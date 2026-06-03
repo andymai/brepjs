@@ -15,9 +15,10 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, isErr, initFromOC } from 'brepjs';
+import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
-import { author, miterCorner, unfold } from '../src/api.js';
+import { author, miterCorner, unfold, fold } from '../src/api.js';
+import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
 import type { BendRule, FlatPattern, SheetMetalPart } from '../src/types.js';
 
@@ -137,14 +138,42 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     await writeFile(stepPath, Buffer.from(await step.value.arrayBuffer()));
   }
 
+  // Fold round-trip: re-derive a FlatInput from the part and fold it back up,
+  // demonstrating unfold→fold reproduces the part's volume (the PR2 oracle).
+  // Mitered parts are intentionally skipped; a failure on a non-mitered demo is a
+  // real round-trip regression, so it must surface rather than read as "skipped".
+  let roundTrip = '(fold round-trip skipped: mitered part)';
+  if (demo.miter === undefined) {
+    roundTrip = foldRoundTrip(part);
+  }
+
   return [
     `  [${demo.name}]`,
     `    folded + flat SVG : ${svgPath}`,
     `    folded STEP       : ${stepPath}`,
     `    bend lines        : ${pattern.bendLines.length}`,
     `    developed area    : ${pattern.developedArea.toFixed(2)} mm²`,
+    `    fold round-trip   : ${roundTrip}`,
     `    warnings          : ${unfolded.value.warnings.length}`,
   ];
+}
+
+/**
+ * Round-trip a non-mitered part through `partToFlatInput → fold` and report the
+ * volume delta. Any Err or missing solid is a genuine round-trip regression, so it
+ * is reported as FAILED with the reason — never silently as "skipped".
+ */
+function foldRoundTrip(part: SheetMetalPart): string {
+  if (part.solid === undefined) return '(fold round-trip FAILED: part has no solid)';
+  const flatInput = partToFlatInput(part);
+  if (isErr(flatInput)) return `(fold round-trip FAILED: ${flatInput.error.message})`;
+  const refolded = fold(flatInput.value);
+  if (isErr(refolded)) return `(fold round-trip FAILED: ${refolded.error.message})`;
+  if (refolded.value.solid === undefined) return '(fold round-trip FAILED: refolded part has no solid)';
+  const vA = measureVolume(part.solid);
+  const vB = measureVolume(refolded.value.solid);
+  if (isErr(vA) || isErr(vB)) return '(fold round-trip FAILED: volume not measurable)';
+  return `Δvol ${Math.abs(vA.value - vB.value).toExponential(2)} mm³`;
 }
 
 interface Seg2 {

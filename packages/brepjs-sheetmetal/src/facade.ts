@@ -17,6 +17,7 @@ import type { MiterPlane, DxfOptions } from './api.js';
 import {
   author,
   unfold,
+  fold,
   miter,
   miterCorner,
   toDXF,
@@ -26,6 +27,7 @@ import {
 import type {
   SheetMetalPart,
   FlatPattern,
+  FlatInput,
   BendReport,
   MaterialSpec,
   SheetMetalWarning,
@@ -171,6 +173,11 @@ export function sheetMetal(base: BaseFlatSpec, thickness: number): SheetMetalBui
 /** Re-enter the fluent chain from an already-authored part. */
 export function fromPart(part: SheetMetalPart): SheetMetalPartHandle {
   return new SheetMetalPartHandle(part);
+}
+
+/** Fold a flat pattern up into a part and re-enter the fluent chain. */
+export function foldFlat(input: FlatInput): SheetMetalPartHandle {
+  return new SheetMetalPartHandle(unwrapOrThrow(fold(input)));
 }
 
 export { SheetMetalBuilder, SheetMetalPartHandle };

@@ -14,6 +14,7 @@ import {
   type FlangeSpec,
 } from './authorFns.js';
 import { unfold as unfoldFn } from './unfoldFns.js';
+import { fold as foldFn } from './foldFns.js';
 import {
   miterCut as miterCutFn,
   autoMiterCorner as autoMiterCornerFn,
@@ -30,6 +31,7 @@ import { bendAllowance as bendAllowanceFn, developedLength as developedLengthFn 
 import type {
   SheetMetalPart,
   FlatPattern,
+  FlatInput,
   BendReport,
   BendRule,
   UnfoldResult,
@@ -44,6 +46,11 @@ export function author(spec: AuthorSpec): Result<SheetMetalPart> {
 /** Flatten an authored part into a developed flat pattern + bend report + warnings. */
 export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   return unfoldFn(part);
+}
+
+/** Fold a flat pattern (region-tree) up into a 3D part — the inverse of {@link unfold}. */
+export function fold(input: FlatInput): Result<SheetMetalPart> {
+  return foldFn(input);
 }
 
 /** Cut a part by an oriented plane, removing material on the `+normal` side. */

@@ -281,7 +281,7 @@ function placeChild(
 }
 
 /** Edge origin + along/out unit directions for one side of a 2D frame. */
-function edgeBasis2(f: Frame2, side: FlatSide): { along: Pt2; out: Pt2; edgeOrigin: Pt2 } {
+export function edgeBasis2(f: Frame2, side: FlatSide): { along: Pt2; out: Pt2; edgeOrigin: Pt2 } {
   const uTop = add2(f.origin, scale2(f.u, f.uLen));
   const vTop = add2(f.origin, scale2(f.v, f.vLen));
   switch (side) {

@@ -115,3 +115,47 @@ export interface UnfoldResult {
   report: BendReport;
   warnings: SheetMetalWarning[];
 }
+
+/**
+ * One fold-up region in a {@link FlatInput}: a rectangle in the flat pattern that
+ * folds about a fold line off its parent region (the base by default, or another
+ * region via `parent`). The region-tree is the inverse of the unfold layout, and is
+ * recovered purely from the 2D flat-pattern geometry by `patternToFlatInput` — so
+ * folding it up just re-runs the forward author geometry. `side`/`offset`/`width`
+ * locate the fold line along the parent edge exactly as the authoring `FlangeSpec`
+ * does (`side` is expressed in the parent region's local frame).
+ */
+export interface FoldRegion {
+  id: string;
+  /** Flat extent of the region away from the fold line (becomes the flange length). */
+  length: number;
+  angleDeg: number;
+  direction: 'up' | 'down';
+  rule: BendRule;
+  /** Which edge of the parent region this region folds off. Default `'xmax'`. */
+  side?: FlatSide | undefined;
+  /** Id of another fold region this one chains off. Default = base region. */
+  parent?: string | undefined;
+  /** Start position along the parent edge. Default `0`. */
+  offset?: number | undefined;
+  /** Extent along the parent edge. Default = full parent-edge length. */
+  width?: number | undefined;
+  miter?: MiterSpec | undefined;
+}
+
+/**
+ * A flat pattern to fold up into a 3D part: the base region (a rectangle) plus a
+ * tree of {@link FoldRegion}s, each folding off its parent about a fold line. This
+ * is the inverse of {@link unfold}: a region-tree rather than a 2D outline, which
+ * avoids fragile auto-partitioning of an arbitrary developed polygon and maps
+ * one-to-one onto the authored feature tree.
+ */
+export interface FlatInput {
+  thickness: number;
+  /** Base region extent along +X (the run). */
+  baseLength: number;
+  /** Base region extent along +Y (the developed-strip width). */
+  width: number;
+  material?: MaterialSpec | undefined;
+  regions: FoldRegion[];
+}

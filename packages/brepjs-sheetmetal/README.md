@@ -27,10 +27,20 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 | --------------- | -------------------------------------------------------------------------------------- |
 | Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams       |
 | Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area |
+| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`      |
 | Miter / outputs | auto corner-miter, multi-layer DXF, JSON bend report, manufacturability warnings       |
 | API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                |
 
-`FlatInput` (flat-pattern → fold, the inverse direction) is not yet implemented.
+`fold(input: FlatInput)` folds a flat pattern back up into a 3D part — the inverse of `unfold`. A
+`FlatInput` is a region-tree (a base rectangle plus child fold regions, each with a fold line, angle,
+direction, and bend rule), the inverse of the unfold layout. `patternToFlatInput(pattern, { thickness,
+ruleFor })` recovers that region-tree from the **2D flat-pattern geometry alone** — the developed outline
+wire and bend-line edges — reading real coordinates back out with the public `getEdges` / `curveStartPoint`
+/ `curveEndPoint` readers; only the bend rule (which a flat pattern cannot encode) is a supplied input.
+`partToFlatInput(part)` chains `unfold` → `patternToFlatInput`, so `fold(partToFlatInput(part))` round-trips
+volume, validity, and bend/flange counts through the 2D geometry — making the round-trip a genuine,
+non-circular oracle. Fold reuses the forward authoring bend geometry wholesale (no duplicated bend math),
+and rides SEAM_CUT / MIN_RADIUS warnings inside the Ok payload.
 
 ## Design
 

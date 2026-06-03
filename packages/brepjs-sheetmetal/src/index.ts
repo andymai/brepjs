@@ -25,6 +25,9 @@ export type {
 
 export { unfold } from './unfoldFns.js';
 
+export { fold, foldWithWarnings, patternToFlatInput, partToFlatInput } from './foldFns.js';
+export type { FoldResult, PatternToFlatInputOptions } from './foldFns.js';
+
 export { authorPart, baseEdgeRef } from './authorFns.js';
 export type {
   AuthorSpec,
@@ -47,6 +50,7 @@ export { validatePart } from './validateFns.js';
 export {
   author,
   unfold as unfoldPart,
+  fold as foldPart,
   miter,
   miterCorner,
   toDXF,
@@ -58,7 +62,7 @@ export {
   developed,
 } from './api.js';
 
-export { sheetMetal, fromPart, SheetMetalError, SheetMetalBuilder, SheetMetalPartHandle } from './facade.js';
+export { sheetMetal, fromPart, foldFlat, SheetMetalError, SheetMetalBuilder, SheetMetalPartHandle } from './facade.js';
 
 export type {
   EdgeRef,
@@ -71,6 +75,8 @@ export type {
   CornerMiter,
   SheetMetalPart,
   FlatPattern,
+  FlatInput,
+  FoldRegion,
   BendReport,
   SheetMetalWarning,
   UnfoldResult,
