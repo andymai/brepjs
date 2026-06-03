@@ -24,6 +24,8 @@ import {
   collect,
   tryCatch,
   tryCatchAsync,
+  flatten,
+  mapBoth,
   type Result,
 } from '@/core/result.js';
 
@@ -326,5 +328,47 @@ describe('fromNullable', () => {
 
   it('returns Err for undefined', () => {
     expect(unwrapErr(fromNullable(undefined, () => 'was undef'))).toBe('was undef');
+  });
+});
+
+describe('flatten', () => {
+  it('collapses a nested Ok into a single Ok', () => {
+    expect(unwrap(flatten(ok(ok(42))))).toBe(42);
+  });
+
+  it('propagates an inner Err', () => {
+    expect(unwrapErr(flatten(ok(err('inner'))))).toBe('inner');
+  });
+
+  it('propagates an outer Err', () => {
+    expect(unwrapErr(flatten(err('outer') as Result<Result<number, string>, string>))).toBe(
+      'outer'
+    );
+  });
+});
+
+describe('mapBoth', () => {
+  it('applies the ok mapper to an Ok value', () => {
+    expect(
+      unwrap(
+        mapBoth(
+          ok(2),
+          (v) => v * 10,
+          (e) => `err:${String(e)}`
+        )
+      )
+    ).toBe(20);
+  });
+
+  it('applies the err mapper to an Err value', () => {
+    expect(
+      unwrapErr(
+        mapBoth(
+          err('boom'),
+          (v: number) => v * 10,
+          (e) => `err:${e}`
+        )
+      )
+    ).toBe('err:boom');
   });
 });
