@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.53.0](https://github.com/andymai/brepjs/compare/brepjs-v18.52.0...brepjs-v18.53.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** contour flanges and lofted/ruled transition flanges ([#1188](https://github.com/andymai/brepjs/issues/1188)) ([0bb6268](https://github.com/andymai/brepjs/commit/0bb62682edd0ddd37ee636c767e222ca3d206bd0))
+
 ## [18.52.0](https://github.com/andymai/brepjs/compare/brepjs-v18.51.0...brepjs-v18.52.0) (2026-06-03)
 
 
