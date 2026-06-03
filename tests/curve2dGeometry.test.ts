@@ -24,6 +24,9 @@ import {
   distanceBetweenCurves2d,
   liftCurve2dToPlane,
   extractCurve2dFromEdge,
+  trimCurve2d,
+  copyCurve2d,
+  splitCurve2d,
 } from '@/2d/curve2dGeometryFns.js';
 import { getKernel2D } from '@/kernel/index.js';
 import { unwrap, isOk, isErr } from '@/core/result.js';
@@ -370,6 +373,50 @@ describe('numerical intersection', () => {
     const result = unwrap(intersectCurves2d(arc, bez));
     expect(result.points.length).toBeGreaterThanOrEqual(1);
     result.segments.forEach((s) => {
+      s[Symbol.dispose]();
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Modification
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('2D curve modification', () => {
+  it('trims a curve so its endpoints match the original at the trim params', () => {
+    using curve = unwrap(circle2d([0, 0], 5));
+    const bounds = unwrap(boundsCurve2d(curve));
+    const mid = (bounds.first + bounds.last) / 2;
+    const startPt = unwrap(evaluateCurve2d(curve, bounds.first));
+    const midPt = unwrap(evaluateCurve2d(curve, mid));
+    using trimmed = unwrap(trimCurve2d(curve, bounds.first, mid));
+    const tb = unwrap(boundsCurve2d(trimmed));
+    const trimStart = unwrap(evaluateCurve2d(trimmed, tb.first));
+    const trimEnd = unwrap(evaluateCurve2d(trimmed, tb.last));
+    expect(trimStart[0]).toBeCloseTo(startPt[0], 4);
+    expect(trimStart[1]).toBeCloseTo(startPt[1], 4);
+    expect(trimEnd[0]).toBeCloseTo(midPt[0], 4);
+    expect(trimEnd[1]).toBeCloseTo(midPt[1], 4);
+  });
+
+  it('copies a curve into an independent handle', () => {
+    using curve = unwrap(line2d([0, 0], [10, 5]));
+    using copy = unwrap(copyCurve2d(curve));
+    const original = unwrap(boundsCurve2d(curve));
+    const copied = unwrap(boundsCurve2d(copy));
+    expect(copied.first).toBeCloseTo(original.first, 5);
+    expect(copied.last).toBeCloseTo(original.last, 5);
+  });
+
+  it('splits a curve at interior parameters into ordered segments', () => {
+    using curve = unwrap(circle2d([0, 0], 5));
+    const bounds = unwrap(boundsCurve2d(curve));
+    const range = bounds.last - bounds.first;
+    const segments = unwrap(
+      splitCurve2d(curve, [bounds.first + range / 3, bounds.first + (2 * range) / 3])
+    );
+    expect(segments.length).toBe(3);
+    segments.forEach((s) => {
       s[Symbol.dispose]();
     });
   });

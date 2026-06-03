@@ -213,3 +213,29 @@ describe('CompoundSketch loftWith mismatch', () => {
     expect(() => c1.loftWith(c2, { ruled: true })).toThrow();
   });
 });
+
+describe('CompoundSketch instance methods', () => {
+  it('face() builds a face with the inner wires as holes', () => {
+    const compound = new CompoundSketch([sketchRectangle(20, 20), sketchCircle(3)]);
+    const area = unwrap(measureArea(compound.face()));
+    expect(area).toBeCloseTo(20 * 20 - Math.PI * 9, -1);
+  });
+
+  it('revolve() produces a positive-volume solid', () => {
+    const outer = new Sketcher('XZ').movePointerTo([10, 0]).hLine(5).vLine(5).hLine(-5).close();
+    const inner = new Sketcher('XZ').movePointerTo([11, 1]).hLine(3).vLine(3).hLine(-3).close();
+    const compound = new CompoundSketch([outer, inner]);
+    expect(unwrap(measureVolume(compound.revolve([0, 0, 1])))).toBeGreaterThan(0);
+  });
+
+  it('delete() releases every sub-sketch without throwing', () => {
+    const compound = new CompoundSketch([sketchRectangle(10, 10), sketchCircle(2)]);
+    expect(() => {
+      compound.delete();
+    }).not.toThrow();
+  });
+
+  it('constructor rejects an empty sketch array', () => {
+    expect(() => new CompoundSketch([])).toThrow();
+  });
+});
