@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.56.0](https://github.com/andymai/brepjs/compare/brepjs-v18.55.0...brepjs-v18.56.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** hems (closed/open/teardrop/rolled) + jogs ([#1195](https://github.com/andymai/brepjs/issues/1195)) ([ff8eba6](https://github.com/andymai/brepjs/commit/ff8eba6c27284ac3cb4cb94ae9283b85900877c6))
+
 ## [18.55.0](https://github.com/andymai/brepjs/compare/brepjs-v18.54.0...brepjs-v18.55.0) (2026-06-03)
 
 
