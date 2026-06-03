@@ -72,11 +72,8 @@ export function registerBendTable(table: BendTable): Result<BendTable> {
       );
     }
   }
-  registry.set(table.id, { id: table.id, kind: table.kind, rows: table.rows.map((r) => ({ ...r })) });
-  const stored = registry.get(table.id);
-  if (stored === undefined) {
-    return err(validationError('REGISTER_FAILED', `bend table '${table.id}' failed to register`));
-  }
+  const stored = { id: table.id, kind: table.kind, rows: table.rows.map((r) => ({ ...r })) };
+  registry.set(table.id, stored);
   return ok(stored);
 }
 
@@ -287,7 +284,7 @@ export function resolveBendAllowance(
     }
     if (interp.clamped && onWarning !== undefined) {
       onWarning({
-        code: 'MIN_RADIUS',
+        code: 'TABLE_CLAMP',
         message: `bend table '${table.id}' query (t=${thickness}, r=${rule.innerRadius}, θ=${angle}) is outside the tabulated range; clamped to the nearest entry`,
       });
     }

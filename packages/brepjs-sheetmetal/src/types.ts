@@ -418,7 +418,11 @@ export type SheetMetalWarning = {
     /** Foreign unfold: the part is a valid solid but its detected structure is
      * incomplete (non-uniform thickness, a dropped panel, or a bend not joining
      * exactly two flats), so the flat pattern may be partial. */
-    | 'DETECTION_INCOMPLETE';
+    | 'DETECTION_INCOMPLETE'
+    /** A bend-table query fell outside the tabulated (thickness, radius, angle)
+     * range and was clamped to the nearest entry (no extrapolation). Distinct from
+     * MIN_RADIUS, which means a bend's inner radius is below one thickness. */
+    | 'TABLE_CLAMP';
   message: string;
   featureId?: string | undefined;
 };

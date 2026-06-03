@@ -201,6 +201,8 @@ describe('resolveBendAllowance — out-of-range clamp + warning hook', () => {
     if (!r.ok) return;
     expect(r.value).toBeCloseTo(3.0, 9); // clamped to the 90° row, not extrapolated
     expect(warnings.length).toBe(1);
+    // A dedicated code, NOT MIN_RADIUS (which means inner radius < thickness).
+    expect(warnings[0]?.code).toBe('TABLE_CLAMP');
   });
 
   it('clamps an above-range thickness without extrapolating', () => {
