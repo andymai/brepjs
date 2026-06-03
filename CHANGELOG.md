@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.49.0](https://github.com/andymai/brepjs/compare/brepjs-v18.48.0...brepjs-v18.49.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** flat-pattern→fold inverse with non-circular round-trip oracle ([#1180](https://github.com/andymai/brepjs/issues/1180)) ([ea667f4](https://github.com/andymai/brepjs/commit/ea667f4f44f6dac5523bfa9e51cd385590cacc5a))
+
 ## [18.48.0](https://github.com/andymai/brepjs/compare/brepjs-v18.47.0...brepjs-v18.48.0) (2026-06-03)
 
 
