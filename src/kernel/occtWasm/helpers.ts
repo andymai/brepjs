@@ -1,4 +1,3 @@
-/* v8 ignore file -- occt-wasm kernel not available in brepkit test suite */
 /**
  * Shared helpers for the occt-wasm adapter — handle wrapping, kernel result
  * unwrapping, and Embind vector marshalling.

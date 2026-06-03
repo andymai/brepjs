@@ -1,4 +1,3 @@
-/* v8 ignore file -- occt-wasm kernel not available in brepkit test suite */
 /**
  * OcctWasmAdapter -- KernelAdapter implementation backed by occt-wasm's WASM kernel.
  *

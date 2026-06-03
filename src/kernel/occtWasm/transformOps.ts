@@ -1,4 +1,3 @@
-/* v8 ignore file -- occt-wasm kernel not available in brepkit test suite */
 /**
  * Transform / pattern operations for the occt-wasm adapter.
  *

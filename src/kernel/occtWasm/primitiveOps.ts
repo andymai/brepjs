@@ -1,4 +1,3 @@
-/* v8 ignore file -- occt-wasm kernel not available in brepkit test suite */
 /**
  * Primitive shape constructors for the occt-wasm adapter.
  *
