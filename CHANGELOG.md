@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.55.0](https://github.com/andymai/brepjs/compare/brepjs-v18.54.0...brepjs-v18.55.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** bend tables with allowance/deduction lookup + interpolation ([#1193](https://github.com/andymai/brepjs/issues/1193)) ([f050a5b](https://github.com/andymai/brepjs/commit/f050a5b64019c8419e79f3ab04dac6e62392e3f4))
+
 ## [18.54.0](https://github.com/andymai/brepjs/compare/brepjs-v18.53.0...brepjs-v18.54.0) (2026-06-03)
 
 
