@@ -125,7 +125,7 @@ The default 128 MB cap is fine for simple CAD operations but tight for STEP impo
 
 ### Threaded WASM
 
-The threaded build (`brepjs-opencascade-threaded`, optional) requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The default `brepjs-opencascade` is single-threaded and doesn't need these headers.
+The threaded build (`brepjs-opencascade-threaded`, optional) requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The standard single-threaded `brepjs-opencascade` build doesn't need these headers, and neither does the default `occt-wasm` kernel.
 
 ## Reporting compatibility issues
 
