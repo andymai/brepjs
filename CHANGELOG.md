@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.57.0](https://github.com/andymai/brepjs/compare/brepjs-v18.56.0...brepjs-v18.57.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** true-shape (no-fit-polygon) nesting for interlocking parts ([#1198](https://github.com/andymai/brepjs/issues/1198)) ([aca93cf](https://github.com/andymai/brepjs/commit/aca93cfc84b50cc5c3aad6fc3543f7ed85827385))
+
 ## [18.56.0](https://github.com/andymai/brepjs/compare/brepjs-v18.55.0...brepjs-v18.56.0) (2026-06-03)
 
 
