@@ -123,6 +123,11 @@ export interface ReliefFeature {
  *              across; `angleDeg` rotates the slot in-plane (CCW about its centre);
  *              `round` makes the ends semicircular (obround) rather than square.
  * - `polygon`— an arbitrary closed polygon given by its local `points` (≥ 3).
+ *
+ * `region` names the flat the cutout sits on: a flange id, or `'root'`/`'base'`/
+ * `'face-0'` for the base flat (the three base aliases the rest of the package
+ * accepts). Coordinates are region-local: `+x` along the bend axis, `+y` along the
+ * run, origin at the region's frame origin.
  */
 export type CutoutSpec =
   | { kind: 'hole'; region: string; x: number; y: number; diameter: number }

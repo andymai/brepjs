@@ -32,7 +32,7 @@ import type {
   SheetMetalPart,
 } from './types.js';
 import { normalizeSolid } from './internal.js';
-import { ROOT_FLAT_ID, featureTree } from './featureTreeFns.js';
+import { ROOT_FLAT_ID, featureTree, type FeatureTree } from './featureTreeFns.js';
 
 /** Authoring options for the base flat the flanges attach to. */
 export interface BaseFlatSpec {
@@ -249,7 +249,10 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
  * the matching folded face. Walks the feature tree in BFS order so a chained
  * flange's parent frame is always known first.
  */
-export function worldFrames(part: SheetMetalPart): Result<Map<string, FlatFrame>> {
+export function worldFrames(
+  part: SheetMetalPart,
+  tree?: FeatureTree
+): Result<Map<string, FlatFrame>> {
   const frames = new Map<string, FlatFrame>();
   frames.set(ROOT_FLAT_ID, {
     id: ROOT_FLAT_ID,
@@ -261,7 +264,7 @@ export function worldFrames(part: SheetMetalPart): Result<Map<string, FlatFrame>
     vLen: part.width,
   });
 
-  const treeResult = featureTree(part);
+  const treeResult = tree !== undefined ? ok(tree) : featureTree(part);
   if (!treeResult.ok) return treeResult;
 
   const flangeById = new Map<string, FlangeFeature>();

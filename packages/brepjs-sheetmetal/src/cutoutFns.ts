@@ -20,7 +20,7 @@ import type { CutoutSpec, CutoutFeature, SheetMetalPart } from './types.js';
 import { normalizeSolid } from './internal.js';
 import { worldFrames, type FlatFrame } from './authorFns.js';
 import { layoutTree, type Frame2 } from './unfoldFns.js';
-import { featureTree, ROOT_FLAT_ID } from './featureTreeFns.js';
+import { featureTree, ROOT_FLAT_ID, type FeatureTree } from './featureTreeFns.js';
 
 const EPS = 1e-6;
 /** A hair of over-cut so the tool pokes through both faces cleanly. */
@@ -46,7 +46,12 @@ export function addCutout(part: SheetMetalPart, spec: CutoutSpec): Result<SheetM
   }
 
   const regionId = resolveRegionId(spec.region);
-  const framesResult = worldFrames(part);
+  // Walk the feature tree once and thread it into both the world-frame and
+  // developed-frame lookups (each would otherwise re-walk it independently).
+  const treeResult = featureTree(part);
+  if (!treeResult.ok) return treeResult;
+  const tree = treeResult.value;
+  const framesResult = worldFrames(part, tree);
   if (!framesResult.ok) return framesResult;
   const worldFrame = framesResult.value.get(regionId);
   if (worldFrame === undefined) {
@@ -63,7 +68,7 @@ export function addCutout(part: SheetMetalPart, spec: CutoutSpec): Result<SheetM
     return err(validationError('CUTOUT_OUT_OF_BOUNDS', oob));
   }
 
-  const dev = developedFrame(part, regionId);
+  const dev = developedFrame(part, regionId, tree);
   if (!dev.ok) return dev;
 
   const toolResult = buildTool(local, worldFrame, part.thickness);
@@ -248,10 +253,10 @@ function buildTool(local: Pt2[], f: FlatFrame, thickness: number): Result<Solid>
 }
 
 /** Developed-plane {@link Frame2} of a region (base or flange) via the unfold layout. */
-function developedFrame(part: SheetMetalPart, regionId: string): Result<Frame2> {
-  const tree = featureTree(part);
-  if (!tree.ok) return tree;
-  const layout = layoutTree(part, tree.value, part.baseLength, part.width);
+function developedFrame(part: SheetMetalPart, regionId: string, tree?: FeatureTree): Result<Frame2> {
+  const treeResult = tree !== undefined ? ok(tree) : featureTree(part);
+  if (!treeResult.ok) return treeResult;
+  const layout = layoutTree(part, treeResult.value, part.baseLength, part.width);
   if (!layout.ok) return layout;
   const placed = layout.value.flats.find((p) => p.id === regionId);
   if (placed === undefined) {
