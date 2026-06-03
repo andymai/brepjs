@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.48.0](https://github.com/andymai/brepjs/compare/brepjs-v18.47.0...brepjs-v18.48.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** multi-bend authoring, down-bends, closed-box seams ([#1177](https://github.com/andymai/brepjs/issues/1177)) ([298d612](https://github.com/andymai/brepjs/commit/298d6123b431c7abdefc39b199c4de93a16d8e40))
+
 ## [18.47.0](https://github.com/andymai/brepjs/compare/brepjs-v18.46.0...brepjs-v18.47.0) (2026-06-03)
 
 
