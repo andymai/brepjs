@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.52.0](https://github.com/andymai/brepjs/compare/brepjs-v18.51.0...brepjs-v18.52.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** tabs, tab-and-slot joints, louvers, dimples/embosses ([#1186](https://github.com/andymai/brepjs/issues/1186)) ([44feb8e](https://github.com/andymai/brepjs/commit/44feb8e8c5b91c5b96dae5d83d3bd454fabc4b6f))
+
 ## [18.51.0](https://github.com/andymai/brepjs/compare/brepjs-v18.50.0...brepjs-v18.51.0) (2026-06-03)
 
 
