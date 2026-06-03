@@ -53,7 +53,7 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
 
   const warnings: SheetMetalWarning[] = [...tree.warnings];
 
-  const layoutResult = layoutTree(part, tree, baseLength, width);
+  const layoutResult = layoutTree(part, tree, baseLength, width, (warning) => warnings.push(warning));
   if (!layoutResult.ok) return layoutResult;
   const layout = layoutResult.value;
 
@@ -213,7 +213,8 @@ export function layoutTree(
   part: SheetMetalPart,
   tree: FeatureTree,
   baseLength: number,
-  width: number
+  width: number,
+  onWarning?: (warning: SheetMetalWarning) => void
 ): Result<TreeLayout> {
   const frames = new Map<string, Frame2>();
   frames.set(ROOT_FLAT_ID, {
@@ -250,7 +251,7 @@ export function layoutTree(
       );
     }
 
-    const devResult = developedLength(treeBend.bend.angleDeg, part.thickness, treeBend.bend.rule);
+    const devResult = developedLength(treeBend.bend.angleDeg, part.thickness, treeBend.bend.rule, onWarning);
     if (!devResult.ok) return devResult;
     const dev = devResult.value;
 

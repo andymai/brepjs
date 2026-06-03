@@ -48,6 +48,12 @@ import {
 } from './reportFns.js';
 import { validatePart as validatePartFn } from './validateFns.js';
 import { bendAllowance as bendAllowanceFn, developedLength as developedLengthFn } from './allowanceFns.js';
+import {
+  registerBendTable as registerBendTableFn,
+  getBendTable as getBendTableFn,
+  resolveBendAllowance as resolveBendAllowanceFn,
+  type BendTable,
+} from './bendTableFns.js';
 import type {
   SheetMetalPart,
   FlatPattern,
@@ -242,13 +248,47 @@ export function validate(part: SheetMetalPart): SheetMetalWarning[] {
 }
 
 /** Bend allowance `BA = (π/180)·|angle|·(R + K·T)` for a single bend. */
-export function allowance(angleDeg: number, thickness: number, rule: BendRule): Result<number> {
-  return bendAllowanceFn(angleDeg, thickness, rule);
+export function allowance(
+  angleDeg: number,
+  thickness: number,
+  rule: BendRule,
+  onWarning?: (warning: SheetMetalWarning) => void
+): Result<number> {
+  return bendAllowanceFn(angleDeg, thickness, rule, onWarning);
 }
 
 /** Neutral-axis developed length of a bend region (numerically equal to the allowance). */
-export function developed(angleDeg: number, thickness: number, rule: BendRule): Result<number> {
-  return developedLengthFn(angleDeg, thickness, rule);
+export function developed(
+  angleDeg: number,
+  thickness: number,
+  rule: BendRule,
+  onWarning?: (warning: SheetMetalWarning) => void
+): Result<number> {
+  return developedLengthFn(angleDeg, thickness, rule, onWarning);
+}
+
+/** Register (or replace) a shop bend table so rules can reference it by id. */
+export function addBendTable(table: BendTable): Result<BendTable> {
+  return registerBendTableFn(table);
+}
+
+/** Look up a registered bend table by id (starter tables included). */
+export function bendTable(id: string): BendTable | undefined {
+  return getBendTableFn(id);
+}
+
+/**
+ * Resolve a bend's developed allowance through the single resolution point:
+ * a referenced bend table, then an explicit `rule.allowance`, then the K-factor
+ * formula. This is what {@link developed} delegates to.
+ */
+export function resolveAllowance(
+  rule: BendRule,
+  angleDeg: number,
+  thickness: number,
+  onWarning?: (warning: SheetMetalWarning) => void
+): Result<number> {
+  return resolveBendAllowanceFn(rule, angleDeg, thickness, onWarning);
 }
 
 export type { AuthorSpec, FlangeSpec, MiterPlane, DxfOptions, SlotPlacement };

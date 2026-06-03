@@ -8,6 +8,9 @@ export {
 
 export { bendAllowance, developedLength, neutralRadius } from './allowanceFns.js';
 
+export { registerBendTable, getBendTable, resolveBendAllowance } from './bendTableFns.js';
+export type { BendTable, BendTableRow } from './bendTableFns.js';
+
 export {
   ROOT_FLAT_ID,
   buildFeatureGraph,
@@ -79,6 +82,9 @@ export {
   validate,
   allowance,
   developed,
+  addBendTable,
+  bendTable,
+  resolveAllowance,
   contourFlange,
   loftedFlange,
 } from './api.js';

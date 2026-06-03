@@ -695,7 +695,7 @@ function layoutForeign(
 
   for (const tb of treeBends) {
     const bend = tb.edge.bend;
-    const dev = developedLength(bend.angleDeg, thickness, { innerRadius: bend.innerRadius, kFactor });
+    const dev = developedLength(bend.angleDeg, thickness, { innerRadius: bend.innerRadius, kFactor }, (w) => warnings.push(w));
     if (!dev.ok) return dev;
     const parentPlace = placed.get(tb.parent);
     const parent = flats[tb.parent] as DetectedFlat;

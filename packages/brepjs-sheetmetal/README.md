@@ -11,9 +11,10 @@ Pipeline: **author part → auto-miter corners → fold to 3D → unfold to flat
 ## Scope
 
 Straight (cylindrical) bends, authoring our own parts (not unfolding foreign solids). The bend model is
-K-factor based with an extensible schema, so it can grow toward bend-tables without a rewrite.
+K-factor based by default, with optional **shop bend tables** (see below) for parts that develop per a
+press-brake's measured allowance/deduction values.
 
-- Bend allowance: `BA = (π/180)·|angle|·(R + K·T)`
+- Bend allowance: `BA = (π/180)·|angle|·(R + K·T)`, or interpolated from a referenced bend table.
 - Defaults: units are mm; K-factor `0.44`; inner radius `= thickness`.
 
 Authoring supports arbitrary bend trees: flanges off any of the four base edges, **chained
@@ -34,6 +35,7 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 | Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)      |
 | Contour flange  | open line/arc profile swept along a base edge (multi-bend section); EXACT development       |
 | Lofted flange   | ruled transition between two open profiles; triangulated development (exact if developable) |
+| Bend tables     | shop allowance/deduction tables, angle-linear + thickness×radius-bilinear interp, clamp-warn |
 | Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings           |
 | API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                     |
 
@@ -208,6 +210,42 @@ sheet-metal structure is detected at all, e.g. a bare sphere). The detection is 
 author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
 authored unfold's developed area, bend count, flat count, and total flat bbox (single bend, L-bracket,
 U-channel) — reading only the solid, never the feature tree.
+
+## Bend tables
+
+By default a bend develops by the K-factor formula `BA = (π/180)·|angle|·(R + K·T)`. A `BendRule` may
+instead reference a **shop bend table** by id (`rule.bendTableRef`), in which case the developed length is
+**interpolated from the table** — linear in bend angle, bilinear across thickness × inner radius (with
+nearest-radius substitution for sparse one-radius-per-gauge tables), clamping to the nearest tabulated
+entry outside the table's range (and emitting a `MIN_RADIUS` unfold warning rather than extrapolating).
+
+A table is `{ id, kind: 'allowance' | 'deduction', rows: { thickness, radius, angleDeg, value }[] }`. An
+`allowance` table tabulates the developed arc length directly; a `deduction` table tabulates the bend
+deduction and is converted on lookup via the outside-setback relation `OSSB = (R+T)·tan(θ/2)`,
+`BD = 2·OSSB − BA` ⇒ `BA = 2·OSSB − BD` (for a 90° bend, `OSSB = R+T`).
+
+Resolution precedence at the single resolution point (`resolveBendAllowance`, which `developedLength`
+delegates to): **(1) `bendTableRef` table → (2) explicit `rule.allowance` override → (3) K-factor formula**.
+Parts with no `bendTableRef` are byte-for-byte unchanged. Two starter air-bend tables ship auto-registered
+on first access — `steel-airbend` (mild steel) and `aluminum-airbend` (5052-H32) — with published 90°
+allowances scaled across {30, 60, 90, 120}° (sources: SheetMetal.Me charts, Machinery's Handbook 29th ed.).
+
+```ts
+import { registerBendTable, author, unfold } from 'brepjs-sheetmetal';
+
+registerBendTable({
+  id: 'my-shop-steel',
+  kind: 'allowance',
+  rows: [{ thickness: 1.52, radius: 1.5, angleDeg: 90, value: 3.63 }],
+});
+
+const part = author({
+  thickness: 1.52,
+  base: { length: 40, width: 40 },
+  flanges: [{ id: 'fx', length: 18, angleDeg: 90, side: 'xmax', rule: { innerRadius: 1.5, kFactor: 0.44, bendTableRef: 'my-shop-steel' } }],
+});
+// unfold(part.value) now develops the bend at BA = 3.63 mm (the table), not (π/2)·(R + K·T).
+```
 
 ## Design
 

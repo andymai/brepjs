@@ -17,7 +17,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
-import { author, miterCorner, unfold, unfoldSolid, fold } from '../src/api.js';
+import { author, miterCorner, unfold, unfoldSolid, fold, developed } from '../src/api.js';
 import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { addCutout } from '../src/cutoutFns.js';
 import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
@@ -261,8 +261,33 @@ async function main(): Promise<void> {
     lines.push(...(await renderDemo(demo)));
   }
   lines.push(...(await renderForeignDemo()));
+  lines.push(...renderBendTableDemo());
   lines.push('');
   process.stdout.write(lines.join('\n'));
+}
+
+/**
+ * Bend-table demo (plan PR8): develop one 90° bend two ways — via the published
+ * `steel-airbend` table vs the K-factor formula at the same R/T — and print the
+ * developed-length delta, proving the table path replaces the formula.
+ */
+function renderBendTableDemo(): string[] {
+  const thickness = 1.52;
+  const radius = 1.5;
+  const kRule: BendRule = { innerRadius: radius, kFactor: 0.44 };
+  const tableRule: BendRule = { ...kRule, bendTableRef: 'steel-airbend' };
+
+  const kDev = developed(90, thickness, kRule);
+  const tableDev = developed(90, thickness, tableRule);
+  if (isErr(kDev) || isErr(tableDev)) throw new Error('bend-table demo: developed length failed');
+
+  return [
+    '  [bend-table]',
+    '    table id              : steel-airbend (mild-steel air-bend, SheetMetal.Me / Machinery’s Handbook)',
+    `    K-factor BA (90°)     : ${kDev.value.toFixed(3)} mm`,
+    `    table BA (90°)        : ${tableDev.value.toFixed(3)} mm`,
+    `    Δ developed length    : ${Math.abs(kDev.value - tableDev.value).toFixed(3)} mm`,
+  ];
 }
 
 /**
