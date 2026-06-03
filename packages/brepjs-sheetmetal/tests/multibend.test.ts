@@ -270,6 +270,17 @@ describe('input validation', () => {
     expect(bad.error.code).toBe('INVALID_FLANGE_ID');
   });
 
+  it.each(['root', 'face-0'])("rejects a flange reusing the reserved id '%s'", (reserved) => {
+    const bad = author({
+      thickness: T,
+      base: { length: 30, width: 30 },
+      flanges: [{ id: reserved, length: 10, angleDeg: 90, rule, side: 'xmax' }],
+    });
+    expect(bad.ok).toBe(false);
+    if (!isErr(bad)) return;
+    expect(bad.error.code).toBe('INVALID_FLANGE_ID');
+  });
+
   it('rejects a seam with an out-of-range angle', () => {
     const bad = author({
       thickness: T,

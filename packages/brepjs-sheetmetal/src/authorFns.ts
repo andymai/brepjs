@@ -146,8 +146,12 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
   for (const flange of spec.flanges) {
     // `::` is reserved as the seam-bend id delimiter (`seam::<parent>::<child>`);
     // allowing it in a flange id would make the seam parent/child ambiguous to parse.
-    if (flange.id === '' || flange.id.includes('::')) {
-      return err(validationError('INVALID_FLANGE_ID', `flange id must be non-empty and must not contain '::', got '${flange.id}'`));
+    // `root`/`face-0` are reserved sentinels for the base flat — a flange reusing
+    // either would silently overwrite the base frame and fold off wrong geometry.
+    if (flange.id === '' || flange.id.includes('::') || flange.id === ROOT_FLAT_ID || flange.id === 'face-0') {
+      return err(
+        validationError('INVALID_FLANGE_ID', `flange id must be non-empty, must not contain '::', and must not reuse the reserved ids 'root'/'face-0', got '${flange.id}'`)
+      );
     }
     if (seen.has(flange.id)) {
       return err(validationError('DUPLICATE_FLANGE', `duplicate flange id '${flange.id}'`));
