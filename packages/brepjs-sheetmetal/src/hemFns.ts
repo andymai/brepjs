@@ -168,9 +168,9 @@ export function hem(part: SheetMetalPart, spec: HemSpec): Result<SheetMetalPart>
   });
 }
 
-/** Deterministic hem id from its region/side/type when none is supplied. */
+/** The hem's id: an explicit `spec.id`, else a deterministic region/side/type key. */
 function hemId(spec: HemSpec): string {
-  return `hem-${spec.region}-${spec.side}-${spec.type}`;
+  return spec.id ?? `hem-${spec.region}-${spec.side}-${spec.type}`;
 }
 
 function resolveRegion(region: string): string {
@@ -188,10 +188,13 @@ function planHem(spec: HemSpec, thickness: number): Result<HemPlan> {
   if (!Number.isFinite(thickness) || thickness <= 0) {
     return err(validationError('INVALID_THICKNESS', `hem thickness must be positive, got ${thickness}`));
   }
-  const baseRadius = spec.radius ?? thickness;
-  if (!Number.isFinite(baseRadius) || baseRadius <= 0) {
-    return err(validationError('INVALID_HEM_RADIUS', `hem radius must be positive, got ${baseRadius}`));
+  if (spec.radius !== undefined && (!Number.isFinite(spec.radius) || spec.radius < 0)) {
+    return err(validationError('INVALID_HEM_RADIUS', `hem radius must be non-negative, got ${spec.radius}`));
   }
+  // Inner-radius default differs by type: a closed hem folds essentially flat
+  // (radius ≈ 0, just the HAIR clearance) so it is actually closed; teardrop/rolled
+  // default to one thickness. Open derives its radius from the requested gap below.
+  const baseRadius = spec.radius ?? thickness;
 
   switch (spec.type) {
     case 'closed': {
@@ -206,7 +209,9 @@ function planHem(spec: HemSpec, thickness: number): Result<HemPlan> {
           validationError('HEM_LENGTH_TOO_SHORT', `closed hem return length ${returnLength} must be ≥ thickness ${thickness}`)
         );
       }
-      return ok({ curlDeg: 180, radius: baseRadius + CLOSED_HEM_HAIR, returnLength });
+      // Default to a tight (≈0) radius so the return folds flat against the parent
+      // (an actually-closed hem); the HAIR keeps the coincident-face fuse valid.
+      return ok({ curlDeg: 180, radius: (spec.radius ?? 0) + CLOSED_HEM_HAIR, returnLength });
     }
     case 'open': {
       const returnLength = spec.length ?? 0;
@@ -215,14 +220,13 @@ function planHem(spec: HemSpec, thickness: number): Result<HemPlan> {
           validationError('INVALID_HEM_LENGTH', `open hem requires a positive return length, got ${spec.length}`)
         );
       }
-      // Open-hem gap = the clear distance between the return and the parent. The
-      // curl's inner radius sets that gap directly (the return lands a diameter +
-      // thickness away), so size the radius from the requested gap.
-      const gap = spec.gap ?? baseRadius;
+      // `gap` is the physical clear distance between the return and the parent. A
+      // 180° fold at inner radius r lands the return 2r away, so the radius is gap/2.
+      const gap = spec.gap ?? thickness;
       if (!Number.isFinite(gap) || gap <= 0) {
         return err(validationError('INVALID_HEM_GAP', `open hem gap must be positive, got ${gap}`));
       }
-      return ok({ curlDeg: 180, radius: gap, returnLength });
+      return ok({ curlDeg: 180, radius: gap / 2, returnLength });
     }
     case 'teardrop': {
       const returnLength = spec.length ?? 0;

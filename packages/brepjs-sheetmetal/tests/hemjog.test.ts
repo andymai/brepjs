@@ -81,7 +81,8 @@ describe('hem — fold-back development', () => {
     expect(feature).toBeDefined();
     if (feature === undefined) return;
 
-    const fullCurl = developedLength(180, T, { ...rule, innerRadius: gap });
+    // `gap` is the physical clear distance; the inner bend radius is gap/2.
+    const fullCurl = developedLength(180, T, { ...rule, innerRadius: gap / 2 });
     expect(fullCurl.ok).toBe(true);
     if (!fullCurl.ok) return;
     const arcDev = feature.segments.filter((s) => s.kind === 'arc').reduce((acc, s) => acc + s.dev, 0);
@@ -273,5 +274,30 @@ describe('jog — two-bend step', () => {
   it('rejects an out-of-range angle', () => {
     const j = jog(basePart(), { region: 'base', side: 'xmax', position: 8, offsetHeight: 5, angle: 90, rule });
     expect(j.ok).toBe(false);
+  });
+});
+
+describe('hem/jog — review-fix behaviors', () => {
+  it('a closed hem with no radius folds tighter than one defaulting to a thickness', () => {
+    // The closed default is now ≈0 (HAIR), not one thickness — so its curl
+    // allowance is smaller than an explicit radius=thickness closed hem.
+    const tight = hem(basePart(), { region: 'base', side: 'xmax', type: 'closed', length: 6, rule });
+    const wide = hem(basePart(), { region: 'base', side: 'xmax', type: 'closed', length: 6, radius: T, rule });
+    expect(tight.ok && wide.ok).toBe(true);
+    if (!tight.ok || !wide.ok) return;
+    const dTight = tight.value.hems?.[0]?.developedLength ?? 0;
+    const dWide = wide.value.hems?.[0]?.developedLength ?? 0;
+    expect(dTight).toBeLessThan(dWide);
+  });
+
+  it('places two hems on the same edge via explicit ids (no DUPLICATE_HEM)', () => {
+    const one = hem(basePart(), { region: 'base', side: 'xmax', type: 'open', id: 'h1', length: 6, offset: 0, width: 12, gap: 2, rule });
+    expect(one.ok).toBe(true);
+    if (!one.ok) return;
+    const two = hem(one.value, { region: 'base', side: 'xmax', type: 'open', id: 'h2', length: 6, offset: 18, width: 12, gap: 2, rule });
+    expect(two.ok).toBe(true);
+    if (!two.ok) return;
+    expect(two.value.hems?.length).toBe(2);
+    if (two.value.solid !== undefined) expect(isValid(two.value.solid)).toBe(true);
   });
 });

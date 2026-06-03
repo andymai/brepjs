@@ -196,7 +196,7 @@ export function jog(part: SheetMetalPart, spec: JogSpec): Result<SheetMetalPart>
 }
 
 function jogId(spec: JogSpec): string {
-  return `jog-${spec.region}-${spec.side}`;
+  return spec.id ?? `jog-${spec.region}-${spec.side}`;
 }
 
 function resolveRegion(region: string): string {

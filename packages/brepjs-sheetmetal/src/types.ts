@@ -365,11 +365,17 @@ export interface HemSpec {
   region: string;
   side: FlatSide;
   type: 'closed' | 'open' | 'teardrop' | 'rolled';
+  /** Optional unique id; defaults to `hem-<region>-<side>-<type>`. Set this to
+   * place more than one hem of the same type on the same region edge (e.g. at
+   * different offsets). Must not contain `::`. */
+  id?: string | undefined;
   /** Return-leg length out along the parent. Required for closed/open/teardrop. */
   length?: number | undefined;
-  /** Inner bend radius. Default = one material thickness. */
+  /** Inner bend radius. Default = one thickness (closed defaults to ≈0, just the
+   * HAIR clearance, so it folds flat). */
   radius?: number | undefined;
-  /** Open-hem gap between the return and the parent. Default = `radius`. */
+  /** Open-hem physical clear distance between the return and the parent (the inner
+   * radius is set to gap/2). Default = one thickness. */
   gap?: number | undefined;
   /** Start position along the region edge. Default `0`. */
   offset?: number | undefined;
@@ -427,6 +433,10 @@ export interface HemFeature {
 export interface JogSpec {
   region: string;
   side: FlatSide;
+  /** Optional unique id; defaults to `jog-<region>-<side>`. Set this to place more
+   * than one jog on the same region edge (e.g. at different positions). Must not
+   * contain `::`. */
+  id?: string | undefined;
   /** Distance out along the run from the region edge to the first bend. */
   position: number;
   /** The perpendicular step the two opposite bends produce. Must be > 0. */
