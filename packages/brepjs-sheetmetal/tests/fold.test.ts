@@ -362,3 +362,35 @@ describe('fold matches author for an equivalent spec', () => {
     expect(volFold).toBeCloseTo(volAuthor, 6);
   });
 });
+
+describe('scale invariance — sub-millimeter parts round-trip (base probe is unit-free)', () => {
+  it('recovers the base of a 0.5mm part (would fail a hardcoded 1e-3 mm x probe)', () => {
+    const smallRule: BendRule = { innerRadius: 0.1, kFactor: K };
+    const authored = author({
+      thickness: 0.1,
+      base: { length: 0.6, width: 0.5 },
+      flanges: [{ id: 'f', length: 0.3, angleDeg: 90, rule: smallRule, side: 'xmax' }],
+    });
+    expect(authored.ok).toBe(true);
+    if (isErr(authored)) return;
+    const partA = authored.value;
+    if (partA.solid === undefined) return;
+    const volA = unwrap(measureVolume(partA.solid));
+
+    const unfolded = unfold(partA);
+    if (isErr(unfolded)) return;
+    const flatInput = patternToFlatInput(unfolded.value.pattern, {
+      thickness: 0.1,
+      ruleFor: () => smallRule,
+    });
+    expect(flatInput.ok).toBe(true);
+    if (isErr(flatInput)) return;
+
+    const folded = fold(flatInput.value);
+    expect(folded.ok).toBe(true);
+    if (isErr(folded)) return;
+    if (folded.value.solid === undefined) return;
+    expect(isValid(folded.value.solid)).toBe(true);
+    expect(unwrap(measureVolume(folded.value.solid))).toBeCloseTo(volA, 6);
+  });
+});

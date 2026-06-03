@@ -316,7 +316,14 @@ function orderedLoop(segs: { a: Pt2; b: Pt2 }[]): Pt2[] | undefined {
   if (segs.length === 0) return undefined;
   const key = (p: Pt2): string => `${round(p[0])}|${round(p[1])}`;
   const from = new Map<string, Pt2>();
-  for (const s of segs) from.set(key(s.a), s.b);
+  // Two segments sharing a start-vertex key means the loop isn't a simple chain
+  // (floating-point drift can also collapse two near vertices into one bucket);
+  // bail rather than silently overwrite and trace a wrong polygon.
+  for (const s of segs) {
+    const k = key(s.a);
+    if (from.has(k)) return undefined;
+    from.set(k, s.b);
+  }
   const start = segs[0]?.a;
   if (start === undefined) return undefined;
   const loop: Pt2[] = [start];
@@ -374,7 +381,16 @@ function baseRect(
   if (xs.length < 2 || ys.length < 2) {
     return err(validationError('BASE_NOT_FOUND', 'cannot locate base region at origin'));
   }
-  const yProbe = firstFilledCellMid(ys.filter((v) => v > -EPS), (mid) => contains(1e-3, mid));
+  // Probe halfway between the origin and the first positive x grid line — a
+  // scale-invariant point inside the base's undivided +X span (the base is one
+  // rectangle in X, so the first gridline > 0 is its right edge). Avoids assuming
+  // any absolute unit and stays correct when xmin/ymin flanges add negative coords.
+  const xFirstPositive = xs.find((v) => v > EPS);
+  if (xFirstPositive === undefined) {
+    return err(validationError('BASE_NOT_FOUND', 'no positive x extent to locate the base region'));
+  }
+  const xProbeBase = xFirstPositive / 2;
+  const yProbe = firstFilledCellMid(ys.filter((v) => v > -EPS), (mid) => contains(xProbeBase, mid));
   if (yProbe === undefined) {
     return err(validationError('BASE_NOT_FOUND', 'origin cell is not inside the developed region'));
   }
