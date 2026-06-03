@@ -70,7 +70,7 @@ export function polygonBounds(poly: Polygon): [number, number, number, number] {
   return [minX, minY, maxX, maxY];
 }
 
-/** Translate then rotate (CCW, degrees about the origin) every vertex. */
+/** Rotate every vertex (CCW, degrees, about the origin), then translate by (dx, dy). */
 export function transformPolygon(poly: Polygon, dx: number, dy: number, rotationDeg: number): Polygon {
   const rad = (rotationDeg * Math.PI) / 180;
   const c = Math.cos(rad);
@@ -82,7 +82,9 @@ export function transformPolygon(poly: Polygon, dx: number, dy: number, rotation
   });
 }
 
-/** Ray-cast point-in-polygon (boundary points count as inside via the EPS slack below). */
+/** Ray-cast point-in-polygon: points strictly inside return true; behaviour for a
+ * point exactly on the boundary is undefined (the overlap predicate handles edge
+ * contact separately via segment-intersection). */
 export function pointInPolygon(poly: Polygon, x: number, y: number): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
