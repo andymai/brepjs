@@ -13,6 +13,11 @@ import {
   mirror2D,
   drawRectangle,
   drawCircle,
+  stretch2D,
+  sketchOnPlane2D,
+  sketchOnFace2D,
+  box,
+  getFaces,
   unwrap,
   isOk,
   isErr,
@@ -216,5 +221,30 @@ describe('blueprintFns', () => {
       mirrored.delete();
       bp.delete();
     });
+  });
+});
+
+describe('blueprint sketching + stretch', () => {
+  it('stretch2D scales the blueprint along a direction', () => {
+    const bp = stretch2D(rect(10, 10), 2, [1, 0]);
+    const bounds = getBounds2D(bp);
+    // Stretching x2 along X widens the 10-unit width to ~20.
+    expect(bounds.width).toBeGreaterThan(15);
+    bp.delete();
+  });
+
+  it('sketchOnPlane2D projects the blueprint onto a 3D plane', () => {
+    const sketch = sketchOnPlane2D(rect(10, 20));
+    expect(sketch).toBeDefined();
+    expect(sketch.wire).toBeDefined();
+  });
+
+  it('sketchOnFace2D maps the blueprint onto a face surface', () => {
+    const solid = box(20, 20, 20);
+    const face = getFaces(solid)[0];
+    expect(face).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted above
+    const sketch = sketchOnFace2D(rect(4, 4), face!);
+    expect(sketch).toBeDefined();
   });
 });
