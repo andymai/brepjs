@@ -31,6 +31,7 @@ export type {
   BaseFlatSpec,
   FlangeSpec,
   FlangeSide,
+  SeamSpec,
 } from './authorFns.js';
 
 export { miterCut, autoMiterCorner } from './miterFns.js';
@@ -61,6 +62,7 @@ export { sheetMetal, fromPart, SheetMetalError, SheetMetalBuilder, SheetMetalPar
 
 export type {
   EdgeRef,
+  FlatSide,
   BendRule,
   MaterialSpec,
   MiterSpec,

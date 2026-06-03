@@ -121,8 +121,10 @@ describe('miter — two-flange corner', () => {
     expect(result.value.bends).toHaveLength(2);
 
     const [bx, by] = result.value.bends;
+    // Bend axes are right-handed with the outward run (out × dir = n), so the
+    // ymax axis runs along −X (its sign is geometry-significant, not decorative).
     expect(bx?.axisDir).toEqual([0, 1, 0]);
-    expect(by?.axisDir).toEqual([1, 0, 0]);
+    expect(by?.axisDir).toEqual([-1, 0, 0]);
   });
 
   it('auto-miters the corner into a valid solid', () => {
@@ -179,7 +181,7 @@ describe('miter — two-flange corner', () => {
 describe('authorPart — input validation', () => {
   const rule = { innerRadius: R, kFactor: 0.44 };
 
-  it('rejects two flanges on the same side (would overlap and corrupt the flat pattern)', () => {
+  it('rejects two full-span flanges on the same side (they would overlap)', () => {
     const result = authorPart({
       thickness: T,
       base: { length: 30, width: 10 },
@@ -190,10 +192,10 @@ describe('authorPart — input validation', () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe('DUPLICATE_SIDE');
+    expect(result.error.code).toBe('OVERLAPPING_FLANGES');
   });
 
-  it('treats an omitted side as xmax for the duplicate-side check', () => {
+  it('treats an omitted side as xmax for the overlap check', () => {
     const result = authorPart({
       thickness: T,
       base: { length: 30, width: 10 },
@@ -212,6 +214,23 @@ describe('authorPart — input validation', () => {
       flanges: [
         { id: 'a', length: 12, angleDeg: 90, rule, side: 'xmax' },
         { id: 'b', length: 12, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('keys the overlap check on the resolved chained-parent edge, not the base', () => {
+    // The wall folds off the base xmax edge (length = base width = 10), spans 8 of
+    // it, and is 20 long. Its ymax edge therefore has length = the wall span = 8.
+    // Two partial flanges chained off wall.ymax sit at [0,3] and [5,8] — valid only
+    // when the overlap check resolves the parent edge to 8, not the base width/length.
+    const result = authorPart({
+      thickness: T,
+      base: { length: 60, width: 10 },
+      flanges: [
+        { id: 'wall', length: 20, angleDeg: 90, rule, side: 'xmax', width: 8 },
+        { id: 'c1', length: 6, angleDeg: 90, rule, side: 'ymax', parent: 'wall', offset: 0, width: 3 },
+        { id: 'c2', length: 6, angleDeg: 90, rule, side: 'ymax', parent: 'wall', offset: 5, width: 3 },
       ],
     });
     expect(result.ok).toBe(true);

@@ -10,6 +10,7 @@ import {
   vecCross,
 } from 'brepjs';
 import type { BendFeature, SheetMetalPart, SheetMetalWarning } from './types.js';
+import { ROOT_FLAT_ID } from './featureTreeFns.js';
 
 const OVERLAP_TOL = 1e-6;
 
@@ -60,6 +61,7 @@ function checkMinRadius(part: SheetMetalPart): SheetMetalWarning[] {
   const warnings: SheetMetalWarning[] = [];
   if (!(part.thickness > 0)) return warnings;
   for (const bend of part.bends) {
+    if (bend.id.startsWith('seam::')) continue;
     if (bend.rule.innerRadius < part.thickness) {
       warnings.push({
         code: 'MIN_RADIUS',
@@ -82,10 +84,18 @@ function checkCollisions(part: SheetMetalPart): SheetMetalWarning[] {
   for (const bend of part.bends) {
     const flange = part.flanges.find((f) => f.id === bend.id);
     if (flange === undefined) continue;
-    boxes.push({
-      id: bend.id,
-      bounds: flangeBounds(bend, flange.length, flange.span, part.thickness, center),
-    });
+    // The analytic flangeBounds re-fold assumes the flange folds off the z=0 base
+    // plane: correct for root flanges, but wrong for chained flanges whose parent
+    // edge sits off that plane (it would report false-positive corner collisions).
+    // For chained flanges, use the AABB authorPart recorded from real geometry.
+    const parentId = flange.baseEdge.parentId;
+    const isChained =
+      parentId !== undefined && parentId !== ROOT_FLAT_ID && parentId !== 'face-0';
+    const bounds =
+      isChained && flange.foldedBounds !== undefined
+        ? flange.foldedBounds
+        : flangeBounds(bend, flange.length, flange.span, part.thickness, center);
+    boxes.push({ id: bend.id, bounds });
   }
 
   for (let i = 0; i < boxes.length; i += 1) {
@@ -123,7 +133,8 @@ function flangeBounds(
 ): Bounds3D {
   const axis = vecNormalize(bend.axisDir);
   const run = outwardRun(bend.axisOrigin, axis, center);
-  const up: Vec3 = [0, 0, 1];
+  // A down-bend folds the run toward −Z instead of +Z.
+  const up: Vec3 = bend.direction === 'down' ? [0, 0, -1] : [0, 0, 1];
 
   const theta = (bend.angleDeg * Math.PI) / 180;
   const cos = Math.cos(theta);

@@ -1,24 +1,14 @@
 import { type Result, ok, err, validationError } from 'brepjs';
 import type { BendReport, SheetMetalPart, UnfoldResult } from './types.js';
 import { featureTree } from './featureTreeFns.js';
-import { developedLength } from './allowanceFns.js';
-import { classifyRunDir } from './internal.js';
-
-interface ReportEntry {
-  id: string;
-  angleDeg: number;
-  radius: number;
-  allowance: number;
-  flatLength: number;
-  direction: 'up' | 'down';
-}
+import { layoutTree, reportFromLayout } from './unfoldFns.js';
 
 /**
  * Build the bend-table JSON report directly from an authored part. Walks the
- * same feature tree the unfold consumes so the per-bend values and the total
- * flat size agree with the flat pattern. `allowance` is the consumed neutral-axis
- * arc length (the bend allowance); `flatLength` is the straight flange leg past
- * the bend — distinct values a downstream nesting/cut-list tool needs separately.
+ * same tree layout the unfold consumes so the per-bend values and the total flat
+ * size agree with the flat pattern. `allowance` is the consumed neutral-axis arc
+ * length (the bend allowance); `flatLength` is the straight flange leg past the
+ * bend — distinct values a downstream nesting/cut-list tool needs separately.
  */
 export function buildReport(part: SheetMetalPart): Result<BendReport> {
   const treeResult = featureTree(part);
@@ -34,44 +24,9 @@ export function buildReport(part: SheetMetalPart): Result<BendReport> {
     return err(validationError('INVALID_WIDTH', `part width must be positive, got ${width}`));
   }
 
-  let maxX = baseLength;
-  let maxY = width;
-  const bends: ReportEntry[] = [];
-
-  for (const treeBend of tree.bends) {
-    const dir = classifyRunDir(treeBend.bend.axisDir);
-    if (dir === undefined) {
-      return err(
-        validationError('UNRESOLVED_RUN_DIR', `bend '${treeBend.bend.id}' axisDir is not axis-aligned`)
-      );
-    }
-
-    const devResult = developedLength(treeBend.bend.angleDeg, part.thickness, treeBend.bend.rule);
-    if (!devResult.ok) return devResult;
-    const devLength = devResult.value;
-
-    const childNode = tree.nodes.get(treeBend.child);
-    if (childNode === undefined) {
-      return err(
-        validationError('UNKNOWN_FLAT', `child flat '${treeBend.child}' missing from tree nodes`)
-      );
-    }
-    const length = childNode.flange?.length ?? 0;
-
-    bends.push({
-      id: treeBend.bend.id,
-      angleDeg: treeBend.bend.angleDeg,
-      radius: treeBend.bend.rule.innerRadius,
-      allowance: devLength,
-      flatLength: length,
-      direction: treeBend.bend.direction,
-    });
-
-    if (dir === 'east') maxX = baseLength + devLength + length;
-    else maxY = width + devLength + length;
-  }
-
-  return ok({ bends, totalFlatSize: [maxX, maxY] });
+  const layout = layoutTree(part, tree, baseLength, width);
+  if (!layout.ok) return layout;
+  return ok(reportFromLayout(layout.value));
 }
 
 /**

@@ -18,7 +18,8 @@ import { fileURLToPath } from 'node:url';
 import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
 import { author, miterCorner, unfold } from '../src/api.js';
-import type { BendRule, FlatPattern } from '../src/types.js';
+import type { AuthorSpec } from '../src/authorFns.js';
+import type { BendRule, FlatPattern, SheetMetalPart } from '../src/types.js';
 
 /**
  * Boot the OCCT-WASM kernel directly from `brepjs-opencascade` (the same recipe
@@ -51,54 +52,99 @@ const PANEL_W = 480;
 const PANEL_H = 480;
 const PAD = 28;
 
+interface Demo {
+  name: string;
+  spec: AuthorSpec;
+  /** Optional auto-miter applied to the authored part before unfolding. */
+  miter?: { a: string; b: string; gap: number };
+}
+
+const DEMOS: Demo[] = [
+  {
+    name: 'bracket',
+    spec: {
+      thickness: T,
+      base: { length: 40, width: 40 },
+      flanges: [
+        { id: 'fx', length: 18, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'fy', length: 18, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    },
+    miter: { a: 'fx', b: 'fy', gap: 1 },
+  },
+  {
+    name: 'u-channel',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 30 },
+      flanges: [
+        { id: 'left', length: 18, angleDeg: 90, rule, side: 'xmin' },
+        { id: 'right', length: 18, angleDeg: 90, rule, side: 'xmax' },
+      ],
+    },
+  },
+  {
+    name: 'tray',
+    spec: {
+      thickness: T,
+      base: { length: 50, width: 40 },
+      flanges: [
+        { id: 'xn', length: 14, angleDeg: 90, rule, side: 'xmin' },
+        { id: 'xp', length: 14, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'yn', length: 14, angleDeg: 90, rule, side: 'ymin' },
+        { id: 'yp', length: 14, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    },
+  },
+];
+
 async function main(): Promise<void> {
   await initOCCT();
   await mkdir(OUT_DIR, { recursive: true });
 
-  const authored = author({
-    thickness: T,
-    base: { length: 40, width: 40 },
-    flanges: [
-      { id: 'fx', length: 18, angleDeg: 90, rule, side: 'xmax' },
-      { id: 'fy', length: 18, angleDeg: 90, rule, side: 'ymax' },
-    ],
-  });
-  if (isErr(authored)) throw new Error(`author failed: ${authored.error.message}`);
+  const lines = ['brepjs-sheetmetal snapshot harness'];
+  for (const demo of DEMOS) {
+    lines.push(...(await renderDemo(demo)));
+  }
+  lines.push('');
+  process.stdout.write(lines.join('\n'));
+}
 
-  const mitered = miterCorner(authored.value, 'fx', 'fy', 1);
-  if (isErr(mitered)) throw new Error(`miterCorner failed: ${mitered.error.message}`);
-  const part = mitered.value;
-  if (part.solid === undefined) throw new Error('mitered part has no solid');
+async function renderDemo(demo: Demo): Promise<string[]> {
+  const authored = author(demo.spec);
+  if (isErr(authored)) throw new Error(`author '${demo.name}' failed: ${authored.error.message}`);
+
+  let part: SheetMetalPart = authored.value;
+  if (demo.miter !== undefined) {
+    const mitered = miterCorner(part, demo.miter.a, demo.miter.b, demo.miter.gap);
+    if (isErr(mitered)) throw new Error(`miterCorner '${demo.name}' failed: ${mitered.error.message}`);
+    part = mitered.value;
+  }
+  if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
-  if (isErr(unfolded)) throw new Error(`unfold failed: ${unfolded.error.message}`);
+  if (isErr(unfolded)) throw new Error(`unfold '${demo.name}' failed: ${unfolded.error.message}`);
   const pattern = unfolded.value.pattern;
 
-  const foldedPanel = renderFoldedSvg(part.solid);
-  const flatPanel = renderFlatSvg(pattern);
-  const svg = composeSideBySide(foldedPanel, flatPanel);
-
-  const svgPath = resolve(OUT_DIR, 'bracket.svg');
+  const svg = composeSideBySide(renderFoldedSvg(part.solid), renderFlatSvg(pattern));
+  const svgPath = resolve(OUT_DIR, `${demo.name}.svg`);
   await writeFile(svgPath, svg, 'utf8');
 
   const step = exportSTEP(part.solid);
   let stepPath = '(STEP export skipped)';
   if (!isErr(step)) {
-    stepPath = resolve(OUT_DIR, 'bracket.step');
+    stepPath = resolve(OUT_DIR, `${demo.name}.step`);
     await writeFile(stepPath, Buffer.from(await step.value.arrayBuffer()));
   }
 
-  process.stdout.write(
-    [
-      'brepjs-sheetmetal snapshot harness',
-      `  folded + flat SVG : ${svgPath}`,
-      `  folded STEP       : ${stepPath}`,
-      `  bend lines        : ${pattern.bendLines.length}`,
-      `  developed area    : ${pattern.developedArea.toFixed(2)} mm²`,
-      `  warnings          : ${unfolded.value.warnings.length}`,
-      '',
-    ].join('\n')
-  );
+  return [
+    `  [${demo.name}]`,
+    `    folded + flat SVG : ${svgPath}`,
+    `    folded STEP       : ${stepPath}`,
+    `    bend lines        : ${pattern.bendLines.length}`,
+    `    developed area    : ${pattern.developedArea.toFixed(2)} mm²`,
+    `    warnings          : ${unfolded.value.warnings.length}`,
+  ];
 }
 
 interface Seg2 {

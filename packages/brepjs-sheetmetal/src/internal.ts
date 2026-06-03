@@ -1,4 +1,5 @@
 import { type Solid, type Vec3, isSolid, getSolids } from 'brepjs';
+import type { FlatSide } from './types.js';
 
 /**
  * OCCT boolean fuse returns a compound wrapping the unioned solid. Extract the
@@ -12,17 +13,16 @@ export function normalizeSolid(shape: Solid): Solid {
   return only ?? shape;
 }
 
-/** Which way a flange develops in the flat pattern, from its recorded bend axis. */
-export type RunDir = 'east' | 'north';
-
 /**
- * Classify a bend's run direction from its recorded axis: an axis along +Y
- * (|axisDir.y|>0.5) belongs to an east flange (develops in +X); an axis along
- * +X belongs to a north flange (develops in +Y). Shared by the unfold and the
- * bend report so their layouts agree.
+ * Fallback develop side for a hand-built flange whose `baseEdge.side` is omitted:
+ * derive it from the recorded bend axis. An axis along +Y (|axisDir.y|>0.5) is an
+ * east flange that develops in +X (`xmax`); an axis along +X is a north flange
+ * developing in +Y (`ymax`). This preserves the original axis-only unfold
+ * heuristic for external fixtures predating the explicit `side` field; parts from
+ * {@link authorPart} always set `side`, so this only kicks in for the legacy path.
  */
-export function classifyRunDir(axisDir: Vec3): RunDir | undefined {
-  if (Math.abs(axisDir[1]) > 0.5) return 'east';
-  if (Math.abs(axisDir[0]) > 0.5) return 'north';
+export function sideFromAxisDir(axisDir: Vec3): FlatSide | undefined {
+  if (Math.abs(axisDir[1]) > 0.5) return 'xmax';
+  if (Math.abs(axisDir[0]) > 0.5) return 'ymax';
   return undefined;
 }

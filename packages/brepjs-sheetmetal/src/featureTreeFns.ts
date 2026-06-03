@@ -77,6 +77,21 @@ export function buildFeatureGraph(part: SheetMetalPart): Result<FeatureGraph> {
     }
     seenBendIds.add(bend.id);
 
+    // A seam bend (`seam::<parent>::<child>`) is an explicit edge between two
+    // already-authored flats — the cycle-closing edge of a tube/box profile.
+    if (bend.id.startsWith('seam::')) {
+      const parts = bend.id.split('::');
+      const parent = parts[1];
+      const child = parts[2];
+      if (parent === undefined || child === undefined || !nodes.has(parent) || !nodes.has(child)) {
+        return err(
+          validationError('UNRESOLVED_SEAM', `seam bend '${bend.id}' references an unknown flat`)
+        );
+      }
+      edges.push({ bend, parent, child });
+      continue;
+    }
+
     const child = resolveChildFlat(bend.id, nodes);
     if (child === undefined) {
       return err(
@@ -104,6 +119,10 @@ function resolveChildFlat(bendId: string, nodes: Map<string, FlatNode>): string 
 function resolveParentFlat(flange: FlangeFeature | undefined, nodes: Map<string, FlatNode>): string {
   if (flange === undefined) return ROOT_FLAT_ID;
   const ref = flange.baseEdge;
+  // Chained flanges name their parent flat directly; `face-0` is the base flat.
+  if (ref.parentId !== undefined && ref.parentId !== 'face-0' && nodes.has(ref.parentId)) {
+    return ref.parentId;
+  }
   return nodes.has(`face-${ref.faceIndex}`) ? `face-${ref.faceIndex}` : ROOT_FLAT_ID;
 }
 
@@ -117,9 +136,21 @@ export function buildFeatureTree(graph: FeatureGraph, rootId: string = ROOT_FLAT
     return err(validationError('UNKNOWN_ROOT', `root flat '${rootId}' not present in graph`));
   }
 
+  // Authored seam bends (`seam::…`) are explicitly the cycle-closing edges of a
+  // closed profile. They must never enter the spanning tree, or the BFS can grab a
+  // seam as a tree edge and demote a real authored bend to the seam cut — placing
+  // its child flat off the wrong frame. Exclude them from BFS and record them as
+  // seam cuts directly, so authored seams are always the non-tree edges.
+  const seamEdges: BendEdge[] = [];
+  const treeCandidates: BendEdge[] = [];
+  for (const edge of graph.edges) {
+    if (edge.bend.id.startsWith('seam::')) seamEdges.push(edge);
+    else treeCandidates.push(edge);
+  }
+
   const adjacency = new Map<string, BendEdge[]>();
   for (const id of graph.nodes.keys()) adjacency.set(id, []);
-  for (const edge of graph.edges) {
+  for (const edge of treeCandidates) {
     adjacency.get(edge.parent)?.push(edge);
     adjacency.get(edge.child)?.push(edge);
   }
@@ -145,14 +176,19 @@ export function buildFeatureTree(graph: FeatureGraph, rootId: string = ROOT_FLAT
 
   const warnings: SheetMetalWarning[] = [];
   const seams: SeamCut[] = [];
-  for (const edge of graph.edges) {
-    if (treeEdges.has(edge)) continue;
+  const recordSeam = (edge: BendEdge): void => {
     seams.push({ bend: edge.bend, between: [edge.parent, edge.child] });
     warnings.push({
       code: 'SEAM_CUT',
       message: `closed profile: bend '${edge.bend.id}' (${edge.parent}↔${edge.child}) becomes a seam cut`,
       featureId: edge.bend.id,
     });
+  };
+  for (const edge of seamEdges) recordSeam(edge);
+  // A non-seam edge left out of the tree closes a cycle authored without a seam.
+  for (const edge of treeCandidates) {
+    if (treeEdges.has(edge)) continue;
+    recordSeam(edge);
   }
 
   for (const node of graph.nodes.values()) {

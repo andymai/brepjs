@@ -12,7 +12,7 @@
 
 import type { BrepError, Result } from 'brepjs';
 import { isErr } from 'brepjs';
-import type { AuthorSpec, BaseFlatSpec, FlangeSpec } from './authorFns.js';
+import type { AuthorSpec, BaseFlatSpec, FlangeSpec, SeamSpec } from './authorFns.js';
 import type { MiterPlane, DxfOptions } from './api.js';
 import {
   author,
@@ -107,9 +107,14 @@ class SheetMetalBuilder {
 
   constructor(private readonly spec: AuthorSpec) {}
 
-  /** Add a flange folded up off a base edge. */
+  /** Add a flange folded off its parent edge (the base by default). */
   flange(flange: FlangeSpec): SheetMetalBuilder {
     return new SheetMetalBuilder({ ...this.spec, flanges: [...this.spec.flanges, flange] });
+  }
+
+  /** Add a seam closing a profile into a tube/box (left unfolded). */
+  seam(seam: SeamSpec): SheetMetalBuilder {
+    return new SheetMetalBuilder({ ...this.spec, seams: [...(this.spec.seams ?? []), seam] });
   }
 
   /** Set the part material (its thickness/default rule). */

@@ -99,6 +99,23 @@ describe('validatePart — flange collision', () => {
     expect(collision?.message).toMatch(/overlap once folded/);
   });
 
+  it('does not flag a chained U-channel (return folds clear of the base)', () => {
+    const result = authorPart({
+      thickness: 1,
+      base: { length: 40, width: 30 },
+      flanges: [
+        { id: 'wall', length: 20, angleDeg: 90, rule: { innerRadius: 2, kFactor: 0.44 }, side: 'xmax' },
+        { id: 'return', length: 10, angleDeg: 90, rule: { innerRadius: 2, kFactor: 0.44 }, side: 'ymax', parent: 'wall' },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // The wall is vertical and the return folds off its distal edge, parallel to
+    // the base but lifted 20 above it — their AABBs must not be reported colliding.
+    expect(codes(validatePart(result.value))).not.toContain('COLLISION');
+  });
+
   it('does not flag a single-flange part', () => {
     const result = authorPart({
       thickness: 1,

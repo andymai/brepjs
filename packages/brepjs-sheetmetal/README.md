@@ -10,21 +10,27 @@ Pipeline: **author part → auto-miter corners → fold to 3D → unfold to flat
 
 ## Scope
 
-First build is a single end-to-end vertical slice for straight (cylindrical) bends, authoring our own
-parts (not unfolding foreign solids). The bend model is K-factor based with an extensible schema, so it
-can grow toward bend-tables without a rewrite.
+Straight (cylindrical) bends, authoring our own parts (not unfolding foreign solids). The bend model is
+K-factor based with an extensible schema, so it can grow toward bend-tables without a rewrite.
 
 - Bend allowance: `BA = (π/180)·|angle|·(R + K·T)`
 - Defaults: units are mm; K-factor `0.44`; inner radius `= thickness`.
 
+Authoring supports arbitrary bend trees: flanges off any of the four base edges, **chained
+flange-off-flange** bends (U-channels, Z-profiles, box walls), **up/down** fold direction, and
+**partial/offset** flanges (more than one flange per edge). Closed profiles (tubes/boxes) author a seam
+edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid connected pattern.
+
 ## Status
 
-| Phase        | Contents                                                                                                             |
-| ------------ | -------------------------------------------------------------------------------------------------------------------- |
-| 1 (scaffold) | package skeleton, data model (`types.ts`), starter gauge library (`materials.ts`)                                    |
-| 2+           | allowance/feature-tree/unfold math, flange authoring + auto-miter, DXF/report/validation, public API + fluent facade |
+| Area            | State                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------- |
+| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams       |
+| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area |
+| Miter / outputs | auto corner-miter, multi-layer DXF, JSON bend report, manufacturability warnings       |
+| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                |
 
-`FlatInput` (flat-pattern → fold, the inverse direction) is deferred to Phase 2.
+`FlatInput` (flat-pattern → fold, the inverse direction) is not yet implemented.
 
 ## Design
 
