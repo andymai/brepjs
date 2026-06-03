@@ -70,9 +70,13 @@ export default defineConfig({
       // default kernel) so adding/flipping a kernel doesn't require a vitest edit.
       exclude: ['src/**/*.d.ts', 'src/**/index.ts', ...coverageExcludesFor(defaultKernelId())],
       // Floored at the occt-wasm (default kernel) measured coverage, rounded down
-      // to the nearest whole percent. occt-wasm's adapter-dir denominator differs
-      // from occt's, so these are not directly comparable to the prior occt floor;
-      // re-measure and re-floor (npm run test:full) if the default kernel changes.
+      // to the nearest whole percent. These are the *measured* numbers for the
+      // default project, not hand-tuned targets — branches at 71 is what occt-wasm
+      // actually achieves, not a relaxed floor. occt-wasm's adapter-dir denominator
+      // differs from occt's (different excluded files, different branch population),
+      // so the 71 is NOT comparable to the prior occt 74 floor and does not imply a
+      // coverage regression in shared code. Re-measure and re-floor (npm run
+      // test:full) if the default kernel changes.
       thresholds: {
         statements: 85,
         branches: 71,

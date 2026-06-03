@@ -91,6 +91,16 @@ The raw `new OcctWasmAdapter(Module, kernel)` constructor remains for callers th
 import { OcctWasmAdapter } from 'brepjs';
 ```
 
+> **Migration note (occt-wasm default flip).** The re-exported `OcctKernelOwner`
+> interface now types its `getRawModule()` / `getRawKernel()` accessors as
+> `unknown` instead of the concrete `OcctWasmModule` / `OcctKernelWasm`. This
+> mirrors occt-wasm's published `.d.ts`, which under-declares the raw Embind
+> surface. The runtime objects are unchanged. Callers that only pass an
+> `OcctKernel` wrapper into `OcctWasmAdapter.fromKernel(kernel)` need no changes
+> (and any existing `kernel as unknown as Parameters<typeof OcctWasmAdapter.fromKernel>[0]`
+> workaround can be removed). Callers that read the raw module or kernel through
+> the interface directly must add their own cast to the concrete type.
+
 ### `withKernel(id, fn)`
 
 Run a **synchronous** function with a different kernel as the default, then restore the previous default. Do not pass async functions - the kernel override is restored in `finally`.
