@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.50.0](https://github.com/andymai/brepjs/compare/brepjs-v18.49.0...brepjs-v18.50.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** corner & bend reliefs for manufacturable multi-bend parts ([#1182](https://github.com/andymai/brepjs/issues/1182)) ([7d1d407](https://github.com/andymai/brepjs/commit/7d1d407d52dc0fd1e73be086f5567c51384306a7))
+
 ## [18.49.0](https://github.com/andymai/brepjs/compare/brepjs-v18.48.0...brepjs-v18.49.0) (2026-06-03)
 
 
