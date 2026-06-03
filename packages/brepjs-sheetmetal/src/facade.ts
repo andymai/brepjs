@@ -31,6 +31,8 @@ import {
   tabAndSlot,
   louver,
   emboss,
+  contourFlange,
+  loftedFlange,
   toDXF,
   report,
   validate,
@@ -44,6 +46,8 @@ import type {
   ReliefSpec,
   CutoutSpec,
   TabSpec,
+  ContourFlangeSpec,
+  LoftedFlangeSpec,
   SheetMetalWarning,
   UnfoldResult,
 } from './types.js';
@@ -157,6 +161,16 @@ class SheetMetalPartHandle {
     kind: 'dimple' | 'emboss';
   }): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(emboss(this.part, opts)));
+  }
+
+  /** Author a contour flange (open line/arc profile swept along a base edge). */
+  contourFlange(spec: ContourFlangeSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(contourFlange(this.part, spec)));
+  }
+
+  /** Author a lofted / ruled transition flange between two parallel open profiles. */
+  loftedFlange(spec: LoftedFlangeSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(loftedFlange(this.part, spec)));
   }
 
   /** Flatten into a developed flat pattern + bend report + warnings. */
@@ -291,6 +305,14 @@ class SheetMetalBuilder {
     kind: 'dimple' | 'emboss';
   }): SheetMetalPartHandle {
     return this.build().emboss(opts);
+  }
+
+  contourFlange(spec: ContourFlangeSpec): SheetMetalPartHandle {
+    return this.build().contourFlange(spec);
+  }
+
+  loftedFlange(spec: LoftedFlangeSpec): SheetMetalPartHandle {
+    return this.build().loftedFlange(spec);
   }
 
   unfold(): UnfoldResult {

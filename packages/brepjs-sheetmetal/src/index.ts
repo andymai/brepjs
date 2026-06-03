@@ -49,6 +49,9 @@ export type { SlotPlacement } from './tabFns.js';
 
 export { addForm, louver, emboss } from './formFns.js';
 
+export { authorContourFlange } from './contourFlangeFns.js';
+export { authorLoftedFlange } from './loftedFlangeFns.js';
+
 export { flatPatternToDXF } from './dxfFns.js';
 export type { DxfOptions } from './dxfFns.js';
 
@@ -72,6 +75,8 @@ export {
   validate,
   allowance,
   developed,
+  contourFlange,
+  loftedFlange,
 } from './api.js';
 
 export { sheetMetal, fromPart, foldFlat, SheetMetalError, SheetMetalBuilder, SheetMetalPartHandle } from './facade.js';
@@ -93,6 +98,11 @@ export type {
   TabFeature,
   FormSpec,
   FormFeature,
+  ProfileSegment,
+  ContourFlangeSpec,
+  ContourFlangeFeature,
+  LoftedFlangeSpec,
+  LoftedFlangeFeature,
   SheetMetalPart,
   FlatPattern,
   FlatInput,

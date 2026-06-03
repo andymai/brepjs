@@ -251,6 +251,98 @@ export interface FormFeature {
   hinge?: [[number, number], [number, number]] | undefined;
 }
 
+/**
+ * One segment of a contour-flange profile: an open 2D polyline of straight `line`
+ * runs joined by circular-`arc` bends, swept along a straight base edge. A `line`
+ * is a flat leg of `length`; an `arc` is a bend of `radius` turning `angleDeg`
+ * either `up` (toward the parent normal) or `down`. Each arc becomes a recorded
+ * {@link BendFeature}; each line a flat leg of the developed strip.
+ */
+export type ProfileSegment =
+  | { kind: 'line'; length: number }
+  | { kind: 'arc'; radius: number; angleDeg: number; direction: 'up' | 'down' };
+
+/**
+ * A contour flange: an OPEN 2D profile (alternating line/arc {@link ProfileSegment}s)
+ * swept along a straight edge of the base flat (`side`). Unlike a plain flange (one
+ * bend + one flat) this chains an arbitrary multi-bend cross-section — a return, a
+ * hat/top-hat, a J — in one feature. The development is EXACT: the developed strip
+ * length is the sum of each segment's developed length (lines: `length`; arcs: the
+ * canonical {@link bendAllowance}).
+ */
+export interface ContourFlangeSpec {
+  id: string;
+  side: FlatSide;
+  profile: ProfileSegment[];
+  rule?: BendRule | undefined;
+  /** Extent along the base edge (the bend-axis width). Default = full edge length. */
+  width?: number | undefined;
+  /** Start position along the base edge. Default `0`. */
+  offset?: number | undefined;
+}
+
+/**
+ * A recorded contour flange, mirroring {@link FlangeFeature}: enough for the unfold
+ * to lay the developed strip out straight along the base edge without re-deriving
+ * the 3D geometry. `segments` carries each developed segment in order (a flat leg or
+ * a developed bend arc); `developedLength` is their exact sum (the strip length out
+ * from the base edge); `span`/`offset` locate the strip along the base edge.
+ */
+export interface ContourFlangeFeature {
+  id: string;
+  side: FlatSide;
+  /** Start position along the base edge. */
+  offset: number;
+  /** Extent along the base edge (the developed strip width). */
+  span: number;
+  /** Exact developed length out from the base edge (Σ segment developed lengths). */
+  developedLength: number;
+  segments: {
+    kind: 'line' | 'arc';
+    /** Developed length of this segment along the strip. */
+    dev: number;
+    angleDeg?: number | undefined;
+    direction?: 'up' | 'down' | undefined;
+    /** Id of the recorded {@link BendFeature} for an arc segment. */
+    bendId?: string | undefined;
+  }[];
+}
+
+/**
+ * A lofted / ruled transition flange: a ruled surface lofted between two parallel
+ * OPEN profiles (`profileA`, `profileB`) separated by `height` along +Z, thickened
+ * to a valid solid. The development is by TRIANGULATION — the standard sheet-metal
+ * transition development pairing profile vertices into triangles laid flat
+ * preserving edge lengths. Exact to tolerance for a genuinely developable (single-
+ * curvature, straight-generator) transition; an approximation otherwise, in which
+ * case the unfold emits a {@link SheetMetalWarning} `DEVELOPMENT_APPROXIMATE`.
+ */
+export interface LoftedFlangeSpec {
+  id: string;
+  /** Open polyline of the near profile, in the base plane (z = 0). */
+  profileA: [number, number][];
+  /** Open polyline of the far profile (its z is `height`). */
+  profileB: [number, number][];
+  height: number;
+  thickness?: number | undefined;
+}
+
+/**
+ * A recorded lofted flange, mirroring {@link ContourFlangeFeature}. `developedLoop`
+ * is the triangulated flat boundary (a closed developed-plane polygon); `developedArea`
+ * the summed triangle areas; `approximate` flags a non-developable transition the
+ * triangulated development only approximates (the unfold emits the warning).
+ */
+export interface LoftedFlangeFeature {
+  id: string;
+  /** Triangulated developed boundary `[x, y]` (closed) in the developed plane. */
+  developedLoop: [number, number][];
+  /** Summed area of the triangulated development. */
+  developedArea: number;
+  /** True when the transition is not developable; the development is an approximation. */
+  approximate: boolean;
+}
+
 export interface SheetMetalPart {
   thickness: number;
   /** Base flat extent along +X (x∈[0, baseLength]); the east-run length. */
@@ -266,6 +358,8 @@ export interface SheetMetalPart {
   cutouts?: CutoutFeature[] | undefined;
   tabs?: TabFeature[] | undefined;
   forms?: FormFeature[] | undefined;
+  contourFlanges?: ContourFlangeFeature[] | undefined;
+  loftedFlanges?: LoftedFlangeFeature[] | undefined;
 }
 
 export interface FlatPattern {
@@ -288,6 +382,13 @@ export interface FlatPattern {
   formMarkers: Wire[];
   /** Form hinge lines (louver fold lines) for annotation, as edges. */
   formHinges: Edge[];
+  /**
+   * Lofted/ruled transition developed boundaries, as closed wires in the developed
+   * plane (one per recorded {@link LoftedFlangeFeature}). The outline laid out by the
+   * rectilinear union covers the base + straight flanges; a ruled transition's
+   * triangulated development is non-rectilinear and rides here instead.
+   */
+  loftedDevelopments: Wire[];
   developedArea: number;
 }
 
@@ -304,7 +405,13 @@ export interface BendReport {
 }
 
 export type SheetMetalWarning = {
-  code: 'COLLISION' | 'SEAM_CUT' | 'MIN_RADIUS' | 'INVALID_SOLID' | 'MITER_NOT_DEVELOPED';
+  code:
+    | 'COLLISION'
+    | 'SEAM_CUT'
+    | 'MIN_RADIUS'
+    | 'INVALID_SOLID'
+    | 'MITER_NOT_DEVELOPED'
+    | 'DEVELOPMENT_APPROXIMATE';
   message: string;
   featureId?: string | undefined;
 };

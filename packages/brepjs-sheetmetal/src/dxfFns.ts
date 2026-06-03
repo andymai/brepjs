@@ -138,6 +138,12 @@ function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textH
     writePolyline(w, loopPoints(hole), LAYER_CUTOUT);
   }
 
+  // Lofted/ruled transition developed boundaries: closed triangulated outlines on
+  // the OUTLINE layer (each a separate developed blank from the rectilinear outline).
+  for (const dev of pattern.loftedDevelopments) {
+    writePolyline(w, loopPoints(dev), LAYER_OUTLINE);
+  }
+
   // Form features: louver U-cuts are OPEN three-side cut paths (the hinge side is
   // left uncut and drawn separately below), emboss footprints are closed marker
   // polylines, louver hinge lines are LINEs — all on the FORM layer.

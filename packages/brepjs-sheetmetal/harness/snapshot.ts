@@ -22,9 +22,20 @@ import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { addCutout } from '../src/cutoutFns.js';
 import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
 import { addForm } from '../src/formFns.js';
+import { authorContourFlange } from '../src/contourFlangeFns.js';
+import { authorLoftedFlange } from '../src/loftedFlangeFns.js';
 import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
-import type { BendRule, CutoutSpec, FlatPattern, FormSpec, SheetMetalPart, TabSpec } from '../src/types.js';
+import type {
+  BendRule,
+  ContourFlangeSpec,
+  CutoutSpec,
+  FlatPattern,
+  FormSpec,
+  LoftedFlangeSpec,
+  SheetMetalPart,
+  TabSpec,
+} from '../src/types.js';
 
 /**
  * Boot the OCCT-WASM kernel directly from `brepjs-opencascade` (the same recipe
@@ -74,6 +85,10 @@ interface Demo {
   tabSlots?: { tab: TabSpec; slot: SlotPlacement }[];
   /** Optional form features (louvers / embosses) formed after authoring. */
   forms?: FormSpec[];
+  /** Optional contour flanges (open line/arc profile swept along a base edge). */
+  contourFlanges?: ContourFlangeSpec[];
+  /** Optional lofted / ruled transition flanges between two open profiles. */
+  loftedFlanges?: LoftedFlangeSpec[];
 }
 
 const DEMOS: Demo[] = [
@@ -187,6 +202,54 @@ const DEMOS: Demo[] = [
       { kind: 'emboss', region: 'base', x: 60, y: 35, diameter: 10, height: 0.5, form: 'dimple' },
     ],
   },
+  {
+    name: 'contour-flange',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 30 },
+      flanges: [],
+    },
+    // A return / top-hat cross-section swept along the +X edge.
+    contourFlanges: [
+      {
+        id: 'hat',
+        side: 'xmax',
+        rule,
+        profile: [
+          { kind: 'line', length: 10 },
+          { kind: 'arc', radius: R, angleDeg: 90, direction: 'up' },
+          { kind: 'line', length: 14 },
+          { kind: 'arc', radius: R, angleDeg: 90, direction: 'up' },
+          { kind: 'line', length: 10 },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'lofted-chute',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 40 },
+      flanges: [],
+    },
+    // A tapered chute: a wide bottom edge transitioning up to a narrower top edge
+    // (a developable truncated-wedge ruled transition).
+    loftedFlanges: [
+      {
+        id: 'chute',
+        profileA: [
+          [10, 40],
+          [50, 40],
+        ],
+        profileB: [
+          [22, 40],
+          [38, 40],
+        ],
+        height: 24,
+        thickness: T,
+      },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {
@@ -241,6 +304,16 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     if (isErr(formResult)) throw new Error(`form '${demo.name}' failed: ${formResult.error.message}`);
     part = formResult.value;
   }
+  for (const spec of demo.contourFlanges ?? []) {
+    const cfResult = authorContourFlange(part, spec);
+    if (isErr(cfResult)) throw new Error(`contourFlange '${demo.name}' failed: ${cfResult.error.message}`);
+    part = cfResult.value;
+  }
+  for (const spec of demo.loftedFlanges ?? []) {
+    const lfResult = authorLoftedFlange(part, spec);
+    if (isErr(lfResult)) throw new Error(`loftedFlange '${demo.name}' failed: ${lfResult.error.message}`);
+    part = lfResult.value;
+  }
   if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
@@ -267,8 +340,12 @@ async function renderDemo(demo: Demo): Promise<string[]> {
   // their region-local specs), so a tab'd/formed part still round-trips even though a
   // tab protrudes the outline — the parser recovers the base/flange rectangles from
   // the bend lines and unprotruded edges.
-  const skipRoundTrip = demo.miter !== undefined || part.reliefs !== undefined;
-  let roundTrip = '(fold round-trip skipped: mitered/relief’d part)';
+  const skipRoundTrip =
+    demo.miter !== undefined ||
+    part.reliefs !== undefined ||
+    part.contourFlanges !== undefined ||
+    part.loftedFlanges !== undefined;
+  let roundTrip = '(fold round-trip skipped: mitered/relief’d/contour/lofted part)';
   if (!skipRoundTrip) {
     roundTrip = foldRoundTrip(part);
   }
@@ -340,6 +417,9 @@ function renderFlatSvg(pattern: FlatPattern): string {
   const holeSegs: Seg2[] = pattern.holes.flatMap((w) =>
     getEdges(w).map((e) => ({ a: to2(curveStartPoint(e)), b: to2(curveEndPoint(e)) }))
   );
+  const loftedSegs: Seg2[] = pattern.loftedDevelopments.flatMap((w) =>
+    getEdges(w).map((e) => ({ a: to2(curveStartPoint(e)), b: to2(curveEndPoint(e)) }))
+  );
   const formSegs: Seg2[] = [
     ...pattern.formCuts,
     ...pattern.formMarkers,
@@ -349,9 +429,13 @@ function renderFlatSvg(pattern: FlatPattern): string {
     b: to2(curveEndPoint(e)),
   }));
 
-  const allPts = [...outlineSegs, ...bendSegs, ...holeSegs, ...formSegs, ...hingeSegs].flatMap((s) => [s.a, s.b]);
+  const allPts = [...outlineSegs, ...bendSegs, ...holeSegs, ...loftedSegs, ...formSegs, ...hingeSegs].flatMap((s) => [s.a, s.b]);
   const body =
     outlineSegs
+      .map((s) => `<line class="outline" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
+      .join('\n') +
+    '\n' +
+    loftedSegs
       .map((s) => `<line class="outline" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
       .join('\n') +
     '\n' +

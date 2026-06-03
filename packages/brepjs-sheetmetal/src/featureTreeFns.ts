@@ -77,6 +77,13 @@ export function buildFeatureGraph(part: SheetMetalPart): Result<FeatureGraph> {
     }
     seenBendIds.add(bend.id);
 
+    // A contour-flange bend (`contour::<flange>::<n>`) is one arc of a multi-bend
+    // contour flange. The contour flange records its own developed strip in
+    // `part.contourFlanges` and lays out independently of the bend spanning tree
+    // (its development is non-rectilinear, like a miter), so its bends never enter
+    // the graph — they would resolve to no flange flat and break the tree.
+    if (bend.id.startsWith('contour::')) continue;
+
     // A seam bend (`seam::<parent>::<child>`) is an explicit edge between two
     // already-authored flats — the cycle-closing edge of a tube/box profile.
     if (bend.id.startsWith('seam::')) {

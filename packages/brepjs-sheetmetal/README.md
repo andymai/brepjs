@@ -23,17 +23,19 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 
 ## Status
 
-| Area            | State                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------- |
-| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams          |
-| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area    |
-| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`         |
-| Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner) |
-| Cutouts         | holes / slots (rect + obround) / polygons punched on the base or a folded flange          |
-| Tabs / joints   | additive edge tabs, self-fixturing tab-and-slot joints (tab + matching mating slot)       |
-| Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)    |
-| Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings         |
-| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                   |
+| Area            | State                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams            |
+| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area      |
+| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`           |
+| Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner)   |
+| Cutouts         | holes / slots (rect + obround) / polygons punched on the base or a folded flange            |
+| Tabs / joints   | additive edge tabs, self-fixturing tab-and-slot joints (tab + matching mating slot)         |
+| Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)      |
+| Contour flange  | open line/arc profile swept along a base edge (multi-bend section); EXACT development       |
+| Lofted flange   | ruled transition between two open profiles; triangulated development (exact if developable) |
+| Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings           |
+| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                     |
 
 `fold(input: FlatInput)` folds a flat pattern back up into a 3D part — the inverse of `unfold`. A
 `FlatInput` is a region-tree (a base rectangle plus child fold regions, each with a fold line, angle,
@@ -146,6 +148,33 @@ output:
 Forms ride through `fold` via `FoldRegion.forms` / `FlatInput.baseForms`. Because they are material-neutral
 they don't change the outline, so a **formed part still round-trips** through the strict outline oracle
 (`partToFlatInput` carries the region-local form specs across, exactly as it does for cutouts).
+
+## Contour & lofted/ruled transition flanges
+
+Two profile-driven flanges extend authoring beyond single straight bends:
+
+- `contourFlange(part, { id, side, profile, rule?, offset?, width? })` — an **open 2D profile** (alternating
+  `{ kind: 'line', length }` flats and `{ kind: 'arc', radius, angleDeg, direction }` bends) swept along a
+  straight base edge into a multi-bend cross-section (a return, a hat/top-hat, a J). Each arc becomes a
+  recorded `BendFeature` (id `contour::<flange>::<n>`) and chains frame-to-frame exactly as flange-off-flange
+  bends do. The **development is EXACT**: the developed strip length is the sum of each segment's developed
+  length (lines: `length`; arcs: the canonical `developedLength` = `(π/180)·|angle|·(R + K·T)`). The unfold
+  lays the strip out straight along the base edge with one bend line per arc at its exact cumulative
+  arc-length offset.
+- `loftedFlange(part, { id, profileA, profileB, height, thickness? })` — a **ruled transition** between two
+  parallel open profiles (`profileA` at z=0, `profileB` at z=`height`, equal vertex counts), thickened to a
+  valid solid by triangulating each quad of the ruled surface and extruding each triangle. The
+  **development is by triangulation** — the standard sheet-metal transition development: each quad is split
+  along a diagonal into two triangles laid out flat preserving their true 3D edge lengths. For a genuinely
+  **developable** transition (planar quads / single-curvature) this is **exact to tolerance**; for a
+  non-developable (twisted) transition it is an **approximation**, and the unfold emits a
+  `DEVELOPMENT_APPROXIMATE` warning (inside the `Ok` payload). The triangulated boundary is emitted as a
+  valid closed wire in `FlatPattern.loftedDevelopments`.
+
+Both flanges have **non-rectilinear** developments, so — like miters and tabs — they sit outside the strict
+`patternToFlatInput` outline oracle: verification leans on developed-length/area invariants and solid
+validity rather than a fold round-trip. The contour flange's developed strip still joins the rectilinear
+outline union; the lofted flange's triangulated blank is a separate developed boundary.
 
 ## Design
 

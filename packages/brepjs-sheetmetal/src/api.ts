@@ -37,6 +37,8 @@ import {
   type SlotPlacement,
 } from './tabFns.js';
 import { louver as louverFn, emboss as embossFn } from './formFns.js';
+import { authorContourFlange as authorContourFlangeFn } from './contourFlangeFns.js';
+import { authorLoftedFlange as authorLoftedFlangeFn } from './loftedFlangeFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
   buildReport as buildReportFn,
@@ -54,6 +56,8 @@ import type {
   ReliefSpec,
   CutoutSpec,
   TabSpec,
+  ContourFlangeSpec,
+  LoftedFlangeSpec,
   UnfoldResult,
   SheetMetalWarning,
 } from './types.js';
@@ -182,6 +186,23 @@ export function emboss(
   opts: { region: string; x: number; y: number; diameter: number; height: number; kind: 'dimple' | 'emboss' }
 ): Result<SheetMetalPart> {
   return embossFn(part, opts);
+}
+
+/**
+ * Author a contour flange: an open line/arc profile swept along a base edge into a
+ * multi-bend cross-section. The development is exact (Σ segment developed lengths).
+ */
+export function contourFlange(part: SheetMetalPart, spec: ContourFlangeSpec): Result<SheetMetalPart> {
+  return authorContourFlangeFn(part, spec);
+}
+
+/**
+ * Author a lofted / ruled transition flange between two parallel open profiles. The
+ * development is by triangulation — exact for a developable transition, an
+ * approximation (with a `DEVELOPMENT_APPROXIMATE` unfold warning) otherwise.
+ */
+export function loftedFlange(part: SheetMetalPart, spec: LoftedFlangeSpec): Result<SheetMetalPart> {
+  return authorLoftedFlangeFn(part, spec);
 }
 
 /** Emit an annotated multi-layer DXF string for a flat pattern. */

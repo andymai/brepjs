@@ -68,9 +68,15 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
     }
   }
 
+  // Contour-flange developed strips lay out straight along their base edge; compute
+  // them first so their rectangles join the outline union below.
+  const contourResult = buildContourDevelopments(part);
+  if (!contourResult.ok) return contourResult;
+
   const rects: Rect[] = [];
   for (const placed of layout.flats) rects.push(placed.rect);
   for (const strip of layout.strips) rects.push(strip);
+  for (const strip of contourResult.value.strips) rects.push(strip);
 
   // Tabs are additive protrusions: their developed rectangles join the outer-outline
   // union and add to the developed area.
@@ -102,6 +108,23 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   const formsResult = buildForms(part);
   if (!formsResult.ok) return formsResult;
 
+  const loftedResult = buildLoftedDevelopments(part);
+  if (!loftedResult.ok) return loftedResult;
+  for (const lf of part.loftedFlanges ?? []) {
+    layout.developedArea += lf.developedArea;
+    if (lf.approximate) {
+      warnings.push({
+        code: 'DEVELOPMENT_APPROXIMATE',
+        message: `lofted flange '${lf.id}' transition is not developable; its triangulated flat development is an approximation`,
+        featureId: lf.id,
+      });
+    }
+  }
+
+  for (const cf of part.contourFlanges ?? []) {
+    layout.developedArea += cf.developedLength * cf.span;
+  }
+
   const bendLines = layout.flats
     .filter((p): p is PlacedFlange => p.kind === 'flange')
     .map((p) => ({
@@ -112,7 +135,8 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
       // The child frame's v axis is the develop-out direction; into-parent is its
       // negation. Correct for chained flanges too (it is local to the placement).
       inward: [-p.frame.v[0], -p.frame.v[1]] as [number, number],
-    }));
+    }))
+    .concat(contourResult.value.bendLines);
 
   const pattern: FlatPattern = {
     outline: outlineResult.value,
@@ -121,6 +145,7 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
     formCuts: formsResult.value.cuts,
     formMarkers: formsResult.value.markers,
     formHinges: formsResult.value.hinges,
+    loftedDevelopments: loftedResult.value,
     developedArea: layout.developedArea,
   };
 
@@ -401,6 +426,74 @@ function buildForms(part: SheetMetalPart): Result<FormWires> {
     }
   }
   return ok({ cuts, markers, hinges });
+}
+
+/**
+ * Closed developed-plane {@link Wire}s for recorded lofted/ruled transition flanges.
+ * Each feature's triangulated `developedLoop` was already laid out flat when the
+ * flange was authored, so this just traces it into a wire; the boundary is non-
+ * rectilinear so it rides separately from the rectilinear-union outline.
+ */
+function buildLoftedDevelopments(part: SheetMetalPart): Result<Wire[]> {
+  const wires: Wire[] = [];
+  for (const lf of part.loftedFlanges ?? []) {
+    const w = closedLoopWire(lf.developedLoop);
+    if (!w.ok) return w;
+    wires.push(w.value);
+  }
+  return ok(wires);
+}
+
+interface ContourDevelopments {
+  /** Developed strip rectangles (one per contour flange) for the outline union. */
+  strips: Rect[];
+  /** Developed bend lines (one per arc segment) in the flat pattern. */
+  bendLines: FlatPattern['bendLines'];
+}
+
+/**
+ * Lay each recorded contour flange's developed strip out STRAIGHT along its base
+ * edge: a rectangle `span` wide along the edge by `developedLength` out from it,
+ * returned for the outer-outline union. One bend line per arc segment is placed at
+ * that segment's cumulative developed offset out from the base edge — the EXACT
+ * arc-length sum, so the strip length equals Σ segment developed lengths with no
+ * error.
+ */
+function buildContourDevelopments(part: SheetMetalPart): Result<ContourDevelopments> {
+  const strips: Rect[] = [];
+  const bendLines: FlatPattern['bendLines'] = [];
+  const baseFrame: Frame2 = {
+    origin: [0, 0],
+    u: [1, 0],
+    v: [0, 1],
+    uLen: part.baseLength,
+    vLen: part.width,
+  };
+
+  for (const cf of part.contourFlanges ?? []) {
+    const { along, out, edgeOrigin } = edgeBasis2(baseFrame, cf.side);
+    const base = add2(edgeOrigin, scale2(along, cf.offset));
+    strips.push(
+      rectFromCorners(base, add2(add2(base, scale2(along, cf.span)), scale2(out, cf.developedLength)))
+    );
+
+    let cumulative = 0;
+    for (const seg of cf.segments) {
+      if (seg.kind === 'arc') {
+        const a = add2(base, scale2(out, cumulative));
+        const b = add2(a, scale2(along, cf.span));
+        bendLines.push({
+          id: seg.bendId ?? cf.id,
+          line: line([a[0], a[1], 0], [b[0], b[1], 0]),
+          angleDeg: seg.angleDeg ?? 0,
+          direction: seg.direction ?? 'up',
+          inward: [-out[0], -out[1]] as [number, number],
+        });
+      }
+      cumulative += seg.dev;
+    }
+  }
+  return ok({ strips, bendLines });
 }
 
 /** Trace a closed developed-plane loop (≥ 3 points) into a brepjs {@link Wire}. */
