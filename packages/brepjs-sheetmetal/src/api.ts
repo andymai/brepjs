@@ -254,9 +254,12 @@ export function toDXF(pattern: FlatPattern, options?: DxfOptions): Result<string
 }
 
 /**
- * Bounding-box nest: arrange developed flat patterns onto stock sheets to reduce
- * waste. Parts are packed as their outline bounding boxes (no interlocking);
- * true-shape NFP nesting is a follow-up.
+ * Nest developed flat patterns onto stock sheets to reduce waste. The default
+ * `strategy: "bbox"` packs each part as its outline bounding box (fast, no
+ * interlocking). `strategy: "nfp"` is true-shape / no-fit-polygon nesting: the actual
+ * outline polygons are packed so concave (L-shaped) parts interlock for higher
+ * utilization. The NFP packer is a HEURISTIC (bottom-left-fill) — not provably
+ * optimal — but never overlaps parts and never drops a part silently.
  */
 export function nest(patterns: FlatPattern[], options: NestOptions): Result<NestResult> {
   return nestFn(patterns, options);

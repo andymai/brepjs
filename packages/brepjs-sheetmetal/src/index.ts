@@ -74,6 +74,18 @@ export type {
   Bbox,
 } from './nestFns.js';
 
+export {
+  wireToPolygon,
+  polygonsOverlap,
+  polygonsOverlapWithClearance,
+  segmentsIntersect,
+  pointInPolygon,
+  transformPolygon,
+  polygonBounds,
+  signedArea,
+} from './polygonFns.js';
+export type { Polygon, Pt2 } from './polygonFns.js';
+
 export { buildReport, reportFromUnfold, reportToJSON } from './reportFns.js';
 
 export { validatePart } from './validateFns.js';

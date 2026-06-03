@@ -15,7 +15,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
+import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC, polygon, outerWire, unwrap } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
 import { author, miterCorner, unfold, unfoldSolid, fold, developed, nest, nestToDXF } from '../src/api.js';
 import type { NestResult } from '../src/nestFns.js';
@@ -347,7 +347,7 @@ async function renderNestDemo(): Promise<string[]> {
 
   const utils = result.sheets.map((s) => `${(s.utilization * 100).toFixed(1)}%`).join(', ');
   return [
-    '  [nesting]',
+    '  [nesting / bbox]',
     `    parts                : ${patterns.length}`,
     `    sheet                : ${sheet.width}×${sheet.height} mm (margin ${margin}, spacing ${spacing})`,
     `    sheets used          : ${result.sheets.length}`,
@@ -355,6 +355,61 @@ async function renderNestDemo(): Promise<string[]> {
     `    unplaced             : ${result.unplaced.length}`,
     `    nested sheet-0 DXF   : ${dxfPath}`,
     `    nested sheet-0 SVG   : ${svgPath}`,
+    ...(await renderNfpVsBbox()),
+  ];
+}
+
+/**
+ * True-shape (no-fit-polygon) demo (plan PR11): nest a set of identical concave
+ * L-shaped parts with BOTH strategies on the same sheet and print the material-
+ * utilization improvement true-shape interlocking buys over the bounding-box packer.
+ * The nfp packer is a heuristic (bottom-left-fill) — not provably optimal — but on
+ * concave parts it interlocks rotated copies into each other's notches, fitting more
+ * material per sheet than bbox packing ever can.
+ */
+async function renderNfpVsBbox(): Promise<string[]> {
+  // A clean tessellating L: a 40×40 square with a 20×20 notch at the far corner. Two
+  // of them (one rotated 180°) interlock into a 40×60 rectangle with no waste.
+  const lPattern: FlatPattern = {
+    outline: outerWire(
+      unwrap(
+        polygon([
+          [0, 0, 0],
+          [40, 0, 0],
+          [40, 20, 0],
+          [20, 20, 0],
+          [20, 40, 0],
+          [0, 40, 0],
+        ])
+      )
+    ),
+    bendLines: [],
+    holes: [],
+    formCuts: [],
+    formMarkers: [],
+    formHinges: [],
+    loftedDevelopments: [],
+    developedArea: 1200,
+  };
+  const parts = Array.from({ length: 8 }, () => lPattern);
+  const sheet = { width: 45, height: 65 };
+  const opts = { sheet, allowRotation: true } as const;
+
+  const bbox = nest(parts, { ...opts, strategy: 'bbox' });
+  const nfp = nest(parts, { ...opts, strategy: 'nfp' });
+  if (isErr(bbox) || isErr(nfp)) throw new Error('nfp-vs-bbox nest failed');
+
+  const bestU = (r: NestResult): number => r.sheets.reduce((m, s) => Math.max(m, s.utilization), 0);
+  const bU = bestU(bbox.value);
+  const nU = bestU(nfp.value);
+  const improvement = bU > 0 ? ((nU - bU) / bU) * 100 : 0;
+
+  return [
+    '  [nesting / nfp vs bbox — 8 L-shaped parts]',
+    `    sheet                : ${sheet.width}×${sheet.height} mm`,
+    `    bbox  sheets / util  : ${bbox.value.sheets.length} / ${(bU * 100).toFixed(1)}%`,
+    `    nfp   sheets / util  : ${nfp.value.sheets.length} / ${(nU * 100).toFixed(1)}% (interlocked)`,
+    `    utilization gain     : +${improvement.toFixed(1)}%  (heuristic true-shape packer)`,
   ];
 }
 
@@ -376,11 +431,12 @@ function renderNestSheetSvg(
     const pattern = patterns[p.patternIndex];
     if (pattern === undefined) continue;
     const b = patternBboxLocal(pattern);
-    const w = (p.rotationDeg === 90 ? b.height : b.width) * scale;
-    const h = (p.rotationDeg === 90 ? b.width : b.height) * scale;
+    const swapped = p.rotationDeg === 90 || p.rotationDeg === 270;
+    const w = (swapped ? b.height : b.width) * scale;
+    const h = (swapped ? b.width : b.height) * scale;
     parts.push(
       `<rect x="${fmt(sx(p.x))}" y="${fmt(sy(p.y) - h)}" width="${fmt(w)}" height="${fmt(h)}" fill="#b8431d22" stroke="#b8431d" />`,
-      `<text x="${fmt(sx(p.x) + 4)}" y="${fmt(sy(p.y) - h + 14)}" font-family="sans-serif" font-size="11" fill="#b8431d">#${p.patternIndex}${p.rotationDeg === 90 ? ' ⟳' : ''}</text>`
+      `<text x="${fmt(sx(p.x) + 4)}" y="${fmt(sy(p.y) - h + 14)}" font-family="sans-serif" font-size="11" fill="#b8431d">#${p.patternIndex}${p.rotationDeg !== 0 ? ' ⟳' : ''}</text>`
     );
   }
   return [

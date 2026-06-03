@@ -217,35 +217,61 @@ measured jog offset, and solid validity.
 
 ## Nesting
 
-`nest(patterns, { sheet, margin?, spacing?, allowRotation? })` arranges a set of developed flat patterns onto
-stock sheets to reduce waste, returning `Result<NestResult>` (`{ sheets, unplaced, warnings }`). Each sheet
-carries its `placements` (`{ patternIndex, x, y, rotationDeg }`, where `rotationDeg` is `0` or `90`) and a
-`utilization`. `nestToDXF(result, patterns, sheetIndex)` then emits one fabrication-ready, multi-layer DXF per
-sheet, translating and rotating every placed pattern (outline + bend lines + holes + forms) onto the sheet via
-the same bounding boxes the packer used.
+`nest(patterns, { sheet, margin?, spacing?, allowRotation?, strategy? })` arranges a set of developed flat
+patterns onto stock sheets to reduce waste, returning `Result<NestResult>` (`{ sheets, unplaced, warnings }`).
+Each sheet carries its `placements` (`{ patternIndex, x, y, rotationDeg }`) and a `utilization`.
+`nestToDXF(result, patterns, sheetIndex)` then emits one fabrication-ready, multi-layer DXF per sheet,
+translating and rotating every placed pattern (outline + bend lines + holes + forms) onto the sheet.
 
-> **Scope — bounding-box nesting only.** This packs each part as its axis-aligned **outline bounding box**, so
-> parts do **not** interlock: a concave or L-shaped part reserves its full rectangular footprint and leaves the
-> in-bbox waste unused. True-shape **no-fit-polygon (NFP)** nesting — where parts nest into each other's
-> concavities — is the planned follow-up. Treat the reported utilization as a conservative lower bound on what
-> NFP nesting could achieve.
+Two strategies are available via `strategy`:
+
+### `strategy: "bbox"` (default) — bounding-box nesting
+
+Packs each part as its axis-aligned **outline bounding box**, so parts do **not** interlock: a concave or
+L-shaped part reserves its full rectangular footprint and leaves the in-bbox waste unused. `rotationDeg` is
+`0` or `90`. This remains the default so existing callers are unchanged.
 
 - **Algorithm.** A shelf (level) packing heuristic. Parts are sorted largest-first (by bbox height, then area)
   and placed left-to-right into horizontal shelves; a new shelf opens below when the current row fills, and a
-  **new sheet** opens when the next shelf would overflow the usable height. Placements stay inside the usable
-  area `[margin, sheet − margin]` and are separated by at least `spacing`.
-- **Rotation.** With `allowRotation`, each part is tried at both `0°` and `90°` and the orientation that fits
-  (or packs shorter) is kept — letting a tall part fit a short sheet.
-- **Unplaceable parts.** A part larger than the usable sheet even rotated is reported in `unplaced` with a
-  warning; it is never dropped silently and never loops.
-- **Utilization.** Σ placed part **bounding-box** areas ÷ usable-sheet area, in `(0, 1]`. Inter-part spacing
-  gaps and intra-bbox waste are not credited, so it is a conservative material-use measure.
+  **new sheet** opens when the next shelf would overflow the usable height.
+- **Rotation.** With `allowRotation`, each part is tried at `0°` and `90°` and the orientation that fits (or
+  packs shorter) is kept.
+- **Utilization.** Σ placed part **bounding-box** areas ÷ usable-sheet area — a conservative lower bound that
+  does not credit inter-part gaps or intra-bbox waste.
+
+### `strategy: "nfp"` — true-shape (no-fit-polygon) nesting
+
+Packs the actual **outline polygons** so concave parts interlock — an L-shaped part nests a rotated copy into
+its notch, fitting more material per sheet than bbox packing ever can. `rotationDeg` may be `0/90/180/270`.
+
+> **Heuristic, not optimal.** The nfp packer is a **bottom-left-fill** heuristic (largest-first, with a
+> discretised raster scan over each part's orientations). It finds good interlocks but is **not** a provably
+> optimal solver — a different part order or finer rotation set may pack tighter. What it guarantees: placed
+> outline polygons never overlap (within `spacing`), all placements stay inside `[margin, sheet − margin]`, an
+> oversized part goes to `unplaced` with a `PART_TOO_LARGE` warning (never dropped, never an infinite loop).
+
+- **Correctness backbone.** Overlap is tested at the **polygon** level: two outlines overlap iff any edges
+  cross **or** one contains a vertex of the other (full containment), with a configurable `spacing` clearance.
+  A bbox-only check would let a part collide with a concave neighbour, so the true outline is always used.
+- **Utilization.** Σ placed part **outline-polygon** areas ÷ usable-sheet area, so an L-shaped part credits
+  only its true material — the two strategies' utilizations are directly comparable on the same parts.
+- **Geometry assumption.** Outlines are read as straight-edged polylines (one vertex per edge start point);
+  arc edges are approximated by their endpoints — the same assumption the DXF/SVG writers and the bbox nester
+  make.
+
+On a set of identical L-shaped parts, `"nfp"` interlocks them and typically uses roughly **half the sheets** of
+`"bbox"` (see the snapshot harness's `nfp vs bbox` demo).
 
 ```ts
 const patterns = parts.map((p) => unfold(p).value.pattern);
-const nested = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true });
-// nested.value.sheets.length, nested.value.sheets[i].utilization, nested.value.unplaced
-const dxf = nestToDXF(nested.value, patterns, 0); // fabrication-ready DXF for sheet 0
+
+// Default bounding-box nesting:
+const bbox = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true });
+
+// True-shape nesting — interlocks concave parts for higher utilization:
+const nfp = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true, strategy: 'nfp' });
+
+const dxf = nestToDXF(nfp.value, patterns, 0); // fabrication-ready DXF for sheet 0
 ```
 
 ## Foreign-solid import & unfold
@@ -344,7 +370,9 @@ the headline L-bracket with a mitered corner, a tray, reliefs, a cutout panel, a
 flaps + emboss/dimple) — then renders each folded 3D part next to its developed
 flat pattern as a single side-by-side SVG and also writes the folded solid as STEP.
 It also runs a **nesting** demo (a handful of parts bbox-packed onto one sheet),
-printing the sheet count + utilization and writing the nested sheet as DXF + SVG.
+printing the sheet count + utilization and writing the nested sheet as DXF + SVG,
+plus an **nfp vs bbox** comparison nesting identical L-shaped parts with both
+strategies and printing the true-shape utilization gain.
 
 ```bash
 npm run snapshot --workspace=brepjs-sheetmetal
