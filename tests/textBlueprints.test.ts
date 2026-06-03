@@ -4,6 +4,7 @@ import { loadFont, getFont } from '@/text/fontRegistry.js';
 import { textBlueprints } from '@/text/textBlueprints.js';
 import { sketchText } from '@/text/sketchText.js';
 import { textMetrics, fontMetrics } from '@/text/textMetrics.js';
+import { drawText } from '@/sketching/drawingFactories.js';
 import { unwrap, isOk, isErr } from '@/core/result.js';
 import { readFile, access } from 'node:fs/promises';
 
@@ -100,6 +101,21 @@ describe('textBlueprints', () => {
     // without modifying internals. Instead, verify it works with default fallback.
     const bps = textBlueprints('X', { fontFamily: 'missing' });
     expect(bps).toBeDefined();
+  });
+});
+
+describe('drawText', () => {
+  it('builds a Drawing from text using a loaded font', ({ skip }) => {
+    if (!fontPath) skip();
+    const drawing = drawText('Hi', { fontFamily: 'test', fontSize: 20 });
+    expect(drawing).toBeDefined();
+    expect(typeof drawing.clone).toBe('function');
+  });
+
+  it('honours startX/startY offsets', ({ skip }) => {
+    if (!fontPath) skip();
+    const drawing = drawText('Hi', { fontFamily: 'test', startX: 5, startY: 3 });
+    expect(drawing).toBeDefined();
   });
 });
 
