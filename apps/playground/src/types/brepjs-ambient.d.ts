@@ -242,7 +242,7 @@ interface KernelEvolutionOps {
 
 interface KernelIOOps {
     exportSTEP(shapes: KernelShape[]): string;
-    exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer;
+    exportSTL(shape: KernelShape, binary?: boolean, tolerance?: number, angularTolerance?: number): string | ArrayBuffer;
     importSTEP(data: string | ArrayBuffer): KernelShape[];
     importSTL(data: string | ArrayBuffer): KernelShape;
     exportIGES(shapes: KernelShape[]): string;
@@ -295,14 +295,6 @@ interface KernelIOOps {
         modelUnit?: string | undefined;
         schema?: number | undefined;
     }): string;
-    /** Wrap a JS string as a kernel extended string. */
-    wrapString(str: string): KernelType;
-    /** Create a kernel color from RGB 0-255 and alpha 0-1. */
-    wrapColor(red: number, green: number, blue: number, alpha: number): KernelType;
-    /** Configure STEP writer unit settings. */
-    configureStepUnits(unit: string | undefined, modelUnit: string | undefined): void;
-    /** Configure STEP writer standard settings (color, layer, name, schema). */
-    configureStepWriter(writer: KernelType): void;
 }
 
 interface KernelMeasureOps {
@@ -700,13 +692,13 @@ interface OcctKernelWasm {
     fillet(solidId: number, edgeIds: EmVectorUint32, radius: number): number;
     chamfer(solidId: number, edgeIds: EmVectorUint32, distance: number): number;
     chamferDistAngle(solidId: number, edgeIds: EmVectorUint32, distance: number, angleDeg: number): number;
-    shell(solidId: number, faceIds: EmVectorUint32, thickness: number): number;
-    offset(solidId: number, distance: number): number;
+    shell(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number): number;
+    offset(solidId: number, distance: number, tolerance: number): number;
     draft(shapeId: number, faceId: number, angleRad: number, dx: number, dy: number, dz: number): number;
     pipe(profileId: number, spineId: number): number;
     simplePipe(profileId: number, spineId: number): number;
-    loft(wireIds: EmVectorUint32, isSolid: boolean): number;
-    loftWithVertices(wireIds: EmVectorUint32, isSolid: boolean, startVertexId: number, endVertexId: number): number;
+    loft(wireIds: EmVectorUint32, isSolid: boolean, ruled: boolean): number;
+    loftWithVertices(wireIds: EmVectorUint32, isSolid: boolean, ruled: boolean, startVertexId: number, endVertexId: number): number;
     sweep(wireId: number, spineId: number, transitionMode: number): number;
     sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
     draftPrism(shapeId: number, dx: number, dy: number, dz: number, angleDeg: number): number;
@@ -769,11 +761,12 @@ interface OcctKernelWasm {
     exportStl(id: number, linearDeflection: number, ascii: boolean): string;
     toBREP(id: number): string;
     fromBREP(data: string): number;
-    getBoundingBox(id: number): EmBBoxData;
+    getBoundingBox(id: number, useTriangulation: boolean): EmBBoxData;
     getVolume(id: number): number;
     getSurfaceArea(id: number): number;
     getLength(id: number): number;
     getCenterOfMass(id: number): EmVectorDouble;
+    getSurfaceCenterOfMass(faceId: number): EmVectorDouble;
     getLinearCenterOfMass(id: number): EmVectorDouble;
     surfaceCurvature(faceId: number, u: number, v: number): EmVectorDouble;
     vertexPosition(vertexId: number): EmVectorDouble;
@@ -797,13 +790,18 @@ interface OcctKernelWasm {
     projectEdges(shapeId: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, xx: number, xy: number, xz: number, hasXAxis: boolean): EmProjectionData;
     getNurbsCurveData(edgeId: number): EmNurbsCurveData;
     liftCurve2dToPlane(flatPoints2d: EmVectorDouble, planeOx: number, planeOy: number, planeOz: number, planeZx: number, planeZy: number, planeZz: number, planeXx: number, planeXy: number, planeXz: number): number;
-    createXCAFDocument(shapeIds: EmVectorUint32, joinedNames: string, flatColors: EmVectorDouble): number;
-    writeXCAFToSTEP(docId: number): string;
+    xcafNewDocument(): number;
+    xcafClose(docId: number): void;
+    xcafAddShape(docId: number, shapeId: number): number;
+    xcafSetColor(docId: number, labelId: number, r: number, g: number, b: number): void;
+    xcafSetName(docId: number, labelId: number, name: string): void;
+    xcafGetRootLabels(docId: number): EmVectorInt;
+    xcafExportSTEP(docId: number): string;
     bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
     makeFaceOnSurface(faceId: number, wireId: number): number;
     makeNullShape(): number;
-    thicken(shapeId: number, thickness: number): number;
-    defeature(shapeId: number, faceIds: EmVectorUint32): number;
+    thicken(shapeId: number, thickness: number, tolerance: number): number;
+    defeature(shapeId: number, faceIds: EmVectorUint32, tolerance: number): number;
     reverseShape(id: number): number;
     simplify(id: number): number;
     filletVariable(solidId: number, edgeId: number, startRadius: number, endRadius: number): number;
@@ -817,9 +815,9 @@ interface OcctKernelWasm {
     scaleWithHistory(id: number, cx: number, cy: number, cz: number, factor: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     intersectWithHistory(a: number, b: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     chamferWithHistory(solidId: number, edgeIds: EmVectorUint32, distance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
-    shellWithHistory(solidId: number, faceIds: EmVectorUint32, thickness: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
-    offsetWithHistory(solidId: number, distance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
-    thickenWithHistory(shapeId: number, thickness: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    shellWithHistory(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    offsetWithHistory(solidId: number, distance: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    thickenWithHistory(shapeId: number, thickness: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     buildCurves3d(wireId: number): void;
     fixWireOnFace(wireId: number, faceId: number, tolerance: number): number;
     fixShape(id: number): number;
@@ -864,10 +862,9 @@ declare function getPerformanceStats(): PerformanceStats;
 /** Reset all counters to zero. */
 declare function resetPerformanceStats(): void;
 
-/**
- * Register a kernel adapter under a unique identifier.
- * The first registered kernel becomes the default.
- */
+/** Initialise and register the manifold kernel from a loaded manifold-3d module. */
+declare function initFromManifold(module: ManifoldModule): void;
+
 declare function registerKernel(id: string, adapter: KernelAdapter): void;
 
 /**
@@ -877,14 +874,6 @@ declare function registerKernel(id: string, adapter: KernelAdapter): void;
  */
 declare function getKernel(id?: string): KernelAdapter;
 
-/**
- * Run a **synchronous** function with a specific kernel as the default,
- * then restore the previous default.
- *
- * **Warning**: Do NOT pass an async function — the kernel override is
- * restored synchronously in `finally`, so any `getKernel()` call after
- * the first `await` inside `fn` would observe the wrong kernel.
- */
 declare function withKernel<T extends Exclude<unknown, Promise<unknown>>>(id: string, fn: () => T): T;
 
 /** Initialise the brepjs kernel from a loaded WASM instance. */
@@ -909,13 +898,15 @@ declare function prewarm(): void;
 /**
  * Auto-detect and initialise the best available kernel.
  *
- * Tries `brepjs-opencascade` (OCCT) first, then falls back to `brepkit-wasm`.
- * For `occt-wasm`, use {@link registerKernel} directly (see tests/helpers/kernelInit.ts).
+ * Tries `occt-wasm` (the default kernel) first, then falls back to
+ * `brepjs-opencascade`, then `brepkit-wasm`. `occt-wasm` loads via its
+ * browser-safe `OcctKernel.init()` (auto-locates the `.wasm` via
+ * `import.meta.url`), so no manual registration is required.
  *
  * Idempotent — calling it again after a kernel is registered is a no-op that
  * returns the current kernel ID immediately.
  *
- * @returns The kernel ID that was initialised (`'occt'` or `'brepkit'`).
+ * @returns The kernel ID that was initialised (`'occt-wasm'`, `'occt'`, or `'brepkit'`).
  * @throws If no kernel package can be imported.
  *
  * @example
@@ -1155,6 +1146,7 @@ declare const BrepErrorCode: {
     readonly CHAMFER_NOT_3D: "CHAMFER_NOT_3D";
     readonly CHAMFER_ANGLE_NOT_3D: "CHAMFER_ANGLE_NOT_3D";
     readonly CHAMFER_ANGLE_FAILED: "CHAMFER_ANGLE_FAILED";
+    readonly CSG_NOT_3D: "CSG_NOT_3D";
     readonly SHELL_NOT_3D: "SHELL_NOT_3D";
     readonly OFFSET_NOT_3D: "OFFSET_NOT_3D";
     readonly NULL_SHAPE: "NULL_SHAPE";
@@ -1169,8 +1161,12 @@ declare const BrepErrorCode: {
     readonly STEP_EXPORT_FAILED: "STEP_EXPORT_FAILED";
     readonly STEP_EXPORT_CONFIGURED_FAILED: "STEP_EXPORT_CONFIGURED_FAILED";
     readonly STEP_FILE_READ_ERROR: "STEP_FILE_READ_ERROR";
+    readonly STEP_EXPORT_CRASHED: "STEP_EXPORT_CRASHED";
+    readonly STEP_EXPORT_UNSERIALIZABLE: "STEP_EXPORT_UNSERIALIZABLE";
     readonly STL_EXPORT_FAILED: "STL_EXPORT_FAILED";
     readonly STL_FILE_READ_ERROR: "STL_FILE_READ_ERROR";
+    readonly STL_EXPORT_CRASHED: "STL_EXPORT_CRASHED";
+    readonly STL_EXPORT_UNSERIALIZABLE: "STL_EXPORT_UNSERIALIZABLE";
     readonly STEP_IMPORT_FAILED: "STEP_IMPORT_FAILED";
     readonly STL_IMPORT_FAILED: "STL_IMPORT_FAILED";
     readonly IGES_EXPORT_FAILED: "IGES_EXPORT_FAILED";
@@ -2216,10 +2212,228 @@ interface StepExportOptions {
 declare function exportSTEPConfigured(parts: ReadonlyArray<StepExportPart>, options?: StepExportOptions): Result<string>;
 
 /**
+ * The wasm surface the voxel domain depends on — structurally satisfied by the
+ * loaded `brepjs-voxel-wasm` module. Kept snake_case to match the wasm-bindgen
+ * exports exactly, so the raw module is a zero-adapter `VoxelEngine`.
+ *
+ * All buffers are flat (no zero-copy across the wasm boundary, per ADR-0013):
+ * `verts` is xyz·V, `tris` is index·T, `queries` is xyz·Q.
+ */
+interface VoxelEngine {
+    /** Generalized winding number per query point (~1 inside, ~0 outside). */
+    winding_numbers(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Float32Array;
+    /** Inside/outside classification per query point (1 = inside, 0 = outside). */
+    points_inside(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Uint8Array;
+    /** Voxelize-and-contour a mesh into a closed surface (FWN sign keystone). */
+    repair_mesh(verts: Float32Array, tris: Uint32Array, resolution: number, padding: number): VoxelRepairResult;
+    /** Fill an FWN-signed solid with a TPMS lattice infill, contoured to a mesh. */
+    lattice_infill(verts: Float32Array, tris: Uint32Array, resolution: number, padding: number, lattice_type: number, period: number, thickness: number): VoxelRepairResult;
+    /** Contour the infinite TPMS lattice clipped to an axis-aligned box. */
+    tpms_box(min_x: number, min_y: number, min_z: number, max_x: number, max_y: number, max_z: number, resolution: number, padding: number, lattice_type: number, period: number, thickness: number): VoxelRepairResult;
+    /** Offset a mesh by a true-SDF iso-level shift (>0 outward, <0 inward). */
+    offset_mesh(verts: Float32Array, tris: Uint32Array, distance: number, resolution: number, padding: number): VoxelRepairResult;
+    /** Hollow a solid mesh into an inward shell of the given thickness (>0). */
+    shell_mesh(verts: Float32Array, tris: Uint32Array, thickness: number, resolution: number, padding: number): VoxelRepairResult;
+    /** Voxel CSG of two meshes (op: 0=union, 1=intersection, 2=difference A−B). */
+    voxel_boolean(verts_a: Float32Array, tris_a: Uint32Array, verts_b: Float32Array, tris_b: Uint32Array, op: number, resolution: number, padding: number): VoxelRepairResult;
+    /** Engine artifact version, for loader/artifact compatibility checks. */
+    version(): string;
+}
+
+/**
+ * The repaired-mesh handle the wasm `repair_mesh` returns. Flat xyz
+ * `positions`/`normals` (length 3·V) and a triangle-list `indices` (3 per tri),
+ * in world space. Structurally satisfied by the generated `RepairResult` class.
+ */
+interface VoxelRepairResult {
+    readonly positions: Float32Array;
+    readonly normals: Float32Array;
+    readonly indices: Uint32Array;
+    /** Release the backing WASM allocation (wasm-bindgen lifecycle). */
+    free(): void;
+    [Symbol.dispose](): void;
+}
+
+/**
+ * Minimal triangle-soup input for sign queries. Structurally satisfied by a
+ * {@link KernelMeshResult} (which also carries normals/uvs/faceGroups).
+ */
+interface VoxelMeshInput {
+    vertices: Float32Array;
+    triangles: Uint32Array;
+}
+
+/**
+ * Generalized winding number at each query point against a triangle-soup mesh.
+ *
+ * `queries` is flat xyz (length 3·Q); the result has length Q. ~1 inside, ~0
+ * outside for a closed mesh; degrades gracefully on holes (the keystone that
+ * makes non-watertight repair possible — ADR-0013 §11).
+ */
+declare function windingNumbers(mesh: VoxelMeshInput, queries: Float32Array, id?: string): Result<Float32Array>;
+
+/**
+ * Inside/outside classification (winding number > 0.5) at each query point.
+ *
+ * `queries` is flat xyz (length 3·Q); the result has length Q.
+ */
+declare function pointsInside(mesh: VoxelMeshInput, queries: Float32Array, id?: string): Result<boolean[]>;
+
+/** Voxel-repair tuning. `resolution` sizes the longest bbox axis in voxels;
+ *  `padding` is the positive air-margin ring (>= 1) Surface Nets needs. */
+interface RepairOptions {
+    resolution?: number;
+    padding?: number;
+}
+
+/**
+ * Repair a (possibly non-watertight) triangle-soup mesh into a closed surface:
+ * voxelize an FWN-signed SDF, then Surface-Nets contour it back to triangles.
+ *
+ * The FWN sign classifies inside/outside even on holey input, so a mesh with
+ * missing faces still yields a watertight result (ADR-0013 §11). Returns a
+ * {@link KernelMeshResult} in world coordinates (a single face group, no UVs).
+ */
+declare function repairMesh(mesh: VoxelMeshInput, opts?: RepairOptions, id?: string): Result<KernelMeshResult>;
+
+/** Voxel mesh-op tuning. `resolution` sizes the longest bbox axis in voxels;
+ *  `padding` is the positive air-margin ring (>= 1) Surface Nets needs. */
+interface VoxelOpOptions {
+    resolution?: number;
+    padding?: number;
+}
+
+/**
+ * Offset a mesh by `distance` via a true-SDF iso-level shift: voxelize an
+ * FWN-signed SDF, subtract `distance`, then Surface-Nets contour it back.
+ *
+ * `distance > 0` grows the surface outward, `< 0` shrinks it inward. Returns a
+ * {@link KernelMeshResult} in world coordinates (a single face group, no UVs).
+ */
+declare function offsetMesh(mesh: VoxelMeshInput, distance: number, opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Hollow a solid mesh into a shell of the given inward `thickness`: voxelize an
+ * FWN-signed SDF, take `max(solid, -(solid + thickness))`, then contour it.
+ *
+ * `thickness` must be finite and > 0 (inward-only). Returns a
+ * {@link KernelMeshResult} in world coordinates (a single face group, no UVs).
+ */
+declare function shellMesh(mesh: VoxelMeshInput, thickness: number, opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Voxel-based CSG of two meshes: voxelize both onto a shared grid, combine their
+ * SDFs (union/intersection/difference), then Surface-Nets contour the result.
+ *
+ * `op` is `'difference'` = A − B. Robust on non-watertight input (FWN sign).
+ * Returns a {@link KernelMeshResult} in world coordinates (single group, no UVs).
+ */
+declare function voxelBoolean(a: VoxelMeshInput, b: VoxelMeshInput, op: 'union' | 'intersection' | 'difference', opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Offset a B-rep shape by `distance`: tessellate it, then run {@link offsetMesh}
+ * on the resulting triangle soup. `distance > 0` grows outward, `< 0` shrinks
+ * inward. Threads a meshing failure straight back as an `err(...)`.
+ */
+declare function offsetShape(shape: AnyShape<Dimension>, distance: number, opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Hollow a B-rep shape into a shell of inward `thickness`: tessellate it, then
+ * run {@link shellMesh}. `thickness` must be finite and > 0. Threads a meshing
+ * failure straight back as an `err(...)`.
+ */
+declare function shellShape(shape: AnyShape<Dimension>, thickness: number, opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Voxel CSG of two B-rep shapes: tessellate both, then run {@link voxelBoolean}.
+ * `op` is `'difference'` = A − B. Threads either meshing failure back as an
+ * `err(...)`.
+ */
+declare function voxelBooleanShapes(a: AnyShape<Dimension>, b: AnyShape<Dimension>, op: 'union' | 'intersection' | 'difference', opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+declare function registerVoxel(id: string, engine: VoxelEngine): void;
+
+/**
+ * Return a voxel engine by id, or the default engine if no id is given.
+ *
+ * @throws If no engine has been registered via {@link initVoxel} or
+ * {@link registerVoxel}.
+ */
+declare function getVoxel(id?: string): VoxelEngine;
+
+/** Return the id of the active default engine, or `null` if none is registered. */
+declare function getActiveVoxelId(): string | null;
+
+/**
+ * Register a loaded voxel engine and make it the default.
+ *
+ * Mirrors {@link initFromOC} for the kernel: the loader package
+ * (`brepjs-voxel`) instantiates the wasm, then hands the engine here.
+ */
+declare function initVoxel(engine: VoxelEngine, id?: string): void;
+
+/**
+ * Mesh a B-rep shape into the flat triangle-soup {@link VoxelMeshInput} the voxel
+ * ops consume. Tessellates via the topology mesh API at `deflection` linear
+ * tolerance and forwards its `{ vertices, triangles }` (already Float32Array /
+ * Uint32Array). Meshing failures surface as an `err(...)` rather than a throw.
+ */
+declare function shapeToMeshInput(shape: AnyShape<Dimension>, deflection?: number): Result<VoxelMeshInput>;
+
+/** TPMS lattice families. Maps to the wasm tag (0=Gyroid, 1=SchwarzP, 2=Diamond). */
+type LatticeType = 'gyroid' | 'schwarzP' | 'diamond';
+
+/**
+ * TPMS lattice tuning. `period` is the unit-cell size (world units); `thickness`
+ * is the strut wall width in field units. `resolution` sizes the longest bbox
+ * axis in voxels; `padding` is the positive air-margin ring (>= 1) Surface Nets
+ * needs.
+ */
+interface LatticeOptions {
+    type: LatticeType;
+    period: number;
+    thickness: number;
+    resolution?: number;
+    padding?: number;
+}
+
+/**
+ * Fill a solid mesh with a TPMS lattice infill: intersect the FWN-signed solid
+ * with the chosen lattice shell field, then Surface-Nets contour the result.
+ *
+ * Returns a {@link KernelMeshResult} in world coordinates (a single face group,
+ * no UVs). The TPMS field is the approximate implicit (raw trig), so the surface
+ * is contoured at the zero level without distance normalization (ADR-0013).
+ */
+declare function latticeInfill(mesh: VoxelMeshInput, opts: LatticeOptions, id?: string): Result<KernelMeshResult>;
+
+/**
+ * Fill a B-rep shape with a TPMS lattice infill: tessellate the shape, then run
+ * {@link latticeInfill} on the resulting triangle soup. Threads a meshing
+ * failure straight back as an `err(...)`.
+ */
+declare function latticeInfillShape(shape: AnyShape<Dimension>, opts: LatticeOptions, id?: string): Result<KernelMeshResult>;
+
+/** Axis-aligned bounds for a clipped TPMS lattice. */
+interface LatticeBounds {
+    min: [number, number, number];
+    max: [number, number, number];
+}
+
+/**
+ * Contour the infinite TPMS lattice clipped to an axis-aligned box.
+ *
+ * Returns a {@link KernelMeshResult} in world coordinates (a single face group,
+ * no UVs). The TPMS field is the approximate implicit (raw trig), contoured at
+ * the zero level without distance normalization (ADR-0013).
+ */
+declare function tpmsLattice(bounds: LatticeBounds, opts: LatticeOptions, id?: string): Result<KernelMeshResult>;
+
+/**
  * Base class for 2D sketchers that accumulate {@link Curve2D} segments.
  *
  * Provides the shared pen-drawing API (lines, arcs, ellipses, beziers, splines)
- * used by {@link FaceSketcher}, {@link BlueprintSketcher}, and {@link DrawingPen}.
+ * used by `FaceSketcher`, `BlueprintSketcher`, and `DrawingPen`.
  * Subclasses implement `done()` / `close()` to produce the appropriate output type.
  *
  * @category Sketching
@@ -2232,13 +2446,9 @@ declare class BaseSketcher2d {
     constructor(origin?: Point2D);
     protected _convertToUV([x, y]: Point2D): Point2D;
     protected _convertFromUV([u, v]: Point2D): Point2D;
-    /** Return the last curve in the pending list, or null if empty. */
     protected _lastCurve(): Curve2D | null;
-    /** Require that a previous curve exists, returning it or throwing. */
     protected _requireLastCurve(caller: string, action: string): Curve2D;
-    /** Resolve a relative offset from the current pointer position. */
     protected _resolveRelative(xDist: number, yDist: number): Point2D;
-    /** Save a curve, advance the pointer to the given end point, and return `this`. */
     protected _saveCurveAndAdvance(curve: Curve2D, end: Point2D): this;
     /**
      * Returns the current pen position as [x, y] coordinates
@@ -2248,10 +2458,6 @@ declare class BaseSketcher2d {
     get penPosition(): Point2D;
     /**
      * Returns the current pen angle in degrees
-     *
-     * The angle represents the tangent direction at the current pen position,
-     * based on the last drawing operation (line, arc, bezier, etc.).
-     * Returns 0 if nothing has been drawn yet.
      *
      * @category Drawing State
      */
@@ -2319,9 +2525,7 @@ declare class BaseSketcher2d {
     smoothSplineTo(end: Point2D, config?: SplineOptions): this;
     /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
     smoothSpline(xDist: number, yDist: number, splineConfig?: SplineOptions): this;
-    /**
-     * Changes the corner between the previous and next segments.
-     */
+    /** Changes the corner between the previous and next segments. */
     customCorner(radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]), mode?: 'fillet' | 'chamfer'): this;
     protected _customCornerLastWithFirst(radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]), mode?: 'fillet' | 'chamfer' | 'dogbone'): void;
     protected _closeSketch(): void;
@@ -2661,9 +2865,7 @@ interface GenericSketcher<ReturnType> {
 
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 interface SketchInterface {
-    /**
-     * Transforms the lines into a face. The lines should be closed.
-     */
+    /** Transforms the lines into a face. The lines should be closed. */
     face(): Face;
     /**
      * Revolves the drawing on an axis (defined by its direction and an origin
@@ -2714,9 +2916,9 @@ declare class Sketches {
     sketches: Array<Sketch | CompoundSketch>;
     constructor(sketches: Array<Sketch | CompoundSketch>);
     /** Return all wires combined into a single compound shape. */
-    wires(): AnyShape;
+    wires(): Compound;
     /** Return all sketch faces combined into a single compound shape. */
-    faces(): AnyShape;
+    faces(): Compound;
     /** Extrudes the sketch to a certain distance (along the default direction
      * and origin of the sketch).
      *
@@ -2732,14 +2934,14 @@ declare class Sketches {
         extrusionProfile?: ExtrusionProfile;
         twistAngle?: number;
         origin?: PointInput;
-    }): AnyShape;
+    }): Compound;
     /**
      * Revolves the drawing on an axis (defined by its direction and an origin
      * (defaults to the sketch origin)
      */
     revolve(revolutionAxis?: PointInput, config?: {
         origin?: PointInput;
-    }): AnyShape;
+    }): Compound;
 }
 
 /**
@@ -3135,93 +3337,30 @@ declare function drawProjection(shape: AnyShape, projectionCamera?: ProjectionPl
  */
 declare function drawFaceOutline(face: Face): Drawing;
 
-/**
- * Extrude a sketch to a given distance along its default (or overridden) direction.
- *
- * @param sketch - The sketch to extrude. Consumed (deleted) by this call.
- * @param height - Extrusion distance.
- * @param config - Optional direction, profile, twist angle, or origin overrides.
- * @returns The extruded 3D solid.
- *
- * @see {@link Sketch.extrude} for the OOP equivalent.
- */
-declare function sketchExtrude(sketch: Sketch, height: number, config?: {
-    extrusionDirection?: PointInput;
-    extrusionProfile?: ExtrusionProfile;
-    twistAngle?: number;
-    origin?: PointInput;
-}): Shape3D;
+/** Build a face from a sketch's closed planar wire. */
+declare function sketchFace(sketch: Sketch): OrientedFace & PlanarFace;
+
+/** Return an independent clone of the sketch's wire. */
+declare function sketchWires(sketch: Sketch): Wire;
 
 /**
  * Revolve a sketch around an axis to produce a solid of revolution.
  *
- * @param sketch - The sketch to revolve. Consumed (deleted) by this call.
- * @param revolutionAxis - Axis direction (defaults to sketch default direction).
- * @param options - Optional origin override.
- * @returns The revolved 3D solid.
- *
- * @see {@link Sketch.revolve} for the OOP equivalent.
+ * @remarks Consumes the sketch — calling twice throws on the second call.
  */
-declare function sketchRevolve(sketch: Sketch, revolutionAxis?: PointInput, options?: {
+declare function sketchRevolve(sketch: Sketch, revolutionAxis?: PointInput, { origin }?: {
     origin?: PointInput;
 }): Shape3D;
 
 /**
- * Loft between this sketch and one or more other sketches.
+ * Extrude a sketch to a given distance.
  *
- * @param sketch - The starting sketch. Consumed by this call.
- * @param otherSketches - Target sketch(es) to loft toward.
- * @param loftConfig - Loft options (ruled surface, start/end points, etc.).
- * @param returnShell - If true, return a shell instead of a solid.
- * @returns The lofted 3D shape.
+ * Supports profile (taper) extrusion via `extrusionProfile`, twist extrusion
+ * via `twistAngle`, and direction/origin overrides.
  *
- * @see {@link Sketch.loftWith} for the OOP equivalent.
+ * @remarks Consumes the sketch — calling twice throws on the second call.
  */
-declare function sketchLoft(sketch: Sketch, otherSketches: Sketch | Sketch[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
-
-/**
- * Sweep a profile sketch along this sketch's wire path.
- *
- * @param sketch - The path sketch. Consumed by this call.
- * @param sketchOnPlane - Function that builds the profile sketch at the sweep start.
- * @param sweepConfig - Sweep options (auxiliary spine, orthogonality, etc.).
- * @returns The swept 3D shape.
- *
- * @see {@link Sketch.sweepSketch} for the OOP equivalent.
- */
-declare function sketchSweep(sketch: Sketch, sketchOnPlane: Parameters<Sketch['sweepSketch']>[0], sweepConfig?: SweepOptions): Shape3D;
-
-/**
- * Build a face from a sketch's closed wire.
- *
- * @param sketch - A sketch with a closed wire.
- * @returns The planar face.
- *
- * @see {@link Sketch.face} for the OOP equivalent.
- */
-declare function sketchFace(sketch: Sketch): OrientedFace & PlanarFace;
-
-/**
- * Get a clone of the wire from a sketch.
- *
- * @param sketch - The source sketch.
- * @returns A cloned wire.
- *
- * @see {@link Sketch.wires} for the OOP equivalent.
- */
-declare function sketchWires(sketch: Sketch): Wire;
-
-/**
- * Extrude a compound sketch (outer + holes) to a given distance.
- *
- * @param sketch - The compound sketch to extrude.
- * @param height - Extrusion distance.
- * @param config - Optional direction, profile, twist angle, or origin overrides.
- * @returns The extruded 3D solid.
- *
- * @see {@link CompoundSketch.extrude} for the OOP equivalent.
- */
-declare function compoundSketchExtrude(sketch: CompoundSketch, height: number, config?: {
+declare function sketchExtrude(sketch: Sketch, extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
@@ -3229,39 +3368,42 @@ declare function compoundSketchExtrude(sketch: CompoundSketch, height: number, c
 }): Shape3D;
 
 /**
- * Revolve a compound sketch around an axis to produce a solid of revolution.
+ * Sweep a profile sketch (built by `sketchOnPlane`) along this sketch's wire path.
  *
- * @param sketch - The compound sketch to revolve.
- * @param revolutionAxis - Axis direction.
- * @param options - Optional origin override.
- * @returns The revolved 3D solid.
- *
- * @see {@link CompoundSketch.revolve} for the OOP equivalent.
+ * @remarks Consumes both this sketch and the one returned by `sketchOnPlane` —
+ * calling either twice throws on the second call.
  */
-declare function compoundSketchRevolve(sketch: CompoundSketch, revolutionAxis?: PointInput, options?: {
-    origin?: PointInput;
-}): Shape3D;
+declare function sketchSweep(sketch: Sketch, sketchOnPlane: (plane: Plane, origin: Vec3) => Sketch, sweepConfig?: SweepOptions): Shape3D;
 
 /**
- * Build a face from a compound sketch (outer boundary with holes).
+ * Loft between this sketch and one or more other sketches.
  *
- * @param sketch - The compound sketch.
- * @returns A face with inner wires subtracted as holes.
- *
- * @see {@link CompoundSketch.face} for the OOP equivalent.
+ * @remarks Consumes all input sketches — calling twice throws on the second call.
  */
+declare function sketchLoft(sketch: Sketch, otherSketches: Sketch | Sketch[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
+
+/** Build a face from a compound sketch (outer boundary with holes). */
 declare function compoundSketchFace(sketch: CompoundSketch): OrientedFace & PlanarFace;
 
 /**
- * Loft between two compound sketches that have the same number of sub-sketches.
+ * Extrude a compound sketch (outer + holes) along the default or given direction.
  *
- * @param sketch - Starting compound sketch.
- * @param other - Target compound sketch.
- * @param loftConfig - Loft options (ruled surface, etc.).
- * @returns The lofted 3D solid.
- *
- * @see {@link CompoundSketch.loftWith} for the OOP equivalent.
+ * Supports twist and profile extrusions. For twist/profile modes each
+ * sub-sketch is extruded as a shell, then capped into a solid.
  */
+declare function compoundSketchExtrude(sketch: CompoundSketch, extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+    extrusionDirection?: PointInput;
+    extrusionProfile?: ExtrusionProfile;
+    twistAngle?: number;
+    origin?: PointInput;
+}): Shape3D;
+
+/** Revolve a compound sketch (outer + holes) around an axis. */
+declare function compoundSketchRevolve(sketch: CompoundSketch, revolutionAxis?: PointInput, { origin }?: {
+    origin?: PointInput;
+}): Shape3D;
+
+/** Loft between two compound sketches with matching sub-sketch counts. */
 declare function compoundSketchLoft(sketch: CompoundSketch, other: CompoundSketch, loftConfig: LoftOptions): Shape3D;
 
 /**
@@ -3274,7 +3416,7 @@ declare function compoundSketchLoft(sketch: CompoundSketch, other: CompoundSketc
  *
  * @see {@link Drawing.sketchOnPlane} for the OOP equivalent.
  */
-declare function drawingToSketchOnPlane(drawing: Drawing, inputPlane?: PlaneName | Plane, origin?: PointInput | number): any;
+declare function drawingToSketchOnPlane(drawing: Drawing, inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchInterface | Sketches;
 
 /**
  * Fuse two drawings with a Boolean union.
@@ -3847,6 +3989,30 @@ type PlaneInput = Plane | PlaneName;
  */
 declare function invalidateShapeCache(shape: AnyShape<Dimension>): void;
 
+/**
+ * Get all solids of a shape as branded Solid handles. Results are cached per shape.
+ *
+ * Booleans (`cut`/`fuse`/`fuseAll`), `chamfer`/`fillet`, and some sweeps return a
+ * `Compound` wrapping the solid(s); use this to unwrap them without reaching into
+ * the kernel. Returns `[]` for shapes with no solids (wires, bare faces, shells).
+ */
+declare function getSolids(shape: AnyShape<Dimension>): Solid[];
+
+/** Get all shells of a shape as branded Shell handles. Results are cached per shape. */
+declare function getShells(shape: AnyShape<Dimension>): Shell[];
+
+/** Get all compsolids of a shape as branded CompSolid handles. Results are cached per shape. */
+declare function getCompSolids(shape: AnyShape<Dimension>): CompSolid[];
+
+/** Lazily iterate solids of a shape, yielding branded Solid handles one at a time. */
+declare function iterSolids(shape: AnyShape<Dimension>): Generator<Solid>;
+
+/** Lazily iterate shells of a shape, yielding branded Shell handles one at a time. */
+declare function iterShells(shape: AnyShape<Dimension>): Generator<Shell>;
+
+/** Lazily iterate compsolids of a shape, yielding branded CompSolid handles one at a time. */
+declare function iterCompSolids(shape: AnyShape<Dimension>): Generator<CompSolid>;
+
 /** Bounding box as a plain object. */
 interface Bounds3D {
     readonly xMin: number;
@@ -4241,11 +4407,6 @@ interface MeshOptions {
     signal?: AbortSignal;
 }
 
-/**
- * Export a shape as a STEP file Blob.
- *
- * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
- */
 declare function exportSTEP(shape: AnyShape<Dimension>): Result<Blob>;
 
 /**
@@ -4485,6 +4646,39 @@ interface BooleanPipelineStep {
 declare function booleanPipeline(base: Shape3D, steps: readonly BooleanPipelineStep[], options?: {
     readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
 }): Result<Shape3D>;
+
+interface BatchBisectTelemetry {
+    /** Number of inputs the caller passed (tools for cut, shapes for fuse). */
+    readonly totalInputs: number;
+    /** N-way kernel batch (`cutAll` / `fuseAll`) attempts, including failures. */
+    readonly batchAttempts: number;
+    /** N-way kernel batch attempts that succeeded. */
+    readonly batchSucceeded: number;
+    /**
+     * 2-input pairwise kernel call attempts after bisection bottomed out. For
+     * `cutAllBisect` this counts singleton `cut(base, tool)` calls; for
+     * `fuseAllBisect` this counts the `fuse(a, b)` calls that combine the
+     * results of two recursive halves. Both flavors mean "the kernel did a
+     * pair op, not a batch op."
+     */
+    readonly singletonFallbacks: number;
+    /**
+     * Sorted, deduplicated input indices that failed even as pairwise ops and
+     * were dropped from the result. Multi-level fuse failures can target the
+     * same index from different recursion levels — dedup happens at freeze.
+     */
+    readonly failedInputs: readonly number[];
+}
+
+declare function cutAllBisect(base: ValidSolid, tools: ValidSolid[], options?: BooleanOptions): Result<BatchBisectResult<ValidSolid>>;
+declare function cutAllBisect(base: Shape3D, tools: Shape3D[], options: BooleanOptions & {
+    unsafe: true;
+}): Result<BatchBisectResult>;
+
+declare function fuseAllBisect(shapes: ValidSolid[], options?: BooleanOptions): Result<BatchBisectResult<ValidSolid>>;
+declare function fuseAllBisect(shapes: Shape3D[], options: BooleanOptions & {
+    unsafe: true;
+}): Result<BatchBisectResult>;
 
 /**
  * Pre-validate operands before a boolean operation.
@@ -6404,418 +6598,213 @@ declare class BrepWrapperError extends Error {
     });
 }
 
-declare class BrepkitAdapter implements KernelAdapter {
+type GearDiagnosticSeverity = 'warning' | 'info';
+
+type GearDiagnosticCode = 'CONTACT_RATIO_LOW_SUN_PLANET' | 'CONTACT_RATIO_LOW_PLANET_RING' | 'UNDERCUT_RISK' | 'UNDERCUT_RISK_SUN' | 'UNDERCUT_RISK_PLANET' | 'LEWIS_Y_SHIFT_UNCORRECTED' | 'PLANETARY_SHIFT_KINEMATIC_MISMATCH';
+
+interface GearDiagnostic {
+    code: GearDiagnosticCode;
+    severity: GearDiagnosticSeverity;
+    message: string;
+    context?: Record<string, number | string>;
+}
+
+interface GearGeometry {
+    rPitch: number;
+    rb: number;
+    /** Outer radius for external, inner for internal. */
+    rTip: number;
+    /** Inner radius for external, outer for internal. */
+    rRoot: number;
+    alphaPitch: number;
+    /** Half-tooth angular width at the pitch circle, with shift and flank thinning applied. */
+    halfToothAngle: number;
+    /** Involute parameter α at the radius the flank reaches (rTip ext, rRoot int). */
+    alphaTip: number;
+    toothPitch: number;
+    isInternal: boolean;
+}
+
+declare function gearGeometry(z: number, moduleSize: number, alpha: number, shift: number, clearance: number, backlashHalf: number, isInternal: boolean): GearGeometry;
+
+declare function validatePlanetary(zs: number, zp: number, n: number, planetShift: number): Result<void>;
+
+/** Pure-kinematics inputs for {@link planetPlacements}; subset of `PlanetaryGearParams`. */
+interface PlanetPlacementParams {
+    moduleSize?: number;
+    sunTeeth?: number;
+    planetTeeth?: number;
+    numPlanets?: number;
+    pressureAngleDeg?: number;
+    sunShift?: number;
+    planetShift?: number;
+}
+
+interface PlanetPlacement {
+    /** Self-rotation around the planet's own Z axis, in degrees. */
+    rotationDeg: number;
+    /** Center of the planet in the assembly frame: `[x, y, 0]`. */
+    position: Vec3;
+}
+
+/**
+ * Compute the rigid placement of each planet without building any solid.
+ *
+ * Pairs with one materialized planet from `makeExternalGear` to support
+ * GPU-instanced rendering: mesh once, draw N times under these transforms.
+ * Defaults match {@link PlanetaryGearParams}.
+ */
+declare function planetPlacements(params?: PlanetPlacementParams): Result<PlanetPlacement[]>;
+
+interface ExternalGearParams {
+    teeth: number;
+    moduleSize: number;
+    thickness: number;
+    pressureAngleDeg?: number;
+    shift?: number;
+    clearance?: number;
+    /**
+     * Per-gear flank thinning (mm); 0 = theoretical involute. For an equal-pair
+     * mesh, total mesh backlash is 2× this value.
+     */
+    flankThinning?: number;
+    /** Diameter (mm) of central bore; 0 or omitted = no bore. */
+    bore?: number;
+    /**
+     * Sample count per involute flank. Lower = faster mesh, coarser surface.
+     * Defaults to `adaptiveSampleCount(moduleSize)` (≈ 16 at module 2). Try
+     * 8 for previews, 24+ for 3D printing.
+     */
+    samples?: number;
+}
+
+interface InternalGearParams {
+    teeth: number;
+    moduleSize: number;
+    thickness: number;
+    pressureAngleDeg?: number;
+    shift?: number;
+    clearance?: number;
+    flankThinning?: number;
+    /** Wall thickness from pitch radius outward; defaults to 2·moduleSize. */
+    ringWallThickness?: number;
+    /** See {@link ExternalGearParams.samples}. */
+    samples?: number;
+}
+
+interface PlanetaryGearParams {
+    /** Extrusion thickness (mm). */
+    thickness: number;
+    moduleSize?: number;
+    sunTeeth?: number;
+    planetTeeth?: number;
+    numPlanets?: number;
+    pressureAngleDeg?: number;
+    clearance?: number;
+    /** Total mesh backlash (mm); split as b/2 per gear. */
+    backlash?: number;
+    sunShift?: number;
+    planetShift?: number;
+    ringShift?: number;
+    ringWallThickness?: number;
+    /** Diameter (mm) of central bore in the sun gear; 0 or omitted = no bore. */
+    sunBore?: number;
+    /** Diameter (mm) of central bore in each planet gear; 0 or omitted = no bore. */
+    planetBore?: number;
+    /**
+     * Applied torque on the SUN (input) shaft, in N·m. Planet and ring stresses
+     * are derived via force balance (shared tangential force at the mesh).
+     * When supplied, `lewisStress` and `stressConcentrationFactor` are computed.
+     */
+    appliedTorque?: number;
+    /** See {@link ExternalGearParams.samples}. Applied to sun, planet, and ring. */
+    samples?: number;
+}
+
+interface GearResult {
+    solid: ValidSolid;
+    pitchDiameter: number;
+    baseDiameter: number;
+    tipDiameter: number;
+    rootDiameter: number;
+    /**
+     * Diagnostics specific to this gear in isolation (e.g. undercut risk for
+     * low-tooth-count gears with no profile shift). Empty when the gear is
+     * geometrically clean. Planetary assemblies emit additional cross-mesh
+     * diagnostics on `PlanetaryGearAssembly.diagnostics`.
+     */
+    diagnostics: GearDiagnostic[];
+}
+
+interface PlanetaryGearAssembly {
+    sun: ValidSolid;
+    planets: ValidSolid[];
+    ring: ValidSolid;
+    ringTeeth: number;
+    /** Working pressure angle (radians) under the supplied profile shifts. */
+    workingPressureAngle: number;
+    /** True (working) center distance between sun and planet axes (mm). */
+    centerDistance: number;
+    /** Transverse contact ratios per mesh; ≥ 1.2 is industry-acceptable. */
+    contactRatio: {
+        sunPlanet: number;
+        planetRing: number;
+    };
+    /**
+     * Additional profile shift each gear needs to clear the undercut threshold.
+     * Positive = undercut risk; zero = clear.
+     */
+    undercutDeficit: {
+        sun: number;
+        planet: number;
+    };
+    /**
+     * Root bending stress (MPa) at each gear, with the fillet stress
+     * concentration factor applied: `σ = σ_Lewis · K_f`. Only present when
+     * `appliedTorque` was supplied. See {@link stressConcentrationFactor} for
+     * the K_f values used.
+     */
+    lewisStress?: {
+        sun: number;
+        planet: number;
+        ring: number;
+    };
+    /**
+     * Dolan-Broghamer stress concentration factor `K_f` at each gear's root
+     * fillet, the multiplier already folded into {@link lewisStress}. Exposed
+     * so callers can recover the raw Lewis stress (σ_Lewis = lewisStress / K_f)
+     * or compare against ISO 6336-3 `Y_F·Y_S` from an external check. The ring
+     * value uses the Niemann internal-gear reduction (concave fillet).
+     */
+    stressConcentrationFactor?: {
+        sun: number;
+        planet: number;
+        ring: number;
+    };
+    diagnostics: GearDiagnostic[];
+}
+
+declare function makeExternalGear(params: ExternalGearParams): Result<GearResult>;
+
+declare function makeInternalGear(params: InternalGearParams): Result<GearResult>;
+
+declare function makePlanetaryGear(params: PlanetaryGearParams): Result<PlanetaryGearAssembly>;
+
+interface BrepkitAdapter extends KernelAdapter, ConstraintSketchCapability, BrepkitExtensions {
+}
+/**
+ * `KernelAdapter` backed by brepkit's WASM kernel.
+ *
+ * All methods are composed from per-domain factories at construction time.
+ * To find a method's implementation, grep for `function <name>` in
+ * `src/kernel/brepkit/*Ops.ts`.
+ */
+declare class BrepkitAdapter {
     readonly oc: KernelInstance;
     readonly kernelId = "brepkit";
     /** The underlying brepkit WASM kernel instance (typed). */
     private readonly bk;
     constructor(brepkitKernel: KernelInstance);
-    fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    section(shape: KernelShape, plane: KernelShape, _approximation?: boolean): KernelShape;
-    fuseAll(shapes: KernelShape[], options?: BooleanOptions): KernelShape;
-    cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape;
-    split(shape: KernelShape, tools: KernelShape[]): KernelShape;
-    checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult;
-    hull(shapes: KernelShape[], _tolerance: number): KernelShape;
-    hullFromPoints(points: Array<{
-        x: number;
-        y: number;
-        z: number;
-    }>, _tolerance: number): KernelShape;
-    buildSolidFromFaces(points: Array<{
-        x: number;
-        y: number;
-        z: number;
-    }>, faces: Array<readonly [number, number, number]>, _tolerance: number): KernelShape;
-    makeVertex(x: number, y: number, z: number): KernelShape;
-    makeEdge(curve: KernelType, start?: number, end?: number): KernelShape;
-    makeWire(edges: KernelShape[]): KernelShape;
-    makeFace(wire: KernelShape, _planar?: boolean): KernelShape;
-    makeBox(width: number, height: number, depth: number): KernelShape;
-    makeRectangle(width: number, height: number): KernelShape;
-    makeCylinder(radius: number, height: number, center?: [number, number, number], direction?: [number, number, number]): KernelShape;
-    makeSphere(radius: number, center?: [number, number, number]): KernelShape;
-    makeCone(radius1: number, radius2: number, height: number, center?: [number, number, number], direction?: [number, number, number]): KernelShape;
-    makeTorus(majorRadius: number, minorRadius: number, center?: [number, number, number], direction?: [number, number, number]): KernelShape;
-    makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape;
-    makeLineEdge(p1: [number, number, number], p2: [number, number, number]): KernelShape;
-    makeCircleEdge(center: [number, number, number], normal: [number, number, number], radius: number): KernelShape;
-    makeCircleArc(center: [number, number, number], normal: [number, number, number], radius: number, startAngle: number, endAngle: number): KernelShape;
-    makeArcEdge(p1: [number, number, number], p2: [number, number, number], p3: [number, number, number]): KernelShape;
-    makeEllipseEdge(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, xDir?: [number, number, number]): KernelShape;
-    makeEllipseArc(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, xDir?: [number, number, number]): KernelShape;
-    makeBezierEdge(points: [number, number, number][]): KernelShape;
-    makeTangentArc(startPoint: [number, number, number], startTangent: [number, number, number], endPoint: [number, number, number]): KernelShape;
-    makeHelixWire(pitch: number, height: number, radius: number, center?: [number, number, number], _direction?: [number, number, number], leftHanded?: boolean): KernelShape;
-    makeWireFromMixed(items: KernelShape[]): KernelShape;
-    makeCompound(shapes: KernelShape[]): KernelShape;
-    makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
-    solidFromShell(shell: KernelShape): KernelShape;
-    extrude(face: KernelShape, direction: [number, number, number], length: number): KernelShape;
-    revolve(shape: KernelShape, axis: KernelType, angle: number): KernelShape;
-    revolveVec(shape: KernelShape, center: [number, number, number], direction: [number, number, number], angle: number): KernelShape;
-    loft(wires: KernelShape[], _ruled?: boolean, _startShape?: KernelShape, _endShape?: KernelShape): KernelShape;
-    sweep(wire: KernelShape, spine: KernelShape, options?: {
-        transitionMode?: number;
-    }): KernelShape;
-    simplePipe(profile: KernelShape, spine: KernelShape): KernelShape;
-    helicalSweep(profile: KernelShape, axisOrigin: [number, number, number], axisDirection: [number, number, number], radius: number, pitch: number, turns: number): KernelShape;
-    sweepWithOptions(profile: KernelShape, pathEdge: KernelShape, contactMode: string, scaleValues: number[], segments: number): KernelShape;
-    sweepPipeShell(profile: KernelShape, spine: KernelShape, options?: Record<string, unknown>): KernelShape | {
-        shape: KernelShape;
-        firstShape: KernelShape;
-        lastShape: KernelShape;
-    };
-    loftAdvanced(wires: KernelShape[], options?: {
-        solid?: boolean;
-        ruled?: boolean;
-        startVertex?: KernelShape;
-        endVertex?: KernelShape;
-        tolerance?: number;
-    }): KernelShape;
-    buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType;
-    draftPrism(shape: KernelShape, face: KernelShape, _baseFace: KernelShape, height: number | null, _angleDeg: number, fuse: boolean): KernelShape;
-    fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
-    chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
-    chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
-    shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
-    thicken(shape: KernelShape, thickness: number): KernelShape;
-    offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
-    filletVariable(shape: KernelShape, spec: string): KernelShape;
-    draft(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number)): KernelShape;
-    defeature(shape: KernelShape, faces: KernelShape[]): KernelShape;
-    simplify(shape: KernelShape): KernelShape;
-    reverseShape(shape: KernelShape): KernelShape;
-    offsetWire2D(wire: KernelShape, offset: number, _joinType?: number | 'arc' | 'intersection' | 'tangent'): KernelShape;
-    transform(shape: KernelShape, trsf: KernelType): KernelShape;
-    translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
-    rotate(shape: KernelShape, angle: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): KernelShape;
-    mirror(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number]): KernelShape;
-    scale(shape: KernelShape, center: readonly [number, number, number], factor: number): KernelShape;
-    transformBatch(entries: TransformEntry[]): KernelShape[];
-    generalTransform(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], _isOrthogonal: boolean): KernelShape;
-    generalTransformNonOrthogonal(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number]): KernelShape;
-    positionOnCurve(shape: KernelShape, spine: KernelShape, param: number): KernelShape;
-    linearPattern(shape: KernelShape, direction: [number, number, number], spacing: number, count: number): KernelShape[];
-    circularPattern(shape: KernelShape, center: [number, number, number], axis: [number, number, number], angleStep: number, count: number): KernelShape[];
-    gridPattern(shape: KernelShape, directionX: [number, number, number], directionY: [number, number, number], spacingX: number, spacingY: number, countX: number, countY: number): KernelShape;
-    translateWithHistory(shape: KernelShape, x: number, y: number, z: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    rotateWithHistory(shape: KernelShape, angle: number, inputFaceHashes: number[], hashUpperBound: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): OperationResult;
-    mirrorWithHistory(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number], inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    scaleWithHistory(shape: KernelShape, center: readonly [number, number, number], factor: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    generalTransformWithHistory(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], isOrthogonal: boolean, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    fuseWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
-    cutWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
-    intersectWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
-    filletWithHistory(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    chamferWithHistory(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
-    thickenWithHistory(shape: KernelShape, thickness: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
-    draftWithHistory(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    applyComposedTransformWithHistory(shape: KernelShape, transformHandle: KernelType, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    composeTransform(ops: Array<{
-        type: 'translate';
-        x: number;
-        y: number;
-        z: number;
-    } | {
-        type: 'rotate';
-        angle: number;
-        axis?: readonly [number, number, number];
-        center?: readonly [number, number, number];
-    }>): {
-        handle: KernelType;
-        dispose: () => void;
-    };
-    mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
-    meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
-    hasTriangulation(_shape: KernelShape): boolean;
-    meshShape(_shape: KernelShape, _tolerance: number, _angularTolerance: number): void;
-    exportSTEP(shapes: KernelShape[]): string;
-    exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer;
-    importSTEP(data: string | ArrayBuffer): KernelShape[];
-    importSTL(data: string | ArrayBuffer): KernelShape;
-    exportIGES(shapes: KernelShape[]): string;
-    importIGES(data: string | ArrayBuffer): KernelShape[];
-    exportSTEPAssembly(parts: StepAssemblyPart[], _options?: {
-        unit?: string;
-    }): string;
-    export3MF(shape: KernelShape, tolerance: number): ArrayBuffer;
-    exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer;
-    exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer;
-    exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer;
-    import3MF(data: ArrayBuffer): KernelShape[];
-    importOBJ(data: ArrayBuffer): KernelShape;
-    importGLB(data: ArrayBuffer): KernelShape;
-    toBREP(shape: KernelShape): string;
-    fromBREP(data: string): KernelShape;
-    createXCAFDocument(shapes: Array<{
-        shape: KernelShape;
-        name: string;
-        color?: [number, number, number, number];
-    }>): KernelType;
-    writeXCAFToSTEP(doc: KernelType, _options?: {
-        unit?: string;
-        modelUnit?: string;
-    }): string;
-    exportSTEPConfigured(shapes: Array<{
-        shape: KernelShape;
-        name?: string;
-        color?: [number, number, number, number];
-    }>, _options?: {
-        unit?: string;
-        modelUnit?: string;
-        schema?: number;
-    }): string;
-    wrapString(str: string): KernelType;
-    wrapColor(red: number, green: number, blue: number, alpha: number): KernelType;
-    configureStepUnits(_unit: string | undefined, _modelUnit: string | undefined): void;
-    configureStepWriter(_writer: KernelType): void;
-    volume(shape: KernelShape): number;
-    area(shape: KernelShape): number;
-    length(shape: KernelShape): number;
-    centerOfMass(shape: KernelShape): [number, number, number];
-    linearCenterOfMass(shape: KernelShape): [number, number, number];
-    boundingBox(shape: KernelShape): {
-        min: [number, number, number];
-        max: [number, number, number];
-    };
-    measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement;
-    distance(shape1: KernelShape, shape2: KernelShape): DistanceResult;
-    surfaceCurvature(face: KernelShape, u: number, v: number): {
-        gaussian: number;
-        mean: number;
-        max: number;
-        min: number;
-        maxDirection: [number, number, number];
-        minDirection: [number, number, number];
-    };
-    surfaceCenterOfMass(face: KernelShape): [number, number, number];
-    createDistanceQuery(referenceShape: KernelShape): {
-        distanceTo(shape: KernelShape): {
-            value: number;
-            point1: [number, number, number];
-            point2: [number, number, number];
-        };
-        dispose(): void;
-    };
-    iterShapes(shape: KernelShape, type: ShapeType): KernelShape[];
-    iterShapeList(list: KernelShape, callback: (item: KernelShape) => void): void;
-    shapeType(shape: KernelShape): ShapeType;
-    isSame(a: KernelShape, b: KernelShape): boolean;
-    isEqual(a: KernelShape, b: KernelShape): boolean;
-    downcast(shape: KernelShape, _type?: ShapeType): KernelShape;
-    hashCode(shape: KernelShape, upperBound: number): number;
-    isNull(shape: KernelShape): boolean;
-    shapeOrientation(shape: KernelShape): ShapeOrientation;
-    edgeToFaceMap(shape: KernelShape): string;
-    sharedEdges(faceA: KernelShape, faceB: KernelShape): KernelShape[];
-    adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[];
-    sew(shapes: KernelShape[], tolerance?: number): KernelShape;
-    vertexPosition(vertex: KernelShape): [number, number, number];
-    surfaceType(face: KernelShape): SurfaceType;
-    uvBounds(face: KernelShape): {
-        uMin: number;
-        uMax: number;
-        vMin: number;
-        vMax: number;
-    };
-    outerWire(face: KernelShape): KernelShape;
-    surfaceNormal(face: KernelShape, u: number, v: number): [number, number, number];
-    pointOnSurface(face: KernelShape, u: number, v: number): [number, number, number];
-    uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null;
-    projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number];
-    curveTangent(shape: KernelShape, param: number): {
-        point: [number, number, number];
-        tangent: [number, number, number];
-    };
-    curveParameters(shape: KernelShape): [number, number];
-    curvePointAtParam(shape: KernelShape, param: number): [number, number, number];
-    curveIsClosed(shape: KernelShape): boolean;
-    curveIsPeriodic(shape: KernelShape): boolean;
-    curvePeriod(shape: KernelShape): number;
-    curveType(shape: KernelShape): string;
-    curveDegreeElevate(edge: KernelShape, elevateBy: number): KernelShape;
-    curveKnotInsert(edge: KernelShape, knot: number, times: number): KernelShape;
-    curveKnotRemove(edge: KernelShape, knot: number, tolerance: number): KernelShape;
-    curveSplit(edge: KernelShape, param: number): [KernelShape, KernelShape];
-    approximateSurfaceLspia(coords: number[], rows: number, cols: number, degreeU: number, degreeV: number, numCpsU: number, numCpsV: number, tolerance: number, maxIterations: number): KernelShape;
-    untrimFace(face: KernelShape, samplesPerCurve: number, interiorSamples: number): KernelShape;
-    createCurveAdaptor(shape: KernelShape): KernelType;
-    getBezierPenultimatePole(edge: KernelShape): [number, number, number] | null;
-    getSurfaceCylinderData(surface: KernelType): {
-        radius: number;
-        isDirect: boolean;
-    } | null;
-    reverseSurfaceU(surface: KernelType): KernelType;
-    classifyPointOnFace(face: KernelShape, u: number, v: number, tolerance?: number): 'in' | 'on' | 'out';
-    classifyPointRobust(shape: KernelShape, point: [number, number, number], tolerance: number): string;
-    classifyPointWinding(shape: KernelShape, point: [number, number, number], tolerance: number): string;
-    detectSmallFeatures(shape: KernelShape, areaThreshold: number, tolerance: number): KernelShape[];
-    recognizeFeatures(shape: KernelShape, tolerance: number): string;
-    projectEdges(shape: KernelShape, _cameraOrigin: [number, number, number], _cameraDirection: [number, number, number], _cameraXAxis?: [number, number, number]): {
-        visible: {
-            outline: KernelShape;
-            smooth: KernelShape;
-            sharp: KernelShape;
-        };
-        hidden: {
-            outline: KernelShape;
-            smooth: KernelShape;
-            sharp: KernelShape;
-        };
-    };
-    getNurbsCurveData(_edge: KernelShape): NurbsCurveData | null;
-    getNurbsSurfaceData(_face: KernelShape): NurbsSurfaceData | null;
-    isValid(shape: KernelShape): boolean;
-    isValidStrict(shape: KernelShape): boolean;
-    healSolid(shape: KernelShape): KernelShape | null;
-    healFace(shape: KernelShape): KernelShape;
-    healWire(wire: KernelShape, _face?: KernelShape): KernelShape;
-    fixShape(shape: KernelShape): KernelShape;
-    fixSelfIntersection(wire: KernelShape): KernelShape;
-    mergeCoincidentVertices(shape: KernelShape, tolerance: number): number;
-    removeDegenerateEdges(shape: KernelShape, tolerance: number): number;
-    fixFaceOrientations(shape: KernelShape): number;
-    validationDetails(shape: KernelShape): string | null;
-    makeNonPlanarFace(wire: KernelShape): KernelShape;
-    addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape;
-    removeHolesFromFace(face: KernelShape): KernelShape;
-    makeFaceOnSurface(_surface: KernelType, wire: KernelShape): KernelShape;
-    bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
-    triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
-    buildTriFace(a: [number, number, number], b: [number, number, number], c: [number, number, number]): KernelShape | null;
-    sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape;
-    interpolatePoints(points: [number, number, number][], options?: {
-        periodic?: boolean;
-        tolerance?: number;
-    }): KernelShape;
-    approximatePoints(points: [number, number, number][], options?: {
-        tolerance?: number;
-        degMin?: number;
-        degMax?: number;
-        smoothing?: [number, number, number] | null;
-    }): KernelShape;
-    createPoint3d(x: number, y: number, z: number): KernelType;
-    createDirection3d(x: number, y: number, z: number): KernelType;
-    createVector3d(x: number, y: number, z: number): KernelType;
-    createAxis1(cx: number, cy: number, cz: number, dx: number, dy: number, dz: number): KernelType;
-    createAxis2(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType;
-    createAxis3(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType;
-    meshBoolean(positionsA: number[], indicesA: number[], positionsB: number[], indicesB: number[], op: string, tolerance: number): KernelMeshResult;
-    sketchNew(): number;
-    sketchAddPoint(sketch: number, x: number, y: number, fixed: boolean): number;
-    sketchAddArc(sketch: number, centerIdx: number, startIdx: number, endIdx: number): number;
-    sketchAddConstraint(sketch: number, constraintJson: string): void;
-    sketchSolve(sketch: number, maxIterations: number, tolerance: number): string;
-    sketchDof(sketch: number): string;
-    checkpoint(): number;
-    checkpointCount(): number;
-    restoreCheckpoint(cp: number): void;
-    discardCheckpoint(cp: number): void;
-    dispose(_handle: {
-        delete(): void;
-    }): void;
-    executeBatch(json: string): string;
-    createPoint2d(x: number, y: number): KernelType;
-    createDirection2d(x: number, y: number): KernelType;
-    createVector2d(x: number, y: number): KernelType;
-    createAxis2d(px: number, py: number, dx: number, dy: number): KernelType;
-    wrapCurve2dHandle(handle: KernelType): Curve2dHandle;
-    createCurve2dAdaptor(handle: Curve2dHandle): KernelType;
-    makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle;
-    makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle;
-    makeArc2dThreePoints(x1: number, y1: number, xm: number, ym: number, x2: number, y2: number): Curve2dHandle;
-    makeArc2dTangent(sx: number, sy: number, tx: number, ty: number, ex: number, ey: number): Curve2dHandle;
-    makeEllipse2d(cx: number, cy: number, major: number, minor: number, xDirX?: number, xDirY?: number, sense?: boolean): Curve2dHandle;
-    makeEllipseArc2d(cx: number, cy: number, major: number, minor: number, start: number, end: number, xDirX?: number, xDirY?: number, sense?: boolean): Curve2dHandle;
-    makeBezier2d(points: [number, number][]): Curve2dHandle;
-    makeBSpline2d(points: [number, number][], _options?: Record<string, unknown>): Curve2dHandle;
-    evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number];
-    evaluateCurve2dD1(curve: Curve2dHandle, param: number): {
-        point: [number, number];
-        tangent: [number, number];
-    };
-    getCurve2dBounds(curve: Curve2dHandle): {
-        first: number;
-        last: number;
-    };
-    getCurve2dType(curve: Curve2dHandle): string;
-    trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle;
-    reverseCurve2d(_curve: Curve2dHandle): void;
-    copyCurve2d(curve: Curve2dHandle): Curve2dHandle;
-    offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle;
-    translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle;
-    rotateCurve2d(curve: Curve2dHandle, angle: number, cx: number, cy: number): Curve2dHandle;
-    scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle;
-    mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle;
-    mirrorCurve2dAcrossAxis(curve: Curve2dHandle, ox: number, oy: number, dx: number, dy: number): Curve2dHandle;
-    affinityTransform2d(curve: Curve2dHandle, ox: number, oy: number, dx: number, dy: number, ratio: number): Curve2dHandle;
-    createIdentityGTrsf2d(): KernelType;
-    createAffinityGTrsf2d(ox: number, oy: number, dx: number, dy: number, ratio: number): KernelType;
-    createTranslationGTrsf2d(dx: number, dy: number): KernelType;
-    createMirrorGTrsf2d(cx: number, cy: number, mode: 'point' | 'axis', ox?: number, oy?: number, dx?: number, dy?: number): KernelType;
-    createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType;
-    createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType;
-    setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void;
-    multiplyGTrsf2d(base: KernelType, other: KernelType): void;
-    transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle;
-    intersectCurves2d(c1: Curve2dHandle, c2: Curve2dHandle, tolerance: number): {
-        points: [number, number][];
-        segments: Curve2dHandle[];
-    };
-    projectPointOnCurve2d(curve: Curve2dHandle, x: number, y: number): {
-        param: number;
-        distance: number;
-    } | null;
-    distanceBetweenCurves2d(c1: Curve2dHandle, c2: Curve2dHandle, p1s: number, p1e: number, p2s: number, p2e: number): number;
-    approximateCurve2dAsBSpline(curve: Curve2dHandle, tol: number, cont: 'C0' | 'C1' | 'C2' | 'C3', maxSeg: number): Curve2dHandle;
-    decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[];
-    createBoundingBox2d(): BBox2dHandle;
-    addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tol: number): void;
-    getBBox2dBounds(bbox: BBox2dHandle): {
-        xMin: number;
-        yMin: number;
-        xMax: number;
-        yMax: number;
-    };
-    mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void;
-    isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean;
-    isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean;
-    getCurve2dCircleData(curve: Curve2dHandle): {
-        cx: number;
-        cy: number;
-        radius: number;
-        isDirect: boolean;
-    } | null;
-    getCurve2dEllipseData(curve: Curve2dHandle): {
-        majorRadius: number;
-        minorRadius: number;
-        xAxisAngle: number;
-        isDirect: boolean;
-    } | null;
-    getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null;
-    getCurve2dBezierDegree(curve: Curve2dHandle): number | null;
-    getCurve2dBSplineData(curve: Curve2dHandle): {
-        poles: [number, number][];
-        knots: number[];
-        multiplicities: number[];
-        degree: number;
-        isPeriodic: boolean;
-    } | null;
-    serializeCurve2d(curve: Curve2dHandle): string;
-    deserializeCurve2d(data: string): Curve2dHandle;
-    splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[];
-    liftCurve2dToPlane(curve: Curve2dHandle, origin: [number, number, number], planeZ: [number, number, number], planeX: [number, number, number]): KernelShape;
-    buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape;
-    extractSurfaceFromFace(face: KernelShape): KernelType;
-    extractCurve2dFromEdge(edge: KernelShape, face: KernelShape): Curve2dHandle;
-    buildCurves3d(_wire: KernelShape): void;
-    fixWireOnFace(wire: KernelShape, _face: KernelShape, _tolerance: number): KernelShape;
-    fillSurface(wires: KernelShape[], _options?: Record<string, unknown>): KernelShape;
 }
 
 declare class OcctWasmAdapter implements KernelAdapter {
@@ -6823,7 +6812,17 @@ declare class OcctWasmAdapter implements KernelAdapter {
     readonly kernelId = "occt-wasm";
     private readonly Module;
     private readonly k;
-    constructor(module: OcctWasmModule, kernel: OcctKernelWasm);
+    private readonly owner;
+    constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: OcctKernelOwner);
+    /**
+     * Build an adapter from occt-wasm's `OcctKernel` wrapper, retaining it for the
+     * adapter's lifetime. Prefer this over the raw `(module, kernel)` constructor:
+     * the wrapper deletes its raw kernel when garbage-collected, so an adapter that
+     * only borrows the raw kernel can be left pointing at freed memory.
+     */
+    static fromKernel(kernel: OcctKernelOwner): OcctWasmAdapter;
+    /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
+    get retainedKernelOwner(): OcctKernelOwner | undefined;
     dispose(h: {
         delete(): void;
     }): void;
@@ -6840,19 +6839,19 @@ declare class OcctWasmAdapter implements KernelAdapter {
     makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape;
     makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
     makeRectangle(width: number, height: number): KernelShape;
-    fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape;
-    section(shape: KernelShape, plane: KernelShape, _approximation?: boolean): KernelShape;
-    fuseAll(shapes: KernelShape[], _options?: BooleanOptions): KernelShape;
-    cutAll(shape: KernelShape, tools: KernelShape[], _options?: BooleanOptions): KernelShape;
+    fuse(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape;
+    cut(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape;
+    intersect(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape;
+    section(shape: KernelShape, plane: KernelShape, approximation?: boolean): KernelShape;
+    fuseAll(shapes: KernelShape[], options?: BooleanOptions): KernelShape;
+    cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape;
     split(shape: KernelShape, tools: KernelShape[]): KernelShape;
-    checkBoolean(shape: KernelShape, tool: KernelShape, _op: BooleanOpType): CheckBooleanResult;
-    meshBoolean(_positionsA: number[], _indicesA: number[], _positionsB: number[], _indicesB: number[], _op: string, _tolerance: number): KernelMeshResult;
+    checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult;
+    meshBoolean(positionsA: number[], indicesA: number[], positionsB: number[], indicesB: number[], op: string, tolerance: number): KernelMeshResult;
     makeVertex(x: number, y: number, z: number): KernelShape;
     makeEdge(curve: KernelType, _start?: number, _end?: number): KernelShape;
     makeWire(edges: KernelShape[]): KernelShape;
-    makeFace(wire: KernelShape, _planar?: boolean): KernelShape;
+    makeFace(wire: KernelShape, planar?: boolean): KernelShape;
     makeLineEdge(p1: [number, number, number], p2: [number, number, number]): KernelShape;
     makeCircleEdge(center: [number, number, number], normal: [number, number, number], radius: number): KernelShape;
     makeCircleArc(center: [number, number, number], normal: [number, number, number], radius: number, startAngle: number, endAngle: number): KernelShape;
@@ -6865,7 +6864,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     makeWireFromMixed(items: KernelShape[]): KernelShape;
     makeCompound(shapes: KernelShape[]): KernelShape;
     solidFromShell(shell: KernelShape): KernelShape;
-    hull(_shapes: KernelShape[], _tolerance: number): KernelShape;
+    hull(shapes: KernelShape[], tolerance: number): KernelShape;
     hullFromPoints(points: Array<{
         x: number;
         y: number;
@@ -6884,7 +6883,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
     buildTriFace(a: [number, number, number], b: [number, number, number], c: [number, number, number]): KernelShape | null;
     sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape;
-    createPoint3d(_x: number, _y: number, _z: number): KernelType;
+    createPoint3d(x: number, y: number, z: number): KernelType;
     createDirection3d(x: number, y: number, z: number): KernelType;
     createVector3d(x: number, y: number, z: number): KernelType;
     createAxis1(cx: number, cy: number, cz: number, dx: number, dy: number, dz: number): KernelType;
@@ -6892,7 +6891,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     createAxis3(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType;
     extrude(face: KernelShape, direction: [number, number, number], length: number): KernelShape;
     revolve(shape: KernelShape, axis: KernelType, angle: number): KernelShape;
-    loft(wires: KernelShape[], _ruled?: boolean, _startShape?: KernelShape, _endShape?: KernelShape): KernelShape;
+    loft(wires: KernelShape[], ruled?: boolean, startShape?: KernelShape, endShape?: KernelShape): KernelShape;
     sweep(wire: KernelShape, spine: KernelShape, options?: {
         transitionMode?: number;
     }): KernelShape;
@@ -6927,15 +6926,15 @@ declare class OcctWasmAdapter implements KernelAdapter {
     }): KernelShape;
     buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType;
     revolveVec(shape: KernelShape, center: [number, number, number], direction: [number, number, number], angle: number): KernelShape;
-    draftPrism(shape: KernelShape, _face: KernelShape, _baseFace: KernelShape, height: number | null, angleDeg: number, _fuse: boolean): KernelShape;
+    draftPrism(shape: KernelShape, face: KernelShape, baseFace: KernelShape, height: number | null, angleDeg: number, fuse: boolean): KernelShape;
     fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
-    shell(shape: KernelShape, faces: KernelShape[], thickness: number, _tolerance?: number): KernelShape;
+    shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
     thicken(shape: KernelShape, thickness: number): KernelShape;
-    offset(shape: KernelShape, distance: number, _tolerance?: number): KernelShape;
+    offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
     filletVariable(shape: KernelShape, spec: string): KernelShape;
-    draft(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], _neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number)): KernelShape;
+    draft(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number)): KernelShape;
     defeature(shape: KernelShape, faces: KernelShape[]): KernelShape;
     offsetWire2D(wire: KernelShape, offset: number, joinType?: number | 'arc' | 'intersection' | 'tangent'): KernelShape;
     simplify(shape: KernelShape): KernelShape;
@@ -6959,7 +6958,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     rotate(shape: KernelShape, angle: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): KernelShape;
     mirror(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number]): KernelShape;
     scale(shape: KernelShape, center: readonly [number, number, number], factor: number): KernelShape;
-    generalTransform(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], _isOrthogonal: boolean): KernelShape;
+    generalTransform(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], isOrthogonal: boolean): KernelShape;
     generalTransformNonOrthogonal(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number]): KernelShape;
     positionOnCurve(shape: KernelShape, spine: KernelShape, param: number): KernelShape;
     linearPattern(shape: KernelShape, direction: [number, number, number], spacing: number, count: number): KernelShape[];
@@ -6969,34 +6968,34 @@ declare class OcctWasmAdapter implements KernelAdapter {
     rotateWithHistory(shape: KernelShape, angle: number, inputFaceHashes: number[], hashUpperBound: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): OperationResult;
     mirrorWithHistory(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number], inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     scaleWithHistory(shape: KernelShape, center: readonly [number, number, number], factor: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    generalTransformWithHistory(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], _isOrthogonal: boolean, inputFaceHashes: number[], _hashUpperBound: number): OperationResult;
-    fuseWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, _options?: BooleanOptions): DiagnosticOperationResult;
-    cutWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, _options?: BooleanOptions): DiagnosticOperationResult;
-    intersectWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, _options?: BooleanOptions): DiagnosticOperationResult;
+    generalTransformWithHistory(shape: KernelShape, linear: readonly [number, number, number, number, number, number, number, number, number], translation: readonly [number, number, number], isOrthogonal: boolean, inputFaceHashes: number[], _hashUpperBound: number): OperationResult;
+    fuseWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
+    cutWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
+    intersectWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
     filletWithHistory(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     chamferWithHistory(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, _tolerance?: number): OperationResult;
+    shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
     thickenWithHistory(shape: KernelShape, thickness: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
-    offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, _tolerance?: number): OperationResult;
+    offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
     draftWithHistory(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], _neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number), _inputFaceHashes: number[], _hashUpperBound: number): OperationResult;
     applyComposedTransformWithHistory(shape: KernelShape, transformHandle: KernelType, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
-    meshEdges(shape: KernelShape, tolerance: number, _angularTolerance: number): KernelEdgeMeshResult;
+    meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
     hasTriangulation(shape: KernelShape): boolean;
     meshShape(shape: KernelShape, tolerance: number, angularTolerance: number): void;
     exportSTEP(shapes: KernelShape[]): string;
-    exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer;
+    exportSTL(shape: KernelShape, binary?: boolean, tolerance?: number, angularTolerance?: number): string | ArrayBuffer;
     importSTEP(data: string | ArrayBuffer): KernelShape[];
     importSTL(data: string | ArrayBuffer): KernelShape;
     exportIGES(shapes: KernelShape[]): string;
     importIGES(data: string | ArrayBuffer): KernelShape[];
-    exportSTEPAssembly(_parts: StepAssemblyPart[], _options?: {
+    exportSTEPAssembly(parts: StepAssemblyPart[], options?: {
         unit?: string;
     }): string;
     export3MF(_shape: KernelShape, _tolerance: number): ArrayBuffer;
-    exportGLB(_shape: KernelShape, _tolerance: number): ArrayBuffer;
-    exportOBJ(_shape: KernelShape, _tolerance: number): ArrayBuffer;
-    exportPLY(_shape: KernelShape, _tolerance: number): ArrayBuffer;
+    exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer;
+    exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer;
+    exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer;
     import3MF(_data: ArrayBuffer): KernelShape[];
     importOBJ(_data: ArrayBuffer): KernelShape;
     importGLB(_data: ArrayBuffer): KernelShape;
@@ -7007,23 +7006,19 @@ declare class OcctWasmAdapter implements KernelAdapter {
         name: string;
         color?: [number, number, number, number] | undefined;
     }>): KernelType;
-    writeXCAFToSTEP(doc: KernelType, _options?: {
+    writeXCAFToSTEP(doc: KernelType, options?: {
         unit?: string | undefined;
         modelUnit?: string | undefined;
     }): string;
-    exportSTEPConfigured(_shapes: Array<{
+    exportSTEPConfigured(shapes: Array<{
         shape: KernelShape;
         name?: string | undefined;
         color?: [number, number, number, number] | undefined;
-    }>, _options?: {
+    }>, options?: {
         unit?: string | undefined;
         modelUnit?: string | undefined;
         schema?: number | undefined;
     }): string;
-    wrapString(_str: string): KernelType;
-    wrapColor(_red: number, _green: number, _blue: number, _alpha: number): KernelType;
-    configureStepUnits(_unit: string | undefined, _modelUnit: string | undefined): void;
-    configureStepWriter(_writer: KernelType): void;
     volume(shape: KernelShape): number;
     area(shape: KernelShape): number;
     length(shape: KernelShape): number;
@@ -7074,7 +7069,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     };
     curveIsClosed(shape: KernelShape): boolean;
     curveIsPeriodic(shape: KernelShape): boolean;
-    curvePeriod(_shape: KernelShape): number;
+    curvePeriod(shape: KernelShape): number;
     interpolatePoints(points: [number, number, number][], options?: {
         periodic?: boolean;
         tolerance?: number;
@@ -7104,7 +7099,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     pointOnSurface(face: KernelShape, u: number, v: number): [number, number, number];
     uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null;
     projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number];
-    classifyPointOnFace(face: KernelShape, u: number, v: number, _tolerance?: number): 'in' | 'on' | 'out';
+    classifyPointOnFace(face: KernelShape, u: number, v: number, tolerance?: number): 'in' | 'on' | 'out';
     classifyPointRobust(_shape: KernelShape, _point: [number, number, number], _tolerance: number): string;
     classifyPointWinding(_shape: KernelShape, _point: [number, number, number], _tolerance: number): string;
     approximateSurfaceLspia(_coords: number[], _rows: number, _cols: number, _degreeU: number, _degreeV: number, _numCpsU: number, _numCpsV: number, _tolerance: number, _maxIterations: number): KernelShape;
@@ -7131,17 +7126,17 @@ declare class OcctWasmAdapter implements KernelAdapter {
     isValid(shape: KernelShape): boolean;
     healSolid(shape: KernelShape): KernelShape | null;
     healFace(shape: KernelShape): KernelShape;
-    healWire(wire: KernelShape, _face?: KernelShape): KernelShape;
-    mergeCoincidentVertices(_shape: KernelShape, _tolerance: number): number;
-    removeDegenerateEdges(shape: KernelShape, _tolerance: number): number;
+    healWire(wire: KernelShape, face?: KernelShape): KernelShape;
+    mergeCoincidentVertices(shape: KernelShape, tolerance: number): number;
+    removeDegenerateEdges(shape: KernelShape, tolerance: number): number;
     fixFaceOrientations(shape: KernelShape): number;
     fixShape(shape: KernelShape): KernelShape;
     fixSelfIntersection(_wire: KernelShape): KernelShape;
-    createPoint2d(_x: number, _y: number): KernelType;
-    createDirection2d(_x: number, _y: number): KernelType;
-    createVector2d(_x: number, _y: number): KernelType;
+    createPoint2d(x: number, y: number): KernelType;
+    createDirection2d(x: number, y: number): KernelType;
+    createVector2d(x: number, y: number): KernelType;
     createAxis2d(px: number, py: number, dx: number, dy: number): KernelType;
-    wrapCurve2dHandle(handle: KernelType): Curve2dHandle;
+    wrapCurve2dHandle(h: KernelType): Curve2dHandle;
     createCurve2dAdaptor(_handle: Curve2dHandle): KernelType;
     makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle;
     makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle;
@@ -7168,7 +7163,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     };
     getCurve2dType(curve: Curve2dHandle): string;
     trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle;
-    reverseCurve2d(_curve: Curve2dHandle): void;
+    reverseCurve2d(curve: Curve2dHandle): void;
     copyCurve2d(curve: Curve2dHandle): Curve2dHandle;
     offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle;
     translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle;
@@ -7176,7 +7171,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle;
     mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle;
     mirrorCurve2dAcrossAxis(curve: Curve2dHandle, originX: number, originY: number, dirX: number, dirY: number): Curve2dHandle;
-    affinityTransform2d(_curve: Curve2dHandle, _axisOriginX: number, _axisOriginY: number, _axisDirX: number, _axisDirY: number, _ratio: number): Curve2dHandle;
+    affinityTransform2d(curve: Curve2dHandle, _axisOriginX: number, _axisOriginY: number, _axisDirX: number, _axisDirY: number, _ratio: number): Curve2dHandle;
     createIdentityGTrsf2d(): KernelType;
     createAffinityGTrsf2d(originX: number, originY: number, dirX: number, dirY: number, ratio: number): KernelType;
     createTranslationGTrsf2d(dx: number, dy: number): KernelType;
@@ -7685,7 +7680,6 @@ declare class FaceSketcher extends BaseSketcher2d implements GenericSketcher<Ske
  * Use this when you need a reusable 2D profile that can later be sketched onto
  * different planes or faces.
  *
- * @see {@link DrawingPen} for the higher-level Drawing wrapper.
  * @category Sketching
  */
 declare class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher<Blueprint> {
@@ -7739,6 +7733,10 @@ declare class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawi
  * {@link Sketch.revolve}, {@link Sketch.sweepSketch}, and {@link Sketch.loftWith}
  * know how to act on it without extra arguments.
  *
+ * The class methods are thin delegations to the canonical functions in
+ * `sketchFns.ts` (`sketchExtrude`, `sketchRevolve`, etc.). New functionality
+ * should be added there.
+ *
  * @remarks Most operations consume (delete) the sketch after producing a solid.
  *
  * @see {@link Sketcher} to build a Sketch interactively.
@@ -7746,7 +7744,14 @@ declare class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawi
  * @category Sketching
  */
 declare class Sketch implements SketchInterface {
-    wire: Wire;
+    /**
+     * The wire is typed as `ClosedWire & PlanarWire` to reflect the contract at
+     * Sketcher boundaries: `Sketcher.close()`, `closeWithMirror()`,
+     * `closeWithCustomCorner()`, and the canned-sketch factories all produce
+     * closed planar wires. Callers constructing `Sketch` from an arbitrary
+     * `Wire` must assert validity at the construction site.
+     */
+    wire: ClosedWire & PlanarWire;
     /**
      * @ignore
      */
@@ -7756,7 +7761,7 @@ declare class Sketch implements SketchInterface {
      */
     _defaultDirection: Vec3;
     protected _baseFace: Face | null | undefined;
-    constructor(wire: Wire, { defaultOrigin, defaultDirection, }?: {
+    constructor(wire: ClosedWire & PlanarWire, { defaultOrigin, defaultDirection, }?: {
         defaultOrigin?: PointInput;
         defaultDirection?: PointInput;
     });
@@ -7774,9 +7779,7 @@ declare class Sketch implements SketchInterface {
     get defaultDirection(): Vec3;
     /** Set the default extrusion/normal direction. */
     set defaultDirection(newDirection: PointInput);
-    /**
-     * Transforms the lines into a face. The lines should be closed.
-     */
+    /** Transforms the lines into a face. The lines should be closed. */
     face(): Face;
     /** Return a clone of the underlying wire. */
     wires(): Wire;
@@ -7785,8 +7788,10 @@ declare class Sketch implements SketchInterface {
     /**
      * Revolves the drawing on an axis (defined by its direction and an origin
      * (defaults to the sketch origin)
+     *
+     * @remarks Consumes the sketch — calling this twice throws on the second call.
      */
-    revolve(revolutionAxis?: PointInput, { origin }?: {
+    revolve(revolutionAxis?: PointInput, config?: {
         origin?: PointInput;
     }): Shape3D;
     /** Extrudes the sketch to a certain distance (along the default direction
@@ -7798,8 +7803,10 @@ declare class Sketch implements SketchInterface {
      * give a profile to the extrusion (the endFactor will scale the face, and
      * the profile will define how the scale is applied (either linearly or with
      * a s-shape).
+     *
+     * @remarks Consumes the sketch — calling this twice throws on the second call.
      */
-    extrude(extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+    extrude(extrusionDistance: number, config?: {
         extrusionDirection?: PointInput;
         extrusionProfile?: ExtrusionProfile;
         twistAngle?: number;
@@ -7808,6 +7815,9 @@ declare class Sketch implements SketchInterface {
     /**
      * Sweep along this sketch another sketch defined in the function
      * `sketchOnPlane`.
+     *
+     * @remarks Consumes both this sketch and the one returned by `sketchOnPlane` —
+     * calling either consumer twice throws on the second call.
      */
     sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => this, sweepConfig?: SweepOptions): Shape3D;
     /** Loft between this sketch and another sketch (or an array of them)
@@ -7830,6 +7840,9 @@ declare class Sketch implements SketchInterface {
  *
  * Typically produced from a {@link CompoundBlueprint} via `sketchOnPlane`.
  *
+ * The class methods are thin delegations to the canonical functions in
+ * `sketchFns.ts` (`compoundSketchExtrude`, `compoundSketchRevolve`, etc.).
+ *
  * @see {@link Sketch} for single-wire profiles without holes.
  * @category Sketching
  */
@@ -7845,14 +7858,14 @@ declare class CompoundSketch implements SketchInterface {
     /** Return all wires (outer + holes) combined into a compound shape. */
     get wires(): import('../core/shapeTypes.js').Compound;
     /** Build a face from the outer boundary with inner wires subtracted as holes. */
-    face(): OrientedFace<"3D">;
+    face(): Face;
     /**
      * Extrude the compound face (with holes) along the default or given direction.
      *
      * Supports twist and profile extrusions. For twist/profile modes each
      * sub-sketch is extruded as a shell, then capped into a solid.
      */
-    extrude(extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+    extrude(extrusionDistance: number, config?: {
         extrusionDirection?: PointInput;
         extrusionProfile?: ExtrusionProfile;
         twistAngle?: number;
@@ -7862,7 +7875,7 @@ declare class CompoundSketch implements SketchInterface {
      * Revolves the drawing on an axis (defined by its direction and an origin
      * (defaults to the sketch origin)
      */
-    revolve(revolutionAxis?: PointInput, { origin }?: {
+    revolve(revolutionAxis?: PointInput, config?: {
         origin?: PointInput;
     }): Shape3D;
     /** Loft between this compound sketch and another with matching sub-sketch counts. */
@@ -8225,6 +8238,11 @@ declare function offset<T extends ValidSolid>(shape: Shapeable<T>, distance: num
  * (injection molding, casting) where parts must release from a mold.
  */
 declare function draft<T extends ValidSolid>(shape: Shapeable<T>, faces: Face[] | FinderFn<Face> | ShapeFinder<Face>, options: DraftOptions): Result<T>;
+
+interface BatchBisectResult<T extends Shape3D = Shape3D> {
+    readonly shape: T;
+    readonly telemetry: BatchBisectTelemetry;
+}
 
 /** Fuse two 3D shapes (boolean union). */
 declare function fuse<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: booleans.BooleanOptions): Result<T>;

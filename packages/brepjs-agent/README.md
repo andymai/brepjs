@@ -18,7 +18,7 @@ Teaches an agent the authoring workflow. Delivered via the brepjs marketplace (g
 The CLI the skill invokes. Install it in **your** project, where `brepjs` + the WASM kernel resolve (Node module resolution is project-local, so the runtime can't live in the plugin dir):
 
 ```
-npm i -D brepjs-agent brepjs brepjs-opencascade
+npm i -D brepjs-agent brepjs occt-wasm
 ```
 
 ## The `.brep.ts` contract

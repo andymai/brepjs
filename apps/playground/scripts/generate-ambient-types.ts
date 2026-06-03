@@ -14,9 +14,11 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// brepjs is hoisted to the repo-root node_modules (symlinked to the repo root),
+// three levels up from apps/playground/scripts.
 const BREPJS_DIST = resolve(
   __dirname,
-  '../../node_modules/brepjs/dist',
+  '../../../node_modules/brepjs/dist',
 );
 const ENTRY = resolve(BREPJS_DIST, 'index.d.ts');
 const OUT = resolve(__dirname, '../src/types/brepjs-ambient.d.ts');

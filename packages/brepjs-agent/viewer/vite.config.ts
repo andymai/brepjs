@@ -1,21 +1,22 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { createReadStream, existsSync, mkdirSync, copyFileSync } from 'node:fs';
 
-const WASM_FILES = ['brepjs_single.js', 'brepjs_single.wasm'];
-const WASM_PROBE = 'brepjs_single.js';
+const viewerRequire = createRequire(import.meta.url);
 
-// Serve/copy the brepjs-opencascade WASM under `wasm/` — the worker fetches
-// `wasm/brepjs_single.js` relative to the viewer base. Mirrors apps/playground/vite.config.ts:21-63.
-function opencascadeWasm(): Plugin {
-  const local = resolve(fileURLToPath(new URL('../../brepjs-opencascade/src', import.meta.url)));
-  const wasmDir = existsSync(resolve(local, WASM_PROBE))
-    ? local
-    : resolve(fileURLToPath(new URL('../node_modules/brepjs-opencascade/src', import.meta.url)));
+const WASM_FILES = ['occt-wasm.js', 'occt-wasm.wasm'];
+
+// Serve/copy the occt-wasm WASM under `wasm/` — the worker fetches
+// `wasm/occt-wasm.js` relative to the viewer base. Mirrors apps/playground/vite.config.ts:24-65.
+function occtWasm(): Plugin {
+  // Resolve the occt-wasm dist dir (the package's exports map exposes
+  // ./dist/occt-wasm.js and ./dist/occt-wasm.wasm).
+  const wasmDir = dirname(viewerRequire.resolve('occt-wasm/dist/occt-wasm.js'));
   return {
-    name: 'opencascade-wasm',
+    name: 'occt-wasm',
     configureServer(server) {
       server.middlewares.use('/wasm', (req, res, next) => {
         const file = req.url?.slice(1) ?? '';
@@ -43,14 +44,14 @@ function opencascadeWasm(): Plugin {
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   base: './',
-  plugins: [react(), opencascadeWasm()],
+  plugins: [react(), occtWasm()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
-  optimizeDeps: { exclude: ['brepjs', 'brepjs-opencascade'] },
+  optimizeDeps: { exclude: ['brepjs', 'occt-wasm'] },
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1500 },
   worker: { format: 'es' },
 });

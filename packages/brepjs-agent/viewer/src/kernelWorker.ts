@@ -2,7 +2,15 @@
 import { loadModel, type BrepjsForLoad } from './loaders.js';
 import type { MeshData } from 'brepjs-viewer';
 
-type BrepjsKernel = BrepjsForLoad & { initFromOC: (oc: unknown) => void };
+type BrepjsKernel = BrepjsForLoad & {
+  registerKernel: (id: string, adapter: unknown) => void;
+  OcctWasmAdapter: new (m: unknown, k: unknown) => unknown;
+};
+
+/** Minimal view of the occt-wasm Emscripten module — just the raw kernel ctor. */
+interface OcctWasmModule {
+  OcctKernel: new () => unknown;
+}
 
 export interface LoadRequest {
   type: 'load';
@@ -30,7 +38,7 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
 }
 
 // Memoized boot promise, assigned synchronously so concurrent `load` messages share one boot
-// instead of racing two initFromOC calls; reset on failure so a later message can retry.
+// instead of racing two kernel registrations; reset on failure so a later message can retry.
 let kernel: Promise<BrepjsKernel> | null = null;
 function ensureKernel(): Promise<BrepjsKernel> {
   if (!kernel) {
@@ -42,26 +50,27 @@ function ensureKernel(): Promise<BrepjsKernel> {
   return kernel;
 }
 
-// Boot OpenCascade WASM once, init brepjs against it. Pattern: cad.worker.ts:63-96,122-152.
+// Boot occt-wasm once, register it as brepjs's kernel. Pattern: cad.worker.ts:63-96,140-170.
 async function bootKernel(): Promise<BrepjsKernel> {
   // Resolve the wasm dir from the viewer base (import.meta.env.BASE_URL → dist root), NOT the
   // worker chunk's own dir: with base:'./' the ES worker chunk lands in dist/assets/ while the
   // wasm-copy plugin writes dist/wasm/, so `new URL('./', self.location.href)` would 404.
   const base = new URL(import.meta.env.BASE_URL, self.location.origin).href;
-  const resp = await fetch(`${base}wasm/brepjs_single.js`);
-  if (!resp.ok) throw new Error(`failed to load brepjs_single.js: ${resp.status}`);
+  const resp = await fetch(`${base}wasm/occt-wasm.js`);
+  if (!resp.ok) throw new Error(`failed to load occt-wasm.js: ${resp.status}`);
   const blobUrl = URL.createObjectURL(
     new Blob([await resp.text()], { type: 'application/javascript' }),
   );
-  const ocModule = (await import(/* @vite-ignore */ blobUrl)) as {
-    default: (o: unknown) => Promise<unknown>;
+  const wasmModule = (await import(/* @vite-ignore */ blobUrl)) as {
+    default: (o: unknown) => Promise<OcctWasmModule>;
   };
   URL.revokeObjectURL(blobUrl);
-  const oc = await ocModule.default({
-    locateFile: (p: string) => (p.endsWith('.wasm') ? `${base}wasm/brepjs_single.wasm` : p),
+  const Module = await wasmModule.default({
+    locateFile: (p: string) => (p.endsWith('.wasm') ? `${base}wasm/occt-wasm.wasm` : p),
   });
   const mod = (await import('brepjs')) as unknown as BrepjsKernel;
-  mod.initFromOC(oc);
+  const kernel = new Module.OcctKernel();
+  mod.registerKernel('occt-wasm', new mod.OcctWasmAdapter(Module, kernel));
   return mod;
 }
 

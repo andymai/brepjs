@@ -60,10 +60,11 @@ function isColoredShape(v: unknown): v is ColoredShape {
   return typeof v === 'object' && v !== null && PLAYGROUND_COLOR_TAG in v;
 }
 
-async function loadWasmBuild() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten module
+async function loadOcctWasmModule(): Promise<any> {
   const base = import.meta.env.BASE_URL;
-  const jsFile = `${base}wasm/brepjs_single.js`;
-  const wasmFile = `${base}wasm/brepjs_single.wasm`;
+  const jsFile = `${base}wasm/occt-wasm.js`;
+  const wasmFile = `${base}wasm/occt-wasm.wasm`;
 
   let resp: Response | undefined;
   try {
@@ -86,11 +87,11 @@ async function loadWasmBuild() {
   const jsText = await resp.text();
   const blob = new Blob([jsText], { type: 'application/javascript' });
   const blobUrl = URL.createObjectURL(blob);
-  const ocModule = await import(/* @vite-ignore */ blobUrl);
+  const wasmModule = await import(/* @vite-ignore */ blobUrl);
   URL.revokeObjectURL(blobUrl);
-  const opencascade = ocModule.default;
+  const createOcctWasm = wasmModule.default;
 
-  return opencascade({
+  return createOcctWasm({
     locateFile: (path: string) => (path.endsWith('.wasm') ? wasmFile : path),
   });
 }
@@ -152,12 +153,13 @@ async function handleInit() {
     post({ type: 'init-progress', stage: 'Downloading kernel...', progress: 0.1 });
     post({ type: 'init-progress', stage: 'Initializing WASM...', progress: 0.4 });
 
-    const oc = await loadWasmBuild();
+    const Module = await loadOcctWasmModule();
 
     post({ type: 'init-progress', stage: 'Loading brepjs...', progress: 0.7 });
 
     brepjs = await import('brepjs');
-    brepjs.initFromOC(oc);
+    const kernel = new Module.OcctKernel();
+    brepjs.registerKernel('occt-wasm', new brepjs.OcctWasmAdapter(Module, kernel));
 
     (self as unknown as { __brepjs: unknown }).__brepjs = brepjs;
     brepjsBlobUrl = buildBrepjsWrapperUrl(brepjs);

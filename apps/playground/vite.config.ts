@@ -17,21 +17,19 @@ const brepjsPkgPath = fileURLToPath(new URL('../../package.json', import.meta.ur
 const brepjsPkg = JSON.parse(readFileSync(brepjsPkgPath, 'utf8')) as PackageJson;
 const BREPJS_VERSION = brepjsPkg.version ?? '0.0.0-dev';
 
-const WASM_FILES = ['brepjs_single.js', 'brepjs_single.wasm'];
+const WASM_FILES = ['occt-wasm.js', 'occt-wasm.wasm'];
 
 const BASE = '/playground/';
 
-function opencascadeWasm(): Plugin {
-  // Prefer local monorepo path, fall back to node_modules
-  const local = resolve('../../packages/brepjs-opencascade/src');
-  const wasmDir = existsSync(resolve(local, WASM_FILES[0]))
-    ? local
-    : resolve('node_modules/brepjs-opencascade/src');
+function occtWasm(): Plugin {
+  // Resolve the occt-wasm dist dir (the package's exports map exposes
+  // ./dist/occt-wasm.js and ./dist/occt-wasm.wasm).
+  const wasmDir = dirname(reactRequire.resolve('occt-wasm/dist/occt-wasm.js'));
 
   let base = BASE;
 
   return {
-    name: 'opencascade-wasm',
+    name: 'occt-wasm',
     configResolved(config) {
       base = config.base;
     },
@@ -72,7 +70,7 @@ export default defineConfig({
     // brepjs version in bug reports without needing devtools.
     __BREPJS_VERSION__: JSON.stringify(BREPJS_VERSION),
   },
-  plugins: [react(), tailwindcss(), opencascadeWasm()],
+  plugins: [react(), tailwindcss(), occtWasm()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
@@ -80,7 +78,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['brepjs-opencascade'],
+    exclude: ['occt-wasm'],
   },
   resolve: {
     // Pin react/react-dom to a single physical copy so vite 8 + rolldown's stricter

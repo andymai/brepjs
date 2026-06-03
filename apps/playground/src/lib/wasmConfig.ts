@@ -3,10 +3,10 @@
  */
 
 /** Cache name for WASM files (used by preloader and worker) */
-export const WASM_CACHE_NAME = 'brepjs-wasm-v1';
+export const WASM_CACHE_NAME = 'brepjs-wasm-v2-occt-wasm';
 
 /** WASM files to preload and serve */
 export const WASM_FILES = [
-  'brepjs_single.js',
-  'brepjs_single.wasm',
+  'occt-wasm.js',
+  'occt-wasm.wasm',
 ] as const;
