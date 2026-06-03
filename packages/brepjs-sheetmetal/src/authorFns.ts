@@ -144,6 +144,11 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
 
   const seen = new Set<string>();
   for (const flange of spec.flanges) {
+    // `::` is reserved as the seam-bend id delimiter (`seam::<parent>::<child>`);
+    // allowing it in a flange id would make the seam parent/child ambiguous to parse.
+    if (flange.id === '' || flange.id.includes('::')) {
+      return err(validationError('INVALID_FLANGE_ID', `flange id must be non-empty and must not contain '::', got '${flange.id}'`));
+    }
     if (seen.has(flange.id)) {
       return err(validationError('DUPLICATE_FLANGE', `duplicate flange id '${flange.id}'`));
     }
@@ -197,6 +202,16 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
     if (!frames.has(seamParent) || !frames.has(seamChild)) {
       return err(
         validationError('UNKNOWN_SEAM_FLAT', `seam ${seam.parent}↔${seam.child} references an unauthored flat`)
+      );
+    }
+    if (!Number.isFinite(seam.angleDeg) || seam.angleDeg <= 0 || seam.angleDeg > 180) {
+      return err(
+        validationError('INVALID_SEAM_ANGLE', `seam ${seam.parent}↔${seam.child} angleDeg must be in (0, 180], got ${seam.angleDeg}`)
+      );
+    }
+    if (!Number.isFinite(seam.rule.innerRadius) || seam.rule.innerRadius < 0) {
+      return err(
+        validationError('INVALID_SEAM_RADIUS', `seam ${seam.parent}↔${seam.child} innerRadius must be non-negative`)
       );
     }
     const parentFrame = frames.get(seamParent) as FlatFrame;

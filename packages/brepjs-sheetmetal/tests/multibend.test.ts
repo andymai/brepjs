@@ -257,3 +257,40 @@ describe('multi-bend report', () => {
     expect(rep.value.bends.map((b) => b.id).sort()).toEqual(['a', 'b', 'c']);
   });
 });
+
+describe('input validation', () => {
+  it("rejects a flange id containing '::' (reserved seam delimiter)", () => {
+    const bad = author({
+      thickness: T,
+      base: { length: 30, width: 30 },
+      flanges: [{ id: 'left::wall', length: 10, angleDeg: 90, rule, side: 'xmax' }],
+    });
+    expect(bad.ok).toBe(false);
+    if (!isErr(bad)) return;
+    expect(bad.error.code).toBe('INVALID_FLANGE_ID');
+  });
+
+  it('rejects a seam with an out-of-range angle', () => {
+    const bad = author({
+      thickness: T,
+      base: { length: 30, width: 30 },
+      flanges: [{ id: 'w1', length: 20, angleDeg: 90, rule, side: 'xmax' }],
+      seams: [{ parent: 'w1', child: 'root', angleDeg: -90, rule }],
+    });
+    expect(bad.ok).toBe(false);
+    if (!isErr(bad)) return;
+    expect(bad.error.code).toBe('INVALID_SEAM_ANGLE');
+  });
+
+  it('rejects a seam with a negative inner radius', () => {
+    const bad = author({
+      thickness: T,
+      base: { length: 30, width: 30 },
+      flanges: [{ id: 'w1', length: 20, angleDeg: 90, rule, side: 'xmax' }],
+      seams: [{ parent: 'w1', child: 'root', angleDeg: 90, rule: { innerRadius: -1, kFactor: K } }],
+    });
+    expect(bad.ok).toBe(false);
+    if (!isErr(bad)) return;
+    expect(bad.error.code).toBe('INVALID_SEAM_RADIUS');
+  });
+});

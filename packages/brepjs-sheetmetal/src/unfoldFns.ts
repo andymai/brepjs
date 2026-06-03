@@ -284,7 +284,6 @@ function placeChild(
 function edgeBasis2(f: Frame2, side: FlatSide): { along: Pt2; out: Pt2; edgeOrigin: Pt2 } {
   const uTop = add2(f.origin, scale2(f.u, f.uLen));
   const vTop = add2(f.origin, scale2(f.v, f.vLen));
-  const uvTop = add2(uTop, scale2(f.v, f.vLen));
   switch (side) {
     case 'xmax':
       return { along: f.v, out: f.u, edgeOrigin: uTop };
@@ -295,7 +294,7 @@ function edgeBasis2(f: Frame2, side: FlatSide): { along: Pt2; out: Pt2; edgeOrig
     case 'ymin':
       return { along: f.u, out: neg2(f.v), edgeOrigin: f.origin };
     default:
-      return { along: f.u, out: f.v, edgeOrigin: uvTop };
+      return side satisfies never;
   }
 }
 

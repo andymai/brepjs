@@ -80,9 +80,12 @@ export function buildFeatureGraph(part: SheetMetalPart): Result<FeatureGraph> {
     // A seam bend (`seam::<parent>::<child>`) is an explicit edge between two
     // already-authored flats — the cycle-closing edge of a tube/box profile.
     if (bend.id.startsWith('seam::')) {
-      const parts = bend.id.split('::');
-      const parent = parts[1];
-      const child = parts[2];
+      // Format is `seam::<parent>::<child>`; flange ids are validated to exclude
+      // `::`, so the last delimiter splits parent from child unambiguously.
+      const withoutPrefix = bend.id.slice('seam::'.length);
+      const sep = withoutPrefix.lastIndexOf('::');
+      const parent = sep >= 0 ? withoutPrefix.slice(0, sep) : undefined;
+      const child = sep >= 0 ? withoutPrefix.slice(sep + 2) : undefined;
       if (parent === undefined || child === undefined || !nodes.has(parent) || !nodes.has(child)) {
         return err(
           validationError('UNRESOLVED_SEAM', `seam bend '${bend.id}' references an unknown flat`)
