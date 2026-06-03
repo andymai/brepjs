@@ -17,7 +17,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
-import { author, miterCorner, unfold, fold } from '../src/api.js';
+import { author, miterCorner, unfold, unfoldSolid, fold } from '../src/api.js';
 import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { addCutout } from '../src/cutoutFns.js';
 import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
@@ -260,8 +260,58 @@ async function main(): Promise<void> {
   for (const demo of DEMOS) {
     lines.push(...(await renderDemo(demo)));
   }
+  lines.push(...(await renderForeignDemo()));
   lines.push('');
   process.stdout.write(lines.join('\n'));
+}
+
+/**
+ * Foreign-solid unfold demo (plan PR7): author a bracket, discard its feature
+ * tree, run `unfoldSolid` on ONLY the solid, and render the detected flat pattern
+ * next to the authored flat pattern with the developed-area delta printed. This
+ * proves the geometry-only detection path reproduces the authored development.
+ */
+async function renderForeignDemo(): Promise<string[]> {
+  const spec: AuthorSpec = {
+    thickness: T,
+    base: { length: 40, width: 40 },
+    flanges: [
+      { id: 'fx', length: 18, angleDeg: 90, rule: { innerRadius: R, kFactor: 0.5 }, side: 'xmax' },
+      { id: 'fy', length: 18, angleDeg: 90, rule: { innerRadius: R, kFactor: 0.5 }, side: 'ymax' },
+    ],
+  };
+  const authored = author(spec);
+  if (isErr(authored)) throw new Error(`foreign author failed: ${authored.error.message}`);
+  const part = authored.value;
+  if (part.solid === undefined) throw new Error('foreign demo: no solid');
+
+  const authoredUnfold = unfold(part);
+  if (isErr(authoredUnfold)) throw new Error(`foreign authored unfold failed: ${authoredUnfold.error.message}`);
+
+  // Detect-and-unfold reading ONLY the solid geometry (no part.bends/flanges).
+  const detected = unfoldSolid(part.solid, { kFactor: 0.5 });
+  if (isErr(detected)) throw new Error(`unfoldSolid failed: ${detected.error.message}`);
+
+  const svg = composeSideBySide(
+    renderFlatSvg(authoredUnfold.value.pattern),
+    renderFlatSvg(detected.value.pattern)
+  );
+  const svgPath = resolve(OUT_DIR, 'foreign-unfold.svg');
+  await writeFile(svgPath, svg, 'utf8');
+
+  const deltaArea = Math.abs(
+    authoredUnfold.value.pattern.developedArea - detected.value.pattern.developedArea
+  );
+  return [
+    '  [foreign-unfold]',
+    `    authored + detected flat SVG : ${svgPath}`,
+    `    authored bends               : ${authoredUnfold.value.report.bends.length}`,
+    `    detected bends               : ${detected.value.report.bends.length}`,
+    `    authored developed area      : ${authoredUnfold.value.pattern.developedArea.toFixed(2)} mm²`,
+    `    detected developed area      : ${detected.value.pattern.developedArea.toFixed(2)} mm²`,
+    `    Δ developed area             : ${deltaArea.toExponential(2)} mm²`,
+    `    detection warnings           : ${detected.value.warnings.length}`,
+  ];
 }
 
 async function renderDemo(demo: Demo): Promise<string[]> {

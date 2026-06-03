@@ -10,13 +10,14 @@
  * directly when explicit error handling is preferred over throwing.
  */
 
-import type { BrepError, Result } from 'brepjs';
+import type { BrepError, Result, Solid } from 'brepjs';
 import { isErr } from 'brepjs';
 import type { AuthorSpec, BaseFlatSpec, FlangeSpec, SeamSpec } from './authorFns.js';
 import type { MiterPlane, DxfOptions, SlotPlacement } from './api.js';
 import {
   author,
   unfold,
+  unfoldSolid,
   fold,
   miter,
   miterCorner,
@@ -204,6 +205,37 @@ class SheetMetalPartHandle {
   }
 }
 
+/**
+ * An imported foreign solid (no feature tree) re-entering the fluent chain: detect
+ * its geometry and unfold it. `kFactor` defaults to the mid-surface neutral axis.
+ */
+class ForeignSolidHandle {
+  constructor(
+    private readonly solid: Solid,
+    private readonly opts?: { kFactor?: number }
+  ) {}
+
+  /** Override the neutral-axis K-factor (default 0.5, the mid-surface). */
+  kFactor(kFactor: number): ForeignSolidHandle {
+    return new ForeignSolidHandle(this.solid, { ...this.opts, kFactor });
+  }
+
+  /** Detect geometry and flatten into a developed flat pattern + report + warnings. */
+  unfold(): UnfoldResult {
+    return unwrapOrThrow(unfoldSolid(this.solid, this.opts));
+  }
+
+  /** Just the flat pattern from the detected unfold. */
+  flatPattern(): FlatPattern {
+    return this.unfold().pattern;
+  }
+
+  /** Annotated multi-layer DXF of the developed flat pattern. */
+  dxf(options?: DxfOptions): string {
+    return unwrapOrThrow(toDXF(this.flatPattern(), options));
+  }
+}
+
 /** Authoring builder — accumulates the base/flanges/material spec, then folds. */
 class SheetMetalBuilder {
   private built?: SheetMetalPartHandle;
@@ -351,4 +383,9 @@ export function foldFlat(input: FlatInput): SheetMetalPartHandle {
   return new SheetMetalPartHandle(unwrapOrThrow(fold(input)));
 }
 
-export { SheetMetalBuilder, SheetMetalPartHandle };
+/** Detect and unfold an imported foreign sheet-metal solid (no feature tree). */
+export function fromSolid(solid: Solid, opts?: { kFactor?: number }): ForeignSolidHandle {
+  return new ForeignSolidHandle(solid, opts);
+}
+
+export { SheetMetalBuilder, SheetMetalPartHandle, ForeignSolidHandle };

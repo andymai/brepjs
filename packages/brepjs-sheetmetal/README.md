@@ -176,11 +176,46 @@ Both flanges have **non-rectilinear** developments, so — like miters and tabs 
 validity rather than a fold round-trip. The contour flange's developed strip still joins the rectilinear
 outline union; the lofted flange's triangulated blank is a separate developed boundary.
 
+## Foreign-solid import & unfold
+
+`unfoldSolid(solid, { kFactor? })` (fluent: `fromSolid(solid).unfold()`) flattens an **arbitrary imported
+sheet-metal solid that has no feature tree** by detecting its geometry numerically — the reverse of the
+authored path. It reads only the B-rep:
+
+- **Classify faces** by surface type: planar faces are panel faces, cylindrical faces are bend faces. Any
+  other surface type (cone, sphere, spline, …) is reported `UNSUPPORTED_FACE` and skipped (the unfold never
+  silently invents a flat for an unrecognised face).
+- **Pair flats**: the two large parallel planar faces of a panel, a sheet thickness apart, are the
+  mid-surface flat. Thickness is detected as the smallest opposed-planar-pair gap.
+- **Fit bends**: `fitCylinder(face)` recovers a bend's axis + radius + swept angle from sampled points and
+  normals. The axis direction is the common perpendicular of the sampled normals (every cylinder normal is
+  ⟂ the axis), recovered as the sign-aligned average of cross products of non-parallel normal pairs; the
+  axis line and radius come from a least-squares circle fit of the points projected onto the plane ⟂ axis;
+  the radius is the mean point-to-axis distance. A fit whose residual exceeds tolerance is rejected (warned).
+  Recovery is high-precision — radius and axis of a known `cylinder()` primitive are recovered to ~1e-6.
+- **Build the bend graph** (flats = nodes; a bend connects the two flats it shares edges with), take a
+  spanning tree from a root flat, and turn non-tree bends into seam cuts (`SEAM_CUT`, warned).
+- **Unfold** by walking the tree, replacing each cylindrical region with a developed strip of length
+  `developedLength(angle, thickness, { innerRadius, kFactor })`. Because a foreign solid carries no material
+  K-factor, the default is the **mid-surface neutral axis (K = 0.5)**; pass `{ kFactor }` to match a known
+  material. Bend direction (up/down) is read from the cylinder centre relative to the parent flat.
+
+**Supported class**: roughly-uniform-thickness solids whose panels are **planar** and whose bends are
+**cylindrical** (straight bends). Outside this class the unfold **warns rather than mis-unfolding** —
+non-uniform thickness, conical/spline bend faces, non-manifold / non-sheet topology, and faces that don't
+fit a cylinder within tolerance all surface as warnings inside the `Ok` payload (or a clear `Err` when no
+sheet-metal structure is detected at all, e.g. a bare sphere). The detection is validated by an oracle:
+author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
+authored unfold's developed area, bend count, flat count, and total flat bbox (single bend, L-bracket,
+U-channel) — reading only the solid, never the feature tree.
+
 ## Design
 
-All geometry is computed analytically from the authored feature tree — bend axis, radius, and angle are
-known inputs recorded on each `BendFeature`, so the unfold reads the tree rather than reverse-engineering
-the B-rep. No kernel/WASM changes are required.
+All geometry for **authored** parts is computed analytically from the feature tree — bend axis, radius, and
+angle are known inputs recorded on each `BendFeature`, so the unfold reads the tree rather than
+reverse-engineering the B-rep. The **foreign-solid** path (`unfoldSolid`) is the exception: it detects bend
+geometry numerically from the public surface queries (no recorded tree). No kernel/WASM changes are required
+for either path.
 
 ## Usage
 

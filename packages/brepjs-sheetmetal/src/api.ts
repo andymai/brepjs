@@ -7,13 +7,14 @@
  * `sheetMetal()` facade in `./facade.js` is built on top of these.
  */
 
-import type { Result } from 'brepjs';
+import type { Result, Solid } from 'brepjs';
 import {
   authorPart as authorPartFn,
   type AuthorSpec,
   type FlangeSpec,
 } from './authorFns.js';
 import { unfold as unfoldFn } from './unfoldFns.js';
+import { unfoldForeignSolid as unfoldForeignSolidFn } from './foreignUnfoldFns.js';
 import { fold as foldFn } from './foldFns.js';
 import {
   miterCut as miterCutFn,
@@ -70,6 +71,16 @@ export function author(spec: AuthorSpec): Result<SheetMetalPart> {
 /** Flatten an authored part into a developed flat pattern + bend report + warnings. */
 export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   return unfoldFn(part);
+}
+
+/**
+ * Unfold an imported sheet-metal solid that has no feature tree, by detecting its
+ * geometry (planar panels + cylindrical bends) numerically. `kFactor` defaults to
+ * the mid-surface neutral axis (0.5); supply a known material's K-factor to match
+ * its development.
+ */
+export function unfoldSolid(solid: Solid, opts?: { kFactor?: number }): Result<UnfoldResult> {
+  return unfoldForeignSolidFn(solid, opts);
 }
 
 /** Fold a flat pattern (region-tree) up into a 3D part — the inverse of {@link unfold}. */

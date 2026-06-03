@@ -25,6 +25,9 @@ export type {
 
 export { unfold } from './unfoldFns.js';
 
+export { unfoldForeignSolid, fitCylinder } from './foreignUnfoldFns.js';
+export type { FittedCylinder } from './foreignUnfoldFns.js';
+
 export { fold, foldWithWarnings, patternToFlatInput, partToFlatInput } from './foldFns.js';
 export type { FoldResult, PatternToFlatInputOptions } from './foldFns.js';
 
@@ -62,6 +65,7 @@ export { validatePart } from './validateFns.js';
 export {
   author,
   unfold as unfoldPart,
+  unfoldSolid,
   fold as foldPart,
   miter,
   miterCorner,
@@ -79,7 +83,16 @@ export {
   loftedFlange,
 } from './api.js';
 
-export { sheetMetal, fromPart, foldFlat, SheetMetalError, SheetMetalBuilder, SheetMetalPartHandle } from './facade.js';
+export {
+  sheetMetal,
+  fromPart,
+  foldFlat,
+  fromSolid,
+  SheetMetalError,
+  SheetMetalBuilder,
+  SheetMetalPartHandle,
+  ForeignSolidHandle,
+} from './facade.js';
 
 export type {
   EdgeRef,
