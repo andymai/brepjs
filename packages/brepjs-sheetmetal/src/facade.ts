@@ -34,6 +34,8 @@ import {
   emboss,
   contourFlange,
   loftedFlange,
+  hem,
+  jog,
   toDXF,
   report,
   validate,
@@ -49,6 +51,8 @@ import type {
   TabSpec,
   ContourFlangeSpec,
   LoftedFlangeSpec,
+  HemSpec,
+  JogSpec,
   SheetMetalWarning,
   UnfoldResult,
 } from './types.js';
@@ -172,6 +176,16 @@ class SheetMetalPartHandle {
   /** Author a lofted / ruled transition flange between two parallel open profiles. */
   loftedFlange(spec: LoftedFlangeSpec): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(loftedFlange(this.part, spec)));
+  }
+
+  /** Fold a region edge back ~180°+ onto its parent as a hem (closed/open/teardrop/rolled). */
+  hem(spec: HemSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(hem(this.part, spec)));
+  }
+
+  /** Step a region's flat by `offsetHeight` with two opposite bends (a jog/joggle). */
+  jog(spec: JogSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(jog(this.part, spec)));
   }
 
   /** Flatten into a developed flat pattern + bend report + warnings. */
@@ -345,6 +359,14 @@ class SheetMetalBuilder {
 
   loftedFlange(spec: LoftedFlangeSpec): SheetMetalPartHandle {
     return this.build().loftedFlange(spec);
+  }
+
+  hem(spec: HemSpec): SheetMetalPartHandle {
+    return this.build().hem(spec);
+  }
+
+  jog(spec: JogSpec): SheetMetalPartHandle {
+    return this.build().jog(spec);
   }
 
   unfold(): UnfoldResult {

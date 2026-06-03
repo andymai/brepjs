@@ -24,6 +24,8 @@ import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
 import { addForm } from '../src/formFns.js';
 import { authorContourFlange } from '../src/contourFlangeFns.js';
 import { authorLoftedFlange } from '../src/loftedFlangeFns.js';
+import { hem } from '../src/hemFns.js';
+import { jog } from '../src/jogFns.js';
 import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
 import type {
@@ -32,6 +34,8 @@ import type {
   CutoutSpec,
   FlatPattern,
   FormSpec,
+  HemSpec,
+  JogSpec,
   LoftedFlangeSpec,
   SheetMetalPart,
   TabSpec,
@@ -89,6 +93,10 @@ interface Demo {
   contourFlanges?: ContourFlangeSpec[];
   /** Optional lofted / ruled transition flanges between two open profiles. */
   loftedFlanges?: LoftedFlangeSpec[];
+  /** Optional hems (edge folded back ~180°+ onto its parent). */
+  hems?: HemSpec[];
+  /** Optional jogs (two opposite bends stepping the flat by an offset). */
+  jogs?: (JogSpec & { id?: string })[];
 }
 
 const DEMOS: Demo[] = [
@@ -224,6 +232,31 @@ const DEMOS: Demo[] = [
         ],
       },
     ],
+  },
+  {
+    name: 'hemmed-panel',
+    spec: {
+      thickness: T,
+      base: { length: 80, width: 50 },
+      flanges: [],
+    },
+    // A panel with a closed hem along one edge and an open hem along the opposite
+    // edge — a stiffened, safe-edged panel.
+    hems: [
+      { region: 'base', side: 'xmax', type: 'closed', length: 6, radius: R },
+      { region: 'base', side: 'xmin', type: 'open', length: 6, gap: 3 },
+    ],
+  },
+  {
+    name: 'jogged-bracket',
+    spec: {
+      thickness: T,
+      base: { length: 80, width: 40 },
+      flanges: [],
+    },
+    // A bracket whose face steps up by a Z-offset partway along the run (a joggle to
+    // clear an obstruction), then continues parallel.
+    jogs: [{ region: 'base', side: 'xmax', position: 20, offsetHeight: 8, angle: 45, runOut: 30, radius: R }],
   },
   {
     name: 'lofted-chute',
@@ -389,6 +422,16 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     if (isErr(lfResult)) throw new Error(`loftedFlange '${demo.name}' failed: ${lfResult.error.message}`);
     part = lfResult.value;
   }
+  for (const spec of demo.hems ?? []) {
+    const hemResult = hem(part, spec);
+    if (isErr(hemResult)) throw new Error(`hem '${demo.name}' failed: ${hemResult.error.message}`);
+    part = hemResult.value;
+  }
+  for (const spec of demo.jogs ?? []) {
+    const jogResult = jog(part, spec);
+    if (isErr(jogResult)) throw new Error(`jog '${demo.name}' failed: ${jogResult.error.message}`);
+    part = jogResult.value;
+  }
   if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
@@ -419,8 +462,10 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     demo.miter !== undefined ||
     part.reliefs !== undefined ||
     part.contourFlanges !== undefined ||
-    part.loftedFlanges !== undefined;
-  let roundTrip = '(fold round-trip skipped: mitered/relief’d/contour/lofted part)';
+    part.loftedFlanges !== undefined ||
+    part.hems !== undefined ||
+    part.jogs !== undefined;
+  let roundTrip = '(fold round-trip skipped: mitered/relief’d/contour/lofted/hem/jog part)';
   if (!skipRoundTrip) {
     roundTrip = foldRoundTrip(part);
   }

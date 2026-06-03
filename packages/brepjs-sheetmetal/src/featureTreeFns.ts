@@ -84,6 +84,12 @@ export function buildFeatureGraph(part: SheetMetalPart): Result<FeatureGraph> {
     // the graph — they would resolve to no flange flat and break the tree.
     if (bend.id.startsWith('contour::')) continue;
 
+    // Hem and jog sub-bends (`hem::<id>::<n>` / `jog::<id>::<n>`) are the curl/step
+    // arcs of a recorded hem or jog. Like contour bends they record their own
+    // developed strip (in `part.hems` / `part.jogs`) and lay out non-rectilinearly,
+    // so they never enter the spanning tree.
+    if (bend.id.startsWith('hem::') || bend.id.startsWith('jog::')) continue;
+
     // A seam bend (`seam::<parent>::<child>`) is an explicit edge between two
     // already-authored flats — the cycle-closing edge of a tube/box profile.
     if (bend.id.startsWith('seam::')) {

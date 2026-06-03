@@ -58,6 +58,9 @@ export { addForm, louver, emboss } from './formFns.js';
 export { authorContourFlange } from './contourFlangeFns.js';
 export { authorLoftedFlange } from './loftedFlangeFns.js';
 
+export { hem } from './hemFns.js';
+export { jog } from './jogFns.js';
+
 export { flatPatternToDXF } from './dxfFns.js';
 export type { DxfOptions } from './dxfFns.js';
 
@@ -122,6 +125,10 @@ export type {
   ContourFlangeFeature,
   LoftedFlangeSpec,
   LoftedFlangeFeature,
+  HemSpec,
+  HemFeature,
+  JogSpec,
+  JogFeature,
   SheetMetalPart,
   FlatPattern,
   FlatInput,

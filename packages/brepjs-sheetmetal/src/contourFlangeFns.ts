@@ -32,7 +32,7 @@ import type {
 import { normalizeSolid } from './internal.js';
 import { developedLength } from './allowanceFns.js';
 
-interface SegmentFrame {
+export interface SegmentFrame {
   /** Origin of the −normal (bottom) surface at the start of this segment. */
   origin: Vec3;
   /** Outward run direction (the segment's local +X). */
@@ -161,12 +161,12 @@ export function authorContourFlange(
   });
 }
 
-interface BuiltSegment {
+export interface BuiltSegment {
   solid: Solid;
   frame: SegmentFrame;
 }
 
-interface BuiltArc extends BuiltSegment {
+export interface BuiltArc extends BuiltSegment {
   axisOrigin: Vec3;
 }
 
@@ -175,7 +175,7 @@ interface BuiltArc extends BuiltSegment {
  * `frame.run`, full thickness along `frame.n`, across `span` along `frame.axis`.
  * The next segment's frame starts at the leg's far end.
  */
-function buildLineLeg(
+export function buildLineLeg(
   base: Solid,
   frame: SegmentFrame,
   span: number,
@@ -201,7 +201,7 @@ function buildLineLeg(
  * The returned frame's run/normal are rotated by the fold so the next leg continues
  * tangentially.
  */
-function buildArcBend(
+export function buildArcBend(
   base: Solid,
   frame: SegmentFrame,
   span: number,
@@ -285,7 +285,7 @@ function frameTransform(runT: Vec3, axisT: Vec3, nT: Vec3, origin: Vec3): Placed
   };
 }
 
-interface BaseEdge {
+export interface BaseEdge {
   dir: Vec3;
   out: Vec3;
   start: Vec3;
@@ -293,7 +293,7 @@ interface BaseEdge {
 }
 
 /** Resolve one of the four edges of the base flat (the contour-flange root). */
-function baseEdge(part: SheetMetalPart, side: FlatSide): BaseEdge {
+export function baseEdge(part: SheetMetalPart, side: FlatSide): BaseEdge {
   const o: Vec3 = [0, 0, 0];
   const u: Vec3 = [1, 0, 0];
   const v: Vec3 = [0, 1, 0];
@@ -339,6 +339,71 @@ function baseEdge(part: SheetMetalPart, side: FlatSide): BaseEdge {
   const toB = vecSub(b, a);
   const start = vecDot(toB, dir) >= 0 ? a : b;
   return { dir, out, start, length };
+}
+
+/**
+ * Resolve one of the four edges of an arbitrary flat region (its world top-surface
+ * frame), the region-aware generalization of {@link baseEdge}: the base is the
+ * special case where `origin = 0`, `u = +X`, `v = +Y`, `n = +Z`. Used by hems and
+ * jogs to chain their profile off a named flange (or the base) edge.
+ */
+export function regionEdge(
+  frame: { origin: Vec3; u: Vec3; v: Vec3; n: Vec3; uLen: number; vLen: number },
+  side: FlatSide
+): BaseEdge {
+  const o = frame.origin;
+  const uTop = vecAdd(o, vecScale(frame.u, frame.uLen));
+  const vTop = vecAdd(o, vecScale(frame.v, frame.vLen));
+  const uvTop = vecAdd(uTop, vecScale(frame.v, frame.vLen));
+
+  let out: Vec3;
+  let length: number;
+  let a: Vec3;
+  let b: Vec3;
+  switch (side) {
+    case 'xmax':
+      out = frame.u;
+      length = frame.vLen;
+      a = uTop;
+      b = uvTop;
+      break;
+    case 'xmin':
+      out = vecScale(frame.u, -1);
+      length = frame.vLen;
+      a = o;
+      b = vTop;
+      break;
+    case 'ymax':
+      out = frame.v;
+      length = frame.uLen;
+      a = vTop;
+      b = uvTop;
+      break;
+    case 'ymin':
+      out = vecScale(frame.v, -1);
+      length = frame.uLen;
+      a = o;
+      b = uTop;
+      break;
+  }
+  const dir = vecNormalize(vecCross(frame.n, out));
+  const toB = vecSub(b, a);
+  const start = vecDot(toB, dir) >= 0 ? a : b;
+  return { dir, out, start, length };
+}
+
+/**
+ * The starting {@link SegmentFrame} for a profile chained off `edge` at `offset`
+ * along it: contact at the edge, run pointing outward, normal = the region normal,
+ * bend axis along the edge. Shared by the contour-flange, hem and jog builders.
+ */
+export function initialSegmentFrame(edge: BaseEdge, n: Vec3, offset: number): SegmentFrame {
+  return {
+    origin: vecAdd(edge.start, vecScale(edge.dir, offset)),
+    run: edge.out,
+    n,
+    axis: edge.dir,
+  };
 }
 
 /** Cylindrical bend patch (hollow tube ∩ fold wedge), mirroring authorFns. */

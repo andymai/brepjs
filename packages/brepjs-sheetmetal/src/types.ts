@@ -343,6 +343,134 @@ export interface LoftedFlangeFeature {
   approximate: boolean;
 }
 
+/**
+ * A hem: an edge folded back ~180°+ onto its parent flat, then running a short
+ * return leg. `region` names the flat the hem folds off (a flange id, or
+ * `'base'`/`'root'` for the base flat); `side` is that region's local edge. The
+ * four `type`s set the curl angle and the gap between the return and the parent:
+ *
+ * - `closed`   — a tight ~180° fold, the return runs flat against the parent
+ *   (`gap ≈ 0`; a HAIR clearance keeps the fused solid valid). `length` is the
+ *   return-leg length out along the parent.
+ * - `open`     — a ~180° fold with a `gap` (defaults to `radius`) between the
+ *   return and the parent, the return running parallel offset by the gap.
+ * - `teardrop` — a >180° curl leaving a small teardrop opening, then a short
+ *   return tangent to the curl.
+ * - `rolled`   — a full ~270° circular roll (a curled edge / safe edge), no return.
+ *
+ * `radius` is the inner bend radius (defaults to one material thickness). `gap`
+ * applies to `open` only. `rule` overrides the part's per-bend allowance rule.
+ */
+export interface HemSpec {
+  region: string;
+  side: FlatSide;
+  type: 'closed' | 'open' | 'teardrop' | 'rolled';
+  /** Return-leg length out along the parent. Required for closed/open/teardrop. */
+  length?: number | undefined;
+  /** Inner bend radius. Default = one material thickness. */
+  radius?: number | undefined;
+  /** Open-hem gap between the return and the parent. Default = `radius`. */
+  gap?: number | undefined;
+  /** Start position along the region edge. Default `0`. */
+  offset?: number | undefined;
+  /** Extent along the region edge. Default = full edge length. */
+  width?: number | undefined;
+  rule?: BendRule | undefined;
+}
+
+/**
+ * A recorded hem, mirroring {@link ContourFlangeFeature}: enough for the unfold to
+ * lay its developed strip out straight along the parent edge. `subBends` are the
+ * `hem::<id>::<n>` curl bends (one per ≤180° sub-arc); `returnLength` is the flat
+ * return leg past the curl. `developedLength` is the EXACT strip length out from
+ * the edge: Σ curl bend allowances + `returnLength`. `segments` mirrors the
+ * contour-flange developed segment list (a flat leg or a developed bend arc), so
+ * the unfold lays bend lines at their exact cumulative developed offsets.
+ */
+export interface HemFeature {
+  id: string;
+  type: HemSpec['type'];
+  /** The flat region the hem folds off (a flange id, or `'root'` for the base). */
+  region: string;
+  side: FlatSide;
+  /** Start position along the parent edge. */
+  offset: number;
+  /** Extent along the parent edge (the developed strip width). */
+  span: number;
+  /** Flat return-leg length past the curl (0 for a rolled hem). */
+  returnLength: number;
+  /** Exact developed length out from the parent edge (Σ curl allowances + return). */
+  developedLength: number;
+  subBends: string[];
+  segments: {
+    kind: 'line' | 'arc';
+    /** Developed length of this segment along the strip. */
+    dev: number;
+    angleDeg?: number | undefined;
+    direction?: 'up' | 'down' | undefined;
+    /** Id of the recorded {@link BendFeature} for an arc segment. */
+    bendId?: string | undefined;
+  }[];
+}
+
+/**
+ * A jog (joggle): two opposite bends (`+θ` then `−θ`) that step a flat by
+ * `offsetHeight` perpendicular to its plane, then continue parallel past the step.
+ * `region` names the flat the jog runs across (a flange id, or `'base'`/`'root'`);
+ * `side` is the region edge the jog develops out from; `position` is how far out
+ * along the run the jog sits; `offsetHeight` is the Z-step the two bends produce.
+ * `angle` (default 45°) is the magnitude of each bend — a shallower angle gives a
+ * longer, gentler step; the connecting step run is `offsetHeight / sin(angle)`.
+ * `runOut` is the flat leg continuing past the second bend. `rule` overrides the
+ * per-bend allowance rule.
+ */
+export interface JogSpec {
+  region: string;
+  side: FlatSide;
+  /** Distance out along the run from the region edge to the first bend. */
+  position: number;
+  /** The perpendicular step the two opposite bends produce. Must be > 0. */
+  offsetHeight: number;
+  /** Magnitude of each opposite bend, in degrees (0, 90). Default `45`. */
+  angle?: number | undefined;
+  /** Flat leg continuing past the second bend. Default = `position`. */
+  runOut?: number | undefined;
+  /** Inner bend radius. Default = one material thickness. */
+  radius?: number | undefined;
+  /** Start position along the region edge. Default `0`. */
+  offset?: number | undefined;
+  /** Extent along the region edge. Default = full edge length. */
+  width?: number | undefined;
+  rule?: BendRule | undefined;
+}
+
+/**
+ * A recorded jog, mirroring {@link HemFeature}. `bends` are the two opposite curl
+ * bends (`jog::<id>::0` up, `jog::<id>::1` down); `offsetHeight` is the requested
+ * perpendicular step; `segments` is the developed leg/arc list (position leg →
+ * up bend → step run → down bend → runOut leg). `developedLength` is the exact
+ * strip length out from the edge (Σ legs + Σ bend allowances).
+ */
+export interface JogFeature {
+  id: string;
+  /** The flat region the jog runs across (a flange id, or `'root'` for the base). */
+  region: string;
+  side: FlatSide;
+  offset: number;
+  span: number;
+  offsetHeight: number;
+  angleDeg: number;
+  developedLength: number;
+  bends: string[];
+  segments: {
+    kind: 'line' | 'arc';
+    dev: number;
+    angleDeg?: number | undefined;
+    direction?: 'up' | 'down' | undefined;
+    bendId?: string | undefined;
+  }[];
+}
+
 export interface SheetMetalPart {
   thickness: number;
   /** Base flat extent along +X (x∈[0, baseLength]); the east-run length. */
@@ -360,6 +488,8 @@ export interface SheetMetalPart {
   forms?: FormFeature[] | undefined;
   contourFlanges?: ContourFlangeFeature[] | undefined;
   loftedFlanges?: LoftedFlangeFeature[] | undefined;
+  hems?: HemFeature[] | undefined;
+  jogs?: JogFeature[] | undefined;
 }
 
 export interface FlatPattern {

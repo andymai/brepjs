@@ -73,10 +73,16 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   const contourResult = buildContourDevelopments(part);
   if (!contourResult.ok) return contourResult;
 
+  // Hems and jogs lay their multi-bend developed strips out straight along their
+  // region edge (the base or a flange), exactly like a contour flange.
+  const hemJogResult = buildHemJogDevelopments(part, layout);
+  if (!hemJogResult.ok) return hemJogResult;
+
   const rects: Rect[] = [];
   for (const placed of layout.flats) rects.push(placed.rect);
   for (const strip of layout.strips) rects.push(strip);
   for (const strip of contourResult.value.strips) rects.push(strip);
+  for (const strip of hemJogResult.value.strips) rects.push(strip);
 
   // Tabs are additive protrusions: their developed rectangles join the outer-outline
   // union and add to the developed area.
@@ -125,6 +131,13 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
     layout.developedArea += cf.developedLength * cf.span;
   }
 
+  for (const h of part.hems ?? []) {
+    layout.developedArea += h.developedLength * h.span;
+  }
+  for (const j of part.jogs ?? []) {
+    layout.developedArea += j.developedLength * j.span;
+  }
+
   const bendLines = layout.flats
     .filter((p): p is PlacedFlange => p.kind === 'flange')
     .map((p) => ({
@@ -136,7 +149,8 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
       // negation. Correct for chained flanges too (it is local to the placement).
       inward: [-p.frame.v[0], -p.frame.v[1]] as [number, number],
     }))
-    .concat(contourResult.value.bendLines);
+    .concat(contourResult.value.bendLines)
+    .concat(hemJogResult.value.bendLines);
 
   const pattern: FlatPattern = {
     outline: outlineResult.value,
@@ -485,6 +499,94 @@ function buildContourDevelopments(part: SheetMetalPart): Result<ContourDevelopme
         const b = add2(a, scale2(along, cf.span));
         bendLines.push({
           id: seg.bendId ?? cf.id,
+          line: line([a[0], a[1], 0], [b[0], b[1], 0]),
+          angleDeg: seg.angleDeg ?? 0,
+          direction: seg.direction ?? 'up',
+          inward: [-out[0], -out[1]] as [number, number],
+        });
+      }
+      cumulative += seg.dev;
+    }
+  }
+  return ok({ strips, bendLines });
+}
+
+interface HemJogDevelopments {
+  /** Developed strip rectangles (one per hem/jog) for the outline union. */
+  strips: Rect[];
+  /** Developed bend lines (one per curl/step sub-bend) in the flat pattern. */
+  bendLines: FlatPattern['bendLines'];
+}
+
+/**
+ * Lay each recorded hem and jog developed strip out STRAIGHT along its region edge
+ * (the base or a flange), mirroring {@link buildContourDevelopments}. The region's
+ * developed-plane {@link Frame2} comes from the tree layout (so a hem on a flange
+ * lands on that flange's developed face). Each sub-bend (a hem curl arc or a jog
+ * step arc) gets a bend line at its EXACT cumulative developed offset out from the
+ * edge — Σ segment developed lengths, so the strip length is exact.
+ */
+function buildHemJogDevelopments(part: SheetMetalPart, layout: TreeLayout): Result<HemJogDevelopments> {
+  const strips: Rect[] = [];
+  const bendLines: FlatPattern['bendLines'] = [];
+
+  const frameFor = (region: string): Frame2 | undefined => {
+    const id = region === 'base' || region === 'face-0' ? ROOT_FLAT_ID : region;
+    for (const p of layout.flats) {
+      if (p.id === id) return p.frame;
+    }
+    return undefined;
+  };
+
+  interface Strip {
+    region: string;
+    side: FlatSide;
+    offset: number;
+    span: number;
+    developedLength: number;
+    segments: {
+      kind: 'line' | 'arc';
+      dev: number;
+      angleDeg?: number | undefined;
+      direction?: 'up' | 'down' | undefined;
+      bendId?: string | undefined;
+    }[];
+  }
+  const allStrips: Strip[] = [
+    ...(part.hems ?? []).map((h) => ({
+      region: h.region,
+      side: h.side,
+      offset: h.offset,
+      span: h.span,
+      developedLength: h.developedLength,
+      segments: h.segments,
+    })),
+    ...(part.jogs ?? []).map((j) => ({
+      region: j.region,
+      side: j.side,
+      offset: j.offset,
+      span: j.span,
+      developedLength: j.developedLength,
+      segments: j.segments,
+    })),
+  ];
+
+  for (const s of allStrips) {
+    const regionFrame = frameFor(s.region);
+    if (regionFrame === undefined) {
+      return err(validationError('UNKNOWN_HEMJOG_REGION', `hem/jog region '${s.region}' missing from layout`));
+    }
+    const { along, out, edgeOrigin } = edgeBasis2(regionFrame, s.side);
+    const base = add2(edgeOrigin, scale2(along, s.offset));
+    strips.push(rectFromCorners(base, add2(add2(base, scale2(along, s.span)), scale2(out, s.developedLength))));
+
+    let cumulative = 0;
+    for (const seg of s.segments) {
+      if (seg.kind === 'arc') {
+        const a = add2(base, scale2(out, cumulative));
+        const b = add2(a, scale2(along, s.span));
+        bendLines.push({
+          id: seg.bendId ?? s.region,
           line: line([a[0], a[1], 0], [b[0], b[1], 0]),
           angleDeg: seg.angleDeg ?? 0,
           direction: seg.direction ?? 'up',

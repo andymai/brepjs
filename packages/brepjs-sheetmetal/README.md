@@ -35,6 +35,8 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 | Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)      |
 | Contour flange  | open line/arc profile swept along a base edge (multi-bend section); EXACT development       |
 | Lofted flange   | ruled transition between two open profiles; triangulated development (exact if developable) |
+| Hems            | edge folded back ~180°+ (closed / open / teardrop / rolled); EXACT development              |
+| Jogs            | two opposite bends stepping a flat by a Z-offset (joggle); EXACT development                |
 | Bend tables     | shop allowance/deduction tables, angle-linear + thickness×radius-bilinear interp, clamp-warn |
 | Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings           |
 | API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                     |
@@ -177,6 +179,41 @@ Both flanges have **non-rectilinear** developments, so — like miters and tabs 
 `patternToFlatInput` outline oracle: verification leans on developed-length/area invariants and solid
 validity rather than a fold round-trip. The contour flange's developed strip still joins the rectilinear
 outline union; the lofted flange's triangulated blank is a separate developed boundary.
+
+## Hems & jogs
+
+Hems and jogs are multi-bend edge features built on the same frame-to-frame profile chainer as the contour
+flange, so their developments are **EXACT** (Σ segment developed lengths, via the table-aware
+`developedLength`). Both attach to any flat **region** — the base (`'base'`/`'root'`) or a named flange —
+edge, record their curl/step sub-bends as `hem::<id>::<n>` / `jog::<id>::<n>` `BendFeature`s (skipped by the
+feature-tree spanning walk, like `contour::` bends), and lay their developed strip out straight along the
+region edge with one bend line per sub-bend.
+
+- `hem(part, { region, side, type, length?, radius?, gap?, offset?, width?, rule? })` folds a region edge
+  back onto its parent. Four `type`s set the curl angle and the gap:
+  - **`closed`** — a tight ~180° fold, the return flat against the parent. The curl radius is inflated by a
+    small **HAIR** clearance (0.05 mm) so the fused solid stays valid (a true zero-gap fold makes the curl's
+    inner cylinder coincide with the parent face → a self-touching, non-manifold solid). `length` is the
+    return-leg length (must be ≥ one thickness).
+  - **`open`** — a ~180° fold with a clear `gap` (default = `radius`) between the return and the parent; the
+    curl radius is sized from the gap, so its developed curl length is the exact 180° allowance at that radius.
+  - **`teardrop`** — a >180° (~210°) curl leaving a small teardrop opening, then a short return.
+  - **`rolled`** — a full ~270° circular roll (a curled / safe edge); no flat return.
+
+  The curl is split into ≤120° sub-arcs (the bend-patch wedge degenerates at ≥180°), each a recorded
+  sub-bend; the bend allowance is linear in angle, so Σ sub-arc allowances == the single-curl allowance. The
+  **developed length** is Σ curl allowances + the return length, laid out straight past the edge.
+- `jog(part, { region, side, position, offsetHeight, angle?, runOut?, radius?, offset?, width?, rule? })`
+  steps a flat by `offsetHeight` perpendicular to its plane with **two opposite bends** (`+θ` then `−θ`,
+  `angle` default 45°), then continues parallel. The connecting step run is solved so the two arcs' rise plus
+  the step rise equals `offsetHeight` exactly — the resulting run-out bottom face sits exactly `offsetHeight`
+  above the base bottom face (verified by measurement, not just construction). The flat carries the **two
+  bend lines** (one `up`, one `down`); the **developed length** is `position + 2·allowance + stepRun +
+  runOut`. `offsetHeight` must exceed the bends' own rise `(T + 2R)(1 − cos θ)`, else the jog is rejected.
+
+Like the contour/lofted flanges, hems and jogs have non-rectilinear developments and so sit outside the
+strict `partToFlatInput → fold` round-trip oracle; verification leans on developed-length invariants, the
+measured jog offset, and solid validity.
 
 ## Foreign-solid import & unfold
 

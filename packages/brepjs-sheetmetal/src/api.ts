@@ -40,6 +40,8 @@ import {
 import { louver as louverFn, emboss as embossFn } from './formFns.js';
 import { authorContourFlange as authorContourFlangeFn } from './contourFlangeFns.js';
 import { authorLoftedFlange as authorLoftedFlangeFn } from './loftedFlangeFns.js';
+import { hem as hemFn } from './hemFns.js';
+import { jog as jogFn } from './jogFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
   buildReport as buildReportFn,
@@ -65,6 +67,8 @@ import type {
   TabSpec,
   ContourFlangeSpec,
   LoftedFlangeSpec,
+  HemSpec,
+  JogSpec,
   UnfoldResult,
   SheetMetalWarning,
 } from './types.js';
@@ -220,6 +224,22 @@ export function contourFlange(part: SheetMetalPart, spec: ContourFlangeSpec): Re
  */
 export function loftedFlange(part: SheetMetalPart, spec: LoftedFlangeSpec): Result<SheetMetalPart> {
   return authorLoftedFlangeFn(part, spec);
+}
+
+/**
+ * Author a hem: fold a region edge back ~180°+ onto its parent and run a short
+ * return leg. The development is exact (Σ curl bend allowances + return length).
+ */
+export function hem(part: SheetMetalPart, spec: HemSpec): Result<SheetMetalPart> {
+  return hemFn(part, spec);
+}
+
+/**
+ * Author a jog (joggle): two opposite bends stepping the flat by `offsetHeight`
+ * perpendicular to its plane, then continuing parallel. Development is exact.
+ */
+export function jog(part: SheetMetalPart, spec: JogSpec): Result<SheetMetalPart> {
+  return jogFn(part, spec);
 }
 
 /** Emit an annotated multi-layer DXF string for a flat pattern. */
