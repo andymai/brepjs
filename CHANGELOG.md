@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.51.0](https://github.com/andymai/brepjs/compare/brepjs-v18.50.0...brepjs-v18.51.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** cutouts & holes that survive fold/unfold ([#1184](https://github.com/andymai/brepjs/issues/1184)) ([18007b2](https://github.com/andymai/brepjs/commit/18007b2b95fdaaee52633da9ae3291fa5fe61858))
+
 ## [18.50.0](https://github.com/andymai/brepjs/compare/brepjs-v18.49.0...brepjs-v18.50.0) (2026-06-03)
 
 
