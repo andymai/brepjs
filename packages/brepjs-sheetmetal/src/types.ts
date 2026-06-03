@@ -411,7 +411,14 @@ export type SheetMetalWarning = {
     | 'MIN_RADIUS'
     | 'INVALID_SOLID'
     | 'MITER_NOT_DEVELOPED'
-    | 'DEVELOPMENT_APPROXIMATE';
+    | 'DEVELOPMENT_APPROXIMATE'
+    /** Foreign unfold: a face is outside the supported planar/cylindrical class
+     * (unknown surface type, or a cylinder that didn't fit) and was ignored. */
+    | 'UNSUPPORTED_FACE'
+    /** Foreign unfold: the part is a valid solid but its detected structure is
+     * incomplete (non-uniform thickness, a dropped panel, or a bend not joining
+     * exactly two flats), so the flat pattern may be partial. */
+    | 'DETECTION_INCOMPLETE';
   message: string;
   featureId?: string | undefined;
 };

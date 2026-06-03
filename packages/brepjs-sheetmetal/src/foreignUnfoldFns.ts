@@ -13,6 +13,7 @@ import {
   faceCenter,
   sharedEdges,
   measureArea,
+  getBounds,
   isValid,
   vecAdd,
   vecSub,
@@ -339,14 +340,14 @@ export function unfoldForeignSolid(
   for (const face of faces) {
     const t = getSurfaceType(face);
     if (!t.ok) {
-      warnings.push({ code: 'INVALID_SOLID', message: 'failed to read a face surface type; skipping' });
+      warnings.push({ code: 'UNSUPPORTED_FACE', message: 'failed to read a face surface type; skipping' });
       continue;
     }
     if (t.value === 'PLANE') planarFaces.push(face);
     else if (t.value === 'CYLINDRE') cylFaces.push(face);
     else {
       warnings.push({
-        code: 'INVALID_SOLID',
+        code: 'UNSUPPORTED_FACE',
         message: `UNSUPPORTED_FACE: surface type '${t.value}' is not a planar panel or cylindrical bend; the unfold ignores it and may be incomplete`,
       });
     }
@@ -430,7 +431,20 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
       }
     }
     if (best < 0 || bestErr > thickness * 0.5 + GEOM_TOL) {
-      // An unpaired planar face is a bend-edge cap or rim, not a panel; skip it.
+      // No usable antiparallel partner at the sheet thickness. A bend-edge cap or
+      // rim band is plate-thin in one in-plane direction (≈ thickness) — expected,
+      // skip quietly. A face that is wide in BOTH in-plane directions is a real
+      // panel; dropping it means non-uniform thickness or unrecognised topology, so
+      // flag it. (Area alone can't tell them apart — a long rim is large by area.)
+      const db = getBounds(fa);
+      const ext = [db.xMax - db.xMin, db.yMax - db.yMin, db.zMax - db.zMin].sort((p, q) => q - p);
+      const inPlaneMin = ext[1] ?? 0;
+      if (inPlaneMin > thickness * 4) {
+        warnings.push({
+          code: 'DETECTION_INCOMPLETE',
+          message: `a panel-sized planar face (${(ext[0] ?? 0).toFixed(1)}×${inPlaneMin.toFixed(1)}) has no opposite face at the sheet thickness ${thickness.toFixed(3)}; omitted (possible non-uniform thickness)`,
+        });
+      }
       continue;
     }
     const fb = planar[best] as Face;
@@ -438,7 +452,23 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
     used.add(best);
     const areaA = measureArea(fa);
     const areaB = measureArea(fb);
-    const area = areaA.ok && areaB.ok ? (areaA.value + areaB.value) / 2 : 0;
+    let area: number;
+    if (areaA.ok && areaB.ok) area = (areaA.value + areaB.value) / 2;
+    else if (areaA.ok) area = areaA.value;
+    else if (areaB.ok) area = areaB.value;
+    else {
+      // Neither face area is measurable: fall back to the panel's bounding-box
+      // footprint so developedArea isn't silently zero, and flag the estimate.
+      const b = getBounds(fa);
+      const dx = b.xMax - b.xMin;
+      const dy = b.yMax - b.yMin;
+      const dz = b.zMax - b.zMin;
+      area = Math.max(dx * dy, dy * dz, dx * dz);
+      warnings.push({
+        code: 'DETECTION_INCOMPLETE',
+        message: `flat-${flats.length}: face area unmeasurable; using a bounding-box estimate (${area.toFixed(2)})`,
+      });
+    }
     flats.push({
       id: `flat-${flats.length}`,
       faces: [fa, fb],
@@ -449,7 +479,7 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
   }
   if (flats.length === 0 && planar.length > 0) {
     warnings.push({
-      code: 'INVALID_SOLID',
+      code: 'DETECTION_INCOMPLETE',
       message: 'no parallel planar face pairs matched the detected thickness; the part may have non-uniform thickness',
     });
   }
@@ -470,7 +500,7 @@ function pairBends(cyl: Face[], warnings: SheetMetalWarning[]): DetectedBend[] {
     const fit = fitCylinder(face);
     if (fit === null) {
       warnings.push({
-        code: 'INVALID_SOLID',
+        code: 'UNSUPPORTED_FACE',
         message: 'a cylindrical face did not fit a cylinder within tolerance; the bend is ignored',
       });
       continue;
@@ -546,7 +576,7 @@ function buildBendGraph(
     }
     if (touching.length < 2) {
       warnings.push({
-        code: 'INVALID_SOLID',
+        code: 'DETECTION_INCOMPLETE',
         message: `bend '${bend.id}' connects ${touching.length} flats (expected 2); ignored`,
         featureId: bend.id,
       });
@@ -554,7 +584,7 @@ function buildBendGraph(
     }
     if (touching.length > 2) {
       warnings.push({
-        code: 'INVALID_SOLID',
+        code: 'DETECTION_INCOMPLETE',
         message: `bend '${bend.id}' touches ${touching.length} flats; using the first two`,
         featureId: bend.id,
       });

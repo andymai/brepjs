@@ -234,7 +234,10 @@ describe('unfoldForeignSolid — honest scope (no silently-wrong answer)', () =>
     const result = unfoldForeignSolid(fused.value, { kFactor: 0.5 });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.warnings.some((w) => w.message.includes('UNSUPPORTED_FACE'))).toBe(true);
+    // The dedicated code lets a caller dispatch programmatically (not parse messages).
+    expect(result.value.warnings.some((w) => w.code === 'UNSUPPORTED_FACE')).toBe(true);
+    // It's a supported-class limit, not a corrupt B-rep.
+    expect(result.value.warnings.some((w) => w.code === 'INVALID_SOLID')).toBe(false);
   });
 });
 
