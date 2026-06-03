@@ -82,8 +82,8 @@ export function nest(patterns: FlatPattern[], options: NestOptions): Result<Nest
   if (!Number.isFinite(sheet.width) || sheet.width <= 0 || !Number.isFinite(sheet.height) || sheet.height <= 0) {
     return err(validationError('INVALID_SHEET', `sheet width/height must be positive, got ${sheet.width}×${sheet.height}`));
   }
-  if (margin < 0 || spacing < 0) {
-    return err(validationError('INVALID_NEST_OPTS', `margin and spacing must be non-negative`));
+  if (!Number.isFinite(margin) || margin < 0 || !Number.isFinite(spacing) || spacing < 0) {
+    return err(validationError('INVALID_NEST_OPTS', `margin and spacing must be non-negative finite numbers, got margin=${margin} spacing=${spacing}`));
   }
 
   const usableW = sheet.width - 2 * margin;
@@ -131,7 +131,17 @@ export function nest(patterns: FlatPattern[], options: NestOptions): Result<Nest
     placeable.push(idx);
   }
 
-  const sheets = packShelves(placeable, boxes, usableW, usableH, margin, spacing, allowRotation, usableArea);
+  const { sheets, dropped } = packShelves(placeable, boxes, usableW, usableH, margin, spacing, allowRotation, usableArea);
+  for (const idx of dropped) {
+    // Should be unreachable (pre-filtered parts fit an empty sheet); guards against
+    // a future regression silently dropping a part.
+    unplaced.push(idx);
+    warnings.push({
+      code: 'PART_TOO_LARGE',
+      message: `pattern ${idx} could not be placed on a fresh sheet; left unplaced`,
+      featureId: `pattern-${idx}`,
+    });
+  }
 
   unplaced.sort((a, b) => a - b);
   return ok({ sheets, unplaced, warnings });
@@ -164,8 +174,9 @@ function packShelves(
   spacing: number,
   allowRotation: boolean,
   usableArea: number
-): NestSheet[] {
+): { sheets: NestSheet[]; dropped: number[] } {
   const sheets: NestSheet[] = [];
+  const dropped: number[] = [];
   let state = newSheet(margin);
 
   const commit = (): void => {
@@ -178,16 +189,19 @@ function packShelves(
 
     if (!tryPlace(state, box, idx, usableW, usableH, margin, spacing, allowRotation)) {
       // Current sheet is full for this part — close it and open a fresh one. Every
-      // part in `placeable` fits an empty usable sheet, so this second attempt always
-      // succeeds (no part can stall the loop).
+      // part in `placeable` fits an empty usable sheet, so this second attempt should
+      // always succeed; record it as dropped (caller routes to `unplaced`) as a
+      // self-enforcing safety net rather than relying on that reasoning alone.
       commit();
       state = newSheet(margin);
-      tryPlace(state, box, idx, usableW, usableH, margin, spacing, allowRotation);
+      if (!tryPlace(state, box, idx, usableW, usableH, margin, spacing, allowRotation)) {
+        dropped.push(idx);
+      }
     }
   }
 
   if (state.placements.length > 0) commit();
-  return sheets;
+  return { sheets, dropped };
 }
 
 function newSheet(margin: number): ShelfState {

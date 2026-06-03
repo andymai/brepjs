@@ -165,6 +165,13 @@ describe('nest — bbox', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('rejects a non-finite margin/spacing rather than silently producing empty sheets', () => {
+    const r = nest([flatBlank(10, 10)], { sheet: { width: 100, height: 100 }, margin: Number.NaN });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error.code).toBe('INVALID_NEST_OPTS');
+  });
+
   it('keeps utilization strictly above 0 for a thin part (the (0,1] contract floor)', () => {
     // A thin-but-real 20×0.5 part still has positive bbox area. patternBbox rejects only
     // sub-EPS-extent (degenerate) boxes, so any part it accepts has positive area and can

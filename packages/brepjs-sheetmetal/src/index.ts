@@ -64,7 +64,7 @@ export { jog } from './jogFns.js';
 export { flatPatternToDXF, multiPatternToDXF } from './dxfFns.js';
 export type { DxfOptions, PlacedPattern, Transform2 } from './dxfFns.js';
 
-export { nest, nestToDXF, patternBbox } from './nestFns.js';
+export { patternBbox } from './nestFns.js';
 export type {
   NestOptions,
   NestResult,
@@ -100,8 +100,8 @@ export {
   resolveAllowance,
   contourFlange,
   loftedFlange,
-  nest as nestPatterns,
-  nestToDXF as nestSheetToDXF,
+  nest,
+  nestToDXF,
 } from './api.js';
 
 export {
