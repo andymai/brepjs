@@ -21,7 +21,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['brepjs', 'brepjs-opencascade', 'commander', 'puppeteer', /^node:/],
+      external: ['brepjs', 'occt-wasm', 'commander', 'puppeteer', /^node:/],
     },
   },
 });

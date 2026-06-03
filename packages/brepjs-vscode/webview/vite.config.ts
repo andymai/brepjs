@@ -22,5 +22,5 @@ export default defineConfig({
     },
   },
   // Exclude brepjs so it doesn't accidentally get bundled into the webview
-  optimizeDeps: { exclude: ['brepjs', 'brepjs-opencascade'] },
+  optimizeDeps: { exclude: ['brepjs', 'occt-wasm'] },
 });

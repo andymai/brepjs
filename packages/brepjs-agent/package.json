@@ -47,7 +47,7 @@
   },
   "peerDependencies": {
     "brepjs": ">=18.0.0",
-    "brepjs-opencascade": ">=0.16.0"
+    "occt-wasm": ">=3.0.0"
   },
   "dependencies": {
     "@react-three/drei": "*",
