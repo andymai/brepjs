@@ -101,6 +101,10 @@ export interface SlotPlacement {
   x: number;
   y: number;
   clearance?: number | undefined;
+  /** In-plane rotation of the slot (deg, CCW) in the mating region's local frame.
+   * Default 0 = slot length along the region's +x (bend-axis) direction; set this
+   * when the tab meets the slot region at a non-default orientation. */
+  angleDeg?: number | undefined;
 }
 
 /**
@@ -134,6 +138,7 @@ export function tabAndSlot(
     y: slot.y,
     length: slotLength,
     width: slotWidth,
+    ...(slot.angleDeg !== undefined ? { angleDeg: slot.angleDeg } : {}),
   });
 }
 

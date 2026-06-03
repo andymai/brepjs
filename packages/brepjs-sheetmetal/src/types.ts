@@ -304,7 +304,7 @@ export interface BendReport {
 }
 
 export type SheetMetalWarning = {
-  code: 'COLLISION' | 'SEAM_CUT' | 'MIN_RADIUS' | 'INVALID_SOLID';
+  code: 'COLLISION' | 'SEAM_CUT' | 'MIN_RADIUS' | 'INVALID_SOLID' | 'MITER_NOT_DEVELOPED';
   message: string;
   featureId?: string | undefined;
 };

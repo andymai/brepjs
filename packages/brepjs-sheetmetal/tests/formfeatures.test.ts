@@ -201,6 +201,20 @@ describe('tabAndSlot — self-fixturing joint', () => {
     expect(slotSpec.length).toBeGreaterThan(10);
     expect(slotSpec.width).toBeGreaterThan(T);
   });
+
+  it('threads the slot angleDeg through so the slot can be oriented to match the tab', () => {
+    const part = basePart(60, 40);
+    const joined = unwrap(
+      tabAndSlot(
+        part,
+        { region: 'base', side: 'xmax', offset: 15, width: 10, length: 8 },
+        { region: 'base', x: 30, y: 20, angleDeg: 90 }
+      )
+    );
+    const slotSpec = joined.cutouts?.[0]?.spec;
+    if (slotSpec?.kind !== 'slot') throw new Error('expected slot');
+    expect(slotSpec.angleDeg).toBe(90);
+  });
 });
 
 describe('louver — formed vent', () => {

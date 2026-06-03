@@ -82,7 +82,14 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   );
   // The L-miter chamfer special-case can't express tabs either; once any tab is
   // recorded, fall through to the rectilinear-union path (which absorbs tab rects).
+  // The 3D corner-miter cut still stands; only the developed chamfer is omitted.
   const miters = tabRects.length > 0 ? [] : part.miters ?? [];
+  if (tabRects.length > 0 && (part.miters ?? []).length > 0) {
+    warnings.push({
+      code: 'MITER_NOT_DEVELOPED',
+      message: 'developed outline omits the corner-miter chamfer because a tab is present; the 3D miter cut is unaffected',
+    });
+  }
   const outlineResult = buildOutline(rects, layout, miters, notches);
   if (!outlineResult.ok) return outlineResult;
   layout.developedArea -= removedNotchArea(rects, notches);
@@ -384,9 +391,9 @@ function buildForms(part: SheetMetalPart): Result<FormWires> {
       cuts.push(cutWire.value);
     }
     for (const loop of form.markers) {
-      const wire = closedLoopWire(loop);
-      if (!wire.ok) return wire;
-      markers.push(wire.value);
+      const markerWire = closedLoopWire(loop);
+      if (!markerWire.ok) return markerWire;
+      markers.push(markerWire.value);
     }
     if (form.hinge !== undefined) {
       const [a, b] = form.hinge;
@@ -416,7 +423,7 @@ function closedLoopWire(loop: Pt2[]): Result<Wire> {
 /** Trace an OPEN developed-plane path (≥ 2 points) into a brepjs {@link Wire}. */
 function openPathWire(path: Pt2[]): Result<Wire> {
   if (path.length < 2) {
-    return err(validationError('FORM_LOOP_TOO_SMALL', `form cut path has ${path.length} points, need ≥ 2`));
+    return err(validationError('FORM_PATH_TOO_SHORT', `form cut path has ${path.length} points, need ≥ 2`));
   }
   const edges: Edge[] = [];
   for (let i = 0; i + 1 < path.length; i += 1) {
