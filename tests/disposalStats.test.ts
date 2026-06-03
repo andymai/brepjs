@@ -30,13 +30,17 @@ describe('disposal stats', () => {
     expect(typeof stats.scopeEnters).toBe('number');
   });
 
-  it('resetDisposalStats zeroes the live/peak/scope counters', () => {
+  it('resetDisposalStats zeroes the peak/scope/gc counters', () => {
     resetDisposalStats();
     const stats = getDisposalStats();
-    expect(stats.liveHandles).toBe(0);
     expect(stats.peakHandles).toBe(0);
     expect(stats.scopeEnters).toBe(0);
     expect(stats.scopeExits).toBe(0);
+    expect(stats.gcCollected).toBe(0);
+    // liveHandles is intentionally not asserted: setup (initOC) leaves WASM
+    // handles alive, so the FinalizationRegistry can adjust this counter
+    // asynchronously after the synchronous reset — an absolute assertion would
+    // be fragile and could even go negative for later readers.
   });
 });
 

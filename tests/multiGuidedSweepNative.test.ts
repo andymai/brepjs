@@ -39,39 +39,46 @@ beforeAll(async () => {
 
 describe('multiSectionSweep (public-API fixtures)', () => {
   it('lofts two sections along a spine into a 3D shape', () => {
-    const spine = lineSpine([0, 0, 0], [0, 0, 50]);
-    const result = multiSectionSweep([{ wire: circleWire(10) }, { wire: circleWire(5) }], spine, {
-      solid: true,
-    });
+    using spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using c1 = circleWire(10);
+    using c2 = circleWire(5);
+    const result = multiSectionSweep([{ wire: c1 }, { wire: c2 }], spine, { solid: true });
     expect(isOk(result)).toBe(true);
-    expect(isShape3D(unwrap(result))).toBe(true);
+    using shape = unwrap(result);
+    expect(isShape3D(shape)).toBe(true);
   });
 
   it('honours explicit, strictly-increasing section locations', () => {
-    const spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using c1 = circleWire(8);
+    using c2 = circleWire(6);
     const result = multiSectionSweep(
       [
-        { wire: circleWire(8), location: 0.1 },
-        { wire: circleWire(6), location: 0.9 },
+        { wire: c1, location: 0.1 },
+        { wire: c2, location: 0.9 },
       ],
       spine
     );
     expect(isOk(result)).toBe(true);
+    unwrap(result)[Symbol.dispose]();
   });
 
   it('errors with fewer than 2 sections', () => {
-    const spine = lineSpine([0, 0, 0], [0, 0, 50]);
-    const result = multiSectionSweep([{ wire: circleWire(10) }], spine);
+    using spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using c1 = circleWire(10);
+    const result = multiSectionSweep([{ wire: c1 }], spine);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('MULTI_SWEEP_INSUFFICIENT_SECTIONS');
   });
 
   it('errors when a section location is out of [0, 1]', () => {
-    const spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using c1 = circleWire(8);
+    using c2 = circleWire(6);
     const result = multiSectionSweep(
       [
-        { wire: circleWire(8), location: 0.2 },
-        { wire: circleWire(6), location: 1.5 },
+        { wire: c1, location: 0.2 },
+        { wire: c2, location: 1.5 },
       ],
       spine
     );
@@ -79,11 +86,13 @@ describe('multiSectionSweep (public-API fixtures)', () => {
   });
 
   it('errors when section locations are not strictly increasing', () => {
-    const spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using spine = lineSpine([0, 0, 0], [0, 0, 50]);
+    using c1 = circleWire(8);
+    using c2 = circleWire(6);
     const result = multiSectionSweep(
       [
-        { wire: circleWire(8), location: 0.7 },
-        { wire: circleWire(6), location: 0.3 },
+        { wire: c1, location: 0.7 },
+        { wire: c2, location: 0.3 },
       ],
       spine
     );
@@ -93,18 +102,20 @@ describe('multiSectionSweep (public-API fixtures)', () => {
 
 describe('guidedSweep (public-API fixtures)', () => {
   it('sweeps a profile along a spine with a guide wire', () => {
-    const profile = circleWire(3);
-    const spine = lineSpine([0, 0, 0], [0, 0, 30]);
-    const guide = lineSpine([5, 0, 0], [5, 0, 30]);
+    using profile = circleWire(3);
+    using spine = lineSpine([0, 0, 0], [0, 0, 30]);
+    using guide = lineSpine([5, 0, 0], [5, 0, 30]);
     const result = guidedSweep(profile, spine, [guide]);
     expect(isOk(result)).toBe(true);
-    expect(isShape3D(unwrap(result))).toBe(true);
+    using shape = unwrap(result);
+    expect(isShape3D(shape)).toBe(true);
   });
 
   it('sweeps without guides (no auxiliary spine) in shell mode', () => {
-    const profile = circleWire(3);
-    const spine = lineSpine([0, 0, 0], [0, 0, 30]);
+    using profile = circleWire(3);
+    using spine = lineSpine([0, 0, 0], [0, 0, 30]);
     const result = guidedSweep(profile, spine, [], { solid: false });
     expect(isOk(result)).toBe(true);
+    unwrap(result)[Symbol.dispose]();
   });
 });
