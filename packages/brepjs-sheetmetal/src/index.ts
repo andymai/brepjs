@@ -44,6 +44,11 @@ export { addBendRelief, autoBendReliefs, cornerRelief } from './reliefFns.js';
 
 export { addCutout, addHole, addSlot, addPolygonCutout } from './cutoutFns.js';
 
+export { addTab, tabAndSlot } from './tabFns.js';
+export type { SlotPlacement } from './tabFns.js';
+
+export { addForm, louver, emboss } from './formFns.js';
+
 export { flatPatternToDXF } from './dxfFns.js';
 export type { DxfOptions } from './dxfFns.js';
 
@@ -84,6 +89,10 @@ export type {
   ReliefFeature,
   CutoutSpec,
   CutoutFeature,
+  TabSpec,
+  TabFeature,
+  FormSpec,
+  FormFeature,
   SheetMetalPart,
   FlatPattern,
   FlatInput,

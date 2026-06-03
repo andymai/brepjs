@@ -161,6 +161,96 @@ export interface CutoutFeature {
   area: number;
 }
 
+/**
+ * A rectangular tab: additive material extending OUTWARD from a flat region's edge
+ * (the additive counterpart of a cutout). `region` names the flat (a flange id, or
+ * `'base'`/`'root'` for the base); `side` is the region-local edge it protrudes
+ * from; `offset` is its start position along that edge and `width` its extent along
+ * it; `length` is how far it sticks out past the edge. The tab is full thickness.
+ */
+export interface TabSpec {
+  region: string;
+  side: FlatSide;
+  offset: number;
+  width: number;
+  length: number;
+}
+
+/**
+ * A recorded tab, mirroring {@link CutoutFeature}: enough to replay the developed
+ * protrusion and re-fuse the 3D material on a re-fold. `rect` is the developed-plane
+ * rectangle `[x0, y0, x1, y1]` added to the outer outline; `area` is its area, added
+ * to the developed area.
+ */
+export interface TabFeature {
+  spec: TabSpec;
+  /** The region (flange id, or `'root'`) the tab protrudes from. */
+  region: string;
+  /** Developed-plane protrusion rectangle `[x0, y0, x1, y1]`. */
+  rect: [number, number, number, number];
+  /** Area of the protrusion rectangle (`width · length`). */
+  area: number;
+}
+
+/**
+ * A form feature: a louver (vent flap) or an emboss/dimple (round bump), formed
+ * locally on a flat region's face. Forms do not remove or add net material, so the
+ * developed outline is unchanged; the flat pattern carries the fabrication markers
+ * (the louver U-cut + hinge line, the emboss footprint circle) on a FORM layer.
+ *
+ * - `louver` — a vent cut on three sides with the flap formed up along the hinge.
+ *   `length` runs along the hinge, `width` is the flap depth (perpendicular), and
+ *   `height` is how far the flap rises. `direction` picks the formed face (`up` =
+ *   +n, the default).
+ * - `emboss` / `dimple` — a round local form of `diameter` rising (`emboss`) or
+ *   recessed (`dimple`) by `height`.
+ *
+ * Coordinates are region-local: `(x, y)` is the form centre, `+x` along the region
+ * `u` axis, `+y` along `v`.
+ */
+export type FormSpec =
+  | {
+      kind: 'louver';
+      region: string;
+      x: number;
+      y: number;
+      length: number;
+      width: number;
+      height: number;
+      direction?: 'up' | 'down' | undefined;
+    }
+  | {
+      kind: 'emboss';
+      region: string;
+      x: number;
+      y: number;
+      diameter: number;
+      height: number;
+      form: 'dimple' | 'emboss';
+    };
+
+/**
+ * A recorded form feature, mirroring {@link CutoutFeature}. `spec` is the original
+ * region-local feature (so {@link FoldRegion} can re-apply it on a re-fold). `cuts`
+ * are OPEN developed-plane cut paths: the louver's three cut sides — all but the
+ * {@link FormFeature.hinge} side — as an open polyline the fabricator cuts to free
+ * the flap; empty for an emboss/dimple, which removes no material. `markers` are
+ * closed developed-plane marker loops (the emboss/dimple footprint circle; empty for
+ * a louver). `hinge` is the developed-plane fold segment of a louver — the one
+ * footprint side NOT cut — and is `undefined` for an emboss/dimple.
+ */
+export interface FormFeature {
+  spec: FormSpec;
+  /** The region (flange id, or `'root'`) the form sits on. */
+  region: string;
+  /** Developed-plane cut paths (open) a fabricator cuts; empty for embosses. */
+  cuts: [number, number][][];
+  /** Developed-plane marker loops (closed) for the FORM layer. */
+  markers: [number, number][][];
+  /** Developed-plane hinge segment `[a, b]` for a louver; undefined otherwise. */
+  hinge?: [[number, number], [number, number]] | undefined;
+}
+
 export interface SheetMetalPart {
   thickness: number;
   /** Base flat extent along +X (x∈[0, baseLength]); the east-run length. */
@@ -174,6 +264,8 @@ export interface SheetMetalPart {
   miters?: CornerMiter[] | undefined;
   reliefs?: ReliefFeature[] | undefined;
   cutouts?: CutoutFeature[] | undefined;
+  tabs?: TabFeature[] | undefined;
+  forms?: FormFeature[] | undefined;
 }
 
 export interface FlatPattern {
@@ -189,6 +281,13 @@ export interface FlatPattern {
   }[];
   /** Interior cutout loops (holes/slots/polygons) as closed wires in the developed plane. */
   holes: Wire[];
+  /** Form cut paths (louver U-cuts) a fabricator cuts before forming, as open wires
+   * (the three non-hinge sides; the hinge rides in {@link FlatPattern.formHinges}). */
+  formCuts: Wire[];
+  /** Form marker loops (emboss/dimple footprints) for annotation, as closed wires. */
+  formMarkers: Wire[];
+  /** Form hinge lines (louver fold lines) for annotation, as edges. */
+  formHinges: Edge[];
   developedArea: number;
 }
 
@@ -245,6 +344,10 @@ export interface FoldRegion {
   bendRelief?: ReliefSpec | undefined;
   /** Cutouts to punch into this region (in region-local coords) after folding. */
   cutouts?: CutoutSpec[] | undefined;
+  /** Tabs to fuse onto this region's edges (in region-local coords) after folding. */
+  tabs?: TabSpec[] | undefined;
+  /** Form features (louvers / embosses) on this region (region-local) after folding. */
+  forms?: FormSpec[] | undefined;
 }
 
 /**
@@ -264,4 +367,8 @@ export interface FlatInput {
   regions: FoldRegion[];
   /** Cutouts to punch into the base region (in base-local coords) after folding. */
   baseCutouts?: CutoutSpec[] | undefined;
+  /** Tabs to fuse onto the base region's edges (in base-local coords) after folding. */
+  baseTabs?: TabSpec[] | undefined;
+  /** Form features on the base region (base-local coords) after folding. */
+  baseForms?: FormSpec[] | undefined;
 }

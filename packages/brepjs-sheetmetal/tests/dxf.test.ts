@@ -80,14 +80,14 @@ describe('flatPatternToDXF — structure', () => {
     expect(r.value).toContain('BEND_DOWN');
   });
 
-  it('LAYER table entry count matches the 4 layers written', () => {
+  it('LAYER table entry count matches the 5 layers written', () => {
     const r = flatPatternToDXF(unfoldPattern('up'));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const lines = r.value.split('\n');
     const symIdx = lines.indexOf('AcDbSymbolTable');
     expect(lines[symIdx + 1]).toBe('70');
-    expect(lines[symIdx + 2]).toBe('4');
+    expect(lines[symIdx + 2]).toBe('5');
   });
 
   it('is R2000-conformant: $HANDSEED + AcDb subclass markers on every entity', () => {

@@ -20,9 +20,11 @@ import type { Solid, Vec3 } from 'brepjs';
 import { author, miterCorner, unfold, fold } from '../src/api.js';
 import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { addCutout } from '../src/cutoutFns.js';
+import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
+import { addForm } from '../src/formFns.js';
 import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
-import type { BendRule, CutoutSpec, FlatPattern, SheetMetalPart } from '../src/types.js';
+import type { BendRule, CutoutSpec, FlatPattern, FormSpec, SheetMetalPart, TabSpec } from '../src/types.js';
 
 /**
  * Boot the OCCT-WASM kernel directly from `brepjs-opencascade` (the same recipe
@@ -66,6 +68,12 @@ interface Demo {
   cornerRelief?: { a: string; b: string };
   /** Optional cutouts (holes / slots / polygons) punched after authoring. */
   cutouts?: CutoutSpec[];
+  /** Optional tabs (additive protrusions) fused after authoring. */
+  tabs?: TabSpec[];
+  /** Optional tab-and-slot joints (a tab + a matching mating slot). */
+  tabSlots?: { tab: TabSpec; slot: SlotPlacement }[];
+  /** Optional form features (louvers / embosses) formed after authoring. */
+  forms?: FormSpec[];
 }
 
 const DEMOS: Demo[] = [
@@ -147,6 +155,38 @@ const DEMOS: Demo[] = [
       { kind: 'hole', region: 'lip', x: 30, y: 9, diameter: 8 },
     ],
   },
+  {
+    name: 'tab-and-slot-box',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 60 },
+      flanges: [
+        { id: 'wx', length: 20, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'wy', length: 20, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    },
+    // Self-locating box corners: a tab on one wall inserts into a slot on the next.
+    tabSlots: [
+      {
+        tab: { region: 'wx', side: 'xmax', offset: 6, width: 10, length: 4 },
+        slot: { region: 'wy', x: 10, y: 10, clearance: 0.2 },
+      },
+    ],
+  },
+  {
+    name: 'louvered-panel',
+    spec: {
+      thickness: T,
+      base: { length: 80, width: 50 },
+      flanges: [{ id: 'lip', length: 14, angleDeg: 90, rule, side: 'ymax' }],
+    },
+    forms: [
+      { kind: 'louver', region: 'base', x: 25, y: 20, length: 30, width: 8, height: 4 },
+      { kind: 'louver', region: 'base', x: 25, y: 35, length: 30, width: 8, height: 4 },
+      { kind: 'emboss', region: 'base', x: 60, y: 20, diameter: 10, height: 2, form: 'emboss' },
+      { kind: 'emboss', region: 'base', x: 60, y: 35, diameter: 10, height: 0.5, form: 'dimple' },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {
@@ -186,6 +226,21 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     if (isErr(cutResult)) throw new Error(`cutout '${demo.name}' failed: ${cutResult.error.message}`);
     part = cutResult.value;
   }
+  for (const spec of demo.tabs ?? []) {
+    const tabResult = addTab(part, spec);
+    if (isErr(tabResult)) throw new Error(`tab '${demo.name}' failed: ${tabResult.error.message}`);
+    part = tabResult.value;
+  }
+  for (const ts of demo.tabSlots ?? []) {
+    const tsResult = tabAndSlot(part, ts.tab, ts.slot);
+    if (isErr(tsResult)) throw new Error(`tabAndSlot '${demo.name}' failed: ${tsResult.error.message}`);
+    part = tsResult.value;
+  }
+  for (const spec of demo.forms ?? []) {
+    const formResult = addForm(part, spec);
+    if (isErr(formResult)) throw new Error(`form '${demo.name}' failed: ${formResult.error.message}`);
+    part = formResult.value;
+  }
   if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
@@ -208,6 +263,10 @@ async function renderDemo(demo: Demo): Promise<string[]> {
   // Mitered AND relief'd parts are intentionally skipped (a notched/chamfered outline
   // is not a plain rectangle, so patternToFlatInput cannot re-parse it); a failure on
   // a plain demo is a real round-trip regression, so it must surface as such.
+  // Tabs, cutouts and forms ride the recorded-feature path (partToFlatInput carries
+  // their region-local specs), so a tab'd/formed part still round-trips even though a
+  // tab protrudes the outline — the parser recovers the base/flange rectangles from
+  // the bend lines and unprotruded edges.
   const skipRoundTrip = demo.miter !== undefined || part.reliefs !== undefined;
   let roundTrip = '(fold round-trip skipped: mitered/relief’d part)';
   if (!skipRoundTrip) {
@@ -281,8 +340,16 @@ function renderFlatSvg(pattern: FlatPattern): string {
   const holeSegs: Seg2[] = pattern.holes.flatMap((w) =>
     getEdges(w).map((e) => ({ a: to2(curveStartPoint(e)), b: to2(curveEndPoint(e)) }))
   );
+  const formSegs: Seg2[] = [
+    ...pattern.formCuts,
+    ...pattern.formMarkers,
+  ].flatMap((w) => getEdges(w).map((e) => ({ a: to2(curveStartPoint(e)), b: to2(curveEndPoint(e)) })));
+  const hingeSegs: Seg2[] = pattern.formHinges.map((e) => ({
+    a: to2(curveStartPoint(e)),
+    b: to2(curveEndPoint(e)),
+  }));
 
-  const allPts = [...outlineSegs, ...bendSegs, ...holeSegs].flatMap((s) => [s.a, s.b]);
+  const allPts = [...outlineSegs, ...bendSegs, ...holeSegs, ...formSegs, ...hingeSegs].flatMap((s) => [s.a, s.b]);
   const body =
     outlineSegs
       .map((s) => `<line class="outline" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
@@ -294,6 +361,14 @@ function renderFlatSvg(pattern: FlatPattern): string {
     '\n' +
     holeSegs
       .map((s) => `<line class="hole" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
+      .join('\n') +
+    '\n' +
+    formSegs
+      .map((s) => `<line class="form" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
+      .join('\n') +
+    '\n' +
+    hingeSegs
+      .map((s) => `<line class="hinge" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
       .join('\n');
 
   return fitPanel(body, bounds(allPts), 'Flat pattern', '#b8431d', true);
@@ -359,7 +434,7 @@ function fitPanel(body: string, box: Box, title: string, stroke: string, flipY =
 function composeSideBySide(left: string, right: string): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${PANEL_W * 2}" height="${PANEL_H}" viewBox="0 0 ${PANEL_W * 2} ${PANEL_H}">`,
-    `<style>.bend{stroke-dasharray:4 3}.hole{stroke:#2a9d4a}</style>`,
+    `<style>.bend{stroke-dasharray:4 3}.hole{stroke:#2a9d4a}.form{stroke:#9d4aa0}.hinge{stroke:#9d4aa0;stroke-dasharray:2 2}</style>`,
     `<g>${left}</g>`,
     `<g transform="translate(${PANEL_W} 0)">${right}</g>`,
     `</svg>`,

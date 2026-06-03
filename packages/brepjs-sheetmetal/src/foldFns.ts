@@ -15,13 +15,17 @@ import type {
   FlatPattern,
   FlatSide,
   FoldRegion,
+  FormSpec,
   MaterialSpec,
   SheetMetalPart,
   SheetMetalWarning,
+  TabSpec,
 } from './types.js';
 import { authorPart, type AuthorSpec, type FlangeSpec } from './authorFns.js';
 import { addBendRelief } from './reliefFns.js';
 import { addCutout } from './cutoutFns.js';
+import { addTab } from './tabFns.js';
+import { addForm } from './formFns.js';
 import { featureTree, ROOT_FLAT_ID } from './featureTreeFns.js';
 import { developedLength } from './allowanceFns.js';
 import { unfold, edgeBasis2, type Frame2 } from './unfoldFns.js';
@@ -85,6 +89,33 @@ export function foldWithWarnings(input: FlatInput): Result<FoldResult> {
       const cutResult = addCutout(part, { ...spec, region: region.id });
       if (!cutResult.ok) return cutResult;
       part = cutResult.value;
+    }
+  }
+
+  // Re-apply recorded tabs (additive protrusions) and form features so a tab'd /
+  // formed part folds back into the same solid + recorded features.
+  for (const spec of input.baseTabs ?? []) {
+    const tabbed = addTab(part, { ...spec, region: ROOT_FLAT_ID });
+    if (!tabbed.ok) return tabbed;
+    part = tabbed.value;
+  }
+  for (const region of input.regions) {
+    for (const spec of region.tabs ?? []) {
+      const tabbed = addTab(part, { ...spec, region: region.id });
+      if (!tabbed.ok) return tabbed;
+      part = tabbed.value;
+    }
+  }
+  for (const spec of input.baseForms ?? []) {
+    const formed = addForm(part, { ...spec, region: ROOT_FLAT_ID });
+    if (!formed.ok) return formed;
+    part = formed.value;
+  }
+  for (const region of input.regions) {
+    for (const spec of region.forms ?? []) {
+      const formed = addForm(part, { ...spec, region: region.id });
+      if (!formed.ok) return formed;
+      part = formed.value;
     }
   }
 
@@ -212,7 +243,11 @@ export function partToFlatInput(part: SheetMetalPart): Result<FlatInput> {
   });
   if (!recovered.ok) return recovered;
 
-  return attachCutouts(part, recovered.value);
+  const withCutouts = attachCutouts(part, recovered.value);
+  if (!withCutouts.ok) return withCutouts;
+  const withTabs = attachTabs(part, withCutouts.value);
+  if (!withTabs.ok) return withTabs;
+  return attachForms(part, withTabs.value);
 }
 
 /**
@@ -264,6 +299,107 @@ function attachCutouts(part: SheetMetalPart, input: FlatInput): Result<FlatInput
     ...input,
     regions,
     ...(baseCutouts.length > 0 ? { baseCutouts } : {}),
+  });
+}
+
+/**
+ * Re-attach a part's recorded tabs onto a recovered {@link FlatInput}, mirroring
+ * {@link attachCutouts}. A tab carries its region-local {@link TabSpec}, so it
+ * replays through the recorded-feature path exactly as cutouts/forms do — the spec,
+ * not the outline, drives the re-fuse. (The tab does extend the outer outline, but
+ * the outline parser only needs to recover the base/flange rectangles, which it does
+ * from the bend lines and the unprotruded edges; see {@link partToFlatInput}.) An
+ * unmappable region fails loudly rather than silently dropping the tab — silently
+ * shedding it would change the refolded volume with no diagnostic.
+ */
+function attachTabs(part: SheetMetalPart, input: FlatInput): Result<FlatInput> {
+  if (part.tabs === undefined || part.tabs.length === 0) return ok(input);
+
+  const recoveredIdByFlange = new Map<string, string>();
+  const tree = featureTree(part);
+  if (tree.ok) {
+    tree.value.bends.forEach((tb, i) => recoveredIdByFlange.set(tb.child, `b${i}`));
+  }
+
+  const baseTabs: TabSpec[] = [];
+  const byRegion = new Map<string, TabSpec[]>();
+  for (const t of part.tabs) {
+    if (t.region === ROOT_FLAT_ID) {
+      baseTabs.push(t.spec);
+      continue;
+    }
+    const recoveredId = recoveredIdByFlange.get(t.region);
+    if (recoveredId === undefined) {
+      return err(
+        validationError(
+          'TAB_REGION_UNMAPPED',
+          `partToFlatInput: tab on region '${t.region}' has no recovered flat region; round-trip would drop it`
+        )
+      );
+    }
+    const list = byRegion.get(recoveredId) ?? [];
+    list.push(t.spec);
+    byRegion.set(recoveredId, list);
+  }
+
+  const regions = input.regions.map((r) => {
+    const specs = byRegion.get(r.id);
+    return specs === undefined ? r : { ...r, tabs: specs };
+  });
+
+  return ok({
+    ...input,
+    regions,
+    ...(baseTabs.length > 0 ? { baseTabs } : {}),
+  });
+}
+
+/**
+ * Re-attach a part's recorded form features (louvers / embosses) onto a recovered
+ * {@link FlatInput}, mirroring {@link attachCutouts}. Forms are net-material-neutral
+ * (they don't change the outer outline), so they round-trip cleanly through the
+ * outline oracle; only their region-local specs need carrying across. An unmappable
+ * region fails loudly rather than silently dropping the form.
+ */
+function attachForms(part: SheetMetalPart, input: FlatInput): Result<FlatInput> {
+  if (part.forms === undefined || part.forms.length === 0) return ok(input);
+
+  const recoveredIdByFlange = new Map<string, string>();
+  const tree = featureTree(part);
+  if (tree.ok) {
+    tree.value.bends.forEach((tb, i) => recoveredIdByFlange.set(tb.child, `b${i}`));
+  }
+
+  const baseForms: FormSpec[] = [];
+  const byRegion = new Map<string, FormSpec[]>();
+  for (const f of part.forms) {
+    if (f.region === ROOT_FLAT_ID) {
+      baseForms.push(f.spec);
+      continue;
+    }
+    const recoveredId = recoveredIdByFlange.get(f.region);
+    if (recoveredId === undefined) {
+      return err(
+        validationError(
+          'FORM_REGION_UNMAPPED',
+          `partToFlatInput: form on region '${f.region}' has no recovered flat region; round-trip would drop it`
+        )
+      );
+    }
+    const list = byRegion.get(recoveredId) ?? [];
+    list.push(f.spec);
+    byRegion.set(recoveredId, list);
+  }
+
+  const regions = input.regions.map((r) => {
+    const specs = byRegion.get(r.id);
+    return specs === undefined ? r : { ...r, forms: specs };
+  });
+
+  return ok({
+    ...input,
+    regions,
+    ...(baseForms.length > 0 ? { baseForms } : {}),
   });
 }
 

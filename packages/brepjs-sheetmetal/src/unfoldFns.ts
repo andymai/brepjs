@@ -6,6 +6,7 @@ import {
   err,
   validationError,
   line,
+  wire,
   wireLoop,
 } from 'brepjs';
 import type {
@@ -71,16 +72,28 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   for (const placed of layout.flats) rects.push(placed.rect);
   for (const strip of layout.strips) rects.push(strip);
 
+  // Tabs are additive protrusions: their developed rectangles join the outer-outline
+  // union and add to the developed area.
+  const tabRects: Rect[] = (part.tabs ?? []).map((t) => ({ x0: t.rect[0], y0: t.rect[1], x1: t.rect[2], y1: t.rect[3] }));
+  for (const r of tabRects) rects.push(r);
+
   const notches: Rect[] = (part.reliefs ?? []).flatMap((relief) =>
     relief.notches.map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }))
   );
-  const outlineResult = buildOutline(rects, layout, part.miters ?? [], notches);
+  // The L-miter chamfer special-case can't express tabs either; once any tab is
+  // recorded, fall through to the rectilinear-union path (which absorbs tab rects).
+  const miters = tabRects.length > 0 ? [] : part.miters ?? [];
+  const outlineResult = buildOutline(rects, layout, miters, notches);
   if (!outlineResult.ok) return outlineResult;
   layout.developedArea -= removedNotchArea(rects, notches);
+  for (const t of part.tabs ?? []) layout.developedArea += t.area;
 
   const holesResult = buildHoles(part);
   if (!holesResult.ok) return holesResult;
   for (const c of part.cutouts ?? []) layout.developedArea -= c.area;
+
+  const formsResult = buildForms(part);
+  if (!formsResult.ok) return formsResult;
 
   const bendLines = layout.flats
     .filter((p): p is PlacedFlange => p.kind === 'flange')
@@ -98,6 +111,9 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
     outline: outlineResult.value,
     bendLines,
     holes: holesResult.value,
+    formCuts: formsResult.value.cuts,
+    formMarkers: formsResult.value.markers,
+    formHinges: formsResult.value.hinges,
     developedArea: layout.developedArea,
   };
 
@@ -342,6 +358,76 @@ function buildHoles(part: SheetMetalPart): Result<Wire[]> {
     wires.push(wire.value);
   }
   return ok(wires);
+}
+
+interface FormWires {
+  cuts: Wire[];
+  markers: Wire[];
+  hinges: Edge[];
+}
+
+/**
+ * Developed-plane wires for recorded form features: each louver U-cut and emboss
+ * footprint as a closed {@link Wire}, plus each louver hinge as an {@link Edge}. The
+ * loops were already mapped into developed coordinates when the form was recorded
+ * (via the region's developed frame), so this just traces them. Forms are net-
+ * material-neutral, so the outer outline and developed area are untouched.
+ */
+function buildForms(part: SheetMetalPart): Result<FormWires> {
+  const cuts: Wire[] = [];
+  const markers: Wire[] = [];
+  const hinges: Edge[] = [];
+  for (const form of part.forms ?? []) {
+    for (const path of form.cuts) {
+      const cutWire = openPathWire(path);
+      if (!cutWire.ok) return cutWire;
+      cuts.push(cutWire.value);
+    }
+    for (const loop of form.markers) {
+      const wire = closedLoopWire(loop);
+      if (!wire.ok) return wire;
+      markers.push(wire.value);
+    }
+    if (form.hinge !== undefined) {
+      const [a, b] = form.hinge;
+      hinges.push(line([a[0], a[1], 0], [b[0], b[1], 0]));
+    }
+  }
+  return ok({ cuts, markers, hinges });
+}
+
+/** Trace a closed developed-plane loop (≥ 3 points) into a brepjs {@link Wire}. */
+function closedLoopWire(loop: Pt2[]): Result<Wire> {
+  if (loop.length < 3) {
+    return err(validationError('FORM_LOOP_TOO_SMALL', `form loop has ${loop.length} points, need ≥ 3`));
+  }
+  const edges: Edge[] = [];
+  for (let i = 0; i < loop.length; i += 1) {
+    const a = loop[i];
+    const b = loop[(i + 1) % loop.length];
+    if (a === undefined || b === undefined) {
+      return err(validationError('FORM_LOOP_FAILED', 'failed to index form loop'));
+    }
+    edges.push(line([a[0], a[1], 0], [b[0], b[1], 0]));
+  }
+  return wireLoop(edges);
+}
+
+/** Trace an OPEN developed-plane path (≥ 2 points) into a brepjs {@link Wire}. */
+function openPathWire(path: Pt2[]): Result<Wire> {
+  if (path.length < 2) {
+    return err(validationError('FORM_LOOP_TOO_SMALL', `form cut path has ${path.length} points, need ≥ 2`));
+  }
+  const edges: Edge[] = [];
+  for (let i = 0; i + 1 < path.length; i += 1) {
+    const a = path[i];
+    const b = path[i + 1];
+    if (a === undefined || b === undefined) {
+      return err(validationError('FORM_LOOP_FAILED', 'failed to index form cut path'));
+    }
+    edges.push(line([a[0], a[1], 0], [b[0], b[1], 0]));
+  }
+  return wire(edges);
 }
 
 function rectOf(f: Frame2): Rect {

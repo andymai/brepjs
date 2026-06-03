@@ -127,8 +127,38 @@ export function addPolygonCutout(
 }
 
 /** `'base'` is an alias for the base region; everything else passes through. */
-function resolveRegionId(region: string): string {
+export function resolveRegionId(region: string): string {
   return region === 'base' || region === 'face-0' ? ROOT_FLAT_ID : region;
+}
+
+/**
+ * Resolve a region's world {@link FlatFrame} and developed {@link Frame2} in one
+ * shared feature-tree walk — the lookup tabs/forms need to place geometry on the
+ * correct folded face and emit the matching developed-plane loops. Mirrors the
+ * frame resolution {@link addCutout} performs inline.
+ */
+export function regionFrames(
+  part: SheetMetalPart,
+  region: string
+): Result<{ regionId: string; world: FlatFrame; dev: Frame2 }> {
+  const regionId = resolveRegionId(region);
+  const treeResult = featureTree(part);
+  if (!treeResult.ok) return treeResult;
+  const tree = treeResult.value;
+  const framesResult = worldFrames(part, tree);
+  if (!framesResult.ok) return framesResult;
+  const world = framesResult.value.get(regionId);
+  if (world === undefined) {
+    return err(validationError('UNKNOWN_REGION', `region '${region}' not found`));
+  }
+  const dev = developedFrame(part, regionId, tree);
+  if (!dev.ok) return dev;
+  return ok({ regionId, world, dev: dev.value });
+}
+
+/** Developed-plane (u, v) extent of a region: base dims, or a flange frame's lengths. */
+export function regionDevExtent(part: SheetMetalPart, regionId: string, world: FlatFrame): Extent {
+  return regionExtent(part, regionId, world);
 }
 
 /** Closed local-plane loop (CCW, no closing-point duplicate) for a cutout spec. */
@@ -200,7 +230,7 @@ function slotPts(cx: number, cy: number, length: number, width: number, angleDeg
 }
 
 /** Local-frame extent the cutout must fit within. */
-interface Extent {
+export interface Extent {
   uMax: number;
   vMax: number;
 }
@@ -266,7 +296,7 @@ function developedFrame(part: SheetMetalPart, regionId: string, tree?: FeatureTr
 }
 
 /** Map a region-local `(x, y)` into developed-plane coordinates via its {@link Frame2}. */
-function mapToFrame2(p: Pt2, f: Frame2): Pt2 {
+export function mapToFrame2(p: Pt2, f: Frame2): Pt2 {
   return [
     f.origin[0] + f.u[0] * p[0] + f.v[0] * p[1],
     f.origin[1] + f.u[1] * p[0] + f.v[1] * p[1],

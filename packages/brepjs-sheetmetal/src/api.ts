@@ -31,6 +31,12 @@ import {
   addSlot as addSlotFn,
   addPolygonCutout as addPolygonCutoutFn,
 } from './cutoutFns.js';
+import {
+  addTab as addTabFn,
+  tabAndSlot as tabAndSlotFn,
+  type SlotPlacement,
+} from './tabFns.js';
+import { louver as louverFn, emboss as embossFn } from './formFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
   buildReport as buildReportFn,
@@ -47,6 +53,7 @@ import type {
   BendRule,
   ReliefSpec,
   CutoutSpec,
+  TabSpec,
   UnfoldResult,
   SheetMetalWarning,
 } from './types.js';
@@ -139,6 +146,44 @@ export function addPolygonCutout(
   return addPolygonCutoutFn(part, region, points);
 }
 
+/** Fuse a rectangular tab (additive protrusion) onto a region's edge. */
+export function addTab(part: SheetMetalPart, spec: TabSpec): Result<SheetMetalPart> {
+  return addTabFn(part, spec);
+}
+
+/** Self-fixturing tab-and-slot joint: a tab on one region + a matching slot on another. */
+export function tabAndSlot(
+  part: SheetMetalPart,
+  tab: TabSpec,
+  slot: SlotPlacement
+): Result<SheetMetalPart> {
+  return tabAndSlotFn(part, tab, slot);
+}
+
+/** Form a louver (vent flap cut on 3 sides, formed up along the hinge) on a region. */
+export function louver(
+  part: SheetMetalPart,
+  opts: {
+    region: string;
+    x: number;
+    y: number;
+    length: number;
+    width: number;
+    height: number;
+    direction?: 'up' | 'down';
+  }
+): Result<SheetMetalPart> {
+  return louverFn(part, opts);
+}
+
+/** Form a round emboss (raised) or dimple (recessed) on a region. */
+export function emboss(
+  part: SheetMetalPart,
+  opts: { region: string; x: number; y: number; diameter: number; height: number; kind: 'dimple' | 'emboss' }
+): Result<SheetMetalPart> {
+  return embossFn(part, opts);
+}
+
 /** Emit an annotated multi-layer DXF string for a flat pattern. */
 export function toDXF(pattern: FlatPattern, options?: DxfOptions): Result<string> {
   return flatPatternToDXFFn(pattern, options);
@@ -174,4 +219,4 @@ export function developed(angleDeg: number, thickness: number, rule: BendRule): 
   return developedLengthFn(angleDeg, thickness, rule);
 }
 
-export type { AuthorSpec, FlangeSpec, MiterPlane, DxfOptions };
+export type { AuthorSpec, FlangeSpec, MiterPlane, DxfOptions, SlotPlacement };

@@ -13,7 +13,7 @@
 import type { BrepError, Result } from 'brepjs';
 import { isErr } from 'brepjs';
 import type { AuthorSpec, BaseFlatSpec, FlangeSpec, SeamSpec } from './authorFns.js';
-import type { MiterPlane, DxfOptions } from './api.js';
+import type { MiterPlane, DxfOptions, SlotPlacement } from './api.js';
 import {
   author,
   unfold,
@@ -27,6 +27,10 @@ import {
   addHole,
   addSlot,
   addPolygonCutout,
+  addTab,
+  tabAndSlot,
+  louver,
+  emboss,
   toDXF,
   report,
   validate,
@@ -39,6 +43,7 @@ import type {
   MaterialSpec,
   ReliefSpec,
   CutoutSpec,
+  TabSpec,
   SheetMetalWarning,
   UnfoldResult,
 } from './types.js';
@@ -117,6 +122,41 @@ class SheetMetalPartHandle {
   /** Punch an arbitrary polygon cutout from its region-local `points`. */
   polygonCutout(region: string, points: [number, number][]): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(addPolygonCutout(this.part, region, points)));
+  }
+
+  /** Fuse a rectangular tab (additive protrusion) onto a region's edge. */
+  tab(spec: TabSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addTab(this.part, spec)));
+  }
+
+  /** Self-fixturing tab-and-slot joint: a tab on one region + a matching slot on another. */
+  tabAndSlot(tab: TabSpec, slot: SlotPlacement): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(tabAndSlot(this.part, tab, slot)));
+  }
+
+  /** Form a louver (vent flap) on a region. */
+  louver(opts: {
+    region: string;
+    x: number;
+    y: number;
+    length: number;
+    width: number;
+    height: number;
+    direction?: 'up' | 'down';
+  }): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(louver(this.part, opts)));
+  }
+
+  /** Form a round emboss (raised) or dimple (recessed) on a region. */
+  emboss(opts: {
+    region: string;
+    x: number;
+    y: number;
+    diameter: number;
+    height: number;
+    kind: 'dimple' | 'emboss';
+  }): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(emboss(this.part, opts)));
   }
 
   /** Flatten into a developed flat pattern + bend report + warnings. */
@@ -220,6 +260,37 @@ class SheetMetalBuilder {
 
   polygonCutout(region: string, points: [number, number][]): SheetMetalPartHandle {
     return this.build().polygonCutout(region, points);
+  }
+
+  tab(spec: TabSpec): SheetMetalPartHandle {
+    return this.build().tab(spec);
+  }
+
+  tabAndSlot(tab: TabSpec, slot: SlotPlacement): SheetMetalPartHandle {
+    return this.build().tabAndSlot(tab, slot);
+  }
+
+  louver(opts: {
+    region: string;
+    x: number;
+    y: number;
+    length: number;
+    width: number;
+    height: number;
+    direction?: 'up' | 'down';
+  }): SheetMetalPartHandle {
+    return this.build().louver(opts);
+  }
+
+  emboss(opts: {
+    region: string;
+    x: number;
+    y: number;
+    diameter: number;
+    height: number;
+    kind: 'dimple' | 'emboss';
+  }): SheetMetalPartHandle {
+    return this.build().emboss(opts);
   }
 
   unfold(): UnfoldResult {

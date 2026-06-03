@@ -10,11 +10,13 @@ const LAYER_OUTLINE = 'OUTLINE';
 const LAYER_BEND_UP = 'BEND_UP';
 const LAYER_BEND_DOWN = 'BEND_DOWN';
 const LAYER_CUTOUT = 'CUTOUT';
+const LAYER_FORM = 'FORM';
 
 const COLOR_OUTLINE = 7;
 const COLOR_BEND_UP = 1;
 const COLOR_BEND_DOWN = 5;
 const COLOR_CUTOUT = 3;
+const COLOR_FORM = 4;
 
 type Pt2 = [number, number];
 
@@ -95,11 +97,12 @@ function writeTables(w: DxfWriter): void {
   w.pair(2, 'LAYER');
   w.handle();
   w.pair(100, 'AcDbSymbolTable');
-  w.pair(70, 4);
+  w.pair(70, 5);
   writeLayer(w, LAYER_OUTLINE, COLOR_OUTLINE);
   writeLayer(w, LAYER_BEND_UP, COLOR_BEND_UP);
   writeLayer(w, LAYER_BEND_DOWN, COLOR_BEND_DOWN);
   writeLayer(w, LAYER_CUTOUT, COLOR_CUTOUT);
+  writeLayer(w, LAYER_FORM, COLOR_FORM);
   w.pair(0, 'ENDTAB');
   w.pair(0, 'ENDSEC');
 }
@@ -135,17 +138,39 @@ function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textH
     writePolyline(w, loopPoints(hole), LAYER_CUTOUT);
   }
 
+  // Form features: louver U-cuts are OPEN three-side cut paths (the hinge side is
+  // left uncut and drawn separately below), emboss footprints are closed marker
+  // polylines, louver hinge lines are LINEs — all on the FORM layer.
+  for (const cut of pattern.formCuts) {
+    writeOpenPolyline(w, pathPoints(cut), LAYER_FORM);
+  }
+  for (const marker of pattern.formMarkers) {
+    writePolyline(w, loopPoints(marker), LAYER_FORM);
+  }
+  for (const hinge of pattern.formHinges) {
+    writeLine(w, toPt2(curveStartPoint(hinge)), toPt2(curveEndPoint(hinge)), LAYER_FORM);
+  }
+
   w.pair(0, 'ENDSEC');
 }
 
 function writePolyline(w: DxfWriter, points: Pt2[], layer: string): void {
+  writeLwPolyline(w, points, layer, true);
+}
+
+/** An OPEN LWPOLYLINE (no closing segment back to the first vertex). */
+function writeOpenPolyline(w: DxfWriter, points: Pt2[], layer: string): void {
+  writeLwPolyline(w, points, layer, false);
+}
+
+function writeLwPolyline(w: DxfWriter, points: Pt2[], layer: string, closed: boolean): void {
   w.pair(0, 'LWPOLYLINE');
   w.handle();
   w.pair(100, 'AcDbEntity');
   w.pair(8, layer);
   w.pair(100, 'AcDbPolyline');
   w.pair(90, points.length);
-  w.pair(70, 1);
+  w.pair(70, closed ? 1 : 0);
   for (const [x, y] of points) {
     w.pair(10, x);
     w.pair(20, y);
@@ -201,6 +226,15 @@ function outlinePoints(pattern: FlatPattern): Result<Pt2[]> {
 /** Ordered vertices of a closed cutout wire (one per edge start point). */
 function loopPoints(wire: Wire): Pt2[] {
   return getEdges(wire).map((e) => toPt2(curveStartPoint(e)));
+}
+
+/** Ordered vertices of an OPEN wire: every edge start plus the final endpoint. */
+function pathPoints(wire: Wire): Pt2[] {
+  const edges = getEdges(wire);
+  const pts = edges.map((e) => toPt2(curveStartPoint(e)));
+  const last = edges[edges.length - 1];
+  if (last !== undefined) pts.push(toPt2(curveEndPoint(last)));
+  return pts;
 }
 
 function toPt2(v: Vec3): Pt2 {
