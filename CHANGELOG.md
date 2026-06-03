@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.54.0](https://github.com/andymai/brepjs/compare/brepjs-v18.53.0...brepjs-v18.54.0) (2026-06-03)
+
+
+### Features
+
+* **sheetmetal:** foreign-solid import & unfold via numerical cylinder fitting ([#1190](https://github.com/andymai/brepjs/issues/1190)) ([65a4c2f](https://github.com/andymai/brepjs/commit/65a4c2f77a76d5fd5046a37afcb5a6dcca960349))
+
 ## [18.53.0](https://github.com/andymai/brepjs/compare/brepjs-v18.52.0...brepjs-v18.53.0) (2026-06-03)
 
 
