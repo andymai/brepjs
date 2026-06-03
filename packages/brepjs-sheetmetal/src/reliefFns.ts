@@ -115,14 +115,13 @@ export function autoBendReliefs(
 ): Result<SheetMetalPart> {
   let current = part;
   for (const flange of part.flanges) {
-    const bend = current.bends.find((b) => b.id === flange.id);
-    if (bend === undefined) continue;
-    const dims = reliefDims(spec, current.thickness, devOf(bend, current.thickness));
-    if (!dims.ok) return dims;
-    const geo = bendReliefGeometry(current, flange, bend, dims.value.width, dims.value.depth);
-    if (geo === undefined) continue;
+    // Let addBendRelief own the needed/not-needed decision rather than recomputing
+    // the relief geometry here just to peek (which also allocated throwaway tools).
     const next = addBendRelief(current, flange.id, spec);
-    if (!next.ok) return next;
+    if (!next.ok) {
+      if (next.error.code === 'BEND_RELIEF_NOT_NEEDED') continue;
+      return next;
+    }
     current = next.value;
   }
   return ok(current);
@@ -165,7 +164,8 @@ export function cornerRelief(
   const { depth } = dims.value;
 
   // The corner notch is a square; its side is the user's `width` when given, else
-  // the depth clearance. Recording the side as `width` keeps the feature truthful.
+  // the depth clearance. Both recorded dims are the actual side so a consumer
+  // reading width/depth reconstructs the real cut (not a stale clearance value).
   const side = spec.width ?? depth;
 
   const flangeA = part.flanges.find((f) => f.id === flangeIdA);
@@ -191,7 +191,7 @@ export function cornerRelief(
     flangeA: flangeIdA,
     flangeB: flangeIdB,
     width: side,
-    depth,
+    depth: side,
     notches: [geo.notch2d],
   };
 
