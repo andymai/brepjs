@@ -21,6 +21,15 @@ const COLOR_FORM = 4;
 type Pt2 = [number, number];
 
 /**
+ * A 2D point transform applied to every emitted vertex. Used by the nesting writer
+ * to place each pattern at its `(x, y)` and rotation on the sheet; the default
+ * single-pattern writer uses the identity transform.
+ */
+export type Transform2 = (p: Pt2) => Pt2;
+
+const IDENTITY: Transform2 = (p) => p;
+
+/**
  * Package-local DXF writer for sheet-metal flat patterns. The core public writer
  * (`blueprintToDXF`) is R12 LINE/POLYLINE-only with no MTEXT, layer color, or
  * INSUNITS, so it cannot carry the annotated multi-layer output required here.
@@ -32,20 +41,45 @@ type Pt2 = [number, number];
  * R13+ readers (AutoCAD AUDIT, ODA/Teigha) require to parse the file cleanly.
  */
 export function flatPatternToDXF(pattern: FlatPattern, options: DxfOptions = {}): Result<string> {
+  return multiPatternToDXF([{ pattern, transform: IDENTITY }], options);
+}
+
+/** One pattern plus the sheet-placement transform applied to all its geometry. */
+export interface PlacedPattern {
+  pattern: FlatPattern;
+  transform: Transform2;
+}
+
+/**
+ * Emit one DXF for any number of placed patterns (the nesting per-sheet writer).
+ * Each pattern's outline / bend lines / holes / forms are run through its own
+ * {@link Transform2} (translate + rotate onto the sheet) before being written, so
+ * the nested file is fabrication-ready. Layers/colors/handle scheme match the
+ * single-pattern writer exactly.
+ */
+export function multiPatternToDXF(placed: PlacedPattern[], options: DxfOptions = {}): Result<string> {
   const textHeight = options.textHeight ?? DEFAULT_TEXT_HEIGHT;
   if (!Number.isFinite(textHeight) || textHeight <= 0) {
     return err(validationError('INVALID_TEXT_HEIGHT', `textHeight must be a finite, positive number, got ${textHeight}`));
   }
 
-  const outlineResult = outlinePoints(pattern);
-  if (!outlineResult.ok) return outlineResult;
-  const outline = outlineResult.value;
+  const prepared: { pattern: FlatPattern; transform: Transform2; outline: Pt2[] }[] = [];
+  for (const p of placed) {
+    const outlineResult = outlinePoints(p.pattern);
+    if (!outlineResult.ok) return outlineResult;
+    prepared.push({ pattern: p.pattern, transform: p.transform, outline: outlineResult.value });
+  }
 
   // Tables + entities consume handles; the header's $HANDSEED must exceed them,
   // so build the body first and seed the header from the next free handle.
   const body = new DxfWriter();
   writeTables(body);
-  writeEntities(body, outline, pattern, textHeight);
+  body.pair(0, 'SECTION');
+  body.pair(2, 'ENTITIES');
+  for (const p of prepared) {
+    writePatternEntities(body, p.outline, p.pattern, textHeight, p.transform);
+  }
+  body.pair(0, 'ENDSEC');
 
   const head = new DxfWriter();
   writeHeader(head, body.seedHex());
@@ -118,16 +152,13 @@ function writeLayer(w: DxfWriter, name: string, color: number): void {
   w.pair(6, 'CONTINUOUS');
 }
 
-function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textHeight: number): void {
-  w.pair(0, 'SECTION');
-  w.pair(2, 'ENTITIES');
-
-  writePolyline(w, outline, LAYER_OUTLINE);
+function writePatternEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textHeight: number, tf: Transform2): void {
+  writePolyline(w, outline.map(tf), LAYER_OUTLINE);
 
   for (const bend of pattern.bendLines) {
     const layer = bend.direction === 'down' ? LAYER_BEND_DOWN : LAYER_BEND_UP;
-    const start = toPt2(curveStartPoint(bend.line));
-    const end = toPt2(curveEndPoint(bend.line));
+    const start = tf(toPt2(curveStartPoint(bend.line)));
+    const end = tf(toPt2(curveEndPoint(bend.line)));
     writeLine(w, start, end, layer);
     const mid: Pt2 = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
     const label = annotation(bend.angleDeg, bend.direction);
@@ -135,29 +166,27 @@ function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textH
   }
 
   for (const hole of pattern.holes) {
-    writePolyline(w, loopPoints(hole), LAYER_CUTOUT);
+    writePolyline(w, loopPoints(hole).map(tf), LAYER_CUTOUT);
   }
 
   // Lofted/ruled transition developed boundaries: closed triangulated outlines on
   // the OUTLINE layer (each a separate developed blank from the rectilinear outline).
   for (const dev of pattern.loftedDevelopments) {
-    writePolyline(w, loopPoints(dev), LAYER_OUTLINE);
+    writePolyline(w, loopPoints(dev).map(tf), LAYER_OUTLINE);
   }
 
   // Form features: louver U-cuts are OPEN three-side cut paths (the hinge side is
   // left uncut and drawn separately below), emboss footprints are closed marker
   // polylines, louver hinge lines are LINEs — all on the FORM layer.
   for (const cut of pattern.formCuts) {
-    writeOpenPolyline(w, pathPoints(cut), LAYER_FORM);
+    writeOpenPolyline(w, pathPoints(cut).map(tf), LAYER_FORM);
   }
   for (const marker of pattern.formMarkers) {
-    writePolyline(w, loopPoints(marker), LAYER_FORM);
+    writePolyline(w, loopPoints(marker).map(tf), LAYER_FORM);
   }
   for (const hinge of pattern.formHinges) {
-    writeLine(w, toPt2(curveStartPoint(hinge)), toPt2(curveEndPoint(hinge)), LAYER_FORM);
+    writeLine(w, tf(toPt2(curveStartPoint(hinge))), tf(toPt2(curveEndPoint(hinge))), LAYER_FORM);
   }
-
-  w.pair(0, 'ENDSEC');
 }
 
 function writePolyline(w: DxfWriter, points: Pt2[], layer: string): void {

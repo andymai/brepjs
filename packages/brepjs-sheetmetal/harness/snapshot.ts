@@ -17,7 +17,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
-import { author, miterCorner, unfold, unfoldSolid, fold, developed } from '../src/api.js';
+import { author, miterCorner, unfold, unfoldSolid, fold, developed, nest, nestToDXF } from '../src/api.js';
+import type { NestResult } from '../src/nestFns.js';
 import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { addCutout } from '../src/cutoutFns.js';
 import { addTab, tabAndSlot, type SlotPlacement } from '../src/tabFns.js';
@@ -294,9 +295,108 @@ async function main(): Promise<void> {
     lines.push(...(await renderDemo(demo)));
   }
   lines.push(...(await renderForeignDemo()));
+  lines.push(...(await renderNestDemo()));
   lines.push(...renderBendTableDemo());
   lines.push('');
   process.stdout.write(lines.join('\n'));
+}
+
+/**
+ * Nesting demo (plan PR10): author a handful of different parts, unfold each to a
+ * flat pattern, then bbox-nest them onto a stock sheet. Prints the sheet count and
+ * per-sheet utilization, writes the first nested sheet as a fabrication-ready DXF,
+ * and renders that sheet (sheet frame + each placed part bbox) as an SVG. This is
+ * BOUNDING-BOX nesting (parts do not interlock) — true-shape NFP nesting is the
+ * follow-up.
+ */
+async function renderNestDemo(): Promise<string[]> {
+  const specs: AuthorSpec[] = [
+    { thickness: T, base: { length: 60, width: 40 }, flanges: [{ id: 'f', length: 16, angleDeg: 90, rule, side: 'xmax' }] },
+    { thickness: T, base: { length: 40, width: 40 }, flanges: [] },
+    { thickness: T, base: { length: 80, width: 24 }, flanges: [] },
+    { thickness: T, base: { length: 30, width: 50 }, flanges: [{ id: 'f', length: 12, angleDeg: 90, rule, side: 'ymax' }] },
+    { thickness: T, base: { length: 45, width: 30 }, flanges: [] },
+    { thickness: T, base: { length: 25, width: 25 }, flanges: [] },
+  ];
+
+  const patterns: FlatPattern[] = [];
+  for (const spec of specs) {
+    const authored = author(spec);
+    if (isErr(authored)) throw new Error(`nest author failed: ${authored.error.message}`);
+    const unfolded = unfold(authored.value);
+    if (isErr(unfolded)) throw new Error(`nest unfold failed: ${unfolded.error.message}`);
+    patterns.push(unfolded.value.pattern);
+  }
+
+  const sheet = { width: 200, height: 120 };
+  const margin = 4;
+  const spacing = 3;
+  const nested = nest(patterns, { sheet, margin, spacing, allowRotation: true });
+  if (isErr(nested)) throw new Error(`nest failed: ${nested.error.message}`);
+  const result = nested.value;
+
+  const dxf = nestToDXF(result, patterns, 0);
+  let dxfPath = '(nest DXF skipped: no sheet)';
+  if (!isErr(dxf)) {
+    dxfPath = resolve(OUT_DIR, 'nest-sheet-0.dxf');
+    await writeFile(dxfPath, dxf.value, 'utf8');
+  }
+
+  const svgPath = resolve(OUT_DIR, 'nest-sheet-0.svg');
+  await writeFile(svgPath, renderNestSheetSvg(result, patterns, 0, sheet), 'utf8');
+
+  const utils = result.sheets.map((s) => `${(s.utilization * 100).toFixed(1)}%`).join(', ');
+  return [
+    '  [nesting]',
+    `    parts                : ${patterns.length}`,
+    `    sheet                : ${sheet.width}×${sheet.height} mm (margin ${margin}, spacing ${spacing})`,
+    `    sheets used          : ${result.sheets.length}`,
+    `    utilization / sheet  : ${utils}`,
+    `    unplaced             : ${result.unplaced.length}`,
+    `    nested sheet-0 DXF   : ${dxfPath}`,
+    `    nested sheet-0 SVG   : ${svgPath}`,
+  ];
+}
+
+/** Render one nested sheet: the stock frame plus each placed part's bbox + index. */
+function renderNestSheetSvg(
+  result: NestResult,
+  patterns: FlatPattern[],
+  sheetIndex: number,
+  sheet: { width: number; height: number }
+): string {
+  const placed = result.sheets[sheetIndex];
+  const scale = Math.min((PANEL_W - 2 * PAD) / sheet.width, (PANEL_H - 2 * PAD) / sheet.height);
+  const sx = (x: number): number => PAD + x * scale;
+  const sy = (y: number): number => PANEL_H - PAD - y * scale; // +Y up
+  const parts: string[] = [
+    `<rect x="${fmt(sx(0))}" y="${fmt(sy(sheet.height))}" width="${fmt(sheet.width * scale)}" height="${fmt(sheet.height * scale)}" fill="#fafafa" stroke="#333" />`,
+  ];
+  for (const p of placed?.placements ?? []) {
+    const pattern = patterns[p.patternIndex];
+    if (pattern === undefined) continue;
+    const b = patternBboxLocal(pattern);
+    const w = (p.rotationDeg === 90 ? b.height : b.width) * scale;
+    const h = (p.rotationDeg === 90 ? b.width : b.height) * scale;
+    parts.push(
+      `<rect x="${fmt(sx(p.x))}" y="${fmt(sy(p.y) - h)}" width="${fmt(w)}" height="${fmt(h)}" fill="#b8431d22" stroke="#b8431d" />`,
+      `<text x="${fmt(sx(p.x) + 4)}" y="${fmt(sy(p.y) - h + 14)}" font-family="sans-serif" font-size="11" fill="#b8431d">#${p.patternIndex}${p.rotationDeg === 90 ? ' ⟳' : ''}</text>`
+    );
+  }
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${PANEL_W}" height="${PANEL_H}" viewBox="0 0 ${PANEL_W} ${PANEL_H}">`,
+    `<text x="${PAD}" y="20" font-family="sans-serif" font-size="13" fill="#333">Nested sheet ${sheetIndex}</text>`,
+    parts.join('\n'),
+    `</svg>`,
+    '',
+  ].join('\n');
+}
+
+/** Local bbox read for the nest SVG (origin + extents of the outline). */
+function patternBboxLocal(pattern: FlatPattern): { minX: number; minY: number; width: number; height: number } {
+  const pts = getEdges(pattern.outline).map((e) => to2(curveStartPoint(e)));
+  const box = bounds(pts);
+  return { minX: box.minX, minY: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY };
 }
 
 /**

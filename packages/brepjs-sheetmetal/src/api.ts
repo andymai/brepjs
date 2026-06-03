@@ -44,6 +44,12 @@ import { hem as hemFn } from './hemFns.js';
 import { jog as jogFn } from './jogFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
+  nest as nestFn,
+  nestToDXF as nestToDXFFn,
+  type NestOptions,
+  type NestResult,
+} from './nestFns.js';
+import {
   buildReport as buildReportFn,
   reportFromUnfold as reportFromUnfoldFn,
   reportToJSON as reportToJSONFn,
@@ -247,6 +253,25 @@ export function toDXF(pattern: FlatPattern, options?: DxfOptions): Result<string
   return flatPatternToDXFFn(pattern, options);
 }
 
+/**
+ * Bounding-box nest: arrange developed flat patterns onto stock sheets to reduce
+ * waste. Parts are packed as their outline bounding boxes (no interlocking);
+ * true-shape NFP nesting is a follow-up.
+ */
+export function nest(patterns: FlatPattern[], options: NestOptions): Result<NestResult> {
+  return nestFn(patterns, options);
+}
+
+/** Emit one fabrication-ready DXF for a single nested sheet (all parts placed). */
+export function nestToDXF(
+  result: NestResult,
+  patterns: FlatPattern[],
+  sheetIndex: number,
+  options?: DxfOptions
+): Result<string> {
+  return nestToDXFFn(result, patterns, sheetIndex, options);
+}
+
 /** Build a bend report by walking the part's feature tree. */
 export function report(part: SheetMetalPart): Result<BendReport> {
   return buildReportFn(part);
@@ -311,4 +336,4 @@ export function resolveAllowance(
   return resolveBendAllowanceFn(rule, angleDeg, thickness, onWarning);
 }
 
-export type { AuthorSpec, FlangeSpec, MiterPlane, DxfOptions, SlotPlacement };
+export type { AuthorSpec, FlangeSpec, MiterPlane, DxfOptions, SlotPlacement, NestOptions, NestResult };

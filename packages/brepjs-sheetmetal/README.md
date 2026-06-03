@@ -215,6 +215,39 @@ Like the contour/lofted flanges, hems and jogs have non-rectilinear developments
 strict `partToFlatInput → fold` round-trip oracle; verification leans on developed-length invariants, the
 measured jog offset, and solid validity.
 
+## Nesting
+
+`nest(patterns, { sheet, margin?, spacing?, allowRotation? })` arranges a set of developed flat patterns onto
+stock sheets to reduce waste, returning `Result<NestResult>` (`{ sheets, unplaced, warnings }`). Each sheet
+carries its `placements` (`{ patternIndex, x, y, rotationDeg }`, where `rotationDeg` is `0` or `90`) and a
+`utilization`. `nestToDXF(result, patterns, sheetIndex)` then emits one fabrication-ready, multi-layer DXF per
+sheet, translating and rotating every placed pattern (outline + bend lines + holes + forms) onto the sheet via
+the same bounding boxes the packer used.
+
+> **Scope — bounding-box nesting only.** This packs each part as its axis-aligned **outline bounding box**, so
+> parts do **not** interlock: a concave or L-shaped part reserves its full rectangular footprint and leaves the
+> in-bbox waste unused. True-shape **no-fit-polygon (NFP)** nesting — where parts nest into each other's
+> concavities — is the planned follow-up. Treat the reported utilization as a conservative lower bound on what
+> NFP nesting could achieve.
+
+- **Algorithm.** A shelf (level) packing heuristic. Parts are sorted largest-first (by bbox height, then area)
+  and placed left-to-right into horizontal shelves; a new shelf opens below when the current row fills, and a
+  **new sheet** opens when the next shelf would overflow the usable height. Placements stay inside the usable
+  area `[margin, sheet − margin]` and are separated by at least `spacing`.
+- **Rotation.** With `allowRotation`, each part is tried at both `0°` and `90°` and the orientation that fits
+  (or packs shorter) is kept — letting a tall part fit a short sheet.
+- **Unplaceable parts.** A part larger than the usable sheet even rotated is reported in `unplaced` with a
+  warning; it is never dropped silently and never loops.
+- **Utilization.** Σ placed part **bounding-box** areas ÷ usable-sheet area, in `(0, 1]`. Inter-part spacing
+  gaps and intra-bbox waste are not credited, so it is a conservative material-use measure.
+
+```ts
+const patterns = parts.map((p) => unfold(p).value.pattern);
+const nested = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true });
+// nested.value.sheets.length, nested.value.sheets[i].utilization, nested.value.unplaced
+const dxf = nestToDXF(nested.value, patterns, 0); // fabrication-ready DXF for sheet 0
+```
+
 ## Foreign-solid import & unfold
 
 `unfoldSolid(solid, { kFactor? })` (fluent: `fromSolid(solid).unfold()`) flattens an **arbitrary imported
@@ -310,6 +343,8 @@ the headline L-bracket with a mitered corner, a tray, reliefs, a cutout panel, a
 **tab-and-slot box** (self-locating corner joint), and a **louvered panel** (vent
 flaps + emboss/dimple) — then renders each folded 3D part next to its developed
 flat pattern as a single side-by-side SVG and also writes the folded solid as STEP.
+It also runs a **nesting** demo (a handful of parts bbox-packed onto one sheet),
+printing the sheet count + utilization and writing the nested sheet as DXF + SVG.
 
 ```bash
 npm run snapshot --workspace=brepjs-sheetmetal

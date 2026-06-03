@@ -562,7 +562,10 @@ export type SheetMetalWarning = {
     /** A bend-table query fell outside the tabulated (thickness, radius, angle)
      * range and was clamped to the nearest entry (no extrapolation). Distinct from
      * MIN_RADIUS, which means a bend's inner radius is below one thickness. */
-    | 'TABLE_CLAMP';
+    | 'TABLE_CLAMP'
+    /** Nesting: a flat pattern's outline bounding box does not fit the usable stock
+     * sheet (sheet minus margin) even rotated 90°, so it was left unplaced. */
+    | 'PART_TOO_LARGE';
   message: string;
   featureId?: string | undefined;
 };

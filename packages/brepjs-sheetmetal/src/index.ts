@@ -61,8 +61,18 @@ export { authorLoftedFlange } from './loftedFlangeFns.js';
 export { hem } from './hemFns.js';
 export { jog } from './jogFns.js';
 
-export { flatPatternToDXF } from './dxfFns.js';
-export type { DxfOptions } from './dxfFns.js';
+export { flatPatternToDXF, multiPatternToDXF } from './dxfFns.js';
+export type { DxfOptions, PlacedPattern, Transform2 } from './dxfFns.js';
+
+export { nest, nestToDXF, patternBbox } from './nestFns.js';
+export type {
+  NestOptions,
+  NestResult,
+  NestSheet,
+  Placement,
+  SheetSpec,
+  Bbox,
+} from './nestFns.js';
 
 export { buildReport, reportFromUnfold, reportToJSON } from './reportFns.js';
 
@@ -90,6 +100,8 @@ export {
   resolveAllowance,
   contourFlange,
   loftedFlange,
+  nest as nestPatterns,
+  nestToDXF as nestSheetToDXF,
 } from './api.js';
 
 export {
