@@ -1,4 +1,4 @@
-import { type Result, type Vec3, ok, err, validationError, getEdges, curveStartPoint, curveEndPoint } from 'brepjs';
+import { type Result, type Vec3, type Wire, ok, err, validationError, getEdges, curveStartPoint, curveEndPoint } from 'brepjs';
 import type { FlatPattern } from './types.js';
 
 export interface DxfOptions {
@@ -9,10 +9,12 @@ const DEFAULT_TEXT_HEIGHT = 2.5;
 const LAYER_OUTLINE = 'OUTLINE';
 const LAYER_BEND_UP = 'BEND_UP';
 const LAYER_BEND_DOWN = 'BEND_DOWN';
+const LAYER_CUTOUT = 'CUTOUT';
 
 const COLOR_OUTLINE = 7;
 const COLOR_BEND_UP = 1;
 const COLOR_BEND_DOWN = 5;
+const COLOR_CUTOUT = 3;
 
 type Pt2 = [number, number];
 
@@ -93,10 +95,11 @@ function writeTables(w: DxfWriter): void {
   w.pair(2, 'LAYER');
   w.handle();
   w.pair(100, 'AcDbSymbolTable');
-  w.pair(70, 3);
+  w.pair(70, 4);
   writeLayer(w, LAYER_OUTLINE, COLOR_OUTLINE);
   writeLayer(w, LAYER_BEND_UP, COLOR_BEND_UP);
   writeLayer(w, LAYER_BEND_DOWN, COLOR_BEND_DOWN);
+  writeLayer(w, LAYER_CUTOUT, COLOR_CUTOUT);
   w.pair(0, 'ENDTAB');
   w.pair(0, 'ENDSEC');
 }
@@ -126,6 +129,10 @@ function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textH
     const mid: Pt2 = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
     const label = annotation(bend.angleDeg, bend.direction);
     writeMText(w, mid, label, layer, textHeight);
+  }
+
+  for (const hole of pattern.holes) {
+    writePolyline(w, loopPoints(hole), LAYER_CUTOUT);
   }
 
   w.pair(0, 'ENDSEC');
@@ -189,6 +196,11 @@ function outlinePoints(pattern: FlatPattern): Result<Pt2[]> {
     points.push(toPt2(curveStartPoint(edge)));
   }
   return ok(points);
+}
+
+/** Ordered vertices of a closed cutout wire (one per edge start point). */
+function loopPoints(wire: Wire): Pt2[] {
+  return getEdges(wire).map((e) => toPt2(curveStartPoint(e)));
 }
 
 function toPt2(v: Vec3): Pt2 {

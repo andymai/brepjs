@@ -23,6 +23,10 @@ import {
   bendRelief,
   autoReliefs,
   relieveCorner,
+  addCutout,
+  addHole,
+  addSlot,
+  addPolygonCutout,
   toDXF,
   report,
   validate,
@@ -34,6 +38,7 @@ import type {
   BendReport,
   MaterialSpec,
   ReliefSpec,
+  CutoutSpec,
   SheetMetalWarning,
   UnfoldResult,
 } from './types.js';
@@ -89,6 +94,29 @@ class SheetMetalPartHandle {
   /** Cut a corner relief notch at the shared corner of two adjacent flanges. */
   cornerRelief(flangeIdA: string, flangeIdB: string, spec?: ReliefSpec): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(relieveCorner(this.part, flangeIdA, flangeIdB, spec)));
+  }
+
+  /** Punch a cutout (hole / slot / polygon) through a named flat region. */
+  cutout(spec: CutoutSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addCutout(this.part, spec)));
+  }
+
+  /** Punch a circular hole of `diameter` centred at region-local `(x, y)`. */
+  hole(region: string, x: number, y: number, diameter: number): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addHole(this.part, region, x, y, diameter)));
+  }
+
+  /** Punch a slot (rectangular or obround) centred at region-local `(x, y)`. */
+  slot(
+    region: string,
+    opts: { x: number; y: number; length: number; width: number; angleDeg?: number; round?: boolean }
+  ): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addSlot(this.part, region, opts)));
+  }
+
+  /** Punch an arbitrary polygon cutout from its region-local `points`. */
+  polygonCutout(region: string, points: [number, number][]): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(addPolygonCutout(this.part, region, points)));
   }
 
   /** Flatten into a developed flat pattern + bend report + warnings. */
@@ -173,6 +201,25 @@ class SheetMetalBuilder {
 
   cornerRelief(flangeIdA: string, flangeIdB: string, spec?: ReliefSpec): SheetMetalPartHandle {
     return this.build().cornerRelief(flangeIdA, flangeIdB, spec);
+  }
+
+  cutout(spec: CutoutSpec): SheetMetalPartHandle {
+    return this.build().cutout(spec);
+  }
+
+  hole(region: string, x: number, y: number, diameter: number): SheetMetalPartHandle {
+    return this.build().hole(region, x, y, diameter);
+  }
+
+  slot(
+    region: string,
+    opts: { x: number; y: number; length: number; width: number; angleDeg?: number; round?: boolean }
+  ): SheetMetalPartHandle {
+    return this.build().slot(region, opts);
+  }
+
+  polygonCutout(region: string, points: [number, number][]): SheetMetalPartHandle {
+    return this.build().polygonCutout(region, points);
   }
 
   unfold(): UnfoldResult {

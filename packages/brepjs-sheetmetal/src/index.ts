@@ -42,6 +42,8 @@ export type { MiterPlane } from './miterFns.js';
 
 export { addBendRelief, autoBendReliefs, cornerRelief } from './reliefFns.js';
 
+export { addCutout, addHole, addSlot, addPolygonCutout } from './cutoutFns.js';
+
 export { flatPatternToDXF } from './dxfFns.js';
 export type { DxfOptions } from './dxfFns.js';
 
@@ -80,6 +82,8 @@ export type {
   CornerMiter,
   ReliefSpec,
   ReliefFeature,
+  CutoutSpec,
+  CutoutFeature,
   SheetMetalPart,
   FlatPattern,
   FlatInput,

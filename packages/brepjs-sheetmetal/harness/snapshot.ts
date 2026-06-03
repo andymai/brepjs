@@ -19,9 +19,10 @@ import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measur
 import type { Solid, Vec3 } from 'brepjs';
 import { author, miterCorner, unfold, fold } from '../src/api.js';
 import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
+import { addCutout } from '../src/cutoutFns.js';
 import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
-import type { BendRule, FlatPattern, SheetMetalPart } from '../src/types.js';
+import type { BendRule, CutoutSpec, FlatPattern, SheetMetalPart } from '../src/types.js';
 
 /**
  * Boot the OCCT-WASM kernel directly from `brepjs-opencascade` (the same recipe
@@ -63,6 +64,8 @@ interface Demo {
   bendRelief?: { flange: string };
   /** Optional corner relief notch between two adjacent flanges. */
   cornerRelief?: { a: string; b: string };
+  /** Optional cutouts (holes / slots / polygons) punched after authoring. */
+  cutouts?: CutoutSpec[];
 }
 
 const DEMOS: Demo[] = [
@@ -125,6 +128,25 @@ const DEMOS: Demo[] = [
     },
     cornerRelief: { a: 'fx', b: 'fy' },
   },
+  {
+    name: 'cutout-panel',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 40 },
+      flanges: [{ id: 'lip', length: 18, angleDeg: 90, rule, side: 'ymax' }],
+    },
+    cutouts: [
+      // Four mounting holes near the base corners.
+      { kind: 'hole', region: 'base', x: 10, y: 10, diameter: 5 },
+      { kind: 'hole', region: 'base', x: 50, y: 10, diameter: 5 },
+      { kind: 'hole', region: 'base', x: 10, y: 30, diameter: 5 },
+      { kind: 'hole', region: 'base', x: 50, y: 30, diameter: 5 },
+      // A central obround slot on the base.
+      { kind: 'slot', region: 'base', x: 30, y: 20, length: 20, width: 6, round: true },
+      // A vent hole on the folded lip.
+      { kind: 'hole', region: 'lip', x: 30, y: 9, diameter: 8 },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {
@@ -159,6 +181,11 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     if (isErr(relieved)) throw new Error(`cornerRelief '${demo.name}' failed: ${relieved.error.message}`);
     part = relieved.value;
   }
+  for (const spec of demo.cutouts ?? []) {
+    const cutResult = addCutout(part, spec);
+    if (isErr(cutResult)) throw new Error(`cutout '${demo.name}' failed: ${cutResult.error.message}`);
+    part = cutResult.value;
+  }
   if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
@@ -192,6 +219,7 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     `    folded + flat SVG : ${svgPath}`,
     `    folded STEP       : ${stepPath}`,
     `    bend lines        : ${pattern.bendLines.length}`,
+    `    cutouts           : ${pattern.holes.length}`,
     `    developed area    : ${pattern.developedArea.toFixed(2)} mm²`,
     `    fold round-trip   : ${roundTrip}`,
     `    warnings          : ${unfolded.value.warnings.length}`,
@@ -250,8 +278,11 @@ function renderFlatSvg(pattern: FlatPattern): string {
     a: to2(curveStartPoint(bl.line)),
     b: to2(curveEndPoint(bl.line)),
   }));
+  const holeSegs: Seg2[] = pattern.holes.flatMap((w) =>
+    getEdges(w).map((e) => ({ a: to2(curveStartPoint(e)), b: to2(curveEndPoint(e)) }))
+  );
 
-  const allPts = [...outlineSegs, ...bendSegs].flatMap((s) => [s.a, s.b]);
+  const allPts = [...outlineSegs, ...bendSegs, ...holeSegs].flatMap((s) => [s.a, s.b]);
   const body =
     outlineSegs
       .map((s) => `<line class="outline" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
@@ -259,6 +290,10 @@ function renderFlatSvg(pattern: FlatPattern): string {
     '\n' +
     bendSegs
       .map((s) => `<line class="bend" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
+      .join('\n') +
+    '\n' +
+    holeSegs
+      .map((s) => `<line class="hole" x1="${fmt(s.a[0])}" y1="${fmt(s.a[1])}" x2="${fmt(s.b[0])}" y2="${fmt(s.b[1])}" />`)
       .join('\n');
 
   return fitPanel(body, bounds(allPts), 'Flat pattern', '#b8431d', true);
@@ -324,7 +359,7 @@ function fitPanel(body: string, box: Box, title: string, stroke: string, flipY =
 function composeSideBySide(left: string, right: string): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${PANEL_W * 2}" height="${PANEL_H}" viewBox="0 0 ${PANEL_W * 2} ${PANEL_H}">`,
-    `<style>.bend{stroke-dasharray:4 3}</style>`,
+    `<style>.bend{stroke-dasharray:4 3}.hole{stroke:#2a9d4a}</style>`,
     `<g>${left}</g>`,
     `<g transform="translate(${PANEL_W} 0)">${right}</g>`,
     `</svg>`,

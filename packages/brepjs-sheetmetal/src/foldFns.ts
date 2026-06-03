@@ -10,6 +10,7 @@ import {
 } from 'brepjs';
 import type {
   BendRule,
+  CutoutSpec,
   FlatInput,
   FlatPattern,
   FlatSide,
@@ -20,7 +21,8 @@ import type {
 } from './types.js';
 import { authorPart, type AuthorSpec, type FlangeSpec } from './authorFns.js';
 import { addBendRelief } from './reliefFns.js';
-import { featureTree } from './featureTreeFns.js';
+import { addCutout } from './cutoutFns.js';
+import { featureTree, ROOT_FLAT_ID } from './featureTreeFns.js';
 import { developedLength } from './allowanceFns.js';
 import { unfold, edgeBasis2, type Frame2 } from './unfoldFns.js';
 import { validatePart } from './validateFns.js';
@@ -69,6 +71,21 @@ export function foldWithWarnings(input: FlatInput): Result<FoldResult> {
     const relieved = addBendRelief(part, region.id, region.bendRelief);
     if (!relieved.ok) return relieved;
     part = relieved.value;
+  }
+
+  // Re-apply recorded cutouts (in region-local coords) so a cutout'd part folds
+  // back into the same solid + recorded feature, exactly as `addCutout` produces.
+  for (const spec of input.baseCutouts ?? []) {
+    const cutResult = addCutout(part, { ...spec, region: ROOT_FLAT_ID });
+    if (!cutResult.ok) return cutResult;
+    part = cutResult.value;
+  }
+  for (const region of input.regions) {
+    for (const spec of region.cutouts ?? []) {
+      const cutResult = addCutout(part, { ...spec, region: region.id });
+      if (!cutResult.ok) return cutResult;
+      part = cutResult.value;
+    }
   }
 
   // SEAM_CUT comes from the feature-tree walk; INVALID_SOLID / COLLISION / MIN_RADIUS
@@ -188,10 +205,65 @@ export function partToFlatInput(part: SheetMetalPart): Result<FlatInput> {
   const ruleByIndex = bendRulesInOrder(part);
   const fallback: BendRule = part.material?.defaultRule ?? { innerRadius: part.thickness, kFactor: 0.44 };
 
-  return patternToFlatInput(pattern, {
+  const recovered = patternToFlatInput(pattern, {
     thickness: part.thickness,
     ruleFor: (i) => ruleByIndex[i] ?? fallback,
     ...(part.material !== undefined ? { material: part.material } : {}),
+  });
+  if (!recovered.ok) return recovered;
+
+  return attachCutouts(part, recovered.value);
+}
+
+/**
+ * Re-attach a part's recorded cutouts onto a recovered {@link FlatInput}. Cutouts
+ * ride as interior loops, so {@link patternToFlatInput} (which reads only the outer
+ * outline) cannot recover them; we carry the region-local specs across instead.
+ * The recovered region for the i-th feature-tree bend is `b${i}` (the parser's id
+ * scheme), and the unfold emits bend lines in that same BFS order, so a flange's
+ * recovered region id is its position in `featureTree(part).bends`. A cutout whose
+ * region can't be mapped is failed loudly rather than dropped: silently shedding it
+ * would change the refolded volume with no diagnostic, a correctness violation.
+ */
+function attachCutouts(part: SheetMetalPart, input: FlatInput): Result<FlatInput> {
+  if (part.cutouts === undefined || part.cutouts.length === 0) return ok(input);
+
+  const recoveredIdByFlange = new Map<string, string>();
+  const tree = featureTree(part);
+  if (tree.ok) {
+    tree.value.bends.forEach((tb, i) => recoveredIdByFlange.set(tb.child, `b${i}`));
+  }
+
+  const baseCutouts: CutoutSpec[] = [];
+  const byRegion = new Map<string, CutoutSpec[]>();
+  for (const c of part.cutouts) {
+    if (c.region === ROOT_FLAT_ID) {
+      baseCutouts.push(c.spec);
+      continue;
+    }
+    const recoveredId = recoveredIdByFlange.get(c.region);
+    if (recoveredId === undefined) {
+      return err(
+        validationError(
+          'CUTOUT_REGION_UNMAPPED',
+          `partToFlatInput: cutout on region '${c.region}' has no recovered flat region; round-trip would drop it`
+        )
+      );
+    }
+    const list = byRegion.get(recoveredId) ?? [];
+    list.push(c.spec);
+    byRegion.set(recoveredId, list);
+  }
+
+  const regions = input.regions.map((r) => {
+    const specs = byRegion.get(r.id);
+    return specs === undefined ? r : { ...r, cutouts: specs };
+  });
+
+  return ok({
+    ...input,
+    regions,
+    ...(baseCutouts.length > 0 ? { baseCutouts } : {}),
   });
 }
 

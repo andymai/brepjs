@@ -32,7 +32,7 @@ import type {
   SheetMetalPart,
 } from './types.js';
 import { normalizeSolid } from './internal.js';
-import { ROOT_FLAT_ID } from './featureTreeFns.js';
+import { ROOT_FLAT_ID, featureTree } from './featureTreeFns.js';
 
 /** Authoring options for the base flat the flanges attach to. */
 export interface BaseFlatSpec {
@@ -107,9 +107,10 @@ export function baseEdgeRef(faceIndex: number): EdgeRef {
  * frame (origin + orthonormal axes) of its top surface so a child flange can be
  * built directly off any of its four edges, at any fold direction.
  */
-interface FlatFrame {
+export interface FlatFrame {
   id: string;
-  /** Lower-left corner of the flat's top surface (the +normal side). */
+  /** Near corner of the flat on its −normal (bottom) surface; the flat spans
+   * `thickness` along +n. Local `(x, y)` maps to `origin + x·u + y·v`. */
   origin: Vec3;
   /** In-plane direction; the flat spans `[0, uLen]` along it. */
   u: Vec3;
@@ -238,6 +239,55 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
     bends,
     solid: normalizeSolid(solid),
   });
+}
+
+/**
+ * World {@link FlatFrame} of every flat region of an authored part, keyed by region
+ * id (`'root'` for the base). Reconstructed from the recorded bend/flange feature
+ * tree using the exact same edge/transform/child-frame math {@link authorPart} uses
+ * to place the geometry, so a cutout authored in a region's local `(x, y)` lands on
+ * the matching folded face. Walks the feature tree in BFS order so a chained
+ * flange's parent frame is always known first.
+ */
+export function worldFrames(part: SheetMetalPart): Result<Map<string, FlatFrame>> {
+  const frames = new Map<string, FlatFrame>();
+  frames.set(ROOT_FLAT_ID, {
+    id: ROOT_FLAT_ID,
+    origin: [0, 0, 0],
+    u: [1, 0, 0],
+    v: [0, 1, 0],
+    n: [0, 0, 1],
+    uLen: part.baseLength,
+    vLen: part.width,
+  });
+
+  const treeResult = featureTree(part);
+  if (!treeResult.ok) return treeResult;
+
+  const flangeById = new Map<string, FlangeFeature>();
+  for (const f of part.flanges) flangeById.set(f.id, f);
+
+  for (const tb of treeResult.value.bends) {
+    const flange = flangeById.get(tb.child);
+    if (flange === undefined) continue;
+    const parent = frames.get(tb.parent);
+    if (parent === undefined) {
+      return err(validationError('UNKNOWN_PARENT', `worldFrames: parent '${tb.parent}' missing for '${tb.child}'`));
+    }
+    const side: FlatSide = flange.baseEdge.side ?? 'xmax';
+    const direction: 'up' | 'down' = flange.direction ?? 'up';
+    const offset = flange.offset ?? flange.baseEdge.offset ?? 0;
+    const r = flange.rule.innerRadius;
+    const edge = parentEdge(parent, side);
+    const sign = direction === 'up' ? 1 : -1;
+    const place = frameTransform(edge.dir, edge.out, parent.n, edge.start, offset);
+    frames.set(
+      flange.id,
+      computeChildFrame(flange.id, place, flange.span, flange.angleDeg, part.thickness, r, sign, flange.length)
+    );
+  }
+
+  return ok(frames);
 }
 
 /**

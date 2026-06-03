@@ -78,6 +78,10 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   if (!outlineResult.ok) return outlineResult;
   layout.developedArea -= removedNotchArea(rects, notches);
 
+  const holesResult = buildHoles(part);
+  if (!holesResult.ok) return holesResult;
+  for (const c of part.cutouts ?? []) layout.developedArea -= c.area;
+
   const bendLines = layout.flats
     .filter((p): p is PlacedFlange => p.kind === 'flange')
     .map((p) => ({
@@ -93,6 +97,7 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   const pattern: FlatPattern = {
     outline: outlineResult.value,
     bendLines,
+    holes: holesResult.value,
     developedArea: layout.developedArea,
   };
 
@@ -308,6 +313,35 @@ export function edgeBasis2(f: Frame2, side: FlatSide): { along: Pt2; out: Pt2; e
 
 function bendLineEdge(p: PlacedFlange): Edge {
   return line([p.bendA[0], p.bendA[1], 0], [p.bendB[0], p.bendB[1], 0]);
+}
+
+/**
+ * One closed developed-plane {@link Wire} per recorded cutout, traced from the
+ * feature's already-mapped `loop` (which {@link addCutout} positioned via the
+ * region's developed frame, so the loop sits at the cutout's matching flat-pattern
+ * spot). Emitted as interior holes of the pattern; the outer outline is unchanged.
+ */
+function buildHoles(part: SheetMetalPart): Result<Wire[]> {
+  const wires: Wire[] = [];
+  for (const c of part.cutouts ?? []) {
+    const loop = c.loop;
+    if (loop.length < 3) {
+      return err(validationError('CUTOUT_LOOP_TOO_SMALL', `cutout loop has ${loop.length} points, need ≥ 3`));
+    }
+    const edges: Edge[] = [];
+    for (let i = 0; i < loop.length; i += 1) {
+      const a = loop[i];
+      const b = loop[(i + 1) % loop.length];
+      if (a === undefined || b === undefined) {
+        return err(validationError('CUTOUT_LOOP_FAILED', 'failed to index cutout loop'));
+      }
+      edges.push(line([a[0], a[1], 0], [b[0], b[1], 0]));
+    }
+    const wire = wireLoop(edges);
+    if (!wire.ok) return wire;
+    wires.push(wire.value);
+  }
+  return ok(wires);
 }
 
 function rectOf(f: Frame2): Rect {

@@ -25,6 +25,12 @@ import {
   autoBendReliefs as autoBendReliefsFn,
   cornerRelief as cornerReliefFn,
 } from './reliefFns.js';
+import {
+  addCutout as addCutoutFn,
+  addHole as addHoleFn,
+  addSlot as addSlotFn,
+  addPolygonCutout as addPolygonCutoutFn,
+} from './cutoutFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
   buildReport as buildReportFn,
@@ -40,6 +46,7 @@ import type {
   BendReport,
   BendRule,
   ReliefSpec,
+  CutoutSpec,
   UnfoldResult,
   SheetMetalWarning,
 } from './types.js';
@@ -96,6 +103,40 @@ export function relieveCorner(
   spec?: ReliefSpec
 ): Result<SheetMetalPart> {
   return cornerReliefFn(part, flangeIdA, flangeIdB, spec);
+}
+
+/** Punch a cutout (hole / slot / polygon) through a named flat region's thickness. */
+export function addCutout(part: SheetMetalPart, spec: CutoutSpec): Result<SheetMetalPart> {
+  return addCutoutFn(part, spec);
+}
+
+/** Punch a circular hole of `diameter` centred at region-local `(x, y)`. */
+export function addHole(
+  part: SheetMetalPart,
+  region: string,
+  x: number,
+  y: number,
+  diameter: number
+): Result<SheetMetalPart> {
+  return addHoleFn(part, region, x, y, diameter);
+}
+
+/** Punch a slot (rectangular or obround) centred at region-local `(x, y)`. */
+export function addSlot(
+  part: SheetMetalPart,
+  region: string,
+  opts: { x: number; y: number; length: number; width: number; angleDeg?: number; round?: boolean }
+): Result<SheetMetalPart> {
+  return addSlotFn(part, region, opts);
+}
+
+/** Punch an arbitrary polygon cutout from its region-local `points`. */
+export function addPolygonCutout(
+  part: SheetMetalPart,
+  region: string,
+  points: [number, number][]
+): Result<SheetMetalPart> {
+  return addPolygonCutoutFn(part, region, points);
 }
 
 /** Emit an annotated multi-layer DXF string for a flat pattern. */

@@ -112,6 +112,50 @@ export interface ReliefFeature {
   notches: [number, number, number, number][];
 }
 
+/**
+ * A 2D feature punched through a named flat region's thickness, in that region's
+ * LOCAL frame: the origin is the region frame origin, `+x` runs along the region's
+ * `u` axis and `+y` along its `v` axis (so `(0,0)` is the region's near corner).
+ * `region` is a flange id, or `'root'`/`'base'` for the base flat.
+ *
+ * - `hole`   — a circular hole centred at `(x, y)`.
+ * - `slot`   — a slot centred at `(x, y)`, `length` along the slot axis by `width`
+ *              across; `angleDeg` rotates the slot in-plane (CCW about its centre);
+ *              `round` makes the ends semicircular (obround) rather than square.
+ * - `polygon`— an arbitrary closed polygon given by its local `points` (≥ 3).
+ */
+export type CutoutSpec =
+  | { kind: 'hole'; region: string; x: number; y: number; diameter: number }
+  | {
+      kind: 'slot';
+      region: string;
+      x: number;
+      y: number;
+      length: number;
+      width: number;
+      angleDeg?: number | undefined;
+      round?: boolean | undefined;
+    }
+  | { kind: 'polygon'; region: string; points: [number, number][] };
+
+/**
+ * A recorded cutout, mirroring {@link ReliefFeature}: enough to replay the 2D loop
+ * in the developed pattern without re-deriving geometry. `spec` is the original
+ * region-local feature (so {@link FoldRegion} can re-apply it on a re-fold); `loop`
+ * is the closed cutout boundary already mapped into developed-plane coordinates via
+ * the region's unfold frame; `area` is the loop's enclosed area, subtracted from the
+ * developed area.
+ */
+export interface CutoutFeature {
+  spec: CutoutSpec;
+  /** The region (flange id, or `'root'`) the cutout was applied to. */
+  region: string;
+  /** Closed cutout boundary `[x, y]` in the developed (flat-pattern) plane. */
+  loop: [number, number][];
+  /** Enclosed area of the loop. */
+  area: number;
+}
+
 export interface SheetMetalPart {
   thickness: number;
   /** Base flat extent along +X (x∈[0, baseLength]); the east-run length. */
@@ -124,6 +168,7 @@ export interface SheetMetalPart {
   solid?: Solid | undefined;
   miters?: CornerMiter[] | undefined;
   reliefs?: ReliefFeature[] | undefined;
+  cutouts?: CutoutFeature[] | undefined;
 }
 
 export interface FlatPattern {
@@ -137,6 +182,8 @@ export interface FlatPattern {
      * side a bend relief notches), opposite the develop-out direction. */
     inward: [number, number];
   }[];
+  /** Interior cutout loops (holes/slots/polygons) as closed wires in the developed plane. */
+  holes: Wire[];
   developedArea: number;
 }
 
@@ -191,6 +238,8 @@ export interface FoldRegion {
   miter?: MiterSpec | undefined;
   /** Bend relief to add at this region's partial-span fold-line ends after folding. */
   bendRelief?: ReliefSpec | undefined;
+  /** Cutouts to punch into this region (in region-local coords) after folding. */
+  cutouts?: CutoutSpec[] | undefined;
 }
 
 /**
@@ -208,4 +257,6 @@ export interface FlatInput {
   width: number;
   material?: MaterialSpec | undefined;
   regions: FoldRegion[];
+  /** Cutouts to punch into the base region (in base-local coords) after folding. */
+  baseCutouts?: CutoutSpec[] | undefined;
 }

@@ -29,6 +29,7 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 | Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area    |
 | Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`         |
 | Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner) |
+| Cutouts         | holes / slots (rect + obround) / polygons punched on the base or a folded flange          |
 | Miter / outputs | auto corner-miter, multi-layer DXF, JSON bend report, manufacturability warnings          |
 | API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                   |
 
@@ -63,6 +64,31 @@ and 3D cut are rectangular for both shapes in this version. Reliefs round-trip t
 `FoldRegion.bendRelief` field; the strict geometric round-trip oracle (`partToFlatInput → fold`) skips
 relief'd parts because a notched outline is not a plain rectangle the parser can re-derive (same as mitered
 parts).
+
+## Cutouts
+
+Holes, slots, and polygon cutouts are 2D features punched through a flat region's thickness. They survive
+fold/unfold: each appears in the 3D solid, in the flat pattern (`FlatPattern.holes`, one closed wire per
+cutout), and in the DXF (a `CUTOUT` layer). The outer outline is unchanged — cutouts are interior loops.
+
+A `CutoutSpec` names the `region` (a flange id, or `'base'`/`'root'` for the base flat) and places the
+feature in that region's **local** frame: `(0, 0)` is the region's near corner, `+x` runs along the region's
+`u` axis and `+y` along its `v` axis. The discriminated union is `hole` (`{ x, y, diameter }`), `slot`
+(`{ x, y, length, width, angleDeg?, round? }` — `round` makes the ends semicircular/obround), or `polygon`
+(`{ points: [x, y][] }`).
+
+- `addCutout(part, spec)` / `addHole(part, region, x, y, diameter)` / `addSlot(part, region, opts)` /
+  `addPolygonCutout(part, region, points)` cut the feature through the sheet on the **correct face**: the 2D
+  profile is built in region-local coords, then placed via the region's world frame (origin/u/v/n), so a
+  hole authored on a folded flange lands on the flange face, not the base plane. Rejects a feature outside
+  the region (`CUTOUT_OUT_OF_BOUNDS`) and guards a valid, single-bodied result (`CUTOUT_SEVERED_SOLID`).
+- `unfold` emits the matching developed loop at the cutout's flat-pattern location (mapped through the same
+  region's developed frame) and drops `developedArea` by the cutout areas.
+
+Cutouts round-trip through `fold` via `FoldRegion.cutouts` (and `FlatInput.baseCutouts` for the base):
+`partToFlatInput(part)` carries the region-local specs across, so `fold(partToFlatInput(part))` reproduces a
+cutout'd part's volume. Unlike notched reliefs, cutouts don't change the outer outline, so a cutout'd part
+still round-trips through the strict outline oracle.
 
 ## Design
 
