@@ -71,15 +71,23 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   for (const placed of layout.flats) rects.push(placed.rect);
   for (const strip of layout.strips) rects.push(strip);
 
-  const outlineResult = buildOutline(rects, layout, part.miters ?? []);
+  const notches: Rect[] = (part.reliefs ?? []).flatMap((relief) =>
+    relief.notches.map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }))
+  );
+  const outlineResult = buildOutline(rects, layout, part.miters ?? [], notches);
   if (!outlineResult.ok) return outlineResult;
+  layout.developedArea -= removedNotchArea(rects, notches);
 
   const bendLines = layout.flats
     .filter((p): p is PlacedFlange => p.kind === 'flange')
     .map((p) => ({
+      id: p.id,
       line: bendLineEdge(p),
       angleDeg: p.angleDeg,
       direction: p.direction,
+      // The child frame's v axis is the develop-out direction; into-parent is its
+      // negation. Correct for chained flanges too (it is local to the placement).
+      inward: [-p.frame.v[0], -p.frame.v[1]] as [number, number],
     }));
 
   const pattern: FlatPattern = {
@@ -334,9 +342,16 @@ function neg2(a: Pt2): Pt2 {
  * emitted as one closed loop. Holes are not possible for the supported shapes
  * (every arm attaches to the simply-connected base or a chain thereof).
  */
-function buildOutline(rects: Rect[], layout: TreeLayout, miters: CornerMiter[]): Result<Wire> {
-  const miterCorners = lShapedMiter(layout, miters);
-  const corners = miterCorners ?? rectilinearUnion(rects);
+function buildOutline(
+  rects: Rect[],
+  layout: TreeLayout,
+  miters: CornerMiter[],
+  notches: Rect[]
+): Result<Wire> {
+  // The lShapedMiter chamfer special-case can't express a notch, so once any relief
+  // is recorded fall through to the rectilinear-union path (which subtracts notches).
+  const miterCorners = notches.length > 0 ? undefined : lShapedMiter(layout, miters);
+  const corners = miterCorners ?? rectilinearUnion(rects, notches);
   if (corners.length < 3) {
     return err(validationError('OUTLINE_BUILD_FAILED', 'developed outline has fewer than 3 vertices'));
   }
@@ -407,12 +422,16 @@ function miterGapFor(miters: CornerMiter[], aId: string, bId: string): number | 
  * tracking the covered y-spans, then tracing the boundary contour. The sweep emits
  * a CCW loop of corner points with no collinear duplicates.
  */
-function rectilinearUnion(rects: Rect[]): Pt2[] {
-  const xs = uniqueSorted(rects.flatMap((r) => [r.x0, r.x1]));
-  const ys = uniqueSorted(rects.flatMap((r) => [r.y0, r.y1]));
+function rectilinearUnion(rects: Rect[], notches: Rect[] = []): Pt2[] {
+  const cuts = [...rects.flatMap((r) => [r.x0, r.x1]), ...notches.flatMap((r) => [r.x0, r.x1])];
+  const cutsY = [...rects.flatMap((r) => [r.y0, r.y1]), ...notches.flatMap((r) => [r.y0, r.y1])];
+  const xs = uniqueSorted(cuts);
+  const ys = uniqueSorted(cutsY);
   if (xs.length < 2 || ys.length < 2) return [];
 
-  // Cell-occupancy grid over the arrangement of all rectangle edges.
+  // Cell-occupancy grid: a cell is filled if its centre lies in the rectangle union
+  // and in no notch (notches subtract material; they sit on the boundary so the
+  // result stays simply-connected).
   const nx = xs.length - 1;
   const ny = ys.length - 1;
   const filled = new Set<number>();
@@ -420,9 +439,9 @@ function rectilinearUnion(rects: Rect[]): Pt2[] {
     const cx = ((xs[i] as number) + (xs[i + 1] as number)) / 2;
     for (let j = 0; j < ny; j += 1) {
       const cy = ((ys[j] as number) + (ys[j + 1] as number)) / 2;
-      if (rects.some((r) => cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1)) {
-        filled.add(i * ny + j);
-      }
+      const inRect = rects.some((r) => cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1);
+      const inNotch = notches.some((r) => cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1);
+      if (inRect && !inNotch) filled.add(i * ny + j);
     }
   }
 
@@ -451,6 +470,38 @@ function rectilinearUnion(rects: Rect[]): Pt2[] {
   }
 
   return traceLoop(segs);
+}
+
+/**
+ * Area of material removed by the relief notches: the portion of each notch that
+ * overlaps the rectangle union, summed over a shared cell grid so overlapping
+ * notches (e.g. two corner reliefs meeting) are not double-counted.
+ */
+function removedNotchArea(rects: Rect[], notches: Rect[]): number {
+  if (notches.length === 0) return 0;
+  const xs = uniqueSorted([
+    ...rects.flatMap((r) => [r.x0, r.x1]),
+    ...notches.flatMap((r) => [r.x0, r.x1]),
+  ]);
+  const ys = uniqueSorted([
+    ...rects.flatMap((r) => [r.y0, r.y1]),
+    ...notches.flatMap((r) => [r.y0, r.y1]),
+  ]);
+  let area = 0;
+  for (let i = 0; i + 1 < xs.length; i += 1) {
+    const x0 = xs[i] as number;
+    const x1 = xs[i + 1] as number;
+    const cx = (x0 + x1) / 2;
+    for (let j = 0; j + 1 < ys.length; j += 1) {
+      const y0 = ys[j] as number;
+      const y1 = ys[j + 1] as number;
+      const cy = (y0 + y1) / 2;
+      const inRect = rects.some((r) => cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1);
+      const inNotch = notches.some((r) => cx > r.x0 && cx < r.x1 && cy > r.y0 && cy < r.y1);
+      if (inRect && inNotch) area += (x1 - x0) * (y1 - y0);
+    }
+  }
+  return area;
 }
 
 /** Chain oriented boundary segments into a single loop, dropping collinear points. */

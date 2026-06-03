@@ -73,6 +73,45 @@ export interface CornerMiter {
   gap: number;
 }
 
+/**
+ * A relief cut to make a multi-bend part manufacturable. `shape` records the intent:
+ * `rectangular` is a plain slot, `obround` the rounded-slot (semicircular-ended,
+ * lower-stress) standard relief. In this version both produce rectangular geometry —
+ * `obround` only carries the rounded-end intent onto the recorded feature; the
+ * developed notch and 3D cut are rectangular for both. `width` runs along the parent
+ * edge (the slot's narrow extent, default ≈ material thickness); `depth` cuts
+ * perpendicular into the parent flat (default ≈ the bend's developed length plus a
+ * small clearance). For a corner relief, `width` sets the square notch side (default
+ * ≈ depth).
+ */
+export interface ReliefSpec {
+  shape: 'rectangular' | 'obround';
+  width?: number | undefined;
+  depth?: number | undefined;
+}
+
+/**
+ * A recorded relief, mirroring {@link CornerMiter}: enough information for the
+ * unfold to replay the 2D notch without reparsing geometry. `kind` distinguishes a
+ * bend relief (a slot at each end of a partial bend line, into the parent flat)
+ * from a corner relief (a notch at the shared corner of two flanges). `notches`
+ * are the developed-plane (flat-pattern) rectangles to subtract from the outline;
+ * each is also cut from the 3D solid. `shape` carries the rounded-end option onto
+ * the developed outline.
+ */
+export interface ReliefFeature {
+  kind: 'bend' | 'corner';
+  shape: 'rectangular' | 'obround';
+  /** The flange the relief was applied to (bend relief) or the first flange (corner relief). */
+  flangeA: string;
+  /** The second flange of a corner relief; undefined for a bend relief. */
+  flangeB?: string | undefined;
+  width: number;
+  depth: number;
+  /** Developed-plane notch rectangles `[x0, y0, x1, y1]` subtracted from the outline. */
+  notches: [number, number, number, number][];
+}
+
 export interface SheetMetalPart {
   thickness: number;
   /** Base flat extent along +X (x∈[0, baseLength]); the east-run length. */
@@ -84,11 +123,20 @@ export interface SheetMetalPart {
   bends: BendFeature[];
   solid?: Solid | undefined;
   miters?: CornerMiter[] | undefined;
+  reliefs?: ReliefFeature[] | undefined;
 }
 
 export interface FlatPattern {
   outline: Wire;
-  bendLines: { line: Edge; angleDeg: number; direction: 'up' | 'down' }[];
+  bendLines: {
+    id: string;
+    line: Edge;
+    angleDeg: number;
+    direction: 'up' | 'down';
+    /** Unit direction in the developed plane pointing into the parent flat (the
+     * side a bend relief notches), opposite the develop-out direction. */
+    inward: [number, number];
+  }[];
   developedArea: number;
 }
 
@@ -141,6 +189,8 @@ export interface FoldRegion {
   /** Extent along the parent edge. Default = full parent-edge length. */
   width?: number | undefined;
   miter?: MiterSpec | undefined;
+  /** Bend relief to add at this region's partial-span fold-line ends after folding. */
+  bendRelief?: ReliefSpec | undefined;
 }
 
 /**

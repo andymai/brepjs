@@ -20,6 +20,9 @@ import {
   fold,
   miter,
   miterCorner,
+  bendRelief,
+  autoReliefs,
+  relieveCorner,
   toDXF,
   report,
   validate,
@@ -30,6 +33,7 @@ import type {
   FlatInput,
   BendReport,
   MaterialSpec,
+  ReliefSpec,
   SheetMetalWarning,
   UnfoldResult,
 } from './types.js';
@@ -70,6 +74,21 @@ class SheetMetalPartHandle {
   /** Auto-miter the shared corner of two flanges with an optional gap. */
   miterCorner(flangeIdA: string, flangeIdB: string, gap = 0): SheetMetalPartHandle {
     return new SheetMetalPartHandle(unwrapOrThrow(miterCorner(this.part, flangeIdA, flangeIdB, gap)));
+  }
+
+  /** Add a bend relief at each mid-edge end of a partial flange's bend line. */
+  bendRelief(flangeId: string, spec?: ReliefSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(bendRelief(this.part, flangeId, spec)));
+  }
+
+  /** Add a bend relief to every partial-span bend in the part. */
+  autoReliefs(spec?: ReliefSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(autoReliefs(this.part, spec)));
+  }
+
+  /** Cut a corner relief notch at the shared corner of two adjacent flanges. */
+  cornerRelief(flangeIdA: string, flangeIdB: string, spec?: ReliefSpec): SheetMetalPartHandle {
+    return new SheetMetalPartHandle(unwrapOrThrow(relieveCorner(this.part, flangeIdA, flangeIdB, spec)));
   }
 
   /** Flatten into a developed flat pattern + bend report + warnings. */
@@ -142,6 +161,18 @@ class SheetMetalBuilder {
 
   miterCorner(flangeIdA: string, flangeIdB: string, gap = 0): SheetMetalPartHandle {
     return this.build().miterCorner(flangeIdA, flangeIdB, gap);
+  }
+
+  bendRelief(flangeId: string, spec?: ReliefSpec): SheetMetalPartHandle {
+    return this.build().bendRelief(flangeId, spec);
+  }
+
+  autoReliefs(spec?: ReliefSpec): SheetMetalPartHandle {
+    return this.build().autoReliefs(spec);
+  }
+
+  cornerRelief(flangeIdA: string, flangeIdB: string, spec?: ReliefSpec): SheetMetalPartHandle {
+    return this.build().cornerRelief(flangeIdA, flangeIdB, spec);
   }
 
   unfold(): UnfoldResult {

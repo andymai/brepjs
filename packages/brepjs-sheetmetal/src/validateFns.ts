@@ -98,11 +98,19 @@ function checkCollisions(part: SheetMetalPart): SheetMetalWarning[] {
     boxes.push({ id: bend.id, bounds });
   }
 
+  // A corner resolved by a miter or a corner relief is no longer an interference:
+  // both record a `CornerMiter` for the pair, so skip those pairs.
+  const resolved = new Set<string>();
+  for (const m of part.miters ?? []) {
+    resolved.add(pairKey(m.flangeA, m.flangeB));
+  }
+
   for (let i = 0; i < boxes.length; i += 1) {
     for (let j = i + 1; j < boxes.length; j += 1) {
       const a = boxes[i];
       const b = boxes[j];
       if (a === undefined || b === undefined) continue;
+      if (resolved.has(pairKey(a.id, b.id))) continue;
       if (boundsOverlap(a.bounds, b.bounds)) {
         warnings.push({
           code: 'COLLISION',
@@ -194,6 +202,11 @@ function outwardRun(axisOrigin: Vec3, axis: Vec3, center: Vec3): Vec3 {
   ];
   const dot = perp[0] * toEdge[0] + perp[1] * toEdge[1];
   return dot >= 0 ? perp : [-perp[0], -perp[1], -perp[2]];
+}
+
+/** Order-independent key for a flange pair (corner identity). */
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}::${b}` : `${b}::${a}`;
 }
 
 function boundsOverlap(a: Bounds3D, b: Bounds3D): boolean {

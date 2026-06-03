@@ -19,6 +19,7 @@ import type {
   SheetMetalWarning,
 } from './types.js';
 import { authorPart, type AuthorSpec, type FlangeSpec } from './authorFns.js';
+import { addBendRelief } from './reliefFns.js';
 import { featureTree } from './featureTreeFns.js';
 import { developedLength } from './allowanceFns.js';
 import { unfold, edgeBasis2, type Frame2 } from './unfoldFns.js';
@@ -58,7 +59,17 @@ export function foldWithWarnings(input: FlatInput): Result<FoldResult> {
 
   const authored = authorPart(spec);
   if (!authored.ok) return authored;
-  const part = authored.value;
+  let part = authored.value;
+
+  // Re-apply any bend reliefs recorded on the regions, so fold reproduces a
+  // relief'd part's solid + recorded feature (reliefs are cut after the solid is
+  // built, exactly as the explicit `addBendRelief` API does).
+  for (const region of input.regions) {
+    if (region.bendRelief === undefined) continue;
+    const relieved = addBendRelief(part, region.id, region.bendRelief);
+    if (!relieved.ok) return relieved;
+    part = relieved.value;
+  }
 
   // SEAM_CUT comes from the feature-tree walk; INVALID_SOLID / COLLISION / MIN_RADIUS
   // come from the canonical validator, so fold inherits the same checks (and message

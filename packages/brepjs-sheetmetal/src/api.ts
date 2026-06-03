@@ -20,6 +20,11 @@ import {
   autoMiterCorner as autoMiterCornerFn,
   type MiterPlane,
 } from './miterFns.js';
+import {
+  addBendRelief as addBendReliefFn,
+  autoBendReliefs as autoBendReliefsFn,
+  cornerRelief as cornerReliefFn,
+} from './reliefFns.js';
 import { flatPatternToDXF as flatPatternToDXFFn, type DxfOptions } from './dxfFns.js';
 import {
   buildReport as buildReportFn,
@@ -34,6 +39,7 @@ import type {
   FlatInput,
   BendReport,
   BendRule,
+  ReliefSpec,
   UnfoldResult,
   SheetMetalWarning,
 } from './types.js';
@@ -66,6 +72,30 @@ export function miterCorner(
   gap = 0
 ): Result<SheetMetalPart> {
   return autoMiterCornerFn(part, flangeIdA, flangeIdB, gap);
+}
+
+/** Add a bend relief slot at each mid-edge end of a partial flange's bend line. */
+export function bendRelief(
+  part: SheetMetalPart,
+  flangeId: string,
+  spec?: ReliefSpec
+): Result<SheetMetalPart> {
+  return addBendReliefFn(part, flangeId, spec);
+}
+
+/** Add a bend relief to every partial-span bend in the part. */
+export function autoReliefs(part: SheetMetalPart, spec?: ReliefSpec): Result<SheetMetalPart> {
+  return autoBendReliefsFn(part, spec);
+}
+
+/** Cut a corner relief notch at the shared corner of two adjacent flanges. */
+export function relieveCorner(
+  part: SheetMetalPart,
+  flangeIdA: string,
+  flangeIdB: string,
+  spec?: ReliefSpec
+): Result<SheetMetalPart> {
+  return cornerReliefFn(part, flangeIdA, flangeIdB, spec);
 }
 
 /** Emit an annotated multi-layer DXF string for a flat pattern. */

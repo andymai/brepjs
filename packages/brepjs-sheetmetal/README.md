@@ -23,13 +23,14 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 
 ## Status
 
-| Area            | State                                                                                  |
-| --------------- | -------------------------------------------------------------------------------------- |
-| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams       |
-| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area |
-| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`      |
-| Miter / outputs | auto corner-miter, multi-layer DXF, JSON bend report, manufacturability warnings       |
-| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                |
+| Area            | State                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams          |
+| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area    |
+| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`         |
+| Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner) |
+| Miter / outputs | auto corner-miter, multi-layer DXF, JSON bend report, manufacturability warnings          |
+| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                   |
 
 `fold(input: FlatInput)` folds a flat pattern back up into a 3D part — the inverse of `unfold`. A
 `FlatInput` is a region-tree (a base rectangle plus child fold regions, each with a fold line, angle,
@@ -41,6 +42,27 @@ wire and bend-line edges — reading real coordinates back out with the public `
 volume, validity, and bend/flange counts through the 2D geometry — making the round-trip a genuine,
 non-circular oracle. Fold reuses the forward authoring bend geometry wholesale (no duplicated bend math),
 and rides SEAM_CUT / MIN_RADIUS warnings inside the Ok payload.
+
+## Reliefs
+
+Multi-bend parts tear or collide at corners unless material is relieved. Reliefs are recorded features
+(like corner miters): cut from the folded 3D solid and replayed by `unfold` as 2D notches subtracted from
+the developed outline (so they ride in the DXF `OUTLINE` layer and shrink `developedArea`).
+
+- `addBendRelief(part, flangeId, spec?)` cuts a slot at each **mid-edge end** of a partial/offset flange's
+  bend line — the ends that don't reach the parent-edge endpoint, where the parent material would tear.
+  `autoBendReliefs(part, spec?)` adds one to every partial-span flange (full-span flanges are skipped).
+- `cornerRelief(part, flangeIdA, flangeIdB, spec?)` cuts a square notch centred on the shared corner of two
+  adjacent flanges — the notch alternative to a 45° miter. The square side is `spec.width` when given, else
+  the depth clearance. It records the corner as resolved, so the `COLLISION` warning the un-relieved corner
+  raised goes away.
+
+A `ReliefSpec` is `{ shape: 'rectangular' | 'obround'; width?; depth? }`. Defaults: `width ≈ thickness`,
+`depth ≈ developedLength(bend) + thickness`. `obround` records the rounded-slot intent; the developed notch
+and 3D cut are rectangular for both shapes in this version. Reliefs round-trip through `fold` via a
+`FoldRegion.bendRelief` field; the strict geometric round-trip oracle (`partToFlatInput → fold`) skips
+relief'd parts because a notched outline is not a plain rectangle the parser can re-derive (same as mitered
+parts).
 
 ## Design
 

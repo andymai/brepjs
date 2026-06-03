@@ -40,6 +40,8 @@ export type {
 export { miterCut, autoMiterCorner } from './miterFns.js';
 export type { MiterPlane } from './miterFns.js';
 
+export { addBendRelief, autoBendReliefs, cornerRelief } from './reliefFns.js';
+
 export { flatPatternToDXF } from './dxfFns.js';
 export type { DxfOptions } from './dxfFns.js';
 
@@ -53,6 +55,9 @@ export {
   fold as foldPart,
   miter,
   miterCorner,
+  bendRelief,
+  autoReliefs,
+  relieveCorner,
   toDXF,
   report,
   reportFrom,
@@ -73,6 +78,8 @@ export type {
   BendFeature,
   FlangeFeature,
   CornerMiter,
+  ReliefSpec,
+  ReliefFeature,
   SheetMetalPart,
   FlatPattern,
   FlatInput,

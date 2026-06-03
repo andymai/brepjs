@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { meshEdges, getEdges, curveStartPoint, curveEndPoint, exportSTEP, measureVolume, isErr, initFromOC } from 'brepjs';
 import type { Solid, Vec3 } from 'brepjs';
 import { author, miterCorner, unfold, fold } from '../src/api.js';
+import { addBendRelief, cornerRelief } from '../src/reliefFns.js';
 import { partToFlatInput } from '../src/foldFns.js';
 import type { AuthorSpec } from '../src/authorFns.js';
 import type { BendRule, FlatPattern, SheetMetalPart } from '../src/types.js';
@@ -58,6 +59,10 @@ interface Demo {
   spec: AuthorSpec;
   /** Optional auto-miter applied to the authored part before unfolding. */
   miter?: { a: string; b: string; gap: number };
+  /** Optional bend relief on a partial flange (slot at each mid-edge bend-line end). */
+  bendRelief?: { flange: string };
+  /** Optional corner relief notch between two adjacent flanges. */
+  cornerRelief?: { a: string; b: string };
 }
 
 const DEMOS: Demo[] = [
@@ -97,6 +102,29 @@ const DEMOS: Demo[] = [
       ],
     },
   },
+  {
+    name: 'bend-relief',
+    spec: {
+      thickness: T,
+      base: { length: 60, width: 40 },
+      // A partial flange centred on the ymax edge: both bend-line ends sit mid-edge
+      // and would tear the parent without a relief slot.
+      flanges: [{ id: 'tab', length: 16, angleDeg: 90, rule, side: 'ymax', offset: 18, width: 24 }],
+    },
+    bendRelief: { flange: 'tab' },
+  },
+  {
+    name: 'corner-relief',
+    spec: {
+      thickness: T,
+      base: { length: 44, width: 44 },
+      flanges: [
+        { id: 'fx', length: 16, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'fy', length: 16, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    },
+    cornerRelief: { a: 'fx', b: 'fy' },
+  },
 ];
 
 async function main(): Promise<void> {
@@ -121,6 +149,16 @@ async function renderDemo(demo: Demo): Promise<string[]> {
     if (isErr(mitered)) throw new Error(`miterCorner '${demo.name}' failed: ${mitered.error.message}`);
     part = mitered.value;
   }
+  if (demo.bendRelief !== undefined) {
+    const relieved = addBendRelief(part, demo.bendRelief.flange);
+    if (isErr(relieved)) throw new Error(`bendRelief '${demo.name}' failed: ${relieved.error.message}`);
+    part = relieved.value;
+  }
+  if (demo.cornerRelief !== undefined) {
+    const relieved = cornerRelief(part, demo.cornerRelief.a, demo.cornerRelief.b);
+    if (isErr(relieved)) throw new Error(`cornerRelief '${demo.name}' failed: ${relieved.error.message}`);
+    part = relieved.value;
+  }
   if (part.solid === undefined) throw new Error(`'${demo.name}' has no solid`);
 
   const unfolded = unfold(part);
@@ -140,10 +178,12 @@ async function renderDemo(demo: Demo): Promise<string[]> {
 
   // Fold round-trip: re-derive a FlatInput from the part and fold it back up,
   // demonstrating unfold→fold reproduces the part's volume (the PR2 oracle).
-  // Mitered parts are intentionally skipped; a failure on a non-mitered demo is a
-  // real round-trip regression, so it must surface rather than read as "skipped".
-  let roundTrip = '(fold round-trip skipped: mitered part)';
-  if (demo.miter === undefined) {
+  // Mitered AND relief'd parts are intentionally skipped (a notched/chamfered outline
+  // is not a plain rectangle, so patternToFlatInput cannot re-parse it); a failure on
+  // a plain demo is a real round-trip regression, so it must surface as such.
+  const skipRoundTrip = demo.miter !== undefined || part.reliefs !== undefined;
+  let roundTrip = '(fold round-trip skipped: mitered/relief’d part)';
+  if (!skipRoundTrip) {
     roundTrip = foldRoundTrip(part);
   }
 
