@@ -208,7 +208,9 @@ function makeNativeKernel2DOps(
     const o = occt();
     const fn = o?.[method] as ((...a: unknown[]) => unknown) | undefined;
     if (!fn) throw new Error(`manifold 2D: ${method} needs an OCCT kernel (none registered)`);
-    return fn(...args);
+    // Member call (not `fn(...)`) so the adapter's `this` binding survives —
+    // OCCT-WASM adapter methods read `this.k`/`this.Module`.
+    return (o as Record<string, (...a: unknown[]) => unknown>)[method]!(...args);
   }
 
   const asC = (h: Curve2dHandle): NativeCurve => h;
@@ -317,8 +319,14 @@ function makeNativeKernel2DOps(
 
     evaluateCurve2d: (h, param) => {
       const c = asC(h);
-      if (c.k === 'line')
-        return [c.p1[0] + (c.p2[0] - c.p1[0]) * param, c.p1[1] + (c.p2[1] - c.p1[1]) * param];
+      if (c.k === 'line') {
+        // Lines are parametrized by signed distance (OCCT convention) so
+        // parameter()/splitAt() round-tripping through OCCT stays consistent.
+        const dx = c.p2[0] - c.p1[0];
+        const dy = c.p2[1] - c.p1[1];
+        const len = Math.hypot(dx, dy) || 1;
+        return [c.p1[0] + (dx * param) / len, c.p1[1] + (dy * param) / len];
+      }
       if (c.k === 'bezier') return bezierAt(c.pts, param);
       return [
         c.c[0] + c.u[0] * Math.cos(param) + c.v[0] * Math.sin(param),
@@ -327,11 +335,15 @@ function makeNativeKernel2DOps(
     },
     evaluateCurve2dD1: (h, param) => {
       const c = asC(h);
-      if (c.k === 'line')
+      if (c.k === 'line') {
+        const dx = c.p2[0] - c.p1[0];
+        const dy = c.p2[1] - c.p1[1];
+        const len = Math.hypot(dx, dy) || 1;
         return {
-          point: [c.p1[0] + (c.p2[0] - c.p1[0]) * param, c.p1[1] + (c.p2[1] - c.p1[1]) * param],
-          tangent: [c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]],
+          point: [c.p1[0] + (dx * param) / len, c.p1[1] + (dy * param) / len],
+          tangent: [dx / len, dy / len], // unit tangent (distance parametrization)
         };
+      }
       if (c.k === 'bezier')
         return { point: bezierAt(c.pts, param), tangent: bezierD1(c.pts, param) };
       const ct = Math.cos(param);
@@ -345,6 +357,8 @@ function makeNativeKernel2DOps(
     getCurve2dBounds: (h) => {
       const c = asC(h);
       if (c.k === 'conic') return { first: c.a0, last: c.a1 };
+      if (c.k === 'line')
+        return { first: 0, last: Math.hypot(c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]) };
       return { first: 0, last: 1 };
     },
     getCurve2dType: (h) => {
@@ -369,6 +383,16 @@ function makeNativeKernel2DOps(
     trimCurve2d: (h, start, end) => {
       const c = asC(h);
       if (c.k === 'conic') return conic(c.c, c.u, c.v, start, end);
+      if (c.k === 'line') {
+        // start/end are distances along the line (distance parametrization).
+        const dx = c.p2[0] - c.p1[0];
+        const dy = c.p2[1] - c.p1[1];
+        const len = Math.hypot(dx, dy) || 1;
+        return line(
+          [c.p1[0] + (dx * start) / len, c.p1[1] + (dy * start) / len],
+          [c.p1[0] + (dx * end) / len, c.p1[1] + (dy * end) / len]
+        );
+      }
       return structuredClone(c);
     },
 
