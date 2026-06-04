@@ -23,7 +23,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import * as fc from 'fast-check';
-import { initKernel } from '../setup.js';
+import { initKernel, currentKernel } from '../setup.js';
 import { NUM_RUNS, fcDim, formula } from './helpers.js';
 import {
   box,
@@ -40,6 +40,12 @@ import {
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 
+// BREP/STEP are OCCT B-rep formats; the manifold mesh kernel can only export
+// them by replaying onto an OCCT kernel. The manifold-only test projection
+// registers no OCCT, so these round-trips can't run there (in real use manifold
+// is paired with occt-wasm, which does the replay). Skip the suite on manifold.
+const describeBrep = currentKernel === 'manifold' ? describe.skip : describe;
+
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -52,7 +58,7 @@ function volOf(shape: AnyShape<Dimension>): number {
 // BREP — lossless string round-trip
 // ---------------------------------------------------------------------------
 
-describe('SPEC: BREP round-trip preserves volume (lossless)', () => {
+describeBrep('SPEC: BREP round-trip preserves volume (lossless)', () => {
   // BREP is the kernel's native serialization. Header contract: 6 decimals.
   it.each<[string, () => AnyShape<Dimension>, number]>([
     ['box(2,3,4)', () => box(2, 3, 4), 24],
@@ -67,7 +73,7 @@ describe('SPEC: BREP round-trip preserves volume (lossless)', () => {
   });
 });
 
-describe('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
+describeBrep('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
   // Header contract: 6 decimals (BREP is lossless).
   it.each<[string, () => AnyShape<Dimension>, number]>([
     ['sketchRectangle(10,20).extrude(5)', () => sketchRectangle(10, 20).extrude(5), 1000],
@@ -95,7 +101,7 @@ describe('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
 // STEP — lossless B-rep file format
 // ---------------------------------------------------------------------------
 
-describe('SPEC: STEP round-trip preserves volume (lossless B-rep)', () => {
+describeBrep('SPEC: STEP round-trip preserves volume (lossless B-rep)', () => {
   // Header contract: 4 decimals. STEP file I/O round-trips through string
   // serialization with bounded float precision; ±5e-5 is the contract.
   it.each<[string, () => AnyShape<Dimension>, number]>([
@@ -119,7 +125,7 @@ describe('SPEC: STEP round-trip preserves volume (lossless B-rep)', () => {
 // Algebraic invariants — round-trip should be idempotent in the BREP path
 // ---------------------------------------------------------------------------
 
-describe('INVARIANT: BREP round-trip is volume-preserving for boxes', () => {
+describeBrep('INVARIANT: BREP round-trip is volume-preserving for boxes', () => {
   it('vol(fromBREP(toBREP(box(w,d,h)))) === vol(box(w,d,h))', () => {
     fc.assert(
       fc.property(fcDim(), fcDim(), fcDim(), (w, d, h) => {
@@ -136,7 +142,7 @@ describe('INVARIANT: BREP round-trip is volume-preserving for boxes', () => {
   });
 });
 
-describe('INVARIANT: BREP round-trip is volume-preserving for cylinders', () => {
+describeBrep('INVARIANT: BREP round-trip is volume-preserving for cylinders', () => {
   it('vol(fromBREP(toBREP(cylinder(r, h)))) === vol(cylinder(r, h))', () => {
     fc.assert(
       fc.property(fcDim(), fcDim(), (r, h) => {
@@ -154,7 +160,7 @@ describe('INVARIANT: BREP round-trip is volume-preserving for cylinders', () => 
   });
 });
 
-describe('INVARIANT: STEP round-trip preserves volume for boxes', () => {
+describeBrep('INVARIANT: STEP round-trip preserves volume for boxes', () => {
   it('vol(importSTEP(exportSTEP(box))) === vol(box)', async () => {
     // STEP uses async import, so we run fewer property samples to keep CI
     // time bounded. Coverage comes from the closed-form table above.

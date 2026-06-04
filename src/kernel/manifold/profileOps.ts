@@ -34,10 +34,25 @@ import {
   type Vec3,
 } from './approximations.js';
 
-/** Segments used to approximate a full circle; arcs scale by angle span. */
+/** Fallback full-circle segment count when the kernel exposes no quality fn. */
 const FULL_CIRCLE_SEGMENTS = 24;
 /** Bezier sampling segments per edge. */
 const BEZIER_SEGMENTS = 24;
+
+/**
+ * Full-circle segment count, following the Manifold global quality setting
+ * (`getCircularSegments`) when available so profile-curve fidelity scales with
+ * the kernel's tessellation quality — fine for accuracy-sensitive callers,
+ * coarse for fast preview — instead of a hardcoded constant. Set by
+ * {@link makeProfileBuilders}.
+ */
+let circularSegmentsFor: ((radius: number) => number) | null = null;
+
+function fullCircleSegments(radius: number): number {
+  const r = Math.max(Math.abs(radius), 1e-6);
+  const n = circularSegmentsFor ? circularSegmentsFor(r) : FULL_CIRCLE_SEGMENTS;
+  return Math.max(FULL_CIRCLE_SEGMENTS, n);
+}
 
 const ZERO3: Vec3 = [0, 0, 0];
 const EPS_JOIN = 1e-6;
@@ -52,8 +67,8 @@ function at3(pts: Pts, i: number): Vec3 {
   return pts[i] ?? ZERO3;
 }
 
-function arcSegments(angleSpan: number): number {
-  return Math.max(2, Math.ceil((Math.abs(angleSpan) / (2 * Math.PI)) * FULL_CIRCLE_SEGMENTS));
+function arcSegments(angleSpan: number, radius = 1): number {
+  return Math.max(2, Math.ceil((Math.abs(angleSpan) / (2 * Math.PI)) * fullCircleSegments(radius)));
 }
 
 function pickPerp(n: Vec3): Vec3 {
@@ -74,7 +89,7 @@ function sampleArc(
   const x = xDir ? normalize3(xDir) : pickPerp(n);
   const y = normalize3(cross(n, x));
   const span = endAngle - startAngle;
-  const segs = arcSegments(span);
+  const segs = arcSegments(span, radius);
   const pts: Pts = [];
   for (let i = 0; i <= segs; i++) {
     const a = startAngle + (span * i) / segs;
@@ -247,7 +262,11 @@ export interface ProfileBuilders {
   makePolygonFace(points: Vec3[]): KernelShape;
 }
 
-export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
+export function makeProfileBuilders(module: ManifoldModule): ProfileBuilders {
+  // Follow the kernel's global tessellation quality for profile-curve sampling.
+  const getSegs = (module as { getCircularSegments?: (r: number) => number }).getCircularSegments;
+  if (typeof getSegs === 'function') circularSegmentsFor = (r) => getSegs(r);
+
   function edge(pts: Pts, curve?: CurveDesc): KernelShape {
     const params = curve ? { pts, curve } : { pts };
     return wrap(PLACEHOLDER, makeNode('profileEdge', params, [])) as KernelShape;
@@ -384,8 +403,9 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
     const x = xDir ? normalize3(xDir) : pickPerp(n);
     const y = normalize3(cross(n, x));
     const pts: Pts = [];
-    for (let i = 0; i <= FULL_CIRCLE_SEGMENTS; i++) {
-      const a = (2 * Math.PI * i) / FULL_CIRCLE_SEGMENTS;
+    const segs = fullCircleSegments(Math.max(majorRadius, minorRadius));
+    for (let i = 0; i <= segs; i++) {
+      const a = (2 * Math.PI * i) / segs;
       pts.push(
         add(
           center,
