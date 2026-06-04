@@ -20,6 +20,7 @@ import type { ManifoldModule } from './helpers.js';
 import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
 import { replay } from './replay.js';
 import { isNativeFace } from './nativeFaces.js';
+import { isNativeEdge, isNativeVertex, edgePointAt, edgeTangentAt } from './nativeEdges.js';
 
 type Vec3 = [number, number, number];
 
@@ -82,12 +83,21 @@ function viaOcct<T>(
 
 export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & KernelSurfaceOps {
   return {
-    // --- Exact curve queries: replay onto OCCT ---
-    curveType: (shape) => viaOcct(shape, (s, occt) => occt.curveType(s)),
-    curveParameters: (shape) => viaOcct(shape, (s, occt) => occt.curveParameters(s)),
+    // --- Curve queries: native for mesh-extracted edges, else replay onto OCCT ---
+    curveType: (shape) =>
+      isNativeEdge(shape) ? shape.curveType : viaOcct(shape, (s, occt) => occt.curveType(s)),
+    curveParameters: (shape) =>
+      isNativeEdge(shape)
+        ? [0, shape.length]
+        : viaOcct(shape, (s, occt) => occt.curveParameters(s)),
     curvePointAtParam: (shape, param) =>
-      viaOcct(shape, (s, occt) => occt.curvePointAtParam(s, param)),
-    curveTangent: (shape, param) => viaOcct(shape, (s, occt) => occt.curveTangent(s, param)),
+      isNativeEdge(shape)
+        ? edgePointAt(shape, param)
+        : viaOcct(shape, (s, occt) => occt.curvePointAtParam(s, param)),
+    curveTangent: (shape, param) =>
+      isNativeEdge(shape)
+        ? { point: edgePointAt(shape, param), tangent: edgeTangentAt(shape, param) }
+        : viaOcct(shape, (s, occt) => occt.curveTangent(s, param)),
     curveIsClosed: (shape) => viaOcct(shape, (s, occt) => occt.curveIsClosed(s)),
     curveIsPeriodic: (shape) => viaOcct(shape, (s, occt) => occt.curveIsPeriodic(s)),
     curvePeriod: (shape) => viaOcct(shape, (s, occt) => occt.curvePeriod(s)),
@@ -109,6 +119,7 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
 
     // --- Cheap mesh-derivable query ---
     vertexPosition: (vertex) => {
+      if (isNativeVertex(vertex)) return vertex.point;
       if (!asManifoldShape(vertex)) {
         return viaOcct(vertex, (s, occt) => occt.vertexPosition(s));
       }

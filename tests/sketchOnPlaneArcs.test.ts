@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { initKernel, currentKernel } from './setup.js';
 import {
   draw,
   drawCircle,
@@ -54,10 +54,13 @@ describe('sketchOnPlane is plane-invariant for arc-containing drawings', () => {
     expect(new Set(tops.map((t) => t.faces)).size).toBe(1);
     expect(new Set(tops.map((t) => t.edges)).size).toBe(1);
     expect(new Set(tops.map((t) => t.verts)).size).toBe(1);
-    // Sanity: edges == 1.5x verts for a closed prism (2 rims + 1 vertical per rim vert).
+    // Sanity: edges == 1.5x verts for a closed prism (2 rims + 1 vertical per rim
+    // vert). This is a B-rep identity; the manifold mesh kernel fragments smooth
+    // rims into per-facet edges (plane-invariant but not the clean B-rep count),
+    // so the ratio only holds on B-rep kernels.
     const [ref] = tops;
     if (!ref) throw new Error('PLANES must yield at least one topology');
-    expect(ref.edges).toBe(ref.verts * 1.5);
+    if (currentKernel !== 'manifold') expect(ref.edges).toBe(ref.verts * 1.5);
   });
 
   it('drawCircle produces identical topology on XY/XZ/YZ', () => {

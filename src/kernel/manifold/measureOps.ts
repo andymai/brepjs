@@ -281,7 +281,12 @@ export function makeMeasureOps(_module: ManifoldModule): KernelMeasureOps {
   return {
     volume: (shape) => volume(shape),
     area: (shape) => area(shape),
-    length: () => notImplemented('length'),
+    length: (shape) => {
+      // Native edge witnesses carry their polyline arc length.
+      const e = shape as { __nativeEdge?: boolean; length?: number } | null;
+      if (e && e.__nativeEdge && typeof e.length === 'number') return e.length;
+      return notImplemented('length');
+    },
     centerOfMass: (shape) => centerOfMass(shape),
     linearCenterOfMass: (shape) => centerOfMass(shape),
     boundingBox: (shape) => boundingBox(shape),
