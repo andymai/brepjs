@@ -88,6 +88,30 @@ const COMPILER_OPTIONS: ts.CompilerOptions = {
   allowImportingTsExtensions: true,
 };
 
+/**
+ * Locate the `@types/node` declarations so a part may import Node built-ins (`node:fs` to load a
+ * font, `node:fs/promises` to read a STEP file, etc.) without `--check` failing on the import.
+ * Returns the `@types` directory to use as a `typeRoots` entry. Probes the tool's own install
+ * first (where `@types/node` ships as a dependency), then the part's directory.
+ */
+function nodeTypesRoot(partPath: string, toolDir: string | undefined): string | undefined {
+  const froms = [
+    import.meta.url,
+    toolDir ? pathToFileURL(resolvePath(toolDir, 'package.json')).href : undefined,
+    pathToFileURL(partPath).href,
+  ];
+  for (const from of froms) {
+    if (!from) continue;
+    try {
+      const pkgJson = createRequire(from).resolve('@types/node/package.json');
+      return dirname(dirname(pkgJson)); // .../node_modules/@types
+    } catch {
+      // keep probing
+    }
+  }
+  return undefined;
+}
+
 function diagnosticToErrorInfo(d: ts.Diagnostic): ErrorInfo {
   const text = ts.flattenDiagnosticMessageText(d.messageText, '\n');
   let where = '';
@@ -117,6 +141,13 @@ export function typecheckPart(partPath: string, toolDir?: string): TypecheckResu
   const options: ts.CompilerOptions = { ...COMPILER_OPTIONS };
   if (dts) {
     options.paths = { brepjs: [dts] };
+  }
+  const typesRoot = nodeTypesRoot(partPath, toolDir);
+  if (typesRoot) {
+    // Make Node built-ins available (font/STEP file IO), but only `node` — not every @types
+    // package on disk — so the check stays close to what the part actually imports.
+    options.typeRoots = [typesRoot];
+    options.types = ['node'];
   }
   const program = ts.createProgram([partPath], options);
   const diagnostics = [

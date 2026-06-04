@@ -51,6 +51,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
+    "@types/node": "^25.9.1",
     "brepjs": "^18.0.0",
     "commander": "^13.0.0",
     "occt-wasm": "^3.0.0",
