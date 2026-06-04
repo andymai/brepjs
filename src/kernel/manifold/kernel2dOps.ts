@@ -1,12 +1,15 @@
 /**
  * 2D geometry capability for the manifold adapter.
  *
- * Manifold is a 3D-only mesh kernel with no 2D curve representation, so every
- * Kernel2DCapability method delegates to the OCCT kernel when one is
- * registered. With no 'occt' kernel present, each throws a clear unsupported
- * error. Delegation is a thin uniform wrapper rather than 63 hand-written
- * bodies: each method forwards its arguments to the identically-named OCCT
- * method, resolved lazily at call time.
+ * The construction path (draw → sketch → extrude) runs *natively* via
+ * {@link ./kernel2dNative.js}: lines/arcs/conics/beziers are a tiny JS curve
+ * algebra, and `liftCurve2dToPlane` emits native manifold profile edges that
+ * makeWire/makeFace consume with no OCCT round-trip. Everything native doesn't
+ * model (exact NURBS, curve intersection/projection, serialization, surface
+ * queries) falls through to the OCCT kernel when one is registered; with no
+ * OCCT present those throw a clear unsupported error. The OCCT fall-through is
+ * a thin uniform wrapper: each method forwards its arguments to the
+ * identically-named OCCT method, resolved lazily at call time.
  * @module
  */
 
@@ -14,6 +17,7 @@ import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { resolveOcct } from './meshHandle.js';
+import { makeNativeKernel2DOps } from './kernel2dNative.js';
 
 const KERNEL_2D_METHODS: readonly (keyof Kernel2DCapability)[] = [
   'createPoint2d',
@@ -93,10 +97,19 @@ function resolveOcct2D(
   return occt as unknown as Record<keyof Kernel2DCapability, (...a: unknown[]) => unknown>;
 }
 
-export function makeKernel2DOps(_module: ManifoldModule): Kernel2DCapability {
+export function makeKernel2DOps(module: ManifoldModule): Kernel2DCapability {
   const ops: Partial<Record<keyof Kernel2DCapability, unknown>> = {};
+  // Base layer: OCCT fall-through for every method.
   for (const method of KERNEL_2D_METHODS) {
     ops[method] = (...args: unknown[]): unknown => resolveOcct2D(method)[method](...args);
   }
+  // Overlay: native implementations take precedence for the construction path.
+  // The native ops receive a lazy OCCT resolver so the genuinely-OCCT tail
+  // (NURBS, intersect, project, serialize, surface ops) delegates correctly.
+  const native = makeNativeKernel2DOps(
+    module,
+    () => resolveOcct() as unknown as Partial<Kernel2DCapability> | undefined
+  );
+  Object.assign(ops, native);
   return ops as Kernel2DCapability;
 }

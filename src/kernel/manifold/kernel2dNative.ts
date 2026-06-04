@@ -50,7 +50,7 @@ interface Affine {
   ty: number;
 }
 
-const CIRCLE_SEGMENTS = 64; // full-circle sampling (arcs scale by angle span)
+const CHORD_TOL = 0.004; // max polygon sagitta (mm) when discretizing conic arcs
 
 function isNative(x: unknown): x is NativeCurve {
   return !!x && typeof x === 'object' && (x as { __nativeC2d?: boolean }).__nativeC2d === true;
@@ -98,6 +98,43 @@ function bezierAt(pts: Vec2[], t: number): Vec2 {
   return tmp[0] ?? [0, 0];
 }
 
+function conicPoint(c: ConicC, t: number): Vec2 {
+  const ct = Math.cos(t);
+  const st = Math.sin(t);
+  return [c.c[0] + c.u[0] * ct + c.v[0] * st, c.c[1] + c.u[1] * ct + c.v[1] * st];
+}
+
+/** Bezier first derivative B'(t) = n·Σ(P_{i+1}−P_i)·b_{i,n−1}(t). */
+function bezierD1(pts: Vec2[], t: number): Vec2 {
+  const n = pts.length - 1;
+  if (n < 1) return [0, 0];
+  const diff: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i] ?? [0, 0];
+    const b = pts[i + 1] ?? [0, 0];
+    diff.push([n * (b[0] - a[0]), n * (b[1] - a[1])]);
+  }
+  return bezierAt(diff, t);
+}
+
+/**
+ * Segment count for a conic arc, driven by chord-height tolerance rather than a
+ * fixed count: the polygon's sagitta is `ρ(1 − cos(Δθ/2))`, so to keep it under
+ * CHORD_TOL the per-segment angle must satisfy `Δθ ≤ 2·acos(1 − tol/ρ)`. This
+ * gives tiny gridfinity corner arcs few segments (fast) while large circles get
+ * enough to match OCCT's exact volume (parity). `ρ` is the larger conjugate
+ * radius (ellipse worst case).
+ */
+function conicSegments(curve: ConicC): number {
+  const span = Math.abs(curve.a1 - curve.a0);
+  const ru = Math.hypot(curve.u[0], curve.u[1]);
+  const rv = Math.hypot(curve.v[0], curve.v[1]);
+  const rho = Math.max(ru, rv);
+  if (rho <= CHORD_TOL) return Math.max(2, Math.ceil((span / (2 * Math.PI)) * 8));
+  const maxAngle = 2 * Math.acos(Math.max(-1, 1 - CHORD_TOL / rho));
+  return Math.max(2, Math.ceil(span / maxAngle));
+}
+
 function sample(curve: NativeCurve): Vec2[] {
   if (curve.k === 'line') return [curve.p1, curve.p2];
   if (curve.k === 'bezier') {
@@ -106,7 +143,7 @@ function sample(curve: NativeCurve): Vec2[] {
     return out;
   }
   const span = curve.a1 - curve.a0;
-  const n = Math.max(2, Math.ceil((Math.abs(span) / (2 * Math.PI)) * CIRCLE_SEGMENTS));
+  const n = conicSegments(curve);
   const pts: Vec2[] = [];
   for (let i = 0; i <= n; i++) {
     const t = curve.a0 + (span * i) / n;
@@ -177,7 +214,48 @@ function makeNativeKernel2DOps(
 
   const asC = (h: Curve2dHandle): NativeCurve => h as unknown as NativeCurve;
 
-  return {
+  function occtOr(method: string): Kernel2DCapability {
+    const o = occt();
+    if (!o) throw new Error(`manifold 2D: ${method} needs an OCCT kernel (none registered)`);
+    return o as Kernel2DCapability;
+  }
+
+  /**
+   * Reconstruct a native curve descriptor as an *exact* OCCT 2D curve so it can
+   * flow into OCCT-only paths (2D booleans, intersection, NURBS). Curve type is
+   * preserved — line→line, circle→circle, arc→3-point arc, ellipse→ellipse —
+   * which keeps OCCT's shared-edge detection working in blueprint booleans.
+   * Skewed/odd cases fall back to a dense B-spline. OCCT handles pass through.
+   */
+  function toOcct(h: Curve2dHandle): Curve2dHandle {
+    if (!isNative(h)) return h;
+    const o = occtOr('toOcct');
+    const c = asC(h);
+    if (c.k === 'line') return o.makeLine2d(c.p1[0], c.p1[1], c.p2[0], c.p2[1]);
+    if (c.k === 'bezier') return o.makeBezier2d(c.pts);
+    const ru = Math.hypot(c.u[0], c.u[1]);
+    const rv = Math.hypot(c.v[0], c.v[1]);
+    const full = Math.abs(Math.abs(c.a1 - c.a0) - 2 * Math.PI) < 1e-9;
+    const sense = c.u[0] * c.v[1] - c.u[1] * c.v[0] >= 0;
+    if (Math.abs(ru - rv) < 1e-9 * Math.max(1, ru)) {
+      if (full) return o.makeCircle2d(c.c[0], c.c[1], ru, sense);
+      const p0 = conicPoint(c, c.a0);
+      const pm = conicPoint(c, (c.a0 + c.a1) / 2);
+      const p1 = conicPoint(c, c.a1);
+      return o.makeArc2dThreePoints(p0[0], p0[1], pm[0], pm[1], p1[0], p1[1]);
+    }
+    const dotUV = c.u[0] * c.v[0] + c.u[1] * c.v[1];
+    if (Math.abs(dotUV) < 1e-9 * Math.max(1, ru * rv)) {
+      const xdx = c.u[0] / ru;
+      const xdy = c.u[1] / ru;
+      return full
+        ? o.makeEllipse2d(c.c[0], c.c[1], ru, rv, xdx, xdy, sense)
+        : o.makeEllipseArc2d(c.c[0], c.c[1], ru, rv, c.a0, c.a1, xdx, xdy, sense);
+    }
+    return o.makeBSpline2d(sample(c).map((p) => [p[0], p[1]]));
+  }
+
+  const impl: Partial<Kernel2DCapability> = {
     createPoint2d: (x, y) => ({ x, y }) as KernelType,
     createDirection2d: (x, y) => ({ x, y }) as KernelType,
     createVector2d: (x, y) => ({ x, y }) as KernelType,
@@ -196,12 +274,12 @@ function makeNativeKernel2DOps(
       const tlen = Math.hypot(tx, ty) || 1;
       const nx = -ty / tlen;
       const ny = tx / tlen; // normal at start
-      const mx = (sx + ex) / 2;
-      const my = (sy + ey) / 2;
       const chord: Vec2 = [ex - sx, ey - sy];
-      const denom = 2 * (nx * chord[0] + ny * chord[1]);
-      if (Math.abs(denom) < 1e-12) return line([sx, sy], [ex, ey]) as unknown as Curve2dHandle;
-      const t = ((mx - sx) * chord[0] + (my - sy) * chord[1]) / denom;
+      // Center C = S + n·t lies on the start normal and is equidistant from S
+      // and E. Solving |C−S| = |C−E| gives t = |chord|² / (2·(n·chord)).
+      const ndotc = nx * chord[0] + ny * chord[1];
+      if (Math.abs(ndotc) < 1e-12) return line([sx, sy], [ex, ey]) as unknown as Curve2dHandle;
+      const t = (chord[0] * chord[0] + chord[1] * chord[1]) / (2 * ndotc);
       const cx = sx + nx * t;
       const cy = sy + ny * t;
       const r = Math.hypot(sx - cx, sy - cy);
@@ -249,6 +327,23 @@ function makeNativeKernel2DOps(
         c.c[0] + c.u[0] * Math.cos(param) + c.v[0] * Math.sin(param),
         c.c[1] + c.u[1] * Math.cos(param) + c.v[1] * Math.sin(param),
       ];
+    },
+    evaluateCurve2dD1: (h, param) => {
+      const c = asC(h);
+      if (c.k === 'line')
+        return {
+          point: [c.p1[0] + (c.p2[0] - c.p1[0]) * param, c.p1[1] + (c.p2[1] - c.p1[1]) * param],
+          tangent: [c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]],
+        };
+      if (c.k === 'bezier')
+        return { point: bezierAt(c.pts, param), tangent: bezierD1(c.pts, param) };
+      const ct = Math.cos(param);
+      const st = Math.sin(param);
+      return {
+        point: [c.c[0] + c.u[0] * ct + c.v[0] * st, c.c[1] + c.u[1] * ct + c.v[1] * st],
+        // d/dθ (C + U cosθ + V sinθ) = −U sinθ + V cosθ
+        tangent: [-c.u[0] * st + c.v[0] * ct, -c.u[1] * st + c.v[1] * ct],
+      };
     },
     getCurve2dBounds: (h) => {
       const c = asC(h);
@@ -373,13 +468,58 @@ function makeNativeKernel2DOps(
         tx: 2 * cx,
         ty: 2 * cy,
       }) as unknown as Curve2dHandle,
+    mirrorCurve2dAcrossAxis: (h, ox, oy, dx, dy) => {
+      const l = Math.hypot(dx, dy) || 1;
+      const ux = dx / l;
+      const uy = dy / l;
+      const a = ux * ux - uy * uy;
+      const b = 2 * ux * uy;
+      return transform(asC(h), {
+        a,
+        b,
+        c: b,
+        d: -a,
+        tx: ox - (a * ox + b * oy),
+        ty: oy - (b * ox - a * oy),
+      }) as unknown as Curve2dHandle;
+    },
+    affinityTransform2d: (h, ox, oy, dx, dy, ratio) => {
+      const l = Math.hypot(dx, dy) || 1;
+      const ux = dx / l;
+      const uy = dy / l;
+      const nx = -uy;
+      const ny = ux;
+      const a = ux * ux + ratio * nx * nx;
+      const b = ux * uy + ratio * nx * ny;
+      const c = uy * ux + ratio * ny * nx;
+      const d = uy * uy + ratio * ny * ny;
+      return transform(asC(h), {
+        a,
+        b,
+        c,
+        d,
+        tx: ox - (a * ox + b * oy),
+        ty: oy - (c * ox + d * oy),
+      }) as unknown as Curve2dHandle;
+    },
 
     // --- bounding box (mutable JS box) ---
     createBoundingBox2d: () =>
       ({ min: [Infinity, Infinity], max: [-Infinity, -Infinity] }) as unknown as BBox2dHandle,
     addCurveToBBox2d: (bb, h) => {
       const box = bb as unknown as { min: Vec2; max: Vec2 };
-      for (const [x, y] of sample(asC(h))) {
+      let pts: Vec2[];
+      if (isNative(h)) {
+        pts = sample(asC(h));
+      } else {
+        // OCCT curve (e.g. post-boolean blueprint): sample via the OCCT kernel.
+        const o = occtOr('addCurveToBBox2d');
+        const { first, last } = o.getCurve2dBounds(h);
+        pts = [];
+        for (let i = 0; i <= 32; i++)
+          pts.push(o.evaluateCurve2d(h, first + ((last - first) * i) / 32));
+      }
+      for (const [x, y] of pts) {
         if (x < box.min[0]) box.min[0] = x;
         if (y < box.min[1]) box.min[1] = y;
         if (x > box.max[0]) box.max[0] = x;
@@ -438,24 +578,80 @@ function makeNativeKernel2DOps(
       return wrap(PLACEHOLDER, makeNode('profileEdge', { pts: pts3d }, [])) as KernelShape;
     },
 
-    // --- OCCT-delegated (no native form): NURBS, exact intersection, etc. ---
-    makeBSpline2d: (...a) => delegate('makeBSpline2d', ...a),
-    offsetCurve2d: (...a) => delegate('offsetCurve2d', ...a),
-    intersectCurves2d: (...a) => delegate('intersectCurves2d', ...a),
-    projectPointOnCurve2d: (...a) => delegate('projectPointOnCurve2d', ...a),
-    distanceBetweenCurves2d: (...a) => delegate('distanceBetweenCurves2d', ...a),
-    approximateCurve2dAsBSpline: (...a) => delegate('approximateCurve2dAsBSpline', ...a),
-    decomposeBSpline2dToBeziers: (...a) => delegate('decomposeBSpline2dToBeziers', ...a),
-    serializeCurve2d: (...a) => delegate('serializeCurve2d', ...a),
-    deserializeCurve2d: (...a) => delegate('deserializeCurve2d', ...a),
-    splitCurve2d: (...a) => delegate('splitCurve2d', ...a),
-    buildEdgeOnSurface: (...a) => delegate('buildEdgeOnSurface', ...a),
+    // --- OCCT-delegated (no native form): NURBS, exact intersection, surface
+    // ops, serialization. Native curve args are reconstructed exactly into OCCT
+    // first (toOcct) so the genuinely-OCCT engine receives real B-rep curves.
+    makeBSpline2d: (points, options) => occtOr('makeBSpline2d').makeBSpline2d(points, options),
+    offsetCurve2d: (c, offset) => occtOr('offsetCurve2d').offsetCurve2d(toOcct(c), offset),
+    intersectCurves2d: (c1, c2, tol) =>
+      occtOr('intersectCurves2d').intersectCurves2d(toOcct(c1), toOcct(c2), tol),
+    projectPointOnCurve2d: (c, x, y) =>
+      occtOr('projectPointOnCurve2d').projectPointOnCurve2d(toOcct(c), x, y),
+    distanceBetweenCurves2d: (c1, c2, s1, e1, s2, e2) =>
+      occtOr('distanceBetweenCurves2d').distanceBetweenCurves2d(
+        toOcct(c1),
+        toOcct(c2),
+        s1,
+        e1,
+        s2,
+        e2
+      ),
+    approximateCurve2dAsBSpline: (c, tol, cont, maxSeg) =>
+      occtOr('approximateCurve2dAsBSpline').approximateCurve2dAsBSpline(
+        toOcct(c),
+        tol,
+        cont,
+        maxSeg
+      ),
+    decomposeBSpline2dToBeziers: (c) =>
+      occtOr('decomposeBSpline2dToBeziers').decomposeBSpline2dToBeziers(toOcct(c)),
+    serializeCurve2d: (c) => occtOr('serializeCurve2d').serializeCurve2d(toOcct(c)),
+    deserializeCurve2d: (data) => occtOr('deserializeCurve2d').deserializeCurve2d(data),
+    splitCurve2d: (c, params) => occtOr('splitCurve2d').splitCurve2d(toOcct(c), params),
+    getCurve2dEllipseData: (c) => occtOr('getCurve2dEllipseData').getCurve2dEllipseData(toOcct(c)),
+    getCurve2dBezierPoles: (c) => occtOr('getCurve2dBezierPoles').getCurve2dBezierPoles(toOcct(c)),
+    getCurve2dBezierDegree: (c) =>
+      occtOr('getCurve2dBezierDegree').getCurve2dBezierDegree(toOcct(c)),
+    getCurve2dBSplineData: (c) => occtOr('getCurve2dBSplineData').getCurve2dBSplineData(toOcct(c)),
+    buildEdgeOnSurface: (c, surface) =>
+      occtOr('buildEdgeOnSurface').buildEdgeOnSurface(toOcct(c), surface),
     extractSurfaceFromFace: (...a) => delegate('extractSurfaceFromFace', ...a),
     extractCurve2dFromEdge: (...a) => delegate('extractCurve2dFromEdge', ...a),
     buildCurves3d: (...a) => delegate('buildCurves3d', ...a),
     fixWireOnFace: (...a) => delegate('fixWireOnFace', ...a),
     fillSurface: (...a) => delegate('fillSurface', ...a),
   };
+
+  // Per-handle dispatch: each native curve-consuming op runs natively only for
+  // native handles; an OCCT handle (e.g. a post-boolean blueprint curve)
+  // delegates to OCCT. The fast construction path stays native; mixed pipelines
+  // stay correct.
+  const GUARDED: (keyof Kernel2DCapability)[] = [
+    'evaluateCurve2d',
+    'evaluateCurve2dD1',
+    'getCurve2dBounds',
+    'getCurve2dType',
+    'reverseCurve2d',
+    'copyCurve2d',
+    'trimCurve2d',
+    'transformCurve2dGeneral',
+    'translateCurve2d',
+    'rotateCurve2d',
+    'scaleCurve2d',
+    'mirrorCurve2dAtPoint',
+    'mirrorCurve2dAcrossAxis',
+    'affinityTransform2d',
+    'getCurve2dCircleData',
+    'liftCurve2dToPlane',
+  ];
+  for (const m of GUARDED) {
+    const nativeFn = impl[m] as ((...a: unknown[]) => unknown) | undefined;
+    if (!nativeFn) continue;
+    impl[m] = ((h: Curve2dHandle, ...rest: unknown[]) =>
+      isNative(h) ? nativeFn(h, ...rest) : delegate(m, h, ...rest)) as never;
+  }
+
+  return impl;
 }
 
 export { makeNativeKernel2DOps, isNative };
