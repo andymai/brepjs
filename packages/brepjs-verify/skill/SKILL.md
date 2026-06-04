@@ -7,13 +7,15 @@ description: Use when authoring or editing parametric 3D CAD models in TypeScrip
 
 You write a `.brep.ts` part; the `brepjs-verify` CLI runs it against a real geometry kernel and tells you the truth. Never judge a part by how the code reads — judge it by the report. The loop below is the job.
 
+Run every command as `npx -y brepjs-verify <subcommand> …` (or `brepjs-verify <subcommand> …` when installed). The steps below use the short subcommand form for brevity.
+
 ## The loop (every part, in order)
 
 1. **Brief.** Convert the request to explicit params: dimensions (mm), datums, features, assumptions. Don't ask the user for JSON.
 2. **Load only the reference you need** (index below) — not all at once.
-3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `npx -y brepjs-verify init <name>`. Edit *source*, never generated artifacts.
+3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `init <name>`. Edit *source*, never generated artifacts.
 4. **Declare intent.** Add `export const expected = { volume?, area?, bounds?, tolerancePct? }` from your brief. The CLI asserts it — this is how you prove the part is the *right* part, not just a valid one.
-5. **Verify (type + geometry).** `npx -y brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `watch part.brep.ts`.
+5. **Verify (type + geometry).** `verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `watch part.brep.ts`.
 6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion — convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
 8. **Export + hand off.** `verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `export part.brep.ts --all`. `--serve` prints a clickable preview link. Report the STEP path.
@@ -36,6 +38,7 @@ You write a `.brep.ts` part; the `brepjs-verify` CLI runs it against a real geom
 - **`checks`** = kernel validity (manifold solid, positive volume). A failed check means the geometry is broken, not just wrong-sized.
 - **`assertions`** = your declared intent vs reality. A failed assertion means valid-but-wrong (off dimensions).
 - **`hints`** = actionable fix + next step keyed on the error code. Read these before guessing.
+- **`errorInfos`** = the raw structured failures (`code` + `message`) the hints derive from — authoring, kernel, or export errors. Cite the `code` when repairing.
 - Trust this JSON over the rendered image. The render confirms *shape*; the JSON confirms *correctness*.
 
 ## Repair discipline
