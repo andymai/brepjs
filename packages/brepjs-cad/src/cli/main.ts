@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync } from 'node:fs';
-import { resolve, join, basename } from 'node:path';
+import { writeFileSync, watch as fsWatch } from 'node:fs';
+import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { runPart } from '../verify/runPart.js';
 import { serializeReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
+import { scaffoldPart } from './scaffold.js';
+import { debounce, DEFAULT_DEBOUNCE_MS } from './watch.js';
+import { exportPart } from './exportPart.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
@@ -99,6 +102,83 @@ program
     process.stdout.write(JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n');
     if (result.errors.length > 0) process.exitCode = 1;
   });
+
+program
+  .command('init')
+  .argument('<name>', 'part name; scaffolds <name>.brep.ts + tsconfig.json + README.md')
+  .option('--out <dir>', 'target directory (defaults to ./<name>)')
+  .action((name: string, opts: { out?: string }) => {
+    const dir = resolve(opts.out ?? name);
+    const result = scaffoldPart(name, dir);
+    for (const f of result.files) {
+      const tag = f.created ? 'created' : 'exists (kept)';
+      process.stderr.write(`${tag}: ${f.path}\n`);
+    }
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+  });
+
+program
+  .command('watch')
+  .argument('<file>', 'path to a .brep.ts module; re-verifies on each save until Ctrl-C')
+  .action((file: string) => {
+    const path = resolve(file);
+    const run = async () => {
+      try {
+        const { report } = await runPart(path);
+        process.stdout.write(serializeReport(report) + '\n');
+      } catch (e) {
+        process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
+      }
+    };
+    const { trigger } = debounce(run, DEFAULT_DEBOUNCE_MS);
+    process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
+    void run(); // initial verify
+    // Watch the parent dir: editors often replace the file (rename) on save,
+    // which drops a watcher bound to the file inode itself.
+    const watcher = fsWatch(dirname(path), (_event, filename) => {
+      if (filename === undefined || filename === null) {
+        trigger();
+        return;
+      }
+      if (basename(path) === filename.toString()) trigger();
+    });
+    process.on('SIGINT', () => {
+      watcher.close();
+      process.exit(0);
+    });
+  });
+
+program
+  .command('export')
+  .argument('<file>', 'path to a .brep.ts module')
+  .option('--step', 'write a STEP artifact')
+  .option('--glb', 'write a GLB artifact')
+  .option('--stl', 'write an STL artifact')
+  .option('--all', 'write STEP + GLB + STL')
+  .option('--out <dir>', 'output directory', '.')
+  .action(
+    async (
+      file: string,
+      opts: { step?: boolean; glb?: boolean; stl?: boolean; all?: boolean; out: string },
+    ) => {
+      const formats = opts.all
+        ? { step: true, glb: true, stl: true }
+        : { step: Boolean(opts.step), glb: Boolean(opts.glb), stl: Boolean(opts.stl) };
+      if (!formats.step && !formats.glb && !formats.stl) {
+        process.stderr.write('no formats requested — pass --step/--glb/--stl or --all\n');
+        process.exitCode = 1;
+        return;
+      }
+      const result = await exportPart(resolve(file), formats, resolve(opts.out));
+      for (const p of result.written) process.stderr.write(`wrote: ${p}\n`);
+      for (const e of result.errors) process.stderr.write(`error: ${e}\n`);
+      process.stdout.write(
+        JSON.stringify({ ok: result.ok, written: result.written, errors: result.errors }, null, 2) +
+          '\n',
+      );
+      if (!result.ok) process.exitCode = 1;
+    },
+  );
 
 // Only drive the CLI when run as the entry script, so tests can import the
 // guarded loaders without commander parsing the test runner's argv.
