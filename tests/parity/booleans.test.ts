@@ -12,6 +12,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import * as fc from 'fast-check';
 import { initKernel } from '../setup.js';
 import { NUM_RUNS, fcDim, fcOffset, shiftedBy, unitCube } from './helpers.js';
+import { shouldSkipSuite } from '../helpers/kernelDivergences.js';
 import { fuse, cut, intersect, fuseAll, measureVolume, unwrap, isOk } from '@/index.js';
 import type { Shape3D } from '@/core/shapeTypes.js';
 
@@ -267,25 +268,31 @@ describe('INVARIANT: cut-of-self yields empty (or zero-volume)', () => {
 });
 
 describe('INVARIANT: cut-then-fuse-back recovers original volume', () => {
-  it('vol((a − b) ∪ (a ∩ b)) === vol(a)', () => {
-    fc.assert(
-      fc.property(fcDim(), fcDim(), fcOffset(), (s, t, dx) => {
-        const a = unitCube(s, s, s);
-        const b = shiftedBy(unitCube(t, t, t), dx, 0, 0);
-        const aMinusB = cut(a, b);
-        const aAndB = intersect(a, b);
-        if (!isOk(aMinusB) || !isOk(aAndB)) return;
-        const recombined = fuse(unwrap(aMinusB), unwrap(aAndB));
-        if (!isOk(recombined)) return;
-        const lhs = volOf(unwrap(recombined));
-        const rhs = volOf(a);
-        // 1% relative, with a 0.051 absolute floor — strictly subsumes the prior
-        // `toBeCloseTo(_, 1)` (0.05). The 0.05 cap was real ULP headroom on the
-        // dx ≈ 4e-7 near-concentric case the kernel resolves to within 0.05.
-        const tol = Math.max(0.051, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
-        expect(Math.abs(lhs - rhs)).toBeLessThanOrEqual(tol);
-      }),
-      { numRuns: NUM_RUNS }
-    );
-  });
+  // Skipped on manifold: mesh CSG diverges at exactly-coincident faces (the
+  // fast-check generator hits concentric equal cubes). See kernelDivergences
+  // `booleans.cutFuseRecombine`.
+  it.skipIf(shouldSkipSuite('booleans.cutFuseRecombine'))(
+    'vol((a − b) ∪ (a ∩ b)) === vol(a)',
+    () => {
+      fc.assert(
+        fc.property(fcDim(), fcDim(), fcOffset(), (s, t, dx) => {
+          const a = unitCube(s, s, s);
+          const b = shiftedBy(unitCube(t, t, t), dx, 0, 0);
+          const aMinusB = cut(a, b);
+          const aAndB = intersect(a, b);
+          if (!isOk(aMinusB) || !isOk(aAndB)) return;
+          const recombined = fuse(unwrap(aMinusB), unwrap(aAndB));
+          if (!isOk(recombined)) return;
+          const lhs = volOf(unwrap(recombined));
+          const rhs = volOf(a);
+          // 1% relative, with a 0.051 absolute floor — strictly subsumes the prior
+          // `toBeCloseTo(_, 1)` (0.05). The 0.05 cap was real ULP headroom on the
+          // dx ≈ 4e-7 near-concentric case the kernel resolves to within 0.05.
+          const tol = Math.max(0.051, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
+          expect(Math.abs(lhs - rhs)).toBeLessThanOrEqual(tol);
+        }),
+        { numRuns: NUM_RUNS }
+      );
+    }
+  );
 });

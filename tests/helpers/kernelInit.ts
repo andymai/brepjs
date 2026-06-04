@@ -56,7 +56,7 @@ export async function initKernel(id?: string): Promise<void> {
     // gets ~6 facets → ~30% volume error). Fix a fine global segment count so the
     // mesh kernel's curved primitives/lofts land within parity tolerance.
     // (Production preview callers set their own coarser quality for speed.)
-    (module as { setCircularSegments?: (n: number) => void }).setCircularSegments?.(256);
+    (module as { setCircularSegments?: (n: number) => void }).setCircularSegments?.(512);
     initFromManifold(module);
     _available.push('manifold');
   } else if (kernel === 'occt') {

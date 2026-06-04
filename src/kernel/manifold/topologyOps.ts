@@ -58,8 +58,11 @@ function hashCode(shape: KernelShape, upperBound: number): number {
 function isNull(shape: KernelShape): boolean {
   const s = asManifoldShape(shape);
   if (!s) return true;
-  const solid = unwrap(s);
-  return !solid || (typeof solid.isEmpty === 'function' && solid.isEmpty());
+  // Only a genuinely absent solid is "null". An EMPTY-but-present manifold
+  // (e.g. the result of cut(a, a) or a disjoint intersection) is a valid
+  // zero-volume solid, matching OCCT — so measureVolume returns 0 instead of
+  // throwing NULL_SHAPE_INPUT.
+  return !unwrap(s);
 }
 
 function iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {

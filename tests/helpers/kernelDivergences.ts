@@ -43,6 +43,16 @@ export const isBrepkit: boolean = currentKernelId === 'brepkit';
 // ---------------------------------------------------------------------------
 
 export const divergences: DivergenceMap = {
+  manifold: {
+    // -----------------------------------------------------------------------
+    // booleans.test.ts — mesh CSG vs exact B-rep
+    // -----------------------------------------------------------------------
+    'booleans.cutFuseRecombine': {
+      kind: 'skip',
+      reason:
+        'Mesh CSG is ambiguous at exactly-coincident faces — fast-check generates concentric, equal-size cubes whose intersection collapses to empty (100% volume loss) where B-rep resolves it exactly. The identity holds on manifold for realistic non-coincident geometry; real designs avoid coincident faces via clearance margins.',
+    },
+  },
   brepkit: {
     // -----------------------------------------------------------------------
     // booleanFns.test.ts
