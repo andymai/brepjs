@@ -27,7 +27,6 @@ export async function exportPart(
   formats: ExportFormats,
   outDir: string,
 ): Promise<ExportResult> {
-  const wantStl = Boolean(formats.stl);
   const { shape, report, step, glb } = await runPart(modulePath, {
     step: Boolean(formats.step),
     glb: Boolean(formats.glb),
@@ -67,7 +66,7 @@ export async function exportPart(
         errors.push('GLB export produced no data');
       }
     }
-    if (wantStl) {
+    if (formats.stl) {
       const r = exportSTL(shape);
       if (isOk(r)) {
         const p = join(outDir, `${base}.stl`);

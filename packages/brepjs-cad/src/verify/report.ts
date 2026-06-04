@@ -56,7 +56,7 @@ export function emptyReport(): VerifyReport {
   return { shapeType: null, checks: [], measurements: {}, errors: [], errorInfos: [], hints: [] };
 }
 
-/** Record a failure on the report, keeping the flat `errors` string list and structured `errorInfos` in sync. */
+// Keep errors and errorInfos parallel — callers must not push to either directly.
 export function pushError(r: VerifyReport, info: ErrorInfo): void {
   r.errors.push(info.message);
   r.errorInfos.push(info);

@@ -46,7 +46,7 @@ export async function acquireServer(opts: AcquireOptions = {}): Promise<Acquired
       /* busy/raced — next */
     }
   }
-  if (!server) throw new Error(`no free port in ${ports[0]}..${ports[ports.length - 1]}`);
+  if (!server) throw new Error(`no free port in ${ports[0]}..${ports.at(-1)}`);
   const timer = setTimeout(() => void server?.close(), opts.shutdownAfterMs ?? DEFAULT_SHUTDOWN_AFTER_MS);
   timer.unref();
   const started = server;

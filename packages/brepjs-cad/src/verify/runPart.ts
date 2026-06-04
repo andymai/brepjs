@@ -23,7 +23,6 @@ function isBrepError(v: unknown): v is BrepError {
   return typeof rec['code'] === 'string' && typeof rec['message'] === 'string';
 }
 
-/** Pull structured `{ message, code, suggestion }` out of a `BrepError`, a thrown `Error`, or anything. */
 function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
   if (isBrepError(e)) {
     return { message: `${prefix}: ${e.message}`, code: e.code, suggestion: e.suggestion };
@@ -82,11 +81,11 @@ export async function runPart(
   }
   let shape: AnyShape | null;
   if (isResult(out)) {
-    if (isOk(out)) shape = out.value;
-    else {
+    if (!isOk(out)) {
       pushError(report, toErrorInfo('part returned Err', out.error));
       return finalize({ shape: null, report });
     }
+    shape = out.value;
   } else {
     shape = out as AnyShape;
   }

@@ -52,7 +52,8 @@ async function sendFile(res: ServerResponse, absPath: string): Promise<void> {
 
 function safeJoin(root: string, rel: string): string | null {
   const abs = resolve(root, normalize(decodeURIComponent(rel.replace(/^\/+/, ''))));
-  return abs !== root && !abs.startsWith(root + sep) ? null : abs;
+  if (abs !== root && !abs.startsWith(root + sep)) return null;
+  return abs;
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse, port: number): Promise<void> {

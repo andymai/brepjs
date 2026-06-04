@@ -5,13 +5,6 @@ import { runPart } from '../src/verify/runPart.js';
 import { reportOk, type VerifyReport } from '../src/verify/report.js';
 import { disposeShape } from '../src/disposeShape.js';
 
-/**
- * Deterministic eval harness: replay every `skill/examples/*.brep.ts` that has a sibling
- * `*.expected.json` through the public verify runtime (`runPart`), compare measured
- * volume/area/validity to the recorded baseline within each file's tolerance, print a
- * scorecard, and exit non-zero if any example regresses. No LLM / API key — CI-safe.
- */
-
 const here = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(here, '../skill/examples');
 
