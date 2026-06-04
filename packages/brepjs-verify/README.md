@@ -71,6 +71,23 @@ Few-shot examples live under `skill/examples/<name>.brep.ts`, each with a `<name
 
 `npm run eval` (`bench/run.ts`) replays every `skill/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic — no LLM or API key — so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
 
+### Live eval (`npm run eval:live`)
+
+The measurement flywheel: sends ~18 natural-language part prompts (`bench/prompts.ts`) to a real model — using the **deployed `SKILL.md` as the system prompt**, so it measures the actual skill — then verifies each generated part two ways:
+
+- **Auto (objective):** `runPart --check` → valid solid + any pinned dims within tolerance.
+- **Judge (intent):** a multimodal Claude call looks at the rendered iso/front/top/right snapshots and decides whether the part matches the request + rubric.
+
+The scorecard reports per-category `valid` / `judge` / `both` rates and stamps the model + **resolved brepjs version** + date (so trend lines don't mix kernel versions).
+
+```bash
+ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-verify          # opus by default
+ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-verify -- --model claude-sonnet-4-6
+#   --only <id|category>   run a subset      --keep   keep the generated parts
+```
+
+Opt-in and **billed** (real API calls), so it does _not_ run in CI — the deterministic replay above is the CI gate. Snapshots (hence the judge) need `puppeteer`/Chrome; without them the run scores on auto-verify alone and notes the skipped judge.
+
 ## Programmatic API
 
 ```ts
