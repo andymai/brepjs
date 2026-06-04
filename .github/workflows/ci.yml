@@ -160,6 +160,10 @@ jobs:
       # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load
       # failures that only surface for installed users (tsx/vitest hide them in-repo).
       - run: npm run smoke --workspace=brepjs-verify
+      # Standalone smoke: pack the tarball, install it into a clean project with NO brepjs,
+      # and run the installed bin — proves bundling + the bundled-fallback resolve hook for a
+      # true standalone user (a bundling/fallback break is invisible to the in-repo smoke).
+      - run: npm run smoke:standalone --workspace=brepjs-verify
 
   packages-sheetmetal:
     # Experimental sheet-metal domain satellite. Build root brepjs first so the
