@@ -35,6 +35,8 @@
  * @module
  */
 
+import type { KernelCapabilities } from '@/kernel/capabilities.js';
+import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
 import type {
   ConstraintSketchCapability,
   KernelAdapter,
@@ -119,6 +121,7 @@ export interface BrepkitAdapter
 export class BrepkitAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'brepkit';
+  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
 
   /** The underlying brepkit WASM kernel instance (typed). */
   private readonly bk: BrepkitKernel;

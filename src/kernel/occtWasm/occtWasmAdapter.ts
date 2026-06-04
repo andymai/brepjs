@@ -40,6 +40,8 @@
  * @module
  */
 
+import type { KernelCapabilities } from '@/kernel/capabilities.js';
+import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
 import type {
   BooleanOpType,
   BooleanOptions,
@@ -139,6 +141,7 @@ export interface OcctKernelOwner {
 export class OcctWasmAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt-wasm';
+  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
 
   private readonly Module: OcctWasmModule;
   private readonly k: OcctKernelWasm;

@@ -3,6 +3,7 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
+import { qualityDeflection } from '@/kernel/quality.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, type BrepError } from '@/core/errors.js';
@@ -69,15 +70,19 @@ export interface MeshOptions {
  */
 export function mesh(
   shape: AnyShape<Dimension>,
-  {
-    tolerance = 1e-3,
-    angularTolerance = 0.1,
+  opts: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
+): ShapeMesh {
+  // Unspecified deflection defaults to the active quality level (see
+  // withQuality / withTier). 'standard' reproduces the historical 1e-3 / 0.1.
+  const q = qualityDeflection();
+  const {
+    tolerance = q.tolerance,
+    angularTolerance = q.angularTolerance,
     skipNormals = false,
     includeUVs = false,
     cache = true,
     signal,
-  }: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
-): ShapeMesh {
+  } = opts;
   signal?.throwIfAborted();
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
   const cacheKey = buildMeshCacheKey(tolerance, angularTolerance, skipNormals, includeUVs);

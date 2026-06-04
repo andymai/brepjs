@@ -9,6 +9,8 @@
  */
 
 import type { KernelInstance } from '@/kernel/types.js';
+import type { KernelCapabilities } from '@/kernel/capabilities.js';
+import type { QualityLevel } from '@/kernel/quality.js';
 
 export interface KernelCore {
   /**
@@ -24,6 +26,21 @@ export interface KernelCore {
    * Used to prevent mixing shapes from different kernels.
    */
   readonly kernelId: string;
+
+  /**
+   * What this kernel *is* — exact vs mesh-approximate, can export B-rep, how
+   * tessellation is controlled. Lets callers route export/measurement and
+   * quality without hard-coding kernel ids. See {@link ../capabilities.js}.
+   */
+  readonly capabilities: KernelCapabilities;
+
+  /**
+   * Apply a tessellation quality level. Implemented only by `build-time`
+   * kernels (e.g. Manifold maps it to a global circular-segment setting before
+   * solids are built); `extract-time` kernels leave this undefined and instead
+   * read the active level as their default deflection at `mesh()`/export time.
+   */
+  setQuality?(level: QualityLevel): void;
 
   /** Dispose a kernel handle, releasing its resources. */
   dispose(handle: { delete(): void }): void;

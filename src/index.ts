@@ -12,9 +12,18 @@ export {
   getKernel,
   registerKernel,
   withKernel,
+  getKernelCapabilities,
+  withQuality,
+  registerKernelTier,
+  getKernelTier,
+  withTier,
   BrepkitAdapter,
   OcctWasmAdapter,
 } from './kernel/index.js';
+export { currentQuality } from './kernel/quality.js';
+export type { QualityLevel } from './kernel/quality.js';
+export { EXACT_BREP_CAPABILITIES, DEFAULT_CAPABILITIES } from './kernel/capabilities.js';
+export type { KernelCapabilities, TessellationModel } from './kernel/capabilities.js';
 export type {
   KernelAdapter,
   BrepkitHandle,

@@ -1,5 +1,8 @@
 import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
+import type { KernelCapabilities } from './capabilities.js';
+import type { QualityLevel } from './quality.js';
+import { currentQuality, setQualityState } from './quality.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './occt/defaultAdapter.js';
 import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
@@ -112,6 +115,81 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
     // inside fn may have replaced the adapter for the original default id.
     _cachedDefault = prev ? (_kernels.get(prev) ?? null) : null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Capabilities, quality tiers — route work by what a kernel *is*
+// ---------------------------------------------------------------------------
+
+/** Capabilities of a kernel (defaults to the active kernel). */
+export function getKernelCapabilities(id?: string): KernelCapabilities {
+  return getKernel(id).capabilities;
+}
+
+/**
+ * Run `fn` at a tessellation quality level. For `build-time` kernels (Manifold)
+ * the level is pushed to the kernel's global setting on enter and restored on
+ * exit; for `extract-time` kernels (OCCT) it becomes the default deflection at
+ * `mesh()`/export inside `fn`. Synchronous only (mirrors {@link withKernel}).
+ */
+export function withQuality<T extends Exclude<unknown, Promise<unknown>>>(
+  level: QualityLevel,
+  fn: () => T
+): T {
+  const prevLevel = currentQuality();
+  setQualityState(level);
+  getKernel().setQuality?.(level);
+  try {
+    const result = fn();
+    if (result instanceof Promise) {
+      throw new Error(
+        'withQuality() callback returned a Promise. Async code must read currentQuality()/getKernel() directly.'
+      );
+    }
+    return result;
+  } finally {
+    setQualityState(prevLevel);
+    getKernel().setQuality?.(prevLevel);
+  }
+}
+
+interface KernelTier {
+  readonly kernel: string;
+  readonly quality: QualityLevel;
+}
+const _tiers = new Map<string, KernelTier>();
+
+/**
+ * Bind a named tier to a (kernel, quality) pair — e.g. a `'preview'` tier on a
+ * fast mesh kernel at `'draft'` quality, and an `'exact'` tier on an OCCT
+ * kernel at `'fine'`. Lets call sites express intent (`withTier('preview', …)`)
+ * instead of hard-coding a kernel id + quality knob.
+ */
+export function registerKernelTier(name: string, tier: KernelTier): void {
+  _tiers.set(name, tier);
+}
+
+/** The (kernel, quality) a tier resolves to, or undefined if unregistered. */
+export function getKernelTier(name: string): KernelTier | undefined {
+  return _tiers.get(name);
+}
+
+/**
+ * Run `fn` under a registered tier: switches to the tier's kernel and applies
+ * its quality (both restored on exit). Composes {@link withKernel} and
+ * {@link withQuality}. Throws if the tier is unregistered.
+ */
+export function withTier<T extends Exclude<unknown, Promise<unknown>>>(
+  name: string,
+  fn: () => T
+): T {
+  const tier = _tiers.get(name);
+  if (!tier) {
+    throw new Error(
+      `withTier: no tier registered for "${name}". Call registerKernelTier("${name}", { kernel, quality }) first.`
+    );
+  }
+  return withKernel(tier.kernel, () => withQuality(tier.quality, fn));
 }
 
 /** Initialise the brepjs kernel from a loaded WASM instance. */

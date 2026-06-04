@@ -14,6 +14,8 @@
  * @see docs/decisions/0007-kernel-interface-segregation.md
  */
 
+import type { KernelCapabilities } from '@/kernel/capabilities.js';
+import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
 import type { KernelAdapter, KernelMeshResult, KernelInstance } from '@/kernel/types.js';
 import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
 
@@ -155,6 +157,7 @@ export interface DefaultAdapter extends KernelAdapter, Kernel2DCapability {}
 export class DefaultAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt';
+  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
 
   constructor(oc: KernelInstance) {
     this.oc = oc;

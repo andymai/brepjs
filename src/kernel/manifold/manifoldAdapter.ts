@@ -1,5 +1,7 @@
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelCore } from '@/kernel/interfaces/core.js';
+import type { KernelCapabilities } from '@/kernel/capabilities.js';
+import type { QualityLevel } from '@/kernel/quality.js';
 import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
 import { makePrimitiveOps } from './primitiveOps.js';
@@ -63,6 +65,32 @@ export class ManifoldAdapter {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- manifold module type gap
   readonly oc: any;
   readonly kernelId = 'manifold';
+
+  // Mesh-CSG kernel: fast but approximate, no B-rep export, and resolution is
+  // fixed at build time by a global circular-segment setting.
+  readonly capabilities: KernelCapabilities = {
+    exact: false,
+    brepExport: false,
+    exactMeasurement: false,
+    tessellationModel: 'build-time',
+  };
+
+  /**
+   * Map a quality level to Manifold's global tessellation. Cleared segment
+   * count + an angle bound makes it radius-adaptive (a small sphere still gets
+   * enough facets); finer angle ⇒ more segments ⇒ closer to exact volume.
+   */
+  setQuality(level: QualityLevel): void {
+    const m = this.oc as {
+      setCircularSegments?: (n: number) => void;
+      setMinCircularAngle?: (deg: number) => void;
+      setMinCircularEdgeLength?: (len: number) => void;
+    };
+    m.setCircularSegments?.(0); // 0 = derive from angle/edge-length, not a fixed count
+    m.setMinCircularEdgeLength?.(0); // angle-driven (avoids radius-dependent coarsening)
+    const angle = level === 'draft' ? 30 : level === 'fine' ? 3 : 10;
+    m.setMinCircularAngle?.(angle);
+  }
 
   constructor(module: ManifoldModule) {
     this.oc = module;
