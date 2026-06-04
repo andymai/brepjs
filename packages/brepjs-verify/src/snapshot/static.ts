@@ -34,7 +34,7 @@ export interface StaticServer {
   close(): Promise<void>;
 }
 export interface ServerDescriptor {
-  app: 'brepjs-cad-viewer';
+  app: 'brepjs-verify-viewer';
   port: number;
   dynamicRoot: true;
   serverApiVersion: number;
@@ -59,7 +59,7 @@ function safeJoin(root: string, rel: string): string | null {
 async function handle(req: IncomingMessage, res: ServerResponse, port: number): Promise<void> {
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`);
   if (url.pathname === '/__cad/server') {
-    const d: ServerDescriptor = { app: 'brepjs-cad-viewer', port, dynamicRoot: true, serverApiVersion: SERVER_API_VERSION };
+    const d: ServerDescriptor = { app: 'brepjs-verify-viewer', port, dynamicRoot: true, serverApiVersion: SERVER_API_VERSION };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(d));
     return;

@@ -69,3 +69,24 @@ export function loadBrep(): Promise<BrepNs> {
   }
   return cached;
 }
+
+let kernelReady: Promise<void> | undefined;
+
+// Boot the SOLE bundled kernel explicitly: occt-wasm, no fallback chain. brepjs's
+// zero-arg init() would probe occt-wasm -> brepjs-opencascade -> brepkit; since this
+// tool bundles only occt-wasm, we register it directly so behavior is deterministic
+// and a load failure surfaces as a clean occt-wasm error, not a confusing fallback miss.
+// occt-wasm resolves through the same hook, so it lands on the one chosen brepjs realm.
+export function initOcctWasm(brep: BrepNs): Promise<void> {
+  if (!kernelReady) {
+    kernelReady = (async () => {
+      const occt = (await import('occt-wasm')) as {
+        OcctKernel: { init(): Promise<unknown> };
+      };
+      const kernel = await occt.OcctKernel.init(); // auto-locates its .wasm via import.meta.url
+      type KernelArg = Parameters<typeof brep.OcctWasmAdapter.fromKernel>[0];
+      brep.registerKernel('occt-wasm', brep.OcctWasmAdapter.fromKernel(kernel as KernelArg));
+    })();
+  }
+  return kernelReady;
+}

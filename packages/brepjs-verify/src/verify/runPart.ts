@@ -1,6 +1,6 @@
 import type { AnyShape, BrepError, Result } from 'brepjs';
 import { pathToFileURL } from 'node:url';
-import { loadBrep, toolDir } from './brepjsRuntime.js';
+import { loadBrep, initOcctWasm, toolDir } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
 import { evaluateExpected, isExpectedDims, type ExpectedDims } from './expected.js';
 import { typecheckPart } from './typecheck.js';
@@ -100,7 +100,7 @@ export async function runPart(
   let brep: Awaited<ReturnType<typeof loadBrep>>;
   try {
     brep = await loadBrep();
-    await brep.init();
+    await initOcctWasm(brep);
   } catch (e) {
     pushError(report, toErrorInfo('kernel init failed', e));
     return finalize({ shape: null, report });
