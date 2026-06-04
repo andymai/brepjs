@@ -1,5 +1,5 @@
 {
   ".": "18.59.0",
   "packages/brepjs-opencascade": "0.16.0",
-  "packages/brepjs-cad": "0.1.0"
+  "packages/brepjs-cad": "0.2.0"
 }
