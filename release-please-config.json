@@ -5,12 +5,18 @@
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
       "bump-minor-pre-major": true,
-      "exclude-paths": ["apps"]
+      "exclude-paths": ["apps", "packages/brepjs-cad", "packages/brepjs-viewer"]
     },
     "packages/brepjs-opencascade": {
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-opencascade",
+      "bump-minor-pre-major": true
+    },
+    "packages/brepjs-cad": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "component": "brepjs-cad",
       "bump-minor-pre-major": true
     }
   },

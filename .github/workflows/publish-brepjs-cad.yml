@@ -1,0 +1,42 @@
+name: Publish brepjs-cad
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build only, skip publish)"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - run: npm ci
+
+      # The root `npm run build` is root-only; build the package explicitly so
+      # dist + viewer/dist are present even if prepack does not fire here.
+      - name: Build brepjs-cad
+        run: npm run build --workspace=brepjs-cad
+
+      # Authenticates via OIDC trusted publisher (configured for this exact
+      # workflow filename on npmjs.com -> brepjs-cad -> Trusted Publisher Mgmt).
+      - name: Publish brepjs-cad
+        if: ${{ inputs.dry_run != true }}
+        run: npm publish -w brepjs-cad --provenance

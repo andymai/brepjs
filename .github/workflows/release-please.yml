@@ -23,8 +23,10 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
+      brepjs_cad_release_created: ${{ steps.release.outputs['packages/brepjs-cad--release_created'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
+      prs: ${{ steps.release.outputs.prs }}
     steps:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
@@ -38,7 +40,8 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Only auto-merge brepjs PRs, NOT brepjs-opencascade (expensive WASM build needs manual review)
+  # Only auto-merge the root brepjs PR. brepjs-opencascade (expensive WASM
+  # build) and brepjs-cad (publish HELD: Andy merges manually) are skipped.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -50,28 +53,52 @@ jobs:
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Enable auto-merge for brepjs PRs only
+      - name: Enable auto-merge for the root brepjs PR only
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Prefer the plural `prs` array (separate-pull-requests: true emits
+          # one PR per component); fall back to the singular `pr`.
+          PRS_DATA: ${{ needs.release-please.outputs.prs }}
           PR_DATA: ${{ needs.release-please.outputs.pr }}
           GH_REPO: ${{ github.repository }}
         run: |
-          pr_number=$(echo "$PR_DATA" | jq -r '.number // empty')
-          pr_title=$(echo "$PR_DATA" | jq -r '.title // empty')
-          if [ -z "$pr_number" ]; then
-            echo "No PR number found, skipping"
-            exit 0
+          prs_json="$PRS_DATA"
+          if [ -z "$prs_json" ] || [ "$prs_json" = "null" ]; then
+            # Wrap the singular PR object into a one-element array.
+            prs_json=$(echo "$PR_DATA" | jq -c 'if . == null or . == "" then [] else [.] end')
           fi
-          # Skip brepjs-opencascade PRs — they need manual review due to expensive WASM build
-          if [[ "$pr_title" == *"brepjs-opencascade"* ]]; then
-            echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
-            exit 0
-          fi
-          echo "Enabling auto-merge for brepjs PR #$pr_number"
-          gh pr merge "$pr_number" --auto --squash --repo "$GH_REPO"
 
-  # brepjs-opencascade is published via the dedicated publish-opencascade.yml
-  # workflow (manual dispatch) which handles the Docker WASM build.
+          count=$(echo "$prs_json" | jq 'length')
+          if [ "$count" -eq 0 ]; then
+            echo "No release PRs found, skipping"
+            exit 0
+          fi
+
+          echo "$prs_json" | jq -c '.[]' | while read -r pr; do
+            pr_number=$(echo "$pr" | jq -r '.number // empty')
+            pr_title=$(echo "$pr" | jq -r '.title // empty')
+            if [ -z "$pr_number" ]; then
+              echo "PR with no number, skipping"
+              continue
+            fi
+            # Skip brepjs-opencascade (manual review: expensive WASM build) and
+            # brepjs-cad (publish HELD: Andy merges manually).
+            case "$pr_title" in
+              *brepjs-opencascade*)
+                echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
+                continue
+                ;;
+              *brepjs-cad*)
+                echo "Skipping auto-merge for brepjs-cad PR #$pr_number (publish held, manual merge)"
+                continue
+                ;;
+            esac
+            echo "Enabling auto-merge for brepjs PR #$pr_number"
+            gh pr merge "$pr_number" --auto --squash --repo "$GH_REPO"
+          done
+
+  # brepjs-opencascade is published via publish-opencascade.yml and brepjs-cad
+  # via publish-brepjs-cad.yml — both manual workflow_dispatch (publish held).
 
   publish-brepjs:
     runs-on: ubuntu-24.04
