@@ -12,8 +12,8 @@
 
 import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
+import { resolveOcct } from './meshHandle.js';
 
 const KERNEL_2D_METHODS: readonly (keyof Kernel2DCapability)[] = [
   'createPoint2d',
@@ -84,10 +84,8 @@ const KERNEL_2D_METHODS: readonly (keyof Kernel2DCapability)[] = [
 function resolveOcct2D(
   method: keyof Kernel2DCapability
 ): Record<keyof Kernel2DCapability, (...a: unknown[]) => unknown> {
-  let occt: KernelAdapter;
-  try {
-    occt = getKernel('occt');
-  } catch {
+  const occt: KernelAdapter | undefined = resolveOcct();
+  if (!occt) {
     throw new Error(
       `manifold: ${method} unsupported on manifold kernel; no B-rep kernel registered`
     );
