@@ -45,7 +45,7 @@
     "lint": "eslint src tests viewer bench",
     "test": "vitest run",
     "eval": "tsx bench/run.ts",
-    "smoke": "node dist/cli/main.js verify tests/fixtures/validBox.brep.ts",
+    "smoke": "node dist/cli/main.js verify tests/fixtures/validBox.brep.ts | node -e \"const r=JSON.parse(require('fs').readFileSync(0,'utf8'));if(r.ok!==true||!(r.measurements.volume>0))process.exit(1)\"",
     "prepack": "npm run build"
   },
   "peerDependencies": {

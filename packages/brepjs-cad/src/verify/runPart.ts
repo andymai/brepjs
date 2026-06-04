@@ -23,7 +23,9 @@ async function loadPart(modulePath: string): Promise<{ default?: PartFn }> {
     return (await import(pathToFileURL(modulePath).href)) as { default?: PartFn };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/Cannot use import statement|Unknown file extension|ERR_UNKNOWN_FILE_EXTENSION/i.test(msg)) {
+    // A TypeScript part (.ts/.mts/.cts/.tsx) that fails to load is almost always a
+    // CommonJS-project module-type issue — point the user at the fix.
+    if (/\.[mc]?tsx?$/.test(modulePath) && /import statement|file extension/i.test(msg)) {
       throw new Error(
         `cannot load TypeScript part "${modulePath}": author parts in an ESM project ` +
           `(set "type": "module" in package.json) or rename the file to .mts. (${msg})`,
