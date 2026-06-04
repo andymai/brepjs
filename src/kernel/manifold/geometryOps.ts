@@ -46,6 +46,16 @@ function viaOcct<T>(
   shape: KernelShape,
   query: (occtShape: KernelShape, occt: KernelAdapter) => T
 ): T {
+  // Sub-shape witnesses (from iterShapes) carry their OCCT shape directly —
+  // query it on OCCT so faceFinder/topology queries work on extrude/loft faces.
+  const witness = shape as { __manifoldSub?: boolean; occt?: KernelShape } | null;
+  if (witness && witness.__manifoldSub && witness.occt) {
+    const occt = resolveOcct();
+    if (!occt) {
+      throw new Error('manifold: sub-shape geometry query requires a registered occt kernel');
+    }
+    return query(witness.occt, occt);
+  }
   const ms = asManifoldShape(shape);
   if (!ms) {
     throw new Error('manifold: exact geometry query requires a manifold shape handle');

@@ -41,7 +41,48 @@ function solidOf(shape: KernelShape): ReturnType<typeof unwrap> {
   return unwrap(shape as ManifoldShape);
 }
 
+/** World points recorded on a profile placeholder node (edge/wire/face/vertex). */
+function profileWorldPoints(shape: KernelShape): Vec3[] | undefined {
+  const node = (shape as { node?: { op?: string; params?: Record<string, unknown> } } | null)?.node;
+  const p = node?.params;
+  if (!p) return undefined;
+  const pts = (p['pts'] as Vec3[] | undefined) ?? (p['ring'] as Vec3[] | undefined);
+  if (pts && pts.length) return pts;
+  const outline = p['outline'] as Array<readonly [number, number]> | undefined;
+  if (outline && outline.length) {
+    const o = (p['origin'] as Vec3 | undefined) ?? [0, 0, 0];
+    const x = (p['xAxis'] as Vec3 | undefined) ?? [1, 0, 0];
+    const y = (p['yAxis'] as Vec3 | undefined) ?? [0, 1, 0];
+    return outline.map((q) => [
+      o[0] + x[0] * q[0] + y[0] * q[1],
+      o[1] + x[1] * q[0] + y[1] * q[1],
+      o[2] + x[2] * q[0] + y[2] * q[1],
+    ]);
+  }
+  return undefined;
+}
+
+function aabbOfPoints(pts: Vec3[]): ManifoldBox {
+  const min: Vec3 = [Infinity, Infinity, Infinity];
+  const max: Vec3 = [-Infinity, -Infinity, -Infinity];
+  for (const q of pts) {
+    for (let i = 0; i < 3; i++) {
+      const v = q[i] ?? 0;
+      if (v < (min[i] ?? Infinity)) min[i] = v;
+      if (v > (max[i] ?? -Infinity)) max[i] = v;
+    }
+  }
+  return { min, max };
+}
+
 function boxOf(shape: KernelShape): ManifoldBox {
+  // Sub-shape witnesses (iterShapes) carry their precomputed OCCT AABB.
+  const w = shape as { __manifoldSub?: boolean; box?: ManifoldBox } | null;
+  if (w && w.__manifoldSub && w.box) return w.box;
+  // Profile placeholders (edge/wire/face/vertex) have no manifold solid; derive
+  // the AABB from the recorded outline/ring/pts.
+  const pts = profileWorldPoints(shape);
+  if (pts) return aabbOfPoints(pts);
   return solidOf(shape).boundingBox() as ManifoldBox;
 }
 
@@ -151,6 +192,11 @@ export function area(shape: KernelShape): number {
 }
 
 export function boundingBox(shape: KernelShape): { min: Vec3; max: Vec3 } {
+  // Sub-shape witnesses (iterShapes) carry their precomputed OCCT box.
+  const w = shape as { __manifoldSub?: boolean; box?: { min: Vec3; max: Vec3 } } | null;
+  if (w && w.__manifoldSub && w.box) {
+    return { min: [...w.box.min], max: [...w.box.max] };
+  }
   const bb = boxOf(shape);
   return { min: [...bb.min], max: [...bb.max] };
 }

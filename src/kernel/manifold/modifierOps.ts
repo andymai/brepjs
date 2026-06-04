@@ -5,6 +5,7 @@ import { notImplemented } from './helpers.js';
 import type { ManifoldShape, ManifoldSolid } from './meshHandle.js';
 import { nodeOf, unwrap, wrap } from './meshHandle.js';
 import { makeNode } from './opGraph.js';
+import { orientPositive } from './approximations.js';
 
 const ROUNDING_BALL_SEGMENTS = 16;
 
@@ -201,6 +202,58 @@ function chamferDistAngle(
   );
 }
 
+/**
+ * Hollow an extrude-origin solid with an open top — the gridfinity bin-body case
+ * (and what `approxShellMesh` cannot do: manifold-3d exposes no Minkowski inward
+ * offset, so the generic shell no-ops and leaves the body solid). Reconstruct the
+ * cavity from the extrude op-node's recorded outline: offset it inward by
+ * `thickness` (Clipper2 2D), extrude full height so it punches through the top
+ * (open), lifted by `thickness` along the extrude dir so a floor remains, then
+ * subtract. Returns undefined for non-extrude solids (caller falls back).
+ */
+function extrudeOpenTopShell(
+  module: ManifoldModule,
+  input: ManifoldShape,
+  thickness: number
+): ManifoldSolid | undefined {
+  const node = input.node as { op?: string; params?: Record<string, unknown> } | undefined;
+  if (node?.op !== 'extrude') return undefined;
+  const p = node.params ?? {};
+  const outline = p['outline'] as ReadonlyArray<readonly [number, number]> | undefined;
+  const origin = p['origin'] as Vec3 | undefined;
+  const dir = p['direction'] as Vec3 | undefined;
+  const length = p['length'] as number | undefined;
+  if (!outline || outline.length < 3 || !origin || !dir || typeof length !== 'number') {
+    return undefined;
+  }
+  const t = Math.abs(thickness);
+  try {
+    const cs = new module.CrossSection([outline.map((q) => [q[0], q[1]] as [number, number])]);
+    const inner = cs.offset(-t);
+    if (typeof inner.isEmpty === 'function' && inner.isEmpty()) return undefined;
+    const cavity = module.Manifold.extrude(inner, length) as {
+      rotate(r: Vec3): unknown;
+      translate(t: Vec3): unknown;
+    };
+    const dlen = Math.hypot(dir[0], dir[1], dir[2]) || 1;
+    const alignedZ = Math.abs(dir[0]) < 1e-9 && Math.abs(dir[1]) < 1e-9 && dir[2] > 0;
+    let placed = cavity;
+    if (!alignedZ) {
+      const pitch = Math.atan2(Math.hypot(dir[0], dir[1]), dir[2]) * (180 / Math.PI);
+      const yaw = Math.atan2(dir[1], dir[0]) * (180 / Math.PI);
+      placed = placed.rotate([0, pitch, yaw]) as typeof placed;
+    }
+    placed = placed.translate([
+      origin[0] + (dir[0] / dlen) * t,
+      origin[1] + (dir[1] / dlen) * t,
+      origin[2] + (dir[2] / dlen) * t,
+    ]) as typeof placed;
+    return orientPositive(module, unwrap(input).subtract(placed as ManifoldSolid));
+  } catch {
+    return undefined;
+  }
+}
+
 function shell(
   module: ManifoldModule,
   shape: KernelShape,
@@ -210,7 +263,9 @@ function shell(
 ): ManifoldShape {
   const input = asShape(shape);
   const selection = describeSelection(faces);
-  const manifold = approxShellMesh(module, unwrap(input), thickness, false);
+  const manifold =
+    extrudeOpenTopShell(module, input, thickness) ??
+    approxShellMesh(module, unwrap(input), thickness, false);
   const params =
     tolerance === undefined ? { thickness, selection } : { thickness, selection, tolerance };
   return wrap(manifold, makeNode('shell', params, [nodeOf(input)]));

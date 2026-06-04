@@ -164,7 +164,7 @@ function spineNodeOrSynthetic(spine: KernelShape): OpNode {
  * `dir`. Sections are typically in the XY plane; this keeps the common case
  * exact and otherwise re-bases onto the section frame.
  */
-function orientExtrusion(
+export function orientExtrusion(
   solid: ManifoldOriented,
   section: CrossSection,
   dir: Vec3

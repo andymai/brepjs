@@ -59,6 +59,11 @@ const REPLAYABLE_OPS = new Set<string>([
   'hull',
   'hullFromPoints',
   'sewAndSolidify',
+  // planar profile builders — rebuild real OCCT topology on replay so
+  // iterShapes('face')/faceFinder work on extrude/loft results
+  'profileEdge',
+  'profileWire',
+  'profileFace',
 ]);
 
 export function opIsReplayable(op: string): boolean {

@@ -78,10 +78,16 @@ function iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {
       brepCache.set(s.node, b);
       return b;
     })();
+  // Witnesses carry the OCCT sub-shape directly (so geometry/topology queries
+  // delegate straight to OCCT) plus the box + parent node for selection
+  // re-identification on a later replay. This is what unblocks faceFinder.
   return occt.iterShapes(brep, type).map((sub, index) => ({
     __manifoldSub: true,
     index,
     box: occt.boundingBox(sub),
+    occt: sub,
+    parent: s.node,
+    subType: type,
   }));
 }
 

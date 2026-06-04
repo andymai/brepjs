@@ -304,6 +304,32 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
     );
   },
 
+  // --- Profile builders (manifold-native planar profiles) ---
+  // These rebuild real OCCT topology so iterShapes('face')/faceFinder/topology
+  // queries work on extrude/loft results (manifold has no B-rep faces). The
+  // extrude/loft handlers rebuild their own face from `outline`, so these are
+  // only used when a profile shape is queried directly, but they must replay
+  // cleanly because they are inputs in the op-graph.
+  profileEdge: (t, p) => {
+    const pts = (p['pts'] as Array<readonly [number, number, number]> | undefined) ?? [];
+    const a = pts[0] ?? [0, 0, 0];
+    const b = pts.length > 1 ? (pts[pts.length - 1] ?? a) : [a[0] + 1e-3, a[1], a[2]];
+    return t.makeLineEdge([a[0], a[1], a[2]], [b[0], b[1], b[2]]);
+  },
+  profileWire: (t, p) => {
+    const ring = (p['ring'] as Array<readonly [number, number, number]> | undefined) ?? [];
+    const edges: KernelShape[] = [];
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i] ?? [0, 0, 0];
+      const b = ring[(i + 1) % ring.length] ?? a;
+      edges.push(t.makeLineEdge([a[0], a[1], a[2]], [b[0], b[1], b[2]]));
+    }
+    const wire = t.makeWire(edges);
+    for (const e of edges) t.dispose(e);
+    return wire;
+  },
+  profileFace: (t, p) => faceFromOutline(t, p),
+
   // --- Sweeps ---
   extrude: (t, p) => {
     const face = faceFromOutline(t, p);
