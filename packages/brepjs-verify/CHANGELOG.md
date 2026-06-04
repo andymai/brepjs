@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.3.0...brepjs-verify-v0.4.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-verify:** eval-driven skill, hint, and reference improvements ([#1219](https://github.com/andymai/brepjs/issues/1219)) ([1a9b80f](https://github.com/andymai/brepjs/commit/1a9b80f3d3dbb44d7a8ae2f601ff305b70534efe))
+
 ## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.2.1...brepjs-verify-v0.3.0) (2026-06-04)
 
 
