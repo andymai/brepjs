@@ -127,9 +127,15 @@ async function evalPrompt(
       writeFileSync(stepPath, Buffer.from(step));
       const pngs = await snapshot(stepPath, join(workdir, `${p.id}-shots`));
       if (pngs.length > 0) {
-        const v = await judge(client, { prompt: p.prompt, rubric: p.rubric, pngPaths: pngs, model: args.model });
-        judgePass = v.pass;
-        judgeReason = v.reason;
+        // The judge is a secondary signal — if it throws (timeout, API error) keep the
+        // objective `auto` result and leave judgePass undefined (scorecard shows judge:—).
+        try {
+          const v = await judge(client, { prompt: p.prompt, rubric: p.rubric, pngPaths: pngs, model: args.model });
+          judgePass = v.pass;
+          judgeReason = v.reason;
+        } catch (e) {
+          console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
+        }
       }
     }
     return { ...base, auto, judgePass, judgeReason };
