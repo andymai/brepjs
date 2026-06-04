@@ -1,20 +1,5 @@
-import {
-  isSolid,
-  isFace,
-  isShell,
-  isWire,
-  isEdge,
-  isVertex,
-  isCompound,
-  isCompSolid,
-  isShape3D,
-  measureVolume,
-  measureArea,
-  getBounds,
-  validSolid,
-  isOk,
-  type AnyShape,
-} from 'brepjs';
+import type { AnyShape } from 'brepjs';
+import type { BrepNs } from './brepjsRuntime.js';
 import {
   buildHints,
   emptyReport,
@@ -24,7 +9,8 @@ import {
   type VerifyReport,
 } from './report.js';
 
-function shapeTypeOf(s: AnyShape): string {
+function shapeTypeOf(brep: BrepNs, s: AnyShape): string {
+  const { isSolid, isFace, isShell, isWire, isEdge, isVertex, isCompound, isCompSolid } = brep;
   if (isSolid(s)) return 'Solid';
   if (isCompSolid(s)) return 'CompSolid';
   if (isCompound(s)) return 'Compound';
@@ -36,9 +22,11 @@ function shapeTypeOf(s: AnyShape): string {
   return 'Unknown';
 }
 
-export function runChecks(shape: AnyShape): VerifyReport {
+export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
+  const { isSolid, isShape3D, isFace, measureVolume, measureArea, getBounds, validSolid, isOk } =
+    brep;
   const r = emptyReport();
-  r.shapeType = shapeTypeOf(shape);
+  r.shapeType = shapeTypeOf(brep, shape);
 
   // Strongest validity check available: BRepCheck on a single Solid.
   if (isSolid(shape)) {

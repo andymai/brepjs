@@ -1,4 +1,4 @@
-import { measureDistance, measureLength, isOk } from 'brepjs';
+import { loadBrep } from './brepjsRuntime.js';
 import { runPart } from './runPart.js';
 
 export interface MeasureReport {
@@ -8,6 +8,7 @@ export interface MeasureReport {
 }
 
 export async function runMeasure(aPath: string, bPath?: string): Promise<MeasureReport> {
+  const { measureDistance, measureLength, isOk } = await loadBrep();
   const errors: string[] = [];
   const a = await runPart(aPath);
   errors.push(...a.report.errors);

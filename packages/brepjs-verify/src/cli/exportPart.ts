@@ -1,6 +1,6 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { exportSTL, isOk } from 'brepjs';
+import { loadBrep } from '../verify/brepjsRuntime.js';
 import { runPart } from '../verify/runPart.js';
 import { reportOk, type VerifyReport } from '../verify/report.js';
 import { disposeShape } from '../disposeShape.js';
@@ -19,13 +19,15 @@ export interface ExportResult {
 }
 
 function stem(file: string): string {
-  return basename(file).replace(/\.brep\.ts$/, '').replace(/\.ts$/, '');
+  return basename(file)
+    .replace(/\.brep\.ts$/, '')
+    .replace(/\.ts$/, '');
 }
 
 export async function exportPart(
   modulePath: string,
   formats: ExportFormats,
-  outDir: string,
+  outDir: string
 ): Promise<ExportResult> {
   const { shape, report, step, glb } = await runPart(modulePath, {
     step: Boolean(formats.step),
@@ -67,6 +69,7 @@ export async function exportPart(
       }
     }
     if (formats.stl) {
+      const { exportSTL, isOk } = await loadBrep();
       const r = exportSTL(shape);
       if (isOk(r)) {
         const p = join(outDir, `${base}.stl`);

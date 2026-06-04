@@ -1,9 +1,29 @@
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
+import { copyFileSync, mkdirSync } from 'node:fs';
+
+// The resolve hook must ship as a hand-authored ESM file (not bundled): node:module's
+// `register` loads it as an off-thread loader, so it has to stay a clean standalone module.
+function copyResolveHook() {
+  return {
+    name: 'copy-brepjs-resolve-hook',
+    closeBundle() {
+      const outDir = resolve(__dirname, 'dist/loader');
+      mkdirSync(outDir, { recursive: true });
+      copyFileSync(
+        resolve(__dirname, 'src/loader/brepjsResolve.mjs'),
+        resolve(outDir, 'brepjsResolve.mjs')
+      );
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [dts({ rollupTypes: false, compilerOptions: { declarationMap: false } })],
+  plugins: [
+    dts({ rollupTypes: false, compilerOptions: { declarationMap: false } }),
+    copyResolveHook(),
+  ],
   build: {
     target: 'es2022',
     minify: false,

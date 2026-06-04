@@ -1,14 +1,6 @@
-import {
-  init,
-  isOk,
-  mesh,
-  exportGlb,
-  exportSTEP,
-  type AnyShape,
-  type BrepError,
-  type Result,
-} from 'brepjs';
+import type { AnyShape, BrepError, Result } from 'brepjs';
 import { pathToFileURL } from 'node:url';
+import { loadBrep } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
 import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
@@ -83,12 +75,17 @@ export async function runPart(
   opts: RunPartOptions = {}
 ): Promise<RunPartResult> {
   const report = emptyReport();
+  // Register the resolve hook and load brepjs THROUGH it before anything else, so this
+  // module's brepjs and the part's `import 'brepjs'` share one kernel realm.
+  let brep: Awaited<ReturnType<typeof loadBrep>>;
   try {
-    await init();
+    brep = await loadBrep();
+    await brep.init();
   } catch (e) {
     pushError(report, toErrorInfo('kernel init failed', e));
     return finalize({ shape: null, report });
   }
+  const { isOk, mesh, exportGlb, exportSTEP } = brep;
   let mod: { default?: PartFn };
   try {
     mod = await loadPart(modulePath);
@@ -123,7 +120,7 @@ export async function runPart(
   }
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
-  const result = runChecks(shape);
+  const result = runChecks(brep, shape);
   let glb: ArrayBuffer | undefined;
   let step: ArrayBuffer | undefined;
   if (opts.glb) {

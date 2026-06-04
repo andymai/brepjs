@@ -10,6 +10,16 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
+    // The resolve hook is a hand-authored ESM file loaded off-thread by node:module
+    // `register` — it is intentionally not part of any tsconfig project, so type-aware
+    // rules can't run on it. Lint it with syntax-only rules.
+    files: ['src/loader/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      globals: { console: 'readonly' },
+    },
+  },
+  {
     files: ['src/**/*.ts'],
     languageOptions: {
       parserOptions: {
