@@ -3,6 +3,7 @@ import { join, basename } from 'node:path';
 import { exportSTL, isOk } from 'brepjs';
 import { runPart } from '../verify/runPart.js';
 import { reportOk, type VerifyReport } from '../verify/report.js';
+import { disposeShape } from '../disposeShape.js';
 
 export interface ExportFormats {
   step?: boolean;
@@ -37,6 +38,7 @@ export async function exportPart(
   // Validity gate: never emit artifacts for an invalid part.
   const valid = reportOk(report) && shape !== null;
   if (!valid) {
+    disposeShape(shape); // live WASM handle owned by this fn
     return { ok: false, report, written, errors: report.errors };
   }
 
@@ -72,5 +74,6 @@ export async function exportPart(
     }
   }
 
+  disposeShape(shape);
   return { ok: errors.length === 0, report, written, errors };
 }

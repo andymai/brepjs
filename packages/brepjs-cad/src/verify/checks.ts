@@ -84,6 +84,8 @@ export function runChecks(shape: AnyShape): VerifyReport {
     pushError(r, { message: `getBounds: ${(e as Error).message}` });
   }
 
+  // Hints from the check-phase errors. Callers that push more errors before
+  // finalizing (e.g. runPart's export paths) rebuild hints via finalize().
   r.hints = buildHints(r);
   return r;
 }

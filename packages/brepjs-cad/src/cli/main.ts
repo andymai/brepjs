@@ -11,6 +11,7 @@ import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
 import { debounce, DEFAULT_DEBOUNCE_MS } from './watch.js';
 import { exportPart } from './exportPart.js';
+import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
@@ -124,8 +125,12 @@ program
     const path = resolve(file);
     const run = async () => {
       try {
-        const { report } = await runPart(path);
-        process.stdout.write(serializeReport(report) + '\n');
+        const { report, shape } = await runPart(path);
+        try {
+          process.stdout.write(serializeReport(report) + '\n');
+        } finally {
+          disposeShape(shape); // live WASM handle; the loop runs indefinitely
+        }
       } catch (e) {
         process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
       }
@@ -142,10 +147,12 @@ program
       }
       if (basename(path) === filename.toString()) trigger();
     });
-    process.on('SIGINT', () => {
+    const stop = () => {
       watcher.close();
       process.exit(0);
-    });
+    };
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop); // supervisors (docker stop, systemctl) send SIGTERM
   });
 
 program

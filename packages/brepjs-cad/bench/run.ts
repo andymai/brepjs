@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../src/verify/runPart.js';
 import { reportOk, type VerifyReport } from '../src/verify/report.js';
+import { disposeShape } from '../src/disposeShape.js';
 
 /**
  * Deterministic eval harness: replay every `skill/examples/*.brep.ts` that has a sibling
@@ -88,12 +89,6 @@ function compare(name: string, report: VerifyReport, expected: Expected): Outcom
   for (const err of report.errors) failures.push(`runtime error: ${err}`);
 
   return { name, pass: failures.length === 0, failures };
-}
-
-function disposeShape(shape: unknown): void {
-  if (shape && typeof (shape as { [Symbol.dispose]?: () => void })[Symbol.dispose] === 'function') {
-    (shape as { [Symbol.dispose]: () => void })[Symbol.dispose]();
-  }
 }
 
 function discover(): string[] {
