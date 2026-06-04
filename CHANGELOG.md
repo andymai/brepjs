@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.63.0](https://github.com/andymai/brepjs/compare/brepjs-v18.62.1...brepjs-v18.63.0) (2026-06-04)
+
+
+### Features
+
+* **manifold:** native preview kernel — 2D construction + provenance topology (faceFinder without OCCT) ([#1223](https://github.com/andymai/brepjs/issues/1223)) ([2f6c60b](https://github.com/andymai/brepjs/commit/2f6c60b829e1f7080a91e56f781e37edbc04b9a2))
+
 ## [18.62.1](https://github.com/andymai/brepjs/compare/brepjs-v18.62.0...brepjs-v18.62.1) (2026-06-04)
 
 
