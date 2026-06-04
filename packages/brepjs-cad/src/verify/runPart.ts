@@ -59,8 +59,13 @@ export async function runPart(
   modulePath: string,
   opts: RunPartOptions = {}
 ): Promise<RunPartResult> {
-  await init();
   const report = emptyReport();
+  try {
+    await init();
+  } catch (e) {
+    pushError(report, toErrorInfo('kernel init failed', e));
+    return finalize({ shape: null, report });
+  }
   let mod: { default?: PartFn };
   try {
     mod = (await import(modulePath)) as { default?: PartFn };

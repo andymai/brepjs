@@ -5,7 +5,7 @@ import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
-import { reportOk, serializeReport } from '../verify/report.js';
+import { pushError, reportOk, serializeReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
@@ -57,30 +57,35 @@ program
         glb: Boolean(opts.glb),
       });
       const json = serializeReport(report);
-      if (opts.json) writeFileSync(opts.json, json);
-      if (opts.glb && glb) writeFileSync(opts.glb, Buffer.from(glb));
-
       let stepPath: string | undefined = opts.step;
-      if (wantStep && step) {
-        stepPath = opts.step ?? join(tmpdir(), `brepjs-cad-${basename(file)}.step`);
-        writeFileSync(stepPath, Buffer.from(step));
-      }
-      if (opts.snapshot && stepPath) {
-        const shoot = await loadSnapshotShoot(); // lazy: keeps puppeteer off the default path
-        if (shoot) {
-          const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
-          // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
-          for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
+      try {
+        if (opts.json) writeFileSync(opts.json, json);
+        if (opts.glb && glb) writeFileSync(opts.glb, Buffer.from(glb));
+
+        if (wantStep && step) {
+          stepPath = opts.step ?? join(tmpdir(), `brepjs-cad-${basename(file)}.step`);
+          writeFileSync(stepPath, Buffer.from(step));
         }
-      } else if (opts.snapshot) {
-        process.stderr.write('snapshot skipped: STEP export produced no artifact\n');
+        if (opts.snapshot && stepPath) {
+          const shoot = await loadSnapshotShoot(); // lazy: keeps puppeteer off the default path
+          if (shoot) {
+            const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
+            // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
+            for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
+          }
+        } else if (opts.snapshot) {
+          process.stderr.write('snapshot skipped: STEP export produced no artifact\n');
+        }
+      } catch (e) {
+        pushError(report, { message: `artifact write failed: ${(e as Error).message}` });
+      } finally {
+        // The shape is a live WASM handle; release it before the server takes over (the
+        // --serve path stays running, so leaking here would persist for the server's lifetime).
+        disposeShape(shape);
       }
-      process.stdout.write(json + '\n');
-      const willServe = Boolean(opts.serve) && stepPath !== undefined;
-      if (!willServe && !reportOk(report)) process.exitCode = 1;
-      // The shape is a live WASM handle; release it before the server takes over (the
-      // --serve path stays running, so leaking here would persist for the server's lifetime).
-      disposeShape(shape);
+      process.stdout.write(serializeReport(report) + '\n');
+      if (!reportOk(report)) process.exitCode = 1;
+      const willServe = Boolean(opts.serve) && stepPath !== undefined && reportOk(report);
       if (willServe && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
         const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
