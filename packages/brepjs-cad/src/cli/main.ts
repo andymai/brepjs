@@ -52,7 +52,7 @@ program
       // The WASM viewer loads a CAD file (it can't run a .brep.ts), so --snapshot/--serve
       // stage the primary STEP and point the viewer at it via ?dir=&file=. --glb is its own artifact.
       const wantStep = Boolean(opts.step) || Boolean(opts.snapshot) || Boolean(opts.serve);
-      const { report, step, glb } = await runPart(resolve(file), {
+      const { report, step, glb, shape } = await runPart(resolve(file), {
         step: wantStep,
         glb: Boolean(opts.glb),
       });
@@ -72,11 +72,17 @@ program
           // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
           for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
         }
+      } else if (opts.snapshot) {
+        process.stderr.write('snapshot skipped: STEP export produced no artifact\n');
       }
       process.stdout.write(json + '\n');
       const parsed = JSON.parse(json) as { ok: boolean };
-      if (!opts.serve && parsed.ok !== true) process.exitCode = 1;
-      if (opts.serve && stepPath) {
+      const willServe = Boolean(opts.serve) && stepPath !== undefined;
+      if (!willServe && parsed.ok !== true) process.exitCode = 1;
+      // The shape is a live WASM handle; release it before the server takes over (the
+      // --serve path stays running, so leaking here would persist for the server's lifetime).
+      disposeShape(shape);
+      if (willServe && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
         const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
         process.stderr.write(`viewer: ${url}\n`);

@@ -9,7 +9,7 @@ import {
   type Shape3D,
 } from 'brepjs';
 import { runPart } from './runPart.js';
-import type { DiffReport } from './report.js';
+import type { BoundsDelta, DiffReport } from './report.js';
 
 function emptyDiff(errors: string[]): DiffReport {
   return {
@@ -36,6 +36,26 @@ function areaOf(shape: AnyShape, errors: string[]): number {
   return 0;
 }
 
+// getBounds → kernel boundingBox can throw on a degenerate/empty shape; keep runDiff's
+// always-return-a-DiffReport contract by recording the failure and falling back to zero.
+function boundsDelta(a: AnyShape, b: AnyShape, errors: string[]): BoundsDelta {
+  try {
+    const ba = getBounds(a);
+    const bb = getBounds(b);
+    return {
+      xMin: bb.xMin - ba.xMin,
+      xMax: bb.xMax - ba.xMax,
+      yMin: bb.yMin - ba.yMin,
+      yMax: bb.yMax - ba.yMax,
+      zMin: bb.zMin - ba.zMin,
+      zMax: bb.zMax - ba.zMax,
+    };
+  } catch (e) {
+    errors.push(`getBounds: ${(e as Error).message}`);
+    return { xMin: 0, xMax: 0, yMin: 0, yMax: 0, zMin: 0, zMax: 0 };
+  }
+}
+
 // One side of the symmetric difference: vol(cut(x, y)) — the part of x not shared with y.
 function cutVolume(x: Shape3D, y: Shape3D, errors: string[]): number {
   const r = cut(x, y);
@@ -52,23 +72,15 @@ export async function runDiff(aPath: string, bPath: string): Promise<DiffReport>
   const errors: string[] = [];
   const a = await runPart(aPath);
   errors.push(...a.report.errors);
-  const b = await runPart(bPath);
-  errors.push(...b.report.errors);
-  if (!a.shape || !b.shape) return emptyDiff(errors);
+  if (!a.shape) return emptyDiff(errors);
   // runPart hands back live kernel shapes; dispose both on every exit path.
   using sa = a.shape;
+  const b = await runPart(bPath);
+  errors.push(...b.report.errors);
+  if (!b.shape) return emptyDiff(errors);
   using sb = b.shape;
 
-  const ba = getBounds(sa);
-  const bb = getBounds(sb);
-  const bboxDelta = {
-    xMin: bb.xMin - ba.xMin,
-    xMax: bb.xMax - ba.xMax,
-    yMin: bb.yMin - ba.yMin,
-    yMax: bb.yMax - ba.yMax,
-    zMin: bb.zMin - ba.zMin,
-    zMax: bb.zMax - ba.zMax,
-  };
+  const bboxDelta = boundsDelta(sa, sb, errors);
 
   const areaDelta = areaOf(sb, errors) - areaOf(sa, errors);
 

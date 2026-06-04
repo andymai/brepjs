@@ -39,41 +39,46 @@ export async function exportPart(
   const valid = reportOk(report) && shape !== null;
   if (!valid) {
     disposeShape(shape); // live WASM handle owned by this fn
-    return { ok: false, report, written, errors: report.errors };
+    // Validity failures land in errorInfos (checks.ts keeps them out of `errors` to avoid
+    // double-counting), so derive the diagnostics from there rather than the empty `errors`.
+    const failures = report.errorInfos.map((e) => e.message);
+    return { ok: false, report, written, errors: failures.length > 0 ? failures : report.errors };
   }
 
-  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-  const base = stem(modulePath);
+  try {
+    if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+    const base = stem(modulePath);
 
-  if (formats.step) {
-    if (step) {
-      const p = join(outDir, `${base}.step`);
-      writeFileSync(p, Buffer.from(step));
-      written.push(p);
-    } else {
-      errors.push('STEP export produced no data');
+    if (formats.step) {
+      if (step) {
+        const p = join(outDir, `${base}.step`);
+        writeFileSync(p, Buffer.from(step));
+        written.push(p);
+      } else {
+        errors.push('STEP export produced no data');
+      }
     }
-  }
-  if (formats.glb) {
-    if (glb) {
-      const p = join(outDir, `${base}.glb`);
-      writeFileSync(p, Buffer.from(glb));
-      written.push(p);
-    } else {
-      errors.push('GLB export produced no data');
+    if (formats.glb) {
+      if (glb) {
+        const p = join(outDir, `${base}.glb`);
+        writeFileSync(p, Buffer.from(glb));
+        written.push(p);
+      } else {
+        errors.push('GLB export produced no data');
+      }
     }
-  }
-  if (wantStl) {
-    const r = exportSTL(shape);
-    if (isOk(r)) {
-      const p = join(outDir, `${base}.stl`);
-      writeFileSync(p, Buffer.from(await r.value.arrayBuffer()));
-      written.push(p);
-    } else {
-      errors.push(`STL export: ${r.error.message}`);
+    if (wantStl) {
+      const r = exportSTL(shape);
+      if (isOk(r)) {
+        const p = join(outDir, `${base}.stl`);
+        writeFileSync(p, Buffer.from(await r.value.arrayBuffer()));
+        written.push(p);
+      } else {
+        errors.push(`STL export: ${r.error.message}`);
+      }
     }
+  } finally {
+    disposeShape(shape);
   }
-
-  disposeShape(shape);
   return { ok: errors.length === 0, report, written, errors };
 }
