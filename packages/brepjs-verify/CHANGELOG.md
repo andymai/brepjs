@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.2.1...brepjs-verify-v0.3.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-verify:** live text-to-cad eval flywheel ([#1215](https://github.com/andymai/brepjs/issues/1215)) ([4e81fc4](https://github.com/andymai/brepjs/commit/4e81fc4053491ce3e08182d57d76bd649252ea3c))
+* **brepjs-verify:** standalone bundled CLI + rename from brepjs-cad ([#1211](https://github.com/andymai/brepjs/issues/1211)) ([05b3799](https://github.com/andymai/brepjs/commit/05b3799a0e9ee4968d4cac92f3a2ea236e39cd35))
+
+
+### Bug Fixes
+
+* **brepjs-verify:** correct fillet/chamfer arg order in no-edges hints ([#1218](https://github.com/andymai/brepjs/issues/1218)) ([835f13a](https://github.com/andymai/brepjs/commit/835f13ac966b4264ba56a5cfc371bbbbbd1a0f01))
+
 ## [0.2.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.2.0...brepjs-cad-v0.2.1) (2026-06-04)
 
 
