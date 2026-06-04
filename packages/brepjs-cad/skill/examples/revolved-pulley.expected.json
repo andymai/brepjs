@@ -1,0 +1,16 @@
+{
+  "shapeType": "Solid",
+  "validSolid": true,
+  "ok": true,
+  "volume": 8168.140899333463,
+  "area": 3977.256299444678,
+  "tolerancePct": 0.5,
+  "bounds": {
+    "xMin": -18,
+    "xMax": 18,
+    "yMin": -18,
+    "yMax": 18,
+    "zMin": 0,
+    "zMax": 10
+  }
+}

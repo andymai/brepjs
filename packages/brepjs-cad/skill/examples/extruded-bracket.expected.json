@@ -1,0 +1,16 @@
+{
+  "shapeType": "Compound",
+  "validSolid": false,
+  "ok": true,
+  "volume": 10285.199992765356,
+  "area": 4698.169872599538,
+  "tolerancePct": 0.5,
+  "bounds": {
+    "xMin": -30,
+    "xMax": 30,
+    "yMin": -15,
+    "yMax": 15,
+    "zMin": 0,
+    "zMax": 6
+  }
+}

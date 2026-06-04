@@ -41,9 +41,10 @@
   ],
   "scripts": {
     "build": "vite build && vite build --config viewer/vite.config.ts",
-    "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit",
-    "lint": "eslint src tests viewer",
+    "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit && tsc -p bench/tsconfig.json",
+    "lint": "eslint src tests viewer bench",
     "test": "vitest run",
+    "eval": "tsx bench/run.ts",
     "prepack": "npm run build"
   },
   "peerDependencies": {

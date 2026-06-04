@@ -20,7 +20,7 @@ function isResult(v: unknown): v is Result<AnyShape> {
 function isBrepError(v: unknown): v is BrepError {
   if (typeof v !== 'object' || v === null) return false;
   const rec = v as Record<string, unknown>;
-  return typeof rec.code === 'string' && typeof rec.message === 'string';
+  return typeof rec['code'] === 'string' && typeof rec['message'] === 'string';
 }
 
 /** Pull structured `{ message, code, suggestion }` out of a `BrepError`, a thrown `Error`, or anything. */

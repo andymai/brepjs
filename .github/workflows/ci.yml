@@ -155,6 +155,8 @@ jobs:
       - run: npm run lint --workspace=brepjs-cad
       - run: npm run test --workspace=brepjs-cad
       - run: npm run build --workspace=brepjs-cad
+      # Deterministic eval: replay skill/examples through runPart, gate on volume/area/validity.
+      - run: npm run eval --workspace=brepjs-cad
 
   packages-sheetmetal:
     # Experimental sheet-metal domain satellite. Build root brepjs first so the

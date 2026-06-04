@@ -33,6 +33,30 @@ export default tseslint.config(
     },
   },
   {
+    // The eval harness is a dev-only tsx script (never shipped in dist); its scorecard prints
+    // to stdout, so `console.log` is allowed here unlike the published `src/`.
+    files: ['bench/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: './bench/tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/prefer-readonly': 'error',
+      'prefer-const': 'error',
+      eqeqeq: 'error',
+      'no-var': 'error',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     languageOptions: {
       parserOptions: {
