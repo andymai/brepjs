@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.2.0...brepjs-cad-v0.2.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** load .ts parts via native type-stripping ([#1207](https://github.com/andymai/brepjs/issues/1207)) ([198078b](https://github.com/andymai/brepjs/commit/198078becf570614c0cbf61537714fc94c2de43a))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.1.0...brepjs-cad-v0.2.0) (2026-06-04)
 
 
