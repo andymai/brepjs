@@ -16,9 +16,10 @@
  */
 
 import type { KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode, type OpNode } from './opGraph.js';
-import { wrap, nodeOf, asManifoldShape } from './meshHandle.js';
+import { wrap, nodeOf, asManifoldShape, resolveOcct } from './meshHandle.js';
 import {
   add,
   cross,
@@ -168,6 +169,30 @@ function chainEdges(edgePts: Pts[]): Pts {
   return ring;
 }
 
+const OCCT_CURVE_SEGMENTS = 24;
+
+/** Sample an OCCT edge into a polyline (line → endpoints, curve → 24 segments). */
+function sampleOcctEdge(occt: KernelAdapter, edge: KernelShape): Pts {
+  const [t0, t1] = occt.curveParameters(edge);
+  let segs = OCCT_CURVE_SEGMENTS;
+  try {
+    if (occt.curveType(edge) === 'line') segs = 1;
+  } catch {
+    /* unknown curve type → fall back to dense sampling */
+  }
+  const pts: Pts = [];
+  for (let i = 0; i <= segs; i++) {
+    pts.push(occt.curvePointAtParam(edge, t0 + ((t1 - t0) * i) / segs));
+  }
+  return pts;
+}
+
+/** Discretize an OCCT wire (from the 2D-delegated blueprint path) into a ring. */
+function discretizeOcctWire(occt: KernelAdapter, wire: KernelShape): Pts {
+  const edges = occt.iterShapes(wire, 'edge');
+  return chainEdges(edges.map((e) => sampleOcctEdge(occt, e)));
+}
+
 export interface ProfileBuilders {
   makeVertex(x: number, y: number, z: number): KernelShape;
   makeLineEdge(p1: Vec3, p2: Vec3): KernelShape;
@@ -201,11 +226,16 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
     return wrap(PLACEHOLDER, makeNode('profileEdge', { pts }, [])) as KernelShape;
   }
 
-  // Edge handles carry `pts`; wire handles carry `ring` (already chained).
+  // Edge/wire handles carry `pts`/`ring`; OCCT shapes (2D-delegated blueprint
+  // path) are discretized via the registered OCCT kernel.
   function ringOrPts(shape: KernelShape): Pts {
     const ms = asManifoldShape(shape);
-    const params = (ms?.node as { params?: { ring?: Pts; pts?: Pts } } | undefined)?.params;
-    return params?.ring ?? params?.pts ?? [];
+    if (ms) {
+      const params = (ms.node as { params?: { ring?: Pts; pts?: Pts } }).params;
+      return params?.ring ?? params?.pts ?? [];
+    }
+    const occt = resolveOcct();
+    return occt ? sampleOcctEdge(occt, shape) : [];
   }
 
   function inputNodes(items: KernelShape[]): OpNode[] {
@@ -243,7 +273,13 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
 
   function makeFace(wire: KernelShape): KernelShape {
     const ms = asManifoldShape(wire);
-    const ring = (ms?.node as { params?: { ring?: Pts } } | undefined)?.params?.ring ?? [];
+    if (ms) {
+      const ring = (ms.node as { params?: { ring?: Pts } }).params?.ring ?? [];
+      if (ring.length >= 3) return faceFromRing(ring, nodeOf(ms));
+    }
+    // OCCT wire from the 2D-delegated blueprint path → discretize its edges.
+    const occt = resolveOcct();
+    const ring = occt ? discretizeOcctWire(occt, wire) : [];
     return faceFromRing(ring, ms ? nodeOf(ms) : undefined);
   }
 
@@ -267,7 +303,14 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
     };
     const newHoles: Vec2[][] = [];
     for (const hw of holeWires) {
-      const ring = ringOrPts(hw);
+      const hms = asManifoldShape(hw);
+      let ring: Pts;
+      if (hms) {
+        ring = (hms.node as { params?: { ring?: Pts } }).params?.ring ?? [];
+      } else {
+        const occt = resolveOcct();
+        ring = occt ? discretizeOcctWire(occt, hw) : [];
+      }
       if (ring.length >= 3) newHoles.push(ring.map(project));
     }
     const holes = [...(fp.holes ?? []), ...newHoles];

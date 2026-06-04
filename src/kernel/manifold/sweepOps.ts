@@ -547,6 +547,6 @@ export function makeSweepOps(module: ManifoldModule): KernelSweepOps {
       endFactor,
     }),
     loftBatch: () => notImplemented('loftBatch'),
-    extrudeBatch: () => notImplemented('extrudeBatch'),
+    extrudeBatch: (entries) => entries.map((e) => extrudeOp(module, e.face, e.direction, e.length)),
   };
 }
