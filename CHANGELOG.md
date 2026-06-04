@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.62.1](https://github.com/andymai/brepjs/compare/brepjs-v18.62.0...brepjs-v18.62.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **manifold:** native shapeType + OCCT-family resolution ([#1220](https://github.com/andymai/brepjs/issues/1220)) ([7730789](https://github.com/andymai/brepjs/commit/7730789b0b430477cd7037a4d9b67cf8dda6a7a6))
+
 ## [18.62.0](https://github.com/andymai/brepjs/compare/brepjs-v18.61.0...brepjs-v18.62.0) (2026-06-04)
 
 
