@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.58.0](https://github.com/andymai/brepjs/compare/brepjs-v18.57.0...brepjs-v18.58.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-cad:** rename from brepjs-agent + make npm-publishable (publish held) ([#1201](https://github.com/andymai/brepjs/issues/1201)) ([630bbba](https://github.com/andymai/brepjs/commit/630bbbab4885604bd4d5fb2148584a6572c8d99c))
+
 ## [18.57.0](https://github.com/andymai/brepjs/compare/brepjs-v18.56.0...brepjs-v18.57.0) (2026-06-03)
 
 
