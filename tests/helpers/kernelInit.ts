@@ -51,6 +51,12 @@ export async function initKernel(id?: string): Promise<void> {
     _manifoldInitialized = true;
     const { initManifold } = await import('brepjs-manifold');
     const module = await initManifold();
+    // Parity tests assert against exact B-rep formulas; Manifold's default
+    // tessellation is radius-dependent and coarse for small radii (a unit sphere
+    // gets ~6 facets → ~30% volume error). Fix a fine global segment count so the
+    // mesh kernel's curved primitives/lofts land within parity tolerance.
+    // (Production preview callers set their own coarser quality for speed.)
+    (module as { setCircularSegments?: (n: number) => void }).setCircularSegments?.(256);
     initFromManifold(module);
     _available.push('manifold');
   } else if (kernel === 'occt') {

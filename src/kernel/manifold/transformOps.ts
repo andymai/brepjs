@@ -32,8 +32,12 @@ function translationMatrix(x: number, y: number, z: number): Mat4 {
   return m;
 }
 
-function rotationMatrix(angleDeg: number, axis: Vec3, center: Vec3): Mat4 {
-  const rad = (angleDeg * Math.PI) / 180;
+function rotationMatrix(angleRad: number, axis: Vec3, center: Vec3): Mat4 {
+  // The kernel `rotate` contract is radians (matches the OCCT adapters, which
+  // pass the angle straight to the native kernel). Do NOT convert from degrees
+  // here — doing so double-converts the already-radian input (a 90° = π/2 rad
+  // request would otherwise rotate by only ~1.57°).
+  const rad = angleRad;
   const [ax, ay, az] = normalizeAxis(axis);
   const c = Math.cos(rad);
   const s = Math.sin(rad);
