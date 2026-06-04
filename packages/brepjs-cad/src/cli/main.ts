@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync, watch as fsWatch } from 'node:fs';
+import { writeFileSync, watch as fsWatch, realpathSync } from 'node:fs';
 import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
 import { serializeReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
@@ -189,6 +189,17 @@ program
 
 // Only drive the CLI when run as the entry script, so tests can import the
 // guarded loaders without commander parsing the test runner's argv.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Resolve symlinks on both sides: the npm-installed bin (node_modules/.bin/brepjs)
+// is a symlink, so process.argv[1] would otherwise never equal the real module path.
+export function isEntrypoint(argv1: string | undefined, moduleUrl: string): boolean {
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint(process.argv[1], import.meta.url)) {
   void program.parseAsync();
 }
