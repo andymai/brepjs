@@ -28,7 +28,7 @@
     "packages/brepjs-manifold",
     "packages/brepjs-voxel-wasm",
     "packages/brepjs-voxel",
-    "packages/brepjs-agent",
+    "packages/brepjs-cad",
     "packages/brepjs-viewer",
     "packages/brepjs-vscode",
     "apps/playground",

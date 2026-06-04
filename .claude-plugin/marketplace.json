@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "brepjs-cad",
-      "source": "./packages/brepjs-agent",
+      "source": "./packages/brepjs-cad",
       "description": "Author and verify parametric brepjs CAD models"
     }
   ]

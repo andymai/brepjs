@@ -19,7 +19,7 @@ measureVolume(box(2, 3, 4)); // ok(24)
 
 ## The verify loop
 
-1. `npx brepjs-agent-verify model.brep.ts` runs the model + deterministic checks (volume, bounds, validity) — these decide pass/fail.
+1. `npx brepjs model.brep.ts` runs the model + deterministic checks (volume, bounds, validity) — these decide pass/fail.
 2. `--json out.json` emits machine-readable measurements to diff between iterations; `measure`/`diff` subcommands compare distances and before/after parts.
 3. `--snapshot ./out` writes iso/front/top/right PNGs for a visual sanity pass.
 4. `--serve` opens a clickable, directory-rooted preview rendering the real STEP geometry (read-only).

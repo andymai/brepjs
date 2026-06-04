@@ -1,5 +1,5 @@
 {
-  "name": "brepjs-agent",
+  "name": "brepjs-cad",
   "version": "0.1.0",
   "description": "Agent skill + verify/preview tooling for authoring parametric brepjs CAD code",
   "license": "Apache-2.0",
@@ -11,7 +11,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
-    "directory": "packages/brepjs-agent"
+    "directory": "packages/brepjs-cad"
   },
   "main": "./dist/brepjs-agent.cjs",
   "module": "./dist/brepjs-agent.js",
@@ -29,6 +29,7 @@
     }
   },
   "bin": {
+    "brepjs": "./dist/cli/main.js",
     "brepjs-agent-verify": "./dist/cli/main.js"
   },
   "files": [

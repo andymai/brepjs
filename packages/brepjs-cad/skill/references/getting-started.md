@@ -23,7 +23,7 @@ export default () => box(40, 20, 10, { centered: true });
 ## Verify it
 
 ```sh
-npx brepjs-agent-verify bracket.brep.ts
+npx brepjs bracket.brep.ts
 ```
 
 Add `--snapshot ./out` for PNGs, `--step ./out/bracket.step` for the primary STEP, or `--serve` for a clickable preview that renders the real STEP geometry.

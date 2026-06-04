@@ -1,4 +1,4 @@
-# brepjs-agent
+# brepjs-cad
 
 Agent skill + verify/preview tooling for authoring parametric CAD with [brepjs](https://github.com/andymai/brepjs).
 
@@ -18,7 +18,7 @@ Teaches an agent the authoring workflow. Delivered via the brepjs marketplace (g
 The CLI the skill invokes. Install it in **your** project, where `brepjs` + the WASM kernel resolve (Node module resolution is project-local, so the runtime can't live in the plugin dir):
 
 ```
-npm i -D brepjs-agent brepjs occt-wasm
+npm i -D brepjs-cad brepjs occt-wasm
 ```
 
 ## The `.brep.ts` contract
@@ -34,9 +34,9 @@ export default () => box(40, 20, 10, { centered: true });
 ## Usage
 
 ```
-npx brepjs-agent-verify part.brep.ts --step part.step --json report.json   # primary STEP + deterministic report
-npx brepjs-agent-verify part.brep.ts --snapshot shots/                     # iso/front/top/right PNGs
-npx brepjs-agent-verify part.brep.ts --serve                               # clickable preview link (renders the real STEP)
+npx brepjs part.brep.ts --step part.step --json report.json   # primary STEP + deterministic report
+npx brepjs part.brep.ts --snapshot shots/                     # iso/front/top/right PNGs
+npx brepjs part.brep.ts --serve                               # clickable preview link (renders the real STEP)
 ```
 
 `--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The viewer is read-only display + screenshot in v1.
@@ -44,7 +44,7 @@ npx brepjs-agent-verify part.brep.ts --serve                               # cli
 ## Programmatic API
 
 ```ts
-import { runPart, runChecks, serializeReport } from 'brepjs-agent';
+import { runPart, runChecks, serializeReport } from 'brepjs-cad';
 
 const { shape, report, step } = await runPart('part.brep.ts', { step: true });
 console.log(serializeReport(report)); // { ok, shapeType, checks, measurements, errors }

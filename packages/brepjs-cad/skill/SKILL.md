@@ -11,10 +11,10 @@ description: Use when authoring or editing parametric 3D CAD models in TypeScrip
 2. **Write a CAD brief** — convert prose to explicit params: dimensions (mm), datums, features, assumptions. Do NOT ask the user for JSON.
 3. **Load only the references you need** — see the index below; do not read all at once.
 4. **Author a `.brep.ts` module** — `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …). Parameterize with named consts at the top. Edit _source_, never generated artifacts.
-5. **Verify deterministically** — `npx brepjs-agent-verify part.brep.ts --json report.json`. Treat the JSON (validity brands + volume/area/bounds) as the source of truth.
+5. **Verify deterministically** — `npx brepjs part.brep.ts --json report.json`. Treat the JSON (validity brands + volume/area/bounds) as the source of truth.
 6. **Verify visually** — add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is NOT a conclusion: convert it to a measurement ("hole looks off-center → check bounds"). Never skip the snapshot for confidence.
 7. **Repair the smallest responsible section** of source and re-run.
-8. **Export the primary artifact + hand off** — `npx brepjs-agent-verify part.brep.ts --step part.step` writes STEP (the primary, validated deliverable); GLB/STL are derived previews. For a human handoff, `--serve` prints a clickable preview link. Report the STEP path (and link).
+8. **Export the primary artifact + hand off** — `npx brepjs part.brep.ts --step part.step` writes STEP (the primary, validated deliverable); GLB/STL are derived previews. For a human handoff, `--serve` prints a clickable preview link. Report the STEP path (and link).
 
 ## Hard rules
 

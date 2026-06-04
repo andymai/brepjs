@@ -21,8 +21,8 @@ Monorepo packages:
 - `packages/brepjs-opencascade` — OpenCascade WASM build (published)
 - `packages/brepjs-bim` — IFC/BIM helpers (experimental, unpublished)
 - `packages/brepjs-manifold` — Manifold mesh/CSG preview kernel (experimental, unpublished)
-- `packages/brepjs-viewer` — Shared React/R3F renderer (consumed by the playground and brepjs-agent; not yet published)
-- `packages/brepjs-agent` — Agent skill + verify/preview CLI + WASM viewer (not yet published; skill ships via the repo Claude-plugin marketplace)
+- `packages/brepjs-viewer` — Shared React/R3F renderer (consumed by the playground and brepjs-cad; not yet published)
+- `packages/brepjs-cad` — Agent skill + verify/preview CLI + WASM viewer (not yet published; skill ships via the repo Claude-plugin marketplace)
 
 ## Commands
 

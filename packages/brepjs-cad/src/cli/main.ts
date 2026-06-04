@@ -17,7 +17,7 @@ console.log = (...args: unknown[]) => {
 };
 
 const program = new Command();
-program.name('brepjs-agent-verify');
+program.name('brepjs');
 
 program
   .command('verify', { isDefault: true })
