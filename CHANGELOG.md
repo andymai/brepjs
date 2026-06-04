@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.59.0](https://github.com/andymai/brepjs/compare/brepjs-v18.58.0...brepjs-v18.59.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-cad:** CLI subcommands + verify hints + gridfinity examples + eval harness ([#1204](https://github.com/andymai/brepjs/issues/1204)) ([4d57198](https://github.com/andymai/brepjs/commit/4d5719874b5f5e685a4f909fd2d2363c0331770b))
+
 ## [18.58.0](https://github.com/andymai/brepjs/compare/brepjs-v18.57.0...brepjs-v18.58.0) (2026-06-04)
 
 
