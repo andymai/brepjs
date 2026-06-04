@@ -23,6 +23,7 @@ import {
   unwrap,
 } from './meshHandle.js';
 import { replay } from './replay.js';
+import { type CurveDesc, descLength } from './curveDesc.js';
 
 type Vec3 = [number, number, number];
 
@@ -285,6 +286,10 @@ export function makeMeasureOps(_module: ManifoldModule): KernelMeasureOps {
       // Native edge witnesses carry their polyline arc length.
       const e = shape as { __nativeEdge?: boolean; length?: number } | null;
       if (e && e.__nativeEdge && typeof e.length === 'number') return e.length;
+      // Standalone profile edges carry an exact analytic descriptor.
+      const ms = asManifoldShape(shape);
+      const node = ms?.node as { op?: string; params?: { curve?: CurveDesc } } | undefined;
+      if (node?.op === 'profileEdge' && node.params?.curve) return descLength(node.params.curve);
       return notImplemented('length');
     },
     centerOfMass: (shape) => centerOfMass(shape),

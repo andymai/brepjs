@@ -66,7 +66,8 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     makeBezierEdge: (points) => profile.makeBezierEdge(points),
     makeTangentArc: (startPoint, startTangent, endPoint) =>
       profile.makeTangentArc(startPoint, startTangent, endPoint),
-    makeHelixWire: () => notImplemented('makeHelixWire'),
+    makeHelixWire: (pitch, height, radius, center, direction, leftHanded) =>
+      profile.makeHelixWire(pitch, height, radius, center, direction, leftHanded),
     makeWireFromMixed: (items) => profile.makeWireFromMixed(items),
     makeCompound: () => notImplemented('makeCompound'),
     solidFromShell: () => notImplemented('solidFromShell'),

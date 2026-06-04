@@ -21,6 +21,16 @@ import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './
 import { replay } from './replay.js';
 import { isNativeFace } from './nativeFaces.js';
 import { isNativeEdge, isNativeVertex, edgePointAt, edgeTangentAt } from './nativeEdges.js';
+import {
+  type CurveDesc,
+  descType,
+  descBounds,
+  descPointAt,
+  descTangent,
+  descIsClosed,
+  descIsPeriodic,
+  descPeriod,
+} from './curveDesc.js';
 
 type Vec3 = [number, number, number];
 
@@ -81,26 +91,59 @@ function viaOcct<T>(
   return query(occtShape, occt);
 }
 
+/** The analytic curve descriptor of a standalone profile edge, if it has one. */
+function descOf(shape: KernelShape): CurveDesc | undefined {
+  const ms = asManifoldShape(shape);
+  if (!ms) return undefined;
+  const node = ms.node as { op?: string; params?: { curve?: CurveDesc } };
+  return node.op === 'profileEdge' ? node.params?.curve : undefined;
+}
+
 export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & KernelSurfaceOps {
   return {
-    // --- Curve queries: native for mesh-extracted edges, else replay onto OCCT ---
-    curveType: (shape) =>
-      isNativeEdge(shape) ? shape.curveType : viaOcct(shape, (s, occt) => occt.curveType(s)),
-    curveParameters: (shape) =>
-      isNativeEdge(shape)
+    // --- Curve queries: analytic for standalone profile edges (exact), native
+    // for mesh-extracted edges, else replay onto OCCT ---
+    curveType: (shape) => {
+      const d = descOf(shape);
+      if (d) return descType(d);
+      return isNativeEdge(shape) ? shape.curveType : viaOcct(shape, (s, occt) => occt.curveType(s));
+    },
+    curveParameters: (shape) => {
+      const d = descOf(shape);
+      if (d) {
+        const b = descBounds(d);
+        return [b.first, b.last];
+      }
+      return isNativeEdge(shape)
         ? [0, shape.length]
-        : viaOcct(shape, (s, occt) => occt.curveParameters(s)),
-    curvePointAtParam: (shape, param) =>
-      isNativeEdge(shape)
+        : viaOcct(shape, (s, occt) => occt.curveParameters(s));
+    },
+    curvePointAtParam: (shape, param) => {
+      const d = descOf(shape);
+      if (d) return descPointAt(d, param);
+      return isNativeEdge(shape)
         ? edgePointAt(shape, param)
-        : viaOcct(shape, (s, occt) => occt.curvePointAtParam(s, param)),
-    curveTangent: (shape, param) =>
-      isNativeEdge(shape)
+        : viaOcct(shape, (s, occt) => occt.curvePointAtParam(s, param));
+    },
+    curveTangent: (shape, param) => {
+      const d = descOf(shape);
+      if (d) return { point: descPointAt(d, param), tangent: descTangent(d, param) };
+      return isNativeEdge(shape)
         ? { point: edgePointAt(shape, param), tangent: edgeTangentAt(shape, param) }
-        : viaOcct(shape, (s, occt) => occt.curveTangent(s, param)),
-    curveIsClosed: (shape) => viaOcct(shape, (s, occt) => occt.curveIsClosed(s)),
-    curveIsPeriodic: (shape) => viaOcct(shape, (s, occt) => occt.curveIsPeriodic(s)),
-    curvePeriod: (shape) => viaOcct(shape, (s, occt) => occt.curvePeriod(s)),
+        : viaOcct(shape, (s, occt) => occt.curveTangent(s, param));
+    },
+    curveIsClosed: (shape) => {
+      const d = descOf(shape);
+      return d ? descIsClosed(d) : viaOcct(shape, (s, occt) => occt.curveIsClosed(s));
+    },
+    curveIsPeriodic: (shape) => {
+      const d = descOf(shape);
+      return d ? descIsPeriodic(d) : viaOcct(shape, (s, occt) => occt.curveIsPeriodic(s));
+    },
+    curvePeriod: (shape) => {
+      const d = descOf(shape);
+      return d ? descPeriod(d) : viaOcct(shape, (s, occt) => occt.curvePeriod(s));
+    },
     interpolatePoints: (points, options) =>
       occtOrThrow('interpolatePoints').interpolatePoints(points, options),
     approximatePoints: (points, options) =>

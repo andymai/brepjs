@@ -19,6 +19,7 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode, type OpNode } from './opGraph.js';
+import { type CurveDesc, descPointAt } from './curveDesc.js';
 import { wrap, nodeOf, asManifoldShape, resolveOcct } from './meshHandle.js';
 import {
   add,
@@ -231,6 +232,14 @@ export interface ProfileBuilders {
   ): KernelShape;
   makeBezierEdge(points: Vec3[]): KernelShape;
   makeTangentArc(startPoint: Vec3, startTangent: Vec3, endPoint: Vec3): KernelShape;
+  makeHelixWire(
+    pitch: number,
+    height: number,
+    radius: number,
+    center?: Vec3,
+    direction?: Vec3,
+    leftHanded?: boolean
+  ): KernelShape;
   makeWire(edges: KernelShape[]): KernelShape;
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeFace(wire: KernelShape, planar?: boolean): KernelShape;
@@ -239,8 +248,39 @@ export interface ProfileBuilders {
 }
 
 export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
-  function edge(pts: Pts): KernelShape {
-    return wrap(PLACEHOLDER, makeNode('profileEdge', { pts }, [])) as KernelShape;
+  function edge(pts: Pts, curve?: CurveDesc): KernelShape {
+    const params = curve ? { pts, curve } : { pts };
+    return wrap(PLACEHOLDER, makeNode('profileEdge', params, [])) as KernelShape;
+  }
+
+  /** In-plane orthonormal frame (x, y) for a conic on a plane with the given normal. */
+  function conicFrame(normal: Vec3, xDir?: Vec3): { x: Vec3; y: Vec3 } {
+    const n = normalize3(normal);
+    const x = xDir ? normalize3(xDir) : pickPerp(n);
+    return { x, y: normalize3(cross(n, x)) };
+  }
+
+  /** Analytic conic descriptor for the circle through three points (or null if collinear). */
+  function conicDescFrom3(p1: Vec3, p2: Vec3, p3: Vec3): CurveDesc | undefined {
+    const v1 = sub(p2, p1);
+    const v2 = sub(p3, p1);
+    const n = cross(v1, v2);
+    if (length3(n) < 1e-12) return undefined;
+    const nn = normalize3(n);
+    const b = dot(v1, v1);
+    const c = dot(v2, v2);
+    const dd = dot(v1, v2);
+    const denom = 2 * (b * c - dd * dd);
+    if (Math.abs(denom) < 1e-18) return undefined;
+    const s = (c * (b - dd)) / denom;
+    const t = (b * (c - dd)) / denom;
+    const center = add(p1, add(scaleVec(v1, s), scaleVec(v2, t)));
+    const radius = length3(sub(p1, center));
+    const x = normalize3(sub(p1, center));
+    const y = normalize3(cross(nn, x));
+    let a1 = Math.atan2(dot(sub(p3, center), y), dot(sub(p3, center), x));
+    if (a1 < 0) a1 += 2 * Math.PI;
+    return { k: 'conic', center, x, y, rx: radius, ry: radius, a0: 0, a1 };
   }
 
   // Edge/wire handles carry `pts`/`ring`; OCCT shapes (2D-delegated blueprint
@@ -358,18 +398,74 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
 
   return {
     makeVertex: (x, y, z) => edge([[x, y, z]]),
-    makeLineEdge: (p1, p2) => edge([p1, p2]),
-    makeCircleEdge: (center, normal, radius) =>
-      edge(sampleArc(center, normal, radius, 0, 2 * Math.PI)),
-    makeCircleArc: (center, normal, radius, startAngle, endAngle) =>
-      edge(sampleArc(center, normal, radius, startAngle, endAngle)),
-    makeArcEdge: (p1, p2, p3) => edge(circleFrom3(p1, p2, p3)),
-    makeEllipseEdge: (center, normal, majorRadius, minorRadius, xDir) =>
-      edge(ellipsePts(center, normal, majorRadius, minorRadius, xDir)),
-    makeBezierEdge: (points) => edge(sampleBezier(points)),
+    makeLineEdge: (p1, p2) => edge([p1, p2], { k: 'line', p1, p2 }),
+    makeCircleEdge: (center, normal, radius) => {
+      const { x, y } = conicFrame(normal);
+      return edge(sampleArc(center, normal, radius, 0, 2 * Math.PI), {
+        k: 'conic',
+        center,
+        x,
+        y,
+        rx: radius,
+        ry: radius,
+        a0: 0,
+        a1: 2 * Math.PI,
+      });
+    },
+    makeCircleArc: (center, normal, radius, startAngle, endAngle) => {
+      const { x, y } = conicFrame(normal);
+      return edge(sampleArc(center, normal, radius, startAngle, endAngle), {
+        k: 'conic',
+        center,
+        x,
+        y,
+        rx: radius,
+        ry: radius,
+        a0: startAngle,
+        a1: endAngle,
+      });
+    },
+    makeArcEdge: (p1, p2, p3) => edge(circleFrom3(p1, p2, p3), conicDescFrom3(p1, p2, p3)),
+    makeEllipseEdge: (center, normal, majorRadius, minorRadius, xDir) => {
+      const { x, y } = conicFrame(normal, xDir);
+      return edge(ellipsePts(center, normal, majorRadius, minorRadius, xDir), {
+        k: 'conic',
+        center,
+        x,
+        y,
+        rx: majorRadius,
+        ry: minorRadius,
+        a0: 0,
+        a1: 2 * Math.PI,
+      });
+    },
+    makeBezierEdge: (points) =>
+      edge(sampleBezier(points), { k: 'bezier', points: points.map((p) => [...p]) }),
     // Tangent arcs are rare in gridfinity profiles; approximate as a chord for
     // now (TODO: sample the true tangent-constrained arc when a profile needs it).
-    makeTangentArc: (startPoint, _startTangent, endPoint) => edge([startPoint, endPoint]),
+    makeTangentArc: (startPoint, _startTangent, endPoint) =>
+      edge([startPoint, endPoint], { k: 'line', p1: startPoint, p2: endPoint }),
+    makeHelixWire: (
+      pitch,
+      height,
+      radius,
+      center = [0, 0, 0],
+      direction = [0, 0, 1],
+      leftHanded = false
+    ) => {
+      const axis = normalize3(direction);
+      const x = pickPerp(axis);
+      const y0 = normalize3(cross(axis, x));
+      const y = leftHanded ? (scaleVec(y0, -1)) : y0;
+      const turns = pitch !== 0 ? height / pitch : 0;
+      const desc: CurveDesc = { k: 'helix', center, axis, x, y, radius, pitch, turns };
+      const segs = Math.max(8, Math.ceil(turns * FULL_CIRCLE_SEGMENTS));
+      const pts: Pts = [];
+      for (let i = 0; i <= segs; i++) {
+        pts.push(descPointAt(desc, (2 * Math.PI * turns * i) / segs));
+      }
+      return edge(pts, desc);
+    },
     makeWire: (edges) => wireFrom(edges),
     makeWireFromMixed: (items) => wireFrom(items),
     makeFace,
