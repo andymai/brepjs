@@ -105,7 +105,14 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
     },
 
     // --- Exact surface queries: replay onto OCCT ---
-    surfaceType: (face) => viaOcct(face, (s, occt) => occt.surfaceType(s)),
+    surfaceType: (face) => {
+      // Profile faces built by profileOps are planar by construction; answer
+      // natively so isPlanarFace() works without an OCCT replay (the placeholder
+      // handle is non-replayable).
+      const ms = asManifoldShape(face);
+      if (ms && (ms.node as { op?: string }).op === 'profileFace') return 'plane';
+      return viaOcct(face, (s, occt) => occt.surfaceType(s));
+    },
     uvBounds: (face) => viaOcct(face, (s, occt) => occt.uvBounds(s)),
     outerWire: (face) => viaOcct(face, (s, occt) => occt.outerWire(s)),
     surfaceNormal: (face, u, v) => viaOcct(face, (s, occt) => occt.surfaceNormal(s, u, v)),

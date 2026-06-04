@@ -4,9 +4,11 @@ import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
 import { makeNode } from './opGraph.js';
 import { nodeOf, occtOrThrow, unwrap, wrap } from './meshHandle.js';
+import { makeProfileBuilders } from './profileOps.js';
 
 export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
   const Manifold = module.Manifold;
+  const profile = makeProfileBuilders(module);
 
   function hullFromPoints(
     points: Array<{ x: number; y: number; z: number }>,
@@ -49,20 +51,23 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
   }
 
   return {
-    makeVertex: () => notImplemented('makeVertex'),
+    makeVertex: (x, y, z) => profile.makeVertex(x, y, z),
     makeEdge: () => notImplemented('makeEdge'),
-    makeWire: () => notImplemented('makeWire'),
-    makeFace: () => notImplemented('makeFace'),
-    makeLineEdge: () => notImplemented('makeLineEdge'),
-    makeCircleEdge: () => notImplemented('makeCircleEdge'),
-    makeCircleArc: () => notImplemented('makeCircleArc'),
-    makeArcEdge: () => notImplemented('makeArcEdge'),
-    makeEllipseEdge: () => notImplemented('makeEllipseEdge'),
+    makeWire: (edges) => profile.makeWire(edges),
+    makeFace: (wire, planar) => profile.makeFace(wire, planar),
+    makeLineEdge: (p1, p2) => profile.makeLineEdge(p1, p2),
+    makeCircleEdge: (center, normal, radius) => profile.makeCircleEdge(center, normal, radius),
+    makeCircleArc: (center, normal, radius, startAngle, endAngle) =>
+      profile.makeCircleArc(center, normal, radius, startAngle, endAngle),
+    makeArcEdge: (p1, p2, p3) => profile.makeArcEdge(p1, p2, p3),
+    makeEllipseEdge: (center, normal, majorRadius, minorRadius, xDir) =>
+      profile.makeEllipseEdge(center, normal, majorRadius, minorRadius, xDir),
     makeEllipseArc: () => notImplemented('makeEllipseArc'),
-    makeBezierEdge: () => notImplemented('makeBezierEdge'),
-    makeTangentArc: () => notImplemented('makeTangentArc'),
+    makeBezierEdge: (points) => profile.makeBezierEdge(points),
+    makeTangentArc: (startPoint, startTangent, endPoint) =>
+      profile.makeTangentArc(startPoint, startTangent, endPoint),
     makeHelixWire: () => notImplemented('makeHelixWire'),
-    makeWireFromMixed: () => notImplemented('makeWireFromMixed'),
+    makeWireFromMixed: (items) => profile.makeWireFromMixed(items),
     makeCompound: () => notImplemented('makeCompound'),
     solidFromShell: () => notImplemented('solidFromShell'),
     hull,
