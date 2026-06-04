@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.64.0](https://github.com/andymai/brepjs/compare/brepjs-v18.63.0...brepjs-v18.64.0) (2026-06-04)
+
+
+### Features
+
+* **manifold:** exact analytic 1D curve queries (full curves parity) ([#1226](https://github.com/andymai/brepjs/issues/1226)) ([3249364](https://github.com/andymai/brepjs/commit/3249364662e84e4e7d45c3fd83050c83d1d92a0c))
+
 ## [18.63.0](https://github.com/andymai/brepjs/compare/brepjs-v18.62.1...brepjs-v18.63.0) (2026-06-04)
 
 
