@@ -5,7 +5,7 @@ import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
-import { serializeReport } from '../verify/report.js';
+import { reportOk, serializeReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
@@ -76,9 +76,8 @@ program
         process.stderr.write('snapshot skipped: STEP export produced no artifact\n');
       }
       process.stdout.write(json + '\n');
-      const parsed = JSON.parse(json) as { ok: boolean };
       const willServe = Boolean(opts.serve) && stepPath !== undefined;
-      if (!willServe && parsed.ok !== true) process.exitCode = 1;
+      if (!willServe && !reportOk(report)) process.exitCode = 1;
       // The shape is a live WASM handle; release it before the server takes over (the
       // --serve path stays running, so leaking here would persist for the server's lifetime).
       disposeShape(shape);
