@@ -42,12 +42,26 @@ program
   .option('--step <out>', 'write the primary STEP artifact to this path')
   .option('--glb <out>', 'write a derived GLB preview to this path')
   .option('--json <out>', 'write the JSON report to this path')
+  .option(
+    '--check',
+    'type-check the part (against brepjs types) before running; skip execution on type errors'
+  )
   .option('--snapshot <dir>', 'render iso/front/top/right PNGs to this dir (requires built viewer)')
-  .option('--serve', 'after verifying, start a preview server and print a ?dir=&file= deep link (stays running)')
+  .option(
+    '--serve',
+    'after verifying, start a preview server and print a ?dir=&file= deep link (stays running)'
+  )
   .action(
     async (
       file: string,
-      opts: { step?: string; glb?: string; json?: string; snapshot?: string; serve?: boolean },
+      opts: {
+        step?: string;
+        glb?: string;
+        json?: string;
+        check?: boolean;
+        snapshot?: string;
+        serve?: boolean;
+      }
     ) => {
       // The WASM viewer loads a CAD file (it can't run a .brep.ts), so --snapshot/--serve
       // stage the primary STEP and point the viewer at it via ?dir=&file=. --glb is its own artifact.
@@ -55,6 +69,7 @@ program
       const { report, step, glb, shape } = await runPart(resolve(file), {
         step: wantStep,
         glb: Boolean(opts.glb),
+        check: Boolean(opts.check),
       });
       let stepPath: string | undefined = opts.step;
       try {
@@ -93,7 +108,7 @@ program
         const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
         process.stderr.write(`viewer: ${url}\n`);
       }
-    },
+    }
   );
 
 program
@@ -102,7 +117,9 @@ program
   .argument('[b]', 'optional second module; if given, measures distance between the two parts')
   .action(async (a: string, b?: string) => {
     const result = await runMeasure(resolve(a), b === undefined ? undefined : resolve(b));
-    process.stdout.write(JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n');
+    process.stdout.write(
+      JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n'
+    );
     if (result.errors.length > 0) process.exitCode = 1;
   });
 
@@ -112,7 +129,9 @@ program
   .argument('<b>', 'path to the comparison .brep.ts module')
   .action(async (a: string, b: string) => {
     const result = await runDiff(resolve(a), resolve(b));
-    process.stdout.write(JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n');
+    process.stdout.write(
+      JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n'
+    );
     if (result.errors.length > 0) process.exitCode = 1;
   });
 
@@ -178,7 +197,7 @@ program
   .action(
     async (
       file: string,
-      opts: { step?: boolean; glb?: boolean; stl?: boolean; all?: boolean; out: string },
+      opts: { step?: boolean; glb?: boolean; stl?: boolean; all?: boolean; out: string }
     ) => {
       const formats = opts.all
         ? { step: true, glb: true, stl: true }
@@ -193,10 +212,10 @@ program
       for (const e of result.errors) process.stderr.write(`error: ${e}\n`);
       process.stdout.write(
         JSON.stringify({ ok: result.ok, written: result.written, errors: result.errors }, null, 2) +
-          '\n',
+          '\n'
       );
       if (!result.ok) process.exitCode = 1;
-    },
+    }
   );
 
 // Only drive the CLI when run as the entry script, so tests can import the

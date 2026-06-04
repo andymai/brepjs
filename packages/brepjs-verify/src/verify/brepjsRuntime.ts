@@ -24,7 +24,7 @@ let hookRegistered = false;
 // the hook falls back to) and dist/loader/ (the hook file). Walk up from this module's URL
 // to the nearest package.json named "brepjs-verify" rather than assuming a fixed depth: the
 // bundler is free to place this module at any dist depth, so a relative offset is fragile.
-function toolDir(): string {
+export function toolDir(): string {
   let dir = dirname(fileURLToPath(import.meta.url));
   const root = parsePath(dir).root;
   for (;;) {

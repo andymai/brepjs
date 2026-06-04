@@ -50,7 +50,8 @@
   "dependencies": {
     "brepjs": "^18.0.0",
     "commander": "^13.0.0",
-    "occt-wasm": "^3.0.0"
+    "occt-wasm": "^3.0.0",
+    "typescript": "^6.0.3"
   },
   "optionalDependencies": {
     "puppeteer": "^25.0.4"
@@ -69,7 +70,6 @@
     "react-dom": "^19.2.6",
     "three": "^0.184.0",
     "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^5.0.1",
     "vitest": "^4.0.0"

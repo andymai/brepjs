@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../src/verify/runPart.js';
 import { reportOk, type VerifyReport } from '../src/verify/report.js';
+import { DEFAULT_TOLERANCE_PCT, pctDelta } from '../src/verify/expected.js';
 import { disposeShape } from '../src/disposeShape.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -25,11 +26,6 @@ interface Outcome {
   failures: string[];
 }
 
-function pctDelta(actual: number, expected: number): number {
-  if (expected === 0) return actual === 0 ? 0 : Infinity;
-  return (Math.abs(actual - expected) / Math.abs(expected)) * 100;
-}
-
 /** True iff the report carries a passing `isValidSolid` check (a single valid solid). */
 function isValidSolid(report: VerifyReport): boolean {
   return report.checks.some((c) => c.name === 'isValidSolid' && c.passed);
@@ -37,7 +33,7 @@ function isValidSolid(report: VerifyReport): boolean {
 
 function compare(name: string, report: VerifyReport, expected: Expected): Outcome {
   const failures: string[] = [];
-  const tol = expected.tolerancePct ?? 0.5;
+  const tol = expected.tolerancePct ?? DEFAULT_TOLERANCE_PCT;
 
   const actualOk = reportOk(report);
   if (expected.ok !== undefined && actualOk !== expected.ok) {

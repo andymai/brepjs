@@ -41,7 +41,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['brepjs', 'occt-wasm', 'commander', 'puppeteer', /^node:/],
+      external: ['brepjs', 'occt-wasm', 'commander', 'puppeteer', 'typescript', /^node:/],
     },
   },
 });

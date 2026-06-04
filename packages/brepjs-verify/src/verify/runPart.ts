@@ -1,7 +1,9 @@
 import type { AnyShape, BrepError, Result } from 'brepjs';
 import { pathToFileURL } from 'node:url';
-import { loadBrep } from './brepjsRuntime.js';
+import { loadBrep, toolDir } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
+import { evaluateExpected, isExpectedDims, type ExpectedDims } from './expected.js';
+import { typecheckPart } from './typecheck.js';
 import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
 type PartFn = () => unknown;
@@ -10,9 +12,12 @@ type PartFn = () => unknown;
 // but only in an ESM context — so a part loaded under a CommonJS project fails. A
 // transpiler fallback (tsx) is NOT viable: it loads `brepjs` in a separate module
 // realm, so the part gets an uninitialized kernel. Surface a clear fix instead.
-async function loadPart(modulePath: string): Promise<{ default?: PartFn }> {
+async function loadPart(modulePath: string): Promise<{ default?: PartFn; expected?: unknown }> {
   try {
-    return (await import(pathToFileURL(modulePath).href)) as { default?: PartFn };
+    return (await import(pathToFileURL(modulePath).href)) as {
+      default?: PartFn;
+      expected?: unknown;
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // A TypeScript part (.ts/.mts/.cts/.tsx) that fails to load is almost always a
@@ -51,6 +56,11 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
 export interface RunPartOptions {
   step?: boolean;
   glb?: boolean;
+  /**
+   * Run a TypeScript type-check on the part (against the bundled/local `brepjs` types) BEFORE
+   * executing it. Type errors are surfaced as `TYPECHECK` error infos and the part is NOT run.
+   */
+  check?: boolean;
 }
 
 export interface RunPartResult {
@@ -75,6 +85,16 @@ export async function runPart(
   opts: RunPartOptions = {}
 ): Promise<RunPartResult> {
   const report = emptyReport();
+  // Type-check pre-pass: run the TS compiler over the part before any kernel work. On type
+  // errors, record them and skip execution entirely (ok:false), so a type-wrong part never
+  // reaches the kernel.
+  if (opts.check) {
+    const tc = typecheckPart(modulePath, toolDir());
+    if (!tc.ok) {
+      for (const e of tc.errors) pushError(report, e);
+      return finalize({ shape: null, report });
+    }
+  }
   // Register the resolve hook and load brepjs THROUGH it before anything else, so this
   // module's brepjs and the part's `import 'brepjs'` share one kernel realm.
   let brep: Awaited<ReturnType<typeof loadBrep>>;
@@ -86,7 +106,7 @@ export async function runPart(
     return finalize({ shape: null, report });
   }
   const { isOk, mesh, exportGlb, exportSTEP } = brep;
-  let mod: { default?: PartFn };
+  let mod: { default?: PartFn; expected?: unknown };
   try {
     mod = await loadPart(modulePath);
   } catch (e) {
@@ -121,6 +141,12 @@ export async function runPart(
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
   const result = runChecks(brep, shape);
+  // Asserted dims: compare measured volume/area/bounds against the part's `export const expected`.
+  // When present, every assertion must pass for `ok` (enforced by reportOk).
+  if (isExpectedDims(mod.expected)) {
+    const expected: ExpectedDims = mod.expected;
+    result.assertions = evaluateExpected(expected, result.measurements);
+  }
   let glb: ArrayBuffer | undefined;
   let step: ArrayBuffer | undefined;
   if (opts.glb) {

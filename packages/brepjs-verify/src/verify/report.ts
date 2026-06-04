@@ -24,6 +24,15 @@ export interface VerifyHint {
   nextStep: string;
 }
 
+/** One measured-vs-expected comparison from a part's `export const expected`. */
+export interface VerifyAssertion {
+  name: string;
+  expected: number;
+  /** The measured value, or null when the part produced no such measurement. */
+  actual: number | null;
+  passed: boolean;
+}
+
 export interface VerifyReport {
   shapeType: string | null;
   checks: VerifyCheck[];
@@ -33,6 +42,11 @@ export interface VerifyReport {
   errorInfos: ErrorInfo[];
   /** Actionable, code-keyed guidance derived from `errorInfos`. */
   hints: VerifyHint[];
+  /**
+   * Measured-vs-expected comparisons from a part's `export const expected`. Empty when the part
+   * declares no expectations; when non-empty, `ok` additionally requires every assertion pass.
+   */
+  assertions: VerifyAssertion[];
 }
 
 export interface BoundsDelta {
@@ -53,7 +67,15 @@ export interface DiffReport {
 }
 
 export function emptyReport(): VerifyReport {
-  return { shapeType: null, checks: [], measurements: {}, errors: [], errorInfos: [], hints: [] };
+  return {
+    shapeType: null,
+    checks: [],
+    measurements: {},
+    errors: [],
+    errorInfos: [],
+    hints: [],
+    assertions: [],
+  };
 }
 
 // Keep errors and errorInfos parallel — callers must not push to either directly.
@@ -63,7 +85,9 @@ export function pushError(r: VerifyReport, info: ErrorInfo): void {
 }
 
 export function reportOk(r: VerifyReport): boolean {
-  return r.errors.length === 0 && r.checks.every((c) => c.passed);
+  return (
+    r.errors.length === 0 && r.checks.every((c) => c.passed) && r.assertions.every((a) => a.passed)
+  );
 }
 
 /**
@@ -202,6 +226,10 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     fix: 'The shape failed validity (BRepCheck). It is non-manifold, self-intersecting, or has bad geometry.',
     nextStep:
       'Heal/sew the shape, or revisit the operation that produced it, until validSolid passes.',
+  },
+  TYPECHECK: {
+    fix: 'Fix the TypeScript type error before running the part — the API call or value does not match brepjs’s types.',
+    nextStep: 'Correct the flagged type (e.g. argument/return type or import), then re-verify.',
   },
 };
 
