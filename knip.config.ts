@@ -14,7 +14,7 @@ const config: KnipConfig = {
       ignoreBinaries: ['tsx'],
       // @types/react is pinned at the root to force ONE React-19 types copy across the monorepo
       // (so @react-three/fiber's JSX augmentation resolves it, not a stale @types/react@18 hoist);
-      // it's consumed by the brepjs-viewer/brepjs-cad workspaces, not root src.
+      // it's consumed by the brepjs-viewer/brepjs-verify workspaces, not root src.
       // (occt-wasm is now the default kernel — dynamically imported in src/kernel/index.ts + src/quick.ts.)
       ignoreDependencies: ['@types/react'],
     },
@@ -29,7 +29,7 @@ const config: KnipConfig = {
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },
-    'packages/brepjs-cad': {
+    'packages/brepjs-verify': {
       ignore: ['**'],
     },
     'apps/playground': {

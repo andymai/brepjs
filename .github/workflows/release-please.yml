@@ -23,7 +23,7 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
-      brepjs_cad_release_created: ${{ steps.release.outputs['packages/brepjs-cad--release_created'] }}
+      brepjs_verify_release_created: ${{ steps.release.outputs['packages/brepjs-verify--release_created'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
       prs: ${{ steps.release.outputs.prs }}
@@ -41,7 +41,7 @@ jobs:
           manifest-file: .release-please-manifest.json
 
   # Only auto-merge the root brepjs PR. brepjs-opencascade (expensive WASM
-  # build) and brepjs-cad (publish HELD: Andy merges manually) are skipped.
+  # build) and brepjs-verify (publish HELD: Andy merges manually) are skipped.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -82,14 +82,14 @@ jobs:
               continue
             fi
             # Skip brepjs-opencascade (manual review: expensive WASM build) and
-            # brepjs-cad (publish HELD: Andy merges manually).
+            # brepjs-verify (publish HELD: Andy merges manually).
             case "$pr_title" in
               *brepjs-opencascade*)
                 echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
                 continue
                 ;;
-              *brepjs-cad*)
-                echo "Skipping auto-merge for brepjs-cad PR #$pr_number (publish held, manual merge)"
+              *brepjs-verify*)
+                echo "Skipping auto-merge for brepjs-verify PR #$pr_number (publish held, manual merge)"
                 continue
                 ;;
             esac
@@ -97,8 +97,8 @@ jobs:
             gh pr merge "$pr_number" --auto --squash --repo "$GH_REPO"
           done
 
-  # brepjs-opencascade is published via publish-opencascade.yml and brepjs-cad
-  # via publish-brepjs-cad.yml — both manual workflow_dispatch (publish held).
+  # brepjs-opencascade is published via publish-opencascade.yml and brepjs-verify
+  # via publish-brepjs-verify.yml — both manual workflow_dispatch (publish held).
 
   publish-brepjs:
     runs-on: ubuntu-24.04

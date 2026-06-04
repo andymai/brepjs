@@ -87,7 +87,7 @@
         "brepjs.cliPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to brepjs-agent-verify binary. Leave empty for auto-detection from workspace node_modules."
+          "description": "Absolute path to brepjs-verify binary. Leave empty for auto-detection from workspace node_modules."
         }
       }
     }

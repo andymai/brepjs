@@ -124,7 +124,7 @@ jobs:
 
   packages-viewer:
     # Shared React/R3F renderer extracted from the playground; gated on its own
-    # since the playground (and brepjs-cad) now depend on it.
+    # since the playground (and brepjs-verify) now depend on it.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -137,8 +137,8 @@ jobs:
       - run: npm run test --workspace=brepjs-viewer
       - run: npm run build --workspace=brepjs-viewer
 
-  packages-cad:
-    # brepjs-cad skill runtime (verify CLI + WASM viewer). Build root brepjs and
+  packages-verify:
+    # brepjs-verify skill runtime (verify CLI + WASM viewer). Build root brepjs and
     # brepjs-viewer dist first so the package typecheck/viewer build resolve their
     # types (brepjs-viewer is a runtime dep, not externalized). The setup
     # composite restores the OCCT WASM the viewer build copies.
@@ -151,15 +151,15 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run build --workspace=brepjs-viewer
-      - run: npm run typecheck --workspace=brepjs-cad
-      - run: npm run lint --workspace=brepjs-cad
-      - run: npm run test --workspace=brepjs-cad
-      - run: npm run build --workspace=brepjs-cad
+      - run: npm run typecheck --workspace=brepjs-verify
+      - run: npm run lint --workspace=brepjs-verify
+      - run: npm run test --workspace=brepjs-verify
+      - run: npm run build --workspace=brepjs-verify
       # Deterministic eval: replay skill/examples through runPart, gate on volume/area/validity.
-      - run: npm run eval --workspace=brepjs-cad
+      - run: npm run eval --workspace=brepjs-verify
       # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load
       # failures that only surface for installed users (tsx/vitest hide them in-repo).
-      - run: npm run smoke --workspace=brepjs-cad
+      - run: npm run smoke --workspace=brepjs-verify
 
   packages-sheetmetal:
     # Experimental sheet-metal domain satellite. Build root brepjs first so the
@@ -358,7 +358,7 @@ jobs:
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-cad, packages-sheetmetal, test, size, benchmark]
+    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, test, size, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

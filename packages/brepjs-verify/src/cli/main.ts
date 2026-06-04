@@ -34,7 +34,7 @@ export async function loadSnapshotShoot(): Promise<typeof ShootFn | undefined> {
 }
 
 const program = new Command();
-program.name('brepjs');
+program.name('brepjs-verify');
 
 program
   .command('verify', { isDefault: true })
@@ -61,7 +61,7 @@ program
         if (opts.glb && glb) writeFileSync(opts.glb, Buffer.from(glb));
 
         if (wantStep && step) {
-          stepPath = opts.step ?? join(tmpdir(), `brepjs-cad-${basename(file)}.step`);
+          stepPath = opts.step ?? join(tmpdir(), `brepjs-verify-${basename(file)}.step`);
           writeFileSync(stepPath, Buffer.from(step));
         }
         if (opts.snapshot && stepPath) {

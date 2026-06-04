@@ -1,4 +1,4 @@
-// Types mirroring brepjs-agent's verify report shape. Kept local so the extension host
+// Types mirroring brepjs-verify's verify report shape. Kept local so the extension host
 // has zero runtime imports from the CAD library — it only spawns the CLI as a subprocess.
 
 export interface VerifyBounds {

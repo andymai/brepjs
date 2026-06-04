@@ -21,8 +21,8 @@ const alwaysExclude = [
   'benchmarks/**',
   'node_modules/**',
   'packages/**/node_modules/**',
-  // brepjs-cad aliases `@` to its own src and runs via its own vitest config + CI job.
-  'packages/brepjs-cad/**',
+  // brepjs-verify aliases `@` to its own src and runs via its own vitest config + CI job.
+  'packages/brepjs-verify/**',
   // brepjs-viewer likewise aliases `@`→its own src and runs via its own vitest config + CI job.
   'packages/brepjs-viewer/**',
   'apps/**',

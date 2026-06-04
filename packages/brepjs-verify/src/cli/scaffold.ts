@@ -54,19 +54,19 @@ A parametric brepjs CAD part. Units are millimetres.
 ## Verify
 
 \`\`\`sh
-npx brepjs ${name}.brep.ts --json report.json
+npx -y brepjs-verify ${name}.brep.ts --json report.json
 \`\`\`
 
 ## Iterate
 
 \`\`\`sh
-npx brepjs watch ${name}.brep.ts
+npx -y brepjs-verify watch ${name}.brep.ts
 \`\`\`
 
 ## Export artifacts
 
 \`\`\`sh
-npx brepjs export ${name}.brep.ts --all --out out/
+npx -y brepjs-verify export ${name}.brep.ts --all --out out/
 \`\`\`
 `;
 }

@@ -1,4 +1,4 @@
-name: Publish brepjs-cad
+name: Publish brepjs-verify
 
 on:
   workflow_dispatch:
@@ -44,17 +44,17 @@ jobs:
             fi
           done
 
-      # Build prerequisites first, mirroring the packages-cad CI job: the viewer
+      # Build prerequisites first, mirroring the packages-verify CI job: the viewer
       # worker imports `brepjs`, so the root lib + brepjs-viewer dist must exist
-      # before the brepjs-cad build (which also builds viewer/dist).
-      - name: Build brepjs-cad (root + viewer prerequisites)
+      # before the brepjs-verify build (which also builds viewer/dist).
+      - name: Build brepjs-verify (root + viewer prerequisites)
         run: |
           npm run build
           npm run build --workspace=brepjs-viewer
-          npm run build --workspace=brepjs-cad
+          npm run build --workspace=brepjs-verify
 
       # Authenticates via OIDC trusted publisher (configured for this exact
-      # workflow filename on npmjs.com -> brepjs-cad -> Trusted Publisher Mgmt).
-      - name: Publish brepjs-cad
+      # workflow filename on npmjs.com -> brepjs-verify -> Trusted Publisher Mgmt).
+      - name: Publish brepjs-verify
         if: ${{ inputs.dry_run != true }}
-        run: npm publish -w brepjs-cad --provenance
+        run: npm publish -w brepjs-verify --provenance

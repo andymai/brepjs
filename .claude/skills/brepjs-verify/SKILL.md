@@ -1,5 +1,5 @@
 ---
-name: brepjs-cad
+name: brepjs-verify
 description: Use when authoring or editing parametric 3D CAD models in TypeScript with the brepjs library — generating solids from natural-language part requirements, then verifying them deterministically (volume/area/validity) and visually (multi-view snapshots) before handing off STEP/GLB artifacts.
 ---
 
@@ -10,11 +10,11 @@ description: Use when authoring or editing parametric 3D CAD models in TypeScrip
 1. **Classify the task** — new part, edit existing part, assembly, or measurement-only.
 2. **Write a CAD brief** — convert prose to explicit params: dimensions (mm), datums, features, assumptions. Do NOT ask the user for JSON.
 3. **Load only the references you need** — see the index below; do not read all at once.
-4. **Author a `.brep.ts` module** — `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …). Parameterize with named consts at the top. Edit _source_, never generated artifacts. To scaffold from scratch: `npx brepjs init <name>` writes a parameterized `<name>.brep.ts` + `tsconfig.json`.
-5. **Verify deterministically** — `npx brepjs part.brep.ts --json report.json`. Treat the JSON (validity brands + volume/area/bounds) as the source of truth. During iteration, `npx brepjs watch part.brep.ts` re-verifies on every save.
+4. **Author a `.brep.ts` module** — `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …). Parameterize with named consts at the top. Edit _source_, never generated artifacts. To scaffold from scratch: `npx -y brepjs-verify init <name>` writes a parameterized `<name>.brep.ts` + `tsconfig.json`.
+5. **Verify deterministically** — `npx -y brepjs-verify part.brep.ts --json report.json`. Treat the JSON (validity brands + volume/area/bounds) as the source of truth. During iteration, `npx -y brepjs-verify watch part.brep.ts` re-verifies on every save.
 6. **Verify visually** — add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is NOT a conclusion: convert it to a measurement ("hole looks off-center → check bounds"). Never skip the snapshot for confidence.
 7. **Repair the smallest responsible section** of source and re-run.
-8. **Export the primary artifact + hand off** — `npx brepjs part.brep.ts --step part.step` writes STEP (the primary, validated deliverable); GLB/STL are derived previews. Batch multiple formats behind a validity gate with `npx brepjs export part.brep.ts --all`. For a human handoff, `--serve` prints a clickable preview link. Report the STEP path (and link).
+8. **Export the primary artifact + hand off** — `npx -y brepjs-verify part.brep.ts --step part.step` writes STEP (the primary, validated deliverable); GLB/STL are derived previews. Batch multiple formats behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. For a human handoff, `--serve` prints a clickable preview link. Report the STEP path (and link).
 
 ## Hard rules
 
@@ -65,11 +65,11 @@ Each entry is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.
 - `gridfinity-bin` — simplified faithful bin.
 - `gridfinity-divider` — simplified faithful divider / insert.
 
-## CLI subcommands (the `brepjs` bin)
+## CLI subcommands (the `brepjs-verify` bin)
 
-- `brepjs verify <file>` (default) — deterministic report; `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`.
-- `brepjs init <name>` — scaffold a parameterized `<name>.brep.ts` + `tsconfig.json`.
-- `brepjs watch <file>` — re-verify on every save until Ctrl-C.
-- `brepjs export <file>` — batch STEP/GLB/STL behind a validity gate (`--step`/`--glb`/`--stl`/`--all`).
-- `brepjs measure <a> [b]` — measurements for one part, or distance between two.
-- `brepjs diff <a> <b>` — compare two parts' measurements.
+- `brepjs-verify verify <file>` (default) — deterministic report; `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`.
+- `brepjs-verify init <name>` — scaffold a parameterized `<name>.brep.ts` + `tsconfig.json`.
+- `brepjs-verify watch <file>` — re-verify on every save until Ctrl-C.
+- `brepjs-verify export <file>` — batch STEP/GLB/STL behind a validity gate (`--step`/`--glb`/`--stl`/`--all`).
+- `brepjs-verify measure <a> [b]` — measurements for one part, or distance between two.
+- `brepjs-verify diff <a> <b>` — compare two parts' measurements.

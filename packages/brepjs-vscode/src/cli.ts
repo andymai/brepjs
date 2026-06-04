@@ -25,8 +25,7 @@ function findBin(): { cmd: string; args: string[] } {
   const userPath = config.get<string>('cliPath');
   if (userPath && existsSync(userPath)) return { cmd: userPath, args: [] };
 
-  const binName =
-    process.platform === 'win32' ? 'brepjs-agent-verify.cmd' : 'brepjs-agent-verify';
+  const binName = process.platform === 'win32' ? 'brepjs-verify.cmd' : 'brepjs-verify';
 
   // Check the first open workspace folder's node_modules
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -35,8 +34,8 @@ function findBin(): { cmd: string; args: string[] } {
     if (existsSync(candidate)) return { cmd: candidate, args: [] };
   }
 
-  // npx fallback — slower but works when brepjs-agent is installed globally or via npx cache
-  return { cmd: 'npx', args: ['--yes', 'brepjs-agent-verify'] };
+  // npx fallback — slower but works when brepjs-verify is installed globally or via npx cache
+  return { cmd: 'npx', args: ['--yes', 'brepjs-verify'] };
 }
 
 function spawnCli(
@@ -70,7 +69,7 @@ function spawnCli(
       reject(
         new Error(
           `Cannot run ${cmd}: ${err.message}.\n` +
-            `Install brepjs-agent in your project: npm i -D brepjs-agent`,
+            `Install brepjs-verify in your project: npm i -D brepjs-verify`,
         ),
       );
     });
@@ -95,7 +94,7 @@ export async function runVerify(filePath: string, signal: AbortSignal): Promise<
     report = JSON.parse(stdout) as VerifyReport;
   } catch {
     throw new Error(
-      `brepjs-agent-verify produced unexpected output.\nstdout: ${stdout}\nstderr: ${stderr}`,
+      `brepjs-verify produced unexpected output.\nstdout: ${stdout}\nstderr: ${stderr}`,
     );
   }
 
