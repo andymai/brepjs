@@ -27,6 +27,12 @@ function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep
 
 export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
   function shapeType(shape: KernelShape): ShapeType {
+    // A manifold-3d solid is, by construction, a watertight solid. Answer
+    // natively so castShape() can wrap boolean/primitive results without
+    // replaying the whole op-graph onto OCCT — the replay would erase the
+    // point of a fast mesh-CSG preview kernel (and require an occt kernel to
+    // even classify a shape). Non-manifold handles still classify via OCCT.
+    if (asManifoldShape(shape)) return 'solid';
     const { occt, brep } = brepOf(shape, 'shapeType');
     return occt.shapeType(brep);
   }

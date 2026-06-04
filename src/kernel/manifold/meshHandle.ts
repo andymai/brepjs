@@ -30,12 +30,21 @@ export function asManifoldShape(shape: KernelShape): ManifoldShape | undefined {
   return undefined;
 }
 
+// OCCT-family kernel ids the op-graph can replay onto, in preference order.
+// Both register an OCCT B-rep kernel; `occt-wasm` is the common browser setup
+// (e.g. gridfinity registers only `occt-wasm` alongside `manifold`), so accept
+// it as a fallback rather than hard-requiring the literal `occt` id.
+const OCCT_FAMILY_IDS = ['occt', 'occt-wasm'] as const;
+
 export function resolveOcct(): KernelAdapter | undefined {
-  try {
-    return getKernel('occt');
-  } catch {
-    return undefined;
+  for (const id of OCCT_FAMILY_IDS) {
+    try {
+      return getKernel(id);
+    } catch {
+      // not registered under this id — try the next
+    }
   }
+  return undefined;
 }
 
 export function occtOrThrow(method: string): KernelAdapter {
