@@ -1,28 +1,61 @@
 ---
 name: brepjs-verify
-description: Use when authoring or editing parametric 3D CAD models in TypeScript with the brepjs library — generating solids from natural-language part requirements, then verifying them deterministically (volume/area/validity) and visually (multi-view snapshots) before handing off STEP/GLB artifacts.
+description: Use when authoring or editing parametric 3D CAD models in TypeScript with the brepjs library — turning natural-language part requirements into solids, then type-checking, verifying deterministically (validity + volume/area/bounds vs intent), and visually (multi-view snapshots) before handing off STEP/GLB artifacts.
 ---
 
 # Authoring CAD with brepjs
 
-## Workflow (follow in order)
+You write a `.brep.ts` part; the `brepjs-verify` CLI runs it against a real geometry kernel and tells you the truth. Never judge a part by how the code reads — judge it by the report. The loop below is the job.
 
-1. **Classify the task** — new part, edit existing part, assembly, or measurement-only.
-2. **Write a CAD brief** — convert prose to explicit params: dimensions (mm), datums, features, assumptions. Do NOT ask the user for JSON.
-3. **Load only the references you need** — see the index below; do not read all at once.
-4. **Author a `.brep.ts` module** — `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …). Parameterize with named consts at the top. Edit _source_, never generated artifacts. To scaffold from scratch: `npx -y brepjs-verify init <name>` writes a parameterized `<name>.brep.ts` + `tsconfig.json`.
-5. **Verify deterministically** — `npx -y brepjs-verify part.brep.ts --json report.json`. Treat the JSON (validity brands + volume/area/bounds) as the source of truth. During iteration, `npx -y brepjs-verify watch part.brep.ts` re-verifies on every save.
-6. **Verify visually** — add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is NOT a conclusion: convert it to a measurement ("hole looks off-center → check bounds"). Never skip the snapshot for confidence.
-7. **Repair the smallest responsible section** of source and re-run.
-8. **Export the primary artifact + hand off** — `npx -y brepjs-verify part.brep.ts --step part.step` writes STEP (the primary, validated deliverable); GLB/STL are derived previews. Batch multiple formats behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. For a human handoff, `--serve` prints a clickable preview link. Report the STEP path (and link).
+## The loop (every part, in order)
+
+1. **Brief.** Convert the request to explicit params: dimensions (mm), datums, features, assumptions. Don't ask the user for JSON.
+2. **Load only the reference you need** (index below) — not all at once.
+3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `npx -y brepjs-verify init <name>`. Edit *source*, never generated artifacts.
+4. **Declare intent.** Add `export const expected = { volume?, area?, bounds?, tolerancePct? }` from your brief. The CLI asserts it — this is how you prove the part is the *right* part, not just a valid one.
+5. **Verify (type + geometry).** `npx -y brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `watch part.brep.ts`.
+6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion — convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
+7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
+8. **Export + hand off.** `verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `export part.brep.ts --all`. `--serve` prints a clickable preview link. Report the STEP path.
+
+## Reading the report (this is the source of truth)
+
+```jsonc
+{
+  "ok": false,                       // true only if valid AND every assertion passes
+  "shapeType": "Solid",
+  "checks": [{ "name": "isValidSolid", "passed": false }],
+  "measurements": { "volume": …, "area": …, "bounds": {…} },
+  "assertions": [{ "name": "volume", "expected": 24000, "actual": 31200, "passed": false }],
+  "hints":  [{ "code": "FILLET_NO_EDGES", "fix": "…", "nextStep": "…" }],
+  "errorInfos": [{ "code": "…", "message": "…" }]
+}
+```
+
+- **`ok`** is the verdict. `false` → not done. With an `expected` block, `ok` also requires every assertion to pass.
+- **`checks`** = kernel validity (manifold solid, positive volume). A failed check means the geometry is broken, not just wrong-sized.
+- **`assertions`** = your declared intent vs reality. A failed assertion means valid-but-wrong (off dimensions).
+- **`hints`** = actionable fix + next step keyed on the error code. Read these before guessing.
+- Trust this JSON over the rendered image. The render confirms *shape*; the JSON confirms *correctness*.
+
+## Repair discipline
+
+- Change the **smallest responsible section**, re-verify, repeat. Don't rewrite the whole part on one failure.
+- Let the `code`/`hints` localize the cause (e.g. `INVALID_FILLET_RADIUS` → reduce radius vs local edge length; `*_NOT_3D` → you passed a 2D shape to a 3D op; `BOOLEAN_HAS_ERRORS` → inputs overlap-degenerate).
+- A part that *runs* but reports `ok:false` is wrong, not done — same as a crash.
+
+## Reliable scope (be honest)
+
+- **Reliable first-try:** primitives, booleans (`fuse`/`cut`/`intersect`), 2D sketch → extrude, `fillet`/`chamfer`, `shell`/`offset`, transforms. Prefer these.
+- **Advanced — verify extra carefully, expect iteration:** sweeps, lofts, revolves, multi-section, assemblies, text. They fail more often (degenerate profiles, self-intersection); lean harder on the report and small steps.
 
 ## Hard rules
 
 - Edit source, not artifacts. STEP/STL/GLB derive from the `.brep.ts`.
-- `measureVolume`/`measureArea` return `Result<number>` — handle the `Err` branch.
-- Booleans (`fuse`/`cut`/`intersect`) return `Result` — unwrap and check before chaining.
-- `fillet`/`chamfer` require a valid solid — verify validity first.
-- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z). Positioning option is `at`, not `origin`. Units are mm.
+- Booleans and `measureVolume`/`measureArea` return `Result` — unwrap and check the `Err` branch before chaining.
+- `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
+- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z); positioning option is `at`, not `origin`. Units mm.
+- Author parts in an ESM context (the tool's default) so the kernel loads — a CommonJS project needs `"type": "module"` or a `.mts` file.
 
 ## Reference index (progressive — load only what the task needs)
 
@@ -35,41 +68,22 @@ description: Use when authoring or editing parametric 3D CAD models in TypeScrip
 - Measurement + the verify loop → `references/measurement-validation.md`
 - Export formats → `references/export.md`
 
-Full symbol index: the library ships `docs/function-lookup.md` (463 symbols) — consult it for anything not covered above.
+Full symbol index: the library ships `docs/function-lookup.md` — consult it for anything not covered above.
 
-## Examples index (pattern-match against these — read the closest one before authoring)
+## Examples index (few-shot — read the closest one before authoring)
 
-Each entry is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expected.json` baseline (replayed by the `eval` harness). Load the one nearest the task as a few-shot.
+Each is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expected.json` baseline (replayed by the `eval` harness).
 
-**Primitives + booleans**
-
-- `mounting-bracket` — L-shaped bracket: base plate fused to an upright web with bolt holes.
-- `flanged-coupler` — boxed flange fused to a cylinder, chamfered, with a center bore.
-- `transform-bracket` — translate / rotate / mirror placing duplicated features.
-
-**2D sketch → solid**
-
-- `extruded-bracket` — rounded-corner mounting plate with two bolt holes (sketch → extrude → cut).
-- `revolved-pulley` — V-groove pulley revolved from a 2D XZ profile about Z.
-- `swept-gasket` — rectangular gasket frame swept along a rounded-rectangle spine.
-
-**Modifiers (fillet / chamfer / shell)**
-
-- `rounded-block` — canonical fillet: a block with every edge rounded.
-- `chamfered-block` — canonical chamfer: a block with every edge chamfered.
-- `hollow-enclosure` — filleted box shelled to a thin wall (open top).
-
-**Gridfinity primitives**
-
-- `gridfinity-baseplate` — simplified faithful baseplate.
-- `gridfinity-bin` — simplified faithful bin.
-- `gridfinity-divider` — simplified faithful divider / insert.
+- **Primitives + booleans:** `mounting-bracket` (base + upright web + bolt holes) · `flanged-coupler` (flange + cylinder + bore, chamfered) · `transform-bracket` (translate/rotate/mirror).
+- **2D sketch → solid:** `extruded-bracket` (rounded plate + bolt holes) · `revolved-pulley` (V-groove revolved) · `swept-gasket` (frame swept along a spine).
+- **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (chamfer) · `hollow-enclosure` (filleted box, shelled).
+- **Gridfinity:** `gridfinity-baseplate` · `gridfinity-bin` · `gridfinity-divider`.
 
 ## CLI subcommands (the `brepjs-verify` bin)
 
-- `brepjs-verify verify <file>` (default) — deterministic report; `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`.
-- `brepjs-verify init <name>` — scaffold a parameterized `<name>.brep.ts` + `tsconfig.json`.
-- `brepjs-verify watch <file>` — re-verify on every save until Ctrl-C.
-- `brepjs-verify export <file>` — batch STEP/GLB/STL behind a validity gate (`--step`/`--glb`/`--stl`/`--all`).
-- `brepjs-verify measure <a> [b]` — measurements for one part, or distance between two.
-- `brepjs-verify diff <a> <b>` — compare two parts' measurements.
+- `verify <file>` (default) — report; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`.
+- `init <name>` — scaffold `<name>.brep.ts` + `tsconfig.json`.
+- `watch <file>` — re-verify on every save.
+- `export <file>` — batch STEP/GLB/STL behind a validity gate (`--step`/`--glb`/`--stl`/`--all`).
+- `measure <a> [b]` — measurements for one part, or distance between two.
+- `diff <a> <b>` — compare two parts' measurements.
