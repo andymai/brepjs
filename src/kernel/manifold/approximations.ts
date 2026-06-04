@@ -23,7 +23,7 @@ export interface CrossSection {
   /** Closed outline in the section's local 2D coordinates (no repeated last point). */
   readonly outline: Vec2[];
   /** Inner contours (holes), CW-wound (opposite the outline) in section 2D coords. */
-  readonly holes?: Vec2[][];
+  readonly holes?: Vec2[][] | undefined;
   /** World-space origin of the section plane. */
   readonly origin: Vec3;
   /** Section local +X axis in world space (maps outline.x). */
