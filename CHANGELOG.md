@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.61.0](https://github.com/andymai/brepjs/compare/brepjs-v18.60.0...brepjs-v18.61.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-verify:** live text-to-cad eval flywheel ([#1215](https://github.com/andymai/brepjs/issues/1215)) ([4e81fc4](https://github.com/andymai/brepjs/commit/4e81fc4053491ce3e08182d57d76bd649252ea3c))
+
 ## [18.60.0](https://github.com/andymai/brepjs/compare/brepjs-v18.59.1...brepjs-v18.60.0) (2026-06-04)
 
 
