@@ -39,14 +39,14 @@ describe('runPart', () => {
     expect(report.errorInfos.some((e) => e.code === 'FILLET_NO_EDGES')).toBe(true);
   }, 30000);
 
-  it('recovers the code from an unwrap()-thrown kernel error so a hint still fires', async () => {
+  it('recovers the specific code from an unwrap()-thrown kernel error so its hint fires', async () => {
     const { report } = await runPart(fix('filletFailed.brep.ts'));
     expect(report.errors.length).toBeGreaterThan(0);
-    // The BrepError code arrived flattened inside the thrown Error message; runPart
-    // recovers it, so the structured error info carries a code...
-    expect(report.errorInfos.some((e) => e.code)).toBe(true);
-    // ...and the hint table fires actionable guidance instead of going dark.
-    expect(report.hints.length).toBeGreaterThan(0);
+    // The FILLET_FAILED code arrived flattened inside the thrown Error message; runPart
+    // recovers that exact code...
+    expect(report.errorInfos.some((e) => e.code === 'FILLET_FAILED')).toBe(true);
+    // ...so the matching hint fires instead of the table going dark.
+    expect(report.hints.some((h) => h.code === 'FILLET_FAILED')).toBe(true);
   }, 30000);
 
   it('surfaces an INVALID_FILLET_RADIUS hint for a negative radius', async () => {

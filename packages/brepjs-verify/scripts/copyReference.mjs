@@ -21,4 +21,10 @@ for (const name of ['llms.txt', 'llms-full.txt']) {
     console.warn(`copyReference: ${name} not found at ${repoRoot}; skipping`);
   }
 }
+if (copied === 0) {
+  // The package ships these as its bundled API reference; producing none means the published
+  // tarball would silently omit `reference/`. Fail rather than ship an incomplete package.
+  console.error(`copyReference: no reference files found at ${repoRoot} — cannot bundle.`);
+  process.exit(1);
+}
 console.warn(`copyReference: bundled ${copied} API reference file(s) into reference/`);

@@ -57,7 +57,9 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
     // "Called unwrap() on an Err: [KIND] CODE: detail". Authors are told to unwrap, so
     // the structured BrepError code arrives flattened into this string — recover it so the
     // hint table still fires (otherwise a known failure like FILLET_FAILED produces no hint).
-    const code = e.message.match(/\]\s*([A-Z][A-Z0-9_]+):/)?.[1];
+    // Anchor on the literal `[KIND] CODE:` shape so a stray `]…:` elsewhere can't be mistaken
+    // for the code.
+    const code = e.message.match(/\[[A-Z][A-Z0-9_]*\]\s+([A-Z][A-Z0-9_]+):/)?.[1];
     return code
       ? { message: `${prefix}: ${e.message}`, code }
       : { message: `${prefix}: ${e.message}` };
