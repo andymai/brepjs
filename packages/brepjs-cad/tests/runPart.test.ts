@@ -28,4 +28,22 @@ describe('runPart', () => {
     expect(glb).toBeInstanceOf(ArrayBuffer);
     expect((glb as ArrayBuffer).byteLength).toBeGreaterThan(0);
   }, 30000);
+
+  it('surfaces a FILLET_NO_EDGES hint with an actionable fix and next step', async () => {
+    const { report } = await runPart(fix('filletNoEdges.brep.ts'));
+    const hint = report.hints.find((h) => h.code === 'FILLET_NO_EDGES');
+    expect(hint).toBeDefined();
+    expect(hint?.fix).not.toBe('');
+    expect(hint?.nextStep).not.toBe('');
+    // The structured error info carried the public BrepError code through runPart.
+    expect(report.errorInfos.some((e) => e.code === 'FILLET_NO_EDGES')).toBe(true);
+  }, 30000);
+
+  it('surfaces an INVALID_FILLET_RADIUS hint for a negative radius', async () => {
+    const { report } = await runPart(fix('invalidFilletRadius.brep.ts'));
+    const hint = report.hints.find((h) => h.code === 'INVALID_FILLET_RADIUS');
+    expect(hint).toBeDefined();
+    expect(hint?.fix.length).toBeGreaterThan(0);
+    expect(hint?.nextStep.length).toBeGreaterThan(0);
+  }, 30000);
 });

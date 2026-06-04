@@ -15,7 +15,14 @@ import {
   isOk,
   type AnyShape,
 } from 'brepjs';
-import { emptyReport, type VerifyCheck, type VerifyReport } from './report.js';
+import {
+  buildHints,
+  emptyReport,
+  pushError,
+  VALIDITY_FAILURE_CODE,
+  type VerifyCheck,
+  type VerifyReport,
+} from './report.js';
 
 function shapeTypeOf(s: AnyShape): string {
   if (isSolid(s)) return 'Solid';
@@ -37,7 +44,12 @@ export function runChecks(shape: AnyShape): VerifyReport {
   if (isSolid(shape)) {
     const valid = validSolid(shape);
     const validCheck: VerifyCheck = { name: 'isValidSolid', passed: isOk(valid) };
-    if (!isOk(valid)) validCheck.detail = valid.error;
+    if (!isOk(valid)) {
+      validCheck.detail = valid.error;
+      // validSolid returns a plain-string error (no BrepError code); attach a synthetic code so the
+      // hint table can fire on a failed validity check without double-counting it in `errors`.
+      r.errorInfos.push({ message: `isValidSolid: ${valid.error}`, code: VALIDITY_FAILURE_CODE });
+    }
     r.checks.push(validCheck);
   }
 
@@ -51,7 +63,11 @@ export function runChecks(shape: AnyShape): VerifyReport {
       r.measurements.volume = vol.value;
       r.checks.push({ name: 'positiveVolume', passed: vol.value > 0 });
     } else {
-      r.errors.push(`measureVolume: ${vol.error.message}`);
+      pushError(r, {
+        message: `measureVolume: ${vol.error.message}`,
+        code: vol.error.code,
+        suggestion: vol.error.suggestion,
+      });
     }
   }
 
@@ -65,8 +81,9 @@ export function runChecks(shape: AnyShape): VerifyReport {
   try {
     r.measurements.bounds = getBounds(shape);
   } catch (e) {
-    r.errors.push(`getBounds: ${(e as Error).message}`);
+    pushError(r, { message: `getBounds: ${(e as Error).message}` });
   }
 
+  r.hints = buildHints(r);
   return r;
 }

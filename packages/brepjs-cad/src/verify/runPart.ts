@@ -1,11 +1,37 @@
-import { init, isOk, mesh, exportGlb, exportSTEP, type AnyShape, type Result } from 'brepjs';
+import {
+  init,
+  isOk,
+  mesh,
+  exportGlb,
+  exportSTEP,
+  type AnyShape,
+  type BrepError,
+  type Result,
+} from 'brepjs';
 import { runChecks } from './checks.js';
-import { emptyReport, type VerifyReport } from './report.js';
+import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
 type PartFn = () => unknown;
 
 function isResult(v: unknown): v is Result<AnyShape> {
   return typeof v === 'object' && v !== null && 'ok' in v && typeof v.ok === 'boolean';
+}
+
+function isBrepError(v: unknown): v is BrepError {
+  if (typeof v !== 'object' || v === null) return false;
+  const rec = v as Record<string, unknown>;
+  return typeof rec.code === 'string' && typeof rec.message === 'string';
+}
+
+/** Pull structured `{ message, code, suggestion }` out of a `BrepError`, a thrown `Error`, or anything. */
+function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
+  if (isBrepError(e)) {
+    return { message: `${prefix}: ${e.message}`, code: e.code, suggestion: e.suggestion };
+  }
+  if (e instanceof Error) {
+    return { message: `${prefix}: ${e.message}` };
+  }
+  return { message: `${prefix}: ${String(e)}` };
 }
 
 export interface RunPartOptions {
@@ -25,9 +51,14 @@ export interface RunPartResult {
   glb?: ArrayBuffer | undefined;
 }
 
+function finalize(result: RunPartResult): RunPartResult {
+  result.report.hints = buildHints(result.report);
+  return result;
+}
+
 export async function runPart(
   modulePath: string,
-  opts: RunPartOptions = {},
+  opts: RunPartOptions = {}
 ): Promise<RunPartResult> {
   await init();
   const report = emptyReport();
@@ -35,33 +66,33 @@ export async function runPart(
   try {
     mod = (await import(modulePath)) as { default?: PartFn };
   } catch (e) {
-    report.errors.push(`import failed: ${(e as Error).message}`);
-    return { shape: null, report };
+    pushError(report, toErrorInfo('import failed', e));
+    return finalize({ shape: null, report });
   }
   if (typeof mod.default !== 'function') {
-    report.errors.push('module has no default-exported part function');
-    return { shape: null, report };
+    pushError(report, { message: 'module has no default-exported part function' });
+    return finalize({ shape: null, report });
   }
   let out: unknown;
   try {
     out = await mod.default();
   } catch (e) {
-    report.errors.push(`part threw: ${(e as Error).message}`);
-    return { shape: null, report };
+    pushError(report, toErrorInfo('part threw', e));
+    return finalize({ shape: null, report });
   }
   let shape: AnyShape | null;
   if (isResult(out)) {
     if (isOk(out)) shape = out.value;
     else {
-      report.errors.push(`part returned Err: ${out.error.message}`);
-      return { shape: null, report };
+      pushError(report, toErrorInfo('part returned Err', out.error));
+      return finalize({ shape: null, report });
     }
   } else {
     shape = out as AnyShape;
   }
   if (!shape) {
-    report.errors.push('part produced no shape');
-    return { shape: null, report };
+    pushError(report, { message: 'part produced no shape' });
+    return finalize({ shape: null, report });
   }
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
@@ -72,13 +103,13 @@ export async function runPart(
     try {
       glb = exportGlb(mesh(shape));
     } catch (e) {
-      result.errors.push(`exportGlb: ${(e as Error).message}`);
+      pushError(result, toErrorInfo('exportGlb', e));
     }
   }
   if (opts.step) {
     const r = exportSTEP(shape);
     if (isOk(r)) step = await r.value.arrayBuffer();
-    else result.errors.push(`exportSTEP: ${r.error.message}`);
+    else pushError(result, toErrorInfo('exportSTEP', r.error));
   }
-  return { shape, report: result, step, glb };
+  return finalize({ shape, report: result, step, glb });
 }
