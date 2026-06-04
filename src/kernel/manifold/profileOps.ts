@@ -34,7 +34,7 @@ import {
 } from './approximations.js';
 
 /** Segments used to approximate a full circle; arcs scale by angle span. */
-const FULL_CIRCLE_SEGMENTS = 48;
+const FULL_CIRCLE_SEGMENTS = 24;
 /** Bezier sampling segments per edge. */
 const BEZIER_SEGMENTS = 24;
 
@@ -169,7 +169,24 @@ function chainEdges(edgePts: Pts[]): Pts {
   return ring;
 }
 
-const OCCT_CURVE_SEGMENTS = 24;
+/** Project a planar 3D ring onto its own plane → 2D outline + world frame. */
+function frameFromRing(ring: Pts): { outline: Vec2[]; origin: Vec3; xAxis: Vec3; yAxis: Vec3 } {
+  const normal = ringNormal(ring);
+  const origin = at3(ring, 0);
+  let xAxis = ring.length > 1 ? normalize3(sub(at3(ring, 1), origin)) : pickPerp(normal);
+  xAxis = normalize3(sub(xAxis, scaleVec(normal, dot(xAxis, normal))));
+  if (length3(xAxis) < 1e-9) xAxis = pickPerp(normal);
+  const yAxis = normalize3(cross(normal, xAxis));
+  const outline: Vec2[] = ensureCCW(
+    ring.map((p) => {
+      const rel = sub(p, origin);
+      return [dot(rel, xAxis), dot(rel, yAxis)] as Vec2;
+    })
+  );
+  return { outline, origin, xAxis, yAxis };
+}
+
+const OCCT_CURVE_SEGMENTS = 12;
 
 /** Sample an OCCT edge into a polyline (line → endpoints, curve → 24 segments). */
 function sampleOcctEdge(occt: KernelAdapter, edge: KernelShape): Pts {
@@ -249,22 +266,17 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
 
   function wireFrom(items: KernelShape[]): KernelShape {
     const ring = chainEdges(items.map((e) => ringOrPts(e)));
-    return wrap(PLACEHOLDER, makeNode('profileWire', { ring }, inputNodes(items))) as KernelShape;
+    // Record the projected 2D outline + frame on the wire too, so loft/sweep
+    // (which read profileCrossSection from a wire, not a face) work directly.
+    const frame = ring.length >= 3 ? frameFromRing(ring) : undefined;
+    return wrap(
+      PLACEHOLDER,
+      makeNode('profileWire', { ring, ...frame }, inputNodes(items))
+    ) as KernelShape;
   }
 
   function faceFromRing(ring: Pts, input?: OpNode): KernelShape {
-    const normal = ringNormal(ring);
-    const origin = at3(ring, 0);
-    let xAxis = ring.length > 1 ? normalize3(sub(at3(ring, 1), origin)) : pickPerp(normal);
-    xAxis = normalize3(sub(xAxis, scaleVec(normal, dot(xAxis, normal))));
-    if (length3(xAxis) < 1e-9) xAxis = pickPerp(normal);
-    const yAxis = normalize3(cross(normal, xAxis));
-    const outline: Vec2[] = ensureCCW(
-      ring.map((p) => {
-        const rel = sub(p, origin);
-        return [dot(rel, xAxis), dot(rel, yAxis)] as Vec2;
-      })
-    );
+    const { outline, origin, xAxis, yAxis } = frameFromRing(ring);
     return wrap(
       PLACEHOLDER,
       makeNode('profileFace', { outline, origin, xAxis, yAxis }, input ? [input] : [])
