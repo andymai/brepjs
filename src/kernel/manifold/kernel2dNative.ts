@@ -208,9 +208,9 @@ function makeNativeKernel2DOps(
     const o = occt();
     const fn = o?.[method] as ((...a: unknown[]) => unknown) | undefined;
     if (!fn) throw new Error(`manifold 2D: ${method} needs an OCCT kernel (none registered)`);
-    // Member call (not `fn(...)`) so the adapter's `this` binding survives —
-    // OCCT-WASM adapter methods read `this.k`/`this.Module`.
-    return (o as Record<string, (...a: unknown[]) => unknown>)[method]!(...args);
+    // `.call(o, …)` so the adapter's `this` binding survives — OCCT-WASM adapter
+    // methods read `this.k`/`this.Module`.
+    return fn.call(o, ...args);
   }
 
   const asC = (h: Curve2dHandle): NativeCurve => h;
