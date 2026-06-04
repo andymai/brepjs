@@ -100,12 +100,12 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
   FILLET_NO_EDGES: {
     fix: 'Select real edges before filleting — pass an edge query (e.g. find edges by direction/position) or a non-empty edge list, not the whole solid.',
     nextStep:
-      'List the solid’s edges, pick the ones to round, then call fillet(solid, radius, edges).',
+      'List the solid’s edges, pick the ones to round, then call fillet(solid, edges, radius).',
   },
   CHAMFER_NO_EDGES: {
     fix: 'Select real edges before chamfering — pass a non-empty edge query/list rather than relying on a default that matched nothing.',
     nextStep:
-      'Enumerate the solid’s edges, choose the target edges, then call chamfer(solid, distance, edges).',
+      'Enumerate the solid’s edges, choose the target edges, then call chamfer(solid, edges, distance).',
   },
   INVALID_FILLET_RADIUS: {
     fix: 'Use a fillet radius that is > 0 and small enough to fit the adjacent faces (well under half the thinnest wall).',
