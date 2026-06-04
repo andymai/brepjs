@@ -333,7 +333,7 @@ const halfTorus = sketchCircle(2, { plane: 'XZ' }).revolve([10, 0, 0], { origin:
 
 Functional API:
 - `extrude(face: OrientedFace, height: number | Vec3): Result<Solid>` — Extrude a face. Pass a number for Z-axis extrusion or a Vec3 for arbitrary direction (vector length = distance)
-- `revolve(face: OrientedFace, { axis?, at?, angle? }?): Result<Shape3D>` — Revolve a face. `at` default `[0,0,0]`, `axis` default `[0,0,1]` (Z), `angle` default `360` degrees
+- `revolve(face: OrientedFace, { axis?, at?, angle? }?): Result<Shape3D>` — Revolve a face. `at` default `[0,0,0]`, `axis` default `[0,0,1]` (Z). **`angle` is in RADIANS** — a full turn is `Math.PI * 2`; if omitted it defaults to a HALF turn (`Math.PI`), so always pass it explicitly. (Note: pattern `fullAngle` is in degrees — brepjs is not uniform, so don't assume degrees here.)
 - `sweep(wire, spine, config?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>` — Sweep profile along spine
 - `complexExtrude(wire, center, normal, profileShape?, shellMode?): Result<Shape3D>` — Extrude with scaling profile
 - `twistExtrude(wire, angleDeg, center, normal, profileShape?, shellMode?): Result<Shape3D>` — Twist extrude with rotation

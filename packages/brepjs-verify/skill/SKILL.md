@@ -13,8 +13,8 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 
 1. **Brief.** Convert the request to explicit params: dimensions (mm), datums, features, assumptions. Don't ask the user for JSON.
 2. **Load only the reference you need** (index below) — not all at once.
-3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `npx -y brepjs-verify init <name>`. Edit *source*, never generated artifacts.
-4. **Declare intent.** Add an `expected` block from your brief, e.g. `export const expected = { volume: 24000, tolerancePct: 1 }`. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. The CLI asserts it — this is how you prove the part is the *right* part, not just a valid one.
+3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `npx -y brepjs-verify init <name>`. Edit _source_, never generated artifacts.
+4. **Declare intent.** Add an `expected` block from your brief, e.g. `export const expected = { volume: 24000, tolerancePct: 1 }`. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. The CLI asserts it — this is how you prove the part is the _right_ part, not just a valid one.
 5. **Verify (type + geometry).** `npx -y brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `npx -y brepjs-verify watch part.brep.ts`.
 6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion — convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
@@ -39,13 +39,13 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - **`assertions`** = your declared intent vs reality. A failed assertion means valid-but-wrong (off dimensions).
 - **`hints`** = actionable fix + next step keyed on the error code. Read these before guessing.
 - **`errorInfos`** = the raw structured failures (`code` + `message`) the hints derive from — authoring, kernel, or export errors. Cite the `code` when repairing.
-- Trust this JSON over the rendered image. The render confirms *shape*; the JSON confirms *correctness*.
+- Trust this JSON over the rendered image. The render confirms _shape_; the JSON confirms _correctness_.
 
 ## Repair discipline
 
 - Change the **smallest responsible section**, re-verify, repeat. Don't rewrite the whole part on one failure.
 - Let the `code`/`hints` localize the cause (e.g. `INVALID_FILLET_RADIUS` → reduce radius vs local edge length; `*_NOT_3D` → you passed a 2D shape to a 3D op; `BOOLEAN_HAS_ERRORS` → inputs overlap-degenerate).
-- A part that *runs* but reports `ok:false` is wrong, not done — same as a crash.
+- A part that _runs_ but reports `ok:false` is wrong, not done — same as a crash.
 
 ## Reliable scope (be honest)
 
@@ -57,6 +57,8 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - Edit source, not artifacts. STEP/STL/GLB derive from the `.brep.ts`.
 - Booleans and `measureVolume`/`measureArea` return `Result` — unwrap and check the `Err` branch before chaining.
 - `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
+- **Select edges/faces — don't fillet/chamfer everything.** `fillet(solid, radius)` (no edge list) rounds EVERY edge and frequently fails (`FILLET_FAILED`). Pass an edge list: `edgeFinder().inDirection('Z').findAll(solid)`. Note `inDirection` matches BOTH ± orientations — discriminate a single face/edge by position with `.when(f => getBounds(f).zMax > t)`. (See `references/modifiers.md`.)
+- **`revolve` angle is in RADIANS** (full turn = `Math.PI * 2`, not `360`). Build a revolve profile with `polygon(points3D)`, not `draw().close().sketchOnPlane('XZ').face()` — the latter fails `--check` (`sketchOnPlane` is typed `SketchInterface | Sketches` and `.face()` isn't on both). (See `references/sketching-2d.md`.)
 - `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z); positioning option is `at`, not `origin`. Units mm.
 - Author parts in an ESM context (the tool's default) so the kernel loads — a CommonJS project needs `"type": "module"` or a `.mts` file.
 
@@ -71,7 +73,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - Measurement + the verify loop → `references/measurement-validation.md`
 - Export formats → `references/export.md`
 
-Full symbol index: the library ships `docs/function-lookup.md` — consult it for anything not covered above.
+**Full API reference (backstop):** for any symbol, signature, or option not covered by the curated references above, consult brepjs's complete `llms-full.txt` — every export with signatures and examples. It ships bundled in the package at `reference/llms-full.txt`, and is online at <https://github.com/andymai/brepjs/blob/main/llms-full.txt>. Reach for it before guessing an API; the curated references are a fast path, not the whole surface.
 
 ## Examples index (few-shot — read the closest one before authoring)
 

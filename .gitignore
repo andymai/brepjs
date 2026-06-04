@@ -11,6 +11,9 @@
 node_modules
 dist/
 
+# Generated at build: bundled API reference copied from the repo-root llms*.txt
+packages/brepjs-verify/reference/
+
 # V8 profiling artifacts
 *.cpuprofile
 isolate-*.log

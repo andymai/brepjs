@@ -20,6 +20,15 @@ export interface ExpectedDims {
 
 export const DEFAULT_TOLERANCE_PCT = 0.5;
 
+/**
+ * Absolute slack (mm / mm² / mm³) below which a deviation always passes, independent of
+ * percent tolerance. Kernel coordinates carry sub-nanometer float noise (e.g. a loft base
+ * lands at z = -1e-7, not 0), so a percent comparison against an expected `0` — where any
+ * nonzero deviation is infinite percent — would make a zero-valued bound or measurement
+ * impossible to assert. 1e-6 is far above that noise and far below any real feature size.
+ */
+export const ABS_EPSILON = 1e-6;
+
 /** Percent deviation of `actual` from `expected`; 0 expected matches only 0 actual. */
 export function pctDelta(actual: number, expected: number): number {
   if (expected === 0) return actual === 0 ? 0 : Infinity;
@@ -27,6 +36,9 @@ export function pctDelta(actual: number, expected: number): number {
 }
 
 function withinTolerance(actual: number, expected: number, tolerancePct: number): boolean {
+  // Absolute-epsilon escape hatch first, so a near-zero expectation (the percent metric's
+  // blind spot) still passes against noisy-but-correct kernel output.
+  if (Math.abs(actual - expected) <= ABS_EPSILON) return true;
   return pctDelta(actual, expected) <= tolerancePct;
 }
 

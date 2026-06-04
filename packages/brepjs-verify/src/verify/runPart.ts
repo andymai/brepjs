@@ -48,7 +48,14 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
     return { message: `${prefix}: ${e.message}`, code: e.code, suggestion: e.suggestion };
   }
   if (e instanceof Error) {
-    return { message: `${prefix}: ${e.message}` };
+    // brepjs throws on a bare `unwrap()` of an Err with a message shaped like
+    // "Called unwrap() on an Err: [KIND] CODE: detail". Authors are told to unwrap, so
+    // the structured BrepError code arrives flattened into this string — recover it so the
+    // hint table still fires (otherwise a known failure like FILLET_FAILED produces no hint).
+    const code = e.message.match(/\]\s*([A-Z][A-Z0-9_]+):/)?.[1];
+    return code
+      ? { message: `${prefix}: ${e.message}`, code }
+      : { message: `${prefix}: ${e.message}` };
   }
   return { message: `${prefix}: ${String(e)}` };
 }

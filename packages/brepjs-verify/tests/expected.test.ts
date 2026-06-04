@@ -55,6 +55,18 @@ describe('evaluateExpected / isExpectedDims (unit)', () => {
     expect(assertions.every((a) => a.passed)).toBe(true);
   });
 
+  it('passes a zero-valued expectation against sub-epsilon kernel float noise', () => {
+    // A loft base lands at z = -1e-7, not exactly 0; pinning zMin: 0 must still pass.
+    const [a] = evaluateExpected(
+      { bounds: { zMin: 0 }, tolerancePct: 1 },
+      { bounds: { xMin: 0, xMax: 1, yMin: 0, yMax: 1, zMin: -1e-7, zMax: 1 } }
+    );
+    expect(a?.passed).toBe(true);
+    // Noise an order of magnitude above the epsilon still fails — the slack is tight.
+    const [b] = evaluateExpected({ volume: 0, tolerancePct: 1 }, { volume: 1e-3 });
+    expect(b?.passed).toBe(false);
+  });
+
   it('isExpectedDims rejects non-objects and bad field types', () => {
     expect(isExpectedDims({ volume: 1 })).toBe(true);
     expect(isExpectedDims({ volume: 'x' })).toBe(false);

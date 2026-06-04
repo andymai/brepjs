@@ -21,6 +21,15 @@ The CLI the skill invokes. Install it in **your** project, where `brepjs` + the 
 npm i -D brepjs-verify brepjs occt-wasm
 ```
 
+## API reference
+
+The package bundles brepjs's full API reference for offline/agent use — the complete export surface with signatures and examples:
+
+- `reference/llms-full.txt` — every export, full signatures (the deep reference)
+- `reference/llms.txt` — the same content as a quicker index
+
+Point your agent at `node_modules/brepjs-verify/reference/llms-full.txt` for anything the skill's curated references don't cover.
+
 ## The `.brep.ts` contract
 
 A model is a module whose default export is a zero-arg function returning a shape (or a `Result<shape>`):
