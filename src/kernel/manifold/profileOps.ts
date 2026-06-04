@@ -456,7 +456,7 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
       const axis = normalize3(direction);
       const x = pickPerp(axis);
       const y0 = normalize3(cross(axis, x));
-      const y = leftHanded ? (scaleVec(y0, -1)) : y0;
+      const y = leftHanded ? scaleVec(y0, -1) : y0;
       const turns = pitch !== 0 ? height / pitch : 0;
       const desc: CurveDesc = { k: 'helix', center, axis, x, y, radius, pitch, turns };
       const segs = Math.max(8, Math.ceil(turns * FULL_CIRCLE_SEGMENTS));
