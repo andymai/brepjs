@@ -30,9 +30,19 @@ jobs:
 
       - run: npm ci
 
-      # Restore the OCCT WASM the viewer build copies (gitignored).
+      # Restore the OCCT WASM the viewer build copies (gitignored). Retry like the
+      # setup composite — a transient fetch failure shouldn't force a manual re-dispatch.
       - name: Restore WASM files
-        run: bash scripts/ensure-wasm.sh
+        run: |
+          for i in 1 2 3; do
+            bash scripts/ensure-wasm.sh && break
+            if [ "$i" -lt 3 ]; then
+              echo "::warning::ensure-wasm.sh failed (attempt $i/3), retrying in 5s..."
+              sleep 5
+            else
+              exit 1
+            fi
+          done
 
       # Build prerequisites first, mirroring the packages-cad CI job: the viewer
       # worker imports `brepjs`, so the root lib + brepjs-viewer dist must exist
