@@ -27,6 +27,7 @@ import {
   frameForNormal,
   length3,
   normalize3,
+  orientPositive,
   placeRing,
   profileCrossSection,
   rotationMinimizingFrames,
@@ -284,7 +285,10 @@ function extrudeOp(
     toPolygon(section),
     ...(section.holes ?? []).map((h) => h.map((p) => [p[0], p[1]] as [number, number])),
   ];
-  const base = module.Manifold.extrude(polygons, height) as ManifoldOriented;
+  const base = orientPositive(
+    module,
+    module.Manifold.extrude(polygons, height)
+  ) as ManifoldOriented;
   const solid = orientExtrusion(base, section, dir);
   return wrap(
     solid,

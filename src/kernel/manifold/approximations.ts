@@ -276,7 +276,33 @@ export function skinRings(module: ManifoldModule, rings: readonly Vec3[][]): Man
     vertProperties: Float32Array.from(verts),
     triVerts: Uint32Array.from(tris),
   });
-  return new module.Manifold(built);
+  return orientPositive(module, new module.Manifold(built));
+}
+
+/**
+ * Normalize a built solid to outward (positive-volume) orientation. Skinning a
+ * profile whose section order or outline winding runs "backwards" yields an
+ * inside-out manifold (negative volume) that booleans then mishandle — a cut
+ * tool that won't subtract, a fuse operand that cancels volume. If the volume
+ * is negative, rebuild with reversed triangle winding so normals face outward.
+ */
+export function orientPositive(module: ManifoldModule, solid: ManifoldSolid): ManifoldSolid {
+  if (typeof solid.volume !== 'function' || solid.volume() >= 0) return solid;
+  const mesh = solid.getMesh();
+  const tv = mesh.triVerts as Uint32Array;
+  for (let i = 0; i + 2 < tv.length; i += 3) {
+    const t = tv[i + 1] ?? 0;
+    tv[i + 1] = tv[i + 2] ?? 0;
+    tv[i + 2] = t;
+  }
+  const flipped = new module.Mesh({
+    numProp: mesh.numProp,
+    vertProperties: mesh.vertProperties,
+    triVerts: tv,
+  });
+  const result = new module.Manifold(flipped);
+  if (typeof solid.delete === 'function') solid.delete();
+  return result;
 }
 
 /** Build the triangle index list for `ringCount` rings of `m` points each. */
