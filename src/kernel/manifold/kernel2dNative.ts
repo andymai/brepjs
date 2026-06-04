@@ -12,7 +12,7 @@
  * @module
  */
 
-import type { Curve2dHandle, BBox2dHandle, Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
+import type { Curve2dHandle, Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode } from './opGraph.js';
@@ -180,8 +180,8 @@ function circleThrough3(p1: Vec2, pm: Vec2, p2: Vec2): NativeCurve {
   const center: Vec2 = [ux, uy];
   const r = Math.hypot(ax - ux, ay - uy);
   const ang = (p: Vec2): number => Math.atan2(p[1] - uy, p[0] - ux);
-  let a0 = ang(p1);
-  let am = ang(pm);
+  const a0 = ang(p1);
+  const am = ang(pm);
   let a1 = ang(p2);
   // Choose sweep direction so the arc passes through pm.
   const norm = (x: number): number => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -204,15 +204,14 @@ function makeNativeKernel2DOps(
   const PLACEHOLDER: unknown = { delete: () => {}, isEmpty: () => false };
   void module;
 
-  function delegate<T>(method: keyof Kernel2DCapability, ...args: unknown[]): T {
+  function delegate(method: keyof Kernel2DCapability, ...args: unknown[]): unknown {
     const o = occt();
-    const fn = o?.[method] as ((...a: unknown[]) => T) | undefined;
-    if (!fn)
-      throw new Error(`manifold 2D: ${String(method)} needs an OCCT kernel (none registered)`);
+    const fn = o?.[method] as ((...a: unknown[]) => unknown) | undefined;
+    if (!fn) throw new Error(`manifold 2D: ${method} needs an OCCT kernel (none registered)`);
     return fn(...args);
   }
 
-  const asC = (h: Curve2dHandle): NativeCurve => h as unknown as NativeCurve;
+  const asC = (h: Curve2dHandle): NativeCurve => h;
 
   function occtOr(method: string): Kernel2DCapability {
     const o = occt();
@@ -261,13 +260,12 @@ function makeNativeKernel2DOps(
     createVector2d: (x, y) => ({ x, y }) as KernelType,
     createAxis2d: (px, py, dx, dy) => ({ px, py, dx, dy }) as KernelType,
     wrapCurve2dHandle: (h) => h,
-    createCurve2dAdaptor: (h) => h as unknown as KernelType,
+    createCurve2dAdaptor: (h) => h,
 
-    makeLine2d: (x1, y1, x2, y2) => line([x1, y1], [x2, y2]) as unknown as Curve2dHandle,
+    makeLine2d: (x1, y1, x2, y2) => line([x1, y1], [x2, y2]),
     makeCircle2d: (cx, cy, r, sense = true) =>
-      conic([cx, cy], [r, 0], sense ? [0, r] : [0, -r], 0, 2 * Math.PI) as unknown as Curve2dHandle,
-    makeArc2dThreePoints: (x1, y1, xm, ym, x2, y2) =>
-      circleThrough3([x1, y1], [xm, ym], [x2, y2]) as unknown as Curve2dHandle,
+      conic([cx, cy], [r, 0], sense ? [0, r] : [0, -r], 0, 2 * Math.PI),
+    makeArc2dThreePoints: (x1, y1, xm, ym, x2, y2) => circleThrough3([x1, y1], [xm, ym], [x2, y2]),
     makeArc2dTangent: (sx, sy, tx, ty, ex, ey) => {
       // Arc from start tangent to (tx,ty), ending at end. Center is on the
       // perpendicular to the tangent at start, equidistant from start & end.
@@ -278,7 +276,7 @@ function makeNativeKernel2DOps(
       // Center C = S + n·t lies on the start normal and is equidistant from S
       // and E. Solving |C−S| = |C−E| gives t = |chord|² / (2·(n·chord)).
       const ndotc = nx * chord[0] + ny * chord[1];
-      if (Math.abs(ndotc) < 1e-12) return line([sx, sy], [ex, ey]) as unknown as Curve2dHandle;
+      if (Math.abs(ndotc) < 1e-12) return line([sx, sy], [ex, ey]);
       const t = (chord[0] * chord[0] + chord[1] * chord[1]) / (2 * ndotc);
       const cx = sx + nx * t;
       const cy = sy + ny * t;
@@ -293,7 +291,7 @@ function makeNativeKernel2DOps(
       const tangCCW: Vec2 = [-(sy - cy), sx - cx];
       if (tangCCW[0] * tx + tangCCW[1] * ty >= 0) a1 = a0 + norm(a1 - a0);
       else a1 = a0 - norm(a0 - a1);
-      return conic([cx, cy], [r, 0], [0, r], a0, a1) as unknown as Curve2dHandle;
+      return conic([cx, cy], [r, 0], [0, r], a0, a1);
     },
     makeEllipse2d: (cx, cy, maj, min, xdx = 1, xdy = 0, sense = true) => {
       const xl = Math.hypot(xdx, xdy) || 1;
@@ -301,7 +299,7 @@ function makeNativeKernel2DOps(
       const uy = (xdy / xl) * maj;
       const vx = (-xdy / xl) * min * (sense ? 1 : -1);
       const vy = (xdx / xl) * min * (sense ? 1 : -1);
-      return conic([cx, cy], [ux, uy], [vx, vy], 0, 2 * Math.PI) as unknown as Curve2dHandle;
+      return conic([cx, cy], [ux, uy], [vx, vy], 0, 2 * Math.PI);
     },
     makeEllipseArc2d: (cx, cy, maj, min, a0, a1, xdx = 1, xdy = 0, sense = true) => {
       const xl = Math.hypot(xdx, xdy) || 1;
@@ -309,14 +307,13 @@ function makeNativeKernel2DOps(
       const uy = (xdy / xl) * maj;
       const vx = (-xdy / xl) * min * (sense ? 1 : -1);
       const vy = (xdx / xl) * min * (sense ? 1 : -1);
-      return conic([cx, cy], [ux, uy], [vx, vy], a0, a1) as unknown as Curve2dHandle;
+      return conic([cx, cy], [ux, uy], [vx, vy], a0, a1);
     },
-    makeBezier2d: (points) =>
-      ({
-        __nativeC2d: true,
-        k: 'bezier',
-        pts: points.map((p) => [p[0], p[1]]),
-      }) as unknown as Curve2dHandle,
+    makeBezier2d: (points) => ({
+      __nativeC2d: true,
+      k: 'bezier',
+      pts: points.map((p) => [p[0], p[1]]),
+    }),
 
     evaluateCurve2d: (h, param) => {
       const c = asC(h);
@@ -368,11 +365,11 @@ function makeNativeKernel2DOps(
         c.a1 = t;
       }
     },
-    copyCurve2d: (h) => structuredClone(asC(h)) as unknown as Curve2dHandle,
+    copyCurve2d: (h) => structuredClone(asC(h)),
     trimCurve2d: (h, start, end) => {
       const c = asC(h);
-      if (c.k === 'conic') return conic(c.c, c.u, c.v, start, end) as unknown as Curve2dHandle;
-      return structuredClone(c) as unknown as Curve2dHandle;
+      if (c.k === 'conic') return conic(c.c, c.u, c.v, start, end);
+      return structuredClone(c);
     },
 
     // --- general transforms (affine on descriptors) ---
@@ -431,13 +428,11 @@ function makeNativeKernel2DOps(
       m.ty = dy;
     },
     multiplyGTrsf2d: (base, other) => {
-      const r = compose(base as unknown as Affine, other as unknown as Affine);
+      const r = compose(base, other);
       Object.assign(base as unknown as Affine, r);
     },
-    transformCurve2dGeneral: (h, g) =>
-      transform(asC(h), g as unknown as Affine) as unknown as Curve2dHandle,
-    translateCurve2d: (h, dx, dy) =>
-      transform(asC(h), { a: 1, b: 0, c: 0, d: 1, tx: dx, ty: dy }) as unknown as Curve2dHandle,
+    transformCurve2dGeneral: (h, g) => transform(asC(h), g),
+    translateCurve2d: (h, dx, dy) => transform(asC(h), { a: 1, b: 0, c: 0, d: 1, tx: dx, ty: dy }),
     rotateCurve2d: (h, angle, cx, cy) => {
       const co = Math.cos(angle);
       const si = Math.sin(angle);
@@ -448,7 +443,7 @@ function makeNativeKernel2DOps(
         d: co,
         tx: cx - (co * cx - si * cy),
         ty: cy - (si * cx + co * cy),
-      }) as unknown as Curve2dHandle;
+      });
     },
     scaleCurve2d: (h, f, cx, cy) =>
       transform(asC(h), {
@@ -458,7 +453,7 @@ function makeNativeKernel2DOps(
         d: f,
         tx: cx - f * cx,
         ty: cy - f * cy,
-      }) as unknown as Curve2dHandle,
+      }),
     mirrorCurve2dAtPoint: (h, cx, cy) =>
       transform(asC(h), {
         a: -1,
@@ -467,7 +462,7 @@ function makeNativeKernel2DOps(
         d: -1,
         tx: 2 * cx,
         ty: 2 * cy,
-      }) as unknown as Curve2dHandle,
+      }),
     mirrorCurve2dAcrossAxis: (h, ox, oy, dx, dy) => {
       const l = Math.hypot(dx, dy) || 1;
       const ux = dx / l;
@@ -481,7 +476,7 @@ function makeNativeKernel2DOps(
         d: -a,
         tx: ox - (a * ox + b * oy),
         ty: oy - (b * ox - a * oy),
-      }) as unknown as Curve2dHandle;
+      });
     },
     affinityTransform2d: (h, ox, oy, dx, dy, ratio) => {
       const l = Math.hypot(dx, dy) || 1;
@@ -500,12 +495,11 @@ function makeNativeKernel2DOps(
         d,
         tx: ox - (a * ox + b * oy),
         ty: oy - (c * ox + d * oy),
-      }) as unknown as Curve2dHandle;
+      });
     },
 
     // --- bounding box (mutable JS box) ---
-    createBoundingBox2d: () =>
-      ({ min: [Infinity, Infinity], max: [-Infinity, -Infinity] }) as unknown as BBox2dHandle,
+    createBoundingBox2d: () => ({ min: [Infinity, Infinity], max: [-Infinity, -Infinity] }),
     addCurveToBBox2d: (bb, h) => {
       const box = bb as unknown as { min: Vec2; max: Vec2 };
       let pts: Vec2[];
@@ -615,11 +609,14 @@ function makeNativeKernel2DOps(
     getCurve2dBSplineData: (c) => occtOr('getCurve2dBSplineData').getCurve2dBSplineData(toOcct(c)),
     buildEdgeOnSurface: (c, surface) =>
       occtOr('buildEdgeOnSurface').buildEdgeOnSurface(toOcct(c), surface),
-    extractSurfaceFromFace: (...a) => delegate('extractSurfaceFromFace', ...a),
-    extractCurve2dFromEdge: (...a) => delegate('extractCurve2dFromEdge', ...a),
-    buildCurves3d: (...a) => delegate('buildCurves3d', ...a),
-    fixWireOnFace: (...a) => delegate('fixWireOnFace', ...a),
-    fillSurface: (...a) => delegate('fillSurface', ...a),
+    extractSurfaceFromFace: (face) => occtOr('extractSurfaceFromFace').extractSurfaceFromFace(face),
+    extractCurve2dFromEdge: (edge, face) =>
+      occtOr('extractCurve2dFromEdge').extractCurve2dFromEdge(edge, face),
+    buildCurves3d: (wire) => {
+      occtOr('buildCurves3d').buildCurves3d(wire);
+    },
+    fixWireOnFace: (wire, face, tol) => occtOr('fixWireOnFace').fixWireOnFace(wire, face, tol),
+    fillSurface: (wires, opts) => occtOr('fillSurface').fillSurface(wires, opts),
   };
 
   // Per-handle dispatch: each native curve-consuming op runs natively only for

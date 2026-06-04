@@ -108,7 +108,7 @@ export function makeKernel2DOps(module: ManifoldModule): Kernel2DCapability {
   // (NURBS, intersect, project, serialize, surface ops) delegates correctly.
   const native = makeNativeKernel2DOps(
     module,
-    () => resolveOcct() as unknown as Partial<Kernel2DCapability> | undefined
+    () => resolveOcct()
   );
   Object.assign(ops, native);
   return ops as Kernel2DCapability;
