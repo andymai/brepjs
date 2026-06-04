@@ -25,106 +25,91 @@ function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep
   return { occt, brep };
 }
 
+function shapeType(shape: KernelShape): ShapeType {
+  // A manifold-3d solid is, by construction, a watertight solid. Answer
+  // natively so castShape() can wrap boolean/primitive results without
+  // replaying the whole op-graph onto OCCT — the replay would erase the
+  // point of a fast mesh-CSG preview kernel (and require an occt kernel to
+  // even classify a shape). Non-manifold handles still classify via OCCT.
+  if (asManifoldShape(shape)) return 'solid';
+  const { occt, brep } = brepOf(shape, 'shapeType');
+  return occt.shapeType(brep);
+}
+
+function isSame(a: KernelShape, b: KernelShape): boolean {
+  const sa = asManifoldShape(a);
+  const sb = asManifoldShape(b);
+  if (!sa || !sb) return false;
+  return sa.manifold === sb.manifold;
+}
+
+function hashCode(shape: KernelShape, upperBound: number): number {
+  const ms = asManifoldShape(shape);
+  if (!ms) return 0;
+  // No per-node cache: occt.hashCode depends on upperBound (a node-keyed cache
+  // returns a stale out-of-range value when the bound changes). The expensive
+  // replay is already memoized in brepCache via brepOf.
+  const { occt, brep } = brepOf(shape, 'hashCode');
+  return occt.hashCode(brep, upperBound);
+}
+
+function isNull(shape: KernelShape): boolean {
+  const s = asManifoldShape(shape);
+  if (!s) return true;
+  const solid = unwrap(s);
+  return !solid || (typeof solid.isEmpty === 'function' && solid.isEmpty());
+}
+
+function iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {
+  const s = asManifoldShape(shape);
+  if (!s) return [];
+  if (type === 'solid') return [shape];
+  if (type !== 'edge' && type !== 'face') return [];
+  // Manifold has no B-rep edges/faces; replay to OCCT, then expose each
+  // sub-shape as a witness handle carrying its OCCT bounding box. Subset
+  // fillet/chamfer/shell selection re-identifies these by box center on replay.
+  if (!s.node.replayable) return [];
+  const occt = resolveOcct();
+  if (!occt) return [];
+  const brep =
+    brepCache.get(s.node) ??
+    (() => {
+      const b = replay(s.node, occt);
+      brepCache.set(s.node, b);
+      return b;
+    })();
+  return occt.iterShapes(brep, type).map((sub, index) => ({
+    __manifoldSub: true,
+    index,
+    box: occt.boundingBox(sub),
+  }));
+}
+
+function edgeToFaceMap(shape: KernelShape): string {
+  const { occt, brep } = brepOf(shape, 'edgeToFaceMap');
+  return occt.edgeToFaceMap(brep);
+}
+
+function adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[] {
+  const { occt, brep } = brepOf(shape, 'adjacentFaces');
+  return occt.adjacentFaces(brep, face);
+}
+
 export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
-  function shapeType(shape: KernelShape): ShapeType {
-    // A manifold-3d solid is, by construction, a watertight solid. Answer
-    // natively so castShape() can wrap boolean/primitive results without
-    // replaying the whole op-graph onto OCCT — the replay would erase the
-    // point of a fast mesh-CSG preview kernel (and require an occt kernel to
-    // even classify a shape). Non-manifold handles still classify via OCCT.
-    if (asManifoldShape(shape)) return 'solid';
-    const { occt, brep } = brepOf(shape, 'shapeType');
-    return occt.shapeType(brep);
-  }
-
-  function isSame(a: KernelShape, b: KernelShape): boolean {
-    const sa = asManifoldShape(a);
-    const sb = asManifoldShape(b);
-    if (!sa || !sb) return false;
-    return sa.manifold === sb.manifold;
-  }
-
-  function isEqual(a: KernelShape, b: KernelShape): boolean {
-    return isSame(a, b);
-  }
-
-  function hashCode(shape: KernelShape, upperBound: number): number {
-    const ms = asManifoldShape(shape);
-    if (!ms) return 0;
-    // No per-node cache: occt.hashCode depends on upperBound (a node-keyed cache
-    // returns a stale out-of-range value when the bound changes). The expensive
-    // replay is already memoized in brepCache via brepOf.
-    const { occt, brep } = brepOf(shape, 'hashCode');
-    return occt.hashCode(brep, upperBound);
-  }
-
-  function isNull(shape: KernelShape): boolean {
-    const s = asManifoldShape(shape);
-    if (!s) return true;
-    const solid = unwrap(s);
-    return !solid || (typeof solid.isEmpty === 'function' && solid.isEmpty());
-  }
-
-  function shapeOrientation(_shape: KernelShape): ShapeOrientation {
-    return 'forward';
-  }
-
-  function iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {
-    const s = asManifoldShape(shape);
-    if (!s) return [];
-    if (type === 'solid') return [shape];
-    if (type !== 'edge' && type !== 'face') return [];
-    // Manifold has no B-rep edges/faces; replay to OCCT, then expose each
-    // sub-shape as a witness handle carrying its OCCT bounding box. Subset
-    // fillet/chamfer/shell selection re-identifies these by box center on replay.
-    if (!s.node.replayable) return [];
-    const occt = resolveOcct();
-    if (!occt) return [];
-    const brep =
-      brepCache.get(s.node) ??
-      (() => {
-        const b = replay(s.node, occt);
-        brepCache.set(s.node, b);
-        return b;
-      })();
-    return occt.iterShapes(brep, type).map((sub, index) => ({
-      __manifoldSub: true,
-      index,
-      box: occt.boundingBox(sub),
-    }));
-  }
-
-  function iterShapeList(list: KernelShape, callback: (item: KernelShape) => void): void {
-    occtOrThrow('iterShapeList').iterShapeList(list, callback);
-  }
-
-  function edgeToFaceMap(shape: KernelShape): string {
-    const { occt, brep } = brepOf(shape, 'edgeToFaceMap');
-    return occt.edgeToFaceMap(brep);
-  }
-
-  function sharedEdges(faceA: KernelShape, faceB: KernelShape): KernelShape[] {
-    const occt = occtOrThrow('sharedEdges');
-    return occt.sharedEdges(faceA, faceB);
-  }
-
-  function adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[] {
-    const { occt, brep } = brepOf(shape, 'adjacentFaces');
-    return occt.adjacentFaces(brep, face);
-  }
-
   return {
     iterShapes,
-    iterShapeList,
+    iterShapeList: (list, callback) => {
+      occtOrThrow('iterShapeList').iterShapeList(list, callback);
+    },
     shapeType,
     isSame,
-    isEqual,
+    isEqual: isSame,
     downcast: (shape) => shape,
     hashCode,
     isNull,
-    shapeOrientation,
+    shapeOrientation: (_shape: KernelShape): ShapeOrientation => 'forward',
     edgeToFaceMap,
-    sharedEdges,
+    sharedEdges: (faceA, faceB) => occtOrThrow('sharedEdges').sharedEdges(faceA, faceB),
     adjacentFaces,
     sew: () => {
       throw new Error('manifold: sew is unsupported on the mesh kernel; use a B-rep kernel');
