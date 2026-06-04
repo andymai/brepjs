@@ -8,10 +8,31 @@ import {
   type BrepError,
   type Result,
 } from 'brepjs';
+import { pathToFileURL } from 'node:url';
 import { runChecks } from './checks.js';
 import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
 type PartFn = () => unknown;
+
+// Author parts are `.brep.ts`. Node strips types natively (engines requires >=24),
+// but only in an ESM context — so a part loaded under a CommonJS project fails. A
+// transpiler fallback (tsx) is NOT viable: it loads `brepjs` in a separate module
+// realm, so the part gets an uninitialized kernel. Surface a clear fix instead.
+async function loadPart(modulePath: string): Promise<{ default?: PartFn }> {
+  try {
+    return (await import(pathToFileURL(modulePath).href)) as { default?: PartFn };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/Cannot use import statement|Unknown file extension|ERR_UNKNOWN_FILE_EXTENSION/i.test(msg)) {
+      throw new Error(
+        `cannot load TypeScript part "${modulePath}": author parts in an ESM project ` +
+          `(set "type": "module" in package.json) or rename the file to .mts. (${msg})`,
+        { cause: e }
+      );
+    }
+    throw e;
+  }
+}
 
 function isResult(v: unknown): v is Result<AnyShape> {
   return typeof v === 'object' && v !== null && 'ok' in v && typeof v.ok === 'boolean';
@@ -68,7 +89,7 @@ export async function runPart(
   }
   let mod: { default?: PartFn };
   try {
-    mod = (await import(modulePath)) as { default?: PartFn };
+    mod = await loadPart(modulePath);
   } catch (e) {
     pushError(report, toErrorInfo('import failed', e));
     return finalize({ shape: null, report });

@@ -157,6 +157,9 @@ jobs:
       - run: npm run build --workspace=brepjs-cad
       # Deterministic eval: replay skill/examples through runPart, gate on volume/area/validity.
       - run: npm run eval --workspace=brepjs-cad
+      # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load
+      # failures that only surface for installed users (tsx/vitest hide them in-repo).
+      - run: npm run smoke --workspace=brepjs-cad
 
   packages-sheetmetal:
     # Experimental sheet-metal domain satellite. Build root brepjs first so the

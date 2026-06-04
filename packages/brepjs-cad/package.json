@@ -45,6 +45,7 @@
     "lint": "eslint src tests viewer bench",
     "test": "vitest run",
     "eval": "tsx bench/run.ts",
+    "smoke": "node dist/cli/main.js verify tests/fixtures/validBox.brep.ts",
     "prepack": "npm run build"
   },
   "peerDependencies": {
