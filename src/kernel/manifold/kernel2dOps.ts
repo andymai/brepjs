@@ -106,10 +106,7 @@ export function makeKernel2DOps(module: ManifoldModule): Kernel2DCapability {
   // Overlay: native implementations take precedence for the construction path.
   // The native ops receive a lazy OCCT resolver so the genuinely-OCCT tail
   // (NURBS, intersect, project, serialize, surface ops) delegates correctly.
-  const native = makeNativeKernel2DOps(
-    module,
-    () => resolveOcct()
-  );
+  const native = makeNativeKernel2DOps(module, () => resolveOcct());
   Object.assign(ops, native);
   return ops as Kernel2DCapability;
 }
