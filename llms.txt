@@ -131,7 +131,7 @@ Layered on top of base types to encode topological invariants at compile time:
 - `ManifoldShell` — shell proven to be watertight.
 - `ValidSolid` — solid passing BRepCheck validation. Returned by `box()`, `cylinder()`, etc.
 
-Smart constructors prove validity at runtime: `closedWire(w)`, `orientedFace(f)`, `manifoldShell(s)`, `validSolid(s)` → `ValidityResult<T>`.
+Smart constructors prove validity at runtime: `closedWire(w)`, `orientedFace(f)`, `manifoldShell(s)`, `validSolid(s)` → `Result<T, string>` (check with `isOk`, extract with `unwrap` — there is no `.valid`/`.value` field).
 Type guards narrow in-place: `isClosedWire(w)`, `isOrientedFace(f)`, `isManifoldShell(s)`, `isValidSolid(s)`.
 Convenience: `wireLoop(edges)` assembles edges and verifies closure → `Result<ClosedWire>`.
 
@@ -1490,8 +1490,8 @@ getShapeKind(shape): ShapeKind          // 'vertex' | 'edge' | ... | 'compound'
 isVertex(s): s is Vertex                // Type guards for shape kinds
 is3D(s): s is AnyShape<'3D'>           // Dimension guards
 is2D(s): s is AnyShape<'2D'>
-closedWire(w): ValidityResult<ClosedWire>     // Validity smart constructors
-orientedFace(f): ValidityResult<OrientedFace>
+closedWire(w): Result<ClosedWire, string>     // Validity smart constructors
+orientedFace(f): Result<OrientedFace, string>
 isClosedWire(w): w is ClosedWire              // Validity type guards
 isOrientedFace(f): f is OrientedFace
 isManifoldShell(s): s is ManifoldShell

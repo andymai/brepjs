@@ -42,6 +42,25 @@ function withinTolerance(actual: number, expected: number, tolerancePct: number)
   return pctDelta(actual, expected) <= tolerancePct;
 }
 
+const TOP_LEVEL_KEYS = new Set(['volume', 'area', 'bounds', 'tolerancePct']);
+const BOUND_KEYS = new Set(['xMin', 'xMax', 'yMin', 'yMax', 'zMin', 'zMax']);
+
+/**
+ * Keys in an `expected` block that the CLI does not understand and would silently ignore — a
+ * `{ min: [...], max: [...] }` or `{ x: [...] }` bounds shape, or a misspelled top-level field.
+ * Surfaced as an error (not dropped) so a wrong `expected` shape fails loud instead of passing
+ * vacuously with the intended assertion never run.
+ */
+export function unknownExpectedKeys(expected: object): string[] {
+  const bad: string[] = [];
+  for (const k of Object.keys(expected)) if (!TOP_LEVEL_KEYS.has(k)) bad.push(k);
+  const bounds = (expected as { bounds?: unknown }).bounds;
+  if (bounds && typeof bounds === 'object') {
+    for (const k of Object.keys(bounds)) if (!BOUND_KEYS.has(k)) bad.push(`bounds.${k}`);
+  }
+  return bad;
+}
+
 export function isExpectedDims(v: unknown): v is ExpectedDims {
   if (typeof v !== 'object' || v === null) return false;
   const r = v as Record<string, unknown>;

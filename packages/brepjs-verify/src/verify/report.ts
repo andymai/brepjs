@@ -241,6 +241,11 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     fix: 'Fix the TypeScript type error before running the part — the API call or value does not match brepjs’s types.',
     nextStep: 'Correct the flagged type (e.g. argument/return type or import), then re-verify.',
   },
+  EXPECTED_UNKNOWN_KEY: {
+    fix: 'Your `expected` block has keys the CLI does not assert (so the intended check never ran). Bounds must be `{ xMin, xMax, yMin, yMax, zMin, zMax }` — not `{ min, max }` or `{ x, y, z }`.',
+    nextStep:
+      'Rewrite `expected` using only volume, area, tolerancePct, and bounds.{xMin..zMax}, then re-verify.',
+  },
 };
 
 /** Synthetic code attached to validity-check failures (validSolid returns a plain string error). */

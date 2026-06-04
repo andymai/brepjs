@@ -10,6 +10,24 @@ STEP is the canonical, lossless output — the source of truth. Mesh formats (ST
 
 GLB/3MF sidecars are emitted by the verify CLI (`--glb`), not authored in the model.
 
+## Importing + modifying
+
+`importSTEP(blob)` is **async** and takes a **`Blob`** (not a path or `ArrayBuffer`): `importSTEP(blob): Promise<Result<AnyShape>>`. Read the file bytes yourself, wrap them, and `await` — so the part's default export must be `async`. The result is an `AnyShape`; narrow it before a 3D op like `fillet` (which needs a `ValidSolid`).
+
+```ts
+import { readFile } from 'node:fs/promises';
+import { importSTEP, fillet, getEdges, isSolid, validSolid, unwrap, isOk } from 'brepjs';
+
+export default async () => {
+  const bytes = await readFile('input.step');
+  const imported = unwrap(await importSTEP(new Blob([bytes])));
+  if (!isSolid(imported)) throw new Error('expected a solid from the STEP file');
+  const valid = validSolid(imported); // Result<ValidSolid, string> — use isOk/unwrap, NOT .valid
+  if (!isOk(valid)) throw new Error(valid.error);
+  return unwrap(fillet(valid.value, getEdges(valid.value), 2));
+};
+```
+
 ```ts
 import { box } from 'brepjs';
 export default () => box(10, 10, 10, { centered: true });

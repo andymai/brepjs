@@ -2,7 +2,12 @@ import type { AnyShape, BrepError, Result } from 'brepjs';
 import { pathToFileURL } from 'node:url';
 import { loadBrep, initOcctWasm, toolDir } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
-import { evaluateExpected, isExpectedDims, type ExpectedDims } from './expected.js';
+import {
+  evaluateExpected,
+  isExpectedDims,
+  unknownExpectedKeys,
+  type ExpectedDims,
+} from './expected.js';
 import { typecheckPart } from './typecheck.js';
 import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport } from './report.js';
 
@@ -153,6 +158,15 @@ export async function runPart(
   if (isExpectedDims(mod.expected)) {
     const expected: ExpectedDims = mod.expected;
     result.assertions = evaluateExpected(expected, result.measurements);
+    // A wrong `expected` shape (e.g. bounds as { min, max } or { x } instead of
+    // { xMin, xMax, … }) would otherwise be ignored, vacuously passing. Fail loud.
+    const unknown = unknownExpectedKeys(expected);
+    if (unknown.length > 0) {
+      pushError(result, {
+        message: `expected has unrecognized keys (ignored): ${unknown.join(', ')}. Valid keys: volume, area, tolerancePct, bounds.{xMin,xMax,yMin,yMax,zMin,zMax}.`,
+        code: 'EXPECTED_UNKNOWN_KEY',
+      });
+    }
   }
   let glb: ArrayBuffer | undefined;
   let step: ArrayBuffer | undefined;
