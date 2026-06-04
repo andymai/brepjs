@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.60.0](https://github.com/andymai/brepjs/compare/brepjs-v18.59.1...brepjs-v18.60.0) (2026-06-04)
+
+
+### Features
+
+* **brepjs-verify:** standalone bundled CLI + rename from brepjs-cad ([#1211](https://github.com/andymai/brepjs/issues/1211)) ([05b3799](https://github.com/andymai/brepjs/commit/05b3799a0e9ee4968d4cac92f3a2ea236e39cd35))
+
 ## [18.59.1](https://github.com/andymai/brepjs/compare/brepjs-v18.59.0...brepjs-v18.59.1) (2026-06-04)
 
 

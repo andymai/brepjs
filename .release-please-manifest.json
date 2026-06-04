@@ -1,5 +1,5 @@
 {
-  ".": "18.59.1",
+  ".": "18.60.0",
   "packages/brepjs-opencascade": "0.16.0",
   "packages/brepjs-verify": "0.2.1"
 }
