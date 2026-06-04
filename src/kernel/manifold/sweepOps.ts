@@ -30,6 +30,7 @@ import {
   orientPositive,
   placeRing,
   profileCrossSection,
+  resampleClosed,
   rotationMinimizingFrames,
   scaleVec,
   skinRings,
@@ -325,6 +326,38 @@ function revolveOp(
   return wrap(solid, makeNode(op, params, [nodeOf(asShape(shape))]));
 }
 
+/**
+ * Rotate `ring`'s point order to the cyclic offset that best lines up with
+ * `ref` (minimizes Σ‖ring[(j+off)%n] − ref[j]‖²). Both rings must share a
+ * vertex count. Keeps loft correspondence from twisting between dissimilar
+ * sections.
+ */
+function alignRing(ring: Vec3[], ref: Vec3[]): Vec3[] {
+  const n = ring.length;
+  if (n === 0 || ref.length !== n) return ring;
+  let bestOff = 0;
+  let bestCost = Infinity;
+  for (let off = 0; off < n; off++) {
+    let cost = 0;
+    for (let j = 0; j < n && cost < bestCost; j++) {
+      const a = ring[(j + off) % n] ?? [0, 0, 0];
+      const b = ref[j] ?? [0, 0, 0];
+      const dx = a[0] - b[0];
+      const dy = a[1] - b[1];
+      const dz = a[2] - b[2];
+      cost += dx * dx + dy * dy + dz * dz;
+    }
+    if (cost < bestCost) {
+      bestCost = cost;
+      bestOff = off;
+    }
+  }
+  if (bestOff === 0) return ring;
+  const out: Vec3[] = [];
+  for (let j = 0; j < n; j++) out.push(ring[(j + bestOff) % n] ?? [0, 0, 0]);
+  return out;
+}
+
 function loftOp(
   module: ManifoldModule,
   wires: KernelShape[],
@@ -335,13 +368,21 @@ function loftOp(
     throw new Error('manifold: loft requires at least two profiles');
   }
   const sections = wires.map(profileCrossSection);
-  const m = sections[0]?.outline.length ?? 0;
-  const rings: Vec3[][] = sections.map((s) => {
-    if (s.outline.length !== m) {
-      throw new Error('manifold: loft profiles must share a vertex count for mesh skinning');
-    }
-    return placeRing(s, sectionFrame(s));
-  });
+  // Sections may have different vertex counts (e.g. a circle vs a rounded rect).
+  // Resample every outline to a shared count (the max, by arc length) so
+  // skinRings can connect them by index.
+  const target = sections.reduce((mx, s) => Math.max(mx, s.outline.length), 0);
+  const rings: Vec3[][] = sections.map((s) =>
+    placeRing({ ...s, outline: resampleClosed(s.outline, target) }, sectionFrame(s))
+  );
+  // Align correspondence: skinRings connects ring[i][j]→ring[i+1][j] by index, so
+  // each ring's start point must line up with the previous ring's. Rotate every
+  // ring to the cyclic offset that minimizes squared distance to its predecessor,
+  // otherwise dissimilar sections (circle→rect) skin into a twisted, low-volume
+  // solid.
+  for (let i = 1; i < rings.length; i++) {
+    rings[i] = alignRing(rings[i] ?? [], rings[i - 1] ?? []);
+  }
   const solid = skinRings(module, rings);
   return wrap(
     solid,

@@ -233,6 +233,53 @@ export function fanTriangulate(vertexCount: number): number[] {
  * in correspondence with the section's outline order. `scale` rescales the
  * outline about its frame origin (for tapered/draft sweeps and scale laws).
  */
+/**
+ * Upsample a closed 2D outline to exactly `n` points by KEEPING every original
+ * vertex and inserting extra points on the longest segments (proportional to
+ * length, largest-remainder allotment). Vertex-preserving so corners aren't
+ * rounded off — resampling a 4-point rectangle to 4 returns it unchanged. Used
+ * to give loft sections a common vertex count so {@link skinRings} can connect
+ * them by index; lofting profiles of different point counts (circle ↔ rounded
+ * rect) is otherwise impossible on the mesh kernel. `n < k` is not supported
+ * (callers pass `n = max` count), so it never downsamples.
+ */
+export function resampleClosed(outline: readonly Vec2[], n: number): Vec2[] {
+  const k = outline.length;
+  if (k < 2 || n <= k) return outline.map((p) => [p[0], p[1]] as Vec2);
+  const seg: number[] = [];
+  let total = 0;
+  for (let i = 0; i < k; i++) {
+    const a = outline[i] ?? [0, 0];
+    const b = outline[(i + 1) % k] ?? [0, 0];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    seg.push(l);
+    total += l;
+  }
+  if (total === 0) return outline.map((p) => [p[0], p[1]] as Vec2);
+  const extra = n - k;
+  // Largest-remainder: fractional share of `extra` per segment, by length.
+  const quota = seg.map((l) => (extra * l) / total);
+  const add = quota.map((q) => Math.floor(q));
+  let placed = add.reduce((s, v) => s + v, 0);
+  const rema = quota.map((q, i) => ({ i, f: q - Math.floor(q) })).sort((x, y) => y.f - x.f);
+  for (let r = 0; placed < extra; r++, placed++) {
+    const idx = rema[r % rema.length]?.i ?? 0;
+    add[idx] = (add[idx] ?? 0) + 1;
+  }
+  const out: Vec2[] = [];
+  for (let i = 0; i < k; i++) {
+    const a = outline[i] ?? [0, 0];
+    const b = outline[(i + 1) % k] ?? [0, 0];
+    out.push([a[0], a[1]]); // keep the original vertex
+    const inner = add[i] ?? 0;
+    for (let j = 1; j <= inner; j++) {
+      const t = j / (inner + 1);
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  return out;
+}
+
 export function placeRing(section: CrossSection, frame: SweepFrame, scale = 1): Vec3[] {
   return section.outline.map((p) => {
     const lx = p[0] * scale;
