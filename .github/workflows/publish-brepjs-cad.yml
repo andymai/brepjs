@@ -30,10 +30,18 @@ jobs:
 
       - run: npm ci
 
-      # The root `npm run build` is root-only; build the package explicitly so
-      # dist + viewer/dist are present even if prepack does not fire here.
-      - name: Build brepjs-cad
-        run: npm run build --workspace=brepjs-cad
+      # Restore the OCCT WASM the viewer build copies (gitignored).
+      - name: Restore WASM files
+        run: bash scripts/ensure-wasm.sh
+
+      # Build prerequisites first, mirroring the packages-cad CI job: the viewer
+      # worker imports `brepjs`, so the root lib + brepjs-viewer dist must exist
+      # before the brepjs-cad build (which also builds viewer/dist).
+      - name: Build brepjs-cad (root + viewer prerequisites)
+        run: |
+          npm run build
+          npm run build --workspace=brepjs-viewer
+          npm run build --workspace=brepjs-cad
 
       # Authenticates via OIDC trusted publisher (configured for this exact
       # workflow filename on npmjs.com -> brepjs-cad -> Trusted Publisher Mgmt).
