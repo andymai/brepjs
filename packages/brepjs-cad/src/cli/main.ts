@@ -3,10 +3,12 @@ import { Command } from 'commander';
 import { writeFileSync } from 'node:fs';
 import { resolve, join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { runPart } from '../verify/runPart.js';
 import { serializeReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
+import type { shoot as ShootFn } from '../snapshot/shoot.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
 // (Emscripten's default stdout sink). The CLI owns stdout for machine-readable JSON,
@@ -15,6 +17,17 @@ import { runDiff } from '../verify/diff.js';
 console.log = (...args: unknown[]) => {
   process.stderr.write(args.map(String).join(' ') + '\n');
 };
+
+export async function loadSnapshotShoot(): Promise<typeof ShootFn | undefined> {
+  try {
+    const mod = await import('../snapshot/shoot.js');
+    return mod.shoot;
+  } catch {
+    process.stderr.write('snapshots need puppeteer/Chrome — run: npm i puppeteer\n');
+    process.exitCode = 1;
+    return undefined;
+  }
+}
 
 const program = new Command();
 program.name('brepjs');
@@ -49,9 +62,11 @@ program
         writeFileSync(stepPath, Buffer.from(step));
       }
       if (opts.snapshot && stepPath) {
-        const { shoot } = await import('../snapshot/shoot.js'); // lazy: keeps puppeteer off the default path
-        const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
-        for (const p of pngs) process.stdout.write(p + '\n');
+        const shoot = await loadSnapshotShoot(); // lazy: keeps puppeteer off the default path
+        if (shoot) {
+          const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
+          for (const p of pngs) process.stdout.write(p + '\n');
+        }
       }
       process.stdout.write(json + '\n');
       const parsed = JSON.parse(json) as { ok: boolean };
@@ -84,4 +99,8 @@ program
     if (result.errors.length > 0) process.exitCode = 1;
   });
 
-void program.parseAsync();
+// Only drive the CLI when run as the entry script, so tests can import the
+// guarded loaders without commander parsing the test runner's argv.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void program.parseAsync();
+}

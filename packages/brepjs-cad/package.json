@@ -51,26 +51,28 @@
     "occt-wasm": ">=3.0.0"
   },
   "dependencies": {
-    "@react-three/drei": "*",
-    "@react-three/fiber": "*",
-    "brepjs-viewer": "*",
-    "commander": "^13.0.0",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "three": "0.184.0"
+    "commander": "^13.0.0"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^25.0.4"
   },
   "devDependencies": {
-    "@types/node": "*",
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
-    "@types/three": "0.184.1",
-    "@vitejs/plugin-react": "*",
-    "eslint": "*",
-    "puppeteer": "^25.0.0",
-    "tsx": "4.22.3",
-    "typescript": "*",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.184.1",
+    "@vitejs/plugin-react": "^6.0.2",
+    "brepjs-viewer": "^0.1.0",
+    "eslint": "^10.4.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "three": "^0.184.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
     "vite": "^8.0.0",
-    "vite-plugin-dts": "*",
+    "vite-plugin-dts": "^5.0.1",
     "vitest": "^4.0.0"
   }
 }
