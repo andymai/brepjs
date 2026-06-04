@@ -188,6 +188,9 @@ export function volume(shape: KernelShape): number {
 }
 
 export function area(shape: KernelShape): number {
+  // Native face witnesses (iterShapes) carry their own precomputed area.
+  const w = shape as { __nativeFace?: boolean; area?: number } | null;
+  if (w && w.__nativeFace && typeof w.area === 'number') return w.area;
   return solidOf(shape).surfaceArea() as number;
 }
 

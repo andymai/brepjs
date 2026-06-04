@@ -19,6 +19,7 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
 import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
 import { replay } from './replay.js';
+import { isNativeFace } from './nativeFaces.js';
 
 type Vec3 = [number, number, number];
 
@@ -116,16 +117,23 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
 
     // --- Exact surface queries: replay onto OCCT ---
     surfaceType: (face) => {
-      // Profile faces built by profileOps are planar by construction; answer
-      // natively so isPlanarFace() works without an OCCT replay (the placeholder
-      // handle is non-replayable).
+      // Native mesh faces (faceID groups) are planar; profile faces built by
+      // profileOps are planar by construction. Answer 'plane' natively so
+      // faceFinder.ofSurfaceType / isPlanarFace work without an OCCT replay.
+      if (isNativeFace(face)) return 'plane';
       const ms = asManifoldShape(face);
       if (ms && (ms.node as { op?: string }).op === 'profileFace') return 'plane';
       return viaOcct(face, (s, occt) => occt.surfaceType(s));
     },
-    uvBounds: (face) => viaOcct(face, (s, occt) => occt.uvBounds(s)),
+    // A native planar face has constant normal; uv is irrelevant. Return a unit
+    // square so normalAt()'s midpoint sampling stays well-defined.
+    uvBounds: (face) =>
+      isNativeFace(face)
+        ? { uMin: 0, uMax: 1, vMin: 0, vMax: 1 }
+        : viaOcct(face, (s, occt) => occt.uvBounds(s)),
     outerWire: (face) => viaOcct(face, (s, occt) => occt.outerWire(s)),
-    surfaceNormal: (face, u, v) => viaOcct(face, (s, occt) => occt.surfaceNormal(s, u, v)),
+    surfaceNormal: (face, u, v) =>
+      isNativeFace(face) ? face.normal : viaOcct(face, (s, occt) => occt.surfaceNormal(s, u, v)),
     pointOnSurface: (face, u, v) => viaOcct(face, (s, occt) => occt.pointOnSurface(s, u, v)),
     uvFromPoint: (face, point) => viaOcct(face, (s, occt) => occt.uvFromPoint(s, point)),
     projectPointOnFace: (face, point) =>
