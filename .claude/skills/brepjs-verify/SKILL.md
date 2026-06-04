@@ -14,7 +14,7 @@ Run every command as `npx -y brepjs-verify <subcommand> …` (or `brepjs-verify 
 1. **Brief.** Convert the request to explicit params: dimensions (mm), datums, features, assumptions. Don't ask the user for JSON.
 2. **Load only the reference you need** (index below) — not all at once.
 3. **Author `.brep.ts`** — `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `init <name>`. Edit *source*, never generated artifacts.
-4. **Declare intent.** Add `export const expected = { volume?, area?, bounds?, tolerancePct? }` from your brief. The CLI asserts it — this is how you prove the part is the *right* part, not just a valid one.
+4. **Declare intent.** Add an `expected` block from your brief, e.g. `export const expected = { volume: 24000, tolerancePct: 1 }`. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. The CLI asserts it — this is how you prove the part is the *right* part, not just a valid one.
 5. **Verify (type + geometry).** `verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `watch part.brep.ts`.
 6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion — convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
