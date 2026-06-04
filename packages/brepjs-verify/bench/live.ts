@@ -59,15 +59,24 @@ function extractModule(text: string): string {
   return (fence?.[1] ?? text).trim();
 }
 
+// Per-call abort: with adaptive thinking + 16K tokens a single author call can run
+// minutes; stream (avoids the SDK HTTP timeout on long outputs) and cap it so one
+// hung response can't stall the whole run.
+const CALL_TIMEOUT_MS = 300_000;
+
 async function authorPart(client: Anthropic, system: string, p: EvalPrompt, model: string): Promise<string> {
-  const response = await client.messages.create({
-    model,
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: p.prompt }],
-  });
-  const text = response.content
+  const stream = client.messages.stream(
+    {
+      model,
+      max_tokens: 16000,
+      thinking: { type: 'adaptive' },
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: p.prompt }],
+    },
+    { signal: AbortSignal.timeout(CALL_TIMEOUT_MS) }
+  );
+  const message = await stream.finalMessage();
+  const text = message.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map((b) => b.text)
     .join('');

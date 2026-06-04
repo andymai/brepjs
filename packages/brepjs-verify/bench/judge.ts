@@ -34,25 +34,28 @@ export async function judge(client: Anthropic, input: JudgeInput): Promise<Verdi
     },
   }));
 
-  const response = await client.messages.parse({
-    model: input.model,
-    max_tokens: 1024,
-    // Frozen across every prompt → cache it (prefix match; verify via cache_read_input_tokens).
-    system: [{ type: 'text', text: JUDGE_SYSTEM, cache_control: { type: 'ephemeral' } }],
-    messages: [
-      {
-        role: 'user',
-        content: [
-          ...images,
-          {
-            type: 'text',
-            text: `Request:\n${input.prompt}\n\nRubric (must be satisfied):\n${input.rubric}\n\nDoes the rendered part satisfy the request and rubric?`,
-          },
-        ],
-      },
-    ],
-    output_config: { format: zodOutputFormat(VERDICT) },
-  });
+  const response = await client.messages.parse(
+    {
+      model: input.model,
+      max_tokens: 1024,
+      // Frozen across every prompt → cache it (prefix match; verify via cache_read_input_tokens).
+      system: [{ type: 'text', text: JUDGE_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            ...images,
+            {
+              type: 'text',
+              text: `Request:\n${input.prompt}\n\nRubric (must be satisfied):\n${input.rubric}\n\nDoes the rendered part satisfy the request and rubric?`,
+            },
+          ],
+        },
+      ],
+      output_config: { format: zodOutputFormat(VERDICT) },
+    },
+    { signal: AbortSignal.timeout(120_000) }
+  );
 
   return response.parsed_output ?? { pass: false, reason: 'judge returned no parseable verdict' };
 }
