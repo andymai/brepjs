@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.65.0](https://github.com/andymai/brepjs/compare/brepjs-v18.64.0...brepjs-v18.65.0) (2026-06-04)
+
+
+### Features
+
+* **manifold:** full parity-suite green — rotate fix, empty-shape volume, documented divergences ([#1228](https://github.com/andymai/brepjs/issues/1228)) ([f9e9da3](https://github.com/andymai/brepjs/commit/f9e9da3ab67a803d8d7b3966c3a178b73b5a53b0))
+
 ## [18.64.0](https://github.com/andymai/brepjs/compare/brepjs-v18.63.0...brepjs-v18.64.0) (2026-06-04)
 
 
