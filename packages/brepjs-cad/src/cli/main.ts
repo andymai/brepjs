@@ -56,10 +56,8 @@ program
         step: wantStep,
         glb: Boolean(opts.glb),
       });
-      const json = serializeReport(report);
       let stepPath: string | undefined = opts.step;
       try {
-        if (opts.json) writeFileSync(opts.json, json);
         if (opts.glb && glb) writeFileSync(opts.glb, Buffer.from(glb));
 
         if (wantStep && step) {
@@ -83,7 +81,11 @@ program
         // --serve path stays running, so leaking here would persist for the server's lifetime).
         disposeShape(shape);
       }
-      process.stdout.write(serializeReport(report) + '\n');
+      // Serialize once after all artifact writes so the --json file and stdout
+      // reflect the same report (incl. any "artifact write failed" error).
+      const json = serializeReport(report);
+      if (opts.json) writeFileSync(opts.json, json);
+      process.stdout.write(json + '\n');
       if (!reportOk(report)) process.exitCode = 1;
       const willServe = Boolean(opts.serve) && stepPath !== undefined && reportOk(report);
       if (willServe && stepPath) {
