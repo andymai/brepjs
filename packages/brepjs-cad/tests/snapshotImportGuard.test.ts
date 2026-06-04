@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
 describe('snapshot dependency guard', () => {
   let stderr: string;
@@ -18,6 +18,10 @@ describe('snapshot dependency guard', () => {
     process.exitCode = undefined;
     vi.resetModules();
     vi.doUnmock('../src/snapshot/shoot.js');
+  });
+
+  afterAll(() => {
+    writeSpy.mockRestore();
   });
 
   it('prints a friendly message and sets a non-zero exit code when puppeteer is missing', async () => {
