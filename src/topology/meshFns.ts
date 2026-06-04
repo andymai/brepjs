@@ -135,8 +135,11 @@ export function mesh(
  */
 export function meshEdges(
   shape: AnyShape<Dimension>,
-  { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
+  opts: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
+  // Default deflection follows the active quality level (see mesh()).
+  const eq = qualityDeflection();
+  const { tolerance = eq.tolerance, angularTolerance = eq.angularTolerance, cache = true } = opts;
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
   const cacheKey = buildEdgeMeshCacheKey(tolerance, angularTolerance);
   if (cache) {
@@ -276,12 +279,11 @@ export function exportSTEP(shape: AnyShape<Dimension>): Result<Blob> {
  */
 export function exportSTL(
   shape: AnyShape<Dimension>,
-  {
-    tolerance = 1e-3,
-    angularTolerance = 0.1,
-    binary = false,
-  }: MeshOptions & { binary?: boolean } = {}
+  opts: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
+  // Default deflection follows the active quality level (see mesh()).
+  const sq = qualityDeflection();
+  const { tolerance = sq.tolerance, angularTolerance = sq.angularTolerance, binary = false } = opts;
   const unserializable = probeSerializable(shape, 'STL');
   if (unserializable) return err(unserializable);
   try {

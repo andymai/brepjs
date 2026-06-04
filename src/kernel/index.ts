@@ -137,9 +137,11 @@ export function withQuality<T extends Exclude<unknown, Promise<unknown>>>(
   fn: () => T
 ): T {
   const prevLevel = currentQuality();
-  setQualityState(level);
-  getKernel().setQuality?.(level);
   try {
+    // Inside the try so a throw from setQuality (or anywhere) still restores
+    // the prior level in `finally` — no permanently-corrupted global state.
+    setQualityState(level);
+    getKernel().setQuality?.(level);
     const result = fn();
     if (result instanceof Promise) {
       throw new Error(

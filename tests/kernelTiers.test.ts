@@ -65,6 +65,18 @@ describe('withQuality', () => {
     expect(currentQuality()).toBe('standard');
   });
 
+  it('restores quality even if the callback throws', () => {
+    expect(currentQuality()).toBe('standard');
+    expect(() =>
+      withKernel('occt', () =>
+        withQuality('fine', () => {
+          throw new Error('boom');
+        })
+      )
+    ).toThrow('boom');
+    expect(currentQuality()).toBe('standard');
+  });
+
   it('extract-time (occt): finer quality yields more triangles', () => {
     withKernel('occt', () => {
       const s = sphere(5);
