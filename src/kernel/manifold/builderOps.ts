@@ -74,7 +74,7 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     hullFromPoints,
     buildSolidFromFaces: () => notImplemented('buildSolidFromFaces'),
     makeNonPlanarFace: () => notImplemented('makeNonPlanarFace'),
-    addHolesInFace: () => notImplemented('addHolesInFace'),
+    addHolesInFace: (face, holeWires) => profile.addHolesInFace(face, holeWires),
     removeHolesFromFace: () => notImplemented('removeHolesFromFace'),
     makeFaceOnSurface: () => notImplemented('makeFaceOnSurface'),
     bsplineSurface: (points, rows, cols) =>

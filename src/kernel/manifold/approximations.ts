@@ -22,6 +22,8 @@ export type Vec3 = readonly [number, number, number];
 export interface CrossSection {
   /** Closed outline in the section's local 2D coordinates (no repeated last point). */
   readonly outline: Vec2[];
+  /** Inner contours (holes), CW-wound (opposite the outline) in section 2D coords. */
+  readonly holes?: Vec2[][];
   /** World-space origin of the section plane. */
   readonly origin: Vec3;
   /** Section local +X axis in world space (maps outline.x). */
@@ -102,6 +104,11 @@ export function ensureCCW(outline: Vec2[]): Vec2[] {
   return signedArea(outline) < 0 ? [...outline].reverse() : outline;
 }
 
+/** Force CW winding (used for holes, opposite the CCW outline). */
+export function ensureCW(outline: Vec2[]): Vec2[] {
+  return signedArea(outline) > 0 ? [...outline].reverse() : outline;
+}
+
 function readNodeParams(shape: ManifoldShape): Readonly<Record<string, unknown>> | undefined {
   const node = shape.node as { params?: Readonly<Record<string, unknown>> } | undefined;
   return node?.params;
@@ -126,12 +133,22 @@ export function profileCrossSection(profile: unknown): CrossSection {
   if (recorded && recorded.length >= 3) {
     const origin = (params?.['origin'] as Vec3 | undefined) ?? [0, 0, 0];
     const outline = ensureCCW(recorded.map((p) => [p[0], p[1]] as Vec2));
+    const holesRaw = params?.['holes'] as Vec2[][] | undefined;
+    const holes = holesRaw
+      ?.filter((h) => h.length >= 3)
+      .map((h) => ensureCW(h.map((p) => [p[0], p[1]] as Vec2)));
     if (params?.['xAxis'] && params['yAxis']) {
-      return { outline, origin, xAxis: params['xAxis'] as Vec3, yAxis: params['yAxis'] as Vec3 };
+      return {
+        outline,
+        holes,
+        origin,
+        xAxis: params['xAxis'] as Vec3,
+        yAxis: params['yAxis'] as Vec3,
+      };
     }
     const normal = (params?.['normal'] as Vec3 | undefined) ?? [0, 0, 1];
     const { xAxis, yAxis } = frameForNormal(normal);
-    return { outline, origin, xAxis, yAxis };
+    return { outline, holes, origin, xAxis, yAxis };
   }
 
   return crossSectionFromMesh(shape);

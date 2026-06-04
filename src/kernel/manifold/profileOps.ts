@@ -192,6 +192,7 @@ export interface ProfileBuilders {
   makeWire(edges: KernelShape[]): KernelShape;
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeFace(wire: KernelShape, planar?: boolean): KernelShape;
+  addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape;
   makePolygonFace(points: Vec3[]): KernelShape;
 }
 
@@ -246,6 +247,37 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
     return faceFromRing(ring, ms ? nodeOf(ms) : undefined);
   }
 
+  interface FaceParams {
+    outline?: Vec2[];
+    holes?: Vec2[][];
+    origin?: Vec3;
+    xAxis?: Vec3;
+    yAxis?: Vec3;
+  }
+
+  function addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape {
+    const fms = asManifoldShape(face);
+    const fp = (fms?.node as { params?: FaceParams } | undefined)?.params ?? {};
+    const origin = fp.origin ?? ZERO3;
+    const xAxis = fp.xAxis ?? [1, 0, 0];
+    const yAxis = fp.yAxis ?? [0, 1, 0];
+    const project = (p: Vec3): Vec2 => {
+      const rel = sub(p, origin);
+      return [dot(rel, xAxis), dot(rel, yAxis)];
+    };
+    const newHoles: Vec2[][] = [];
+    for (const hw of holeWires) {
+      const ring = ringOrPts(hw);
+      if (ring.length >= 3) newHoles.push(ring.map(project));
+    }
+    const holes = [...(fp.holes ?? []), ...newHoles];
+    const inputs = fms ? [nodeOf(fms), ...inputNodes(holeWires)] : inputNodes(holeWires);
+    return wrap(
+      PLACEHOLDER,
+      makeNode('profileFace', { outline: fp.outline ?? [], holes, origin, xAxis, yAxis }, inputs)
+    ) as KernelShape;
+  }
+
   function ellipsePts(
     center: Vec3,
     normal: Vec3,
@@ -286,6 +318,7 @@ export function makeProfileBuilders(_module: ManifoldModule): ProfileBuilders {
     makeWire: (edges) => wireFrom(edges),
     makeWireFromMixed: (items) => wireFrom(items),
     makeFace,
+    addHolesInFace,
     makePolygonFace: (points) => faceFromRing(points),
   };
 }

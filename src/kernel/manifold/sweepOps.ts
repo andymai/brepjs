@@ -279,7 +279,12 @@ function extrudeOp(
   const section = profileCrossSection(face);
   const dir = normalize3([direction[0], direction[1], direction[2]]);
   const height = length3([direction[0] * length, direction[1] * length, direction[2] * length]);
-  const base = module.Manifold.extrude([toPolygon(section)], height) as ManifoldOriented;
+  // Outer contour plus any holes (CW-wound) → manifold subtracts the holes.
+  const polygons: Array<[number, number]>[] = [
+    toPolygon(section),
+    ...(section.holes ?? []).map((h) => h.map((p) => [p[0], p[1]] as [number, number])),
+  ];
+  const base = module.Manifold.extrude(polygons, height) as ManifoldOriented;
   const solid = orientExtrusion(base, section, dir);
   return wrap(
     solid,
@@ -287,6 +292,7 @@ function extrudeOp(
       'extrude',
       {
         outline: section.outline,
+        holes: section.holes,
         origin: section.origin,
         xAxis: section.xAxis,
         yAxis: section.yAxis,
