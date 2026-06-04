@@ -58,14 +58,15 @@ program
 
       let stepPath: string | undefined = opts.step;
       if (wantStep && step) {
-        stepPath = opts.step ?? join(tmpdir(), `brepjs-agent-${basename(file)}.step`);
+        stepPath = opts.step ?? join(tmpdir(), `brepjs-cad-${basename(file)}.step`);
         writeFileSync(stepPath, Buffer.from(step));
       }
       if (opts.snapshot && stepPath) {
         const shoot = await loadSnapshotShoot(); // lazy: keeps puppeteer off the default path
         if (shoot) {
           const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
-          for (const p of pngs) process.stdout.write(p + '\n');
+          // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
+          for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
         }
       }
       process.stdout.write(json + '\n');
@@ -74,7 +75,7 @@ program
       if (opts.serve && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
         const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
-        process.stdout.write(`viewer: ${url}\n`);
+        process.stderr.write(`viewer: ${url}\n`);
       }
     },
   );
