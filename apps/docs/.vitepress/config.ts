@@ -67,6 +67,7 @@ export default withMermaid(
       siteTitle: 'brepjs',
       nav: [
         { text: 'Guide', link: '/introduction/why-brepjs' },
+        { text: 'Authoring with AI', link: '/agent/overview' },
         { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
         { text: 'Playground', link: '/playground', target: '_blank', rel: 'noopener noreferrer' },
         {
@@ -92,6 +93,16 @@ export default withMermaid(
             { text: 'Install & Initialize', link: '/getting-started/install' },
             { text: 'Your First Solid', link: '/getting-started/first-solid' },
             { text: 'Cheat Sheet', link: '/getting-started/cheat-sheet' },
+          ],
+        },
+        {
+          text: 'Authoring with AI',
+          items: [
+            { text: 'Overview', link: '/agent/overview' },
+            { text: 'The Verify Loop', link: '/agent/the-loop' },
+            { text: 'CLI Reference', link: '/agent/cli' },
+            { text: 'Examples', link: '/agent/examples' },
+            { text: 'Eval & Scorecard', link: '/agent/eval' },
           ],
         },
         {

@@ -103,6 +103,36 @@ Layer 0  kernel/, utils/                  WASM bindings
 
 Imports flow downward only. Boundaries are enforced in CI.
 
+## Authoring CAD with AI (brepjs-verify)
+
+[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) helps an AI agent (or you) author parametric CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry — so it writes a `.brep.ts` part, runs it on a real kernel, and reads a deterministic report instead of guessing from how the code reads. It ships as two cooperating pieces: a **Claude Code skill** (the authoring loop) and a **verification CLI** (validity + measured dimensions + multi-view snapshots + STEP export).
+
+Install both — they ride on two rails:
+
+```bash
+# 1. The skill — Claude Code plugin (delivered via this repo's marketplace)
+/plugin marketplace add andymai/brepjs
+/plugin install brepjs-verify@brepjs
+
+# 2. The runtime — the CLI the skill drives
+npm i -D brepjs-verify
+```
+
+`brepjs-verify` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory; inside an existing brepjs project it prefers your installed versions so verified parts match what you ship. A model is a module that default-exports a zero-arg function returning a shape:
+
+```typescript
+// bracket.brep.ts
+import { box } from 'brepjs';
+export const expected = { volume: 8000, tolerancePct: 1 }; // optional: assert intent
+export default () => box(40, 20, 10, { centered: true });
+```
+
+```bash
+npx -y brepjs-verify bracket.brep.ts --check --step bracket.step --json report.json
+```
+
+The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance), so it drops straight into CI or an agent loop. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, CLI reference, examples, and the measurement eval.
+
 ## Projects Using brepjs
 
 - [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool): Web-based layout generator for Gridfinity storage systems

@@ -8,6 +8,36 @@
 - **Function lookup table**: `docs/function-lookup.md` — alphabetical index mapping every symbol to its sub-path
 - **Which API guide**: `docs/which-api.md` — choosing between Sketcher, functional API, Drawing
 
+## Authoring with an AI Agent (brepjs-verify)
+
+If you are an LLM generating brepjs CAD, use `brepjs-verify` — a CLI that runs your model on a real kernel and returns a deterministic report. **Judge a part by the report, never by how the code reads.** Published on npm as `brepjs-verify`; the companion Claude Code skill installs via `/plugin marketplace add andymai/brepjs` then `/plugin install brepjs-verify@brepjs`.
+
+Install the runtime where `brepjs` resolves (it also bundles its own `brepjs` + `occt-wasm`, so it runs standalone):
+```bash
+npm i -D brepjs-verify
+```
+
+A model is a `.brep.ts` module: a default-exported zero-arg function returning a shape (or `Result<shape>`), optionally with an `expected` block that the CLI asserts:
+```ts
+import { box } from 'brepjs';
+export const expected = { volume: 8000, tolerancePct: 1 }; // optional: volume|area|bounds + tolerancePct
+export default () => box(40, 20, 10, { centered: true });
+```
+
+The loop, in order: brief → author `.brep.ts` → declare `expected` → `brepjs-verify verify part.brep.ts --check --json report.json` → review `--snapshot shots/` → repair the smallest responsible section → `--step part.step` and hand off. Use `npx -y brepjs-verify …` if not installed.
+
+The report (stdout JSON) is the source of truth:
+- `ok` — `true` only if valid AND every assertion passes. `false` → not done.
+- `checks` — kernel validity (manifold solid, positive volume). A failed check = broken geometry.
+- `measurements` — measured `volume`/`area`/`bounds`.
+- `assertions` — declared intent vs reality. A failed assertion = valid-but-wrong (off dimensions).
+- `hints` — actionable fix + next step keyed on an error `code`; read before guessing.
+- `errorInfos` — raw `{code,message}` failures (authoring/kernel/export). Cite the `code` when repairing.
+
+CLI subcommands: `verify <file>` (default; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`), `init <name>` (scaffold), `watch <file>`, `export <file>` (`--step`/`--glb`/`--stl`/`--all` behind a validity gate), `measure <a> [b]`, `diff <a> <b>`. Exits non-zero when not `ok`.
+
+Reliable first-try: primitives, booleans, 2D sketch → extrude, fillet/chamfer, shell/offset, transforms. Advanced (verify carefully, expect iteration): sweeps, lofts, revolves, multi-section, assemblies, text. Author parts in ESM (a CJS project needs `"type":"module"` or a `.mts` file); Node 24+ strips the part's types natively.
+
 ## Setup & Initialization
 
 Install:
