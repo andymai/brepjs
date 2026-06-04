@@ -19,11 +19,12 @@ describe('runPart --check (typecheck pre-pass)', () => {
   }, 30000);
 
   it('runs normally when --check passes for a well-typed part', async () => {
-    const { report, shape } = await runPart(fix('validBox.brep.ts'), { check: true });
+    const result = await runPart(fix('validBox.brep.ts'), { check: true });
+    using shape = result.shape; // live WASM handle — dispose so it doesn't leak into the worker
     expect(shape).not.toBeNull();
-    expect(report.shapeType).toBe('Solid');
-    expect(reportOk(report)).toBe(true);
-    expect(report.errorInfos.some((e) => e.code === TYPECHECK_CODE)).toBe(false);
+    expect(result.report.shapeType).toBe('Solid');
+    expect(reportOk(result.report)).toBe(true);
+    expect(result.report.errorInfos.some((e) => e.code === TYPECHECK_CODE)).toBe(false);
   }, 30000);
 
   it('without --check, executes a type-wrong part (type-strip + run, today’s behavior)', async () => {
