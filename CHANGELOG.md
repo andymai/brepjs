@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.66.1](https://github.com/andymai/brepjs/compare/brepjs-v18.66.0...brepjs-v18.66.1) (2026-06-05)
+
+
+### Bug Fixes
+
+* **manifold:** orient sketch extrudes by full plane basis, not just the axis ([#1234](https://github.com/andymai/brepjs/issues/1234)) ([e149751](https://github.com/andymai/brepjs/commit/e149751e9a583248e08ede39ff9c6830c44acb86))
+
 ## [18.66.0](https://github.com/andymai/brepjs/compare/brepjs-v18.65.0...brepjs-v18.66.0) (2026-06-05)
 
 
