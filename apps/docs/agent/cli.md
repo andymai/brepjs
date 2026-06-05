@@ -91,4 +91,4 @@ Each declared field appears in `report.assertions` as `{ name, expected, actual,
 ## Next steps
 
 - [The Verify Loop](./the-loop) — how to use these commands as a workflow
-- [Eval & Scorecard](./eval) — the measurement flywheel
+- [Eval & Scorecard](./eval) — how the skill measures itself

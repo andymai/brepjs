@@ -96,16 +96,6 @@ export default withMermaid(
           ],
         },
         {
-          text: 'Authoring with AI',
-          items: [
-            { text: 'Overview', link: '/agent/overview' },
-            { text: 'The Verify Loop', link: '/agent/the-loop' },
-            { text: 'CLI Reference', link: '/agent/cli' },
-            { text: 'Examples', link: '/agent/examples' },
-            { text: 'Eval & Scorecard', link: '/agent/eval' },
-          ],
-        },
-        {
           text: 'Core Concepts',
           items: [
             { text: 'B-Rep vs Mesh', link: '/concepts/brep-vs-mesh' },
@@ -139,6 +129,16 @@ export default withMermaid(
             { text: 'Web Workers', link: '/advanced/workers' },
             { text: 'Healing & Sewing', link: '/advanced/healing' },
             { text: 'CSG Caching & Optimization', link: '/advanced/csg-caching' },
+          ],
+        },
+        {
+          text: 'Authoring with AI',
+          items: [
+            { text: 'Overview', link: '/agent/overview' },
+            { text: 'The Verify Loop', link: '/agent/the-loop' },
+            { text: 'CLI Reference', link: '/agent/cli' },
+            { text: 'Examples', link: '/agent/examples' },
+            { text: 'Eval & Scorecard', link: '/agent/eval' },
           ],
         },
         {

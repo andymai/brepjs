@@ -1,41 +1,54 @@
 ---
 title: Authoring CAD with AI
-description: 'brepjs-verify is an agent skill plus a verification CLI that turns natural-language part requirements into valid brepjs solids — type-checked, measured against intent, and snapshot-reviewed before handoff.'
+description: 'brepjs-verify lets an AI agent author parametric CAD in brepjs and prove it is correct — type-checked, measured against intent, and snapshot-reviewed — before handing off STEP.'
 ---
 
 # Authoring CAD with AI
 
-[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) lets an AI agent author parametric CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry — so it writes a `.brep.ts` part, runs it against a real OpenCascade kernel, and reads the deterministic report instead of guessing from how the code looks.
+Ask for a part in plain English. The agent writes it, runs it on a real CAD kernel, and proves it is correct before handing it back.
 
-It ships as **two cooperating pieces**:
+```
+   "a 40×20×10 mm bracket with two M4 holes"
+                  │  agent writes bracket.brep.ts and runs
+                  ▼  it on a real OpenCascade kernel
+   ────────────────────────────────────────────────────
+   ✓ valid solid       ✓ volume ≈ 7,750 mm³ (within 1%)
+   ✓ snapshots rendered    →  bracket.step ready to hand off
+```
 
-- **The skill** — a Claude Code plugin that teaches the agent the authoring loop (brief → author → verify → repair). It carries the API references, examples, and discipline. This is the _brain_.
-- **The runtime** — the `brepjs-verify` CLI the skill drives. It loads the part on a real kernel, checks validity, measures volume/area/bounds, renders snapshots, and exports STEP. This is the _hands_.
+An LLM can't see geometry. Code that reads correctly can still produce a solid that is broken, empty, or simply the wrong size — and the model has no way to notice. [`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) takes the guesswork out: the agent writes the part, runs it against a real kernel, and reads back what the kernel actually measured instead of judging the code by eye.
 
-You install both — they ride on two different rails because Claude Code discovers skills from plugins (a git marketplace), never from `node_modules`, while the runtime must live where your project's `brepjs` resolves.
+## What it checks
 
-## Why a verify loop
+Every part gets three independent verdicts, so a pass means more than "the code ran":
 
-The kernel is the only honest judge of a B-Rep model. Code that reads correctly can still produce a non-manifold solid, a zero-volume shape, or a part that is valid but the wrong size. `brepjs-verify` collapses that uncertainty into a single machine-readable verdict:
+- **Validity** — is it a real manifold solid with positive volume? (the kernel's `validSolid` brand)
+- **Intent** — does it match the dimensions you asked for? (`measureVolume` / `measureArea` / bounds vs an `expected` block)
+- **Shape** — does it actually look like the request? (multi-view PNG snapshots, for the agent or you to review)
 
-- **Validity** — is it a real manifold solid with positive volume? (kernel `validSolid` brand)
-- **Intent** — does it match the declared dimensions? (`measureVolume`/`measureArea`/bounds vs an `expected` block)
-- **Shape** — does the render match the request? (multi-view PNG snapshots, for the agent or a human to review)
+STEP is the validated deliverable; GLB, STL, and snapshots are derived previews.
 
-STEP is the validated primary deliverable; GLB/STL/snapshots are derived previews.
+## What you install
 
-## Install — the skill (Claude Code plugin)
+`brepjs-verify` is two parts that work together:
 
-The skill is delivered through the brepjs plugin marketplace, which is just this git repo. Add the marketplace once, then install the plugin:
+- **The skill** teaches the agent the workflow — brief → author → verify → repair — and carries the API references and examples it learns from.
+- **The runtime** is the CLI the skill drives. It loads your part on a real kernel, checks validity, measures volume / area / bounds, renders snapshots, and exports STEP.
+
+They install separately because Claude Code loads skills from plugins (a git marketplace), while the runtime has to live wherever your project's `brepjs` resolves. You install both once and never think about it again.
+
+### Install the skill (Claude Code plugin)
+
+The skill ships through the brepjs plugin marketplace — which is just this git repo. Add the marketplace once, then install the plugin:
 
 ```
 /plugin marketplace add andymai/brepjs
 /plugin install brepjs-verify@brepjs
 ```
 
-Claude Code now knows the authoring workflow and will invoke the CLI on your behalf. There is no npm step for the skill — plugins are not loaded from `node_modules`.
+Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill — plugins aren't loaded from `node_modules`.
 
-## Install — the runtime (npm)
+### Install the runtime (npm)
 
 Add the CLI to the project where you want parts verified:
 
@@ -43,11 +56,11 @@ Add the CLI to the project where you want parts verified:
 npm i -D brepjs-verify
 ```
 
-That's the whole install. `brepjs-verify` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory with nothing else installed. **In an existing brepjs project** it automatically prefers your locally installed `brepjs` and kernel (via a Node module-resolution hook), so your verified parts bind to the exact version you ship — no version skew between what you verify and what you build.
+That's the whole install. `brepjs-verify` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory with nothing else set up. **In an existing brepjs project** it automatically prefers your locally installed `brepjs` and kernel (via a Node module-resolution hook), so your verified parts bind to the exact version you ship — no drift between what you verify and what you build.
 
-The runtime initializes **occt-wasm** as its sole kernel (`OcctKernel.init()` + `registerKernel`), not the auto-detect fallback chain — so verification results are reproducible on one known engine.
+It runs **occt-wasm** as its only kernel, rather than the auto-detect fallback chain, so verification results are reproducible on one known engine.
 
-You can also run it without installing, straight from npm:
+Prefer not to install anything? Run it straight from npm:
 
 ```bash
 npx -y brepjs-verify part.brep.ts
@@ -66,7 +79,7 @@ import { box } from 'brepjs';
 export default () => box(40, 20, 10, { centered: true });
 ```
 
-Optionally declare intent with an `expected` block — the CLI asserts it, so you prove the part is the _right_ part, not merely a valid one:
+Declare intent with an `expected` block and the CLI asserts it — so you prove the part is the _right_ part, not just a valid one:
 
 <!-- @no-test -->
 
@@ -96,9 +109,13 @@ npx -y brepjs-verify verify bracket/bracket.brep.ts --step bracket.step
 
 The command exits non-zero whenever the report is not `ok`, so it drops straight into CI or an agent loop.
 
+## Why I built this
+
+I write CAD as code, but I can't trust an agent to write it blind — and neither can the agent. Geometry that reads fine on the page is constantly wrong in ways only the kernel can see: a boolean that didn't overlap, a fillet that collapsed a face, a part that's valid but 3 mm too tall. So I gave the agent the one thing it was missing: a way to run the part, measure it, look at it, and find out the truth before claiming it's done. That loop is the whole idea — the rest is plumbing.
+
 ## Next steps
 
 - [The Verify Loop](./the-loop) — the author → verify → repair workflow and how to read the report
 - [CLI Reference](./cli) — every subcommand, flag, and exit code
-- [Examples](./examples) — the few-shot gallery the skill learns from
-- [Eval & Scorecard](./eval) — the measurement flywheel that proves the skill
+- [Examples](./examples) — the example gallery the skill learns from
+- [Eval & Scorecard](./eval) — how the skill measures itself and stays honest

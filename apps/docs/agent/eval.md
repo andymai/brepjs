@@ -1,11 +1,11 @@
 ---
 title: Eval & Scorecard
-description: 'How brepjs-verify measures itself — a deterministic replay that gates CI, plus an opt-in live flywheel that sends natural-language prompts to a model under the deployed skill and scores validity + visual intent.'
+description: 'How brepjs-verify measures itself — a deterministic replay that gates CI, plus an opt-in live eval that sends natural-language prompts to a model under the deployed skill and scores validity + visual intent.'
 ---
 
 # Eval & Scorecard
 
-`brepjs-verify` measures itself two ways: a **deterministic replay** that runs in CI, and an opt-in **live flywheel** that exercises the actual skill against a real model. Together they keep the skill honest as brepjs and the kernel evolve.
+A verify loop is only as good as you can prove it is. `brepjs-verify` measures itself two ways: a **deterministic replay** that runs in CI, and an opt-in **live eval** that exercises the actual skill against a real model. Together they keep the skill honest as brepjs and the kernel evolve.
 
 ## Deterministic eval (CI gate)
 
@@ -17,7 +17,7 @@ npm run eval
 
 It is fully deterministic — **no LLM, no API key** — so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an _intentional_ geometry change; an unintentional change surfaces as a failure.
 
-## Live eval — the flywheel (`eval:live`)
+## Live eval (`eval:live`)
 
 This is how you measure the skill itself, not just the geometry. It sends ~18 natural-language part prompts (`bench/prompts.ts`) to a real model — using the **deployed `SKILL.md` as the system prompt**, so it measures exactly what an agent sees — then verifies each generated part two ways:
 
