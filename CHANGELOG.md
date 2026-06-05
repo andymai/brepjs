@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.66.0](https://github.com/andymai/brepjs/compare/brepjs-v18.65.0...brepjs-v18.66.0) (2026-06-05)
+
+
+### Features
+
+* **kernel:** capability flags + quality tiers (preview/exact ergonomics) ([#1230](https://github.com/andymai/brepjs/issues/1230)) ([59a751b](https://github.com/andymai/brepjs/commit/59a751b78eea4784b8aca3ecbfde978b0765d237))
+
 ## [18.65.0](https://github.com/andymai/brepjs/compare/brepjs-v18.64.0...brepjs-v18.65.0) (2026-06-04)
 
 
