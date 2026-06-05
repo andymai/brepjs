@@ -47,9 +47,9 @@ export interface EdgeMesh {
 
 /** Shared options for meshing operations. */
 export interface MeshOptions {
-  /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
+  /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active quality level. */
   tolerance?: number;
-  /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
+  /** Angular deflection tolerance in radians. Smaller = finer mesh on curved surfaces. Defaults to the active quality level. */
   angularTolerance?: number;
   /** Abort signal to cancel mesh generation between face iterations. */
   signal?: AbortSignal;
@@ -74,10 +74,10 @@ export function mesh(
 ): ShapeMesh {
   // Unspecified deflection defaults to the active quality level (see
   // withQuality / withTier). 'standard' reproduces the historical 1e-3 / 0.1.
-  const q = qualityDeflection();
+  const quality = qualityDeflection();
   const {
-    tolerance = q.tolerance,
-    angularTolerance = q.angularTolerance,
+    tolerance = quality.tolerance,
+    angularTolerance = quality.angularTolerance,
     skipNormals = false,
     includeUVs = false,
     cache = true,
@@ -138,8 +138,12 @@ export function meshEdges(
   opts: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
   // Default deflection follows the active quality level (see mesh()).
-  const eq = qualityDeflection();
-  const { tolerance = eq.tolerance, angularTolerance = eq.angularTolerance, cache = true } = opts;
+  const quality = qualityDeflection();
+  const {
+    tolerance = quality.tolerance,
+    angularTolerance = quality.angularTolerance,
+    cache = true,
+  } = opts;
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
   const cacheKey = buildEdgeMeshCacheKey(tolerance, angularTolerance);
   if (cache) {
@@ -282,8 +286,12 @@ export function exportSTL(
   opts: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
   // Default deflection follows the active quality level (see mesh()).
-  const sq = qualityDeflection();
-  const { tolerance = sq.tolerance, angularTolerance = sq.angularTolerance, binary = false } = opts;
+  const quality = qualityDeflection();
+  const {
+    tolerance = quality.tolerance,
+    angularTolerance = quality.angularTolerance,
+    binary = false,
+  } = opts;
   const unserializable = probeSerializable(shape, 'STL');
   if (unserializable) return err(unserializable);
   try {
