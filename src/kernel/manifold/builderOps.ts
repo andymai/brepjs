@@ -32,6 +32,30 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     );
   }
 
+  function makeCompound(shapes: KernelShape[]): KernelShape {
+    // Mesh CSG has no non-fused grouping, so an n-ary union is the closest
+    // valid semantic. Disjoint members (the common case — pattern compounds)
+    // become a multi-component manifold, geometrically identical to an OCCT
+    // compound; overlapping members merge, which downstream booleans can't
+    // distinguish anyway (cutting by a compound ≡ cutting by the union of its
+    // members). What this can't support is iterating members back out as
+    // separate sub-shapes.
+    const operands = shapes.map((s) => unwrap(s));
+    const first = operands[0];
+    if (!first) {
+      notImplemented('makeCompound (no input shapes on manifold kernel)');
+    }
+    const solid = operands.length === 1 ? first : Manifold.union(operands);
+    return wrap(
+      solid,
+      makeNode(
+        'makeCompound',
+        {},
+        shapes.map((s) => nodeOf(s))
+      )
+    );
+  }
+
   function sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape {
     // Manifold meshes are already watertight solids; sewing is the identity over
     // the incoming solid. We accept a single operand and record the intent so an
@@ -69,7 +93,7 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     makeHelixWire: (pitch, height, radius, center, direction, leftHanded) =>
       profile.makeHelixWire(pitch, height, radius, center, direction, leftHanded),
     makeWireFromMixed: (items) => profile.makeWireFromMixed(items),
-    makeCompound: () => notImplemented('makeCompound'),
+    makeCompound,
     solidFromShell: () => notImplemented('solidFromShell'),
     hull,
     hullFromPoints,

@@ -236,10 +236,13 @@ export function composeTransform(
 ): { handle: KernelType; dispose: () => void } {
   let acc = identityMatrix();
   for (const o of ops) {
+    // Unlike kernel `rotate` (radians), the `composeTransform` boundary is
+    // degrees: the OCCT adapters convert per-op internally, so this one must
+    // too or composed placements land at radian-sized angles.
     const step =
       o.type === 'translate'
         ? translationMatrix(o.x, o.y, o.z)
-        : rotationMatrix(o.angle, o.axis ?? [0, 0, 1], o.center ?? [0, 0, 0]);
+        : rotationMatrix((o.angle * Math.PI) / 180, o.axis ?? [0, 0, 1], o.center ?? [0, 0, 0]);
     acc = multiplyMatrix(step, acc);
   }
   return { handle: acc as KernelType, dispose: () => {} };
@@ -270,7 +273,9 @@ export function circularPattern(
 ): KernelShape[] {
   const results: KernelShape[] = [shape];
   for (let i = 1; i < count; i++) {
-    results.push(rotate(shape, angleStep * i, axis, center));
+    // `circularPattern` receives degrees (matching the OCCT adapters); kernel
+    // `rotate` expects radians.
+    results.push(rotate(shape, (angleStep * i * Math.PI) / 180, axis, center));
   }
   return results;
 }
@@ -310,7 +315,8 @@ export function transformBatch(entries: TransformEntry[]): KernelShape[] {
       case 'translate':
         return translate(e.shape, e.x, e.y, e.z);
       case 'rotate':
-        return rotate(e.shape, e.angle, e.axis, e.center);
+        // Batch entries carry degrees (the OCCT adapters convert per-entry).
+        return rotate(e.shape, (e.angle * Math.PI) / 180, e.axis, e.center);
       case 'scale':
         return scale(e.shape, e.center, e.factor);
       case 'mirror':
