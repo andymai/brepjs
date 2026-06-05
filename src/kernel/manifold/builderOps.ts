@@ -43,7 +43,7 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
     const operands = shapes.map((s) => unwrap(s));
     const first = operands[0];
     if (!first) {
-      notImplemented('makeCompound (no input shapes on manifold kernel)');
+      throw new Error('manifold: makeCompound requires at least one input shape');
     }
     const solid = operands.length === 1 ? first : Manifold.union(operands);
     return wrap(

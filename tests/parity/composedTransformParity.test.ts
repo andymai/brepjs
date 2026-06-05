@@ -61,8 +61,8 @@ function placed(ops: TransformOp[]) {
 }
 
 describe('composed-transform parity (manifold vs occt)', () => {
-  it('rotate inside composeTransforms is degrees on both kernels', () => {
-    if (!haveManifold) return;
+  it('rotate inside composeTransforms is degrees on both kernels', (ctx) => {
+    if (!haveManifold) return ctx.skip();
     const build = () =>
       bounds(
         mesh(
@@ -80,8 +80,8 @@ describe('composed-transform parity (manifold vs occt)', () => {
     }
   });
 
-  it('chained rotates compose in the same order on both kernels', () => {
-    if (!haveManifold) return;
+  it('chained rotates compose in the same order on both kernels', (ctx) => {
+    if (!haveManifold) return ctx.skip();
     const build = () =>
       bounds(
         mesh(
@@ -101,8 +101,8 @@ describe('composed-transform parity (manifold vs occt)', () => {
     }
   });
 
-  it('wall-pattern shaped cut (hex prism compound) removes material on both kernels', () => {
-    if (!haveManifold) return;
+  it('wall-pattern shaped cut (hex prism compound) removes material on both kernels', (ctx) => {
+    if (!haveManifold) return ctx.skip();
     // Mirrors gridfinity's honeycomb path: hex prisms extruded on XY, placed
     // onto a vertical wall via composeTransforms + transformCopy, grouped with
     // compound(), then cut from the wall solid.
@@ -137,8 +137,8 @@ describe('composed-transform parity (manifold vs occt)', () => {
     expect(manifold).toBeCloseTo(occt, 0);
   });
 
-  it('circularPattern spreads copies over degrees on both kernels', () => {
-    if (!haveManifold) return;
+  it('circularPattern spreads copies over degrees on both kernels', (ctx) => {
+    if (!haveManifold) return ctx.skip();
     const build = () =>
       bounds(
         mesh(unwrap(circularPattern(translate(makeBaseBox(2, 2, 2), 8, 0, 0), [0, 0, 1], 4, 270)), {
