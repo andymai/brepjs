@@ -37,7 +37,11 @@ import {
   sub,
 } from './approximations.js';
 
-type ManifoldOriented = { rotate(r: Vec3): unknown; translate(t: Vec3): unknown };
+type ManifoldOriented = {
+  rotate(r: Vec3): unknown;
+  translate(t: Vec3): unknown;
+  transform(m: number[]): unknown;
+};
 type ManifoldMeshLike = { numProp: number; vertProperties: Float32Array };
 
 const RAD_PER_DEG = Math.PI / 180;
@@ -170,18 +174,27 @@ export function orientExtrusion(
   section: CrossSection,
   dir: Vec3
 ): ManifoldOriented {
-  let placed = solid;
-  const alignedZ = Math.abs(dir[0]) < 1e-9 && Math.abs(dir[1]) < 1e-9 && dir[2] > 0;
-  if (!alignedZ) {
-    const pitch = Math.atan2(Math.hypot(dir[0], dir[1]), dir[2]) * (180 / Math.PI);
-    const yaw = Math.atan2(dir[1], dir[0]) * (180 / Math.PI);
-    placed = placed.rotate([0, pitch, yaw]) as ManifoldOriented;
-  }
+  // The base is built in manifold-local space: the outline lives in XY (local
+  // x = outline.x, local y = outline.y) extruded along +Z. Re-base it onto the
+  // section's world frame with a full basis transform — manifold X→xAxis,
+  // Y→yAxis, Z→extrude dir — then translate to the plane origin.
+  //
+  // A basis transform (not an Euler rotate) is required: the previous rotate
+  // aligned ONLY the extrude axis to `dir` and left the in-plane (x,y) axes at
+  // their defaults, so any sketch on a non-XY plane was mis-oriented — e.g. a
+  // 'YZ' scoop ramp landed mirrored below Z=0. Manifold's Mat4 is column-major
+  // (cols 0-2 = where local X/Y/Z map, col 3 = translation).
+  const x = section.xAxis;
+  const y = section.yAxis;
   const o = section.origin;
-  if (o[0] !== 0 || o[1] !== 0 || o[2] !== 0) {
-    placed = placed.translate([o[0], o[1], o[2]]) as ManifoldOriented;
-  }
-  return placed;
+  // prettier-ignore
+  const matrix = [
+    x[0], x[1], x[2], 0,
+    y[0], y[1], y[2], 0,
+    dir[0], dir[1], dir[2], 0,
+    o[0], o[1], o[2], 1,
+  ];
+  return solid.transform(matrix) as ManifoldOriented;
 }
 
 /**
