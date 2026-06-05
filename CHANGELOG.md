@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.66.2](https://github.com/andymai/brepjs/compare/brepjs-v18.66.1...brepjs-v18.66.2) (2026-06-05)
+
+
+### Bug Fixes
+
+* **manifold:** degree contract for composed transforms + implement makeCompound ([#1236](https://github.com/andymai/brepjs/issues/1236)) ([75c9681](https://github.com/andymai/brepjs/commit/75c96811ed34934dec9651b3aeb65ddc2b8914ae))
+
 ## [18.66.1](https://github.com/andymai/brepjs/compare/brepjs-v18.66.0...brepjs-v18.66.1) (2026-06-05)
 
 
