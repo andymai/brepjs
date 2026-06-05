@@ -36,12 +36,14 @@ describe.skipIf(!RUN_VOXEL_PARITY)('SPEC: voxel union agrees with the exact OCCT
     const a = box(10, 10, 10);
     const b = translate(box(10, 10, 10), [5, 0, 0]);
 
-    const occtVol = unwrap(measureVolume(unwrap(fuse(a, b))));
+    // Fuse once; reuse for both the exact-volume check and the Hausdorff reference.
+    const fused = unwrap(fuse(a, b));
+    const occtVol = unwrap(measureVolume(fused));
     const voxUnion = unwrap(voxelBoolean(meshInputOf(a), meshInputOf(b), 'union', opts));
 
     expect(relErr(meshVolume(voxUnion), occtVol)).toBeLessThan(0.03);
 
-    const ref = kernelMeshOf(unwrap(fuse(a, b)), 0.2);
+    const ref = kernelMeshOf(fused, 0.2);
     const h = hausdorff(voxUnion, ref);
     // Union spans 15mm on its longest axis; allow the surface to sit within
     // ~3 voxels of the exact B-rep (Surface Nets is staircase-ish on flats).

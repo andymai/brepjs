@@ -95,13 +95,15 @@ describe.skipIf(!RUN_VOXEL_PARITY)(
         });
 
         // DOCUMENTED DIVERGENCE: not a 2-manifold guarantee — a regression bound.
-        it('keeps degenerate + non-manifold triangles within the documented band', () => {
+        // Degenerate triangles and non-manifold edges are different units, so
+        // bound each independently (both normalized by triangle count) rather
+        // than summing them.
+        it('keeps degenerate triangles + non-manifold edges within the documented band', () => {
           const out = outs.get(name);
           if (!out) return;
           const top = meshTopology(out);
-          expect((top.degenerateTriangles + top.nonManifoldEdges) / top.triangleCount).toBeLessThan(
-            VOXEL.badTriFraction
-          );
+          expect(top.degenerateTriangles / top.triangleCount).toBeLessThan(VOXEL.badTriFraction);
+          expect(top.nonManifoldEdges / top.triangleCount).toBeLessThan(VOXEL.badTriFraction);
         });
       });
     }
