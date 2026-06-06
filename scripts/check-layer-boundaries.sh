@@ -16,7 +16,9 @@ if [[ "${1:-}" == "--staged" ]]; then
   STAGED_ONLY=true
 fi
 
-SRC_DIR="src"
+# Scan root is overridable (default "src") so the enforcement itself can be
+# exercised against throwaway fixtures without touching the real tree.
+SRC_DIR="${BOUNDARY_SRC_DIR:-src}"
 ERRORS=()
 
 # Map directory to layer number
@@ -34,8 +36,8 @@ get_layer() {
 # Get top-level src directory from a file path
 get_src_dir() {
   local filepath="$1"
-  # Strip src/ prefix and get first directory component
-  local relative="${filepath#src/}"
+  # Strip the scan-root prefix and get first directory component
+  local relative="${filepath#"$SRC_DIR"/}"
   echo "${relative%%/*}"
 }
 
@@ -69,7 +71,7 @@ resolve_import_dir() {
     local combined="$source_dir/$import_path"
     # Normalize path
     resolved=$(python3 -c "import os.path; print(os.path.normpath('$combined'))" 2>/dev/null || echo "")
-    resolved="${resolved#src/}"
+    resolved="${resolved#"$SRC_DIR"/}"
   fi
 
   # Get the top-level directory
