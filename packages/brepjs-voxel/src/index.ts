@@ -16,6 +16,7 @@ export type VoxelEngine = Pick<
   | 'offset_mesh'
   | 'shell_mesh'
   | 'voxel_boolean'
+  | 'VoxelField'
   | 'version'
 >;
 
@@ -56,6 +57,7 @@ export async function loadVoxelEngine(): Promise<VoxelEngine> {
     offset_mesh: wasm.offset_mesh,
     shell_mesh: wasm.shell_mesh,
     voxel_boolean: wasm.voxel_boolean,
+    VoxelField: wasm.VoxelField,
     version: wasm.version,
   };
   return _engine;

@@ -370,16 +370,13 @@ pub fn shell_mesh(
     })
 }
 
-/// Robust CSG boolean of two meshes via voxelized SDFs. Voxelize both meshes over
-/// a shared grid sized to their UNION bbox, combine by `op`
-/// (0=union, 1=intersection, 2=difference A−B), then Surface-Nets contour.
-///
-/// `verts_a`/`verts_b`: flat xyz; `tris_a`/`tris_b`: flat vertex indices.
-/// Errors (as a JS exception) on an unknown `op` tag, a dim mismatch, or a grid
-/// over the voxel cap.
-#[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn voxel_boolean(
+/// Co-register two meshes onto ONE shared grid sized to their UNION bbox and
+/// combine by `op` (0=union, 1=intersection, 2=difference A−B). This is the only
+/// correct way to boolean two independently-described meshes: a single grid means
+/// one origin/spacing/dims, so the elementwise SDF blend operates in a single
+/// coordinate frame. Returns the combined dense [`Grid`]. Rejects `op > 2`; a
+/// grid over the dense voxel cap surfaces as the `Grid::for_bounds` error.
+fn voxel_boolean_grid(
     verts_a: &[f32],
     tris_a: &[u32],
     verts_b: &[f32],
@@ -387,7 +384,7 @@ pub fn voxel_boolean(
     op: u32,
     resolution: u32,
     padding: u32,
-) -> Result<RepairResult, JsError> {
+) -> Result<Grid, JsError> {
     if op > 2 {
         return Err(JsError::new(&format!("unknown boolean op: {op}")));
     }
@@ -415,12 +412,35 @@ pub fn voxel_boolean(
     let mut grid_b = grid_a.same_shape();
     ops::voxelize_mesh(&mut grid_b, &mesh_b);
 
-    let combined = match op {
+    match op {
         0 => ops::voxel_union(&grid_a, &grid_b),
         1 => ops::voxel_intersection(&grid_a, &grid_b),
         _ => ops::voxel_difference(&grid_a, &grid_b),
     }
-    .map_err(|e| JsError::new(&format!("voxel boolean failed: {e:?}")))?;
+    .map_err(|e| JsError::new(&format!("voxel boolean failed: {e:?}")))
+}
+
+/// Robust CSG boolean of two meshes via voxelized SDFs. Voxelize both meshes over
+/// a shared grid sized to their UNION bbox, combine by `op`
+/// (0=union, 1=intersection, 2=difference A−B), then Surface-Nets contour.
+///
+/// `verts_a`/`verts_b`: flat xyz; `tris_a`/`tris_b`: flat vertex indices.
+/// Errors (as a JS exception) on an unknown `op` tag, a dim mismatch, or a grid
+/// over the voxel cap.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn voxel_boolean(
+    verts_a: &[f32],
+    tris_a: &[u32],
+    verts_b: &[f32],
+    tris_b: &[u32],
+    op: u32,
+    resolution: u32,
+    padding: u32,
+) -> Result<RepairResult, JsError> {
+    let combined = voxel_boolean_grid(
+        verts_a, tris_a, verts_b, tris_b, op, resolution, padding,
+    )?;
 
     let out = contour::surface_nets_mesh(&combined);
 
@@ -429,6 +449,189 @@ pub fn voxel_boolean(
         normals: out.normals,
         indices: out.indices,
     })
+}
+
+/// A persistent dense voxel field for same-grid op chains: voxelize a mesh once,
+/// then boolean / offset / shell / reinit IN PLACE on the kept grid, and contour
+/// it once at the end. The value-returning free functions above re-voxelize and
+/// re-contour on every call; this handle keeps one grid so an offset/shell after
+/// a boolean is both cheaper AND correct (it reinitializes the drifted gradient).
+///
+/// Dense-only (v1): the persistent path wraps the dense [`Grid`] only, matching
+/// boolean's dense-only scope. A grid whose bounds exceed the dense budget is
+/// rejected at construction. wasm-bindgen auto-generates `.free()` (the struct
+/// owns the grid's `Vec<f32>`).
+#[wasm_bindgen]
+pub struct VoxelField {
+    grid: Grid,
+    /// Whether φ has drifted off a true SDF (|∇φ| != 1 away from the surface).
+    /// A boolean sets it; offset/shell auto-reinitialize when it is set, then
+    /// clear it. A fresh voxelization is a true banded SDF, so it starts clean.
+    dirty: bool,
+}
+
+#[wasm_bindgen]
+impl VoxelField {
+    /// Voxelize a mesh into a persistent dense field sized to its bbox. Mirrors
+    /// `offset_mesh`'s voxelize path (bbox → `Grid::for_bounds` → banded SDF) but
+    /// stops before contour and keeps the grid. The result IS a true banded SDF,
+    /// so `dirty` starts false.
+    ///
+    /// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+    /// `resolution` sizes the longest bbox axis; `padding` is the air-margin ring.
+    /// Errors if the grid would exceed the dense budget (the persistent path is
+    /// dense-only) or the voxel cap.
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        verts: &[f32],
+        tris: &[u32],
+        resolution: u32,
+        padding: u32,
+    ) -> Result<VoxelField, JsError> {
+        let mesh = fwn::Mesh::from_flat(verts, tris);
+        let (min, max) = bbox(verts);
+
+        if let Pipeline::Sparse = route(min, max, resolution, padding) {
+            return Err(JsError::new(
+                "voxel field requires a dense grid; resolution/bounds exceed the dense budget",
+            ));
+        }
+
+        let mut grid =
+            Grid::for_bounds(min, max, resolution as usize, padding as usize).map_err(grid_err)?;
+        let band = ops::band_radius(&grid, 0.0);
+        ops::voxelize_mesh_banded(&mut grid, &mesh, band);
+
+        Ok(VoxelField { grid, dirty: false })
+    }
+
+    /// Boolean two meshes onto ONE co-registered field, ready to chain. Mirrors
+    /// `voxel_boolean` (union bbox → voxelize BOTH onto one shared dense grid →
+    /// combine by `op`) but keeps the combined grid instead of contouring it, so
+    /// the result is directly chainable (`.offset()`, `.shell()`, `.contour()`).
+    ///
+    /// This is THE correct way to "boolean then chain offset/shell" two
+    /// independently-described meshes: a single shared grid means a single
+    /// coordinate frame, where the per-field `boolean` method requires the caller
+    /// to have already co-registered both operands onto matching grid geometry.
+    ///
+    /// `op`: 0=union, 1=intersection, 2=difference A−B. The combined field is
+    /// `dirty` (the min/max blend drifts the gradient), so a subsequent
+    /// offset/shell auto-reinitializes. Rejects `op > 2` and a grid over the
+    /// dense voxel cap (the persistent path is dense-only, like `new`).
+    #[wasm_bindgen]
+    #[allow(clippy::too_many_arguments)]
+    pub fn boolean_of(
+        verts_a: &[f32],
+        tris_a: &[u32],
+        verts_b: &[f32],
+        tris_b: &[u32],
+        op: u32,
+        resolution: u32,
+        padding: u32,
+    ) -> Result<VoxelField, JsError> {
+        let (min_a, max_a) = bbox(verts_a);
+        let (min_b, max_b) = bbox(verts_b);
+        let umin = [
+            min_a[0].min(min_b[0]),
+            min_a[1].min(min_b[1]),
+            min_a[2].min(min_b[2]),
+        ];
+        let umax = [
+            max_a[0].max(max_b[0]),
+            max_a[1].max(max_b[1]),
+            max_a[2].max(max_b[2]),
+        ];
+        if let Pipeline::Sparse = route(umin, umax, resolution, padding) {
+            return Err(JsError::new(
+                "voxel field requires a dense grid; resolution/bounds exceed the dense budget",
+            ));
+        }
+
+        let grid = voxel_boolean_grid(
+            verts_a, tris_a, verts_b, tris_b, op, resolution, padding,
+        )?;
+        Ok(VoxelField { grid, dirty: true })
+    }
+
+    /// CSG-combine this field with `other` IN PLACE (0=union, 1=intersection,
+    /// 2=difference self−other). Both operands MUST share grid geometry — same
+    /// origin, spacing, AND dims — or this errors (`GeometryMismatch`) rather than
+    /// silently blending mismatched coordinate frames. Two fields built by `new`
+    /// from DIFFERENT meshes generally do NOT share geometry (each sizes its grid
+    /// to its own bbox); use [`VoxelField::boolean_of`] for the easy co-registered
+    /// path. The min/max blend keeps the zero set exact but drifts the gradient
+    /// near the join, so this marks the field dirty (a subsequent offset/shell
+    /// auto-reinitializes).
+    pub fn boolean(&mut self, other: &VoxelField, op: u32) -> Result<(), JsError> {
+        if op > 2 {
+            return Err(JsError::new(&format!("unknown boolean op: {op}")));
+        }
+        let combined = match op {
+            0 => ops::voxel_union(&self.grid, &other.grid),
+            1 => ops::voxel_intersection(&self.grid, &other.grid),
+            _ => ops::voxel_difference(&self.grid, &other.grid),
+        }
+        .map_err(|e| JsError::new(&format!("voxel boolean failed: {e:?}")))?;
+        self.grid = combined;
+        self.dirty = true;
+        Ok(())
+    }
+
+    /// Offset (grow/shrink) the surface by `distance` via an iso-level shift
+    /// (`> 0` outward, `< 0` inward), IN PLACE. AUTO-REINITIALIZES first if the
+    /// field is dirty, so an iso-shift always rides a true SDF — this is what
+    /// makes offset-after-boolean correct without the caller intervening.
+    ///
+    /// The grid bounds are fixed at voxelize time, so a large outward offset can
+    /// clip at the padding ring; size resolution/padding for the intended offset.
+    pub fn offset(&mut self, distance: f32) -> Result<(), JsError> {
+        if !distance.is_finite() {
+            return Err(JsError::new("offset distance must be a finite number"));
+        }
+        if self.dirty {
+            ops::reinit_sdf(&mut self.grid);
+            self.dirty = false;
+        }
+        ops::offset_sdf(&mut self.grid, distance);
+        Ok(())
+    }
+
+    /// Hollow the field into an inward shell of wall `thickness`, IN PLACE.
+    /// AUTO-REINITIALIZES first if dirty. The `max(s, -(s + t))` re-introduces a
+    /// kink, so the field is dirty again afterwards.
+    pub fn shell(&mut self, thickness: f32) -> Result<(), JsError> {
+        if !(thickness.is_finite() && thickness > 0.0) {
+            return Err(JsError::new("shell thickness must be a positive finite number"));
+        }
+        if self.dirty {
+            ops::reinit_sdf(&mut self.grid);
+            self.dirty = false;
+        }
+        self.grid = ops::shell_sdf(&self.grid, thickness);
+        self.dirty = true;
+        Ok(())
+    }
+
+    /// Explicitly reinitialize φ to a true SDF (|∇φ| = 1) while preserving the
+    /// zero set (Fast Sweeping). Idempotent on a clean field; clears `dirty`.
+    pub fn reinit(&mut self) {
+        ops::reinit_sdf(&mut self.grid);
+        self.dirty = false;
+    }
+
+    /// Surface-Nets contour the current field to a triangle mesh. Borrows `&self`
+    /// so the field stays alive and chainable afterwards. Does NOT reinitialize:
+    /// the zero set is exact (boolean preserves it), and reinit only matters for a
+    /// SUBSEQUENT offset/shell.
+    pub fn contour(&self) -> RepairResult {
+        let out = contour::surface_nets_mesh(&self.grid);
+        RepairResult {
+            positions: out.positions,
+            normals: out.normals,
+            indices: out.indices,
+        }
+    }
 }
 
 /// Winding number at each query point, against a triangle-soup mesh.
@@ -543,5 +746,69 @@ mod tests {
             .expect("tpms_box must succeed");
         assert!(!r.positions.is_empty(), "tpms_box mesh must have vertices");
         assert!(!r.indices.is_empty(), "tpms_box mesh must have triangles");
+    }
+
+    /// A field built from two overlapping cubes via the co-registered constructor
+    /// must contour to a non-empty mesh, and be `dirty` (boolean drifts gradient).
+    #[test]
+    fn boolean_of_co_registers_and_is_chainable() {
+        let (verts_a, tris_a) = unit_cube();
+        let (mut verts_b, tris_b) = unit_cube();
+        for p in verts_b.chunks_exact_mut(3) {
+            p[0] += 0.5;
+        }
+        let field = VoxelField::boolean_of(&verts_a, &tris_a, &verts_b, &tris_b, 0, 24, 2)
+            .expect("boolean_of must succeed");
+        assert!(field.dirty, "a boolean field must be dirty");
+        let r = field.contour();
+        assert!(!r.positions.is_empty(), "co-registered union must have vertices");
+        assert!(!r.indices.is_empty(), "co-registered union must have triangles");
+    }
+
+    /// Handle wiring: an offset AFTER a union differs WITH the dirty-gated reinit
+    /// vs WITHOUT it. The reinit math is proven in ops; this only pins that the
+    /// `offset` method's auto-reinit actually fires when the field is dirty.
+    /// Compares the contoured surfaces directly so it doesn't depend on a probe.
+    ///
+    /// Stays on the Ok path of the JsError-returning methods, because constructing
+    /// a `JsError` panics on the native (non-wasm) test target — so the Err-path
+    /// guards (op > 2, geometry mismatch) are covered at the ops level and in TS.
+    #[test]
+    fn offset_after_union_reinit_changes_surface() {
+        let (verts_a, tris_a) = unit_cube();
+        let (mut verts_b, tris_b) = unit_cube();
+        for p in verts_b.chunks_exact_mut(3) {
+            p[0] += 0.5;
+        }
+        let d = 0.2_f32;
+
+        // WITH reinit: the offset method reinitializes because the field is dirty.
+        let mut with = VoxelField::boolean_of(&verts_a, &tris_a, &verts_b, &tris_b, 0, 48, 4)
+            .expect("union must succeed");
+        with.offset(d).expect("offset must succeed");
+        let with_mesh = with.contour();
+
+        // WITHOUT reinit: clear dirty first so the offset rides the drifted field.
+        let mut without = VoxelField::boolean_of(&verts_a, &tris_a, &verts_b, &tris_b, 0, 48, 4)
+            .expect("union must succeed");
+        without.dirty = false;
+        without.offset(d).expect("offset must succeed");
+        let without_mesh = without.contour();
+
+        // The reinit shifts the min/max-blended join saddle, so the two contoured
+        // surfaces are NOT identical: their max-extent differs near the join.
+        let extent = |pos: &[f32]| {
+            pos.chunks_exact(3)
+                .fold(f32::NEG_INFINITY, |m, p| m.max(p[1]).max(p[0]).max(p[2]))
+        };
+        let e_with = extent(&with_mesh.positions);
+        let e_without = extent(&without_mesh.positions);
+        assert!(
+            with_mesh.positions.len() != without_mesh.positions.len()
+                || (e_with - e_without).abs() > 1e-4,
+            "auto-reinit must change the offset surface: with extent {e_with} ({} verts) vs without {e_without} ({} verts)",
+            with_mesh.positions.len(),
+            without_mesh.positions.len()
+        );
     }
 }

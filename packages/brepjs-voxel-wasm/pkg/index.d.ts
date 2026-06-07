@@ -16,6 +16,92 @@ export class RepairResult {
 }
 
 /**
+ * A persistent dense voxel field for same-grid op chains: voxelize a mesh once,
+ * then boolean / offset / shell / reinit IN PLACE on the kept grid, and contour
+ * it once at the end. The value-returning free functions above re-voxelize and
+ * re-contour on every call; this handle keeps one grid so an offset/shell after
+ * a boolean is both cheaper AND correct (it reinitializes the drifted gradient).
+ *
+ * Dense-only (v1): the persistent path wraps the dense [`Grid`] only, matching
+ * boolean's dense-only scope. A grid whose bounds exceed the dense budget is
+ * rejected at construction. wasm-bindgen auto-generates `.free()` (the struct
+ * owns the grid's `Vec<f32>`).
+ */
+export class VoxelField {
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * CSG-combine this field with `other` IN PLACE (0=union, 1=intersection,
+     * 2=difference self−other). Both operands MUST share grid geometry — same
+     * origin, spacing, AND dims — or this errors (`GeometryMismatch`) rather than
+     * silently blending mismatched coordinate frames. Two fields built by `new`
+     * from DIFFERENT meshes generally do NOT share geometry (each sizes its grid
+     * to its own bbox); use [`VoxelField::boolean_of`] for the easy co-registered
+     * path. The min/max blend keeps the zero set exact but drifts the gradient
+     * near the join, so this marks the field dirty (a subsequent offset/shell
+     * auto-reinitializes).
+     */
+    boolean(other: VoxelField, op: number): void;
+    /**
+     * Boolean two meshes onto ONE co-registered field, ready to chain. Mirrors
+     * `voxel_boolean` (union bbox → voxelize BOTH onto one shared dense grid →
+     * combine by `op`) but keeps the combined grid instead of contouring it, so
+     * the result is directly chainable (`.offset()`, `.shell()`, `.contour()`).
+     *
+     * This is THE correct way to "boolean then chain offset/shell" two
+     * independently-described meshes: a single shared grid means a single
+     * coordinate frame, where the per-field `boolean` method requires the caller
+     * to have already co-registered both operands onto matching grid geometry.
+     *
+     * `op`: 0=union, 1=intersection, 2=difference A−B. The combined field is
+     * `dirty` (the min/max blend drifts the gradient), so a subsequent
+     * offset/shell auto-reinitializes. Rejects `op > 2` and a grid over the
+     * dense voxel cap (the persistent path is dense-only, like `new`).
+     */
+    static boolean_of(verts_a: Float32Array, tris_a: Uint32Array, verts_b: Float32Array, tris_b: Uint32Array, op: number, resolution: number, padding: number): VoxelField;
+    /**
+     * Surface-Nets contour the current field to a triangle mesh. Borrows `&self`
+     * so the field stays alive and chainable afterwards. Does NOT reinitialize:
+     * the zero set is exact (boolean preserves it), and reinit only matters for a
+     * SUBSEQUENT offset/shell.
+     */
+    contour(): RepairResult;
+    /**
+     * Voxelize a mesh into a persistent dense field sized to its bbox. Mirrors
+     * `offset_mesh`'s voxelize path (bbox → `Grid::for_bounds` → banded SDF) but
+     * stops before contour and keeps the grid. The result IS a true banded SDF,
+     * so `dirty` starts false.
+     *
+     * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+     * `resolution` sizes the longest bbox axis; `padding` is the air-margin ring.
+     * Errors if the grid would exceed the dense budget (the persistent path is
+     * dense-only) or the voxel cap.
+     */
+    constructor(verts: Float32Array, tris: Uint32Array, resolution: number, padding: number);
+    /**
+     * Offset (grow/shrink) the surface by `distance` via an iso-level shift
+     * (`> 0` outward, `< 0` inward), IN PLACE. AUTO-REINITIALIZES first if the
+     * field is dirty, so an iso-shift always rides a true SDF — this is what
+     * makes offset-after-boolean correct without the caller intervening.
+     *
+     * The grid bounds are fixed at voxelize time, so a large outward offset can
+     * clip at the padding ring; size resolution/padding for the intended offset.
+     */
+    offset(distance: number): void;
+    /**
+     * Explicitly reinitialize φ to a true SDF (|∇φ| = 1) while preserving the
+     * zero set (Fast Sweeping). Idempotent on a clean field; clears `dirty`.
+     */
+    reinit(): void;
+    /**
+     * Hollow the field into an inward shell of wall `thickness`, IN PLACE.
+     * AUTO-REINITIALIZES first if dirty. The `max(s, -(s + t))` re-introduces a
+     * kink, so the field is dirty again afterwards.
+     */
+    shell(thickness: number): void;
+}
+
+/**
  * Fill a mesh with a TPMS lattice infill: voxelize the FWN-signed solid over a
  * grid sized to the mesh bbox, build a shell field of the chosen lattice over the
  * same grid, intersect them (keep voxels both inside the solid AND in strut
@@ -112,6 +198,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_repairresult_free: (a: number, b: number) => void;
+    readonly __wbg_voxelfield_free: (a: number, b: number) => void;
     readonly lattice_infill: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
     readonly offset_mesh: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number];
     readonly points_inside: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
@@ -123,6 +210,13 @@ export interface InitOutput {
     readonly tpms_box: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
     readonly version: () => [number, number];
     readonly voxel_boolean: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
+    readonly voxelfield_boolean: (a: number, b: number, c: number) => [number, number];
+    readonly voxelfield_boolean_of: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
+    readonly voxelfield_contour: (a: number) => number;
+    readonly voxelfield_new: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
+    readonly voxelfield_offset: (a: number, b: number) => [number, number];
+    readonly voxelfield_reinit: (a: number) => void;
+    readonly voxelfield_shell: (a: number, b: number) => [number, number];
     readonly winding_numbers: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

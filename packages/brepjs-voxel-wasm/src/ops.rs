@@ -507,12 +507,36 @@ pub fn voxelize_mesh_sparse_pub(sparse: &mut SparseGrid, mesh: &Mesh, band: f64)
     voxelize_mesh_sparse(sparse, mesh, band).expect("sparse voxelize must fit budget");
 }
 
-/// Require two grids to share dimensions, else [`GridError::DimMismatch`].
-fn require_same_dims(a: &Grid, b: &Grid) -> Result<(), GridError> {
+#[doc(hidden)]
+pub fn reinit_sdf_pub(grid: &mut Grid) {
+    reinit_sdf(grid);
+}
+
+/// Largest per-axis origin/spacing drift two grids may have and still count as
+/// the same coordinate frame for an elementwise combine.
+const GEOM_EPS: f32 = 1e-6;
+
+/// Require two grids to share both dimensions AND world placement (origin +
+/// spacing), else a [`GridError`]. The dims check alone is not enough: two
+/// independently voxelized fields can land identical dims over DIFFERENT bboxes,
+/// and combining them elementwise would silently blend mismatched coordinate
+/// frames. Origin/spacing are compared within [`GEOM_EPS`] (float voxelization).
+fn require_same_grid(a: &Grid, b: &Grid) -> Result<(), GridError> {
     if a.dims() != b.dims() {
         return Err(GridError::DimMismatch {
             expected: a.dims(),
             got: b.dims(),
+        });
+    }
+    let (ao, bo) = (a.origin(), b.origin());
+    let origin_ok = (0..3).all(|d| (ao[d] - bo[d]).abs() <= GEOM_EPS);
+    let spacing_ok = (a.spacing() - b.spacing()).abs() <= GEOM_EPS;
+    if !origin_ok || !spacing_ok {
+        return Err(GridError::GeometryMismatch {
+            expected_origin: ao,
+            got_origin: bo,
+            expected_spacing: a.spacing(),
+            got_spacing: b.spacing(),
         });
     }
     Ok(())
@@ -520,7 +544,7 @@ fn require_same_dims(a: &Grid, b: &Grid) -> Result<(), GridError> {
 
 /// Elementwise combine two same-dim grids into a new grid shaped like `a`.
 fn combine(a: &Grid, b: &Grid, f: impl Fn(f32, f32) -> f32) -> Result<Grid, GridError> {
-    require_same_dims(a, b)?;
+    require_same_grid(a, b)?;
     let [nx, ny, nz] = a.dims();
     let mut out = a.same_shape();
     for z in 0..nz {
@@ -578,6 +602,174 @@ pub fn shell_sdf(solid: &Grid, thickness: f32) -> Grid {
         }
     }
     out
+}
+
+/// Far sentinel seeded into every non-frozen cell before the sweeps. The sweeps
+/// only ever take a `min`, so an unreached cell keeps its sign and a large
+/// magnitude; sized well below the grid's `FAR_OUTSIDE` so it never overflows.
+const REINIT_LARGE: f32 = 1.0e18;
+
+/// Sign of `v`, with zero treated as positive (outside). A reinitialized field
+/// never lands a frozen cell exactly on zero — the interface is sub-voxel — so
+/// the tie convention only fixes the seed sign of an exactly-zero pre-image.
+#[inline]
+fn sign_of(v: f32) -> f32 {
+    if v < 0.0 {
+        -1.0
+    } else {
+        1.0
+    }
+}
+
+/// Solve the Godunov upwind Eikonal update at one cell from its per-axis upwind
+/// minima `[a, b, c]` (each the smaller |neighbour| across that axis, or +∞ at a
+/// boundary) and spacing `h`. Returns the |φ| that satisfies the discrete
+/// |∇φ| = 1, falling through the 1-/2-/3-variable quadratics in sorted order.
+fn eikonal_update(mut a: f32, mut b: f32, mut c: f32, h: f32) -> f32 {
+    // Sort a <= b <= c so the fall-through tests each added axis in turn.
+    if a > b {
+        std::mem::swap(&mut a, &mut b);
+    }
+    if b > c {
+        std::mem::swap(&mut b, &mut c);
+    }
+    if a > b {
+        std::mem::swap(&mut a, &mut b);
+    }
+
+    // 1-variable: only the nearest axis contributes.
+    let mut d = a + h;
+    if d <= b {
+        return d;
+    }
+
+    // 2-variable: (d-a)^2 + (d-b)^2 = h^2.
+    let sum = a + b;
+    let disc = 2.0 * h * h - (a - b) * (a - b);
+    // disc >= 0 here because d > b implies the two-axis front is feasible.
+    d = 0.5 * (sum + disc.max(0.0).sqrt());
+    if d <= c {
+        return d;
+    }
+
+    // 3-variable: (d-a)^2 + (d-b)^2 + (d-c)^2 = h^2.
+    let sum3 = a + b + c;
+    let q = a * a + b * b + c * c - h * h;
+    let disc3 = sum3 * sum3 - 3.0 * q;
+    (sum3 + disc3.max(0.0).sqrt()) / 3.0
+}
+
+/// Reinitialize `grid` to a true signed distance field (|∇φ| = 1) while
+/// PRESERVING the zero level set, via the Zhao-2005 Fast Sweeping Method. This
+/// is what makes an offset/shell after a boolean correct: a min/max-blended
+/// field has the right zero set but a drifted gradient near the join, so an
+/// iso-shift on it lands on a moved surface; reinitializing first fixes that.
+///
+/// Stage 1 freezes the near-surface band at its EXACT linearly-interpolated
+/// interface distance (so the surface cannot move). Stage 2 runs the fixed 8
+/// Gauss-Seidel sweeps of the Godunov upwind Eikonal update over the non-frozen
+/// cells (the 8 octant directions resolve every characteristic in one pass).
+/// Stage 3 writes the result back. Idempotent on a clean field.
+pub fn reinit_sdf(grid: &mut Grid) {
+    let [nx, ny, nz] = grid.dims();
+    let h = grid.spacing();
+    let n = grid.len();
+
+    let mut phi = vec![0.0f32; n];
+    let mut frozen = vec![false; n];
+
+    // Stage 1 — freeze the near-surface band. A cell adjacent (6-neighbour) to a
+    // sign change is frozen at its ORIGINAL φ: that value is already the true
+    // banded distance to the surface, so freezing it verbatim pins every zero
+    // crossing Surface Nets reads (t = φ_i/(φ_i − φ_n)) byte-stable across the
+    // reinit — the #1 surface-preservation mechanism. Non-frozen cells are seeded
+    // to sign·LARGE (sign from the pre-reinit field, which a boolean preserves at
+    // every cell) so the sweeps grow distance out from the frozen band.
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let i = grid.index(x, y, z);
+                let phi0 = grid.at(x, y, z);
+                let s0 = sign_of(phi0);
+
+                let near_surface = (x > 0 && sign_of(grid.at(x - 1, y, z)) != s0)
+                    || (x + 1 < nx && sign_of(grid.at(x + 1, y, z)) != s0)
+                    || (y > 0 && sign_of(grid.at(x, y - 1, z)) != s0)
+                    || (y + 1 < ny && sign_of(grid.at(x, y + 1, z)) != s0)
+                    || (z > 0 && sign_of(grid.at(x, y, z - 1)) != s0)
+                    || (z + 1 < nz && sign_of(grid.at(x, y, z + 1)) != s0);
+
+                if near_surface {
+                    phi[i] = phi0;
+                    frozen[i] = true;
+                } else {
+                    phi[i] = s0 * REINIT_LARGE;
+                }
+            }
+        }
+    }
+
+    // Stage 2 — 8 Gauss-Seidel sweeps (the 2^3 axis-direction octants).
+    let idx = |x: usize, y: usize, z: usize| x + y * nx + z * nx * ny;
+    let sweep = |phi: &mut [f32], dirs: [bool; 3]| {
+        let xs: Vec<usize> = if dirs[0] { (0..nx).collect() } else { (0..nx).rev().collect() };
+        let ys: Vec<usize> = if dirs[1] { (0..ny).collect() } else { (0..ny).rev().collect() };
+        let zs: Vec<usize> = if dirs[2] { (0..nz).collect() } else { (0..nz).rev().collect() };
+        for &z in &zs {
+            for &y in &ys {
+                for &x in &xs {
+                    let i = idx(x, y, z);
+                    if frozen[i] {
+                        continue;
+                    }
+                    let axis_min = |lo: Option<f32>, hi: Option<f32>| -> f32 {
+                        let lo = lo.map(f32::abs).unwrap_or(f32::INFINITY);
+                        let hi = hi.map(f32::abs).unwrap_or(f32::INFINITY);
+                        lo.min(hi)
+                    };
+                    let a = axis_min(
+                        (x > 0).then(|| phi[idx(x - 1, y, z)]),
+                        (x + 1 < nx).then(|| phi[idx(x + 1, y, z)]),
+                    );
+                    let b = axis_min(
+                        (y > 0).then(|| phi[idx(x, y - 1, z)]),
+                        (y + 1 < ny).then(|| phi[idx(x, y + 1, z)]),
+                    );
+                    let c = axis_min(
+                        (z > 0).then(|| phi[idx(x, y, z - 1)]),
+                        (z + 1 < nz).then(|| phi[idx(x, y, z + 1)]),
+                    );
+
+                    let solved = eikonal_update(a, b, c, h);
+                    let new_mag = phi[i].abs().min(solved);
+                    phi[i] = sign_of(phi[i]) * new_mag;
+                }
+            }
+        }
+    };
+
+    let sweep_dirs: [[bool; 3]; 8] = [
+        [true, true, true],
+        [false, true, true],
+        [true, false, true],
+        [false, false, true],
+        [true, true, false],
+        [false, true, false],
+        [true, false, false],
+        [false, false, false],
+    ];
+    for dirs in sweep_dirs {
+        sweep(&mut phi, dirs);
+    }
+
+    // Stage 3 — write the reinitialized field back into the grid.
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                grid.set(x, y, z, phi[idx(x, y, z)]);
+            }
+        }
+    }
 }
 
 /// Fill a grid with the exact signed distance to the axis-aligned box
@@ -1247,6 +1439,298 @@ mod tests {
             }
             other => panic!("expected DimMismatch, got {other:?}"),
         }
+    }
+
+    /// Two grids with IDENTICAL dims but a different bbox (origin/spacing) must be
+    /// rejected: combining them blends mismatched coordinate frames (the P1 bug).
+    #[test]
+    fn boolean_geometry_mismatch_errors() {
+        // Same resolution/padding ⇒ same dims, but the second bbox is translated,
+        // so origin differs while dims match.
+        let a = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 4, 1).unwrap();
+        let b = Grid::for_bounds([5.0, 0.0, 0.0], [6.0, 1.0, 1.0], 4, 1).unwrap();
+        assert_eq!(a.dims(), b.dims(), "fixture must share dims to isolate the geometry check");
+        assert_ne!(a.origin(), b.origin(), "fixture must differ in origin");
+        match voxel_union(&a, &b) {
+            Err(GridError::GeometryMismatch { .. }) => {}
+            other => panic!("expected GeometryMismatch, got {other:?}"),
+        }
+    }
+
+    /// A combine of two grids that DO share geometry (same bbox, dims, spacing)
+    /// must still succeed — the guard rejects only true frame mismatches.
+    #[test]
+    fn boolean_same_geometry_succeeds() {
+        let a = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 4, 1).unwrap();
+        let b = a.same_shape();
+        assert!(voxel_union(&a, &b).is_ok(), "matching geometry must combine");
+    }
+
+    // ── Fast Sweeping reinitialization (PR5) ──
+
+    use crate::contour::surface_nets_mesh;
+
+    /// Voxelize a mesh into a true banded SDF over `[min,max]` at `res`/`pad`.
+    fn voxelize_field(mesh: &Mesh, min: [f32; 3], max: [f32; 3], res: usize, pad: usize) -> Grid {
+        let mut g = Grid::for_bounds(min, max, res, pad).unwrap();
+        let band = band_radius(&g, 0.0);
+        voxelize_mesh_banded(&mut g, mesh, band);
+        g
+    }
+
+    /// Mean |∇φ| via central differences over interior cells in the window
+    /// `[lo·h, hi·h]` of |φ|: far enough from the surface that the interface kink
+    /// doesn't dominate, near enough that the cells carry a meaningful gradient
+    /// (a freshly banded field is flat beyond its ~2·spacing band, so the window
+    /// stays inside the band; a reinitialized field is linear everywhere).
+    fn gradient_mean(g: &Grid, lo: f32, hi: f32) -> f32 {
+        let [nx, ny, nz] = g.dims();
+        let h = g.spacing();
+        let mut count = 0usize;
+        let mut sum = 0.0f32;
+        for z in 1..nz - 1 {
+            for y in 1..ny - 1 {
+                for x in 1..nx - 1 {
+                    let v = g.at(x, y, z).abs();
+                    if v < lo * h || v > hi * h {
+                        continue;
+                    }
+                    let gx = (g.at(x + 1, y, z) - g.at(x - 1, y, z)) / (2.0 * h);
+                    let gy = (g.at(x, y + 1, z) - g.at(x, y - 1, z)) / (2.0 * h);
+                    let gz = (g.at(x, y, z + 1) - g.at(x, y, z - 1)) / (2.0 * h);
+                    sum += (gx * gx + gy * gy + gz * gz).sqrt();
+                    count += 1;
+                }
+            }
+        }
+        sum / count.max(1) as f32
+    }
+
+    /// Build a union-of-two-overlapping-spheres field, dirty (gradient drifted at
+    /// the join) but with an exact zero set.
+    fn two_sphere_union(res: usize, pad: usize) -> Grid {
+        let min = [-1.3, -1.3, -1.3];
+        let max = [1.9, 1.3, 1.3]; // union bbox: second sphere shifted +0.6 on x.
+        let a = voxelize_field(&icosphere(3), min, max, res, pad);
+        // Second sphere: same icosphere translated +0.6 on x, voxelized on the
+        // SAME grid shape.
+        let mut shifted = icosphere(3);
+        for v in shifted.verts.iter_mut() {
+            v[0] += 0.6;
+        }
+        let b = {
+            let mut g = a.same_shape();
+            let band = band_radius(&g, 0.0);
+            voxelize_mesh_banded(&mut g, &shifted, band);
+            g
+        };
+        // Union (min): exact zero set, drifted gradient at the join.
+        voxel_union(&a, &b).unwrap()
+    }
+
+    #[test]
+    fn reinit_restores_unit_gradient_and_boolean_field_fails_it() {
+        // GATE 1: a true banded SDF (cube, sphere) already has |∇φ|≈1; reinit
+        // keeps it. A boolean (min-blended) field does NOT, but reinit fixes it.
+        // A freshly banded SDF is linear within its ~2·spacing band: |∇φ|≈1 there.
+        let cube = voxelize_field(&unit_cube(), [-0.3, -0.3, -0.3], [1.3, 1.3, 1.3], 32, 2);
+        let g_cube = gradient_mean(&cube, 0.75, 1.6);
+        assert!(
+            (0.85..=1.15).contains(&g_cube),
+            "fresh cube SDF must have |∇φ|≈1 in-band, got {g_cube}"
+        );
+
+        // A reinitialized sphere is linear EVERYWHERE (the band extends across the
+        // grid), so the window can reach far from the surface.
+        let mut sphere_re =
+            voxelize_field(&icosphere(3), [-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2);
+        reinit_sdf(&mut sphere_re);
+        let g_sphere = gradient_mean(&sphere_re, 0.75, 5.0);
+        assert!(
+            (0.85..=1.15).contains(&g_sphere),
+            "reinitialized sphere SDF must have |∇φ|≈1, got {g_sphere}"
+        );
+
+        // The dirty union field's gradient near the join is far from 1 (the join
+        // probe window straddles the min-blended saddle); reinit pulls it to ~1.
+        let union = two_sphere_union(40, 3);
+        let g_dirty = gradient_mean(&union, 0.5, 1.6);
+        let mut union_re = two_sphere_union(40, 3);
+        reinit_sdf(&mut union_re);
+        let g_clean = gradient_mean(&union_re, 0.75, 5.0);
+        assert!(
+            (0.85..=1.15).contains(&g_clean),
+            "reinitialized union SDF must have |∇φ|≈1, got {g_clean}"
+        );
+        // The reinit measurably improves the gradient toward 1 vs the dirty field.
+        assert!(
+            (g_clean - 1.0).abs() < (g_dirty - 1.0).abs(),
+            "reinit must move |∇φ| toward 1: dirty {g_dirty} -> clean {g_clean}"
+        );
+    }
+
+    #[test]
+    fn reinit_preserves_the_surface() {
+        // GATE 2: the Surface-Nets contour before == after reinit (the frozen-band
+        // proof). Vertex/triangle counts identical; canonical vertex sets agree to
+        // sub-voxel tolerance.
+        for (name, mesh, min, max, res) in [
+            ("cube", unit_cube(), [-0.3, -0.3, -0.3], [1.3, 1.3, 1.3], 32usize),
+            ("sphere", icosphere(3), [-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32),
+        ] {
+            let g = voxelize_field(&mesh, min, max, res, 2);
+            let before = surface_nets_mesh(&g);
+            let mut g_re = voxelize_field(&mesh, min, max, res, 2);
+            reinit_sdf(&mut g_re);
+            let after = surface_nets_mesh(&g_re);
+
+            assert_eq!(
+                before.positions.len(),
+                after.positions.len(),
+                "{name}: vertex count changed across reinit"
+            );
+            assert_eq!(
+                before.indices.len(),
+                after.indices.len(),
+                "{name}: triangle count changed across reinit"
+            );
+
+            // Nearest-match every before-vertex to an after-vertex; the max drift
+            // must be sub-voxel (the frozen band pins the crossing fraction).
+            let h = g.spacing();
+            let before_pts: Vec<[f32; 3]> = before
+                .positions
+                .chunks_exact(3)
+                .map(|p| [p[0], p[1], p[2]])
+                .collect();
+            let after_pts: Vec<[f32; 3]> = after
+                .positions
+                .chunks_exact(3)
+                .map(|p| [p[0], p[1], p[2]])
+                .collect();
+            let mut max_drift = 0.0f32;
+            for bp in &before_pts {
+                let mut nearest = f32::INFINITY;
+                for ap in &after_pts {
+                    let d = ((bp[0] - ap[0]).powi(2)
+                        + (bp[1] - ap[1]).powi(2)
+                        + (bp[2] - ap[2]).powi(2))
+                    .sqrt();
+                    nearest = nearest.min(d);
+                }
+                max_drift = max_drift.max(nearest);
+            }
+            assert!(
+                max_drift < 0.5 * h,
+                "{name}: surface moved {max_drift} (>= 0.5·spacing {}) across reinit",
+                0.5 * h
+            );
+        }
+    }
+
+    /// A field with NO sign change (no surface in the grid — e.g. fully outside)
+    /// must not panic and must stay sign-consistent: Stage 1 freezes nothing, so
+    /// every cell is seeded to sign·LARGE and the sweeps grow distance from the
+    /// boundaries without ever flipping sign. The keystone is "no panic + every
+    /// cell keeps its (positive) sign".
+    #[test]
+    fn reinit_no_sign_change_is_safe() {
+        // A grid uniformly positive (fully outside): no 6-neighbour sign change.
+        let mut g = filled_grid(2.0);
+        reinit_sdf(&mut g);
+        let [nx, ny, nz] = g.dims();
+        for z in 0..nz {
+            for y in 0..ny {
+                for x in 0..nx {
+                    let v = g.at(x, y, z);
+                    assert!(v.is_finite(), "reinit must leave finite values, got {v}");
+                    assert!(v > 0.0, "a fully-outside field must stay positive, got {v}");
+                }
+            }
+        }
+
+        // Symmetric case: a uniformly negative (fully inside) field stays negative.
+        let mut gi = filled_grid(-2.0);
+        reinit_sdf(&mut gi);
+        for z in 0..nz {
+            for y in 0..ny {
+                for x in 0..nx {
+                    assert!(gi.at(x, y, z) < 0.0, "fully-inside field must stay negative");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn reinit_is_idempotent() {
+        // The convergence witness: a SECOND reinit is a no-op (|Δφ| < 1e-4).
+        let mut g = two_sphere_union(40, 3);
+        reinit_sdf(&mut g);
+        let snapshot: Vec<f32> = g.data().to_vec();
+        reinit_sdf(&mut g);
+        let mut max_delta = 0.0f32;
+        for (a, b) in snapshot.iter().zip(g.data()) {
+            max_delta = max_delta.max((a - b).abs());
+        }
+        assert!(
+            max_delta < 1e-4,
+            "second reinit must be a no-op, max |Δφ| = {max_delta}"
+        );
+    }
+
+    #[test]
+    fn offset_after_boolean_correct_with_reinit_wrong_without() {
+        // GATE 3 (the value proof): union two overlapping spheres, then offset by
+        // d. WITH reinit the join saddle moves outward ~d; WITHOUT it under-moves.
+        let res = 48;
+        let pad = 4;
+        let d = 0.2f32;
+
+        // The join saddle sits on the x-axis midway between the two centres.
+        // Centre A at origin (radius 1), centre B at +0.6 (radius 1); the union
+        // surface on the +y side near x=0.3 is the saddle region we probe.
+        // Measure the union surface's max-y extent at the join slab BEFORE and
+        // AFTER an offset, on the reinitialized vs the raw (dirty) field.
+        let join_y_extent = |g: &Grid| -> f32 {
+            let m = surface_nets_mesh(g);
+            let mut max_y = f32::NEG_INFINITY;
+            for p in m.positions.chunks_exact(3) {
+                // Slab around the join plane x ≈ 0.3, near z = 0.
+                if (p[0] - 0.3).abs() < 0.15 && p[2].abs() < 0.15 {
+                    max_y = max_y.max(p[1]);
+                }
+            }
+            max_y
+        };
+
+        let base = two_sphere_union(res, pad);
+        let base_y = join_y_extent(&base);
+
+        // WITH reinit: reinitialize, then offset.
+        let mut with = two_sphere_union(res, pad);
+        reinit_sdf(&mut with);
+        offset_sdf(&mut with, d);
+        let with_y = join_y_extent(&with);
+        let with_move = with_y - base_y;
+
+        // WITHOUT reinit: offset the dirty union directly.
+        let mut without = two_sphere_union(res, pad);
+        offset_sdf(&mut without, d);
+        let without_y = join_y_extent(&without);
+        let without_move = without_y - base_y;
+
+        // The reinitialized offset moves the join ~d (within ~1 voxel).
+        let h = base.spacing();
+        assert!(
+            (with_move - d).abs() < 1.5 * h,
+            "with reinit, join must move ~{d}; moved {with_move} (spacing {h})"
+        );
+        // The dirty offset under-moves the join: its displacement differs from d
+        // by more than the reinitialized one — the explicit with-vs-without proof.
+        assert!(
+            (without_move - d).abs() > (with_move - d).abs() + 0.3 * h,
+            "without reinit the join must under-move: without {without_move} vs with {with_move} (target {d})"
+        );
     }
 }
 

@@ -53,6 +53,171 @@ export class RepairResult {
 if (Symbol.dispose) RepairResult.prototype[Symbol.dispose] = RepairResult.prototype.free;
 
 /**
+ * A persistent dense voxel field for same-grid op chains: voxelize a mesh once,
+ * then boolean / offset / shell / reinit IN PLACE on the kept grid, and contour
+ * it once at the end. The value-returning free functions above re-voxelize and
+ * re-contour on every call; this handle keeps one grid so an offset/shell after
+ * a boolean is both cheaper AND correct (it reinitializes the drifted gradient).
+ *
+ * Dense-only (v1): the persistent path wraps the dense [`Grid`] only, matching
+ * boolean's dense-only scope. A grid whose bounds exceed the dense budget is
+ * rejected at construction. wasm-bindgen auto-generates `.free()` (the struct
+ * owns the grid's `Vec<f32>`).
+ */
+export class VoxelField {
+    static __wrap(ptr) {
+        const obj = Object.create(VoxelField.prototype);
+        obj.__wbg_ptr = ptr;
+        VoxelFieldFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        VoxelFieldFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_voxelfield_free(ptr, 0);
+    }
+    /**
+     * CSG-combine this field with `other` IN PLACE (0=union, 1=intersection,
+     * 2=difference self−other). Both operands MUST share grid geometry — same
+     * origin, spacing, AND dims — or this errors (`GeometryMismatch`) rather than
+     * silently blending mismatched coordinate frames. Two fields built by `new`
+     * from DIFFERENT meshes generally do NOT share geometry (each sizes its grid
+     * to its own bbox); use [`VoxelField::boolean_of`] for the easy co-registered
+     * path. The min/max blend keeps the zero set exact but drifts the gradient
+     * near the join, so this marks the field dirty (a subsequent offset/shell
+     * auto-reinitializes).
+     * @param {VoxelField} other
+     * @param {number} op
+     */
+    boolean(other, op) {
+        _assertClass(other, VoxelField);
+        const ret = wasm.voxelfield_boolean(this.__wbg_ptr, other.__wbg_ptr, op);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Boolean two meshes onto ONE co-registered field, ready to chain. Mirrors
+     * `voxel_boolean` (union bbox → voxelize BOTH onto one shared dense grid →
+     * combine by `op`) but keeps the combined grid instead of contouring it, so
+     * the result is directly chainable (`.offset()`, `.shell()`, `.contour()`).
+     *
+     * This is THE correct way to "boolean then chain offset/shell" two
+     * independently-described meshes: a single shared grid means a single
+     * coordinate frame, where the per-field `boolean` method requires the caller
+     * to have already co-registered both operands onto matching grid geometry.
+     *
+     * `op`: 0=union, 1=intersection, 2=difference A−B. The combined field is
+     * `dirty` (the min/max blend drifts the gradient), so a subsequent
+     * offset/shell auto-reinitializes. Rejects `op > 2` and a grid over the
+     * dense voxel cap (the persistent path is dense-only, like `new`).
+     * @param {Float32Array} verts_a
+     * @param {Uint32Array} tris_a
+     * @param {Float32Array} verts_b
+     * @param {Uint32Array} tris_b
+     * @param {number} op
+     * @param {number} resolution
+     * @param {number} padding
+     * @returns {VoxelField}
+     */
+    static boolean_of(verts_a, tris_a, verts_b, tris_b, op, resolution, padding) {
+        const ptr0 = passArrayF32ToWasm0(verts_a, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray32ToWasm0(tris_a, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArrayF32ToWasm0(verts_b, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passArray32ToWasm0(tris_b, wasm.__wbindgen_malloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.voxelfield_boolean_of(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, op, resolution, padding);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return VoxelField.__wrap(ret[0]);
+    }
+    /**
+     * Surface-Nets contour the current field to a triangle mesh. Borrows `&self`
+     * so the field stays alive and chainable afterwards. Does NOT reinitialize:
+     * the zero set is exact (boolean preserves it), and reinit only matters for a
+     * SUBSEQUENT offset/shell.
+     * @returns {RepairResult}
+     */
+    contour() {
+        const ret = wasm.voxelfield_contour(this.__wbg_ptr);
+        return RepairResult.__wrap(ret);
+    }
+    /**
+     * Voxelize a mesh into a persistent dense field sized to its bbox. Mirrors
+     * `offset_mesh`'s voxelize path (bbox → `Grid::for_bounds` → banded SDF) but
+     * stops before contour and keeps the grid. The result IS a true banded SDF,
+     * so `dirty` starts false.
+     *
+     * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+     * `resolution` sizes the longest bbox axis; `padding` is the air-margin ring.
+     * Errors if the grid would exceed the dense budget (the persistent path is
+     * dense-only) or the voxel cap.
+     * @param {Float32Array} verts
+     * @param {Uint32Array} tris
+     * @param {number} resolution
+     * @param {number} padding
+     */
+    constructor(verts, tris, resolution, padding) {
+        const ptr0 = passArrayF32ToWasm0(verts, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.voxelfield_new(ptr0, len0, ptr1, len1, resolution, padding);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0];
+        VoxelFieldFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Offset (grow/shrink) the surface by `distance` via an iso-level shift
+     * (`> 0` outward, `< 0` inward), IN PLACE. AUTO-REINITIALIZES first if the
+     * field is dirty, so an iso-shift always rides a true SDF — this is what
+     * makes offset-after-boolean correct without the caller intervening.
+     *
+     * The grid bounds are fixed at voxelize time, so a large outward offset can
+     * clip at the padding ring; size resolution/padding for the intended offset.
+     * @param {number} distance
+     */
+    offset(distance) {
+        const ret = wasm.voxelfield_offset(this.__wbg_ptr, distance);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Explicitly reinitialize φ to a true SDF (|∇φ| = 1) while preserving the
+     * zero set (Fast Sweeping). Idempotent on a clean field; clears `dirty`.
+     */
+    reinit() {
+        wasm.voxelfield_reinit(this.__wbg_ptr);
+    }
+    /**
+     * Hollow the field into an inward shell of wall `thickness`, IN PLACE.
+     * AUTO-REINITIALIZES first if dirty. The `max(s, -(s + t))` re-introduces a
+     * kink, so the field is dirty again afterwards.
+     * @param {number} thickness
+     */
+    shell(thickness) {
+        const ret = wasm.voxelfield_shell(this.__wbg_ptr, thickness);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+}
+if (Symbol.dispose) VoxelField.prototype[Symbol.dispose] = VoxelField.prototype.free;
+
+/**
  * Fill a mesh with a TPMS lattice infill: voxelize the FWN-signed solid over a
  * grid sized to the mesh bbox, build a shell field of the chosen lattice over the
  * same grid, intersect them (keep voxels both inside the solid AND in strut
@@ -319,6 +484,15 @@ function __wbg_get_imports() {
 const RepairResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_repairresult_free(ptr, 1));
+const VoxelFieldFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_voxelfield_free(ptr, 1));
+
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+}
 
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;

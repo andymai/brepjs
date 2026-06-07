@@ -249,6 +249,15 @@ export {
   offsetShape,
   shellShape,
   voxelBooleanShapes,
+  voxelField,
+  voxelBooleanField,
+  fieldBoolean,
+  fieldOffset,
+  fieldShell,
+  fieldReinit,
+  fieldContour,
+  voxelFieldFromShape,
+  voxelBooleanFieldShapes,
   shapeToMeshInput,
 } from './voxel/index.js';
 export type {
@@ -257,6 +266,9 @@ export type {
   VoxelRepairResult,
   RepairOptions,
   VoxelOpOptions,
+  VoxelFieldHandle,
+  VoxelFieldOptions,
+  VoxelBooleanOp,
 } from './voxel/index.js';
 
 // ── Layer 3: lattice (ADR-0013) ──

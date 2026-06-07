@@ -80,12 +80,20 @@ impl GridGeom {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GridError {
     /// Requested voxel count exceeds [`MAX_VOXELS`]; nothing was allocated.
     TooLarge { requested: usize },
     /// Two grids (or a grid and a buffer) disagree on dimensions.
     DimMismatch { expected: [usize; 3], got: [usize; 3] },
+    /// Two grids share dims but disagree on world placement (origin or spacing),
+    /// so an elementwise combine would blend mismatched coordinate frames.
+    GeometryMismatch {
+        expected_origin: [f32; 3],
+        got_origin: [f32; 3],
+        expected_spacing: f32,
+        got_spacing: f32,
+    },
 }
 
 /// A dense, uniformly spaced SDF grid.

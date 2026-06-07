@@ -68,8 +68,66 @@ export interface VoxelEngine {
     resolution: number,
     padding: number
   ): VoxelRepairResult;
+  /**
+   * Persistent dense voxel-field class, for same-grid op chains: voxelize a mesh
+   * once, then boolean/offset/shell/reinit in place, contour once. Structurally
+   * satisfied by the generated `VoxelField` wasm-bindgen class.
+   */
+  VoxelField: WasmVoxelFieldConstructor;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
+}
+
+/**
+ * Constructor of the wasm `VoxelField` class. `new VoxelField(verts, tris, res,
+ * padding)` voxelizes a mesh into a persistent dense field. Throws (as a JS
+ * exception) on a non-dense grid or a grid over the voxel cap.
+ */
+export interface WasmVoxelFieldConstructor {
+  new (
+    verts: Float32Array,
+    tris: Uint32Array,
+    resolution: number,
+    padding: number
+  ): WasmVoxelField;
+  /**
+   * Boolean two meshes onto ONE co-registered dense field (union bbox → voxelize
+   * both onto a shared grid → combine), ready to chain. The correct path for
+   * "boolean then offset/shell" two independently-described meshes, where
+   * {@link WasmVoxelField.boolean} requires the operands to already share grid
+   * geometry. `op`: 0=union, 1=intersection, 2=difference A−B.
+   */
+  boolean_of(
+    verts_a: Float32Array,
+    tris_a: Uint32Array,
+    verts_b: Float32Array,
+    tris_b: Uint32Array,
+    op: number,
+    resolution: number,
+    padding: number
+  ): WasmVoxelField;
+}
+
+/**
+ * A persistent dense voxel field. All ops MUTATE IN PLACE (return void), so the
+ * same grid persists across a chain. `contour()` reads the zero set into a fresh
+ * {@link VoxelRepairResult}; `free()` releases the backing WASM grid (mandatory).
+ * Structurally satisfied by the generated `VoxelField` wasm-bindgen class.
+ */
+export interface WasmVoxelField {
+  /** CSG-combine in place (op: 0=union, 1=intersection, 2=difference self−B). */
+  boolean(other: WasmVoxelField, op: number): void;
+  /** Offset the surface in place (>0 outward, <0 inward); auto-reinits if dirty. */
+  offset(distance: number): void;
+  /** Hollow into an inward shell in place (thickness > 0); auto-reinits if dirty. */
+  shell(thickness: number): void;
+  /** Reinitialize φ to a true SDF (|∇φ|=1) while preserving the zero set. */
+  reinit(): void;
+  /** Surface-Nets contour the current field to a triangle mesh. */
+  contour(): VoxelRepairResult;
+  /** Release the backing WASM grid allocation (wasm-bindgen lifecycle). */
+  free(): void;
+  [Symbol.dispose](): void;
 }
 
 /**
