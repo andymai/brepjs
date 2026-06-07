@@ -27,7 +27,10 @@ fn len(a: V3) -> f64 {
 
 /// Signed solid angle (steradians) subtended by triangle (a,b,c) at point p.
 /// Robust atan2 form so it stays accurate as the triangle shrinks in the view.
-fn solid_angle(p: V3, a: V3, b: V3, c: V3) -> f64 {
+///
+/// `pub(crate)` so the BVH leaf path in [`crate::bvh`] sums the IDENTICAL exact
+/// term — leaf contributions are bit-for-bit the oracle's, just in BVH order.
+pub(crate) fn solid_angle(p: V3, a: V3, b: V3, c: V3) -> f64 {
     let a = sub(a, p);
     let b = sub(b, p);
     let c = sub(c, p);

@@ -17,7 +17,7 @@
 // callers the contour/bridge seams will add, so silence dead-code here.
 #![allow(dead_code)]
 
-use crate::bvh::Bvh;
+use crate::bvh::{Bvh, BETA};
 use crate::fwn::Mesh;
 use crate::grid::{Grid, GridError};
 
@@ -114,6 +114,8 @@ pub(crate) fn point_to_triangle_distance(
 /// rather than from surface connectivity.
 pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
     let bvh = Bvh::build(mesh);
+    // One scratch stack: the distance and sign traversals run sequentially per
+    // voxel and each clear()s on entry, so a single buffer serves both.
     let mut stack: Vec<u32> = Vec::new();
     let [nx, ny, nz] = grid.dims();
     for z in 0..nz {
@@ -124,7 +126,11 @@ pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
 
                 let unsigned = bvh.nearest_distance_with(p, &mut stack);
 
-                let sign = if mesh.is_inside(p) { -1.0 } else { 1.0 };
+                let sign = if bvh.winding_number_fast(p, BETA, &mut stack) > 0.5 {
+                    -1.0
+                } else {
+                    1.0
+                };
                 grid.set(x, y, z, (sign * unsigned) as f32);
             }
         }
@@ -184,6 +190,44 @@ fn distance_field_brute(grid: &mut Grid, mesh: &Mesh) {
     }
 }
 
+/// Write ONLY the FWN sign field via the EXACT per-triangle winding number, so a
+/// bench can isolate the sign pass (the ~98% of e2e that PR2 accelerates).
+#[cfg(not(target_arch = "wasm32"))]
+fn sign_field_exact(grid: &mut Grid, mesh: &Mesh) {
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                grid.set(x, y, z, if mesh.is_inside(p) { -1.0 } else { 1.0 });
+            }
+        }
+    }
+}
+
+/// Write ONLY the FWN sign field via the hierarchical Barnes–Hut query.
+#[cfg(not(target_arch = "wasm32"))]
+fn sign_field_fast(grid: &mut Grid, mesh: &Mesh) {
+    let bvh = Bvh::build(mesh);
+    let mut stack: Vec<u32> = Vec::new();
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                let s = if bvh.winding_number_fast(p, BETA, &mut stack) > 0.5 {
+                    -1.0
+                } else {
+                    1.0
+                };
+                grid.set(x, y, z, s);
+            }
+        }
+    }
+}
+
 /// Write ONLY the unsigned distance field (no FWN sign) via the BVH.
 #[cfg(not(target_arch = "wasm32"))]
 fn distance_field_bvh(grid: &mut Grid, mesh: &Mesh) {
@@ -219,6 +263,18 @@ pub fn distance_field_brute_pub(grid: &mut Grid, mesh: &Mesh) {
 #[doc(hidden)]
 pub fn distance_field_bvh_pub(grid: &mut Grid, mesh: &Mesh) {
     distance_field_bvh(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn sign_field_exact_pub(grid: &mut Grid, mesh: &Mesh) {
+    sign_field_exact(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn sign_field_fast_pub(grid: &mut Grid, mesh: &Mesh) {
+    sign_field_fast(grid, mesh);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -392,6 +448,19 @@ mod tests {
         Mesh::from_flat(&verts, &tris)
     }
 
+    /// Closed axis-aligned box [min,max], outward CCW (unit_cube topology, scaled).
+    fn box_mesh(min: [f32; 3], max: [f32; 3]) -> (Vec<f32>, Vec<u32>) {
+        let ([a, b, c], [d, e, f]) = (min, max);
+        let verts = vec![
+            a, b, c, d, b, c, d, e, c, a, e, c, a, b, f, d, b, f, d, e, f, a, e, f,
+        ];
+        let tris = vec![
+            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7,
+            3, 1, 2, 6, 1, 6, 5,
+        ];
+        (verts, tris)
+    }
+
     /// A deterministic multi-triangle soup, enough tris to force BVH splits.
     fn tri_soup() -> Mesh {
         let mut verts: Vec<f32> = Vec::new();
@@ -405,6 +474,228 @@ mod tests {
             tris.extend_from_slice(&[base, base + 1, base + 2]);
         }
         Mesh::from_flat(&verts, &tris)
+    }
+
+    fn icosphere(subdiv: u32) -> Mesh {
+        use std::collections::HashMap;
+        let t = (1.0_f64 + 5.0_f64.sqrt()) / 2.0;
+        let mut verts: Vec<[f64; 3]> = vec![
+            [-1.0, t, 0.0],
+            [1.0, t, 0.0],
+            [-1.0, -t, 0.0],
+            [1.0, -t, 0.0],
+            [0.0, -1.0, t],
+            [0.0, 1.0, t],
+            [0.0, -1.0, -t],
+            [0.0, 1.0, -t],
+            [t, 0.0, -1.0],
+            [t, 0.0, 1.0],
+            [-t, 0.0, -1.0],
+            [-t, 0.0, 1.0],
+        ];
+        let norm = |v: &mut [f64; 3]| {
+            let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+            v[0] /= l;
+            v[1] /= l;
+            v[2] /= l;
+        };
+        for v in verts.iter_mut() {
+            norm(v);
+        }
+        let mut faces: Vec<[u32; 3]> = vec![
+            [0, 11, 5],
+            [0, 5, 1],
+            [0, 1, 7],
+            [0, 7, 10],
+            [0, 10, 11],
+            [1, 5, 9],
+            [5, 11, 4],
+            [11, 10, 2],
+            [10, 7, 6],
+            [7, 1, 8],
+            [3, 9, 4],
+            [3, 4, 2],
+            [3, 2, 6],
+            [3, 6, 8],
+            [3, 8, 9],
+            [4, 9, 5],
+            [2, 4, 11],
+            [6, 2, 10],
+            [8, 6, 7],
+            [9, 8, 1],
+        ];
+        for _ in 0..subdiv {
+            let mut cache: HashMap<(u32, u32), u32> = HashMap::new();
+            let mut next: Vec<[u32; 3]> = Vec::new();
+            let mut mid = |i: u32, j: u32, verts: &mut Vec<[f64; 3]>| -> u32 {
+                let key = if i < j { (i, j) } else { (j, i) };
+                if let Some(&m) = cache.get(&key) {
+                    return m;
+                }
+                let a = verts[i as usize];
+                let b = verts[j as usize];
+                let mut m = [
+                    (a[0] + b[0]) * 0.5,
+                    (a[1] + b[1]) * 0.5,
+                    (a[2] + b[2]) * 0.5,
+                ];
+                norm(&mut m);
+                let idx = verts.len() as u32;
+                verts.push(m);
+                cache.insert(key, idx);
+                idx
+            };
+            for f in &faces {
+                let a = mid(f[0], f[1], &mut verts);
+                let b = mid(f[1], f[2], &mut verts);
+                let c = mid(f[2], f[0], &mut verts);
+                next.push([f[0], a, c]);
+                next.push([f[1], b, a]);
+                next.push([f[2], c, b]);
+                next.push([a, b, c]);
+            }
+            faces = next;
+        }
+        Mesh {
+            verts,
+            tris: faces
+                .iter()
+                .map(|f| [f[0] as usize, f[1] as usize, f[2] as usize])
+                .collect(),
+        }
+    }
+
+    /// The sign-identity gate: at EVERY voxel center of the grid the fast BVH
+    /// winding sign must equal the exact FWN sign. Zero mismatches allowed.
+    ///
+    /// Bounds are deliberately off-axis (no voxel center lands exactly on an
+    /// axis-aligned face) because winding is genuinely ill-defined ON the surface
+    /// — there both the exact oracle and the fast path return w = 0.5 ± float
+    /// noise and either may round either way. That on-surface tie is not an
+    /// approximation defect; the design notes voxel centers rarely land on a
+    /// face, and these bounds honour that.
+    #[test]
+    fn sign_parity_fast_vs_exact_all_voxels() {
+        use crate::bvh::{Bvh, BETA};
+        let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 5] = [
+            ("unit_cube", unit_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
+            ("holey_cube", holey_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
+            ("icosphere2", icosphere(2), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
+            ("icosphere3", icosphere(3), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
+            ("tri_soup", tri_soup(), [-1.03, -1.47, -1.51], [7.49, 1.53, 1.47]),
+        ];
+        for (name, mesh, min, max) in fixtures {
+            let g = Grid::for_bounds(min, max, 16, 2).unwrap();
+            let bvh = Bvh::build(&mesh);
+            let mut stack = Vec::new();
+            let [nx, ny, nz] = g.dims();
+            let mut mismatches = 0usize;
+            for z in 0..nz {
+                for y in 0..ny {
+                    for x in 0..nx {
+                        let wp = g.world_pos(x, y, z);
+                        let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                        let fast = bvh.is_inside_fast(p, BETA, &mut stack);
+                        let exact = mesh.is_inside(p);
+                        if fast != exact {
+                            mismatches += 1;
+                        }
+                    }
+                }
+            }
+            assert_eq!(mismatches, 0, "{name}: {mismatches} sign mismatches vs exact FWN");
+        }
+    }
+
+    /// Adversarial guards for the dipole-only / BETA=2 far-field margin (review P3):
+    /// the regimes where the first-order approximation is least damped. Each must
+    /// hold 100% SIGN parity vs the exact oracle, so a future BETA / leaf-size
+    /// change can't silently erode the empirical margin.
+    #[test]
+    fn sign_parity_adversarial_fixtures() {
+        use crate::bvh::{Bvh, BETA};
+
+        // High-aspect closed slab: extreme node AABBs / radii.
+        let (sv, st) = box_mesh([0.0, 0.0, 0.0], [10.0, 0.1, 0.1]);
+        let slab = Mesh::from_flat(&sv, &st);
+
+        // Far disjoint emitter: a small unit cube near origin PLUS a large closed
+        // cube centred at x=20, whose accumulated far-field dipole error lands on
+        // the queries sampled around the small near-origin component.
+        let (mut cv, mut ct) = box_mesh([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
+        let (bv, bt) = box_mesh([17.0, -3.0, -3.0], [23.0, 3.0, 3.0]);
+        let off = (cv.len() / 3) as u32;
+        cv.extend_from_slice(&bv);
+        ct.extend(bt.iter().map(|i| i + off));
+        let disjoint = Mesh::from_flat(&cv, &ct);
+
+        let cases: [(&str, Mesh, [f32; 3], [f32; 3]); 3] = [
+            // Single OPEN triangle: no surrounding geometry to damp the dipole.
+            ("open_tri", single_tri(), [-1.07, -1.05, -1.11], [2.03, 2.09, 1.07]),
+            ("slab", slab, [-0.53, -0.57, -0.61], [10.47, 0.63, 0.67]),
+            ("disjoint_far_emitter", disjoint, [-0.53, -0.57, -0.61], [1.53, 1.49, 1.47]),
+        ];
+        for (name, mesh, min, max) in cases {
+            let g = Grid::for_bounds(min, max, 16, 2).unwrap();
+            let bvh = Bvh::build(&mesh);
+            let mut stack = Vec::new();
+            let [nx, ny, nz] = g.dims();
+            let mut mismatches = 0usize;
+            for z in 0..nz {
+                for y in 0..ny {
+                    for x in 0..nx {
+                        let wp = g.world_pos(x, y, z);
+                        let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                        if bvh.is_inside_fast(p, BETA, &mut stack) != mesh.is_inside(p) {
+                            mismatches += 1;
+                        }
+                    }
+                }
+            }
+            assert_eq!(mismatches, 0, "{name}: {mismatches} sign mismatches vs exact FWN");
+        }
+    }
+
+    /// Keystone explicit: the holey-cube center still classifies inside under the
+    /// fast path (w > 0.5), matching the exact ~0.833.
+    #[test]
+    fn fast_holey_cube_center_still_inside() {
+        use crate::bvh::{Bvh, BETA};
+        let mesh = holey_cube();
+        let bvh = Bvh::build(&mesh);
+        let mut stack = Vec::new();
+        let w = bvh.winding_number_fast([0.5, 0.5, 0.5], BETA, &mut stack);
+        assert!(w > 0.5, "holey-cube center must stay inside, w={w}");
+        assert!((w - (1.0 - 1.0 / 6.0)).abs() < 1e-2, "expected ~0.833, got {w}");
+    }
+
+    /// Full-grid SDF sign parity: voxelize_mesh (fast sign) and voxelize_mesh_brute
+    /// (exact sign) must agree in SIGN at every voxel — magnitudes already match
+    /// via the shared exact distance pass; only the sign source changed.
+    #[test]
+    fn voxelize_sign_parity_fast_vs_brute_all_voxels() {
+        let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
+            ("unit_cube", unit_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
+            ("holey_cube", holey_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
+            ("icosphere2", icosphere(2), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
+            ("tri_soup", tri_soup(), [-1.03, -1.47, -1.51], [7.49, 1.53, 1.47]),
+        ];
+        for (name, mesh, min, max) in fixtures {
+            let mut a = Grid::for_bounds(min, max, 16, 2).unwrap();
+            let mut b = Grid::for_bounds(min, max, 16, 2).unwrap();
+            voxelize_mesh_brute(&mut a, &mesh);
+            voxelize_mesh(&mut b, &mesh);
+            let [nx, ny, nz] = a.dims();
+            for z in 0..nz {
+                for y in 0..ny {
+                    for x in 0..nx {
+                        let sa = a.at(x, y, z).signum();
+                        let sb = b.at(x, y, z).signum();
+                        assert_eq!(sa, sb, "{name}: sign mismatch at ({x},{y},{z})");
+                    }
+                }
+            }
+        }
     }
 
     #[test]

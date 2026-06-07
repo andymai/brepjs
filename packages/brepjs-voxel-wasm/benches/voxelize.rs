@@ -1,17 +1,20 @@
-//! Distance-pass + end-to-end voxelize benchmark (brute vs BVH).
+//! Voxelize benchmark: each accelerated pass isolated, plus end-to-end.
 //!
-//! `distance_pass` isolates the accelerated pass (the BVH min over triangles);
-//! `end_to_end` runs the full `voxelize_mesh`, whose speedup is bounded by the
-//! still-brute FWN sign pass (PR1 accelerates the distance pass only). No
-//! absolute-time assertions — criterion's regression report is the artifact.
+//! `distance_pass` isolates PR1 (BVH nearest-distance vs brute min over tris);
+//! `sign_pass` isolates PR2 (hierarchical Barnes-Hut FWN vs exact O(N) FWN) —
+//! this is where the PR2 win is read. `end_to_end` runs the full `voxelize_mesh`
+//! and so reflects PR1+PR2 COMBINED (BVH distance + hierarchical sign vs brute
+//! distance + exact sign); attribute the per-pass deltas from the isolated
+//! groups, not from end_to_end. No absolute-time assertions — criterion's
+//! regression report is the artifact.
 
 use std::collections::HashMap;
 
 use brepjs_voxel_wasm::fwn::Mesh;
 use brepjs_voxel_wasm::grid::Grid;
 use brepjs_voxel_wasm::ops::{
-    distance_field_brute_pub, distance_field_bvh_pub, voxelize_mesh_brute_pub,
-    voxelize_mesh_bvh_pub,
+    distance_field_brute_pub, distance_field_bvh_pub, sign_field_exact_pub, sign_field_fast_pub,
+    voxelize_mesh_brute_pub, voxelize_mesh_bvh_pub,
 };
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -133,6 +136,24 @@ fn bench_voxelize(c: &mut Criterion) {
         });
     }
     distance.finish();
+
+    // Isolated FWN sign pass (no distance) — the apples-to-apples PR2 headline:
+    // exact per-triangle winding vs hierarchical Barnes–Hut.
+    let mut sign = c.benchmark_group("sign_pass");
+    sign.sample_size(20);
+    for (subdiv, label) in sizes {
+        let (verts, tris) = icosphere(subdiv);
+        let mesh = Mesh::from_flat(&verts, &tris);
+        sign.bench_with_input(BenchmarkId::new("exact", label), &mesh, |bench, mesh| {
+            let mut grid = Grid::for_bounds([-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2).unwrap();
+            bench.iter(|| sign_field_exact_pub(&mut grid, mesh));
+        });
+        sign.bench_with_input(BenchmarkId::new("fast", label), &mesh, |bench, mesh| {
+            let mut grid = Grid::for_bounds([-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2).unwrap();
+            bench.iter(|| sign_field_fast_pub(&mut grid, mesh));
+        });
+    }
+    sign.finish();
 
     let mut e2e = c.benchmark_group("end_to_end");
     e2e.sample_size(20);

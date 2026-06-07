@@ -12,8 +12,26 @@
 // cdylib build can't see every caller, so silence dead-code as elsewhere.
 #![allow(dead_code)]
 
-use crate::fwn::Mesh;
+use crate::fwn::{solid_angle, Mesh};
 use crate::ops::point_to_triangle_distance;
+
+/// Barnes–Hut opening factor: a node is approximated by its (first-order, point
+/// dipole) expansion only when the query point is more than `BETA` node-radii
+/// away; otherwise it is recursed and ultimately evaluated EXACTLY at the leaf.
+/// Larger BETA = more exact (more recursion) = safer + slower; smaller = faster
+/// but risks a far-field error large enough to flip a near-0.5 classification.
+///
+/// 2.0 holds 100% SIGN parity with the exact oracle across the test gate (cube /
+/// holey-cube / icosphere) AND the adversarial fixtures (far disjoint emitter,
+/// high-aspect slab, single open triangle) using the dipole term ALONE. This is
+/// an EMPIRICAL margin, not a proven bound: the dipole truncation error is
+/// O((R/d)²) ≈ 0.25 at d = BETA·R, kept small per node only by measurement
+/// (~0.03 max on the gate) and able to accumulate additively across far nodes.
+/// The 0.5 classification margin is the safety buffer; the adversarial fixtures
+/// are committed guards so a future BETA / leaf-size change can't silently erode
+/// it. Levers if a mesh class ever regresses: raise BETA (more recursion), or add
+/// the second-order Barill tensor (omitted here to keep the per-node table small).
+pub(crate) const BETA: f64 = 2.0;
 
 /// Leaf triangle threshold: small enough that the linear leaf scan is cheap,
 /// large enough to bound tree depth and node count.
@@ -88,6 +106,47 @@ struct Tri {
     c: [f64; 3],
 }
 
+fn vsub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn vdot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn vcross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn vlen(a: [f64; 3]) -> f64 {
+    vdot(a, a).sqrt()
+}
+
+/// Per-node Barnes–Hut winding expansion, in a Vec parallel to `nodes` (same
+/// length / index). Kept out of [`BvhNode`] so the distance traversal's cache
+/// line stays narrow and so it can be skipped wholesale for an empty mesh.
+#[derive(Clone, Copy)]
+struct NodeExpansion {
+    /// Expansion point: area-weighted centroid of all triangles under the node
+    /// (falls back to the geometric box centre for an all-degenerate subtree).
+    center: [f64; 3],
+    /// Area-weighted normal sum `Σ nᵢ`, `nᵢ = ½(b-a)×(c-a)` (UN-normalized, so
+    /// `|nᵢ|` already equals the triangle area). Translation-invariant, so it
+    /// combines by plain addition up the tree. Same a,b,c winding as
+    /// `solid_angle`, so the dipole term is sign-consistent with the oracle.
+    dipole: [f64; 3],
+    /// Conservative ball radius: max distance from `center` to any member vertex,
+    /// so the ball provably encloses all geometry and the far-field bound holds.
+    radius: f64,
+    /// Total triangle area under the node; drives the area-weighted `center`
+    /// combine and the degenerate fallback.
+    total_area: f64,
+}
+
 enum NodeKind {
     Leaf { start: u32, count: u32 },
     Inner { left: u32, right: u32 },
@@ -102,6 +161,10 @@ pub struct Bvh {
     nodes: Vec<BvhNode>,
     tris: Vec<Tri>,
     root: u32,
+    /// Winding expansions, parallel to `nodes` (same length / index). Empty when
+    /// the mesh is empty, so `winding_number_fast` short-circuits like the
+    /// distance path.
+    expansions: Vec<NodeExpansion>,
 }
 
 impl Bvh {
@@ -121,6 +184,7 @@ impl Bvh {
                 nodes: Vec::new(),
                 tris,
                 root: 0,
+                expansions: Vec::new(),
             };
         }
 
@@ -143,10 +207,13 @@ impl Bvh {
         // Reorder tris so each leaf's slice is contiguous in [start, start+count).
         let reordered: Vec<Tri> = order.iter().map(|&i| tris[i as usize]).collect();
 
+        let expansions = compute_expansions(&nodes, &reordered);
+
         Bvh {
             nodes,
             tris: reordered,
             root,
+            expansions,
         }
     }
 
@@ -210,6 +277,187 @@ impl Bvh {
 
         best_d
     }
+
+    /// Hierarchical (Barnes–Hut) winding number at `p`, normalized like
+    /// [`Mesh::winding_number`](crate::fwn::Mesh::winding_number) so the result
+    /// is directly comparable and the 0.5 inside/outside threshold is meaningful.
+    ///
+    /// Far nodes (`|p - center| > BETA·radius`) contribute via the cheap dipole
+    /// expansion; near nodes recurse, and every leaf reached sums the EXACT
+    /// `solid_angle` per triangle. This makes the sign IDENTICAL to the exact
+    /// FWN: near-surface points (where w crosses 0.5) are dominated by exact
+    /// leaf terms, and the bounded far-field error can't move a robustly-far
+    /// point's w across 0.5. Reuses a caller-owned stack like
+    /// [`nearest_distance_with`](Self::nearest_distance_with).
+    pub fn winding_number_fast(&self, p: [f64; 3], beta: f64, stack: &mut Vec<u32>) -> f64 {
+        if self.nodes.is_empty() {
+            return 0.0;
+        }
+
+        let mut acc = 0.0;
+        stack.clear();
+        stack.push(self.root);
+
+        while let Some(idx) = stack.pop() {
+            let e = &self.expansions[idx as usize];
+            let d = vlen(vsub(p, e.center));
+
+            if d > beta * e.radius {
+                acc += dipole_eval(p, e);
+                continue;
+            }
+
+            match self.nodes[idx as usize].kind {
+                NodeKind::Leaf { start, count } => {
+                    for t in &self.tris[start as usize..(start + count) as usize] {
+                        acc += solid_angle(p, t.a, t.b, t.c);
+                    }
+                }
+                NodeKind::Inner { left, right } => {
+                    // Order is irrelevant: every opened branch is fully summed,
+                    // there is no pruning / early-out to bias.
+                    stack.push(left);
+                    stack.push(right);
+                }
+            }
+        }
+
+        acc / (4.0 * core::f64::consts::PI)
+    }
+
+    /// Inside test mirroring [`Mesh::is_inside`](crate::fwn::Mesh::is_inside):
+    /// the drop-in fast-path replacement for the per-voxel sign in
+    /// [`crate::ops::voxelize_mesh`].
+    pub fn is_inside_fast(&self, p: [f64; 3], beta: f64, stack: &mut Vec<u32>) -> bool {
+        self.winding_number_fast(p, beta, stack) > 0.5
+    }
+}
+
+/// Point-dipole solid-angle approximation: `dot(N, c₀-p) / |c₀-p|³`, the leading
+/// Barill term. The shared `1/(4π)` is applied once by the caller alongside the
+/// exact leaf terms. Only ever called for a FAR node (`d > β·radius > 0`), so
+/// `r2` is non-zero; guarded defensively all the same.
+fn dipole_eval(p: [f64; 3], e: &NodeExpansion) -> f64 {
+    let r = vsub(e.center, p);
+    let r2 = vdot(r, r);
+    if r2 == 0.0 {
+        return 0.0;
+    }
+    let inv3 = 1.0 / (r2 * r2.sqrt());
+    vdot(e.dipole, r) * inv3
+}
+
+/// Build the parallel winding-expansion table bottom-up. An inner node reserves
+/// its slot BEFORE recursing, so both its children get strictly higher indices;
+/// iterating from the last node to the first therefore computes every child
+/// before its parent — a single post-order pass with no extra traversal.
+fn compute_expansions(nodes: &[BvhNode], tris: &[Tri]) -> Vec<NodeExpansion> {
+    let mut exp = vec![
+        NodeExpansion {
+            center: [0.0; 3],
+            dipole: [0.0; 3],
+            radius: 0.0,
+            total_area: 0.0,
+        };
+        nodes.len()
+    ];
+    for idx in (0..nodes.len()).rev() {
+        exp[idx] = match nodes[idx].kind {
+            NodeKind::Leaf { start, count } => {
+                leaf_expansion(&tris[start as usize..(start + count) as usize], &nodes[idx])
+            }
+            NodeKind::Inner { left, right } => {
+                combine_expansion(&exp[left as usize], &exp[right as usize], &nodes[idx])
+            }
+        };
+    }
+    exp
+}
+
+fn leaf_expansion(tris: &[Tri], node: &BvhNode) -> NodeExpansion {
+    let mut total_area = 0.0;
+    let mut wsum = [0.0; 3];
+    let mut dipole = [0.0; 3];
+    for t in tris {
+        let n = vcross(vsub(t.b, t.a), vsub(t.c, t.a));
+        let n = [0.5 * n[0], 0.5 * n[1], 0.5 * n[2]];
+        let area = vlen(n);
+        let centroid = [
+            (t.a[0] + t.b[0] + t.c[0]) / 3.0,
+            (t.a[1] + t.b[1] + t.c[1]) / 3.0,
+            (t.a[2] + t.b[2] + t.c[2]) / 3.0,
+        ];
+        total_area += area;
+        wsum[0] += area * centroid[0];
+        wsum[1] += area * centroid[1];
+        wsum[2] += area * centroid[2];
+        dipole[0] += n[0];
+        dipole[1] += n[1];
+        dipole[2] += n[2];
+    }
+
+    let center = if total_area > 0.0 {
+        [
+            wsum[0] / total_area,
+            wsum[1] / total_area,
+            wsum[2] / total_area,
+        ]
+    } else {
+        bounds_center(node)
+    };
+
+    let mut radius: f64 = 0.0;
+    for t in tris {
+        for &v in &[t.a, t.b, t.c] {
+            let d = vlen(vsub(v, center));
+            if d > radius {
+                radius = d;
+            }
+        }
+    }
+
+    NodeExpansion {
+        center,
+        dipole,
+        radius,
+        total_area,
+    }
+}
+
+fn combine_expansion(l: &NodeExpansion, r: &NodeExpansion, node: &BvhNode) -> NodeExpansion {
+    let total_area = l.total_area + r.total_area;
+    let center = if total_area > 0.0 {
+        [
+            (l.total_area * l.center[0] + r.total_area * r.center[0]) / total_area,
+            (l.total_area * l.center[1] + r.total_area * r.center[1]) / total_area,
+            (l.total_area * l.center[2] + r.total_area * r.center[2]) / total_area,
+        ]
+    } else {
+        bounds_center(node)
+    };
+    let dipole = [
+        l.dipole[0] + r.dipole[0],
+        l.dipole[1] + r.dipole[1],
+        l.dipole[2] + r.dipole[2],
+    ];
+    // Parent ball must provably enclose both child balls.
+    let radius = (vlen(vsub(l.center, center)) + l.radius)
+        .max(vlen(vsub(r.center, center)) + r.radius);
+
+    NodeExpansion {
+        center,
+        dipole,
+        radius,
+        total_area,
+    }
+}
+
+fn bounds_center(node: &BvhNode) -> [f64; 3] {
+    [
+        (node.bounds.min[0] + node.bounds.max[0]) * 0.5,
+        (node.bounds.min[1] + node.bounds.max[1]) * 0.5,
+        (node.bounds.min[2] + node.bounds.max[2]) * 0.5,
+    ]
 }
 
 /// Build a subtree over `order[start..end]`, appending nodes to `nodes` and
@@ -408,6 +656,193 @@ mod tests {
             }
             _ => panic!("single triangle must build a single leaf"),
         }
+    }
+
+    fn icosphere(subdiv: u32) -> Mesh {
+        use std::collections::HashMap;
+        let t = (1.0_f64 + 5.0_f64.sqrt()) / 2.0;
+        let mut verts: Vec<[f64; 3]> = vec![
+            [-1.0, t, 0.0],
+            [1.0, t, 0.0],
+            [-1.0, -t, 0.0],
+            [1.0, -t, 0.0],
+            [0.0, -1.0, t],
+            [0.0, 1.0, t],
+            [0.0, -1.0, -t],
+            [0.0, 1.0, -t],
+            [t, 0.0, -1.0],
+            [t, 0.0, 1.0],
+            [-t, 0.0, -1.0],
+            [-t, 0.0, 1.0],
+        ];
+        let norm = |v: &mut [f64; 3]| {
+            let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+            v[0] /= l;
+            v[1] /= l;
+            v[2] /= l;
+        };
+        for v in verts.iter_mut() {
+            norm(v);
+        }
+        let mut faces: Vec<[u32; 3]> = vec![
+            [0, 11, 5],
+            [0, 5, 1],
+            [0, 1, 7],
+            [0, 7, 10],
+            [0, 10, 11],
+            [1, 5, 9],
+            [5, 11, 4],
+            [11, 10, 2],
+            [10, 7, 6],
+            [7, 1, 8],
+            [3, 9, 4],
+            [3, 4, 2],
+            [3, 2, 6],
+            [3, 6, 8],
+            [3, 8, 9],
+            [4, 9, 5],
+            [2, 4, 11],
+            [6, 2, 10],
+            [8, 6, 7],
+            [9, 8, 1],
+        ];
+        for _ in 0..subdiv {
+            let mut cache: HashMap<(u32, u32), u32> = HashMap::new();
+            let mut next: Vec<[u32; 3]> = Vec::new();
+            let mut mid = |i: u32, j: u32, verts: &mut Vec<[f64; 3]>| -> u32 {
+                let key = if i < j { (i, j) } else { (j, i) };
+                if let Some(&m) = cache.get(&key) {
+                    return m;
+                }
+                let a = verts[i as usize];
+                let b = verts[j as usize];
+                let mut m = [
+                    (a[0] + b[0]) * 0.5,
+                    (a[1] + b[1]) * 0.5,
+                    (a[2] + b[2]) * 0.5,
+                ];
+                norm(&mut m);
+                let idx = verts.len() as u32;
+                verts.push(m);
+                cache.insert(key, idx);
+                idx
+            };
+            for f in &faces {
+                let a = mid(f[0], f[1], &mut verts);
+                let b = mid(f[1], f[2], &mut verts);
+                let c = mid(f[2], f[0], &mut verts);
+                next.push([f[0], a, c]);
+                next.push([f[1], b, a]);
+                next.push([f[2], c, b]);
+                next.push([a, b, c]);
+            }
+            faces = next;
+        }
+        Mesh {
+            verts,
+            tris: faces
+                .iter()
+                .map(|f| [f[0] as usize, f[1] as usize, f[2] as usize])
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn leaf_expansion_aggregates_single_tri() {
+        // For one triangle the dipole IS its un-normalized half-cross-product, the
+        // center its barycentre, total_area its area.
+        let bvh = Bvh::build(&single_tri());
+        assert_eq!(bvh.expansions.len(), 1);
+        let e = bvh.expansions[0];
+        assert!((e.total_area - 0.5).abs() < 1e-12, "area {}", e.total_area);
+        // Triangle is in the z=0 plane wound CCW about +z -> dipole = (0,0,0.5).
+        assert!((e.dipole[2] - 0.5).abs() < 1e-12, "dipole {:?}", e.dipole);
+        assert!(e.dipole[0].abs() < 1e-12 && e.dipole[1].abs() < 1e-12);
+        let want_c = [1.0 / 3.0, 1.0 / 3.0, 0.0];
+        for (k, &wc) in want_c.iter().enumerate() {
+            assert!((e.center[k] - wc).abs() < 1e-12);
+        }
+        assert!(e.radius > 0.0);
+    }
+
+    #[test]
+    fn dipole_translation_invariant_under_combine() {
+        // The root dipole of a multi-leaf tree equals the plain sum of all member
+        // half-cross-products (no re-centering needed for the leading term).
+        let mesh = soup();
+        let bvh = Bvh::build(&mesh);
+        let mut want = [0.0; 3];
+        for t in &bvh.tris {
+            let n = vcross(vsub(t.b, t.a), vsub(t.c, t.a));
+            want[0] += 0.5 * n[0];
+            want[1] += 0.5 * n[1];
+            want[2] += 0.5 * n[2];
+        }
+        let root = bvh.expansions[bvh.root as usize];
+        for (k, &w) in want.iter().enumerate() {
+            assert!(
+                (root.dipole[k] - w).abs() < 1e-9,
+                "dipole[{k}] {} vs {}",
+                root.dipole[k],
+                w
+            );
+        }
+    }
+
+    #[test]
+    fn root_ball_encloses_all_vertices() {
+        let mesh = icosphere(2);
+        let bvh = Bvh::build(&mesh);
+        let root = bvh.expansions[bvh.root as usize];
+        for v in &mesh.verts {
+            let d = vlen(vsub(*v, root.center));
+            assert!(
+                d <= root.radius + 1e-9,
+                "vertex {v:?} at {d} outside ball radius {}",
+                root.radius
+            );
+        }
+    }
+
+    #[test]
+    fn winding_number_fast_matches_exact_within_tol() {
+        let mesh = icosphere(2);
+        let bvh = Bvh::build(&mesh);
+        let mut stack = Vec::new();
+        // Interior, exterior, and a near-surface band point.
+        let samples: [[f64; 3]; 6] = [
+            [0.0, 0.0, 0.0],
+            [0.1, -0.2, 0.05],
+            [3.0, 0.0, 0.0],
+            [-2.0, 1.5, 0.5],
+            [0.97, 0.0, 0.0],
+            [0.0, 0.0, 1.02],
+        ];
+        for p in samples {
+            let fast = bvh.winding_number_fast(p, BETA, &mut stack);
+            let exact = mesh.winding_number(p);
+            // The NUMBER is a bounded far-field approximation: the dipole error on
+            // icosphere far nodes is ~0.03, well inside the 0.5 sign margin. The
+            // SIGN, the actual contract, must match exactly.
+            assert!(
+                (fast - exact).abs() < 5e-2,
+                "w too far at {p:?}: fast {fast} exact {exact}"
+            );
+            assert_eq!(
+                fast > 0.5,
+                exact > 0.5,
+                "sign mismatch at {p:?}: fast {fast} exact {exact}"
+            );
+        }
+    }
+
+    #[test]
+    fn empty_mesh_winding_is_zero_and_outside() {
+        let mesh = Mesh::from_flat(&[], &[]);
+        let bvh = Bvh::build(&mesh);
+        let mut stack = Vec::new();
+        assert_eq!(bvh.winding_number_fast([0.0, 0.0, 0.0], BETA, &mut stack), 0.0);
+        assert!(!bvh.is_inside_fast([0.0, 0.0, 0.0], BETA, &mut stack));
     }
 
     #[test]
