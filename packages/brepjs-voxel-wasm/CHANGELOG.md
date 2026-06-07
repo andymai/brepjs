@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.2...brepjs-voxel-wasm-v0.2.3) (2026-06-07)
+
+
+### Performance Improvements
+
+* **voxel:** narrow-band distance via a band-cutoff BVH query ([#1247](https://github.com/andymai/brepjs/issues/1247)) ([67d0840](https://github.com/andymai/brepjs/commit/67d0840a62bd1e3510b3f11054005dd28a5ba392))
+
 ## [0.2.2](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.1...brepjs-voxel-wasm-v0.2.2) (2026-06-07)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "brepjs-voxel-wasm",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Voxel/SDF geometry engine for brepjs (Rust → WASM)",
   "keywords": [
     "voxel",
