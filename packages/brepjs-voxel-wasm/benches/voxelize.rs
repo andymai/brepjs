@@ -118,6 +118,9 @@ fn bench_voxelize(c: &mut Criterion) {
     let sizes = [(3u32, "1280_tris"), (4u32, "5120_tris")];
 
     // Isolated distance pass (no FWN sign) — the headline brute-vs-bvh number.
+    // The bvh arm builds the BVH inside the timed region while brute has no setup,
+    // so these ratios are a CONSERVATIVE lower bound: production (voxelize_mesh)
+    // builds the BVH once and amortizes it across both the distance and sign passes.
     let mut distance = c.benchmark_group("distance_pass");
     distance.sample_size(20);
     for (subdiv, label) in sizes {
@@ -138,7 +141,10 @@ fn bench_voxelize(c: &mut Criterion) {
     distance.finish();
 
     // Isolated FWN sign pass (no distance) — the apples-to-apples PR2 headline:
-    // exact per-triangle winding vs hierarchical Barnes–Hut.
+    // exact per-triangle winding vs hierarchical Barnes–Hut. As with distance_pass,
+    // the fast arm builds the BVH inside the timed region while exact has no setup,
+    // so the reported ratios UNDERSTATE the per-query traversal gain (production
+    // builds the BVH once and shares it across both passes).
     let mut sign = c.benchmark_group("sign_pass");
     sign.sample_size(20);
     for (subdiv, label) in sizes {
