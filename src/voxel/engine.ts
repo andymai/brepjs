@@ -84,12 +84,7 @@ export interface VoxelEngine {
  * exception) on a non-dense grid or a grid over the voxel cap.
  */
 export interface WasmVoxelFieldConstructor {
-  new (
-    verts: Float32Array,
-    tris: Uint32Array,
-    resolution: number,
-    padding: number
-  ): WasmVoxelField;
+  new (verts: Float32Array, tris: Uint32Array, resolution: number, padding: number): WasmVoxelField;
   /**
    * Boolean two meshes onto ONE co-registered dense field (union bbox → voxelize
    * both onto a shared grid → combine), ready to chain. The correct path for

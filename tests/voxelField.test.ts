@@ -24,7 +24,30 @@ function box(min: [number, number, number], max: [number, number, number]): Voxe
   const [a, b, c] = min;
   const [d, e, f] = max;
   const vertices = new Float32Array([
-    a, b, c, d, b, c, d, e, c, a, e, c, a, b, f, d, b, f, d, e, f, a, e, f,
+    a,
+    b,
+    c,
+    d,
+    b,
+    c,
+    d,
+    e,
+    c,
+    a,
+    e,
+    c,
+    a,
+    b,
+    f,
+    d,
+    b,
+    f,
+    d,
+    e,
+    f,
+    a,
+    e,
+    f,
   ]);
   const triangles = new Uint32Array([
     0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7, 3, 1, 2,
@@ -55,18 +78,43 @@ const B = box([0.6, 0, 0], [1.6, 1, 1]);
 function sphere(radius: number): VoxelMeshInput {
   const t = (1 + Math.sqrt(5)) / 2;
   let pts: number[][] = [
-    [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
-    [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
-    [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
+    [-1, t, 0],
+    [1, t, 0],
+    [-1, -t, 0],
+    [1, -t, 0],
+    [0, -1, t],
+    [0, 1, t],
+    [0, -1, -t],
+    [0, 1, -t],
+    [t, 0, -1],
+    [t, 0, 1],
+    [-t, 0, -1],
+    [-t, 0, 1],
   ].map((v) => {
     const l = Math.hypot(v[0] as number, v[1] as number, v[2] as number);
     return [(v[0] as number) / l, (v[1] as number) / l, (v[2] as number) / l];
   });
   let faces: number[][] = [
-    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+    [0, 11, 5],
+    [0, 5, 1],
+    [0, 1, 7],
+    [0, 7, 10],
+    [0, 10, 11],
+    [1, 5, 9],
+    [5, 11, 4],
+    [11, 10, 2],
+    [10, 7, 6],
+    [7, 1, 8],
+    [3, 9, 4],
+    [3, 4, 2],
+    [3, 2, 6],
+    [3, 6, 8],
+    [3, 8, 9],
+    [4, 9, 5],
+    [2, 4, 11],
+    [6, 2, 10],
+    [8, 6, 7],
+    [9, 8, 1],
   ];
   for (let s = 0; s < 2; s++) {
     const cache = new Map<string, number>();
@@ -318,12 +366,8 @@ describe('voxel field op-chains (persistent grid + Fast Sweeping reinit)', () =>
     // The union spans x∈[-1,1.8] (width 2.8 = the longest axis), so the grid
     // spacing is 2.8/resolution; allow ~2 voxels of Surface-Nets slack.
     const spacing = 2.8 / 40;
-    expect((baseBox.min[0] as number) - (outBox.min[0] as number)).toBeGreaterThan(
-      d - 2 * spacing
-    );
-    expect((outBox.max[0] as number) - (baseBox.max[0] as number)).toBeGreaterThan(
-      d - 2 * spacing
-    );
+    expect((baseBox.min[0] as number) - (outBox.min[0] as number)).toBeGreaterThan(d - 2 * spacing);
+    expect((outBox.max[0] as number) - (baseBox.max[0] as number)).toBeGreaterThan(d - 2 * spacing);
   });
 
   it('rejects voxelBooleanField on an empty operand', () => {

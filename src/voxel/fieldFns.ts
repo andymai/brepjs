@@ -169,9 +169,7 @@ function isLive(handle: VoxelFieldHandle): boolean {
 }
 
 function disposedErr<T>(): Result<T> {
-  return err(
-    validationError('VOXEL_FIELD_DISPOSED', 'the voxel field handle has been disposed.')
-  );
+  return err(validationError('VOXEL_FIELD_DISPOSED', 'the voxel field handle has been disposed.'));
 }
 
 /**
@@ -247,12 +245,18 @@ export function voxelBooleanField(
   if (invalidB) return err(invalidB);
   if (a.vertices.length === 0 || a.triangles.length === 0) {
     return err(
-      validationError('VOXEL_EMPTY_MESH', 'voxelBooleanField requires a non-empty mesh for operand A.')
+      validationError(
+        'VOXEL_EMPTY_MESH',
+        'voxelBooleanField requires a non-empty mesh for operand A.'
+      )
     );
   }
   if (b.vertices.length === 0 || b.triangles.length === 0) {
     return err(
-      validationError('VOXEL_EMPTY_MESH', 'voxelBooleanField requires a non-empty mesh for operand B.')
+      validationError(
+        'VOXEL_EMPTY_MESH',
+        'voxelBooleanField requires a non-empty mesh for operand B.'
+      )
     );
   }
   const params = resolveGridParams(opts);
