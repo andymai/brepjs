@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.1...brepjs-voxel-wasm-v0.2.2) (2026-06-07)
+
+
+### Performance Improvements
+
+* **voxel:** hierarchical Barnes-Hut FWN for the voxelize sign pass ([#1245](https://github.com/andymai/brepjs/issues/1245)) ([1c426ec](https://github.com/andymai/brepjs/commit/1c426ec34688ad696b0e3bef367ad91f369d5b26))
+
 ## [0.2.1](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.0...brepjs-voxel-wasm-v0.2.1) (2026-06-07)
 
 
