@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.3...brepjs-voxel-wasm-v0.2.4) (2026-06-07)
+
+
+### Performance Improvements
+
+* **voxel:** sparse tiled grid + seam-free tiled contouring ([#1249](https://github.com/andymai/brepjs/issues/1249)) ([5d5ec1e](https://github.com/andymai/brepjs/commit/5d5ec1ee5633d597db5c1c3b32a45c3b7df46b1b))
+
 ## [0.2.3](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.2...brepjs-voxel-wasm-v0.2.3) (2026-06-07)
 
 
