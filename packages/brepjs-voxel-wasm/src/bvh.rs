@@ -152,7 +152,17 @@ impl Bvh {
 
     /// Exact nearest unsigned distance from `p` to the triangle soup. Returns
     /// `f64::INFINITY` for an empty mesh (matching the brute init value).
+    /// Allocates a traversal stack; the voxelization hot path uses
+    /// [`nearest_distance_with`](Self::nearest_distance_with) to reuse one.
     pub fn nearest_distance(&self, p: [f64; 3]) -> f64 {
+        let mut stack = Vec::new();
+        self.nearest_distance_with(p, &mut stack)
+    }
+
+    /// As [`nearest_distance`](Self::nearest_distance), but reuses a caller-owned
+    /// traversal stack to avoid a per-query heap allocation — at ~47K voxels per
+    /// `voxelize_mesh` call that turns 47K allocations into one grow-once buffer.
+    pub fn nearest_distance_with(&self, p: [f64; 3], stack: &mut Vec<u32>) -> f64 {
         if self.nodes.is_empty() {
             return f64::INFINITY;
         }
@@ -163,7 +173,7 @@ impl Bvh {
         // produces — squared comparison is monotonic in d, so the argmin matches.
         let mut best_sq = f64::INFINITY;
         let mut best_d = f64::INFINITY;
-        let mut stack: Vec<u32> = Vec::with_capacity(64);
+        stack.clear();
         stack.push(self.root);
 
         while let Some(idx) = stack.pop() {

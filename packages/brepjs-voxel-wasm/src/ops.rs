@@ -114,6 +114,7 @@ pub(crate) fn point_to_triangle_distance(
 /// rather than from surface connectivity.
 pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
     let bvh = Bvh::build(mesh);
+    let mut stack: Vec<u32> = Vec::new();
     let [nx, ny, nz] = grid.dims();
     for z in 0..nz {
         for y in 0..ny {
@@ -121,7 +122,7 @@ pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
                 let wp = grid.world_pos(x, y, z);
                 let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
 
-                let unsigned = bvh.nearest_distance(p);
+                let unsigned = bvh.nearest_distance_with(p, &mut stack);
 
                 let sign = if mesh.is_inside(p) { -1.0 } else { 1.0 };
                 grid.set(x, y, z, (sign * unsigned) as f32);
@@ -187,13 +188,14 @@ fn distance_field_brute(grid: &mut Grid, mesh: &Mesh) {
 #[cfg(not(target_arch = "wasm32"))]
 fn distance_field_bvh(grid: &mut Grid, mesh: &Mesh) {
     let bvh = Bvh::build(mesh);
+    let mut stack: Vec<u32> = Vec::new();
     let [nx, ny, nz] = grid.dims();
     for z in 0..nz {
         for y in 0..ny {
             for x in 0..nx {
                 let wp = grid.world_pos(x, y, z);
                 let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
-                grid.set(x, y, z, bvh.nearest_distance(p) as f32);
+                grid.set(x, y, z, bvh.nearest_distance_with(p, &mut stack) as f32);
             }
         }
     }
