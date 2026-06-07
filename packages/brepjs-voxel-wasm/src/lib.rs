@@ -62,7 +62,7 @@ fn sparse_voxelized(
     band: f64,
 ) -> Result<SparseGrid, JsError> {
     let (geom, _) = GridGeom::for_bounds(min, max, resolution as usize, padding as usize);
-    let mut sparse = SparseGrid::new(geom, band as f32);
+    let mut sparse = SparseGrid::new(geom, band as f32).map_err(grid_err)?;
     ops::voxelize_mesh_sparse(&mut sparse, mesh, band).map_err(grid_err)?;
     Ok(sparse)
 }

@@ -15,7 +15,7 @@
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 
-use crate::grid::{GridGeom, MAX_VOXELS};
+use crate::grid::{GridError, GridGeom, MAX_VOXELS};
 
 /// A minimal multiply-shift hasher over integer keys, used for the tile/cell
 /// maps. It avoids pulling SipHash's monomorphization into the cdylib (keeping
@@ -86,17 +86,30 @@ pub struct SparseGrid {
 impl SparseGrid {
     /// A sparse grid matching `geom`, every cell implicitly `+far_band` (exterior
     /// air) until a tile is activated or its far sign is set.
-    pub fn new(geom: GridGeom, far_band: f32) -> SparseGrid {
+    ///
+    /// Refuses with [`GridError::TooLarge`] when the total tile count exceeds
+    /// `u32::MAX`: `tile_key` packs (tx,ty,tz) into a u32 and `far_sign` is a dense
+    /// `Vec` indexed by it, so an overflow would wrap two tile coords onto one key
+    /// and silently corrupt blocks. `checked_mul` catches it even on wasm32 where
+    /// `usize` is 32-bit (so the product itself would wrap).
+    pub fn new(geom: GridGeom, far_band: f32) -> Result<SparseGrid, GridError> {
         let [nx, ny, nz] = geom.dims;
         let tile_dims = [tiles_for(nx), tiles_for(ny), tiles_for(nz)];
-        let ntiles = tile_dims[0] * tile_dims[1] * tile_dims[2];
-        SparseGrid {
+        let ntiles = match tile_dims[0]
+            .checked_mul(tile_dims[1])
+            .and_then(|v| v.checked_mul(tile_dims[2]))
+        {
+            Some(n) if n <= u32::MAX as usize => n,
+            Some(n) => return Err(GridError::TooLarge { requested: n }),
+            None => return Err(GridError::TooLarge { requested: usize::MAX }),
+        };
+        Ok(SparseGrid {
             geom,
             tile_dims,
             far_band,
             far_sign: vec![1i8; ntiles],
             blocks: IntHashMap::default(),
-        }
+        })
     }
 
     pub fn dims(&self) -> [usize; 3] {
@@ -286,9 +299,23 @@ mod tests {
         GridGeom::for_bounds([0.0, 0.0, 0.0], [40.0, 40.0, 40.0], 40, 0).0
     }
 
+    /// The tile key is a u32 and far_sign is indexed by it, so a tile count past
+    /// u32::MAX must be REFUSED (not silently wrapped onto an aliasing block). The
+    /// check precedes any allocation, so this is cheap even though the would-be
+    /// far_sign is enormous.
+    #[test]
+    fn new_refuses_tile_count_overflow() {
+        // ~50000^3 voxels -> ~3125^3 tiles ~= 3.05e10 > u32::MAX (4.29e9).
+        let huge = GridGeom::for_bounds([0.0, 0.0, 0.0], [50000.0, 50000.0, 50000.0], 50000, 0).0;
+        assert!(
+            SparseGrid::new(huge, 1.0).is_err(),
+            "tile count beyond u32::MAX must refuse, not wrap"
+        );
+    }
+
     #[test]
     fn absent_tile_reads_far_value() {
-        let mut g = SparseGrid::new(geom(), 2.0);
+        let mut g = SparseGrid::new(geom(), 2.0).unwrap();
         // Default far sign is +1 -> exterior air.
         assert_eq!(g.at(5, 5, 5), 2.0);
         // Mark a tile interior; its absent cells now read -band.
@@ -298,7 +325,7 @@ mod tests {
 
     #[test]
     fn set_lazily_allocates_block_prefilled_with_far() {
-        let mut g = SparseGrid::new(geom(), 2.0);
+        let mut g = SparseGrid::new(geom(), 2.0).unwrap();
         g.set_far_sign(0, 0, 0, -1);
         assert_eq!(g.allocated_tiles(), 0);
         g.set(1, 1, 1, 0.25);
@@ -311,7 +338,7 @@ mod tests {
 
     #[test]
     fn tile_key_coord_round_trip() {
-        let g = SparseGrid::new(geom(), 1.0);
+        let g = SparseGrid::new(geom(), 1.0).unwrap();
         let [tnx, tny, tnz] = g.tile_dims();
         for tz in 0..tnz {
             for ty in 0..tny {
@@ -325,7 +352,7 @@ mod tests {
 
     #[test]
     fn oob_reads_are_far_air() {
-        let g = SparseGrid::new(geom(), 3.0);
+        let g = SparseGrid::new(geom(), 3.0).unwrap();
         let [nx, ny, nz] = g.dims();
         assert_eq!(g.at(nx, 0, 0), 3.0);
         assert_eq!(g.at(0, ny + 5, 0), 3.0);
@@ -334,7 +361,7 @@ mod tests {
 
     #[test]
     fn world_pos_matches_geom() {
-        let g = SparseGrid::new(geom(), 1.0);
+        let g = SparseGrid::new(geom(), 1.0).unwrap();
         let gm = g.geom();
         assert_eq!(g.world_pos(3, 7, 11), gm.world_pos(3, 7, 11));
     }

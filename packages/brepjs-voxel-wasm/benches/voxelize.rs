@@ -217,7 +217,7 @@ fn bench_voxelize(c: &mut Criterion) {
             let (geom, _) = GridGeom::for_bounds([-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2);
             let band = (2.0 * geom.spacing) as f64;
             bench.iter(|| {
-                let mut sparse = SparseGrid::new(geom, band as f32);
+                let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
                 voxelize_mesh_sparse_pub(&mut sparse, mesh, band);
             });
         });

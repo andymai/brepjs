@@ -632,7 +632,7 @@ mod tests {
         let dense = Grid::for_bounds(min, max, res, pad).unwrap();
         let band = band_radius(&dense, 0.0);
         let (geom, _) = GridGeom::for_bounds(min, max, res, pad);
-        let mut sparse = SparseGrid::new(geom, band as f32);
+        let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
         voxelize_mesh_sparse(&mut sparse, mesh, band).unwrap();
         sparse
     }
@@ -747,7 +747,7 @@ mod tests {
             let oracle = surface_nets_mesh(&dense);
 
             let (geom, _) = GridGeom::for_bounds(emin, emax, res, pad);
-            let mut sparse = SparseGrid::new(geom, band as f32);
+            let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
             voxelize_mesh_sparse(&mut sparse, &mesh, band).unwrap();
             sparse.map_active_cells(|v| v - distance);
             sparse.offset_far(distance);
@@ -768,7 +768,7 @@ mod tests {
         let oracle = surface_nets_mesh(&shell);
 
         let (geom, _) = GridGeom::for_bounds(min, max, res, pad);
-        let mut sparse = SparseGrid::new(geom, band as f32);
+        let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
         voxelize_mesh_sparse(&mut sparse, &mesh, band).unwrap();
         sparse.map_active_cells(|s| s.max(-(s + thickness)));
         sparse.shell_far(thickness);
@@ -796,7 +796,7 @@ mod tests {
         let mesh = icosphere(2);
         let (geom, _) = GridGeom::for_bounds(min, max, res, pad);
         let band = (2.0 * geom.spacing) as f64;
-        let mut sparse = SparseGrid::new(geom, band as f32);
+        let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
         voxelize_mesh_sparse(&mut sparse, &mesh, band).unwrap();
         assert!(
             sparse.allocated_voxels() < MAX_VOXELS,
@@ -941,7 +941,7 @@ mod tests {
         // cap. A 1-voxel band keeps the shell thin so the proof runs fast; the
         // ceiling argument is independent of band width.
         let band = geom.spacing;
-        let mut sparse = SparseGrid::new(geom, band);
+        let mut sparse = SparseGrid::new(geom, band).unwrap();
         voxelize_mesh_sparse(&mut sparse, &mesh, band as f64)
             .expect("sparse must succeed where dense refuses");
         let out = surface_nets_mesh_sparse(&sparse);
@@ -974,7 +974,7 @@ mod tests {
         let res = 1100;
         let (geom, _) = GridGeom::for_bounds(min, max, res, 2);
         let band = geom.spacing as f64;
-        let mut sparse = SparseGrid::new(geom, band as f32);
+        let mut sparse = SparseGrid::new(geom, band as f32).unwrap();
         let err = voxelize_mesh_sparse(&mut sparse, &mesh, band);
         assert!(
             err.is_err(),
