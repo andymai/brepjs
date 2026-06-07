@@ -21,7 +21,7 @@
     "src"
   ],
   "dependencies": {
-    "brepjs-voxel-wasm": "^0.1.0"
+    "brepjs-voxel-wasm": "^0.2.0"
   },
   "exports": {
     ".": {
