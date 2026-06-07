@@ -5,20 +5,74 @@
 //! TS loader passes Float32Array/Uint32Array in and gets a typed array back).
 
 mod bvh;
-mod contour;
 mod tpms;
 
 // Public so the criterion bench (an external harness built against the rlib)
-// can reach `Mesh`, `Grid`, and the `voxelize_mesh_*_pub` bench shims. The wasm
-// surface is unchanged — none of these carry #[wasm_bindgen].
+// can reach `Mesh`, `Grid`, `SparseGrid`, the contourers, and the
+// `voxelize_mesh_*_pub` bench shims. The wasm surface is unchanged — none of
+// these carry #[wasm_bindgen].
+pub mod contour;
 pub mod fwn;
 pub mod grid;
 pub mod ops;
+pub mod sparse;
 
 use wasm_bindgen::prelude::*;
 
-use crate::grid::Grid;
+use crate::grid::{Grid, GridError, GridGeom};
+use crate::sparse::SparseGrid;
 use crate::tpms::LatticeType;
+
+/// Dense-vs-sparse routing threshold on the would-be dense voxel count. Set well
+/// above every current vitest fixture (all res <= 32, far under 4M) so they stay
+/// byte-for-byte on the proven dense path; only larger grids route to the sparse
+/// tiled path. Overflowing dims (`usize::MAX`) also route sparse.
+const DENSE_THRESHOLD: usize = 4_000_000;
+
+/// Which voxel pipeline a bridge call routes to. Internal — no wasm-bindgen.
+enum Pipeline {
+    Dense,
+    Sparse,
+}
+
+/// Choose the pipeline from the would-be dense voxel count for these bounds.
+fn route(min: [f32; 3], max: [f32; 3], resolution: u32, padding: u32) -> Pipeline {
+    let (_, voxels) = GridGeom::for_bounds(min, max, resolution as usize, padding as usize);
+    if voxels <= DENSE_THRESHOLD {
+        Pipeline::Dense
+    } else {
+        Pipeline::Sparse
+    }
+}
+
+/// Map a [`GridError`] to a JS exception, matching the dense path's wording.
+fn grid_err(e: GridError) -> JsError {
+    JsError::new(&format!("voxel grid allocation failed: {e:?}"))
+}
+
+/// Build a sparse grid over `(min,max,res,pad)` and voxelize `mesh` with `band`.
+/// Returns the populated grid or a `TooLarge` JS error if the active band would
+/// exceed the sparse budget.
+fn sparse_voxelized(
+    mesh: &fwn::Mesh,
+    min: [f32; 3],
+    max: [f32; 3],
+    resolution: u32,
+    padding: u32,
+    band: f64,
+) -> Result<SparseGrid, JsError> {
+    let (geom, _) = GridGeom::for_bounds(min, max, resolution as usize, padding as usize);
+    let mut sparse = SparseGrid::new(geom, band as f32);
+    ops::voxelize_mesh_sparse(&mut sparse, mesh, band).map_err(grid_err)?;
+    Ok(sparse)
+}
+
+/// The dense band radius for a grid sized like `(min,max,res,pad)`, computed from
+/// geometry alone (no allocation) so the sparse path sizes its band identically.
+fn band_for(min: [f32; 3], max: [f32; 3], resolution: u32, padding: u32, extra: f32) -> f64 {
+    let (geom, _) = GridGeom::for_bounds(min, max, resolution as usize, padding as usize);
+    (extra + 2.0 * geom.spacing) as f64
+}
 
 /// Repaired triangle mesh handed back across the wasm boundary. wasm-bindgen
 /// exposes the `Vec` getters as typed arrays (flat xyz positions/normals,
@@ -96,17 +150,25 @@ pub fn repair_mesh(
     let mesh = fwn::Mesh::from_flat(verts, tris);
     let (min, max) = bbox(verts);
 
-    let mut grid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
-        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
-
-    let band = ops::band_radius(&grid, 0.0);
-    ops::voxelize_mesh_banded(&mut grid, &mesh, band);
-    let mesh = contour::surface_nets_mesh(&grid);
+    let out = match route(min, max, resolution, padding) {
+        Pipeline::Dense => {
+            let mut grid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
+                .map_err(grid_err)?;
+            let band = ops::band_radius(&grid, 0.0);
+            ops::voxelize_mesh_banded(&mut grid, &mesh, band);
+            contour::surface_nets_mesh(&grid)
+        }
+        Pipeline::Sparse => {
+            let band = band_for(min, max, resolution, padding, 0.0);
+            let sparse = sparse_voxelized(&mesh, min, max, resolution, padding, band)?;
+            contour::surface_nets_mesh_sparse(&sparse)
+        }
+    };
 
     Ok(RepairResult {
-        positions: mesh.positions,
-        normals: mesh.normals,
-        indices: mesh.indices,
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
     })
 }
 
@@ -234,13 +296,23 @@ pub fn offset_mesh(
     let emin = [min[0] - grow, min[1] - grow, min[2] - grow];
     let emax = [max[0] + grow, max[1] + grow, max[2] + grow];
 
-    let mut grid = Grid::for_bounds(emin, emax, resolution as usize, padding as usize)
-        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
-    let band = ops::band_radius(&grid, distance.abs());
-    ops::voxelize_mesh_banded(&mut grid, &mesh, band);
-    ops::offset_sdf(&mut grid, distance);
-
-    let out = contour::surface_nets_mesh(&grid);
+    let out = match route(emin, emax, resolution, padding) {
+        Pipeline::Dense => {
+            let mut grid = Grid::for_bounds(emin, emax, resolution as usize, padding as usize)
+                .map_err(grid_err)?;
+            let band = ops::band_radius(&grid, distance.abs());
+            ops::voxelize_mesh_banded(&mut grid, &mesh, band);
+            ops::offset_sdf(&mut grid, distance);
+            contour::surface_nets_mesh(&grid)
+        }
+        Pipeline::Sparse => {
+            let band = band_for(emin, emax, resolution, padding, distance.abs());
+            let mut sparse = sparse_voxelized(&mesh, emin, emax, resolution, padding, band)?;
+            sparse.map_active_cells(|v| v - distance);
+            sparse.offset_far(distance);
+            contour::surface_nets_mesh_sparse(&sparse)
+        }
+    };
 
     Ok(RepairResult {
         positions: out.positions,
@@ -273,13 +345,23 @@ pub fn shell_mesh(
     let mesh = fwn::Mesh::from_flat(verts, tris);
     let (min, max) = bbox(verts);
 
-    let mut solid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
-        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
-    let band = ops::band_radius(&solid, thickness);
-    ops::voxelize_mesh_banded(&mut solid, &mesh, band);
-
-    let shell = ops::shell_sdf(&solid, thickness);
-    let out = contour::surface_nets_mesh(&shell);
+    let out = match route(min, max, resolution, padding) {
+        Pipeline::Dense => {
+            let mut solid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
+                .map_err(grid_err)?;
+            let band = ops::band_radius(&solid, thickness);
+            ops::voxelize_mesh_banded(&mut solid, &mesh, band);
+            let shell = ops::shell_sdf(&solid, thickness);
+            contour::surface_nets_mesh(&shell)
+        }
+        Pipeline::Sparse => {
+            let band = band_for(min, max, resolution, padding, thickness);
+            let mut sparse = sparse_voxelized(&mesh, min, max, resolution, padding, band)?;
+            sparse.map_active_cells(|s| s.max(-(s + thickness)));
+            sparse.shell_far(thickness);
+            contour::surface_nets_mesh_sparse(&sparse)
+        }
+    };
 
     Ok(RepairResult {
         positions: out.positions,

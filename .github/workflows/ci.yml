@@ -21,6 +21,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       playground: ${{ steps.filter.outputs.playground }}
+      voxel: ${{ steps.filter.outputs.voxel }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Release-please PRs only touch CHANGELOG.md, package.json versions,
@@ -61,6 +62,9 @@ jobs:
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
+            voxel:
+              - 'packages/brepjs-voxel-wasm/**'
+              - '.github/workflows/ci.yml'
 
   typecheck:
     needs: changes
@@ -182,6 +186,27 @@ jobs:
       - run: npm run lint --workspace=brepjs-sheetmetal
       - run: npm run test --workspace=brepjs-sheetmetal
       - run: npm run build --workspace=brepjs-sheetmetal
+
+  voxel-wasm-rust:
+    # The brepjs-voxel-wasm crate's correctness — the BVH/FWN/narrow-band/sparse
+    # parity gates (incl. the seam-free tiled-vs-dense contour proof) — lives in
+    # cargo tests, which otherwise run nowhere in CI: the committed pkg/ wasm is
+    # all the vitest suite drives. Run cargo test + clippy as a gate. (Not a
+    # rebuild-and-diff of pkg/ — wasm-opt output varies by version, so it would
+    # flake; this gates the source-level correctness proof.)
+    needs: changes
+    if: needs.changes.outputs.voxel == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/brepjs-voxel-wasm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Use latest stable Rust + clippy
+        run: rustup update stable && rustup default stable && rustup component add clippy
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
 
   test:
     needs: changes
@@ -362,7 +387,7 @@ jobs:
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, test, size, benchmark]
+    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, voxel-wasm-rust, test, size, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

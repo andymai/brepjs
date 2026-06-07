@@ -17,9 +17,12 @@
 // callers the contour/bridge seams will add, so silence dead-code here.
 #![allow(dead_code)]
 
+use std::collections::HashSet;
+
 use crate::bvh::{Bvh, BETA};
 use crate::fwn::Mesh;
 use crate::grid::{Grid, GridError};
+use crate::sparse::{IntBuildHasher, SparseGrid, MAX_ACTIVE_TILES, TILE};
 
 /// Squared length of a 3-vector.
 fn len_sq(v: [f64; 3]) -> f64 {
@@ -158,6 +161,156 @@ pub(crate) fn voxelize_mesh_banded(grid: &mut Grid, mesh: &Mesh, band: f64) {
             }
         }
     }
+}
+
+/// Sparse twin of [`voxelize_mesh_banded`]: write the same FWN-signed, band-clamped
+/// SDF into a [`SparseGrid`], but ONLY into tiles the surface band can reach. The
+/// per-voxel math is byte-identical — only the iteration set shrinks — so the cells
+/// written here equal the dense grid's at the same (x,y,z), and absent tiles read a
+/// uniform far value that equals the dense grid's clamped far field.
+///
+/// Errors with [`GridError::TooLarge`] if the active-tile band would exceed
+/// [`MAX_ACTIVE_TILES`], the sparse-path OOM ceiling (checked before Phase-2
+/// allocation, so nothing large is allocated on refusal).
+pub(crate) fn voxelize_mesh_sparse(
+    sparse: &mut SparseGrid,
+    mesh: &Mesh,
+    band: f64,
+) -> Result<(), GridError> {
+    let bvh = Bvh::build(mesh);
+    let geom = sparse.geom();
+    let [tnx, tny, tnz] = sparse.tile_dims();
+    // Activation reach = band + a 2-voxel cell margin. The band alone marks every
+    // voxel with |dist| < band, but a SURFACE CELL is owned by the tile of its MIN
+    // corner, which can sit up to ~sqrt(3) voxels OUTSIDE the band on the far side
+    // of a near-surface corner. The +2-voxel margin guarantees that owning tile is
+    // marked, so Pass A iterates every surface cell — the seam-freedom precondition.
+    let reach = band as f32 + 2.0 * geom.spacing;
+
+    // Phase 1 — activate tiles whose AABB (expanded by the activation reach) can
+    // contain (or own) a near-surface voxel. Any voxel with |dist| < band is within
+    // `band` of some triangle, hence inside that triangle's expanded AABB; the extra
+    // margin pulls in the owning tile of every boundary surface cell.
+    let mut active: HashSet<u32, IntBuildHasher> = HashSet::default();
+    for tri in &mesh.tris {
+        let (a, b, c) = (mesh.verts[tri[0]], mesh.verts[tri[1]], mesh.verts[tri[2]]);
+        let mut lo = [0f32; 3];
+        let mut hi = [0f32; 3];
+        for d in 0..3 {
+            let amin = a[d].min(b[d]).min(c[d]) as f32 - reach;
+            let amax = a[d].max(b[d]).max(c[d]) as f32 + reach;
+            lo[d] = amin;
+            hi[d] = amax;
+        }
+        // Map the expanded AABB corners to tile coords (floor((p-origin)/spacing/T)),
+        // clamped to the tile grid.
+        let tile_lo = world_to_tile(&geom, lo, [tnx, tny, tnz], false);
+        let tile_hi = world_to_tile(&geom, hi, [tnx, tny, tnz], true);
+        for tz in tile_lo[2]..=tile_hi[2] {
+            for ty in tile_lo[1]..=tile_hi[1] {
+                for tx in tile_lo[0]..=tile_hi[0] {
+                    active.insert(sparse.tile_key(tx, ty, tz));
+                    if active.len() > MAX_ACTIVE_TILES {
+                        return Err(GridError::TooLarge {
+                            requested: active.len() * TILE * TILE * TILE,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 3 — implicit far sign: one FWN center-cell query per ABSENT tile decides
+    // its uniform interior/exterior sign. A tile entirely far from the surface is
+    // uniformly inside or outside, so its center is representative; active tiles get
+    // their per-cell sign from Phase 2 and ignore the table.
+    let mut stack: Vec<u32> = Vec::new();
+    for tz in 0..tnz {
+        for ty in 0..tny {
+            for tx in 0..tnx {
+                if active.contains(&sparse.tile_key(tx, ty, tz)) {
+                    continue;
+                }
+                let cx = (tx * TILE + TILE / 2).min(geom.dims[0].saturating_sub(1));
+                let cy = (ty * TILE + TILE / 2).min(geom.dims[1].saturating_sub(1));
+                let cz = (tz * TILE + TILE / 2).min(geom.dims[2].saturating_sub(1));
+                let wp = geom.world_pos(cx, cy, cz);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                let sign = if bvh.winding_number_fast(p, BETA, &mut stack) > 0.5 {
+                    -1
+                } else {
+                    1
+                };
+                sparse.set_far_sign(tx, ty, tz, sign);
+            }
+        }
+    }
+
+    // Phase 2 — voxelize active tiles. Each cell's value is bit-identical to what
+    // voxelize_mesh_banded writes at the same (x,y,z): same distance, same FWN sign.
+    let [nx, ny, nz] = geom.dims;
+    for &key in &active {
+        let [tx, ty, tz] = tile_coord(key, [tnx, tny, tnz]);
+        sparse.activate_tile(tx, ty, tz);
+        let x0 = tx * TILE;
+        let y0 = ty * TILE;
+        let z0 = tz * TILE;
+        for lz in 0..TILE {
+            let z = z0 + lz;
+            if z >= nz {
+                break;
+            }
+            for ly in 0..TILE {
+                let y = y0 + ly;
+                if y >= ny {
+                    break;
+                }
+                for lx in 0..TILE {
+                    let x = x0 + lx;
+                    if x >= nx {
+                        break;
+                    }
+                    let wp = geom.world_pos(x, y, z);
+                    let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                    let unsigned = bvh.nearest_distance_within(p, band, &mut stack);
+                    let sign = if bvh.winding_number_fast(p, BETA, &mut stack) > 0.5 {
+                        -1.0
+                    } else {
+                        1.0
+                    };
+                    sparse.set(x, y, z, (sign * unsigned) as f32);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Map a world point to a tile coord, clamped into `[0, tn-1]` per axis. `ceil`
+/// rounds up for an AABB's max corner so the overlapped tile is included.
+fn world_to_tile(
+    geom: &crate::grid::GridGeom,
+    p: [f32; 3],
+    tile_dims: [usize; 3],
+    ceil: bool,
+) -> [usize; 3] {
+    let mut out = [0usize; 3];
+    for d in 0..3 {
+        let cell = (p[d] - geom.origin[d]) / geom.spacing;
+        let t = cell / TILE as f32;
+        let ti = if ceil { t.ceil() } else { t.floor() };
+        let ti = if ti < 0.0 { 0.0 } else { ti };
+        out[d] = (ti as usize).min(tile_dims[d].saturating_sub(1));
+    }
+    out
+}
+
+/// Linear tile id → (tx,ty,tz). Mirror of `SparseGrid::tile_key`.
+fn tile_coord(key: u32, tile_dims: [usize; 3]) -> [usize; 3] {
+    let [tnx, tny, _] = tile_dims;
+    let k = key as usize;
+    [k % tnx, (k / tnx) % tny, k / (tnx * tny)]
 }
 
 /// Brute reference for the distance pass: the unsigned min over all triangles.
@@ -346,6 +499,12 @@ pub fn voxelize_mesh_banded_pub(grid: &mut Grid, mesh: &Mesh, band: f64) {
 #[doc(hidden)]
 pub fn band_radius_pub(grid: &Grid, extra_world: f32) -> f64 {
     band_radius(grid, extra_world)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn voxelize_mesh_sparse_pub(sparse: &mut SparseGrid, mesh: &Mesh, band: f64) {
+    voxelize_mesh_sparse(sparse, mesh, band).expect("sparse voxelize must fit budget");
 }
 
 /// Require two grids to share dimensions, else [`GridError::DimMismatch`].

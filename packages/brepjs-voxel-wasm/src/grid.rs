@@ -14,7 +14,71 @@
 const FAR_OUTSIDE: f32 = f32::MAX / 4.0;
 
 /// Hard cap on total voxel count, refused before allocation to avoid OOM.
-const MAX_VOXELS: usize = 64_000_000;
+pub const MAX_VOXELS: usize = 64_000_000;
+
+/// Padded grid geometry: the dims/origin/spacing triple shared identically by
+/// the dense [`Grid`] and the sparse grid, so `world_pos` math is defined once.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GridGeom {
+    pub dims: [usize; 3],
+    pub origin: [f32; 3],
+    pub spacing: f32,
+}
+
+impl GridGeom {
+    /// Size geometry so the LONGEST bbox axis spans `resolution` voxels at uniform
+    /// spacing, expanded by `padding_voxels` on every side. Pure dims math, no
+    /// allocation — used to threshold dense-vs-sparse without touching memory.
+    /// Returns the geometry plus the would-be dense voxel count (saturating, so an
+    /// overflowing product reads as `usize::MAX` rather than wrapping).
+    pub fn for_bounds(
+        min: [f32; 3],
+        max: [f32; 3],
+        resolution: usize,
+        padding_voxels: usize,
+    ) -> (GridGeom, usize) {
+        let res = resolution.max(1);
+        let extent = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+        let longest = extent[0].max(extent[1]).max(extent[2]).max(f32::MIN_POSITIVE);
+        let spacing = longest / res as f32;
+
+        let pad = padding_voxels;
+        let dims = [
+            (extent[0] / spacing).ceil() as usize + 1 + 2 * pad,
+            (extent[1] / spacing).ceil() as usize + 1 + 2 * pad,
+            (extent[2] / spacing).ceil() as usize + 1 + 2 * pad,
+        ];
+
+        let requested = dims[0]
+            .checked_mul(dims[1])
+            .and_then(|v| v.checked_mul(dims[2]))
+            .unwrap_or(usize::MAX);
+
+        let origin = [
+            min[0] - pad as f32 * spacing,
+            min[1] - pad as f32 * spacing,
+            min[2] - pad as f32 * spacing,
+        ];
+
+        (
+            GridGeom {
+                dims,
+                origin,
+                spacing,
+            },
+            requested,
+        )
+    }
+
+    /// World-space position of cell (x,y,z): `origin + [x,y,z]*spacing`.
+    pub fn world_pos(&self, x: usize, y: usize, z: usize) -> [f32; 3] {
+        [
+            self.origin[0] + x as f32 * self.spacing,
+            self.origin[1] + y as f32 * self.spacing,
+            self.origin[2] + z as f32 * self.spacing,
+        ]
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GridError {
@@ -43,36 +107,15 @@ impl Grid {
         resolution: usize,
         padding_voxels: usize,
     ) -> Result<Grid, GridError> {
-        let res = resolution.max(1);
-        let extent = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
-        let longest = extent[0].max(extent[1]).max(extent[2]).max(f32::MIN_POSITIVE);
-        let spacing = longest / res as f32;
-
-        let pad = padding_voxels;
-        let dims = [
-            (extent[0] / spacing).ceil() as usize + 1 + 2 * pad,
-            (extent[1] / spacing).ceil() as usize + 1 + 2 * pad,
-            (extent[2] / spacing).ceil() as usize + 1 + 2 * pad,
-        ];
-
-        let requested = dims[0]
-            .checked_mul(dims[1])
-            .and_then(|v| v.checked_mul(dims[2]))
-            .unwrap_or(usize::MAX);
+        let (geom, requested) = GridGeom::for_bounds(min, max, resolution, padding_voxels);
         if requested > MAX_VOXELS {
             return Err(GridError::TooLarge { requested });
         }
 
-        let origin = [
-            min[0] - pad as f32 * spacing,
-            min[1] - pad as f32 * spacing,
-            min[2] - pad as f32 * spacing,
-        ];
-
         Ok(Grid {
-            dims,
-            origin,
-            spacing,
+            dims: geom.dims,
+            origin: geom.origin,
+            spacing: geom.spacing,
             data: vec![FAR_OUTSIDE; requested],
         })
     }
@@ -125,6 +168,16 @@ impl Grid {
 
     pub fn origin(&self) -> [f32; 3] {
         self.origin
+    }
+
+    /// The shared geometry triple, for code that wants `world_pos` without a
+    /// dense allocation (e.g. the sparse contour parity oracle).
+    pub fn geom(&self) -> GridGeom {
+        GridGeom {
+            dims: self.dims,
+            origin: self.origin,
+            spacing: self.spacing,
+        }
     }
 
     /// Total voxel count (== length of the backing data).

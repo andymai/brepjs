@@ -11,12 +11,13 @@
 use std::collections::HashMap;
 
 use brepjs_voxel_wasm::fwn::Mesh;
-use brepjs_voxel_wasm::grid::Grid;
+use brepjs_voxel_wasm::grid::{Grid, GridGeom};
 use brepjs_voxel_wasm::ops::{
     band_radius_pub, distance_field_banded_pub, distance_field_brute_pub, distance_field_bvh_pub,
     sign_field_exact_pub, sign_field_fast_pub, voxelize_mesh_banded_pub, voxelize_mesh_brute_pub,
-    voxelize_mesh_bvh_pub,
+    voxelize_mesh_bvh_pub, voxelize_mesh_sparse_pub,
 };
+use brepjs_voxel_wasm::sparse::SparseGrid;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 /// Deterministic unit icosphere: a 12/20 icosahedron loop-subdivided `subdiv`
@@ -196,6 +197,32 @@ fn bench_voxelize(c: &mut Criterion) {
         });
     }
     e2e.finish();
+
+    // Dense vs sparse e2e voxelize at the resolution the repair path uses (32).
+    // Same band, same per-voxel math; the sparse arm pays a tile-activation pass
+    // but voxelizes only near-surface tiles. At res 32 (small grid) the dense arm
+    // is expected to win — the sparse path's payoff is at the resolutions dense
+    // refuses, which a bench can't time against a missing baseline.
+    let mut router = c.benchmark_group("dense_vs_sparse_voxelize");
+    router.sample_size(20);
+    for (subdiv, label) in sizes {
+        let (verts, tris) = icosphere(subdiv);
+        let mesh = Mesh::from_flat(&verts, &tris);
+        router.bench_with_input(BenchmarkId::new("dense", label), &mesh, |bench, mesh| {
+            let mut grid = Grid::for_bounds([-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2).unwrap();
+            let band = band_radius_pub(&grid, 0.0);
+            bench.iter(|| voxelize_mesh_banded_pub(&mut grid, mesh, band));
+        });
+        router.bench_with_input(BenchmarkId::new("sparse", label), &mesh, |bench, mesh| {
+            let (geom, _) = GridGeom::for_bounds([-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32, 2);
+            let band = (2.0 * geom.spacing) as f64;
+            bench.iter(|| {
+                let mut sparse = SparseGrid::new(geom, band as f32);
+                voxelize_mesh_sparse_pub(&mut sparse, mesh, band);
+            });
+        });
+    }
+    router.finish();
 }
 
 criterion_group!(benches, bench_voxelize);

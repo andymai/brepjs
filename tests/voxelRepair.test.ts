@@ -97,9 +97,38 @@ describe('voxel repair (FWN-signed SDF → Surface Nets)', () => {
     expect(isErr(repairMesh({ vertices: VERTS, triangles: HOLEY }, { padding: 0 }))).toBe(true);
   });
 
-  it('returns err (not a wasm trap) when resolution blows past the voxel cap', () => {
-    // ~512^3 voxels exceeds MAX_VOXELS; the Rust JsError must surface as err().
-    const result = repairMesh({ vertices: VERTS, triangles: HOLEY }, { resolution: 512 });
+  it('repairs at a LARGE resolution via the sparse tiled path (raised ceiling)', () => {
+    // res 170 on the unit cube is ~174^3 ≈ 5.3M would-be-dense voxels, past the
+    // dense routing threshold, so this drives the sparse tiled pipeline end-to-end
+    // through wasm — a grid the old dense-only path would refuse near this size,
+    // the sparse path completes. Proves the resolution ceiling rose.
+    const out = unwrap(repairMesh({ vertices: VERTS, triangles: HOLEY }, { resolution: 170 }));
+    expect(out.vertices.length).toBeGreaterThan(0);
+    expect(out.triangles.length).toBeGreaterThan(0);
+    expect(out.vertices.length % 3).toBe(0);
+    expect(out.triangles.length % 3).toBe(0);
+
+    // The surface still hugs the unit cube on all six sides (sparse == dense here).
+    let lo = [Infinity, Infinity, Infinity];
+    let hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < out.vertices.length; i += 3) {
+      for (let d = 0; d < 3; d++) {
+        const v = out.vertices[i + d] as number;
+        lo[d] = Math.min(lo[d] as number, v);
+        hi[d] = Math.max(hi[d] as number, v);
+      }
+    }
+    for (let d = 0; d < 3; d++) {
+      expect(lo[d]).toBeCloseTo(0, 1);
+      expect(hi[d]).toBeCloseTo(1, 1);
+    }
+  });
+
+  it('returns err (not a wasm trap) when the band exceeds the sparse voxel cap', () => {
+    // An absurd resolution makes even the near-surface band exceed MAX_ACTIVE_TILES;
+    // the Rust JsError must surface as err() (refused in Phase-1 tile activation,
+    // before any large allocation), not a wasm trap.
+    const result = repairMesh({ vertices: VERTS, triangles: HOLEY }, { resolution: 3000 });
     expect(isErr(result)).toBe(true);
   });
 });
