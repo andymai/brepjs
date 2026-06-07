@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.4...brepjs-voxel-wasm-v0.3.0) (2026-06-07)
+
+
+### Features
+
+* **voxel:** persistent VoxelField + op-chains + Fast Sweeping reinit ([#1251](https://github.com/andymai/brepjs/issues/1251)) ([91787c4](https://github.com/andymai/brepjs/commit/91787c41d881adefd2c0e0c0e3ba4986d7c55ea1))
+
 ## [0.2.4](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.3...brepjs-voxel-wasm-v0.2.4) (2026-06-07)
 
 
