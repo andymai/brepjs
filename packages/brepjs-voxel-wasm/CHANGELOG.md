@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.2.0...brepjs-voxel-wasm-v0.2.1) (2026-06-07)
+
+
+### Performance Improvements
+
+* **voxel:** accelerate voxelize distance pass with a BVH ([#1241](https://github.com/andymai/brepjs/issues/1241)) ([6d9a2b7](https://github.com/andymai/brepjs/commit/6d9a2b7c7351ef1e750aa1d50d483ec1900ca192))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.1.0...brepjs-voxel-wasm-v0.2.0) (2026-06-06)
 
 
