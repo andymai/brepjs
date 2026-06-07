@@ -113,6 +113,29 @@ pub(crate) fn point_to_triangle_distance(
 /// mesh produce a watertight SDF, because the sign comes from the winding number
 /// rather than from surface connectivity.
 pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
+    voxelize_mesh_banded(grid, mesh, f64::INFINITY);
+}
+
+// Surface Nets reads a 2×2×2 neighbourhood, so every zero-crossing it extracts
+// needs a correctly-signed collar of at least one full voxel on the far side; a
+// 2-voxel margin is the conservative collar that keeps any extracted cell from
+// reading a clamped value on the side facing the surface.
+const BAND_MARGIN_VOXELS: f64 = 2.0;
+
+/// World-space narrow-band radius for a voxelize call: the op's own reach
+/// (`extra_world`) plus a [`BAND_MARGIN_VOXELS`]-voxel Surface-Nets collar. Never
+/// a magic constant — each op sizes the band from its own transform (offset →
+/// `|distance|`, shell → `thickness`, repair → `0`).
+pub(crate) fn band_radius(grid: &Grid, extra_world: f32) -> f64 {
+    (extra_world + BAND_MARGIN_VOXELS as f32 * grid.spacing()) as f64
+}
+
+/// Narrow-band core of [`voxelize_mesh`]: identical, but the distance pass clamps
+/// at `band` world units. `band = f64::INFINITY` is the exact unbounded path, so
+/// `voxelize_mesh` is literally this with an infinite band. The contoured surface
+/// (the SDF=0 crossing) is unchanged for any `band` covering the op's read depth;
+/// only far-field MAGNITUDES clamp to `sign * band`.
+pub(crate) fn voxelize_mesh_banded(grid: &mut Grid, mesh: &Mesh, band: f64) {
     let bvh = Bvh::build(mesh);
     // One scratch stack: the distance and sign traversals run sequentially per
     // voxel and each clear()s on entry, so a single buffer serves both.
@@ -124,7 +147,7 @@ pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
                 let wp = grid.world_pos(x, y, z);
                 let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
 
-                let unsigned = bvh.nearest_distance_with(p, &mut stack);
+                let unsigned = bvh.nearest_distance_within(p, band, &mut stack);
 
                 let sign = if bvh.winding_number_fast(p, BETA, &mut stack) > 0.5 {
                     -1.0
@@ -245,6 +268,24 @@ fn distance_field_bvh(grid: &mut Grid, mesh: &Mesh) {
     }
 }
 
+/// Write ONLY the unsigned distance field via the BVH with a narrow band, so a
+/// bench can isolate the far-field-prune win on the distance pass.
+#[cfg(not(target_arch = "wasm32"))]
+fn distance_field_banded(grid: &mut Grid, mesh: &Mesh, band: f64) {
+    let bvh = Bvh::build(mesh);
+    let mut stack: Vec<u32> = Vec::new();
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                grid.set(x, y, z, bvh.nearest_distance_within(p, band, &mut stack) as f32);
+            }
+        }
+    }
+}
+
 // Bench-only re-exports: criterion builds an external harness against the rlib,
 // which can't reach `pub(crate)`/private items. These shims keep the wasm
 // surface unchanged (no #[wasm_bindgen]) while letting the bench call each path.
@@ -287,6 +328,24 @@ pub fn voxelize_mesh_brute_pub(grid: &mut Grid, mesh: &Mesh) {
 #[doc(hidden)]
 pub fn voxelize_mesh_bvh_pub(grid: &mut Grid, mesh: &Mesh) {
     voxelize_mesh(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn distance_field_banded_pub(grid: &mut Grid, mesh: &Mesh, band: f64) {
+    distance_field_banded(grid, mesh, band);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn voxelize_mesh_banded_pub(grid: &mut Grid, mesh: &Mesh, band: f64) {
+    voxelize_mesh_banded(grid, mesh, band);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn band_radius_pub(grid: &Grid, extra_world: f32) -> f64 {
+    band_radius(grid, extra_world)
 }
 
 /// Require two grids to share dimensions, else [`GridError::DimMismatch`].
@@ -786,6 +845,174 @@ mod tests {
         );
     }
 
+    /// Element-wise equality of two contoured meshes (exact f32 — identical inputs
+    /// near the surface must produce bit-identical contours).
+    fn assert_contours_equal(a: &Grid, b: &Grid, label: &str) {
+        let ca = crate::contour::surface_nets_mesh(a);
+        let cb = crate::contour::surface_nets_mesh(b);
+        assert_eq!(ca.indices, cb.indices, "{label}: contour indices differ");
+        assert_eq!(ca.positions.len(), cb.positions.len(), "{label}: position counts differ");
+        for (i, (&pa, &pb)) in ca.positions.iter().zip(cb.positions.iter()).enumerate() {
+            assert_eq!(pa, pb, "{label}: position[{i}] {pa} vs {pb}");
+        }
+    }
+
+    /// The narrow-band voxelizer must reproduce the full-path CONTOUR exactly on
+    /// every fixture whose surface is closed (or whose open spans are smaller than
+    /// the band), for each op's band sizing. Far-field SDF magnitudes are NOT
+    /// compared (they clamp by design); only the extracted surface is asserted,
+    /// which is the cross-language parity contract.
+    ///
+    /// holey_cube is covered separately by
+    /// [`voxelize_banded_holey_cube_contour_within_tolerance`]: its large open top
+    /// is filled by FWN at a zero-crossing whose nearest triangle is ~half the cube
+    /// away — farther than the 2-voxel repair band — so the open-span fill cannot
+    /// reproduce the full path bit-for-bit there. That is a property of open-span
+    /// FWN fill, not a sign defect; the keystone and a sub-voxel tolerance pin it.
+    /// The whole banded-op parity argument rests on `band_radius` always adding a
+    /// full 2-voxel collar beyond the op's reach, so no extracted contour cell ever
+    /// reads a clamped value on the side facing the surface. Pin that invariant.
+    #[test]
+    fn band_radius_always_adds_two_voxel_collar() {
+        let g = Grid::for_bounds([0.0, 0.0, 0.0], [4.0, 2.0, 1.0], 16, 2).unwrap();
+        let sp = g.spacing() as f64;
+        // repair (extra=0) is exactly the collar; offset/shell add their reach on top.
+        assert!((band_radius(&g, 0.0) - 2.0 * sp).abs() < 1e-6);
+        assert!(band_radius(&g, 0.5) >= 0.5 + 2.0 * sp - 1e-6);
+        assert!(band_radius(&g, 3.0) >= 3.0 + 2.0 * sp - 1e-6);
+    }
+
+    #[test]
+    fn voxelize_banded_matches_full_contoured() {
+        let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
+            ("unit_cube", unit_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            ("single_tri", single_tri(), [-0.5, -0.5, -0.5], [1.5, 1.5, 0.5]),
+            ("tri_soup", tri_soup(), [-1.0, -1.5, -1.5], [7.5, 1.5, 1.5]),
+            ("icosphere2", icosphere(2), [-1.3, -1.3, -1.3], [1.3, 1.3, 1.3]),
+        ];
+        for (name, mesh, min, max) in fixtures {
+            // repair: band = 2·spacing (extra = 0), contour the raw SDF.
+            {
+                let mut full = Grid::for_bounds(min, max, 16, 2).unwrap();
+                let mut banded = full.same_shape();
+                voxelize_mesh(&mut full, &mesh);
+                let r = band_radius(&banded, 0.0);
+                voxelize_mesh_banded(&mut banded, &mesh, r);
+                assert_contours_equal(&full, &banded, &format!("{name}/repair"));
+            }
+
+            // offset: band must cover the chosen iso-shift; apply offset_sdf to both.
+            {
+                let distance = 0.15_f32;
+                let mut full = Grid::for_bounds(min, max, 16, 2).unwrap();
+                let mut banded = full.same_shape();
+                voxelize_mesh(&mut full, &mesh);
+                let r = band_radius(&banded, distance.abs());
+                voxelize_mesh_banded(&mut banded, &mesh, r);
+                offset_sdf(&mut full, distance);
+                offset_sdf(&mut banded, distance);
+                assert_contours_equal(&full, &banded, &format!("{name}/offset"));
+            }
+
+            // shell: band must reach inward to thickness; apply shell_sdf to both.
+            {
+                let thickness = 0.2_f32;
+                let mut full = Grid::for_bounds(min, max, 16, 2).unwrap();
+                let mut banded = full.same_shape();
+                voxelize_mesh(&mut full, &mesh);
+                let r = band_radius(&banded, thickness);
+                voxelize_mesh_banded(&mut banded, &mesh, r);
+                let full_shell = shell_sdf(&full, thickness);
+                let band_shell = shell_sdf(&banded, thickness);
+                assert_contours_equal(&full_shell, &band_shell, &format!("{name}/shell"));
+            }
+        }
+    }
+
+    /// holey_cube repair under the 2-voxel band: its open top is filled by FWN at a
+    /// zero-crossing whose nearest triangle is ~half a cube away (farther than the
+    /// band), so the open-span fill is the ONE region the band can't reproduce
+    /// bit-for-bit — the surface there shifts by under a voxel and can add/drop a
+    /// fill cell, so neither indices nor positions match exactly. The contract that
+    /// DOES survive is the one vitest gates: same bbox (the surface still hugs the
+    /// unit cube on all six sides) and a comparable triangle count. Asserting that
+    /// here mirrors `voxelRepair.test.ts`'s `toBeCloseTo(..., 1)` bounds, the actual
+    /// cross-language guard, while documenting the open-span limitation.
+    #[test]
+    fn voxelize_banded_holey_cube_contour_within_tolerance() {
+        let mesh = holey_cube();
+        let mut full = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 16, 2).unwrap();
+        let mut banded = full.same_shape();
+        voxelize_mesh(&mut full, &mesh);
+        let r = band_radius(&banded, 0.0);
+        voxelize_mesh_banded(&mut banded, &mesh, r);
+
+        let cf = crate::contour::surface_nets_mesh(&full);
+        let cb = crate::contour::surface_nets_mesh(&banded);
+
+        let bbox = |pos: &[f32]| {
+            let mut lo = [f32::INFINITY; 3];
+            let mut hi = [f32::NEG_INFINITY; 3];
+            for p in pos.chunks_exact(3) {
+                for d in 0..3 {
+                    lo[d] = lo[d].min(p[d]);
+                    hi[d] = hi[d].max(p[d]);
+                }
+            }
+            (lo, hi)
+        };
+        let (flo, fhi) = bbox(&cf.positions);
+        let (blo, bhi) = bbox(&cb.positions);
+        for d in 0..3 {
+            assert!(
+                (flo[d] - blo[d]).abs() < banded.spacing()
+                    && (fhi[d] - bhi[d]).abs() < banded.spacing(),
+                "axis {d}: bbox must agree within a voxel — full [{},{}] banded [{},{}]",
+                flo[d],
+                fhi[d],
+                blo[d],
+                bhi[d]
+            );
+        }
+        let ft = cf.indices.len() / 3;
+        let bt = cb.indices.len() / 3;
+        let tol = (ft / 10).max(8);
+        assert!(
+            bt.abs_diff(ft) <= tol,
+            "banded triangle count {bt} must be within {tol} of full {ft}"
+        );
+    }
+
+    /// Keystone under banding: the holey-cube interior must STILL classify inside
+    /// (negative SDF) when banded, because the clamp is `sign × band` and the sign
+    /// comes from the unchanged `winding_number_fast`. Also asserts the far interior
+    /// clamps to exactly `-band` (a correctly-signed far value, not `+band`).
+    #[test]
+    fn voxelize_banded_holey_cube_interior_still_negative() {
+        let m = holey_cube();
+        let mut g = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 8, 1).unwrap();
+        let band = band_radius(&g, 0.0);
+        voxelize_mesh_banded(&mut g, &m, band);
+
+        let [nx, ny, nz] = g.dims();
+        let (cx, cy, cz) = (nx / 2, ny / 2, nz / 2);
+        assert!(
+            g.at(cx, cy, cz) < 0.0,
+            "banded holey-cube interior voxel must STILL be negative (FWN keystone)"
+        );
+
+        // A deep-interior cell whose nearest face is farther than the band clamps
+        // to exactly -band: correctly-signed (negative), not a wrong-signed +band.
+        // The cube interior depth (~0.5 to the nearest face at the centre) exceeds
+        // a 2·spacing band at this resolution, so the centre itself is clamped.
+        assert!(
+            (g.at(cx, cy, cz) - (-band as f32)).abs() < 1e-5,
+            "far interior must clamp to -band ({}), got {}",
+            -band as f32,
+            g.at(cx, cy, cz)
+        );
+    }
+
     /// A small grid with every cell set to `fill`, shaped from a 1-unit cube.
     fn filled_grid(fill: f32) -> Grid {
         let mut g = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 2, 0).unwrap();
@@ -863,3 +1090,4 @@ mod tests {
         }
     }
 }
+

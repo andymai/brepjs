@@ -99,7 +99,8 @@ pub fn repair_mesh(
     let mut grid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
         .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
 
-    ops::voxelize_mesh(&mut grid, &mesh);
+    let band = ops::band_radius(&grid, 0.0);
+    ops::voxelize_mesh_banded(&mut grid, &mesh, band);
     let mesh = contour::surface_nets_mesh(&grid);
 
     Ok(RepairResult {
@@ -235,7 +236,8 @@ pub fn offset_mesh(
 
     let mut grid = Grid::for_bounds(emin, emax, resolution as usize, padding as usize)
         .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
-    ops::voxelize_mesh(&mut grid, &mesh);
+    let band = ops::band_radius(&grid, distance.abs());
+    ops::voxelize_mesh_banded(&mut grid, &mesh, band);
     ops::offset_sdf(&mut grid, distance);
 
     let out = contour::surface_nets_mesh(&grid);
@@ -273,7 +275,8 @@ pub fn shell_mesh(
 
     let mut solid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
         .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
-    ops::voxelize_mesh(&mut solid, &mesh);
+    let band = ops::band_radius(&solid, thickness);
+    ops::voxelize_mesh_banded(&mut solid, &mesh, band);
 
     let shell = ops::shell_sdf(&solid, thickness);
     let out = contour::surface_nets_mesh(&shell);

@@ -13,8 +13,9 @@ use std::collections::HashMap;
 use brepjs_voxel_wasm::fwn::Mesh;
 use brepjs_voxel_wasm::grid::Grid;
 use brepjs_voxel_wasm::ops::{
-    distance_field_brute_pub, distance_field_bvh_pub, sign_field_exact_pub, sign_field_fast_pub,
-    voxelize_mesh_brute_pub, voxelize_mesh_bvh_pub,
+    band_radius_pub, distance_field_banded_pub, distance_field_brute_pub, distance_field_bvh_pub,
+    sign_field_exact_pub, sign_field_fast_pub, voxelize_mesh_banded_pub, voxelize_mesh_brute_pub,
+    voxelize_mesh_bvh_pub,
 };
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
@@ -137,6 +138,15 @@ fn bench_voxelize(c: &mut Criterion) {
                 Grid::for_bounds([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0], 32, 2).unwrap();
             bench.iter(|| distance_field_bvh_pub(&mut grid, mesh));
         });
+        // Narrow-band distance pass: most of the res-32 pad-2 grid is interior /
+        // padding farther than 2·spacing from the unit-sphere shell, so banded
+        // voxels prune at the root in O(1) while full voxels pay O(log n).
+        distance.bench_with_input(BenchmarkId::new("banded", label), &mesh, |bench, mesh| {
+            let mut grid =
+                Grid::for_bounds([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0], 32, 2).unwrap();
+            let band = band_radius_pub(&grid, 0.0);
+            bench.iter(|| distance_field_banded_pub(&mut grid, mesh, band));
+        });
     }
     distance.finish();
 
@@ -175,6 +185,14 @@ fn bench_voxelize(c: &mut Criterion) {
             let mut grid =
                 Grid::for_bounds([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0], 32, 2).unwrap();
             bench.iter(|| voxelize_mesh_bvh_pub(&mut grid, mesh));
+        });
+        // Banded distance + unchanged hierarchical sign — the e2e number the repair
+        // path actually runs (band = 2·spacing).
+        e2e.bench_with_input(BenchmarkId::new("banded", label), &mesh, |bench, mesh| {
+            let mut grid =
+                Grid::for_bounds([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0], 32, 2).unwrap();
+            let band = band_radius_pub(&grid, 0.0);
+            bench.iter(|| voxelize_mesh_banded_pub(&mut grid, mesh, band));
         });
     }
     e2e.finish();

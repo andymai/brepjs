@@ -233,13 +233,44 @@ impl Bvh {
         if self.nodes.is_empty() {
             return f64::INFINITY;
         }
+        self.nearest_within_sq(p, f64::INFINITY, f64::INFINITY, stack)
+    }
 
+    /// Narrow-band nearest distance: identical to
+    /// [`nearest_distance_with`](Self::nearest_distance_with) but seeds the
+    /// branch-and-bound bound at `max_dist` instead of infinity. The tighter seed
+    /// prunes far INTERIOR subtrees all the way down the descent — that subtree
+    /// pruning is the bulk of the speedup, not the root prune. A voxel whose root
+    /// AABB is already beyond `max_dist` is the best case: the whole tree prunes at
+    /// the root with zero triangle tests. A voxel inside the band returns the
+    /// IDENTICAL exact nearest the unbounded query would (the squared comparison is
+    /// monotonic and the seed never undercuts a real triangle distance ≤ `max_dist`),
+    /// clamping to `max_dist` only when the true nearest exceeds the band. Returns
+    /// `max_dist` (not infinity) for an empty mesh, so the caller's far-field clamp
+    /// is finite.
+    pub fn nearest_distance_within(&self, p: [f64; 3], max_dist: f64, stack: &mut Vec<u32>) -> f64 {
+        if self.nodes.is_empty() {
+            return max_dist;
+        }
+        self.nearest_within_sq(p, max_dist * max_dist, max_dist, stack)
+    }
+
+    /// Shared branch-and-bound traversal for both the unbounded and narrow-band
+    /// nearest-distance queries. Assumes a non-empty tree (each public wrapper
+    /// applies its own empty-mesh sentinel first). `best_sq`/`best_d` are the
+    /// initial squared/linear bound: `(∞, ∞)` for the exact query, `(b², b)` for a
+    /// band radius `b`.
+    fn nearest_within_sq(
+        &self,
+        p: [f64; 3],
+        mut best_sq: f64,
+        mut best_d: f64,
+        stack: &mut Vec<u32>,
+    ) -> f64 {
         // `best_sq` drives the squared-space pruning lower bound; `best_d` carries
         // the exact linear distance of the same argmin triangle. Returning `best_d`
         // (not `best_sq.sqrt()`) makes the result the identical f64 the brute min
         // produces — squared comparison is monotonic in d, so the argmin matches.
-        let mut best_sq = f64::INFINITY;
-        let mut best_d = f64::INFINITY;
         stack.clear();
         stack.push(self.root);
 
@@ -643,6 +674,62 @@ mod tests {
         let bvh = Bvh::build(&mesh);
         assert_eq!(bvh.nearest_distance([0.0, 0.0, 0.0]), f64::INFINITY);
         assert_eq!(bvh.nearest_distance([5.0, 1.0, -2.0]), f64::INFINITY);
+    }
+
+    #[test]
+    fn within_equals_unbounded_for_large_band() {
+        // A band far larger than any query distance must reproduce the exact
+        // unbounded nearest at every sample (the seed is looser than every real
+        // triangle distance, so it never participates in the argmin).
+        let mesh = soup();
+        let bvh = Bvh::build(&mesh);
+        let mut stack = Vec::new();
+        for iz in -3..=3 {
+            for iy in -3..=3 {
+                for ix in -3..=3 {
+                    let p = [ix as f64 * 0.4, iy as f64 * 0.4, iz as f64 * 0.4];
+                    let full = bvh.nearest_distance_with(p, &mut stack);
+                    let banded = bvh.nearest_distance_within(p, 1e9, &mut stack);
+                    assert_eq!(full, banded, "band-vs-full mismatch at {p:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn within_clamps_far_query_to_band() {
+        // A query well outside the band returns exactly `max_dist` (clamped), while
+        // the unbounded query returns the true, larger distance.
+        let bvh = Bvh::build(&single_tri());
+        let mut stack = Vec::new();
+        let p = [100.0, 0.0, 0.0];
+        let band = 2.0;
+        assert_eq!(bvh.nearest_distance_within(p, band, &mut stack), band);
+        assert!(bvh.nearest_distance_with(p, &mut stack) > band);
+    }
+
+    #[test]
+    fn within_far_query_prunes_at_root() {
+        // Behavioral proof of the O(1) far-field prune: with a non-degenerate root
+        // box, a far query whose band is smaller than the root-box distance returns
+        // the band untouched (the root pops, the guard fires, the stack empties).
+        // Any band ≥ root-box distance would instead descend, so the clamp here is
+        // evidence the whole tree was pruned at the root.
+        let bvh = Bvh::build(&soup());
+        let mut stack = Vec::new();
+        let p = [-50.0, -50.0, -50.0];
+        let root_box = bvh.nodes[bvh.root as usize].bounds.dist_sq_to_point(p).sqrt();
+        let band = root_box * 0.5;
+        assert!(band > 0.0, "fixture must place root box away from the query");
+        assert_eq!(bvh.nearest_distance_within(p, band, &mut stack), band);
+    }
+
+    #[test]
+    fn within_empty_mesh_returns_band() {
+        let mesh = Mesh::from_flat(&[], &[]);
+        let bvh = Bvh::build(&mesh);
+        let mut stack = Vec::new();
+        assert_eq!(bvh.nearest_distance_within([0.0, 0.0, 0.0], 3.5, &mut stack), 3.5);
     }
 
     #[test]
