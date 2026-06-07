@@ -17,6 +17,7 @@
 // callers the contour/bridge seams will add, so silence dead-code here.
 #![allow(dead_code)]
 
+use crate::bvh::Bvh;
 use crate::fwn::Mesh;
 use crate::grid::{Grid, GridError};
 
@@ -36,7 +37,12 @@ fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
 /// Exact distance from point `p` to triangle (a,b,c), via the closest point on
 /// the triangle (Ericson, *Real-Time Collision Detection*, §5.1.5). Handles the
 /// vertex / edge / face Voronoi regions rather than approximating with the plane.
-fn point_to_triangle_distance(p: [f64; 3], a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> f64 {
+pub(crate) fn point_to_triangle_distance(
+    p: [f64; 3],
+    a: [f64; 3],
+    b: [f64; 3],
+    c: [f64; 3],
+) -> f64 {
     let ab = sub(b, a);
     let ac = sub(c, a);
     let ap = sub(p, a);
@@ -101,11 +107,13 @@ fn point_to_triangle_distance(p: [f64; 3], a: [f64; 3], b: [f64; 3], c: [f64; 3]
 /// Fill `grid` with a signed distance field for `mesh`.
 ///
 /// For each voxel at world position `p`: the unsigned distance is the minimum
-/// closest-point distance over all triangles; the sign is `-1` if `mesh.is_inside`
+/// closest-point distance over all triangles (found via a BVH branch-and-bound,
+/// bit-exact with the brute min); the sign is `-1` if `mesh.is_inside`
 /// (FWN > 0.5) else `+1`. Storing `sign * unsigned` makes even a non-watertight
 /// mesh produce a watertight SDF, because the sign comes from the winding number
 /// rather than from surface connectivity.
 pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
+    let bvh = Bvh::build(mesh);
     let [nx, ny, nz] = grid.dims();
     for z in 0..nz {
         for y in 0..ny {
@@ -113,24 +121,114 @@ pub fn voxelize_mesh(grid: &mut Grid, mesh: &Mesh) {
                 let wp = grid.world_pos(x, y, z);
                 let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
 
-                let mut unsigned = f64::INFINITY;
-                for t in &mesh.tris {
-                    let d = point_to_triangle_distance(
-                        p,
-                        mesh.verts[t[0]],
-                        mesh.verts[t[1]],
-                        mesh.verts[t[2]],
-                    );
-                    if d < unsigned {
-                        unsigned = d;
-                    }
-                }
+                let unsigned = bvh.nearest_distance(p);
 
                 let sign = if mesh.is_inside(p) { -1.0 } else { 1.0 };
                 grid.set(x, y, z, (sign * unsigned) as f32);
             }
         }
     }
+}
+
+/// Brute reference for the distance pass: the unsigned min over all triangles.
+/// The BVH leaf primitive reused, scanned linearly — the parity oracle for
+/// [`Bvh::nearest_distance`](crate::bvh::Bvh::nearest_distance). Native-only
+/// (test/bench); excluded from the wasm cdylib so it adds no shipped code.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn nearest_distance_brute(mesh: &Mesh, p: [f64; 3]) -> f64 {
+    let mut unsigned = f64::INFINITY;
+    for t in &mesh.tris {
+        let d = point_to_triangle_distance(p, mesh.verts[t[0]], mesh.verts[t[1]], mesh.verts[t[2]]);
+        if d < unsigned {
+            unsigned = d;
+        }
+    }
+    unsigned
+}
+
+/// Brute-force reference voxelizer (no BVH): the frozen pre-acceleration body,
+/// kept as the parity oracle for [`voxelize_mesh`] and the bench baseline.
+/// Native-only; excluded from the wasm cdylib.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn voxelize_mesh_brute(grid: &mut Grid, mesh: &Mesh) {
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+
+                let unsigned = nearest_distance_brute(mesh, p);
+
+                let sign = if mesh.is_inside(p) { -1.0 } else { 1.0 };
+                grid.set(x, y, z, (sign * unsigned) as f32);
+            }
+        }
+    }
+}
+
+/// Write ONLY the unsigned distance field (no FWN sign) via the brute min, so a
+/// bench can isolate the distance pass from the unaccelerated sign pass.
+#[cfg(not(target_arch = "wasm32"))]
+fn distance_field_brute(grid: &mut Grid, mesh: &Mesh) {
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                grid.set(x, y, z, nearest_distance_brute(mesh, p) as f32);
+            }
+        }
+    }
+}
+
+/// Write ONLY the unsigned distance field (no FWN sign) via the BVH.
+#[cfg(not(target_arch = "wasm32"))]
+fn distance_field_bvh(grid: &mut Grid, mesh: &Mesh) {
+    let bvh = Bvh::build(mesh);
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let wp = grid.world_pos(x, y, z);
+                let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
+                grid.set(x, y, z, bvh.nearest_distance(p) as f32);
+            }
+        }
+    }
+}
+
+// Bench-only re-exports: criterion builds an external harness against the rlib,
+// which can't reach `pub(crate)`/private items. These shims keep the wasm
+// surface unchanged (no #[wasm_bindgen]) while letting the bench call each path.
+// Gated to native builds so they add no code to the shipped cdylib.
+//
+// `distance_field_*` isolate the accelerated pass (no FWN sign); the
+// `voxelize_mesh_*` shims run the full pipeline whose speedup is bounded by the
+// still-brute sign pass.
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn distance_field_brute_pub(grid: &mut Grid, mesh: &Mesh) {
+    distance_field_brute(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn distance_field_bvh_pub(grid: &mut Grid, mesh: &Mesh) {
+    distance_field_bvh(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn voxelize_mesh_brute_pub(grid: &mut Grid, mesh: &Mesh) {
+    voxelize_mesh_brute(grid, mesh);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn voxelize_mesh_bvh_pub(grid: &mut Grid, mesh: &Mesh) {
+    voxelize_mesh(grid, mesh);
 }
 
 /// Require two grids to share dimensions, else [`GridError::DimMismatch`].
@@ -283,6 +381,63 @@ mod tests {
         // Off the AB edge -> perpendicular to that edge.
         let d_edge = point_to_triangle_distance([0.5, -1.0, 0.0], a, b, c);
         assert!((d_edge - 1.0).abs() < 1e-9);
+    }
+
+    /// A single triangle in the unit box.
+    fn single_tri() -> Mesh {
+        let verts: Vec<f32> = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+        let tris: Vec<u32> = vec![0, 1, 2];
+        Mesh::from_flat(&verts, &tris)
+    }
+
+    /// A deterministic multi-triangle soup, enough tris to force BVH splits.
+    fn tri_soup() -> Mesh {
+        let mut verts: Vec<f32> = Vec::new();
+        let mut tris: Vec<u32> = Vec::new();
+        for i in 0..20 {
+            let x = i as f32 * 0.37;
+            let y = (i as f32 * 0.91).sin();
+            let z = (i as f32 * 1.3).cos();
+            let base = (verts.len() / 3) as u32;
+            verts.extend_from_slice(&[x, y, z, x + 0.5, y + 0.2, z, x + 0.1, y + 0.6, z + 0.3]);
+            tris.extend_from_slice(&[base, base + 1, base + 2]);
+        }
+        Mesh::from_flat(&verts, &tris)
+    }
+
+    #[test]
+    fn voxelize_parity_bvh_vs_brute() {
+        let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
+            ("unit_cube", unit_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            ("holey_cube", holey_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            ("single_tri", single_tri(), [-0.5, -0.5, -0.5], [1.5, 1.5, 0.5]),
+            ("tri_soup", tri_soup(), [-1.0, -1.5, -1.5], [7.5, 1.5, 1.5]),
+        ];
+        for (name, mesh, min, max) in fixtures {
+            let mut a = Grid::for_bounds(min, max, 12, 2).unwrap();
+            let mut b = Grid::for_bounds(min, max, 12, 2).unwrap();
+            voxelize_mesh_brute(&mut a, &mesh);
+            voxelize_mesh(&mut b, &mesh);
+
+            assert_eq!(a.dims(), b.dims(), "{name}: dims must match");
+
+            let [nx, ny, nz] = a.dims();
+            let mut max_abs_diff = 0.0_f32;
+            for z in 0..nz {
+                for y in 0..ny {
+                    for x in 0..nx {
+                        let diff = (a.at(x, y, z) - b.at(x, y, z)).abs();
+                        if diff > max_abs_diff {
+                            max_abs_diff = diff;
+                        }
+                    }
+                }
+            }
+            assert!(
+                max_abs_diff < 1e-6,
+                "{name}: BVH SDF must match brute, max abs diff {max_abs_diff}"
+            );
+        }
     }
 
     #[test]

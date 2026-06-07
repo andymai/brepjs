@@ -4,11 +4,16 @@
 //! exposed across the wasm boundary as flat typed-array calls (no zero-copy; the
 //! TS loader passes Float32Array/Uint32Array in and gets a typed array back).
 
+mod bvh;
 mod contour;
-mod fwn;
-mod grid;
-mod ops;
 mod tpms;
+
+// Public so the criterion bench (an external harness built against the rlib)
+// can reach `Mesh`, `Grid`, and the `voxelize_mesh_*_pub` bench shims. The wasm
+// surface is unchanged — none of these carry #[wasm_bindgen].
+pub mod fwn;
+pub mod grid;
+pub mod ops;
 
 use wasm_bindgen::prelude::*;
 

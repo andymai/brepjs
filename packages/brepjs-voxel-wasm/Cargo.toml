@@ -19,6 +19,15 @@ wasm-bindgen = "0.2"
 # fast-surface-nets, so we use that re-export to avoid a Shape-trait version skew.
 fast-surface-nets = "0.2"
 
+[dev-dependencies]
+# default-features=false drops the plotters/html stack, keeping the dev build
+# lean. Dev-deps never ship in the cdylib, so wasm size is unaffected.
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "voxelize"
+harness = false
+
 [profile.release]
 opt-level = "s"
 lto = true
