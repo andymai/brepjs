@@ -22,6 +22,7 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
           engine.setProgress(msg.stage, msg.progress);
           break;
         case 'init-done':
+          engine.setVoxelVersion(msg.voxelVersion);
           engine.setStatus('ready');
           onSettled?.();
           break;

@@ -11,6 +11,7 @@ import {
 export default function StatusBar() {
   const engineStatus = useEngineStore((s) => s.status);
   const stage = useEngineStore((s) => s.stage);
+  const voxelVersion = useEngineStore((s) => s.voxelVersion);
   const error = usePlaygroundStore((s) => s.error);
   const timeMs = usePlaygroundStore((s) => s.timeMs);
   const isRunning = usePlaygroundStore((s) => s.isRunning);
@@ -52,9 +53,10 @@ export default function StatusBar() {
         )}
         <span
           className="text-gray-500"
-          title="brepjs version + active kernel (helpful when reporting bugs)"
+          title="brepjs version + loaded engines (helpful when reporting bugs)"
         >
           brepjs v{__BREPJS_VERSION__} · OCCT
+          {voxelVersion && ` · voxel v${voxelVersion}`}
         </span>
       </div>
       {lastSelection && (

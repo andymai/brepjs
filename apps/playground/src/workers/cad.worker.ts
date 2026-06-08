@@ -17,6 +17,7 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
 let brepjs: any = null;
 
 let brepjsBlobUrl: string | null = null;
+let voxelEngineVersion: string | null = null;
 
 // Per-eval cancellation: ids land here when the main thread sends `cancel`
 // or when a newer eval supersedes them. Each `handleEval` checks the set at
@@ -146,7 +147,7 @@ async function handleInit() {
   // wrapper-URL build, leaving every eval to fail with "Worker not
   // initialized".
   if (brepjs && brepjsBlobUrl) {
-    post({ type: 'init-done' });
+    post({ type: 'init-done', voxelVersion: voxelEngineVersion });
     return;
   }
   try {
@@ -167,7 +168,9 @@ async function handleInit() {
     try {
       post({ type: 'init-progress', stage: 'Loading voxel engine...', progress: 0.85 });
       const { loadVoxelEngine } = await import('brepjs-voxel');
-      brepjs.initVoxel(await loadVoxelEngine());
+      const voxelEngine = await loadVoxelEngine();
+      brepjs.initVoxel(voxelEngine);
+      voxelEngineVersion = voxelEngine.version();
     } catch (voxelErr) {
       console.warn('voxel engine init failed; voxel examples unavailable', voxelErr);
     }
@@ -176,7 +179,7 @@ async function handleInit() {
     brepjsBlobUrl = buildBrepjsWrapperUrl(brepjs);
 
     post({ type: 'init-progress', stage: 'Ready', progress: 1 });
-    post({ type: 'init-done' });
+    post({ type: 'init-done', voxelVersion: voxelEngineVersion });
   } catch (e) {
     post({ type: 'init-error', error: e instanceof Error ? e.message : String(e) });
   }

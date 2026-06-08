@@ -8,9 +8,12 @@ interface EngineState {
   progress: number;
   error: string | null;
   recoveryAttempts: number;
+  /** Voxel/SDF engine version, or null if it didn't load (best-effort). */
+  voxelVersion: string | null;
   setStatus: (status: EngineStatus) => void;
   setProgress: (stage: string, progress: number) => void;
   setError: (error: string) => void;
+  setVoxelVersion: (voxelVersion: string | null) => void;
   incrementRecoveryAttempts: () => void;
   resetRecoveryAttempts: () => void;
 }
@@ -21,7 +24,9 @@ export const useEngineStore = create<EngineState>((set) => ({
   progress: 0,
   error: null,
   recoveryAttempts: 0,
+  voxelVersion: null,
   setStatus: (status) => set({ status }),
+  setVoxelVersion: (voxelVersion) => set({ voxelVersion }),
   setProgress: (stage, progress) => set({ stage, progress, status: 'loading' }),
   setError: (error) => set({ error, status: 'error' }),
   incrementRecoveryAttempts: () => set((state) => ({ recoveryAttempts: state.recoveryAttempts + 1 })),

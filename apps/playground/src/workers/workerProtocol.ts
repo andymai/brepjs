@@ -43,7 +43,7 @@ export type ToWorker =
 
 export type FromWorker =
   | { type: 'init-progress'; stage: string; progress: number }
-  | { type: 'init-done' }
+  | { type: 'init-done'; voxelVersion: string | null }
   | { type: 'init-error'; error: string }
   | { type: 'eval-result'; id: string; meshes: MeshTransfer[]; console: string[]; timeMs: number }
   | { type: 'eval-error'; id: string; error: string; line?: number }
