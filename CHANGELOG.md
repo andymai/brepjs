@@ -1,5 +1,20 @@
 # Changelog
 
+## [18.67.0](https://github.com/andymai/brepjs/compare/brepjs-v18.66.2...brepjs-v18.67.0) (2026-06-08)
+
+
+### Features
+
+* **voxel:** persistent VoxelField + op-chains + Fast Sweeping reinit ([#1251](https://github.com/andymai/brepjs/issues/1251)) ([91787c4](https://github.com/andymai/brepjs/commit/91787c41d881adefd2c0e0c0e3ba4986d7c55ea1))
+
+
+### Performance Improvements
+
+* **voxel:** accelerate voxelize distance pass with a BVH ([#1241](https://github.com/andymai/brepjs/issues/1241)) ([6d9a2b7](https://github.com/andymai/brepjs/commit/6d9a2b7c7351ef1e750aa1d50d483ec1900ca192))
+* **voxel:** hierarchical Barnes-Hut FWN for the voxelize sign pass ([#1245](https://github.com/andymai/brepjs/issues/1245)) ([1c426ec](https://github.com/andymai/brepjs/commit/1c426ec34688ad696b0e3bef367ad91f369d5b26))
+* **voxel:** narrow-band distance via a band-cutoff BVH query ([#1247](https://github.com/andymai/brepjs/issues/1247)) ([67d0840](https://github.com/andymai/brepjs/commit/67d0840a62bd1e3510b3f11054005dd28a5ba392))
+* **voxel:** sparse tiled grid + seam-free tiled contouring ([#1249](https://github.com/andymai/brepjs/issues/1249)) ([5d5ec1e](https://github.com/andymai/brepjs/commit/5d5ec1ee5633d597db5c1c3b32a45c3b7df46b1b))
+
 ## [18.66.2](https://github.com/andymai/brepjs/compare/brepjs-v18.66.1...brepjs-v18.66.2) (2026-06-05)
 
 
