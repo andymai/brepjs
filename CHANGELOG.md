@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.68.0](https://github.com/andymai/brepjs/compare/brepjs-v18.67.0...brepjs-v18.68.0) (2026-06-08)
+
+
+### Features
+
+* **implicit:** field-first SDF core — primitives, operators, expr tree + TS builder (Phase 1) ([#1256](https://github.com/andymai/brepjs/issues/1256)) ([3ff2eef](https://github.com/andymai/brepjs/commit/3ff2eefa29c55b40d781a634be4cc12d76f94946))
+
 ## [18.67.0](https://github.com/andymai/brepjs/compare/brepjs-v18.66.2...brepjs-v18.67.0) (2026-06-08)
 
 
