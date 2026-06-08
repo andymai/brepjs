@@ -16,7 +16,7 @@ import { latticeInfillShape } from 'brepjs';
 // stiffness, stay self-supporting to print.
 const part = unwrap(cut(box(48, 34, 24), box(22, 42, 12, { at: [13, -4, 12] })));
 const light = unwrap(
-  latticeInfillShape(part, { type: 'gyroid', period: 11, thickness: 1.6, resolution: 96 })
+  latticeInfillShape(part, { type: 'gyroid', period: 11, thickness: 1.6, resolution: 128 })
 );
 
 export default light;
@@ -30,7 +30,7 @@ import { offsetShape } from 'brepjs';
 // iso-surface, so it rounds smoothly and can't self-intersect. Left: the sharp
 // part. Right: the same part offset +2 mm — every edge rounded.
 const part = unwrap(cut(box(38, 38, 22), box(44, 14, 12, { at: [-3, 12, 5] })));
-const rounded = unwrap(offsetShape(part, 2));
+const rounded = unwrap(offsetShape(part, 2, { resolution: 150 }));
 
 export default [translate(part, [-48, 0, 0]), rounded];
 `;
@@ -45,7 +45,7 @@ import { voxelBooleanShapes } from 'brepjs';
 const a = box(34, 34, 20);
 const b = translate(box(20, 20, 34), [20, 20, -7]);
 
-export default unwrap(voxelBooleanShapes(a, b, 'union', { resolution: 80 }));
+export default unwrap(voxelBooleanShapes(a, b, 'union', { resolution: 130 }));
 `;
 
 const opChain = `import { box, translate, unwrap } from 'brepjs/quick';
@@ -59,7 +59,7 @@ import { voxelBooleanFieldShapes } from 'brepjs';
 // grow into; the field's grid bounds are fixed once built.)
 const a = box(34, 34, 24);
 const b = translate(box(26, 26, 24), [22, 22, 0]);
-using field = unwrap(voxelBooleanFieldShapes(a, b, 'union', { resolution: 72, padding: 6 }));
+using field = unwrap(voxelBooleanFieldShapes(a, b, 'union', { resolution: 120, padding: 8 }));
 
 export default field.offset(2).contour();
 `;
