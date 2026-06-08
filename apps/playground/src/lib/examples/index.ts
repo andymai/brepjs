@@ -11,6 +11,7 @@ export type { Example } from './types';
 import type { Example } from './types';
 import { BASIC_EXAMPLES } from './basics';
 import { MECHANICAL_EXAMPLES } from './mechanical';
+import { VOXEL_EXAMPLES } from './voxel';
 
 export interface ExampleCategory {
   id: string;
@@ -21,6 +22,7 @@ export interface ExampleCategory {
 export const CATEGORIES: readonly ExampleCategory[] = [
   { id: 'basics', label: 'Basics', examples: BASIC_EXAMPLES },
   { id: 'mechanical', label: 'Mechanical', examples: MECHANICAL_EXAMPLES },
+  { id: 'voxel', label: 'Voxel', examples: VOXEL_EXAMPLES },
 ];
 
 export const EXAMPLES: readonly Example[] = CATEGORIES.flatMap((c) => c.examples);

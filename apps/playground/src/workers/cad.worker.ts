@@ -161,6 +161,17 @@ async function handleInit() {
     const kernel = new Module.OcctKernel();
     brepjs.registerKernel('occt-wasm', new brepjs.OcctWasmAdapter(Module, kernel));
 
+    // Voxel/SDF engine, for the lattice + voxel examples. Best-effort: a load
+    // failure leaves every kernel (B-rep) example fully working — only the
+    // voxel examples go dark.
+    try {
+      post({ type: 'init-progress', stage: 'Loading voxel engine...', progress: 0.85 });
+      const { loadVoxelEngine } = await import('brepjs-voxel');
+      brepjs.initVoxel(await loadVoxelEngine());
+    } catch (voxelErr) {
+      console.warn('voxel engine init failed; voxel examples unavailable', voxelErr);
+    }
+
     (self as unknown as { __brepjs: unknown }).__brepjs = brepjs;
     brepjsBlobUrl = buildBrepjsWrapperUrl(brepjs);
 
@@ -309,6 +320,23 @@ async function handleEval(id: string, code: string) {
       try {
         const fnShape = unwrapResultShape(shapes[i]);
 
+        // Voxel/SDF ops (lattice infill, repair, offset, …) return a raw
+        // KernelMeshResult — a triangle soup, not a B-rep shape — so render it
+        // straight through instead of re-meshing it. No edges/face-groups: a
+        // contoured voxel surface has no B-rep topology to pick.
+        if (isRawMesh(fnShape)) {
+          const rawMesh: MeshTransfer = {
+            position: fnShape.vertices,
+            normal: fnShape.normals,
+            index: fnShape.triangles,
+            edges: new Float32Array(0),
+          };
+          const rawColor = colors[i];
+          if (rawColor) rawMesh.color = rawColor;
+          meshes.push(rawMesh);
+          continue;
+        }
+
         const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
         const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
 
@@ -445,6 +473,21 @@ function collectEdgeInfos(shape: any) {
     }
   }
   return infos;
+}
+
+// A raw triangle mesh from the voxel/SDF engine (KernelMeshResult): flat typed
+// arrays, no B-rep topology. Duck-typed because the worker only sees the runtime
+// value the user code returned.
+function isRawMesh(
+  x: unknown
+): x is { vertices: Float32Array; normals: Float32Array; triangles: Uint32Array } {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    (x as { vertices?: unknown }).vertices instanceof Float32Array &&
+    (x as { normals?: unknown }).normals instanceof Float32Array &&
+    (x as { triangles?: unknown }).triangles instanceof Uint32Array
+  );
 }
 
 function unwrapResultShape(shape: unknown): unknown {
