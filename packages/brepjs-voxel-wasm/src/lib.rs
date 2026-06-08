@@ -15,6 +15,7 @@ pub mod contour;
 pub mod fwn;
 pub mod grid;
 pub mod ops;
+pub mod sdf;
 pub mod sparse;
 
 use wasm_bindgen::prelude::*;
@@ -470,6 +471,16 @@ pub struct VoxelField {
     dirty: bool,
 }
 
+impl VoxelField {
+    /// Wrap an already-built [`Grid`] as a field. Lets the field-first `Sdf`
+    /// rasterizer hand its grid to the same chainable surface the mesh-first
+    /// constructor produces. A freshly rasterized banded SDF is clean (`dirty:
+    /// false`); a blended/derived grid passes `dirty: true`.
+    pub(crate) fn from_grid(grid: Grid, dirty: bool) -> VoxelField {
+        VoxelField { grid, dirty }
+    }
+}
+
 #[wasm_bindgen]
 impl VoxelField {
     /// Voxelize a mesh into a persistent dense field sized to its bbox. Mirrors
@@ -631,6 +642,207 @@ impl VoxelField {
             normals: out.normals,
             indices: out.indices,
         }
+    }
+}
+
+/// An opaque analytic SDF expression (the field-first authoring path, ADR-0013).
+/// Wraps an immutable [`sdf::Expr`] tree built by the static primitive
+/// constructors and grown by the combinator methods. Every method CLONES into a
+/// fresh node and returns a new `Sdf` (wasm-bindgen has no shared borrow across
+/// calls), so an `Sdf` is a value, not a mutable builder.
+#[wasm_bindgen]
+pub struct Sdf {
+    expr: sdf::Expr,
+}
+
+impl Sdf {
+    fn of(expr: sdf::Expr) -> Sdf {
+        Sdf { expr }
+    }
+}
+
+#[wasm_bindgen]
+impl Sdf {
+    // ── Primitive constructors (centered at the origin unless noted) ──
+
+    pub fn sphere(r: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Sphere { r })
+    }
+
+    #[wasm_bindgen(js_name = box_)]
+    pub fn box_(hx: f64, hy: f64, hz: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Box { half: [hx, hy, hz] })
+    }
+
+    pub fn rounded_box(hx: f64, hy: f64, hz: f64, r: f64) -> Sdf {
+        Sdf::of(sdf::Expr::RoundBox {
+            half: [hx, hy, hz],
+            r,
+        })
+    }
+
+    pub fn cylinder(r: f64, h: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Cylinder { r, h })
+    }
+
+    pub fn cone(r: f64, h: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Cone { r, h })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn capsule(ax: f64, ay: f64, az: f64, bx: f64, by: f64, bz: f64, r: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Capsule {
+            a: [ax, ay, az],
+            b: [bx, by, bz],
+            r,
+        })
+    }
+
+    pub fn torus(major: f64, minor: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Torus { major, minor })
+    }
+
+    pub fn plane(nx: f64, ny: f64, nz: f64, h: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Plane { n: [nx, ny, nz], h })
+    }
+
+    // ── Binary operators ──
+
+    pub fn union(&self, other: &Sdf) -> Sdf {
+        Sdf::of(sdf::Expr::Union(
+            Box::new(self.expr.clone()),
+            Box::new(other.expr.clone()),
+        ))
+    }
+
+    pub fn intersection(&self, other: &Sdf) -> Sdf {
+        Sdf::of(sdf::Expr::Intersection(
+            Box::new(self.expr.clone()),
+            Box::new(other.expr.clone()),
+        ))
+    }
+
+    pub fn difference(&self, other: &Sdf) -> Sdf {
+        Sdf::of(sdf::Expr::Difference(
+            Box::new(self.expr.clone()),
+            Box::new(other.expr.clone()),
+        ))
+    }
+
+    pub fn smooth_union(&self, other: &Sdf, k: f64) -> Sdf {
+        Sdf::of(sdf::Expr::SmoothUnion {
+            a: Box::new(self.expr.clone()),
+            b: Box::new(other.expr.clone()),
+            k,
+        })
+    }
+
+    pub fn smooth_intersection(&self, other: &Sdf, k: f64) -> Sdf {
+        Sdf::of(sdf::Expr::SmoothIntersection {
+            a: Box::new(self.expr.clone()),
+            b: Box::new(other.expr.clone()),
+            k,
+        })
+    }
+
+    pub fn smooth_difference(&self, other: &Sdf, k: f64) -> Sdf {
+        Sdf::of(sdf::Expr::SmoothDifference {
+            a: Box::new(self.expr.clone()),
+            b: Box::new(other.expr.clone()),
+            k,
+        })
+    }
+
+    // ── Unary field operators ──
+
+    pub fn offset(&self, d: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Offset {
+            e: Box::new(self.expr.clone()),
+            d,
+        })
+    }
+
+    pub fn round(&self, r: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Round {
+            e: Box::new(self.expr.clone()),
+            r,
+        })
+    }
+
+    pub fn shell(&self, t: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Shell {
+            e: Box::new(self.expr.clone()),
+            t,
+        })
+    }
+
+    pub fn onion(&self, t: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Onion {
+            e: Box::new(self.expr.clone()),
+            t,
+        })
+    }
+
+    // ── Domain transforms ──
+
+    pub fn translate(&self, x: f64, y: f64, z: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Translate {
+            e: Box::new(self.expr.clone()),
+            t: [x, y, z],
+        })
+    }
+
+    pub fn rotate(&self, ax: f64, ay: f64, az: f64, angle: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Rotate {
+            e: Box::new(self.expr.clone()),
+            axis: [ax, ay, az],
+            angle,
+        })
+    }
+
+    pub fn scale(&self, s: f64) -> Sdf {
+        Sdf::of(sdf::Expr::Scale {
+            e: Box::new(self.expr.clone()),
+            s,
+        })
+    }
+
+    // ── Rasterization ──
+
+    /// Rasterize this expression into a persistent dense [`VoxelField`] using its
+    /// analytic bounds. The result is a true banded SDF, so the field starts clean
+    /// (`dirty: false`). Rejects a grid over the dense voxel cap with a clear
+    /// JsError, mirroring `VoxelField::new`.
+    pub fn rasterize(&self, resolution: u32, padding: u32) -> Result<VoxelField, JsError> {
+        let grid = sdf::rasterize(
+            &self.expr,
+            self.expr.bounds(),
+            resolution as usize,
+            padding as usize,
+        )
+        .map_err(grid_err)?;
+        Ok(VoxelField::from_grid(grid, false))
+    }
+
+    /// Rasterize this expression into a dense [`VoxelField`] over EXPLICIT bounds
+    /// `[min..max]`, for clipping unbounded primitives (a half-space) or framing a
+    /// custom region. Same banded SDF semantics as [`Sdf::rasterize`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn rasterize_in(
+        &self,
+        min_x: f64,
+        min_y: f64,
+        min_z: f64,
+        max_x: f64,
+        max_y: f64,
+        max_z: f64,
+        resolution: u32,
+        padding: u32,
+    ) -> Result<VoxelField, JsError> {
+        let bounds = sdf::Aabb::new([min_x, min_y, min_z], [max_x, max_y, max_z]);
+        let grid = sdf::rasterize(&self.expr, bounds, resolution as usize, padding as usize)
+            .map_err(grid_err)?;
+        Ok(VoxelField::from_grid(grid, false))
     }
 }
 

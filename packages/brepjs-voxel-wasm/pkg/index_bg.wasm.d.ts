@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_repairresult_free: (a: number, b: number) => void;
+export const __wbg_sdf_free: (a: number, b: number) => void;
 export const __wbg_voxelfield_free: (a: number, b: number) => void;
 export const lattice_infill: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
 export const offset_mesh: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number];
@@ -10,6 +11,29 @@ export const repair_mesh: (a: number, b: number, c: number, d: number, e: number
 export const repairresult_indices: (a: number) => [number, number];
 export const repairresult_normals: (a: number) => [number, number];
 export const repairresult_positions: (a: number) => [number, number];
+export const sdf_box_: (a: number, b: number, c: number) => number;
+export const sdf_capsule: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+export const sdf_cone: (a: number, b: number) => number;
+export const sdf_cylinder: (a: number, b: number) => number;
+export const sdf_difference: (a: number, b: number) => number;
+export const sdf_intersection: (a: number, b: number) => number;
+export const sdf_offset: (a: number, b: number) => number;
+export const sdf_onion: (a: number, b: number) => number;
+export const sdf_plane: (a: number, b: number, c: number, d: number) => number;
+export const sdf_rasterize: (a: number, b: number, c: number) => [number, number, number];
+export const sdf_rasterize_in: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
+export const sdf_rotate: (a: number, b: number, c: number, d: number, e: number) => number;
+export const sdf_round: (a: number, b: number) => number;
+export const sdf_rounded_box: (a: number, b: number, c: number, d: number) => number;
+export const sdf_scale: (a: number, b: number) => number;
+export const sdf_shell: (a: number, b: number) => number;
+export const sdf_smooth_difference: (a: number, b: number, c: number) => number;
+export const sdf_smooth_intersection: (a: number, b: number, c: number) => number;
+export const sdf_smooth_union: (a: number, b: number, c: number) => number;
+export const sdf_sphere: (a: number) => number;
+export const sdf_torus: (a: number, b: number) => number;
+export const sdf_translate: (a: number, b: number, c: number, d: number) => number;
+export const sdf_union: (a: number, b: number) => number;
 export const shell_mesh: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number];
 export const tpms_box: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
 export const version: () => [number, number];

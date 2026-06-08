@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Layer 0: kernel/, utils/       — no internal imports
 # Layer 1: core/                 — can import kernel/, utils/
-# Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/, csg/, voxel/
+# Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/, csg/, voxel/, implicit/
 #                                — can import layers 0-1 + each other
 # Layer 3: sketching/, text/, projection/, gear/, ns/, lattice/
 #                                — can import layers 0-2
@@ -27,7 +27,7 @@ get_layer() {
   case "$dir" in
     kernel|utils) echo 0 ;;
     core) echo 1 ;;
-    topology|2d|operations|query|measurement|io|worker|csg|voxel) echo 2 ;;
+    topology|2d|operations|query|measurement|io|worker|csg|voxel|implicit) echo 2 ;;
     sketching|text|projection|gear|ns|lattice) echo 3 ;;
     *) echo -1 ;;
   esac
@@ -129,7 +129,7 @@ if [[ ${#ERRORS[@]} -gt 0 ]]; then
   echo ""
   echo "Layer 0: kernel/, utils/"
   echo "Layer 1: core/"
-  echo "Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/, csg/, voxel/"
+  echo "Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/, csg/, voxel/, implicit/"
   echo "Layer 3: sketching/, text/, projection/, gear/, ns/, lattice/"
   echo ""
   echo "Imports must flow downward (higher layer -> lower layer or same layer)."

@@ -17,6 +17,7 @@ export type VoxelEngine = Pick<
   | 'shell_mesh'
   | 'voxel_boolean'
   | 'VoxelField'
+  | 'Sdf'
   | 'version'
 >;
 
@@ -58,6 +59,7 @@ export async function loadVoxelEngine(): Promise<VoxelEngine> {
     shell_mesh: wasm.shell_mesh,
     voxel_boolean: wasm.voxel_boolean,
     VoxelField: wasm.VoxelField,
+    Sdf: wasm.Sdf,
     version: wasm.version,
   };
   return _engine;

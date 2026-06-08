@@ -16,6 +16,53 @@ export class RepairResult {
 }
 
 /**
+ * An opaque analytic SDF expression (the field-first authoring path, ADR-0013).
+ * Wraps an immutable [`sdf::Expr`] tree built by the static primitive
+ * constructors and grown by the combinator methods. Every method CLONES into a
+ * fresh node and returns a new `Sdf` (wasm-bindgen has no shared borrow across
+ * calls), so an `Sdf` is a value, not a mutable builder.
+ */
+export class Sdf {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    static box_(hx: number, hy: number, hz: number): Sdf;
+    static capsule(ax: number, ay: number, az: number, bx: number, by: number, bz: number, r: number): Sdf;
+    static cone(r: number, h: number): Sdf;
+    static cylinder(r: number, h: number): Sdf;
+    difference(other: Sdf): Sdf;
+    intersection(other: Sdf): Sdf;
+    offset(d: number): Sdf;
+    onion(t: number): Sdf;
+    static plane(nx: number, ny: number, nz: number, h: number): Sdf;
+    /**
+     * Rasterize this expression into a persistent dense [`VoxelField`] using its
+     * analytic bounds. The result is a true banded SDF, so the field starts clean
+     * (`dirty: false`). Rejects a grid over the dense voxel cap with a clear
+     * JsError, mirroring `VoxelField::new`.
+     */
+    rasterize(resolution: number, padding: number): VoxelField;
+    /**
+     * Rasterize this expression into a dense [`VoxelField`] over EXPLICIT bounds
+     * `[min..max]`, for clipping unbounded primitives (a half-space) or framing a
+     * custom region. Same banded SDF semantics as [`Sdf::rasterize`].
+     */
+    rasterize_in(min_x: number, min_y: number, min_z: number, max_x: number, max_y: number, max_z: number, resolution: number, padding: number): VoxelField;
+    rotate(ax: number, ay: number, az: number, angle: number): Sdf;
+    round(r: number): Sdf;
+    static rounded_box(hx: number, hy: number, hz: number, r: number): Sdf;
+    scale(s: number): Sdf;
+    shell(t: number): Sdf;
+    smooth_difference(other: Sdf, k: number): Sdf;
+    smooth_intersection(other: Sdf, k: number): Sdf;
+    smooth_union(other: Sdf, k: number): Sdf;
+    static sphere(r: number): Sdf;
+    static torus(major: number, minor: number): Sdf;
+    translate(x: number, y: number, z: number): Sdf;
+    union(other: Sdf): Sdf;
+}
+
+/**
  * A persistent dense voxel field for same-grid op chains: voxelize a mesh once,
  * then boolean / offset / shell / reinit IN PLACE on the kept grid, and contour
  * it once at the end. The value-returning free functions above re-voxelize and
@@ -198,6 +245,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_repairresult_free: (a: number, b: number) => void;
+    readonly __wbg_sdf_free: (a: number, b: number) => void;
     readonly __wbg_voxelfield_free: (a: number, b: number) => void;
     readonly lattice_infill: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
     readonly offset_mesh: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number];
@@ -206,6 +254,29 @@ export interface InitOutput {
     readonly repairresult_indices: (a: number) => [number, number];
     readonly repairresult_normals: (a: number) => [number, number];
     readonly repairresult_positions: (a: number) => [number, number];
+    readonly sdf_box_: (a: number, b: number, c: number) => number;
+    readonly sdf_capsule: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+    readonly sdf_cone: (a: number, b: number) => number;
+    readonly sdf_cylinder: (a: number, b: number) => number;
+    readonly sdf_difference: (a: number, b: number) => number;
+    readonly sdf_intersection: (a: number, b: number) => number;
+    readonly sdf_offset: (a: number, b: number) => number;
+    readonly sdf_onion: (a: number, b: number) => number;
+    readonly sdf_plane: (a: number, b: number, c: number, d: number) => number;
+    readonly sdf_rasterize: (a: number, b: number, c: number) => [number, number, number];
+    readonly sdf_rasterize_in: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
+    readonly sdf_rotate: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly sdf_round: (a: number, b: number) => number;
+    readonly sdf_rounded_box: (a: number, b: number, c: number, d: number) => number;
+    readonly sdf_scale: (a: number, b: number) => number;
+    readonly sdf_shell: (a: number, b: number) => number;
+    readonly sdf_smooth_difference: (a: number, b: number, c: number) => number;
+    readonly sdf_smooth_intersection: (a: number, b: number, c: number) => number;
+    readonly sdf_smooth_union: (a: number, b: number, c: number) => number;
+    readonly sdf_sphere: (a: number) => number;
+    readonly sdf_torus: (a: number, b: number) => number;
+    readonly sdf_translate: (a: number, b: number, c: number, d: number) => number;
+    readonly sdf_union: (a: number, b: number) => number;
     readonly shell_mesh: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number];
     readonly tpms_box: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
     readonly version: () => [number, number];

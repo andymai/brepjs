@@ -53,6 +53,269 @@ export class RepairResult {
 if (Symbol.dispose) RepairResult.prototype[Symbol.dispose] = RepairResult.prototype.free;
 
 /**
+ * An opaque analytic SDF expression (the field-first authoring path, ADR-0013).
+ * Wraps an immutable [`sdf::Expr`] tree built by the static primitive
+ * constructors and grown by the combinator methods. Every method CLONES into a
+ * fresh node and returns a new `Sdf` (wasm-bindgen has no shared borrow across
+ * calls), so an `Sdf` is a value, not a mutable builder.
+ */
+export class Sdf {
+    static __wrap(ptr) {
+        const obj = Object.create(Sdf.prototype);
+        obj.__wbg_ptr = ptr;
+        SdfFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        SdfFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_sdf_free(ptr, 0);
+    }
+    /**
+     * @param {number} hx
+     * @param {number} hy
+     * @param {number} hz
+     * @returns {Sdf}
+     */
+    static box_(hx, hy, hz) {
+        const ret = wasm.sdf_box_(hx, hy, hz);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} ax
+     * @param {number} ay
+     * @param {number} az
+     * @param {number} bx
+     * @param {number} by
+     * @param {number} bz
+     * @param {number} r
+     * @returns {Sdf}
+     */
+    static capsule(ax, ay, az, bx, by, bz, r) {
+        const ret = wasm.sdf_capsule(ax, ay, az, bx, by, bz, r);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} r
+     * @param {number} h
+     * @returns {Sdf}
+     */
+    static cone(r, h) {
+        const ret = wasm.sdf_cone(r, h);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} r
+     * @param {number} h
+     * @returns {Sdf}
+     */
+    static cylinder(r, h) {
+        const ret = wasm.sdf_cylinder(r, h);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @returns {Sdf}
+     */
+    difference(other) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_difference(this.__wbg_ptr, other.__wbg_ptr);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @returns {Sdf}
+     */
+    intersection(other) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_intersection(this.__wbg_ptr, other.__wbg_ptr);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} d
+     * @returns {Sdf}
+     */
+    offset(d) {
+        const ret = wasm.sdf_offset(this.__wbg_ptr, d);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} t
+     * @returns {Sdf}
+     */
+    onion(t) {
+        const ret = wasm.sdf_onion(this.__wbg_ptr, t);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} nx
+     * @param {number} ny
+     * @param {number} nz
+     * @param {number} h
+     * @returns {Sdf}
+     */
+    static plane(nx, ny, nz, h) {
+        const ret = wasm.sdf_plane(nx, ny, nz, h);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * Rasterize this expression into a persistent dense [`VoxelField`] using its
+     * analytic bounds. The result is a true banded SDF, so the field starts clean
+     * (`dirty: false`). Rejects a grid over the dense voxel cap with a clear
+     * JsError, mirroring `VoxelField::new`.
+     * @param {number} resolution
+     * @param {number} padding
+     * @returns {VoxelField}
+     */
+    rasterize(resolution, padding) {
+        const ret = wasm.sdf_rasterize(this.__wbg_ptr, resolution, padding);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return VoxelField.__wrap(ret[0]);
+    }
+    /**
+     * Rasterize this expression into a dense [`VoxelField`] over EXPLICIT bounds
+     * `[min..max]`, for clipping unbounded primitives (a half-space) or framing a
+     * custom region. Same banded SDF semantics as [`Sdf::rasterize`].
+     * @param {number} min_x
+     * @param {number} min_y
+     * @param {number} min_z
+     * @param {number} max_x
+     * @param {number} max_y
+     * @param {number} max_z
+     * @param {number} resolution
+     * @param {number} padding
+     * @returns {VoxelField}
+     */
+    rasterize_in(min_x, min_y, min_z, max_x, max_y, max_z, resolution, padding) {
+        const ret = wasm.sdf_rasterize_in(this.__wbg_ptr, min_x, min_y, min_z, max_x, max_y, max_z, resolution, padding);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return VoxelField.__wrap(ret[0]);
+    }
+    /**
+     * @param {number} ax
+     * @param {number} ay
+     * @param {number} az
+     * @param {number} angle
+     * @returns {Sdf}
+     */
+    rotate(ax, ay, az, angle) {
+        const ret = wasm.sdf_rotate(this.__wbg_ptr, ax, ay, az, angle);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} r
+     * @returns {Sdf}
+     */
+    round(r) {
+        const ret = wasm.sdf_round(this.__wbg_ptr, r);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} hx
+     * @param {number} hy
+     * @param {number} hz
+     * @param {number} r
+     * @returns {Sdf}
+     */
+    static rounded_box(hx, hy, hz, r) {
+        const ret = wasm.sdf_rounded_box(hx, hy, hz, r);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} s
+     * @returns {Sdf}
+     */
+    scale(s) {
+        const ret = wasm.sdf_scale(this.__wbg_ptr, s);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} t
+     * @returns {Sdf}
+     */
+    shell(t) {
+        const ret = wasm.sdf_shell(this.__wbg_ptr, t);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @param {number} k
+     * @returns {Sdf}
+     */
+    smooth_difference(other, k) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_smooth_difference(this.__wbg_ptr, other.__wbg_ptr, k);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @param {number} k
+     * @returns {Sdf}
+     */
+    smooth_intersection(other, k) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_smooth_intersection(this.__wbg_ptr, other.__wbg_ptr, k);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @param {number} k
+     * @returns {Sdf}
+     */
+    smooth_union(other, k) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_smooth_union(this.__wbg_ptr, other.__wbg_ptr, k);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} r
+     * @returns {Sdf}
+     */
+    static sphere(r) {
+        const ret = wasm.sdf_sphere(r);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} major
+     * @param {number} minor
+     * @returns {Sdf}
+     */
+    static torus(major, minor) {
+        const ret = wasm.sdf_torus(major, minor);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
+     * @returns {Sdf}
+     */
+    translate(x, y, z) {
+        const ret = wasm.sdf_translate(this.__wbg_ptr, x, y, z);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @returns {Sdf}
+     */
+    union(other) {
+        _assertClass(other, Sdf);
+        const ret = wasm.sdf_union(this.__wbg_ptr, other.__wbg_ptr);
+        return Sdf.__wrap(ret);
+    }
+}
+if (Symbol.dispose) Sdf.prototype[Symbol.dispose] = Sdf.prototype.free;
+
+/**
  * A persistent dense voxel field for same-grid op chains: voxelize a mesh once,
  * then boolean / offset / shell / reinit IN PLACE on the kept grid, and contour
  * it once at the end. The value-returning free functions above re-voxelize and
@@ -484,6 +747,9 @@ function __wbg_get_imports() {
 const RepairResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_repairresult_free(ptr, 1));
+const SdfFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_sdf_free(ptr, 1));
 const VoxelFieldFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_voxelfield_free(ptr, 1));

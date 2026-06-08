@@ -125,7 +125,12 @@ function fieldDeletable(raw: WasmVoxelField): FieldDeletable {
   };
 }
 
+export function makeFieldHandle(raw: WasmVoxelField): VoxelFieldHandle {
+  return makeHandle(raw);
+}
+
 function makeHandle(raw: WasmVoxelField): VoxelFieldHandle {
+  // brepjs-patterns-disable: require-using-for-handles -- factory returns the handle, so it must outlive this scope
   const inner = createKernelHandle(fieldDeletable(raw));
 
   const handle: VoxelFieldHandle = {

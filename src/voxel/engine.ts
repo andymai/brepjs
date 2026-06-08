@@ -74,8 +74,78 @@ export interface VoxelEngine {
    * satisfied by the generated `VoxelField` wasm-bindgen class.
    */
   VoxelField: WasmVoxelFieldConstructor;
+  /**
+   * Field-first analytic SDF builder (ADR-0013). Static primitive constructors
+   * and combinator methods compose an opaque expression tree that rasterizes
+   * directly into a {@link WasmVoxelField} with no input mesh. Structurally
+   * satisfied by the generated `Sdf` wasm-bindgen class.
+   */
+  Sdf: WasmSdfConstructor;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
+}
+
+/**
+ * Static surface of the wasm `Sdf` class: the primitive constructors that seed an
+ * expression tree (centered at the origin unless noted). Each returns a fresh
+ * {@link WasmSdf}. Structurally satisfied by the generated `Sdf` class.
+ */
+export interface WasmSdfConstructor {
+  sphere(r: number): WasmSdf;
+  box_(hx: number, hy: number, hz: number): WasmSdf;
+  rounded_box(hx: number, hy: number, hz: number, r: number): WasmSdf;
+  cylinder(r: number, h: number): WasmSdf;
+  cone(r: number, h: number): WasmSdf;
+  capsule(
+    ax: number,
+    ay: number,
+    az: number,
+    bx: number,
+    by: number,
+    bz: number,
+    r: number
+  ): WasmSdf;
+  torus(major: number, minor: number): WasmSdf;
+  plane(nx: number, ny: number, nz: number, h: number): WasmSdf;
+}
+
+/**
+ * An opaque analytic SDF expression. Every combinator CLONES into a new node and
+ * returns a fresh `WasmSdf` (wasm-bindgen has no shared borrow across calls), so an
+ * `Sdf` is a value, not a mutable builder. `rasterize` builds a banded-SDF
+ * {@link WasmVoxelField}; `free()` releases the backing WASM expression tree.
+ * Structurally satisfied by the generated `Sdf` wasm-bindgen class.
+ */
+export interface WasmSdf {
+  union(other: WasmSdf): WasmSdf;
+  intersection(other: WasmSdf): WasmSdf;
+  difference(other: WasmSdf): WasmSdf;
+  smooth_union(other: WasmSdf, k: number): WasmSdf;
+  smooth_intersection(other: WasmSdf, k: number): WasmSdf;
+  smooth_difference(other: WasmSdf, k: number): WasmSdf;
+  offset(d: number): WasmSdf;
+  round(r: number): WasmSdf;
+  shell(t: number): WasmSdf;
+  onion(t: number): WasmSdf;
+  translate(x: number, y: number, z: number): WasmSdf;
+  rotate(ax: number, ay: number, az: number, angle: number): WasmSdf;
+  scale(s: number): WasmSdf;
+  /** Rasterize into a banded-SDF dense field over the expression's analytic bounds. */
+  rasterize(resolution: number, padding: number): WasmVoxelField;
+  /** Rasterize over explicit `[min..max]` bounds (clips unbounded primitives). */
+  rasterize_in(
+    min_x: number,
+    min_y: number,
+    min_z: number,
+    max_x: number,
+    max_y: number,
+    max_z: number,
+    resolution: number,
+    padding: number
+  ): WasmVoxelField;
+  /** Release the backing WASM expression-tree allocation (wasm-bindgen lifecycle). */
+  free(): void;
+  [Symbol.dispose](): void;
 }
 
 /**

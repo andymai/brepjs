@@ -271,6 +271,20 @@ export type {
   VoxelBooleanOp,
 } from './voxel/index.js';
 
+// ── Layer 2: implicit (ADR-0013, field-first SDF) ──
+
+export {
+  sphere as sdfSphere,
+  box as sdfBox,
+  roundedBox as sdfRoundedBox,
+  cylinder as sdfCylinder,
+  cone as sdfCone,
+  capsule as sdfCapsule,
+  torus as sdfTorus,
+  plane as sdfPlane,
+} from './implicit/index.js';
+export type { SdfHandle, SdfBounds } from './implicit/index.js';
+
 // ── Layer 3: lattice (ADR-0013) ──
 
 export { latticeInfill, latticeInfillShape, tpmsLattice } from './lattice/index.js';
