@@ -53,7 +53,7 @@ pub fn smooth_difference(a: f64, b: f64, k: f64) -> f64 {
     (a * (1.0 - h) + (-b) * h) + k * h * (1.0 - h)
 }
 
-/// Iso-level offset: grow (`d > 0`) or shrink (`d < 0`) a surface.
+/// Iso-level offset of the SDF value `d`: grow (`dist > 0`) or shrink (`dist < 0`) a surface.
 #[inline]
 pub fn offset(d: f64, dist: f64) -> f64 {
     d - dist

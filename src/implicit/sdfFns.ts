@@ -263,7 +263,7 @@ export function cylinder(r: number, h: number, id?: string): Result<SdfHandle> {
   return build((e) => e.Sdf.cylinder(r, h), id);
 }
 
-/** A capped cone, axis +Z, base radius `r` to an apex, total height `h`. */
+/** A capped cone centered at the origin: base radius `r` at z = −h/2 tapering to an apex at z = +h/2. */
 export function cone(r: number, h: number, id?: string): Result<SdfHandle> {
   return build((e) => e.Sdf.cone(r, h), id);
 }
