@@ -70,7 +70,7 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
   });
 
   it('builds and rasterizes the skeleton chamber v0 (hollow cone + cooling channels)', () => {
-    const chamber = buildChamber();
+    using chamber = buildChamber();
     using field = unwrap(chamber.rasterize({ resolution: 40, padding: 3 }));
     const mesh = field.contour();
 
@@ -85,7 +85,6 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
       expect(extent).toBeGreaterThan(1);
       expect(extent).toBeLessThan(10);
     }
-    chamber[Symbol.dispose]();
   });
 });
 
