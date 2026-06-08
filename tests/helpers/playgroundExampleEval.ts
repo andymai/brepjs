@@ -78,6 +78,17 @@ function unwrapResultShape(shape: unknown): unknown {
   return inner;
 }
 
+/** A raw triangle mesh from a voxel/SDF op (KernelMeshResult): flat typed arrays,
+ * no B-rep topology. Mirrors the worker's raw-mesh render path. */
+function isRawMesh(x: unknown): x is { vertices: Float32Array; triangles: Uint32Array } {
+  return (
+    typeof x === 'object' &&
+    x !== null &&
+    (x as { vertices?: unknown }).vertices instanceof Float32Array &&
+    (x as { triangles?: unknown }).triangles instanceof Uint32Array
+  );
+}
+
 /** Run an example's source and return the exported shape(s) as an array. */
 export function runExample(code: string): unknown[] {
   const body = transpileExample(code);
@@ -106,6 +117,15 @@ export function evalAndMeshExample(code: string): MeshCheck {
   let totalVertices = 0;
   for (let i = 0; i < shapes.length; i++) {
     const shape = unwrapResultShape(shapes[i]);
+    // Voxel/SDF ops return a raw KernelMeshResult, not a B-rep shape — validate it
+    // directly instead of re-meshing it (mirrors the worker's raw-mesh path).
+    if (isRawMesh(shape)) {
+      if (shape.vertices.length === 0) {
+        throw new Error(`shape[${i}] produced an empty mesh`);
+      }
+      totalVertices += shape.vertices.length;
+      continue;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs barrel over WASM handles
     const mesh = (brepjs as any).mesh(shape) as { vertices: { length: number } };
     if (mesh.vertices.length === 0) {

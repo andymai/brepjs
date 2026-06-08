@@ -7,12 +7,20 @@
  * production smoke test only checks the engine boots, not that each example
  * runs. Without this, an example can silently rot into a blank viewer.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, beforeAll, expect } from 'vitest';
+import initWasm, * as voxelWasm from 'brepjs-voxel-wasm';
 import { initOC } from './setup.js';
+import { initVoxel } from '@/voxel/index.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
 import { evalAndMeshExample } from './helpers/playgroundExampleEval.js';
 
 beforeAll(async () => {
+  // Voxel examples need the voxel engine, just like the playground worker inits it.
+  const wasmPath = resolve(__dirname, '../packages/brepjs-voxel-wasm/pkg/index_bg.wasm');
+  await initWasm({ module_or_path: readFileSync(wasmPath) });
+  initVoxel(voxelWasm);
   await initOC();
 }, 60000);
 
