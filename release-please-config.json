@@ -22,7 +22,14 @@
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-voxel-wasm",
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "Cargo.toml",
+          "jsonpath": "$.package.version"
+        }
+      ]
     },
     "packages/brepjs-verify": {
       "release-type": "node",
