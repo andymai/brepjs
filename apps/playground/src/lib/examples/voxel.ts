@@ -1,20 +1,19 @@
 /**
  * Voxel / SDF examples — when to reach past B-rep for a signed-distance field.
- * The headline is TPMS lattice infill: B-rep CSG can't fill a solid with a
- * triply-periodic minimal surface, but the voxel engine does it in a few lines.
- * Voxel ops return a raw triangle mesh (no B-rep topology), so picking and
- * per-face inspection are unavailable. See the module-authoring rules in ./types.
+ * Each one is a practical job a voxel kernel does better than (or instead of)
+ * B-rep, with a comment naming the B-rep limitation it sidesteps. Voxel ops
+ * return a raw triangle mesh (no B-rep topology), so picking and per-face
+ * inspection are unavailable. See the module-authoring rules in ./types.
  */
 import type { Example } from './types';
 
-const lightweightPart = `import { box, cut, unwrap } from 'brepjs/quick';
+const latticeLightweighting = `import { box, cut, unwrap } from 'brepjs/quick';
 import { latticeInfillShape } from 'brepjs';
 
-// LIGHTWEIGHTING — the flagship voxel use case. Swap a part's solid interior for
-// a gyroid TPMS lattice: large mass savings, retained stiffness, self-supporting
-// for printing. Lattices are voxel/SDF-only — B-rep CSG can't build a
-// triply-periodic minimal surface. latticeInfillShape voxelizes the solid,
-// intersects it with the gyroid field, and contours back to a mesh (not a Solid).
+// USE VOXELS WHEN you need a lattice. B-rep CSG can't build a triply-periodic
+// minimal surface at all — latticeInfillShape voxelizes the solid, intersects it
+// with the gyroid field, and contours a mesh. Lightweighting: cut mass, keep
+// stiffness, stay self-supporting to print.
 const part = unwrap(cut(box(48, 34, 24), box(22, 42, 12, { at: [13, -4, 12] })));
 const light = unwrap(
   latticeInfillShape(part, { type: 'gyroid', period: 11, thickness: 1.6, resolution: 96 })
@@ -23,20 +22,46 @@ const light = unwrap(
 export default light;
 `;
 
-const tpmsFamilies = `import { box, translate, unwrap } from 'brepjs/quick';
-import { latticeInfillShape } from 'brepjs';
+const robustOffset = `import { box, cut, translate, unwrap } from 'brepjs/quick';
+import { offsetShape } from 'brepjs';
 
-// THE THREE TPMS FAMILIES brepjs ships — same cube, same period/thickness, side
-// by side. Each is a distinct minimal surface with different stiffness, surface
-// area, and printability; pick the one your part needs. Returning an array
-// renders them all. Higher 'resolution' = smoother but slower.
-const opts = { period: 12, thickness: 1.7, resolution: 78 };
-const cube = () => box(26, 26, 26);
-const gyroid = unwrap(latticeInfillShape(translate(cube(), [-32, 0, 0]), { ...opts, type: 'gyroid' }));
-const diamond = unwrap(latticeInfillShape(cube(), { ...opts, type: 'diamond' }));
-const schwarz = unwrap(latticeInfillShape(translate(cube(), [32, 0, 0]), { ...opts, type: 'schwarzP' }));
+// USE VOXELS WHEN an offset must round concave or thin features. B-rep offset
+// self-intersects there and fails; the voxel offset just shifts the SDF
+// iso-surface, so it rounds smoothly and can't self-intersect. Left: the sharp
+// part. Right: the same part offset +2 mm — every edge rounded.
+const part = unwrap(cut(box(38, 38, 22), box(44, 14, 12, { at: [-3, 12, 5] })));
+const rounded = unwrap(offsetShape(part, 2));
 
-export default [gyroid, diamond, schwarz];
+export default [translate(part, [-48, 0, 0]), rounded];
+`;
+
+const robustBoolean = `import { box, translate, unwrap } from 'brepjs/quick';
+import { voxelBooleanShapes } from 'brepjs';
+
+// USE VOXELS WHEN a boolean hits coincident or tangent faces. B-rep BOPAlgo can
+// throw on those degenerate cases; voxel CSG is just min/max on two distance
+// fields, so it always returns a clean mesh (edges soften with resolution — the
+// price of robustness). Here: union of two overlapping blocks.
+const a = box(34, 34, 20);
+const b = translate(box(20, 20, 34), [20, 20, -7]);
+
+export default unwrap(voxelBooleanShapes(a, b, 'union', { resolution: 80 }));
+`;
+
+const opChain = `import { box, translate, unwrap } from 'brepjs/quick';
+import { voxelBooleanFieldShapes } from 'brepjs';
+
+// USE VOXELS WHEN you chain ops. B-rep re-solves the whole model at each boolean
+// or offset and can fail or drift; a voxel field is ONE grid you mutate in place,
+// with Fast-Sweeping keeping it a true SDF between steps. 'using' frees the WASM
+// grid on scope exit. Here: fuse two blocks, then offset the joined result +2 mm
+// — in a single field, contoured once. ('padding' leaves room for the offset to
+// grow into; the field's grid bounds are fixed once built.)
+const a = box(34, 34, 24);
+const b = translate(box(26, 26, 24), [22, 22, 0]);
+using field = unwrap(voxelBooleanFieldShapes(a, b, 'union', { resolution: 72, padding: 6 }));
+
+export default field.offset(2).contour();
 `;
 
 export const VOXEL_EXAMPLES: readonly Example[] = [
@@ -44,13 +69,28 @@ export const VOXEL_EXAMPLES: readonly Example[] = [
     id: 'lattice-lightweighting',
     label: 'Lattice lightweighting',
     description:
-      'Replace a part’s solid interior with a gyroid TPMS lattice — the mass-saving trick only a voxel kernel can do.',
-    code: lightweightPart,
+      'Fill a part with a gyroid TPMS lattice to cut mass — a lattice only a voxel kernel can build.',
+    code: latticeLightweighting,
   },
   {
-    id: 'tpms-families',
-    label: 'TPMS lattice families',
-    description: 'Gyroid, Diamond, and Schwarz-P lattices side by side — the voxel lattice design space.',
-    code: tpmsFamilies,
+    id: 'robust-offset',
+    label: 'Robust offset (rounding)',
+    description:
+      'Offset/round a part where B-rep offset would self-intersect — sharp vs rounded, side by side.',
+    code: robustOffset,
+  },
+  {
+    id: 'robust-boolean',
+    label: 'Robust boolean (CSG)',
+    description:
+      'Union via min/max on distance fields — clean where B-rep BOPAlgo throws on degenerate faces.',
+    code: robustBoolean,
+  },
+  {
+    id: 'voxel-op-chain',
+    label: 'Op-chain: union then offset',
+    description:
+      'Chain boolean → offset on one persistent voxel field — robust where B-rep re-solves every step.',
+    code: opChain,
   },
 ];

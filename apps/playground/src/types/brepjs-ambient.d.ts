@@ -163,6 +163,19 @@ interface KernelCore {
      * Used to prevent mixing shapes from different kernels.
      */
     readonly kernelId: string;
+    /**
+     * What this kernel *is* — exact vs mesh-approximate, can export B-rep, how
+     * tessellation is controlled. Lets callers route export/measurement and
+     * quality without hard-coding kernel ids. See {@link ../capabilities.js}.
+     */
+    readonly capabilities: KernelCapabilities;
+    /**
+     * Apply a tessellation quality level. Implemented only by `build-time`
+     * kernels (e.g. Manifold maps it to a global circular-segment setting before
+     * solids are built); `extract-time` kernels leave this undefined and instead
+     * read the active level as their default deflection at `mesh()`/export time.
+     */
+    setQuality?(level: QualityLevel): void;
     /** Dispose a kernel handle, releasing its resources. */
     dispose(handle: {
         delete(): void;
@@ -876,6 +889,35 @@ declare function getKernel(id?: string): KernelAdapter;
 
 declare function withKernel<T extends Exclude<unknown, Promise<unknown>>>(id: string, fn: () => T): T;
 
+/** Capabilities of a kernel (defaults to the active kernel). */
+declare function getKernelCapabilities(id?: string): KernelCapabilities;
+
+/**
+ * Run `fn` at a tessellation quality level. For `build-time` kernels (Manifold)
+ * the level is pushed to the kernel's global setting on enter and restored on
+ * exit; for `extract-time` kernels (OCCT) it becomes the default deflection at
+ * `mesh()`/export inside `fn`. Synchronous only (mirrors {@link withKernel}).
+ */
+declare function withQuality<T extends Exclude<unknown, Promise<unknown>>>(level: QualityLevel, fn: () => T): T;
+
+/**
+ * Bind a named tier to a (kernel, quality) pair — e.g. a `'preview'` tier on a
+ * fast mesh kernel at `'draft'` quality, and an `'exact'` tier on an OCCT
+ * kernel at `'fine'`. Lets call sites express intent (`withTier('preview', …)`)
+ * instead of hard-coding a kernel id + quality knob.
+ */
+declare function registerKernelTier(name: string, tier: KernelTier): void;
+
+/** The (kernel, quality) a tier resolves to, or undefined if unregistered. */
+declare function getKernelTier(name: string): KernelTier | undefined;
+
+/**
+ * Run `fn` under a registered tier: switches to the tier's kernel and applies
+ * its quality (both restored on exit). Composes {@link withKernel} and
+ * {@link withQuality}. Throws if the tier is unregistered.
+ */
+declare function withTier<T extends Exclude<unknown, Promise<unknown>>>(name: string, fn: () => T): T;
+
 /** Initialise the brepjs kernel from a loaded WASM instance. */
 declare function initFromOC(oc: KernelInstance): void;
 
@@ -918,6 +960,66 @@ declare function prewarm(): void;
  * ```
  */
 declare function init(): Promise<string>;
+
+/**
+ * Tessellation quality levels — a kernel-agnostic fidelity/speed dial.
+ *
+ * Callers pick an intent (`'draft' | 'standard' | 'fine'`) instead of
+ * kernel-specific knobs (Manifold circular segments vs. OCCT deflection). Each
+ * level maps to:
+ * - a **deflection** pair, used as the default at `mesh()`/export for
+ *   `extract-time` kernels (OCCT), and
+ * - a per-kernel `setQuality()` for `build-time` kernels (Manifold), which
+ *   translate the level to their native global setting before a solid is built.
+ *
+ * The current level is process-global state, scoped by `withQuality()` /
+ * `withTier()` in `./index.js`. This module is pure data + state so it has no
+ * dependency on the kernel registry.
+ * @module
+ */
+type QualityLevel = 'draft' | 'standard' | 'fine';
+
+/** The active quality level (defaults to `'standard'`). */
+declare function currentQuality(): QualityLevel;
+
+/**
+ * Kernel capability flags — let callers route work by what a kernel *is*, not by
+ * its id. The headline need: send export/measurement to an exact B-rep kernel
+ * and fast previews to a mesh kernel without hard-coding `'manifold'` vs
+ * `'occt-wasm'` at every call site.
+ *
+ * `tessellationModel` also tells the quality layer (see {@link ./quality.js})
+ * *how* a kernel's mesh resolution is controlled:
+ * - `'build-time'`  — the mesh is fixed when the solid is built (e.g. Manifold's
+ *   global circular-segment setting); quality must be applied *before* building.
+ * - `'extract-time'`— the shape is exact and tessellated on demand with a
+ *   per-call deflection (e.g. OCCT); quality is the default deflection at
+ *   `mesh()`/export time.
+ * - `'none'`        — no tessellation control (or not a meshing kernel).
+ * @module
+ */
+type TessellationModel = 'build-time' | 'extract-time' | 'none';
+
+interface KernelCapabilities {
+    /** Exact B-rep geometry (vs. a mesh approximation). */
+    readonly exact: boolean;
+    /** Can serialize to B-rep exchange formats (BREP/STEP). */
+    readonly brepExport: boolean;
+    /** Volume/area/length match the analytic value (vs. mesh-approximate). */
+    readonly exactMeasurement: boolean;
+    /** How tessellation resolution is controlled — see module docs. */
+    readonly tessellationModel: TessellationModel;
+}
+
+/** Default for an exact B-rep kernel (OCCT family, brepkit). */
+declare const EXACT_BREP_CAPABILITIES: KernelCapabilities;
+
+/**
+ * Conservative fallback for a kernel that doesn't declare capabilities: assume
+ * exact B-rep so export/measurement aren't wrongly blocked, but claim no
+ * tessellation control.
+ */
+declare const DEFAULT_CAPABILITIES: KernelCapabilities;
 
 type PerformanceStats = Record<PerfCategory, CategoryStats>;
 
@@ -2236,6 +2338,12 @@ interface VoxelEngine {
     shell_mesh(verts: Float32Array, tris: Uint32Array, thickness: number, resolution: number, padding: number): VoxelRepairResult;
     /** Voxel CSG of two meshes (op: 0=union, 1=intersection, 2=difference A−B). */
     voxel_boolean(verts_a: Float32Array, tris_a: Uint32Array, verts_b: Float32Array, tris_b: Uint32Array, op: number, resolution: number, padding: number): VoxelRepairResult;
+    /**
+     * Persistent dense voxel-field class, for same-grid op chains: voxelize a mesh
+     * once, then boolean/offset/shell/reinit in place, contour once. Structurally
+     * satisfied by the generated `VoxelField` wasm-bindgen class.
+     */
+    VoxelField: WasmVoxelFieldConstructor;
     /** Engine artifact version, for loader/artifact compatibility checks. */
     version(): string;
 }
@@ -2350,6 +2458,133 @@ declare function shellShape(shape: AnyShape<Dimension>, thickness: number, opts?
  * `err(...)`.
  */
 declare function voxelBooleanShapes(a: AnyShape<Dimension>, b: AnyShape<Dimension>, op: 'union' | 'intersection' | 'difference', opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/** Field tuning. `resolution` sizes the longest bbox axis in voxels; `padding`
+ *  is the air-margin ring (>= 1) Surface Nets needs AND the headroom an outward
+ *  offset has before it clips at the grid boundary (the grid is fixed at
+ *  voxelize time — size both for the intended maximum offset). */
+interface VoxelFieldOptions {
+    resolution?: number;
+    padding?: number;
+}
+
+/** Boolean op selector for {@link fieldBoolean} / {@link VoxelFieldHandle.boolean}. */
+type VoxelBooleanOp = 'union' | 'intersection' | 'difference';
+
+/**
+ * A persistent, disposable voxel field. Carries the wrapped WASM field as
+ * `value` and a fluent op-chain (`.boolean().offset().shell().contour()`) that
+ * throws on the rare WASM error (mirroring the `shape()` facade's
+ * throw-on-`Err` convention), so a `using`-scoped chain reads cleanly:
+ *
+ * ```ts
+ * using field = voxelField(meshA).unwrap();
+ * using other = voxelField(meshB).unwrap();
+ * const mesh = field.boolean(other, 'union').offset(2).contour();
+ * ```
+ *
+ * Dispose is mandatory (FinalizationRegistry is an unreliable safety net): use
+ * `using`, or call `[Symbol.dispose]()` explicitly, to free the WASM grid.
+ */
+interface VoxelFieldHandle {
+    /** The wrapped WASM field. Throws if the handle has been disposed. */
+    readonly value: WasmVoxelField;
+    /** Whether the backing WASM grid has been freed. */
+    readonly disposed: boolean;
+    [Symbol.dispose](): void;
+    /** CSG-combine with `other` in place (marks the field for lazy reinit). */
+    boolean(other: VoxelFieldHandle, op: VoxelBooleanOp): VoxelFieldHandle;
+    /** Offset the surface in place (>0 outward, <0 inward); auto-reinits if dirty. */
+    offset(distance: number): VoxelFieldHandle;
+    /** Hollow into an inward shell in place (thickness > 0); auto-reinits if dirty. */
+    shell(thickness: number): VoxelFieldHandle;
+    /** Reinitialize φ to a true SDF while preserving the zero set. */
+    reinit(): VoxelFieldHandle;
+    /** Surface-Nets contour the current field to a mesh (the field stays alive). */
+    contour(): KernelMeshResult;
+}
+
+/**
+ * Voxelize a mesh into a persistent dense {@link VoxelFieldHandle}: one grid you
+ * can boolean / offset / shell / reinit in place, then contour once. The handle
+ * is disposable — free the WASM grid with `using` (or `[Symbol.dispose]()`).
+ *
+ * `resolution` sizes the longest bbox axis; `padding` is the air-margin ring.
+ * Errors on an empty/invalid mesh, or if the grid would exceed the dense budget
+ * (the persistent path is dense-only) or the voxel cap.
+ */
+declare function voxelField(mesh: VoxelMeshInput, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * Boolean two meshes into ONE co-registered, chainable {@link VoxelFieldHandle}:
+ * voxelize both onto a single shared grid sized to their union bbox, combine by
+ * `op`, and keep the field. This is THE correct way to "boolean then chain
+ * offset/shell" two independently-described meshes — unlike {@link fieldBoolean},
+ * which requires the operands to already share grid geometry. The result is
+ * dirty (the blend drifts the gradient), so a subsequent offset/shell
+ * auto-reinitializes. The handle is disposable — free it with `using`.
+ *
+ * `op` is `'difference'` = A − B. Errors on an empty/invalid mesh, or if the
+ * shared grid would exceed the dense budget (the persistent path is dense-only).
+ */
+declare function voxelBooleanField(a: VoxelMeshInput, b: VoxelMeshInput, op: VoxelBooleanOp, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * CSG-combine two fields IN PLACE, returning the SAME `handle` for chaining. The
+ * min/max blend keeps the zero set exact but drifts the gradient near the join,
+ * so a subsequent {@link fieldOffset}/{@link fieldShell} auto-reinitializes.
+ *
+ * PRECONDITION: both operands must be CO-REGISTERED — same origin, spacing, AND
+ * dims. Two fields built by {@link voxelField} from DIFFERENT meshes generally do
+ * NOT share geometry (each sizes its grid to its own bbox), and the WASM guard
+ * rejects that mismatch as an `err(...)` rather than silently blending mismatched
+ * coordinate frames. For the easy co-registered path, build the field directly
+ * from both meshes with {@link voxelBooleanField}.
+ */
+declare function fieldBoolean(handle: VoxelFieldHandle, other: VoxelFieldHandle, op: VoxelBooleanOp): Result<VoxelFieldHandle>;
+
+/**
+ * Offset the field's surface IN PLACE (>0 outward, <0 inward), returning the
+ * SAME `handle`. Auto-reinitializes first if the field is dirty (post-boolean),
+ * so the iso-shift always rides a true SDF.
+ */
+declare function fieldOffset(handle: VoxelFieldHandle, distance: number): Result<VoxelFieldHandle>;
+
+/**
+ * Hollow the field into an inward shell of `thickness` IN PLACE, returning the
+ * SAME `handle`. Auto-reinitializes first if dirty; the result is dirty again
+ * (the shell re-introduces a kink).
+ */
+declare function fieldShell(handle: VoxelFieldHandle, thickness: number): Result<VoxelFieldHandle>;
+
+/**
+ * Explicitly reinitialize φ to a true SDF (|∇φ|=1) while preserving the zero
+ * set, returning the SAME `handle`. Idempotent on a clean field. Offset/shell
+ * already auto-reinitialize, so this is for advanced control only.
+ */
+declare function fieldReinit(handle: VoxelFieldHandle): Result<VoxelFieldHandle>;
+
+/**
+ * Surface-Nets contour the current field to a {@link KernelMeshResult}. The
+ * field stays alive and chainable afterwards (contour borrows it). An empty
+ * contour surfaces as `VOXEL_DEGENERATE_RESULT`.
+ */
+declare function fieldContour(handle: VoxelFieldHandle): Result<KernelMeshResult>;
+
+/**
+ * Voxelize a B-rep shape into a persistent {@link VoxelFieldHandle}: tessellate
+ * it, then run {@link voxelField}. Threads a meshing failure back as an
+ * `err(...)`. The handle is disposable — free it with `using`.
+ */
+declare function voxelFieldFromShape(shape: AnyShape<Dimension>, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * Boolean two B-rep shapes into one co-registered, chainable
+ * {@link VoxelFieldHandle}: tessellate both, then run {@link voxelBooleanField}.
+ * `op` is `'difference'` = A − B. Threads either meshing failure back as an
+ * `err(...)`. The handle is disposable — free it with `using`.
+ */
+declare function voxelBooleanFieldShapes(a: AnyShape<Dimension>, b: AnyShape<Dimension>, op: VoxelBooleanOp, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
 
 declare function registerVoxel(id: string, engine: VoxelEngine): void;
 
@@ -4399,9 +4634,9 @@ interface EdgeMesh {
 
 /** Shared options for meshing operations. */
 interface MeshOptions {
-    /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
+    /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active quality level. */
     tolerance?: number;
-    /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
+    /** Angular deflection tolerance in radians. Smaller = finer mesh on curved surfaces. Defaults to the active quality level. */
     angularTolerance?: number;
     /** Abort signal to cancel mesh generation between face iterations. */
     signal?: AbortSignal;
@@ -4414,7 +4649,7 @@ declare function exportSTEP(shape: AnyShape<Dimension>): Result<Blob>;
  *
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
  */
-declare function exportSTL(shape: AnyShape<Dimension>, { tolerance, angularTolerance, binary, }?: MeshOptions & {
+declare function exportSTL(shape: AnyShape<Dimension>, opts?: MeshOptions & {
     binary?: boolean;
 }): Result<Blob>;
 
@@ -6802,6 +7037,7 @@ interface BrepkitAdapter extends KernelAdapter, ConstraintSketchCapability, Brep
 declare class BrepkitAdapter {
     readonly oc: KernelInstance;
     readonly kernelId = "brepkit";
+    readonly capabilities: KernelCapabilities;
     /** The underlying brepkit WASM kernel instance (typed). */
     private readonly bk;
     constructor(brepkitKernel: KernelInstance);
@@ -6810,6 +7046,7 @@ declare class BrepkitAdapter {
 declare class OcctWasmAdapter implements KernelAdapter {
     readonly oc: KernelInstance;
     readonly kernelId = "occt-wasm";
+    readonly capabilities: KernelCapabilities;
     private readonly Module;
     private readonly k;
     private readonly owner;
