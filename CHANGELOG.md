@@ -1,5 +1,14 @@
 # Changelog
 
+## [18.69.0](https://github.com/andymai/brepjs/compare/brepjs-v18.68.0...brepjs-v18.69.0) (2026-06-09)
+
+
+### Features
+
+* **implicit:** graded + conformal lattices (TPMS + strut) and chamber v1 (Phase 2c) ([#1266](https://github.com/andymai/brepjs/issues/1266)) ([666bfb6](https://github.com/andymai/brepjs/commit/666bfb61372272c3076cbf03dc101c6aa3940d70))
+* **implicit:** profile-along-spine sweep operator with RMF frames (Phase 2a) ([#1260](https://github.com/andymai/brepjs/issues/1260)) ([10422ff](https://github.com/andymai/brepjs/commit/10422ff0a5dd2b4fa75242f893d093fedd84ac80))
+* **implicit:** scalar-field modulation + position-varying operators (Phase 2b) ([#1264](https://github.com/andymai/brepjs/issues/1264)) ([9b59880](https://github.com/andymai/brepjs/commit/9b598802ed5c653320184f88b003cb6d35e4452f))
+
 ## [18.68.0](https://github.com/andymai/brepjs/compare/brepjs-v18.67.0...brepjs-v18.68.0) (2026-06-08)
 
 
