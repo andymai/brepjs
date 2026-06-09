@@ -735,7 +735,6 @@ impl Sdf {
         Ok(Sdf::of(sdf::Expr::Sweep {
             curve: sdf::SweptCurve::new(&pts, closed),
             profile: Box::new(profile.expr.clone()),
-            closed,
         }))
     }
 

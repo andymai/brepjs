@@ -188,8 +188,12 @@ impl SweptCurve {
             let seed = frames[0].normal;
             let theta = dot(cross(wrapped, seed), tangents[0])
                 .atan2(dot(wrapped, seed).clamp(-1.0, 1.0));
+            // Spread the residual twist over the n-1 explicit inter-station intervals
+            // so station n-1 absorbs the full theta — the wrap segment then carries
+            // zero, closing the seam exactly. Dividing by n would leave theta/n on the
+            // wrap (a visible kink on flat, few-station loops).
             for (i, frame) in frames.iter_mut().enumerate() {
-                let ang = theta * (i as f64) / (n as f64);
+                let ang = theta * (i as f64) / ((n - 1) as f64);
                 let t = frame.tangent;
                 let rotated = rotate_about(frame.normal, t, ang);
                 frame.normal =

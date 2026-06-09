@@ -215,7 +215,6 @@ mod tests {
         Expr::Sweep {
             curve: SweptCurve::new(&spine, false),
             profile: Box::new(Expr::Sphere { r: CHANNEL_TUBE_R }),
-            closed: false,
         }
     }
 

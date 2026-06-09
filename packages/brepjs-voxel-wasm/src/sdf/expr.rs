@@ -244,11 +244,11 @@ pub enum Expr {
     /// A 2D `profile` (sampled in-plane at `[u, v, 0]`) swept along `curve`'s
     /// rotation-minimizing frames. The result is a PSEUDO-SDF (true distance only
     /// near the surface): the in-plane profile distance is exact, but the field
-    /// drifts in the axial direction away from the wall. `closed` skips end caps.
+    /// drifts in the axial direction away from the wall. Open vs closed is carried
+    /// by `curve` — a closed [`SweptCurve`] reports zero overrun, so no end caps.
     Sweep {
         curve: SweptCurve,
         profile: Box<Expr>,
-        closed: bool,
     },
 }
 
@@ -292,14 +292,10 @@ impl Expr {
                 e.eval([p[0] / s, p[1] / s, p[2] / s]) * s.abs()
             }
 
-            Expr::Sweep {
-                curve,
-                profile,
-                closed,
-            } => {
+            Expr::Sweep { curve, profile } => {
                 let (u, v, overrun) = curve.local_coords(p);
                 let dp = profile.eval([u, v, 0.0]);
-                if *closed || overrun <= 0.0 {
+                if overrun <= 0.0 {
                     dp
                 } else {
                     // Open sweep END-CAP: this branch is reached only when `overrun > 0`,
@@ -672,7 +668,6 @@ mod tests {
         let sweep = Expr::Sweep {
             curve: SweptCurve::new(&spine, false),
             profile: Box::new(Expr::Sphere { r }),
-            closed: false,
         };
         let cyl = Expr::Cylinder { r, h };
 
@@ -713,7 +708,6 @@ mod tests {
         let sweep = Expr::Sweep {
             curve: SweptCurve::new(&spine, false),
             profile: Box::new(Expr::Sphere { r }),
-            closed: false,
         };
 
         // Mid-arc station (45°): the spine point and offsets from it.
@@ -743,7 +737,6 @@ mod tests {
             profile: Box::new(Expr::Box {
                 half: [0.4, 0.15, 10.0],
             }),
-            closed: false,
         };
         // Step along the frame normal (the profile's local x) vs binormal (local y).
         let mid = [0.0, 0.0, 0.0];
@@ -773,7 +766,6 @@ mod tests {
         let sweep = Expr::Sweep {
             curve: SweptCurve::new(&straight_z_spine(8, h), false),
             profile: Box::new(Expr::Sphere { r }),
-            closed: false,
         };
         // On-axis (deep inside the profile in-plane, dp = -r) but just past the cap.
         for &eps in &[0.01, 0.1, 0.4] {
@@ -795,7 +787,6 @@ mod tests {
         let inner = Expr::Sweep {
             curve: SweptCurve::new(&straight_z_spine(6, 3.0), false),
             profile: Box::new(Expr::Box { half }),
-            closed: false,
         };
         let rotated = Expr::Rotate {
             e: Box::new(inner),
@@ -847,7 +838,6 @@ mod tests {
         let sweep = Expr::Sweep {
             curve,
             profile: Box::new(Expr::Sphere { r }),
-            closed: true,
         };
         // Interior (a spine point), surface (offset by r), exterior (far) at a station.
         let a = 0.7_f64;
@@ -855,6 +845,35 @@ mod tests {
         assert!(sweep.eval(c) < 0.0, "closed tube core interior");
         let out = [major * 1.5, 0.0, 0.0];
         assert!(sweep.eval(out) > 0.0, "outside closed tube positive");
+    }
+
+    /// A FLAT circle has holonomy θ ≈ 2π, so with few stations a wrong denominator
+    /// (spreading θ over n instead of n-1 intervals) leaves a large kink on the wrap
+    /// segment. The corrected frame must close: every adjacent pair, INCLUDING the
+    /// wrap (n-1 → 0), turns by the same small step.
+    #[test]
+    fn closed_sweep_flat_circle_closes_at_wrap() {
+        let major = 3.0;
+        let steps = 8; // few stations: θ/n would be ~45°, θ/(n-1) closes it.
+        let spine: Vec<[f64; 3]> = (0..steps)
+            .map(|i| {
+                let a = (i as f64 / steps as f64) * 2.0 * PI;
+                [major * a.cos(), major * a.sin(), 0.0]
+            })
+            .collect();
+        let fs = SweptCurve::new(&spine, true);
+        let frames = fs.frames();
+        // The per-step turn between consecutive frames (incl. the wrap) is uniform.
+        let n = frames.len();
+        let step_dot = dot3(frames[0].normal, frames[1].normal);
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let d = dot3(frames[i].normal, frames[j].normal);
+            assert!(
+                (d - step_dot).abs() < 0.1,
+                "wrap seam at {i}->{j}: dot {d} vs uniform {step_dot}"
+            );
+        }
     }
 
     fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
