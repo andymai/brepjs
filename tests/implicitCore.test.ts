@@ -8,6 +8,7 @@ import {
   sdfCone,
   sdfSweep,
   sdfLattice,
+  sdfStrutLattice,
   sdfFieldAxialRamp,
   sdfFieldConst,
   sdfFieldClamp,
@@ -119,6 +120,24 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
     expect(isErr(sdfFieldClamp(inner, 0.0, 1.0))).toBe(false);
     // min == max is a valid (degenerate) clamp.
     expect(isErr(sdfFieldClamp(inner, 0.5, 0.5))).toBe(false);
+  });
+
+  it('rasterizes a conformal strut lattice (construct → clip → rasterize → contour)', () => {
+    using radius = unwrap(sdfFieldConst(0.18));
+    using struts = unwrap(sdfStrutLattice(0.8, radius));
+    using region = unwrap(sdfBox(1.2, 1.2, 1.2));
+    using clipped = struts.intersection(region);
+    using field = unwrap(clipped.rasterize({ resolution: 48, padding: 2 }));
+    const mesh = field.contour();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length).toBeGreaterThan(0);
+  });
+
+  it('rejects an unknown lattice kind as a Result error', () => {
+    using period = unwrap(sdfFieldConst(1));
+    using thickness = unwrap(sdfFieldConst(0.3));
+    // An untyped caller passing a bad kind must error, not silently build a gyroid.
+    expect(isErr(sdfLattice('hexgrid' as 'gyroid', period, thickness))).toBe(true);
   });
 
   it('builds and rasterizes chamber v1 (graded wall + swept channels + conformal gyroid jacket)', () => {

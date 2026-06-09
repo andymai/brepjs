@@ -390,7 +390,14 @@ export function lattice(
   thickness: ScalarFieldHandle,
   id?: string
 ): Result<SdfHandle> {
-  return build((e) => e.Sdf.lattice(LATTICE_TAGS[kind], period.value, thickness.value), id);
+  // An untyped caller can pass an unknown string; without this guard the missing
+  // tag would cross into wasm as 0 and silently build a Gyroid instead of erroring.
+  // The string-keyed view lets the runtime guard typecheck (the typed map can't).
+  const tag = (LATTICE_TAGS as Record<string, number | undefined>)[kind];
+  if (tag === undefined) {
+    return err(validationError('SDF_INVALID_LATTICE_KIND', `unknown lattice kind: ${kind}`));
+  }
+  return build((e) => e.Sdf.lattice(tag, period.value, thickness.value), id);
 }
 
 /**
