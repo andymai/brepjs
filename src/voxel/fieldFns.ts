@@ -4,7 +4,7 @@ import { createKernelHandle, type Deletable } from '@/core/disposal.js';
 import type { KernelMeshResult } from '@/kernel/types.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type VoxelMeshInput, validateMesh, resolveEngine } from './signFns.js';
-import type { WasmVoxelField } from './engine.js';
+import type { WasmVoxelField, VoxelRepairResult } from './engine.js';
 import { shapeToMeshInput } from './shapeMesh.js';
 
 /** Field tuning. `resolution` sizes the longest bbox axis in voxels; `padding`
@@ -47,8 +47,11 @@ function resolveGridParams(
  * {@link KernelMeshResult}, freeing the WASM result via `using` (the getters
  * copy, so the mesh survives the free). An empty contour surfaces as an error.
  */
-function meshFromField(field: WasmVoxelField): Result<KernelMeshResult> {
-  const rawResult = field.contour();
+function meshFromField(
+  field: WasmVoxelField,
+  contourer: (f: WasmVoxelField) => VoxelRepairResult = (f) => f.contour()
+): Result<KernelMeshResult> {
+  const rawResult = contourer(field);
   using contoured = {
     value: rawResult,
     [Symbol.dispose]() {
@@ -105,6 +108,12 @@ export interface VoxelFieldHandle {
   reinit(): VoxelFieldHandle;
   /** Surface-Nets contour the current field to a mesh (the field stays alive). */
   contour(): KernelMeshResult;
+  /**
+   * Manifold Dual Contouring of the current field to a watertight + 2-manifold
+   * mesh (sharp-feature-preserving; survives high-genus clipped lattices where
+   * Surface-Nets `contour` pinches). The field stays alive afterwards.
+   */
+  contourManifold(): KernelMeshResult;
 }
 
 /**
@@ -161,6 +170,11 @@ function makeHandle(raw: WasmVoxelField): VoxelFieldHandle {
     },
     contour() {
       const mesh = meshFromField(this.value);
+      if (isErr(mesh)) throw new Error(mesh.error.message);
+      return mesh.value;
+    },
+    contourManifold() {
+      const mesh = meshFromField(this.value, (f) => f.contour_manifold());
       if (isErr(mesh)) throw new Error(mesh.error.message);
       return mesh.value;
     },
@@ -411,6 +425,29 @@ export function fieldContour(handle: VoxelFieldHandle): Result<KernelMeshResult>
       computationError(
         'VOXEL_FIELD_CONTOUR_FAILED',
         cause instanceof Error ? cause.message : 'voxel field contour failed.',
+        cause
+      )
+    );
+  }
+}
+
+/**
+ * Manifold Dual Contouring of the current field to a watertight + 2-manifold
+ * {@link KernelMeshResult} (sharp-feature-preserving QEF + per-cell component
+ * split). Use this over {@link fieldContour} when the field has high-genus or
+ * clipped-lattice features that Surface Nets pinches non-manifold; it is heavier,
+ * so `fieldContour` stays the fast preview path. The field stays alive afterwards.
+ * An empty contour surfaces as `VOXEL_DEGENERATE_RESULT`.
+ */
+export function fieldContourManifold(handle: VoxelFieldHandle): Result<KernelMeshResult> {
+  if (!isLive(handle)) return disposedErr();
+  try {
+    return meshFromField(handle.value, (f) => f.contour_manifold());
+  } catch (cause) {
+    return err(
+      computationError(
+        'VOXEL_FIELD_CONTOUR_FAILED',
+        cause instanceof Error ? cause.message : 'voxel field manifold contour failed.',
         cause
       )
     );

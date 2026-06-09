@@ -254,6 +254,13 @@ export interface WasmVoxelField {
   reinit(): void;
   /** Surface-Nets contour the current field to a triangle mesh. */
   contour(): VoxelRepairResult;
+  /**
+   * Manifold Dual Contouring of the current field: a sharp-feature-preserving,
+   * watertight + 2-manifold contour (per-cell QEF + component split), where the
+   * Surface-Nets `contour` pinches on high-genus clipped lattices. Heavier than
+   * `contour`, which stays the fast preview default.
+   */
+  contour_manifold(): VoxelRepairResult;
   /** Release the backing WASM grid allocation (wasm-bindgen lifecycle). */
   free(): void;
   [Symbol.dispose](): void;

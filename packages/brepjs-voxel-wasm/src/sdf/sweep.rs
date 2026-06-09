@@ -186,8 +186,8 @@ impl SweptCurve {
                 tangents[0],
             );
             let seed = frames[0].normal;
-            let theta = dot(cross(wrapped, seed), tangents[0])
-                .atan2(dot(wrapped, seed).clamp(-1.0, 1.0));
+            let theta =
+                dot(cross(wrapped, seed), tangents[0]).atan2(dot(wrapped, seed).clamp(-1.0, 1.0));
             // Spread the residual twist over the n-1 explicit inter-station intervals
             // so station n-1 absorbs the full theta — the wrap segment then carries
             // zero, closing the seam exactly. Dividing by n would leave theta/n on the
@@ -196,8 +196,7 @@ impl SweptCurve {
                 let ang = theta * (i as f64) / ((n - 1) as f64);
                 let t = frame.tangent;
                 let rotated = rotate_about(frame.normal, t, ang);
-                frame.normal =
-                    normalize_or(sub(rotated, scale(t, dot(rotated, t))), frame.normal);
+                frame.normal = normalize_or(sub(rotated, scale(t, dot(rotated, t))), frame.normal);
                 frame.binormal = normalize_or(cross(t, frame.normal), frame.binormal);
             }
         }
@@ -456,6 +455,9 @@ mod tests {
         let curve = SweptCurve::new(&straight_spine(), false);
         // Spine ends at z = 5; a point at z = 6 projects 1.0 past the end cap.
         let (_, _, overrun) = curve.local_coords([0.0, 0.0, 6.0]);
-        assert!((overrun - 1.0).abs() < 1e-6, "overrun past end cap: {overrun}");
+        assert!(
+            (overrun - 1.0).abs() < 1e-6,
+            "overrun past end cap: {overrun}"
+        );
     }
 }

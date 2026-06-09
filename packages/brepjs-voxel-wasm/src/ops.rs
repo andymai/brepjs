@@ -433,7 +433,12 @@ fn distance_field_banded(grid: &mut Grid, mesh: &Mesh, band: f64) {
             for x in 0..nx {
                 let wp = grid.world_pos(x, y, z);
                 let p = [wp[0] as f64, wp[1] as f64, wp[2] as f64];
-                grid.set(x, y, z, bvh.nearest_distance_within(p, band, &mut stack) as f32);
+                grid.set(
+                    x,
+                    y,
+                    z,
+                    bvh.nearest_distance_within(p, band, &mut stack) as f32,
+                );
             }
         }
     }
@@ -712,9 +717,21 @@ pub fn reinit_sdf(grid: &mut Grid) {
     // Stage 2 — 8 Gauss-Seidel sweeps (the 2^3 axis-direction octants).
     let idx = |x: usize, y: usize, z: usize| x + y * nx + z * nx * ny;
     let sweep = |phi: &mut [f32], dirs: [bool; 3]| {
-        let xs: Vec<usize> = if dirs[0] { (0..nx).collect() } else { (0..nx).rev().collect() };
-        let ys: Vec<usize> = if dirs[1] { (0..ny).collect() } else { (0..ny).rev().collect() };
-        let zs: Vec<usize> = if dirs[2] { (0..nz).collect() } else { (0..nz).rev().collect() };
+        let xs: Vec<usize> = if dirs[0] {
+            (0..nx).collect()
+        } else {
+            (0..nx).rev().collect()
+        };
+        let ys: Vec<usize> = if dirs[1] {
+            (0..ny).collect()
+        } else {
+            (0..ny).rev().collect()
+        };
+        let zs: Vec<usize> = if dirs[2] {
+            (0..nz).collect()
+        } else {
+            (0..nz).rev().collect()
+        };
         for &z in &zs {
             for &y in &ys {
                 for &x in &xs {
@@ -988,11 +1005,36 @@ mod tests {
     fn sign_parity_fast_vs_exact_all_voxels() {
         use crate::bvh::{Bvh, BETA};
         let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 5] = [
-            ("unit_cube", unit_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
-            ("holey_cube", holey_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
-            ("icosphere2", icosphere(2), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
-            ("icosphere3", icosphere(3), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
-            ("tri_soup", tri_soup(), [-1.03, -1.47, -1.51], [7.49, 1.53, 1.47]),
+            (
+                "unit_cube",
+                unit_cube(),
+                [-0.07, -0.05, -0.11],
+                [1.03, 1.09, 1.07],
+            ),
+            (
+                "holey_cube",
+                holey_cube(),
+                [-0.07, -0.05, -0.11],
+                [1.03, 1.09, 1.07],
+            ),
+            (
+                "icosphere2",
+                icosphere(2),
+                [-1.31, -1.27, -1.23],
+                [1.29, 1.33, 1.27],
+            ),
+            (
+                "icosphere3",
+                icosphere(3),
+                [-1.31, -1.27, -1.23],
+                [1.29, 1.33, 1.27],
+            ),
+            (
+                "tri_soup",
+                tri_soup(),
+                [-1.03, -1.47, -1.51],
+                [7.49, 1.53, 1.47],
+            ),
         ];
         for (name, mesh, min, max) in fixtures {
             let g = Grid::for_bounds(min, max, 16, 2).unwrap();
@@ -1013,7 +1055,10 @@ mod tests {
                     }
                 }
             }
-            assert_eq!(mismatches, 0, "{name}: {mismatches} sign mismatches vs exact FWN");
+            assert_eq!(
+                mismatches, 0,
+                "{name}: {mismatches} sign mismatches vs exact FWN"
+            );
         }
     }
 
@@ -1041,9 +1086,19 @@ mod tests {
 
         let cases: [(&str, Mesh, [f32; 3], [f32; 3]); 3] = [
             // Single OPEN triangle: no surrounding geometry to damp the dipole.
-            ("open_tri", single_tri(), [-1.07, -1.05, -1.11], [2.03, 2.09, 1.07]),
+            (
+                "open_tri",
+                single_tri(),
+                [-1.07, -1.05, -1.11],
+                [2.03, 2.09, 1.07],
+            ),
             ("slab", slab, [-0.53, -0.57, -0.61], [10.47, 0.63, 0.67]),
-            ("disjoint_far_emitter", disjoint, [-0.53, -0.57, -0.61], [1.53, 1.49, 1.47]),
+            (
+                "disjoint_far_emitter",
+                disjoint,
+                [-0.53, -0.57, -0.61],
+                [1.53, 1.49, 1.47],
+            ),
         ];
         for (name, mesh, min, max) in cases {
             let g = Grid::for_bounds(min, max, 16, 2).unwrap();
@@ -1062,7 +1117,10 @@ mod tests {
                     }
                 }
             }
-            assert_eq!(mismatches, 0, "{name}: {mismatches} sign mismatches vs exact FWN");
+            assert_eq!(
+                mismatches, 0,
+                "{name}: {mismatches} sign mismatches vs exact FWN"
+            );
         }
     }
 
@@ -1076,7 +1134,10 @@ mod tests {
         let mut stack = Vec::new();
         let w = bvh.winding_number_fast([0.5, 0.5, 0.5], BETA, &mut stack);
         assert!(w > 0.5, "holey-cube center must stay inside, w={w}");
-        assert!((w - (1.0 - 1.0 / 6.0)).abs() < 1e-2, "expected ~0.833, got {w}");
+        assert!(
+            (w - (1.0 - 1.0 / 6.0)).abs() < 1e-2,
+            "expected ~0.833, got {w}"
+        );
     }
 
     /// Full-grid SDF sign parity: voxelize_mesh (fast sign) and voxelize_mesh_brute
@@ -1085,10 +1146,30 @@ mod tests {
     #[test]
     fn voxelize_sign_parity_fast_vs_brute_all_voxels() {
         let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
-            ("unit_cube", unit_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
-            ("holey_cube", holey_cube(), [-0.07, -0.05, -0.11], [1.03, 1.09, 1.07]),
-            ("icosphere2", icosphere(2), [-1.31, -1.27, -1.23], [1.29, 1.33, 1.27]),
-            ("tri_soup", tri_soup(), [-1.03, -1.47, -1.51], [7.49, 1.53, 1.47]),
+            (
+                "unit_cube",
+                unit_cube(),
+                [-0.07, -0.05, -0.11],
+                [1.03, 1.09, 1.07],
+            ),
+            (
+                "holey_cube",
+                holey_cube(),
+                [-0.07, -0.05, -0.11],
+                [1.03, 1.09, 1.07],
+            ),
+            (
+                "icosphere2",
+                icosphere(2),
+                [-1.31, -1.27, -1.23],
+                [1.29, 1.33, 1.27],
+            ),
+            (
+                "tri_soup",
+                tri_soup(),
+                [-1.03, -1.47, -1.51],
+                [7.49, 1.53, 1.47],
+            ),
         ];
         for (name, mesh, min, max) in fixtures {
             let mut a = Grid::for_bounds(min, max, 16, 2).unwrap();
@@ -1113,7 +1194,12 @@ mod tests {
         let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
             ("unit_cube", unit_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
             ("holey_cube", holey_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
-            ("single_tri", single_tri(), [-0.5, -0.5, -0.5], [1.5, 1.5, 0.5]),
+            (
+                "single_tri",
+                single_tri(),
+                [-0.5, -0.5, -0.5],
+                [1.5, 1.5, 0.5],
+            ),
             ("tri_soup", tri_soup(), [-1.0, -1.5, -1.5], [7.5, 1.5, 1.5]),
         ];
         for (name, mesh, min, max) in fixtures {
@@ -1202,7 +1288,11 @@ mod tests {
         let ca = crate::contour::surface_nets_mesh(a);
         let cb = crate::contour::surface_nets_mesh(b);
         assert_eq!(ca.indices, cb.indices, "{label}: contour indices differ");
-        assert_eq!(ca.positions.len(), cb.positions.len(), "{label}: position counts differ");
+        assert_eq!(
+            ca.positions.len(),
+            cb.positions.len(),
+            "{label}: position counts differ"
+        );
         for (i, (&pa, &pb)) in ca.positions.iter().zip(cb.positions.iter()).enumerate() {
             assert_eq!(pa, pb, "{label}: position[{i}] {pa} vs {pb}");
         }
@@ -1237,9 +1327,19 @@ mod tests {
     fn voxelize_banded_matches_full_contoured() {
         let fixtures: [(&str, Mesh, [f32; 3], [f32; 3]); 4] = [
             ("unit_cube", unit_cube(), [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
-            ("single_tri", single_tri(), [-0.5, -0.5, -0.5], [1.5, 1.5, 0.5]),
+            (
+                "single_tri",
+                single_tri(),
+                [-0.5, -0.5, -0.5],
+                [1.5, 1.5, 0.5],
+            ),
             ("tri_soup", tri_soup(), [-1.0, -1.5, -1.5], [7.5, 1.5, 1.5]),
-            ("icosphere2", icosphere(2), [-1.3, -1.3, -1.3], [1.3, 1.3, 1.3]),
+            (
+                "icosphere2",
+                icosphere(2),
+                [-1.3, -1.3, -1.3],
+                [1.3, 1.3, 1.3],
+            ),
         ];
         for (name, mesh, min, max) in fixtures {
             // repair: band = 2·spacing (extra = 0), contour the raw SDF.
@@ -1449,7 +1549,11 @@ mod tests {
         // so origin differs while dims match.
         let a = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 4, 1).unwrap();
         let b = Grid::for_bounds([5.0, 0.0, 0.0], [6.0, 1.0, 1.0], 4, 1).unwrap();
-        assert_eq!(a.dims(), b.dims(), "fixture must share dims to isolate the geometry check");
+        assert_eq!(
+            a.dims(),
+            b.dims(),
+            "fixture must share dims to isolate the geometry check"
+        );
         assert_ne!(a.origin(), b.origin(), "fixture must differ in origin");
         match voxel_union(&a, &b) {
             Err(GridError::GeometryMismatch { .. }) => {}
@@ -1463,7 +1567,10 @@ mod tests {
     fn boolean_same_geometry_succeeds() {
         let a = Grid::for_bounds([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 4, 1).unwrap();
         let b = a.same_shape();
-        assert!(voxel_union(&a, &b).is_ok(), "matching geometry must combine");
+        assert!(
+            voxel_union(&a, &b).is_ok(),
+            "matching geometry must combine"
+        );
     }
 
     // ── Fast Sweeping reinitialization (PR5) ──
@@ -1575,8 +1682,20 @@ mod tests {
         // proof). Vertex/triangle counts identical; canonical vertex sets agree to
         // sub-voxel tolerance.
         for (name, mesh, min, max, res) in [
-            ("cube", unit_cube(), [-0.3, -0.3, -0.3], [1.3, 1.3, 1.3], 32usize),
-            ("sphere", icosphere(3), [-1.3, -1.3, -1.3], [1.3, 1.3, 1.3], 32),
+            (
+                "cube",
+                unit_cube(),
+                [-0.3, -0.3, -0.3],
+                [1.3, 1.3, 1.3],
+                32usize,
+            ),
+            (
+                "sphere",
+                icosphere(3),
+                [-1.3, -1.3, -1.3],
+                [1.3, 1.3, 1.3],
+                32,
+            ),
         ] {
             let g = voxelize_field(&mesh, min, max, res, 2);
             let before = surface_nets_mesh(&g);
@@ -1655,7 +1774,10 @@ mod tests {
         for z in 0..nz {
             for y in 0..ny {
                 for x in 0..nx {
-                    assert!(gi.at(x, y, z) < 0.0, "fully-inside field must stay negative");
+                    assert!(
+                        gi.at(x, y, z) < 0.0,
+                        "fully-inside field must stay negative"
+                    );
                 }
             }
         }
@@ -1733,4 +1855,3 @@ mod tests {
         );
     }
 }
-

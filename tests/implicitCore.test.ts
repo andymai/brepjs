@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import initWasm, * as voxelWasm from 'brepjs-voxel-wasm';
-import { initVoxel } from '@/voxel/index.js';
+import { initVoxel, fieldContourManifold } from '@/voxel/index.js';
 import {
   sdfSphere,
   sdfBox,
@@ -167,7 +167,49 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
     );
     expect(radial).toBeGreaterThan(2.1);
   });
+
+  it('manifold-contours chamber v1 to a watertight + 2-manifold mesh (DC, the Phase 3a keystone)', () => {
+    using chamber = buildChamber();
+    using field = unwrap(chamber.rasterize({ resolution: 48, padding: 3 }));
+    const mesh = unwrap(fieldContourManifold(field));
+
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length % 3).toBe(0);
+
+    // The Surface-Nets `contour` cannot make the clipped gyroid jacket watertight;
+    // Manifold Dual Contouring can — assert 0 boundary AND 0 non-manifold edges.
+    const { boundary, nonManifold } = edgeQuality(mesh.triangles);
+    expect(boundary).toBe(0);
+    expect(nonManifold).toBe(0);
+  });
 });
+
+/** Undirected-edge incidence quality: boundary = edges in 1 triangle, nonManifold
+ *  = edges in >2. Watertight ⇔ boundary 0; 2-manifold ⇔ nonManifold 0. */
+function edgeQuality(triangles: Uint32Array): { boundary: number; nonManifold: number } {
+  const counts = new Map<bigint, number>();
+  for (let i = 0; i < triangles.length; i += 3) {
+    const t = [triangles[i] as number, triangles[i + 1] as number, triangles[i + 2] as number];
+    for (const [a, b] of [
+      [t[0], t[1]],
+      [t[1], t[2]],
+      [t[2], t[0]],
+    ] as [number, number][]) {
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      const key = (BigInt(lo) << 32n) | BigInt(hi);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  let boundary = 0;
+  let nonManifold = 0;
+  for (const c of counts.values()) {
+    if (c === 1) boundary++;
+    else if (c > 2) nonManifold++;
+  }
+  return { boundary, nonManifold };
+}
 
 const CHANNEL_TUBE_R = 0.3;
 

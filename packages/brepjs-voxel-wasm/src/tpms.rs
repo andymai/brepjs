@@ -97,7 +97,11 @@ mod tests {
     fn tpms_fields_are_periodic_on_every_axis() {
         let period = 2.0;
         let p = [0.37, 0.81, 0.12];
-        for kind in [LatticeType::Gyroid, LatticeType::SchwarzP, LatticeType::Diamond] {
+        for kind in [
+            LatticeType::Gyroid,
+            LatticeType::SchwarzP,
+            LatticeType::Diamond,
+        ] {
             let f0 = tpms_value(kind, p, period);
             for axis in 0..3 {
                 let mut shifted = p;

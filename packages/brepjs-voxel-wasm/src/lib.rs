@@ -14,6 +14,7 @@ mod tpms;
 pub mod contour;
 pub mod fwn;
 pub mod grid;
+pub mod mesh;
 pub mod ops;
 pub mod sdf;
 pub mod sparse;
@@ -110,10 +111,14 @@ impl RepairResult {
 // makes the 2*PI/period scale non-finite (NaN field).
 fn check_lattice_params(period: f32, thickness: f32) -> Result<(), JsError> {
     if !(period.is_finite() && period > 0.0) {
-        return Err(JsError::new("lattice period must be a positive finite number"));
+        return Err(JsError::new(
+            "lattice period must be a positive finite number",
+        ));
     }
     if !(thickness.is_finite() && thickness > 0.0) {
-        return Err(JsError::new("lattice thickness must be a positive finite number"));
+        return Err(JsError::new(
+            "lattice thickness must be a positive finite number",
+        ));
     }
     Ok(())
 }
@@ -340,7 +345,9 @@ pub fn shell_mesh(
     padding: u32,
 ) -> Result<RepairResult, JsError> {
     if !(thickness.is_finite() && thickness > 0.0) {
-        return Err(JsError::new("shell thickness must be a positive finite number"));
+        return Err(JsError::new(
+            "shell thickness must be a positive finite number",
+        ));
     }
 
     let mesh = fwn::Mesh::from_flat(verts, tris);
@@ -439,9 +446,7 @@ pub fn voxel_boolean(
     resolution: u32,
     padding: u32,
 ) -> Result<RepairResult, JsError> {
-    let combined = voxel_boolean_grid(
-        verts_a, tris_a, verts_b, tris_b, op, resolution, padding,
-    )?;
+    let combined = voxel_boolean_grid(verts_a, tris_a, verts_b, tris_b, op, resolution, padding)?;
 
     let out = contour::surface_nets_mesh(&combined);
 
@@ -559,9 +564,7 @@ impl VoxelField {
             ));
         }
 
-        let grid = voxel_boolean_grid(
-            verts_a, tris_a, verts_b, tris_b, op, resolution, padding,
-        )?;
+        let grid = voxel_boolean_grid(verts_a, tris_a, verts_b, tris_b, op, resolution, padding)?;
         Ok(VoxelField { grid, dirty: true })
     }
 
@@ -613,7 +616,9 @@ impl VoxelField {
     /// kink, so the field is dirty again afterwards.
     pub fn shell(&mut self, thickness: f32) -> Result<(), JsError> {
         if !(thickness.is_finite() && thickness > 0.0) {
-            return Err(JsError::new("shell thickness must be a positive finite number"));
+            return Err(JsError::new(
+                "shell thickness must be a positive finite number",
+            ));
         }
         if self.dirty {
             ops::reinit_sdf(&mut self.grid);
@@ -637,6 +642,20 @@ impl VoxelField {
     /// SUBSEQUENT offset/shell.
     pub fn contour(&self) -> RepairResult {
         let out = contour::surface_nets_mesh(&self.grid);
+        RepairResult {
+            positions: out.positions,
+            normals: out.normals,
+            indices: out.indices,
+        }
+    }
+
+    /// Manifold Dual Contouring of the current field (brepjs-implicit Phase 3a):
+    /// a sharp-feature-preserving, 2-manifold contour with a per-cell component
+    /// split, watertight even on high-genus clipped lattices where Surface Nets
+    /// pinches. Heavier than `contour` (QEF solve per cell); `contour` stays the
+    /// fast preview default. Borrows `&self` so the field stays chainable.
+    pub fn contour_manifold(&self) -> RepairResult {
+        let out = mesh::dual_contour_mesh(&self.grid);
         RepairResult {
             positions: out.positions,
             normals: out.normals,
@@ -765,7 +784,9 @@ impl Sdf {
     /// non-positive or non-finite `period`.
     pub fn strut_lattice(period: f64, radius: &ScalarField) -> Result<Sdf, JsError> {
         if !(period.is_finite() && period > 0.0) {
-            return Err(JsError::new("strut lattice period must be a positive finite number"));
+            return Err(JsError::new(
+                "strut lattice period must be a positive finite number",
+            ));
         }
         Ok(Sdf::of(sdf::Expr::StrutLattice {
             period,
@@ -975,7 +996,13 @@ impl ScalarField {
     /// Errors if `axis` is not 0, 1, or 2.
     pub fn axial_ramp(axis: u32, a: f64, b: f64, lo: f64, hi: f64) -> Result<ScalarField, JsError> {
         let axis = check_axis(axis)?;
-        Ok(ScalarField::of(sdf::ScalarField::AxialRamp { axis, a, b, lo, hi }))
+        Ok(ScalarField::of(sdf::ScalarField::AxialRamp {
+            axis,
+            a,
+            b,
+            lo,
+            hi,
+        }))
     }
 
     /// Value by radial distance from the line through `(cx, cy, cz)` along `axis`:
@@ -1168,8 +1195,14 @@ mod tests {
             .expect("boolean_of must succeed");
         assert!(field.dirty, "a boolean field must be dirty");
         let r = field.contour();
-        assert!(!r.positions.is_empty(), "co-registered union must have vertices");
-        assert!(!r.indices.is_empty(), "co-registered union must have triangles");
+        assert!(
+            !r.positions.is_empty(),
+            "co-registered union must have vertices"
+        );
+        assert!(
+            !r.indices.is_empty(),
+            "co-registered union must have triangles"
+        );
     }
 
     /// Handle wiring: an offset AFTER a union differs WITH the dirty-gated reinit

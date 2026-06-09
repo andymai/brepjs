@@ -256,6 +256,7 @@ export {
   fieldShell,
   fieldReinit,
   fieldContour,
+  fieldContourManifold,
   voxelFieldFromShape,
   voxelBooleanFieldShapes,
   shapeToMeshInput,

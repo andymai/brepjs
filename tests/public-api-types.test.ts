@@ -322,6 +322,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'facesOfEdge',
   'fieldBoolean',
   'fieldContour',
+  'fieldContourManifold',
   'fieldOffset',
   'fieldReinit',
   'fieldShell',

@@ -186,6 +186,14 @@ export class VoxelField {
      */
     contour(): RepairResult;
     /**
+     * Manifold Dual Contouring of the current field (brepjs-implicit Phase 3a):
+     * a sharp-feature-preserving, 2-manifold contour with a per-cell component
+     * split, watertight even on high-genus clipped lattices where Surface Nets
+     * pinches. Heavier than `contour` (QEF solve per cell); `contour` stays the
+     * fast preview default. Borrows `&self` so the field stays chainable.
+     */
+    contour_manifold(): RepairResult;
+    /**
      * Voxelize a mesh into a persistent dense field sized to its bbox. Mirrors
      * `offset_mesh`'s voxelize path (bbox → `Grid::for_bounds` → banded SDF) but
      * stops before contour and keeps the grid. The result IS a true banded SDF,
@@ -369,6 +377,7 @@ export interface InitOutput {
     readonly voxelfield_boolean: (a: number, b: number, c: number) => [number, number];
     readonly voxelfield_boolean_of: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
     readonly voxelfield_contour: (a: number) => number;
+    readonly voxelfield_contour_manifold: (a: number) => number;
     readonly voxelfield_new: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
     readonly voxelfield_offset: (a: number, b: number) => [number, number];
     readonly voxelfield_reinit: (a: number) => void;

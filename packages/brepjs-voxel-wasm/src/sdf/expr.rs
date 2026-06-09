@@ -349,9 +349,7 @@ impl Expr {
                 operators::smooth_union(a.eval(p), b.eval(p), k.eval(p))
             }
 
-            Expr::Translate { e, t } => {
-                e.eval([p[0] - t[0], p[1] - t[1], p[2] - t[2]])
-            }
+            Expr::Translate { e, t } => e.eval([p[0] - t[0], p[1] - t[1], p[2] - t[2]]),
             Expr::Rotate { e, axis, angle } => e.eval(rotate_point(p, *axis, -*angle)),
             Expr::Scale { e, s } => {
                 // Distance scales by |s|, never the signed factor — a negative s is a
@@ -397,22 +395,12 @@ impl Expr {
         match self {
             Expr::Sphere { r } => Aabb::centered([*r, *r, *r]),
             Expr::Box { half } => Aabb::centered(*half),
-            Expr::RoundBox { half, r } => {
-                Aabb::centered([half[0] + r, half[1] + r, half[2] + r])
-            }
+            Expr::RoundBox { half, r } => Aabb::centered([half[0] + r, half[1] + r, half[2] + r]),
             Expr::Cylinder { r, h } => Aabb::centered([*r, *r, h * 0.5]),
             Expr::Cone { r, h } => Aabb::centered([*r, *r, h * 0.5]),
             Expr::Capsule { a, b, r } => {
-                let lo = [
-                    a[0].min(b[0]) - r,
-                    a[1].min(b[1]) - r,
-                    a[2].min(b[2]) - r,
-                ];
-                let hi = [
-                    a[0].max(b[0]) + r,
-                    a[1].max(b[1]) + r,
-                    a[2].max(b[2]) + r,
-                ];
+                let lo = [a[0].min(b[0]) - r, a[1].min(b[1]) - r, a[2].min(b[2]) - r];
+                let hi = [a[0].max(b[0]) + r, a[1].max(b[1]) + r, a[2].max(b[2]) + r];
                 Aabb::new(lo, hi)
             }
             Expr::Torus { major, minor } => {
@@ -525,14 +513,22 @@ mod tests {
         let s = Expr::Sphere { r: 2.0 };
         assert!((s.eval([0.0, 0.0, 0.0]) + 2.0).abs() < EPS, "center = -r");
         assert!(s.eval([2.0, 0.0, 0.0]).abs() < EPS, "on surface = 0");
-        assert!((s.eval([5.0, 0.0, 0.0]) - 3.0).abs() < EPS, "outside = dist - r");
+        assert!(
+            (s.eval([5.0, 0.0, 0.0]) - 3.0).abs() < EPS,
+            "outside = dist - r"
+        );
     }
 
     #[test]
     fn box_distance_at_known_points() {
-        let b = Expr::Box { half: [1.0, 1.0, 1.0] };
+        let b = Expr::Box {
+            half: [1.0, 1.0, 1.0],
+        };
         assert!(b.eval([0.0, 0.0, 0.0]).abs() - 1.0 < EPS);
-        assert!((b.eval([0.0, 0.0, 0.0]) + 1.0).abs() < EPS, "center = -half");
+        assert!(
+            (b.eval([0.0, 0.0, 0.0]) + 1.0).abs() < EPS,
+            "center = -half"
+        );
         assert!(b.eval([1.0, 0.0, 0.0]).abs() < EPS, "on face = 0");
         assert!((b.eval([2.0, 0.0, 0.0]) - 1.0).abs() < EPS, "outside face");
         // Diagonally outside a corner.
@@ -541,7 +537,10 @@ mod tests {
 
     #[test]
     fn torus_distance_at_known_points() {
-        let t = Expr::Torus { major: 3.0, minor: 1.0 };
+        let t = Expr::Torus {
+            major: 3.0,
+            minor: 1.0,
+        };
         // On the major circle: distance is -minor (inside the tube center).
         assert!((t.eval([3.0, 0.0, 0.0]) + 1.0).abs() < EPS);
         // On the outer tube surface.
@@ -583,7 +582,10 @@ mod tests {
             b: [0.0, 0.0, 1.0],
             r: 0.5,
         };
-        assert!((c.eval([0.0, 0.0, 0.0]) + 0.5).abs() < EPS, "axis center = -r");
+        assert!(
+            (c.eval([0.0, 0.0, 0.0]) + 0.5).abs() < EPS,
+            "axis center = -r"
+        );
         assert!(c.eval([0.5, 0.0, 0.0]).abs() < EPS, "on side");
         // Spherical cap end.
         assert!(c.eval([0.0, 0.0, 1.5]).abs() < EPS);
@@ -591,7 +593,10 @@ mod tests {
 
     #[test]
     fn plane_halfspace_sign() {
-        let p = Expr::Plane { n: [0.0, 0.0, 1.0], h: 0.0 };
+        let p = Expr::Plane {
+            n: [0.0, 0.0, 1.0],
+            h: 0.0,
+        };
         assert!(p.eval([0.0, 0.0, -1.0]) < 0.0, "below is inside");
         assert!(p.eval([0.0, 0.0, 1.0]) > 0.0, "above is outside");
         assert!(p.eval([5.0, 5.0, 0.0]).abs() < EPS, "on plane");
@@ -626,7 +631,10 @@ mod tests {
             e: Box::new(Expr::Sphere { r: 1.0 }),
             s: -2.0,
         };
-        assert!((s.eval([0.0, 0.0, 0.0]) + 2.0).abs() < EPS, "center stays inside");
+        assert!(
+            (s.eval([0.0, 0.0, 0.0]) + 2.0).abs() < EPS,
+            "center stays inside"
+        );
         assert!(s.eval([2.0, 0.0, 0.0]).abs() < EPS, "radius is |s|");
         assert!(s.eval([3.0, 0.0, 0.0]) > 0.0, "outside stays outside");
     }
@@ -635,13 +643,18 @@ mod tests {
     fn rotate_preserves_distance_for_symmetric_shape() {
         // Rotating a box 90° about Z maps an x-face to a y-face.
         let b = Expr::Rotate {
-            e: Box::new(Expr::Box { half: [2.0, 1.0, 1.0] }),
+            e: Box::new(Expr::Box {
+                half: [2.0, 1.0, 1.0],
+            }),
             axis: [0.0, 0.0, 1.0],
             angle: PI / 2.0,
         };
         // The long axis (originally x, half 2) is now along y.
         assert!(b.eval([0.0, 2.0, 0.0]).abs() < 1e-9, "rotated long face");
-        assert!((b.eval([1.0, 0.0, 0.0]) + 0.0).abs() < 1e-9, "now-short x face");
+        assert!(
+            (b.eval([1.0, 0.0, 0.0]) + 0.0).abs() < 1e-9,
+            "now-short x face"
+        );
     }
 
     #[test]
@@ -676,9 +689,18 @@ mod tests {
             [-0.5, 0.5, 0.2],
             [2.0, 0.0, 0.0],
         ] {
-            assert!((hard_u.eval(p) - soft_u.eval(p)).abs() < EPS, "union k=0 at {p:?}");
-            assert!((hard_i.eval(p) - soft_i.eval(p)).abs() < EPS, "inter k=0 at {p:?}");
-            assert!((hard_d.eval(p) - soft_d.eval(p)).abs() < EPS, "diff k=0 at {p:?}");
+            assert!(
+                (hard_u.eval(p) - soft_u.eval(p)).abs() < EPS,
+                "union k=0 at {p:?}"
+            );
+            assert!(
+                (hard_i.eval(p) - soft_i.eval(p)).abs() < EPS,
+                "inter k=0 at {p:?}"
+            );
+            assert!(
+                (hard_d.eval(p) - soft_d.eval(p)).abs() < EPS,
+                "diff k=0 at {p:?}"
+            );
         }
     }
 
@@ -705,12 +727,24 @@ mod tests {
         // strictly positive there (the surface is fully contained).
         let exprs: Vec<Expr> = vec![
             Expr::Sphere { r: 1.3 },
-            Expr::Box { half: [1.0, 0.5, 2.0] },
-            Expr::RoundBox { half: [1.0, 1.0, 1.0], r: 0.3 },
+            Expr::Box {
+                half: [1.0, 0.5, 2.0],
+            },
+            Expr::RoundBox {
+                half: [1.0, 1.0, 1.0],
+                r: 0.3,
+            },
             Expr::Cylinder { r: 1.0, h: 3.0 },
             Expr::Cone { r: 1.0, h: 2.0 },
-            Expr::Torus { major: 2.0, minor: 0.6 },
-            Expr::Capsule { a: [-1.0, 0.0, 0.0], b: [1.0, 0.5, 0.0], r: 0.4 },
+            Expr::Torus {
+                major: 2.0,
+                minor: 0.6,
+            },
+            Expr::Capsule {
+                a: [-1.0, 0.0, 0.0],
+                b: [1.0, 0.5, 0.0],
+                r: 0.4,
+            },
             Expr::Union(
                 Box::new(Expr::Sphere { r: 1.0 }),
                 Box::new(Expr::Translate {
@@ -727,11 +761,15 @@ mod tests {
                 k: 0.5,
             },
             Expr::Translate {
-                e: Box::new(Expr::Box { half: [1.0, 1.0, 1.0] }),
+                e: Box::new(Expr::Box {
+                    half: [1.0, 1.0, 1.0],
+                }),
                 t: [3.0, -2.0, 1.0],
             },
             Expr::Rotate {
-                e: Box::new(Expr::Box { half: [2.0, 0.5, 0.5] }),
+                e: Box::new(Expr::Box {
+                    half: [2.0, 0.5, 0.5],
+                }),
                 axis: [0.2, 1.0, 0.3],
                 angle: 0.7,
             },
@@ -744,7 +782,9 @@ mod tests {
                 t: 0.2,
             },
             Expr::Offset {
-                e: Box::new(Expr::Box { half: [1.0, 1.0, 1.0] }),
+                e: Box::new(Expr::Box {
+                    half: [1.0, 1.0, 1.0],
+                }),
                 d: 0.5,
             },
         ];
@@ -754,12 +794,36 @@ mod tests {
             // (no zero-crossing escapes the box).
             let margin = 1e-3;
             let samples = [
-                [b.min[0] - margin, (b.min[1] + b.max[1]) * 0.5, (b.min[2] + b.max[2]) * 0.5],
-                [b.max[0] + margin, (b.min[1] + b.max[1]) * 0.5, (b.min[2] + b.max[2]) * 0.5],
-                [(b.min[0] + b.max[0]) * 0.5, b.min[1] - margin, (b.min[2] + b.max[2]) * 0.5],
-                [(b.min[0] + b.max[0]) * 0.5, b.max[1] + margin, (b.min[2] + b.max[2]) * 0.5],
-                [(b.min[0] + b.max[0]) * 0.5, (b.min[1] + b.max[1]) * 0.5, b.min[2] - margin],
-                [(b.min[0] + b.max[0]) * 0.5, (b.min[1] + b.max[1]) * 0.5, b.max[2] + margin],
+                [
+                    b.min[0] - margin,
+                    (b.min[1] + b.max[1]) * 0.5,
+                    (b.min[2] + b.max[2]) * 0.5,
+                ],
+                [
+                    b.max[0] + margin,
+                    (b.min[1] + b.max[1]) * 0.5,
+                    (b.min[2] + b.max[2]) * 0.5,
+                ],
+                [
+                    (b.min[0] + b.max[0]) * 0.5,
+                    b.min[1] - margin,
+                    (b.min[2] + b.max[2]) * 0.5,
+                ],
+                [
+                    (b.min[0] + b.max[0]) * 0.5,
+                    b.max[1] + margin,
+                    (b.min[2] + b.max[2]) * 0.5,
+                ],
+                [
+                    (b.min[0] + b.max[0]) * 0.5,
+                    (b.min[1] + b.max[1]) * 0.5,
+                    b.min[2] - margin,
+                ],
+                [
+                    (b.min[0] + b.max[0]) * 0.5,
+                    (b.min[1] + b.max[1]) * 0.5,
+                    b.max[2] + margin,
+                ],
             ];
             for s in samples {
                 assert!(
@@ -834,7 +898,11 @@ mod tests {
         let center = [major * am.cos(), major * am.sin(), 0.0];
         // On the tube surface: offset by r in +z (perpendicular to the planar arc).
         let on = [center[0], center[1], r];
-        assert!(sweep.eval(on).abs() < 0.06, "on tube surface ~0: {}", sweep.eval(on));
+        assert!(
+            sweep.eval(on).abs() < 0.06,
+            "on tube surface ~0: {}",
+            sweep.eval(on)
+        );
         // Interior: the spine point itself.
         assert!(sweep.eval(center) < 0.0, "tube core interior");
         // Exterior: far above.
@@ -889,10 +957,17 @@ mod tests {
         // On-axis (deep inside the profile in-plane, dp = -r) but just past the cap.
         for &eps in &[0.01, 0.1, 0.4] {
             let p = [0.0, 0.0, h * 0.5 + eps];
-            assert!(sweep.eval(p) > 0.0, "on-axis {eps} past cap must be exterior: {}", sweep.eval(p));
+            assert!(
+                sweep.eval(p) > 0.0,
+                "on-axis {eps} past cap must be exterior: {}",
+                sweep.eval(p)
+            );
         }
         // Just INSIDE the cap stays interior.
-        assert!(sweep.eval([0.0, 0.0, h * 0.5 - 0.1]) < 0.0, "just inside the cap is interior");
+        assert!(
+            sweep.eval([0.0, 0.0, h * 0.5 - 0.1]) < 0.0,
+            "just inside the cap is interior"
+        );
     }
 
     /// `bounds()` must use the diagonal profile reach: a box profile on a frame
@@ -921,7 +996,10 @@ mod tests {
         );
         // No zero-crossing outside the reported bounds: sample just beyond +X.
         let outside = [b.max[0] + 0.25, 0.0, 0.0];
-        assert!(rotated.eval(outside) > 0.0, "field positive just outside bounds");
+        assert!(
+            rotated.eval(outside) > 0.0,
+            "field positive just outside bounds"
+        );
     }
 
     /// A circle swept along a CLOSED non-planar loop: the closure correction keeps
@@ -951,7 +1029,10 @@ mod tests {
         let fs = curve.frames();
         for i in 0..fs.len() {
             let j = (i + 1) % fs.len();
-            assert!(dot3(fs[i].normal, fs[j].normal) > 0.3, "no frame seam at {i}->{j}");
+            assert!(
+                dot3(fs[i].normal, fs[j].normal) > 0.3,
+                "no frame seam at {i}->{j}"
+            );
         }
 
         let sweep = Expr::Sweep {
@@ -1007,7 +1088,9 @@ mod tests {
     #[test]
     fn offset_field_const_equals_constant_offset() {
         let d = 0.37;
-        let base = Expr::Box { half: [1.0, 0.8, 1.2] };
+        let base = Expr::Box {
+            half: [1.0, 0.8, 1.2],
+        };
         let modulated = Expr::OffsetField {
             e: Box::new(base.clone()),
             d: ScalarField::Const(d),
@@ -1072,7 +1155,10 @@ mod tests {
     /// (`eval = z`) and confirm the field equals `|z| − t(z)` at each.
     #[test]
     fn shell_field_axial_ramp_matches_thickness() {
-        let base = Expr::Plane { n: [0.0, 0.0, 1.0], h: 0.0 };
+        let base = Expr::Plane {
+            n: [0.0, 0.0, 1.0],
+            h: 0.0,
+        };
         let t = ScalarField::AxialRamp {
             axis: 2,
             a: -2.0,
@@ -1144,7 +1230,10 @@ mod tests {
             },
         };
         let ub = unbounded.bounds();
-        assert!(ub.max[0] >= 1.0e9, "unclamped FromSdf must report infinite bounds");
+        assert!(
+            ub.max[0] >= 1.0e9,
+            "unclamped FromSdf must report infinite bounds"
+        );
 
         let clamped = Expr::OffsetField {
             e: Box::new(base),
@@ -1159,9 +1248,15 @@ mod tests {
             },
         };
         let cb = clamped.bounds();
-        assert!(cb.max[0] < 1.0e9, "clamped FromSdf must report finite bounds");
+        assert!(
+            cb.max[0] < 1.0e9,
+            "clamped FromSdf must report finite bounds"
+        );
         // base sphere (r=1) grown by at most 0.3 → reaches ~1.3; box must contain it.
-        assert!(cb.max[0] >= 1.3 - 1e-9, "clamped bound must reach the grown surface");
+        assert!(
+            cb.max[0] >= 1.3 - 1e-9,
+            "clamped bound must reach the grown surface"
+        );
     }
 
     /// A field-modulated shell rasterizes and contours to a WATERTIGHT mesh.
@@ -1183,8 +1278,14 @@ mod tests {
         };
         let grid = rasterize(&shell, shell.bounds(), 36, 3).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "modulated shell must contour to vertices");
-        assert!(!mesh.indices.is_empty(), "modulated shell must contour to triangles");
+        assert!(
+            !mesh.positions.is_empty(),
+            "modulated shell must contour to vertices"
+        );
+        assert!(
+            !mesh.indices.is_empty(),
+            "modulated shell must contour to triangles"
+        );
 
         let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
         for tri in mesh.indices.chunks_exact(3) {
@@ -1254,11 +1355,7 @@ mod tests {
         let mut has_pos = false;
         for k in 0..12 {
             for j in 0..12 {
-                let p = [
-                    -1.1 + 0.2 * k as f64,
-                    -1.1 + 0.2 * j as f64,
-                    0.1 * k as f64,
-                ];
+                let p = [-1.1 + 0.2 * k as f64, -1.1 + 0.2 * j as f64, 0.1 * k as f64];
                 let v = raw.eval(p);
                 if v < 0.0 {
                     has_neg = true;
@@ -1364,7 +1461,13 @@ mod tests {
         let thickness = ScalarField::Const(0.3);
         let graded = Expr::Lattice {
             kind: LatticeType::Gyroid,
-            period: ScalarField::AxialRamp { axis: 2, a: 0.0, b: 4.0, lo: 1.0, hi: 3.0 },
+            period: ScalarField::AxialRamp {
+                axis: 2,
+                a: 0.0,
+                b: 4.0,
+                lo: 1.0,
+                hi: 3.0,
+            },
             thickness: thickness.clone(),
         };
         // At z=3 the ramped period is 2.5; compare against a fixed period-1 lattice at a
@@ -1391,7 +1494,10 @@ mod tests {
             thickness: ScalarField::Const(0.3),
         };
         let lb = lattice.bounds();
-        assert!(lb.max[0] >= 1.0e9, "bare lattice must report the infinite box");
+        assert!(
+            lb.max[0] >= 1.0e9,
+            "bare lattice must report the infinite box"
+        );
 
         let region = Expr::Box {
             half: [2.0, 1.0, 0.5],
@@ -1448,8 +1554,14 @@ mod tests {
                 hi: 0.5,
             },
         };
-        assert!(graded.eval([0.25, 0.25, 0.3]) > 0.0, "thin end excludes the point");
-        assert!(graded.eval([0.25, 0.25, 0.7]) < 0.0, "thick end includes the point");
+        assert!(
+            graded.eval([0.25, 0.25, 0.3]) > 0.0,
+            "thin end excludes the point"
+        );
+        assert!(
+            graded.eval([0.25, 0.25, 0.7]) < 0.0,
+            "thick end includes the point"
+        );
     }
 
     /// A conformal (clipped) strut lattice contours to a non-empty, WATERTIGHT mesh.
@@ -1469,8 +1581,17 @@ mod tests {
         let bounds = conformal.bounds();
         let grid = rasterize(&conformal, bounds, 56, 3).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "clipped strut lattice must contour");
-        assert!(!mesh.indices.is_empty(), "clipped strut lattice must have triangles");
-        assert!(watertight(&mesh.indices), "clipped strut lattice must be watertight");
+        assert!(
+            !mesh.positions.is_empty(),
+            "clipped strut lattice must contour"
+        );
+        assert!(
+            !mesh.indices.is_empty(),
+            "clipped strut lattice must have triangles"
+        );
+        assert!(
+            watertight(&mesh.indices),
+            "clipped strut lattice must be watertight"
+        );
     }
 }

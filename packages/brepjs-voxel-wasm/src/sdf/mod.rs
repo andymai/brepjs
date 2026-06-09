@@ -27,8 +27,16 @@ pub fn rasterize(
     resolution: usize,
     padding: usize,
 ) -> Result<Grid, GridError> {
-    let min = [bounds.min[0] as f32, bounds.min[1] as f32, bounds.min[2] as f32];
-    let max = [bounds.max[0] as f32, bounds.max[1] as f32, bounds.max[2] as f32];
+    let min = [
+        bounds.min[0] as f32,
+        bounds.min[1] as f32,
+        bounds.min[2] as f32,
+    ];
+    let max = [
+        bounds.max[0] as f32,
+        bounds.max[1] as f32,
+        bounds.max[2] as f32,
+    ];
 
     let mut grid = Grid::for_bounds(min, max, resolution, padding)?;
     let band = band_radius(&grid, 0.0);
@@ -47,13 +55,90 @@ pub fn rasterize(
     Ok(grid)
 }
 
+/// Shared chamber fixtures (the brepjs-implicit demonstrator). Test-only and
+/// `pub(crate)` so both this module's tests and the DC contourer's manifold gate
+/// (which proves the v1 jacket is watertight under DC) build the SAME geometry.
+#[cfg(test)]
+pub(crate) mod fixtures {
+    use super::expr::Expr;
+    use super::field::ScalarField;
+    use super::sweep::SweptCurve;
+    use crate::tpms::LatticeType;
+    use std::f64::consts::PI;
+
+    const CHANNEL_TUBE_R: f64 = 0.3;
+
+    pub fn swept_channel(phase: f64) -> Expr {
+        let steps = 16;
+        let mut spine = Vec::with_capacity(steps + 1);
+        for i in 0..=steps {
+            let s = i as f64 / steps as f64;
+            let z = -2.6 + 5.2 * s;
+            let wall = (2.0 * (1.0 - (z + 2.0) / 4.0)).clamp(0.0, 2.0);
+            let radius = wall + CHANNEL_TUBE_R * 0.5;
+            let a = phase + s * (PI / 4.0);
+            spine.push([radius * a.cos(), radius * a.sin(), z]);
+        }
+        Expr::Sweep {
+            curve: SweptCurve::new(&spine, false),
+            profile: Box::new(Expr::Sphere { r: CHANNEL_TUBE_R }),
+        }
+    }
+
+    pub fn chamber_expr() -> Expr {
+        let body = Expr::ShellField {
+            e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
+            t: ScalarField::AxialRamp {
+                axis: 2,
+                a: -2.0,
+                b: 2.0,
+                lo: 0.2,
+                hi: 0.35,
+            },
+        };
+        let mut acc = body;
+        for i in 0..4 {
+            let phase = i as f64 * PI / 2.0;
+            acc = Expr::Union(Box::new(acc), Box::new(swept_channel(phase)));
+        }
+        acc
+    }
+
+    pub fn chamber_v1_expr() -> Expr {
+        let lattice = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(1.0),
+            thickness: ScalarField::AxialRamp {
+                axis: 2,
+                a: -2.0,
+                b: 2.0,
+                lo: 0.45,
+                hi: 0.65,
+            },
+        };
+        let band = Expr::Shell {
+            e: Box::new(Expr::Offset {
+                e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
+                d: 0.35,
+            }),
+            t: 0.7,
+        };
+        let jacket = Expr::Intersection(Box::new(lattice), Box::new(band));
+        Expr::SmoothUnion {
+            a: Box::new(chamber_expr()),
+            b: Box::new(jacket),
+            k: 0.15,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::fixtures::{chamber_expr, chamber_v1_expr, swept_channel};
     use super::*;
     use crate::contour::surface_nets_mesh;
     use crate::ops::fill_box_sdf;
     use std::collections::HashMap;
-    use std::f64::consts::PI;
 
     /// RASTERIZE PARITY: a Box rasterized via Expr must agree in SIGN with the
     /// template `fill_box_sdf` rasterizer at every voxel. Same bounds, same grid
@@ -72,7 +157,11 @@ mod tests {
         let mut via_template = Grid::for_bounds(min, max, 20, 2).unwrap();
         fill_box_sdf(&mut via_template, min, max);
 
-        assert_eq!(via_expr.dims(), via_template.dims(), "grids must co-register");
+        assert_eq!(
+            via_expr.dims(),
+            via_template.dims(),
+            "grids must co-register"
+        );
         let [nx, ny, nz] = via_expr.dims();
         let mut mismatches = 0usize;
         for z in 0..nz {
@@ -98,7 +187,10 @@ mod tests {
         let expr = Expr::Sphere { r };
         let grid = rasterize(&expr, expr.bounds(), 24, 2).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "sphere must contour to vertices");
+        assert!(
+            !mesh.positions.is_empty(),
+            "sphere must contour to vertices"
+        );
         assert!(!mesh.indices.is_empty(), "sphere must contour to triangles");
 
         let (mn, mx) = flat_bbox(&mesh.positions);
@@ -140,7 +232,10 @@ mod tests {
         let s_grid = rasterize(&hollow, hollow.bounds(), 32, 3).unwrap();
         let s_mesh = surface_nets_mesh(&s_grid);
         assert!(!s_mesh.positions.is_empty(), "shelled sphere must contour");
-        assert!(!s_mesh.indices.is_empty(), "shelled sphere must have triangles");
+        assert!(
+            !s_mesh.indices.is_empty(),
+            "shelled sphere must have triangles"
+        );
     }
 
     /// SKELETON CHAMBER v0: a hollow conical body unioned with a ring of cooling
@@ -150,8 +245,14 @@ mod tests {
         let chamber = chamber_expr();
         let grid = rasterize(&chamber, chamber.bounds(), 40, 3).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "chamber must contour to vertices");
-        assert!(!mesh.indices.is_empty(), "chamber must contour to triangles");
+        assert!(
+            !mesh.positions.is_empty(),
+            "chamber must contour to vertices"
+        );
+        assert!(
+            !mesh.indices.is_empty(),
+            "chamber must contour to triangles"
+        );
         assert!(
             is_watertight(&mesh.indices),
             "skeleton chamber contour must be watertight"
@@ -171,8 +272,14 @@ mod tests {
         let chamber = chamber_v1_expr();
         let grid = rasterize(&chamber, chamber.bounds(), 48, 3).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "chamber v1 must contour to vertices");
-        assert!(!mesh.indices.is_empty(), "chamber v1 must contour to triangles");
+        assert!(
+            !mesh.positions.is_empty(),
+            "chamber v1 must contour to vertices"
+        );
+        assert!(
+            !mesh.indices.is_empty(),
+            "chamber v1 must contour to triangles"
+        );
 
         let (mn, mx) = flat_bbox(&mesh.positions);
         for axis in 0..3 {
@@ -183,7 +290,10 @@ mod tests {
         // The jacket band sits outside the bare cone (base r = 2), so the radial
         // extent must reach past the cone's own ±2 — the lattice jacket is present.
         let radial = mx[0].max(mx[1]).max(-mn[0]).max(-mn[1]);
-        assert!(radial > 2.1, "jacket must extend past the bare cone wall, got {radial}");
+        assert!(
+            radial > 2.1,
+            "jacket must extend past the bare cone wall, got {radial}"
+        );
     }
 
     /// A single SWEPT channel (circle profile along a helical spine) rasterizes and
@@ -193,122 +303,18 @@ mod tests {
         let channel = swept_channel(0.0);
         let grid = rasterize(&channel, channel.bounds(), 48, 3).unwrap();
         let mesh = surface_nets_mesh(&grid);
-        assert!(!mesh.positions.is_empty(), "swept channel must contour to vertices");
-        assert!(!mesh.indices.is_empty(), "swept channel must contour to triangles");
+        assert!(
+            !mesh.positions.is_empty(),
+            "swept channel must contour to vertices"
+        );
+        assert!(
+            !mesh.indices.is_empty(),
+            "swept channel must contour to triangles"
+        );
         assert!(
             is_watertight(&mesh.indices),
             "swept channel contour must be watertight"
         );
-    }
-
-    /// CHAMBER v0.5: a capped cone shelled into a hollow body, unioned with four
-    /// SWEPT cooling channels. Each channel is a circle profile swept along a gently
-    /// helical spine that follows the cone wall (radius tapers with height), proving
-    /// the Phase-2a sweep operator in the demonstrator. This is the WATERTIGHT core
-    /// the v1 jacket builds on (`chamber_v1_expr`).
-    fn chamber_expr() -> Expr {
-        use super::field::ScalarField;
-        // Field-modulated wall: thicker toward the hot throat (the cone apex at
-        // z = +h/2 = +2). An AxialRamp grades the shell half-width from 0.2 at the
-        // base to 0.35 at the throat — the Phase-2b modulation in the demonstrator.
-        let body = Expr::ShellField {
-            e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
-            t: ScalarField::AxialRamp {
-                axis: 2,
-                a: -2.0,
-                b: 2.0,
-                lo: 0.2,
-                hi: 0.35,
-            },
-        };
-        let mut acc = body;
-        for i in 0..4 {
-            let phase = i as f64 * PI / 2.0;
-            acc = Expr::Union(Box::new(acc), Box::new(swept_channel(phase)));
-        }
-        acc
-    }
-
-    /// CHAMBER v1: the v0.5 chamber (graded wall + swept channels) smooth-unioned
-    /// with a CONFORMAL GRADED GYROID JACKET — the LEAP71-class composition. The
-    /// jacket is a gyroid lattice with GRADED thickness (thicker toward the hot
-    /// throat, tracking the wall) clipped to a conical band hugging the outer wall;
-    /// the `Intersection` is the conformal clip that bounds the periodic lattice.
-    ///
-    /// NOTE on the watertight gate: surface-nets cannot contour the conformal
-    /// gyroid jacket WATERTIGHT at feasible resolution, and the CLIP SHAPE is not the
-    /// cause. Empirically (verified across res 48/64/96): the conical clip is fine on
-    /// its own — the same chamber smooth-unioned with the SOLID conical band (no
-    /// lattice) IS watertight — and an axis-aligned BOX clip of the gyroid jacket
-    /// fails too. The cause is the high-genus TPMS topology: anywhere the clip
-    /// surface grazes a lattice wall at sub-voxel scale, surface-nets emits a
-    /// non-manifold seam, and a periodic TPMS presents many such near-tangential
-    /// grazes against any clip. (Even an ISOLATED box-clipped gyroid is only
-    /// watertight at resolutions where the clip plane happens to land in lattice
-    /// void — it is resolution-fragile, not guaranteed.) So `chamber_v1_expr` is
-    /// gated on NON-EMPTY + sane bbox (the same invariant the mesh-first
-    /// `tpms_box`/`lattice_infill` lattice paths assert), while the watertight gate
-    /// stays on the lattice-free v0.5 `chamber_expr`.
-    fn chamber_v1_expr() -> Expr {
-        use super::field::ScalarField;
-        use crate::tpms::LatticeType;
-        let lattice = Expr::Lattice {
-            kind: LatticeType::Gyroid,
-            period: ScalarField::Const(1.0),
-            thickness: ScalarField::AxialRamp {
-                axis: 2,
-                a: -2.0,
-                b: 2.0,
-                lo: 0.45,
-                hi: 0.65,
-            },
-        };
-        // A conical band hugging the OUTER wall: offset the cone outward by 0.35 then
-        // shell it to a ~0.7-wide band, so the lattice is clipped to a jacket. The
-        // Intersection is the conformal clip; the band's bound frames the grid.
-        let band = Expr::Shell {
-            e: Box::new(Expr::Offset {
-                e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
-                d: 0.35,
-            }),
-            t: 0.7,
-        };
-        let jacket = Expr::Intersection(Box::new(lattice), Box::new(band));
-        Expr::SmoothUnion {
-            a: Box::new(chamber_expr()),
-            b: Box::new(jacket),
-            k: 0.15,
-        }
-    }
-
-    /// One cooling channel: a small circle swept along a helical spine that rides
-    /// the OUTER cone wall, gaining a quarter turn over its length. The spine radius
-    /// sits the tube just outside the outer surface so it bulges externally and
-    /// fuses cleanly — keeping it clear of the thin graded inner cavity wall, whose
-    /// near-tangential pinch is what produces non-manifold surface-nets seams.
-    const CHANNEL_TUBE_R: f64 = 0.3;
-
-    fn swept_channel(phase: f64) -> Expr {
-        use super::sweep::SweptCurve;
-
-        let steps = 16;
-        let mut spine = Vec::with_capacity(steps + 1);
-        for i in 0..=steps {
-            let s = i as f64 / steps as f64;
-            // Overhang both ends (below the base, above the apex) so the channel
-            // breaches the cone surface cleanly instead of grazing it tangentially.
-            let z = -2.6 + 5.2 * s;
-            // Cone outer-wall radius at this height (linear taper, clamped), pushed
-            // out by the tube radius so the channel rides just proud of the wall.
-            let wall = (2.0 * (1.0 - (z + 2.0) / 4.0)).clamp(0.0, 2.0);
-            let radius = wall + CHANNEL_TUBE_R * 0.5;
-            let a = phase + s * (PI / 4.0);
-            spine.push([radius * a.cos(), radius * a.sin(), z]);
-        }
-        Expr::Sweep {
-            curve: SweptCurve::new(&spine, false),
-            profile: Box::new(Expr::Sphere { r: CHANNEL_TUBE_R }),
-        }
     }
 
     /// Every undirected edge is shared by exactly two triangles.
@@ -335,4 +341,3 @@ mod tests {
         (mn, mx)
     }
 }
-

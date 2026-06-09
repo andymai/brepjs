@@ -101,7 +101,11 @@ impl SparseGrid {
         {
             Some(n) if n <= u32::MAX as usize => n,
             Some(n) => return Err(GridError::TooLarge { requested: n }),
-            None => return Err(GridError::TooLarge { requested: usize::MAX }),
+            None => {
+                return Err(GridError::TooLarge {
+                    requested: usize::MAX,
+                })
+            }
         };
         Ok(SparseGrid {
             geom,

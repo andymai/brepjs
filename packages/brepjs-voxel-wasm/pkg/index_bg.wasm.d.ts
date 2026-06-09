@@ -54,6 +54,7 @@ export const voxel_boolean: (a: number, b: number, c: number, d: number, e: numb
 export const voxelfield_boolean: (a: number, b: number, c: number) => [number, number];
 export const voxelfield_boolean_of: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number, number];
 export const voxelfield_contour: (a: number) => number;
+export const voxelfield_contour_manifold: (a: number) => number;
 export const voxelfield_new: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number];
 export const voxelfield_offset: (a: number, b: number) => [number, number];
 export const voxelfield_reinit: (a: number) => void;

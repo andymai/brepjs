@@ -31,6 +31,7 @@ export {
   fieldShell,
   fieldReinit,
   fieldContour,
+  fieldContourManifold,
   voxelFieldFromShape,
   voxelBooleanFieldShapes,
 } from './fieldFns.js';
