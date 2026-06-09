@@ -18,6 +18,7 @@ export type VoxelEngine = Pick<
   | 'voxel_boolean'
   | 'VoxelField'
   | 'Sdf'
+  | 'ScalarField'
   | 'version'
 >;
 
@@ -60,6 +61,7 @@ export async function loadVoxelEngine(): Promise<VoxelEngine> {
     voxel_boolean: wasm.voxel_boolean,
     VoxelField: wasm.VoxelField,
     Sdf: wasm.Sdf,
+    ScalarField: wasm.ScalarField,
     version: wasm.version,
   };
   return _engine;

@@ -3,7 +3,7 @@ import { validationError, computationError, moduleInitError } from '@/core/error
 import { createKernelHandle, type Deletable } from '@/core/disposal.js';
 import { getVoxel } from '@/voxel/registry.js';
 import { makeFieldHandle } from '@/voxel/fieldFns.js';
-import type { VoxelEngine, WasmSdf } from '@/voxel/engine.js';
+import type { VoxelEngine, WasmSdf, WasmScalarField } from '@/voxel/engine.js';
 import type { VoxelFieldHandle, VoxelFieldOptions } from '@/voxel/fieldFns.js';
 
 const DEFAULT_RESOLUTION = 48;
@@ -70,6 +70,15 @@ export interface SdfHandle {
   round(radius: number): SdfHandle;
   shell(thickness: number): SdfHandle;
   onion(thickness: number): SdfHandle;
+  /**
+   * Offset by a per-position distance {@link ScalarFieldHandle}. NOTE: a modulated
+   * offset/blend yields a Lipschitz field (`|∇| < 1`), not a true SDF — a downstream
+   * true-distance op on the rasterized field (`offset`/`shell`) must reinit first.
+   */
+  offsetField(field: ScalarFieldHandle): SdfHandle;
+  roundField(field: ScalarFieldHandle): SdfHandle;
+  shellField(field: ScalarFieldHandle): SdfHandle;
+  smoothUnionField(other: SdfHandle, field: ScalarFieldHandle): SdfHandle;
   translate(x: number, y: number, z: number): SdfHandle;
   rotate(ax: number, ay: number, az: number, angle: number): SdfHandle;
   scale(s: number): SdfHandle;
@@ -92,6 +101,29 @@ function sdfDeletable(raw: WasmSdf): SdfDeletable {
     raw,
     delete() {
       raw.free();
+    },
+  };
+}
+
+/** The position-modulated operator methods, split out to keep {@link makeSdfHandle}
+ * under the per-function line cap. `this` binds to the owning {@link SdfHandle} when
+ * spread into its object literal. */
+function modulatedFieldMethods(): Pick<
+  SdfHandle,
+  'offsetField' | 'roundField' | 'shellField' | 'smoothUnionField'
+> {
+  return {
+    offsetField(this: SdfHandle, field) {
+      return makeSdfHandle(this.value.offset_field(field.value));
+    },
+    roundField(this: SdfHandle, field) {
+      return makeSdfHandle(this.value.round_field(field.value));
+    },
+    shellField(this: SdfHandle, field) {
+      return makeSdfHandle(this.value.shell_field(field.value));
+    },
+    smoothUnionField(this: SdfHandle, other, field) {
+      return makeSdfHandle(this.value.smooth_union_field(other.value, field.value));
     },
   };
 }
@@ -140,6 +172,7 @@ function makeSdfHandle(raw: WasmSdf): SdfHandle {
     onion(thickness) {
       return makeSdfHandle(this.value.onion(thickness));
     },
+    ...modulatedFieldMethods(),
     translate(x, y, z) {
       return makeSdfHandle(this.value.translate(x, y, z));
     },
@@ -328,4 +361,134 @@ export function sweep(
   if (isErr(flat)) return flat;
   const closed = opts?.closed ?? false;
   return build((e) => e.Sdf.sweep(flat.value, profile.value, closed), id);
+}
+
+/**
+ * A disposable handle around a position-varying scalar field (brepjs-implicit Phase
+ * 2b). Fed to the {@link SdfHandle} modulated operators (`offsetField`, `shellField`,
+ * …) to vary an operator parameter per voxel. Like {@link SdfHandle} it is a value —
+ * the constructors return fresh fields — and dispose is mandatory (`using`, or
+ * `[Symbol.dispose]()`) to free the WASM allocation.
+ */
+export interface ScalarFieldHandle {
+  /** The wrapped WASM field. Throws if the handle has been disposed. */
+  readonly value: WasmScalarField;
+  /** Whether the backing WASM field has been freed. */
+  readonly disposed: boolean;
+  [Symbol.dispose](): void;
+}
+
+interface ScalarFieldDeletable extends Deletable {
+  readonly raw: WasmScalarField;
+}
+
+function scalarFieldDeletable(raw: WasmScalarField): ScalarFieldDeletable {
+  return {
+    raw,
+    delete() {
+      raw.free();
+    },
+  };
+}
+
+function makeScalarFieldHandle(raw: WasmScalarField): ScalarFieldHandle {
+  // brepjs-patterns-disable: require-using-for-handles -- factory returns the handle, so it must outlive this scope
+  const inner = createKernelHandle(scalarFieldDeletable(raw));
+  return {
+    get value() {
+      return inner.value.raw;
+    },
+    get disposed() {
+      return inner.disposed;
+    },
+    [Symbol.dispose]() {
+      inner[Symbol.dispose]();
+    },
+  };
+}
+
+function buildField(
+  make: (engine: VoxelEngine) => WasmScalarField,
+  id?: string
+): Result<ScalarFieldHandle> {
+  const engine = resolveEngine(id);
+  if (isErr(engine)) return engine;
+  try {
+    return ok(makeScalarFieldHandle(make(engine.value)));
+  } catch (cause) {
+    return err(
+      computationError(
+        'SDF_FIELD_BUILD_FAILED',
+        cause instanceof Error ? cause.message : 'scalar field construction failed.',
+        cause
+      )
+    );
+  }
+}
+
+/** A spatially constant field — reproduces a constant operator parameter exactly. */
+export function fieldConst(c: number, id?: string): Result<ScalarFieldHandle> {
+  return buildField((e) => e.ScalarField.constant(c), id);
+}
+
+/**
+ * A field that ramps `lo → hi` as `coord[axis]` goes `a → b`, clamped to the
+ * endpoint band outside `[a, b]`. `axis` is 0 (x), 1 (y), or 2 (z).
+ */
+export function fieldAxialRamp(
+  axis: number,
+  a: number,
+  b: number,
+  lo: number,
+  hi: number,
+  id?: string
+): Result<ScalarFieldHandle> {
+  return buildField((e) => e.ScalarField.axial_ramp(axis, a, b, lo, hi), id);
+}
+
+/**
+ * A field by radial distance from the line through `center` along `axis`: `lo → hi`
+ * as that distance goes `r0 → r1`, clamped. `axis` is 0 (x), 1 (y), or 2 (z).
+ */
+export function fieldRadialRamp(
+  center: [number, number, number],
+  axis: number,
+  r0: number,
+  r1: number,
+  lo: number,
+  hi: number,
+  id?: string
+): Result<ScalarFieldHandle> {
+  return buildField(
+    (e) => e.ScalarField.radial_ramp(center[0], center[1], center[2], axis, r0, r1, lo, hi),
+    id
+  );
+}
+
+/**
+ * A field from an {@link SdfHandle}'s signed distance, affinely remapped to
+ * `sdf.eval(p) * scale + offset`. UNBOUNDED — drive a bounds-affecting op
+ * (`offsetField`/`shellField`) with it only via `rasterizeIn` or wrapped in
+ * {@link fieldClamp}.
+ */
+export function fieldFromSdf(
+  sdf: SdfHandle,
+  scale: number,
+  offset: number,
+  id?: string
+): Result<ScalarFieldHandle> {
+  return buildField((e) => e.ScalarField.from_sdf(sdf.value, scale, offset), id);
+}
+
+/**
+ * Clamp another field's value to `[min, max]` — bounds an otherwise unbounded
+ * {@link fieldFromSdf} so it can safely drive offset/shell.
+ */
+export function fieldClamp(
+  field: ScalarFieldHandle,
+  min: number,
+  max: number,
+  id?: string
+): Result<ScalarFieldHandle> {
+  return buildField((e) => e.ScalarField.clamp(field.value, min, max), id);
 }

@@ -3,6 +3,7 @@
 //! pure function `eval(p) -> signed distance`, plus a conservative analytic
 //! [`Aabb`] so the rasterizer can size a grid without sampling.
 
+use super::field::ScalarField;
 use super::operators;
 use super::primitives;
 use super::sweep::SweptCurve;
@@ -149,6 +150,16 @@ fn rotate_point(p: [f64; 3], axis: [f64; 3], angle: f64) -> [f64; 3] {
     ]
 }
 
+/// Expand `b` by a modulated parameter's range MAX. A non-finite max (an unclamped
+/// [`ScalarField::FromSdf`]) means the surface can reach arbitrarily far, so the
+/// conservative bound is [`Aabb::infinite`]. A non-positive max never shrinks the box.
+fn expand_by_range_max(b: Aabb, range_max: f64) -> Aabb {
+    if !range_max.is_finite() {
+        return Aabb::infinite();
+    }
+    b.expand(range_max.max(0.0))
+}
+
 /// An SDF expression tree node. Primitives are leaves (exact distance, centered at
 /// the origin unless noted), operators combine two children, domain nodes transform
 /// the query point before evaluating their single child.
@@ -225,6 +236,29 @@ pub enum Expr {
         t: f64,
     },
 
+    // ── Position-modulated field operators (brepjs-implicit Phase 2b) ──
+    /// Offset by a per-position distance: `e.eval(p) − d.eval(p)`. A modulated
+    /// offset/blend yields a Lipschitz field (`|∇| < 1`), not a true SDF — a
+    /// DOWNSTREAM true-distance op must `reinit_sdf` first.
+    OffsetField {
+        e: Box<Expr>,
+        d: ScalarField,
+    },
+    RoundField {
+        e: Box<Expr>,
+        r: ScalarField,
+    },
+    ShellField {
+        e: Box<Expr>,
+        t: ScalarField,
+    },
+    /// Smooth-union with a per-position blend width `k`. Lipschitz (see [`OffsetField`]).
+    SmoothUnionField {
+        a: Box<Expr>,
+        b: Box<Expr>,
+        k: ScalarField,
+    },
+
     // ── Domain transforms ──
     Translate {
         e: Box<Expr>,
@@ -280,6 +314,13 @@ impl Expr {
             Expr::Round { e, r } => operators::round(e.eval(p), *r),
             Expr::Shell { e, t } => operators::shell(e.eval(p), *t),
             Expr::Onion { e, t } => operators::onion(e.eval(p), *t),
+
+            Expr::OffsetField { e, d } => operators::offset(e.eval(p), d.eval(p)),
+            Expr::RoundField { e, r } => operators::round(e.eval(p), r.eval(p)),
+            Expr::ShellField { e, t } => operators::shell(e.eval(p), t.eval(p)),
+            Expr::SmoothUnionField { a, b, k } => {
+                operators::smooth_union(a.eval(p), b.eval(p), k.eval(p))
+            }
 
             Expr::Translate { e, t } => {
                 e.eval([p[0] - t[0], p[1] - t[1], p[2] - t[2]])
@@ -359,6 +400,16 @@ impl Expr {
             // material stay within the original bound expanded by t.
             Expr::Shell { e, t } => e.bounds().expand(t.max(0.0)),
             Expr::Onion { e, t } => e.bounds().expand(t.max(0.0)),
+
+            // Size the band off the MAX of the modulated parameter range (Spike-C):
+            // a non-finite max (an unclamped FromSdf) makes the surface reach
+            // unbounded, so report the infinite box for the rasterizer to clip.
+            Expr::OffsetField { e, d } => expand_by_range_max(e.bounds(), d.range().1),
+            Expr::RoundField { e, r } => expand_by_range_max(e.bounds(), r.range().1),
+            Expr::ShellField { e, t } => expand_by_range_max(e.bounds(), t.range().1),
+            Expr::SmoothUnionField { a, b, k } => {
+                expand_by_range_max(a.bounds().union(b.bounds()), k.range().1)
+            }
 
             Expr::Translate { e, t } => e.bounds().translate(*t),
             Expr::Rotate { e, axis, angle } => e.bounds().rotate(*axis, *angle),
@@ -878,5 +929,205 @@ mod tests {
 
     fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
         a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+
+    // ── Position-modulated field operators (Phase 2b) ──
+
+    /// ADDITIVE PARITY: an `OffsetField` driven by `Const(d)` is bit-identical to the
+    /// constant `Offset { d }` everywhere — a modulated op with a constant field
+    /// reproduces the constant op exactly.
+    #[test]
+    fn offset_field_const_equals_constant_offset() {
+        let d = 0.37;
+        let base = Expr::Box { half: [1.0, 0.8, 1.2] };
+        let modulated = Expr::OffsetField {
+            e: Box::new(base.clone()),
+            d: ScalarField::Const(d),
+        };
+        let constant = Expr::Offset {
+            e: Box::new(base),
+            d,
+        };
+        for &p in &[
+            [0.0, 0.0, 0.0],
+            [0.5, -0.3, 0.7],
+            [1.5, 1.0, -0.4],
+            [-2.0, 0.2, 0.9],
+            [0.1, 0.1, 0.1],
+        ] {
+            assert_eq!(
+                modulated.eval(p),
+                constant.eval(p),
+                "OffsetField(Const) must equal Offset at {p:?}"
+            );
+        }
+    }
+
+    /// ADDITIVE PARITY for the smooth blend: `SmoothUnionField` with `Const(k)` equals
+    /// the constant `SmoothUnion { k }` everywhere.
+    #[test]
+    fn smooth_union_field_const_equals_constant() {
+        let k = 0.6;
+        let a = Expr::Sphere { r: 1.0 };
+        let b = Expr::Translate {
+            e: Box::new(Expr::Sphere { r: 1.0 }),
+            t: [1.3, 0.0, 0.0],
+        };
+        let modulated = Expr::SmoothUnionField {
+            a: Box::new(a.clone()),
+            b: Box::new(b.clone()),
+            k: ScalarField::Const(k),
+        };
+        let constant = Expr::SmoothUnion {
+            a: Box::new(a),
+            b: Box::new(b),
+            k,
+        };
+        for &p in &[
+            [0.0, 0.0, 0.0],
+            [0.65, 0.3, 0.1],
+            [1.3, 0.0, 0.0],
+            [-0.5, 0.5, 0.2],
+            [2.0, 0.0, 0.0],
+        ] {
+            assert_eq!(
+                modulated.eval(p),
+                constant.eval(p),
+                "SmoothUnionField(Const) must equal SmoothUnion at {p:?}"
+            );
+        }
+    }
+
+    /// SPIKE-C INVARIANT: a `ShellField` with an `AxialRamp` thickness rasterizes to
+    /// exactly `|d(p)| − t(z)` — the base distance shelled by the per-position ramped
+    /// thickness, to machine precision. Sample many points off a planar base
+    /// (`eval = z`) and confirm the field equals `|z| − t(z)` at each.
+    #[test]
+    fn shell_field_axial_ramp_matches_thickness() {
+        let base = Expr::Plane { n: [0.0, 0.0, 1.0], h: 0.0 };
+        let t = ScalarField::AxialRamp {
+            axis: 2,
+            a: -2.0,
+            b: 2.0,
+            lo: 0.2,
+            hi: 0.5,
+        };
+        let shell = Expr::ShellField {
+            e: Box::new(base),
+            t: t.clone(),
+        };
+        for &z in &[-1.5_f64, -0.4, 0.0, 0.3, 0.6, 1.0, 1.4] {
+            let p = [0.7, -0.2, z];
+            let expected = z.abs() - t.eval(p);
+            assert!(
+                (shell.eval(p) - expected).abs() < 1e-12,
+                "ShellField = |z| − t(z) at z={z}: got {} expected {expected}",
+                shell.eval(p)
+            );
+        }
+    }
+
+    /// CONSERVATIVE BOUNDS: a ramp-modulated `ShellField` must report a box that
+    /// contains the whole wall — no zero-crossing just outside any face.
+    #[test]
+    fn shell_field_bounds_conservative() {
+        let base = Expr::Sphere { r: 1.0 };
+        let shell = Expr::ShellField {
+            e: Box::new(base),
+            t: ScalarField::AxialRamp {
+                axis: 2,
+                a: -1.0,
+                b: 1.0,
+                lo: 0.1,
+                hi: 0.6,
+            },
+        };
+        let b = shell.bounds();
+        let margin = 1e-3;
+        let samples = [
+            [b.min[0] - margin, 0.0, 0.0],
+            [b.max[0] + margin, 0.0, 0.0],
+            [0.0, b.min[1] - margin, 0.0],
+            [0.0, b.max[1] + margin, 0.0],
+            [0.0, 0.0, b.min[2] - margin],
+            [0.0, 0.0, b.max[2] + margin],
+        ];
+        for s in samples {
+            assert!(
+                shell.eval(s) > 0.0,
+                "field must be positive outside bounds at {s:?} (got {})",
+                shell.eval(s)
+            );
+        }
+    }
+
+    /// An unbounded `FromSdf` makes a bounds-affecting op report the infinite box;
+    /// wrapping it in `Clamp` restores a finite, conservative bound.
+    #[test]
+    fn from_sdf_field_bounds_unbounded_then_clamped() {
+        let base = Expr::Sphere { r: 1.0 };
+        let driver = Expr::Sphere { r: 0.5 };
+        let unbounded = Expr::OffsetField {
+            e: Box::new(base.clone()),
+            d: ScalarField::FromSdf {
+                e: Box::new(driver.clone()),
+                scale: 1.0,
+                offset: 0.0,
+            },
+        };
+        let ub = unbounded.bounds();
+        assert!(ub.max[0] >= 1.0e9, "unclamped FromSdf must report infinite bounds");
+
+        let clamped = Expr::OffsetField {
+            e: Box::new(base),
+            d: ScalarField::Clamp {
+                f: Box::new(ScalarField::FromSdf {
+                    e: Box::new(driver),
+                    scale: 1.0,
+                    offset: 0.0,
+                }),
+                min: 0.0,
+                max: 0.3,
+            },
+        };
+        let cb = clamped.bounds();
+        assert!(cb.max[0] < 1.0e9, "clamped FromSdf must report finite bounds");
+        // base sphere (r=1) grown by at most 0.3 → reaches ~1.3; box must contain it.
+        assert!(cb.max[0] >= 1.3 - 1e-9, "clamped bound must reach the grown surface");
+    }
+
+    /// A field-modulated shell rasterizes and contours to a WATERTIGHT mesh.
+    #[test]
+    fn shell_field_rasterizes_watertight() {
+        use super::super::rasterize;
+        use crate::contour::surface_nets_mesh;
+        use std::collections::HashMap;
+
+        let shell = Expr::ShellField {
+            e: Box::new(Expr::Sphere { r: 1.2 }),
+            t: ScalarField::AxialRamp {
+                axis: 2,
+                a: -1.2,
+                b: 1.2,
+                lo: 0.12,
+                hi: 0.3,
+            },
+        };
+        let grid = rasterize(&shell, shell.bounds(), 36, 3).unwrap();
+        let mesh = surface_nets_mesh(&grid);
+        assert!(!mesh.positions.is_empty(), "modulated shell must contour to vertices");
+        assert!(!mesh.indices.is_empty(), "modulated shell must contour to triangles");
+
+        let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
+        for tri in mesh.indices.chunks_exact(3) {
+            for &(a, b) in &[(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
+                let key = if a < b { (a, b) } else { (b, a) };
+                *edges.entry(key).or_insert(0) += 1;
+            }
+        }
+        assert!(
+            edges.values().all(|&c| c == 2),
+            "field-modulated shell contour must be watertight"
+        );
     }
 }

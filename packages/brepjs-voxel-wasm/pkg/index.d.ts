@@ -16,6 +16,45 @@ export class RepairResult {
 }
 
 /**
+ * An opaque position-varying scalar field (brepjs-implicit Phase 2b). Wraps an
+ * immutable [`sdf::ScalarField`] built by the static constructors below and fed to
+ * the `Sdf` modulated operators (`offset_field`, `shell_field`, …) to vary an
+ * operator parameter per voxel. Like [`Sdf`], it is a value: each constructor
+ * returns a fresh field. wasm-bindgen auto-generates `.free()`.
+ */
+export class ScalarField {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Linear `lo → hi` as `coord[axis]` goes `a → b`, clamped outside `[a, b]`.
+     * Errors if `axis` is not 0, 1, or 2.
+     */
+    static axial_ramp(axis: number, a: number, b: number, lo: number, hi: number): ScalarField;
+    /**
+     * Clamp another field's value to `[min, max]` — bounds an otherwise unbounded
+     * [`ScalarField::from_sdf`] so it can safely drive offset/shell. Errors if
+     * `min > max` or either bound is NaN (the `!(min <= max)` form rejects both).
+     */
+    static clamp(field: ScalarField, min: number, max: number): ScalarField;
+    /**
+     * A spatially constant value — reproduces a constant operator parameter exactly.
+     */
+    static constant(c: number): ScalarField;
+    /**
+     * An `Sdf`'s signed distance affinely remapped: `sdf.eval(p) * scale + offset`.
+     * UNBOUNDED — drive a bounds-affecting op with this only via `rasterize_in` or
+     * wrapped in [`ScalarField::clamp`].
+     */
+    static from_sdf(sdf: Sdf, scale: number, offset: number): ScalarField;
+    /**
+     * Value by radial distance from the line through `(cx, cy, cz)` along `axis`:
+     * `lo → hi` as that distance goes `r0 → r1`, clamped. Errors on a bad `axis`.
+     */
+    static radial_ramp(cx: number, cy: number, cz: number, axis: number, r0: number, r1: number, lo: number, hi: number): ScalarField;
+}
+
+/**
  * An opaque analytic SDF expression (the field-first authoring path, ADR-0013).
  * Wraps an immutable [`sdf::Expr`] tree built by the static primitive
  * constructors and grown by the combinator methods. Every method CLONES into a
@@ -33,6 +72,13 @@ export class Sdf {
     difference(other: Sdf): Sdf;
     intersection(other: Sdf): Sdf;
     offset(d: number): Sdf;
+    /**
+     * Offset by a per-position distance field. NOTE: a modulated offset/blend yields
+     * a Lipschitz field (`|∇| < 1`), not a true SDF — a downstream true-distance op
+     * (`VoxelField::offset`/`shell`) must reinit first; `rasterize` returns it clean
+     * but a chained op after a SECOND modulation should reinit.
+     */
+    offset_field(f: ScalarField): Sdf;
     onion(t: number): Sdf;
     static plane(nx: number, ny: number, nz: number, h: number): Sdf;
     /**
@@ -50,12 +96,15 @@ export class Sdf {
     rasterize_in(min_x: number, min_y: number, min_z: number, max_x: number, max_y: number, max_z: number, resolution: number, padding: number): VoxelField;
     rotate(ax: number, ay: number, az: number, angle: number): Sdf;
     round(r: number): Sdf;
+    round_field(f: ScalarField): Sdf;
     static rounded_box(hx: number, hy: number, hz: number, r: number): Sdf;
     scale(s: number): Sdf;
     shell(t: number): Sdf;
+    shell_field(f: ScalarField): Sdf;
     smooth_difference(other: Sdf, k: number): Sdf;
     smooth_intersection(other: Sdf, k: number): Sdf;
     smooth_union(other: Sdf, k: number): Sdf;
+    smooth_union_field(other: Sdf, k: ScalarField): Sdf;
     static sphere(r: number): Sdf;
     /**
      * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
@@ -253,6 +302,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_repairresult_free: (a: number, b: number) => void;
+    readonly __wbg_scalarfield_free: (a: number, b: number) => void;
     readonly __wbg_sdf_free: (a: number, b: number) => void;
     readonly __wbg_voxelfield_free: (a: number, b: number) => void;
     readonly lattice_infill: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
@@ -262,6 +312,11 @@ export interface InitOutput {
     readonly repairresult_indices: (a: number) => [number, number];
     readonly repairresult_normals: (a: number) => [number, number];
     readonly repairresult_positions: (a: number) => [number, number];
+    readonly scalarfield_axial_ramp: (a: number, b: number, c: number, d: number, e: number) => [number, number, number];
+    readonly scalarfield_clamp: (a: number, b: number, c: number) => [number, number, number];
+    readonly scalarfield_constant: (a: number) => number;
+    readonly scalarfield_from_sdf: (a: number, b: number, c: number) => number;
+    readonly scalarfield_radial_ramp: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number];
     readonly sdf_box_: (a: number, b: number, c: number) => number;
     readonly sdf_capsule: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly sdf_cone: (a: number, b: number) => number;
@@ -269,18 +324,22 @@ export interface InitOutput {
     readonly sdf_difference: (a: number, b: number) => number;
     readonly sdf_intersection: (a: number, b: number) => number;
     readonly sdf_offset: (a: number, b: number) => number;
+    readonly sdf_offset_field: (a: number, b: number) => number;
     readonly sdf_onion: (a: number, b: number) => number;
     readonly sdf_plane: (a: number, b: number, c: number, d: number) => number;
     readonly sdf_rasterize: (a: number, b: number, c: number) => [number, number, number];
     readonly sdf_rasterize_in: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number, number];
     readonly sdf_rotate: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly sdf_round: (a: number, b: number) => number;
+    readonly sdf_round_field: (a: number, b: number) => number;
     readonly sdf_rounded_box: (a: number, b: number, c: number, d: number) => number;
     readonly sdf_scale: (a: number, b: number) => number;
     readonly sdf_shell: (a: number, b: number) => number;
+    readonly sdf_shell_field: (a: number, b: number) => number;
     readonly sdf_smooth_difference: (a: number, b: number, c: number) => number;
     readonly sdf_smooth_intersection: (a: number, b: number, c: number) => number;
     readonly sdf_smooth_union: (a: number, b: number, c: number) => number;
+    readonly sdf_smooth_union_field: (a: number, b: number, c: number) => number;
     readonly sdf_sphere: (a: number) => number;
     readonly sdf_sweep: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly sdf_torus: (a: number, b: number) => number;

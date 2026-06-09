@@ -4,11 +4,13 @@
 //! it feeds the same contour / offset / shell seam as `voxelize_mesh_banded`.
 
 pub mod expr;
+pub mod field;
 pub mod operators;
 pub mod primitives;
 pub mod sweep;
 
 pub use expr::{Aabb, Expr};
+pub use field::ScalarField;
 pub use sweep::SweptCurve;
 
 use crate::grid::{Grid, GridError};
@@ -176,9 +178,19 @@ mod tests {
     /// helical spine that follows the cone wall (radius tapers with height), proving
     /// the Phase-2a sweep operator in the demonstrator.
     fn chamber_expr() -> Expr {
-        let body = Expr::Shell {
+        use super::field::ScalarField;
+        // Field-modulated wall: thicker toward the hot throat (the cone apex at
+        // z = +h/2 = +2). An AxialRamp grades the shell half-width from 0.2 at the
+        // base to 0.35 at the throat — the Phase-2b modulation in the demonstrator.
+        let body = Expr::ShellField {
             e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
-            t: 0.25,
+            t: ScalarField::AxialRamp {
+                axis: 2,
+                a: -2.0,
+                b: 2.0,
+                lo: 0.2,
+                hi: 0.35,
+            },
         };
         let mut acc = body;
         for i in 0..4 {
@@ -191,7 +203,7 @@ mod tests {
     /// One cooling channel: a small circle swept along a helical spine that rides
     /// the OUTER cone wall, gaining a quarter turn over its length. The spine radius
     /// sits the tube just outside the outer surface so it bulges externally and
-    /// fuses cleanly — keeping it clear of the thin (0.25) inner cavity wall, whose
+    /// fuses cleanly — keeping it clear of the thin graded inner cavity wall, whose
     /// near-tangential pinch is what produces non-manifold surface-nets seams.
     const CHANNEL_TUBE_R: f64 = 0.3;
 

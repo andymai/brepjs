@@ -283,8 +283,13 @@ export {
   torus as sdfTorus,
   plane as sdfPlane,
   sweep as sdfSweep,
+  fieldConst as sdfFieldConst,
+  fieldAxialRamp as sdfFieldAxialRamp,
+  fieldRadialRamp as sdfFieldRadialRamp,
+  fieldFromSdf as sdfFieldFromSdf,
+  fieldClamp as sdfFieldClamp,
 } from './implicit/index.js';
-export type { SdfHandle, SdfBounds, SdfSweepOptions } from './implicit/index.js';
+export type { SdfHandle, SdfBounds, SdfSweepOptions, ScalarFieldHandle } from './implicit/index.js';
 
 // ── Layer 3: lattice (ADR-0013) ──
 

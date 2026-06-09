@@ -53,6 +53,110 @@ export class RepairResult {
 if (Symbol.dispose) RepairResult.prototype[Symbol.dispose] = RepairResult.prototype.free;
 
 /**
+ * An opaque position-varying scalar field (brepjs-implicit Phase 2b). Wraps an
+ * immutable [`sdf::ScalarField`] built by the static constructors below and fed to
+ * the `Sdf` modulated operators (`offset_field`, `shell_field`, …) to vary an
+ * operator parameter per voxel. Like [`Sdf`], it is a value: each constructor
+ * returns a fresh field. wasm-bindgen auto-generates `.free()`.
+ */
+export class ScalarField {
+    static __wrap(ptr) {
+        const obj = Object.create(ScalarField.prototype);
+        obj.__wbg_ptr = ptr;
+        ScalarFieldFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        ScalarFieldFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_scalarfield_free(ptr, 0);
+    }
+    /**
+     * Linear `lo → hi` as `coord[axis]` goes `a → b`, clamped outside `[a, b]`.
+     * Errors if `axis` is not 0, 1, or 2.
+     * @param {number} axis
+     * @param {number} a
+     * @param {number} b
+     * @param {number} lo
+     * @param {number} hi
+     * @returns {ScalarField}
+     */
+    static axial_ramp(axis, a, b, lo, hi) {
+        const ret = wasm.scalarfield_axial_ramp(axis, a, b, lo, hi);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ScalarField.__wrap(ret[0]);
+    }
+    /**
+     * Clamp another field's value to `[min, max]` — bounds an otherwise unbounded
+     * [`ScalarField::from_sdf`] so it can safely drive offset/shell. Errors if
+     * `min > max` or either bound is NaN (the `!(min <= max)` form rejects both).
+     * @param {ScalarField} field
+     * @param {number} min
+     * @param {number} max
+     * @returns {ScalarField}
+     */
+    static clamp(field, min, max) {
+        _assertClass(field, ScalarField);
+        const ret = wasm.scalarfield_clamp(field.__wbg_ptr, min, max);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ScalarField.__wrap(ret[0]);
+    }
+    /**
+     * A spatially constant value — reproduces a constant operator parameter exactly.
+     * @param {number} c
+     * @returns {ScalarField}
+     */
+    static constant(c) {
+        const ret = wasm.scalarfield_constant(c);
+        return ScalarField.__wrap(ret);
+    }
+    /**
+     * An `Sdf`'s signed distance affinely remapped: `sdf.eval(p) * scale + offset`.
+     * UNBOUNDED — drive a bounds-affecting op with this only via `rasterize_in` or
+     * wrapped in [`ScalarField::clamp`].
+     * @param {Sdf} sdf
+     * @param {number} scale
+     * @param {number} offset
+     * @returns {ScalarField}
+     */
+    static from_sdf(sdf, scale, offset) {
+        _assertClass(sdf, Sdf);
+        const ret = wasm.scalarfield_from_sdf(sdf.__wbg_ptr, scale, offset);
+        return ScalarField.__wrap(ret);
+    }
+    /**
+     * Value by radial distance from the line through `(cx, cy, cz)` along `axis`:
+     * `lo → hi` as that distance goes `r0 → r1`, clamped. Errors on a bad `axis`.
+     * @param {number} cx
+     * @param {number} cy
+     * @param {number} cz
+     * @param {number} axis
+     * @param {number} r0
+     * @param {number} r1
+     * @param {number} lo
+     * @param {number} hi
+     * @returns {ScalarField}
+     */
+    static radial_ramp(cx, cy, cz, axis, r0, r1, lo, hi) {
+        const ret = wasm.scalarfield_radial_ramp(cx, cy, cz, axis, r0, r1, lo, hi);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ScalarField.__wrap(ret[0]);
+    }
+}
+if (Symbol.dispose) ScalarField.prototype[Symbol.dispose] = ScalarField.prototype.free;
+
+/**
  * An opaque analytic SDF expression (the field-first authoring path, ADR-0013).
  * Wraps an immutable [`sdf::Expr`] tree built by the static primitive
  * constructors and grown by the combinator methods. Every method CLONES into a
@@ -145,6 +249,19 @@ export class Sdf {
         return Sdf.__wrap(ret);
     }
     /**
+     * Offset by a per-position distance field. NOTE: a modulated offset/blend yields
+     * a Lipschitz field (`|∇| < 1`), not a true SDF — a downstream true-distance op
+     * (`VoxelField::offset`/`shell`) must reinit first; `rasterize` returns it clean
+     * but a chained op after a SECOND modulation should reinit.
+     * @param {ScalarField} f
+     * @returns {Sdf}
+     */
+    offset_field(f) {
+        _assertClass(f, ScalarField);
+        const ret = wasm.sdf_offset_field(this.__wbg_ptr, f.__wbg_ptr);
+        return Sdf.__wrap(ret);
+    }
+    /**
      * @param {number} t
      * @returns {Sdf}
      */
@@ -220,6 +337,15 @@ export class Sdf {
         return Sdf.__wrap(ret);
     }
     /**
+     * @param {ScalarField} f
+     * @returns {Sdf}
+     */
+    round_field(f) {
+        _assertClass(f, ScalarField);
+        const ret = wasm.sdf_round_field(this.__wbg_ptr, f.__wbg_ptr);
+        return Sdf.__wrap(ret);
+    }
+    /**
      * @param {number} hx
      * @param {number} hy
      * @param {number} hz
@@ -244,6 +370,15 @@ export class Sdf {
      */
     shell(t) {
         const ret = wasm.sdf_shell(this.__wbg_ptr, t);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {ScalarField} f
+     * @returns {Sdf}
+     */
+    shell_field(f) {
+        _assertClass(f, ScalarField);
+        const ret = wasm.sdf_shell_field(this.__wbg_ptr, f.__wbg_ptr);
         return Sdf.__wrap(ret);
     }
     /**
@@ -274,6 +409,17 @@ export class Sdf {
     smooth_union(other, k) {
         _assertClass(other, Sdf);
         const ret = wasm.sdf_smooth_union(this.__wbg_ptr, other.__wbg_ptr, k);
+        return Sdf.__wrap(ret);
+    }
+    /**
+     * @param {Sdf} other
+     * @param {ScalarField} k
+     * @returns {Sdf}
+     */
+    smooth_union_field(other, k) {
+        _assertClass(other, Sdf);
+        _assertClass(k, ScalarField);
+        const ret = wasm.sdf_smooth_union_field(this.__wbg_ptr, other.__wbg_ptr, k.__wbg_ptr);
         return Sdf.__wrap(ret);
     }
     /**
@@ -768,6 +914,9 @@ function __wbg_get_imports() {
 const RepairResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_repairresult_free(ptr, 1));
+const ScalarFieldFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_scalarfield_free(ptr, 1));
 const SdfFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_sdf_free(ptr, 1));

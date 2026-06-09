@@ -785,6 +785,41 @@ impl Sdf {
         })
     }
 
+    // ── Position-modulated field operators (brepjs-implicit Phase 2b) ──
+
+    /// Offset by a per-position distance field. NOTE: a modulated offset/blend yields
+    /// a Lipschitz field (`|∇| < 1`), not a true SDF — a downstream true-distance op
+    /// (`VoxelField::offset`/`shell`) must reinit first; `rasterize` returns it clean
+    /// but a chained op after a SECOND modulation should reinit.
+    pub fn offset_field(&self, f: &ScalarField) -> Sdf {
+        Sdf::of(sdf::Expr::OffsetField {
+            e: Box::new(self.expr.clone()),
+            d: f.field.clone(),
+        })
+    }
+
+    pub fn round_field(&self, f: &ScalarField) -> Sdf {
+        Sdf::of(sdf::Expr::RoundField {
+            e: Box::new(self.expr.clone()),
+            r: f.field.clone(),
+        })
+    }
+
+    pub fn shell_field(&self, f: &ScalarField) -> Sdf {
+        Sdf::of(sdf::Expr::ShellField {
+            e: Box::new(self.expr.clone()),
+            t: f.field.clone(),
+        })
+    }
+
+    pub fn smooth_union_field(&self, other: &Sdf, k: &ScalarField) -> Sdf {
+        Sdf::of(sdf::Expr::SmoothUnionField {
+            a: Box::new(self.expr.clone()),
+            b: Box::new(other.expr.clone()),
+            k: k.field.clone(),
+        })
+    }
+
     // ── Unary field operators ──
 
     pub fn offset(&self, d: f64) -> Sdf {
@@ -875,6 +910,99 @@ impl Sdf {
         let grid = sdf::rasterize(&self.expr, bounds, resolution as usize, padding as usize)
             .map_err(grid_err)?;
         Ok(VoxelField::from_grid(grid, false))
+    }
+}
+
+/// An opaque position-varying scalar field (brepjs-implicit Phase 2b). Wraps an
+/// immutable [`sdf::ScalarField`] built by the static constructors below and fed to
+/// the `Sdf` modulated operators (`offset_field`, `shell_field`, …) to vary an
+/// operator parameter per voxel. Like [`Sdf`], it is a value: each constructor
+/// returns a fresh field. wasm-bindgen auto-generates `.free()`.
+#[wasm_bindgen]
+pub struct ScalarField {
+    field: sdf::ScalarField,
+}
+
+impl ScalarField {
+    fn of(field: sdf::ScalarField) -> ScalarField {
+        ScalarField { field }
+    }
+}
+
+#[wasm_bindgen]
+impl ScalarField {
+    /// A spatially constant value — reproduces a constant operator parameter exactly.
+    pub fn constant(c: f64) -> ScalarField {
+        ScalarField::of(sdf::ScalarField::Const(c))
+    }
+
+    /// Linear `lo → hi` as `coord[axis]` goes `a → b`, clamped outside `[a, b]`.
+    /// Errors if `axis` is not 0, 1, or 2.
+    pub fn axial_ramp(axis: u32, a: f64, b: f64, lo: f64, hi: f64) -> Result<ScalarField, JsError> {
+        let axis = check_axis(axis)?;
+        Ok(ScalarField::of(sdf::ScalarField::AxialRamp { axis, a, b, lo, hi }))
+    }
+
+    /// Value by radial distance from the line through `(cx, cy, cz)` along `axis`:
+    /// `lo → hi` as that distance goes `r0 → r1`, clamped. Errors on a bad `axis`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn radial_ramp(
+        cx: f64,
+        cy: f64,
+        cz: f64,
+        axis: u32,
+        r0: f64,
+        r1: f64,
+        lo: f64,
+        hi: f64,
+    ) -> Result<ScalarField, JsError> {
+        let axis = check_axis(axis)?;
+        Ok(ScalarField::of(sdf::ScalarField::RadialRamp {
+            center: [cx, cy, cz],
+            axis,
+            r0,
+            r1,
+            lo,
+            hi,
+        }))
+    }
+
+    /// An `Sdf`'s signed distance affinely remapped: `sdf.eval(p) * scale + offset`.
+    /// UNBOUNDED — drive a bounds-affecting op with this only via `rasterize_in` or
+    /// wrapped in [`ScalarField::clamp`].
+    pub fn from_sdf(sdf: &Sdf, scale: f64, offset: f64) -> ScalarField {
+        ScalarField::of(sdf::ScalarField::FromSdf {
+            e: Box::new(sdf.expr.clone()),
+            scale,
+            offset,
+        })
+    }
+
+    /// Clamp another field's value to `[min, max]` — bounds an otherwise unbounded
+    /// [`ScalarField::from_sdf`] so it can safely drive offset/shell. Errors if
+    /// `min > max` or either bound is NaN (the `!(min <= max)` form rejects both).
+    pub fn clamp(field: &ScalarField, min: f64, max: f64) -> Result<ScalarField, JsError> {
+        // Reject `min > max` AND either bound being NaN (partial_cmp returns None on NaN).
+        if !matches!(
+            min.partial_cmp(&max),
+            Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+        ) {
+            return Err(JsError::new("clamp min must be <= max"));
+        }
+        Ok(ScalarField::of(sdf::ScalarField::Clamp {
+            f: Box::new(field.field.clone()),
+            min,
+            max,
+        }))
+    }
+}
+
+/// Validate a wasm-supplied axis index (0=x, 1=y, 2=z).
+fn check_axis(axis: u32) -> Result<usize, JsError> {
+    if axis < 3 {
+        Ok(axis as usize)
+    } else {
+        Err(JsError::new("axis must be 0 (x), 1 (y), or 2 (z)"))
     }
 }
 

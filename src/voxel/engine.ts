@@ -81,8 +81,50 @@ export interface VoxelEngine {
    * satisfied by the generated `Sdf` wasm-bindgen class.
    */
   Sdf: WasmSdfConstructor;
+  /**
+   * Position-varying scalar fields (brepjs-implicit Phase 2b). Static constructors
+   * compose an opaque field that the `Sdf` modulated operators sample per voxel.
+   * Structurally satisfied by the generated `ScalarField` wasm-bindgen class.
+   */
+  ScalarField: WasmScalarFieldConstructor;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
+}
+
+/**
+ * Static surface of the wasm `ScalarField` class: the constructors that seed a
+ * position-varying field. Each returns a fresh {@link WasmScalarField}; the ramp
+ * constructors throw (as a JS exception) on an out-of-range axis. Structurally
+ * satisfied by the generated `ScalarField` class.
+ */
+export interface WasmScalarFieldConstructor {
+  constant(c: number): WasmScalarField;
+  axial_ramp(axis: number, a: number, b: number, lo: number, hi: number): WasmScalarField;
+  radial_ramp(
+    cx: number,
+    cy: number,
+    cz: number,
+    axis: number,
+    r0: number,
+    r1: number,
+    lo: number,
+    hi: number
+  ): WasmScalarField;
+  from_sdf(sdf: WasmSdf, scale: number, offset: number): WasmScalarField;
+  clamp(field: WasmScalarField, min: number, max: number): WasmScalarField;
+}
+
+/**
+ * An opaque position-varying scalar field. A value, not a builder (each constructor
+ * returns a fresh field). Fed to the `Sdf` modulated operators
+ * ({@link WasmSdf.offset_field} et al.) to vary an operator parameter per voxel.
+ * `free()` releases the backing WASM allocation. Structurally satisfied by the
+ * generated `ScalarField` wasm-bindgen class.
+ */
+export interface WasmScalarField {
+  /** Release the backing WASM allocation (wasm-bindgen lifecycle). */
+  free(): void;
+  [Symbol.dispose](): void;
 }
 
 /**
@@ -133,6 +175,10 @@ export interface WasmSdf {
   round(r: number): WasmSdf;
   shell(t: number): WasmSdf;
   onion(t: number): WasmSdf;
+  offset_field(f: WasmScalarField): WasmSdf;
+  round_field(f: WasmScalarField): WasmSdf;
+  shell_field(f: WasmScalarField): WasmSdf;
+  smooth_union_field(other: WasmSdf, k: WasmScalarField): WasmSdf;
   translate(x: number, y: number, z: number): WasmSdf;
   rotate(ax: number, ay: number, az: number, angle: number): WasmSdf;
   scale(s: number): WasmSdf;

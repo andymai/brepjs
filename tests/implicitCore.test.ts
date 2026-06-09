@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import initWasm, * as voxelWasm from 'brepjs-voxel-wasm';
 import { initVoxel } from '@/voxel/index.js';
-import { sdfSphere, sdfBox, sdfCone, sdfSweep } from '@/index.js';
+import {
+  sdfSphere,
+  sdfBox,
+  sdfCone,
+  sdfSweep,
+  sdfFieldAxialRamp,
+  sdfFieldConst,
+  sdfFieldClamp,
+} from '@/index.js';
 import type { SdfHandle } from '@/index.js';
 import { unwrap, isErr } from '@/core/result.js';
 import { initOC } from './setup.js';
@@ -99,6 +107,19 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
     ).toBe(true);
   });
 
+  it('rejects an inverted clamp range as a Result error rather than trapping in eval', () => {
+    using inner = unwrap(sdfFieldConst(0.5));
+    // min > max: a construction-time error, not a wasm trap on the first voxel.
+    expect(isErr(sdfFieldClamp(inner, 0.3, 0.0))).toBe(true);
+    // NaN bound is rejected by the same !(min <= max) guard.
+    expect(isErr(sdfFieldClamp(inner, Number.NaN, 1.0))).toBe(true);
+    expect(isErr(sdfFieldClamp(inner, 0.0, Number.NaN))).toBe(true);
+    // A well-ordered range still builds.
+    expect(isErr(sdfFieldClamp(inner, 0.0, 1.0))).toBe(false);
+    // min == max is a valid (degenerate) clamp.
+    expect(isErr(sdfFieldClamp(inner, 0.5, 0.5))).toBe(false);
+  });
+
   it('builds and rasterizes the skeleton chamber v0 (hollow cone + cooling channels)', () => {
     using chamber = buildChamber();
     using field = unwrap(chamber.rasterize({ resolution: 40, padding: 3 }));
@@ -129,7 +150,10 @@ const CHANNEL_TUBE_R = 0.3;
  */
 function buildChamber(): SdfHandle {
   using cone = unwrap(sdfCone(2.0, 4.0));
-  using body = cone.shell(0.25);
+  // Field-modulated wall: thicker toward the hot throat (cone apex at z = +2). The
+  // AxialRamp grades the shell half-width 0.2 → 0.35 from base to throat.
+  using wallThickness = unwrap(sdfFieldAxialRamp(2, -2.0, 2.0, 0.2, 0.35));
+  using body = cone.shellField(wallThickness);
   let acc: SdfHandle = body.translate(0, 0, 0);
   for (let i = 0; i < 4; i++) {
     const phase = (i * Math.PI) / 2;
