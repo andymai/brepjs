@@ -738,6 +738,41 @@ impl Sdf {
         }))
     }
 
+    // ── Lattices (brepjs-implicit Phase 2c) ──
+
+    /// A graded/conformal TPMS lattice node: `|f(p)| − ½·thickness(p)` for the chosen
+    /// family (`kind_tag`: 0=Gyroid, 1=SchwarzP, 2=Diamond), with `period` and
+    /// `thickness` GRADED via [`ScalarField`]. The lattice is INFINITE/periodic, so
+    /// it must be intersected with a bounded region (`a.intersection(box)`) before
+    /// `rasterize`. Rejects an out-of-range `kind_tag`.
+    pub fn lattice(
+        kind_tag: u32,
+        period: &ScalarField,
+        thickness: &ScalarField,
+    ) -> Result<Sdf, JsError> {
+        let kind = LatticeType::from_u32(kind_tag)
+            .ok_or_else(|| JsError::new(&format!("unknown lattice type: {kind_tag}")))?;
+        Ok(Sdf::of(sdf::Expr::Lattice {
+            kind,
+            period: period.field.clone(),
+            thickness: thickness.field.clone(),
+        }))
+    }
+
+    /// A cubic beam/strut lattice node: axis-aligned cylindrical struts on a
+    /// `period`-spaced cubic grid, `radius` GRADED via [`ScalarField`]. Periodic, so
+    /// it must be intersected with a bounded region before `rasterize`. Rejects a
+    /// non-positive or non-finite `period`.
+    pub fn strut_lattice(period: f64, radius: &ScalarField) -> Result<Sdf, JsError> {
+        if !(period.is_finite() && period > 0.0) {
+            return Err(JsError::new("strut lattice period must be a positive finite number"));
+        }
+        Ok(Sdf::of(sdf::Expr::StrutLattice {
+            period,
+            radius: radius.field.clone(),
+        }))
+    }
+
     // ── Binary operators ──
 
     pub fn union(&self, other: &Sdf) -> Sdf {

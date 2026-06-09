@@ -71,6 +71,14 @@ export class Sdf {
     static cylinder(r: number, h: number): Sdf;
     difference(other: Sdf): Sdf;
     intersection(other: Sdf): Sdf;
+    /**
+     * A graded/conformal TPMS lattice node: `|f(p)| − ½·thickness(p)` for the chosen
+     * family (`kind_tag`: 0=Gyroid, 1=SchwarzP, 2=Diamond), with `period` and
+     * `thickness` GRADED via [`ScalarField`]. The lattice is INFINITE/periodic, so
+     * it must be intersected with a bounded region (`a.intersection(box)`) before
+     * `rasterize`. Rejects an out-of-range `kind_tag`.
+     */
+    static lattice(kind_tag: number, period: ScalarField, thickness: ScalarField): Sdf;
     offset(d: number): Sdf;
     /**
      * Offset by a per-position distance field. NOTE: a modulated offset/blend yields
@@ -106,6 +114,13 @@ export class Sdf {
     smooth_union(other: Sdf, k: number): Sdf;
     smooth_union_field(other: Sdf, k: ScalarField): Sdf;
     static sphere(r: number): Sdf;
+    /**
+     * A cubic beam/strut lattice node: axis-aligned cylindrical struts on a
+     * `period`-spaced cubic grid, `radius` GRADED via [`ScalarField`]. Periodic, so
+     * it must be intersected with a bounded region before `rasterize`. Rejects a
+     * non-positive or non-finite `period`.
+     */
+    static strut_lattice(period: number, radius: ScalarField): Sdf;
     /**
      * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
      * using rotation-minimizing frames. `closed` skips the end caps. The profile's
@@ -323,6 +338,7 @@ export interface InitOutput {
     readonly sdf_cylinder: (a: number, b: number) => number;
     readonly sdf_difference: (a: number, b: number) => number;
     readonly sdf_intersection: (a: number, b: number) => number;
+    readonly sdf_lattice: (a: number, b: number, c: number) => [number, number, number];
     readonly sdf_offset: (a: number, b: number) => number;
     readonly sdf_offset_field: (a: number, b: number) => number;
     readonly sdf_onion: (a: number, b: number) => number;
@@ -341,6 +357,7 @@ export interface InitOutput {
     readonly sdf_smooth_union: (a: number, b: number, c: number) => number;
     readonly sdf_smooth_union_field: (a: number, b: number, c: number) => number;
     readonly sdf_sphere: (a: number) => number;
+    readonly sdf_strut_lattice: (a: number, b: number) => [number, number, number];
     readonly sdf_sweep: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly sdf_torus: (a: number, b: number) => number;
     readonly sdf_translate: (a: number, b: number, c: number, d: number) => number;

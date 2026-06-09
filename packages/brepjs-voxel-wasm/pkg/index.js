@@ -241,6 +241,26 @@ export class Sdf {
         return Sdf.__wrap(ret);
     }
     /**
+     * A graded/conformal TPMS lattice node: `|f(p)| − ½·thickness(p)` for the chosen
+     * family (`kind_tag`: 0=Gyroid, 1=SchwarzP, 2=Diamond), with `period` and
+     * `thickness` GRADED via [`ScalarField`]. The lattice is INFINITE/periodic, so
+     * it must be intersected with a bounded region (`a.intersection(box)`) before
+     * `rasterize`. Rejects an out-of-range `kind_tag`.
+     * @param {number} kind_tag
+     * @param {ScalarField} period
+     * @param {ScalarField} thickness
+     * @returns {Sdf}
+     */
+    static lattice(kind_tag, period, thickness) {
+        _assertClass(period, ScalarField);
+        _assertClass(thickness, ScalarField);
+        const ret = wasm.sdf_lattice(kind_tag, period.__wbg_ptr, thickness.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return Sdf.__wrap(ret[0]);
+    }
+    /**
      * @param {number} d
      * @returns {Sdf}
      */
@@ -429,6 +449,23 @@ export class Sdf {
     static sphere(r) {
         const ret = wasm.sdf_sphere(r);
         return Sdf.__wrap(ret);
+    }
+    /**
+     * A cubic beam/strut lattice node: axis-aligned cylindrical struts on a
+     * `period`-spaced cubic grid, `radius` GRADED via [`ScalarField`]. Periodic, so
+     * it must be intersected with a bounded region before `rasterize`. Rejects a
+     * non-positive or non-finite `period`.
+     * @param {number} period
+     * @param {ScalarField} radius
+     * @returns {Sdf}
+     */
+    static strut_lattice(period, radius) {
+        _assertClass(radius, ScalarField);
+        const ret = wasm.sdf_strut_lattice(period, radius.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return Sdf.__wrap(ret[0]);
     }
     /**
      * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)

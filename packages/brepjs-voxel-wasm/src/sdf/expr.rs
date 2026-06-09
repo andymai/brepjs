@@ -7,6 +7,7 @@ use super::field::ScalarField;
 use super::operators;
 use super::primitives;
 use super::sweep::SweptCurve;
+use crate::tpms::{tpms_value_f64, LatticeType};
 
 /// A conservative axis-aligned bounding box of an [`Expr`]'s zero set. "Conservative"
 /// means it never crops the surface: every point where `eval == 0` lies inside (or
@@ -284,6 +285,32 @@ pub enum Expr {
         curve: SweptCurve,
         profile: Box<Expr>,
     },
+
+    // ── Lattices (brepjs-implicit Phase 2c) ──
+    /// A graded/conformal TPMS lattice: `|f(p)| − ½·thickness(p)` where `f` is the
+    /// chosen family's nodal trig field (negative = strut material). `period` and
+    /// `thickness` are GRADED via [`ScalarField`]; a [`Const`](ScalarField::Const)
+    /// period/thickness reproduces a uniform lattice. The field is Lipschitz and
+    /// APPROXIMATE, not a true SDF (matching the mesh-first lattice path).
+    ///
+    /// The lattice is INFINITE/periodic, so [`bounds`](Expr::bounds) reports the
+    /// infinite box — a raw `Lattice` must be clipped to a bounded region via
+    /// `Intersection(Lattice, region)` (CONFORMAL use) before rasterize, which
+    /// gives the rasterizer a finite grid.
+    Lattice {
+        kind: LatticeType,
+        period: ScalarField,
+        thickness: ScalarField,
+    },
+    /// A cubic beam/strut lattice: axis-aligned cylindrical struts running along the
+    /// edges of a `period`-spaced cubic grid. `eval` is the distance from `p` to the
+    /// nearest of the three axis-aligned strut families, minus `radius(p)` (negative
+    /// = inside a strut). `radius` is GRADED via [`ScalarField`]. Periodic, so
+    /// [`bounds`](Expr::bounds) is infinite — clip via `Intersection` like [`Lattice`].
+    StrutLattice {
+        period: f64,
+        radius: ScalarField,
+    },
 }
 
 impl Expr {
@@ -347,6 +374,20 @@ impl Expr {
                     // point on-axis just past the cap as interior. Pseudo-SDF near the rim.
                     (dp.max(0.0).powi(2) + overrun * overrun).sqrt()
                 }
+            }
+
+            Expr::Lattice {
+                kind,
+                period,
+                thickness,
+            } => {
+                // A zero/negative period makes the 2π/period scale non-finite; clamp
+                // to a tiny positive so a graded period that dips to 0 stays defined.
+                let per = period.eval(p).max(1e-6);
+                tpms_value_f64(*kind, p, per).abs() - 0.5 * thickness.eval(p)
+            }
+            Expr::StrutLattice { period, radius } => {
+                strut_lattice_distance(p, *period) - radius.eval(p)
             }
         }
     }
@@ -441,8 +482,35 @@ impl Expr {
                 }
                 Aabb { min: lo, max: hi }
             }
+
+            // A TPMS / strut lattice is infinite (periodic); CONFORMAL use clips it
+            // via Intersection(Lattice, region), whose bound is the finite region's.
+            Expr::Lattice { .. } => Aabb::infinite(),
+            Expr::StrutLattice { .. } => Aabb::infinite(),
         }
     }
+}
+
+/// Distance from `p` to the nearest axis-aligned cylindrical strut of a cubic grid
+/// with `period` spacing. Struts run along the cell edges (the lines where two of
+/// the three coordinates are integer multiples of `period`). For each axis, the
+/// strut family parallel to that axis is the set of lines fixed in the other two
+/// coordinates; the in-cell distance to the nearest such line is the planar
+/// distance in those two coordinates to the nearest grid node. The strut distance
+/// is the min over the three families.
+fn strut_lattice_distance(p: [f64; 3], period: f64) -> f64 {
+    let per = period.max(1e-6);
+    // Signed offset of each coordinate to its nearest grid line, in [-per/2, per/2].
+    let nearest = |c: f64| {
+        let r = (c / per).round() * per;
+        c - r
+    };
+    let d = [nearest(p[0]), nearest(p[1]), nearest(p[2])];
+    // Strut along axis k: distance is the hypot of the offsets in the OTHER two axes.
+    let dx = (d[1] * d[1] + d[2] * d[2]).sqrt();
+    let dy = (d[0] * d[0] + d[2] * d[2]).sqrt();
+    let dz = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    dx.min(dy).min(dz)
 }
 
 #[cfg(test)]
@@ -1129,5 +1197,280 @@ mod tests {
             edges.values().all(|&c| c == 2),
             "field-modulated shell contour must be watertight"
         );
+    }
+
+    // ── Lattices (Phase 2c) ──
+
+    fn watertight(indices: &[u32]) -> bool {
+        use std::collections::HashMap;
+        let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
+        for tri in indices.chunks_exact(3) {
+            for &(a, b) in &[(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
+                let key = if a < b { (a, b) } else { (b, a) };
+                *edges.entry(key).or_insert(0) += 1;
+            }
+        }
+        edges.values().all(|&c| c == 2)
+    }
+
+    /// A const-thickness TPMS lattice clipped to a box rasterizes and contours to a
+    /// non-empty mesh, with both strut (interior) and void (exterior) present inside
+    /// the clip region, and is WATERTIGHT across a usable resolution band.
+    ///
+    /// Watertightness of a clipped TPMS lattice is RESOLUTION-SENSITIVE, not an
+    /// unconditional guarantee: a box clip stays watertight only when the clip planes
+    /// land cleanly between lattice walls. These params/clip are watertight across
+    /// res 44–64 but NOT at res 40 (where a clip plane grazes a strut and surface-nets
+    /// emits a non-manifold seam). The test sweeps the band so it proves a reliable
+    /// usable range, not a single lucky resolution. A high-genus jacket conformed to a
+    /// curved wall presents far more near-tangential grazes against ANY clip, which is
+    /// why `chamber_v1` cannot be gated on watertight (see `sdf::tests::chamber_v1_*`).
+    #[test]
+    fn tpms_lattice_clipped_contours_watertight_with_strut_and_void() {
+        use super::super::rasterize;
+        use crate::contour::surface_nets_mesh;
+
+        let lattice = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(1.2),
+            thickness: ScalarField::Const(0.6),
+        };
+        let region = Expr::Box {
+            half: [1.2, 1.2, 1.2],
+        };
+        let conformal = Expr::Intersection(Box::new(lattice), Box::new(region));
+
+        // The bare lattice is infinite; the clipped region drives the grid bounds.
+        let bounds = conformal.bounds();
+        assert!(bounds.max[0] < 1.0e9, "clipped lattice must be finite");
+
+        // Both strut and void inside the region (sample the raw lattice field).
+        let raw = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(1.2),
+            thickness: ScalarField::Const(0.6),
+        };
+        let mut has_neg = false;
+        let mut has_pos = false;
+        for k in 0..12 {
+            for j in 0..12 {
+                let p = [
+                    -1.1 + 0.2 * k as f64,
+                    -1.1 + 0.2 * j as f64,
+                    0.1 * k as f64,
+                ];
+                let v = raw.eval(p);
+                if v < 0.0 {
+                    has_neg = true;
+                } else if v > 0.0 {
+                    has_pos = true;
+                }
+            }
+        }
+        assert!(has_neg, "lattice must have strut (negative) material");
+        assert!(has_pos, "lattice must have void (positive) space");
+
+        for res in [44usize, 48, 52, 56, 64] {
+            let grid = rasterize(&conformal, bounds, res, 3).unwrap();
+            let mesh = surface_nets_mesh(&grid);
+            assert!(
+                !mesh.positions.is_empty(),
+                "clipped lattice must contour to vertices at res {res}"
+            );
+            assert!(
+                !mesh.indices.is_empty(),
+                "clipped lattice must contour to triangles at res {res}"
+            );
+            assert!(
+                watertight(&mesh.indices),
+                "clipped TPMS lattice must be watertight at res {res}"
+            );
+        }
+    }
+
+    /// GRADED THICKNESS: a lattice whose thickness ramps with z has a wall half-width
+    /// that tracks `½·t(z)`. At an on-surface point (`f ≈ 0`) the field reads
+    /// `≈ −½·t(z)`, so the field gets more negative where the ramp is thicker.
+    #[test]
+    fn tpms_lattice_graded_thickness_tracks_ramp() {
+        // Find a point where the gyroid nodal field is ~0 at two different z, then
+        // confirm the field value there equals −½·t(z) for the ramped thickness.
+        let period = 1.0;
+        let thickness = ScalarField::AxialRamp {
+            axis: 2,
+            a: 0.0,
+            b: 4.0,
+            lo: 0.2,
+            hi: 0.8,
+        };
+        let lattice = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(period),
+            thickness: thickness.clone(),
+        };
+        // For each z, find a point ON the minimal surface (raw nodal field = 0) by
+        // scanning x for a sign change at fixed (y, z) then bisecting. On that point
+        // the lattice field is `|0| − ½·t(z) = −½·t(z)`, so it must track the ramp.
+        // At y = 0 the gyroid reduces to sin(kx) + sin(kz)·cos(kx); at z = 0.5 and 3.5
+        // (period 1) the sin(kz) term vanishes, leaving sin(kx) — a clean crossing.
+        for &z in &[0.5_f64, 3.5] {
+            let y = 0.0;
+            let raw = |x: f64| tpms_value_f64(LatticeType::Gyroid, [x, y, z], period);
+            // Scan one period for a bracket containing a zero crossing.
+            let mut lo = 0.0_f64;
+            let mut hi = 0.0_f64;
+            let mut found = false;
+            let steps = 200;
+            let mut prev_x = 0.0;
+            for i in 1..=steps {
+                let x = (i as f64 / steps as f64) * period;
+                if raw(prev_x).signum() != raw(x).signum() {
+                    lo = prev_x;
+                    hi = x;
+                    found = true;
+                    break;
+                }
+                prev_x = x;
+            }
+            assert!(found, "gyroid must cross zero within one period at z={z}");
+            for _ in 0..60 {
+                let mid = 0.5 * (lo + hi);
+                if raw(lo).signum() == raw(mid).signum() {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+            let xs = 0.5 * (lo + hi);
+            let p = [xs, y, z];
+            let expected = -0.5 * thickness.eval(p);
+            assert!(
+                (lattice.eval(p) - expected).abs() < 1e-3,
+                "graded lattice on-surface = −½·t(z) at z={z}: got {} expected {expected}",
+                lattice.eval(p)
+            );
+        }
+        // The thicker end is more deeply negative on-surface than the thin end.
+        let thin_half = 0.5 * thickness.eval([0.0, 0.0, 0.5]);
+        let thick_half = 0.5 * thickness.eval([0.0, 0.0, 3.5]);
+        assert!(thick_half > thin_half, "ramp must widen the wall with z");
+    }
+
+    /// A graded (non-Const) period actually drives the field: the gyroid scale is
+    /// `2π/period(p)`, so at a point where a ramped period differs from a constant one
+    /// the lattice value differs. Guards that the period ScalarField is really sampled.
+    #[test]
+    fn lattice_graded_period_changes_the_field() {
+        let thickness = ScalarField::Const(0.3);
+        let graded = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::AxialRamp { axis: 2, a: 0.0, b: 4.0, lo: 1.0, hi: 3.0 },
+            thickness: thickness.clone(),
+        };
+        // At z=3 the ramped period is 2.5; compare against a fixed period-1 lattice at a
+        // point where the two scales disagree, so the eval must differ.
+        let fixed = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(1.0),
+            thickness,
+        };
+        let p = [0.4, 0.6, 3.0];
+        assert!(
+            (graded.eval(p) - fixed.eval(p)).abs() > 1e-6,
+            "graded period must change the field vs a constant period"
+        );
+    }
+
+    /// A bare `Lattice` reports the infinite box; `Intersection(Lattice, box)` reports
+    /// the box's own bounds — the conformal-clipping contract.
+    #[test]
+    fn lattice_bounds_infinite_but_intersection_is_finite() {
+        let lattice = Expr::Lattice {
+            kind: LatticeType::Diamond,
+            period: ScalarField::Const(1.0),
+            thickness: ScalarField::Const(0.3),
+        };
+        let lb = lattice.bounds();
+        assert!(lb.max[0] >= 1.0e9, "bare lattice must report the infinite box");
+
+        let region = Expr::Box {
+            half: [2.0, 1.0, 0.5],
+        };
+        let clipped = Expr::Intersection(Box::new(lattice), Box::new(region.clone()));
+        assert_eq!(
+            clipped.bounds(),
+            region.bounds(),
+            "Intersection(Lattice, box) bounds must equal the box bounds"
+        );
+    }
+
+    /// STRUT LATTICE: a point ON a strut axis reads interior (< 0), a point at the
+    /// cell center reads exterior (> 0), and radius grading widens the strut (a point
+    /// just off the axis flips from exterior to interior as the radius grows).
+    #[test]
+    fn strut_lattice_axis_interior_center_exterior_and_grades() {
+        let period = 2.0;
+        // A point on the z-axis strut through the origin (x=y=0): its distance to that
+        // strut family is 0 — so it is inside any radius > 0.
+        let on_axis = [0.0, 0.0, 0.7];
+        // The cell center is offset per/2 on each of the two off-axis coords from the
+        // nearest strut of each family, so its nearest-strut distance is per/√2 (≈0.707
+        // at period 1) — the farthest interior point, hence exterior for thin radii.
+        let center = [period * 0.5, period * 0.5, period * 0.5];
+
+        let thin = Expr::StrutLattice {
+            period,
+            radius: ScalarField::Const(0.2),
+        };
+        assert!(thin.eval(on_axis) < 0.0, "on-axis must be inside the strut");
+        assert!(thin.eval(center) > 0.0, "cell center must be exterior");
+
+        // A point off ALL three strut families, at strut-distance hypot(0.25,0.25) ≈
+        // 0.354: outside a 0.2 strut but inside a 0.5 one — radius widens the strut.
+        let off = [0.25, 0.25, 0.5];
+        assert!(thin.eval(off) > 0.0, "off-axis is outside a 0.2 strut");
+        let thick = Expr::StrutLattice {
+            period,
+            radius: ScalarField::Const(0.5),
+        };
+        assert!(thick.eval(off) < 0.0, "radius grading must widen the strut");
+
+        // A z-graded radius flips the same fixed-distance point. Keep the xy offsets
+        // 0.25 each (z-strut distance 0.354, z-independent) and the z-offset >= 0.25
+        // so the min strut distance stays 0.354 at both samples; only the radius moves.
+        let graded = Expr::StrutLattice {
+            period,
+            radius: ScalarField::AxialRamp {
+                axis: 2,
+                a: 0.0,
+                b: 1.0,
+                lo: 0.2,
+                hi: 0.5,
+            },
+        };
+        assert!(graded.eval([0.25, 0.25, 0.3]) > 0.0, "thin end excludes the point");
+        assert!(graded.eval([0.25, 0.25, 0.7]) < 0.0, "thick end includes the point");
+    }
+
+    /// A conformal (clipped) strut lattice contours to a non-empty, WATERTIGHT mesh.
+    #[test]
+    fn strut_lattice_clipped_contours_watertight() {
+        use super::super::rasterize;
+        use crate::contour::surface_nets_mesh;
+
+        let lattice = Expr::StrutLattice {
+            period: 1.0,
+            radius: ScalarField::Const(0.18),
+        };
+        let region = Expr::Box {
+            half: [1.5, 1.5, 1.5],
+        };
+        let conformal = Expr::Intersection(Box::new(lattice), Box::new(region));
+        let bounds = conformal.bounds();
+        let grid = rasterize(&conformal, bounds, 56, 3).unwrap();
+        let mesh = surface_nets_mesh(&grid);
+        assert!(!mesh.positions.is_empty(), "clipped strut lattice must contour");
+        assert!(!mesh.indices.is_empty(), "clipped strut lattice must have triangles");
+        assert!(watertight(&mesh.indices), "clipped strut lattice must be watertight");
     }
 }

@@ -7,6 +7,7 @@ import {
   sdfBox,
   sdfCone,
   sdfSweep,
+  sdfLattice,
   sdfFieldAxialRamp,
   sdfFieldConst,
   sdfFieldClamp,
@@ -120,33 +121,44 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
     expect(isErr(sdfFieldClamp(inner, 0.5, 0.5))).toBe(false);
   });
 
-  it('builds and rasterizes the skeleton chamber v0 (hollow cone + cooling channels)', () => {
+  it('builds and rasterizes chamber v1 (graded wall + swept channels + conformal gyroid jacket)', () => {
     using chamber = buildChamber();
-    using field = unwrap(chamber.rasterize({ resolution: 40, padding: 3 }));
+    using field = unwrap(chamber.rasterize({ resolution: 48, padding: 3 }));
     const mesh = field.contour();
 
     expect(mesh.vertices.length).toBeGreaterThan(0);
     expect(mesh.triangles.length).toBeGreaterThan(0);
     expect(mesh.triangles.length % 3).toBe(0);
 
-    // A sane chamber bbox: the cone body spans ~[-2,2] radially and ~[-2,2] axially.
+    // A sane chamber bbox: the cone body spans ~[-2,2] radially and ~[-2,2] axially;
+    // the gyroid jacket band pushes the radial extent a little past the bare cone.
     const { min, max } = bboxOf(mesh.vertices);
     for (let axis = 0; axis < 3; axis++) {
       const extent = (max[axis] as number) - (min[axis] as number);
       expect(extent).toBeGreaterThan(1);
-      expect(extent).toBeLessThan(10);
+      expect(extent).toBeLessThan(12);
     }
+    // The conformal jacket sits outside the bare cone (base r = 2): the radial reach
+    // must exceed 2, proving the lattice jacket is present in the contour.
+    const radial = Math.max(
+      max[0] as number,
+      max[1] as number,
+      -(min[0] as number),
+      -(min[1] as number)
+    );
+    expect(radial).toBeGreaterThan(2.1);
   });
 });
 
 const CHANNEL_TUBE_R = 0.3;
 
 /**
- * The chamber skeleton (mirrors the rust v0.5 `chamber_expr` fixture): a capped
- * cone shelled into a hollow body, unioned with four SWEPT cooling channels —
- * each a circle profile swept along a gently helical spine riding the cone wall.
- * Intermediate handles are disposed eagerly; the returned handle owns the final
- * tree and is disposed by the caller.
+ * Chamber v1 (mirrors the rust `chamber_v1_expr` fixture): the v0.5 chamber — a
+ * capped cone shelled into a graded-wall hollow body, unioned with four SWEPT
+ * cooling channels — smooth-unioned with a CONFORMAL GRADED GYROID JACKET (a
+ * graded-thickness gyroid lattice clipped to a conical band hugging the outer
+ * wall). Intermediate handles are disposed eagerly; the returned handle owns the
+ * final tree and is disposed by the caller.
  */
 function buildChamber(): SdfHandle {
   using cone = unwrap(sdfCone(2.0, 4.0));
@@ -163,7 +175,20 @@ function buildChamber(): SdfHandle {
     acc[Symbol.dispose]();
     acc = next;
   }
-  return acc;
+  // Conformal graded gyroid jacket: a gyroid lattice with thickness ramped 0.45 →
+  // 0.65 (thicker toward the throat, like the wall), clipped to a conical band
+  // around the outer wall (cone offset out 0.35, shelled to a 0.7-wide band). The
+  // `intersection` is the conformal clip that bounds the periodic lattice.
+  using period = unwrap(sdfFieldConst(1.0));
+  using jacketThickness = unwrap(sdfFieldAxialRamp(2, -2.0, 2.0, 0.45, 0.65));
+  using lattice = unwrap(sdfLattice('gyroid', period, jacketThickness));
+  using bandCone = unwrap(sdfCone(2.0, 4.0));
+  using bandOffset = bandCone.offset(0.35);
+  using band = bandOffset.shell(0.7);
+  using jacket = lattice.intersection(band);
+  const chamber = acc.smoothUnion(jacket, 0.15);
+  acc[Symbol.dispose]();
+  return chamber;
 }
 
 /** A helical channel spine riding just proud of the outer cone wall. */

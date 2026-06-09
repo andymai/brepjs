@@ -155,6 +155,18 @@ export interface WasmSdfConstructor {
    * JS exception) on fewer than two stations or a degenerate spine.
    */
   sweep(spine: Float64Array, profile: WasmSdf, closed: boolean): WasmSdf;
+  /**
+   * A graded/conformal TPMS lattice node (`kind_tag`: 0=Gyroid, 1=SchwarzP,
+   * 2=Diamond) with per-position `period`/`thickness`. Periodic/infinite — clip via
+   * `intersection` before rasterize. Throws (as a JS exception) on a bad `kind_tag`.
+   */
+  lattice(kind_tag: number, period: WasmScalarField, thickness: WasmScalarField): WasmSdf;
+  /**
+   * A cubic beam/strut lattice node with per-position `radius`. Periodic/infinite —
+   * clip via `intersection` before rasterize. Throws (as a JS exception) on a
+   * non-positive `period`.
+   */
+  strut_lattice(period: number, radius: WasmScalarField): WasmSdf;
 }
 
 /**

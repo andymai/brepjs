@@ -158,6 +158,34 @@ mod tests {
         );
     }
 
+    /// CHAMBER v1: the v0.5 chamber smooth-unioned with a CONFORMAL GRADED GYROID
+    /// JACKET rasterizes and contours to a NON-EMPTY mesh with a SANE bbox. The jacket
+    /// adds the lattice both as strut material (the gyroid is present in the bbox) and
+    /// raises the radial extent past the bare cone (the band sits outside the wall).
+    /// (Watertight is NOT asserted here — surface-nets cannot contour a clipped
+    /// high-genus TPMS jacket watertight at feasible resolution regardless of clip
+    /// shape; see `chamber_v1_expr`. The watertight gate stays on the lattice-free
+    /// `chamber_expr`.)
+    #[test]
+    fn chamber_v1_jacket_contours_with_sane_bbox() {
+        let chamber = chamber_v1_expr();
+        let grid = rasterize(&chamber, chamber.bounds(), 48, 3).unwrap();
+        let mesh = surface_nets_mesh(&grid);
+        assert!(!mesh.positions.is_empty(), "chamber v1 must contour to vertices");
+        assert!(!mesh.indices.is_empty(), "chamber v1 must contour to triangles");
+
+        let (mn, mx) = flat_bbox(&mesh.positions);
+        for axis in 0..3 {
+            let extent = mx[axis] - mn[axis];
+            assert!(extent > 1.0, "axis {axis} extent {extent} must be > 1");
+            assert!(extent < 12.0, "axis {axis} extent {extent} must be < 12");
+        }
+        // The jacket band sits outside the bare cone (base r = 2), so the radial
+        // extent must reach past the cone's own ±2 — the lattice jacket is present.
+        let radial = mx[0].max(mx[1]).max(-mn[0]).max(-mn[1]);
+        assert!(radial > 2.1, "jacket must extend past the bare cone wall, got {radial}");
+    }
+
     /// A single SWEPT channel (circle profile along a helical spine) rasterizes and
     /// contours to a non-empty, watertight mesh — the Phase-2a sweep watertight gate.
     #[test]
@@ -176,7 +204,8 @@ mod tests {
     /// CHAMBER v0.5: a capped cone shelled into a hollow body, unioned with four
     /// SWEPT cooling channels. Each channel is a circle profile swept along a gently
     /// helical spine that follows the cone wall (radius tapers with height), proving
-    /// the Phase-2a sweep operator in the demonstrator.
+    /// the Phase-2a sweep operator in the demonstrator. This is the WATERTIGHT core
+    /// the v1 jacket builds on (`chamber_v1_expr`).
     fn chamber_expr() -> Expr {
         use super::field::ScalarField;
         // Field-modulated wall: thicker toward the hot throat (the cone apex at
@@ -198,6 +227,58 @@ mod tests {
             acc = Expr::Union(Box::new(acc), Box::new(swept_channel(phase)));
         }
         acc
+    }
+
+    /// CHAMBER v1: the v0.5 chamber (graded wall + swept channels) smooth-unioned
+    /// with a CONFORMAL GRADED GYROID JACKET — the LEAP71-class composition. The
+    /// jacket is a gyroid lattice with GRADED thickness (thicker toward the hot
+    /// throat, tracking the wall) clipped to a conical band hugging the outer wall;
+    /// the `Intersection` is the conformal clip that bounds the periodic lattice.
+    ///
+    /// NOTE on the watertight gate: surface-nets cannot contour the conformal
+    /// gyroid jacket WATERTIGHT at feasible resolution, and the CLIP SHAPE is not the
+    /// cause. Empirically (verified across res 48/64/96): the conical clip is fine on
+    /// its own — the same chamber smooth-unioned with the SOLID conical band (no
+    /// lattice) IS watertight — and an axis-aligned BOX clip of the gyroid jacket
+    /// fails too. The cause is the high-genus TPMS topology: anywhere the clip
+    /// surface grazes a lattice wall at sub-voxel scale, surface-nets emits a
+    /// non-manifold seam, and a periodic TPMS presents many such near-tangential
+    /// grazes against any clip. (Even an ISOLATED box-clipped gyroid is only
+    /// watertight at resolutions where the clip plane happens to land in lattice
+    /// void — it is resolution-fragile, not guaranteed.) So `chamber_v1_expr` is
+    /// gated on NON-EMPTY + sane bbox (the same invariant the mesh-first
+    /// `tpms_box`/`lattice_infill` lattice paths assert), while the watertight gate
+    /// stays on the lattice-free v0.5 `chamber_expr`.
+    fn chamber_v1_expr() -> Expr {
+        use super::field::ScalarField;
+        use crate::tpms::LatticeType;
+        let lattice = Expr::Lattice {
+            kind: LatticeType::Gyroid,
+            period: ScalarField::Const(1.0),
+            thickness: ScalarField::AxialRamp {
+                axis: 2,
+                a: -2.0,
+                b: 2.0,
+                lo: 0.45,
+                hi: 0.65,
+            },
+        };
+        // A conical band hugging the OUTER wall: offset the cone outward by 0.35 then
+        // shell it to a ~0.7-wide band, so the lattice is clipped to a jacket. The
+        // Intersection is the conformal clip; the band's bound frames the grid.
+        let band = Expr::Shell {
+            e: Box::new(Expr::Offset {
+                e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
+                d: 0.35,
+            }),
+            t: 0.7,
+        };
+        let jacket = Expr::Intersection(Box::new(lattice), Box::new(band));
+        Expr::SmoothUnion {
+            a: Box::new(chamber_expr()),
+            b: Box::new(jacket),
+            k: 0.15,
+        }
     }
 
     /// One cooling channel: a small circle swept along a helical spine that rides

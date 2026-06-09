@@ -56,6 +56,14 @@ pub fn tpms_value(kind: LatticeType, p: [f32; 3], period: f32) -> f32 {
     }
 }
 
+/// Evaluate the implicit field at an `f64` world point. The trig form is f32
+/// internally — the field is Lipschitz and APPROXIMATE (not a true distance), so
+/// the f32→f64 widening at the boundary costs no accuracy the field could honor —
+/// and lets the [`crate::sdf::Expr`] algebra evaluate a lattice node in f64.
+pub fn tpms_value_f64(kind: LatticeType, p: [f64; 3], period: f64) -> f64 {
+    tpms_value(kind, [p[0] as f32, p[1] as f32, p[2] as f32], period as f32) as f64
+}
+
 /// Write a shell field over `grid`: every voxel gets `|f| - thickness/2` at its
 /// world position (negative = inside the strut wall). Surface Nets then meshes the
 /// `= 0` isosurface into two offset sheets bounding a wall of width `thickness`.

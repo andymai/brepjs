@@ -288,8 +288,16 @@ export {
   fieldRadialRamp as sdfFieldRadialRamp,
   fieldFromSdf as sdfFieldFromSdf,
   fieldClamp as sdfFieldClamp,
+  lattice as sdfLattice,
+  strutLattice as sdfStrutLattice,
 } from './implicit/index.js';
-export type { SdfHandle, SdfBounds, SdfSweepOptions, ScalarFieldHandle } from './implicit/index.js';
+export type {
+  SdfHandle,
+  SdfBounds,
+  SdfSweepOptions,
+  ScalarFieldHandle,
+  LatticeKind as SdfLatticeKind,
+} from './implicit/index.js';
 
 // ── Layer 3: lattice (ADR-0013) ──
 
