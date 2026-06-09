@@ -70,11 +70,10 @@ export interface SdfHandle {
   round(radius: number): SdfHandle;
   shell(thickness: number): SdfHandle;
   onion(thickness: number): SdfHandle;
-  /**
-   * Offset by a per-position distance {@link ScalarFieldHandle}. NOTE: a modulated
-   * offset/blend yields a Lipschitz field (`|∇| < 1`), not a true SDF — a downstream
-   * true-distance op on the rasterized field (`offset`/`shell`) must reinit first.
-   */
+  // The four field-modulated operators below take a per-position
+  // {@link ScalarFieldHandle}. NOTE: a modulated offset/round/shell/blend yields a
+  // Lipschitz field (`|∇| < 1`), not a true SDF — a downstream true-distance op on
+  // the rasterized field (`offset`/`shell`) must reinit first.
   offsetField(field: ScalarFieldHandle): SdfHandle;
   roundField(field: ScalarFieldHandle): SdfHandle;
   shellField(field: ScalarFieldHandle): SdfHandle;
@@ -108,25 +107,25 @@ function sdfDeletable(raw: WasmSdf): SdfDeletable {
 /** The position-modulated operator methods, split out to keep {@link makeSdfHandle}
  * under the per-function line cap. `this` binds to the owning {@link SdfHandle} when
  * spread into its object literal. */
-function modulatedFieldMethods(): Pick<
+// Shared across every handle: methods bind `this` dynamically, so one constant
+// object spread into each handle behaves identically and avoids per-call allocation.
+const MODULATED_FIELD_METHODS: Pick<
   SdfHandle,
   'offsetField' | 'roundField' | 'shellField' | 'smoothUnionField'
-> {
-  return {
-    offsetField(this: SdfHandle, field) {
-      return makeSdfHandle(this.value.offset_field(field.value));
-    },
-    roundField(this: SdfHandle, field) {
-      return makeSdfHandle(this.value.round_field(field.value));
-    },
-    shellField(this: SdfHandle, field) {
-      return makeSdfHandle(this.value.shell_field(field.value));
-    },
-    smoothUnionField(this: SdfHandle, other, field) {
-      return makeSdfHandle(this.value.smooth_union_field(other.value, field.value));
-    },
-  };
-}
+> = {
+  offsetField(this: SdfHandle, field) {
+    return makeSdfHandle(this.value.offset_field(field.value));
+  },
+  roundField(this: SdfHandle, field) {
+    return makeSdfHandle(this.value.round_field(field.value));
+  },
+  shellField(this: SdfHandle, field) {
+    return makeSdfHandle(this.value.shell_field(field.value));
+  },
+  smoothUnionField(this: SdfHandle, other, field) {
+    return makeSdfHandle(this.value.smooth_union_field(other.value, field.value));
+  },
+};
 
 function makeSdfHandle(raw: WasmSdf): SdfHandle {
   // brepjs-patterns-disable: require-using-for-handles -- factory returns the handle, so it must outlive this scope
@@ -172,7 +171,7 @@ function makeSdfHandle(raw: WasmSdf): SdfHandle {
     onion(thickness) {
       return makeSdfHandle(this.value.onion(thickness));
     },
-    ...modulatedFieldMethods(),
+    ...MODULATED_FIELD_METHODS,
     translate(x, y, z) {
       return makeSdfHandle(this.value.translate(x, y, z));
     },
