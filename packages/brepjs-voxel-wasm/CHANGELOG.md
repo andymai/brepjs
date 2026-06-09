@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.4.0...brepjs-voxel-wasm-v0.5.0) (2026-06-09)
+
+
+### Features
+
+* **implicit:** profile-along-spine sweep operator with RMF frames (Phase 2a) ([#1260](https://github.com/andymai/brepjs/issues/1260)) ([10422ff](https://github.com/andymai/brepjs/commit/10422ff0a5dd2b4fa75242f893d093fedd84ac80))
+
 ## [0.4.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.3.0...brepjs-voxel-wasm-v0.4.0) (2026-06-08)
 
 
