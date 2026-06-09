@@ -31,6 +31,7 @@ export const sdf_smooth_difference: (a: number, b: number, c: number) => number;
 export const sdf_smooth_intersection: (a: number, b: number, c: number) => number;
 export const sdf_smooth_union: (a: number, b: number, c: number) => number;
 export const sdf_sphere: (a: number) => number;
+export const sdf_sweep: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const sdf_torus: (a: number, b: number) => number;
 export const sdf_translate: (a: number, b: number, c: number, d: number) => number;
 export const sdf_union: (a: number, b: number) => number;

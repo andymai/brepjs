@@ -706,6 +706,39 @@ impl Sdf {
         Sdf::of(sdf::Expr::Plane { n: [nx, ny, nz], h })
     }
 
+    /// Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
+    /// using rotation-minimizing frames. `closed` skips the end caps. The profile's
+    /// expression is cloned in-plane (sampled at `[u, v, 0]` per station). Errors on
+    /// fewer than two stations, a non-`3·N` length, a non-finite coordinate, or a
+    /// degenerate (zero-length) spine.
+    pub fn sweep(spine: &[f64], profile: &Sdf, closed: bool) -> Result<Sdf, JsError> {
+        if spine.len() < 6 || !spine.len().is_multiple_of(3) {
+            return Err(JsError::new(
+                "sweep spine must be flat xyz with at least 2 stations (length 3·N, N >= 2)",
+            ));
+        }
+        let pts: Vec<[f64; 3]> = spine.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        if !pts.iter().all(|p| p.iter().all(|c| c.is_finite())) {
+            return Err(JsError::new("sweep spine coordinates must be finite"));
+        }
+        // A zero-length spine (all stations coincident) has no tangent direction.
+        let total: f64 = pts
+            .windows(2)
+            .map(|w| {
+                let d = [w[1][0] - w[0][0], w[1][1] - w[0][1], w[1][2] - w[0][2]];
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+            })
+            .sum();
+        if total <= 1e-9 {
+            return Err(JsError::new("sweep spine is degenerate (zero length)"));
+        }
+        Ok(Sdf::of(sdf::Expr::Sweep {
+            curve: sdf::SweptCurve::new(&pts, closed),
+            profile: Box::new(profile.expr.clone()),
+            closed,
+        }))
+    }
+
     // ── Binary operators ──
 
     pub fn union(&self, other: &Sdf) -> Sdf {

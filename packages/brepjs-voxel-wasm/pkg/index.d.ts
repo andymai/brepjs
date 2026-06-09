@@ -57,6 +57,14 @@ export class Sdf {
     smooth_intersection(other: Sdf, k: number): Sdf;
     smooth_union(other: Sdf, k: number): Sdf;
     static sphere(r: number): Sdf;
+    /**
+     * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
+     * using rotation-minimizing frames. `closed` skips the end caps. The profile's
+     * expression is cloned in-plane (sampled at `[u, v, 0]` per station). Errors on
+     * fewer than two stations, a non-`3·N` length, a non-finite coordinate, or a
+     * degenerate (zero-length) spine.
+     */
+    static sweep(spine: Float64Array, profile: Sdf, closed: boolean): Sdf;
     static torus(major: number, minor: number): Sdf;
     translate(x: number, y: number, z: number): Sdf;
     union(other: Sdf): Sdf;
@@ -274,6 +282,7 @@ export interface InitOutput {
     readonly sdf_smooth_intersection: (a: number, b: number, c: number) => number;
     readonly sdf_smooth_union: (a: number, b: number, c: number) => number;
     readonly sdf_sphere: (a: number) => number;
+    readonly sdf_sweep: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly sdf_torus: (a: number, b: number) => number;
     readonly sdf_translate: (a: number, b: number, c: number, d: number) => number;
     readonly sdf_union: (a: number, b: number) => number;

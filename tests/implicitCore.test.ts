@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import initWasm, * as voxelWasm from 'brepjs-voxel-wasm';
 import { initVoxel } from '@/voxel/index.js';
-import { sdfSphere, sdfBox, sdfCone, sdfCylinder } from '@/index.js';
+import { sdfSphere, sdfBox, sdfCone, sdfSweep } from '@/index.js';
 import type { SdfHandle } from '@/index.js';
 import { unwrap, isErr } from '@/core/result.js';
 import { initOC } from './setup.js';
@@ -69,6 +69,36 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
     expect(isErr(res)).toBe(true);
   });
 
+  it('rejects a degenerate sweep spine as a Result error rather than throwing', () => {
+    using profile = unwrap(sdfSphere(0.3));
+    // Fewer than two stations.
+    expect(isErr(sdfSweep([[0, 0, 0]], profile))).toBe(true);
+    // A non-finite coordinate.
+    expect(
+      isErr(
+        sdfSweep(
+          [
+            [0, 0, 0],
+            [0, 0, Number.NaN],
+          ],
+          profile
+        )
+      )
+    ).toBe(true);
+    // All stations coincident → zero-length spine.
+    expect(
+      isErr(
+        sdfSweep(
+          [
+            [1, 1, 1],
+            [1, 1, 1],
+          ],
+          profile
+        )
+      )
+    ).toBe(true);
+  });
+
   it('builds and rasterizes the skeleton chamber v0 (hollow cone + cooling channels)', () => {
     using chamber = buildChamber();
     using field = unwrap(chamber.rasterize({ resolution: 40, padding: 3 }));
@@ -88,23 +118,41 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
   });
 });
 
+const CHANNEL_TUBE_R = 0.3;
+
 /**
- * The chamber skeleton (mirrors the rust `chamber_expr` fixture): a capped cone
- * shelled into a hollow body, unioned with four cooling channels translated around
- * the axis. Intermediate handles are disposed eagerly; the returned handle owns the
- * final tree and is disposed by the caller.
+ * The chamber skeleton (mirrors the rust v0.5 `chamber_expr` fixture): a capped
+ * cone shelled into a hollow body, unioned with four SWEPT cooling channels —
+ * each a circle profile swept along a gently helical spine riding the cone wall.
+ * Intermediate handles are disposed eagerly; the returned handle owns the final
+ * tree and is disposed by the caller.
  */
 function buildChamber(): SdfHandle {
   using cone = unwrap(sdfCone(2.0, 4.0));
   using body = cone.shell(0.25);
   let acc: SdfHandle = body.translate(0, 0, 0);
   for (let i = 0; i < 4; i++) {
-    const angle = (i * Math.PI) / 2;
-    using channel = unwrap(sdfCylinder(0.3, 4.0));
-    using placed = channel.translate(1.4 * Math.cos(angle), 1.4 * Math.sin(angle), 0);
-    const next = acc.union(placed);
+    const phase = (i * Math.PI) / 2;
+    using profile = unwrap(sdfSphere(CHANNEL_TUBE_R));
+    using channel = unwrap(sdfSweep(channelSpine(phase), profile));
+    const next = acc.union(channel);
     acc[Symbol.dispose]();
     acc = next;
   }
   return acc;
+}
+
+/** A helical channel spine riding just proud of the outer cone wall. */
+function channelSpine(phase: number): [number, number, number][] {
+  const steps = 16;
+  const spine: [number, number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const s = i / steps;
+    const z = -2.6 + 5.2 * s;
+    const wall = Math.min(Math.max(2.0 * (1.0 - (z + 2.0) / 4.0), 0.0), 2.0);
+    const radius = wall + CHANNEL_TUBE_R * 0.5;
+    const a = phase + s * (Math.PI / 4);
+    spine.push([radius * Math.cos(a), radius * Math.sin(a), z]);
+  }
+  return spine;
 }

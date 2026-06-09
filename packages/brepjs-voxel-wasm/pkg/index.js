@@ -285,6 +285,27 @@ export class Sdf {
         return Sdf.__wrap(ret);
     }
     /**
+     * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
+     * using rotation-minimizing frames. `closed` skips the end caps. The profile's
+     * expression is cloned in-plane (sampled at `[u, v, 0]` per station). Errors on
+     * fewer than two stations, a non-`3·N` length, a non-finite coordinate, or a
+     * degenerate (zero-length) spine.
+     * @param {Float64Array} spine
+     * @param {Sdf} profile
+     * @param {boolean} closed
+     * @returns {Sdf}
+     */
+    static sweep(spine, profile, closed) {
+        const ptr0 = passArrayF64ToWasm0(spine, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        _assertClass(profile, Sdf);
+        const ret = wasm.sdf_sweep(ptr0, len0, profile.__wbg_ptr, closed);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return Sdf.__wrap(ret[0]);
+    }
+    /**
      * @param {number} major
      * @param {number} minor
      * @returns {Sdf}
@@ -783,6 +804,14 @@ function getFloat32ArrayMemory0() {
     return cachedFloat32ArrayMemory0;
 }
 
+let cachedFloat64ArrayMemory0 = null;
+function getFloat64ArrayMemory0() {
+    if (cachedFloat64ArrayMemory0 === null || cachedFloat64ArrayMemory0.byteLength === 0) {
+        cachedFloat64ArrayMemory0 = new Float64Array(wasm.memory.buffer);
+    }
+    return cachedFloat64ArrayMemory0;
+}
+
 function getStringFromWasm0(ptr, len) {
     return decodeText(ptr >>> 0, len);
 }
@@ -817,6 +846,13 @@ function passArrayF32ToWasm0(arg, malloc) {
     return ptr;
 }
 
+function passArrayF64ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 8, 8) >>> 0;
+    getFloat64ArrayMemory0().set(arg, ptr / 8);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_externrefs.get(idx);
     wasm.__externref_table_dealloc(idx);
@@ -845,6 +881,7 @@ function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
     cachedFloat32ArrayMemory0 = null;
+    cachedFloat64ArrayMemory0 = null;
     cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();

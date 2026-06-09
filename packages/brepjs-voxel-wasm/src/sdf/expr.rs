@@ -5,6 +5,7 @@
 
 use super::operators;
 use super::primitives;
+use super::sweep::SweptCurve;
 
 /// A conservative axis-aligned bounding box of an [`Expr`]'s zero set. "Conservative"
 /// means it never crops the surface: every point where `eval == 0` lies inside (or
@@ -238,6 +239,17 @@ pub enum Expr {
         e: Box<Expr>,
         s: f64,
     },
+
+    // ── Profile-along-spine sweep (brepjs-implicit Phase 2a) ──
+    /// A 2D `profile` (sampled in-plane at `[u, v, 0]`) swept along `curve`'s
+    /// rotation-minimizing frames. The result is a PSEUDO-SDF (true distance only
+    /// near the surface): the in-plane profile distance is exact, but the field
+    /// drifts in the axial direction away from the wall. `closed` skips end caps.
+    Sweep {
+        curve: SweptCurve,
+        profile: Box<Expr>,
+        closed: bool,
+    },
 }
 
 impl Expr {
@@ -278,6 +290,26 @@ impl Expr {
                 // point-reflection (handled by dividing p), not a field-sign flip.
                 let s = if *s == 0.0 { 1.0 } else { *s };
                 e.eval([p[0] / s, p[1] / s, p[2] / s]) * s.abs()
+            }
+
+            Expr::Sweep {
+                curve,
+                profile,
+                closed,
+            } => {
+                let (u, v, overrun) = curve.local_coords(p);
+                let dp = profile.eval([u, v, 0.0]);
+                if *closed || overrun <= 0.0 {
+                    dp
+                } else {
+                    // Open sweep END-CAP: this branch is reached only when `overrun > 0`,
+                    // i.e. the point projects strictly past a flat cap, so it is always
+                    // EXTERIOR. Distance is the hypot of the in-plane overshoot (0 when the
+                    // projection lands inside the profile → perpendicular to the cap disk)
+                    // and the axial overrun. Adding `dp.min(0)` here would wrongly report a
+                    // point on-axis just past the cap as interior. Pseudo-SDF near the rim.
+                    (dp.max(0.0).powi(2) + overrun * overrun).sqrt()
+                }
             }
         }
     }
@@ -335,6 +367,33 @@ impl Expr {
             Expr::Translate { e, t } => e.bounds().translate(*t),
             Expr::Rotate { e, axis, angle } => e.bounds().rotate(*axis, *angle),
             Expr::Scale { e, s } => e.bounds().scale(s.abs().max(f64::MIN_POSITIVE)),
+
+            Expr::Sweep { curve, profile, .. } => {
+                // The profile is in-plane (XY of its own frame); its reach is the
+                // farthest in-plane CORNER of its bounds — `hypot(rx, ry)`, not the
+                // per-axis max. A frame rotated ~45° in world XY puts that corner up to
+                // √2 farther from the spine than any single axis, so a per-axis pad would
+                // crop the swept wall at the grid edge. A sphere of that corner radius at
+                // every station bounds the tube conservatively for any frame orientation.
+                let pb = profile.bounds();
+                let rx = pb.min[0].abs().max(pb.max[0].abs());
+                let ry = pb.min[1].abs().max(pb.max[1].abs());
+                let reach = (rx * rx + ry * ry).sqrt();
+                let pad = reach + 1e-3;
+                let pts = curve.points();
+                if pts.is_empty() {
+                    return Aabb::centered([pad, pad, pad]);
+                }
+                let mut lo = [f64::INFINITY; 3];
+                let mut hi = [f64::NEG_INFINITY; 3];
+                for s in pts {
+                    for d in 0..3 {
+                        lo[d] = lo[d].min(s[d] - pad);
+                        hi[d] = hi[d].max(s[d] + pad);
+                    }
+                }
+                Aabb { min: lo, max: hi }
+            }
         }
     }
 }
@@ -595,5 +654,210 @@ mod tests {
                 );
             }
         }
+    }
+
+    fn straight_z_spine(n: usize, h: f64) -> Vec<[f64; 3]> {
+        (0..=n)
+            .map(|i| [0.0, 0.0, -h * 0.5 + h * (i as f64 / n as f64)])
+            .collect()
+    }
+
+    /// A CIRCLE profile (a Sphere reads `hypot(u,v) - r` in-plane) swept along a
+    /// STRAIGHT spine must match the Cylinder primitive near the surface.
+    #[test]
+    fn circle_swept_straight_matches_cylinder() {
+        let r = 0.7;
+        let h = 4.0;
+        let spine = straight_z_spine(8, h);
+        let sweep = Expr::Sweep {
+            curve: SweptCurve::new(&spine, false),
+            profile: Box::new(Expr::Sphere { r }),
+            closed: false,
+        };
+        let cyl = Expr::Cylinder { r, h };
+
+        // Sample on/near the side wall at several heights and angles.
+        for &z in &[-1.0, 0.0, 1.0] {
+            for k in 0..8 {
+                let a = k as f64 * PI / 4.0;
+                let p = [r * a.cos(), r * a.sin(), z];
+                let ds = sweep.eval(p);
+                let dc = cyl.eval(p);
+                assert!(
+                    (ds - dc).abs() < 0.05,
+                    "side wall sweep {ds} vs cylinder {dc} at {p:?}"
+                );
+                // Interior negative, exterior positive.
+                assert!(sweep.eval([0.0, 0.0, z]) < 0.0, "axis interior");
+                assert!(sweep.eval([r * 2.0, 0.0, z]) > 0.0, "outside positive");
+            }
+        }
+        // End cap: a point past z = +h/2 must be outside.
+        assert!(sweep.eval([0.0, 0.0, h]) > 0.0, "past end cap is outside");
+        assert!(sweep.eval([0.0, 0.0, 0.0]) < 0.0, "core interior");
+    }
+
+    /// A circle swept along an ARC spine: points on the expected tube surface read
+    /// ~0, interior < 0, exterior > 0.
+    #[test]
+    fn circle_swept_arc_tube_signs() {
+        let major = 3.0;
+        let r = 0.5;
+        // Quarter-circle arc of radius `major` in the XY plane.
+        let mut spine = Vec::new();
+        let steps = 24;
+        for i in 0..=steps {
+            let a = (i as f64 / steps as f64) * (PI / 2.0);
+            spine.push([major * a.cos(), major * a.sin(), 0.0]);
+        }
+        let sweep = Expr::Sweep {
+            curve: SweptCurve::new(&spine, false),
+            profile: Box::new(Expr::Sphere { r }),
+            closed: false,
+        };
+
+        // Mid-arc station (45°): the spine point and offsets from it.
+        let am = PI / 4.0;
+        let center = [major * am.cos(), major * am.sin(), 0.0];
+        // On the tube surface: offset by r in +z (perpendicular to the planar arc).
+        let on = [center[0], center[1], r];
+        assert!(sweep.eval(on).abs() < 0.06, "on tube surface ~0: {}", sweep.eval(on));
+        // Interior: the spine point itself.
+        assert!(sweep.eval(center) < 0.0, "tube core interior");
+        // Exterior: far above.
+        let out = [center[0], center[1], r * 3.0];
+        assert!(sweep.eval(out) > 0.0, "outside tube positive");
+    }
+
+    /// An ASYMMETRIC profile (a thin in-plane box) follows the frame orientation:
+    /// along a straight +Z spine the box's wide axis stays along the frame normal,
+    /// so the swept solid is wider along one in-plane axis than the other.
+    #[test]
+    fn asymmetric_profile_follows_frame() {
+        let spine = straight_z_spine(6, 3.0);
+        let curve = SweptCurve::new(&spine, false);
+        let f = curve.frames()[3];
+        // A box half [0.4, 0.15] in-plane (z half large so it never caps here).
+        let sweep = Expr::Sweep {
+            curve,
+            profile: Box::new(Expr::Box {
+                half: [0.4, 0.15, 10.0],
+            }),
+            closed: false,
+        };
+        // Step along the frame normal (the profile's local x) vs binormal (local y).
+        let mid = [0.0, 0.0, 0.0];
+        let along_n = [
+            mid[0] + f.normal[0] * 0.3,
+            mid[1] + f.normal[1] * 0.3,
+            mid[2] + f.normal[2] * 0.3,
+        ];
+        let along_b = [
+            mid[0] + f.binormal[0] * 0.3,
+            mid[1] + f.binormal[1] * 0.3,
+            mid[2] + f.binormal[2] * 0.3,
+        ];
+        // 0.3 is inside the 0.4 half along the normal, but outside the 0.15 half
+        // along the binormal — the asymmetry must show through the frame.
+        assert!(sweep.eval(along_n) < 0.0, "inside wide (normal) axis");
+        assert!(sweep.eval(along_b) > 0.0, "outside narrow (binormal) axis");
+    }
+
+    /// A point on-axis just past an open cap must read EXTERIOR. The earlier end-cap
+    /// form `outside + dp.min(0)` wrongly reported it interior (the solid leaked past
+    /// its flat cap by the profile's interior depth).
+    #[test]
+    fn open_cap_just_past_is_exterior() {
+        let r = 0.7;
+        let h = 4.0;
+        let sweep = Expr::Sweep {
+            curve: SweptCurve::new(&straight_z_spine(8, h), false),
+            profile: Box::new(Expr::Sphere { r }),
+            closed: false,
+        };
+        // On-axis (deep inside the profile in-plane, dp = -r) but just past the cap.
+        for &eps in &[0.01, 0.1, 0.4] {
+            let p = [0.0, 0.0, h * 0.5 + eps];
+            assert!(sweep.eval(p) > 0.0, "on-axis {eps} past cap must be exterior: {}", sweep.eval(p));
+        }
+        // Just INSIDE the cap stays interior.
+        assert!(sweep.eval([0.0, 0.0, h * 0.5 - 0.1]) < 0.0, "just inside the cap is interior");
+    }
+
+    /// `bounds()` must use the diagonal profile reach: a box profile on a frame
+    /// rotated ~45° in world XY puts its corner at hypot(rx,ry) ≈ √2·half from the
+    /// spine. A per-axis pad cropped that corner and truncated the swept wall.
+    #[test]
+    fn sweep_bounds_contains_rotated_profile_corner() {
+        // Straight +Z spine, but rotate the whole sweep 45° about Z so the box's
+        // in-plane axes are diagonal to world X/Y.
+        let half = [1.0_f64, 0.6, 10.0];
+        let inner = Expr::Sweep {
+            curve: SweptCurve::new(&straight_z_spine(6, 3.0), false),
+            profile: Box::new(Expr::Box { half }),
+            closed: false,
+        };
+        let rotated = Expr::Rotate {
+            e: Box::new(inner),
+            axis: [0.0, 0.0, 1.0],
+            angle: PI / 4.0,
+        };
+        let b = rotated.bounds();
+        // The profile's farthest corner is hypot(1.0, 0.6) ≈ 1.166 from the axis.
+        let corner = (half[0] * half[0] + half[1] * half[1]).sqrt();
+        assert!(
+            b.max[0] >= corner - 1e-6 && b.max[1] >= corner - 1e-6,
+            "bounds {b:?} must reach the diagonal corner {corner}"
+        );
+        // No zero-crossing outside the reported bounds: sample just beyond +X.
+        let outside = [b.max[0] + 0.25, 0.0, 0.0];
+        assert!(rotated.eval(outside) > 0.0, "field positive just outside bounds");
+    }
+
+    /// A circle swept along a CLOSED non-planar loop: the closure correction keeps
+    /// the frame seamless, so the swept tube is watertight in sign — interior < 0,
+    /// on-surface ~0, exterior > 0 — with no twist seam at the wrap segment.
+    #[test]
+    fn closed_sweep_tube_signs_and_continuity() {
+        let major = 3.0;
+        let r = 0.5;
+        let tilt = 0.6; // non-planar: z wobbles so holonomy is non-trivial.
+        let steps = 48;
+        let spine: Vec<[f64; 3]> = (0..steps)
+            .map(|i| {
+                let a = (i as f64 / steps as f64) * 2.0 * PI;
+                [major * a.cos(), major * a.sin(), tilt * (2.0 * a).sin()]
+            })
+            .collect();
+        let curve = SweptCurve::new(&spine, true);
+
+        // Every frame stays orthonormal after the closure correction.
+        for fr in curve.frames() {
+            assert!((dot3(fr.tangent, fr.normal)).abs() < 1e-6, "t·n ~ 0");
+            assert!((dot3(fr.normal, fr.binormal)).abs() < 1e-6, "n·b ~ 0");
+            assert!((dot3(fr.normal, fr.normal) - 1.0).abs() < 1e-6, "n unit");
+        }
+        // Adjacent normals (including the wrap segment) turn smoothly — no seam.
+        let fs = curve.frames();
+        for i in 0..fs.len() {
+            let j = (i + 1) % fs.len();
+            assert!(dot3(fs[i].normal, fs[j].normal) > 0.3, "no frame seam at {i}->{j}");
+        }
+
+        let sweep = Expr::Sweep {
+            curve,
+            profile: Box::new(Expr::Sphere { r }),
+            closed: true,
+        };
+        // Interior (a spine point), surface (offset by r), exterior (far) at a station.
+        let a = 0.7_f64;
+        let c = [major * a.cos(), major * a.sin(), tilt * (2.0 * a).sin()];
+        assert!(sweep.eval(c) < 0.0, "closed tube core interior");
+        let out = [major * 1.5, 0.0, 0.0];
+        assert!(sweep.eval(out) > 0.0, "outside closed tube positive");
+    }
+
+    fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     }
 }

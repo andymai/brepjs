@@ -8,5 +8,5 @@
  * {@link VoxelFieldHandle} for contour / offset / shell.
  */
 
-export type { SdfHandle, SdfBounds } from './sdfFns.js';
-export { sphere, box, roundedBox, cylinder, cone, capsule, torus, plane } from './sdfFns.js';
+export type { SdfHandle, SdfBounds, SdfSweepOptions } from './sdfFns.js';
+export { sphere, box, roundedBox, cylinder, cone, capsule, torus, plane, sweep } from './sdfFns.js';

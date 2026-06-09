@@ -572,6 +572,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'sdfPlane',
   'sdfRoundedBox',
   'sdfSphere',
+  'sdfSweep',
   'sdfTorus',
   'section',
   'sectionToFace',

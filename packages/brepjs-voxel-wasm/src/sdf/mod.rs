@@ -6,8 +6,10 @@
 pub mod expr;
 pub mod operators;
 pub mod primitives;
+pub mod sweep;
 
 pub use expr::{Aabb, Expr};
+pub use sweep::SweptCurve;
 
 use crate::grid::{Grid, GridError};
 use crate::ops::band_radius;
@@ -154,26 +156,67 @@ mod tests {
         );
     }
 
-    /// The chamber skeleton: a capped cone shelled into a hollow body, unioned with
-    /// four cooling channels (thin cylinders) translated around the axis.
+    /// A single SWEPT channel (circle profile along a helical spine) rasterizes and
+    /// contours to a non-empty, watertight mesh — the Phase-2a sweep watertight gate.
+    #[test]
+    fn swept_channel_contours_watertight() {
+        let channel = swept_channel(0.0);
+        let grid = rasterize(&channel, channel.bounds(), 48, 3).unwrap();
+        let mesh = surface_nets_mesh(&grid);
+        assert!(!mesh.positions.is_empty(), "swept channel must contour to vertices");
+        assert!(!mesh.indices.is_empty(), "swept channel must contour to triangles");
+        assert!(
+            is_watertight(&mesh.indices),
+            "swept channel contour must be watertight"
+        );
+    }
+
+    /// CHAMBER v0.5: a capped cone shelled into a hollow body, unioned with four
+    /// SWEPT cooling channels. Each channel is a circle profile swept along a gently
+    /// helical spine that follows the cone wall (radius tapers with height), proving
+    /// the Phase-2a sweep operator in the demonstrator.
     fn chamber_expr() -> Expr {
         let body = Expr::Shell {
             e: Box::new(Expr::Cone { r: 2.0, h: 4.0 }),
             t: 0.25,
         };
         let mut acc = body;
-        let channel = || Expr::Cylinder { r: 0.3, h: 4.0 };
         for i in 0..4 {
-            let angle = i as f64 * PI / 2.0;
-            let cx = 1.4 * angle.cos();
-            let cy = 1.4 * angle.sin();
-            let ch = Expr::Translate {
-                e: Box::new(channel()),
-                t: [cx, cy, 0.0],
-            };
-            acc = Expr::Union(Box::new(acc), Box::new(ch));
+            let phase = i as f64 * PI / 2.0;
+            acc = Expr::Union(Box::new(acc), Box::new(swept_channel(phase)));
         }
         acc
+    }
+
+    /// One cooling channel: a small circle swept along a helical spine that rides
+    /// the OUTER cone wall, gaining a quarter turn over its length. The spine radius
+    /// sits the tube just outside the outer surface so it bulges externally and
+    /// fuses cleanly — keeping it clear of the thin (0.25) inner cavity wall, whose
+    /// near-tangential pinch is what produces non-manifold surface-nets seams.
+    const CHANNEL_TUBE_R: f64 = 0.3;
+
+    fn swept_channel(phase: f64) -> Expr {
+        use super::sweep::SweptCurve;
+
+        let steps = 16;
+        let mut spine = Vec::with_capacity(steps + 1);
+        for i in 0..=steps {
+            let s = i as f64 / steps as f64;
+            // Overhang both ends (below the base, above the apex) so the channel
+            // breaches the cone surface cleanly instead of grazing it tangentially.
+            let z = -2.6 + 5.2 * s;
+            // Cone outer-wall radius at this height (linear taper, clamped), pushed
+            // out by the tube radius so the channel rides just proud of the wall.
+            let wall = (2.0 * (1.0 - (z + 2.0) / 4.0)).clamp(0.0, 2.0);
+            let radius = wall + CHANNEL_TUBE_R * 0.5;
+            let a = phase + s * (PI / 4.0);
+            spine.push([radius * a.cos(), radius * a.sin(), z]);
+        }
+        Expr::Sweep {
+            curve: SweptCurve::new(&spine, false),
+            profile: Box::new(Expr::Sphere { r: CHANNEL_TUBE_R }),
+            closed: false,
+        }
     }
 
     /// Every undirected edge is shared by exactly two triangles.
@@ -200,3 +243,4 @@ mod tests {
         (mn, mx)
     }
 }
+

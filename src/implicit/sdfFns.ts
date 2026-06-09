@@ -287,3 +287,45 @@ export function torus(major: number, minor: number, id?: string): Result<SdfHand
 export function plane(n: [number, number, number], h: number, id?: string): Result<SdfHandle> {
   return build((e) => e.Sdf.plane(n[0], n[1], n[2], h), id);
 }
+
+/** Options for {@link sweep}. */
+export interface SdfSweepOptions {
+  /** Close the spine into a loop, skipping the open-end caps. Default `false`. */
+  closed?: boolean;
+}
+
+function flattenSpine(spine: [number, number, number][]): Result<Float64Array> {
+  if (spine.length < 2) {
+    return err(validationError('SDF_INVALID_SPINE', 'sweep spine needs at least 2 points.'));
+  }
+  const flat = new Float64Array(spine.length * 3);
+  for (let i = 0; i < spine.length; i++) {
+    const pt = spine[i] as [number, number, number];
+    if (!pt.every((c) => Number.isFinite(c))) {
+      return err(validationError('SDF_INVALID_SPINE', 'sweep spine coordinates must be finite.'));
+    }
+    flat[i * 3] = pt[0];
+    flat[i * 3 + 1] = pt[1];
+    flat[i * 3 + 2] = pt[2];
+  }
+  return ok(flat);
+}
+
+/**
+ * Sweep an in-plane `profile` along a `spine` polyline using rotation-minimizing
+ * frames (no 180° flip at inflections). The profile is sampled in its own
+ * `(normal, binormal)` plane at every station; `opts.closed` loops the spine and
+ * skips the open-end caps. The result is a pseudo-SDF (exact distance only near
+ * the swept wall), which contours cleanly. `spine` needs at least 2 finite points.
+ */
+export function sweep(
+  spine: [number, number, number][],
+  profile: SdfHandle,
+  opts?: SdfSweepOptions,
+  id?: string
+): Result<SdfHandle> {
+  const flat = flattenSpine(spine);
+  if (isErr(flat)) return flat;
+  const closed = opts?.closed ?? false;
+  return build((e) => e.Sdf.sweep(flat.value, profile.value, closed), id);
+}

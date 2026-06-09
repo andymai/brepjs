@@ -107,6 +107,12 @@ export interface WasmSdfConstructor {
   ): WasmSdf;
   torus(major: number, minor: number): WasmSdf;
   plane(nx: number, ny: number, nz: number, h: number): WasmSdf;
+  /**
+   * Sweep an in-plane `profile` along `spine` (flat xyz, length 3·N, N >= 2)
+   * using rotation-minimizing frames. `closed` skips the end caps. Throws (as a
+   * JS exception) on fewer than two stations or a degenerate spine.
+   */
+  sweep(spine: Float64Array, profile: WasmSdf, closed: boolean): WasmSdf;
 }
 
 /**

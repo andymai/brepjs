@@ -282,8 +282,9 @@ export {
   capsule as sdfCapsule,
   torus as sdfTorus,
   plane as sdfPlane,
+  sweep as sdfSweep,
 } from './implicit/index.js';
-export type { SdfHandle, SdfBounds } from './implicit/index.js';
+export type { SdfHandle, SdfBounds, SdfSweepOptions } from './implicit/index.js';
 
 // ── Layer 3: lattice (ADR-0013) ──
 
