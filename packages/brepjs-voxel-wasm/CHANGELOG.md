@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.5.0...brepjs-voxel-wasm-v0.6.0) (2026-06-09)
+
+
+### Features
+
+* **implicit:** scalar-field modulation + position-varying operators (Phase 2b) ([#1264](https://github.com/andymai/brepjs/issues/1264)) ([9b59880](https://github.com/andymai/brepjs/commit/9b598802ed5c653320184f88b003cb6d35e4452f))
+
 ## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.4.0...brepjs-voxel-wasm-v0.5.0) (2026-06-09)
 
 
