@@ -1,6 +1,6 @@
 {
   ".": "18.69.0",
   "packages/brepjs-opencascade": "0.16.0",
-  "packages/brepjs-voxel-wasm": "0.6.0",
+  "packages/brepjs-voxel-wasm": "0.7.0",
   "packages/brepjs-verify": "0.6.0"
 }

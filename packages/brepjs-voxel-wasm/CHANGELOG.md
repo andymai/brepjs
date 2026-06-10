@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.6.0...brepjs-voxel-wasm-v0.7.0) (2026-06-10)
+
+
+### Features
+
+* **implicit:** graded + conformal lattices (TPMS + strut) and chamber v1 (Phase 2c) ([#1266](https://github.com/andymai/brepjs/issues/1266)) ([666bfb6](https://github.com/andymai/brepjs/commit/666bfb61372272c3076cbf03dc101c6aa3940d70))
+
 ## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.5.0...brepjs-voxel-wasm-v0.6.0) (2026-06-09)
 
 
