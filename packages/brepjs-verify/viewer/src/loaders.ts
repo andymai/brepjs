@@ -1,4 +1,4 @@
-import type { MeshData } from 'brepjs-viewer';
+import type { FaceInfo, MeshData } from 'brepjs-viewer';
 import { shapeMeshToMeshData, type ShapeMeshLike } from './convert.js';
 
 // Structural view of the brepjs namespace this module uses; injected by the worker
@@ -16,6 +16,10 @@ export interface BrepjsForLoad {
   measureVolume: (s: unknown) => { ok: boolean; value?: number };
   measureArea: (s: unknown) => { ok: boolean; value?: number };
   isValid: (s: unknown) => boolean;
+  getFaces: (s: unknown) => unknown[];
+  getSurfaceType: (face: unknown) => { ok: boolean; value?: string };
+  normalAt: (face: unknown) => [number, number, number];
+  getHashCode: (face: unknown) => number;
 }
 type Importer = (b: Blob) => Promise<{ ok: boolean }>;
 
@@ -68,7 +72,38 @@ export function importerFor(bk: BrepjsForLoad, ext: string): Importer {
       throw new Error(`unsupported file extension: ${ext}`);
   }
 }
-export async function loadModel(bk: BrepjsForLoad, blob: Blob, ext: string): Promise<LoadedModel> {
+// Per-face metadata for click-to-inspect: surface type, area, and outward normal,
+// keyed by hash code so it matches the mesh's faceGroup faceIds. Per-face try/catch
+// keeps one degenerate face (normalAt can throw on quirky BSpline UVs) from wiping
+// the rest. Mirrors apps/playground's cad.worker collectFaceInfos.
+function collectFaceInfos(bk: BrepjsForLoad, shape: unknown): FaceInfo[] {
+  let faces: unknown[];
+  try {
+    faces = bk.getFaces(shape);
+  } catch {
+    return [];
+  }
+  const infos: FaceInfo[] = [];
+  for (const face of faces) {
+    try {
+      const st = bk.getSurfaceType(face);
+      const surfaceType = bk.isOk(st) && st.value ? st.value : 'OTHER_SURFACE';
+      const areaResult = bk.measureArea(face);
+      const area = bk.isOk(areaResult) && typeof areaResult.value === 'number' ? areaResult.value : NaN;
+      infos.push({ faceId: bk.getHashCode(face), surfaceType, area, normal: bk.normalAt(face) });
+    } catch {
+      // skip this face
+    }
+  }
+  return infos;
+}
+
+export async function loadModel(
+  bk: BrepjsForLoad,
+  blob: Blob,
+  ext: string,
+  inspect = false,
+): Promise<LoadedModel> {
   const result = await importerFor(bk, ext)(blob);
   if (!bk.isOk(result)) {
     const err = (result as { error?: unknown }).error;
@@ -76,5 +111,8 @@ export async function loadModel(bk: BrepjsForLoad, blob: Blob, ext: string): Pro
   }
   const shape = (result as unknown as { value: unknown }).value;
   const meshData = shapeMeshToMeshData(bk.mesh(shape), bk.meshEdges(shape).lines);
+  // Face metadata powers click-to-inspect; skip it for headless snapshots (inspect=false)
+  // so capture stays as fast as before.
+  if (inspect) meshData.faceInfos = collectFaceInfos(bk, shape);
   return { meshData, measurements: measureModel(bk, shape) };
 }

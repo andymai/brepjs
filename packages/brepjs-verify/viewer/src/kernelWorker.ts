@@ -16,6 +16,8 @@ export interface LoadRequest {
   type: 'load';
   bytes: ArrayBuffer;
   ext: string;
+  /** Collect per-face metadata for click-to-inspect (skipped for headless snapshots). */
+  inspect?: boolean;
 }
 export interface LoadOk {
   type: 'loaded';
@@ -82,7 +84,12 @@ function transferablesFor(md: MeshData): Transferable[] {
 async function handleLoad(req: LoadRequest): Promise<void> {
   try {
     const kernel = await ensureKernel();
-    const { meshData, measurements } = await loadModel(kernel, new Blob([req.bytes]), req.ext);
+    const { meshData, measurements } = await loadModel(
+      kernel,
+      new Blob([req.bytes]),
+      req.ext,
+      req.inspect ?? false,
+    );
     post({ type: 'loaded', meshData, measurements }, transferablesFor(meshData));
   } catch (e) {
     post({ type: 'error', error: e instanceof Error ? e.message : String(e) });

@@ -5,5 +5,6 @@ export { default as SceneSetup } from './SceneSetup.js';
 export { ViewerCanvas, type ViewerCanvasProps } from './ViewerCanvas.js';
 export { ViewerControls, type ViewerControlsProps } from './ViewerControls.js';
 export { ViewerInfoPanel, type ViewerInfoPanelProps } from './ViewerInfoPanel.js';
+export { ViewerSelectionPanel, type ViewerSelectionPanelProps } from './ViewerSelectionPanel.js';
 export * from './types.js';
 export { buildGeometry, findFaceGroupAt, meshSize } from './geometry.js';

@@ -23,6 +23,10 @@ function makeFakeBrepjs() {
     measureVolume: vi.fn(() => ({ ok: true, value: 42 })),
     measureArea: vi.fn(() => ({ ok: true, value: 84 })),
     isValid: vi.fn(() => true),
+    getFaces: vi.fn(() => [{ id: 1 }, { id: 2 }]),
+    getSurfaceType: vi.fn(() => ({ ok: true, value: 'PLANE' })),
+    normalAt: vi.fn(() => [0, 0, 1] as [number, number, number]),
+    getHashCode: vi.fn((f: { id: number }) => f.id),
   };
 }
 describe('importerFor', () => {
@@ -58,6 +62,29 @@ describe('loadModel', () => {
     expect(measurements.volume).toBeUndefined();
     expect(measurements.valid).toBe(false);
     expect(measurements.area).toBe(84);
+  });
+  it('omits face metadata by default (snapshot path)', async () => {
+    const bk = makeFakeBrepjs();
+    const { meshData } = await loadModel(bk, new Blob([new Uint8Array([1])]), '.step');
+    expect(meshData.faceInfos).toBeUndefined();
+    expect(bk.getFaces).not.toHaveBeenCalled();
+  });
+  it('collects per-face metadata when inspecting', async () => {
+    const bk = makeFakeBrepjs();
+    const { meshData } = await loadModel(bk, new Blob([new Uint8Array([1])]), '.step', true);
+    expect(meshData.faceInfos).toEqual([
+      { faceId: 1, surfaceType: 'PLANE', area: 84, normal: [0, 0, 1] },
+      { faceId: 2, surfaceType: 'PLANE', area: 84, normal: [0, 0, 1] },
+    ]);
+  });
+  it('skips a face whose metadata throws', async () => {
+    const bk = makeFakeBrepjs();
+    bk.normalAt = vi.fn((f: { id: number }) => {
+      if (f.id === 1) throw new Error('degenerate UV');
+      return [0, 0, 1];
+    });
+    const { meshData } = await loadModel(bk, new Blob([new Uint8Array([1])]), '.step', true);
+    expect(meshData.faceInfos?.map((f) => f.faceId)).toEqual([2]);
   });
   it('rejects on Err', async () => {
     const bk = makeFakeBrepjs();

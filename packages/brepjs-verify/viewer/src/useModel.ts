@@ -23,7 +23,11 @@ export type ModelState =
   | { status: 'ready'; data: MeshData; measurements: ModelMeasurements }
   | { status: 'error'; error: string };
 
-export function useModel(): ModelState {
+export interface UseModelOptions {
+  /** Collect per-face metadata so faces are clickable (skipped for headless snapshots). */
+  inspect?: boolean;
+}
+export function useModel({ inspect = false }: UseModelOptions = {}): ModelState {
   const [state, setState] = useState<ModelState>({ status: 'idle' });
   useEffect(() => {
     const params = parseModelParams(window.location.search);
@@ -57,7 +61,7 @@ export function useModel(): ModelState {
         return r.arrayBuffer();
       })
       .then((bytes) => {
-        const msg: LoadRequest = { type: 'load', bytes, ext: extOf(params.file) };
+        const msg: LoadRequest = { type: 'load', bytes, ext: extOf(params.file), inspect };
         worker.postMessage(msg, [bytes]);
       })
       .catch((err: unknown) => {
@@ -68,6 +72,6 @@ export function useModel(): ModelState {
       cancelled = true;
       worker.terminate();
     };
-  }, []);
+  }, [inspect]);
   return state;
 }

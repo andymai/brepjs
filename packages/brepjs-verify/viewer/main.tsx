@@ -4,9 +4,12 @@ import {
   ViewerCanvas,
   ViewerControls,
   ViewerInfoPanel,
+  ViewerSelectionPanel,
   Renderer,
   EdgeRenderer,
+  SelectionHighlight,
   meshSize,
+  type FaceInfo,
   type ViewMode,
   type ViewName,
 } from 'brepjs-viewer';
@@ -28,16 +31,24 @@ function downloadCanvasPng(): void {
 }
 
 function App() {
-  const state = useModel();
+  const state = useModel({ inspect: showControls });
   const [view, setView] = useState<ViewName>('iso');
   const [viewMode, setViewMode] = useState<ViewMode>('solid');
   const [showEdges, setShowEdges] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [autoRotate, setAutoRotate] = useState(false);
   const [fitSignal, setFitSignal] = useState(0);
+  const [selectedFace, setSelectedFace] = useState<FaceInfo | null>(null);
+  const [hoverFaceId, setHoverFaceId] = useState<number | null>(null);
   useEffect(() => onViewChange(setView), []); // bridge window.__renderView -> ViewerCanvas.view
   const handleFit = useCallback(() => {
     setFitSignal((n) => n + 1);
+  }, []);
+  const handleFacePick = useCallback((info: FaceInfo) => {
+    setSelectedFace(info);
+  }, []);
+  const handleFaceHover = useCallback((info: FaceInfo | null) => {
+    setHoverFaceId(info ? info.faceId : null);
   }, []);
   if (state.status === 'error')
     return (
@@ -55,11 +66,32 @@ function App() {
         gridVisible={showGrid}
         onFirstFrame={markReady}
       >
-        <Renderer data={state.data} viewMode={viewMode} />
+        <Renderer
+          data={state.data}
+          viewMode={viewMode}
+          {...(showControls
+            ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover }
+            : {})}
+        />
         {showEdges && viewMode !== 'wireframe' && state.data.edges.length > 0 && (
           <EdgeRenderer edges={state.data.edges} />
         )}
+        {showControls && (
+          <SelectionHighlight
+            data={state.data}
+            selectedFaceIds={selectedFace ? [selectedFace.faceId] : []}
+            hoverFaceId={hoverFaceId}
+          />
+        )}
       </ViewerCanvas>
+      {showControls && (
+        <ViewerSelectionPanel
+          face={selectedFace}
+          onClear={() => {
+            setSelectedFace(null);
+          }}
+        />
+      )}
       {showControls && (
         <ViewerInfoPanel
           dims={meshSize(state.data)}
