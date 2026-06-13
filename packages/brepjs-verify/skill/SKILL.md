@@ -20,7 +20,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
 8. **Export + hand off.** `npx -y brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. `--serve` prints a clickable link to an interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) for the human to eyeball; report that URL. In an interactive terminal it also opens the browser; under agent/CI runs (non-TTY) auto-open is suppressed automatically, so you normally don't need `--no-open` (pass it to be explicit). Report the STEP path.
 
-## Reading the report (this is the source of truth)
+## Reading the report
 
 ```jsonc
 {
