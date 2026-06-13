@@ -67,6 +67,33 @@ The `brepjs-verify` bin is a multi-command CLI. `verify` is the default command,
 
 Every command writes a single machine-readable JSON document to stdout; diagnostics (paths, kernel chatter, watch notices) go to stderr.
 
+## MCP server
+
+`brepjs-verify-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client). It currently provides one tool:
+
+| Tool          | Input                                  | Returns                                                                                                                                                                                                                               |
+| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `{ code: string, timeoutMs?: number }` | Executes the brepjs `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
+
+This is the closed _build → verify_ loop as a single call: the agent sends part source, gets back the deterministic report. The program runs in a separate process with a wall-clock timeout and a memory cap, so a runaway part can't hang the agent.
+
+### Connect (local build)
+
+Build the package, then register the server by absolute path:
+
+```bash
+npm run build   # emits dist/mcp/server.js
+claude mcp add brepjs-verify -- node "$(pwd)/dist/mcp/server.js"
+```
+
+Once the package is published to npm, the same server is available without a local build:
+
+```bash
+claude mcp add brepjs-verify -- npx -y --package brepjs-verify brepjs-verify-mcp
+```
+
+The server runs locally and in-process to your agent — geometry never leaves your machine.
+
 ## Examples gallery
 
 Few-shot examples live under `skill/examples/<name>.brep.ts`, each with a `<name>.expected.json` baseline. Grouped by category:
