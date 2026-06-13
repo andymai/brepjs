@@ -36,7 +36,7 @@ function measureModel(bk: BrepjsForLoad, shape: unknown): ModelMeasurements {
   const vol = safe(() => bk.measureVolume(shape));
   if (vol && bk.isOk(vol) && typeof vol.value === 'number' && vol.value > 0) m.volume = vol.value;
   const area = safe(() => bk.measureArea(shape));
-  if (area && bk.isOk(area) && typeof area.value === 'number') m.area = area.value;
+  if (area && bk.isOk(area) && typeof area.value === 'number' && area.value > 0) m.area = area.value;
   return m;
 }
 function safe<T>(fn: () => T): T | undefined {
