@@ -1100,6 +1100,8 @@ export {
 
 export { loftAll, type LoftAllEntry } from './operations/loftFns.js';
 
+export { thread, type ThreadOptions } from './operations/threadFns.js';
+
 // ── Compound operations ──
 
 export {

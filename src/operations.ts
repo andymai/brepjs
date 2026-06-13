@@ -18,6 +18,10 @@ export {
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
 
+// ── Thread ──
+
+export { thread, type ThreadOptions } from './operations/threadFns.js';
+
 // ── Patterns ──
 
 export { linearPattern, circularPattern, gridPattern } from './operations/patternFns.js';
