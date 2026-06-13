@@ -16,9 +16,10 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 3. **Author `.brep.ts`**: `export default () => <shape>` with the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top. Scaffold with `npx -y brepjs-verify init <name>`. Edit _source_, never generated artifacts.
 4. **Declare intent.** Add an `expected` block from your brief, e.g. `export const expected = { volume: 24000, tolerancePct: 1 }`. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. Bounds shape is exactly `bounds: { xMin, xMax, yMin, yMax, zMin, zMax }` (declare any subset), **not** `{ min, max }` or `{ x, y, z }` (a wrong shape is reported as `EXPECTED_UNKNOWN_KEY`, not silently ignored). The CLI asserts it, catching a part that is valid but wrong-sized. **Prefer `bounds`** (read straight off your datums/params) over a hand-computed `volume`: multi-feature volume arithmetic is easy to get wrong, and a wrong number fails a _correct_ part. To assert volume, run once and copy the report's measured value.
 5. **Verify (type + geometry).** `npx -y brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `npx -y brepjs-verify watch part.brep.ts`.
-6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs; each has the bbox size (`W × D × H`) burned in, so you can read scale from the image. Review against the brief. A visual concern is **not** a conclusion: convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
+6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs; each has the bbox size (`W × D × H`) burned in, so you can read scale from the image. Review against the brief. A visual concern is **not** a conclusion: convert a _dimensional_ one to a measurement ("hole looks off-center → check `bounds`"); a _design-quality_ one ("looks lumpy / glued-from-primitives") goes to the polish pass (step 8). Don't declare done without a snapshot.
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
-8. **Export + hand off.** `npx -y brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. `--serve` prints a clickable link to an interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) for the human to eyeball; report that URL. In an interactive terminal it also opens the browser; under agent/CI runs (non-TTY) auto-open is suppressed automatically, so you normally don't need `--no-open` (pass it to be explicit). Report the STEP path.
+8. **Polish pass** — when the part should look _designed_, not merely valid (products, toys, mechanisms, anything a human eyeballs). A lumpy stack of overlapping primitives still reports `ok:true`, so validity never catches it. Render iso + a detail view and critique: manufactured, or glued-from-primitives? Fix the worst offender — a primitive-blob (two solids doing one feature's job), a mismatched cap, raw sharp rims — prefer **additive** detail (fins, gussets, lightening holes, grooves, a flush rounded end) over the failure-prone `fillet`/`chamfer` ops, re-verify (`ok` stays true), re-render. See `references/design-polish.md`. Skip for purely functional/internal parts.
+9. **Export + hand off.** `npx -y brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. `--serve` prints a clickable link to an interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) for the human to eyeball; report that URL. In an interactive terminal it also opens the browser; under agent/CI runs (non-TTY) auto-open is suppressed automatically, so you normally don't need `--no-open` (pass it to be explicit). Report the STEP path.
 
 ## Reading the report
 
@@ -52,6 +53,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - **Reliable first-try:** primitives, booleans (`fuse`/`cut`/`intersect`), `compound` (group many bodies into an assembly, no boolean cost), 2D sketch → extrude, `fillet`/`chamfer`, `shell`/`offset`, transforms. Prefer these.
 - **Advanced (verify carefully, expect iteration):** sweeps, lofts, revolves, multi-section, welded assemblies (`fuseAll`), text. They fail more often (degenerate profiles, self-intersection); lean harder on the report and small steps.
 - **Assemblies (furniture, kits, many parts):** reach for `compound([...])`, not `fuseAll`: faster, and each part stays distinct. Only `fuseAll` when you truly need one watertight solid (and use `{ unsafe: true }` over `Shape3D[]`). Color the GLB preview with `export const materials`. See `references/booleans.md`.
+- **Mechanisms (anything that moves — hinge, slider, gear, crank, linkage):** a part-by-part valid assembly can still **jam or not move**, and the kernel won't catch it. Sweep the drive parameter (crank angle, etc.) and assert parts never interpenetrate (`intersect` volume ≈ 0) AND the driven element travels its intended distance. Don't claim a mechanism works from a single rendered pose. See `references/assemblies-motion.md`.
 
 ## Hard rules
 
@@ -71,10 +73,20 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - Primitives → `references/primitives.md`
 - 2D sketching → extrude → `references/sketching-2d.md`
 - Booleans → `references/booleans.md`
+- Assemblies & motion (validate mechanisms move without colliding) → `references/assemblies-motion.md`
 - Fillet/chamfer/shell/offset → `references/modifiers.md`
+- Design polish (make parts look engineered, not assembled-from-primitives) → `references/design-polish.md`
 - Transforms → `references/transforms.md`
 - Measurement + the verify loop → `references/measurement-validation.md`
 - Export formats → `references/export.md`
+
+_Maker recipes & conventions (load when the request matches):_
+
+- FDM defaults — fastener clearance holes, walls, clearance heuristics, design-for-printing → `references/fdm-conventions.md`
+- Mechanical joints — snap-fit clips, press-fits/crush-ribs, heat-set inserts → `references/mechanical-joints.md`
+- Gridfinity spec (42 mm grid, magnets, stacking) → `references/gridfinity.md`
+- Gears (spur **reliable** via polygon→extrude; helical/bevel advanced) → `references/gears.md`
+- Threads (**reliable** via loft-through-sections; `MakePipeShell` can't) → `references/threads.md`
 
 **Full API reference (backstop):** for any symbol, signature, or option not covered by the curated references above, consult brepjs's complete `llms-full.txt`, which lists every export with signatures and examples. It ships bundled in the package at `reference/llms-full.txt`, and is online at <https://github.com/andymai/brepjs/blob/main/llms-full.txt>. Reach for it before guessing an API; the curated references are a fast path, not the whole surface.
 
@@ -85,6 +97,7 @@ Each is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expect
 - **Primitives + booleans:** `mounting-bracket` (base + upright web + bolt holes) · `flanged-coupler` (flange + cylinder + bore, chamfered) · `transform-bracket` (translate/rotate/mirror).
 - **2D sketch → solid:** `extruded-bracket` (rounded plate + bolt holes) · `revolved-pulley` (V-groove revolved) · `swept-gasket` (frame swept along a spine).
 - **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (chamfer) · `hollow-enclosure` (filleted box, shelled).
+- **Mechanical:** `spur-gear` (involute spur gear — all teeth as one `polygon` → `extrude`, BOSL2-faithful math) · `threaded-rod` (external thread — `loft` through rotated sections).
 - **Gridfinity:** `gridfinity-baseplate` · `gridfinity-bin` · `gridfinity-divider`.
 
 ## CLI subcommands (the `brepjs-verify` bin)
