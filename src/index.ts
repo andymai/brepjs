@@ -834,6 +834,19 @@ export {
 } from './operations/mateFns.js';
 
 export {
+  revoluteJoint,
+  prismaticJoint,
+  setJointValue,
+  jointTransform,
+  addJoint,
+  type Joint,
+  type JointAxis,
+  type JointType,
+  type JointPose,
+  type JointOptions,
+} from './operations/jointFns.js';
+
+export {
   createHistory,
   addStep,
   undoLast,

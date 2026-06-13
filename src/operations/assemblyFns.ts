@@ -26,6 +26,8 @@ export interface AssemblyNode {
   readonly metadata?: Readonly<Record<string, unknown>>;
   readonly children: ReadonlyArray<AssemblyNode>;
   readonly mates?: readonly unknown[];
+  /** Drivable kinematic joints (see jointFns). Typed loosely to avoid a cycle. */
+  readonly joints?: readonly unknown[];
 }
 
 export interface AssemblyNodeOptions {

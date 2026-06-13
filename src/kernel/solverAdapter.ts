@@ -2,6 +2,8 @@
  * Constraint solver adapter — analytical solver for simple assembly mates.
  */
 
+import { quatRotate, quatFromAxisAngle, quatFromTo } from '@/utils/quaternion.js';
+
 /** 3D vector (local alias to avoid cross-layer import). */
 type Vec3 = readonly [number, number, number];
 
@@ -72,53 +74,20 @@ function normalize(a: Vec3): Vec3 {
   return [a[0] / l, a[1] / l, a[2] / l];
 }
 
-/** A unit vector perpendicular to `v` (for the 180° / parallel degenerate cases). */
+/** A unit vector perpendicular to `v` (for the parallel-normals degenerate case). */
 function anyPerpendicular(v: Vec3): Vec3 {
   const ref: Vec3 = Math.abs(v[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
   return normalize(cross(v, ref));
 }
 
-/** Rotate vector `v` by quaternion `q` = [w, x, y, z]. */
-function qRotate(q: Quat, v: Vec3): Vec3 {
-  const [w, x, y, z] = q;
-  const tx = 2 * (y * v[2] - z * v[1]);
-  const ty = 2 * (z * v[0] - x * v[2]);
-  const tz = 2 * (x * v[1] - y * v[0]);
-  return [
-    v[0] + w * tx + (y * tz - z * ty),
-    v[1] + w * ty + (z * tx - x * tz),
-    v[2] + w * tz + (x * ty - y * tx),
-  ];
-}
-
-function qFromAxisAngle(axis: Vec3, angle: number): Quat {
-  const h = angle / 2;
-  const s = Math.sin(h);
-  const u = normalize(axis);
-  return [Math.cos(h), u[0] * s, u[1] * s, u[2] * s];
-}
-
-/** Shortest-arc quaternion rotating unit vector `from` onto unit vector `to`. */
-function qFromTo(from: Vec3, to: Vec3): Quat {
-  const a = normalize(from);
-  const b = normalize(to);
-  const d = dot(a, b);
-  if (d >= 1 - 1e-9) return IDENTITY_ROTATION;
-  if (d <= -1 + 1e-9) return qFromAxisAngle(anyPerpendicular(a), Math.PI);
-  const c = cross(a, b);
-  const q: Quat = [1 + d, c[0], c[1], c[2]];
-  const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
-  return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
-}
-
 /** Apply a pose (rotate then translate) to an entity's origin and any directions. */
 function transformEntity(e: SolverEntity, pose: Pose): SolverEntity {
-  const origin = add(qRotate(pose.rotation, e.origin), pose.position);
+  const origin = add(quatRotate(pose.rotation, e.origin), pose.position);
   return {
     type: e.type,
     origin,
-    ...(e.normal ? { normal: qRotate(pose.rotation, e.normal) } : {}),
-    ...(e.direction ? { direction: qRotate(pose.rotation, e.direction) } : {}),
+    ...(e.normal ? { normal: quatRotate(pose.rotation, e.normal) } : {}),
+    ...(e.direction ? { direction: quatRotate(pose.rotation, e.direction) } : {}),
   };
 }
 
@@ -145,8 +114,8 @@ function solvePlanePair(ref: SolverEntity, dep: SolverEntity, extra: number): Po
 function solveConcentric(ref: SolverEntity, dep: SolverEntity): Pose {
   const dRef = ref.direction ?? [0, 0, 1];
   const dDep = dep.direction ?? [0, 0, 1];
-  const rotation = qFromTo(dDep, dRef);
-  const rotatedOrigin = qRotate(rotation, dep.origin);
+  const rotation = quatFromTo(dDep, dRef);
+  const rotatedOrigin = quatRotate(rotation, dep.origin);
   return { position: sub(ref.origin, rotatedOrigin), rotation };
 }
 
@@ -163,7 +132,7 @@ function solveAngle(ref: SolverEntity, dep: SolverEntity, angleRad: number): Pos
   const axis = Math.hypot(c[0], c[1], c[2]) < 1e-9 ? anyPerpendicular(nDep) : c;
   // Rotating nDep about (nDep×nRef) by +phi aligns it with nRef; rotate by
   // (phi − angle) to leave exactly `angleRad` between them.
-  return { position: [0, 0, 0], rotation: qFromAxisAngle(axis, phi - angleRad) };
+  return { position: [0, 0, 0], rotation: quatFromAxisAngle(axis, phi - angleRad) };
 }
 
 /** Entity types each positioning constraint requires of (entityA, entityB). */
