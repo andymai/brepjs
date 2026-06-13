@@ -858,6 +858,15 @@ export {
 } from './operations/jointFns.js';
 
 export {
+  inverseKinematics,
+  jointTrajectory,
+  type IKTarget,
+  type IKOptions,
+  type IKResult,
+  type TrajectorySample,
+} from './operations/ikFns.js';
+
+export {
   createHistory,
   addStep,
   undoLast,
