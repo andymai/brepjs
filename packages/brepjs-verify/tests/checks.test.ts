@@ -64,4 +64,20 @@ describe('runChecks', () => {
     const report = runChecks(brep, box(10, 10, 10));
     expect(report.topology?.manifold).toBe(true);
   });
+
+  it('reports manifold=false when a shell is not manifold', () => {
+    // Fault-inject the manifold predicate to exercise the false branch deterministically,
+    // without depending on the kernel to produce a real non-manifold solid.
+    const faultyBrep = { ...brep, isManifoldShell: (() => false) as typeof brep.isManifoldShell };
+    const report = runChecks(faultyBrep, box(10, 10, 10));
+    expect(report.topology?.manifold).toBe(false);
+  });
+
+  it('omits manifold (absent, not false) for a shape with no shells', () => {
+    const edge = brep.getEdges(box(10, 10, 10))[0];
+    if (!edge) throw new Error('expected an edge from the box');
+    const report = runChecks(brep, edge);
+    expect(report.topology).toBeDefined();
+    expect(report.topology?.manifold).toBeUndefined();
+  });
 });
