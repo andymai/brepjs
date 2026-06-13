@@ -41,75 +41,136 @@ const UNSUPPORTED_DOF: Readonly<Record<string, number>> = {
   angle: 1,
 };
 
+type Pose = { position: Vec3; rotation: [number, number, number, number] };
+
+const IDENTITY_ROTATION: [number, number, number, number] = [1, 0, 0, 0];
+
+function add(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function dot(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+/**
+ * Position a dependent plane against an already-placed reference plane.
+ *
+ * Both entity origins are local (pre-transform); the reference's solved
+ * translation is applied before measuring, so a chain composes down its
+ * already-solved poses instead of reading original geometry. `extra` is the
+ * gap for a distance mate (0 for coincident). Rotation stays identity —
+ * coincident/distance produce pure translations.
+ */
+function solvePlanePair(
+  ref: SolverEntity,
+  refPos: Vec3,
+  dep: SolverEntity,
+  depPos: Vec3,
+  extra: number
+): Pose {
+  const n = ref.normal ?? [0, 0, 1];
+  const refOrigin = add(ref.origin, refPos);
+  const depOrigin = add(dep.origin, depPos);
+  const offset =
+    dot(n, [
+      refOrigin[0] - depOrigin[0],
+      refOrigin[1] - depOrigin[1],
+      refOrigin[2] - depOrigin[2],
+    ]) + extra;
+  return {
+    position: [depPos[0] + offset * n[0], depPos[1] + offset * n[1], depPos[2] + offset * n[2]],
+    rotation: IDENTITY_ROTATION,
+  };
+}
+
 /**
  * Solve assembly constraints analytically.
  *
- * Currently handles: fixed, coincident (plane-plane), distance (plane-plane).
- * Returns `converged: false` with unsupported constraint details for concentric and angle.
+ * Handles: fixed, coincident (plane-plane), distance (plane-plane). For a
+ * positioning mate, entityA is the reference and entityB the dependent. Chain
+ * roots (nodes never positioned by a mate) and explicit `fixed` nodes anchor at
+ * the origin; constraints then resolve in topological order — each places its
+ * dependent against the reference's solved pose, so multi-body chains compose.
+ * Returns `converged: false` with unsupported details for concentric, angle,
+ * non-plane pairs, and any constraint whose reference never resolves.
  */
 export function solveConstraints(nodes: string[], constraints: SolverConstraint[]): SolverResult {
-  const transforms = new Map<
-    string,
-    { position: Vec3; rotation: [number, number, number, number] }
-  >();
+  const transforms = new Map<string, Pose>();
 
   // Initialize all nodes at origin
   for (const node of nodes) {
-    transforms.set(node, {
-      position: [0, 0, 0],
-      rotation: [1, 0, 0, 0],
-    });
+    transforms.set(node, { position: [0, 0, 0], rotation: IDENTITY_ROTATION });
   }
 
   const unsupported: string[] = [];
 
-  // Process fixed constraints first (no-ops, node stays at origin)
-  // Then process positioning constraints
+  // For positioning mates, entityA is the reference and entityB the dependent.
+  const positioning = constraints.filter(
+    (c) => (c.type === 'coincident' || c.type === 'distance') && c.entityA && c.entityB
+  );
+  const dependents = new Set<string>();
+  for (const c of positioning) if (c.entityB) dependents.add(c.entityB.node);
+
+  // Anchors are placed at the origin: any node never positioned by a mate (a
+  // chain root), plus any explicit `fixed` node.
+  const placed = new Set<string>();
+  for (const node of nodes) if (!dependents.has(node)) placed.add(node);
+  for (const c of constraints) if (c.type === 'fixed' && c.entityA) placed.add(c.entityA.node);
+
+  // concentric / angle are not solved yet (Phase 1).
   for (const c of constraints) {
-    if (c.type === 'coincident' && c.entityA && c.entityB) {
-      const a = c.entityA;
-      const b = c.entityB;
-
-      if (a.entity.type === 'plane' && b.entity.type === 'plane') {
-        const aNormal = a.entity.normal ?? [0, 0, 1];
-        const aOrigin = a.entity.origin;
-        const bOrigin = b.entity.origin;
-
-        const dot =
-          aNormal[0] * (aOrigin[0] - bOrigin[0]) +
-          aNormal[1] * (aOrigin[1] - bOrigin[1]) +
-          aNormal[2] * (aOrigin[2] - bOrigin[2]);
-
-        const pos: Vec3 = [dot * aNormal[0], dot * aNormal[1], dot * aNormal[2]];
-        transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
-      } else {
-        unsupported.push(`coincident(${a.entity.type}-${b.entity.type})`);
-      }
-    } else if (c.type === 'distance' && c.entityA && c.entityB && c.value !== undefined) {
-      const a = c.entityA;
-      const b = c.entityB;
-
-      if (a.entity.type === 'plane' && b.entity.type === 'plane') {
-        const aNormal = a.entity.normal ?? [0, 0, 1];
-        const aOrigin = a.entity.origin;
-        const bOrigin = b.entity.origin;
-
-        const currentDist =
-          aNormal[0] * (aOrigin[0] - bOrigin[0]) +
-          aNormal[1] * (aOrigin[1] - bOrigin[1]) +
-          aNormal[2] * (aOrigin[2] - bOrigin[2]);
-
-        const offset = currentDist + c.value;
-        const pos: Vec3 = [offset * aNormal[0], offset * aNormal[1], offset * aNormal[2]];
-        transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
-      } else {
-        unsupported.push(`distance(${a.entity.type}-${b.entity.type})`);
-      }
-    } else if (c.type === 'concentric' || c.type === 'angle') {
-      unsupported.push(c.type);
-    }
-    // 'fixed' is a no-op — node stays at origin (handled by initialization)
+    if (c.type === 'concentric' || c.type === 'angle') unsupported.push(c.type);
   }
+
+  // Non-plane positioning pairs are unsupported regardless of order; report them
+  // eagerly and keep only plane-plane pairs for topological resolution.
+  const pending: SolverConstraint[] = [];
+  for (const c of positioning) {
+    if (!c.entityA || !c.entityB) continue;
+    if (c.entityA.entity.type !== 'plane' || c.entityB.entity.type !== 'plane') {
+      unsupported.push(`${c.type}(${c.entityA.entity.type}-${c.entityB.entity.type})`);
+      continue;
+    }
+    pending.push(c);
+  }
+
+  // Resolve in topological rounds: a mate solves once its reference (entityA) is
+  // placed, positioning the dependent (entityB) against the reference's solved
+  // pose so multi-body chains compose.
+  let progress = true;
+  while (progress && pending.length > 0) {
+    progress = false;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      const c = pending[i];
+      if (!c?.entityA || !c.entityB) continue;
+      const ref = c.entityA;
+      const dep = c.entityB;
+      if (!placed.has(ref.node)) continue; // reference not solved yet — defer
+
+      pending.splice(i, 1);
+      progress = true;
+      if (placed.has(dep.node)) continue; // dependent already anchored (fixed) — redundant
+
+      const refPose = transforms.get(ref.node) ?? {
+        position: [0, 0, 0],
+        rotation: IDENTITY_ROTATION,
+      };
+      const depPose = transforms.get(dep.node) ?? {
+        position: [0, 0, 0],
+        rotation: IDENTITY_ROTATION,
+      };
+      const extra = c.type === 'distance' ? (c.value ?? 0) : 0;
+      transforms.set(
+        dep.node,
+        solvePlanePair(ref.entity, refPose.position, dep.entity, depPose.position, extra)
+      );
+      placed.add(dep.node);
+    }
+  }
+
+  // Anything still pending has a reference that never resolved (e.g. a cycle).
+  for (const c of pending) unsupported.push(`${c.type}(unanchored)`);
 
   const dof = unsupported.reduce((sum, type) => {
     // Look up by exact key first, then by base type (before parenthesis)

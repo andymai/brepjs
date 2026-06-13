@@ -421,11 +421,45 @@ describe('solveAssembly — combined mates', () => {
     const midZ = solved.transforms.get('mid')?.position[2];
     expect(midZ).toBeCloseTo(10, 0);
 
-    // Solver uses original (pre-transform) face coordinates.
-    // top of b2 (5-tall) has center at z=5 in local space, bottom of b3 at z=0.
-    // currentDist = 1*(5-0) = 5, offset = 5 + 3 = 8 → top.position[2] = 8
+    // Constraints compose down the chain: the distance mate reads mid's SOLVED
+    // pose, not its original geometry. mid is placed at z=10 (spans 10..15), so
+    // its top face is at world z=15; with a 3-unit gap, top sits at z=18.
     const topZ = solved.transforms.get('top')?.position[2];
-    expect(topZ).toBeCloseTo(8, 0);
+    expect(topZ).toBeCloseTo(18, 0);
+  });
+
+  it('composes a chain regardless of mate declaration order', () => {
+    const b1 = box(10, 10, 10);
+    const b2 = box(5, 5, 5);
+    const b3 = box(5, 5, 5);
+
+    let assembly = createAssemblyNode('root');
+    assembly = addChild(assembly, createAssemblyNode('base', { shape: b1 }));
+    assembly = addChild(assembly, createAssemblyNode('mid', { shape: b2 }));
+    assembly = addChild(assembly, createAssemblyNode('top', { shape: b3 }));
+
+    // Declared leaf-first: the top→mid mate appears before mid→base, so a
+    // naive in-order solver would read mid's unsolved (origin) pose. Topological
+    // resolution must still place mid before solving the distance mate.
+    assembly = addMate(assembly, {
+      type: 'distance',
+      entityA: { node: 'mid', face: topFace(b2) },
+      entityB: { node: 'top', face: bottomFace(b3) },
+      distance: 3,
+    });
+    assembly = addMate(assembly, {
+      type: 'coincident',
+      entityA: { node: 'base', face: topFace(b1) },
+      entityB: { node: 'mid', face: bottomFace(b2) },
+    });
+    assembly = addMate(assembly, { type: 'fixed', entity: { node: 'base' } });
+
+    const result = solveAssembly(assembly);
+    expect(isOk(result)).toBe(true);
+    const solved = unwrap(result);
+    expect(solved.converged).toBe(true);
+    expect(solved.transforms.get('mid')?.position[2]).toBeCloseTo(10, 0);
+    expect(solved.transforms.get('top')?.position[2]).toBeCloseTo(18, 0);
   });
 });
 
