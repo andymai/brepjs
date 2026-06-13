@@ -11,8 +11,12 @@
     "vscode": "^1.87.0",
     "node": ">=24"
   },
-  "categories": ["Other"],
-  "activationEvents": ["onLanguage:typescript"],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:typescript"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -107,7 +111,7 @@
     "@types/three": "*",
     "@types/vscode": "^1.87.0",
     "@vitejs/plugin-react": "*",
-    "esbuild": "^0.28.0",
+    "esbuild": "0.28.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "three": "0.184.0",
