@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.78.1](https://github.com/andymai/brepjs/compare/brepjs-v18.78.0...brepjs-v18.78.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **occt:** derive cylinder data via embind downcast, not GeomAdaptor_Surface ([#1336](https://github.com/andymai/brepjs/issues/1336)) ([25874c2](https://github.com/andymai/brepjs/commit/25874c23a5a8fc011b6b4cb28e0d8134465442c5))
+
 ## [18.78.0](https://github.com/andymai/brepjs/compare/brepjs-v18.77.0...brepjs-v18.78.0) (2026-06-13)
 
 
