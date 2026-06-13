@@ -53,8 +53,10 @@ export async function runProgramTool(args: RunProgramToolArgs): Promise<CallTool
   if (recordPath) {
     try {
       await appendRunRecord(recordPath, buildRunRecord(args.code, result));
-    } catch {
-      // provenance is best-effort
+    } catch (err) {
+      // Best-effort: surface a misconfigured path (e.g. a missing parent dir) on stderr — which is
+      // separate from the stdio JSON-RPC channel — without affecting the tool result.
+      console.warn(`run-record append failed (BREPJS_RUN_RECORD_PATH=${recordPath}):`, err);
     }
   }
 
