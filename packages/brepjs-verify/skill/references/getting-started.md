@@ -26,7 +26,7 @@ export default () => box(40, 20, 10, { centered: true });
 npx -y brepjs-verify bracket.brep.ts
 ```
 
-Add `--snapshot ./out` for PNGs, `--step ./out/bracket.step` for the primary STEP, or `--serve` for a clickable preview that renders the real STEP geometry.
+Add `--snapshot ./out` for PNGs (with the bbox size burned into each), `--step ./out/bracket.step` for the primary STEP, or `--serve` for a clickable interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) that renders the real STEP geometry.
 
 ## Pitfalls
 

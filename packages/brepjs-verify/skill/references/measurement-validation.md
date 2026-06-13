@@ -21,8 +21,8 @@ measureVolume(box(2, 3, 4)); // ok(24)
 
 1. `npx -y brepjs-verify model.brep.ts` runs the model + deterministic checks (volume, bounds, validity) — these decide pass/fail.
 2. `--json out.json` emits machine-readable measurements to diff between iterations; `measure`/`diff` subcommands compare distances and before/after parts.
-3. `--snapshot ./out` writes iso/front/top/right PNGs for a visual sanity pass.
-4. `--serve` opens a clickable, directory-rooted preview rendering the real STEP geometry (read-only).
+3. `--snapshot ./out` writes iso/front/top/right PNGs for a visual sanity pass. Each PNG has the bounding-box size (`W × D × H`) burned into the corner, so you can read scale straight from the image — but still confirm exact dimensions against `bounds` in the report.
+4. `--serve` opens a clickable, directory-rooted preview rendering the real STEP geometry. It's an interactive inspector (for the human reviewing the link): view presets + zoom-to-fit, solid/wireframe/x-ray, edge & grid toggles, turntable, ortho/perspective, click-a-face to read its surface type + area, a movable section/clipping plane to inspect internal features, a measurements panel (size · volume · area · validity), and an in-browser screenshot.
 
 Trust the deterministic numbers; treat snapshots/serve as confirmation, not proof.
 
