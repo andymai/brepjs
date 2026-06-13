@@ -235,6 +235,140 @@ describe('jointFns — forward kinematics', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Independent 4x4-style FK (rotation matrix + translation) used to cross-check
+// the production quaternion-based forwardKinematics on a 6-DOF spatial chain.
+// ---------------------------------------------------------------------------
+
+type V3 = [number, number, number];
+type M3 = [number, number, number, number, number, number, number, number, number]; // row-major
+
+function unit3(v: V3): V3 {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+}
+
+/** Rodrigues' rotation matrix for `angle` radians about (normalized) `axis`. */
+function rotMat(axis: V3, angle: number): M3 {
+  const [x, y, z] = unit3(axis);
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const t = 1 - c;
+  return [
+    t * x * x + c,
+    t * x * y - s * z,
+    t * x * z + s * y,
+    t * x * y + s * z,
+    t * y * y + c,
+    t * y * z - s * x,
+    t * x * z - s * y,
+    t * y * z + s * x,
+    t * z * z + c,
+  ];
+}
+
+function matVec(m: M3, v: V3): V3 {
+  return [
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+
+function matMul(a: M3, b: M3): M3 {
+  const out = [0, 0, 0, 0, 0, 0, 0, 0, 0] as unknown as M3;
+  for (let r = 0; r < 3; r++)
+    for (let col = 0; col < 3; col++)
+      out[r * 3 + col] = a[r * 3] * b[col] + a[r * 3 + 1] * b[3 + col] + a[r * 3 + 2] * b[6 + col];
+  return out;
+}
+
+interface Link {
+  child: string;
+  joint: Joint;
+}
+
+/** Reference FK by composing per-joint (R, t) rigid transforms with matrices. */
+function matrixFK(links: readonly Link[], values: Record<string, number>, tip: V3): V3 {
+  let R: M3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  let t: V3 = [0, 0, 0];
+  for (const { child, joint } of links) {
+    const v = values[child] ?? joint.value;
+    let Rl: M3;
+    let tl: V3;
+    if (joint.type === 'prismatic') {
+      Rl = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+      const d = unit3(joint.axis.direction as V3);
+      tl = [d[0] * v, d[1] * v, d[2] * v];
+    } else {
+      Rl = rotMat(joint.axis.direction as V3, (v * Math.PI) / 180);
+      const o = joint.axis.origin as V3;
+      const ro = matVec(Rl, o);
+      tl = [o[0] - ro[0], o[1] - ro[1], o[2] - ro[2]];
+    }
+    // world = parent ∘ local: t += R·tl, R = R·Rl
+    const Rtl = matVec(R, tl);
+    t = [t[0] + Rtl[0], t[1] + Rtl[1], t[2] + Rtl[2]];
+    R = matMul(R, Rl);
+  }
+  const Rtip = matVec(R, tip);
+  return [Rtip[0] + t[0], Rtip[1] + t[1], Rtip[2] + t[2]];
+}
+
+describe('jointFns — forward kinematics (6-DOF spatial chain)', () => {
+  // A 6-axis arm: mixed revolute axes (Z/Y/X) plus one prismatic, joint origins
+  // along +X in each parent frame. Axes are non-coplanar so the test exercises
+  // full 3D quaternion composition, not just planar rotation.
+  const links: Link[] = [
+    {
+      child: 'l1',
+      joint: revoluteJoint('base', 'l1', { origin: [0, 0, 0], direction: [0, 0, 1] }),
+    },
+    { child: 'l2', joint: revoluteJoint('l1', 'l2', { origin: [2, 0, 0], direction: [0, 1, 0] }) },
+    { child: 'l3', joint: revoluteJoint('l2', 'l3', { origin: [4, 0, 0], direction: [0, 1, 0] }) },
+    {
+      child: 'l4',
+      joint: prismaticJoint('l3', 'l4', { origin: [6, 0, 0], direction: [1, 0, 0] }, { max: 5 }),
+    },
+    { child: 'l5', joint: revoluteJoint('l4', 'l5', { origin: [7, 0, 0], direction: [1, 0, 0] }) },
+    { child: 'l6', joint: revoluteJoint('l5', 'l6', { origin: [8, 0, 0], direction: [0, 1, 0] }) },
+  ];
+  const tip: V3 = [9, 0, 0];
+
+  function chain(): ReturnType<typeof createAssemblyNode> {
+    let asm = createAssemblyNode('root');
+    for (const name of ['base', 'l1', 'l2', 'l3', 'l4', 'l5', 'l6'])
+      asm = addChild(asm, createAssemblyNode(name));
+    for (const { joint } of links) asm = addJoint(asm, joint);
+    return asm;
+  }
+
+  it('reports 6 degrees of freedom', () => {
+    expect(mechanismDOF(chain())).toBe(6);
+  });
+
+  it('matches an independent matrix FK across joint configurations', () => {
+    const configs: Array<Record<string, number>> = [
+      {},
+      { l1: 30, l2: 45, l3: -30, l4: 3, l5: 60, l6: -45 },
+      { l1: 90, l2: -90, l3: 20, l4: 5, l5: 15, l6: 80 },
+      { l1: -120, l2: 70, l3: 70, l4: 1, l5: -50, l6: 110 },
+    ];
+    const asm = chain();
+    for (const cfg of configs) {
+      const poses = forwardKinematics(asm, cfg);
+      const fkTip = applyPose(poseOf6(poses, 'l6'), tip);
+      expectVecClose(fkTip, matrixFK(links, cfg, tip), 6);
+    }
+  });
+});
+
+function poseOf6(poses: Map<string, JointPose>, name: string): JointPose {
+  const p = poses.get(name);
+  if (!p) throw new Error(`no pose for ${name}`);
+  return p;
+}
+
 describe('jointFns — mechanism DOF', () => {
   it('sums joint freedoms (open-chain mobility)', () => {
     let asm = createAssemblyNode('root');
