@@ -60,6 +60,13 @@ export interface Joint {
   readonly value: number;
   /** All drivable degrees of freedom, in composition order. */
   readonly dofs: readonly JointDOF[];
+  /**
+   * Optional fixed transform applied to the child frame *after* the joint
+   * motion (`childWorld = parentWorld ∘ jointTransform ∘ offset`). Lets a single
+   * joint carry a static link offset (e.g. a Denavit-Hartenberg link geometry)
+   * without an extra body. Defaults to identity. See `jointsFromDH`.
+   */
+  readonly offset?: JointPose;
 }
 
 /** A rigid transform: translation + quaternion rotation `[w, x, y, z]`. */
@@ -426,7 +433,10 @@ export function forwardKinematics(
       progress = true;
       if (poses.has(j.child)) continue; // already placed (duplicate/cycle) — skip
       const value = jointValues[j.child] ?? j.value;
-      poses.set(j.child, composePose(parentPose, jointTransform(j, value)));
+      const local = j.offset
+        ? composePose(jointTransform(j, value), j.offset)
+        : jointTransform(j, value);
+      poses.set(j.child, composePose(parentPose, local));
     }
   }
   // A joint whose parent never resolved (cycle/dangling) still gets an entry so

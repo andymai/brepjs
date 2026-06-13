@@ -73,6 +73,15 @@ export {
   type TrajectorySample,
 } from './operations/ikFns.js';
 
+export { jointsFromDH, type DHRow, type DHOptions } from './operations/dhFns.js';
+
+export {
+  exportURDF,
+  importURDF,
+  type UrdfExportOptions,
+  type UrdfDocument,
+} from './operations/urdfFns.js';
+
 export {
   exportAssemblySTEP,
   type ShapeOptions,
