@@ -13,6 +13,7 @@ import {
   meshBounds,
   sectionPlane,
   type FaceInfo,
+  type Projection,
   type SectionAxis,
   type ViewMode,
   type ViewName,
@@ -45,6 +46,7 @@ function App() {
   const [showEdges, setShowEdges] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [autoRotate, setAutoRotate] = useState(false);
+  const [projection, setProjection] = useState<Projection>('perspective');
   const [fitSignal, setFitSignal] = useState(0);
   const [selectedFace, setSelectedFace] = useState<FaceInfo | null>(null);
   const [hoverFaceId, setHoverFaceId] = useState<number | null>(null);
@@ -108,6 +110,7 @@ function App() {
         fitSignal={fitSignal}
         autoRotate={autoRotate}
         gridVisible={showGrid}
+        projection={projection}
         onFirstFrame={markReady}
       >
         <Renderer
@@ -181,6 +184,10 @@ function App() {
           autoRotate={autoRotate}
           onToggleAutoRotate={() => {
             setAutoRotate((v) => !v);
+          }}
+          projection={projection}
+          onToggleProjection={() => {
+            setProjection((p) => (p === 'perspective' ? 'orthographic' : 'perspective'));
           }}
           activeView={view}
           onView={setView}

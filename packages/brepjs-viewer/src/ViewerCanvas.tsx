@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
+import { OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import SceneSetup from './SceneSetup.js'; // default export; renders its own OrbitControls
 import { buildGeometry } from './geometry.js';
 import type { MeshData, ViewName } from './types.js';
+
+export type Projection = 'perspective' | 'orthographic';
 
 export interface ViewerCanvasProps {
   data: MeshData;
@@ -12,6 +15,7 @@ export interface ViewerCanvasProps {
   fitSignal?: number;
   autoRotate?: boolean;
   gridVisible?: boolean;
+  projection?: Projection;
   onFirstFrame?: () => void;
   children?: ReactNode;
 }
@@ -29,11 +33,13 @@ function Framing({
   data,
   view,
   fitSignal,
+  projection,
   onFirstFrame,
 }: {
   data: MeshData;
   view: ViewName;
   fitSignal?: number | undefined;
+  projection: Projection;
   onFirstFrame?: (() => void) | undefined;
 }) {
   const camera = useThree((s) => s.camera);
@@ -57,18 +63,37 @@ function Framing({
   useEffect(() => {
     const dir = VIEW_DIR[view].clone().normalize();
     camera.position.copy(center).addScaledVector(dir, radius * 3);
-    const cam = camera as THREE.PerspectiveCamera;
-    cam.near = radius / 100;
-    cam.far = radius * 100;
+    camera.near = radius / 100;
+    camera.far = radius * 100;
+    const ortho = camera as THREE.OrthographicCamera;
+    if (ortho.isOrthographicCamera) {
+      // Ortho has no perspective foreshortening, so framing comes from zoom, not distance:
+      // scale the bounding sphere to ~80% of the smaller viewport dimension.
+      const viewSize = Math.min(ortho.right - ortho.left, ortho.top - ortho.bottom);
+      if (viewSize > 0 && radius > 0) ortho.zoom = viewSize / (radius * 2.4);
+    }
     camera.lookAt(center);
-    cam.updateProjectionMatrix();
+    camera.updateProjectionMatrix();
     invalidate();
     if (!fired.current) {
       fired.current = true;
       onFirstFrameRef.current?.();
     }
-  }, [camera, invalidate, center, radius, view, fitSignal]);
+  }, [camera, invalidate, center, radius, view, fitSignal, projection]);
   return null;
+}
+
+// Mounts an OrthographicCamera with makeDefault while ortho is active, starting at the
+// perspective camera's current position so the swap is visually continuous. On unmount,
+// drei restores the Canvas's default PerspectiveCamera.
+function OrthoCamera() {
+  const camera = useThree((s) => s.camera);
+  const initial = useRef<[number, number, number]>([
+    camera.position.x,
+    camera.position.y,
+    camera.position.z,
+  ]);
+  return <OrthographicCamera makeDefault position={initial.current} zoom={20} near={0.1} far={2000} />;
 }
 
 // Enables material-level (local) clipping planes. Set once; harmless when no material
@@ -90,6 +115,7 @@ export function ViewerCanvas({
   fitSignal,
   autoRotate = false,
   gridVisible = true,
+  projection = 'perspective',
   onFirstFrame,
   children,
 }: ViewerCanvasProps) {
@@ -98,8 +124,15 @@ export function ViewerCanvas({
     // GPU idle. preserveDrawingBuffer stays on so screenshots read back in both modes.
     <Canvas frameloop={autoRotate ? 'always' : 'demand'} gl={{ preserveDrawingBuffer: true }}>
       <LocalClipping />
+      {projection === 'orthographic' && <OrthoCamera />}
       <SceneSetup autoRotate={autoRotate} gridVisible={gridVisible} />
-      <Framing data={data} view={view} fitSignal={fitSignal} onFirstFrame={onFirstFrame} />
+      <Framing
+        data={data}
+        view={view}
+        fitSignal={fitSignal}
+        projection={projection}
+        onFirstFrame={onFirstFrame}
+      />
       {children}
     </Canvas>
   );
