@@ -59,12 +59,19 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     // isn't reported ok on volume alone while an invalid body hides inside it.
     const solids = getSolids(shape);
     if (solids.length > 0) {
-      const invalid = solids.filter((s) => !isOk(validSolid(s))).length;
-      const bodiesCheck: VerifyCheck = { name: 'allBodiesValid', passed: invalid === 0 };
-      if (invalid > 0) {
-        bodiesCheck.detail = `${invalid}/${solids.length} bodies invalid`;
+      // Keep each failing body's BRepCheck message (which body, and why) rather than just a count.
+      const failures: string[] = [];
+      solids.forEach((s, i) => {
+        const v = validSolid(s);
+        if (!isOk(v)) failures.push(`body ${i}: ${v.error}`);
+      });
+      const bodiesCheck: VerifyCheck = { name: 'allBodiesValid', passed: failures.length === 0 };
+      if (failures.length > 0) {
+        bodiesCheck.detail = `${failures.length}/${solids.length} bodies invalid — ${failures.join('; ')}`;
+        // One errorInfo with the shared validity code; buildHints dedupes by code, so the hint
+        // fires once while the per-body detail stays reachable on the check.
         r.errorInfos.push({
-          message: `allBodiesValid: ${invalid}/${solids.length} bodies invalid`,
+          message: `allBodiesValid: ${bodiesCheck.detail}`,
           code: VALIDITY_FAILURE_CODE,
         });
       }

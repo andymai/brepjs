@@ -103,6 +103,23 @@ describe('runChecks', () => {
     expect(check?.detail).toContain('2/2');
   });
 
+  it('reports a partial failure (1 of 2 bodies invalid)', () => {
+    // Fail only the second body: first call delegates to the real check, later calls force-fail.
+    let call = 0;
+    const faultyBrep = {
+      ...brep,
+      validSolid: ((s: Parameters<typeof brep.validSolid>[0]) =>
+        call++ === 0
+          ? brep.validSolid(s)
+          : { ok: false, error: 'forced invalid' }) as typeof brep.validSolid,
+    };
+    const asm = compound([box(10, 10, 10), box(10, 10, 10, { at: [20, 0, 0] })]);
+    const report = runChecks(faultyBrep, asm);
+    const check = report.checks.find((c) => c.name === 'allBodiesValid');
+    expect(check?.passed).toBe(false);
+    expect(check?.detail).toContain('1/2');
+  });
+
   it('does not add a body-validity check for a shape with no solids', () => {
     const edge = brep.getEdges(box(10, 10, 10))[0];
     if (!edge) throw new Error('expected an edge from the box');
