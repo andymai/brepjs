@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.74.0](https://github.com/andymai/brepjs/compare/brepjs-v18.73.0...brepjs-v18.74.0) (2026-06-13)
+
+
+### Features
+
+* **brepjs-verify:** auto-open browser on --serve + document the MCP server ([#1308](https://github.com/andymai/brepjs/issues/1308)) ([de4272c](https://github.com/andymai/brepjs/commit/de4272c9196f70baec4ff762a33636fccef4c012))
+
 ## [18.73.0](https://github.com/andymai/brepjs/compare/brepjs-v18.72.0...brepjs-v18.73.0) (2026-06-13)
 
 ### Features
