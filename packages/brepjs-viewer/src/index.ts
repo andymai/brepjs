@@ -4,5 +4,6 @@ export { default as SelectionHighlight } from './SelectionHighlight.js';
 export { default as SceneSetup } from './SceneSetup.js';
 export { ViewerCanvas, type ViewerCanvasProps } from './ViewerCanvas.js';
 export { ViewerControls, type ViewerControlsProps } from './ViewerControls.js';
+export { ViewerInfoPanel, type ViewerInfoPanelProps } from './ViewerInfoPanel.js';
 export * from './types.js';
-export { buildGeometry, findFaceGroupAt } from './geometry.js';
+export { buildGeometry, findFaceGroupAt, meshSize } from './geometry.js';

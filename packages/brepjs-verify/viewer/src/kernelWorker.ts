@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { loadModel, type BrepjsForLoad } from './loaders.js';
+import { loadModel, type BrepjsForLoad, type ModelMeasurements } from './loaders.js';
 import type { MeshData } from 'brepjs-viewer';
 
 type BrepjsKernel = BrepjsForLoad & {
@@ -20,6 +20,7 @@ export interface LoadRequest {
 export interface LoadOk {
   type: 'loaded';
   meshData: MeshData;
+  measurements: ModelMeasurements;
 }
 export interface LoadError {
   type: 'error';
@@ -81,8 +82,8 @@ function transferablesFor(md: MeshData): Transferable[] {
 async function handleLoad(req: LoadRequest): Promise<void> {
   try {
     const kernel = await ensureKernel();
-    const meshData = await loadModel(kernel, new Blob([req.bytes]), req.ext);
-    post({ type: 'loaded', meshData }, transferablesFor(meshData));
+    const { meshData, measurements } = await loadModel(kernel, new Blob([req.bytes]), req.ext);
+    post({ type: 'loaded', meshData, measurements }, transferablesFor(meshData));
   } catch (e) {
     post({ type: 'error', error: e instanceof Error ? e.message : String(e) });
   }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MeshData } from 'brepjs-viewer';
 import type { FromWorker, LoadRequest } from './kernelWorker.js';
+import type { ModelMeasurements } from './loaders.js';
 
 export interface ModelParams {
   dir: string | null;
@@ -19,7 +20,7 @@ export function extOf(file: string): string {
 export type ModelState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; data: MeshData }
+  | { status: 'ready'; data: MeshData; measurements: ModelMeasurements }
   | { status: 'error'; error: string };
 
 export function useModel(): ModelState {
@@ -41,7 +42,8 @@ export function useModel(): ModelState {
     let cancelled = false;
     worker.addEventListener('message', (e: MessageEvent<FromWorker>) => {
       if (cancelled) return;
-      if (e.data.type === 'loaded') setState({ status: 'ready', data: e.data.meshData });
+      if (e.data.type === 'loaded')
+        setState({ status: 'ready', data: e.data.meshData, measurements: e.data.measurements });
       else setState({ status: 'error', error: e.data.error });
     });
     // Fetch via the Phase D static server's model route: /__model/<rel>?dir=<abs>.

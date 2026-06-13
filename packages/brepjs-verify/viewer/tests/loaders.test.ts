@@ -20,6 +20,9 @@ function makeFakeBrepjs() {
     importOBJ: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
     mesh: vi.fn(() => fakeMesh),
     meshEdges: vi.fn(() => ({ lines: new Float32Array([0, 0, 0, 1, 0, 0]), edgeGroups: [] })),
+    measureVolume: vi.fn(() => ({ ok: true, value: 42 })),
+    measureArea: vi.fn(() => ({ ok: true, value: 84 })),
+    isValid: vi.fn(() => true),
   };
 }
 describe('importerFor', () => {
@@ -37,10 +40,24 @@ describe('importerFor', () => {
 describe('loadModel', () => {
   it('imports, meshes, converts', async () => {
     const bk = makeFakeBrepjs();
-    const md = await loadModel(bk, new Blob([new Uint8Array([1, 2, 3])]), '.step');
+    const { meshData } = await loadModel(bk, new Blob([new Uint8Array([1, 2, 3])]), '.step');
     expect(bk.importSTEP).toHaveBeenCalledOnce();
-    expect(md.position).toBe(fakeMesh.vertices);
-    expect(md.faceGroups).toEqual([{ start: 0, count: 1, faceId: 7 }]);
+    expect(meshData.position).toBe(fakeMesh.vertices);
+    expect(meshData.faceGroups).toEqual([{ start: 0, count: 1, faceId: 7 }]);
+  });
+  it('measures volume, area, and validity', async () => {
+    const bk = makeFakeBrepjs();
+    const { measurements } = await loadModel(bk, new Blob([new Uint8Array([1])]), '.step');
+    expect(measurements).toEqual({ volume: 42, area: 84, valid: true });
+  });
+  it('omits non-positive volume and surfaces invalid shapes', async () => {
+    const bk = makeFakeBrepjs();
+    bk.measureVolume = vi.fn(() => ({ ok: true, value: 0 }));
+    bk.isValid = vi.fn(() => false);
+    const { measurements } = await loadModel(bk, new Blob([new Uint8Array([1])]), '.step');
+    expect(measurements.volume).toBeUndefined();
+    expect(measurements.valid).toBe(false);
+    expect(measurements.area).toBe(84);
   });
   it('rejects on Err', async () => {
     const bk = makeFakeBrepjs();

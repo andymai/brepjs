@@ -13,8 +13,39 @@ export interface BrepjsForLoad {
   importOBJ: (b: Blob) => Promise<{ ok: boolean }>;
   mesh: (s: unknown) => ShapeMeshLike;
   meshEdges: (s: unknown) => { lines: Float32Array };
+  measureVolume: (s: unknown) => { ok: boolean; value?: number };
+  measureArea: (s: unknown) => { ok: boolean; value?: number };
+  isValid: (s: unknown) => boolean;
 }
 type Importer = (b: Blob) => Promise<{ ok: boolean }>;
+
+export interface ModelMeasurements {
+  volume?: number;
+  area?: number;
+  valid: boolean;
+}
+export interface LoadedModel {
+  meshData: MeshData;
+  measurements: ModelMeasurements;
+}
+
+// Best-effort measurements: a non-solid import has no volume, so guard each call and
+// only surface what the kernel returns cleanly. Validity always resolves to a boolean.
+function measureModel(bk: BrepjsForLoad, shape: unknown): ModelMeasurements {
+  const m: ModelMeasurements = { valid: safe(() => bk.isValid(shape)) ?? false };
+  const vol = safe(() => bk.measureVolume(shape));
+  if (vol && bk.isOk(vol) && typeof vol.value === 'number' && vol.value > 0) m.volume = vol.value;
+  const area = safe(() => bk.measureArea(shape));
+  if (area && bk.isOk(area) && typeof area.value === 'number') m.area = area.value;
+  return m;
+}
+function safe<T>(fn: () => T): T | undefined {
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
 
 export function importerFor(bk: BrepjsForLoad, ext: string): Importer {
   switch (ext.replace(/^\./, '').toLowerCase()) {
@@ -37,12 +68,13 @@ export function importerFor(bk: BrepjsForLoad, ext: string): Importer {
       throw new Error(`unsupported file extension: ${ext}`);
   }
 }
-export async function loadModel(bk: BrepjsForLoad, blob: Blob, ext: string): Promise<MeshData> {
+export async function loadModel(bk: BrepjsForLoad, blob: Blob, ext: string): Promise<LoadedModel> {
   const result = await importerFor(bk, ext)(blob);
   if (!bk.isOk(result)) {
     const err = (result as { error?: unknown }).error;
     throw new Error(`import failed: ${typeof err === 'string' ? err : JSON.stringify(err)}`);
   }
   const shape = (result as unknown as { value: unknown }).value;
-  return shapeMeshToMeshData(bk.mesh(shape), bk.meshEdges(shape).lines);
+  const meshData = shapeMeshToMeshData(bk.mesh(shape), bk.meshEdges(shape).lines);
+  return { meshData, measurements: measureModel(bk, shape) };
 }

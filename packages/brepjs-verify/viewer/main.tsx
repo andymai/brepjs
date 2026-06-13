@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client';
 import {
   ViewerCanvas,
   ViewerControls,
+  ViewerInfoPanel,
   Renderer,
   EdgeRenderer,
+  meshSize,
   type ViewMode,
   type ViewName,
 } from 'brepjs-viewer';
@@ -58,6 +60,15 @@ function App() {
           <EdgeRenderer edges={state.data.edges} />
         )}
       </ViewerCanvas>
+      {showControls && (
+        <ViewerInfoPanel
+          dims={meshSize(state.data)}
+          volume={state.measurements.volume}
+          area={state.measurements.area}
+          triangles={state.data.index.length / 3}
+          valid={state.measurements.valid}
+        />
+      )}
       {showControls && (
         <ViewerControls
           viewMode={viewMode}
