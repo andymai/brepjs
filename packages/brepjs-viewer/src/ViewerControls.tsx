@@ -146,6 +146,9 @@ const containerStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
+  // The toolbar overlays the canvas; let pointer events fall through the container/gaps to
+  // the scene (so e.g. face picking works near the toolbar) and re-enable them on buttons.
+  pointerEvents: 'none',
   fontFamily:
     'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 };
@@ -161,6 +164,7 @@ const groupStyle: CSSProperties = {
 };
 const buttonStyle: CSSProperties = {
   cursor: 'pointer',
+  pointerEvents: 'auto',
   padding: '4px 10px',
   borderRadius: 5,
   fontSize: 12,
