@@ -150,7 +150,7 @@ describe('assembly mates', () => {
     expect(upperTransform?.position[2]).toBeCloseTo(15, 0);
   });
 
-  it('point-plane coincident mate drops a part point onto a reference face', () => {
+  it('plane-point coincident mate drops a part point onto a reference face', () => {
     const base = box(10, 10, 10);
     let assembly = createAssemblyNode('root');
     assembly = addChild(assembly, createAssemblyNode('base', { shape: base }));

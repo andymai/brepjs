@@ -259,6 +259,23 @@ describe('jointFns — multi-DOF kinematics', () => {
     expectVecClose(applyPose(pose, [0, 0, 0]), [3, 4, 0]);
   });
 
+  it('planar rotates about the normal through an offset plane origin', () => {
+    const j = setJointValues(
+      planarJoint(
+        'base',
+        'slide',
+        { origin: [5, 0, 0], direction: [0, 0, 1] },
+        { uDirection: [1, 0, 0] }
+      ),
+      [0, 0, 90] // rotation only, no in-plane translation
+    );
+    const pose = jointTransform(j);
+    // 90° about the Z line through (5,0,0): a point 1 unit out at (6,0,0) → (5,1,0).
+    expectVecClose(applyPose(pose, [6, 0, 0]), [5, 1, 0]);
+    // The plane origin is the pivot and stays fixed.
+    expectVecClose(applyPose(pose, [5, 0, 0]), [5, 0, 0]);
+  });
+
   it('spherical drives each axis and composes Rx·Ry·Rz about the pivot', () => {
     const pivot: [number, number, number] = [0, 0, 0];
     // Single-axis: +90 about X sends +Y to +Z.

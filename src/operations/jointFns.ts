@@ -81,7 +81,12 @@ export interface JointOptions {
 export interface CylindricalOptions {
   /** Rotation DOF (degrees). Default range -180..180. */
   rotation?: JointOptions;
-  /** Translation DOF (length). Default range 0..100. */
+  /**
+   * Translation DOF (length). Default range 0..100, matching `prismaticJoint`
+   * (both model a slide along an axis). This is deliberately asymmetric with
+   * `planarJoint`'s in-plane translations, which default to -100..100 because
+   * an unanchored in-plane slide is naturally bidirectional.
+   */
   translation?: JointOptions;
 }
 
@@ -302,6 +307,7 @@ export function setJointValue(joint: Joint, value: number): Joint {
 /** The local rigid transform contributed by a single DOF at `value`. */
 function dofPose(origin: Vec3, dof: JointDOF, value: number): JointPose {
   if (dof.kind === 'translation') {
+    // `origin` is intentionally unused: a pure translation has no pivot.
     return {
       position: [dof.axis[0] * value, dof.axis[1] * value, dof.axis[2] * value],
       rotation: [1, 0, 0, 0],

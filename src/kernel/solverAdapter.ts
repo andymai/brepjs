@@ -273,10 +273,20 @@ function solveMate(c: SolverConstraint, ref: SolverEntity, dep: SolverEntity): P
       return solveConcentric(ref, dep);
     case 'angle':
       return solveAngle(ref, dep, ((c.value ?? 0) * Math.PI) / 180);
-    case 'distance':
-      return solveTranslational(ref, dep, c.value ?? 0) ?? solvePlanePair(ref, dep, c.value ?? 0);
-    default:
-      return solveTranslational(ref, dep, 0) ?? solvePlanePair(ref, dep, 0);
+    default: {
+      // coincident (extra = 0) / distance (extra = value). isSupportedPair has
+      // already filtered out unsupported pairs upstream, so a null here means
+      // TRANSLATIONAL_PAIRS and solveTranslational drifted out of sync — surface
+      // that invariant violation loudly rather than guessing with plane logic.
+      const extra = c.type === 'distance' ? (c.value ?? 0) : 0;
+      const pose = solveTranslational(ref, dep, extra);
+      if (!pose) {
+        throw new Error(
+          `solveMate: unsupported entity pair escaped filter: ${ref.type}-${dep.type}`
+        );
+      }
+      return pose;
+    }
   }
 }
 
