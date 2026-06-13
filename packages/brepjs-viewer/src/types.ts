@@ -31,6 +31,7 @@ export interface MeshData {
   color?: string;
 }
 export type ViewMode = 'solid' | 'wireframe' | 'xray';
+export type Projection = 'perspective' | 'orthographic';
 export interface ScreenPos {
   x: number;
   y: number;

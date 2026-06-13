@@ -4,9 +4,7 @@ import { OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import SceneSetup from './SceneSetup.js'; // default export; renders its own OrbitControls
 import { buildGeometry } from './geometry.js';
-import type { MeshData, ViewName } from './types.js';
-
-export type Projection = 'perspective' | 'orthographic';
+import type { MeshData, Projection, ViewName } from './types.js';
 
 export interface ViewerCanvasProps {
   data: MeshData;
@@ -83,9 +81,10 @@ function Framing({
   return null;
 }
 
-// Mounts an OrthographicCamera with makeDefault while ortho is active, starting at the
-// perspective camera's current position so the swap is visually continuous. On unmount,
-// drei restores the Canvas's default PerspectiveCamera.
+// Mounts an OrthographicCamera with makeDefault while ortho is active. `initial` only seeds
+// the first frame at the perspective camera's position (avoids a flash at the origin before
+// Framing's passive effect runs); Framing then sets the final position and zoom-fit. On
+// unmount, drei restores the Canvas's default PerspectiveCamera.
 function OrthoCamera() {
   const camera = useThree((s) => s.camera);
   const initial = useRef<[number, number, number]>([
