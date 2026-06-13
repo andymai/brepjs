@@ -4,8 +4,8 @@
  * The program is written to a temp ESM directory and executed by the verify CLI in a separate
  * process, with a wall-clock timeout and a memory cap. Out-of-process execution is what makes the
  * loop *unattended-safe*: a runaway (CPU-bound infinite loop) or memory-hungry part is killed
- * rather than hanging or crashing the host. Results cross the boundary as the serialized verify
- * report (never live WASM handles), and the temp directory is always cleaned up.
+ * rather than hanging or crashing the host. Results cross the boundary as serialized JSON (never
+ * live WASM handles), and the temp program directory is always cleaned up.
  */
 
 import { execFile } from 'node:child_process';
@@ -28,17 +28,30 @@ export type RunProgramResult =
   | { outcome: 'timeout'; timeoutMs: number }
   | { outcome: 'crashed'; exitCode: number | null; detail: string };
 
-export interface RunProgramOptions {
+/** Outcome of a sandboxed export. `completed` carries the written artifact paths and any errors. */
+export type ExportProgramResult =
+  | { outcome: 'completed'; ok: boolean; written: string[]; errors: string[] }
+  | { outcome: 'timeout'; timeoutMs: number }
+  | { outcome: 'crashed'; exitCode: number | null; detail: string };
+
+export interface SandboxOptions {
   /** Wall-clock budget; the child is SIGKILLed past it. Default 30000. */
   timeoutMs?: number;
   /** Child heap cap (`--max-old-space-size`), in MB. Default 2048. */
   maxMemoryMb?: number;
   /**
-   * CLI entry to spawn. Defaults to the in-repo TypeScript CLI (run via `tsx`), which is correct
-   * for dev/test. Production callers pass the built `dist/cli/main.js` (run via `node`). The runner
-   * is inferred from the extension: `.ts` → `npx tsx`, otherwise the current `node`.
+   * CLI entry to spawn. Defaults to the in-repo TypeScript CLI (run via `tsx`), correct for
+   * dev/test. Production callers pass the built `dist/cli/main.js` (run via `node`). The runner is
+   * inferred from the extension: `.ts` → `npx tsx`, otherwise the current `node`.
    */
   cliEntry?: string;
+}
+
+export type RunProgramOptions = SandboxOptions;
+export interface ExportFormats {
+  step?: boolean;
+  glb?: boolean;
+  stl?: boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -62,21 +75,25 @@ function defaultCliEntry(): string {
   return fileURLToPath(new URL('../cli/main.ts', import.meta.url));
 }
 
-function tryParseReport(out: string | undefined): SerializedReport | null {
-  if (!out || !out.trim()) return null;
-  try {
-    return JSON.parse(out) as SerializedReport;
-  } catch {
-    return null;
-  }
+/** Raw outcome of running the verify CLI on a sandboxed program. */
+interface CliOutcome {
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  outputTooLarge: boolean;
+  exitCode: number | null;
 }
 
-/** Execute `code` (an agent-authored `.brep.ts` module) in an isolated, resource-bounded child. */
-export async function runProgram(
+/**
+ * Write `code` to a temp ESM directory, run the verify CLI with `makeArgs(partPath)` in a
+ * resource-bounded child process, and return the raw outcome. The temp *program* directory is
+ * always cleaned up; any artifacts the CLI writes elsewhere (e.g. an `--out` dir) are the caller's.
+ */
+async function runVerifyCli(
   code: string,
-  opts: RunProgramOptions = {}
-): Promise<RunProgramResult> {
-  // Clamp to positive defaults: a non-positive timeout would disable the kill budget entirely.
+  makeArgs: (partPath: string) => string[],
+  opts: SandboxOptions
+): Promise<CliOutcome> {
   const timeoutMs = positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS);
   const maxMemoryMb = positiveOrDefault(opts.maxMemoryMb, DEFAULT_MAX_MEMORY_MB);
   const cliEntry = opts.cliEntry ?? defaultCliEntry();
@@ -89,13 +106,12 @@ export async function runProgram(
     const partPath = join(dir, 'part.brep.ts');
     await writeFile(partPath, code);
 
+    const cliArgs = makeArgs(partPath);
     const cmd = useTsx ? 'npx' : process.execPath;
-    const args = useTsx
-      ? ['tsx', cliEntry, partPath, '--check']
-      : [cliEntry, partPath, '--check'];
+    const args = useTsx ? ['tsx', cliEntry, ...cliArgs] : [cliEntry, ...cliArgs];
 
     try {
-      const { stdout } = await execFileAsync(cmd, args, {
+      const { stdout, stderr } = await execFileAsync(cmd, args, {
         timeout: timeoutMs,
         killSignal: 'SIGKILL',
         maxBuffer: MAX_OUTPUT_BYTES,
@@ -107,9 +123,7 @@ export async function runProgram(
             .join(' '),
         },
       });
-      const report = tryParseReport(stdout);
-      if (report) return { outcome: 'completed', report };
-      return { outcome: 'crashed', exitCode: 0, detail: 'no JSON report on stdout' };
+      return { stdout, stderr, timedOut: false, outputTooLarge: false, exitCode: 0 };
     } catch (err) {
       const e = err as {
         stdout?: string;
@@ -117,22 +131,85 @@ export async function runProgram(
         killed?: boolean;
         code?: number | string | null;
       };
-      // A not-ok part exits 1 but still prints its JSON report — that is a completed run.
-      const report = tryParseReport(e.stdout);
-      if (report) return { outcome: 'completed', report };
-      // Output cap exceeded also kills the child; classify it distinctly from a timeout.
-      if (e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-        return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
-      }
-      if (e.killed) return { outcome: 'timeout', timeoutMs };
-      const detail = e.stderr || (err instanceof Error ? err.message : String(err));
+      // The CLI prints its JSON document and exits 1 for a not-ok part — that is not a crash; the
+      // caller inspects stdout. We only classify timeout / output-cap here.
       return {
-        outcome: 'crashed',
+        stdout: e.stdout ?? '',
+        stderr: e.stderr ?? (err instanceof Error ? err.message : String(err)),
+        timedOut: Boolean(e.killed) && e.code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+        outputTooLarge: e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
         exitCode: typeof e.code === 'number' ? e.code : null,
-        detail: detail.slice(0, 2000),
       };
     }
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+function tryParse<T>(out: string): T | null {
+  if (!out.trim()) return null;
+  try {
+    return JSON.parse(out) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Execute `code` (an agent-authored `.brep.ts` module) in an isolated, resource-bounded child. */
+export async function runProgram(
+  code: string,
+  opts: RunProgramOptions = {}
+): Promise<RunProgramResult> {
+  const o = await runVerifyCli(code, (partPath) => [partPath, '--check'], opts);
+
+  // A not-ok part still prints a JSON report (exit 1) — that's a completed run.
+  const report = tryParse<SerializedReport>(o.stdout);
+  if (report) return { outcome: 'completed', report };
+  if (o.timedOut) return { outcome: 'timeout', timeoutMs: positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS) };
+  if (o.outputTooLarge) return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
+  return { outcome: 'crashed', exitCode: o.exitCode, detail: o.stderr.slice(0, 2000) || 'no JSON report on stdout' };
+}
+
+/**
+ * Execute `code` and export artifacts to `outDir`. Artifacts persist in `outDir` (the caller owns
+ * it); only the temp program directory is cleaned up. Returns the written paths and any errors.
+ */
+export async function exportProgram(
+  code: string,
+  outDir: string,
+  formats: ExportFormats = { step: true, glb: true, stl: true },
+  opts: SandboxOptions = {}
+): Promise<ExportProgramResult> {
+  const formatFlags = [
+    formats.step ? '--step' : '',
+    formats.glb ? '--glb' : '',
+    formats.stl ? '--stl' : '',
+  ].filter(Boolean);
+
+  const o = await runVerifyCli(
+    code,
+    (partPath) => ['export', partPath, ...formatFlags, '--out', outDir],
+    opts
+  );
+
+  const parsed = tryParse<{ ok: boolean; written: string[]; errors: string[] }>(o.stdout);
+  if (parsed) {
+    return {
+      outcome: 'completed',
+      ok: parsed.ok,
+      written: parsed.written,
+      errors: parsed.errors,
+    };
+  }
+  if (o.timedOut) {
+    return { outcome: 'timeout', timeoutMs: positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS) };
+  }
+  if (o.outputTooLarge) {
+    return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
+  }
+  return {
+    outcome: 'crashed',
+    exitCode: o.exitCode,
+    detail: o.stderr.slice(0, 2000) || 'no JSON result on stdout',
+  };
 }
