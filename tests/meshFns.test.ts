@@ -213,6 +213,44 @@ describe('meshFns', () => {
       expect(ascii.size).toBeGreaterThan(0);
     });
 
+    // Triangle count from a binary STL header (uint32 at byte offset 80).
+    const stlTriCount = async (blob: Blob): Promise<number> =>
+      new DataView(await blob.arrayBuffer()).getUint32(80, true);
+
+    it.skipIf(shouldSkipSuite('meshFns.exportStlTolerance'))(
+      'threads linear tolerance through to tessellation (coarse vs fine differ)',
+      async () => {
+        clearMeshCache();
+        // Fresh instances: StlAPI.Write-based adapters serialize the
+        // triangulation already cached on the shape, so reusing one sphere
+        // would export the first tolerance twice.
+        const coarse = await stlTriCount(
+          unwrap(exportSTL(sphere(10), { binary: true, tolerance: 1 }))
+        );
+        const fine = await stlTriCount(
+          unwrap(exportSTL(sphere(10), { binary: true, tolerance: 0.01 }))
+        );
+        expect(coarse).toBeGreaterThan(0);
+        // A finer linear deflection must subdivide the sphere into more facets.
+        expect(fine).toBeGreaterThan(coarse);
+      }
+    );
+
+    it.skipIf(shouldSkipSuite('meshFns.exportStlTolerance'))(
+      'threads angularTolerance through to tessellation',
+      async () => {
+        clearMeshCache();
+        // Loose linear deflection so the angular cap, not chord error, drives density.
+        const coarse = await stlTriCount(
+          unwrap(exportSTL(sphere(10), { binary: true, tolerance: 2, angularTolerance: 1 }))
+        );
+        const fine = await stlTriCount(
+          unwrap(exportSTL(sphere(10), { binary: true, tolerance: 2, angularTolerance: 0.1 }))
+        );
+        expect(fine).toBeGreaterThan(coarse);
+      }
+    );
+
     it('skips re-meshing when shape already has triangulation', () => {
       // mesh() populates triangulation on the shape's underlying kernel object;
       // exportSTL should detect that and skip the BRepMesh step.

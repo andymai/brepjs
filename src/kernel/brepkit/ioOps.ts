@@ -18,6 +18,8 @@ import {
   DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
+import { buildAsciiSTL, buildBinarySTL } from '@/kernel/stlBuilder.js';
+import { mesh } from './meshOps.js';
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
@@ -36,16 +38,21 @@ export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
 export function exportSTL(
   bk: BrepkitKernel,
   shape: KernelShape,
-  binary?: boolean
+  binary?: boolean,
+  tolerance = DEFAULT_DEFLECTION,
+  angularTolerance = 0
 ): string | ArrayBuffer {
   const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTL');
-  // Use the first solid; STL format doesn't natively support multi-solid
-  if (binary) {
-    const bytes: Uint8Array = bk.exportStl(wasmIndex(solidIds, 0), DEFAULT_DEFLECTION);
-    return bytes.buffer as ArrayBuffer;
-  }
-  const bytes: Uint8Array = bk.exportStlAscii(wasmIndex(solidIds, 0), DEFAULT_DEFLECTION);
-  return new TextDecoder().decode(bytes);
+  // Use the first solid; STL format doesn't natively support multi-solid.
+  // Build STL from the mesh rather than native exportStl so that both tolerance
+  // and angularTolerance are threaded through (native exportStl takes only a
+  // fixed linear deflection) — mirroring the occt-wasm adapter.
+  const { vertices, triangles } = mesh(bk, solidHandle(wasmIndex(solidIds, 0)), {
+    tolerance,
+    angularTolerance,
+    skipNormals: true,
+  });
+  return binary ? buildBinarySTL(vertices, triangles) : buildAsciiSTL(vertices, triangles);
 }
 
 export function importSTEP(bk: BrepkitKernel, data: string | ArrayBuffer): KernelShape[] {
@@ -199,7 +206,8 @@ export function exportSTEPConfigured(
 export function makeIoOps(bk: BrepkitKernel) {
   return {
     exportSTEP: (shapes) => exportSTEP(bk, shapes),
-    exportSTL: (shape, binary) => exportSTL(bk, shape, binary),
+    exportSTL: (shape, binary, tolerance, angularTolerance) =>
+      exportSTL(bk, shape, binary, tolerance, angularTolerance),
     importSTEP: (data) => importSTEP(bk, data),
     importSTL: (data) => importSTL(bk, data),
     exportIGES: (shapes) => exportIGES(bk, shapes),

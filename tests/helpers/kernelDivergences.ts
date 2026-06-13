@@ -52,6 +52,11 @@ export const divergences: DivergenceMap = {
       reason:
         'Mesh CSG is ambiguous at exactly-coincident faces — fast-check generates concentric, equal-size cubes whose intersection collapses to empty (100% volume loss) where B-rep resolves it exactly. The identity holds on manifold for realistic non-coincident geometry; real designs avoid coincident faces via clearance margins.',
     },
+    'meshFns.exportStlTolerance': {
+      kind: 'skip',
+      reason:
+        'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------

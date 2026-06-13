@@ -7,6 +7,7 @@
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, unwrap, wrapResult } from './helpers.js';
+import { buildAsciiSTL, buildBinarySTL } from '@/kernel/stlBuilder.js';
 
 interface Vec3Bounds {
   readonly min: [number, number, number];
@@ -109,76 +110,19 @@ export function exportSTEP(
 }
 
 export function exportSTL(
-  k: OcctKernelWasm,
   mesh: MeshFn,
   shape: KernelShape,
   binary?: boolean,
   tolerance = 1e-3,
   angularTolerance = 0.1
 ): string | ArrayBuffer {
-  if (binary) {
-    // Build the binary STL in JS from the triangulation. occt-wasm's native
-    // exportStl returns the binary payload as a JS string, and reconstructing
-    // bytes from it via charCodeAt is lossy — binary bytes outside the ASCII
-    // range get mangled by the WASM string marshalling, producing a truncated,
-    // unparseable buffer for some meshes (e.g. compartment partitions). Building
-    // from the mesh sidesteps the string entirely, mirroring exportGLB/OBJ/PLY.
-    const { vertices, triangles } = mesh(shape, { tolerance, angularTolerance, skipNormals: true });
-    return buildBinarySTL(vertices, triangles);
-  }
-  return k.exportStl(unwrap(shape), tolerance, true);
-}
-
-/** Serialize a triangle soup as a binary STL (80-byte header + uint32 count + 50B/tri). */
-function buildBinarySTL(vertices: Float32Array, triangles: Uint32Array): ArrayBuffer {
-  const triCount = Math.floor(triangles.length / 3);
-  const buffer = new ArrayBuffer(84 + triCount * 50);
-  const view = new DataView(buffer);
-  view.setUint32(80, triCount, true);
-  let offset = 84;
-  for (let i = 0; i < triCount; i++) {
-    const ia = (triangles[i * 3] ?? 0) * 3;
-    const ib = (triangles[i * 3 + 1] ?? 0) * 3;
-    const ic = (triangles[i * 3 + 2] ?? 0) * 3;
-    const ax = vertices[ia] ?? 0,
-      ay = vertices[ia + 1] ?? 0,
-      az = vertices[ia + 2] ?? 0;
-    const bx = vertices[ib] ?? 0,
-      by = vertices[ib + 1] ?? 0,
-      bz = vertices[ib + 2] ?? 0;
-    const cx = vertices[ic] ?? 0,
-      cy = vertices[ic + 1] ?? 0,
-      cz = vertices[ic + 2] ?? 0;
-    // Facet normal from the triangle winding (right-hand rule).
-    const ux = bx - ax,
-      uy = by - ay,
-      uz = bz - az;
-    const vx = cx - ax,
-      vy = cy - ay,
-      vz = cz - az;
-    let nx = uy * vz - uz * vy;
-    let ny = uz * vx - ux * vz;
-    let nz = ux * vy - uy * vx;
-    const len = Math.hypot(nx, ny, nz) || 1;
-    nx /= len;
-    ny /= len;
-    nz /= len;
-    view.setFloat32(offset, nx, true);
-    view.setFloat32(offset + 4, ny, true);
-    view.setFloat32(offset + 8, nz, true);
-    view.setFloat32(offset + 12, ax, true);
-    view.setFloat32(offset + 16, ay, true);
-    view.setFloat32(offset + 20, az, true);
-    view.setFloat32(offset + 24, bx, true);
-    view.setFloat32(offset + 28, by, true);
-    view.setFloat32(offset + 32, bz, true);
-    view.setFloat32(offset + 36, cx, true);
-    view.setFloat32(offset + 40, cy, true);
-    view.setFloat32(offset + 44, cz, true);
-    view.setUint16(offset + 48, 0, true);
-    offset += 50;
-  }
-  return buffer;
+  // Build STL in JS from the triangulation for both formats. The native
+  // exportStl returns its payload as a JS string (lossy for binary bytes via
+  // WASM string marshalling) and only takes linear deflection, so building from
+  // the mesh both sidesteps the marshalling bug and honours angularTolerance —
+  // mirroring exportGLB/OBJ/PLY.
+  const { vertices, triangles } = mesh(shape, { tolerance, angularTolerance, skipNormals: true });
+  return binary ? buildBinarySTL(vertices, triangles) : buildAsciiSTL(vertices, triangles);
 }
 
 export function importSTEP(k: OcctKernelWasm, data: string | ArrayBuffer): KernelShape[] {

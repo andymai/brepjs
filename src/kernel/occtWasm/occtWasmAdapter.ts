@@ -1129,14 +1129,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     tolerance?: number,
     angularTolerance?: number
   ): string | ArrayBuffer {
-    return ioOps.exportSTL(
-      this.k,
-      this.mesh.bind(this),
-      shape,
-      binary,
-      tolerance,
-      angularTolerance
-    );
+    return ioOps.exportSTL(this.mesh.bind(this), shape, binary, tolerance, angularTolerance);
   }
 
   importSTEP(data: string | ArrayBuffer): KernelShape[] {
