@@ -37,11 +37,20 @@ export default defineConfig({
         'snapshot/registry': resolve(__dirname, 'src/snapshot/registry.ts'),
         'snapshot/shoot': resolve(__dirname, 'src/snapshot/shoot.ts'),
         'snapshot/serve': resolve(__dirname, 'src/snapshot/serve.ts'),
+        'mcp/server': resolve(__dirname, 'src/mcp/server.ts'),
       },
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['brepjs', 'occt-wasm', 'commander', 'puppeteer', 'typescript', /^node:/],
+      external: [
+        'brepjs',
+        'occt-wasm',
+        'commander',
+        'puppeteer',
+        'typescript',
+        /^@modelcontextprotocol\/sdk/,
+        /^node:/,
+      ],
     },
   },
 });

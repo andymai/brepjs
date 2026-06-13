@@ -29,7 +29,8 @@
     }
   },
   "bin": {
-    "brepjs-verify": "./dist/cli/main.js"
+    "brepjs-verify": "./dist/cli/main.js",
+    "brepjs-verify-mcp": "./dist/mcp/server.js"
   },
   "files": [
     "dist",
@@ -40,7 +41,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "node scripts/copyReference.mjs && vite build && vite build --config viewer/vite.config.ts && node -e \"require('fs').chmodSync('dist/cli/main.js',0o755);require('fs').chmodSync('dist/cli/main.cjs',0o755)\"",
+    "build": "node scripts/copyReference.mjs && vite build && vite build --config viewer/vite.config.ts && node -e \"require('fs').chmodSync('dist/cli/main.js',0o755);require('fs').chmodSync('dist/cli/main.cjs',0o755);require('fs').chmodSync('dist/mcp/server.js',0o755)\"",
     "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit && tsc -p bench/tsconfig.json",
     "lint": "eslint src tests viewer bench",
     "test": "vitest run",
@@ -51,6 +52,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@types/node": "^25.9.1",
     "brepjs": "^18.0.0",
     "commander": "^13.0.0",
