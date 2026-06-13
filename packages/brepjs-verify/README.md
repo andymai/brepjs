@@ -48,7 +48,7 @@ npx -y brepjs-verify part.brep.ts --snapshot shots/                     # iso/fr
 npx -y brepjs-verify part.brep.ts --serve                               # clickable preview link (renders the real STEP)
 ```
 
-`--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The viewer is read-only display + screenshot in v1.
+`--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The `--serve` link is interactive: a toolbar offers view presets + fit, solid/wireframe/x-ray modes, edge/grid toggles, a turntable, and an in-browser PNG screenshot. `--snapshot` loads the same page with `ui=0` to suppress the toolbar, so captured PNGs stay chrome-free.
 
 ## CLI reference
 

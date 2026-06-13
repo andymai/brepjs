@@ -7,7 +7,8 @@ It is a thin, store-agnostic rendering layer: it takes a `MeshData` and optional
 ## Exports
 
 - `Renderer` — draws a `MeshData` mesh; optional `onFacePick`/`onFaceHover`/`onFaceContextMenu` callbacks for selection.
-- `ViewerCanvas` — R3F `<Canvas frameloop="demand">` wrapper that frames the model bbox, re-points the camera from a `view` prop (`iso`/`front`/`top`/`right`), and fires `onFirstFrame` after first paint. Screenshot-agnostic.
+- `ViewerCanvas` — R3F `<Canvas>` wrapper that frames the model bbox, re-points the camera from a `view` prop (`iso`/`front`/`top`/`right`), re-frames on a `fitSignal` bump, and toggles `autoRotate`/`gridVisible`. Flips to `frameloop="always"` while spinning, `demand` otherwise. Fires `onFirstFrame` after first paint. Screenshot-agnostic.
+- `ViewerControls` — store-agnostic, fully-controlled toolbar (view-mode, edges, grid, turntable, view presets, fit, screenshot). Each group renders only when its handler is supplied; self-contained inline styles, `className` to restyle.
 - `EdgeRenderer`, `SelectionHighlight`, `SceneSetup` — companion components.
 - `buildGeometry`, `findFaceGroupAt` — pure helpers.
 - Types: `MeshData`, `FaceGroup`, `FaceInfo`, `EdgeGroup`, `EdgeInfo`, `ViewMode`, `ViewName`, `VIEW_NAMES`.
