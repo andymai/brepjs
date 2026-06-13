@@ -10,6 +10,8 @@ STEP is the canonical, lossless output — the source of truth. Mesh formats (ST
 
 GLB/3MF sidecars are emitted by the verify CLI (`--glb`), not authored in the model.
 
+The GLB sidecar is **Y-up** (glTF's required convention) via a root-node rotation, so it opens upright in three.js, model-viewer, Blender, etc. Vertices remain Z-up, matching the STEP/STL. To paint the GLB, a part may `export const materials` (a per-face `MaterialFn`, or one `GltfMaterial` for the whole part) — see `references/booleans.md` → "Coloring an assembly".
+
 ## Importing + modifying
 
 `importSTEP(blob)` is **async** and takes a **`Blob`** (not a path or `ArrayBuffer`): `importSTEP(blob): Promise<Result<AnyShape>>`. Read the file bytes yourself, wrap them, and `await` — so the part's default export must be `async`. The result is an `AnyShape`; narrow it before a 3D op like `fillet` (which needs a `ValidSolid`).

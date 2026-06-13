@@ -49,8 +49,9 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 
 ## Reliable scope (be honest)
 
-- **Reliable first-try:** primitives, booleans (`fuse`/`cut`/`intersect`), 2D sketch → extrude, `fillet`/`chamfer`, `shell`/`offset`, transforms. Prefer these.
-- **Advanced — verify extra carefully, expect iteration:** sweeps, lofts, revolves, multi-section, assemblies, text. They fail more often (degenerate profiles, self-intersection); lean harder on the report and small steps.
+- **Reliable first-try:** primitives, booleans (`fuse`/`cut`/`intersect`), `compound` (group many bodies into an assembly — no boolean cost), 2D sketch → extrude, `fillet`/`chamfer`, `shell`/`offset`, transforms. Prefer these.
+- **Advanced — verify extra carefully, expect iteration:** sweeps, lofts, revolves, multi-section, welded assemblies (`fuseAll`), text. They fail more often (degenerate profiles, self-intersection); lean harder on the report and small steps.
+- **Assemblies (furniture, kits, many parts):** reach for `compound([...])`, not `fuseAll` — faster, and each part stays distinct. Only `fuseAll` when you truly need one watertight solid (and use `{ unsafe: true }` over `Shape3D[]`). Color the GLB preview with `export const materials`. See `references/booleans.md`.
 
 ## Hard rules
 
