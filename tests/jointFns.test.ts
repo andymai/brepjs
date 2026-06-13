@@ -5,6 +5,8 @@ import {
   setJointValue,
   jointTransform,
   addJoint,
+  forwardKinematics,
+  mechanismDOF,
   createAssemblyNode,
   addChild,
   type Joint,
@@ -161,5 +163,86 @@ describe('jointFns — assembly integration', () => {
     expect(before.joints).toBeUndefined();
     expect(asm.joints).toHaveLength(1);
     expect((asm.joints as Joint[])[0]).toBe(j);
+  });
+});
+
+describe('jointFns — forward kinematics', () => {
+  const L1 = 10;
+  const L2 = 6;
+
+  /** base → link1 (revolute at origin) → link2 (revolute at L1 along link1). */
+  function arm(theta1: number, theta2: number) {
+    let asm = createAssemblyNode('root');
+    asm = addChild(asm, createAssemblyNode('base'));
+    asm = addChild(asm, createAssemblyNode('link1'));
+    asm = addChild(asm, createAssemblyNode('link2'));
+    asm = addJoint(
+      asm,
+      revoluteJoint('base', 'link1', { origin: [0, 0, 0], direction: [0, 0, 1] }, { value: theta1 })
+    );
+    asm = addJoint(
+      asm,
+      revoluteJoint(
+        'link1',
+        'link2',
+        { origin: [L1, 0, 0], direction: [0, 0, 1] },
+        { value: theta2 }
+      )
+    );
+    return asm;
+  }
+
+  function poseOf(poses: Map<string, JointPose>, name: string): JointPose {
+    const p = poses.get(name);
+    if (!p) throw new Error(`no pose for ${name}`);
+    return p;
+  }
+
+  /** Closed-form planar 2R forward kinematics for the end-effector tip. */
+  function expected2R(theta1: number, theta2: number): [number, number, number] {
+    const r1 = (theta1 * Math.PI) / 180;
+    const r12 = ((theta1 + theta2) * Math.PI) / 180;
+    return [L1 * Math.cos(r1) + L2 * Math.cos(r12), L1 * Math.sin(r1) + L2 * Math.sin(r12), 0];
+  }
+
+  it('positions a 2-DOF planar arm at the closed-form 2R solution', () => {
+    const cases: Array<[number, number]> = [
+      [0, 0],
+      [90, 0],
+      [0, 90],
+      [45, 45],
+      [30, -60],
+      [120, 90],
+    ];
+    for (const [t1, t2] of cases) {
+      const poses = forwardKinematics(arm(t1, t2));
+      // link2's frame coincides with the base frame at zero joint values, so
+      // the tip's local coordinate is its rest-pose world position (L1+L2,0,0).
+      const tip = applyPose(poseOf(poses, 'link2'), [L1 + L2, 0, 0]);
+      expectVecClose(tip, expected2R(t1, t2));
+    }
+  });
+
+  it('leaves the chain root (base) at the origin', () => {
+    const poses = forwardKinematics(arm(45, 45));
+    expect(poseOf(poses, 'base')).toEqual({ position: [0, 0, 0], rotation: [1, 0, 0, 0] });
+  });
+
+  it('jointValues overrides stored values, keyed by child node', () => {
+    const poses = forwardKinematics(arm(0, 0), { link1: 90, link2: 0 });
+    const tip = applyPose(poseOf(poses, 'link2'), [L1 + L2, 0, 0]);
+    expectVecClose(tip, expected2R(90, 0));
+  });
+});
+
+describe('jointFns — mechanism DOF', () => {
+  it('sums joint freedoms (open-chain mobility)', () => {
+    let asm = createAssemblyNode('root');
+    expect(mechanismDOF(asm)).toBe(0);
+    asm = addJoint(asm, revoluteJoint('a', 'b', { origin: [0, 0, 0], direction: [0, 0, 1] }));
+    asm = addJoint(asm, revoluteJoint('b', 'c', { origin: [0, 0, 0], direction: [0, 0, 1] }));
+    expect(mechanismDOF(asm)).toBe(2);
+    asm = addJoint(asm, prismaticJoint('c', 'd', { origin: [0, 0, 0], direction: [1, 0, 0] }));
+    expect(mechanismDOF(asm)).toBe(3);
   });
 });

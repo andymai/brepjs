@@ -63,3 +63,15 @@ export function quatFromTo(from: Vec3, to: Vec3): [number, number, number, numbe
   const len = Math.hypot(1 + d, c[0], c[1], c[2]) || 1;
   return [(1 + d) / len, c[0] / len, c[1] / len, c[2] / len];
 }
+
+/** Hamilton product `a ⊗ b` — the rotation that applies `b` first, then `a`. */
+export function quatMultiply(a: Quat, b: Quat): [number, number, number, number] {
+  const [aw, ax, ay, az] = a;
+  const [bw, bx, by, bz] = b;
+  return [
+    aw * bw - ax * bx - ay * by - az * bz,
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+  ];
+}

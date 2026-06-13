@@ -12,8 +12,9 @@
  */
 
 import type { Vec3 } from '@/core/types.js';
-import { quatFromAxisAngle, quatRotate } from '@/utils/quaternion.js';
+import { quatFromAxisAngle, quatRotate, quatMultiply } from '@/utils/quaternion.js';
 import type { AssemblyNode } from './assemblyFns.js';
+import { walkAssembly } from './assemblyFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,4 +161,92 @@ export function jointTransform(joint: Joint, value: number = joint.value): Joint
 export function addJoint(assembly: AssemblyNode, joint: Joint): AssemblyNode {
   const existing = (assembly.joints ?? []) as readonly Joint[];
   return { ...assembly, joints: [...existing, joint] };
+}
+
+// ---------------------------------------------------------------------------
+// Forward kinematics
+// ---------------------------------------------------------------------------
+
+const IDENTITY_POSE: JointPose = { position: [0, 0, 0], rotation: [1, 0, 0, 0] };
+
+/** Compose two poses: the result applies `b` in `a`'s frame (`a ∘ b`). */
+function composePose(a: JointPose, b: JointPose): JointPose {
+  const rb = quatRotate(a.rotation, b.position);
+  return {
+    position: [a.position[0] + rb[0], a.position[1] + rb[1], a.position[2] + rb[2]],
+    rotation: quatMultiply(a.rotation, b.rotation),
+  };
+}
+
+/** Collect every joint attached anywhere in the assembly tree. */
+function collectJoints(assembly: AssemblyNode): Joint[] {
+  const joints: Joint[] = [];
+  walkAssembly(assembly, (node) => {
+    if (node.joints) joints.push(...(node.joints as readonly Joint[]));
+  });
+  return joints;
+}
+
+/**
+ * Forward kinematics: set joint values and propagate world poses down the
+ * kinematic chain. Each joint's axis is interpreted in its **parent's** frame,
+ * so a child's world pose is `parentWorld ∘ jointTransform(joint, value)`.
+ *
+ * Bodies not driven by a joint (chain roots) start at the origin. `jointValues`
+ * overrides a joint's stored value, keyed by the **child** node name; omitted
+ * joints use `joint.value`. Resolution is topological (reuses the Phase-0
+ * ordering), so chains of any depth compose. Returns a world pose for every node.
+ */
+export function forwardKinematics(
+  assembly: AssemblyNode,
+  jointValues: Readonly<Record<string, number>> = {}
+): Map<string, JointPose> {
+  const joints = collectJoints(assembly);
+  const byChild = new Map<string, Joint>();
+  for (const j of joints) byChild.set(j.child, j);
+
+  const names = new Set<string>();
+  walkAssembly(assembly, (node) => names.add(node.name));
+  for (const j of joints) {
+    names.add(j.parent);
+    names.add(j.child);
+  }
+
+  const poses = new Map<string, JointPose>();
+  // Roots: any node not driven by a joint sits at the origin.
+  for (const name of names) if (!byChild.has(name)) poses.set(name, IDENTITY_POSE);
+
+  // Propagate down the joint graph: a joint resolves once its parent is placed.
+  const pending = [...joints];
+  let progress = true;
+  while (progress && pending.length > 0) {
+    progress = false;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      const j = pending[i];
+      if (!j) continue;
+      const parentPose = poses.get(j.parent);
+      if (!parentPose) continue; // parent not placed yet — defer
+      pending.splice(i, 1);
+      progress = true;
+      if (poses.has(j.child)) continue; // already placed (duplicate/cycle) — skip
+      const value = jointValues[j.child] ?? j.value;
+      poses.set(j.child, composePose(parentPose, jointTransform(j, value)));
+    }
+  }
+  // A joint whose parent never resolved (cycle/dangling) still gets an entry so
+  // the map covers every node.
+  for (const j of pending) if (!poses.has(j.child)) poses.set(j.child, IDENTITY_POSE);
+
+  return poses;
+}
+
+const JOINT_FREEDOM: Readonly<Record<JointType, number>> = { revolute: 1, prismatic: 1 };
+
+/**
+ * Open-chain mobility — the number of independent degrees of freedom. Each
+ * revolute/prismatic joint contributes 1, so for a serial chain this equals the
+ * joint count. (Closed-loop Grübler/Kutzbach analysis is future work.)
+ */
+export function mechanismDOF(assembly: AssemblyNode): number {
+  return collectJoints(assembly).reduce((sum, j) => sum + JOINT_FREEDOM[j.type], 0);
 }

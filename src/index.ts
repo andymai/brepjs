@@ -839,6 +839,8 @@ export {
   setJointValue,
   jointTransform,
   addJoint,
+  forwardKinematics,
+  mechanismDOF,
   type Joint,
   type JointAxis,
   type JointType,
