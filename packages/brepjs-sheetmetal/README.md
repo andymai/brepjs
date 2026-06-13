@@ -24,31 +24,31 @@ edge that the unfold leaves uncut as a `SEAM_CUT`, flattening into a valid conne
 
 ## Status
 
-| Area            | State                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams            |
-| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area      |
-| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`           |
-| Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner)   |
-| Cutouts         | holes / slots (rect + obround) / polygons punched on the base or a folded flange            |
-| Tabs / joints   | additive edge tabs, self-fixturing tab-and-slot joints (tab + matching mating slot)         |
-| Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)      |
-| Contour flange  | open line/arc profile swept along a base edge (multi-bend section); EXACT development       |
-| Lofted flange   | ruled transition between two open profiles; triangulated development (exact if developable) |
-| Hems            | edge folded back ~180°+ (closed / open / teardrop / rolled); EXACT development              |
-| Jogs            | two opposite bends stepping a flat by a Z-offset (joggle); EXACT development                |
+| Area            | State                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| Authoring       | 4-edge flanges, chained bends, up/down, partial/offset flanges, closed-box seams             |
+| Unfold          | recursive BFS tree-walk → rectilinear-union flat pattern + bend lines + developed area       |
+| Fold            | `FlatInput` region-tree → 3D part (inverse of unfold); round-trips `unfold(fold)`            |
+| Reliefs         | bend reliefs (slots at partial-flange bend-line ends), corner reliefs (notch at a corner)    |
+| Cutouts         | holes / slots (rect + obround) / polygons punched on the base or a folded flange             |
+| Tabs / joints   | additive edge tabs, self-fixturing tab-and-slot joints (tab + matching mating slot)          |
+| Form features   | louvers (3-side cut + formed flap), embosses / dimples (round raised / recessed forms)       |
+| Contour flange  | open line/arc profile swept along a base edge (multi-bend section); EXACT development        |
+| Lofted flange   | ruled transition between two open profiles; triangulated development (exact if developable)  |
+| Hems            | edge folded back ~180°+ (closed / open / teardrop / rolled); EXACT development               |
+| Jogs            | two opposite bends stepping a flat by a Z-offset (joggle); EXACT development                 |
 | Bend tables     | shop allowance/deduction tables, angle-linear + thickness×radius-bilinear interp, clamp-warn |
-| Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings           |
-| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                     |
+| Miter / outputs | auto corner-miter, multi-layer DXF (incl. FORM layer), JSON bend report, warnings            |
+| API             | functional `*Fns` → short-named `api.ts` → fluent `sheetMetal()` facade                      |
 
-`fold(input: FlatInput)` folds a flat pattern back up into a 3D part — the inverse of `unfold`. A
+`fold(input: FlatInput)` folds a flat pattern back up into a 3D part, the inverse of `unfold`. A
 `FlatInput` is a region-tree (a base rectangle plus child fold regions, each with a fold line, angle,
 direction, and bend rule), the inverse of the unfold layout. `patternToFlatInput(pattern, { thickness,
-ruleFor })` recovers that region-tree from the **2D flat-pattern geometry alone** — the developed outline
-wire and bend-line edges — reading real coordinates back out with the public `getEdges` / `curveStartPoint`
+ruleFor })` recovers that region-tree from the **2D flat-pattern geometry alone** (the developed outline
+wire and bend-line edges), reading real coordinates back out with the public `getEdges` / `curveStartPoint`
 / `curveEndPoint` readers; only the bend rule (which a flat pattern cannot encode) is a supplied input.
 `partToFlatInput(part)` chains `unfold` → `patternToFlatInput`, so `fold(partToFlatInput(part))` round-trips
-volume, validity, and bend/flange counts through the 2D geometry — making the round-trip a genuine,
+volume, validity, and bend/flange counts through the 2D geometry, making the round-trip a genuine,
 non-circular oracle. Fold reuses the forward authoring bend geometry wholesale (no duplicated bend math),
 and rides SEAM_CUT / MIN_RADIUS warnings inside the Ok payload.
 
@@ -59,10 +59,10 @@ Multi-bend parts tear or collide at corners unless material is relieved. Reliefs
 the developed outline (so they ride in the DXF `OUTLINE` layer and shrink `developedArea`).
 
 - `addBendRelief(part, flangeId, spec?)` cuts a slot at each **mid-edge end** of a partial/offset flange's
-  bend line — the ends that don't reach the parent-edge endpoint, where the parent material would tear.
+  bend line, the ends that don't reach the parent-edge endpoint, where the parent material would tear.
   `autoBendReliefs(part, spec?)` adds one to every partial-span flange (full-span flanges are skipped).
 - `cornerRelief(part, flangeIdA, flangeIdB, spec?)` cuts a square notch centred on the shared corner of two
-  adjacent flanges — the notch alternative to a 45° miter. The square side is `spec.width` when given, else
+  adjacent flanges, the notch alternative to a 45° miter. The square side is `spec.width` when given, else
   the depth clearance. It records the corner as resolved, so the `COLLISION` warning the un-relieved corner
   raised goes away.
 
@@ -77,12 +77,12 @@ parts).
 
 Holes, slots, and polygon cutouts are 2D features punched through a flat region's thickness. They survive
 fold/unfold: each appears in the 3D solid, in the flat pattern (`FlatPattern.holes`, one closed wire per
-cutout), and in the DXF (a `CUTOUT` layer). The outer outline is unchanged — cutouts are interior loops.
+cutout), and in the DXF (a `CUTOUT` layer). The outer outline is unchanged; cutouts are interior loops.
 
 A `CutoutSpec` names the `region` (a flange id, or `'base'`/`'root'` for the base flat) and places the
 feature in that region's **local** frame: `(0, 0)` is the region's near corner, `+x` runs along the region's
 `u` axis and `+y` along its `v` axis. The discriminated union is `hole` (`{ x, y, diameter }`), `slot`
-(`{ x, y, length, width, angleDeg?, round? }` — `round` makes the ends semicircular/obround), or `polygon`
+(`{ x, y, length, width, angleDeg?, round? }`, where `round` makes the ends semicircular/obround), or `polygon`
 (`{ points: [x, y][] }`).
 
 - `addCutout(part, spec)` / `addHole(part, region, x, y, diameter)` / `addSlot(part, region, opts)` /
@@ -103,7 +103,7 @@ still round-trips through the strict outline oracle.
 A **tab** is the additive counterpart of a cutout: a rectangular protrusion of material extending
 **outward** from a flat region's edge. `addTab(part, { region, side, offset, width, length })` builds the
 tab as a region-local rectangle just past the chosen `side`, places it on the correct folded face via the
-region's world frame, extrudes it through the sheet thickness and **fuses** it on — so the volume rises by
+region's world frame, extrudes it through the sheet thickness and **fuses** it on, so the volume rises by
 `width · length · thickness`. The same rectangle is mapped through the region's developed frame and recorded
 as a `TabFeature`, so `unfold` **extends the outer outline** by the protrusion and grows `developedArea` by
 the tab area. Guards a valid, single-bodied result (`TAB_INVALID_SOLID`) and rejects a tab overhanging its
@@ -112,7 +112,7 @@ edge (`TAB_OUT_OF_BOUNDS`).
 `tabAndSlot(part, tab, { region, x, y, clearance? })` is the headline self-locating joint: it fuses a tab on
 one region **and** punches a matching **slot cutout** on the mating region, sized so the tab's cross-section
 (`width × thickness`) inserts into the slot. The slot is `tab.width + clearance` long by `thickness +
-clearance` wide — always strictly larger than the tab cross-section, so the joint mates (clearance defaults
+clearance` wide, always strictly larger than the tab cross-section, so the joint mates (clearance defaults
 to `0.1` mm). Use it to make boxes/enclosures that self-fixture before welding.
 
 Tabs ride through `fold` via `FoldRegion.tabs` / `FlatInput.baseTabs`, so `fold` re-fuses them and a tab'd
@@ -125,28 +125,28 @@ than being silently dropped).
 
 ## Form features (louvers, embosses, dimples)
 
-Form features are **locally formed** — they neither remove nor add net material, so the developed **outline
+Form features are **locally formed**: they neither remove nor add net material, so the developed **outline
 and area are unchanged**; the flat pattern instead carries the fabrication markers on a `FORM` DXF layer.
 
-- `louver(part, { region, x, y, length, width, height, direction? })` — a vent cut on three sides with the
+- `louver(part, { region, x, y, length, width, height, direction? })`: a vent cut on three sides with the
   flap formed up along the hinge. In the **flat pattern** it emits the three cut sides as an **open** cut
-  path in `FlatPattern.formCuts` (the fabricator cuts three of the footprint's four sides — all but the
+  path in `FlatPattern.formCuts` (the fabricator cuts three of the footprint's four sides, all but the
   hinge) plus the hinge fold line in `FlatPattern.formHinges`, so a fabricator cuts the U and folds the flap
   about the uncut hinge. The cut path is emitted as an open LWPOLYLINE on the DXF `FORM` layer (not a closed
   rectangle, which would drop the flap out).
-- `emboss(part, { region, x, y, diameter, height, kind: 'emboss' | 'dimple' })` — a round local form, raised
+- `emboss(part, { region, x, y, diameter, height, kind: 'emboss' | 'dimple' })`: a round local form, raised
   (`emboss`) or recessed (`dimple`). The footprint circle is emitted as a marker (`FlatPattern.formMarkers`).
 
 **3D fidelity (simplified, documented).** The public CSG-only API makes true sheet forming (bending the flap
 continuous with the parent, or stretch-forming a spherical cap) impractical, so the 3D representations are
-deliberately simplified while keeping a **valid single solid** — the flat pattern is the fabrication-critical
+deliberately simplified while keeping a **valid single solid**; the flat pattern is the fabrication-critical
 output:
 
 - _Louver_: the vent opening (`length × width`) is cut fully through the sheet, and the formed flap is
   represented as a thin plate hinged on one side and tilted up to `height`, fused at the hinge so the result
   stays one body. (True forming keeps the flap material continuous with the parent.)
 - _Emboss_: a short cylinder fused onto the formed face (raised by `height`). _Dimple_: a shallow cylinder
-  recess cut into the formed face (recessed by `height`, never through — rejected if `height ≥ thickness`).
+  recess cut into the formed face (recessed by `height`, never through; rejected if `height ≥ thickness`).
   The flat-topped round approximates a true spherical/conical form so the solid stays valid.
 
 Forms ride through `fold` via `FoldRegion.forms` / `FlatInput.baseForms`. Because they are material-neutral
@@ -157,7 +157,7 @@ they don't change the outline, so a **formed part still round-trips** through th
 
 Two profile-driven flanges extend authoring beyond single straight bends:
 
-- `contourFlange(part, { id, side, profile, rule?, offset?, width? })` — an **open 2D profile** (alternating
+- `contourFlange(part, { id, side, profile, rule?, offset?, width? })`: an **open 2D profile** (alternating
   `{ kind: 'line', length }` flats and `{ kind: 'arc', radius, angleDeg, direction }` bends) swept along a
   straight base edge into a multi-bend cross-section (a return, a hat/top-hat, a J). Each arc becomes a
   recorded `BendFeature` (id `contour::<flange>::<n>`) and chains frame-to-frame exactly as flange-off-flange
@@ -165,17 +165,17 @@ Two profile-driven flanges extend authoring beyond single straight bends:
   length (lines: `length`; arcs: the canonical `developedLength` = `(π/180)·|angle|·(R + K·T)`). The unfold
   lays the strip out straight along the base edge with one bend line per arc at its exact cumulative
   arc-length offset.
-- `loftedFlange(part, { id, profileA, profileB, height, thickness? })` — a **ruled transition** between two
+- `loftedFlange(part, { id, profileA, profileB, height, thickness? })`: a **ruled transition** between two
   parallel open profiles (`profileA` at z=0, `profileB` at z=`height`, equal vertex counts), thickened to a
   valid solid by triangulating each quad of the ruled surface and extruding each triangle. The
-  **development is by triangulation** — the standard sheet-metal transition development: each quad is split
+  **development is by triangulation**, the standard sheet-metal transition development: each quad is split
   along a diagonal into two triangles laid out flat preserving their true 3D edge lengths. For a genuinely
   **developable** transition (planar quads / single-curvature) this is **exact to tolerance**; for a
   non-developable (twisted) transition it is an **approximation**, and the unfold emits a
   `DEVELOPMENT_APPROXIMATE` warning (inside the `Ok` payload). The triangulated boundary is emitted as a
   valid closed wire in `FlatPattern.loftedDevelopments`.
 
-Both flanges have **non-rectilinear** developments, so — like miters and tabs — they sit outside the strict
+Both flanges have **non-rectilinear** developments, so, like miters and tabs, they sit outside the strict
 `patternToFlatInput` outline oracle: verification leans on developed-length/area invariants and solid
 validity rather than a fold round-trip. The contour flange's developed strip still joins the rectilinear
 outline union; the lofted flange's triangulated blank is a separate developed boundary.
@@ -184,32 +184,33 @@ outline union; the lofted flange's triangulated blank is a separate developed bo
 
 Hems and jogs are multi-bend edge features built on the same frame-to-frame profile chainer as the contour
 flange, so their developments are **EXACT** (Σ segment developed lengths, via the table-aware
-`developedLength`). Both attach to any flat **region** — the base (`'base'`/`'root'`) or a named flange —
+`developedLength`). Both attach to any flat **region**, the base (`'base'`/`'root'`) or a named flange,
 edge, record their curl/step sub-bends as `hem::<id>::<n>` / `jog::<id>::<n>` `BendFeature`s (skipped by the
 feature-tree spanning walk, like `contour::` bends), and lay their developed strip out straight along the
 region edge with one bend line per sub-bend.
 
 - `hem(part, { region, side, type, length?, radius?, gap?, offset?, width?, rule? })` folds a region edge
   back onto its parent. Four `type`s set the curl angle and the gap:
-  - **`closed`** — a tight ~180° fold, the return flat against the parent. The curl radius is inflated by a
+  - **`closed`**: a tight ~180° fold, the return flat against the parent. The curl radius is inflated by a
     small **HAIR** clearance (0.05 mm) so the fused solid stays valid (a true zero-gap fold makes the curl's
     inner cylinder coincide with the parent face → a self-touching, non-manifold solid). `length` is the
     return-leg length (must be ≥ one thickness).
-  - **`open`** — a ~180° fold with a clear `gap` (default = `radius`) between the return and the parent; the
+  - **`open`**: a ~180° fold with a clear `gap` (default = `radius`) between the return and the parent; the
     curl radius is sized from the gap, so its developed curl length is the exact 180° allowance at that radius.
-  - **`teardrop`** — a >180° (~210°) curl leaving a small teardrop opening, then a short return.
-  - **`rolled`** — a full ~270° circular roll (a curled / safe edge); no flat return.
+  - **`teardrop`**: a >180° (~210°) curl leaving a small teardrop opening, then a short return.
+  - **`rolled`**: a full ~270° circular roll (a curled / safe edge); no flat return.
 
   The curl is split into ≤120° sub-arcs (the bend-patch wedge degenerates at ≥180°), each a recorded
   sub-bend; the bend allowance is linear in angle, so Σ sub-arc allowances == the single-curl allowance. The
   **developed length** is Σ curl allowances + the return length, laid out straight past the edge.
+
 - `jog(part, { region, side, position, offsetHeight, angle?, runOut?, radius?, offset?, width?, rule? })`
   steps a flat by `offsetHeight` perpendicular to its plane with **two opposite bends** (`+θ` then `−θ`,
   `angle` default 45°), then continues parallel. The connecting step run is solved so the two arcs' rise plus
-  the step rise equals `offsetHeight` exactly — the resulting run-out bottom face sits exactly `offsetHeight`
+  the step rise equals `offsetHeight` exactly; the resulting run-out bottom face sits exactly `offsetHeight`
   above the base bottom face (verified by measurement, not just construction). The flat carries the **two
   bend lines** (one `up`, one `down`); the **developed length** is `position + 2·allowance + stepRun +
-  runOut`. `offsetHeight` must exceed the bends' own rise `(T + 2R)(1 − cos θ)`, else the jog is rejected.
+runOut`. `offsetHeight` must exceed the bends' own rise `(T + 2R)(1 − cos θ)`, else the jog is rejected.
 
 Like the contour/lofted flanges, hems and jogs have non-rectilinear developments and so sit outside the
 strict `partToFlatInput → fold` round-trip oracle; verification leans on developed-length invariants, the
@@ -225,7 +226,7 @@ translating and rotating every placed pattern (outline + bend lines + holes + fo
 
 Two strategies are available via `strategy`:
 
-### `strategy: "bbox"` (default) — bounding-box nesting
+### `strategy: "bbox"` (default): bounding-box nesting
 
 Packs each part as its axis-aligned **outline bounding box**, so parts do **not** interlock: a concave or
 L-shaped part reserves its full rectangular footprint and leaves the in-bbox waste unused. `rotationDeg` is
@@ -236,17 +237,17 @@ L-shaped part reserves its full rectangular footprint and leaves the in-bbox was
   **new sheet** opens when the next shelf would overflow the usable height.
 - **Rotation.** With `allowRotation`, each part is tried at `0°` and `90°` and the orientation that fits (or
   packs shorter) is kept.
-- **Utilization.** Σ placed part **bounding-box** areas ÷ usable-sheet area — a conservative lower bound that
+- **Utilization.** Σ placed part **bounding-box** areas ÷ usable-sheet area, a conservative lower bound that
   does not credit inter-part gaps or intra-bbox waste.
 
-### `strategy: "nfp"` — true-shape (no-fit-polygon) nesting
+### `strategy: "nfp"`: true-shape (no-fit-polygon) nesting
 
-Packs the actual **outline polygons** so concave parts interlock — an L-shaped part nests a rotated copy into
+Packs the actual **outline polygons** so concave parts interlock; an L-shaped part nests a rotated copy into
 its notch, fitting more material per sheet than bbox packing ever can. `rotationDeg` may be `0/90/180/270`.
 
 > **Heuristic, not optimal.** The nfp packer is a **bottom-left-fill** heuristic (largest-first, with a
 > discretised raster scan over each part's orientations). It finds good interlocks but is **not** a provably
-> optimal solver — a different part order or finer rotation set may pack tighter. What it guarantees: placed
+> optimal solver; a different part order or finer rotation set may pack tighter. What it guarantees: placed
 > outline polygons never overlap (within `spacing`), all placements stay inside `[margin, sheet − margin]`, an
 > oversized part goes to `unplaced` with a `PART_TOO_LARGE` warning (never dropped, never an infinite loop).
 
@@ -254,9 +255,9 @@ its notch, fitting more material per sheet than bbox packing ever can. `rotation
   cross **or** one contains a vertex of the other (full containment), with a configurable `spacing` clearance.
   A bbox-only check would let a part collide with a concave neighbour, so the true outline is always used.
 - **Utilization.** Σ placed part **outline-polygon** areas ÷ usable-sheet area, so an L-shaped part credits
-  only its true material — the two strategies' utilizations are directly comparable on the same parts.
+  only its true material; the two strategies' utilizations are directly comparable on the same parts.
 - **Geometry assumption.** Outlines are read as straight-edged polylines (one vertex per edge start point);
-  arc edges are approximated by their endpoints — the same assumption the DXF/SVG writers and the bbox nester
+  arc edges are approximated by their endpoints, the same assumption the DXF/SVG writers and the bbox nester
   make.
 
 On a set of identical L-shaped parts, `"nfp"` interlocks them and typically uses roughly **half the sheets** of
@@ -266,10 +267,21 @@ On a set of identical L-shaped parts, `"nfp"` interlocks them and typically uses
 const patterns = parts.map((p) => unfold(p).value.pattern);
 
 // Default bounding-box nesting:
-const bbox = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true });
+const bbox = nest(patterns, {
+  sheet: { width: 1250, height: 2500 },
+  margin: 5,
+  spacing: 3,
+  allowRotation: true,
+});
 
-// True-shape nesting — interlocks concave parts for higher utilization:
-const nfp = nest(patterns, { sheet: { width: 1250, height: 2500 }, margin: 5, spacing: 3, allowRotation: true, strategy: 'nfp' });
+// True-shape nesting - interlocks concave parts for higher utilization:
+const nfp = nest(patterns, {
+  sheet: { width: 1250, height: 2500 },
+  margin: 5,
+  spacing: 3,
+  allowRotation: true,
+  strategy: 'nfp',
+});
 
 const dxf = nestToDXF(nfp.value, patterns, 0); // fabrication-ready DXF for sheet 0
 ```
@@ -277,7 +289,7 @@ const dxf = nestToDXF(nfp.value, patterns, 0); // fabrication-ready DXF for shee
 ## Foreign-solid import & unfold
 
 `unfoldSolid(solid, { kFactor? })` (fluent: `fromSolid(solid).unfold()`) flattens an **arbitrary imported
-sheet-metal solid that has no feature tree** by detecting its geometry numerically — the reverse of the
+sheet-metal solid that has no feature tree** by detecting its geometry numerically, the reverse of the
 authored path. It reads only the B-rep:
 
 - **Classify faces** by surface type: planar faces are panel faces, cylindrical faces are bend faces. Any
@@ -290,7 +302,7 @@ authored path. It reads only the B-rep:
   ⟂ the axis), recovered as the sign-aligned average of cross products of non-parallel normal pairs; the
   axis line and radius come from a least-squares circle fit of the points projected onto the plane ⟂ axis;
   the radius is the mean point-to-axis distance. A fit whose residual exceeds tolerance is rejected (warned).
-  Recovery is high-precision — radius and axis of a known `cylinder()` primitive are recovered to ~1e-6.
+  Recovery is high-precision: radius and axis of a known `cylinder()` primitive are recovered to ~1e-6.
 - **Build the bend graph** (flats = nodes; a bend connects the two flats it shares edges with), take a
   spanning tree from a root flat, and turn non-tree bends into seam cuts (`SEAM_CUT`, warned).
 - **Unfold** by walking the tree, replacing each cylindrical region with a developed strip of length
@@ -299,19 +311,19 @@ authored path. It reads only the B-rep:
   material. Bend direction (up/down) is read from the cylinder centre relative to the parent flat.
 
 **Supported class**: roughly-uniform-thickness solids whose panels are **planar** and whose bends are
-**cylindrical** (straight bends). Outside this class the unfold **warns rather than mis-unfolding** —
+**cylindrical** (straight bends). Outside this class the unfold **warns rather than mis-unfolding**:
 non-uniform thickness, conical/spline bend faces, non-manifold / non-sheet topology, and faces that don't
 fit a cylinder within tolerance all surface as warnings inside the `Ok` payload (or a clear `Err` when no
 sheet-metal structure is detected at all, e.g. a bare sphere). The detection is validated by an oracle:
 author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
 authored unfold's developed area, bend count, flat count, and total flat bbox (single bend, L-bracket,
-U-channel) — reading only the solid, never the feature tree.
+U-channel), reading only the solid, never the feature tree.
 
 ## Bend tables
 
 By default a bend develops by the K-factor formula `BA = (π/180)·|angle|·(R + K·T)`. A `BendRule` may
 instead reference a **shop bend table** by id (`rule.bendTableRef`), in which case the developed length is
-**interpolated from the table** — linear in bend angle, bilinear across thickness × inner radius (with
+**interpolated from the table**: linear in bend angle, bilinear across thickness × inner radius (with
 nearest-radius substitution for sparse one-radius-per-gauge tables), clamping to the nearest tabulated
 entry outside the table's range (and emitting a `MIN_RADIUS` unfold warning rather than extrapolating).
 
@@ -323,7 +335,7 @@ deduction and is converted on lookup via the outside-setback relation `OSSB = (R
 Resolution precedence at the single resolution point (`resolveBendAllowance`, which `developedLength`
 delegates to): **(1) `bendTableRef` table → (2) explicit `rule.allowance` override → (3) K-factor formula**.
 Parts with no `bendTableRef` are byte-for-byte unchanged. Two starter air-bend tables ship auto-registered
-on first access — `steel-airbend` (mild steel) and `aluminum-airbend` (5052-H32) — with published 90°
+on first access (`steel-airbend` (mild steel) and `aluminum-airbend` (5052-H32)) with published 90°
 allowances scaled across {30, 60, 90, 120}° (sources: SheetMetal.Me charts, Machinery's Handbook 29th ed.).
 
 ```ts
@@ -338,14 +350,22 @@ registerBendTable({
 const part = author({
   thickness: 1.52,
   base: { length: 40, width: 40 },
-  flanges: [{ id: 'fx', length: 18, angleDeg: 90, side: 'xmax', rule: { innerRadius: 1.5, kFactor: 0.44, bendTableRef: 'my-shop-steel' } }],
+  flanges: [
+    {
+      id: 'fx',
+      length: 18,
+      angleDeg: 90,
+      side: 'xmax',
+      rule: { innerRadius: 1.5, kFactor: 0.44, bendTableRef: 'my-shop-steel' },
+    },
+  ],
 });
 // unfold(part.value) now develops the bend at BA = 3.63 mm (the table), not (π/2)·(R + K·T).
 ```
 
 ## Design
 
-All geometry for **authored** parts is computed analytically from the feature tree — bend axis, radius, and
+All geometry for **authored** parts is computed analytically from the feature tree; bend axis, radius, and
 angle are known inputs recorded on each `BendFeature`, so the unfold reads the tree rather than
 reverse-engineering the B-rep. The **foreign-solid** path (`unfoldSolid`) is the exception: it detects bend
 geometry numerically from the public surface queries (no recorded tree). No kernel/WASM changes are required
@@ -364,10 +384,10 @@ All public operations return `Result<T>` (from `brepjs`); non-fatal warnings tra
 ## Snapshot harness
 
 A standalone visual harness lives in `harness/snapshot.ts`. It imports
-`brepjs-sheetmetal` directly (no playground dependency), builds a set of demos —
-the headline L-bracket with a mitered corner, a tray, reliefs, a cutout panel, a
+`brepjs-sheetmetal` directly (no playground dependency), builds a set of demos
+(the headline L-bracket with a mitered corner, a tray, reliefs, a cutout panel, a
 **tab-and-slot box** (self-locating corner joint), and a **louvered panel** (vent
-flaps + emboss/dimple) — then renders each folded 3D part next to its developed
+flaps + emboss/dimple)), then renders each folded 3D part next to its developed
 flat pattern as a single side-by-side SVG and also writes the folded solid as STEP.
 It also runs a **nesting** demo (a handful of parts bbox-packed onto one sheet),
 printing the sheet count + utilization and writing the nested sheet as DXF + SVG,
@@ -381,7 +401,7 @@ npm run snapshot --workspace=brepjs-sheetmetal
 ```
 
 The folded view is an isometric edge-wireframe projection of the kernel mesh, so
-the harness runs as a plain `tsx` script wherever the WASM kernel runs — no
+the harness runs as a plain `tsx` script wherever the WASM kernel runs, with no
 headless browser or GPU required. Output lands in `harness/out/` (gitignored).
 
 ## Development

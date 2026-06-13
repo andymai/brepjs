@@ -5,7 +5,7 @@ description: "What's cheap and what's expensive in brepjs. Batching booleans, ca
 
 # Performance
 
-brepjs operations are bounded by the kernel — booleans on small primitives are microseconds, booleans on heavily-filleted assemblies are seconds. Most of the time you don't think about performance because the cost of one operation is in the noise. When you do hit a wall, this chapter covers what's typically slow and what's typically cheap, and what to do about it.
+brepjs operations are bounded by the kernel: booleans on small primitives are microseconds, booleans on heavily-filleted assemblies are seconds. Most of the time you don't think about performance because the cost of one operation is in the noise. When you do hit a wall, this chapter covers what's typically slow and what's typically cheap, and what to do about it.
 
 ## What's cheap
 
@@ -85,7 +85,7 @@ Same applies to `fuseAll` vs. chained `fuse` and `intersectAll` vs. chained `int
 
 ## Avoiding the kernel altogether
 
-For specific queries you don't always need the kernel. Bounding boxes are cheap and conservative — use them as filters before expensive operations:
+For specific queries you don't always need the kernel. Bounding boxes are cheap and conservative; use them as filters before expensive operations:
 
 ```typescript
 import { box, getBoundingBox, distanceTo, type Shape3D } from 'brepjs/quick';
@@ -136,7 +136,7 @@ void variantB;
 void variantC;
 ```
 
-The kernel doesn't share state between cuts — each is a full operation — but you only built the base once.
+The kernel doesn't share state between cuts (each is a full operation) but you only built the base once.
 
 ## Workers
 
@@ -169,9 +169,9 @@ Halving the tolerance roughly quadruples the triangle count. For screen renderin
 
 These are typical optimizations in mesh libraries that **do not exist** in B-Rep:
 
-- **LOD (level of detail)** — there's one shape; meshing produces one mesh at one tolerance.
-- **Spatial partitioning of the kernel state** — the kernel sees one shape at a time. There's no octree behind the scenes.
-- **Streaming** — operations are atomic. You can't progressively refine a boolean.
+- **LOD (level of detail)**: there's one shape; meshing produces one mesh at one tolerance.
+- **Spatial partitioning of the kernel state**: the kernel sees one shape at a time. There's no octree behind the scenes.
+- **Streaming**: operations are atomic. You can't progressively refine a boolean.
 
 If you need these, you need a mesh library on top of brepjs's output, not a different brepjs configuration.
 
@@ -192,14 +192,14 @@ console.timeEnd('fillet');
 void filleted;
 ```
 
-For sub-operation cost (which face is the slow one in a multi-face fillet, say) you'd need to break the operation up — there's no kernel-side per-face profiling exposed.
+For sub-operation cost (which face is the slow one in a multi-face fillet, say) you'd need to break the operation up; there's no kernel-side per-face profiling exposed.
 
 ## Bench results
 
-The brepjs repo runs benchmarks against both kernels (OpenCascade and brepkit) on every release. Latest results: `benchmarks/results/latest.md` in the repo. Use this for "is brepkit ready for my workload yet?" — generally brepkit wins on simple operations, OpenCascade wins on complex healing and STEP IO.
+The brepjs repo runs benchmarks against both kernels (OpenCascade and brepkit) on every release. Latest results: `benchmarks/results/latest.md` in the repo. Use this for "is brepkit ready for my workload yet?". Generally brepkit wins on simple operations, OpenCascade wins on complex healing and STEP IO.
 
 ## Next steps
 
-- [Web Workers](./workers) — isolating brepjs from the main thread
-- [Memory Management](./memory) — leaks compound and slow your app down
-- [Healing & Sewing](./healing) — the often-slowest operation, when imports require it
+- [Web Workers](./workers): isolating brepjs from the main thread
+- [Memory Management](./memory): leaks compound and slow your app down
+- [Healing & Sewing](./healing): the often-slowest operation, when imports require it

@@ -1,6 +1,6 @@
 # Topology
 
-Layer 2 — Casting, primitives, transforms, booleans, modifiers, and the public functional API for shape manipulation.
+Layer 2: Casting, primitives, transforms, booleans, modifiers, and the public functional API for shape manipulation.
 
 Shapes are **branded handles**, not class instances. Each shape (`Vertex`, `Edge`, `Wire`, `Face`, `Shell`, `Solid`, `CompSolid`, `Compound`) is a typed `ShapeHandle` defined in `core/shapeTypes.ts` carrying a phantom `D extends Dimension` parameter. Validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) layer on top to encode topological invariants at compile time.
 
@@ -21,7 +21,7 @@ graph TD
 | Group              | Files                                                                                          | Purpose                                                                                                |
 | ------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Public API         | `api.ts`, `apiTypes.ts`                                                                        | Short-named, options-object functions accepting `Shapeable<T>`. The canonical surface for callers.     |
-| Fluent facade      | `wrapperFns.ts`                                                                                | `shape(x)` returns `Wrapped<T>` — chainable, auto-unwraps `Result` by throwing `BrepWrapperError`.     |
+| Fluent facade      | `wrapperFns.ts`                                                                                | `shape(x)` returns `Wrapped<T>`, chainable, auto-unwraps `Result` by throwing `BrepWrapperError`.      |
 | Casting & topology | `cast.ts`                                                                                      | `cast`, `downcast`, `shapeType`, `iterTopo`, `asTopo`, `isCompSolid`, `fromBREP`.                      |
 | Primitives         | `primitiveFns.ts`, `curveBuilders.ts`, `surfaceBuilders.ts`, `solidBuilders.ts`                | `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `wire`, `wireLoop`, `face`, `polygon`, etc. |
 | Transforms         | `transformFns.ts`                                                                              | `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `transformCopy`, `composeTransforms`.         |
@@ -41,9 +41,9 @@ graph TD
 
 `primitiveFns.ts` uses validity-branded return types to encode invariants at compile time:
 
-- **`ValidSolid`** — `box()`, `cylinder()`, `sphere()`, `cone()`, `torus()`, `ellipsoid()`, `solid()`
-- **`ClosedWire`** — `wireLoop()` (assembles edges and verifies closure)
-- **`OrientedFace`** — `face()`, `filledFace()`, `polygon()`, `subFace()`, `addHoles()`
+- **`ValidSolid`**: `box()`, `cylinder()`, `sphere()`, `cone()`, `torus()`, `ellipsoid()`, `solid()`
+- **`ClosedWire`**: `wireLoop()` (assembles edges and verifies closure)
+- **`OrientedFace`**: `face()`, `filledFace()`, `polygon()`, `subFace()`, `addHoles()`
 
 Functions that need stronger guarantees require these branded types:
 
@@ -55,13 +55,13 @@ extrude(f: OrientedFace, h: number): ...      // Won't accept a plain Face
 ## Two API styles
 
 ```typescript
-// Functional (canonical) — explicit Result handling
+// Functional (canonical) - explicit Result handling
 const boxR = box(30, 20, 10);
 const filleted = fillet(boxR, (e) => e.inDirection('Z'), 2);
 if (isErr(filleted)) throw filleted.error;
 const moved = translate(filleted.value, [0, 0, 5]);
 
-// Fluent facade — auto-unwraps, throws BrepWrapperError on failure
+// Fluent facade - auto-unwraps, throws BrepWrapperError on failure
 const bracket = shape(box(30, 20, 10))
   .cut(cylinder(5, 15, { at: [15, 10, -1] }))
   .fillet((e) => e.inDirection('Z'), 2)
@@ -72,9 +72,9 @@ Prefer the functional API for library code where explicit error handling matters
 
 ## Gotchas
 
-1. **`.wrapped` is read-only data** — Layer 2+ code reads `shape.wrapped` to pass the kernel handle to `getKernel().method(...)` but **never calls methods on `.wrapped` directly**. ESLint's `no-restricted-syntax` enforces this.
-2. **`iterTopo` does not deduplicate** — it delegates straight to `getKernel().iterShapes`. If you need unique sub-shapes, dedupe via `getHashCode()` at the call site.
-3. **Fluent facade throws, functional API doesn't** — `shape(x).fillet(...)` throws `BrepWrapperError` on kernel failure; `fillet(x, ...)` returns `Result<T>`. Pick one style per call chain.
-4. **Flat mesh data** — `mesh()` returns `ShapeMesh` with flat `Float32Array` / `Uint32Array` buffers, not nested objects. See `meshFns.ts`.
-5. **Validity brands must round-trip carefully** — applying a transform to a `ValidSolid` does not preserve the brand at the type level; re-validate or use `validSolid()` to re-brand if needed downstream.
-6. **All new functionality goes in `*Fns.ts` files** — surface it via `api.ts` for the functional public API, and (if appropriate) add a method on `Wrapped<T>` in `wrapperFns.ts` to expose it through the fluent facade.
+1. **`.wrapped` is read-only data**: Layer 2+ code reads `shape.wrapped` to pass the kernel handle to `getKernel().method(...)` but **never calls methods on `.wrapped` directly**. ESLint's `no-restricted-syntax` enforces this.
+2. **`iterTopo` does not deduplicate**: it delegates straight to `getKernel().iterShapes`. If you need unique sub-shapes, dedupe via `getHashCode()` at the call site.
+3. **Fluent facade throws, functional API doesn't**: `shape(x).fillet(...)` throws `BrepWrapperError` on kernel failure; `fillet(x, ...)` returns `Result<T>`. Pick one style per call chain.
+4. **Flat mesh data**: `mesh()` returns `ShapeMesh` with flat `Float32Array` / `Uint32Array` buffers, not nested objects. See `meshFns.ts`.
+5. **Validity brands must round-trip carefully**: applying a transform to a `ValidSolid` does not preserve the brand at the type level; re-validate or use `validSolid()` to re-brand if needed downstream.
+6. **All new functionality goes in `*Fns.ts` files**: surface it via `api.ts` for the functional public API, and (if appropriate) add a method on `Wrapped<T>` in `wrapperFns.ts` to expose it through the fluent facade.

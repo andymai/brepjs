@@ -1,11 +1,11 @@
 ---
 title: Boolean Operations
-description: 'Fuse, cut, intersect — the three operations that combine primitives into real parts, plus their multi-shape variants and failure modes.'
+description: 'Fuse, cut, intersect: the three operations that combine primitives into real parts, plus their multi-shape variants and failure modes.'
 ---
 
 # Boolean Operations
 
-The three boolean operations — fuse, cut, intersect — are how you combine primitives into real parts. They are also the operation most likely to fail in practice. This chapter covers all three, the multi-shape variants, and the failure modes you will hit eventually.
+The three boolean operations, fuse, cut, intersect, are how you combine primitives into real parts. They are also the operation most likely to fail in practice. This chapter covers all three, the multi-shape variants, and the failure modes you will hit eventually.
 
 ## The three operations
 
@@ -91,7 +91,7 @@ import { box, cut, isOk } from 'brepjs/quick';
 const a = box(10, 10, 10);
 const b = box(10, 10, 10, { at: [100, 0, 0] }); // far away
 const result = cut(a, b);
-console.log('Overlap?', isOk(result)); // true — cut returns a unchanged
+console.log('Overlap?', isOk(result)); // true - cut returns a unchanged
 ```
 
 `cut` with no overlap actually succeeds and returns `a` untouched in OpenCascade's semantics. `intersect` with no overlap returns an empty compound. `fuse` with no overlap returns a compound containing both shapes (a CompSolid). What "no overlap" means for your specific code depends on which operation you used.
@@ -109,7 +109,7 @@ if (
   isOk(result) &&
   Math.abs(unwrap(measureVolume(result.value)) - unwrap(measureVolume(a))) < 1e-6
 ) {
-  console.warn('Cut had no effect — operands did not overlap');
+  console.warn('Cut had no effect - operands did not overlap');
 }
 ```
 
@@ -134,7 +134,7 @@ void result;
 
 ### `BOOLEAN_NEAR_COINCIDENT`
 
-The two operands have geometry that is _almost_ but not exactly coincident. The boolean produces slivers — tiny degenerate faces. Workarounds:
+The two operands have geometry that is _almost_ but not exactly coincident. The boolean produces slivers: tiny degenerate faces. Workarounds:
 
 - **Add overshoot**: extend the cutting tool slightly past the boundary so coincidence becomes unambiguous overlap (the `cylinder(5, 12, { at: [..., -1] })` pattern).
 - **Heal both** with a slightly enlarged tolerance: `autoHeal(s, { tolerance: 0.01 })`.
@@ -146,7 +146,7 @@ The operation has multiple geometrically valid outcomes. Rare. Usually a sign th
 
 ### `KERNEL_INTERNAL_ERROR`
 
-OpenCascade's `BRepAlgoAPI` died with an unrecoverable error. Treat as a programmer error in the inputs — usually the inputs were degenerate (zero volume, self-intersecting, etc.). File a bug if the inputs are clearly valid.
+OpenCascade's `BRepAlgoAPI` died with an unrecoverable error. Treat as a programmer error in the inputs. Usually the inputs were degenerate (zero volume, self-intersecting, etc.). File a bug if the inputs are clearly valid.
 
 [Error Codes](../reference/errors) lists every code with detailed recovery patterns.
 
@@ -159,7 +159,7 @@ Boolean cost roughly tracks (face count of A) × (face count of B). A box-on-box
 
 ## Common patterns
 
-### Drill many holes — cut once
+### Drill many holes: cut once
 
 ```typescript
 import { box, cylinder, cut, fuseAll, unwrap } from 'brepjs/quick';
@@ -188,7 +188,7 @@ Three potential boolean failures become one. If the holes don't overlap each oth
 ```typescript
 import { box, cut, fuse, unwrap } from 'brepjs/quick';
 
-// Through, four-shouldered T-joint between a rail and a stile — the
+// Through, four-shouldered T-joint between a rail and a stile - the
 // canonical furniture joint (chair stretcher into a leg). Rendered
 // exploded along the rail axis so the tenon is visible in mid-air.
 
@@ -233,7 +233,7 @@ const rail = unwrap(
 export default [rail, stile];
 ```
 
-`fuse` adds the tenon as a boss on the rail; `cut` removes the mortise from the stile. Sizing the tenon to about ⅓ the rail thickness leaves enough wood on either side of the mortise that the stile doesn't split — the same rule a hand-tool woodworker would follow. The `clearance` (0.2 mm here) is the sliding fit that lets the joint actually go together; without it, kernel rounding can produce coincident faces and a failed boolean.
+`fuse` adds the tenon as a boss on the rail; `cut` removes the mortise from the stile. Sizing the tenon to about ⅓ the rail thickness leaves enough wood on either side of the mortise that the stile doesn't split, the same rule a hand-tool woodworker would follow. The `clearance` (0.2 mm here) is the sliding fit that lets the joint actually go together; without it, kernel rounding can produce coincident faces and a failed boolean.
 
 ### Carve a label
 
@@ -254,13 +254,13 @@ Shallow, broad cuts are how engraving works in B-Rep. The depth controls how dee
 
 These will fail or produce nonsense regardless of how you frame them:
 
-- **Booleans across different units** — if `a` is in mm and `b` is in metres, the kernel treats them as the same scale. Make sure both inputs are in the same unit space.
-- **Booleans on shapes with self-intersections** — `BRepCheck` will catch this; surface it via `autoHeal`.
-- **Booleans on faces** (without converting to solids first) — `fuse(face, face)` doesn't make geometric sense. Convert to solids by extruding or building shells.
-- **Booleans on shapes with very different tolerances** — the kernel uses the larger of the two and may treat distant geometry as coincident. Normalize first.
+- **Booleans across different units**: if `a` is in mm and `b` is in metres, the kernel treats them as the same scale. Make sure both inputs are in the same unit space.
+- **Booleans on shapes with self-intersections**: `BRepCheck` will catch this; surface it via `autoHeal`.
+- **Booleans on faces** (without converting to solids first): `fuse(face, face)` doesn't make geometric sense. Convert to solids by extruding or building shells.
+- **Booleans on shapes with very different tolerances**: the kernel uses the larger of the two and may treat distant geometry as coincident. Normalize first.
 
 ## Next steps
 
-- [Fillets & Chamfers](./fillets) — refining the edges that appear after booleans
-- [Healing & Sewing](../advanced/healing) — fixing inputs and outputs that don't pass `BRepCheck`
-- [Error Codes](../reference/errors) — every boolean error and its recovery
+- [Fillets & Chamfers](./fillets): refining the edges that appear after booleans
+- [Healing & Sewing](../advanced/healing): fixing inputs and outputs that don't pass `BRepCheck`
+- [Error Codes](../reference/errors): every boolean error and its recovery

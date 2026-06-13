@@ -42,7 +42,7 @@ import { exportSTEP } from 'brepjs/io';
 The complete index is one of:
 
 - **In the repository**: `docs/function-lookup.md` on the [main branch](https://github.com/andymai/brepjs/blob/main/docs/function-lookup.md)
-- **Searchable API reference**: [andymai.github.io/brepjs](https://andymai.github.io/brepjs/) — full TypeDoc with type signatures, examples, source links
+- **Searchable API reference**: [andymai.github.io/brepjs](https://andymai.github.io/brepjs/): full TypeDoc with type signatures, examples, source links
 
 ## Available sub-paths
 
@@ -75,6 +75,6 @@ The pre-commit hook reminds you to run this when `*Fns.ts` files have changed.
 
 ## Next steps
 
-- [TypeDoc API Reference](https://andymai.github.io/brepjs/) — searchable type-level reference
-- [Cheat Sheet](../getting-started/cheat-sheet) — task-oriented code snippets
-- [Glossary](./glossary) — concept-oriented terms
+- [TypeDoc API Reference](https://andymai.github.io/brepjs/): searchable type-level reference
+- [Cheat Sheet](../getting-started/cheat-sheet): task-oriented code snippets
+- [Glossary](./glossary): concept-oriented terms

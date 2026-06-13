@@ -5,11 +5,11 @@
 
 ## Context
 
-ADR-0005 introduced topological validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) — phantom types encoding properties like "wire is closed" or "solid passes BRepCheck". These are _topological_ invariants: they describe connectivity and validity, not geometry.
+ADR-0005 introduced topological validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`): phantom types encoding properties like "wire is closed" or "solid passes BRepCheck". These are _topological_ invariants: they describe connectivity and validity, not geometry.
 
 Several operations have _geometric_ preconditions that aren't captured by topological brands:
 
-- `face(w)` / `makeFace(w)` require a **planar** wire — non-planar wires produce corrupt faces with the error "Your wire might be non planar"
+- `face(w)` / `makeFace(w)` require a **planar** wire; non-planar wires produce corrupt faces with the error "Your wire might be non planar"
 - `extrude(face, vec)` documents "The **planar** face to extrude" but accepts any `OrientedFace`
 - `revolve(face, ...)` implicitly requires a planar face
 - `roof(w, ...)` projects wire to XY plane, assuming planarity
@@ -20,11 +20,11 @@ These failures are silent or produce cryptic WASM errors. The type system should
 
 Three candidates were evaluated:
 
-| Candidate                 | Runtime Check                    | Both Kernels? | Operations Protected                             | Verdict                                                                      |
-| ------------------------- | -------------------------------- | ------------- | ------------------------------------------------ | ---------------------------------------------------------------------------- |
-| **PlanarFace/PlanarWire** | `surfaceType(face) === 'plane'`  | ✅ Yes        | `face`, `makeFace`, `extrude`, `revolve`, `roof` | ✅ Add                                                                       |
-| **ConnectedWire**         | Edge iteration + vertex matching | ⚠️ JS-only    | `sweep`, `loft`                                  | ❌ Skip — wires from API are connected by construction                       |
-| **NonSelfIntersecting**   | No detection API exists          | ❌ No         | Booleans, sweeps                                 | ❌ Skip — no cross-kernel detection; `ValidSolid` catches downstream effects |
+| Candidate                 | Runtime Check                    | Both Kernels? | Operations Protected                             | Verdict                                                                     |
+| ------------------------- | -------------------------------- | ------------- | ------------------------------------------------ | --------------------------------------------------------------------------- |
+| **PlanarFace/PlanarWire** | `surfaceType(face) === 'plane'`  | ✅ Yes        | `face`, `makeFace`, `extrude`, `revolve`, `roof` | ✅ Add                                                                      |
+| **ConnectedWire**         | Edge iteration + vertex matching | ⚠️ JS-only    | `sweep`, `loft`                                  | ❌ Skip: wires from API are connected by construction                       |
+| **NonSelfIntersecting**   | No detection API exists          | ❌ No         | Booleans, sweeps                                 | ❌ Skip: no cross-kernel detection; `ValidSolid` catches downstream effects |
 
 ## Decision
 
@@ -59,7 +59,7 @@ PlanarOrientedFace<D> = PlanarFace<D> & OrientedFace<D>
                       = Face<D> & { __planar } & { __oriented }
 ```
 
-No new combined types are defined — callers use `ClosedWire<D> & PlanarWire<D>` directly, or we provide a convenience alias `ClosedPlanarWire<D>` if usage warrants it.
+No new combined types are defined; callers use `ClosedWire<D> & PlanarWire<D>` directly, or we provide a convenience alias `ClosedPlanarWire<D>` if usage warrants it.
 
 ### Runtime Checks
 
@@ -118,21 +118,21 @@ Functions that produce known-planar shapes return branded types:
 - `makeFace(w)` → `Result<OrientedFace<D> & PlanarFace<D>>` (makeFace only succeeds on planar wires)
 - `face(w)` → `Result<OrientedFace & PlanarFace>` (delegates to makeFace)
 - `polygon(pts)` → `Result<OrientedFace & PlanarFace>` (polygon is always planar)
-- Primitives: `box()` faces, `cylinder()` end caps — these are internal, not user-facing
+- Primitives: `box()` faces, `cylinder()` end caps. These are internal, not user-facing
 
 ## Consequences
 
 ### Positive
 
 - **Compile-time planarity safety**: `face(w)` rejects non-planar wires at the type level
-- **Zero runtime overhead**: Brands are phantom — no wrapper objects
+- **Zero runtime overhead**: Brands are phantom, no wrapper objects
 - **Composable with existing brands**: `ClosedWire & PlanarWire` stacks naturally
 - **Cross-kernel**: `surfaceType()` works on both OCCT and brepkit
 - **Self-documenting**: `extrude(face: OrientedFace & PlanarFace)` is clearer than `extrude(face: OrientedFace)` + JSDoc
 
 ### Negative / Trade-offs
 
-- **Brand stacking verbosity**: `ClosedWire<'2D'> & PlanarWire<'2D'>` is getting long — may warrant a convenience alias
+- **Brand stacking verbosity**: `ClosedWire<'2D'> & PlanarWire<'2D'>` is getting long; may warrant a convenience alias
 - **Wire planarity check cost**: `isPlanarWire()` constructs a temporary face (~1 WASM alloc + dispose). Cheap but not free.
 - **Ergonomic friction**: Users calling `face()` must now prove planarity. Most wires from sketching are planar by construction, so internal code uses justified casts.
 - **Not all planarity is checkable**: A wire may have all-planar edges that don't share a common plane. The `makeFace` fallback catches this but is indirect.
@@ -141,7 +141,7 @@ Functions that produce known-planar shapes return branded types:
 
 ### A: `PlanarWire` only (no `PlanarFace`)
 
-Check planarity at wire level, don't brand faces. Rejected because `extrude` and `revolve` accept faces, not wires — branding only wires leaves these unprotected.
+Check planarity at wire level, don't brand faces. Rejected because `extrude` and `revolve` accept faces, not wires; branding only wires leaves these unprotected.
 
 ### B: Overloads instead of brands
 
@@ -149,11 +149,11 @@ Add `facePlanar(w)` / `faceNonPlanar(w)` as separate functions. Rejected because
 
 ### C: Runtime-only validation (no types)
 
-Keep `isPlanarWire()` as a boolean helper without branding. Rejected for the same reason as ADR-0005 Alternative B — callers can forget to check.
+Keep `isPlanarWire()` as a boolean helper without branding. Rejected for the same reason as ADR-0005 Alternative B: callers can forget to check.
 
 ## Related
 
 - ADR-0003: Branded types (foundation pattern)
 - ADR-0005: Topological validity types (extended here with geometric brands)
-- `src/core/validityTypes.ts` — implementation location
-- `src/kernel/interfaces/surfaceOps.ts` — `surfaceType()` capability
+- `src/core/validityTypes.ts`: implementation location
+- `src/kernel/interfaces/surfaceOps.ts`: `surfaceType()` capability

@@ -57,7 +57,7 @@ The two operands don't share volume. For `cut`, this is occasionally not an erro
 
 One of the inputs failed `BRepCheck`. The kernel refuses to operate on invalid shapes.
 
-**Fix**: Run `autoHeal(input)` on each operand before the boolean. For imported shapes, this should be the default — see [Healing & Sewing](../advanced/healing).
+**Fix**: Run `autoHeal(input)` on each operand before the boolean. For imported shapes, this should be the default. See [Healing & Sewing](../advanced/healing).
 
 ### `BOOLEAN_NEAR_COINCIDENT`
 
@@ -81,15 +81,15 @@ The boolean succeeded but the result didn't pass `BRepCheck`. Usually means the 
 
 ### `FILLET_TOO_LARGE`
 
-The radius is bigger than the local edge geometry can support. A 6 mm fillet on a 10 mm-thick part doesn't fit — the fillet would consume both faces.
+The radius is bigger than the local edge geometry can support. A 6 mm fillet on a 10 mm-thick part doesn't fit. The fillet would consume both faces.
 
-**Fix**: Smaller radius. Or: fewer edges (radius and edge selection interact — a fillet that would propagate to a too-tight neighbour fails).
+**Fix**: Smaller radius. Or: fewer edges (radius and edge selection interact; a fillet that would propagate to a too-tight neighbour fails).
 
 ### `FILLET_INVALID_EDGE`
 
 The selected edge has geometry the fillet algorithm can't handle. Common with imported shapes: sharp creases, edges shorter than the radius, non-tangent meeting edges.
 
-**Fix**: Heal first (`autoHeal`). Or skip the problematic edge by refining the finder. Or use `chamfer` — it has fewer requirements.
+**Fix**: Heal first (`autoHeal`). Or skip the problematic edge by refining the finder. Or use `chamfer`. It has fewer requirements.
 
 ### `FILLET_AMBIGUOUS_PROPAGATION`
 
@@ -105,7 +105,7 @@ Same as `FILLET_TOO_LARGE` but for chamfer.
 
 ### `SHELL_TOO_THICK`
 
-The wall thickness in `shell(solid, faces, t)` is larger than the local geometry can support — the offset surfaces would self-intersect.
+The wall thickness in `shell(solid, faces, t)` is larger than the local geometry can support. The offset surfaces would self-intersect.
 
 **Fix**: Thinner wall. Or remove faces that allow more offset clearance.
 
@@ -121,7 +121,7 @@ You passed a face to `shell` that isn't part of the input solid. This usually me
 
 You tried to build a face from a wire that isn't a closed loop. Usually means you forgot `.close()` on a `Sketcher`.
 
-**Fix**: Call `.close()`. The compiler should normally catch this — you've probably done a runtime cast that bypassed the type system.
+**Fix**: Call `.close()`. The compiler should normally catch this. You've probably done a runtime cast that bypassed the type system.
 
 ### `WIRE_SELF_INTERSECTS`
 
@@ -143,9 +143,9 @@ The revolution axis passes through the profile. The result would self-intersect.
 
 ### `LOFT_PROFILE_MISMATCH`
 
-The profiles passed to `loft` have very different topologies — e.g. one is closed, another is open.
+The profiles passed to `loft` have very different topologies, e.g. one is closed, another is open.
 
-**Fix**: Make all profiles consistent — all closed, all the same general topology.
+**Fix**: Make all profiles consistent, all closed, all the same general topology.
 
 ### `SWEEP_PATH_INVALID`
 
@@ -163,7 +163,7 @@ The path has self-intersections, sharp corners, or non-tangent meeting edges. Th
 
 ### `SEW_FAILED`
 
-`sew` couldn't connect the input faces — the gaps are larger than tolerance, or the topology is incompatible.
+`sew` couldn't connect the input faces. The gaps are larger than tolerance, or the topology is incompatible.
 
 **Fix**: Increase tolerance. Or pre-process the faces (e.g. heal each individually first).
 
@@ -191,7 +191,7 @@ The file ends unexpectedly. Likely a download or upload problem.
 
 An exporter (STL, glTF, 3MF) couldn't triangulate the input. Usually a tolerance issue with very small or very large shapes.
 
-**Fix**: Heal the input first. Adjust tolerance — too small (1e-9) can fail; too large (1.0) can also fail for fine geometry.
+**Fix**: Heal the input first. Adjust tolerance. Too small (1e-9) can fail; too large (1.0) can also fail for fine geometry.
 
 ## Validity / type checks
 
@@ -260,11 +260,11 @@ The `cause` field carries the underlying kernel error (often a string from the O
 
 - **Codes are stable** across patch and minor versions.
 - **Suggestions can improve** in any version (the wording, not the code).
-- **New codes can be added** in minor versions — don't write `default: throw` unless you really mean it.
+- **New codes can be added** in minor versions. Don't write `default: throw` unless you really mean it.
 - **Codes are removed** only in major versions, with deprecation warnings in advance.
 
 ## Next steps
 
-- [Result and Errors](../concepts/result) — the type and patterns above
-- [Healing & Sewing](../advanced/healing) — for the recovery paths
-- [Boolean Operations](../tasks/booleans) — the most common error source
+- [Result and Errors](../concepts/result): the type and patterns above
+- [Healing & Sewing](../advanced/healing): for the recovery paths
+- [Boolean Operations](../tasks/booleans): the most common error source

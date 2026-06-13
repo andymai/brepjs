@@ -2,9 +2,9 @@
 
 brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Three adapters are provided:
 
-- **occt-wasm** (via `occt-wasm`) — the default kernel: arena-based OCCT V8 compiled to WASM with a handle-based memory model
-- **OpenCascade WASM** (via `brepjs-opencascade`) — the legacy OpenCascade build; mature, still supported as an alternative
-- **brepkit WASM** (via `brepkit-wasm`) — alternative kernel with growing coverage
+- **occt-wasm** (via `occt-wasm`), the default kernel: arena-based OCCT V8 compiled to WASM with a handle-based memory model
+- **OpenCascade WASM** (via `brepjs-opencascade`), the legacy OpenCascade build; mature, still supported as an alternative
+- **brepkit WASM** (via `brepkit-wasm`), alternative kernel with growing coverage
 
 You can also register your own kernel at runtime.
 
@@ -55,11 +55,11 @@ Register a `KernelAdapter` under a unique string ID. The first kernel registered
 
 ### `init()`
 
-Auto-detect and initialize the best available kernel. Tries `occt-wasm` (the default kernel) first, then falls back to `brepjs-opencascade`, then `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt-wasm'`, `'occt'`, or `'brepkit'`). Idempotent — calling it again after a kernel is registered returns the current kernel ID immediately.
+Auto-detect and initialize the best available kernel. Tries `occt-wasm` (the default kernel) first, then falls back to `brepjs-opencascade`, then `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt-wasm'`, `'occt'`, or `'brepkit'`). Idempotent: calling it again after a kernel is registered returns the current kernel ID immediately.
 
 ### `initFromOC(oc)`
 
-Manual initialization — creates the OpenCascade adapter from a loaded `brepjs-opencascade` WASM instance and registers it as `'occt'` (the alternative kernel; the default is `occt-wasm`).
+Manual initialization: creates the OpenCascade adapter from a loaded `brepjs-opencascade` WASM instance and registers it as `'occt'` (the alternative kernel; the default is `occt-wasm`).
 
 ### `BrepkitAdapter`
 
@@ -67,7 +67,7 @@ Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAd
 
 ### `OcctWasmAdapter`
 
-Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM — all geometry is identified by `u32` handles into the arena.
+Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM: all geometry is identified by `u32` handles into the arena.
 
 When you use occt-wasm's high-level `OcctKernel` wrapper, build the adapter with `OcctWasmAdapter.fromKernel(kernel)`:
 
@@ -83,7 +83,7 @@ registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 The raw `new OcctWasmAdapter(Module, kernel)` constructor remains for callers that own a raw Embind kernel directly (`new Module.OcctKernel()`), which the adapter already retains.
 
-`occt-wasm` is the default kernel and is auto-detected by `init()` — its `OcctKernel.init()` resolves its own WASM binary, so no build-tool configuration is needed. The manual `registerKernel('occt-wasm', ...)` path above is for callers that want explicit control over init timing or error handling.
+`occt-wasm` is the default kernel and is auto-detected by `init()`; its `OcctKernel.init()` resolves its own WASM binary, so no build-tool configuration is needed. The manual `registerKernel('occt-wasm', ...)` path above is for callers that want explicit control over init timing or error handling.
 
 `OcctWasmAdapter` is exported from the `brepjs` root:
 

@@ -5,13 +5,13 @@ description: 'Solid → Shell → Face → Wire → Edge → Vertex. The recursi
 
 # The Topology Hierarchy
 
-A B-Rep shape is a recursive structure: a solid contains shells, shells contain faces, faces contain wires, wires contain edges, and edges contain vertices. Every modelling operation operates somewhere on this hierarchy, and every query you write picks an entity at one level. Knowing the levels — and the brand on each — is the bedrock of using brepjs effectively.
+A B-Rep shape is a recursive structure: a solid contains shells, shells contain faces, faces contain wires, wires contain edges, and edges contain vertices. Every modelling operation operates somewhere on this hierarchy, and every query you write picks an entity at one level. Knowing the levels (and the brand on each) is the bedrock of using brepjs effectively.
 
 ## The hierarchy
 
 ```
 Compound      collection of any shapes
-  └─ Solid      watertight 3D volume — the goal of most CAD work
+  └─ Solid      watertight 3D volume - the goal of most CAD work
        └─ Shell     closed surface bounding a solid
             └─ Face     bounded region of a mathematical surface
                  └─ Wire     closed loop of edges (face boundary)
@@ -19,7 +19,7 @@ Compound      collection of any shapes
                            └─ Vertex   point in 3D space
 ```
 
-Each level adds geometric meaning to the level below. An edge is just a curve, but a _closed_ edge loop forms a wire that bounds a face. A face is just a trimmed surface, but a _closed_ set of faces forms a shell that bounds a solid. The brepjs type system encodes these "closed" qualifiers as validity brands — see [Types That Prove Geometry Is Valid](./types).
+Each level adds geometric meaning to the level below. An edge is just a curve, but a _closed_ edge loop forms a wire that bounds a face. A face is just a trimmed surface, but a _closed_ set of faces forms a shell that bounds a solid. The brepjs type system encodes these "closed" qualifiers as validity brands; see [Types That Prove Geometry Is Valid](./types).
 
 ## The seven shape kinds
 
@@ -43,12 +43,12 @@ if (firstCorner) {
 
 A curve segment connecting two vertices. The curve is one of:
 
-- `LINE` — straight segment
-- `CIRCLE` — circular arc (or full circle)
-- `ELLIPSE` — elliptical arc
-- `BEZIER` — Bézier curve
-- `BSPLINE` — B-spline (the catch-all for non-analytic curves)
-- `OFFSET` — an offset of another curve
+- `LINE`: straight segment
+- `CIRCLE`: circular arc (or full circle)
+- `ELLIPSE`: elliptical arc
+- `BEZIER`: Bézier curve
+- `BSPLINE`: B-spline (the catch-all for non-analytic curves)
+- `OFFSET`: an offset of another curve
 
 ```typescript
 import { box, edgeFinder, curveLength, getCurveType } from 'brepjs/quick';
@@ -79,13 +79,13 @@ if (oneFace) {
 
 ### Face
 
-A bounded region of a mathematical surface — a plane trimmed to a polygon, a cylinder trimmed to a band, a sphere trimmed to a cap. The surface kind determines what's possible: a planar face can be sketched on, extruded, mirrored; a curved face can be queried for normal at a point.
+A bounded region of a mathematical surface: a plane trimmed to a polygon, a cylinder trimmed to a band, a sphere trimmed to a cap. The surface kind determines what's possible: a planar face can be sketched on, extruded, mirrored; a curved face can be queried for normal at a point.
 
 Face surface kinds:
 
-- `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS` — analytic
-- `BSPLINE_SURFACE` — the catch-all
-- `OFFSET_SURFACE`, `EXTRUSION`, `REVOLUTION` — derived
+- `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS`: analytic
+- `BSPLINE_SURFACE`: the catch-all
+- `OFFSET_SURFACE`, `EXTRUSION`, `REVOLUTION`: derived
 
 ```typescript
 import { box, faceFinder, measureArea, getSurfaceType, unwrap } from 'brepjs/quick';
@@ -102,19 +102,19 @@ console.log('All faces:', faces.length);
 
 ### Shell
 
-A connected set of faces. A **closed shell** has every edge shared by exactly two faces — it bounds a solid. Open shells exist (think a tea-cup before the bottom is sewn on); they are useful as intermediate results during construction.
+A connected set of faces. A **closed shell** has every edge shared by exactly two faces; it bounds a solid. Open shells exist (think a tea-cup before the bottom is sewn on); they are useful as intermediate results during construction.
 
 ```typescript
 import { box, shellFinder } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 const shells = shellFinder().findAll(b);
-console.log('Shells:', shells.length); // 1 — the outer shell of the box
+console.log('Shells:', shells.length); // 1: the outer shell of the box
 ```
 
 ### Solid
 
-A 3D volume bounded by one or more shells (one outer, possibly inner shells for cavities). The most common output type. Every primitive (`box`, `cylinder`, `sphere`) returns a `ValidSolid` — a solid that has passed `BRepCheck`.
+A 3D volume bounded by one or more shells (one outer, possibly inner shells for cavities). The most common output type. Every primitive (`box`, `cylinder`, `sphere`) returns a `ValidSolid`: a solid that has passed `BRepCheck`.
 
 ```typescript
 import { box, sphere, measureVolume, unwrap } from 'brepjs/quick';
@@ -142,8 +142,8 @@ A compound containing only solids is a `CompSolid`. Compound is the fallback typ
 
 Some brepjs functions accept any shape regardless of level. Two convenience unions:
 
-- `Shape3D` — `Face | Shell | Solid | CompSolid | Compound<'3D'>`. The argument type for "anything 3D".
-- `AnyShape` — `Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound`. Truly anything.
+- `Shape3D`: `Face | Shell | Solid | CompSolid | Compound<'3D'>`. The argument type for "anything 3D".
+- `AnyShape`: `Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound`. Truly anything.
 
 A phantom dimension parameter (`'2D' | '3D'`) prevents mixing 2D drafts with 3D parts at compile time. See [Types That Prove Geometry Is Valid](./types) for the full story.
 
@@ -162,7 +162,7 @@ edgeFinder().inDirection('Z').findAll(b); // 4 vertical
 faceFinder().ofSurfaceType('PLANE').findAll(b); // 6
 ```
 
-Finders return arrays — empty if nothing matches. They never throw and never return `undefined`. See [Finders & Queries](../tasks/finders) for the full filter vocabulary.
+Finders return arrays, empty if nothing matches. They never throw and never return `undefined`. See [Finders & Queries](../tasks/finders) for the full filter vocabulary.
 
 ## How operations move you up the hierarchy
 
@@ -193,6 +193,6 @@ You start with edges (lines), close them into a wire, the wire becomes a face, t
 
 ## Next steps
 
-- [Types That Prove Geometry Is Valid](./types) — the brand-and-validity types that prevent topology bugs at compile time
-- [Finders & Queries](../tasks/finders) — selecting entities at any level
-- [2D Sketching](../tasks/sketching) — building wires and faces fluently
+- [Types That Prove Geometry Is Valid](./types): the brand-and-validity types that prevent topology bugs at compile time
+- [Finders & Queries](../tasks/finders): selecting entities at any level
+- [2D Sketching](../tasks/sketching): building wires and faces fluently

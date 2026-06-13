@@ -290,7 +290,7 @@ function withScopeResultAsync<T, E = BrepError>(
 ): Promise<Result<T, E>>;
 ```
 
-**`using` declaration (preferred — auto-disposes at block end):**
+**`using` declaration (preferred, auto-disposes at block end):**
 
 ```typescript
 using scope = new DisposalScope();
@@ -298,7 +298,7 @@ const pnt = scope.register(new oc.gp_Pnt_3(0, 0, 0));
 // scope.delete() called automatically, pnt deleted
 ```
 
-**`withScopeResult` — for Result-returning functions:**
+**`withScopeResult`: for Result-returning functions:**
 
 ```typescript
 return withScopeResult((scope) => {
@@ -308,7 +308,7 @@ return withScopeResult((scope) => {
 });
 ```
 
-**`withScopeResultAsync` — for async Result-returning functions:**
+**`withScopeResultAsync`: for async Result-returning functions:**
 
 ```typescript
 return withScopeResultAsync(async (scope) => {
@@ -319,7 +319,7 @@ return withScopeResultAsync(async (scope) => {
 });
 ```
 
-> **Note:** The `await` in `return await fn(scope)` inside `withScopeResultAsync` is intentional — the TC39 `using` block is synchronous; without `await`, the scope would be disposed before the promise resolves.
+> **Note:** The `await` in `return await fn(scope)` inside `withScopeResultAsync` is intentional. The TC39 `using` block is synchronous; without `await`, the scope would be disposed before the promise resolves.
 
 ### Lifecycle Guard
 
@@ -358,7 +358,7 @@ kernelCall(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKin
 // Like kernelCall but returns the raw OcShape (no branded wrapping).
 kernelCallRaw(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<OcShape>
 
-// Like kernelCall but provides a DisposalScope — for operations that need intermediate kernel objects.
+// Like kernelCall but provides a DisposalScope - for operations that need intermediate kernel objects.
 kernelCallScoped(fn: (scope: DisposalScope) => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>
 ```
 

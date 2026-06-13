@@ -12,7 +12,7 @@ Layer 3 camera definitions and 3D-to-2D edge projection with hidden line removal
 
 ## Gotchas
 
-1. **Hidden line performance**: The kernel's hidden line removal can be slow on complex geometry — use `withHiddenLines: false` if only visible edges needed.
+1. **Hidden line performance**: The kernel's hidden line removal can be slow on complex geometry. Use `withHiddenLines: false` if only visible edges needed.
 2. **Separate edge arrays**: Returns visible edges (solid lines) and hidden edges (dashed lines) separately for rendering control.
 3. **Standard view names**: Supports `'front'`, `'back'`, `'top'`, `'bottom'`, `'left'`, `'right'` plus plane names (`'XY'`, `'XZ'`, `'YZ'`, `'YX'`, `'ZX'`, `'ZY'`).
 4. **Plain objects**: `Camera` is a plain immutable object (no `.delete()` needed). Uses same underlying `makeProjectedEdges()` implementation.

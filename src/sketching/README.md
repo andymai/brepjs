@@ -29,8 +29,8 @@ graph LR
 
 ## Gotchas
 
-1. **Sketch consumption**: Sketch operations (`extrude()`, `revolve()`, etc.) "consume" the sketch by calling `.delete()` internally — the sketch instance cannot be reused after.
-2. **Drawing immutability**: Drawings are non-destructive — operations return new Drawing instances.
+1. **Sketch consumption**: Sketch operations (`extrude()`, `revolve()`, etc.) "consume" the sketch by calling `.delete()` internally. The sketch instance cannot be reused after.
+2. **Drawing immutability**: Drawings are non-destructive; operations return new Drawing instances.
 3. **Relative vs absolute coordinates**: Use `.line(dx, dy)` for relative movement, `.lineTo([x, y])` for absolute positioning.
 4. **Mirror symmetry**: `closeWithMirror()` mirrors the drawn path around the start-to-end axis to create symmetric shapes.
 5. **UV coordinates**: `FaceSketcher` works on curved 3D surfaces using UV parametric coordinates, not Cartesian.

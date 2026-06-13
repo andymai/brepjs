@@ -10,7 +10,7 @@ CAD modeling for JavaScript.
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-**[▶ Try the live playground](https://brepjs.dev/playground)** — write code, watch the solid render, and export STEP, all in your browser.
+**[▶ Try the live playground](https://brepjs.dev/playground)**: write code, watch the solid render, and export STEP, all in your browser.
 
 **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
 
@@ -18,7 +18,7 @@ CAD modeling for JavaScript.
 
 </div>
 
-Shapes are exact mathematical boundaries — not triangle meshes — so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
+Shapes are exact mathematical boundaries (not triangle meshes) so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
 ```typescript
 // Drill a hole, fillet the vertical edges, export to STEP
@@ -44,11 +44,11 @@ Neither had the type safety I wanted, so brepjs leans hard on it: branded types,
 
 To set expectations, this project deliberately does not:
 
-- **Render or display geometry** — brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
-- **Support organic or sculpting workflows** — the API is built for parametric parts (enclosures, brackets, fixtures); freeform sculpting is out of scope.
-- **Output SVG or 2D files** — 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
-- **Run server-side (SSR)** — WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
-- **Provide a GUI** — brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
+- **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
+- **Support organic or sculpting workflows**: the API is built for parametric parts (enclosures, brackets, fixtures); freeform sculpting is out of scope.
+- **Output SVG or 2D files**: 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
+- **Run server-side (SSR)**: WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
+- **Provide a GUI**: brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
 
 ## Status
 
@@ -78,17 +78,17 @@ registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 The chapter-based guide is the recommended starting point:
 
-- **[Why brepjs](https://brepjs.dev/introduction/why-brepjs)** — what makes it different, who it's for
-- **[Install & Initialize](https://brepjs.dev/getting-started/install)** — three init styles, bundler notes
-- **[Your First Solid](https://brepjs.dev/getting-started/first-solid)** — the canonical drill-fillet-export workflow
-- **[Cheat Sheet](https://brepjs.dev/getting-started/cheat-sheet)** — single-page reference
-- **[Core Concepts](https://brepjs.dev/concepts/brep-vs-mesh)** — B-Rep, topology, types, kernels, tolerance
-- **[Common Tasks](https://brepjs.dev/tasks/booleans)** — booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
-- **[Three.js Integration](https://brepjs.dev/integration/threejs)** — meshing and rendering
-- **[Migration](https://brepjs.dev/migration/replicad)** — coming from Replicad, OpenSCAD, or Three.js
-- **[Extending brepjs](https://brepjs.dev/extending/architecture)** — custom kernels, custom operations, architecture
-- **[Reference](https://brepjs.dev/reference/glossary)** — glossary, function lookup, error codes, ADRs
-- **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/)** — searchable type-level reference
+- **[Why brepjs](https://brepjs.dev/introduction/why-brepjs)**: what makes it different, who it's for
+- **[Install & Initialize](https://brepjs.dev/getting-started/install)**: three init styles, bundler notes
+- **[Your First Solid](https://brepjs.dev/getting-started/first-solid)**: the canonical drill-fillet-export workflow
+- **[Cheat Sheet](https://brepjs.dev/getting-started/cheat-sheet)**: single-page reference
+- **[Core Concepts](https://brepjs.dev/concepts/brep-vs-mesh)**: B-Rep, topology, types, kernels, tolerance
+- **[Common Tasks](https://brepjs.dev/tasks/booleans)**: booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
+- **[Three.js Integration](https://brepjs.dev/integration/threejs)**: meshing and rendering
+- **[Migration](https://brepjs.dev/migration/replicad)**: coming from Replicad, OpenSCAD, or Three.js
+- **[Extending brepjs](https://brepjs.dev/extending/architecture)**: custom kernels, custom operations, architecture
+- **[Reference](https://brepjs.dev/reference/glossary)**: glossary, function lookup, error codes, ADRs
+- **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/)**: searchable type-level reference
 
 Legacy single-page docs in [./docs/](./docs/) remain available; the chapter site is the canonical location going forward.
 
@@ -105,16 +105,16 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 ## Authoring CAD with AI (brepjs-verify)
 
-[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) helps an AI agent (or you) author parametric CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry — so it writes a `.brep.ts` part, runs it on a real kernel, and reads a deterministic report instead of guessing from how the code reads. It ships as two cooperating pieces: a **Claude Code skill** (the authoring loop) and a **verification CLI** (validity + measured dimensions + multi-view snapshots + STEP export).
+[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) helps an AI agent (or you) author parametric CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry, so it writes a `.brep.ts` part, runs it on a real kernel, and reads a deterministic report instead of guessing from how the code reads. It ships as two cooperating pieces: a **Claude Code skill** (the authoring loop) and a **verification CLI** (validity + measured dimensions + multi-view snapshots + STEP export).
 
-Install both — they ride on two rails:
+Install both; they ride on two rails:
 
 ```bash
-# 1. The skill — Claude Code plugin (delivered via this repo's marketplace)
+# 1. The skill - Claude Code plugin (delivered via this repo's marketplace)
 /plugin marketplace add andymai/brepjs
 /plugin install brepjs-verify@brepjs
 
-# 2. The runtime — the CLI the skill drives
+# 2. The runtime - the CLI the skill drives
 npm i -D brepjs-verify
 ```
 

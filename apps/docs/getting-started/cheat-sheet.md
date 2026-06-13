@@ -38,9 +38,9 @@ import { fuse, cut, intersect, fuseAll, box, cylinder, sphere, unwrap } from 'br
 const a = box(20, 20, 20);
 const b = cylinder(8, 30, { at: [10, 10, -5] });
 
-unwrap(fuse(a, b)); // union — glue together
-unwrap(cut(a, b)); // subtraction — drill a hole
-unwrap(intersect(a, b)); // intersection — common volume
+unwrap(fuse(a, b)); // union - glue together
+unwrap(cut(a, b)); // subtraction - drill a hole
+unwrap(intersect(a, b)); // intersection - common volume
 
 unwrap(fuseAll([a, b, sphere(5)])); // fuse a list (faster than chaining)
 ```
@@ -111,7 +111,7 @@ vertexFinder().findAll(b);
 wireFinder().isClosed().findAll(b);
 ```
 
-Filters chain — every call narrows the result.
+Filters chain: every call narrows the result.
 
 ## Measurement
 
@@ -131,9 +131,9 @@ The fluent equivalents: `shape(b).volume()`, `shape(b).area()`.
 import { exportSTEP, exportSTL, exportGltf, box, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
-unwrap(exportSTEP(b)); // STEP — round-trips with SolidWorks/Fusion/FreeCAD
-unwrap(exportSTL(b)); // STL — meshing, 3D printing
-unwrap(exportGltf(b)); // glTF — web rendering
+unwrap(exportSTEP(b)); // STEP - round-trips with SolidWorks/Fusion/FreeCAD
+unwrap(exportSTL(b)); // STL - meshing, 3D printing
+unwrap(exportGltf(b)); // glTF - web rendering
 ```
 
 <!-- @no-test -->
@@ -157,7 +157,7 @@ if (isOk(result)) {
   void part;
 }
 
-// Pattern 2: unwrap (throws on error — fine for scripts)
+// Pattern 2: unwrap (throws on error - fine for scripts)
 const part = unwrap(result);
 void part;
 
@@ -214,12 +214,12 @@ void geo;
 
 ## API reference
 
-- [Function Lookup](../reference/function-lookup) — alphabetical index of every export with its sub-path
-- [TypeDoc API Reference](https://andymai.github.io/brepjs/) — full searchable reference
-- [Glossary](../reference/glossary) — B-Rep terminology
+- [Function Lookup](../reference/function-lookup): alphabetical index of every export with its sub-path
+- [TypeDoc API Reference](https://andymai.github.io/brepjs/): full searchable reference
+- [Glossary](../reference/glossary): B-Rep terminology
 
 ## Next steps
 
-- [B-Rep vs Mesh](../concepts/brep-vs-mesh) — what makes B-Rep precise
-- [Types That Prove Geometry Is Valid](../concepts/types) — the type system that catches bugs at compile time
+- [B-Rep vs Mesh](../concepts/brep-vs-mesh): what makes B-Rep precise
+- [Types That Prove Geometry Is Valid](../concepts/types): the type system that catches bugs at compile time
 - Pick a task: [Booleans](../tasks/booleans) · [Sketching](../tasks/sketching) · [Three.js](../integration/threejs)

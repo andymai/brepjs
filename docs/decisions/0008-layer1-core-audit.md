@@ -8,11 +8,11 @@
 Layer 1 (`src/core/`) had grown to 15 files / 2,316 LOC with several structural concerns:
 
 1. **shapeTypes.ts** (479 LOC) mixed three concerns from ADR-0003 (branded types), ADR-0004 (phantom dimensions), and ADR-0005 (validity brands).
-2. **ValidityResult<T>** used `{ valid, shape }` / `{ valid, reason }` — incompatible with the project-standard `Result<T, E>` pattern.
+2. **ValidityResult<T>** used `{ valid, shape }` / `{ valid, reason }`, incompatible with the project-standard `Result<T, E>` pattern.
 3. **geometryHelpers.ts** mixed pure functions with kernel calls (layer boundary smell).
 4. **memory.ts** was a pure re-export hub adding indirection over disposal.ts.
 5. **errors.ts** bundled type definitions with OCCT-specific regex translation logic.
-6. **definitionMaps.ts** was under-scoped — only handled CurveType while getShapeKind lived elsewhere.
+6. **definitionMaps.ts** was under-scoped: only handled CurveType while getShapeKind lived elsewhere.
 7. **is2D()/is3D()** type guards checked a `__is2D` runtime marker that was never set.
 8. No resource tracking capability for debugging WASM memory leaks.
 9. `Result<T,E>` missing `flatten()` and `mapBoth()` combinators.
@@ -25,9 +25,9 @@ Address all findings via nine incremental PRs, each independently verifiable:
 
 ### PR 1: Split shapeTypes.ts into 3 files
 
-- `dimensionTypes.ts` — ADR-0004 dimension types + absorbed `typeErrors.ts`
-- `validityTypes.ts` — ADR-0005 validity brands, type guards, smart constructors
-- `shapeTypes.ts` — slimmed to branded types + re-exports for backward compat
+- `dimensionTypes.ts`: ADR-0004 dimension types + absorbed `typeErrors.ts`
+- `validityTypes.ts`: ADR-0005 validity brands, type guards, smart constructors
+- `shapeTypes.ts`: slimmed to branded types + re-exports for backward compat
 
 ### PR 2: Unify ValidityResult with Result<T, string>
 
@@ -48,7 +48,7 @@ Address all findings via nine incremental PRs, each independently verifiable:
 ### PR 5: Add DisposalStats for WASM memory debugging
 
 - `DisposalStats` interface with live/peak/gc/scope counters
-- `getDisposalStats()` / `resetDisposalStats()` — zero overhead when not called
+- `getDisposalStats()` / `resetDisposalStats()`: zero overhead when not called
 
 ### PR 6: Implement \_\_is2D runtime markers
 
@@ -58,9 +58,9 @@ Address all findings via nine incremental PRs, each independently verifiable:
 
 ### PR 7: Add Result.flatten + Result.mapBoth + normalize2d
 
-- `flatten()` — unwraps `Result<Result<T,E>,E>`
-- `mapBoth()` — maps both Ok and Err in one pass
-- `normalize2d()` in `vec2d.ts` — fills the Layer 0 gap
+- `flatten()`: unwraps `Result<Result<T,E>,E>`
+- `mapBoth()`: maps both Ok and Err in one pass
+- `normalize2d()` in `vec2d.ts`: fills the Layer 0 gap
 
 ### PR 8: Export kernel sub-interfaces from public API
 
@@ -88,11 +88,11 @@ Address all findings via nine incremental PRs, each independently verifiable:
 
 ### Keep shapeTypes.ts as a monolith
 
-Rejected — 479 LOC mixing three ADR concerns makes each concern harder to reason about independently.
+Rejected: 479 LOC mixing three ADR concerns makes each concern harder to reason about independently.
 
 ### Use a separate `ValidityResult` pattern alongside `Result`
 
-Rejected — two incompatible discriminated union patterns for the same purpose creates unnecessary cognitive load and prevents using `Result` combinators on validity proofs.
+Rejected: two incompatible discriminated union patterns for the same purpose creates unnecessary cognitive load and prevents using `Result` combinators on validity proofs.
 
 ## Related
 

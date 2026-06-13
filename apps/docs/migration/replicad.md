@@ -1,6 +1,6 @@
 ---
 title: Coming from Replicad
-description: 'Coming from Replicad — both wrap OpenCascade. What is the same, what differs, and the search-and-replace map for working code.'
+description: 'Coming from Replicad. Both wrap OpenCascade. What is the same, what differs, and the search-and-replace map for working code.'
 ---
 
 # Coming from Replicad
@@ -9,7 +9,7 @@ description: 'Coming from Replicad — both wrap OpenCascade. What is the same, 
 
 ## What's the same
 
-- The kernel is OpenCascade in both libraries — same precision, same tolerances, same booleans, same fillets.
+- The kernel is OpenCascade in both libraries: same precision, same tolerances, same booleans, same fillets.
 - 2D drawing → sketch → extrude is the canonical shape-building flow.
 - STEP / STL / glTF export.
 - Web-first, ESM-first, browser-friendly.
@@ -17,7 +17,7 @@ description: 'Coming from Replicad — both wrap OpenCascade. What is the same, 
 ## What's different
 
 - **Branded types and validity types.** brepjs distinguishes `Edge`, `Wire`, `Face` at the type level, and stamps `ClosedWire`, `OrientedFace`, `ValidSolid` on shapes proven to satisfy invariants. Replicad treats most shapes as a single `Shape` type.
-- **`Result<T, BrepError>`** for fallible operations. brepjs returns `Result` from booleans, fillets, imports, exports — Replicad throws.
+- **`Result<T, BrepError>`** for fallible operations. brepjs returns `Result` from booleans, fillets, imports, exports; Replicad throws.
 - **Two API styles.** Functional (`fuse(a, b)`, `fillet(s, edges, r)`) is the canonical surface; the fluent `shape()` wrapper provides a chainable view that matches Replicad's `.fuse().fillet()` style.
 - **Pluggable kernel.** brepjs supports OpenCascade and brepkit (Rust-based) behind one API; Replicad is OpenCascade-only.
 
@@ -186,7 +186,7 @@ if (isClosedWire(someWire)) {
 
 - **Replicad's workbench.** brepjs has <a href="/playground" target="_blank" rel="noopener">a similar playground</a>. Same idea, slightly different UI.
 - **Some operation names.** `revolution` → `revolve`. `loft` is the same. `pipe` → `sweep`.
-- **Replicad's higher-order helpers.** Some niche helpers (e.g. `genericSweep`) don't have direct brepjs equivalents — usually composing two operations covers the case.
+- **Replicad's higher-order helpers.** Some niche helpers (e.g. `genericSweep`) don't have direct brepjs equivalents; usually composing two operations covers the case.
 
 ## When to keep Replicad
 
@@ -196,9 +196,9 @@ If you're not running into Replicad's pain points (silent failures, runtime topo
 
 For a moderate codebase:
 
-1. Add brepjs alongside Replicad. They can coexist — different imports.
+1. Add brepjs alongside Replicad. They can coexist, different imports.
 2. Pick one module (one part / one feature) and migrate it. Use the function map above.
-3. Embrace `Result` — change error-handling sites to use `isOk` or the wrapper.
+3. Embrace `Result`: change error-handling sites to use `isOk` or the wrapper.
 4. Add validity-type assertions at boundaries (where shapes enter/leave your code).
 5. Repeat for the next module.
 
@@ -206,6 +206,6 @@ A search-and-replace (replacing Replicad's class methods with brepjs's functiona
 
 ## Next steps
 
-- [Cheat Sheet](../getting-started/cheat-sheet) — the brepjs API at a glance
-- [Result and Errors](../concepts/result) — handling fallible operations
-- [Types That Prove Geometry Is Valid](../concepts/types) — the differentiator
+- [Cheat Sheet](../getting-started/cheat-sheet): the brepjs API at a glance
+- [Result and Errors](../concepts/result): handling fallible operations
+- [Types That Prove Geometry Is Valid](../concepts/types): the differentiator

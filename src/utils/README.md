@@ -14,6 +14,6 @@ Low-level helper functions with no internal imports (Layer 0 foundation).
 
 ## Gotchas
 
-1. **Never catch bug()** — `bug()` should never be caught, it signals programmer errors (invariant violations), not recoverable failures
-2. **Single dependency** — `zip` imports from `range.js` (only inter-file dependency in utils)
-3. **Export patterns** — All files use default exports except `bug.ts` and `uuid.ts` which use named exports. `precisionRound.ts` has both a default export and named `round2`/`round5` exports
+1. **Never catch bug()**: `bug()` should never be caught, it signals programmer errors (invariant violations), not recoverable failures
+2. **Single dependency**: `zip` imports from `range.js` (only inter-file dependency in utils)
+3. **Export patterns**: All files use default exports except `bug.ts` and `uuid.ts` which use named exports. `precisionRound.ts` has both a default export and named `round2`/`round5` exports

@@ -1,6 +1,6 @@
 # Measurement
 
-**Layer 2** — Volume, area, length, and distance measurement.
+**Layer 2**: Volume, area, length, and distance measurement.
 
 ## Key Files
 
@@ -10,7 +10,7 @@
 
 ## API (`measureFns.ts`)
 
-All functions return plain numbers or objects — no memory management needed.
+All functions return plain numbers or objects; no memory management needed.
 
 | Function                  | Input                | Output                       | Use Case                  |
 | ------------------------- | -------------------- | ---------------------------- | ------------------------- |
@@ -46,9 +46,9 @@ query.dispose(); // Clean up
 
 ## Gotchas
 
-1. **Stateless** — No `.delete()` required; all cleanup happens internally
-2. **Reusable queries are faster** — `createDistanceQuery()` loads reference shape once, then measures against many targets efficiently
-3. **"Mass" is not mass** — The `mass` field represents geometric properties (volume/area/length), not actual mass. Multiply by density if needed.
-4. **Center of mass from geometry** — Computed from shape geometry, not physical distribution
-5. **Face vs Shape3D for area** — `measureArea()` accepts both faces (single surface) and 3D shapes (total surface area)
-6. **AnyShape for length** — `measureLength()` works on edges, wires, and any shape (computes total edge length)
+1. **Stateless**: No `.delete()` required; all cleanup happens internally
+2. **Reusable queries are faster**: `createDistanceQuery()` loads reference shape once, then measures against many targets efficiently
+3. **"Mass" is not mass**: The `mass` field represents geometric properties (volume/area/length), not actual mass. Multiply by density if needed.
+4. **Center of mass from geometry**: Computed from shape geometry, not physical distribution
+5. **Face vs Shape3D for area**: `measureArea()` accepts both faces (single surface) and 3D shapes (total surface area)
+6. **AnyShape for length**: `measureLength()` works on edges, wires, and any shape (computes total edge length)

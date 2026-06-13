@@ -5,11 +5,11 @@ description: "If you've tried CAD in Three.js with three-csg-ts and hit the wall
 
 # Coming from Three.js (mesh modeling)
 
-If you've tried to do CAD in [Three.js](https://threejs.org/) — building parts with `THREE.BoxGeometry` and `three-csg-ts` for booleans — you've hit walls. CSG on meshes is unreliable for anything past simple shapes, fillets don't exist, measurements are approximate, and STEP export is impossible. brepjs is the precision layer above Three.js: model in B-Rep, render in Three.js. This chapter is the conceptual shift and the practical pipeline.
+If you've tried to do CAD in [Three.js](https://threejs.org/) (building parts with `THREE.BoxGeometry` and `three-csg-ts` for booleans) you've hit walls. CSG on meshes is unreliable for anything past simple shapes, fillets don't exist, measurements are approximate, and STEP export is impossible. brepjs is the precision layer above Three.js: model in B-Rep, render in Three.js. This chapter is the conceptual shift and the practical pipeline.
 
 ## The realisation
 
-Three.js is a **renderer**. Its geometry classes (`BoxGeometry`, `SphereGeometry`, `BufferGeometry`) describe what to display, not what to model. You can do CSG on meshes, but the operations approximate — they accumulate error, produce slivers, and fail unpredictably on near-coincident geometry.
+Three.js is a **renderer**. Its geometry classes (`BoxGeometry`, `SphereGeometry`, `BufferGeometry`) describe what to display, not what to model. You can do CSG on meshes, but the operations approximate: they accumulate error, produce slivers, and fail unpredictably on near-coincident geometry.
 
 brepjs is a **modeller**. It produces exact B-Rep shapes that you can boolean reliably, fillet, measure, export to industry CAD formats, and _then_ mesh for Three.js to render.
 
@@ -35,13 +35,13 @@ Two libraries, one role each.
 | Hand-tuned ray traversal for measurement               | `measureVolume`, `measureArea`, `distanceTo`                                |
 | Approximate STL export from `BufferGeometry`           | `exportSTEP`, `exportSTL` directly from B-Rep                               |
 
-Three.js stays in the picture — for rendering, controls, materials, lights, post-processing. The modelling moves to brepjs.
+Three.js stays in the picture, for rendering, controls, materials, lights, post-processing. The modelling moves to brepjs.
 
 ## Concept-by-concept
 
 ### Mesh vs. B-Rep
 
-A `BoxGeometry` is 12 triangles. A brepjs `box` is 6 planar surfaces, 12 line edges, 8 vertices, exact. The brepjs box can be `cut` with a cylinder and the resulting hole is exactly cylindrical — not 12-sided. See [B-Rep vs Mesh](../concepts/brep-vs-mesh).
+A `BoxGeometry` is 12 triangles. A brepjs `box` is 6 planar surfaces, 12 line edges, 8 vertices, exact. The brepjs box can be `cut` with a cylinder and the resulting hole is exactly cylindrical, not 12-sided. See [B-Rep vs Mesh](../concepts/brep-vs-mesh).
 
 ### Booleans
 
@@ -114,7 +114,7 @@ Exact mathematical values, not Riemann sums.
 
 ### Export to CAD formats
 
-Three.js exporters (`STLExporter`, `GLTFExporter`) work on triangle data — STL out is fine. STEP / IGES export from triangles is impossible.
+Three.js exporters (`STLExporter`, `GLTFExporter`) work on triangle data; STL out is fine. STEP / IGES export from triangles is impossible.
 
 brepjs exports STEP from B-Rep:
 
@@ -128,7 +128,7 @@ console.log('STEP size:', step.size, 'bytes');
 export default part;
 ```
 
-The output round-trips with SolidWorks, Fusion 360, FreeCAD, OnShape — every desktop CAD tool.
+The output round-trips with SolidWorks, Fusion 360, FreeCAD, OnShape: every desktop CAD tool.
 
 ## The integration pattern
 
@@ -165,7 +165,7 @@ scene.add(mesh);
 
 Some workflows are fundamentally mesh-based:
 
-- **Sculpting** — pushing vertices around. B-Rep can't express most sculpted forms.
+- **Sculpting**: pushing vertices around. B-Rep can't express most sculpted forms.
 - **Real-time CSG** at hundreds of operations per second. B-Rep is too slow.
 - **Procedural terrain / heightmaps.** B-Rep would explode in face count.
 - **Voxel art / Minecraft-style.** Mesh territory.
@@ -184,12 +184,12 @@ For an existing Three.js + CSG codebase:
 2. Replace `three-csg-ts` calls with `fuse` / `cut` / `intersect`.
 3. Mesh the brepjs results to feed back to Three.js.
 4. Add fillets, shells, and measurements where you previously avoided them.
-5. Add STEP export — this is the killer feature most users didn't know they wanted.
+5. Add STEP export: this is the killer feature most users didn't know they wanted.
 
-The integration is incremental — start with one part, prove the pipeline, expand.
+The integration is incremental: start with one part, prove the pipeline, expand.
 
 ## Next steps
 
-- [Three.js Integration](../integration/threejs) — the full B-Rep → render pipeline
-- [Boolean Operations](../tasks/booleans) — exact booleans you can rely on
-- [Why brepjs](../introduction/why-brepjs) — the broader case for B-Rep modelling on the web
+- [Three.js Integration](../integration/threejs): the full B-Rep → render pipeline
+- [Boolean Operations](../tasks/booleans): exact booleans you can rely on
+- [Why brepjs](../introduction/why-brepjs): the broader case for B-Rep modelling on the web

@@ -106,12 +106,12 @@ brepjs requires WebAssembly support:
 
 **Alternative kernels** (optional peer dependencies):
 
-| Package              | Description                                                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `brepjs-opencascade` | Legacy OpenCascade WASM build — `brepjs_single` (~15 MB), `brepjs_threaded` (~16 MB), `brepjs_with_exceptions` (~17 MB) |
-| `brepkit-wasm`       | Alternative kernel with growing operation coverage                                                                      |
+| Package              | Description                                                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `brepjs-opencascade` | Legacy OpenCascade WASM build: `brepjs_single` (~15 MB), `brepjs_threaded` (~16 MB), `brepjs_with_exceptions` (~17 MB) |
+| `brepkit-wasm`       | Alternative kernel with growing operation coverage                                                                     |
 
-All kernels are optional peer dependencies — install whichever you need. See [Custom Kernel Guide](./kernel-swap.md) for initialization details.
+All kernels are optional peer dependencies; install whichever you need. See [Custom Kernel Guide](./kernel-swap.md) for initialization details.
 
 ## Known Limitations
 

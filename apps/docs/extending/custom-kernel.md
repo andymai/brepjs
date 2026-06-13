@@ -11,14 +11,14 @@ brepjs is built so the kernel is replaceable. The two shipped kernels (OpenCasca
 
 - **Wrap a Rust geometry library** you already maintain.
 - **Adapt a different OpenCascade build** (different version, different feature flags).
-- **Mock the kernel for tests** — return synthetic shapes for unit testing without loading WASM.
-- **Implement a constrained subset** — e.g. a "mesh-only" kernel that doesn't support exact booleans.
+- **Mock the kernel for tests**: return synthetic shapes for unit testing without loading WASM.
+- **Implement a constrained subset**: e.g. a "mesh-only" kernel that doesn't support exact booleans.
 
 For most apps this chapter is reference, not requirement. You only need it if one of the above applies.
 
 ## What `KernelInterface` looks like
 
-The kernel interface lives at `src/kernel/types.ts`. It's segregated into smaller fragments — `KernelBooleans`, `KernelMesh`, `KernelMeasurement`, `KernelIO`, etc. — composed into the full `KernelInterface`. A custom kernel can implement only the fragments it supports.
+The kernel interface lives at `src/kernel/types.ts`. It's segregated into smaller fragments (`KernelBooleans`, `KernelMesh`, `KernelMeasurement`, `KernelIO`, etc.) composed into the full `KernelInterface`. A custom kernel can implement only the fragments it supports.
 
 A simplified excerpt:
 
@@ -51,7 +51,7 @@ export interface KernelInterface
 }
 ```
 
-`KernelHandle` is your kernel's native shape type — whatever your library calls a shape. brepjs treats it as an opaque value; only your adapter ever calls methods on it.
+`KernelHandle` is your kernel's native shape type: whatever your library calls a shape. brepjs treats it as an opaque value; only your adapter ever calls methods on it.
 
 ## A skeleton adapter
 
@@ -116,18 +116,18 @@ After `registerKernel`, brepjs operations executed inside `withKernel('mygeom', 
 
 Implement at minimum:
 
-- **`KernelTopology`** — primitives (`makeBox`, `makeCylinder`, …), `shapeKind`, sub-shape iteration
-- **`KernelBooleans`** — `fuse`, `cut`, `intersect`, multi-shape variants
-- **`KernelMeasurement`** — `measureVolume`, `measureArea`, `measureLength`, `boundingBox`, `centerOfMass`
-- **`KernelMesh`** — triangulation
-- **`KernelTransforms`** — `translate`, `rotate`, `scale`, `mirror`
-- **`KernelDispose`** — `dispose` (single), batch dispose
+- **`KernelTopology`**: primitives (`makeBox`, `makeCylinder`, …), `shapeKind`, sub-shape iteration
+- **`KernelBooleans`**: `fuse`, `cut`, `intersect`, multi-shape variants
+- **`KernelMeasurement`**: `measureVolume`, `measureArea`, `measureLength`, `boundingBox`, `centerOfMass`
+- **`KernelMesh`**: triangulation
+- **`KernelTransforms`**: `translate`, `rotate`, `scale`, `mirror`
+- **`KernelDispose`**: `dispose` (single), batch dispose
 
 Optional:
 
-- **`KernelIO`** — STEP, IGES, BREP, STL — if you don't implement, those operations throw `KERNEL_NOT_SUPPORTED`
-- **`KernelHealing`** — `autoHeal`, `sew`, etc. If absent, brepjs callers get an explicit error.
-- **`KernelFinders`** — kernel-side query helpers; if absent, brepjs falls back to topology iteration
+- **`KernelIO`**: STEP, IGES, BREP, STL. If you don't implement, those operations throw `KERNEL_NOT_SUPPORTED`
+- **`KernelHealing`**: `autoHeal`, `sew`, etc. If absent, brepjs callers get an explicit error.
+- **`KernelFinders`**: kernel-side query helpers; if absent, brepjs falls back to topology iteration
 
 The conformance suite tests each fragment independently. You can ship a partial kernel that supports only what your backend can do.
 
@@ -137,7 +137,7 @@ Writing a kernel that reaches conformance is non-trivial. Common challenges:
 
 ### Shape kind classification
 
-brepjs has seven shape kinds. Your library may have a different ontology. The mapping isn't always one-to-one — e.g. some kernels don't distinguish `Shell` from `Solid`. Your adapter has to make these decisions consistently.
+brepjs has seven shape kinds. Your library may have a different ontology. The mapping isn't always one-to-one; e.g. some kernels don't distinguish `Shell` from `Solid`. Your adapter has to make these decisions consistently.
 
 ### Tolerance propagation
 
@@ -153,7 +153,7 @@ Every shape your adapter returns has to be disposable. brepjs tracks shapes and 
 
 ## The `BrepkitAdapter` reference
 
-`src/kernel/brepkit/BrepkitAdapter.ts` in the brepjs source is the reference implementation for a Rust-WASM kernel. It's instructive as a complete, working example of the interface — every method is implemented or stubbed with a clear `KERNEL_NOT_SUPPORTED` placeholder.
+`src/kernel/brepkit/BrepkitAdapter.ts` in the brepjs source is the reference implementation for a Rust-WASM kernel. It's instructive as a complete, working example of the interface. Every method is implemented or stubbed with a clear `KERNEL_NOT_SUPPORTED` placeholder.
 
 The brepkit adapter shows the typical structure:
 
@@ -184,7 +184,7 @@ For a single dominant kernel, register it in your app's startup code. For dual-k
 
 ## Testing your adapter
 
-Use the conformance suite ([Kernel Conformance Suite](./conformance)) — it's the same test suite brepjs runs against the OpenCascade and brepkit kernels. Pointing it at your adapter tells you which fragments work, which don't, and which fail subtly.
+Use the conformance suite ([Kernel Conformance Suite](./conformance)). It's the same test suite brepjs runs against the OpenCascade and brepkit kernels. Pointing it at your adapter tells you which fragments work, which don't, and which fail subtly.
 
 The minimal CI:
 
@@ -199,10 +199,10 @@ The conformance suite is parametrized on kernel ID. A passing run means your ada
 ## When to _not_ write a kernel
 
 - If you're targeting a different geometry library to get a particular operation, prefer adding that operation in Layer 2 of brepjs (call into the existing kernel for the boilerplate, your own code for the operation). Most "I want feature X" cases are not kernel-shaped.
-- If you're trying to fake the kernel for tests, prefer a stub that throws on unimplemented methods rather than a full adapter — keeps the test boundary explicit.
+- If you're trying to fake the kernel for tests, prefer a stub that throws on unimplemented methods rather than a full adapter; keeps the test boundary explicit.
 
 ## Next steps
 
-- [Kernel Conformance Suite](./conformance) — testing your adapter
-- [Architecture & Layers](./architecture) — where the kernel sits relative to the rest of brepjs
-- [Kernels & withKernel](../concepts/kernels) — the user-facing view of the kernel system
+- [Kernel Conformance Suite](./conformance): testing your adapter
+- [Architecture & Layers](./architecture): where the kernel sits relative to the rest of brepjs
+- [Kernels & withKernel](../concepts/kernels): the user-facing view of the kernel system

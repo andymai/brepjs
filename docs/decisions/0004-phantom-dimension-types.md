@@ -5,7 +5,7 @@
 
 ## Context
 
-Shape types (Edge, Wire, Face, etc.) can exist in 2D or 3D space. Mixing dimensions — e.g., fusing a 2D wire with a 3D solid — produces cryptic WASM errors. The type system should prevent this at compile time.
+Shape types (Edge, Wire, Face, etc.) can exist in 2D or 3D space. Mixing dimensions (e.g., fusing a 2D wire with a 3D solid) produces cryptic WASM errors. The type system should prevent this at compile time.
 
 ## Decision
 
@@ -25,7 +25,7 @@ Default is `'3D'` for backward compatibility. Template literal error types produ
 
 - Compile-time rejection of 2D/3D mismatches
 - Zero runtime overhead (phantom parameter)
-- Backward compatible — existing `Edge` means `Edge<'3D'>`
+- Backward compatible: existing `Edge` means `Edge<'3D'>`
 - Foundation for future validity types (ADR-0005)
 
 ### Negative / Trade-offs
@@ -35,6 +35,6 @@ Default is `'3D'` for backward compatibility. Template literal error types produ
 
 ## Related
 
-- ADR-0003 (branded types — the foundation this builds on)
-- ADR-0005 (topological validity types — the next layer of phantom types)
-- `docs/plans/phantom-dimension-types.md` — original implementation plan
+- ADR-0003 (branded types, the foundation this builds on)
+- ADR-0005 (topological validity types, the next layer of phantom types)
+- `docs/plans/phantom-dimension-types.md`: original implementation plan

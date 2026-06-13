@@ -1,6 +1,6 @@
 # Kernel
 
-Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Three adapters are provided: OpenCascade WASM (via `brepjs-opencascade`), brepkit WASM (via `brepkit-wasm`), and occt-wasm (via `occt-wasm`). Additional kernels can be registered at runtime.
+Kernel abstraction layer: all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Three adapters are provided: OpenCascade WASM (via `brepjs-opencascade`), brepkit WASM (via `brepkit-wasm`), and occt-wasm (via `occt-wasm`). Additional kernels can be registered at runtime.
 
 ```mermaid
 graph TD
@@ -32,10 +32,10 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 | `index.ts`                    | Kernel registry: `init()`, `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                     |
 | `types.ts`                    | `KernelAdapter` interface (~164 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
 | `kernel2dTypes.ts`            | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
-| `defaultAdapter.ts`           | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
-| `brepkitAdapter.ts`           | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |
-| `occtWasm/occtWasmAdapter.ts` | occt-wasm adapter (`OcctWasmAdapter`) — arena-based OCCT V8 kernel with handle-based memory model                                 |
-| `geometry2d.ts`               | Pure-TypeScript 2D geometry engine — kernel-agnostic, used by brepkit and occt-wasm adapters                                      |
+| `defaultAdapter.ts`           | Default OCCT adapter class: thin delegation layer implementing both interfaces                                                    |
+| `brepkitAdapter.ts`           | brepkit WASM adapter (`BrepkitAdapter`): alternative kernel with growing operation coverage                                       |
+| `occtWasm/occtWasmAdapter.ts` | occt-wasm adapter (`OcctWasmAdapter`): arena-based OCCT V8 kernel with handle-based memory model                                  |
+| `geometry2d.ts`               | Pure-TypeScript 2D geometry engine: kernel-agnostic, used by brepkit and occt-wasm adapters                                       |
 | `brepkitWasmTypes.ts`         | TypeScript type definitions for the brepkit WASM module                                                                           |
 
 ### Operation Modules (kernel-specific)
@@ -59,7 +59,7 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 | `advancedOps.ts`            | Patterns, XCAF documents, projection, surface construction, curvature                                                                                           |
 | `healingOps.ts`             | `healSolid`, `healFace`, `healWire`                                                                                                                             |
 | `curveOps.ts`               | `interpolatePoints`, `approximatePoints`                                                                                                                        |
-| `evolutionOps.ts`           | `buildEvolution`, `transformWithEvolution`, `booleanWithEvolution`, `modifierWithEvolution` — face-tracking evolution for topology history                      |
+| `evolutionOps.ts`           | `buildEvolution`, `transformWithEvolution`, `booleanWithEvolution`, `modifierWithEvolution`: face-tracking evolution for topology history                       |
 | `hullOps.ts`                | `hull`, `hullFromPoints`, `buildSolidFromFaces`                                                                                                                 |
 | `kernel2dOps.ts`            | All 2D curve operations: creation, evaluation, transforms, bounding boxes, circle/ellipse/bezier data extraction                                                |
 
@@ -103,10 +103,10 @@ See [Custom Kernel Guide](../../docs/kernel-swap.md) for writing your own kernel
 
 ## Gotchas
 
-1. **Must initialize first** — `getKernel()` throws if no kernel has been registered
-2. **Manual memory management** — All intermediate kernel objects need `.delete()` inside ops modules; only final shapes are returned
-3. **WASM enum values** — Emscripten returns enum objects with `.value` property, not raw numbers. Use `typeof val === 'number' ? val : Number(val?.value ?? val)` pattern
-4. **C++ mesh extraction** — `meshOps.ts` uses `MeshExtractor`/`EdgeMeshExtractor` for all mesh operations (normals, UVs, face groups computed in C++)
-5. **Virtual filesystem** — File I/O uses Emscripten virtual filesystem, not real disk paths
-6. **Degree conversion** — `rotate()` takes degrees, converts internally to radians
-7. **withKernel is sync-only** — The kernel override is restored in `finally`, so async functions would observe the wrong kernel after `await`
+1. **Must initialize first**: `getKernel()` throws if no kernel has been registered
+2. **Manual memory management**: All intermediate kernel objects need `.delete()` inside ops modules; only final shapes are returned
+3. **WASM enum values**: Emscripten returns enum objects with `.value` property, not raw numbers. Use `typeof val === 'number' ? val : Number(val?.value ?? val)` pattern
+4. **C++ mesh extraction**: `meshOps.ts` uses `MeshExtractor`/`EdgeMeshExtractor` for all mesh operations (normals, UVs, face groups computed in C++)
+5. **Virtual filesystem**: File I/O uses Emscripten virtual filesystem, not real disk paths
+6. **Degree conversion**: `rotate()` takes degrees, converts internally to radians
+7. **withKernel is sync-only**: The kernel override is restored in `finally`, so async functions would observe the wrong kernel after `await`

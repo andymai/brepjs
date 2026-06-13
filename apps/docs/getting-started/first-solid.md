@@ -1,6 +1,6 @@
 ---
 title: Your First Solid
-description: 'Build a 30×20×10 mm block with a hole, fillet the vertical edges, export to STEP — six type-checked operations end to end.'
+description: 'Build a 30×20×10 mm block with a hole, fillet the vertical edges, export to STEP. Six type-checked operations end to end.'
 ---
 
 # Your First Solid
@@ -49,9 +49,9 @@ const block = box(30, 20, 10);
 const hole = cylinder(5, 15, { at: [15, 10, -2] });
 ```
 
-`box(width, depth, height)` returns a `ValidSolid` — a 30×20×10 mm rectangular solid centred at the origin's lower corner. `cylinder(radius, height, { at })` returns a `ValidSolid` 5 mm radius, 15 mm tall, with its base centre at `[15, 10, -2]` so it pokes through the block.
+`box(width, depth, height)` returns a `ValidSolid`: a 30×20×10 mm rectangular solid centred at the origin's lower corner. `cylinder(radius, height, { at })` returns a `ValidSolid` 5 mm radius, 15 mm tall, with its base centre at `[15, 10, -2]` so it pokes through the block.
 
-The `at` option translates the primitive at construction time. You can also `translate(cylinder(5, 15), [15, 10, -2])` after the fact — the result is identical.
+The `at` option translates the primitive at construction time. You can also `translate(cylinder(5, 15), [15, 10, -2])` after the fact; the result is identical.
 
 ### Step 2: boolean
 
@@ -60,7 +60,7 @@ import { box, cylinder, cut, unwrap } from 'brepjs/quick';
 const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));
 ```
 
-`cut(a, b)` removes `b` from `a`. It returns `Result<Shape3D, BrepError>` — the operation can fail, for instance if `b` doesn't intersect `a`. `unwrap()` extracts the value or throws on error; in production code you'd use `isOk()` or `match()` instead. See [Result and Errors](../concepts/result).
+`cut(a, b)` removes `b` from `a`. It returns `Result<Shape3D, BrepError>`. The operation can fail, for instance if `b` doesn't intersect `a`. `unwrap()` extracts the value or throws on error; in production code you'd use `isOk()` or `match()` instead. See [Result and Errors](../concepts/result).
 
 ### Step 3: query
 
@@ -71,7 +71,7 @@ const verticalEdges = edgeFinder()
   .findAll(box(30, 20, 10));
 ```
 
-Finders are how you select features after the fact. `edgeFinder()` starts a query, `.inDirection('Z')` filters to edges aligned with the Z axis, `.findAll(shape)` runs it. Returns an array of `Edge` handles — empty if nothing matched.
+Finders are how you select features after the fact. `edgeFinder()` starts a query, `.inDirection('Z')` filters to edges aligned with the Z axis, `.findAll(shape)` runs it. Returns an array of `Edge` handles; empty if nothing matched.
 
 [Finders & Queries](../tasks/finders) covers the full filter vocabulary.
 
@@ -92,7 +92,7 @@ import { box, measureVolume, unwrap } from 'brepjs/quick';
 console.log('Volume:', unwrap(measureVolume(box(10, 10, 10))).toFixed(2), 'mm³');
 ```
 
-Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production code prefer `isOk()` / `match()`. `measureVolume`, `measureArea`, `measureLength` are the most common; see [Measurement](../tasks/measurement) for the full set.
+Measurement functions return `Result<number>`. Null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production code prefer `isOk()` / `match()`. `measureVolume`, `measureArea`, `measureLength` are the most common; see [Measurement](../tasks/measurement) for the full set.
 
 ### Step 6: export
 
@@ -101,7 +101,7 @@ import { box, exportSTEP, unwrap } from 'brepjs/quick';
 const step = unwrap(exportSTEP(box(10, 10, 10)));
 ```
 
-`exportSTEP` returns `Result<Blob>`. The blob is a STEP file ready to save (in Node, write to disk; in the browser, trigger a download via an `<a>` tag). brepjs ships exporters for STEP, STL, BREP, IGES, glTF, DXF, 3MF, OBJ, and SVG — see [Import & Export](../tasks/import-export).
+`exportSTEP` returns `Result<Blob>`. The blob is a STEP file ready to save (in Node, write to disk; in the browser, trigger a download via an `<a>` tag). brepjs ships exporters for STEP, STL, BREP, IGES, glTF, DXF, 3MF, OBJ, and SVG; see [Import & Export](../tasks/import-export).
 
 ## The fluent equivalent
 
@@ -122,7 +122,7 @@ export default part;
 
 The wrapper auto-unwraps `Result`s and throws `BrepWrapperError` on failure. Each operation returns a typed wrapper (`Wrapped3D`, `WrappedFace`, etc.) so `.fillet`, `.shell`, `.translate`, `.volume` are all available without separate imports. Use `.val` at the end to extract the underlying shape.
 
-The functional API and the wrapper produce the same geometry. Pick whichever feels right — the [Cheat Sheet](./cheat-sheet) shows both side by side.
+The functional API and the wrapper produce the same geometry. Pick whichever feels right; the [Cheat Sheet](./cheat-sheet) shows both side by side.
 
 ## Common variations
 
@@ -145,7 +145,7 @@ const part = unwrap(cut(block, holes));
 export default part;
 ```
 
-Boolean-fuse the holes first, then cut once. Three booleans become two — faster and avoids a class of failure modes when the cuts overlap.
+Boolean-fuse the holes first, then cut once. Three booleans become two: faster and avoids a class of failure modes when the cuts overlap.
 
 ### Sketch-then-extrude profiles
 
@@ -206,7 +206,7 @@ The most common failures and their typical causes:
 
 ## Next steps
 
-- [Cheat Sheet](./cheat-sheet) — single-page reference for the full API
-- [Boolean Operations](../tasks/booleans) — fuse, cut, intersect, and the failure modes
-- [Fillets & Chamfers](../tasks/fillets) — when fillets fail and how to fix them
-- [Memory Management](../advanced/memory) — `using` and DisposalScope for long-running apps
+- [Cheat Sheet](./cheat-sheet): single-page reference for the full API
+- [Boolean Operations](../tasks/booleans): fuse, cut, intersect, and the failure modes
+- [Fillets & Chamfers](../tasks/fillets): when fillets fail and how to fix them
+- [Memory Management](../advanced/memory): `using` and DisposalScope for long-running apps

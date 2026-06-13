@@ -17,19 +17,19 @@ This page documents the parts of the `csg` namespace that the [walkthrough](/tas
 
 Four parts. Each one is a reason two evaluations might _not_ share a cache entry:
 
-- **`structuralHash`** — the Merkle hash of the node and everything beneath it. Different tree shape, different literal values, even different optional flags → different hash. Computed once at build time, stored on the node.
-- **`kernelId`** — the kernel id resolved at evaluator construction (e.g. `'occt'`, `'brepkit'`). Cache entries are not portable across kernels; an OCCT-evaluated `Solid` cannot be returned to a brepkit caller. The id is resolved once at `new Evaluator()` so cache keys stay stable even if the active kernel changes mid-run.
-- **`projectedEnvHash`** — the FNV hash of _only the env keys this node depends on_, in canonical (sorted) order. This is the mechanism behind incremental re-evaluation: a node whose `freeParams` doesn't contain `K` cannot see its key change when `K` does.
-- **`toleranceHash`** — the default tolerance configured on the evaluator, or a sentinel if undefined. Two evaluators with different tolerances cache independently.
+- **`structuralHash`**: the Merkle hash of the node and everything beneath it. Different tree shape, different literal values, even different optional flags → different hash. Computed once at build time, stored on the node.
+- **`kernelId`**: the kernel id resolved at evaluator construction (e.g. `'occt'`, `'brepkit'`). Cache entries are not portable across kernels; an OCCT-evaluated `Solid` cannot be returned to a brepkit caller. The id is resolved once at `new Evaluator()` so cache keys stay stable even if the active kernel changes mid-run.
+- **`projectedEnvHash`**: the FNV hash of _only the env keys this node depends on_, in canonical (sorted) order. This is the mechanism behind incremental re-evaluation: a node whose `freeParams` doesn't contain `K` cannot see its key change when `K` does.
+- **`toleranceHash`**: the default tolerance configured on the evaluator, or a sentinel if undefined. Two evaluators with different tolerances cache independently.
 
 Two consequences worth internalizing:
 
-1. **Cache reuse is structural, not nominal.** Two separately-constructed but structurally identical trees share entries automatically. You don't need to memoize calls to `csg.box(10, 10, 10)` — every call returns a different object, but they all hash the same.
+1. **Cache reuse is structural, not nominal.** Two separately-constructed but structurally identical trees share entries automatically. You don't need to memoize calls to `csg.box(10, 10, 10)`; every call returns a different object, but they all hash the same.
 2. **A parent hit short-circuits the whole subtree.** When a node hits, its children are never visited. That's why re-evaluating a tree is roughly free: the root usually hits, and that's the only `onStep` event you see.
 
 ## Reading the cache stats
 
-`cacheStats()` returns `{ hits, misses, entries }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size — it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime.
+`cacheStats()` returns `{ hits, misses, entries }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size; it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime.
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -88,9 +88,9 @@ fine.cacheStats().entries; // 1
 coarse.cacheStats().entries; // 1
 ```
 
-One tree, two cache entries — one per tolerance. Intentional: kernel output can differ at boundary tolerance, and miss-and-rebuild beats returning a shape that doesn't match what the caller asked for.
+One tree, two cache entries, one per tolerance. Intentional: kernel output can differ at boundary tolerance, and miss-and-rebuild beats returning a shape that doesn't match what the caller asked for.
 
-Per-node `tolerance` overrides on `fuse`/`cut`/`intersect`/`fuseAll`/`cutAll` are mixed into the **structuralHash**, not the cache key's tolerance slot — the evaluator-level tolerance stays a global default, per-call overrides ride along in the tree.
+Per-node `tolerance` overrides on `fuse`/`cut`/`intersect`/`fuseAll`/`cutAll` are mixed into the **structuralHash**, not the cache key's tolerance slot; the evaluator-level tolerance stays a global default, per-call overrides ride along in the tree.
 
 ## `optimize()`: tree-level rewrites
 
@@ -116,18 +116,18 @@ const tree = csg.translate(
 );
 
 const opt = csg.optimize(tree);
-opt.kind; // 'Box' — three rewrites collapsed to a single primitive
+opt.kind; // 'Box' - three rewrites collapsed to a single primitive
 ```
 
-The `2 + 3` folded to `5`, the `fuse(empty, …)` short-circuited to its second argument, and the outer `translate(…, [0,0,0])` collapsed to its target — leaving a bare `Box(5, 10, 10)`.
+The `2 + 3` folded to `5`, the `fuse(empty, …)` short-circuited to its second argument, and the outer `translate(…, [0,0,0])` collapsed to its target, leaving a bare `Box(5, 10, 10)`.
 
-You don't have to call `optimize` — the evaluator works on any well-formed tree. But:
+You don't have to call `optimize`; the evaluator works on any well-formed tree. But:
 
 - **It changes cache keys.** An optimized tree has a different `structuralHash` than the original (smaller tree = different hash), so the first post-optimize evaluation will miss even if you'd previously evaluated the un-optimized version.
 - **It's cheap.** Pure tree rewrites, no kernel calls, no allocation pressure. Run it once after the tree is built and you keep its smaller form for the rest of the session.
-- **It only fires on literal inputs.** `translate(x, [param('dx'), 0, 0])` will not collapse even if `dx` happens to be zero at runtime — `optimize` runs before evaluation, so it can't know.
+- **It only fires on literal inputs.** `translate(x, [param('dx'), 0, 0])` will not collapse even if `dx` happens to be zero at runtime; `optimize` runs before evaluation, so it can't know.
 
-## Serialization — `toJSON` / `fromJSON`
+## Serialization: `toJSON` / `fromJSON`
 
 The IR serializes to a JSON envelope versioned by `CSG_VERSION` (currently `1`):
 
@@ -145,15 +145,15 @@ unwrap(restored).structuralHash === tree.structuralHash; // true
 
 The round-trip preserves structural hashes, so a deserialized tree shares cache entries with the original. Useful for:
 
-- **Build pipelines** — serialize the tree at design time, materialize geometry at runtime against the deployed kernel.
-- **Undo/redo** — `JSON.stringify` snapshots are tiny next to materialized B-Rep data.
-- **Sharing builds** — paste a JSON envelope between users without shipping STEP files.
+- **Build pipelines**: serialize the tree at design time, materialize geometry at runtime against the deployed kernel.
+- **Undo/redo**: `JSON.stringify` snapshots are tiny next to materialized B-Rep data.
+- **Sharing builds**: paste a JSON envelope between users without shipping STEP files.
 
-A note on shape: `toJSON` _expands_ the DAG to a tree. If your IR has shared subtrees (the same `Box` node referenced under two `Translate` parents), the JSON contains the box twice. Sharing is rebuilt on `fromJSON` — the rebuilt nodes hash identically, so the evaluator's cache still dedupes them. The JSON is just bigger than it strictly needs to be.
+A note on shape: `toJSON` _expands_ the DAG to a tree. If your IR has shared subtrees (the same `Box` node referenced under two `Translate` parents), the JSON contains the box twice. Sharing is rebuilt on `fromJSON`; the rebuilt nodes hash identically, so the evaluator's cache still dedupes them. The JSON is just bigger than it strictly needs to be.
 
 `fromJSON` is the trust boundary: every field is validated, every expression is reconstructed via builders so `structuralHash` and `freeParams` are correct. Invalid envelopes return `Result.err`, not throw.
 
-## Editing trees — `replaceNode`, `forEachNode`, `nodeCount`
+## Editing trees: `replaceNode`, `forEachNode`, `nodeCount`
 
 The IR is immutable. Edits rebuild from the bottom up via builders, which keeps hashes and free-params correct.
 
@@ -181,20 +181,20 @@ csg.forEachNode(tree, (n) => kinds.push(n.kind));
 // ['Fuse', 'Box', 'Cut', 'Sphere', 'Cylinder']
 ```
 
-`replaceNode` is structural — it can't reach into expressions to change a `Param` name, for instance. For parameter changes, just re-evaluate with a new env; that's what the cache is built for.
+`replaceNode` is structural; it can't reach into expressions to change a `Param` name, for instance. For parameter changes, just re-evaluate with a new env; that's what the cache is built for.
 
 ## What doesn't cache
 
 A few things are deliberately _not_ cached, and it's worth knowing why:
 
 - **The kernel adapter's internal state.** Cached shapes are kernel handles, but cache entries don't persist across kernels. Re-binding the active kernel after evaluation builds a fresh cache if you construct a new `Evaluator`.
-- **Errors.** `Result.err` values aren't cached. A re-evaluation of a node that previously failed will retry — useful when the failure was transient (e.g. boolean tolerance issue resolved by a parent's tolerance override), but it does mean a persistently broken subtree will repeat its work each call.
-- **`Empty` nodes.** They have no kernel realization; trying to evaluate one alone returns `Result.err`. `Empty` exists as the identity element for booleans — `fuse`/`cut` short-circuit on it as a correctness invariant (not just an optimization), so `fuse(empty, x)` evaluates to `x` directly without needing `optimize()`. The optimizer can still strip them eagerly to shrink trees before they reach the cache.
+- **Errors.** `Result.err` values aren't cached. A re-evaluation of a node that previously failed will retry. Useful when the failure was transient (e.g. boolean tolerance issue resolved by a parent's tolerance override), but it does mean a persistently broken subtree will repeat its work each call.
+- **`Empty` nodes.** They have no kernel realization; trying to evaluate one alone returns `Result.err`. `Empty` exists as the identity element for booleans; `fuse`/`cut` short-circuit on it as a correctness invariant (not just an optimization), so `fuse(empty, x)` evaluates to `x` directly without needing `optimize()`. The optimizer can still strip them eagerly to shrink trees before they reach the cache.
 - **DOM-side mesh data.** The cache holds kernel handles, not tessellated meshes. If you tessellate after evaluation, that work isn't cached. Run your mesh cache on the same key the evaluator uses (`node.structuralHash` is a fine starting point).
 
 ## Cache lifecycle
 
-`Evaluator` is a `Disposable`. The cache and all its borrowed kernel handles release when you dispose it — either explicitly via `[Symbol.dispose]()`, automatically via the `using` keyword, or implicitly inside `withEvaluator`.
+`Evaluator` is a `Disposable`. The cache and all its borrowed kernel handles release when you dispose it, either explicitly via `[Symbol.dispose]()`, automatically via the `using` keyword, or implicitly inside `withEvaluator`.
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -216,10 +216,10 @@ csg.withEvaluator({}, (ev) => {
 });
 ```
 
-After disposal, every shape returned by `evaluate` is invalid — they were _borrowed_ from the evaluator's `DisposalScope`, not transferred out. Copy out any persistent data (volumes, mesh arrays, exported STEP strings) before the evaluator's lifetime ends.
+After disposal, every shape returned by `evaluate` is invalid; they were _borrowed_ from the evaluator's `DisposalScope`, not transferred out. Copy out any persistent data (volumes, mesh arrays, exported STEP strings) before the evaluator's lifetime ends.
 
 ## Where to go next
 
-- **[The walkthrough](/tasks/parametric-csg)** — if you skipped here from the index, the gridfinity-bin walkthrough is where the surface API gets exercised end-to-end.
-- **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)** — for projects that already built a `Map<key, Solid>` cache around the eager API.
-- **[Memory Management](/advanced/memory)** — for the `DisposalScope`/`using` pattern that `Evaluator` itself is built on.
+- **[The walkthrough](/tasks/parametric-csg)**: if you skipped here from the index, the gridfinity-bin walkthrough is where the surface API gets exercised end-to-end.
+- **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)**: for projects that already built a `Map<key, Solid>` cache around the eager API.
+- **[Memory Management](/advanced/memory)**: for the `DisposalScope`/`using` pattern that `Evaluator` itself is built on.

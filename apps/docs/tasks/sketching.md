@@ -5,7 +5,7 @@ description: 'Build 2D profiles fluently with the Sketcher, or use canned shape 
 
 # 2D Sketching with the Sketcher
 
-For shapes you can't build from primitive booleans — anything with a non-rectangular profile, anything tapered, anything organic-mechanical — you sketch in 2D and extrude into 3D. brepjs ships two ways to do this: the `Sketcher` builder (for arbitrary profiles) and the canned shape builders (`sketchCircle`, `sketchRoundedRectangle`, etc., for common ones).
+For shapes you can't build from primitive booleans (anything with a non-rectangular profile, anything tapered, anything organic-mechanical) you sketch in 2D and extrude into 3D. brepjs ships two ways to do this: the `Sketcher` builder (for arbitrary profiles) and the canned shape builders (`sketchCircle`, `sketchRoundedRectangle`, etc., for common ones).
 
 ## The two-step model
 
@@ -21,7 +21,7 @@ A sketch is a planar face. From a face you build a solid by extruding (linear), 
 
 ## Canned profiles
 
-For common cross-sections, use the builder functions — they return a sketch with `.extrude` directly:
+For common cross-sections, use the builder functions; they return a sketch with `.extrude` directly:
 
 ```typescript
 import {
@@ -94,7 +94,7 @@ After `close()`, the sketch is a `ClosedWire<'2D'>` ready to extrude / revolve /
 
 ### Tangent arcs are the workhorse
 
-Most curved profiles in mechanical CAD use tangent arcs — the arc continues smoothly from the previous segment without a corner:
+Most curved profiles in mechanical CAD use tangent arcs: the arc continues smoothly from the previous segment without a corner:
 
 ```typescript
 import { Sketcher } from 'brepjs/quick';
@@ -172,7 +172,7 @@ const rod = sweep(cross, path);
 export default rod;
 ```
 
-The path can be any wire — straight, arced, helical. Common pattern: revolve + sweep produces threaded rods, tubing, springs.
+The path can be any wire: straight, arced, helical. Common pattern: revolve + sweep produces threaded rods, tubing, springs.
 
 ## The Drawing API: 2D booleans before extrude
 
@@ -207,7 +207,7 @@ For most profiles the Sketcher is simpler. Use the Drawing API when you need 2D 
 
 ## Sketching on existing faces
 
-You don't have to sketch on the world planes — you can sketch on any face of an existing shape:
+You don't have to sketch on the world planes; you can sketch on any face of an existing shape:
 
 ```typescript
 import { box, faceFinder, Sketcher, fuse, unwrap } from 'brepjs/quick';
@@ -236,7 +236,7 @@ The Sketcher constructor accepts either a plane name (`'XY'`) or a face. When gi
 
 ### Close every sketch before extruding
 
-`extrude` requires a closed wire (it has type `OrientedFace`, which requires `ClosedWire`). Forgetting `.close()` is the most common Sketcher mistake. The compiler catches it — `OrientedFace` is not assignable from an unclosed sketch.
+`extrude` requires a closed wire (it has type `OrientedFace`, which requires `ClosedWire`). Forgetting `.close()` is the most common Sketcher mistake. The compiler catches it; `OrientedFace` is not assignable from an unclosed sketch.
 
 ### Don't intersect with yourself
 
@@ -244,10 +244,10 @@ A self-intersecting wire produces an invalid face. The kernel will catch it and 
 
 ### Use the canned shapes when possible
 
-`sketchCircle(10)` is _much_ better than building a circle from four arcs — fewer kernel calls, better tolerance, no chance of an open wire.
+`sketchCircle(10)` is _much_ better than building a circle from four arcs: fewer kernel calls, better tolerance, no chance of an open wire.
 
 ## Next steps
 
-- [Lofts, Sweeps, Revolves](./lofts-sweeps) — going from sketch to solid by means other than extrude
-- [Finders & Queries](./finders) — picking specific edges of a sketched part to refine
-- [Boolean Operations](./booleans) — combining sketched solids
+- [Lofts, Sweeps, Revolves](./lofts-sweeps): going from sketch to solid by means other than extrude
+- [Finders & Queries](./finders): picking specific edges of a sketched part to refine
+- [Boolean Operations](./booleans): combining sketched solids

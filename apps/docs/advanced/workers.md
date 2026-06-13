@@ -9,13 +9,13 @@ Long brepjs operations should not run on the main thread. A 200 ms boolean dropp
 
 ## Why a worker
 
-JavaScript is single-threaded. Every `await` in the main thread is a yield to the event loop, which is fine for IO-bound work — but brepjs operations are CPU-bound. Even with `await`, a heavy boolean blocks paint and input handling.
+JavaScript is single-threaded. Every `await` in the main thread is a yield to the event loop, which is fine for IO-bound work, but brepjs operations are CPU-bound. Even with `await`, a heavy boolean blocks paint and input handling.
 
 A worker isolates the kernel: it has its own JS context, its own WASM heap, its own brepjs instance. Crashes in the worker (e.g. an OOM from a runaway operation) kill only the worker, not the page. You restart the worker; the page stays responsive.
 
 ## The two ways to use a worker
 
-### Option 1: brepjs/worker — typed RPC
+### Option 1: brepjs/worker, typed RPC
 
 For apps that build a part on the worker and just need the resulting mesh:
 
@@ -34,7 +34,7 @@ const command: WorkerCommand = {
 };
 
 const { mesh } = await client.run(command);
-// mesh is { position, normal, index } typed arrays — ready for Three.js
+// mesh is { position, normal, index } typed arrays, ready for Three.js
 ```
 
 `createWorkerClient` returns a typed object with `init()` and `run()` methods. Behind the scenes it serializes commands as messages, posts them, and resolves promises when the worker replies.
@@ -102,7 +102,7 @@ self.onmessage = (e: MessageEvent) => {
 };
 ```
 
-The `transfer` argument hands the underlying ArrayBuffers to the main thread without copying — much faster than structured-cloning megabytes of triangle data.
+The `transfer` argument hands the underlying ArrayBuffers to the main thread without copying; much faster than structured-cloning megabytes of triangle data.
 
 ## Initialization in the worker
 
@@ -114,7 +114,7 @@ The worker has to init brepjs just like the main thread. `brepjs/quick` works in
 // worker.js
 import { box } from 'brepjs/quick';
 
-// brepjs/quick auto-initializes via top-level await — works in workers too.
+// brepjs/quick auto-initializes via top-level await; works in workers too.
 self.onmessage = (e) => {
   if (e.data.kind === 'build') {
     self.postMessage({ kind: 'volume', value: box(10, 10, 10) });
@@ -176,11 +176,11 @@ import singleWasm from 'brepjs-opencascade/src/brepjs_single.wasm?url';
 // ...use singleWasm to load via the OpenCascade JS init
 ```
 
-The `?url` suffix tells Vite "emit this WASM as an asset and give me a URL to it" — so your worker can fetch it without bundling the binary into the worker JS.
+The `?url` suffix tells Vite "emit this WASM as an asset and give me a URL to it", so your worker can fetch it without bundling the binary into the worker JS.
 
 ## Transferable types
 
-Worker boundaries copy data by default. For mesh data, that's expensive. Use `Transferable`s — typed arrays whose underlying buffers move from worker to main thread without a copy:
+Worker boundaries copy data by default. For mesh data, that's expensive. Use `Transferable`s: typed arrays whose underlying buffers move from worker to main thread without a copy:
 
 <!-- @no-test -->
 
@@ -188,13 +188,13 @@ Worker boundaries copy data by default. For mesh data, that's expensive. Use `Tr
 self.postMessage({ position, normal, index }, [position.buffer, normal.buffer, index.buffer]);
 ```
 
-After transferring, the worker's view of those arrays is detached — they can no longer be read from the worker side. This is what you want: the data has moved, not been duplicated.
+After transferring, the worker's view of those arrays is detached; they can no longer be read from the worker side. This is what you want: the data has moved, not been duplicated.
 
 The brepjs `toBufferGeometryData` returns plain `Float32Array` and `Uint32Array` (with backing `ArrayBuffer`), so they're directly transferable.
 
 ## Disposing in the worker
 
-Memory management still applies inside a worker — the WASM heap there grows just like in the main thread. Use the same patterns:
+Memory management still applies inside a worker; the WASM heap there grows just like in the main thread. Use the same patterns:
 
 <!-- @no-test -->
 
@@ -208,14 +208,14 @@ self.onmessage = (e) => {
       const b = scope.track(sphere(5));
       const fused = scope.track(unwrap(fuse(a, b)));
       const m = scope.track(shape(fused).mesh({ tolerance: 0.1 }));
-      return toBufferGeometryData(m); // primitives — safe to return
+      return toBufferGeometryData(m); // primitives, safe to return
     });
     self.postMessage(result, [result.position.buffer, result.normal.buffer, result.index.buffer]);
   }
 };
 ```
 
-`withScope` disposes everything inside the scope — by the time the postMessage returns, only the buffer-data references the worker still holds, and those move to the main thread.
+`withScope` disposes everything inside the scope; by the time the postMessage returns, only the buffer-data references the worker still holds, and those move to the main thread.
 
 ## Restarting the worker on failure
 
@@ -247,12 +247,12 @@ A worker-aware app survives kernel hiccups without becoming unusable.
 - One-shot scripts that just produce a STEP file.
 - Static-site generators where the output is built at compile time.
 - Server-side Node CLIs.
-- Apps where every operation completes in < 16 ms — main thread is fine.
+- Apps where every operation completes in < 16 ms: main thread is fine.
 
 For an interactive web app with any boolean over 50 ms, workers pay for themselves quickly.
 
 ## Next steps
 
-- [Performance](./performance) — what's expensive enough to worth moving to a worker
-- [Memory Management](./memory) — leaks in a worker still leak (just elsewhere)
-- [Three.js Integration](../integration/threejs) — receiving mesh data from a worker and rendering
+- [Performance](./performance): what's expensive enough to worth moving to a worker
+- [Memory Management](./memory): leaks in a worker still leak (just elsewhere)
+- [Three.js Integration](../integration/threejs): receiving mesh data from a worker and rendering

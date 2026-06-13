@@ -156,7 +156,7 @@ import { measureVolume, measureArea, unwrap } from 'brepjs';
 console.log('Volume:', unwrap(measureVolume(moved)), 'mm³');
 ```
 
-Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production prefer `isOk()` / `match()`.
+Measurement functions return `Result<number>`; null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production prefer `isOk()` / `match()`.
 
 ## Step 7: Export
 

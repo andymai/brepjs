@@ -5,7 +5,7 @@ description: 'Boxes, cylinders, spheres, cones, tori, plus the transform vocabul
 
 # Primitives & Transforms
 
-Every parametric part starts from primitives — boxes, cylinders, spheres, cones, tori — and gets to its final form by transforming and combining them. This chapter covers the primitives brepjs ships, the options each accepts, and the transform vocabulary that moves them around.
+Every parametric part starts from primitives (boxes, cylinders, spheres, cones, tori) and gets to its final form by transforming and combining them. This chapter covers the primitives brepjs ships, the options each accepts, and the transform vocabulary that moves them around.
 
 ## The primitives
 
@@ -21,7 +21,7 @@ torus(20, 3); // major radius, minor radius
 console.log(unwrap(measureVolume(box(10, 10, 10)))); // 1000
 ```
 
-All five return `ValidSolid` — a solid that has passed `BRepCheck`.
+All five return `ValidSolid`: a solid that has passed `BRepCheck`.
 
 ### `box(w, d, h, options?)`
 
@@ -99,7 +99,7 @@ console.log(unwrap(measureVolume(stretched))); // 2000
 
 `rotate(shape, angleDegrees, { axis, origin })`. The axis defaults to `[0, 0, 1]`, origin to `[0, 0, 0]`.
 
-`scale(shape, factor)` — uniform if `factor` is a number, per-axis if it's a `[sx, sy, sz]` tuple.
+`scale(shape, factor)`: uniform if `factor` is a number, per-axis if it's a `[sx, sy, sz]` tuple.
 
 ## Fluent transforms
 
@@ -115,7 +115,7 @@ const positioned = shape(box(10, 10, 10))
   .scale(2).val;
 ```
 
-The shortcuts — `.moveX/Y/Z`, `.rotateX/Y/Z` — exist because they are the most common transforms in practice. For arbitrary axes use `.translate([dx, dy, dz])` and `.rotate(angle, { axis })`.
+The shortcuts (`.moveX/Y/Z`, `.rotateX/Y/Z`) exist because they are the most common transforms in practice. For arbitrary axes use `.translate([dx, dy, dz])` and `.rotate(angle, { axis })`.
 
 ## Constructing at a position
 
@@ -128,7 +128,7 @@ cylinder(5, 20, { at: [10, 10, -2] }); // construct at position
 translate(cylinder(5, 20), [10, 10, -2]); // construct at origin then move
 ```
 
-The `at` option is faster — it avoids one transform — but they produce identical geometry.
+The `at` option is faster (it avoids one transform) but they produce identical geometry.
 
 ## Mirroring
 
@@ -198,7 +198,7 @@ const drilled = unwrap(cut(block, hole));
 export default drilled;
 ```
 
-`cylinder(5, 10, { at: [10, 10, 0] })` would have endpoints exactly on the block's faces — the boolean kernel can produce slivers near coincident geometry. A 1-unit overshoot is the cheap, reliable fix.
+`cylinder(5, 10, { at: [10, 10, 0] })` would have endpoints exactly on the block's faces; the boolean kernel can produce slivers near coincident geometry. A 1-unit overshoot is the cheap, reliable fix.
 
 ### Construct in millimetres (or whatever your unit is)
 
@@ -218,6 +218,6 @@ sphere(5); // already centred
 
 ## Next steps
 
-- [Boolean Operations](./booleans) — `fuse`, `cut`, `intersect`, and the failure modes
-- [Fillets & Chamfers](./fillets) — refining edges after primitives meet
-- [2D Sketching](./sketching) — non-primitive profiles
+- [Boolean Operations](./booleans): `fuse`, `cut`, `intersect`, and the failure modes
+- [Fillets & Chamfers](./fillets): refining edges after primitives meet
+- [2D Sketching](./sketching): non-primitive profiles

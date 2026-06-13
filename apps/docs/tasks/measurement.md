@@ -1,11 +1,11 @@
 ---
 title: Measurement
-description: 'Volume, area, length, distance, bounding box, centroid, principal axes — every measurement you can ask of a brepjs shape.'
+description: 'Volume, area, length, distance, bounding box, centroid, principal axes: every measurement you can ask of a brepjs shape.'
 ---
 
 # Measurement
 
-Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. For valid inputs, `unwrap()` extracts the number; in production code prefer `isOk()` / `match()`. You ask "what is the volume of this thing?" and you get a `Result`. This chapter is short because the API is small.
+Measurement functions return `Result<number>`. Null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. For valid inputs, `unwrap()` extracts the number; in production code prefer `isOk()` / `match()`. You ask "what is the volume of this thing?" and you get a `Result`. This chapter is short because the API is small.
 
 ## The four core measurements
 
@@ -39,11 +39,11 @@ if (circularEdge) {
 export default cylinder2;
 ```
 
-| Function               | Argument            | Returns                                               |
-| ---------------------- | ------------------- | ----------------------------------------------------- |
-| `measureVolume(shape)` | `Shape3D`           | `Result<number>` — total volume in cubic units        |
-| `measureArea(shape)`   | `Shape3D` or `Face` | `Result<number>` — total surface area in square units |
-| `measureLength(edge)`  | `Edge` or `Wire`    | `Result<number>` — length along the curve             |
+| Function               | Argument            | Returns                                              |
+| ---------------------- | ------------------- | ---------------------------------------------------- |
+| `measureVolume(shape)` | `Shape3D`           | `Result<number>`: total volume in cubic units        |
+| `measureArea(shape)`   | `Shape3D` or `Face` | `Result<number>`: total surface area in square units |
+| `measureLength(edge)`  | `Edge` or `Wire`    | `Result<number>`: length along the curve             |
 
 These are the workhorses. The fluent wrapper exposes them as methods: `shape(s).volume()`, `shape(s).area()`.
 
@@ -170,8 +170,8 @@ For a quick "how complex is this shape" check, count entities at each level. A s
 ## Performance notes
 
 - Volume and area are cheap (kernel mass-properties query).
-- Distance between two shapes can be expensive — proportional to face counts. For repeated distance queries, build a spatial index (`flatbush` is included as a dependency) over your shapes' bounding boxes.
-- Curvature queries are constant-time at a single parameter, but evaluating a dense grid of points is naive — there's no built-in batched API.
+- Distance between two shapes can be expensive, proportional to face counts. For repeated distance queries, build a spatial index (`flatbush` is included as a dependency) over your shapes' bounding boxes.
+- Curvature queries are constant-time at a single parameter, but evaluating a dense grid of points is naive; there's no built-in batched API.
 
 ## Common patterns
 
@@ -226,6 +226,6 @@ console.log(`Mass: ${massGrams.toFixed(2)} g`);
 
 ## Next steps
 
-- [Finders & Queries](./finders) — selecting specific entities to measure
-- [Import & Export](./import-export) — measuring shapes you imported from STEP
-- [The Topology Hierarchy](../concepts/topology) — what each shape kind contributes to area / volume
+- [Finders & Queries](./finders): selecting specific entities to measure
+- [Import & Export](./import-export): measuring shapes you imported from STEP
+- [The Topology Hierarchy](../concepts/topology): what each shape kind contributes to area / volume

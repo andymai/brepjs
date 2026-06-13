@@ -5,7 +5,7 @@ description: 'Add a new modelling operation to brepjs: where the file goes, what
 
 # Writing Custom Operations
 
-brepjs ships hundreds of operations, and you might still want one more. This chapter walks through adding a new operation — what files to touch, what tests to write, what types to declare. The examples assume you're contributing to brepjs upstream, but the same structure works for a fork or a local extension.
+brepjs ships hundreds of operations, and you might still want one more. This chapter walks through adding a new operation: what files to touch, what tests to write, what types to declare. The examples assume you're contributing to brepjs upstream, but the same structure works for a fork or a local extension.
 
 ## Where operations live
 
@@ -28,7 +28,7 @@ A new primitive. Goal: add `octahedron(radius)` returning a `ValidSolid` whose 6
 
 ### Step 1: kernel method (Layer 0)
 
-The kernel doesn't have a direct `octahedron` primitive. We compose it from existing kernel calls — make 8 triangular faces, sew them, close into a solid. So Layer 0 doesn't need new methods.
+The kernel doesn't have a direct `octahedron` primitive. We compose it from existing kernel calls: make 8 triangular faces, sew them, close into a solid. So Layer 0 doesn't need new methods.
 
 If we _did_ need a new kernel primitive, we'd extend `src/kernel/types.ts` (`KernelTopology` interface) and implement in both adapters (`src/kernel/occt/...`, `src/kernel/brepkit/...`).
 
@@ -136,11 +136,11 @@ describe('octahedron', () => {
 });
 ```
 
-For a brepjs upstream contribution, the conformance suite picks this up automatically — same test runs against OCCT and brepkit.
+For a brepjs upstream contribution, the conformance suite picks this up automatically; the same test runs against OCCT and brepkit.
 
 ### Step 5: fluent wrapper exposure (Layer 3)
 
-If you want `shape(otherShape).addOctahedron(radius, position)` syntax, add a method to `src/topology/wrapper.ts`. For most operations, the functional API is enough — wrappers are for operations that compose with other shapes.
+If you want `shape(otherShape).addOctahedron(radius, position)` syntax, add a method to `src/topology/wrapper.ts`. For most operations, the functional API is enough; wrappers are for operations that compose with other shapes.
 
 ### Step 6: update the function lookup
 
@@ -159,7 +159,7 @@ This regenerates `docs/function-lookup.md` to include the new symbol. The pre-co
 For an operation to be a good citizen:
 
 1. **Type signature is precise.** Use validity brands. If your op only works on closed wires, take `ClosedWire`. If it produces a valid solid, return `ValidSolid`.
-2. **Failure modes use named codes.** No `throw new Error('something went wrong')` — `err({ code: 'OP_DESCRIPTIVE_CODE', message: '...', suggestion: '...' })`.
+2. **Failure modes use named codes.** No `throw new Error('something went wrong')`; use `err({ code: 'OP_DESCRIPTIVE_CODE', message: '...', suggestion: '...' })`.
 3. **Memory is tracked.** Use `getKernel()` to acquire shapes; the kernel adapter tracks them. If you build many intermediate handles, dispose them inside the function.
 4. **Result is the unique answer.** No randomness, no environment-dependent behaviour. Same input → same output.
 5. **Tests cover counts and measurements.** Vertex / edge / face counts are integer-exact; volumes / areas use `toBeCloseTo`.
@@ -176,15 +176,15 @@ Layer 2+ code never calls methods on `.wrapped`. Always go through `getKernel()`
 
 ### Async `withKernel`
 
-If your operation needs the active kernel, use `getKernel()` inside the synchronous body. Don't wrap an async function in `withKernel` — see [Kernels & withKernel](../concepts/kernels) for the details.
+If your operation needs the active kernel, use `getKernel()` inside the synchronous body. Don't wrap an async function in `withKernel`; see [Kernels & withKernel](../concepts/kernels) for the details.
 
 ### Returning unbranded shapes
 
-`Result<Shape3D>` is a fine return type for a generic operation. For specific guarantees (the result is a solid, the result is a closed wire), return the branded type — the type system is doing useful work, don't throw it away.
+`Result<Shape3D>` is a fine return type for a generic operation. For specific guarantees (the result is a solid, the result is a closed wire), return the branded type. The type system is doing useful work, don't throw it away.
 
 ### Ignoring tolerance
 
-If your operation builds shapes from scratch (like the octahedron above), inherit the kernel's default tolerance. If it operates on existing shapes, use the input shapes' tolerance to set the result tolerance — `Math.max(tolA, tolB)` is the typical rule.
+If your operation builds shapes from scratch (like the octahedron above), inherit the kernel's default tolerance. If it operates on existing shapes, use the input shapes' tolerance to set the result tolerance: `Math.max(tolA, tolB)` is the typical rule.
 
 ## Adding to the wrapper
 
@@ -227,6 +227,6 @@ The TSDoc renders into the TypeDoc API site automatically.
 
 ## Next steps
 
-- [Architecture & Layers](./architecture) — where to place your code
-- [Pattern Checker Rules](./pattern-checker) — automated checks your contribution passes
-- [Kernel Conformance Suite](./conformance) — verifying behaviour across kernels
+- [Architecture & Layers](./architecture): where to place your code
+- [Pattern Checker Rules](./pattern-checker): automated checks your contribution passes
+- [Kernel Conformance Suite](./conformance): verifying behaviour across kernels

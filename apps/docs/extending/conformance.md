@@ -5,7 +5,7 @@ description: 'The kernel conformance test suite. Run the same tests against ever
 
 # Kernel Conformance Suite
 
-The conformance suite is the test suite brepjs runs against every supported kernel. Same tests, two backends — anywhere a test passes on one kernel and fails on the other, you've found either a kernel bug or a divergence in semantics. If you're [writing a custom kernel](./custom-kernel), the conformance suite is how you verify your adapter.
+The conformance suite is the test suite brepjs runs against every supported kernel. Same tests, two backends: anywhere a test passes on one kernel and fails on the other, you've found either a kernel bug or a divergence in semantics. If you're [writing a custom kernel](./custom-kernel), the conformance suite is how you verify your adapter.
 
 ## Running the suite
 
@@ -23,16 +23,16 @@ For dual-kernel runs, brepjs's CI runs both passes in parallel. The matrix runs 
 
 The suite is organized by domain:
 
-- **Primitives** — `box`, `cylinder`, `sphere`, … — each shape's volume, area, vertex count, edge count are asserted exactly.
-- **Booleans** — `fuse`, `cut`, `intersect` over canonical pairs (box-on-box, cylinder-through-box, sphere-cut, etc.) — result volumes within tolerance, expected face counts.
-- **Transforms** — translate, rotate, scale invariance properties (volume preserved by translate/rotate, scaled by `s³` for uniform scale).
-- **Refinement** — fillet / chamfer over canonical edge sets — result topology invariants (face count delta).
-- **Sketching → 3D** — `sketchCircle().extrude()`, `Sketcher` chains, lofts, sweeps.
-- **Finders** — every filter, every shape kind.
-- **Measurement** — exact-value tests for primitives, tolerance-bounded tests for derived shapes.
-- **IO** — round-trip STEP / BREP / IGES; STL conversion.
-- **Healing** — known-broken inputs and the expected fixed outputs.
-- **Validity types** — smart-constructor and type-guard runtime checks.
+- **Primitives**: `box`, `cylinder`, `sphere`, …; each shape's volume, area, vertex count, edge count are asserted exactly.
+- **Booleans**: `fuse`, `cut`, `intersect` over canonical pairs (box-on-box, cylinder-through-box, sphere-cut, etc.); result volumes within tolerance, expected face counts.
+- **Transforms**: translate, rotate, scale invariance properties (volume preserved by translate/rotate, scaled by `s³` for uniform scale).
+- **Refinement**: fillet / chamfer over canonical edge sets; result topology invariants (face count delta).
+- **Sketching → 3D**: `sketchCircle().extrude()`, `Sketcher` chains, lofts, sweeps.
+- **Finders**: every filter, every shape kind.
+- **Measurement**: exact-value tests for primitives, tolerance-bounded tests for derived shapes.
+- **IO**: round-trip STEP / BREP / IGES; STL conversion.
+- **Healing**: known-broken inputs and the expected fixed outputs.
+- **Validity types**: smart-constructor and type-guard runtime checks.
 
 Each domain has both **happy-path tests** (the operation succeeds with expected output) and **failure-mode tests** (the operation should fail with a specific error code).
 
@@ -40,11 +40,11 @@ Each domain has both **happy-path tests** (the operation succeeds with expected 
 
 Conformance tests live in `tests/` alongside the regular brepjs unit tests. They share infrastructure:
 
-- `tests/<moduleName>.test.ts` — tests for one module's functions
-- `tests/api*.test.ts` — public-API integration tests
-- `tests/kernel-*.test.ts` — kernel-specific behaviours that should diverge gracefully
+- `tests/<moduleName>.test.ts`: tests for one module's functions
+- `tests/api*.test.ts`: public-API integration tests
+- `tests/kernel-*.test.ts`: kernel-specific behaviours that should diverge gracefully
 
-The `kernel-*` family contains tests for things like "OpenCascade returns enum objects with `.value` but brepkit returns numbers" — divergences that are _expected_ and that the adapter normalizes.
+The `kernel-*` family contains tests for things like "OpenCascade returns enum objects with `.value` but brepkit returns numbers": divergences that are _expected_ and that the adapter normalizes.
 
 ## Writing a conformance-style test
 
@@ -78,10 +78,10 @@ describe('box primitive', () => {
 
 Key conventions:
 
-- `toBeCloseTo(expected, precision)` for floating-point — never `toBe` for geometry
-- `unwrap(result)` is fine in tests — failures throw, the test name pinpoints the issue
+- `toBeCloseTo(expected, precision)` for floating-point; never `toBe` for geometry
+- `unwrap(result)` is fine in tests; failures throw, the test name pinpoints the issue
 - 30-second timeout on the kernel init; 5 seconds on individual operations
-- Each test is independent — no shared state across tests
+- Each test is independent; no shared state across tests
 
 For the full conventions see the brepjs `CONTRIBUTING.md`.
 
@@ -91,8 +91,8 @@ A custom kernel should produce:
 
 - **Identical** integer counts (face counts, edge counts, vertex counts).
 - **Tolerance-equal** measurements (volumes, areas, distances within `toBeCloseTo(expected, 4)` for normalized inputs).
-- **Identical** error codes for failure modes — `BOOLEAN_NO_OVERLAP`, `FILLET_TOO_LARGE`, etc.
-- **Round-trip identity** for serialization — a STEP file written by your kernel and re-read produces the same shape (with kernel-tolerance epsilon).
+- **Identical** error codes for failure modes: `BOOLEAN_NO_OVERLAP`, `FILLET_TOO_LARGE`, etc.
+- **Round-trip identity** for serialization: a STEP file written by your kernel and re-read produces the same shape (with kernel-tolerance epsilon).
 
 A kernel that produces a slightly different volume (1000.0001 vs 1000.0000) and otherwise matches is conformant. A kernel that produces 1000 sometimes and 1001 sometimes is not.
 
@@ -118,7 +118,7 @@ describe('boolean on near-coincident geometry', () => {
 });
 ```
 
-The override is honest — the test still runs on both kernels and records the divergence.
+The override is honest: the test still runs on both kernels and records the divergence.
 
 ## Performance: don't run conformance on every commit
 
@@ -138,6 +138,6 @@ The pattern: write the simplest happy-path test first, then the failure-mode tes
 
 ## Next steps
 
-- [Writing a Custom Kernel](./custom-kernel) — building the adapter the suite verifies
-- [Writing Custom Operations](./custom-ops) — operations that need new conformance tests
-- [Architecture & Layers](./architecture) — where the test infrastructure sits
+- [Writing a Custom Kernel](./custom-kernel): building the adapter the suite verifies
+- [Writing Custom Operations](./custom-ops): operations that need new conformance tests
+- [Architecture & Layers](./architecture): where the test infrastructure sits

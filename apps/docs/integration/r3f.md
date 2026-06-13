@@ -103,7 +103,7 @@ function PartFromWorker({ params }: { params: object }) {
 }
 ```
 
-The brepjs handles never cross the React tree — only typed arrays do. This is what gridfinity-layout-tool's worker pipeline looks like.
+The brepjs handles never cross the React tree; only typed arrays do. This is what gridfinity-layout-tool's worker pipeline looks like.
 
 ## Picking and selection
 
@@ -200,21 +200,21 @@ Render the edges alongside the filled mesh; combined they look like proper engin
 
 ## drei helpers worth knowing
 
-- `<OrbitControls>` — drag to rotate, pinch to zoom, the right behaviour for CAD UIs
-- `<Bounds>` — fit-camera-to-content; essential for "I just loaded a STEP, frame it"
-- `<Environment preset="studio" />` — instant-good HDRi reflections
-- `<ContactShadows>` — soft ground shadow that makes parts feel "placed"
-- `<GizmoHelper>` — small axis triad for orientation
+- `<OrbitControls>`: drag to rotate, pinch to zoom, the right behaviour for CAD UIs
+- `<Bounds>`: fit-camera-to-content; essential for "I just loaded a STEP, frame it"
+- `<Environment preset="studio" />`: instant-good HDRi reflections
+- `<ContactShadows>`: soft ground shadow that makes parts feel "placed"
+- `<GizmoHelper>`: small axis triad for orientation
 
 ## Performance
 
-- **Memoize meshing** — `useMemo` keyed on the shape, the tolerance, and any pose params.
-- **Avoid React state for camera position** — use Three.js controls or refs; React state changes re-render the tree.
-- **Lazy-mount heavy parts** — render only what's visible; Suspense or virtualization for assemblies of many parts.
-- **Throttle interactive sliders** — debounce parameter changes that re-mesh.
+- **Memoize meshing**: `useMemo` keyed on the shape, the tolerance, and any pose params.
+- **Avoid React state for camera position**: use Three.js controls or refs; React state changes re-render the tree.
+- **Lazy-mount heavy parts**: render only what's visible; Suspense or virtualization for assemblies of many parts.
+- **Throttle interactive sliders**: debounce parameter changes that re-mesh.
 
 ## Next steps
 
-- [Three.js](./threejs) — the underlying Three.js patterns
-- [Vite, Next.js, Astro](./frameworks) — getting R3F + brepjs working in your bundler
-- [Web Workers](../advanced/workers) — moving heavy meshing off the render thread
+- [Three.js](./threejs): the underlying Three.js patterns
+- [Vite, Next.js, Astro](./frameworks): getting R3F + brepjs working in your bundler
+- [Web Workers](../advanced/workers): moving heavy meshing off the render thread

@@ -15,13 +15,13 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 | **IGES** (.igs, .iges)  | ✓    | ✓     | Older B-Rep round-trip; STEP preferred  |
 | **BREP** (.brep)        | ✓    | ✓     | OpenCascade-native; smallest, fastest   |
 | **STL** (.stl)          | ✓    | ✓     | 3D printing, mesh-only                  |
-| **OBJ** (.obj)          | —    | ✓     | Mesh export for renderers               |
-| **glTF** (.glb / .gltf) | —    | ✓     | Web-friendly mesh                       |
-| **3MF** (.3mf)          | —    | ✓     | Modern 3D printing format with metadata |
+| **OBJ** (.obj)          | -    | ✓     | Mesh export for renderers               |
+| **glTF** (.glb / .gltf) | -    | ✓     | Web-friendly mesh                       |
+| **3MF** (.3mf)          | -    | ✓     | Modern 3D printing format with metadata |
 | **DXF** (.dxf)          | ✓    | ✓     | 2D laser cutting                        |
-| **SVG** (.svg)          | —    | ✓     | 2D for the web / signage                |
+| **SVG** (.svg)          | -    | ✓     | 2D for the web / signage                |
 
-STL import lossily converts triangles into a B-Rep approximation — useful for STEP conversion and measurement, not for further B-Rep work.
+STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work.
 
 ## Export
 
@@ -32,7 +32,7 @@ import { box, exportSTEP, exportSTL, exportGltf, unwrap } from 'brepjs/quick';
 
 const part = box(30, 20, 10);
 
-const step = unwrap(exportSTEP(part)); // Blob — STEP file
+const step = unwrap(exportSTEP(part)); // Blob: STEP file
 const stl = unwrap(exportSTL(part, { tolerance: 0.1 }));
 const gltf = unwrap(exportGltf(part, { tolerance: 0.1 }));
 
@@ -43,7 +43,7 @@ console.log('glTF:', gltf.size, 'bytes');
 export default part;
 ```
 
-### STEP — the round-trip format
+### STEP: the round-trip format
 
 STEP (ISO 10303) preserves B-Rep structure: faces, edges, surfaces, curves, even sharp/smooth qualifiers. A part written with `exportSTEP` and re-imported with `importSTEP` is geometrically identical (within tolerance):
 
@@ -58,9 +58,9 @@ console.log('Original volume:', unwrap(measureVolume(original))); // 6000
 console.log('Reimported volume:', unwrap(measureVolume(reimported))); // 6000 ± epsilon
 ```
 
-Use STEP for any pipeline that involves desktop CAD — Fusion 360, SolidWorks, FreeCAD, OnShape, Rhino.
+Use STEP for any pipeline that involves desktop CAD: Fusion 360, SolidWorks, FreeCAD, OnShape, Rhino.
 
-### STL — the printing format
+### STL: the printing format
 
 STL is the universal 3D-printing format. brepjs's `exportSTL` triangulates the B-Rep at a configurable tolerance:
 
@@ -81,9 +81,9 @@ export default part;
 
 The defaults are tuned for screen-size rendering. For 3D printing, set `tolerance` to roughly one-tenth your printer's nozzle diameter (so for a 0.4 mm nozzle, ~0.04 mm).
 
-### glTF — the web-friendly format
+### glTF: the web-friendly format
 
-glTF (.glb is binary glTF) carries triangles plus optional materials and normals — designed for the web, smaller than STL, viewable in browsers natively:
+glTF (.glb is binary glTF) carries triangles plus optional materials and normals, designed for the web, smaller than STL, viewable in browsers natively:
 
 ```typescript
 import { box, exportGltf, unwrap } from 'brepjs/quick';
@@ -95,9 +95,9 @@ void glb;
 export default part;
 ```
 
-Use this for "ship the model to the user's browser" — they can open it directly in `<model-viewer>` or load it into Three.js.
+Use this for "ship the model to the user's browser": they can open it directly in `<model-viewer>` or load it into Three.js.
 
-### 3MF — the modern printing format
+### 3MF: the modern printing format
 
 3MF carries the same triangles as STL but adds metadata (units, slicer hints, multiple parts, colour). Modern slicers prefer it:
 
@@ -111,7 +111,7 @@ void threeMF;
 export default part;
 ```
 
-### DXF / SVG — 2D export
+### DXF / SVG: 2D export
 
 For laser cutting and signage, project a 3D part to a 2D drawing:
 
@@ -126,7 +126,7 @@ void svg;
 void dxf;
 ```
 
-These accept `Drawing<'2D'>` values — typically the output of a `drawing*` chain or a `face` flattened to 2D via `projectToPlane`.
+These accept `Drawing<'2D'>` values, typically the output of a `drawing*` chain or a `face` flattened to 2D via `projectToPlane`.
 
 ## Import
 
@@ -155,7 +155,7 @@ All imports return `Result<Shape, BrepError>`. Failures during import almost alw
 
 ### Always heal imported shapes
 
-Imports — especially STEP from third-party tools — often have minor invalidity: gaps between faces, edges with the wrong precision, vertices that don't quite match. Always heal before operating on imported shapes:
+Imports (especially STEP from third-party tools) often have minor invalidity: gaps between faces, edges with the wrong precision, vertices that don't quite match. Always heal before operating on imported shapes:
 
 ```typescript
 import { importSTEP, autoHeal, unwrap } from 'brepjs/quick';
@@ -172,7 +172,7 @@ Without healing, the first boolean against an imported shape is likely to fail w
 
 ## Saving and loading
 
-### Browser — save via download
+### Browser: save via download
 
 <!-- @no-test -->
 
@@ -188,7 +188,7 @@ a.click();
 URL.revokeObjectURL(url);
 ```
 
-### Browser — load via file input
+### Browser: load via file input
 
 <!-- @no-test -->
 
@@ -204,9 +204,9 @@ if (file) {
 }
 ```
 
-`File` is a `Blob` subtype — every `import*` accepts both.
+`File` is a `Blob` subtype; every `import*` accepts both.
 
-### Node — read/write disk
+### Node: read/write disk
 
 <!-- @no-test -->
 
@@ -249,7 +249,7 @@ void stl;
 
 ### STL → STEP (best-effort)
 
-Reverse direction is lossy — STL is triangles, STEP wants surfaces. brepjs converts triangles to a B-Rep approximation:
+Reverse direction is lossy: STL is triangles, STEP wants surfaces. brepjs converts triangles to a B-Rep approximation:
 
 <!-- @no-test -->
 
@@ -268,15 +268,15 @@ The result is a STEP file with one face per input triangle. Acceptable for low-r
 
 ## What can go wrong
 
-| Failure                     | Cause                                                                                   |
-| --------------------------- | --------------------------------------------------------------------------------------- |
-| `IO_PARSE_ERROR`            | The file is malformed or in an unsupported dialect                                      |
-| `IO_UNSUPPORTED_VERSION`    | The file uses a STEP/IGES schema we don't support                                       |
-| `INVALID_SHAPE`             | Imported shape doesn't pass `BRepCheck` — heal it                                       |
-| `MESH_TRIANGULATION_FAILED` | An exporter (STL, glTF, 3MF) couldn't triangulate the input — usually a tolerance issue |
+| Failure                     | Cause                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| `IO_PARSE_ERROR`            | The file is malformed or in an unsupported dialect                                     |
+| `IO_UNSUPPORTED_VERSION`    | The file uses a STEP/IGES schema we don't support                                      |
+| `INVALID_SHAPE`             | Imported shape doesn't pass `BRepCheck`: heal it                                       |
+| `MESH_TRIANGULATION_FAILED` | An exporter (STL, glTF, 3MF) couldn't triangulate the input, usually a tolerance issue |
 
 ## Next steps
 
-- [Healing & Sewing](../advanced/healing) — preparing imports for further operations
-- [Three.js Integration](../integration/threejs) — render exported meshes in the browser
-- [Boolean Operations](./booleans) — operating on imported shapes (after healing)
+- [Healing & Sewing](../advanced/healing): preparing imports for further operations
+- [Three.js Integration](../integration/threejs): render exported meshes in the browser
+- [Boolean Operations](./booleans): operating on imported shapes (after healing)

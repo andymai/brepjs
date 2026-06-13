@@ -17,7 +17,7 @@ Principle (ISP):
 - **Cognitive overhead**: New contributors faced a 900-line interface with no domain
   grouping beyond inline comments.
 - **Documentation**: JSDoc for cross-kernel behavioral differences (22 items from
-  ADR-0006 Appendix A) had no structural home — notes floated between unrelated methods.
+  ADR-0006 Appendix A) had no structural home; notes floated between unrelated methods.
 - **Partial implementations**: A future lightweight kernel (e.g., measurement-only or
   mesh-only) would be forced to stub hundreds of irrelevant methods.
 - **OCCT alignment**: OCCT itself organizes into modular packages (BRepAlgoAPI,
@@ -78,7 +78,7 @@ export type KernelAdapter = KernelCore &
 ```
 src/kernel/
   interfaces/
-    index.ts          # Barrel — composes KernelAdapter, re-exports all
+    index.ts          # Barrel - composes KernelAdapter, re-exports all
     core.ts           # KernelCore
     boolean-ops.ts    # KernelBooleanOps
     construction-ops.ts
@@ -154,8 +154,8 @@ it doesn't enable partial implementations or sub-interface-level type narrowing.
 
 ## Related
 
-- ADR-0002: Kernel Abstraction — established the KernelAdapter pattern
-- ADR-0006: Domain Boundaries — documented 22 cross-kernel behavioral differences
+- ADR-0002: Kernel Abstraction, established the KernelAdapter pattern
+- ADR-0006: Domain Boundaries, documented 22 cross-kernel behavioral differences
   that informed sub-interface JSDoc
 - OCCT package structure: BRepAlgoAPI, BRepPrimAPI, BRepFilletAPI, BRepOffsetAPI,
   GProp, BRepBndLib, TopExp, BRep_Tool, ShapeFix

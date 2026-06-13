@@ -1,11 +1,11 @@
 ---
 title: Install & Initialize
-description: 'Pick an init style, run npm install, and you are modelling. Auto-detect, manual init, top-level await — three ways to load brepjs.'
+description: 'Pick an init style, run npm install, and you are modelling. Auto-detect, manual init, top-level await: three ways to load brepjs.'
 ---
 
 # Install & Initialize
 
-Pick an init style, run `npm install`, and you are modelling. The first call to any brepjs function requires the WASM kernel to be loaded — the only choice is **who** triggers the load.
+Pick an init style, run `npm install`, and you are modelling. The first call to any brepjs function requires the WASM kernel to be loaded; the only choice is **who** triggers the load.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ npm install brepjs occt-wasm
 
 All three give you the same API. They differ only in who calls the kernel init.
 
-### `brepjs/quick` — zero ceremony
+### `brepjs/quick`: zero ceremony
 
 ```typescript
 import { box, cylinder, shape } from 'brepjs/quick';
@@ -36,7 +36,7 @@ const part = shape(b).cut(cyl).val;
 
 Best for scripts, prototypes, and any ESM environment with top-level await. The `brepjs/quick` entry resolves the default `occt-wasm` kernel (falling back to `brepjs-opencascade`) at module-load time, then re-exports the full API.
 
-### `init()` — auto-detect
+### `init()`: auto-detect
 
 <!-- @no-test -->
 
@@ -71,7 +71,7 @@ Best for apps that need a loading indicator, explicit error handling, or environ
 
 ### Vite
 
-Vite bundles WASM correctly out of the box. The only quirk: if you load WASM from a Worker, you may want to import the file URL explicitly so Vite emits it as an asset — gridfinitylayouttool.com does this:
+Vite bundles WASM correctly out of the box. The only quirk: if you load WASM from a Worker, you may want to import the file URL explicitly so Vite emits it as an asset; gridfinitylayouttool.com does this:
 
 <!-- @no-test -->
 
@@ -162,6 +162,6 @@ All sub-paths re-export a subset of the main `brepjs` entry. You can mix and mat
 
 ## Next steps
 
-- [Your First Solid](./first-solid) — the canonical drill-fillet-export workflow
-- [Cheat Sheet](./cheat-sheet) — single-page quick reference
-- [B-Rep vs Mesh](../concepts/brep-vs-mesh) — why brepjs is different from Three.js
+- [Your First Solid](./first-solid): the canonical drill-fillet-export workflow
+- [Cheat Sheet](./cheat-sheet): single-page quick reference
+- [B-Rep vs Mesh](../concepts/brep-vs-mesh): why brepjs is different from Three.js

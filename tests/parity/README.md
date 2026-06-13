@@ -1,4 +1,4 @@
-# `tests/parity/` — brepjs behavioral spec
+# `tests/parity/`: brepjs behavioral spec
 
 These tests are the **kernel-agnostic specification** that brepjs's geometric
 operations must satisfy. They exist because brepjs supports two kernels
@@ -26,8 +26,8 @@ a fixed target to implement against.
 
 | Suite                            | What runs            | Required-to-merge? |
 | -------------------------------- | -------------------- | ------------------ |
-| `npm test` / `npm run test:full` | OCCT project only    | yes — CI gate      |
-| `npm run test:brepkit`           | brepkit project only | no — informational |
+| `npm test` / `npm run test:full` | OCCT project only    | yes: CI gate       |
+| `npm run test:brepkit`           | brepkit project only | no: informational  |
 
 Failures in the brepkit project on these files are **expected** during the
 cleanroom rewrite and represent the parity gap. They do not block PRs.
@@ -36,25 +36,25 @@ cleanroom rewrite and represent the parity gap. They do not block PRs.
 
 1. Identify the failing assertion's _mathematical claim_ (e.g.
    `vol(cylinder r=2 h=5) === π·4·5`).
-2. Run the same op on OCCT (`npm test`) — should pass.
+2. Run the same op on OCCT (`npm test`), should pass.
 3. Run on brepkit (`TEST_KERNEL=brepkit npx vitest run tests/parity/...`).
 4. The numerical delta is the parity gap. File or fix in `src/kernel/brepkit/`
    or, if the issue is in the brepkit WASM kernel itself, in the brepkit repo.
 
 ## Tolerance policy
 
-- **Unit-scale closed-form values**: `toBeCloseTo(expected, 0)` — within 0.5
+- **Unit-scale closed-form values**: `toBeCloseTo(expected, 0)`, within 0.5
   absolute units. OCCT and a correct brepkit both clear this comfortably.
 - **fast-check invariants**: relative tolerance, default `1e-6` of the
   expected sum. Property tests run with `numRuns: 50`.
-- **Round-trip serialization**: `toBeCloseTo(original, 6)` — six decimals.
+- **Round-trip serialization**: `toBeCloseTo(original, 6)`, six decimals.
 
 ## Input generators
 
 `fcDim` excludes near-zero/huge dimensions; `fcOffset` is **quantized to a
 0.05 mm grid**. Sub-micron, non-zero offsets put solids in near-coincident
 configurations OCCT booleans resolve unstably (volumes up to ~98% wrong), and
-fast-check shrinks straight toward them — a nondeterministic CI red. Use
+fast-check shrinks straight toward them, a nondeterministic CI red. Use
 `fcOffset` for positional offsets rather than a raw `fc.double`, or the
 degeneracy returns.
 

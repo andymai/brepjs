@@ -5,7 +5,7 @@ description: "AST-based linter rules that catch issues ESLint can't: kernel rout
 
 # Pattern Checker Rules
 
-`npm run check:patterns` runs `scripts/check-patterns.ts`, an AST-based linter that catches structural issues ESLint can't. The rules protect invariants the architecture depends on — kernel-routing, memory cleanup, code-quality thresholds. This chapter is the rule catalog: what each rule prevents, why, and how to fix or disable a violation.
+`npm run check:patterns` runs `scripts/check-patterns.ts`, an AST-based linter that catches structural issues ESLint can't. The rules protect invariants the architecture depends on: kernel-routing, memory cleanup, code-quality thresholds. This chapter is the rule catalog: what each rule prevents, why, and how to fix or disable a violation.
 
 ## Running the checker
 
@@ -111,7 +111,7 @@ function clean() {
 }
 ```
 
-The rule is heuristic — it can produce false positives when the handle is intentionally returned (in which case the _caller_ is responsible). Use `// brepjs-patterns-disable: missing-using-on-handle` when the lifetime escapes the function.
+The rule is heuristic; it can produce false positives when the handle is intentionally returned (in which case the _caller_ is responsible). Use `// brepjs-patterns-disable: missing-using-on-handle` when the lifetime escapes the function.
 
 ### `function-too-long`
 
@@ -173,7 +173,7 @@ const violatesRule = ...; // disable applies to the next line
 const inline = ...; // brepjs-patterns-disable: <rule-id> (inline)
 ```
 
-Use these sparingly. Each disable should have a comment explaining _why_ the rule doesn't apply — "this is a kernel adapter, .wrapped access is fine here", "the lifetime escapes via the return value", etc.
+Use these sparingly. Each disable should have a comment explaining _why_ the rule doesn't apply: "this is a kernel adapter, .wrapped access is fine here", "the lifetime escapes via the return value", etc.
 
 ## When the rules are wrong
 
@@ -183,7 +183,7 @@ Sometimes a rule is over-eager:
 - **`function-too-long` on switch statements**: a long `switch` with many cases is sometimes the right shape.
 - **`double-cast` in WASM bindings**: occasional unavoidable casts when wrapping untyped C APIs.
 
-For these, inline-disable with a clear reason. If the same disable appears in many places, consider whether the rule needs adjustment — open an issue.
+For these, inline-disable with a clear reason. If the same disable appears in many places, consider whether the rule needs adjustment. Open an issue.
 
 ## Adding a rule
 
@@ -198,12 +198,12 @@ Most useful new rules detect class-of-bug, not single instances. If a recent bug
 
 ## Why these and not ESLint?
 
-ESLint runs at parse-tree level — fast, but limited. The pattern checker runs at the type-checked AST level using the TypeScript compiler API, so it knows the actual types and can make decisions ESLint can't. The trade-off: it's slower (typecheck-then-walk vs. parse-then-walk).
+ESLint runs at parse-tree level: fast, but limited. The pattern checker runs at the type-checked AST level using the TypeScript compiler API, so it knows the actual types and can make decisions ESLint can't. The trade-off: it's slower (typecheck-then-walk vs. parse-then-walk).
 
 In brepjs, ESLint covers the syntax-level rules (`no-explicit-any`, `prefer-const`, `import-extensions`) and the pattern checker covers the semantic-level rules (`wrapped-method-call`, `async-with-kernel`).
 
 ## Next steps
 
-- [Architecture & Layers](./architecture) — the rules the checker protects
-- [Writing Custom Operations](./custom-ops) — building code that passes the checks
-- [Kernel Conformance Suite](./conformance) — the test suite that complements the checks
+- [Architecture & Layers](./architecture): the rules the checker protects
+- [Writing Custom Operations](./custom-ops): building code that passes the checks
+- [Kernel Conformance Suite](./conformance): the test suite that complements the checks

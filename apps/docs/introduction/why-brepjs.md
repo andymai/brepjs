@@ -5,17 +5,17 @@ description: 'Code-first CAD for JavaScript: exact B-Rep solids, branded types t
 
 # Why brepjs
 
-> **Try it live:** the <a href="/playground" target="_blank" rel="noopener">in-browser playground</a> compiles a TypeScript snippet and renders the resulting solid in a few hundred milliseconds — no install, no setup.
+> **Try it live:** the <a href="/playground" target="_blank" rel="noopener">in-browser playground</a> compiles a TypeScript snippet and renders the resulting solid in a few hundred milliseconds, no install, no setup.
 
-**brepjs** is a code-first CAD library for JavaScript. It models real solids — exact mathematical boundaries, not triangle meshes — so booleans are precise, fillets land on real edges, measurements are real numbers, and STEP export round-trips with SolidWorks, Fusion, FreeCAD, and OpenSCAD. The library is built on top of OpenCascade WASM today and a Rust-based kernel ([brepkit](https://github.com/andymai/brepkit)) tomorrow; the kernel is pluggable behind a small abstraction layer.
+**brepjs** is a code-first CAD library for JavaScript. It models real solids (exact mathematical boundaries, not triangle meshes) so booleans are precise, fillets land on real edges, measurements are real numbers, and STEP export round-trips with SolidWorks, Fusion, FreeCAD, and OpenSCAD. The library is built on top of OpenCascade WASM today and a Rust-based kernel ([brepkit](https://github.com/andymai/brepkit)) tomorrow; the kernel is pluggable behind a small abstraction layer.
 
-The differentiator: brepjs leans on TypeScript's type system to prove geometric invariants at compile time. Branded types separate `Edge` from `Wire` from `Face`. Validity brands like `ClosedWire`, `OrientedFace`, and `ValidSolid` encode topological properties — a wire that forms a loop, a face with a consistent normal, a solid that passes BRepCheck. If your code compiles, the geometry is structurally valid.
+The differentiator: brepjs leans on TypeScript's type system to prove geometric invariants at compile time. Branded types separate `Edge` from `Wire` from `Face`. Validity brands like `ClosedWire`, `OrientedFace`, and `ValidSolid` encode topological properties: a wire that forms a loop, a face with a consistent normal, a solid that passes BRepCheck. If your code compiles, the geometry is structurally valid.
 
 ## What can you build?
 
-The library targets **parametric parts defined by parameters** — enclosures, brackets, fixtures, gridfinity bins, mounts, jigs, signs, name plates, parts that snap to a grid or follow a formula. It is not optimized for organic sculpting (no SubD modeling, no T-splines). The sweet spot is anything you might otherwise write in OpenSCAD or SolidWorks, but as a JavaScript program you can deploy to the web.
+The library targets **parametric parts defined by parameters**: enclosures, brackets, fixtures, gridfinity bins, mounts, jigs, signs, name plates, parts that snap to a grid or follow a formula. It is not optimized for organic sculpting (no SubD modeling, no T-splines). The sweet spot is anything you might otherwise write in OpenSCAD or SolidWorks, but as a JavaScript program you can deploy to the web.
 
-The default unit is millimetres, but brepjs is unit-agnostic — pick whatever your kernel is configured for. The OpenCascade kernel uses double-precision floating point throughout.
+The default unit is millimetres, but brepjs is unit-agnostic. Pick whatever your kernel is configured for. The OpenCascade kernel uses double-precision floating point throughout.
 
 ## Where does it fit?
 
@@ -28,11 +28,11 @@ The default unit is millimetres, but brepjs is unit-agnostic — pick whatever y
 | [Three.js + CSG](https://threejs.org/)          | Mesh                      | CSG hacks        | Standard                 | Yes            |
 | [OpenSCAD](https://openscad.org/)               | CSG tree                  | Exact            | None (custom DSL)        | No             |
 
-The closest peer is Replicad — same kernel family, same code-CAD ethos. brepjs's pitch over Replicad is the type system: you do not need to wonder whether a wire is closed before passing it to `face()`, because the compiler already proved it.
+The closest peer is Replicad: same kernel family, same code-CAD ethos. brepjs's pitch over Replicad is the type system: you do not need to wonder whether a wire is closed before passing it to `face()`, because the compiler already proved it.
 
 ## Why I built this
 
-brepjs grew out of [gridfinitylayouttool.com](https://gridfinitylayouttool.com). I needed parametric CAD in the browser, I'm not a 3D modeler, but I know TypeScript. OpenSCAD nailed code-first CAD but lives outside the JS ecosystem. Replicad proved OpenCascade works in JS but I kept fighting the API — too easy to pass the wrong shape to the wrong function and discover it at runtime.
+brepjs grew out of [gridfinitylayouttool.com](https://gridfinitylayouttool.com). I needed parametric CAD in the browser, I'm not a 3D modeler, but I know TypeScript. OpenSCAD nailed code-first CAD but lives outside the JS ecosystem. Replicad proved OpenCascade works in JS but I kept fighting the API: too easy to pass the wrong shape to the wrong function and discover it at runtime.
 
 Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom dimension parameters, validity brands. **If it compiles, the geometry is valid.**
 

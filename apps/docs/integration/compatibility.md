@@ -5,7 +5,7 @@ description: "What's tested and what works: Node.js versions, browser support, b
 
 # Compatibility Matrix
 
-What's tested, what works, what to avoid. brepjs targets modern browsers, Node 24+, and any reasonable WASM-capable runtime. Server-side rendering is unsupported — brepjs requires WASM to execute.
+What's tested, what works, what to avoid. brepjs targets modern browsers, Node 24+, and any reasonable WASM-capable runtime. Server-side rendering is unsupported; brepjs requires WASM to execute.
 
 ## Node.js
 
@@ -14,7 +14,7 @@ What's tested, what works, what to avoid. brepjs targets modern browsers, Node 2
 | 24.x    | ✓ Supported, CI tested                             |
 | 22.x    | ✓ Likely works (no test gate)                      |
 | 20.x    | ✓ Likely works (no test gate); uses fewer features |
-| 18.x    | ✗ End of life — not tested                         |
+| 18.x    | ✗ End of life, not tested                          |
 | < 18    | ✗ Unsupported                                      |
 
 CI runs on Node 24. Anything with first-class WASM and ESM support should work; the version floor is dictated by Vitest's requirements rather than brepjs's.
@@ -51,24 +51,24 @@ WASM performance on mobile is slower than desktop; CAD-quality rendering at 60 f
 
 Strict mode (`"strict": true` in `tsconfig.json`) is required. Specifically:
 
-- `strictNullChecks` — enabled
-- `noUncheckedIndexedAccess` — recommended; brepjs uses it internally
-- `exactOptionalPropertyTypes` — recommended
+- `strictNullChecks`: enabled
+- `noUncheckedIndexedAccess`: recommended; brepjs uses it internally
+- `exactOptionalPropertyTypes`: recommended
 
 ## Frameworks (tested)
 
-| Framework              | Status                                          |
-| ---------------------- | ----------------------------------------------- |
-| Vite                   | ✓ First-class — the brepjs playground uses Vite |
-| React + R3F            | ✓ Documented integration                        |
-| Next.js (app router)   | ✓ With `'use client'` and dynamic import        |
-| Next.js (pages router) | ✓ With `dynamic({ ssr: false })`                |
-| Astro                  | ✓ With `client:only`                            |
-| Nuxt 3                 | ✓ With `<ClientOnly>`                           |
-| SvelteKit              | ✓ With `onMount` and `if (browser)`             |
-| Remix                  | ✓ With `useEffect` deferred import              |
-| webpack 5              | ✓ With `experiments.asyncWebAssembly`           |
-| webpack 4              | ✗ Unsupported — no async WASM                   |
+| Framework              | Status                                         |
+| ---------------------- | ---------------------------------------------- |
+| Vite                   | ✓ First-class; the brepjs playground uses Vite |
+| React + R3F            | ✓ Documented integration                       |
+| Next.js (app router)   | ✓ With `'use client'` and dynamic import       |
+| Next.js (pages router) | ✓ With `dynamic({ ssr: false })`               |
+| Astro                  | ✓ With `client:only`                           |
+| Nuxt 3                 | ✓ With `<ClientOnly>`                          |
+| SvelteKit              | ✓ With `onMount` and `if (browser)`            |
+| Remix                  | ✓ With `useEffect` deferred import             |
+| webpack 5              | ✓ With `experiments.asyncWebAssembly`          |
+| webpack 4              | ✗ Unsupported: no async WASM                   |
 
 See [Vite, Next.js, Astro](./frameworks) for per-framework recipes.
 
@@ -86,9 +86,9 @@ For server-side STEP generation, edge compute is fine for one-off conversions bu
 
 ## Server-side rendering: NOT SUPPORTED
 
-brepjs requires WASM to execute. SSR frameworks render on the server, where instantiating the WASM module is possible but operating on shapes is not — the kernel mutates state, including state that's tied to a particular browser-like execution context.
+brepjs requires WASM to execute. SSR frameworks render on the server, where instantiating the WASM module is possible but operating on shapes is not; the kernel mutates state, including state that's tied to a particular browser-like execution context.
 
-The supported pattern is **client-only rendering** — wrap brepjs-using components in `dynamic({ ssr: false })` (Next.js), `<ClientOnly>` (Nuxt), `client:only` (Astro), or equivalent.
+The supported pattern is **client-only rendering**: wrap brepjs-using components in `dynamic({ ssr: false })` (Next.js), `<ClientOnly>` (Nuxt), `client:only` (Astro), or equivalent.
 
 ## Bundle size
 
@@ -99,7 +99,7 @@ The supported pattern is **client-only rendering** — wrap brepjs-using compone
 | `brepjs-opencascade` WASM (alt)   | ~3.2 MB    |
 | `brepkit-wasm` WASM (alt)         | ~2.4 MB    |
 
-The WASM is the dominant cost. brepjs is treeshakeable per sub-path — importing only `brepjs/measurement` skips the topology bundle.
+The WASM is the dominant cost. brepjs is treeshakeable per sub-path: importing only `brepjs/measurement` skips the topology bundle.
 
 ## What's not supported
 
@@ -135,10 +135,10 @@ If brepjs fails on a tested platform, file a bug at [github.com/andymai/brepjs/i
 - A minimal repro (ideally a playground link)
 - The error message and stack trace
 
-If it fails on an untested platform, please first confirm the runtime supports WASM 1.0+ and ESM modules — those are the only platform requirements.
+If it fails on an untested platform, please first confirm the runtime supports WASM 1.0+ and ESM modules; those are the only platform requirements.
 
 ## Next steps
 
-- [Vite, Next.js, Astro](./frameworks) — per-framework setup recipes
-- [Status, Stability & Versioning](../introduction/stability) — what's covered by semver
-- [Three.js Integration](./threejs) — rendering across the platforms above
+- [Vite, Next.js, Astro](./frameworks): per-framework setup recipes
+- [Status, Stability & Versioning](../introduction/stability): what's covered by semver
+- [Three.js Integration](./threejs): rendering across the platforms above

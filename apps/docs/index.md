@@ -22,10 +22,10 @@ hero:
 features:
   - icon: 📐
     title: Exact B-Rep, not triangles
-    details: Shapes are mathematical boundaries — faces, edges, vertices — so booleans are precise, measurements are real, and you can export to STEP.
+    details: Shapes are mathematical boundaries (faces, edges, vertices) so booleans are precise, measurements are real, and you can export to STEP.
   - icon: 🛡️
     title: If it compiles, it's valid
-    details: Branded types and validity brands (ClosedWire, OrientedFace, ValidSolid) prove topological invariants at compile time. Not just type-safe — geometry-safe.
+    details: Branded types and validity brands (ClosedWire, OrientedFace, ValidSolid) prove topological invariants at compile time. Not just type-safe: geometry-safe.
   - icon: ⚡
     title: Two kernels, one API
     details: occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel and ships today. brepkit (Rust-based) is a faster drop-in replacement under active development. Switching is one line.
@@ -34,7 +34,7 @@ features:
     details: ESM, top-level await init, Three.js mesh adapter, web-worker friendly. Plays well with Vite, Next.js, and React Three Fiber.
   - icon: ✏️
     title: Sketcher + functional API
-    details: Build 2D profiles fluently, extrude into solids, then chain booleans, fillets, shells. Or stay fully functional — both surfaces are first-class.
+    details: Build 2D profiles fluently, extrude into solids, then chain booleans, fillets, shells. Or stay fully functional; both surfaces are first-class.
   - icon: 📦
     title: Everything imports/exports
     details: STEP, STL, BREP, IGES, glTF, DXF, 3MF, OBJ, SVG. Round-trip with SolidWorks, Fusion, FreeCAD, OpenSCAD.

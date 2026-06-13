@@ -1,8 +1,8 @@
-# `tests/parity/voxel/` — voxel-domain behavioral spec
+# `tests/parity/voxel/`: voxel-domain behavioral spec
 
 The kernel-agnostic spec for the **voxel / SDF domain** (ADR-0013). It is the
 voxel analog of [`../README.md`](../README.md), but the voxel domain is a
-parallel domain — **not** a `KernelAdapter` — so the kernel-swap harness in
+parallel domain, **not** a `KernelAdapter`, so the kernel-swap harness in
 `../*.ts` does not apply, and the rules differ.
 
 ## Why a separate suite
@@ -13,7 +13,7 @@ mesh; they never touch `getKernel`/`ShapeHandle`. So:
 - **References are still closed-form math**, not kernel output (volume of a
   10mm cube is `1000` because `w·d·h = 1000`).
 - **But results are resolution-bound and lossy by construction.** Tolerances are
-  coarse and resolution-dependent, computed from the output mesh — `compareMetrics`
+  coarse and resolution-dependent, computed from the output mesh. `compareMetrics`
   (which measures B-rep shapes) cannot be used; `helpers.ts` provides
   `meshVolume`/`meshArea`/`meshBbox`/`meshTopology` instead.
 - **Invariants are the real guard** (ADR-0013 §11). A single volume number can
@@ -42,7 +42,7 @@ cylinder ~0.4%, box-union ~0.8%; area inflated ~5%.
 ## Documented divergences (these are properties of voxel v1, not bugs)
 
 1. **Not strictly 2-manifold.** Surface Nets v1 output is always **closed** (no
-   boundary edges — asserted), but emits non-manifold edges + degenerate/sliver
+   boundary edges, asserted), but emits non-manifold edges + degenerate/sliver
    triangles except on grid-aligned geometry (e.g. a cube at res 32 is clean; at
    res 24/48 it is not). The suite bounds the bad-triangle fraction (`badTriFraction`,
    ~8%) as a regression guard, **not** a 2-manifold guarantee. The manifold
@@ -52,7 +52,7 @@ cylinder ~0.4%, box-union ~0.8%; area inflated ~5%.
 3. **Cost scales with input triangle count, not just resolution.** The FWN sign
    pass is O(grid · inputTriangles), so a finely-tessellated input (e.g.
    `sphere()` floors at ~8000 triangles → ~12s) dominates runtime. Spec inputs
-   are low-poly (boxes; cylinders tessellated coarsely) — fidelity comes from the
+   are low-poly (boxes; cylinders tessellated coarsely). Fidelity comes from the
    grid resolution, not input density. **Avoid high-poly inputs in this suite.**
 
 ## Running
@@ -102,5 +102,5 @@ describe.skipIf(!RUN_VOXEL_PARITY)('SPEC: …', () => {
 });
 ```
 
-Build op outputs in `beforeAll` (never at collection time — the kernel/engine
+Build op outputs in `beforeAll` (never at collection time: the kernel/engine
 are not ready yet); keep `describe`/`it` names static.

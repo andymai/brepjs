@@ -29,10 +29,10 @@ graph TD
 
 ## Gotchas
 
-1. **Dual API surface** — Each operation exists in OO form (`extrude.ts`, `loft.ts`, `exporters.ts`) using Point/Vector objects AND functional form (`*Fns.ts`) using Vec3 tuples `[x, y, z]`. Prefer functional API for new code.
-2. **OrientedFace required** — `extrude()`, `revolve()`, and `complexExtrude()` in the functional API require `OrientedFace` (not plain `Face`). Use `face(closedWire)` or the `polygon()` convenience to get one.
-3. **Sweep shellMode overload** — `genericSweep(wire, spine, config, true)` returns `Result<[Shape3D, Wire, Wire]>` tuple (shape + start/end wires) instead of just `Result<Shape3D>` when shellMode is true.
-4. **Complex extrude profiles** — `complexExtrude` with `profile: 's-curve'` uses BSpline law for smooth tapering, `profile: 'linear'` uses linear scaling. `endFactor` controls final scale (0.5 = 50% taper).
-5. **XCAF metadata preservation** — `createAssembly` + `exportSTEP` preserves shape colors/names/layers via XCAF document. Plain topology exports lose this metadata.
-6. **Loft ruled default** — `loft` defaults to `ruled: true` for straight-ruled surface. Set `ruled: false` for smooth interpolated surface through wire sections.
-7. **Unit case sensitivity** — `SupportedUnit` accepts both uppercase ('M', 'MM') and lowercase ('m', 'mm') for backward compatibility.
+1. **Dual API surface**: Each operation exists in OO form (`extrude.ts`, `loft.ts`, `exporters.ts`) using Point/Vector objects AND functional form (`*Fns.ts`) using Vec3 tuples `[x, y, z]`. Prefer functional API for new code.
+2. **OrientedFace required**: `extrude()`, `revolve()`, and `complexExtrude()` in the functional API require `OrientedFace` (not plain `Face`). Use `face(closedWire)` or the `polygon()` convenience to get one.
+3. **Sweep shellMode overload**: `genericSweep(wire, spine, config, true)` returns `Result<[Shape3D, Wire, Wire]>` tuple (shape + start/end wires) instead of just `Result<Shape3D>` when shellMode is true.
+4. **Complex extrude profiles**: `complexExtrude` with `profile: 's-curve'` uses BSpline law for smooth tapering, `profile: 'linear'` uses linear scaling. `endFactor` controls final scale (0.5 = 50% taper).
+5. **XCAF metadata preservation**: `createAssembly` + `exportSTEP` preserves shape colors/names/layers via XCAF document. Plain topology exports lose this metadata.
+6. **Loft ruled default**: `loft` defaults to `ruled: true` for straight-ruled surface. Set `ruled: false` for smooth interpolated surface through wire sections.
+7. **Unit case sensitivity**: `SupportedUnit` accepts both uppercase ('M', 'MM') and lowercase ('m', 'mm') for backward compatibility.

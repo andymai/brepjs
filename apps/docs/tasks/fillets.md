@@ -5,7 +5,7 @@ description: 'Round edges with arcs, bevel them with chamfers. Edge selection pa
 
 # Fillets & Chamfers
 
-A **fillet** rounds an edge with a circular arc. A **chamfer** bevels it with a flat. Both are edge-refinement operations: pick the edges, pick the size, get a new shape. brepjs ships them as fallible operations because they are — fillets fail more often than booleans, and the failure modes are surprising.
+A **fillet** rounds an edge with a circular arc. A **chamfer** bevels it with a flat. Both are edge-refinement operations: pick the edges, pick the size, get a new shape. brepjs ships them as fallible operations because they are. Fillets fail more often than booleans, and the failure modes are surprising.
 
 ## The basic shape
 
@@ -56,7 +56,7 @@ console.log({
 });
 ```
 
-`edgeFinder()` filters chain — see [Finders & Queries](./finders) for the full vocabulary.
+`edgeFinder()` filters chain; see [Finders & Queries](./finders) for the full vocabulary.
 
 ## With the fluent wrapper
 
@@ -101,20 +101,20 @@ const verticals = edgeFinder().inDirection('Z').findAll(b);
 const horizontals = edgeFinder().inDirection('X').findAll(b);
 
 b = unwrap(fillet(b, verticals, 3));
-// Re-find on the new shape — old handles refer to the old shape.
+// Re-find on the new shape: old handles refer to the old shape.
 const newHorizontals = edgeFinder().inDirection('X').findAll(b);
 b = unwrap(fillet(b, newHorizontals, 1));
 
 console.log('Verticals at r=3, horizontals at r=1');
 ```
 
-Edge handles are bound to the shape they were found on. Filleting consumes the input shape and returns a new one — old handles no longer apply. Always re-find after each operation.
+Edge handles are bound to the shape they were found on. Filleting consumes the input shape and returns a new one, so old handles no longer apply. Always re-find after each operation.
 
 ## Failure modes
 
 ### `FILLET_TOO_LARGE`
 
-The radius is bigger than the geometry around the edge can support. A box 10mm thick cannot have a 6mm fillet on its corner — the fillet would leave no flat region. The kernel detects this:
+The radius is bigger than the geometry around the edge can support. A box 10mm thick cannot have a 6mm fillet on its corner: the fillet would leave no flat region. The kernel detects this:
 
 ```typescript
 import { box, edgeFinder, fillet, isOk } from 'brepjs/quick';
@@ -130,13 +130,13 @@ Fix: smaller radius, or fewer edges.
 
 ### `FILLET_INVALID_EDGE`
 
-The selected edge has a curvature or geometry the fillet algorithm can't handle. Common with imported geometry — sharp creases, non-tangent meeting edges, edges shorter than the fillet radius.
+The selected edge has a curvature or geometry the fillet algorithm can't handle. Common with imported geometry: sharp creases, non-tangent meeting edges, edges shorter than the fillet radius.
 
 Workarounds:
 
 - Heal the input first (`autoHeal`)
 - Skip that edge (refine the finder)
-- Use `chamfer` instead — it has fewer requirements
+- Use `chamfer` instead; it has fewer requirements
 
 ### `FILLET_AMBIGUOUS_PROPAGATION`
 
@@ -147,11 +147,11 @@ When you fillet an edge that meets multiple other edges at a vertex, the fillet 
 Two ways to fillet several groups of edges, only one works reliably:
 
 ```typescript
-// WRONG — fillet operations interact in unobvious ways
+// WRONG: fillet operations interact in unobvious ways
 import { box, edgeFinder, fillet, unwrap } from 'brepjs/quick';
 let b: import('brepjs').Shape3D = box(20, 20, 20);
 b = unwrap(fillet(b, edgeFinder().inDirection('Z').findAll(b), 3));
-// The edges in 'X' have moved/transformed — re-find:
+// The edges in 'X' have moved/transformed, so re-find:
 b = unwrap(fillet(b, edgeFinder().inDirection('X').findAll(b), 3));
 console.log('Filleted in two passes');
 ```
@@ -172,11 +172,11 @@ console.log('One-pass fillet');
 export default filleted;
 ```
 
-For different radii, two passes are unavoidable — just re-find edges after each.
+For different radii, two passes are unavoidable; just re-find edges after each.
 
 ## Tip: chamfer is more forgiving
 
-Chamfer fails less often than fillet. When fillet fails on imported geometry, try chamfer with the same distance — it bevels rather than blends and tolerates more curvature variation.
+Chamfer fails less often than fillet. When fillet fails on imported geometry, try chamfer with the same distance; it bevels rather than blends and tolerates more curvature variation.
 
 ```typescript
 import { box, edgeFinder, fillet, chamfer, isOk, unwrap } from 'brepjs/quick';
@@ -238,6 +238,6 @@ export default part;
 
 ## Next steps
 
-- [Finders & Queries](./finders) — selecting the exact edges you want
-- [Healing & Sewing](../advanced/healing) — when fillets fail on imports
-- [Boolean Operations](./booleans) — the operation that creates the edges fillets refine
+- [Finders & Queries](./finders): selecting the exact edges you want
+- [Healing & Sewing](../advanced/healing): when fillets fail on imports
+- [Boolean Operations](./booleans): the operation that creates the edges fillets refine

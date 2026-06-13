@@ -5,7 +5,7 @@
 
 ## Context
 
-brepjs shape types discriminate by _kind_ (Edge, Wire, Face, etc.) and _dimension_ (2D, 3D) at compile time. However, topological _validity_ properties — whether a wire is closed, a face is oriented, a shell is manifold, or a solid passes geometry checks — are only discoverable at runtime.
+brepjs shape types discriminate by _kind_ (Edge, Wire, Face, etc.) and _dimension_ (2D, 3D) at compile time. However, topological _validity_ properties (whether a wire is closed, a face is oriented, a shell is manifold, or a solid passes geometry checks) are only discoverable at runtime.
 
 This matters because many operations have validity preconditions:
 
@@ -18,7 +18,7 @@ Currently, violating these preconditions produces cryptic WASM errors or silentl
 
 1. Operations that require validity can declare it in their signatures
 2. The only way to obtain a validity-branded type is through a function that proves the property at runtime (smart constructor pattern)
-3. Existing code continues to work — validity types are subtypes of their base types
+3. Existing code continues to work; validity types are subtypes of their base types
 
 ## Decision
 
@@ -37,26 +37,26 @@ declare const __valid: unique symbol; // Solid passes BRepCheck validation
 ### Validity Types
 
 ```ts
-// Closed wire — proven to form a loop
+// Closed wire - proven to form a loop
 type ClosedWire<D extends Dimension = '3D'> = Wire<D> & { readonly [__closed]: true };
 
-// Oriented face — proven to have consistent normal
+// Oriented face - proven to have consistent normal
 type OrientedFace<D extends Dimension = '3D'> = Face<D> & { readonly [__oriented]: true };
 
-// Manifold shell — proven to be watertight
+// Manifold shell - proven to be watertight
 type ManifoldShell = Shell & { readonly [__manifold]: true };
 
-// Valid solid — proven to pass BRepCheck
+// Valid solid - proven to pass BRepCheck
 type ValidSolid = Solid & { readonly [__valid]: true };
 ```
 
 ### Subtype Relationships
 
 ```
-ClosedWire<D>  <:  Wire<D>      — assignable to Wire, not vice versa
-OrientedFace<D> <:  Face<D>      — assignable to Face, not vice versa
-ManifoldShell   <:  Shell        — assignable to Shell, not vice versa
-ValidSolid      <:  Solid        — assignable to Solid, not vice versa
+ClosedWire<D>  <:  Wire<D>      - assignable to Wire, not vice versa
+OrientedFace<D> <:  Face<D>      - assignable to Face, not vice versa
+ManifoldShell   <:  Shell        - assignable to Shell, not vice versa
+ValidSolid      <:  Solid        - assignable to Solid, not vice versa
 ```
 
 ### Smart Constructors (Proof Terms)
@@ -99,8 +99,8 @@ function circleWire(radius: number): ClosedWire<'3D'>;
 
 Validity types are **subtypes** with two tiers:
 
-- **Non-breaking (Phase 2)**: Producers return branded types — callers get narrower types automatically
-- **Breaking (Phase 3)**: Constructive operations _require_ branded inputs — callers must prove validity via smart constructors, type guards, or `as` casts where the invariant holds by construction
+- **Non-breaking (Phase 2)**: Producers return branded types; callers get narrower types automatically
+- **Breaking (Phase 3)**: Constructive operations _require_ branded inputs; callers must prove validity via smart constructors, type guards, or `as` casts where the invariant holds by construction
 
 ## Consequences
 
@@ -108,7 +108,7 @@ Validity types are **subtypes** with two tiers:
 
 - **Compile-time safety**: Operations that require validity declare it in types
 - **Self-documenting APIs**: `face(wire: ClosedWire)` is clearer than `face(wire: Wire)` + runtime error
-- **Zero runtime overhead**: Brands are phantom — no wrapper objects, no memory allocation
+- **Zero runtime overhead**: Brands are phantom: no wrapper objects, no memory allocation
 - **Composable**: Brands stack with dimension types: `ClosedWire<'2D'>`
 - **Gradual**: Existing code is unaffected; validity requirements can be added incrementally
 - **Proof-carrying code**: The type system tracks which validations have been performed
@@ -168,7 +168,7 @@ Update functions that produce known-valid shapes to return branded types:
 - `makeFace()` → `OrientedFace` (faces are always oriented)
 - `sewShells()` → conditional `ManifoldShell` or `Shell`
 
-### Phase 3: Consumer Updates (Breaking) — ClosedWire & OrientedFace ✅ Complete
+### Phase 3: Consumer Updates (Breaking): ClosedWire & OrientedFace ✅ Complete
 
 Updated operation signatures to _require_ validity brands at call sites:
 
@@ -187,7 +187,7 @@ Updated operation signatures to _require_ validity brands at call sites:
 
 Internal call sites (Sketch, CompoundSketch, Blueprint, draw, booleanFns, compoundOpsFns) cast with `as ClosedWire`/`as OrientedFace` where the invariant is known to hold by construction.
 
-### Phase 3b: Consumer Updates — ValidSolid ✅ Complete
+### Phase 3b: Consumer Updates: ValidSolid ✅ Complete
 
 Require `ValidSolid` on operations that fail or produce garbage on invalid solids:
 
@@ -208,7 +208,7 @@ Batch variants `fuseAll` and `cutAll` follow the same overload pattern.
 
 ### Phase 4: Convenience & Propagation ✅ Partially Complete
 
-- ✅ `wireLoop(edges)` — assemble + closure check in one step, returns `Result<ClosedWire>`
+- ✅ `wireLoop(edges)`: assemble + closure check in one step, returns `Result<ClosedWire>`
 - ✅ `solid(facesOrShells)` / `makeSolid()` → `Result<ValidSolid>` (was `Result<Solid>`)
 - Transforms (`translate`, `rotate`, `mirror`, `scale`) preserve brands via `<T extends AnyShape<D>>` generics
 - `fillet`, `chamfer`, `shell` (api layer) preserve brands via `<T extends Shape3D>` generics
@@ -223,6 +223,6 @@ See ADR-0011 for `PlanarFace`/`PlanarWire` brands that encode geometric (not jus
 - ADR-0003: Branded types (foundation pattern)
 - ADR-0004: Phantom dimension types (extends the same pattern)
 - ADR-0011: Geometric validity brands (PlanarFace/PlanarWire)
-- `src/core/validityTypes.ts` — validity type definitions
-- `src/core/shapeTypes.ts` — shape type definitions and re-exports
-- `src/topology/healingFns.ts` — validation infrastructure
+- `src/core/validityTypes.ts`: validity type definitions
+- `src/core/shapeTypes.ts`: shape type definitions and re-exports
+- `src/topology/healingFns.ts`: validation infrastructure

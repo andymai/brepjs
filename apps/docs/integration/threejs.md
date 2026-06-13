@@ -5,7 +5,7 @@ description: 'The CAD-on-the-web stack: model in brepjs, mesh, hand the buffer d
 
 # Three.js
 
-brepjs is the kernel; Three.js is the renderer. The combination is the standard CAD-on-the-web stack — model with brepjs, mesh, hand the buffer data to Three.js, render in a `<canvas>`. This chapter covers the conversion pipeline, the buffer format, materials, and shadow / outline patterns common in CAD UIs.
+brepjs is the kernel; Three.js is the renderer. The combination is the standard CAD-on-the-web stack: model with brepjs, mesh, hand the buffer data to Three.js, render in a `<canvas>`. This chapter covers the conversion pipeline, the buffer format, materials, and shadow / outline patterns common in CAD UIs.
 
 ## The pipeline
 
@@ -195,7 +195,7 @@ const lineMaterial = new THREE.LineBasicMaterial({ color: 0x111111 });
 const lines = new THREE.LineSegments(edges, lineMaterial);
 ```
 
-Quick, fully Three.js native, but only finds creases above the angle threshold — smooth filleted edges may disappear.
+Quick, fully Three.js native, but only finds creases above the angle threshold; smooth filleted edges may disappear.
 
 ### brepjs edge meshing (kernel-side)
 
@@ -238,11 +238,11 @@ Combine with a good environment map (e.g. `RGBELoader` HDRi) for realistic refle
 
 - **Re-meshing every frame**: cache the mesh on the brepjs side; only re-mesh when the shape changes.
 - **High-tolerance meshes for distant parts**: mesh at 1 mm tolerance for previews, only refine for the active selection.
-- **Disposing the wrong thing**: dispose Three.js `BufferGeometry`, `Material`, `Mesh` separately when removing — Three.js does not auto-clean.
+- **Disposing the wrong thing**: dispose Three.js `BufferGeometry`, `Material`, `Mesh` separately when removing; Three.js does not auto-clean.
 - **Forgetting brepjs disposal**: meshing allocates a brepjs-side handle. Use `using` or `withScope` to release it.
 
 ## Next steps
 
-- [React Three Fiber](./r3f) — the same pipeline expressed declaratively in React
-- [Web Workers](../advanced/workers) — meshing in a worker to keep the render thread cool
-- [Vite, Next.js, Astro](./frameworks) — bundler and framework specifics
+- [React Three Fiber](./r3f): the same pipeline expressed declaratively in React
+- [Web Workers](../advanced/workers): meshing in a worker to keep the render thread cool
+- [Vite, Next.js, Astro](./frameworks): bundler and framework specifics

@@ -5,17 +5,17 @@ description: 'Every B-Rep shape has a tolerance below which two points are the s
 
 # Tolerance and Validity
 
-Every B-Rep shape has a **tolerance** — a small distance below which the kernel treats two points as the same point and two surfaces as touching. Tolerance is fundamental: pick it too large and your shape's edges stop meeting; pick it too small and floating-point noise produces invalidity. This chapter explains what the tolerance is, how brepjs surfaces it, what `BRepCheck` validates, and when to call `autoHeal`.
+Every B-Rep shape has a **tolerance**: a small distance below which the kernel treats two points as the same point and two surfaces as touching. Tolerance is fundamental: pick it too large and your shape's edges stop meeting; pick it too small and floating-point noise produces invalidity. This chapter explains what the tolerance is, how brepjs surfaces it, what `BRepCheck` validates, and when to call `autoHeal`.
 
 ## What tolerance means
 
-When the kernel builds a face from a wire, it doesn't require the wire to close _exactly_ — it requires it to close within a tolerance ε. Two adjacent edges share a vertex if their endpoints are within ε. Two adjacent faces share an edge if the edge curves are within ε along their length. The kernel uses tolerance everywhere — every operation, every check.
+When the kernel builds a face from a wire, it doesn't require the wire to close _exactly_; it requires it to close within a tolerance ε. Two adjacent edges share a vertex if their endpoints are within ε. Two adjacent faces share an edge if the edge curves are within ε along their length. The kernel uses tolerance everywhere: every operation, every check.
 
 The default tolerance for OpenCascade is `1e-7` (0.0000001 mm). For most parametric parts at millimetre scale this is fine; floating-point precision is around `1e-15` for double-precision numbers, so tolerance can be much smaller than your geometry without running out of headroom. Working in micrometres or below changes the calculus.
 
 ## Where tolerance shows up
 
-You typically don't set tolerance — operations propagate it from inputs to outputs, and the kernel adjusts as needed. The places where tolerance is exposed:
+You typically don't set tolerance; operations propagate it from inputs to outputs, and the kernel adjusts as needed. The places where tolerance is exposed:
 
 ### Mesh tolerance
 
@@ -27,7 +27,7 @@ const m = shape(b).mesh({ tolerance: 0.01 }); // smaller = more triangles
 console.log('Triangles:', m.indices.length / 3);
 ```
 
-This is the **mesh** tolerance, not the geometric tolerance — how close the triangulation has to be to the exact surface. Smaller tolerance produces denser meshes. The default is reasonable for screen-size rendering; reduce it for closeup zoom or 3D printing.
+This is the **mesh** tolerance, not the geometric tolerance: how close the triangulation has to be to the exact surface. Smaller tolerance produces denser meshes. The default is reasonable for screen-size rendering; reduce it for closeup zoom or 3D printing.
 
 ### Boolean tolerance hints
 
@@ -48,7 +48,7 @@ void healed;
 
 ## What `BRepCheck` validates
 
-When a primitive returns `ValidSolid`, that means the shape passed `BRepCheck` — OpenCascade's validity checker. Concretely, `BRepCheck` verifies:
+When a primitive returns `ValidSolid`, that means the shape passed `BRepCheck`, OpenCascade's validity checker. Concretely, `BRepCheck` verifies:
 
 | Check                   | Failure means                                                            |
 | ----------------------- | ------------------------------------------------------------------------ |
@@ -68,7 +68,7 @@ Three common situations:
 
 ### 1. Imported shapes from third-party formats
 
-STEP, IGES, BREP, and especially STL imports often arrive with minor invalidity — gaps between adjacent faces, edges with the wrong precision, vertices that don't quite match. Always run `autoHeal` on imported shapes before using them in operations:
+STEP, IGES, BREP, and especially STL imports often arrive with minor invalidity: gaps between adjacent faces, edges with the wrong precision, vertices that don't quite match. Always run `autoHeal` on imported shapes before using them in operations:
 
 ```typescript
 import { importSTEP, autoHeal, unwrap } from 'brepjs/quick';
@@ -81,7 +81,7 @@ void ready;
 
 ### 2. Operations near coincident geometry
 
-When two faces are _almost_ coplanar but not quite, the boolean kernel can produce slivers — tiny faces that aren't really there. The result still passes `BRepCheck` but is geometrically suspect. Running `autoHeal` afterwards consolidates them.
+When two faces are _almost_ coplanar but not quite, the boolean kernel can produce slivers: tiny faces that aren't really there. The result still passes `BRepCheck` but is geometrically suspect. Running `autoHeal` afterwards consolidates them.
 
 ### 3. Bad parameter choices
 
@@ -98,11 +98,11 @@ const b = box(10, 10, 10);
 console.log('Tolerance:', getShapeTolerance(b)); // ~1e-7
 ```
 
-For sub-shapes, the tolerance can vary across an edge or face — `getShapeTolerance` returns the maximum.
+For sub-shapes, the tolerance can vary across an edge or face; `getShapeTolerance` returns the maximum.
 
 ## `autoHeal` short-circuits valid shapes
 
-A subtle but important behaviour: if you call `autoHeal` on a shape that already passes `BRepCheck`, the function short-circuits and returns the input unchanged, with `report.alreadyValid = true`. **No sew, heal, or fix diagnostics run.** This is a performance optimisation — there's nothing to do — but it means you can't use `autoHeal` to "force a recheck" of a valid shape.
+A subtle but important behaviour: if you call `autoHeal` on a shape that already passes `BRepCheck`, the function short-circuits and returns the input unchanged, with `report.alreadyValid = true`. **No sew, heal, or fix diagnostics run.** This is a performance optimisation (there's nothing to do) but it means you can't use `autoHeal` to "force a recheck" of a valid shape.
 
 To force a full re-validation:
 
@@ -126,12 +126,12 @@ if (!report.valid) {
 Two scenarios that show up in real apps:
 
 - **Sub-millimetre scale**: working in micrometres with default tolerance `1e-7` (which is now `1e-7` micrometres = `1e-13` of your unit). The kernel may treat distinct points as identical. Switch units to millimetres at construction time and scale at export.
-- **Very large parts**: working at kilometre scale stresses tolerance the other way — `1e-7` mm relative to a kilometre is `1e-13` relative precision, fine for IEEE-754, but boolean operations on large coordinate values do lose precision. Translate the part near the origin, operate, translate back.
+- **Very large parts**: working at kilometre scale stresses tolerance the other way. `1e-7` mm relative to a kilometre is `1e-13` relative precision, fine for IEEE-754, but boolean operations on large coordinate values do lose precision. Translate the part near the origin, operate, translate back.
 
 When in doubt: keep your geometry within ~10⁰ to 10⁴ in your chosen units, and tolerance takes care of itself.
 
 ## Next steps
 
-- [Healing & Sewing](../advanced/healing) — `autoHeal`, `sew`, manual repair workflows
-- [Error Codes](../reference/errors) — what `INVALID_SHAPE` and tolerance-related codes mean
-- [Boolean Operations](../tasks/booleans) — the operation most sensitive to tolerance
+- [Healing & Sewing](../advanced/healing): `autoHeal`, `sew`, manual repair workflows
+- [Error Codes](../reference/errors): what `INVALID_SHAPE` and tolerance-related codes mean
+- [Boolean Operations](../tasks/booleans): the operation most sensitive to tolerance

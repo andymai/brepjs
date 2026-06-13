@@ -71,7 +71,7 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 
 | Doc                         | What it answers                                      |
 | --------------------------- | ---------------------------------------------------- |
-| `CLAUDE.md`                 | Rules, patterns, commands — read first               |
+| `CLAUDE.md`                 | Rules, patterns, commands; read first                |
 | `docs/function-lookup.md`   | "Where is function X exported from?" (381+ symbols)  |
 | `docs/architecture.md`      | Layer diagrams, data flow, key patterns              |
 | `docs/errors.md`            | All error codes with recovery hints                  |

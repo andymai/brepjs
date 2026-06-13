@@ -1,6 +1,6 @@
 # Query
 
-**Layer 2** — Functional immutable finders for edges, faces, and corners.
+**Layer 2**: Functional immutable finders for edges, faces, and corners.
 
 ```mermaid
 graph TB
@@ -58,9 +58,9 @@ finder
 
 ## Gotchas
 
-1. **Immutable finders** — Each filter call returns a new finder instance; chain calls or save intermediate results
-2. **Unique mode errors** — `findUnique(shape)` returns `Result<T>` and errors if 0 or >1 match found
-3. **cornerFinder operates on 2D** — Works on `BlueprintLike` objects (2D sketches), not 3D shapes
-4. **Direction shortcuts** — Accepts `'X' | 'Y' | 'Z'` strings or `Vec3` tuples like `[1, 0, 0]`
-5. **Angle tolerance** — Direction/plane filters use 1e-6 radian tolerance for floating-point safety
-6. **Edge tangents may fail** — Degenerate edges lack valid tangents; filters receive `normal: null` and should handle gracefully
+1. **Immutable finders**: Each filter call returns a new finder instance; chain calls or save intermediate results
+2. **Unique mode errors**: `findUnique(shape)` returns `Result<T>` and errors if 0 or >1 match found
+3. **cornerFinder operates on 2D**: Works on `BlueprintLike` objects (2D sketches), not 3D shapes
+4. **Direction shortcuts**: Accepts `'X' | 'Y' | 'Z'` strings or `Vec3` tuples like `[1, 0, 0]`
+5. **Angle tolerance**: Direction/plane filters use 1e-6 radian tolerance for floating-point safety
+6. **Edge tangents may fail**: Degenerate edges lack valid tangents; filters receive `normal: null` and should handle gracefully

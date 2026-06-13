@@ -5,7 +5,7 @@ description: 'Per-framework recipes for Vite, Next.js, Astro, SvelteKit. Where t
 
 # Vite, Next.js, Astro
 
-brepjs is just a JS library — `npm install` and import. The wrinkles are bundler-specific: where the WASM file goes, when it loads, whether your framework runs the code on a server (which can't run WASM) or only in the browser (which can). This chapter has the per-framework recipes.
+brepjs is just a JS library: `npm install` and import. The wrinkles are bundler-specific: where the WASM file goes, when it loads, whether your framework runs the code on a server (which can't run WASM) or only in the browser (which can). This chapter has the per-framework recipes.
 
 ## Vite (the easy case)
 
@@ -91,7 +91,7 @@ export default function CadPage() {
 }
 ```
 
-`ssr: false` is the magic — Next.js skips this component during render and loads it only on the client.
+`ssr: false` is the magic: Next.js skips this component during render and loads it only on the client.
 
 ### `next.config.js` adjustments
 
@@ -154,7 +154,7 @@ export default function BrepViewer() {
 
 ## Nuxt 3
 
-Same pattern as Next.js — wrap the brepjs-using component as client-only:
+Same pattern as Next.js: wrap the brepjs-using component as client-only:
 
 <!-- @no-test -->
 
@@ -216,11 +216,11 @@ For routes that should never SSR-render the brepjs component at all, factor the 
 
 ## Cloudflare Workers / Deno / Bun
 
-brepjs is just WASM + JS — these runtimes work for batch jobs (build a STEP file, return it as a response). The constraints:
+brepjs is just WASM + JS: these runtimes work for batch jobs (build a STEP file, return it as a response). The constraints:
 
-- **No DOM** — anything assuming `window`, `document`, or browser globals fails. brepjs's core doesn't use these, but the playground site does.
-- **Memory limits** — workers have caps (Cloudflare: 128 MB by default). Heavy operations may need bumping.
-- **Bundle size** — WASM is ~3 MB compressed. Cloudflare's bundle budget allows this; some embedded runtimes don't.
+- **No DOM**: anything assuming `window`, `document`, or browser globals fails. brepjs's core doesn't use these, but the playground site does.
+- **Memory limits**: workers have caps (Cloudflare: 128 MB by default). Heavy operations may need bumping.
+- **Bundle size**: WASM is ~3 MB compressed. Cloudflare's bundle budget allows this; some embedded runtimes don't.
 
 For server-side STEP generation in Cloudflare:
 
@@ -244,7 +244,7 @@ export default {
 
 Some bundler configurations don't enable top-level await by default. Either:
 
-- Update the bundler config (Vite, webpack 5+, esbuild — all support it).
+- Update the bundler config (Vite, webpack 5+, esbuild, all support it).
 - Switch from `import 'brepjs/quick'` to `await init()` inside an async function.
 
 ### "WASM file 404" in production
@@ -272,10 +272,10 @@ For multi-threaded WASM (e.g. OpenCascade with pthreads), you need cross-origin 
 }
 ```
 
-The brepjs playground uses single-threaded WASM by default, which doesn't need this — but if you switch to the threaded build, COOP/COEP becomes required.
+The brepjs playground uses single-threaded WASM by default, which doesn't need this, but if you switch to the threaded build, COOP/COEP becomes required.
 
 ## Next steps
 
-- [Compatibility Matrix](./compatibility) — exact tested versions for each framework
-- [Web Workers](../advanced/workers) — bundler-specific worker setup
-- [Three.js](./threejs) and [React Three Fiber](./r3f) — what to do with the meshed output
+- [Compatibility Matrix](./compatibility): exact tested versions for each framework
+- [Web Workers](../advanced/workers): bundler-specific worker setup
+- [Three.js](./threejs) and [React Three Fiber](./r3f): what to do with the meshed output

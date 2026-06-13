@@ -1,6 +1,6 @@
 ---
 title: Design Decisions
-description: 'Index of architectural decision records — short ADRs explaining context, choice, alternatives, and consequences for major decisions.'
+description: 'Index of architectural decision records: short ADRs explaining context, choice, alternatives, and consequences for major decisions.'
 ---
 
 # Design Decisions
@@ -9,9 +9,9 @@ The brepjs repository tracks architectural decision records (ADRs) under `docs/d
 
 ## Why ADRs
 
-Architecture decisions accumulate over a project's lifetime. Without records, future contributors (and future me) have to reverse-engineer the decision from the code, often missing the context that justified it. ADRs make the rationale durable — they survive when the original author forgets, leaves, or simply moves on.
+Architecture decisions accumulate over a project's lifetime. Without records, future contributors (and future me) have to reverse-engineer the decision from the code, often missing the context that justified it. ADRs make the rationale durable: they survive when the original author forgets, leaves, or simply moves on.
 
-The brepjs ADRs are intentionally short — typically a page or two each. Longer than a comment, shorter than a chapter.
+The brepjs ADRs are intentionally short, typically a page or two each. Longer than a comment, shorter than a chapter.
 
 ## The ADRs
 
@@ -70,23 +70,23 @@ Roughly: when a decision affects more than one module, when there's a real alter
 - Choosing between two approaches with different long-term consequences (e.g. "should tolerance be a type parameter or a runtime field?")
 - Defining a public API contract (e.g. "what's the canonical surface for query operations?")
 
-Don't write an ADR for routine code changes — bug fixes, performance improvements, dependency bumps. The git history is enough for those.
+Don't write an ADR for routine code changes: bug fixes, performance improvements, dependency bumps. The git history is enough for those.
 
 ## Reading order
 
 If you want to understand the brepjs architecture from first principles:
 
-1. **0001 — Layered architecture** — the foundation
-2. **0002 — Kernel abstraction** — why the kernel is replaceable
-3. **0003 — Branded types** — the type-system foundation
-4. **0004 — Phantom dimension types** — extends 0003 for 2D/3D safety
-5. **0005 — Topological validity types** + **0011 — Geometric validity brands** — the validity layer
-6. **0006 — Domain boundaries** + **0008, 0010 — audits** — what's in each module
+1. **0001: Layered architecture**: the foundation
+2. **0002: Kernel abstraction**: why the kernel is replaceable
+3. **0003: Branded types**: the type-system foundation
+4. **0004: Phantom dimension types**: extends 0003 for 2D/3D safety
+5. **0005: Topological validity types** + **0011: Geometric validity brands**: the validity layer
+6. **0006: Domain boundaries** + **0008, 0010: audits**: what's in each module
 
 The rest are deeper drills into specific subsystems.
 
 ## Next steps
 
-- [Architecture & Layers](../extending/architecture) — the user-facing summary of these decisions
-- [Types That Prove Geometry Is Valid](../concepts/types) — the type system the ADRs justify
-- [GitHub repository](https://github.com/andymai/brepjs) — for the latest ADRs
+- [Architecture & Layers](../extending/architecture): the user-facing summary of these decisions
+- [Types That Prove Geometry Is Valid](../concepts/types): the type system the ADRs justify
+- [GitHub repository](https://github.com/andymai/brepjs): for the latest ADRs

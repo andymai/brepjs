@@ -5,7 +5,7 @@ description: 'Every fallible brepjs operation returns Result<T, BrepError> inste
 
 # Result and Errors
 
-Every fallible operation in brepjs — every boolean, every fillet, every import, every export — returns a `Result<T, BrepError>` instead of throwing. This chapter explains why, how to handle it, and the patterns that keep error handling clean.
+Every fallible operation in brepjs (every boolean, every fillet, every import, every export) returns a `Result<T, BrepError>` instead of throwing. This chapter explains why, how to handle it, and the patterns that keep error handling clean.
 
 ## What `Result<T, E>` is
 
@@ -15,11 +15,11 @@ type Result<T, E = BrepError> = { ok: true; value: T } | { ok: false; error: E }
 
 A discriminated union with two cases. Either the operation succeeded (`ok: true` with a `value`) or it failed (`ok: false` with an `error`). TypeScript narrows the union based on `ok`, so once you check, the value or error is concretely typed.
 
-This is the same pattern used by Rust's `Result`, Haskell's `Either`, and a thousand other type systems that take error handling seriously. brepjs adopts it because boolean operations on B-Rep shapes are _fundamentally_ fallible — they can fail on near-coincident geometry, on invalid inputs, on tolerance issues — and a thrown exception buries the error several stack frames up from where the user can do anything useful with it.
+This is the same pattern used by Rust's `Result`, Haskell's `Either`, and a thousand other type systems that take error handling seriously. brepjs adopts it because boolean operations on B-Rep shapes are _fundamentally_ fallible (they can fail on near-coincident geometry, on invalid inputs, on tolerance issues) and a thrown exception buries the error several stack frames up from where the user can do anything useful with it.
 
 ## The four ways to handle a Result
 
-### 1. `unwrap` — for scripts and tests
+### 1. `unwrap`: for scripts and tests
 
 ```typescript
 import { box, cylinder, cut, unwrap } from 'brepjs/quick';
@@ -28,9 +28,9 @@ const part = unwrap(cut(box(20, 20, 20), cylinder(5, 25)));
 console.log('Cut succeeded');
 ```
 
-`unwrap()` extracts the value or throws on error. Use it in scripts, examples, and tests — places where a thrown exception is the right outcome on failure. **Do not use it in production code paths** where you want to recover or surface an error.
+`unwrap()` extracts the value or throws on error. Use it in scripts, examples, and tests, places where a thrown exception is the right outcome on failure. **Do not use it in production code paths** where you want to recover or surface an error.
 
-### 2. `isOk` / `isErr` — for control flow
+### 2. `isOk` / `isErr`: for control flow
 
 ```typescript
 import { box, cylinder, cut, isOk } from 'brepjs/quick';
@@ -46,23 +46,23 @@ if (isOk(result)) {
 }
 ```
 
-The most common pattern. Read the error fields and decide what to do — fall back, retry with adjusted parameters, surface to the user.
+The most common pattern. Read the error fields and decide what to do: fall back, retry with adjusted parameters, surface to the user.
 
-### 3. `match` — for exhaustive both-arms handling
+### 3. `match`: for exhaustive both-arms handling
 
 ```typescript
 import { box, cylinder, cut, match, measureVolume, unwrap } from 'brepjs/quick';
 
 const summary = match(cut(box(20, 20, 20), cylinder(5, 25)), {
   ok: (s) => `Volume: ${unwrap(measureVolume(s)).toFixed(2)} mm³`,
-  err: (e) => `Failed: ${e.code} — ${e.suggestion ?? 'no suggestion'}`,
+  err: (e) => `Failed: ${e.code}: ${e.suggestion ?? 'no suggestion'}`,
 });
 console.log(summary);
 ```
 
-Equivalent to the `if/else`, but expression-shaped — both arms produce a value of the same type. Useful when you want a single value out of the operation.
+Equivalent to the `if/else`, but expression-shaped; both arms produce a value of the same type. Useful when you want a single value out of the operation.
 
-### 4. The fluent wrapper — auto-unwrap
+### 4. The fluent wrapper: auto-unwrap
 
 ```typescript
 import { shape, box, cylinder, BrepWrapperError } from 'brepjs/quick';
@@ -83,7 +83,7 @@ The `shape()` wrapper automatically unwraps every operation in the chain. Failur
 
 ```typescript
 type BrepError = {
-  code: string; // stable identifier — e.g. 'BOOLEAN_NO_OVERLAP'
+  code: string; // stable identifier, e.g. 'BOOLEAN_NO_OVERLAP'
   message: string; // human-readable description
   suggestion?: string; // actionable recovery advice when available
   cause?: unknown; // underlying kernel error if applicable
@@ -92,8 +92,8 @@ type BrepError = {
 
 The most useful fields:
 
-- **`code`** — stable across releases. Switch on this for programmatic recovery (`if (e.code === 'FILLET_TOO_LARGE')`).
-- **`suggestion`** — when the kernel returns a known failure mode, brepjs adds a one-line suggestion. Surface this to users when you can.
+- **`code`**: stable across releases. Switch on this for programmatic recovery (`if (e.code === 'FILLET_TOO_LARGE')`).
+- **`suggestion`**: when the kernel returns a known failure mode, brepjs adds a one-line suggestion. Surface this to users when you can.
 
 See [Error Codes](../reference/errors) for the full list.
 
@@ -157,7 +157,7 @@ match(result, {
 
 Three reasons:
 
-1. **Visibility in signatures.** A function that returns `Result<T, BrepError>` is visibly fallible. A function that returns `T` and might throw is not — you have to read the implementation or remember.
+1. **Visibility in signatures.** A function that returns `Result<T, BrepError>` is visibly fallible. A function that returns `T` and might throw is not. You have to read the implementation or remember.
 2. **No silent catches.** `try/catch` around a thrown error catches _every_ error, including programmer mistakes. `Result` requires you to handle the named failure mode and lets unexpected errors propagate.
 3. **Composition.** Sequencing fallible operations is direct with `Result` (chain `match` calls or use `unwrap` in a script). With exceptions, every step needs a `try/catch` if you want to recover at granularity.
 
@@ -182,6 +182,6 @@ console.log('Final shape produced');
 
 ## Next steps
 
-- [Error Codes](../reference/errors) — every error code and its recovery pattern
-- [Healing & Sewing](../advanced/healing) — repairing shapes that don't pass `BRepCheck`
-- [Boolean Operations](../tasks/booleans) — the most common source of `Result` failures and how to read them
+- [Error Codes](../reference/errors): every error code and its recovery pattern
+- [Healing & Sewing](../advanced/healing): repairing shapes that don't pass `BRepCheck`
+- [Boolean Operations](../tasks/booleans): the most common source of `Result` failures and how to read them

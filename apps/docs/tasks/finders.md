@@ -1,11 +1,11 @@
 ---
 title: Finders & Queries
-description: 'edgeFinder, faceFinder, wireFinder, vertexFinder — composable filters that pick exactly the topology your next operation needs.'
+description: 'edgeFinder, faceFinder, wireFinder, vertexFinder: composable filters that pick exactly the topology your next operation needs.'
 ---
 
 # Finders & Queries
 
-You build a part, then you need to do something to a specific feature: round the vertical edges, shell the top face, find the corner where two boolean operations met. Finders are how you select features. They are filters that compose — you start with "all edges of this shape" and narrow down by direction, length, curve type, position, or any combination.
+You build a part, then you need to do something to a specific feature: round the vertical edges, shell the top face, find the corner where two boolean operations met. Finders are how you select features. They are filters that compose: you start with "all edges of this shape" and narrow down by direction, length, curve type, position, or any combination.
 
 ## The four finders
 
@@ -27,7 +27,7 @@ console.log({
 });
 ```
 
-`findAll` returns an array. `find` returns the first match (or `undefined`). Filters chain — every call narrows the result.
+`findAll` returns an array. `find` returns the first match (or `undefined`). Filters chain; every call narrows the result.
 
 ## Filter vocabulary
 
@@ -41,7 +41,7 @@ import { box, edgeFinder, faceFinder } from 'brepjs/quick';
 const b = box(30, 20, 10);
 
 edgeFinder().inDirection('Z').findAll(b); // edges parallel to Z
-edgeFinder().inDirection([1, 1, 0]).findAll(b); // edges along (1,1,0) — none in a box
+edgeFinder().inDirection([1, 1, 0]).findAll(b); // edges along (1,1,0), none in a box
 faceFinder().inDirection('Z').findAll(b); // top + bottom faces
 faceFinder().inDirection([0, 0, -1]).findAll(b); // bottom face only (negative Z normal)
 ```
@@ -92,7 +92,7 @@ const cyl = sketchCircle(10).extrude(20);
 faceFinder().ofSurfaceType('PLANE').findAll(cyl); // 2 (top, bottom)
 faceFinder().ofSurfaceType('CYLINDER').findAll(cyl); // 1 (side)
 
-edgeFinder().ofCurveType('LINE').findAll(cyl); // 0 — sketchCircle has no straight edges
+edgeFinder().ofCurveType('LINE').findAll(cyl); // 0, sketchCircle has no straight edges
 edgeFinder().ofCurveType('CIRCLE').findAll(cyl); // 2
 ```
 
@@ -143,7 +143,7 @@ const topVerticals = edgeFinder()
 console.log('Found', topVerticals.length, 'edges'); // 4 vertical edges
 ```
 
-Order doesn't matter for correctness — filters are additive — but for performance, put the most-selective filter first if you have many candidates.
+Order doesn't matter for correctness (filters are additive) but for performance, put the most-selective filter first if you have many candidates.
 
 ## With the fluent wrapper
 
@@ -176,7 +176,7 @@ const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 12, { at: [15, 10, -1] }
 // Vertical edges include the hole's edges. Filter by length to exclude them.
 const externalVerticals = edgeFinder()
   .inDirection('Z')
-  .withLength({ min: 9.5 }) // hole edges are 12mm but the box edges are 10mm — adjust filter
+  .withLength({ min: 9.5 }) // hole edges are 12mm but the box edges are 10mm, adjust filter
   .findAll(drilled);
 const filleted = unwrap(fillet(drilled, externalVerticals, 1));
 
@@ -213,7 +213,7 @@ const base = box(40, 40, 5);
 const boss = sketchCircle(8).extrude(10).translate([20, 20, 5]);
 const part = unwrap(fuse(base, boss));
 
-// "The cylindrical face" — easy
+// "The cylindrical face": easy
 const bossSide = faceFinder().ofSurfaceType('CYLINDER').findAll(part)[0];
 console.log('Found boss cylindrical face');
 void bossSide;
@@ -226,8 +226,8 @@ Surface type, area range, and direction together usually pin down a specific fac
 ## What finders don't do
 
 - They don't index by any kind of stable ID. Edge handles are bound to the shape they were found on; after an operation transforms the shape, the handles are stale.
-- They don't traverse compounds across kernel boundaries — finders look at one shape at a time.
-- They are not topology-aware in the sense of "edges connected to face X" — for that, use `edgesOfFace(face)` from `brepjs/topology`.
+- They don't traverse compounds across kernel boundaries; finders look at one shape at a time.
+- They are not topology-aware in the sense of "edges connected to face X"; for that, use `edgesOfFace(face)` from `brepjs/topology`.
 
 ## Edges have direction; finders sometimes don't care
 
@@ -235,6 +235,6 @@ Surface type, area range, and direction together usually pin down a specific fac
 
 ## Next steps
 
-- [Fillets & Chamfers](./fillets) — the operation finders are most often used for
-- [Measurement](./measurement) — measuring the entities you found
-- [The Topology Hierarchy](../concepts/topology) — what each finder operates on
+- [Fillets & Chamfers](./fillets): the operation finders are most often used for
+- [Measurement](./measurement): measuring the entities you found
+- [The Topology Hierarchy](../concepts/topology): what each finder operates on

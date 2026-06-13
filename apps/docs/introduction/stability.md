@@ -11,9 +11,9 @@ brepjs is at major version 18. The OpenCascade kernel is production-ready and po
 
 brepjs follows [Semantic Versioning](https://semver.org/). The version number is `MAJOR.MINOR.PATCH`:
 
-- **PATCH** — bug fixes, internal refactors, performance improvements that do not change observed behaviour
-- **MINOR** — new exports, new methods, new error codes, new parameters with safe defaults; backwards-compatible
-- **MAJOR** — removals, signature changes, behavioural changes, kernel-version bumps that change geometric output
+- **PATCH**: bug fixes, internal refactors, performance improvements that do not change observed behaviour
+- **MINOR**: new exports, new methods, new error codes, new parameters with safe defaults; backwards-compatible
+- **MAJOR**: removals, signature changes, behavioural changes, kernel-version bumps that change geometric output
 
 What counts as a breaking change:
 
@@ -38,7 +38,7 @@ Breaking changes ship under conventional commit prefix `feat!:` or `fix!:` and a
 | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Node.js 24+                                               | Supported (CI tested)                                                           |
 | Modern browsers (Chrome 113+, Firefox 113+, Safari 16.4+) | Supported                                                                       |
-| Cloudflare Workers / Deno                                 | Untested but expected to work — WASM-only                                       |
+| Cloudflare Workers / Deno                                 | Untested but expected to work, WASM-only                                        |
 | TypeScript 5.9+                                           | Recommended (for `using` syntax and stricter branded types)                     |
 | TypeScript 5.0+                                           | Supported with workarounds (use `DisposalScope` instead of `using`)             |
 | Server-side rendering                                     | Client-only; see [Compatibility](../integration/compatibility) for SSR patterns |
@@ -54,7 +54,7 @@ The `using` keyword (TypeScript 5.2+, browsers/Node since 2024) is the recommend
 | 16.x           | `occt-wasm` 2.x or `brepjs-opencascade` 0.13–0.16 | `brepkit-wasm` 2.x        |
 | 15.x           | `brepjs-opencascade` 0.12–0.15                    | `brepkit-wasm` 1.x or 2.x |
 
-A kernel version bump is treated as a breaking change for brepjs even if the brepjs API is unchanged — geometric output can shift between kernel versions.
+A kernel version bump is treated as a breaking change for brepjs even if the brepjs API is unchanged; geometric output can shift between kernel versions.
 
 ## Deprecation policy
 
@@ -71,24 +71,24 @@ The legacy class-based API (`Shape`, `Solid`, `Edge`, `Face` classes in `src/top
 
 These surfaces may change without a major bump:
 
-- Internal-only modules under `src/kernel/occt/` and `src/kernel/brepkit/` — only the `KernelInterface` from `src/kernel/types.ts` is public-stable
+- Internal-only modules under `src/kernel/occt/` and `src/kernel/brepkit/`; only the `KernelInterface` from `src/kernel/types.ts` is public-stable
 - Pattern checker baseline and rule set
 - The exact wording of error messages (codes are stable; messages may improve)
-- The structure of internal `.wrapped` handles — Layer 2+ code must never touch them
+- The structure of internal `.wrapped` handles; Layer 2+ code must never touch them
 
 ## Release cadence
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please) — every commit on `main` that follows Conventional Commits accumulates into the next version. Patch releases are typically weekly when fixes accumulate; minor releases land as features ship; majors are rare and announced in advance.
+Releases are managed by [release-please](https://github.com/googleapis/release-please); every commit on `main` that follows Conventional Commits accumulates into the next version. Patch releases are typically weekly when fixes accumulate; minor releases land as features ship; majors are rare and announced in advance.
 
 See `CHANGELOG.md` in the repository for the full history.
 
 ## Reporting bugs
 
-- **Bug reports**: [github.com/andymai/brepjs/issues](https://github.com/andymai/brepjs/issues) — include a minimal reproduction, ideally a playground link
+- **Bug reports**: [github.com/andymai/brepjs/issues](https://github.com/andymai/brepjs/issues); include a minimal reproduction, ideally a playground link
 - **Security**: see `SECURITY.md` in the repository
 
 ## Next steps
 
-- [What brepjs is NOT](./non-goals) — explicit non-goals before adoption
-- [Compatibility Matrix](../integration/compatibility) — tested environments in detail
-- [Custom Kernels](../extending/custom-kernel) — how to swap or write your own kernel
+- [What brepjs is NOT](./non-goals): explicit non-goals before adoption
+- [Compatibility Matrix](../integration/compatibility): tested environments in detail
+- [Custom Kernels](../extending/custom-kernel): how to swap or write your own kernel

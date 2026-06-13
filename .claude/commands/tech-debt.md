@@ -1,6 +1,6 @@
 # Tech Debt Reduction
 
-You are working on this codebase to systematically reduce tech debt. Each session, pick **one item** from the GitHub issue backlog and complete it as a standalone PR. Work incrementally — ship small, safe changes.
+You are working on this codebase to systematically reduce tech debt. Each session, pick **one item** from the GitHub issue backlog and complete it as a standalone PR. Work incrementally; ship small, safe changes.
 
 ## Before Starting
 
@@ -39,7 +39,7 @@ You are working on this codebase to systematically reduce tech debt. Each sessio
 ### Refactoring large files/modules
 
 - Read the existing file completely before restructuring
-- Preserve the public interface exactly — external imports must not change
+- Preserve the public interface exactly; external imports must not change
 - Move code into submodules incrementally; verify the build after each move
 - Check that all consuming code still compiles without changes
 
@@ -53,7 +53,7 @@ You are working on this codebase to systematically reduce tech debt. Each sessio
 
 - Check the changelog for breaking changes before upgrading
 - Pin to a specific version in the PR; widen the range only after tests pass
-- Run the full test suite — not just affected tests — after dependency changes
+- Run the full test suite (not just affected tests) after dependency changes
 
 ---
 
@@ -71,8 +71,8 @@ When starting an item, assign yourself. When the PR merges, close the issue.
 
 ## Ground Rules
 
-- **One item per PR** — keep changes reviewable
-- **No behavioral changes** — tech debt PRs must not change functionality
-- **Tests must pass** — `npm run validate` is the minimum bar
-- **Coverage must not drop** — check `npm run test:full` thresholds
-- **Don't boil the ocean** — if an item is larger than expected, split it further
+- **One item per PR**: keep changes reviewable
+- **No behavioral changes**: tech debt PRs must not change functionality
+- **Tests must pass**: `npm run validate` is the minimum bar
+- **Coverage must not drop**: check `npm run test:full` thresholds
+- **Don't boil the ocean**: if an item is larger than expected, split it further

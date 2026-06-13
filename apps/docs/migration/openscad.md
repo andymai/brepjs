@@ -5,7 +5,7 @@ description: 'Switching from OpenSCAD to brepjs: TypeScript instead of a DSL, ex
 
 # Coming from OpenSCAD
 
-[OpenSCAD](https://openscad.org/) is many people's first code-CAD tool — small, focused, two decades of history. brepjs is a different beast: TypeScript instead of OpenSCAD's custom DSL, B-Rep instead of CSG-tree-of-meshes, exact mathematical surfaces instead of polygon approximations, browser-native instead of desktop-only. If you've outgrown OpenSCAD or want to ship a parametric configurator on the web, this chapter is the bridge.
+[OpenSCAD](https://openscad.org/) is many people's first code-CAD tool: small, focused, two decades of history. brepjs is a different beast: TypeScript instead of OpenSCAD's custom DSL, B-Rep instead of CSG-tree-of-meshes, exact mathematical surfaces instead of polygon approximations, browser-native instead of desktop-only. If you've outgrown OpenSCAD or want to ship a parametric configurator on the web, this chapter is the bridge.
 
 ## What's the same
 
@@ -18,7 +18,7 @@ description: 'Switching from OpenSCAD to brepjs: TypeScript instead of a DSL, ex
 
 - **Exact B-Rep, not CSG-of-meshes.** OpenSCAD computes a CSG tree at the end and produces a triangle mesh. Every operation in brepjs operates on exact surfaces and produces a B-Rep shape. Booleans are exact, fillets are real, STEP export round-trips with desktop CAD.
 - **TypeScript.** You get type checking, autocomplete, and the standard JS/TS ecosystem (npm, bundlers, frameworks, libraries).
-- **Browser-native.** Ship a configurator as a web app — no install, no separate viewer.
+- **Browser-native.** Ship a configurator as a web app, no install, no separate viewer.
 - **Real fillets and shells.** OpenSCAD has the `minkowski` hack for rounding. brepjs has first-class `fillet`, `chamfer`, `shell`.
 - **Industry-format export.** STEP for desktop CAD round-trip, glTF for web rendering, IGES for legacy tools, 3MF for modern slicers.
 
@@ -74,7 +74,7 @@ For multi-shape unions, prefer `fuseAll([a, b, c])` over chained `fuse`.
 
 ### Refinement (no OpenSCAD equivalents)
 
-These have no native OpenSCAD analogue — `minkowski` is the closest people use:
+These have no native OpenSCAD analogue; `minkowski` is the closest people use:
 
 | OpenSCAD                                    | brepjs                                             |
 | ------------------------------------------- | -------------------------------------------------- |
@@ -179,8 +179,8 @@ Two more lines than the SCAD version. In return: type-safe parameters, `.tsx` if
 If you have an existing OpenSCAD model:
 
 1. Identify the parameters (top-level variables in the SCAD file). These become TypeScript constants.
-2. Identify the primitives — translate to `box`, `cylinder`, `sphere`.
-3. Identify the boolean tree — flatten to `fuseAll` / `cutAll` where possible.
+2. Identify the primitives. Translate to `box`, `cylinder`, `sphere`.
+3. Identify the boolean tree. Flatten to `fuseAll` / `cutAll` where possible.
 4. Replace transforms with brepjs's `translate`, `rotate`, `scale`, `mirror`.
 5. Replace `for` loops over translates with `linearPattern` / `circularPattern`.
 6. Add fillets / chamfers / shells where you previously used `minkowski` workarounds.
@@ -190,6 +190,6 @@ For trivial models, the conversion takes minutes. For complex assemblies, expect
 
 ## Next steps
 
-- [Your First Solid](../getting-started/first-solid) — the canonical brepjs flow
-- [Boolean Operations](../tasks/booleans) — the workhorse, with multi-shape variants
-- [Three.js](../integration/threejs) — if you want a web viewer for your parts
+- [Your First Solid](../getting-started/first-solid): the canonical brepjs flow
+- [Boolean Operations](../tasks/booleans): the workhorse, with multi-shape variants
+- [Three.js](../integration/threejs): if you want a web viewer for your parts

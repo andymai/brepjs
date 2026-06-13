@@ -5,7 +5,7 @@
 
 ## Context
 
-CAD shapes (Vertex, Edge, Wire, Face, Shell, Solid) are all opaque handles wrapping kernel pointers. Without type-level discrimination, it's easy to pass a Wire where a Face is expected — the error only surfaces at runtime inside WASM.
+CAD shapes (Vertex, Edge, Wire, Face, Shell, Solid) are all opaque handles wrapping kernel pointers. Without type-level discrimination, it's easy to pass a Wire where a Face is expected; the error only surfaces at runtime inside WASM.
 
 ## Decision
 
@@ -22,8 +22,8 @@ Runtime type guards (`isEdge()`, `isWire()`, etc.) query the kernel and narrow t
 
 ### Positive
 
-- Compile-time shape discrimination — wrong-shape bugs caught before runtime
-- Zero runtime overhead — brands exist only in the type system
+- Compile-time shape discrimination: wrong-shape bugs caught before runtime
+- Zero runtime overhead: brands exist only in the type system
 - Type guards integrate with TypeScript's control flow analysis
 - Factory functions (`createEdge()`, `createWire()`) are the only way to brand a handle
 
@@ -35,4 +35,4 @@ Runtime type guards (`isEdge()`, `isWire()`, etc.) query the kernel and narrow t
 ## Related
 
 - ADR-0004 (phantom dimension types extend this pattern)
-- `src/core/shapeTypes.ts` — type definitions and factories
+- `src/core/shapeTypes.ts`: type definitions and factories

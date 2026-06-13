@@ -11,9 +11,9 @@ Layer 2 (`topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/`, `wo
 2. **Metadata propagation** (~20 lines of tag/color/origin propagation) duplicated across booleanFns, modifierFns, and shapeFns.
 3. **Legacy OO wrappers** (extrude.ts, loft.ts) duplicated their \*Fns.ts functional equivalents.
 4. **compoundOpsFns.ts** lived in topology/ but imported from operations/ (architecturally backwards).
-5. **Sweep files fragmented** — sweep logic split across extrudeFns, multiSweepFns, guidedSweepFns.
+5. **Sweep files fragmented**: sweep logic split across extrudeFns, multiSweepFns, guidedSweepFns.
 6. **Query finders** (edge, face, wire) near-identical but in 3 separate files, lacking composition operators.
-7. **Validity type gaps** — Wire→ClosedWire missing in sweep/supportExtrude/roof, Face→OrientedFace missing in measureCurvatureAt.
+7. **Validity type gaps**: Wire→ClosedWire missing in sweep/supportExtrude/roof, Face→OrientedFace missing in measureCurvatureAt.
 8. **topology/index.ts** leaked core types (AnyShape, Shape3D, CurveLike).
 
 ## Decision
@@ -22,9 +22,9 @@ Layer 2 (`topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/`, `wo
 
 New `src/topology/metadataPropagation.ts` centralizes:
 
-- `collectInputFaceHashes()` — unified O(1) fast-path check
-- `propagateAllMetadata()` — calls origins + tags + colors propagation
-- `propagateMetadataByHash()` — hash-only fallback
+- `collectInputFaceHashes()`: unified O(1) fast-path check
+- `propagateAllMetadata()`: calls origins + tags + colors propagation
+- `propagateMetadataByHash()`: hash-only fallback
 
 Transforms now propagate all three metadata types (previously only origins).
 
@@ -32,10 +32,10 @@ Transforms now propagate all three metadata types (previously only origins).
 
 753 LOC → 4 focused files:
 
-- `transformFns.ts` — translate, rotate, scale, mirror, applyMatrix, composeTransforms
-- `topologyQueryFns.ts` — getEdges/getFaces/getWires/getVertices, iterators, getBounds, describe
-- `originTrackingFns.ts` — setShapeOrigin, getFaceOrigins, propagation functions
-- `shapeFns.ts` — identity/introspection (clone, toBREP, getHashCode) + re-exports
+- `transformFns.ts`: translate, rotate, scale, mirror, applyMatrix, composeTransforms
+- `topologyQueryFns.ts`: getEdges/getFaces/getWires/getVertices, iterators, getBounds, describe
+- `originTrackingFns.ts`: setShapeOrigin, getFaceOrigins, propagation functions
+- `shapeFns.ts`: identity/introspection (clone, toBREP, getHashCode) + re-exports
 
 ### Sweep consolidation + validity types (PR 3)
 

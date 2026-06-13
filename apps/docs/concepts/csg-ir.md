@@ -1,13 +1,13 @@
 ---
 title: CSG as an Intermediate Representation
-description: 'Build a content-addressed DAG of primitives, booleans, and transforms — then evaluate it against the kernel with subtree-level caching for incremental parametric edits.'
+description: 'Build a content-addressed DAG of primitives, booleans, and transforms, then evaluate it against the kernel with subtree-level caching for incremental parametric edits.'
 ---
 
 # CSG as an Intermediate Representation
 
 Most code-CAD libraries hand you eager geometry: `box(10, 10, 10)` immediately calls into the kernel, returns a real B-Rep solid, and that solid sits in WASM memory until you `.delete()` it. Chain a few operations and you've allocated and freed dozens of intermediate shapes whose only purpose was to feed the next call.
 
-brepjs's `csg` namespace offers a different surface for the same operations. Instead of materializing geometry, the builders construct a **content-addressed DAG** — a tree of `IRNode` values, each describing what to build without actually building it. Geometry is produced on demand by an `Evaluator`, which caches by structural hash so re-evaluating the same subtree is free.
+brepjs's `csg` namespace offers a different surface for the same operations. Instead of materializing geometry, the builders construct a **content-addressed DAG**: a tree of `IRNode` values, each describing what to build without actually building it. Geometry is produced on demand by an `Evaluator`, which caches by structural hash so re-evaluating the same subtree is free.
 
 ## A tree, not a shape
 
@@ -25,7 +25,7 @@ const node = csg.box(10, 20, 30);
 // }
 ```
 
-No kernel call, no WASM allocation. Same for every builder — `cylinder`, `sphere`, `fuse`, `cut`, `translate`, even `compound`. The tree is just description.
+No kernel call, no WASM allocation. Same for every builder: `cylinder`, `sphere`, `fuse`, `cut`, `translate`, even `compound`. The tree is just description.
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -46,7 +46,7 @@ The structure of the tree is the structure of the computation. Nothing has been 
 
 ## Content-addressed hashing
 
-Every node carries a `structuralHash` — a 64-bit FNV-1a Merkle hash of its kind plus its children's hashes. Two trees that describe the _same_ geometry hash identically, regardless of how they were built:
+Every node carries a `structuralHash`: a 64-bit FNV-1a Merkle hash of its kind plus its children's hashes. Two trees that describe the _same_ geometry hash identically, regardless of how they were built:
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -61,14 +61,14 @@ Change _any_ literal anywhere in the tree and the hash changes:
 
 ```typescript
 csg.box(10, 10, 10).structuralHash === csg.box(10, 10, 11).structuralHash;
-// false — last dimension differs
+// false - last dimension differs
 ```
 
 The hash is computed once at build time and stored on the node, so cache lookups during evaluation are O(1) per node rather than O(subtree-size). The hash also normalizes `-0` to `+0` and serializes floats bit-exactly via `DataView.setFloat64`, so identical doubles always hash the same.
 
 ## Free parameters propagate upward
 
-Builders accept literal numbers or expressions. Expressions parameterize the tree — `csg.param('w')` is a placeholder bound at evaluation time. Each node tracks the set of parameter names it transitively depends on:
+Builders accept literal numbers or expressions. Expressions parameterize the tree: `csg.param('w')` is a placeholder bound at evaluation time. Each node tracks the set of parameter names it transitively depends on:
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -82,7 +82,7 @@ const tree = csg.translate(csg.fuse(csg.box(csg.param('w'), 10, 10), csg.sphere(
 [...tree.freeParams].sort(); // ['dx', 'r', 'w']
 ```
 
-`freeParams` is computed bottom-up by the builders at build time. The evaluator uses it to project the env before computing the cache key — a node that doesn't reference `dx` will never see `dx` enter its cache key, so unrelated env edits cannot invalidate it. This is the core mechanism behind incremental re-evaluation:
+`freeParams` is computed bottom-up by the builders at build time. The evaluator uses it to project the env before computing the cache key: a node that doesn't reference `dx` will never see `dx` enter its cache key, so unrelated env edits cannot invalidate it. This is the core mechanism behind incremental re-evaluation:
 
 ```mermaid
 graph TD
@@ -95,7 +95,7 @@ When `dx` changes, only `Translate` invalidates. When `r` changes, `Sphere` + `F
 
 ## Output kinds and structural validity
 
-The IR doesn't have separate node types for solids vs faces vs edges — there's one `IRNode` union with a `kind` discriminator. Output kind is derived structurally via `outputKindOf`:
+The IR doesn't have separate node types for solids vs faces vs edges; there's one `IRNode` union with a `kind` discriminator. Output kind is derived structurally via `outputKindOf`:
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -113,7 +113,7 @@ csg.outputKindOf(
 ); // 'Face'
 ```
 
-Booleans inherit the kind of their `a` argument; transforms inherit from `target`; primitives are fixed. There's no cross-kind boolean — `fuse(box, circle)` is rejected at the kernel boundary, not by the TypeScript types at v1.
+Booleans inherit the kind of their `a` argument; transforms inherit from `target`; primitives are fixed. There's no cross-kind boolean: `fuse(box, circle)` is rejected at the kernel boundary, not by the TypeScript types at v1.
 
 ## Two equivalent ways to compute the same geometry
 
@@ -121,14 +121,14 @@ Both snippets produce the same 1000 - π·125 ≈ 477 mm³ solid:
 
 ::: code-group
 
-```typescript [Eager — topology API]
+```typescript [Eager: topology API]
 import { box, sphere, cut, measureVolume, unwrap } from 'brepjs/quick';
 
 const cube = box(10, 10, 10);
 const ball = sphere(2.5);
 const part = unwrap(cut(cube, ball));
 const v = unwrap(measureVolume(part));
-// 3 kernel allocations: cube, ball, part — all live until disposed
+// 3 kernel allocations: cube, ball, part - all live until disposed
 ```
 
 ```typescript [CSG IR]
@@ -153,7 +153,7 @@ If none of those apply, the topology API is leaner. The IR is a tool, not a repl
 
 ## Where this fits in brepjs
 
-The IR is purely a build-time abstraction layered on top of the kernel adapter — `csg.Evaluator` calls the same `getKernel().fuseSolids(...)` that the topology API does. Everything that works on a `Solid` works on the result of `ev.evaluate(tree)`: finders, fillets, measurement, export. The IR is the parametric _front_ of the pipeline; the topology API picks up where it leaves off.
+The IR is purely a build-time abstraction layered on top of the kernel adapter: `csg.Evaluator` calls the same `getKernel().fuseSolids(...)` that the topology API does. Everything that works on a `Solid` works on the result of `ev.evaluate(tree)`: finders, fillets, measurement, export. The IR is the parametric _front_ of the pipeline; the topology API picks up where it leaves off.
 
 ## The rest of the surface
 
@@ -161,6 +161,6 @@ The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `transl
 
 ## Next steps
 
-- **[Parametric CSG walkthrough](/tasks/parametric-csg)** — build a gridfinity-style bin with named parameters, change a slider, watch the cache absorb the unchanged subtrees.
-- **[CSG caching internals](/advanced/csg-caching)** — `cacheStats`, `optimize`, serialization, what the cache key actually contains, and what _doesn't_ cache.
-- **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)** — if you've built your own `Map<key, Solid>` cache around eager geometry, here's the IR equivalent and what you'd inherit by switching.
+- **[Parametric CSG walkthrough](/tasks/parametric-csg)**: build a gridfinity-style bin with named parameters, change a slider, watch the cache absorb the unchanged subtrees.
+- **[CSG caching internals](/advanced/csg-caching)**: `cacheStats`, `optimize`, serialization, what the cache key actually contains, and what _doesn't_ cache.
+- **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)**: if you've built your own `Map<key, Solid>` cache around eager geometry, here's the IR equivalent and what you'd inherit by switching.

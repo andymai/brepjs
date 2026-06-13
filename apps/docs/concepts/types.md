@@ -5,7 +5,7 @@ description: 'Branded types, phantom dimensions, and validity brands prove your 
 
 # Types That Prove Geometry Is Valid
 
-This is the chapter that explains what makes brepjs different. Most code-CAD libraries treat shapes as a single "thing" — `Shape`, `Geometry`, `Solid` — and let runtime errors find your bugs. brepjs uses TypeScript's type system to encode topological invariants at compile time. A wire that hasn't been proven closed cannot be passed to `face()`. A face whose normal hasn't been determined cannot be passed to `extrude()`. The compiler refuses, and you find the bug while typing.
+This is the chapter that explains what makes brepjs different. Most code-CAD libraries treat shapes as a single "thing" (`Shape`, `Geometry`, `Solid`) and let runtime errors find your bugs. brepjs uses TypeScript's type system to encode topological invariants at compile time. A wire that hasn't been proven closed cannot be passed to `face()`. A face whose normal hasn't been determined cannot be passed to `extrude()`. The compiler refuses, and you find the bug while typing.
 
 There are three layers of types that work together: **branded types** for shape kind, **phantom dimension types** for 2D/3D safety, and **validity brands** for topological invariants.
 
@@ -20,7 +20,7 @@ type Face<D extends Dimension = '3D'>   = ShapeHandle & { readonly [__brand]: 'f
 type Solid                              = ShapeHandle & { readonly [__brand]: 'solid' };
 ```
 
-The brand is a phantom property — it exists only at the type level, costs zero bytes at runtime, and prevents nominal mixups:
+The brand is a phantom property; it exists only at the type level, costs zero bytes at runtime, and prevents nominal mixups:
 
 ```typescript
 import { box, edgeFinder, type Face } from 'brepjs/quick';
@@ -28,7 +28,7 @@ import { box, edgeFinder, type Face } from 'brepjs/quick';
 const edges = edgeFinder().findAll(box(10, 10, 10));
 const firstEdge = edges[0];
 
-// This does NOT compile — Edge is not assignable to Face
+// This does NOT compile - Edge is not assignable to Face
 // const f: Face = firstEdge;
 void firstEdge;
 ```
@@ -60,11 +60,11 @@ const profile = drawRectangle(40, 20); // Drawing<'2D'>
 
 The dimension parameter has zero runtime cost. `Edge<'2D'>` and `Edge<'3D'>` are the same byte-for-byte at runtime; only the compiler distinguishes them.
 
-`Shell`, `Solid`, and `CompSolid` are always 3D — they have no dimension parameter.
+`Shell`, `Solid`, and `CompSolid` are always 3D; they have no dimension parameter.
 
 ## Layer 3: validity brands for topological invariants
 
-Some operations require shapes that satisfy properties beyond their kind. A face cannot be built from any wire — only from a _closed_ wire. A solid cannot be extruded from any face — only from one with a determined normal. brepjs encodes these as **validity brands**:
+Some operations require shapes that satisfy properties beyond their kind. A face cannot be built from any wire, only from a _closed_ wire. A solid cannot be extruded from any face, only from one with a determined normal. brepjs encodes these as **validity brands**:
 
 ```typescript
 type ClosedWire<D> = Wire<D> & { readonly [__closed]: true };
@@ -94,14 +94,14 @@ declare const myWire: import('brepjs').Wire;
 
 const result = closedWire(myWire); // ValidityResult<ClosedWire>
 if (result.valid) {
-  // result.shape is now ClosedWire — the runtime check passed
+  // result.shape is now ClosedWire: the runtime check passed
   // and the type system has been updated.
   const cw = result.shape;
   void cw;
 }
 ```
 
-`closedWire(w)` performs a runtime check (does this wire form a loop?) and returns a `ValidityResult` — either `{ valid: true, shape: ClosedWire }` or `{ valid: false, reason: ... }`. Use this when you've built a wire from primitives or imported it.
+`closedWire(w)` performs a runtime check (does this wire form a loop?) and returns a `ValidityResult`: either `{ valid: true, shape: ClosedWire }` or `{ valid: false, reason: ... }`. Use this when you've built a wire from primitives or imported it.
 
 ### 2. Type guard (narrow in place)
 
@@ -123,7 +123,7 @@ The type guard combines the runtime check with TypeScript narrowing. Equivalent 
 ```typescript
 import { line, wireLoop, face, extrude, unwrap } from 'brepjs/quick';
 
-// wireLoop returns Result<ClosedWire> — it builds a closed wire by construction
+// wireLoop returns Result<ClosedWire> - it builds a closed wire by construction
 const cw = unwrap(
   wireLoop([
     line([0, 0, 0], [10, 0, 0]),
@@ -146,7 +146,7 @@ console.log('Built a valid solid by construction');
 | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `face(wire)` accepted at compile, may throw at runtime if wire is open | `face(wire)` rejected at compile if wire is not `ClosedWire` |
 | `extrude(face, 10)` accepted, may produce inverted solid               | `extrude(face, 10)` rejected if face is not `OrientedFace`   |
-| Caller has to remember to `if (wire.isClosed)`                         | Caller cannot forget — the compiler refuses                  |
+| Caller has to remember to `if (wire.isClosed)`                         | Caller cannot forget; the compiler refuses                   |
 | Validity checks scattered throughout user code                         | Centralized in smart constructors and builders               |
 
 ## Combining the layers
@@ -173,7 +173,7 @@ All four facts are checked by the compiler.
 
 ## When brands get in the way
 
-Branded types work great until you import a shape from elsewhere — STEP files, deserialized data, or third-party libraries. In those cases, you have a `Wire` and need a `ClosedWire`. Two options:
+Branded types work great until you import a shape from elsewhere: STEP files, deserialized data, or third-party libraries. In those cases, you have a `Wire` and need a `ClosedWire`. Two options:
 
 ```typescript
 import { closedWire, isClosedWire, autoHeal, unwrap } from 'brepjs/quick';
@@ -192,7 +192,7 @@ if (isClosedWire(healed)) {
 }
 ```
 
-`autoHeal` runs OpenCascade's `ShapeFix` to close gaps and stitch faces — see [Healing & Sewing](../advanced/healing).
+`autoHeal` runs OpenCascade's `ShapeFix` to close gaps and stitch faces. See [Healing & Sewing](../advanced/healing).
 
 ## Cost: zero
 
@@ -200,6 +200,6 @@ Every brand is a phantom type. The compiled JS doesn't even know they exist. Bra
 
 ## Next steps
 
-- [Result and Errors](./result) — the `Result<T,E>` type used by every fallible operation
-- [The Topology Hierarchy](./topology) — what each shape kind represents geometrically
-- [Tolerance and Validity](./tolerance) — what `BRepCheck` actually checks, and what tolerance means
+- [Result and Errors](./result): the `Result<T,E>` type used by every fallible operation
+- [The Topology Hierarchy](./topology): what each shape kind represents geometrically
+- [Tolerance and Validity](./tolerance): what `BRepCheck` actually checks, and what tolerance means

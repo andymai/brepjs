@@ -1,6 +1,6 @@
 ---
 title: Architecture & Layers
-description: 'The four enforced layers — kernel, core, domain, high-level API — and the rules that keep imports flowing downward only.'
+description: 'The four enforced layers (kernel, core, domain, high-level API) and the rules that keep imports flowing downward only.'
 ---
 
 # Architecture & Layers
@@ -29,24 +29,24 @@ Layer 0 imports nothing internal. Layer 1 imports only Layer 0. Layer 2 modules 
 
 The foundation. Nothing internal-imported here.
 
-- `kernel/` — the WASM kernel abstraction
-  - `types.ts` — `KernelInterface` and shared types (the public stable API for kernel implementers)
-  - `interfaces/` — segregated interface fragments (`KernelBooleans`, `KernelMesh`, etc.)
-  - `occt/` — OpenCascade adapter (private; only the registered kernel id `'occt'` is public)
-  - `brepkit/` — brepkit adapter (private; only `'brepkit'` is public)
-- `utils/` — math helpers, type predicates, generic JS utilities
+- `kernel/`: the WASM kernel abstraction
+  - `types.ts`: `KernelInterface` and shared types (the public stable API for kernel implementers)
+  - `interfaces/`: segregated interface fragments (`KernelBooleans`, `KernelMesh`, etc.)
+  - `occt/`: OpenCascade adapter (private; only the registered kernel id `'occt'` is public)
+  - `brepkit/`: brepkit adapter (private; only `'brepkit'` is public)
+- `utils/`: math helpers, type predicates, generic JS utilities
 
 ### Layer 1: core/
 
 Memory management, errors, branded types, the `Result` type.
 
-- `core/disposal.ts` — `DisposalScope`, `withScope`, `createHandle`, `createKernelHandle`, the `using`-compatible cleanup machinery
-- `core/result.ts` — `Result<T,E>`, `ok`, `err`, `isOk`, `isErr`, `unwrap`, `match`
-- `core/shapeTypes.ts` — branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) and validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`)
-- `core/errors.ts` — `BrepError` shape and well-known error codes
-- `core/dimensions.ts` — phantom dimension types
-- `core/vectors.ts` — vector math helpers
-- `core/planes.ts` — `Plane` type, plane name resolution
+- `core/disposal.ts`: `DisposalScope`, `withScope`, `createHandle`, `createKernelHandle`, the `using`-compatible cleanup machinery
+- `core/result.ts`: `Result<T,E>`, `ok`, `err`, `isOk`, `isErr`, `unwrap`, `match`
+- `core/shapeTypes.ts`: branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) and validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`)
+- `core/errors.ts`: `BrepError` shape and well-known error codes
+- `core/dimensions.ts`: phantom dimension types
+- `core/vectors.ts`: vector math helpers
+- `core/planes.ts`: `Plane` type, plane name resolution
 
 Layer 1 is small, stable, and has no external runtime dependencies beyond Layer 0.
 
@@ -54,13 +54,13 @@ Layer 1 is small, stable, and has no external runtime dependencies beyond Layer 
 
 Each module owns one concern. Layer 2 modules import each other peer-to-peer.
 
-- `topology/` — primitives (`box`, `cylinder`, …), shape construction, type guards (`isSolid`, `isFace`)
-- `operations/` — extrude, revolve, loft, sweep, patterns, assembly, history
-- `2d/` — drawings, 2D booleans, blueprints
-- `query/` — finders (`edgeFinder`, `faceFinder`, …)
-- `measurement/` — volume, area, length, distance, curvature
-- `io/` — STEP, IGES, BREP, STL, OBJ, glTF, DXF, 3MF, SVG
-- `worker/` — typed RPC for `brepjs/worker`
+- `topology/`: primitives (`box`, `cylinder`, …), shape construction, type guards (`isSolid`, `isFace`)
+- `operations/`: extrude, revolve, loft, sweep, patterns, assembly, history
+- `2d/`: drawings, 2D booleans, blueprints
+- `query/`: finders (`edgeFinder`, `faceFinder`, …)
+- `measurement/`: volume, area, length, distance, curvature
+- `io/`: STEP, IGES, BREP, STL, OBJ, glTF, DXF, 3MF, SVG
+- `worker/`: typed RPC for `brepjs/worker`
 
 Each Layer 2 module exports through an `index.ts` that brepjs's package.json exposes as a sub-path (`brepjs/topology`, `brepjs/operations`, etc.).
 
@@ -68,9 +68,9 @@ Each Layer 2 module exports through an `index.ts` that brepjs's package.json exp
 
 Composes Layer 2 into ergonomic surfaces.
 
-- `sketching/` — the `Sketcher` builder, sketch-to-shape operations, canned profiles
-- `text/` — text-as-2D-curves (using `opentype.js`)
-- `projection/` — projecting 3D to 2D drawings for laser / SVG export
+- `sketching/`: the `Sketcher` builder, sketch-to-shape operations, canned profiles
+- `text/`: text-as-2D-curves (using `opentype.js`)
+- `projection/`: projecting 3D to 2D drawings for laser / SVG export
 
 Layer 3 is what most users touch indirectly: `Sketcher` underlies most 2D-to-3D pipelines, `text/` underlies any nameplate or label feature.
 
@@ -82,17 +82,17 @@ Every Layer 1 type is depended on by every Layer 2 module. If Layer 1 also impor
 
 ### Layer 2 modules are peers
 
-`topology` and `operations` need each other (operations creates shapes that topology functions consume; topology has primitives that operations transform). Same for `query` and the others. The peer relationship is intentional — they're all "domain logic" — but they all sit above the same foundation.
+`topology` and `operations` need each other (operations creates shapes that topology functions consume; topology has primitives that operations transform). Same for `query` and the others. The peer relationship is intentional (they're all "domain logic") but they all sit above the same foundation.
 
 ### Layer 3 cannot leak into Layer 2
 
-The `Sketcher` is in Layer 3 because it composes `topology`, `operations`, and `2d`. If `topology` could import `Sketcher`, the API would be tangled — tests would have to load the full sketching machinery to test a primitive. The ban keeps each layer testable in isolation.
+The `Sketcher` is in Layer 3 because it composes `topology`, `operations`, and `2d`. If `topology` could import `Sketcher`, the API would be tangled; tests would have to load the full sketching machinery to test a primitive. The ban keeps each layer testable in isolation.
 
 ## The `.wrapped` rule
 
 Each shape brepjs ships is a TypeScript handle wrapping a kernel WASM object. The kernel object is exposed as `.wrapped`. Two rules:
 
-1. **Layer 0 may call methods on `.wrapped` directly** (it's the kernel adapter — that's what it does).
+1. **Layer 0 may call methods on `.wrapped` directly** (it's the kernel adapter; that's what it does).
 2. **Layers 1, 2, 3 must never call methods on `.wrapped`.** Always go through `getKernel().method(shape.wrapped)`.
 
 ESLint enforces this via `no-restricted-syntax`. The reason: by routing through `getKernel()`, the kernel can be swapped at runtime without changing user code. Direct `.wrapped.method()` bypasses the abstraction and breaks dual-kernel testing.
@@ -105,7 +105,7 @@ The pattern checker (`npm run check:patterns`) flags `async` callbacks to `withK
 
 ## The `*Fns.ts` convention
 
-New domain functionality goes in `*Fns.ts` files — flat functions that take and return branded types. The legacy classes (`Shape`, `Solid`, `Edge` in `topology/`) are deprecated and frozen — no new methods. The `*Fns` files are the canonical surface that the fluent `shape()` wrapper composes.
+New domain functionality goes in `*Fns.ts` files: flat functions that take and return branded types. The legacy classes (`Shape`, `Solid`, `Edge` in `topology/`) are deprecated and frozen, with no new methods. The `*Fns` files are the canonical surface that the fluent `shape()` wrapper composes.
 
 This is why the docs and the migration guides emphasize the functional API: it's the API that's still growing. The class-based wrappers are kept for backwards compatibility and removed in the next major.
 
@@ -127,9 +127,9 @@ See [Pattern Checker Rules](./pattern-checker) for the full rule catalog.
 
 Adding a new operation typically touches three layers:
 
-1. **Layer 0** (`kernel/types.ts` + adapter) — extend `KernelInterface` with the new method, implement in the OpenCascade and brepkit adapters.
-2. **Layer 2** (`operations/<newOpFns.ts>`) — write the `*Fns` function that calls `getKernel().newMethod(...)`.
-3. **Layer 3** (`sketching/index.ts` if applicable) — expose via the fluent wrapper.
+1. **Layer 0** (`kernel/types.ts` + adapter): extend `KernelInterface` with the new method, implement in the OpenCascade and brepkit adapters.
+2. **Layer 2** (`operations/<newOpFns.ts>`): write the `*Fns` function that calls `getKernel().newMethod(...)`.
+3. **Layer 3** (`sketching/index.ts` if applicable): expose via the fluent wrapper.
 
 Each step is a separate concern: the kernel says _what's possible_, the operation says _how to invoke it_, the wrapper says _how to compose it_. Decoupling makes each step testable in isolation.
 
@@ -137,18 +137,18 @@ See [Writing Custom Operations](./custom-ops) for the full walkthrough and [Writ
 
 ## Quick reference
 
-| What you're doing                                | Layer                                 |
-| ------------------------------------------------ | ------------------------------------- |
-| Adding a new primitive (`pyramid`, `helixSolid`) | Layer 2 — `topology/`                 |
-| Adding an operation (`twistExtrude`)             | Layer 2 — `operations/`               |
-| Adding an exporter (e.g. JT format)              | Layer 2 — `io/`                       |
-| Adding a measurement                             | Layer 2 — `measurement/`              |
-| Wiring a new kernel method                       | Layer 0 — `kernel/types.ts` + adapter |
-| Adding a fluent wrapper helper                   | Layer 3 — usually in the wrapper file |
-| Adding a new branded type                        | Layer 1 — `core/shapeTypes.ts`        |
+| What you're doing                                | Layer                                |
+| ------------------------------------------------ | ------------------------------------ |
+| Adding a new primitive (`pyramid`, `helixSolid`) | Layer 2: `topology/`                 |
+| Adding an operation (`twistExtrude`)             | Layer 2: `operations/`               |
+| Adding an exporter (e.g. JT format)              | Layer 2: `io/`                       |
+| Adding a measurement                             | Layer 2: `measurement/`              |
+| Wiring a new kernel method                       | Layer 0: `kernel/types.ts` + adapter |
+| Adding a fluent wrapper helper                   | Layer 3: usually in the wrapper file |
+| Adding a new branded type                        | Layer 1: `core/shapeTypes.ts`        |
 
 ## Next steps
 
-- [Writing a Custom Kernel](./custom-kernel) — implementing `KernelInterface` for a new backend
-- [Writing Custom Operations](./custom-ops) — adding to Layer 2
-- [Pattern Checker Rules](./pattern-checker) — the AST checks that protect the architecture
+- [Writing a Custom Kernel](./custom-kernel): implementing `KernelInterface` for a new backend
+- [Writing Custom Operations](./custom-ops): adding to Layer 2
+- [Pattern Checker Rules](./pattern-checker): the AST checks that protect the architecture

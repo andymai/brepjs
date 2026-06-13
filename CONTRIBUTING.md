@@ -44,7 +44,7 @@ npm run docs:api            # build TypeDoc API reference
 npm run docs:generate-lookup # regenerate docs/function-lookup.md from sources
 ```
 
-When you add or modify a code block in a chapter, the doc-test harness picks it up automatically — every fenced ` ```typescript ` block becomes a test that runs against the OCCT kernel. Mark blocks with `<!-- @no-test -->` (immediately preceding) to opt out, or `<!-- @setup -->` for shared setup that's prepended to subsequent blocks in the same file.
+When you add or modify a code block in a chapter, the doc-test harness picks it up automatically. Every fenced ` ```typescript ` block becomes a test that runs against the OCCT kernel. Mark blocks with `<!-- @no-test -->` (immediately preceding) to opt out, or `<!-- @setup -->` for shared setup that's prepended to subsequent blocks in the same file.
 
 ### Docs deployment
 
