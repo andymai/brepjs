@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.72.0](https://github.com/andymai/brepjs/compare/brepjs-v18.71.0...brepjs-v18.72.0) (2026-06-13)
+
+
+### Features
+
+* **verify:** add MCP server with run_program tool (stdio) ([#1300](https://github.com/andymai/brepjs/issues/1300)) ([e3c2c9e](https://github.com/andymai/brepjs/commit/e3c2c9e678dd719608cea8b6ee38101de9775e5d))
+
 ## [18.71.0](https://github.com/andymai/brepjs/compare/brepjs-v18.70.0...brepjs-v18.71.0) (2026-06-13)
 
 ### Features
