@@ -469,24 +469,27 @@ export function getSurfaceAxis(
   face: KernelShape
 ): { origin: [number, number, number]; direction: [number, number, number] } | null {
   const adaptor = new oc.BRepAdaptor_Surface_2(face, false);
-  const typeVal = adaptor.GetType();
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
-  // 1 = GeomAbs_Cylinder
-  if (typeIdx !== 1) {
+  try {
+    const typeVal = adaptor.GetType();
+    const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
+    // 1 = GeomAbs_Cylinder
+    if (typeIdx !== 1) return null;
+    const cyl = adaptor.Cylinder();
+    const axis = cyl.Axis();
+    const loc = axis.Location();
+    const dir = axis.Direction();
+    const result = {
+      origin: [loc.X(), loc.Y(), loc.Z()] as [number, number, number],
+      direction: [dir.X(), dir.Y(), dir.Z()] as [number, number, number],
+    };
+    loc.delete();
+    dir.delete();
+    axis.delete();
+    cyl.delete();
+    return result;
+  } finally {
     adaptor.delete();
-    return null;
   }
-  const cyl = adaptor.Cylinder();
-  const axis = cyl.Axis();
-  const loc = axis.Location();
-  const dir = axis.Direction();
-  const result = {
-    origin: [loc.X(), loc.Y(), loc.Z()] as [number, number, number],
-    direction: [dir.X(), dir.Y(), dir.Z()] as [number, number, number],
-  };
-  cyl.delete();
-  adaptor.delete();
-  return result;
 }
 
 /** Reverse the U direction of a surface. Returns a new surface handle. */
