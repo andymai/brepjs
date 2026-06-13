@@ -15,6 +15,7 @@ import {
   unwrap,
   unwrapErr,
   type AnyShape,
+  type Shape3D,
   type Result,
 } from '@/index.js';
 
@@ -33,7 +34,7 @@ const deg = (d: number) => (d * Math.PI) / 180;
  * algorithm) does not. `fuseAll(..., { strategy: 'pairwise' })` is the supported
  * workaround until the upstream OCCT fix lands (andymai/opencascade.js#3).
  */
-function buildTreadAndRail(): [AnyShape, AnyShape] {
+function buildTreadAndRail(): [Shape3D, Shape3D] {
   const TREAD_T = 4,
     TREAD_INNER_R = 10,
     TREAD_OUTER_R = 62,
