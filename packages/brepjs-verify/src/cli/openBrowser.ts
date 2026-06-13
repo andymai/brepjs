@@ -30,8 +30,10 @@ export function shouldAutoOpen({
 /** The platform-specific command that opens `url` in the default browser. */
 export function browserCommand(url: string, platform: NodeJS.Platform): [string, string[]] {
   if (platform === 'darwin') return ['open', [url]];
-  // Windows `start` is a cmd builtin; the empty "" is the (ignored) window title.
-  if (platform === 'win32') return ['cmd', ['/c', 'start', '', url]];
+  // On Windows, hand the URL to the shell-free protocol handler rather than
+  // `cmd /c start` — our URL contains `&` (?dir=&file=), which `cmd` would
+  // re-parse, and the embedded path comes from a CLI argument.
+  if (platform === 'win32') return ['rundll32', ['url.dll,FileProtocolHandler', url]];
   return ['xdg-open', [url]];
 }
 

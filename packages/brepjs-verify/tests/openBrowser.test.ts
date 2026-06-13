@@ -4,7 +4,10 @@ import { browserCommand, shouldAutoOpen } from '@/cli/openBrowser.js';
 describe('browserCommand', () => {
   it('uses the platform-appropriate opener', () => {
     expect(browserCommand('http://x', 'darwin')).toEqual(['open', ['http://x']]);
-    expect(browserCommand('http://x', 'win32')).toEqual(['cmd', ['/c', 'start', '', 'http://x']]);
+    expect(browserCommand('http://x', 'win32')).toEqual([
+      'rundll32',
+      ['url.dll,FileProtocolHandler', 'http://x'],
+    ]);
     expect(browserCommand('http://x', 'linux')).toEqual(['xdg-open', ['http://x']]);
   });
 });

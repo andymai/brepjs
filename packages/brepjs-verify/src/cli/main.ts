@@ -63,7 +63,9 @@ program
         check?: boolean;
         snapshot?: string;
         serve?: boolean;
-        open?: boolean;
+        // Commander materializes a negated flag as a concrete boolean: true by
+        // default, false when --no-open is passed.
+        open: boolean;
       }
     ) => {
       // The WASM viewer loads a CAD file (it can't run a .brep.ts), so --snapshot/--serve
@@ -111,8 +113,9 @@ program
         const { url, reused } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
         process.stderr.write(`viewer: ${url}\n`);
         // Auto-open only for a freshly started server (a reused one already has
-        // a tab) in an interactive session; `--no-open` always suppresses it.
-        if (!reused && opts.open !== false && shouldAutoOpen()) {
+        // a tab) in an interactive session; `--no-open` (opts.open === false)
+        // always suppresses it.
+        if (!reused && opts.open && shouldAutoOpen()) {
           openBrowser(url);
         }
       }
