@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.70.0](https://github.com/andymai/brepjs/compare/brepjs-v18.69.3...brepjs-v18.70.0) (2026-06-13)
+
+
+### Features
+
+* **assembly:** rotational mates — concentric + angle (kinematics Phase 1) ([#1296](https://github.com/andymai/brepjs/issues/1296)) ([039dabe](https://github.com/andymai/brepjs/commit/039dabef25816048414f0414b7eaee7aa706aab7))
+
 ## [18.69.3](https://github.com/andymai/brepjs/compare/brepjs-v18.69.2...brepjs-v18.69.3) (2026-06-13)
 
 
