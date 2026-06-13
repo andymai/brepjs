@@ -164,7 +164,13 @@ function isoCircleCenter(
  * Axis of a surface of revolution (cone, torus, general revolution) by sampling.
  * occt-wasm exposes no analytic accessor for these. Their U parameter is the
  * angle of revolution, so the iso-v curve at a fixed v is a circle centered on
- * the axis; two such centers at different heights span the axis. Avoids v
+ * the axis; two such centers at different heights span the axis.
+ *
+ * Samples three v-levels and uses the farthest-apart pair of centers. Two levels
+ * suffice for a cone or general revolution (v is monotonic along the axis), but
+ * a torus parameterizes v as the tube angle: on a v-symmetric partial torus (a
+ * half-torus, v in [0, pi]) two symmetric samples land at equal heights and
+ * their centers coincide. A third level breaks that symmetry. Avoids the v
  * extremes so a cone apex (a degenerate zero-radius circle) is not sampled.
  */
 function deriveAxisBySampling(
@@ -175,13 +181,27 @@ function deriveAxisBySampling(
   direction: V3;
 } | null {
   const b = uvBounds(k, face);
-  const c1 = isoCircleCenter(k, face, b.uMin, b.uMax, b.vMin + 0.25 * (b.vMax - b.vMin));
-  const c2 = isoCircleCenter(k, face, b.uMin, b.uMax, b.vMin + 0.75 * (b.vMax - b.vMin));
-  if (!c1 || !c2) return null;
-  const d = subV(c2, c1);
-  const len = lenV(d);
-  if (len < 1e-9) return null; // centers coincide; axis not resolvable
-  return { origin: c1, direction: [d[0] / len, d[1] / len, d[2] / len] };
+  const centers = [0.2, 0.5, 0.8]
+    .map((f) => isoCircleCenter(k, face, b.uMin, b.uMax, b.vMin + f * (b.vMax - b.vMin)))
+    .filter((c): c is V3 => c !== null);
+  if (centers.length < 2) return null;
+
+  let best: { origin: V3; direction: V3 } | null = null;
+  let bestLen = 1e-9; // require a resolvable separation between centers
+  for (let i = 0; i < centers.length; i++) {
+    for (let j = i + 1; j < centers.length; j++) {
+      const ci = centers[i];
+      const cj = centers[j];
+      if (!ci || !cj) continue;
+      const d = subV(cj, ci);
+      const len = lenV(d);
+      if (len > bestLen) {
+        bestLen = len;
+        best = { origin: ci, direction: [d[0] / len, d[1] / len, d[2] / len] };
+      }
+    }
+  }
+  return best;
 }
 
 /**

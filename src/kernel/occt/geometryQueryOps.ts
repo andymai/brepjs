@@ -501,16 +501,20 @@ export function getSurfaceAxis(
     const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
     const axis = surfaceAxisAx1(adaptor, typeIdx);
     if (!axis) return null;
-    const loc = axis.Location();
-    const dir = axis.Direction();
-    const result = {
-      origin: [loc.X(), loc.Y(), loc.Z()] as [number, number, number],
-      direction: [dir.X(), dir.Y(), dir.Z()] as [number, number, number],
-    };
-    loc.delete();
-    dir.delete();
-    axis.delete();
-    return result;
+    let loc: KernelType = null;
+    let dir: KernelType = null;
+    try {
+      loc = axis.Location();
+      dir = axis.Direction();
+      return {
+        origin: [loc.X(), loc.Y(), loc.Z()] as [number, number, number],
+        direction: [dir.X(), dir.Y(), dir.Z()] as [number, number, number],
+      };
+    } finally {
+      loc?.delete?.();
+      dir?.delete?.();
+      axis.delete();
+    }
   } finally {
     adaptor.delete();
   }
