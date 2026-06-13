@@ -57,6 +57,12 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
     },
+    'curves.cylinderUnwrapOriginal': {
+      kind: 'not-implemented',
+      reason:
+        'manifold proxies getSurfaceCylinderData to occt, which throws ' +
+        '(oc.GeomAdaptor_Surface_2 is not a constructor in the brepjs-opencascade WASM build; see #1312)',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------
@@ -421,6 +427,12 @@ export const divergences: DivergenceMap = {
       kind: 'skip',
       reason:
         'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
+    },
+    'curves.cylinderUnwrapOriginal': {
+      kind: 'not-implemented',
+      reason:
+        'getSurfaceCylinderData throws on occt: oc.GeomAdaptor_Surface_2 is not a constructor ' +
+        'in the brepjs-opencascade WASM build (see #1312)',
     },
   },
 

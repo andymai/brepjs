@@ -1508,8 +1508,9 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('untrimFace');
   }
 
-  getSurfaceCylinderData(_surface: KernelType): { radius: number; isDirect: boolean } | null {
-    notImplemented('getSurfaceCylinderData');
+  getSurfaceCylinderData(surface: KernelType): { radius: number; isDirect: boolean } | null {
+    // occt-wasm uses faces as surface proxies (see extractSurfaceFromFace).
+    return surfaceOps.getSurfaceCylinderData(this.k, surface);
   }
 
   getSurfaceAxis(
