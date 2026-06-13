@@ -15,7 +15,7 @@ import {
   faceCenter,
 } from '@/index.js';
 import type { MateConstraint } from '@/index.js';
-import { solveConstraints } from '@/kernel/solverAdapter.js';
+import { solveConstraints, type SolverEntity } from '@/kernel/solverAdapter.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -583,5 +583,32 @@ describe('solveConstraints — unsupported constraint honesty', () => {
     expect(result.transforms.get('b')?.position[2]).toBeCloseTo(10, 0);
     expect(result.converged).toBe(false);
     expect(result.unsupported).toEqual(['angle']);
+  });
+
+  it('reports a mutual-reference cycle as unanchored (no root to resolve from)', () => {
+    // a→b and b→a with no fixed node and no chain root: neither reference can
+    // ever be placed, so both stay pending and surface as `(unanchored)`.
+    const plane = (z: number): SolverEntity => ({
+      type: 'plane',
+      origin: [0, 0, z],
+      normal: [0, 0, 1],
+    });
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'coincident',
+          entityA: { node: 'a', entity: plane(0) },
+          entityB: { node: 'b', entity: plane(0) },
+        },
+        {
+          type: 'coincident',
+          entityA: { node: 'b', entity: plane(0) },
+          entityB: { node: 'a', entity: plane(0) },
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.unsupported).toEqual(['coincident(unanchored)', 'coincident(unanchored)']);
   });
 });

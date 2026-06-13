@@ -56,30 +56,25 @@ function dot(a: Vec3, b: Vec3): number {
 /**
  * Position a dependent plane against an already-placed reference plane.
  *
- * Both entity origins are local (pre-transform); the reference's solved
- * translation is applied before measuring, so a chain composes down its
- * already-solved poses instead of reading original geometry. `extra` is the
- * gap for a distance mate (0 for coincident). Rotation stays identity —
- * coincident/distance produce pure translations.
+ * The reference's solved translation is applied to its (local) entity origin
+ * before measuring, so a chain composes down already-solved poses instead of
+ * reading original geometry. The dependent is at the origin (a node is only
+ * solved once, while unplaced), so the returned position is its absolute
+ * translation. `extra` is the gap for a distance mate (0 for coincident).
+ * Rotation stays identity — coincident/distance produce pure translations;
+ * Phase 1 rotational constraints will extend this.
  */
-function solvePlanePair(
-  ref: SolverEntity,
-  refPos: Vec3,
-  dep: SolverEntity,
-  depPos: Vec3,
-  extra: number
-): Pose {
+function solvePlanePair(ref: SolverEntity, refPos: Vec3, dep: SolverEntity, extra: number): Pose {
   const n = ref.normal ?? [0, 0, 1];
   const refOrigin = add(ref.origin, refPos);
-  const depOrigin = add(dep.origin, depPos);
   const offset =
     dot(n, [
-      refOrigin[0] - depOrigin[0],
-      refOrigin[1] - depOrigin[1],
-      refOrigin[2] - depOrigin[2],
+      refOrigin[0] - dep.origin[0],
+      refOrigin[1] - dep.origin[1],
+      refOrigin[2] - dep.origin[2],
     ]) + extra;
   return {
-    position: [depPos[0] + offset * n[0], depPos[1] + offset * n[1], depPos[2] + offset * n[2]],
+    position: [offset * n[0], offset * n[1], offset * n[2]],
     rotation: IDENTITY_ROTATION,
   };
 }
@@ -124,7 +119,10 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
   }
 
   // Non-plane positioning pairs are unsupported regardless of order; report them
-  // eagerly and keep only plane-plane pairs for topological resolution.
+  // eagerly and keep only plane-plane pairs for topological resolution. A node
+  // left unplaced by such a pair (it's a dependent, so not a root) will cause
+  // any downstream plane-plane mate that references it to end up `(unanchored)`
+  // — intended: an unsolved reference can't compose, so the chain doesn't converge.
   const pending: SolverConstraint[] = [];
   for (const c of positioning) {
     if (!c.entityA || !c.entityB) continue;
@@ -156,15 +154,8 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
         position: [0, 0, 0],
         rotation: IDENTITY_ROTATION,
       };
-      const depPose = transforms.get(dep.node) ?? {
-        position: [0, 0, 0],
-        rotation: IDENTITY_ROTATION,
-      };
       const extra = c.type === 'distance' ? (c.value ?? 0) : 0;
-      transforms.set(
-        dep.node,
-        solvePlanePair(ref.entity, refPose.position, dep.entity, depPose.position, extra)
-      );
+      transforms.set(dep.node, solvePlanePair(ref.entity, refPose.position, dep.entity, extra));
       placed.add(dep.node);
     }
   }
