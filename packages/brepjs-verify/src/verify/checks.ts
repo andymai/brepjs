@@ -34,6 +34,7 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     getEdges,
     getWires,
     getVertices,
+    getSolids,
     getShells,
     isManifoldShell,
     validSolid,
@@ -53,6 +54,22 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
       r.errorInfos.push({ message: `isValidSolid: ${valid.error}`, code: VALIDITY_FAILURE_CODE });
     }
     r.checks.push(validCheck);
+  } else {
+    // Multi-body assemblies (Compound/CompSolid): validate each contained solid so the assembly
+    // isn't reported ok on volume alone while an invalid body hides inside it.
+    const solids = getSolids(shape);
+    if (solids.length > 0) {
+      const invalid = solids.filter((s) => !isOk(validSolid(s))).length;
+      const bodiesCheck: VerifyCheck = { name: 'allBodiesValid', passed: invalid === 0 };
+      if (invalid > 0) {
+        bodiesCheck.detail = `${invalid}/${solids.length} bodies invalid`;
+        r.errorInfos.push({
+          message: `allBodiesValid: ${invalid}/${solids.length} bodies invalid`,
+          code: VALIDITY_FAILURE_CODE,
+        });
+      }
+      r.checks.push(bodiesCheck);
+    }
   }
 
   // Volume + positiveVolume for ANY 3D shape. Booleans/modifiers (cut/fuse/chamfer) routinely

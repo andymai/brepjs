@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as brep from 'brepjs';
-import { init, box, fuse, unwrap } from 'brepjs';
+import { init, box, fuse, unwrap, compound } from 'brepjs';
 import { runChecks } from '@/verify/checks.js';
 
 beforeAll(async () => {
@@ -79,5 +79,35 @@ describe('runChecks', () => {
     const report = runChecks(brep, edge);
     expect(report.topology).toBeDefined();
     expect(report.topology?.manifold).toBeUndefined();
+  });
+
+  it('validates each body of a multi-solid compound (allBodiesValid)', () => {
+    const asm = compound([box(10, 10, 10), box(10, 10, 10, { at: [20, 0, 0] })]);
+    const report = runChecks(brep, asm);
+    expect(report.shapeType).toBe('Compound');
+    expect(report.checks.find((c) => c.name === 'allBodiesValid')?.passed).toBe(true);
+    // A multi-body assembly does not get the single-solid check.
+    expect(report.checks.find((c) => c.name === 'isValidSolid')).toBeUndefined();
+  });
+
+  it('reports allBodiesValid=false when a body is invalid', () => {
+    // Fault-inject validSolid so a body reads as invalid, exercising the false branch deterministically.
+    const faultyBrep = {
+      ...brep,
+      validSolid: (() => ({ ok: false, error: 'forced invalid' })) as typeof brep.validSolid,
+    };
+    const asm = compound([box(10, 10, 10), box(10, 10, 10, { at: [20, 0, 0] })]);
+    const report = runChecks(faultyBrep, asm);
+    const check = report.checks.find((c) => c.name === 'allBodiesValid');
+    expect(check?.passed).toBe(false);
+    expect(check?.detail).toContain('2/2');
+  });
+
+  it('does not add a body-validity check for a shape with no solids', () => {
+    const edge = brep.getEdges(box(10, 10, 10))[0];
+    if (!edge) throw new Error('expected an edge from the box');
+    const report = runChecks(brep, edge);
+    expect(report.checks.find((c) => c.name === 'allBodiesValid')).toBeUndefined();
+    expect(report.checks.find((c) => c.name === 'isValidSolid')).toBeUndefined();
   });
 });
