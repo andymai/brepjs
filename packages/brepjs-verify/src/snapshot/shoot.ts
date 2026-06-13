@@ -16,6 +16,8 @@ export interface ShootOptions extends AcquireOptions {
   views?: readonly ViewName[];
   /** Wall-clock ms to let the camera settle before each capture (default 400; raise on slow CI). */
   settleMs?: number;
+  /** Burn the model's bbox dimensions into each PNG so the agent can read scale (default true). */
+  dimensions?: boolean;
 }
 export interface ShootResult {
   outDir: string;
@@ -39,8 +41,10 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 900 });
-    // ui=0 hides the interactive toolbar so captured PNGs contain only the model.
-    const target = `${server.url}/?dir=${encodeURIComponent(dir)}&file=${encodeURIComponent(rel)}&ui=0`;
+    // ui=0 hides the interactive toolbar so captured PNGs contain only the model; dims=1
+    // overlays the bbox size so the agent can read scale from the image.
+    const dimsParam = opts.dimensions === false ? '' : '&dims=1';
+    const target = `${server.url}/?dir=${encodeURIComponent(dir)}&file=${encodeURIComponent(rel)}&ui=0${dimsParam}`;
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await page.waitForFunction('window.__ready === true', { timeout: READY_TIMEOUT_MS });
     for (const view of views) {

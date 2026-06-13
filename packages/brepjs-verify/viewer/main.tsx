@@ -22,7 +22,11 @@ import { installScreenshotApi, onViewChange, markReady } from './src/screenshotA
 
 // The agent snapshot pipeline screenshots this same page, so it loads with ?ui=0 to
 // suppress the toolbar and keep PNGs free of chrome. Human `--serve` links omit it.
-const showControls = new URLSearchParams(window.location.search).get('ui') !== '0';
+const params = new URLSearchParams(window.location.search);
+const showControls = params.get('ui') !== '0';
+// Snapshot mode adds ?dims=1 to burn the model's bbox size into the PNG so the agent
+// can read scale from the image. In interactive mode the info panel already shows it.
+const showDims = params.get('dims') === '1';
 
 function downloadCanvasPng(): void {
   const canvas = document.querySelector('canvas');
@@ -161,6 +165,7 @@ function App() {
           valid={state.measurements.valid}
         />
       )}
+      {!showControls && showDims && <ViewerInfoPanel dims={meshSize(state.data)} />}
       {showControls && (
         <ViewerControls
           viewMode={viewMode}
