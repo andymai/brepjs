@@ -79,7 +79,7 @@ This is the closed _build → verify_ loop as a single call: the agent sends par
 
 ### Connect (local build)
 
-Build the package, then register the server by absolute path:
+Build the package, then register the server by absolute path. Run both commands from the package root (`packages/brepjs-verify`), where `dist/` is emitted — `$(pwd)` is resolved by your shell at that location:
 
 ```bash
 npm run build   # emits dist/mcp/server.js
@@ -92,7 +92,7 @@ Once the package is published to npm, the same server is available without a loc
 claude mcp add brepjs-verify -- npx -y --package brepjs-verify brepjs-verify-mcp
 ```
 
-The server runs locally and in-process to your agent — geometry never leaves your machine.
+The server runs locally as a child process of your agent (stdio) — geometry never leaves your machine.
 
 ## Examples gallery
 
