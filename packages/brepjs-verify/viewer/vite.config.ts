@@ -51,6 +51,7 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
+  resolve: { dedupe: ['react', 'react-dom', '@react-three/fiber', '@react-three/drei', 'three'] },
   optimizeDeps: { exclude: ['brepjs', 'occt-wasm'] },
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1500 },
   worker: { format: 'es' },
