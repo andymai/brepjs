@@ -21,4 +21,11 @@ describe('runProgramTool (MCP run_program handler)', () => {
     const text = res.content[0]?.type === 'text' ? res.content[0].text : '';
     expect(text).toContain('timeout');
   }, 30000);
+
+  it('rejects empty code without running the sandbox', async () => {
+    const res = await runProgramTool({ code: '   ' });
+    expect(res.isError).toBe(true);
+    const text = res.content[0]?.type === 'text' ? res.content[0].text : '';
+    expect(text).toContain('code');
+  });
 });

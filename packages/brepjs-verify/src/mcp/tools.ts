@@ -34,6 +34,13 @@ export const RUN_PROGRAM_INPUT_SCHEMA = {
  * `isError` is set when the part failed checks, timed out, or crashed — so the agent can branch.
  */
 export async function runProgramTool(args: RunProgramToolArgs): Promise<CallToolResult> {
+  if (!args.code || !args.code.trim()) {
+    return {
+      content: [{ type: 'text', text: 'run_program requires a non-empty "code" string.' }],
+      isError: true,
+    };
+  }
+
   const result = await runProgram(
     args.code,
     args.timeoutMs !== undefined ? { timeoutMs: args.timeoutMs } : {}

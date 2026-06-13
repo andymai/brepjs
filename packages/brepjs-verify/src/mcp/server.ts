@@ -8,6 +8,9 @@
  * JSON-Schema tool definitions (no direct zod dependency in this package).
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -16,8 +19,15 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { RUN_PROGRAM_INPUT_SCHEMA, runProgramTool } from './tools.js';
 
+// Read the version from package.json at runtime so it tracks the package (this module sits two
+// levels below the package root in both src/ and dist/). NB: don't use
+// `new URL('../../package.json', import.meta.url)` — vite inlines that as a data: URL that
+// readFileSync can't read; resolve via fileURLToPath + join instead.
+const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json');
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
+
 const server = new Server(
-  { name: 'brepjs-verify', version: '0.7.1' },
+  { name: 'brepjs-verify', version: pkg.version },
   { capabilities: { tools: {} } }
 );
 
@@ -37,7 +47,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     // Arguments arrive untyped over the protocol — validate before handing them to the tool.
     const a = req.params.arguments ?? {};
     const code = typeof a['code'] === 'string' ? a['code'] : '';
-    const timeoutMs = typeof a['timeoutMs'] === 'number' ? a['timeoutMs'] : undefined;
+    const timeoutMs =
+      typeof a['timeoutMs'] === 'number' && a['timeoutMs'] > 0 ? a['timeoutMs'] : undefined;
     return runProgramTool({ code, ...(timeoutMs !== undefined ? { timeoutMs } : {}) });
   }
   throw new Error(`Unknown tool: ${req.params.name}`);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runProgram } from '@/sandbox/runProgram.js';
+import { runProgram, positiveOrDefault } from '@/sandbox/runProgram.js';
 
 const VALID_PART = `import { box } from 'brepjs';\nexport default () => box(10, 10, 10);\n`;
 // A synchronous infinite loop blocks the child's event loop — only an out-of-process
@@ -29,4 +29,16 @@ describe('runProgram (sandbox executor)', () => {
     expect(res.outcome).toBe('crashed');
     if (res.outcome === 'crashed') expect(res.detail.length).toBeGreaterThan(0);
   }, 30000);
+});
+
+describe('positiveOrDefault (timeout/memory guard)', () => {
+  it('clamps non-positive and non-finite values to the default', () => {
+    // A 0 or negative timeout would disable Node execFile's kill budget entirely.
+    expect(positiveOrDefault(0, 30000)).toBe(30000);
+    expect(positiveOrDefault(-5, 30000)).toBe(30000);
+    expect(positiveOrDefault(undefined, 30000)).toBe(30000);
+    expect(positiveOrDefault(Number.NaN, 30000)).toBe(30000);
+    expect(positiveOrDefault(Infinity, 30000)).toBe(30000);
+    expect(positiveOrDefault(8000, 30000)).toBe(8000);
+  });
 });

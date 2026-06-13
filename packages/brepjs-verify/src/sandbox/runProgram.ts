@@ -45,6 +45,15 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_MEMORY_MB = 2048;
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Clamp a caller-supplied limit to a positive, finite value, falling back to the default otherwise.
+ * Critical for the timeout: Node's `execFile` treats `timeout: 0` (and it ignores negatives) as
+ * "no timeout", which would silently disable the sandbox's only runaway protection.
+ */
+export function positiveOrDefault(value: number | undefined, fallback: number): number {
+  return value !== undefined && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function defaultCliEntry(): string {
   // runProgram and the CLI share a build root: dist/cli/main.js in a built/published package,
   // src/cli/main.ts in dev/test. Prefer the built JS so the default works in production too.
@@ -67,8 +76,9 @@ export async function runProgram(
   code: string,
   opts: RunProgramOptions = {}
 ): Promise<RunProgramResult> {
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxMemoryMb = opts.maxMemoryMb ?? DEFAULT_MAX_MEMORY_MB;
+  // Clamp to positive defaults: a non-positive timeout would disable the kill budget entirely.
+  const timeoutMs = positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS);
+  const maxMemoryMb = positiveOrDefault(opts.maxMemoryMb, DEFAULT_MAX_MEMORY_MB);
   const cliEntry = opts.cliEntry ?? defaultCliEntry();
   const useTsx = cliEntry.endsWith('.ts');
 
