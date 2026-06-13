@@ -315,6 +315,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'extrude',
   'extrudeAll',
   'face',
+  'faceAxis',
   'faceCenter',
   'faceFinder',
   'faceGeomType',

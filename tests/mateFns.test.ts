@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
@@ -13,6 +14,7 @@ import {
   unwrapErr,
   getFaces,
   faceCenter,
+  faceAxis,
 } from '@/index.js';
 import type { MateConstraint } from '@/index.js';
 import { solveConstraints, type SolverEntity } from '@/kernel/solverAdapter.js';
@@ -51,19 +53,26 @@ function bottomFace(shape: Parameters<typeof getFaces>[0]) {
   return best;
 }
 
-/** Find the face whose center is closest to the XY plane (smallest |Z|). */
+/** Rotate a vector by a quaternion [w, x, y, z] (test-side check helper). */
+function qRotate(q: readonly number[], v: readonly number[]): [number, number, number] {
+  const [w, x, y, z] = q as [number, number, number, number];
+  const [vx, vy, vz] = v as [number, number, number];
+  const tx = 2 * (y * vz - z * vy);
+  const ty = 2 * (z * vx - x * vz);
+  const tz = 2 * (x * vy - y * vx);
+  return [
+    vx + w * tx + (y * tz - z * ty),
+    vy + w * ty + (z * tx - x * tz),
+    vz + w * tz + (x * ty - y * tx),
+  ];
+}
+
+/** Find the lateral cylindrical face — the one that has a well-defined axis. */
 function cylindricalFace(shape: Parameters<typeof getFaces>[0]) {
   const faces = getFaces(shape);
-  let best = faces[0];
-  let bestAbsZ = Math.abs(faceCenter(best)[2]);
-  for (let i = 1; i < faces.length; i++) {
-    const absZ = Math.abs(faceCenter(faces[i])[2]);
-    if (absZ < bestAbsZ) {
-      best = faces[i];
-      bestAbsZ = absZ;
-    }
-  }
-  return best;
+  const face = faces.find((f) => faceAxis(f) !== null);
+  if (!face) throw new Error('no cylindrical face found');
+  return face;
 }
 
 describe('assembly mates', () => {
@@ -252,28 +261,41 @@ describe('solveAssembly — fixed-only', () => {
 });
 
 describe('solveAssembly — concentric mate', () => {
-  it('concentric mate returns error (not yet implemented)', () => {
-    const cyl1 = cylinder(5, 20);
-    const cyl2 = cylinder(3, 15);
+  it.skipIf(shouldSkipSuite('mateFns.concentricAxis'))(
+    'concentric mate aligns two cylinder axes (pin-in-hole)',
+    () => {
+      // Two coaxial cylinders along +Z; concentric should converge with the
+      // sleeve placed so its axis is collinear with the shaft's.
+      const cyl1 = cylinder(5, 20);
+      const cyl2 = cylinder(3, 15);
 
-    const cylFace1 = cylindricalFace(cyl1);
-    const cylFace2 = cylindricalFace(cyl2);
+      const cylFace1 = cylindricalFace(cyl1);
+      const cylFace2 = cylindricalFace(cyl2);
 
-    let assembly = createAssemblyNode('root');
-    assembly = addChild(assembly, createAssemblyNode('shaft', { shape: cyl1 }));
-    assembly = addChild(assembly, createAssemblyNode('sleeve', { shape: cyl2 }));
-    assembly = addMate(assembly, { type: 'fixed', entity: { node: 'shaft' } });
-    assembly = addMate(assembly, {
-      type: 'concentric',
-      axisA: { node: 'shaft', face: cylFace1 },
-      axisB: { node: 'sleeve', face: cylFace2 },
-    });
+      let assembly = createAssemblyNode('root');
+      assembly = addChild(assembly, createAssemblyNode('shaft', { shape: cyl1 }));
+      assembly = addChild(assembly, createAssemblyNode('sleeve', { shape: cyl2 }));
+      assembly = addMate(assembly, { type: 'fixed', entity: { node: 'shaft' } });
+      assembly = addMate(assembly, {
+        type: 'concentric',
+        axisA: { node: 'shaft', face: cylFace1 },
+        axisB: { node: 'sleeve', face: cylFace2 },
+      });
 
-    const result = solveAssembly(assembly);
-    expect(isErr(result)).toBe(true);
-    const error = unwrapErr(result);
-    expect(error.message).toContain('concentric');
-  });
+      const result = solveAssembly(assembly);
+      expect(isOk(result)).toBe(true);
+      const solved = unwrap(result);
+      expect(solved.converged).toBe(true);
+      const sleeve = solved.transforms.get('sleeve');
+      expect(sleeve).toBeDefined();
+      // Both cylinders are already Z-aligned, so the sleeve's axis is on the Z
+      // axis: its solved X/Y translation must place its axis point on x=y=0.
+      expect(sleeve?.position[0]).toBeCloseTo(0, 4);
+      expect(sleeve?.position[1]).toBeCloseTo(0, 4);
+      // Axes parallel → rotation is identity (w≈±1, vector part ≈0).
+      expect(Math.abs(sleeve?.rotation[0] ?? 0)).toBeCloseTo(1, 4);
+    }
+  );
 
   it('concentric mate with no geometry returns error', () => {
     let assembly = createAssemblyNode('root');
@@ -291,7 +313,7 @@ describe('solveAssembly — concentric mate', () => {
 });
 
 describe('solveAssembly — angle mate', () => {
-  it('angle mate returns error (not yet implemented)', () => {
+  it('angle mate constrains relative orientation to the requested angle', () => {
     const b1 = box(10, 10, 10);
     const b2 = box(10, 10, 10);
 
@@ -310,9 +332,15 @@ describe('solveAssembly — angle mate', () => {
     });
 
     const result = solveAssembly(assembly);
-    expect(isErr(result)).toBe(true);
-    const error = unwrapErr(result);
-    expect(error.message).toContain('angle');
+    expect(isOk(result)).toBe(true);
+    const solved = unwrap(result);
+    expect(solved.converged).toBe(true);
+    const rot = solved.transforms.get('tilted')?.rotation ?? [1, 0, 0, 0];
+    // Apply the solved rotation to tilted's top-face normal (+Z) and confirm it
+    // ends up 45° from base's top-face normal (also +Z).
+    const rotated = qRotate(rot, [0, 0, 1]);
+    const cos = rotated[2]; // dot with [0,0,1]
+    expect((Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI).toBeCloseTo(45, 3);
   });
 
   it('angle mate with no geometry returns error', () => {
@@ -474,7 +502,7 @@ describe('solveConstraints — unsupported constraint honesty', () => {
     expect(result.unsupported).toEqual([]);
   });
 
-  it('returns converged=false and dof=4 for unsupported concentric', () => {
+  it('solves a concentric (axis-axis) mate, placing the dependent axis collinear', () => {
     const result = solveConstraints(
       ['a', 'b'],
       [
@@ -485,12 +513,13 @@ describe('solveConstraints — unsupported constraint honesty', () => {
         },
       ]
     );
-    expect(result.converged).toBe(false);
-    expect(result.dof).toBe(4);
-    expect(result.unsupported).toEqual(['concentric']);
+    expect(result.converged).toBe(true);
+    expect(result.dof).toBe(0);
+    // b's axis point [1,0,0] must shift to the reference axis (x=y=0): t=[-1,0,0].
+    expect(result.transforms.get('b')?.position).toEqual([-1, 0, 0]);
   });
 
-  it('returns converged=false and dof=1 for unsupported angle', () => {
+  it('solves an angle (plane-plane) mate', () => {
     const result = solveConstraints(
       ['a', 'b'],
       [
@@ -502,31 +531,33 @@ describe('solveConstraints — unsupported constraint honesty', () => {
         },
       ]
     );
-    expect(result.converged).toBe(false);
-    expect(result.dof).toBe(1);
-    expect(result.unsupported).toEqual(['angle']);
+    expect(result.converged).toBe(true);
+    expect(result.dof).toBe(0);
+    expect(result.unsupported).toEqual([]);
   });
 
-  it('accumulates DOF from multiple unsupported constraints', () => {
+  it('reports entity-type mismatches as unsupported and accumulates their DOF', () => {
     const result = solveConstraints(
       ['a', 'b'],
       [
+        // concentric requires axis-axis; planes here are a mismatch (4 DOF).
         {
           type: 'concentric',
-          entityA: { node: 'a', entity: { type: 'axis', origin: [0, 0, 0] } },
-          entityB: { node: 'b', entity: { type: 'axis', origin: [0, 0, 0] } },
-        },
-        {
-          type: 'angle',
           entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 0] } },
           entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0] } },
+        },
+        // angle requires plane-plane; axes here are a mismatch (1 DOF).
+        {
+          type: 'angle',
+          entityA: { node: 'a', entity: { type: 'axis', origin: [0, 0, 0] } },
+          entityB: { node: 'b', entity: { type: 'axis', origin: [0, 0, 0] } },
           value: 90,
         },
       ]
     );
     expect(result.converged).toBe(false);
     expect(result.dof).toBe(5); // 4 (concentric) + 1 (angle)
-    expect(result.unsupported).toEqual(['concentric', 'angle']);
+    expect(result.unsupported).toEqual(['concentric(plane-plane)', 'angle(axis-axis)']);
   });
 
   it('reports non-plane entity combinations as unsupported for coincident', () => {
@@ -564,25 +595,25 @@ describe('solveConstraints — unsupported constraint honesty', () => {
 
   it('still solves supported constraints alongside unsupported ones', () => {
     const result = solveConstraints(
-      ['a', 'b'],
+      ['a', 'b', 'c'],
       [
         {
           type: 'coincident',
           entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 10], normal: [0, 0, 1] } },
           entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0], normal: [0, 0, 1] } },
         },
+        // concentric requires axis-axis; planes are a mismatch → unsupported.
         {
-          type: 'angle',
+          type: 'concentric',
           entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 0] } },
-          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0] } },
-          value: 45,
+          entityB: { node: 'c', entity: { type: 'plane', origin: [0, 0, 0] } },
         },
       ]
     );
-    // Coincident is solved even though angle is not
+    // Coincident is solved even though the mismatched concentric is not.
     expect(result.transforms.get('b')?.position[2]).toBeCloseTo(10, 0);
     expect(result.converged).toBe(false);
-    expect(result.unsupported).toEqual(['angle']);
+    expect(result.unsupported).toEqual(['concentric(plane-plane)']);
   });
 
   it('reports a mutual-reference cycle as unanchored (no root to resolve from)', () => {

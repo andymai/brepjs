@@ -28,11 +28,12 @@ export interface SolverResult {
 }
 
 /**
- * Standard degrees of freedom left unresolved by each unsupported constraint type.
- * coincident: 3 translational (plane normal alignment + contact)
- * concentric: 2 rotational (axis alignment) + 2 translational (axis centering) = 4
- * distance: 1 translational (offset along normal)
- * angle: 1 rotational
+ * Degrees of freedom each constraint leaves unresolved when it can't be applied
+ * (entity-type mismatch or an unreachable reference). All four types now solve
+ * for well-typed inputs; these counts only feed the diagnostic `dof` for the
+ * unsupported cases.
+ * coincident: 3 translational · concentric: 2 rotational + 2 translational = 4
+ * distance: 1 translational · angle: 1 rotational
  */
 const UNSUPPORTED_DOF: Readonly<Record<string, number>> = {
   coincident: 3,
@@ -41,54 +42,165 @@ const UNSUPPORTED_DOF: Readonly<Record<string, number>> = {
   angle: 1,
 };
 
-type Pose = { position: Vec3; rotation: [number, number, number, number] };
+type Quat = [number, number, number, number];
+type Pose = { position: Vec3; rotation: Quat };
 
-const IDENTITY_ROTATION: [number, number, number, number] = [1, 0, 0, 0];
+const IDENTITY_ROTATION: Quat = [1, 0, 0, 0];
 
 function add(a: Vec3, b: Vec3): Vec3 {
   return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function sub(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
 function dot(a: Vec3, b: Vec3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function scale(a: Vec3, s: number): Vec3 {
+  return [a[0] * s, a[1] * s, a[2] * s];
+}
+
+function normalize(a: Vec3): Vec3 {
+  const l = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+}
+
+/** A unit vector perpendicular to `v` (for the 180° / parallel degenerate cases). */
+function anyPerpendicular(v: Vec3): Vec3 {
+  const ref: Vec3 = Math.abs(v[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  return normalize(cross(v, ref));
+}
+
+/** Rotate vector `v` by quaternion `q` = [w, x, y, z]. */
+function qRotate(q: Quat, v: Vec3): Vec3 {
+  const [w, x, y, z] = q;
+  const tx = 2 * (y * v[2] - z * v[1]);
+  const ty = 2 * (z * v[0] - x * v[2]);
+  const tz = 2 * (x * v[1] - y * v[0]);
+  return [
+    v[0] + w * tx + (y * tz - z * ty),
+    v[1] + w * ty + (z * tx - x * tz),
+    v[2] + w * tz + (x * ty - y * tx),
+  ];
+}
+
+function qFromAxisAngle(axis: Vec3, angle: number): Quat {
+  const h = angle / 2;
+  const s = Math.sin(h);
+  const u = normalize(axis);
+  return [Math.cos(h), u[0] * s, u[1] * s, u[2] * s];
+}
+
+/** Shortest-arc quaternion rotating unit vector `from` onto unit vector `to`. */
+function qFromTo(from: Vec3, to: Vec3): Quat {
+  const a = normalize(from);
+  const b = normalize(to);
+  const d = dot(a, b);
+  if (d >= 1 - 1e-9) return IDENTITY_ROTATION;
+  if (d <= -1 + 1e-9) return qFromAxisAngle(anyPerpendicular(a), Math.PI);
+  const c = cross(a, b);
+  const q: Quat = [1 + d, c[0], c[1], c[2]];
+  const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+  return [q[0] / l, q[1] / l, q[2] / l, q[3] / l];
+}
+
+/** Apply a pose (rotate then translate) to an entity's origin and any directions. */
+function transformEntity(e: SolverEntity, pose: Pose): SolverEntity {
+  const origin = add(qRotate(pose.rotation, e.origin), pose.position);
+  return {
+    type: e.type,
+    origin,
+    ...(e.normal ? { normal: qRotate(pose.rotation, e.normal) } : {}),
+    ...(e.direction ? { direction: qRotate(pose.rotation, e.direction) } : {}),
+  };
+}
+
 /**
  * Position a dependent plane against an already-placed reference plane.
  *
- * The reference's solved translation is applied to its (local) entity origin
- * before measuring, so a chain composes down already-solved poses instead of
- * reading original geometry. The dependent is at the origin (a node is only
- * solved once, while unplaced), so the returned position is its absolute
- * translation. `extra` is the gap for a distance mate (0 for coincident).
- * Rotation stays identity — coincident/distance produce pure translations;
- * Phase 1 rotational constraints will extend this.
+ * `ref` is the reference entity already in world space. The dependent is at the
+ * origin (a node is only solved once, while unplaced), so the returned position
+ * is its absolute translation along the reference normal. `extra` is the gap for
+ * a distance mate (0 for coincident). Plane mates don't reorient the dependent.
  */
-function solvePlanePair(ref: SolverEntity, refPos: Vec3, dep: SolverEntity, extra: number): Pose {
+function solvePlanePair(ref: SolverEntity, dep: SolverEntity, extra: number): Pose {
   const n = ref.normal ?? [0, 0, 1];
-  const refOrigin = add(ref.origin, refPos);
-  const offset =
-    dot(n, [
-      refOrigin[0] - dep.origin[0],
-      refOrigin[1] - dep.origin[1],
-      refOrigin[2] - dep.origin[2],
-    ]) + extra;
-  return {
-    position: [offset * n[0], offset * n[1], offset * n[2]],
-    rotation: IDENTITY_ROTATION,
-  };
+  const offset = dot(n, sub(ref.origin, dep.origin)) + extra;
+  return { position: scale(n, offset), rotation: IDENTITY_ROTATION };
+}
+
+/**
+ * Concentric (axis-axis) mate: rotate the dependent so its axis is parallel to
+ * the reference axis, then translate so the two axes are collinear (the
+ * dependent's axis point is placed on the reference axis). `ref` is in world
+ * space; the dependent is at the origin.
+ */
+function solveConcentric(ref: SolverEntity, dep: SolverEntity): Pose {
+  const dRef = ref.direction ?? [0, 0, 1];
+  const dDep = dep.direction ?? [0, 0, 1];
+  const rotation = qFromTo(dDep, dRef);
+  const rotatedOrigin = qRotate(rotation, dep.origin);
+  return { position: sub(ref.origin, rotatedOrigin), rotation };
+}
+
+/**
+ * Angle mate: rotate the dependent so the angle between its (plane) normal and
+ * the reference normal equals `angleRad`. Orientation-only — position is left at
+ * the origin. `ref` is in world space; the dependent is at the origin.
+ */
+function solveAngle(ref: SolverEntity, dep: SolverEntity, angleRad: number): Pose {
+  const nRef = normalize(ref.normal ?? [0, 0, 1]);
+  const nDep = normalize(dep.normal ?? [0, 0, 1]);
+  const phi = Math.acos(Math.max(-1, Math.min(1, dot(nDep, nRef))));
+  const c = cross(nDep, nRef);
+  const axis = Math.hypot(c[0], c[1], c[2]) < 1e-9 ? anyPerpendicular(nDep) : c;
+  // Rotating nDep about (nDep×nRef) by +phi aligns it with nRef; rotate by
+  // (phi − angle) to leave exactly `angleRad` between them.
+  return { position: [0, 0, 0], rotation: qFromAxisAngle(axis, phi - angleRad) };
+}
+
+/** Entity types each positioning constraint requires of (entityA, entityB). */
+const REQUIRED_ENTITIES: Readonly<Record<string, SolverEntity['type']>> = {
+  coincident: 'plane',
+  distance: 'plane',
+  angle: 'plane',
+  concentric: 'axis',
+};
+
+const POSITIONING_TYPES = new Set(['coincident', 'distance', 'angle', 'concentric']);
+
+/** Dispatch a positioning mate to its solver. `ref` is already in world space. */
+function solveMate(c: SolverConstraint, ref: SolverEntity, dep: SolverEntity): Pose {
+  switch (c.type) {
+    case 'concentric':
+      return solveConcentric(ref, dep);
+    case 'angle':
+      return solveAngle(ref, dep, ((c.value ?? 0) * Math.PI) / 180);
+    case 'distance':
+      return solvePlanePair(ref, dep, c.value ?? 0);
+    default:
+      return solvePlanePair(ref, dep, 0);
+  }
 }
 
 /**
  * Solve assembly constraints analytically.
  *
- * Handles: fixed, coincident (plane-plane), distance (plane-plane). For a
- * positioning mate, entityA is the reference and entityB the dependent. Chain
- * roots (nodes never positioned by a mate) and explicit `fixed` nodes anchor at
- * the origin; constraints then resolve in topological order — each places its
- * dependent against the reference's solved pose, so multi-body chains compose.
- * Returns `converged: false` with unsupported details for concentric, angle,
- * non-plane pairs, and any constraint whose reference never resolves.
+ * Handles: fixed, coincident/distance (plane-plane), concentric (axis-axis), and
+ * angle (plane-plane orientation). For a positioning mate, entityA is the
+ * reference and entityB the dependent. Chain roots (nodes never positioned by a
+ * mate) and explicit `fixed` nodes anchor at the origin; constraints then resolve
+ * in topological order — each places its dependent against the reference's solved
+ * pose (rotation included), so multi-body chains compose. Returns
+ * `converged: false` with details for entity-type mismatches and any constraint
+ * whose reference never resolves.
  */
 export function solveConstraints(nodes: string[], constraints: SolverConstraint[]): SolverResult {
   const transforms = new Map<string, Pose>();
@@ -102,7 +214,7 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
 
   // For positioning mates, entityA is the reference and entityB the dependent.
   const positioning = constraints.filter(
-    (c) => (c.type === 'coincident' || c.type === 'distance') && c.entityA && c.entityB
+    (c) => POSITIONING_TYPES.has(c.type) && c.entityA && c.entityB
   );
   const dependents = new Set<string>();
   for (const c of positioning) if (c.entityB) dependents.add(c.entityB.node);
@@ -113,20 +225,16 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
   for (const node of nodes) if (!dependents.has(node)) placed.add(node);
   for (const c of constraints) if (c.type === 'fixed' && c.entityA) placed.add(c.entityA.node);
 
-  // concentric / angle are not solved yet (Phase 1).
-  for (const c of constraints) {
-    if (c.type === 'concentric' || c.type === 'angle') unsupported.push(c.type);
-  }
-
-  // Non-plane positioning pairs are unsupported regardless of order; report them
-  // eagerly and keep only plane-plane pairs for topological resolution. A node
-  // left unplaced by such a pair (it's a dependent, so not a root) will cause
-  // any downstream plane-plane mate that references it to end up `(unanchored)`
-  // — intended: an unsolved reference can't compose, so the chain doesn't converge.
+  // Entity-type mismatches are unsupported regardless of order; report them
+  // eagerly and keep only well-typed mates for topological resolution. A node
+  // left unplaced by such a mate (it's a dependent, so not a root) will cause
+  // any downstream mate that references it to end up `(unanchored)` — intended:
+  // an unsolved reference can't compose, so the chain doesn't converge.
   const pending: SolverConstraint[] = [];
   for (const c of positioning) {
     if (!c.entityA || !c.entityB) continue;
-    if (c.entityA.entity.type !== 'plane' || c.entityB.entity.type !== 'plane') {
+    const required = REQUIRED_ENTITIES[c.type];
+    if (c.entityA.entity.type !== required || c.entityB.entity.type !== required) {
       unsupported.push(`${c.type}(${c.entityA.entity.type}-${c.entityB.entity.type})`);
       continue;
     }
@@ -135,7 +243,7 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
 
   // Resolve in topological rounds: a mate solves once its reference (entityA) is
   // placed, positioning the dependent (entityB) against the reference's solved
-  // pose so multi-body chains compose.
+  // world-space pose so multi-body chains compose.
   let progress = true;
   while (progress && pending.length > 0) {
     progress = false;
@@ -154,8 +262,8 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
         position: [0, 0, 0],
         rotation: IDENTITY_ROTATION,
       };
-      const extra = c.type === 'distance' ? (c.value ?? 0) : 0;
-      transforms.set(dep.node, solvePlanePair(ref.entity, refPose.position, dep.entity, extra));
+      const refWorld = transformEntity(ref.entity, refPose);
+      transforms.set(dep.node, solveMate(c, refWorld, dep.entity));
       placed.add(dep.node);
     }
   }

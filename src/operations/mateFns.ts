@@ -8,7 +8,8 @@ import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { AssemblyNode } from './assemblyFns.js';
 import { walkAssembly } from './assemblyFns.js';
-import { faceCenter, normalAt } from '@/topology/faceFns.js';
+import { faceCenter, normalAt, faceAxis } from '@/topology/faceFns.js';
+import { getCurveType, curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
 import {
   solveConstraints,
   type SolverEntity,
@@ -45,9 +46,26 @@ export interface AssemblySolveResult {
 
 function extractEntity(mate: MateEntity): SolverEntity | null {
   if (mate.face) {
-    const origin = faceCenter(mate.face);
-    const normal = normalAt(mate.face);
-    return { type: 'plane', origin, normal };
+    // A cylindrical (or otherwise axial) face yields an axis; a planar face a
+    // plane. faceAxis returns null for non-axial faces, so it doubles as the
+    // discriminator.
+    const axis = faceAxis(mate.face);
+    if (axis) {
+      return { type: 'axis', origin: axis.origin, direction: axis.direction };
+    }
+    return { type: 'plane', origin: faceCenter(mate.face), normal: normalAt(mate.face) };
+  }
+
+  if (mate.edge) {
+    // A straight edge defines an axis (origin + direction); other curves can't.
+    if (getCurveType(mate.edge) === 'LINE') {
+      return {
+        type: 'axis',
+        origin: curveStartPoint(mate.edge),
+        direction: curveTangentAt(mate.edge),
+      };
+    }
+    return null;
   }
 
   if (mate.point) {

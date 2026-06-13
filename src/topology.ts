@@ -132,6 +132,7 @@ export {
   uvCoordinates,
   normalAt,
   faceCenter,
+  faceAxis,
   classifyPointOnFace,
   outerWire,
   innerWires,

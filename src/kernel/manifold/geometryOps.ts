@@ -99,6 +99,7 @@ function descOf(shape: KernelShape): CurveDesc | undefined {
   return node.op === 'profileEdge' ? node.params?.curve : undefined;
 }
 
+// brepjs-patterns-disable: max-function-lines
 export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & KernelSurfaceOps {
   return {
     // --- Curve queries: analytic for standalone profile edges (exact), native
@@ -224,6 +225,7 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
       viaOcct(face, (s, occt) => occt.untrimFace(s, samplesPerCurve, interiorSamples)),
     getSurfaceCylinderData: (surface) =>
       viaOcct(surface, (s, occt) => occt.getSurfaceCylinderData(s)),
+    getSurfaceAxis: (face) => viaOcct(face, (s, occt) => occt.getSurfaceAxis(s)),
     reverseSurfaceU: (surface) => occtOrThrow('reverseSurfaceU').reverseSurfaceU(surface),
     detectSmallFeatures: (shape, areaThreshold, tolerance) =>
       viaOcct(shape, (s, occt) => occt.detectSmallFeatures(s, areaThreshold, tolerance)),

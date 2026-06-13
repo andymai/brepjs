@@ -65,6 +65,54 @@ export function pointOnSurface(
   }
 }
 
+type V3 = [number, number, number];
+const subV = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const lenV = (a: V3): number => Math.hypot(a[0], a[1], a[2]);
+const crossV = (a: V3, b: V3): V3 => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+];
+
+/**
+ * Derive a cylindrical face's axis (point on axis + unit direction) from the
+ * primitives occt-wasm exposes — it has no analytic `gp_Cylinder` accessor.
+ *
+ * Two surface samples at the same height v give radial normals n1,n2 (lying in
+ * the plane perpendicular to the axis), so `n1 x n2` is parallel to the axis.
+ * The points satisfy `p1 - p2 = ±r(n1 - n2)`, giving the radius
+ * `r = |p1-p2| / |n1-n2|`; the axis point is then `p - r·n` with the normal's
+ * sign chosen so both samples agree. Exact for full and partial cylinders.
+ * Returns null for non-cylinders.
+ */
+export function getSurfaceAxis(
+  k: OcctKernelWasm,
+  face: KernelShape
+): { origin: V3; direction: V3 } | null {
+  if (surfaceType(k, face) !== 'cylinder') return null;
+  const b = uvBounds(k, face);
+  const vMid = 0.5 * (b.vMin + b.vMax);
+  const u1 = b.uMin + 0.25 * (b.uMax - b.uMin);
+  const u2 = b.uMin + 0.5 * (b.uMax - b.uMin);
+  const n1 = surfaceNormal(k, face, u1, vMid);
+  const n2 = surfaceNormal(k, face, u2, vMid);
+  const p1 = pointOnSurface(k, face, u1, vMid);
+  const p2 = pointOnSurface(k, face, u2, vMid);
+
+  const axis = crossV(n1, n2);
+  const axisLen = lenV(axis);
+  const dnLen = lenV(subV(n1, n2));
+  if (axisLen < 1e-9 || dnLen < 1e-9) return null; // samples too close to resolve
+  const direction: V3 = [axis[0] / axisLen, axis[1] / axisLen, axis[2] / axisLen];
+  const r = lenV(subV(p1, p2)) / dnLen;
+
+  // Axis point is p - r·n; pick the normal sign that makes both samples agree.
+  const minus1: V3 = [p1[0] - r * n1[0], p1[1] - r * n1[1], p1[2] - r * n1[2]];
+  const minus2: V3 = [p2[0] - r * n2[0], p2[1] - r * n2[1], p2[2] - r * n2[2]];
+  if (lenV(subV(minus1, minus2)) < 1e-6) return { origin: minus1, direction };
+  return { origin: [p1[0] + r * n1[0], p1[1] + r * n1[1], p1[2] + r * n1[2]], direction };
+}
+
 export function uvFromPoint(
   k: OcctKernelWasm,
   face: KernelShape,
