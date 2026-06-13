@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
+import { getKernel } from '@/kernel/index.js';
 import {
   line,
   circle,
@@ -56,6 +58,21 @@ describe('curveAxis', () => {
   it('returns null for a non-circular (line) edge', () => {
     const edge = line([0, 0, 0], [10, 0, 0]);
     expect(curveAxis(castShape(edge.wrapped))).toBeNull();
+  });
+
+  it('resolves the same axis from a partial arc as from the full circle', (ctx) => {
+    skipIfDiverges(ctx, 'curveFns.circleArcType');
+    // A 90-degree arc samples three points spanning a quarter turn, a much
+    // thinner triangle than a full circle; the circumcenter must still land on
+    // the true center. Arc: radius 4, center (2, 3, 5), in a plane normal to Z.
+    const arcShape = getKernel().makeCircleArc([2, 3, 5], [0, 0, 1], 4, 0, Math.PI / 2);
+    const axis = curveAxis(castShape(arcShape));
+    expect(axis).not.toBeNull();
+    if (!axis) return;
+    expect(axis.origin[0]).toBeCloseTo(2, 5);
+    expect(axis.origin[1]).toBeCloseTo(3, 5);
+    expect(axis.origin[2]).toBeCloseTo(5, 5);
+    expect(Math.abs(axis.direction[2])).toBeCloseTo(1, 5);
   });
 });
 

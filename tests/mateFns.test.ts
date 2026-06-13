@@ -4,6 +4,7 @@ import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
+  cone,
   createAssemblyNode,
   addChild,
   addMate,
@@ -333,6 +334,39 @@ describe('solveAssembly — concentric mate', () => {
     expect(sleeve?.position[1]).toBeCloseTo(0, 4);
     expect(Math.abs(sleeve?.rotation[0] ?? 0)).toBeCloseTo(1, 4);
   });
+
+  it.skipIf(shouldSkipSuite('mateFns.coneAxis'))(
+    'concentric mate aligns two conical faces (tapered pin-in-hole)',
+    () => {
+      // Two coaxial cones along +Z; concentric on their conical faces converges.
+      const cone1 = cone(5, 2, 20);
+      const cone2 = cone(4, 1.5, 15);
+      const coneFace = (shape: Parameters<typeof getFaces>[0]) => {
+        const f = getFaces(shape).find((face) => faceAxis(face) !== null);
+        if (!f) throw new Error('no conical face with an axis found');
+        return f;
+      };
+
+      let assembly = createAssemblyNode('root');
+      assembly = addChild(assembly, createAssemblyNode('shaft', { shape: cone1 }));
+      assembly = addChild(assembly, createAssemblyNode('sleeve', { shape: cone2 }));
+      assembly = addMate(assembly, { type: 'fixed', entity: { node: 'shaft' } });
+      assembly = addMate(assembly, {
+        type: 'concentric',
+        axisA: { node: 'shaft', face: coneFace(cone1) },
+        axisB: { node: 'sleeve', face: coneFace(cone2) },
+      });
+
+      const result = solveAssembly(assembly);
+      expect(isOk(result)).toBe(true);
+      const solved = unwrap(result);
+      expect(solved.converged).toBe(true);
+      const sleeve = solved.transforms.get('sleeve');
+      expect(sleeve?.position[0]).toBeCloseTo(0, 4);
+      expect(sleeve?.position[1]).toBeCloseTo(0, 4);
+      expect(Math.abs(sleeve?.rotation[0] ?? 0)).toBeCloseTo(1, 4);
+    }
+  );
 
   it('concentric mate with no geometry returns error', () => {
     let assembly = createAssemblyNode('root');

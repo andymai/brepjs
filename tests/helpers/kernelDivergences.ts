@@ -63,6 +63,11 @@ export const divergences: DivergenceMap = {
         'manifold proxies getSurfaceCylinderData to occt, which throws ' +
         '(oc.GeomAdaptor_Surface_2 is not a constructor in the brepjs-opencascade WASM build; see #1312)',
     },
+    'mateFns.coneAxis': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel: a cone tessellates to planar facets, so there is no analytic cone face to extract an axis from',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------
@@ -295,6 +300,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Shape evolution tracking not implemented in brepkit kernel',
     },
+    'curveFns.circleArcType': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit represents a circular arc as a BSPLINE_CURVE, not CIRCLE, so curveAxis (which keys on the CIRCLE type) returns null for arc edges',
+    },
 
     // -----------------------------------------------------------------------
     // meshFns.test.ts
@@ -433,6 +443,11 @@ export const divergences: DivergenceMap = {
       reason:
         'getSurfaceCylinderData throws on occt: oc.GeomAdaptor_Surface_2 is not a constructor ' +
         'in the brepjs-opencascade WASM build (see #1312)',
+    },
+    'mateFns.coneAxis': {
+      kind: 'not-implemented',
+      reason:
+        'gp_Cone is not bound in the brepjs-opencascade WASM build, so getSurfaceAxis returns null for cone faces on occt',
     },
   },
 
