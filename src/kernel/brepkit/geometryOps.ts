@@ -399,9 +399,16 @@ export function getSurfaceAxis(
   face: KernelShape
 ): { origin: [number, number, number]; direction: [number, number, number] } | null {
   const params = JSON.parse(bk.getAnalyticSurfaceParams(unwrap(face, 'face')));
-  if (params.type !== 'cylinder') return null;
-  const [ox, oy, oz] = params.origin;
-  const [ax, ay, az] = params.axis;
+  // Cylinder params expose origin+axis; cone params expose apex+axis (the apex
+  // is a point on the axis). Torus params carry only a center, no axis vector,
+  // so a toroidal axis is not recoverable here.
+  // params is `any` from JSON.parse; cylinder exposes origin, cone exposes apex.
+
+  const point =
+    params.type === 'cylinder' ? params.origin : params.type === 'cone' ? params.apex : null;
+  if (!point || !params.axis) return null;
+  const [ox, oy, oz] = point as [number, number, number];
+  const [ax, ay, az] = params.axis as [number, number, number];
   const len = Math.hypot(ax, ay, az);
   if (len < 1e-12) return null;
   return {

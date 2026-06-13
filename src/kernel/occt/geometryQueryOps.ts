@@ -463,7 +463,34 @@ export function getSurfaceCylinderData(
   return result;
 }
 
-/** Get a cylindrical face's axis (point on axis + unit direction). Null otherwise. */
+/**
+ * Extract the `gp_Ax1` axis of an analytic surface adaptor by type index, or
+ * null. GeomAbs_SurfaceType: 1 = Cylinder, 2 = Cone, 4 = Torus, 7 =
+ * SurfaceOfRevolution. gp_Cone / gp_Torus are not bound in the shipped
+ * opencascade.js build, so their accessors throw; that is treated as "no axis".
+ */
+function surfaceAxisAx1(adaptor: KernelType, typeIdx: number): KernelType | null {
+  let prim: KernelType = null;
+  try {
+    if (typeIdx === 7) return adaptor.AxeOfRevolution();
+    if (typeIdx === 1) prim = adaptor.Cylinder();
+    else if (typeIdx === 2) prim = adaptor.Cone();
+    else if (typeIdx === 4) prim = adaptor.Torus();
+    else return null;
+    const axis = prim.Axis();
+    prim.delete();
+    return axis;
+  } catch {
+    prim?.delete?.();
+    return null;
+  }
+}
+
+/**
+ * Get the axis of symmetry (point on axis + unit direction) for an analytic
+ * face that has one: cylinder, cone, torus, or surface of revolution. Null
+ * otherwise (plane, sphere, free-form).
+ */
 export function getSurfaceAxis(
   oc: KernelInstance,
   face: KernelShape
@@ -472,10 +499,8 @@ export function getSurfaceAxis(
   try {
     const typeVal = adaptor.GetType();
     const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
-    // 1 = GeomAbs_Cylinder
-    if (typeIdx !== 1) return null;
-    const cyl = adaptor.Cylinder();
-    const axis = cyl.Axis();
+    const axis = surfaceAxisAx1(adaptor, typeIdx);
+    if (!axis) return null;
     const loc = axis.Location();
     const dir = axis.Direction();
     const result = {
@@ -485,7 +510,6 @@ export function getSurfaceAxis(
     loc.delete();
     dir.delete();
     axis.delete();
-    cyl.delete();
     return result;
   } finally {
     adaptor.delete();
