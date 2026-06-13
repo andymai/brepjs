@@ -13,6 +13,9 @@ import {
   unwrap,
   unwrapErr,
   getFaces,
+  getEdges,
+  getCurveType,
+  curveAxis,
   faceCenter,
   faceAxis,
 } from '@/index.js';
@@ -296,6 +299,40 @@ describe('solveAssembly — concentric mate', () => {
       expect(Math.abs(sleeve?.rotation[0] ?? 0)).toBeCloseTo(1, 4);
     }
   );
+
+  it('concentric mate aligns two circular edges (bore rim pin-in-hole)', () => {
+    // A circular edge (e.g. a bore rim) defines an axis through its center,
+    // normal to its plane. Concentric on two such edges should converge.
+    const cyl1 = cylinder(5, 20);
+    const cyl2 = cylinder(3, 15);
+
+    const rim1 = getEdges(cyl1).find((e) => getCurveType(e) === 'CIRCLE');
+    const rim2 = getEdges(cyl2).find((e) => getCurveType(e) === 'CIRCLE');
+    expect(rim1).toBeDefined();
+    expect(rim2).toBeDefined();
+    if (!rim1 || !rim2) return;
+    // Sanity: curveAxis resolves an axis for the rim.
+    expect(curveAxis(rim1)).not.toBeNull();
+
+    let assembly = createAssemblyNode('root');
+    assembly = addChild(assembly, createAssemblyNode('shaft', { shape: cyl1 }));
+    assembly = addChild(assembly, createAssemblyNode('sleeve', { shape: cyl2 }));
+    assembly = addMate(assembly, { type: 'fixed', entity: { node: 'shaft' } });
+    assembly = addMate(assembly, {
+      type: 'concentric',
+      axisA: { node: 'shaft', edge: rim1 },
+      axisB: { node: 'sleeve', edge: rim2 },
+    });
+
+    const result = solveAssembly(assembly);
+    expect(isOk(result)).toBe(true);
+    const solved = unwrap(result);
+    expect(solved.converged).toBe(true);
+    const sleeve = solved.transforms.get('sleeve');
+    expect(sleeve?.position[0]).toBeCloseTo(0, 4);
+    expect(sleeve?.position[1]).toBeCloseTo(0, 4);
+    expect(Math.abs(sleeve?.rotation[0] ?? 0)).toBeCloseTo(1, 4);
+  });
 
   it('concentric mate with no geometry returns error', () => {
     let assembly = createAssemblyNode('root');

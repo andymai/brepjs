@@ -253,6 +253,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'curve2dParameter',
   'curve2dSplitAt',
   'curve2dTangentAt',
+  'curveAxis',
   'curveEndPoint',
   'curveIsClosed',
   'curveIsPeriodic',

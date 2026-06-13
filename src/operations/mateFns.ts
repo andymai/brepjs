@@ -9,7 +9,7 @@ import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { AssemblyNode } from './assemblyFns.js';
 import { walkAssembly } from './assemblyFns.js';
 import { faceCenter, normalAt, faceAxis } from '@/topology/faceFns.js';
-import { getCurveType, curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
+import { getCurveType, curveStartPoint, curveTangentAt, curveAxis } from '@/topology/curveFns.js';
 import {
   solveConstraints,
   type SolverEntity,
@@ -57,13 +57,18 @@ function extractEntity(mate: MateEntity): SolverEntity | null {
   }
 
   if (mate.edge) {
-    // A straight edge defines an axis (origin + direction); other curves can't.
+    // A straight edge defines an axis along its tangent; a circular edge defines
+    // one through its center, normal to its plane (bore rim, shaft fillet).
     if (getCurveType(mate.edge) === 'LINE') {
       return {
         type: 'axis',
         origin: curveStartPoint(mate.edge),
         direction: curveTangentAt(mate.edge),
       };
+    }
+    const axis = curveAxis(mate.edge);
+    if (axis) {
+      return { type: 'axis', origin: axis.origin, direction: axis.direction };
     }
     return null;
   }

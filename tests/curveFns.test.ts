@@ -12,6 +12,7 @@ import {
   curveEndPoint,
   curvePointAt,
   curveTangentAt,
+  curveAxis,
   curveLength,
   curveIsClosed,
   curveIsPeriodic,
@@ -35,6 +36,26 @@ describe('getCurveType', () => {
   it('returns CIRCLE for a circle edge', () => {
     const edge = circle(5);
     expect(getCurveType(castShape(edge.wrapped))).toBe('CIRCLE');
+  });
+});
+
+describe('curveAxis', () => {
+  it('returns center + plane normal for a circle edge', () => {
+    const edge = circle(5);
+    const axis = curveAxis(castShape(edge.wrapped));
+    expect(axis).not.toBeNull();
+    if (!axis) return;
+    expect(axis.origin[0]).toBeCloseTo(0, 6);
+    expect(axis.origin[1]).toBeCloseTo(0, 6);
+    expect(axis.origin[2]).toBeCloseTo(0, 6);
+    // Unit normal of the XY plane.
+    expect(Math.abs(axis.direction[2])).toBeCloseTo(1, 6);
+    expect(Math.hypot(...axis.direction)).toBeCloseTo(1, 6);
+  });
+
+  it('returns null for a non-circular (line) edge', () => {
+    const edge = line([0, 0, 0], [10, 0, 0]);
+    expect(curveAxis(castShape(edge.wrapped))).toBeNull();
   });
 });
 

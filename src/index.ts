@@ -612,6 +612,7 @@ export {
   curveEndPoint,
   curvePointAt,
   curveTangentAt,
+  curveAxis,
   curveLength,
   curveIsClosed,
   curveIsPeriodic,

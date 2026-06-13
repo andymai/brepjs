@@ -62,6 +62,55 @@ export function curveLength(shape: Edge<Dimension> | Wire<Dimension>): number {
   return getKernel().length(shape.wrapped);
 }
 
+/**
+ * Axis of a circular edge: the circle's center plus the unit normal of its
+ * plane. Returns null for non-circular curves.
+ *
+ * Derived kernel-agnostically from three sampled points (the circumcenter of a
+ * triangle determines the unique circle through its vertices), so it works for
+ * full circles and arcs alike without an analytic circle accessor.
+ */
+export function curveAxis(shape: Edge<Dimension> | Wire<Dimension>): {
+  origin: Vec3;
+  direction: Vec3;
+} | null {
+  if (getCurveType(shape) !== 'CIRCLE') return null;
+
+  const a = curvePointAt(shape, 0);
+  const b = curvePointAt(shape, 1 / 3);
+  const c = curvePointAt(shape, 2 / 3);
+
+  const ab: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const ac: Vec3 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+  const m: Vec3 = [
+    ab[1] * ac[2] - ab[2] * ac[1],
+    ab[2] * ac[0] - ab[0] * ac[2],
+    ab[0] * ac[1] - ab[1] * ac[0],
+  ];
+  const mLenSq = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
+  if (mLenSq < 1e-18) return null; // collinear samples; not a resolvable circle
+
+  const abSq = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  const acSq = ac[0] * ac[0] + ac[1] * ac[1] + ac[2] * ac[2];
+  // d = |ab|²·ac − |ac|²·ab, then center = a + (d × m) / (2|m|²).
+  const d: Vec3 = [
+    abSq * ac[0] - acSq * ab[0],
+    abSq * ac[1] - acSq * ab[1],
+    abSq * ac[2] - acSq * ab[2],
+  ];
+  const dxm: Vec3 = [
+    d[1] * m[2] - d[2] * m[1],
+    d[2] * m[0] - d[0] * m[2],
+    d[0] * m[1] - d[1] * m[0],
+  ];
+  const inv = 1 / (2 * mLenSq);
+  const origin: Vec3 = [a[0] + dxm[0] * inv, a[1] + dxm[1] * inv, a[2] + dxm[2] * inv];
+
+  const mLen = Math.sqrt(mLenSq);
+  const direction: Vec3 = [m[0] / mLen, m[1] / mLen, m[2] / mLen];
+  return { origin, direction };
+}
+
 /** Check if the curve is closed. */
 export function curveIsClosed(shape: Edge<Dimension> | Wire<Dimension>): boolean {
   return getKernel().curveIsClosed(shape.wrapped);
