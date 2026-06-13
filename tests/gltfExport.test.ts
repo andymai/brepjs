@@ -28,12 +28,48 @@ describe('exportGltf', () => {
     const doc = JSON.parse(json);
 
     expect(doc.scenes).toHaveLength(1);
-    expect(doc.nodes).toHaveLength(1);
+    // Default is Y-up: a root rotation node parents the mesh node.
+    expect(doc.nodes).toHaveLength(2);
     expect(doc.meshes).toHaveLength(1);
     expect(doc.meshes[0].primitives).toHaveLength(1);
     expect(doc.meshes[0].primitives[0].attributes.POSITION).toBe(1);
     expect(doc.meshes[0].primitives[0].attributes.NORMAL).toBe(2);
     expect(doc.meshes[0].primitives[0].indices).toBe(0);
+  });
+
+  describe('up-axis', () => {
+    const meshNodeOf = (doc: { scene: number; scenes: { nodes: number[] }[]; nodes: unknown[] }) =>
+      doc.nodes.find((n) => (n as { mesh?: number }).mesh !== undefined) as { mesh: number };
+
+    it('defaults to Y-up via a −90°-X root node so glTF viewers show it upright', () => {
+      const doc = JSON.parse(exportGltf(getBoxMesh()));
+      const root = doc.nodes[doc.scenes[doc.scene].nodes[0]];
+      expect(root.rotation).toEqual([-Math.SQRT1_2, 0, 0, Math.SQRT1_2]);
+      expect(root.children).toContain(doc.nodes.indexOf(meshNodeOf(doc)));
+      // Vertex data stays Z-up (matches STEP/STL) — only the node carries the spin.
+      expect(meshNodeOf(doc).rotation).toBeUndefined();
+    });
+
+    it('emits raw Z-up with no root node when upAxis is "Z"', () => {
+      const doc = JSON.parse(exportGltf(getBoxMesh(), { upAxis: 'Z' }));
+      expect(doc.nodes).toHaveLength(1);
+      expect(doc.nodes[0].mesh).toBe(0);
+      expect(doc.nodes[0].rotation).toBeUndefined();
+    });
+
+    it('applies the Y-up root node on the materials path too', () => {
+      const m = getBoxMesh();
+      const materials = new Map(
+        m.faceGroups.map((fg, i) => [
+          fg.faceId,
+          { baseColor: [i % 2, 0, 1, 1] as [number, number, number, number] },
+        ])
+      );
+      const doc = JSON.parse(exportGltf(m, { materials }));
+      const root = doc.nodes[doc.scenes[doc.scene].nodes[0]];
+      expect(root.rotation).toEqual([-Math.SQRT1_2, 0, 0, Math.SQRT1_2]);
+      expect(doc.materials.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('has correct accessor counts', () => {

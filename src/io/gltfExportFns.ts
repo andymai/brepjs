@@ -30,6 +30,25 @@ export interface GltfMaterial {
 }
 
 /**
+ * A meshed face as presented to a {@link MaterialFn} — its stable id and the
+ * centroid of its triangles in part coordinates (Z-up, mm).
+ */
+export interface GltfFace {
+  /** Stable face identifier — matches ShapeMesh.faceGroups[].faceId. */
+  faceId: number;
+  /** Centroid of the face's vertices, in part (Z-up, mm) coordinates. */
+  center: [number, number, number];
+}
+
+/**
+ * Per-face material selector. Called once per face group; return a material to
+ * paint that face, or `undefined` to leave it at the glTF default. Consumed by
+ * tooling (e.g. brepjs-verify's `export const materials`) that has the mesh and
+ * builds the faceId→material map passed to {@link GltfExportOptions.materials}.
+ */
+export type MaterialFn = (face: GltfFace) => GltfMaterial | undefined;
+
+/**
  * Options for glTF/GLB export.
  *
  * When `materials` is provided, faces are grouped into separate
@@ -38,6 +57,14 @@ export interface GltfMaterial {
 export interface GltfExportOptions {
   /** Map of faceId → material. FaceIds come from ShapeMesh.faceGroups[].faceId. */
   materials?: Map<number, GltfMaterial>;
+  /**
+   * Up-axis of the emitted document. brepjs geometry is Z-up (CAD convention),
+   * but glTF 2.0 mandates Y-up. With `'Y'` (the default) a root node carrying a
+   * −90° rotation about X is emitted so the part stands upright in standard glTF
+   * viewers (three.js, model-viewer, Blender); vertex data stays Z-up, matching
+   * the STEP/STL exports. Use `'Z'` to emit raw Z-up coordinates with no root node.
+   */
+  upAxis?: 'Y' | 'Z';
 }
 
 // ---------------------------------------------------------------------------
@@ -59,11 +86,19 @@ interface GltfMaterialDef {
   };
 }
 
+interface GltfNode {
+  mesh?: number;
+  name?: string;
+  /** Quaternion [x, y, z, w]. */
+  rotation?: [number, number, number, number];
+  children?: number[];
+}
+
 interface GltfDocument {
   asset: { version: string; generator: string };
   scene: number;
   scenes: Array<{ nodes: number[] }>;
-  nodes: Array<{ mesh: number }>;
+  nodes: GltfNode[];
   meshes: Array<{ primitives: GltfPrimitive[] }>;
   accessors: Array<{
     bufferView: number;
@@ -91,6 +126,20 @@ const FLOAT = 5126;
 const UNSIGNED_INT = 5125;
 const ARRAY_BUFFER = 34962;
 const ELEMENT_ARRAY_BUFFER = 34963;
+
+// Quaternion for −90° about X — rotates Z-up (CAD) content into Y-up (glTF).
+const Y_UP_QUAT: [number, number, number, number] = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2];
+
+/**
+ * Scene-graph nodes for the single mesh. For Y-up (default) the mesh node is
+ * parented under a rotation node so the Z-up vertices display upright in glTF
+ * viewers; for Z-up the mesh node is the root with no transform.
+ */
+function sceneNodes(upAxis: 'Y' | 'Z'): GltfNode[] {
+  return upAxis === 'Z'
+    ? [{ mesh: 0 }]
+    : [{ name: 'Z_up_to_Y_up', rotation: Y_UP_QUAT, children: [1] }, { mesh: 0 }];
+}
 
 // ---------------------------------------------------------------------------
 // Helper: compute min/max of a Float32Array in groups of 3
@@ -291,7 +340,7 @@ function buildGltfDocument(
 
   // If materials are provided and face groups exist, create per-material primitives
   if (materialMap && materialMap.size > 0 && mesh.faceGroups.length > 0) {
-    return buildGltfDocumentWithMaterials(mesh, mode, materialMap);
+    return buildGltfDocumentWithMaterials(mesh, mode, materialMap, options.upAxis ?? 'Y');
   }
 
   const indicesByteLength = triangles.byteLength;
@@ -305,7 +354,7 @@ function buildGltfDocument(
     asset: { version: '2.0', generator: 'brepjs' },
     scene: 0,
     scenes: [{ nodes: [0] }],
-    nodes: [{ mesh: 0 }],
+    nodes: sceneNodes(options?.upAxis ?? 'Y'),
     meshes: [
       {
         primitives: [
@@ -346,10 +395,14 @@ function buildGlbData(
 ): { doc: GltfDocument; binBuffer: ArrayBuffer } {
   const materialMap = options?.materials;
   if (materialMap && materialMap.size > 0 && mesh.faceGroups.length > 0) {
-    const { doc, binBuffer } = buildGltfDocumentAndBufferWithMaterials(mesh, materialMap);
+    const { doc, binBuffer } = buildGltfDocumentAndBufferWithMaterials(
+      mesh,
+      materialMap,
+      options.upAxis ?? 'Y'
+    );
     return { doc, binBuffer };
   }
-  const doc = buildGltfDocument(mesh, 'glb');
+  const doc = buildGltfDocument(mesh, 'glb', options);
   return { doc, binBuffer: buildBinaryBuffer(mesh) };
 }
 
@@ -524,7 +577,11 @@ function appendIndexPrimitives(
 /**
  * Build a glTF document from material layout.
  */
-function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout): GltfDocument {
+function buildGltfDocFromLayout(
+  mesh: ShapeMesh,
+  layout: MaterialPrimitiveLayout,
+  upAxis: 'Y' | 'Z' = 'Y'
+): GltfDocument {
   const { primitiveData, indexBufferInfos, verticesOffset, totalByteLength, uniqueMaterials } =
     layout;
 
@@ -551,7 +608,7 @@ function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout
     asset: { version: '2.0', generator: 'brepjs' },
     scene: 0,
     scenes: [{ nodes: [0] }],
-    nodes: [{ mesh: 0 }],
+    nodes: sceneNodes(upAxis),
     meshes: [{ primitives }],
     accessors,
     bufferViews,
@@ -601,10 +658,11 @@ function buildBinaryBufferFromLayout(
 function buildGltfDocumentWithMaterials(
   mesh: ShapeMesh,
   _mode: 'base64' | 'glb',
-  materialMap: Map<number, GltfMaterial>
+  materialMap: Map<number, GltfMaterial>,
+  upAxis: 'Y' | 'Z' = 'Y'
 ): GltfDocument {
   const layout = computeMaterialLayout(mesh, materialMap);
-  const doc = buildGltfDocFromLayout(mesh, layout);
+  const doc = buildGltfDocFromLayout(mesh, layout, upAxis);
 
   if (_mode === 'base64') {
     const buffer = buildBinaryBufferFromLayout(mesh, layout);
@@ -622,10 +680,11 @@ function buildGltfDocumentWithMaterials(
  */
 function buildGltfDocumentAndBufferWithMaterials(
   mesh: ShapeMesh,
-  materialMap: Map<number, GltfMaterial>
+  materialMap: Map<number, GltfMaterial>,
+  upAxis: 'Y' | 'Z' = 'Y'
 ): { doc: GltfDocument; binBuffer: ArrayBuffer } {
   const layout = computeMaterialLayout(mesh, materialMap);
-  const doc = buildGltfDocFromLayout(mesh, layout);
+  const doc = buildGltfDocFromLayout(mesh, layout, upAxis);
   const binBuffer = buildBinaryBufferFromLayout(mesh, layout);
   return { doc, binBuffer };
 }

@@ -24,6 +24,8 @@ export {
   exportGlb,
   type GltfMaterial,
   type GltfExportOptions,
+  type GltfFace,
+  type MaterialFn,
 } from './io/gltfExportFns.js';
 
 export {
