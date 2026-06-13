@@ -40,7 +40,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "node scripts/copyReference.mjs && vite build && vite build --config viewer/vite.config.ts",
+    "build": "node scripts/copyReference.mjs && vite build && vite build --config viewer/vite.config.ts && node -e \"require('fs').chmodSync('dist/cli/main.js',0o755);require('fs').chmodSync('dist/cli/main.cjs',0o755)\"",
     "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit && tsc -p bench/tsconfig.json",
     "lint": "eslint src tests viewer bench",
     "test": "vitest run",
