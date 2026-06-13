@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.80.0](https://github.com/andymai/brepjs/compare/brepjs-v18.79.0...brepjs-v18.80.0) (2026-06-13)
+
+
+### Features
+
+* **assembly:** non-plane coincident and distance mates ([#1341](https://github.com/andymai/brepjs/issues/1341)) ([05da665](https://github.com/andymai/brepjs/commit/05da665dd0e31af32e9e889c8abe06761e87ff8d))
+
 ## [18.79.0](https://github.com/andymai/brepjs/compare/brepjs-v18.78.1...brepjs-v18.79.0) (2026-06-13)
 
 
