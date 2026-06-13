@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.7.0...brepjs-verify-v0.7.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **brepjs-verify:** repair preview viewer + GLB Y-up/materials fidelity ([#1271](https://github.com/andymai/brepjs/issues/1271)) ([2823d21](https://github.com/andymai/brepjs/commit/2823d212e2fc5f79e785911ec2b9f3320bdfdbbf))
+
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.6.0...brepjs-verify-v0.7.0) (2026-06-10)
 
 
