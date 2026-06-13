@@ -45,27 +45,52 @@ export default () => box(40, 20, 10, { centered: true });
 ```
 npx -y brepjs-verify part.brep.ts --step part.step --json report.json   # primary STEP + deterministic report
 npx -y brepjs-verify part.brep.ts --snapshot shots/                     # iso/front/top/right PNGs
-npx -y brepjs-verify part.brep.ts --serve                               # clickable preview link (renders the real STEP)
+npx -y brepjs-verify part.brep.ts --serve                               # preview server + opens the viewer in your browser
+npx -y brepjs-verify part.brep.ts --serve --no-open                     # preview server; just print the URL (no browser)
 ```
 
 `--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The `--serve` link is interactive: a toolbar offers view presets + fit, solid/wireframe/x-ray modes, edge/grid toggles, a turntable, click-to-inspect face picking, a section/clipping plane, a measurements panel, and an in-browser PNG screenshot. `--snapshot` loads the same page with `ui=0` to suppress the toolbar, and burns the bounding-box size into each PNG (`dims=1`) so the agent can read scale from the image.
+
+`--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped automatically when it would be unwanted — when the server is reused (a tab is already open), under CI, when output is piped (non-TTY, e.g. agent runs), or on Linux with no display server. Pass `--no-open` to always suppress it.
 
 ## CLI reference
 
 The `brepjs-verify` bin is a multi-command CLI. `verify` is the default command, so `brepjs-verify part.brep.ts` runs it directly.
 
-| Command                         | What it does                                                                                                                                                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brepjs-verify verify <file>`   | Default command. Loads the part, runs deterministic checks, prints the JSON report. Flags: `--json <out>`, `--step <out>`, `--glb <out>`, `--snapshot <dir>`, `--serve`. Exits non-zero when the report is not `ok` (unless `--serve`). |
-| `brepjs-verify init <name>`     | Scaffolds a parameterized `<name>.brep.ts` + `tsconfig.json` + `README.md` into `./<name>` (or `--out <dir>`). Never overwrites existing files.                                                                                         |
-| `brepjs-verify watch <file>`    | Re-verifies on every save until Ctrl-C (debounced; watches the parent dir to survive editor rename-on-save).                                                                                                                            |
-| `brepjs-verify export <file>`   | Batch artifacts behind a validity gate: `--step`, `--glb`, `--stl`, or `--all`; `--out <dir>` (default `.`). Exits non-zero on failure.                                                                                                 |
-| `brepjs-verify measure <a> [b]` | Measurements for one part; with a second module, the distance between the two parts.                                                                                                                                                    |
-| `brepjs-verify diff <a> <b>`    | Compares the measurements of a baseline and a comparison module.                                                                                                                                                                        |
-| `brepjs-verify snapshot`        | Multi-view PNG capture — surfaced via `verify --snapshot <dir>`. Requires the optional `puppeteer`/Chrome dependency; degrades with a clear message when absent.                                                                        |
-| `brepjs-verify serve`           | Preview server with a `?dir=&file=` deep link — surfaced via `verify --serve`.                                                                                                                                                          |
+| Command                         | What it does                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brepjs-verify verify <file>`   | Default command. Loads the part, runs deterministic checks, prints the JSON report. Flags: `--json <out>`, `--step <out>`, `--glb <out>`, `--snapshot <dir>`, `--serve`, `--no-open` (with `--serve`, don't auto-open the browser). Exits non-zero when the report is not `ok` (unless `--serve`). |
+| `brepjs-verify init <name>`     | Scaffolds a parameterized `<name>.brep.ts` + `tsconfig.json` + `README.md` into `./<name>` (or `--out <dir>`). Never overwrites existing files.                                                                                                                                                    |
+| `brepjs-verify watch <file>`    | Re-verifies on every save until Ctrl-C (debounced; watches the parent dir to survive editor rename-on-save).                                                                                                                                                                                       |
+| `brepjs-verify export <file>`   | Batch artifacts behind a validity gate: `--step`, `--glb`, `--stl`, or `--all`; `--out <dir>` (default `.`). Exits non-zero on failure.                                                                                                                                                            |
+| `brepjs-verify measure <a> [b]` | Measurements for one part; with a second module, the distance between the two parts.                                                                                                                                                                                                               |
+| `brepjs-verify diff <a> <b>`    | Compares the measurements of a baseline and a comparison module.                                                                                                                                                                                                                                   |
+| `brepjs-verify snapshot`        | Multi-view PNG capture — surfaced via `verify --snapshot <dir>`. Requires the optional `puppeteer`/Chrome dependency; degrades with a clear message when absent.                                                                                                                                   |
+| `brepjs-verify serve`           | Preview server with a `?dir=&file=` deep link — surfaced via `verify --serve`. Auto-opens the browser in an interactive terminal (suppressed under CI / non-TTY / no display, or with `--no-open`).                                                                                                |
 
 Every command writes a single machine-readable JSON document to stdout; diagnostics (paths, kernel chatter, watch notices) go to stderr.
+
+## MCP server
+
+For MCP-capable agents, the package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same verify substrate as a tool. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
+
+Point an MCP client at it via stdio:
+
+```json
+{
+  "mcpServers": {
+    "brepjs-verify": { "command": "npx", "args": ["-y", "brepjs-verify-mcp"] }
+  }
+}
+```
+
+It exposes one tool:
+
+| Tool          | Input                                              | Returns                                                                                                                                                          |
+| ------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `code` (a `.brep.ts` source), `timeoutMs?` (30000) | The verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes, so the agent can branch. |
+
+This is the closed **build → verify** step the agent loop is built on, without spawning the CLI: the agent sends a brepjs program as a string and reads back the deterministic report.
 
 ## Examples gallery
 

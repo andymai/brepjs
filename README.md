@@ -131,7 +131,7 @@ export default () => box(40, 20, 10, { centered: true });
 npx -y brepjs-verify bracket.brep.ts --check --step bracket.step --json report.json
 ```
 
-The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance), so it drops straight into CI or an agent loop. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, CLI reference, examples, and the measurement eval.
+The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance), so it drops straight into CI or an agent loop. For MCP-capable agents the package also ships a stdio MCP server (`brepjs-verify-mcp`) exposing the same build-and-verify step as a `run_program` tool. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, CLI reference, the MCP server, examples, and the measurement eval.
 
 ## Projects Using brepjs
 

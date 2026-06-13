@@ -11,6 +11,7 @@ import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
 import { debounce, DEFAULT_DEBOUNCE_MS } from './watch.js';
 import { exportPart } from './exportPart.js';
+import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
 
@@ -51,6 +52,7 @@ program
     '--serve',
     'after verifying, start a preview server and print a ?dir=&file= deep link (stays running)'
   )
+  .option('--no-open', 'with --serve, do not auto-open the browser (just print the viewer URL)')
   .action(
     async (
       file: string,
@@ -61,6 +63,7 @@ program
         check?: boolean;
         snapshot?: string;
         serve?: boolean;
+        open?: boolean;
       }
     ) => {
       // The WASM viewer loads a CAD file (it can't run a .brep.ts), so --snapshot/--serve
@@ -105,8 +108,13 @@ program
       const willServe = Boolean(opts.serve) && stepPath !== undefined && reportOk(report);
       if (willServe && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
-        const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
+        const { url, reused } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
         process.stderr.write(`viewer: ${url}\n`);
+        // Auto-open only for a freshly started server (a reused one already has
+        // a tab) in an interactive session; `--no-open` always suppresses it.
+        if (!reused && opts.open !== false && shouldAutoOpen()) {
+          openBrowser(url);
+        }
       }
     }
   );

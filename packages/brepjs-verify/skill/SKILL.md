@@ -18,7 +18,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 5. **Verify (type + geometry).** `npx -y brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `npx -y brepjs-verify watch part.brep.ts`.
 6. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs — each has the bbox size (`W × D × H`) burned in, so you can read scale from the image. Review against the brief. A visual concern is **not** a conclusion — convert it to a measurement ("hole looks off-center → check `bounds`"). Don't declare done without a snapshot.
 7. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
-8. **Export + hand off.** `npx -y brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. `--serve` prints a clickable link to an interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) for the human to eyeball. Report the STEP path.
+8. **Export + hand off.** `npx -y brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `npx -y brepjs-verify export part.brep.ts --all`. `--serve` prints a clickable link to an interactive inspector (view presets, solid/wire/x-ray, face picking, section plane, measurements panel) for the human to eyeball — report that URL. In an interactive terminal it also opens the browser; under agent/CI runs (non-TTY) auto-open is suppressed automatically, so you normally don't need `--no-open` (pass it to be explicit). Report the STEP path.
 
 ## Reading the report (this is the source of truth)
 
@@ -89,7 +89,7 @@ Each is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expect
 
 ## CLI subcommands (the `brepjs-verify` bin)
 
-- `verify <file>` (default) — report; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`.
+- `verify <file>` (default) — report; flags `--check`, `--json`, `--step`, `--glb`, `--snapshot <dir>`, `--serve`, `--no-open` (with `--serve`, never auto-open the browser).
 - `init <name>` — scaffold `<name>.brep.ts` + `tsconfig.json`.
 - `watch <file>` — re-verify on every save.
 - `export <file>` — batch STEP/GLB/STL behind a validity gate (`--step`/`--glb`/`--stl`/`--all`).
