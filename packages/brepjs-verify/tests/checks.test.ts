@@ -35,4 +35,19 @@ describe('runChecks', () => {
     expect(report.topology?.wireCount).toBe(6);
     expect(report.topology?.vertexCount).toBe(8);
   });
+
+  it('omits topology (without failing the report) when traversal throws', () => {
+    // Fault-inject a topology extractor to exercise runChecks's defensive fallback: counts must
+    // degrade to "absent" while the rest of the report stays intact and unaffected.
+    const faultyBrep = {
+      ...brep,
+      getFaces: () => {
+        throw new Error('simulated degenerate-shape traversal failure');
+      },
+    };
+    const report = runChecks(faultyBrep, box(10, 10, 10));
+    expect(report.topology).toBeUndefined();
+    expect(report.shapeType).toBe('Solid');
+    expect(report.measurements.volume).toBeCloseTo(1000, 1);
+  });
 });

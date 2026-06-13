@@ -8,6 +8,7 @@ export {
   type VerifyReport,
   type VerifyCheck,
   type VerifyMeasurements,
+  type VerifyTopology,
   type VerifyAssertion,
   type DiffReport,
   type BoundsDelta,
