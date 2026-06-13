@@ -102,7 +102,7 @@ For sub-shapes, the tolerance can vary across an edge or face; `getShapeToleranc
 
 ## `autoHeal` short-circuits valid shapes
 
-A subtle but important behaviour: if you call `autoHeal` on a shape that already passes `BRepCheck`, the function short-circuits and returns the input unchanged, with `report.alreadyValid = true`. **No sew, heal, or fix diagnostics run.** This is a performance optimisation (there's nothing to do) but it means you can't use `autoHeal` to "force a recheck" of a valid shape.
+A subtle but important behaviour: if you call `autoHeal` on a shape that already passes `BRepCheck`, the function short-circuits and returns the input unchanged, with `report.alreadyValid = true`. **No sew, heal, or fix diagnostics run.** This is a performance optimisation (there's nothing to do), but it means you can't use `autoHeal` to "force a recheck" of a valid shape.
 
 To force a full re-validation:
 

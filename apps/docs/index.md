@@ -22,7 +22,7 @@ hero:
 features:
   - icon: 📐
     title: Exact B-Rep, not triangles
-    details: Shapes are mathematical boundaries (faces, edges, vertices) so booleans are precise, measurements are real, and you can export to STEP.
+    details: Shapes are mathematical boundaries (faces, edges, vertices), so booleans are precise, measurements are real, and you can export to STEP.
   - icon: 🛡️
     title: If it compiles, it's valid
     details: Branded types and validity brands (ClosedWire, OrientedFace, ValidSolid) prove topological invariants at compile time. Not just type-safe: geometry-safe.

@@ -7,7 +7,7 @@ description: 'Code-first CAD for JavaScript: exact B-Rep solids, branded types t
 
 > **Try it live:** the <a href="/playground" target="_blank" rel="noopener">in-browser playground</a> compiles a TypeScript snippet and renders the resulting solid in a few hundred milliseconds, no install, no setup.
 
-**brepjs** is a code-first CAD library for JavaScript. It models real solids (exact mathematical boundaries, not triangle meshes) so booleans are precise, fillets land on real edges, measurements are real numbers, and STEP export round-trips with SolidWorks, Fusion, FreeCAD, and OpenSCAD. The library is built on top of OpenCascade WASM today and a Rust-based kernel ([brepkit](https://github.com/andymai/brepkit)) tomorrow; the kernel is pluggable behind a small abstraction layer.
+**brepjs** is a code-first CAD library for JavaScript. It models real solids (exact mathematical boundaries, not triangle meshes), so booleans are precise, fillets land on real edges, measurements are real numbers, and STEP export round-trips with SolidWorks, Fusion, FreeCAD, and OpenSCAD. The library is built on top of OpenCascade WASM today and a Rust-based kernel ([brepkit](https://github.com/andymai/brepkit)) tomorrow; the kernel is pluggable behind a small abstraction layer.
 
 The differentiator: brepjs leans on TypeScript's type system to prove geometric invariants at compile time. Branded types separate `Edge` from `Wire` from `Face`. Validity brands like `ClosedWire`, `OrientedFace`, and `ValidSolid` encode topological properties: a wire that forms a loop, a face with a consistent normal, a solid that passes BRepCheck. If your code compiles, the geometry is structurally valid.
 

@@ -18,7 +18,7 @@ CAD modeling for JavaScript.
 
 </div>
 
-Shapes are exact mathematical boundaries (not triangle meshes) so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
+Shapes are exact mathematical boundaries (not triangle meshes), so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
 ```typescript
 // Drill a hole, fillet the vertical edges, export to STEP

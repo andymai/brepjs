@@ -47,7 +47,7 @@ STEP, IGES, and BREP files describe B-Rep shapes. They round-trip with SolidWork
 
 ### Memory ownership
 
-WASM objects are not garbage-collected. brepjs gives you tools to manage this (the `using` keyword, `DisposalScope`, the fluent `shape()` wrapper that disposes intermediate results) but you must think about it for long-running apps. See [Memory Management](../advanced/memory).
+WASM objects are not garbage-collected. brepjs gives you tools to manage this (the `using` keyword, `DisposalScope`, the fluent `shape()` wrapper that disposes intermediate results), but you must think about it for long-running apps. See [Memory Management](../advanced/memory).
 
 ### Speed for trivial operations
 
