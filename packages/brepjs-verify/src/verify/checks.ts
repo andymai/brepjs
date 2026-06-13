@@ -34,6 +34,8 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     getEdges,
     getWires,
     getVertices,
+    getShells,
+    isManifoldShell,
     validSolid,
     isOk,
   } = brep;
@@ -99,6 +101,17 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     };
   } catch {
     // topology is informational; skip it if traversal fails on a degenerate shape
+  }
+
+  // Manifold-ness — only meaningful when the shape has shells. Guarded separately so a
+  // manifold-check failure doesn't drop the counts already recorded above.
+  if (r.topology) {
+    try {
+      const shells = getShells(shape);
+      if (shells.length > 0) r.topology.manifold = shells.every((s) => isManifoldShell(s));
+    } catch {
+      // manifold is informational; leave it absent if the check fails
+    }
   }
 
   // Hints from the check-phase errors. Callers that push more errors before

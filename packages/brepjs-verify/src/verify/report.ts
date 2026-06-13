@@ -18,6 +18,8 @@ export interface VerifyTopology {
   edgeCount: number;
   wireCount: number;
   vertexCount: number;
+  /** True when every shell is manifold. Absent for shapes without shells (nothing to assess). */
+  manifold?: boolean;
 }
 
 /** A failure captured with whatever structured context it carried (a `BrepError` code/suggestion). */

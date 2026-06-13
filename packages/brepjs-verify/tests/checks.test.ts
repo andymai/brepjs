@@ -59,4 +59,9 @@ describe('runChecks', () => {
     expect(report.measurements.centerOfMass?.[1]).toBeCloseTo(5, 3);
     expect(report.measurements.centerOfMass?.[2]).toBeCloseTo(5, 3);
   });
+
+  it('reports manifold=true for a closed solid', () => {
+    const report = runChecks(brep, box(10, 10, 10));
+    expect(report.topology?.manifold).toBe(true);
+  });
 });
