@@ -11,8 +11,9 @@ It is a thin, store-agnostic rendering layer: it takes a `MeshData` and optional
 - `ViewerControls` — store-agnostic, fully-controlled toolbar (view-mode, edges, grid, turntable, view presets, fit, screenshot). Each group renders only when its handler is supplied; self-contained inline styles, `className` to restyle.
 - `ViewerInfoPanel` — controlled, store-agnostic measurements readout (bbox size, volume, area, triangles, validity); renders only the rows whose values are supplied.
 - `ViewerSelectionPanel` — controlled readout for a picked `FaceInfo` (surface type, area, normal) with an optional clear button; renders nothing when no face is selected.
+- `ViewerSectionControls` — controlled section-plane bar (enable, axis, position slider, flip). Pair with `sectionPlane(...)` and pass the result to `Renderer`/`EdgeRenderer` via their `clippingPlanes` prop. `ViewerCanvas` enables local clipping, so only the model is cut (not the grid).
 - `EdgeRenderer`, `SelectionHighlight`, `SceneSetup` — companion components.
-- `buildGeometry`, `findFaceGroupAt`, `meshSize` — pure helpers (`meshSize` returns mesh bbox extents).
+- `buildGeometry`, `findFaceGroupAt`, `meshSize`, `meshBounds`, `sectionPlane` — pure helpers (`meshBounds` returns the bbox; `sectionPlane` builds a model-space clipping plane).
 - Types: `MeshData`, `FaceGroup`, `FaceInfo`, `EdgeGroup`, `EdgeInfo`, `ViewMode`, `ViewName`, `VIEW_NAMES`.
 
 ## Peer dependencies

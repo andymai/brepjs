@@ -6,5 +6,17 @@ export { ViewerCanvas, type ViewerCanvasProps } from './ViewerCanvas.js';
 export { ViewerControls, type ViewerControlsProps } from './ViewerControls.js';
 export { ViewerInfoPanel, type ViewerInfoPanelProps } from './ViewerInfoPanel.js';
 export { ViewerSelectionPanel, type ViewerSelectionPanelProps } from './ViewerSelectionPanel.js';
+export {
+  ViewerSectionControls,
+  type ViewerSectionControlsProps,
+} from './ViewerSectionControls.js';
 export * from './types.js';
-export { buildGeometry, findFaceGroupAt, meshSize } from './geometry.js';
+export {
+  buildGeometry,
+  findFaceGroupAt,
+  meshSize,
+  meshBounds,
+  sectionPlane,
+  type MeshBounds,
+  type SectionAxis,
+} from './geometry.js';

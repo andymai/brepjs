@@ -7,6 +7,7 @@ export interface EdgeRendererProps {
   edges: Float32Array;
   edgeGroups?: EdgeGroup[];
   edgeInfos?: EdgeInfo[];
+  clippingPlanes?: THREE.Plane[];
   onEdgePick?: (info: EdgeInfo, additive: boolean, pos: ScreenPos) => void;
   onEdgeHover?: (info: EdgeInfo | null, pos?: ScreenPos) => void;
   onEdgeContextMenu?: (info: EdgeInfo, pos: ScreenPos) => void;
@@ -32,6 +33,7 @@ export default function EdgeRenderer({
   edges,
   edgeGroups,
   edgeInfos,
+  clippingPlanes,
   onEdgePick,
   onEdgeHover,
   onEdgeContextMenu,
@@ -156,7 +158,12 @@ export default function EdgeRenderer({
     : {};
   return (
     <lineSegments geometry={geometry} renderOrder={1} raycast={raycastLines} {...handlers}>
-      <lineBasicMaterial color="#000000" depthTest={true} linewidth={2} />
+      <lineBasicMaterial
+        color="#000000"
+        depthTest={true}
+        linewidth={2}
+        clippingPlanes={clippingPlanes ?? null}
+      />
     </lineSegments>
   );
 }

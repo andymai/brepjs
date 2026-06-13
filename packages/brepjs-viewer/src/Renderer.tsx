@@ -7,6 +7,7 @@ import type { MeshData, FaceInfo, ViewMode, ScreenPos } from './types.js';
 export interface RendererProps {
   data: MeshData;
   viewMode?: ViewMode;
+  clippingPlanes?: THREE.Plane[];
   onFacePick?: (info: FaceInfo, additive: boolean, pos: ScreenPos) => void;
   onFaceHover?: (info: FaceInfo | null, pos?: ScreenPos) => void;
   onFaceContextMenu?: (info: FaceInfo, pos: ScreenPos) => void;
@@ -15,6 +16,7 @@ export interface RendererProps {
 export function Renderer({
   data,
   viewMode = 'solid',
+  clippingPlanes,
   onFacePick,
   onFaceHover,
   onFaceContextMenu,
@@ -112,6 +114,7 @@ export function Renderer({
         transparent={viewMode === 'xray'}
         opacity={viewMode === 'xray' ? 0.35 : 1}
         depthWrite={viewMode !== 'xray'}
+        clippingPlanes={clippingPlanes ?? null}
       />
     </mesh>
   );
