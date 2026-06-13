@@ -21,6 +21,12 @@ describe('exportProgram (sandbox export)', () => {
       await rm(dir, { recursive: true, force: true });
     }
   }, 60000);
+
+  it('fails clearly (without spawning) when no formats are selected', async () => {
+    const res = await exportProgram(VALID_PART, '/tmp', {});
+    expect(res.outcome).toBe('crashed');
+    if (res.outcome === 'crashed') expect(res.detail).toContain('format');
+  });
 });
 
 describe('exportPartTool (MCP export_part handler)', () => {

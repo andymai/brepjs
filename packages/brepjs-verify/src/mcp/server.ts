@@ -73,13 +73,16 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       typeof a['formats'] === 'object' && a['formats'] !== null
         ? (a['formats'] as Record<string, unknown>)
         : undefined;
-    const formats = f
-      ? {
-          ...(typeof f['step'] === 'boolean' ? { step: f['step'] } : {}),
-          ...(typeof f['glb'] === 'boolean' ? { glb: f['glb'] } : {}),
-          ...(typeof f['stl'] === 'boolean' ? { stl: f['stl'] } : {}),
-        }
-      : undefined;
+    // Collapse an empty / all-false formats object to undefined so exportProgram's "all" default
+    // applies, rather than spawning with no flags (which the CLI rejects).
+    const formats =
+      f && (f['step'] === true || f['glb'] === true || f['stl'] === true)
+        ? {
+            ...(f['step'] === true ? { step: true } : {}),
+            ...(f['glb'] === true ? { glb: true } : {}),
+            ...(f['stl'] === true ? { stl: true } : {}),
+          }
+        : undefined;
     const toolArgs: ExportPartToolArgs = {
       code,
       outDir,

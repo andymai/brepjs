@@ -186,6 +186,15 @@ export async function exportProgram(
     formats.stl ? '--stl' : '',
   ].filter(Boolean);
 
+  if (formatFlags.length === 0) {
+    // Fail clearly instead of spawning the CLI (which would reject it as an opaque crash).
+    return {
+      outcome: 'crashed',
+      exitCode: 1,
+      detail: 'no formats selected; pass at least one of step/glb/stl',
+    };
+  }
+
   const o = await runVerifyCli(
     code,
     (partPath) => ['export', partPath, ...formatFlags, '--out', outDir],
