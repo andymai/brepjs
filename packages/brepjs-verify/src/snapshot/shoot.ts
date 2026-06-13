@@ -39,7 +39,8 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 900 });
-    const target = `${server.url}/?dir=${encodeURIComponent(dir)}&file=${encodeURIComponent(rel)}`;
+    // ui=0 hides the interactive toolbar so captured PNGs contain only the model.
+    const target = `${server.url}/?dir=${encodeURIComponent(dir)}&file=${encodeURIComponent(rel)}&ui=0`;
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await page.waitForFunction('window.__ready === true', { timeout: READY_TIMEOUT_MS });
     for (const view of views) {

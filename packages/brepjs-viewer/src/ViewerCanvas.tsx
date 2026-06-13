@@ -8,6 +8,10 @@ import type { MeshData, ViewName } from './types.js';
 export interface ViewerCanvasProps {
   data: MeshData;
   view?: ViewName;
+  /** Bump to re-frame the model on demand (e.g. a "Fit" button). */
+  fitSignal?: number;
+  autoRotate?: boolean;
+  gridVisible?: boolean;
   onFirstFrame?: () => void;
   children?: ReactNode;
 }
@@ -24,10 +28,12 @@ const VIEW_DIR: Record<ViewName, THREE.Vector3> = {
 function Framing({
   data,
   view,
+  fitSignal,
   onFirstFrame,
 }: {
   data: MeshData;
   view: ViewName;
+  fitSignal?: number | undefined;
   onFirstFrame?: (() => void) | undefined;
 }) {
   const camera = useThree((s) => s.camera);
@@ -56,15 +62,25 @@ function Framing({
       fired.current = true;
       onFirstFrame?.();
     }
-  }, [camera, invalidate, center, radius, view, onFirstFrame]);
+  }, [camera, invalidate, center, radius, view, fitSignal, onFirstFrame]);
   return null;
 }
 
-export function ViewerCanvas({ data, view = 'iso', onFirstFrame, children }: ViewerCanvasProps) {
+export function ViewerCanvas({
+  data,
+  view = 'iso',
+  fitSignal,
+  autoRotate = false,
+  gridVisible = true,
+  onFirstFrame,
+  children,
+}: ViewerCanvasProps) {
   return (
-    <Canvas frameloop="demand" gl={{ preserveDrawingBuffer: true }}>
-      <SceneSetup />
-      <Framing data={data} view={view} onFirstFrame={onFirstFrame} />
+    // `always` while spinning so the turntable advances; `demand` otherwise keeps the
+    // GPU idle. preserveDrawingBuffer stays on so screenshots read back in both modes.
+    <Canvas frameloop={autoRotate ? 'always' : 'demand'} gl={{ preserveDrawingBuffer: true }}>
+      <SceneSetup autoRotate={autoRotate} gridVisible={gridVisible} />
+      <Framing data={data} view={view} fitSignal={fitSignal} onFirstFrame={onFirstFrame} />
       {children}
     </Canvas>
   );
