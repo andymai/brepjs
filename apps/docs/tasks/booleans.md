@@ -63,6 +63,8 @@ export default drilled;
 
 `cutAll(base, tools)` cuts every tool from base in one operation. `fuseAll(shapes)` fuses everything in the list.
 
+If a fused result passes validity checks but fails to export STEP (a rare BOPAlgo corruption on some disjoint inputs, [#1126](https://github.com/andymai/brepjs/issues/1126)), retry with `fuseAll(shapes, { strategy: 'pairwise' })`. The pairwise path uses a different OCCT algorithm that is not affected.
+
 ## With the fluent wrapper
 
 ```typescript

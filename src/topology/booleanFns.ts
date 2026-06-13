@@ -431,7 +431,15 @@ function fuseAllPairwise(
  * Fuse all shapes in a single boolean operation.
  *
  * With `strategy: 'native'` (default), uses N-way BRepAlgoAPI_BuilderAlgo.
- * With `strategy: 'pairwise'`, uses recursive divide-and-conquer.
+ * With `strategy: 'pairwise'`, uses recursive divide-and-conquer over
+ * BRepAlgoAPI_Fuse.
+ *
+ * `strategy: 'pairwise'` is the workaround for #1126: the native N-way builder
+ * can silently corrupt the topology of certain disjoint inputs (e.g. an
+ * annular-sector tread fused with a frenet-swept rail) so the result passes all
+ * in-memory checks but traps the STEP writer. The pairwise path uses a different
+ * OCCT algorithm that is not affected. Tracked upstream at
+ * andymai/opencascade.js#3.
  *
  * @param shapes - Array of 3D shapes to fuse (at least one required).
  * @param options - Boolean operation options.

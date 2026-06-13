@@ -28,10 +28,12 @@ const deg = (d: number) => (d * Math.PI) / 180;
  * `isValid`/`validSolid`/`mesh`/`getBounds`/`measureArea` but OOB-trap the STEP/BREP
  * writer. Each input serializes fine on its own; only this specific pairing triggers it.
  *
- * Note: the list-builder `fuseAll` path reproduces this deterministically; the
- * pairwise `fuse` path (a different OCCT algorithm) does not, so this must use `fuseAll`.
+ * Note: the list-builder `fuseAll` path (native N-way BRepAlgoAPI_BuilderAlgo)
+ * reproduces this deterministically; the pairwise path (a different OCCT
+ * algorithm) does not. `fuseAll(..., { strategy: 'pairwise' })` is the supported
+ * workaround until the upstream OCCT fix lands (andymai/opencascade.js#3).
  */
-function buildCorruptingFuse(): AnyShape {
+function buildTreadAndRail(): [AnyShape, AnyShape] {
   const TREAD_T = 4,
     TREAD_INNER_R = 10,
     TREAD_OUTER_R = 62,
@@ -64,7 +66,11 @@ function buildCorruptingFuse(): AnyShape {
   const railProfile = sketchCircle(RAIL_DIA / 2, { plane: railPlane }).wire;
   const rail = unwrap(sweep(railProfile, railPath, { frenet: true }));
 
-  return unwrap(fuseAll([tread0, rail]));
+  return [tread0, rail];
+}
+
+function buildCorruptingFuse(): AnyShape {
+  return unwrap(fuseAll(buildTreadAndRail()));
 }
 
 // Isolated in its own file: a successful trap poisons the kernel's writer for the
@@ -81,6 +87,17 @@ describe.skipIf(currentKernel !== 'occt')(
     it('exports a healthy box before the poisoning call', () => {
       // Proves the kernel is alive, so a later failure is attributable to the shape.
       expect(isOk(exportSTEP(box(5, 5, 5)))).toBe(true);
+    });
+
+    it('strategy: "pairwise" produces a STEP-exportable shape (the #1126 workaround)', () => {
+      // The pairwise reduction uses BRepAlgoAPI_Fuse rather than the N-way
+      // BuilderAlgo, sidestepping the BOPAlgo corruption. Same inputs that
+      // corrupt under the native path export cleanly here. Runs before the
+      // poisoning call below, which would otherwise leave the writer unusable.
+      const pairwise = fuseAll(buildTreadAndRail(), { strategy: 'pairwise' });
+      expect(isOk(pairwise)).toBe(true);
+      const result = exportSTEP(unwrap(pairwise));
+      expect(isOk(result)).toBe(true);
     });
 
     it('returns a clean Err (never throws, never a phantom file-read error)', () => {
