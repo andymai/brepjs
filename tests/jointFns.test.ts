@@ -34,6 +34,12 @@ function expectVecClose(a: readonly number[], b: readonly number[], digits = 6):
   for (let i = 0; i < 3; i++) expect(a[i]).toBeCloseTo(b[i] ?? 0, digits);
 }
 
+function poseOf(poses: Map<string, JointPose>, name: string): JointPose {
+  const p = poses.get(name);
+  if (!p) throw new Error(`no pose for ${name}`);
+  return p;
+}
+
 describe('jointFns — construction', () => {
   it('revoluteJoint normalizes the axis direction and defaults the range', () => {
     const j = revoluteJoint('base', 'arm', { origin: [0, 0, 0], direction: [0, 0, 2] });
@@ -192,12 +198,6 @@ describe('jointFns — forward kinematics', () => {
     return asm;
   }
 
-  function poseOf(poses: Map<string, JointPose>, name: string): JointPose {
-    const p = poses.get(name);
-    if (!p) throw new Error(`no pose for ${name}`);
-    return p;
-  }
-
   /** Closed-form planar 2R forward kinematics for the end-effector tip. */
   function expected2R(theta1: number, theta2: number): [number, number, number] {
     const r1 = (theta1 * Math.PI) / 180;
@@ -316,9 +316,9 @@ function matrixFK(links: readonly Link[], values: Record<string, number>, tip: V
 }
 
 describe('jointFns — forward kinematics (6-DOF spatial chain)', () => {
-  // A 6-axis arm: mixed revolute axes (Z/Y/X) plus one prismatic, joint origins
-  // along +X in each parent frame. Axes are non-coplanar so the test exercises
-  // full 3D quaternion composition, not just planar rotation.
+  // A 6-axis arm with axes Z, Y, Y, prismatic-X, X, Y and joint origins along
+  // +X in each parent frame. The mix of Z/Y/X rotation axes is non-coplanar, so
+  // the test exercises full 3D quaternion composition, not just planar rotation.
   const links: Link[] = [
     {
       child: 'l1',
@@ -357,17 +357,11 @@ describe('jointFns — forward kinematics (6-DOF spatial chain)', () => {
     const asm = chain();
     for (const cfg of configs) {
       const poses = forwardKinematics(asm, cfg);
-      const fkTip = applyPose(poseOf6(poses, 'l6'), tip);
+      const fkTip = applyPose(poseOf(poses, 'l6'), tip);
       expectVecClose(fkTip, matrixFK(links, cfg, tip), 6);
     }
   });
 });
-
-function poseOf6(poses: Map<string, JointPose>, name: string): JointPose {
-  const p = poses.get(name);
-  if (!p) throw new Error(`no pose for ${name}`);
-  return p;
-}
 
 describe('jointFns — mechanism DOF', () => {
   it('sums joint freedoms (open-chain mobility)', () => {

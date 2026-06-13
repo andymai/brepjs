@@ -201,13 +201,16 @@ export function forwardKinematics(
   assembly: AssemblyNode,
   jointValues: Readonly<Record<string, number>> = {}
 ): Map<string, JointPose> {
-  const joints = collectJoints(assembly);
-  const byChild = new Map<string, Joint>();
-  for (const j of joints) byChild.set(j.child, j);
-
+  // Single pass: gather joints and node names together.
+  const joints: Joint[] = [];
   const names = new Set<string>();
-  walkAssembly(assembly, (node) => names.add(node.name));
+  walkAssembly(assembly, (node) => {
+    names.add(node.name);
+    if (node.joints) joints.push(...(node.joints as readonly Joint[]));
+  });
+  const byChild = new Map<string, Joint>();
   for (const j of joints) {
+    byChild.set(j.child, j);
     names.add(j.parent);
     names.add(j.child);
   }
