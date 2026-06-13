@@ -61,6 +61,19 @@ describe('jointFns — construction', () => {
     expect(j.value).toBe(45);
   });
 
+  it('normalizes an inverted (min > max) range so value stays in bounds', () => {
+    const j = revoluteJoint(
+      'a',
+      'b',
+      { origin: [0, 0, 0], direction: [0, 0, 1] },
+      { min: 90, max: -90, value: 0 }
+    );
+    expect(j.min).toBe(-90);
+    expect(j.max).toBe(90);
+    expect(j.value).toBe(0);
+    expect(setJointValue(j, 45).value).toBe(45);
+  });
+
   it('setJointValue clamps and is immutable', () => {
     const j = revoluteJoint(
       'a',

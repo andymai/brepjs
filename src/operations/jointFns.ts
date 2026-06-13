@@ -79,8 +79,12 @@ function makeJoint(
   defMin: number,
   defMax: number
 ): Joint {
-  const min = opts.min ?? defMin;
-  const max = opts.max ?? defMax;
+  // Normalize the range so an inverted (min > max) input can't break the
+  // "value is always within [min, max]" invariant.
+  const a = opts.min ?? defMin;
+  const b = opts.max ?? defMax;
+  const min = Math.min(a, b);
+  const max = Math.max(a, b);
   return {
     type,
     parent,
@@ -102,7 +106,12 @@ export function revoluteJoint(
   return makeJoint('revolute', parent, child, axis, opts, -180, 180);
 }
 
-/** A prismatic (slider) joint — the child translates along `axis` by `value` units. */
+/**
+ * A prismatic (slider) joint — the child translates along `axis` by `value`
+ * units. Only `axis.direction` is used; `axis.origin` is ignored (a pure
+ * translation has no anchor point), unlike a revolute joint which rotates about
+ * the axis line through `origin`.
+ */
 export function prismaticJoint(
   parent: string,
   child: string,
