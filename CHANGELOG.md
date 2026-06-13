@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.78.0](https://github.com/andymai/brepjs/compare/brepjs-v18.77.0...brepjs-v18.78.0) (2026-06-13)
+
+
+### Features
+
+* native thread() operation + maker-breadth skill references ([#1330](https://github.com/andymai/brepjs/issues/1330)) ([1bfc73d](https://github.com/andymai/brepjs/commit/1bfc73d696b0b779230e6ed3542e7b8415426992))
+
 ## [18.77.0](https://github.com/andymai/brepjs/compare/brepjs-v18.76.0...brepjs-v18.77.0) (2026-06-13)
 
 
