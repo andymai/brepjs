@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.69.2](https://github.com/andymai/brepjs/compare/brepjs-v18.69.1...brepjs-v18.69.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* **kernel:** thread STL tolerance/angularTolerance through brepkit + occt-wasm ([#1289](https://github.com/andymai/brepjs/issues/1289)) ([2679061](https://github.com/andymai/brepjs/commit/2679061f6d086f9f256b53ad5cbd5d65e0635ff2))
+
 ## [18.69.1](https://github.com/andymai/brepjs/compare/brepjs-v18.69.0...brepjs-v18.69.1) (2026-06-13)
 
 
