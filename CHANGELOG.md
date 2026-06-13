@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.79.0](https://github.com/andymai/brepjs/compare/brepjs-v18.78.1...brepjs-v18.79.0) (2026-06-13)
+
+
+### Features
+
+* **kinematics:** add cylindrical, planar, and spherical joints ([#1339](https://github.com/andymai/brepjs/issues/1339)) ([3db334d](https://github.com/andymai/brepjs/commit/3db334dcbd259f3a9155a45e61975cfcecce784d))
+
 ## [18.78.1](https://github.com/andymai/brepjs/compare/brepjs-v18.78.0...brepjs-v18.78.1) (2026-06-13)
 
 
