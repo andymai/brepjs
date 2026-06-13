@@ -10,6 +10,14 @@ export interface VerifyMeasurements {
   bounds?: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number };
 }
 
+/** Topology element counts — a quick structural fingerprint of a shape. */
+export interface VerifyTopology {
+  faceCount: number;
+  edgeCount: number;
+  wireCount: number;
+  vertexCount: number;
+}
+
 /** A failure captured with whatever structured context it carried (a `BrepError` code/suggestion). */
 export interface ErrorInfo {
   message: string;
@@ -37,6 +45,8 @@ export interface VerifyReport {
   shapeType: string | null;
   checks: VerifyCheck[];
   measurements: VerifyMeasurements;
+  /** Topology element counts. Absent when traversal fails on a degenerate shape. */
+  topology?: VerifyTopology;
   errors: string[];
   /** Structured copies of `errors`, carrying any `BrepError` code/suggestion. Drives `hints`. */
   errorInfos: ErrorInfo[];

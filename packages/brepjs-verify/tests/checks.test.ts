@@ -26,4 +26,13 @@ describe('runChecks', () => {
     expect(report.measurements.volume).toBeGreaterThan(0);
     expect(report.checks.some((c) => c.name === 'positiveVolume' && c.passed)).toBe(true);
   });
+
+  it('reports topology counts (faces/edges/wires/vertices) for a solid', () => {
+    const report = runChecks(brep, box(10, 10, 10));
+    expect(report.topology).toBeDefined();
+    expect(report.topology?.faceCount).toBe(6);
+    expect(report.topology?.edgeCount).toBe(12);
+    expect(report.topology?.wireCount).toBe(6);
+    expect(report.topology?.vertexCount).toBe(8);
+  });
 });

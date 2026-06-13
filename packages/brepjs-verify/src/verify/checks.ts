@@ -23,8 +23,20 @@ function shapeTypeOf(brep: BrepNs, s: AnyShape): string {
 }
 
 export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
-  const { isSolid, isShape3D, isFace, measureVolume, measureArea, getBounds, validSolid, isOk } =
-    brep;
+  const {
+    isSolid,
+    isShape3D,
+    isFace,
+    measureVolume,
+    measureArea,
+    getBounds,
+    getFaces,
+    getEdges,
+    getWires,
+    getVertices,
+    validSolid,
+    isOk,
+  } = brep;
   const r = emptyReport();
   r.shapeType = shapeTypeOf(brep, shape);
 
@@ -70,6 +82,19 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     r.measurements.bounds = getBounds(shape);
   } catch (e) {
     pushError(r, { message: `getBounds: ${(e as Error).message}` });
+  }
+
+  // Topology counts: an informational structural fingerprint. Traversal is safe on valid shapes;
+  // if it throws on a degenerate shape, leave topology absent rather than failing the report.
+  try {
+    r.topology = {
+      faceCount: getFaces(shape).length,
+      edgeCount: getEdges(shape).length,
+      wireCount: getWires(shape).length,
+      vertexCount: getVertices(shape).length,
+    };
+  } catch {
+    // topology is informational; skip it if traversal fails on a degenerate shape
   }
 
   // Hints from the check-phase errors. Callers that push more errors before
