@@ -29,7 +29,7 @@ export default () => {
 `revolve(face, { axis, at, angle })` spins a planar face around an axis into a solid. Draw the cross-section in the **XZ plane (x = radius, z = height)** and revolve about Z.
 
 ```ts
-// pulley.brep.ts — type-clean revolve
+// pulley.brep.ts: type-clean revolve
 import { polygon, revolve, unwrap } from 'brepjs';
 export default () => {
   // Closed profile in XZ (y = 0): bore → rim → groove → rim → bore.
@@ -48,13 +48,13 @@ export default () => {
 };
 ```
 
-- **`angle` is in RADIANS**, not degrees — a full turn is `Math.PI * 2`. Passing `360` revolves 360 radians (≈57 turns).
+- **`angle` is in RADIANS**, not degrees: a full turn is `Math.PI * 2`. Passing `360` revolves 360 radians (≈57 turns).
 - Build the revolve profile with **`polygon(points3D)`** (a typed `OrientedFace`). The tempting `draw(...).close().sketchOnPlane('XZ').face()` path **fails `--check`**: `sketchOnPlane()` is typed `SketchInterface | Sketches`, and `.face()` / `.sweepSketch()` exist only on the single-profile `SketchInterface`, so `tsc` rejects them even though they work at runtime for a single profile.
 
 ## Pitfalls
 
-- A `Drawing` is purely 2D — you must `.sketchOnPlane(...)` before `.extrude`.
-- `.sketchOnPlane(...)` returns `SketchInterface | Sketches`. `.extrude(...)` works on the union, but `.face()` / `.sweepSketch()` do not — for a single profile that needs a face (revolve), use `polygon(points3D)` instead (see above) to stay `--check`-clean.
+- A `Drawing` is purely 2D; you must `.sketchOnPlane(...)` before `.extrude`.
+- `.sketchOnPlane(...)` returns `SketchInterface | Sketches`. `.extrude(...)` works on the union, but `.face()` / `.sweepSketch()` do not; for a single profile that needs a face (revolve), use `polygon(points3D)` instead (see above) to stay `--check`-clean.
 - Low-level `circle`/`ellipse`/`line` (primitives) return **edges**, not faces; use the `draw*` factories when you need a closed profile to extrude.
 
 See also: docs/function-lookup.md → brepjs/sketching.

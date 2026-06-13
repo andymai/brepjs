@@ -18,7 +18,7 @@ export default () => fillet(box(40, 20, 10, { centered: true }), 2);
 
 ## Selecting which edges / faces
 
-The no-edge-list forms `fillet(solid, radius)` / `chamfer(solid, distance)` round **every** edge, and `shell` needs the specific faces to open. Pick them with a finder, not by guessing — `findAll(solid)` returns the array these functions expect:
+The no-edge-list forms `fillet(solid, radius)` / `chamfer(solid, distance)` round **every** edge, and `shell` needs the specific faces to open. Pick them with a finder, not by guessing: `findAll(solid)` returns the array these functions expect:
 
 ```ts
 import { box, fillet, shell, edgeFinder, faceFinder, getBounds, unwrap } from 'brepjs';
@@ -40,9 +40,9 @@ Finder vocabulary: `edgeFinder()` / `faceFinder()` then `.inDirection(dir)`, `.o
 
 ## Pitfalls
 
-- **`fillet(solid, radius)` rounds ALL edges and often fails** — a uniform radius rarely fits every edge (e.g. it can't exceed a thin wall). Select the edges you mean with `edgeFinder()`. A failed fillet/chamfer surfaces as `FILLET_FAILED` / `CHAMFER_FAILED`.
-- **`inDirection('Z')` matches BOTH orientations** (+Z and −Z) — it tests the axis, not the sign. To single out one face/edge add `.when(f => getBounds(f).zMax > threshold)` or `.atDistance(...)`.
-- A radius/distance larger than the local geometry makes the kernel fail — keep it well below the smallest adjacent edge length.
+- **`fillet(solid, radius)` rounds ALL edges and often fails:** a uniform radius rarely fits every edge (e.g. it can't exceed a thin wall). Select the edges you mean with `edgeFinder()`. A failed fillet/chamfer surfaces as `FILLET_FAILED` / `CHAMFER_FAILED`.
+- **`inDirection('Z')` matches BOTH orientations** (+Z and −Z): it tests the axis, not the sign. To single out one face/edge add `.when(f => getBounds(f).zMax > threshold)` or `.atDistance(...)`.
+- A radius/distance larger than the local geometry makes the kernel fail; keep it well below the smallest adjacent edge length.
 - `fillet`/`chamfer` only accept a `ValidSolid`; wrap a post-boolean shape with `validSolid(...)` before filleting.
 
 See also: docs/function-lookup.md → brepjs/topology.

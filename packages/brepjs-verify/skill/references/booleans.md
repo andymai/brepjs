@@ -1,6 +1,6 @@
 # Booleans
 
-Combine solids with CSG. All three return `Result<T>` — unwrap or thread the result through to the default export.
+Combine solids with CSG. All three return `Result<T>`; unwrap or thread the result through to the default export.
 
 | Function    | Signature         | Meaning              |
 | ----------- | ----------------- | -------------------- |
@@ -14,17 +14,17 @@ import { box, cylinder, cut } from 'brepjs';
 export default () => {
   const body = box(40, 20, 10, { centered: true });
   const bore = cylinder(4, 12, { at: [0, 0, -6] });
-  return cut(body, bore); // Result<Solid> — fine to return directly
+  return cut(body, bore); // Result<Solid>, fine to return directly
 };
 ```
 
 ## Many bodies: `fuseAll` vs `compound`
 
-- `fuseAll(solids)` welds N solids into ONE watertight solid — but it runs N−1 boolean ops, so it is slow for large N and can time out STEP export on dozens of bodies. Use it only when you genuinely need a single manifold solid. Over mixed `Shape3D[]` (e.g. results of `cut`) the typed overload needs `fuseAll(shapes, { unsafe: true })`.
-- `compound(shapes)` groups bodies into one shape with ZERO boolean cost (returns a `Compound`, not a `Result`). This is the right tool for **assemblies** — furniture, kits, anything that is naturally many distinct parts. STEP/GLB store the assembly tree natively, and each part stays addressable.
+- `fuseAll(solids)` welds N solids into ONE watertight solid, but it runs N−1 boolean ops, so it is slow for large N and can time out STEP export on dozens of bodies. Use it only when you genuinely need a single manifold solid. Over mixed `Shape3D[]` (e.g. results of `cut`) the typed overload needs `fuseAll(shapes, { unsafe: true })`.
+- `compound(shapes)` groups bodies into one shape with ZERO boolean cost (returns a `Compound`, not a `Result`). This is the right tool for **assemblies**: furniture, kits, anything that is naturally many distinct parts. STEP/GLB store the assembly tree natively, and each part stays addressable.
 
 ```ts
-// assembly.brep.ts — 50 slats + posts + legs, no booleans
+// assembly.brep.ts: 50 slats + posts + legs, no booleans
 import { box, compound } from 'brepjs';
 export default () => compound([...posts, ...slats, ...legs]); // Compound, fast
 ```
@@ -33,7 +33,7 @@ Rule of thumb: need one solid (for a downstream fillet/shell, or a watertight pr
 
 ## Coloring an assembly (GLB preview)
 
-A part may `export const materials` to paint its GLB preview (STEP stays geometry-only). It is a per-face selector run at export — return a material per face, or `undefined` for the default:
+A part may `export const materials` to paint its GLB preview (STEP stays geometry-only). It is a per-face selector run at export: return a material per face, or `undefined` for the default:
 
 ```ts
 import type { MaterialFn } from 'brepjs';
@@ -48,6 +48,6 @@ A plain `GltfMaterial` object (not a function) paints the whole part one color. 
 ## Pitfalls
 
 - Returning a `Result` from the default export is supported; the verifier unwraps it and reports an `Err`.
-- Booleans on touching-but-not-overlapping solids can yield empty/invalid results — give operands a small overlap. (A `compound` does NOT need overlap — bodies stay distinct.)
+- Booleans on touching-but-not-overlapping solids can yield empty/invalid results; give operands a small overlap. (A `compound` does NOT need overlap; bodies stay distinct.)
 
 See also: docs/function-lookup.md → brepjs/topology.
