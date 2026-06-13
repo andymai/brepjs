@@ -289,9 +289,16 @@ jobs:
         run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-pr.txt | sed '1d;$d' > /tmp/pr-results.json
       - name: Checkout main branch
         run: git fetch origin main && git checkout origin/main
+      # continue-on-error so a broken main baseline (e.g. a dependency/lockfile
+      # sync issue) can't deadlock every PR through the required ci-pass gate —
+      # including the very PR that fixes main. If the baseline won't install we
+      # skip the comparison rather than failing; the PR's own benchmark still runs.
       - name: Install main branch dependencies
+        id: main-install
+        continue-on-error: true
         run: npm ci --ignore-scripts && bash scripts/ensure-wasm.sh
       - name: Run benchmark on main branch
+        if: steps.main-install.outcome == 'success'
         run: |
           if [ -f benchmarks/regression.bench.test.ts ]; then
             NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-main.txt
@@ -300,6 +307,11 @@ jobs:
             echo "[]" > /tmp/main-results.json
             echo "Benchmark file not found on main — skipping baseline"
           fi
+      - name: Skip baseline if main install failed
+        if: steps.main-install.outcome != 'success'
+        run: |
+          echo "[]" > /tmp/main-results.json
+          echo "::warning::main branch dependency install failed — skipping benchmark baseline (no comparison this run)"
       - name: Compare results and post PR comment
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
