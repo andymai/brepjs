@@ -27,7 +27,6 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     isSolid,
     isShape3D,
     isFace,
-    measureVolume,
     measureVolumeProps,
     measureArea,
     getBounds,
@@ -59,22 +58,21 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
   // isSolid would silently skip validation for ~half of real multi-feature parts (and leave
   // `ok:true` vacuously true with no checks).
   if (isShape3D(shape)) {
-    const vol = measureVolume(shape);
-    if (isOk(vol)) {
-      r.measurements.volume = vol.value;
-      r.checks.push({ name: 'positiveVolume', passed: vol.value > 0 });
+    // Volume and center of mass come from a single kernel measurement: `measureVolume` itself
+    // calls `measureVolumeProps`, so one call yields both (and they share a failure — if the
+    // measurement fails, neither is recorded).
+    const volProps = measureVolumeProps(shape);
+    if (isOk(volProps)) {
+      r.measurements.volume = volProps.value.volume;
+      r.measurements.centerOfMass = volProps.value.centerOfMass;
+      r.checks.push({ name: 'positiveVolume', passed: volProps.value.volume > 0 });
     } else {
       pushError(r, {
-        message: `measureVolume: ${vol.error.message}`,
-        code: vol.error.code,
-        suggestion: vol.error.suggestion,
+        message: `measureVolume: ${volProps.error.message}`,
+        code: volProps.error.code,
+        suggestion: volProps.error.suggestion,
       });
     }
-
-    // Center of mass (volume centroid), computed independently of volume so a CoM failure
-    // doesn't drop the volume measurement. Informational: absent (not an error) on failure.
-    const volProps = measureVolumeProps(shape);
-    if (isOk(volProps)) r.measurements.centerOfMass = volProps.value.centerOfMass;
   }
 
   if (isFace(shape) || isShape3D(shape)) {
