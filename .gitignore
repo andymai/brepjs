@@ -2,6 +2,9 @@
 .claude/agent-memory-local/
 .claude/scheduled_tasks.lock
 
+# Superpowers brainstorming/spec/plan docs (local working artifacts, not shared)
+docs/superpowers/
+
 # Git worktrees
 .worktrees/
 
