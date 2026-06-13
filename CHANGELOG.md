@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.81.0](https://github.com/andymai/brepjs/compare/brepjs-v18.80.0...brepjs-v18.81.0) (2026-06-13)
+
+
+### Features
+
+* **kinematics:** inverse kinematics and joint trajectories ([#1343](https://github.com/andymai/brepjs/issues/1343)) ([daa7a75](https://github.com/andymai/brepjs/commit/daa7a7552354b43d614b02ab7fa9aa19ddc73535))
+
 ## [18.80.0](https://github.com/andymai/brepjs/compare/brepjs-v18.79.0...brepjs-v18.80.0) (2026-06-13)
 
 
