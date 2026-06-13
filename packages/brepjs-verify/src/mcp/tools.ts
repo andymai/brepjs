@@ -51,13 +51,12 @@ export async function runProgramTool(args: RunProgramToolArgs): Promise<CallTool
   // Best-effort — a recording failure must never affect the tool result the agent sees.
   const recordPath = process.env['BREPJS_RUN_RECORD_PATH'];
   if (recordPath) {
-    try {
-      await appendRunRecord(recordPath, buildRunRecord(args.code, result));
-    } catch (err) {
-      // Best-effort: surface a misconfigured path (e.g. a missing parent dir) on stderr — which is
-      // separate from the stdio JSON-RPC channel — without affecting the tool result.
+    // Fire-and-forget: provenance is a side channel and must never block (or fail) the agent
+    // response on disk I/O. A misconfigured path is surfaced on stderr (separate from the stdio
+    // JSON-RPC channel) without touching the tool result.
+    void appendRunRecord(recordPath, buildRunRecord(args.code, result)).catch((err: unknown) => {
       console.warn(`run-record append failed (BREPJS_RUN_RECORD_PATH=${recordPath}):`, err);
-    }
+    });
   }
 
   if (result.outcome === 'completed') {
