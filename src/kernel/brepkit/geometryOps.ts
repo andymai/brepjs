@@ -394,6 +394,22 @@ export function getSurfaceCylinderData(
   return null;
 }
 
+export function getSurfaceAxis(
+  bk: BrepkitKernel,
+  face: KernelShape
+): { origin: [number, number, number]; direction: [number, number, number] } | null {
+  const params = JSON.parse(bk.getAnalyticSurfaceParams(unwrap(face, 'face')));
+  if (params.type !== 'cylinder') return null;
+  const [ox, oy, oz] = params.origin;
+  const [ax, ay, az] = params.axis;
+  const len = Math.hypot(ax, ay, az);
+  if (len < 1e-12) return null;
+  return {
+    origin: [ox, oy, oz],
+    direction: [ax / len, ay / len, az / len],
+  };
+}
+
 export function reverseSurfaceU(_bk: BrepkitKernel, surface: KernelType): KernelType {
   return surface; // No-op: brepkit doesn't have separate surface handle direction
 }
@@ -574,8 +590,7 @@ export function makeGeometryOps(bk: BrepkitKernel) {
     createCurveAdaptor: (shape) => createCurveAdaptor(bk, shape),
     getBezierPenultimatePole: (edge) => getBezierPenultimatePole(bk, edge),
     getSurfaceCylinderData: (surface) => getSurfaceCylinderData(bk, surface),
-    // Axis-based mates (concentric) are an OCCT-only feature for now.
-    getSurfaceAxis: () => null,
+    getSurfaceAxis: (face) => getSurfaceAxis(bk, face),
     reverseSurfaceU: (surface) => reverseSurfaceU(bk, surface),
     classifyPointOnFace: (face, u, v, tolerance) => classifyPointOnFace(bk, face, u, v, tolerance),
     classifyPointRobust: (shape, point, tolerance) =>
