@@ -1,11 +1,16 @@
 # Changelog
 
-## [18.72.0](https://github.com/andymai/brepjs/compare/brepjs-v18.71.0...brepjs-v18.72.0) (2026-06-13)
-
+## [18.73.0](https://github.com/andymai/brepjs/compare/brepjs-v18.72.0...brepjs-v18.73.0) (2026-06-13)
 
 ### Features
 
-* **verify:** add MCP server with run_program tool (stdio) ([#1300](https://github.com/andymai/brepjs/issues/1300)) ([e3c2c9e](https://github.com/andymai/brepjs/commit/e3c2c9e678dd719608cea8b6ee38101de9775e5d))
+- **assembly:** forward kinematics + mechanism DOF (kinematics Phase 3) ([#1304](https://github.com/andymai/brepjs/issues/1304)) ([df42939](https://github.com/andymai/brepjs/commit/df4293990ef77d323d5f03b9186510ecccbc9968)), closes [#1287](https://github.com/andymai/brepjs/issues/1287)
+
+## [18.72.0](https://github.com/andymai/brepjs/compare/brepjs-v18.71.0...brepjs-v18.72.0) (2026-06-13)
+
+### Features
+
+- **verify:** add MCP server with run_program tool (stdio) ([#1300](https://github.com/andymai/brepjs/issues/1300)) ([e3c2c9e](https://github.com/andymai/brepjs/commit/e3c2c9e678dd719608cea8b6ee38101de9775e5d))
 
 ## [18.71.0](https://github.com/andymai/brepjs/compare/brepjs-v18.70.0...brepjs-v18.71.0) (2026-06-13)
 

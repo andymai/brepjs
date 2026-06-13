@@ -72,25 +72,30 @@ Every command writes a single machine-readable JSON document to stdout; diagnost
 
 ## MCP server
 
-For MCP-capable agents, the package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same build-and-verify step as a tool. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
+`brepjs-verify-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client). It currently provides one tool:
 
-Point an MCP client at it via stdio:
+| Tool          | Input                                  | Returns                                                                                                                                                                                                                               |
+| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `{ code: string, timeoutMs?: number }` | Executes the brepjs `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
 
-```json
-{
-  "mcpServers": {
-    "brepjs-verify": { "command": "npx", "args": ["-y", "brepjs-verify-mcp"] }
-  }
-}
+This is the closed _build → verify_ loop as a single call: the agent sends part source, gets back the deterministic report. The program runs in a separate process with a wall-clock timeout and a memory cap, so a runaway part can't hang the agent.
+
+### Connect (local build)
+
+Build the package, then register the server by absolute path. Run both commands from the package root (`packages/brepjs-verify`), where `dist/` is emitted — `$(pwd)` is resolved by your shell at that location:
+
+```bash
+npm run build   # emits dist/mcp/server.js
+claude mcp add brepjs-verify -- node "$(pwd)/dist/mcp/server.js"
 ```
 
-It exposes one tool:
+Once the package is published to npm, the same server is available without a local build:
 
-| Tool          | Input                                              | Returns                                                                                                                                                          |
-| ------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_program` | `code` (a `.brep.ts` source), `timeoutMs?` (30000) | The verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes, so the agent can branch. |
+```bash
+claude mcp add brepjs-verify -- npx -y --package brepjs-verify brepjs-verify-mcp
+```
 
-This is the closed **build → verify** step the agent loop is built on, without spawning the CLI: the agent sends a brepjs program as a string and reads back the deterministic report.
+The server runs locally as a child process of your agent (stdio) — geometry never leaves your machine.
 
 ## Examples gallery
 

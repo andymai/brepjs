@@ -85,26 +85,19 @@ Each declared field appears in `report.assertions` as `{ name, expected, actual,
 
 ## MCP server
 
-The package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same build-and-verify step to MCP-capable agents directly, without spawning the CLI. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
+The package ships a second bin — `brepjs-verify-mcp` — a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client) directly, without spawning the CLI. It provides one tool:
 
-Register it with an MCP client over stdio:
+| Tool          | Input                                  | Returns                                                                                                                                                                                                                    |
+| ------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `{ code: string, timeoutMs?: number }` | Runs the `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
 
-```json
-{
-  "mcpServers": {
-    "brepjs-verify": { "command": "npx", "args": ["-y", "brepjs-verify-mcp"] }
-  }
-}
+It's the closed _build → verify_ step of [the loop](./the-loop.md) as a single call: the agent sends part source, gets back the deterministic report, all in a separate process so a runaway part can't hang the agent. Register it with Claude Code:
+
+```bash
+claude mcp add brepjs-verify -- npx -y --package brepjs-verify brepjs-verify-mcp
 ```
 
-It exposes one tool, **`run_program`**:
-
-| Field       | Description                                                                         |
-| ----------- | ----------------------------------------------------------------------------------- |
-| `code`      | A brepjs `.brep.ts` module source with a default-exported part function (required). |
-| `timeoutMs` | Optional wall-clock budget in milliseconds (default `30000`).                       |
-
-It runs the program in the same isolated sandbox as `verify` and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes — the closed **build → verify** step of [the loop](./the-loop.md), but as a tool call instead of a subprocess.
+Geometry never leaves your machine — the server runs locally as a child process over stdio.
 
 ## Troubleshooting
 
