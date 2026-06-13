@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.81.1](https://github.com/andymai/brepjs/compare/brepjs-v18.81.0...brepjs-v18.81.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **kinematics:** bound-aware IK Jacobian probe ([#1347](https://github.com/andymai/brepjs/issues/1347)) ([5e9ea00](https://github.com/andymai/brepjs/commit/5e9ea004a6b1bc13f9574cc480354673f184a926))
+
 ## [18.81.0](https://github.com/andymai/brepjs/compare/brepjs-v18.80.0...brepjs-v18.81.0) (2026-06-13)
 
 
