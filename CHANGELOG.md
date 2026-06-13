@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.76.0](https://github.com/andymai/brepjs/compare/brepjs-v18.75.1...brepjs-v18.76.0) (2026-06-13)
+
+
+### Features
+
+* **mates:** concentric mates on circular edges ([#1325](https://github.com/andymai/brepjs/issues/1325)) ([275a238](https://github.com/andymai/brepjs/commit/275a2385bd47891538801c44561e104240479118))
+
 ## [18.75.1](https://github.com/andymai/brepjs/compare/brepjs-v18.75.0...brepjs-v18.75.1) (2026-06-13)
 
 
