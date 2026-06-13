@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.77.0](https://github.com/andymai/brepjs/compare/brepjs-v18.76.0...brepjs-v18.77.0) (2026-06-13)
+
+
+### Features
+
+* **mates:** concentric axis extraction for cones, tori, and surfaces of revolution ([#1327](https://github.com/andymai/brepjs/issues/1327)) ([4f266bc](https://github.com/andymai/brepjs/commit/4f266bc592ca948f3aeee8ff5e11d1e7474b96ac))
+
 ## [18.76.0](https://github.com/andymai/brepjs/compare/brepjs-v18.75.1...brepjs-v18.76.0) (2026-06-13)
 
 
