@@ -135,15 +135,136 @@ function solveAngle(ref: SolverEntity, dep: SolverEntity, angleRad: number): Pos
   return { position: [0, 0, 0], rotation: quatFromAxisAngle(axis, phi - angleRad) };
 }
 
-/** Entity types each positioning constraint requires of (entityA, entityB). */
+/**
+ * Point-point coincident/distance: place the dependent point on the reference
+ * point (`extra` = 0) or at `extra` along the original separation direction.
+ * If the points already coincide the direction is arbitrary (+X).
+ */
+function solvePointPair(refOrigin: Vec3, depOrigin: Vec3, extra: number): Pose {
+  const sep = sub(depOrigin, refOrigin);
+  const len = Math.hypot(sep[0], sep[1], sep[2]);
+  const dir: Vec3 = len < 1e-9 ? [1, 0, 0] : scale(sep, 1 / len);
+  const target = add(refOrigin, scale(dir, extra));
+  return { position: sub(target, depOrigin), rotation: IDENTITY_ROTATION };
+}
+
+/**
+ * Move the dependent plane (normal `depNormal`, at the origin) so its signed
+ * distance from the reference point equals `extra` (the mirror of `solvePlanePair`
+ * for a point reference and a plane dependent).
+ */
+function solvePlaneToPoint(depNormal: Vec3, refOrigin: Vec3, depOrigin: Vec3, extra: number): Pose {
+  const n = normalize(depNormal);
+  const t = dot(n, sub(refOrigin, depOrigin)) - extra;
+  return { position: scale(n, t), rotation: IDENTITY_ROTATION };
+}
+
+/**
+ * Reference axis, dependent point: drop the point onto the axis line
+ * (`extra` = 0) or place it at radial distance `extra` from the line, keeping
+ * its along-axis position. A point already on the axis gets an arbitrary radial.
+ */
+function solveAxisToPoint(ref: SolverEntity, depOrigin: Vec3, extra: number): Pose {
+  const d = normalize(ref.direction ?? [0, 0, 1]);
+  const foot = add(ref.origin, scale(d, dot(d, sub(depOrigin, ref.origin))));
+  if (extra === 0) return { position: sub(foot, depOrigin), rotation: IDENTITY_ROTATION };
+  const radial = sub(depOrigin, foot);
+  const rlen = Math.hypot(radial[0], radial[1], radial[2]);
+  const rdir = rlen < 1e-9 ? anyPerpendicular(d) : scale(radial, 1 / rlen);
+  return { position: sub(add(foot, scale(rdir, extra)), depOrigin), rotation: IDENTITY_ROTATION };
+}
+
+/**
+ * Reference point, dependent axis: translate the axis line so it passes through
+ * the point (`extra` = 0) or lies at perpendicular distance `extra` from it.
+ * Translation is purely perpendicular to the axis, so the line's direction and
+ * along-axis parameterization are preserved.
+ */
+function solvePointToAxis(refOrigin: Vec3, dep: SolverEntity, extra: number): Pose {
+  const d = normalize(dep.direction ?? [0, 0, 1]);
+  const w = sub(dep.origin, refOrigin);
+  const perp = sub(w, scale(d, dot(d, w)));
+  const plen = Math.hypot(perp[0], perp[1], perp[2]);
+  if (extra === 0) return { position: scale(perp, -1), rotation: IDENTITY_ROTATION };
+  const pdir = plen < 1e-9 ? anyPerpendicular(d) : scale(perp, 1 / plen);
+  return { position: sub(scale(pdir, extra), perp), rotation: IDENTITY_ROTATION };
+}
+
+/**
+ * Axis-axis distance: align the dependent axis parallel to the reference, then
+ * offset it to perpendicular distance `extra` (parallel pin-and-spacer). With
+ * `extra` = 0 the axes become collinear, matching `concentric`.
+ */
+function solveAxisAxisDistance(ref: SolverEntity, dep: SolverEntity, extra: number): Pose {
+  const dRef = normalize(ref.direction ?? [0, 0, 1]);
+  const dDep = normalize(dep.direction ?? [0, 0, 1]);
+  const rotation = quatFromTo(dDep, dRef);
+  const depO = quatRotate(rotation, dep.origin);
+  const w = sub(depO, ref.origin);
+  const perp = sub(w, scale(dRef, dot(dRef, w)));
+  const plen = Math.hypot(perp[0], perp[1], perp[2]);
+  const pdir = plen < 1e-9 ? anyPerpendicular(dRef) : scale(perp, 1 / plen);
+  return { position: sub(scale(pdir, extra), perp), rotation };
+}
+
+/**
+ * Supported entity-type pairs for the translational mates (`coincident` /
+ * `distance`), keyed `${entityA}-${entityB}`. Both orders are listed where the
+ * solver handles them, so a user need not pre-order the entities.
+ */
+const TRANSLATIONAL_PAIRS = new Set([
+  'plane-plane',
+  'plane-point',
+  'point-plane',
+  'point-point',
+  'axis-axis',
+  'axis-point',
+  'point-axis',
+]);
+
+/** Entity types the orientation/axis mates require of (entityA, entityB). */
 const REQUIRED_ENTITIES: Readonly<Record<string, SolverEntity['type']>> = {
-  coincident: 'plane',
-  distance: 'plane',
   angle: 'plane',
   concentric: 'axis',
 };
 
 const POSITIONING_TYPES = new Set(['coincident', 'distance', 'angle', 'concentric']);
+
+/** Whether a positioning mate's entity pair is solvable. */
+function isSupportedPair(type: string, a: SolverEntity['type'], b: SolverEntity['type']): boolean {
+  const required = REQUIRED_ENTITIES[type];
+  if (required) return a === required && b === required;
+  // coincident / distance: dispatch by entity-type pair.
+  return TRANSLATIONAL_PAIRS.has(`${a}-${b}`);
+}
+
+/**
+ * Solve a `coincident` (extra = 0) or `distance` (extra = value) mate for any
+ * supported entity-type pair. `ref` is already in world space; the dependent is
+ * at the origin. Returns null only for an unsupported pair (filtered out
+ * upstream by `isSupportedPair`).
+ */
+function solveTranslational(ref: SolverEntity, dep: SolverEntity, extra: number): Pose | null {
+  const key = `${ref.type}-${dep.type}`;
+  switch (key) {
+    case 'plane-plane':
+    case 'plane-point':
+      // Both use the reference plane normal; a point dependent has no normal.
+      return solvePlanePair(ref, dep, extra);
+    case 'point-plane':
+      return solvePlaneToPoint(dep.normal ?? [0, 0, 1], ref.origin, dep.origin, extra);
+    case 'point-point':
+      return solvePointPair(ref.origin, dep.origin, extra);
+    case 'axis-axis':
+      return extra === 0 ? solveConcentric(ref, dep) : solveAxisAxisDistance(ref, dep, extra);
+    case 'axis-point':
+      return solveAxisToPoint(ref, dep.origin, extra);
+    case 'point-axis':
+      return solvePointToAxis(ref.origin, dep, extra);
+    default:
+      return null;
+  }
+}
 
 /** Dispatch a positioning mate to its solver. `ref` is already in world space. */
 function solveMate(c: SolverConstraint, ref: SolverEntity, dep: SolverEntity): Pose {
@@ -153,18 +274,20 @@ function solveMate(c: SolverConstraint, ref: SolverEntity, dep: SolverEntity): P
     case 'angle':
       return solveAngle(ref, dep, ((c.value ?? 0) * Math.PI) / 180);
     case 'distance':
-      return solvePlanePair(ref, dep, c.value ?? 0);
+      return solveTranslational(ref, dep, c.value ?? 0) ?? solvePlanePair(ref, dep, c.value ?? 0);
     default:
-      return solvePlanePair(ref, dep, 0);
+      return solveTranslational(ref, dep, 0) ?? solvePlanePair(ref, dep, 0);
   }
 }
 
 /**
  * Solve assembly constraints analytically.
  *
- * Handles: fixed, coincident/distance (plane-plane), concentric (axis-axis), and
- * angle (plane-plane orientation). For a positioning mate, entityA is the
- * reference and entityB the dependent. Chain roots (nodes never positioned by a
+ * Handles: fixed, concentric (axis-axis), angle (plane-plane orientation), and
+ * coincident/distance for any supported entity-type pair (plane-plane,
+ * plane-point, point-point, axis-axis, axis-point, and both point orders — see
+ * `TRANSLATIONAL_PAIRS`). For a positioning mate, entityA is the reference and
+ * entityB the dependent. Chain roots (nodes never positioned by a
  * mate) and explicit `fixed` nodes anchor at the origin; constraints then resolve
  * in topological order — each places its dependent against the reference's solved
  * pose (rotation included), so multi-body chains compose. Returns
@@ -202,9 +325,10 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
   const pending: SolverConstraint[] = [];
   for (const c of positioning) {
     if (!c.entityA || !c.entityB) continue;
-    const required = REQUIRED_ENTITIES[c.type];
-    if (c.entityA.entity.type !== required || c.entityB.entity.type !== required) {
-      unsupported.push(`${c.type}(${c.entityA.entity.type}-${c.entityB.entity.type})`);
+    const a = c.entityA.entity.type;
+    const b = c.entityB.entity.type;
+    if (!isSupportedPair(c.type, a, b)) {
+      unsupported.push(`${c.type}(${a}-${b})`);
       continue;
     }
     pending.push(c);

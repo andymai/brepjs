@@ -106,7 +106,7 @@ For adding a new operation or kernel method, see `.claude/commands/`.
 
 - OCCT Emscripten returns enum objects with `.value`; extract with: `typeof val === 'number' ? val : Number(val?.value ?? val)`
 - `autoHeal` short-circuits valid shapes: `report.alreadyValid=true`, no sew/heal diagnostics run
-- Assembly solver composes constraints down a chain: each positioning mate reads the referenced part's _solved_ pose and resolves in topological order (a `fixed` node anchors the chain). `concentric`/`angle` and non-plane entity pairs are still unsupported (report `ASSEMBLY_NOT_CONVERGED`).
+- Assembly solver composes constraints down a chain: each positioning mate reads the referenced part's _solved_ pose and resolves in topological order (a `fixed` node anchors the chain). Solved mates: `fixed`, `concentric` (axis-axis), `angle` (plane-plane), and `coincident`/`distance` for plane-plane, plane-point, point-point, axis-axis, and axis-point pairs (`TRANSLATIONAL_PAIRS` in `solverAdapter.ts`). Unsupported pairs (e.g. axis-plane) report `ASSEMBLY_NOT_CONVERGED` with the offending `type(a-b)` and DOF count.
 - `Uint32Array` WASM interop: always convert to regular `Array` before passing to kernel methods
 - `DisposalScope` disposes in LIFO order; register dependencies after their dependees
 - `noUncheckedIndexedAccess` is enabled: array indexing returns `T | undefined`, add bounds checks or use `!` with eslint-disable

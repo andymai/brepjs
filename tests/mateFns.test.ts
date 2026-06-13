@@ -12,7 +12,6 @@ import {
   isOk,
   isErr,
   unwrap,
-  unwrapErr,
   getFaces,
   getEdges,
   getCurveType,
@@ -149,6 +148,23 @@ describe('assembly mates', () => {
     // Top of b1 at z=10, bottom of b2 at z=0, distance 5
     // offset = (10-0) + 5 = 15
     expect(upperTransform?.position[2]).toBeCloseTo(15, 0);
+  });
+
+  it('point-plane coincident mate drops a part point onto a reference face', () => {
+    const base = box(10, 10, 10);
+    let assembly = createAssemblyNode('root');
+    assembly = addChild(assembly, createAssemblyNode('base', { shape: base }));
+    assembly = addChild(assembly, createAssemblyNode('peg', { shape: box(2, 2, 2) }));
+    assembly = addMate(assembly, { type: 'fixed', entity: { node: 'base' } });
+    assembly = addMate(assembly, {
+      type: 'coincident',
+      entityA: { node: 'base', face: topFace(base) }, // plane at z=10
+      entityB: { node: 'peg', point: [0, 0, 0] },
+    });
+
+    const solved = unwrap(solveAssembly(assembly));
+    expect(solved.converged).toBe(true);
+    expect(solved.transforms.get('peg')?.position[2]).toBeCloseTo(10, 6);
   });
 
   it('returns error when no mates defined', () => {
@@ -431,23 +447,22 @@ describe('solveAssembly — angle mate', () => {
 });
 
 describe('solveAssembly — coincident with point entity', () => {
-  it('coincident mate using point entities returns error (point-point unsupported)', () => {
+  it('coincident mate using point entities moves the dependent onto the reference point', () => {
     let assembly = createAssemblyNode('root');
     assembly = addChild(assembly, createAssemblyNode('a', { shape: box(10, 10, 10) }));
     assembly = addChild(assembly, createAssemblyNode('b', { shape: box(5, 5, 5) }));
     assembly = addMate(assembly, { type: 'fixed', entity: { node: 'a' } });
     assembly = addMate(assembly, {
       type: 'coincident',
-      // Points are valid MateEntity with type 'point' in extractEntity
       entityA: { node: 'a', point: [0, 0, 10] },
       entityB: { node: 'b', point: [0, 0, 0] },
     });
 
     const result = solveAssembly(assembly);
-    // Point-point coincident is not implemented — solver reports as unsupported
-    expect(isErr(result)).toBe(true);
-    const error = unwrapErr(result);
-    expect(error.message).toContain('coincident(point-point)');
+    expect(isOk(result)).toBe(true);
+    const solved = unwrap(result);
+    expect(solved.converged).toBe(true);
+    expect(solved.transforms.get('b')?.position).toEqual([0, 0, 10]);
   });
 
   it('coincident mate with no geometry returns error', () => {
@@ -631,37 +646,20 @@ describe('solveConstraints — unsupported constraint honesty', () => {
     expect(result.unsupported).toEqual(['concentric(plane-plane)', 'angle(axis-axis)']);
   });
 
-  it('reports non-plane entity combinations as unsupported for coincident', () => {
+  it('reports a genuinely unsupported entity pair (axis-plane) for coincident', () => {
     const result = solveConstraints(
       ['a', 'b'],
       [
         {
           type: 'coincident',
-          entityA: { node: 'a', entity: { type: 'point', origin: [0, 0, 10] } },
-          entityB: { node: 'b', entity: { type: 'point', origin: [0, 0, 0] } },
+          entityA: { node: 'a', entity: { type: 'axis', origin: [0, 0, 0], direction: [0, 0, 1] } },
+          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0], normal: [0, 0, 1] } },
         },
       ]
     );
     expect(result.converged).toBe(false);
-    expect(result.unsupported).toEqual(['coincident(point-point)']);
+    expect(result.unsupported).toEqual(['coincident(axis-plane)']);
     expect(result.dof).toBe(3);
-  });
-
-  it('reports non-plane entity combinations as unsupported for distance', () => {
-    const result = solveConstraints(
-      ['a', 'b'],
-      [
-        {
-          type: 'distance',
-          entityA: { node: 'a', entity: { type: 'point', origin: [0, 0, 0] } },
-          entityB: { node: 'b', entity: { type: 'axis', origin: [0, 0, 0], direction: [0, 0, 1] } },
-          value: 5,
-        },
-      ]
-    );
-    expect(result.converged).toBe(false);
-    expect(result.unsupported).toEqual(['distance(point-axis)']);
-    expect(result.dof).toBe(1);
   });
 
   it('still solves supported constraints alongside unsupported ones', () => {
@@ -712,5 +710,106 @@ describe('solveConstraints — unsupported constraint honesty', () => {
     );
     expect(result.converged).toBe(false);
     expect(result.unsupported).toEqual(['coincident(unanchored)', 'coincident(unanchored)']);
+  });
+});
+
+describe('solveConstraints — non-plane coincident/distance pairs', () => {
+  const pt = (o: [number, number, number]): SolverEntity => ({ type: 'point', origin: o });
+  const ax = (o: [number, number, number], d: [number, number, number]): SolverEntity => ({
+    type: 'axis',
+    origin: o,
+    direction: d,
+  });
+  const pl = (o: [number, number, number], n: [number, number, number]): SolverEntity => ({
+    type: 'plane',
+    origin: o,
+    normal: n,
+  });
+
+  function solveOne(
+    type: 'coincident' | 'distance',
+    a: SolverEntity,
+    b: SolverEntity,
+    value?: number
+  ) {
+    return solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type,
+          entityA: { node: 'a', entity: a },
+          entityB: { node: 'b', entity: b },
+          ...(value === undefined ? {} : { value }),
+        },
+      ]
+    );
+  }
+
+  function pos(r: ReturnType<typeof solveConstraints>): [number, number, number] {
+    const p = r.transforms.get('b')?.position;
+    if (!p) throw new Error('no transform for b');
+    return [p[0], p[1], p[2]];
+  }
+
+  function expectPos(r: ReturnType<typeof solveConstraints>, expected: readonly number[]): void {
+    const p = pos(r);
+    for (let i = 0; i < 3; i++) expect(p[i]).toBeCloseTo(expected[i] ?? 0, 9);
+  }
+
+  it('point-point coincident moves the dependent point onto the reference point', () => {
+    const r = solveOne('coincident', pt([0, 0, 10]), pt([0, 0, 0]));
+    expect(r.converged).toBe(true);
+    expectPos(r, [0, 0, 10]);
+  });
+
+  it('point-point distance separates along the original direction', () => {
+    const r = solveOne('distance', pt([0, 0, 0]), pt([3, 0, 0]), 10);
+    expect(r.converged).toBe(true);
+    expectPos(r, [7, 0, 0]); // dep ends at x=10, 10 from ref
+  });
+
+  it('plane-point coincident drops the point onto the reference plane', () => {
+    const r = solveOne('coincident', pl([0, 0, 5], [0, 0, 1]), pt([0, 0, 0]));
+    expect(r.converged).toBe(true);
+    expectPos(r, [0, 0, 5]);
+  });
+
+  it('point-plane coincident moves the dependent plane through the reference point', () => {
+    const r = solveOne('coincident', pt([0, 0, 0]), pl([0, 0, 5], [0, 0, 1]));
+    expect(r.converged).toBe(true);
+    expectPos(r, [0, 0, -5]);
+  });
+
+  it('axis-axis coincident makes the axes collinear', () => {
+    const r = solveOne('coincident', ax([0, 0, 0], [0, 0, 1]), ax([1, 0, 0], [0, 0, 1]));
+    expect(r.converged).toBe(true);
+    expectPos(r, [-1, 0, 0]);
+  });
+
+  it('axis-axis distance offsets the dependent axis to a perpendicular gap', () => {
+    const r = solveOne('distance', ax([0, 0, 0], [0, 0, 1]), ax([0, 0, 0], [0, 0, 1]), 5);
+    expect(r.converged).toBe(true);
+    const p = pos(r);
+    expect(Math.hypot(p[0], p[1])).toBeCloseTo(5, 9); // 5 away from the ref axis
+    expect(p[2]).toBeCloseTo(0, 9);
+  });
+
+  it('axis-point coincident drops the point onto the axis line', () => {
+    const r = solveOne('coincident', ax([0, 0, 0], [0, 0, 1]), pt([3, 0, 0]));
+    expect(r.converged).toBe(true);
+    expectPos(r, [-3, 0, 0]); // point at (3,0,0) → on the z-axis
+  });
+
+  it('axis-point distance places the point at a radial offset', () => {
+    const r = solveOne('distance', ax([0, 0, 0], [0, 0, 1]), pt([3, 0, 0]), 10);
+    expect(r.converged).toBe(true);
+    expectPos(r, [7, 0, 0]); // point at x=10, 10 from the axis
+  });
+
+  it('point-axis distance offsets the axis to a perpendicular gap from the point', () => {
+    const r = solveOne('distance', pt([0, 0, 0]), ax([0, 0, 0], [0, 0, 1]), 5);
+    expect(r.converged).toBe(true);
+    const p = pos(r);
+    expect(Math.hypot(p[0], p[1])).toBeCloseTo(5, 9);
   });
 });
