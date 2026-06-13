@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.8.0...brepjs-verify-v0.9.0) (2026-06-13)
+
+
+### Features
+
+* native thread() operation + maker-breadth skill references ([#1330](https://github.com/andymai/brepjs/issues/1330)) ([1bfc73d](https://github.com/andymai/brepjs/commit/1bfc73d696b0b779230e6ed3542e7b8415426992))
+
+
+### Bug Fixes
+
+* **verify:** relax brepjs-viewer devDep to * so workspace links ([#1320](https://github.com/andymai/brepjs/issues/1320)) ([b26a18d](https://github.com/andymai/brepjs/commit/b26a18d406a051806c72e36d67da0f644588f315))
+
 ## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.7.1...brepjs-verify-v0.8.0) (2026-06-13)
 
 
