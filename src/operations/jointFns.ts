@@ -1,13 +1,18 @@
 /**
- * Drivable kinematic joints — revolute and prismatic — built on the assembly
- * tree. A joint connects a `parent` (reference) body to a `child` (moving) body
- * about/along an axis, carrying a single drivable parameter clamped to a range.
+ * Drivable kinematic joints — built on the assembly tree. A joint connects a
+ * `parent` (reference) body to a `child` (moving) body and carries one or more
+ * drivable degrees of freedom (DOF), each clamped to its own range.
  *
- * A joint is sugar over the Phase-1 mate constraints — a revolute is concentric
- * (axis alignment) plus an angle driver; a prismatic is coincident plus a
- * distance driver — but the *local* child transform for a given joint value is
- * computed directly here. Forward kinematics (composing these down a chain) is
- * Phase 3. `joint.value` is the stored degree of freedom, distinct from
+ * Single-DOF joints (`revolute`, `prismatic`) are sugar over the Phase-1 mate
+ * constraints — a revolute is concentric (axis alignment) plus an angle driver;
+ * a prismatic is coincident plus a distance driver. Multi-DOF joints compose
+ * several DOFs about a shared anchor: `cylindrical` (rotation + slide on one
+ * axis, 2 DOF), `planar` (two in-plane translations + a rotation about the
+ * normal, 3 DOF), and `spherical` (three rotations about a pivot, 3 DOF).
+ *
+ * The `dofs` array is the source of truth; `value`/`min`/`max`/`axis` mirror the
+ * primary (first) DOF for single-DOF ergonomics and backward compatibility.
+ * `joint.dofs` are the stored degrees of freedom, distinct from
  * `AssemblyNode.rotate` (a static structural transform).
  */
 
@@ -26,19 +31,35 @@ export interface JointAxis {
   readonly direction: Vec3;
 }
 
-export type JointType = 'revolute' | 'prismatic';
+export type JointType = 'revolute' | 'prismatic' | 'cylindrical' | 'planar' | 'spherical';
+
+/**
+ * A single drivable degree of freedom. A `rotation` DOF turns about the joint's
+ * anchor point along `axis` (degrees); a `translation` DOF slides along `axis`
+ * (length units). `value` is always clamped to `[min, max]`.
+ */
+export interface JointDOF {
+  readonly kind: 'rotation' | 'translation';
+  readonly axis: Vec3;
+  readonly min: number;
+  readonly max: number;
+  readonly value: number;
+}
 
 export interface Joint {
   readonly type: JointType;
   /** Reference body (stays put); the child moves relative to it. */
   readonly parent: string;
   readonly child: string;
+  /** Primary axis; `origin` is the anchor every rotation DOF pivots about. */
   readonly axis: JointAxis;
-  /** Range bounds — degrees for revolute, length units for prismatic. */
+  /** Primary-DOF range bounds (mirror of `dofs[0]`). */
   readonly min: number;
   readonly max: number;
-  /** Current drivable parameter, always clamped to `[min, max]`. */
+  /** Primary-DOF value (mirror of `dofs[0]`), always clamped to `[min, max]`. */
   readonly value: number;
+  /** All drivable degrees of freedom, in composition order. */
+  readonly dofs: readonly JointDOF[];
 }
 
 /** A rigid transform: translation + quaternion rotation `[w, x, y, z]`. */
@@ -56,6 +77,39 @@ export interface JointOptions {
   value?: number;
 }
 
+/** Per-DOF ranges for a cylindrical joint (rotation about + slide along one axis). */
+export interface CylindricalOptions {
+  /** Rotation DOF (degrees). Default range -180..180. */
+  rotation?: JointOptions;
+  /** Translation DOF (length). Default range 0..100. */
+  translation?: JointOptions;
+}
+
+/** Per-DOF ranges for a planar joint (two in-plane translations + a rotation). */
+export interface PlanarOptions {
+  /** Translation along the in-plane `uDirection`. Default range -100..100. */
+  u?: JointOptions;
+  /** Translation along `normal × u`. Default range -100..100. */
+  v?: JointOptions;
+  /** Rotation about the plane normal (degrees). Default range -180..180. */
+  rotation?: JointOptions;
+  /**
+   * In-plane reference direction for the `u` translation. Projected onto the
+   * plane and normalized; defaults to an arbitrary perpendicular of the normal.
+   */
+  uDirection?: Vec3;
+}
+
+/** Per-DOF ranges for a spherical joint (three rotations about a pivot). */
+export interface SphericalOptions {
+  /** Rotation about local X through the pivot (degrees). Default range -180..180. */
+  x?: JointOptions;
+  /** Rotation about local Y through the pivot (degrees). Default range -180..180. */
+  y?: JointOptions;
+  /** Rotation about local Z through the pivot (degrees). Default range -180..180. */
+  z?: JointOptions;
+}
+
 const DEG2RAD = Math.PI / 180;
 
 // ---------------------------------------------------------------------------
@@ -71,29 +125,51 @@ function unit(v: Vec3): Vec3 {
   return [v[0] / l, v[1] / l, v[2] / l];
 }
 
-function makeJoint(
-  type: JointType,
-  parent: string,
-  child: string,
-  axis: JointAxis,
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+/** A unit vector perpendicular to `v` (for the unspecified-reference case). */
+function anyPerpendicular(v: Vec3): Vec3 {
+  const ref: Vec3 = Math.abs(v[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  return unit(cross(v, ref));
+}
+
+/** Build one DOF, normalizing an inverted range and clamping the initial value. */
+function makeDof(
+  kind: JointDOF['kind'],
+  axis: Vec3,
   opts: JointOptions,
   defMin: number,
   defMax: number
-): Joint {
+): JointDOF {
   // Normalize the range so an inverted (min > max) input can't break the
   // "value is always within [min, max]" invariant.
   const a = opts.min ?? defMin;
   const b = opts.max ?? defMax;
   const min = Math.min(a, b);
   const max = Math.max(a, b);
+  return { kind, axis: unit(axis), min, max, value: clamp(opts.value ?? 0, min, max) };
+}
+
+/** Assemble a Joint from its DOFs, mirroring the primary DOF into the top level. */
+function buildJoint(
+  type: JointType,
+  parent: string,
+  child: string,
+  axis: JointAxis,
+  dofs: readonly JointDOF[]
+): Joint {
+  const primary = dofs[0] ?? { kind: 'rotation', axis: [0, 0, 1], min: 0, max: 0, value: 0 };
   return {
     type,
     parent,
     child,
     axis: { origin: axis.origin, direction: unit(axis.direction) },
-    min,
-    max,
-    value: clamp(opts.value ?? 0, min, max),
+    min: primary.min,
+    max: primary.max,
+    value: primary.value,
+    dofs,
   };
 }
 
@@ -104,7 +180,9 @@ export function revoluteJoint(
   axis: JointAxis,
   opts: JointOptions = {}
 ): Joint {
-  return makeJoint('revolute', parent, child, axis, opts, -180, 180);
+  return buildJoint('revolute', parent, child, axis, [
+    makeDof('rotation', axis.direction, opts, -180, 180),
+  ]);
 }
 
 /**
@@ -119,38 +197,153 @@ export function prismaticJoint(
   axis: JointAxis,
   opts: JointOptions = {}
 ): Joint {
-  return makeJoint('prismatic', parent, child, axis, opts, 0, 100);
+  return buildJoint('prismatic', parent, child, axis, [
+    makeDof('translation', axis.direction, opts, 0, 100),
+  ]);
 }
 
-/** Return a copy of `joint` with its drivable parameter set (clamped to range). */
+/**
+ * A cylindrical joint — the child both rotates about and slides along a single
+ * `axis` (2 DOF). DOF order: `[rotation, translation]`. The two motions share
+ * the axis, so they commute; rotation pivots about `axis.origin`.
+ */
+export function cylindricalJoint(
+  parent: string,
+  child: string,
+  axis: JointAxis,
+  opts: CylindricalOptions = {}
+): Joint {
+  return buildJoint('cylindrical', parent, child, axis, [
+    makeDof('rotation', axis.direction, opts.rotation ?? {}, -180, 180),
+    makeDof('translation', axis.direction, opts.translation ?? {}, 0, 100),
+  ]);
+}
+
+/**
+ * A planar joint — the child translates within a plane and rotates about its
+ * normal (3 DOF). `plane.direction` is the normal; `plane.origin` the rotation
+ * anchor. DOF order: `[u-translation, v-translation, rotation]`, where the
+ * translations are applied in the plane frame (independent of the rotation).
+ */
+export function planarJoint(
+  parent: string,
+  child: string,
+  plane: JointAxis,
+  opts: PlanarOptions = {}
+): Joint {
+  const normal = unit(plane.direction);
+  // Project a requested u-direction onto the plane; fall back to an arbitrary
+  // in-plane axis. v completes a right-handed in-plane basis.
+  let u: Vec3;
+  if (opts.uDirection) {
+    const d = opts.uDirection;
+    const proj = d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2];
+    const inPlane: Vec3 = [
+      d[0] - proj * normal[0],
+      d[1] - proj * normal[1],
+      d[2] - proj * normal[2],
+    ];
+    u =
+      Math.hypot(inPlane[0], inPlane[1], inPlane[2]) < 1e-9
+        ? anyPerpendicular(normal)
+        : unit(inPlane);
+  } else {
+    u = anyPerpendicular(normal);
+  }
+  const v = unit(cross(normal, u));
+  return buildJoint('planar', parent, child, { origin: plane.origin, direction: normal }, [
+    makeDof('translation', u, opts.u ?? {}, -100, 100),
+    makeDof('translation', v, opts.v ?? {}, -100, 100),
+    makeDof('rotation', normal, opts.rotation ?? {}, -180, 180),
+  ]);
+}
+
+/**
+ * A spherical (ball) joint — the child rotates freely about a pivot point
+ * (3 DOF). DOF order: `[x, y, z]` rotations about the local axes through
+ * `pivot`, composed as `Rx · Ry · Rz`.
+ */
+export function sphericalJoint(
+  parent: string,
+  child: string,
+  pivot: Vec3,
+  opts: SphericalOptions = {}
+): Joint {
+  return buildJoint('spherical', parent, child, { origin: pivot, direction: [0, 0, 1] }, [
+    makeDof('rotation', [1, 0, 0], opts.x ?? {}, -180, 180),
+    makeDof('rotation', [0, 1, 0], opts.y ?? {}, -180, 180),
+    makeDof('rotation', [0, 0, 1], opts.z ?? {}, -180, 180),
+  ]);
+}
+
+/**
+ * Return a copy of `joint` with per-DOF values set (each clamped to its range).
+ * Values are positional, matching `joint.dofs`; omitted entries keep their
+ * stored value. The primary mirror (`value`) is kept in sync with `dofs[0]`.
+ */
+export function setJointValues(joint: Joint, values: readonly number[]): Joint {
+  const dofs = joint.dofs.map((d, i) => {
+    const v = values[i];
+    return v === undefined ? d : { ...d, value: clamp(v, d.min, d.max) };
+  });
+  const primary = dofs[0];
+  return primary ? { ...joint, dofs, value: primary.value } : { ...joint, dofs };
+}
+
+/** Return a copy of `joint` with its primary DOF set (clamped to range). */
 export function setJointValue(joint: Joint, value: number): Joint {
-  return { ...joint, value: clamp(value, joint.min, joint.max) };
+  return setJointValues(joint, [value]);
 }
 
 // ---------------------------------------------------------------------------
 // Kinematics
 // ---------------------------------------------------------------------------
 
-/**
- * The child's local rigid transform (relative to the parent) for a joint value.
- * Defaults to the joint's stored value; an explicit value is clamped to range.
- *
- * - **revolute**: rotation of `value` degrees about the axis line. Rotating
- *   about a line through `origin` is `p ↦ R·p + (origin − R·origin)`.
- * - **prismatic**: translation of `value` units along the axis direction.
- */
-export function jointTransform(joint: Joint, value: number = joint.value): JointPose {
-  const v = clamp(value, joint.min, joint.max);
-  const dir = unit(joint.axis.direction);
-
-  if (joint.type === 'prismatic') {
-    return { position: [dir[0] * v, dir[1] * v, dir[2] * v], rotation: [1, 0, 0, 0] };
+/** The local rigid transform contributed by a single DOF at `value`. */
+function dofPose(origin: Vec3, dof: JointDOF, value: number): JointPose {
+  if (dof.kind === 'translation') {
+    return {
+      position: [dof.axis[0] * value, dof.axis[1] * value, dof.axis[2] * value],
+      rotation: [1, 0, 0, 0],
+    };
   }
+  // Rotation about the axis line through `origin`: p ↦ R·p + (origin − R·origin).
+  const rotation = quatFromAxisAngle(dof.axis, value * DEG2RAD);
+  const ro = quatRotate(rotation, origin);
+  return { position: [origin[0] - ro[0], origin[1] - ro[1], origin[2] - ro[2]], rotation };
+}
 
-  const rotation = quatFromAxisAngle(dir, v * DEG2RAD);
-  const o = joint.axis.origin;
-  const ro = quatRotate(rotation, o);
-  return { position: [o[0] - ro[0], o[1] - ro[1], o[2] - ro[2]], rotation };
+/**
+ * The child's local rigid transform (relative to the parent) for given DOF
+ * values. Defaults to each DOF's stored value. A single `number` overrides only
+ * the primary DOF (single-DOF ergonomics); an array overrides positionally,
+ * with omitted entries keeping their stored value. Each value is clamped to its
+ * DOF range.
+ *
+ * DOFs are folded in array order via frame composition. For same-anchor
+ * rotations (e.g. spherical) this composes to a single rotation about the pivot;
+ * for a cylindrical axis the rotation and slide commute.
+ */
+export function jointTransform(
+  joint: Joint,
+  value: number | readonly number[] = joint.value
+): JointPose {
+  const overrides = Array.isArray(value) ? (value as readonly number[]) : undefined;
+  const primary = overrides ? undefined : (value as number);
+  const origin = joint.axis.origin;
+
+  let pose = IDENTITY_POSE;
+  for (let i = 0; i < joint.dofs.length; i++) {
+    const dof = joint.dofs[i];
+    if (!dof) continue;
+    const raw = overrides
+      ? (overrides[i] ?? dof.value)
+      : i === 0
+        ? (primary ?? dof.value)
+        : dof.value;
+    pose = composePose(pose, dofPose(origin, dof, clamp(raw, dof.min, dof.max)));
+  }
+  return pose;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,7 +392,7 @@ function collectJoints(assembly: AssemblyNode): Joint[] {
  */
 export function forwardKinematics(
   assembly: AssemblyNode,
-  jointValues: Readonly<Record<string, number>> = {}
+  jointValues: Readonly<Record<string, number | readonly number[]>> = {}
 ): Map<string, JointPose> {
   // Single pass: gather joints and node names together.
   const joints: Joint[] = [];
@@ -243,13 +436,12 @@ export function forwardKinematics(
   return poses;
 }
 
-const JOINT_FREEDOM: Readonly<Record<JointType, number>> = { revolute: 1, prismatic: 1 };
-
 /**
- * Open-chain mobility — the number of independent degrees of freedom. Each
- * revolute/prismatic joint contributes 1, so for a serial chain this equals the
- * joint count. (Closed-loop Grübler/Kutzbach analysis is future work.)
+ * Open-chain mobility — the number of independent degrees of freedom, summing
+ * each joint's DOF count (revolute/prismatic 1, cylindrical 2, planar/spherical
+ * 3). For a serial chain this equals the total DOF. (Closed-loop
+ * Grübler/Kutzbach analysis is future work.)
  */
 export function mechanismDOF(assembly: AssemblyNode): number {
-  return collectJoints(assembly).reduce((sum, j) => sum + JOINT_FREEDOM[j.type], 0);
+  return collectJoints(assembly).reduce((sum, j) => sum + j.dofs.length, 0);
 }

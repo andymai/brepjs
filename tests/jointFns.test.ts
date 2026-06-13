@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   revoluteJoint,
   prismaticJoint,
+  cylindricalJoint,
+  planarJoint,
+  sphericalJoint,
   setJointValue,
+  setJointValues,
   jointTransform,
   addJoint,
   forwardKinematics,
@@ -155,6 +159,150 @@ describe('jointFns — prismatic kinematics', () => {
       { value: 4 }
     );
     expectVecClose(jointTransform(j).position, [0, 0, 4]); // moves 4 units, not 20
+  });
+});
+
+describe('jointFns — multi-DOF construction', () => {
+  it('cylindricalJoint has [rotation, translation] DOFs with default ranges', () => {
+    const j = cylindricalJoint('base', 'bolt', { origin: [0, 0, 0], direction: [0, 0, 2] });
+    expect(j.type).toBe('cylindrical');
+    expect(j.dofs).toHaveLength(2);
+    expect(j.dofs[0]?.kind).toBe('rotation');
+    expect(j.dofs[1]?.kind).toBe('translation');
+    expectVecClose(j.dofs[0]?.axis ?? [], [0, 0, 1]); // unit-normalized
+    expect(j.dofs[0]?.min).toBe(-180);
+    expect(j.dofs[1]?.max).toBe(100);
+    // primary mirror tracks dofs[0]
+    expect(j.value).toBe(j.dofs[0]?.value);
+    expect(j.min).toBe(-180);
+  });
+
+  it('planarJoint has [u, v, rotation] DOFs about the normal', () => {
+    const j = planarJoint(
+      'base',
+      'slide',
+      { origin: [0, 0, 0], direction: [0, 0, 1] },
+      { uDirection: [1, 0, 0] }
+    );
+    expect(j.type).toBe('planar');
+    expect(j.dofs.map((d) => d.kind)).toEqual(['translation', 'translation', 'rotation']);
+    expectVecClose(j.dofs[0]?.axis ?? [], [1, 0, 0]); // u
+    expectVecClose(j.dofs[1]?.axis ?? [], [0, 1, 0]); // v = n × u
+    expectVecClose(j.dofs[2]?.axis ?? [], [0, 0, 1]); // rotation about normal
+  });
+
+  it('sphericalJoint has three rotation DOFs about the pivot', () => {
+    const j = sphericalJoint('base', 'ball', [1, 2, 3]);
+    expect(j.type).toBe('spherical');
+    expect(j.dofs.map((d) => d.kind)).toEqual(['rotation', 'rotation', 'rotation']);
+    expectVecClose(j.axis.origin, [1, 2, 3]); // pivot
+  });
+
+  it('setJointValues clamps positionally and is immutable', () => {
+    const j = cylindricalJoint(
+      'a',
+      'b',
+      { origin: [0, 0, 0], direction: [0, 0, 1] },
+      { rotation: { min: -90, max: 90 }, translation: { min: 0, max: 10 } }
+    );
+    const j2 = setJointValues(j, [200, 20]);
+    expect(j2.dofs[0]?.value).toBe(90); // clamped
+    expect(j2.dofs[1]?.value).toBe(10); // clamped
+    expect(j2.value).toBe(90); // primary mirror in sync
+    expect(j.dofs[0]?.value).toBe(0); // original unchanged
+    // omitted entry keeps stored value
+    const j3 = setJointValues(setJointValues(j, [45, 5]), [10]);
+    expect(j3.dofs[0]?.value).toBe(10);
+    expect(j3.dofs[1]?.value).toBe(5);
+  });
+});
+
+describe('jointFns — multi-DOF kinematics', () => {
+  it('cylindrical rotates about and slides along its axis', () => {
+    const j = setJointValues(
+      cylindricalJoint('base', 'bolt', { origin: [0, 0, 0], direction: [0, 0, 1] }),
+      [90, 5]
+    );
+    // [1,0,0] rotates 90° about +Z to [0,1,0], then slides +5 along Z.
+    expectVecClose(applyPose(jointTransform(j), [1, 0, 0]), [0, 1, 5]);
+  });
+
+  it('cylindrical rotation pivots about an offset axis line', () => {
+    const j = cylindricalJoint('base', 'bolt', { origin: [2, 0, 0], direction: [0, 0, 1] });
+    // rotation only: point 1 unit out at (3,0,0) sweeps about the line x=2 to (2,1,0).
+    expectVecClose(applyPose(jointTransform(j, [90, 0]), [3, 0, 0]), [2, 1, 0]);
+  });
+
+  it('a bare number overrides only the primary (rotation) DOF', () => {
+    const j = setJointValues(
+      cylindricalJoint('base', 'bolt', { origin: [0, 0, 0], direction: [0, 0, 1] }),
+      [0, 7] // stored slide of 7
+    );
+    // Passing 90 sets rotation but leaves the stored slide untouched.
+    expectVecClose(applyPose(jointTransform(j, 90), [1, 0, 0]), [0, 1, 7]);
+  });
+
+  it('planar translates in-plane (independent of rotation) and rotates about the normal', () => {
+    const j = setJointValues(
+      planarJoint(
+        'base',
+        'slide',
+        { origin: [0, 0, 0], direction: [0, 0, 1] },
+        { uDirection: [1, 0, 0] }
+      ),
+      [3, 4, 90]
+    );
+    const pose = jointTransform(j);
+    // [1,0,0] rotates to [0,1,0] then shifts by the in-plane (3,4): → (3,5,0).
+    expectVecClose(applyPose(pose, [1, 0, 0]), [3, 5, 0]);
+    // translation is applied in the plane frame, so the pivot moves by (3,4,0).
+    expectVecClose(applyPose(pose, [0, 0, 0]), [3, 4, 0]);
+  });
+
+  it('spherical drives each axis and composes Rx·Ry·Rz about the pivot', () => {
+    const pivot: [number, number, number] = [0, 0, 0];
+    // Single-axis: +90 about X sends +Y to +Z.
+    const jx = setJointValues(sphericalJoint('b', 'c', pivot), [90, 0, 0]);
+    expectVecClose(applyPose(jointTransform(jx), [0, 1, 0]), [0, 0, 1]);
+
+    // Combined: cross-check against an independent Rx·Ry·Rz matrix.
+    const [ax, ay, az] = [30, 45, -60];
+    const j = setJointValues(sphericalJoint('b', 'c', pivot), [ax, ay, az]);
+    const M = matMul(
+      matMul(rotMat([1, 0, 0], (ax * Math.PI) / 180), rotMat([0, 1, 0], (ay * Math.PI) / 180)),
+      rotMat([0, 0, 1], (az * Math.PI) / 180)
+    );
+    const p: V3 = [1, -2, 3];
+    expectVecClose(applyPose(jointTransform(j), p), matVec(M, p));
+  });
+
+  it('spherical pivots about an offset point', () => {
+    const j = setJointValues(sphericalJoint('b', 'c', [0, 0, 5]), [0, 0, 90]);
+    const pose = jointTransform(j);
+    expectVecClose(applyPose(pose, [1, 0, 5]), [0, 1, 5]); // 90° about Z through (0,0,5)
+    expectVecClose(applyPose(pose, [0, 0, 5]), [0, 0, 5]); // pivot is fixed
+  });
+});
+
+describe('jointFns — multi-DOF in forward kinematics', () => {
+  it('propagates a cylindrical joint, overriding via an array keyed by child', () => {
+    let asm = createAssemblyNode('root');
+    asm = addChild(asm, createAssemblyNode('base'));
+    asm = addChild(asm, createAssemblyNode('bolt'));
+    asm = addJoint(
+      asm,
+      cylindricalJoint('base', 'bolt', { origin: [0, 0, 0], direction: [0, 0, 1] })
+    );
+    const poses = forwardKinematics(asm, { bolt: [90, 5] });
+    expectVecClose(applyPose(poseOf(poses, 'bolt'), [1, 0, 0]), [0, 1, 5]);
+  });
+
+  it('mechanismDOF sums per-joint DOF counts', () => {
+    let asm = createAssemblyNode('root');
+    asm = addJoint(asm, revoluteJoint('a', 'b', { origin: [0, 0, 0], direction: [0, 0, 1] }));
+    asm = addJoint(asm, cylindricalJoint('b', 'c', { origin: [0, 0, 0], direction: [0, 0, 1] }));
+    asm = addJoint(asm, sphericalJoint('c', 'd', [0, 0, 0]));
+    expect(mechanismDOF(asm)).toBe(1 + 2 + 3);
   });
 });
 

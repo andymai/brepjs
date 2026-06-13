@@ -837,16 +837,24 @@ export {
 export {
   revoluteJoint,
   prismaticJoint,
+  cylindricalJoint,
+  planarJoint,
+  sphericalJoint,
   setJointValue,
+  setJointValues,
   jointTransform,
   addJoint,
   forwardKinematics,
   mechanismDOF,
   type Joint,
+  type JointDOF,
   type JointAxis,
   type JointType,
   type JointPose,
   type JointOptions,
+  type CylindricalOptions,
+  type PlanarOptions,
+  type SphericalOptions,
 } from './operations/jointFns.js';
 
 export {
