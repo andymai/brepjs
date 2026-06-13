@@ -28,6 +28,7 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
     isShape3D,
     isFace,
     measureVolume,
+    measureVolumeProps,
     measureArea,
     getBounds,
     getFaces,
@@ -69,6 +70,11 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
         suggestion: vol.error.suggestion,
       });
     }
+
+    // Center of mass (volume centroid), computed independently of volume so a CoM failure
+    // doesn't drop the volume measurement. Informational: absent (not an error) on failure.
+    const volProps = measureVolumeProps(shape);
+    if (isOk(volProps)) r.measurements.centerOfMass = volProps.value.centerOfMass;
   }
 
   if (isFace(shape) || isShape3D(shape)) {

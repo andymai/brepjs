@@ -50,4 +50,13 @@ describe('runChecks', () => {
     expect(report.shapeType).toBe('Solid');
     expect(report.measurements.volume).toBeCloseTo(1000, 1);
   });
+
+  it('reports center of mass for a solid', () => {
+    // box(10,10,10) spans 0..10 on each axis, so its centroid is (5,5,5).
+    const report = runChecks(brep, box(10, 10, 10));
+    expect(report.measurements.centerOfMass).toBeDefined();
+    expect(report.measurements.centerOfMass?.[0]).toBeCloseTo(5, 3);
+    expect(report.measurements.centerOfMass?.[1]).toBeCloseTo(5, 3);
+    expect(report.measurements.centerOfMass?.[2]).toBeCloseTo(5, 3);
+  });
 });

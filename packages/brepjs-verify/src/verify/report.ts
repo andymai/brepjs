@@ -7,6 +7,8 @@ export interface VerifyCheck {
 export interface VerifyMeasurements {
   volume?: number;
   area?: number;
+  /** Volume centroid `[x, y, z]`. Absent when center-of-mass can't be computed. */
+  centerOfMass?: readonly [number, number, number];
   bounds?: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number };
 }
 
