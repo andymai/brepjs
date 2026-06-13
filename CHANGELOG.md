@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.75.1](https://github.com/andymai/brepjs/compare/brepjs-v18.75.0...brepjs-v18.75.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **verify:** relax brepjs-viewer devDep to * so workspace links ([#1320](https://github.com/andymai/brepjs/issues/1320)) ([b26a18d](https://github.com/andymai/brepjs/commit/b26a18d406a051806c72e36d67da0f644588f315))
+
 ## [18.75.0](https://github.com/andymai/brepjs/compare/brepjs-v18.74.1...brepjs-v18.75.0) (2026-06-13)
 
 
