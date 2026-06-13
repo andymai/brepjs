@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.69.1](https://github.com/andymai/brepjs/compare/brepjs-v18.69.0...brepjs-v18.69.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **brepjs-verify:** repair preview viewer + GLB Y-up/materials fidelity ([#1271](https://github.com/andymai/brepjs/issues/1271)) ([2823d21](https://github.com/andymai/brepjs/commit/2823d212e2fc5f79e785911ec2b9f3320bdfdbbf))
+
 ## [18.69.0](https://github.com/andymai/brepjs/compare/brepjs-v18.68.0...brepjs-v18.69.0) (2026-06-09)
 
 
