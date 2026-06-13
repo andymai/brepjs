@@ -128,7 +128,35 @@ describe('inverseKinematics — planar 2R', () => {
       expect(angle).toBeLessThanOrEqual(20 + 1e-9);
     }
   });
+
+  it('escapes a DOF seeded at its upper bound (bound-aware Jacobian probe)', () => {
+    // Single revolute about +Z, tip 10 out on +X, seeded at the max (180°).
+    let asm = createAssemblyNode('root');
+    asm = addChild(asm, createAssemblyNode('base'));
+    asm = addChild(asm, createAssemblyNode('arm'));
+    asm = addJoint(
+      asm,
+      revoluteJoint(
+        'base',
+        'arm',
+        { origin: [0, 0, 0], direction: [0, 0, 1] },
+        { min: 0, max: 180 }
+      )
+    );
+    const tip: [number, number, number] = [10, 0, 0];
+    // Target at 30° — requires pulling the joint *down* from the 180° ceiling.
+    const target = tipAt30();
+    const result = inverseKinematics(asm, 'arm', { position: target }, { tip, seed: { arm: 180 } });
+    expect(result.converged).toBe(true);
+    expect(result.values.arm?.[0]).toBeCloseTo(30, 2);
+  });
 });
+
+/** Tip of a 10-unit +X link rotated 30° about +Z. */
+function tipAt30(): [number, number, number] {
+  const r = (30 * Math.PI) / 180;
+  return [10 * Math.cos(r), 10 * Math.sin(r), 0];
+}
 
 describe('inverseKinematics — prismatic and multi-DOF', () => {
   it('solves a prismatic slide to a target distance', () => {

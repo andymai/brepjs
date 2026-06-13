@@ -244,12 +244,20 @@ function residualTwist(
   return Math.sqrt(s);
 }
 
-/** Finite-difference Jacobian: column `j` is the end-effector twist from δq[j]. */
+/**
+ * Finite-difference Jacobian: column `j` is the end-effector twist from δq[j].
+ * The probe steps *inward* from a bound — `forwardKinematics` clamps each DOF to
+ * its range, so a forward `+eps` at the upper limit would yield a zero column and
+ * trap the solver at the ceiling. Stepping `-eps` there (and dividing by the
+ * signed step) keeps every column a true one-sided derivative.
+ */
 function fillJacobian(
   J: Float64Array,
   q: Float64Array,
   n: number,
   m: number,
+  lo: Float64Array,
+  hi: Float64Array,
   base: JointPose,
   tip: Vec3,
   eps: number,
@@ -258,18 +266,21 @@ function fillJacobian(
   const basePos = applyPose(base, tip);
   for (let j = 0; j < n; j++) {
     const saved = el(q, j);
-    q[j] = saved + eps;
+    // Step away from whichever bound we're against so the perturbation isn't
+    // clamped to a no-op; default forward.
+    const h = saved + eps > el(hi, j) && saved - eps >= el(lo, j) ? -eps : eps;
+    q[j] = saved + h;
     const p2 = tipPose(q);
     q[j] = saved;
     const pos2 = applyPose(p2, tip);
-    J[j] = (pos2[0] - basePos[0]) / eps;
-    J[n + j] = (pos2[1] - basePos[1]) / eps;
-    J[2 * n + j] = (pos2[2] - basePos[2]) / eps;
+    J[j] = (pos2[0] - basePos[0]) / h;
+    J[n + j] = (pos2[1] - basePos[1]) / h;
+    J[2 * n + j] = (pos2[2] - basePos[2]) / h;
     if (m === 6) {
       const dr = rotationError(base.rotation, p2.rotation);
-      J[3 * n + j] = dr[0] / eps;
-      J[4 * n + j] = dr[1] / eps;
-      J[5 * n + j] = dr[2] / eps;
+      J[3 * n + j] = dr[0] / h;
+      J[4 * n + j] = dr[1] / h;
+      J[5 * n + j] = dr[2] / h;
     }
   }
 }
@@ -339,7 +350,7 @@ export function inverseKinematics(
   let iter = 0;
 
   for (; iter < maxIterations && n > 0 && err > tolerance; iter++) {
-    fillJacobian(J, q, n, m, pose, tip, eps, tipPose);
+    fillJacobian(J, q, n, m, lo, hi, pose, tip, eps, tipPose);
     const dq = dlsStep(J, e, n, m, lambda);
     if (!dq) break;
     for (let j = 0; j < n; j++) {
