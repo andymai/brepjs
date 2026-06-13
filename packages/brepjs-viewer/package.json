@@ -1,21 +1,34 @@
 {
   "name": "brepjs-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared React/R3F renderer for brepjs meshes (used by the playground and the brepjs-agent viewer)",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "main": "./dist/brepjs-viewer.cjs",
   "module": "./dist/brepjs-viewer.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-viewer.js" },
-      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-viewer.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-viewer.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-viewer.cjs"
+      }
     }
   },
-  "files": ["dist", "CHANGELOG.md", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit",
