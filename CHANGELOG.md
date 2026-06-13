@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.74.1](https://github.com/andymai/brepjs/compare/brepjs-v18.74.0...brepjs-v18.74.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **brepkit:** implement getSurfaceAxis for cylindrical faces ([#1311](https://github.com/andymai/brepjs/issues/1311)) ([2cd2fbb](https://github.com/andymai/brepjs/commit/2cd2fbb2c1f44bb891d548a3711a55528f535afd)), closes [#1297](https://github.com/andymai/brepjs/issues/1297)
+
 ## [18.74.0](https://github.com/andymai/brepjs/compare/brepjs-v18.73.0...brepjs-v18.74.0) (2026-06-13)
 
 
