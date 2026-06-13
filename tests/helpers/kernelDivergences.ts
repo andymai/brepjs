@@ -291,6 +291,14 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
+    // mateFns.test.ts
+    // -----------------------------------------------------------------------
+    'mateFns.concentricAxis': {
+      kind: 'not-implemented',
+      reason: 'getSurfaceAxis (cylinder axis extraction) is OCCT-only; brepkit returns null',
+    },
+
+    // -----------------------------------------------------------------------
     // meshFns.test.ts
     // -----------------------------------------------------------------------
     'meshFns.stepReadError': {

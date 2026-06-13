@@ -574,6 +574,8 @@ export function makeGeometryOps(bk: BrepkitKernel) {
     createCurveAdaptor: (shape) => createCurveAdaptor(bk, shape),
     getBezierPenultimatePole: (edge) => getBezierPenultimatePole(bk, edge),
     getSurfaceCylinderData: (surface) => getSurfaceCylinderData(bk, surface),
+    // Axis-based mates (concentric) are an OCCT-only feature for now.
+    getSurfaceAxis: () => null,
     reverseSurfaceU: (surface) => reverseSurfaceU(bk, surface),
     classifyPointOnFace: (face, u, v, tolerance) => classifyPointOnFace(bk, face, u, v, tolerance),
     classifyPointRobust: (shape, point, tolerance) =>
@@ -613,6 +615,7 @@ export function makeGeometryOps(bk: BrepkitKernel) {
     | 'createCurveAdaptor'
     | 'getBezierPenultimatePole'
     | 'getSurfaceCylinderData'
+    | 'getSurfaceAxis'
     | 'reverseSurfaceU'
     | 'classifyPointOnFace'
     | 'classifyPointRobust'

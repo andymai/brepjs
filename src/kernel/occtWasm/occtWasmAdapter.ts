@@ -1512,6 +1512,12 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('getSurfaceCylinderData');
   }
 
+  getSurfaceAxis(
+    face: KernelShape
+  ): { origin: [number, number, number]; direction: [number, number, number] } | null {
+    return surfaceOps.getSurfaceAxis(this.k, face);
+  }
+
   reverseSurfaceU(_surface: KernelType): KernelType {
     notImplemented('reverseSurfaceU');
   }

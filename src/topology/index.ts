@@ -77,6 +77,7 @@ export {
   uvCoordinates,
   normalAt,
   faceCenter,
+  faceAxis,
   outerWire,
   innerWires,
   type UVBounds,

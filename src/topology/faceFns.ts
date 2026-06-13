@@ -190,6 +190,15 @@ export function faceCenter(face: Face): Vec3 {
   return getKernel().surfaceCenterOfMass(face.wrapped);
 }
 
+/**
+ * Get a face's axis of symmetry — a point on the axis plus a unit direction —
+ * for analytic faces that have one (e.g. a cylinder's axis). Returns null when
+ * the face has no well-defined axis or the active kernel can't determine it.
+ */
+export function faceAxis(face: Face): { origin: Vec3; direction: Vec3 } | null {
+  return getKernel().getSurfaceAxis(face.wrapped);
+}
+
 // ---------------------------------------------------------------------------
 // Point classification
 // ---------------------------------------------------------------------------

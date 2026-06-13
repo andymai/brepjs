@@ -64,6 +64,14 @@ export interface KernelSurfaceOps {
   // --- Surface geometry extraction ---
   /** Extract cylinder data from a surface handle. Returns null if not a cylinder. */
   getSurfaceCylinderData(surface: KernelType): { radius: number; isDirect: boolean } | null;
+  /**
+   * Get a face's analytic axis of symmetry (e.g. a cylinder's axis): a point on
+   * the axis plus a unit direction. Returns null if the face has no well-defined
+   * axis (non-cylindrical, or the adapter can't determine it).
+   */
+  getSurfaceAxis(
+    face: KernelShape
+  ): { origin: [number, number, number]; direction: [number, number, number] } | null;
   /** Reverse the U direction of a surface. Returns a new surface handle. */
   reverseSurfaceU(surface: KernelType): KernelType;
 

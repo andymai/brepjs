@@ -463,12 +463,42 @@ export function getSurfaceCylinderData(
   return result;
 }
 
+/** Get a cylindrical face's axis (point on axis + unit direction). Null otherwise. */
+export function getSurfaceAxis(
+  oc: KernelInstance,
+  face: KernelShape
+): { origin: [number, number, number]; direction: [number, number, number] } | null {
+  const adaptor = new oc.BRepAdaptor_Surface_2(face, false);
+  try {
+    const typeVal = adaptor.GetType();
+    const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
+    // 1 = GeomAbs_Cylinder
+    if (typeIdx !== 1) return null;
+    const cyl = adaptor.Cylinder();
+    const axis = cyl.Axis();
+    const loc = axis.Location();
+    const dir = axis.Direction();
+    const result = {
+      origin: [loc.X(), loc.Y(), loc.Z()] as [number, number, number],
+      direction: [dir.X(), dir.Y(), dir.Z()] as [number, number, number],
+    };
+    loc.delete();
+    dir.delete();
+    axis.delete();
+    cyl.delete();
+    return result;
+  } finally {
+    adaptor.delete();
+  }
+}
+
 /** Reverse the U direction of a surface. Returns a new surface handle. */
 export function reverseSurfaceU(_oc: KernelInstance, surface: KernelType): KernelType {
   return surface.get().UReversed();
 }
 
 /** Co-located factory: returns the geometry-query slice of {@link KernelAdapter} bound to `oc`. */
+// brepjs-patterns-disable: max-function-lines
 export function makeGeometryQueryOps(oc: KernelInstance) {
   return {
     vertexPosition: (vertex) => vertexPosition(oc, vertex),
@@ -498,6 +528,7 @@ export function makeGeometryQueryOps(oc: KernelInstance) {
     curvePeriod: (shape) => curvePeriod(oc, shape),
     curveType: (shape) => curveType(oc, shape),
     getSurfaceCylinderData: (surface) => getSurfaceCylinderData(oc, surface),
+    getSurfaceAxis: (face) => getSurfaceAxis(oc, face),
     reverseSurfaceU: (surface) => reverseSurfaceU(oc, surface),
   } satisfies Pick<
     KernelAdapter,
@@ -526,6 +557,7 @@ export function makeGeometryQueryOps(oc: KernelInstance) {
     | 'curvePeriod'
     | 'curveType'
     | 'getSurfaceCylinderData'
+    | 'getSurfaceAxis'
     | 'reverseSurfaceU'
   >;
 }
