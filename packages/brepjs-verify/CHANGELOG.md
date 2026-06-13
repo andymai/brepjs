@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.7.1...brepjs-verify-v0.8.0) (2026-06-13)
+
+
+### Features
+
+* **brepjs-verify:** auto-open browser on --serve + document the MCP server ([#1308](https://github.com/andymai/brepjs/issues/1308)) ([de4272c](https://github.com/andymai/brepjs/commit/de4272c9196f70baec4ff762a33636fccef4c012))
+* **brepjs-verify:** burn bbox dimensions into agent snapshots ([#1280](https://github.com/andymai/brepjs/issues/1280)) ([25b6b8d](https://github.com/andymai/brepjs/commit/25b6b8df68909a41eaef5307519a29a8a05ccc00))
+* **verify:** add center of mass to the verify report ([#1288](https://github.com/andymai/brepjs/issues/1288)) ([5738600](https://github.com/andymai/brepjs/commit/5738600e31f56c00d928d62e32ab9d5e8220b377))
+* **verify:** add export_part MCP tool and sandbox export ([#1316](https://github.com/andymai/brepjs/issues/1316)) ([8a52f90](https://github.com/andymai/brepjs/commit/8a52f90c5b3d76c8bf6ef50a36c6977833af59bb))
+* **verify:** add JSONL run-record provenance for sandbox runs ([#1309](https://github.com/andymai/brepjs/issues/1309)) ([6bda9b6](https://github.com/andymai/brepjs/commit/6bda9b630b8e4edf6eb860002c58b3e36cf1bfd4))
+* **verify:** add manifold flag to the topology channel ([#1291](https://github.com/andymai/brepjs/issues/1291)) ([5ea5bb4](https://github.com/andymai/brepjs/commit/5ea5bb4db5bc8539f2773752e1c42770c91b5e0d))
+* **verify:** add MCP server with run_program tool (stdio) ([#1300](https://github.com/andymai/brepjs/issues/1300)) ([e3c2c9e](https://github.com/andymai/brepjs/commit/e3c2c9e678dd719608cea8b6ee38101de9775e5d))
+* **verify:** add topology counts to the verify report ([#1285](https://github.com/andymai/brepjs/issues/1285)) ([17a0eed](https://github.com/andymai/brepjs/commit/17a0eede727ac29007591cb0249274a35896facb))
+* **verify:** sandbox executor — run agent code in an isolated child process ([#1295](https://github.com/andymai/brepjs/issues/1295)) ([8b72aa2](https://github.com/andymai/brepjs/commit/8b72aa2e272a58aa6d3886b8304eeaefb1a09b2e))
+* **verify:** validate each body of multi-solid assemblies ([#1293](https://github.com/andymai/brepjs/issues/1293)) ([deb682f](https://github.com/andymai/brepjs/commit/deb682f1104179f261f232be7d94ceb154985328))
+* **viewer:** click-to-inspect face picking in verify --serve ([#1278](https://github.com/andymai/brepjs/issues/1278)) ([735dc04](https://github.com/andymai/brepjs/commit/735dc0401143ff47046a79e6fb7bac53cf00a91e))
+* **viewer:** measurements info panel in verify --serve ([#1277](https://github.com/andymai/brepjs/issues/1277)) ([c1ccf1d](https://github.com/andymai/brepjs/commit/c1ccf1d7c50ab43dc0444468f92fcf9365fda9da))
+* **viewer:** orthographic/perspective projection toggle ([#1281](https://github.com/andymai/brepjs/issues/1281)) ([96673e4](https://github.com/andymai/brepjs/commit/96673e45e1ee316f9d26e52c995b4daba691e8b0))
+* **viewer:** section/clipping plane in verify --serve ([#1279](https://github.com/andymai/brepjs/issues/1279)) ([cc0d00b](https://github.com/andymai/brepjs/commit/cc0d00b7a6296cc698fce1ae42b7503e6d47c032))
+* **viewer:** shared ViewerControls toolbar; interactive verify --serve ([#1275](https://github.com/andymai/brepjs/issues/1275)) ([139ae15](https://github.com/andymai/brepjs/commit/139ae15a29d8a7ad5e520ba21d6dc9788242c089))
+
 ## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.7.0...brepjs-verify-v0.7.1) (2026-06-13)
 
 
