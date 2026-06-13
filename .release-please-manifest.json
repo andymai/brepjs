@@ -1,5 +1,5 @@
 {
-  ".": "18.74.1",
+  ".": "18.75.0",
   "packages/brepjs-opencascade": "0.16.0",
   "packages/brepjs-voxel-wasm": "0.7.0",
   "packages/brepjs-verify": "0.7.1"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.75.0](https://github.com/andymai/brepjs/compare/brepjs-v18.74.1...brepjs-v18.75.0) (2026-06-13)
+
+
+### Features
+
+* **occt-wasm:** derive getSurfaceCylinderData from surface sampling ([#1314](https://github.com/andymai/brepjs/issues/1314)) ([67a6458](https://github.com/andymai/brepjs/commit/67a6458daf95791eb484e20df22ea29788c36ac4)), closes [#1298](https://github.com/andymai/brepjs/issues/1298)
+
 ## [18.74.1](https://github.com/andymai/brepjs/compare/brepjs-v18.74.0...brepjs-v18.74.1) (2026-06-13)
 
 
