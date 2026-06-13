@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.71.0](https://github.com/andymai/brepjs/compare/brepjs-v18.70.0...brepjs-v18.71.0) (2026-06-13)
+
+
+### Features
+
+* **assembly:** drivable joint primitives (kinematics Phase 2) ([#1302](https://github.com/andymai/brepjs/issues/1302)) ([0172cfa](https://github.com/andymai/brepjs/commit/0172cfafd39c9b6acc2c9d92537f6eabbe724df1)), closes [#1287](https://github.com/andymai/brepjs/issues/1287)
+
 ## [18.70.0](https://github.com/andymai/brepjs/compare/brepjs-v18.69.3...brepjs-v18.70.0) (2026-06-13)
 
 
