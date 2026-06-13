@@ -11,6 +11,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,8 +46,10 @@ const DEFAULT_MAX_MEMORY_MB = 2048;
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 
 function defaultCliEntry(): string {
-  // runProgram and the CLI share a build root (src/ in dev, dist/ in prod); '../cli/main.ts'
-  // resolves to the in-repo TS CLI used by the existing CLI tests.
+  // runProgram and the CLI share a build root: dist/cli/main.js in a built/published package,
+  // src/cli/main.ts in dev/test. Prefer the built JS so the default works in production too.
+  const builtJs = fileURLToPath(new URL('../cli/main.js', import.meta.url));
+  if (existsSync(builtJs)) return builtJs;
   return fileURLToPath(new URL('../cli/main.ts', import.meta.url));
 }
 
@@ -86,7 +89,13 @@ export async function runProgram(
         timeout: timeoutMs,
         killSignal: 'SIGKILL',
         maxBuffer: MAX_OUTPUT_BYTES,
-        env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=${maxMemoryMb}` },
+        env: {
+          ...process.env,
+          // Append rather than replace, so an existing NODE_OPTIONS (flags, other limits) survives.
+          NODE_OPTIONS: [process.env['NODE_OPTIONS'], `--max-old-space-size=${maxMemoryMb}`]
+            .filter(Boolean)
+            .join(' '),
+        },
       });
       const report = tryParseReport(stdout);
       if (report) return { outcome: 'completed', report };

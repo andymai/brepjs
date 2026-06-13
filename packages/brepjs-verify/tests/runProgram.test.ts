@@ -21,4 +21,12 @@ describe('runProgram (sandbox executor)', () => {
     expect(res.outcome).toBe('timeout');
     if (res.outcome === 'timeout') expect(res.timeoutMs).toBe(8000);
   }, 30000);
+
+  it('reports crashed when the runner produces no report (bad CLI entry)', async () => {
+    // A non-existent .js entry runs under `node` and exits non-zero with no JSON on stdout —
+    // exactly the "the child died without a report" path the crashed outcome must catch.
+    const res = await runProgram(VALID_PART, { cliEntry: '/nonexistent/brepjs-verify-cli.js' });
+    expect(res.outcome).toBe('crashed');
+    if (res.outcome === 'crashed') expect(res.detail.length).toBeGreaterThan(0);
+  }, 30000);
 });
