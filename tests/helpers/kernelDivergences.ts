@@ -60,8 +60,7 @@ export const divergences: DivergenceMap = {
     'curves.cylinderUnwrapOriginal': {
       kind: 'not-implemented',
       reason:
-        'manifold proxies getSurfaceCylinderData to occt, which throws ' +
-        '(oc.GeomAdaptor_Surface_2 is not a constructor in the brepjs-opencascade WASM build; see #1312)',
+        'manifold is a mesh kernel: a cylinder tessellates to planar facets, so surfaceType never reports a cylindrical face to unwrap onto',
     },
     'mateFns.coneAxis': {
       kind: 'not-implemented',
@@ -437,12 +436,6 @@ export const divergences: DivergenceMap = {
       kind: 'skip',
       reason:
         'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
-    },
-    'curves.cylinderUnwrapOriginal': {
-      kind: 'not-implemented',
-      reason:
-        'getSurfaceCylinderData throws on occt: oc.GeomAdaptor_Surface_2 is not a constructor ' +
-        'in the brepjs-opencascade WASM build (see #1312)',
     },
     'mateFns.coneAxis': {
       kind: 'not-implemented',

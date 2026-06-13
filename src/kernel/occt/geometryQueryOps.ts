@@ -442,24 +442,21 @@ export function createCurveAdaptor(oc: KernelInstance, shape: KernelShape): Kern
 
 /** Extract cylinder data from a surface handle. Returns null if not a cylinder. */
 export function getSurfaceCylinderData(
-  oc: KernelInstance,
+  _oc: KernelInstance,
   surface: KernelType
 ): { radius: number; isDirect: boolean } | null {
-  const adaptor = new oc.GeomAdaptor_Surface_2(surface);
-  const typeVal = adaptor.GetType();
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
-  // 1 = GeomAbs_Cylinder
-  if (typeIdx !== 1) {
-    adaptor.delete();
-    return null;
-  }
-  const cyl = adaptor.Cylinder();
+  // GeomAdaptor_Surface is not bound in this WASM build (#1312). embind
+  // auto-downcasts the handle's payload to its most-derived registered type, so a
+  // cylindrical surface exposes gp_Cylinder accessors directly; non-cylinders lack
+  // Cylinder().
+  const geom = surface.get();
+  if (typeof geom.Cylinder !== 'function') return null;
+  const cyl = geom.Cylinder();
   const result = {
     radius: cyl.Radius(),
     isDirect: cyl.Direct(),
   };
   cyl.delete();
-  adaptor.delete();
   return result;
 }
 
