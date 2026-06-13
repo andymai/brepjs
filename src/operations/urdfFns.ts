@@ -120,11 +120,15 @@ export function exportURDF(
     const toRad = j.type === 'revolute';
     const lower = toRad ? j.min * DEG2RAD : j.min;
     const upper = toRad ? j.max * DEG2RAD : j.max;
+    // brepjs prismatic FK slides from the parent origin and ignores axis.origin,
+    // so emit a zero origin to keep the URDF faithful to brepjs's own kinematics
+    // (a non-zero origin would make a ROS consumer place the slider differently).
+    const origin: Vec3 = j.type === 'prismatic' ? [0, 0, 0] : j.axis.origin;
     lines.push(
       `  <joint name="${escapeXml(`${j.parent}_to_${j.child}`)}" type="${j.type}">`,
       `    <parent link="${escapeXml(j.parent)}"/>`,
       `    <child link="${escapeXml(j.child)}"/>`,
-      `    <origin xyz="${vec(j.axis.origin)}" rpy="0 0 0"/>`,
+      `    <origin xyz="${vec(origin)}" rpy="0 0 0"/>`,
       `    <axis xyz="${vec(j.axis.direction)}"/>`,
       `    <limit lower="${fmt(lower)}" upper="${fmt(upper)}" effort="${fmt(effort)}" velocity="${fmt(velocity)}"/>`,
       `  </joint>`
@@ -224,13 +228,20 @@ export function importURDF(xml: string): Result<UrdfDocument> {
           ? { min: lowerRaw, max: upperRaw }
           : {};
       joints.push(prismaticJoint(parent, child, { origin, direction }, opts));
-    } else {
-      // revolute or continuous (continuous → full range)
+    } else if (type === 'revolute' || type === 'continuous') {
+      // continuous → full range
       const opts =
         type === 'continuous' || !Number.isFinite(lowerRaw) || !Number.isFinite(upperRaw)
           ? { min: -180, max: 180 }
           : { min: lowerRaw * RAD2DEG, max: upperRaw * RAD2DEG };
       joints.push(revoluteJoint(parent, child, { origin, direction }, opts));
+    } else {
+      return err(
+        validationError(
+          BrepErrorCode.VALIDATION_FAILED,
+          `importURDF: joint '${attr(head, 'name') ?? 'unnamed'}' has unrecognized type '${type}'`
+        )
+      );
     }
   }
 

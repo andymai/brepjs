@@ -133,6 +133,18 @@ describe('importURDF', () => {
   it('errors on a document without a <robot> element', () => {
     expect(isErr(importURDF('<not-urdf/>'))).toBe(true);
   });
+
+  it('errors on an unrecognized joint type instead of silently treating it as revolute', () => {
+    const xml = `<robot name="r">
+  <link name="a"/><link name="b"/>
+  <joint name="typo" type="revolutte">
+    <parent link="a"/><child link="b"/><axis xyz="0 0 1"/>
+  </joint>
+</robot>`;
+    const r = importURDF(xml);
+    expect(isErr(r)).toBe(true);
+    expect(unwrapErr(r).message).toContain('revolutte');
+  });
 });
 
 describe('URDF round-trip', () => {
