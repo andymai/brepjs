@@ -1,6 +1,6 @@
 # Export
 
-STEP is the canonical, lossless output — the source of truth. Mesh formats (STL/3MF/GLB) are **derived sidecars** for preview/printing, never the authoritative artifact.
+STEP is the canonical, lossless output, the source of truth. Mesh formats (STL/3MF/GLB) are **derived sidecars** for preview/printing, never the authoritative artifact.
 
 | Function     | Signature                                     | Role              |
 | ------------ | --------------------------------------------- | ----------------- |
@@ -22,6 +22,6 @@ npx -y brepjs-verify model.brep.ts --step out/model.step --glb out/model.glb
 ## Pitfalls
 
 - Prefer STEP downstream; meshes lose exact surfaces and are tessellation-dependent.
-- All exporters return `Result<Blob>` — check for `Err` before writing.
+- All exporters return `Result<Blob>`; check for `Err` before writing.
 
 See also: docs/function-lookup.md → brepjs/io.

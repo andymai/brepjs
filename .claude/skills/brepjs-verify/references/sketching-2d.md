@@ -24,7 +24,7 @@ export default () => {
 
 ## Pitfalls
 
-- A `Drawing` is purely 2D — you must `.sketchOnPlane(...)` before `.extrude`.
+- A `Drawing` is purely 2D; you must `.sketchOnPlane(...)` before `.extrude`.
 - Low-level `circle`/`ellipse`/`line` (primitives) return **edges**, not faces; use the `draw*` factories when you need a closed profile to extrude.
 
 See also: docs/function-lookup.md → brepjs/sketching.

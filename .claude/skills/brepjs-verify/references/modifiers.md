@@ -18,7 +18,7 @@ export default () => fillet(box(40, 20, 10, { centered: true }), 2);
 
 ## Pitfalls
 
-- A radius/distance larger than the local geometry makes the kernel fail — keep it well below the smallest adjacent edge length.
+- A radius/distance larger than the local geometry makes the kernel fail; keep it well below the smallest adjacent edge length.
 - `fillet`/`chamfer` only accept a `ValidSolid`; wrap a post-boolean shape with `validSolid(...)` before filleting.
 
 See also: docs/function-lookup.md → brepjs/topology.
