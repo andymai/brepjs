@@ -7,6 +7,15 @@
  * @module
  */
 
+/**
+ * Default tessellation tolerances for STL export, shared by every kernel
+ * adapter so per-adapter defaults can't drift. Callers normally pass explicit
+ * values (the public `exportSTL` derives them from the active quality level);
+ * these apply only to direct kernel-level calls made without arguments.
+ */
+export const DEFAULT_STL_TOLERANCE = 1e-3;
+export const DEFAULT_STL_ANGULAR_TOLERANCE = 0.1;
+
 interface Facet {
   nx: number;
   ny: number;
@@ -21,6 +30,23 @@ interface Facet {
   cy: number;
   cz: number;
 }
+
+// Reused across the serialization loop — each facet is consumed before the next
+// call, so a single mutable scratch object avoids per-triangle allocation.
+const scratch: Facet = {
+  nx: 0,
+  ny: 0,
+  nz: 0,
+  ax: 0,
+  ay: 0,
+  az: 0,
+  bx: 0,
+  by: 0,
+  bz: 0,
+  cx: 0,
+  cy: 0,
+  cz: 0,
+};
 
 function facetAt(vertices: ArrayLike<number>, triangles: ArrayLike<number>, i: number): Facet {
   const ia = (triangles[i * 3] ?? 0) * 3;
@@ -48,7 +74,19 @@ function facetAt(vertices: ArrayLike<number>, triangles: ArrayLike<number>, i: n
   nx /= len;
   ny /= len;
   nz /= len;
-  return { nx, ny, nz, ax, ay, az, bx, by, bz, cx, cy, cz };
+  scratch.nx = nx;
+  scratch.ny = ny;
+  scratch.nz = nz;
+  scratch.ax = ax;
+  scratch.ay = ay;
+  scratch.az = az;
+  scratch.bx = bx;
+  scratch.by = by;
+  scratch.bz = bz;
+  scratch.cx = cx;
+  scratch.cy = cy;
+  scratch.cz = cz;
+  return scratch;
 }
 
 /** Serialize a triangle soup as a binary STL (80-byte header + uint32 count + 50B/tri). */

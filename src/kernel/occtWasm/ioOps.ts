@@ -7,7 +7,12 @@
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, unwrap, wrapResult } from './helpers.js';
-import { buildAsciiSTL, buildBinarySTL } from '@/kernel/stlBuilder.js';
+import {
+  buildAsciiSTL,
+  buildBinarySTL,
+  DEFAULT_STL_ANGULAR_TOLERANCE,
+  DEFAULT_STL_TOLERANCE,
+} from '@/kernel/stlBuilder.js';
 
 interface Vec3Bounds {
   readonly min: [number, number, number];
@@ -113,8 +118,8 @@ export function exportSTL(
   mesh: MeshFn,
   shape: KernelShape,
   binary?: boolean,
-  tolerance = 1e-3,
-  angularTolerance = 0.1
+  tolerance = DEFAULT_STL_TOLERANCE,
+  angularTolerance = DEFAULT_STL_ANGULAR_TOLERANCE
 ): string | ArrayBuffer {
   // Build STL in JS from the triangulation for both formats. The native
   // exportStl returns its payload as a JS string (lossy for binary bytes via

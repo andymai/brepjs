@@ -15,10 +15,14 @@ import {
   copyWasmBytes,
   noop,
   warnOnce,
-  DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
-import { buildAsciiSTL, buildBinarySTL } from '@/kernel/stlBuilder.js';
+import {
+  buildAsciiSTL,
+  buildBinarySTL,
+  DEFAULT_STL_ANGULAR_TOLERANCE,
+  DEFAULT_STL_TOLERANCE,
+} from '@/kernel/stlBuilder.js';
 import { mesh } from './meshOps.js';
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
@@ -39,8 +43,8 @@ export function exportSTL(
   bk: BrepkitKernel,
   shape: KernelShape,
   binary?: boolean,
-  tolerance = DEFAULT_DEFLECTION,
-  angularTolerance = 0
+  tolerance = DEFAULT_STL_TOLERANCE,
+  angularTolerance = DEFAULT_STL_ANGULAR_TOLERANCE
 ): string | ArrayBuffer {
   const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTL');
   // Use the first solid; STL format doesn't natively support multi-solid.
