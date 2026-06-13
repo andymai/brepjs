@@ -81,11 +81,11 @@ Each declared field appears in `report.assertions` as `{ name, expected, actual,
 
 `--snapshot` and `--serve` use the bundled viewer (shipped with the package, including the OCCT WASM) and render the **real exported STEP**, not a code preview. Snapshots require the optional `puppeteer`/Chrome dependency; when it is absent the CLI degrades with a clear message rather than failing, and `--snapshot` is simply skipped. The viewer is read-only display + screenshot.
 
-`--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped when it would be unwanted — a reused server (a tab already exists), CI, a non-TTY/piped session (e.g. an agent run), or Linux with no display server — and `--no-open` always suppresses it. Agents therefore get the URL without a browser popping up.
+`--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped when it would be unwanted — a reused server (a tab already exists), CI, a non-TTY/piped session (e.g. an agent run), or Linux with no display server — and `--no-open` always suppresses it. Agents therefore get the URL without a browser launching.
 
 ## MCP server
 
-The package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents directly, without spawning the CLI. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
+The package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same build-and-verify step to MCP-capable agents directly, without spawning the CLI. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
 
 Register it with an MCP client over stdio:
 

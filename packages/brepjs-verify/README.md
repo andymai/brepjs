@@ -51,7 +51,7 @@ npx -y brepjs-verify part.brep.ts --serve --no-open                     # previe
 
 `--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The `--serve` link is interactive: a toolbar offers view presets + fit, solid/wireframe/x-ray modes, edge/grid toggles, a turntable, click-to-inspect face picking, a section/clipping plane, a measurements panel, and an in-browser PNG screenshot. `--snapshot` loads the same page with `ui=0` to suppress the toolbar, and burns the bounding-box size into each PNG (`dims=1`) so the agent can read scale from the image.
 
-`--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped automatically when it would be unwanted — when the server is reused (a tab is already open), under CI, when output is piped (non-TTY, e.g. agent runs), or on Linux with no display server. Pass `--no-open` to always suppress it.
+`--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped when it would be unwanted — when the server is reused (a tab is already open), under CI, when output is piped (non-TTY, e.g. agent runs), or on Linux with no display server. Pass `--no-open` to always suppress it.
 
 ## CLI reference
 
@@ -72,7 +72,7 @@ Every command writes a single machine-readable JSON document to stdout; diagnost
 
 ## MCP server
 
-For MCP-capable agents, the package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same verify substrate as a tool. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
+For MCP-capable agents, the package ships a second bin — `brepjs-verify-mcp` — a stdio [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the same build-and-verify step as a tool. The `@modelcontextprotocol/sdk` it needs is a regular dependency, so it runs straight from the published package.
 
 Point an MCP client at it via stdio:
 
