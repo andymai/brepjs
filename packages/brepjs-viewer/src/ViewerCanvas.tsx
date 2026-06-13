@@ -77,6 +77,9 @@ function LocalClipping() {
   const gl = useThree((s) => s.gl);
   useEffect(() => {
     gl.localClippingEnabled = true;
+    return () => {
+      gl.localClippingEnabled = false;
+    };
   }, [gl]);
   return null;
 }

@@ -53,11 +53,14 @@ export function ViewerSectionControls({
             max={max}
             step={(max - min) / 200 || 0.01}
             value={position}
+            disabled={min === max}
             onChange={(e) => {
               onPositionChange(Number(e.target.value));
             }}
             aria-label="Section position"
-            style={sliderStyle}
+            // A zero-extent axis (e.g. a sheet body) has nothing to slide along; dim and
+            // disable so the stuck handle reads as intentional rather than broken.
+            style={{ ...sliderStyle, ...(min === max ? { opacity: 0.4 } : null) }}
           />
           <Btn label="Flip" active={flip} onClick={onToggleFlip} />
         </>
