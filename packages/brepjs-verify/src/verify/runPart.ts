@@ -1,4 +1,4 @@
-import type { AnyShape, BrepError, Result } from 'brepjs';
+import type { AnyShape, BrepError, GltfMaterial, MaterialFn, Result, ShapeMesh } from 'brepjs';
 import { pathToFileURL } from 'node:url';
 import { loadBrep, initOcctWasm, toolDir } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
@@ -13,15 +13,59 @@ import { buildHints, emptyReport, pushError, type ErrorInfo, type VerifyReport }
 
 type PartFn = () => unknown;
 
+// A part may `export const materials` to colour its GLB: either one material for
+// the whole shape (a GltfMaterial object), or a MaterialFn selector keyed on each
+// face's centroid. Resolved into a faceId→material map by buildMaterialMap.
+
+/** Centroid of a face group's vertices, in part (Z-up, mm) coordinates. */
+function faceCentroid(m: ShapeMesh, start: number, count: number): [number, number, number] {
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  for (let i = start; i < start + count; i++) {
+    const vi = (m.triangles[i] ?? 0) * 3;
+    x += m.vertices[vi] ?? 0;
+    y += m.vertices[vi + 1] ?? 0;
+    z += m.vertices[vi + 2] ?? 0;
+  }
+  const n = count || 1;
+  return [x / n, y / n, z / n];
+}
+
+// Resolve the part's `materials` export into a faceId→material map by evaluating
+// it against the meshed face groups. A function is a per-face selector; a plain
+// object paints every face. Anything else (e.g. an array) is ignored.
+function buildMaterialMap(
+  m: ShapeMesh,
+  spec: unknown
+): { map?: Map<number, GltfMaterial>; warning?: string } {
+  if (spec === undefined || spec === null) return {};
+  if (typeof spec !== 'function' && (typeof spec !== 'object' || Array.isArray(spec))) {
+    return { warning: 'export const materials must be a function or a material object — ignored' };
+  }
+  // Narrow by callability: a function is the per-face selector, an object paints all faces.
+  const sel = spec as MaterialFn | GltfMaterial;
+  const select: MaterialFn = typeof sel === 'function' ? sel : () => sel;
+  const map = new Map<number, GltfMaterial>();
+  for (const fg of m.faceGroups) {
+    const mat = select({ faceId: fg.faceId, center: faceCentroid(m, fg.start, fg.count) });
+    if (mat) map.set(fg.faceId, mat);
+  }
+  return map.size > 0 ? { map } : {};
+}
+
 // Author parts are `.brep.ts`. Node strips types natively (engines requires >=24),
 // but only in an ESM context — so a part loaded under a CommonJS project fails. A
 // transpiler fallback (tsx) is NOT viable: it loads `brepjs` in a separate module
 // realm, so the part gets an uninitialized kernel. Surface a clear fix instead.
-async function loadPart(modulePath: string): Promise<{ default?: PartFn; expected?: unknown }> {
+async function loadPart(
+  modulePath: string
+): Promise<{ default?: PartFn; expected?: unknown; materials?: unknown }> {
   try {
     return (await import(pathToFileURL(modulePath).href)) as {
       default?: PartFn;
       expected?: unknown;
+      materials?: unknown;
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -120,7 +164,7 @@ export async function runPart(
     return finalize({ shape: null, report });
   }
   const { isOk, mesh, exportGlb, exportSTEP } = brep;
-  let mod: { default?: PartFn; expected?: unknown };
+  let mod: { default?: PartFn; expected?: unknown; materials?: unknown };
   try {
     mod = await loadPart(modulePath);
   } catch (e) {
@@ -174,7 +218,12 @@ export async function runPart(
   let step: ArrayBuffer | undefined;
   if (opts.glb) {
     try {
-      glb = exportGlb(mesh(shape));
+      const shapeMesh = mesh(shape);
+      const { map, warning } = buildMaterialMap(shapeMesh, mod.materials);
+      if (warning)
+        pushError(result, { message: `materials: ${warning}`, code: 'MATERIALS_IGNORED' });
+      // GLB defaults to Y-up so the preview stands upright in glTF viewers.
+      glb = map ? exportGlb(shapeMesh, { materials: map }) : exportGlb(shapeMesh);
     } catch (e) {
       pushError(result, toErrorInfo('exportGlb', e));
     }
