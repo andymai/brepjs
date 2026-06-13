@@ -7,6 +7,7 @@
 import type { KernelShape, SurfaceType } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, unwrap } from './helpers.js';
+import { shapeOrientation } from './topologyOps.js';
 
 export function vertexPosition(k: OcctKernelWasm, vertex: KernelShape): [number, number, number] {
   const vec = k.vertexPosition(unwrap(vertex));
@@ -83,9 +84,14 @@ const crossV = (a: V3, b: V3): V3 => [
  * in the plane perpendicular to the axis), so `n1 x n2` is parallel to the axis.
  * The points satisfy `p1 - p2 = ±r(n1 - n2)`, giving the radius
  * `r = |p1-p2| / |n1-n2|`; the axis point is then `p - r·n` with the normal's
- * sign chosen so both samples agree. `isDirect` follows from whether the normal
- * points radially outward (`n·(p - origin) > 0`) — true for the standard
- * outward-facing cylinder. Exact for full and partial cylinders; null otherwise.
+ * sign chosen so both samples agree.
+ *
+ * `isDirect` mirrors OCCT's `gp_Cylinder::Direct()` — the handedness of the
+ * cylinder's coordinate system, independent of face orientation. occt-wasm's
+ * `surfaceNormal` is orientation-aware (a REVERSED face reports an inward
+ * normal), so we undo the face orientation before the outward test; otherwise an
+ * inner bore (a reversed face on an otherwise-direct cylinder) would wrongly
+ * report `isDirect: false`. Exact for full and partial cylinders; null otherwise.
  */
 function deriveCylinder(
   k: OcctKernelWasm,
@@ -115,7 +121,8 @@ function deriveCylinder(
     lenV(subV(minus1, minus2)) < 1e-6
       ? minus1
       : [p1[0] + radius * n1[0], p1[1] + radius * n1[1], p1[2] + radius * n1[2]];
-  const isDirect = dotV(n1, subV(p1, origin)) > 0;
+  const orientSign = shapeOrientation(k, face) === 'reversed' ? -1 : 1;
+  const isDirect = orientSign * dotV(n1, subV(p1, origin)) > 0;
   return { origin, direction, radius, isDirect };
 }
 
