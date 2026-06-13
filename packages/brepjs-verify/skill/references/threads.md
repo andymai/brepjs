@@ -44,5 +44,5 @@ Swap the section profile to change the form: ISO/UTS 60° V, trapezoidal 30°, A
 
 For *small fasteners*, a **heat-set insert or tapped clearance hole** is often more robust on FDM than
 a printed thread (`references/mechanical-joints.md`). Reach for printed threads when the thread is the
-feature (caps, jars, glands, lead screws). A native `thread()` brepjs helper wrapping this loft recipe
-would be a clean follow-up.
+feature (caps, jars, glands, lead screws) — and prefer the native `thread()` (above) over hand-rolling
+the loft when your brepjs version has it.

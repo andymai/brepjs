@@ -645,6 +645,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'textBlueprints',
   'textMetrics',
   'thicken',
+  'thread',
   'threePointArc',
   'toBREP',
   'toBufferGeometryData',

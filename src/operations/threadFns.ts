@@ -13,6 +13,7 @@ import type { Vec3 } from '@/core/types.js';
 import type { Dimension, Wire, Shape3D } from '@/core/shapeTypes.js';
 import { type Result, err, isOk } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
+import { DisposalScope } from '@/core/disposal.js';
 import { line, wire } from '@/topology/primitiveFns.js';
 import { loft } from './loftFns.js';
 
@@ -80,6 +81,10 @@ export function thread(options: ThreadOptions): Result<Shape3D> {
   const baseU = inward ? 0.3 : -0.3; // root: slightly into the mating solid for a clean boolean
   const a = toothHalfWidth;
 
+  // The per-section edges and wires are intermediate WASM handles consumed by
+  // loft — register them in a scope so they're freed on every exit path (the
+  // lofted ridge is a fresh shape and survives). See docs/memory-management.md.
+  using scope = new DisposalScope();
   const sections: Wire<Dimension>[] = [];
   for (let i = 0; i <= nSec; i++) {
     const th = (sign * i * 2 * Math.PI) / sectionsPerTurn;
@@ -96,9 +101,12 @@ export function thread(options: ThreadOptions): Result<Shape3D> {
     // Three line edges form a closed triangular tooth by construction; pass the
     // wire straight to loft (no closed-wire geometry proof — it needs the B-rep
     // kernel and isn't required: ThruSections closes geometrically-closed wires).
-    const w = wire([line(p1, apex), line(apex, p3), line(p3, p1)]);
+    const e1 = scope.register(line(p1, apex));
+    const e2 = scope.register(line(apex, p3));
+    const e3 = scope.register(line(p3, p1));
+    const w = wire([e1, e2, e3]);
     if (!isOk(w)) return w;
-    sections.push(w.value);
+    sections.push(scope.register(w.value));
   }
 
   return loft(sections, { ruled: true });
