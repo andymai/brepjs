@@ -105,7 +105,7 @@ function Group({ children }: { children: ReactNode }) {
 
 function Btn({
   label,
-  active = false,
+  active,
   onClick,
 }: {
   label: string;
@@ -116,6 +116,8 @@ function Btn({
     <button
       type="button"
       onClick={onClick}
+      // Omit aria-pressed for one-shot actions (Fit/Snap, active===undefined); set it only
+      // for the toggle buttons so screen readers don't announce actions as unpressed toggles.
       aria-pressed={active}
       style={{ ...buttonStyle, ...(active ? activeButtonStyle : null) }}
     >

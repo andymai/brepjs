@@ -39,6 +39,11 @@ function Framing({
   const camera = useThree((s) => s.camera);
   const invalidate = useThree((s) => s.invalidate);
   const fired = useRef(false);
+  // Hold the latest onFirstFrame in a ref so it stays out of the framing effect's deps:
+  // an inline callback from a consumer would otherwise re-run the effect on every parent
+  // render and snap the camera back to the preset, interrupting an in-progress orbit.
+  const onFirstFrameRef = useRef(onFirstFrame);
+  onFirstFrameRef.current = onFirstFrame;
   const { center, radius } = useMemo(() => {
     // Throwaway geometry just for the bounding sphere — dispose it so its GPU buffers
     // aren't leaked on every `data` change (GC alone won't free them).
@@ -60,9 +65,9 @@ function Framing({
     invalidate();
     if (!fired.current) {
       fired.current = true;
-      onFirstFrame?.();
+      onFirstFrameRef.current?.();
     }
-  }, [camera, invalidate, center, radius, view, fitSignal, onFirstFrame]);
+  }, [camera, invalidate, center, radius, view, fitSignal]);
   return null;
 }
 
