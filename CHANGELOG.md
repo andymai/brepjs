@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.69.3](https://github.com/andymai/brepjs/compare/brepjs-v18.69.2...brepjs-v18.69.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* **assembly:** compose mate constraints down a chain (kinematics Phase 0) ([#1292](https://github.com/andymai/brepjs/issues/1292)) ([735cd3b](https://github.com/andymai/brepjs/commit/735cd3b0348aab2ecd24cb165e53c67bb1f3fade))
+
 ## [18.69.2](https://github.com/andymai/brepjs/compare/brepjs-v18.69.1...brepjs-v18.69.2) (2026-06-13)
 
 
