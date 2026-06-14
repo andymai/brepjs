@@ -1,10 +1,31 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runProgram, positiveOrDefault } from '@/sandbox/runProgram.js';
 
 const VALID_PART = `import { box } from 'brepjs';\nexport default () => box(10, 10, 10);\n`;
 // A synchronous infinite loop blocks the child's event loop — only an out-of-process
 // timeout/kill can stop it, which is exactly what the sandbox must guarantee.
 const RUNAWAY_PART = `export default () => {\n  // eslint-disable-next-line\n  while (true) {}\n};\n`;
+
+// The dev/test sandbox runs the CLI via `npx tsx <main.ts>`, which spawns the part-executing
+// `node` as a GRANDCHILD behind npx+tsx. Pinning the `.ts` entry forces that grandchild chain
+// (rather than a built `dist/.../main.js`, which would run as a single direct child).
+const TS_CLI_ENTRY = fileURLToPath(new URL('../src/cli/main.ts', import.meta.url));
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    // EPERM = the process exists but we don't own it (still "alive"); ESRCH = gone.
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('runProgram (sandbox executor)', () => {
   it('runs a valid part in a child process and returns a completed report', async () => {
@@ -21,6 +42,50 @@ describe('runProgram (sandbox executor)', () => {
     expect(res.outcome).toBe('timeout');
     if (res.outcome === 'timeout') expect(res.timeoutMs).toBe(8000);
   }, 30000);
+
+  it('kills the whole process tree (leaf included), not just the direct child, on timeout', async () => {
+    // The runaway records the LEAF pid — the `node` process actually running the part — to a file
+    // before spinning. If the timeout only SIGKILLs the direct child (npx), this leaf is orphaned
+    // and keeps burning a core indefinitely. The sandbox must reap the whole tree.
+    const pidFile = join(tmpdir(), `brepjs-orphan-leaf-${process.pid}-${Date.now()}.pid`);
+    const PID_RECORDING_RUNAWAY = [
+      `import { writeFileSync } from 'node:fs';`,
+      `export default () => {`,
+      `  writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));`,
+      `  // eslint-disable-next-line`,
+      `  while (true) {}`,
+      `};`,
+      ``,
+    ].join('\n');
+
+    let leafPid: number | undefined;
+    try {
+      const res = await runProgram(PID_RECORDING_RUNAWAY, {
+        timeoutMs: 10000,
+        cliEntry: TS_CLI_ENTRY,
+      });
+      expect(res.outcome).toBe('timeout');
+
+      // The leaf actually started executing the part before the kill (otherwise the test below
+      // would be vacuous — it'd "pass" only because the part never ran).
+      expect(existsSync(pidFile)).toBe(true);
+      leafPid = Number(readFileSync(pidFile, 'utf8'));
+      expect(Number.isInteger(leafPid)).toBe(true);
+
+      // Give the OS a beat to deliver signals, then assert the leaf is gone — not orphaned.
+      await delay(1000);
+      expect(isAlive(leafPid)).toBe(false);
+    } finally {
+      if (leafPid !== undefined && isAlive(leafPid)) {
+        try {
+          process.kill(leafPid, 'SIGKILL');
+        } catch {
+          /* already gone */
+        }
+      }
+      if (existsSync(pidFile)) rmSync(pidFile, { force: true });
+    }
+  }, 45000);
 
   it('reports crashed when the runner produces no report (bad CLI entry)', async () => {
     // A non-existent .js entry runs under `node` and exits non-zero with no JSON on stdout —

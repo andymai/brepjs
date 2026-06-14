@@ -8,16 +8,13 @@
  * live WASM handles), and the temp program directory is always cleaned up.
  */
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VerifyReport } from '../verify/report.js';
-
-const execFileAsync = promisify(execFile);
 
 /** The verify report as serialized by the CLI (the report plus the top-level `ok` verdict). */
 export type SerializedReport = VerifyReport & { ok: boolean };
@@ -109,41 +106,96 @@ async function runVerifyCli(
     const cliArgs = makeArgs(partPath);
     const cmd = useTsx ? 'npx' : process.execPath;
     const args = useTsx ? ['tsx', cliEntry, ...cliArgs] : [cliEntry, ...cliArgs];
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      // Append rather than replace, so an existing NODE_OPTIONS (flags, other limits) survives.
+      NODE_OPTIONS: [process.env['NODE_OPTIONS'], `--max-old-space-size=${maxMemoryMb}`]
+        .filter(Boolean)
+        .join(' '),
+    };
 
-    try {
-      const { stdout, stderr } = await execFileAsync(cmd, args, {
-        timeout: timeoutMs,
-        killSignal: 'SIGKILL',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        env: {
-          ...process.env,
-          // Append rather than replace, so an existing NODE_OPTIONS (flags, other limits) survives.
-          NODE_OPTIONS: [process.env['NODE_OPTIONS'], `--max-old-space-size=${maxMemoryMb}`]
-            .filter(Boolean)
-            .join(' '),
-        },
-      });
-      return { stdout, stderr, timedOut: false, outputTooLarge: false, exitCode: 0 };
-    } catch (err) {
-      const e = err as {
-        stdout?: string;
-        stderr?: string;
-        killed?: boolean;
-        code?: number | string | null;
-      };
-      // The CLI prints its JSON document and exits 1 for a not-ok part — that is not a crash; the
-      // caller inspects stdout. We only classify timeout / output-cap here.
-      return {
-        stdout: e.stdout ?? '',
-        stderr: e.stderr ?? (err instanceof Error ? err.message : String(err)),
-        timedOut: Boolean(e.killed) && e.code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
-        outputTooLarge: e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
-        exitCode: typeof e.code === 'number' ? e.code : null,
-      };
-    }
+    return await spawnCliOutcome(cmd, args, env, timeoutMs);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * Spawn the verify CLI in its OWN process group and enforce the wall-clock budget by SIGKILLing the
+ * WHOLE group on timeout — not just the direct child.
+ *
+ * Why a process group rather than Node's built-in `execFile` timeout: in dev/test the CLI runs as
+ * `npx tsx <main.ts>`, so the process that actually executes the part (and can spin on a CPU-bound
+ * OCCT op) is a *grandchild* behind npx+tsx. `child_process`' `timeout`/`killSignal` signals only
+ * the direct child, so a fired timeout SIGKILLs `npx` and orphans the still-spinning grandchild
+ * forever (it reparents to init and keeps burning a core). Spawning `detached` makes the child a
+ * process-group leader that npx's descendants inherit, so `process.kill(-pid, …)` reaps the entire
+ * tree. The production path (`node dist/cli/main.js`) has no intermediary, but the group kill is
+ * equally correct there.
+ */
+function spawnCliOutcome(
+  cmd: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  timeoutMs: number
+): Promise<CliOutcome> {
+  return new Promise<CliOutcome>((resolve) => {
+    const child = spawn(cmd, args, { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+
+    let stdout = '';
+    let stderr = '';
+    let stdoutBytes = 0;
+    let timedOut = false;
+    let outputTooLarge = false;
+    let settled = false;
+
+    const killTree = (signal: NodeJS.Signals): void => {
+      const pid = child.pid;
+      if (pid === undefined) return;
+      try {
+        // Negative pid → the whole process GROUP (POSIX). On win32 (no POSIX groups) fall back to
+        // the root process — best effort; the dev CLI targets POSIX.
+        process.kill(process.platform === 'win32' ? pid : -pid, signal);
+      } catch {
+        // The group is already gone (child exited between the check and the signal).
+      }
+    };
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killTree('SIGKILL');
+    }, timeoutMs);
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdoutBytes += chunk.length;
+      if (stdoutBytes > MAX_OUTPUT_BYTES) {
+        // Mirror execFile's maxBuffer: a runaway writer is killed and classified as output-too-large.
+        outputTooLarge = true;
+        killTree('SIGKILL');
+        return;
+      }
+      stdout += chunk.toString();
+    });
+    // stderr is diagnostic only; cap it so a chatty failure can't exhaust memory.
+    child.stderr?.on('data', (chunk: Buffer) => {
+      if (stderr.length < MAX_OUTPUT_BYTES) stderr += chunk.toString();
+    });
+
+    const finish = (exitCode: number | null): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ stdout, stderr, timedOut, outputTooLarge, exitCode });
+    };
+
+    // The command itself could not be spawned (e.g. ENOENT) — surface as a crash (no JSON report).
+    child.on('error', (err: Error) => {
+      if (!stderr) stderr = err.message;
+      finish(null);
+    });
+    // 'close' fires once stdio is fully drained; a signal-kill reports a null exit code.
+    child.on('close', (code: number | null) => finish(code));
+  });
 }
 
 function tryParse<T>(out: string): T | null {
