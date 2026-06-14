@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.6](https://github.com/andymai/brepjs/compare/brepjs-v18.82.5...brepjs-v18.82.6) (2026-06-14)
+
+
+### Bug Fixes
+
+* **2d:** make stretch2D directional affinity consistent across kernels ([#1374](https://github.com/andymai/brepjs/issues/1374)) ([699b6af](https://github.com/andymai/brepjs/commit/699b6af86ef982879b4b28a6ed591f9c4ec070cc))
+
 ## [18.82.5](https://github.com/andymai/brepjs/compare/brepjs-v18.82.4...brepjs-v18.82.5) (2026-06-14)
 
 
