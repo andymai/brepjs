@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.2](https://github.com/andymai/brepjs/compare/brepjs-v18.82.1...brepjs-v18.82.2) (2026-06-14)
+
+
+### Bug Fixes
+
+* **occt:** don't coerce an open pipe shell into an invalid solid ([#1357](https://github.com/andymai/brepjs/issues/1357)) ([ab75fe1](https://github.com/andymai/brepjs/commit/ab75fe14f7a1efacc3f137ac5aee1e3e7e9e234a))
+
 ## [18.82.1](https://github.com/andymai/brepjs/compare/brepjs-v18.82.0...brepjs-v18.82.1) (2026-06-14)
 
 
