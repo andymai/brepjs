@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.3](https://github.com/andymai/brepjs/compare/brepjs-v18.82.2...brepjs-v18.82.3) (2026-06-14)
+
+
+### Bug Fixes
+
+* **occt:** delete the rejected solid in simplePipe to avoid a WASM leak ([#1359](https://github.com/andymai/brepjs/issues/1359)) ([1d22e6a](https://github.com/andymai/brepjs/commit/1d22e6ac1ca91ca0975b24007e5697f73518fbe2))
+
 ## [18.82.2](https://github.com/andymai/brepjs/compare/brepjs-v18.82.1...brepjs-v18.82.2) (2026-06-14)
 
 
