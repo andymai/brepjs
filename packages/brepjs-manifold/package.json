@@ -25,7 +25,7 @@
     "access": "public"
   },
   "dependencies": {
-    "manifold-3d": "^3.5.0"
+    "manifold-3d": "3.5.1"
   },
   "exports": {
     ".": {
