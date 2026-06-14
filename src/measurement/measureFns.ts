@@ -51,6 +51,19 @@ export function measureVolumeProps(shape: Shape3D): Result<VolumeProps> {
   if (shapeIsNull(shape)) return nullShapeErr('measureVolumeProps');
 
   const kernel = getKernel();
+
+  // Volume is only defined for closed regions: solids, compsolids, and compounds
+  // (which may contain solids). An open shell/face/wire encloses no volume.
+  // Kernels otherwise diverge here (#1361): occt uses VolumeProperties with
+  // OnlyClosed=true and reports 0 for an open shell, while occt-wasm's GProp
+  // returns a meaningless divergence-theorem value. Normalize to 0/origin.
+  const type = kernel.shapeType(shape.wrapped);
+  if (type !== 'solid' && type !== 'compsolid' && type !== 'compound') {
+    const zero: VolumeProps = { mass: 0, volume: 0, centerOfMass: [0, 0, 0] };
+    setCachedMeasurement(shape.wrapped, 'volume', zero);
+    return ok(zero);
+  }
+
   const m = kernel.volume(shape.wrapped);
   const comResult = kernelCallRaw(
     () => kernel.centerOfMass(shape.wrapped),

@@ -22,6 +22,7 @@ import {
   measureCurvatureAt,
   measureCurvatureAtMid,
   getFaces,
+  getShells,
   getKernel,
   createSolid,
   createFace,
@@ -44,6 +45,17 @@ describe('measureFns', () => {
     it('sphere volume', () => {
       const s = sphere(5);
       expect(unwrap(measureVolume(castShape(s.wrapped)))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    });
+
+    it('returns 0 for a non-solid shape, e.g. a shell (#1361)', () => {
+      // Volume is only defined for solids/compsolids/compounds. A shell encloses
+      // no volume by this contract — normalized across kernels (occt returned 0
+      // via VolumeProperties(OnlyClosed=true); occt-wasm previously returned a
+      // meaningless GProp divergence-theorem value). getShells is empty on the
+      // mesh-ish kernels (brepkit/manifold), where the divergence didn't occur;
+      // the contract is exercised on the B-rep kernels that extract a shell.
+      const shell = getShells(box(10, 10, 10))[0];
+      if (shell) expect(unwrap(measureVolume(shell))).toBe(0);
     });
   });
 
