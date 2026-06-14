@@ -25,7 +25,7 @@ features:
     details: Shapes are mathematical boundaries (faces, edges, vertices), so booleans are precise, measurements are real, and you can export to STEP.
   - icon: 🛡️
     title: If it compiles, it's valid
-    details: Branded types and validity brands (ClosedWire, OrientedFace, ValidSolid) prove topological invariants at compile time. Not just type-safe: geometry-safe.
+    details: 'Branded types and validity brands (ClosedWire, OrientedFace, ValidSolid) prove topological invariants at compile time. Not just type-safe: geometry-safe.'
   - icon: ⚡
     title: Two kernels, one API
     details: occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel and ships today. brepkit (Rust-based) is a faster drop-in replacement under active development. Switching is one line.
