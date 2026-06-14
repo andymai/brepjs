@@ -1,5 +1,6 @@
 {
   "framework": "vitepress",
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in *components--brepjs-verify) exit 0 ;; *) exit 1 ;; esac",
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build && npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
   "outputDirectory": "apps/docs/.vitepress/dist",
