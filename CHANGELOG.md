@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.0](https://github.com/andymai/brepjs/compare/brepjs-v18.81.1...brepjs-v18.82.0) (2026-06-14)
+
+
+### Features
+
+* **kinematics:** import/export URDF and Denavit-Hartenberg ([#1346](https://github.com/andymai/brepjs/issues/1346)) ([edf770a](https://github.com/andymai/brepjs/commit/edf770adaadc73f4eb288171c0e213806035af69))
+
 ## [18.81.1](https://github.com/andymai/brepjs/compare/brepjs-v18.81.0...brepjs-v18.81.1) (2026-06-13)
 
 
