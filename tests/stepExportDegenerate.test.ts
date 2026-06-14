@@ -76,10 +76,14 @@ function buildCorruptingFuse(): AnyShape {
 
 // Isolated in its own file: a successful trap poisons the kernel's writer for the
 // rest of the worker, so this must not share a process with other export tests.
-// Gated to occt — the BOPAlgo corruption is specific to the occt-wasm build (the
-// manifold mesh kernel doesn't export STEP at all).
+// Gated to the `occt` project (brepjs-opencascade / opencascade.js): the BOPAlgo
+// corruption is specific to that build. The default occt-wasm kernel does not
+// reproduce it (upstream triage exported the same BREP-loaded inputs cleanly on
+// occt-wasm; note the frenet sweep that *builds* this repro is itself an occt-wasm
+// gap, so the repro can only be constructed on `occt`). The manifold mesh kernel
+// doesn't export STEP at all. Tracked upstream: andymai/opencascade.js#3.
 describe.skipIf(currentKernel !== 'occt')(
-  'STEP export of BOPAlgo-corrupted geometry (#1126)',
+  'STEP export of BOPAlgo-corrupted geometry (#1126, opencascade.js fallback)',
   () => {
     beforeAll(async () => {
       await initKernel();
