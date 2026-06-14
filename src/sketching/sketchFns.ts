@@ -14,15 +14,15 @@ import {
   makeNewFaceWithinFace,
   makeSolid,
 } from '@/topology/shapeHelpers.js';
-import { isOk, type Result, unwrap } from '@/core/result.js';
-import { cast, downcast } from '@/topology/cast.js';
+import { type Result, unwrap } from '@/core/result.js';
+import { downcast } from '@/topology/cast.js';
+import { cutAll } from '@/topology/booleanFns.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import { vecScale, vecNormalize, vecCross } from '@/core/vecOps.js';
 import { extrude, revolve } from '@/operations/extrudeFns.js';
 import { sweep, complexExtrude, twistExtrude } from '@/operations/sweepFns.js';
 import { firstOrThrow, getAtOrThrow } from '@/utils/arrayAccess.js';
 import { bug } from '@/core/errors.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import { loft } from '@/operations/loftFns.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
@@ -35,7 +35,7 @@ import type {
   Wire,
   PlanarWire,
 } from '@/core/shapeTypes.js';
-import { createFace, createWire, isFace } from '@/core/shapeTypes.js';
+import { createFace, createWire } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
 import type { SketchData } from '@/2d/blueprints/lib.js';
 import { curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
@@ -231,58 +231,26 @@ export function sketchLoft(
 // CompoundSketch operations (canonical implementations)
 // ---------------------------------------------------------------------------
 
-const guessFaceFromWires = (wires: Wire[]): Face => {
-  const wireShapes = wires.map((w) => w.wrapped);
-  const newFace = unwrap(cast(getKernel().fillSurface(wireShapes)));
-
-  if (!isFace(newFace)) {
-    bug('guessFaceFromWires', 'Failed to create a face');
-  }
-  return newFace as Face;
-};
-
-const fixWire = (wire: Wire, baseFace: Face): Wire => {
-  const fixedWire = getKernel().fixWireOnFace(wire.wrapped, baseFace.wrapped, 1e-9);
-  return createWire(fixedWire);
-};
-
-const faceFromWires = (wires: Wire[]): Face => {
-  let baseFace: Face;
-  let holeWires: ClosedWire[];
-
-  // Sweep end-cap wires are always closed boundaries
-  const faceResult = makeFace(firstOrThrow(wires) as ClosedWire & PlanarWire);
-  if (isOk(faceResult)) {
-    baseFace = faceResult.value;
-    holeWires = wires.slice(1) as ClosedWire[];
-  } else {
-    baseFace = guessFaceFromWires(wires);
-    holeWires = wires.slice(1).map((w) => fixWire(w, baseFace)) as ClosedWire[];
-  }
-
-  return addHolesInFace(baseFace, holeWires);
-};
-
-const solidFromShellGenerator = (
+/**
+ * Build a holed twist/profile-extruded solid by extruding the outer boundary
+ * and each hole wire as independent solids, then boolean-subtracting the holes.
+ *
+ * A single-wire twist/profile sweep already yields a valid, consistently-
+ * oriented solid. The previous approach assembled the per-wire lateral *shells*
+ * plus shared caps into one solid, which produced an inconsistently-oriented
+ * (invalid) result whose signed volume even flipped sign between occt-wasm
+ * versions — the cause of the #1366 twist/profile compound-extrude failure
+ * under occt-wasm 3.3.0. Subtracting valid solids is robust to kernel
+ * orientation conventions.
+ */
+const holedSweptSolid = (
   sketches: Sketch[],
-  shellGenerator: (sketch: Sketch) => Result<[Shape3D, Wire, Wire]>
+  solidGenerator: (sketch: Sketch) => Result<Shape3D | [Shape3D, Wire, Wire]>
 ): Shape3D => {
-  const shells: Shell[] = [];
-  const startWires: Wire[] = [];
-  const endWires: Wire[] = [];
-
-  sketches.forEach((sketch) => {
-    const [shell, startWire, endWire] = unwrap(shellGenerator(sketch));
-    shells.push(shell as Shell);
-    startWires.push(startWire);
-    endWires.push(endWire);
-  });
-
-  const startFace = faceFromWires(startWires);
-  const endFace = faceFromWires(endWires);
-  const solid = unwrap(makeSolid([startFace, ...shells, endFace]));
-
-  return solid;
+  const outer = unwrap(solidGenerator(firstOrThrow(sketches))) as Shape3D;
+  const holes = sketches.slice(1).map((s) => unwrap(solidGenerator(s)) as Shape3D);
+  if (holes.length === 0) return outer;
+  return unwrap(cutAll(outer, holes, { unsafe: true }));
 };
 
 /** Build a face from a compound sketch (outer boundary with holes). */
@@ -329,30 +297,24 @@ export function compoundSketchExtrude(
   const extrusionVec = vecScale(normVec, extrusionDistance);
 
   if (extrusionProfile && !twistAngle) {
-    return solidFromShellGenerator(
-      sketch.sketches,
-      (s: Sketch) =>
-        complexExtrude(
-          s.wire,
-          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        ) as Result<[Shape3D, Wire, Wire]>
+    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
+      complexExtrude(
+        s.wire,
+        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+        extrusionVec,
+        extrusionProfile
+      )
     );
   }
   if (twistAngle) {
-    return solidFromShellGenerator(
-      sketch.sketches,
-      (s: Sketch) =>
-        twistExtrude(
-          s.wire,
-          twistAngle,
-          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        ) as Result<[Shape3D, Wire, Wire]>
+    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
+      twistExtrude(
+        s.wire,
+        twistAngle,
+        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+        extrusionVec,
+        extrusionProfile
+      )
     );
   }
   return unwrap(extrude(compoundSketchFace(sketch), extrusionVec));

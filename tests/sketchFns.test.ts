@@ -8,6 +8,7 @@ import {
   measureArea,
   CompoundSketch,
   isCompound,
+  isValid,
   unwrap,
 } from '@/index.js';
 import {
@@ -191,6 +192,11 @@ describe('CompoundSketch extrude options', () => {
     const compound = new CompoundSketch([outer, inner]);
     const solid = compound.extrude(10, { twistAngle: 30 });
     expect(solid).toBeDefined();
+    // Must be a *valid* solid: the old shell-assembly produced an invalid,
+    // inconsistently-oriented solid that a bare `> 0` check let through and whose
+    // signed volume flipped negative under occt-wasm 3.3.0. isValid is the guard
+    // that catches it on any kernel (volume magnitude is kernel-dependent).
+    expect(isValid(solid)).toBe(true);
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
@@ -202,6 +208,8 @@ describe('CompoundSketch extrude options', () => {
       extrusionProfile: { profile: 'linear', endFactor: 0.5 },
     });
     expect(solid).toBeDefined();
+    // Same guard: a valid (not inverted/invalid) solid with positive volume.
+    expect(isValid(solid)).toBe(true);
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
