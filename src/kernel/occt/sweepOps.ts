@@ -151,7 +151,11 @@ export function simplePipe(
     if (solidMaker.IsDone()) {
       const solid = solidMaker.Solid();
       const analyzer = new oc.BRepCheck_Analyzer(solid, true, false, false);
-      if (analyzer.IsValid_2()) result = solid;
+      if (analyzer.IsValid_2()) {
+        result = solid;
+      } else {
+        solid.delete(); // rejected: free the WASM-owned TopoDS_Solid
+      }
       analyzer.delete();
     }
 
