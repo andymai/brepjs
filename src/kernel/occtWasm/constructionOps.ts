@@ -216,7 +216,13 @@ export function makeHelixWire(
   const dx = direction ? direction[0] : 0;
   const dy = direction ? direction[1] : 0;
   const dz = direction ? direction[2] : 1;
-  return handle('wire', k.makeHelixWire(px, py, pz, dx, dy, dz, pitch, height, radius));
+  const wireId = k.makeHelixWire(px, py, pz, dx, dy, dz, pitch, height, radius);
+  // The helix edge is built as a 2D curve on a cylindrical surface with no 3D
+  // curve. BRepOffsetAPI_MakePipe/MakePipeShell require a 3D curve on the spine,
+  // so without this they throw on a helix spine (#1353). Build the 3D curves so
+  // the helix is sweepable, matching the opencascade.js build.
+  k.buildCurves3d(wireId);
+  return handle('wire', wireId);
 }
 
 export function makeCompound(

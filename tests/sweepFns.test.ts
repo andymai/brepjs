@@ -6,6 +6,7 @@ import {
   wire,
   castShape,
   sweep,
+  helix,
   isOk,
   unwrap,
   isSolid,
@@ -76,6 +77,25 @@ describe('sweepFns', () => {
     const actual = unwrap(measureVolume(shape));
     expect(actual).toBeGreaterThan(expected * 0.99);
     expect(actual).toBeLessThan(expected * 1.01);
+  });
+
+  it('sweeps a circle along a helix spine (#1353)', () => {
+    // Regression: occt-wasm built the helix edge with only a pcurve (no 3D
+    // curve), so MakePipe/MakePipeShell threw on a helix spine. makeHelixWire
+    // now builds the 3D curves, matching the opencascade.js build.
+    const profile = castShape(sketchCircle(2).wire.wrapped) as Wire;
+    const result = sweep(profile, helix(40, 40, 10));
+    expect(isOk(result)).toBe(true);
+    const shape = unwrap(result);
+    expect(isShape3D(shape)).toBe(true);
+    expect(unwrap(measureVolume(shape))).toBeGreaterThan(0);
+  });
+
+  it('sweeps a circle along a helix spine with frenet (#1353)', () => {
+    const profile = castShape(sketchCircle(2).wire.wrapped) as Wire;
+    const result = sweep(profile, helix(40, 40, 10), { frenet: true });
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(0);
   });
 
   describe('kernel.helicalSweep', () => {
