@@ -63,7 +63,16 @@ export const stretchTransform2d = (
   direction: Point2D,
   origin: Point2D = [0, 0]
 ): Transformation2D => {
-  return getKernel().createAffinityGTrsf2d(origin[0], origin[1], direction[0], direction[1], ratio);
+  // `createAffinityGTrsf2d` follows OCCT `gp_GTrsf2d::SetAffinity`: it scales the
+  // component perpendicular to its axis. To stretch *along* `direction`, pass the
+  // axis perpendicular to it (rotate 90°: (dx, dy) -> (-dy, dx)).
+  return getKernel().createAffinityGTrsf2d(
+    origin[0],
+    origin[1],
+    -direction[1],
+    direction[0],
+    ratio
+  );
 };
 
 /** Create a 2D translation transformation. */
@@ -151,7 +160,8 @@ export function curvesAsEdgesOnFace(
     if (!cylData.isDirect) {
       geomSurf = kernel.reverseSurfaceU(geomSurf);
     }
-    transformation = stretchTransform2d(1 / cylData.radius, [0, 1]);
+    // Scale the u (circumferential, X) coordinate from arc length to angle.
+    transformation = stretchTransform2d(1 / cylData.radius, [1, 0]);
   }
 
   if (scale === 'bounds') {

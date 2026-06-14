@@ -337,9 +337,52 @@ export function mirrorCurve2dAcrossAxis(
   return c2dWrap(ow2d.mirrorAcrossAxis(c2d(curve), originX, originY, dirX, dirY));
 }
 
-export function affinityTransform2d(curve: Curve2dHandle): Curve2dHandle {
-  // Affinity transform not yet supported — pass curve through unchanged.
-  return curve;
+/**
+ * Directional affinity matching OCCT `gp_GTrsf2d::SetAffinity`: scales the
+ * component perpendicular to the axis `(dx, dy)` through `(ox, oy)` by `ratio`,
+ * leaving the parallel component fixed. Applied by sampling and refitting as a
+ * Bezier, since occt-wasm has no native Geom2d transform.
+ */
+export function affinityCurve2d(
+  curve: Curve2dHandle,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
+  ratio: number
+): Curve2dHandle {
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1e-15) return curve;
+  const px = -dy / len,
+    py = dx / len; // perpendicular to axis
+  const k = ratio - 1;
+  const a = 1 + k * px * px,
+    b = k * px * py,
+    d = k * py * px,
+    e = 1 + k * py * py;
+  const tx = ox - a * ox - b * oy;
+  const ty = oy - d * ox - e * oy;
+  const c = c2d(curve);
+  const bounds = ow2d.curveBounds(c);
+  const N = 20;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
+    const [qx, qy] = ow2d.evaluateCurve2d(c, t);
+    pts.push([a * qx + b * qy + tx, d * qx + e * qy + ty]);
+  }
+  return c2dWrap(ow2d.makeBezier2d(pts));
+}
+
+export function affinityTransform2d(
+  curve: Curve2dHandle,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
+  ratio: number
+): Curve2dHandle {
+  return affinityCurve2d(curve, ox, oy, dx, dy, ratio);
 }
 
 // ─── 2D general transforms (GTrsf) ──────────────────────────────────────────
@@ -444,11 +487,13 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
     return mirrorCurve2dAtPoint(curve, Number(t['ox']) || 0, Number(t['oy']) || 0);
   }
   if (t['type'] === 'affinity2d') {
-    return scaleCurve2d(
+    return affinityCurve2d(
       curve,
-      Number(t['ratio']) || 1,
       Number(t['axOriginX']) || 0,
-      Number(t['axOriginY']) || 0
+      Number(t['axOriginY']) || 0,
+      Number(t['axDirX']) || 0,
+      Number(t['axDirY']) || 0,
+      Number(t['ratio']) || 1
     );
   }
   if (Number(t['dx']) || Number(t['dy'])) {

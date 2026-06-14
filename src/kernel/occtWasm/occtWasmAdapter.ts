@@ -1742,13 +1742,20 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
   affinityTransform2d(
     curve: Curve2dHandle,
-    _axisOriginX: number,
-    _axisOriginY: number,
-    _axisDirX: number,
-    _axisDirY: number,
-    _ratio: number
+    axisOriginX: number,
+    axisOriginY: number,
+    axisDirX: number,
+    axisDirY: number,
+    ratio: number
   ): Curve2dHandle {
-    return kernel2dOps.affinityTransform2d(curve);
+    return kernel2dOps.affinityTransform2d(
+      curve,
+      axisOriginX,
+      axisOriginY,
+      axisDirX,
+      axisDirY,
+      ratio
+    );
   }
   createIdentityGTrsf2d(): KernelType {
     return kernel2dOps.createIdentityGTrsf2d();

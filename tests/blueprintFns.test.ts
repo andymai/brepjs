@@ -228,8 +228,18 @@ describe('blueprint sketching + stretch', () => {
   it('stretch2D scales the blueprint along a direction', () => {
     const bp = stretch2D(rect(10, 10), 2, [1, 0]);
     const bounds = getBounds2D(bp);
-    // Stretching x2 along X widens the 10-unit width to ~20.
-    expect(bounds.width).toBeGreaterThan(15);
+    // Stretching x2 along X doubles the 10-unit width and leaves height unchanged.
+    // The height check rejects a uniform-scale approximation that would double both.
+    expect(bounds.width).toBeCloseTo(20, 4);
+    expect(bounds.height).toBeCloseTo(10, 4);
+    bp.delete();
+  });
+
+  it('stretch2D along Y scales only the perpendicular axis', () => {
+    const bp = stretch2D(rect(10, 10), 3, [0, 1]);
+    const bounds = getBounds2D(bp);
+    expect(bounds.width).toBeCloseTo(10, 4);
+    expect(bounds.height).toBeCloseTo(30, 4);
     bp.delete();
   });
 
