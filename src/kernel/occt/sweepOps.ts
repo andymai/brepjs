@@ -142,7 +142,18 @@ export function simplePipe(
     solidMaker.Build(solidProgress);
     solidProgress.delete();
 
-    const result = solidMaker.IsDone() ? solidMaker.Solid() : pipeShape;
+    // MakeSolid.IsDone() is true even for an OPEN shell (a tube swept from a
+    // wire profile is open at both ends), yielding an invalid zero-volume
+    // solid. Keep the solid only if it actually validates; otherwise return the
+    // open shell — an open lateral surface has no solid form — matching the
+    // occt-wasm build, which returns the shell.
+    let result: KernelShape = pipeShape;
+    if (solidMaker.IsDone()) {
+      const solid = solidMaker.Solid();
+      const analyzer = new oc.BRepCheck_Analyzer(solid, true, false, false);
+      if (analyzer.IsValid_2()) result = solid;
+      analyzer.delete();
+    }
 
     shellDowncast.delete();
     solidMaker.delete();

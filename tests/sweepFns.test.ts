@@ -11,7 +11,9 @@ import {
   unwrap,
   isSolid,
   isShape3D,
+  isValid,
   measureVolume,
+  measureArea,
   box,
   getFaces,
   getKernel,
@@ -96,6 +98,20 @@ describe('sweepFns', () => {
     const result = sweep(profile, helix(40, 40, 10), { frenet: true });
     expect(isOk(result)).toBe(true);
     expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(0);
+  });
+
+  it('simple-mode helix sweep produces a valid (non-degenerate) shape', () => {
+    // Regression: occt's simplePipe coerced the open tube (a wire profile swept
+    // along a helix has no caps) into an INVALID zero-volume solid. It now
+    // returns the valid open shell, matching occt-wasm. (Volume of an open shell
+    // is kernel-dependent, so assert validity + surface area, not volume.)
+    const profile = castShape(sketchCircle(2).wire.wrapped) as Wire;
+    const result = sweep(profile, helix(40, 40, 10), { mode: 'simple' });
+    expect(isOk(result)).toBe(true);
+    const shape = unwrap(result);
+    expect(isShape3D(shape)).toBe(true);
+    expect(isValid(shape)).toBe(true);
+    expect(unwrap(measureArea(shape))).toBeGreaterThan(0);
   });
 
   describe('kernel.helicalSweep', () => {
