@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -86,6 +87,53 @@ describe('runProgram (sandbox executor)', () => {
       if (existsSync(pidFile)) rmSync(pidFile, { force: true });
     }
   }, 45000);
+
+  it('reaps an in-flight sandbox when the host process is terminated (host-death)', async () => {
+    // The per-run timeout protects a run only while the host's timer is alive. If the host (the MCP
+    // server) is stopped mid-build, its detached sandbox group must still be reaped — not orphaned
+    // to spin forever. This is the failure that left 13h-old runaways burning cores.
+    const pidFile = join(tmpdir(), `brepjs-orphan-host-${process.pid}-${Date.now()}.pid`);
+    const hostScript = fileURLToPath(new URL('./fixtures/sandboxHost.ts', import.meta.url));
+    // Run the host as a direct `node` child (mirrors the production `node dist/mcp/server.js`), so
+    // the SIGTERM lands on the process that installed the handlers — not on an `npx` wrapper.
+    const host = spawn(process.execPath, ['--import', 'tsx', hostScript, pidFile], {
+      stdio: 'ignore',
+    });
+
+    let leafPid = -1;
+    try {
+      // Wait until the sandbox leaf is actually executing the part.
+      const deadline = Date.now() + 45000;
+      while (!existsSync(pidFile)) {
+        if (Date.now() > deadline) throw new Error('sandbox leaf never started');
+        await delay(150);
+      }
+      leafPid = Number(readFileSync(pidFile, 'utf8'));
+      expect(Number.isInteger(leafPid)).toBe(true);
+      expect(isAlive(leafPid)).toBe(true);
+
+      // Simulate the agent stopping the MCP server while a build is in flight.
+      host.kill('SIGTERM');
+
+      // The shutdown reaper must SIGKILL the whole sandbox tree, not orphan the spinning leaf.
+      for (let i = 0; i < 80 && isAlive(leafPid); i++) await delay(100);
+      expect(isAlive(leafPid)).toBe(false);
+    } finally {
+      if (leafPid > 0 && isAlive(leafPid)) {
+        try {
+          process.kill(leafPid, 'SIGKILL');
+        } catch {
+          /* already gone */
+        }
+      }
+      try {
+        host.kill('SIGKILL');
+      } catch {
+        /* already gone */
+      }
+      if (existsSync(pidFile)) rmSync(pidFile, { force: true });
+    }
+  }, 70000);
 
   it('reports crashed when the runner produces no report (bad CLI entry)', async () => {
     // A non-existent .js entry runs under `node` and exits non-zero with no JSON on stdout —

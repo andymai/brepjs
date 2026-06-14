@@ -56,6 +56,24 @@ const DEFAULT_MAX_MEMORY_MB = 2048;
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 
 /**
+ * In-flight sandbox process *groups*, keyed by group-leader pid. Tracked so a dying host can reap
+ * its runs (see installSandboxShutdownHandlers) — the per-run timeout can't, since its timer dies
+ * with the host.
+ */
+const activeGroups = new Set<number>();
+
+/** SIGKILL (or `signal`) an entire detached process group by its leader pid; ignore if already gone. */
+function killGroup(pid: number, signal: NodeJS.Signals): void {
+  try {
+    // Negative pid → the whole process GROUP (POSIX). On win32 (no POSIX groups) fall back to the
+    // root process — best effort; the dev CLI targets POSIX.
+    process.kill(process.platform === 'win32' ? pid : -pid, signal);
+  } catch {
+    // The group is already gone (the leader exited between the check and the signal).
+  }
+}
+
+/**
  * Clamp a caller-supplied limit to a positive, finite value, falling back to the default otherwise.
  * Critical for the timeout: Node's `execFile` treats `timeout: 0` (and it ignores negatives) as
  * "no timeout", which would silently disable the sandbox's only runaway protection.
@@ -141,6 +159,8 @@ function spawnCliOutcome(
 ): Promise<CliOutcome> {
   return new Promise<CliOutcome>((resolve) => {
     const child = spawn(cmd, args, { env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    // Track the group so a host shutdown can reap it even if this run's timer never fires.
+    if (child.pid !== undefined) activeGroups.add(child.pid);
 
     let stdout = '';
     let stderr = '';
@@ -150,15 +170,7 @@ function spawnCliOutcome(
     let settled = false;
 
     const killTree = (signal: NodeJS.Signals): void => {
-      const pid = child.pid;
-      if (pid === undefined) return;
-      try {
-        // Negative pid → the whole process GROUP (POSIX). On win32 (no POSIX groups) fall back to
-        // the root process — best effort; the dev CLI targets POSIX.
-        process.kill(process.platform === 'win32' ? pid : -pid, signal);
-      } catch {
-        // The group is already gone (child exited between the check and the signal).
-      }
+      if (child.pid !== undefined) killGroup(child.pid, signal);
     };
 
     const timer = setTimeout(() => {
@@ -185,6 +197,7 @@ function spawnCliOutcome(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      if (child.pid !== undefined) activeGroups.delete(child.pid);
       resolve({ stdout, stderr, timedOut, outputTooLarge, exitCode });
     };
 
@@ -195,6 +208,42 @@ function spawnCliOutcome(
     });
     // 'close' fires once stdio is fully drained; a signal-kill reports a null exit code.
     child.on('close', (code: number | null) => finish(code));
+  });
+}
+
+/** SIGKILL every in-flight sandbox process group now. Exported so a host can reap explicitly. */
+export function killActiveSandboxes(signal: NodeJS.Signals = 'SIGKILL'): void {
+  for (const pid of activeGroups) killGroup(pid, signal);
+  activeGroups.clear();
+}
+
+let shutdownHandlersInstalled = false;
+
+/**
+ * Install process-shutdown hooks that reap any in-flight sandbox process groups when THIS process
+ * (the host — e.g. the MCP server) terminates. Idempotent; call once at startup from an entrypoint.
+ *
+ * Rationale: the per-run timeout (`spawnCliOutcome`) only protects a run while the host is alive —
+ * its timer dies with the host. If the host is stopped (the agent disconnects) before a run's
+ * budget elapses, the `detached` sandbox group is in its own session and survives, burning a core
+ * indefinitely. These hooks SIGKILL every tracked group on the way down so a dying host doesn't
+ * leak its children. (A hard SIGKILL of the host can't be trapped — that residual needs the kernel's
+ * PR_SET_PDEATHSIG, which Node doesn't expose.)
+ */
+export function installSandboxShutdownHandlers(): void {
+  if (shutdownHandlersInstalled) return;
+  shutdownHandlersInstalled = true;
+  // Normal or explicit exit: reap synchronously (process.kill is sync and valid in an 'exit' handler).
+  process.on('exit', () => killActiveSandboxes('SIGKILL'));
+  // Signal-initiated stop (the agent terminating the server): reap, then keep terminating with the
+  // conventional 128+signal exit code so the host still exits promptly.
+  process.once('SIGTERM', () => {
+    killActiveSandboxes('SIGKILL');
+    process.exit(143);
+  });
+  process.once('SIGINT', () => {
+    killActiveSandboxes('SIGKILL');
+    process.exit(130);
   });
 }
 

@@ -24,6 +24,11 @@ import {
   runProgramTool,
   type ExportPartToolArgs,
 } from './tools.js';
+import { installSandboxShutdownHandlers } from '../sandbox/runProgram.js';
+
+// Reap any in-flight sandbox process groups if this server is stopped mid-build (the agent
+// disconnecting), so a runaway part can't outlive the server and burn a core indefinitely.
+installSandboxShutdownHandlers();
 
 // Read the version from package.json at runtime so it tracks the package (this module sits two
 // levels below the package root in both src/ and dist/). NB: don't use
