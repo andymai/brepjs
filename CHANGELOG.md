@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.1](https://github.com/andymai/brepjs/compare/brepjs-v18.82.0...brepjs-v18.82.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* **occt-wasm:** build 3D curves on helix wires so they can be swept ([#1354](https://github.com/andymai/brepjs/issues/1354)) ([874acb2](https://github.com/andymai/brepjs/commit/874acb2d77559af5cd6a07f9ac3333bde2aaff0a))
+
 ## [18.82.0](https://github.com/andymai/brepjs/compare/brepjs-v18.81.1...brepjs-v18.82.0) (2026-06-14)
 
 
