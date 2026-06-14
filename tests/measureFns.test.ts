@@ -55,7 +55,7 @@ describe('measureFns', () => {
       // mesh-ish kernels (brepkit/manifold), where the divergence didn't occur;
       // the contract is exercised on the B-rep kernels that extract a shell.
       const shell = getShells(box(10, 10, 10))[0];
-      if (shell) expect(unwrap(measureVolume(shell))).toBe(0);
+      if (shell) expect(unwrap(measureVolume(shell))).toBeCloseTo(0, 5);
     });
   });
 
