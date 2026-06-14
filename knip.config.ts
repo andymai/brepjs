@@ -11,7 +11,7 @@ const config: KnipConfig = {
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
-      ignoreBinaries: ['tsx'],
+      ignoreBinaries: ['tsx', 'tar'],
       // @types/react is pinned at the root to force ONE React-19 types copy across the monorepo
       // (so @react-three/fiber's JSX augmentation resolves it, not a stale @types/react@18 hoist);
       // it's consumed by the brepjs-viewer/brepjs-verify workspaces, not root src.
