@@ -67,6 +67,30 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold is a mesh kernel: a cone tessellates to planar facets, so there is no analytic cone face to extract an axis from',
     },
+
+    // -----------------------------------------------------------------------
+    // measureFns.test.ts — null-shape helpers and analytic-surface measurement
+    // -----------------------------------------------------------------------
+    'measureFns.nullShapeValidation': {
+      kind: 'not-implemented',
+      reason:
+        'Tests construct null shapes via raw OCCT API (oc.TopoDS_Solid/oc.TopoDS_Face), unavailable in the manifold kernel.',
+    },
+    'measureFns.analyticFaceMeasurement': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel: a sketched rectangle / sphere / cylinder tessellates to planar facets, so there is no single analytic face to extract for area, surface centroid, or principal-curvature measurement.',
+    },
+    'measurement.faceMeasurement': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel: a sketched-rectangle face does not round-trip to a single analytic face for area / surface-property measurement.',
+    },
+    'measurement.wireLength': {
+      kind: 'not-implemented',
+      reason:
+        'manifold does not implement length() for curved wires (e.g. a circle wire) — only straight edges measure.',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------

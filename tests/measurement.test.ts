@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -43,7 +44,7 @@ describe('measureArea', () => {
     expect(unwrap(measureArea(cyl))).toBeCloseTo(2 * Math.PI * 5 * 10 + 2 * Math.PI * 25, 0);
   });
 
-  it('face area of a rectangle', () => {
+  it.skipIf(shouldSkipSuite('measurement.faceMeasurement'))('face area of a rectangle', () => {
     const sketch = sketchRectangle(10, 20);
     const f = sketch.face();
     expect(unwrap(measureArea(f))).toBeCloseTo(200, 0);
@@ -61,7 +62,7 @@ describe('measureLength', () => {
     expect(unwrap(measureLength(edge))).toBeCloseTo(5, 2);
   });
 
-  it('circle wire', () => {
+  it.skipIf(shouldSkipSuite('measurement.wireLength'))('circle wire', () => {
     const c = sketchCircle(10);
     expect(unwrap(measureLength(c.wire))).toBeCloseTo(2 * Math.PI * 10, 0);
   });
@@ -104,7 +105,7 @@ describe('measureSurfaceProps (functional)', () => {
     expect(com[2]).toBeCloseTo(5, 0);
   });
 
-  it('works on a face', () => {
+  it.skipIf(shouldSkipSuite('measurement.faceMeasurement'))('works on a face', () => {
     const sketch = sketchRectangle(10, 20);
     const faces = getFaces(castShape(sketch.face().wrapped));
     const f = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
@@ -123,7 +124,7 @@ describe('measureLinearProps (functional)', () => {
     expect(com[0]).toBeCloseTo(5, 0);
   });
 
-  it('returns mass (length) for wire', () => {
+  it.skipIf(shouldSkipSuite('measurement.wireLength'))('returns mass (length) for wire', () => {
     const c = sketchCircle(5);
     const w = castShape(c.wire.wrapped);
     const props = unwrap(measureLinearProps(w));
