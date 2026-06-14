@@ -245,12 +245,19 @@ export function sketchLoft(
  */
 const holedSweptSolid = (
   sketches: Sketch[],
-  solidGenerator: (sketch: Sketch) => Result<Shape3D | [Shape3D, Wire, Wire]>
+  solidGenerator: (sketch: Sketch) => Result<Shape3D>
 ): Shape3D => {
-  const outer = unwrap(solidGenerator(firstOrThrow(sketches))) as Shape3D;
-  const holes = sketches.slice(1).map((s) => unwrap(solidGenerator(s)) as Shape3D);
+  const outer = unwrap(solidGenerator(firstOrThrow(sketches)));
+  const holes = sketches.slice(1).map((s) => unwrap(solidGenerator(s)));
   if (holes.length === 0) return outer;
-  return unwrap(cutAll(outer, holes, { unsafe: true }));
+  try {
+    return unwrap(cutAll(outer, holes, { unsafe: true }));
+  } finally {
+    // cutAll is immutable and doesn't consume its inputs, so the per-wire
+    // intermediates must be disposed or each hole leaks a WASM solid per call.
+    outer.delete();
+    for (const h of holes) h.delete();
+  }
 };
 
 /** Build a face from a compound sketch (outer boundary with holes). */
@@ -297,24 +304,28 @@ export function compoundSketchExtrude(
   const extrusionVec = vecScale(normVec, extrusionDistance);
 
   if (extrusionProfile && !twistAngle) {
-    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
-      complexExtrude(
-        s.wire,
-        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-        extrusionVec,
-        extrusionProfile
-      )
+    return holedSweptSolid(
+      sketch.sketches,
+      (s: Sketch) =>
+        complexExtrude(
+          s.wire,
+          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile
+        ) as Result<Shape3D> // solid mode (shellMode omitted)
     );
   }
   if (twistAngle) {
-    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
-      twistExtrude(
-        s.wire,
-        twistAngle,
-        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-        extrusionVec,
-        extrusionProfile
-      )
+    return holedSweptSolid(
+      sketch.sketches,
+      (s: Sketch) =>
+        twistExtrude(
+          s.wire,
+          twistAngle,
+          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile
+        ) as Result<Shape3D> // solid mode (shellMode omitted)
     );
   }
   return unwrap(extrude(compoundSketchFace(sketch), extrusionVec));
