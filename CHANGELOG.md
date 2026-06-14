@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.4](https://github.com/andymai/brepjs/compare/brepjs-v18.82.3...brepjs-v18.82.4) (2026-06-14)
+
+
+### Bug Fixes
+
+* **measurement:** measureVolume returns 0 for non-solid shapes ([#1362](https://github.com/andymai/brepjs/issues/1362)) ([645e423](https://github.com/andymai/brepjs/commit/645e4230751770df013110466ed6278abbfc103d))
+
 ## [18.82.3](https://github.com/andymai/brepjs/compare/brepjs-v18.82.2...brepjs-v18.82.3) (2026-06-14)
 
 
