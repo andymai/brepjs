@@ -39,8 +39,17 @@ function iterCompound(bk: BrepkitKernel, h: number, type: ShapeType): KernelShap
   return [];
 }
 
-function iterSolid(bk: BrepkitKernel, h: number, type: ShapeType): KernelShape[] {
+function iterSolid(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  h: number,
+  type: ShapeType
+): KernelShape[] {
   switch (type) {
+    case 'solid':
+      return [shape];
+    case 'shell':
+      return toArray(bk.getSolidShells(h)).map(shellHandle);
     case 'face':
       return toArray(bk.getSolidFaces(h)).map(faceHandle);
     case 'edge':
@@ -71,7 +80,13 @@ function iterShellChildren(bk: BrepkitKernel, h: number, type: 'edge' | 'vertex'
   return results;
 }
 
-function iterShell(bk: BrepkitKernel, h: number, type: ShapeType): KernelShape[] {
+function iterShell(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  h: number,
+  type: ShapeType
+): KernelShape[] {
+  if (type === 'shell') return [shape];
   if (type === 'face') return toArray(bk.getShellFaces(h)).map(faceHandle);
   if (type === 'edge' || type === 'vertex') return iterShellChildren(bk, h, type);
   return [];
@@ -146,9 +161,9 @@ export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeTyp
     case 'compound':
       return iterCompound(bk, h, type);
     case 'solid':
-      return iterSolid(bk, h, type);
+      return iterSolid(bk, shape, h, type);
     case 'shell':
-      return iterShell(bk, h, type);
+      return iterShell(bk, shape, h, type);
     case 'face':
       return iterFace(bk, shape, h, type);
     case 'wire':
