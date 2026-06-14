@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.5](https://github.com/andymai/brepjs/compare/brepjs-v18.82.4...brepjs-v18.82.5) (2026-06-14)
+
+
+### Bug Fixes
+
+* **sketching:** build holed twist/profile extrusions by boolean subtraction ([#1368](https://github.com/andymai/brepjs/issues/1368)) ([567307e](https://github.com/andymai/brepjs/commit/567307eab11210729956a657c8ac1782c640c58c))
+
 ## [18.82.4](https://github.com/andymai/brepjs/compare/brepjs-v18.82.3...brepjs-v18.82.4) (2026-06-14)
 
 
