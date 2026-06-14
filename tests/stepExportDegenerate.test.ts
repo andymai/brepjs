@@ -24,15 +24,16 @@ const deg = (d: number) => (d * Math.PI) / 180;
 /**
  * Reconstructs the smallest known reproduction of #1126: fusing an annular-sector
  * tread (arc-cylinder + planar faces, from `threePointsArcTo` + `extrude`) with a
- * frenet-swept helical rail tube. The two solids are *geometrically disjoint*, yet
- * OCCT's BOPAlgo corrupts both outputs' exact topology — they pass
- * `isValid`/`validSolid`/`mesh`/`getBounds`/`measureArea` but OOB-trap the STEP/BREP
- * writer. Each input serializes fine on its own; only this specific pairing triggers it.
+ * frenet-swept helical rail tube, two *geometrically disjoint* solids. On the
+ * opencascade.js build this pairing makes OCCT's BOPAlgo corrupt both outputs'
+ * exact topology — they pass `isValid`/`validSolid`/`mesh`/`getBounds`/`measureArea`
+ * but OOB-trap the STEP/BREP writer. The default occt-wasm build is unaffected and
+ * round-trips to STEP (see the occt-wasm test below).
  *
  * Note: the list-builder `fuseAll` path (native N-way BRepAlgoAPI_BuilderAlgo)
- * reproduces this deterministically; the pairwise path (a different OCCT
+ * reproduces the corruption on opencascade.js; the pairwise path (a different OCCT
  * algorithm) does not. `fuseAll(..., { strategy: 'pairwise' })` is the supported
- * workaround until the upstream OCCT fix lands (andymai/opencascade.js#3).
+ * workaround on that build until the upstream OCCT fix lands (andymai/opencascade.js#3).
  */
 function buildTreadAndRail(): [Shape3D, Shape3D] {
   const TREAD_T = 4,
@@ -74,14 +75,32 @@ function buildCorruptingFuse(): AnyShape {
   return unwrap(fuseAll(buildTreadAndRail()));
 }
 
+// The default occt-wasm kernel resolves #1126 end-to-end: it builds the repro
+// (the frenet helix sweep was fixed in #1354) and exports the native N-way fuse
+// to STEP without the BOPAlgo/STEP-writer trap. This is the user-facing closure
+// of #1126. The trap is confined to the opencascade.js fallback, covered below.
+describe.skipIf(currentKernel !== 'occt-wasm')(
+  '#1126 round-trips to STEP on the default kernel',
+  () => {
+    beforeAll(async () => {
+      await initKernel();
+    }, 30000);
+
+    it('builds, fuses (native N-way), and exports the staircase repro to STEP', () => {
+      const fused = fuseAll(buildTreadAndRail()); // native BRepAlgoAPI_BuilderAlgo
+      expect(isOk(fused)).toBe(true);
+      const result = exportSTEP(unwrap(fused));
+      expect(isOk(result)).toBe(true);
+    });
+  }
+);
+
 // Isolated in its own file: a successful trap poisons the kernel's writer for the
 // rest of the worker, so this must not share a process with other export tests.
 // Gated to the `occt` project (brepjs-opencascade / opencascade.js): the BOPAlgo
 // corruption is specific to that build. The default occt-wasm kernel does not
-// reproduce it (upstream triage exported the same BREP-loaded inputs cleanly on
-// occt-wasm; note the frenet sweep that *builds* this repro is itself an occt-wasm
-// gap, so the repro can only be constructed on `occt`). The manifold mesh kernel
-// doesn't export STEP at all. Tracked upstream: andymai/opencascade.js#3.
+// reproduce it (see the round-trip test above). The manifold mesh kernel doesn't
+// export STEP at all. Tracked upstream: andymai/opencascade.js#3.
 describe.skipIf(currentKernel !== 'occt')(
   'STEP export of BOPAlgo-corrupted geometry (#1126, opencascade.js fallback)',
   () => {
