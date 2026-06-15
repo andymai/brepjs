@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -128,7 +129,7 @@ describe('createCamera', () => {
   });
 });
 
-describe('makeProjectedEdges', () => {
+describe.skipIf(shouldSkipSuite('projection.makeProjectedEdges'))('makeProjectedEdges', () => {
   it('projects a box from front', () => {
     const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
@@ -153,7 +154,8 @@ describe('makeProjectedEdges', () => {
     expect(result.hidden.length).toBe(0);
   });
 
-  it('with hidden lines', () => {
+  it('with hidden lines', (ctx) => {
+    skipIfDiverges(ctx, 'projection.hiddenLines');
     const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
     const result = makeProjectedEdges(b, cam, true);
@@ -191,14 +193,16 @@ describe('makeProjectedEdges', () => {
     }
   });
 
-  it('projects a sphere (curved edges)', () => {
+  it('projects a sphere (curved edges)', (ctx) => {
+    skipIfDiverges(ctx, 'projection.curvedSilhouette');
     const s = sphere(10);
     const cam = unwrap(cameraFromPlane('front'));
     const result = makeProjectedEdges(s, cam);
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
-  it('projects a sphere without hidden lines', () => {
+  it('projects a sphere without hidden lines', (ctx) => {
+    skipIfDiverges(ctx, 'projection.curvedSilhouette');
     const s = sphere(10);
     const cam = unwrap(cameraFromPlane('front'));
     const result = makeProjectedEdges(s, cam, false);

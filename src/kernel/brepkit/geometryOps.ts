@@ -18,11 +18,14 @@ import {
   edgeHandle,
   faceHandle,
   wireHandle,
+  compoundHandle,
   unwrap,
   unwrapSolidOrThrow,
   toArray,
   dist3,
   warnOnce,
+  nextSyntheticId,
+  syntheticCompounds,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { extractNurbsFromEdge } from './internalOps.js';
@@ -504,19 +507,75 @@ export function recognizeFeatures(
 export function projectEdges(
   bk: BrepkitKernel,
   shape: KernelShape,
-  _cameraOrigin: [number, number, number],
-  _cameraDirection: [number, number, number],
-  _cameraXAxis?: [number, number, number]
+  cameraOrigin: [number, number, number],
+  cameraDirection: [number, number, number],
+  cameraXAxis?: [number, number, number]
 ): {
   visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
   hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
 } {
-  // Simplified: return all edges as visible outlines, no hidden line removal
-  const edges = iterShapes(bk, shape, 'edge');
-  const emptyCompound = edges.length > 0 ? edges[0] : shape;
+  const solidId = unwrap(shape);
+  const [ox, oy, oz] = cameraOrigin;
+  const [dx, dy, dz] = cameraDirection;
+  const [xx, xy, xz] = cameraXAxis ?? [1, 0, 0];
+
+  // brepkit returns polyline approximations of the projection, so tie the
+  // tessellation deflection to model scale (1/1000 of the bbox diagonal) to
+  // stay resolution-independent across part sizes.
+  let deflection = 0.1;
+  try {
+    const bb = bk.boundingBox(solidId);
+    const [minX, minY, minZ] = vec3At(bb, 0);
+    const [maxX, maxY, maxZ] = vec3At(bb, 3);
+    const diag = dist3(minX, minY, minZ, maxX, maxY, maxZ);
+    if (diag > 0) deflection = Math.max(diag * 1e-3, 1e-6);
+  } catch {
+    // non-solid input or bbox failure: keep the default deflection
+  }
+
+  const json = bk.projectEdges(solidId, ox, oy, oz, dx, dy, dz, xx, xy, xz, true, deflection);
+  const parsed = JSON.parse(json) as { visible: number[][]; hidden: number[][] };
+
+  // brepkit emits flat [x,y,x,y,…] polylines in view coordinates and, unlike
+  // OCCT's HLR, does not split silhouette/smooth/sharp — rebuild line edges in
+  // the view plane (z=0) and surface them all as the visible/hidden outline.
+  // brepkit's wasm makeCompound only accepts solids; edge collections use the
+  // JS-side synthetic-compound mechanism that iterShapes/getEdges resolves.
+  const polylinesToCompound = (polylines: number[][]): KernelShape => {
+    const edges: BrepkitHandle[] = [];
+    for (const poly of polylines) {
+      for (let i = 0; i + 3 < poly.length; i += 2) {
+        const x1 = poly[i];
+        const y1 = poly[i + 1];
+        const x2 = poly[i + 2];
+        const y2 = poly[i + 3];
+        if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) break;
+        if (x1 === x2 && y1 === y2) continue;
+        edges.push(edgeHandle(bk.makeLineEdge(x1, y1, 0, x2, y2, 0)));
+      }
+    }
+    const id = nextSyntheticId();
+    syntheticCompounds.set(id, edges);
+    return compoundHandle(id);
+  };
+
+  const emptyCompound = (): KernelShape => {
+    const id = nextSyntheticId();
+    syntheticCompounds.set(id, []);
+    return compoundHandle(id);
+  };
+
   return {
-    visible: { outline: emptyCompound, smooth: emptyCompound, sharp: emptyCompound },
-    hidden: { outline: emptyCompound, smooth: emptyCompound, sharp: emptyCompound },
+    visible: {
+      outline: polylinesToCompound(parsed.visible),
+      smooth: emptyCompound(),
+      sharp: emptyCompound(),
+    },
+    hidden: {
+      outline: polylinesToCompound(parsed.hidden),
+      smooth: emptyCompound(),
+      sharp: emptyCompound(),
+    },
   };
 }
 

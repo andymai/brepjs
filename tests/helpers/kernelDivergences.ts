@@ -45,6 +45,13 @@ export const isBrepkit: boolean = currentKernelId === 'brepkit';
 export const divergences: DivergenceMap = {
   manifold: {
     // -----------------------------------------------------------------------
+    // projection.test.ts — manifold has no HLR
+    // -----------------------------------------------------------------------
+    'projection.makeProjectedEdges': {
+      kind: 'not-implemented',
+      reason: 'manifold is a mesh kernel with no hidden-line-removal projection (projectEdges).',
+    },
+    // -----------------------------------------------------------------------
     // booleans.test.ts — mesh CSG vs exact B-rep
     // -----------------------------------------------------------------------
     'booleans.cutFuseRecombine': {
@@ -93,6 +100,19 @@ export const divergences: DivergenceMap = {
     },
   },
   brepkit: {
+    // -----------------------------------------------------------------------
+    // projection.test.ts — brepkit HLR (projectEdges) is partial
+    // -----------------------------------------------------------------------
+    'projection.hiddenLines': {
+      kind: 'skip',
+      reason:
+        "brepkit's exact point-in-solid occlusion does not flag a box's back-face edges as hidden when they project exactly onto the front silhouette; OCCT's HLR reports them as hidden, so the hidden set is empty here.",
+    },
+    'projection.curvedSilhouette': {
+      kind: 'skip',
+      reason:
+        'brepkit projectEdges projects topological B-rep edges only and does not synthesize view-dependent silhouettes for smooth surfaces, so a sphere yields no projected outline.',
+    },
     // -----------------------------------------------------------------------
     // booleanFns.test.ts
     // -----------------------------------------------------------------------

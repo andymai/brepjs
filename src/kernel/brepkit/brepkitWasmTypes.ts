@@ -857,7 +857,6 @@ export interface BrepkitKernel {
 
   offsetWire2DWithJoin(wire: number, distance: number, joinType: string): number;
 
-  /** @unwired */
   projectEdges(
     solid: number,
     originX: number,
