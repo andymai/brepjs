@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Running comprehensive checks before push..."
+echo "Running pre-push checks..."
 
-# Full suite without coverage — mirrors the CI gate (the sharded `test` job runs
-# test:ci). Coverage is main-only and non-blocking in CI (the `coverage` job is
-# excluded from ci-pass), so gating pushes on it is stricter than CI and pays the
-# v8 instrumentation + report cost on every push. Set VITEST_MAX_WORKERS to trade
-# RAM for wall-time if you have the headroom (default 4; each fork caps at 6 GB).
-npm run test:ci
+# The full test suite runs in CI (the sharded `test` job runs test:ci), so it is
+# not re-run here — pre-commit already gates changed-file tests, and re-running
+# the whole suite on every push was the slow path. Push relies on CI for the full
+# gate.
 
 # Detect unused code
 npm run knip
