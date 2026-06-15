@@ -63,6 +63,7 @@ const ANY_RETURN_OVERRIDES: Record<string, string> = {
 function mapReturnType(rt: string, methodName: string): string {
   if (rt === 'JsMesh') return 'BrepkitMesh';
   if (rt === 'JsEdgeLines') return 'BrepkitEdgeLines';
+  if (rt === 'JsGroupedMesh') return 'BrepkitGroupedMesh';
   if (rt === 'any') {
     return ANY_RETURN_OVERRIDES[methodName] ?? 'string';
   }
@@ -530,6 +531,22 @@ function generate(): void {
   lines.push('  readonly offsets: Uint32Array;');
   lines.push('  /** Number of edges. */');
   lines.push('  readonly edgeCount: number;');
+  lines.push('}');
+  lines.push('');
+  lines.push(
+    '/** Per-face-grouped mesh returned by `tessellateSolidGroupedBinary` (packed typed arrays). */'
+  );
+  lines.push('export interface BrepkitGroupedMesh {');
+  lines.push('  /** Flattened vertex positions `[x, y, z, ...]`. */');
+  lines.push('  readonly positions: Float32Array;');
+  lines.push('  /** Flattened per-vertex normals `[nx, ny, nz, ...]`. */');
+  lines.push('  readonly normals: Float32Array;');
+  lines.push('  /** Triangle indices (groups of 3). */');
+  lines.push('  readonly indices: Uint32Array;');
+  lines.push(
+    "  /** Per-face start offsets into `indices`; last element equals `indices.length`. */"
+  );
+  lines.push('  readonly faceOffsets: Uint32Array;');
   lines.push('}');
   lines.push('');
 
