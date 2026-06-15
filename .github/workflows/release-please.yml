@@ -24,6 +24,7 @@ jobs:
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
       brepjs_verify_release_created: ${{ steps.release.outputs['packages/brepjs-verify--release_created'] }}
+      brepjs_verify_tag_name: ${{ steps.release.outputs['packages/brepjs-verify--tag_name'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
       prs: ${{ steps.release.outputs.prs }}
@@ -53,7 +54,7 @@ jobs:
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Enable auto-merge for the root brepjs PR only
+      - name: Enable auto-merge for brepjs and brepjs-verify PRs
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           # Prefer the plural `prs` array (separate-pull-requests: true emits
@@ -145,5 +146,9 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
-          GH_REF: ${{ github.ref_name }}
+          # Dispatch against the release tag release-please just created, not the
+          # `main` branch: the workflow_dispatch API accepts a tag (immutable) but
+          # rejects a raw SHA, and pinning the tag avoids publishing the wrong
+          # commit if another push lands on main during the dispatch window.
+          GH_REF: ${{ needs.release-please.outputs.brepjs_verify_tag_name }}
         run: gh workflow run publish-brepjs-verify.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
