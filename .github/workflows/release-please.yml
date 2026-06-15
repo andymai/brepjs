@@ -14,6 +14,15 @@ on:
 permissions:
   contents: read
 
+# Serialize release runs on main. Without this, rapid back-to-back merges (or a
+# dependency-bump release loop) spawn concurrent runs that race on the shared
+# `autorelease:*` labels — one run removes a label another expects, failing with
+# "Label does not exist", which skips the gated publish jobs. Queue, never
+# cancel: cancelling mid-publish would leave a tagged-but-unpublished release.
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
     runs-on: ubuntu-24.04
