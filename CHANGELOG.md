@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.83.4](https://github.com/andymai/brepjs/compare/brepjs-v18.83.3...brepjs-v18.83.4) (2026-06-15)
+
+
+### Bug Fixes
+
+* **brepkit:** build CCW circular arcs as exact Circle edges ([#1413](https://github.com/andymai/brepjs/issues/1413)) ([03f17f9](https://github.com/andymai/brepjs/commit/03f17f94abe9f68fbe56c39ff72f267b55575415))
+
 ## [18.83.3](https://github.com/andymai/brepjs/compare/brepjs-v18.83.2...brepjs-v18.83.3) (2026-06-15)
 
 
