@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.83.1](https://github.com/andymai/brepjs/compare/brepjs-v18.83.0...brepjs-v18.83.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **kernel:** sync brepkit to 2.112.0, guard empty projection, recover gridfinity tests ([#1392](https://github.com/andymai/brepjs/issues/1392)) ([b9ae309](https://github.com/andymai/brepjs/commit/b9ae30921bfc62e11c79910adb8baef84ff3ce11))
+
 ## [18.83.0](https://github.com/andymai/brepjs/compare/brepjs-v18.82.8...brepjs-v18.83.0) (2026-06-15)
 
 
