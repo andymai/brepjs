@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.24.0...brepjs-verify-v0.24.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **ci:** unbreak main — unpin viewer devDep and clear OSV vulns ([#1426](https://github.com/andymai/brepjs/issues/1426)) ([cccd507](https://github.com/andymai/brepjs/commit/cccd50736afb93c78d8a92f79e6d81a2979027f3))
+
 ## [0.24.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.23.1...brepjs-verify-v0.24.0) (2026-06-15)
 
 
