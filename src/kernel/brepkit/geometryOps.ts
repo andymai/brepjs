@@ -534,7 +534,12 @@ export function projectEdges(
   }
 
   const json = bk.projectEdges(solidId, ox, oy, oz, dx, dy, dz, xx, xy, xz, true, deflection);
-  const parsed = JSON.parse(json) as { visible: number[][]; hidden: number[][] };
+  let parsed: { visible: number[][]; hidden: number[][] };
+  try {
+    parsed = JSON.parse(json) as { visible: number[][]; hidden: number[][] };
+  } catch {
+    parsed = { visible: [], hidden: [] };
+  }
 
   // brepkit emits flat [x,y,x,y,…] polylines in view coordinates and, unlike
   // OCCT's HLR, does not split silhouette/smooth/sharp — rebuild line edges in
@@ -549,7 +554,9 @@ export function projectEdges(
         const y1 = poly[i + 1];
         const x2 = poly[i + 2];
         const y2 = poly[i + 3];
-        if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) break;
+        // narrows the four indices to `number` (noUncheckedIndexedAccess); the
+        // loop bound guarantees presence, so this never skips a real segment.
+        if (x1 === undefined || y1 === undefined || x2 === undefined || y2 === undefined) continue;
         if (x1 === x2 && y1 === y2) continue;
         edges.push(edgeHandle(bk.makeLineEdge(x1, y1, 0, x2, y2, 0)));
       }
