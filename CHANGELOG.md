@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.83.0](https://github.com/andymai/brepjs/compare/brepjs-v18.82.8...brepjs-v18.83.0) (2026-06-15)
+
+
+### Features
+
+* **kernel:** wire brepkit projectEdges to native HLR ([#1383](https://github.com/andymai/brepjs/issues/1383)) ([e8c7364](https://github.com/andymai/brepjs/commit/e8c73644ca954d794bfc3d48937049a06d6b777a))
+
 ## [18.82.8](https://github.com/andymai/brepjs/compare/brepjs-v18.82.7...brepjs-v18.82.8) (2026-06-15)
 
 
