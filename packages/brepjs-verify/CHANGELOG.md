@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.21.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.21.0...brepjs-verify-v0.21.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **verify:** unpin brepjs-viewer devDep to workspace wildcard ([#1408](https://github.com/andymai/brepjs/issues/1408)) ([ab1d331](https://github.com/andymai/brepjs/commit/ab1d331908b5fd6d20a1e1cb2ab81aeaf6ad004a))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * brepjs bumped from ^18.0.0 to ^18.83.2
+  * devDependencies
+    * brepjs-viewer bumped from * to 0.2.1
+
 ## [0.21.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.20.1...brepjs-verify-v0.21.0) (2026-06-15)
 
 
