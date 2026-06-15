@@ -1405,6 +1405,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     return curveOps.approximatePoints(this.k, this.Module, points, options);
   }
 
+  // NURBS edit/construct + Bézier pole read are unavailable: occt-wasm exposes
+  // NURBS *read* (getNurbsCurveData) but no Geom_BSplineCurve editing, no
+  // B-spline edge constructor, and no Bézier pole access (getNurbsCurveData
+  // returns null for BEZIER_CURVE). Blocked on the bindings tracked in
+  // andymai/occt-wasm#172; brepkit-wasm implements these natively.
   curveDegreeElevate(_edge: KernelShape, _elevateBy: number): KernelShape {
     notImplemented('curveDegreeElevate');
   }
@@ -1421,12 +1426,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('curveSplit');
   }
 
-  createCurveAdaptor(_shape: KernelShape): KernelType {
-    notImplemented('createCurveAdaptor');
-  }
-
   getBezierPenultimatePole(_edge: KernelShape): [number, number, number] | null {
     notImplemented('getBezierPenultimatePole');
+  }
+
+  // N/A for the id-based API: callers evaluate curves via curvePointAtParam /
+  // curveTangent / curveParameters, so no raw BRepAdaptor object is needed.
+  createCurveAdaptor(_shape: KernelShape): KernelType {
+    notImplemented('createCurveAdaptor');
   }
 
   // =========================================================================
