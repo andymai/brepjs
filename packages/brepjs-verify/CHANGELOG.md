@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.19.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.19.0...brepjs-verify-v0.19.1) (2026-06-15)
+
 ## [0.19.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.18.1...brepjs-verify-v0.19.0) (2026-06-15)
 
 
