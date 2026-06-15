@@ -6,10 +6,17 @@ import {
   sdfSphere,
   sdfBox,
   sdfCone,
+  sdfRoundedBox,
+  sdfCylinder,
+  sdfCapsule,
+  sdfTorus,
+  sdfPlane,
   sdfSweep,
   sdfLattice,
   sdfStrutLattice,
   sdfFieldAxialRamp,
+  sdfFieldRadialRamp,
+  sdfFieldFromSdf,
   sdfFieldConst,
   sdfFieldClamp,
 } from '@/index.js';
@@ -166,6 +173,65 @@ describe('implicit SDF builder (field-first authoring against the real wasm engi
       -(min[1] as number)
     );
     expect(radial).toBeGreaterThan(2.1);
+  });
+});
+
+describe('implicit SDF primitives and scalar fields (analytic builders)', () => {
+  it.each([
+    ['roundedBox', () => sdfRoundedBox(1, 1, 1, 0.2)],
+    ['cylinder', () => sdfCylinder(0.8, 2)],
+    ['capsule', () => sdfCapsule([0, 0, -1], [0, 0, 1], 0.4)],
+    ['torus', () => sdfTorus(1.2, 0.3)],
+  ])('rasterizes %s into a non-empty contour', (_name, make) => {
+    using s = unwrap(make());
+    using field = unwrap(s.rasterize({ resolution: 24, padding: 2 }));
+    const mesh = field.contour();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length % 3).toBe(0);
+  });
+
+  it('clips an unbounded plane half-space via explicit rasterizeIn bounds', () => {
+    using half = unwrap(sdfPlane([0, 0, 1], 0));
+    using region = unwrap(sdfBox(1, 1, 1));
+    // The plane is unbounded; intersect with a finite box so it frames a grid.
+    using clipped = half.intersection(region);
+    using field = unwrap(
+      clipped.rasterizeIn(
+        { min: [-1.5, -1.5, -1.5], max: [1.5, 1.5, 1.5] },
+        { resolution: 24, padding: 2 }
+      )
+    );
+    const mesh = field.contour();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+  });
+
+  it('rejects degenerate rasterizeIn bounds as a Result error', () => {
+    using s = unwrap(sdfSphere(1));
+    // max <= min on an axis.
+    expect(isErr(s.rasterizeIn({ min: [0, 0, 0], max: [1, 1, 0] }))).toBe(true);
+    // A non-finite bound.
+    expect(isErr(s.rasterizeIn({ min: [0, 0, 0], max: [1, 1, Number.NaN] }))).toBe(true);
+  });
+
+  it('grades a shell thickness with a radial-ramp field', () => {
+    using cyl = unwrap(sdfCylinder(1, 2));
+    using thickness = unwrap(sdfFieldRadialRamp([0, 0, 0], 2, 0, 1, 0.1, 0.3));
+    using walled = cyl.shellField(thickness);
+    using field = unwrap(walled.rasterize({ resolution: 28, padding: 2 }));
+    const mesh = field.contour();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+  });
+
+  it('drives an offset from another SDF via fieldFromSdf (clamped)', () => {
+    using base = unwrap(sdfSphere(1));
+    using driver = unwrap(sdfBox(2, 2, 2));
+    using raw = unwrap(sdfFieldFromSdf(driver, 0.2, 0.1));
+    // fieldFromSdf is unbounded; clamp before driving a bounds-affecting op.
+    using bounded = unwrap(sdfFieldClamp(raw, -0.5, 0.5));
+    using grown = base.offsetField(bounded);
+    using field = unwrap(grown.rasterize({ resolution: 24, padding: 3 }));
+    const mesh = field.contour();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
   });
 });
 
