@@ -167,45 +167,18 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // sketcher3d.test.ts
     // -----------------------------------------------------------------------
-    'sketcher3d.sagittaArcTo': {
-      kind: 'skip',
-      reason: 'brepkit: 2D-to-3D lift produces different geometry than direct 3D construction',
-    },
-    'sketcher3d.bulgeArcTo': {
-      kind: 'skip',
-      reason: 'brepkit: 2D-to-3D lift produces different geometry than direct 3D construction',
-    },
     'sketcher3d.halfEllipseTo': {
       kind: 'skip',
-      reason: 'brepkit: 2D-to-3D lift produces different geometry than direct 3D construction',
+      reason:
+        'brepkit: elliptical-arc 2D→3D lift is geometrically wrong (vol 33.3 vs 89.3). ' +
+        'curvesAsEdgesOnPlane has no exact trimmed-ellipse path (only full makeEllipseEdge), ' +
+        'so an ellipse arc falls through to dense point-sampling that collapses the swept region.',
     },
     'sketcher3d.ellipseTo': {
       kind: 'skip',
-      reason: 'brepkit: 2D-to-3D lift produces different geometry than direct 3D construction',
-    },
-    'sketcher3d.smoothSplineTo': {
-      kind: 'skip',
-      reason: 'brepkit: 2D-to-3D lift produces different geometry than direct 3D construction',
-    },
-    'sketcher3d.customCornerFillet': {
-      kind: 'skip',
       reason:
-        'brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane',
-    },
-    'sketcher3d.customCornerChamfer': {
-      kind: 'skip',
-      reason:
-        'brepkit: chamfer2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane',
-    },
-    'sketcher3d.closeWithCustomCorner': {
-      kind: 'skip',
-      reason:
-        'brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane',
-    },
-    'sketcher3d.customCornerNonXY': {
-      kind: 'skip',
-      reason:
-        'brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane',
+        'brepkit: elliptical-arc 2D→3D lift is geometrically wrong (vol 24.4 vs 115.5). ' +
+        'Same root cause as halfEllipseTo: no exact trimmed-ellipse lift in curvesAsEdgesOnPlane.',
     },
 
     // -----------------------------------------------------------------------
