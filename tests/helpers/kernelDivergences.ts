@@ -219,18 +219,13 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // gridfinity-smoke.test.ts
     // -----------------------------------------------------------------------
-    'gridfinity.roundedRectExtrude': {
-      kind: 'skip',
-      reason: 'brepkit: roundedRect extrude depth=37 vs expected 7',
-    },
-    'gridfinity.circleExtrude': {
-      kind: 'skip',
-      reason: 'brepkit: FACE_BUILD_FAILED on circle wire (non-planar wire detection issue)',
-    },
     'gridfinity.rectLipSweep': {
       kind: 'skip',
       reason:
-        'brepkit: sweep pipe on rectangular spine produces wildly different geometry bounds (xMax ~105 vs expected ~24)',
+        'brepkit: withContact sweepSketch on a non-square rounded-rect spine mis-orients the ' +
+        'cross-section frame, so the lip blows out to xMax ~105 vs the expected ~24 (the square ' +
+        '84x84 lip case passes). Square spines are symmetric in the frame xDir; rectangular ' +
+        'spines expose the orientation bug on the long vs short edges.',
     },
 
     // -----------------------------------------------------------------------

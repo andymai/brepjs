@@ -16,6 +16,8 @@ import { wasmIndex } from '@/utils/vec3.js';
  * @returns An array of connected curve chains.
  */
 export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] => {
+  // Flatbush's constructor rejects numItems === 0; an empty curve set has no chains.
+  if (curves.length === 0) return [];
   // We create a spacial index of the startpoints
   const startPoints = new Flatbush(curves.length);
   curves.forEach((c) => {
