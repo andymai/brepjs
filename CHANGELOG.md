@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.7](https://github.com/andymai/brepjs/compare/brepjs-v18.82.6...brepjs-v18.82.7) (2026-06-15)
+
+
+### Performance Improvements
+
+* **brepkit:** use binary grouped tessellation (no JSON marshaling) ([#1377](https://github.com/andymai/brepjs/issues/1377)) ([99ba909](https://github.com/andymai/brepjs/commit/99ba90961ffda0a172405a63a44a1c78bcc27ff0))
+
 ## [18.82.6](https://github.com/andymai/brepjs/compare/brepjs-v18.82.5...brepjs-v18.82.6) (2026-06-14)
 
 
