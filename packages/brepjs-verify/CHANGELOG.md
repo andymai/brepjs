@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.12.0...brepjs-verify-v0.12.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **verify:** reap orphaned sandbox processes on timeout and host shutdown ([#1380](https://github.com/andymai/brepjs/issues/1380)) ([7489ba8](https://github.com/andymai/brepjs/commit/7489ba8f665a71549d5b80367757f3373e1af0fb))
+
 ## [0.12.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.11.1...brepjs-verify-v0.12.0) (2026-06-15)
 
 
