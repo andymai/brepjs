@@ -43,7 +43,7 @@ You called a brepjs function before any kernel was registered. Either you forgot
 
 You called `withKernel('name', ...)` for a kernel that hasn't been registered. Either the import is missing or `registerKernel('name', adapter)` wasn't called.
 
-**Fix**: Verify the kernel package is installed and registered. For brepkit: `import init, { Brepkit } from 'brepkit-wasm'; ...; registerKernel('brepkit', new BrepkitAdapter(bk));`.
+**Fix**: Verify the kernel package is installed and registered. For brepkit: `import { BrepKernel } from 'brepkit-wasm'; const bk = new BrepKernel(); registerKernel('brepkit', new BrepkitAdapter(bk));`.
 
 ## Boolean operations
 

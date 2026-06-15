@@ -88,8 +88,7 @@ initFromOC(oc);
 
 // brepkit WASM (external brepkit-wasm package)
 import { BrepkitAdapter } from 'brepjs';
-import bkInit, { BrepKernel } from 'brepkit-wasm';
-await bkInit();
+import { BrepKernel } from 'brepkit-wasm';
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Custom kernel

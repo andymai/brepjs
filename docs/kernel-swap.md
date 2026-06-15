@@ -28,8 +28,7 @@ const kernel = await OcctKernel.init();
 registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 // Register the brepkit kernel as an alternative (external brepkit-wasm package)
-import bkInit, { BrepKernel } from 'brepkit-wasm';
-await bkInit();
+import { BrepKernel } from 'brepkit-wasm';
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Register the legacy brepjs-opencascade kernel as an alternative

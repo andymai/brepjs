@@ -16,11 +16,10 @@
  * ## Lifecycle
  *
  * ```ts
- * import init, { BrepKernel } from 'brepkit-wasm';
+ * import { BrepKernel } from 'brepkit-wasm';
  * import { BrepkitAdapter } from './brepkitAdapter.js';
  * import { registerKernel } from './index.js';
  *
- * await init();
  * const kernel = new BrepKernel();
  * registerKernel('brepkit', new BrepkitAdapter(kernel));
  * ```

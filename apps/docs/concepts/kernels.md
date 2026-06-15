@@ -31,11 +31,10 @@ For brepkit explicitly:
 <!-- @no-test -->
 
 ```typescript
-import init, { Brepkit } from 'brepkit-wasm';
+import { BrepKernel } from 'brepkit-wasm';
 import { registerKernel, BrepkitAdapter, withKernel } from 'brepjs';
 
-await init();
-const bk = new Brepkit();
+const bk = new BrepKernel();
 registerKernel('brepkit', new BrepkitAdapter(bk));
 
 withKernel('brepkit', () => {
