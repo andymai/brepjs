@@ -3,6 +3,11 @@
   "version": "0.2.0",
   "description": "Shared React/R3F renderer for brepjs meshes (used by the playground and the brepjs-agent viewer)",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-viewer"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
