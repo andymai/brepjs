@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.15.1](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.15.0...brepjs-verify-v0.15.1) (2026-06-15)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * brepjs-viewer bumped from * to 0.2.1
+
 ## [0.15.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.14.0...brepjs-verify-v0.15.0) (2026-06-15)
 
 

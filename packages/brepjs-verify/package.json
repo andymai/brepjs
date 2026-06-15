@@ -1,6 +1,6 @@
 {
   "name": "brepjs-verify",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "Agent skill + verify/preview tooling for authoring parametric brepjs CAD code",
   "license": "Apache-2.0",
   "type": "module",
@@ -70,7 +70,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.1",
     "@vitejs/plugin-react": "^6.0.2",
-    "brepjs-viewer": "*",
+    "brepjs-viewer": "0.2.1",
     "eslint": "^10.4.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
