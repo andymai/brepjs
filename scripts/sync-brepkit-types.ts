@@ -37,9 +37,12 @@ function snakeToCamel(s: string): string {
 function convertParams(raw: string): string {
   let result = raw;
   // Convert param names from snake_case to camelCase
-  result = result.replace(/\b([a-z][a-z0-9_]*)\s*([\?]?\s*:)/g, (_, name: string, colon: string) => {
-    return snakeToCamel(name) + colon;
-  });
+  result = result.replace(
+    /\b([a-z][a-z0-9_]*)\s*([\?]?\s*:)/g,
+    (_, name: string, colon: string) => {
+      return snakeToCamel(name) + colon;
+    }
+  );
   // Widen typed array params to also accept plain number[]:
   // Float64Array → Float64Array | number[]
   // Uint32Array → Uint32Array | number[]
@@ -180,56 +183,98 @@ const METHOD_SECTIONS: Section[] = [
   {
     label: 'Primitives',
     methods: [
-      'makeBox', 'makeCylinder', 'makeSphere', 'makeCone', 'makeTorus',
-      'makeEllipsoid', 'makeRectangle', 'makePolygon', 'makeCircle',
+      'makeBox',
+      'makeCylinder',
+      'makeSphere',
+      'makeCone',
+      'makeTorus',
+      'makeEllipsoid',
+      'makeRectangle',
+      'makePolygon',
+      'makeCircle',
       'makeCircleFace',
     ],
   },
   {
     label: 'Shape construction',
     methods: [
-      'makeVertex', 'makeLineEdge', 'makeCircleArc3d', 'makeTangentArc3d',
-      'makeNurbsEdge', 'makeWire', 'makePolygonWire', 'makeRegularPolygonWire',
-      'makeFaceFromWire', 'makeCompound', 'makeSolid', 'solidFromShell',
-      'addHolesToFace', 'removeHolesFromFace', 'reverseShape',
+      'makeVertex',
+      'makeLineEdge',
+      'makeCircleArc3d',
+      'makeTangentArc3d',
+      'makeNurbsEdge',
+      'makeWire',
+      'makePolygonWire',
+      'makeRegularPolygonWire',
+      'makeFaceFromWire',
+      'makeCompound',
+      'makeSolid',
+      'solidFromShell',
+      'addHolesToFace',
+      'removeHolesFromFace',
+      'reverseShape',
     ],
   },
   {
     label: 'Boolean ops',
-    methods: [
-      'fuse', 'cut', 'intersect', 'compoundCut', 'convexHull',
-      'section', 'split',
-    ],
+    methods: ['fuse', 'cut', 'intersect', 'compoundCut', 'convexHull', 'section', 'split'],
   },
   {
     label: 'Evolution tracking',
-    methods: [
-      'fuseWithEvolution', 'cutWithEvolution', 'intersectWithEvolution',
-    ],
+    methods: ['fuseWithEvolution', 'cutWithEvolution', 'intersectWithEvolution'],
   },
   {
     label: 'Sweep / Loft',
     methods: [
-      'extrude', 'revolve', 'sweep', 'sweepSmooth', 'sweepAlongEdges',
-      'sweepWithOptions', 'pipe', 'loft', 'loftSmooth', 'loftWithOptions',
+      'extrude',
+      'revolve',
+      'sweep',
+      'sweepSmooth',
+      'sweepAlongEdges',
+      'sweepWithOptions',
+      'pipe',
+      'loft',
+      'loftSmooth',
+      'loftWithOptions',
       'helicalSweep',
     ],
   },
   {
     label: 'Modifiers',
     methods: [
-      'fillet', 'filletV2', 'filletVariable', 'chamfer', 'chamferV2',
-      'chamferDistanceAngle', 'shell', 'offsetSolid', 'offsetSolidV2',
-      'offsetFace', 'offsetWire', 'offsetWireWithJoinType', 'thicken', 'draft',
-      'defeature', 'detectSmallFeatures', 'recognizeFeatures', 'unifyFaces',
+      'fillet',
+      'filletV2',
+      'filletVariable',
+      'chamfer',
+      'chamferV2',
+      'chamferDistanceAngle',
+      'shell',
+      'offsetSolid',
+      'offsetSolidV2',
+      'offsetFace',
+      'offsetWire',
+      'offsetWireWithJoinType',
+      'thicken',
+      'draft',
+      'defeature',
+      'detectSmallFeatures',
+      'recognizeFeatures',
+      'unifyFaces',
     ],
   },
   {
     label: 'Transform',
     methods: [
-      'transformSolid', 'transformWire', 'copySolid', 'copyWire',
-      'copyAndTransformSolid', 'mirror', 'linearPattern', 'circularPattern',
-      'gridPattern', 'composeTransforms',
+      'transformSolid',
+      'transformWire',
+      'copySolid',
+      'copyWire',
+      'copyAndTransformSolid',
+      'mirror',
+      'linearPattern',
+      'circularPattern',
+      'gridPattern',
+      'composeTransforms',
     ],
   },
   {
@@ -239,102 +284,172 @@ const METHOD_SECTIONS: Section[] = [
   {
     label: 'Topology',
     methods: [
-      'getSolidFaces', 'getSolidEdges', 'getSolidVertices', 'getFaceEdges',
-      'getFaceVertices', 'getFaceNormal', 'getFaceOuterWire', 'getFaceWires',
-      'faceWires', 'getWireEdges', 'getEdgeVertices', 'getEdgeVertexHandles',
-      'getVertexPosition', 'getEntityCounts', 'getShellFaces',
-      'getShapeOrientation', 'adjacentFaces', 'sharedEdges', 'edgeToFaceMap',
-      'isEdgeForwardInWire', 'isWireClosed', 'getCompoundSolids',
+      'getSolidFaces',
+      'getSolidEdges',
+      'getSolidVertices',
+      'getFaceEdges',
+      'getFaceVertices',
+      'getFaceNormal',
+      'getFaceOuterWire',
+      'getFaceWires',
+      'faceWires',
+      'getWireEdges',
+      'getEdgeVertices',
+      'getEdgeVertexHandles',
+      'getVertexPosition',
+      'getEntityCounts',
+      'getShellFaces',
+      'getShapeOrientation',
+      'adjacentFaces',
+      'sharedEdges',
+      'edgeToFaceMap',
+      'isEdgeForwardInWire',
+      'isWireClosed',
+      'getCompoundSolids',
     ],
   },
   {
     label: 'Geometry',
     methods: [
-      'getSurfaceType', 'getSurfaceDomain', 'getAnalyticSurfaceParams',
-      'getEdgeCurveType', 'getEdgeCurveParameters', 'getEdgeNurbsData',
-      'evaluateEdgeCurve', 'evaluateEdgeCurveD1', 'evaluateSurface',
-      'evaluateSurfaceNormal', 'projectPointOnSurface',
+      'getSurfaceType',
+      'getSurfaceDomain',
+      'getAnalyticSurfaceParams',
+      'getEdgeCurveType',
+      'getEdgeCurveParameters',
+      'getEdgeNurbsData',
+      'evaluateEdgeCurve',
+      'evaluateEdgeCurveD1',
+      'evaluateSurface',
+      'evaluateSurfaceNormal',
+      'projectPointOnSurface',
       'liftCurve2dToPlane',
     ],
   },
   {
     label: 'Measurement',
     methods: [
-      'boundingBox', 'volume', 'surfaceArea', 'faceArea', 'facePerimeter',
-      'edgeLength', 'wireLength', 'centerOfMass',
-      'measureCurvatureAtEdge', 'measureCurvatureAtSurface',
-      'pointToSolidDistance', 'pointToFaceDistance', 'pointToEdgeDistance',
+      'boundingBox',
+      'volume',
+      'surfaceArea',
+      'faceArea',
+      'facePerimeter',
+      'edgeLength',
+      'wireLength',
+      'centerOfMass',
+      'measureCurvatureAtEdge',
+      'measureCurvatureAtSurface',
+      'pointToSolidDistance',
+      'pointToFaceDistance',
+      'pointToEdgeDistance',
       'solidToSolidDistance',
     ],
   },
   {
     label: 'Classification',
-    methods: [
-      'classifyPoint', 'classifyPointWinding', 'classifyPointRobust',
-    ],
+    methods: ['classifyPoint', 'classifyPointWinding', 'classifyPointRobust'],
   },
   {
     label: 'Validation & repair',
     methods: [
-      'validateSolid', 'validateSolidRelaxed', 'validateSolidWithOptions',
-      'healSolid', 'repairSolid', 'fixFaceOrientations',
-      'mergeCoincidentVertices', 'removeDegenerateEdges',
+      'validateSolid',
+      'validateSolidRelaxed',
+      'validateSolidWithOptions',
+      'healSolid',
+      'repairSolid',
+      'fixFaceOrientations',
+      'mergeCoincidentVertices',
+      'removeDegenerateEdges',
     ],
   },
   {
     label: 'Tessellation',
     methods: [
-      'tessellateFace', 'tessellateSolid', 'tessellateSolidGrouped',
-      'tessellateSolidUV', 'tessellateEdge', 'meshEdges', 'meshEdgesAll',
+      'tessellateFace',
+      'tessellateSolid',
+      'tessellateSolidGrouped',
+      'tessellateSolidGroupedBinary',
+      'tessellateSolidUV',
+      'tessellateEdge',
+      'meshEdges',
+      'meshEdgesAll',
       'meshBoolean',
     ],
   },
   {
     label: 'Export',
     methods: [
-      'exportStep', 'exportStl', 'exportStlAscii', 'exportIges',
-      'export3mf', 'exportObj', 'exportGlb', 'exportPly',
+      'exportStep',
+      'exportStl',
+      'exportStlAscii',
+      'exportIges',
+      'export3mf',
+      'exportObj',
+      'exportGlb',
+      'exportPly',
     ],
   },
   {
     label: 'Import',
     methods: [
-      'importStep', 'importStl', 'importIges', 'import3mf',
-      'importObj', 'importGlb', 'importIndexedMesh',
+      'importStep',
+      'importStl',
+      'importIges',
+      'import3mf',
+      'importObj',
+      'importGlb',
+      'importIndexedMesh',
     ],
   },
   {
     label: 'NURBS curves & surfaces',
     methods: [
-      'interpolatePoints', 'approximateCurve', 'approximateCurveLspia',
-      'curveKnotInsert', 'curveKnotRemove', 'curveSplit', 'curveDegreeElevate',
-      'interpolateSurface', 'approximateSurfaceLspia',
+      'interpolatePoints',
+      'approximateCurve',
+      'approximateCurveLspia',
+      'curveKnotInsert',
+      'curveKnotRemove',
+      'curveSplit',
+      'curveDegreeElevate',
+      'interpolateSurface',
+      'approximateSurfaceLspia',
     ],
   },
   {
     label: 'Sketch',
     methods: [
-      'sketchNew', 'sketchAddPoint', 'sketchAddArc', 'sketchAddConstraint',
-      'sketchSolve', 'sketchDof',
+      'sketchNew',
+      'sketchAddPoint',
+      'sketchAddArc',
+      'sketchAddConstraint',
+      'sketchSolve',
+      'sketchDof',
     ],
   },
   {
     label: '2D polygon ops',
     methods: [
-      'offsetPolygon2d', 'chamfer2d', 'fillet2d', 'polygonsIntersect2d',
-      'intersectPolygons2d', 'commonSegment2d', 'pointInPolygon2d',
+      'offsetPolygon2d',
+      'chamfer2d',
+      'fillet2d',
+      'polygonsIntersect2d',
+      'intersectPolygons2d',
+      'commonSegment2d',
+      'pointInPolygon2d',
     ],
   },
   {
     label: 'Batch & checkpoint',
-    methods: [
-      'executeBatch', 'checkpoint', 'checkpointCount', 'restore',
-      'discardCheckpoint',
-    ],
+    methods: ['executeBatch', 'checkpoint', 'checkpointCount', 'restore', 'discardCheckpoint'],
   },
   {
     label: 'Assembly',
-    methods: ['assemblyNew', 'assemblyAddRoot', 'assemblyAddChild', 'assemblyFlatten', 'assemblyBom'],
+    methods: [
+      'assemblyNew',
+      'assemblyAddRoot',
+      'assemblyAddChild',
+      'assemblyFlatten',
+      'assemblyBom',
+    ],
   },
   {
     label: 'BREP serialization',
@@ -344,10 +459,7 @@ const METHOD_SECTIONS: Section[] = [
 
 // ── Generate output ────────────────────────────────────────────
 
-function formatMethodSignature(
-  method: ParsedMethod,
-  isWired: boolean
-): string {
+function formatMethodSignature(method: ParsedMethod, isWired: boolean): string {
   const tag = isWired ? '' : '  /** @unwired */\n';
   const params = convertParams(method.params);
   const ret = mapReturnType(method.returnType, method.name);
@@ -425,7 +537,7 @@ function generate(): void {
   lines.push('// ── Main kernel interface ────────────────────────────────────────');
   lines.push('');
   lines.push('/**');
-  lines.push(' * Type-safe view of brepkit\'s WASM `BrepKernel` class.');
+  lines.push(" * Type-safe view of brepkit's WASM `BrepKernel` class.");
   lines.push(' *');
   lines.push(' * All handle parameters and return values are `number` (u32 arena indices).');
   lines.push(' * Coordinate arrays are flat `number[]` (`[x,y,z, ...]`).');
@@ -477,14 +589,14 @@ function generate(): void {
     validateSolidDetails: 'validateSolidDetails?(solid: number): string;',
   };
 
-  const futureToEmit = [...missingGuarded]
-    .sort()
-    .filter((name) => FUTURE_STUBS[name]);
+  const futureToEmit = [...missingGuarded].sort().filter((name) => FUTURE_STUBS[name]);
   if (futureToEmit.length > 0) {
     lines.push('  // ── Feature-guarded stubs (not in current WASM) ─────────────────');
     lines.push('');
     for (const name of futureToEmit) {
-      lines.push(`  /** @future Not in brepkit-wasm ${upstreamVersion}. Referenced with feature detection in adapter. */`);
+      lines.push(
+        `  /** @future Not in brepkit-wasm ${upstreamVersion}. Referenced with feature detection in adapter. */`
+      );
       lines.push(`  ${FUTURE_STUBS[name]}`);
       lines.push('');
     }
@@ -495,7 +607,7 @@ function generate(): void {
   if (unhandled.length > 0) {
     console.warn(
       `⚠ Feature-guarded methods missing from FUTURE_STUBS: ${unhandled.join(', ')}\n` +
-      '  Add typed signatures to FUTURE_STUBS in sync-brepkit-types.ts'
+        '  Add typed signatures to FUTURE_STUBS in sync-brepkit-types.ts'
     );
   }
 
@@ -513,8 +625,8 @@ function generate(): void {
   const totalCount = methods.length;
   console.log(
     `✓ Generated ${OUTPUT_FILE}\n` +
-    `  ${totalCount} methods from brepkit-wasm@${upstreamVersion}\n` +
-    `  ${wiredCount} wired, ${totalCount - wiredCount} @unwired`
+      `  ${totalCount} methods from brepkit-wasm@${upstreamVersion}\n` +
+      `  ${wiredCount} wired, ${totalCount - wiredCount} @unwired`
   );
 }
 
