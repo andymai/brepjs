@@ -179,6 +179,8 @@ function spawnCliOutcome(
     }, timeoutMs);
 
     child.stdout?.on('data', (chunk: Buffer) => {
+      // Already over the cap and condemned — don't re-fire the kill on every buffered chunk.
+      if (outputTooLarge) return;
       stdoutBytes += chunk.length;
       if (stdoutBytes > MAX_OUTPUT_BYTES) {
         // Mirror execFile's maxBuffer: a runaway writer is killed and classified as output-too-large.
@@ -188,9 +190,12 @@ function spawnCliOutcome(
       }
       stdout += chunk.toString();
     });
-    // stderr is diagnostic only; cap it so a chatty failure can't exhaust memory.
+    // stderr is diagnostic only; cap it by byte count (matching stdout — `.length` would count
+    // UTF-16 code units, undercounting multi-byte output) so a chatty failure can't exhaust memory.
+    let stderrBytes = 0;
     child.stderr?.on('data', (chunk: Buffer) => {
-      if (stderr.length < MAX_OUTPUT_BYTES) stderr += chunk.toString();
+      stderrBytes += chunk.length;
+      if (stderrBytes <= MAX_OUTPUT_BYTES) stderr += chunk.toString();
     });
 
     const finish = (exitCode: number | null): void => {

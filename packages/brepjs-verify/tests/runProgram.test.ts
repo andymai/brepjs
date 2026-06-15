@@ -73,8 +73,9 @@ describe('runProgram (sandbox executor)', () => {
       leafPid = Number(readFileSync(pidFile, 'utf8'));
       expect(Number.isInteger(leafPid)).toBe(true);
 
-      // Give the OS a beat to deliver signals, then assert the leaf is gone — not orphaned.
-      await delay(1000);
+      // Poll (don't fix-wait) for the leaf to be reaped — avoids flakiness from the brief
+      // dead-but-not-yet-reaped window on loaded machines.
+      for (let i = 0; i < 80 && isAlive(leafPid); i++) await delay(100);
       expect(isAlive(leafPid)).toBe(false);
     } finally {
       if (leafPid !== undefined && isAlive(leafPid)) {
