@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -224,9 +223,7 @@ describe('pipeline', () => {
     expect(unwrapErr(result).code).toBe('INVALID_FILLET_RADIUS');
   });
 
-  it('accepts a Result as input', (ctx) => {
-    skipIfDiverges(ctx, 'kernelCall.doubleFillet');
-
+  it('accepts a Result as input', () => {
     const b = box(10, 10, 10) as Shape3D;
     const filletResult = fillet(b, getEdges(b).slice(0, 2), 1);
     expect(isOk(filletResult)).toBe(true);

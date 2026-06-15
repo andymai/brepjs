@@ -145,15 +145,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // kernelCall.test.ts
-    // -----------------------------------------------------------------------
-    'kernelCall.doubleFillet': {
-      kind: 'skip',
-      reason:
-        'Double fillet requires filleting edges adjacent to NURBS blend faces, which brepkit does not yet support',
-    },
-
-    // -----------------------------------------------------------------------
     // sketcher3d.test.ts
     // -----------------------------------------------------------------------
     'sketcher3d.sagittaArcTo': {
