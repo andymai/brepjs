@@ -3,7 +3,7 @@
  * @module
  */
 
-import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { BrepkitKernel, BrepkitGroupedMesh } from './brepkitWasmTypes.js';
 import type {
   KernelShape,
   KernelMeshResult,
@@ -120,10 +120,88 @@ function meshSolid(
  * Batch tessellation via `tessellateSolidGrouped` -- single WASM call for
  * all faces. Falls back to `meshSolidPerFace` on error.
  *
+ * Prefers the binary `tessellateSolidGroupedBinary` (packed typed arrays) when
+ * the kernel exposes it; the mesh then crosses the WASM boundary as bulk memory
+ * copies instead of a multi-megabyte JSON string round-trip (the JSON variant
+ * was ~2x slower on large meshes). Falls back to the JSON path on older kernels.
+ *
  * When `includeUVs` is true, makes an additional `tessellateSolidUV` call
  * to populate real surface parametrization coordinates.
  */
 function meshSolidGrouped(
+  bk: BrepkitKernel,
+  solidId: number,
+  deflection: number,
+  includeUVs: boolean,
+  angularTolerance?: number
+): KernelMeshResult {
+  if (typeof bk.tessellateSolidGroupedBinary === 'function') {
+    // Call here, inside the `typeof` guard, so the call site is a direct method
+    // invocation (TS narrows the optional method; no unbound method reference).
+    const m = bk.tessellateSolidGroupedBinary(solidId, deflection, angularTolerance);
+    return meshSolidGroupedBinary(bk, solidId, deflection, includeUVs, angularTolerance, m);
+  }
+  return meshSolidGroupedJson(bk, solidId, deflection, includeUVs, angularTolerance);
+}
+
+/**
+ * Binary grouped tessellation: positions/normals are packed `Float32Array`s and
+ * indices/`faceOffsets` are `Uint32Array`s straight from the kernel — no JSON.
+ */
+function meshSolidGroupedBinary(
+  bk: BrepkitKernel,
+  solidId: number,
+  deflection: number,
+  includeUVs: boolean,
+  angularTolerance: number | undefined,
+  m: BrepkitGroupedMesh
+): KernelMeshResult {
+  const positions = m.positions;
+  const normals = m.normals;
+  const indices = m.indices;
+  const faceOffsets = m.faceOffsets;
+
+  const faceIds = toArray(bk.getSolidFaces(solidId));
+  const groupCount = faceOffsets.length - 1;
+  if (groupCount !== faceIds.length) {
+    throw new Error(
+      `faceOffsets/faceIds length mismatch: ${groupCount} groups vs ${faceIds.length} faces`
+    );
+  }
+  const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
+  for (let i = 0; i < faceOffsets.length - 1; i++) {
+    const start = wasmIndex(faceOffsets, i);
+    const count = wasmIndex(faceOffsets, i + 1) - start;
+    if (count === 0) continue; // degenerate face -- skip
+    faceGroups.push({ start, count, faceHash: faceIds[i] ?? 0 });
+  }
+
+  let uvs = new Float32Array(0);
+  if (includeUVs) {
+    const expectedUvLen = (positions.length / 3) * 2;
+    try {
+      const uvJson = bk.tessellateSolidUV(solidId, deflection, angularTolerance);
+      const uvData: { uvs: number[] } = JSON.parse(uvJson);
+      uvs =
+        uvData.uvs.length === expectedUvLen
+          ? new Float32Array(uvData.uvs)
+          : new Float32Array(expectedUvLen);
+    } catch {
+      uvs = new Float32Array(expectedUvLen);
+    }
+  }
+
+  return {
+    vertices: positions,
+    normals,
+    triangles: indices,
+    uvs,
+    faceGroups,
+  };
+}
+
+/** JSON grouped tessellation (fallback for kernels without the binary API). */
+function meshSolidGroupedJson(
   bk: BrepkitKernel,
   solidId: number,
   deflection: number,
