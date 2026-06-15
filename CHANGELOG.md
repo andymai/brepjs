@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.83.2](https://github.com/andymai/brepjs/compare/brepjs-v18.83.1...brepjs-v18.83.2) (2026-06-15)
+
+
+### Bug Fixes
+
+* **verify:** unpin brepjs-viewer devDep to workspace wildcard ([#1408](https://github.com/andymai/brepjs/issues/1408)) ([ab1d331](https://github.com/andymai/brepjs/commit/ab1d331908b5fd6d20a1e1cb2ab81aeaf6ad004a))
+
 ## [18.83.1](https://github.com/andymai/brepjs/compare/brepjs-v18.83.0...brepjs-v18.83.1) (2026-06-15)
 
 
