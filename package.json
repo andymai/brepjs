@@ -306,8 +306,8 @@
     "brace-expansion": "^5.0.6",
     "esbuild@<0.25.0": "^0.25.0",
     "esbuild@>=0.26.0 <0.28.1": "^0.28.1",
-    "js-yaml": "4.2.0",
-    "markdown-it": "14.2.0",
+    "js-yaml": "^4.2.0",
+    "markdown-it": "^14.2.0",
     "vitepress": {
       "vite": "6.4.3"
     }
