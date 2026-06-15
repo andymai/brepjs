@@ -1,6 +1,6 @@
 {
   "name": "brepjs-verify",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "description": "Agent skill + verify/preview tooling for authoring parametric brepjs CAD code",
   "license": "Apache-2.0",
   "type": "module",
