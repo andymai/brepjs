@@ -203,6 +203,56 @@ export function makeCircleArc(
   startAngle: number,
   endAngle: number
 ): KernelShape {
+  // A proper CCW arc (0 < sweep < 2π) builds as an exact Circle edge so it
+  // reports CIRCLE (not BSPLINE_CURVE) and curveAxis can recover its axis.
+  // makeCircleArc3d sweeps CCW(start→end) about the axis, which equals the
+  // intended sweep only in this range; full circles, degenerate, and CW sweeps
+  // (which makeCircleNurbs models as a signed sweep) fall back to the NURBS form.
+  const sweep = endAngle - startAngle;
+  const EPS = 1e-9;
+  if (sweep > EPS && sweep < 2 * Math.PI - EPS) {
+    const nLen = Math.hypot(normal[0], normal[1], normal[2]);
+    const nz: [number, number, number] = [normal[0] / nLen, normal[1] / nLen, normal[2] / nLen];
+    const ref: [number, number, number] = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const xRaw: [number, number, number] = [
+      nz[1] * ref[2] - nz[2] * ref[1],
+      nz[2] * ref[0] - nz[0] * ref[2],
+      nz[0] * ref[1] - nz[1] * ref[0],
+    ];
+    const xLen = Math.hypot(xRaw[0], xRaw[1], xRaw[2]);
+    const xAxis: [number, number, number] = [xRaw[0] / xLen, xRaw[1] / xLen, xRaw[2] / xLen];
+    const yAxis: [number, number, number] = [
+      nz[1] * xAxis[2] - nz[2] * xAxis[1],
+      nz[2] * xAxis[0] - nz[0] * xAxis[2],
+      nz[0] * xAxis[1] - nz[1] * xAxis[0],
+    ];
+    const at = (angle: number): [number, number, number] => {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      return [
+        center[0] + radius * (c * xAxis[0] + s * yAxis[0]),
+        center[1] + radius * (c * xAxis[1] + s * yAxis[1]),
+        center[2] + radius * (c * xAxis[2] + s * yAxis[2]),
+      ];
+    };
+    const start = at(startAngle);
+    const end = at(endAngle);
+    const id = bk.makeCircleArc3d(
+      start[0],
+      start[1],
+      start[2],
+      end[0],
+      end[1],
+      end[2],
+      center[0],
+      center[1],
+      center[2],
+      nz[0],
+      nz[1],
+      nz[2]
+    );
+    return edgeHandle(id);
+  }
   return makeCircleNurbs(bk, center, normal, radius, startAngle, endAngle);
 }
 

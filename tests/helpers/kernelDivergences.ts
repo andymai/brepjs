@@ -329,12 +329,6 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Shape evolution tracking not implemented in brepkit kernel',
     },
-    'curveFns.circleArcType': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit represents a circular arc as a BSPLINE_CURVE, not CIRCLE, so curveAxis (which keys on the CIRCLE type) returns null for arc edges',
-    },
-
     // -----------------------------------------------------------------------
     // meshFns.test.ts
     // -----------------------------------------------------------------------
