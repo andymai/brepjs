@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/andymai/brepjs/compare/brepjs-viewer-v0.2.0...brepjs-viewer-v0.2.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **viewer:** add repository field for provenance publishing ([#1395](https://github.com/andymai/brepjs/issues/1395)) ([c6160bb](https://github.com/andymai/brepjs/commit/c6160bb061a6558c0bf5040dcab75e782244b60c))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-viewer-v0.1.0...brepjs-viewer-v0.2.0) (2026-06-13)
 
 
