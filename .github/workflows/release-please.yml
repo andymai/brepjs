@@ -43,8 +43,12 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Auto-merge the root brepjs, brepjs-verify, and brepjs-viewer PRs.
-  # brepjs-opencascade (expensive WASM build) is skipped and merged manually.
+  # Auto-merge ONLY the root brepjs release PR. brepjs-opencascade (expensive
+  # WASM build) and brepjs-verify / brepjs-viewer are held for manual merge:
+  # auto-merging their release-please dependency-bump PRs creates a runaway
+  # release loop across the cross-linked workspace packages (the node-workspace
+  # plugin re-emits a bump release on every linked release). Auto-PUBLISH still
+  # works — it fires when a human merges the held release PR.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -56,7 +60,7 @@ jobs:
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Enable auto-merge for brepjs, brepjs-verify, and brepjs-viewer PRs
+      - name: Enable auto-merge for the root brepjs release PR only
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           # Prefer the plural `prs` array (separate-pull-requests: true emits
@@ -84,10 +88,13 @@ jobs:
               echo "PR with no number, skipping"
               continue
             fi
-            # Skip brepjs-opencascade only (manual review: expensive WASM build).
+            # Hold brepjs-opencascade (expensive WASM build, manual review) and
+            # brepjs-verify / brepjs-viewer (auto-merging their bump PRs loops the
+            # release pipeline across linked workspace packages). Only the root
+            # brepjs release PR auto-merges.
             case "$pr_title" in
-              *brepjs-opencascade*)
-                echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
+              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer*)
+                echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
                 continue
                 ;;
             esac
