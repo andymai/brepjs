@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.82.8](https://github.com/andymai/brepjs/compare/brepjs-v18.82.7...brepjs-v18.82.8) (2026-06-15)
+
+
+### Bug Fixes
+
+* **security:** bump esbuild to 0.28.1 outside the vite6/vitepress path ([#1384](https://github.com/andymai/brepjs/issues/1384)) ([d7bddd8](https://github.com/andymai/brepjs/commit/d7bddd8c0d8b8fa9e5d863fd3003b6046f8e4a73))
+
 ## [18.82.7](https://github.com/andymai/brepjs/compare/brepjs-v18.82.6...brepjs-v18.82.7) (2026-06-15)
 
 
