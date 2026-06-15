@@ -36,12 +36,6 @@
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-verify",
       "bump-minor-pre-major": true
-    },
-    "packages/brepjs-viewer": {
-      "release-type": "node",
-      "changelog-path": "CHANGELOG.md",
-      "component": "brepjs-viewer",
-      "bump-minor-pre-major": true
     }
   },
   "plugins": ["node-workspace"],

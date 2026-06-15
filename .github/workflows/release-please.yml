@@ -34,8 +34,6 @@ jobs:
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
       brepjs_verify_release_created: ${{ steps.release.outputs['packages/brepjs-verify--release_created'] }}
       brepjs_verify_tag_name: ${{ steps.release.outputs['packages/brepjs-verify--tag_name'] }}
-      brepjs_viewer_release_created: ${{ steps.release.outputs['packages/brepjs-viewer--release_created'] }}
-      brepjs_viewer_tag_name: ${{ steps.release.outputs['packages/brepjs-viewer--tag_name'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
       prs: ${{ steps.release.outputs.prs }}
@@ -171,30 +169,8 @@ jobs:
           GH_REF: ${{ needs.release-please.outputs.brepjs_verify_tag_name }}
         run: gh workflow run publish-brepjs-verify.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
-  # Auto-publish brepjs-viewer by dispatching its own publish workflow, mirroring
-  # publish-brepjs-verify above. The npm OIDC trusted publisher for brepjs-viewer
-  # is bound to the publish-brepjs-viewer.yml filename, so the publish must run
-  # from that workflow to authenticate. Dispatching also keeps the manual
-  # workflow_dispatch path working as the recovery route.
-  # Fires on the post-merge release-please run that cuts the brepjs-viewer release.
-  publish-brepjs-viewer:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    needs: [release-please]
-    if: ${{ needs.release-please.outputs.brepjs_viewer_release_created == 'true' }}
-    steps:
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        id: app-token
-        with:
-          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
-          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Dispatch publish-brepjs-viewer (real publish)
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          GH_REPO: ${{ github.repository }}
-          # Dispatch against the release tag release-please just created, not the
-          # `main` branch: the workflow_dispatch API accepts a tag (immutable) but
-          # rejects a raw SHA, and pinning the tag avoids publishing the wrong
-          # commit if another push lands on main during the dispatch window.
-          GH_REF: ${{ needs.release-please.outputs.brepjs_viewer_tag_name }}
-        run: gh workflow run publish-brepjs-viewer.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+  # brepjs-viewer is NOT managed by release-please (removed from
+  # release-please-config.json): node-workspace was re-pinning brepjs-verify's
+  # build-time `brepjs-viewer` devDep to viewer's pending, unpublished version on
+  # every verify release, repeatedly breaking the monorepo `npm ci`. Viewer is
+  # versioned and published manually via publish-brepjs-viewer.yml dispatch.
