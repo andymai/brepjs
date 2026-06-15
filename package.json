@@ -305,6 +305,7 @@
     "dompurify": "^3.4.5",
     "brace-expansion": "^5.0.6",
     "esbuild@<0.25.0": "^0.25.0",
+    "esbuild@>=0.26.0 <0.28.1": "^0.28.1",
     "vitepress": {
       "vite": "6.4.2"
     }
