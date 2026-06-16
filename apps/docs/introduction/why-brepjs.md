@@ -13,7 +13,9 @@ The differentiator: brepjs leans on TypeScript's type system to prove geometric 
 
 ## What can you build?
 
-The library targets **parametric parts defined by parameters**: enclosures, brackets, fixtures, gridfinity bins, mounts, jigs, signs, name plates, parts that snap to a grid or follow a formula. It is not optimized for organic sculpting (no SubD modeling, no T-splines). The sweet spot is anything you might otherwise write in OpenSCAD or SolidWorks, but as a JavaScript program you can deploy to the web.
+Anything defined by **exact, manufacturable geometry**. Boundary representation is the language of mechanical CAD — solids defined to micron precision, native to STEP, CNC, and inspection — and that's brepjs's strength: precise booleans, fillets, chamfers and shells; real volumes, areas and clearances; watertight solids that export cleanly to SolidWorks, Fusion, and FreeCAD. That spans enclosures, brackets, fixtures, mounts, jigs, gridfinity bins, machined and molded parts, name plates, and full assemblies — whether parametric (driven by a formula) or one-off, now as a JavaScript program you can deploy to the web.
+
+It is not optimized for organic sculpting (no SubD modeling, no T-splines) or dense lattices and porous structures — those want a field-based (implicit/voxel) representation, not B-Rep. Knowing that boundary is part of why brepjs is dependable.
 
 The default unit is millimetres, but brepjs is unit-agnostic. Pick whatever your kernel is configured for. The OpenCascade kernel uses double-precision floating point throughout.
 

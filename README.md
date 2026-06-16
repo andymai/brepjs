@@ -38,14 +38,14 @@ const step = unwrap(exportSTEP(part));
 
 brepjs grew out of the love and care I put into [gridfinitylayouttool.com](https://gridfinitylayouttool.com). I needed parametric CAD in the browser and I'm not a 3D modeler, but I know TypeScript. [OpenSCAD](https://openscad.org/) nailed code-first CAD but lives outside the JS ecosystem. [replicad](https://replicad.xyz/) proved OpenCascade works in JS but I kept hitting performance walls and fighting the API.
 
-Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom types that prove invariants at compile time. If it compiles, the geometry is valid. Best for parts defined by parameters (enclosures, brackets, fixtures, gridfinity bins) rather than organic sculpting.
+Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom types that prove invariants at compile time. If it compiles, the geometry is valid. It's strongest at exact, manufacturable geometry — precise booleans, fillets, chamfers and shells; real volumes, areas and clearances; watertight solids that round-trip through STEP — from a single part to a full assembly (enclosures, brackets, fixtures, gridfinity bins, machined and molded parts). It isn't built for organic sculpting or dense lattices; that's what field-based (implicit/voxel) modeling is for.
 
 ## Scope
 
 To set expectations, this project deliberately does not:
 
 - **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
-- **Support organic or sculpting workflows**: the API is built for parametric parts (enclosures, brackets, fixtures); freeform sculpting is out of scope.
+- **Support organic or sculpting workflows**: brepjs models exact mechanical solids — parts and assemblies; freeform/organic sculpting and dense lattices are out of scope (that's field-based implicit/voxel territory).
 - **Output SVG or 2D files**: 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
 - **Run server-side (SSR)**: WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
 - **Provide a GUI**: brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
@@ -105,7 +105,7 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 ## Authoring CAD with AI (brepjs-verify)
 
-[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) helps an AI agent (or you) author parametric CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry, so it writes a `.brep.ts` part, runs it on a real kernel, and reads a deterministic report instead of guessing from how the code reads. It ships as two cooperating pieces: a **Claude Code skill** (the authoring loop) and a **verification CLI** (validity + measured dimensions + multi-view snapshots + STEP export).
+[`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) helps an AI agent (or you) author CAD in brepjs and **prove it is correct** before handing it off. An LLM can't see geometry, so it writes a `.brep.ts` part, runs it on a real kernel, and reads a deterministic report instead of guessing from how the code reads. It ships as two cooperating pieces: a **Claude Code skill** (the authoring loop) and a **verification CLI** (validity + measured dimensions + multi-view snapshots + STEP export).
 
 Install both; they ride on two rails:
 
