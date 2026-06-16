@@ -243,6 +243,7 @@
     "docs:preview": "npm -C apps/docs run preview",
     "docs:extract-tests": "npx tsx scripts/extract-doc-tests.ts",
     "docs:render-images": "npx tsx scripts/render-doc-images.ts",
+    "docs:gen-hero": "npx tsx scripts/genHeroFrames.ts",
     "gen:og": "bash scripts/gen-og.sh",
     "test:docs": "npm run docs:extract-tests && vitest run --project occt-wasm tests/docs",
     "conformance:generate": "npx tsx scripts/generateConformance.ts",

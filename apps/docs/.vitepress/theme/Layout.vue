@@ -3,7 +3,6 @@ import DefaultTheme from 'vitepress/theme';
 import { computed, onMounted, nextTick, watch } from 'vue';
 import { useData, useRoute } from 'vitepress';
 import { decorateCodeBlocks } from './playgroundLink';
-import HeroCube from './components/HeroCube.vue';
 import Landing from './components/Landing.vue';
 
 const { Layout } = DefaultTheme;
@@ -22,11 +21,5 @@ watch(() => route.path, decorate);
 
 <template>
   <Landing v-if="isLanding" />
-  <Layout v-else>
-    <template #home-hero-image>
-      <ClientOnly>
-        <HeroCube />
-      </ClientOnly>
-    </template>
-  </Layout>
+  <Layout v-else />
 </template>

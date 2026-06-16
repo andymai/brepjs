@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
-import HeroCube from './HeroCube.vue';
+import CodeCadHero from './CodeCadHero.vue';
 import { encodeCode } from '../playgroundLink';
 
 const loopSnippet = `import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
@@ -96,36 +96,33 @@ onBeforeUnmount(() => observer?.disconnect());
     <main id="main">
       <!-- ───────────────────────── HERO ───────────────────────── -->
       <section class="hero">
-        <div class="wrap hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">Exact B-Rep · TypeScript · Browser-native</p>
-            <h1>Exact CAD geometry,<br /><span class="grad">written in TypeScript.</span></h1>
-            <p class="subhead">
-              A real B-Rep kernel in your browser via WASM. A type system that makes invalid
-              geometry uncompilable. And a verification loop so AI agents author parts that are
-              provably correct — not just plausible.
-            </p>
-            <div class="cta-row">
-              <a class="btn-primary" href="/playground" target="_blank" rel="noopener"
-                >Open the Playground</a
-              >
-              <a class="btn-ghost" href="/getting-started/install">Get Started</a>
-              <a class="text-link" href="/agent/overview">Authoring with AI →</a>
-            </div>
-            <ul class="specstrip" aria-label="At a glance">
-              <li><b>v18</b> · Apache-2.0</li>
-              <li><b>OpenCascade</b> kernel</li>
-              <li>STEP-accurate</li>
-              <li>runs in the browser</li>
-            </ul>
+        <div class="wrap hero-top">
+          <p class="eyebrow">Exact B-Rep · TypeScript · Browser-native</p>
+          <h1>Exact CAD geometry,<br /><span class="grad">written in TypeScript.</span></h1>
+          <p class="subhead">
+            A real B-Rep kernel in your browser via WASM. A type system that makes invalid geometry
+            uncompilable. And a verification loop so AI agents author parts that are provably
+            correct — not just plausible.
+          </p>
+          <div class="cta-row center">
+            <a class="btn-primary" href="/playground" target="_blank" rel="noopener"
+              >Open the Playground</a
+            >
+            <a class="btn-ghost" href="/getting-started/install">Get Started</a>
+            <a class="text-link" href="/agent/overview">Authoring with AI →</a>
           </div>
+        </div>
 
-          <div class="hero-stage">
-            <span class="stage-tag"><i class="live-dot"></i> kernel · meshed · three.js</span>
-            <ClientOnly>
-              <HeroCube />
-            </ClientOnly>
-          </div>
+        <div class="wrap hero-demo">
+          <ClientOnly>
+            <CodeCadHero />
+          </ClientOnly>
+          <ul class="specstrip" aria-label="At a glance">
+            <li><b>v18</b> · Apache-2.0</li>
+            <li><b>OpenCascade</b> kernel</li>
+            <li>STEP-accurate</li>
+            <li>runs in the browser</li>
+          </ul>
         </div>
       </section>
 
@@ -646,17 +643,19 @@ pre code {
 
 /* ───────────── HERO ───────────── */
 .hero {
-  padding: 88px 0 60px;
+  padding: 76px 0 64px;
 }
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 52px;
-  align-items: center;
+.hero-top {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+.hero-demo {
+  margin-top: 44px;
 }
 h1 {
-  font-size: clamp(2.6rem, 5.2vw, 4.1rem);
-  line-height: 1.02;
+  font-size: clamp(2.5rem, 5vw, 3.9rem);
+  line-height: 1.04;
   letter-spacing: -0.022em;
   margin: 16px 0 0;
 }
@@ -667,11 +666,11 @@ h1 .grad {
   color: transparent;
 }
 .subhead {
-  font-size: 1.22rem;
+  font-size: 1.2rem;
   line-height: 1.5;
   color: var(--ink-1);
-  max-width: 35ch;
-  margin: 22px 0 0;
+  max-width: 54ch;
+  margin: 22px auto 0;
 }
 .cta-row {
   display: flex;
@@ -722,11 +721,11 @@ h1 .grad {
 }
 .specstrip {
   list-style: none;
-  margin: 38px 0 0;
-  padding: 18px 0 0;
-  border-top: 1px solid var(--line);
+  margin: 22px auto 0;
+  padding: 0;
   display: flex;
-  gap: 22px;
+  justify-content: center;
+  gap: 10px 22px;
   flex-wrap: wrap;
   font-family: var(--f-mono);
   font-size: 12.5px;
@@ -735,52 +734,6 @@ h1 .grad {
 .specstrip b {
   color: var(--ink-1);
   font-weight: 500;
-}
-
-.hero-stage {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background:
-    radial-gradient(circle at 52% 46%, rgba(3, 176, 173, 0.1), transparent 64%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-0));
-  overflow: hidden;
-}
-.hero-stage :deep(.hero-cube) {
-  position: absolute;
-  inset: 0;
-}
-.stage-tag {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 3;
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--ink-2);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--pass);
-  animation: pulse 2.4s infinite;
-}
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(70, 208, 154, 0.5);
-  }
-  70% {
-    box-shadow: 0 0 0 8px rgba(70, 208, 154, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(70, 208, 154, 0);
-  }
 }
 
 /* ───────────── SECTION SHELL ───────────── */
@@ -835,9 +788,6 @@ h2 {
     opacity: 1;
     transform: none;
     transition: none;
-  }
-  .live-dot {
-    animation: none;
   }
 }
 
@@ -1228,16 +1178,10 @@ pre.code.big {
   .lnav-right .ic {
     display: none;
   }
-  .hero-grid,
   .split,
   .ai-grid {
     grid-template-columns: 1fr;
     gap: 34px;
-  }
-  .hero-stage {
-    max-width: 440px;
-    width: 100%;
-    margin: 0 auto;
   }
   .kernels {
     grid-template-columns: 1fr;
