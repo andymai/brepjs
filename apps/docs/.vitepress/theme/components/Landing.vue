@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import CodeCadHero from './CodeCadHero.vue';
 import { encodeCode } from '../playgroundLink';
+import { highlightCode, highlightLine } from './codeHighlight';
 
 const loopSnippet = `import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
 
@@ -12,16 +13,22 @@ const step = unwrap(exportSTEP(part));
 export default part;`;
 
 const playgroundHref = encodeCode(loopSnippet);
+const loopSnippetHtml = highlightCode(loopSnippet);
 
-// Syntax-coloured rendering of the fixed snippet above. Trusted, static markup
-// (no user input) so v-html is safe here.
-const loopSnippetHtml = `<span class="k">import</span> { <span class="fn">box</span>, <span class="fn">cut</span>, <span class="fn">cylinder</span>, <span class="fn">fillet</span>, <span class="fn">edgeFinder</span>, <span class="fn">exportSTEP</span>, <span class="fn">unwrap</span> } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;
-
-<span class="k">const</span> drilled = <span class="fn">unwrap</span>(<span class="fn">cut</span>(<span class="fn">box</span>(<span class="n">30</span>, <span class="n">20</span>, <span class="n">10</span>), <span class="fn">cylinder</span>(<span class="n">5</span>, <span class="n">15</span>, { at: [<span class="n">15</span>, <span class="n">10</span>, <span class="n">-2</span>] })));
-<span class="k">const</span> part = <span class="fn">unwrap</span>(<span class="fn">fillet</span>(drilled, <span class="fn">edgeFinder</span>().<span class="fn">inDirection</span>(<span class="s">'Z'</span>).<span class="fn">findAll</span>(drilled), <span class="n">1.5</span>));
-<span class="k">const</span> step = <span class="fn">unwrap</span>(<span class="fn">exportSTEP</span>(part));
-
-<span class="k">export default</span> part;`;
+// Type-safety card: real code highlighted by the tokenizer, with the genuine
+// tsc error (captured under --strict) as annotation lines.
+const typeCardHtml = [
+  highlightLine('const w = unwrap(wire([line(a, b), line(b, c), line(c, a)]));'),
+  '',
+  highlightLine('const f = filledFace(w);'),
+  '<span class="er">                     ~</span>',
+  `<span class="cm">// TS2345: Argument of type 'Wire' is not assignable</span>`,
+  `<span class="cm">//   to parameter of type 'ClosedWire'. Property</span>`,
+  `<span class="cm">//   '[__closed]' is missing in type 'Wire'.</span>`,
+  '',
+  `<span class="cm">// prove it closed first — now it compiles</span>`,
+  highlightLine('const ok = filledFace(unwrap(closedWire(w)));') + ' <span class="ok">// ✓</span>',
+].join('\n');
 
 // Reveal-on-scroll, gated behind prefers-reduced-motion.
 const root = ref<HTMLElement | null>(null);
@@ -180,18 +187,7 @@ onBeforeUnmount(() => observer?.disconnect());
             <div class="code-bar">
               <span class="dot3"><i></i><i></i><i></i></span> face.ts — tsc --strict
             </div>
-            <pre
-              class="code"
-            ><code><span class="k">const</span> w = <span class="fn">unwrap</span>(<span class="fn">wire</span>([<span class="fn">line</span>(a, b), <span class="fn">line</span>(b, c), <span class="fn">line</span>(c, a)]));
-
-<span class="k">const</span> f = <span class="fn">filledFace</span>(w);
-<span class="er">                     ~</span>
-<span class="cm">// TS2345: Argument of type 'Wire' is not assignable</span>
-<span class="cm">//   to parameter of type 'ClosedWire'. Property</span>
-<span class="cm">//   '[__closed]' is missing in type 'Wire'.</span>
-
-<span class="cm">// prove it closed first — now it compiles</span>
-<span class="k">const</span> ok = <span class="fn">filledFace</span>(<span class="fn">unwrap</span>(<span class="fn">closedWire</span>(w))); <span class="ok">// ✓</span></code></pre>
+            <pre class="code"><code v-html="typeCardHtml"></code></pre>
           </div>
         </div>
       </section>
@@ -199,17 +195,15 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── CAD AN AGENT CAN PROVE (prominent) ──────────────────── -->
       <section class="band feature ai" data-reveal>
         <div class="wrap">
-          <div class="sec-head center">
+          <div class="sec-head">
             <p class="eyebrow">AI-foundational</p>
             <h2>CAD an agent can prove.</h2>
             <p class="lead">
-              The hard part of AI plus CAD isn't drawing a shape — it's knowing the shape is
-              correct. Models can't see geometry, and generated CAD is often invalid or merely
-              plausible-looking. brepjs answers this twice: the type system rejects invalid geometry
-              before it runs, and <code>brepjs-verify</code> runs the part on a real kernel and
-              returns a deterministic report — validity, measured dimensions, multi-view snapshots,
-              and a STEP export. The agent reads facts instead of guessing. It ships as a Claude
-              Code skill and a CLI.
+              The hard part of AI plus CAD isn't drawing a shape — it's knowing it's correct. brepjs
+              answers twice: the type system rejects invalid geometry before it runs, and
+              <code>brepjs-verify</code> runs the part on a real kernel and returns a deterministic
+              report — validity, measured dimensions, multi-view snapshots, a STEP export. Ships as
+              a Claude Code skill and a CLI.
             </p>
           </div>
 
@@ -385,7 +379,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── FIVE-LINE LOOP ──────────────────── -->
       <section class="band alt loop" data-reveal>
         <div class="wrap">
-          <div class="sec-head center">
+          <div class="sec-head">
             <p class="eyebrow">Code-as-CAD</p>
             <h2>The whole code-CAD loop, in five lines.</h2>
           </div>
@@ -920,26 +914,38 @@ pre.code.big {
   font-size: 13.5px;
   line-height: 1.95;
 }
-.code .k,
+.code :deep(.k),
 .term .kk {
   color: #c9defb;
 }
-.code .fn {
+.code :deep(.fn) {
   color: var(--teal-200);
 }
-.code .s {
+.code :deep(.s) {
   color: #ffd9a8;
 }
-.code .n {
+.code :deep(.n) {
   color: #f2a6c2;
 }
-.code .cm {
+.code :deep(.cm) {
   color: var(--ink-2);
 }
-.code .er {
+.code :deep(.ty) {
+  color: #6ee7c8;
+}
+.code :deep(.pr) {
+  color: #9cdcfe;
+}
+.code :deep(.va) {
+  color: #c8d3da;
+}
+.code :deep(.op) {
+  color: #7c8794;
+}
+.code :deep(.er) {
   color: #ff8c8c;
 }
-.code .ok,
+.code :deep(.ok),
 .term .ok {
   color: var(--pass);
 }
@@ -1036,7 +1042,6 @@ pre.code.big {
   margin-top: 26px;
   font-size: 15px;
   color: var(--ink-2);
-  text-align: center;
 }
 
 /* kernels */
@@ -1116,7 +1121,6 @@ pre.code.big {
 }
 .loop-card {
   max-width: 880px;
-  margin: 0 auto;
 }
 
 /* provenance + closer */

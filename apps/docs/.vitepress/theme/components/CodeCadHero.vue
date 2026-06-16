@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { withBase } from 'vitepress';
 import { encodeCode } from '../playgroundLink';
+import { tokenize, tokensToHtml } from './codeHighlight';
 import type { CodeCadHandle, HeroFramesData } from './codeCadRenderer';
 
 // The program the panel types out, and what "Open in Playground" carries — a
@@ -24,62 +25,12 @@ const lip = unwrap(cut(lipOuter, lipInner));
 
 export default unwrap(fuse(body, lip));`;
 
-const LINES_HTML = [
-  `<span class="k">import</span> { <span class="fn">drawRoundedRectangle</span>, <span class="fn">cut</span>, <span class="fn">fuse</span>, <span class="fn">unwrap</span> } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
-  ``,
-  `<span class="k">const</span> [W, WALL, H] = [<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">1.2</span>, <span class="n">3</span> * <span class="n">7</span>]; <span class="cm">// 1×1 bin, 3 units tall</span>`,
-  `<span class="k">const</span> <span class="fn">r</span> = (inset, z) => <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*inset, W - <span class="n">2</span>*inset, <span class="n">3.75</span> - inset).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, z);`,
-  ``,
-  `<span class="cm">// Gridfinity socket foot — mates with a baseplate</span>`,
-  `<span class="k">const</span> foot = <span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.15</span>, -<span class="n">2.4</span>), <span class="fn">r</span>(<span class="n">2.95</span>, -<span class="n">5</span>)], { ruled: <span class="k">true</span> });`,
-  ``,
-  `<span class="cm">// hollow body — walls + floor</span>`,
-  `<span class="k">const</span> body = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(foot, <span class="fn">unwrap</span>(<span class="fn">cut</span>(<span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">extrude</span>(H), <span class="fn">r</span>(WALL, <span class="n">1</span>).<span class="fn">extrude</span>(H)))));`,
-  ``,
-  `<span class="cm">// stacking lip — so bins nest when stacked</span>`,
-  `<span class="k">const</span> lipOuter = <span class="fn">r</span>(<span class="n">0</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">0</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
-  `<span class="k">const</span> lipInner = <span class="fn">r</span>(<span class="n">1.2</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.6</span>, H-<span class="n">1.2</span>), <span class="fn">r</span>(<span class="n">2.6</span>, H), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">0.7</span>), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">2.5</span>), <span class="fn">r</span>(<span class="n">0.05</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
-  `<span class="k">const</span> lip = <span class="fn">unwrap</span>(<span class="fn">cut</span>(lipOuter, lipInner));`,
-  ``,
-  `<span class="k">export default</span> <span class="fn">unwrap</span>(<span class="fn">fuse</span>(body, lip));`,
-];
-
-// Parse the highlighted lines into {text, class} tokens so the panel can type
-// in one character at a time without splitting the syntax spans.
-type Tok = { t: string; c?: string };
-const TOKEN_RE = /<span class="([a-z]+)">([\s\S]*?)<\/span>|([^<]+)/g;
-const unescapeHtml = (s: string): string =>
-  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-const escapeHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-const LINE_TOKENS: Tok[][] = LINES_HTML.map((html) => {
-  const toks: Tok[] = [];
-  let m: RegExpExecArray | null;
-  TOKEN_RE.lastIndex = 0;
-  while ((m = TOKEN_RE.exec(html)) !== null) {
-    if (m[1] !== undefined) toks.push({ t: unescapeHtml(m[2] ?? ''), c: m[1] });
-    else toks.push({ t: unescapeHtml(m[3] ?? '') });
-  }
-  return toks;
-});
-const LINE_PLAIN = LINE_TOKENS.map((toks) => toks.map((t) => t.t).join(''));
-const LINE_LEN = LINE_PLAIN.map((s) => s.length);
-const LINE_INDENT = LINE_PLAIN.map((s) => s.length - s.trimStart().length);
-
-function partialHtml(toks: Tok[], n: number): string {
-  let out = '';
-  let count = 0;
-  for (const tok of toks) {
-    if (count >= n) break;
-    const take = Math.min(tok.t.length, n - count);
-    out += tok.c
-      ? `<span class="${tok.c}">${escapeHtml(tok.t.slice(0, take))}</span>`
-      : escapeHtml(tok.t.slice(0, take));
-    count += take;
-  }
-  return out || '&nbsp;';
-}
+// Real syntax highlighting via the shared tokenizer. Keeping tokens (not
+// pre-baked HTML) lets the panel reveal a line one character at a time.
+const LINES = PROGRAM.split('\n');
+const LINE_TOKENS = LINES.map(tokenize);
+const LINE_LEN = LINES.map((s) => s.length);
+const LINE_INDENT = LINES.map((s) => s.length - s.trimStart().length);
 
 // When a given line finishes "typing", run this geometry step.
 const STEP_AT: Record<number, { frame: number; step: number }> = {
@@ -114,7 +65,7 @@ const COMPLETIONS: Record<
   { at: number; selected: number; items: CompletionItem[]; method: string }
 > = {};
 for (const s of COMPLETION_SPECS) {
-  const idx = (LINE_PLAIN[s.line] ?? '').indexOf(s.marker);
+  const idx = (LINES[s.line] ?? '').indexOf(s.marker);
   if (idx >= 0) {
     const method = SKETCH_METHODS[s.selected]?.n ?? '';
     COMPLETIONS[s.line] = {
@@ -185,8 +136,8 @@ function showCompletion(c: { selected: number; items: CompletionItem[] }): void 
 
 // HTML for a line given how far typing has progressed.
 function lineHtml(i: number): string {
-  if (i < typedLine.value) return LINES_HTML[i] || '&nbsp;';
-  if (i === typedLine.value) return partialHtml(LINE_TOKENS[i] ?? [], typedChars.value);
+  if (i < typedLine.value) return tokensToHtml(LINE_TOKENS[i] ?? []);
+  if (i === typedLine.value) return tokensToHtml(LINE_TOKENS[i] ?? [], typedChars.value);
   return '&nbsp;';
 }
 
@@ -208,7 +159,7 @@ function advanceLine(delay: number): void {
 function typeTick(): void {
   if (paused) return;
   const i = typedLine.value;
-  if (i >= LINES_HTML.length) {
+  if (i >= LINES.length) {
     finished.value = true; // play once — wait for Replay
     return;
   }
@@ -335,7 +286,7 @@ onMounted(async () => {
 
   if (reduceMotion) {
     // No typing/playback: show the whole program and the finished bin.
-    typedLine.value = LINES_HTML.length;
+    typedLine.value = LINES.length;
     typedChars.value = 0;
     doneLines.value = new Set([6, 9, 14, DONE_LINE]);
     stepIndex.value = 2;
@@ -384,7 +335,7 @@ onBeforeUnmount(() => {
           @mouseout="onCodeOut"
         >
           <li
-            v-for="(line, i) in LINES_HTML"
+            v-for="(line, i) in LINES"
             :key="i"
             :class="{ typed: i <= typedLine, active: i === typedLine, done: doneLines.has(i) }"
           >
@@ -634,6 +585,18 @@ onBeforeUnmount(() => {
 }
 .code .src :deep(.cm) {
   color: #5b6b66;
+}
+.code .src :deep(.ty) {
+  color: #6ee7c8;
+}
+.code .src :deep(.pr) {
+  color: #9cdcfe;
+}
+.code .src :deep(.va) {
+  color: #c8d3da;
+}
+.code .src :deep(.op) {
+  color: #7c8794;
 }
 .caret {
   display: inline-block;
