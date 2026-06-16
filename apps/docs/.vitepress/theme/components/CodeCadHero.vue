@@ -142,8 +142,16 @@ function lineHtml(i: number): string {
 }
 
 function scrollActive(): void {
+  // Scroll only the code panel's own overflow — never call scrollIntoView,
+  // which would scroll the whole page back up to the hero as lines type in.
   void nextTick(() => {
-    codeEl.value?.querySelector('li.active')?.scrollIntoView({ block: 'nearest' });
+    const ol = codeEl.value;
+    const li = ol?.querySelector('li.active') as HTMLElement | null;
+    if (!ol || !li) return;
+    const o = ol.getBoundingClientRect();
+    const l = li.getBoundingClientRect();
+    if (l.bottom > o.bottom) ol.scrollTop += l.bottom - o.bottom;
+    else if (l.top < o.top) ol.scrollTop += l.top - o.top;
   });
 }
 
