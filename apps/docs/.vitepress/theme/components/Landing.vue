@@ -1,19 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import CodeCadHero from './CodeCadHero.vue';
-import { encodeCode } from '../playgroundLink';
-import { highlightCode, highlightLine } from './codeHighlight';
-
-const loopSnippet = `import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
-
-const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));
-const part = unwrap(fillet(drilled, edgeFinder().inDirection('Z').findAll(drilled), 1.5));
-const step = unwrap(exportSTEP(part));
-
-export default part;`;
-
-const playgroundHref = encodeCode(loopSnippet);
-const loopSnippetHtml = highlightCode(loopSnippet);
+import { highlightLine } from './codeHighlight';
 
 // Type-safety card: real code highlighted by the tokenizer, with the genuine
 // tsc error (captured under --strict) as annotation lines.
@@ -376,29 +364,6 @@ onBeforeUnmount(() => observer?.disconnect());
         </div>
       </section>
 
-      <!-- ──────────────────── FIVE-LINE LOOP ──────────────────── -->
-      <section class="band alt loop" data-reveal>
-        <div class="wrap">
-          <div class="sec-head">
-            <p class="eyebrow">Code-as-CAD</p>
-            <h2>The whole code-CAD loop, in five lines.</h2>
-          </div>
-          <div class="loop-card">
-            <div class="code-bar">
-              <span class="dot3"><i></i><i></i><i></i></span> part.ts
-              <a class="run-link" :href="playgroundHref" target="_blank" rel="noopener"
-                >▶ Open in Playground</a
-              >
-            </div>
-            <pre class="code big"><code v-html="loopSnippetHtml"></code></pre>
-          </div>
-          <p class="caption">
-            Drill a hole, fillet the vertical edges, export to STEP — then open it in the Playground
-            to watch it run.
-          </p>
-        </div>
-      </section>
-
       <!-- ──────────────────── SCOPE ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">
@@ -433,7 +398,7 @@ onBeforeUnmount(() => observer?.disconnect());
             <li>runs in the browser</li>
           </ul>
           <div class="closer">
-            <h2>Start with five lines.</h2>
+            <h2>Write your first solid.</h2>
             <div class="cta-row center">
               <a class="btn-primary" href="/playground" target="_blank" rel="noopener"
                 >Open the Playground</a
@@ -864,8 +829,7 @@ h2 {
 
 /* code cards / terminals */
 .code-card,
-.panel,
-.loop-card {
+.panel {
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
@@ -891,14 +855,6 @@ h2 {
   border-radius: 50%;
   background: var(--line-2);
 }
-.run-link {
-  margin-left: auto;
-  color: var(--teal-200);
-  font-size: 12px;
-}
-.run-link:hover {
-  color: var(--teal-100);
-}
 pre.code,
 pre.term {
   margin: 0;
@@ -908,10 +864,6 @@ pre.term {
   font-size: 13px;
   line-height: 1.75;
   color: var(--ink-1);
-}
-pre.code.big {
-  font-size: 13.5px;
-  line-height: 1.95;
 }
 .code :deep(.k),
 .term .kk {
@@ -1112,14 +1064,6 @@ pre.code.big {
   color: var(--ink-2);
   font-size: 9px;
   margin-left: 2px;
-}
-
-/* loop section */
-.loop .sec-head {
-  margin-bottom: 30px;
-}
-.loop-card {
-  max-width: 880px;
 }
 
 /* provenance + closer */
