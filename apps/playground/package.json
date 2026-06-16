@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run check:examples && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "check:examples": "npx tsx scripts/checkExamples.ts",
     "smoke": "npx tsx scripts/smoke.ts",
     "shoot": "npx tsx scripts/shootExamples.ts",
     "thumbs": "npx tsx scripts/shootExamples.ts --thumbs",

@@ -1,18 +1,8 @@
 import type { Monaco } from '@monaco-editor/react';
 import ambientTypes from '../types/brepjs-ambient.d.ts?raw';
+import { buildBrepjsModuleDts } from './ambientModule';
 
 let initialized = false;
-
-// Top-level declarations in the ambient file sit at column 0; the line-anchored
-// regexes below rely on that invariant.
-function ambientToModuleBody(ambient: string): string {
-  return ambient
-    .replace(
-      /^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?(abstract\s+class|class|function|const|let|var|namespace|enum|interface)\b/gm,
-      '$1export $2'
-    )
-    .replace(/^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?type(\s+\w+\b)/gm, '$1export type$2');
-}
 
 export function setupMonaco(monaco: Monaco) {
   if (initialized) return;
@@ -60,12 +50,8 @@ export function setupMonaco(monaco: Monaco) {
     noSyntaxValidation: false,
   });
 
-  const moduleBody = ambientToModuleBody(ambientTypes);
-  const moduleDts =
-    `declare module 'brepjs' {\n${moduleBody}\n}\n` +
-    `declare module 'brepjs/quick' {\n${moduleBody}\n}\n`;
   monaco.languages.typescript.typescriptDefaults.addExtraLib(
-    moduleDts,
+    buildBrepjsModuleDts(ambientTypes),
     'file:///node_modules/@types/brepjs/index.d.ts'
   );
 }

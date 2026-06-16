@@ -81,6 +81,14 @@ const KERNEL_TYPES = [
 ];
 const KERNEL_TYPE_RE = new RegExp(`\\b(${KERNEL_TYPES.join('|')})\\b`, 'g');
 
+// Modules whose exports are kept out of the playground ambient types. The
+// experimental implicit/SDF domain re-exports primitive names (`cylinder`,
+// `box`, `cone`, …) aliased as `sdfCylinder` etc.; emitting them would collide
+// with the core solid primitives of the same local name and overwrite them.
+// No playground example or doc uses the SDF domain, so it is excluded until it
+// is a supported playground API.
+const EXCLUDED_MODULE_RE = /(^|\/)implicit\//;
+
 // ── Recursive declaration resolution ──
 
 /**
@@ -265,6 +273,7 @@ for (const stmt of indexSf.statements) {
     stmt.exportClause &&
     ts.isNamedExports(stmt.exportClause)
   ) {
+    if (EXCLUDED_MODULE_RE.test(stmt.moduleSpecifier.text)) continue;
     const targetPath = resolveModulePath(ENTRY, stmt.moduleSpecifier.text);
     const list = moduleExports.get(targetPath) ?? [];
     for (const el of stmt.exportClause.elements) {

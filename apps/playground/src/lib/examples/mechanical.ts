@@ -28,7 +28,7 @@ function gridfinityBin({ cols = 1, rows = 1, heightUnits = 3 } = {}) {
 
   // Rounded rectangle on plane XY at height z, inset on every edge (the inset
   // shrinks the corner radius with it, so the chamfers stay concentric).
-  const rect = (w, h, inset, z) =>
+  const rect = (w: number, h: number, inset: number, z: number) =>
     drawRoundedRectangle(w - 2 * inset, h - 2 * inset, 3.75 - inset).sketchOnPlane('XY', z);
 
   // One socket foot per grid cell — the chamfered pad that clicks onto a baseplate.
@@ -166,7 +166,7 @@ function axialFan({
   const steps = 10; // sections along the blade — more = smoother
 
   // One cross-section (4 corners) at path parameter t in [0, 1].
-  const section = (t: number) => {
+  const section = (t: number): [number, number, number][] => {
     const rr = rInner + (rOuter - rInner) * t;
     const ang = sweep * t * t; // accelerating curl reads as an organic scoop
     const pitch = pitch0 + (pitch1 - pitch0) * t;

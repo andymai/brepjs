@@ -163,6 +163,19 @@ interface KernelCore {
      * Used to prevent mixing shapes from different kernels.
      */
     readonly kernelId: string;
+    /**
+     * What this kernel *is* — exact vs mesh-approximate, can export B-rep, how
+     * tessellation is controlled. Lets callers route export/measurement and
+     * quality without hard-coding kernel ids. See {@link ../capabilities.js}.
+     */
+    readonly capabilities: KernelCapabilities;
+    /**
+     * Apply a tessellation quality level. Implemented only by `build-time`
+     * kernels (e.g. Manifold maps it to a global circular-segment setting before
+     * solids are built); `extract-time` kernels leave this undefined and instead
+     * read the active level as their default deflection at `mesh()`/export time.
+     */
+    setQuality?(level: QualityLevel): void;
     /** Dispose a kernel handle, releasing its resources. */
     dispose(handle: {
         delete(): void;
@@ -471,6 +484,15 @@ interface KernelSurfaceOps {
     getSurfaceCylinderData(surface: KernelType): {
         radius: number;
         isDirect: boolean;
+    } | null;
+    /**
+     * Get a face's analytic axis of symmetry (e.g. a cylinder's axis): a point on
+     * the axis plus a unit direction. Returns null if the face has no well-defined
+     * axis (non-cylindrical, or the adapter can't determine it).
+     */
+    getSurfaceAxis(face: KernelShape): {
+        origin: [number, number, number];
+        direction: [number, number, number];
     } | null;
     /** Reverse the U direction of a surface. Returns a new surface handle. */
     reverseSurfaceU(surface: KernelType): KernelType;
@@ -789,6 +811,10 @@ interface OcctKernelWasm {
     approximatePoints(flatPoints: EmVectorDouble, tolerance: number): number;
     projectEdges(shapeId: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, xx: number, xy: number, xz: number, hasXAxis: boolean): EmProjectionData;
     getNurbsCurveData(edgeId: number): EmNurbsCurveData;
+    curveDegreeElevate(edgeId: number, elevateBy: number): number;
+    curveKnotInsert(edgeId: number, knot: number, times: number): number;
+    curveKnotRemove(edgeId: number, knot: number, tolerance: number): number;
+    curveSplit(edgeId: number, param: number): EmVectorUint32;
     liftCurve2dToPlane(flatPoints2d: EmVectorDouble, planeOx: number, planeOy: number, planeOz: number, planeZx: number, planeZy: number, planeZz: number, planeXx: number, planeXy: number, planeXz: number): number;
     xcafNewDocument(): number;
     xcafClose(docId: number): void;
@@ -876,6 +902,35 @@ declare function getKernel(id?: string): KernelAdapter;
 
 declare function withKernel<T extends Exclude<unknown, Promise<unknown>>>(id: string, fn: () => T): T;
 
+/** Capabilities of a kernel (defaults to the active kernel). */
+declare function getKernelCapabilities(id?: string): KernelCapabilities;
+
+/**
+ * Run `fn` at a tessellation quality level. For `build-time` kernels (Manifold)
+ * the level is pushed to the kernel's global setting on enter and restored on
+ * exit; for `extract-time` kernels (OCCT) it becomes the default deflection at
+ * `mesh()`/export inside `fn`. Synchronous only (mirrors {@link withKernel}).
+ */
+declare function withQuality<T extends Exclude<unknown, Promise<unknown>>>(level: QualityLevel, fn: () => T): T;
+
+/**
+ * Bind a named tier to a (kernel, quality) pair — e.g. a `'preview'` tier on a
+ * fast mesh kernel at `'draft'` quality, and an `'exact'` tier on an OCCT
+ * kernel at `'fine'`. Lets call sites express intent (`withTier('preview', …)`)
+ * instead of hard-coding a kernel id + quality knob.
+ */
+declare function registerKernelTier(name: string, tier: KernelTier): void;
+
+/** The (kernel, quality) a tier resolves to, or undefined if unregistered. */
+declare function getKernelTier(name: string): KernelTier | undefined;
+
+/**
+ * Run `fn` under a registered tier: switches to the tier's kernel and applies
+ * its quality (both restored on exit). Composes {@link withKernel} and
+ * {@link withQuality}. Throws if the tier is unregistered.
+ */
+declare function withTier<T extends Exclude<unknown, Promise<unknown>>>(name: string, fn: () => T): T;
+
 /** Initialise the brepjs kernel from a loaded WASM instance. */
 declare function initFromOC(oc: KernelInstance): void;
 
@@ -918,6 +973,66 @@ declare function prewarm(): void;
  * ```
  */
 declare function init(): Promise<string>;
+
+/**
+ * Tessellation quality levels — a kernel-agnostic fidelity/speed dial.
+ *
+ * Callers pick an intent (`'draft' | 'standard' | 'fine'`) instead of
+ * kernel-specific knobs (Manifold circular segments vs. OCCT deflection). Each
+ * level maps to:
+ * - a **deflection** pair, used as the default at `mesh()`/export for
+ *   `extract-time` kernels (OCCT), and
+ * - a per-kernel `setQuality()` for `build-time` kernels (Manifold), which
+ *   translate the level to their native global setting before a solid is built.
+ *
+ * The current level is process-global state, scoped by `withQuality()` /
+ * `withTier()` in `./index.js`. This module is pure data + state so it has no
+ * dependency on the kernel registry.
+ * @module
+ */
+type QualityLevel = 'draft' | 'standard' | 'fine';
+
+/** The active quality level (defaults to `'standard'`). */
+declare function currentQuality(): QualityLevel;
+
+/**
+ * Kernel capability flags — let callers route work by what a kernel *is*, not by
+ * its id. The headline need: send export/measurement to an exact B-rep kernel
+ * and fast previews to a mesh kernel without hard-coding `'manifold'` vs
+ * `'occt-wasm'` at every call site.
+ *
+ * `tessellationModel` also tells the quality layer (see {@link ./quality.js})
+ * *how* a kernel's mesh resolution is controlled:
+ * - `'build-time'`  — the mesh is fixed when the solid is built (e.g. Manifold's
+ *   global circular-segment setting); quality must be applied *before* building.
+ * - `'extract-time'`— the shape is exact and tessellated on demand with a
+ *   per-call deflection (e.g. OCCT); quality is the default deflection at
+ *   `mesh()`/export time.
+ * - `'none'`        — no tessellation control (or not a meshing kernel).
+ * @module
+ */
+type TessellationModel = 'build-time' | 'extract-time' | 'none';
+
+interface KernelCapabilities {
+    /** Exact B-rep geometry (vs. a mesh approximation). */
+    readonly exact: boolean;
+    /** Can serialize to B-rep exchange formats (BREP/STEP). */
+    readonly brepExport: boolean;
+    /** Volume/area/length match the analytic value (vs. mesh-approximate). */
+    readonly exactMeasurement: boolean;
+    /** How tessellation resolution is controlled — see module docs. */
+    readonly tessellationModel: TessellationModel;
+}
+
+/** Default for an exact B-rep kernel (OCCT family, brepkit). */
+declare const EXACT_BREP_CAPABILITIES: KernelCapabilities;
+
+/**
+ * Conservative fallback for a kernel that doesn't declare capabilities: assume
+ * exact B-rep so export/measurement aren't wrongly blocked, but claim no
+ * tessellation control.
+ */
+declare const DEFAULT_CAPABILITIES: KernelCapabilities;
 
 type PerformanceStats = Record<PerfCategory, CategoryStats>;
 
@@ -1982,6 +2097,25 @@ interface GltfMaterial {
 }
 
 /**
+ * A meshed face as presented to a {@link MaterialFn} — its stable id and the
+ * centroid of its triangles in part coordinates (Z-up, mm).
+ */
+interface GltfFace {
+    /** Stable face identifier — matches ShapeMesh.faceGroups[].faceId. */
+    faceId: number;
+    /** Centroid of the face's vertices, in part (Z-up, mm) coordinates. */
+    center: [number, number, number];
+}
+
+/**
+ * Per-face material selector. Called once per face group; return a material to
+ * paint that face, or `undefined` to leave it at the glTF default. Consumed by
+ * tooling (e.g. brepjs-verify's `export const materials`) that has the mesh and
+ * builds the faceId→material map passed to {@link GltfExportOptions.materials}.
+ */
+type MaterialFn = (face: GltfFace) => GltfMaterial | undefined;
+
+/**
  * Options for glTF/GLB export.
  *
  * When `materials` is provided, faces are grouped into separate
@@ -1990,6 +2124,14 @@ interface GltfMaterial {
 interface GltfExportOptions {
     /** Map of faceId → material. FaceIds come from ShapeMesh.faceGroups[].faceId. */
     materials?: Map<number, GltfMaterial>;
+    /**
+     * Up-axis of the emitted document. brepjs geometry is Z-up (CAD convention),
+     * but glTF 2.0 mandates Y-up. With `'Y'` (the default) a root node carrying a
+     * −90° rotation about X is emitted so the part stands upright in standard glTF
+     * viewers (three.js, model-viewer, Blender); vertex data stays Z-up, matching
+     * the STEP/STL exports. Use `'Z'` to emit raw Z-up coordinates with no root node.
+     */
+    upAxis?: 'Y' | 'Z';
 }
 
 /**
@@ -2236,6 +2378,25 @@ interface VoxelEngine {
     shell_mesh(verts: Float32Array, tris: Uint32Array, thickness: number, resolution: number, padding: number): VoxelRepairResult;
     /** Voxel CSG of two meshes (op: 0=union, 1=intersection, 2=difference A−B). */
     voxel_boolean(verts_a: Float32Array, tris_a: Uint32Array, verts_b: Float32Array, tris_b: Uint32Array, op: number, resolution: number, padding: number): VoxelRepairResult;
+    /**
+     * Persistent dense voxel-field class, for same-grid op chains: voxelize a mesh
+     * once, then boolean/offset/shell/reinit in place, contour once. Structurally
+     * satisfied by the generated `VoxelField` wasm-bindgen class.
+     */
+    VoxelField: WasmVoxelFieldConstructor;
+    /**
+     * Field-first analytic SDF builder (ADR-0013). Static primitive constructors
+     * and combinator methods compose an opaque expression tree that rasterizes
+     * directly into a {@link WasmVoxelField} with no input mesh. Structurally
+     * satisfied by the generated `Sdf` wasm-bindgen class.
+     */
+    Sdf: WasmSdfConstructor;
+    /**
+     * Position-varying scalar fields (brepjs-implicit Phase 2b). Static constructors
+     * compose an opaque field that the `Sdf` modulated operators sample per voxel.
+     * Structurally satisfied by the generated `ScalarField` wasm-bindgen class.
+     */
+    ScalarField: WasmScalarFieldConstructor;
     /** Engine artifact version, for loader/artifact compatibility checks. */
     version(): string;
 }
@@ -2350,6 +2511,133 @@ declare function shellShape(shape: AnyShape<Dimension>, thickness: number, opts?
  * `err(...)`.
  */
 declare function voxelBooleanShapes(a: AnyShape<Dimension>, b: AnyShape<Dimension>, op: 'union' | 'intersection' | 'difference', opts?: VoxelOpOptions, id?: string): Result<KernelMeshResult>;
+
+/** Field tuning. `resolution` sizes the longest bbox axis in voxels; `padding`
+ *  is the air-margin ring (>= 1) Surface Nets needs AND the headroom an outward
+ *  offset has before it clips at the grid boundary (the grid is fixed at
+ *  voxelize time — size both for the intended maximum offset). */
+interface VoxelFieldOptions {
+    resolution?: number;
+    padding?: number;
+}
+
+/** Boolean op selector for {@link fieldBoolean} / {@link VoxelFieldHandle.boolean}. */
+type VoxelBooleanOp = 'union' | 'intersection' | 'difference';
+
+/**
+ * A persistent, disposable voxel field. Carries the wrapped WASM field as
+ * `value` and a fluent op-chain (`.boolean().offset().shell().contour()`) that
+ * throws on the rare WASM error (mirroring the `shape()` facade's
+ * throw-on-`Err` convention), so a `using`-scoped chain reads cleanly:
+ *
+ * ```ts
+ * using field = voxelField(meshA).unwrap();
+ * using other = voxelField(meshB).unwrap();
+ * const mesh = field.boolean(other, 'union').offset(2).contour();
+ * ```
+ *
+ * Dispose is mandatory (FinalizationRegistry is an unreliable safety net): use
+ * `using`, or call `[Symbol.dispose]()` explicitly, to free the WASM grid.
+ */
+interface VoxelFieldHandle {
+    /** The wrapped WASM field. Throws if the handle has been disposed. */
+    readonly value: WasmVoxelField;
+    /** Whether the backing WASM grid has been freed. */
+    readonly disposed: boolean;
+    [Symbol.dispose](): void;
+    /** CSG-combine with `other` in place (marks the field for lazy reinit). */
+    boolean(other: VoxelFieldHandle, op: VoxelBooleanOp): VoxelFieldHandle;
+    /** Offset the surface in place (>0 outward, <0 inward); auto-reinits if dirty. */
+    offset(distance: number): VoxelFieldHandle;
+    /** Hollow into an inward shell in place (thickness > 0); auto-reinits if dirty. */
+    shell(thickness: number): VoxelFieldHandle;
+    /** Reinitialize φ to a true SDF while preserving the zero set. */
+    reinit(): VoxelFieldHandle;
+    /** Surface-Nets contour the current field to a mesh (the field stays alive). */
+    contour(): KernelMeshResult;
+}
+
+/**
+ * Voxelize a mesh into a persistent dense {@link VoxelFieldHandle}: one grid you
+ * can boolean / offset / shell / reinit in place, then contour once. The handle
+ * is disposable — free the WASM grid with `using` (or `[Symbol.dispose]()`).
+ *
+ * `resolution` sizes the longest bbox axis; `padding` is the air-margin ring.
+ * Errors on an empty/invalid mesh, or if the grid would exceed the dense budget
+ * (the persistent path is dense-only) or the voxel cap.
+ */
+declare function voxelField(mesh: VoxelMeshInput, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * Boolean two meshes into ONE co-registered, chainable {@link VoxelFieldHandle}:
+ * voxelize both onto a single shared grid sized to their union bbox, combine by
+ * `op`, and keep the field. This is THE correct way to "boolean then chain
+ * offset/shell" two independently-described meshes — unlike {@link fieldBoolean},
+ * which requires the operands to already share grid geometry. The result is
+ * dirty (the blend drifts the gradient), so a subsequent offset/shell
+ * auto-reinitializes. The handle is disposable — free it with `using`.
+ *
+ * `op` is `'difference'` = A − B. Errors on an empty/invalid mesh, or if the
+ * shared grid would exceed the dense budget (the persistent path is dense-only).
+ */
+declare function voxelBooleanField(a: VoxelMeshInput, b: VoxelMeshInput, op: VoxelBooleanOp, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * CSG-combine two fields IN PLACE, returning the SAME `handle` for chaining. The
+ * min/max blend keeps the zero set exact but drifts the gradient near the join,
+ * so a subsequent {@link fieldOffset}/{@link fieldShell} auto-reinitializes.
+ *
+ * PRECONDITION: both operands must be CO-REGISTERED — same origin, spacing, AND
+ * dims. Two fields built by {@link voxelField} from DIFFERENT meshes generally do
+ * NOT share geometry (each sizes its grid to its own bbox), and the WASM guard
+ * rejects that mismatch as an `err(...)` rather than silently blending mismatched
+ * coordinate frames. For the easy co-registered path, build the field directly
+ * from both meshes with {@link voxelBooleanField}.
+ */
+declare function fieldBoolean(handle: VoxelFieldHandle, other: VoxelFieldHandle, op: VoxelBooleanOp): Result<VoxelFieldHandle>;
+
+/**
+ * Offset the field's surface IN PLACE (>0 outward, <0 inward), returning the
+ * SAME `handle`. Auto-reinitializes first if the field is dirty (post-boolean),
+ * so the iso-shift always rides a true SDF.
+ */
+declare function fieldOffset(handle: VoxelFieldHandle, distance: number): Result<VoxelFieldHandle>;
+
+/**
+ * Hollow the field into an inward shell of `thickness` IN PLACE, returning the
+ * SAME `handle`. Auto-reinitializes first if dirty; the result is dirty again
+ * (the shell re-introduces a kink).
+ */
+declare function fieldShell(handle: VoxelFieldHandle, thickness: number): Result<VoxelFieldHandle>;
+
+/**
+ * Explicitly reinitialize φ to a true SDF (|∇φ|=1) while preserving the zero
+ * set, returning the SAME `handle`. Idempotent on a clean field. Offset/shell
+ * already auto-reinitialize, so this is for advanced control only.
+ */
+declare function fieldReinit(handle: VoxelFieldHandle): Result<VoxelFieldHandle>;
+
+/**
+ * Surface-Nets contour the current field to a {@link KernelMeshResult}. The
+ * field stays alive and chainable afterwards (contour borrows it). An empty
+ * contour surfaces as `VOXEL_DEGENERATE_RESULT`.
+ */
+declare function fieldContour(handle: VoxelFieldHandle): Result<KernelMeshResult>;
+
+/**
+ * Voxelize a B-rep shape into a persistent {@link VoxelFieldHandle}: tessellate
+ * it, then run {@link voxelField}. Threads a meshing failure back as an
+ * `err(...)`. The handle is disposable — free it with `using`.
+ */
+declare function voxelFieldFromShape(shape: AnyShape<Dimension>, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
+
+/**
+ * Boolean two B-rep shapes into one co-registered, chainable
+ * {@link VoxelFieldHandle}: tessellate both, then run {@link voxelBooleanField}.
+ * `op` is `'difference'` = A − B. Threads either meshing failure back as an
+ * `err(...)`. The handle is disposable — free it with `using`.
+ */
+declare function voxelBooleanFieldShapes(a: AnyShape<Dimension>, b: AnyShape<Dimension>, op: VoxelBooleanOp, opts?: VoxelFieldOptions, id?: string): Result<VoxelFieldHandle>;
 
 declare function registerVoxel(id: string, engine: VoxelEngine): void;
 
@@ -2901,47 +3189,12 @@ interface SketchInterface {
      *
      * Note that all sketches will be deleted by this operation
      */
-    loftWith(otherSketches: this | this[], loftConfig: LoftOptions, returnShell?: boolean): Shape3D;
-}
-
-/**
- * Batch wrapper around multiple {@link Sketch} or {@link CompoundSketch} instances.
- *
- * Applies the same operation (extrude, revolve, etc.) to every contained sketch
- * and returns the results combined into a single compound shape.
- *
- * @category Sketching
- */
-declare class Sketches {
-    sketches: Array<Sketch | CompoundSketch>;
-    constructor(sketches: Array<Sketch | CompoundSketch>);
-    /** Return all wires combined into a single compound shape. */
-    wires(): Compound;
-    /** Return all sketch faces combined into a single compound shape. */
-    faces(): Compound;
-    /** Extrudes the sketch to a certain distance (along the default direction
-     * and origin of the sketch).
-     *
-     * You can define another extrusion direction or origin,
-     *
-     * It is also possible to twist extrude with an angle (in degrees), or to
-     * give a profile to the extrusion (the endFactor will scale the face, and
-     * the profile will define how the scale is applied (either linearly or with
-     * a s-shape).
-     */
-    extrude(extrusionDistance: number, extrusionConfig?: {
-        extrusionDirection?: PointInput;
-        extrusionProfile?: ExtrusionProfile;
-        twistAngle?: number;
-        origin?: PointInput;
-    }): Compound;
+    loftWith(otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
     /**
-     * Revolves the drawing on an axis (defined by its direction and an origin
-     * (defaults to the sketch origin)
+     * Sweep a profile sketch (built by the `sketchOnPlane` callback) along this
+     * sketch's wire path.
      */
-    revolve(revolutionAxis?: PointInput, config?: {
-        origin?: PointInput;
-    }): Compound;
+    sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface, sweepConfig?: SweepOptions): Shape3D;
 }
 
 /**
@@ -3373,14 +3626,14 @@ declare function sketchExtrude(sketch: Sketch, extrusionDistance: number, { extr
  * @remarks Consumes both this sketch and the one returned by `sketchOnPlane` —
  * calling either twice throws on the second call.
  */
-declare function sketchSweep(sketch: Sketch, sketchOnPlane: (plane: Plane, origin: Vec3) => Sketch, sweepConfig?: SweepOptions): Shape3D;
+declare function sketchSweep(sketch: Sketch, sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface, sweepConfig?: SweepOptions): Shape3D;
 
 /**
  * Loft between this sketch and one or more other sketches.
  *
  * @remarks Consumes all input sketches — calling twice throws on the second call.
  */
-declare function sketchLoft(sketch: Sketch, otherSketches: Sketch | Sketch[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
+declare function sketchLoft(sketch: Sketch, otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
 
 /** Build a face from a compound sketch (outer boundary with holes). */
 declare function compoundSketchFace(sketch: CompoundSketch): OrientedFace & PlanarFace;
@@ -3404,7 +3657,7 @@ declare function compoundSketchRevolve(sketch: CompoundSketch, revolutionAxis?: 
 }): Shape3D;
 
 /** Loft between two compound sketches with matching sub-sketch counts. */
-declare function compoundSketchLoft(sketch: CompoundSketch, other: CompoundSketch, loftConfig: LoftOptions): Shape3D;
+declare function compoundSketchLoft(sketch: CompoundSketch, other: CompoundSketch, loftConfig?: LoftOptions): Shape3D;
 
 /**
  * Sketch a drawing onto a 3D plane, producing a Sketch or Sketches.
@@ -4154,6 +4407,19 @@ declare function curveTangentAt(shape: Edge<Dimension> | Wire<Dimension>, positi
 /** Get the arc length of an edge or wire. */
 declare function curveLength(shape: Edge<Dimension> | Wire<Dimension>): number;
 
+/**
+ * Axis of a circular edge: the circle's center plus the unit normal of its
+ * plane. Returns null for non-circular curves.
+ *
+ * Derived kernel-agnostically from three sampled points (the circumcenter of a
+ * triangle determines the unique circle through its vertices), so it works for
+ * full circles and arcs alike without an analytic circle accessor.
+ */
+declare function curveAxis(shape: Edge<Dimension> | Wire<Dimension>): {
+    origin: Vec3;
+    direction: Vec3;
+} | null;
+
 /** Check if the curve is closed. */
 declare function curveIsClosed(shape: Edge<Dimension> | Wire<Dimension>): boolean;
 
@@ -4359,6 +4625,16 @@ declare function normalAt(face: Face, locationPoint?: PointInput): Vec3;
 declare function faceCenter(face: Face): Vec3;
 
 /**
+ * Get a face's axis of symmetry — a point on the axis plus a unit direction —
+ * for analytic faces that have one (e.g. a cylinder's axis). Returns null when
+ * the face has no well-defined axis or the active kernel can't determine it.
+ */
+declare function faceAxis(face: Face): {
+    origin: Vec3;
+    direction: Vec3;
+} | null;
+
+/**
  * Classify a 3D point's position relative to a face boundary.
  * Projects the point onto the face's surface and classifies the UV result.
  *
@@ -4399,9 +4675,9 @@ interface EdgeMesh {
 
 /** Shared options for meshing operations. */
 interface MeshOptions {
-    /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
+    /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active quality level. */
     tolerance?: number;
-    /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
+    /** Angular deflection tolerance in radians. Smaller = finer mesh on curved surfaces. Defaults to the active quality level. */
     angularTolerance?: number;
     /** Abort signal to cancel mesh generation between face iterations. */
     signal?: AbortSignal;
@@ -4414,7 +4690,7 @@ declare function exportSTEP(shape: AnyShape<Dimension>): Result<Blob>;
  *
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
  */
-declare function exportSTL(shape: AnyShape<Dimension>, { tolerance, angularTolerance, binary, }?: MeshOptions & {
+declare function exportSTL(shape: AnyShape<Dimension>, opts?: MeshOptions & {
     binary?: boolean;
 }): Result<Blob>;
 
@@ -4589,42 +4865,6 @@ interface BooleanOptions {
      */
     trackEvolution?: boolean | undefined;
 }
-
-/**
- * Fuse all shapes in a single boolean operation.
- *
- * With `strategy: 'native'` (default), uses N-way BRepAlgoAPI_BuilderAlgo.
- * With `strategy: 'pairwise'`, uses recursive divide-and-conquer.
- *
- * @param shapes - Array of 3D shapes to fuse (at least one required).
- * @param options - Boolean operation options.
- * @returns Ok with the fused shape, or Err if the array is empty or the result is not 3D.
- *
- * @example
- * ```ts
- * const result = fuseAll([box1, box2, box3], { simplify: true });
- * ```
- */
-declare function fuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
-declare function fuseAll(shapes: Shape3D[], options: BooleanOptions & {
-    unsafe: true;
-}): Result<Shape3D>;
-
-/**
- * Cut all tool shapes from a base shape in a single boolean operation.
- *
- * Combines all tools into a compound before cutting to avoid accumulated
- * floating-point drift from sequential pair-wise cuts.
- *
- * @param base - The shape to cut from.
- * @param tools - Array of tool shapes to subtract.
- * @param options - Boolean operation options.
- * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
- */
-declare function cutAll(base: ValidSolid, tools: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
-declare function cutAll(base: Shape3D, tools: Shape3D[], options: BooleanOptions & {
-    unsafe: true;
-}): Result<Shape3D>;
 
 type PipelineOp = 'fuse' | 'cut' | 'intersect';
 
@@ -5365,6 +5605,8 @@ interface AssemblyNode {
     readonly metadata?: Readonly<Record<string, unknown>>;
     readonly children: ReadonlyArray<AssemblyNode>;
     readonly mates?: readonly unknown[];
+    /** Drivable kinematic joints (see jointFns). Typed loosely to avoid a cycle. */
+    readonly joints?: readonly unknown[];
 }
 
 interface AssemblyNodeOptions {
@@ -5450,6 +5692,311 @@ declare function addMate(assembly: AssemblyNode, constraint: MateConstraint): As
  * Solve all mate constraints and compute part transforms.
  */
 declare function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResult>;
+
+/** A joint axis: a point on the axis line plus a direction. */
+interface JointAxis {
+    readonly origin: Vec3;
+    readonly direction: Vec3;
+}
+
+type JointType = 'revolute' | 'prismatic' | 'cylindrical' | 'planar' | 'spherical';
+
+/**
+ * A single drivable degree of freedom. A `rotation` DOF turns about the joint's
+ * anchor point along `axis` (degrees); a `translation` DOF slides along `axis`
+ * (length units). `value` is always clamped to `[min, max]`.
+ */
+interface JointDOF {
+    readonly kind: 'rotation' | 'translation';
+    readonly axis: Vec3;
+    readonly min: number;
+    readonly max: number;
+    readonly value: number;
+}
+
+interface Joint {
+    readonly type: JointType;
+    /** Reference body (stays put); the child moves relative to it. */
+    readonly parent: string;
+    readonly child: string;
+    /** Primary axis; `origin` is the anchor every rotation DOF pivots about. */
+    readonly axis: JointAxis;
+    /** Primary-DOF range bounds (mirror of `dofs[0]`). */
+    readonly min: number;
+    readonly max: number;
+    /** Primary-DOF value (mirror of `dofs[0]`), always clamped to `[min, max]`. */
+    readonly value: number;
+    /** All drivable degrees of freedom, in composition order. */
+    readonly dofs: readonly JointDOF[];
+    /**
+     * Optional fixed transform applied to the child frame *after* the joint
+     * motion (`childWorld = parentWorld ∘ jointTransform ∘ offset`). Lets a single
+     * joint carry a static link offset (e.g. a Denavit-Hartenberg link geometry)
+     * without an extra body. Defaults to identity. See `jointsFromDH`.
+     */
+    readonly offset?: JointPose;
+}
+
+/** A rigid transform: translation + quaternion rotation `[w, x, y, z]`. */
+interface JointPose {
+    readonly position: Vec3;
+    readonly rotation: [number, number, number, number];
+}
+
+interface JointOptions {
+    /** Range lower bound. Default: -180 (revolute) / 0 (prismatic). */
+    min?: number;
+    /** Range upper bound. Default: 180 (revolute) / 100 (prismatic). */
+    max?: number;
+    /** Initial value, clamped to the range. Default: 0. */
+    value?: number;
+}
+
+/** Per-DOF ranges for a cylindrical joint (rotation about + slide along one axis). */
+interface CylindricalOptions {
+    /** Rotation DOF (degrees). Default range -180..180. */
+    rotation?: JointOptions;
+    /**
+     * Translation DOF (length). Default range 0..100, matching `prismaticJoint`
+     * (both model a slide along an axis). This is deliberately asymmetric with
+     * `planarJoint`'s in-plane translations, which default to -100..100 because
+     * an unanchored in-plane slide is naturally bidirectional.
+     */
+    translation?: JointOptions;
+}
+
+/** Per-DOF ranges for a planar joint (two in-plane translations + a rotation). */
+interface PlanarOptions {
+    /** Translation along the in-plane `uDirection`. Default range -100..100. */
+    u?: JointOptions;
+    /** Translation along `normal × u`. Default range -100..100. */
+    v?: JointOptions;
+    /** Rotation about the plane normal (degrees). Default range -180..180. */
+    rotation?: JointOptions;
+    /**
+     * In-plane reference direction for the `u` translation. Projected onto the
+     * plane and normalized; defaults to an arbitrary perpendicular of the normal.
+     */
+    uDirection?: Vec3;
+}
+
+/** Per-DOF ranges for a spherical joint (three rotations about a pivot). */
+interface SphericalOptions {
+    /** Rotation about local X through the pivot (degrees). Default range -180..180. */
+    x?: JointOptions;
+    /** Rotation about local Y through the pivot (degrees). Default range -180..180. */
+    y?: JointOptions;
+    /** Rotation about local Z through the pivot (degrees). Default range -180..180. */
+    z?: JointOptions;
+}
+
+/** A revolute (hinge) joint — the child rotates about `axis` by `value` degrees. */
+declare function revoluteJoint(parent: string, child: string, axis: JointAxis, opts?: JointOptions): Joint;
+
+/**
+ * A prismatic (slider) joint — the child translates along `axis` by `value`
+ * units. Only `axis.direction` is used; `axis.origin` is ignored (a pure
+ * translation has no anchor point), unlike a revolute joint which rotates about
+ * the axis line through `origin`.
+ */
+declare function prismaticJoint(parent: string, child: string, axis: JointAxis, opts?: JointOptions): Joint;
+
+/**
+ * A cylindrical joint — the child both rotates about and slides along a single
+ * `axis` (2 DOF). DOF order: `[rotation, translation]`. The two motions share
+ * the axis, so they commute; rotation pivots about `axis.origin`.
+ */
+declare function cylindricalJoint(parent: string, child: string, axis: JointAxis, opts?: CylindricalOptions): Joint;
+
+/**
+ * A planar joint — the child translates within a plane and rotates about its
+ * normal (3 DOF). `plane.direction` is the normal; `plane.origin` the rotation
+ * anchor. DOF order: `[u-translation, v-translation, rotation]`, where the
+ * translations are applied in the plane frame (independent of the rotation).
+ */
+declare function planarJoint(parent: string, child: string, plane: JointAxis, opts?: PlanarOptions): Joint;
+
+/**
+ * A spherical (ball) joint — the child rotates freely about a pivot point
+ * (3 DOF). DOF order: `[x, y, z]` rotations about the local axes through
+ * `pivot`, composed as `Rx · Ry · Rz`.
+ */
+declare function sphericalJoint(parent: string, child: string, pivot: Vec3, opts?: SphericalOptions): Joint;
+
+/**
+ * Return a copy of `joint` with per-DOF values set (each clamped to its range).
+ * Values are positional, matching `joint.dofs`; omitted entries keep their
+ * stored value. The primary mirror (`value`) is kept in sync with `dofs[0]`.
+ */
+declare function setJointValues(joint: Joint, values: readonly number[]): Joint;
+
+/** Return a copy of `joint` with its primary DOF set (clamped to range). */
+declare function setJointValue(joint: Joint, value: number): Joint;
+
+/**
+ * The child's local rigid transform (relative to the parent) for given DOF
+ * values. Defaults to each DOF's stored value. A single `number` overrides only
+ * the primary DOF (single-DOF ergonomics); an array overrides positionally,
+ * with omitted entries keeping their stored value. Each value is clamped to its
+ * DOF range.
+ *
+ * DOFs are folded in array order via frame composition. For same-anchor
+ * rotations (e.g. spherical) this composes to a single rotation about the pivot;
+ * for a cylindrical axis the rotation and slide commute.
+ */
+declare function jointTransform(joint: Joint, value?: number | readonly number[]): JointPose;
+
+/** Attach a joint to an assembly node. Returns a new node (immutable). */
+declare function addJoint(assembly: AssemblyNode, joint: Joint): AssemblyNode;
+
+/**
+ * Forward kinematics: set joint values and propagate world poses down the
+ * kinematic chain. Each joint's axis is interpreted in its **parent's** frame,
+ * so a child's world pose is `parentWorld ∘ jointTransform(joint, value)`.
+ *
+ * Bodies not driven by a joint (chain roots) start at the origin. `jointValues`
+ * overrides a joint's stored value, keyed by the **child** node name; omitted
+ * joints use `joint.value`. Resolution is topological (reuses the Phase-0
+ * ordering), so chains of any depth compose. Returns a world pose for every node.
+ */
+declare function forwardKinematics(assembly: AssemblyNode, jointValues?: Readonly<Record<string, number | readonly number[]>>): Map<string, JointPose>;
+
+/**
+ * Open-chain mobility — the number of independent degrees of freedom, summing
+ * each joint's DOF count (revolute/prismatic 1, cylindrical 2, planar/spherical
+ * 3). For a serial chain this equals the total DOF. (Closed-loop
+ * Grübler/Kutzbach analysis is future work.)
+ */
+declare function mechanismDOF(assembly: AssemblyNode): number;
+
+/** A target for the end-effector: a world position, optionally an orientation. */
+interface IKTarget {
+    readonly position: Vec3;
+    /** Target orientation `[w, x, y, z]`. Omit for position-only IK. */
+    readonly rotation?: Quat;
+}
+
+interface IKOptions {
+    /** Maximum solver iterations. Default 200. */
+    maxIterations?: number;
+    /** Convergence threshold on the residual norm. Default 1e-5. */
+    tolerance?: number;
+    /** Damping factor λ for the least-squares step. Default 0.05. */
+    damping?: number;
+    /** Initial joint values, keyed by child node (number or per-DOF array). */
+    seed?: Readonly<Record<string, number | readonly number[]>>;
+    /** Local point on the end-effector node to drive to the target. Default origin. */
+    tip?: Vec3;
+}
+
+interface IKResult {
+    /** Solved joint values, keyed by child node, one entry per DOF. */
+    readonly values: Record<string, number[]>;
+    readonly converged: boolean;
+    readonly iterations: number;
+    /** Final residual norm (position, plus orientation when targeted). */
+    readonly error: number;
+}
+
+/**
+ * Solve for the joint values that place `endEffector` (offset by `tip`) at
+ * `target`, by damped-least-squares descent on a numerical Jacobian. Joint
+ * ranges are honored: every iterate is clamped to each DOF's `[min, max]`.
+ *
+ * Returns the solved per-DOF values keyed by child node (ready to pass to
+ * `forwardKinematics`), whether it converged, the iteration count, and the final
+ * residual norm. An end-effector with no driving joints, or an unreachable
+ * target, returns `converged: false` with the best configuration found.
+ */
+declare function inverseKinematics(assembly: AssemblyNode, endEffector: string, target: IKTarget, options?: IKOptions): IKResult;
+
+interface TrajectorySample {
+    /** Normalized path parameter in `[0, 1]`. */
+    readonly t: number;
+    /** Interpolated joint values at this step, keyed by child node. */
+    readonly values: Record<string, number[]>;
+    /** Forward-kinematics world poses for every node at this step. */
+    readonly poses: Map<string, JointPose>;
+}
+
+/**
+ * Sample a straight-line path in joint space from `from` to `to` over `steps`
+ * segments, yielding `steps + 1` samples (inclusive of both endpoints). Each
+ * sample carries the interpolated per-DOF values (clamped to range) and the
+ * forward-kinematics poses of every node. Joints absent from `from`/`to` hold
+ * their stored value at both ends.
+ */
+declare function jointTrajectory(assembly: AssemblyNode, from: Readonly<Record<string, number | readonly number[]>>, to: Readonly<Record<string, number | readonly number[]>>, steps: number): TrajectorySample[];
+
+/** One row of a Denavit-Hartenberg table (angles in degrees). */
+interface DHRow {
+    /** Link length: translation along the (rotated) x axis. */
+    readonly a: number;
+    /** Link twist: rotation about the x axis, in degrees. */
+    readonly alpha: number;
+    /** Link offset: translation along the z axis. For prismatic, the home offset. */
+    readonly d: number;
+    /** Joint angle about z, in degrees. For revolute, the home angle. */
+    readonly theta: number;
+    /** Which parameter is the joint variable. Default `'revolute'` (θ varies). */
+    readonly type?: 'revolute' | 'prismatic';
+    /** Joint range lower bound (degrees for revolute, length for prismatic). */
+    readonly min?: number;
+    /** Joint range upper bound. */
+    readonly max?: number;
+    /** Initial joint value (clamped to range). Default 0. */
+    readonly value?: number;
+    /** Child link name produced by this row. Default `link{i+1}`. */
+    readonly name?: string;
+}
+
+interface DHOptions {
+    /** Name of the base (root) link. Default `'base'`. */
+    base?: string;
+}
+
+/**
+ * Build a serial revolute/prismatic joint chain from a DH table. Joint `i`
+ * connects the previous link to row `i`'s link; its motion is the variable
+ * parameter (θ for revolute, d for prismatic) about/along +z, and its fixed
+ * link geometry is carried on `Joint.offset`. The result drives correctly
+ * through `forwardKinematics` and reports `rows.length` DOF via `mechanismDOF`.
+ */
+declare function jointsFromDH(rows: readonly DHRow[], options?: DHOptions): Joint[];
+
+interface UrdfExportOptions {
+    /** `<robot name="...">`. Default `'robot'`. */
+    name?: string;
+    /** Default `effort` limit emitted for every joint. Default 0. */
+    effort?: number;
+    /** Default `velocity` limit emitted for every joint. Default 0. */
+    velocity?: number;
+    /** Per-link mesh filename for a `<visual>` reference, keyed by node name. */
+    meshes?: Readonly<Record<string, string>>;
+}
+
+interface UrdfDocument {
+    readonly name: string;
+    readonly links: string[];
+    readonly joints: Joint[];
+}
+
+/**
+ * Serialize an assembly's links and revolute/prismatic joints to a URDF string.
+ * Returns an error if any joint is multi-DOF or carries a fixed `offset`, since
+ * URDF cannot represent those as a single joint.
+ */
+declare function exportURDF(assembly: AssemblyNode, options?: UrdfExportOptions): Result<string>;
+
+/**
+ * Parse a URDF document into its robot name, link names, and revolute/prismatic
+ * joints. `continuous` joints become revolute with a full -180..180 range;
+ * `fixed`/`floating`/`planar` joints are skipped (their links are still listed).
+ * A non-zero `<origin rpy>` is folded into the joint axis direction; its
+ * residual frame rotation is not represented (URDF's pre-motion frame offset has
+ * no single-joint brepjs equivalent).
+ */
+declare function importURDF(xml: string): Result<UrdfDocument>;
 
 interface OperationStep {
     readonly id: string;
@@ -6580,6 +7127,45 @@ interface LoftAllEntry {
  */
 declare function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]>;
 
+/** Configuration for {@link thread}. Units are mm; angles derive from pitch. */
+interface ThreadOptions {
+    /** Core radius (external) or nominal hole radius (internal), at the thread root. */
+    radius: number;
+    /** Axial distance per full turn. */
+    pitch: number;
+    /** Total thread length along the axis. Turn count = `height / pitch`. */
+    height: number;
+    /** Radial thread height (crest minus root). Defaults to `0.6 * pitch` (≈ISO 60° V). */
+    depth?: number;
+    /** Axial half-width of the V tooth. Defaults to `0.42 * pitch`. */
+    toothHalfWidth?: number;
+    /** Loft sections per turn — higher is smoother but slower. Defaults to `20`. */
+    sectionsPerTurn?: number;
+    /** Left-handed thread. Defaults to `false` (right-handed). */
+    lefthand?: boolean;
+    /** Point the tooth toward the axis (for an internal thread to `cut` from a bore). */
+    inward?: boolean;
+}
+
+/**
+ * Build a helical screw-thread ridge by lofting rotated tooth sections.
+ *
+ * @param options - {@link ThreadOptions}.
+ * @returns `Result` with the thread-ridge solid, or an error.
+ *
+ * @example External thread (Ø12 rod, 2.5 mm pitch):
+ * ```ts
+ * const ridge = thread({ radius: 6, pitch: 2.5, height: 7.5 });
+ * const rod = fuse(cylinder(6.15, 7.5), unwrap(ridge));
+ * ```
+ * @example Internal thread (tapped Ø6 hole):
+ * ```ts
+ * const ridge = thread({ radius: 3, pitch: 1, height: 6, inward: true });
+ * const nut = cut(boredBlock, unwrap(ridge));
+ * ```
+ */
+declare function thread(options: ThreadOptions): Result<Shape3D>;
+
 /**
  * Error class thrown by the shape() wrapper when a Result<T> contains an Err.
  * Wraps the structured BrepError for catch-based handling.
@@ -6802,6 +7388,7 @@ interface BrepkitAdapter extends KernelAdapter, ConstraintSketchCapability, Brep
 declare class BrepkitAdapter {
     readonly oc: KernelInstance;
     readonly kernelId = "brepkit";
+    readonly capabilities: KernelCapabilities;
     /** The underlying brepkit WASM kernel instance (typed). */
     private readonly bk;
     constructor(brepkitKernel: KernelInstance);
@@ -6810,6 +7397,7 @@ declare class BrepkitAdapter {
 declare class OcctWasmAdapter implements KernelAdapter {
     readonly oc: KernelInstance;
     readonly kernelId = "occt-wasm";
+    readonly capabilities: KernelCapabilities;
     private readonly Module;
     private readonly k;
     private readonly owner;
@@ -7080,12 +7668,12 @@ declare class OcctWasmAdapter implements KernelAdapter {
         degMax?: number;
         smoothing?: [number, number, number] | null;
     }): KernelShape;
-    curveDegreeElevate(_edge: KernelShape, _elevateBy: number): KernelShape;
-    curveKnotInsert(_edge: KernelShape, _knot: number, _times: number): KernelShape;
-    curveKnotRemove(_edge: KernelShape, _knot: number, _tolerance: number): KernelShape;
-    curveSplit(_edge: KernelShape, _param: number): [KernelShape, KernelShape];
+    curveDegreeElevate(edge: KernelShape, elevateBy: number): KernelShape;
+    curveKnotInsert(edge: KernelShape, knot: number, times: number): KernelShape;
+    curveKnotRemove(edge: KernelShape, knot: number, tolerance: number): KernelShape;
+    curveSplit(edge: KernelShape, param: number): [KernelShape, KernelShape];
+    getBezierPenultimatePole(edge: KernelShape): [number, number, number] | null;
     createCurveAdaptor(_shape: KernelShape): KernelType;
-    getBezierPenultimatePole(_edge: KernelShape): [number, number, number] | null;
     vertexPosition(vertex: KernelShape): [number, number, number];
     surfaceType(face: KernelShape): SurfaceType;
     uvBounds(face: KernelShape): {
@@ -7104,9 +7692,13 @@ declare class OcctWasmAdapter implements KernelAdapter {
     classifyPointWinding(_shape: KernelShape, _point: [number, number, number], _tolerance: number): string;
     approximateSurfaceLspia(_coords: number[], _rows: number, _cols: number, _degreeU: number, _degreeV: number, _numCpsU: number, _numCpsV: number, _tolerance: number, _maxIterations: number): KernelShape;
     untrimFace(_face: KernelShape, _samplesPerCurve: number, _interiorSamples: number): KernelShape;
-    getSurfaceCylinderData(_surface: KernelType): {
+    getSurfaceCylinderData(surface: KernelType): {
         radius: number;
         isDirect: boolean;
+    } | null;
+    getSurfaceAxis(face: KernelShape): {
+        origin: [number, number, number];
+        direction: [number, number, number];
     } | null;
     reverseSurfaceU(_surface: KernelType): KernelType;
     detectSmallFeatures(_shape: KernelShape, _areaThreshold: number, _tolerance: number): KernelShape[];
@@ -7171,7 +7763,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle;
     mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle;
     mirrorCurve2dAcrossAxis(curve: Curve2dHandle, originX: number, originY: number, dirX: number, dirY: number): Curve2dHandle;
-    affinityTransform2d(curve: Curve2dHandle, _axisOriginX: number, _axisOriginY: number, _axisDirX: number, _axisDirY: number, _ratio: number): Curve2dHandle;
+    affinityTransform2d(curve: Curve2dHandle, axisOriginX: number, axisOriginY: number, axisDirX: number, axisDirY: number, ratio: number): Curve2dHandle;
     createIdentityGTrsf2d(): KernelType;
     createAffinityGTrsf2d(originX: number, originY: number, dirX: number, dirY: number, ratio: number): KernelType;
     createTranslationGTrsf2d(dx: number, dy: number): KernelType;
@@ -7819,7 +8411,7 @@ declare class Sketch implements SketchInterface {
      * @remarks Consumes both this sketch and the one returned by `sketchOnPlane` —
      * calling either consumer twice throws on the second call.
      */
-    sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => this, sweepConfig?: SweepOptions): Shape3D;
+    sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface, sweepConfig?: SweepOptions): Shape3D;
     /** Loft between this sketch and another sketch (or an array of them)
      *
      * You can also define a `startPoint` for the loft (that will be placed
@@ -7829,7 +8421,7 @@ declare class Sketch implements SketchInterface {
      *
      * Note that all sketches will be deleted by this operation
      */
-    loftWith(otherSketches: this | this[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
+    loftWith(otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
 }
 
 /**
@@ -7879,7 +8471,66 @@ declare class CompoundSketch implements SketchInterface {
         origin?: PointInput;
     }): Shape3D;
     /** Loft between this compound sketch and another with matching sub-sketch counts. */
-    loftWith(otherCompound: this, loftConfig: LoftOptions): Shape3D;
+    loftWith(otherCompound: this, loftConfig?: LoftOptions): Shape3D;
+    /** Sweeping a face-with-holes profile has no single well-defined spine. */
+    sweepSketch(): Shape3D;
+}
+
+/**
+ * Batch wrapper around multiple {@link Sketch} or {@link CompoundSketch} instances.
+ *
+ * Applies the same operation (extrude, revolve, etc.) to every contained sketch
+ * and returns the results combined into a single compound shape.
+ *
+ * Implements {@link SketchInterface} so it is interchangeable with a single
+ * {@link Sketch} in the chained `Drawing.sketchOnPlane(...).extrude()` style.
+ * Operations with no per-profile batch meaning (`face`, `loftWith`,
+ * `sweepSketch`) require a single contained profile and otherwise throw.
+ *
+ * @category Sketching
+ */
+declare class Sketches implements SketchInterface {
+    sketches: Array<Sketch | CompoundSketch>;
+    constructor(sketches: Array<Sketch | CompoundSketch>);
+    /**
+     * The sole contained {@link Sketch}, for operations that have no
+     * multi-profile meaning. Throws when there is more than one profile, or when
+     * the single profile is a compound (face-with-holes) sketch.
+     */
+    private soleSketch;
+    /** Build a face from the sole contained profile (see {@link Sketches.faces}). */
+    face(): Face;
+    /** Loft from the sole contained profile to one or more other sketches. */
+    loftWith(otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
+    /** Sweep a profile along the sole contained sketch's wire. */
+    sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface, sweepConfig?: SweepOptions): Shape3D;
+    /** Return all wires combined into a single compound shape. */
+    wires(): Compound;
+    /** Return all sketch faces combined into a single compound shape. */
+    faces(): Compound;
+    /** Extrudes the sketch to a certain distance (along the default direction
+     * and origin of the sketch).
+     *
+     * You can define another extrusion direction or origin,
+     *
+     * It is also possible to twist extrude with an angle (in degrees), or to
+     * give a profile to the extrusion (the endFactor will scale the face, and
+     * the profile will define how the scale is applied (either linearly or with
+     * a s-shape).
+     */
+    extrude(extrusionDistance: number, extrusionConfig?: {
+        extrusionDirection?: PointInput;
+        extrusionProfile?: ExtrusionProfile;
+        twistAngle?: number;
+        origin?: PointInput;
+    }): Compound;
+    /**
+     * Revolves the drawing on an axis (defined by its direction and an origin
+     * (defaults to the sketch origin)
+     */
+    revolve(revolutionAxis?: PointInput, config?: {
+        origin?: PointInput;
+    }): Compound;
 }
 
 /** A shape with optional name and color for STEP assembly export. */
@@ -8249,6 +8900,12 @@ declare function fuse<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>,
 
 /** Cut a tool from a base shape (boolean subtraction). */
 declare function cut<T extends Shape3D>(base: Shapeable<T>, tool: Shapeable<Shape3D>, options?: booleans.BooleanOptions): Result<T>;
+
+/** Fuse many 3D shapes (boolean union) in a single operation. */
+declare function fuseAll<T extends Shape3D>(shapes: Shapeable<T>[], options?: booleans.BooleanOptions): Result<T>;
+
+/** Cut many tool shapes from a base shape (boolean subtraction) in a single operation. */
+declare function cutAll<T extends Shape3D>(base: Shapeable<T>, tools: Shapeable<Shape3D>[], options?: booleans.BooleanOptions): Result<T>;
 
 /** Compute the intersection of two shapes (boolean common). */
 declare function intersect<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: booleans.BooleanOptions): Result<T>;
