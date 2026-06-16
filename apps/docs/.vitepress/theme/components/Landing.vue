@@ -175,21 +175,23 @@ onBeforeUnmount(() => observer?.disconnect());
           <div
             class="code-card"
             role="img"
-            aria-label="TypeScript rejecting an open wire at compile time"
+            aria-label="TypeScript rejecting a plain Wire where a ClosedWire is required, with the real tsc error"
           >
             <div class="code-bar">
-              <span class="dot3"><i></i><i></i><i></i></span> bracket.ts
+              <span class="dot3"><i></i><i></i><i></i></span> face.ts — tsc --strict
             </div>
             <pre
               class="code"
-            ><code><span class="k">const</span> wire = <span class="fn">makeWire</span>(edges); <span class="cm">// Result&lt;Wire&gt;</span>
-<span class="k">const</span> face = <span class="fn">makeFace</span>(wire);
-<span class="er">       ~~~~</span>
-<span class="cm">// ✗ Argument of type 'Wire' is not</span>
-<span class="cm">//   assignable to 'ClosedWire'.</span>
+            ><code><span class="k">const</span> w = <span class="fn">unwrap</span>(<span class="fn">wire</span>([<span class="fn">line</span>(a, b), <span class="fn">line</span>(b, c), <span class="fn">line</span>(c, a)]));
 
-<span class="k">const</span> closed = <span class="fn">closedWire</span>(wire); <span class="cm">// proves it</span>
-<span class="k">const</span> ok = <span class="fn">makeFace</span>(<span class="fn">unwrap</span>(closed)); <span class="ok">// ✓</span></code></pre>
+<span class="k">const</span> f = <span class="fn">filledFace</span>(w);
+<span class="er">                     ~</span>
+<span class="cm">// TS2345: Argument of type 'Wire' is not assignable</span>
+<span class="cm">//   to parameter of type 'ClosedWire'. Property</span>
+<span class="cm">//   '[__closed]' is missing in type 'Wire'.</span>
+
+<span class="cm">// prove it closed first — now it compiles</span>
+<span class="k">const</span> ok = <span class="fn">filledFace</span>(<span class="fn">unwrap</span>(<span class="fn">closedWire</span>(w))); <span class="ok">// ✓</span></code></pre>
           </div>
         </div>
       </section>
