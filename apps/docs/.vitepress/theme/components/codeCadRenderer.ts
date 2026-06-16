@@ -285,6 +285,9 @@ export function mountCodeCad(
     showStep,
     hide(): void {
       for (const s of slots) s.target = 0;
+      // Clear the guard so a Replay during a step's dwell re-shows step 0
+      // instead of being swallowed by `showStep`'s `i === shown` early-out.
+      shown = -1;
     },
     setColorScheme: applyColorScheme,
     destroy(): void {
