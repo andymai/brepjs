@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 
 const KEY = import.meta.env.VITE_POSTHOG_PROJECT_TOKEN;
-const HOST = import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+const HOST = import.meta.env.VITE_POSTHOG_HOST ?? '/ingest';
 
 let enabled = false;
 
@@ -11,7 +11,12 @@ export function initPostHog(): void {
   if (!KEY) return;
 
   posthog.init(KEY, {
+    // api_host is a same-origin Vercel reverse proxy (see vercel.json rewrites),
+    // so ingestion dodges the ad blockers that block posthog.com directly —
+    // brepjs's developer audience runs them heavily. ui_host keeps the toolbar
+    // and "view in PostHog" links pointing at the real app.
     api_host: HOST,
+    ui_host: 'https://us.posthog.com',
     defaults: '2025-05-24',
     // We never call identify(), so don't mint a person profile per anonymous
     // visitor — keeps this to pageview/event analytics only.

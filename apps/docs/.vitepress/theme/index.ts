@@ -63,7 +63,10 @@ async function initPostHog(): Promise<void> {
 
   const { default: posthog } = await import('posthog-js');
   posthog.init(key, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+    // Same-origin Vercel reverse proxy (vercel.json rewrites) so ingestion
+    // dodges ad blockers; ui_host keeps toolbar/links on the real app.
+    api_host: import.meta.env.VITE_POSTHOG_HOST ?? '/ingest',
+    ui_host: 'https://us.posthog.com',
     defaults: '2025-05-24',
     // We never call identify(), so don't mint a person profile per anonymous
     // visitor — keeps this to pageview/event analytics only.
