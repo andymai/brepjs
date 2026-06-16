@@ -494,7 +494,7 @@ onBeforeUnmount(() => {
   color: var(--ink-1, #aab6bd);
   font-family: var(--f-mono, monospace);
   font-size: 12px;
-  padding: 3px 10px;
+  padding: 6px 12px; /* ≥24px tall — WCAG 2.5.8 target size */
   cursor: pointer;
   transition:
     border-color 0.12s,
@@ -617,7 +617,7 @@ onBeforeUnmount(() => {
   flex: none;
   width: 26px;
   text-align: right;
-  color: #3a4650;
+  color: #767f8d; /* AA-legible gutter (≥4.5:1 on the panel) */
   user-select: none;
 }
 .code .src :deep(.k) {
