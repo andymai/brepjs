@@ -1405,29 +1405,27 @@ export class OcctWasmAdapter implements KernelAdapter {
     return curveOps.approximatePoints(this.k, this.Module, points, options);
   }
 
-  // NURBS edit/construct + Bézier pole read are unavailable: occt-wasm exposes
-  // NURBS *read* (getNurbsCurveData) but no Geom_BSplineCurve editing, no
-  // B-spline edge constructor, and no Bézier pole access (getNurbsCurveData
-  // returns null for BEZIER_CURVE). Blocked on the bindings tracked in
-  // andymai/occt-wasm#172; brepkit-wasm implements these natively.
-  curveDegreeElevate(_edge: KernelShape, _elevateBy: number): KernelShape {
-    notImplemented('curveDegreeElevate');
+  // NURBS edit/construct + Bézier pole read, backed by the curve bindings added
+  // in occt-wasm 3.4.0 (andymai/occt-wasm#172). The edits copy the source curve
+  // C++-side, so the input edge is untouched.
+  curveDegreeElevate(edge: KernelShape, elevateBy: number): KernelShape {
+    return curveOps.curveDegreeElevate(this.k, edge, elevateBy);
   }
 
-  curveKnotInsert(_edge: KernelShape, _knot: number, _times: number): KernelShape {
-    notImplemented('curveKnotInsert');
+  curveKnotInsert(edge: KernelShape, knot: number, times: number): KernelShape {
+    return curveOps.curveKnotInsert(this.k, edge, knot, times);
   }
 
-  curveKnotRemove(_edge: KernelShape, _knot: number, _tolerance: number): KernelShape {
-    notImplemented('curveKnotRemove');
+  curveKnotRemove(edge: KernelShape, knot: number, tolerance: number): KernelShape {
+    return curveOps.curveKnotRemove(this.k, edge, knot, tolerance);
   }
 
-  curveSplit(_edge: KernelShape, _param: number): [KernelShape, KernelShape] {
-    notImplemented('curveSplit');
+  curveSplit(edge: KernelShape, param: number): [KernelShape, KernelShape] {
+    return curveOps.curveSplit(this.k, edge, param);
   }
 
-  getBezierPenultimatePole(_edge: KernelShape): [number, number, number] | null {
-    notImplemented('getBezierPenultimatePole');
+  getBezierPenultimatePole(edge: KernelShape): [number, number, number] | null {
+    return curveOps.getBezierPenultimatePole(this.k, edge);
   }
 
   // N/A for the id-based API: callers evaluate curves via curvePointAtParam /

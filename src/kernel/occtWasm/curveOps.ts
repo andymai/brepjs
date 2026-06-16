@@ -121,6 +121,57 @@ export function approximatePoints(
   }
 }
 
+export function curveDegreeElevate(
+  k: OcctKernelWasm,
+  edge: KernelShape,
+  elevateBy: number
+): KernelShape {
+  return handle('edge', k.curveDegreeElevate(unwrap(edge), elevateBy));
+}
+
+export function curveKnotInsert(
+  k: OcctKernelWasm,
+  edge: KernelShape,
+  knot: number,
+  times: number
+): KernelShape {
+  return handle('edge', k.curveKnotInsert(unwrap(edge), knot, times));
+}
+
+export function curveKnotRemove(
+  k: OcctKernelWasm,
+  edge: KernelShape,
+  knot: number,
+  tolerance: number
+): KernelShape {
+  return handle('edge', k.curveKnotRemove(unwrap(edge), knot, tolerance));
+}
+
+export function curveSplit(
+  k: OcctKernelWasm,
+  edge: KernelShape,
+  param: number
+): [KernelShape, KernelShape] {
+  const vec = k.curveSplit(unwrap(edge), param);
+  try {
+    return [handle('edge', vec.get(0)), handle('edge', vec.get(1))];
+  } finally {
+    vec.delete();
+  }
+}
+
+export function getBezierPenultimatePole(
+  k: OcctKernelWasm,
+  edge: KernelShape
+): [number, number, number] | null {
+  // occt-wasm has no dedicated binding: getNurbsCurveData converts Bézier→BSpline
+  // (occt-wasm#172), so the penultimate pole is poles[n-2] of the resulting data.
+  const data = getNurbsCurveData(k, edge);
+  if (!data || data.poles.length < 2) return null;
+  const pole = data.poles[data.poles.length - 2];
+  return pole ? [pole[0], pole[1], pole[2]] : null;
+}
+
 export function getNurbsCurveData(k: OcctKernelWasm, edge: KernelShape): NurbsCurveData | null {
   try {
     const data = k.getNurbsCurveData(unwrap(edge));

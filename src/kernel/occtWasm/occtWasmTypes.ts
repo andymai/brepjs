@@ -460,6 +460,10 @@ export interface OcctKernelWasm {
 
   // --- NURBS introspection ---
   getNurbsCurveData(edgeId: number): EmNurbsCurveData;
+  curveDegreeElevate(edgeId: number, elevateBy: number): number;
+  curveKnotInsert(edgeId: number, knot: number, times: number): number;
+  curveKnotRemove(edgeId: number, knot: number, tolerance: number): number;
+  curveSplit(edgeId: number, param: number): EmVectorUint32;
 
   // --- 2D→3D curve lifting ---
   liftCurve2dToPlane(
