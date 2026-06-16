@@ -215,7 +215,16 @@ export function makeEllipseArc2d(
   sense?: boolean
 ): Curve2dHandle {
   const ellipse = bk2d.makeEllipse2d(cx, cy, major, minor, xDirX, xDirY, sense);
-  return { __bk2d: 'trimmed', basis: ellipse, tStart: start, tEnd: end } as Curve2dObj;
+  // The basis evaluates angle = sense ? t : -t, so the trimmed parameter runs
+  // in angle space (CCW) or negated-angle space (CW). Normalise the range so
+  // the linear interpolation tStart..tEnd sweeps the intended direction — the
+  // analog of makeCircleArc2d's wrap. Without it, an arc whose end precedes
+  // its start collapses onto the complementary (wrong-side) arc.
+  const ccw = sense !== false;
+  const tStart = ccw ? start : -start;
+  let tEnd = ccw ? end : -end;
+  if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
+  return { __bk2d: 'trimmed', basis: ellipse, tStart, tEnd } as Curve2dObj;
 }
 
 export function makeBezier2d(points: [number, number][]): Curve2dHandle {
@@ -285,8 +294,55 @@ export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): C
   return { __bk2d: 'trimmed', basis: c2d(curve), tStart: start, tEnd: end } as Curve2dObj;
 }
 
-export function reverseCurve2d(_curve: Curve2dHandle): void {
-  /* Mutates in-place — no-op for immutable objects */
+export function reverseCurve2d(curve: Curve2dHandle): void {
+  // bk2d curves are plain mutable data (copyCurve2d deep-clones via JSON), so
+  // reverse the parameterization in place: evaluateCurve2d must then traverse
+  // end -> start. Each variant flips however its own parameter maps to the
+  // sweep direction.
+  const c = curve as Curve2dObj;
+  switch (c.__bk2d) {
+    case 'line': {
+      // Origin moves to the far end; direction flips, length is unchanged.
+      const m = c as { ox: number; oy: number; dx: number; dy: number; len: number };
+      m.ox += m.dx * m.len;
+      m.oy += m.dy * m.len;
+      m.dx = -m.dx;
+      m.dy = -m.dy;
+      break;
+    }
+    case 'circle':
+    case 'ellipse': {
+      // A full conic reversed is the opposite sense.
+      const m = c as { sense: boolean };
+      m.sense = !m.sense;
+      break;
+    }
+    case 'trimmed': {
+      // Swap the trim bounds so the linear sweep runs the other way (same
+      // geometric arc, opposite traversal).
+      const m = c as { tStart: number; tEnd: number };
+      [m.tStart, m.tEnd] = [m.tEnd, m.tStart];
+      break;
+    }
+    case 'bezier': {
+      const m = c as { poles: [number, number][] };
+      m.poles = [...m.poles].reverse();
+      break;
+    }
+    case 'bspline': {
+      const m = c as { poles: [number, number][]; knots: number[]; weights?: number[] };
+      m.poles = [...m.poles].reverse();
+      const lo = m.knots[0];
+      const hi = m.knots[m.knots.length - 1];
+      if (lo !== undefined && hi !== undefined) {
+        m.knots = m.knots.map((k) => lo + hi - k).reverse();
+      }
+      if (Array.isArray(m.weights)) m.weights = [...m.weights].reverse();
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
@@ -899,7 +955,9 @@ export function liftCurve2dToPlane(
 
   // Circles/arcs: use exact Circle3D edges via makeCircleArc3d when the
   // basis is a circle. This produces EdgeCurve::Circle edges that extrude
-  // into CylindricalSurface faces (not NURBS), matching OCCT topology.
+  // into CylindricalSurface faces (not NURBS), matching the reference
+  // kernel's topology. Ellipse arcs fall through to dense sampling below
+  // until brepkit supports a trimmed elliptical swept surface in extrude.
   if (c.__bk2d === 'circle' || c.__bk2d === 'trimmed') {
     // Unwrap trimmed to find the circle basis.
     // bk2d curve objects have dynamic structure — suppress type-safety here.
@@ -938,7 +996,7 @@ export function liftCurve2dToPlane(
 
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
-    // Non-circle basis (e.g. ellipse): fall through to generic sampling below
+    // Other analytic basis: fall through to generic sampling below
   }
 
   // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)

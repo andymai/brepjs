@@ -167,18 +167,14 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // sketcher3d.test.ts
     // -----------------------------------------------------------------------
-    'sketcher3d.halfEllipseTo': {
-      kind: 'skip',
-      reason:
-        'brepkit: elliptical-arc 2D→3D lift is geometrically wrong (vol 33.3 vs 89.3). ' +
-        'curvesAsEdgesOnPlane has no exact trimmed-ellipse path (only full makeEllipseEdge), ' +
-        'so an ellipse arc falls through to dense point-sampling that collapses the swept region.',
-    },
     'sketcher3d.ellipseTo': {
       kind: 'skip',
       reason:
-        'brepkit: elliptical-arc 2D→3D lift is geometrically wrong (vol 24.4 vs 115.5). ' +
-        'Same root cause as halfEllipseTo: no exact trimmed-ellipse lift in curvesAsEdgesOnPlane.',
+        'brepkit: ellipseTo extruded volume is 114.4 vs 115.45 (~1%, outside the ' +
+        'strict tolerance). The 2D arc direction + reverseCurve2d are now fixed, so ' +
+        'the residual is only the dense-NURBS lift approximation; an exact ' +
+        'EdgeCurve::Ellipse lift needs brepkit to build a trimmed elliptical swept ' +
+        'surface in extrude (tracked separately). halfEllipseTo now passes.',
     },
 
     // -----------------------------------------------------------------------
