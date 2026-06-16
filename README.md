@@ -141,6 +141,16 @@ The command exits non-zero unless the report is `ok` (valid **and** every declar
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.
 
+## Acknowledgements
+
+brepjs.dev and the playground are hosted on [Vercel](https://vercel.com) through its Open Source Program.
+
+<div align="center">
+  <a href="https://vercel.com/open-source-program">
+    <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge-2026.svg" />
+  </a>
+</div>
+
 ## License
 
 [Apache-2.0](./LICENSE)
