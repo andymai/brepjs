@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.84.0](https://github.com/andymai/brepjs/compare/brepjs-v18.83.4...brepjs-v18.84.0) (2026-06-16)
+
+
+### Features
+
+* **occt-wasm:** wire NURBS curve edit/construct + Bézier pole read ([#1434](https://github.com/andymai/brepjs/issues/1434)) ([49dd5e0](https://github.com/andymai/brepjs/commit/49dd5e009a2e203c930caa1cefa71028ad4d13c4))
+
 ## [18.83.4](https://github.com/andymai/brepjs/compare/brepjs-v18.83.3...brepjs-v18.83.4) (2026-06-15)
 
 
