@@ -61,6 +61,31 @@ export default withMermaid(
         ['meta', { name: 'twitter:title', content: fullTitle }],
         ['meta', { name: 'twitter:description', content: description }]
       );
+
+      // The bespoke landing page (and only it) uses Space Grotesk for display
+      // type and JetBrains Mono for code/annotations. Load them here so docs
+      // pages — which never use these faces — stay lean.
+      if (pageData.relativePath === 'index.md') {
+        pageData.frontmatter.head.push(
+          ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+          ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+          [
+            'link',
+            {
+              rel: 'stylesheet',
+              href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap',
+            },
+          ],
+          // Scroll-reveal on the landing page starts sections at opacity:0 and
+          // fades them in via IntersectionObserver. Without JS that would trap
+          // content hidden, so force it visible when scripting is unavailable.
+          [
+            'noscript',
+            {},
+            '<style>[data-reveal]{opacity:1 !important;transform:none !important}</style>',
+          ]
+        );
+      }
     },
     themeConfig: {
       logo: { src: '/logo.svg', alt: 'brepjs' },

@@ -5,7 +5,7 @@ const { compressToEncodedURIComponent } = lzString;
 const PLAYGROUND_PATH = '/playground';
 const ATTR_DECORATED = 'data-playground-decorated';
 
-function encodeCode(code: string): string {
+export function encodeCode(code: string): string {
   return `${PLAYGROUND_PATH}?code=${compressToEncodedURIComponent(code)}`;
 }
 
