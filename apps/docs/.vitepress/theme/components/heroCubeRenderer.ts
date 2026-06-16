@@ -59,6 +59,11 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const scene = new Scene();
 
   const camera = new PerspectiveCamera(35, 1, 0.1, 100);
@@ -186,7 +191,10 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     camera.updateProjectionMatrix();
   }
 
-  const ro = new ResizeObserver(() => resize());
+  const ro = new ResizeObserver(() => {
+    resize();
+    if (reduceMotion) renderer.render(scene, camera);
+  });
   ro.observe(canvas);
   resize();
 
@@ -227,11 +235,24 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     renderer.render(scene, camera);
   }
 
-  rafId = requestAnimationFrame(tick);
+  // Honour prefers-reduced-motion: no breathing or auto-rotate. Show the
+  // assembled cube and only re-render when the user drags it (opt-in).
+  let changeHandler: (() => void) | null = null;
+  if (reduceMotion) {
+    root.rotation.y = yaw;
+    for (const p of pieces) p.mesh.position.set(p.baseX, p.baseY, p.baseZ);
+    rimLight.intensity = RIM_BASE;
+    changeHandler = () => renderer.render(scene, camera);
+    controls.addEventListener('change', changeHandler);
+    changeHandler();
+  } else {
+    rafId = requestAnimationFrame(tick);
+  }
 
   return {
     destroy(): void {
       cancelAnimationFrame(rafId);
+      if (changeHandler) controls.removeEventListener('change', changeHandler);
       ro.disconnect();
       controls.dispose();
       pieces.forEach((p) => {

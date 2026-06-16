@@ -425,7 +425,7 @@ onBeforeUnmount(() => observer?.disconnect());
           </p>
         </div>
         <nav class="foot-col" aria-label="Documentation">
-          <h4>Docs</h4>
+          <h3>Docs</h3>
           <a href="/introduction/why-brepjs">Guide</a>
           <a href="/getting-started/install">Get Started</a>
           <a href="/agent/overview">Authoring with AI</a>
@@ -434,7 +434,7 @@ onBeforeUnmount(() => observer?.disconnect());
           >
         </nav>
         <nav class="foot-col" aria-label="Project">
-          <h4>Project</h4>
+          <h3>Project</h3>
           <a href="/playground" target="_blank" rel="noopener">Playground</a>
           <a href="https://github.com/andymai/brepjs" target="_blank" rel="noopener">GitHub</a>
           <a href="https://www.npmjs.com/package/brepjs" target="_blank" rel="noopener">npm</a>
@@ -474,7 +474,7 @@ onBeforeUnmount(() => observer?.disconnect());
 
   --ink-0: #f1f6f7;
   --ink-1: #aab6bd;
-  --ink-2: #6c7780;
+  --ink-2: #828d96;
 
   --line: #1c2530;
   --line-2: #283340;
@@ -583,6 +583,7 @@ pre code {
   position: sticky;
   top: 0;
   z-index: 30;
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   background: rgba(8, 11, 14, 0.7);
   border-bottom: 1px solid var(--line);
@@ -1181,7 +1182,7 @@ pre.code.big {
   line-height: 1.6;
   max-width: 46ch;
 }
-.foot-col h4 {
+.foot-col h3 {
   font-family: var(--f-mono);
   font-size: 12px;
   letter-spacing: 0.08em;
