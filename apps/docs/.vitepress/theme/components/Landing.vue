@@ -385,7 +385,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── FIVE-LINE LOOP ──────────────────── -->
       <section class="band alt loop" data-reveal>
         <div class="wrap">
-          <div class="sec-head">
+          <div class="sec-head center">
             <p class="eyebrow">Code-as-CAD</p>
             <h2>The whole code-CAD loop, in five lines.</h2>
           </div>
@@ -408,13 +408,16 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── SCOPE ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">
-          <p class="eyebrow">Honest scope</p>
-          <h2>Made for parametric parts.</h2>
+          <p class="eyebrow">What it's for</p>
+          <h2>Built for exact, manufacturable geometry.</h2>
           <p class="lead">
-            brepjs is at its best on parts defined by parameters — enclosures, brackets, fixtures,
-            gridfinity bins, anything you'd otherwise script in OpenSCAD. It's a programmatic
-            library, not a GUI; it models exact solids, it doesn't sculpt organic surfaces or render
-            scenes. Knowing what it isn't is part of why it's dependable.
+            Boundary representation is the language of mechanical CAD — exact solids to micron
+            precision, and the native form of STEP, CNC, and inspection. That's brepjs's strength:
+            precise booleans, fillets, chamfers, and shells; real volumes, areas, and clearances;
+            watertight solids that move cleanly between SolidWorks, Fusion, and FreeCAD. From a
+            single bracket to a full assembly — enclosures, fixtures, gridfinity bins, machined and
+            molded parts. It's a programmatic library, not a GUI, and exact B-Rep isn't the tool for
+            organic sculpting or dense lattices; knowing that is part of why it's dependable.
           </p>
         </div>
       </section>
@@ -423,7 +426,10 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="band provenance" data-reveal>
         <div class="wrap center">
           <p class="prov-line">
-            Born from a tool people actually use — brepjs grew out of the Gridfinity Layout Tool.
+            Born from a tool people actually use — brepjs grew out of the
+            <a href="https://gridfinitylayouttool.com" target="_blank" rel="noopener"
+              >Gridfinity Layout Tool</a
+            >.
           </p>
           <ul class="specrow" aria-label="Project facts">
             <li>v18</li>
@@ -454,9 +460,9 @@ onBeforeUnmount(() => observer?.disconnect());
             ><img src="/logo.svg" alt="" width="26" height="26" /><span>brepjs</span></a
           >
           <p class="foot-egg">
-            The hero solid is a Hill tetrahedron — one of the rare tetrahedra that tiles space and
-            can be cut and reassembled into a cube. The regular tetrahedron can't (Dehn, 1900). A
-            shape that becomes a cube felt right for a kernel that builds exact solids.
+            Everything in the hero is real: brepjs types out a Gridfinity bin, the kernel meshes
+            each build step, and Three.js renders the exact edges — no video, no mockup. Open it in
+            the Playground and run it yourself.
           </p>
         </div>
         <nav class="foot-col" aria-label="Documentation">
@@ -1110,11 +1116,20 @@ pre.code.big {
 }
 .loop-card {
   max-width: 880px;
+  margin: 0 auto;
 }
 
 /* provenance + closer */
 .provenance {
   background: radial-gradient(80% 70% at 50% 120%, rgba(3, 176, 173, 0.12), transparent 60%);
+}
+.prov-line a {
+  color: var(--teal-200);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prov-line a:hover {
+  color: var(--teal-100);
 }
 .prov-line {
   color: var(--ink-1);
