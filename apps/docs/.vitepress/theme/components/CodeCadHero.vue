@@ -281,10 +281,15 @@ function onLeave(): void {
 onMounted(async () => {
   const canvas = canvasEl.value;
   if (!canvas) return;
-  const reduceMotion =
+  const mq = (q: string): boolean =>
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.matchMedia(q).matches;
+  const reduceMotion = mq('(prefers-reduced-motion: reduce)');
+  // On phones the IDE collapses to a single cramped column (the 760px
+  // breakpoint in the styles below), where a one-char-at-a-time build is hard
+  // to follow — show the finished program and bin straight away instead.
+  const staticView = reduceMotion || mq('(max-width: 760px)');
 
   let data: HeroFramesData;
   try {
@@ -297,14 +302,14 @@ onMounted(async () => {
 
   try {
     const { mountCodeCad } = await import('./codeCadRenderer');
-    handle = mountCodeCad(canvas, data, { dark: true, reduceMotion });
+    handle = mountCodeCad(canvas, data, { dark: true, reduceMotion: staticView });
   } catch {
     failed.value = true; // no WebGL — the code panel still tells the story
     return;
   }
   ready.value = true;
 
-  if (reduceMotion) {
+  if (staticView) {
     // No typing/playback: show the whole program and the finished bin.
     typedLine.value = LINES.length;
     typedChars.value = 0;
@@ -729,6 +734,15 @@ onBeforeUnmount(() => {
   }
   .codecol {
     border-right: none;
+  }
+  /* The build plays through once to its finished state on mobile (see the
+     staticView gate in script) — Replay would restart a typing run that's hard
+     to follow on a phone, so drop it and let the link own the right edge. */
+  .bar-btn {
+    display: none;
+  }
+  .run-link {
+    margin-left: auto;
   }
 }
 </style>
