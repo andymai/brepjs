@@ -899,11 +899,19 @@ pre.code,
 pre.term {
   margin: 0;
   padding: 18px 20px;
-  overflow-x: auto;
   font-family: var(--f-mono);
   font-size: 13px;
   line-height: 1.75;
   color: var(--ink-1);
+}
+/* wrap long lines instead of clipping/scrolling on narrow screens */
+pre.code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
+pre.term {
+  overflow-x: auto;
 }
 .code :deep(.k),
 .term .kk {
