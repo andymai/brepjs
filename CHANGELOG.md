@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.84.1](https://github.com/andymai/brepjs/compare/brepjs-v18.84.0...brepjs-v18.84.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* **brepkit-adapter:** correct ellipse-arc 2D direction + reverseCurve2d ([#1437](https://github.com/andymai/brepjs/issues/1437)) ([bc640a0](https://github.com/andymai/brepjs/commit/bc640a0a16d54054aef91d7fb57c9f63628ab2bd))
+
 ## [18.84.0](https://github.com/andymai/brepjs/compare/brepjs-v18.83.4...brepjs-v18.84.0) (2026-06-16)
 
 
