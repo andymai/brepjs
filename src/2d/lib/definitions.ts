@@ -16,7 +16,10 @@ export function isPoint2D(point: unknown): point is Point2D {
 /** A 2x2 matrix represented as two row tuples. */
 export type Matrix2X2 = [[number, number], [number, number]];
 
-/** Type guard that checks whether a value is a `Matrix2X2`. */
+/**
+ * Type guard that checks whether a value is a `Matrix2X2`.
+ * @testOnly Exercised by tests/definitions.test.ts.
+ */
 export function isMatrix2X2(matrix: unknown): matrix is Matrix2X2 {
   return (
     Array.isArray(matrix) &&

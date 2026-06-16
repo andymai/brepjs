@@ -52,6 +52,7 @@ const CURVE_TYPE_BY_INT: CurveType[] = [
  * Map a kernel curve type enum value to its string discriminant.
  *
  * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
+ * @testOnly Exercised by tests/typeDiscriminants.test.ts.
  */
 export const findCurveType = (type: number | { value: number }): Result<CurveType> => {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion -- WASM enum .value may be boxed; Number() ensures plain number

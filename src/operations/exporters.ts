@@ -77,6 +77,7 @@ export function createAssembly(shapes: ShapeOptions[] = []): AssemblyExporter {
  * ```
  *
  * @see {@link exporterFns!exportAssemblySTEP | exportAssemblySTEP} for the functional API equivalent.
+ * @testOnly Exercised by tests/operations-exporters.test.ts.
  */
 export function exportSTEP(
   shapes: ShapeOptions[] = [],

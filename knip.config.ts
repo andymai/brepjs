@@ -2,6 +2,10 @@ import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
   ignoreExportsUsedInFile: true,
+  // Exports tagged `@testOnly` are exercised only by the suite in `tests/`
+  // (outside `src`). knip can't trace those usages here — the tests import via
+  // the `@/…js` alias from a separate tsconfig — so treat the tag as "used".
+  tags: ['-testOnly'],
   rules: {
     // Intentional API-compat aliases (drawRectangle = drawRoundedRectangle, etc.)
     duplicates: 'off',

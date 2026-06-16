@@ -163,7 +163,10 @@ export function planeToWorld(plane: Plane, local: Vec2): Vec3 {
   return vecAdd(vecAdd(plane.origin, vecScale(plane.xDir, u)), vecScale(plane.yDir, v));
 }
 
-/** Convert 3D world coordinates to 2D local coordinates on the plane. */
+/**
+ * Convert 3D world coordinates to 2D local coordinates on the plane.
+ * @testOnly Exercised by tests/planeOps.test.ts.
+ */
 export function planeToLocal(plane: Plane, world: Vec3): Vec2 {
   const relative = vecSub(world, plane.origin);
   return [vecDot(relative, plane.xDir), vecDot(relative, plane.yDir)];

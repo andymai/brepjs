@@ -71,7 +71,10 @@ export function crossProduct2d([x0, y0]: Point2D, [x1, y1]: Point2D): number {
   return x0 * y1 - y0 * x1;
 }
 
-/** Compute the dot product of two 2D vectors. */
+/**
+ * Compute the dot product of two 2D vectors.
+ * @testOnly Exercised by tests/vectorOperations.test.ts.
+ */
 export function dotProduct2d([x0, y0]: Point2D, [x1, y1]: Point2D): number {
   return x0 * x1 + y0 * y1;
 }

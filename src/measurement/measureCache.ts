@@ -40,6 +40,7 @@ export function setCachedMeasurement<K extends MeasurementKey>(
   map.set(key, value);
 }
 
+/** @testOnly Exercised by tests/measureCache.test.ts. */
 export function clearMeasurementCache(shape?: object): void {
   if (shape) {
     cache.delete(shape);
