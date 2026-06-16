@@ -445,7 +445,12 @@ onBeforeUnmount(() => observer?.disconnect());
               >
               <a class="btn-ghost" href="/introduction/why-brepjs">Read the docs</a>
             </div>
-            <p class="quiet">Authoring with AI? Install the <code>brepjs-verify</code> skill.</p>
+            <p class="quiet">
+              Authoring with AI?
+              <a class="quiet-link" href="/agent/overview"
+                >Set up the <code>brepjs-verify</code> skill →</a
+              >
+            </p>
           </div>
         </div>
       </section>
@@ -1207,6 +1212,21 @@ pre.term {
   margin-top: 22px;
   color: var(--ink-2);
   font-size: 14.5px;
+}
+.quiet-link {
+  color: var(--teal-200);
+  font-weight: 500;
+  border-bottom: 1px solid color-mix(in srgb, var(--teal-200) 35%, transparent);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.quiet-link:hover {
+  color: var(--teal-100);
+  border-bottom-color: var(--teal-100);
+}
+.quiet-link code {
+  color: inherit;
 }
 
 /* footer */

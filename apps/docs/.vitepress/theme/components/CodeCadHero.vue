@@ -53,12 +53,25 @@ const SKETCH_METHODS: CompletionItem[] = [
   { n: 'sweep', d: '(spine): Solid' },
   { n: 'offset', d: '(distance): Sketch' },
 ];
-// Each fires when typing reaches the `.` after `marker`; `selected` is the
-// method the code then types.
-const COMPLETION_SPECS = [
-  { line: 6, marker: 'r(0, 0).', selected: 0 }, // .loftWith
-  { line: 9, marker: 'r(0, 0).', selected: 1 }, // .extrude
-  { line: 12, marker: 'r(0, H-2.6).', selected: 0 }, // .loftWith
+const DRAW_FUNCTIONS: CompletionItem[] = [
+  { n: 'drawRoundedRectangle', d: '(w, h, r?): Drawing' },
+  { n: 'drawRectangle', d: '(w, h): Drawing' },
+  { n: 'drawCircle', d: '(radius): Drawing' },
+  { n: 'drawEllipse', d: '(rx, ry): Drawing' },
+  { n: 'drawPolysides', d: '(radius, sides): Drawing' },
+];
+// Each fires when typing reaches `marker`; `selected` is what the code then
+// types. Only the first use of a given completion actually dwells.
+const COMPLETION_SPECS: {
+  line: number;
+  marker: string;
+  selected: number;
+  items: CompletionItem[];
+}[] = [
+  { line: 3, marker: '=> drawRounded', selected: 0, items: DRAW_FUNCTIONS }, // drawRoundedRectangle
+  { line: 6, marker: 'r(0, 0).', selected: 0, items: SKETCH_METHODS }, // .loftWith
+  { line: 9, marker: 'r(0, 0).', selected: 1, items: SKETCH_METHODS }, // .extrude
+  { line: 12, marker: 'r(0, H-2.6).', selected: 0, items: SKETCH_METHODS }, // .loftWith (already shown)
 ];
 const COMPLETIONS: Record<
   number,
@@ -67,12 +80,11 @@ const COMPLETIONS: Record<
 for (const s of COMPLETION_SPECS) {
   const idx = (LINES[s.line] ?? '').indexOf(s.marker);
   if (idx >= 0) {
-    const method = SKETCH_METHODS[s.selected]?.n ?? '';
     COMPLETIONS[s.line] = {
       at: idx + s.marker.length,
       selected: s.selected,
-      items: SKETCH_METHODS,
-      method,
+      items: s.items,
+      method: s.items[s.selected]?.n ?? '',
     };
   }
 }
