@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { track } from '@vercel/analytics';
+import { captureEvent } from '../lib/posthog';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useToastStore } from '../stores/toastStore';
 import { useViewerStore } from '../stores/viewerStore';
@@ -47,24 +48,28 @@ export function usePlaygroundActions(): PlaygroundActions {
     runCode(code);
     updateUrl(code);
     track('playground_run');
+    captureEvent('playground_run');
   }, [runCode, code, updateUrl]);
 
   const handleExportSTL = useCallback(() => {
     exportSTL(code);
     addToast('Exporting STL...');
     track('playground_export', { format: 'stl' });
+    captureEvent('playground_export', { format: 'stl' });
   }, [exportSTL, code, addToast]);
 
   const handleExportSTEP = useCallback(() => {
     exportSTEP(code);
     addToast('Exporting STEP...');
     track('playground_export', { format: 'step' });
+    captureEvent('playground_export', { format: 'step' });
   }, [exportSTEP, code, addToast]);
 
   const handleShare = useCallback(() => {
     void copyShareUrl(code);
     addToast('Link copied to clipboard');
     track('playground_share');
+    captureEvent('playground_share');
   }, [copyShareUrl, code, addToast]);
 
   const handleResetToDefault = useCallback(() => {

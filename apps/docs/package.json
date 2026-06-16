@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "2.0.1",
+    "posthog-js": "1.387.0",
     "three": "0.184.0",
     "three-stdlib": "2.36.1"
   },
