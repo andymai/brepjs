@@ -97,6 +97,26 @@ const STEP_AT: Record<number, { frame: number; step: number }> = {
 };
 const DONE_LINE = 19;
 
+// Simulated IntelliSense: while typing a `.` on a line, pop a completion list of
+// the real brepjs Sketch methods, then "accept" and keep typing.
+interface CompletionItem {
+  n: string;
+  d: string;
+}
+const COMPLETIONS: Record<number, { at: number; selected: number; items: CompletionItem[] }> = {
+  9: {
+    at: 21, // just after `const foot = r(0, 0).`
+    selected: 0,
+    items: [
+      { n: 'loftWith', d: '(sections, opts): Solid' },
+      { n: 'extrude', d: '(distance): Solid' },
+      { n: 'revolve', d: '(angle, axis?): Solid' },
+      { n: 'sweep', d: '(spine): Solid' },
+      { n: 'offset', d: '(distance): Sketch' },
+    ],
+  },
+};
+
 const CHAR_MS = 15; // per-character typing speed
 const LINE_PAUSE = 220; // beat at the end of a typed line
 const BLANK_MS = 130; // blank line
@@ -116,11 +136,28 @@ const stepIndex = ref(-1); // -1 → nothing built yet; 0..2 for the rail
 const exported = ref(false);
 const stepLabel = ref('');
 const stepVol = ref<number | null>(null);
+const completion = ref<{
+  items: CompletionItem[];
+  selected: number;
+  top: number;
+  left: number;
+} | null>(null);
 
 let handle: CodeCadHandle | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let paused = false;
 let frames: HeroFramesData['frames'] = [];
+const firedCompletions = new Set<number>();
+
+function showCompletion(c: { selected: number; items: CompletionItem[] }): void {
+  completion.value = { items: c.items, selected: c.selected, top: 0, left: 54 };
+  void nextTick(() => {
+    const li = codeEl.value?.querySelector('li.active') as HTMLElement | null;
+    if (li && completion.value) {
+      completion.value = { ...completion.value, top: li.offsetTop + li.offsetHeight + 3 };
+    }
+  });
+}
 
 // HTML for a line given how far typing has progressed.
 function lineHtml(i: number): string {
@@ -152,6 +189,19 @@ function typeTick(): void {
     return;
   }
   const len = LINE_LEN[i] ?? 0;
+
+  // IntelliSense: pause on the `.` to show the completion list, then accept.
+  const comp = COMPLETIONS[i];
+  if (comp && typedChars.value === comp.at && !firedCompletions.has(i)) {
+    firedCompletions.add(i);
+    showCompletion(comp);
+    timer = setTimeout(() => {
+      completion.value = null;
+      typeTick();
+    }, 1200);
+    return;
+  }
+
   if (typedChars.value < len) {
     // reveal leading indent at once (it's invisible), then one char per tick
     typedChars.value =
@@ -190,6 +240,8 @@ function resetLoop(): void {
   exported.value = false;
   stepLabel.value = '';
   stepVol.value = null;
+  completion.value = null;
+  firedCompletions.clear();
   handle?.hide();
   typeTick();
 }
@@ -270,18 +322,38 @@ onBeforeUnmount(() => {
 
     <div class="ide-body">
       <!-- code panel: typed in line by line -->
-      <ol ref="codeEl" class="code" aria-label="brepjs program">
-        <li
-          v-for="(line, i) in LINES_HTML"
-          :key="i"
-          :class="{ typed: i <= typedLine, active: i === typedLine, done: doneLines.has(i) }"
+      <div class="codecol">
+        <ol ref="codeEl" class="code" aria-label="brepjs program">
+          <li
+            v-for="(line, i) in LINES_HTML"
+            :key="i"
+            :class="{ typed: i <= typedLine, active: i === typedLine, done: doneLines.has(i) }"
+          >
+            <span class="ln">{{ i <= typedLine ? i + 1 : '' }}</span>
+            <span class="src" v-html="lineHtml(i)"></span>
+            <span v-if="i === typedLine && !exported" class="caret" aria-hidden="true"></span>
+            <span v-else-if="doneLines.has(i)" class="tick" aria-hidden="true">✓</span>
+          </li>
+        </ol>
+        <!-- simulated TypeScript IntelliSense -->
+        <div
+          v-if="completion"
+          class="iset"
+          :style="{ top: completion.top + 'px', left: completion.left + 'px' }"
+          aria-hidden="true"
         >
-          <span class="ln">{{ i <= typedLine ? i + 1 : '' }}</span>
-          <span class="src" v-html="lineHtml(i)"></span>
-          <span v-if="i === typedLine && !exported" class="caret" aria-hidden="true"></span>
-          <span v-else-if="doneLines.has(i)" class="tick" aria-hidden="true">✓</span>
-        </li>
-      </ol>
+          <div
+            v-for="(it, k) in completion.items"
+            :key="k"
+            class="iset-row"
+            :class="{ sel: k === completion.selected }"
+          >
+            <span class="iset-kind">ƒ</span>
+            <span class="iset-name">{{ it.n }}</span>
+            <span class="iset-sig">{{ it.d }}</span>
+          </div>
+        </div>
+      </div>
 
       <!-- viewport: pre-baked kernel meshes + exact B-Rep edges, via three.js -->
       <div class="view">
@@ -360,11 +432,55 @@ onBeforeUnmount(() => {
   grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
   min-height: 400px;
 }
+.codecol {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid var(--line, #1c2530);
+}
+.iset {
+  position: absolute;
+  z-index: 5;
+  min-width: 232px;
+  max-width: 92%;
+  background: #0b0f15;
+  border: 1px solid var(--line-2, #283340);
+  border-radius: 6px;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.75);
+  padding: 4px;
+  font-family: var(--f-mono, monospace);
+  font-size: 11.5px;
+  overflow: hidden;
+}
+.iset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: var(--ink-1, #aab6bd);
+}
+.iset-row.sel {
+  background: rgba(3, 176, 173, 0.22);
+  color: #eef6f7;
+}
+.iset-kind {
+  flex: none;
+  width: 13px;
+  text-align: center;
+  color: #c98bdb;
+}
+.iset-name {
+  color: var(--ink-0, #f1f6f7);
+}
+.iset-sig {
+  margin-left: auto;
+  color: var(--ink-2, #828d96);
+  font-size: 10.5px;
+}
 .code {
   list-style: none;
   margin: 0;
   padding: 18px 8px 18px 0;
-  border-right: 1px solid var(--line, #1c2530);
   font-family: var(--f-mono, monospace);
   font-size: 12px;
   line-height: 1.85;
@@ -528,7 +644,7 @@ onBeforeUnmount(() => {
     min-height: 300px;
     border-bottom: 1px solid var(--line, #1c2530);
   }
-  .code {
+  .codecol {
     border-right: none;
   }
 }
