@@ -9,18 +9,15 @@ import type { CodeCadHandle, HeroFramesData } from './codeCadRenderer';
 const PROGRAM = `import { drawRoundedRectangle, cut, fuse, unwrap } from 'brepjs/quick';
 
 const [W, WALL, H] = [42 - 0.5, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+const r = (inset, z) => drawRoundedRectangle(W - 2*inset, W - 2*inset, 3.75 - inset).sketchOnPlane('XY', z);
 
-// rounded-rect section: inset from the 41.5 mm footprint, at height z
-const r = (inset, z) =>
-  drawRoundedRectangle(W - 2*inset, W - 2*inset, Math.max(3.75 - inset, 0.1)).sketchOnPlane('XY', z);
-
-// 1 — Gridfinity socket foot (clicks into a baseplate)
+// Gridfinity socket foot — mates with a baseplate
 const foot = r(0, 0).loftWith([r(2.15, -2.4), r(2.95, -5)], { ruled: true });
 
-// 2 — hollow body: walls + floor
+// hollow body — walls + floor
 const body = unwrap(fuse(foot, unwrap(cut(r(0, 0).extrude(H), r(WALL, 1).extrude(H)))));
 
-// 3 — stacking lip so bins nest when stacked
+// stacking lip — so bins nest when stacked
 const lipOuter = r(0, H-2.6).loftWith([r(0, H+4.4)], { ruled: true });
 const lipInner = r(1.2, H-2.6).loftWith([r(2.6, H-1.2), r(2.6, H), r(1.9, H+0.7), r(1.9, H+2.5), r(0.05, H+4.4)], { ruled: true });
 const lip = unwrap(cut(lipOuter, lipInner));
@@ -28,21 +25,18 @@ const lip = unwrap(cut(lipOuter, lipInner));
 export default unwrap(fuse(body, lip));`;
 
 const LINES_HTML = [
-  `<span class="k">import</span> { drawRoundedRectangle, cut, fuse, unwrap } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
+  `<span class="k">import</span> { <span class="fn">drawRoundedRectangle</span>, <span class="fn">cut</span>, <span class="fn">fuse</span>, <span class="fn">unwrap</span> } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
   ``,
   `<span class="k">const</span> [W, WALL, H] = [<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">1.2</span>, <span class="n">3</span> * <span class="n">7</span>]; <span class="cm">// 1×1 bin, 3 units tall</span>`,
+  `<span class="k">const</span> <span class="fn">r</span> = (inset, z) => <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*inset, W - <span class="n">2</span>*inset, <span class="n">3.75</span> - inset).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, z);`,
   ``,
-  `<span class="cm">// rounded-rect section: inset from the 41.5 mm footprint, at height z</span>`,
-  `<span class="k">const</span> r = (inset, z) =>`,
-  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*inset, W - <span class="n">2</span>*inset, <span class="fn">Math</span>.max(<span class="n">3.75</span> - inset, <span class="n">0.1</span>)).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, z);`,
-  ``,
-  `<span class="cm">// 1 — Gridfinity socket foot (clicks into a baseplate)</span>`,
+  `<span class="cm">// Gridfinity socket foot — mates with a baseplate</span>`,
   `<span class="k">const</span> foot = <span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.15</span>, -<span class="n">2.4</span>), <span class="fn">r</span>(<span class="n">2.95</span>, -<span class="n">5</span>)], { ruled: <span class="k">true</span> });`,
   ``,
-  `<span class="cm">// 2 — hollow body: walls + floor</span>`,
+  `<span class="cm">// hollow body — walls + floor</span>`,
   `<span class="k">const</span> body = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(foot, <span class="fn">unwrap</span>(<span class="fn">cut</span>(<span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">extrude</span>(H), <span class="fn">r</span>(WALL, <span class="n">1</span>).<span class="fn">extrude</span>(H)))));`,
   ``,
-  `<span class="cm">// 3 — stacking lip so bins nest when stacked</span>`,
+  `<span class="cm">// stacking lip — so bins nest when stacked</span>`,
   `<span class="k">const</span> lipOuter = <span class="fn">r</span>(<span class="n">0</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">0</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
   `<span class="k">const</span> lipInner = <span class="fn">r</span>(<span class="n">1.2</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.6</span>, H-<span class="n">1.2</span>), <span class="fn">r</span>(<span class="n">2.6</span>, H), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">0.7</span>), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">2.5</span>), <span class="fn">r</span>(<span class="n">0.05</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
   `<span class="k">const</span> lip = <span class="fn">unwrap</span>(<span class="fn">cut</span>(lipOuter, lipInner));`,
@@ -69,11 +63,9 @@ const LINE_TOKENS: Tok[][] = LINES_HTML.map((html) => {
   }
   return toks;
 });
-const LINE_LEN = LINE_TOKENS.map((toks) => toks.reduce((n, t) => n + t.t.length, 0));
-const LINE_INDENT = LINE_TOKENS.map((toks) => {
-  const text = toks.map((t) => t.t).join('');
-  return text.length - text.trimStart().length;
-});
+const LINE_PLAIN = LINE_TOKENS.map((toks) => toks.map((t) => t.t).join(''));
+const LINE_LEN = LINE_PLAIN.map((s) => s.length);
+const LINE_INDENT = LINE_PLAIN.map((s) => s.length - s.trimStart().length);
 
 function partialHtml(toks: Tok[], n: number): string {
   let out = '';
@@ -91,11 +83,11 @@ function partialHtml(toks: Tok[], n: number): string {
 
 // When a given line finishes "typing", run this geometry step.
 const STEP_AT: Record<number, { frame: number; step: number }> = {
-  9: { frame: 0, step: 0 }, // socket
-  12: { frame: 1, step: 1 }, // body
-  17: { frame: 2, step: 2 }, // lip → final bin
+  6: { frame: 0, step: 0 }, // socket foot
+  9: { frame: 1, step: 1 }, // hollow body
+  14: { frame: 2, step: 2 }, // stacking lip → final bin
 };
-const DONE_LINE = 19;
+const DONE_LINE = 16;
 
 // Simulated IntelliSense: while typing a `.` on a line, pop a completion list of
 // the real brepjs Sketch methods, then "accept" and keep typing.
@@ -103,25 +95,54 @@ interface CompletionItem {
   n: string;
   d: string;
 }
-const COMPLETIONS: Record<number, { at: number; selected: number; items: CompletionItem[] }> = {
-  9: {
-    at: 21, // just after `const foot = r(0, 0).`
-    selected: 0,
-    items: [
-      { n: 'loftWith', d: '(sections, opts): Solid' },
-      { n: 'extrude', d: '(distance): Solid' },
-      { n: 'revolve', d: '(angle, axis?): Solid' },
-      { n: 'sweep', d: '(spine): Solid' },
-      { n: 'offset', d: '(distance): Sketch' },
-    ],
-  },
+const SKETCH_METHODS: CompletionItem[] = [
+  { n: 'loftWith', d: '(sections, opts): Solid' },
+  { n: 'extrude', d: '(distance): Solid' },
+  { n: 'revolve', d: '(angle, axis?): Solid' },
+  { n: 'sweep', d: '(spine): Solid' },
+  { n: 'offset', d: '(distance): Sketch' },
+];
+// Each fires when typing reaches the `.` after `marker`; `selected` is the
+// method the code then types.
+const COMPLETION_SPECS = [
+  { line: 6, marker: 'r(0, 0).', selected: 0 }, // .loftWith
+  { line: 9, marker: 'r(0, 0).', selected: 1 }, // .extrude
+  { line: 12, marker: 'r(0, H-2.6).', selected: 0 }, // .loftWith
+];
+const COMPLETIONS: Record<
+  number,
+  { at: number; selected: number; items: CompletionItem[]; method: string }
+> = {};
+for (const s of COMPLETION_SPECS) {
+  const idx = (LINE_PLAIN[s.line] ?? '').indexOf(s.marker);
+  if (idx >= 0) {
+    const method = SKETCH_METHODS[s.selected]?.n ?? '';
+    COMPLETIONS[s.line] = {
+      at: idx + s.marker.length,
+      selected: s.selected,
+      items: SKETCH_METHODS,
+      method,
+    };
+  }
+}
+
+// Hover IntelliSense: signatures shown when hovering a function/method token.
+const HOVER_INFO: Record<string, string> = {
+  drawRoundedRectangle: 'drawRoundedRectangle(width, height, radius?): Drawing',
+  sketchOnPlane: 'Drawing.sketchOnPlane(plane, origin?): Sketch',
+  loftWith: 'Sketch.loftWith(sections: Sketch[], opts?): Solid',
+  extrude: 'Sketch.extrude(distance: number): Solid',
+  cut: 'cut(a: Shape, b: Shape): Result<Shape3D>',
+  fuse: 'fuse(a: Shape, b: Shape): Result<Shape3D>',
+  unwrap: 'unwrap<T>(result: Result<T>): T',
+  r: '(inset: number, z: number) => Sketch',
 };
 
-const CHAR_MS = 15; // per-character typing speed
-const LINE_PAUSE = 220; // beat at the end of a typed line
-const BLANK_MS = 130; // blank line
-const STEP_DWELL = 1500; // hold after a geometry step appears
-const LOOP_PAUSE = 3200;
+const CHAR_MS = 11; // per-character typing speed
+const LINE_PAUSE = 200; // beat at the end of a typed line
+const BLANK_MS = 140; // blank line
+const STEP_DWELL = 2200; // hold after a geometry step appears
+const COMPLETION_HOLD = 1200; // how long the IntelliSense list lingers
 
 const playgroundHref = encodeCode(PROGRAM);
 
@@ -134,6 +155,7 @@ const typedChars = ref(0); // characters revealed on the current line
 const doneLines = ref<Set<number>>(new Set());
 const stepIndex = ref(-1); // -1 → nothing built yet; 0..2 for the rail
 const exported = ref(false);
+const finished = ref(false); // build sequence has played through once
 const stepLabel = ref('');
 const stepVol = ref<number | null>(null);
 const completion = ref<{
@@ -142,12 +164,14 @@ const completion = ref<{
   top: number;
   left: number;
 } | null>(null);
+const hover = ref<{ sig: string; top: number; left: number } | null>(null);
 
 let handle: CodeCadHandle | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let paused = false;
 let frames: HeroFramesData['frames'] = [];
 const firedCompletions = new Set<number>();
+const shownMethods = new Set<string>(); // dwell on a method's popup only once
 
 function showCompletion(c: { selected: number; items: CompletionItem[] }): void {
   completion.value = { items: c.items, selected: c.selected, top: 0, left: 54 };
@@ -185,21 +209,25 @@ function typeTick(): void {
   if (paused) return;
   const i = typedLine.value;
   if (i >= LINES_HTML.length) {
-    timer = setTimeout(resetLoop, LOOP_PAUSE);
+    finished.value = true; // play once — wait for Replay
     return;
   }
   const len = LINE_LEN[i] ?? 0;
 
-  // IntelliSense: pause on the `.` to show the completion list, then accept.
+  // IntelliSense: pause on the `.` to show the completion list, but only the
+  // first time a given method is used, then "accept" and keep typing.
   const comp = COMPLETIONS[i];
   if (comp && typedChars.value === comp.at && !firedCompletions.has(i)) {
     firedCompletions.add(i);
-    showCompletion(comp);
-    timer = setTimeout(() => {
-      completion.value = null;
-      typeTick();
-    }, 1200);
-    return;
+    if (!shownMethods.has(comp.method)) {
+      shownMethods.add(comp.method);
+      showCompletion(comp);
+      timer = setTimeout(() => {
+        completion.value = null;
+        typeTick();
+      }, COMPLETION_HOLD);
+      return;
+    }
   }
 
   if (typedChars.value < len) {
@@ -232,18 +260,39 @@ function typeTick(): void {
   advanceLine(len === 0 ? BLANK_MS : LINE_PAUSE);
 }
 
-function resetLoop(): void {
+function restart(): void {
+  if (timer) clearTimeout(timer);
   typedLine.value = 0;
   typedChars.value = 0;
   doneLines.value = new Set();
   stepIndex.value = -1;
   exported.value = false;
+  finished.value = false;
   stepLabel.value = '';
   stepVol.value = null;
   completion.value = null;
   firedCompletions.clear();
+  shownMethods.clear();
+  paused = false;
   handle?.hide();
   typeTick();
+}
+
+// Hover IntelliSense: show a signature tooltip over a function/method token.
+function onCodeOver(e: MouseEvent): void {
+  const el = e.target as HTMLElement | null;
+  if (!el || !el.classList?.contains('fn')) return;
+  const sig = HOVER_INFO[(el.textContent ?? '').trim()];
+  if (!sig) return;
+  const host = codeEl.value?.parentElement; // .codecol
+  if (!host) return;
+  const r = el.getBoundingClientRect();
+  const h = host.getBoundingClientRect();
+  hover.value = { sig, top: Math.max(r.top - h.top - 30, 2), left: r.left - h.left };
+}
+function onCodeOut(e: MouseEvent): void {
+  const el = e.target as HTMLElement | null;
+  if (el && el.classList?.contains('fn')) hover.value = null;
 }
 
 function onEnter(): void {
@@ -251,6 +300,8 @@ function onEnter(): void {
   if (timer) clearTimeout(timer);
 }
 function onLeave(): void {
+  hover.value = null;
+  if (finished.value) return; // don't resume a finished sequence
   if (!paused) return;
   paused = false;
   typeTick();
@@ -286,9 +337,10 @@ onMounted(async () => {
     // No typing/playback: show the whole program and the finished bin.
     typedLine.value = LINES_HTML.length;
     typedChars.value = 0;
-    doneLines.value = new Set([9, 12, 17, DONE_LINE]);
+    doneLines.value = new Set([6, 9, 14, DONE_LINE]);
     stepIndex.value = 2;
     exported.value = true;
+    finished.value = true;
     handle.showStep(frames.length - 1, false);
     const last = frames[frames.length - 1];
     if (last) {
@@ -315,6 +367,7 @@ onBeforeUnmount(() => {
       <span class="run-state" :class="{ on: exported }">{{
         exported ? '✓ default export ready' : 'authoring…'
       }}</span>
+      <button type="button" class="bar-btn" @click="restart">↻ Replay</button>
       <a class="run-link" :href="playgroundHref" target="_blank" rel="noopener"
         >▶ Open in Playground</a
       >
@@ -323,7 +376,13 @@ onBeforeUnmount(() => {
     <div class="ide-body">
       <!-- code panel: typed in line by line -->
       <div class="codecol">
-        <ol ref="codeEl" class="code" aria-label="brepjs program">
+        <ol
+          ref="codeEl"
+          class="code"
+          aria-label="brepjs program"
+          @mouseover="onCodeOver"
+          @mouseout="onCodeOut"
+        >
           <li
             v-for="(line, i) in LINES_HTML"
             :key="i"
@@ -335,6 +394,15 @@ onBeforeUnmount(() => {
             <span v-else-if="doneLines.has(i)" class="tick" aria-hidden="true">✓</span>
           </li>
         </ol>
+        <!-- hover IntelliSense: signature tooltip -->
+        <div
+          v-if="hover"
+          class="hovtip"
+          :style="{ top: hover.top + 'px', left: hover.left + 'px' }"
+          aria-hidden="true"
+        >
+          {{ hover.sig }}
+        </div>
         <!-- simulated TypeScript IntelliSense -->
         <div
           v-if="completion"
@@ -418,13 +486,45 @@ onBeforeUnmount(() => {
 .run-state.on {
   color: var(--pass, #46d09a);
 }
-.run-link {
+.bar-btn {
   margin-left: auto;
+  background: none;
+  border: 1px solid var(--line-2, #283340);
+  border-radius: 6px;
+  color: var(--ink-1, #aab6bd);
+  font-family: var(--f-mono, monospace);
+  font-size: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    color 0.12s;
+}
+.bar-btn:hover {
+  border-color: var(--teal-400, #03b0ad);
+  color: var(--ink-0, #f1f6f7);
+}
+.run-link {
   color: var(--teal-200, #7adbdd);
   text-decoration: none;
 }
 .run-link:hover {
   color: var(--teal-100, #a8e8e8);
+}
+.hovtip {
+  position: absolute;
+  z-index: 6;
+  max-width: 94%;
+  background: #0b0f15;
+  border: 1px solid var(--line-2, #283340);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.75);
+  padding: 5px 9px;
+  font-family: var(--f-mono, monospace);
+  font-size: 11px;
+  color: var(--teal-100, #a8e8e8);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .ide-body {

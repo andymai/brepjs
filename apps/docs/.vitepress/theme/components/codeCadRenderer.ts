@@ -9,12 +9,13 @@ import {
   LineSegments,
   Mesh,
   MeshStandardMaterial,
-  PerspectiveCamera,
+  OrthographicCamera,
   PointLight,
   Scene,
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { OrbitControls } from 'three-stdlib';
 
 export interface HeroFrame {
   label: string;
@@ -35,10 +36,9 @@ export interface HeroFramesData {
 export interface CodeCadHandle {
   /** Show frame `i`, cross-fading from whatever is currently shown. */
   showStep(i: number, animate: boolean): void;
-  /** Fade everything out (used when the build sequence loops). */
+  /** Fade everything out (used when the build sequence replays). */
   hide(): void;
   setColorScheme(dark: boolean): void;
-  setIdle(on: boolean): void;
   destroy(): void;
 }
 
@@ -80,9 +80,9 @@ export function mountCodeCad(
 
   const scene = new Scene();
 
-  const camera = new PerspectiveCamera(34, 1, 0.1, 5000);
-  // brepjs builds Z-up (CAD convention); make the scene Z-up so the bin stands
-  // upright (opening toward +Z) instead of lying on its side.
+  // Orthographic, true-isometric view — the CAD convention (no perspective
+  // foreshortening). brepjs builds Z-up, so the scene is Z-up too.
+  const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 100000);
   camera.up.set(0, 0, 1);
   const { lo, hi } = data.bounds;
   const center = new Vector3(
@@ -104,9 +104,8 @@ export function mountCodeCad(
       (hi[1] as number) - (lo[1] as number),
       (hi[2] as number) - (lo[2] as number)
     );
-  // 3/4 view (~33° elevation): low enough to read the stepped foot and the
-  // stacking-lip rim, high enough to see into the open compartment.
-  const dir = new Vector3(0.78, 0.52, 0.6).normalize();
+  // True isometric direction (Z-up): azimuth 45°, elevation ~35.26°.
+  const dir = new Vector3(1, 1, 1).normalize();
 
   const root = new Group();
   // Recentre the model on the origin so idle rotation spins about its centre.
@@ -216,23 +215,37 @@ export function mountCodeCad(
     const h = canvas.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    // Fit the bounding sphere into the ortho frustum on whichever axis is
+    // tighter, so the bin never crops (incl. portrait viewports on mobile).
+    const aspect = w / h;
+    const half = radius * 1.18;
+    const hw = aspect >= 1 ? half * aspect : half;
+    const hh = aspect >= 1 ? half : half / aspect;
+    camera.left = -hw;
+    camera.right = hw;
+    camera.top = hh;
+    camera.bottom = -hh;
     camera.updateProjectionMatrix();
-    // Fit the bounding sphere to whichever of the two FOVs is the tighter
-    // constraint (handles portrait viewports without cropping).
-    const vFov = (camera.fov * Math.PI) / 180;
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.12;
-    camera.position.copy(dir).multiplyScalar(dist);
-    camera.lookAt(0, 0, 0);
     if (reduceMotion) render();
   }
   const reduceMotion = opts.reduceMotion;
+
+  // Initial isometric pose; OrbitControls then lets the viewer orbit and zoom.
+  camera.position.copy(dir).multiplyScalar(radius * 6);
+  camera.lookAt(0, 0, 0);
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 0, 0);
+  controls.enablePan = false;
+  controls.enableZoom = true;
+  controls.minZoom = 0.65;
+  controls.maxZoom = 3.5;
+  controls.enableDamping = !reduceMotion;
+  controls.dampingFactor = 0.09;
+  controls.rotateSpeed = 0.9;
+
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
-
-  let yaw = 0;
-  resize(); // positions + frames the camera
+  resize();
 
   function render(): void {
     renderer.render(scene, camera);
@@ -240,8 +253,6 @@ export function mountCodeCad(
 
   let raf = 0;
   let last = performance.now();
-  let idle = !reduceMotion;
-  const YAW_RATE = (Math.PI * 2) / 26;
 
   function tick(now: number): void {
     raf = requestAnimationFrame(tick);
@@ -251,27 +262,20 @@ export function mountCodeCad(
     let changed = false;
     for (const s of slots) {
       if (s.opacity !== s.target) {
-        const step = (dt * 1000) / FADE_MS;
-        s.opacity += Math.sign(s.target - s.opacity) * step;
-        if (Math.abs(s.target - s.opacity) <= step) s.opacity = s.target;
+        const stepAmt = (dt * 1000) / FADE_MS;
+        s.opacity += Math.sign(s.target - s.opacity) * stepAmt;
+        if (Math.abs(s.target - s.opacity) <= stepAmt) s.opacity = s.target;
         changed = true;
       }
     }
     if (changed) applyOpacity();
-
-    if (idle) {
-      yaw += dt * YAW_RATE;
-      // Turntable about the vertical (Z) axis, gently swaying so the open
-      // compartment stays toward the viewer.
-      root.rotation.z = Math.sin(yaw) * 0.4 - 0.35;
-    }
+    controls.update();
     render();
   }
 
   if (reduceMotion) {
-    // Static: show the finished part immediately, no animation loop.
-    root.rotation.set(0, 0, -0.35);
     showStep(data.frames.length - 1, false);
+    controls.addEventListener('change', render);
     render();
   } else {
     raf = requestAnimationFrame(tick);
@@ -283,11 +287,9 @@ export function mountCodeCad(
       for (const s of slots) s.target = 0;
     },
     setColorScheme: applyColorScheme,
-    setIdle(on: boolean): void {
-      idle = on && !reduceMotion;
-    },
     destroy(): void {
       cancelAnimationFrame(raf);
+      controls.dispose();
       ro.disconnect();
       for (const s of slots) {
         clearGroup(s.group);

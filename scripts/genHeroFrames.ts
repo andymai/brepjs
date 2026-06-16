@@ -47,18 +47,15 @@ const H = 3 * 7; // 21
 const PROGRAM = `import { drawRoundedRectangle, cut, fuse, unwrap } from 'brepjs/quick';
 
 const [W, WALL, H] = [42 - 0.5, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+const r = (inset, z) => drawRoundedRectangle(W - 2*inset, W - 2*inset, 3.75 - inset).sketchOnPlane('XY', z);
 
-// rounded-rect section: inset from the 41.5 mm footprint, at height z
-const r = (inset, z) =>
-  drawRoundedRectangle(W - 2*inset, W - 2*inset, Math.max(3.75 - inset, 0.1)).sketchOnPlane('XY', z);
-
-// 1 — Gridfinity socket foot (clicks into a baseplate)
+// Gridfinity socket foot — clicks into a baseplate
 const foot = r(0, 0).loftWith([r(2.15, -2.4), r(2.95, -5)], { ruled: true });
 
-// 2 — hollow body: walls + floor
+// hollow body — walls + floor
 const body = unwrap(fuse(foot, unwrap(cut(r(0, 0).extrude(H), r(WALL, 1).extrude(H)))));
 
-// 3 — stacking lip so bins nest when stacked
+// stacking lip — so bins nest when stacked
 const lipOuter = r(0, H-2.6).loftWith([r(0, H+4.4)], { ruled: true });
 const lipInner = r(1.2, H-2.6).loftWith([r(2.6, H-1.2), r(2.6, H), r(1.9, H+0.7), r(1.9, H+2.5), r(0.05, H+4.4)], { ruled: true });
 const lip = unwrap(cut(lipOuter, lipInner));
@@ -90,11 +87,7 @@ function frame(label: string, s: Shape3D) {
 // rounded-rect section: inset from the footprint, at height z (mirrors `r` above)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fluent sketch API
 function r(inset: number, z: number): any {
-  return drawRoundedRectangle(
-    W - 2 * inset,
-    W - 2 * inset,
-    Math.max(3.75 - inset, 0.1)
-  ).sketchOnPlane('XY', z);
+  return drawRoundedRectangle(W - 2 * inset, W - 2 * inset, 3.75 - inset).sketchOnPlane('XY', z);
 }
 
 async function main(): Promise<void> {
