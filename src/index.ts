@@ -681,8 +681,6 @@ export {
 // ── Boolean operations (functional) ──
 
 export {
-  fuseAll,
-  cutAll,
   booleanPipeline,
   type BooleanOptions,
   type BooleanPipelineStep,
@@ -1086,6 +1084,8 @@ export {
   // Booleans
   fuse,
   cut,
+  fuseAll,
+  cutAll,
   intersect,
   section,
   sectionToFace,

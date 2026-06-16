@@ -148,6 +148,30 @@ export function cut<T extends Shape3D>(
   }) as Result<T>;
 }
 
+/** Fuse many 3D shapes (boolean union) in a single operation. */
+export function fuseAll<T extends Shape3D>(
+  shapes: Shapeable<T>[],
+  options?: booleans.BooleanOptions
+): Result<T> {
+  return booleans.fuseAll(
+    shapes.map((s) => resolve(s)),
+    { ...options, unsafe: true }
+  ) as Result<T>;
+}
+
+/** Cut many tool shapes from a base shape (boolean subtraction) in a single operation. */
+export function cutAll<T extends Shape3D>(
+  base: Shapeable<T>,
+  tools: Shapeable<Shape3D>[],
+  options?: booleans.BooleanOptions
+): Result<T> {
+  return booleans.cutAll(
+    resolve(base),
+    tools.map((s) => resolve(s)),
+    { ...options, unsafe: true }
+  ) as Result<T>;
+}
+
 /** Compute the intersection of two shapes (boolean common). */
 export function intersect<T extends Shape3D>(
   a: Shapeable<T>,

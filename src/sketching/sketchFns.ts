@@ -39,7 +39,7 @@ import { createFace, createWire } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
 import type { SketchData } from '@/2d/blueprints/lib.js';
 import { curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
-import Sketch from './sketch.js';
+import Sketch, { type SketchInterface } from './sketch.js';
 import CompoundSketch from './compoundSketch.js';
 
 // ---------------------------------------------------------------------------
@@ -60,6 +60,26 @@ export function wrapSketchData(data: SketchData): Sketch {
 /** Wrap an array of SketchData into a CompoundSketch. */
 export function wrapSketchDataArray(dataArr: SketchData[]): CompoundSketch {
   return new CompoundSketch(dataArr.map(wrapSketchData));
+}
+
+/**
+ * Collapse a sketch-like (the `SketchInterface | Sketches` union that
+ * `Drawing.sketchOnPlane` can return) to a single {@link Sketch} for use as a
+ * loft or sweep section. A single-wire profile passes through; a multi-piece
+ * profile keeps its first wire and disposes the rest, since loft/sweep sections
+ * are single wires.
+ */
+export function asSketch(sketchLike: SketchInterface): Sketch {
+  if (sketchLike instanceof Sketch) return sketchLike;
+  const pieces = (sketchLike as { sketches?: unknown }).sketches;
+  if (Array.isArray(pieces)) {
+    const [first, ...rest] = pieces as Sketch[];
+    if (first instanceof Sketch) {
+      for (const extra of rest) extra.delete();
+      return first;
+    }
+  }
+  bug('asSketch', 'Expected a single-wire profile to loft or sweep.');
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +178,7 @@ export function sketchExtrude(
  */
 export function sketchSweep(
   sketch: Sketch,
-  sketchOnPlane: (plane: Plane, origin: Vec3) => Sketch,
+  sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface,
   sweepConfig: SweepOptions = {}
 ): Shape3D {
   const startPoint = curveStartPoint(sketch.wire);
@@ -167,24 +187,12 @@ export function sketchSweep(
   const defaultDir: Vec3 = sketch.defaultDirection;
   const xDir = vecScale(vecCross(normal, defaultDir), -1);
 
-  const result = sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [
-    ...startPoint,
-  ]);
-
-  // The callback may return a Sketches (plural) when the Drawing used a
-  // 2D boolean that split the profile into multiple pieces. Extract the
-  // first sketch's wire and dispose the rest to prevent WASM leaks.
-  // Duck-type check avoids circular import (sketches.ts imports Sketch).
-  let profile: Sketch;
-  if ('sketches' in result && Array.isArray((result as { sketches: unknown[] }).sketches)) {
-    const pieces = (result as { sketches: Sketch[] }).sketches;
-    profile = pieces[0] as Sketch;
-    for (let i = 1; i < pieces.length; i++) {
-      pieces[i]?.delete();
-    }
-  } else {
-    profile = result;
-  }
+  // The callback may return a Sketches (plural) when the Drawing used a 2D
+  // boolean that split the profile into multiple pieces; asSketch extracts the
+  // first wire and disposes the rest to prevent WASM leaks.
+  const profile = asSketch(
+    sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [...startPoint])
+  );
 
   const config: SweepOptions = {
     forceProfileSpineOthogonality: true,
@@ -206,13 +214,12 @@ export function sketchSweep(
  */
 export function sketchLoft(
   sketch: Sketch,
-  otherSketches: Sketch | Sketch[],
+  otherSketches: SketchInterface | SketchInterface[],
   loftConfig: LoftOptions = {},
   returnShell = false
 ): Shape3D {
-  const sketchArray = Array.isArray(otherSketches)
-    ? [sketch, ...otherSketches]
-    : [sketch, otherSketches];
+  const others = (Array.isArray(otherSketches) ? otherSketches : [otherSketches]).map(asSketch);
+  const sketchArray = [sketch, ...others];
   const shape = unwrap(
     loft(
       sketchArray.map((s) => s.wire),
@@ -346,7 +353,7 @@ export function compoundSketchRevolve(
 export function compoundSketchLoft(
   sketch: CompoundSketch,
   other: CompoundSketch,
-  loftConfig: LoftOptions
+  loftConfig: LoftOptions = {}
 ): Shape3D {
   if (sketch.sketches.length !== other.sketches.length)
     bug(

@@ -85,7 +85,15 @@ export default class CompoundSketch implements SketchInterface {
   }
 
   /** Loft between this compound sketch and another with matching sub-sketch counts. */
-  loftWith(otherCompound: this, loftConfig: LoftOptions): Shape3D {
+  loftWith(otherCompound: this, loftConfig: LoftOptions = {}): Shape3D {
     return fns.compoundSketchLoft(this, otherCompound, loftConfig);
+  }
+
+  /** Sweeping a face-with-holes profile has no single well-defined spine. */
+  sweepSketch(): Shape3D {
+    return bug(
+      'CompoundSketch.sweepSketch',
+      'Sweeping a compound (face-with-holes) profile is not supported — sweep its outer Sketch instead.'
+    );
   }
 }

@@ -1,10 +1,14 @@
-import type { PointInput } from '@/core/types.js';
+import type { PointInput, Vec3 } from '@/core/types.js';
 import { makeCompound } from '@/topology/shapeHelpers.js';
-import type { ExtrusionProfile } from '@/operations/extrudeUtils.js';
-import type { Compound } from '@/core/shapeTypes.js';
+import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
+import type { LoftOptions } from '@/operations/loftFns.js';
+import type { Plane } from '@/core/planeTypes.js';
+import type { Compound, Face, Shape3D } from '@/core/shapeTypes.js';
+import { bug } from '@/core/errors.js';
+import { firstOrThrow } from '@/utils/arrayAccess.js';
 
 import type CompoundSketch from './compoundSketch.js';
-import Sketch from './sketch.js';
+import Sketch, { type SketchInterface } from './sketch.js';
 
 /**
  * Batch wrapper around multiple {@link Sketch} or {@link CompoundSketch} instances.
@@ -12,13 +16,56 @@ import Sketch from './sketch.js';
  * Applies the same operation (extrude, revolve, etc.) to every contained sketch
  * and returns the results combined into a single compound shape.
  *
+ * Implements {@link SketchInterface} so it is interchangeable with a single
+ * {@link Sketch} in the chained `Drawing.sketchOnPlane(...).extrude()` style.
+ * Operations with no per-profile batch meaning (`face`, `loftWith`,
+ * `sweepSketch`) require a single contained profile and otherwise throw.
+ *
  * @category Sketching
  */
-export default class Sketches {
+export default class Sketches implements SketchInterface {
   sketches: Array<Sketch | CompoundSketch>;
 
   constructor(sketches: Array<Sketch | CompoundSketch>) {
     this.sketches = sketches;
+  }
+
+  /**
+   * The sole contained {@link Sketch}, for operations that have no
+   * multi-profile meaning. Throws when there is more than one profile, or when
+   * the single profile is a compound (face-with-holes) sketch.
+   */
+  private soleSketch(op: string): Sketch {
+    if (this.sketches.length !== 1)
+      bug(`Sketches.${op}`, `Multiple profiles — ${op} each sub-sketch individually.`);
+    const only = firstOrThrow(this.sketches);
+    if (!(only instanceof Sketch))
+      bug(`Sketches.${op}`, `${op} is only supported on single-wire profiles.`);
+    return only;
+  }
+
+  /** Build a face from the sole contained profile (see {@link Sketches.faces}). */
+  face(): Face {
+    if (this.sketches.length !== 1)
+      bug('Sketches.face', 'Multiple profiles — use faces() to combine them.');
+    return firstOrThrow(this.sketches).face();
+  }
+
+  /** Loft from the sole contained profile to one or more other sketches. */
+  loftWith(
+    otherSketches: SketchInterface | SketchInterface[],
+    loftConfig?: LoftOptions,
+    returnShell?: boolean
+  ): Shape3D {
+    return this.soleSketch('loftWith').loftWith(otherSketches, loftConfig, returnShell);
+  }
+
+  /** Sweep a profile along the sole contained sketch's wire. */
+  sweepSketch(
+    sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface,
+    sweepConfig?: SweepOptions
+  ): Shape3D {
+    return this.soleSketch('sweepSketch').sweepSketch(sketchOnPlane, sweepConfig);
   }
 
   /** Return all wires combined into a single compound shape. */

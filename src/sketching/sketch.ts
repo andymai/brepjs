@@ -47,7 +47,19 @@ export interface SketchInterface {
    *
    * Note that all sketches will be deleted by this operation
    */
-  loftWith(otherSketches: this | this[], loftConfig: LoftOptions, returnShell?: boolean): Shape3D;
+  loftWith(
+    otherSketches: SketchInterface | SketchInterface[],
+    loftConfig?: LoftOptions,
+    returnShell?: boolean
+  ): Shape3D;
+  /**
+   * Sweep a profile sketch (built by the `sketchOnPlane` callback) along this
+   * sketch's wire path.
+   */
+  sweepSketch(
+    sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface,
+    sweepConfig?: SweepOptions
+  ): Shape3D;
 }
 
 /**
@@ -205,7 +217,7 @@ export default class Sketch implements SketchInterface {
    * calling either consumer twice throws on the second call.
    */
   sweepSketch(
-    sketchOnPlane: (plane: Plane, origin: Vec3) => this,
+    sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface,
     sweepConfig: SweepOptions = {}
   ): Shape3D {
     return fns.sketchSweep(this, sketchOnPlane, sweepConfig);
@@ -221,7 +233,7 @@ export default class Sketch implements SketchInterface {
    * Note that all sketches will be deleted by this operation
    */
   loftWith(
-    otherSketches: this | this[],
+    otherSketches: SketchInterface | SketchInterface[],
     loftConfig: LoftOptions = {},
     returnShell = false
   ): Shape3D {
