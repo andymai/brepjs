@@ -454,9 +454,8 @@ onBeforeUnmount(() => observer?.disconnect());
             ><img src="/logo.svg" alt="" width="26" height="26" /><span>brepjs</span></a
           >
           <p class="foot-egg">
-            Everything in the hero is real: brepjs types out a Gridfinity bin, the kernel meshes
-            each build step, and Three.js renders the exact edges — no video, no mockup. Open it in
-            the Playground and run it yourself.
+            Exact, code-first CAD for TypeScript — real B-Rep solids, proven valid at compile time,
+            and STEP that drops into the tools you already own.
           </p>
         </div>
         <nav class="foot-col" aria-label="Documentation">
