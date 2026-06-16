@@ -92,10 +92,18 @@ export function mountCodeCad(
     (hi[1] as number) - (lo[1] as number),
     (hi[2] as number) - (lo[2] as number)
   );
-  const dist = size * 1.95;
-  // Lower elevation (~26°) so the Gridfinity stepped feet read, while still
-  // showing the open top and one long side.
-  const dir = new Vector3(0.82, 0.46, 0.46).normalize();
+  // Bounding-sphere radius — used to fit the model to whatever aspect ratio the
+  // viewport ends up (portrait on mobile / when the code panel is tall).
+  const radius =
+    0.5 *
+    Math.hypot(
+      (hi[0] as number) - (lo[0] as number),
+      (hi[1] as number) - (lo[1] as number),
+      (hi[2] as number) - (lo[2] as number)
+    );
+  // 3/4 view (~33° elevation): low enough to read the stepped foot and the
+  // stacking-lip rim, high enough to see into the open compartment.
+  const dir = new Vector3(0.78, 0.52, 0.6).normalize();
 
   const root = new Group();
   // Recentre the model on the origin so idle rotation spins about its centre.
@@ -210,6 +218,13 @@ export function mountCodeCad(
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // Fit the bounding sphere to whichever of the two FOVs is the tighter
+    // constraint (handles portrait viewports without cropping).
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+    const dist = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.12;
+    camera.position.copy(dir).multiplyScalar(dist);
+    camera.lookAt(0, 0, 0);
     if (reduceMotion) render();
   }
   const reduceMotion = opts.reduceMotion;
@@ -217,13 +232,7 @@ export function mountCodeCad(
   ro.observe(canvas);
 
   let yaw = 0;
-  function placeCamera(): void {
-    const offset = dir.clone().multiplyScalar(dist);
-    camera.position.copy(offset);
-    camera.lookAt(0, 0, 0);
-  }
-  placeCamera();
-  resize();
+  resize(); // positions + frames the camera
 
   function render(): void {
     renderer.render(scene, camera);

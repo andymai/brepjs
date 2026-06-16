@@ -7,50 +7,62 @@ import type { CodeCadHandle, HeroFramesData } from './codeCadRenderer';
 // The program shown in the panel, line by line. Mirrors the pre-baked frames in
 // public/hero-frames.json (see scripts/genHeroFrames.ts) and is what the
 // "Open in Playground" link carries — so the demo is runnable, not a mock.
-const PROGRAM = `import { drawRoundedRectangle, cut, fuse, translate, unwrap } from 'brepjs/quick';
+const PROGRAM = `import { drawRoundedRectangle, cut, fuse, unwrap } from 'brepjs/quick';
 
-const cell = 42 - 0.5;          // one Gridfinity unit, less clearance
-const [w, d, h] = [cell, 2*42 - 0.5, 3*7];
+const [W, R, WALL, H] = [42 - 0.5, 3.75, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
 
-const block = drawRoundedRectangle(w, d, 3.75).sketchOnPlane('XY', 0).extrude(h);
-const inner = drawRoundedRectangle(w-2.4, d-2.4, 2).sketchOnPlane('XY', 1).extrude(h);
-const bin   = unwrap(cut(block, inner));   // hollow: walls + floor
+// 1 — Gridfinity socket foot (clicks into a baseplate)
+const foot = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).loftWith([
+  drawRoundedRectangle(W - 4.3, W - 4.3, 1.6).sketchOnPlane('XY', -2.4),
+  drawRoundedRectangle(W - 5.9, W - 5.9, 0.8).sketchOnPlane('XY', -5),
+], { ruled: true });
 
-const foot = (y) => translate(       // Gridfinity stepped foot, per cell
-  drawRoundedRectangle(cell, cell, 3.75).sketchOnPlane('XY', 0).loftWith([
-    drawRoundedRectangle(cell-4.3, cell-4.3, 1.6).sketchOnPlane('XY', -2.4),
-    drawRoundedRectangle(cell-5.9, cell-5.9, 0.8).sketchOnPlane('XY', -5),
-  ], { ruled: true }), [0, y, 0]);
-const base = unwrap(fuse(foot(21), foot(-21)));
+// 2 — hollow body on top: walls + floor
+const block = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).extrude(H);
+const bore  = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', 1).extrude(H);
+const body  = unwrap(fuse(foot, unwrap(cut(block, bore))));
 
-export default unwrap(fuse(bin, base));`;
+// 3 — stacking lip so bins nest when stacked
+const cap   = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', H).extrude(4.4);
+const ledge = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', H).loftWith([
+  drawRoundedRectangle(W - 0.8, W - 0.8, 3.4).sketchOnPlane('XY', H + 4.4),
+], { ruled: true });
+const lip   = unwrap(cut(cap, ledge));
+
+export default unwrap(fuse(body, lip));`;
 
 const LINES_HTML = [
-  `<span class="k">import</span> { drawRoundedRectangle, cut, fuse, translate, unwrap } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
+  `<span class="k">import</span> { drawRoundedRectangle, cut, fuse, unwrap } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
   ``,
-  `<span class="k">const</span> cell = <span class="n">42</span> - <span class="n">0.5</span>;          <span class="cm">// one Gridfinity unit, less clearance</span>`,
-  `<span class="k">const</span> [w, d, h] = [cell, <span class="n">2</span>*<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">3</span>*<span class="n">7</span>];`,
+  `<span class="k">const</span> [W, R, WALL, H] = [<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">3.75</span>, <span class="n">1.2</span>, <span class="n">3</span> * <span class="n">7</span>]; <span class="cm">// 1×1 bin, 3 units tall</span>`,
   ``,
-  `<span class="k">const</span> block = <span class="fn">drawRoundedRectangle</span>(w, d, <span class="n">3.75</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">extrude</span>(h);`,
-  `<span class="k">const</span> inner = <span class="fn">drawRoundedRectangle</span>(w-<span class="n">2.4</span>, d-<span class="n">2.4</span>, <span class="n">2</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">1</span>).<span class="fn">extrude</span>(h);`,
-  `<span class="k">const</span> bin   = <span class="fn">unwrap</span>(<span class="fn">cut</span>(block, inner));   <span class="cm">// hollow: walls + floor</span>`,
+  `<span class="cm">// 1 — Gridfinity socket foot (clicks into a baseplate)</span>`,
+  `<span class="k">const</span> foot = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([`,
+  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">4.3</span>, W - <span class="n">4.3</span>, <span class="n">1.6</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">2.4</span>),`,
+  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">5.9</span>, W - <span class="n">5.9</span>, <span class="n">0.8</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">5</span>),`,
+  `], { ruled: <span class="k">true</span> });`,
   ``,
-  `<span class="k">const</span> foot = (y) => <span class="fn">translate</span>(       <span class="cm">// Gridfinity stepped foot, per cell</span>`,
-  `  <span class="fn">drawRoundedRectangle</span>(cell, cell, <span class="n">3.75</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([`,
-  `    <span class="fn">drawRoundedRectangle</span>(cell-<span class="n">4.3</span>, cell-<span class="n">4.3</span>, <span class="n">1.6</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">2.4</span>),`,
-  `    <span class="fn">drawRoundedRectangle</span>(cell-<span class="n">5.9</span>, cell-<span class="n">5.9</span>, <span class="n">0.8</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">5</span>),`,
-  `  ], { ruled: <span class="k">true</span> }), [<span class="n">0</span>, y, <span class="n">0</span>]);`,
-  `<span class="k">const</span> base = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(<span class="fn">foot</span>(<span class="n">21</span>), <span class="fn">foot</span>(-<span class="n">21</span>)));`,
+  `<span class="cm">// 2 — hollow body on top: walls + floor</span>`,
+  `<span class="k">const</span> block = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">extrude</span>(H);`,
+  `<span class="k">const</span> bore  = <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*WALL, W - <span class="n">2</span>*WALL, <span class="n">2</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">1</span>).<span class="fn">extrude</span>(H);`,
+  `<span class="k">const</span> body  = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(foot, <span class="fn">unwrap</span>(<span class="fn">cut</span>(block, bore))));`,
   ``,
-  `<span class="k">export default</span> <span class="fn">unwrap</span>(<span class="fn">fuse</span>(bin, base));`,
+  `<span class="cm">// 3 — stacking lip so bins nest when stacked</span>`,
+  `<span class="k">const</span> cap   = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H).<span class="fn">extrude</span>(<span class="n">4.4</span>);`,
+  `<span class="k">const</span> ledge = <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*WALL, W - <span class="n">2</span>*WALL, <span class="n">2</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H).<span class="fn">loftWith</span>([`,
+  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">0.8</span>, W - <span class="n">0.8</span>, <span class="n">3.4</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H + <span class="n">4.4</span>),`,
+  `], { ruled: <span class="k">true</span> });`,
+  `<span class="k">const</span> lip   = <span class="fn">unwrap</span>(<span class="fn">cut</span>(cap, ledge));`,
+  ``,
+  `<span class="k">export default</span> <span class="fn">unwrap</span>(<span class="fn">fuse</span>(body, lip));`,
 ];
 
 // beat → which frame to show, which code line is "running", how long to dwell
 const BEATS = [
-  { frame: 0, line: 5, dwell: 1500 },
-  { frame: 1, line: 7, dwell: 1550 },
-  { frame: 2, line: 14, dwell: 1900 },
-  { frame: 2, line: 16, dwell: 2600, done: true },
+  { frame: 0, line: 5, dwell: 1600 },
+  { frame: 1, line: 13, dwell: 1700 },
+  { frame: 2, line: 20, dwell: 1900 },
+  { frame: 2, line: 22, dwell: 2600, done: true },
 ] as const;
 
 const playgroundHref = encodeCode(PROGRAM);
@@ -147,8 +159,8 @@ onMounted(async () => {
 
   if (reduceMotion) {
     // Final state, no playback: show the whole program as "run".
-    activeLine.value = 16;
-    doneLines.value = new Set([5, 7, 14, 16]);
+    activeLine.value = 22;
+    doneLines.value = new Set([5, 13, 20, 22]);
     stepIndex.value = 2;
     exported.value = true;
     const last = frames[frames.length - 1];
@@ -216,11 +228,11 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="ide-rail" aria-hidden="true">
-      <span :class="{ on: stepIndex >= 0 }">extrude</span>
+      <span :class="{ on: stepIndex >= 0 }">socket</span>
       <i></i>
-      <span :class="{ on: stepIndex >= 1 }">hollow</span>
+      <span :class="{ on: stepIndex >= 1 }">body</span>
       <i></i>
-      <span :class="{ on: stepIndex >= 2 }">gridfinity feet</span>
+      <span :class="{ on: stepIndex >= 2 }">stacking lip</span>
       <i></i>
       <span :class="{ on: exported }">export</span>
     </div>
@@ -275,7 +287,7 @@ onBeforeUnmount(() => {
 
 .ide-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
   min-height: 380px;
 }
 .code {
@@ -284,23 +296,28 @@ onBeforeUnmount(() => {
   padding: 18px 8px 18px 0;
   border-right: 1px solid var(--line, #1c2530);
   font-family: var(--f-mono, monospace);
-  font-size: 13px;
-  line-height: 1.95;
-  overflow-x: auto;
-  counter-reset: none;
+  font-size: 12px;
+  line-height: 1.85;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .code li {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  padding: 1px 16px 1px 0;
+  gap: 10px;
+  padding: 1px 14px 1px 0;
   border-left: 2px solid transparent;
   color: var(--ink-2, #828d96);
   transition:
     background 0.25s,
     color 0.25s,
     border-color 0.25s;
-  white-space: pre;
+}
+.code .src {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 .code li.done {
   color: var(--ink-1, #aab6bd);
