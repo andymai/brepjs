@@ -136,14 +136,24 @@ onBeforeUnmount(() => observer?.disconnect());
             precise, measurements are real numbers, and STEP exports drop cleanly into SolidWorks,
             Fusion, and FreeCAD. No tessellation error baked into your model.
           </p>
-          <div class="compare" aria-hidden="true">
+          <div class="compare">
             <figure class="compare-cell">
-              <div class="mini exact"></div>
-              <figcaption><b>brepjs</b> — exact B-Rep surface</figcaption>
+              <img
+                class="mini"
+                src="/images/landing/exact.png"
+                alt="A turned part as an exact B-Rep solid — smooth curved face, clean edges"
+                loading="lazy"
+              />
+              <figcaption><b>brepjs</b> — exact B-Rep, one smooth face</figcaption>
             </figure>
             <figure class="compare-cell">
-              <div class="mini faceted"></div>
-              <figcaption>mesh CAD — faceted approximation</figcaption>
+              <img
+                class="mini"
+                src="/images/landing/faceted.png"
+                alt="The same part as a coarse triangle mesh — a faceted polygon approximation"
+                loading="lazy"
+              />
+              <figcaption>mesh CAD — faceted triangle approximation</figcaption>
             </figure>
           </div>
         </div>
@@ -212,10 +222,10 @@ onBeforeUnmount(() => observer?.disconnect());
 <span class="p">$</span> <span class="c">/plugin install</span> brepjs-verify@brepjs
 <span class="p">$</span> <span class="c">npm i -D</span> brepjs-verify brepjs occt-wasm
 
-<span class="p">$</span> brepjs-verify <span class="kk">verify</span> bracket.ts
+<span class="p">$</span> brepjs-verify <span class="kk">verify</span> bin.ts
 <span class="p">›</span> running on occt-wasm kernel…
-<span class="ok">✓ valid Solid</span> · vol 4 812.5 mm³ · 11 faces
-<span class="ok">✓ assertions 3/3</span> · wrote bracket.step</code></pre>
+<span class="ok">✓ valid Solid</span> · vol 14 043.4 mm³ · 91 faces
+<span class="ok">✓ assertions 3/3</span> · wrote bin.step</code></pre>
             </div>
 
             <div class="panel">
@@ -235,19 +245,19 @@ onBeforeUnmount(() => observer?.disconnect());
                   </div>
                   <div>
                     <dt>measurements.volume</dt>
-                    <dd>4812.5</dd>
+                    <dd>14043.4</dd>
                   </div>
                   <div>
                     <dt>measurements.area</dt>
-                    <dd>2188.0</dd>
+                    <dd>11659.6</dd>
                   </div>
                   <div>
                     <dt>measurements.bounds</dt>
-                    <dd>30 × 20 × 10</dd>
+                    <dd>41.7 × 41.7 × 30.5</dd>
                   </div>
                   <div>
                     <dt>topology</dt>
-                    <dd>11 f · 24 e · 16 v</dd>
+                    <dd>91 f · 192 e · 104 v</dd>
                   </div>
                   <div>
                     <dt>topology.manifold</dt>
@@ -255,12 +265,38 @@ onBeforeUnmount(() => observer?.disconnect());
                   </div>
                   <div>
                     <dt>assertions.volume</dt>
-                    <dd class="pass">4812.5 = 4812.5 ✓</dd>
+                    <dd class="pass">14043.4 = 14043.4 ✓</dd>
                   </div>
                 </dl>
-                <div class="views" aria-hidden="true">
-                  <span class="view">iso</span><span class="view">front</span
-                  ><span class="view">top</span><span class="view">right</span>
+                <div class="views">
+                  <figure class="view">
+                    <img
+                      src="/images/landing/snap-iso.png"
+                      alt="bin — isometric view"
+                      loading="lazy"
+                    />
+                    <span>iso</span>
+                  </figure>
+                  <figure class="view">
+                    <img
+                      src="/images/landing/snap-front.png"
+                      alt="bin — front view"
+                      loading="lazy"
+                    />
+                    <span>front</span>
+                  </figure>
+                  <figure class="view">
+                    <img src="/images/landing/snap-top.png" alt="bin — top view" loading="lazy" />
+                    <span>top</span>
+                  </figure>
+                  <figure class="view">
+                    <img
+                      src="/images/landing/snap-right.png"
+                      alt="bin — right view"
+                      loading="lazy"
+                    />
+                    <span>right</span>
+                  </figure>
                 </div>
               </div>
             </div>
@@ -806,18 +842,13 @@ h2 {
   background: var(--bg-1);
 }
 .mini {
-  height: 150px;
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: contain;
   border-radius: 10px;
-  background: var(--bg-2);
-}
-.mini.exact {
   background:
-    radial-gradient(circle at 38% 32%, rgba(122, 219, 221, 0.5), transparent 60%),
-    conic-gradient(from 210deg at 60% 60%, #0c8698, #03b0ad, #4acecc, #0c8698);
-}
-.mini.faceted {
-  background: repeating-conic-gradient(from 0deg at 50% 50%, #0c8698 0 30deg, #07606f 30deg 60deg);
-  opacity: 0.85;
+    radial-gradient(circle at 50% 42%, rgba(3, 176, 173, 0.12), transparent 68%), var(--bg-2);
 }
 .compare-cell figcaption {
   margin-top: 14px;
@@ -972,13 +1003,23 @@ pre.code.big {
   margin-top: 14px;
 }
 .view {
+  position: relative;
+  margin: 0;
   aspect-ratio: 1;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg-2);
-  display: flex;
-  align-items: flex-end;
-  padding: 6px;
+  overflow: hidden;
+}
+.view img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.view span {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
   font-size: 9px;
   color: var(--ink-2);
   letter-spacing: 0.05em;
