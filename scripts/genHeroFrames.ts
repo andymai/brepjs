@@ -2,9 +2,12 @@
  * Pre-bake the landing hero's "code-as-CAD" build sequence: a real 1×1
  * Gridfinity bin (brepjs grew out of the Gridfinity Layout Tool). Builds it
  * bottom-up — socket foot → hollow body → stacking lip — running the actual
- * kernel (occt-wasm) and baking each step's face mesh to
- * apps/docs/public/hero-frames.json. The hero plays it back and derives white
- * B-Rep edges client-side; no WASM ships to the browser.
+ * kernel (occt-wasm) and baking each step's face mesh + exact B-Rep edge lines
+ * to apps/docs/public/hero-frames.json. No WASM ships to the browser.
+ *
+ * Lip profile mirrors the layout tool's buildTopShapeLoft (LIP_* constants):
+ * outer tube minus a stepped inner frustum, so the ledge overhangs inward and
+ * the rim tapers to the outer edge at the peak.
  *
  * Re-run when the demo program changes:  npm run docs:gen-hero
  */
@@ -19,8 +22,10 @@ import {
   fuse,
   unwrap,
   mesh,
+  meshEdges,
   measureVolume,
   toBufferGeometryData,
+  toLineGeometryData,
   type Shape3D,
 } from '@/index.js';
 
@@ -35,37 +40,31 @@ const OUT = join(
 
 // Standard Gridfinity (Gridfinity Layout Tool defaults). 1×1, 3 units tall.
 const W = 42 - 0.5; // 41.5 — one unit, less clearance
-const R = 3.75;
 const WALL = 1.2;
 const H = 3 * 7; // 21
 
 // The runnable program shown in the panel + carried by "Open in Playground".
 const PROGRAM = `import { drawRoundedRectangle, cut, fuse, unwrap } from 'brepjs/quick';
 
-const [W, R, WALL, H] = [42 - 0.5, 3.75, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+const [W, WALL, H] = [42 - 0.5, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+
+// rounded-rect section: inset from the 41.5 mm footprint, at height z
+const r = (inset, z) =>
+  drawRoundedRectangle(W - 2*inset, W - 2*inset, Math.max(3.75 - inset, 0.1)).sketchOnPlane('XY', z);
 
 // 1 — Gridfinity socket foot (clicks into a baseplate)
-const foot = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).loftWith([
-  drawRoundedRectangle(W - 4.3, W - 4.3, 1.6).sketchOnPlane('XY', -2.4),
-  drawRoundedRectangle(W - 5.9, W - 5.9, 0.8).sketchOnPlane('XY', -5),
-], { ruled: true });
+const foot = r(0, 0).loftWith([r(2.15, -2.4), r(2.95, -5)], { ruled: true });
 
-// 2 — hollow body on top: walls + floor
-const block = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).extrude(H);
-const bore  = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', 1).extrude(H);
-const body  = unwrap(fuse(foot, unwrap(cut(block, bore))));
+// 2 — hollow body: walls + floor
+const body = unwrap(fuse(foot, unwrap(cut(r(0, 0).extrude(H), r(WALL, 1).extrude(H)))));
 
 // 3 — stacking lip so bins nest when stacked
-const cap   = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', H).extrude(4.4);
-const ledge = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', H).loftWith([
-  drawRoundedRectangle(W - 0.8, W - 0.8, 3.4).sketchOnPlane('XY', H + 4.4),
-], { ruled: true });
-const lip   = unwrap(cut(cap, ledge));
+const lipOuter = r(0, H-2.6).loftWith([r(0, H+4.4)], { ruled: true });
+const lipInner = r(1.2, H-2.6).loftWith([r(2.6, H-1.2), r(2.6, H), r(1.9, H+0.7), r(1.9, H+2.5), r(0.05, H+4.4)], { ruled: true });
+const lip = unwrap(cut(lipOuter, lipInner));
 
 export default unwrap(fuse(body, lip));`;
 
-// Coarse mesh — the bin is ~40 mm and ~600 px on screen, so a generous
-// deflection keeps the asset small with no visible faceting.
 const MESH_OPTS = { tolerance: 0.1, angularTolerance: 0.35 } as const;
 
 function b64(arr: Float32Array | Uint32Array): string {
@@ -76,6 +75,7 @@ function vol(s: Shape3D): number {
 }
 function frame(label: string, s: Shape3D) {
   const m = toBufferGeometryData(mesh(s, MESH_OPTS));
+  const e = toLineGeometryData(meshEdges(s, MESH_OPTS));
   return {
     label,
     vol: vol(s),
@@ -83,29 +83,18 @@ function frame(label: string, s: Shape3D) {
     position: b64(m.position),
     normal: b64(m.normal),
     index: b64(m.index),
+    edges: b64(e.position),
   };
 }
 
-function buildFoot(): Shape3D {
-  return drawRoundedRectangle(W, W, R)
-    .sketchOnPlane('XY', 0)
-    .loftWith(
-      [
-        drawRoundedRectangle(W - 4.3, W - 4.3, 1.6).sketchOnPlane('XY', -2.4),
-        drawRoundedRectangle(W - 5.9, W - 5.9, 0.8).sketchOnPlane('XY', -5),
-      ],
-      { ruled: true }
-    );
-}
-
-function buildLip(): Shape3D {
-  const cap = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', H).extrude(4.4);
-  const ledge = drawRoundedRectangle(W - 2 * WALL, W - 2 * WALL, 2)
-    .sketchOnPlane('XY', H)
-    .loftWith([drawRoundedRectangle(W - 0.8, W - 0.8, 3.4).sketchOnPlane('XY', H + 4.4)], {
-      ruled: true,
-    });
-  return unwrap(cut(cap, ledge));
+// rounded-rect section: inset from the footprint, at height z (mirrors `r` above)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- fluent sketch API
+function r(inset: number, z: number): any {
+  return drawRoundedRectangle(
+    W - 2 * inset,
+    W - 2 * inset,
+    Math.max(3.75 - inset, 0.1)
+  ).sketchOnPlane('XY', z);
 }
 
 async function main(): Promise<void> {
@@ -113,14 +102,19 @@ async function main(): Promise<void> {
   const k = await OcctKernel.init();
   registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(k));
 
-  const foot = buildFoot();
-  const block = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).extrude(H);
-  const bore = drawRoundedRectangle(W - 2 * WALL, W - 2 * WALL, 2)
-    .sketchOnPlane('XY', 1)
-    .extrude(H);
-  const hollow = unwrap(cut(block, bore));
-  const body = unwrap(fuse(foot, hollow));
-  const bin = unwrap(fuse(body, buildLip()));
+  const foot = r(0, 0).loftWith([r(2.15, -2.4), r(2.95, -5)], { ruled: true }) as Shape3D;
+
+  const block = r(0, 0).extrude(H) as Shape3D;
+  const bore = r(WALL, 1).extrude(H) as Shape3D;
+  const body = unwrap(fuse(foot, unwrap(cut(block, bore))));
+
+  const lipOuter = r(0, H - 2.6).loftWith([r(0, H + 4.4)], { ruled: true }) as Shape3D;
+  const lipInner = r(1.2, H - 2.6).loftWith(
+    [r(2.6, H - 1.2), r(2.6, H), r(1.9, H + 0.7), r(1.9, H + 2.5), r(0.05, H + 4.4)],
+    { ruled: true }
+  ) as Shape3D;
+  const lip = unwrap(cut(lipOuter, lipInner));
+  const bin = unwrap(fuse(body, lip));
 
   const frames = [frame('socket', foot), frame('body', body), frame('bin', bin)];
 

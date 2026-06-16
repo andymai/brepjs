@@ -4,66 +4,104 @@ import { withBase } from 'vitepress';
 import { encodeCode } from '../playgroundLink';
 import type { CodeCadHandle, HeroFramesData } from './codeCadRenderer';
 
-// The program shown in the panel, line by line. Mirrors the pre-baked frames in
-// public/hero-frames.json (see scripts/genHeroFrames.ts) and is what the
-// "Open in Playground" link carries — so the demo is runnable, not a mock.
+// The program the panel types out, and what "Open in Playground" carries — a
+// real, runnable 1×1 Gridfinity bin. Mirrors scripts/genHeroFrames.ts.
 const PROGRAM = `import { drawRoundedRectangle, cut, fuse, unwrap } from 'brepjs/quick';
 
-const [W, R, WALL, H] = [42 - 0.5, 3.75, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+const [W, WALL, H] = [42 - 0.5, 1.2, 3 * 7]; // 1×1 bin, 3 units tall
+
+// rounded-rect section: inset from the 41.5 mm footprint, at height z
+const r = (inset, z) =>
+  drawRoundedRectangle(W - 2*inset, W - 2*inset, Math.max(3.75 - inset, 0.1)).sketchOnPlane('XY', z);
 
 // 1 — Gridfinity socket foot (clicks into a baseplate)
-const foot = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).loftWith([
-  drawRoundedRectangle(W - 4.3, W - 4.3, 1.6).sketchOnPlane('XY', -2.4),
-  drawRoundedRectangle(W - 5.9, W - 5.9, 0.8).sketchOnPlane('XY', -5),
-], { ruled: true });
+const foot = r(0, 0).loftWith([r(2.15, -2.4), r(2.95, -5)], { ruled: true });
 
-// 2 — hollow body on top: walls + floor
-const block = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', 0).extrude(H);
-const bore  = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', 1).extrude(H);
-const body  = unwrap(fuse(foot, unwrap(cut(block, bore))));
+// 2 — hollow body: walls + floor
+const body = unwrap(fuse(foot, unwrap(cut(r(0, 0).extrude(H), r(WALL, 1).extrude(H)))));
 
 // 3 — stacking lip so bins nest when stacked
-const cap   = drawRoundedRectangle(W, W, R).sketchOnPlane('XY', H).extrude(4.4);
-const ledge = drawRoundedRectangle(W - 2*WALL, W - 2*WALL, 2).sketchOnPlane('XY', H).loftWith([
-  drawRoundedRectangle(W - 0.8, W - 0.8, 3.4).sketchOnPlane('XY', H + 4.4),
-], { ruled: true });
-const lip   = unwrap(cut(cap, ledge));
+const lipOuter = r(0, H-2.6).loftWith([r(0, H+4.4)], { ruled: true });
+const lipInner = r(1.2, H-2.6).loftWith([r(2.6, H-1.2), r(2.6, H), r(1.9, H+0.7), r(1.9, H+2.5), r(0.05, H+4.4)], { ruled: true });
+const lip = unwrap(cut(lipOuter, lipInner));
 
 export default unwrap(fuse(body, lip));`;
 
 const LINES_HTML = [
   `<span class="k">import</span> { drawRoundedRectangle, cut, fuse, unwrap } <span class="k">from</span> <span class="s">'brepjs/quick'</span>;`,
   ``,
-  `<span class="k">const</span> [W, R, WALL, H] = [<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">3.75</span>, <span class="n">1.2</span>, <span class="n">3</span> * <span class="n">7</span>]; <span class="cm">// 1×1 bin, 3 units tall</span>`,
+  `<span class="k">const</span> [W, WALL, H] = [<span class="n">42</span> - <span class="n">0.5</span>, <span class="n">1.2</span>, <span class="n">3</span> * <span class="n">7</span>]; <span class="cm">// 1×1 bin, 3 units tall</span>`,
+  ``,
+  `<span class="cm">// rounded-rect section: inset from the 41.5 mm footprint, at height z</span>`,
+  `<span class="k">const</span> r = (inset, z) =>`,
+  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*inset, W - <span class="n">2</span>*inset, <span class="fn">Math</span>.max(<span class="n">3.75</span> - inset, <span class="n">0.1</span>)).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, z);`,
   ``,
   `<span class="cm">// 1 — Gridfinity socket foot (clicks into a baseplate)</span>`,
-  `<span class="k">const</span> foot = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([`,
-  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">4.3</span>, W - <span class="n">4.3</span>, <span class="n">1.6</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">2.4</span>),`,
-  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">5.9</span>, W - <span class="n">5.9</span>, <span class="n">0.8</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, -<span class="n">5</span>),`,
-  `], { ruled: <span class="k">true</span> });`,
+  `<span class="k">const</span> foot = <span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.15</span>, -<span class="n">2.4</span>), <span class="fn">r</span>(<span class="n">2.95</span>, -<span class="n">5</span>)], { ruled: <span class="k">true</span> });`,
   ``,
-  `<span class="cm">// 2 — hollow body on top: walls + floor</span>`,
-  `<span class="k">const</span> block = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">0</span>).<span class="fn">extrude</span>(H);`,
-  `<span class="k">const</span> bore  = <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*WALL, W - <span class="n">2</span>*WALL, <span class="n">2</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, <span class="n">1</span>).<span class="fn">extrude</span>(H);`,
-  `<span class="k">const</span> body  = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(foot, <span class="fn">unwrap</span>(<span class="fn">cut</span>(block, bore))));`,
+  `<span class="cm">// 2 — hollow body: walls + floor</span>`,
+  `<span class="k">const</span> body = <span class="fn">unwrap</span>(<span class="fn">fuse</span>(foot, <span class="fn">unwrap</span>(<span class="fn">cut</span>(<span class="fn">r</span>(<span class="n">0</span>, <span class="n">0</span>).<span class="fn">extrude</span>(H), <span class="fn">r</span>(WALL, <span class="n">1</span>).<span class="fn">extrude</span>(H)))));`,
   ``,
   `<span class="cm">// 3 — stacking lip so bins nest when stacked</span>`,
-  `<span class="k">const</span> cap   = <span class="fn">drawRoundedRectangle</span>(W, W, R).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H).<span class="fn">extrude</span>(<span class="n">4.4</span>);`,
-  `<span class="k">const</span> ledge = <span class="fn">drawRoundedRectangle</span>(W - <span class="n">2</span>*WALL, W - <span class="n">2</span>*WALL, <span class="n">2</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H).<span class="fn">loftWith</span>([`,
-  `  <span class="fn">drawRoundedRectangle</span>(W - <span class="n">0.8</span>, W - <span class="n">0.8</span>, <span class="n">3.4</span>).<span class="fn">sketchOnPlane</span>(<span class="s">'XY'</span>, H + <span class="n">4.4</span>),`,
-  `], { ruled: <span class="k">true</span> });`,
-  `<span class="k">const</span> lip   = <span class="fn">unwrap</span>(<span class="fn">cut</span>(cap, ledge));`,
+  `<span class="k">const</span> lipOuter = <span class="fn">r</span>(<span class="n">0</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">0</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
+  `<span class="k">const</span> lipInner = <span class="fn">r</span>(<span class="n">1.2</span>, H-<span class="n">2.6</span>).<span class="fn">loftWith</span>([<span class="fn">r</span>(<span class="n">2.6</span>, H-<span class="n">1.2</span>), <span class="fn">r</span>(<span class="n">2.6</span>, H), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">0.7</span>), <span class="fn">r</span>(<span class="n">1.9</span>, H+<span class="n">2.5</span>), <span class="fn">r</span>(<span class="n">0.05</span>, H+<span class="n">4.4</span>)], { ruled: <span class="k">true</span> });`,
+  `<span class="k">const</span> lip = <span class="fn">unwrap</span>(<span class="fn">cut</span>(lipOuter, lipInner));`,
   ``,
   `<span class="k">export default</span> <span class="fn">unwrap</span>(<span class="fn">fuse</span>(body, lip));`,
 ];
 
-// beat → which frame to show, which code line is "running", how long to dwell
-const BEATS = [
-  { frame: 0, line: 5, dwell: 1600 },
-  { frame: 1, line: 13, dwell: 1700 },
-  { frame: 2, line: 20, dwell: 1900 },
-  { frame: 2, line: 22, dwell: 2600, done: true },
-] as const;
+// Parse the highlighted lines into {text, class} tokens so the panel can type
+// in one character at a time without splitting the syntax spans.
+type Tok = { t: string; c?: string };
+const TOKEN_RE = /<span class="([a-z]+)">([\s\S]*?)<\/span>|([^<]+)/g;
+const unescapeHtml = (s: string): string =>
+  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const LINE_TOKENS: Tok[][] = LINES_HTML.map((html) => {
+  const toks: Tok[] = [];
+  let m: RegExpExecArray | null;
+  TOKEN_RE.lastIndex = 0;
+  while ((m = TOKEN_RE.exec(html)) !== null) {
+    if (m[1] !== undefined) toks.push({ t: unescapeHtml(m[2] ?? ''), c: m[1] });
+    else toks.push({ t: unescapeHtml(m[3] ?? '') });
+  }
+  return toks;
+});
+const LINE_LEN = LINE_TOKENS.map((toks) => toks.reduce((n, t) => n + t.t.length, 0));
+const LINE_INDENT = LINE_TOKENS.map((toks) => {
+  const text = toks.map((t) => t.t).join('');
+  return text.length - text.trimStart().length;
+});
+
+function partialHtml(toks: Tok[], n: number): string {
+  let out = '';
+  let count = 0;
+  for (const tok of toks) {
+    if (count >= n) break;
+    const take = Math.min(tok.t.length, n - count);
+    out += tok.c
+      ? `<span class="${tok.c}">${escapeHtml(tok.t.slice(0, take))}</span>`
+      : escapeHtml(tok.t.slice(0, take));
+    count += take;
+  }
+  return out || '&nbsp;';
+}
+
+// When a given line finishes "typing", run this geometry step.
+const STEP_AT: Record<number, { frame: number; step: number }> = {
+  9: { frame: 0, step: 0 }, // socket
+  12: { frame: 1, step: 1 }, // body
+  17: { frame: 2, step: 2 }, // lip → final bin
+};
+const DONE_LINE = 19;
+
+const CHAR_MS = 15; // per-character typing speed
+const LINE_PAUSE = 220; // beat at the end of a typed line
+const BLANK_MS = 130; // blank line
+const STEP_DWELL = 1500; // hold after a geometry step appears
+const LOOP_PAUSE = 3200;
 
 const playgroundHref = encodeCode(PROGRAM);
 
@@ -71,9 +109,10 @@ const canvasEl = ref<HTMLCanvasElement | null>(null);
 const codeEl = ref<HTMLOListElement | null>(null);
 const ready = ref(false);
 const failed = ref(false);
-const activeLine = ref(-1);
+const typedLine = ref(0); // line currently being typed
+const typedChars = ref(0); // characters revealed on the current line
 const doneLines = ref<Set<number>>(new Set());
-const stepIndex = ref(0); // 0..2 for the progress rail
+const stepIndex = ref(-1); // -1 → nothing built yet; 0..2 for the rail
 const exported = ref(false);
 const stepLabel = ref('');
 const stepVol = ref<number | null>(null);
@@ -81,44 +120,78 @@ const stepVol = ref<number | null>(null);
 let handle: CodeCadHandle | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let paused = false;
-let beat = 0;
 let frames: HeroFramesData['frames'] = [];
 
-function runBeat(animate: boolean): void {
-  const b = BEATS[beat];
-  if (!b || !handle) return;
-  handle.showStep(b.frame, animate);
-  activeLine.value = b.line;
-  stepIndex.value = b.frame;
-  exported.value = b.done === true;
-  const f = frames[b.frame];
-  if (f) {
-    stepLabel.value = f.label;
-    stepVol.value = f.vol;
-  }
-  // mark completed lines
-  const next = new Set(doneLines.value);
-  for (let i = 0; i < beat; i++) {
-    const pb = BEATS[i];
-    if (pb) next.add(pb.line);
-  }
-  if (b.done) next.add(b.line);
-  doneLines.value = next;
+// HTML for a line given how far typing has progressed.
+function lineHtml(i: number): string {
+  if (i < typedLine.value) return LINES_HTML[i] || '&nbsp;';
+  if (i === typedLine.value) return partialHtml(LINE_TOKENS[i] ?? [], typedChars.value);
+  return '&nbsp;';
+}
+
+function scrollActive(): void {
   void nextTick(() => {
     codeEl.value?.querySelector('li.active')?.scrollIntoView({ block: 'nearest' });
   });
 }
 
-function advance(): void {
-  if (paused) return;
-  const b = BEATS[beat];
-  if (!b) return;
+function advanceLine(delay: number): void {
   timer = setTimeout(() => {
-    beat = (beat + 1) % BEATS.length;
-    if (beat === 0) doneLines.value = new Set();
-    runBeat(beat !== 0);
-    advance();
-  }, b.dwell);
+    typedLine.value += 1;
+    typedChars.value = 0;
+    scrollActive();
+    typeTick();
+  }, delay);
+}
+
+function typeTick(): void {
+  if (paused) return;
+  const i = typedLine.value;
+  if (i >= LINES_HTML.length) {
+    timer = setTimeout(resetLoop, LOOP_PAUSE);
+    return;
+  }
+  const len = LINE_LEN[i] ?? 0;
+  if (typedChars.value < len) {
+    // reveal leading indent at once (it's invisible), then one char per tick
+    typedChars.value =
+      typedChars.value === 0 && (LINE_INDENT[i] ?? 0) > 0
+        ? (LINE_INDENT[i] ?? 0)
+        : typedChars.value + 1;
+    timer = setTimeout(typeTick, CHAR_MS);
+    return;
+  }
+  // line fully typed → run its geometry step (if any), then move on
+  const trig = STEP_AT[i];
+  if (trig && handle) {
+    handle.showStep(trig.frame, true);
+    stepIndex.value = trig.step;
+    const f = frames[trig.frame];
+    if (f) {
+      stepLabel.value = f.label;
+      stepVol.value = f.vol;
+    }
+    doneLines.value = new Set([...doneLines.value, i]);
+    advanceLine(STEP_DWELL);
+    return;
+  }
+  if (i === DONE_LINE) {
+    exported.value = true;
+    doneLines.value = new Set([...doneLines.value, i]);
+  }
+  advanceLine(len === 0 ? BLANK_MS : LINE_PAUSE);
+}
+
+function resetLoop(): void {
+  typedLine.value = 0;
+  typedChars.value = 0;
+  doneLines.value = new Set();
+  stepIndex.value = -1;
+  exported.value = false;
+  stepLabel.value = '';
+  stepVol.value = null;
+  handle?.hide();
+  typeTick();
 }
 
 function onEnter(): void {
@@ -128,7 +201,7 @@ function onEnter(): void {
 function onLeave(): void {
   if (!paused) return;
   paused = false;
-  advance();
+  typeTick();
 }
 
 onMounted(async () => {
@@ -144,7 +217,7 @@ onMounted(async () => {
     const res = await fetch(withBase('/hero-frames.json'));
     data = (await res.json()) as HeroFramesData;
   } catch {
-    return; // leave the static poster in place
+    return;
   }
   frames = data.frames;
 
@@ -158,11 +231,13 @@ onMounted(async () => {
   ready.value = true;
 
   if (reduceMotion) {
-    // Final state, no playback: show the whole program as "run".
-    activeLine.value = 22;
-    doneLines.value = new Set([5, 13, 20, 22]);
+    // No typing/playback: show the whole program and the finished bin.
+    typedLine.value = LINES_HTML.length;
+    typedChars.value = 0;
+    doneLines.value = new Set([9, 12, 17, DONE_LINE]);
     stepIndex.value = 2;
     exported.value = true;
+    handle.showStep(frames.length - 1, false);
     const last = frames[frames.length - 1];
     if (last) {
       stepLabel.value = last.label;
@@ -170,8 +245,7 @@ onMounted(async () => {
     }
     return;
   }
-  runBeat(false);
-  advance();
+  typeTick();
 });
 
 onBeforeUnmount(() => {
@@ -185,9 +259,9 @@ onBeforeUnmount(() => {
   <div class="ide" @pointerenter="onEnter" @pointerleave="onLeave">
     <div class="ide-bar">
       <span class="dot3"><i></i><i></i><i></i></span>
-      <span class="fname">part.ts</span>
+      <span class="fname">bin.ts</span>
       <span class="run-state" :class="{ on: exported }">{{
-        exported ? '✓ default export ready' : 'building…'
+        exported ? '✓ default export ready' : 'authoring…'
       }}</span>
       <a class="run-link" :href="playgroundHref" target="_blank" rel="noopener"
         >▶ Open in Playground</a
@@ -195,35 +269,31 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="ide-body">
-      <!-- code panel: real program text (also good for SEO / no-JS) -->
+      <!-- code panel: typed in line by line -->
       <ol ref="codeEl" class="code" aria-label="brepjs program">
         <li
-          v-for="(html, i) in LINES_HTML"
+          v-for="(line, i) in LINES_HTML"
           :key="i"
-          :class="{
-            active: i === activeLine,
-            done: doneLines.has(i),
-            blank: html === '',
-          }"
+          :class="{ typed: i <= typedLine, active: i === typedLine, done: doneLines.has(i) }"
         >
-          <span class="ln">{{ i + 1 }}</span>
-          <span class="src" v-html="html || '&nbsp;'"></span>
-          <span v-if="i === activeLine && !exported" class="caret" aria-hidden="true"></span>
+          <span class="ln">{{ i <= typedLine ? i + 1 : '' }}</span>
+          <span class="src" v-html="lineHtml(i)"></span>
+          <span v-if="i === typedLine && !exported" class="caret" aria-hidden="true"></span>
           <span v-else-if="doneLines.has(i)" class="tick" aria-hidden="true">✓</span>
         </li>
       </ol>
 
-      <!-- viewport: pre-baked kernel meshes, rendered with three.js -->
+      <!-- viewport: pre-baked kernel meshes + exact B-Rep edges, via three.js -->
       <div class="view">
         <canvas ref="canvasEl" class="cv" :class="{ on: ready }" aria-hidden="true"></canvas>
         <span class="vstatus" v-show="!ready">{{
-          failed ? 'preview needs WebGL — read the code →' : 'compiling geometry…'
+          failed ? 'preview needs WebGL — read the code →' : 'starting kernel…'
         }}</span>
-        <span class="vlabel" v-show="ready">
+        <span class="vlabel" v-show="ready && stepLabel">
           <b>{{ stepLabel }}</b>
           <template v-if="stepVol !== null"> · vol {{ stepVol.toLocaleString() }} mm³</template>
         </span>
-        <span class="vtag" v-show="ready">kernel-meshed · three.js</span>
+        <span class="vtag" v-show="ready">kernel-meshed · exact edges · three.js</span>
       </div>
     </div>
 
@@ -288,7 +358,7 @@ onBeforeUnmount(() => {
 .ide-body {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
-  min-height: 380px;
+  min-height: 400px;
 }
 .code {
   list-style: none;
@@ -309,9 +379,9 @@ onBeforeUnmount(() => {
   border-left: 2px solid transparent;
   color: var(--ink-2, #828d96);
   transition:
-    background 0.25s,
-    color 0.25s,
-    border-color 0.25s;
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
 }
 .code .src {
   flex: 1;
@@ -319,7 +389,7 @@ onBeforeUnmount(() => {
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
-.code li.done {
+.code li.typed {
   color: var(--ink-1, #aab6bd);
 }
 .code li.active {
@@ -346,10 +416,13 @@ onBeforeUnmount(() => {
 .code .src :deep(.n) {
   color: #f2a6c2;
 }
+.code .src :deep(.cm) {
+  color: #5b6b66;
+}
 .caret {
   display: inline-block;
   width: 7px;
-  height: 15px;
+  height: 14px;
   margin-left: 2px;
   background: var(--teal-300, #4acecc);
   transform: translateY(2px);
@@ -368,7 +441,7 @@ onBeforeUnmount(() => {
 
 .view {
   position: relative;
-  min-height: 380px;
+  min-height: 400px;
   background: radial-gradient(circle at 56% 44%, rgba(3, 176, 173, 0.12), transparent 64%);
 }
 .cv {
@@ -457,7 +530,6 @@ onBeforeUnmount(() => {
   }
   .code {
     border-right: none;
-    font-size: 12px;
   }
 }
 </style>

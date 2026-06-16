@@ -4,7 +4,6 @@ import {
   BufferGeometry,
   Color,
   DirectionalLight,
-  EdgesGeometry,
   Group,
   LineBasicMaterial,
   LineSegments,
@@ -16,7 +15,6 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { mergeVertices } from 'three-stdlib';
 
 export interface HeroFrame {
   label: string;
@@ -25,6 +23,7 @@ export interface HeroFrame {
   position: string;
   normal: string;
   index: string;
+  edges: string;
 }
 
 export interface HeroFramesData {
@@ -36,12 +35,13 @@ export interface HeroFramesData {
 export interface CodeCadHandle {
   /** Show frame `i`, cross-fading from whatever is currently shown. */
   showStep(i: number, animate: boolean): void;
+  /** Fade everything out (used when the build sequence loops). */
+  hide(): void;
   setColorScheme(dark: boolean): void;
   setIdle(on: boolean): void;
   destroy(): void;
 }
 
-const EDGE_ANGLE = 24; // EdgesGeometry threshold — keeps B-Rep feature edges, drops facet noise.
 const FADE_MS = 460;
 
 function decodeF32(b64: string): Float32Array {
@@ -81,6 +81,9 @@ export function mountCodeCad(
   const scene = new Scene();
 
   const camera = new PerspectiveCamera(34, 1, 0.1, 5000);
+  // brepjs builds Z-up (CAD convention); make the scene Z-up so the bin stands
+  // upright (opening toward +Z) instead of lying on its side.
+  camera.up.set(0, 0, 1);
   const { lo, hi } = data.bounds;
   const center = new Vector3(
     ((lo[0] as number) + (hi[0] as number)) / 2,
@@ -134,9 +137,10 @@ export function mountCodeCad(
       metalness: 0.12,
       transparent: true,
       opacity: 0,
+      // Push faces back so the exact edge lines sit cleanly on top (no z-fight).
       polygonOffset: true,
-      polygonOffsetFactor: 1,
-      polygonOffsetUnits: 1,
+      polygonOffsetFactor: 2,
+      polygonOffsetUnits: 2,
     });
     const edge = new LineBasicMaterial({ color: new Color(EDGE), transparent: true, opacity: 0 });
     root.add(group);
@@ -156,25 +160,17 @@ export function mountCodeCad(
 
   function buildInto(slot: Slot, frame: HeroFrame): void {
     clearGroup(slot.group);
-    const pos = decodeF32(frame.position);
-    const idx = decodeU32(frame.index);
 
     const geom = new BufferGeometry();
-    geom.setAttribute('position', new BufferAttribute(pos, 3));
+    geom.setAttribute('position', new BufferAttribute(decodeF32(frame.position), 3));
     geom.setAttribute('normal', new BufferAttribute(decodeF32(frame.normal), 3));
-    geom.setIndex(new BufferAttribute(idx, 1));
+    geom.setIndex(new BufferAttribute(decodeU32(frame.index), 1));
     const m = new Mesh(geom, slot.fill);
 
-    // Weld coincident positions (a position-only copy) so EdgesGeometry shows
-    // only true B-Rep feature edges — not the per-triangle tessellation that an
-    // unwelded, flat-shaded kernel mesh would otherwise expose.
-    const weldSrc = new BufferGeometry();
-    weldSrc.setAttribute('position', new BufferAttribute(pos.slice(), 3));
-    weldSrc.setIndex(new BufferAttribute(idx.slice(), 1));
-    const welded = mergeVertices(weldSrc);
-    const edges = new LineSegments(new EdgesGeometry(welded, EDGE_ANGLE), slot.edge);
-    weldSrc.dispose();
-    welded.dispose();
+    // Exact B-Rep edges from the kernel (LineSegments: 2 verts per segment).
+    const edgeGeom = new BufferGeometry();
+    edgeGeom.setAttribute('position', new BufferAttribute(decodeF32(frame.edges), 3));
+    const edges = new LineSegments(edgeGeom, slot.edge);
 
     slot.group.add(m);
     slot.group.add(edges);
@@ -202,7 +198,11 @@ export function mountCodeCad(
   function applyOpacity(): void {
     for (const s of slots) {
       s.fill.opacity = s.opacity;
-      s.edge.opacity = s.opacity * 0.92;
+      s.edge.opacity = s.opacity * 0.95;
+      // Hide a fully-faded slot entirely, and let only the (near-)opaque slot
+      // write depth — otherwise the two coincident meshes z-fight mid/after fade.
+      s.group.visible = s.opacity > 0.01;
+      s.fill.depthWrite = s.opacity > 0.98;
     }
   }
 
@@ -261,15 +261,16 @@ export function mountCodeCad(
 
     if (idle) {
       yaw += dt * YAW_RATE;
-      root.rotation.y = Math.sin(yaw) * 0.4 - 0.35;
-      root.rotation.x = Math.sin(yaw * 0.6) * 0.05;
+      // Turntable about the vertical (Z) axis, gently swaying so the open
+      // compartment stays toward the viewer.
+      root.rotation.z = Math.sin(yaw) * 0.4 - 0.35;
     }
     render();
   }
 
   if (reduceMotion) {
     // Static: show the finished part immediately, no animation loop.
-    root.rotation.set(0.05, -0.5, 0);
+    root.rotation.set(0, 0, -0.35);
     showStep(data.frames.length - 1, false);
     render();
   } else {
@@ -278,6 +279,9 @@ export function mountCodeCad(
 
   return {
     showStep,
+    hide(): void {
+      for (const s of slots) s.target = 0;
+    },
     setColorScheme: applyColorScheme,
     setIdle(on: boolean): void {
       idle = on && !reduceMotion;
