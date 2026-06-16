@@ -1,7 +1,33 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import CodeCadHero from './CodeCadHero.vue';
-import { highlightLine } from './codeHighlight';
+import { highlightCode, highlightLine } from './codeHighlight';
+
+// "Native to your stack" — the real Three.js mesh-adapter integration.
+const stackSnippetHtml = highlightCode(
+  `import { box, mesh, toBufferGeometryData } from 'brepjs/quick';
+import * as THREE from 'three';
+
+const data = toBufferGeometryData(mesh(box(30, 20, 10)));
+
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
+geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
+geo.setIndex(new THREE.BufferAttribute(data.index, 1));`
+);
+
+// "Round-trips" — formats with their import/export support.
+const FORMATS = [
+  { name: 'STEP', io: 'in · out' },
+  { name: 'IGES', io: 'in · out' },
+  { name: 'STL', io: 'in · out' },
+  { name: 'OBJ', io: 'in · out' },
+  { name: '3MF', io: 'in · out' },
+  { name: 'glTF / GLB', io: 'in · out' },
+  { name: 'DXF', io: 'in · out' },
+  { name: 'BREP', io: 'in · out' },
+  { name: 'SVG', io: 'in · 2D' },
+];
 
 // Type-safety card: real code highlighted by the tokenizer, with the genuine
 // tsc error (captured under --strict) as annotation lines.
@@ -319,48 +345,62 @@ onBeforeUnmount(() => observer?.disconnect());
 
       <!-- ──────────────────── NATIVE TO YOUR STACK ──────────────────── -->
       <section class="band alt" data-reveal>
-        <div class="wrap narrow">
-          <p class="eyebrow">JS-native</p>
-          <h2>Native to the stack you already use.</h2>
-          <p class="lead">
-            ESM, top-level await init, a Three.js mesh adapter, structured errors, web-worker
-            friendly. Drops into Vite, Next.js, and React Three Fiber. brepjs produces the geometry;
-            you render it however you like.
-          </p>
-          <ul class="chips" aria-label="Ecosystem">
-            <li>ESM</li>
-            <li>top-level await</li>
-            <li>Three.js adapter</li>
-            <li>Web Workers</li>
-            <li>Vite</li>
-            <li>Next.js</li>
-            <li>React Three Fiber</li>
-            <li>structured errors</li>
-          </ul>
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">JS-native</p>
+            <h2>Native to the stack you already use.</h2>
+            <p class="lead">
+              ESM, top-level await init, a Three.js mesh adapter, structured errors, web-worker
+              friendly. Drops into Vite, Next.js, and React Three Fiber. brepjs produces the
+              geometry; you render it however you like.
+            </p>
+            <ul class="chips" aria-label="Ecosystem">
+              <li>ESM</li>
+              <li>top-level await</li>
+              <li>Web Workers</li>
+              <li>Vite</li>
+              <li>Next.js</li>
+              <li>R3F</li>
+            </ul>
+          </div>
+          <div
+            class="code-card"
+            role="img"
+            aria-label="Meshing a brepjs solid into a Three.js BufferGeometry"
+          >
+            <div class="code-bar">
+              <span class="dot3"><i></i><i></i><i></i></span> scene.ts
+            </div>
+            <pre class="code"><code v-html="stackSnippetHtml"></code></pre>
+          </div>
         </div>
       </section>
 
       <!-- ──────────────────── FORMATS ──────────────────── -->
       <section class="band" data-reveal>
-        <div class="wrap narrow">
-          <p class="eyebrow">Interop</p>
-          <h2>Round-trips with the tools you already own.</h2>
-          <p class="lead">
-            Import and export STEP, STL, IGES, glTF, DXF, 3MF, and OBJ, plus 2D DXF/SVG profiles and
-            OCCT BREP. Move exact solids between brepjs, SolidWorks, Fusion, and FreeCAD over STEP
-            without losing precision.
-          </p>
-          <ul class="formats" aria-label="Supported formats">
-            <li>STEP</li>
-            <li>STL</li>
-            <li>IGES</li>
-            <li>glTF / GLB</li>
-            <li>DXF</li>
-            <li>3MF</li>
-            <li>OBJ</li>
-            <li>BREP</li>
-            <li>SVG<sup>2D</sup></li>
-          </ul>
+        <div class="wrap split">
+          <div>
+            <p class="eyebrow">Interop</p>
+            <h2>Round-trips with the tools you already own.</h2>
+            <p class="lead">
+              Import and export STEP, STL, IGES, glTF, DXF, 3MF, and OBJ, plus 2D DXF/SVG profiles
+              and OCCT BREP. Move exact solids between brepjs, SolidWorks, Fusion, and FreeCAD over
+              STEP without losing precision.
+            </p>
+          </div>
+          <div class="fmt-card">
+            <div class="fmt-flow" aria-hidden="true">
+              <span class="fmt-node">brepjs</span>
+              <span class="fmt-link">⇄ STEP ⇄</span>
+              <span class="fmt-node">SolidWorks · Fusion · FreeCAD</span>
+            </div>
+            <ul class="fmt-grid" aria-label="Supported formats">
+              <li v-for="f in FORMATS" :key="f.name">
+                <b>{{ f.name }}</b
+                ><span>{{ f.io }}</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -1036,34 +1076,76 @@ pre.term {
   white-space: nowrap;
 }
 
-/* chips + formats */
-.chips,
-.formats {
+/* ecosystem chips */
+.chips {
   list-style: none;
   padding: 0;
-  margin: 32px 0 0;
+  margin: 26px 0 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 9px;
 }
-.chips li,
-.formats li {
+.chips li {
   font-family: var(--f-mono);
-  font-size: 13px;
-  padding: 7px 14px;
+  font-size: 12.5px;
+  padding: 6px 13px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line-2);
   color: var(--ink-1);
   background: var(--bg-1);
 }
-.formats li {
-  border-color: rgba(3, 176, 173, 0.28);
+
+/* interop / formats card */
+.fmt-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  overflow: hidden;
+}
+.fmt-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+.fmt-node {
+  color: var(--ink-1);
+}
+.fmt-link {
+  color: var(--teal-200);
+}
+.fmt-grid {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.fmt-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-2);
+}
+.fmt-grid b {
+  font-weight: 600;
+  font-size: 13px;
   color: var(--teal-100);
 }
-.formats sup {
+.fmt-grid span {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
   color: var(--ink-2);
-  font-size: 9px;
-  margin-left: 2px;
+  letter-spacing: 0.03em;
 }
 
 /* provenance + closer */
