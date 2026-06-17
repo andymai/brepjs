@@ -1,5 +1,5 @@
-# Claude Code agent memory (user-specific, not shared)
-.claude/agent-memory-local/
+# Claude Code agent memory (user-specific, not shared) — any package, any depth
+**/.claude/agent-memory-local/
 .claude/scheduled_tasks.lock
 
 # Superpowers brainstorming/spec/plan docs (local working artifacts, not shared)
@@ -58,3 +58,7 @@ apps/playground/dist/
 # Scratch: OpenSCAD reference clone, example screenshots, candidate scratch, etc.
 tmp/
 **/tmp/
+
+# Generated example/render outputs (SVG/HTML produced by running examples)
+examples/output/
+docs/images/examples/
