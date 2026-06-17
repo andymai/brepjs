@@ -245,7 +245,7 @@
     "docs:render-images": "npx tsx scripts/render-doc-images.ts",
     "docs:gen-hero": "npx tsx scripts/genHeroFrames.ts",
     "docs:gen-images": "npx tsx scripts/genLandingImages.ts",
-    "gen:og": "bash scripts/gen-og.sh",
+    "gen:og": "node scripts/gen-og-docs.mjs && bash scripts/gen-og.sh",
     "test:docs": "npm run docs:extract-tests && vitest run --project occt-wasm tests/docs",
     "conformance:generate": "npx tsx scripts/generateConformance.ts",
     "sync:brepkit-types": "npx tsx scripts/sync-brepkit-types.ts",
