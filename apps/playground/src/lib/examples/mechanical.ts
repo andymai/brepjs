@@ -463,6 +463,8 @@ function pipeTee({
   boltR = 3.5, // bolt hole radius (mm)
   bolts = 4, // bolt holes per flange
 } = {}) {
+  // Branch flange a touch smaller than the run flanges so its rim stays clear
+  // of the run body at the saddle join.
   const topFlangeR = flangeR - 4;
 
   // Run along X, branch up Z; both cross the origin so the union is clean.
