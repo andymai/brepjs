@@ -42,7 +42,7 @@ This is the clearest divide. OpenSCAD produces a triangle mesh, and every 3D exp
 
 ### Real fillets and chamfers
 
-OpenSCAD has no native fillet. People round geometry with `minkowski()` (slow, and dimensions shift), `hull()`, or the BOSL2 library — but those round shapes _as you build them_ and produce a faceted mesh; you can't select an arbitrary edge of an existing solid and fillet it. brepjs has first-class `fillet`, `chamfer`, and `shell` that operate on real edges, and fallible operations return a `Result` so a failure is something you handle rather than a silently wrong mesh. (Both sit on OpenCascade-class kernels, so neither makes every fillet succeed — brepjs's value is real edge selection plus explicit error reporting.)
+OpenSCAD has no native fillet. People round geometry with `minkowski()` (slow, and dimensions shift), `hull()`, or the BOSL2 library — but those round shapes _as you build them_ and produce a faceted mesh; you can't select an arbitrary edge of an existing solid and fillet it. brepjs has first-class `fillet`, `chamfer`, and `shell` that operate on real edges, and fallible operations return a `Result` so a failure is something you handle rather than a silently wrong mesh. (B-Rep fillets can still fail on tricky geometry — brepjs's value is real edge selection plus explicit error reporting, not a promise that every fillet succeeds.)
 
 ### A real programming language
 
