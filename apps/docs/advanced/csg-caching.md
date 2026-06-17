@@ -1,6 +1,6 @@
 ---
 title: CSG Caching, Optimization, and Serialization
-description: 'What the evaluator cache key contains, how optimize() rewrites trees before evaluation, JSON round-trip, and the editing primitives for rebuilding trees from the bottom up.'
+description: 'What the evaluator cache key contains, how optimize() rewrites trees before evaluation, JSON round-trip, and the primitives for rebuilding trees bottom-up.'
 ---
 
 # CSG Caching, Optimization, and Serialization

@@ -2,7 +2,7 @@
 layout: home
 landing: true
 title: Exact CAD geometry, written in TypeScript
-description: 'Exact CAD geometry, written in TypeScript. A real B-Rep kernel in your browser via WASM, a type system that makes invalid geometry uncompilable, and a verification loop so AI agents author parts that are provably correct — not just plausible.'
+description: 'Exact CAD geometry in TypeScript: a real B-Rep kernel in the browser, types that make invalid geometry uncompilable, and a verify loop for AI agents.'
 ---
 
 <!-- The homepage renders the bespoke <Landing /> component (see

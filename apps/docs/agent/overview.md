@@ -1,6 +1,6 @@
 ---
 title: Authoring CAD with AI
-description: 'brepjs-verify lets an AI agent author parametric CAD in brepjs and check it against intent. It type-checks, measures dimensions, and renders snapshots before handing off STEP.'
+description: 'Let an AI agent author parametric CAD in brepjs and check it against intent — type-checks, measures dimensions, and renders snapshots before handing off STEP.'
 ---
 
 # Authoring CAD with AI

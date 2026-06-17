@@ -1,6 +1,6 @@
 ---
 title: CLI Reference
-description: 'Every brepjs-verify subcommand, flag, and exit code (verify, init, watch, export, measure, diff, snapshot, serve), plus the MCP server, the expected-dimensions contract, and troubleshooting.'
+description: 'Every brepjs-verify subcommand, flag, and exit code — verify, init, watch, export, measure, diff, snapshot, serve — plus the MCP server and troubleshooting.'
 ---
 
 # CLI Reference

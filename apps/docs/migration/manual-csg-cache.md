@@ -1,6 +1,6 @@
 ---
 title: Migrating from a Hand-Rolled Cache
-description: 'If you built your own Map<key, Solid> around the eager fuse/cut API, here is the side-by-side translation to the CSG IR: what you keep, what you replace, and what you inherit by switching.'
+description: 'Moving from a hand-rolled Map<key, Solid> cache to the CSG IR: a side-by-side translation of what you keep, what you replace, and what you get for free.'
 ---
 
 # Migrating from a Hand-Rolled Cache

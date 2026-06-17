@@ -1,6 +1,6 @@
 ---
 title: CSG as an Intermediate Representation
-description: 'Build a content-addressed DAG of primitives, booleans, and transforms, then evaluate it against the kernel with subtree-level caching for incremental parametric edits.'
+description: 'Build a content-addressed DAG of primitives, booleans, and transforms, then evaluate against the kernel with subtree caching for incremental parametric edits.'
 ---
 
 # CSG as an Intermediate Representation

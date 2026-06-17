@@ -1,6 +1,6 @@
 ---
 title: Eval & Scorecard
-description: 'How brepjs-verify measures itself: a deterministic replay that gates CI, plus an opt-in live eval that sends natural-language prompts to a model under the deployed skill and scores validity + visual intent.'
+description: 'How brepjs-verify measures itself: a deterministic replay that gates CI, plus an opt-in live eval scoring model prompts on validity and visual intent.'
 ---
 
 # Eval & Scorecard

@@ -1,6 +1,6 @@
 ---
 title: The Verify Loop
-description: 'The author → verify → repair loop in brepjs-verify: declare intent, run the part on the kernel, read the JSON report as the source of truth, and repair the smallest responsible section.'
+description: 'The author → verify → repair loop in brepjs-verify: declare intent, run the part on the kernel, read the JSON report as truth, and repair the smallest section.'
 ---
 
 # The Verify Loop

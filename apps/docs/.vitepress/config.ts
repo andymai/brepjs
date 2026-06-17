@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import type { DefaultTheme } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
 // Update on major bumps — this docs site is deployed independently from the
@@ -49,6 +50,28 @@ const structuredData = {
   ],
 };
 
+// Build a Home → Section → Page trail from the sidebar so docs pages can emit
+// BreadcrumbList structured data (Google renders it as a breadcrumb in the
+// result snippet). Section groups have no landing page of their own, so the
+// section crumb points at the group's first page.
+function breadcrumbTrail(
+  path: string,
+  sidebar: DefaultTheme.SidebarItem[]
+): { name: string; url: string }[] | null {
+  const link = `/${path}`;
+  for (const group of sidebar) {
+    const items = group.items ?? [];
+    const found = items.find((it) => it.link === link);
+    if (found?.text && items[0]?.link) {
+      return [
+        { name: group.text ?? 'brepjs', url: `${siteUrl}${items[0].link}` },
+        { name: found.text, url: `${siteUrl}${link}` },
+      ];
+    }
+  }
+  return null;
+}
+
 export default withMermaid(
   defineConfig({
     title: 'brepjs',
@@ -75,7 +98,7 @@ export default withMermaid(
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
       ['meta', { name: 'twitter:image', content: defaultOgImage }],
     ],
-    transformPageData(pageData) {
+    transformPageData(pageData, ctx) {
       // Per-page meta. `frontmatter.description` wins over the global default
       // so each page can give Slack/X/Google a tailored preview.
       const description =
@@ -99,6 +122,30 @@ export default withMermaid(
         ['meta', { name: 'twitter:title', content: fullTitle }],
         ['meta', { name: 'twitter:description', content: description }]
       );
+
+      // BreadcrumbList for every docs page (not the home page), derived from
+      // the sidebar hierarchy so search results show a Home → Section → Page
+      // trail instead of the bare URL.
+      if (pageData.relativePath !== 'index.md') {
+        const sb = ctx.siteConfig.site.themeConfig.sidebar;
+        const sidebar = Array.isArray(sb) ? sb : [];
+        const trail = breadcrumbTrail(path, sidebar) ?? [{ name: String(title), url }];
+        const crumbs = [{ name: 'Home', url: `${siteUrl}/` }, ...trail];
+        pageData.frontmatter.head.push([
+          'script',
+          { type: 'application/ld+json' },
+          JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: crumbs.map((c, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              name: c.name,
+              item: c.url,
+            })),
+          }),
+        ]);
+      }
 
       // The bespoke landing page (and only it) uses Space Grotesk for display
       // type and JetBrains Mono for code/annotations. Load them here so docs

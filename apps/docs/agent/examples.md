@@ -1,6 +1,6 @@
 ---
 title: Examples
-description: 'The few-shot example gallery brepjs-verify ships (primitives, booleans, 2D sketch-to-solid, modifiers, and gridfinity), each a complete .brep.ts with a recorded measurement baseline.'
+description: 'The few-shot gallery brepjs-verify ships: primitives, booleans, sketch-to-solid, modifiers, and gridfinity — each a complete .brep.ts with a measurement baseline.'
 ---
 
 # Examples
