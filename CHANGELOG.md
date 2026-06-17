@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.89.0](https://github.com/andymai/brepjs/compare/brepjs-v18.88.1...brepjs-v18.89.0) (2026-06-17)
+
+
+### Features
+
+* **bim:** export and download BIM models as IFC from the playground ([#1465](https://github.com/andymai/brepjs/issues/1465)) ([ecc8bca](https://github.com/andymai/brepjs/commit/ecc8bcace766a801113a19955065a95a2e312f4a))
+
 ## [18.88.1](https://github.com/andymai/brepjs/compare/brepjs-v18.88.0...brepjs-v18.88.1) (2026-06-17)
 
 
