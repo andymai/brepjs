@@ -19,11 +19,36 @@ function ambientToModuleBody(ambient: string): string {
     .replace(/^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?type(\s+\w+\b)/gm, '$1export type$2');
 }
 
-// Module specifiers the playground exposes to user code.
-const BREPJS_MODULE_IDS = ['brepjs', 'brepjs/quick'] as const;
+/** Ambient `.d.ts` text + the module specifier(s) it should be exposed under. */
+export interface AmbientPackage {
+  moduleIds: string[];
+  ambient: string;
+}
 
-/** Wrap the ambient body as `declare module` blocks for each exposed specifier. */
-export function buildBrepjsModuleDts(ambient: string): string {
-  const body = ambientToModuleBody(ambient);
-  return BREPJS_MODULE_IDS.map((id) => `declare module '${id}' {\n${body}\n}\n`).join('');
+/** Wrap each package's ambient body as `declare module` blocks. */
+export function buildModuleDts(packages: AmbientPackage[]): string {
+  return packages
+    .map(({ moduleIds, ambient }) => {
+      const body = ambientToModuleBody(ambient);
+      return moduleIds.map((id) => `declare module '${id}' {\n${body}\n}\n`).join('');
+    })
+    .join('');
+}
+
+/**
+ * Build the combined `declare module` blocks for every package the playground
+ * exposes: core `brepjs` (also under `brepjs/quick`), plus the satellite domain
+ * packages. Each satellite ambient keeps its `import type … from 'brepjs'` line,
+ * which resolves against the `brepjs` block emitted alongside it.
+ */
+export function buildBrepjsModuleDts(
+  brepjsAmbient: string,
+  sheetmetalAmbient: string,
+  bimAmbient: string
+): string {
+  return buildModuleDts([
+    { moduleIds: ['brepjs', 'brepjs/quick'], ambient: brepjsAmbient },
+    { moduleIds: ['brepjs-sheetmetal'], ambient: sheetmetalAmbient },
+    { moduleIds: ['brepjs-bim'], ambient: bimAmbient },
+  ]);
 }

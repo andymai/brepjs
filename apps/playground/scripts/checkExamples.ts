@@ -19,6 +19,8 @@ import { buildBrepjsModuleDts } from '../src/lib/ambientModule.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const AMBIENT = resolve(__dirname, '../src/types/brepjs-ambient.d.ts');
+const SHEETMETAL_AMBIENT = resolve(__dirname, '../src/types/brepjs-sheetmetal-ambient.d.ts');
+const BIM_AMBIENT = resolve(__dirname, '../src/types/brepjs-bim-ambient.d.ts');
 
 // Mirror the editor's compiler options (see src/lib/monacoSetup.ts). `lib` is
 // omitted so the default lib for the target is used, exactly as Monaco does.
@@ -39,10 +41,15 @@ const fileForExample = (id: string) => `/__example__/${id.replace(/[^a-zA-Z0-9]/
 // hand-maintained `PLAYGROUND_PROGRAM`, which mirrors the gridfinity-bin example
 // and is encoded into the hero's "Open in Playground" link — so it must
 // type-check against the editor types just like a real example.
-const snippets: { id: string; code: string }[] = EXAMPLES.map((ex) => ({ id: ex.id, code: ex.code }));
+const snippets: { id: string; code: string }[] = EXAMPLES.map((ex) => ({
+  id: ex.id,
+  code: ex.code,
+}));
 
 const HERO_VUE = resolve(__dirname, '../../docs/.vitepress/theme/components/CodeCadHero.vue');
-const heroProgram = readFileSync(HERO_VUE, 'utf-8').match(/const PLAYGROUND_PROGRAM = `([\s\S]*?)`;/)?.[1];
+const heroProgram = readFileSync(HERO_VUE, 'utf-8').match(
+  /const PLAYGROUND_PROGRAM = `([\s\S]*?)`;/
+)?.[1];
 if (heroProgram === undefined) {
   console.error(
     `Could not find the PLAYGROUND_PROGRAM template literal in ${HERO_VUE}.\n` +
@@ -53,7 +60,14 @@ if (heroProgram === undefined) {
 snippets.push({ id: 'docs-hero:PLAYGROUND_PROGRAM', code: heroProgram });
 
 const virtual = new Map<string, string>();
-virtual.set(MODULE_FILE, buildBrepjsModuleDts(readFileSync(AMBIENT, 'utf-8')));
+virtual.set(
+  MODULE_FILE,
+  buildBrepjsModuleDts(
+    readFileSync(AMBIENT, 'utf-8'),
+    readFileSync(SHEETMETAL_AMBIENT, 'utf-8'),
+    readFileSync(BIM_AMBIENT, 'utf-8')
+  )
+);
 for (const s of snippets) virtual.set(fileForExample(s.id), s.code);
 
 const host = ts.createCompilerHost(OPTIONS, true);
@@ -84,7 +98,9 @@ for (const diag of ts.getPreEmitDiagnostics(program)) {
 }
 
 if (failures.size === 0) {
-  console.log(`✓ All ${snippets.length} playground snippets (examples + docs hero) type-check cleanly.`);
+  console.log(
+    `✓ All ${snippets.length} playground snippets (examples + docs hero) type-check cleanly.`
+  );
   process.exit(0);
 }
 

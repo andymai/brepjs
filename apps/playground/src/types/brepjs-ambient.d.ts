@@ -2,9 +2,7 @@
  * AUTO-GENERATED — do not edit manually.
  * Run `npm run generate-types` to regenerate from brepjs package types.
  *
- * Ambient type declarations for brepjs functions available in the playground.
- * These are injected onto globalThis in the web worker, so user code can
- * use them without imports.
+ * Ambient type declarations for brepjs available in the playground editor.
  */
 
 /** @internal */ declare abstract class Finder<Type, FilterType> {}

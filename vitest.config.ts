@@ -50,6 +50,11 @@ export default defineConfig({
       'brepjs-voxel-wasm': resolve(__dirname, 'packages/brepjs-voxel-wasm/pkg/index.js'),
       // node_modules/brepjs is a stale published copy; route to live src.
       brepjs: resolve(__dirname, 'src/index.ts'),
+      // Same for the satellite domain packages the playground-example regression
+      // test meshes: route to live src so tests run against current source (not
+      // the last-published dist) and don't need a dist build in CI.
+      'brepjs-sheetmetal': resolve(__dirname, 'packages/brepjs-sheetmetal/src/index.ts'),
+      'brepjs-bim': resolve(__dirname, 'packages/brepjs-bim/src/index.ts'),
     },
   },
   test: {

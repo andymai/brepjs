@@ -19,6 +19,8 @@
  */
 import { transform } from 'sucrase';
 import * as brepjs from '@/index.js';
+import * as sheetmetal from 'brepjs-sheetmetal';
+import * as bim from 'brepjs-bim';
 
 // Mirrors scripts/extract-doc-tests.ts — a synchronous body suffices since the
 // playground eval surface (and `mesh`) is synchronous.
@@ -59,6 +61,11 @@ function transpileExample(code: string): string {
   return js
     .replace(/import\s+\{([^}]*)\}\s+from\s+(['"])brepjs\/playground\2;?/g, 'const {$1} = __pg;')
     .replace(
+      /import\s+\{([^}]*)\}\s+from\s+(['"])brepjs-sheetmetal\2;?/g,
+      'const {$1} = __sheetmetal;'
+    )
+    .replace(/import\s+\{([^}]*)\}\s+from\s+(['"])brepjs-bim\2;?/g, 'const {$1} = __bim;')
+    .replace(
       /import\s+\{([^}]*)\}\s+from\s+(['"])brepjs(?:\/quick)?\2;?/g,
       'const {$1} = __brepjs;'
     )
@@ -81,8 +88,8 @@ function unwrapResultShape(shape: unknown): unknown {
 /** Run an example's source and return the exported shape(s) as an array. */
 export function runExample(code: string): unknown[] {
   const body = transpileExample(code);
-  const fn = new BodyFunction('__brepjs', '__pg', body);
-  const exported = fn(brepjs, playgroundModule);
+  const fn = new BodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', body);
+  const exported = fn(brepjs, playgroundModule, sheetmetal, bim);
   if (exported === null || exported === undefined) return [];
   return Array.isArray(exported) ? exported : [exported];
 }
