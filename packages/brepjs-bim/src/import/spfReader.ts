@@ -2,6 +2,7 @@ import { IfcAPI } from 'web-ifc';
 import type { FlatMesh, IfcGeometry } from 'web-ifc';
 import type { BimError } from '../errors/bimError.js';
 import { importError } from '../errors/bimError.js';
+import { initIfcApi } from '../ifcRuntime.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 
@@ -56,7 +57,7 @@ export class SpfReader {
     let api: IfcAPI;
     try {
       api = new IfcAPI();
-      await api.Init();
+      await initIfcApi(api);
     } catch (e) {
       return err(importError('OPEN_MODEL_FAILED', 'Failed to initialize web-ifc', e));
     }

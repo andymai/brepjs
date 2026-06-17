@@ -125,7 +125,7 @@ export function useCodeExecution() {
           break;
         case 'export-ifc-result':
           if (msg.id !== latestIfcIdRef.current) return;
-          downloadBlob(msg.ifc, 'model.ifc', 'application/x-step');
+          downloadBlob(msg.ifc, 'model.ifc', 'application/x-ifc');
           break;
         case 'export-error':
           store.setError(msg.error);

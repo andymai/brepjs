@@ -2,6 +2,7 @@ import { IfcAPI } from 'web-ifc';
 import * as WebIFC from 'web-ifc';
 import type { ValidationIssue, ValidationReport } from './severity.js';
 import { issue, emptyReport, appendIssues } from './severity.js';
+import { initIfcApi } from '../ifcRuntime.js';
 
 /**
  * Human-readable names of the key entities whose per-type counts are compared
@@ -51,7 +52,7 @@ export interface RoundTripReport extends ValidationReport {
  */
 export async function firstPassCounts(bytes: Uint8Array): Promise<EntityCounts> {
   const api = new IfcAPI();
-  await api.Init();
+  await initIfcApi(api);
   const modelId = api.OpenModel(bytes);
   try {
     return collectCounts(api, modelId);
@@ -66,7 +67,7 @@ export async function firstPassCounts(bytes: Uint8Array): Promise<EntityCounts> 
  */
 async function secondPassCounts(bytes: Uint8Array): Promise<EntityCounts> {
   const api = new IfcAPI();
-  await api.Init();
+  await initIfcApi(api);
   const sourceModelId = api.OpenModel(bytes);
   let resaved: Uint8Array;
   try {

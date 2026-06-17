@@ -182,9 +182,10 @@ interface ValidatedIfcResult {
 declare function toIfcValidated(model: BimModel, meta: BimModelMeta): Promise<Result<ValidatedIfcResult, BimError>>;
 
 /**
- * Override how web-ifc finds its `.wasm` file, used by {@link IfcWriter.create}
- * (and therefore `toIfc`/`fromIfc`). Required when brepjs-bim is bundled into a
- * worker that serves the wasm itself; not needed in Node.
+ * Override how web-ifc finds its `.wasm` file. Applied by every web-ifc entry
+ * point in this package — IFC export ({@link toIfc}), import ({@link fromIfc})
+ * and validation. Required when brepjs-bim is bundled into a worker that serves
+ * the wasm itself; not needed in Node.
  */
 declare function setIfcWasmLocateFile(locate: ((path: string, prefix: string) => string) | undefined): void;
 

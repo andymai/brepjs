@@ -1,5 +1,6 @@
 import * as WebIFC from 'web-ifc';
 import { isValidIfcGuid } from '../identity/ifcGuid.js';
+import { initIfcApi } from '../ifcRuntime.js';
 import {
   appendIssue,
   appendIssues,
@@ -30,7 +31,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
   }
 
   const api = new WebIFC.IfcAPI();
-  await api.Init();
+  await initIfcApi(api);
 
   let modelId: number | undefined;
   try {
