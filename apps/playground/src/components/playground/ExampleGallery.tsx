@@ -36,6 +36,9 @@ export default function ExampleGallery({
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Turntable ids that 404'd, kept across card remounts (filter/search changes
+  // re-key the grid) so a missing turntable is never re-requested.
+  const failedTurntables = useRef<Set<string>>(new Set());
 
   // Reset scope + focus the search box each time the gallery opens.
   useEffect(() => {
@@ -107,7 +110,9 @@ export default function ExampleGallery({
   // Deep-linked focus (/examples/<id>): scroll the card into view and focus it.
   useEffect(() => {
     if (!open || !focusedId) return;
-    const el = gridRef.current?.querySelector<HTMLElement>(`[data-id="${focusedId}"]`);
+    // CSS.escape: focusedId is a URL path segment, so guard the selector against
+    // metacharacters that would otherwise throw a DOMException.
+    const el = gridRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(focusedId)}"]`);
     el?.scrollIntoView({ block: 'center' });
     el?.focus();
   }, [open, focusedId, shown]);
@@ -223,6 +228,7 @@ export default function ExampleGallery({
                   key={ex.id}
                   example={ex}
                   focused={ex.id === focusedId}
+                  failedTurntables={failedTurntables}
                   onSelect={() => {
                     onSelect(ex);
                     onClose();
@@ -241,15 +247,17 @@ export default function ExampleGallery({
 interface CardProps {
   example: Example;
   focused: boolean;
+  failedTurntables: { current: Set<string> };
   onSelect: () => void;
   onFocus: () => void;
 }
 
-function ExampleCard({ example, focused, onSelect, onFocus }: CardProps) {
+function ExampleCard({ example, focused, failedTurntables, onSelect, onFocus }: CardProps) {
   const [hovered, setHovered] = useState(false);
   // Turntable assets may not exist for every example; fall back to the static
-  // thumbnail permanently on the first load error so the grid never breaks.
-  const [animAvailable, setAnimAvailable] = useState(true);
+  // thumbnail on the first load error so the grid never breaks. Seed from the
+  // shared failed set so a once-404'd turntable isn't re-requested on remount.
+  const [failed, setFailed] = useState(() => failedTurntables.current.has(example.id));
 
   return (
     <button
@@ -277,13 +285,14 @@ function ExampleCard({ example, focused, onSelect, onFocus }: CardProps) {
           className="h-full w-full object-contain"
         />
         {/* Lazy turntable: only mounted (and thus fetched) on hover/focus. */}
-        {hovered && animAvailable && (
+        {hovered && !failed && (
           <img
             src={`${THUMB_BASE}${example.id}.turntable.webp`}
             alt=""
             aria-hidden="true"
             onError={() => {
-              setAnimAvailable(false);
+              failedTurntables.current.add(example.id);
+              setFailed(true);
             }}
             className="absolute inset-0 h-full w-full object-contain"
           />
