@@ -62,6 +62,32 @@ describe('beamToSolid', () => {
     expect(vol.value).toBeCloseTo(5000 * 9700, -2);
   });
 
+  it('I-beam with root fillets adds material at the web junctions', () => {
+    const r = 12;
+    const result = beamToSolid({
+      ...BASE,
+      profile: {
+        kind: 'I_BEAM',
+        overallWidth: 200,
+        overallDepth: 400,
+        flangeThickness: 15,
+        webThickness: 10,
+        filletRadius: r,
+      },
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    using solid = result.value;
+    const vol = measureVolume(solid);
+    if (!vol.ok) throw new Error(vol.error.message);
+    // Sharp section (9700) plus four root fills of r²(1 − π/4), times length.
+    // The fillet arcs are tessellated, so accept the analytic target within 1%;
+    // it must still exceed the sharp section's volume (material was added).
+    const area = 9700 + 4 * r * r * (1 - Math.PI / 4);
+    expect(vol.value).toBeGreaterThan(5000 * 9700);
+    expect(vol.value).toBeGreaterThan(5000 * area * 0.99);
+    expect(vol.value).toBeLessThan(5000 * area * 1.01);
+  });
+
   it('rejects zero length', () => {
     const result = beamToSolid({ ...BASE, length: 0 });
     expect(result.ok).toBe(false);

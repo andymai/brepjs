@@ -288,10 +288,7 @@ function writeAxis2Placement2D(w: IfcWriter): number {
   w.writeLine({
     expressID: originId,
     type: WebIFC.IFCCARTESIANPOINT,
-    Coordinates: [
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-    ],
+    Coordinates: [w.mkType(WebIFC.IFCLENGTHMEASURE, 0), w.mkType(WebIFC.IFCLENGTHMEASURE, 0)],
   });
   const id = w.nextId();
   w.writeLine({
@@ -344,8 +341,14 @@ export function writeProfile(w: IfcWriter, profile: Profile): number {
         OverallWidth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(profile.overallWidth)),
         OverallDepth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(profile.overallDepth)),
         WebThickness: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(profile.webThickness)),
-        FlangeThickness: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(profile.flangeThickness)),
-        FilletRadius: null,
+        FlangeThickness: w.mkType(
+          WebIFC.IFCPOSITIVELENGTHMEASURE,
+          toIfcLengthM(profile.flangeThickness)
+        ),
+        FilletRadius:
+          profile.filletRadius === undefined
+            ? null
+            : w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(profile.filletRadius)),
         FlangeEdgeRadius: null,
         FlangeSlope: null,
       });
@@ -359,11 +362,7 @@ function crossUnit(
   a: [number, number, number],
   b: [number, number, number]
 ): [number, number, number] {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
 // Emits IfcLocalPlacement + IfcExtrudedAreaSolid + IfcProductDefinitionShape

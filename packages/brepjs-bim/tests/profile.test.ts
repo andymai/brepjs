@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseProfile } from '../src/specs/profile.js';
-import {
-  profileCrossSectionArea,
-  profileToPolygon,
-} from '../src/elementFns/profileFns.js';
+import { profileCrossSectionArea, profileToPolygon } from '../src/elementFns/profileFns.js';
 import type { Profile } from '../src/specs/profile.js';
 
 describe('parseProfile', () => {
@@ -83,6 +80,21 @@ describe('profileCrossSectionArea', () => {
     // 2 × (200 × 15) + (400 - 30) × 10 = 6000 + 3700 = 9700
     expect(profileCrossSectionArea(profile)).toBe(9700);
   });
+
+  it('I-beam root fillets add material at the four web junctions', () => {
+    const r = 12;
+    const profile: Profile = {
+      kind: 'I_BEAM',
+      overallWidth: 200,
+      overallDepth: 400,
+      flangeThickness: 15,
+      webThickness: 10,
+      filletRadius: r,
+    };
+    // Sharp area (9700) plus four corner fills of r²(1 − π/4) each.
+    const expected = 9700 + 4 * r * r * (1 - Math.PI / 4);
+    expect(profileCrossSectionArea(profile)).toBeCloseTo(expected, 6);
+  });
 });
 
 describe('profileToPolygon', () => {
@@ -132,5 +144,28 @@ describe('profileToPolygon', () => {
     expect(pts[0]).toEqual([-100, -200, 0]);
     // Top-right flange corner
     expect(pts[6]).toEqual([100, 200, 0]);
+  });
+
+  it('I-beam with a fillet radius tessellates the four root corners into arcs', () => {
+    const r = 12;
+    const result = profileToPolygon({
+      kind: 'I_BEAM',
+      overallWidth: 200,
+      overallDepth: 400,
+      flangeThickness: 15,
+      webThickness: 10,
+      filletRadius: r,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pts = result.value;
+    // Eight sharp vertices remain; each of the four root corners becomes an arc
+    // of FILLET_SEGMENTS + 1 = 9 points.
+    expect(pts).toHaveLength(8 + 4 * 9);
+    // The eight outer flange corners are untouched.
+    expect(pts[0]).toEqual([-100, -200, 0]);
+    // No tessellated point lands exactly on a sharp root corner (5, 185).
+    const onSharpRoot = pts.some(([x, y]) => Math.abs(x) === 5 && Math.abs(y) === 185);
+    expect(onSharpRoot).toBe(false);
   });
 });
