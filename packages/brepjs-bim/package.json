@@ -5,6 +5,7 @@
   "keywords": ["bim", "ifc", "cad", "brep"],
   "author": "Andy Aragon",
   "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "https://github.com/andymai/brepjs", "directory": "packages/brepjs-bim" },
   "type": "module",
   "sideEffects": false,
   "engines": { "node": ">=24" },

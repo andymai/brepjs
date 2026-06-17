@@ -12,6 +12,11 @@
   ],
   "author": "Andy Aragon",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-sheetmetal"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
