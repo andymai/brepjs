@@ -1154,7 +1154,7 @@ export default projectEnclosure();`,
   cylinder,
   edgeFinder,
   fillet,
-  fuseAll,
+  fuse,
   rotate,
   sketchRoundedRectangle,
   translate,
@@ -1216,7 +1216,10 @@ function txEnclosure({
   const baseStepped = unwrap(cut(baseTray, lipStep));
 
   // --- Internal PCB standoff posts (mounting bosses) in the base corners ---
-  // Pegs the PCB rests on, each cored for a self-tapping screw.
+  // Pegs the PCB rests on, each cored for a self-tapping screw. Each post grows
+  // from z = 0 up through the whole \`floor\` slab so it overlaps the tray solid:
+  // a post that merely kissed the floor at z = floor would stay a separate,
+  // floating peg. The screw bores are punched later, with the I/O ports.
   const postR = 2.6;
   const pinR = 1.1;
   const px = innerL / 2 - 5;
@@ -1227,20 +1230,25 @@ function txEnclosure({
     [px, py],
     [-px, py],
   ];
-  const posts = postCenters.map(([x, y]) =>
-    unwrap(
-      cut(
-        cylinder(postR, standoff, { at: [x, y, floor] }),
-        cylinder(pinR, standoff, { at: [x, y, floor + 1] }),
-      ),
-    ),
-  );
-  const baseWithPosts = unwrap(fuseAll([baseStepped, ...posts]));
+  const posts = postCenters.map(([x, y]) => cylinder(postR, floor + standoff, { at: [x, y, 0] }));
+  // Weld posts in one at a time with the 2-way \`fuse\`: the N-way \`fuseAll\` glues
+  // via BuilderAlgo and leaves each overlapping post a separate solid in a
+  // compound (four floating pegs). Pairwise fuse unifies them into one body.
+  let baseWithPosts = baseStepped;
+  for (const post of posts) {
+    baseWithPosts = unwrap(fuse(baseWithPosts, post));
+  }
 
   // --- Side connector cutouts through the base walls ---
   // Heights are measured from the floor up to the PCB connector centreline.
   const ioZ = floor + standoff + 4;
   const tools = [];
+
+  // Screw bores down each standoff — clean through-holes (z from under the floor
+  // up past the post top), punched with the I/O ports in the cutAll below.
+  for (const [x, y] of postCenters) {
+    tools.push(cylinder(pinR, floor + standoff + 2, { at: [x, y, -1] }));
+  }
 
   // Coax antenna bulkhead: round hole centred on the back (+Y) wall.
   tools.push(
