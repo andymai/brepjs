@@ -1,6 +1,10 @@
 # brepjs-bim
 
-> Experimental, unpublished satellite package.
+> Experimental satellite package, published to npm. Early-stage — the API may change.
+
+```bash
+npm install brepjs-bim
+```
 
 A BIM (Building Information Modeling) layer for [brepjs](https://github.com/andymai/brepjs). It
 authors IFC4-aligned parametric building elements (walls, slabs, beams, columns, roofs, curtain

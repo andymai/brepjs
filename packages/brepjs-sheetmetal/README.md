@@ -1,6 +1,10 @@
 # brepjs-sheetmetal
 
-> Experimental, unpublished satellite package.
+> Experimental satellite package, published to npm. Early-stage — the API may change.
+
+```bash
+npm install brepjs-sheetmetal
+```
 
 A sheet-metal CAD domain for [brepjs](https://github.com/andymai/brepjs). It authors parametric
 sheet-metal parts (flange/bend features), auto-miters corners, folds to 3D, and unfolds to a flat
