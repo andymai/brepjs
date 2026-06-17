@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.86.0](https://github.com/andymai/brepjs/compare/brepjs-v18.85.0...brepjs-v18.86.0) (2026-06-17)
+
+
+### Features
+
+* **playground:** showcase BIM and sheet-metal use cases ([#1452](https://github.com/andymai/brepjs/issues/1452)) ([916436b](https://github.com/andymai/brepjs/commit/916436b50fa1ee61f03c3dffd66461cf4876a206))
+
 ## [18.85.0](https://github.com/andymai/brepjs/compare/brepjs-v18.84.1...brepjs-v18.85.0) (2026-06-17)
 
 
