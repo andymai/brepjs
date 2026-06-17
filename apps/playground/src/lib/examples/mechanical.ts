@@ -98,16 +98,16 @@ export default oRing();
   {
     id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
-    description: 'An axial cooling fan with a curved impeller.',
+    description: 'An axial cooling fan with a ring of pitched blades.',
     code: `import {
   box,
-  convexHull,
   cutAll,
   cylinder,
   edgeFinder,
   fillet,
   fuseAll,
   rotate,
+  translate,
   unwrap,
 } from 'brepjs/quick';
 
@@ -149,60 +149,22 @@ function axialFan({
   // Hub: solid cylinder protruding above the top face.
   const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
 
-  // Each blade is an organically curved, pitched vane. We march a rectangular
-  // cross-section along a curling path from hub to rim — the path sweeps
-  // tangentially (so the blade scoops like a real impeller) and the section
-  // twists from a steep pitch at the root to a shallow one at the tip. Hulling
-  // each consecutive pair of sections and fusing the chain yields a smooth,
-  // concave-curved blade a single straight hull can't express.
+  // A ring of flat, pitched blades. Each blade is a thin plate spanning hub to
+  // rim, built flat on the X axis at z = 0, tilted about that radial axis to set
+  // its angle of attack, then lifted just below the top face. The root sinks
+  // into the hub so the fuse is clean.
   const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
-  const rOuter = width / 2 - 5; // tip stays 1 mm inside the air bore radius (width/2 - 4)
-  const chord = 9; // blade chord (tangential width)
-  const thick = 1.1; // blade material thickness
-  const zBase = depth - 4; // sits just below the top face
-  const sweep = 1.05; // total tangential curl from root to tip (radians)
-  const pitch0 = 0.95; // steep pitch at the root
-  const pitch1 = 0.35; // shallower pitch at the tip
-  const steps = 10; // sections along the blade — more = smoother
+  const rOuter = width / 2 - 5; // tip stays inside the air bore radius
+  const span = rOuter - rInner;
+  const cx = rInner + span / 2;
+  const chord = 9; // blade width (tangential)
+  const thick = 1.4; // blade thickness
+  const pitch = 30; // blade angle of attack (deg)
+  const zMid = depth - 4; // blade plane just below the top face
 
-  // One cross-section (4 corners) at path parameter t in [0, 1].
-  const section = (t: number): [number, number, number][] => {
-    const rr = rInner + (rOuter - rInner) * t;
-    const ang = sweep * t * t; // accelerating curl reads as an organic scoop
-    const pitch = pitch0 + (pitch1 - pitch0) * t;
-    const cos = Math.cos(ang);
-    const sin = Math.sin(ang);
-    const cx = rr * cos;
-    const cy = rr * sin;
-    const tx = -sin; // tangential direction at this radius
-    const ty = cos;
-    const ch = chord / 2;
-    const th = thick / 2;
-    const cHx = Math.cos(pitch) * tx * ch;
-    const cHy = Math.cos(pitch) * ty * ch;
-    const cHz = Math.sin(pitch) * ch;
-    const nHx = -Math.sin(pitch) * tx * th;
-    const nHy = -Math.sin(pitch) * ty * th;
-    const nHz = Math.cos(pitch) * th;
-    return [
-      [cx - cHx - nHx, cy - cHy - nHy, zBase - cHz - nHz],
-      [cx + cHx - nHx, cy + cHy - nHy, zBase + cHz - nHz],
-      [cx + cHx + nHx, cy + cHy + nHy, zBase + cHz + nHz],
-      [cx - cHx + nHx, cy - cHy + nHy, zBase - cHz + nHz],
-    ];
-  };
-
-  // One blade = a fused chain of per-segment hulls; place a ring of them
-  // (fresh blade per slot — rotate consumes the handle it's given).
   const makeBlade = () => {
-    const segs = [];
-    let prev = section(0);
-    for (let stp = 1; stp <= steps; stp++) {
-      const cur = section(stp / steps);
-      segs.push(unwrap(convexHull([...prev, ...cur])));
-      prev = cur;
-    }
-    return unwrap(fuseAll(segs));
+    const plate = box(span, chord, thick, { at: [cx, 0, 0] });
+    return translate(rotate(plate, pitch, { axis: [1, 0, 0] }), [0, 0, zMid]);
   };
   const bladeRing = [];
   for (let i = 0; i < blades; i++) {
@@ -1287,102 +1249,6 @@ function txEnclosure({
 }
 
 export default txEnclosure();`,
-  },
-  {
-    id: 'wall-ring-hook',
-    label: 'Wall ring hook (J-hook)',
-    description:
-      'A wall-mount loop hook: a screw-down pad flaring tangentially into a bored ring for cables, straps, or coats.',
-    code: `import {
-  box,
-  cutAll,
-  cylinder,
-  edgeFinder,
-  extrude,
-  fillet,
-  fuse,
-  polygon,
-  unwrap,
-} from 'brepjs/quick';
-
-// Wall ring hook (loop / J-hook): a flat rectangular mounting pad that flares
-// tangentially up into a horizontal ring you loop a strap, cable or coat over.
-// The pad takes two screws; the ring is a bored barrel whose neck blends into
-// it on a true tangent so there is no weak shoulder. Pin axis runs along Y so
-// the ring opening faces front. Defaults model a ~50 mm utility wall hook.
-function wallRingHook({
-  baseWidth = 50, // mounting pad width along X (mm)
-  depth = 10, // pad / ring thickness along the pin axis Y (mm)
-  plate = 5, // mounting pad thickness in Z (mm)
-  holeZ = 28, // height of the ring centre above the pad (mm)
-  outerR = 16, // outer radius of the ring barrel (mm)
-  innerR = 11, // through-hole radius of the ring (mm)
-  screwR = 2.4, // mounting screw clearance radius, M4 (mm)
-} = {}) {
-  const halfW = baseWidth / 2;
-
-  // Tangent from a base corner (halfW, 0) to the ring circle centred at
-  // (0, holeZ): the neck's sloped side rides this line, so the pad blends into
-  // the barrel without a notch. Solve the upper tangent point on the circle.
-  const cz = holeZ;
-  const dist = Math.hypot(halfW, cz); // corner-to-centre distance
-  const tangentLen = Math.sqrt(Math.max(dist * dist - outerR * outerR, 1)); // >0 guard
-  const baseAng = Math.atan2(-cz, halfW); // corner -> centre ray angle
-  const tanAng = Math.atan2(outerR, tangentLen); // half subtended angle
-  const tAng = baseAng + tanAng + Math.PI / 2; // rotate to the tangent radius
-  const tpx = Math.abs(outerR * Math.cos(tAng));
-  const tpz = cz + outerR * Math.sin(tAng);
-
-  // Neck profile in the X-Z plane: pad corners at the bottom, tangent points
-  // near the barrel at the top, mirrored across X. Stop the top a hair below
-  // the ring centre so the barrel (added next) buries the seam with real
-  // overlap rather than a coincident edge.
-  const topZ = Math.min(tpz, holeZ - 0.5);
-  const topX = Math.max(Math.min(tpx, outerR - 0.5), 1);
-  const profile = unwrap(
-    polygon([
-      [-halfW, 0, 0],
-      [halfW, 0, 0],
-      [topX, 0, topZ],
-      [-topX, 0, topZ],
-    ]),
-  );
-  // Extrude the profile along +Y by \`depth\` (spans y in [0, depth]).
-  const neck = unwrap(extrude(profile, [0, depth, 0]));
-
-  // Mounting pad: a thin slab under the neck, centred on the pad footprint.
-  // Round its four short vertical (Z) corners FIRST, while it is a clean box,
-  // so the soft corners survive the fuse. It rises 0.5 mm into the neck base so
-  // the two weld into one solid.
-  const padH = plate + 0.5;
-  const padBlank = box(baseWidth, depth, padH, { at: [0, depth / 2, padH / 2 - 0.5] });
-  const padEdges = edgeFinder().inDirection('Z').findAll(padBlank);
-  const pad = unwrap(fillet(padBlank, padEdges, Math.min(plate * 0.5, 2)));
-
-  // Ring barrel: a horizontal cylinder along Y, length = depth, centred on the
-  // pad in Y and lifted to holeZ. Overlaps the neck top so it fuses cleanly.
-  const barrel = cylinder(outerR, depth, { at: [0, 0, holeZ], axis: [0, 1, 0] });
-
-  // Weld pairwise (never fuseAll): pad -> neck -> barrel into one rigid body.
-  let body = pad;
-  body = unwrap(fuse(body, neck));
-  body = unwrap(fuse(body, barrel));
-
-  // Bore the ring through-hole along Y, over-length so it punches both faces.
-  const bore = cylinder(innerR, depth + 2, { at: [0, -depth / 2 - 1, holeZ], axis: [0, 1, 0] });
-
-  // Two screw clearance holes through the pad (Z bores, inset from the edges).
-  const screwOffset = halfW - Math.max(screwR + 3, 6);
-  const screwL = padH + 2;
-  const screws = [-screwOffset, screwOffset].map((sx) =>
-    cylinder(screwR, screwL, { at: [sx, depth / 2, -1] }),
-  );
-
-  return unwrap(cutAll(body, [bore, ...screws]));
-}
-
-export default wallRingHook();
-`,
   },
   {
     id: 'tripod-rc2-plate',
