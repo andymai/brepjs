@@ -73,7 +73,7 @@ export function asSketch(sketchLike: SketchInterface): Sketch {
   if (sketchLike instanceof Sketch) return sketchLike;
   const pieces = (sketchLike as { sketches?: unknown }).sketches;
   if (Array.isArray(pieces)) {
-    const [first, ...rest] = pieces as Sketch[];
+    const [first, ...rest] = pieces as Array<Sketch | CompoundSketch>;
     if (first instanceof Sketch) {
       for (const extra of rest) extra.delete();
       return first;

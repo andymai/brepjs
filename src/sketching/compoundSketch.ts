@@ -84,8 +84,20 @@ export default class CompoundSketch implements SketchInterface {
     return fns.compoundSketchRevolve(this, revolutionAxis, config);
   }
 
-  /** Loft between this compound sketch and another with matching sub-sketch counts. */
-  loftWith(otherCompound: this, loftConfig: LoftOptions = {}): Shape3D {
+  /**
+   * Loft between this compound sketch and another with matching sub-sketch
+   * counts. The target must itself be a compound sketch — lofting a
+   * face-with-holes profile to a single-wire one has no defined meaning.
+   */
+  loftWith(
+    otherCompound: SketchInterface | SketchInterface[],
+    loftConfig: LoftOptions = {}
+  ): Shape3D {
+    if (Array.isArray(otherCompound) || !(otherCompound instanceof CompoundSketch))
+      return bug(
+        'CompoundSketch.loftWith',
+        'A compound (face-with-holes) sketch can only loft to another compound sketch with the same number of sub-sketches.'
+      );
     return fns.compoundSketchLoft(this, otherCompound, loftConfig);
   }
 

@@ -8470,8 +8470,12 @@ declare class CompoundSketch implements SketchInterface {
     revolve(revolutionAxis?: PointInput, config?: {
         origin?: PointInput;
     }): Shape3D;
-    /** Loft between this compound sketch and another with matching sub-sketch counts. */
-    loftWith(otherCompound: this, loftConfig?: LoftOptions): Shape3D;
+    /**
+     * Loft between this compound sketch and another with matching sub-sketch
+     * counts. The target must itself be a compound sketch — lofting a
+     * face-with-holes profile to a single-wire one has no defined meaning.
+     */
+    loftWith(otherCompound: SketchInterface | SketchInterface[], loftConfig?: LoftOptions): Shape3D;
     /** Sweeping a face-with-holes profile has no single well-defined spine. */
     sweepSketch(): Shape3D;
 }
