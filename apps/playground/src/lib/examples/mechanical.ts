@@ -635,7 +635,7 @@ export default ballBearing();`,
   cutAll,
   cylinder,
   edgeFinder,
-  fuseAll,
+  fuse,
   unwrap,
 } from 'brepjs/quick';
 
@@ -666,10 +666,14 @@ function nemaStepper({
   const can = unwrap(chamfer(blank, longEdges, edgeChamfer));
 
   // Raised pilot boss (plinth) centered on the mounting face — the spigot that
-  // locates the motor in its bracket. The shaft rises from its center.
-  const plinth = cylinder(plinthDiam / 2, plinthHeight, { at: [0, 0, 0] });
-  const shaft = cylinder(shaftDiam / 2, shaftLen, { at: [0, 0, 0] });
-  const motor = unwrap(fuseAll([can, plinth, shaft]));
+  // locates the motor in its bracket. The shaft rises from its center. Both dig
+  // 1 mm into the can (base at z = -1) for real volumetric overlap — a part that
+  // merely kissed the z = 0 face would stay a separate, floating solid.
+  const plinth = cylinder(plinthDiam / 2, plinthHeight + 1, { at: [0, 0, -1] });
+  const shaft = cylinder(shaftDiam / 2, shaftLen + 1, { at: [0, 0, -1] });
+  // Weld pairwise: the N-way fuseAll glues via BuilderAlgo and leaves the solids
+  // separate in a compound; pairwise fuse unifies the overlapping bodies into one.
+  const motor = unwrap(fuse(unwrap(fuse(can, plinth)), shaft));
 
   // Four tapped corner holes on the square bolt pitch, sunk from the face.
   const o = screwPitch / 2;
@@ -700,7 +704,7 @@ export default nemaStepper();`,
   cut,
   cutAll,
   cylinder,
-  fuseAll,
+  fuse,
   rotate,
   translate,
   unwrap,
@@ -757,7 +761,10 @@ function knuckleHinge({
       parts.push(box(band, webLen, leafThick, { at: [cx, (sign * webLen) / 2, axisZ] }));
     }
 
-    return unwrap(fuseAll(parts));
+    // Pairwise fuse, not fuseAll: BuilderAlgo leaves the plate, knuckles and webs
+    // as separate solids in a compound even though they overlap; folding with the
+    // 2-way fuse unifies them into one rigid leaf.
+    return parts.reduce((a, b) => unwrap(fuse(a, b)));
   };
 
   // Even knuckles belong to leaf A (+Y), odd ones to leaf B (-Y): they mesh.
@@ -809,7 +816,6 @@ export default knuckleHinge();`,
   cut,
   cutAll,
   fuse,
-  fuseAll,
   rotate,
   sketchPolysides,
   translate,
@@ -863,7 +869,8 @@ function cubeTrussFrame({ segments = 3, cube = 30, strut = 4, bracing = true } =
     run.push(translate(oneCube(), [0, i * pitch, 0]));
   }
   // Re-centre the whole beam about the origin along its run (Y).
-  const beam = unwrap(fuseAll(run));
+  // Pairwise fuse the overlapping cubes (fuseAll leaves them as separate bodies).
+  const beam = run.reduce((a, b) => unwrap(fuse(a, b)));
   return translate(beam, [0, -((segments - 1) * pitch) / 2, 0]);
 }
 
@@ -874,7 +881,7 @@ export default cubeTrussFrame();`,
     label: 'Linear-bearing pillow block (LM8UU clamp)',
     description:
       'Split-clamp housing that grips a round LMxUU linear-bearing cartridge, pinched shut by a counterbored cross-bolt.',
-    code: `import { box, cutAll, cylinder, fuseAll, rotate, translate, unwrap } from 'brepjs/quick';
+    code: `import { box, cutAll, cylinder, fuse, rotate, translate, unwrap } from 'brepjs/quick';
 
 // Linear-bearing pillow block (LM8UU clamp mount): a split-clamp housing that
 // grips a round linear-bearing cartridge running along X. Bore = bearing OD (15
@@ -900,14 +907,18 @@ function linearBearingBlock(
   // Round housing barrel, axis along X, centred on the origin.
   const barrel = cylinder(housingR, length, { at: [-length / 2, 0, 0], axis: [1, 0, 0] });
 
-  // Flat base slab hanging below the barrel so the block sits on a surface.
-  const baseSlab = box(length, housingR * 2, base, { at: [0, 0, -housingR - base / 2] });
+  // Flat base slab hanging below the barrel so the block sits on a surface. Its
+  // top rises 1 mm into the round barrel (a flat tangent to a cylinder is only a
+  // line of contact — no volume to fuse), so it welds instead of floating off.
+  const baseSlab = box(length, housingR * 2, base + 1, { at: [0, 0, -housingR - base / 2 + 0.5] });
 
   // Solid ear stock above the barrel; the flex gap is cut from it next.
   const earBlockH = earRise + housingR;
   const earStock = box(length, earSpan, earBlockH, { at: [0, 0, earBlockH / 2] });
 
-  const body = unwrap(fuseAll([barrel, baseSlab, earStock]));
+  // Pairwise fuse the overlapping barrel, base and ear block into one solid
+  // (fuseAll would leave them as separate bodies in a compound).
+  const body = unwrap(fuse(unwrap(fuse(barrel, baseSlab)), earStock));
 
   // Bearing bore: cartridge passes straight through, slightly proud each end.
   const bearingBore = cylinder(bore / 2, length + 2, {
@@ -923,7 +934,7 @@ function linearBearingBlock(
   // side. Built Z-up at the origin, laid onto +Y, then lifted to the bolt line.
   const boltShaft = cylinder(boltR, earSpan + 2, { at: [0, 0, -(earSpan / 2 + 1)] });
   const boltHead = cylinder(headR, tabWall + 1, { at: [0, 0, gap / 2] });
-  const boltZup = unwrap(fuseAll([boltShaft, boltHead]));
+  const boltZup = unwrap(fuse(boltShaft, boltHead));
   const boltOnY = rotate(boltZup, -90, { axis: [1, 0, 0] });
   const bolt = translate(boltOnY, [0, 0, boltZ]);
 
