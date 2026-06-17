@@ -2421,4 +2421,430 @@ function ventedCase({
 
 export default ventedCase();`,
   },
+  {
+    id: 'l-angle-gusset-bracket',
+    label: 'L-angle gusset bracket (corner brace)',
+    description:
+      'A right-angle shelf bracket: two perpendicular flat legs stiffened by a triangular gusset web, with clearance mounting holes down each leg and a chamfered outer heel.',
+    code: `import {
+  box,
+  cut,
+  cutAll,
+  cylinder,
+  extrude,
+  fuse,
+  polygon,
+  rotate,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// L-angle gusset bracket (right-angle shelf / corner brace): two flat legs
+// meeting at 90 deg, stiffened by a triangular gusset web across the inside
+// corner, with clearance mounting holes down each leg and a chamfered outer
+// heel. The back faces share the y = 0 plane and the legs overlap in a
+// width x t x t corner cube, so the whole brace fuses into one rigid solid.
+// Defaults model a ~60 mm steel angle bracket with 3 holes per leg.
+function lBracket({
+  width = 40, // bracket width across X (mm)
+  legLen = 60, // reach of each leg from the corner (mm)
+  thick = 4, // plate / wall thickness (mm)
+  gusset = 38, // how far the triangular web runs out along each leg (mm)
+  ribThick = 4, // gusset web thickness across X (mm)
+  holeDia = 5.2, // clearance hole diameter, ~M5 (mm)
+  holesPerLeg = 3, // mounting holes down each leg
+  heelChamfer = 6, // 45 deg flat on the outer heel (mm)
+} = {}) {
+  // Horizontal leg: flat on z in [0, thick], extends out in +Y to legLen.
+  const flatLeg = box(width, legLen, thick, { at: [0, legLen / 2, thick / 2] });
+
+  // Vertical leg: stands at y in [0, thick], rises in +Z to legLen. It shares
+  // the corner cube (width x thick x thick) with the flat leg, so the two
+  // overlap volumetrically and fuse into one body rather than just kissing.
+  const upLeg = box(width, thick, legLen, { at: [0, thick / 2, legLen / 2] });
+  let body = unwrap(fuse(flatLeg, upLeg));
+
+  // Triangular gusset web bridging the inside corner. Built as a right triangle
+  // in the Y-Z plane (right angle at the inner corner y=thick, z=thick), then
+  // extruded a thin slab across X and centred. It digs ~0.5 mm into both inner
+  // faces so it welds to the legs instead of floating on the corner seam.
+  const bite = 0.5;
+  const tri = unwrap(
+    polygon([
+      [0, thick - bite, thick - bite],
+      [0, thick + gusset, thick - bite],
+      [0, thick - bite, thick + gusset],
+    ]),
+  );
+  const web = translate(unwrap(extrude(tri, [ribThick, 0, 0])), [-ribThick / 2, 0, 0]);
+  body = unwrap(fuse(body, web));
+
+  // Chamfer the outer heel: subtract a 45 deg slab hinged along the outer back
+  // edge (y = 0, z = 0), running the full width. Reads as a bevelled corner and
+  // keeps the build fully constructive (no finder needed on the fused solid).
+  const slab = box(width + 4, heelChamfer * 2, heelChamfer * 2, {
+    at: [0, -heelChamfer, -heelChamfer],
+  });
+  const heelCut = rotate(slab, 45, { axis: [1, 0, 0], at: [0, 0, 0] });
+  body = unwrap(cut(body, heelCut));
+
+  // Mounting holes down each leg, evenly spaced from the corner toward the free
+  // end. The holes are offset sideways in X so they sit on solid plate beside
+  // the central gusset rib (rib spans x in [-ribThick/2, ribThick/2]) instead of
+  // being drilled through the fused web. Flat-leg holes drill down through z;
+  // vertical-leg holes drill back through y.
+  const holes = [];
+  const xOff = width * 0.28; // lateral offset to clear the central gusset rib
+  const first = thick + (legLen - thick) * 0.22; // first hole clears the corner
+  const last = legLen - (legLen - thick) * 0.12; // last hole near the tip
+  for (let i = 0; i < holesPerLeg; i++) {
+    const t = holesPerLeg === 1 ? 0.5 : i / (holesPerLeg - 1);
+    const d = first + (last - first) * t;
+    // Flat leg: vertical hole at y = d, drilled down through z. The bore base
+    // sits at z = -1 and runs +Z through the thick plate.
+    holes.push(cylinder(holeDia / 2, thick + 2, { at: [xOff, d, -1] }));
+    // Vertical leg: horizontal hole at z = d, drilled back through -Y. After the
+    // -90 deg X rotation the bore points along +Y spanning y in [-1, 5], so it
+    // straddles the vertical-leg material (y in [0, thick]) and removes a clean
+    // through-hole rather than floating past the outer face.
+    const back = rotate(cylinder(holeDia / 2, thick + 2, { at: [0, 0, -1] }), -90, {
+      axis: [1, 0, 0],
+    });
+    holes.push(translate(back, [xOff, -1, d]));
+  }
+
+  return unwrap(cutAll(body, holes));
+}
+
+export default lBracket();
+`,
+  },
+  {
+    id: 'pipe-saddle-p-clamp',
+    label: 'Two-bolt P-clamp (pipe saddle clamp)',
+    description:
+      'A formed-metal pipe/conduit saddle clamp: a band-thick strap arching over the pipe bore with a flat bolt foot flaring out each side.',
+    code: `import {
+  box,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuse,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Two-bolt P-clamp (pipe / conduit saddle clamp): a formed-metal strap that
+// arches over a round pipe and bolts down through a flat foot on each side.
+// The pipe runs along X; the saddle is the top half of a band-thickness tube
+// hugging the bore, and the two feet flare out in +/-Y at the base, each with a
+// vertical bolt hole. Defaults suit ~20 mm conduit on M6 bolts.
+function pClamp({
+  pipeDia = 20, // pipe / conduit outer diameter the saddle grips (mm)
+  band = 3, // strap thickness, radial (mm)
+  width = 14, // strap width along the pipe axis (mm)
+  footLength = 16, // how far each bolt foot reaches out past the saddle (mm)
+  footThick = 4, // foot slab thickness (mm)
+  boltDia = 6.5, // bolt clearance hole diameter, M6 (mm)
+  filletR = 2, // radius of the formed bend where saddle meets foot (mm)
+} = {}) {
+  const pipeR = pipeDia / 2;
+  const outerR = pipeR + band; // saddle outer radius
+
+  // Saddle: the top half of a band-thick tube. Build a full tube (outer minus
+  // bore cylinder, both along X), then shear off everything below the pipe
+  // centreline so only the arching dome remains.
+  const tube = unwrap(
+    cutAll(cylinder(outerR, width, { axis: [1, 0, 0], at: [-width / 2, 0, 0] }), [
+      cylinder(pipeR, width + 2, { axis: [1, 0, 0], at: [-width / 2 - 1, 0, 0] }),
+    ]),
+  );
+  // Remove the lower half (z < 0): a big block sitting just under the centreline.
+  const lowerHalf = box(width + 4, (outerR + footLength) * 2 + 4, outerR + 4, {
+    at: [0, 0, -(outerR + 4) / 2],
+  });
+  const saddle = unwrap(cutAll(tube, [lowerHalf]));
+
+  // Two flat bolt feet, one per side, lying at the base (centred on z = 0 so
+  // they bite into the saddle wall for a real fused overlap, not a kissed face).
+  // Each foot spans from inside the saddle wall outward by footLength.
+  const footY0 = pipeR - 1; // start 1 mm inside the wall -> guaranteed overlap
+  const footOuter = outerR + footLength;
+  const footW = footOuter - footY0;
+  const foot = (sign: 1 | -1) =>
+    box(width, footW, footThick, { at: [0, sign * (footY0 + footW / 2), 0] });
+
+  // Weld the saddle and both feet pairwise (never fuseAll: that would leave
+  // three separate solids glued in a compound that falls apart on export).
+  let body = unwrap(fuse(saddle, foot(1)));
+  body = unwrap(fuse(body, foot(-1)));
+
+  // Soften the inside bends where each foot rolls off the saddle dome, the
+  // hallmark of a formed-metal strap. Pick the X-running edges out near the
+  // saddle's outer radius at the base.
+  const valid = unwrap(validSolid(body));
+  const bendEdges = edgeFinder().inDirection('X').atDistance(outerR, [0, 0, 0]).findAll(valid);
+  const formed = bendEdges.length > 0 ? unwrap(fillet(valid, bendEdges, filletR)) : valid;
+
+  // Vertical bolt hole through the middle of each foot.
+  const boltAt = (outerR + footOuter) / 2; // mid-length of the foot reach
+  const bolts = [1, -1].map((s) =>
+    cylinder(boltDia / 2, footThick + 2, { at: [0, s * boltAt, -footThick / 2 - 1] }),
+  );
+
+  return unwrap(cutAll(formed, bolts));
+}
+
+export default pClamp();
+`,
+  },
+  {
+    id: 'din-rail-clip-enclosure',
+    label: 'DIN-Rail Clip Enclosure (base + lid)',
+    description:
+      'A rounded-corner electronics module box with an integral TS35 DIN-rail snap clip on its back wall, shown beside its matching lid.',
+    code: `import {
+  box,
+  cut,
+  cutAll,
+  edgeFinder,
+  fillet,
+  fuse,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// DIN-rail clip enclosure (base + lid): a compact rounded-corner module box
+// that snaps onto a standard 35 mm TS35 top-hat rail. The base is an upward
+// tray; its back wall carries an integral DIN-rail clip — a recessed rail
+// channel whose mouth is pinched by two overhang lips that hook the rail
+// flanges, with a screwdriver pry tab hanging off the lower lip. The lid is an
+// inverted tray laid beside the base, the way the two sit on a print plate.
+function dinRailClipEnclosure({
+  innerLength = 70, // cavity extent along X (mm)
+  innerWidth = 45, // cavity extent along Y (mm)
+  wall = 2.2, // side-wall thickness (mm)
+  floor = 1.8, // base / lid plane thickness (mm)
+  baseWall = 28, // base side-wall height above the floor (mm)
+  lidWall = 8, // lid skirt height (mm)
+  cornerR = 4, // outer vertical corner radius (mm)
+  railWidth = 35, // TS35 DIN-rail nominal width (mm)
+  railDepth = 7.5, // TS35 top-hat profile depth (mm)
+  railLip = 1, // rail flange thickness the jaws hook over (mm)
+} = {}) {
+  // Outer footprint = cavity + two walls; inner corners shrink with the wall.
+  const outerL = innerLength + 2 * wall;
+  const outerW = innerWidth + 2 * wall;
+  const innerR = Math.max(cornerR - wall, 0.6);
+
+  // A rounded-corner rectangular prism: a centred box with only its four
+  // vertical (Z-running) edges filleted — the building block for every wall,
+  // cavity and clip jaw so the box keeps soft vertical corners. (A direct
+  // shell() is fragile here: inDirection('Z') on a cavity also catches the flat
+  // faces; cutting an inner cavity keeps the floor intact.)
+  const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
+    const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
+    if (r <= 0) return blk;
+    return unwrap(fillet(blk, edgeFinder().inDirection('Z').findAll(blk), r));
+  };
+
+  // --- BASE: a rounded tray, floor on z = 0, opening upward. ---
+  const baseHeight = floor + baseWall;
+  const baseOuter = roundedPrism(outerL, outerW, baseHeight, 0, cornerR);
+  const baseCavity = roundedPrism(innerLength, innerWidth, baseWall + 1, floor, innerR);
+  let base = unwrap(cut(baseOuter, baseCavity));
+
+  // --- DIN-rail clip, welded onto the back (+Y) wall of the base. ---------
+  // Geometry intent: a top-hat (TS35) rail seats horizontally (axis along X) in
+  // a channel that opens out the back (+Y). The channel mouth is pinched in Z by
+  // a fixed upper lip and a fixed lower lip that hook over the rail's two
+  // flanges; its throat behind the lips is full rail height, so the rail snaps
+  // past the lips and is trapped. A solid back wall ties the whole clip — both
+  // lips, the side pillars and the channel floor — into the body as one piece.
+  // A pry-tab tongue hangs off the lower lip for screwdriver release.
+  const wallY = outerW / 2; // outer face of the +Y back wall
+  const lip = wall + railLip + 0.4; // lip band thickness in Z
+  const channelH = railWidth + 0.6; // channel throat height (rail + slack)
+  const bite = wall; // how far the block sinks into the wall to weld
+  const clipCenterZ = baseHeight / 2; // clip centred on the wall height
+
+  const clipW = railWidth + 12; // clip width across X (wider than the rail)
+  const clipH = channelH + 2 * lip; // full clip height in Z
+  const backWall = wall; // solid back wall behind the channel floor
+  const clipBlockD = railDepth + backWall; // clip stand-off depth past the wall
+  const clipBackY = wallY + clipBlockD; // back plane of the clip block
+
+  // Clip backing block: a rounded slab standing off the back wall, sunk \`bite\`
+  // into the wall so it welds (a block merely kissing the wall face would stay
+  // a separate, floating solid). Spans the channel throat + both lips in Z.
+  const slabD = clipBlockD + bite;
+  const clip = roundedPrism(clipW, slabD, clipH, 0, Math.min(cornerR, 3));
+  // roundedPrism centres in X/Y and sits base at z = 0; move it onto the
+  // back-wall line and up so it straddles the wall mid-height.
+  const clipBlock = translate(clip, [
+    0,
+    wallY - bite + slabD / 2,
+    clipCenterZ - clipH / 2,
+  ]);
+  base = unwrap(fuse(base, clipBlock));
+
+  // Carve the rail channel out of that block as a T-pocket open toward +Y:
+  // a full-height throat that stops short of the mouth, plus a shorter narrow
+  // slot punched out the back. What's left at the mouth is the pair of overhang
+  // lips; behind the throat a \`backWall\`-thick floor stays solid and connected.
+  const lipReachZ = railLip + 0.8; // how far each lip overhangs the flange in Z
+  const mouthH = channelH - 2 * lipReachZ; // open gap between the two lips
+  const floorY = wallY + 0.2; // channel floor, just proud of the wall
+  const throatDepth = railDepth - lipReachZ; // throat stops short of the mouth
+  const cutters = [];
+  // Full-height throat (does NOT reach the back face — leaves the floor).
+  cutters.push(
+    box(railWidth, throatDepth, channelH, {
+      at: [0, floorY + throatDepth / 2, clipCenterZ],
+    }),
+  );
+  // Narrow mouth slot, out the back between the lips (the rail's entry gap).
+  cutters.push(
+    box(railWidth, clipBlockD + 2, mouthH, {
+      at: [0, floorY + (clipBlockD + 2) / 2, clipCenterZ],
+    }),
+  );
+
+  // Lip-back relief: undercut the inner face of each lip so it overhangs the
+  // rail flange (the lip is thinner in Y than the throat is deep). A shallow
+  // pocket behind each lip, cut from the throat side, stopping short of the back.
+  const reliefDepth = throatDepth + lipReachZ - railLip; // up to the lip's back
+  for (const sz of [-1, 1]) {
+    const zc = clipCenterZ + sz * (mouthH / 2 + lipReachZ / 2);
+    cutters.push(
+      box(railWidth + 2, reliefDepth, lipReachZ + 0.1, {
+        at: [0, floorY + reliefDepth / 2, zc],
+      }),
+    );
+  }
+
+  base = unwrap(cutAll(base, cutters));
+
+  // Pry tab: a tongue hanging off the bottom lip that you lever with a
+  // screwdriver to spring the box off the rail. A thin slab fused to the lower
+  // lip's back-bottom, overlapping it so it welds into one rigid body.
+  const tabW = 12; // tab width across X
+  const tabThk = 2.6; // tab thickness in Y
+  const tabDrop = 9; // how far the tab hangs below the lower lip
+  const tabZTop = clipCenterZ - clipH / 2 + 1.5; // overlap the lip bottom
+  const tab = box(tabW, tabThk, tabDrop, {
+    at: [0, clipBackY - tabThk / 2, tabZTop - tabDrop / 2],
+  });
+  base = unwrap(fuse(base, tab));
+
+  // --- LID: a shallow inverted tray — cap on top, skirt hanging down. ------
+  // Built cap-up directly (cavity open at the bottom) so it needs no flip; the
+  // downward skirt drops over the base rim on assembly.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerL, outerW, lidH, 0, cornerR);
+  const lidCavity = roundedPrism(innerLength, innerWidth, lidWall + 1, -1, innerR);
+  const lidTray = unwrap(cut(lidOuter, lidCavity));
+
+  // Lay the lid beside the base along Y (clear of the clip), open faces both up,
+  // exactly how the two would sit on a print plate.
+  const gap = clipBlockD + 14;
+  const placedLid = translate(lidTray, [0, outerW + gap, 0]);
+
+  return [base, placedLid];
+}
+
+export default dinRailClipEnclosure();
+`,
+  },
+  {
+    id: 'conduit-snap-clip',
+    label: 'Conduit cable snap-clip',
+    description:
+      'An open C-ring that snaps over a cable or conduit, on a flat countersunk screw foot.',
+    code: `import {
+  box,
+  cone,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuse,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Conduit / cable snap-clip: an open C-ring that snaps over a round cable or
+// conduit, standing on a flat screw foot. The ring axis runs along X (the cable
+// threads through it); the C opens at the top with two in-turned lips whose gap
+// is narrower than the bore, so the cable pushes past them and is captured. A
+// rectangular foot carries one countersunk screw hole. Whole part is one solid.
+// Defaults suit ~16 mm corrugated conduit (a 16 mm bore, M4 mount).
+function conduitClip(
+  bore = 16, // captured cable / conduit diameter (mm)
+  wall = 2.4, // ring wall thickness (mm)
+  width = 12, // axial length of the clip along the cable (mm)
+  mouthFrac = 0.62, // opening width as a fraction of bore (< 1 grips the cable)
+  footLen = 30, // mounting-foot length across the cable (mm)
+  footThick = 3, // mounting-foot slab thickness (mm)
+  screwClear = 2.3, // screw clearance-hole radius — M4 (mm)
+  screwHead = 4.2, // countersink top radius (mm)
+) {
+  const rBore = bore / 2;
+  const rOuter = rBore + wall;
+  const x0 = -width / 2; // ring spans [-width/2, +width/2] along its X axis
+
+  // Ring barrel: an outer cylinder minus the bore, both along X. The ring centre
+  // sits one outer-radius above the foot so the foot tucks under it.
+  const ringZ = footThick + rOuter; // ring-axis height above the foot underside
+  const barrel = cylinder(rOuter, width, { axis: [1, 0, 0], at: [x0, 0, ringZ] });
+  const bored = unwrap(
+    cut(barrel, cylinder(rBore, width + 2, { axis: [1, 0, 0], at: [x0 - 1, 0, ringZ] })),
+  );
+
+  // Open the C at the top: a vertical slot, narrower than the bore, cut from
+  // above the ring down to the bore centre. Because the slot is narrower than
+  // the bore, two crescent lips are left flanking the mouth — the in-turned
+  // catches that snap over and retain the cable.
+  const mouthW = bore * mouthFrac;
+  const slot = box(width + 2, mouthW, rOuter * 2, {
+    at: [0, 0, ringZ + rOuter], // base at the bore centre, rising clear of the top
+  });
+  const cRing = unwrap(cut(bored, slot));
+
+  // Round the two mouth lips so they read as smooth snap catches, not sharp
+  // corners. The X-running edges sitting one bore-radius from the ring axis are
+  // the lip tips at the slot walls.
+  const lipEdges = edgeFinder().inDirection('X').atDistance(rBore, [0, 0, ringZ]).findAll(cRing);
+  const ringSolid = unwrap(validSolid(cRing));
+  const ring =
+    lipEdges.length > 0
+      ? unwrap(fillet(ringSolid, lipEdges, Math.min(wall * 0.6, mouthW / 4)))
+      : cRing;
+
+  // Mounting foot: a flat slab under the ring, its top rising 1 mm into the ring
+  // wall so the two weld into one solid (a face-tangent foot would float off).
+  const foot = box(footLen, width, footThick + 1, {
+    at: [0, 0, (footThick + 1) / 2 - 0.5],
+  });
+
+  // Pairwise fuse (never fuseAll): the overlapping ring + foot become one body.
+  const body = unwrap(fuse(ring, foot));
+
+  // Countersunk screw hole through the foot, parked on the free end so it clears
+  // the ring: a straight shank capped by a flaring head cone at the top face.
+  const holeX = -(rOuter + (footLen / 2 - rOuter) / 2);
+  const shank = cylinder(screwClear, footThick + 2, { at: [holeX, 0, -1] });
+  const csDepth = Math.min(screwHead - screwClear, footThick - 0.6);
+  const csink = cone(screwClear, screwHead, csDepth + 0.2, {
+    at: [holeX, 0, footThick - csDepth],
+  });
+
+  return unwrap(cutAll(body, [shank, csink]));
+}
+
+export default conduitClip();
+`,
+  },
 ];
