@@ -210,6 +210,7 @@
   ],
   "scripts": {
     "build": "vite build && node scripts/build-quick.js",
+    "build:site": "npm run build && npm run build --workspace=brepjs-bim && npm run build --workspace=brepjs-sheetmetal && npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
     "dev": "vite build --watch",
     "prepublishOnly": "npm run build",
     "prepack": "bash scripts/validate-pack.sh",
