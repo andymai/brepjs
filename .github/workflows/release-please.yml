@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       republish:
-        description: "Republish current main package.json version (skip release-please, run publish-brepjs only)"
+        description: 'Republish current main package.json version (skip release-please, run publish-brepjs only)'
         required: false
         type: boolean
         default: false
@@ -34,6 +34,10 @@ jobs:
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
       brepjs_verify_release_created: ${{ steps.release.outputs['packages/brepjs-verify--release_created'] }}
       brepjs_verify_tag_name: ${{ steps.release.outputs['packages/brepjs-verify--tag_name'] }}
+      brepjs_bim_release_created: ${{ steps.release.outputs['packages/brepjs-bim--release_created'] }}
+      brepjs_bim_tag_name: ${{ steps.release.outputs['packages/brepjs-bim--tag_name'] }}
+      brepjs_sheetmetal_release_created: ${{ steps.release.outputs['packages/brepjs-sheetmetal--release_created'] }}
+      brepjs_sheetmetal_tag_name: ${{ steps.release.outputs['packages/brepjs-sheetmetal--tag_name'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
       prs: ${{ steps.release.outputs.prs }}
@@ -100,7 +104,7 @@ jobs:
             # release pipeline across linked workspace packages). Only the root
             # brepjs release PR auto-merges.
             case "$pr_title" in
-              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer*)
+              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer* | *brepjs-bim* | *brepjs-sheetmetal*)
                 echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
                 continue
                 ;;
@@ -168,6 +172,48 @@ jobs:
           # commit if another push lands on main during the dispatch window.
           GH_REF: ${{ needs.release-please.outputs.brepjs_verify_tag_name }}
         run: gh workflow run publish-brepjs-verify.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+
+  # Auto-publish brepjs-bim by dispatching its own publish workflow (the npm OIDC
+  # trusted publisher is bound to the publish-brepjs-bim.yml filename, so the
+  # publish must run from that workflow). Fires on the post-merge release-please
+  # run that cuts the brepjs-bim release.
+  publish-brepjs-bim:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [release-please]
+    if: ${{ needs.release-please.outputs.brepjs_bim_release_created == 'true' }}
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
+          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
+      - name: Dispatch publish-brepjs-bim (real publish)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          # Dispatch against the immutable release tag, not main (see verify above).
+          GH_REF: ${{ needs.release-please.outputs.brepjs_bim_tag_name }}
+        run: gh workflow run publish-brepjs-bim.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+
+  # Auto-publish brepjs-sheetmetal — same pattern as brepjs-bim above.
+  publish-brepjs-sheetmetal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [release-please]
+    if: ${{ needs.release-please.outputs.brepjs_sheetmetal_release_created == 'true' }}
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
+          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
+      - name: Dispatch publish-brepjs-sheetmetal (real publish)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          GH_REF: ${{ needs.release-please.outputs.brepjs_sheetmetal_tag_name }}
+        run: gh workflow run publish-brepjs-sheetmetal.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
   # brepjs-viewer is NOT managed by release-please (removed from
   # release-please-config.json): node-workspace was re-pinning brepjs-verify's
