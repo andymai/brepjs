@@ -91,7 +91,7 @@ If you're choosing a **JavaScript CAD library** more broadly, here's where brepj
 - **vs OpenSCAD** — OpenSCAD uses its own language and a mesh-based engine, so it has no true fillets and no STEP export. brepjs is exact B-Rep, written in TypeScript, with STEP out of the box.
 - **vs JSCAD** — JSCAD is JavaScript but polygon/mesh-based, so it can't produce exact solids or true STEP. brepjs is a B-Rep kernel.
 - **vs CadQuery / build123d** — excellent, but Python and server-side. brepjs runs in the browser, in TypeScript.
-- **vs opencascade.js** — that's a raw OpenCascade WASM binding, and the one Replicad is built on. brepjs runs on its own OpenCascade WASM build (`occt-wasm`) and gives you a high-level, typed API, so you don't work with the kernel directly.
+- **vs opencascade.js** — a raw OpenCascade WASM binding. Replicad builds on its own custom version (`replicad-opencascadejs`); brepjs builds on its own (`occt-wasm`) and wraps it in a high-level, typed API, so you don't work with the kernel directly.
 
 ## FAQ
 
