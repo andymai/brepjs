@@ -1,23 +1,39 @@
 {
   "name": "brepjs-bim",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "BIM layer for brepjs — IFC4-aligned parametric building elements",
-  "keywords": ["bim", "ifc", "cad", "brep"],
+  "keywords": [
+    "bim",
+    "ifc",
+    "cad",
+    "brep"
+  ],
   "author": "Andy Aragon",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "main": "./dist/brepjs-bim.cjs",
   "module": "./dist/brepjs-bim.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-bim.js" },
-      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-bim.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-bim.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-bim.cjs"
+      }
     }
   },
-  "files": ["dist", "LICENSE"],
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "vite build",
     "typecheck": "tsc --noEmit",
