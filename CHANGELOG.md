@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.85.0](https://github.com/andymai/brepjs/compare/brepjs-v18.84.1...brepjs-v18.85.0) (2026-06-17)
+
+
+### Features
+
+* unified sketch chainable surface + playground example type-check guard ([#1443](https://github.com/andymai/brepjs/issues/1443)) ([d393271](https://github.com/andymai/brepjs/commit/d393271be66af4525ed269e5e34c611f92106f7e))
+
 ## [18.84.1](https://github.com/andymai/brepjs/compare/brepjs-v18.84.0...brepjs-v18.84.1) (2026-06-16)
 
 
