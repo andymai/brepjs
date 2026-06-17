@@ -37,6 +37,7 @@ interface CachedEval {
   timeMs: number;
   artifacts: string[];
   bimTree: unknown;
+  overlay2d: unknown;
 }
 
 const codeCache = new Map<string, CachedEval>();
@@ -81,6 +82,8 @@ interface PresentArtifacts {
   ifc?: Uint8Array;
   // A serializable BimModel.toTreeSummary() result, rendered in the domain panel.
   bimTree?: unknown;
+  // A serializable flatPatternToPolylines() result, rendered as a 2D overlay.
+  overlay2d?: unknown;
 }
 interface PresentWrapper {
   [PLAYGROUND_PRESENT_TAG]: PresentArtifacts;
@@ -339,6 +342,7 @@ async function handleEval(id: string, code: string) {
         timeMs: cached.timeMs,
         artifacts: [...cached.artifacts],
         bimTree: cached.bimTree,
+        overlay2d: cached.overlay2d,
       },
       transferablesFor(meshes)
     );
@@ -397,6 +401,7 @@ async function handleEval(id: string, code: string) {
     const { shape: presented, artifacts } = unwrapPresent(userModule.default);
     const artifactKeys = DOWNLOAD_ARTIFACT_KEYS.filter((k) => artifacts[k] != null);
     const bimTree = artifacts.bimTree;
+    const overlay2d = artifacts.overlay2d;
     const exported = presented;
     if (exported == null) {
       post({
@@ -407,6 +412,7 @@ async function handleEval(id: string, code: string) {
         timeMs: performance.now() - startTime,
         artifacts: artifactKeys,
         bimTree,
+        overlay2d,
       });
       return;
     }
@@ -490,6 +496,7 @@ async function handleEval(id: string, code: string) {
       timeMs,
       artifacts: artifactKeys,
       bimTree,
+      overlay2d,
     });
 
     post(
@@ -501,6 +508,7 @@ async function handleEval(id: string, code: string) {
         timeMs,
         artifacts: artifactKeys,
         bimTree,
+        overlay2d,
       },
       transferablesFor(meshes)
     );

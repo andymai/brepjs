@@ -717,6 +717,32 @@ type Polygon = Pt2[];
  */
 declare function wireToPolygon(outline: Wire): Result<Polygon>;
 
+/** A bend line in the developed plane: a segment plus its fold direction. */
+interface FlatPatternBendLine {
+    from: Pt2;
+    to: Pt2;
+    direction: 'up' | 'down';
+}
+
+/** A flat pattern reduced to serializable 2D polylines for a developed-view overlay. */
+interface FlatPatternPolylines {
+    /** Closed outer boundary as an ordered, non-closing vertex loop. */
+    outline: Polygon;
+    /** Interior cutout loops (holes / slots / polygon cutouts). */
+    holes: Polygon[];
+    /** Bend lines, each with its fold direction. */
+    bendLines: FlatPatternBendLine[];
+}
+
+/**
+ * Reduce a {@link FlatPattern} to serializable 2D polylines (outline, holes, bend
+ * lines) for a developed-pattern overlay. Best-effort: a wire that fails to read
+ * is dropped rather than throwing, so a partial pattern still yields what it can.
+ * Arc edges are approximated by endpoints, the same assumption {@link wireToPolygon}
+ * and the DXF writer make.
+ */
+declare function flatPatternToPolylines(pattern: FlatPattern): FlatPatternPolylines;
+
 /** Signed area (CCW positive) — used to normalise orientation and reject degenerates. */
 declare function signedArea(poly: Polygon): number;
 

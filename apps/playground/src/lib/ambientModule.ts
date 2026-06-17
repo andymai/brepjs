@@ -70,6 +70,8 @@ const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
     ifc?: Uint8Array;
     /** A serializable BIM tree summary (BimModel.toTreeSummary()) for the domain panel. */
     bimTree?: unknown;
+    /** Serializable flat-pattern polylines (flatPatternToPolylines()) for the 2D overlay. */
+    overlay2d?: unknown;
   }
   /** Attach downloadable artifacts to the shown shape; enables the matching toolbar download. */
   export function present<T>(shape: T, artifacts: PresentArtifacts): T;

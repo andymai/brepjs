@@ -11,8 +11,18 @@
  * assumption the DXF/SVG writers and the bbox nester make.
  */
 
-import { type Result, ok, err, validationError, getEdges, curveStartPoint } from 'brepjs';
+import {
+  type Result,
+  ok,
+  err,
+  isOk,
+  validationError,
+  getEdges,
+  curveStartPoint,
+  curveEndPoint,
+} from 'brepjs';
 import type { Wire } from 'brepjs';
+import type { FlatPattern } from './types.js';
 
 export type Pt2 = [number, number];
 
@@ -41,6 +51,50 @@ export function wireToPolygon(outline: Wire): Result<Polygon> {
     return err(validationError('EMPTY_OUTLINE', 'outline polygon has fewer than 3 vertices'));
   }
   return ok(poly);
+}
+
+/** A bend line in the developed plane: a segment plus its fold direction. */
+export interface FlatPatternBendLine {
+  from: Pt2;
+  to: Pt2;
+  direction: 'up' | 'down';
+}
+
+/** A flat pattern reduced to serializable 2D polylines for a developed-view overlay. */
+export interface FlatPatternPolylines {
+  /** Closed outer boundary as an ordered, non-closing vertex loop. */
+  outline: Polygon;
+  /** Interior cutout loops (holes / slots / polygon cutouts). */
+  holes: Polygon[];
+  /** Bend lines, each with its fold direction. */
+  bendLines: FlatPatternBendLine[];
+}
+
+/**
+ * Reduce a {@link FlatPattern} to serializable 2D polylines (outline, holes, bend
+ * lines) for a developed-pattern overlay. Best-effort: a wire that fails to read
+ * is dropped rather than throwing, so a partial pattern still yields what it can.
+ * Arc edges are approximated by endpoints, the same assumption {@link wireToPolygon}
+ * and the DXF writer make.
+ */
+export function flatPatternToPolylines(pattern: FlatPattern): FlatPatternPolylines {
+  const outlineResult = wireToPolygon(pattern.outline);
+  const outline = isOk(outlineResult) ? outlineResult.value : [];
+  const holes: Polygon[] = [];
+  for (const hole of pattern.holes) {
+    const holeResult = wireToPolygon(hole);
+    if (isOk(holeResult)) holes.push(holeResult.value);
+  }
+  const bendLines: FlatPatternBendLine[] = pattern.bendLines.map((bend) => {
+    const start = curveStartPoint(bend.line);
+    const end = curveEndPoint(bend.line);
+    return {
+      from: [start[0], start[1]],
+      to: [end[0], end[1]],
+      direction: bend.direction,
+    };
+  });
+  return { outline, holes, bendLines };
 }
 
 /** Signed area (CCW positive) — used to normalise orientation and reject degenerates. */

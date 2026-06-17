@@ -6,6 +6,7 @@ import ViewerPanel from './ViewerPanelLazy';
 import OutputPanel from './OutputPanel';
 import CollapsedConsoleBar from './CollapsedConsoleBar';
 import BimTreePanel from './BimTreePanel';
+import FlatPatternPanel from './FlatPatternPanel';
 
 interface Props {
   panels: PlaygroundPanels;
@@ -95,8 +96,10 @@ export default function DesktopLayout({
         {isViewerCollapsed ? null : (
           <div className="relative h-full w-full">
             <ViewerPanel />
-            {/* Overlay: renders only when the current example exposes a BIM tree. */}
+            {/* Overlays: each renders only when the current example exposes its
+                data (BIM tree / sheet-metal flat pattern), so they never co-occur. */}
             <BimTreePanel />
+            <FlatPatternPanel />
           </div>
         )}
       </Panel>

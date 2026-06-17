@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { BimTreeSummary } from 'brepjs-bim';
+import type { FlatPatternPolylines } from 'brepjs-sheetmetal';
 import { DEFAULT_CODE } from '../lib/constants';
 import type { FaceInfo, EdgeInfo } from '../workers/workerProtocol';
 import type { SharedSelection } from '../lib/urlCodec';
@@ -32,6 +33,9 @@ interface PlaygroundState {
   // A BIM tree summary the current model exposes via present({ bimTree }),
   // rendered in the domain panel; null when the model isn't a BIM model.
   bimTree: BimTreeSummary | null;
+  // Flat-pattern polylines the current model exposes via present({ overlay2d }),
+  // rendered as a 2D overlay; null when the model isn't a sheet-metal flat pattern.
+  flatPattern: FlatPatternPolylines | null;
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
@@ -48,6 +52,7 @@ interface PlaygroundState {
   setMeshes: (meshes: MeshData[]) => void;
   setAvailableArtifacts: (artifacts: string[]) => void;
   setBimTree: (tree: BimTreeSummary | null) => void;
+  setFlatPattern: (pattern: FlatPatternPolylines | null) => void;
   setError: (error: string | null, line?: number | null) => void;
   setConsoleOutput: (output: string[]) => void;
   setTimeMs: (ms: number) => void;
@@ -82,6 +87,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   isRunning: false,
   availableArtifacts: [],
   bimTree: null,
+  flatPattern: null,
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
   isEditorCollapsed: false,
@@ -105,6 +111,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
     }),
   setAvailableArtifacts: (availableArtifacts) => set({ availableArtifacts }),
   setBimTree: (bimTree) => set({ bimTree }),
+  setFlatPattern: (flatPattern) => set({ flatPattern }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -133,6 +140,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       meshes: [],
       availableArtifacts: [],
       bimTree: null,
+      flatPattern: null,
       error: null,
       errorLine: null,
       consoleOutput: [],

@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react';
 import type { BimTreeSummary } from 'brepjs-bim';
+import type { FlatPatternPolylines } from 'brepjs-sheetmetal';
 import type { FromWorker, ToWorker } from '../workers/workerProtocol';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
@@ -53,6 +54,7 @@ export function useCodeExecution() {
     store.setMeshes([]);
     store.setAvailableArtifacts([]);
     store.setBimTree(null);
+    store.setFlatPattern(null);
     postMessageRef.current({ type: 'eval', id, code });
     return id;
   }, []);
@@ -78,6 +80,7 @@ export function useCodeExecution() {
           // The worker forwards present({ bimTree }) verbatim; it's the
           // serializable BimModel.toTreeSummary() shape.
           store.setBimTree((msg.bimTree as BimTreeSummary | undefined) ?? null);
+          store.setFlatPattern((msg.overlay2d as FlatPatternPolylines | undefined) ?? null);
           store.setConsoleOutput(msg.console);
           store.setTimeMs(msg.timeMs);
           store.setIsRunning(false);

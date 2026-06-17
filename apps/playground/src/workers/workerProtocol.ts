@@ -56,6 +56,8 @@ export type FromWorker =
       artifacts?: string[];
       // A serializable BIM tree summary attached via present({ bimTree }), if any.
       bimTree?: unknown;
+      // Serializable flat-pattern polylines attached via present({ overlay2d }), if any.
+      overlay2d?: unknown;
     }
   | { type: 'eval-error'; id: string; error: string; line?: number }
   | { type: 'eval-cancelled'; id: string }

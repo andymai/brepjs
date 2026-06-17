@@ -11,7 +11,7 @@ export const SHEET_METAL_EXAMPLES: readonly Example[] = [
     label: 'Mitered L-Bracket',
     description:
       'A folded sheet-metal L-bracket with two mitered flanges, unfolded to a flat pattern. Use the DXF button in the toolbar to download the fabrication-ready flat pattern.',
-    code: `import { author, miterCorner, unfold, toDXF } from 'brepjs-sheetmetal';
+    code: `import { author, miterCorner, unfold, toDXF, flatPatternToPolylines } from 'brepjs-sheetmetal';
 import { present } from 'brepjs/playground';
 
 // A folded sheet-metal L-bracket. Two 90° flanges come off adjacent edges of a
@@ -43,7 +43,11 @@ if (!unfolded.ok) throw unfolded.error;
 const dxf = toDXF(unfolded.value.pattern);
 if (!dxf.ok) throw dxf.error;
 
-export default present(solid, { dxf: dxf.value });
+// Attach the DXF for download and the 2D polylines for the flat-pattern overlay.
+export default present(solid, {
+  dxf: dxf.value,
+  overlay2d: flatPatternToPolylines(unfolded.value.pattern),
+});
 `,
   },
   {

@@ -76,6 +76,7 @@ export type {
 
 export {
   wireToPolygon,
+  flatPatternToPolylines,
   polygonsOverlap,
   polygonsOverlapWithClearance,
   segmentsIntersect,
@@ -84,7 +85,12 @@ export {
   polygonBounds,
   signedArea,
 } from './polygonFns.js';
-export type { Polygon, Pt2 } from './polygonFns.js';
+export type {
+  Polygon,
+  Pt2,
+  FlatPatternPolylines,
+  FlatPatternBendLine,
+} from './polygonFns.js';
 
 export { buildReport, reportFromUnfold, reportToJSON } from './reportFns.js';
 
