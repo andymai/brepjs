@@ -12,7 +12,8 @@
     "smoke": "npx tsx scripts/smoke.ts",
     "shoot": "npx tsx scripts/shootExamples.ts",
     "thumbs": "npx tsx scripts/shootExamples.ts --thumbs",
-    "picker:e2e": "npx tsx scripts/pickerE2e.ts",
+    "turntables": "npx tsx scripts/shootExamples.ts --turntable",
+    "gallery:e2e": "npx tsx scripts/galleryE2e.ts",
     "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
   "dependencies": {

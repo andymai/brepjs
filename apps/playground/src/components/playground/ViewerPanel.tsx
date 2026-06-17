@@ -223,6 +223,52 @@ function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
   return null;
 }
 
+// DEV-only deterministic camera-orbit hook for the turntable screenshotter
+// (scripts/shootExamples.ts --turntable). Registered ONCE at module load so it
+// can never be torn down between begin() and set() by a viewer re-render
+// (frameModel's editor-collapse/Fit remounts the Canvas subtree right before
+// capture). The bridge component below just publishes the live OrbitControls +
+// invalidate. Damping is suspended during capture so each azimuth lands exactly,
+// yielding a seamless 360° loop; rendering goes through R3F's invalidate() (the
+// same demand-render path the static screenshotter relies on). Statically
+// stripped from production via import.meta.env.DEV.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
+let orbitControls: any = null;
+let orbitInvalidate: (() => void) | null = null;
+
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  let baseAzimuth = 0;
+  let prevDamping = true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- screenshot test hook
+  (window as any).__brepjsOrbit = {
+    begin() {
+      baseAzimuth = orbitControls.getAzimuthalAngle();
+      prevDamping = orbitControls.enableDamping;
+      orbitControls.enableDamping = false;
+    },
+    set(frac: number) {
+      orbitControls.setAzimuthalAngle(baseAzimuth + frac * Math.PI * 2);
+      orbitControls.update();
+      orbitInvalidate?.();
+    },
+    end() {
+      orbitControls.enableDamping = prevDamping;
+      orbitControls.setAzimuthalAngle(baseAzimuth);
+      orbitControls.update();
+      orbitInvalidate?.();
+    },
+  };
+}
+
+function ScreenshotOrbitBridge() {
+  const { controls, invalidate } = useThree();
+  // Only publish a live OrbitControls — a remount briefly renders with null
+  // controls, and clobbering the good reference strands the capture hook.
+  if (controls) orbitControls = controls;
+  orbitInvalidate = invalidate;
+  return null;
+}
+
 /**
  * Mounts an OrthographicCamera with `makeDefault` only when ortho is active,
  * starting it at the current PerspectiveCamera's position so the swap is
@@ -360,6 +406,7 @@ export default function ViewerPanel() {
         <Invalidator />
         <AutoFit meshes={meshes} projection={projection} />
         <CameraPresetBridge meshes={meshes} />
+        {import.meta.env.DEV && <ScreenshotOrbitBridge />}
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {meshes.map((m, i) => (
             <group key={meshKey(m, i)}>

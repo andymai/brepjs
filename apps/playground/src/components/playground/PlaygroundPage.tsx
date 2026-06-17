@@ -11,6 +11,7 @@ import { usePlaygroundActions } from '../../hooks/usePlaygroundActions';
 import { usePlaygroundCommands } from '../../hooks/usePlaygroundCommands';
 import { useShortcutHelpKey } from '../../hooks/useShortcutHelpKey';
 import { useAutoExpandOnError } from '../../hooks/useAutoExpandOnError';
+import { useExampleRoute } from '../../hooks/useExampleRoute';
 import { SHORTCUTS } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import Toolbar from './Toolbar';
@@ -18,7 +19,7 @@ import StatusBar from './StatusBar';
 import LoadingOverlay from './LoadingOverlay';
 import ShortcutHelp from './ShortcutHelp';
 import CommandPalette from './CommandPalette';
-import ExamplePicker from './ExamplePicker';
+import ExampleGallery from './ExampleGallery';
 import MobileLayout from './MobileLayout';
 import DesktopLayout from './DesktopLayout';
 import ToastContainer from '../shared/ToastContainer';
@@ -39,16 +40,13 @@ export default function PlaygroundPage() {
 
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
+  const exampleRoute = useExampleRoute();
 
   const openCommandPalette = useCallback(() => {
     setPaletteOpen(true);
   }, []);
   const openShortcutHelp = useCallback(() => {
     setShortcutHelpOpen(true);
-  }, []);
-  const openExamplePicker = useCallback(() => {
-    setExamplePickerOpen(true);
   }, []);
   const toggleShortcutHelp = useCallback(() => {
     setShortcutHelpOpen((o) => !o);
@@ -70,7 +68,7 @@ export default function PlaygroundPage() {
       toggleViewer: panels.toggleViewer,
       toggleEditor: panels.toggleEditor,
       commandPalette: openCommandPalette,
-      examples: openExamplePicker,
+      examples: exampleRoute.openGallery,
       cycleViewMode,
     },
     shortcutDefs
@@ -84,7 +82,7 @@ export default function PlaygroundPage() {
     panels,
     onFormat: editorBridges.onFormat,
     openShortcutHelp,
-    openExamplePicker,
+    openExampleGallery: exampleRoute.openGallery,
   });
 
   return (
@@ -101,7 +99,7 @@ export default function PlaygroundPage() {
         onShare={actions.handleShare}
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}
-        onOpenExamples={openExamplePicker}
+        onOpenExamples={exampleRoute.openGallery}
         isRunning={isRunning}
         compact={isMobile}
       />
@@ -137,12 +135,12 @@ export default function PlaygroundPage() {
         }}
         commands={commands}
       />
-      <ExamplePicker
-        open={examplePickerOpen}
-        onClose={() => {
-          setExamplePickerOpen(false);
-        }}
+      <ExampleGallery
+        open={exampleRoute.open}
+        focusedId={exampleRoute.focusedId}
+        onClose={exampleRoute.closeGallery}
         onSelect={actions.handleLoadExample}
+        onFocusExample={exampleRoute.focusExample}
       />
     </div>
   );
