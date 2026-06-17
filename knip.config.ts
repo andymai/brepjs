@@ -25,6 +25,11 @@ const config: KnipConfig = {
       // the lockfile with sharp's platform binaries for no runtime/CI benefit.
       ignoreDependencies: ['@types/react', 'sharp'],
     },
+    // examples/ holds runnable demos (entry points, not imported by src); the
+    // IfcOpenShell validator under scripts/ is Python. src/ stays fully checked.
+    'packages/brepjs-bim': {
+      ignore: ['examples/**'],
+    },
     'packages/brepjs-opencascade': {
       ignore: ['**'],
     },

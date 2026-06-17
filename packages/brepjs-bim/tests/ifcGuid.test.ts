@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newIfcGuid, isValidIfcGuid } from '../src/identity/ifcGuid.js';
+import { newIfcGuid, isValidIfcGuid, encodeIfcGuid } from '../src/identity/ifcGuid.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 
 describe('IfcGuid', () => {
@@ -27,6 +27,24 @@ describe('IfcGuid', () => {
 
   it('rejects a GUID with invalid characters', () => {
     expect(isValidIfcGuid('0YD2wbqJz7kf6Ds9qe9k+H')).toBe(false);
+  });
+
+  it("first character is always 0-3 (the 128-bit GUID's 4-bit front slack)", () => {
+    for (let i = 0; i < 200; i++) {
+      const guid = newIfcGuid();
+      expect('0123').toContain(guid[0]);
+    }
+  });
+
+  it('rejects an otherwise-valid GUID whose first char exceeds 3', () => {
+    // 22 valid-alphabet chars but the leading char encodes >2 bits — a malformed
+    // GlobalId that length-only checks miss but real IFC tools reject.
+    expect(isValidIfcGuid('AYD2wbqJz7kf6Ds9qe9kVH')).toBe(false);
+  });
+
+  it('encodes the canonical buildingSMART compression', () => {
+    expect(encodeIfcGuid(new Uint8Array(16))).toBe('0000000000000000000000');
+    expect(encodeIfcGuid(new Uint8Array(16).fill(0xff))).toBe(`3${'$'.repeat(21)}`);
   });
 });
 

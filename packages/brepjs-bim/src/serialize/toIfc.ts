@@ -127,7 +127,13 @@ export async function toIfc(
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
 
-  const writerResult = await IfcWriter.create(meta.mvdViewDefinition, meta.ifcSchema);
+  const authorName = [meta.author?.givenName, meta.author?.familyName]
+    .filter((p): p is string => Boolean(p))
+    .join(' ');
+  const writerResult = await IfcWriter.create(meta.mvdViewDefinition, meta.ifcSchema, {
+    author: authorName,
+    organization: meta.organizationName,
+  });
   if (!writerResult.ok) return writerResult;
   const w = writerResult.value;
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.

@@ -1,6 +1,5 @@
 import type { IfcGuid } from './ifcGuid.js';
-
-const IFC_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+import { encodeIfcGuid } from './ifcGuid.js';
 
 // Project-scoped namespace mixed into every derivation so the key-space is
 // isolated from any other hash consumer. Bump the version suffix only if a
@@ -82,22 +81,4 @@ export function makeRelKey(modelScope: string, kind: string, localId: number): s
 /** `"line:{modelScope}:{expressId}"` — model-scoped stable key for a writer-minted line. */
 export function makeLineKey(modelScope: string, expressId: number): string {
   return `line:${modelScope}:${expressId}`;
-}
-
-function encodeIfcGuid(bytes: Uint8Array): IfcGuid {
-  let result = '';
-  let acc = 0;
-  let bits = 0;
-  for (const byte of bytes) {
-    acc = (acc << 8) | byte;
-    bits += 8;
-    while (bits >= 6) {
-      bits -= 6;
-      result += IFC_CHARS[(acc >> bits) & 0x3f] ?? '';
-    }
-  }
-  if (bits > 0) {
-    result += IFC_CHARS[(acc << (6 - bits)) & 0x3f] ?? '';
-  }
-  return result as IfcGuid;
 }

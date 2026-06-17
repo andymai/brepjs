@@ -41,6 +41,18 @@ coordinates — placement (`origin` / `axisX` / `axisZ`) is applied by the IFC l
 | Validation        | referential integrity, schema check, geometry validity, IFC round-trip report                            |
 | Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                        |
 
+### Independent validation
+
+The exported IFC is validated by **IfcOpenShell** (a separate implementation from the
+web-ifc parser used internally), not just self-checked. The committed sample
+(`examples/sample-building.ifc`) passes IfcOpenShell's EXPRESS schema + where-rule
+validator and generates geometry for every product. See [VALIDATION.md](./VALIDATION.md)
+to reproduce, and `examples/sampleBuilding.mjs` for the model it validates.
+
+> **Not yet:** the official buildingSMART Validation Service and desktop-tool
+> interop (Revit / ArchiCAD / Solibri) are unverified. This is an early-stage
+> (`0.1.x`) experimental package and the API will change.
+
 ## Usage
 
 Author a small model and export IFC:
