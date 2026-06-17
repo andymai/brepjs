@@ -12,6 +12,7 @@
 import puppeteer from 'puppeteer';
 import sharp from 'sharp';
 import { readFile, mkdir, readdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -159,8 +160,16 @@ async function mdFiles(dir) {
   return out;
 }
 
+// Prefer a system Chrome (what the committed cards were rendered with) but fall
+// back to puppeteer's bundled browser so `npm run gen:og` also works on macOS
+// and Chromium-only Linux.
+const systemChrome = [
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+].find((p) => existsSync(p));
 const browser = await puppeteer.launch({
-  executablePath: '/usr/bin/google-chrome',
+  ...(systemChrome ? { executablePath: systemChrome } : {}),
   headless: true,
   args: ['--no-sandbox', '--disable-gpu', '--force-color-profile=srgb', '--hide-scrollbars'],
 });
