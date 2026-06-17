@@ -36,6 +36,7 @@ interface CachedEval {
   console: string[];
   timeMs: number;
   artifacts: string[];
+  bimTree: unknown;
 }
 
 const codeCache = new Map<string, CachedEval>();
@@ -67,14 +68,19 @@ function isColoredShape(v: unknown): v is ColoredShape {
   return typeof v === 'object' && v !== null && PLAYGROUND_COLOR_TAG in v;
 }
 
-// `present(shape, { dxf, ifc })` tags the default export with downloadable
-// artifacts the example computed (a sheet-metal DXF, a BIM IFC buffer). The
-// eval pipeline strips the wrapper down to `shape` for meshing and surfaces the
-// artifact keys so the toolbar can offer the matching downloads.
+// `present(shape, { … })` tags the default export with extra artifacts the
+// example computed: downloadable ones (a sheet-metal DXF, a BIM IFC buffer)
+// surfaced as toolbar download buttons, and display ones (a serializable BIM
+// tree summary) rendered in the domain panel. The eval pipeline strips the
+// wrapper down to `shape` for meshing and forwards the artifacts.
 const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
+// Artifact kinds offered as toolbar downloads (the rest are display-only).
+const DOWNLOAD_ARTIFACT_KEYS = ['dxf', 'ifc'] as const;
 interface PresentArtifacts {
   dxf?: string;
   ifc?: Uint8Array;
+  // A serializable BimModel.toTreeSummary() result, rendered in the domain panel.
+  bimTree?: unknown;
 }
 interface PresentWrapper {
   [PLAYGROUND_PRESENT_TAG]: PresentArtifacts;
@@ -332,6 +338,7 @@ async function handleEval(id: string, code: string) {
         console: [...cached.console],
         timeMs: cached.timeMs,
         artifacts: [...cached.artifacts],
+        bimTree: cached.bimTree,
       },
       transferablesFor(meshes)
     );
@@ -388,7 +395,8 @@ async function handleEval(id: string, code: string) {
     // Peel off a present() wrapper first: its shape is meshed, its artifact
     // keys (dxf/ifc) ride along on eval-result so the toolbar can offer them.
     const { shape: presented, artifacts } = unwrapPresent(userModule.default);
-    const artifactKeys = Object.keys(artifacts);
+    const artifactKeys = DOWNLOAD_ARTIFACT_KEYS.filter((k) => artifacts[k] != null);
+    const bimTree = artifacts.bimTree;
     const exported = presented;
     if (exported == null) {
       post({
@@ -398,6 +406,7 @@ async function handleEval(id: string, code: string) {
         console: consoleOutput,
         timeMs: performance.now() - startTime,
         artifacts: artifactKeys,
+        bimTree,
       });
       return;
     }
@@ -480,10 +489,19 @@ async function handleEval(id: string, code: string) {
       console: [...consoleOutput],
       timeMs,
       artifacts: artifactKeys,
+      bimTree,
     });
 
     post(
-      { type: 'eval-result', id, meshes, console: consoleOutput, timeMs, artifacts: artifactKeys },
+      {
+        type: 'eval-result',
+        id,
+        meshes,
+        console: consoleOutput,
+        timeMs,
+        artifacts: artifactKeys,
+        bimTree,
+      },
       transferablesFor(meshes)
     );
   } catch (e) {

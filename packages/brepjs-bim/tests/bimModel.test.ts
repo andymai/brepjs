@@ -573,3 +573,41 @@ describe('BimModel.addColumn (M7)', () => {
     expect(column.geometry.disposed).toBe(true);
   });
 });
+
+describe('BimModel.toTreeSummary', () => {
+  it('returns null root for an uninitialized model', () => {
+    const model = new BimModel();
+    const tree = model.toTreeSummary();
+    expect(tree.root).toBeNull();
+    expect(tree.elementCount).toBe(0);
+  });
+
+  it('walks the spatial hierarchy and contained elements', () => {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Project' }));
+    const project = model.getProject();
+    if (!project) throw new Error('no project');
+    const siteId = model.addSite({ name: 'Site' });
+    const buildingId = model.addBuilding({ name: 'Building' });
+    const storeyId = model.addStorey({ name: 'Level 1', elevation: 3000 });
+    model.aggregate(project.localId, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+
+    const wall = model.addWall(WALL_SPEC);
+    if (!wall.ok) throw new Error(wall.error.message);
+    model.placeIn(wall.value, storeyId);
+
+    const tree = model.toTreeSummary();
+    expect(tree.root?.category).toBe('PROJECT');
+    expect(tree.root?.label).toBe('Project');
+    const site = tree.root?.children[0];
+    expect(site?.category).toBe('SITE');
+    const building = site?.children[0];
+    expect(building?.category).toBe('BUILDING');
+    const storey = building?.children[0];
+    expect(storey?.category).toBe('STOREY');
+    expect(storey?.label).toContain('3000');
+    expect(storey?.children.map((c) => c.category)).toContain('WALL');
+  });
+});

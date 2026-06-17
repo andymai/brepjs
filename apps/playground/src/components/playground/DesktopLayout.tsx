@@ -5,6 +5,7 @@ import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanelLazy';
 import OutputPanel from './OutputPanel';
 import CollapsedConsoleBar from './CollapsedConsoleBar';
+import BimTreePanel from './BimTreePanel';
 
 interface Props {
   panels: PlaygroundPanels;
@@ -91,7 +92,13 @@ export default function DesktopLayout({
         defaultSize="50%"
         onResize={panels.handleViewerResize}
       >
-        {isViewerCollapsed ? null : <ViewerPanel />}
+        {isViewerCollapsed ? null : (
+          <div className="relative h-full w-full">
+            <ViewerPanel />
+            {/* Overlay: renders only when the current example exposes a BIM tree. */}
+            <BimTreePanel />
+          </div>
+        )}
       </Panel>
     </Group>
   );

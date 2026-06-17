@@ -54,6 +54,8 @@ export type FromWorker =
       timeMs: number;
       // Downloadable artifact kinds the example attached via present() (e.g. 'dxf').
       artifacts?: string[];
+      // A serializable BIM tree summary attached via present({ bimTree }), if any.
+      bimTree?: unknown;
     }
   | { type: 'eval-error'; id: string; error: string; line?: number }
   | { type: 'eval-cancelled'; id: string }

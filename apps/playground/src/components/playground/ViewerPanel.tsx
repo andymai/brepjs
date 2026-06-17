@@ -113,11 +113,25 @@ function fitCamera(
     }
   }
 
+  // Derive the clip planes and dolly limits from the model's scale. The static
+  // defaults (far=2000, maxDistance=800) are tuned for mm-scale mechanical parts
+  // and clip / trap meter-scale architectural models (a 3 m wall sits past
+  // far=2000 → black viewport). Match the shared viewer's radius-based planes.
+  const cam = camera as THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  cam.near = Math.max(radius / 100, 0.01);
+  cam.far = Math.max(radius * 100, dist * 4);
+  if (controls) {
+    controls.minDistance = Math.max(radius / 100, 0.1);
+    // Raise the dolly cap BEFORE controls.update() below, which would otherwise
+    // clamp the freshly-positioned camera back to the previous (too-small) max.
+    controls.maxDistance = dist * 8;
+  }
+
   if (controls?.target) {
     controls.target.copy(center);
     controls.update();
   }
-  (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).updateProjectionMatrix();
+  cam.updateProjectionMatrix();
 }
 
 /**

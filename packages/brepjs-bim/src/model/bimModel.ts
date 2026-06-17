@@ -7,6 +7,7 @@ import { makeLocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError } from '../errors/bimError.js';
 import type { AnyBimElement, BimElement, WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import type { BimTreeNode, BimTreeSummary } from './treeSummary.js';
 import type {
   BimRelationship,
   AggregatesRel,
@@ -701,6 +702,51 @@ export class BimModel {
 
   getElement(id: LocalId): AnyBimElement | null {
     return this.#elements.get(id) ?? null;
+  }
+
+  /**
+   * A serializable summary of the model's structure, rooted at the project and
+   * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
+   * storey) plus the elements contained in each storey (placeIn). Useful for a
+   * read-only tree view of the model across a worker boundary.
+   */
+  toTreeSummary(): BimTreeSummary {
+    const aggregated = new Map<LocalId, LocalId[]>();
+    const contained = new Map<LocalId, LocalId[]>();
+    for (const rel of this.#relationships.values()) {
+      if (rel.kind === 'AGGREGATES') {
+        const list = aggregated.get(rel.relatingObject) ?? [];
+        list.push(...rel.relatedObjects);
+        aggregated.set(rel.relatingObject, list);
+      } else if (rel.kind === 'CONTAINED_IN') {
+        const list = contained.get(rel.relatingStructure) ?? [];
+        list.push(...rel.relatedElements);
+        contained.set(rel.relatingStructure, list);
+      }
+    }
+
+    const labelFor = (el: AnyBimElement): string => {
+      const spec = el.spec as { name?: string; elevation?: number };
+      const base = typeof spec.name === 'string' && spec.name.length > 0 ? spec.name : el.category;
+      return el.category === 'STOREY' && typeof spec.elevation === 'number'
+        ? `${base} (+${spec.elevation} mm)`
+        : base;
+    };
+
+    // `seen` guards against a malformed relationship cycle re-entering a node.
+    const seen = new Set<LocalId>();
+    const build = (id: LocalId): BimTreeNode | null => {
+      if (seen.has(id)) return null;
+      seen.add(id);
+      const el = this.#elements.get(id);
+      if (el === undefined) return null;
+      const childIds = [...(aggregated.get(id) ?? []), ...(contained.get(id) ?? [])];
+      const children = childIds.map(build).filter((n): n is BimTreeNode => n !== null);
+      return { id, label: labelFor(el), category: el.category, children };
+    };
+
+    const root = this.#projectId !== null ? build(this.#projectId) : null;
+    return { root, elementCount: this.#elements.size };
   }
 
   getWalls(): BimElement<'WALL'>[] {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { BimTreeSummary } from 'brepjs-bim';
 import { DEFAULT_CODE } from '../lib/constants';
 import type { FaceInfo, EdgeInfo } from '../workers/workerProtocol';
 import type { SharedSelection } from '../lib/urlCodec';
@@ -28,6 +29,9 @@ interface PlaygroundState {
   // Downloadable artifact kinds the current model exposes via present() (e.g.
   // 'dxf'), used to show the matching toolbar download buttons.
   availableArtifacts: string[];
+  // A BIM tree summary the current model exposes via present({ bimTree }),
+  // rendered in the domain panel; null when the model isn't a BIM model.
+  bimTree: BimTreeSummary | null;
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
@@ -43,6 +47,7 @@ interface PlaygroundState {
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
   setAvailableArtifacts: (artifacts: string[]) => void;
+  setBimTree: (tree: BimTreeSummary | null) => void;
   setError: (error: string | null, line?: number | null) => void;
   setConsoleOutput: (output: string[]) => void;
   setTimeMs: (ms: number) => void;
@@ -76,6 +81,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   timeMs: null,
   isRunning: false,
   availableArtifacts: [],
+  bimTree: null,
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
   isEditorCollapsed: false,
@@ -98,6 +104,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       contextMenu: null,
     }),
   setAvailableArtifacts: (availableArtifacts) => set({ availableArtifacts }),
+  setBimTree: (bimTree) => set({ bimTree }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -125,6 +132,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
     set({
       meshes: [],
       availableArtifacts: [],
+      bimTree: null,
       error: null,
       errorLine: null,
       consoleOutput: [],

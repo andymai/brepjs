@@ -114,6 +114,13 @@ declare class BimModel {
     placeIn(elementId: LocalId, containerId: LocalId): void;
     getProject(): BimElement<'PROJECT'> | null;
     getElement(id: LocalId): AnyBimElement | null;
+    /**
+     * A serializable summary of the model's structure, rooted at the project and
+     * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
+     * storey) plus the elements contained in each storey (placeIn). Useful for a
+     * read-only tree view of the model across a worker boundary.
+     */
+    toTreeSummary(): BimTreeSummary;
     getWalls(): BimElement<'WALL'>[];
     getSlabs(): BimElement<'SLAB'>[];
     getBeams(): BimElement<'BEAM'>[];
@@ -133,6 +140,28 @@ declare class BimModel {
     getSystems(): BimElement<'SYSTEM'>[];
     getAllElements(): AnyBimElement[];
     getAllRelationships(): BimRelationship[];
+}
+
+/**
+ * A node in a {@link BimModel}'s spatial/decomposition tree. Fully serializable
+ * (plain numbers/strings) so it can be posted across a worker boundary.
+ */
+interface BimTreeNode {
+    /** The element's local id. */
+    readonly id: number;
+    /** Display label — the element's name, or its category when unnamed. */
+    readonly label: string;
+    /** The element's IFC category. */
+    readonly category: BimCategory;
+    readonly children: readonly BimTreeNode[];
+}
+
+/** A serializable summary of a model's structure, rooted at the project. */
+interface BimTreeSummary {
+    /** The project node and its nested spatial structure + contained elements. */
+    readonly root: BimTreeNode | null;
+    /** Total number of elements in the model. */
+    readonly elementCount: number;
 }
 
 declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;

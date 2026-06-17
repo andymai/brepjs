@@ -44,14 +44,24 @@ export default model.getBeams()[0].geometry;
     id: 'bim-wall-openings',
     label: 'Wall with Openings',
     description:
-      'A parametric wall hosting a door and a window. Each opening is a real IFC void boolean-cut into the wall solid — the textbook BIM "hello world".',
+      'A parametric wall hosting a door and a window, placed in a project → site → building → storey spatial structure. The BIM panel shows the live IFC model tree.',
     code: `import { BimModel } from 'brepjs-bim';
+import { present } from 'brepjs/playground';
 
-// A parametric wall hosting a door and a window. Each opening is a real IFC
-// void that is boolean-cut into the wall solid (and emitted as IfcOpeningElement
-// + IfcDoor/IfcWindow on export). Tune the wall size and opening placements.
+// A parametric wall hosting a door and a window, organised into a real IFC
+// spatial structure (project → site → building → storey). Each opening is a void
+// boolean-cut into the wall solid. The BIM panel (top-right) shows the model tree.
 const model = new BimModel();
-model.init({ name: 'Wall with openings' });
+model.init({ name: 'Wall example' });
+
+// Spatial structure — what makes this a BIM model, not just geometry.
+const project = model.getProject();
+const siteId = model.addSite({ name: 'Site' });
+const buildingId = model.addBuilding({ name: 'Building' });
+const storeyId = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
 
 const wall = model.addWall({
   length: 3000,
@@ -63,6 +73,7 @@ const wall = model.addWall({
   materialName: 'Concrete',
 });
 if (!wall.ok) throw wall.error;
+model.placeIn(wall.value, storeyId);
 
 const door = model.addDoor({
   wallLocalId: wall.value,
@@ -73,6 +84,7 @@ const door = model.addDoor({
   materialName: 'Timber',
 });
 if (!door.ok) throw door.error;
+model.placeIn(door.value, storeyId);
 
 const win = model.addWindow({
   wallLocalId: wall.value,
@@ -83,9 +95,10 @@ const win = model.addWindow({
   materialName: 'Aluminium',
 });
 if (!win.ok) throw win.error;
+model.placeIn(win.value, storeyId);
 
-// The wall solid now carries both openings (the door/window cut it).
-export default model.getWalls()[0].geometry;
+// Show the wall solid (with its openings) and attach the IFC tree for the panel.
+export default present(model.getWalls()[0].geometry, { bimTree: model.toTreeSummary() });
 `,
   },
   {

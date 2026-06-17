@@ -27,6 +27,10 @@ const alwaysExclude = [
   'packages/brepjs-viewer/**',
   'apps/**',
   '.worktrees/**',
+  // Git worktrees created under .claude/ (parallel-agent branches) carry their
+  // own copies of the test tree; exclude them so a stale worktree without WASM
+  // set up can't fail the root suite.
+  '.claude/worktrees/**',
 ];
 
 // Default 4 — CI's sharded `test` job runs on 16 GB runners where OCCT WASM

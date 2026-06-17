@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
+import type { BimTreeSummary } from 'brepjs-bim';
 import type { FromWorker, ToWorker } from '../workers/workerProtocol';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
@@ -51,6 +52,7 @@ export function useCodeExecution() {
     // dropped on the user's first real run).
     store.setMeshes([]);
     store.setAvailableArtifacts([]);
+    store.setBimTree(null);
     postMessageRef.current({ type: 'eval', id, code });
     return id;
   }, []);
@@ -73,6 +75,9 @@ export function useCodeExecution() {
           codeByIdRef.current.delete(msg.id);
           store.setMeshes(msg.meshes);
           store.setAvailableArtifacts(msg.artifacts ?? []);
+          // The worker forwards present({ bimTree }) verbatim; it's the
+          // serializable BimModel.toTreeSummary() shape.
+          store.setBimTree((msg.bimTree as BimTreeSummary | undefined) ?? null);
           store.setConsoleOutput(msg.console);
           store.setTimeMs(msg.timeMs);
           store.setIsRunning(false);

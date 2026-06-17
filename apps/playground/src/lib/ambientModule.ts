@@ -62,12 +62,14 @@ export function buildBrepjsModuleDts(
 const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
   /** Tag a shape with a CSS color the viewer applies to its mesh. */
   export function color<T>(shape: T, value: string): T;
-  /** Downloadable artifacts an example attaches to its default export. */
+  /** Extra artifacts an example attaches to its default export. */
   export interface PresentArtifacts {
     /** A DXF document (e.g. a sheet-metal flat pattern) offered for download. */
     dxf?: string;
     /** An IFC-SPF byte buffer offered for download. */
     ifc?: Uint8Array;
+    /** A serializable BIM tree summary (BimModel.toTreeSummary()) for the domain panel. */
+    bimTree?: unknown;
   }
   /** Attach downloadable artifacts to the shown shape; enables the matching toolbar download. */
   export function present<T>(shape: T, artifacts: PresentArtifacts): T;
