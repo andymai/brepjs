@@ -20,7 +20,10 @@ const config: KnipConfig = {
       // (so @react-three/fiber's JSX augmentation resolves it, not a stale @types/react@18 hoist);
       // it's consumed by the brepjs-viewer/brepjs-verify workspaces, not root src.
       // (occt-wasm is now the default kernel — dynamically imported in src/kernel/index.ts + src/quick.ts.)
-      ignoreDependencies: ['@types/react'],
+      // sharp is used only by the local OG generator (scripts/gen-og-docs.mjs via
+      // `npm run gen:og`); it's hoisted (transitive) so declaring it would churn
+      // the lockfile with sharp's platform binaries for no runtime/CI benefit.
+      ignoreDependencies: ['@types/react', 'sharp'],
     },
     'packages/brepjs-opencascade': {
       ignore: ['**'],
