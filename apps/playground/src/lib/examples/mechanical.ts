@@ -2510,7 +2510,7 @@ function lBracket({
     const back = rotate(cylinder(holeDia / 2, thick + 2, { at: [0, 0, -1] }), -90, {
       axis: [1, 0, 0],
     });
-    holes.push(translate(back, [xOff, -1, d]));
+    holes.push(translate(back, [xOff, 0, d]));
   }
 
   return unwrap(cutAll(body, holes));
