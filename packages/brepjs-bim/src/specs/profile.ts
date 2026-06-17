@@ -12,8 +12,8 @@ import { extendedProfileToFace } from './profilesExtended.js';
 
 export type RectangularProfile = {
   readonly kind: 'RECTANGULAR';
-  readonly width: number;   // X extent
-  readonly height: number;  // Y extent
+  readonly width: number; // X extent
+  readonly height: number; // Y extent
 };
 
 export type CircularProfile = {
@@ -26,12 +26,15 @@ export type CircularProfile = {
 //   overallDepth: outer Y extent (total height)
 //   flangeThickness: top and bottom flange thickness
 //   webThickness: vertical web thickness (centered)
+//   filletRadius: root radius at the four web-to-flange junctions (optional). Hot-
+//     rolled wide-flange sections always carry one; omit it for a sharp section.
 export type IShapeProfile = {
   readonly kind: 'I_BEAM';
   readonly overallWidth: number;
   readonly overallDepth: number;
   readonly flangeThickness: number;
   readonly webThickness: number;
+  readonly filletRadius?: number | undefined;
 };
 
 // Core parametric profiles handled directly by profileToPolygon (brepjs solids)
@@ -83,6 +86,7 @@ const IShapeProfileSchema = z.object({
   overallDepth: z.number().positive(),
   flangeThickness: z.number().positive(),
   webThickness: z.number().positive(),
+  filletRadius: z.number().positive().optional(),
 });
 
 const CoreProfileSchema = z.discriminatedUnion('kind', [
@@ -185,7 +189,10 @@ function validateExtendedProfile(profile: ExtendedProfile): BimError | null {
   switch (profile.kind) {
     case 'L_SHAPE':
       if (profile.legThickness >= profile.width || profile.legThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', 'L_SHAPE legThickness must be smaller than width and depth');
+        return specError(
+          'INVALID_PROFILE',
+          'L_SHAPE legThickness must be smaller than width and depth'
+        );
       }
       return null;
     case 'T_SHAPE':
@@ -199,31 +206,58 @@ function validateExtendedProfile(profile: ExtendedProfile): BimError | null {
     case 'U_SHAPE':
     case 'Z_SHAPE':
       if (2 * profile.flangeThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', `${profile.kind} flangeThickness × 2 must be less than depth`);
+        return specError(
+          'INVALID_PROFILE',
+          `${profile.kind} flangeThickness × 2 must be less than depth`
+        );
       }
       if (profile.webThickness >= profile.flangeWidth) {
-        return specError('INVALID_PROFILE', `${profile.kind} webThickness must be less than flangeWidth`);
+        return specError(
+          'INVALID_PROFILE',
+          `${profile.kind} webThickness must be less than flangeWidth`
+        );
       }
       return null;
     case 'C_SHAPE':
-      if (2 * profile.wallThickness >= profile.width || 2 * profile.wallThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', 'C_SHAPE wallThickness × 2 must be less than width and depth');
+      if (
+        2 * profile.wallThickness >= profile.width ||
+        2 * profile.wallThickness >= profile.depth
+      ) {
+        return specError(
+          'INVALID_PROFILE',
+          'C_SHAPE wallThickness × 2 must be less than width and depth'
+        );
       }
       if (profile.girth >= profile.depth / 2 || profile.girth <= profile.wallThickness) {
-        return specError('INVALID_PROFILE', 'C_SHAPE girth must exceed wallThickness and be less than depth/2');
+        return specError(
+          'INVALID_PROFILE',
+          'C_SHAPE girth must exceed wallThickness and be less than depth/2'
+        );
       }
       return null;
     case 'ASYMMETRIC_I':
       if (profile.topFlangeThickness + profile.bottomFlangeThickness >= profile.overallDepth) {
-        return specError('INVALID_PROFILE', 'ASYMMETRIC_I flange thicknesses must sum to less than overallDepth');
+        return specError(
+          'INVALID_PROFILE',
+          'ASYMMETRIC_I flange thicknesses must sum to less than overallDepth'
+        );
       }
-      if (profile.webThickness >= profile.topFlangeWidth || profile.webThickness >= profile.bottomFlangeWidth) {
-        return specError('INVALID_PROFILE', 'ASYMMETRIC_I webThickness must be less than both flange widths');
+      if (
+        profile.webThickness >= profile.topFlangeWidth ||
+        profile.webThickness >= profile.bottomFlangeWidth
+      ) {
+        return specError(
+          'INVALID_PROFILE',
+          'ASYMMETRIC_I webThickness must be less than both flange widths'
+        );
       }
       return null;
     case 'RECTANGLE_HOLLOW':
       if (2 * profile.wallThickness >= profile.xDim || 2 * profile.wallThickness >= profile.yDim) {
-        return specError('INVALID_PROFILE', 'RECTANGLE_HOLLOW wallThickness × 2 must be less than xDim and yDim');
+        return specError(
+          'INVALID_PROFILE',
+          'RECTANGLE_HOLLOW wallThickness × 2 must be less than xDim and yDim'
+        );
       }
       return null;
     case 'CIRCLE_HOLLOW':
@@ -252,16 +286,28 @@ export function parseProfile(input: unknown): Result<Profile, BimError> {
   }
   if (profile.kind === 'I_BEAM') {
     if (2 * profile.flangeThickness >= profile.overallDepth) {
-      return err(specError(
-        'INVALID_PROFILE',
-        'I-beam flangeThickness × 2 must be less than overallDepth'
-      ));
+      return err(
+        specError('INVALID_PROFILE', 'I-beam flangeThickness × 2 must be less than overallDepth')
+      );
     }
     if (profile.webThickness >= profile.overallWidth) {
-      return err(specError(
-        'INVALID_PROFILE',
-        'I-beam webThickness must be less than overallWidth'
-      ));
+      return err(
+        specError('INVALID_PROFILE', 'I-beam webThickness must be less than overallWidth')
+      );
+    }
+    if (profile.filletRadius !== undefined) {
+      // The root fillet sits in the notch beside the web and above the flange;
+      // it must fit both the clear half-web-height and the clear half-span.
+      const clearHeight = profile.overallDepth / 2 - profile.flangeThickness;
+      const clearSpan = (profile.overallWidth - profile.webThickness) / 2;
+      if (profile.filletRadius >= clearHeight || profile.filletRadius >= clearSpan) {
+        return err(
+          specError(
+            'INVALID_PROFILE',
+            'I-beam filletRadius must be smaller than the clear web height and the clear span beside the web'
+          )
+        );
+      }
     }
   }
   return ok(profile);
