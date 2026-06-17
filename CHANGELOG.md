@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.88.0](https://github.com/andymai/brepjs/compare/brepjs-v18.87.0...brepjs-v18.88.0) (2026-06-17)
+
+
+### Features
+
+* **sheetmetal:** flat-pattern 2D overlay in the playground ([#1461](https://github.com/andymai/brepjs/issues/1461)) ([0324322](https://github.com/andymai/brepjs/commit/0324322df42dabb3d68e87342368fc2b416d5a9d))
+
 ## [18.87.0](https://github.com/andymai/brepjs/compare/brepjs-v18.86.0...brepjs-v18.87.0) (2026-06-17)
 
 
