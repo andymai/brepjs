@@ -2861,4 +2861,844 @@ function conduitClip(
 export default conduitClip();
 `,
   },
+  {
+    id: 'hobby-rc-servo',
+    label: 'Hobby RC Servo Motor',
+    description: 'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
+    code: `import {
+  box,
+  chamfer,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuse,
+  unwrap,
+} from 'brepjs/quick';
+
+// Hobby RC servo motor (standard-size body, ~40 x 20 x 37 mm): the geared
+// servo that swings control surfaces and pan/tilt rigs. A rectangular case with
+// two flat mounting ears jutting from the upper long sides (a screw hole near
+// each ear corner), a raised gearbox deck, a round gear boss offset to one end
+// carrying the splined output shaft, and a smaller free-wheeling pivot post at
+// the other end. Defaults model a common 40.5 mm "standard" servo.
+function hobbyServo({
+  bodyL = 40.5, // case length along X (mm)
+  bodyW = 20, // case width along Y (mm)
+  bodyH = 37, // case height to the deck, mounting face at z=0 (mm)
+  edgeRound = 1.5, // softening on the four vertical body edges (mm)
+  earSpan = 54.5, // flange tip-to-tip across the ears, along X (mm)
+  earThick = 2.6, // mounting-ear thickness (mm)
+  earDrop = 5, // ears sit this far below the top deck (mm)
+  deckH = 3.5, // raised gearbox deck above the body top (mm)
+  deckInset = 1.2, // deck is inset from the body footprint (mm)
+  bossDia = 13, // output gear boss diameter (mm)
+  bossH = 4, // gear boss height above the deck (mm)
+  bossOffset = 9.5, // boss centre offset from body centre toward +X (mm)
+  shaftDia = 5.6, // splined output shaft diameter (mm)
+  shaftH = 4.5, // shaft length above the boss (mm)
+  pivotDia = 6, // free-wheel pivot post diameter (mm)
+  pivotH = 2.5, // pivot post height above the deck (mm)
+  screwDia = 4, // mounting-hole diameter through the ears (mm)
+  screwInset = 2.6, // hole centre inset from each ear corner (mm)
+} = {}) {
+  // Case body: mounting face on z=0, case rising to the deck at z=bodyH.
+  const blank = box(bodyL, bodyW, bodyH, { at: [0, 0, bodyH / 2] });
+  const vEdges = edgeFinder().inDirection('Z').findAll(blank);
+  const bodyShape = unwrap(fillet(blank, vEdges, edgeRound));
+
+  // Mounting ears: one flat flange slab spanning the full ear span and body
+  // width, parked just below the deck. It overlaps the case in the middle so it
+  // welds into one solid; the case sides poke ~earThick through it.
+  const earZ = bodyH - earDrop - earThick / 2;
+  const ears = box(earSpan, bodyW, earThick, { at: [0, 0, earZ] });
+
+  // Raised gearbox deck: a slimmer slab capping the body, dug 1 mm into the
+  // case so it fuses rather than floats.
+  const deck = box(bodyL - 2 * deckInset, bodyW - 2 * deckInset, deckH + 1, {
+    at: [0, 0, bodyH - 0.5 + deckH / 2],
+  });
+
+  // Gear boss + splined output shaft, offset toward +X. Both sink 1 mm into the
+  // deck for real overlap.
+  const deckTop = bodyH + deckH;
+  const boss = cylinder(bossDia / 2, bossH + 1, { at: [bossOffset, 0, deckTop - 1] });
+  const shaft = cylinder(shaftDia / 2, shaftH + 1, {
+    at: [bossOffset, 0, deckTop + bossH - 1],
+  });
+
+  // Free-wheel pivot post at the opposite end.
+  const pivot = cylinder(pivotDia / 2, pivotH + 1, { at: [-bossOffset, 0, deckTop - 1] });
+
+  // Pairwise fuse (never fuseAll): each overlapping part is welded into the one
+  // rigid case in turn, so the result is a single solid.
+  let servo = bodyShape;
+  servo = unwrap(fuse(servo, ears));
+  servo = unwrap(fuse(servo, deck));
+  servo = unwrap(fuse(servo, boss));
+  servo = unwrap(fuse(servo, shaft));
+  servo = unwrap(fuse(servo, pivot));
+
+  // Soften the upper rim of the gear boss so the cap reads as molded.
+  const bossTopRim = edgeFinder().atDistance(bossDia / 2, [bossOffset, 0, deckTop + bossH]).findAll(servo);
+  if (bossTopRim.length > 0) {
+    servo = unwrap(chamfer(servo, bossTopRim, 0.8));
+  }
+
+  // Four mounting holes near the ear corners, drilled down through the flange.
+  const holeX = earSpan / 2 - screwInset;
+  const holeY = bodyW / 2 - screwInset;
+  const holes = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      holes.push(
+        cylinder(screwDia / 2, earThick + 2, {
+          at: [sx * holeX, sy * holeY, earZ - earThick / 2 - 1],
+        }),
+      );
+    }
+  }
+
+  return unwrap(cutAll(servo, holes));
+}
+
+export default hobbyServo();`,
+  },
+  {
+    id: 'rotary-potentiometer',
+    label: 'Panel-mount rotary potentiometer (can, M10 bushing, D-shaft)',
+    description: 'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
+    code: `import {
+  box,
+  chamfer,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fuse,
+  rotate,
+  torus,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Panel-mount rotary potentiometer (16 mm carbon pot, 3/8" / M10 bushing). A
+// crimped sheet-metal can carries a raised boss on its front face, a threaded
+// mounting bushing rising from the boss, an anti-rotation locating pin beside
+// it, and a keyed (D-flat) control shaft up the centre. Three solder lugs hang
+// off the back. Built along +Z: can z=0..bodyH, then boss, bushing and shaft.
+// Everything is fused pairwise with ~1 mm interpenetration so the whole vitamin
+// stays a single rigid solid; the D-flat and the thread grooves are cut.
+function rotaryPot({
+  bodyDia = 24, // diameter of the metal can (mm)
+  bodyH = 14, // height of the can (mm)
+  bushingDia = 10, // mounting thread OD (M10 / 3/8") (mm)
+  bushingH = 7.5, // height of the threaded bushing (mm)
+  bossDia = 14, // raised plinth between can and bushing (mm)
+  bossH = 2.5, // boss height (mm)
+  shaftDia = 6, // control-shaft diameter (mm)
+  shaftLen = 20, // shaft length above the bushing top (mm)
+  flatOffset = 2, // distance from shaft axis to the milled D-flat plane (mm)
+  flatLen = 14, // length of the flatted (keyed) portion (mm)
+  tabOffset = 11, // anti-rotation pin offset from shaft axis (mm)
+} = {}) {
+  const bodyR = bodyDia / 2;
+  const bushR = bushingDia / 2;
+  const bossR = bossDia / 2;
+  const shaftR = shaftDia / 2;
+
+  // Reference heights along the central axis.
+  const bodyTop = bodyH;
+  const bossTop = bodyTop + bossH;
+  const bushTop = bossTop + bushingH;
+  const shaftTop = bushTop + shaftLen;
+
+  // --- The metal can: chamfer the front rim so it reads as a rolled crimp. ---
+  const can0 = cylinder(bodyR, bodyH, { at: [0, 0, 0] });
+  const rimEdges = edgeFinder().ofCurveType('CIRCLE').findAll(can0);
+  let can = unwrap(chamfer(unwrap(validSolid(can0)), rimEdges, 1.2));
+
+  // --- Raised boss / plinth on the front face (sinks 1 mm into the can). ---
+  const boss = cylinder(bossR, bossH + 1, { at: [0, 0, bodyTop - 1] });
+
+  // --- Threaded mounting bushing rising from the boss. Chamfer both rims so
+  // the thread lead-in reads cleanly at the top. ---
+  const bushing0 = cylinder(bushR, bushingH + 1, { at: [0, 0, bossTop - 1] });
+  const bushRimEdges = edgeFinder().ofCurveType('CIRCLE').findAll(bushing0);
+  const bushing = unwrap(chamfer(unwrap(validSolid(bushing0)), bushRimEdges, 0.6));
+
+  // --- Anti-rotation locating pin on the front face, offset from the axis. ---
+  const pin = box(1.4, 3, bossH + 2.2, { at: [tabOffset, 0, bodyTop + (bossH + 2.2) / 2 - 1] });
+
+  // --- Control shaft up the centre, with a neck step at its base. ---
+  const neck = cylinder(shaftR + 0.6, 2, { at: [0, 0, bushTop - 1] });
+  const shaft = cylinder(shaftR, shaftLen + 1, { at: [0, 0, bushTop - 1] });
+
+  // --- Solder lugs: three thin tabs hanging off the back of the can. ---
+  const lugs = [];
+  for (let i = 0; i < 3; i++) {
+    const lug = box(3.2, 0.6, 5, { at: [0, bodyR - 0.5, -5 / 2 + 1] });
+    lugs.push(rotate(lug, 90 + (i - 1) * 35, { axis: [0, 0, 1], at: [0, 0, 0] }));
+  }
+
+  // --- Fuse everything PAIRWISE into one rigid body (real overlap each time). ---
+  let pot = can;
+  pot = unwrap(fuse(pot, boss));
+  pot = unwrap(fuse(pot, bushing));
+  pot = unwrap(fuse(pot, pin));
+  pot = unwrap(fuse(pot, neck));
+  pot = unwrap(fuse(pot, shaft));
+  for (const lug of lugs) pot = unwrap(fuse(pot, lug));
+
+  // --- Mill the D-flat on the upper part of the shaft (a keyed drive). The
+  // cutter is a slab whose near face sits at y = flatOffset (inside the shaft
+  // radius) and which extends outward past the shaft, removing the cap. ---
+  const flatZ0 = shaftTop - flatLen;
+  const cutDepth = shaftDia; // reaches well past the far wall
+  const flatCutter = box(shaftDia + 2, cutDepth, flatLen + 2, {
+    at: [0, flatOffset + cutDepth / 2, (flatZ0 + shaftTop) / 2 + 1],
+  });
+  pot = unwrap(cut(pot, flatCutter));
+
+  // --- Score the bushing with a few thread grooves (toroidal ring cuts). ---
+  const grooves = [];
+  const pitch = 1.0;
+  for (let z = bossTop + 1.2; z < bushTop - 0.8; z += pitch) {
+    grooves.push(torus(bushR, 0.28, { at: [0, 0, z] }));
+  }
+  return unwrap(cutAll(pot, grooves));
+}
+
+export default rotaryPot();`,
+  },
+  {
+    id: 'd-sub-connector',
+    label: 'D-sub Connector (DB9)',
+    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus threaded jackscrew posts.',
+    code: `import {
+  box,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  extrude,
+  fillet,
+  fuse,
+  polygon,
+  sphere,
+  translate,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// D-sub connector (DB9 / VGA-style): a panel-mount data connector. A thin metal
+// flange with two mounting holes carries the signature trapezoidal "D" shell —
+// a rounded-corner tube, wider at the bottom than the top, that shrouds two
+// staggered rows of gold pins. Threaded jackscrew posts stand behind the
+// flange. Defaults model the 9-way DB9; bump \`ways\` (and the lengths) for DA15
+// / DB25-style parts. The "D" asymmetry is what keeps the plug from mating
+// upside-down, and it is the recognizable silhouette here.
+function dSubConnector({
+  ways = 9, // number of pins (9 = DB9)
+  rows = 2, // staggered pin rows
+  flangeLen = 30.81, // flange length, X (mm)
+  flangeWid = 12.55, // flange width, Y (mm)
+  flangeThick = 1.12, // flange plate thickness (mm)
+  holePitch = 24.99, // centre-to-centre of the two mounting holes (mm)
+  holeR = 1.6, // mounting-hole radius (mm)
+  dLen = 18, // "D" shell length at its base, X (mm)
+  dWid = 9.26, // "D" shell width at its base, Y (mm)
+  cornerR = 2.5, // rounded-corner radius of the D profile (mm)
+  frontH = 6.693, // how far the shell shrouds forward of the flange (+Z)
+  backH = 4, // rear collar depth behind the flange (-Z)
+  wall = 0.7, // shell wall thickness (mm)
+  pinR = 0.5, // pin radius (mm)
+} = {}) {
+  // The "D" cross-section is a trapezoid wider at the bottom (-Y) than the top
+  // (+Y): the TOP corners step inward by \`skew\` (a ~10 deg lean on each slanted
+  // flank), the asymmetry that stops the plug mating upside-down. We build it as
+  // a sharp-cornered quad, EXTRUDE it along +Z into a prism, then FILLET the four
+  // vertical arrises for genuine rounded corners — a clean swept tube, not the
+  // lumpy faceted mass a convex hull of arc-sampled points produces.
+  const skew = (dWid / 2 - cornerR) * Math.sin((10 * Math.PI) / 180);
+
+  // A clean rounded-corner D-prism inset from the nominal size by \`g\`, spanning
+  // z0..z1. The sharp trapezoid is wound CCW (bottom edge L→R, up the right
+  // flank, top edge R→L, down the left flank) so the extrude faces outward.
+  const dPrism = (g: number, z0: number, z1: number) => {
+    const hl = dLen / 2 - g; // half-length at the base (widest line)
+    const hw = dWid / 2 - g; // half-width
+    const profile = unwrap(
+      polygon([
+        [-hl, -hw, z0], // bottom-left  (widest)
+        [hl, -hw, z0], // bottom-right
+        [hl - skew, hw, z0], // top-right   (pulled in)
+        [-hl + skew, hw, z0], // top-left
+      ]),
+    );
+    const prism = unwrap(validSolid(unwrap(extrude(profile, [0, 0, z1 - z0]))));
+    // Round only the four vertical (Z-running) edges; radius shrinks with the
+    // inset so the inner wall keeps a uniform thickness around the corners.
+    const r = Math.max(cornerR - g, 0.25);
+    const vertEdges = edgeFinder().inDirection('Z').findAll(prism);
+    return vertEdges.length > 0 ? unwrap(fillet(prism, vertEdges, r)) : prism;
+  };
+
+  // Metal flange plate, centred on the origin, its front face at z = 0.
+  const flange = box(flangeLen, flangeWid, flangeThick, { at: [0, 0, -flangeThick / 2] });
+
+  // Forward shell: outer D-prism minus an inner one → a shrouding tube with an
+  // OPEN top the pins stand in. It digs 1 mm back through the flange face so the
+  // two weld into one body (a shell that merely kissed z = 0 would float off as a
+  // separate solid). The inner cavity runs past the top so the mouth stays open.
+  const shellOuter = dPrism(0, -1, frontH);
+  const shellInner = dPrism(wall, -1 - 1, frontH + 1);
+  const shell = unwrap(cut(shellOuter, shellInner));
+
+  // Rear collar: a short solid D-stub behind the flange (the back of the metal
+  // body), again overlapping the flange by 1 mm.
+  const collar = dPrism(0, -backH, 1);
+
+  // Weld flange + shell + collar pairwise into ONE rigid body. (fuseAll would
+  // glue them into a compound of separate solids that falls apart on export.)
+  let body = flange;
+  body = unwrap(fuse(body, shell));
+  body = unwrap(fuse(body, collar));
+
+  // Two mounting holes through the flange, on the X axis at ±holePitch/2.
+  const o = holePitch / 2;
+  const mountHoles = [
+    cylinder(holeR, flangeThick + 2, { at: [-o, 0, -flangeThick - 1] }),
+    cylinder(holeR, flangeThick + 2, { at: [o, 0, -flangeThick - 1] }),
+  ];
+  body = unwrap(cutAll(body, mountHoles));
+
+  // Pin field: \`ways\` pins split across \`rows\` staggered rows, the classic D-sub
+  // zig-zag. Each pin is a post tipped with a hemisphere, rooted at the flange
+  // face (z = 0) and standing UP the full depth of the shroud so the two rows
+  // fill the open mouth and read clearly looking into it. Returned as separate
+  // solids (real pins are discrete contacts).
+  const colPitch = 2.77; // X spacing between adjacent pins in a row
+  const rowGap = 2.84; // Y spacing between the two rows
+  const pinH = frontH - pinR; // shaft height; tip hemisphere reaches the rim
+  const perRow = Math.ceil(ways / rows);
+  const pins: ReturnType<typeof cylinder>[] = [];
+  let placed = 0;
+  for (let r = 0; r < rows && placed < ways; r++) {
+    const count = Math.min(perRow, ways - placed);
+    const y = (r - (rows - 1) / 2) * rowGap;
+    for (let i = 0; i < count; i++) {
+      const x = (i - (count - 1) / 2) * colPitch;
+      const shaft = cylinder(pinR, pinH, { at: [x, y, 0] });
+      const tip = sphere(pinR, { at: [x, y, pinH] });
+      pins.push(translate(unwrap(fuse(shaft, tip)), [0, 0, 0]));
+      placed++;
+    }
+  }
+
+  // Jackscrew posts: threaded standoffs standing behind the flange at the hole
+  // centres (where the mating shell's screws bite). Each is a stud topped by a
+  // hex-style nut boss; modelled as discrete hardware.
+  const studLen = 8;
+  const studR = 1.25;
+  const bossR = 2.7;
+  const bossH = 4.5;
+  const post = (sx: number) => {
+    const stud = cylinder(studR, studLen, { at: [sx * o, 0, -flangeThick - studLen] });
+    const boss = box(bossR * 2, bossR * 2, bossH, { at: [sx * o, 0, -flangeThick - bossH / 2] });
+    return unwrap(fuse(stud, boss));
+  };
+
+  return [body, ...pins, post(-1), post(1)];
+}
+
+export default dSubConnector();`,
+  },
+  {
+    id: 'panel-fuse-holder',
+    label: '20 mm Panel Fuse Holder',
+    description: 'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
+    code: `import {
+  box,
+  chamfer,
+  cone,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fuse,
+  rotate,
+  translate,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// 20 mm panel-mount fuse holder: the cylindrical cartridge holder that clamps
+// into a chassis hole and grabs a 20 mm glass fuse. A slotted Ø18.8 flange cap
+// presses against the panel front, a flatted Ø12 threaded neck passes through
+// the hole, the bakelite body tapers down behind the panel with two contact
+// slots, and a spade terminal exits the base. The knurled clamping nut (a
+// genuinely separate part) is returned alongside. Built standing on its spade.
+function fuseHolder({
+  flangeDia = 18.8, // outer diameter of the front flange cap (mm)
+  flangeThick = 2, // flange cap thickness (mm)
+  neckDia = 12, // threaded mounting-neck nominal diameter (mm)
+  neckFlat = 10.8, // across-flats of the neck (anti-rotation flats) (mm)
+  neckLen = 15, // threaded neck length (mm)
+  bodyTopDia = 10.4, // body diameter where it meets the neck (mm)
+  bodyBotDia = 8.7, // body diameter at the far (spade) end (mm)
+  totalLen = 33.2, // flange face to body base, the cartridge length (mm)
+  boreDia = 6.2, // axial bore the fuse cap seats into (mm)
+  nutDia = 18.8, // clamping-nut across-flats / outer diameter (mm)
+  nutThick = 6, // nut height (mm)
+  spadeWidth = 6.4, // blade width of the bottom spade terminal (mm)
+  spadeLen = 8, // spade blade length below the body (mm)
+} = {}) {
+  const bodyLen = totalLen - flangeThick - neckLen; // tapered section length
+  const spadeThick = 0.8; // spade blade thickness (mm)
+
+  // Z=0 sits at the body base (the deepest point behind the panel). Stack
+  // upward: tapered body, threaded neck, flange cap — flange ends up on top.
+  const bodyZ0 = 0;
+  const neckZ0 = bodyZ0 + bodyLen;
+  const flangeZ0 = neckZ0 + neckLen;
+
+  // Tapered bakelite body: a frustum, narrow at the base, wide under the neck.
+  const body = cone(bodyBotDia / 2, bodyTopDia / 2, bodyLen, { at: [0, 0, bodyZ0] });
+
+  // Threaded mounting neck: a Ø12 cylinder milled down to two parallel flats so
+  // the nut can't spin it. Overlap 1 mm into the body below so they weld solid.
+  let neck = cylinder(neckDia / 2, neckLen + 1, { at: [0, 0, neckZ0 - 1] });
+  const flatCut = (neckDia - neckFlat) / 2 + 0.1; // depth shaved off each side
+  for (const side of [-1, 1]) {
+    const slab = box(neckDia + 2, flatCut, neckLen + 4, {
+      at: [0, side * (neckFlat / 2 + flatCut / 2), neckZ0 + neckLen / 2],
+    });
+    neck = unwrap(cut(neck, slab));
+  }
+
+  // Front flange cap: a wide disc that bears on the panel face. Overlaps 1 mm
+  // down into the neck so the cap, neck and body fuse into one rigid solid.
+  const flange = cylinder(flangeDia / 2, flangeThick + 1, { at: [0, 0, flangeZ0 - 1] });
+
+  // Spade terminal: a thin flat blade projecting from the base (rolled-corner
+  // tab simplified to a rectangle). Reaches 1 mm up into the body to weld on.
+  const spade = box(spadeThick, spadeWidth, spadeLen + 1, {
+    at: [0, 0, bodyZ0 - spadeLen / 2 + 0.5],
+  });
+
+  // Weld pairwise into ONE solid (never fuseAll — that glues separate bodies
+  // into a compound that falls apart on export). Each adjacent pair overlaps.
+  let holder = body;
+  holder = unwrap(fuse(holder, neck));
+  holder = unwrap(fuse(holder, flange));
+  holder = unwrap(fuse(holder, spade));
+
+  // Axial fuse bore down from the flange face — where the screw-on fuse cap
+  // seats. Blind: stops short of the base so the holder stays closed.
+  const bore = cylinder(boreDia / 2, neckLen + flangeThick + 2, {
+    at: [0, 0, flangeZ0 + flangeThick + 1],
+    axis: [0, 0, -1],
+  });
+  holder = unwrap(cut(holder, bore));
+
+  // Slot across the flange cap face (screwdriver detail to tighten/seat the cap).
+  const slot = box(flangeDia + 2, 1.6, 1, { at: [0, 0, flangeZ0 + flangeThick - 0.5] });
+  holder = unwrap(cut(holder, slot));
+
+  // Two contact slots milled into opposite sides of the tapered body — where the
+  // internal fuse clips are accessed. Thin radial windows near the base.
+  const slotCutters = [];
+  for (const side of [-1, 1]) {
+    slotCutters.push(
+      box(bodyTopDia + 2, 3.2, 7, {
+        at: [side * (bodyBotDia / 2 + 0.5), 0, bodyZ0 + bodyLen * 0.45],
+      }),
+    );
+  }
+  holder = unwrap(cutAll(holder, slotCutters));
+
+  // Soften the front rim of the flange cap with a small chamfer so it reads as a
+  // molded bezel, not a raw disc. Wrap the fused solid so chamfer accepts it.
+  const valid = validSolid(holder);
+  if (valid.ok) {
+    const topRim = edgeFinder().atDistance(flangeDia / 2, [0, 0, flangeZ0 + flangeThick]).findAll(valid.value);
+    if (topRim.length > 0) {
+      holder = unwrap(chamfer(valid.value, topRim, 0.6));
+    }
+  }
+
+  // Clamping nut: a separate round nut with a thin seating flange, threaded onto
+  // the neck behind the panel. Modeled as two concentric discs with a clearance
+  // bore; returned as its own solid (it really is a separate part).
+  const nutFlangeT = 1.5;
+  const nutBody = cylinder(nutDia / 2, nutThick, { at: [0, 0, 0] });
+  const nutFlange = cylinder(nutDia / 2 + 0.6, nutFlangeT, { at: [0, 0, nutThick] });
+  let nut = unwrap(fuse(nutBody, nutFlange));
+  const nutBore = cylinder(neckDia / 2 + 0.2, nutThick + nutFlangeT + 2, { at: [0, 0, -1] });
+  nut = unwrap(cut(nut, nutBore));
+  // Park the nut on the neck, snug under the flange cap.
+  nut = translate(nut, [0, 0, neckZ0 + 1]);
+
+  return [holder, nut];
+}
+
+export default fuseHolder();`,
+  },
+  {
+    id: 'green-terminal-block',
+    label: 'Green PCB Screw-Terminal Block',
+    description: 'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
+    code: `import { box, cut, cutAll, cylinder, extrude, polygon, translate, unwrap } from 'brepjs/quick';
+
+// Green PCB screw-terminal block (Phoenix-style, 5.08 mm pitch). The classic
+// snap-together mains connector: a green plastic body with a tall vertical
+// front, a flat top ridge carrying a row of slotted silver screws, and a back
+// that slopes down to a low rear edge. Each "way" has a rectangular wire-entry
+// window in the front face; thin solder pins drop below the PCB line. The whole
+// plastic body is one extruded prism (the side silhouette repeats every way),
+// so it is a single rigid solid; the metal screws and pins are returned as
+// their own separate solids.
+function greenTerminalBlock({
+  ways = 4, // number of terminal positions
+  pitch = 5.08, // centre-to-centre spacing along Y (0.2")
+  depth = 7.9, // front-to-back body depth (X)
+  ridgeHeight = 10, // height of the raised top ridge where the screws sit
+  ridgeDepth = 5, // front-to-back depth of the top ridge
+  backHeight = 6.8, // height of the low sloped-back rear edge
+  screwR = 1.95, // screw head radius
+  frameT = 0.5, // wall thickness around the front wire window
+  windowW = 4, // wire-entry window width (Y)
+  windowH = 5.4, // wire-entry window height (Z)
+} = {}) {
+  const width = ways * pitch; // total length of the bar (Y)
+  const frontX = depth / 2; // front face plane (+X)
+  const backX = -depth / 2; // back face plane (-X)
+  const ridgeBackX = frontX - ridgeDepth; // where the flat top ridge ends
+  const screwX = frontX - ridgeDepth / 2; // screws ride the ridge centre
+
+  // Side silhouette in the X-Z plane (height runs up +Z, Y held at 0): tall
+  // vertical front, flat top ridge, then one slope down to the low rear edge.
+  // The profile is identical for every way, so the whole body is a single
+  // extrusion along the bar's length (+Y) — one clean solid, no per-cell fusing.
+  // Keeping height in Z lines the body up with the Z-up screws, recesses,
+  // windows and pins placed below; a flat-in-Z profile would tip on its side.
+  const profile = unwrap(
+    polygon([
+      [frontX, 0, 0],
+      [frontX, 0, ridgeHeight],
+      [ridgeBackX, 0, ridgeHeight],
+      [backX, 0, backHeight],
+      [backX, 0, 0],
+    ]),
+  );
+  // Extrude along +Y by the full bar length (the explicit vector form drives the
+  // prism perpendicular to the X-Z profile and caps it into a watertight solid),
+  // then slide the bar so it is centred on the origin in Y.
+  const bar = translate(unwrap(extrude(profile, [0, width, 0])), [0, -width / 2, 0]);
+
+  // Per-way feature cutters: a front wire window and a top screw recess.
+  const windowCutters = [];
+  const recessCutters = [];
+  const yAt = (i: number) => -width / 2 + i * pitch + pitch / 2; // centre of way i
+  for (let i = 0; i < ways; i++) {
+    const cy = yAt(i);
+    // Wire-entry window: a pocket driven in from the front face, stopping short
+    // of the back so a contact wall remains. Sits frameT above the PCB line.
+    const windowDepth = depth - frameT - 1.5;
+    windowCutters.push(
+      box(windowDepth, windowW, windowH, {
+        at: [frontX - windowDepth / 2 + 1, cy, frameT + windowH / 2],
+      }),
+    );
+    // Screw recess: a shallow bore sunk into the top of the ridge — the well the
+    // captive screw turns in.
+    recessCutters.push(cylinder(screwR + 0.15, 2.4, { at: [screwX, cy, ridgeHeight - 2.4] }));
+  }
+  const greenBody = unwrap(cutAll(bar, [...windowCutters, ...recessCutters]));
+
+  // Silver screws: a head disc seated in each recess, with a screwdriver slot
+  // milled across the top. Returned as separate solids (a different material).
+  const screws = [];
+  for (let i = 0; i < ways; i++) {
+    const cy = yAt(i);
+    const headTop = ridgeHeight - 0.6;
+    const head = cylinder(screwR, 1.6, { at: [screwX, cy, headTop - 1.6] });
+    const slot = box(screwR * 2 + 1, screwR / 2, 0.7, { at: [screwX, cy, headTop - 0.35] });
+    screws.push(unwrap(cut(head, slot)));
+  }
+
+  // Solder pins: a thin square pin under each way, dropping below the PCB line.
+  const pinSide = 0.7;
+  const pinLen = 3.3;
+  const pins = [];
+  for (let i = 0; i < ways; i++) {
+    pins.push(box(pinSide, pinSide, pinLen, { at: [backX + 1.6, yAt(i), -pinLen / 2 + 0.5] }));
+  }
+
+  return [greenBody, ...screws, ...pins];
+}
+
+export default greenTerminalBlock();`,
+  },
+  {
+    id: 'button-top-battery-cell',
+    label: 'Button-top battery cell (AA / 18650)',
+    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive nub, a raised negative contact, and a chamfered base rim.',
+    code: `import {
+  cylinder,
+  cone,
+  sphere,
+  fuse,
+  cut,
+  intersect,
+  chamfer,
+  edgeFinder,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Button-top dry cell (AA / 18650 style): a steel can with a crimped-in top
+// shoulder, a small rounded positive nub, and a flat negative base. Total length
+// includes the terminal. Origin is the cell's centre; everything is one body.
+// Defaults model an AA cell: 14.5 mm dia x 50.5 mm overall, 5.5 mm nub, 1 mm proud.
+function batteryCell(
+  diameter = 14.5, // can outer diameter (mm)
+  length = 50.5, // overall length incl. positive terminal (mm)
+  posDia = 5.5, // positive nub diameter (mm)
+  posHeight = 1, // nub height proud of the can top (mm)
+  negDia = 7, // raised negative contact diameter on the base (mm)
+) {
+  const rCan = diameter / 2;
+  const rNub = posDia / 2;
+  const half = length / 2;
+  const canLen = length - posHeight; // can body spans everything below the nub
+  const neckH = Math.min(1.6, canLen * 0.06); // height of the crimped-in top step
+  const shoulderR = rNub + 1.2; // flat shoulder radius around the nub
+
+  // Main can: a cylinder whose centre sits posHeight/2 below the origin so its
+  // top face lands where the nub begins.
+  const canTopZ = half - posHeight;
+  const can = cylinder(rCan, canLen, { at: [0, 0, canTopZ - canLen] });
+
+  // Crimped top: a short cone necking the can wall in toward the flat shoulder,
+  // overlapped 1 mm into the can so the two read as one rolled rim.
+  const neck = cone(rCan, shoulderR, neckH + 1, {
+    at: [0, 0, canTopZ - neckH],
+  });
+  let body = unwrap(fuse(can, neck));
+
+  // Positive nub: a short post sunk 1 mm into the shoulder, then rolled at the
+  // top edge by clipping with a sphere whose pole rests on the nub's top face.
+  const nubH = posHeight + 1;
+  const nubBaseZ = half - posHeight - 1;
+  const nub = cylinder(rNub, nubH, { at: [0, 0, nubBaseZ] });
+  const r2 = 0.5; // top round-over radius
+  const sphereR = (rNub * rNub + r2 * r2) / (2 * r2);
+  const roller = sphere(sphereR, { at: [0, 0, half - sphereR] });
+  const roundedNub = unwrap(intersect(nub, roller));
+  body = unwrap(fuse(body, roundedNub));
+
+  // Negative base: a low raised contact ring proud of the flat can bottom, sunk
+  // 1 mm up into the can so it fuses cleanly.
+  const negH = 0.8;
+  const negPlate = cylinder(negDia / 2, negH + 1, {
+    at: [0, 0, -half - negH],
+  });
+  body = unwrap(fuse(body, negPlate));
+
+  // Roll the bottom rim of the can: chamfer the lowest Z edge of the body.
+  const bottomEdges = edgeFinder().inDirection('Z').atDistance(0, [0, 0, -half]).findAll(body);
+  if (bottomEdges.length > 0) {
+    const valid = unwrap(validSolid(body));
+    body = unwrap(chamfer(valid, bottomEdges, 0.6));
+  }
+
+  return body;
+}
+
+export default batteryCell();`,
+  },
+  {
+    id: 'finger-tab-split-joint',
+    label: 'Interlocking finger-tab split joint',
+    description: 'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
+    code: `import {
+  box,
+  chamfer,
+  cut,
+  cylinder,
+  edgeFinder,
+  extrude,
+  intersect,
+  polygon,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// Interlocking finger-tab split joint: one rigid bar sawn in two across a
+// square-wave seam so a too-long print can be split, then snapped back
+// together. The mating line is a comb of square fingers (tab width \`tab\`,
+// projection \`reach\` past the cut plane) that key the halves against sliding;
+// a small \`slop\` on the front half's slots gives a printable press fit. Bar
+// runs along X, the seam along the Y = 0 plane; the two halves are returned
+// spread apart in Y so you can read the joint.
+function fingerSplitJoint({
+  length = 90, // bar length along the cut axis (X)
+  depth = 34, // total bar depth across the seam (Y)
+  height = 16, // bar height (Z)
+  tab = 11, // finger / slot width along X
+  reach = 7, // how far each finger projects past the seam plane (Y)
+  bore = 5, // through-bore radius for a dowel / cable (mm)
+  edgeR = 1.4, // chamfer on the long top edges (mm)
+  slop = 0.25, // clearance added to the front half's slots (mm)
+  spread = 14, // gap the two halves are pulled apart for display (mm)
+} = {}) {
+  const halfL = length / 2;
+  const halfD = depth / 2;
+
+  // --- The full bar, before splitting: a plain block with chamfered top
+  //     edges and a bore running the length, so each half shows the cut
+  //     surface against a recognizable part rather than a bare cuboid.
+  const blank = box(length, depth, height, { at: [0, 0, height / 2] });
+  const topEdges = edgeFinder().inDirection('X').findAll(blank);
+  const chamfered = unwrap(chamfer(blank, topEdges, edgeR));
+  const dowel = cylinder(bore, length + 2, { axis: [1, 0, 0], at: [-halfL - 1, 0, height / 2] });
+  const bar = unwrap(cut(chamfered, dowel));
+
+  // --- Seam mask: a closed polygon in XY whose front edge is the square-wave
+  //     finger line and whose back edge runs well behind the bar. Extruded up
+  //     Z it becomes the prism that owns the BACK half (every finger pokes to
+  //     +Y across the seam). \`g\` (gap, 0 for the back, \`slop\` for the front)
+  //     shifts the wave so the front slots open up for a press fit.
+  //
+  //     Walk +X across the seam, alternating a tab that reaches +reach into
+  //     the back region and a notch that sits flush on the cut plane. An even
+  //     finger count keeps the pattern symmetric about the centre.
+  const span = length; // pattern covers the whole length
+  const fingers = Math.max(2, 2 * Math.round(span / tab / 2));
+  const step = span / fingers;
+
+  // The masking prism is built from a polygon laid 1 mm BELOW the bar's base
+  // and extruded 1 mm past its top, so its flat top and bottom never sit
+  // coplanar with the bar's faces — coincident caps make the seam boolean
+  // degenerate and the half come back empty. It straddles the bar in Z and
+  // trims cleanly.
+  const z0 = -1;
+  const prismH = height + 2;
+  const seamPrism = (g: number) => {
+    const pts: [number, number, number][] = [];
+    const back = halfD + 4; // safely past the bar's back face
+    // start at the left edge, on the cut plane
+    pts.push([-halfL, -g, z0]);
+    for (let i = 0; i < fingers; i++) {
+      const x0 = -halfL + i * step;
+      const x1 = x0 + step;
+      if (i % 2 === 0) {
+        // a tab: rise to +reach, run across, drop back to the plane
+        pts.push([x0, reach - g, z0]);
+        pts.push([x1, reach - g, z0]);
+      } else {
+        // a notch: stay on the cut plane (front half fills this)
+        pts.push([x0, -g, z0]);
+        pts.push([x1, -g, z0]);
+      }
+    }
+    // close out along the back, well clear of the bar
+    pts.push([halfL, back, z0]);
+    pts.push([-halfL, back, z0]);
+    return unwrap(extrude(unwrap(polygon(pts)), [0, 0, prismH]));
+  };
+
+  // Back half: keep only the fingered back side by intersecting with the prism.
+  const backHalf = unwrap(intersect(bar, seamPrism(0)));
+
+  // Front half: cut the same wave grown by \`slop\` (so its slots clear the
+  // fingers for a press fit) from the bar, leaving the complementary side.
+  const frontHalf = unwrap(cut(bar, seamPrism(slop)));
+
+  // Spread the two mating halves apart in Y for display.
+  return [translate(backHalf, [0, spread / 2, 0]), translate(frontHalf, [0, -spread / 2, 0])];
+}
+
+export default fingerSplitJoint();`,
+  },
+  {
+    id: 'conical-pour-funnel',
+    label: 'Kitchen / Lab Funnel',
+    description: 'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
+    code: `import { cone, cylinder, cut, fuse, rotate, torus, translate, unwrap } from 'brepjs/quick';
+
+// Kitchen / lab funnel: a wide conical bowl that necks down into a long thin
+// pour spout, hollowed to a thin wall so liquid runs from the mouth straight
+// out the tube. A rolled rim stiffens the top lip and a side hang-loop lets it
+// dangle off a rail. Mouth points up (+Z); spout hangs below. Defaults model a
+// ~75 mm bench funnel.
+function funnel({
+  mouthDia = 75, // outer diameter of the top rim (mm)
+  bowlHeight = 48, // height of the conical bowl section (mm)
+  spoutDia = 12, // outer diameter of the pour spout (mm)
+  spoutLength = 40, // length of the straight spout below the bowl (mm)
+  wall = 1.6, // vessel wall thickness (mm)
+  rimRoll = 2.4, // radius of the rolled top-rim bead (mm)
+  loop = true, // add a side hang-loop on the rim
+} = {}) {
+  const rMouth = mouthDia / 2;
+  const rSpout = spoutDia / 2;
+  const rBore = rSpout - wall; // inner spout (pour) radius
+  // Spout occupies z = 0..zNeck; bowl flares up from there to the mouth.
+  const zNeck = spoutLength; // bowl/spout junction
+  const zTop = spoutLength + bowlHeight; // mouth rim height
+
+  // --- Outer shell: spout tube fused to the conical bowl above it ---
+  // Cone base (narrow, rSpout) sits at the neck and widens UP to rMouth — the
+  // mouth points up. The spout overshoots 1 mm INTO the bowl base so the two
+  // bodies truly interpenetrate (a coincident face alone would leave a floating
+  // solid that survives meshing but falls apart on export).
+  const bowlOuter = cone(rSpout, rMouth, bowlHeight, { at: [0, 0, zNeck] });
+  const spoutOuter = cylinder(rSpout, zNeck + 1, { at: [0, 0, 0] });
+  let body = unwrap(fuse(spoutOuter, bowlOuter));
+
+  // --- Rolled rim bead around the mouth ---
+  // A torus riding the mouth edge. Its tube centre is pulled inboard by the full
+  // roll and dropped half a roll below the rim, so a fat slice of the bead is
+  // buried in the cone wall — real shared volume, so it welds into one body
+  // rather than gluing on as a separate lump.
+  const rimCentre = rMouth - rimRoll;
+  const rim = torus(rimCentre, rimRoll, { at: [0, 0, zTop - rimRoll * 0.5] });
+  body = unwrap(fuse(body, rim));
+
+  // --- Side hang-loop ---
+  // A small upright ring sunk into the rim bead so the two solids share volume.
+  if (loop) {
+    const loopR = 7; // loop ring centreline radius
+    const loopTube = 1.9; // loop wire radius
+    // Bead outer edge sits at rimCentre + rimRoll; seat the ring so its inner
+    // edge laps ~2 mm inside that, guaranteeing overlap with the bead.
+    const ringX = rimCentre + rimRoll + loopR - 2;
+    // torus is built in XY (axis +Z); tip it 90° about X so the ring stands up,
+    // then carry it out to the mouth-rim height on +X.
+    const ring = translate(rotate(torus(loopR, loopTube), 90, { axis: [1, 0, 0] }), [
+      ringX,
+      0,
+      zTop - rimRoll * 0.5,
+    ]);
+    body = unwrap(fuse(body, ring));
+  }
+
+  // --- Hollow it out: inner cone + inner spout bore, one connected cavity ---
+  // Inner cone is narrow (spout bore) at the neck and wide (mouth bore) at the
+  // top, run proud of the rim so the mouth opens fully. The bore cylinder
+  // overshoots both ends and shares the neck region with the inner cone, so the
+  // conical cavity and the tube bore merge into a single through-passage with no
+  // plug left behind.
+  const innerCone = cone(rBore, rMouth - wall, bowlHeight + rimRoll + 2, {
+    at: [0, 0, zNeck],
+  });
+  const bore = cylinder(rBore, zTop + 4, { at: [0, 0, -2] });
+  return unwrap(cut(unwrap(cut(body, innerCone)), bore));
+}
+
+export default funnel();`,
+  },
 ];
