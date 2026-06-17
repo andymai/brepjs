@@ -1812,7 +1812,6 @@ export default gridfinityBaseplate();`,
   edgeFinder,
   fillet,
   fuse,
-  rotate,
   unwrap,
   validSolid,
 } from 'brepjs/quick';
@@ -1966,11 +1965,13 @@ function dividedGridfinityBin({
   for (let gi = 0; gi < divx; gi++) {
     const [cx, cy] = pocketCenter(gi, divy - 1); // back row only
     const yBack = cy + cellPy / 2; // back wall plane of this pocket
-    const scoop = rotate(
-      cylinder(scoopR, cellPx, { at: [cx - cellPx / 2, yBack, FLOOR + scoopR] }),
-      90,
-      { axis: [0, 1, 0] },
-    );
+    // Cylinder runs directly along X (axis) at the pocket back-floor corner. A
+    // rotate() with no 'at' pivots about the world origin and flings the scoop
+    // clear out of the pocket.
+    const scoop = cylinder(scoopR, cellPx, {
+      at: [cx - cellPx / 2, yBack, FLOOR + scoopR],
+      axis: [1, 0, 0],
+    });
     cutters.push(scoop);
   }
 
@@ -2277,7 +2278,7 @@ function ventedCase({
   // Honeycomb occupies the back half of the floor (−X side). Hex prisms on a
   // staggered (brick-offset) grid, flat-topped, sized across flats.
   const hexCircumR = hexAcross / 2 / Math.cos(Math.PI / 6); // flats → vertex radius
-  const colPitch = (hexAcross + hexGap) * 0.75 * (2 / Math.cos(Math.PI / 6)); // hex column step
+  const colPitch = 1.5 * hexCircumR + hexGap; // flat-top hex column step: 3/4 width + wall
   const rowPitch = hexAcross + hexGap; // hex row step (flat-to-flat + wall)
   const hexZoneMaxX = -3; // honeycomb stays on the back half
   for (let ci = -6; ci <= 6; ci++) {
