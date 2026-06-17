@@ -1,0 +1,6 @@
+# brepjs.dev — https://brepjs.dev
+# Public docs and playground. Crawlers welcome.
+User-agent: *
+Allow: /
+
+Sitemap: https://brepjs.dev/sitemap.xml

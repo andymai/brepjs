@@ -9,7 +9,45 @@ const year = new Date().getFullYear();
 const siteUrl = 'https://brepjs.dev';
 const defaultOgImage = `${siteUrl}/og.png`;
 const defaultDescription =
-  'CAD modeling for JavaScript. Exact B-Rep geometry, type-safe, browser-native.';
+  'Exact CAD geometry, written in TypeScript — a real B-Rep kernel in your browser, type-safe and STEP-accurate.';
+
+// Homepage structured data. SoftwareSourceCode (not SoftwareApplication) is the
+// honest type for an open-source library and avoids Google's "missing offers /
+// rating" warnings. No WebSite SearchAction — local search has no query URL to
+// point one at, and claiming a capability that doesn't exist invites warnings.
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      url: `${siteUrl}/`,
+      name: 'brepjs',
+      description: defaultDescription,
+      inLanguage: 'en-US',
+      publisher: { '@id': `${siteUrl}/#author` },
+    },
+    {
+      '@type': 'SoftwareSourceCode',
+      '@id': `${siteUrl}/#software`,
+      name: 'brepjs',
+      description: defaultDescription,
+      url: `${siteUrl}/`,
+      codeRepository: 'https://github.com/andymai/brepjs',
+      programmingLanguage: 'TypeScript',
+      runtimePlatform: 'WebAssembly',
+      license: 'https://www.apache.org/licenses/LICENSE-2.0',
+      author: { '@id': `${siteUrl}/#author` },
+    },
+    {
+      '@type': 'Person',
+      '@id': `${siteUrl}/#author`,
+      name: 'Andy Aragon',
+      url: 'https://github.com/andymai',
+      sameAs: ['https://github.com/andymai'],
+    },
+  ],
+};
 
 export default withMermaid(
   defineConfig({
@@ -33,7 +71,7 @@ export default withMermaid(
       ['meta', { property: 'og:image', content: defaultOgImage }],
       ['meta', { property: 'og:image:width', content: '1200' }],
       ['meta', { property: 'og:image:height', content: '630' }],
-      ['meta', { property: 'og:image:alt', content: 'brepjs — CAD modeling for JavaScript' }],
+      ['meta', { property: 'og:image:alt', content: 'brepjs — Exact CAD geometry, written in TypeScript' }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
       ['meta', { name: 'twitter:image', content: defaultOgImage }],
     ],
@@ -66,6 +104,11 @@ export default withMermaid(
       // type and JetBrains Mono for code/annotations. Load them here so docs
       // pages — which never use these faces — stay lean.
       if (pageData.relativePath === 'index.md') {
+        pageData.frontmatter.head.push([
+          'script',
+          { type: 'application/ld+json' },
+          JSON.stringify(structuredData),
+        ]);
         pageData.frontmatter.head.push(
           ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
           ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
