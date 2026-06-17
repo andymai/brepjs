@@ -3086,7 +3086,6 @@ export default rotaryPot();`,
   fuse,
   polygon,
   sphere,
-  translate,
   unwrap,
   validSolid,
 } from 'brepjs/quick';
@@ -3191,7 +3190,7 @@ function dSubConnector({
       const x = (i - (count - 1) / 2) * colPitch;
       const shaft = cylinder(pinR, pinH, { at: [x, y, 0] });
       const tip = sphere(pinR, { at: [x, y, pinH] });
-      pins.push(translate(unwrap(fuse(shaft, tip)), [0, 0, 0]));
+      pins.push(unwrap(fuse(shaft, tip)));
       placed++;
     }
   }
@@ -3507,8 +3506,10 @@ function batteryCell(
   });
   body = unwrap(fuse(body, negPlate));
 
-  // Roll the bottom rim of the can: chamfer the lowest Z edge of the body.
-  const bottomEdges = edgeFinder().inDirection('Z').atDistance(0, [0, 0, -half]).findAll(body);
+  // Roll the bottom rim of the can: chamfer the circular edge at radius rCan in
+  // the z = -half plane (the can-wall-to-base edge). It is a CIRCLE, not a
+  // Z-running edge, so select it by its distance from the base-centre point.
+  const bottomEdges = edgeFinder().atDistance(rCan, [0, 0, -half]).findAll(body);
   if (bottomEdges.length > 0) {
     const valid = unwrap(validSolid(body));
     body = unwrap(chamfer(valid, bottomEdges, 0.6));
