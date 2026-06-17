@@ -11,13 +11,12 @@ export const BIM_EXAMPLES: readonly Example[] = [
     id: 'bim-steel-beam',
     label: 'Steel I-Beam',
     description:
-      'A parametric structural-steel wide-flange (I-beam) authored through a BimModel. The element carries a brepjs solid for display and the model serializes to IFC.',
+      'A parametric structural-steel wide-flange (I-beam) authored through a BimModel, complete with the rolled root fillets where the web meets the flanges. The element carries a brepjs solid for display and the model serializes to IFC.',
     code: `import { BimModel } from 'brepjs-bim';
 
-// A parametric structural-steel I-beam (wide-flange section), authored through
-// the BIM model rather than as raw geometry. The element carries a brepjs solid
-// (shown here); the same model serializes to a real IFC file via toIfc(model).
-// Tune the length and the I_BEAM section dimensions.
+// A parametric structural-steel I-beam authored through the BIM model (it also
+// serializes to IFC via toIfc(model)). filletRadius adds the rolled root fillets
+// real wide-flange sections carry where the web meets the flanges.
 const model = new BimModel();
 model.init({ name: 'Beam example' });
 
@@ -29,6 +28,7 @@ const beam = model.addBeam({
     overallDepth: 300,
     flangeThickness: 12,
     webThickness: 8,
+    filletRadius: 14,
   },
   origin: [0, 0, 0],
   axisX: [1, 0, 0],

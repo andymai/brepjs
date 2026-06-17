@@ -880,68 +880,73 @@ export default knuckleHinge();`,
     id: 'cube-truss-frame',
     label: 'Cube-Truss Frame',
     description:
-      'Modular open-framed cube-truss beam: hollow box-section cubes with octagonal windows and diagonal X cross-braces, tiled into a structural run.',
-    code: `import {
-  box,
-  cut,
-  cutAll,
-  fuse,
-  rotate,
-  sketchPolysides,
-  translate,
-  unwrap,
-} from 'brepjs/quick';
+      'A square-section tubular space frame — round chord tubes, a Warren zig-zag of round web braces, and spherical gusset nodes — the way real stage rigging and lattice booms are actually built.',
+    code: `import { cylinder, sphere } from 'brepjs/quick';
 
-// Modular cube-truss frame: a chain of open-framed structural cubes (think
-// stage rigging / 3D-printed lattice beam). Each cube is \`cube\` mm on a side
-// with \`strut\` mm box-section walls, an octagonal lightening window punched
-// through all six faces, and an internal diagonal X cross-brace per cube for
-// stiffness. Cubes tile along the run sharing one strut wall (pitch = cube -
-// strut), so \`segments\` grows the beam end to end.
-function cubeTrussFrame({ segments = 3, cube = 30, strut = 4, bracing = true } = {}) {
-  const inner = cube - 2 * strut; // clear span inside the box-section walls
-  const pitch = cube - strut; // cubes overlap by one strut wall
-  const braceW = strut / Math.SQRT2; // square brace, same cross-section as struts
-  const span = inner * Math.SQRT2; // face-diagonal length the brace must cover
+// Square-section tubular space frame (like real stage rigging): round chord
+// tubes, a Warren zig-zag of web braces, and spherical gusset nodes at each joint.
+function cubeTrussFrame({
+  segments = 4,
+  cube = 30,
+  rod = 1.8, // chord + ring tube radius (mm)
+  brace = 1.3, // diagonal web-brace radius (mm)
+  node = 3, // spherical gusset-node radius (mm)
+  bracing = true,
+} = {}) {
+  const h = cube / 2;
+  const y0 = -(segments * cube) / 2; // centre the run about the origin
+  const yAt = (j: number) => y0 + j * cube;
 
-  // Octagonal window cutter, sized so its flats sit just inside the walls.
-  // Built as a Z-axis octagonal prism, then turned onto whichever axis it cuts.
-  const octR = inner / 2 / Math.cos(Math.PI / 8);
-  const octZ = () =>
-    translate(sketchPolysides(octR, 8, 0, 'XY').extrude(cube + 2), [0, 0, -(cube + 2) / 2]);
+  // The four chord corners [x, z] of the cross-section and the edges joining them.
+  const c00: [number, number] = [-h, -h];
+  const c10: [number, number] = [h, -h];
+  const c11: [number, number] = [h, h];
+  const c01: [number, number] = [-h, h];
+  const corners: [number, number][] = [c00, c10, c11, c01];
+  const edges: [[number, number], [number, number]][] = [
+    [c00, c10],
+    [c10, c11],
+    [c11, c01],
+    [c01, c00],
+  ];
+  const at = (xz: [number, number], j: number): [number, number, number] => [xz[0], yAt(j), xz[1]];
 
-  // One open-framed cube centred on the origin: hollow box, then three
-  // through-windows, then (optionally) a pair of crossed diagonal braces.
-  function oneCube() {
-    const hollow = unwrap(
-      cut(box(cube, cube, cube, { centered: true }), box(inner, inner, inner, { centered: true })),
-    );
-    const windows = [
-      octZ(), // vertical window (Z)
-      rotate(octZ(), 90, { axis: [1, 0, 0] }), // window through Y
-      rotate(octZ(), 90, { axis: [0, 1, 0] }), // window through X
-    ];
-    const frame = unwrap(cutAll(hollow, windows));
-    if (!bracing) return frame;
+  // A round member from a to b: a cylinder oriented along a→b (axis option, no rotate).
+  const strut = (a: [number, number, number], b: [number, number, number], r: number) => {
+    const d: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const len = Math.hypot(d[0], d[1], d[2]);
+    return cylinder(r, len, { at: a, axis: [d[0] / len, d[1] / len, d[2] / len] });
+  };
 
-    // Two flat diagonal braces filling the vertical (XZ) window, crossed into
-    // an X. Each is a thin slab spun 45 deg about Y; their overlap fuses solid.
-    const slab = box(braceW, inner, span, { centered: true });
-    const braceA = rotate(slab, 45, { axis: [0, 1, 0] });
-    const braceB = rotate(slab, -45, { axis: [0, 1, 0] });
-    const cross = unwrap(fuse(braceA, braceB));
-    return unwrap(fuse(frame, cross));
+  const members = [];
+
+  // Chords along each corner line, then a ring of transverse tubes at every station.
+  for (let j = 0; j < segments; j++) {
+    for (const c of corners) members.push(strut(at(c, j), at(c, j + 1), rod));
+  }
+  for (let j = 0; j <= segments; j++) {
+    for (const [a, b] of edges) members.push(strut(at(a, j), at(b, j), rod));
   }
 
-  const base = oneCube();
-  const run = [base];
-  for (let i = 1; i < segments; i++) {
-    run.push(translate(oneCube(), [0, i * pitch, 0]));
+  // One web brace per side face per bay, flipped each bay so they zig-zag (Warren).
+  if (bracing) {
+    for (let j = 0; j < segments; j++) {
+      const up = j % 2 === 0;
+      for (const [a, b] of edges) {
+        const p1 = up ? at(a, j) : at(a, j + 1);
+        const p2 = up ? at(b, j + 1) : at(b, j);
+        members.push(strut(p1, p2, brace));
+      }
+    }
   }
-  // Re-centre the whole beam about the origin along its run (Y).
-  // Pairwise fuse the overlapping cubes (fuseAll leaves them as separate bodies).
-  const beam = run.reduce((a, b) => unwrap(fuse(a, b)));
-  return translate(beam, [0, -((segments - 1) * pitch) / 2, 0]);
+
+  // Gusset nodes at every joint.
+  const nodes = [];
+  for (let j = 0; j <= segments; j++) {
+    for (const c of corners) nodes.push(sphere(node, { at: at(c, j) }));
+  }
+
+  return [...members, ...nodes];
 }
 
 export default cubeTrussFrame();`,
@@ -1109,7 +1114,7 @@ export default dovetailJoint();`,
     id: 'project-enclosure',
     label: 'Two-Part Project Enclosure',
     description:
-      'A PCB project box: rounded base tray with corner standoffs and a ridge lip, plus a matching lid that nests over it.',
+      'A PCB project box with a real fastening system: a hollow base tray whose four corner bosses are tapped with a modelled M3 thread, and a hollow lid with matching counterbored-free clearance holes that line up so the halves actually screw together.',
     code: `import {
   box,
   cut,
@@ -1118,17 +1123,15 @@ export default dovetailJoint();`,
   edgeFinder,
   fillet,
   fuse,
+  thread,
   translate,
   unwrap,
 } from 'brepjs/quick';
 
-// Two-part project enclosure (base + lid) sized around a PCB footprint.
-// Outer shell = PCB + 2 mm padding on every side, 2 mm walls, rounded vertical
-// edges (r = 3). The base is a 25 mm-deep tray with four corner standoffs
-// (7 mm posts, 2.4 mm pin holes); its top wall carries a 5 mm ridge lip, inset
-// by a slack gap. The lid is a 23 mm-deep inverted tray whose inner groove
-// drops over that ridge so the halves register. Shown side by side along Y,
-// exactly how the print plate would lay them out.
+// Two-part PCB box that actually screws together: a hollow base tray whose four
+// corner bosses are tapped with a modelled thread, and a hollow lid with
+// clearance holes that line up over them. A base ridge + lid groove register the
+// halves. Laid out open-face-up along Y, print-plate style.
 function projectEnclosure({
   pcbLength = 150, // PCB extent along X (mm)
   pcbWidth = 100, // PCB extent along Y (mm)
@@ -1140,82 +1143,84 @@ function projectEnclosure({
   ridge = 5, // overlap ridge height (mm)
   slack = 0.3, // ridge-to-lid radial clearance (mm)
   round = 3, // rounded vertical-edge radius (mm)
-  standoffD = 7, // standoff post diameter (mm)
-  pinD = 2.4, // standoff pin-hole diameter (mm)
-  standoffH = 12, // standoff post height above the floor (mm)
+  bossD = 8, // screw-boss / standoff diameter (mm)
+  bossH = 14, // boss height above the floor (mm)
+  threadR = 1.5, // tapped-thread nominal radius (mm)
+  threadPitch = 1.2, // tapped-thread pitch (coarse, so it reads + stays cheap)
+  threadDepth = 5, // tapped length down each boss (mm)
+  clearR = 1.7, // lid clearance-hole radius for an M3 shank (mm)
 } = {}) {
-  // Inner cavity footprint, then the full outer footprint (cavity + two walls).
   const innerX = pcbLength + 2 * padding;
   const innerY = pcbWidth + 2 * padding;
   const outerX = innerX + 2 * wall;
   const outerY = innerY + 2 * wall;
+  const innerR = Math.max(round - wall, 0.5);
 
-  // A rounded-corner rectangular prism: a centred box with its four vertical
-  // (Z-running) edges filleted. Used for every outer wall and every cavity.
+  // Centred box with its four vertical edges filleted — every wall and cavity.
   const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
     const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
     if (r <= 0) return blk;
     return unwrap(fillet(blk, edgeFinder().inDirection('Z'), r));
   };
 
-  // --- BASE: a tray, floor at z = 0, opening upward. --------------------------
+  // Four boss/hole centres, inset from the corners.
+  const sx = innerX / 2 - bossD / 2 - 1;
+  const sy = innerY / 2 - bossD / 2 - 1;
+  const bossCenters: [number, number][] = [
+    [-sx, -sy],
+    [sx, -sy],
+    [sx, sy],
+    [-sx, sy],
+  ];
+
+  // BASE: a hollow tray — cap at z = 0, opening upward.
   const baseOuter = roundedPrism(outerX, outerY, floor + baseWall, 0, round);
-  const baseCavity = roundedPrism(innerX, innerY, baseWall + round, floor, Math.max(round - wall, 0.5));
+  const baseCavity = roundedPrism(innerX, innerY, baseWall + round, floor, innerR);
   let base = unwrap(cut(baseOuter, baseCavity));
 
-  // Ridge lip: a thin perimeter wall rising from the top of the base wall,
-  // pulled in by \`slack\` so the lid's inner face clears it on assembly.
+  // Ridge lip on the top rim, inset by \`slack\` so the lid groove clears it.
   const ridgeTop = floor + baseWall;
   const ridgeOuterW = innerX + 2 * wall - 2 * slack;
   const ridgeOuterD = innerY + 2 * wall - 2 * slack;
   const ridgeBand = unwrap(
     cut(
       roundedPrism(ridgeOuterW, ridgeOuterD, ridge, ridgeTop, Math.max(round - slack, 0.5)),
-      roundedPrism(innerX, innerY, ridge + 1, ridgeTop - 0.5, Math.max(round - wall, 0.5)),
+      roundedPrism(innerX, innerY, ridge + 1, ridgeTop - 0.5, innerR),
     ),
   );
   base = unwrap(fuse(base, ridgeBand));
 
-  // Four corner standoffs with pin holes — PCB sits on the post tops.
-  // Each post is grown down from z = 0 through the whole \`floor\` slab so it
-  // overlaps the tray solid (a post that merely kissed the floor plane at
-  // z = floor stays a separate, floating solid — fuse needs real overlap), then
-  // rises \`standoffH\` above the floor's top face to seat the board.
-  const sx = innerX / 2 - standoffD / 2 - 1;
-  const sy = innerY / 2 - standoffD / 2 - 1;
-  const posts = [];
-  const pins = [];
-  for (const cx of [-sx, sx]) {
-    for (const cy of [-sy, sy]) {
-      posts.push(cylinder(standoffD / 2, floor + standoffH, { at: [cx, cy, 0] }));
-      // Pin hole punches clean through both ends (z below the floor, z above the
-      // post top) so cutAll leaves an open through-hole, not a thin skin.
-      pins.push(cylinder(pinD / 2, floor + standoffH + 2, { at: [cx, cy, -1] }));
-    }
+  // Tapped corner bosses (also PCB standoffs). Tapping one standalone boss —
+  // bore, then cut the inward thread ridge — is far cheaper than carving the
+  // helix out of the whole enclosure, so the four copies are just fused on.
+  const tapTop = floor + bossH;
+  const ridgeSolid = unwrap(
+    thread({ radius: threadR, pitch: threadPitch, height: threadDepth, inward: true, sectionsPerTurn: 10 }),
+  );
+  let boss = cylinder(bossD / 2, floor + bossH, { at: [0, 0, 0] });
+  boss = unwrap(cut(boss, cylinder(threadR, threadDepth + 1, { at: [0, 0, tapTop - threadDepth] })));
+  boss = unwrap(cut(boss, translate(ridgeSolid, [0, 0, tapTop - threadDepth])));
+  for (const [cx, cy] of bossCenters) {
+    base = unwrap(fuse(base, translate(boss, [cx, cy, 0])));
   }
-  // Weld posts in one at a time with the 2-way \`fuse\` (the same op that merged
-  // the ridge): the N-way \`fuseAll\` glues via BuilderAlgo and leaves each post
-  // a separate solid in a compound, so the tray would ship with four floating
-  // pegs. Pairwise fuse unifies overlapping solids into one body.
-  for (const post of posts) {
-    base = unwrap(fuse(base, post));
-  }
-  base = unwrap(cutAll(base, pins));
 
-  // --- LID: an inverted tray that caps the base, placed beside it in Y. -------
+  // LID: hollow shell, cavity starting at z = floor so a floor-thick cap remains
+  // (flipped onto the base on assembly). Printed open-face-up beside the base.
   const lidOuter = roundedPrism(outerX, outerY, floor + lidWall, 0, round);
-  const lidCavity = roundedPrism(innerX, innerY, lidWall + round, 0, Math.max(round - wall, 0.5));
+  const lidCavity = roundedPrism(innerX, innerY, lidWall + 1, floor, innerR);
   let lid = unwrap(cut(lidOuter, lidCavity));
 
-  // Groove that swallows the base ridge: widen the cavity near the rim by the
-  // ridge band thickness so the two halves nest with the slack gap.
+  // Groove in the top rim that swallows the base ridge.
   const grooveW = ridgeOuterW + 2 * slack;
   const grooveD = ridgeOuterD + 2 * slack;
   const groove = roundedPrism(grooveW, grooveD, ridge, lidWall - ridge + floor, Math.max(round - slack, 0.5));
   lid = unwrap(cut(lid, groove));
 
-  // Lay the lid alongside the base (open faces both up) with a small print gap.
-  const gap = 10;
+  // Clearance holes through the lid cap, on the same centres as the bosses.
+  const lidHoles = bossCenters.map(([cx, cy]) => cylinder(clearR, floor + 2, { at: [cx, cy, -1] }));
+  lid = unwrap(cutAll(lid, lidHoles));
+
+  const gap = 10; // print gap between the two parts
   const placedLid = translate(lid, [0, outerY + gap, 0]);
 
   return [base, placedLid];
@@ -1227,7 +1232,7 @@ export default projectEnclosure();`,
     id: 'tx-enclosure',
     label: 'Two-part RF enclosure (side connectors)',
     description:
-      'A snap-fit transmitter/receiver project box: shelled base + lid, PCB standoffs, and side I/O connector ports, drawn exploded.',
+      'A screw-together transmitter/receiver project box: shelled base + lid, PCB standoffs cored as self-tapping screw bosses, matching clearance holes in the lid, and side I/O connector ports, drawn exploded.',
     code: `import {
   box,
   cut,
@@ -1371,9 +1376,15 @@ function txEnclosure({
   const lidCavity = roundedPrism(innerL, innerW, lidWall + 1, -1, innerR);
   const lidTray = unwrap(cut(lidOuter, lidCavity));
 
+  // Clearance holes through the lid cap, aligned to the standoff bores, so a
+  // self-tapping screw passes through the lid and bites the boss below.
+  const lidClearR = 1.5;
+  const lidHoles = postCenters.map(([x, y]) => cylinder(lidClearR, lidH + 2, { at: [x, y, -1] }));
+  const lidBored = unwrap(cutAll(lidTray, lidHoles));
+
   // Lift the lid clear of the base for the exploded gallery view: its skirt rim
   // floats \`explode\` mm above the base's top edge.
-  const lid = translate(lidTray, [0, 0, baseHeight + explode]);
+  const lid = translate(lidBored, [0, 0, baseHeight + explode]);
 
   return [base, lid];
 }

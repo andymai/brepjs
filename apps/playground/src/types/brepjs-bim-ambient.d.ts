@@ -505,6 +505,7 @@ type IShapeProfile = {
     readonly overallDepth: number;
     readonly flangeThickness: number;
     readonly webThickness: number;
+    readonly filletRadius?: number | undefined;
 };
 
 type CoreProfile = RectangularProfile | CircularProfile | IShapeProfile;
