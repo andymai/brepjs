@@ -4,5 +4,5 @@
   "packages/brepjs-voxel-wasm": "0.7.0",
   "packages/brepjs-verify": "0.24.3",
   "packages/brepjs-bim": "0.1.0",
-  "packages/brepjs-sheetmetal": "0.1.0"
+  "packages/brepjs-sheetmetal": "0.2.0"
 }
