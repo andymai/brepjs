@@ -1310,4 +1310,1044 @@ function txEnclosure({
 
 export default txEnclosure();`,
   },
+  {
+    id: 'wall-ring-hook',
+    label: 'Wall ring hook (J-hook)',
+    description:
+      'A wall-mount loop hook: a screw-down pad flaring tangentially into a bored ring for cables, straps, or coats.',
+    code: `import {
+  box,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  extrude,
+  fillet,
+  fuse,
+  polygon,
+  unwrap,
+} from 'brepjs/quick';
+
+// Wall ring hook (loop / J-hook): a flat rectangular mounting pad that flares
+// tangentially up into a horizontal ring you loop a strap, cable or coat over.
+// The pad takes two screws; the ring is a bored barrel whose neck blends into
+// it on a true tangent so there is no weak shoulder. Pin axis runs along Y so
+// the ring opening faces front. Defaults model a ~50 mm utility wall hook.
+function wallRingHook({
+  baseWidth = 50, // mounting pad width along X (mm)
+  depth = 10, // pad / ring thickness along the pin axis Y (mm)
+  plate = 5, // mounting pad thickness in Z (mm)
+  holeZ = 28, // height of the ring centre above the pad (mm)
+  outerR = 16, // outer radius of the ring barrel (mm)
+  innerR = 11, // through-hole radius of the ring (mm)
+  screwR = 2.4, // mounting screw clearance radius, M4 (mm)
+} = {}) {
+  const halfW = baseWidth / 2;
+
+  // Tangent from a base corner (halfW, 0) to the ring circle centred at
+  // (0, holeZ): the neck's sloped side rides this line, so the pad blends into
+  // the barrel without a notch. Solve the upper tangent point on the circle.
+  const cz = holeZ;
+  const dist = Math.hypot(halfW, cz); // corner-to-centre distance
+  const tangentLen = Math.sqrt(Math.max(dist * dist - outerR * outerR, 1)); // >0 guard
+  const baseAng = Math.atan2(-cz, halfW); // corner -> centre ray angle
+  const tanAng = Math.atan2(outerR, tangentLen); // half subtended angle
+  const tAng = baseAng + tanAng + Math.PI / 2; // rotate to the tangent radius
+  const tpx = Math.abs(outerR * Math.cos(tAng));
+  const tpz = cz + outerR * Math.sin(tAng);
+
+  // Neck profile in the X-Z plane: pad corners at the bottom, tangent points
+  // near the barrel at the top, mirrored across X. Stop the top a hair below
+  // the ring centre so the barrel (added next) buries the seam with real
+  // overlap rather than a coincident edge.
+  const topZ = Math.min(tpz, holeZ - 0.5);
+  const topX = Math.max(Math.min(tpx, outerR - 0.5), 1);
+  const profile = unwrap(
+    polygon([
+      [-halfW, 0, 0],
+      [halfW, 0, 0],
+      [topX, 0, topZ],
+      [-topX, 0, topZ],
+    ]),
+  );
+  // Extrude the profile along +Y by \`depth\` (spans y in [0, depth]).
+  const neck = unwrap(extrude(profile, [0, depth, 0]));
+
+  // Mounting pad: a thin slab under the neck, centred on the pad footprint.
+  // Round its four short vertical (Z) corners FIRST, while it is a clean box,
+  // so the soft corners survive the fuse. It rises 0.5 mm into the neck base so
+  // the two weld into one solid.
+  const padH = plate + 0.5;
+  const padBlank = box(baseWidth, depth, padH, { at: [0, depth / 2, padH / 2 - 0.5] });
+  const padEdges = edgeFinder().inDirection('Z').findAll(padBlank);
+  const pad = unwrap(fillet(padBlank, padEdges, Math.min(plate * 0.5, 2)));
+
+  // Ring barrel: a horizontal cylinder along Y, length = depth, centred on the
+  // pad in Y and lifted to holeZ. Overlaps the neck top so it fuses cleanly.
+  const barrel = cylinder(outerR, depth, { at: [0, 0, holeZ], axis: [0, 1, 0] });
+
+  // Weld pairwise (never fuseAll): pad -> neck -> barrel into one rigid body.
+  let body = pad;
+  body = unwrap(fuse(body, neck));
+  body = unwrap(fuse(body, barrel));
+
+  // Bore the ring through-hole along Y, over-length so it punches both faces.
+  const bore = cylinder(innerR, depth + 2, { at: [0, -depth / 2 - 1, holeZ], axis: [0, 1, 0] });
+
+  // Two screw clearance holes through the pad (Z bores, inset from the edges).
+  const screwOffset = halfW - Math.max(screwR + 3, 6);
+  const screwL = padH + 2;
+  const screws = [-screwOffset, screwOffset].map((sx) =>
+    cylinder(screwR, screwL, { at: [sx, depth / 2, -1] }),
+  );
+
+  return unwrap(cutAll(body, [bore, ...screws]));
+}
+
+export default wallRingHook();
+`,
+  },
+  {
+    id: 'tripod-rc2-plate',
+    label: 'Manfrotto RC2 quick-release plate',
+    description:
+      'A tripod quick-release dovetail plate: chamfered trapezoidal prism with end relief notches and a counterbored 1/4"-20 camera screw hole.',
+    code: `import {
+  box,
+  chamfer,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  extrude,
+  polygon,
+  translate,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Manfrotto RC2 quick-release tripod plate: a dovetail prism the camera bolts to
+// and the tripod head's spring jaws clamp under. The cross-section is a trapezoid
+// wider at the base (42.4 mm) than the top (37.4 mm) with angled dovetail flanks
+// the clamp grips; it sweeps 52.5 mm along the plate. Every long edge is lightly
+// chamfered, the base corners are relieved at each end for clamp clearance, and a
+// central 1/4"-20 camera screw passes through a counterbore. Centred on the origin.
+function rc2Plate({
+  length = 52.5, // plate length along the slide axis (mm)
+  botWidth = 42.4, // width at the base — the dovetail's widest line (mm)
+  topWidth = 37.4, // width across the top face (mm)
+  thickness = 10.5, // overall plate thickness (mm)
+  flat = 3, // straight wall height at top and bottom of each flank (mm)
+  relief = 25, // relieved span length along each base corner (mm)
+  reliefDepth = 4.5, // how far up the relief notch reaches from the base (mm)
+  reliefInset = 6, // how far in from each base corner the notch reaches (mm)
+  screwClear = 3.4, // 1/4"-20 clearance hole radius (~6.8 mm dia) (mm)
+  cboreRad = 6, // counterbore radius for the captive screw head (mm)
+  cboreDepth = 4, // counterbore depth from the underside (mm)
+  edgeChamfer = 0.6, // chamfer on the long (Y-running) dovetail edges (mm)
+} = {}) {
+  const xb = botWidth / 2;
+  const xt = topWidth / 2;
+  // Top of the angled flank; guarded so the flank never inverts if thickness is
+  // thinner than the two straight walls combined.
+  const zMid = flat + Math.max(thickness - 2 * flat, 0.5);
+
+  // Dovetail cross-section in the X-Z plane (y = 0), wound CCW: a trapezoid whose
+  // sides step straight up \`flat\`, angle inward to the narrower top, then run
+  // straight up to the top face. Extruding it along +Y makes the whole body in
+  // one solid, so the part is rigid by construction. Then centre it on the origin.
+  const profile = unwrap(
+    polygon([
+      [-xb, 0, 0],
+      [xb, 0, 0],
+      [xb, 0, flat],
+      [xt, 0, zMid],
+      [xt, 0, thickness],
+      [-xt, 0, thickness],
+      [-xt, 0, zMid],
+      [-xb, 0, flat],
+    ]),
+  );
+  const prism = translate(unwrap(extrude(profile, [0, length, 0])), [0, -length / 2, 0]);
+
+  // Chamfer every long (Y-running) edge of the bare prism — the eight dovetail
+  // arrises — before any holes are cut, so the finder selects an unambiguous,
+  // unbroken edge set. (The real plate bevels essentially all of these.)
+  const longEdges = edgeFinder().inDirection('Y').findAll(prism);
+  const body =
+    longEdges.length > 0
+      ? unwrap(chamfer(unwrap(validSolid(prism)), longEdges, edgeChamfer))
+      : prism;
+
+  // End relief: notches knocked out of both base corners at each end so the plate
+  // drops cleanly into the spring clamp. Each is an over-long box cut biting the
+  // lower outer corner over the relief span.
+  const notchLen = relief + 1;
+  const notchY = length / 2 - notchLen / 2 + 0.5; // centre near each end, poking 0.5 past
+  const notches = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      notches.push(
+        box(reliefInset + 1, notchLen, reliefDepth + 0.5, {
+          at: [sx * (xb - reliefInset / 2 + 0.5), sy * notchY, reliefDepth / 2 - 0.25],
+        }),
+      );
+    }
+  }
+
+  // Central 1/4"-20 camera screw: a through clearance hole with a counterbore in
+  // the underside for the captive bolt head. Both run over-length to punch clean
+  // through their faces.
+  const screw = cylinder(screwClear, thickness + 2, { at: [0, 0, -1] });
+  const cbore = cylinder(cboreRad, cboreDepth + 1, { at: [0, 0, -1] });
+
+  return unwrap(cutAll(body, [...notches, screw, cbore]));
+}
+
+export default rc2Plate();`,
+  },
+  {
+    id: 'modular-hose-segment',
+    label: 'Modular coolant hose segment (Loc-Line)',
+    description:
+      "Parametric Loc-Line style ball-and-socket coolant hose link: a truncated ball end snaps into the next segment's spherical socket cup, with flex slots and a through-bore for coolant.",
+    code: `import {
+  cone,
+  cut,
+  cutAll,
+  cylinder,
+  fuse,
+  intersect,
+  rotate,
+  sphere,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// Loc-Line style modular coolant-hose segment: a ball end (bottom) snapping
+// into the socket cup (top) of the next link, joined by a slim waist. One
+// rigid, hollow body — coolant flows straight up the central bore. Defaults
+// model the common 1/4" line: 4.9 mm ball radius, 3.0 mm through-bore.
+function modularHoseSegment(
+  ballRadius = 4.9,
+  boreRadius = 1.5,
+  waistRadius = 2.65,
+  segmentLength = 14,
+  slotCount = 4,
+) {
+  const wall = 1.4; // socket shell thickness around the captured ball
+  const socketR = ballRadius + wall; // outer radius of the cup
+  const ballCenterZ = ballRadius * 0.7; // sphere pulled down so its base truncates flat
+  const waistTop = ballRadius * 1.35; // where the waist blends into the socket body
+  const socketBaseZ = waistTop - 1; // socket cylinder swallows the waist top
+  const seatBottomZ = socketBaseZ + 1.2; // solid floor under the seat keeps the ball attached
+  const seatR = ballRadius + 0.25; // cavity a hair larger than a mating ball
+  const socketSeatZ = seatBottomZ + seatR; // seat centre, so the cavity bottoms out on the floor
+
+  // --- Ball end: a sphere truncated to a flat neck on the bottom -----------
+  // Intersect with a tall cylinder so the south pole becomes a clean disc the
+  // bore can break through, leaving the recognizable spherical knuckle.
+  const ballSphere = sphere(ballRadius, { at: [0, 0, ballCenterZ] });
+  const ballClip = cylinder(ballRadius + 0.2, ballRadius * 1.7, {
+    at: [0, 0, 0],
+  });
+  let body = unwrap(intersect(ballSphere, ballClip));
+
+  // --- Waist: slim neck rising off the ball toward the socket --------------
+  const waist = cylinder(waistRadius, waistTop + 1.5, {
+    at: [0, 0, ballRadius - 0.5],
+  });
+  body = unwrap(fuse(body, waist));
+
+  // --- Socket housing: the cup that grabs the next link's ball -------------
+  // A cylinder whose base overlaps the waist so the part stays one solid; its
+  // cavity is hollowed out above a solid floor.
+  const socket = cylinder(socketR, segmentLength - socketBaseZ, {
+    at: [0, 0, socketBaseZ],
+  });
+  body = unwrap(fuse(body, socket));
+
+  // --- Hollow the socket: spherical seat + flared mouth --------------------
+  // The seat is a sphere a hair larger than the mating ball; the mouth is a
+  // cone opening upward so a ball can snap in and pivot. The seat bottoms out
+  // on a solid floor, leaving the ball+waist connected to the cup walls.
+  const seat = sphere(seatR, { at: [0, 0, socketSeatZ] });
+  const mouth = cone(ballRadius - 0.6, socketR + 0.5, ballRadius * 1.1, {
+    at: [0, 0, socketSeatZ],
+  });
+  body = unwrap(cut(body, seat));
+  body = unwrap(cut(body, mouth));
+
+  // --- Coolant through-bore: straight up the spine -------------------------
+  const bore = cylinder(boreRadius, segmentLength + 4, { at: [0, 0, -2] });
+  body = unwrap(cut(body, bore));
+
+  // --- Flex slots in the socket wall ---------------------------------------
+  // Radial slabs cut through the cup walls give the segment its springy grip
+  // and the unmistakable Loc-Line silhouette.
+  const slotZ = (socketSeatZ + segmentLength) / 2;
+  const slots = [];
+  for (let i = 0; i < slotCount; i++) {
+    const angle = (360 / slotCount) * i;
+    const slab = cylinder(0.7, socketR * 2.4, {
+      at: [0, 0, slotZ],
+      axis: [1, 0, 0],
+    });
+    slots.push(rotate(translate(slab, [-socketR * 1.2, 0, 0]), angle, { axis: [0, 0, 1] }));
+  }
+  body = unwrap(cutAll(body, slots));
+
+  return body;
+}
+
+export default modularHoseSegment();`,
+  },
+  {
+    id: 'v-groove-slider-rail',
+    label: 'V-groove linear slider (rail + carriage)',
+    description:
+      'A V-groove rail and the inverted-U carriage that rides it, ribs engaging the side grooves.',
+    code: `import { box, cut, cutAll, fuse, polygon, extrude, rotate, translate, unwrap } from 'brepjs/quick';
+
+// V-groove linear slider: a rail and the carriage that rides it. The rail is a
+// long bar with a 90-degree V-groove notched the full length of each side; the
+// carriage is an inverted-U channel straddling it, with matching inward V-ribs
+// that drop into those grooves so it can only slide along the rail (Y axis).
+// Both ends of the rail are chamfered into a lead-in so the carriage can enter.
+// Defaults model a ~20 mm rail on an 80 mm length. Returned as two parts.
+function vGrooveSlider({
+  length = 80, // rail length along the slide axis Y (mm)
+  railWidth = 20, // rail cross-section width across X (mm)
+  railHeight = 16, // rail cross-section height in Z (mm)
+  grooveDepth = 4, // how deep each side V-groove bites inward (mm)
+  carriageLen = 34, // carriage length along Y (mm)
+  wall = 4, // carriage wall / top-plate thickness (mm)
+  slop = 0.4, // running clearance between carriage and rail (mm)
+} = {}) {
+  const halfW = railWidth / 2;
+  const grooveZ = railHeight / 2; // grooves centred on the rail mid-height
+  // A 90-degree V cutter: half-height equals depth, so the notch apex is square.
+  const vHalf = grooveDepth;
+
+  // --- RAIL: a bar running along Y with a V-groove down each side. ---
+  // Build the bar centred on the origin, base at z = 0.
+  const railBlank = box(railWidth, length, railHeight, { at: [0, 0, railHeight / 2] });
+
+  // One side V-groove cutter: a triangular prism running the full length along Y.
+  // Profile drawn in the XZ plane (y held at the front face), pointing inward.
+  // sign = +1 cuts the +X face, sign = -1 cuts the -X face.
+  const grooveCutter = (sign: number) => {
+    const xFace = sign * halfW; // the side face the groove opens on
+    const xApex = sign * (halfW - grooveDepth); // notch apex, pushed inward
+    const y0 = -length / 2 - 1; // overshoot both ends
+    const profile = unwrap(
+      polygon([
+        [xFace, y0, grooveZ - vHalf],
+        [xFace, y0, grooveZ + vHalf],
+        [xApex, y0, grooveZ],
+      ]),
+    );
+    return unwrap(extrude(profile, [0, length + 2, 0]));
+  };
+
+  let rail = unwrap(cutAll(railBlank, [grooveCutter(1), grooveCutter(-1)]));
+
+  // Lead-in chamfers at both ends: shave the top corners back so the carriage
+  // ribs find the grooves. Two wide angled slabs, one pivoting down at each end.
+  const leadLen = railHeight; // 45-degree lead-in roughly one rail-height long
+  const endChamfer = (endSign: number) => {
+    const slab = box(railWidth + 2, leadLen * 2, railHeight, {
+      at: [0, endSign * (length / 2 + leadLen), railHeight],
+    });
+    // Pivot the slab about the rail's top end edge so it slices off a wedge.
+    return rotate(slab, endSign * 35, { axis: [1, 0, 0], at: [0, endSign * (length / 2), railHeight] });
+  };
+  rail = unwrap(cutAll(rail, [endChamfer(1), endChamfer(-1)]));
+
+  // --- CARRIAGE: an inverted-U channel that straddles the rail. ---
+  // Outer block sits over the rail with wall-thick top and sides; the channel is
+  // cut out below it, sized rail + slop so the carriage slides freely.
+  const chanW = railWidth + 2 * slop; // channel width (rail + clearance)
+  const chanH = railHeight + slop; // channel depth (leaves slop under the top)
+  const outerW = chanW + 2 * wall;
+  const outerH = chanH + wall;
+  // Base of the carriage walls sits slop above the bench so it clears the rail base.
+  const baseZ = slop;
+  const outer = box(outerW, carriageLen, outerH, { at: [0, 0, baseZ + outerH / 2] });
+  // Channel: open at the bottom (extends below baseZ so it cuts clean through).
+  const channel = box(chanW, carriageLen + 2, chanH + baseZ + 1, {
+    at: [0, 0, baseZ + chanH - (chanH + baseZ + 1) / 2 + 0.5],
+  });
+  let carriage = unwrap(cut(outer, channel));
+
+  // Inward V-ribs: matching triangular prisms on the inner wall faces that drop
+  // into the rail grooves. They sit slop proud of the groove so they ride loose.
+  const ribDepth = grooveDepth - slop; // rib a touch smaller than the groove
+  const ribHalf = ribDepth;
+  const ribZ = baseZ + slop / 2 + grooveZ; // align rib centre with groove centre
+  const ribRoot = 1; // rib base buried this far into the wall for a real overlap
+  const rib = (sign: number) => {
+    const xBase = sign * (chanW / 2 + ribRoot); // start inside the wall material
+    const xTip = sign * (chanW / 2 - ribDepth); // rib tip, pointing inward
+    const y0 = -carriageLen / 2 - 1;
+    const profile = unwrap(
+      polygon([
+        [xBase, y0, ribZ - ribHalf - ribRoot],
+        [xBase, y0, ribZ + ribHalf + ribRoot],
+        [xTip, y0, ribZ],
+      ]),
+    );
+    return unwrap(extrude(profile, [0, carriageLen + 2, 0]));
+  };
+  // Pairwise fuse the ribs onto the channel walls (real overlap at the wall face).
+  carriage = unwrap(fuse(carriage, rib(1)));
+  carriage = unwrap(fuse(carriage, rib(-1)));
+
+  // Lift the carriage onto the rail and slide it toward one end, ready to ride.
+  const placedCarriage = translate(carriage, [0, length / 4, 0]);
+
+  return [rail, placedCarriage];
+}
+
+export default vGrooveSlider();
+`,
+  },
+  {
+    id: 'gridfinity-baseplate',
+    label: 'Gridfinity Baseplate',
+    description:
+      'Parametric Gridfinity baseplate: a cols x rows grid of 42 mm cells with chamfered socket wells and per-cell magnet pockets on a rounded-corner plate.',
+    code: `import {
+  box,
+  cutAll,
+  cylinder,
+  drawRoundedRectangle,
+  edgeFinder,
+  fillet,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// Gridfinity baseplate — the tray that bins click down into (the mating half of
+// the Gridfinity bin). A cols x rows grid of 42 mm cells on a 5 mm plate with
+// rounded outer corners; every cell carries a chamfered square socket well that
+// receives a bin's foot, plus four 6.5 mm magnet pockets per cell drilled from
+// below. One rigid plate: a filleted slab with everything cut out of it.
+function gridfinityBaseplate({ cols = 2, rows = 2 } = {}) {
+  const PITCH = 42; // Gridfinity grid pitch (mm)
+  const HEIGHT = 5; // plate thickness — the spec baseplate height
+  const OUTER_R = 4; // outer corner radius (8 mm corner diameter)
+  const CELL_TOP = 41.5; // socket mouth size — 0.5 mm gap between cells
+  const TOP_R = 3.75; // socket mouth corner radius
+  // Socket cross-section (spec _BASEPLATE_PROFILE): from the well floor the wall
+  // goes out 0.7 at 45 deg, straight up 1.8, then out 2.15 at 45 deg to the rim.
+  const STEP_INSET = 2.15; // rim -> top of the vertical wall (per side)
+  const FLOOR_INSET = 2.85; // rim -> well floor (per side)
+  const FLOOR_DROP = 2.5; // mouth -> top of vertical wall (the two 45 deg + riser)
+  const WELL_DEPTH = 4.65; // total socket depth; leaves ~0.35 mm floor under HEIGHT
+
+  const MAG_DIA = 6.5; // magnet pocket diameter
+  const MAG_DEPTH = 2.4; // magnet pocket depth (2 mm magnet + clearance)
+  const HOLE_FROM_SIDE = 8; // magnet centre inset from each cell edge
+
+  const Wx = cols * PITCH; // outer footprint
+  const Wy = rows * PITCH;
+
+  // Filleted slab: centre it on the origin, then round the four vertical edges.
+  const slab = box(Wx, Wy, HEIGHT, { at: [0, 0, HEIGHT / 2] });
+  const plate = unwrap(fillet(slab, edgeFinder().inDirection('Z').findAll(slab), OUTER_R));
+
+  // One rounded rectangle profile on plane XY at height z, inset on every edge
+  // (the inset shrinks the corner radius with it so the chamfers stay concentric).
+  const rect = (inset: number, z: number) =>
+    drawRoundedRectangle(
+      CELL_TOP - 2 * inset,
+      CELL_TOP - 2 * inset,
+      Math.max(TOP_R - inset, 0.4),
+    ).sketchOnPlane('XY', z);
+
+  // The socket cutter for one cell: a downward loft from the wide rim, in to the
+  // top of the vertical wall, then in again to the narrow floor — the chamfered
+  // well a bin foot seats into. Carved from the top face, stopping short of the
+  // underside so the plate keeps a thin solid floor.
+  const wellCutter = () =>
+    rect(0, HEIGHT + 0.01).loftWith(
+      [rect(STEP_INSET, HEIGHT - FLOOR_DROP), rect(FLOOR_INSET, HEIGHT - WELL_DEPTH)],
+      { ruled: true },
+    );
+
+  const cutters = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const cx = (i - (cols - 1) / 2) * PITCH;
+      const cy = (j - (rows - 1) / 2) * PITCH;
+      cutters.push(translate(wellCutter(), [cx, cy, 0]));
+
+      // Four magnet pockets per cell, one toward each corner, bored from below.
+      const off = PITCH / 2 - HOLE_FROM_SIDE;
+      for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+          cutters.push(
+            cylinder(MAG_DIA / 2, MAG_DEPTH + 0.01, { at: [cx + sx * off, cy + sy * off, -0.01] }),
+          );
+        }
+      }
+    }
+  }
+
+  // Everything is a cut from the single filleted slab, so the result is one body.
+  return unwrap(cutAll(plate, cutters));
+}
+
+export default gridfinityBaseplate();`,
+  },
+  {
+    id: 'divided-gridfinity-bin',
+    label: 'Divided Gridfinity Bin (lite, compartments)',
+    description:
+      'A lite-base Gridfinity parts bin carved into a divx x divy field of compartments with rounded inner corners, chamfered floors, finger scoops, and a label tab.',
+    code: `import {
+  box,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuse,
+  rotate,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
+
+// Divided Gridfinity bin (lite, compartments): the printable parts-tray on the
+// 42 mm Gridfinity grid, hollowed to a "lite" thin-floor base and carved into a
+// divx x divy field of storage compartments. Each pocket gets rounded inner
+// corners, a chamfered floor, and a curved finger scoop along its back wall; the
+// front-left pocket also carries a sloped label tab to write on. A stacking lip
+// rims the top so filled bins nest. Bump cols/rows or divx/divy to resize.
+function dividedGridfinityBin({
+  cols = 2, // Gridfinity bases along X
+  rows = 2, // Gridfinity bases along Y
+  heightUnits = 6, // body height in 7 mm Gridfinity units
+  divx = 3, // compartment columns
+  divy = 2, // compartment rows
+} = {}) {
+  const PITCH = 42; // Gridfinity grid pitch (mm)
+  const CLR = 0.5; // total footprint clearance (0.25 mm per outer edge)
+  const WALL = 1.2; // outer wall thickness (mm)
+  const DIV = 1.6; // divider wall thickness between compartments (mm)
+  const FLOOR = 1.2; // lite thin base floor under the compartments (mm)
+  const FOOT_H = 4.75; // socket-foot stack height below z = 0 (mm)
+  const RAD = 3.75; // outer corner radius (mm)
+  const POCKET_R = 2.6; // compartment inner corner radius (mm)
+  const FLOOR_CH = 1.4; // chamfer easing the pocket floor (mm)
+
+  const H = heightUnits * 7; // bodies come in 7 mm units
+  const Wx = cols * PITCH - CLR; // outer footprint X
+  const Wy = rows * PITCH - CLR; // outer footprint Y
+
+  // --- Outer body: a rounded-corner block, floor at z = 0, walls full height ---
+  const blank = box(Wx, Wy, H, { at: [0, 0, H / 2] });
+  const body0 = unwrap(
+    fillet(blank, edgeFinder().inDirection('Z').findAll(blank), RAD),
+  );
+
+  // --- Socket feet: one chamfered pad per base cell, the profile that clicks
+  // onto a Gridfinity baseplate. Built as a stack of three rounded blocks that
+  // step inward going down, then welded under the body (top block overlaps the
+  // floor by 1 mm so it fuses solid rather than floating). ---
+  const cellW = PITCH - CLR; // one base footprint (41.5 mm)
+  // Stacked chamfer tiers as [width, zBottom, zTop]; consecutive tiers overlap
+  // in z so the foot welds into ONE solid, and the top tier rises above z = 0
+  // into the body so the whole pad fuses to the floor instead of floating.
+  const footTiers: [number, number, number][] = [
+    [cellW, -2.6, 1.0], // top landing, pokes 1 mm into the body
+    [cellW - 2.2, -4.0, -2.0], // mid taper tier (overlaps top by 0.6 mm)
+    [cellW - 4.8, -FOOT_H, -3.4], // bottom tier (overlaps mid by 0.6 mm)
+  ];
+  const footPad = (cx: number, cy: number) => {
+    let pad: ReturnType<typeof box> | undefined;
+    for (const [w, zB, zT] of footTiers) {
+      const h = zT - zB;
+      const blk = box(w, w, h, { at: [cx, cy, zB + h / 2] });
+      const tier = unwrap(
+        fillet(
+          blk,
+          edgeFinder().inDirection('Z').findAll(blk),
+          Math.min(RAD, w / 2 - 0.5),
+        ),
+      );
+      pad = pad ? unwrap(fuse(pad, tier)) : tier;
+    }
+    // pad is defined: footTiers is non-empty.
+    return pad as ReturnType<typeof box>;
+  };
+
+  let body = body0;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const cx = (i - (cols - 1) / 2) * PITCH;
+      const cy = (j - (rows - 1) / 2) * PITCH;
+      body = unwrap(fuse(body, footPad(cx, cy)));
+    }
+  }
+
+  // --- Stacking lip: a thin perimeter rim standing proud of the top rim so
+  // bins nest when stacked. Outer rounded block minus the inner cavity, its
+  // base sunk 2 mm into the body top for a real fuse overlap. ---
+  const lipH = 4.4; // lip height above the body top
+  const lipOuter = box(Wx, Wy, lipH + 2, { at: [0, 0, H - 2 + (lipH + 2) / 2] });
+  const lipOuterR = unwrap(
+    fillet(lipOuter, edgeFinder().inDirection('Z').findAll(lipOuter), RAD),
+  );
+  const lipBore = box(Wx - 2 * WALL, Wy - 2 * WALL, lipH + 4, {
+    at: [0, 0, H - 2 + (lipH + 4) / 2],
+  });
+  const lipBoreR = unwrap(
+    fillet(
+      lipBore,
+      edgeFinder().inDirection('Z').findAll(lipBore),
+      Math.max(RAD - WALL, 0.5),
+    ),
+  );
+  const lip = unwrap(cut(lipOuterR, lipBoreR));
+  body = unwrap(fuse(body, lip));
+
+  // --- Compartment field: carve a divx x divy grid of pockets into the body.
+  // The usable interior spans the footprint inset by the outer wall; pockets are
+  // separated by DIV-thick dividers and stop FLOOR above z = 0 (the lite base). ---
+  const innerX = Wx - 2 * WALL;
+  const innerY = Wy - 2 * WALL;
+  const cellPx = (innerX - (divx - 1) * DIV) / divx; // pocket footprint X
+  const cellPy = (innerY - (divy - 1) * DIV) / divy; // pocket footprint Y
+  const pocketTop = H + 1; // open above the rim so the cut breaks through
+  const pocketDepth = pocketTop - FLOOR; // floor of the pocket at z = FLOOR
+
+  const pocketCenter = (gi: number, gj: number): [number, number] => {
+    const x = -innerX / 2 + cellPx / 2 + gi * (cellPx + DIV);
+    const y = -innerY / 2 + cellPy / 2 + gj * (cellPy + DIV);
+    return [x, y];
+  };
+
+  // One rounded pocket cutter, opening upward from z = FLOOR.
+  const pocketCutter = (cx: number, cy: number) => {
+    const blk = box(cellPx, cellPy, pocketDepth, {
+      at: [cx, cy, FLOOR + pocketDepth / 2],
+    });
+    return unwrap(
+      fillet(
+        blk,
+        edgeFinder().inDirection('Z').findAll(blk),
+        Math.min(POCKET_R, cellPx / 2 - 0.5, cellPy / 2 - 0.5),
+      ),
+    );
+  };
+
+  const cutters = [];
+  for (let gi = 0; gi < divx; gi++) {
+    for (let gj = 0; gj < divy; gj++) {
+      const [cx, cy] = pocketCenter(gi, gj);
+      cutters.push(pocketCutter(cx, cy));
+
+      // Chamfered floor: a four-sided pyramidal frustum cut sunk at the pocket
+      // bottom so the floor-to-wall corners ease in (matches the printed bevel).
+      const chBlk = box(cellPx + 2 * FLOOR_CH, cellPy + 2 * FLOOR_CH, FLOOR_CH, {
+        at: [cx, cy, FLOOR + FLOOR_CH / 2],
+      });
+      const chamferEdges = edgeFinder().inDirection('Z').findAll(chBlk);
+      cutters.push(
+        unwrap(fillet(chBlk, chamferEdges, Math.min(POCKET_R, FLOOR_CH))),
+      );
+    }
+  }
+
+  // --- Finger scoop: a curved ramp swept along the back (+Y) wall of every
+  // back-row pocket, so contents slide up into your fingers. Modelled as a
+  // horizontal cylinder subtracted from the back-bottom corner of the pocket. ---
+  const scoopR = Math.min(cellPy * 0.55, pocketDepth * 0.9, 12);
+  for (let gi = 0; gi < divx; gi++) {
+    const [cx, cy] = pocketCenter(gi, divy - 1); // back row only
+    const yBack = cy + cellPy / 2; // back wall plane of this pocket
+    const scoop = rotate(
+      cylinder(scoopR, cellPx, { at: [cx - cellPx / 2, yBack, FLOOR + scoopR] }),
+      90,
+      { axis: [0, 1, 0] },
+    );
+    cutters.push(scoop);
+  }
+
+  body = unwrap(cutAll(body, cutters));
+
+  // --- Label tab: a flat ledge overhanging the top of the front-left pocket's
+  // front (-Y) wall, the lip you write a label on. A thin slab fused onto the
+  // wall, reaching back over the pocket and overlapping the wall by DIV so it
+  // welds into one body. It sits just below the rim, never above it. ---
+  const [tx, ty] = pocketCenter(0, 0); // front-left pocket
+  const yFront = ty - cellPy / 2; // its front wall plane (inner face)
+  const tabW = Math.min(cellPx, 38); // tab width along X
+  const tabDepth = 11; // how far the ledge reaches into the pocket (mm)
+  const tabThk = 2.4; // tab plate thickness (mm)
+  const tabTop = H - 0.6; // top of the tab, kept under the rim
+  const tab = box(tabW, tabDepth + DIV, tabThk, {
+    at: [tx, yFront + (tabDepth - DIV) / 2, tabTop - tabThk / 2],
+  });
+  body = unwrap(fuse(body, tab));
+
+  // Return as a single ValidSolid body (connectivity verified downstream).
+  return unwrap(validSolid(body));
+}
+
+export default dividedGridfinityBin();`,
+  },
+  {
+    id: 'wall-mount-flanged-junction-box',
+    label: 'Wall-Mount Flanged Junction Box (base + lid)',
+    description:
+      'A rounded-corner enclosure whose walls carry external mounting ears with elongated obround screw slots and gusseted roots, shown with its registration-ridge base beside the grooved lid.',
+    code: `import {
+  box,
+  convexHull,
+  cut,
+  cutAll,
+  edgeFinder,
+  fillet,
+  fuse,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// Wall-mount flanged junction box (base + lid). A rounded-corner enclosure
+// whose side walls carry external mounting ears: low rounded-rect flanges, each
+// pierced by an elongated (obround) screw slot so the box can be hung and slid
+// on a wall, with a fillet gusset rooting every ear back into the wall. The base
+// is an upward tray with a registration ridge on its top rim; the lid is an
+// inverted tray with a matching groove, laid beside the base like a print plate.
+function wallMountBox({
+  innerLength = 100, // cavity extent along X (the PCB footprint) (mm)
+  innerWidth = 70, // cavity extent along Y (mm)
+  wall = 2.4, // side-wall thickness (mm)
+  floor = 1.8, // base / lid plane thickness (mm)
+  baseWall = 22, // base side-wall height above the floor (mm)
+  lidWall = 8, // lid skirt height (mm)
+  cornerR = 8, // outer vertical corner radius (mm)
+  ridge = 3, // base/lid registration ridge height (mm)
+  slack = 0.25, // ridge-to-groove radial clearance (mm)
+  earReach = 11, // how far each ear sticks out past the wall (mm)
+  earThick = 4, // ear flange thickness (mm)
+  screwDia = 4, // mounting-screw clearance diameter (mm)
+  slotTravel = 8, // length the screw can slide along the slot (mm)
+} = {}) {
+  // Outer footprint = cavity + two walls. Inner corners shrink with the wall.
+  const outerL = innerLength + 2 * wall;
+  const outerW = innerWidth + 2 * wall;
+  const innerR = Math.max(cornerR - wall, 0.6);
+
+  // A rounded-corner rectangular prism: a centred box with only its four
+  // vertical (Z-running) edges filleted. The building block for every wall,
+  // cavity, ridge and groove so the whole box keeps soft vertical corners.
+  // (A direct shell() is fragile here — inDirection('Z') on the cavity would
+  // also catch the flat faces; cutting an inner cavity keeps the floor intact.)
+  const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
+    const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
+    if (r <= 0) return blk;
+    return unwrap(fillet(blk, edgeFinder().inDirection('Z'), r));
+  };
+
+  // --- BASE: a rounded tray, floor on z = 0, opening upward. ---
+  const baseHeight = floor + baseWall;
+  const baseOuter = roundedPrism(outerL, outerW, baseHeight, 0, cornerR);
+  const baseCavity = roundedPrism(innerLength, innerWidth, baseWall + 1, floor, innerR);
+  let base = unwrap(cut(baseOuter, baseCavity));
+
+  // Registration ridge: a thin perimeter wall rising from the base's top rim,
+  // pulled in by \`slack\` so the lid groove clears it on assembly. Built as a
+  // rounded band minus its own inner cavity so it traces the wall outline.
+  const ridgeOuterL = outerL - 2 * slack;
+  const ridgeOuterW = outerW - 2 * slack;
+  const ridgeBand = unwrap(
+    cut(
+      roundedPrism(ridgeOuterL, ridgeOuterW, ridge, baseHeight, Math.max(cornerR - slack, 0.6)),
+      roundedPrism(innerLength, innerWidth, ridge + 1, baseHeight - 0.5, innerR),
+    ),
+  );
+  base = unwrap(fuse(base, ridgeBand));
+
+  // --- Mounting ears welded onto the long (front/back, ±Y) walls. ---
+  // Each ear is a low rounded-rect flange sitting flush with the floor underside
+  // (z from 0 to earThick) and reaching \`earReach\` past the wall. It overlaps
+  // the wall by \`bite\` mm so the fuse takes — an ear merely touching the wall
+  // face would stay a separate, floating solid. The ear carries an obround screw
+  // slot (a convex hull of two bores) and a fillet gusset back to the wall.
+  const bite = 1.5; // how far the ear penetrates into the wall
+  const earWidth = screwDia + 6; // flange width across X
+  const earLen = earReach + bite; // depth in Y, including the buried overlap
+  const wallY = outerW / 2; // outer face of the +Y wall
+
+  // Build one ear about its own local frame centred on the wall face at the
+  // origin (the ear grows out along +Y), then translate/mirror it to each post.
+  const makeEar = (xPos: number, sign: 1 | -1) => {
+    // Flange body: a rounded slab, its inner edge buried \`bite\` into the wall.
+    // Corner radius stays well under half the slab so opposite fillets never
+    // meet (a degenerate fillet that meets in the middle fails the kernel).
+    const earR = Math.min(earWidth * 0.3, earLen * 0.3, earThick);
+    const yCentre = sign * (wallY - bite + earLen / 2);
+    let ear = roundedPrism(earWidth, earLen, earThick, 0, earR);
+    ear = translate(ear, [xPos, yCentre, 0]);
+
+    // Fillet gusset: a triangular brace thickening the ear root where it meets
+    // the wall, so the join reads as a moulded flange instead of a flat tab.
+    // Built deterministically as a convex hull (no fragile edge finder): a
+    // right-triangle prism rising up the wall and tapering out over the flange,
+    // buried \`bite\` into the wall on its tall side. A \`slab\` of triangular
+    // section spanning the ear width in X.
+    const gRise = earThick + ridge; // tall side, climbing the wall
+    const gRun = earThick + 3; // how far it tapers out over the flange
+    const yWall = sign * (wallY - bite); // the buried root plane
+    const yOut = yWall + sign * gRun; // where the taper meets the flange top
+    const gx = earWidth / 2;
+    const gusset = unwrap(
+      convexHull([
+        // tall buried face against the wall (rectangle z 0..gRise)
+        [xPos - gx, yWall, 0],
+        [xPos + gx, yWall, 0],
+        [xPos - gx, yWall, gRise],
+        [xPos + gx, yWall, gRise],
+        // toe out on the flange (a line at flange top)
+        [xPos - gx, yOut, earThick],
+        [xPos + gx, yOut, earThick],
+      ]),
+    );
+
+    // Weld the gusset and ear into a single ear assembly (pairwise fuse).
+    return unwrap(fuse(ear, gusset));
+  };
+
+  // Obround screw slot through an ear at xPos on the ±Y side: two clearance
+  // bores \`slotTravel\` apart, hulled into a stadium, punched top-to-bottom.
+  const makeSlot = (xPos: number, sign: 1 | -1) => {
+    const yMid = sign * (wallY + earReach * 0.55); // slot sits out near the tip
+    const ends: [number, number, number][] = [];
+    for (const t of [-1, 1]) {
+      const y = yMid + (t * slotTravel) / 2;
+      // Two rings (top + bottom face) per bore feed the hull a proper cylinder.
+      ends.push([xPos, y, -1]);
+      ends.push([xPos, y, earThick + 1]);
+      ends.push([xPos + screwDia / 2, y, earThick + 1]);
+      ends.push([xPos - screwDia / 2, y, earThick + 1]);
+      ends.push([xPos, y + screwDia / 2, earThick + 1]);
+      ends.push([xPos, y - screwDia / 2, earThick + 1]);
+      ends.push([xPos + screwDia / 2, y, -1]);
+      ends.push([xPos - screwDia / 2, y, -1]);
+      ends.push([xPos, y + screwDia / 2, -1]);
+      ends.push([xPos, y - screwDia / 2, -1]);
+    }
+    return unwrap(convexHull(ends));
+  };
+
+  // Two ears per long wall, near the corners; mirror to both walls (4 total).
+  const earX = innerLength / 2 - earWidth / 2 + wall - 4;
+  const earSpecs: Array<[number, 1 | -1]> = [
+    [-earX, 1],
+    [earX, 1],
+    [-earX, -1],
+    [earX, -1],
+  ];
+  // Weld each ear onto the tray with the 2-way fuse (the N-way fuseAll glues via
+  // BuilderAlgo and leaves every ear a separate solid in a compound). Then punch
+  // the obround slots through the welded body in one cutAll.
+  const slots: ReturnType<typeof makeSlot>[] = [];
+  for (const [x, s] of earSpecs) {
+    base = unwrap(fuse(base, makeEar(x, s)));
+    slots.push(makeSlot(x, s));
+  }
+  base = unwrap(cutAll(base, slots));
+
+  // --- LID: a shallow inverted tray — cap on top, skirt hanging down. ---
+  // Built cap-up directly (cavity open at the bottom) so it needs no flip. A
+  // groove rebated into the skirt's inner rim swallows the base ridge.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerL, outerW, lidH, 0, cornerR);
+  const lidCavity = roundedPrism(innerLength, innerWidth, lidWall + 1, -1, innerR);
+  let lid = unwrap(cut(lidOuter, lidCavity));
+  // Groove: widen the cavity over the bottom \`ridge\` mm to clear the ridge band.
+  const groove = roundedPrism(
+    ridgeOuterL + 2 * slack,
+    ridgeOuterW + 2 * slack,
+    ridge + 0.5,
+    -0.25,
+    Math.max(cornerR - slack, 0.6),
+  );
+  lid = unwrap(cut(lid, groove));
+
+  // Lay the lid alongside the base (both open faces up) with a print gap.
+  const placedLid = translate(lid, [0, outerW + 16, 0]);
+
+  return [base, placedLid];
+}
+
+export default wallMountBox();
+`,
+  },
+  {
+    id: 'vented-louvre-case',
+    label: 'Vented Louvre Instrument Case',
+    description:
+      'A two-part instrument enclosure: a base shell with a honeycomb-and-perforation vented floor plus a louvre-slotted lid that nests on a registration ridge.',
+    code: `import {
+  box,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuse,
+  sketchPolysides,
+  sketchRoundedRectangle,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+
+// Vented louvre instrument case (base + slotted lid). A rounded-corner project
+// box split into a deep base shell and a shallow lid. The base FLOOR is a
+// ventilation panel: a honeycomb of hexagonal perforations beside a square grid
+// of round drill holes for passive airflow. The LID is louvred — a row of
+// rounded slots across its top cap. The halves register on a ridge: the base
+// wall carries an inset lip that the lid's inner groove drops over. Drawn side
+// by side along Y, the way a print plate would lay the two parts out.
+function ventedCase({
+  innerLength = 120, // cavity extent along X (mm)
+  innerWidth = 80, // cavity extent along Y (mm)
+  wall = 2.4, // side-wall thickness (mm)
+  floor = 2, // base / lid plane thickness (mm)
+  baseWall = 26, // base side-wall height above the floor (mm)
+  lidWall = 10, // lid skirt height (mm)
+  cornerR = 4, // outer vertical corner radius (mm)
+  ridge = 5, // overlap-ridge height (mm)
+  slack = 0.3, // ridge-to-lid radial clearance (mm)
+  hexAcross = 7, // honeycomb cell width across flats (mm)
+  hexGap = 1.6, // wall left between adjacent honeycomb cells (mm)
+  ventHoleD = 4, // round perforation diameter (mm)
+  ventPitch = 9, // round-perforation grid pitch (mm)
+  slots = 6, // louvre slots across the lid (count)
+  slotWidth = 5, // louvre slot width (mm)
+} = {}) {
+  const outerL = innerLength + 2 * wall;
+  const outerW = innerWidth + 2 * wall;
+  const innerR = Math.max(cornerR - wall, 0.5);
+
+  // Rounded-corner rectangular prism: a centred box with its four vertical
+  // (Z-running) edges filleted. The base for every wall, cavity and lip. (A
+  // direct shell() is fragile here — inDirection('Z') would also catch the flat
+  // faces; cutting an inner cavity keeps the floor/cap solid.)
+  const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
+    const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
+    if (r <= 0) return blk;
+    return unwrap(fillet(blk, edgeFinder().inDirection('Z').findAll(blk), r));
+  };
+
+  // --- BASE: a rounded tray, floor on z = 0, opening upward. ---
+  const baseOuter = roundedPrism(outerL, outerW, floor + baseWall, 0, cornerR);
+  const baseCavity = roundedPrism(innerLength, innerWidth, baseWall + 1, floor, innerR);
+  let base = unwrap(cut(baseOuter, baseCavity));
+
+  // Registration ridge: a thin perimeter lip rising from the top of the base
+  // wall, pulled in by \`slack\` so the lid clears it on assembly. Built as a
+  // rounded outer band with its inner cavity removed, then fused to the tray.
+  const ridgeTop = floor + baseWall;
+  const ridgeOuterL = innerLength + 2 * wall - 2 * slack;
+  const ridgeOuterW = innerWidth + 2 * wall - 2 * slack;
+  const ridgeBand = unwrap(
+    cut(
+      roundedPrism(ridgeOuterL, ridgeOuterW, ridge, ridgeTop, Math.max(cornerR - slack, 0.5)),
+      // dip 0.5 mm into the wall top so the band overlaps the tray and welds
+      // instead of merely kissing the z = ridgeTop face as a floating ring.
+      roundedPrism(innerLength, innerWidth, ridge + 1, ridgeTop - 0.5, innerR),
+    ),
+  );
+  base = unwrap(fuse(base, ridgeBand));
+
+  // --- Floor ventilation: honeycomb hexagons + a square grid of round holes. ---
+  // Both vent fields sit inside a margin so the perforations never break the
+  // wall. Each cutter is over-tall (z from -1 through the floor) to punch a
+  // clean through-hole; all are subtracted in one cutAll, so the base stays one
+  // solid (cuts can't split a single body the way a bad fuse can).
+  const ventMargin = wall + 3;
+  const fieldHalfL = innerLength / 2 - ventMargin;
+  const fieldHalfW = innerWidth / 2 - ventMargin;
+  const cutters = [];
+
+  // Honeycomb occupies the back half of the floor (−X side). Hex prisms on a
+  // staggered (brick-offset) grid, flat-topped, sized across flats.
+  const hexCircumR = hexAcross / 2 / Math.cos(Math.PI / 6); // flats → vertex radius
+  const colPitch = (hexAcross + hexGap) * 0.75 * (2 / Math.cos(Math.PI / 6)); // hex column step
+  const rowPitch = hexAcross + hexGap; // hex row step (flat-to-flat + wall)
+  const hexZoneMaxX = -3; // honeycomb stays on the back half
+  for (let ci = -6; ci <= 6; ci++) {
+    const hx = ci * colPitch;
+    if (hx < -fieldHalfL || hx > Math.min(fieldHalfL, hexZoneMaxX)) continue;
+    const stagger = ci % 2 === 0 ? 0 : rowPitch / 2;
+    for (let ri = -6; ri <= 6; ri++) {
+      const hy = ri * rowPitch + stagger;
+      if (hy < -fieldHalfW || hy > fieldHalfW) continue;
+      const hex = sketchPolysides(hexCircumR, 6, 0, 'XY').extrude(floor + 2);
+      cutters.push(translate(hex, [hx, hy, -1]));
+    }
+  }
+
+  // Round perforations occupy the front half (+X side): a plain square grid.
+  for (let gx = 1; gx * ventPitch < fieldHalfL; gx++) {
+    const px = gx * ventPitch;
+    for (let gy = -5; gy <= 5; gy++) {
+      const py = gy * ventPitch;
+      if (Math.abs(py) > fieldHalfW) continue;
+      cutters.push(cylinder(ventHoleD / 2, floor + 2, { at: [px, py, -1] }));
+    }
+  }
+  base = unwrap(cutAll(base, cutters));
+
+  // --- LID: a shallow inverted tray (cap up, skirt hanging down). ---
+  // Built cap-up directly so it needs no flip; on assembly the skirt drops over
+  // the base ridge.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerL, outerW, lidH, 0, cornerR);
+  const lidCavity = roundedPrism(innerLength, innerWidth, lidWall + 1, -1, innerR);
+  let lid = unwrap(cut(lidOuter, lidCavity));
+
+  // Ridge groove: a thin perimeter band recess on the SKIRT side (z = 0 up, the
+  // open face), NOT the cap. Cutting a band sized to the base ridge footprint
+  // (matching \`ridgeOuterL/W\`) over the bottom \`ridge\` mm carves the inner part
+  // of the skirt wall away so the base lip nests with clearance, while leaving
+  // the cap (z = lidWall..lidH) fully solid for the louvre slots to cut. The
+  // earlier version sized this to the full outer footprint and placed it at the
+  // cap end, which sheared the entire cap off — leaving an empty rim.
+  const groove = roundedPrism(
+    ridgeOuterL,
+    ridgeOuterW,
+    ridge + slack, // clearance under the lip so the skirt seats on the wall top
+    0,
+    Math.max(cornerR - slack, 0.5),
+  );
+  lid = unwrap(cut(lid, groove));
+
+  // Louvre slots across the lid cap: evenly spaced rounded-rectangle channels
+  // running along Y, each over-tall to punch clean through the cap.
+  const slotLen = innerWidth - 2 * (wall + 4);
+  const slotSpan = outerL * 0.6; // slots fill the central 60% of the lid
+  const slotCutters = [];
+  for (let i = 0; i < slots; i++) {
+    const t = slots === 1 ? 0.5 : i / (slots - 1);
+    const sx = -slotSpan / 2 + slotSpan * t;
+    const slot = translate(
+      sketchRoundedRectangle(slotWidth, slotLen, slotWidth * 0.45).extrude(floor + 2),
+      [sx, 0, lidH - floor - 1],
+    );
+    slotCutters.push(slot);
+  }
+  lid = unwrap(cutAll(lid, slotCutters));
+
+  // Lay the lid beside the base along Y with a print gap, both open faces up.
+  const placedLid = translate(lid, [0, outerW + 12, 0]);
+  return [base, placedLid];
+}
+
+export default ventedCase();`,
+  },
 ];
