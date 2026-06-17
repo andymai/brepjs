@@ -21,6 +21,8 @@
     "@react-three/fiber": "9.6.1",
     "@vercel/analytics": "2.0.1",
     "brepjs": "*",
+    "brepjs-bim": "*",
+    "brepjs-sheetmetal": "*",
     "brepjs-viewer": "*",
     "lz-string": "1.5.0",
     "monaco-editor": "0.55.1",
@@ -31,6 +33,7 @@
     "react-resizable-panels": "4.11.2",
     "sucrase": "3.35.1",
     "three": "0.184.0",
+    "web-ifc": "0.0.77",
     "zustand": "5.0.14"
   },
   "devDependencies": {

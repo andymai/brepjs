@@ -2,13 +2,19 @@
   "framework": "vitepress",
   "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in *components--brepjs-verify) exit 0 ;; *) exit 1 ;; esac",
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build && npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
+  "buildCommand": "npm run build && npm run build --workspace=brepjs-bim && npm run build --workspace=brepjs-sheetmetal && npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
   "outputDirectory": "apps/docs/.vitepress/dist",
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/ingest/static/:path(.*)", "destination": "https://us-assets.i.posthog.com/static/:path" },
-    { "source": "/ingest/array/:path(.*)", "destination": "https://us-assets.i.posthog.com/array/:path" },
+    {
+      "source": "/ingest/static/:path(.*)",
+      "destination": "https://us-assets.i.posthog.com/static/:path"
+    },
+    {
+      "source": "/ingest/array/:path(.*)",
+      "destination": "https://us-assets.i.posthog.com/array/:path"
+    },
     { "source": "/ingest/:path(.*)", "destination": "https://us.i.posthog.com/:path" }
   ],
   "headers": [
@@ -17,32 +23,27 @@
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' blob: 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com https://us-assets.i.posthog.com; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net https://us.i.posthog.com https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' data: https://cdn.jsdelivr.net" }
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' blob: 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com https://us-assets.i.posthog.com; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net https://us.i.posthog.com https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' data: https://cdn.jsdelivr.net"
+        }
       ]
     },
     {
       "source": "/playground",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
       "source": "/playground/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {
       "source": "/playground/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
       "source": "/playground/wasm/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ]
 }

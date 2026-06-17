@@ -15,8 +15,14 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs module
 let brepjs: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs-sheetmetal module
+let sheetmetal: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs-bim module
+let bim: any = null;
 
 let brepjsBlobUrl: string | null = null;
+let sheetmetalBlobUrl: string | null = null;
+let bimBlobUrl: string | null = null;
 
 // Per-eval cancellation: ids land here when the main thread sends `cancel`
 // or when a newer eval supersedes them. Each `handleEval` checks the set at
@@ -126,14 +132,24 @@ function asSafeIdentifier(raw: string): string | null {
   return safe;
 }
 
-function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
+// Builds a Blob module that re-exports every export of a runtime package stashed
+// on `self[globalKey]`. Used for the core `brepjs` (with the playground-local
+// `color` helper injected) and for each satellite domain package, so user code's
+// bare specifier resolves to one live module instance instead of re-importing.
+function buildWrapperUrl(
+  mod: Record<string, unknown>,
+  globalKey: string,
+  includeColor: boolean
+): string {
   const names = Object.keys(mod)
     .filter((k) => k !== 'default' && k !== 'color')
     .map(asSafeIdentifier)
     .filter((n): n is string => n !== null);
   const lines = names.map((n) => `export const ${n} = m[${JSON.stringify(n)}];`);
-  const colorHelper = `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`;
-  const body = `const m = self.__brepjs;\n${lines.join('\n')}\n${colorHelper}\n`;
+  const colorHelper = includeColor
+    ? `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`
+    : '';
+  const body = `const m = self[${JSON.stringify(globalKey)}];\n${lines.join('\n')}\n${colorHelper}\n`;
   const blob = new Blob([body], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
 }
@@ -162,7 +178,10 @@ async function handleInit() {
     brepjs.registerKernel('occt-wasm', new brepjs.OcctWasmAdapter(Module, kernel));
 
     (self as unknown as { __brepjs: unknown }).__brepjs = brepjs;
-    brepjsBlobUrl = buildBrepjsWrapperUrl(brepjs);
+    brepjsBlobUrl = buildWrapperUrl(brepjs, '__brepjs', true);
+    // Satellite domain packages (brepjs-sheetmetal, brepjs-bim) are loaded
+    // lazily on first use — see ensureImportsLoaded — to keep them (and the
+    // heavy web-ifc dep brepjs-bim pulls in) off the worker-init critical path.
 
     post({ type: 'init-progress', stage: 'Ready', progress: 1 });
     post({ type: 'init-done' });
@@ -171,12 +190,56 @@ async function handleInit() {
   }
 }
 
-// Anchored on `from \"…\"` so we only rewrite import specifiers, not
-// arbitrary string literals in user code (e.g. `console.log('brepjs')`).
-// The `\2` boundary on the closing quote also rules out 'brepjs-foo' /
-// 'brepjsKit' specifiers.
-function rewriteBrepjsImports(code: string, wrapperUrl: string): string {
-  return code.replace(/(\bfrom\s+)(['"])brepjs(?:\/quick|\/playground)?\2/g, `$1'${wrapperUrl}'`);
+const SHEETMETAL_IMPORT_RE = /\bfrom\s+(['"])brepjs-sheetmetal\1/;
+const BIM_IMPORT_RE = /\bfrom\s+(['"])brepjs-bim\1/;
+
+// Satellite domain packages are loaded lazily the first time an eval imports
+// them, not at worker init — brepjs-bim alone pulls in the multi-megabyte
+// web-ifc dependency, which most sessions never touch. Each shares the same
+// `brepjs` kernel singleton (Vite dedupes the `brepjs` module) and re-exports
+// through its own global-keyed wrapper URL, cached after the first load.
+async function ensureSheetmetalLoaded(): Promise<void> {
+  if (sheetmetalBlobUrl) return;
+  sheetmetal = await import('brepjs-sheetmetal');
+  (self as unknown as { __brepjs_sheetmetal: unknown }).__brepjs_sheetmetal = sheetmetal;
+  sheetmetalBlobUrl = buildWrapperUrl(sheetmetal, '__brepjs_sheetmetal', false);
+}
+
+async function ensureBimLoaded(): Promise<void> {
+  if (bimBlobUrl) return;
+  bim = await import('brepjs-bim');
+  (self as unknown as { __brepjs_bim: unknown }).__brepjs_bim = bim;
+  bimBlobUrl = buildWrapperUrl(bim, '__brepjs_bim', false);
+}
+
+// Load whichever satellite packages the about-to-run code imports, so their
+// wrapper URLs exist before rewriteImports rewrites the specifiers.
+async function ensureImportsLoaded(code: string): Promise<void> {
+  if (SHEETMETAL_IMPORT_RE.test(code)) await ensureSheetmetalLoaded();
+  if (BIM_IMPORT_RE.test(code)) await ensureBimLoaded();
+}
+
+// Rewrite each supported bare specifier to its live-module wrapper URL. Anchored
+// on `from \"…\"` so only import specifiers are touched, not arbitrary string
+// literals (e.g. `console.log('brepjs')`). The core `brepjs` pattern ends on the
+// closing quote (`\2`) right after the optional `/quick`|`/playground` subpath,
+// so it never swallows the `brepjs-sheetmetal` / `brepjs-bim` specifiers, which
+// are rewritten by their own exact patterns.
+function rewriteImports(code: string): string {
+  let out = code;
+  if (brepjsBlobUrl) {
+    out = out.replace(
+      /(\bfrom\s+)(['"])brepjs(?:\/quick|\/playground)?\2/g,
+      `$1'${brepjsBlobUrl}'`
+    );
+  }
+  if (sheetmetalBlobUrl) {
+    out = out.replace(/(\bfrom\s+)(['"])brepjs-sheetmetal\2/g, `$1'${sheetmetalBlobUrl}'`);
+  }
+  if (bimBlobUrl) {
+    out = out.replace(/(\bfrom\s+)(['"])brepjs-bim\2/g, `$1'${bimBlobUrl}'`);
+  }
+  return out;
 }
 
 // Strip TypeScript syntax so the browser's `import()` of a JS blob can parse
@@ -261,7 +324,8 @@ async function handleEval(id: string, code: string) {
       return;
     }
 
-    const rewritten = rewriteBrepjsImports(stripped, brepjsBlobUrl);
+    await ensureImportsLoaded(stripped);
+    const rewritten = rewriteImports(stripped);
     const userBlob = new Blob([rewritten], { type: 'application/javascript' });
     userBlobUrl = URL.createObjectURL(userBlob);
 
@@ -463,7 +527,9 @@ function unwrapResultShape(shape: unknown): unknown {
 // matches the editor even if a render is still pending/debounced.
 async function evalDefaultShapes(code: string): Promise<unknown[]> {
   if (!brepjsBlobUrl) throw new Error('Worker not initialized');
-  const rewritten = rewriteBrepjsImports(stripTypeScript(code), brepjsBlobUrl);
+  const stripped = stripTypeScript(code);
+  await ensureImportsLoaded(stripped);
+  const rewritten = rewriteImports(stripped);
   const userBlob = new Blob([rewritten], { type: 'application/javascript' });
   const userBlobUrl = URL.createObjectURL(userBlob);
   // Export has no console channel — silence user logs during the re-eval so they
