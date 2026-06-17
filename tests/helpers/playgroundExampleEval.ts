@@ -29,9 +29,15 @@ const BodyFunction = Object.getPrototypeOf(function () {}).constructor as new (
 ) => (...args: unknown[]) => unknown;
 
 const PLAYGROUND_COLOR_TAG = '__brepjsPlaygroundColor';
+const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
 
 interface ColoredShape {
   [PLAYGROUND_COLOR_TAG]: string;
+  shape: unknown;
+}
+
+interface PresentWrapper {
+  [PLAYGROUND_PRESENT_TAG]: Record<string, unknown>;
   shape: unknown;
 }
 
@@ -39,11 +45,20 @@ function isColoredShape(v: unknown): v is ColoredShape {
   return typeof v === 'object' && v !== null && PLAYGROUND_COLOR_TAG in v;
 }
 
-// Playground-local helper (not part of published brepjs): tags a shape with a
-// CSS color the eval pipeline lifts onto the mesh. Mirrors the worker's shim.
+function isPresentWrapper(v: unknown): v is PresentWrapper {
+  return typeof v === 'object' && v !== null && PLAYGROUND_PRESENT_TAG in v;
+}
+
+// Playground-local helpers (not part of published brepjs), mirroring the worker's
+// shim: `color` tags a shape with a CSS color; `present` attaches downloadable
+// artifacts (dxf/ifc). Both are stripped back to the shape before meshing.
 const playgroundModule = {
   color: (shape: unknown, value: unknown): ColoredShape => ({
     [PLAYGROUND_COLOR_TAG]: String(value),
+    shape,
+  }),
+  present: (shape: unknown, artifacts: unknown): PresentWrapper => ({
+    [PLAYGROUND_PRESENT_TAG]: (artifacts ?? {}) as Record<string, unknown>,
     shape,
   }),
 };
@@ -89,7 +104,10 @@ function unwrapResultShape(shape: unknown): unknown {
 export function runExample(code: string): unknown[] {
   const body = transpileExample(code);
   const fn = new BodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', body);
-  const exported = fn(brepjs, playgroundModule, sheetmetal, bim);
+  // A present() wrapper carries downloadable artifacts alongside the shown
+  // shape; mesh the shape, ignore the artifacts here.
+  const raw = fn(brepjs, playgroundModule, sheetmetal, bim);
+  const exported = isPresentWrapper(raw) ? raw.shape : raw;
   if (exported === null || exported === undefined) return [];
   return Array.isArray(exported) ? exported : [exported];
 }

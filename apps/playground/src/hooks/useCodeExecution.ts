@@ -29,6 +29,7 @@ export function useCodeExecution() {
   // impatient double-click) is ignored so we don't fire two downloads.
   const latestStlIdRef = useRef<string>('');
   const latestStepIdRef = useRef<string>('');
+  const latestDxfIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
@@ -49,6 +50,7 @@ export function useCodeExecution() {
     // stale geometry under the error banner (and the seeded hero mesh is
     // dropped on the user's first real run).
     store.setMeshes([]);
+    store.setAvailableArtifacts([]);
     postMessageRef.current({ type: 'eval', id, code });
     return id;
   }, []);
@@ -70,6 +72,7 @@ export function useCodeExecution() {
           const ranCode = codeByIdRef.current.get(msg.id) ?? store.code;
           codeByIdRef.current.delete(msg.id);
           store.setMeshes(msg.meshes);
+          store.setAvailableArtifacts(msg.artifacts ?? []);
           store.setConsoleOutput(msg.console);
           store.setTimeMs(msg.timeMs);
           store.setIsRunning(false);
@@ -106,6 +109,10 @@ export function useCodeExecution() {
         case 'export-step-result':
           if (msg.id !== latestStepIdRef.current) return;
           downloadBlob(msg.step, 'model.step', 'application/step');
+          break;
+        case 'export-dxf-result':
+          if (msg.id !== latestDxfIdRef.current) return;
+          downloadBlob(msg.dxf, 'flat-pattern.dxf', 'image/vnd.dxf');
           break;
         case 'export-error':
           store.setError(msg.error);
@@ -200,6 +207,16 @@ export function useCodeExecution() {
     [engineStatus, postMessage]
   );
 
+  const exportDXF = useCallback(
+    (code: string) => {
+      if (engineStatus !== 'ready') return;
+      const id = `dxf-${++evalCounter}`;
+      latestDxfIdRef.current = id;
+      postMessage({ type: 'export-dxf', id, code });
+    },
+    [engineStatus, postMessage]
+  );
+
   const debouncedRun = useCallback(
     (code: string) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -216,5 +233,5 @@ export function useCodeExecution() {
     };
   }, []);
 
-  return { runCode, exportSTL, exportSTEP, debouncedRun };
+  return { runCode, exportSTL, exportSTEP, exportDXF, debouncedRun };
 }

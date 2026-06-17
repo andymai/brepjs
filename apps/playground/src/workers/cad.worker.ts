@@ -35,6 +35,7 @@ interface CachedEval {
   meshes: MeshTransfer[];
   console: string[];
   timeMs: number;
+  artifacts: string[];
 }
 
 const codeCache = new Map<string, CachedEval>();
@@ -64,6 +65,30 @@ interface ColoredShape {
 }
 function isColoredShape(v: unknown): v is ColoredShape {
   return typeof v === 'object' && v !== null && PLAYGROUND_COLOR_TAG in v;
+}
+
+// `present(shape, { dxf, ifc })` tags the default export with downloadable
+// artifacts the example computed (a sheet-metal DXF, a BIM IFC buffer). The
+// eval pipeline strips the wrapper down to `shape` for meshing and surfaces the
+// artifact keys so the toolbar can offer the matching downloads.
+const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
+interface PresentArtifacts {
+  dxf?: string;
+  ifc?: Uint8Array;
+}
+interface PresentWrapper {
+  [PLAYGROUND_PRESENT_TAG]: PresentArtifacts;
+  shape: unknown;
+}
+function isPresentWrapper(v: unknown): v is PresentWrapper {
+  return typeof v === 'object' && v !== null && PLAYGROUND_PRESENT_TAG in v;
+}
+// Split a default export into its shown shape and any attached artifacts.
+function unwrapPresent(exported: unknown): { shape: unknown; artifacts: PresentArtifacts } {
+  if (isPresentWrapper(exported)) {
+    return { shape: exported.shape, artifacts: exported[PLAYGROUND_PRESENT_TAG] ?? {} };
+  }
+  return { shape: exported, artifacts: {} };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten module
@@ -142,14 +167,15 @@ function buildWrapperUrl(
   includeColor: boolean
 ): string {
   const names = Object.keys(mod)
-    .filter((k) => k !== 'default' && k !== 'color')
+    .filter((k) => k !== 'default' && k !== 'color' && k !== 'present')
     .map(asSafeIdentifier)
     .filter((n): n is string => n !== null);
   const lines = names.map((n) => `export const ${n} = m[${JSON.stringify(n)}];`);
-  const colorHelper = includeColor
-    ? `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`
+  const helpers = includeColor
+    ? `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });\n` +
+      `export const present = (shape, artifacts) => ({ ${JSON.stringify(PLAYGROUND_PRESENT_TAG)}: (artifacts || {}), shape });`
     : '';
-  const body = `const m = self[${JSON.stringify(globalKey)}];\n${lines.join('\n')}\n${colorHelper}\n`;
+  const body = `const m = self[${JSON.stringify(globalKey)}];\n${lines.join('\n')}\n${helpers}\n`;
   const blob = new Blob([body], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
 }
@@ -285,6 +311,7 @@ async function handleEval(id: string, code: string) {
         meshes,
         console: [...cached.console],
         timeMs: cached.timeMs,
+        artifacts: [...cached.artifacts],
       },
       transferablesFor(meshes)
     );
@@ -338,7 +365,11 @@ async function handleEval(id: string, code: string) {
       return;
     }
 
-    const exported = userModule.default;
+    // Peel off a present() wrapper first: its shape is meshed, its artifact
+    // keys (dxf/ifc) ride along on eval-result so the toolbar can offer them.
+    const { shape: presented, artifacts } = unwrapPresent(userModule.default);
+    const artifactKeys = Object.keys(artifacts);
+    const exported = presented;
     if (exported == null) {
       post({
         type: 'eval-result',
@@ -346,6 +377,7 @@ async function handleEval(id: string, code: string) {
         meshes: [],
         console: consoleOutput,
         timeMs: performance.now() - startTime,
+        artifacts: artifactKeys,
       });
       return;
     }
@@ -427,10 +459,11 @@ async function handleEval(id: string, code: string) {
       meshes: meshes.map(cloneMeshTransfer),
       console: [...consoleOutput],
       timeMs,
+      artifacts: artifactKeys,
     });
 
     post(
-      { type: 'eval-result', id, meshes, console: consoleOutput, timeMs },
+      { type: 'eval-result', id, meshes, console: consoleOutput, timeMs, artifacts: artifactKeys },
       transferablesFor(meshes)
     );
   } catch (e) {
@@ -521,11 +554,11 @@ function unwrapResultShape(shape: unknown): unknown {
   return shape;
 }
 
-// Evaluate user code to its default-exported shapes (color wrapper stripped),
-// the same way handleEval does. Export re-evaluates the exact code being
-// exported rather than reusing the last rendered shape, so the file always
-// matches the editor even if a render is still pending/debounced.
-async function evalDefaultShapes(code: string): Promise<unknown[]> {
+// Import + run the user code and return its raw default export (present()
+// wrapper intact). Export paths re-evaluate the exact code being exported rather
+// than reusing the last rendered shape, so the file always matches the editor
+// even if a render is still pending/debounced.
+async function evalRawDefault(code: string): Promise<unknown> {
   if (!brepjsBlobUrl) throw new Error('Worker not initialized');
   const stripped = stripTypeScript(code);
   await ensureImportsLoaded(stripped);
@@ -541,15 +574,25 @@ async function evalDefaultShapes(code: string): Promise<unknown[]> {
   console.warn = () => {};
   try {
     const userModule = (await import(/* @vite-ignore */ userBlobUrl)) as { default?: unknown };
-    const exported = userModule.default;
-    if (exported == null) return [];
-    const wrapped = Array.isArray(exported) ? exported : [exported];
-    return wrapped.map((item) => (isColoredShape(item) ? item.shape : item));
+    return userModule.default;
   } finally {
     console.log = origLog;
     console.warn = origWarn;
     URL.revokeObjectURL(userBlobUrl);
   }
+}
+
+// The default export's shown shapes, present() and color wrappers stripped.
+async function evalDefaultShapes(code: string): Promise<unknown[]> {
+  const { shape: exported } = unwrapPresent(await evalRawDefault(code));
+  if (exported == null) return [];
+  const wrapped = Array.isArray(exported) ? exported : [exported];
+  return wrapped.map((item) => (isColoredShape(item) ? item.shape : item));
+}
+
+// The downloadable artifacts (dxf/ifc) attached to the default export, if any.
+async function evalArtifacts(code: string): Promise<PresentArtifacts> {
+  return unwrapPresent(await evalRawDefault(code)).artifacts;
 }
 
 // Reduce the default export to a single shape for IO: a multi-body model
@@ -614,6 +657,27 @@ async function handleExportSTEP(id: string, code: string) {
   }
 }
 
+// Return the DXF an example attached via present(shape, { dxf }). Unlike STL/
+// STEP this is a domain artifact the example computed (e.g. a sheet-metal flat
+// pattern), not something derivable from the meshed shape — so it rides on the
+// present() wrapper rather than being re-derived here.
+async function handleExportDXF(id: string, code: string) {
+  try {
+    const { dxf } = await evalArtifacts(code);
+    if (typeof dxf !== 'string' || dxf.length === 0) {
+      post({
+        type: 'export-error',
+        id,
+        error: 'This model has no DXF to export — attach one with present(shape, { dxf }).',
+      });
+      return;
+    }
+    post({ type: 'export-dxf-result', id, dxf });
+  } catch (e) {
+    post({ type: 'export-error', id, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 addEventListener('message', (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   switch (msg.type) {
@@ -635,6 +699,9 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       break;
     case 'export-step':
       void handleExportSTEP(msg.id, msg.code);
+      break;
+    case 'export-dxf':
+      void handleExportDXF(msg.id, msg.code);
       break;
   }
 });

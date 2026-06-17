@@ -7,6 +7,7 @@ interface ToolbarProps {
   onRun: () => void;
   onExportSTL: () => void;
   onExportSTEP: () => void;
+  onExportDXF: () => void;
   onShare: () => void;
   onOpenCommandPalette: () => void;
   onOpenHelp: () => void;
@@ -21,6 +22,7 @@ export default function Toolbar({
   onRun,
   onExportSTL,
   onExportSTEP,
+  onExportDXF,
   onShare,
   onOpenCommandPalette,
   onOpenHelp,
@@ -31,6 +33,9 @@ export default function Toolbar({
   const engineReady = useEngineStore((s) => s.status === 'ready');
   const selectionCount = usePlaygroundStore((s) => s.selections.length);
   const clearSelections = usePlaygroundStore((s) => s.clearSelections);
+  // DXF is a domain artifact only some models produce (sheet-metal flat
+  // patterns); show the button only when the current model exposes one.
+  const canExportDXF = usePlaygroundStore((s) => s.availableArtifacts.includes('dxf'));
 
   return (
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
@@ -105,6 +110,16 @@ export default function Toolbar({
             >
               STEP
             </button>
+            {canExportDXF && (
+              <button
+                onClick={onExportDXF}
+                disabled={!engineReady || isRunning}
+                title="Export the flat-pattern DXF"
+                className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+              >
+                DXF
+              </button>
+            )}
             <div className="mx-1 h-4 w-px bg-border-subtle" />
           </>
         )}

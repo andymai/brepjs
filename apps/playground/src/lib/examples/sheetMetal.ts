@@ -10,8 +10,9 @@ export const SHEET_METAL_EXAMPLES: readonly Example[] = [
     id: 'sheet-metal-bracket',
     label: 'Mitered L-Bracket',
     description:
-      'A folded sheet-metal L-bracket: a base plate with two 90° flanges off adjacent edges, their shared corner auto-mitered so it folds from a single blank.',
-    code: `import { author, miterCorner } from 'brepjs-sheetmetal';
+      'A folded sheet-metal L-bracket with two mitered flanges, unfolded to a flat pattern. Use the DXF button in the toolbar to download the fabrication-ready flat pattern.',
+    code: `import { author, miterCorner, unfold, toDXF } from 'brepjs-sheetmetal';
+import { present } from 'brepjs/playground';
 
 // A folded sheet-metal L-bracket. Two 90° flanges come off adjacent edges of a
 // base plate; the shared corner is auto-mitered with a small gap so the whole
@@ -35,7 +36,14 @@ if (!mitered.ok) throw mitered.error;
 const solid = mitered.value.solid;
 if (!solid) throw new Error('bracket produced no solid');
 
-export default solid;
+// Unfold to a flat pattern and export it as a fabrication-ready DXF — attached
+// via present() so the toolbar's DXF button downloads it.
+const unfolded = unfold(mitered.value);
+if (!unfolded.ok) throw unfolded.error;
+const dxf = toDXF(unfolded.value.pattern);
+if (!dxf.ok) throw dxf.error;
+
+export default present(solid, { dxf: dxf.value });
 `,
   },
   {

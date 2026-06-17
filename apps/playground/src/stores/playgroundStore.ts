@@ -25,6 +25,9 @@ interface PlaygroundState {
   consoleOutput: string[];
   timeMs: number | null;
   isRunning: boolean;
+  // Downloadable artifact kinds the current model exposes via present() (e.g.
+  // 'dxf'), used to show the matching toolbar download buttons.
+  availableArtifacts: string[];
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
@@ -39,6 +42,7 @@ interface PlaygroundState {
 
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
+  setAvailableArtifacts: (artifacts: string[]) => void;
   setError: (error: string | null, line?: number | null) => void;
   setConsoleOutput: (output: string[]) => void;
   setTimeMs: (ms: number) => void;
@@ -71,6 +75,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   consoleOutput: [],
   timeMs: null,
   isRunning: false,
+  availableArtifacts: [],
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
   isEditorCollapsed: false,
@@ -92,6 +97,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       hoverEntity: null,
       contextMenu: null,
     }),
+  setAvailableArtifacts: (availableArtifacts) => set({ availableArtifacts }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -118,6 +124,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   clearResults: () =>
     set({
       meshes: [],
+      availableArtifacts: [],
       error: null,
       errorLine: null,
       consoleOutput: [],

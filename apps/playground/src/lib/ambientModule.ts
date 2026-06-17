@@ -46,9 +46,30 @@ export function buildBrepjsModuleDts(
   sheetmetalAmbient: string,
   bimAmbient: string
 ): string {
-  return buildModuleDts([
-    { moduleIds: ['brepjs', 'brepjs/quick'], ambient: brepjsAmbient },
-    { moduleIds: ['brepjs-sheetmetal'], ambient: sheetmetalAmbient },
-    { moduleIds: ['brepjs-bim'], ambient: bimAmbient },
-  ]);
+  return (
+    buildModuleDts([
+      { moduleIds: ['brepjs', 'brepjs/quick'], ambient: brepjsAmbient },
+      { moduleIds: ['brepjs-sheetmetal'], ambient: sheetmetalAmbient },
+      { moduleIds: ['brepjs-bim'], ambient: bimAmbient },
+    ]) + PLAYGROUND_MODULE_DTS
+  );
 }
+
+// Hand-written declarations for the playground-only `brepjs/playground` helpers
+// the worker injects at runtime (not part of any published package). Both return
+// the shape type so `export default color(...)` / `present(...)` stays typed as
+// the shape; the worker strips the wrapper before meshing.
+const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
+  /** Tag a shape with a CSS color the viewer applies to its mesh. */
+  export function color<T>(shape: T, value: string): T;
+  /** Downloadable artifacts an example attaches to its default export. */
+  export interface PresentArtifacts {
+    /** A DXF document (e.g. a sheet-metal flat pattern) offered for download. */
+    dxf?: string;
+    /** An IFC-SPF byte buffer offered for download. */
+    ifc?: Uint8Array;
+  }
+  /** Attach downloadable artifacts to the shown shape; enables the matching toolbar download. */
+  export function present<T>(shape: T, artifacts: PresentArtifacts): T;
+}
+`;
