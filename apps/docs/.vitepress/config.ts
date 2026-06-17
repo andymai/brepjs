@@ -292,7 +292,10 @@ export default withMermaid(
         },
         {
           text: 'Compare',
-          items: [{ text: 'brepjs vs Replicad', link: '/compare/brepjs-vs-replicad' }],
+          items: [
+            { text: 'brepjs vs Replicad', link: '/compare/brepjs-vs-replicad' },
+            { text: 'brepjs vs OpenSCAD', link: '/compare/brepjs-vs-openscad' },
+          ],
         },
         {
           text: 'Extending brepjs',

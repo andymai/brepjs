@@ -190,6 +190,7 @@ For trivial models, the conversion takes minutes. For complex assemblies, expect
 
 ## Next steps
 
+- [brepjs vs OpenSCAD](../compare/brepjs-vs-openscad): the feature-by-feature comparison
 - [Your First Solid](../getting-started/first-solid): the canonical brepjs flow
 - [Boolean Operations](../tasks/booleans): the workhorse, with multi-shape variants
 - [Three.js](../integration/threejs): if you want a web viewer for your parts
