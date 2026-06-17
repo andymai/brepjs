@@ -219,23 +219,43 @@ async function handleInit() {
 const SHEETMETAL_IMPORT_RE = /\bfrom\s+(['"])brepjs-sheetmetal\1/;
 const BIM_IMPORT_RE = /\bfrom\s+(['"])brepjs-bim\1/;
 
+// In-flight load locks. handleEval is async, so the worker can pick up a second
+// eval at any `await`; without a lock two concurrent evals importing the same
+// satellite would both pass the `if (blobUrl) return` guard and import twice,
+// leaking the first wrapper Blob URL. Holding the in-flight promise makes the
+// load run exactly once; it's cleared on failure so a later eval can retry.
+let sheetmetalLoading: Promise<void> | null = null;
+let bimLoading: Promise<void> | null = null;
+
 // Satellite domain packages are loaded lazily the first time an eval imports
 // them, not at worker init — brepjs-bim alone pulls in the multi-megabyte
 // web-ifc dependency, which most sessions never touch. Each shares the same
 // `brepjs` kernel singleton (Vite dedupes the `brepjs` module) and re-exports
 // through its own global-keyed wrapper URL, cached after the first load.
-async function ensureSheetmetalLoaded(): Promise<void> {
-  if (sheetmetalBlobUrl) return;
-  sheetmetal = await import('brepjs-sheetmetal');
-  (self as unknown as { __brepjs_sheetmetal: unknown }).__brepjs_sheetmetal = sheetmetal;
-  sheetmetalBlobUrl = buildWrapperUrl(sheetmetal, '__brepjs_sheetmetal', false);
+function ensureSheetmetalLoaded(): Promise<void> {
+  if (sheetmetalBlobUrl) return Promise.resolve();
+  sheetmetalLoading ??= (async () => {
+    sheetmetal = await import('brepjs-sheetmetal');
+    (self as unknown as { __brepjs_sheetmetal: unknown }).__brepjs_sheetmetal = sheetmetal;
+    sheetmetalBlobUrl = buildWrapperUrl(sheetmetal, '__brepjs_sheetmetal', false);
+  })().catch((e: unknown) => {
+    sheetmetalLoading = null;
+    throw e;
+  });
+  return sheetmetalLoading;
 }
 
-async function ensureBimLoaded(): Promise<void> {
-  if (bimBlobUrl) return;
-  bim = await import('brepjs-bim');
-  (self as unknown as { __brepjs_bim: unknown }).__brepjs_bim = bim;
-  bimBlobUrl = buildWrapperUrl(bim, '__brepjs_bim', false);
+function ensureBimLoaded(): Promise<void> {
+  if (bimBlobUrl) return Promise.resolve();
+  bimLoading ??= (async () => {
+    bim = await import('brepjs-bim');
+    (self as unknown as { __brepjs_bim: unknown }).__brepjs_bim = bim;
+    bimBlobUrl = buildWrapperUrl(bim, '__brepjs_bim', false);
+  })().catch((e: unknown) => {
+    bimLoading = null;
+    throw e;
+  });
+  return bimLoading;
 }
 
 // Load whichever satellite packages the about-to-run code imports, so their
