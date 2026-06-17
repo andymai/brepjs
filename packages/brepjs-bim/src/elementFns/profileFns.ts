@@ -34,8 +34,12 @@ export function profileCrossSectionArea(profile: Profile): number {
 // Arc points (minor sweep) rounding the corner at `v` between its neighbours
 // `prev`/`next` with radius `r`. Returns the tessellated fillet from the tangent
 // point on the incoming edge to the tangent point on the outgoing edge; the
-// caller drops the original sharp vertex. Used for I-beam root fillets.
+// caller drops the original sharp vertex. Used for I-beam root fillets (always
+// 90°). A near-collinear (≈0) or near-straight (≈π) corner has no well-defined
+// finite fillet — `tan(α/2)`/`sin(α/2)` or the bisector would blow up to NaN —
+// so those degenerate cases fall back to the original sharp vertex.
 const FILLET_SEGMENTS = 8;
+const FILLET_MIN_ANGLE = 1e-3; // radians; below this (or above π − this) skip the fillet
 function filletArc(
   prev: readonly [number, number],
   v: readonly [number, number],
@@ -47,6 +51,9 @@ function filletArc(
   const a: [number, number] = [(prev[0] - v[0]) / aLen, (prev[1] - v[1]) / aLen];
   const b: [number, number] = [(next[0] - v[0]) / bLen, (next[1] - v[1]) / bLen];
   const alpha = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1])));
+  if (alpha < FILLET_MIN_ANGLE || alpha > Math.PI - FILLET_MIN_ANGLE) {
+    return [[v[0], v[1]]];
+  }
   const setback = r / Math.tan(alpha / 2); // distance from v to each tangent point
   const center = r / Math.sin(alpha / 2); // distance from v to the arc centre
   const bisLen = Math.hypot(a[0] + b[0], a[1] + b[1]);
