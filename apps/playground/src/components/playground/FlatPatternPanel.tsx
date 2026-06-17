@@ -37,8 +37,11 @@ export default function FlatPatternPanel() {
     const span = Math.max(w, h);
     // SVG y grows downward; flip so the developed pattern reads upright.
     const fy = (y: number) => minY + maxY - y;
-    const points = (poly: Pt2[]) => poly.map(([x, y]) => `${x},${fy(y)}`).join(' ');
-    return { minX, minY, w, h, span, fy, points };
+    // Outline + holes as one even-odd path so cutouts are genuinely transparent
+    // (the 3D viewer shows through), not opaque polygons stacked on the outline.
+    const subpath = (poly: Pt2[]) => `M${poly.map(([x, y]) => `${x} ${fy(y)}`).join(' L ')} Z`;
+    const fillPath = [flat.outline, ...flat.holes].map(subpath).join(' ');
+    return { minX, minY, w, h, span, fy, fillPath };
   }, [flat]);
 
   if (!flat || !view) return null;
@@ -47,7 +50,7 @@ export default function FlatPatternPanel() {
   const dash = `${view.span * 0.022} ${view.span * 0.014}`;
 
   return (
-    <div className="absolute right-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-md border border-border-subtle bg-surface/95 shadow-lg backdrop-blur">
+    <div className="absolute bottom-3 left-3 z-10 flex w-64 flex-col overflow-hidden rounded-md border border-border-subtle bg-surface/95 shadow-lg backdrop-blur">
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between border-b border-border-subtle px-3 py-1.5 text-left text-xs font-medium text-gray-300 hover:text-white"
@@ -67,21 +70,13 @@ export default function FlatPatternPanel() {
             className="w-full"
             style={{ maxHeight: 220 }}
           >
-            <polygon
-              points={view.points(flat.outline)}
+            <path
+              d={view.fillPath}
+              fillRule="evenodd"
               fill="#3a3a44"
               stroke="#9ca3af"
               strokeWidth={stroke}
             />
-            {flat.holes.map((hole, i) => (
-              <polygon
-                key={i}
-                points={view.points(hole)}
-                fill="#0f0f14"
-                stroke="#9ca3af"
-                strokeWidth={stroke}
-              />
-            ))}
             {flat.bendLines.map((bend, i) => (
               <line
                 key={i}
