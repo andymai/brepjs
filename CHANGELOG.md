@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.88.1](https://github.com/andymai/brepjs/compare/brepjs-v18.88.0...brepjs-v18.88.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **bim:** spec-conformant IFC GlobalIds + FILE_NAME header (independently validated) ([#1463](https://github.com/andymai/brepjs/issues/1463)) ([cb4301a](https://github.com/andymai/brepjs/commit/cb4301acca129c109067a23c5d738b0d621e042d))
+
 ## [18.88.0](https://github.com/andymai/brepjs/compare/brepjs-v18.87.0...brepjs-v18.88.0) (2026-06-17)
 
 
