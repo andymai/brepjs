@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.90.0](https://github.com/andymai/brepjs/compare/brepjs-v18.89.0...brepjs-v18.90.0) (2026-06-17)
+
+
+### Features
+
+* **playground:** full-screen example gallery with hover turntables ([#1470](https://github.com/andymai/brepjs/issues/1470)) ([06ce0de](https://github.com/andymai/brepjs/commit/06ce0dea8b6a97b0ea181756db961088ae48c7d0))
+
 ## [18.89.0](https://github.com/andymai/brepjs/compare/brepjs-v18.88.1...brepjs-v18.89.0) (2026-06-17)
 
 
