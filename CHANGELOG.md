@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.87.0](https://github.com/andymai/brepjs/compare/brepjs-v18.86.0...brepjs-v18.87.0) (2026-06-17)
+
+
+### Features
+
+* **bim:** BIM model tree panel + architectural-scale camera ([#1459](https://github.com/andymai/brepjs/issues/1459)) ([df4f51e](https://github.com/andymai/brepjs/commit/df4f51e109b421fd646164e762c82e09448a919f))
+
 ## [18.86.0](https://github.com/andymai/brepjs/compare/brepjs-v18.85.0...brepjs-v18.86.0) (2026-06-17)
 
 
