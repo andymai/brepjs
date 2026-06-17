@@ -142,12 +142,20 @@ export class IfcWriter {
 
     // author / organization are LIST [1:?], so at least one entry is required —
     // an empty list still violates the cardinality. Fall back to '' when unset.
-    head = head.replace(
-      FILE_NAME_RE,
-      (_m, prefix: string, systems: string) =>
-        `${prefix}(${stepString(this.#author)}),(${stepString(this.#organization)}),` +
-        `${systems},${stepString('')})`
-    );
+    // Warn (don't silently no-op) if a future web-ifc default breaks the pattern,
+    // mirroring the MVD patch below — a missed match means non-conformant output.
+    if (FILE_NAME_RE.test(head)) {
+      head = head.replace(
+        FILE_NAME_RE,
+        (_m, prefix: string, systems: string) =>
+          `${prefix}(${stepString(this.#author)}),(${stepString(this.#organization)}),` +
+          `${systems},${stepString('')})`
+      );
+    } else {
+      console.warn(
+        'IfcWriter: FILE_NAME null-field pattern not found; author/organization/authorization left unpatched'
+      );
+    }
 
     if (this.#mvdViewDefinition.length > 0) {
       if (VIEW_DEFINITION_RE.test(head)) {

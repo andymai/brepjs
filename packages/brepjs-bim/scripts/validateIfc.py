@@ -69,12 +69,20 @@ def main(argv: list[str]) -> int:
     if not storeys:
         errors.append("no IfcBuildingStorey found")
 
-    # 4. GlobalId validity + uniqueness.
+    # 4. GlobalId validity + uniqueness. A valid IFC GlobalId is 22 chars from
+    # the IFC base64 alphabet whose leading char is 0-3 (the 4-bit front slack of
+    # the 128-bit GUID) — length alone would miss the off-by-four-bits bug.
+    ifc_chars = set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$")
     seen: dict[str, str] = {}
     bad = 0
     for root in model.by_type("IfcRoot"):
         gid = root.GlobalId
-        if not isinstance(gid, str) or len(gid) != 22:
+        if (
+            not isinstance(gid, str)
+            or len(gid) != 22
+            or gid[0] not in "0123"
+            or not all(c in ifc_chars for c in gid)
+        ):
             bad += 1
             errors.append(f"{root.is_a()} #{root.id()} has invalid GlobalId {gid!r}")
         elif gid in seen:
