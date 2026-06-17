@@ -1,6 +1,6 @@
 {
   "name": "brepjs-sheetmetal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sheet-metal CAD domain for brepjs — flange authoring, auto-miter, fold/unfold flat patterns",
   "keywords": [
     "sheet-metal",
@@ -12,6 +12,11 @@
   ],
   "author": "Andy Aragon",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-sheetmetal"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
