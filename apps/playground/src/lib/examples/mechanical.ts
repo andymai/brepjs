@@ -2816,12 +2816,15 @@ function conduitClip(
   // Round the two mouth lips so they read as smooth snap catches, not sharp
   // corners. The X-running edges sitting one bore-radius from the ring axis are
   // the lip tips at the slot walls.
-  const lipEdges = edgeFinder().inDirection('X').atDistance(rBore, [0, 0, ringZ]).findAll(cRing);
   const ringSolid = unwrap(validSolid(cRing));
+  const lipEdges = edgeFinder()
+    .inDirection('X')
+    .atDistance(rBore, [0, 0, ringZ])
+    .findAll(ringSolid);
   const ring =
     lipEdges.length > 0
       ? unwrap(fillet(ringSolid, lipEdges, Math.min(wall * 0.6, mouthW / 4)))
-      : cRing;
+      : ringSolid;
 
   // Mounting foot: a flat slab under the ring, its top rising 1 mm into the ring
   // wall so the two weld into one solid (a face-tangent foot would float off).
