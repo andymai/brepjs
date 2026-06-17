@@ -206,6 +206,7 @@ A search-and-replace (replacing Replicad's class methods with brepjs's functiona
 
 ## Next steps
 
+- [brepjs vs Replicad](../compare/brepjs-vs-replicad): the feature-by-feature comparison
 - [Cheat Sheet](../getting-started/cheat-sheet): the brepjs API at a glance
 - [Result and Errors](../concepts/result): handling fallible operations
 - [Types That Prove Geometry Is Valid](../concepts/types): the differentiator

@@ -291,6 +291,10 @@ export default withMermaid(
           ],
         },
         {
+          text: 'Compare',
+          items: [{ text: 'brepjs vs Replicad', link: '/compare/brepjs-vs-replicad' }],
+        },
+        {
           text: 'Extending brepjs',
           items: [
             { text: 'Architecture & Layers', link: '/extending/architecture' },

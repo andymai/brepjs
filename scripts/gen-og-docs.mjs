@@ -35,6 +35,7 @@ const SECTIONS = {
   agent: 'Authoring with AI',
   integration: 'Integration',
   migration: 'Migration',
+  compare: 'Compare',
   extending: 'Extending brepjs',
   reference: 'Reference',
 };
