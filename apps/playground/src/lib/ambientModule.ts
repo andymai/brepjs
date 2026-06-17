@@ -66,8 +66,8 @@ const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
   export interface PresentArtifacts {
     /** A DXF document (e.g. a sheet-metal flat pattern) offered for download. */
     dxf?: string;
-    /** An IFC-SPF byte buffer offered for download. */
-    ifc?: Uint8Array;
+    /** IFC-SPF bytes offered for download, or a thunk producing them (deferred to the download click). */
+    ifc?: Uint8Array | (() => Uint8Array | Promise<Uint8Array>);
     /** A serializable BIM tree summary (BimModel.toTreeSummary()) for the domain panel. */
     bimTree?: unknown;
     /** Serializable flat-pattern polylines (flatPatternToPolylines()) for the 2D overlay. */

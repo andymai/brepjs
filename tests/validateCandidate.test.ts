@@ -21,9 +21,9 @@ beforeAll(async () => {
 }, 60000);
 
 describe.skipIf(!candidateFile)('candidate playground example', () => {
-  it('evaluates and meshes', () => {
+  it('evaluates and meshes', async () => {
     const code = readFileSync(candidateFile as string, 'utf-8');
-    const { shapeCount, totalVertices } = evalAndMeshExample(code);
+    const { shapeCount, totalVertices } = await evalAndMeshExample(code);
     expect(shapeCount).toBeGreaterThan(0);
     expect(totalVertices).toBeGreaterThan(0);
   });

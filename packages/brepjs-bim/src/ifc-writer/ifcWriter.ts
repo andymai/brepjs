@@ -15,6 +15,24 @@ export const DEFAULT_MVD_VIEW_DEFINITION = 'ReferenceView_v1.2';
 // FILE_DESCRIPTION; we rewrite whatever is between the brackets with our MVD.
 const VIEW_DEFINITION_RE = /ViewDefinition \[[^\]]*\]/;
 
+// Optional override for how web-ifc locates its `.wasm`. When brepjs-bim is
+// bundled into a Web Worker, web-ifc's default (fetch the wasm relative to its
+// own bundled module URL) can't find the file; a host sets this to point Init at
+// a served copy. Undefined falls back to web-ifc's own resolution (works in Node
+// and when web-ifc is loaded from a real package URL).
+let wasmLocateFile: ((path: string, prefix: string) => string) | undefined;
+
+/**
+ * Override how web-ifc finds its `.wasm` file, used by {@link IfcWriter.create}
+ * (and therefore `toIfc`/`fromIfc`). Required when brepjs-bim is bundled into a
+ * worker that serves the wasm itself; not needed in Node.
+ */
+export function setIfcWasmLocateFile(
+  locate: ((path: string, prefix: string) => string) | undefined
+): void {
+  wasmLocateFile = locate;
+}
+
 export class IfcWriter {
   readonly #api: IfcAPI;
   readonly #modelId: number;
@@ -37,7 +55,11 @@ export class IfcWriter {
   ): Promise<Result<IfcWriter, BimError>> {
     try {
       const api = new IfcAPI();
-      await api.Init();
+      // Force single-threaded: in a cross-origin-isolated context web-ifc would
+      // load its pthread build and spawn a sub-Worker, which fails when brepjs-bim
+      // is itself bundled inside a Web Worker. Multithreading only speeds up
+      // parsing/geometry anyway, not the one-shot serialization the writer does.
+      await api.Init(wasmLocateFile, true);
       const modelId = api.CreateModel({ schema: fileSchemaString(ifcSchema) });
       return ok(new IfcWriter(api, modelId, mvdViewDefinition));
     } catch (e) {

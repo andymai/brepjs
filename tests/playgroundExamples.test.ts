@@ -25,8 +25,8 @@ describe('playground examples', () => {
   });
 
   for (const example of EXAMPLES) {
-    it(`evaluates and meshes: ${example.id}`, () => {
-      const { shapeCount, totalVertices } = evalAndMeshExample(example.code);
+    it(`evaluates and meshes: ${example.id}`, async () => {
+      const { shapeCount, totalVertices } = await evalAndMeshExample(example.code);
       expect(shapeCount).toBeGreaterThan(0);
       expect(totalVertices).toBeGreaterThan(0);
     });

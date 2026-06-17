@@ -97,6 +97,7 @@ export default function PlaygroundPage() {
         onExportSTL={actions.handleExportSTL}
         onExportSTEP={actions.handleExportSTEP}
         onExportDXF={actions.handleExportDXF}
+        onExportIFC={actions.handleExportIFC}
         onShare={actions.handleShare}
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}

@@ -8,6 +8,7 @@ interface ToolbarProps {
   onExportSTL: () => void;
   onExportSTEP: () => void;
   onExportDXF: () => void;
+  onExportIFC: () => void;
   onShare: () => void;
   onOpenCommandPalette: () => void;
   onOpenHelp: () => void;
@@ -23,6 +24,7 @@ export default function Toolbar({
   onExportSTL,
   onExportSTEP,
   onExportDXF,
+  onExportIFC,
   onShare,
   onOpenCommandPalette,
   onOpenHelp,
@@ -33,9 +35,10 @@ export default function Toolbar({
   const engineReady = useEngineStore((s) => s.status === 'ready');
   const selectionCount = usePlaygroundStore((s) => s.selections.length);
   const clearSelections = usePlaygroundStore((s) => s.clearSelections);
-  // DXF is a domain artifact only some models produce (sheet-metal flat
-  // patterns); show the button only when the current model exposes one.
+  // DXF / IFC are domain artifacts only some models produce (sheet-metal flat
+  // patterns / BIM models); show each button only when the model exposes it.
   const canExportDXF = usePlaygroundStore((s) => s.availableArtifacts.includes('dxf'));
+  const canExportIFC = usePlaygroundStore((s) => s.availableArtifacts.includes('ifc'));
 
   return (
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
@@ -118,6 +121,16 @@ export default function Toolbar({
                 className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
               >
                 DXF
+              </button>
+            )}
+            {canExportIFC && (
+              <button
+                onClick={onExportIFC}
+                disabled={!engineReady || isRunning}
+                title="Export the BIM model as IFC"
+                className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+              >
+                IFC
               </button>
             )}
             <div className="mx-1 h-4 w-px bg-border-subtle" />

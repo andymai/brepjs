@@ -2,6 +2,7 @@ export { BimModel } from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
+export { setIfcWasmLocateFile } from './ifc-writer/ifcWriter.js';
 export { fromIfc } from './import/fromIfc.js';
 export { disposeImportedModel } from './import/importedModel.js';
 export type { FromIfcOptions } from './import/fromIfc.js';

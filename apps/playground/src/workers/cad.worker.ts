@@ -79,7 +79,9 @@ const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
 const DOWNLOAD_ARTIFACT_KEYS = ['dxf', 'ifc'] as const;
 interface PresentArtifacts {
   dxf?: string;
-  ifc?: Uint8Array;
+  // IFC bytes, or a thunk that produces them — toIfc re-inits web-ifc on every
+  // call, so examples pass a thunk to defer that work to the download click.
+  ifc?: Uint8Array | (() => Uint8Array | Promise<Uint8Array>);
   // A serializable BimModel.toTreeSummary() result, rendered in the domain panel.
   bimTree?: unknown;
   // A serializable flatPatternToPolylines() result, rendered as a 2D overlay.
@@ -259,6 +261,11 @@ function ensureBimLoaded(): Promise<void> {
   bimLoading ??= (async () => {
     bim = await import('brepjs-bim');
     (self as unknown as { __brepjs_bim: unknown }).__brepjs_bim = bim;
+    // Point web-ifc (used by toIfc) at the wasm the playground serves: its
+    // default "fetch relative to my module" can't find the file in the bundled
+    // worker. Mirrors loadOcctWasmModule's locateFile.
+    const webIfcWasm = `${import.meta.env.BASE_URL}wasm/web-ifc.wasm`;
+    bim.setIfcWasmLocateFile((path: string) => (path.endsWith('.wasm') ? webIfcWasm : path));
     bimBlobUrl = buildWrapperUrl(bim, '__brepjs_bim', false);
   })().catch((e: unknown) => {
     bimLoading = null;
@@ -724,6 +731,39 @@ async function handleExportDXF(id: string, code: string) {
   }
 }
 
+// Return the IFC an example attached via present(shape, { ifc }). `ifc` is a
+// thunk (so toIfc, which re-inits web-ifc, runs only on the download click); it
+// resolves to the IFC-SPF bytes. Computed here on demand, not on every render.
+async function handleExportIFC(id: string, code: string) {
+  try {
+    const { ifc } = await evalArtifacts(code);
+    let bytes: Uint8Array | undefined;
+    if (typeof ifc === 'function') {
+      const produced = await ifc();
+      if (produced instanceof Uint8Array) bytes = produced;
+    } else if (ifc instanceof Uint8Array) {
+      bytes = ifc;
+    }
+    if (!bytes || bytes.length === 0) {
+      post({
+        type: 'export-error',
+        id,
+        error: 'This model has no IFC to export — attach one with present(shape, { ifc }).',
+      });
+      return;
+    }
+    // web-ifc returns a Uint8Array over a plain ArrayBuffer; copy out just its
+    // bytes as a transferable ArrayBuffer.
+    const buf = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer;
+    post({ type: 'export-ifc-result', id, ifc: buf }, [buf]);
+  } catch (e) {
+    post({ type: 'export-error', id, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 addEventListener('message', (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   switch (msg.type) {
@@ -748,6 +788,9 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       break;
     case 'export-dxf':
       void handleExportDXF(msg.id, msg.code);
+      break;
+    case 'export-ifc':
+      void handleExportIFC(msg.id, msg.code);
       break;
   }
 });

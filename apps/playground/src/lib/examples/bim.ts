@@ -45,12 +45,13 @@ export default model.getBeams()[0].geometry;
     label: 'Wall with Openings',
     description:
       'A parametric wall hosting a door and a window, placed in a project → site → building → storey spatial structure. The BIM panel shows the live IFC model tree.',
-    code: `import { BimModel } from 'brepjs-bim';
+    code: `import { BimModel, toIfc } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
 
 // A parametric wall hosting a door and a window, organised into a real IFC
 // spatial structure (project → site → building → storey). Each opening is a void
-// boolean-cut into the wall solid. The BIM panel (top-right) shows the model tree.
+// boolean-cut into the wall solid. The BIM panel (top-right) shows the model
+// tree; the IFC button exports the model as a real IFC-SPF file.
 const model = new BimModel();
 model.init({ name: 'Wall example' });
 
@@ -97,8 +98,20 @@ const win = model.addWindow({
 if (!win.ok) throw win.error;
 model.placeIn(win.value, storeyId);
 
-// Show the wall solid (with its openings) and attach the IFC tree for the panel.
-export default present(model.getWalls()[0].geometry, { bimTree: model.toTreeSummary() });
+// Show the wall solid (with its openings), the IFC tree for the panel, and an
+// IFC export. The ifc thunk runs only when you click the IFC button — serializing
+// IFC re-initializes web-ifc, so it's deferred from every render.
+export default present(model.getWalls()[0].geometry, {
+  bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const result = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!result.ok) throw result.error;
+    return result.value;
+  },
+});
 `,
   },
   {

@@ -32,6 +32,7 @@ export function useCodeExecution() {
   const latestStlIdRef = useRef<string>('');
   const latestStepIdRef = useRef<string>('');
   const latestDxfIdRef = useRef<string>('');
+  const latestIfcIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
@@ -121,6 +122,10 @@ export function useCodeExecution() {
         case 'export-dxf-result':
           if (msg.id !== latestDxfIdRef.current) return;
           downloadBlob(msg.dxf, 'flat-pattern.dxf', 'image/vnd.dxf');
+          break;
+        case 'export-ifc-result':
+          if (msg.id !== latestIfcIdRef.current) return;
+          downloadBlob(msg.ifc, 'model.ifc', 'application/x-step');
           break;
         case 'export-error':
           store.setError(msg.error);
@@ -225,6 +230,16 @@ export function useCodeExecution() {
     [engineStatus, postMessage]
   );
 
+  const exportIFC = useCallback(
+    (code: string) => {
+      if (engineStatus !== 'ready') return;
+      const id = `ifc-${++evalCounter}`;
+      latestIfcIdRef.current = id;
+      postMessage({ type: 'export-ifc', id, code });
+    },
+    [engineStatus, postMessage]
+  );
+
   const debouncedRun = useCallback(
     (code: string) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -241,5 +256,5 @@ export function useCodeExecution() {
     };
   }, []);
 
-  return { runCode, exportSTL, exportSTEP, exportDXF, debouncedRun };
+  return { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, debouncedRun };
 }

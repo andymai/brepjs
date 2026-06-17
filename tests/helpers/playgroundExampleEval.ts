@@ -22,11 +22,12 @@ import * as brepjs from '@/index.js';
 import * as sheetmetal from 'brepjs-sheetmetal';
 import * as bim from 'brepjs-bim';
 
-// Mirrors scripts/extract-doc-tests.ts — a synchronous body suffices since the
-// playground eval surface (and `mesh`) is synchronous.
-const BodyFunction = Object.getPrototypeOf(function () {}).constructor as new (
+// An AsyncFunction so example bodies can use top-level await — e.g. a BIM
+// example that does `await toIfc(...)` before its default export. The worker
+// runs examples via `await import(blobUrl)`, which supports the same.
+const AsyncBodyFunction = Object.getPrototypeOf(async function () {}).constructor as new (
   ...args: string[]
-) => (...args: unknown[]) => unknown;
+) => (...args: unknown[]) => Promise<unknown>;
 
 const PLAYGROUND_COLOR_TAG = '__brepjsPlaygroundColor';
 const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
@@ -101,12 +102,12 @@ function unwrapResultShape(shape: unknown): unknown {
 }
 
 /** Run an example's source and return the exported shape(s) as an array. */
-export function runExample(code: string): unknown[] {
+export async function runExample(code: string): Promise<unknown[]> {
   const body = transpileExample(code);
-  const fn = new BodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', body);
+  const fn = new AsyncBodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', body);
   // A present() wrapper carries downloadable artifacts alongside the shown
   // shape; mesh the shape, ignore the artifacts here.
-  const raw = fn(brepjs, playgroundModule, sheetmetal, bim);
+  const raw = await fn(brepjs, playgroundModule, sheetmetal, bim);
   const exported = isPresentWrapper(raw) ? raw.shape : raw;
   if (exported === null || exported === undefined) return [];
   return Array.isArray(exported) ? exported : [exported];
@@ -123,8 +124,8 @@ export interface MeshCheck {
  * nothing or if any shape produces an empty mesh — the two failure modes a
  * blank playground viewer would show.
  */
-export function evalAndMeshExample(code: string): MeshCheck {
-  const shapes = runExample(code);
+export async function evalAndMeshExample(code: string): Promise<MeshCheck> {
+  const shapes = await runExample(code);
   if (shapes.length === 0) {
     throw new Error('example exported no shapes (default export was null/undefined)');
   }

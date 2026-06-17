@@ -19,6 +19,7 @@ export interface PlaygroundActions {
   handleExportSTL: () => void;
   handleExportSTEP: () => void;
   handleExportDXF: () => void;
+  handleExportIFC: () => void;
   handleCopyCode: () => void;
   handleResetToDefault: () => void;
   handleResetViewer: () => void;
@@ -29,7 +30,7 @@ export interface PlaygroundActions {
 export function usePlaygroundActions(): PlaygroundActions {
   const code = usePlaygroundStore((s) => s.code);
   const addToast = useToastStore((s) => s.addToast);
-  const { runCode, exportSTL, exportSTEP, exportDXF, debouncedRun } = useCodeExecution();
+  const { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
   const handleScreenshot = useScreenshot();
   const resetViewerDefaults = useViewerStore((s) => s.resetViewerDefaults);
@@ -72,6 +73,13 @@ export function usePlaygroundActions(): PlaygroundActions {
     track('playground_export', { format: 'dxf' });
     captureEvent('playground_export', { format: 'dxf' });
   }, [exportDXF, code, addToast]);
+
+  const handleExportIFC = useCallback(() => {
+    exportIFC(code);
+    addToast('Exporting IFC...');
+    track('playground_export', { format: 'ifc' });
+    captureEvent('playground_export', { format: 'ifc' });
+  }, [exportIFC, code, addToast]);
 
   const handleShare = useCallback(() => {
     void copyShareUrl(code);
@@ -120,6 +128,7 @@ export function usePlaygroundActions(): PlaygroundActions {
       handleExportSTL,
       handleExportSTEP,
       handleExportDXF,
+      handleExportIFC,
       handleCopyCode,
       handleResetToDefault,
       handleResetViewer,
@@ -133,6 +142,7 @@ export function usePlaygroundActions(): PlaygroundActions {
       handleExportSTL,
       handleExportSTEP,
       handleExportDXF,
+      handleExportIFC,
       handleCopyCode,
       handleResetToDefault,
       handleResetViewer,

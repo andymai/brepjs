@@ -17,19 +17,28 @@ const brepjsPkgPath = fileURLToPath(new URL('../../package.json', import.meta.ur
 const brepjsPkg = JSON.parse(readFileSync(brepjsPkgPath, 'utf8')) as PackageJson;
 const BREPJS_VERSION = brepjsPkg.version ?? '0.0.0-dev';
 
-const WASM_FILES = ['occt-wasm.js', 'occt-wasm.wasm'];
-
 const BASE = '/playground/';
 
-function occtWasm(): Plugin {
-  // Resolve the occt-wasm dist dir (the package's exports map exposes
-  // ./dist/occt-wasm.js and ./dist/occt-wasm.wasm).
-  const wasmDir = dirname(reactRequire.resolve('occt-wasm/dist/occt-wasm.js'));
+// WASM assets the playground worker fetches from `${base}wasm/<file>`: the OCCT
+// kernel (occt-wasm) and web-ifc (used by brepjs-bim's IFC export). Each maps a
+// served filename to its source in node_modules.
+function wasmFileMap(): Record<string, string> {
+  const occtDir = dirname(reactRequire.resolve('occt-wasm/dist/occt-wasm.js'));
+  // web-ifc's main entry sits alongside its .wasm files in the package root.
+  const webIfcDir = dirname(reactRequire.resolve('web-ifc'));
+  return {
+    'occt-wasm.js': resolve(occtDir, 'occt-wasm.js'),
+    'occt-wasm.wasm': resolve(occtDir, 'occt-wasm.wasm'),
+    'web-ifc.wasm': resolve(webIfcDir, 'web-ifc.wasm'),
+  };
+}
 
+function wasmAssets(): Plugin {
+  const files = wasmFileMap();
   let base = BASE;
 
   return {
-    name: 'occt-wasm',
+    name: 'wasm-assets',
     configResolved(config) {
       base = config.base;
     },
@@ -38,9 +47,8 @@ function occtWasm(): Plugin {
       const wasmPath = `${base.replace(/\/$/, '')}/wasm`;
       server.middlewares.use(wasmPath, (req, res, next) => {
         const file = req.url?.slice(1) ?? '';
-        if (!WASM_FILES.includes(file)) return next();
-        const filePath = resolve(wasmDir, file);
-        if (!existsSync(filePath)) return next();
+        const filePath = files[file];
+        if (filePath === undefined || !existsSync(filePath)) return next();
 
         // Set COEP/COOP headers required for SharedArrayBuffer
         res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
@@ -56,8 +64,8 @@ function occtWasm(): Plugin {
       if (!dir) return;
       const out = resolve(dir, 'wasm');
       mkdirSync(out, { recursive: true });
-      for (const f of WASM_FILES) {
-        copyFileSync(resolve(wasmDir, f), resolve(out, f));
+      for (const [file, src] of Object.entries(files)) {
+        if (existsSync(src)) copyFileSync(src, resolve(out, file));
       }
     },
   };
@@ -70,7 +78,7 @@ export default defineConfig({
     // brepjs version in bug reports without needing devtools.
     __BREPJS_VERSION__: JSON.stringify(BREPJS_VERSION),
   },
-  plugins: [react(), tailwindcss(), occtWasm()],
+  plugins: [react(), tailwindcss(), wasmAssets()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
@@ -78,7 +86,9 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['occt-wasm'],
+    // Both are Emscripten glue: running them through esbuild's dep optimizer
+    // corrupts the WASM import object, so serve them as native ESM instead.
+    exclude: ['occt-wasm', 'web-ifc'],
   },
   resolve: {
     // Pin react/react-dom to a single physical copy so vite 8 + rolldown's stricter
