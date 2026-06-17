@@ -598,6 +598,17 @@ describe('BimModel.toTreeSummary', () => {
     if (!wall.ok) throw new Error(wall.error.message);
     model.placeIn(wall.value, storeyId);
 
+    const door = model.addDoor({
+      wallLocalId: wall.value,
+      width: 800,
+      height: 2000,
+      offsetAlongWall: 200,
+      offsetFromFloor: 0,
+      materialName: 'Wood',
+    });
+    if (!door.ok) throw new Error(door.error.message);
+    model.placeIn(door.value, storeyId);
+
     const tree = model.toTreeSummary();
     expect(tree.root?.category).toBe('PROJECT');
     expect(tree.root?.label).toBe('Project');
@@ -609,5 +620,9 @@ describe('BimModel.toTreeSummary', () => {
     expect(storey?.category).toBe('STOREY');
     expect(storey?.label).toContain('3000');
     expect(storey?.children.map((c) => c.category)).toContain('WALL');
+    expect(storey?.children.map((c) => c.category)).toContain('DOOR');
+    // Count is the tree nodes (project, site, building, storey, wall, door = 6),
+    // NOT this.#elements.size which also includes the internal door OPENING (7).
+    expect(tree.elementCount).toBe(6);
   });
 });

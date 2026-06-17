@@ -746,7 +746,13 @@ export class BimModel {
     };
 
     const root = this.#projectId !== null ? build(this.#projectId) : null;
-    return { root, elementCount: this.#elements.size };
+    // Count the nodes actually in the tree, not this.#elements.size — the latter
+    // includes internal OPENING elements (created by addDoor/addWindow) that have
+    // no CONTAINED_IN relationship and never appear in the tree, so the header
+    // count would not match what the panel renders.
+    const countNodes = (node: BimTreeNode): number =>
+      1 + node.children.reduce((sum, c) => sum + countNodes(c), 0);
+    return { root, elementCount: root ? countNodes(root) : 0 };
   }
 
   getWalls(): BimElement<'WALL'>[] {

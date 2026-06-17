@@ -18,6 +18,6 @@ export interface BimTreeNode {
 export interface BimTreeSummary {
   /** The project node and its nested spatial structure + contained elements. */
   readonly root: BimTreeNode | null;
-  /** Total number of elements in the model. */
+  /** Number of nodes in the tree (the project and everything reachable from it). */
   readonly elementCount: number;
 }

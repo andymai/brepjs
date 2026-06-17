@@ -51,6 +51,7 @@ export default function BimTreePanel() {
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between border-b border-border-subtle px-3 py-1.5 text-left text-xs font-medium text-gray-300 hover:text-white"
         title={collapsed ? 'Expand BIM model tree' : 'Collapse BIM model tree'}
+        aria-expanded={!collapsed}
       >
         <span>BIM Model</span>
         <span className="text-[10px] text-gray-500">
