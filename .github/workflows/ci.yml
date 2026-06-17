@@ -187,6 +187,24 @@ jobs:
       - run: npm run test --workspace=brepjs-sheetmetal
       - run: npm run build --workspace=brepjs-sheetmetal
 
+  packages-bim:
+    # Experimental BIM (IFC4) domain satellite. Build root brepjs first so the
+    # package typecheck/build resolve `brepjs` via package exports → dist/; tests
+    # resolve `brepjs` to source through the vitest alias and need the OCCT WASM
+    # the setup composite restores (web-ifc is a devDep, installed by npm ci).
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - run: npm run typecheck --workspace=brepjs-bim
+      - run: npm run lint --workspace=brepjs-bim
+      - run: npm run test --workspace=brepjs-bim
+      - run: npm run build --workspace=brepjs-bim
+
   voxel-wasm-rust:
     # The brepjs-voxel-wasm crate's correctness — the BVH/FWN/narrow-band/sparse
     # parity gates (incl. the seam-free tiled-vs-dense contour proof) — lives in
@@ -272,7 +290,7 @@ jobs:
       - uses: andresz1/size-limit-action@94bc357df29c36c8f8d50ea497c3e225c3c95d1d # v1.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          build_script: "build"
+          build_script: 'build'
 
   benchmark:
     needs: changes
@@ -402,7 +420,23 @@ jobs:
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-verify, packages-sheetmetal, voxel-wasm-rust, test, size, benchmark]
+    needs:
+      [
+        changes,
+        typecheck,
+        lint,
+        quality,
+        build,
+        playground-build,
+        packages-viewer,
+        packages-verify,
+        packages-sheetmetal,
+        packages-bim,
+        voxel-wasm-rust,
+        test,
+        size,
+        benchmark,
+      ]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
