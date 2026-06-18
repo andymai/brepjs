@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.92.0](https://github.com/andymai/brepjs/compare/brepjs-v18.91.0...brepjs-v18.92.0) (2026-06-18)
+
+
+### Features
+
+* **brepjs-bim:** real roof shapes, posted railings, placed-geometry accessor ([#1476](https://github.com/andymai/brepjs/issues/1476)) ([d99af0b](https://github.com/andymai/brepjs/commit/d99af0b3a02cc27e8ee1a90e187fb78190cccdfd))
+
 ## [18.91.0](https://github.com/andymai/brepjs/compare/brepjs-v18.90.0...brepjs-v18.91.0) (2026-06-18)
 
 
