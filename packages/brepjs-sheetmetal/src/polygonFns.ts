@@ -78,6 +78,11 @@ export interface FlatPatternPolylines {
  * Read a wire as an OPEN polyline: every edge start plus the final edge's end,
  * so the last vertex of a non-closing path (a form cut) isn't dropped the way
  * {@link wireToPolygon} drops it for closed loops.
+ *
+ * Arc edges are linearised to their endpoints — the same assumption
+ * {@link wireToPolygon} and the DXF writer make. Form cuts are straight-sided
+ * today (louver/lance slits), so this is exact; a future curved form-feature cut
+ * would render as straight chords in the overlay until arc tessellation is added.
  */
 function wireToOpenPolyline(wire: Wire): Pt2[] {
   const edges = getEdges(wire);
