@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.2.0...brepjs-sheetmetal-v0.3.0) (2026-06-18)
+
+
+### Features
+
+* **playground:** example quality pass — fasteners, geometry, overlays, deep-links, UX ([#1475](https://github.com/andymai/brepjs/issues/1475)) ([9edeac6](https://github.com/andymai/brepjs/commit/9edeac65b585475ccc1143682be6e95e02b94f8f))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.1.0...brepjs-sheetmetal-v0.2.0) (2026-06-17)
 
 ### Features

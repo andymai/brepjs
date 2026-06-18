@@ -1,6 +1,6 @@
 {
   "name": "brepjs-sheetmetal",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Sheet-metal CAD domain for brepjs — flange authoring, auto-miter, fold/unfold flat patterns",
   "keywords": [
     "sheet-metal",
