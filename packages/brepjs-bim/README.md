@@ -21,10 +21,17 @@ useful downstream (psets, classification, materials, quantities), with import, e
 validation. Geometry is produced by brepjs (OCCT); each element carries a `ValidSolid` (or, for
 curtain walls, a panel/mullion grid). Element geometry is **unplaced template geometry** in local
 coordinates — placement (`origin` / `axisX` / `axisZ`) is applied by the IFC layer via
-`IfcLocalPlacement`, not baked into the brepjs solid.
+`IfcLocalPlacement`, not baked into the brepjs solid. Use `placedSolids(element)` to read an
+element's geometry already transformed to its world placement as fresh, caller-owned solids
+(stairs return one solid per flight) — handy for display so the on-screen scene matches the IFC
+export.
 
 - Units default to mm; IFC export emits SI metres.
 - Stable identity: deterministic IFC GUIDs (`deriveIfcGuid`) and local id counters.
+- Shaped geometry: roofs build real shed/gable/hip/dome solids when `pitch` is set (flat slab
+  otherwise); railings build posts + top/bottom rails with `infill: 'POSTED'` (a single swept panel
+  otherwise). Shaped roofs and posted railings serialize to IFC as tessellated bodies; flat roofs
+  and panel railings keep their parametric `IfcExtrudedAreaSolid`.
 
 ## Status
 
