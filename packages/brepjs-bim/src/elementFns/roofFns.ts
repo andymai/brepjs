@@ -1,4 +1,4 @@
-import { polygon, extrude, sphere, box, cut, convexHull, isValidSolid } from 'brepjs';
+import { polygon, extrude, convexHull, isValidSolid } from 'brepjs';
 import type { ValidSolid, Result, Solid, Vec3 } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { RoofSpec } from '../specs/roofSpec.js';
@@ -103,16 +103,28 @@ function hipRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
-// Dome: a hemisphere of radius min(L,W)/2 centred on the footprint, lower half cut.
+// Dome: a faceted hemisphere — the convex hull of points sampled on a hemisphere
+// of radius min(L,W)/2 centred on the footprint. A boolean sphere∩box produces a
+// solid whose spherical surface HANGS the occt-wasm mesher, so the dome is built
+// from planar facets (like the hip) to mesh reliably.
 function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
   const { length, width } = spec;
   const r = Math.min(length, width) / 2;
-  using ball = sphere(r, { at: [length / 2, width / 2, 0] });
-  using cutter = box(length * 3, width * 3, r, {
-    at: [length / 2, width / 2, -r / 2],
-    centered: true,
-  });
-  const solid = cut(ball, cutter);
+  const cx = length / 2;
+  const cy = width / 2;
+  const segments = 24;
+  const rings = [0, 0.4, 0.7, 0.9];
+  const pts: Vec3[] = [];
+  for (const h of rings) {
+    const z = r * h;
+    const ringR = r * Math.sqrt(1 - h * h);
+    for (let i = 0; i < segments; i++) {
+      const a = (2 * Math.PI * i) / segments;
+      pts.push([cx + ringR * Math.cos(a), cy + ringR * Math.sin(a), z]);
+    }
+  }
+  pts.push([cx, cy, r]);
+  const solid = convexHull(pts);
   if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_DOME_FAILED', 'Failed to build dome roof'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }

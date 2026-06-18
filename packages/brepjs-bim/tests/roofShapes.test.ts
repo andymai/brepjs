@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
-import { measureVolume, isValidSolid, unwrap } from 'brepjs';
+import { measureVolume, isValidSolid, unwrap, mesh } from 'brepjs';
 import { parseRoofSpec } from '../src/specs/roofSpec.js';
 import { roofToSolid } from '../src/elementFns/roofFns.js';
 
@@ -62,6 +62,9 @@ describe('roofToSolid shapes', () => {
       expect(vShaped).toBeGreaterThan(0);
       // Shaping must change the volume; identical volume means it stayed a flat box.
       expect(Math.abs(vShaped - vFlat)).toBeGreaterThan(1);
+      // Must mesh (the playground/IFC tessellate it) — guards against a curved
+      // surface that hangs the occt-wasm mesher (e.g. a sphere-based dome).
+      expect(mesh(shapedSolid).triangles.length).toBeGreaterThan(0);
     });
   }
 });
