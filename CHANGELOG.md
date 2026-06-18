@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.93.1](https://github.com/andymai/brepjs/compare/brepjs-v18.93.0...brepjs-v18.93.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **docs:** harden font provisioning (Greptile follow-ups) ([#1489](https://github.com/andymai/brepjs/issues/1489)) ([e9b7443](https://github.com/andymai/brepjs/commit/e9b744388f5e1cc577871c3a20816a5c0fa20a2c))
+
 ## [18.93.0](https://github.com/andymai/brepjs/compare/brepjs-v18.92.0...brepjs-v18.93.0) (2026-06-18)
 
 
