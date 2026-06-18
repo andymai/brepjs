@@ -139,7 +139,7 @@ export default function ExampleGallery({
         {/* Category rail — vertical on desktop, horizontal scroll strip on mobile */}
         <nav
           aria-label="Categories"
-          className="flex shrink-0 gap-1 overflow-x-auto border-b border-border-subtle p-2 sm:w-52 sm:flex-col sm:overflow-x-visible sm:overflow-y-auto sm:border-b-0 sm:border-r sm:p-3"
+          className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto border-b border-border-subtle p-2 sm:w-52 sm:flex-col sm:overflow-x-visible sm:overflow-y-auto sm:border-b-0 sm:border-r sm:p-3"
         >
           <div className="hidden px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:block">
             Examples
@@ -219,23 +219,25 @@ export default function ExampleGallery({
               )}
             </div>
           ) : (
-            <div
-              ref={gridRef}
-              className="grid flex-1 grid-cols-2 content-start gap-3 overflow-y-auto p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 2xl:grid-cols-5"
-            >
-              {shown.map((ex) => (
-                <ExampleCard
-                  key={ex.id}
-                  example={ex}
-                  focused={ex.id === focusedId}
-                  failedTurntables={failedTurntables}
-                  onSelect={() => {
-                    onSelect(ex);
-                    onClose();
-                  }}
-                  onFocus={() => onFocusExample?.(ex.id)}
-                />
-              ))}
+            // Scroll container kept separate from the grid: a flex-1 element
+            // that is itself the grid gives the rows a definite height, which
+            // stops aspect-ratio thumbnails from resolving and collapses them.
+            <div ref={gridRef} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+              <div className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 2xl:grid-cols-5">
+                {shown.map((ex) => (
+                  <ExampleCard
+                    key={ex.id}
+                    example={ex}
+                    focused={ex.id === focusedId}
+                    failedTurntables={failedTurntables}
+                    onSelect={() => {
+                      onSelect(ex);
+                      onClose();
+                    }}
+                    onFocus={() => onFocusExample?.(ex.id)}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -271,18 +273,23 @@ function ExampleCard({ example, focused, failedTurntables, onSelect, onFocus }: 
         setHovered(false);
       }}
       title={example.label}
-      className={`group flex flex-col overflow-hidden rounded-lg border-2 bg-surface-overlay/40 text-left transition-colors focus:outline-none ${
+      className={`group block overflow-hidden rounded-lg border-2 bg-surface-overlay/40 text-left transition-colors focus:outline-none ${
         focused
           ? 'border-teal-primary'
           : 'border-transparent hover:border-teal-primary/50 focus-visible:border-teal-primary'
       }`}
     >
-      <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-black/30">
+      {/* The square thumbnail img sizes the box in normal flow (replaced elements
+          carry intrinsic dimensions), so the card and grid row grow to fit; the
+          hover turntable overlays it absolutely. An aspect-square box with a
+          percentage width can't resolve its height during grid track sizing and
+          collapses the thumbnail to a sliver. */}
+      <div className="relative overflow-hidden bg-black/30">
         <img
           src={`${THUMB_BASE}${example.id}.webp`}
           alt=""
           loading="lazy"
-          className="h-full w-full object-contain"
+          className="block aspect-square w-full object-contain"
         />
         {/* Lazy turntable: only mounted (and thus fetched) on hover/focus. */}
         {hovered && !failed && (
