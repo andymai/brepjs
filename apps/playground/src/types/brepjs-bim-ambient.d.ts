@@ -164,6 +164,22 @@ interface BimTreeSummary {
     readonly elementCount: number;
 }
 
+/**
+ * Returns each element's geometry transformed to its world placement, as fresh
+ * caller-owned solids, wrapped in a `Result` (Layer-2 code prefers `Result` over
+ * throwing). **Dispose the returned solids** (e.g. via `using` / `[Symbol.dispose]`)
+ * when you own their lifetime — they are independent of the model
+ * (`BimModel[Symbol.dispose]` frees only the stored, unplaced `.geometry`). On any
+ * failure the solids already built for this call are disposed before the error is
+ * returned, so no partial array is leaked.
+ *
+ * Stairs carry no element solid (`.geometry` is null), so flight solids are built
+ * from `spec.flights` and placed per flight. Curtain walls return placed panels +
+ * mullions. Elements with no solid geometry (doors/windows/ramps/groups/spatial)
+ * return an empty array.
+ */
+declare function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError>;
+
 declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
 
 interface ValidatedIfcResult {
@@ -663,6 +679,13 @@ interface RoofSpec {
     readonly thermalTransmittance?: number | undefined;
     readonly status?: string | undefined;
     /**
+     * Optional roof slope in degrees (0 < pitch < 90). Its PRESENCE opts the roof
+     * into shaped geometry built for `predefinedType` (shed/gable/hip/dome); when
+     * absent the roof is a flat slab regardless of predefinedType (backward-
+     * compatible). Ignored geometrically for DOME_ROOF (a hemisphere).
+     */
+    readonly pitch?: number | undefined;
+    /**
      * When present, the roof is associated via a layered IfcMaterialLayerSet built
      * from these layers instead of the bare `materialName` IfcMaterial.
      */
@@ -839,6 +862,12 @@ interface RailingSpec {
     readonly axisZ: [number, number, number];
     readonly predefinedType?: RailingPredefinedType | undefined;
     readonly materialName: string;
+    /**
+     * Geometric infill style. 'PANEL' (default) is a single swept panel; 'POSTED'
+     * is vertical posts plus top & bottom rails. Orthogonal to `predefinedType`
+     * (which is the IFC usage role, not a geometry descriptor).
+     */
+    readonly infill?: 'PANEL' | 'POSTED' | undefined;
     readonly isExternal?: boolean | undefined;
     readonly fireRating?: string | undefined;
     readonly status?: string | undefined;
