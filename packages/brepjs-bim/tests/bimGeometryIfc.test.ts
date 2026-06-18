@@ -55,3 +55,34 @@ describe('roof IFC representation', () => {
     expect(txt).toContain('IFCEXTRUDEDAREASOLID');
   });
 });
+
+const railBase = {
+  length: 2000,
+  height: 1000,
+  thickness: 50,
+  origin: [0, 0, 0] as [number, number, number],
+  axisX: [1, 0, 0] as [number, number, number],
+  axisZ: [0, 0, 1] as [number, number, number],
+  predefinedType: 'GUARDRAIL' as const,
+  materialName: 'Steel',
+};
+
+describe('railing IFC representation', () => {
+  beforeAll(async () => {
+    await initOCCT();
+  }, 30000);
+
+  it('POSTED railing serializes as a Tessellation', async () => {
+    const txt = await ifcText((m) => {
+      unwrap(m.addRailing({ ...railBase, infill: 'POSTED' }));
+    });
+    expect(txt).toContain('IFCTRIANGULATEDFACESET');
+  });
+
+  it('PANEL railing keeps the parametric SweptSolid', async () => {
+    const txt = await ifcText((m) => {
+      unwrap(m.addRailing({ ...railBase }));
+    });
+    expect(txt).toContain('IFCEXTRUDEDAREASOLID');
+  });
+});

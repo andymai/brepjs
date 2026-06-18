@@ -1,15 +1,22 @@
 import * as WebIFC from 'web-ifc';
+import type { ValidSolid } from 'brepjs';
 import type { IfcWriter } from './ifcWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
+import { writeTessellation } from './tessellationWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 import type { RailingSpec, RailingPredefinedType } from '../specs/railingSpec.js';
 
 export interface RailingRepresentationIds {
   localPlacementId: number;
   productDefinitionShapeId: number;
-  /** Express ID of the body representation item (the extrusion), for styling. */
-  bodyItemId: number;
+  /**
+   * Express ID of the body representation item (the swept extrusion) for surface
+   * styling, or null for a tessellated POSTED railing (no single styleable item).
+   */
+  bodyItemId: number | null;
+  /** True when tessellation fell back to a degenerate brep. */
+  usedFallback: boolean;
 }
 
 // Emits IfcLocalPlacement + IfcRectangleProfileDef + IfcExtrudedAreaSolid +
@@ -20,6 +27,7 @@ export interface RailingRepresentationIds {
 export function writeRailingGeometry(
   w: IfcWriter,
   spec: RailingSpec,
+  solid: ValidSolid,
   geomSubContextId: number,
   parentPlacementId: number | null
 ): RailingRepresentationIds {
@@ -37,6 +45,18 @@ export function writeRailingGeometry(
     PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
     RelativePlacement: w.ref(placement3DId),
   });
+
+  // POSTED railing → tessellate the real posts+rails solid. There is no single
+  // styleable body item, so bodyItemId is null (POSTED carries no surface style).
+  if (spec.infill === 'POSTED') {
+    const tess = writeTessellation(w, solid, geomSubContextId, localPlacementId);
+    return {
+      localPlacementId,
+      productDefinitionShapeId: tess.productDefinitionShapeId,
+      bodyItemId: null,
+      usedFallback: tess.usedFallback,
+    };
+  }
 
   const thicknessM = toIfcLengthM(spec.thickness);
   const heightM = toIfcLengthM(spec.height);
@@ -102,7 +122,7 @@ export function writeRailingGeometry(
     Representations: [w.ref(shapeRepId)],
   });
 
-  return { localPlacementId, productDefinitionShapeId, bodyItemId: extrusionId };
+  return { localPlacementId, productDefinitionShapeId, bodyItemId: extrusionId, usedFallback: false };
 }
 
 export function writeRailingEntity(

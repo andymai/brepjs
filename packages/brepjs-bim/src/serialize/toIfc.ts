@@ -484,9 +484,11 @@ export async function toIfc(
   for (const [i, railing] of railings.entries()) {
     const containingId = findContainerOf(railing.localId, relationships);
     const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId, bodyItemId } = writeRailingGeometry(
-      w, railing.spec, geomSubContextId, storeyPlacementId
-    );
+    const { localPlacementId, productDefinitionShapeId, bodyItemId, usedFallback } =
+      writeRailingGeometry(w, railing.spec, railing.geometry, geomSubContextId, storeyPlacementId);
+    if (usedFallback) {
+      console.warn(`Railing ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
+    }
     const railingExpressId = writeRailingEntity(
       w, railing.guid, `Railing ${i + 1}`, railing.spec.predefinedType ?? 'NOTDEFINED',
       ownerHistoryId, localPlacementId, productDefinitionShapeId
@@ -498,7 +500,8 @@ export async function toIfc(
     if (railing.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
     }
-    applySurfaceStyle(w, model, railing.localId, bodyItemId);
+    // POSTED railings tessellate and have no single styleable body item.
+    if (bodyItemId !== null) applySurfaceStyle(w, model, railing.localId, bodyItemId);
   }
 
   for (const [i, covering] of coverings.entries()) {
