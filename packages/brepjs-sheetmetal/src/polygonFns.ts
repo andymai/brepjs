@@ -68,6 +68,30 @@ export interface FlatPatternPolylines {
   holes: Polygon[];
   /** Bend lines, each with its fold direction. */
   bendLines: FlatPatternBendLine[];
+  /** Open form-feature cut paths in the blank (e.g. louver/lance three-sided cuts). */
+  formCuts: Polygon[];
+  /** Form-feature hinge lines (the uncut fold edge a louver/lance forms up along). */
+  formHinges: { from: Pt2; to: Pt2 }[];
+}
+
+/**
+ * Read a wire as an OPEN polyline: every edge start plus the final edge's end,
+ * so the last vertex of a non-closing path (a form cut) isn't dropped the way
+ * {@link wireToPolygon} drops it for closed loops.
+ */
+function wireToOpenPolyline(wire: Wire): Pt2[] {
+  const edges = getEdges(wire);
+  if (edges.length === 0) return [];
+  const pts: Pt2[] = edges.map((edge) => {
+    const p = curveStartPoint(edge);
+    return [p[0], p[1]];
+  });
+  const lastEdge = edges[edges.length - 1];
+  if (lastEdge) {
+    const e = curveEndPoint(lastEdge);
+    pts.push([e[0], e[1]]);
+  }
+  return pts;
 }
 
 /**
@@ -94,7 +118,13 @@ export function flatPatternToPolylines(pattern: FlatPattern): FlatPatternPolylin
       direction: bend.direction,
     };
   });
-  return { outline, holes, bendLines };
+  const formCuts = pattern.formCuts.map(wireToOpenPolyline).filter((p) => p.length >= 2);
+  const formHinges = pattern.formHinges.map((hinge) => {
+    const start = curveStartPoint(hinge);
+    const end = curveEndPoint(hinge);
+    return { from: [start[0], start[1]] as Pt2, to: [end[0], end[1]] as Pt2 };
+  });
+  return { outline, holes, bendLines, formCuts, formHinges };
 }
 
 /** Signed area (CCW positive) — used to normalise orientation and reject degenerates. */

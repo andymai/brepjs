@@ -21,6 +21,8 @@ export default function FlatPatternPanel() {
       ...flat.outline,
       ...flat.holes.flat(),
       ...flat.bendLines.flatMap((b) => [b.from, b.to]),
+      ...flat.formCuts.flat(),
+      ...flat.formHinges.flatMap((h) => [h.from, h.to]),
     ];
     let minX = Infinity;
     let minY = Infinity;
@@ -85,6 +87,29 @@ export default function FlatPatternPanel() {
                 x2={bend.to[0]}
                 y2={view.fy(bend.to[1])}
                 stroke={bend.direction === 'up' ? UP_COLOR : DOWN_COLOR}
+                strokeWidth={stroke}
+                strokeDasharray={dash}
+              />
+            ))}
+            {/* Form-feature cuts (louver/lance slits): solid open polylines. */}
+            {flat.formCuts.map((cut, i) => (
+              <path
+                key={`cut-${i}`}
+                d={`M${cut.map(([x, y]) => `${x} ${view.fy(y)}`).join(' L ')}`}
+                fill="none"
+                stroke="#9ca3af"
+                strokeWidth={stroke}
+              />
+            ))}
+            {/* Form-feature hinges (the fold edge the flap forms up along): dashed. */}
+            {flat.formHinges.map((h, i) => (
+              <line
+                key={`hinge-${i}`}
+                x1={h.from[0]}
+                y1={view.fy(h.from[1])}
+                x2={h.to[0]}
+                y2={view.fy(h.to[1])}
+                stroke={UP_COLOR}
                 strokeWidth={stroke}
                 strokeDasharray={dash}
               />
