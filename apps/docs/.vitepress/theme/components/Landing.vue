@@ -499,6 +499,31 @@ onBeforeUnmount(() => observer?.disconnect());
 </template>
 
 <style scoped>
+/* Signifier (Klim, licensed) — self-hosted display face, landing only. The
+   woff2 are gitignored and provisioned at build time from Vercel Blob; see
+   apps/docs/public/fonts/README.md. Falls back to Georgia without them. */
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ============================================================
    DESIGN TOKENS — scoped to .landing so the docs theme is untouched
    ============================================================ */
@@ -533,9 +558,9 @@ onBeforeUnmount(() => observer?.disconnect());
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --maxw: 1180px;
 
-  --f-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --f-display: 'Signifier', Georgia, 'Times New Roman', serif;
   --f-body: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --f-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   position: relative;
   min-height: 100vh;
@@ -545,6 +570,7 @@ onBeforeUnmount(() => observer?.disconnect());
   font-size: 17px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   background-image:
     radial-gradient(120% 86% at 80% 4%, rgba(3, 176, 173, 0.15), transparent 58%),
     radial-gradient(80% 64% at 8% 100%, rgba(7, 96, 111, 0.16), transparent 54%),
@@ -564,8 +590,10 @@ onBeforeUnmount(() => observer?.disconnect());
 }
 .landing :where(h1, h2, h3, h4) {
   font-family: var(--f-display);
-  font-weight: 600;
-  letter-spacing: -0.018em;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  /* even the lines and keep a lone word off the last line */
+  text-wrap: balance;
 }
 .wrap {
   max-width: var(--maxw);
@@ -595,12 +623,22 @@ onBeforeUnmount(() => observer?.disconnect());
 }
 
 .eyebrow {
-  font-family: var(--f-mono);
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--teal-200);
-  margin: 0 0 14px;
+  font-family: var(--f-body);
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  color: var(--ink-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.eyebrow::before {
+  content: '';
+  width: 26px;
+  height: 1px;
+  background: var(--teal-300);
+  flex: none;
 }
 code {
   font-family: var(--f-mono);
@@ -645,8 +683,8 @@ pre code {
   align-items: center;
   gap: 10px;
   font-family: var(--f-display);
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: 500;
+  font-size: 19px;
 }
 .lnav-links {
   display: flex;
@@ -702,8 +740,8 @@ pre code {
 }
 h1 {
   font-size: clamp(2rem, 7.4vw, 3.9rem);
-  line-height: 1.06;
-  letter-spacing: -0.022em;
+  line-height: 1.08;
+  letter-spacing: -0.005em;
   margin: 16px 0 0;
   text-wrap: balance;
 }
@@ -712,6 +750,8 @@ h1 .grad {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  font-style: italic;
+  font-weight: 400;
 }
 .subhead {
   font-size: 1.2rem;
@@ -719,6 +759,7 @@ h1 .grad {
   color: var(--ink-1);
   max-width: 54ch;
   margin: 22px auto 0;
+  text-wrap: balance;
 }
 .cta-row {
   display: flex;
@@ -775,8 +816,8 @@ h1 .grad {
   justify-content: center;
   gap: 10px 22px;
   flex-wrap: wrap;
-  font-family: var(--f-mono);
-  font-size: 12.5px;
+  font-family: var(--f-body);
+  font-size: 13.5px;
   color: var(--ink-2);
 }
 .specstrip b {
@@ -802,6 +843,8 @@ h2 {
   font-size: 1.14rem;
   margin: 18px 0 0;
   max-width: 64ch;
+  /* pull stranded last-line runts back up (no orphans) */
+  text-wrap: pretty;
 }
 .sec-head.center,
 .center .lead {
@@ -1247,6 +1290,7 @@ pre.term {
   font-size: 13.5px;
   line-height: 1.6;
   max-width: 46ch;
+  text-wrap: pretty;
 }
 .foot-col h3 {
   font-family: var(--f-mono);

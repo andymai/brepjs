@@ -163,9 +163,9 @@ export default withMermaid(
         ]);
       }
 
-      // The bespoke landing page (and only it) uses Space Grotesk for display
-      // type and JetBrains Mono for code/annotations. Load them here so docs
-      // pages — which never use these faces — stay lean.
+      // The bespoke landing page (and only it) uses Signifier (self-hosted,
+      // licensed) for display type, Inter for body, and DM Mono for code. Load
+      // them here so docs pages — which never use these faces — stay lean.
       if (pageData.relativePath === 'index.md') {
         pageData.frontmatter.head.push([
           'script',
@@ -175,11 +175,25 @@ export default withMermaid(
         pageData.frontmatter.head.push(
           ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
           ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+          // Signifier is self-hosted (Klim, licensed) — preload the three styles
+          // the landing uses so the hero doesn't flash the fallback serif.
+          [
+            'link',
+            { rel: 'preload', href: '/fonts/signifier-regular.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+          ],
+          [
+            'link',
+            { rel: 'preload', href: '/fonts/signifier-medium.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+          ],
+          [
+            'link',
+            { rel: 'preload', href: '/fonts/signifier-italic.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+          ],
           [
             'link',
             {
               rel: 'stylesheet',
-              href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap',
+              href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap',
             },
           ],
           // Scroll-reveal on the landing page starts sections at opacity:0 and

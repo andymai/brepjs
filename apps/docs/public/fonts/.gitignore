@@ -1,0 +1,9 @@
+# Signifier (Klim Type Foundry, licensed) — must NEVER be committed to this
+# PUBLIC, Apache-2.0 repo. Klim Web Font Licence §3d forbids direct download /
+# third-party access to the font files; a clone-able public repo violates that,
+# and committing would also imply an Apache licence the fonts don't have.
+#
+# The deployed site serves them from /fonts/; they're provisioned at BUILD time
+# from a private source (see README). Keep local copies for dev — without them
+# the landing falls back to the Georgia serif stack, which is fine for dev/OSS.
+*.woff2

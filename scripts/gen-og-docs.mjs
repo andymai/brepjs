@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Render the docs Open Graph cards from an HTML/CSS template via headless Chrome.
-// We use a browser rather than rsvg-convert (scripts/gen-og.sh) because the
-// brand display face, Space Grotesk, isn't installed locally — Chrome fetches it
-// from Google Fonts so the type matches the landing page exactly.
+// We use a browser rather than rsvg-convert (scripts/gen-og.sh) because the brand
+// display face, Signifier (Klim, licensed), is self-hosted — we inline the local
+// woff2 as base64 so the type matches the landing page exactly. Body/mono (Inter,
+// DM Mono) load from Google Fonts.
 //
 // Produces:
 //   apps/docs/public/og.png             — the default/home card
@@ -24,6 +25,26 @@ const H = 630;
 const SCALE = 2;
 
 const logoSvg = await readFile(resolve(publicDir, 'logo.svg'), 'utf8');
+
+// Signifier is licensed + self-hosted — inline the local woff2 so headless Chrome
+// renders the brand face without Google Fonts. Requires the licensed files in
+// apps/docs/public/fonts (gitignored; see that folder's README).
+const fontFile = (f) => resolve(publicDir, 'fonts', f);
+for (const f of ['signifier-regular.woff2', 'signifier-italic.woff2', 'signifier-medium.woff2']) {
+  if (!existsSync(fontFile(f)))
+    throw new Error(
+      `Missing ${f} in apps/docs/public/fonts — license Signifier and drop the woff2 there to regenerate OG cards.`
+    );
+}
+const fontFace = async (file, weight, style) =>
+  `@font-face{font-family:'Signifier';src:url(data:font/woff2;base64,${(
+    await readFile(fontFile(file))
+  ).toString('base64')}) format('woff2');font-weight:${weight};font-style:${style};font-display:block;}`;
+const signifierCss = [
+  await fontFace('signifier-regular.woff2', 400, 'normal'),
+  await fontFace('signifier-italic.woff2', 400, 'italic'),
+  await fontFace('signifier-medium.woff2', 500, 'normal'),
+].join('\n');
 
 // Path-segment → sidebar section label (mirrors themeConfig.sidebar groups).
 const SECTIONS = {
@@ -81,8 +102,9 @@ function html({ eyebrow, headlineHtml, hSize, subhead }) {
 <meta charset="utf-8" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=block" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=block" rel="stylesheet" />
 <style>
+  ${signifierCss}
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: ${W}px; height: ${H}px; }
   .card {
@@ -100,20 +122,22 @@ function html({ eyebrow, headlineHtml, hSize, subhead }) {
   .topline { position: absolute; top: 0; left: 0; right: 0; height: 4px;
     background: linear-gradient(90deg, transparent, #03b0ad 28%, #4acecc 60%, transparent); opacity: 0.8; }
   .brand { position: absolute; top: 52px; left: 72px; display: flex; align-items: center; gap: 13px;
-    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -0.01em; }
+    font-family: 'Signifier', Georgia, serif; font-weight: 500; font-size: 31px; letter-spacing: -0.005em; }
   .brand svg { width: 36px; height: 36px; display: block; }
   .content { position: absolute; left: 72px; top: 0; bottom: 0; width: 700px;
     display: flex; flex-direction: column; justify-content: center; }
-  .eyebrow { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 16px;
-    letter-spacing: 0.2em; text-transform: uppercase; color: #7adbdd; margin-bottom: 22px; }
-  .headline { font-family: 'Space Grotesk', sans-serif; font-weight: 600;
-    font-size: ${hSize}px; line-height: 1.05; letter-spacing: -0.022em; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 22px;
+    font-family: 'Inter', sans-serif; font-weight: 500; font-size: 17px;
+    letter-spacing: 0; text-transform: none; color: #aab6bd; }
+  .eyebrow::before { content: ''; width: 28px; height: 1px; background: #4acecc; flex: none; }
+  .headline { font-family: 'Signifier', Georgia, serif; font-weight: 500;
+    font-size: ${hSize}px; line-height: 1.06; letter-spacing: -0.005em; }
   .headline .grad { background: linear-gradient(118deg, #07606f 0%, #03b0ad 36%, #4acecc 72%, #7adbdd 100%);
-    -webkit-background-clip: text; background-clip: text; color: transparent; }
+    -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; font-weight: 400; }
   .subhead { margin-top: 24px; max-width: 580px; font-size: 21px; line-height: 1.45; color: #aab6bd;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .foot { position: absolute; left: 72px; bottom: 50px; display: flex; align-items: center; gap: 14px;
-    font-family: 'JetBrains Mono', monospace; font-size: 15px; letter-spacing: 0.03em; color: #828d96; }
+    font-family: 'DM Mono', monospace; font-size: 15px; letter-spacing: 0.02em; color: #828d96; }
   .foot .dom { color: #aab6bd; }
   .geo-glow { position: absolute; right: -40px; top: 50%; width: 560px; height: 560px;
     transform: translateY(-50%); background: radial-gradient(circle at 50% 50%, rgba(3, 176, 173, 0.20), transparent 62%); }
