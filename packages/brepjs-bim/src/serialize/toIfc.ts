@@ -353,9 +353,12 @@ export async function toIfc(
   for (const [i, roof] of roofs.entries()) {
     const containingId = findContainerOf(roof.localId, relationships);
     const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeRoofGeometry(
-      w, roof.spec, geomSubContextId, storeyPlacementId
+    const { localPlacementId, productDefinitionShapeId, usedFallback } = writeRoofGeometry(
+      w, roof.spec, roof.geometry, geomSubContextId, storeyPlacementId
     );
+    if (usedFallback) {
+      console.warn(`Roof ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
+    }
     const roofExpressId = writeRoofEntity(
       w, roof.guid, `Roof ${i + 1}`, roof.spec.predefinedType,
       ownerHistoryId, localPlacementId, productDefinitionShapeId

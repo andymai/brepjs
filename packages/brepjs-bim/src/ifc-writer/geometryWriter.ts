@@ -1,7 +1,8 @@
 import * as WebIFC from 'web-ifc';
+import type { ValidSolid } from 'brepjs';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
-import { writeWallAxisRepresentation } from './tessellationWriter.js';
+import { writeWallAxisRepresentation, writeTessellation } from './tessellationWriter.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
@@ -193,15 +194,19 @@ export function writeSlabGeometry(
   return { localPlacementId, productDefinitionShapeId };
 }
 
-// Roof geometry mirrors a flat slab: a centred rectangle profile (length ×
-// width) extruded along local +Z by thickness. predefinedType carries the
-// intended roof shape to IFC consumers; the body is a flat slab regardless.
+// A flat roof (no `spec.pitch`) is a centred rectangle profile (length × width)
+// extruded along local +Z by thickness — a parametric IfcExtrudedAreaSolid. A
+// shaped roof (pitch set → shed/gable/hip/dome) cannot be a single extrusion, so
+// its body is the tessellated `solid` (IfcTriangulatedFaceSet). Either way
+// `predefinedType` records the intended shape for IFC consumers. `usedFallback`
+// is true only when tessellation failed and a degenerate brep was emitted.
 export function writeRoofGeometry(
   w: IfcWriter,
   spec: RoofSpec,
+  solid: ValidSolid,
   geomSubContextId: number,
   parentPlacementId: number | null
-): SlabRepresentationIds {
+): SlabRepresentationIds & { usedFallback: boolean } {
   const placement3DId = writeAxis2Placement3D(
     w,
     spec.origin.map(toIfcLengthM) as [number, number, number],
@@ -216,6 +221,17 @@ export function writeRoofGeometry(
     PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
     RelativePlacement: w.ref(placement3DId),
   });
+
+  // Shaped roof → tessellate the real solid (the placement is carried by the
+  // owning product, so writeTessellation ignores localPlacementId).
+  if (spec.pitch !== undefined) {
+    const tess = writeTessellation(w, solid, geomSubContextId, localPlacementId);
+    return {
+      localPlacementId,
+      productDefinitionShapeId: tess.productDefinitionShapeId,
+      usedFallback: tess.usedFallback,
+    };
+  }
 
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
@@ -280,7 +296,7 @@ export function writeRoofGeometry(
     Representations: [w.ref(shapeRepId)],
   });
 
-  return { localPlacementId, productDefinitionShapeId };
+  return { localPlacementId, productDefinitionShapeId, usedFallback: false };
 }
 
 function writeAxis2Placement2D(w: IfcWriter): number {
