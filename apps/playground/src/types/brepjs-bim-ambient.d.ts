@@ -164,6 +164,19 @@ interface BimTreeSummary {
     readonly elementCount: number;
 }
 
+/**
+ * Returns each element's geometry transformed to its world placement, as fresh
+ * caller-owned solids. **Dispose them** (e.g. via `using` or `[Symbol.dispose]`);
+ * they are independent of the model's lifetime — `BimModel[Symbol.dispose]` only
+ * frees the stored (local) `.geometry`.
+ *
+ * Stairs carry no element solid (`.geometry` is null), so their flight solids are
+ * built from `spec.flights` and placed per flight. Curtain walls are returned as
+ * placed panels + mullions. Elements with no solid geometry (doors/windows/ramps/
+ * groups/spatial) return an empty array. The unplaced `.geometry` is unchanged.
+ */
+declare function placedSolids(el: AnyBimElement): readonly ValidSolid[];
+
 declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
 
 interface ValidatedIfcResult {
@@ -663,6 +676,13 @@ interface RoofSpec {
     readonly thermalTransmittance?: number | undefined;
     readonly status?: string | undefined;
     /**
+     * Optional roof slope in degrees (0 < pitch < 90). Its PRESENCE opts the roof
+     * into shaped geometry built for `predefinedType` (shed/gable/hip/dome); when
+     * absent the roof is a flat slab regardless of predefinedType (backward-
+     * compatible). Ignored geometrically for DOME_ROOF (a hemisphere).
+     */
+    readonly pitch?: number | undefined;
+    /**
      * When present, the roof is associated via a layered IfcMaterialLayerSet built
      * from these layers instead of the bare `materialName` IfcMaterial.
      */
@@ -839,6 +859,12 @@ interface RailingSpec {
     readonly axisZ: [number, number, number];
     readonly predefinedType?: RailingPredefinedType | undefined;
     readonly materialName: string;
+    /**
+     * Geometric infill style. 'PANEL' (default) is a single swept panel; 'POSTED'
+     * is vertical posts plus top & bottom rails. Orthogonal to `predefinedType`
+     * (which is the IFC usage role, not a geometry descriptor).
+     */
+    readonly infill?: 'PANEL' | 'POSTED' | undefined;
     readonly isExternal?: boolean | undefined;
     readonly fireRating?: string | undefined;
     readonly status?: string | undefined;
