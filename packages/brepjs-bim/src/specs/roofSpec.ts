@@ -44,6 +44,14 @@ export interface RoofSpec {
   readonly status?: string | undefined;
 
   /**
+   * Optional roof slope in degrees (0 < pitch < 90). Its PRESENCE opts the roof
+   * into shaped geometry built for `predefinedType` (shed/gable/hip/dome); when
+   * absent the roof is a flat slab regardless of predefinedType (backward-
+   * compatible). Ignored geometrically for DOME_ROOF (a hemisphere).
+   */
+  readonly pitch?: number | undefined;
+
+  /**
    * When present, the roof is associated via a layered IfcMaterialLayerSet built
    * from these layers instead of the bare `materialName` IfcMaterial.
    */
@@ -98,6 +106,7 @@ const RoofSpecSchema = z.object({
   fireRating: z.string().optional(),
   thermalTransmittance: z.number().positive().optional(),
   status: z.string().optional(),
+  pitch: z.number().positive().max(89).optional(),
 
   materialLayers: z.array(MaterialLayerSchema).optional(),
   layerSetName: z.string().optional(),
