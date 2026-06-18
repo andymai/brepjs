@@ -42,7 +42,7 @@ describe('placedSolids', () => {
     );
     const beam = m.getBeams()[0];
     const local = beam.geometry;
-    const placed = placedSolids(beam);
+    const placed = unwrap(placedSolids(beam));
     expect(placed.length).toBe(1);
     const localCoM = unwrap(measureVolumeProps(local)).centerOfMass;
     const placedCoM = unwrap(measureVolumeProps(placed[0])).centerOfMass;
@@ -72,7 +72,7 @@ describe('placedSolids', () => {
         materialName: 'Concrete',
       })
     );
-    const placed = placedSolids(m.getStairs()[0]);
+    const placed = unwrap(placedSolids(m.getStairs()[0]));
     expect(placed.length).toBe(2);
     for (const s of placed) expect(isValidSolid(s)).toBe(true);
     for (const s of placed) s[Symbol.dispose]();

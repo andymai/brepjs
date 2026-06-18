@@ -133,6 +133,12 @@ function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
 // axisZ are applied downstream (IFC writer / placedSolids accessor). When `pitch`
 // is absent the roof is a flat slab regardless of predefinedType (backward-
 // compatible); when present the solid is shaped for the predefinedType.
+//
+// `thickness` is the slab/eave depth and is used by the FLAT, SHED and GABLE
+// builders (which extrude a profile of that depth). HIP and DOME are intentionally
+// solid masses filling the footprint from z=0 up to the apex — they have no slab
+// depth, so they do not consume `thickness` (it is still validated as positive for
+// a consistent spec).
 export function roofToSolid(spec: RoofSpec): Result<ValidSolid, BimError> {
   if (spec.length <= 0) return err(specError('ROOF_ZERO_LENGTH', 'Roof length must be positive'));
   if (spec.width <= 0) return err(specError('ROOF_ZERO_WIDTH', 'Roof width must be positive'));
