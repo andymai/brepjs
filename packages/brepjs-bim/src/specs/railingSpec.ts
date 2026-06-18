@@ -25,6 +25,13 @@ export interface RailingSpec {
   readonly predefinedType?: RailingPredefinedType | undefined;
   readonly materialName: string;
 
+  /**
+   * Geometric infill style. 'PANEL' (default) is a single swept panel; 'POSTED'
+   * is vertical posts plus top & bottom rails. Orthogonal to `predefinedType`
+   * (which is the IFC usage role, not a geometry descriptor).
+   */
+  readonly infill?: 'PANEL' | 'POSTED' | undefined;
+
   readonly isExternal?: boolean | undefined;
   readonly fireRating?: string | undefined;
   readonly status?: string | undefined;
@@ -56,6 +63,7 @@ const RailingSpecSchema = z.object({
   axisX: unitVec,
   axisZ: unitVec,
   predefinedType: z.enum(['BALUSTRADE', 'GUARDRAIL', 'HANDRAIL', 'NOTDEFINED']).optional(),
+  infill: z.enum(['PANEL', 'POSTED']).optional(),
   materialName: z.string().min(1),
 
   isExternal: z.boolean().optional(),
