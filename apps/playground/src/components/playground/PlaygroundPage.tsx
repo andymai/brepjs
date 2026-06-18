@@ -13,6 +13,7 @@ import { useShortcutHelpKey } from '../../hooks/useShortcutHelpKey';
 import { useAutoExpandOnError } from '../../hooks/useAutoExpandOnError';
 import { useExampleRoute } from '../../hooks/useExampleRoute';
 import { SHORTCUTS } from '../../lib/shortcuts';
+import { EXAMPLES, type Example } from '../../lib/examples';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import Toolbar from './Toolbar';
 import StatusBar from './StatusBar';
@@ -42,6 +43,15 @@ export default function PlaygroundPage() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const exampleRoute = useExampleRoute();
 
+  // Loading from the gallery: load the code and leave the friendly permalink.
+  const handleSelectExample = useCallback(
+    (example: Example) => {
+      actions.handleLoadExample(example);
+      exampleRoute.selectExample(example.id);
+    },
+    [actions, exampleRoute]
+  );
+
   const openCommandPalette = useCallback(() => {
     setPaletteOpen(true);
   }, []);
@@ -55,6 +65,18 @@ export default function PlaygroundPage() {
   // Preload WASM files in background when playground mounts
   useEffect(() => {
     startWASMPreload();
+  }, []);
+
+  // Deep link: landing on /playground/examples/<id> is a permalink to that
+  // example — load it into the editor so the shared link opens the running part.
+  // Runs once on mount; in-gallery navigation loads via onSelect instead.
+  useEffect(() => {
+    const id = exampleRoute.focusedId;
+    if (!exampleRoute.open && id) {
+      const example = EXAMPLES.find((e) => e.id === id);
+      if (example) actions.handleLoadExample(example);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on initial deep-land
   }, []);
 
   useKeyboardShortcuts(
@@ -139,7 +161,7 @@ export default function PlaygroundPage() {
         open={exampleRoute.open}
         focusedId={exampleRoute.focusedId}
         onClose={exampleRoute.closeGallery}
-        onSelect={actions.handleLoadExample}
+        onSelect={handleSelectExample}
         onFocusExample={exampleRoute.focusExample}
       />
     </div>

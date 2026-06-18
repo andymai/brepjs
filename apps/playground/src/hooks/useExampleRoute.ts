@@ -17,7 +17,9 @@ function parse(pathname: string): RouteState {
   }
   if (pathname.startsWith(`${EXAMPLES_PATH}/`)) {
     const id = pathname.slice(`${EXAMPLES_PATH}/`.length).replace(/\/$/, '');
-    return { open: true, focusedId: id || null };
+    // A specific example URL is a permalink to that example, not the gallery:
+    // land directly on the running example (PlaygroundPage loads it on mount).
+    return { open: false, focusedId: id || null };
   }
   return { open: false, focusedId: null };
 }
@@ -26,6 +28,7 @@ export interface ExampleRoute extends RouteState {
   openGallery: () => void;
   closeGallery: () => void;
   focusExample: (id: string) => void;
+  selectExample: (id: string) => void;
 }
 
 export function useExampleRoute(): ExampleRoute {
@@ -63,5 +66,12 @@ export function useExampleRoute(): ExampleRoute {
     setState((s) => (s.focusedId === id ? s : { open: true, focusedId: id }));
   }, []);
 
-  return { ...state, openGallery, closeGallery, focusExample };
+  // Selecting an example loads it and closes the gallery, leaving the friendly
+  // /examples/<id> permalink in the address bar so the loaded part is shareable.
+  const selectExample = useCallback((id: string) => {
+    history.replaceState(null, '', `${EXAMPLES_PATH}/${id}${window.location.search}`);
+    setState({ open: false, focusedId: id });
+  }, []);
+
+  return { ...state, openGallery, closeGallery, focusExample, selectExample };
 }

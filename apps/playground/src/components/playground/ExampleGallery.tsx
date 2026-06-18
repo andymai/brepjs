@@ -230,10 +230,7 @@ export default function ExampleGallery({
                     example={ex}
                     focused={ex.id === focusedId}
                     failedTurntables={failedTurntables}
-                    onSelect={() => {
-                      onSelect(ex);
-                      onClose();
-                    }}
+                    onSelect={() => onSelect(ex)}
                     onFocus={() => onFocusExample?.(ex.id)}
                   />
                 ))}
