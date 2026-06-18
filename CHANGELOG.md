@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.93.0](https://github.com/andymai/brepjs/compare/brepjs-v18.92.0...brepjs-v18.93.0) (2026-06-18)
+
+
+### Features
+
+* **docs:** adopt Signifier as the landing display typeface ([#1486](https://github.com/andymai/brepjs/issues/1486)) ([73e939c](https://github.com/andymai/brepjs/commit/73e939c5765a3144d6aefe8ff17532dd3b9bad9e))
+
 ## [18.92.0](https://github.com/andymai/brepjs/compare/brepjs-v18.91.0...brepjs-v18.92.0) (2026-06-18)
 
 
