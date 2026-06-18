@@ -119,7 +119,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="hero">
         <div class="wrap hero-top">
           <p class="eyebrow">Exact B-Rep · TypeScript · Browser-native</p>
-          <h1>Exact CAD geometry,<br /><span class="grad">written in TypeScript.</span></h1>
+          <h1>Exact CAD geometry,<br class="h1-break" /><span class="grad">written in TypeScript.</span></h1>
           <p class="subhead">
             A real B-Rep kernel in your browser via WASM. A type system that makes invalid geometry
             uncompilable. And a verification loop so AI agents author parts that are provably
@@ -701,10 +701,11 @@ pre code {
   margin-top: 44px;
 }
 h1 {
-  font-size: clamp(2.5rem, 5vw, 3.9rem);
-  line-height: 1.04;
+  font-size: clamp(2rem, 7.4vw, 3.9rem);
+  line-height: 1.06;
   letter-spacing: -0.022em;
   margin: 16px 0 0;
+  text-wrap: balance;
 }
 h1 .grad {
   background: var(--grad-name);
@@ -1321,6 +1322,13 @@ pre.term {
   }
   .hero {
     padding: 56px 0 40px;
+  }
+}
+@media (max-width: 600px) {
+  /* Drop the deliberate two-clause break on phones: the headline scales down
+     and balances on its own, so the hard <br> would only force ragged lines. */
+  h1 .h1-break {
+    display: none;
   }
 }
 @media (max-width: 460px) {
