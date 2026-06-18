@@ -98,7 +98,7 @@ export default oRing();
   {
     id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
-    description: 'An axial cooling fan with a ring of pitched blades.',
+    description: 'An axial cooling fan with a ring of swept, twisted impeller blades.',
     code: `import {
   box,
   cutAll,
@@ -106,13 +106,15 @@ export default oRing();
   edgeFinder,
   fillet,
   fuseAll,
+  line,
+  loft,
   rotate,
-  translate,
   unwrap,
+  wire,
 } from 'brepjs/quick';
 
 // Axial cooling fan (57×15 form factor): rounded square frame, air bore,
-// four corner mounting holes, a central hub, and a ring of swept blades.
+// four corner mounting holes, a central hub, and a ring of swept, twisted blades.
 function axialFan({
   width = 57, // outer square width and height (mm)
   depth = 15, // frame thickness (mm)
@@ -149,23 +151,44 @@ function axialFan({
   // Hub: solid cylinder protruding above the top face.
   const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
 
-  // A ring of flat, pitched blades. Each blade is a thin plate spanning hub to
-  // rim, built flat on the X axis at z = 0, tilted about that radial axis to set
-  // its angle of attack, then lifted just below the top face. The root sinks
-  // into the hub so the fuse is clean.
+  // A ring of swept, twisted blades. Each blade is lofted through three thin
+  // cross-sections from hub to rim — wider and steeper at the root, narrower and
+  // flatter at the tip — so it reads as a real impeller instead of a flat tab.
+  // Sections are built as wires (4 lines) in planes perpendicular to the radial
+  // axis, each tilted to its local pitch; a non-ruled loft curves between them.
+  const thick = 1.2; // blade thickness
   const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
   const rOuter = width / 2 - 5; // tip stays inside the air bore radius
-  const span = rOuter - rInner;
-  const cx = rInner + span / 2;
-  const chord = 9; // blade width (tangential)
-  const thick = 1.4; // blade thickness
-  const pitch = 30; // blade angle of attack (deg)
-  const zMid = depth - 4; // blade plane just below the top face
+  const zMid = depth - 4; // blade mid-plane just below the top face
 
-  const makeBlade = () => {
-    const plate = box(span, chord, thick, { at: [cx, 0, 0] });
-    return translate(rotate(plate, pitch, { axis: [1, 0, 0] }), [0, 0, zMid]);
+  const bladeSection = (r: number, c: number, pitchDeg: number) => {
+    const th = (pitchDeg * Math.PI) / 180;
+    const cs = Math.cos(th);
+    const sn = Math.sin(th);
+    // A chord×thick rectangle in the (tangential, axial) plane at radius r,
+    // tilted by the local pitch about the radial axis.
+    const corner = (y0: number, z0: number): [number, number, number] => [
+      r,
+      y0 * cs - z0 * sn,
+      zMid + y0 * sn + z0 * cs,
+    ];
+    const a = corner(-c / 2, -thick / 2);
+    const b = corner(c / 2, -thick / 2);
+    const cc = corner(c / 2, thick / 2);
+    const d = corner(-c / 2, thick / 2);
+    return unwrap(wire([line(a, b), line(b, cc), line(cc, d), line(d, a)]));
   };
+  const makeBlade = () =>
+    unwrap(
+      loft(
+        [
+          bladeSection(rInner, 10, 40),
+          bladeSection((rInner + rOuter) / 2, 8.5, 30),
+          bladeSection(rOuter, 7, 22),
+        ],
+        { ruled: false },
+      ),
+    );
   const bladeRing = [];
   for (let i = 0; i < blades; i++) {
     bladeRing.push(rotate(makeBlade(), (360 * i) / blades, { axis: [0, 0, 1] }));
@@ -316,13 +339,16 @@ function gt2Pulley(
 
   const blank = unwrap(fuseAll([toothed, bottomFlange, topFlange, hub]));
 
-  // Through bore plus a radial grub-screw hole tipped onto the X axis.
+  // Through bore plus a radial grub-screw hole through the hub wall. The radial
+  // cutter is centred and only just clears the hub (no long tail hanging into
+  // empty space — that tail was surviving the boolean as a stray rod).
   const totalH = hubLength + beltWidth;
   const boreCut = cylinder(bore / 2, totalH + 2, { at: [0, 0, -hubLength - 1] });
-  const grubScrew = rotate(cylinder(1.5, hubDia, { at: [0, 0, 0] }), 90, {
-    axis: [1, 0, 0],
-    at: [0, 0, -hubLength / 2],
-  });
+  const grubLen = hubDia + 2;
+  const grubScrew = translate(
+    rotate(cylinder(1.5, grubLen, { at: [0, 0, -grubLen / 2] }), 90, { axis: [1, 0, 0] }),
+    [0, 0, -hubLength / 2],
+  );
 
   return unwrap(cutAll(blank, [boreCut, grubScrew]));
 }
@@ -973,7 +999,7 @@ export default dovetailJoint();`,
     id: 'project-enclosure',
     label: 'Two-Part Project Enclosure',
     description:
-      'A PCB project box with a real fastening system: a hollow base tray whose four corner bosses are tapped with a modelled M3 thread, and a hollow lid with matching counterbored-free clearance holes that line up so the halves actually screw together.',
+      'A PCB project box drawn as an exploded assembly that really screws together: a base tray with four full-height tapped M3 corner bosses, a lid lifted straight up on the boss axes with matching clearance holes, and four steel screws bridging the gap so the whole boss-to-lid fastening path — and the thread — is visible.',
     code: `import {
   box,
   cut,
@@ -986,28 +1012,30 @@ export default dovetailJoint();`,
   translate,
   unwrap,
 } from 'brepjs/quick';
+import { color } from 'brepjs/playground';
 
-// Two-part PCB box that actually screws together: a hollow base tray whose four
-// corner bosses are tapped with a modelled thread, and a hollow lid with
-// clearance holes that line up over them. A base ridge + lid groove register the
-// halves. Laid out open-face-up along Y, print-plate style.
+// Two-part PCB box drawn as an exploded assembly that really screws together:
+// a base tray with four full-height tapped corner bosses, a lid lifted straight
+// up on the boss axes, and four steel M3 screws bridging the gap so the whole
+// boss-to-lid fastening path is visible. Each screw is a slotted head, a shank,
+// and a run of real lofted thread on its tip.
 function projectEnclosure({
   pcbLength = 150, // PCB extent along X (mm)
   pcbWidth = 100, // PCB extent along Y (mm)
   padding = 2, // gap between PCB and inner wall (mm)
   wall = 2, // side-wall thickness (mm)
   floor = 1.5, // base / lid plane thickness (mm)
-  baseWall = 25, // base wall height (mm)
-  lidWall = 23, // lid wall height (mm)
-  ridge = 5, // overlap ridge height (mm)
+  baseWall = 24, // base wall height (mm)
+  lidWall = 12, // lid skirt height (mm)
+  ridge = 4, // registration-ridge height (mm)
   slack = 0.3, // ridge-to-lid radial clearance (mm)
   round = 3, // rounded vertical-edge radius (mm)
-  bossD = 8, // screw-boss / standoff diameter (mm)
-  bossH = 14, // boss height above the floor (mm)
-  threadR = 1.5, // tapped-thread nominal radius (mm)
-  threadPitch = 1.2, // tapped-thread pitch (coarse, so it reads + stays cheap)
-  threadDepth = 5, // tapped length down each boss (mm)
-  clearR = 1.7, // lid clearance-hole radius for an M3 shank (mm)
+  bossD = 9, // corner-boss diameter (mm)
+  threadR = 1.6, // tapped-thread nominal radius (mm)
+  threadPitch = 1.4, // thread pitch, shared by tap and screw (mm)
+  threadDepth = 8, // tapped length down each boss (mm)
+  clearR = 1.8, // lid clearance-hole radius for the M3 shank (mm)
+  explode = 10, // gap the lid is lifted for the assembly view (mm)
 } = {}) {
   const innerX = pcbLength + 2 * padding;
   const innerY = pcbWidth + 2 * padding;
@@ -1033,56 +1061,87 @@ function projectEnclosure({
   ];
 
   // BASE: a hollow tray — cap at z = 0, opening upward.
-  const baseOuter = roundedPrism(outerX, outerY, floor + baseWall, 0, round);
+  const baseTopZ = floor + baseWall;
+  const baseOuter = roundedPrism(outerX, outerY, baseTopZ, 0, round);
   const baseCavity = roundedPrism(innerX, innerY, baseWall + round, floor, innerR);
   let base = unwrap(cut(baseOuter, baseCavity));
 
-  // Ridge lip on the top rim, inset by \`slack\` so the lid groove clears it.
-  const ridgeTop = floor + baseWall;
+  // Registration ridge on the top rim, inset by slack so the lid groove clears it.
   const ridgeOuterW = innerX + 2 * wall - 2 * slack;
   const ridgeOuterD = innerY + 2 * wall - 2 * slack;
   const ridgeBand = unwrap(
     cut(
-      roundedPrism(ridgeOuterW, ridgeOuterD, ridge, ridgeTop, Math.max(round - slack, 0.5)),
-      roundedPrism(innerX, innerY, ridge + 1, ridgeTop - 0.5, innerR),
+      roundedPrism(ridgeOuterW, ridgeOuterD, ridge, baseTopZ, Math.max(round - slack, 0.5)),
+      roundedPrism(innerX, innerY, ridge + 1, baseTopZ - 0.5, innerR),
     ),
   );
   base = unwrap(fuse(base, ridgeBand));
 
-  // Tapped corner bosses (also PCB standoffs). Tapping one standalone boss —
-  // bore, then cut the inward thread ridge — is far cheaper than carving the
-  // helix out of the whole enclosure, so the four copies are just fused on.
-  const tapTop = floor + bossH;
-  const ridgeSolid = unwrap(
+  // Full-height tapped corner bosses (also PCB standoffs): they rise the whole
+  // base-wall height to meet the lid, then are bored and tapped from the top so
+  // the screw bites real thread. Tapping one standalone boss and fusing four
+  // copies is far cheaper than carving the helix from the whole enclosure.
+  const tapThread = unwrap(
     thread({ radius: threadR, pitch: threadPitch, height: threadDepth, inward: true, sectionsPerTurn: 10 }),
   );
-  let boss = cylinder(bossD / 2, floor + bossH, { at: [0, 0, 0] });
-  boss = unwrap(cut(boss, cylinder(threadR, threadDepth + 1, { at: [0, 0, tapTop - threadDepth] })));
-  boss = unwrap(cut(boss, translate(ridgeSolid, [0, 0, tapTop - threadDepth])));
+  let boss = cylinder(bossD / 2, baseTopZ, { at: [0, 0, 0] });
+  boss = unwrap(cut(boss, cylinder(threadR, threadDepth + 1, { at: [0, 0, baseTopZ - threadDepth] })));
+  boss = unwrap(cut(boss, translate(tapThread, [0, 0, baseTopZ - threadDepth])));
   for (const [cx, cy] of bossCenters) {
     base = unwrap(fuse(base, translate(boss, [cx, cy, 0])));
   }
 
-  // LID: hollow shell, cavity starting at z = floor so a floor-thick cap remains
-  // (flipped onto the base on assembly). Printed open-face-up beside the base.
-  const lidOuter = roundedPrism(outerX, outerY, floor + lidWall, 0, round);
-  const lidCavity = roundedPrism(innerX, innerY, lidWall + 1, floor, innerR);
+  // LID: hollow shell built cap-up (cavity open at the bottom) so it nests onto
+  // the base with no flip; the skirt rim is grooved to swallow the base ridge.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerX, outerY, lidH, 0, round);
+  const lidCavity = roundedPrism(innerX, innerY, lidWall + 1, -1, innerR);
   let lid = unwrap(cut(lidOuter, lidCavity));
-
-  // Groove in the top rim that swallows the base ridge.
-  const grooveW = ridgeOuterW + 2 * slack;
-  const grooveD = ridgeOuterD + 2 * slack;
-  const groove = roundedPrism(grooveW, grooveD, ridge, lidWall - ridge + floor, Math.max(round - slack, 0.5));
+  const groove = roundedPrism(
+    ridgeOuterW + 2 * slack,
+    ridgeOuterD + 2 * slack,
+    ridge + 0.5,
+    -0.25,
+    Math.max(round - slack, 0.5),
+  );
   lid = unwrap(cut(lid, groove));
 
-  // Clearance holes through the lid cap, on the same centres as the bosses.
-  const lidHoles = bossCenters.map(([cx, cy]) => cylinder(clearR, floor + 2, { at: [cx, cy, -1] }));
+  // Clearance holes through the lid cap, coaxial with the bosses.
+  const lidHoles = bossCenters.map(([cx, cy]) => cylinder(clearR, lidH + 2, { at: [cx, cy, -1] }));
   lid = unwrap(cutAll(lid, lidHoles));
 
-  const gap = 10; // print gap between the two parts
-  const placedLid = translate(lid, [0, outerY + gap, 0]);
+  // Exploded view: lift the lid straight up so its holes stay coaxial with the bosses.
+  const lidLiftZ = baseTopZ + explode;
+  const placedLid = translate(lid, [0, 0, lidLiftZ]);
+  const lidCapTopZ = lidLiftZ + lidH;
 
-  return [base, placedLid];
+  // One steel M3 screw, built head-up with its head top at z = 0 and the tip
+  // hanging down: a slotted cheese head, a plain shank, and a run of real lofted
+  // thread on the tip.
+  const headR = bossD / 2 - 0.6;
+  const headH = 2.2;
+  const shankR = clearR - 0.3;
+  const screwLen = floor + lidWall + threadDepth - 1; // real M3 length: lid cap → boss engagement, not the explode gap
+  const threadLen = threadDepth + 3;
+  const makeScrew = () => {
+    let head = cylinder(headR, headH, { at: [0, 0, -headH] });
+    const slot = box(headR * 2 + 1, 1, 1.2, { at: [0, 0, -0.6] });
+    head = unwrap(cut(head, slot));
+    const shank = cylinder(shankR, screwLen, { at: [0, 0, -headH - screwLen] });
+    const screw = unwrap(fuse(head, shank));
+    const ridge = unwrap(
+      thread({ radius: shankR, pitch: threadPitch, height: threadLen, sectionsPerTurn: 10 }),
+    );
+    return unwrap(fuse(screw, translate(ridge, [0, 0, -headH - screwLen])));
+  };
+
+  // A screw on each boss axis: tip in the tapped boss, head proud above the lid.
+  const screwTopZ = lidCapTopZ + 3;
+  const screws = bossCenters.map(([cx, cy]) =>
+    color(translate(makeScrew(), [cx, cy, screwTopZ]), '#b9bec6'),
+  );
+
+  return [base, placedLid, ...screws];
 }
 
 export default projectEnclosure();`,
@@ -1091,7 +1150,7 @@ export default projectEnclosure();`,
     id: 'tx-enclosure',
     label: 'Two-part RF enclosure (side connectors)',
     description:
-      'A screw-together transmitter/receiver project box: shelled base + lid, PCB standoffs cored as self-tapping screw bosses, matching clearance holes in the lid, and side I/O connector ports, drawn exploded.',
+      'A screw-together transmitter/receiver project box, drawn exploded: a shelled base with full-height corner screw bosses (self-tap pilots), a shallow lid lifted on the boss axes with matching clearance holes, four steel self-tapping screws spanning lid→boss with visible thread, and side I/O connector ports (coax, barrel jack, RJ12).',
     code: `import {
   box,
   cut,
@@ -1102,15 +1161,18 @@ export default projectEnclosure();`,
   fuse,
   rotate,
   sketchRoundedRectangle,
+  thread,
   translate,
   unwrap,
 } from 'brepjs/quick';
-// Two-part transmitter/receiver project enclosure with side connectors.
-// A rounded-corner box split into a deep base shell and a shallow snap-on lid:
-// the base carries internal PCB standoff posts and a mating lip recess, while
-// the side walls are pierced by the I/O connectors of an RF board — a coax
-// antenna bulkhead (back), a barrel power jack (front), and an RJ12 data jack
-// (front). The lid is drawn lifted clear of the base, exploded-assembly style.
+import { color } from 'brepjs/playground';
+
+// Two-part transmitter/receiver project enclosure, drawn exploded. A deep base
+// shell carries full-height corner screw bosses and a mating-lip recess; its side
+// walls are pierced by an RF board's I/O — a coax antenna bulkhead (back), a barrel
+// power jack (front), and an RJ12 data jack (front). A shallow lid is lifted on the
+// boss axes, and four steel self-tapping screws bridge lid to boss so the whole
+// fastening path — and the thread — is visible.
 function txEnclosure({
   pcbLength = 62, // PCB X extent (mm)
   pcbWidth = 50, // PCB Y extent (mm)
@@ -1120,8 +1182,10 @@ function txEnclosure({
   baseWall = 14, // base side-wall height above the floor (mm)
   lidWall = 6, // lid skirt height (mm)
   cornerR = 2.5, // outer vertical corner radius (mm)
-  standoff = 4, // PCB stand-off post height (mm)
-  explode = 14, // gap the lid is lifted for the assembly view (mm)
+  bossR = 3, // corner screw-boss radius (mm)
+  pilotR = 1.1, // self-tap pilot-bore radius (mm)
+  pilotDepth = 9, // pilot depth down from the boss top (mm)
+  explode = 8, // gap the lid is lifted for the assembly view (mm)
 } = {}) {
   // Outer footprint = PCB + clearance both sides + both walls.
   const outerL = pcbLength + 2 * pad + 2 * wall;
@@ -1131,10 +1195,8 @@ function txEnclosure({
   const innerR = Math.max(cornerR - wall, 0.5);
 
   // A rounded-corner rectangular prism: a centred box with its four vertical
-  // (Z-running) edges filleted. Used for every wall, cavity, and lip step so
-  // the whole box keeps soft vertical corners. (A direct shell() here is
-  // fragile — inDirection() matches BOTH horizontal faces, so it would hollow
-  // the floor away too; cutting an inner cavity keeps the floor/cap intact.)
+  // (Z-running) edges filleted. (A direct shell() is fragile here — inDirection()
+  // matches BOTH horizontal faces; cutting an inner cavity keeps the floor intact.)
   const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
     const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
     if (r <= 0) return blk;
@@ -1148,8 +1210,7 @@ function txEnclosure({
   const baseTray = unwrap(cut(baseOuter, baseCavity));
 
   // Mating-lip recess: rabbet a shallow step into the inner top rim so the lid
-  // skirt nests inside it. Removes the inner half of the wall over the top
-  // \`lipDepth\` mm by widening the cavity there.
+  // skirt nests inside it.
   const lipDepth = 3.5;
   const lipStep = roundedPrism(
     innerL + wall,
@@ -1160,41 +1221,32 @@ function txEnclosure({
   );
   const baseStepped = unwrap(cut(baseTray, lipStep));
 
-  // --- Internal PCB standoff posts (mounting bosses) in the base corners ---
-  // Pegs the PCB rests on, each cored for a self-tapping screw. Each post grows
-  // from z = 0 up through the whole \`floor\` slab so it overlaps the tray solid:
-  // a post that merely kissed the floor at z = floor would stay a separate,
-  // floating peg. The screw bores are punched later, with the I/O ports.
-  const postR = 2.6;
-  const pinR = 1.1;
+  // --- Full-height corner screw bosses (also the PCB standoffs) ---
+  // Each boss rises the whole base-wall height to meet the lid, so the screw
+  // driven down through the lid bites a continuous column instead of a peg
+  // floating at the bottom of the box. Welded one at a time (the N-way fuseAll
+  // leaves overlapping bosses as separate solids in a compound).
   const px = innerL / 2 - 5;
   const py = innerW / 2 - 5;
-  const postCenters: [number, number][] = [
+  const bossCenters: [number, number][] = [
     [-px, -py],
     [px, -py],
     [px, py],
     [-px, py],
   ];
-  const posts = postCenters.map(([x, y]) => cylinder(postR, floor + standoff, { at: [x, y, 0] }));
-  // Weld posts in one at a time with the 2-way \`fuse\`: the N-way \`fuseAll\` glues
-  // via BuilderAlgo and leaves each overlapping post a separate solid in a
-  // compound (four floating pegs). Pairwise fuse unifies them into one body.
-  let baseWithPosts = baseStepped;
-  for (const post of posts) {
-    baseWithPosts = unwrap(fuse(baseWithPosts, post));
+  let baseWithBosses = baseStepped;
+  for (const [x, y] of bossCenters) {
+    baseWithBosses = unwrap(fuse(baseWithBosses, cylinder(bossR, baseHeight, { at: [x, y, 0] })));
   }
 
-  // --- Side connector cutouts through the base walls ---
-  // Heights are measured from the floor up to the PCB connector centreline.
-  const ioZ = floor + standoff + 4;
+  // --- Cutters: self-tap pilot bores down each boss + side I/O ports ---
+  const ioZ = floor + 8; // PCB connector centreline above the floor
   const tools = [];
-
-  // Screw bores down each standoff — clean through-holes (z from under the floor
-  // up past the post top), punched with the I/O ports in the cutAll below.
-  for (const [x, y] of postCenters) {
-    tools.push(cylinder(pinR, floor + standoff + 2, { at: [x, y, -1] }));
+  // Blind self-tap pilots, bored from each boss top down (the screw cuts its own
+  // thread into these on assembly).
+  for (const [x, y] of bossCenters) {
+    tools.push(cylinder(pilotR, pilotDepth + 1, { at: [x, y, baseHeight - pilotDepth] }));
   }
-
   // Coax antenna bulkhead: round hole centred on the back (+Y) wall.
   tools.push(
     rotate(cylinder(3.2, wall + 4, { at: [0, 0, -wall - 2] }), 90, {
@@ -1202,7 +1254,6 @@ function txEnclosure({
       at: [-pcbLength * 0.22, outerW / 2, ioZ],
     }),
   );
-
   // Barrel power jack: round hole low on the front (-Y) wall.
   tools.push(
     rotate(cylinder(4, wall + 4, { at: [0, 0, -wall - 2] }), 90, {
@@ -1210,7 +1261,6 @@ function txEnclosure({
       at: [pcbLength * 0.3, -outerW / 2, floor + 5],
     }),
   );
-
   // RJ12 data jack: a rounded rectangular port through the front wall.
   const rjBlock = translate(sketchRoundedRectangle(14, 11, 1.5).extrude(wall + 4), [
     0,
@@ -1218,14 +1268,10 @@ function txEnclosure({
     -(wall + 4) / 2,
   ]);
   tools.push(
-    translate(rotate(rjBlock, 90, { axis: [1, 0, 0] }), [
-      -pcbLength * 0.18,
-      -outerW / 2,
-      ioZ,
-    ]),
+    translate(rotate(rjBlock, 90, { axis: [1, 0, 0] }), [-pcbLength * 0.18, -outerW / 2, ioZ]),
   );
 
-  const base = unwrap(cutAll(baseWithPosts, tools));
+  const base = unwrap(cutAll(baseWithBosses, tools));
 
   // --- LID: a shallow inverted tray — cap on top, skirt hanging down. ---
   // Built cap-up directly (cavity open at the bottom) so it needs no flip; the
@@ -1235,17 +1281,43 @@ function txEnclosure({
   const lidCavity = roundedPrism(innerL, innerW, lidWall + 1, -1, innerR);
   const lidTray = unwrap(cut(lidOuter, lidCavity));
 
-  // Clearance holes through the lid cap, aligned to the standoff bores, so a
-  // self-tapping screw passes through the lid and bites the boss below.
-  const lidClearR = 1.5;
-  const lidHoles = postCenters.map(([x, y]) => cylinder(lidClearR, lidH + 2, { at: [x, y, -1] }));
+  // Clearance holes through the lid cap, coaxial with the bosses.
+  const clearR = 1.5;
+  const lidHoles = bossCenters.map(([x, y]) => cylinder(clearR, lidH + 2, { at: [x, y, -1] }));
   const lidBored = unwrap(cutAll(lidTray, lidHoles));
 
-  // Lift the lid clear of the base for the exploded gallery view: its skirt rim
-  // floats \`explode\` mm above the base's top edge.
-  const lid = translate(lidBored, [0, 0, baseHeight + explode]);
+  const lidLiftZ = baseHeight + explode;
+  const lid = translate(lidBored, [0, 0, lidLiftZ]);
+  const lidCapTopZ = lidLiftZ + lidH;
 
-  return [base, lid];
+  // --- Steel self-tapping screws spanning lid → boss, real length ---
+  // Pan head, plain shank, and a run of real lofted thread on the tip; sized to
+  // the actual lid + engagement span (not the explode gap), so each reads as a
+  // believable self-tapper, not a stretched pin.
+  const headR = 2.7;
+  const headH = 1.8;
+  const shankR = clearR - 0.2;
+  const engage = 6; // depth the screw threads into the boss pilot
+  const screwLen = floor + lidWall + engage; // real length: lid cap → boss engagement
+  const threadLen = screwLen - 1;
+  const makeScrew = () => {
+    let head = cylinder(headR, headH, { at: [0, 0, -headH] });
+    head = unwrap(cut(head, box(headR * 2 + 1, 0.8, 1, { at: [0, 0, -0.5] })));
+    const shank = cylinder(shankR, screwLen, { at: [0, 0, -headH - screwLen] });
+    const screw = unwrap(fuse(head, shank));
+    const ridge = unwrap(
+      thread({ radius: shankR, pitch: 1.4, height: threadLen, sectionsPerTurn: 10 }),
+    );
+    return unwrap(fuse(screw, translate(ridge, [0, 0, -headH - screwLen])));
+  };
+
+  // A screw on each boss axis: tip just above the boss pilot, head proud of the lid.
+  const screwTopZ = lidCapTopZ + 2.5;
+  const screws = bossCenters.map(([x, y]) =>
+    color(translate(makeScrew(), [x, y, screwTopZ]), '#b9bec6'),
+  );
+
+  return [base, lid, ...screws];
 }
 
 export default txEnclosure();`,
@@ -2324,10 +2396,14 @@ function conduitClip(
   // Countersunk screw hole through the foot, parked on the free end so it clears
   // the ring: a straight shank capped by a flaring head cone at the top face.
   const holeX = -(rOuter + (footLen / 2 - rOuter) / 2);
-  const shank = cylinder(screwClear, footThick + 2, { at: [holeX, 0, -1] });
+  const footTopZ = footThick + 0.5; // the foot box overlaps 0.5 mm up into the ring
+  const shank = cylinder(screwClear, footTopZ + 2, { at: [holeX, 0, -1] });
   const csDepth = Math.min(screwHead - screwClear, footThick - 0.6);
-  const csink = cone(screwClear, screwHead, csDepth + 0.2, {
-    at: [holeX, 0, footThick - csDepth],
+  // Countersink flaring to the head radius right at the real top face, poking
+  // 0.4 mm proud so it opens the surface cleanly instead of burying the funnel
+  // below it (referencing footThick left a 0.5 mm lip and an internal undercut).
+  const csink = cone(screwClear, screwHead, csDepth + 0.4, {
+    at: [holeX, 0, footTopZ - csDepth],
   });
 
   return unwrap(cutAll(body, [shank, csink]));
@@ -2549,7 +2625,7 @@ export default rotaryPot();`,
   {
     id: 'd-sub-connector',
     label: 'D-sub Connector (DB9)',
-    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus threaded jackscrew posts.',
+    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
     code: `import {
   box,
   cut,
@@ -2560,7 +2636,10 @@ export default rotaryPot();`,
   fillet,
   fuse,
   polygon,
+  sketchPolysides,
   sphere,
+  torus,
+  translate,
   unwrap,
   validSolid,
 } from 'brepjs/quick';
@@ -2670,20 +2749,32 @@ function dSubConnector({
     }
   }
 
-  // Jackscrew posts: threaded standoffs standing behind the flange at the hole
-  // centres (where the mating shell's screws bite). Each is a stud topped by a
-  // hex-style nut boss; modelled as discrete hardware.
-  const studLen = 8;
+  // Jack posts (the real DB9 mounting hardware): female hex standoffs on the
+  // FRONT face, flanking the shell at the hole centres, that the mating cable
+  // hood's captive thumbscrews thread INTO — so the visible part is a hex barrel
+  // with a tapped bore, not a male screw. The panel-side end is a short male
+  // threaded stud that passes through and takes a nut. Returned as discrete metal.
+  const hexR = 2.7; // hex across-corners radius
+  const barrelH = 5; // standoff height proud of the front face
+  const boreR = 1.25; // tapped bore (4-40 female)
+  const studLen = 5; // panel-side male stud length
   const studR = 1.25;
-  const bossR = 2.7;
-  const bossH = 4.5;
   const post = (sx: number) => {
-    const stud = cylinder(studR, studLen, { at: [sx * o, 0, -flangeThick - studLen] });
-    const boss = box(bossR * 2, bossR * 2, bossH, { at: [sx * o, 0, -flangeThick - bossH / 2] });
-    return unwrap(fuse(stud, boss));
+    const cx = sx * o;
+    // Front female hex standoff: a hex prism with a tapped through-bore.
+    const barrel = translate(sketchPolysides(hexR, 6, 0, 'XY').extrude(barrelH), [cx, 0, 0]);
+    const front = unwrap(cut(barrel, cylinder(boreR, barrelH + 1, { at: [cx, 0, -0.5] })));
+    // Panel-side male stud, threaded with toroidal ring grooves for the nut.
+    const stud = cylinder(studR, studLen, { at: [cx, 0, -flangeThick - studLen] });
+    const grooves = [];
+    for (let z = -flangeThick - studLen + 0.5; z < -flangeThick - 0.4; z += 0.85) {
+      grooves.push(torus(studR, 0.18, { at: [cx, 0, z] }));
+    }
+    const back = unwrap(cutAll(stud, grooves));
+    return [front, back];
   };
 
-  return [body, ...pins, post(-1), post(1)];
+  return [body, ...pins, ...post(-1), ...post(1)];
 }
 
 export default dSubConnector();`,
@@ -2702,6 +2793,7 @@ export default dSubConnector();`,
   edgeFinder,
   fuse,
   rotate,
+  torus,
   translate,
   unwrap,
   validSolid,
@@ -2750,6 +2842,14 @@ function fuseHolder({
     });
     neck = unwrap(cut(neck, slab));
   }
+  // Thread the neck with toroidal ring grooves — a cheap stand-in for the M12
+  // helix the nut runs on. Grooves sit at the full Ø12 radius, so they bite only
+  // the round flanks and leave the milled flats clean, exactly like a real neck.
+  const neckGrooves = [];
+  for (let z = neckZ0 + 1; z < neckZ0 + neckLen - 1; z += 1.2) {
+    neckGrooves.push(torus(neckDia / 2, 0.32, { at: [0, 0, z] }));
+  }
+  neck = unwrap(cutAll(neck, neckGrooves));
 
   // Front flange cap: a wide disc that bears on the panel face. Overlaps 1 mm
   // down into the neck so the cap, neck and body fuse into one rigid solid.
@@ -2823,7 +2923,7 @@ export default fuseHolder();`,
     id: 'green-terminal-block',
     label: 'Green PCB Screw-Terminal Block',
     description: 'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
-    code: `import { box, cut, cutAll, cylinder, extrude, polygon, translate, unwrap } from 'brepjs/quick';
+    code: `import { box, cut, cutAll, cylinder, extrude, fuse, polygon, torus, translate, unwrap } from 'brepjs/quick';
 
 // Green PCB screw-terminal block (Phoenix-style, 5.08 mm pitch). The classic
 // snap-together mains connector: a green plastic body with a tall vertical
@@ -2891,15 +2991,27 @@ function greenTerminalBlock({
   }
   const greenBody = unwrap(cutAll(bar, [...windowCutters, ...recessCutters]));
 
-  // Silver screws: a head disc seated in each recess, with a screwdriver slot
-  // milled across the top. Returned as separate solids (a different material).
+  // Silver screws: a slotted head disc seated in each recess, plus a threaded
+  // shank dropping into the wire-window cage so a real screw is visible through
+  // the window (not just a floating head). Returned as separate solids (metal).
   const screws = [];
+  const shankR = screwR * 0.58;
+  const headBotZ = ridgeHeight - 0.6 - 1.6;
+  const shankBotZ = frameT + 0.8; // ends down inside the wire window
   for (let i = 0; i < ways; i++) {
     const cy = yAt(i);
     const headTop = ridgeHeight - 0.6;
-    const head = cylinder(screwR, 1.6, { at: [screwX, cy, headTop - 1.6] });
+    let screw = cylinder(screwR, 1.6, { at: [screwX, cy, headBotZ] });
     const slot = box(screwR * 2 + 1, screwR / 2, 0.7, { at: [screwX, cy, headTop - 0.35] });
-    screws.push(unwrap(cut(head, slot)));
+    screw = unwrap(cut(screw, slot));
+    const shank = cylinder(shankR, headBotZ - shankBotZ + 0.2, { at: [screwX, cy, shankBotZ] });
+    screw = unwrap(fuse(screw, shank));
+    // Toroidal ring grooves down the shank — the thread you see in the window.
+    const grooves = [];
+    for (let z = shankBotZ + 0.4; z < headBotZ; z += 0.7) {
+      grooves.push(torus(shankR, 0.14, { at: [screwX, cy, z] }));
+    }
+    screws.push(unwrap(cutAll(screw, grooves)));
   }
 
   // Solder pins: a thin square pin under each way, dropping below the PCB line.
@@ -2918,7 +3030,7 @@ export default greenTerminalBlock();`,
   {
     id: 'button-top-battery-cell',
     label: 'Button-top battery cell (AA / 18650)',
-    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive nub, a raised negative contact, and a chamfered base rim.',
+    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
     code: `import {
   cylinder,
   cone,
@@ -2928,6 +3040,7 @@ export default greenTerminalBlock();`,
   intersect,
   chamfer,
   edgeFinder,
+  torus,
   unwrap,
   validSolid,
 } from 'brepjs/quick';
@@ -2973,13 +3086,11 @@ function batteryCell(
   const roundedNub = unwrap(intersect(nub, roller));
   body = unwrap(fuse(body, roundedNub));
 
-  // Negative base: a low raised contact ring proud of the flat can bottom, sunk
-  // 1 mm up into the can so it fuses cleanly.
-  const negH = 0.8;
-  const negPlate = cylinder(negDia / 2, negH + 1, {
-    at: [0, 0, -half - negH],
-  });
-  body = unwrap(fuse(body, negPlate));
+  // Negative base: the whole flat can bottom IS the negative terminal — a raised
+  // button belongs only on the positive end. Score a shallow concentric insulator
+  // ring at the contact-disc edge, the way a real cell's negative end reads.
+  const insulatorRing = torus(negDia / 2, 0.4, { at: [0, 0, -half] });
+  body = unwrap(cut(body, insulatorRing));
 
   // Roll the bottom rim of the can: chamfer the circular edge at radius rCan in
   // the z = -half plane (the can-wall-to-base edge). It is a CIRCLE, not a

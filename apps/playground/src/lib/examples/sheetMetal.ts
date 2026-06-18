@@ -29,8 +29,9 @@ const bracket = author({
 });
 if (!bracket.ok) throw bracket.error;
 
-// Miter the shared corner (1 mm gap) so the two flanges meet cleanly.
-const mitered = miterCorner(bracket.value, 'side', 'front', 1);
+// Miter the shared corner (2.5 mm gap) so the two flanges meet in a clean 45°
+// seam — a wide-enough gap that the miter actually reads in the flat pattern.
+const mitered = miterCorner(bracket.value, 'side', 'front', 2.5);
 if (!mitered.ok) throw mitered.error;
 
 const solid = mitered.value.solid;
