@@ -1,4 +1,5 @@
 import * as WebIFC from 'web-ifc';
+import type { MatrixTransform } from 'brepjs';
 import type { SpfReader } from './spfReader.js';
 
 /**
@@ -253,6 +254,39 @@ export function readAxis2Placement3D(
     z[0], z[1], z[2], 0,
     originMm[0], originMm[1], originMm[2], 1,
   ];
+}
+
+/** An (origin, axisX, axisZ) frame in mm — the authoring/display side of a placement. */
+export interface FrameInput {
+  readonly origin: Vec3;
+  readonly axisX: Vec3;
+  readonly axisZ: Vec3;
+}
+
+/**
+ * Builds a row-major MatrixTransform (for brepjs `applyMatrix`) from an
+ * (origin, axisX, axisZ) frame, using the SAME IFC orthonormalization as
+ * {@link readAxis2Placement3D}: z = normalize(axisZ); x = normalize(axisX
+ * projected onto the plane ⊥ z); y = z × x. The basis vectors are the matrix
+ * columns, so the row-major linear array is [Xx,Yx,Zx, Xy,Yy,Zy, Xz,Yz,Zz];
+ * translation = origin (mm). This is the display-side counterpart to the IFC
+ * writer's Axis2Placement3D (Axis=Z, RefDirection=X) so on-screen placement and
+ * the IFC export agree.
+ */
+export function placementToMatrix(f: FrameInput): MatrixTransform {
+  const z = normalize(f.axisZ);
+  const dot = z[0] * f.axisX[0] + z[1] * f.axisX[1] + z[2] * f.axisX[2];
+  const projX: Vec3 = [
+    f.axisX[0] - dot * z[0],
+    f.axisX[1] - dot * z[1],
+    f.axisX[2] - dot * z[2],
+  ];
+  const x = lengthSq(projX) < 1e-12 ? normalize(orthogonal(z)) : normalize(projX);
+  const y = cross(z, x);
+  return {
+    linear: [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]],
+    translation: [f.origin[0], f.origin[1], f.origin[2]],
+  };
 }
 
 /** Decomposes a column-major matrix into origin (mm) + IFC axes (Z, X). */

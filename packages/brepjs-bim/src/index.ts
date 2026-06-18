@@ -1,5 +1,6 @@
 export { BimModel } from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
+export { placedSolids } from './elementFns/placedGeometry.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { setIfcWasmLocateFile } from './ifcRuntime.js';
