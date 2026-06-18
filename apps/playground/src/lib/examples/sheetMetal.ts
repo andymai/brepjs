@@ -56,7 +56,8 @@ export default present(solid, {
     label: 'U-Channel',
     description:
       'A sheet-metal U-channel: two upright flanges folded from opposite edges of a base strip — the workhorse profile for rails, brackets, and enclosures.',
-    code: `import { author } from 'brepjs-sheetmetal';
+    code: `import { author, unfold, toDXF, flatPatternToPolylines } from 'brepjs-sheetmetal';
+import { present } from 'brepjs/playground';
 
 // A U-channel: two 90° flanges fold up from opposite long edges of a base strip.
 // Opposite flanges share no corner, so no miter or relief is needed. Tune the
@@ -76,7 +77,16 @@ if (!channel.ok) throw channel.error;
 const solid = channel.value.solid;
 if (!solid) throw new Error('channel produced no solid');
 
-export default solid;
+// Unfold to a flat pattern: DXF for the toolbar download, polylines for the overlay.
+const unfolded = unfold(channel.value);
+if (!unfolded.ok) throw unfolded.error;
+const dxf = toDXF(unfolded.value.pattern);
+if (!dxf.ok) throw dxf.error;
+
+export default present(solid, {
+  dxf: dxf.value,
+  overlay2d: flatPatternToPolylines(unfolded.value.pattern),
+});
 `,
   },
   {
@@ -84,7 +94,8 @@ export default solid;
     label: 'Louvered Vent Panel',
     description:
       'A flat panel with a grid of formed louvers — three-sided cuts with the flap formed up along the hinge. Form features that pure-solid CAD struggles to express.',
-    code: `import { author, louver } from 'brepjs-sheetmetal';
+    code: `import { author, louver, unfold, toDXF, flatPatternToPolylines } from 'brepjs-sheetmetal';
+import { present } from 'brepjs/playground';
 
 // A ventilation panel: a flat blank stamped with a grid of louvers. Each louver
 // is a three-sided cut with the flap formed up along the uncut hinge — a real
@@ -115,7 +126,17 @@ for (let row = 0; row < 3; row++) {
 const solid = part.solid;
 if (!solid) throw new Error('panel produced no solid');
 
-export default solid;
+// Unfold to the flat blank: the louver three-sided cuts + form hinges develop
+// onto the flat pattern. DXF for download, polylines for the overlay.
+const unfolded = unfold(part);
+if (!unfolded.ok) throw unfolded.error;
+const dxf = toDXF(unfolded.value.pattern);
+if (!dxf.ok) throw dxf.error;
+
+export default present(solid, {
+  dxf: dxf.value,
+  overlay2d: flatPatternToPolylines(unfolded.value.pattern),
+});
 `,
   },
   {
@@ -123,7 +144,8 @@ export default solid;
     label: 'Hemmed Safe Edge',
     description:
       'A panel with a closed hem folded back ~180° along one edge — a safe edge that removes the sharp burr and stiffens the part. The development is exact.',
-    code: `import { author, hem } from 'brepjs-sheetmetal';
+    code: `import { author, hem, unfold, toDXF, flatPatternToPolylines } from 'brepjs-sheetmetal';
+import { present } from 'brepjs/playground';
 
 // A panel with a closed hem: the edge is folded back ~180° onto itself, giving a
 // rounded "safe edge" that removes the sharp burr and stiffens the part. Switch
@@ -149,7 +171,17 @@ if (!hemmed.ok) throw hemmed.error;
 const solid = hemmed.value.solid;
 if (!solid) throw new Error('panel produced no solid');
 
-export default solid;
+// Unfold to the flat blank: the hem develops as an exact 180° fold-back. DXF for
+// download, polylines for the overlay.
+const unfolded = unfold(hemmed.value);
+if (!unfolded.ok) throw unfolded.error;
+const dxf = toDXF(unfolded.value.pattern);
+if (!dxf.ok) throw dxf.error;
+
+export default present(solid, {
+  dxf: dxf.value,
+  overlay2d: flatPatternToPolylines(unfolded.value.pattern),
+});
 `,
   },
 ];

@@ -13,12 +13,23 @@ export const BIM_EXAMPLES: readonly Example[] = [
     description:
       'A parametric structural-steel wide-flange (I-beam) authored through a BimModel, complete with the rolled root fillets where the web meets the flanges. The element carries a brepjs solid for display and the model serializes to IFC.',
     code: `import { BimModel } from 'brepjs-bim';
+import { present } from 'brepjs/playground';
 
 // A parametric structural-steel I-beam authored through the BIM model (it also
 // serializes to IFC via toIfc(model)). filletRadius adds the rolled root fillets
-// real wide-flange sections carry where the web meets the flanges.
+// real wide-flange sections carry where the web meets the flanges. Placed in a
+// project → site → building → storey so the BIM panel shows a real model tree.
 const model = new BimModel();
 model.init({ name: 'Beam example' });
+
+// Spatial structure — what makes this a BIM model, not just geometry.
+const project = model.getProject();
+const siteId = model.addSite({ name: 'Site' });
+const buildingId = model.addBuilding({ name: 'Building' });
+const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
 
 const beam = model.addBeam({
   length: 1500,
@@ -36,8 +47,12 @@ const beam = model.addBeam({
   materialName: 'Steel',
 });
 if (!beam.ok) throw beam.error;
+model.placeIn(beam.value, storeyId);
 
-export default model.getBeams()[0].geometry;
+// Show the beam solid and the live IFC model tree in the BIM panel.
+export default present(model.getBeams()[0].geometry, {
+  bimTree: model.toTreeSummary(),
+});
 `,
   },
   {
@@ -120,13 +135,24 @@ export default present(model.getWalls()[0].geometry, {
     description:
       'A parametric curtain-wall facade — a grid of glazing panels framed by vertical and horizontal mullions, each placed from its IFC local origin.',
     code: `import { BimModel } from 'brepjs-bim';
+import { present } from 'brepjs/playground';
 import { translate } from 'brepjs/quick';
 
 // A parametric curtain wall: a columns x rows grid of glazing panels framed by
 // mullions. The model returns each panel and mullion as a local-origin solid
 // plus its placement origin; we translate each into place and show them all.
+// Placed in a project → site → building → storey so the BIM panel shows a tree.
 const model = new BimModel();
 model.init({ name: 'Curtain wall' });
+
+// Spatial structure — what makes this a BIM model, not just geometry.
+const project = model.getProject();
+const siteId = model.addSite({ name: 'Site' });
+const buildingId = model.addBuilding({ name: 'Building' });
+const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
 
 const cw = model.addCurtainWall({
   width: 2700,
@@ -142,11 +168,15 @@ const cw = model.addCurtainWall({
   materialName: 'Aluminium',
 });
 if (!cw.ok) throw cw.error;
+model.placeIn(cw.value, storeyId);
 
 const grid = model.getCurtainWalls()[0].geometry;
 const parts = [...grid.panels, ...grid.mullions].map((c) => translate(c.solid, c.origin));
 
-export default parts;
+// Show every panel + mullion solid and the live IFC model tree in the BIM panel.
+export default present(parts, {
+  bimTree: model.toTreeSummary(),
+});
 `,
   },
 ];

@@ -69,7 +69,7 @@ export default function DesktopLayout({
             collapsible
             collapsedSize="3.5%"
             minSize="15%"
-            defaultSize="20%"
+            defaultSize="3.5%"
             onResize={panels.handleConsoleResize}
           >
             {isConsoleCollapsed ? (

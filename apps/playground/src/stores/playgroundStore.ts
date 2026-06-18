@@ -88,7 +88,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   availableArtifacts: [],
   bimTree: null,
   flatPattern: null,
-  isConsoleCollapsed: false,
+  isConsoleCollapsed: true,
   isViewerCollapsed: false,
   isEditorCollapsed: false,
   lastSuccessfulCode: null,

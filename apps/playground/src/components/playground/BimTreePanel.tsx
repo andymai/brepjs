@@ -46,7 +46,7 @@ export default function BimTreePanel() {
   if (!bimTree?.root) return null;
 
   return (
-    <div className="absolute right-3 top-3 z-10 flex max-h-[70%] w-64 flex-col overflow-hidden rounded-md border border-border-subtle bg-surface/95 shadow-lg backdrop-blur">
+    <div className="absolute left-3 top-3 z-10 flex max-h-[70%] w-64 flex-col overflow-hidden rounded-md border border-border-subtle bg-surface/95 shadow-lg backdrop-blur">
       <button
         onClick={() => setCollapsed((c) => !c)}
         className="flex items-center justify-between border-b border-border-subtle px-3 py-1.5 text-left text-xs font-medium text-gray-300 hover:text-white"
