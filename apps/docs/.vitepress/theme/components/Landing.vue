@@ -119,7 +119,11 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="hero">
         <div class="wrap hero-top">
           <p class="eyebrow">Exact B-Rep · TypeScript · Browser-native</p>
-          <h1>Exact CAD geometry,<br class="h1-break" /><span class="grad">written in TypeScript.</span></h1>
+          <h1>
+            Exact CAD geometry,<br class="h1-break" /><span class="grad"
+              >written in TypeScript.</span
+            >
+          </h1>
           <p class="subhead">
             A real B-Rep kernel in your browser via WASM. A type system that makes invalid geometry
             uncompilable. And a verification loop so AI agents author parts that are provably
@@ -499,30 +503,8 @@ onBeforeUnmount(() => observer?.disconnect());
 </template>
 
 <style scoped>
-/* Signifier (Klim, licensed) — self-hosted display face, landing only. The
-   woff2 are gitignored and provisioned at build time from Vercel Blob; see
-   apps/docs/public/fonts/README.md. Falls back to Georgia without them. */
-@font-face {
-  font-family: 'Signifier';
-  src: url('/fonts/signifier-regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Signifier';
-  src: url('/fonts/signifier-italic.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Signifier';
-  src: url('/fonts/signifier-medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
+/* Signifier @font-face declarations live in theme/custom.css — the docs pages
+   now use them for headings too, so they belong in the global stylesheet. */
 
 /* ============================================================
    DESIGN TOKENS — scoped to .landing so the docs theme is untouched

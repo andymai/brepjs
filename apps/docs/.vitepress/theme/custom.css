@@ -1,3 +1,39 @@
+/* ============================================================
+   FONTS — shared with the bespoke landing (theme/components/Landing.vue)
+   ============================================================ */
+
+/* Signifier (Klim, licensed) — self-hosted display face. The woff2 are
+   gitignored and provisioned at build time from Vercel Blob; see
+   public/fonts/README.md. Falls back to Georgia without them. The landing
+   preloads these for a no-flash hero (config.ts); docs pages let
+   font-display: swap lazy-load them on headings, where a brief fallback is
+   fine and keeps the reading surface from blocking on a third request. */
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Signifier';
+  src: url('/fonts/signifier-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================================
+   THEME TOKENS — harmonized with the landing palette
+   ============================================================ */
+
 :root {
   --vp-c-brand-1: #03b0ad;
   --vp-c-brand-2: #4acecc;
@@ -12,9 +48,38 @@
     transparent 75%
   );
   --vp-home-hero-image-filter: blur(72px);
+
+  /* Code in DM Mono, matching the landing. DM Mono is loaded site-wide from
+     Google Fonts (config.ts head). */
+  --vp-font-family-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Light mode stays close to VitePress default, faintly cool-tinted so it
+     reads as a relative of the dark theme — the landing is dark-only, so there
+     is no light palette to copy and a heavy bespoke light skin isn't worth it. */
+  --vp-c-bg: #fbfdfd;
+  --vp-c-bg-alt: #f3f7f7;
+  --vp-c-bg-soft: #eef4f4;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-divider: #e2ecec;
+  --vp-c-border: #d6e2e2;
+  --vp-c-gutter: #eef4f4;
 }
 
 .dark {
+  /* Dark mode mirrors the landing's cool near-black surface ramp (bg-0..bg-3)
+     and its cool ink/borders, so crossing from the landing into the docs reads
+     as the same world rather than a context switch. */
+  --vp-c-bg: #080b0e;
+  --vp-c-bg-alt: #0d1116;
+  --vp-c-bg-soft: #131922;
+  --vp-c-bg-elv: #1a212b;
+  --vp-c-divider: #1c2530;
+  --vp-c-border: #283340;
+  --vp-c-gutter: #05080a;
+  --vp-c-text-1: #f1f6f7;
+  --vp-c-text-2: #aab6bd;
+  --vp-c-text-3: #828d96;
+
   --vp-home-hero-image-background-image: radial-gradient(
     circle at 50% 50%,
     rgba(74, 206, 204, 0.28),
@@ -22,6 +87,48 @@
     transparent 75%
   );
 }
+
+/* ============================================================
+   DISPLAY TYPE — Signifier on the top two heading levels of rendered docs
+   content only. H1 Medium (page-title authority), H2 Regular (calmer section
+   rhythm). Body, H3+, sidebar and nav stay Inter. Scoped to .vp-doc so the
+   bespoke .landing page — which sets its own scaled display type — is
+   untouched. Georgia fallback covers dev clones without the licensed woff2.
+   ============================================================ */
+
+.vp-doc h1 {
+  font-family: 'Signifier', Georgia, 'Times New Roman', serif;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.vp-doc h2 {
+  font-family: 'Signifier', Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* Softer corners echoing the landing's radii, applied lightly. */
+.vp-doc div[class*='language-'],
+.vp-doc .custom-block {
+  border-radius: 12px;
+}
+
+/* Faint teal glow anchored to the top-right of the nav band (dark only) — a
+   brand hint carried over from the landing without texturing the reading area
+   below. Absolute radius so the falloff is visible across the bar rather than
+   washing it uniformly. */
+.dark .VPNavBar {
+  background-image: radial-gradient(
+    440px 180px at 88% -10%,
+    rgba(3, 176, 173, 0.16),
+    transparent 70%
+  );
+}
+
+/* ============================================================
+   HOME HERO + CODE BLOCK PLAYGROUND LINK
+   ============================================================ */
 
 .VPHero .image-container {
   width: min(440px, 100%);
@@ -49,7 +156,7 @@ div[class*='language-'] .playground-link {
   font-size: 12px;
   line-height: 1;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
   text-decoration: none;

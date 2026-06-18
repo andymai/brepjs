@@ -1,6 +1,6 @@
 {
   "name": "brepjs-bim",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "BIM layer for brepjs — IFC4-aligned parametric building elements",
   "keywords": [
     "bim",
@@ -10,7 +10,11 @@
   ],
   "author": "Andy Aragon",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "https://github.com/andymai/brepjs", "directory": "packages/brepjs-bim" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-bim"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
