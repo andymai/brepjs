@@ -131,7 +131,7 @@ export default function ExampleGallery({
     >
       <div
         ref={panelRef}
-        className="flex h-full max-h-[94vh] w-full max-w-[110rem] flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-2xl sm:flex-row"
+        className="flex h-full max-h-[94dvh] w-full max-w-[110rem] flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-2xl sm:flex-row"
         onClick={(e) => {
           e.stopPropagation();
         }}
@@ -170,7 +170,7 @@ export default function ExampleGallery({
         </nav>
 
         {/* Main: search header + card grid */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5">
             <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true">
               <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
