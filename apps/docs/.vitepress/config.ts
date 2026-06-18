@@ -102,6 +102,24 @@ export default withMermaid(
       ['meta', { property: 'og:image:width', content: '1200' }],
       ['meta', { property: 'og:image:height', content: '630' }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+      // DM Mono is the code face across the whole site (docs + landing); load
+      // it globally. Signifier (the display face) is self-hosted via @font-face
+      // in theme/custom.css and lazy-loaded on docs headings (swap, no preload);
+      // the landing additionally preloads it below for a no-flash hero.
+      ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+      ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+      // Load non-render-blocking: a code face tolerates a brief fallback, so
+      // fetch as print media then promote to all once it arrives (no CSP on
+      // docs pages — the playground's strict CSP is a separate route).
+      [
+        'link',
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap',
+          media: 'print',
+          onload: "this.media='all'",
+        },
+      ],
     ],
     transformPageData(pageData, ctx) {
       // Per-page meta. `frontmatter.description` wins over the global default
@@ -121,7 +139,9 @@ export default withMermaid(
         ? `${siteUrl}/${ogRelPath}`
         : defaultOgImage;
       const ogAlt =
-        title === 'brepjs' ? 'brepjs — Exact CAD geometry, written in TypeScript' : `${title} — brepjs`;
+        title === 'brepjs'
+          ? 'brepjs — Exact CAD geometry, written in TypeScript'
+          : `${title} — brepjs`;
 
       // VitePress emits `<meta name="description">` natively from
       // `frontmatter.description`, so we don't push one here — that would
@@ -163,9 +183,9 @@ export default withMermaid(
         ]);
       }
 
-      // The bespoke landing page (and only it) uses Signifier (self-hosted,
-      // licensed) for display type, Inter for body, and DM Mono for code. Load
-      // them here so docs pages — which never use these faces — stay lean.
+      // The bespoke landing page additionally loads Inter (its body face) and
+      // preloads Signifier so the hero never flashes the fallback serif. DM Mono
+      // (code) is loaded site-wide in the global head above.
       if (pageData.relativePath === 'index.md') {
         pageData.frontmatter.head.push([
           'script',
@@ -173,27 +193,43 @@ export default withMermaid(
           JSON.stringify(structuredData),
         ]);
         pageData.frontmatter.head.push(
-          ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-          ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
           // Signifier is self-hosted (Klim, licensed) — preload the three styles
           // the landing uses so the hero doesn't flash the fallback serif.
           [
             'link',
-            { rel: 'preload', href: '/fonts/signifier-regular.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+            {
+              rel: 'preload',
+              href: '/fonts/signifier-regular.woff2',
+              as: 'font',
+              type: 'font/woff2',
+              crossorigin: '',
+            },
           ],
           [
             'link',
-            { rel: 'preload', href: '/fonts/signifier-medium.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+            {
+              rel: 'preload',
+              href: '/fonts/signifier-medium.woff2',
+              as: 'font',
+              type: 'font/woff2',
+              crossorigin: '',
+            },
           ],
           [
             'link',
-            { rel: 'preload', href: '/fonts/signifier-italic.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
+            {
+              rel: 'preload',
+              href: '/fonts/signifier-italic.woff2',
+              as: 'font',
+              type: 'font/woff2',
+              crossorigin: '',
+            },
           ],
           [
             'link',
             {
               rel: 'stylesheet',
-              href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap',
+              href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
             },
           ],
           // Scroll-reveal on the landing page starts sections at opacity:0 and
