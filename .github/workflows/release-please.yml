@@ -54,12 +54,14 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Auto-merge ONLY the root brepjs release PR. brepjs-opencascade (expensive
-  # WASM build) and brepjs-verify / brepjs-viewer are held for manual merge:
-  # auto-merging their release-please dependency-bump PRs creates a runaway
-  # release loop across the cross-linked workspace packages (the node-workspace
-  # plugin re-emits a bump release on every linked release). Auto-PUBLISH still
-  # works — it fires when a human merges the held release PR.
+  # Auto-merge the root brepjs release PR plus the leaf packages brepjs-bim and
+  # brepjs-sheetmetal. Those leaves depend only on root brepjs (nothing depends
+  # back on them), so the workspace dep graph stays acyclic and node-workspace
+  # propagation terminates after one root->leaves ripple — no release loop is
+  # possible. brepjs-opencascade (expensive WASM build, manual review) and
+  # brepjs-verify / brepjs-viewer are still held: verify cross-links viewer, the
+  # one pairing that historically re-pinned to an unpublished version and looped
+  # the pipeline. Auto-PUBLISH still works — it fires when the release PR merges.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -71,7 +73,7 @@ jobs:
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Enable auto-merge for the root brepjs release PR only
+      - name: Enable auto-merge for root brepjs + leaf package release PRs
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           # Prefer the plural `prs` array (separate-pull-requests: true emits
@@ -100,11 +102,12 @@ jobs:
               continue
             fi
             # Hold brepjs-opencascade (expensive WASM build, manual review) and
-            # brepjs-verify / brepjs-viewer (auto-merging their bump PRs loops the
-            # release pipeline across linked workspace packages). Only the root
-            # brepjs release PR auto-merges.
+            # brepjs-verify / brepjs-viewer (verify cross-links viewer — the
+            # pairing that historically looped the pipeline via unpublished
+            # re-pins). The root brepjs PR and the acyclic leaves brepjs-bim /
+            # brepjs-sheetmetal auto-merge.
             case "$pr_title" in
-              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer* | *brepjs-bim* | *brepjs-sheetmetal*)
+              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer*)
                 echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
                 continue
                 ;;
