@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.91.0](https://github.com/andymai/brepjs/compare/brepjs-v18.90.0...brepjs-v18.91.0) (2026-06-18)
+
+
+### Features
+
+* **playground:** example quality pass — fasteners, geometry, overlays, deep-links, UX ([#1475](https://github.com/andymai/brepjs/issues/1475)) ([9edeac6](https://github.com/andymai/brepjs/commit/9edeac65b585475ccc1143682be6e95e02b94f8f))
+
 ## [18.90.0](https://github.com/andymai/brepjs/compare/brepjs-v18.89.0...brepjs-v18.90.0) (2026-06-17)
 
 
