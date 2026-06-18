@@ -46,11 +46,15 @@ await mkdir(DIR, { recursive: true });
 
 let count = 0;
 for (const url of urls) {
-  const base = decodeURIComponent(new URL(url).pathname.split('/').pop() ?? '');
+  const parsed = new URL(url);
+  const base = decodeURIComponent(parsed.pathname.split('/').pop() ?? '');
   const target = TARGETS.find((t) => t.test.test(base));
   if (!target) throw new Error(`[fonts] cannot map blob URL to a known weight: ${base}`);
 
-  const isPrivate = url.includes('.private.blob.vercel-storage.com');
+  // Decide auth by the parsed hostname, not a substring of the whole URL — a
+  // substring check could be fooled by an attacker-controlled path/query and
+  // leak the token to an arbitrary host.
+  const isPrivate = parsed.hostname.endsWith('.private.blob.vercel-storage.com');
   const headers = isPrivate && token ? { authorization: `Bearer ${token}` } : {};
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`[fonts] download failed for ${target.out}: ${res.status}`);
