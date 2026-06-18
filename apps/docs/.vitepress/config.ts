@@ -108,11 +108,16 @@ export default withMermaid(
       // the landing additionally preloads it below for a no-flash hero.
       ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
       ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+      // Load non-render-blocking: a code face tolerates a brief fallback, so
+      // fetch as print media then promote to all once it arrives (no CSP on
+      // docs pages — the playground's strict CSP is a separate route).
       [
         'link',
         {
           rel: 'stylesheet',
           href: 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap',
+          media: 'print',
+          onload: "this.media='all'",
         },
       ],
     ],
