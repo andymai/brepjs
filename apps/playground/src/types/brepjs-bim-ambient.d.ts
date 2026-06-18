@@ -166,16 +166,19 @@ interface BimTreeSummary {
 
 /**
  * Returns each element's geometry transformed to its world placement, as fresh
- * caller-owned solids. **Dispose them** (e.g. via `using` or `[Symbol.dispose]`);
- * they are independent of the model's lifetime — `BimModel[Symbol.dispose]` only
- * frees the stored (local) `.geometry`.
+ * caller-owned solids, wrapped in a `Result` (Layer-2 code prefers `Result` over
+ * throwing). **Dispose the returned solids** (e.g. via `using` / `[Symbol.dispose]`)
+ * when you own their lifetime — they are independent of the model
+ * (`BimModel[Symbol.dispose]` frees only the stored, unplaced `.geometry`). On any
+ * failure the solids already built for this call are disposed before the error is
+ * returned, so no partial array is leaked.
  *
- * Stairs carry no element solid (`.geometry` is null), so their flight solids are
- * built from `spec.flights` and placed per flight. Curtain walls are returned as
- * placed panels + mullions. Elements with no solid geometry (doors/windows/ramps/
- * groups/spatial) return an empty array. The unplaced `.geometry` is unchanged.
+ * Stairs carry no element solid (`.geometry` is null), so flight solids are built
+ * from `spec.flights` and placed per flight. Curtain walls return placed panels +
+ * mullions. Elements with no solid geometry (doors/windows/ramps/groups/spatial)
+ * return an empty array.
  */
-declare function placedSolids(el: AnyBimElement): readonly ValidSolid[];
+declare function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError>;
 
 declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
 

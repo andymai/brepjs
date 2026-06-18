@@ -155,6 +155,7 @@ export default parts;
     description:
       'A single-bay structural steel frame — four I-section columns, perimeter beams, and a floor slab — grouped as an IfcElementAssembly in a real spatial structure. Each element is read back already placed via placedSolids(), so the view matches the IFC export. Tinted by material role.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // Columns + perimeter beams + a floor slab, grouped as an IfcElementAssembly.
@@ -196,8 +197,10 @@ model.aggregate(assembly, slab.value);
 for (const c of model.getColumns()) model.aggregate(assembly, c.localId);
 for (const bm of model.getBeams()) model.aggregate(assembly, bm.localId);
 
-const steel = [...model.getColumns(), ...model.getBeams()].flatMap((e) => placedSolids(e)).map((s) => color(s, '#8a99ad'));
-const deck = placedSolids(model.getSlabs()[0]).map((s) => color(s, '#cfcabb'));
+// placedSolids returns a Result of fresh, caller-owned solids; here the playground
+// runtime owns the displayed geometry for this eval, so the snippet doesn't dispose it.
+const steel = [...model.getColumns(), ...model.getBeams()].flatMap((e) => unwrap(placedSolids(e))).map((s) => color(s, '#8a99ad'));
+const deck = unwrap(placedSolids(model.getSlabs()[0])).map((s) => color(s, '#cfcabb'));
 
 export default present([...steel, ...deck], {
   bimTree: model.toTreeSummary(),
@@ -215,6 +218,7 @@ export default present([...steel, ...deck], {
     description:
       'A single-room building shell: pad footings, four walls with a door and window, a floor slab, a gable roof, and an IfcSpace for the room — organised in a full project → site → building → storey tree. Material-tinted; the IFC button exports a valid file.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 const model = new BimModel();
@@ -266,8 +270,10 @@ const space = model.addSpace({ name: 'Room', length: L - 2 * T, width: W - 2 * T
 if (!space.ok) throw space.error;
 model.placeIn(space.value, storey);
 
-const concrete = [...model.getWalls(), ...model.getSlabs(), ...model.getFootings()].flatMap((e) => placedSolids(e)).map((s) => color(s, '#cfcabb'));
-const tile = placedSolids(model.getRoofs()[0]).map((s) => color(s, '#9c6b52'));
+// placedSolids returns a Result of fresh, caller-owned solids; here the playground
+// runtime owns the displayed geometry for this eval, so the snippet doesn't dispose it.
+const concrete = [...model.getWalls(), ...model.getSlabs(), ...model.getFootings()].flatMap((e) => unwrap(placedSolids(e))).map((s) => color(s, '#cfcabb'));
+const tile = unwrap(placedSolids(model.getRoofs()[0])).map((s) => color(s, '#9c6b52'));
 
 export default present([...concrete, ...tile], {
   bimTree: model.toTreeSummary(),
@@ -285,6 +291,7 @@ export default present([...concrete, ...tile], {
     description:
       'A half-turn (switchback) stair: two straight flights at 180°, an intermediate landing slab, and a posted guardrail. The stair is an IFC assembly with no solid of its own — its flights are read back as placed solids via placedSolids().',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
 import { present } from 'brepjs/playground';
 
 const model = new BimModel();
@@ -303,6 +310,10 @@ const flightCommon = { width: WIDTH, riserHeight: RH, treadLength: TL, numberOfR
 const stair = model.addStair({
   name: 'Stair',
   predefinedType: 'HALF_TURN_STAIR',
+  // Flight 1 runs +X in lane y in [0, WIDTH]; flight 2 runs -X (axisX = -X flips its
+  // width into -Y), so it occupies the ADJACENT lane y in [WIDTH, 2*WIDTH] — the two
+  // flights sit side by side (total width 2*WIDTH), flight 2 starting at the landing's
+  // far edge (runLen + LANDING_D) and climbing back over flight 1.
   flights: [
     { ...flightCommon, origin: [0, 0, 0], axisX: [1, 0, 0] },
     { ...flightCommon, origin: [runLen + LANDING_D, WIDTH * 2, rise], axisX: [-1, 0, 0] },
@@ -320,10 +331,11 @@ const rail = model.addRailing({ length: LANDING_D, height: 1000, thickness: 80, 
 if (!rail.ok) throw rail.error;
 model.placeIn(rail.value, storey);
 
+// Displayed geometry is owned by the playground runtime for this eval; snippets don't dispose it.
 const parts = [
-  ...placedSolids(model.getStairs()[0]),
-  ...placedSolids(model.getSlabs()[0]),
-  ...placedSolids(model.getRailings()[0]),
+  ...unwrap(placedSolids(model.getStairs()[0])),
+  ...unwrap(placedSolids(model.getSlabs()[0])),
+  ...unwrap(placedSolids(model.getRailings()[0])),
 ];
 
 export default present(parts, {
@@ -342,6 +354,7 @@ export default present(parts, {
     description:
       'Four parametric roof shapes side by side — shed, gable, hip, and dome — each a real IfcRoof solid (not a flat slab). Demonstrates the brepjs-bim roof builder’s shape range; the IFC export tessellates each shaped body.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
 import { present } from 'brepjs/playground';
 
 const model = new BimModel();
@@ -362,7 +375,8 @@ kinds.forEach((kind, i) => {
   model.placeIn(roof.value, storey);
 });
 
-const parts = model.getRoofs().flatMap((e) => placedSolids(e));
+// Displayed geometry is owned by the playground runtime for this eval; snippets don't dispose it.
+const parts = model.getRoofs().flatMap((e) => unwrap(placedSolids(e)));
 
 export default present(parts, {
   bimTree: model.toTreeSummary(),
@@ -380,6 +394,7 @@ export default present(parts, {
     description:
       'An IfcSpace — the room volume itself, a first-class spatial element — shown as a tinted solid inside its four neutral bounding walls (it rises just above the walls so the volume reads). Illustrates the pure-BIM “space” concept that has no equivalent in plain solid modelling.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 const model = new BimModel();
@@ -409,8 +424,9 @@ const space = model.addSpace({ name: 'Room', length: L - 2 * T, width: W - 2 * T
 if (!space.ok) throw space.error;
 model.placeIn(space.value, storey);
 
-const shell = model.getWalls().flatMap((e) => placedSolids(e)).map((s) => color(s, '#d8d4c8'));
-const room = placedSolids(model.getSpaces()[0]).map((s) => color(s, '#4fd1c5'));
+// Displayed geometry is owned by the playground runtime for this eval; snippets don't dispose it.
+const shell = model.getWalls().flatMap((e) => unwrap(placedSolids(e))).map((s) => color(s, '#d8d4c8'));
+const room = unwrap(placedSolids(model.getSpaces()[0])).map((s) => color(s, '#4fd1c5'));
 
 export default present([...shell, ...room], {
   bimTree: model.toTreeSummary(),
