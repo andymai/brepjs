@@ -13,6 +13,7 @@ import ViewerToolbar from './ViewerToolbar';
 import SelectionTooltip from './SelectionTooltip';
 import OnboardingHint from './OnboardingHint';
 import ContextMenu from './ContextMenu';
+import GenerationOverlay from './GenerationOverlay';
 
 /**
  * Build a content-derived React key for a mesh. The store hands us a fresh
@@ -426,6 +427,7 @@ export default function ViewerPanel() {
         </group>
       </Canvas>
       <ViewerToolbar />
+      <GenerationOverlay />
       <SelectionTooltip
         selections={selections}
         hoverEntity={hoverEntity}

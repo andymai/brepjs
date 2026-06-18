@@ -367,6 +367,30 @@ body,
   background: #03b0ad;
 }
 
+/* Generation overlay: a wireframe cube whose edges "march" while geometry
+   recomputes — an elegant stand-in that softens the perceived wait. */
+@keyframes gen-march {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+@keyframes gen-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.gen-overlay {
+  animation: gen-fade-in 0.18s ease-out;
+}
+.gen-cube path,
+.gen-cube line {
+  stroke-dasharray: 5 5;
+  animation: gen-march 0.9s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -389,6 +413,10 @@ body,
     animation: none !important;
   }
   .animate-toast-in {
+    animation: none !important;
+  }
+  .gen-cube path,
+  .gen-cube line {
     animation: none !important;
   }
 }
