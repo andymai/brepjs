@@ -18,7 +18,7 @@
  * back to the `Georgia, serif` stack. Drop the licensed woff2 into
  * apps/docs/public/fonts/ locally to preview the real face.
  *
- * Dependency-free: uses Node's global fetch (Node >= 24).
+ * Dependency-free: uses Node's built-in global fetch (stable since Node 18).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 
@@ -44,7 +44,7 @@ if (urls.length === 0) {
 
 await mkdir(DIR, { recursive: true });
 
-let count = 0;
+const provisioned = new Set();
 for (const url of urls) {
   const parsed = new URL(url);
   const base = decodeURIComponent(parsed.pathname.split('/').pop() ?? '');
@@ -61,7 +61,12 @@ for (const url of urls) {
 
   await writeFile(`${DIR}/${target.out}`, Buffer.from(await res.arrayBuffer()));
   console.log(`[fonts] ✓ ${target.out}`);
-  count++;
+  provisioned.add(target.out);
 }
 
-console.log(`[fonts] provisioned ${count} font(s) into ${DIR}`);
+// Fail loudly on a partial set: a dropped/duplicated URL in FONT_BLOB_URLS would
+// otherwise ship a missing weight as a silently broken @font-face.
+const missing = TARGETS.map((t) => t.out).filter((out) => !provisioned.has(out));
+if (missing.length) throw new Error(`[fonts] incomplete set — missing: ${missing.join(', ')}`);
+
+console.log(`[fonts] provisioned ${provisioned.size} font(s) into ${DIR}`);
