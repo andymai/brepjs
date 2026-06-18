@@ -298,25 +298,25 @@ model.aggregate(site, building);
 model.aggregate(building, storey);
 
 const RISERS = 9, RH = 175, TL = 260, WIDTH = 1100;
-const runLen = RISERS * TL, rise = RISERS * RH;
+const runLen = RISERS * TL, rise = RISERS * RH, LANDING_D = 1500;
 const flightCommon = { width: WIDTH, riserHeight: RH, treadLength: TL, numberOfRisers: RISERS, axisZ: [0, 0, 1] as [number, number, number], materialName: 'Concrete' };
 const stair = model.addStair({
   name: 'Stair',
   predefinedType: 'HALF_TURN_STAIR',
   flights: [
     { ...flightCommon, origin: [0, 0, 0], axisX: [1, 0, 0] },
-    { ...flightCommon, origin: [runLen, WIDTH * 2, rise], axisX: [-1, 0, 0] },
+    { ...flightCommon, origin: [runLen + LANDING_D, WIDTH * 2, rise], axisX: [-1, 0, 0] },
   ],
   materialName: 'Concrete',
 });
 if (!stair.ok) throw stair.error;
 model.placeIn(stair.value, storey);
 
-const landing = model.addSlab({ length: 1200, width: WIDTH * 2, thickness: 200, origin: [runLen, 0, rise - 200], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'LANDING', materialName: 'Concrete' });
+const landing = model.addSlab({ length: LANDING_D, width: WIDTH * 2, thickness: 200, origin: [runLen, 0, rise - 200], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'LANDING', materialName: 'Concrete' });
 if (!landing.ok) throw landing.error;
 model.placeIn(landing.value, storey);
 
-const rail = model.addRailing({ length: runLen, height: 1000, thickness: 50, origin: [0, -WIDTH / 2, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' });
+const rail = model.addRailing({ length: LANDING_D, height: 1000, thickness: 80, origin: [runLen, 0, rise], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' });
 if (!rail.ok) throw rail.error;
 model.placeIn(rail.value, storey);
 
