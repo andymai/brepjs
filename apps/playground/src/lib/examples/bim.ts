@@ -248,7 +248,7 @@ export default present([...steel, ...deckSolids], {
     id: 'bim-building-shell',
     label: 'Building Shell',
     description:
-      'A single-room building shell: pad footings, four walls with a door and window, a floor slab, a gable roof, and an IfcSpace for the room — organised in a full project → site → building → storey tree. Material-tinted; the IFC button exports a valid file.',
+      'A single-room building shell: a foundation plinth, four walls meeting cleanly at the corners, a door and two windows, a gable roof seated on the wall heads, and an IfcSpace for the room — organised in a full project → site → building → storey tree. Material-tinted; the IFC button exports a valid file.',
     code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
 import { unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
@@ -378,9 +378,9 @@ if (!landing.ok) throw landing.error;
 model.placeIn(landing.value, storey);
 
 // Top landing: the upper-floor arrival pad under flight 2's head (x = 0, z = 2*rise).
-const top = model.addSlab({ length: 500, width: W, thickness: LT, origin: [-300, LANE2, 2 * rise - LT], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'LANDING', materialName: 'Concrete' });
-if (!top.ok) throw top.error;
-model.placeIn(top.value, storey);
+const topLanding = model.addSlab({ length: 500, width: W, thickness: LT, origin: [-300, LANE2, 2 * rise - LT], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'LANDING', materialName: 'Concrete' });
+if (!topLanding.ok) throw topLanding.error;
+model.placeIn(topLanding.value, storey);
 
 // Posted guardrail along the half-landing's open (south) edge.
 const rail = model.addRailing({ length: LD, height: 1000, thickness: 80, origin: [run - 100, 0, rise], axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'GUARDRAIL', infill: 'POSTED', materialName: 'Steel' });
