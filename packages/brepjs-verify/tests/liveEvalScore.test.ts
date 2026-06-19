@@ -140,6 +140,24 @@ describe('runScores', () => {
     expect(get('lift')).toBeCloseTo(1 / 2, 5);
   });
 
+  it('normalizes lift scores by the full run size, not just the looped subset', () => {
+    // A mixed run: one single-shot both-pass item + one looped item (first-try miss, eventual both).
+    // All six scores must share the t.total=2 denominator so they're directly comparable on a chart.
+    const results: EvalResult[] = [
+      { id: 'single', category: 'primitive', auto: { pass: true, failures: [] }, judgePass: true },
+      looped('lp', [
+        attempt([], { auto: { pass: true, failures: [] }, judgePass: false }),
+        attempt([], { auto: { pass: true, failures: [] }, judgePass: true }),
+      ]),
+    ];
+    const scores = runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results });
+    const get = (n: string): number | undefined => scores.find((s) => s.name === n)?.value;
+    expect(get('both')).toBeCloseTo(1, 5); // 2 both-pass / 2
+    expect(get('eventual_both')).toBeCloseTo(1 / 2, 5); // 1 looped-both / 2  (NOT 1/1)
+    expect(get('first_try_both')).toBeCloseTo(0, 5); // 0 looped-first-try-both / 2
+    expect(get('lift')).toBeCloseTo(1 / 2, 5); // (1 - 0) / 2
+  });
+
   it('returns no scores for an empty run', () => {
     expect(runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results: [] })).toEqual([]);
   });

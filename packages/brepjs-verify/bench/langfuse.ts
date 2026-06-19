@@ -37,8 +37,9 @@ export interface Telemetry {
   registerSkill: (skillMd: string) => Promise<void>;
   /** Push one run's aggregate scores (both% + first-try-vs-eventual lift) on a single trace. */
   pushScorecard: (card: Scorecard) => Promise<void>;
-  /** Record the run as a dataset experiment: per-part trace + scores linked to its dataset item. */
-  pushDatasetRun: (card: Scorecard) => Promise<void>;
+  /** Record the run as a dataset experiment (per-part trace + scores linked to its dataset item);
+   *  resolves with the number of items successfully linked. */
+  pushDatasetRun: (card: Scorecard) => Promise<number>;
   /** Flush spans + scores and shut down. */
   shutdown: () => Promise<void>;
 }
@@ -47,7 +48,7 @@ const NOOP: Telemetry = {
   observePrompt: (_p, _metadata, run) => run(),
   registerSkill: () => Promise.resolve(),
   pushScorecard: () => Promise.resolve(),
-  pushDatasetRun: () => Promise.resolve(),
+  pushDatasetRun: () => Promise.resolve(0),
   shutdown: () => Promise.resolve(),
 };
 
@@ -156,6 +157,7 @@ export function createTelemetry(): Telemetry {
       // version. Best-effort + isolated per item: corpus drift (a result whose id has no dataset
       // item) only warns and skips, so one missing item never aborts the rest of the run.
       const runName = card.skillVersion ?? `${card.model}-${card.date}`;
+      let linked = 0;
       for (const r of card.results) {
         try {
           await startActiveObservation(r.id, async (obs) => {
@@ -171,12 +173,14 @@ export function createTelemetry(): Telemetry {
               metadata: { skillVersion: card.skillVersion, brepjsVersion: card.brepjsVersion },
             });
           });
+          linked++;
         } catch (e) {
           console.warn(
             `langfuse: dataset-run link failed for ${r.id} (${(e as Error).message.split('\n')[0]})`
           );
         }
       }
+      return linked;
     },
     shutdown: async () => {
       try {

@@ -2,7 +2,6 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import Anthropic from '@anthropic-ai/sdk';
 import { runProgramWithStep } from '../src/sandbox/runProgram.js';
 import { PROMPTS, type EvalPrompt } from './prompts.js';
@@ -21,7 +20,6 @@ import { skillVersion } from './skillVersion.js';
 // authors + judges in-session, use the `/eval-skill` command instead.
 
 const here = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
 
 interface Args {
   model: string;
@@ -59,8 +57,11 @@ function parseArgs(argv: readonly string[]): Args {
 }
 
 function brepjsVersion(): string {
+  // The package IS "brepjs"; read the repo-root package.json via a relative path (bench/ is three
+  // levels down). Its `exports` map has no `./package.json`, so require.resolve('brepjs/package.json')
+  // throws — which is why CI scorecards + dataset run names read "unknown".
   try {
-    const pkg = JSON.parse(readFileSync(require.resolve('brepjs/package.json'), 'utf8')) as {
+    const pkg = JSON.parse(readFileSync(resolve(here, '../../../package.json'), 'utf8')) as {
       version?: string;
     };
     return pkg.version ?? 'unknown';
@@ -238,7 +239,11 @@ async function main(): Promise<void> {
   // corpus — a dataset experiment on brepjs-playground (per-part scores linked to each dataset item),
   // the same two records the manual loop's `eval:push` writes. Best-effort + no-op without keys.
   await telemetry.pushScorecard(card);
-  if (args.corpus === 'playground') await telemetry.pushDatasetRun(card);
+  if (args.corpus === 'playground') {
+    const linked = await telemetry.pushDatasetRun(card);
+    if (process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY'])
+      console.log(`langfuse: dataset run "${skillVer}" — ${linked}/${results.length} items linked`);
+  }
   await telemetry.shutdown();
 
   if (!args.keep) rmSync(workdir, { recursive: true, force: true });

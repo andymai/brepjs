@@ -183,10 +183,13 @@ export function runScores(card: Scorecard): RunScore[] {
   ];
   const lift = liftSummary(card.results);
   if (lift && lift.total > 0) {
+    // Normalize by t.total (all items), not lift.total (looped subset), so all six scores share one
+    // denominator and are directly comparable on a Langfuse chart that carries no n annotation. For
+    // the all-looping runs (eval:live / /eval-skill) t.total == lift.total, so this is identity there.
     out.push(
-      { name: 'first_try_both', value: lift.firstTryBoth / lift.total },
-      { name: 'eventual_both', value: lift.eventualBoth / lift.total },
-      { name: 'lift', value: (lift.eventualBoth - lift.firstTryBoth) / lift.total }
+      { name: 'first_try_both', value: lift.firstTryBoth / t.total },
+      { name: 'eventual_both', value: lift.eventualBoth / t.total },
+      { name: 'lift', value: (lift.eventualBoth - lift.firstTryBoth) / t.total }
     );
   }
   return out;

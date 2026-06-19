@@ -17,12 +17,16 @@ async function main(): Promise<void> {
   const card = JSON.parse(readFileSync(path, 'utf8')) as Scorecard;
   const telemetry = createTelemetry();
   await telemetry.pushScorecard(card);
-  await telemetry.pushDatasetRun(card);
+  const linked = await telemetry.pushDatasetRun(card);
   await telemetry.shutdown();
   const runName = card.skillVersion ?? `${card.model}-${card.date}`;
+  const total = card.results.length;
+  // Report the real link count — a scorecard whose result ids aren't playground example ids links 0
+  // (every datasetRunItems.create warns + skips), so don't claim a clean dataset run when none landed.
+  const linkNote = linked < total ? ' — others had no matching brepjs-playground item' : '';
   console.log(
     process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY']
-      ? `langfuse: pushed run-level scores + dataset run "${runName}" for ${card.results.length} parts.`
+      ? `langfuse: pushed run-level scores + dataset run "${runName}" (${linked}/${total} items linked${linkNote}).`
       : 'langfuse: no LANGFUSE_* keys set — nothing pushed (set LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL).'
   );
 }
