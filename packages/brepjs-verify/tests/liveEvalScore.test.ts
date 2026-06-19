@@ -169,6 +169,7 @@ describe('mergeScorecards', () => {
     model: 'm',
     brepjsVersion: 'v',
     skillVersion: 's',
+    corpus: 'playground',
     date: 'd',
     results,
   });
@@ -180,6 +181,7 @@ describe('mergeScorecards', () => {
     ]);
     expect(merged.results.map((r) => r.id)).toEqual(['p1', 'p2']);
     expect(merged.skillVersion).toBe('s');
+    expect(merged.corpus).toBe('playground');
     expect(merged.model).toBe('m');
   });
 

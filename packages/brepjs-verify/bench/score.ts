@@ -96,6 +96,8 @@ export interface Scorecard {
   brepjsVersion: string;
   /** The deployed skill's content hash — provenance so trends attribute to a SKILL.md edit. */
   skillVersion?: string | undefined;
+  /** The corpus evaluated — lets the combine step guard the dataset push the way the live run does. */
+  corpus?: 'playground' | 'prompts' | undefined;
   date: string;
   results: readonly EvalResult[];
 }
@@ -113,6 +115,7 @@ export function mergeScorecards(cards: readonly Scorecard[]): Scorecard {
     ...(first?.judgeModel !== undefined ? { judgeModel: first.judgeModel } : {}),
     brepjsVersion: first?.brepjsVersion ?? 'unknown',
     ...(first?.skillVersion !== undefined ? { skillVersion: first.skillVersion } : {}),
+    ...(first?.corpus !== undefined ? { corpus: first.corpus } : {}),
     date: first?.date ?? '',
     results: cards.flatMap((c) => [...c.results]),
   };

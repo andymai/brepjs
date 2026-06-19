@@ -20,7 +20,9 @@ async function main(): Promise<void> {
 
   const telemetry = createTelemetry();
   await telemetry.pushScorecard(card);
-  const linked = await telemetry.pushDatasetRun(card);
+  // Push the dataset run only for the playground corpus (the same guard live.ts uses) — its ids
+  // match brepjs-playground items; legacy-prompts ids would just warn + skip per item.
+  const linked = card.corpus === 'playground' ? await telemetry.pushDatasetRun(card) : 0;
   await telemetry.shutdown();
   const hasKeys = process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY'];
   console.log(

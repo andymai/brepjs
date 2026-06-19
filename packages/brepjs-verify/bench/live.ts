@@ -54,10 +54,16 @@ function parseArgs(argv: readonly string[]): Args {
     else if (a === '--max-attempts')
       args.maxAttempts = Math.max(1, Math.trunc(Number(argv[++i])) || args.maxAttempts);
     else if (a === '--shard') {
-      const [idxStr, cntStr] = (argv[++i] ?? '').split('/');
+      const spec = argv[++i] ?? '';
+      const [idxStr, cntStr] = spec.split('/');
       const idx = Math.trunc(Number(idxStr));
       const cnt = Math.trunc(Number(cntStr));
       if (cnt >= 1 && idx >= 0 && idx < cnt) args.shard = { i: idx, n: cnt };
+      else {
+        // Don't silently fall back to the full corpus — a bad shard spec in CI would duplicate work.
+        console.error(`invalid --shard "${spec}" — expected i/N with 0 <= i < N`);
+        process.exit(2);
+      }
     } else if (a === '--out') args.out = argv[++i];
   }
   // The judge defaults to the author model; decoupling lets a cheaper, independent model grade the
@@ -245,6 +251,7 @@ async function main(): Promise<void> {
     judgeModel: args.judgeModel,
     brepjsVersion: version,
     skillVersion: skillVer,
+    corpus: args.corpus,
     date,
     results,
   };
