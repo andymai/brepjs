@@ -49,5 +49,6 @@ A plain `GltfMaterial` object (not a function) paints the whole part one color. 
 
 - Returning a `Result` from the default export is supported; the verifier unwraps it and reports an `Err`.
 - Booleans on touching-but-not-overlapping solids can yield empty/invalid results; give operands a small overlap. (A `compound` does NOT need overlap; bodies stay distinct.)
+- **`fuse` of solids that only meet on a coplanar face/ring can silently return a loose `Compound`** — `ok:true`, but the bodies are NOT welded (the report's `manifold` flag / an undropped face count is the tell, not `shapeType`). For one watertight solid, give the operands a real overlap and use `fuseAll(shapes, { unsafe: true })`. If it's an assembly, a loose `Compound` is correct — just don't mistake it for a weld.
 
 See also: docs/function-lookup.md → brepjs/topology.

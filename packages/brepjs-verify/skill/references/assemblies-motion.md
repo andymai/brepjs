@@ -15,7 +15,7 @@ pure function so you can re-pose it cheaply:
 
 ```ts
 function pose(thetaDeg: number) {
-  const z = (STROKE / 2) * Math.sin((thetaDeg * Math.PI) / 180);          // driven motion
+  const z = (STROKE / 2) * Math.sin((thetaDeg * Math.PI) / 180); // driven motion
   const crank = rotate(crankShaft(), thetaDeg, { at: [0, 0, AXLE_Z], axis: [1, 0, 0] });
   const piston = translate(pistonRodYoke(), [0, 0, z]);
   return { frame: frame(), crank, piston };
@@ -42,12 +42,20 @@ assert the travel equals the design. A mechanism that doesn't collide but also d
 broken.
 
 ```ts
-let maxOverlap = 0, zMin = Infinity, zMax = -Infinity;
+let maxOverlap = 0,
+  zMin = Infinity,
+  zMax = -Infinity;
 for (let t = 0; t < 360; t += 15) {
   const p = pose(t);
-  maxOverlap = Math.max(maxOverlap, overlap(p.piston, p.crank), overlap(p.piston, p.frame), overlap(p.crank, p.frame));
+  maxOverlap = Math.max(
+    maxOverlap,
+    overlap(p.piston, p.crank),
+    overlap(p.piston, p.frame),
+    overlap(p.crank, p.frame)
+  );
   const zb = getBounds(p.piston).zMin;
-  zMin = Math.min(zMin, zb); zMax = Math.max(zMax, zb);
+  zMin = Math.min(zMin, zb);
+  zMax = Math.max(zMax, zb);
 }
 // PASS only if: maxOverlap ~ 0 (no jam)  AND  (zMax - zMin) ≈ STROKE (it really pumps)
 ```
@@ -60,14 +68,28 @@ the assembled `compound` for viewing.
 
 ```ts
 export default () => {
-  if (maxOverlap > EPS) throw new Error(`mechanism jams: overlap ${maxOverlap.toFixed(1)}mm³ at θ-sweep`);
-  if (zMax - zMin < STROKE * 0.95) throw new Error(`piston barely moves: ${(zMax - zMin).toFixed(1)}mm vs ${STROKE}`);
+  if (maxOverlap > EPS)
+    throw new Error(`mechanism jams: overlap ${maxOverlap.toFixed(1)}mm³ at θ-sweep`);
+  if (zMax - zMin < STROKE * 0.95)
+    throw new Error(`piston barely moves: ${(zMax - zMin).toFixed(1)}mm vs ${STROKE}`);
   return compound([pose(0).frame, pose(0).crank, pose(0).piston]);
 };
 ```
 
 Also render the cycle: snapshot poses θ = 0 / 90 / 180 / 270 (place them side-by-side with
 `translate`) so a human can SEE the stroke and confirm parts stay connected.
+
+## Revolute joints — hinges
+
+A hinge whose two leaves are **coplanar at the seam** jams the instant it rotates: the leaf
+faces share the pin plane, so any rotation drives one leaf into the other (the motion sweep
+flags the positive overlap — correctly). Fix it with geometry, not a bigger epsilon:
+
+- **Swage the knuckles** — offset each leaf's barrel slightly out of the leaf plane (real hinges
+  do this) so the leaves clear each other through the swing.
+- **Cap the validated range at the contact stop** — a butt hinge only opens until the leaves
+  meet. Sweep only to the angle where the faces first touch and report THAT as the range; don't
+  widen the overlap epsilon to hide a real collision.
 
 ## Verdict
 

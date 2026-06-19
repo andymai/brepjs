@@ -56,6 +56,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 
 - Edit source, not artifacts. STEP/STL/GLB derive from the `.brep.ts`.
 - Booleans and `measureVolume`/`measureArea` return `Result`: unwrap and check the `Err` branch before chaining.
+- **`fuse` welds only where solids overlap**: bodies that merely touch on a coplanar face/ring may return a loose `Compound` (`ok:true`, not one watertight solid). Overlap the operands + `fuseAll(shapes, { unsafe: true })` for a weld; use `compound` for a distinct-bodies assembly.
 - `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
 - `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z). Units mm. **`at` sets the geometric CENTER, not a corner**: bare `box(w,d,h)` is corner-at-origin (`[0,w]×[0,d]×[0,h]`), `{ centered: true }` centers on the origin, `{ at: [x,y,z] }` centers there. `cylinder`/`cone` `at` is the **base** center; `sphere` `at` is its center. Modelling `at` as a corner ships valid-but-misplaced parts.
 - **No half-sphere primitive:** build a hemisphere/dome by clipping a full `sphere` to a half-space with `intersect` (a `box` over the half you want), then `fuse`/`cut` — fusing a whole sphere bulges past the cap face.

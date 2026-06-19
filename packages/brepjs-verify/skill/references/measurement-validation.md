@@ -30,5 +30,6 @@ Trust the deterministic numbers; treat snapshots/serve as confirmation, not proo
 
 - `measureVolume` returns a `Result`; unwrap before comparing to a number.
 - `getBounds` returns flat `xMin/xMax/...` fields, not min/max vectors.
+- Snapshot view names (`front`/`top`/`right`) are **camera presets, not your part's datum axes** — a Z-up part won't show its 'top' face in `top.png`. Read scale from the burned-in bbox and confirm against `bounds`; don't infer your datum from which preset a feature lands in.
 
 See also: docs/function-lookup.md → brepjs/measurement.

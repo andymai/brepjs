@@ -59,6 +59,7 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 
 - Edit source, not artifacts. STEP/STL/GLB derive from the `.brep.ts`.
 - Booleans and `measureVolume`/`measureArea` return `Result`: unwrap and check the `Err` branch before chaining.
+- **`fuse` welds only where solids overlap**: bodies that merely touch on a coplanar face/ring may return a loose `Compound` (`ok:true`, not one watertight solid). Overlap the operands + `fuseAll(shapes, { unsafe: true })` for a weld; use `compound` for a distinct-bodies assembly. (See `references/booleans.md`.)
 - `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
 - **Select edges/faces; don't fillet/chamfer everything.** `fillet(solid, radius)` (no edge list) rounds EVERY edge and frequently fails (`FILLET_FAILED`). Pass an edge list: `edgeFinder().inDirection('Z').findAll(solid)`. Note `inDirection` matches BOTH ± orientations; discriminate a single face/edge by position with `.when(f => getBounds(f).zMax > t)`. (See `references/modifiers.md`.)
 - **`revolve` angle is in RADIANS** (full turn = `Math.PI * 2`, not `360`). Build a revolve profile with `polygon(points3D)`, not `draw().close().sketchOnPlane('XZ').face()`: the latter fails `--check` (`sketchOnPlane` is typed `SketchInterface | Sketches` and `.face()` isn't on both). (See `references/sketching-2d.md`.)
