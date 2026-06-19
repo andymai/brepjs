@@ -62,3 +62,7 @@ tmp/
 # Generated example/render outputs (SVG/HTML produced by running examples)
 examples/output/
 docs/images/examples/
+
+# Local agent skill tooling (installed via `skills add`, not project source)
+.agents/
+.claude/skills/langfuse
