@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.95.0](https://github.com/andymai/brepjs/compare/brepjs-v18.94.0...brepjs-v18.95.0) (2026-06-19)
+
+
+### Features
+
+* **brepjs-verify:** Langfuse observability foundation ([#1498](https://github.com/andymai/brepjs/issues/1498)) ([78c81f3](https://github.com/andymai/brepjs/commit/78c81f3b3e4890cbd3abc2474fcc5b7e4926bd3e))
+
 ## [18.94.0](https://github.com/andymai/brepjs/compare/brepjs-v18.93.1...brepjs-v18.94.0) (2026-06-19)
 
 
