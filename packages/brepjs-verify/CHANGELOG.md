@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.28.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.27.0...brepjs-verify-v0.28.0) (2026-06-19)
+
+
+### Features
+
+* **brepjs-verify:** fan out the eval across sharded CI runners ([#1503](https://github.com/andymai/brepjs/issues/1503)) ([8eb1f69](https://github.com/andymai/brepjs/commit/8eb1f690588e418e4b884e1294ba91b679667d61))
+
+
+### Bug Fixes
+
+* **brepjs-verify:** chamfer-fragility + unwrap/TS2322 SKILL.md rules ([#1506](https://github.com/andymai/brepjs/issues/1506)) ([0f24004](https://github.com/andymai/brepjs/commit/0f24004983effbd85545372b167f472eed35ec96))
+
 ## [0.27.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.26.0...brepjs-verify-v0.27.0) (2026-06-19)
 
 
