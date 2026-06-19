@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.27.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.26.0...brepjs-verify-v0.27.0) (2026-06-19)
+
+
+### Features
+
+* **brepjs-verify:** enrich experiment traces with request + code ([#1502](https://github.com/andymai/brepjs/issues/1502)) ([5b9141f](https://github.com/andymai/brepjs/commit/5b9141f8107794683d3ef7945466e326132d4a6d))
+* **brepjs-verify:** Langfuse observability foundation ([#1498](https://github.com/andymai/brepjs/issues/1498)) ([78c81f3](https://github.com/andymai/brepjs/commit/78c81f3b3e4890cbd3abc2474fcc5b7e4926bd3e))
+* **brepjs-verify:** looped skill eval + Langfuse v5 telemetry ([#1494](https://github.com/andymai/brepjs/issues/1494)) ([06a7e7c](https://github.com/andymai/brepjs/commit/06a7e7c6e882fe795122141dce1e4c04933f3fdc))
+
+
+### Bug Fixes
+
+* **brepjs-verify:** SKILL.md import rule — eval-driven self-heal ([#1501](https://github.com/andymai/brepjs/issues/1501)) ([550d2ba](https://github.com/andymai/brepjs/commit/550d2ba08849a1692ff237d1a79a28afd88b9053))
+* **brepjs-verify:** three deferred Langfuse-eval follow-ups ([#1500](https://github.com/andymai/brepjs/issues/1500)) ([90b63bd](https://github.com/andymai/brepjs/commit/90b63bd6a2f277db6ec634f2bbecadf1379f4e4d))
+
 ## [0.26.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.25.1...brepjs-verify-v0.26.0) (2026-06-18)
 
 
