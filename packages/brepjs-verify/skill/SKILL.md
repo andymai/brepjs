@@ -101,7 +101,7 @@ Each is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expect
 
 - **Primitives + booleans:** `mounting-bracket` (base + upright web + bolt holes) · `flanged-coupler` (flange + cylinder + bore, chamfered) · `transform-bracket` (translate/rotate/mirror) · `dome-cap` (cylinder + clipped-sphere hemisphere).
 - **2D sketch → solid:** `extruded-bracket` (rounded plate + bolt holes) · `revolved-pulley` (V-groove revolved) · `swept-gasket` (frame swept along a spine).
-- **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (chamfer) · `hollow-enclosure` (filleted box, shelled).
+- **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (chamfer — API shape only; `chamfer` is fragile, see Hard rules) · `hollow-enclosure` (filleted box, shelled).
 - **Mechanical:** `spur-gear` (involute spur gear — all teeth as one `polygon` → `extrude`, BOSL2-faithful math) · `threaded-rod` (external thread — `loft` through rotated sections).
 - **Gridfinity:** `gridfinity-baseplate` · `gridfinity-bin` · `gridfinity-divider`.
 
