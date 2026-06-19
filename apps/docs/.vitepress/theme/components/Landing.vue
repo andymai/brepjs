@@ -1358,7 +1358,7 @@ pre.term {
   /* Pull the (now eyebrow-less) headline up under the nav and let it dominate;
      trim the subhead so it supports rather than competes with the bigger H1. */
   .hero {
-    padding: 40px 0 40px;
+    padding: 40px 0;
   }
   .subhead {
     font-size: 1.08rem;
