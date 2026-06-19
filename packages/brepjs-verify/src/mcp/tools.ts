@@ -6,6 +6,7 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { runProgram, exportProgram, type ExportFormats } from '../sandbox/runProgram.js';
 import { appendRunRecord, buildRunRecord } from '../sandbox/runRecord.js';
+import { traceRun } from './telemetry.js';
 
 export interface RunProgramToolArgs {
   /** A brepjs `.brep.ts` module source with a default-exported part function. */
@@ -58,6 +59,11 @@ export async function runProgramTool(args: RunProgramToolArgs): Promise<CallTool
       console.warn(`run-record append failed (BREPJS_RUN_RECORD_PATH=${recordPath}):`, err);
     });
   }
+
+  // Optional Langfuse trace of this run — best-effort, no-op without LANGFUSE_* keys (see
+  // mcp/telemetry.ts). Fire-and-forget like the run-record above, so telemetry never blocks or
+  // affects the agent's tool result. traceRun swallows its own errors and never throws.
+  void traceRun(args.code, result);
 
   if (result.outcome === 'completed') {
     const payload = { outcome: 'completed', ok: result.report.ok, report: result.report };

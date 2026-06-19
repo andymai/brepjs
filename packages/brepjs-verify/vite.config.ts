@@ -49,6 +49,10 @@ export default defineConfig({
         'puppeteer',
         'typescript',
         /^@modelcontextprotocol\/sdk/,
+        // Optional MCP telemetry — kept external so src/mcp/telemetry.ts can dynamic-import them at
+        // runtime and gracefully no-op when they're absent (the shipped MCP never hard-requires them).
+        /^@langfuse\//,
+        /^@opentelemetry\//,
         /^node:/,
       ],
     },
