@@ -33,7 +33,9 @@ async function initTracer(): Promise<Tracer | null> {
     return {
       trace: async (code, result) => {
         const rec = buildRunRecord(code, result);
-        await startActiveObservation('run_program', (obs) => {
+        // Sync callback → startActiveObservation returns a non-Promise (not awaited); the span ends
+        // synchronously and the explicit flush below delivers it + the score.
+        startActiveObservation('run_program', (obs) => {
           obs.update({
             input: { code },
             output: { outcome: rec.outcome, ok: rec.ok, measurements: rec.measurements },

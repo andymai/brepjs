@@ -113,8 +113,10 @@ export function createTelemetry(): Telemetry {
     pushScorecard: async (card) => {
       // One trace per run carrying the aggregate scores, so Langfuse trends both%/lift across
       // skill versions. Strictly best-effort — a telemetry failure never affects the eval output.
+      // The callback is sync (update + enqueue scores), so startActiveObservation returns a
+      // non-Promise and isn't awaited; client.flush() below delivers the scores.
       try {
-        await startActiveObservation('eval-run', (obs) => {
+        startActiveObservation('eval-run', (obs) => {
           obs.update({
             input: {
               model: card.model,
@@ -142,6 +144,7 @@ export function createTelemetry(): Telemetry {
             }
           }
         });
+        await client.flush();
       } catch (e) {
         console.warn(`langfuse: pushScorecard failed (${(e as Error).message.split('\n')[0]})`);
       }
