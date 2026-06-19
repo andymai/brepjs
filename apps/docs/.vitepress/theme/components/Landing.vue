@@ -118,7 +118,6 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ───────────────────────── HERO ───────────────────────── -->
       <section class="hero">
         <div class="wrap hero-top">
-          <p class="eyebrow">Exact B-Rep · TypeScript · Browser-native</p>
           <h1>
             Exact CAD geometry,<br class="h1-break" /><span class="grad"
               >written in TypeScript.</span
@@ -154,7 +153,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── EXACT, NOT TRIANGLES ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">
-          <p class="eyebrow">Exact geometry</p>
+          <p class="eyebrow">B-Rep vs mesh</p>
           <h2>Exact boundaries, not triangle soup.</h2>
           <p class="lead">
             Shapes are real mathematical boundaries — faces, edges, and vertices — so booleans are
@@ -188,7 +187,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="band alt" data-reveal>
         <div class="wrap split">
           <div>
-            <p class="eyebrow">The wedge · type safety</p>
+            <p class="eyebrow">Type safety</p>
             <h2>If it compiles, the geometry is valid.</h2>
             <p class="lead">
               Branded types, <code>Result&lt;T, E&gt;</code>, and phantom types encode topological
@@ -214,7 +213,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="band feature ai" data-reveal>
         <div class="wrap">
           <div class="sec-head">
-            <p class="eyebrow">AI-foundational</p>
+            <p class="eyebrow">The verify loop</p>
             <h2>CAD an agent can prove.</h2>
             <p class="lead">
               The hard part of AI plus CAD isn't drawing a shape — it's knowing it's correct. brepjs
@@ -322,7 +321,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── TWO KERNELS ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">
-          <p class="eyebrow">Kernel abstraction</p>
+          <p class="eyebrow">Engine-agnostic</p>
           <h2>Two kernels. One API. One line to switch.</h2>
           <p class="lead">
             occt-wasm — OpenCascade compiled to WebAssembly, about 4.7 MB brotli, Web Worker–ready —
@@ -351,7 +350,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="band alt" data-reveal>
         <div class="wrap split">
           <div>
-            <p class="eyebrow">JS-native</p>
+            <p class="eyebrow">Ecosystem</p>
             <h2>Native to the stack you already use.</h2>
             <p class="lead">
               ESM, top-level await init, a Three.js mesh adapter, structured errors, web-worker
@@ -384,7 +383,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <section class="band" data-reveal>
         <div class="wrap split">
           <div>
-            <p class="eyebrow">Interop</p>
+            <p class="eyebrow">File formats</p>
             <h2>Round-trips with the tools you already own.</h2>
             <p class="lead">
               Import and export STEP, STL, IGES, glTF, DXF, 3MF, and OBJ, plus 2D DXF/SVG profiles
@@ -411,7 +410,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- ──────────────────── SCOPE ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">
-          <p class="eyebrow">What it's for</p>
+          <p class="eyebrow">Scope &amp; fit</p>
           <h2>Built for exact, manufacturable geometry.</h2>
           <p class="lead">
             Boundary representation is the language of mechanical CAD — exact solids to micron
@@ -721,8 +720,8 @@ pre code {
   margin-top: 44px;
 }
 h1 {
-  font-size: clamp(2rem, 7.4vw, 3.9rem);
-  line-height: 1.08;
+  font-size: clamp(2.6rem, 7.4vw, 3.9rem);
+  line-height: 1.06;
   letter-spacing: -0.005em;
   margin: 16px 0 0;
   text-wrap: balance;
@@ -1355,6 +1354,15 @@ pre.term {
      and balances on its own, so the hard <br> would only force ragged lines. */
   h1 .h1-break {
     display: none;
+  }
+  /* Pull the (now eyebrow-less) headline up under the nav and let it dominate;
+     trim the subhead so it supports rather than competes with the bigger H1. */
+  .hero {
+    padding: 40px 0 40px;
+  }
+  .subhead {
+    font-size: 1.08rem;
+    margin-top: 18px;
   }
 }
 @media (max-width: 460px) {
