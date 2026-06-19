@@ -736,10 +736,10 @@ import {
   measureDistance
 } from 'brepjs';
 
-measureVolume(solid);                           // number
-measureArea(face);                              // number
-measureLength(edge);                            // number
-measureDistance(shape1, shape2);                 // number
+measureVolume(solid);                           // Result<number> — unwrap()
+measureArea(face);                              // Result<number> — unwrap()
+measureLength(edge);                            // Result<number> — unwrap()
+measureDistance(shape1, shape2);                // Result<number> — unwrap()
 ```
 
 Functional measurement API:

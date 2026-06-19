@@ -41,7 +41,9 @@ primitives glued together?"** Specifically:
   square-bottom groove; **cut a `torus`** for a round-bottom groove (ball raceway, o-ring seat).
 - **Flutes / knurls** — soft-ended cutters (a `cylinder` capped with a `sphere` at each end, or a
   stadium) `circularPattern`'d around a grip read as knurling. Confine axial cutters to the grip
-  BAND — stop them below a domed/filleted cap, or they chew through it and spike the rim.
+  BAND — stop them below a domed/filleted cap, or they chew through it and spike the rim. On a
+  TAPERED grip, set each cutter's centre at `wallRadius − biteDepth` (not a fixed radius), or the
+  bite is uneven and too shallow to read.
 - **D-shaft socket** — a blind `cylinder` bore `cut` with a thin chord `box` gives the shaft flat.
 - **Boss / pad** — a short raised `cylinder`/`box` where another feature mounts.
 

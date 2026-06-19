@@ -58,5 +58,6 @@ export default () => {
 - A `Drawing` is purely 2D; you must `.sketchOnPlane(...)` before `.extrude`.
 - `.sketchOnPlane(...)` returns `SketchInterface | Sketches`. `.extrude(...)` works on the union, but `.face()` / `.sweepSketch()` do not; for a single profile that needs a face (revolve), use `polygon(points3D)` instead (see above) to stay `--check`-clean.
 - Low-level `circle`/`ellipse`/`line` (primitives) return **edges**, not faces; use the `draw*` factories when you need a closed profile to extrude.
+- **`polygon(points)` needs distinct points** — two coincident/duplicate points make a zero-length edge and crash (`makeLineEdge: construction failed`). Dedupe before building, especially in computed tooth/gear profiles where a land and a groove point can land on the same coordinate.
 
 See also: docs/function-lookup.md → brepjs/sketching.
