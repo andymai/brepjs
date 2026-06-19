@@ -41,8 +41,11 @@ async function main(): Promise<void> {
   }
   const corpus = await loadCorpus();
   const client = new LangfuseClient();
+  // Go through client.api.* — the flat client.createDataset/createDatasetItem aliases are assigned
+  // unbound in the v5.5.3 constructor (`this.createDataset = this.api.datasets.create`), so calling
+  // them detaches `this` and throws "this.__create is not a function". The .api path stays bound.
   try {
-    await client.createDataset({
+    await client.api.datasets.create({
       name: DATASET,
       description:
         'brepjs playground examples — the /eval-skill quality bar (basics + mechanical).',
@@ -51,7 +54,7 @@ async function main(): Promise<void> {
     // Dataset already exists — fine; items below upsert by stable id.
   }
   for (const { example, category } of corpus) {
-    await client.createDatasetItem({
+    await client.api.datasetItems.create({
       datasetName: DATASET,
       id: example.id, // stable id → re-sync upserts instead of duplicating
       input: example.description,
