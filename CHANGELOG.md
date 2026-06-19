@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.96.0](https://github.com/andymai/brepjs/compare/brepjs-v18.95.0...brepjs-v18.96.0) (2026-06-19)
+
+
+### Features
+
+* **brepjs-verify:** fan out the eval across sharded CI runners ([#1503](https://github.com/andymai/brepjs/issues/1503)) ([8eb1f69](https://github.com/andymai/brepjs/commit/8eb1f690588e418e4b884e1294ba91b679667d61))
+
 ## [18.95.0](https://github.com/andymai/brepjs/compare/brepjs-v18.94.0...brepjs-v18.95.0) (2026-06-19)
 
 
