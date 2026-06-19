@@ -89,15 +89,23 @@ export function usePlaygroundActions(): PlaygroundActions {
     const coarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
     if (coarse && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       const url = buildShareUrl(code);
-      void navigator.share({ title: 'brepjs Playground', url }).catch(() => {
-        /* user dismissed the share sheet */
-      });
+      void navigator
+        .share({ title: 'brepjs Playground', url })
+        // Only count a share once the sheet actually completes — a dismissed
+        // sheet rejects with AbortError and must not inflate the share metric.
+        .then(() => {
+          track('playground_share');
+          captureEvent('playground_share');
+        })
+        .catch(() => {
+          /* user dismissed the share sheet */
+        });
     } else {
       void copyShareUrl(code);
       addToast('Link copied to clipboard');
+      track('playground_share');
+      captureEvent('playground_share');
     }
-    track('playground_share');
-    captureEvent('playground_share');
   }, [buildShareUrl, copyShareUrl, code, addToast]);
 
   const handleResetToDefault = useCallback(() => {
