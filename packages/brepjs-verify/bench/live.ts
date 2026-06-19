@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import Anthropic from '@anthropic-ai/sdk';
 import { runProgramWithStep } from '../src/sandbox/runProgram.js';
 import { PROMPTS, type EvalPrompt } from './prompts.js';
+import { playgroundPrompts } from './playgroundCorpus.js';
 import { formatScorecard, type EvalResult, type Scorecard } from './score.js';
 import { runAttemptLoop, type ChatMessage, type LoopDeps } from './loop.js';
 import { judge } from './judge.js';
@@ -28,6 +29,8 @@ interface Args {
   only?: string | undefined;
   keep: boolean;
   maxAttempts: number;
+  /** Which corpus to author against: the playground quality bar (default) or the legacy toy prompts. */
+  corpus: 'playground' | 'prompts';
 }
 
 function parseArgs(argv: readonly string[]): Args {
@@ -36,6 +39,7 @@ function parseArgs(argv: readonly string[]): Args {
     judgeModel: 'claude-opus-4-8',
     keep: false,
     maxAttempts: 3,
+    corpus: 'playground',
   };
   let judgeOverride: string | undefined;
   for (let i = 0; i < argv.length; i++) {
@@ -44,6 +48,7 @@ function parseArgs(argv: readonly string[]): Args {
     else if (a === '--judge-model') judgeOverride = argv[++i];
     else if (a === '--only') args.only = argv[++i];
     else if (a === '--keep') args.keep = true;
+    else if (a === '--corpus') args.corpus = argv[++i] === 'prompts' ? 'prompts' : 'playground';
     else if (a === '--max-attempts')
       args.maxAttempts = Math.max(1, Math.trunc(Number(argv[++i])) || args.maxAttempts);
   }
@@ -171,11 +176,12 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const args = parseArgs(process.argv.slice(2));
-  const prompts = PROMPTS.filter(
-    (p) => !args.only || p.id === args.only || p.category === args.only
-  );
+  const corpus = args.corpus === 'playground' ? await playgroundPrompts() : [...PROMPTS];
+  // `--only all` (or blank) means the whole corpus; otherwise match an id or a category.
+  const only = args.only && args.only !== 'all' ? args.only : undefined;
+  const prompts = corpus.filter((p) => !only || p.id === only || p.category === only);
   if (prompts.length === 0) {
-    console.error(`no prompts match --only ${args.only ?? ''}`);
+    console.error(`no prompts match --only ${args.only ?? ''} in corpus ${args.corpus}`);
     process.exit(1);
   }
 
@@ -223,10 +229,16 @@ async function main(): Promise<void> {
     model: args.model,
     judgeModel: args.judgeModel,
     brepjsVersion: version,
+    skillVersion: skillVer,
     date,
     results,
   };
   console.log('\n' + formatScorecard(card));
+  // Record the run for Langfuse trends: aggregate scores on one trace, plus — for the playground
+  // corpus — a dataset experiment on brepjs-playground (per-part scores linked to each dataset item),
+  // the same two records the manual loop's `eval:push` writes. Best-effort + no-op without keys.
+  await telemetry.pushScorecard(card);
+  if (args.corpus === 'playground') await telemetry.pushDatasetRun(card);
   await telemetry.shutdown();
 
   if (!args.keep) rmSync(workdir, { recursive: true, force: true });

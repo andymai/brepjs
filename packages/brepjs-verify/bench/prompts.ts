@@ -10,7 +10,16 @@
 
 export interface EvalPrompt {
   id: string;
-  category: 'primitive' | 'boolean' | 'sketch' | 'modifier' | 'transform' | 'gridfinity';
+  category:
+    | 'primitive'
+    | 'boolean'
+    | 'sketch'
+    | 'modifier'
+    | 'transform'
+    | 'gridfinity'
+    // Playground corpus categories (the `eval:live --corpus playground` quality bar).
+    | 'basics'
+    | 'mechanical';
   /** The natural-language request handed to the model. */
   prompt: string;
   /** What a correct part must show — handed to the multimodal judge. */
