@@ -84,10 +84,12 @@ export async function runAttemptLoop(
 ): Promise<EvalResult> {
   const messages: ChatMessage[] = [{ role: 'user', content: p.prompt }];
   const attempts: AttemptResult[] = [];
+  let lastCode = '';
   let termination: 'CONVERGED' | 'EXHAUSTED' = 'EXHAUSTED';
 
   for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
     const code = await deps.author(messages);
+    lastCode = code;
     const outcome = await deps.execute(code, attempt);
     const auto = autoFromOutcome(outcome, p.expected);
 
@@ -142,7 +144,9 @@ export async function runAttemptLoop(
     attempts,
     iterations: attempts.length,
     termination,
+    prompt: p.prompt,
   };
+  if (lastCode) out.code = lastCode;
   if (firstTry) out.firstTry = firstTry;
   if (eventual?.judgePass !== undefined) out.judgePass = eventual.judgePass;
   if (eventual?.judgeReason !== undefined) out.judgeReason = eventual.judgeReason;

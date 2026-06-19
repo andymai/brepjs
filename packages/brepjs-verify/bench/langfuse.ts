@@ -162,6 +162,10 @@ export function createTelemetry(): Telemetry {
         try {
           await startActiveObservation(r.id, async (obs) => {
             obs.update({
+              // Request + authored module so a Langfuse LLM-as-a-Judge evaluator can review the run
+              // against the dataset item's expectedOutput. Absent for legacy/manual scorecards.
+              ...(r.prompt !== undefined ? { input: r.prompt } : {}),
+              ...(r.code !== undefined ? { output: r.code } : {}),
               metadata: { runName, category: r.category, skillVersion: card.skillVersion },
             });
             attachScores(client, obs.traceId, r);

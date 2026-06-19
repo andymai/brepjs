@@ -42,6 +42,10 @@ export interface EvalResult {
   firstTry?: AttemptResult | undefined;
   iterations?: number | undefined;
   termination?: 'CONVERGED' | 'EXHAUSTED' | undefined;
+  /** The NL request — pushed as the experiment trace `input` so Langfuse evaluators can read it. */
+  prompt?: string | undefined;
+  /** The eventual attempt's authored module source — pushed as the experiment trace `output`. */
+  code?: string | undefined;
 }
 
 /** Objective check: the report is ok (valid solid) and any pinned dims are within tolerance. */
