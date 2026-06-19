@@ -41,32 +41,57 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
+      # This is a tracking job and must never turn `main` red. A missing ANTHROPIC_API_KEY (or a failed
+      # build) WARNS and SKIPS the eval rather than failing — the problem stays visible (a yellow
+      # annotation + the job summary), it just doesn't red the run.
+      - name: Check eval prerequisites
+        id: pre
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "run_eval=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Skill eval skipped::ANTHROPIC_API_KEY is not configured — skipping the nightly skill eval (not a failure; add the repo secret to enable it)."
+            echo "run_eval=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # npm ci + scripts/ensure-wasm.sh (both with 3x retry). Installs puppeteer too.
       - uses: ./.github/actions/setup
+        if: steps.pre.outputs.run_eval == 'true'
 
       # The judge renders snapshots via the built WASM viewer, and the sandbox spawns the built CLI:
       # root -> viewer -> verify (the viewer worker imports `brepjs`, so the root dist must exist first).
       - name: Build CLI + viewer
+        if: steps.pre.outputs.run_eval == 'true'
         run: |
           npm run build
           npm run build --workspace=brepjs-viewer
           npm run build --workspace=brepjs-verify
 
-      # Fail RED if the build didn't produce the viewer/CLI dist (e.g. the WASM restore exhausted its
-      # retries) — a setup failure must not slip through as a silent all-`judge:—` scorecard.
-      - name: Assert build artifacts exist
+      # If the build produced no viewer/CLI dist (e.g. the WASM restore exhausted its retries), WARN
+      # and skip the eval — don't red the run, and don't run a silent all-`judge:—` scorecard.
+      - name: Check build artifacts
+        id: build
+        if: steps.pre.outputs.run_eval == 'true'
         run: |
-          test -d packages/brepjs-verify/viewer/dist || { echo "::error::viewer/dist missing — viewer build failed"; exit 1; }
-          test -f packages/brepjs-verify/dist/cli/main.js || { echo "::error::dist/cli/main.js missing — verify build failed"; exit 1; }
+          if [ -d packages/brepjs-verify/viewer/dist ] && [ -f packages/brepjs-verify/dist/cli/main.js ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Skill eval skipped::viewer/dist or dist/cli/main.js missing (build / WASM restore failed) — skipping the eval."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
 
       # puppeteer is installed by `npm ci`; fetch the Chrome binary it drives.
       - name: Install Chrome for Puppeteer
+        if: steps.pre.outputs.run_eval == 'true' && steps.build.outputs.ok == 'true'
         working-directory: packages/brepjs-verify
         run: npx puppeteer browsers install chrome
 
-      # Records, never gates — a low both% or a flaky judge must not turn the nightly red.
+      # Records, never gates — a low both% or a flaky judge (or any harness error) must not red the run.
       - name: Run skill eval
         id: eval
+        if: steps.pre.outputs.run_eval == 'true' && steps.build.outputs.ok == 'true'
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -86,16 +111,25 @@ jobs:
 
       - name: Publish scorecard to the job summary
         if: always()
+        env:
+          RUN_EVAL: ${{ steps.pre.outputs.run_eval }}
+          BUILD_OK: ${{ steps.build.outputs.ok }}
         run: |
           {
             echo '### brepjs-verify skill eval'
-            echo '```'
-            cat scorecard.txt 2>/dev/null || echo '(no scorecard produced — check the eval step log)'
-            echo '```'
+            if [ "$RUN_EVAL" != 'true' ]; then
+              echo '_Skipped — ANTHROPIC_API_KEY not configured._'
+            elif [ "$BUILD_OK" != 'true' ]; then
+              echo '_Skipped — viewer/CLI build artifacts missing._'
+            else
+              echo '```'
+              cat scorecard.txt 2>/dev/null || echo '(no scorecard produced — check the eval step log)'
+              echo '```'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload scorecard artifact
-        if: always()
+        if: steps.pre.outputs.run_eval == 'true' && steps.build.outputs.ok == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: skill-eval-scorecard
