@@ -4,12 +4,14 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runProgram, positiveOrDefault } from '@/sandbox/runProgram.js';
+import { runProgram, runProgramWithStep, positiveOrDefault } from '@/sandbox/runProgram.js';
 
 const VALID_PART = `import { box } from 'brepjs';\nexport default () => box(10, 10, 10);\n`;
 // A synchronous infinite loop blocks the child's event loop — only an out-of-process
 // timeout/kill can stop it, which is exactly what the sandbox must guarantee.
 const RUNAWAY_PART = `export default () => {\n  // eslint-disable-next-line\n  while (true) {}\n};\n`;
+// A part that throws builds no shape — a completed (ok:false) report with no STEP artifact.
+const INVALID_PART = `export default () => {\n  throw new Error('boom');\n};\n`;
 
 // The dev/test sandbox runs the CLI via `npx tsx <main.ts>`, which spawns the part-executing
 // `node` as a GRANDCHILD behind npx+tsx. Pinning the `.ts` entry forces that grandchild chain
@@ -143,6 +145,43 @@ describe('runProgram (sandbox executor)', () => {
     expect(res.outcome).toBe('crashed');
     if (res.outcome === 'crashed') expect(res.detail.length).toBeGreaterThan(0);
   }, 30000);
+});
+
+describe('runProgramWithStep (single-spawn report + STEP)', () => {
+  it('runs a valid part and returns a completed report AND writes a STEP file at the given path', async () => {
+    const stepPath = join(tmpdir(), `brepjs-rpws-${process.pid}-${Date.now()}.step`);
+    try {
+      const res = await runProgramWithStep(VALID_PART, stepPath);
+      expect(res.outcome).toBe('completed');
+      if (res.outcome === 'completed') {
+        expect(res.report.ok).toBe(true);
+        expect(res.report.measurements.volume).toBeCloseTo(1000, 1);
+        // The STEP is written to the caller-supplied path and surfaced as stepPath.
+        expect(res.stepPath).toBe(stepPath);
+        expect(existsSync(stepPath)).toBe(true);
+        // OCCT writes a standard ISO-10303-21 STEP document.
+        expect(readFileSync(stepPath, 'utf8')).toMatch(/ISO-10303-21/);
+      }
+    } finally {
+      if (existsSync(stepPath)) rmSync(stepPath, { force: true });
+    }
+  }, 60000);
+
+  it('returns a completed (not-ok) report and no stepPath when the part builds no solid', async () => {
+    const stepPath = join(tmpdir(), `brepjs-rpws-bad-${process.pid}-${Date.now()}.step`);
+    try {
+      const res = await runProgramWithStep(INVALID_PART, stepPath);
+      expect(res.outcome).toBe('completed');
+      if (res.outcome === 'completed') {
+        expect(res.report.ok).toBe(false);
+        // No valid solid ⇒ no STEP written ⇒ stepPath omitted.
+        expect(res.stepPath).toBeUndefined();
+        expect(existsSync(stepPath)).toBe(false);
+      }
+    } finally {
+      if (existsSync(stepPath)) rmSync(stepPath, { force: true });
+    }
+  }, 60000);
 });
 
 describe('positiveOrDefault (timeout/memory guard)', () => {

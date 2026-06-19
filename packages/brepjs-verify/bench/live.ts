@@ -1,20 +1,22 @@
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import Anthropic from '@anthropic-ai/sdk';
-import { runPart } from '../src/verify/runPart.js';
-import { disposeShape } from '../src/disposeShape.js';
+import { runProgramWithStep } from '../src/sandbox/runProgram.js';
 import { PROMPTS, type EvalPrompt } from './prompts.js';
-import { checkAuto, formatScorecard, type EvalResult, type Scorecard } from './score.js';
+import { formatScorecard, type EvalResult, type Scorecard } from './score.js';
+import { runAttemptLoop, type ChatMessage, type LoopDeps } from './loop.js';
 import { judge } from './judge.js';
+import { createTelemetry } from './langfuse.js';
+import { skillVersion } from './skillVersion.js';
 
-// Live text-to-CAD eval (opt-in; needs ANTHROPIC_API_KEY). For each prompt:
-//   author with Claude  →  write a .brep.ts  →  verify (--check + dims)  →
-//   render snapshots  →  multimodal judge  →  two-signal scorecard.
+// Live text-to-CAD eval (opt-in; needs ANTHROPIC_API_KEY). For each prompt, a bounded loop:
+//   author with Claude  →  execute in the sandbox (--check + dims, writes a STEP)  →
+//   render snapshots  →  multimodal judge  →  retry on failure  →  two-signal scorecard.
 // The deterministic example replay (`npm run eval`) stays the free CI gate; this
-// measures real first-try success and is run manually to track the plugin/CLI.
+// measures real first-try-vs-eventual success and is run manually / nightly to track the skill.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -23,15 +25,18 @@ interface Args {
   model: string;
   only?: string | undefined;
   keep: boolean;
+  maxAttempts: number;
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { model: 'claude-opus-4-8', keep: false };
+  const args: Args = { model: 'claude-opus-4-8', keep: false, maxAttempts: 3 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--model') args.model = argv[++i] ?? args.model;
     else if (a === '--only') args.only = argv[++i];
     else if (a === '--keep') args.keep = true;
+    else if (a === '--max-attempts')
+      args.maxAttempts = Math.max(1, Math.trunc(Number(argv[++i])) || args.maxAttempts);
   }
   return args;
 }
@@ -64,14 +69,19 @@ function extractModule(text: string): string {
 // hung response can't stall the whole run.
 const CALL_TIMEOUT_MS = 300_000;
 
-async function authorPart(client: Anthropic, system: string, p: EvalPrompt, model: string): Promise<string> {
+async function authorPart(
+  client: Anthropic,
+  system: string,
+  messages: readonly ChatMessage[],
+  model: string
+): Promise<string> {
   const stream = client.messages.stream(
     {
       model,
       max_tokens: 16000,
       thinking: { type: 'adaptive' },
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: p.prompt }],
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
     },
     { signal: AbortSignal.timeout(CALL_TIMEOUT_MS) }
   );
@@ -104,43 +114,41 @@ async function evalPrompt(
   args: Args,
   workdir: string
 ): Promise<EvalResult> {
-  const base: Pick<EvalResult, 'id' | 'category'> = { id: p.id, category: p.category };
-  let code: string;
-  try {
-    code = await authorPart(client, system, p, args.model);
-  } catch (e) {
-    return { ...base, auto: { pass: false, failures: [] }, error: `author failed: ${(e as Error).message}` };
-  }
-
-  const partPath = join(workdir, `${p.id}.brep.ts`);
-  writeFileSync(partPath, code);
-
-  const { shape, report, step } = await runPart(partPath, { check: true, step: true });
-  try {
-    const auto = checkAuto(report, p.expected);
-
-    // Render + judge only when the part built (a STEP came out).
-    let judgePass: boolean | undefined;
-    let judgeReason: string | undefined;
-    if (step) {
-      const stepPath = join(workdir, `${p.id}.step`);
-      writeFileSync(stepPath, Buffer.from(step));
-      const pngs = await snapshot(stepPath, join(workdir, `${p.id}-shots`));
-      if (pngs.length > 0) {
-        // The judge is a secondary signal — if it throws (timeout, API error) keep the
-        // objective `auto` result and leave judgePass undefined (scorecard shows judge:—).
-        try {
-          const v = await judge(client, { prompt: p.prompt, rubric: p.rubric, pngPaths: pngs, model: args.model });
-          judgePass = v.pass;
-          judgeReason = v.reason;
-        } catch (e) {
-          console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
-        }
+  // Wire the real author/execute/snapshot/judge into the bounded loop. Execution runs in the
+  // sandbox (out-of-process, timeout/OOM-bounded) so an unattended nightly run can't hang on a
+  // model-authored infinite loop; the STEP it writes is what the judge renders.
+  const deps: LoopDeps = {
+    author: (messages) => authorPart(client, system, messages, args.model),
+    execute: (code, attempt) =>
+      runProgramWithStep(code, join(workdir, `${p.id}-a${attempt}.step`), {}),
+    snapshot: (stepPath) => snapshot(stepPath, `${stepPath}-shots`),
+    // The judge is a secondary signal — swallow its errors and return null so a judge timeout/API
+    // blip leaves judgePass undefined (scorecard shows judge:—) instead of failing the attempt.
+    judge: async (pngPaths) => {
+      try {
+        const v = await judge(client, {
+          prompt: p.prompt,
+          rubric: p.rubric,
+          pngPaths: [...pngPaths],
+          model: args.model,
+        });
+        return { pass: v.pass, reason: v.reason };
+      } catch (e) {
+        console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
+        return null;
       }
-    }
-    return { ...base, auto, judgePass, judgeReason };
-  } finally {
-    disposeShape(shape);
+    },
+  };
+
+  try {
+    return await runAttemptLoop(p, deps, { maxAttempts: args.maxAttempts });
+  } catch (e) {
+    return {
+      id: p.id,
+      category: p.category,
+      auto: { pass: false, failures: [] },
+      error: `eval threw: ${(e as Error).message}`,
+    };
   }
 }
 
@@ -151,7 +159,9 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const args = parseArgs(process.argv.slice(2));
-  const prompts = PROMPTS.filter((p) => !args.only || p.id === args.only || p.category === args.only);
+  const prompts = PROMPTS.filter(
+    (p) => !args.only || p.id === args.only || p.category === args.only
+  );
   if (prompts.length === 0) {
     console.error(`no prompts match --only ${args.only ?? ''}`);
     process.exit(1);
@@ -159,15 +169,33 @@ async function main(): Promise<void> {
 
   const client = new Anthropic();
   const system = authorSystem();
+  const version = brepjsVersion();
+  const date = new Date().toISOString().slice(0, 10);
+
+  // Telemetry (no-op unless LANGFUSE_* keys are set). Stamp every trace with the skill version so
+  // score movements are attributable to a SKILL.md edit, and register the skill text once per run.
+  const skillMd = readFileSync(resolve(here, '../skill/SKILL.md'), 'utf8');
+  const skillVer = skillVersion(skillMd, version);
+  const telemetry = createTelemetry();
+  await telemetry.registerSkill(skillMd);
+  const runId = `${date}-${args.model}`;
+
   const workdir = mkdtempSync(join(tmpdir(), 'brepjs-verify-eval-'));
-  // Temp parts must load as ESM (Node strips .ts types only in an ESM context).
-  writeFileSync(join(workdir, 'package.json'), JSON.stringify({ type: 'module' }));
 
   const results: EvalResult[] = [];
   for (const p of prompts) {
     console.log(`· ${p.id}`);
+    const meta = {
+      model: args.model,
+      brepjsVersion: version,
+      skillVersion: skillVer,
+      runId,
+      category: p.category,
+    };
     try {
-      results.push(await evalPrompt(client, system, p, args, workdir));
+      results.push(
+        await telemetry.observePrompt(p, meta, () => evalPrompt(client, system, p, args, workdir))
+      );
     } catch (e) {
       results.push({
         id: p.id,
@@ -178,13 +206,9 @@ async function main(): Promise<void> {
     }
   }
 
-  const card: Scorecard = {
-    model: args.model,
-    brepjsVersion: brepjsVersion(),
-    date: new Date().toISOString().slice(0, 10),
-    results,
-  };
+  const card: Scorecard = { model: args.model, brepjsVersion: version, date, results };
   console.log('\n' + formatScorecard(card));
+  await telemetry.shutdown();
 
   if (!args.keep) rmSync(workdir, { recursive: true, force: true });
   else console.log(`\n(kept generated parts in ${workdir})`);

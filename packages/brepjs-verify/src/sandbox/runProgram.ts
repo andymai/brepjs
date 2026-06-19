@@ -271,9 +271,63 @@ export async function runProgram(
   // A not-ok part still prints a JSON report (exit 1) — that's a completed run.
   const report = tryParse<SerializedReport>(o.stdout);
   if (report) return { outcome: 'completed', report };
-  if (o.timedOut) return { outcome: 'timeout', timeoutMs: positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS) };
-  if (o.outputTooLarge) return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
-  return { outcome: 'crashed', exitCode: o.exitCode, detail: o.stderr.slice(0, 2000) || 'no JSON report on stdout' };
+  if (o.timedOut)
+    return { outcome: 'timeout', timeoutMs: positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS) };
+  if (o.outputTooLarge)
+    return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
+  return {
+    outcome: 'crashed',
+    exitCode: o.exitCode,
+    detail: o.stderr.slice(0, 2000) || 'no JSON report on stdout',
+  };
+}
+
+/** Outcome of a sandboxed `--check --step` run. `completed` carries the report; `stepPath` is set
+ * only when a valid solid produced a STEP. */
+export type RunProgramWithStepResult =
+  | { outcome: 'completed'; report: SerializedReport; stepPath?: string }
+  | { outcome: 'timeout'; timeoutMs: number }
+  | { outcome: 'crashed'; exitCode: number | null; detail: string };
+
+/**
+ * Execute `code` with `verify --check --step` in ONE bounded child process: a single spawn yields
+ * both the `auto`-signal report (parsed from stdout) and the STEP the judge renders — one kernel
+ * boot, not the two a `runProgram` + `exportProgram` pair would cost. The caller owns `stepOutPath`;
+ * only the temp program dir is cleaned up.
+ */
+export async function runProgramWithStep(
+  code: string,
+  stepOutPath: string,
+  opts: RunProgramOptions = {}
+): Promise<RunProgramWithStepResult> {
+  // Clear any stale STEP at the caller's path first, so a post-run existsSync unambiguously means
+  // "this run wrote it" (the CLI writes a STEP only for a valid solid; it never deletes a prior one).
+  await rm(stepOutPath, { force: true });
+  const o = await runVerifyCli(
+    code,
+    (partPath) => [partPath, '--check', '--step', stepOutPath],
+    opts
+  );
+
+  // A not-ok part still prints a JSON report (exit 1) — that's a completed run. The STEP exists only
+  // when a valid solid built, so surface `stepPath` only when the file is actually present.
+  const report = tryParse<SerializedReport>(o.stdout);
+  if (report) {
+    return existsSync(stepOutPath)
+      ? { outcome: 'completed', report, stepPath: stepOutPath }
+      : { outcome: 'completed', report };
+  }
+  if (o.timedOut) {
+    return { outcome: 'timeout', timeoutMs: positiveOrDefault(opts.timeoutMs, DEFAULT_TIMEOUT_MS) };
+  }
+  if (o.outputTooLarge) {
+    return { outcome: 'crashed', exitCode: null, detail: 'output exceeded size limit' };
+  }
+  return {
+    outcome: 'crashed',
+    exitCode: o.exitCode,
+    detail: o.stderr.slice(0, 2000) || 'no JSON report on stdout',
+  };
 }
 
 /**
