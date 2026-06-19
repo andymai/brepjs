@@ -1,27 +1,34 @@
 ---
-description: Run the brepjs-verify skill eval in this Claude session — author the bench prompts, verify + render each, self-judge the renders, emit the two-signal scorecard, and propose SKILL.md fixes. No API key, runs on the subscription.
-argument-hint: '[prompt-id | category | all]   (default: all)'
+description: Run the brepjs-verify skill eval in this Claude session — re-author the playground examples from their descriptions, verify + render each, judge against the playground quality bar, emit the two-signal scorecard, and propose SKILL.md fixes. No API key, runs on the subscription.
+argument-hint: '[basics | mechanical | <example-id> | all]   (default: all plain-brepjs examples)'
 ---
 
 # brepjs-verify skill eval (manual loop)
 
-Measure the deployed `SKILL.md` by running the bench prompt corpus through **this**
-Claude Code session — you are both the author and the visual judge. No API key, no
-billing. This is the manual counterpart to `npm run eval:live`, which drives the same
-corpus via the SDK + Langfuse (billed; use that only when you want an _isolated_ or
-_automated_ run). The point of this loop is not the score — it's the **findings**: turn
-each failure into a concrete SKILL.md edit.
+Measure the deployed `SKILL.md` by re-authoring the **playground examples** — the quality
+bar — from their descriptions through **this** Claude Code session, where you are both the
+author and the visual judge. No API key, no billing. The point of this loop is not the
+score — it's the **findings**: each playground part the skill can't reproduce _as a
+designed object_ (not just a valid blob) is a concrete SKILL.md gap to close. (`npm run
+eval:live` is the billed SDK counterpart; it still uses the legacy `bench/prompts.ts`.)
 
 ## Inputs
 
-- `$ARGUMENTS` selects prompts: a prompt `id`, a `category`
-  (`primitive|boolean|sketch|modifier|transform|gridfinity`), or `all` / empty for the
-  whole corpus.
-- **Corpus:** `packages/brepjs-verify/bench/prompts.ts` — each entry has `prompt`,
-  `rubric`, and an optional `expected` (pinned dims).
+- **Corpus = the playground examples** (`apps/playground/src/lib/examples/`, aggregated by
+  `index.ts` into `EXAMPLES`). These ARE the quality bar and grow over time — re-read the
+  catalog each run so new examples are picked up automatically. Use the **`basics`** and
+  **`mechanical`** categories (plain-brepjs designed parts); skip `bim` / `sheet-metal`
+  (those need the brepjs-bim / brepjs-sheetmetal skills, not this one).
+- Per example: the **prompt** is its `description` (the NL intent — all a real author
+  gets); `label` names it. `$ARGUMENTS` selects a category (`basics` | `mechanical`), one
+  example `id`, or `all` / empty for both plain-brepjs categories.
+- **Quality reference:** the example's own `code` IS the bar. To render it for a
+  side-by-side, adapt it to a `.brep.ts` — change `from 'brepjs/quick'` → `from 'brepjs'`
+  and `export default <shape>` → `export default () => <shape>` — then `verify --check
+--snapshot`. The author's part should read as designed as the reference, not just valid.
 - **Authoring contract:** `packages/brepjs-verify/skill/SKILL.md` — follow it exactly;
-  that is the thing under test. Do **not** lean on outside brepjs knowledge the skill
-  doesn't give you, or you measure yourself instead of the skill.
+  that is the thing under test. Do **not** show the author the reference `code`, or lean on
+  outside brepjs knowledge the skill doesn't give you, or you measure yourself.
 
 ## Setup (once per session)
 
@@ -40,25 +47,27 @@ gap, not a pass).
 Author parts into a scratch ESM dir so `import 'brepjs'` resolves and the kernel loads:
 `mkdir -p /tmp/brepjs-eval && printf '{"type":"module"}\n' > /tmp/brepjs-eval/package.json`.
 
-## The loop — per selected prompt, ≤ 3 attempts
+## The loop — per selected example, ≤ 4 attempts (designed parts need the polish pass)
 
-1. **Brief.** Convert the request to explicit params (mm, datums, features) per SKILL.md
-   step 1. Read the closest `skill/examples/*.brep.ts` before authoring.
-2. **Author** `<id>.brep.ts` following SKILL.md: short API (`box`, `cylinder`, `fuse`,
-   `cut`, `fillet`, `polygon`, `revolve`, …), `unwrap()` the `Result`-returning ops,
-   `export default () => <shape>`.
+1. **Brief.** Convert the example's `description` to explicit params (mm, datums, features)
+   per SKILL.md step 1. Read the closest `skill/examples/*.brep.ts` first. Do **not** read
+   the playground example's `code` — that's the answer key.
+2. **Author** `<id>.brep.ts` following SKILL.md: short API, `unwrap()` the `Result`-ops,
+   `export default () => <shape>`. Snapshot **serially** (the render server is a singleton
+   on port 7373; concurrent `--snapshot` runs error out).
 3. **Verify + render** (one spawn):
    `node packages/brepjs-verify/dist/cli/main.js verify <id>.brep.ts --check --json <id>.report.json --snapshot <id>-shots/`
-4. **Auto signal** (objective) from the report: `auto.pass` is true when `ok === true`
-   and every pinned dim in the prompt's `expected` block is within tolerance. Compare
-   bounds by **span/extent**, not absolute position — placement is unconstrained by the
-   prompt (matches `checkAuto` in `bench/score.ts`). Volume is absolute.
-5. **Judge signal** (intent): Read the snapshot PNGs (iso / front / top / right; each has
-   its bbox `W × D × H` burned in) and grade against the prompt's `rubric` — does the
-   rendered part match the request? Record `judge.pass` + a one-line reason.
-6. **Repair.** If `auto.pass` is false, use the report's `hints` / `errorInfos` to fix the
-   **smallest responsible section** and re-run (≤ 3 attempts total). Track the first
-   attempt separately from the eventual one (that's the lift signal).
+4. **Auto signal** (objective): `auto.pass` is `ok === true` (a valid manifold solid /
+   assembly). Playground descriptions rarely pin dims; if one does, check the bbox by
+   **span/extent**, not absolute position (matches `checkAuto`).
+5. **Judge signal** (the quality bar): render the **reference** once — adapt the example's
+   `code` (`brepjs/quick`→`brepjs`, `export default X`→`export default () => X`) and
+   `--snapshot` it — then grade the author's render against it + the description: does it
+   read as a **designed object as polished as the reference** (the right features, present
+   and legible), or a valid blob? Record `judge.pass` + a one-line reason.
+6. **Repair + polish.** If `auto.pass` is false, fix the smallest responsible section from
+   the report `hints`. If valid but blobby, do the **polish pass** (SKILL.md step 8). ≤ 4
+   attempts; track the first attempt vs the eventual (the lift signal).
 
 ## Scorecard
 
