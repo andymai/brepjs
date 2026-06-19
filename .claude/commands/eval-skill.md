@@ -91,10 +91,19 @@ bugs if a verify report exposes one). Then ask whether to apply them.
 
 ## Optional — log to Langfuse
 
-If `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` are set, record the run so it
-trends over skill versions. Write the scorecard as JSON matching `bench/score.ts` `Scorecard` —
-`{ model, brepjsVersion, skillVersion, date, results: EvalResult[] }`, where each result carries
-`auto`, `judgePass`, and `firstTry` so the lift is computed — then push it:
-`npm run eval:push -w brepjs-verify -- <scorecard.json>`. It sends one trace with the aggregate
-scores (`both`, `first_try_both`, `eventual_both`, `lift`), stamped with the skill version, and
-no-ops without the keys.
+If the LANGFUSE\_\* keys are set, record the run so it trends over skill versions. Keys live in the
+repo-root `.env` as `LANGFUSE_HOST` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`; the SDK reads
+`LANGFUSE_BASE_URL`, so bridge first or it silently hits EU cloud:
+`set -a; . ./.env; set +a; export LANGFUSE_BASE_URL="${LANGFUSE_BASE_URL:-$LANGFUSE_HOST}"`.
+
+Once per corpus change, sync the dataset: `npm run eval:dataset:sync -w brepjs-verify` (upserts the
+playground examples into the `brepjs-playground` dataset, keyed by example id).
+
+Write the scorecard as JSON matching `bench/score.ts` `Scorecard` — `{ model, brepjsVersion,
+skillVersion, date, results: EvalResult[] }`, where each result's `id` **is the playground example
+id** and carries `auto`, `judgePass`, and `firstTry` (so the lift is computed) — then push:
+`npm run eval:push -w brepjs-verify -- <scorecard.json>`. It records two things, both no-op without
+keys: (1) one `eval-run` trace with the aggregate scores (`both`, `first_try_both`, `eventual_both`,
+`lift`), and (2) a dataset run on `brepjs-playground` — one trace per part, scored and linked to its
+dataset item — so skill versions compare per part in the dataset Runs view. The run name is the
+`skillVersion`.
