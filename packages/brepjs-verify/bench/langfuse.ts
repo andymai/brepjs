@@ -49,12 +49,14 @@ export function createTelemetry(): Telemetry {
   return {
     observePrompt: async (p, metadata, run) => {
       let result: EvalResult | undefined;
+      let ran = false;
       try {
         await startActiveObservation(p.id, async (obs) => {
           obs.update({
             input: p.prompt,
             metadata: { ...metadata, schemaVersion: SCHEMA_VERSION, units: 'mm' },
           });
+          ran = true;
           result = await run();
           obs.update({
             output: {
@@ -70,8 +72,17 @@ export function createTelemetry(): Telemetry {
         // A telemetry failure must never corrupt the eval result — warn and fall through.
         console.warn(`langfuse: observePrompt failed (${(e as Error).message.split('\n')[0]})`);
       }
-      // If telemetry threw before run() executed, evaluate once now; else return the captured result.
-      return result ?? run();
+      if (result !== undefined) return result;
+      // run() already executed (and rejected) → never re-run it (no double author+sandbox); invoke
+      // run() only when telemetry threw *before* it started.
+      return ran
+        ? {
+            id: p.id,
+            category: p.category,
+            auto: { pass: false, failures: [] },
+            error: 'eval failed',
+          }
+        : run();
     },
     registerSkill: async (skillMd) => {
       try {
