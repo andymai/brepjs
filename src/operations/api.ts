@@ -46,7 +46,7 @@ export interface RevolveOptions {
   axis?: Vec3;
   /** Pivot point. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** Rotation angle in degrees. Default: 360 (full revolution). */
+  /** Rotation angle in **radians**. Default: 2π (full revolution). */
   angle?: number;
 }
 
@@ -62,7 +62,7 @@ export function revolve(
     resolve(face),
     pivotPoint,
     options?.axis ?? [0, 0, 1],
-    options?.angle ?? 360
+    options?.angle ?? 2 * Math.PI
   );
 }
 

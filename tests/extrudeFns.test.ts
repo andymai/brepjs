@@ -73,25 +73,29 @@ describe('extrudeFns', () => {
   });
 
   describe('revolve', () => {
-    it('revolves a rectangle 360 degrees into a cylinder', () => {
+    it('revolves a rectangle a full turn (2π) into a cylinder', () => {
       const rect = sketchRectangle(2, 5, { origin: [6, 0] });
       const f = castShape(rect.face().wrapped);
-      const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
+      const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 2 * Math.PI });
       expect(isOk(result)).toBe(true);
       expect(isShape3D(unwrap(result))).toBe(true);
     });
 
-    it('revolves a rectangle 90 degrees', () => {
+    it('revolves a rectangle a quarter turn (π/2)', () => {
       const rect = sketchRectangle(2, 5, { origin: [6, 0] });
       const f = castShape(rect.face().wrapped);
-      const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 90 });
+      const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: Math.PI / 2 });
       expect(isOk(result)).toBe(true);
     });
   });
 
   describe('revolve error paths', () => {
     it.skipIf(shouldSkipSuite('extrudeFns.revolveNullFace'))('returns error for null face', () => {
-      const result = revolve(makeNullFace(), { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
+      const result = revolve(makeNullFace(), {
+        at: [0, 0, 0],
+        axis: [0, 1, 0],
+        angle: 2 * Math.PI,
+      });
       expect(isErr(result)).toBe(true);
     });
   });

@@ -68,6 +68,32 @@ describe('revolve', () => {
     // Volume of hollow cylinder: π(R²-r²)*h
     expect(unwrap(measureVolume(solid))).toBeCloseTo(Math.PI * (4 - 1) * 5, 0);
   });
+
+  it('treats angle as radians and defaults to a full revolution', () => {
+    const profile = (): OrientedFace & PlanarFace =>
+      new Sketcher('XZ')
+        .movePointerTo([1, 0])
+        .lineTo([2, 0])
+        .lineTo([2, 5])
+        .lineTo([1, 5])
+        .close()
+        .face() as OrientedFace & PlanarFace;
+    const vol = (angle?: number): number =>
+      unwrap(
+        measureVolume(
+          unwrap(
+            revolve(profile(), {
+              at: [0, 0, 0],
+              axis: [0, 0, 1],
+              ...(angle === undefined ? {} : { angle }),
+            })
+          )
+        )
+      );
+    const full = vol(2 * Math.PI);
+    expect(vol()).toBeCloseTo(full, 1); // default omitted ⇒ full revolution
+    expect(vol(Math.PI)).toBeCloseTo(full / 2, 0); // π ⇒ half the swept volume (proves radians)
+  });
 });
 
 describe('loft', () => {

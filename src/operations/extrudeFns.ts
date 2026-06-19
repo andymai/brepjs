@@ -62,14 +62,14 @@ export function extrude(
  * @param face - The face to revolve.
  * @param center - A point on the rotation axis. Defaults to the origin.
  * @param direction - Direction vector of the rotation axis. Defaults to Z-up.
- * @param angle - Rotation angle in degrees (0-360). Defaults to a full revolution.
+ * @param angle - Rotation angle in **radians**. Defaults to 2π (a full revolution).
  * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
  */
 export function revolve(
   face: OrientedFace<Dimension> & PlanarFace<Dimension>,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
-  angle = 360
+  angle = 2 * Math.PI
 ): Result<Shape3D> {
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolve: face is a null shape'));
