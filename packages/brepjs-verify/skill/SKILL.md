@@ -1,6 +1,6 @@
 ---
 name: brepjs-verify
-description: Use when authoring or editing parametric 3D CAD models in TypeScript with the brepjs library: turn natural-language part requirements into solids, then type-check, verify deterministically (validity + volume/area/bounds vs intent), and verify visually (multi-view snapshots) before handing off STEP/GLB artifacts.
+description: Use when authoring, editing, or debugging parametric 3D CAD with the brepjs TypeScript library — turning a natural-language part request into a solid, working in a .brep.ts file, running brepjs-verify, exporting STEP/GLB/STL, or fixing a brepjs part that's invalid, the wrong size, or doesn't look designed.
 ---
 
 # Authoring CAD with brepjs
