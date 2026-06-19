@@ -57,7 +57,8 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - Edit source, not artifacts. STEP/STL/GLB derive from the `.brep.ts`.
 - Booleans and `measureVolume`/`measureArea` return `Result`: unwrap and check the `Err` branch before chaining.
 - `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
-- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z); positioning option is `at`, not `origin`. Units mm.
+- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z). Units mm. **`at` sets the geometric CENTER, not a corner**: bare `box(w,d,h)` is corner-at-origin (`[0,w]×[0,d]×[0,h]`), `{ centered: true }` centers on the origin, `{ at: [x,y,z] }` centers there. `cylinder`/`cone` `at` is the **base** center; `sphere` `at` is its center. Modelling `at` as a corner ships valid-but-misplaced parts.
+- **No half-sphere primitive:** build a hemisphere/dome by clipping a full `sphere` to a half-space with `intersect` (a `box` over the half you want), then `fuse`/`cut` — fusing a whole sphere bulges past the cap face.
 - Author parts in an ESM context (the tool's default) so the kernel loads. A CommonJS project needs `"type": "module"` or a `.mts` file.
 
 ## Reference index (load only what the task needs)

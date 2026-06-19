@@ -62,7 +62,8 @@ Commands below use `npx -y brepjs-verify`; if you've installed the package, drop
 - `fillet`/`chamfer` need a valid solid (its signature is `fillet(solid, edges, radius)`). Verify validity first.
 - **Select edges/faces; don't fillet/chamfer everything.** `fillet(solid, radius)` (no edge list) rounds EVERY edge and frequently fails (`FILLET_FAILED`). Pass an edge list: `edgeFinder().inDirection('Z').findAll(solid)`. Note `inDirection` matches BOTH ± orientations; discriminate a single face/edge by position with `.when(f => getBounds(f).zMax > t)`. (See `references/modifiers.md`.)
 - **`revolve` angle is in RADIANS** (full turn = `Math.PI * 2`, not `360`). Build a revolve profile with `polygon(points3D)`, not `draw().close().sketchOnPlane('XZ').face()`: the latter fails `--check` (`sketchOnPlane` is typed `SketchInterface | Sketches` and `.face()` isn't on both). (See `references/sketching-2d.md`.)
-- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z); positioning option is `at`, not `origin`. Units mm.
+- `box(width, depth, height)`: 2nd arg is depth (Y), 3rd is height (Z). Units mm. **`at` sets the geometric CENTER, not a corner**: bare `box(w,d,h)` is corner-at-origin (`[0,w]×[0,d]×[0,h]`), `{ centered: true }` centers on the origin, `{ at: [x,y,z] }` centers there. `cylinder`/`cone` `at` is the **base** center; `sphere` `at` is its center. Modelling `at` as a corner ships valid-but-misplaced parts.
+- **No half-sphere primitive:** build a hemisphere/dome by clipping a full `sphere` to a half-space with `intersect` (a `box` over the half you want), then `fuse`/`cut` — fusing a whole sphere bulges past the cap face. See the `dome-cap` example.
 - **Parts may be `async`**: `export default async () => {…}` is awaited, so you can `await loadFont(...)` (required before any `sketchText`/`drawText`) or `await importSTEP(...)` inside. `--check` type-checks Node built-ins, so a part may `import { readFile } from 'node:fs/promises'` to load a font/STEP file from disk.
 - **Pattern angles are DEGREES** (`circularPattern`/`rectangularPattern` `fullAngle`, default 360), _unlike_ `revolve` (radians). brepjs is not uniform; check the unit per op.
 - Author parts in an ESM context (the tool's default) so the kernel loads. A CommonJS project needs `"type": "module"` or a `.mts` file.
@@ -94,7 +95,7 @@ _Maker recipes & conventions (load when the request matches):_
 
 Each is a complete `skill/examples/<name>.brep.ts` with a sibling `<name>.expected.json` baseline (replayed by the `eval` harness).
 
-- **Primitives + booleans:** `mounting-bracket` (base + upright web + bolt holes) · `flanged-coupler` (flange + cylinder + bore, chamfered) · `transform-bracket` (translate/rotate/mirror).
+- **Primitives + booleans:** `mounting-bracket` (base + upright web + bolt holes) · `flanged-coupler` (flange + cylinder + bore, chamfered) · `transform-bracket` (translate/rotate/mirror) · `dome-cap` (cylinder + clipped-sphere hemisphere).
 - **2D sketch → solid:** `extruded-bracket` (rounded plate + bolt holes) · `revolved-pulley` (V-groove revolved) · `swept-gasket` (frame swept along a spine).
 - **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (chamfer) · `hollow-enclosure` (filleted box, shelled).
 - **Mechanical:** `spur-gear` (involute spur gear — all teeth as one `polygon` → `extrude`, BOSL2-faithful math) · `threaded-rod` (external thread — `loft` through rotated sections).

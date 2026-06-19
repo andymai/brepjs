@@ -24,6 +24,8 @@ export default () => {
 };
 ```
 
+**Obround / slot:** a corner radius of half the width gives fully-rounded (stadium) ends — `drawRoundedRectangle(length, width, width / 2)` — extrude and `cut` it through a plate for a rounded-end slot.
+
 ## Revolving a profile
 
 `revolve(face, { axis, at, angle })` spins a planar face around an axis into a solid. Draw the cross-section in the **XZ plane (x = radius, z = height)** and revolve about Z.
