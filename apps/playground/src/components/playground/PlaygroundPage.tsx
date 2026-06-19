@@ -21,6 +21,7 @@ import LoadingOverlay from './LoadingOverlay';
 import ShortcutHelp from './ShortcutHelp';
 import CommandPalette from './CommandPalette';
 import ExampleGallery from './ExampleGallery';
+import MobileActionSheet from './MobileActionSheet';
 import MobileLayout from './MobileLayout';
 import DesktopLayout from './DesktopLayout';
 import ToastContainer from '../shared/ToastContainer';
@@ -41,6 +42,7 @@ export default function PlaygroundPage() {
 
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const exampleRoute = useExampleRoute();
 
   // Loading from the gallery: load the code and leave the friendly permalink.
@@ -54,6 +56,12 @@ export default function PlaygroundPage() {
 
   const openCommandPalette = useCallback(() => {
     setPaletteOpen(true);
+  }, []);
+  const openActions = useCallback(() => {
+    setActionsOpen(true);
+  }, []);
+  const closeActions = useCallback(() => {
+    setActionsOpen(false);
   }, []);
   const openShortcutHelp = useCallback(() => {
     setShortcutHelpOpen(true);
@@ -108,7 +116,7 @@ export default function PlaygroundPage() {
   });
 
   return (
-    <div className="relative flex h-screen flex-col bg-gray-950">
+    <div className="relative flex h-dvh flex-col bg-gray-950">
       <LoadingOverlay />
       <ToastContainer />
 
@@ -122,6 +130,7 @@ export default function PlaygroundPage() {
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}
         onOpenExamples={exampleRoute.openGallery}
+        onOpenActions={openActions}
         isRunning={isRunning}
         compact={isMobile}
       />
@@ -163,6 +172,15 @@ export default function PlaygroundPage() {
         onClose={exampleRoute.closeGallery}
         onSelect={handleSelectExample}
         onFocusExample={exampleRoute.focusExample}
+      />
+      <MobileActionSheet
+        open={actionsOpen}
+        onClose={closeActions}
+        onShare={actions.handleShare}
+        onExportSTL={actions.handleExportSTL}
+        onExportSTEP={actions.handleExportSTEP}
+        onExportDXF={actions.handleExportDXF}
+        onExportIFC={actions.handleExportIFC}
       />
     </div>
   );

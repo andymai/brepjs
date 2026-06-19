@@ -40,6 +40,10 @@ interface PlaygroundState {
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
   lastSuccessfulCode: string | null;
+  // Monotonic counter bumped on each successful render (setMeshes). The mobile
+  // shell compares it against the value it last showed to flag the Viewer tab
+  // when a result changed while the user was on another tab.
+  runSeq: number;
   selections: Selection[];
   hoverEntity: Selection | null;
   contextMenu: ContextMenuState | null;
@@ -92,6 +96,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   isViewerCollapsed: false,
   isEditorCollapsed: false,
   lastSuccessfulCode: null,
+  runSeq: 0,
   selections: [],
   hoverEntity: null,
   contextMenu: null,
@@ -101,14 +106,15 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   // Drop selections on every new render — they're bound to the mesh by
   // faceId/edgeId and the new mesh likely won't have the same ids.
   setMeshes: (meshes) =>
-    set({
+    set((s) => ({
       meshes,
       error: null,
       errorLine: null,
       selections: [],
       hoverEntity: null,
       contextMenu: null,
-    }),
+      runSeq: s.runSeq + 1,
+    })),
   setAvailableArtifacts: (availableArtifacts) => set({ availableArtifacts }),
   setBimTree: (bimTree) => set({ bimTree }),
   setFlatPattern: (flatPattern) => set({ flatPattern }),

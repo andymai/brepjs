@@ -151,6 +151,32 @@ body,
   animation: reveal-up 0.25s ease-out both;
 }
 
+/* Subtle "result updated" pulse on the mobile Viewer tab dot — fires when a
+   run succeeds while the user is on the Editor/Console tab. */
+@keyframes tab-cue-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+.animate-tab-cue {
+  animation: tab-cue-pulse 1.5s ease-in-out infinite;
+}
+
+/* --- Safe-area helpers (need viewport-fit=cover; resolve to 0 off notch) --- */
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* --- Mesh gradient --- */
 
 .mesh-gradient {
@@ -413,6 +439,9 @@ body,
     animation: none !important;
   }
   .animate-toast-in {
+    animation: none !important;
+  }
+  .animate-tab-cue {
     animation: none !important;
   }
   .gen-cube path,

@@ -1,6 +1,7 @@
 import { ViewerControls, type ViewName } from 'brepjs-viewer';
 import { useViewerStore, type CameraPreset } from '../../stores/viewerStore';
 import { useScreenshot } from '../../hooks/useScreenshot';
+import { useTouchDevice } from '../../hooks/useTouchDevice';
 
 // The shared ViewerControls speaks the canonical ViewName vocabulary (iso/front/top/right);
 // the playground store predates it with equivalent directions under different names.
@@ -30,9 +31,11 @@ export default function ViewerToolbar() {
   const requestFit = useViewerStore((s) => s.requestFit);
   const setCameraPreset = useViewerStore((s) => s.setCameraPreset);
   const handleScreenshot = useScreenshot();
+  const isTouch = useTouchDevice();
 
   return (
     <ViewerControls
+      touch={isTouch}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       showEdges={showEdges}

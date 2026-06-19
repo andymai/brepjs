@@ -26,6 +26,21 @@ export default function MobileLayout({
   const [tab, setTab] = useState<Tab>('viewer');
   const error = usePlaygroundStore((s) => s.error);
   const hasHadSuccess = usePlaygroundStore((s) => s.lastSuccessfulCode !== null);
+  const runSeq = usePlaygroundStore((s) => s.runSeq);
+
+  // Flag the Viewer tab when a run lands while the user is elsewhere, so they
+  // know their edit took effect without yanking them off the tab they're on.
+  // Switching to Viewer marks the current result seen and clears the flag.
+  const [viewerDirty, setViewerDirty] = useState(false);
+  const seenSeqRef = useRef(runSeq);
+  useEffect(() => {
+    if (tab === 'viewer') {
+      seenSeqRef.current = runSeq;
+      setViewerDirty(false);
+    } else if (runSeq !== seenSeqRef.current) {
+      setViewerDirty(true);
+    }
+  }, [runSeq, tab]);
 
   // Auto-jump to console on the transition into an error so users see the
   // failure without hunting for the tab. Gated on `hasHadSuccess` so the very
@@ -73,32 +88,34 @@ export default function MobileLayout({
       </div>
 
       <nav
-        className="flex h-12 shrink-0 items-stretch border-t border-border-subtle bg-surface"
-        role="tablist"
+        className="pb-safe shrink-0 border-t border-border-subtle bg-surface"
         aria-label="Playground panels"
       >
-        <TabButton
-          label="Editor"
-          active={tab === 'editor'}
-          onClick={() => {
-            setTab('editor');
-          }}
-        />
-        <TabButton
-          label="Viewer"
-          active={tab === 'viewer'}
-          onClick={() => {
-            setTab('viewer');
-          }}
-        />
-        <TabButton
-          label="Console"
-          active={tab === 'console'}
-          onClick={() => {
-            setTab('console');
-          }}
-          badge={error ? '!' : undefined}
-        />
+        <div className="flex h-12 items-stretch" role="tablist">
+          <TabButton
+            label="Editor"
+            active={tab === 'editor'}
+            onClick={() => {
+              setTab('editor');
+            }}
+          />
+          <TabButton
+            label="Viewer"
+            active={tab === 'viewer'}
+            onClick={() => {
+              setTab('viewer');
+            }}
+            dot={viewerDirty}
+          />
+          <TabButton
+            label="Console"
+            active={tab === 'console'}
+            onClick={() => {
+              setTab('console');
+            }}
+            badge={error ? '!' : undefined}
+          />
+        </div>
       </nav>
     </div>
   );
@@ -121,11 +138,13 @@ function TabButton({
   active,
   onClick,
   badge,
+  dot,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   badge?: string;
+  dot?: boolean;
 }) {
   return (
     <button
@@ -143,6 +162,12 @@ function TabButton({
         <span className="absolute right-[28%] top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
           {badge}
         </span>
+      )}
+      {dot && badge === undefined && (
+        <span
+          className="animate-tab-cue absolute right-[30%] top-2 h-2 w-2 rounded-full bg-teal-primary"
+          aria-label="Result updated"
+        />
       )}
     </button>
   );

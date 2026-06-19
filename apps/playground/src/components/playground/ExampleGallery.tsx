@@ -97,7 +97,9 @@ export default function ExampleGallery({
   // Active set = category ∩ query, ranked by fuzzy score when searching.
   const shown = useMemo(() => {
     const inCat =
-      category === ALL ? EXAMPLES : (CATEGORIES.find((c) => c.id === category)?.examples ?? EXAMPLES);
+      category === ALL
+        ? EXAMPLES
+        : (CATEGORIES.find((c) => c.id === category)?.examples ?? EXAMPLES);
     const q = query.trim().toLowerCase();
     if (!q) return [...inCat];
     return inCat
@@ -119,7 +121,10 @@ export default function ExampleGallery({
 
   if (!open) return null;
 
-  const rail = [{ id: ALL, label: 'All' }, ...CATEGORIES.map((c) => ({ id: c.id, label: c.label }))];
+  const rail = [
+    { id: ALL, label: 'All' },
+    ...CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
+  ];
 
   return (
     <div
@@ -151,7 +156,7 @@ export default function ExampleGallery({
                 setCategory(r.id);
               }}
               aria-pressed={category === r.id}
-              className={`flex shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-left text-sm font-medium transition-colors ${
+              className={`flex shrink-0 items-center justify-between gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium transition-colors sm:py-1.5 ${
                 category === r.id
                   ? 'bg-teal-primary/20 text-teal-light'
                   : 'text-gray-400 hover:bg-surface-overlay hover:text-gray-200'
@@ -174,7 +179,12 @@ export default function ExampleGallery({
           <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2.5">
             <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true">
               <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path
+                d="M10.5 10.5L14 14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
             </svg>
             <input
               ref={searchRef}
@@ -222,7 +232,7 @@ export default function ExampleGallery({
             // Scroll container kept separate from the grid: a flex-1 element
             // that is itself the grid gives the rows a definite height, which
             // stops aspect-ratio thumbnails from resolving and collapses them.
-            <div ref={gridRef} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+            <div ref={gridRef} className="scrollbar-thin pb-safe min-h-0 flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 sm:p-4 lg:grid-cols-4 2xl:grid-cols-5">
                 {shown.map((ex) => (
                   <ExampleCard
@@ -304,7 +314,9 @@ function ExampleCard({ example, focused, failedTurntables, onSelect, onFocus }: 
       </div>
       <div className="flex flex-col gap-0.5 p-2.5">
         <span className="truncate text-sm font-medium text-gray-200">{example.label}</span>
-        <span className="line-clamp-2 text-xs leading-snug text-gray-500">{example.description}</span>
+        <span className="line-clamp-2 text-xs leading-snug text-gray-500">
+          {example.description}
+        </span>
       </div>
     </button>
   );

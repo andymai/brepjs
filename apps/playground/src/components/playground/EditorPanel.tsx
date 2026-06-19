@@ -1,6 +1,7 @@
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { setupMonaco } from '../../lib/monacoSetup';
 
 interface EditorPanelProps {
@@ -14,6 +15,7 @@ export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: E
   const setCode = usePlaygroundStore((s) => s.setCode);
   const error = usePlaygroundStore((s) => s.error);
   const errorLine = usePlaygroundStore((s) => s.errorLine);
+  const isMobile = useIsMobile();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
   // Mirrors the last value we know the model holds. The sync effect and the
@@ -143,8 +145,10 @@ export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: E
       onMount={handleMount}
       theme="brepjs-dark"
       options={{
-        fontSize: 14,
-        lineHeight: 22,
+        // 16px on phones: below 16px, iOS Safari auto-zooms the whole page when
+        // the editor gains focus, which breaks the fixed full-height layout.
+        fontSize: isMobile ? 16 : 14,
+        lineHeight: isMobile ? 24 : 22,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         padding: { top: 12, bottom: 12 },

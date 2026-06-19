@@ -56,10 +56,17 @@ export function useUrlState() {
     history.replaceState(null, '', `${window.location.pathname}${query}`);
   };
 
-  const copyShareUrl = async (code: string) => {
+  // Build the canonical permalink and sync it into the address bar, returning
+  // the absolute URL so callers can hand it to the native share sheet.
+  const buildShareUrl = (code: string): string => {
     const query = encodeCodeQuery(code, selectionsForUrl());
     const url = `${window.location.origin}${window.location.pathname}${query}`;
     history.replaceState(null, '', `${window.location.pathname}${query}`);
+    return url;
+  };
+
+  const copyShareUrl = async (code: string) => {
+    const url = buildShareUrl(code);
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -75,5 +82,5 @@ export function useUrlState() {
     }
   };
 
-  return { updateUrl, copyShareUrl };
+  return { updateUrl, copyShareUrl, buildShareUrl };
 }
