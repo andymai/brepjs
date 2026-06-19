@@ -16,10 +16,15 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: 'Model under test'
+        description: 'Model under test (authors the CAD)'
         required: false
         type: string
         default: claude-opus-4-8
+      judge_model:
+        description: 'Model that grades the rendered parts'
+        required: false
+        type: string
+        default: claude-sonnet-4-6
       max_attempts:
         description: 'Max attempts per prompt (N)'
         required: false
@@ -102,10 +107,12 @@ jobs:
           # Pass dispatch inputs via env (never interpolate ${{ }} into the run: shell) to avoid
           # command injection; quote on use.
           EVAL_MODEL: ${{ inputs.model || 'claude-opus-4-8' }}
+          EVAL_JUDGE_MODEL: ${{ inputs.judge_model || 'claude-sonnet-4-6' }}
           EVAL_MAX_ATTEMPTS: ${{ inputs.max_attempts || '3' }}
         run: |
           npm run eval:live -w brepjs-verify -- \
             --model "$EVAL_MODEL" \
+            --judge-model "$EVAL_JUDGE_MODEL" \
             --max-attempts "$EVAL_MAX_ATTEMPTS" \
             | tee scorecard.txt
 

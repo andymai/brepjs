@@ -83,6 +83,8 @@ export function checkAuto(report: VerifyReport, expected: EvalPrompt['expected']
 
 export interface Scorecard {
   model: string;
+  /** The model that graded the rendered parts; omitted when it's the same as the author model. */
+  judgeModel?: string | undefined;
   brepjsVersion: string;
   date: string;
   results: readonly EvalResult[];
@@ -174,8 +176,9 @@ function judgeCoverage(results: readonly EvalResult[]): { built: number; unjudge
 
 export function formatScorecard(card: Scorecard): string {
   const lines: string[] = [];
+  const judge = card.judgeModel ? ` judge=${card.judgeModel}` : '';
   lines.push(
-    `brepjs-verify live eval — model=${card.model} brepjs=${card.brepjsVersion} ${card.date} schema=v${SCHEMA_VERSION} units=mm`
+    `brepjs-verify live eval — model=${card.model}${judge} brepjs=${card.brepjsVersion} ${card.date} schema=v${SCHEMA_VERSION} units=mm`
   );
   lines.push('='.repeat(64));
   const pad = Math.max(2, ...card.results.map((r) => r.id.length));

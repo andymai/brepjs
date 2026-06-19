@@ -23,21 +23,32 @@ const require = createRequire(import.meta.url);
 
 interface Args {
   model: string;
+  judgeModel: string;
   only?: string | undefined;
   keep: boolean;
   maxAttempts: number;
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { model: 'claude-opus-4-8', keep: false, maxAttempts: 3 };
+  const args: Args = {
+    model: 'claude-opus-4-8',
+    judgeModel: 'claude-opus-4-8',
+    keep: false,
+    maxAttempts: 3,
+  };
+  let judgeOverride: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--model') args.model = argv[++i] ?? args.model;
+    else if (a === '--judge-model') judgeOverride = argv[++i];
     else if (a === '--only') args.only = argv[++i];
     else if (a === '--keep') args.keep = true;
     else if (a === '--max-attempts')
       args.maxAttempts = Math.max(1, Math.trunc(Number(argv[++i])) || args.maxAttempts);
   }
+  // The judge defaults to the author model; decoupling lets a cheaper, independent model grade the
+  // renders (e.g. Sonnet) while a stronger model authors the CAD.
+  args.judgeModel = judgeOverride ?? args.model;
   return args;
 }
 
@@ -130,7 +141,7 @@ async function evalPrompt(
           prompt: p.prompt,
           rubric: p.rubric,
           pngPaths: [...pngPaths],
-          model: args.model,
+          model: args.judgeModel,
         });
         return { pass: v.pass, reason: v.reason };
       } catch (e) {
@@ -187,6 +198,7 @@ async function main(): Promise<void> {
     console.log(`· ${p.id}`);
     const meta = {
       model: args.model,
+      judgeModel: args.judgeModel,
       brepjsVersion: version,
       skillVersion: skillVer,
       runId,
@@ -206,7 +218,13 @@ async function main(): Promise<void> {
     }
   }
 
-  const card: Scorecard = { model: args.model, brepjsVersion: version, date, results };
+  const card: Scorecard = {
+    model: args.model,
+    judgeModel: args.judgeModel,
+    brepjsVersion: version,
+    date,
+    results,
+  };
   console.log('\n' + formatScorecard(card));
   await telemetry.shutdown();
 
