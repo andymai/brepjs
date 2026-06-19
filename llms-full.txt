@@ -455,7 +455,7 @@ chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>
 import { shell, faceFinder, unwrap } from 'brepjs';
 
 // Remove top face and shell to 1mm thickness — returns Result<Shape3D>
-const topFaces = faceFinder().parallelTo('XY').findAll(b);
+const topFaces = faceFinder().parallelTo('Z').findAll(b);
 const hollowed = unwrap(shell(b, topFaces, 1));
 ```
 
@@ -1593,8 +1593,8 @@ const pipeFitting = (() => {
   const body = unwrap(fuse(step1, topFlange));
 
   // Hollow out: remove top face, shell to 2mm wall thickness
-  // parallelTo('XY') finds faces with Z-normal; atDistance selects the one at Z=100
-  const shellFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAll(body);
+  // parallelTo('Z') finds faces with Z-normal; atDistance selects the one at Z=100
+  const shellFaces = faceFinder().parallelTo('Z').atDistance(100, [0, 0, 0]).findAll(body);
   const hollowed = unwrap(shell(body, shellFaces, 2));
 
   // Fillet the tube-to-flange transitions
@@ -1640,8 +1640,8 @@ const enclosure = (() => {
   const b = sketchRoundedRectangle(80, 50, 5).extrude(30);
 
   // Shell: remove top face
-  // parallelTo accepts StandardPlane strings ('XY', 'XZ', 'YZ') or Plane objects
-  const shellFaces = faceFinder().parallelTo('XY').findAll(b);
+  // parallelTo takes a direction ('X'/'Y'/'Z'/Vec3), not a plane: a face parallel to XY has a Z normal, so pass 'Z'
+  const shellFaces = faceFinder().parallelTo('Z').findAll(b);
   const shelled = unwrap(shell(b, shellFaces, 2));
 
   // Fillet all vertical edges

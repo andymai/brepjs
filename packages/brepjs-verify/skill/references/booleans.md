@@ -45,6 +45,8 @@ export const materials: MaterialFn = ({ center }) =>
 
 A plain `GltfMaterial` object (not a function) paints the whole part one color. The GLB is exported **Y-up** by default so it stands upright in standard glTF viewers; vertices stay Z-up to match the STEP.
 
+Keep the color literal **inline** (as above) or type any color you factor into a `const` as `GltfMaterial`: a bare `const steel = { baseColor: [0.6, 0.6, 0.6, 1], … }` widens `baseColor` to `number[]` and fails its RGBA 4-tuple (`TS2322: number[] is not assignable to [number, number, number, number]`).
+
 ## Pitfalls
 
 - Returning a `Result` from the default export is supported; the verifier unwraps it and reports an `Err`.

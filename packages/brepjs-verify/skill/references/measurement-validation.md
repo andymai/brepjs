@@ -30,6 +30,7 @@ Trust the deterministic numbers; treat snapshots/serve as confirmation, not proo
 
 - `measureVolume` returns a `Result`; unwrap before comparing to a number.
 - `getBounds` returns flat `xMin/xMax/...` fields, not min/max vectors.
+- **Predict placed extents in `expected.bounds`, not derived ones.** A value you set straight off a datum — a footprint, a stack-up height, where each body sits — is worth asserting: a dropped or misplaced body breaks it. But an extent that emerges from a rotation, a part's orientation, a proud sub-feature, or a half-space clip (a twisted array's tip reach, a torus loop's protrusion, a crimp ring proud of the can, a clipped mouth plane) is _not_ a datum; hand-predicting it to the mm false-fails a _correct_ part. Bound it generously or measure-first (run once, copy the reported value).
 - Snapshot view names (`front`/`top`/`right`) are **camera presets, not your part's datum axes** — a Z-up part won't show its 'top' face in `top.png`. Read scale from the burned-in bbox and confirm against `bounds`; don't infer your datum from which preset a feature lands in.
 
 See also: docs/function-lookup.md → brepjs/measurement.
