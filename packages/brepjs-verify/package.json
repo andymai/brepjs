@@ -48,6 +48,7 @@
     "eval": "tsx bench/run.ts",
     "eval:live": "tsx bench/live.ts",
     "eval:push": "tsx bench/pushScorecard.ts",
+    "eval:combine": "tsx bench/combineShards.ts",
     "eval:dataset:sync": "tsx bench/syncDataset.ts",
     "smoke": "node dist/cli/main.js verify tests/fixtures/validBox.brep.ts | node -e \"const r=JSON.parse(require('fs').readFileSync(0,'utf8'));if(r.ok!==true||!(r.measurements.volume>0))process.exit(1)\"",
     "smoke:standalone": "node scripts/smokeStandalone.mjs",

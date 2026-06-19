@@ -2,9 +2,9 @@ name: eval-on-demand
 
 # On-demand brepjs-verify skill eval against the playground quality bar. Authors + judges each
 # example with Claude (BILLED — uses ANTHROPIC_API_KEY) and records the run to Langfuse: aggregate
-# scores on one trace + a brepjs-playground dataset experiment (per-part scores linked to each
-# dataset item). Deliberately NOT scheduled — trigger from the Actions tab or
-# `gh workflow run eval-on-demand -f only=basics` when you want a fresh trend point.
+# scores on one trace + a brepjs-playground dataset experiment. Fanned out — the corpus is sharded
+# across 5 parallel runners (map), then a combine job merges + pushes the single run (reduce).
+# Deliberately NOT scheduled — `gh workflow run eval-on-demand -f only=mechanical`.
 on:
   workflow_dispatch:
     inputs:
@@ -25,9 +25,17 @@ on:
         type: string
 
 jobs:
-  eval:
+  shard:
+    # Map: each runner authors + judges a round-robin 1/5 slice of the corpus and uploads its
+    # scorecard. Shards do NOT push to Langfuse (no keys here) — the combine job does the one push,
+    # so there's a single aggregate trace + dataset run, not five partials. Each runner gets its own
+    # snapshot server, sidestepping the port-7373 singleton that blocks in-process parallelism.
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,8 +43,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # The sandbox imports 'brepjs' and snapshots render through the viewers, so build the library,
-      # the shared renderer, and the verify package (its CLI + local viewer/dist) before evaluating.
       - name: Build library + viewers + verify
         run: |
           npm run build
@@ -45,20 +51,52 @@ jobs:
       - name: Install Chrome for snapshots
         run: npx puppeteer browsers install chrome
         working-directory: packages/brepjs-verify
-      - name: Run eval (author + judge + push to Langfuse)
-        # Inputs are passed via env (never interpolated into the run script) so a crafted dispatch
-        # value can't inject shell commands; each is quoted on use.
+      - name: Run shard (author + judge, write scorecard)
+        # Inputs via env (never interpolated into the run script) to avoid shell injection.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           ONLY: ${{ inputs.only }}
           MODEL: ${{ inputs.model }}
           MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+          SHARD: ${{ matrix.shard }}
         run: |
           npm run eval:live -w brepjs-verify -- \
             --corpus playground \
             --only "$ONLY" \
             --model "$MODEL" \
-            --max-attempts "$MAX_ATTEMPTS"
+            --max-attempts "$MAX_ATTEMPTS" \
+            --shard "$SHARD/5" \
+            --out "$GITHUB_WORKSPACE/shard-$SHARD.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-${{ matrix.shard }}
+          path: shard-${{ matrix.shard }}.json
+
+  combine:
+    # Reduce: merge the shard scorecards and push the SINGLE Langfuse run (aggregate trend trace + the
+    # brepjs-playground dataset experiment). No model calls here — Langfuse keys only, no build/Chrome
+    # (the combine runs from source via tsx and never touches the kernel). Runs even if a shard failed
+    # so a single bad part can't sink the whole run.
+    needs: shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: scorecard-*
+          merge-multiple: true
+          path: shards
+      - name: Merge shards + push to Langfuse
+        env:
+          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+        run: |
+          npm run eval:combine -w brepjs-verify -- "$GITHUB_WORKSPACE"/shards/shard-*.json

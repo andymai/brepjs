@@ -100,6 +100,24 @@ export interface Scorecard {
   results: readonly EvalResult[];
 }
 
+/**
+ * Merge per-shard scorecards into one — for the fan-out eval, where each CI shard scores a slice of
+ * the corpus and the combine step concatenates their results under the first shard's header, then
+ * pushes the single dataset run + aggregate trend trace. Header (model/version/date) comes from the
+ * first shard; empty for no cards.
+ */
+export function mergeScorecards(cards: readonly Scorecard[]): Scorecard {
+  const first = cards[0];
+  return {
+    model: first?.model ?? 'unknown',
+    ...(first?.judgeModel !== undefined ? { judgeModel: first.judgeModel } : {}),
+    brepjsVersion: first?.brepjsVersion ?? 'unknown',
+    ...(first?.skillVersion !== undefined ? { skillVersion: first.skillVersion } : {}),
+    date: first?.date ?? '',
+    results: cards.flatMap((c) => [...c.results]),
+  };
+}
+
 interface Tally {
   total: number;
   autoValid: number;

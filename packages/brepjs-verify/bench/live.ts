@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,10 @@ interface Args {
   maxAttempts: number;
   /** Which corpus to author against: the playground quality bar (default) or the legacy toy prompts. */
   corpus: 'playground' | 'prompts';
+  /** Fan-out: evaluate only this shard's round-robin slice of the corpus (`--shard i/N`). */
+  shard?: { i: number; n: number } | undefined;
+  /** Write the scorecard JSON here (a shard) instead of pushing to Langfuse — the combine step pushes. */
+  out?: string | undefined;
 }
 
 function parseArgs(argv: readonly string[]): Args {
@@ -49,6 +53,12 @@ function parseArgs(argv: readonly string[]): Args {
     else if (a === '--corpus') args.corpus = argv[++i] === 'prompts' ? 'prompts' : 'playground';
     else if (a === '--max-attempts')
       args.maxAttempts = Math.max(1, Math.trunc(Number(argv[++i])) || args.maxAttempts);
+    else if (a === '--shard') {
+      const [idxStr, cntStr] = (argv[++i] ?? '').split('/');
+      const idx = Math.trunc(Number(idxStr));
+      const cnt = Math.trunc(Number(cntStr));
+      if (cnt >= 1 && idx >= 0 && idx < cnt) args.shard = { i: idx, n: cnt };
+    } else if (a === '--out') args.out = argv[++i];
   }
   // The judge defaults to the author model; decoupling lets a cheaper, independent model grade the
   // renders (e.g. Sonnet) while a stronger model authors the CAD.
@@ -180,11 +190,15 @@ async function main(): Promise<void> {
   const corpus = args.corpus === 'playground' ? await playgroundPrompts() : [...PROMPTS];
   // `--only all` (or blank) means the whole corpus; otherwise match an id or a category.
   const only = args.only && args.only !== 'all' ? args.only : undefined;
-  const prompts = corpus.filter((p) => !only || p.id === only || p.category === only);
-  if (prompts.length === 0) {
+  const filtered = corpus.filter((p) => !only || p.id === only || p.category === only);
+  if (filtered.length === 0) {
     console.error(`no prompts match --only ${args.only ?? ''} in corpus ${args.corpus}`);
     process.exit(1);
   }
+  // Fan-out: evaluate only this shard's round-robin slice (`--shard i/N`). An empty slice (more
+  // shards than parts) is fine — it produces an empty scorecard for the combine step to merge.
+  const shard = args.shard;
+  const prompts = shard ? filtered.filter((_, idx) => idx % shard.n === shard.i) : filtered;
 
   const client = new Anthropic();
   const system = authorSystem();
@@ -235,14 +249,21 @@ async function main(): Promise<void> {
     results,
   };
   console.log('\n' + formatScorecard(card));
-  // Record the run for Langfuse trends: aggregate scores on one trace, plus — for the playground
-  // corpus — a dataset experiment on brepjs-playground (per-part scores linked to each dataset item),
-  // the same two records the manual loop's `eval:push` writes. Best-effort + no-op without keys.
-  await telemetry.pushScorecard(card);
-  if (args.corpus === 'playground') {
-    const linked = await telemetry.pushDatasetRun(card);
-    if (process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY'])
-      console.log(`langfuse: dataset run "${skillVer}" — ${linked}/${results.length} items linked`);
+  if (args.out) {
+    // Shard mode: write the scorecard for the combine step, which merges all shards and does the
+    // single Langfuse push — shards don't push (avoids N partial aggregate traces + run pushes).
+    writeFileSync(args.out, JSON.stringify(card, null, 2));
+    console.log(`wrote ${results.length}-part scorecard to ${args.out} (shard — combine step pushes)`);
+  } else {
+    // Record the run for Langfuse trends: aggregate scores on one trace, plus — for the playground
+    // corpus — a dataset experiment on brepjs-playground (per-part scores linked to each dataset
+    // item). Best-effort + no-op without keys.
+    await telemetry.pushScorecard(card);
+    if (args.corpus === 'playground') {
+      const linked = await telemetry.pushDatasetRun(card);
+      if (process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY'])
+        console.log(`langfuse: dataset run "${skillVer}" — ${linked}/${results.length} items linked`);
+    }
   }
   await telemetry.shutdown();
 

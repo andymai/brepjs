@@ -5,6 +5,7 @@ import {
   failureBreakdown,
   runScores,
   itemScores,
+  mergeScorecards,
   type EvalResult,
   type AttemptResult,
 } from '../bench/score.js';
@@ -160,6 +161,30 @@ describe('runScores', () => {
 
   it('returns no scores for an empty run', () => {
     expect(runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results: [] })).toEqual([]);
+  });
+});
+
+describe('mergeScorecards', () => {
+  const mk = (results: EvalResult[]): Parameters<typeof mergeScorecards>[0][number] => ({
+    model: 'm',
+    brepjsVersion: 'v',
+    skillVersion: 's',
+    date: 'd',
+    results,
+  });
+
+  it('concatenates shard results under the first shard header', () => {
+    const merged = mergeScorecards([
+      mk([{ id: 'p1', category: 'primitive', auto: { pass: true, failures: [] } }]),
+      mk([{ id: 'p2', category: 'boolean', auto: { pass: false, failures: [] } }]),
+    ]);
+    expect(merged.results.map((r) => r.id)).toEqual(['p1', 'p2']);
+    expect(merged.skillVersion).toBe('s');
+    expect(merged.model).toBe('m');
+  });
+
+  it('returns an empty run when there are no cards', () => {
+    expect(mergeScorecards([]).results).toEqual([]);
   });
 });
 
