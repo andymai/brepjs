@@ -53,6 +53,24 @@ describe('checkAuto', () => {
     expect(off.pass).toBe(false);
     expect(off.failures.join(' ')).toContain('bounds.x');
   });
+
+  it('passes a correctly-sized part regardless of placement (extent, not absolute position)', () => {
+    // 40×30×20 centered on the origin — same SIZE as expected [0,40]×[0,30]×[0,20], just a
+    // different datum. The prompt never pins placement, so a correct part must not fail on it.
+    const centered = { xMin: -20, xMax: 20, yMin: -15, yMax: 15, zMin: -10, zMax: 10 };
+    const res = checkAuto(validReport({ bounds: centered }), {
+      bounds: { x: [0, 40], y: [0, 30], z: [0, 20] },
+      tolerancePct: 1,
+    });
+    expect(res.pass).toBe(true);
+  });
+
+  it('fails a wrong-sized part even when its corner sits at the expected origin', () => {
+    const tooWide = { xMin: 0, xMax: 50, yMin: 0, yMax: 30, zMin: 0, zMax: 20 };
+    const res = checkAuto(validReport({ bounds: tooWide }), { bounds: { x: [0, 40] }, tolerancePct: 1 });
+    expect(res.pass).toBe(false);
+    expect(res.failures.join(' ')).toContain('bounds.x');
+  });
 });
 
 describe('formatScorecard', () => {

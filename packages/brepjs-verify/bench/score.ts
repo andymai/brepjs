@@ -68,12 +68,14 @@ export function checkAuto(report: VerifyReport, expected: EvalPrompt['expected']
           const [emin, emax] = range;
           const amin = b[`${axis}Min` as keyof typeof b];
           const amax = b[`${axis}Max` as keyof typeof b];
-          // Tolerance is on the expected span, with a 0.1 mm floor for tiny axes.
-          const eps = Math.max(0.1, (Math.abs(emax - emin) * tol) / 100);
-          if (Math.abs(amin - emin) > eps || Math.abs(amax - emax) > eps)
-            failures.push(
-              `bounds.${axis}: [${amin},${amax}] vs [${emin},${emax}] (±${eps.toFixed(2)})`
-            );
+          // Assert SIZE (span), not absolute position — a part's datum is unconstrained by the
+          // prompt, so a correctly-sized box centered on the origin must match a corner-at-origin
+          // expected box. Tolerance is span-relative, with a 0.1 mm floor for tiny axes.
+          const eSpan = Math.abs(emax - emin);
+          const aSpan = amax - amin;
+          const eps = Math.max(0.1, (eSpan * tol) / 100);
+          if (Math.abs(aSpan - eSpan) > eps)
+            failures.push(`bounds.${axis}: span ${aSpan.toFixed(1)} vs ${eSpan} (±${eps.toFixed(2)})`);
         }
       }
     }
