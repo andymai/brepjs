@@ -144,8 +144,8 @@ export async function runAttemptLoop(
     attempts,
     iterations: attempts.length,
     termination,
-    prompt: p.prompt,
   };
+  if (p.prompt) out.prompt = p.prompt;
   if (lastCode) out.code = lastCode;
   if (firstTry) out.firstTry = firstTry;
   if (eventual?.judgePass !== undefined) out.judgePass = eventual.judgePass;

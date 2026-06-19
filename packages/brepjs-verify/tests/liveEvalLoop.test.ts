@@ -177,4 +177,29 @@ describe('runAttemptLoop', () => {
     expect(res.attempts?.[0]?.codes).toContain('TIMEOUT');
     expect(res.attempts?.[0]?.outcome).toBe('timeout');
   });
+
+  it('captures the request and the eventual authored code on the result', async () => {
+    const res = await runAttemptLoop(
+      PROMPT,
+      deps({ author: () => Promise.resolve('export default () => box(5, 5, 5);') }),
+      { maxAttempts: 3 }
+    );
+    expect(res.prompt).toBe('make a 10mm box');
+    expect(res.code).toBe('export default () => box(5, 5, 5);');
+  });
+
+  it('captures the eventual code after a retry, not the first attempt', async () => {
+    let authorN = 0;
+    let execN = 0;
+    const res = await runAttemptLoop(
+      PROMPT,
+      deps({
+        author: () => Promise.resolve(`// v${++authorN}\nexport default () => box(1, 1, 1);`),
+        execute: () => Promise.resolve(++execN === 1 ? badOutcome() : okOutcome()),
+      }),
+      { maxAttempts: 3 }
+    );
+    expect(res.iterations).toBe(2);
+    expect(res.code).toBe('// v2\nexport default () => box(1, 1, 1);');
+  });
 });
