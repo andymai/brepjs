@@ -110,9 +110,13 @@ Few-shot examples live under `skill/examples/<name>.brep.ts`, each with a `<name
 
 `npm run eval` (`bench/run.ts`) replays every `skill/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
 
+### Manual skill eval (`/eval-skill`)
+
+The fast iteration loop — run on your Claude subscription, no API key, no billing. The `/eval-skill` slash command drives the same `bench/prompts.ts` corpus through the current Claude Code session: Claude authors each part from the **deployed `SKILL.md`**, runs `verify --check --snapshot`, judges the rendered snapshots against each prompt's rubric, emits the two-signal scorecard, and proposes SKILL.md fixes from the failures. This is the recommended way to answer "did my SKILL.md edit help?" — see `.claude/commands/eval-skill.md`.
+
 ### Live eval (`npm run eval:live`)
 
-The measurement flywheel: sends ~18 natural-language part prompts (`bench/prompts.ts`) to a real model (using the **deployed `SKILL.md` as the system prompt**, so it measures the actual skill), then verifies each generated part two ways:
+The **automated / isolated** counterpart to `/eval-skill` — opt-in and billed. An SDK harness sends the `bench/prompts.ts` prompts to a model with the **deployed `SKILL.md` as the system prompt** (so it measures the skill _in isolation_, not inside a Claude Code session), then verifies each generated part two ways:
 
 - **Auto (objective):** `runPart --check` → valid solid + any pinned dims within tolerance.
 - **Judge (intent):** a multimodal Claude call looks at the rendered iso/front/top/right snapshots and decides whether the part matches the request + rubric.

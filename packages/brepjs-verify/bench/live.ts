@@ -15,8 +15,9 @@ import { skillVersion } from './skillVersion.js';
 // Live text-to-CAD eval (opt-in; needs ANTHROPIC_API_KEY). For each prompt, a bounded loop:
 //   author with Claude  →  execute in the sandbox (--check + dims, writes a STEP)  →
 //   render snapshots  →  multimodal judge  →  retry on failure  →  two-signal scorecard.
-// The deterministic example replay (`npm run eval`) stays the free CI gate; this
-// measures real first-try-vs-eventual success and is run manually / nightly to track the skill.
+// The deterministic example replay (`npm run eval`) stays the free CI gate; this is the
+// opt-in, billed, *isolated* measurement. For a no-API run on the Claude subscription that
+// authors + judges in-session, use the `/eval-skill` command instead.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
