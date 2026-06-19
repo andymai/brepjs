@@ -21,6 +21,8 @@ export interface ViewerControlsProps {
   onView?: (view: ViewName) => void;
   onFit?: () => void;
   onScreenshot?: () => void;
+  /** Enlarge buttons and gaps for finger taps on touch devices. */
+  touch?: boolean;
   className?: string;
 }
 
@@ -51,23 +53,28 @@ export function ViewerControls({
   onView,
   onFit,
   onScreenshot,
+  touch = false,
   className,
 }: ViewerControlsProps) {
   return (
-    <div className={className} style={className ? undefined : containerStyle}>
+    <div
+      className={className}
+      style={className ? undefined : { ...containerStyle, gap: touch ? 8 : 6 }}
+    >
       {(onFit || onScreenshot) && (
-        <Group>
-          {onFit && <Btn label="Fit" onClick={onFit} />}
-          {onScreenshot && <Btn label="Snap" onClick={onScreenshot} />}
+        <Group touch={touch}>
+          {onFit && <Btn label="Fit" onClick={onFit} touch={touch} />}
+          {onScreenshot && <Btn label="Snap" onClick={onScreenshot} touch={touch} />}
         </Group>
       )}
       {viewMode && onViewModeChange && (
-        <Group>
+        <Group touch={touch}>
           {(Object.keys(MODE_LABELS) as ViewMode[]).map((mode) => (
             <Btn
               key={mode}
               label={MODE_LABELS[mode]}
               active={viewMode === mode}
+              touch={touch}
               onClick={() => {
                 onViewModeChange(mode);
               }}
@@ -76,30 +83,34 @@ export function ViewerControls({
         </Group>
       )}
       {(onToggleEdges || onToggleGrid || onToggleAutoRotate || onToggleProjection) && (
-        <Group>
+        <Group touch={touch}>
           {onToggleEdges && (
-            <Btn label="Edges" active={showEdges} onClick={onToggleEdges} />
+            <Btn label="Edges" active={showEdges} onClick={onToggleEdges} touch={touch} />
           )}
-          {onToggleGrid && <Btn label="Grid" active={showGrid} onClick={onToggleGrid} />}
+          {onToggleGrid && (
+            <Btn label="Grid" active={showGrid} onClick={onToggleGrid} touch={touch} />
+          )}
           {onToggleAutoRotate && (
-            <Btn label="Spin" active={autoRotate} onClick={onToggleAutoRotate} />
+            <Btn label="Spin" active={autoRotate} onClick={onToggleAutoRotate} touch={touch} />
           )}
           {onToggleProjection && (
             <Btn
               label={projection === 'orthographic' ? 'Ortho' : 'Persp'}
               active={projection === 'orthographic'}
+              touch={touch}
               onClick={onToggleProjection}
             />
           )}
         </Group>
       )}
       {onView && (
-        <Group>
+        <Group touch={touch}>
           {VIEW_NAMES.map((view) => (
             <Btn
               key={view}
               label={VIEW_LABELS[view]}
               active={activeView === view}
+              touch={touch}
               onClick={() => {
                 onView(view);
               }}
@@ -111,18 +122,20 @@ export function ViewerControls({
   );
 }
 
-function Group({ children }: { children: ReactNode }) {
-  return <div style={groupStyle}>{children}</div>;
+function Group({ children, touch }: { children: ReactNode; touch?: boolean }) {
+  return <div style={touch ? groupStyleTouch : groupStyle}>{children}</div>;
 }
 
 function Btn({
   label,
   active,
   onClick,
+  touch,
 }: {
   label: string;
   active?: boolean | undefined;
   onClick: () => void;
+  touch?: boolean;
 }) {
   return (
     <button
@@ -131,7 +144,10 @@ function Btn({
       // Omit aria-pressed for one-shot actions (Fit/Snap, active===undefined); set it only
       // for the toggle buttons so screen readers don't announce actions as unpressed toggles.
       aria-pressed={active}
-      style={{ ...buttonStyle, ...(active ? activeButtonStyle : null) }}
+      style={{
+        ...(touch ? buttonStyleTouch : buttonStyle),
+        ...(active ? activeButtonStyle : null),
+      }}
     >
       {label}
     </button>
@@ -179,4 +195,11 @@ const activeButtonStyle: CSSProperties = {
   color: '#6ee7d7',
   background: 'rgba(45, 212, 191, 0.16)',
   borderColor: 'rgba(45, 212, 191, 0.3)',
+};
+const groupStyleTouch: CSSProperties = { ...groupStyle, gap: 6, padding: 6 };
+const buttonStyleTouch: CSSProperties = {
+  ...buttonStyle,
+  padding: '9px 14px',
+  fontSize: 13,
+  borderRadius: 6,
 };

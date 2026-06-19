@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { useTouchLongPress } from './longPress.js';
 import type { EdgeGroup, EdgeInfo, ScreenPos } from './types.js';
 
 export interface EdgeRendererProps {
@@ -38,7 +39,9 @@ export default function EdgeRenderer({
   onEdgeHover,
   onEdgeContextMenu,
 }: EdgeRendererProps) {
-  const pickable = Boolean(edgeGroups && edgeInfos && (onEdgePick || onEdgeHover || onEdgeContextMenu));
+  const pickable = Boolean(
+    edgeGroups && edgeInfos && (onEdgePick || onEdgeHover || onEdgeContextMenu)
+  );
   const viewportHeight = useThree((s) => s.size.height);
   const viewportHeightRef = useRef(viewportHeight);
   viewportHeightRef.current = viewportHeight;
@@ -75,14 +78,17 @@ export default function EdgeRenderer({
     [edgeGroups, edgeInfoById]
   );
 
+  const longPress = useTouchLongPress(resolveEdge, onEdgeContextMenu);
+
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
+      if (longPress.consumeFired()) return;
       const info = resolveEdge(event);
       if (!info) return;
       event.stopPropagation();
       onEdgePick?.(info, event.shiftKey, { x: event.clientX, y: event.clientY });
     },
-    [resolveEdge, onEdgePick]
+    [resolveEdge, onEdgePick, longPress]
   );
 
   const handleContextMenu = useCallback(
@@ -101,9 +107,10 @@ export default function EdgeRenderer({
   }, []);
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = '';
+    longPress.cancel();
     onEdgeHover?.(null);
     lastEdgeId.current = null;
-  }, [onEdgeHover]);
+  }, [onEdgeHover, longPress]);
 
   // pointermove updates hover each frame so the tooltip tracks the cursor
   // across the same edge. Stop propagation so the underlying face mesh's
@@ -112,13 +119,14 @@ export default function EdgeRenderer({
   // without this the edge would never win.
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
+      longPress.trackMove(event);
       const info = resolveEdge(event);
       if (!info) return;
       event.stopPropagation();
       lastEdgeId.current = info.edgeId;
       onEdgeHover?.(info, { x: event.clientX, y: event.clientY });
     },
-    [resolveEdge, onEdgeHover]
+    [resolveEdge, onEdgeHover, longPress]
   );
 
   // R3F doesn't synthesize `pointerout` for an object that gets unmounted
@@ -151,6 +159,9 @@ export default function EdgeRenderer({
     ? {
         onClick: handleClick,
         onContextMenu: handleContextMenu,
+        onPointerDown: longPress.start,
+        onPointerUp: longPress.cancel,
+        onPointerCancel: longPress.cancel,
         onPointerOver: handlePointerOver,
         onPointerOut: handlePointerOut,
         onPointerMove: handlePointerMove,

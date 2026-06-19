@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildGeometry, findFaceGroupAt } from './geometry.js';
+import { useTouchLongPress } from './longPress.js';
 import type { MeshData, FaceInfo, ViewMode, ScreenPos } from './types.js';
 
 export interface RendererProps {
@@ -53,14 +54,19 @@ export function Renderer({
     [data.faceGroups, faceInfoById]
   );
 
+  const longPress = useTouchLongPress(resolveFace, onFaceContextMenu);
+
   const onClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
+      // Swallow the tap the browser synthesizes when a touch long-press just
+      // opened the context menu, so it doesn't also select the entity.
+      if (longPress.consumeFired()) return;
       const info = resolveFace(e);
       if (!info) return;
       e.stopPropagation();
       onFacePick?.(info, e.shiftKey, { x: e.clientX, y: e.clientY });
     },
-    [resolveFace, onFacePick]
+    [resolveFace, onFacePick, longPress]
   );
   const onCtx = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
@@ -74,24 +80,29 @@ export function Renderer({
   );
   const onMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
+      longPress.trackMove(e);
       const info = resolveFace(e);
       if (!info) return;
       onFaceHover?.(info, { x: e.clientX, y: e.clientY });
     },
-    [resolveFace, onFaceHover]
+    [resolveFace, onFaceHover, longPress]
   );
   const onOver = useCallback(() => {
     document.body.style.cursor = 'pointer';
   }, []);
   const onOut = useCallback(() => {
     document.body.style.cursor = '';
+    longPress.cancel();
     onFaceHover?.(null);
-  }, [onFaceHover]);
+  }, [onFaceHover, longPress]);
 
   const handlers = pickable
     ? {
         onClick,
         onContextMenu: onCtx,
+        onPointerDown: longPress.start,
+        onPointerUp: longPress.cancel,
+        onPointerCancel: longPress.cancel,
         onPointerOver: onOver,
         onPointerOut: onOut,
         onPointerMove: onMove,
