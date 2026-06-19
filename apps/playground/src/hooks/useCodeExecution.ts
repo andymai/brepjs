@@ -86,6 +86,7 @@ export function useCodeExecution() {
           store.setTimeMs(msg.timeMs);
           store.setIsRunning(false);
           store.setLastSuccessfulCode(ranCode);
+          store.markRendered();
           engineStore.resetRecoveryAttempts();
           if (isRecoveringRef.current) {
             isRecoveringRef.current = false;

@@ -40,9 +40,11 @@ interface PlaygroundState {
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
   lastSuccessfulCode: string | null;
-  // Monotonic counter bumped on each successful render (setMeshes). The mobile
-  // shell compares it against the value it last showed to flag the Viewer tab
-  // when a result changed while the user was on another tab.
+  // Monotonic counter bumped once per successful render (via markRendered). The
+  // mobile shell compares it against the value it last showed to flag the Viewer
+  // tab when a result changed while the user was on another tab. Deliberately
+  // NOT tied to setMeshes — that also fires with [] at every run start (to drop
+  // stale geometry), which would flag the tab on run-start and on errors too.
   runSeq: number;
   selections: Selection[];
   hoverEntity: Selection | null;
@@ -65,6 +67,7 @@ interface PlaygroundState {
   setViewerCollapsed: (collapsed: boolean) => void;
   setEditorCollapsed: (collapsed: boolean) => void;
   setLastSuccessfulCode: (code: string) => void;
+  markRendered: () => void;
   pickSelection: (selection: Selection, additive: boolean) => void;
   clearSelections: () => void;
   setHoverEntity: (entity: Selection | null) => void;
@@ -106,15 +109,14 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   // Drop selections on every new render — they're bound to the mesh by
   // faceId/edgeId and the new mesh likely won't have the same ids.
   setMeshes: (meshes) =>
-    set((s) => ({
+    set({
       meshes,
       error: null,
       errorLine: null,
       selections: [],
       hoverEntity: null,
       contextMenu: null,
-      runSeq: s.runSeq + 1,
-    })),
+    }),
   setAvailableArtifacts: (availableArtifacts) => set({ availableArtifacts }),
   setBimTree: (bimTree) => set({ bimTree }),
   setFlatPattern: (flatPattern) => set({ flatPattern }),
@@ -126,6 +128,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   setEditorCollapsed: (isEditorCollapsed) => set({ isEditorCollapsed }),
   setLastSuccessfulCode: (lastSuccessfulCode) => set({ lastSuccessfulCode }),
+  markRendered: () => set((s) => ({ runSeq: s.runSeq + 1 })),
   pickSelection: (selection, additive) =>
     set((s) => {
       if (!additive) return { selections: [selection] };
