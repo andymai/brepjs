@@ -3,7 +3,7 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { startActiveObservation } from '@langfuse/tracing';
 import { LangfuseClient } from '@langfuse/client';
 import type { EvalPrompt } from './prompts.js';
-import { SCHEMA_VERSION, type EvalResult } from './score.js';
+import { SCHEMA_VERSION, runScores, type EvalResult, type Scorecard } from './score.js';
 
 /**
  * Langfuse v5 (OpenTelemetry-based) telemetry for the live eval, behind a no-op shim.
@@ -28,6 +28,8 @@ export interface Telemetry {
   ) => Promise<EvalResult>;
   /** Register the SKILL.md text as a versioned Langfuse prompt (best-effort, once per run). */
   registerSkill: (skillMd: string) => Promise<void>;
+  /** Push one run's aggregate scores (both% + first-try-vs-eventual lift) on a single trace. */
+  pushScorecard: (card: Scorecard) => Promise<void>;
   /** Flush spans + scores and shut down. */
   shutdown: () => Promise<void>;
 }
@@ -35,6 +37,7 @@ export interface Telemetry {
 const NOOP: Telemetry = {
   observePrompt: (_p, _metadata, run) => run(),
   registerSkill: () => Promise.resolve(),
+  pushScorecard: () => Promise.resolve(),
   shutdown: () => Promise.resolve(),
 };
 
@@ -95,6 +98,42 @@ export function createTelemetry(): Telemetry {
         console.warn(
           `langfuse: skill prompt registration failed (${(e as Error).message.split('\n')[0]})`
         );
+      }
+    },
+    pushScorecard: async (card) => {
+      // One trace per run carrying the aggregate scores, so Langfuse trends both%/lift across
+      // skill versions. Strictly best-effort — a telemetry failure never affects the eval output.
+      try {
+        await startActiveObservation('eval-run', (obs) => {
+          obs.update({
+            input: {
+              model: card.model,
+              judgeModel: card.judgeModel,
+              brepjsVersion: card.brepjsVersion,
+            },
+            output: { prompts: card.results.length },
+            metadata: {
+              date: card.date,
+              skillVersion: card.skillVersion,
+              schemaVersion: SCHEMA_VERSION,
+              units: 'mm',
+            },
+          });
+          for (const s of runScores(card)) {
+            try {
+              client.score.create({
+                traceId: obs.traceId,
+                name: s.name,
+                value: s.value,
+                dataType: 'NUMERIC',
+              });
+            } catch {
+              // best-effort — a single score failure must not break the run push.
+            }
+          }
+        });
+      } catch (e) {
+        console.warn(`langfuse: pushScorecard failed (${(e as Error).message.split('\n')[0]})`);
       }
     },
     shutdown: async () => {

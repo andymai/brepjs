@@ -75,7 +75,9 @@ export function checkAuto(report: VerifyReport, expected: EvalPrompt['expected']
           const aSpan = amax - amin;
           const eps = Math.max(0.1, (eSpan * tol) / 100);
           if (Math.abs(aSpan - eSpan) > eps)
-            failures.push(`bounds.${axis}: span ${aSpan.toFixed(1)} vs ${eSpan} (±${eps.toFixed(2)})`);
+            failures.push(
+              `bounds.${axis}: span ${aSpan.toFixed(1)} vs ${eSpan} (±${eps.toFixed(2)})`
+            );
         }
       }
     }
@@ -88,6 +90,8 @@ export interface Scorecard {
   /** The model that graded the rendered parts; omitted when it's the same as the author model. */
   judgeModel?: string | undefined;
   brepjsVersion: string;
+  /** The deployed skill's content hash — provenance so trends attribute to a SKILL.md edit. */
+  skillVersion?: string | undefined;
   date: string;
   results: readonly EvalResult[];
 }
@@ -156,6 +160,36 @@ function liftSummary(results: readonly EvalResult[]): LiftSummary | null {
   }).length;
   const eventualBoth = looped.filter((r) => r.auto.pass && r.judgePass === true).length;
   return { firstTryBoth, eventualBoth, total: looped.length };
+}
+
+/** A run-level numeric score for a Langfuse trend trace (one per eval run). 0–1 fraction. */
+export interface RunScore {
+  name: string;
+  value: number;
+}
+
+/**
+ * Run-level aggregate scores for one eval run — `both%` (the headline) plus the first-try-vs-eventual
+ * lift when loop data is present. Pushed as numeric scores on a single Langfuse trace so runs trend
+ * over skill versions. Empty for an empty run.
+ */
+export function runScores(card: Scorecard): RunScore[] {
+  const t = tally(card.results);
+  if (t.total === 0) return [];
+  const out: RunScore[] = [
+    { name: 'valid', value: t.autoValid / t.total },
+    { name: 'judge', value: t.judgeMatch / t.total },
+    { name: 'both', value: t.both / t.total },
+  ];
+  const lift = liftSummary(card.results);
+  if (lift && lift.total > 0) {
+    out.push(
+      { name: 'first_try_both', value: lift.firstTryBoth / lift.total },
+      { name: 'eventual_both', value: lift.eventualBoth / lift.total },
+      { name: 'lift', value: (lift.eventualBoth - lift.firstTryBoth) / lift.total }
+    );
+  }
+  return out;
 }
 
 /**

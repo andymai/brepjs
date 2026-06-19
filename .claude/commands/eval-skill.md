@@ -91,6 +91,10 @@ bugs if a verify report exposes one). Then ask whether to apply them.
 
 ## Optional — log to Langfuse
 
-If `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` are set and the user
-wants trend history, offer to record the run (skill version + model + per-category both%)
-so manual runs still accrue a trend over time.
+If `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` are set, record the run so it
+trends over skill versions. Write the scorecard as JSON matching `bench/score.ts` `Scorecard` —
+`{ model, brepjsVersion, skillVersion, date, results: EvalResult[] }`, where each result carries
+`auto`, `judgePass`, and `firstTry` so the lift is computed — then push it:
+`npm run eval:push -w brepjs-verify -- <scorecard.json>`. It sends one trace with the aggregate
+scores (`both`, `first_try_both`, `eventual_both`, `lift`), stamped with the skill version, and
+no-ops without the keys.

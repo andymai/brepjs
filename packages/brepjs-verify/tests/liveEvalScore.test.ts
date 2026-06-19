@@ -3,6 +3,7 @@ import {
   checkAuto,
   formatScorecard,
   failureBreakdown,
+  runScores,
   type EvalResult,
   type AttemptResult,
 } from '../bench/score.js';
@@ -67,7 +68,10 @@ describe('checkAuto', () => {
 
   it('fails a wrong-sized part even when its corner sits at the expected origin', () => {
     const tooWide = { xMin: 0, xMax: 50, yMin: 0, yMax: 30, zMin: 0, zMax: 20 };
-    const res = checkAuto(validReport({ bounds: tooWide }), { bounds: { x: [0, 40] }, tolerancePct: 1 });
+    const res = checkAuto(validReport({ bounds: tooWide }), {
+      bounds: { x: [0, 40] },
+      tolerancePct: 1,
+    });
     expect(res.pass).toBe(false);
     expect(res.failures.join(' ')).toContain('bounds.x');
   });
@@ -102,6 +106,41 @@ describe('formatScorecard', () => {
     expect(out).toContain('primitive');
     // 2/3 valid overall, 1/3 judged matching, 1/3 both.
     expect(out).toMatch(/TOTAL\s+valid 67%\s+judge 33%\s+both 33%/);
+  });
+});
+
+describe('runScores', () => {
+  it('derives run-level valid/judge/both fractions (no lift without loop data)', () => {
+    const results: EvalResult[] = [
+      { id: 'a', category: 'primitive', auto: { pass: true, failures: [] }, judgePass: true },
+      { id: 'b', category: 'primitive', auto: { pass: true, failures: [] }, judgePass: false },
+      { id: 'c', category: 'boolean', auto: { pass: false, failures: [] } },
+    ];
+    const scores = runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results });
+    const get = (n: string): number | undefined => scores.find((s) => s.name === n)?.value;
+    expect(get('valid')).toBeCloseTo(2 / 3, 5);
+    expect(get('judge')).toBeCloseTo(1 / 3, 5);
+    expect(get('both')).toBeCloseTo(1 / 3, 5);
+    expect(get('lift')).toBeUndefined();
+  });
+
+  it('adds first_try_both / eventual_both / lift when loop data is present', () => {
+    const results: EvalResult[] = [
+      looped('x', [
+        attempt([], { auto: { pass: true, failures: [] }, judgePass: false }),
+        attempt([], { auto: { pass: true, failures: [] }, judgePass: true }),
+      ]),
+      looped('y', [attempt([], { auto: { pass: true, failures: [] }, judgePass: true })]),
+    ];
+    const scores = runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results });
+    const get = (n: string): number | undefined => scores.find((s) => s.name === n)?.value;
+    expect(get('first_try_both')).toBeCloseTo(1 / 2, 5);
+    expect(get('eventual_both')).toBeCloseTo(1, 5);
+    expect(get('lift')).toBeCloseTo(1 / 2, 5);
+  });
+
+  it('returns no scores for an empty run', () => {
+    expect(runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results: [] })).toEqual([]);
   });
 });
 
