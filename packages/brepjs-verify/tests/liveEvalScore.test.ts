@@ -4,6 +4,7 @@ import {
   formatScorecard,
   failureBreakdown,
   runScores,
+  itemScores,
   type EvalResult,
   type AttemptResult,
 } from '../bench/score.js';
@@ -141,6 +142,45 @@ describe('runScores', () => {
 
   it('returns no scores for an empty run', () => {
     expect(runScores({ model: 'm', brepjsVersion: 'v', date: 'd', results: [] })).toEqual([]);
+  });
+});
+
+describe('itemScores', () => {
+  const get = (r: EvalResult, n: string): number | undefined =>
+    itemScores(r).find((s) => s.name === n)?.value;
+
+  it('scores a part by its own auto/judge/both (no first-try without loop data)', () => {
+    const r: EvalResult = {
+      id: 'a',
+      category: 'primitive',
+      auto: { pass: true, failures: [] },
+      judgePass: true,
+    };
+    expect(get(r, 'auto_pass')).toBe(1);
+    expect(get(r, 'judge_pass')).toBe(1);
+    expect(get(r, 'eventual_both')).toBe(1);
+    expect(get(r, 'first_try_both')).toBeUndefined();
+  });
+
+  it('marks eventual_both 0 when the judge fails despite a valid solid', () => {
+    const r: EvalResult = {
+      id: 'b',
+      category: 'primitive',
+      auto: { pass: true, failures: [] },
+      judgePass: false,
+    };
+    expect(get(r, 'auto_pass')).toBe(1);
+    expect(get(r, 'judge_pass')).toBe(0);
+    expect(get(r, 'eventual_both')).toBe(0);
+  });
+
+  it('adds first_try_both from the first attempt when loop data is present', () => {
+    const r = looped('c', [
+      attempt([], { auto: { pass: true, failures: [] }, judgePass: false }),
+      attempt([], { auto: { pass: true, failures: [] }, judgePass: true }),
+    ]);
+    expect(get(r, 'eventual_both')).toBe(1);
+    expect(get(r, 'first_try_both')).toBe(0);
   });
 });
 

@@ -3,7 +3,13 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { startActiveObservation } from '@langfuse/tracing';
 import { LangfuseClient } from '@langfuse/client';
 import type { EvalPrompt } from './prompts.js';
-import { SCHEMA_VERSION, runScores, type EvalResult, type Scorecard } from './score.js';
+import {
+  SCHEMA_VERSION,
+  runScores,
+  itemScores,
+  type EvalResult,
+  type Scorecard,
+} from './score.js';
 
 /**
  * Langfuse v5 (OpenTelemetry-based) telemetry for the live eval, behind a no-op shim.
@@ -15,9 +21,10 @@ import { SCHEMA_VERSION, runScores, type EvalResult, type Scorecard } from './sc
  * corrupt the eval. The split-package v5 API is used directly (`@langfuse/tracing` + `@langfuse/otel`
  * + `@langfuse/client`); there is no single `langfuse` package and no `.trace()/.generation()`.
  *
- * Deferred (spec Delta 2, both need live keys to validate): a formal dataset run linking traces to
- * dataset items, and per-call nested generation/span observations. Runs are grouped today via trace
- * metadata (runId / skillVersion / model).
+ * `pushDatasetRun` records a run as a Langfuse dataset experiment — one trace per part, its scores
+ * linked to the matching `brepjs-playground` dataset item, under a per-skill-version run name — so
+ * runs compare natively in the dataset Runs view. Deferred: per-call nested generation/span
+ * observations inside the live `eval:live` path.
  */
 export interface Telemetry {
   /** Run one prompt's eval inside a trace; derive + attach scores from the result. */
@@ -30,6 +37,8 @@ export interface Telemetry {
   registerSkill: (skillMd: string) => Promise<void>;
   /** Push one run's aggregate scores (both% + first-try-vs-eventual lift) on a single trace. */
   pushScorecard: (card: Scorecard) => Promise<void>;
+  /** Record the run as a dataset experiment: per-part trace + scores linked to its dataset item. */
+  pushDatasetRun: (card: Scorecard) => Promise<void>;
   /** Flush spans + scores and shut down. */
   shutdown: () => Promise<void>;
 }
@@ -38,6 +47,7 @@ const NOOP: Telemetry = {
   observePrompt: (_p, _metadata, run) => run(),
   registerSkill: () => Promise.resolve(),
   pushScorecard: () => Promise.resolve(),
+  pushDatasetRun: () => Promise.resolve(),
   shutdown: () => Promise.resolve(),
 };
 
@@ -136,6 +146,35 @@ export function createTelemetry(): Telemetry {
         console.warn(`langfuse: pushScorecard failed (${(e as Error).message.split('\n')[0]})`);
       }
     },
+    pushDatasetRun: async (card) => {
+      // Record the run as a Langfuse dataset experiment so per-part scores compare across skill
+      // versions natively (the lift view). Each result links its own trace to the matching
+      // brepjs-playground dataset item (item id === example id) under one run name = the skill
+      // version. Best-effort + isolated per item: corpus drift (a result whose id has no dataset
+      // item) only warns and skips, so one missing item never aborts the rest of the run.
+      const runName = card.skillVersion ?? `${card.model}-${card.date}`;
+      for (const r of card.results) {
+        try {
+          await startActiveObservation(r.id, async (obs) => {
+            obs.update({
+              metadata: { runName, category: r.category, skillVersion: card.skillVersion },
+            });
+            attachScores(client, obs.traceId, r);
+            await client.api.datasetRunItems.create({
+              runName,
+              runDescription: `brepjs-verify eval — ${card.model} ${card.date}`,
+              datasetItemId: r.id,
+              traceId: obs.traceId,
+              metadata: { skillVersion: card.skillVersion, brepjsVersion: card.brepjsVersion },
+            });
+          });
+        } catch (e) {
+          console.warn(
+            `langfuse: dataset-run link failed for ${r.id} (${(e as Error).message.split('\n')[0]})`
+          );
+        }
+      }
+    },
     shutdown: async () => {
       try {
         await client.flush();
@@ -147,19 +186,13 @@ export function createTelemetry(): Telemetry {
   };
 }
 
-/** Derive the run's scores from the EvalResult and queue them on the trace (best-effort). */
+/** Queue the part's per-item scores on its trace (best-effort; shared with the dataset-run path). */
 function attachScores(client: LangfuseClient, traceId: string, r: EvalResult): void {
-  const both = (autoPass: boolean, judgePass: boolean | undefined): number =>
-    autoPass && judgePass === true ? 1 : 0;
-  const put = (name: string, value: number): void => {
+  for (const s of itemScores(r)) {
     try {
-      client.score.create({ traceId, name, value, dataType: 'NUMERIC' });
+      client.score.create({ traceId, name: s.name, value: s.value, dataType: 'NUMERIC' });
     } catch {
       // best-effort — never let a score failure break the eval.
     }
-  };
-  put('auto_pass', r.auto.pass ? 1 : 0);
-  put('judge_pass', r.judgePass === true ? 1 : 0);
-  put('eventual_both', both(r.auto.pass, r.judgePass));
-  if (r.firstTry) put('first_try_both', both(r.firstTry.auto.pass, r.firstTry.judgePass));
+  }
 }

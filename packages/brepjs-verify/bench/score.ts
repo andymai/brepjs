@@ -193,6 +193,26 @@ export function runScores(card: Scorecard): RunScore[] {
 }
 
 /**
+ * Per-part scores for one EvalResult — the part's own valid/judge/both, plus its first-try both when
+ * loop data is present. Attached to a per-item trace that's linked to the matching
+ * `brepjs-playground` dataset item, so a dataset run compares parts across skill versions natively
+ * (the lift view). Mirrors the run-level `runScores` at single-part granularity.
+ */
+export function itemScores(r: EvalResult): RunScore[] {
+  const both = (autoPass: boolean, judgePass: boolean | undefined): number =>
+    autoPass && judgePass === true ? 1 : 0;
+  const out: RunScore[] = [
+    { name: 'auto_pass', value: r.auto.pass ? 1 : 0 },
+    { name: 'judge_pass', value: r.judgePass === true ? 1 : 0 },
+    { name: 'eventual_both', value: both(r.auto.pass, r.judgePass) },
+  ];
+  if (r.firstTry) {
+    out.push({ name: 'first_try_both', value: both(r.firstTry.auto.pass, r.firstTry.judgePass) });
+  }
+  return out;
+}
+
+/**
  * How many *built* parts (eventual attempt produced a STEP) actually got judged. A built part left
  * unjudged means the snapshot/judge pipeline silently failed (no Chrome/viewer) — a harness
  * regression that would otherwise hide as `judge:—` while `both%` collapses to `auto%` (vision §6).
