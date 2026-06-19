@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.94.0](https://github.com/andymai/brepjs/compare/brepjs-v18.93.1...brepjs-v18.94.0) (2026-06-19)
+
+
+### Features
+
+* **brepjs-verify:** looped skill eval + Langfuse v5 telemetry ([#1494](https://github.com/andymai/brepjs/issues/1494)) ([06a7e7c](https://github.com/andymai/brepjs/commit/06a7e7c6e882fe795122141dce1e4c04933f3fdc))
+
 ## [18.93.1](https://github.com/andymai/brepjs/compare/brepjs-v18.93.0...brepjs-v18.93.1) (2026-06-18)
 
 
