@@ -13,8 +13,9 @@ is _pairwise_ (author vs reference) and _blind_ (labels stripped), and costs not
 ## The judge unit
 
 One judge subagent (general-purpose — it must `Read` the PNGs) per part. Its **entire input**: the
-part's NL `description` + two rendered images (**iso + one detail view each**) labeled only **A** and
-**B** + the rubric below. It is told NOTHING about which render is the skill's clean-room output vs
+part's NL `description` + two rendered images each — **iso + one detail view, the SAME view pair for
+both renders** so the A/B comparison is fair (pick the detail view — front/top/right — that best
+exposes the features the description names) — labeled only **A** and **B** + the rubric below. It is told NOTHING about which render is the skill's clean-room output vs
 the playground reference, and never reads any `.brep.ts`, the heal, the orchestration, or
 `apps/playground/**`. Structured return:
 
@@ -40,8 +41,10 @@ Per auto-valid part, **serially** (the render server is a singleton on :7373):
    varied per part. Record the mapping privately. _If a path says `author`/`ref`, the judge isn't
    blind — rename first._
 3. Dispatch ONE blind judge → verdict.
-4. **Escalate only on `tie-*` or `confidence:low`:** two more blind judges (labels re-shuffled per
-   judge), take the majority.
+4. **Escalate only on `tie-good` or `confidence:low`:** two more blind judges (labels re-shuffled
+   per judge), take the majority. `tie-blob` is _not_ an escalation — it means both renders read
+   blobby (usually a bad camera angle); re-render per the verdict map below and re-judge rather than
+   burning panel calls on the same images.
 5. **Decode** the verdict against your private A/B map → author-vs-reference result.
 
 ## Verdict → scorecard (the bar: author ≥ reference, _and_ actually designed)
