@@ -34,8 +34,13 @@ Ignore color, lighting, camera, and exact dimensions you can't read from the ima
 
 Per auto-valid part, **serially** (the render server is a singleton on :7373):
 
-1. Render the **author** `<id>.brep.ts` and the **reference** (adapt the playground `code`:
-   `brepjs/quick`→`brepjs`, `export default X`→`export default () => X`) to snapshots.
+1. Render the **author** `<id>.brep.ts` (`--check --snapshot`) and the **reference** to snapshots.
+   Generate the reference part with **`tsx bench/adaptReference.ts <dir> <id>`** — do **not** hand-edit
+   the playground `code`. The adapter keeps the `brepjs/quick` import (it auto-inits the kernel) and
+   wraps a multi-body **array** return in `compound(...)` (the CLI's runChecks needs one shape; a bare
+   array reports `expected an OcctWasmHandle … got undefined`). Render the reference **without
+   `--check`** — playground `code` is typed against the looser Monaco surface, so strict-CLI type gaps
+   (e.g. `sketchOnPlane('XY')`) are expected and don't affect the image. (Rendering is still serial.)
 2. **Strip the labels.** Copy both renders to **neutral filenames** — `<id>-A-iso.png` /
    `<id>-B-iso.png` (+ a detail view) — and **coin-flip** which of {author, reference} is A vs B,
    varied per part. Record the mapping privately. _If a path says `author`/`ref`, the judge isn't
