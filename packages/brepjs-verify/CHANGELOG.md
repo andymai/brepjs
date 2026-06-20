@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.29.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.28.0...brepjs-verify-v0.29.0) (2026-06-20)
+
+
+### Features
+
+* **brepjs-verify:** blind LLM-as-judge for the eval design signal ([#1512](https://github.com/andymai/brepjs/issues/1512)) ([ddb09d8](https://github.com/andymai/brepjs/commit/ddb09d8b335f18f7181d74746e92d3491409236a))
+
+
+### Bug Fixes
+
+* **brepjs-verify:** heal 3 eval-surfaced SKILL.md gaps (bounds, finders, materials) ([#1507](https://github.com/andymai/brepjs/issues/1507)) ([5c4ebe3](https://github.com/andymai/brepjs/commit/5c4ebe390bf5b311c431698381ceea9244c49a17))
+* **brepjs-verify:** heal pen .fillet/.chamfer gap — name customCorner ([#1517](https://github.com/andymai/brepjs/issues/1517)) ([70837c7](https://github.com/andymai/brepjs/commit/70837c7684b2f1d75b3ede4b4c4529cf1540be85))
+* **brepjs-verify:** heal polygon().extrude() gap — point to drawPolysides ([#1516](https://github.com/andymai/brepjs/issues/1516)) ([13d816a](https://github.com/andymai/brepjs/commit/13d816a6f9e49b8f2d0439a95ed943c0244dea54))
+* **brepjs-verify:** heal sketch-extrude→modifier ValidSolid type gap ([#1515](https://github.com/andymai/brepjs/issues/1515)) ([9a77cfd](https://github.com/andymai/brepjs/commit/9a77cfdaf6a2d5c41194bfbbb53e63628c7a132a))
+
 ## [0.28.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.27.0...brepjs-verify-v0.28.0) (2026-06-19)
 
 
