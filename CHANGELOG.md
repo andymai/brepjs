@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.96.1](https://github.com/andymai/brepjs/compare/brepjs-v18.96.0...brepjs-v18.96.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **brepjs-verify:** heal 3 eval-surfaced SKILL.md gaps (bounds, finders, materials) ([#1507](https://github.com/andymai/brepjs/issues/1507)) ([5c4ebe3](https://github.com/andymai/brepjs/commit/5c4ebe390bf5b311c431698381ceea9244c49a17))
+
 ## [18.96.0](https://github.com/andymai/brepjs/compare/brepjs-v18.95.0...brepjs-v18.96.0) (2026-06-19)
 
 
