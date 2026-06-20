@@ -88,7 +88,7 @@ function brepjsVersion(): string {
 
 /** The deployed skill IS the author system prompt — so the eval measures the real skill. */
 function authorSystem(): string {
-  const skill = readFileSync(resolve(here, '../skill/SKILL.md'), 'utf8');
+  const skill = readFileSync(resolve(here, '../skills/implement/SKILL.md'), 'utf8');
   return `${skill}\n\n---\nYou are now authoring a part. Output ONLY a single complete .brep.ts module — no markdown fences, no prose, no explanation. It must \`export default () => <shape>\` and import what it needs from 'brepjs'.`;
 }
 
@@ -213,7 +213,7 @@ async function main(): Promise<void> {
 
   // Telemetry (no-op unless LANGFUSE_* keys are set). Stamp every trace with the skill version so
   // score movements are attributable to a SKILL.md edit, and register the skill text once per run.
-  const skillMd = readFileSync(resolve(here, '../skill/SKILL.md'), 'utf8');
+  const skillMd = readFileSync(resolve(here, '../skills/implement/SKILL.md'), 'utf8');
   const skillVer = skillVersion(skillMd, version);
   const telemetry = createTelemetry();
   await telemetry.registerSkill(skillMd);

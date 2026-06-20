@@ -27,7 +27,7 @@ eval:live` is the billed SDK counterpart; it still uses the legacy `bench/prompt
   side-by-side, adapt it to a `.brep.ts` — change `from 'brepjs/quick'` → `from 'brepjs'`
   and `export default <shape>` → `export default () => <shape>` — then `verify --check
 --snapshot`. The author's part should read as designed as the reference, not just valid.
-- **Authoring contract:** `packages/brepjs-cad/skill/SKILL.md` — follow it exactly;
+- **Authoring contract:** `packages/brepjs-cad/skills/implement/SKILL.md` — follow it exactly;
   that is the thing under test. Do **not** show the author the reference `code`, or lean on
   outside brepjs knowledge the skill doesn't give you, or you measure yourself.
 
@@ -51,7 +51,7 @@ Author parts into a scratch ESM dir so `import 'brepjs'` resolves and the kernel
 ## The loop — per selected example, ≤ 4 attempts (designed parts need the polish pass)
 
 1. **Brief.** Convert the example's `description` to explicit params (mm, datums, features)
-   per SKILL.md step 1. Read the closest `skill/examples/*.brep.ts` first. Do **not** read
+   per SKILL.md step 1. Read the closest `skills/implement/examples/*.brep.ts` first. Do **not** read
    the playground example's `code` — that's the answer key.
 2. **Author** `<id>.brep.ts` following SKILL.md: short API, `unwrap()` the `Result`-ops,
    `export default () => <shape>`. Snapshot **serially** (the render server is a singleton

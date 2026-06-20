@@ -99,7 +99,7 @@ The server runs locally as a child process of your agent (stdio); geometry never
 
 ## Examples gallery
 
-Few-shot examples live under `skill/examples/<name>.brep.ts`, each with a `<name>.expected.json` baseline. Grouped by category:
+Few-shot examples live under `skills/implement/examples/<name>.brep.ts`, each with a `<name>.expected.json` baseline. Grouped by category:
 
 - **Primitives + booleans**: `mounting-bracket`, `flanged-coupler`, `transform-bracket`
 - **2D sketch → solid**: `extruded-bracket` (extrude), `revolved-pulley` (revolve), `swept-gasket` (sweep)
@@ -108,7 +108,7 @@ Few-shot examples live under `skill/examples/<name>.brep.ts`, each with a `<name
 
 ## Eval / scorecard
 
-`npm run eval` (`bench/run.ts`) replays every `skill/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
+`npm run eval` (`bench/run.ts`) replays every `skills/implement/examples/*.brep.ts` with a sibling `*.expected.json` through the public `runPart` runtime, compares measured volume/area/validity/shape-type against the recorded baseline within each file's tolerance (default 0.5%), prints a PASS/FAIL scorecard, and exits non-zero on any regression. It is deterministic (no LLM or API key) so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an intentional geometry change.
 
 ### Manual skill eval (`/eval-skill`)
 

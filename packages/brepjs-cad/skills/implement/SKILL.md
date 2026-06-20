@@ -1,0 +1,101 @@
+---
+name: implement
+description: Use when authoring or editing a brepjs `.brep.ts` part — writing the geometry with the functional API (box, cylinder, fuse, cut, fillet, sketch→extrude…), declaring an `expected` block, and following the hard rules (import every function, unwrap Results, select edges, coordinate semantics). This is the authoring step; pair it with brepjs:verify to check the result.
+version: 0.1.0
+---
+
+# Author a brepjs part
+
+You write a `.brep.ts` part; the `brep` CLI runs it on a geometry kernel and reports what it
+measured. Judge the part by the report (see `brepjs:verify`), not by how the code reads. This skill
+is **self-contained** — everything needed to author correctly is here or in `references/`.
+
+The CLI ships in the `brepjs-cad` package as `brep`. Installed: `brep verify part.brep.ts …`.
+Otherwise: `npx -y -p brepjs-cad brep verify …`.
+
+## Authoring contract
+
+- `export default () => <shape>` (or `async () => {…}` to `await loadFont`/`importSTEP`).
+- Short functional API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), named consts at the top.
+- Scaffold with `brep init <name>`. **Edit source, never generated artifacts** (STEP/STL/GLB derive
+  from the `.brep.ts`).
+
+## Choose the operation (reliability tiers)
+
+Prefer ops that succeed first-try; lean on the report and small steps for advanced ops. Full table:
+**`references/operation-tiers.md`**. In short: primitives, booleans, `compound`, sketch→extrude,
+`fillet`, `shell`/`offset`, transforms are reliable; sweeps/lofts/revolves/`fuseAll`/text are
+advanced; `chamfer` is the fragile exception (prefer `fillet`).
+
+## Declare intent — the `expected` block
+
+Add `export const expected = { … }` from the brief; the CLI asserts it, catching valid-but-wrong
+sizing. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. Bounds
+shape is exactly `{ xMin, xMax, yMin, yMax, zMin, zMax }` (any subset) — **not** `{ min, max }` or
+`{ x, y, z }` (a wrong shape reports `EXPECTED_UNKNOWN_KEY`).
+
+**Prefer `bounds`** over a hand-computed `volume` (a wrong number fails a _correct_ part). Predict
+only extents you **place directly** — a footprint, a stack height, where each body sits — these read
+off your datums and catch a dropped/misplaced body. An extent **governed by a rotation, a part's
+orientation, a proud sub-feature, or a half-space clip** is not a datum: bound it generously or
+measure-first (run once, copy the report's measured value).
+
+## Hard rules
+
+- **Import every function you call.** No globals — every op is a named export from `'brepjs'`. A
+  used-but-unimported symbol is `TS2304: Cannot find name` and fails `--check` before geometry runs
+  (the #1 first-attempt failure). Re-scan the body before finishing.
+- **Unwrap Results.** Booleans and `measureVolume`/`measureArea` return `Result`: `unwrap(cut(...))`
+  and check the `Err` branch before chaining. `TS2322: Result<X> is not assignable to X` means an
+  op (`cut`/`fuse`/`fillet`/`chamfer`/`shell`/…) was used without `unwrap()`.
+- **`fuse` welds only where solids overlap.** Bodies merely touching on a coplanar face/ring may
+  return a loose `Compound` (`ok:true`, not one watertight solid). Overlap the operands +
+  `fuseAll(shapes, { unsafe: true })` to weld; use `compound` for a distinct-bodies assembly.
+  (`references/booleans.md`.)
+- **`fillet`/`chamfer`/`shell`/`offset` need a `ValidSolid`.** Primitives already are one and
+  booleans preserve it, so a primitive-rooted chain feeds them directly. A shape from a 2D-sketch
+  `.extrude()`/`.revolve()` (or `loft`/`sweep`) is typed `Shape3D`; passing it to these ops is
+  `TS2345`. Lift in two steps: `if (!isSolid(x)) throw …; const solid = unwrap(validSolid(x));`. Or
+  build the prism from a primitive when you know you'll `fillet`/`shell` it. (`references/modifiers.md`.)
+- **Select edges/faces; don't fillet/chamfer everything.** `fillet(solid, radius)` with no edge
+  list rounds EVERY edge and frequently `FILLET_FAILED`s. Pass `edgeFinder().inDirection('Z').findAll(solid)`.
+  `inDirection` matches BOTH ± orientations; discriminate by position with
+  `.when(f => getBounds(f).zMax > t)` (`getBounds` is its own import). Finders take a **direction**
+  (`'X'`/`'Y'`/`'Z'`/`Vec3`), never a plane: a top face is `faceFinder().inDirection('Z')`;
+  **`parallelTo('XY')` fails `--check`** — use `'Z'`. (`references/modifiers.md`.)
+- **`chamfer` is kernel-fragile.** `CHAMFER_FAILED` is common even with a correct edge list. Prefer
+  `fillet`, model the bevel additively (`cut` with an angled tool), or drop it. Re-running the same
+  chamfer rarely helps.
+- **`revolve` angle is RADIANS** (`Math.PI * 2` = full turn). Build a revolve profile with
+  `polygon(points3D)`, not `draw().close().sketchOnPlane('XZ').face()` (fails `--check`).
+  (`references/sketching-2d.md`.)
+- **`box(width, depth, height)`** — depth is Y, height is Z, mm. **`at` sets the geometric CENTER**:
+  bare `box(w,d,h)` is corner-at-origin, `{ centered: true }` centers on origin, `{ at:[x,y,z] }`
+  centers there. `cylinder`/`cone` `at` is the **base** center; `sphere` `at` is its center.
+- **No half-sphere primitive:** clip a full `sphere` to a half-space with `intersect` (a `box` over
+  the half you want). Fusing a whole sphere bulges past a cap face. See the `dome-cap` example.
+- **Pattern angles are DEGREES** (`circularPattern`/`rectangularPattern` `fullAngle`), _unlike_
+  `revolve` (radians). Check the unit per op.
+- **Parts may be `async`**: `export default async () => {…}` is awaited — `await loadFont(...)`
+  (required before any `sketchText`/`drawText`) or `await importSTEP(...)`. `--check` type-checks
+  Node built-ins, so a part may `import { readFile } from 'node:fs/promises'`.
+- Author in ESM (the tool's default) so the kernel loads.
+
+## Reference index (load only what the task needs)
+
+`references/getting-started.md` · `primitives.md` · `sketching-2d.md` · `booleans.md` ·
+`modifiers.md` · `transforms.md` · `measurement-validation.md` · `assemblies-motion.md` ·
+`operation-tiers.md`. Maker recipes: `fdm-conventions.md` · `mechanical-joints.md` ·
+`gridfinity.md` · `gears.md` · `threads.md`. **Backstop:** any symbol not covered →
+`reference/llms-full.txt` (every export with signatures), bundled in the package.
+
+## Examples index (read the closest before authoring)
+
+Each is a complete `examples/<name>.brep.ts` + `<name>.expected.json` baseline.
+
+- **Primitives + booleans:** `mounting-bracket` · `flanged-coupler` · `transform-bracket` · `dome-cap`.
+- **2D sketch → solid:** `extruded-bracket` · `revolved-pulley` · `swept-gasket`.
+- **Modifiers:** `rounded-block` (fillet) · `chamfered-block` (API shape only; chamfer is fragile) ·
+  `hollow-enclosure` (shelled).
+- **Mechanical:** `spur-gear` (polygon→extrude, BOSL2-faithful) · `threaded-rod` (loft sections).
+- **Gridfinity:** `gridfinity-baseplate` · `gridfinity-bin` · `gridfinity-divider`.

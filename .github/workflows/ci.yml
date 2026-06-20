@@ -162,7 +162,7 @@ jobs:
       - run: npm run lint --workspace=brepjs-verify
       - run: npm run test --workspace=brepjs-verify
       - run: npm run build --workspace=brepjs-verify
-      # Deterministic eval: replay skill/examples through runPart, gate on volume/area/validity.
+      # Deterministic eval: replay skills/implement/examples through runPart, gate on volume/area/validity.
       - run: npm run eval --workspace=brepjs-verify
       # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load
       # failures that only surface for installed users (tsx/vitest hide them in-repo).

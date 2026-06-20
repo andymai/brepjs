@@ -5,7 +5,7 @@ description: 'The few-shot gallery brepjs-verify ships: primitives, booleans, sk
 
 # Examples
 
-The skill ships a gallery of complete, verified parts under `skill/examples/<name>.brep.ts`, each paired with a `<name>.expected.json` baseline. They are the few-shot reference the agent reads before authoring, and the corpus the [deterministic eval](./eval) replays. Read the one closest to your task before writing a new part.
+The skill ships a gallery of complete, verified parts under `skills/implement/examples/<name>.brep.ts`, each paired with a `<name>.expected.json` baseline. They are the few-shot reference the agent reads before authoring, and the corpus the [deterministic eval](./eval) replays. Read the one closest to your task before writing a new part.
 
 Each example is a real `.brep.ts` you can run directly:
 

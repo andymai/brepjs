@@ -13,7 +13,7 @@ description: 'How brepjs-verify measures itself: a deterministic replay that gat
 npm run eval
 ```
 
-`bench/run.ts` replays every `skill/examples/*.brep.ts` through the public `runPart` runtime and compares the measured volume / area / validity / shape-type against the recorded `*.expected.json` baseline, within each file's tolerance (default 0.5%). It prints a PASS/FAIL scorecard and exits non-zero on any regression.
+`bench/run.ts` replays every `skills/implement/examples/*.brep.ts` through the public `runPart` runtime and compares the measured volume / area / validity / shape-type against the recorded `*.expected.json` baseline, within each file's tolerance (default 0.5%). It prints a PASS/FAIL scorecard and exits non-zero on any regression.
 
 It is fully deterministic (**no LLM, no API key**), so it runs in CI as the package's regression net. Refresh a baseline by re-recording the example's `*.expected.json` after an _intentional_ geometry change; an unintentional change surfaces as a failure.
 

@@ -36,7 +36,7 @@ prove it with a 3-line part first (turns an N-way silent failure into a 5-second
 
 One **general-purpose subagent per example**, dispatched in parallel batches. Each subagent:
 
-- Reads ONLY `packages/brepjs-cad/skill/SKILL.md` + its references/examples + the bundled
+- Reads ONLY `packages/brepjs-cad/skills/implement/SKILL.md` + its references/examples + the bundled
   `reference/llms-full.txt`. **MUST NOT** read anything under `apps/playground/**` (the answer
   key) or lean on remembered brepjs API — that measures the model, not the skill.
 - Gets the example's `description` as the whole prompt (+ `id`/`label`).
@@ -69,7 +69,7 @@ class and a must-fix; an omission is lower-severity. **Never heal a phantom.**
 
 ## 4. Fix — surgical SKILL.md prose
 
-Edit the canonical `packages/brepjs-cad/skill/SKILL.md` (+ its `references/*.md`) in the house
+Edit the canonical `packages/brepjs-cad/skills/implement/SKILL.md` (+ its `references/*.md`) in the house
 style: terse, failure-mode-keyed, cite the error code. The fix must live in **prose** (the real
 eval author is prompt-only — file-only example fixes don't transfer). If a bundled reference
 (`llms-full.txt`/`llms.txt`) is itself wrong, fix it **and grep everywhere** — root `llms.txt` +
