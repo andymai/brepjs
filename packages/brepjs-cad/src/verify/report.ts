@@ -139,6 +139,12 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     fix: 'Extrude by a non-zero distance — a length of 0 produces no solid.',
     nextStep: 'Set a positive extrusion height (units: mm) and re-verify.',
   },
+  // The sketch `.extrude(0)` path raises EXTRUDE_ZERO_VECTOR (distinct from the sweepFns
+  // ZERO_LENGTH_EXTRUSION above) — the most common version of this mistake, so it needs its own hint.
+  EXTRUDE_ZERO_VECTOR: {
+    fix: 'Pass a non-zero thickness to `.extrude(h)` — a height of 0 is a zero-length vector, no solid.',
+    nextStep: 'Set a positive extrusion height (units: mm) and re-verify.',
+  },
   ZERO_OFFSET: {
     fix: 'Offset by a non-zero amount — an offset of 0 is a no-op the kernel rejects.',
     nextStep: 'Use a small non-zero offset (positive grows, negative shrinks) and re-verify.',

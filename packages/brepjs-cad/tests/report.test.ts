@@ -72,6 +72,18 @@ describe('hints', () => {
     }
   });
 
+  it('gives EXTRUDE_ZERO_VECTOR a specific hint, not the generic fallback', () => {
+    // The sketch `.extrude(0)` path raises EXTRUDE_ZERO_VECTOR. The verify-heal cycle found it had
+    // no HINT_TABLE entry, so it got the useless "No specific fix available" fallback. This guards
+    // the heal: a real, extrude-specific fix.
+    const hint = hintFor({
+      message: 'EXTRUDE_ZERO_VECTOR: extrude: extrusion vector has zero length',
+      code: 'EXTRUDE_ZERO_VECTOR',
+    });
+    expect(hint?.fix).not.toMatch(/No specific fix available/);
+    expect(hint?.fix).toMatch(/extrude/i);
+  });
+
   it('falls back to the public BrepError.suggestion for unknown codes', () => {
     const hint = hintFor({
       message: 'something: failed',

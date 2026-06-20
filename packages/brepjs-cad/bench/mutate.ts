@@ -43,6 +43,14 @@ export const expected = { bounds: { xMax: 999 }, tolerancePct: 0.5 };`,
 export default () => box(10, 10, 10);`,
   },
   {
+    id: 'zero-extrude',
+    expect: { code: 'EXTRUDE_ZERO_VECTOR' },
+    source: `import { drawRoundedRectangle } from 'brepjs';
+// sketch extruded by 0 — the common version of the zero-length mistake (EXTRUDE_ZERO_VECTOR,
+// distinct from the sweepFns ZERO_LENGTH_EXTRUSION).
+export default () => drawRoundedRectangle(40, 20, 4).sketchOnPlane('XY').extrude(0);`,
+  },
+  {
     id: 'bad-expected-key',
     expect: { code: 'EXPECTED_UNKNOWN_KEY' },
     source: `import { box } from 'brepjs';
