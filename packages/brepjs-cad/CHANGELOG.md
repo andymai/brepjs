@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.29.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.28.0...brepjs-cad-v0.29.0) (2026-06-20)
+
+
+### Features
+
+* **brepjs-cad:** CLI subcommands + verify hints + gridfinity examples + eval harness ([#1204](https://github.com/andymai/brepjs/issues/1204)) ([4d57198](https://github.com/andymai/brepjs/commit/4d5719874b5f5e685a4f909fd2d2363c0331770b))
+* **brepjs-cad:** rename from brepjs-agent + make npm-publishable (publish held) ([#1201](https://github.com/andymai/brepjs/issues/1201)) ([630bbba](https://github.com/andymai/brepjs/commit/630bbbab4885604bd4d5fb2148584a6572c8d99c))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** load .ts parts via native type-stripping ([#1207](https://github.com/andymai/brepjs/issues/1207)) ([198078b](https://github.com/andymai/brepjs/commit/198078becf570614c0cbf61537714fc94c2de43a))
+* **brepjs-cad:** run CLI via bin symlink + quality pass ([#1206](https://github.com/andymai/brepjs/issues/1206)) ([ac5b1fe](https://github.com/andymai/brepjs/commit/ac5b1feee3c5b424c37716ca06c397f7898838f1))
+
 ## [0.28.0](https://github.com/andymai/brepjs/compare/brepjs-verify-v0.27.0...brepjs-verify-v0.28.0) (2026-06-19)
 
 ### Features
