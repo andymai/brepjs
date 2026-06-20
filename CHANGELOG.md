@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.98.0](https://github.com/andymai/brepjs/compare/brepjs-v18.97.2...brepjs-v18.98.0) (2026-06-20)
+
+
+### Features
+
+* **playground:** add universal joint, Geneva drive, and bench vise examples ([#1532](https://github.com/andymai/brepjs/issues/1532)) ([e22429e](https://github.com/andymai/brepjs/commit/e22429ed4bfd1962638c219ef14bcfd5e901bd5f))
+
 ## [18.97.2](https://github.com/andymai/brepjs/compare/brepjs-v18.97.1...brepjs-v18.97.2) (2026-06-20)
 
 ### Bug Fixes
