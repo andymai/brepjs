@@ -3459,13 +3459,13 @@ function pegboardShelf(
         const x = -halfW + i * stepX + ox;
         const y = -halfD + j * rowOff * 2 + oy;
         if (Math.abs(x) > halfW || Math.abs(y) > halfD) continue;
-        // Hex prism, flat side up, taller than the plate so it cuts clean.
-        const cell = translate(
-          rotate(sketchPolysides(hexR, 6).extrude(thickness + 2), 90, {
-            axis: [0, 0, 1],
-          }),
-          [x, y, -1],
-        );
+        // Pointy-top hex (sketchPolysides emits a vertex straight up), taller
+        // than the plate so it cuts clean. Pointy-top is what keeps the walls
+        // uniform: its six flats face the six lattice neighbours (at 0/60/.../
+        // 300 deg), so every wall is exactly stepX - 2*hexInradius = hexGap.
+        // Rotating it flat-top would point a vertex at each neighbour and
+        // collapse the walls to stepX - 2*hexR.
+        const cell = translate(sketchPolysides(hexR, 6).extrude(thickness + 2), [x, y, -1]);
         holes.push(cell);
       }
     }
