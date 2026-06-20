@@ -27,7 +27,11 @@ function meshKey(m: MeshData, fallback: number): string {
   const p = m.position;
   if (!p || p.length === 0) return `empty-${fallback}`;
   const mid = ((p.length / 6) | 0) * 3;
-  return `${p.length}-${p[0]}-${p[mid] ?? 0}-${p[p.length - 1] ?? 0}`;
+  // Sampling three buffer values keeps the key stable across re-runs for an
+  // unchanged body, but symmetric/repeated bodies in an assembly (e.g. a truss
+  // of identical struts) collide on those samples — so disambiguate with the
+  // positional index, which is unique per rendered child.
+  return `${p.length}-${p[0]}-${p[mid] ?? 0}-${p[p.length - 1] ?? 0}-${fallback}`;
 }
 
 /**
