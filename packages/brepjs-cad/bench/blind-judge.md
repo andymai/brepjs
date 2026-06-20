@@ -15,12 +15,15 @@ is _pairwise_ (author vs reference) and _blind_ (labels stripped), and costs not
 One judge subagent (general-purpose — it must `Read` the PNGs) per part. Its **entire input**: the
 part's NL `description` + two rendered images each — **iso + one detail view, the SAME view pair for
 both renders** so the A/B comparison is fair (pick the detail view — front/top/right — that best
-exposes the features the description names) — labeled only **A** and **B** + the rubric below. It is told NOTHING about which render is the skill's clean-room output vs
-the playground reference, and never reads any `.brep.ts`, the heal, the orchestration, or
+exposes the features the description names) — labeled only **A** and **B**, **a one-line "measured
+facts" string per render** (body count + interference relations — the ground truth the render can't
+show; see step 1b), + the rubric below. It is told NOTHING about which render is the skill's clean-room
+output vs the playground reference, and never reads any `.brep.ts`, the heal, the orchestration, or
 `apps/playground/**`. Structured return:
 
 - per label (`A`, `B`): `designed | partial | blob` + one-line reason (are the described features
-  present, legible, proportioned — or a lumpy primitive stack?),
+  present, legible, proportioned — or a lumpy primitive stack? do the measured body count + relations
+  match what the description implies?),
 - pairwise: `A-better | B-better | tie-good | tie-blob`,
 - `confidence`: `high | low`.
 
@@ -41,6 +44,13 @@ Per auto-valid part, **serially** (the render server is a singleton on :7373):
    array reports `expected an OcctWasmHandle … got undefined`). Render the reference **without
    `--check`** — playground `code` is typed against the looser Monaco surface, so strict-CLI type gaps
    (e.g. `sketchOnPlane('XY')`) are expected and don't affect the image. (Rendering is still serial.)
+   1b. **Capture measured facts.** Run `brep verify <part> --metrics --json` for the author AND the
+   reference, and from each report build a one-line digest of `bodies` (count) + `bodyRelations`
+   (which bodies sit apart vs touch/overlap) + any `manufacturability.violations`. Give the judge the
+   digest for **A** and for **B** as ground truth — **symmetric and label-free** (each render gets its
+   own line; the digest must not reveal which is author vs reference). The judge reconciles the facts
+   with the image (does it see the stated body count?) and decides whether a reported interference is
+   an intended assembly or an accidental collision from the description.
 2. **Strip the labels.** Copy both renders to **neutral filenames** — `<id>-A-iso.png` /
    `<id>-B-iso.png` (+ a detail view) — and **coin-flip** which of {author, reference} is A vs B,
    varied per part. Record the mapping privately. _If a path says `author`/`ref`, the judge isn't

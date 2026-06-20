@@ -154,19 +154,22 @@ async function evalPrompt(
   const deps: LoopDeps = {
     author: (messages) => authorPart(client, system, messages, args.model),
     execute: (code, attempt) =>
-      runProgramWithStep(code, join(workdir, `${p.id}-a${attempt}.step`), {}),
+      // --metrics so the report carries body/interference facts for the judge (this path already
+      // pays for the STEP export, so the extra metric pass is proportionate).
+      runProgramWithStep(code, join(workdir, `${p.id}-a${attempt}.step`), { metrics: true }),
     snapshot: (stepPath) => snapshot(stepPath, `${stepPath}-shots`),
     // The judge is a secondary signal — swallow its errors and return null so a judge timeout/API
     // blip leaves judgePass undefined (scorecard shows judge:—) instead of failing the attempt.
-    judge: async (pngPaths) => {
+    judge: async (pngPaths, metrics) => {
       try {
         const v = await judge(client, {
           prompt: p.prompt,
           rubric: p.rubric,
           pngPaths: [...pngPaths],
           model: args.judgeModel,
+          ...(metrics ? { metrics } : {}),
         });
-        return { pass: v.pass, reason: v.reason };
+        return { pass: v.pass, reason: v.reason, manufacturable: v.manufacturable };
       } catch (e) {
         console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
         return null;

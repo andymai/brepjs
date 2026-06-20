@@ -61,6 +61,10 @@ program
     'exit 0 only if the report emits this error code (for fixtures/eval recall)'
   )
   .option('--expect-invalid', 'exit 0 only if the part is invalid (ok:false) — for known-bad fixtures')
+  .option(
+    '--metrics',
+    'compute deterministic manufacturability metrics (per-body breakdown + interference matrix) for the design judge — slower; off by default'
+  )
   .action(
     async (
       files: string[],
@@ -73,6 +77,7 @@ program
         serve?: boolean;
         expectCode?: string;
         expectInvalid?: boolean;
+        metrics?: boolean;
         // Commander materializes a negated flag as a concrete boolean: true by
         // default, false when --no-open is passed.
         open: boolean;
@@ -97,7 +102,10 @@ program
         }
         const results: { file: string; ok: boolean; report: VerifyReport }[] = [];
         for (const f of targets) {
-          const { report, shape } = await runPart(f, { check: Boolean(opts.check) });
+          const { report, shape } = await runPart(f, {
+            check: Boolean(opts.check),
+            metrics: Boolean(opts.metrics),
+          });
           disposeShape(shape);
           results.push({ file: f, ok: reportOk(report), report });
         }
@@ -116,6 +124,7 @@ program
         step: wantStep,
         glb: Boolean(opts.glb),
         check: Boolean(opts.check),
+        metrics: Boolean(opts.metrics),
       });
       let stepPath: string | undefined = opts.step;
       try {
@@ -217,7 +226,7 @@ program
     const resolved = resolve(file);
     const base = opts.out ? resolve(opts.out) : `${resolved}-shots`;
     const outDir = opts.label ? join(base, opts.label) : base;
-    const { report, step, shape } = await runPart(resolved, { step: true });
+    const { report, step, shape } = await runPart(resolved, { step: true, metrics: true });
     try {
       if (!step) {
         process.stderr.write('snapshot: part produced no STEP — nothing to render\n');

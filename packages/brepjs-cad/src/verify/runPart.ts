@@ -119,6 +119,12 @@ export interface RunPartOptions {
    * executing it. Type errors are surfaced as `TYPECHECK` error infos and the part is NOT run.
    */
   check?: boolean;
+  /**
+   * Compute deterministic manufacturability metrics (per-body breakdown + interference matrix) for
+   * the design judge. Off by default — these are slow on high-face assemblies, so only the
+   * judge/snapshot path opts in; the author `--check` loop stays fast.
+   */
+  metrics?: boolean;
 }
 
 export interface RunPartResult {
@@ -198,7 +204,7 @@ export async function runPart(
   }
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
-  const result = runChecks(brep, shape);
+  const result = runChecks(brep, shape, { metrics: Boolean(opts.metrics) });
   // Asserted dims: compare measured volume/area/bounds against the part's `export const expected`.
   // When present, every assertion must pass for `ok` (enforced by reportOk).
   if (isExpectedDims(mod.expected)) {

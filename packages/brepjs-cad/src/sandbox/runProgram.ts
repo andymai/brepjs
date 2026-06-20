@@ -42,6 +42,8 @@ export interface SandboxOptions {
    * inferred from the extension: `.ts` → `npx tsx`, otherwise the current `node`.
    */
   cliEntry?: string;
+  /** Pass `--metrics` so the report carries body/interference metrics for the design judge. */
+  metrics?: boolean;
 }
 
 export type RunProgramOptions = SandboxOptions;
@@ -305,7 +307,13 @@ export async function runProgramWithStep(
   await rm(stepOutPath, { force: true });
   const o = await runVerifyCli(
     code,
-    (partPath) => [partPath, '--check', '--step', stepOutPath],
+    (partPath) => [
+      partPath,
+      '--check',
+      '--step',
+      stepOutPath,
+      ...(opts.metrics ? ['--metrics'] : []),
+    ],
     opts
   );
 

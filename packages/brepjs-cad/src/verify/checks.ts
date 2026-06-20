@@ -1,5 +1,6 @@
-import type { AnyShape } from 'brepjs';
+import type { AnyShape, Solid } from 'brepjs';
 import type { BrepNs } from './brepjsRuntime.js';
+import { computeMetrics } from './manufacturability.js';
 import {
   buildHints,
   emptyReport,
@@ -8,6 +9,13 @@ import {
   type VerifyCheck,
   type VerifyReport,
 } from './report.js';
+
+export interface RunChecksOptions {
+  /** Compute deterministic manufacturability metrics (bodies/interference). Default false — the
+   * author `--check` loop skips them; only the judge/snapshot path opts in (they are slow on
+   * high-face assemblies). */
+  metrics?: boolean;
+}
 
 function shapeTypeOf(brep: BrepNs, s: AnyShape): string {
   const { isSolid, isFace, isShell, isWire, isEdge, isVertex, isCompound, isCompSolid } = brep;
@@ -22,7 +30,11 @@ function shapeTypeOf(brep: BrepNs, s: AnyShape): string {
   return 'Unknown';
 }
 
-export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
+export function runChecks(
+  brep: BrepNs,
+  shape: AnyShape,
+  opts: RunChecksOptions = {}
+): VerifyReport {
   const {
     isSolid,
     isShape3D,
@@ -43,6 +55,10 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
   const r = emptyReport();
   r.shapeType = shapeTypeOf(brep, shape);
 
+  // The constituent solids, shared by the validity check and the optional metrics pass. A single
+  // Solid is its own one-body list; a Compound/CompSolid yields its contained solids.
+  const solids: Solid[] = isSolid(shape) ? [shape] : getSolids(shape);
+
   // Strongest validity check available: BRepCheck on a single Solid.
   if (isSolid(shape)) {
     const valid = validSolid(shape);
@@ -57,7 +73,6 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
   } else {
     // Multi-body assemblies (Compound/CompSolid): validate each contained solid so the assembly
     // isn't reported ok on volume alone while an invalid body hides inside it.
-    const solids = getSolids(shape);
     if (solids.length > 0) {
       // Keep each failing body's BRepCheck message (which body, and why) rather than just a count.
       const failures: string[] = [];
@@ -135,6 +150,19 @@ export function runChecks(brep: BrepNs, shape: AnyShape): VerifyReport {
       if (shells.length > 0) r.topology.manifold = shells.every((s) => isManifoldShell(s));
     } catch {
       // manifold is informational; leave it absent if the check fails
+    }
+  }
+
+  // Deterministic manufacturability metrics — opt-in (judge/snapshot path), off the author hot path.
+  // Informational: a failure here must never drop the validity report already built above.
+  if (opts.metrics) {
+    try {
+      const m = computeMetrics(brep, shape, solids);
+      if (m.bodies) r.bodies = m.bodies;
+      if (m.bodyRelations) r.bodyRelations = m.bodyRelations;
+      r.manufacturability = m.manufacturability;
+    } catch {
+      // metrics are advisory; leave them absent if computation fails on a degenerate shape
     }
   }
 

@@ -6,7 +6,7 @@ import type { EvalPrompt } from './prompts.js';
 // unit-tested directly (see tests/liveEvalScore.test.ts).
 
 /** Score/scorecard schema version — bump when the score/scorecard shape changes (vision §H). */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface AutoResult {
   /** Objective signal: valid solid (ok=true) AND any pinned dims within tolerance. */
@@ -19,6 +19,8 @@ export interface AttemptResult {
   auto: AutoResult;
   judgePass?: boolean | undefined;
   judgeReason?: string | undefined;
+  /** The judge's manufacturability axis (separate from `pass`/match). Non-gating; recorded only. */
+  manufacturable?: boolean | undefined;
   outcome: 'completed' | 'timeout' | 'crashed';
   /** Whether this attempt produced a STEP (a valid solid the judge could render). */
   hasStep: boolean;
@@ -34,6 +36,8 @@ export interface EvalResult {
   /** The eventual attempt's judge verdict; undefined when the judge couldn't run (snapshots absent). */
   judgePass?: boolean | undefined;
   judgeReason?: string | undefined;
+  /** The eventual attempt's manufacturability axis (non-gating; recorded for the scorecard). */
+  manufacturable?: boolean | undefined;
   /** undefined when generation/build failed before a report existed. */
   error?: string | undefined;
   /** Per-attempt trail from the bounded loop (absent for the legacy single-shot path). */
@@ -269,7 +273,8 @@ export function formatScorecard(card: Scorecard): string {
   for (const r of card.results) {
     const a = r.error ? 'ERR ' : r.auto.pass ? 'valid' : 'INVALID';
     const j = r.judgePass === undefined ? 'judge:—' : r.judgePass ? 'judge:✓' : 'judge:✗';
-    lines.push(`  ${r.id.padEnd(pad)}  ${a.padEnd(7)} ${j}`);
+    const mfg = r.manufacturable === false ? ' mfg:⚠' : '';
+    lines.push(`  ${r.id.padEnd(pad)}  ${a.padEnd(7)} ${j}${mfg}`);
     if (r.error) lines.push(`        ${r.error}`);
     else {
       for (const f of r.auto.failures) lines.push(`        auto: ${f}`);
@@ -290,6 +295,13 @@ export function formatScorecard(card: Scorecard): string {
   lines.push(
     `  TOTAL      valid ${pct(all.autoValid, all.total)}  judge ${pct(all.judgeMatch, all.total)}  both ${pct(all.both, all.total)}  (n=${all.total})`
   );
+
+  // Manufacturability axis (non-gating): share of judged parts the judge read as producible.
+  const mfgJudged = card.results.filter((r) => r.manufacturable !== undefined);
+  if (mfgJudged.length > 0) {
+    const ok = mfgJudged.filter((r) => r.manufacturable === true).length;
+    lines.push(`  manufacturable ${pct(ok, mfgJudged.length)}  (n=${mfgJudged.length})`);
+  }
 
   // The lodestar signal: does iterating beat single-shot? (Omitted for legacy single-shot results.)
   const lift = liftSummary(card.results);

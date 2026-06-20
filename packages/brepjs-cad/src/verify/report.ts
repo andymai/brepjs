@@ -45,6 +45,43 @@ export interface VerifyAssertion {
   passed: boolean;
 }
 
+/** Per-body fingerprint for multi-body / assembly parts. Absent for single-solid parts. */
+export interface BodyInfo {
+  index: number;
+  volume: number;
+  bounds?: VerifyMeasurements['bounds'];
+  /** validSolid(body) — already computed in the allBodiesValid check. */
+  valid: boolean;
+}
+
+/** Pairwise spatial relationship between two bodies. One entry per unordered pair. */
+export interface BodyRelation {
+  a: number;
+  b: number;
+  /** Min surface-surface distance. 0 ≈ touching/overlapping. Absent when not measured (far pair). */
+  clearance?: number;
+  relation: 'separate' | 'touching' | 'interfering' | 'nested';
+  /** Overlap volume — only populated for 'interfering'/'nested'. */
+  interferenceVolume?: number;
+}
+
+/**
+ * Deterministic, render-free manufacturability metrics. Computed only on demand (CLI `--metrics`);
+ * absent otherwise and on degenerate shapes. Informs the judge — never gates a part on its own.
+ */
+export interface VerifyManufacturability {
+  /** Smallest analytic-cylinder radius (bore/pin/pillar). Absent if none found. */
+  minRadius?: number;
+  /** Best-effort min wall thickness; absent when not computable. */
+  minWallThickness?: number;
+  /** Count of internal (concave / enclosed) cylindrical faces — a "has bores" signal. */
+  internalCylinderCount?: number;
+  /** True when the relation matrix was capped by the pair/time budget (not exhaustive). */
+  relationsTruncated?: boolean;
+  /** Conservative deterministic flags no process tolerates (e.g. zero-thickness body). */
+  violations: string[];
+}
+
 export interface VerifyReport {
   shapeType: string | null;
   checks: VerifyCheck[];
@@ -61,6 +98,12 @@ export interface VerifyReport {
    * declares no expectations; when non-empty, `ok` additionally requires every assertion pass.
    */
   assertions: VerifyAssertion[];
+  /** Per-body breakdown for multi-body parts. Absent unless metrics were requested + bodies > 1. */
+  bodies?: BodyInfo[];
+  /** Pairwise body relationships. Absent unless metrics were requested + bodies > 1. */
+  bodyRelations?: BodyRelation[];
+  /** Deterministic manufacturability metrics. Absent unless metrics were requested. */
+  manufacturability?: VerifyManufacturability;
 }
 
 export interface BoundsDelta {

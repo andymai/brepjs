@@ -1,4 +1,5 @@
 import { checkAuto, type AttemptResult, type AutoResult, type EvalResult } from './score.js';
+import { digestMetrics, type MetricsDigest } from './metrics.js';
 import type { EvalPrompt } from './prompts.js';
 import type { RunProgramWithStepResult } from '../src/sandbox/runProgram.js';
 
@@ -21,8 +22,12 @@ export interface LoopDeps {
   execute: (code: string, attempt: number) => Promise<RunProgramWithStepResult>;
   /** Render multi-view snapshots of a STEP; returns [] when unavailable (no Chrome/viewer). */
   snapshot: (stepPath: string) => Promise<readonly string[]>;
-  /** Multimodal judge over the rendered views; null = no verdict (e.g. judge errored — a soft skip). */
-  judge: (pngPaths: readonly string[]) => Promise<{ pass: boolean; reason: string } | null>;
+  /** Multimodal judge over the rendered views; null = no verdict (e.g. judge errored — a soft skip).
+   * `metrics` carries the deterministic facts the render can't show (body count/interference). */
+  judge: (
+    pngPaths: readonly string[],
+    metrics?: MetricsDigest
+  ) => Promise<{ pass: boolean; reason: string; manufacturable?: boolean } | null>;
 }
 
 export interface LoopOptions {
@@ -100,13 +105,16 @@ export async function runAttemptLoop(
     const wantJudge = attempt === 1 || auto.pass || isFinal;
     let judgePass: boolean | undefined;
     let judgeReason: string | undefined;
+    let manufacturable: boolean | undefined;
     if (wantJudge && outcome.outcome === 'completed' && outcome.stepPath) {
       const pngs = await deps.snapshot(outcome.stepPath);
       if (pngs.length > 0) {
-        const v = await deps.judge(pngs);
+        const metrics = digestMetrics(outcome.report);
+        const v = await deps.judge(pngs, metrics);
         if (v) {
           judgePass = v.pass;
           judgeReason = v.reason;
+          manufacturable = v.manufacturable;
         }
       }
     }
@@ -119,6 +127,7 @@ export async function runAttemptLoop(
     };
     if (judgePass !== undefined) result.judgePass = judgePass;
     if (judgeReason !== undefined) result.judgeReason = judgeReason;
+    if (manufacturable !== undefined) result.manufacturable = manufacturable;
     attempts.push(result);
 
     // An absent judge does not block convergence (judge:— is a legitimate skip, not a fail).
@@ -150,5 +159,6 @@ export async function runAttemptLoop(
   if (firstTry) out.firstTry = firstTry;
   if (eventual?.judgePass !== undefined) out.judgePass = eventual.judgePass;
   if (eventual?.judgeReason !== undefined) out.judgeReason = eventual.judgeReason;
+  if (eventual?.manufacturable !== undefined) out.manufacturable = eventual.manufacturable;
   return out;
 }
