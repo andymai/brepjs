@@ -7,7 +7,7 @@
       "bump-minor-pre-major": true,
       "exclude-paths": [
         "apps",
-        "packages/brepjs-verify",
+        "packages/brepjs-cad",
         "packages/brepjs-viewer",
         "packages/brepjs-voxel"
       ]
@@ -31,7 +31,7 @@
         }
       ]
     },
-    "packages/brepjs-verify": {
+    "packages/brepjs-cad": {
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-verify",

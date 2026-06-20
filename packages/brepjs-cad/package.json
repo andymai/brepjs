@@ -11,7 +11,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
-    "directory": "packages/brepjs-verify"
+    "directory": "packages/brepjs-cad"
   },
   "main": "./dist/brepjs-verify.cjs",
   "module": "./dist/brepjs-verify.js",

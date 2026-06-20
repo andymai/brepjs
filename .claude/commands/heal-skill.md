@@ -26,7 +26,7 @@ when the sweep surfaces a failure mode, run the whole loop.
 
 Build only what's missing: root lib (`test -f dist/index.js || npm run build`), CLI
 (`--workspace=brepjs-verify`), viewer (`--workspace=brepjs-viewer`), Chrome
-(`cd packages/brepjs-verify && npx puppeteer browsers install chrome`). Scratch ESM dir:
+(`cd packages/brepjs-cad && npx puppeteer browsers install chrome`). Scratch ESM dir:
 `mkdir -p /tmp/brepjs-eval && printf '{"type":"module"}\n' > /tmp/brepjs-eval/package.json`.
 **Smoke-test the harness** before fanning out: author a trivial `box` part and `verify --check`;
 all N authors share the one assumption that bare `import 'brepjs'` resolves + the kernel loads, so
@@ -36,7 +36,7 @@ prove it with a 3-line part first (turns an N-way silent failure into a 5-second
 
 One **general-purpose subagent per example**, dispatched in parallel batches. Each subagent:
 
-- Reads ONLY `packages/brepjs-verify/skill/SKILL.md` + its references/examples + the bundled
+- Reads ONLY `packages/brepjs-cad/skill/SKILL.md` + its references/examples + the bundled
   `reference/llms-full.txt`. **MUST NOT** read anything under `apps/playground/**` (the answer
   key) or lean on remembered brepjs API — that measures the model, not the skill.
 - Gets the example's `description` as the whole prompt (+ `id`/`label`).
@@ -69,11 +69,11 @@ class and a must-fix; an omission is lower-severity. **Never heal a phantom.**
 
 ## 4. Fix — surgical SKILL.md prose
 
-Edit the canonical `packages/brepjs-verify/skill/SKILL.md` (+ its `references/*.md`) in the house
+Edit the canonical `packages/brepjs-cad/skill/SKILL.md` (+ its `references/*.md`) in the house
 style: terse, failure-mode-keyed, cite the error code. The fix must live in **prose** (the real
 eval author is prompt-only — file-only example fixes don't transfer). If a bundled reference
 (`llms-full.txt`/`llms.txt`) is itself wrong, fix it **and grep everywhere** — root `llms.txt` +
-root `llms-full.txt` + their build-synced bundled copies under `packages/brepjs-verify/reference/`
+root `llms-full.txt` + their build-synced bundled copies under `packages/brepjs-cad/reference/`
 (it hides in 4 places). Don't leave a self-referential cross-link that your own fix falsifies.
 
 ## 5. Verify — RED→GREEN (writing-skills TDD)

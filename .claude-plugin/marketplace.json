@@ -3,9 +3,9 @@
   "owner": { "name": "andymai" },
   "plugins": [
     {
-      "name": "brepjs-verify",
-      "source": "./packages/brepjs-verify",
-      "description": "Author and verify parametric brepjs CAD models"
+      "name": "brepjs",
+      "source": "./packages/brepjs-cad",
+      "description": "Brainstorm, design, author, verify, and polish parametric brepjs CAD models"
     }
   ]
 }

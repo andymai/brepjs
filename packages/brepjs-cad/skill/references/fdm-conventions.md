@@ -9,7 +9,7 @@ Use these when a maker request omits dimensions. Two kinds of values live here: 
 
 | Screw | Clearance hole Ø | Counterbore (socket head) Ø × depth |
 | ----- | ---------------- | ----------------------------------- |
-| M2    | 2.4 mm           | 4.0 × 2.0                            |
+| M2    | 2.4 mm           | 4.0 × 2.0                           |
 | M2.5  | 2.9 mm           | 5.0 × 2.5                           |
 | M3    | 3.4 mm           | 6.0 × 3.0                           |
 | M4    | 4.5 mm           | 8.0 × 4.0                           |

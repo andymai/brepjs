@@ -27,7 +27,7 @@ eval:live` is the billed SDK counterpart; it still uses the legacy `bench/prompt
   side-by-side, adapt it to a `.brep.ts` — change `from 'brepjs/quick'` → `from 'brepjs'`
   and `export default <shape>` → `export default () => <shape>` — then `verify --check
 --snapshot`. The author's part should read as designed as the reference, not just valid.
-- **Authoring contract:** `packages/brepjs-verify/skill/SKILL.md` — follow it exactly;
+- **Authoring contract:** `packages/brepjs-cad/skill/SKILL.md` — follow it exactly;
   that is the thing under test. Do **not** show the author the reference `code`, or lean on
   outside brepjs knowledge the skill doesn't give you, or you measure yourself.
 
@@ -37,9 +37,9 @@ The visual judge needs rendered snapshots → the built CLI + viewer + Chrome. B
 what's missing:
 
 1. Root library — `test -f dist/index.js || npm run build`
-2. Viewer — `test -d packages/brepjs-verify/viewer/dist || npm run build --workspace=brepjs-viewer`
-3. CLI — `test -f packages/brepjs-verify/dist/cli/main.js || npm run build --workspace=brepjs-verify`
-4. Chrome — `cd packages/brepjs-verify && npx puppeteer browsers install chrome`
+2. Viewer — `test -d packages/brepjs-cad/viewer/dist || npm run build --workspace=brepjs-viewer`
+3. CLI — `test -f packages/brepjs-cad/dist/cli/main.js || npm run build --workspace=brepjs-verify`
+4. Chrome — `cd packages/brepjs-cad && npx puppeteer browsers install chrome`
 
 If the viewer/Chrome can't be built, run **auto-only**: skip `--snapshot`, mark every
 `judge:—`, and say so loudly in the scorecard (a built-but-unjudged part is a coverage
@@ -57,7 +57,7 @@ Author parts into a scratch ESM dir so `import 'brepjs'` resolves and the kernel
    `export default () => <shape>`. Snapshot **serially** (the render server is a singleton
    on port 7373; concurrent `--snapshot` runs error out).
 3. **Verify + render** (one spawn):
-   `node packages/brepjs-verify/dist/cli/main.js verify <id>.brep.ts --check --json <id>.report.json --snapshot <id>-shots/`
+   `node packages/brepjs-cad/dist/cli/main.js verify <id>.brep.ts --check --json <id>.report.json --snapshot <id>-shots/`
 4. **Auto signal** (objective): `auto.pass` is `ok === true` (a valid manifold solid /
    assembly). Playground descriptions rarely pin dims; if one does, check the bbox by
    **span/extent**, not absolute position (matches `checkAuto`).

@@ -41,7 +41,7 @@ const config: KnipConfig = {
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },
-    'packages/brepjs-verify': {
+    'packages/brepjs-cad': {
       ignore: ['**'],
     },
     'apps/playground': {

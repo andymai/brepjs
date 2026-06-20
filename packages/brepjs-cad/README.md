@@ -82,7 +82,7 @@ This is the closed _build → verify_ loop as a single call: the agent sends par
 
 ### Connect (local build)
 
-Build the package, then register the server by absolute path. Run both commands from the package root (`packages/brepjs-verify`), where `dist/` is emitted. `$(pwd)` is resolved by your shell at that location:
+Build the package, then register the server by absolute path. Run both commands from the package root (`packages/brepjs-cad`), where `dist/` is emitted. `$(pwd)` is resolved by your shell at that location:
 
 ```bash
 npm run build   # emits dist/mcp/server.js

@@ -23,7 +23,7 @@ Monorepo packages:
 - `packages/brepjs-sheetmetal`: Sheet-metal authoring + unfold/flat-pattern + DXF (experimental, published)
 - `packages/brepjs-manifold`: Manifold mesh/CSG preview kernel (experimental, unpublished)
 - `packages/brepjs-viewer`: Shared React/R3F renderer (consumed by the playground and brepjs-verify; not yet published)
-- `packages/brepjs-verify`: Agent skill + verify/preview CLI + WASM viewer (not yet published; skill ships via the repo Claude-plugin marketplace)
+- `packages/brepjs-cad`: Agent skill + verify/preview CLI + WASM viewer (not yet published; skill ships via the repo Claude-plugin marketplace)
 
 ## Commands
 

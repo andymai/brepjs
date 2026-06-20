@@ -50,7 +50,7 @@ jobs:
           npm run build --workspace=brepjs-verify
       - name: Install Chrome for snapshots
         run: npx puppeteer browsers install chrome
-        working-directory: packages/brepjs-verify
+        working-directory: packages/brepjs-cad
       - name: Run shard (author + judge, write scorecard)
         # Inputs via env (never interpolated into the run script) to avoid shell injection.
         env:
