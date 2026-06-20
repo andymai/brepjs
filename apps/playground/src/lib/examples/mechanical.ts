@@ -2415,7 +2415,8 @@ export default conduitClip();
   {
     id: 'hobby-rc-servo',
     label: 'Hobby RC Servo Motor',
-    description: 'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
+    description:
+      'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
     code: `import {
   box,
   chamfer,
@@ -2518,7 +2519,8 @@ export default hobbyServo();`,
   {
     id: 'rotary-potentiometer',
     label: 'Panel-mount rotary potentiometer (can, M10 bushing, D-shaft)',
-    description: 'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
+    description:
+      'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
     code: `import {
   box,
   chamfer,
@@ -2625,7 +2627,8 @@ export default rotaryPot();`,
   {
     id: 'd-sub-connector',
     label: 'D-sub Connector (DB9)',
-    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
+    description:
+      'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
     code: `import {
   box,
   cut,
@@ -2782,7 +2785,8 @@ export default dSubConnector();`,
   {
     id: 'panel-fuse-holder',
     label: '20 mm Panel Fuse Holder',
-    description: 'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
+    description:
+      'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
     code: `import {
   box,
   chamfer,
@@ -2922,7 +2926,8 @@ export default fuseHolder();`,
   {
     id: 'green-terminal-block',
     label: 'Green PCB Screw-Terminal Block',
-    description: 'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
+    description:
+      'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
     code: `import { box, cut, cutAll, cylinder, extrude, fuse, polygon, torus, translate, unwrap } from 'brepjs/quick';
 
 // Green PCB screw-terminal block (Phoenix-style, 5.08 mm pitch). The classic
@@ -3030,7 +3035,8 @@ export default greenTerminalBlock();`,
   {
     id: 'button-top-battery-cell',
     label: 'Button-top battery cell (AA / 18650)',
-    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
+    description:
+      'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
     code: `import {
   cylinder,
   cone,
@@ -3109,7 +3115,8 @@ export default batteryCell();`,
   {
     id: 'finger-tab-split-joint',
     label: 'Interlocking finger-tab split joint',
-    description: 'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
+    description:
+      'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
     code: `import {
   box,
   chamfer,
@@ -3213,7 +3220,8 @@ export default fingerSplitJoint();`,
   {
     id: 'conical-pour-funnel',
     label: 'Kitchen / Lab Funnel',
-    description: 'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
+    description:
+      'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
     code: `import { cone, cylinder, cut, fuse, rotate, torus, translate, unwrap } from 'brepjs/quick';
 
 // Kitchen / lab funnel: a wide conical bowl that necks down into a long thin
@@ -3572,6 +3580,387 @@ function planetaryReducer({
 }
 
 export default planetaryReducer();
+`,
+  },
+  {
+    id: 'universal-joint',
+    label: 'Cardan Universal Joint',
+    description:
+      'A Hooke/Cardan universal joint shown at a 25° articulation: two forked yokes on stub shafts, a central cross-spider with grease bosses, and four trunnion pins — each a distinct colored solid.',
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  fuse,
+  cut,
+  translate,
+  rotate,
+  fillet,
+  edgeFinder,
+  unwrap,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Cardan (Hooke) universal joint — display mechanism frozen at a 25° bend.
+// Datums: joint center at origin; shaft A along -X, shaft B tilted by BEND about Z.
+// Built as distinct solids (yokeA, cross, yokeB, 4 pins) so each colors separately.
+const HUB_R = 11; // yoke hub radius (Ø22)
+const HUB_LEN = 8; // hub axial length
+const SHAFT_R = 5; // Ø10 shaft
+const SHAFT_LEN = 16; // shaft length outboard of the hub
+const ARM_W = 6; // fork-arm thickness (across the bore axis)
+const ARM_H = 11; // fork-arm height (kept < FORK_GAP so perpendicular forks clear)
+const FORK_GAP = 14; // clear gap between the two arms
+const ARM_FILLET = 2; // round the proud arm corners
+const ARM_COVER = 2; // arm material outboard of the bore center
+const PIN_R = 2.5; // trunnion-pin radius
+const BORE_R = 2.9; // bore radius (radial clearance for the pin)
+const PIN_LEN = ARM_W + 4;
+const CROSS_BODY = 8; // central cross cube edge
+const TRUN_R = 2.5; // cross trunnion radius
+const TRUN_REACH = FORK_GAP / 2 + ARM_W - 1;
+const BORE_X = 14; // bore station radius from the joint center
+const BEND_DEG = 25; // display articulation
+
+// Yoke in a local frame: shaft along +X, fork opens toward +X, bore axis along Y.
+// After the bore cut it is shifted so the bore station sits at the origin.
+function makeYoke() {
+  const hub = cylinder(HUB_R, HUB_LEN, { axis: [1, 0, 0], at: [-HUB_LEN / 2, 0, 0] });
+  const shaft = cylinder(SHAFT_R, SHAFT_LEN, { axis: [-1, 0, 0], at: [-HUB_LEN / 2, 0, 0] });
+  let body = unwrap(fuse(hub, shaft));
+
+  // Machined collar where the shaft emerges from the hub face.
+  body = unwrap(fuse(body, cylinder(SHAFT_R + 1.6, 2, { axis: [-1, 0, 0], at: [-HUB_LEN / 2, 0, 0] })));
+
+  // Chamfer-look lead-in at the free shaft end (flat-capped cone — no spheres).
+  const endX = -HUB_LEN / 2 - SHAFT_LEN;
+  const lead = cone(SHAFT_R, SHAFT_R - 2, 2, { axis: [-1, 0, 0], at: [endX + 2, 0, 0] });
+  const rimCut = cylinder(SHAFT_R + 0.5, 2, { axis: [-1, 0, 0], at: [endX + 2, 0, 0] });
+  body = unwrap(fuse(unwrap(cut(body, rimCut)), lead));
+
+  // Two fork arms straddling the cross, proud corners rounded.
+  const armCenterY = FORK_GAP / 2 + ARM_W / 2;
+  const armRootX = HUB_LEN / 2 - 1;
+  const armTipX = BORE_X + ARM_COVER;
+  const armLen = armTipX - armRootX;
+  const armCenterX = (armRootX + armTipX) / 2;
+  for (const sy of [1, -1]) {
+    let arm = box(armLen, ARM_W, ARM_H, { at: [armCenterX, sy * armCenterY, 0] });
+    arm = unwrap(fillet(arm, edgeFinder().inDirection('X'), ARM_FILLET));
+    body = unwrap(fuse(body, arm));
+  }
+
+  // Coaxial trunnion bores through both arms (pin axis = Y).
+  const bore = cylinder(BORE_R, FORK_GAP + 2 * ARM_W + 4, {
+    axis: [0, 1, 0],
+    at: [BORE_X, -(FORK_GAP / 2 + ARM_W + 2), 0],
+  });
+  return translate(unwrap(cut(body, bore)), [-BORE_X, 0, 0]);
+}
+
+// Cross/spider: central cube + a Y-trunnion and a Z-trunnion (a '+'), with a
+// grease boss + blind lube hole on each free ±X face (the canonical Cardan detail).
+function makeCross() {
+  let body = box(CROSS_BODY, CROSS_BODY, CROSS_BODY, { at: [0, 0, 0] });
+  body = unwrap(fuse(body, cylinder(TRUN_R, 2 * TRUN_REACH, { axis: [0, 1, 0], at: [0, -TRUN_REACH, 0] })));
+  body = unwrap(fuse(body, cylinder(TRUN_R, 2 * TRUN_REACH, { axis: [0, 0, 1], at: [0, 0, -TRUN_REACH] })));
+  for (const sx of [1, -1]) {
+    body = unwrap(fuse(body, cylinder(3, 1.4, { axis: [sx, 0, 0], at: [(sx * CROSS_BODY) / 2, 0, 0] })));
+    body = unwrap(cut(body, cylinder(1.1, 2.4, { axis: [-sx, 0, 0], at: [(sx * CROSS_BODY) / 2 + sx * 1.4, 0, 0] })));
+  }
+  return body;
+}
+
+// Trunnion pin along +Y, seated through one arm, lead-in chamfer on the head.
+function makePinY() {
+  const baseY = FORK_GAP / 2 + ARM_W - PIN_LEN / 2;
+  const headY = baseY + PIN_LEN;
+  const pin = cylinder(PIN_R, PIN_LEN, { axis: [0, 1, 0], at: [0, baseY, 0] });
+  const rimCut = cylinder(PIN_R + 0.3, 0.9, { axis: [0, 1, 0], at: [0, headY - 0.9, 0] });
+  const lead = cone(PIN_R, PIN_R - 0.9, 0.9, { axis: [0, 1, 0], at: [0, headY - 0.9, 0] });
+  return unwrap(fuse(unwrap(cut(pin, rimCut)), lead));
+}
+
+// Assemble at the 25° display pose. yokeA unrotated on -X; cross at origin; yokeB
+// re-framed (shaft +X, bore Y -> Z) then tilted by BEND about Z. At this pose the
+// exact Cardan precession is zero, so the trunnion bores line up by construction.
+const yokeA = makeYoke();
+const cross = makeCross();
+const yokeBBase = rotate(rotate(makeYoke(), 180, { axis: [0, 0, 1] }), 90, { axis: [1, 0, 0] });
+const yokeB = rotate(yokeBBase, BEND_DEG, { axis: [0, 0, 1] });
+const pinsA = [makePinY(), rotate(makePinY(), 180, { axis: [1, 0, 0] })];
+const pinB1 = rotate(makePinY(), 90, { axis: [1, 0, 0] });
+const pinsB = [pinB1, rotate(pinB1, 180, { axis: [0, 1, 0] })];
+
+export default [
+  color(yokeA, '#b4b9c0'),
+  color(yokeB, '#878d96'),
+  color(cross, '#6b7177'),
+  ...pinsA.map((p) => color(p, '#5d6268')),
+  ...pinsB.map((p) => color(p, '#5d6268')),
+];
+`,
+  },
+  {
+    id: 'geneva-drive',
+    label: 'Geneva Wheel Drive',
+    description:
+      'A four-slot Geneva (Maltese cross) intermittent drive: each driver revolution indexes the slotted wheel one quarter-turn while the convex locking cam holds it still between steps. Two colored bodies on stub shafts.',
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  cut,
+  cutAll,
+  fuseAll,
+  rotate,
+  translate,
+  fillet,
+  edgeFinder,
+  unwrap,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Geneva (Maltese cross) 4-slot intermittent drive. The driver disc sits on the
+// line of centers at +X; its drive pin enters one wheel slot to index it, and the
+// convex cam locks the wheel between steps. Two distinct solids on stub shafts.
+const PIN_PITCH_R = 24; // drive-pin pitch radius on the driver
+const CENTER_DIST = PIN_PITCH_R * Math.SQRT2; // d = pinR·√2 for a 4-slot wheel (~33.9)
+const PIN_R = 3; // drive-pin radius
+const PIN_H = 6; // pin proud of the driver face
+const PIN_LEADIN_H = 1.5; // conical lead-in at the pin tip
+const WHEEL_R = 24; // Maltese wheel radius (Ø48)
+const WHEEL_H = 8; // disc thickness
+const SLOT_W = 7; // radial slot width (pin Ø6 + clearance)
+const SLOT_INNER_R = CENTER_DIST - PIN_PITCH_R - PIN_R - 1;
+const DRIVER_R = 16; // driver disc radius
+const DRIVER_H = 8; // driver thickness
+const CAM_RELIEF_R = 17; // relief cylinder carving the locking cam
+const RECESS_R = DRIVER_R + 0.6; // rim scallop radius matching the cam arc
+const SHAFT_R = 6; // stub-shaft radius
+const SHAFT_H = 6; // stub-shaft length below each disc
+const BORE_R = 4.2; // center bore radius
+const HUB_R = 7; // raised hub-boss collar radius
+const HUB_H = 3; // hub boss proud of the top face
+
+function drivenWheel() {
+  const disc = cylinder(WHEEL_R, WHEEL_H);
+
+  // 4 radial slots, one every 90°, running from the rim inward.
+  const slotLen = WHEEL_R - SLOT_INNER_R + 2;
+  const slotTool = box(slotLen, SLOT_W, WHEEL_H + 4, { at: [SLOT_INNER_R + slotLen / 2, 0, WHEEL_H / 2] });
+  let body = unwrap(cutAll(disc, [0, 90, 180, 270].map((a) => rotate(slotTool, a, { axis: [0, 0, 1] }))));
+
+  // 4 concave locking recesses on the rim, between the slots.
+  const recessTool = cylinder(RECESS_R, WHEEL_H + 4, { at: [CENTER_DIST, 0, -2] });
+  for (const a of [45, 135, 225, 315]) {
+    body = unwrap(cut(body, rotate(recessTool, a, { axis: [0, 0, 1] })));
+  }
+
+  // Stub shaft below (welds to the disc) + raised hub boss above, then bore through.
+  const shaft = cylinder(SHAFT_R, SHAFT_H + WHEEL_H, { at: [0, 0, -SHAFT_H] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, WHEEL_H - 1] });
+  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true }));
+  body = unwrap(cut(body, cylinder(BORE_R, SHAFT_H + WHEEL_H + HUB_H + 4, { at: [0, 0, -SHAFT_H - 2] })));
+
+  // Soften only the full-height lobe-tip / slot-mouth corners (pin clearance unchanged).
+  return unwrap(fillet(body, edgeFinder().inDirection('Z').ofLength(WHEEL_H), 0.6));
+}
+
+function driver() {
+  const disc = cylinder(DRIVER_R, DRIVER_H);
+
+  // Circular relief leaves a convex locking segment that clears the wheel lobes.
+  const relief = cylinder(CAM_RELIEF_R, DRIVER_H + 4, { at: [-(DRIVER_R + CAM_RELIEF_R - DRIVER_R * 0.55), 0, -2] });
+  let body = unwrap(cut(disc, relief));
+
+  // Drive pin (on the -X side, toward the wheel) with a conical lead-in tip.
+  const pinShaftH = PIN_H + DRIVER_H - PIN_LEADIN_H;
+  const pin = cylinder(PIN_R, pinShaftH, { at: [-PIN_PITCH_R, 0, 0] });
+  const pinTip = cone(PIN_R, PIN_R - PIN_LEADIN_H, PIN_LEADIN_H + 0.01, { at: [-PIN_PITCH_R, 0, pinShaftH] });
+  body = unwrap(fuseAll([body, pin, pinTip], { unsafe: true }));
+
+  // Stub shaft + hub boss mirroring the wheel, then bore through.
+  const shaft = cylinder(SHAFT_R, SHAFT_H + DRIVER_H, { at: [0, 0, -SHAFT_H] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, DRIVER_H - 1] });
+  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true }));
+  return unwrap(cut(body, cylinder(BORE_R, SHAFT_H + DRIVER_H + HUB_H + 4, { at: [0, 0, -SHAFT_H - 2] })));
+}
+
+// Seated display pose: drive pin centred in a slot on the line of centers.
+export default [
+  color(drivenWheel(), '#b98a3c'),
+  color(translate(driver(), [CENTER_DIST, 0, 0]), '#8f99a3'),
+];
+`,
+  },
+  {
+    id: 'bench-vise',
+    label: 'Machinist Bench Vise',
+    description:
+      'A machinist bench vise drawn as a product assembly, jaw partway open: a cast body with guide ways and a fixed jaw, a sliding jaw, a real threaded lead screw with a T-handle crank, and two serrated, counterbored jaw plates.',
+    code: `import {
+  box,
+  cylinder,
+  fuse,
+  fuseAll,
+  cut,
+  cutAll,
+  translate,
+  rotate,
+  fillet,
+  thread,
+  edgeFinder,
+  getBounds,
+  unwrap,
+  type Edge,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Machinist bench vise — product assembly with a real threaded lead screw, jaw
+// partway open. Body base sits on Z=0; the screw axis runs along X at mid-height.
+// Every component is a distinct solid so the parts color separately.
+const P = {
+  baseLen: 110, // body base length along X (mm)
+  baseWidth: 64, // body width along Y (mm)
+  baseHeight: 18, // base slab height (mm)
+  baseFillet: 4, // rounding on the base bottom edges (mm)
+  railWidth: 12, // each way-rail width along Y (mm)
+  railGap: 22, // centre-to-centre spacing of the two rails (mm)
+  railHeight: 8, // rail height above the base top (mm)
+  railFillet: 2.5, // rail top rounding (mm)
+  fixedJawX: 6, // X of the fixed-jaw gripping face (mm)
+  fixedJawThick: 16, // fixed-jaw wall thickness along X (mm)
+  fixedJawWidth: 58, // fixed-jaw width along Y (mm)
+  jawTopZ: 56, // top of the jaws above Z=0 (mm)
+  screwR: 6, // lead-screw shank radius (mm)
+  screwBoreR: 7, // clearance bore radius through fixed jaw/nut (mm)
+  screwPitch: 3, // lead-screw thread pitch (mm)
+  threadLen: 70, // working length of the visible thread run (mm)
+  slideLen: 26, // sliding-jaw length along X (mm)
+  slideWidth: 58, // sliding-jaw width along Y (mm)
+  slideTopZ: 56, // sliding-jaw top above Z=0 (mm)
+  nutBoreR: 6.4, // nut bore radius in the sliding jaw (mm)
+  collarR: 9, // screw collar radius (mm)
+  collarThick: 6, // screw collar thickness along X (mm)
+  handleR: 5, // T-handle bar radius (mm)
+  handleLen: 84, // T-handle bar length (mm)
+  handleHubR: 8, // hub where the bar passes through the screw end (mm)
+  handleHubLen: 16, // hub length (mm)
+  knobR: 7, // flat-capped knob radius (mm)
+  knobLen: 11, // knob length (mm)
+  plateThick: 6, // jaw-plate thickness along X (mm)
+  plateWidth: 50, // jaw-plate width along Y (mm)
+  plateHeight: 34, // jaw-plate height along Z (mm)
+  boltR: 2.4, // through bolt-hole radius (mm)
+  cboreR: 4.2, // counterbore radius (mm)
+  cboreDepth: 3, // counterbore depth (mm)
+  openGap: 24, // display gap between fixed and sliding jaw faces (mm)
+};
+
+const screwZ = P.baseHeight + P.railHeight + (P.jawTopZ - (P.baseHeight + P.railHeight)) / 2;
+
+// Body (cast iron): filleted base slab + two filleted way rails + fixed rear jaw,
+// bored along X for the screw.
+function buildBody() {
+  let base = box(P.baseLen, P.baseWidth, P.baseHeight, { at: [P.baseLen / 2, 0, P.baseHeight / 2] });
+  const baseBottom = edgeFinder()
+    .inDirection('X')
+    .when((f: Edge) => getBounds(f).zMin < 1)
+    .findAll(base);
+  base = unwrap(fillet(base, baseBottom, P.baseFillet));
+
+  const railTop = P.baseHeight + P.railHeight;
+  const makeRail = (cy: number) => {
+    const rail = box(P.baseLen, P.railWidth, P.railHeight, { at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2] });
+    const topEdges = edgeFinder()
+      .inDirection('X')
+      .when((f: Edge) => getBounds(f).zMax > railTop - 0.5)
+      .findAll(rail);
+    return unwrap(fillet(rail, topEdges, P.railFillet));
+  };
+
+  const fixedJaw = box(P.fixedJawThick, P.fixedJawWidth, P.jawTopZ, {
+    at: [P.fixedJawX - P.fixedJawThick / 2, 0, P.jawTopZ / 2],
+  });
+
+  let body = unwrap(fuseAll([base, makeRail(-P.railGap / 2), makeRail(P.railGap / 2), fixedJaw], { unsafe: true }));
+
+  const bore = rotate(cylinder(P.screwBoreR, P.fixedJawThick + 20), 90, { axis: [0, 1, 0] });
+  return unwrap(cut(body, translate(bore, [P.fixedJawX + 10, 0, screwZ])));
+}
+
+// Sliding front jaw: a block straddling the rails (channel cut underneath), nut-bored.
+function buildSlidingJaw() {
+  let jaw = box(P.slideLen, P.slideWidth, P.slideTopZ, { at: [0, 0, P.slideTopZ / 2] });
+  const railTopZ = P.baseHeight + P.railHeight;
+  const channel = box(P.slideLen + 2, P.railGap + P.railWidth + 6, railTopZ + 1.5, { at: [0, 0, (railTopZ + 1.5) / 2 - 0.5] });
+  jaw = unwrap(cut(jaw, channel));
+  const nutBore = rotate(cylinder(P.nutBoreR, P.slideLen + 8), 90, { axis: [0, 1, 0] });
+  jaw = unwrap(cut(jaw, translate(nutBore, [0, 0, screwZ])));
+  const topEdges = edgeFinder()
+    .inDirection('X')
+    .when((f: Edge) => getBounds(f).zMax > P.slideTopZ - 0.5)
+    .findAll(jaw);
+  return unwrap(fillet(jaw, topEdges, 2.5));
+}
+
+// Lead screw (steel): shank + real thread run + collar + T-handle crank with
+// flat-capped knob ends (no spheres). Built about +Z, laid along X by the caller.
+function buildScrew() {
+  const shankLen = P.threadLen + P.collarThick + 18;
+  let screw = cylinder(P.screwR, shankLen, { at: [0, 0, 0] });
+
+  const ridge = unwrap(thread({ radius: P.screwR, pitch: P.screwPitch, height: P.threadLen, sectionsPerTurn: 16 }));
+  screw = unwrap(fuse(screw, translate(ridge, [0, 0, 4])));
+  screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, P.threadLen + 12] })));
+
+  const handleZ = shankLen - 8;
+  const hub = cylinder(P.handleHubR, P.handleHubLen, { at: [0, 0, handleZ - P.handleHubLen / 2] });
+  const bar = translate(rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }), [0, 0, handleZ]);
+  screw = unwrap(fuseAll([screw, hub, bar], { unsafe: true }));
+
+  const knobBase = rotate(cylinder(P.knobR, P.knobLen, { at: [0, 0, -P.knobLen / 2] }), 90, { axis: [1, 0, 0] });
+  const off = P.handleLen / 2 + P.knobLen / 2;
+  const knobPlus = translate(knobBase, [0, off, handleZ]);
+  const knobMinus = translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ]);
+  return unwrap(fuseAll([screw, knobPlus, knobMinus], { unsafe: true }));
+}
+
+// Jaw plate (hardened steel): counterbored bolt holes + serration grooves.
+function buildPlate() {
+  let plate = box(P.plateThick, P.plateWidth, P.plateHeight, { at: [P.plateThick / 2, 0, P.plateHeight / 2] });
+  const tools = [];
+  for (const cy of [-P.plateWidth / 4, P.plateWidth / 4]) {
+    const through = rotate(cylinder(P.boltR, P.plateThick + 4), 90, { axis: [0, 1, 0] });
+    const cbore = rotate(cylinder(P.cboreR, P.cboreDepth + 0.5), 90, { axis: [0, 1, 0] });
+    tools.push(translate(through, [P.plateThick + 2, cy, P.plateHeight / 2]));
+    tools.push(translate(cbore, [P.cboreDepth - 0.5, cy, P.plateHeight / 2]));
+  }
+  plate = unwrap(cutAll(plate, tools));
+
+  const grooves = [];
+  for (let i = 0; i < 5; i++) {
+    grooves.push(box(1.4, P.plateWidth + 2, 1.0, { at: [P.plateThick - 0.3, 0, 6 + i * 6] }));
+  }
+  return unwrap(cutAll(plate, grooves));
+}
+
+// Assemble at the display pose (jaw partway open).
+const slideOpenX = P.fixedJawX + P.openGap + P.slideLen / 2;
+const body = buildBody();
+const slidingJaw = translate(buildSlidingJaw(), [slideOpenX, 0, 0]);
+const screw = translate(rotate(buildScrew(), -90, { axis: [0, 1, 0] }), [P.fixedJawX + P.threadLen - 4, 0, screwZ]);
+const plateFixed = translate(buildPlate(), [P.fixedJawX, 0, 0]);
+const plateSliding = translate(rotate(buildPlate(), 180, { axis: [0, 0, 1] }), [slideOpenX - P.slideLen / 2, 0, 0]);
+
+export default [
+  color(body, '#4d525a'),
+  color(slidingJaw, '#565b63'),
+  color(screw, '#c3c8ce'),
+  color(plateFixed, '#74797f'),
+  color(plateSliding, '#74797f'),
+];
 `,
   },
 ];
