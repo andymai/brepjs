@@ -76,7 +76,14 @@ export function propagateOriginsFromEvolution(
     if (generatedHashes) {
       for (const genHash of generatedHashes) {
         if (!resultMap.has(genHash)) {
-          resultMap.set(genHash, 0);
+          // Generated faces (new geometry created at a boolean seam) inherit
+          // the origin of the input face that generated them, rather than
+          // defaulting to 0 (body). Without this the surface where a feature
+          // tool meets the body — e.g. a scoop ramp's top edge against the
+          // wall — loses its tag and renders in the body color in multi-color
+          // consumers (gridfinity-layout-tool GH #1654). first-writer-wins via
+          // the `has` guard keeps it deterministic when a seam is shared.
+          resultMap.set(genHash, origin);
         }
       }
     }
