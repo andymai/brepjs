@@ -24,7 +24,7 @@ export const BAD_FIXTURES: BadFixture[] = [
     id: 'fillet-no-edges',
     expect: { code: 'FILLET_NO_EDGES' },
     source: `import { box, fillet, unwrap } from 'brepjs';
-// fillet with an empty edge list — the kernel rejects it (FILLET_NO_EDGES).
+// empty edge list → FILLET_NO_EDGES
 export default () => unwrap(fillet(box(10, 10, 10), [], 2));`,
   },
   {

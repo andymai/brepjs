@@ -21,9 +21,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(here, '../skills/implement/examples');
 
 function codesOf(r: VerifyReport): string[] {
-  return [...r.errorInfos.map((e) => e.code), ...r.hints.map((h) => h.code)].filter(
-    (c): c is string => Boolean(c)
-  );
+  // hints derive from errorInfos, so the codes already live there — dedupe.
+  return [...new Set(r.errorInfos.map((e) => e.code).filter((c): c is string => Boolean(c)))];
 }
 
 async function run(path: string, check: boolean): Promise<VerifyReport> {
@@ -72,14 +71,15 @@ async function main(): Promise<void> {
   }
 
   const pad = Math.max(...recall.map((r) => r.id.length), 12);
+  const rule = '='.repeat(pad + 20);
+  const recallPass = recall.filter((r) => r.pass).length;
   console.log('brepjs-cad verify-heal eval (precision / recall)');
-  console.log('='.repeat(pad + 20));
+  console.log(rule);
   console.log(`precision: ${goodPass}/${goodNames.length} good parts pass clean`);
   for (const fp of falsePositives) console.log(`  FALSE POSITIVE: ${fp}`);
-  const recallPass = recall.filter((r) => r.pass).length;
   console.log(`recall:    ${recallPass}/${recall.length} known-bad caught with the right code`);
   for (const r of recall) console.log(`  ${r.pass ? 'PASS' : 'MISS'}  ${r.id.padEnd(pad)}  ${r.detail}`);
-  console.log('='.repeat(pad + 20));
+  console.log(rule);
   console.log('note: recall covers only mutate.ts codes — a lower bound, not total verifier coverage.');
 
   if (falsePositives.length > 0 || recallPass !== recall.length) process.exit(1);

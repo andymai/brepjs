@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync, watch as fsWatch, realpathSync } from 'node:fs';
+import { writeFileSync, watch as fsWatch, realpathSync, globSync } from 'node:fs';
 import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
-import { pushError, reportOk, serializeReport } from '../verify/report.js';
+import { pushError, reportOk, serializeReport, type VerifyReport } from '../verify/report.js';
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
@@ -39,7 +39,10 @@ program.name('brep');
 
 program
   .command('verify', { isDefault: true })
-  .argument('<file>', 'path to a .brep.ts module with a default-exported part function')
+  .argument(
+    '<files...>',
+    'path(s) or glob(s) to .brep.ts modules; multiple files → a batch validity JSON array'
+  )
   .option('--step <out>', 'write the primary STEP artifact to this path')
   .option('--glb <out>', 'write a derived GLB preview to this path')
   .option('--json <out>', 'write the JSON report to this path')
@@ -60,7 +63,7 @@ program
   .option('--expect-invalid', 'exit 0 only if the part is invalid (ok:false) — for known-bad fixtures')
   .action(
     async (
-      file: string,
+      files: string[],
       opts: {
         step?: string;
         glb?: string;
@@ -75,6 +78,37 @@ program
         open: boolean;
       }
     ) => {
+      // A quoted glob ("parts/*.brep.ts") arrives as one literal arg, a shell-expanded one as many;
+      // globSync handles both (a literal filename matches itself), falling back to the raw arg so a
+      // missing path still runs and reports its own error.
+      const targets = [
+        ...new Set(
+          files.flatMap((f) => {
+            const m = globSync(f);
+            return m.length ? m : [f];
+          })
+        ),
+      ].map((p) => resolve(p));
+
+      if (targets.length > 1) {
+        // Batch: validity-only JSON array. The single-file artifact flags don't apply.
+        if (opts.step || opts.serve || opts.snapshot || opts.glb || opts.expectCode || opts.expectInvalid) {
+          process.stderr.write('batch mode: --step/--glb/--serve/--snapshot/--expect-code/--expect-invalid ignored (single-file only)\n');
+        }
+        const results: { file: string; ok: boolean; report: VerifyReport }[] = [];
+        for (const f of targets) {
+          const { report, shape } = await runPart(f, { check: Boolean(opts.check) });
+          disposeShape(shape);
+          results.push({ file: f, ok: reportOk(report), report });
+        }
+        const json = JSON.stringify(results, null, 2);
+        if (opts.json && opts.json !== '-') writeFileSync(opts.json, json);
+        process.stdout.write(json + '\n');
+        if (results.some((r) => !r.ok)) process.exitCode = 1;
+        return;
+      }
+
+      const file = targets[0] ?? files[0] ?? '';
       // The WASM viewer loads a CAD file (it can't run a .brep.ts), so --snapshot/--serve
       // stage the primary STEP and point the viewer at it via ?dir=&file=. --glb is its own artifact.
       const wantStep = Boolean(opts.step) || Boolean(opts.snapshot) || Boolean(opts.serve);
@@ -119,10 +153,10 @@ program
       // a known-bad part must fail the *right* way. Codes come from the kernel/authoring errors,
       // not the hint table, so this measures the verifier, not its prose.
       if (opts.expectInvalid || opts.expectCode) {
+        // hints are derived from errorInfos, so the codes live there; dedupe to keep the line clean.
         const codes = [
-          ...report.errorInfos.map((e) => e.code),
-          ...report.hints.map((h) => h.code),
-        ].filter((c): c is string => Boolean(c));
+          ...new Set(report.errorInfos.map((e) => e.code).filter((c): c is string => Boolean(c))),
+        ];
         const valid = reportOk(report);
         const pass =
           (!opts.expectInvalid || !valid) && (!opts.expectCode || codes.includes(opts.expectCode));
@@ -194,7 +228,12 @@ program
       const stepPath = join(tmpdir(), `brep-snap-${basename(file)}.step`);
       writeFileSync(stepPath, Buffer.from(step));
       const shoot = await loadSnapshotShoot();
-      if (!shoot) return; // sets exitCode + stderr
+      if (!shoot) {
+        // puppeteer absent: loadSnapshotShoot set exitCode + stderr; still emit the report so a
+        // caller parsing stdout gets the validity info rather than an empty buffer.
+        process.stdout.write(serializeReport(report) + '\n');
+        return;
+      }
       // fresh: a private ephemeral render server so parallel snapshots don't contend on :7373.
       const { pngs } = await shoot({ file: stepPath, outDir, fresh: true });
       for (const p of pngs) process.stdout.write(`${p}\n`);

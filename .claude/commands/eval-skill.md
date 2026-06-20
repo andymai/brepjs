@@ -15,7 +15,8 @@ bar — from their descriptions through **this** Claude Code session: you author
 No API key, no billing. The point of this loop is not the
 score — it's the **findings**: each playground part the skill can't reproduce _as a
 designed object_ (not just a valid blob) is a concrete SKILL.md gap to close. (`npm run
-eval:live` is the billed SDK counterpart; it still uses the legacy `bench/prompts.ts`.)
+eval:live` is the billed SDK counterpart; it defaults to the playground corpus, `--corpus prompts`
+for the legacy `bench/prompts.ts`.)
 
 ## Inputs
 

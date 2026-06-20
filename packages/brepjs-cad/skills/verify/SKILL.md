@@ -72,9 +72,10 @@ _right_ way.
 
 ## CLI subcommands (the `brep` bin)
 
-- `verify <file>` (default): report; flags `--check`, `--json [path|-]`, `--step`, `--glb`,
-  `--snapshot <dir>`, `--serve`, `--no-open`, `--expect-code <CODE>`, `--expect-invalid`. Accepts a
-  glob for batch verification.
+- `verify <files...>` (default): report; flags `--check`, `--json [path|-]`, `--step`, `--glb`,
+  `--snapshot <dir>`, `--serve`, `--no-open`, `--expect-code <CODE>`, `--expect-invalid`. One file →
+  the full report (all flags). Multiple files or a quoted glob (`brep verify "parts/*.brep.ts"`) →
+  a validity-only JSON array, exit 1 if any part is invalid (single-file artifact flags are ignored).
 - `snapshot <file> [--label <tag>]`: render iso/front/top/right PNGs without re-verifying.
 - `init <name>`: scaffold `<name>.brep.ts` + `tsconfig.json`.
 - `watch <file>`: re-verify on every save.
