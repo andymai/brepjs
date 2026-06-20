@@ -1,0 +1,61 @@
+# Blind LLM-as-judge — the design signal (sub-only)
+
+The eval's **design signal** — _does the skill reproduce the part as a designed object, not a valid
+blob?_ — is graded by a **blind judge subagent**, not by the session driving the loop. The
+orchestrator authored (and, in `/heal-skill`, _healed_) the thing under test, so it is a conflicted
+judge; an isolated judge that never saw the heal, the code, or which render is whose removes the
+bias. Sub-only, **$0** (judge subagents are flat-rate).
+
+This is the sub-loop counterpart to `bench/judge.ts` (the billed SDK judge used by `eval:live`).
+`judge.ts` is _absolute_ (one part's renders vs the request + rubric) and _not_ blind; this protocol
+is _pairwise_ (author vs reference) and _blind_ (labels stripped), and costs nothing.
+
+## The judge unit
+
+One judge subagent (general-purpose — it must `Read` the PNGs) per part. Its **entire input**: the
+part's NL `description` + two rendered images (**iso + one detail view each**) labeled only **A** and
+**B** + the rubric below. It is told NOTHING about which render is the skill's clean-room output vs
+the playground reference, and never reads any `.brep.ts`, the heal, the orchestration, or
+`apps/playground/**`. Structured return:
+
+- per label (`A`, `B`): `designed | partial | blob` + one-line reason (are the described features
+  present, legible, proportioned — or a lumpy primitive stack?),
+- pairwise: `A-better | B-better | tie-good | tie-blob`,
+- `confidence`: `high | low`.
+
+**Rubric (put in the judge prompt):** grade each render against the **description** as the absolute
+bar — the named features present and legible, the thing reads as manufactured/designed. Use the
+other render only to calibrate _how polished is achievable_, never to reward mere similarity. A part
+that differs from the other render but realizes the description as a designed object is `designed`.
+Ignore color, lighting, camera, and exact dimensions you can't read from the image.
+
+## The blind protocol (orchestrator: renders + shuffles + decodes — never grades)
+
+Per auto-valid part, **serially** (the render server is a singleton on :7373):
+
+1. Render the **author** `<id>.brep.ts` and the **reference** (adapt the playground `code`:
+   `brepjs/quick`→`brepjs`, `export default X`→`export default () => X`) to snapshots.
+2. **Strip the labels.** Copy both renders to **neutral filenames** — `<id>-A-iso.png` /
+   `<id>-B-iso.png` (+ a detail view) — and **coin-flip** which of {author, reference} is A vs B,
+   varied per part. Record the mapping privately. _If a path says `author`/`ref`, the judge isn't
+   blind — rename first._
+3. Dispatch ONE blind judge → verdict.
+4. **Escalate only on `tie-*` or `confidence:low`:** two more blind judges (labels re-shuffled per
+   judge), take the majority.
+5. **Decode** the verdict against your private A/B map → author-vs-reference result.
+
+## Verdict → scorecard (the bar: author ≥ reference, _and_ actually designed)
+
+- author `designed` AND (author-preferred OR `tie-good`) → **`judge:✓`**
+- author `partial`/`blob`, OR reference clearly preferred → **`judge:✗`** + the judge's reason
+- `tie-blob` (even the reference rendered blobby — usually a bad camera angle) → **`judge:⚠`**:
+  re-render from a better view and re-judge; don't score it as a pass.
+
+Record the verdict + reason + whether it escalated in the scorecard's judge column. **No silent
+caps:** an unrendered-but-valid part stays `judge:—` (a coverage gap, not a pass).
+
+## Caveat it can't see past
+
+Clean-room authors in `/heal-skill` stop at `ok:true` with no `--snapshot`, so they skip the polish
+pass (SKILL.md authoring step 8). The blind judge therefore measures _first-valid_ design quality,
+not the skill's ceiling — note that in the findings.

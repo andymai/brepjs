@@ -6,8 +6,9 @@ argument-hint: '[basics | mechanical | <example-id> | all]   (default: all plain
 # brepjs-verify skill eval (manual loop)
 
 Measure the deployed `SKILL.md` by re-authoring the **playground examples** — the quality
-bar — from their descriptions through **this** Claude Code session, where you are both the
-author and the visual judge. No API key, no billing. The point of this loop is not the
+bar — from their descriptions through **this** Claude Code session: you author each part, and a
+**blind judge subagent** grades it (you never grade your own output — see `bench/blind-judge.md`).
+No API key, no billing. The point of this loop is not the
 score — it's the **findings**: each playground part the skill can't reproduce _as a
 designed object_ (not just a valid blob) is a concrete SKILL.md gap to close. (`npm run
 eval:live` is the billed SDK counterpart; it still uses the legacy `bench/prompts.ts`.)
@@ -60,11 +61,14 @@ Author parts into a scratch ESM dir so `import 'brepjs'` resolves and the kernel
 4. **Auto signal** (objective): `auto.pass` is `ok === true` (a valid manifold solid /
    assembly). Playground descriptions rarely pin dims; if one does, check the bbox by
    **span/extent**, not absolute position (matches `checkAuto`).
-5. **Judge signal** (the quality bar): render the **reference** once — adapt the example's
-   `code` (`brepjs/quick`→`brepjs`, `export default X`→`export default () => X`) and
-   `--snapshot` it — then grade the author's render against it + the description: does it
-   read as a **designed object as polished as the reference** (the right features, present
-   and legible), or a valid blob? Record `judge.pass` + a one-line reason.
+5. **Judge signal** (the quality bar): grade with a **blind judge subagent**, not yourself.
+   Render the **reference** (adapt the example's `code`: `brepjs/quick`→`brepjs`,
+   `export default X`→`export default () => X`) and the author part, copy both to neutral
+   `A`/`B` filenames (coin-flipped so neither role is fixed), and dispatch a judge never told
+   which is whose: it returns which render better realizes the description as a **designed
+   object** (right features, present and legible) or whether both are blobs. One judge,
+   escalate to 3 on `tie`/low-confidence; decode against your private map, then record the `judge.pass` verdict with its reason.
+   Full protocol: `bench/blind-judge.md`.
 6. **Repair + polish.** If `auto.pass` is false, fix the smallest responsible section from
    the report `hints`. If valid but blobby, do the **polish pass** (SKILL.md step 8). ≤ 4
    attempts; track the first attempt vs the eventual (the lift signal).

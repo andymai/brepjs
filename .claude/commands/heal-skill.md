@@ -48,14 +48,16 @@ One **general-purpose subagent per example**, dispatched in parallel batches. Ea
   error, `EVENTUAL_OK`, `ATTEMPTS`, a **causal field** (what tripped it; did the skill's prose
   carry or fail it), `SKILL_GAP` (did a rule mislead/omit/contradict — name it), and `FINAL_CODE`.
 
-## 2. Judge — main session (the design signal)
+## 2. Judge — blind subagent (the design signal)
 
-Render the auto-valid parts **serially** (`--snapshot`, singleton server) and vision-judge each
-iso/detail render against the description + the playground reference `code` (adapt it:
-`brepjs/quick`→`brepjs`, `export default X`→`export default () => X`): a **designed object as
-polished as the reference**, or a valid blob? Note: clean-room authors stop at `ok:true` without
-the polish pass (SKILL.md's authoring loop, step 8), so this measures _first-valid_ design
-quality — call that out.
+**Don't grade your own loop's output** — you authored the heal, so you're a conflicted judge. Hand
+the design signal to a **blind judge subagent** (full protocol: `bench/blind-judge.md`): render the
+author part AND the playground reference serially, strip the labels to neutral `A`/`B` filenames
+(coin-flipped per part), and a judge that never saw the heal or which render is whose returns the
+verdict — you only render, shuffle, decode, aggregate. One judge per part, escalate to a panel of 3
+on `tie`/`confidence:low`. Note: clean-room authors stop at `ok:true` with no `--snapshot`, skipping
+the polish pass (SKILL.md authoring step 8), so this measures _first-valid_ design quality — call
+that out.
 
 ## 3. Diagnose — verify before healing
 
