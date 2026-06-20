@@ -13,18 +13,18 @@
     "url": "https://github.com/andymai/brepjs",
     "directory": "packages/brepjs-cad"
   },
-  "main": "./dist/brepjs-verify.cjs",
-  "module": "./dist/brepjs-verify.js",
+  "main": "./dist/brepjs-cad.cjs",
+  "module": "./dist/brepjs-cad.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/brepjs-verify.js"
+        "default": "./dist/brepjs-cad.js"
       },
       "require": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/brepjs-verify.cjs"
+        "default": "./dist/brepjs-cad.cjs"
       }
     }
   },

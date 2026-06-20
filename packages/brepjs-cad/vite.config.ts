@@ -29,7 +29,7 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: {
-        'brepjs-verify': resolve(__dirname, 'src/index.ts'),
+        'brepjs-cad': resolve(__dirname, 'src/index.ts'),
         'cli/main': resolve(__dirname, 'src/cli/main.ts'),
         // Pinned so the CLI's dynamic imports land on stable dist/snapshot/*.js paths
         // (preserves the ../../viewer/dist sibling-depth invariant static.ts relies on).

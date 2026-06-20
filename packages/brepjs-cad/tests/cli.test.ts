@@ -34,7 +34,7 @@ describe('init CLI', () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
   it('scaffolds files into --out and prints a clean JSON manifest', () => {
-    dir = mkdtempSync(join(tmpdir(), 'brepjs-verify-cli-init-'));
+    dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-cli-init-'));
     const stdout = execFileSync('npx', ['tsx', cli, 'init', 'gizmo', '--out', dir], {
       encoding: 'utf8', cwd: pkgRoot,
     });
@@ -51,7 +51,7 @@ describe('export CLI', () => {
     if (dir) rmSync(dir, { recursive: true, force: true });
   });
   it('writes requested artifacts for a valid part', () => {
-    dir = mkdtempSync(join(tmpdir(), 'brepjs-verify-cli-export-'));
+    dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-cli-export-'));
     const stdout = execFileSync(
       'npx',
       ['tsx', cli, 'export', fix('validBox.brep.ts'), '--step', '--stl', '--out', dir],
@@ -64,7 +64,7 @@ describe('export CLI', () => {
   }, 60000);
 
   it('exits nonzero and writes nothing for an invalid part', () => {
-    dir = mkdtempSync(join(tmpdir(), 'brepjs-verify-cli-export-bad-'));
+    dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-cli-export-bad-'));
     let exitCode = 0;
     try {
       execFileSync(

@@ -7,7 +7,7 @@ import { scaffoldPart } from '@/cli/scaffold.js';
 describe('scaffoldPart', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'brepjs-verify-init-'));
+    dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-init-'));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

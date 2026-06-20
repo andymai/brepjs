@@ -219,7 +219,7 @@ async function main(): Promise<void> {
   await telemetry.registerSkill(skillMd);
   const runId = `${date}-${args.model}`;
 
-  const workdir = mkdtempSync(join(tmpdir(), 'brepjs-verify-eval-'));
+  const workdir = mkdtempSync(join(tmpdir(), 'brepjs-cad-eval-'));
 
   const results: EvalResult[] = [];
   for (const p of prompts) {

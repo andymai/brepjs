@@ -33,7 +33,7 @@ describe('static server', () => {
     expect(status).toBe(200);
     expect(contentType).toContain('application/json');
     const d = JSON.parse(body) as ServerDescriptor;
-    expect(d.app).toBe('brepjs-verify-viewer');
+    expect(d.app).toBe('brepjs-viewer');
     expect(d.port).toBe(server.port);
     expect(d.dynamicRoot).toBe(true);
     expect(d.serverApiVersion).toBeGreaterThanOrEqual(SERVER_API_VERSION);

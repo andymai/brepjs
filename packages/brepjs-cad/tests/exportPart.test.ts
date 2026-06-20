@@ -14,7 +14,7 @@ describe('exportPart', () => {
     await init();
   }, 30000);
   beforeEach(() => {
-    out = mkdtempSync(join(tmpdir(), 'brepjs-verify-export-'));
+    out = mkdtempSync(join(tmpdir(), 'brepjs-cad-export-'));
   });
   afterEach(() => {
     rmSync(out, { recursive: true, force: true });

@@ -25,7 +25,7 @@ async function probe(port: number): Promise<boolean> {
     if (!res.ok) return false;
     const d = (await res.json()) as Partial<ServerDescriptor>;
     return (
-      d.app === 'brepjs-verify-viewer' &&
+      d.app === 'brepjs-viewer' &&
       d.dynamicRoot === true &&
       typeof d.serverApiVersion === 'number' &&
       d.serverApiVersion >= SERVER_API_VERSION
