@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.97.0](https://github.com/andymai/brepjs/compare/brepjs-v18.96.1...brepjs-v18.97.0) (2026-06-20)
+
+
+### Features
+
+* **brepjs-verify:** blind LLM-as-judge for the eval design signal ([#1512](https://github.com/andymai/brepjs/issues/1512)) ([ddb09d8](https://github.com/andymai/brepjs/commit/ddb09d8b335f18f7181d74746e92d3491409236a))
+
 ## [18.96.1](https://github.com/andymai/brepjs/compare/brepjs-v18.96.0...brepjs-v18.96.1) (2026-06-20)
 
 
