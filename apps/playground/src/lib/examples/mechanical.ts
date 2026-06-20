@@ -2415,8 +2415,7 @@ export default conduitClip();
   {
     id: 'hobby-rc-servo',
     label: 'Hobby RC Servo Motor',
-    description:
-      'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
+    description: 'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
     code: `import {
   box,
   chamfer,
@@ -2519,8 +2518,7 @@ export default hobbyServo();`,
   {
     id: 'rotary-potentiometer',
     label: 'Panel-mount rotary potentiometer (can, M10 bushing, D-shaft)',
-    description:
-      'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
+    description: 'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
     code: `import {
   box,
   chamfer,
@@ -2627,8 +2625,7 @@ export default rotaryPot();`,
   {
     id: 'd-sub-connector',
     label: 'D-sub Connector (DB9)',
-    description:
-      'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
+    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
     code: `import {
   box,
   cut,
@@ -2785,8 +2782,7 @@ export default dSubConnector();`,
   {
     id: 'panel-fuse-holder',
     label: '20 mm Panel Fuse Holder',
-    description:
-      'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
+    description: 'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
     code: `import {
   box,
   chamfer,
@@ -2926,8 +2922,7 @@ export default fuseHolder();`,
   {
     id: 'green-terminal-block',
     label: 'Green PCB Screw-Terminal Block',
-    description:
-      'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
+    description: 'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
     code: `import { box, cut, cutAll, cylinder, extrude, fuse, polygon, torus, translate, unwrap } from 'brepjs/quick';
 
 // Green PCB screw-terminal block (Phoenix-style, 5.08 mm pitch). The classic
@@ -3035,8 +3030,7 @@ export default greenTerminalBlock();`,
   {
     id: 'button-top-battery-cell',
     label: 'Button-top battery cell (AA / 18650)',
-    description:
-      'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
+    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
     code: `import {
   cylinder,
   cone,
@@ -3115,8 +3109,7 @@ export default batteryCell();`,
   {
     id: 'finger-tab-split-joint',
     label: 'Interlocking finger-tab split joint',
-    description:
-      'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
+    description: 'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
     code: `import {
   box,
   chamfer,
@@ -3220,8 +3213,7 @@ export default fingerSplitJoint();`,
   {
     id: 'conical-pour-funnel',
     label: 'Kitchen / Lab Funnel',
-    description:
-      'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
+    description: 'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
     code: `import { cone, cylinder, cut, fuse, rotate, torus, translate, unwrap } from 'brepjs/quick';
 
 // Kitchen / lab funnel: a wide conical bowl that necks down into a long thin
