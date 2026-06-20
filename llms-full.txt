@@ -204,7 +204,7 @@ DrawingPen methods:
 - `quadraticBezierCurveTo(end, control)` — Quadratic Bezier
 - `cubicBezierCurveTo(end, c1, c2)` — Cubic Bezier
 - `smoothSplineTo(end, config?)`, `smoothSpline(dx, dy, config?)` — Smooth splines
-- `fillet(radius)`, `chamfer(radius)` — Corner treatments (call before next segment)
+- `customCorner(radius, mode?)` — Round/bevel the corner at the current vertex (call before the next segment). `mode`: `'fillet'` (default) or `'chamfer'`. (The pen has no bare `.fillet`/`.chamfer`; those are Drawing methods, after `.close()`/`.done()`.)
 - `close()` — Close the path and return a Drawing
 - `closeWithMirror()` — Close by mirroring the path
 - `closeWithCustomCorner(radius, mode?)` — Close with a fillet or chamfer at the join. `mode`: `'fillet'` (default) or `'chamfer'`

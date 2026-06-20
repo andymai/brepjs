@@ -61,5 +61,6 @@ export default () => {
 - Low-level `circle`/`ellipse`/`line` (primitives) return **edges**, not faces; use the `draw*` factories when you need a closed profile to extrude.
 - **For an extruded regular polygon (hex prism, nut, etc.) use `drawPolysides(radius, sides).sketchOnPlane('XY', origin?).extrude(h)`.** Do **not** reach for `polygon(points3D).extrude(...)`: `polygon()` returns an `OrientedFace` (for `revolve`/a face), which has **no `.extrude()`** — `tsc` rejects it with `TS2339: Property 'extrude' does not exist on type '… face … oriented … planar'`.
 - **`polygon(points)` needs distinct points** — two coincident/duplicate points make a zero-length edge and crash (`makeLineEdge: construction failed`). Dedupe before building, especially in computed tooth/gear profiles where a land and a groove point can land on the same coordinate.
+- **Round/bevel a corner mid-pen with `customCorner(radius, mode?)`** (`mode`: `'fillet'` default or `'chamfer'`), called before the next segment — e.g. `draw([0,0]).lineTo([20,0]).customCorner(3, 'chamfer').lineTo([20,20])`. The pen (`DrawingPen`) has **no bare `.fillet`/`.chamfer`** (`TS2339`); those exist only on a `Drawing` (after `.close()`/`.done()`), as `.fillet(radius, filter?)` / `.chamfer(radius, filter?)`.
 
 See also: docs/function-lookup.md → brepjs/sketching.
