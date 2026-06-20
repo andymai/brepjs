@@ -105,6 +105,27 @@ describe('metadata propagation pipeline', () => {
       expect(origins).toBeDefined();
       expect(origins?.size).toBeGreaterThan(0);
     });
+
+    it('gives boolean-generated seam faces the origin of their parent face', () => {
+      // Two OVERLAPPING boxes sharing one origin: the union regenerates faces
+      // at the intersection seam. Those generated faces must inherit the
+      // origin (7), not default to 0 (body) — otherwise a feature tool's seam
+      // with the body renders body-colored downstream (GH #1654).
+      const b1 = box(10, 10, 10);
+      setShapeOrigin(b1, 7);
+      const b2 = box(10, 10, 10);
+      setShapeOrigin(b2, 7);
+      const moved = translate(b2, [5, 5, 0]); // overlaps b1
+
+      const result = fuse(b1, moved);
+      expect(isOk(result)).toBe(true);
+      const fused = unwrap(result);
+      const origins = getFaceOrigins(fused);
+      expect(origins).toBeDefined();
+      expect(origins?.size).toBeGreaterThan(0);
+      // No face should have leaked to origin 0 (the pre-fix bug).
+      expect([...(origins?.values() ?? [])].every((v) => v === 7)).toBe(true);
+    });
   });
 
   describe('full metadata propagation through modifiers', () => {
