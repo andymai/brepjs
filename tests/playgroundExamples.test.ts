@@ -10,7 +10,7 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initOC } from './setup.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
-import { evalAndMeshExample } from './helpers/playgroundExampleEval.js';
+import { evalAndMeshExample, bodySolidCounts } from './helpers/playgroundExampleEval.js';
 
 beforeAll(async () => {
   await initOC();
@@ -44,6 +44,24 @@ describe('playground examples', () => {
         SILENT_FALLBACK.test(example.code),
         `${example.id} swallows a Result with a fallback; unwrap() finishing ops instead so failures surface`
       ).toBe(false);
+    });
+  }
+
+  // Multi-part mechanism/assembly examples return an array of DISTINCT bodies,
+  // each of which must be a single connected solid. A body that is secretly a
+  // multi-solid compound — a pin floating off its disc, parts glued by a fuse
+  // that never welded — passes eval+mesh (a disjoint compound still meshes) yet
+  // detaches on STEP/GLB export. getSolids() is the only thing that catches it.
+  const CONNECTED_BODY_EXAMPLES = ['universal-joint', 'geneva-drive', 'bench-vise'];
+  for (const id of CONNECTED_BODY_EXAMPLES) {
+    it(`every returned body is a single connected solid: ${id}`, async () => {
+      const example = EXAMPLES.find((e) => e.id === id);
+      if (!example) throw new Error(`example ${id} not found`);
+      const counts = await bodySolidCounts(example.code);
+      expect(counts.length).toBeGreaterThan(0);
+      counts.forEach((n, i) => {
+        expect(n, `${id} body[${i}] is not one solid (getSolids=${n})`).toBe(1);
+      });
     });
   }
 });

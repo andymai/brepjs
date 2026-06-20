@@ -3578,7 +3578,7 @@ export default planetaryReducer();
     id: 'universal-joint',
     label: 'Cardan Universal Joint',
     description:
-      'A Hooke/Cardan universal joint shown at a 25° articulation: two forked yokes on stub shafts, a central cross-spider with grease bosses, and four trunnion pins — each a distinct colored solid.',
+      'A Hooke/Cardan universal joint shown at a 25° articulation: two forked yokes on stub shafts whose fork bores ride on a central cross-spider with grease bosses — three distinct colored solids.',
     code: `import {
   box,
   cylinder,
@@ -3605,9 +3605,7 @@ const ARM_H = 11; // fork-arm height (kept < FORK_GAP so perpendicular forks cle
 const FORK_GAP = 14; // clear gap between the two arms
 const ARM_FILLET = 2; // round the proud arm corners
 const ARM_COVER = 2; // arm material outboard of the bore center
-const PIN_R = 2.5; // trunnion-pin radius
-const BORE_R = 2.9; // bore radius (radial clearance for the pin)
-const PIN_LEN = ARM_W + 4;
+const BORE_R = 2.9; // fork bore radius (radial bearing clearance over the trunnion)
 const CROSS_BODY = 8; // central cross cube edge
 const TRUN_R = 2.5; // cross trunnion radius
 const TRUN_REACH = FORK_GAP / 2 + ARM_W - 1;
@@ -3663,34 +3661,16 @@ function makeCross() {
   return body;
 }
 
-// Trunnion pin along +Y, seated through one arm, lead-in chamfer on the head.
-function makePinY() {
-  const baseY = FORK_GAP / 2 + ARM_W - PIN_LEN / 2;
-  const headY = baseY + PIN_LEN;
-  const pin = cylinder(PIN_R, PIN_LEN, { axis: [0, 1, 0], at: [0, baseY, 0] });
-  const rimCut = cylinder(PIN_R + 0.3, 0.9, { axis: [0, 1, 0], at: [0, headY - 0.9, 0] });
-  const lead = cone(PIN_R, PIN_R - 0.9, 0.9, { axis: [0, 1, 0], at: [0, headY - 0.9, 0] });
-  return unwrap(fuse(unwrap(cut(pin, rimCut)), lead));
-}
-
-// Assemble at the 25° display pose. yokeA unrotated on -X; cross at origin; yokeB
+// Assemble at the 25° display pose. yokeA unrotated; cross at origin; yokeB
 // re-framed (shaft +X, bore Y -> Z) then tilted by BEND about Z. At this pose the
-// exact Cardan precession is zero, so the trunnion bores line up by construction.
+// exact Cardan precession is zero, so each fork bore seats on its cross trunnion
+// (bore radius > trunnion radius = a visible bearing gap) by construction.
 const yokeA = makeYoke();
 const cross = makeCross();
 const yokeBBase = rotate(rotate(makeYoke(), 180, { axis: [0, 0, 1] }), 90, { axis: [1, 0, 0] });
 const yokeB = rotate(yokeBBase, BEND_DEG, { axis: [0, 0, 1] });
-const pinsA = [makePinY(), rotate(makePinY(), 180, { axis: [1, 0, 0] })];
-const pinB1 = rotate(makePinY(), 90, { axis: [1, 0, 0] });
-const pinsB = [pinB1, rotate(pinB1, 180, { axis: [0, 1, 0] })];
 
-export default [
-  color(yokeA, '#b4b9c0'),
-  color(yokeB, '#878d96'),
-  color(cross, '#6b7177'),
-  ...pinsA.map((p) => color(p, '#5d6268')),
-  ...pinsB.map((p) => color(p, '#5d6268')),
-];
+export default [color(yokeA, '#b4b9c0'), color(yokeB, '#878d96'), color(cross, '#6b7177')];
 `,
   },
   {
@@ -3707,80 +3687,101 @@ export default [
   fuseAll,
   rotate,
   translate,
-  fillet,
-  edgeFinder,
   unwrap,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Geneva (Maltese cross) 4-slot intermittent drive. The driver disc sits on the
-// line of centers at +X; its drive pin enters one wheel slot to index it, and the
-// convex cam locks the wheel between steps. Two distinct solids on stub shafts.
-const PIN_PITCH_R = 24; // drive-pin pitch radius on the driver
-const CENTER_DIST = PIN_PITCH_R * Math.SQRT2; // d = pinR·√2 for a 4-slot wheel (~33.9)
+// Geneva (Maltese cross) 4-slot intermittent drive on a baseplate so it reads as
+// one mechanism. The driver's crank rides in a gap UNDER the wheel; only its drive
+// pin rises into a slot and its locking cam rises (relieved) alongside the wheel
+// rim, so nothing else enters the wheel's swept envelope. The wheel indexes 90°
+// per driver revolution; the convex cam locks it between steps.
+const CENTER_DIST = 36; // C: wheel axis (origin) to driver axis
+const PIN_PITCH_R = CENTER_DIST / Math.SQRT2; // crank/pin radius p = C/√2 (≈25.46)
 const PIN_R = 3; // drive-pin radius
-const PIN_H = 6; // pin proud of the driver face
 const PIN_LEADIN_H = 1.5; // conical lead-in at the pin tip
-const WHEEL_R = 24; // Maltese wheel radius (Ø48)
-const WHEEL_H = 8; // disc thickness
-const SLOT_W = 7; // radial slot width (pin Ø6 + clearance)
-const SLOT_INNER_R = CENTER_DIST - PIN_PITCH_R - PIN_R - 1;
-const DRIVER_R = 16; // driver disc radius
-const DRIVER_H = 8; // driver thickness
-const CAM_RELIEF_R = 17; // relief cylinder carving the locking cam
-const RECESS_R = DRIVER_R + 0.6; // rim scallop radius matching the cam arc
+const PLATE_H = 4; // baseplate thickness
+const GAP_Z = 3; // gap between plate top and wheel disc (the crank lives here)
+const CRANK_Z0 = PLATE_H; // crank bottom face
+const CRANK_H = GAP_Z; // crank thickness (sits entirely in the gap)
+const WHEEL_Z0 = PLATE_H + GAP_Z; // wheel disc bottom face
+const WHEEL_H = 8; // wheel disc thickness
+const WHEEL_R = PIN_PITCH_R - 0.5; // slot tangent to the pin circle (≈24.96)
+const SLOT_W = 2 * PIN_R + 1; // radial slot width (pin Ø6 + clearance)
+const SLOT_INNER_R = CENTER_DIST - PIN_PITCH_R - PIN_R - 1; // slot depth (≈6.5)
+const CAM_R = CENTER_DIST - WHEEL_R - 0.4; // convex locking-cam radius (≈10.6)
+const CAM_TOP_Z = WHEEL_Z0 + WHEEL_H; // cam reaches the top of the wheel disc
+const CAM_RELIEF_R = WHEEL_R + 1.5; // kidney notch (about the wheel axis)
+const ARM_W = 2 * PIN_R + 0.6; // crank-arm width
+const PIN_TOP_Z = WHEEL_Z0 + WHEEL_H / 2 + 1.5; // pin reaches just above mid-slot
+const DRIVER_FOOTPRINT_R = PIN_PITCH_R + PIN_R; // crank reach (sets the baseplate)
 const SHAFT_R = 6; // stub-shaft radius
-const SHAFT_H = 6; // stub-shaft length below each disc
+const SHAFT_H = 6; // stub-shaft length into the baseplate boss
 const BORE_R = 4.2; // center bore radius
-const HUB_R = 7; // raised hub-boss collar radius
+const HUB_R = 8; // raised hub-boss collar radius
 const HUB_H = 3; // hub boss proud of the top face
+const PLATE_MARGIN = 6; // plate overhang beyond the wheels' footprint
+const BOSS_R = SHAFT_R + 2.5; // bearing-boss outer radius
+const BOSS_H = SHAFT_H + 1; // boss height
+const BOSS_BORE_R = SHAFT_R + 0.4; // boss bore (clearance over the stub shaft)
 
+// Driven Maltese wheel: 4 radial slots + 4 concave lock recesses, stub shaft, hub.
 function drivenWheel() {
-  const disc = cylinder(WHEEL_R, WHEEL_H);
-
-  // 4 radial slots, one every 90°, running from the rim inward.
+  const z0 = WHEEL_Z0;
+  const disc = cylinder(WHEEL_R, WHEEL_H, { at: [0, 0, z0] });
   const slotLen = WHEEL_R - SLOT_INNER_R + 2;
-  const slotTool = box(slotLen, SLOT_W, WHEEL_H + 4, { at: [SLOT_INNER_R + slotLen / 2, 0, WHEEL_H / 2] });
+  const slotTool = box(slotLen, SLOT_W, WHEEL_H + 4, { at: [SLOT_INNER_R + slotLen / 2, 0, z0 + WHEEL_H / 2] });
   let body = unwrap(cutAll(disc, [0, 90, 180, 270].map((a) => rotate(slotTool, a, { axis: [0, 0, 1] }))));
 
-  // 4 concave locking recesses on the rim, between the slots.
-  const recessTool = cylinder(RECESS_R, WHEEL_H + 4, { at: [CENTER_DIST, 0, -2] });
+  const recessTool = cylinder(CAM_R + 0.5, WHEEL_H + 4, { at: [CENTER_DIST, 0, z0 - 2] });
   for (const a of [45, 135, 225, 315]) {
     body = unwrap(cut(body, rotate(recessTool, a, { axis: [0, 0, 1] })));
   }
 
-  // Stub shaft below (welds to the disc) + raised hub boss above, then bore through.
-  const shaft = cylinder(SHAFT_R, SHAFT_H + WHEEL_H, { at: [0, 0, -SHAFT_H] });
-  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, WHEEL_H - 1] });
-  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true }));
-  body = unwrap(cut(body, cylinder(BORE_R, SHAFT_H + WHEEL_H + HUB_H + 4, { at: [0, 0, -SHAFT_H - 2] })));
-
-  // Soften only the full-height lobe-tip / slot-mouth corners (pin clearance unchanged).
-  return unwrap(fillet(body, edgeFinder().inDirection('Z').ofLength(WHEEL_H), 0.6));
+  const shaft = cylinder(SHAFT_R, z0 + WHEEL_H, { at: [0, 0, 0] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, z0 + WHEEL_H - 1] });
+  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true, strategy: 'pairwise' }));
+  return unwrap(cut(body, cylinder(BORE_R, z0 + WHEEL_H + HUB_H + 4, { at: [0, 0, -2] })));
 }
 
+// Driver: a kidney-relieved locking-cam disc + a crank arm carrying the drive pin,
+// all riding in the gap under the wheel; stub shaft + hub.
 function driver() {
-  const disc = cylinder(DRIVER_R, DRIVER_H);
+  const camDisc = cylinder(CAM_R, CAM_TOP_Z - CRANK_Z0, { at: [0, 0, CRANK_Z0] });
+  const relief = cylinder(CAM_RELIEF_R, CAM_TOP_Z - CRANK_Z0 + 4, { at: [-CENTER_DIST, 0, CRANK_Z0 - 2] });
+  const cam = unwrap(cut(camDisc, relief));
 
-  // Circular relief leaves a convex locking segment that clears the wheel lobes.
-  const relief = cylinder(CAM_RELIEF_R, DRIVER_H + 4, { at: [-(DRIVER_R + CAM_RELIEF_R - DRIVER_R * 0.55), 0, -2] });
-  let body = unwrap(cut(disc, relief));
+  const armLen = PIN_PITCH_R + PIN_R;
+  const arm = box(armLen, ARM_W, CRANK_H, { at: [-armLen / 2, 0, CRANK_Z0 + CRANK_H / 2] });
 
-  // Drive pin (on the -X side, toward the wheel) with a conical lead-in tip.
-  const pinShaftH = PIN_H + DRIVER_H - PIN_LEADIN_H;
-  const pin = cylinder(PIN_R, pinShaftH, { at: [-PIN_PITCH_R, 0, 0] });
-  const pinTip = cone(PIN_R, PIN_R - PIN_LEADIN_H, PIN_LEADIN_H + 0.01, { at: [-PIN_PITCH_R, 0, pinShaftH] });
-  body = unwrap(fuseAll([body, pin, pinTip], { unsafe: true }));
+  const pinShaftH = PIN_TOP_Z - CRANK_Z0 - PIN_LEADIN_H;
+  const pin = cylinder(PIN_R, pinShaftH, { at: [-PIN_PITCH_R, 0, CRANK_Z0] });
+  const pinTip = cone(PIN_R, PIN_R - PIN_LEADIN_H, PIN_LEADIN_H + 0.01, { at: [-PIN_PITCH_R, 0, CRANK_Z0 + pinShaftH] });
 
-  // Stub shaft + hub boss mirroring the wheel, then bore through.
-  const shaft = cylinder(SHAFT_R, SHAFT_H + DRIVER_H, { at: [0, 0, -SHAFT_H] });
-  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, DRIVER_H - 1] });
-  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true }));
-  return unwrap(cut(body, cylinder(BORE_R, SHAFT_H + DRIVER_H + HUB_H + 4, { at: [0, 0, -SHAFT_H - 2] })));
+  const shaft = cylinder(SHAFT_R, CRANK_Z0 + CRANK_H, { at: [0, 0, 0] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, CAM_TOP_Z - 1] });
+
+  let body = unwrap(fuseAll([cam, arm, pin, pinTip, shaft, hub], { unsafe: true, strategy: 'pairwise' }));
+  return unwrap(cut(body, cylinder(BORE_R, CAM_TOP_Z + HUB_H + 4, { at: [0, 0, -2] })));
+}
+
+// Baseplate with two raised bearing bosses at the shaft centres.
+function baseplate() {
+  const xMin = -WHEEL_R - PLATE_MARGIN;
+  const xMax = CENTER_DIST + DRIVER_FOOTPRINT_R + PLATE_MARGIN;
+  const yHalf = Math.max(WHEEL_R, DRIVER_FOOTPRINT_R) + PLATE_MARGIN;
+  const plate = box(xMax - xMin, 2 * yHalf, PLATE_H, { at: [(xMin + xMax) / 2, 0, PLATE_H / 2] });
+  const wheelBoss = cylinder(BOSS_R, BOSS_H + 1, { at: [0, 0, PLATE_H - 1] });
+  const driverBoss = cylinder(BOSS_R, BOSS_H + 1, { at: [CENTER_DIST, 0, PLATE_H - 1] });
+  let body = unwrap(fuseAll([plate, wheelBoss, driverBoss], { unsafe: true, strategy: 'pairwise' }));
+  const wheelBore = cylinder(BOSS_BORE_R, BOSS_H + PLATE_H + 4, { at: [0, 0, -2] });
+  const driverBore = cylinder(BOSS_BORE_R, BOSS_H + PLATE_H + 4, { at: [CENTER_DIST, 0, -2] });
+  return unwrap(cutAll(body, [wheelBore, driverBore]));
 }
 
 // Seated display pose: drive pin centred in a slot on the line of centers.
 export default [
+  color(baseplate(), '#565b61'),
   color(drivenWheel(), '#b98a3c'),
   color(translate(driver(), [CENTER_DIST, 0, 0]), '#8f99a3'),
 ];
@@ -3795,7 +3796,6 @@ export default [
   box,
   cylinder,
   fuse,
-  fuseAll,
   cut,
   cutAll,
   translate,
@@ -3835,12 +3835,12 @@ const P = {
   nutBoreR: 6.4, // nut bore radius in the sliding jaw (mm)
   collarR: 9, // screw collar radius (mm)
   collarThick: 6, // screw collar thickness along X (mm)
-  handleR: 5, // T-handle bar radius (mm)
-  handleLen: 84, // T-handle bar length (mm)
-  handleHubR: 8, // hub where the bar passes through the screw end (mm)
-  handleHubLen: 16, // hub length (mm)
-  knobR: 7, // flat-capped knob radius (mm)
-  knobLen: 11, // knob length (mm)
+  handleR: 3.5, // T-handle crossbar radius (mm)
+  handleLen: 44, // crossbar length between knobs (mm)
+  handleHubR: 7, // hub where the bar passes through the screw end (mm)
+  handleHubLen: 13, // hub length (mm)
+  knobR: 5, // flat-capped knob radius (mm)
+  knobLen: 8, // knob length (mm)
   plateThick: 6, // jaw-plate thickness along X (mm)
   plateWidth: 50, // jaw-plate width along Y (mm)
   plateHeight: 34, // jaw-plate height along Z (mm)
@@ -3862,9 +3862,11 @@ function buildBody() {
     .findAll(base);
   base = unwrap(fillet(base, baseBottom, P.baseFillet));
 
+  // Rails sink into the base so the booleans weld to one solid.
   const railTop = P.baseHeight + P.railHeight;
+  const sink = 3;
   const makeRail = (cy: number) => {
-    const rail = box(P.baseLen, P.railWidth, P.railHeight, { at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2] });
+    const rail = box(P.baseLen, P.railWidth, P.railHeight + sink, { at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2 - sink / 2] });
     const topEdges = edgeFinder()
       .inDirection('X')
       .when((f: Edge) => getBounds(f).zMax > railTop - 0.5)
@@ -3876,7 +3878,10 @@ function buildBody() {
     at: [P.fixedJawX - P.fixedJawThick / 2, 0, P.jawTopZ / 2],
   });
 
-  let body = unwrap(fuseAll([base, makeRail(-P.railGap / 2), makeRail(P.railGap / 2), fixedJaw], { unsafe: true }));
+  // Sequential fuse welds the casting into one watertight solid.
+  let body = unwrap(fuse(base, makeRail(-P.railGap / 2)));
+  body = unwrap(fuse(body, makeRail(P.railGap / 2)));
+  body = unwrap(fuse(body, fixedJaw));
 
   const bore = rotate(cylinder(P.screwBoreR, P.fixedJawThick + 20), 90, { axis: [0, 1, 0] });
   return unwrap(cut(body, translate(bore, [P.fixedJawX + 10, 0, screwZ])));
@@ -3907,27 +3912,31 @@ function buildScrew() {
   screw = unwrap(fuse(screw, translate(ridge, [0, 0, 4])));
   screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, P.threadLen + 12] })));
 
+  // T-handle crossbar through a raised hub, flat-capped knob ends (no spheres);
+  // sequential fuse welds the crank into one solid.
   const handleZ = shankLen - 8;
   const hub = cylinder(P.handleHubR, P.handleHubLen, { at: [0, 0, handleZ - P.handleHubLen / 2] });
   const bar = translate(rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }), [0, 0, handleZ]);
-  screw = unwrap(fuseAll([screw, hub, bar], { unsafe: true }));
+  screw = unwrap(fuse(screw, hub));
+  screw = unwrap(fuse(screw, bar));
 
   const knobBase = rotate(cylinder(P.knobR, P.knobLen, { at: [0, 0, -P.knobLen / 2] }), 90, { axis: [1, 0, 0] });
-  const off = P.handleLen / 2 + P.knobLen / 2;
-  const knobPlus = translate(knobBase, [0, off, handleZ]);
-  const knobMinus = translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ]);
-  return unwrap(fuseAll([screw, knobPlus, knobMinus], { unsafe: true }));
+  const off = P.handleLen / 2 + P.knobLen / 2 - 1;
+  screw = unwrap(fuse(screw, translate(knobBase, [0, off, handleZ])));
+  return unwrap(fuse(screw, translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ])));
 }
 
 // Jaw plate (hardened steel): counterbored bolt holes + serration grooves.
 function buildPlate() {
   let plate = box(P.plateThick, P.plateWidth, P.plateHeight, { at: [P.plateThick / 2, 0, P.plateHeight / 2] });
+  // Bolt head countersunk FLUSH into the grip face (X=plateThick), plain shank
+  // through to the back into the jaw; bolts at top/bottom, clear of the grip band.
   const tools = [];
-  for (const cy of [-P.plateWidth / 4, P.plateWidth / 4]) {
+  for (const cz of [P.plateHeight - 7, 7]) {
     const through = rotate(cylinder(P.boltR, P.plateThick + 4), 90, { axis: [0, 1, 0] });
     const cbore = rotate(cylinder(P.cboreR, P.cboreDepth + 0.5), 90, { axis: [0, 1, 0] });
-    tools.push(translate(through, [P.plateThick + 2, cy, P.plateHeight / 2]));
-    tools.push(translate(cbore, [P.cboreDepth - 0.5, cy, P.plateHeight / 2]));
+    tools.push(translate(through, [P.plateThick + 2, 0, cz]));
+    tools.push(translate(cbore, [P.plateThick - P.cboreDepth + 0.5, 0, cz]));
   }
   plate = unwrap(cutAll(plate, tools));
 

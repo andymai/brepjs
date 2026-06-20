@@ -141,3 +141,19 @@ export async function evalAndMeshExample(code: string): Promise<MeshCheck> {
   }
   return { shapeCount: shapes.length, totalVertices };
 }
+
+/**
+ * Run an example and return `getSolids().length` for each exported body. A
+ * multi-part assembly example returns an array of DISTINCT bodies, each of which
+ * should be a single connected solid; a count > 1 means a piece detached (e.g. a
+ * pin floating off its disc). eval+mesh can't catch this — a disjoint compound
+ * still meshes — so connectivity needs its own assertion.
+ */
+export async function bodySolidCounts(code: string): Promise<number[]> {
+  const shapes = await runExample(code);
+  return shapes.map((s) => {
+    const shape = unwrapResultShape(s);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs barrel over WASM handles
+    return ((brepjs as any).getSolids(shape) as unknown[]).length;
+  });
+}
