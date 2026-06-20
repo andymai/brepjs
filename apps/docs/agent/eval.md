@@ -1,11 +1,11 @@
 ---
 title: Eval & Scorecard
-description: 'How brepjs-verify measures itself: a deterministic replay that gates CI, plus an opt-in live eval scoring model prompts on validity and visual intent.'
+description: 'How brepjs-cad measures itself: a deterministic replay that gates CI, plus an opt-in live eval scoring model prompts on validity and visual intent.'
 ---
 
 # Eval & Scorecard
 
-`brepjs-verify` measures itself two ways: a **deterministic replay** that runs in CI, and an opt-in **live eval** that exercises the deployed skill against a model. Both catch regressions as brepjs and the kernel change.
+`brepjs-cad` measures itself two ways: a **deterministic replay** that runs in CI, and an opt-in **live eval** that exercises the deployed skill against a model. Both catch regressions as brepjs and the kernel change.
 
 ## Deterministic eval (CI gate)
 
@@ -25,8 +25,8 @@ The live eval measures the skill, not only the geometry. It sends ~18 natural-la
 - **Judge (intent):** a multimodal Claude call evaluates the rendered iso/front/top/right snapshots against the request and its rubric.
 
 ```bash
-ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-verify              # opus by default
-ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-verify -- --model claude-sonnet-4-6
+ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-cad              # opus by default
+ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-cad -- --model claude-sonnet-4-6
 #   --only <id|category>   run a subset      --keep   keep the generated parts
 ```
 

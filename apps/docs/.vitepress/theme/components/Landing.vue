@@ -218,7 +218,7 @@ onBeforeUnmount(() => observer?.disconnect());
             <p class="lead">
               The hard part of AI plus CAD isn't drawing a shape — it's knowing it's correct. brepjs
               answers twice: the type system rejects invalid geometry before it runs, and
-              <code>brepjs-verify</code> runs the part on a real kernel and returns a deterministic
+              <code>brepjs-cad</code> runs the part on a real kernel and returns a deterministic
               report — validity, measured dimensions, multi-view snapshots, a STEP export. Ships as
               a Claude Code skill and a CLI.
             </p>
@@ -232,10 +232,10 @@ onBeforeUnmount(() => observer?.disconnect());
               <pre
                 class="term"
               ><code><span class="p">$</span> <span class="c">/plugin marketplace add</span> andymai/brepjs
-<span class="p">$</span> <span class="c">/plugin install</span> brepjs-verify@brepjs
-<span class="p">$</span> <span class="c">npm i -D</span> brepjs-verify brepjs occt-wasm
+<span class="p">$</span> <span class="c">/plugin install</span> brepjs@brepjs
+<span class="p">$</span> <span class="c">npm i -D</span> brepjs-cad brepjs occt-wasm
 
-<span class="p">$</span> brepjs-verify <span class="kk">verify</span> bin.ts
+<span class="p">$</span> brep <span class="kk">verify</span> bin.ts
 <span class="p">›</span> running on occt-wasm kernel…
 <span class="ok">✓ valid Solid</span> · vol 14 043.4 mm³ · 91 faces
 <span class="ok">✓ assertions 3/3</span> · wrote bin.step</code></pre>
@@ -451,7 +451,7 @@ onBeforeUnmount(() => observer?.disconnect());
             <p class="quiet">
               Authoring with AI?
               <a class="quiet-link" href="/agent/overview"
-                >Set up the <code>brepjs-verify</code> skill →</a
+                >Set up the <code>brepjs-cad</code> skill →</a
               >
             </p>
           </div>

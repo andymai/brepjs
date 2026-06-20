@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * brepjs-verify MCP server (stdio).
+ * brepjs-cad MCP server (stdio).
  *
  * Exposes the verify substrate to MCP-capable agents. The first tool, `run_program`, executes an
  * agent-authored brepjs program in the sandbox and returns the verification report — the closed
@@ -104,6 +104,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error('brepjs-verify MCP server failed to start:', err);
+  console.error('brepjs-cad MCP server failed to start:', err);
   process.exit(1);
 });

@@ -7,7 +7,7 @@
 // or the resolve hook not landing the CLI's brepjs and the part's `import 'brepjs'` on one
 // kernel realm. This packs the tarball, installs it into a throwaway project that adds NO
 // brepjs of its own, authors a .brep.ts that `import`s 'brepjs', runs the installed
-// `brepjs-verify` bin, and asserts ok:true + volume>0 — the full standalone chain end to end.
+// `brep` bin, and asserts ok:true + volume>0 — the full standalone chain end to end.
 
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
@@ -16,7 +16,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const workRoot = mkdtempSync(join(tmpdir(), 'brepjs-verify-standalone-'));
+const workRoot = mkdtempSync(join(tmpdir(), 'brepjs-cad-standalone-'));
 const cleanup = () => rmSync(workRoot, { recursive: true, force: true });
 
 function run(cmd, args, cwd) {
@@ -27,9 +27,9 @@ try {
   // 1. Build, then pack. Build first (its vite logs go to stdout) so `npm pack` can run with
   //    --ignore-scripts — that skips the prepack rebuild and keeps the pack's stdout a clean
   //    JSON document. --pack-destination keeps the tarball out of the repo.
-  process.stderr.write('building brepjs-verify...\n');
+  process.stderr.write('building brepjs-cad...\n');
   run('npm', ['run', 'build'], pkgRoot);
-  process.stderr.write('packing brepjs-verify...\n');
+  process.stderr.write('packing brepjs-cad...\n');
   const packJson = run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', workRoot], pkgRoot);
   const tarball = join(workRoot, JSON.parse(packJson)[0].filename);
   if (!existsSync(tarball)) throw new Error(`pack produced no tarball at ${tarball}`);
@@ -52,10 +52,10 @@ try {
   // 3. A part that imports bare 'brepjs' — resolved by the tool's hook to ONE realm.
   const part = join(proj, 'box.brep.ts');
   writeFileSync(part, "import { box } from 'brepjs';\nexport default () => box(10, 10, 10);\n");
-  const bin = join(proj, 'node_modules', '.bin', 'brepjs-verify');
+  const bin = join(proj, 'node_modules', '.bin', 'brep');
 
   function verify(label) {
-    process.stderr.write(`running installed brepjs-verify (${label})...\n`);
+    process.stderr.write(`running installed brep (${label})...\n`);
     const outFile = join(proj, `report-${label}.json`);
     run(bin, ['verify', part, '--json', outFile], proj);
     const report = JSON.parse(readFileSync(outFile, 'utf8'));
@@ -67,7 +67,7 @@ try {
 
   // 4. As installed: the consumer added NO brepjs of its own — the only brepjs/occt-wasm present
   //    are the ones npm pulled in as the tool's own declared deps. This is exactly a real
-  //    `npm i brepjs-verify && brepjs-verify verify part.brep.ts` with zero setup, and it proves
+  //    `npm i brepjs-cad && brep verify part.brep.ts` with zero setup, and it proves
   //    the full chain end to end: the package install resolves all runtime deps (nothing was left
   //    dangling), the resolve hook governs both the CLI's `brepjs` and the part's `import 'brepjs'`
   //    onto one initialized kernel realm, the .ts part loads via native ESM type-stripping, the

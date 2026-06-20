@@ -81,7 +81,7 @@ function collectFaceInfos(bk: BrepjsForLoad, shape: unknown): FaceInfo[] {
   try {
     faces = bk.getFaces(shape);
   } catch (err) {
-    console.warn('[brepjs-verify] getFaces threw; faces unselectable', err);
+    console.warn('[brepjs-cad] getFaces threw; faces unselectable', err);
     return [];
   }
   const infos: FaceInfo[] = [];
@@ -95,7 +95,7 @@ function collectFaceInfos(bk: BrepjsForLoad, shape: unknown): FaceInfo[] {
     } catch (err) {
       // A single degenerate face (normalAt can throw on quirky BSpline UVs) shouldn't
       // wipe the rest; warn so the missing pickable face is diagnosable, then skip.
-      console.warn('[brepjs-verify] face metadata threw; skipping face', err);
+      console.warn('[brepjs-cad] face metadata threw; skipping face', err);
     }
   }
   return infos;

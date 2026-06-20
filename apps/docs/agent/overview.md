@@ -16,7 +16,7 @@ Ask for a part in plain English. The agent writes it, runs it on a CAD kernel, a
    ✓ snapshots rendered    →  bracket.step ready to hand off
 ```
 
-An LLM can't see geometry. Code that reads correctly can still produce a solid that is broken, empty, or the wrong size, and the model has no way to notice. [`brepjs-verify`](https://www.npmjs.com/package/brepjs-verify) closes that gap: the agent writes the part, runs it against the kernel, and reads back what the kernel measured instead of judging the code by eye.
+An LLM can't see geometry. Code that reads correctly can still produce a solid that is broken, empty, or the wrong size, and the model has no way to notice. [`brepjs-cad`](https://www.npmjs.com/package/brepjs-cad) closes that gap: the agent writes the part, runs it against the kernel, and reads back what the kernel measured instead of judging the code by eye.
 
 ## What it checks
 
@@ -30,7 +30,7 @@ STEP is the validated deliverable; GLB, STL, and snapshots are derived previews.
 
 ## What you install
 
-`brepjs-verify` is two parts that work together:
+`brepjs-cad` is two parts that work together:
 
 - **The skill** teaches the agent the workflow (brief → author → verify → repair) and carries the API references and examples it draws on.
 - **The runtime** is the CLI the skill drives. It loads your part on a kernel, checks validity, measures volume / area / bounds, renders snapshots, and exports STEP.
@@ -43,7 +43,7 @@ The skill ships through the brepjs plugin marketplace, which is this git repo. A
 
 ```
 /plugin marketplace add andymai/brepjs
-/plugin install brepjs-verify@brepjs
+/plugin install brepjs@brepjs
 ```
 
 Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
@@ -53,17 +53,17 @@ Claude Code now knows the workflow and will run the CLI for you. There is no npm
 Add the CLI to the project where you want parts verified:
 
 ```bash
-npm i -D brepjs-verify
+npm i -D brepjs-cad
 ```
 
-That's the whole install. `brepjs-verify` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory with nothing else set up. **In an existing brepjs project** it automatically prefers your locally installed `brepjs` and kernel (via a Node module-resolution hook), so your verified parts bind to the exact version you ship. There is no drift between what you verify and what you build.
+That's the whole install. `brepjs-cad` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory with nothing else set up. **In an existing brepjs project** it automatically prefers your locally installed `brepjs` and kernel (via a Node module-resolution hook), so your verified parts bind to the exact version you ship. There is no drift between what you verify and what you build.
 
 It runs **occt-wasm** as its only kernel, rather than the auto-detect fallback chain, so verification results are reproducible on one known engine.
 
 Prefer not to install anything? Run it straight from npm:
 
 ```bash
-npx -y brepjs-verify part.brep.ts
+npx -y -p brepjs-cad brep part.brep.ts
 ```
 
 ## The `.brep.ts` contract
@@ -97,14 +97,14 @@ Author parts in an ESM context (the CLI's default). A CommonJS project needs `"t
 
 ```bash
 # scaffold a parameterized part
-npx -y brepjs-verify init bracket
+npx -y -p brepjs-cad brep init bracket
 
 # author bracket/bracket.brep.ts, then verify (type-check + geometry) and write the report
-npx -y brepjs-verify verify bracket/bracket.brep.ts --check --json report.json
+npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --check --json report.json
 
 # review it visually, then export the validated STEP
-npx -y brepjs-verify verify bracket/bracket.brep.ts --snapshot shots/
-npx -y brepjs-verify verify bracket/bracket.brep.ts --step bracket.step
+npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --snapshot shots/
+npx -y -p brepjs-cad brep verify bracket/bracket.brep.ts --step bracket.step
 ```
 
 The command exits non-zero whenever the report is not `ok`, so it drops straight into CI or an agent loop.

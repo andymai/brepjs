@@ -20,7 +20,7 @@ export type BrepNs = typeof Brep;
 let cached: Promise<BrepNs> | undefined;
 let hookRegistered = false;
 
-// The brepjs-verify package root — holds both node_modules (the bundled brepjs/occt-wasm
+// The brepjs-cad package root — holds both node_modules (the bundled brepjs/occt-wasm
 // the hook falls back to) and dist/loader/ (the hook file). Walk up from this module's URL
 // to the nearest package.json named "brepjs-cad" rather than assuming a fixed depth: the
 // bundler is free to place this module at any dist depth, so a relative offset is fragile.

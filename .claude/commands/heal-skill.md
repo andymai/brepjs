@@ -108,7 +108,7 @@ agent (e.g. a typed-vs-untyped `--check` pair).
 
 ## 6. Ship
 
-Branch first (**never commit on `main`**), conventional commit (`fix(brepjs-verify): …`), push over
+Branch first (**never commit on `main`**), conventional commit (`fix(brepjs-cad): …`), push over
 SSH (sandboxed is fine), open the PR with `gh` — only the `gh pr create`/`api`/`merge` calls need
 the **unsandboxed** shell (`dangerouslyDisableSandbox`), so scope the disable to those. Monitor
 CI; when Greptile posts, **verify each finding before complying** (receiving-code-review — don't
@@ -119,7 +119,7 @@ perform agreement), fix to **5/5**, then squash-merge on green + 5/5 (the standi
 ## Scorecard & honesty
 
 Emit the two-signal scorecard in the `formatScorecard` shape (see `/eval-skill`): header
-(`model … brepjs … skill=brepjs-verify@<ver> … units=mm`), per-part `valid|INVALID` + `judge:✓|✗|—`,
+(`model … brepjs … skill=brepjs-cad@<ver> … units=mm`), per-part `valid|INVALID` + `judge:✓|✗|—`,
 per-category + TOTAL, `first-try both%` vs `eventual both%` + lift, and the failure-mode breakdown.
 **No silent caps:** if you swept a subset (`hardest`) or judged a sample, say so loudly — first-try%
 is then a lower bound, and unjudged-but-valid parts are a coverage gap (`judge:—`), not a pass.

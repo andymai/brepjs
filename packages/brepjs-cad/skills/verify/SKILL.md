@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Use when running brepjs-verify on a `.brep.ts` part and interpreting the result — reading the JSON report (ok / checks / assertions / hints), verifying visually from snapshots, driving repair of the smallest responsible section, and using the brep CLI subcommands. This is the checking step that decides whether a part is done.
+description: Use when running brep on a `.brep.ts` part and interpreting the result — reading the JSON report (ok / checks / assertions / hints), verifying visually from snapshots, driving repair of the smallest responsible section, and using the brep CLI subcommands. This is the checking step that decides whether a part is done.
 version: 0.1.0
 ---
 

@@ -43,7 +43,7 @@ export interface GltfFace {
 /**
  * Per-face material selector. Called once per face group; return a material to
  * paint that face, or `undefined` to leave it at the glTF default. Consumed by
- * tooling (e.g. brepjs-verify's `export const materials`) that has the mesh and
+ * tooling (e.g. brepjs-cad's `export const materials`) that has the mesh and
  * builds the faceId→material map passed to {@link GltfExportOptions.materials}.
  */
 export type MaterialFn = (face: GltfFace) => GltfMaterial | undefined;

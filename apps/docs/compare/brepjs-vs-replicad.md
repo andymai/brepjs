@@ -18,19 +18,19 @@ Both are exact B-Rep, both export STEP, both are open source. Neither is a toy.
 
 ## Side by side
 
-|                     | brepjs                                                                   | Replicad                                       |
-| ------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- |
-| Geometry            | Exact B-Rep (OpenCascade)                                                | Exact B-Rep (OpenCascade)                      |
-| Language            | TypeScript-first                                                         | TypeScript / JavaScript                        |
-| Type safety         | Branded types; invalid geometry fails to compile                         | Standard TypeScript types                      |
-| Errors              | `Result<T, BrepError>` with codes + suggestions                          | Throws exceptions                              |
-| Runtime             | Browser and Node                                                         | Browser                                        |
-| Kernel              | OpenCascade WASM; pluggable (Rust `brepkit` in development)              | OpenCascade WASM                               |
-| Export              | STEP, STL, IGES, glTF, DXF, 3MF, OBJ                                     | STEP, STL, glTF                                |
-| AI authoring        | `brepjs-verify` — deterministic validity, measurement, and snapshot loop | —                                              |
-| Maturity            | **Newer, smaller surface**                                               | **Mature and battle-tested**                   |
-| Community & docs    | **Growing**                                                              | **Larger, with a community manual**            |
-| Time to first model | Comparable                                                               | **A little shorter — fewer concepts up front** |
+|                     | brepjs                                                                | Replicad                                       |
+| ------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
+| Geometry            | Exact B-Rep (OpenCascade)                                             | Exact B-Rep (OpenCascade)                      |
+| Language            | TypeScript-first                                                      | TypeScript / JavaScript                        |
+| Type safety         | Branded types; invalid geometry fails to compile                      | Standard TypeScript types                      |
+| Errors              | `Result<T, BrepError>` with codes + suggestions                       | Throws exceptions                              |
+| Runtime             | Browser and Node                                                      | Browser                                        |
+| Kernel              | OpenCascade WASM; pluggable (Rust `brepkit` in development)           | OpenCascade WASM                               |
+| Export              | STEP, STL, IGES, glTF, DXF, 3MF, OBJ                                  | STEP, STL, glTF                                |
+| AI authoring        | `brepjs-cad` — deterministic validity, measurement, and snapshot loop | —                                              |
+| Maturity            | **Newer, smaller surface**                                            | **Mature and battle-tested**                   |
+| Community & docs    | **Growing**                                                           | **Larger, with a community manual**            |
+| Time to first model | Comparable                                                            | **A little shorter — fewer concepts up front** |
 
 The bold rows are the honest summary: brepjs leads on type safety, structured errors, kernel choice, and AI authoring; Replicad leads on maturity, community, and getting started quickly.
 
@@ -63,7 +63,7 @@ A chainable `shape()` wrapper is available if you prefer Replicad's throwing, fl
 
 ### Built for AI authoring
 
-This is the clearest gap. `brepjs-verify` runs a part on a real kernel and returns a deterministic report — solid validity, measured dimensions, multi-view snapshots, and a STEP export — so an agent can check its output against intent instead of guessing. It ships as a CLI and a Claude Code skill. Replicad has no equivalent.
+This is the clearest gap. `brepjs-cad` runs a part on a real kernel and returns a deterministic report — solid validity, measured dimensions, multi-view snapshots, and a STEP export — so an agent can check its output against intent instead of guessing. It ships as a CLI and a Claude Code skill. Replicad has no equivalent.
 
 ### One API, swappable kernels
 

@@ -131,7 +131,7 @@ jobs:
 
   packages-viewer:
     # Shared React/R3F renderer extracted from the playground; gated on its own
-    # since the playground (and brepjs-verify) now depend on it.
+    # since the playground (and brepjs-cad) now depend on it.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -145,7 +145,7 @@ jobs:
       - run: npm run build --workspace=brepjs-viewer
 
   packages-verify:
-    # brepjs-verify skill runtime (verify CLI + WASM viewer). Build root brepjs and
+    # brepjs-cad skill runtime (verify CLI + WASM viewer). Build root brepjs and
     # brepjs-viewer dist first so the package typecheck/viewer build resolve their
     # types (brepjs-viewer is a runtime dep, not externalized). The setup
     # composite restores the OCCT WASM the viewer build copies.

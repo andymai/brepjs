@@ -121,7 +121,7 @@ async function main(): Promise<void> {
   }
 
   const pad = Math.max(...outcomes.map((o) => o.name.length));
-  console.log('brepjs-verify eval scorecard');
+  console.log('brepjs-cad eval scorecard');
   console.log('='.repeat(pad + 8));
   for (const o of outcomes) {
     console.log(`${o.pass ? 'PASS' : 'FAIL'}  ${o.name.padEnd(pad)}`);

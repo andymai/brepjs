@@ -1,6 +1,6 @@
 name: eval-on-demand
 
-# On-demand brepjs-verify skill eval against the playground quality bar. Authors + judges each
+# On-demand brepjs-cad skill eval against the playground quality bar. Authors + judges each
 # example with Claude (BILLED — uses ANTHROPIC_API_KEY) and records the run to Langfuse: aggregate
 # scores on one trace + a brepjs-playground dataset experiment. Fanned out — the corpus is sharded
 # across 5 parallel runners (map), then a combine job merges + pushes the single run (reduce).

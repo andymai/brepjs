@@ -36,7 +36,7 @@ export default () => box(10, 10, 10, { centered: true });
 ```
 
 ```sh
-npx -y brepjs-verify model.brep.ts --step out/model.step --glb out/model.glb
+npx -y -p brepjs-cad brep model.brep.ts --step out/model.step --glb out/model.glb
 ```
 
 ## Pitfalls

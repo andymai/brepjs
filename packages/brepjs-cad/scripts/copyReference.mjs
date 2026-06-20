@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Bundle the repo's llms.txt / llms-full.txt API reference into the published package, so a
-// CLI-only user (`npm i -D brepjs-verify`, no plugin) and the skill's reference-index backstop
+// CLI-only user (`npm i -D brepjs-cad`, no plugin) and the skill's reference-index backstop
 // have the full brepjs API surface on disk. Generated at build/prepack time (gitignored) — the
 // source of truth stays the single repo-root pair, so the bundled copy can never drift.
 const pkgDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');

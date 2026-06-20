@@ -30,7 +30,7 @@ const logoSvg = await readFile(resolve(publicDir, 'logo.svg'), 'utf8');
 
 // Real brepjs output: a flanged pipe tee whose perpendicular run/branch fusion
 // yields the saddle boolean seam. Authored as branding/reddit/part/pipe-tee.brep.ts,
-// rendered through brepjs-verify's snapshot pipeline, then luminance-keyed onto the
+// rendered through brepjs-cad's snapshot pipeline, then luminance-keyed onto the
 // brand teal ramp by branding/reddit/part/processPart.mjs.
 const partPng = await readFile(resolve(root, 'branding/reddit/part/part-teal.png'));
 const partDataUri = `data:image/png;base64,${partPng.toString('base64')}`;

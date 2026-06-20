@@ -275,10 +275,10 @@
         <div class="wrap split">
           <div class="panel">
             <div class="code-bar">agent · verify loop</div>
-<pre class="term"><code><span class="p">$</span> <span class="c">/plugin install</span> brepjs-verify@brepjs
-<span class="p">$</span> <span class="c">npm i -D</span> brepjs-verify brepjs occt-wasm
+<pre class="term"><code><span class="p">$</span> <span class="c">/plugin install</span> brepjs@brepjs
+<span class="p">$</span> <span class="c">npm i -D</span> brepjs-cad brepjs occt-wasm
 
-<span class="p">$</span> brepjs-verify <span class="kk">verify</span> bin.ts
+<span class="p">$</span> brep <span class="kk">verify</span> bin.ts
 <span class="p">›</span> running on occt-wasm kernel…
 <span class="ok">✓ valid Solid</span> · vol 14 043.4 mm³ · 91 faces
 <span class="ok">✓ assertions 3/3</span> · wrote bin.step</code></pre>
@@ -288,7 +288,7 @@
             <h2>CAD an agent can prove.</h2>
             <p class="lead">
               The type system rejects invalid geometry before it runs, and
-              <code>brepjs-verify</code> runs the part on a real kernel and returns a deterministic
+              <code>brepjs-cad</code> runs the part on a real kernel and returns a deterministic
               report — validity, measured dimensions, a STEP export.
             </p>
           </div>

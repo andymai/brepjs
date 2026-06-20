@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 
-// Prefer-local resolution hook for the bundled `brepjs-verify` CLI.
+// Prefer-local resolution hook for the bundled `brep` CLI.
 //
 // The tool bundles its own `brepjs` + `occt-wasm` so it runs standalone, but a part
 // authored inside a real project should bind to THAT project's installed `brepjs`
@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 let toolBaseUrl;
 
 export async function initialize(data) {
-  // `data.toolDir` is the brepjs-verify package root; resolve bundled deps relative to a
+  // `data.toolDir` is the brepjs-cad package root; resolve bundled deps relative to a
   // file inside it so Node's resolver walks the tool's node_modules.
   const dir = data && typeof data.toolDir === 'string' ? data.toolDir : undefined;
   if (dir) {

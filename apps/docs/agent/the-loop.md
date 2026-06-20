@@ -1,23 +1,23 @@
 ---
 title: The Verify Loop
-description: 'The author → verify → repair loop in brepjs-verify: declare intent, run the part on the kernel, read the JSON report as truth, and repair the smallest section.'
+description: 'The author → verify → repair loop in brepjs-cad: declare intent, run the part on the kernel, read the JSON report as truth, and repair the smallest section.'
 ---
 
 # The Verify Loop
 
-You write a `.brep.ts` part; `brepjs-verify` runs it on a geometry kernel and reports what it measured. **Judge the part by the report, not by how the code reads.**
+You write a `.brep.ts` part; `brep` runs it on a geometry kernel and reports what it measured. **Judge the part by the report, not by how the code reads.**
 
 ## The loop (every part, in order)
 
 1. **Brief.** Convert the request into explicit parameters: dimensions (mm), datums, features, assumptions.
-2. **Author `.brep.ts`.** `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), with named constants at the top. Scaffold with `brepjs-verify init <name>`. Edit _source_, never generated artifacts.
+2. **Author `.brep.ts`.** `export default () => <shape>` using the short API (`box`, `cylinder`, `fuse`, `cut`, `fillet`, …), with named constants at the top. Scaffold with `brep init <name>`. Edit _source_, never generated artifacts.
 3. **Declare intent.** Add an `expected` block from your brief, e.g. `export const expected = { volume: 24000, tolerancePct: 1 }`. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. The CLI asserts it, catching a part that is valid but wrong-sized.
-4. **Verify (type + geometry).** `brepjs-verify verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `brepjs-verify watch part.brep.ts`.
+4. **Verify (type + geometry).** `brep verify part.brep.ts --check --json report.json`. `--check` type-checks before running (catches wrong-API calls early); the JSON report is the source of truth. Iterate fast with `brep watch part.brep.ts`.
 5. **Verify visually.** Add `--snapshot shots/` for iso/front/top/right PNGs. Review against the brief. A visual concern is **not** a conclusion: convert it to a measurement ("hole looks off-center → check `bounds`").
 6. **Repair the smallest responsible section** and re-run. Use the report's `hints` to guide the fix.
-7. **Export + hand off.** `brepjs-verify verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `brepjs-verify export part.brep.ts --all`. Report the STEP path.
+7. **Export + hand off.** `brep verify part.brep.ts --step part.step` (STEP is the validated primary deliverable; GLB/STL are derived). Batch behind a validity gate with `brep export part.brep.ts --all`. Report the STEP path.
 
-The commands above assume you've installed the package (`npm i -D brepjs-verify`) and call `brepjs-verify` directly. Otherwise prefix every command with `npx -y` to run it straight from npm.
+The commands above assume you've installed the package (`npm i -D brepjs-cad`) and call `brep` directly. Otherwise prefix every command with `npx -y -p brepjs-cad` to run it straight from npm.
 
 ## Reading the report
 
@@ -77,7 +77,7 @@ The same runtime is exported for scripts and your own harnesses:
 <!-- @no-test -->
 
 ```ts
-import { runPart, serializeReport } from 'brepjs-verify';
+import { runPart, serializeReport } from 'brepjs-cad';
 
 const { shape, report, step } = await runPart('part.brep.ts', { step: true, check: true });
 console.log(serializeReport(report)); // { ok, shapeType, checks, measurements, assertions, hints, errorInfos, errors }

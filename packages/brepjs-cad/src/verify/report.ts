@@ -105,7 +105,7 @@ export function reportOk(r: VerifyReport): boolean {
 }
 
 /**
- * Local, brepjs-verify-owned advice keyed on `BrepErrorCode` values (see `brepjs`'s public
+ * Local, brepjs-cad-owned advice keyed on `BrepErrorCode` values (see `brepjs`'s public
  * `BrepErrorCode`). Intentionally not importing the library's internal `getSuggestionForCode`:
  * this table is the agent loop's own actionable `fix` + `nextStep` guidance, and the library's
  * public `BrepError.suggestion` is still surfaced alongside it on each hint.

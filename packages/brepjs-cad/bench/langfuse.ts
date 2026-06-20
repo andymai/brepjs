@@ -171,7 +171,7 @@ export function createTelemetry(): Telemetry {
             attachScores(client, obs.traceId, r);
             await client.api.datasetRunItems.create({
               runName,
-              runDescription: `brepjs-verify eval — ${card.model} ${card.date}`,
+              runDescription: `brepjs-cad eval — ${card.model} ${card.date}`,
               datasetItemId: r.id,
               traceId: obs.traceId,
               metadata: { skillVersion: card.skillVersion, brepjsVersion: card.brepjsVersion },

@@ -8,13 +8,13 @@
 - **Function lookup table**: `docs/function-lookup.md` — alphabetical index mapping every symbol to its sub-path
 - **Which API guide**: `docs/which-api.md` — choosing between Sketcher, functional API, Drawing
 
-## Authoring with an AI Agent (brepjs-verify)
+## Authoring with an AI Agent (brepjs-cad)
 
-If you are an LLM generating brepjs CAD, use `brepjs-verify` — a CLI that runs your model on a real kernel and returns a deterministic report. **Judge a part by the report, never by how the code reads.** Published on npm as `brepjs-verify`; the companion Claude Code skill installs via `/plugin marketplace add andymai/brepjs` then `/plugin install brepjs-verify@brepjs`.
+If you are an LLM generating brepjs CAD, use `brepjs-cad` — a CLI that runs your model on a real kernel and returns a deterministic report. **Judge a part by the report, never by how the code reads.** Published on npm as `brepjs-cad`; the companion Claude Code skill installs via `/plugin marketplace add andymai/brepjs` then `/plugin install brepjs@brepjs`.
 
 Install the runtime where `brepjs` resolves (it also bundles its own `brepjs` + `occt-wasm`, so it runs standalone):
 ```bash
-npm i -D brepjs-verify
+npm i -D brepjs-cad
 ```
 
 A model is a `.brep.ts` module: a default-exported zero-arg function returning a shape (or `Result<shape>`), optionally with an `expected` block that the CLI asserts:
@@ -24,7 +24,7 @@ export const expected = { volume: 8000, tolerancePct: 1 }; // optional: volume|a
 export default () => box(40, 20, 10, { centered: true });
 ```
 
-The loop, in order: brief → author `.brep.ts` → declare `expected` → `brepjs-verify verify part.brep.ts --check --json report.json` → review `--snapshot shots/` → repair the smallest responsible section → `--step part.step` and hand off. Use `npx -y brepjs-verify …` if not installed.
+The loop, in order: brief → author `.brep.ts` → declare `expected` → `brep verify part.brep.ts --check --json report.json` → review `--snapshot shots/` → repair the smallest responsible section → `--step part.step` and hand off. Use `npx -y -p brepjs-cad brep …` if not installed.
 
 The report (stdout JSON) is the source of truth:
 - `ok` — `true` only if valid AND every assertion passes. `false` → not done.
