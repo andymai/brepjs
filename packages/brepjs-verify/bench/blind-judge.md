@@ -41,8 +41,9 @@ Per auto-valid part, **serially** (the render server is a singleton on :7373):
    varied per part. Record the mapping privately. _If a path says `author`/`ref`, the judge isn't
    blind — rename first._
 3. Dispatch ONE blind judge → verdict.
-4. **Escalate only on `tie-good` or `confidence:low`:** two more blind judges (labels re-shuffled
-   per judge), then vote **each signal the verdict map consumes independently** — the author's
+4. **Escalate only on `tie-good` or `confidence:low`:** two more blind judges on the **same per-part
+   A/B map** (independent subagents — no need to re-shuffle; the step-2 coin-flip already blinds
+   each), then vote **each signal the verdict map consumes independently** — the author's
    per-label class (`designed` vs `partial`/`blob`) and the pairwise call (author ≥ reference?) —
    taking the majority of each across the three judges (a 3-way split with no majority on _either_
    → `judge:⚠`, inconclusive — report it, don't guess). `tie-blob` is _not_ an escalation — it means both renders read
