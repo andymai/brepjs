@@ -54,7 +54,8 @@ Render the auto-valid parts **serially** (`--snapshot`, singleton server) and vi
 iso/detail render against the description + the playground reference `code` (adapt it:
 `brepjs/quick`→`brepjs`, `export default X`→`export default () => X`): a **designed object as
 polished as the reference**, or a valid blob? Note: clean-room authors stop at `ok:true` without
-the polish pass (step 8), so this measures _first-valid_ design quality — call that out.
+the polish pass (SKILL.md's authoring loop, step 8), so this measures _first-valid_ design
+quality — call that out.
 
 ## 3. Diagnose — verify before healing
 
@@ -84,7 +85,8 @@ agent (e.g. a typed-vs-untyped `--check` pair).
 ## 6. Ship
 
 Branch first (**never commit on `main`**), conventional commit (`fix(brepjs-verify): …`), push over
-SSH, open the PR with `gh` (needs the **unsandboxed** shell — `dangerouslyDisableSandbox`). Monitor
+SSH (sandboxed is fine), open the PR with `gh` — only the `gh pr create`/`api`/`merge` calls need
+the **unsandboxed** shell (`dangerouslyDisableSandbox`), so scope the disable to those. Monitor
 CI; when Greptile posts, **verify each finding before complying** (receiving-code-review — don't
 perform agreement), fix to **5/5**, then squash-merge on green + 5/5 (the standing flow). Multiple
 **independent, each-RED→GREEN-verified** heals in one PR is fine; **defer single-incident findings**
