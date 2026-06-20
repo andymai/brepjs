@@ -9,6 +9,7 @@ Build a 2D profile with the `draw` pen or a `draw*` factory, place it with `.ske
 | `drawRectangle`        | `drawRectangle(width, height)`                   | `Drawing`                                 |
 | `drawRoundedRectangle` | `drawRoundedRectangle(width, height, r?)`        | `Drawing`                                 |
 | `drawEllipse`          | `drawEllipse(majorRadius, minorRadius)`          | `Drawing`                                 |
+| `drawPolysides`        | `drawPolysides(radius, sidesCount, sagitta?)`    | `Drawing` (regular polygon: hex, etc.)    |
 | `.sketchOnPlane`       | `.sketchOnPlane('XY', origin?)`                  | `SketchInterface \| Sketches` (see below) |
 | `.extrude`             | `sketch.extrude(distance, { twistAngle?, ... })` | `Shape3D`                                 |
 | `revolve`              | `revolve(face, { axis?, at?, angle? })`          | `Result<Shape3D>`                         |
@@ -58,6 +59,7 @@ export default () => {
 - A `Drawing` is purely 2D; you must `.sketchOnPlane(...)` before `.extrude`.
 - `.sketchOnPlane(...)` returns `SketchInterface | Sketches`. `.extrude(...)` works on the union, but `.face()` / `.sweepSketch()` do not; for a single profile that needs a face (revolve), use `polygon(points3D)` instead (see above) to stay `--check`-clean.
 - Low-level `circle`/`ellipse`/`line` (primitives) return **edges**, not faces; use the `draw*` factories when you need a closed profile to extrude.
+- **For an extruded regular polygon (hex prism, nut, etc.) use `drawPolysides(radius, sides).sketchOnPlane('XY', origin?).extrude(h)`.** Do **not** reach for `polygon(points3D).extrude(...)`: `polygon()` returns an `OrientedFace` (for `revolve`/a face), which has **no `.extrude()`** — `tsc` rejects it with `TS2339: Property 'extrude' does not exist on type '… face … oriented … planar'`.
 - **`polygon(points)` needs distinct points** — two coincident/duplicate points make a zero-length edge and crash (`makeLineEdge: construction failed`). Dedupe before building, especially in computed tooth/gear profiles where a land and a groove point can land on the same coordinate.
 
 See also: docs/function-lookup.md → brepjs/sketching.
