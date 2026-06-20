@@ -40,7 +40,7 @@ the body count or shape via `volume`/`bounds`, never a `shapeType` key.
 
 **Prefer `bounds`** over a hand-computed `volume` (a wrong number fails a _correct_ part). Predict
 only extents you **place directly** — a footprint, where each body sits, the flat face of a body you
-set there — these read off your datums and catch a dropped/misplaced body. An extent **governed by a
+placed there — these read off your datums and catch a dropped/misplaced body. An extent **governed by a
 rotation, a part's orientation, a proud sub-feature, a half-space clip, or the outer top/bottom of a
 deep multi-body stack** is not a datum: bound it generously or measure-first (run once, copy the
 report's measured value). That last one is the #1 `EXPECTED_ASSERTION_FAILED` on assemblies — a
