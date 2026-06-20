@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.0](https://github.com/andymai/brepjs/compare/brepjs-v18.98.0...brepjs-v18.99.0) (2026-06-20)
+
+
+### Features
+
+* **playground:** add scotch yoke, worm gear, rack & pinion, and 3-jaw chuck examples ([#1536](https://github.com/andymai/brepjs/issues/1536)) ([840c70f](https://github.com/andymai/brepjs/commit/840c70f5c6396fdec82aee109d161e8593c485bc))
+
 ## [18.98.0](https://github.com/andymai/brepjs/compare/brepjs-v18.97.2...brepjs-v18.98.0) (2026-06-20)
 
 
