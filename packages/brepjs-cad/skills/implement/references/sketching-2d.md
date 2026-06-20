@@ -25,7 +25,7 @@ export default () => {
 };
 ```
 
-**Obround / slot:** a corner radius approaching half the width gives fully-rounded (stadium) ends — extrude and `cut` it through a plate for a rounded-end slot. **Keep the radius _below_ `width / 2`, not exactly equal.** At `r === width / 2` the straight side segments collapse to zero length (`drawRoundedRectangle` only emits the `width - 2*r` side when `r < width / 2` — `src/2d/blueprints/cannedBlueprints.ts:84`); the degenerate profile then `KERNEL_FAILED`s when you extrude/`cut` it. Use a hair under, e.g. `drawRoundedRectangle(length, width, width / 2 - 0.01)` (or `width * 0.499`), for a stadium slot that builds.
+**Obround / slot:** a corner radius of half the **shorter** side gives fully-rounded (stadium) ends — `drawRoundedRectangle(length, width, width / 2)` with `length > width` extrudes and `cut`s cleanly (the long-axis straight survives; only the short-side straight collapses, which _is_ the rounded end). The one degenerate case is a **square** obround: when `width === height` and `r === width / 2`, _both_ straight pairs collapse to zero and the all-arc profile `KERNEL_FAILED`s on extrude/`cut` (`drawRoundedRectangle` emits each straight side only while `r < that side / 2` — `src/2d/blueprints/cannedBlueprints.ts:84`). For a square rounded end nudge under: `width / 2 - 0.01`. Also keep `r` below half of **each** side — a radius past a half-dimension over-rounds and fails too.
 
 ## Revolving a profile
 
