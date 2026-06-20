@@ -19,6 +19,14 @@ the centre and add a hub/keyway with `cut` afterward.
 - involute point at roll angle θ: `x = br·(cosθ + θ·sinθ)`, `y = br·(sinθ − θ·cosθ)`; θ runs 0 (base)
   → `θmax = √((ra/br)² − 1)` (tip). Half-tooth angular width at the pitch circle = `π/(2N)`; rotate
   each flank so its pitch point lands there.
+- **The +angle flank must use the MIRRORED involute** (`[x, −y]`) with `offset = halfTooth + φpitch`,
+  so the tooth NARROWS to its tip. The un-mirrored flank diverges → teeth wider at the tip (a
+  **dovetail**) that jam instead of meshing — and a single such gear still passes `isValidSolid`.
+- **Add a root fillet where `rr < br`** (i.e. `N` below ~42). A sharp radial root lets the mating
+  tooth tip interfere below the base circle (~tens of mm³ even at the right phase). Use a circular
+  fillet tangent to the flank at the base point, run to the shared space-centre point
+  `rot([rr,0], π/N)` — adjacent fillets meet there (dedupe that vertex) and it undercuts to clear
+  the tip. See `examples/spur-gear.brep.ts`.
 
 ## Meshing rules (get these wrong and the gears jam or skip)
 
