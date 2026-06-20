@@ -39,10 +39,14 @@ putting `shapeType` (or any other field) in `expected` also reports `EXPECTED_UN
 the body count or shape via `volume`/`bounds`, never a `shapeType` key.
 
 **Prefer `bounds`** over a hand-computed `volume` (a wrong number fails a _correct_ part). Predict
-only extents you **place directly** — a footprint, a stack height, where each body sits — these read
-off your datums and catch a dropped/misplaced body. An extent **governed by a rotation, a part's
-orientation, a proud sub-feature, or a half-space clip** is not a datum: bound it generously or
-measure-first (run once, copy the report's measured value).
+only extents you **place directly** — a footprint, where each body sits, the flat face of a body you
+set there — these read off your datums and catch a dropped/misplaced body. An extent **governed by a
+rotation, a part's orientation, a proud sub-feature, a half-space clip, or the outer top/bottom of a
+deep multi-body stack** is not a datum: bound it generously or measure-first (run once, copy the
+report's measured value). That last one is the #1 `EXPECTED_ASSERTION_FAILED` on assemblies — a
+stack's extreme z is usually crowned by a rounded/proud feature (a carrier hub, a ball cap) and sums
+every body's placement error, so **measure it; don't hand-add the stack**. A flat lid-on-base height
+you place is fine; the moment a curved or proud sub-feature defines the extreme, it's governed.
 
 ## Hard rules
 
