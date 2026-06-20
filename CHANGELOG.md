@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.97.2](https://github.com/andymai/brepjs/compare/brepjs-v18.97.1...brepjs-v18.97.2) (2026-06-20)
+
+
+### Bug Fixes
+
+* **topology:** generated boolean faces inherit parent origin ([#1521](https://github.com/andymai/brepjs/issues/1521)) ([c788ed7](https://github.com/andymai/brepjs/commit/c788ed7c71997fe360e49c4c555f8abb748fe548))
+
 ## [18.97.1](https://github.com/andymai/brepjs/compare/brepjs-v18.97.0...brepjs-v18.97.1) (2026-06-20)
 
 
