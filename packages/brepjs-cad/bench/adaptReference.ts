@@ -28,8 +28,12 @@ export function adaptReferenceCode(code: string): string {
   const usesPlain = /from ['"]brepjs['"]/.test(code) && !/from ['"]brepjs\/quick['"]/.test(code);
   const src = usesPlain ? 'brepjs' : QUICK;
 
-  // The default export is a single expression — a call (`fn()`), a variable, or an array literal.
-  const m = code.match(/export default\s+([\s\S]+?);[ \t]*\r?\n?$/m);
+  // The default export is a single expression — a call (`fn()`), a variable, or an array literal,
+  // possibly spanning lines. Anchor `$` to end-of-string (no `m` flag) so the non-greedy capture runs
+  // to the expression's terminating `;` (the last one before trailing whitespace), not the first `;`
+  // that merely happens to end an inner line of a multi-line default. `export default` is always the
+  // module's final statement in the corpus, so the trailing `;\s*$` is unambiguous.
+  const m = code.match(/export default\s+([\s\S]+?);\s*$/);
   if (!m || m.index === undefined || m[1] === undefined) {
     throw new Error('adaptReference: no `export default <expr>;` found');
   }

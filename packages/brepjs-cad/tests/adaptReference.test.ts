@@ -27,6 +27,23 @@ describe('adaptReferenceCode (blind-judge reference adaptation)', () => {
     expect(out).toContain('__refCompound(__ref)');
   });
 
+  it('captures a multi-line default with inner semicolons (end-anchored, not first-`;`)', () => {
+    const code = [
+      "import { box, cylinder } from 'brepjs/quick';",
+      'export default (() => {',
+      '  const a = box(1, 1, 1);',
+      '  const b = cylinder(1, 1);',
+      '  return [a, b];',
+      '})();',
+    ].join('\n');
+    const out = adaptReferenceCode(code);
+    // The whole IIFE must be captured — not truncated at the inner `const a = …;`.
+    expect(out).toContain('const a = box(1, 1, 1);');
+    expect(out).toContain('return [a, b];');
+    expect(out).toContain('})());');
+    expect(out).not.toContain('const __ref = await (box(1, 1, 1));');
+  });
+
   it('passes a single-shape default through the same wrapper', () => {
     const code = ["import { box } from 'brepjs/quick';", 'export default box(2, 3, 4);'].join('\n');
     const out = adaptReferenceCode(code);
