@@ -52,7 +52,13 @@ describe('playground examples', () => {
   // multi-solid compound — a pin floating off its disc, parts glued by a fuse
   // that never welded — passes eval+mesh (a disjoint compound still meshes) yet
   // detaches on STEP/GLB export. getSolids() is the only thing that catches it.
-  const CONNECTED_BODY_EXAMPLES = ['universal-joint', 'geneva-drive', 'bench-vise'];
+  const CONNECTED_BODY_EXAMPLES = [
+    'universal-joint',
+    'geneva-drive',
+    'bench-vise',
+    'scotch-yoke',
+    'three-jaw-chuck',
+  ];
   for (const id of CONNECTED_BODY_EXAMPLES) {
     it(`every returned body is a single connected solid: ${id}`, async () => {
       const example = EXAMPLES.find((e) => e.id === id);

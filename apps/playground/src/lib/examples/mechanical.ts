@@ -3964,4 +3964,557 @@ export default [
 ];
 `,
   },
+  {
+    id: 'scotch-yoke',
+    label: 'Scotch Yoke',
+    description:
+      'A Scotch yoke frozen at a 35° crank angle: the offset crank pin rides a vertical slot in the yoke plate, converting rotation into pure sinusoidal linear motion (stroke = 2× crank radius). Three distinct colored bodies — frame, crank, slotted yoke + piston rod.',
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  cut,
+  fuse,
+  intersect,
+  rotate,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Scotch yoke — crank rotation -> sinusoidal linear motion, frozen at theta=35deg.
+// Datums: baseplate top at Z=0; crank axis along Y at H_AXIS; yoke slides along X.
+// Stroke = 2*crank radius. Three distinct bodies: frame, crank, yoke.
+const PLATE_W = 120, PLATE_D = 46, PLATE_H = 8;
+const H_AXIS = 46;
+const CRANK_R = 16; // pin offset -> 32 mm stroke
+const DISC_R = 22, DISC_T = 8, DISC_Y0 = 8;
+const SHAFT_R = 4, BORE_R = SHAFT_R + 0.4;
+const PIN_R = 4.5, SLOT_W = 2 * PIN_R + 0.4, SLOT_L = 2 * CRANK_R + 2 * PIN_R + 4;
+const ROD_R = 6, GUIDE_R = ROD_R + 0.3;
+const PILLAR_W = 14, PILLAR_D = 8, PILLAR_TOP = H_AXIS + 8;
+const PILLAR_OUTER_Y = -18, PILLAR_INNER_Y = 0;
+const YOKE_Y0 = 20, YOKE_T = 6, YOKE_PLATE_W = 22, YOKE_PLATE_H = SLOT_L + 10;
+const GUIDE_X = PLATE_W / 2 - 14, GUIDE_W = 16, GUIDE_D = 16, GUIDE_H = H_AXIS + 12;
+const DISPLAY_THETA = 35;
+
+// Frame: baseplate + two bored bearing pillars straddling the disc + a bored rod guide boss.
+function frame() {
+  const plate = box(PLATE_W, PLATE_D, PLATE_H, { at: [0, 0, -PLATE_H / 2] });
+  const pillar = (y: number) => {
+    const block = box(PILLAR_W, PILLAR_D, PILLAR_TOP, { at: [0, y, PILLAR_TOP / 2] });
+    const bore = cylinder(BORE_R, PILLAR_D + 4, { at: [0, y - PILLAR_D / 2 - 2, H_AXIS], axis: [0, 1, 0] });
+    return unwrap(cut(block, bore));
+  };
+  let body = unwrap(fuse(plate, pillar(PILLAR_OUTER_Y)));
+  body = unwrap(fuse(body, pillar(PILLAR_INNER_Y)));
+
+  const boss = box(GUIDE_W, GUIDE_D, GUIDE_H, { at: [GUIDE_X, YOKE_Y0 + YOKE_T / 2 - GUIDE_D / 2, GUIDE_H / 2] });
+  body = unwrap(fuse(body, boss));
+  // Turned bearing collar on the rod-entry face (a machined seat, not a raw box face).
+  const collar = cylinder(GUIDE_R + 3, 3, { at: [GUIDE_X - GUIDE_W / 2 - 3, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
+  body = unwrap(fuse(body, collar));
+  const guideBore = cylinder(GUIDE_R, GUIDE_W + 10, { at: [GUIDE_X - GUIDE_W / 2 - 5, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
+  body = unwrap(cut(body, guideBore));
+  return body;
+}
+
+// Crank: disc + shaft (through both pillars) + offset pin + crescent counterweight + flywheel holes.
+function crank() {
+  const disc = cylinder(DISC_R, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
+  const shaftY0 = PILLAR_OUTER_Y - 4;
+  const shaftLen = DISC_Y0 + DISC_T - PILLAR_OUTER_Y + 4;
+  const shaft = cylinder(SHAFT_R, shaftLen, { at: [0, shaftY0, H_AXIS], axis: [0, 1, 0] });
+  let body = unwrap(fuse(disc, shaft));
+  // Machined lead-in cone on the exposed shaft end + a stepped hub collar at the disc back face.
+  body = unwrap(fuse(body, cone(SHAFT_R, SHAFT_R - 1.4, 1.6, { at: [0, shaftY0, H_AXIS], axis: [0, -1, 0] })));
+  body = unwrap(fuse(body, cylinder(SHAFT_R + 3, 2, { at: [0, DISC_Y0, H_AXIS], axis: [0, -1, 0] })));
+  // Offset pin (parallel to the Y axis) cantilevered forward into the yoke slot.
+  const pin = cylinder(PIN_R, YOKE_Y0 + YOKE_T - DISC_Y0, { at: [CRANK_R, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
+  body = unwrap(fuse(body, pin));
+  // Crescent counterweight: a ring clipped to the anti-pin (-X) half-space.
+  const ring = unwrap(cut(
+    cylinder(DISC_R + 4, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] }),
+    cylinder(DISC_R - 4, DISC_T + 2, { at: [0, DISC_Y0 - 1, H_AXIS], axis: [0, 1, 0] })
+  ));
+  const halfSpace = box(DISC_R + 8, DISC_T + 2, 2 * (DISC_R + 8), { at: [-(DISC_R + 8) / 2, DISC_Y0, H_AXIS] });
+  body = unwrap(fuse(body, unwrap(intersect(ring, halfSpace))));
+  // Bolt-circle lightening holes through the disc web (flywheel look), clear of shaft/pin/crescent.
+  for (const deg of [60, 120, 240, 300]) {
+    const a = (deg * Math.PI) / 180;
+    body = unwrap(cut(body, cylinder(2.6, DISC_T + 4, { at: [11 * Math.cos(a), DISC_Y0 - 2, H_AXIS + 11 * Math.sin(a)], axis: [0, 1, 0] })));
+  }
+  return body;
+}
+
+// Yoke: slotted plate (vertical slot rides the pin) + piston rod into the guide + piston nose.
+function yoke() {
+  const plate = box(YOKE_PLATE_W, YOKE_T, YOKE_PLATE_H, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
+  const slot = box(SLOT_W, YOKE_T + 4, SLOT_L, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
+  let body = unwrap(cut(plate, slot));
+  // Weight-relief holes in the top/bottom bands, clear of the pin's Z travel inside the slot.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      body = unwrap(cut(body, cylinder(1.8, YOKE_T + 4, { at: [CRANK_R + sx * (YOKE_PLATE_W / 2 - 3.3), YOKE_Y0 - 2, H_AXIS + sz * 22.5], axis: [0, 1, 0] })));
+    }
+  }
+  const rodStartX = CRANK_R + YOKE_PLATE_W / 2;
+  const rodLen = GUIDE_X - rodStartX + GUIDE_W / 2 + 2;
+  const rodY = YOKE_Y0 + YOKE_T / 2;
+  body = unwrap(fuse(body, cylinder(ROD_R, rodLen, { at: [rodStartX, rodY, H_AXIS], axis: [1, 0, 0] })));
+  const pistonX0 = rodStartX + rodLen - 6;
+  body = unwrap(fuse(body, cylinder(GUIDE_R - 0.2, 6, { at: [pistonX0, rodY, H_AXIS], axis: [1, 0, 0] })));
+  body = unwrap(fuse(body, cone(GUIDE_R - 0.2, GUIDE_R - 2, 2, { at: [pistonX0 + 6, rodY, H_AXIS], axis: [1, 0, 0] })));
+  return body;
+}
+
+// Frozen display pose: crank rotated about Y, yoke shifted X = CRANK_R*cos(theta).
+const x = CRANK_R * Math.cos((DISPLAY_THETA * Math.PI) / 180);
+const frameBody = frame();
+const crankBody = rotate(crank(), DISPLAY_THETA, { at: [0, 0, H_AXIS], axis: [0, 1, 0] });
+const yokeBody = translate(yoke(), [x - CRANK_R, 0, 0]);
+
+export default [
+  color(frameBody, '#d2d4d9'),
+  color(crankBody, '#9aa0a8'),
+  color(yokeBody, '#4d5360'),
+];
+`,
+  },
+  {
+    id: 'worm-gear-drive',
+    label: 'Worm Gear Drive',
+    description:
+      'A right-angle 24:1 worm gear reducer: a single-start steel worm (4.76° lead angle — self-locking) meshing a 24-tooth bronze wheel at the derived 36 mm center distance, with a visible backlash gap. Three distinct colored bodies on a cast frame.',
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  torus,
+  line,
+  wire,
+  closedWire,
+  loft,
+  fuse,
+  fuseAll,
+  cut,
+  circularPattern,
+  rotate,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Right-angle worm gear reducer (same module m=2 on both members).
+//   worm single-start: lead = pi*m; pitch O24 -> OD 28; lead angle 4.76deg (self-locking).
+//   wheel z=24 -> pitch O48, OD 52. Center distance = 12 + 24 = 36 (DERIVED).
+// The worm helix is lofted through rotated V-sections (occt-wasm can't sweep a helix).
+const MODULE = 2.0;
+const STARTS = 1;
+const LEAD = Math.PI * MODULE * STARTS;
+const WORM_PITCH_R = 12;
+const WORM_OUTER_R = WORM_PITCH_R + MODULE;
+const WORM_ROOT_R = WORM_PITCH_R - 1.25 * MODULE;
+const LEAD_ANGLE_DEG = (Math.atan(LEAD / (2 * Math.PI * WORM_PITCH_R)) * 180) / Math.PI;
+const WHEEL_TEETH = 24;
+const WHEEL_PITCH_R = (MODULE * WHEEL_TEETH) / 2;
+const WHEEL_OUTER_R = WHEEL_PITCH_R + MODULE;
+const RATIO = WHEEL_TEETH / STARTS;
+const CENTER_DIST = WORM_PITCH_R + WHEEL_PITCH_R; // 36 (DERIVED)
+const MESH_GAP = 1.6; // visible backlash pull-away (display part)
+const WHEEL_Z = 40;
+const WORM_LEN = 60;
+const WHEEL_THICK = 14;
+const PLATE_W = 96, PLATE_D = 70, PLATE_H = 8;
+
+// Frame: baseplate + 2 worm pillow blocks (X-bored, cap-screw bosses) + wheel post + top bridge.
+function frame() {
+  const plate = box(PLATE_W, PLATE_D, PLATE_H, { at: [0, -CENTER_DIST / 2, -PLATE_H / 2] });
+  const blockW = 12, blockH = WHEEL_Z + 8, bore = 5;
+  const mkPillow = (px: number) => {
+    const blockTop = blockH - PLATE_H;
+    const b = box(blockW, 28, blockH, { at: [px, -CENTER_DIST, blockH / 2 - PLATE_H] });
+    const mkBoss = (sy: number) => {
+      const pad = cylinder(3, 2.5, { at: [px + blockW / 2, -CENTER_DIST + sy * 9, blockTop] });
+      const head = cylinder(1.5, 2, { at: [px + blockW / 2, -CENTER_DIST + sy * 9, blockTop + 1.0] });
+      return unwrap(cut(pad, head));
+    };
+    const withBosses = unwrap(fuseAll([b, mkBoss(1), mkBoss(-1)], { unsafe: true }));
+    const hole = cylinder(bore, blockW + 4, { at: [px - (blockW + 4) / 2, -CENTER_DIST, WHEEL_Z], axis: [1, 0, 0] });
+    return unwrap(cut(withBosses, hole));
+  };
+  const pillowL = mkPillow(-WORM_LEN / 2 + 2);
+  const pillowR = mkPillow(WORM_LEN / 2 - 2);
+  const post = cylinder(9, WHEEL_Z - WHEEL_THICK / 2 + 2, { at: [0, 0, -PLATE_H] });
+  const postBored = unwrap(cut(post, cylinder(4.2, WHEEL_Z, { at: [0, 0, -PLATE_H] })));
+  const bridgeZ = WHEEL_Z + WHEEL_THICK / 2 + 5;
+  const bridgeTop = bridgeZ + 7;
+  const bridge = box(20, 18, 7, { at: [0, 0, bridgeZ] });
+  const mkBridgeBoss = (sx: number) => {
+    const pad = cylinder(3, 2.5, { at: [sx * 7, 0, bridgeTop] });
+    const head = cylinder(1.5, 2, { at: [sx * 7, 0, bridgeTop + 1.0] });
+    return unwrap(cut(pad, head));
+  };
+  const bridgeWithBosses = unwrap(fuseAll([bridge, mkBridgeBoss(1), mkBridgeBoss(-1)], { unsafe: true }));
+  const bridgeBored = unwrap(cut(bridgeWithBosses, cylinder(4.2, 12, { at: [0, 0, WHEEL_Z + WHEEL_THICK / 2 + 1] })));
+  const legL = box(6, 14, WHEEL_THICK + 12, { at: [-13, 0, WHEEL_Z + (WHEEL_THICK + 12) / 2] });
+  const legR = box(6, 14, WHEEL_THICK + 12, { at: [13, 0, WHEEL_Z + (WHEEL_THICK + 12) / 2] });
+  return unwrap(fuseAll([plate, pillowL, pillowR, postBored, bridgeBored, legL, legR], { unsafe: true }));
+}
+
+// Worm: single-start helical ridge lofted through rotated V-sections along Z, then rotated onto X.
+function worm() {
+  const SPT = 16; // sections per turn (fidelity vs. speed)
+  const nSec = Math.ceil((WORM_LEN / LEAD) * SPT);
+  const A = LEAD * 0.42;
+  const sections = [];
+  for (let i = 0; i <= nSec; i++) {
+    const th = (i / SPT) * 2 * Math.PI;
+    const z = (LEAD * th) / (2 * Math.PI);
+    const cx = WORM_PITCH_R * Math.cos(th);
+    const cy = WORM_PITCH_R * Math.sin(th);
+    const rx = Math.cos(th);
+    const ry = Math.sin(th);
+    const pt = (u: number, v: number): [number, number, number] => [cx + u * rx, cy + u * ry, z + v];
+    const p1 = pt(WORM_ROOT_R - WORM_PITCH_R - 0.3, -A);
+    const apex = pt(WORM_OUTER_R - WORM_PITCH_R, 0);
+    const p3 = pt(WORM_ROOT_R - WORM_PITCH_R - 0.3, A);
+    sections.push(unwrap(closedWire(unwrap(wire([line(p1, apex), line(apex, p3), line(p3, p1)])))));
+  }
+  const ridge = unwrap(loft(sections, { ruled: true }));
+  const threaded = unwrap(fuse(cylinder(WORM_ROOT_R + 0.15, WORM_LEN), ridge));
+  const shaftR = 4.8;
+  const stubLo = cylinder(shaftR, 12, { at: [0, 0, -12] });
+  const stubHi = cylinder(shaftR, 12, { at: [0, 0, WORM_LEN] });
+  const noseLo = cone(shaftR, shaftR - 1.4, 1.6, { at: [0, 0, -12], axis: [0, 0, -1] });
+  const noseHi = cone(shaftR, shaftR - 1.4, 1.6, { at: [0, 0, WORM_LEN + 12], axis: [0, 0, 1] });
+  const wormShaft = unwrap(fuseAll([threaded, stubLo, stubHi, noseLo, noseHi], { unsafe: true }));
+  const grooveLo = torus(shaftR - 0.4, 0.6, { at: [0, 0, -4] });
+  const grooveHi = torus(shaftR - 0.4, 0.6, { at: [0, 0, WORM_LEN + 4] });
+  const wormZ = unwrap(cut(wormShaft, unwrap(fuseAll([grooveLo, grooveHi], { unsafe: true }))));
+  return rotate(translate(wormZ, [0, 0, -WORM_LEN / 2]), 90, { axis: [0, 1, 0] });
+}
+function placedWorm() {
+  return translate(worm(), [0, -(CENTER_DIST + MESH_GAP), WHEEL_Z]);
+}
+
+// Wheel: straight-rim blank, 24 helix-angled tooth gaps, bored keyed hub, 6 lightening holes.
+function wheel() {
+  const blank = cylinder(WHEEL_OUTER_R, WHEEL_THICK, { at: [0, 0, -WHEEL_THICK / 2] });
+  const gapDepth = 4.5 * MODULE;
+  const cutter0 = box(gapDepth, MODULE * 1.6, WHEEL_THICK + 6, { at: [WHEEL_OUTER_R - gapDepth / 2 + 0.5, 0, 0] });
+  const cutter = rotate(cutter0, LEAD_ANGLE_DEG, { at: [WHEEL_OUTER_R, 0, 0], axis: [1, 0, 0] });
+  const toothed = unwrap(cut(blank, unwrap(circularPattern(cutter, [0, 0, 1], WHEEL_TEETH))));
+  const withHub = unwrap(fuse(toothed, cylinder(11, WHEEL_THICK + 10, { at: [0, 0, -(WHEEL_THICK + 10) / 2] })));
+  const bored = unwrap(cut(withHub, cylinder(4.2, WHEEL_THICK + 30, { at: [0, 0, -(WHEEL_THICK + 30) / 2] })));
+  const keyed = unwrap(cut(bored, box(2.4, 2.4, WHEEL_THICK + 12, { at: [3.2, -1.2, -(WHEEL_THICK + 12) / 2] })));
+  const lightHole = cylinder(3.5, WHEEL_THICK + 4, { at: [WHEEL_PITCH_R - 6, 0, -(WHEEL_THICK + 4) / 2] });
+  return unwrap(cut(keyed, unwrap(circularPattern(lightHole, [0, 0, 1], 6))));
+}
+function placedWheel() {
+  return translate(wheel(), [0, 0, WHEEL_Z]);
+}
+
+export default [
+  color(frame(), '#80848c'),
+  color(placedWorm(), '#a0a6ad'),
+  color(placedWheel(), '#b87333'),
+];
+`,
+  },
+  {
+    id: 'rack-and-pinion',
+    label: 'Rack & Pinion',
+    description:
+      'A module-2 rack & pinion frozen mid-travel: an 18-tooth involute pinion (pitch Ø36) meshing a straight-flanked rack along the pitch line — the pinion axis sits exactly one pitch-radius (18 mm) above the rack, the condition for conjugate rolling. Three distinct colored bodies.',
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  cut,
+  fuse,
+  fillet,
+  rotate,
+  translate,
+  getBounds,
+  edgeFinder,
+  rectangularPattern,
+  polygon,
+  extrude,
+  getSolids,
+  validSolid,
+  unwrap,
+} from 'brepjs/quick';
+import type { Edge } from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Rack & pinion (same module m=2 on both members), frozen mid-travel with teeth meshed.
+// Mesh: pinion pitch circle (r=18) tangent to the rack pitch line -> axis 18 mm above it.
+const MODULE = 2.0;
+const PA = (20 * Math.PI) / 180; // 20deg pressure angle
+const PITCH = Math.PI * MODULE; // circular pitch 6.283
+const WHOLE_DEPTH = 2.25 * MODULE;
+const ADDENDUM = MODULE;
+const BACKLASH = 0.5;
+const PINION_TEETH = 18;
+const PITCH_R = (MODULE * PINION_TEETH) / 2; // 18
+const OUTER_R = PITCH_R + ADDENDUM; // 20 -> OD 40
+const ROOT_R = PITCH_R - 1.25 * MODULE; // 15.5
+const RAIL_H = 10, CHANNEL_FLOOR_Z = 4, RACK_BODY_H = 12;
+const RACK_TIP_Z = CHANNEL_FLOOR_Z + RACK_BODY_H; // 16
+const RACK_PITCH_Z = RACK_TIP_Z - ADDENDUM; // 14
+const PINION_AXIS_Z = RACK_PITCH_Z + PITCH_R; // 32
+const RAIL_LEN = 140, RAIL_WIDTH = 22, STOP_W = 8, STOP_H = 14;
+const CHANNEL_W = 14, RACK_W = CHANNEL_W - 1.0, RACK_LEN = 96;
+const GEAR_THICK = 10, SHAFT_R = 4, BORE_R = 5, POST_THICK = 8, POST_W = 26;
+const FROZEN_THETA = 10;
+
+// Frame: U-channel guide rail + lightening pockets + 2 end stops (bumpers) + bored bearing post + gussets.
+function frame() {
+  const rail = box(RAIL_LEN, RAIL_WIDTH, RAIL_H, { at: [0, 0, RAIL_H / 2] });
+  const channel = box(RAIL_LEN + 2, CHANNEL_W, RAIL_H - CHANNEL_FLOOR_Z + 2, { at: [0, 0, CHANNEL_FLOOR_Z + (RAIL_H - CHANNEL_FLOOR_Z + 2) / 2] });
+  let body = unwrap(cut(rail, channel));
+  const nPockets = 7, pocketPitch = 16, pocketSpan = (nPockets - 1) * pocketPitch;
+  for (let i = 0; i < nPockets; i++) {
+    const px = -pocketSpan / 2 + i * pocketPitch;
+    for (const sy of [-1, 1]) {
+      body = unwrap(cut(body, box(12, 3.5, 5, { at: [px, sy * (RAIL_WIDTH / 2 - 0.75), RAIL_H / 2] })));
+    }
+  }
+  const stopXL = -RAIL_LEN / 2 + STOP_W / 2, stopXR = RAIL_LEN / 2 - STOP_W / 2, stopZ = RAIL_H + STOP_H / 2;
+  body = unwrap(fuse(body, box(STOP_W, RAIL_WIDTH, STOP_H, { at: [stopXL, 0, stopZ] })));
+  body = unwrap(fuse(body, box(STOP_W, RAIL_WIDTH, STOP_H, { at: [stopXR, 0, stopZ] })));
+  body = unwrap(fuse(body, cylinder(3.5, 2, { at: [stopXL + STOP_W / 2 + 1, 0, RAIL_H + 5], axis: [1, 0, 0] })));
+  body = unwrap(fuse(body, cylinder(3.5, 2, { at: [stopXR - STOP_W / 2 - 1, 0, RAIL_H + 5], axis: [1, 0, 0] })));
+
+  const postY = -(RAIL_WIDTH / 2 + POST_THICK / 2);
+  const post = box(POST_W, POST_THICK, PINION_AXIS_Z + 8, { at: [0, postY, (PINION_AXIS_Z + 8) / 2] });
+  const bore = cylinder(SHAFT_R + 0.3, POST_THICK + 4, { at: [0, postY - (POST_THICK + 4) / 2, PINION_AXIS_Z], axis: [0, 1, 0] });
+  const postSolid = unwrap(validSolid(getSolids(unwrap(cut(post, bore)))[0]));
+  const postEdges = edgeFinder().inDirection('Y').when((f: Edge) => getBounds(f).zMax > PINION_AXIS_Z + 6).findAll(postSolid);
+  let postBody = postEdges.length > 0 ? unwrap(fillet(postSolid, postEdges, 3)) : postSolid;
+  // Bracing gussets: triangular webs (X-Z plane) tying the post back to the rail top.
+  const gussetPrism = unwrap(extrude(unwrap(polygon([[-9, RAIL_H, 0], [9, RAIL_H, 0], [-9, RAIL_H + 26, 0]])), 6));
+  const gussetUp = rotate(gussetPrism, 90, { axis: [1, 0, 0] });
+  for (const gx of [-POST_W / 4, POST_W / 4]) {
+    postBody = unwrap(fuse(postBody, translate(gussetUp, [gx, -(RAIL_WIDTH / 2) - 3, 0])));
+  }
+  return unwrap(fuse(body, postBody));
+}
+
+// Rack: bar with trapezoidal (20deg-flank) tooth gaps cut by a rectangularPattern at the circular pitch.
+function rack() {
+  const bar = box(RACK_LEN, RACK_W, RACK_BODY_H, { at: [0, 0, CHANNEL_FLOOR_Z + RACK_BODY_H / 2] });
+  const halfPitch = (PITCH / 2 + BACKLASH) / 2;
+  const overTip = (RACK_TIP_Z + 0.4 - RACK_PITCH_Z) * Math.tan(PA);
+  const underRoot = (RACK_PITCH_Z - (RACK_TIP_Z - WHOLE_DEPTH - 0.4)) * Math.tan(PA);
+  const zTop = RACK_TIP_Z + 0.4, zBot = RACK_TIP_Z - WHOLE_DEPTH - 0.4;
+  const wTop = halfPitch + overTip, wBot = Math.max(0.4, halfPitch - underRoot);
+  // trapezoid authored in X-Y (sketch-Y carries Z height), extruded then rotated upright.
+  const slab = unwrap(extrude(unwrap(polygon([[-wBot, zBot, 0], [wBot, zBot, 0], [wTop, zTop, 0], [-wTop, zTop, 0]])), RACK_W + 4));
+  const cutter = translate(rotate(slab, 90, { axis: [1, 0, 0] }), [0, (RACK_W + 4) / 2, 0]);
+  const nGaps = Math.floor(RACK_LEN / PITCH) - 1;
+  const cutters = unwrap(rectangularPattern(cutter, { xDir: [1, 0, 0], xCount: nGaps, xSpacing: PITCH, yDir: [0, 1, 0], yCount: 1, ySpacing: 1 }));
+  return unwrap(cut(bar, translate(cutters, [-((nGaps - 1) * PITCH) / 2, 0, 0])));
+}
+
+// Pinion: a true involute spur gear (18 teeth) — straight radial teeth jam against the rack, so the
+// flanks are generated from the involute of the base circle (ported from BOSL2 gears.scad).
+const BASE_R = PITCH_R * Math.cos(PA);
+const INV_STEPS = 10;
+const invPt = (th: number): [number, number] => [BASE_R * (Math.cos(th) + th * Math.sin(th)), BASE_R * (Math.sin(th) - th * Math.cos(th))];
+const thetaAt = (r: number) => Math.sqrt(Math.max(0, (r / BASE_R) ** 2 - 1));
+const rot2 = (p: [number, number], a: number): [number, number] => [p[0] * Math.cos(a) - p[1] * Math.sin(a), p[0] * Math.sin(a) + p[1] * Math.cos(a)];
+
+function pinionProfile(): [number, number, number][] {
+  const halfTooth = Math.PI / (2 * PINION_TEETH) - BACKLASH / 2 / PITCH_R;
+  const thMax = thetaAt(OUTER_R);
+  const phiPitch = Math.atan2(invPt(thetaAt(PITCH_R))[1], invPt(thetaAt(PITCH_R))[0]);
+  const offset = halfTooth + phiPitch;
+  const side: [number, number][] = [];
+  for (let i = INV_STEPS; i >= 0; i--) {
+    const p = invPt((thMax * i) / INV_STEPS);
+    side.push(rot2([p[0], -p[1]], offset));
+  }
+  const rSpace = rot2([ROOT_R, 0], Math.PI / PINION_TEETH);
+  if (ROOT_R < BASE_R) {
+    const pb = rot2([BASE_R, 0], offset);
+    const nHat: [number, number] = [-Math.sin(offset), Math.cos(offset)];
+    const dx = pb[0] - rSpace[0], dy = pb[1] - rSpace[1];
+    const rf = -(dx * dx + dy * dy) / (2 * (dx * nHat[0] + dy * nHat[1]));
+    const cf: [number, number] = [pb[0] + rf * nHat[0], pb[1] + rf * nHat[1]];
+    const a0 = Math.atan2(pb[1] - cf[1], pb[0] - cf[0]);
+    const a1 = Math.atan2(rSpace[1] - cf[1], rSpace[0] - cf[0]);
+    let dA = a1 - a0;
+    while (dA > Math.PI) dA -= 2 * Math.PI;
+    while (dA < -Math.PI) dA += 2 * Math.PI;
+    for (let i = 1; i <= INV_STEPS; i++) {
+      const a = a0 + (dA * i) / INV_STEPS;
+      side.push([cf[0] + Math.abs(rf) * Math.cos(a), cf[1] + Math.abs(rf) * Math.sin(a)]);
+    }
+  } else {
+    side.push(rSpace);
+  }
+  const tooth = [...side.map(([x, y]) => [x, -y] as [number, number]).reverse(), ...side.slice(0, -1)];
+  const pts3: [number, number, number][] = [];
+  for (let t = 0; t < PINION_TEETH; t++) {
+    const c = (t * 2 * Math.PI) / PINION_TEETH;
+    for (const p of tooth) {
+      const q = rot2(p, c);
+      pts3.push([q[0], q[1], 0]);
+    }
+  }
+  return pts3;
+}
+
+function pinion() {
+  let gear = translate(unwrap(extrude(unwrap(polygon(pinionProfile())), GEAR_THICK)), [0, 0, -GEAR_THICK / 2]);
+  const HUB_PROUD = 3;
+  gear = unwrap(fuse(gear, cylinder(BORE_R + 4, HUB_PROUD, { at: [0, 0, GEAR_THICK / 2 + HUB_PROUD / 2] })));
+  gear = unwrap(cut(gear, cylinder(BORE_R, GEAR_THICK + 4 + HUB_PROUD, { at: [0, 0, -(GEAR_THICK + 4) / 2 + HUB_PROUD / 2] })));
+  gear = unwrap(cut(gear, box(2.2, 1.6, GEAR_THICK + HUB_PROUD + 2, { at: [0, BORE_R, GEAR_THICK / 2 + HUB_PROUD / 2 - 1] })));
+  let shaft = cylinder(SHAFT_R, 22, { at: [0, 0, -7] });
+  const ringOuter = cylinder(SHAFT_R + 1, 1.4, { at: [0, 0, -7.1] });
+  const ringInner = cone(SHAFT_R - 1.2, SHAFT_R + 1, 1.4, { at: [0, 0, -7.1] });
+  shaft = unwrap(cut(shaft, unwrap(cut(ringOuter, ringInner))));
+  gear = unwrap(fuse(gear, shaft));
+  return rotate(gear, 90, { axis: [1, 0, 0] }); // lay axis along Y
+}
+
+// Frozen mesh pose: pinion spun +theta about Y, rack rolled -pitchRadius*theta along X.
+const FRAME = frame();
+const RACK0 = rack();
+const PINION0 = pinion();
+const thetaRad = (FROZEN_THETA * Math.PI) / 180;
+const rackBody = translate(RACK0, [-PITCH_R * thetaRad, 0, 0]);
+const pinionBody = translate(rotate(PINION0, FROZEN_THETA, { axis: [0, 1, 0] }), [0, 0, PINION_AXIS_Z]);
+
+export default [
+  color(FRAME, '#8c8f96'),
+  color(rackBody, '#b3b7bd'),
+  color(pinionBody, '#d1a847'),
+];
+`,
+  },
+  {
+    id: 'three-jaw-chuck',
+    label: 'Self-Centering 3-Jaw Chuck',
+    description:
+      'A standard 4″ / 100 mm DIN 6350 lathe scroll chuck (Ø20 through-hole), jaws partway closed gripping a Ø30 bar: a cast body with a scroll-face groove, three 120° T-slot jaw guides, three square pinion sockets offset between them, three serrated stepped jaws, and the gripped stock — five distinct colored bodies.',
+    code: `import {
+  box,
+  cone,
+  cylinder,
+  cut,
+  fuse,
+  fillet,
+  rotate,
+  translate,
+  edgeFinder,
+  getBounds,
+  unwrap,
+} from 'brepjs/quick';
+import type { Edge } from 'brepjs/quick';
+import { color } from 'brepjs/playground';
+
+// Self-centering 3-jaw scroll chuck — 4" / 100 mm, DIN 6350.
+// Datums: front face at Z=0, axis along Z, body extends to -Z. Jaws at 120deg grip a Ø30 bar.
+const BODY_R = 50, BODY_H = 56, BORE_R = 10, BORE_CHAMFER = 2, RIM_FILLET = 2.5;
+const SCROLL_R_OUTER = 34, SCROLL_R_INNER = 28, SCROLL_DEPTH = 2;
+const SLOT_W = 12, SLOT_DEPTH = 9, UNDERCUT_W = 18, UNDERCUT_Z0 = -9, UNDERCUT_Z1 = -4, SLOT_LEN = BODY_R + 4;
+const PINION_SIZE = 11, PINION_DEPTH = 14, PINION_Z = -BODY_H / 2;
+const REGISTER_R = 36, REGISTER_DEPTH = 4, BOLT_R = 4, BOLT_PCD = 42, BOLT_DEPTH = 16;
+const STOCK_R = 15, GRIP_GAP = 0.4;
+const JAW_BASE_W = SLOT_W - 0.6, JAW_BASE_LEN = 30, JAW_BASE_H = 16;
+const JAW_FOOT_W = UNDERCUT_W - 0.6, JAW_FOOT_H = 4;
+const JAW_INNER_R = STOCK_R + GRIP_GAP;
+const STEP_COUNT = 3, STEP_RISE = 4, STEP_RUN = 3.5, STEP_W = 14;
+const SERR_COUNT = 4, SERR_PITCH = 1.0, SERR_BITE = 0.7;
+const STOCK_PROTRUDE = 22, STOCK_GRIP = 16, STOCK_LEAD = 2;
+
+// Body: filleted-rim cylinder + countersunk bore + scroll groove + 3 T-slots + 3 sockets + register.
+function chuckBody() {
+  const blank = cylinder(BODY_R, BODY_H, { at: [0, 0, -BODY_H] });
+  const frontRim = edgeFinder().ofCurveType('CIRCLE').atDistance(BODY_R, [0, 0, 0]).when((e: Edge) => getBounds(e).zMax > -0.5).findAll(blank);
+  let part = unwrap(fillet(blank, frontRim, RIM_FILLET));
+  part = unwrap(cut(part, cylinder(BORE_R, BODY_H + 4, { at: [0, 0, -BODY_H - 2] })));
+  part = unwrap(cut(part, cone(BORE_R, BORE_R + BORE_CHAMFER, BORE_CHAMFER, { at: [0, 0, -BORE_CHAMFER] })));
+  const groove = unwrap(cut(
+    cylinder(SCROLL_R_OUTER, SCROLL_DEPTH + 1, { at: [0, 0, -SCROLL_DEPTH] }),
+    cylinder(SCROLL_R_INNER, SCROLL_DEPTH + 2, { at: [0, 0, -SCROLL_DEPTH - 0.5] })
+  ));
+  part = unwrap(cut(part, groove));
+  for (const ang of [0, 120, 240]) {
+    const channel = translate(box(SLOT_LEN, SLOT_W, SLOT_DEPTH + 1, { at: [SLOT_LEN / 2, 0, -SLOT_DEPTH / 2 + 0.5] }), [BORE_R, 0, 0]);
+    const undercut = translate(box(SLOT_LEN, UNDERCUT_W, UNDERCUT_Z1 - UNDERCUT_Z0, { at: [SLOT_LEN / 2, 0, (UNDERCUT_Z0 + UNDERCUT_Z1) / 2] }), [BORE_R, 0, 0]);
+    part = unwrap(cut(part, rotate(unwrap(fuse(channel, undercut)), ang, { axis: [0, 0, 1] })));
+  }
+  for (const ang of [60, 180, 300]) {
+    const socket = box(PINION_DEPTH + 4, PINION_SIZE, PINION_SIZE, { at: [BODY_R - PINION_DEPTH / 2 + 2, 0, PINION_Z] });
+    part = unwrap(cut(part, rotate(socket, ang, { axis: [0, 0, 1] })));
+  }
+  part = unwrap(cut(part, cylinder(REGISTER_R, REGISTER_DEPTH + 1, { at: [0, 0, -BODY_H - 1] })));
+  for (const ang of [0, 120, 240]) {
+    const a = (ang * Math.PI) / 180;
+    part = unwrap(cut(part, cylinder(BOLT_R, BOLT_DEPTH, { at: [BOLT_PCD * Math.cos(a), BOLT_PCD * Math.sin(a), -BODY_H - 0.5] })));
+  }
+  return part;
+}
+
+// One jaw: T-foot + base keyed into the slot + a staircase of serrated gripping steps.
+function oneJaw() {
+  const center = JAW_INNER_R + JAW_BASE_LEN / 2;
+  const foot = box(JAW_BASE_LEN, JAW_FOOT_W, JAW_FOOT_H, { at: [center, 0, UNDERCUT_Z0 + JAW_FOOT_H / 2] });
+  const base = box(JAW_BASE_LEN, JAW_BASE_W, JAW_BASE_H, { at: [center, 0, JAW_BASE_H / 2 - SLOT_DEPTH + 1] });
+  let jaw = unwrap(fuse(foot, base));
+  for (let i = 0; i < STEP_COUNT; i++) {
+    const r = JAW_INNER_R + i * STEP_RUN;
+    const stepLen = STEP_RUN + 1;
+    const z0 = -SLOT_DEPTH + 1 + i * STEP_RISE;
+    jaw = unwrap(fuse(jaw, box(stepLen, STEP_W, STEP_RISE + 1, { at: [r + stepLen / 2 - 0.5, 0, z0 + STEP_RISE / 2] })));
+  }
+  // Serrations: 45deg V-grooves cut across each step's inner face. They remove material (the grip
+  // face retreats), so they only relax contact — built at origin, rotated about own centre, then placed.
+  for (let i = 0; i < STEP_COUNT; i++) {
+    const r = JAW_INNER_R + i * STEP_RUN;
+    const z0 = -SLOT_DEPTH + 1 + i * STEP_RISE;
+    const face = r - 0.5;
+    for (let t = 0; t < SERR_COUNT; t++) {
+      const zt = z0 + SERR_PITCH * (t + 0.5);
+      const groove = translate(rotate(box(SERR_BITE * 2, STEP_W + 2, SERR_BITE * 2, { centered: true }), 45, { axis: [0, 1, 0] }), [face, 0, zt]);
+      jaw = unwrap(cut(jaw, groove));
+    }
+  }
+  return jaw;
+}
+
+function jaws() {
+  const j = oneJaw();
+  return [0, 120, 240].map((ang) => rotate(j, ang, { axis: [0, 0, 1] }));
+}
+
+// Workpiece: Ø30 bar gripped below the face, protruding above it, with a turned lead-in chamfer.
+function workpiece() {
+  const rod = cylinder(STOCK_R, STOCK_GRIP + STOCK_PROTRUDE, { at: [0, 0, -STOCK_GRIP] });
+  const top = STOCK_PROTRUDE;
+  const ring = unwrap(cut(
+    cylinder(STOCK_R + 1, STOCK_LEAD + 1, { at: [0, 0, top - STOCK_LEAD] }),
+    cone(STOCK_R, STOCK_R - STOCK_LEAD, STOCK_LEAD, { at: [0, 0, top - STOCK_LEAD] })
+  ));
+  return unwrap(cut(rod, ring));
+}
+
+const chuck = chuckBody();
+const jawSet = jaws();
+const stock = workpiece();
+
+export default [
+  color(chuck, '#9ea2a6'),
+  color(jawSet[0], '#383c45'),
+  color(jawSet[1], '#383c45'),
+  color(jawSet[2], '#383c45'),
+  color(stock, '#cda84a'),
+];
+`,
+  },
 ];
