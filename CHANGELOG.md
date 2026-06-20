@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.97.1](https://github.com/andymai/brepjs/compare/brepjs-v18.97.0...brepjs-v18.97.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* **brepjs-verify:** heal pen .fillet/.chamfer gap — name customCorner ([#1517](https://github.com/andymai/brepjs/issues/1517)) ([70837c7](https://github.com/andymai/brepjs/commit/70837c7684b2f1d75b3ede4b4c4529cf1540be85))
+
 ## [18.97.0](https://github.com/andymai/brepjs/compare/brepjs-v18.96.1...brepjs-v18.97.0) (2026-06-20)
 
 
