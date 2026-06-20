@@ -1,11 +1,15 @@
 ---
-description: Run the brepjs-verify skill eval in this Claude session — re-author the playground examples from their descriptions, verify + render each, judge against the playground quality bar, emit the two-signal scorecard, and propose SKILL.md fixes. No API key, runs on the subscription.
-argument-hint: '[basics | mechanical | <example-id> | all]   (default: all plain-brepjs examples)'
+description: Run a brepjs-cad skill eval in this Claude session and propose fixes (no API key). `/eval-skill [target]`: implement (default — re-author the playground examples, verify/render/judge, two-signal scorecard) or verify (run the precision/recall harness). The measure-and-propose sibling of `/heal-skill`.
+argument-hint: '[target: implement | verify]  [scope]   (default: implement, all plain-brepjs examples)'
 ---
 
-# brepjs-verify skill eval (manual loop)
+# brepjs-cad skill eval (manual loop)
 
-Measure the deployed `SKILL.md` by re-authoring the **playground examples** — the quality
+For **`verify`**: run `npm run eval:verify -w brepjs-cad` (`bench/verifyEval.ts`) and report the
+precision/recall table + any false-positive or missed-code finding; propose a
+`skills/verify/SKILL.md` (or `HINT_TABLE`) fix. For **`implement`** (default), continue below.
+
+Measure the deployed implement skill by re-authoring the **playground examples** — the quality
 bar — from their descriptions through **this** Claude Code session: you author each part, and a
 **blind judge subagent** grades it (you never grade your own output — see `bench/blind-judge.md`).
 No API key, no billing. The point of this loop is not the

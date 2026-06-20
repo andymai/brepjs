@@ -1,15 +1,37 @@
 ---
-description: Autonomously self-heal the brepjs-verify SKILL.md from its own eval — fan out clean-room subagent authors over the playground corpus, diagnose the dominant failure mode against the real source, fix SKILL.md, RED→GREEN re-verify, and ship a PR. Sub-only ($0 incremental), drives end-to-end without asking.
-argument-hint: '[basics | mechanical | <example-id> | all | hardest]   (default: hardest — the advanced-op subset where gaps hide)'
+description: Autonomously self-heal a brepjs-cad pipeline skill from its own eval — `/heal-skill <target>` for implement (clean-room authors + auto/judge), verify (precision/recall over known-bad fixtures), or polish (pre/post design judge). Diagnose against the real source, fix the skill, RED→GREEN re-verify, ship a PR. Sub-only ($0 incremental), drives end-to-end without asking.
+argument-hint: '<target: implement | verify | polish>  [scope]   (default: implement hardest)'
 ---
 
-# brepjs-verify skill self-heal loop
+# brepjs-cad skill self-heal loop
 
-Drive **eval → diagnose → fix → RED→GREEN verify → ship** end-to-end so the skill heals from
-its own signal. This is the autonomous sibling of `/eval-skill` (which measures + _proposes_
-fixes, main-session authored). Here you **apply** the fix and ship it, and the authors are
-**clean-room subagents** (a stricter, parallel measurement). **Self-heal, don't ask first** —
-when the sweep surfaces a failure mode, run the whole loop.
+Drive **eval → diagnose → fix → RED→GREEN verify → ship** end-to-end so a skill heals from its own
+signal. The autonomous sibling of `/eval-skill` (which measures + _proposes_ fixes). **Self-heal,
+don't ask first** — when the sweep surfaces a gap, run the whole loop.
+
+## Targets
+
+The geometry-producing skills each have an automated signal — pick one with the first argument
+(default `implement`). Brainstorm/design are text-only and are reviewed via the `skill-reviewer`
+agent + `bench/specFixtures.ts`, not healed here.
+
+- **implement** — heals `skills/implement/SKILL.md`. Fan out **clean-room subagent authors** (each
+  reads only the implement skill + its references) over the corpus; signal = `auto` (valid +
+  declared dims) + blind visual judge. The full procedure below is this target.
+- **verify** — heals `skills/verify/SKILL.md` (and, if the gap is in code, the `HINT_TABLE` in
+  `src/verify/report.ts` **with a matching `tests/report.test.ts` case**). Signal =
+  `npm run eval:verify -w brepjs-cad` (`bench/verifyEval.ts`): precision over the good corpus +
+  recall over the known-bad fixtures (`bench/mutate.ts`). RED→GREEN = a missed code in the recall
+  table flips to PASS because the verifier now emits/explains it. Recall is a lower bound (only the
+  mutate.ts codes) — say so; add a fixture when a new code appears.
+- **polish** — heals `skills/polish/SKILL.md`. Corpus = the implement heal's first-valid parts
+  (fallback: the 16 `skills/implement/examples`). Signal = the pre/post protocol in
+  `bench/blind-judge-polish.md`: render pre → run polish → render post; a heal is confirmed only if
+  post is **still valid** AND the blind judge prefers post AND the change is attributable to a
+  named polish rule.
+
+The procedure below details the **implement** target; for **verify**/**polish**, substitute the
+signal above and the same diagnose → fix → RED→GREEN → ship discipline.
 
 ## Scope & cost
 

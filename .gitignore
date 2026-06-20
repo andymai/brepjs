@@ -66,3 +66,6 @@ docs/images/examples/
 # Local agent skill tooling (installed via `skills add`, not project source)
 .agents/
 .claude/skills/langfuse
+
+# verify-heal eval scratch fixtures
+packages/brepjs-cad/.verifyeval-*
