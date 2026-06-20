@@ -1,6 +1,6 @@
 # Modifiers
 
-`fillet`/`chamfer`/`shell`/`offset` require a `ValidSolid` and return `Result<T>`. Primitives already return `ValidSolid`; after a boolean, validate first.
+`fillet`/`chamfer`/`shell`/`offset` require a `ValidSolid` and return `Result<T>`. Primitives (`box`/`cylinder`/`cone`) already return `ValidSolid`, and booleans preserve it — a `cut`/`fuse` rooted at a `ValidSolid` returns a `ValidSolid`. The shape that trips these ops is one born from a **2D-sketch `.extrude()`/`.revolve()`** (or `loft`/`sweep`): it's typed `Shape3D` and must be lifted first (see Pitfalls).
 
 | Function  | Signature                                                       |
 | --------- | --------------------------------------------------------------- |
@@ -43,6 +43,29 @@ Finder vocabulary: `edgeFinder()` / `faceFinder()` then `.inDirection(dir)`, `.o
 - **`fillet(solid, radius)` rounds ALL edges and often fails:** a uniform radius rarely fits every edge (e.g. it can't exceed a thin wall). Select the edges you mean with `edgeFinder()`. A failed fillet/chamfer surfaces as `FILLET_FAILED` / `CHAMFER_FAILED`.
 - **`inDirection('Z')` matches BOTH orientations** (+Z and −Z): it tests the axis, not the sign. To single out one face/edge add `.when(f => getBounds(f).zMax > threshold)` or `.atDistance(...)`.
 - A radius/distance larger than the local geometry makes the kernel fail; keep it well below the smallest adjacent edge length.
-- `fillet`/`chamfer` only accept a `ValidSolid`; wrap a post-boolean shape with `validSolid(...)` before filleting.
+- **`fillet`/`chamfer`/`shell`/`offset` only accept a `ValidSolid`** — otherwise `TS2345: not assignable to Shapeable<ValidSolid>`. The trigger is **not** a boolean (`cut`/`fuse` keep whatever validity they were handed); it's a shape born from a **2D-sketch `.extrude()`/`.revolve()`** (or `loft`/`sweep`), which is typed `Shape3D`. `validSolid(...)` takes a concrete `Solid`, so the union won't go straight in — narrow with `isSolid`, then lift:
+
+  ```ts
+  import {
+    drawRoundedRectangle,
+    isSolid,
+    validSolid,
+    shell,
+    faceFinder,
+    getBounds,
+    unwrap,
+  } from 'brepjs';
+
+  const raw = drawRoundedRectangle(80, 56, 6).sketchOnPlane('XY').extrude(34); // typed Shape3D
+  if (!isSolid(raw)) throw new Error('extrude did not yield a Solid');
+  const body = unwrap(validSolid(raw)); // ValidSolid — shell/fillet now accept it
+  const top = faceFinder()
+    .inDirection('Z')
+    .when((f) => getBounds(f).zMax > 33)
+    .findAll(body);
+  const hollow = unwrap(shell(body, top, 2.5));
+  ```
+
+  Or sidestep it entirely: when you'll `fillet`/`shell` a prism, build it from a primitive (`box`/`cylinder`) — those return `ValidSolid` directly.
 
 See also: docs/function-lookup.md → brepjs/topology.
