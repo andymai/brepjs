@@ -71,18 +71,23 @@ function wasmAssets(): Plugin {
   };
 }
 
-// index.html references its favicons/manifest with root-absolute paths
-// (`/favicon.ico`). Vite rewrites those to `${base}favicon.ico` at build time —
-// correct for production, including deep `/playground/examples/<id>` permalinks —
-// but the dev server doesn't rewrite them, so they 404 at `/favicon.ico` in dev.
-// Serve those few public files at root during dev to match production's behaviour.
+// index.html references its favicons with root-absolute paths (`/favicon.ico`).
+// Vite rewrites those to `${base}favicon.ico` at build time — correct for
+// production, including deep `/playground/examples/<id>` permalinks — but the dev
+// server doesn't rewrite them, and browsers also probe `/favicon.ico` at the
+// origin root regardless. Serve those image files at root during dev to match
+// production's behaviour.
+//
+// site.webmanifest is deliberately NOT served here: it's reached via the
+// base-rewritten `<link rel="manifest">` (`/playground/site.webmanifest`), and
+// its icon `src`s are relative to the manifest URL — serving it from root would
+// make those resolve to `/icon-*.png` (404) instead of `/playground/icon-*.png`.
 function devRootIcons(): Plugin {
   const publicDir = fileURLToPath(new URL('./public', import.meta.url));
   const types: Record<string, string> = {
     '/favicon.ico': 'image/x-icon',
     '/favicon.svg': 'image/svg+xml',
     '/apple-touch-icon.png': 'image/png',
-    '/site.webmanifest': 'application/manifest+json',
   };
   return {
     name: 'dev-root-icons',
