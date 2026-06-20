@@ -7,7 +7,7 @@ import { createTelemetry } from './langfuse.js';
 // SINGLE Langfuse record set — the aggregate trend trace + the brepjs-playground dataset run (one
 // run-item per part). Shards deliberately don't push, so this is the only place trends are written.
 // No-op push without the LANGFUSE_* keys.
-//   npm run eval:combine -w brepjs-verify -- shard-0.json shard-1.json ...
+//   npm run eval:combine -w brepjs-cad -- shard-0.json shard-1.json ...
 async function main(): Promise<void> {
   const paths = process.argv.slice(2);
   if (paths.length === 0) {

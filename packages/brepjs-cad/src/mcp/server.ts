@@ -38,7 +38,7 @@ const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'packa
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
 
 const server = new Server(
-  { name: 'brepjs-verify', version: pkg.version },
+  { name: 'brepjs-cad', version: pkg.version },
   { capabilities: { tools: {} } }
 );
 

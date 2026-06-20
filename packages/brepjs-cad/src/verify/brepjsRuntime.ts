@@ -22,7 +22,7 @@ let hookRegistered = false;
 
 // The brepjs-verify package root — holds both node_modules (the bundled brepjs/occt-wasm
 // the hook falls back to) and dist/loader/ (the hook file). Walk up from this module's URL
-// to the nearest package.json named "brepjs-verify" rather than assuming a fixed depth: the
+// to the nearest package.json named "brepjs-cad" rather than assuming a fixed depth: the
 // bundler is free to place this module at any dist depth, so a relative offset is fragile.
 export function toolDir(): string {
   let dir = dirname(fileURLToPath(import.meta.url));
@@ -32,7 +32,7 @@ export function toolDir(): string {
     if (existsSync(pkg)) {
       try {
         const parsed = JSON.parse(readFileSync(pkg, 'utf8')) as { name?: unknown };
-        if (parsed.name === 'brepjs-verify') return dir;
+        if (parsed.name === 'brepjs-cad') return dir;
       } catch {
         // keep walking
       }

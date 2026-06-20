@@ -1,7 +1,7 @@
 {
-  "name": "brepjs-verify",
+  "name": "brepjs-cad",
   "version": "0.28.0",
-  "description": "Agent skill + verify/preview tooling for authoring parametric brepjs CAD code",
+  "description": "Brainstorm → design → author → verify → polish pipeline for parametric brepjs CAD, with the brep CLI",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -29,8 +29,8 @@
     }
   },
   "bin": {
-    "brepjs-verify": "./dist/cli/main.js",
-    "brepjs-verify-mcp": "./dist/mcp/server.js"
+    "brep": "./dist/cli/main.js",
+    "brep-mcp": "./dist/mcp/server.js"
   },
   "files": [
     "dist",

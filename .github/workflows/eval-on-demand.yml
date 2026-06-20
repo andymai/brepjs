@@ -47,7 +47,7 @@ jobs:
         run: |
           npm run build
           npm run build --workspace=brepjs-viewer
-          npm run build --workspace=brepjs-verify
+          npm run build --workspace=brepjs-cad
       - name: Install Chrome for snapshots
         run: npx puppeteer browsers install chrome
         working-directory: packages/brepjs-cad
@@ -60,7 +60,7 @@ jobs:
           MAX_ATTEMPTS: ${{ inputs.max_attempts }}
           SHARD: ${{ matrix.shard }}
         run: |
-          npm run eval:live -w brepjs-verify -- \
+          npm run eval:live -w brepjs-cad -- \
             --corpus playground \
             --only "$ONLY" \
             --model "$MODEL" \
@@ -99,4 +99,4 @@ jobs:
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
         run: |
-          npm run eval:combine -w brepjs-verify -- "$GITHUB_WORKSPACE"/shards/shard-*.json
+          npm run eval:combine -w brepjs-cad -- "$GITHUB_WORKSPACE"/shards/shard-*.json

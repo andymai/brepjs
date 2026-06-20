@@ -25,7 +25,7 @@ when the sweep surfaces a failure mode, run the whole loop.
 ## 0. Pre-flight (once)
 
 Build only what's missing: root lib (`test -f dist/index.js || npm run build`), CLI
-(`--workspace=brepjs-verify`), viewer (`--workspace=brepjs-viewer`), Chrome
+(`--workspace=brepjs-cad`), viewer (`--workspace=brepjs-viewer`), Chrome
 (`cd packages/brepjs-cad && npx puppeteer browsers install chrome`). Scratch ESM dir:
 `mkdir -p /tmp/brepjs-eval && printf '{"type":"module"}\n' > /tmp/brepjs-eval/package.json`.
 **Smoke-test the harness** before fanning out: author a trivial `box` part and `verify --check`;

@@ -38,7 +38,7 @@ what's missing:
 
 1. Root library — `test -f dist/index.js || npm run build`
 2. Viewer — `test -d packages/brepjs-cad/viewer/dist || npm run build --workspace=brepjs-viewer`
-3. CLI — `test -f packages/brepjs-cad/dist/cli/main.js || npm run build --workspace=brepjs-verify`
+3. CLI — `test -f packages/brepjs-cad/dist/cli/main.js || npm run build --workspace=brepjs-cad`
 4. Chrome — `cd packages/brepjs-cad && npx puppeteer browsers install chrome`
 
 If the viewer/Chrome can't be built, run **auto-only**: skip `--snapshot`, mark every
@@ -100,13 +100,13 @@ repo-root `.env` as `LANGFUSE_HOST` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_K
 `LANGFUSE_BASE_URL`, so bridge first or it silently hits EU cloud:
 `set -a; . ./.env; set +a; export LANGFUSE_BASE_URL="${LANGFUSE_BASE_URL:-$LANGFUSE_HOST}"`.
 
-Once per corpus change, sync the dataset: `npm run eval:dataset:sync -w brepjs-verify` (upserts the
+Once per corpus change, sync the dataset: `npm run eval:dataset:sync -w brepjs-cad` (upserts the
 playground examples into the `brepjs-playground` dataset, keyed by example id).
 
 Write the scorecard as JSON matching `bench/score.ts` `Scorecard` — `{ model, brepjsVersion,
 skillVersion, date, results: EvalResult[] }`, where each result's `id` **is the playground example
 id** and carries `auto`, `judgePass`, and `firstTry` (so the lift is computed) — then push:
-`npm run eval:push -w brepjs-verify -- <scorecard.json>`. It records two things, both no-op without
+`npm run eval:push -w brepjs-cad -- <scorecard.json>`. It records two things, both no-op without
 keys: (1) one `eval-run` trace with the aggregate scores (`both`, `first_try_both`, `eventual_both`,
 `lift`), and (2) a dataset run on `brepjs-playground` — one trace per part, scored and linked to its
 dataset item — so skill versions compare per part in the dataset Runs view. The run name is the

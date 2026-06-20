@@ -189,7 +189,7 @@ async function evalPrompt(
 async function main(): Promise<void> {
   if (!process.env['ANTHROPIC_API_KEY']) {
     console.error('eval:live needs ANTHROPIC_API_KEY (it calls the Anthropic API — billed).');
-    console.error('Set it and re-run: ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-verify');
+    console.error('Set it and re-run: ANTHROPIC_API_KEY=sk-... npm run eval:live -w brepjs-cad');
     process.exit(2);
   }
   const args = parseArgs(process.argv.slice(2));

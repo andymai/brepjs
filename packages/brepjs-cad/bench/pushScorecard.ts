@@ -7,7 +7,7 @@ import type { Scorecard } from './score.js';
 // experiment on `brepjs-playground` — one trace per part, scored + linked to its dataset item — so
 // skill versions compare per part natively. No-op without the LANGFUSE_* keys. The `/eval-skill`
 // manual loop writes the scorecard JSON, then runs this.
-//   npm run eval:push -w brepjs-verify -- <scorecard.json>
+//   npm run eval:push -w brepjs-cad -- <scorecard.json>
 async function main(): Promise<void> {
   const path = process.argv[2];
   if (!path) {

@@ -32,8 +32,8 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
-      brepjs_verify_release_created: ${{ steps.release.outputs['packages/brepjs-cad--release_created'] }}
-      brepjs_verify_tag_name: ${{ steps.release.outputs['packages/brepjs-cad--tag_name'] }}
+      brepjs_cad_release_created: ${{ steps.release.outputs['packages/brepjs-cad--release_created'] }}
+      brepjs_cad_tag_name: ${{ steps.release.outputs['packages/brepjs-cad--tag_name'] }}
       brepjs_bim_release_created: ${{ steps.release.outputs['packages/brepjs-bim--release_created'] }}
       brepjs_bim_tag_name: ${{ steps.release.outputs['packages/brepjs-bim--tag_name'] }}
       brepjs_sheetmetal_release_created: ${{ steps.release.outputs['packages/brepjs-sheetmetal--release_created'] }}
@@ -59,7 +59,7 @@ jobs:
   # back on them), so the workspace dep graph stays acyclic and node-workspace
   # propagation terminates after one root->leaves ripple — no release loop is
   # possible. brepjs-opencascade (expensive WASM build, manual review) and
-  # brepjs-verify / brepjs-viewer are still held: verify cross-links viewer, the
+  # brepjs-cad / brepjs-viewer are still held: verify cross-links viewer, the
   # one pairing that historically re-pinned to an unpublished version and looped
   # the pipeline. Auto-PUBLISH still works — it fires when the release PR merges.
   auto-merge:
@@ -102,12 +102,12 @@ jobs:
               continue
             fi
             # Hold brepjs-opencascade (expensive WASM build, manual review) and
-            # brepjs-verify / brepjs-viewer (verify cross-links viewer — the
+            # brepjs-cad / brepjs-viewer (verify cross-links viewer — the
             # pairing that historically looped the pipeline via unpublished
             # re-pins). The root brepjs PR and the acyclic leaves brepjs-bim /
             # brepjs-sheetmetal auto-merge.
             case "$pr_title" in
-              *brepjs-opencascade* | *brepjs-verify* | *brepjs-viewer*)
+              *brepjs-opencascade* | *brepjs-cad* | *brepjs-viewer*)
                 echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
                 continue
                 ;;
@@ -148,24 +148,24 @@ jobs:
       - name: Publish brepjs
         run: npm publish --provenance
 
-  # Auto-publish brepjs-verify by dispatching its own publish workflow rather
+  # Auto-publish brepjs-cad by dispatching its own publish workflow rather
   # than inlining `npm publish` here. The npm OIDC trusted publisher for
-  # brepjs-verify is bound to the publish-brepjs-verify.yml filename, so the
+  # brepjs-cad is bound to the publish-brepjs-cad.yml filename, so the
   # publish must run from that workflow to authenticate. Dispatching also keeps
   # the manual workflow_dispatch path working as the recovery route.
-  # Fires on the post-merge release-please run that cuts the brepjs-verify release.
-  publish-brepjs-verify:
+  # Fires on the post-merge release-please run that cuts the brepjs-cad release.
+  publish-brepjs-cad:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [release-please]
-    if: ${{ needs.release-please.outputs.brepjs_verify_release_created == 'true' }}
+    if: ${{ needs.release-please.outputs.brepjs_cad_release_created == 'true' }}
     steps:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Dispatch publish-brepjs-verify (real publish)
+      - name: Dispatch publish-brepjs-cad (real publish)
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
@@ -173,8 +173,8 @@ jobs:
           # `main` branch: the workflow_dispatch API accepts a tag (immutable) but
           # rejects a raw SHA, and pinning the tag avoids publishing the wrong
           # commit if another push lands on main during the dispatch window.
-          GH_REF: ${{ needs.release-please.outputs.brepjs_verify_tag_name }}
-        run: gh workflow run publish-brepjs-verify.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+          GH_REF: ${{ needs.release-please.outputs.brepjs_cad_tag_name }}
+        run: gh workflow run publish-brepjs-cad.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
   # Auto-publish brepjs-bim by dispatching its own publish workflow (the npm OIDC
   # trusted publisher is bound to the publish-brepjs-bim.yml filename, so the
@@ -219,7 +219,7 @@ jobs:
         run: gh workflow run publish-brepjs-sheetmetal.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
   # brepjs-viewer is NOT managed by release-please (removed from
-  # release-please-config.json): node-workspace was re-pinning brepjs-verify's
+  # release-please-config.json): node-workspace was re-pinning brepjs-cad's
   # build-time `brepjs-viewer` devDep to viewer's pending, unpublished version on
   # every verify release, repeatedly breaking the monorepo `npm ci`. Viewer is
   # versioned and published manually via publish-brepjs-viewer.yml dispatch.

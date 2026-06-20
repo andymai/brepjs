@@ -35,7 +35,7 @@ export async function loadSnapshotShoot(): Promise<typeof ShootFn | undefined> {
 }
 
 const program = new Command();
-program.name('brepjs-verify');
+program.name('brep');
 
 program
   .command('verify', { isDefault: true })
@@ -53,6 +53,11 @@ program
     'after verifying, start a preview server and print a ?dir=&file= deep link (stays running)'
   )
   .option('--no-open', 'with --serve, do not auto-open the browser (just print the viewer URL)')
+  .option(
+    '--expect-code <code>',
+    'exit 0 only if the report emits this error code (for fixtures/eval recall)'
+  )
+  .option('--expect-invalid', 'exit 0 only if the part is invalid (ok:false) — for known-bad fixtures')
   .action(
     async (
       file: string,
@@ -63,6 +68,8 @@ program
         check?: boolean;
         snapshot?: string;
         serve?: boolean;
+        expectCode?: string;
+        expectInvalid?: boolean;
         // Commander materializes a negated flag as a concrete boolean: true by
         // default, false when --no-open is passed.
         open: boolean;
@@ -81,7 +88,7 @@ program
         if (opts.glb && glb) writeFileSync(opts.glb, Buffer.from(glb));
 
         if (wantStep && step) {
-          stepPath = opts.step ?? join(tmpdir(), `brepjs-verify-${basename(file)}.step`);
+          stepPath = opts.step ?? join(tmpdir(), `brep-${basename(file)}.step`);
           writeFileSync(stepPath, Buffer.from(step));
         }
         if (opts.snapshot && stepPath) {
@@ -104,9 +111,30 @@ program
       // Serialize once after all artifact writes so the --json file and stdout
       // reflect the same report (incl. any "artifact write failed" error).
       const json = serializeReport(report);
-      if (opts.json) writeFileSync(opts.json, json);
+      // `--json -` is satisfied by the stdout write below; only a real path writes a file.
+      if (opts.json && opts.json !== '-') writeFileSync(opts.json, json);
       process.stdout.write(json + '\n');
       if (!reportOk(report)) process.exitCode = 1;
+      // Fixture assertions (Phase: verify-heal precision/recall) override the normal exit code:
+      // a known-bad part must fail the *right* way. Codes come from the kernel/authoring errors,
+      // not the hint table, so this measures the verifier, not its prose.
+      if (opts.expectInvalid || opts.expectCode) {
+        const codes = [
+          ...report.errorInfos.map((e) => e.code),
+          ...report.hints.map((h) => h.code),
+        ].filter((c): c is string => Boolean(c));
+        const valid = reportOk(report);
+        const pass =
+          (!opts.expectInvalid || !valid) && (!opts.expectCode || codes.includes(opts.expectCode));
+        process.exitCode = pass ? 0 : 1;
+        process.stderr.write(
+          `expect: ${pass ? 'PASS' : 'FAIL'}` +
+            (opts.expectCode ? ` code=${opts.expectCode}` : '') +
+            (opts.expectInvalid ? ' invalid' : '') +
+            ` (ok=${valid}, codes=${codes.join(',') || 'none'})\n`
+        );
+        return;
+      }
       const willServe = Boolean(opts.serve) && stepPath !== undefined && reportOk(report);
       if (willServe && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
@@ -144,6 +172,35 @@ program
       JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n'
     );
     if (result.errors.length > 0) process.exitCode = 1;
+  });
+
+program
+  .command('snapshot')
+  .argument('<file>', 'path to a .brep.ts module; renders iso/front/top/right PNGs (no report assertions)')
+  .option('--out <dir>', 'output directory for the PNGs (default <file>-shots)')
+  .option('--label <tag>', 'subfolder for this render set (e.g. pre, post) for A/B pairing')
+  .action(async (file: string, opts: { out?: string; label?: string }) => {
+    const resolved = resolve(file);
+    const base = opts.out ? resolve(opts.out) : `${resolved}-shots`;
+    const outDir = opts.label ? join(base, opts.label) : base;
+    const { report, step, shape } = await runPart(resolved, { step: true });
+    try {
+      if (!step) {
+        process.stderr.write('snapshot: part produced no STEP — nothing to render\n');
+        process.stdout.write(serializeReport(report) + '\n');
+        process.exitCode = 1;
+        return;
+      }
+      const stepPath = join(tmpdir(), `brep-snap-${basename(file)}.step`);
+      writeFileSync(stepPath, Buffer.from(step));
+      const shoot = await loadSnapshotShoot();
+      if (!shoot) return; // sets exitCode + stderr
+      // fresh: a private ephemeral render server so parallel snapshots don't contend on :7373.
+      const { pngs } = await shoot({ file: stepPath, outDir, fresh: true });
+      for (const p of pngs) process.stdout.write(`${p}\n`);
+    } finally {
+      disposeShape(shape);
+    }
   });
 
 program

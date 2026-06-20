@@ -4,7 +4,7 @@ import { LangfuseClient } from '@langfuse/client';
 // /eval-skill runs can be recorded + compared as dataset experiments. Each example's description
 // is the prompt (input); its own code is the reference (expectedOutput). The dataset auto-tracks
 // the playground catalog. No-op without LANGFUSE_* keys.
-//   npm run eval:dataset:sync -w brepjs-verify
+//   npm run eval:dataset:sync -w brepjs-cad
 const DATASET = 'brepjs-playground';
 const SCOPE = new Set(['basics', 'mechanical']); // plain brepjs; bim/sheet-metal need other skills
 

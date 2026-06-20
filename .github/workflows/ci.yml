@@ -158,19 +158,19 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run build --workspace=brepjs-viewer
-      - run: npm run typecheck --workspace=brepjs-verify
-      - run: npm run lint --workspace=brepjs-verify
-      - run: npm run test --workspace=brepjs-verify
-      - run: npm run build --workspace=brepjs-verify
+      - run: npm run typecheck --workspace=brepjs-cad
+      - run: npm run lint --workspace=brepjs-cad
+      - run: npm run test --workspace=brepjs-cad
+      - run: npm run build --workspace=brepjs-cad
       # Deterministic eval: replay skills/implement/examples through runPart, gate on volume/area/validity.
-      - run: npm run eval --workspace=brepjs-verify
+      - run: npm run eval --workspace=brepjs-cad
       # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load
       # failures that only surface for installed users (tsx/vitest hide them in-repo).
-      - run: npm run smoke --workspace=brepjs-verify
+      - run: npm run smoke --workspace=brepjs-cad
       # Standalone smoke: pack the tarball, install it into a clean project with NO brepjs,
       # and run the installed bin — proves bundling + the bundled-fallback resolve hook for a
       # true standalone user (a bundling/fallback break is invisible to the in-repo smoke).
-      - run: npm run smoke:standalone --workspace=brepjs-verify
+      - run: npm run smoke:standalone --workspace=brepjs-cad
 
   packages-sheetmetal:
     # Experimental sheet-metal domain satellite. Build root brepjs first so the

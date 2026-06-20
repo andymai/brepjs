@@ -5,6 +5,10 @@ export const DEFAULT_SHUTDOWN_AFTER_MS = 12 * 60 * 60 * 1000;
 export interface AcquireOptions {
   port?: number;
   shutdownAfterMs?: number;
+  // Skip reuse and bind a private OS-assigned ephemeral port. Parallel workers (heal fan-out,
+  // orchestrator subagents) each get an isolated server instead of contending on the shared :7373,
+  // which is what made concurrent snapshots flaky.
+  fresh?: boolean;
 }
 export interface AcquiredServer {
   port: number;
@@ -33,6 +37,22 @@ async function probe(port: number): Promise<boolean> {
   }
 }
 export async function acquireServer(opts: AcquireOptions = {}): Promise<AcquiredServer> {
+  // Isolated mode: a private ephemeral server (no probe, no reuse) so N parallel renders don't
+  // share — or race to start — one server. `port: 0` lets the OS hand out a free port.
+  if (opts.fresh) {
+    const fresh = await startStaticServer({ port: 0 });
+    const timer = setTimeout(() => void fresh.close(), opts.shutdownAfterMs ?? DEFAULT_SHUTDOWN_AFTER_MS);
+    timer.unref();
+    return {
+      port: fresh.port,
+      url: fresh.url,
+      reused: false,
+      close: async () => {
+        clearTimeout(timer);
+        await fresh.close();
+      },
+    };
+  }
   const ports =
     opts.port !== undefined ? [opts.port] : Array.from({ length: PROBE_SPAN }, (_, i) => DEFAULT_PORT + i);
   for (const port of ports)
