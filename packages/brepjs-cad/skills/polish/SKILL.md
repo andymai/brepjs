@@ -23,6 +23,12 @@ Prefer **additive** detail — fins, gussets, lightening holes, grooves, a flush
 the failure-prone `fillet`/`chamfer` ops. Re-verify (`ok` stays true), re-render, repeat on the next
 worst offender. Detail and rationale: **`references/design-polish.md`**.
 
+A no-op is a valid outcome. If the part already reads as manufactured, the worst remaining offender
+is minor, or the only available edit is marginal, make NO edit, report the part as already-designed,
+and proceed to export. A marginal addition usually ties or loses against the un-touched render (it
+reads as decoration noise) — do not edit just to satisfy the loop. Only edit when the offender is a
+clear primitive-blob, mismatched cap, raw rim, or missing functional feature a human would notice.
+
 A polish edit must never break validity: if a round/blend pushes the part to `ok:false`, revert it
 and choose an additive alternative.
 

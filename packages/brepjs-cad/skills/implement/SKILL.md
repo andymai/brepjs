@@ -30,9 +30,13 @@ advanced; `chamfer` is the fragile exception (prefer `fillet`).
 ## Declare intent — the `expected` block
 
 Add `export const expected = { … }` from the brief; the CLI asserts it, catching valid-but-wrong
-sizing. Any of `volume`, `area`, `bounds` are optional; `tolerancePct` sets the match window. Bounds
+sizing. The **only** authorable keys are `volume`, `area`, `bounds`, `tolerancePct` (each optional;
+`tolerancePct` sets the match window) — `TOP_LEVEL_KEYS` in `src/verify/expected.ts:45`. Bounds
 shape is exactly `{ xMin, xMax, yMin, yMax, zMin, zMax }` (any subset) — **not** `{ min, max }` or
-`{ x, y, z }` (a wrong shape reports `EXPECTED_UNKNOWN_KEY`).
+`{ x, y, z }` (a wrong shape reports `EXPECTED_UNKNOWN_KEY`). **`shapeType` is report-only, not
+authorable**: the report tells you whether the part measured as a `solid`/`compound`/etc., but
+putting `shapeType` (or any other field) in `expected` also reports `EXPECTED_UNKNOWN_KEY` — assert
+the body count or shape via `volume`/`bounds`, never a `shapeType` key.
 
 **Prefer `bounds`** over a hand-computed `volume` (a wrong number fails a _correct_ part). Predict
 only extents you **place directly** — a footprint, a stack height, where each body sits — these read
@@ -57,6 +61,13 @@ measure-first (run once, copy the report's measured value).
   `.extrude()`/`.revolve()` (or `loft`/`sweep`) is typed `Shape3D`; passing it to these ops is
   `TS2345`. Lift in two steps: `if (!isSolid(x)) throw …; const solid = unwrap(validSolid(x));`. Or
   build the prism from a primitive when you know you'll `fillet`/`shell` it. (`references/modifiers.md`.)
+- **A loose-`Compound` boolean can't be lifted to `ValidSolid` — fix the boolean, don't lift.** When
+  `fuse`/`fuseAll` only touch (don't overlap) they return a `Compound` (`ok:true`), and `isSolid`
+  returns `false` on it (`shapeType()==='compound'`, not `'solid'` — `src/core/shapeTypes.ts:248`).
+  There is **no lift** from a multi-body `Compound` to a `ValidSolid`: `validSolid()` needs one
+  `Solid`, so `if (!isSolid(x)) throw …` just throws, and feeding the Compound onward
+  `KERNEL_FAILED`s. Make the operands actually overlap and `fuseAll(shapes, { unsafe: true })` so the
+  weld yields a single solid **first**, then `fillet`/`shell`. (`references/booleans.md`.)
 - **Select edges/faces; don't fillet/chamfer everything.** `fillet(solid, radius)` with no edge
   list rounds EVERY edge and frequently `FILLET_FAILED`s. Pass `edgeFinder().inDirection('Z').findAll(solid)`.
   `inDirection` matches BOTH ± orientations; discriminate by position with

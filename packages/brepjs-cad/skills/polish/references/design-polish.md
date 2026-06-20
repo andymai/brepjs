@@ -21,7 +21,11 @@ primitives glued together?"** Specifically:
 - **Mismatched cap** — an oversized `sphere` knob on a thin shaft reads as a club. Size an end
   cap to ≈ the shaft radius.
 - **Raw rims everywhere** — every box/cylinder edge left sharp looks like a CAD primitive.
-- **Decoration noise** — detail that implies no function. Engineered ≠ busy.
+- **Decoration noise / invented blemish** — detail that implies no function, OR a fabricated
+  manufacturing defect (parting-line flash, mold seams, tooling marks, weld spatter). A designed
+  part looks CLEAN; adding a defect to make it look real reads worse than the primitive and loses
+  to the un-touched render. Engineered ≠ busy and ≠ flawed. Add functional features (grooves that
+  seat, holes that fasten, gussets that carry load), never simulated imperfections.
 - **Girdling band** — a feature (mounting ear, rib, deck) modelled as a slab that passes through
   the WHOLE body instead of protruding from one face. Build the protrusion as a discrete boss/tab
   fused to the surface, not a band wrapping the part.
@@ -61,3 +65,8 @@ Render iso + a close detail view. Critique against the bar above. Fix the worst 
 a blob or a raw edge — re-verify (`ok` must stay true), re-render. Polish is **qualitative**: you
 cannot convert "looks like a club" into a `bounds` assertion, so the snapshot review _is_ the check
 here. Stop when it reads as a designed part, not a pile of primitives.
+
+Before keeping an edit, compare the post render against the pre render and ask: would a blind judge
+prefer post? If post only ties — or the edit is a small feature on an already-clean part — discard
+it and keep pre. The goal is a clearly better render, not merely a different one. A tie means the
+edit was unnecessary; revert to the simpler form.

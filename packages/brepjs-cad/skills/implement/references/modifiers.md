@@ -43,6 +43,7 @@ Finder vocabulary: `edgeFinder()` / `faceFinder()` then `.inDirection(dir)`, `.o
 - **`fillet(solid, radius)` rounds ALL edges and often fails:** a uniform radius rarely fits every edge (e.g. it can't exceed a thin wall). Select the edges you mean with `edgeFinder()`. A failed fillet/chamfer surfaces as `FILLET_FAILED` / `CHAMFER_FAILED`.
 - **`inDirection('Z')` matches BOTH orientations** (+Z and −Z): it tests the axis, not the sign. To single out one face/edge add `.when(f => getBounds(f).zMax > threshold)` or `.atDistance(...)`.
 - A radius/distance larger than the local geometry makes the kernel fail; keep it well below the smallest adjacent edge length.
+- **`shell` thickness must be positive.** A `0` or negative `thickness` returns `INVALID_THICKNESS` ("Shell thickness must be positive") before the kernel runs (`src/topology/modifierFns.ts:416`); the sign does **not** flip the wall inward — pass a positive wall thickness (shell hollows inward by default). Likewise an empty face list returns `NO_FACES`.
 - **`fillet`/`chamfer`/`shell`/`offset` only accept a `ValidSolid`** — otherwise `TS2345: not assignable to Shapeable<ValidSolid>`. The trigger is **not** a boolean (`cut`/`fuse` keep whatever validity they were handed); it's a shape born from a **2D-sketch `.extrude()`/`.revolve()`** (or `loft`/`sweep`), which is typed `Shape3D`. `validSolid(...)` takes a concrete `Solid`, so the union won't go straight in — narrow with `isSolid`, then lift:
 
   ```ts
