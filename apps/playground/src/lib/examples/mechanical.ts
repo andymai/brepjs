@@ -3307,8 +3307,8 @@ function planetaryReducer({
   planetCount = 3, // equally spaced; (Zsun+Zring) must divide by this
   faceWidth = 12, // gear thickness (mm)
   pressureAngleDeg = 20, // 20° is the industry standard
-  backlash = 0.25, // tooth-thinning clearance so flanks don't jam (mm)
-  addendumFactor = 0.85, // shorten tips to clear the 12-tooth sun's undercut zone
+  backlash = 0.15, // tooth-thinning clearance so flanks don't jam (mm)
+  addendumFactor = 1.0, // full-depth teeth (the trochoid-style root fillet clears interference)
   wall = 8, // ring rim beyond the pitch circle (mm)
   flangeWidth = 12, // mounting flange overhang beyond the wall (mm)
   flangeThick = 5, // flange / floor thickness (mm)
@@ -3322,7 +3322,7 @@ function planetaryReducer({
 } = {}) {
   const teethRing = teethSun + 2 * teethPlanet;
   const PA = (pressureAngleDeg * Math.PI) / 180;
-  const STEPS = 12; // involute samples per flank
+  const STEPS = 16; // involute samples per flank
   const m = module;
 
   const prRing = (m * teethRing) / 2; // 48 — ring pitch radius
@@ -3346,7 +3346,11 @@ function planetaryReducer({
   ];
 
   // One closed CCW loop of all the involute teeth, a tooth centred at angle 0.
-  // ra/rr are the radii the involute spans; blHalf thins each flank (backlash).
+  // The +angle flank uses the MIRRORED involute (offset = halfTooth + phiPitch) so
+  // the tooth narrows to the tip like a real cut gear; where the root dips below
+  // the base circle a circular root fillet (tangent to the flank, running to the
+  // shared space-centre point) replaces the sharp radial root, clearing the mating
+  // tip. ra/rr are the radii the involute spans; blHalf thins each flank (backlash).
   const gearToothLoop = (
     teeth: number,
     ra: number,
@@ -3362,21 +3366,40 @@ function planetaryReducer({
     ];
     const thetaAt = (r: number) => Math.sqrt(Math.max(0, (r / br) ** 2 - 1));
     const phiPitch = Math.atan2(invPt(thetaAt(pr))[1], invPt(thetaAt(pr))[0]);
-    const offset = halfTooth - phiPitch; // land the pitch point at the half-tooth angle
-    const thStart = thetaAt(Math.max(rr, br));
+    const offset = halfTooth + phiPitch;
     const thMax = thetaAt(ra);
+    const thStart = thetaAt(Math.max(rr, br));
 
-    const tooth: [number, number][] = [];
-    if (rr < br) tooth.push(rot([rr, 0], -offset)); // low-N: dip to true root
-    for (let i = 0; i <= STEPS; i++) {
-      const p = invPt(thStart + ((thMax - thStart) * i) / STEPS);
-      tooth.push(rot([p[0], -p[1]], -offset));
-    }
+    // +angle flank, tip -> base (mirrored involute curves back toward centre).
+    const right: [number, number][] = [];
     for (let i = STEPS; i >= 0; i--) {
       const p = invPt(thStart + ((thMax - thStart) * i) / STEPS);
-      tooth.push(rot(p, offset));
+      right.push(rot([p[0], -p[1]], offset));
     }
-    if (rr < br) tooth.push(rot([rr, 0], offset));
+    const rSpace = rot([rr, 0], Math.PI / teeth); // shared root point at the space centre
+    if (rr < br) {
+      const pb = rot([br, 0], offset); // involute base point (flank tangent is radial)
+      const nHat: [number, number] = [-Math.sin(offset), Math.cos(offset)]; // perp to flank, toward space
+      const dx = pb[0] - rSpace[0];
+      const dy = pb[1] - rSpace[1];
+      const rf = -(dx * dx + dy * dy) / (2 * (dx * nHat[0] + dy * nHat[1]));
+      const cf: [number, number] = [pb[0] + rf * nHat[0], pb[1] + rf * nHat[1]];
+      const a0 = Math.atan2(pb[1] - cf[1], pb[0] - cf[0]);
+      const a1 = Math.atan2(rSpace[1] - cf[1], rSpace[0] - cf[0]);
+      let dA = a1 - a0;
+      while (dA > Math.PI) dA -= 2 * Math.PI;
+      while (dA < -Math.PI) dA += 2 * Math.PI;
+      for (let i = 1; i <= STEPS; i++) {
+        const a = a0 + (dA * i) / STEPS;
+        right.push([cf[0] + Math.abs(rf) * Math.cos(a), cf[1] + Math.abs(rf) * Math.sin(a)]);
+      }
+    } else {
+      right.push(rSpace); // root above the base circle — straight root land
+    }
+    // mirror the +angle flank across x for the -angle flank; drop the trailing
+    // space-centre point (it is the next tooth's leading point — avoids a dup vertex).
+    const left: [number, number][] = right.map(([x, y]) => [x, -y] as [number, number]).reverse();
+    const tooth = [...left, ...right.slice(0, -1)];
 
     const loop: [number, number][] = [];
     for (let t = 0; t < teeth; t++) {
@@ -3388,8 +3411,7 @@ function planetaryReducer({
 
   const blHalf = (teeth: number) => backlash / 2 / ((m * teeth) / 2); // per-flank thinning angle
 
-  // External spur gear (addendum shortened by addendumFactor), spun in place,
-  // placed at (cx,cy), extruded up from the gear band.
+  // External spur gear, spun in place, placed at (cx,cy), extruded up from the gear band.
   const spurGear = (teeth: number, spin: number, cx: number, cy: number) => {
     const pr = (m * teeth) / 2;
     const loop = gearToothLoop(teeth, pr + addendumFactor * m, pr - 1.25 * m, blHalf(teeth));
