@@ -42,7 +42,7 @@ Per auto-valid part, **serially** (the render server is a singleton on :7373):
    blind — rename first._
 3. Dispatch ONE blind judge → verdict.
 4. **Escalate only on `tie-good` or `confidence:low`:** two more blind judges (labels re-shuffled
-   per judge), take the majority. `tie-blob` is _not_ an escalation — it means both renders read
+   per judge), take the majority pairwise verdict (a 3-way split with no majority → `judge:⚠`, inconclusive — report it, don't guess). `tie-blob` is _not_ an escalation — it means both renders read
    blobby (usually a bad camera angle); re-render per the verdict map below and re-judge rather than
    burning panel calls on the same images.
 5. **Decode** the verdict against your private A/B map → author-vs-reference result.
@@ -51,8 +51,9 @@ Per auto-valid part, **serially** (the render server is a singleton on :7373):
 
 - author `designed` AND (author-preferred OR `tie-good`) → **`judge:✓`**
 - author `partial`/`blob`, OR reference clearly preferred → **`judge:✗`** + the judge's reason
-- `tie-blob` (even the reference rendered blobby — usually a bad camera angle) → **`judge:⚠`**:
-  re-render from a better view and re-judge; don't score it as a pass.
+- `tie-blob` (both renders read blobby — usually a bad camera angle) → re-render **once** from a
+  better view and re-judge; if it's still `tie-blob`, record **`judge:⚠`** and move on (don't loop).
+  Never score it as a pass.
 
 Record the verdict + reason + whether it escalated in the scorecard's judge column. **No silent
 caps:** an unrendered-but-valid part stays `judge:—` (a coverage gap, not a pass).

@@ -55,7 +55,7 @@ the design signal to a **blind judge subagent** (full protocol: `bench/blind-jud
 author part AND the playground reference serially, strip the labels to neutral `A`/`B` filenames
 (coin-flipped per part), and a judge that never saw the heal or which render is whose returns the
 verdict — you only render, shuffle, decode, aggregate. One judge per part, escalate to a panel of 3
-on `tie`/`confidence:low`. Note: clean-room authors stop at `ok:true` with no `--snapshot`, skipping
+on `tie-good`/`confidence:low` (`tie-blob` re-renders instead — see `bench/blind-judge.md`). Note: clean-room authors stop at `ok:true` with no `--snapshot`, skipping
 the polish pass (SKILL.md authoring step 8), so this measures _first-valid_ design quality — call
 that out.
 
