@@ -4119,7 +4119,6 @@ const LEAD_ANGLE_DEG = (Math.atan(LEAD / (2 * Math.PI * WORM_PITCH_R)) * 180) / 
 const WHEEL_TEETH = 24;
 const WHEEL_PITCH_R = (MODULE * WHEEL_TEETH) / 2;
 const WHEEL_OUTER_R = WHEEL_PITCH_R + MODULE;
-const RATIO = WHEEL_TEETH / STARTS;
 const CENTER_DIST = WORM_PITCH_R + WHEEL_PITCH_R; // 36 (DERIVED)
 const MESH_GAP = 1.6; // visible backlash pull-away (display part)
 const WHEEL_Z = 40;
