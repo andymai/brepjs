@@ -3460,12 +3460,26 @@ function planetaryReducer({
   // Carrier (one rigid body): lightened bottom plate + 3 pins + output boss + open
   // top spider, welded pairwise with real z-overlap at every joint.
   const carrier = () => {
+    // one lightening hole between each adjacent pair of pins — count follows
+    // planetCount, orbit/radius derived so they clear the boss, pins and each other.
+    const plateHoleOrbit = (outputShaft + orbit) / 2;
+    const plateHoleR = Math.min(
+      (orbit - outputShaft) / 3.5,
+      plateHoleOrbit * Math.sin(Math.PI / planetCount) - 1,
+    );
     const holes = [];
-    for (let i = 0; i < 3; i++) {
-      const a = Math.PI / 3 + (i * 2 * Math.PI) / 3;
-      holes.push(cylinder(5, plateT + 2, { at: [19 * Math.cos(a), 19 * Math.sin(a), plateZ0 - 1] }));
+    if (plateHoleR > 1) {
+      for (let i = 0; i < planetCount; i++) {
+        const a = Math.PI / planetCount + (i * 2 * Math.PI) / planetCount;
+        holes.push(
+          cylinder(plateHoleR, plateT + 2, {
+            at: [plateHoleOrbit * Math.cos(a), plateHoleOrbit * Math.sin(a), plateZ0 - 1],
+          }),
+        );
+      }
     }
-    const plate = unwrap(cutAll(cylinder(carrierR, plateT, { at: [0, 0, plateZ0] }), holes));
+    const blank = cylinder(carrierR, plateT, { at: [0, 0, plateZ0] });
+    const plate = holes.length ? unwrap(cutAll(blank, holes)) : blank;
     const boss = cylinder(outputShaft, plateZ0 + plateT + outputProtrude, {
       at: [0, 0, -outputProtrude],
     });
@@ -3531,14 +3545,22 @@ function planetaryReducer({
   const planet = (psi: number) => {
     const cx = orbit * Math.cos(psi);
     const cy = orbit * Math.sin(psi);
-    const tools = [cylinder(pinRadius + 0.4, faceWidth + 2, { at: [cx, cy, gearZ0 - 1] })];
-    for (let k = 0; k < 5; k++) {
-      const a = (k * 2 * Math.PI) / 5;
-      tools.push(
-        cylinder(1.7, faceWidth + 2, {
-          at: [cx + 10 * Math.cos(a), cy + 10 * Math.sin(a), gearZ0 - 1],
-        }),
-      );
+    const boreR = pinRadius + 0.4;
+    const rootR = (m * teethPlanet) / 2 - 1.25 * m; // planet root circle
+    const tools = [cylinder(boreR, faceWidth + 2, { at: [cx, cy, gearZ0 - 1] })];
+    // five lightening holes in the web between the bore and the root circle — derived
+    // from the gear geometry so they scale with the module and never breach the root.
+    const holeOrbit = (boreR + rootR) / 2;
+    const holeR = 0.85 * m;
+    if (holeOrbit - holeR > boreR + 0.3 && holeOrbit + holeR < rootR - 0.3) {
+      for (let k = 0; k < 5; k++) {
+        const a = (k * 2 * Math.PI) / 5;
+        tools.push(
+          cylinder(holeR, faceWidth + 2, {
+            at: [cx + holeOrbit * Math.cos(a), cy + holeOrbit * Math.sin(a), gearZ0 - 1],
+          }),
+        );
+      }
     }
     return unwrap(cutAll(spurGear(teethPlanet, planetSpin(psi), cx, cy), tools));
   };
