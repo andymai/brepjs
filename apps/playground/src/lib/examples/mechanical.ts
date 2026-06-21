@@ -99,45 +99,105 @@ export default oRing();
     id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
     description: 'An axial cooling fan with a ring of swept, twisted impeller blades.',
-    code: `// Axial cooling fan: a ring of swept, cambered, pitch-twisted impeller blades around a hub,
-// enclosed by a shroud ring. Each blade is a CAMBERED airfoil section sketched in the YZ plane
-// at the hub radius, then extruded RADIALLY (+X) across the span with a pitch twist — an axial
-// fan / propeller, not flat fins. (references/airfoils.md)
-import { draw, cylinder, fuse, cut, circularPattern, unwrap } from 'brepjs/quick';
+    code: `import {
+  box,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fillet,
+  fuseAll,
+  line,
+  loft,
+  rotate,
+  unwrap,
+  wire,
+} from 'brepjs/quick';
 
-const R_HUB = 8; // mm — hub radius (blade roots)
-const R_TIP = 28; // mm — blade tip radius
-const SPAN = R_TIP - R_HUB; // radial blade length
-const CHORD = 18; // mm — airfoil chord
-const CAMBER = 3.2; // mm — airfoil camber (~18% of chord)
-const THICK = 1.6; // mm — section thickness
-const PITCH = 38; // degrees — root→tip blade twist
-const N = 7; // blade count
+// Axial cooling fan (57×15 form factor): rounded square frame, air bore,
+// four corner mounting holes, a central hub, and a ring of swept, twisted blades.
+function axialFan({
+  width = 57, // outer square width and height (mm)
+  depth = 15, // frame thickness (mm)
+  bore = 48.5, // screw-hole center-to-center separation (mm)
+  hub = 29, // central hub diameter (mm)
+  hubHeight = 2, // hub protrusion above the top face (mm)
+  screwDia = 4.3, // mounting-screw clearance hole diameter (mm)
+  blades = 9, // number of impeller blades
+} = {}) {
+  const cornerR = (width - bore) / 2; // 4.25 mm for the 57x15 default
 
-// Cambered thin-plate airfoil: upper surface (camber + half-thickness), lower surface returns
-// with (camber − half-thickness) — a crescent, not a flat strip.
-const section = () =>
-  draw([-CHORD / 2, 0])
-    .sagittaArcTo([CHORD / 2, 0], CAMBER + THICK / 2)
-    .sagittaArcTo([-CHORD / 2, 0], -(CAMBER - THICK / 2))
-    .close();
+  // Frame: round the four vertical corners of a plain box.
+  const blank = box(width, width, depth, { at: [0, 0, depth / 2] });
+  const verticalEdges = edgeFinder().inDirection('Z').findAll(blank);
+  const plate = unwrap(fillet(blank, verticalEdges, cornerR));
 
-// One blade: section in the plane perpendicular to the span (YZ → extrudes +X) at the hub radius,
-// extruded radially by SPAN with a pitch twist.
-const blade = () =>
-  section().sketchOnPlane('YZ', [R_HUB, 0, 0]).extrude(SPAN, { twistAngle: PITCH, origin: [0, 0] });
+  // Air bore through the centre.
+  const airBore = cylinder(width / 2 - 4, depth + 2, { at: [0, 0, -1] });
 
-export default (() => {
-  const hub = cylinder(R_HUB + 1, 22, { at: [0, 0, -11] });
-  const blades = unwrap(circularPattern(blade(), [0, 0, 1], N));
-  const impeller = unwrap(fuse(hub, blades));
-  // Shroud ring with a little tip clearance over R_TIP.
-  const ring = unwrap(
-    cut(cylinder(R_TIP + 3, 26, { at: [0, 0, -13] }), cylinder(R_TIP + 0.5, 30, { at: [0, 0, -15] }))
-  );
-  // Impeller and shroud are distinct parts (the impeller spins inside the duct).
-  return [impeller, ring];
-})();`,
+  // Four corner mounting holes.
+  const screwHoles = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      screwHoles.push(
+        cylinder(screwDia / 2, depth + 2, {
+          at: [(sx * bore) / 2, (sy * bore) / 2, -1],
+        }),
+      );
+    }
+  }
+
+  const frame = unwrap(cutAll(plate, [airBore, ...screwHoles]));
+
+  // Hub: solid cylinder protruding above the top face.
+  const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
+
+  // A ring of swept, twisted blades. Each blade is lofted through three thin
+  // cross-sections from hub to rim — wider and steeper at the root, narrower and
+  // flatter at the tip — so it reads as a real impeller instead of a flat tab.
+  // Sections are built as wires (4 lines) in planes perpendicular to the radial
+  // axis, each tilted to its local pitch; a non-ruled loft curves between them.
+  const thick = 1.2; // blade thickness
+  const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
+  const rOuter = width / 2 - 5; // tip stays inside the air bore radius
+  const zMid = depth - 4; // blade mid-plane just below the top face
+
+  const bladeSection = (r: number, c: number, pitchDeg: number) => {
+    const th = (pitchDeg * Math.PI) / 180;
+    const cs = Math.cos(th);
+    const sn = Math.sin(th);
+    // A chord×thick rectangle in the (tangential, axial) plane at radius r,
+    // tilted by the local pitch about the radial axis.
+    const corner = (y0: number, z0: number): [number, number, number] => [
+      r,
+      y0 * cs - z0 * sn,
+      zMid + y0 * sn + z0 * cs,
+    ];
+    const a = corner(-c / 2, -thick / 2);
+    const b = corner(c / 2, -thick / 2);
+    const cc = corner(c / 2, thick / 2);
+    const d = corner(-c / 2, thick / 2);
+    return unwrap(wire([line(a, b), line(b, cc), line(cc, d), line(d, a)]));
+  };
+  const makeBlade = () =>
+    unwrap(
+      loft(
+        [
+          bladeSection(rInner, 10, 40),
+          bladeSection((rInner + rOuter) / 2, 8.5, 30),
+          bladeSection(rOuter, 7, 22),
+        ],
+        { ruled: false },
+      ),
+    );
+  const bladeRing = [];
+  for (let i = 0; i < blades; i++) {
+    bladeRing.push(rotate(makeBlade(), (360 * i) / blades, { axis: [0, 0, 1] }));
+  }
+
+  return unwrap(fuseAll([frame, hubBody, ...bladeRing]));
+}
+
+export default axialFan();`,
   },
   {
     id: 'fan-guard',
@@ -146,148 +206,151 @@ export default (() => {
     code: `import {
   box,
   cylinder,
-  fuse,
   cut,
-  circularPattern,
-  getSolids,
+  cutAll,
+  fuseAll,
+  fillet,
+  edgeFinder,
+  rotate,
   unwrap,
-  type Shape3D,
 } from 'brepjs/quick';
 
-// Fan finger guard: a square mounting plate with a central opening, four corner
-// bolt holes, and a concentric ring-and-spoke grille filling the opening.
-// Sized for an 80mm axial fan. Units: mm.
-const PLATE = 80; // plate width/depth (X/Y)
-const PLATE_T = 3; // plate thickness (Z)
-const OPENING_R = 37; // central opening radius (74mm flow path)
+// Fan finger guard: a rounded square plate with a circular air opening, filled
+// by a concentric-ring + spoke grille. Solid corners carry the mounting holes.
+// Defaults fit a 60 mm fan (50 mm screw pitch, M4).
+function fanGuard(
+  width = 60, // fan side length (mm) → plate is width × width
+  thickness = 2.5, // plate thickness; also the ring / spoke width
+  holePitch = 50, // centre-to-centre of the diagonal mounting holes (mm)
+  screwClearance = 2.4, // mounting hole radius (M4 clearance ≈ 2.4 mm)
+) {
+  const half = width / 2;
 
-const HOLE_R = 2.2; // corner bolt hole radius (M4 clearance)
-const HOLE_INSET = 4; // bolt-hole center inset from each plate edge
+  // Round the corners FIRST (clean 4-edge fillet on a plain box), THEN punch the
+  // air opening — leaving solid corner gussets for the screws to pass through.
+  const cornerR = Math.min(thickness * 1.5, half - 0.5);
+  const plate = box(width, width, thickness, { at: [0, 0, thickness / 2] });
+  const rounded = unwrap(
+    fillet(plate, edgeFinder().inDirection('Z').findAll(plate), cornerR),
+  );
+  const openingR = half - thickness;
+  const frame = unwrap(cut(rounded, cylinder(openingR, thickness + 2, { at: [0, 0, -1] })));
 
-const BAR = 2.4; // grille bar thickness (width of rings/spokes)
-const HUB_R = 5; // central hub radius
-const SPOKE_COUNT = 8; // radial spokes
-const RING_RADII = [13, 24, 33]; // concentric grille ring center radii
+  // Central hub the spokes radiate from.
+  const hubRadius = Math.max(thickness * 1.5, width * 0.08);
+  const parts = [frame, cylinder(hubRadius, thickness, { at: [0, 0, 0] })];
 
-export default (() => {
-  // Plate with a circular central opening, then four corner bolt holes.
-  const plate = box(PLATE, PLATE, PLATE_T, { at: [0, 0, PLATE_T / 2] });
-  const openingTool = cylinder(OPENING_R, PLATE_T + 2, { at: [0, 0, -1] });
-  let frame = unwrap(cut(plate, openingTool));
+  // Concentric rings, each a thin annulus, spaced so gaps stay finger-safe.
+  const ringSpan = half - thickness - hubRadius;
+  const ringCount = Math.max(1, Math.floor(ringSpan / (2 * thickness)));
+  const pitch = ringSpan / ringCount;
+  for (let i = 1; i <= ringCount; i++) {
+    const ro = hubRadius + i * pitch;
+    const ri = ro - thickness / 2;
+    const ring = unwrap(
+      cut(
+        cylinder(ro, thickness, { at: [0, 0, 0] }),
+        cylinder(ri, thickness + 2, { at: [0, 0, -1] }),
+      ),
+    );
+    parts.push(ring);
+  }
 
-  const hc = PLATE / 2 - HOLE_INSET;
-  const corners: [number, number][] = [
-    [hc, hc],
-    [-hc, hc],
-    [hc, -hc],
-    [-hc, -hc],
+  // Spokes: full-width bars rotated onto 45° increments, tying rings to frame.
+  const spokeLen = width;
+  for (const angle of [0, 45, 90, 135]) {
+    const bar = box(spokeLen, thickness, thickness, {
+      at: [0, 0, thickness / 2],
+    });
+    parts.push(rotate(bar, angle, { axis: [0, 0, 1], at: [0, 0, 0] }));
+  }
+
+  const grille = unwrap(fuseAll(parts));
+
+  // Drill the four corner mounting holes through the solid gussets.
+  const o = holePitch / 2;
+  const holeCenters = [
+    [-o, -o],
+    [o, -o],
+    [o, o],
+    [-o, o],
   ];
-  for (const [x, y] of corners) {
-    const drill = cylinder(HOLE_R, PLATE_T + 2, { at: [x, y, -1] });
-    frame = unwrap(cut(frame, drill));
-  }
+  const holes = holeCenters.map(([x, y]) =>
+    cylinder(screwClearance, thickness + 2, { at: [x, y, -1] }),
+  );
+  return unwrap(cutAll(grille, holes));
+}
 
-  // Grille pieces, all the full plate thickness so they sit flush in the opening.
-  const pieces: Shape3D[] = [];
-
-  // Central hub disc.
-  pieces.push(cylinder(HUB_R, PLATE_T, { at: [0, 0, 0] }));
-
-  // Concentric rings (annular bars) made by cutting an inner cylinder from an outer.
-  for (const r of RING_RADII) {
-    const outer = cylinder(r + BAR / 2, PLATE_T, { at: [0, 0, 0] });
-    const inner = cylinder(r - BAR / 2, PLATE_T + 2, { at: [0, 0, -1] });
-    pieces.push(unwrap(cut(outer, inner)));
-  }
-
-  // Radial spokes from the hub to the plate rim, patterned around the axis.
-  // One spoke bar lying along +X, overlapping the hub and reaching the rim.
-  const spokeLen = OPENING_R + 1; // reach into the plate rim for a clean weld
-  const spoke = box(spokeLen, BAR, PLATE_T, { at: [spokeLen / 2, 0, PLATE_T / 2] });
-  const spokes = unwrap(circularPattern(spoke, [0, 0, 1], SPOKE_COUNT));
-  pieces.push(spokes);
-
-  // Fold everything (frame + grille pieces) into one body with pairwise fuse over
-  // real overlaps; fuseAll on this many operands leaves a loose compound.
-  let part: Shape3D = frame;
-  for (const p of pieces) {
-    part = unwrap(fuse(part, p));
-  }
-
-  const solids = getSolids(part);
-  return solids.length === 1 ? solids[0] : part;
-})();`,
+export default fanGuard();`,
   },
   {
     id: 'gt2-pulley',
     label: 'GT2 Timing Pulley',
     description: 'A GT2 timing pulley with flanges and a bored hub.',
-    code: `// GT2 timing pulley: belt-toothed rim caged between two flanges, on a hub stub
-// with a through bore and a radial grub-screw hole. GT2x20 for a 5 mm shaft.
-import { polygon, extrude, cylinder, fuse, cut, rotate, translate, unwrap } from 'brepjs/quick';
+    code: `import {
+  cutAll,
+  cylinder,
+  fuseAll,
+  rotate,
+  sketchRoundedRectangle,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
 
-const TEETH = 20;
-const PITCH = 2.0; // GT2 belt pitch (mm)
-const TOOTH_DEPTH = 0.75; // groove depth (crest land -> trough bottom)
-const GROOVE_R = 0.555; // GT2 tooth (groove) radius
-const BELT_WIDTH = 7.0; // toothed-rim height (z)
-const FLANGE_DIA = 16.0; // flanges overhang the rim to cage the belt
-const FLANGE_THICK = 1.0;
-const BORE_DIA = 5.0; // shaft bore
-const HUB_DIA = 12.0; // hub diameter
-const HUB_LENGTH = 6.0; // hub stub below the toothed body
-const GRUB_R = 1.5; // M3 grub-screw hole radius
-const SAMPLES_PER_TOOTH = 24;
+// GT2 timing pulley: a toothed body caged between two flanges on a bored hub,
+// with a radial grub-screw hole. Defaults model the common GT2x20 for a 5 mm shaft.
+function gt2Pulley(
+  teeth = 20, // number of belt grooves around the rim
+  beltWidth = 7, // axial height of the toothed body (mm)
+  bore = 5, // shaft bore diameter (mm)
+  hubDia = 12, // hub outer diameter (mm)
+  hubLength = 6, // hub height below the body (mm)
+  flangeThickness = 1, // each flange disc thickness (mm)
+) {
+  const pitch = 2; // GT2 belt pitch (standard)
+  const toothDepth = 0.75; // GT2 groove depth (standard)
+  const bodyR = (teeth * pitch) / Math.PI / 2; // from the pitch circle
+  const flangeR = bodyR + 1.5; // flanges overhang the rim to cage the belt
 
-const PITCH_R = (TEETH * PITCH) / (2 * Math.PI);
-const CREST_R = PITCH_R + 0.25; // outer crest (land) radius
-
-function gt2Pulley() {
-  const toothAngle = (2 * Math.PI) / TEETH;
-  const grooveHalf = Math.asin(Math.min(0.999, GROOVE_R / CREST_R)) * 1.4;
-
-  // Single-valued polar radius r(theta): ride the crest land, dip into a smooth
-  // trough once per tooth (gears.md timing-belt recipe — cannot self-intersect).
-  const radiusAt = (theta: number): number => {
-    const local = ((theta % toothAngle) + toothAngle) % toothAngle;
-    const d = local - toothAngle / 2;
-    if (Math.abs(d) > grooveHalf) return CREST_R;
-    const t = d / grooveHalf;
-    return CREST_R - TOOTH_DEPTH * 0.5 * (1 + Math.cos(Math.PI * t));
-  };
-
-  const total = TEETH * SAMPLES_PER_TOOTH;
-  const pts: [number, number, number][] = [];
-  for (let i = 0; i < total; i++) {
-    const theta = (i / total) * 2 * Math.PI;
-    const r = radiusAt(theta);
-    pts.push([r * Math.cos(theta), r * Math.sin(theta), 0]);
+  // Toothed body: carve evenly-spaced rounded grooves into a plain disc; the
+  // lands left between them are the teeth.
+  const body = cylinder(bodyR, beltWidth);
+  const grooveW = pitch * 0.9; // groove mouth width
+  const grooveR = grooveW / 2; // rounded ends → lens-shaped groove
+  const cutterDepth = toothDepth + 1;
+  const cutterCx = bodyR + cutterDepth / 2 - toothDepth;
+  const grooveCutters = [];
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * 360;
+    const flat = sketchRoundedRectangle(cutterDepth, grooveW, grooveR);
+    const cutter = translate(flat.extrude(beltWidth + 2), [cutterCx, 0, -1]);
+    grooveCutters.push(rotate(cutter, a, { axis: [0, 0, 1] }));
   }
-  const rim = unwrap(extrude(unwrap(polygon(pts)), BELT_WIDTH));
+  const toothed = unwrap(cutAll(body, grooveCutters));
 
-  // Hub: a disc closing the rim centre, plus a stub below for the grub screw.
-  const hubDisc = cylinder(HUB_DIA / 2, BELT_WIDTH);
-  const hubStub = cylinder(HUB_DIA / 2, HUB_LENGTH, { at: [0, 0, -HUB_LENGTH] });
-  // Flanges cap the belt channel, slightly proud of the crest.
-  const flangeBottom = cylinder(FLANGE_DIA / 2, FLANGE_THICK, { at: [0, 0, -FLANGE_THICK] });
-  const flangeTop = cylinder(FLANGE_DIA / 2, FLANGE_THICK, { at: [0, 0, BELT_WIDTH] });
-
-  // Pairwise-fuse the overlapping concentric bodies into ONE welded solid.
-  let body = unwrap(fuse(rim, hubDisc));
-  body = unwrap(fuse(body, hubStub));
-  body = unwrap(fuse(body, flangeBottom));
-  body = unwrap(fuse(body, flangeTop));
-
-  // Through bore (proud of both ends) + a radial grub-screw hole through the hub wall.
-  const bore = cylinder(BORE_DIA / 2, HUB_LENGTH + BELT_WIDTH + 2 * FLANGE_THICK + 2, {
-    at: [0, 0, -HUB_LENGTH - FLANGE_THICK - 1],
+  // Flanges: two discs wider than the body, capping the belt channel.
+  const bottomFlange = cylinder(flangeR, flangeThickness, { at: [0, 0, 0] });
+  const topFlange = cylinder(flangeR, flangeThickness, {
+    at: [0, 0, beltWidth - flangeThickness],
   });
-  const grubLen = HUB_DIA + 2;
-  const grub = translate(
-    rotate(cylinder(GRUB_R, grubLen, { at: [0, 0, -grubLen / 2] }), 90, { axis: [1, 0, 0] }),
-    [0, 0, -HUB_LENGTH / 2]
+
+  // Hub: solid stub below the body for the grub screw.
+  const hub = cylinder(hubDia / 2, hubLength, { at: [0, 0, -hubLength] });
+
+  const blank = unwrap(fuseAll([toothed, bottomFlange, topFlange, hub]));
+
+  // Through bore plus a radial grub-screw hole through the hub wall. The radial
+  // cutter is centred and only just clears the hub (no long tail hanging into
+  // empty space — that tail was surviving the boolean as a stray rod).
+  const totalH = hubLength + beltWidth;
+  const boreCut = cylinder(bore / 2, totalH + 2, { at: [0, 0, -hubLength - 1] });
+  const grubLen = hubDia + 2;
+  const grubScrew = translate(
+    rotate(cylinder(1.5, grubLen, { at: [0, 0, -grubLen / 2] }), 90, { axis: [1, 0, 0] }),
+    [0, 0, -hubLength / 2],
   );
-  return unwrap(cut(body, bore, grub));
+
+  return unwrap(cutAll(blank, [boreCut, grubScrew]));
 }
 
 export default gt2Pulley();`,
@@ -297,85 +360,70 @@ export default gt2Pulley();`,
     label: 'Flanged Pipe Tee',
     description:
       'A bolted pipe tee: the perpendicular run/branch union forms the saddle seam — the canonical B-Rep boolean intersection curve.',
-    code: `import { cylinder, fuse, cut, rotate, translate, unwrap } from 'brepjs/quick';
-import type { Solid } from 'brepjs/quick';
+    code: `import { cylinder, cutAll, fuseAll, unwrap } from 'brepjs/quick';
 
-// A bolted pipe tee: a horizontal run pipe and a perpendicular branch pipe,
-// fused so the union forms the saddle seam, with bolt flanges at all three ports.
+// Flanged pipe tee — a main run and a perpendicular branch, each capped by a
+// bolted flange. The run/branch union creates the saddle intersection curve
+// (the canonical B-Rep boolean seam), and every bore and bolt leaves an exact
+// circular edge. A pure fuse + cut build.
+function pipeTee({
+  runR = 18, // main run outer radius (mm)
+  runLen = 130, // run length, flange face to flange face (mm)
+  branchR = 15, // branch outer radius (mm)
+  branchH = 60, // branch height above the run centre (mm)
+  flangeR = 30, // run flange radius (mm)
+  flangeT = 8, // flange disc thickness (mm)
+  boltR = 3.5, // bolt hole radius (mm)
+  bolts = 4, // bolt holes per flange
+} = {}) {
+  // Branch flange a touch smaller than the run flanges so its rim stays clear
+  // of the run body at the saddle join.
+  const topFlangeR = flangeR - 4;
 
-const RUN_LEN = 120; // X span of the run (mm)
-const RUN_OR = 16; // run outer radius (mm)
-const RUN_IR = 11; // run bore radius (mm)
+  // Run along X, branch up Z; both cross the origin so the union is clean.
+  const run = cylinder(runR, runLen, { axis: [1, 0, 0], at: [-runLen / 2, 0, 0] });
+  const branch = cylinder(branchR, branchH, { axis: [0, 0, 1], at: [0, 0, 0] });
 
-const BRANCH_LEN = 60; // Z height of the branch port above the run axis (mm)
-const BRANCH_OR = 14; // branch outer radius (mm)
-const BRANCH_IR = 9; // branch bore radius (mm)
+  // One flange disc per open end.
+  const flangeXPlus = cylinder(flangeR, flangeT, { axis: [1, 0, 0], at: [runLen / 2 - flangeT, 0, 0] });
+  const flangeXMinus = cylinder(flangeR, flangeT, { axis: [1, 0, 0], at: [-runLen / 2, 0, 0] });
+  const flangeTop = cylinder(topFlangeR, flangeT, { axis: [0, 0, 1], at: [0, 0, branchH - flangeT] });
 
-const FLANGE_T = 8; // flange disc thickness (mm)
-const FLANGE_R = 28; // flange disc radius (mm)
-const BOLT_R = 3.5; // bolt-hole radius (mm)
-const BOLT_CIRCLE = 21; // bolt-circle radius (mm)
-const BOLT_COUNT = 4;
+  const body = unwrap(fuseAll([run, branch, flangeXPlus, flangeXMinus, flangeTop]));
 
-// One face flange built on the +Z axis: a thick disc bored to the pipe ID with a
-// ring of bolt holes. The caller rotates/translates it onto each port.
-function faceFlange(boreR: number): Solid {
-  const disc = cylinder(FLANGE_R, FLANGE_T);
-  const bore = cylinder(boreR, FLANGE_T + 4, { at: [0, 0, -2] });
-  let f = unwrap(cut(disc, bore));
-  const drill = cylinder(BOLT_R, FLANGE_T + 4, { at: [0, 0, -2] });
-  for (let i = 0; i < BOLT_COUNT; i++) {
-    const a = (i / BOLT_COUNT) * Math.PI * 2;
-    const dx = Math.cos(a) * BOLT_CIRCLE;
-    const dy = Math.sin(a) * BOLT_CIRCLE;
-    f = unwrap(cut(f, translate(drill, [dx, dy, 0])));
-  }
-  return f;
+  // Through bores down each pipe.
+  const runBore = cylinder(runR - 7, runLen + 10, { axis: [1, 0, 0], at: [-runLen / 2 - 5, 0, 0] });
+  const branchBore = cylinder(branchR - 6, branchH + 30, { axis: [0, 0, 1], at: [0, 0, -20] });
+
+  // A bolt circle on each flange face; holes offset half a step so none land on
+  // the silhouette.
+  const ring = (r: number, axis: 'x' | 'z', fixed: number) => {
+    const holes = [];
+    for (let i = 0; i < bolts; i++) {
+      const a = ((i + 0.5) * (2 * Math.PI)) / bolts;
+      const u = r * Math.cos(a);
+      const v = r * Math.sin(a);
+      holes.push(
+        axis === 'x'
+          ? cylinder(boltR, flangeT + 4, { axis: [1, 0, 0], at: [fixed, u, v] })
+          : cylinder(boltR, flangeT + 4, { axis: [0, 0, 1], at: [u, v, fixed] }),
+      );
+    }
+    return holes;
+  };
+  const bc = flangeR - 6;
+  const bcTop = topFlangeR - 5;
+  const boltHoles = [
+    ...ring(bc, 'x', runLen / 2 - flangeT - 2),
+    ...ring(bc, 'x', -runLen / 2 - 2),
+    ...ring(bcTop, 'z', branchH - flangeT - 2),
+  ];
+
+  return unwrap(cutAll(body, [runBore, branchBore, ...boltHoles]));
 }
 
-export default (() => {
-  // Run pipe along X, centered on the origin.
-  const run = cylinder(RUN_OR, RUN_LEN, { at: [-RUN_LEN / 2, 0, 0], axis: [1, 0, 0] });
-  // Branch pipe along +Z, starting below the run axis so it overlaps the run wall
-  // for a clean welded saddle intersection (the canonical B-Rep seam).
-  const branch = cylinder(BRANCH_OR, BRANCH_LEN + RUN_OR, { at: [0, 0, -RUN_OR], axis: [0, 0, 1] });
-
-  // Tee body: union of run and branch -> the saddle seam.
-  const body = unwrap(fuse(run, branch));
-
-  // Flanges are inset into their pipe by OVERLAP so each weld actually holds
-  // (a flush butt only touches and leaves a loose Compound).
-  const OVERLAP = 2;
-
-  // Branch flange at the +Z port (disc is already +Z-axial).
-  const branchFlange = translate(faceFlange(BRANCH_IR), [0, 0, BRANCH_LEN - OVERLAP]);
-
-  // Run flanges: rotate the +Z disc 90deg about Y so its axis points along X,
-  // then place at each run end. +X port faces +X; -X port faces -X.
-  const flangePosX = translate(
-    rotate(faceFlange(RUN_IR), 90, { axis: [0, 1, 0] }),
-    [RUN_LEN / 2 - OVERLAP, 0, 0],
-  );
-  const flangeNegX = translate(
-    rotate(faceFlange(RUN_IR), -90, { axis: [0, 1, 0] }),
-    [-RUN_LEN / 2 + OVERLAP, 0, 0],
-  );
-
-  // Weld everything into one watertight solid, pairwise over real overlaps.
-  let part = unwrap(fuse(body, branchFlange));
-  part = unwrap(fuse(part, flangePosX));
-  part = unwrap(fuse(part, flangeNegX));
-
-  // Bore the run all the way through (tool proud of both run ports).
-  const runBore = cylinder(RUN_IR, RUN_LEN + 4, { at: [-RUN_LEN / 2 - 2, 0, 0], axis: [1, 0, 0] });
-  part = unwrap(cut(part, runBore));
-
-  // Bore the branch through into the run cavity (proud of the branch port).
-  const branchBore = cylinder(BRANCH_IR, BRANCH_LEN + RUN_OR + 4, { at: [0, 0, -RUN_OR - 2], axis: [0, 0, 1] });
-  part = unwrap(cut(part, branchBore));
-
-  return part;
-})();`,
+export default pipeTee();
+`,
   },
   {
     id: 'fluted-knob',
@@ -1279,84 +1327,95 @@ export default txEnclosure();`,
     label: 'Manfrotto RC2 quick-release plate',
     description:
       'A tripod quick-release dovetail plate: chamfered trapezoidal prism with end relief notches and a counterbored 1/4"-20 camera screw hole.',
-    code: `// Arca-Swiss / RC2 quick-release dovetail plate.
-// A chamfered trapezoidal prism (dovetail cross-section, wide top, narrow base
-// with ~45 deg flanks), with end relief notches and a counterbored 1/4"-20
-// camera screw hole. No stray tabs or nubs protruding from any edge.
-import {
-  draw,
+    code: `import {
   box,
+  chamfer,
+  cutAll,
   cylinder,
-  cut,
-  unwrap,
-  isSolid,
-  validSolid,
-  getBounds,
   edgeFinder,
-  fillet,
-  type Edge,
+  extrude,
+  polygon,
+  translate,
+  unwrap,
+  validSolid,
 } from 'brepjs/quick';
 
-const LENGTH = 50; // mm, plate length along X
-const TOP_WIDTH = 38; // mm, dovetail top width (Y) — Arca-Swiss 38mm standard
-const FLANK = 5; // mm horizontal inset of each 45 deg dovetail flank
-const HEIGHT = 9; // mm, plate thickness (Z)
-const FLANK_H = FLANK; // 45 deg flank: vertical run equals horizontal inset
-const BASE_WIDTH = TOP_WIDTH - 2 * FLANK; // narrow base width (Y)
+// Manfrotto RC2 quick-release tripod plate: a dovetail prism the camera bolts to
+// and the tripod head's spring jaws clamp under. The cross-section is a trapezoid
+// wider at the base (42.4 mm) than the top (37.4 mm) with angled dovetail flanks
+// the clamp grips; it sweeps 52.5 mm along the plate. Every long edge is lightly
+// chamfered, the base corners are relieved at each end for clamp clearance, and a
+// central 1/4"-20 camera screw passes through a counterbore. Centred on the origin.
+function rc2Plate({
+  length = 52.5, // plate length along the slide axis (mm)
+  botWidth = 42.4, // width at the base — the dovetail's widest line (mm)
+  topWidth = 37.4, // width across the top face (mm)
+  thickness = 10.5, // overall plate thickness (mm)
+  flat = 3, // straight wall height at top and bottom of each flank (mm)
+  relief = 25, // relieved span length along each base corner (mm)
+  reliefDepth = 4.5, // how far up the relief notch reaches from the base (mm)
+  reliefInset = 6, // how far in from each base corner the notch reaches (mm)
+  screwClear = 3.4, // 1/4"-20 clearance hole radius (~6.8 mm dia) (mm)
+  cboreRad = 6, // counterbore radius for the captive screw head (mm)
+  cboreDepth = 4, // counterbore depth from the underside (mm)
+  edgeChamfer = 0.6, // chamfer on the long (Y-running) dovetail edges (mm)
+} = {}) {
+  const xb = botWidth / 2;
+  const xt = topWidth / 2;
+  // Top of the angled flank; guarded so the flank never inverts if thickness is
+  // thinner than the two straight walls combined.
+  const zMid = flat + Math.max(thickness - 2 * flat, 0.5);
 
-const RELIEF_W = 4; // mm, end relief notch width along X
-const RELIEF_DEPTH = 2.5; // mm, relief notch depth down from the top face
+  // Dovetail cross-section in the X-Z plane (y = 0), wound CCW: a trapezoid whose
+  // sides step straight up \`flat\`, angle inward to the narrower top, then run
+  // straight up to the top face. Extruding it along +Y makes the whole body in
+  // one solid, so the part is rigid by construction. Then centre it on the origin.
+  const profile = unwrap(
+    polygon([
+      [-xb, 0, 0],
+      [xb, 0, 0],
+      [xb, 0, flat],
+      [xt, 0, zMid],
+      [xt, 0, thickness],
+      [-xt, 0, thickness],
+      [-xt, 0, zMid],
+      [-xb, 0, flat],
+    ]),
+  );
+  const prism = translate(unwrap(extrude(profile, [0, length, 0])), [0, -length / 2, 0]);
 
-const SCREW_R = 6.35 / 2; // 1/4" clearance radius
-const CBORE_R = 6.5; // counterbore radius for a 1/4" socket-head cap
-const CBORE_DEPTH = 4; // counterbore depth from the top face
+  // Chamfer every long (Y-running) edge of the bare prism — the eight dovetail
+  // arrises — before any holes are cut, so the finder selects an unambiguous,
+  // unbroken edge set. (The real plate bevels essentially all of these.)
+  const longEdges = edgeFinder().inDirection('Y').findAll(prism);
+  const body =
+    longEdges.length > 0
+      ? unwrap(chamfer(unwrap(validSolid(prism)), longEdges, edgeChamfer))
+      : prism;
 
-function rc2Plate() {
-  // Trapezoidal dovetail cross-section in the YZ plane (extrudes along +X).
-  // y = width axis, z = height. Base at z=0, top at z=HEIGHT.
-  const halfTop = TOP_WIDTH / 2;
-  const halfBase = BASE_WIDTH / 2;
-  const profile = draw([-halfBase, 0])
-    .lineTo([halfBase, 0]) // narrow base
-    .lineTo([halfTop, FLANK_H]) // right 45 deg dovetail flank
-    .lineTo([halfTop, HEIGHT]) // right top shoulder
-    .lineTo([-halfTop, HEIGHT]) // top face
-    .lineTo([-halfTop, FLANK_H]) // left top shoulder
-    .close(); // left 45 deg flank back to base
-
-  const raw = profile.sketchOnPlane('YZ').extrude(LENGTH);
-  if (!isSolid(raw)) throw new Error('dovetail extrude did not yield a Solid');
-  let result = unwrap(validSolid(raw));
-
-  // Counterbored 1/4"-20 hole, top-down through the center of the plate.
-  const cx = LENGTH / 2;
-  const screw = cylinder(SCREW_R, HEIGHT + 2, { at: [cx, 0, -1] });
-  const cbore = cylinder(CBORE_R, CBORE_DEPTH + 1, { at: [cx, 0, HEIGHT - CBORE_DEPTH] });
-  result = unwrap(cut(result, screw));
-  result = unwrap(cut(result, cbore));
-
-  // End relief notches: shallow grooves milled across the full top width at
-  // each end (the safety-stop detents). A box seated proud above the top face
-  // only REMOVES material from the top, so no nub protrudes from any edge.
-  const notchCenters = [RELIEF_W / 2, LENGTH - RELIEF_W / 2];
-  for (const nx of notchCenters) {
-    const notch = box(RELIEF_W, TOP_WIDTH + 2, RELIEF_DEPTH + 2, {
-      at: [nx, 0, HEIGHT - RELIEF_DEPTH + (RELIEF_DEPTH + 2) / 2],
-    });
-    result = unwrap(cut(result, notch));
+  // End relief: notches knocked out of both base corners at each end so the plate
+  // drops cleanly into the spring clamp. Each is an over-long box cut biting the
+  // lower outer corner over the relief span.
+  const notchLen = relief + 1;
+  const notchY = length / 2 - notchLen / 2 + 0.5; // centre near each end, poking 0.5 past
+  const notches = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      notches.push(
+        box(reliefInset + 1, notchLen, reliefDepth + 0.5, {
+          at: [sx * (xb - reliefInset / 2 + 0.5), sy * notchY, reliefDepth / 2 - 0.25],
+        }),
+      );
+    }
   }
 
-  // Break the two top long edges for a clean, finished plate (material removal).
-  const topEdges = edgeFinder()
-    .inDirection('X')
-    .when((e: Edge) => getBounds(e).zMin > HEIGHT - 0.1)
-    .findAll(result);
-  if (topEdges.length > 0) {
-    const rounded = fillet(result, topEdges, 0.8);
-    if (rounded.ok) result = rounded.value;
-  }
+  // Central 1/4"-20 camera screw: a through clearance hole with a counterbore in
+  // the underside for the captive bolt head. Both run over-length to punch clean
+  // through their faces.
+  const screw = cylinder(screwClear, thickness + 2, { at: [0, 0, -1] });
+  const cbore = cylinder(cboreRad, cboreDepth + 1, { at: [0, 0, -1] });
 
-  return result;
+  return unwrap(cutAll(body, [...notches, screw, cbore]));
 }
 
 export default rc2Plate();`,
@@ -1366,74 +1425,93 @@ export default rc2Plate();`,
     label: 'Modular coolant hose segment (Loc-Line)',
     description:
       "Parametric Loc-Line style ball-and-socket coolant hose link: a truncated ball end snaps into the next segment's spherical socket cup, with flex slots and a through-bore for coolant.",
-    code: `import { cylinder, sphere, box, fuse, cut, intersect, translate, rotate, unwrap } from 'brepjs/quick';
+    code: `import {
+  cone,
+  cut,
+  cutAll,
+  cylinder,
+  fuse,
+  intersect,
+  rotate,
+  sphere,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
 
-// Loc-Line style ball-and-socket coolant hose link (axis = Z, mm).
-// Bottom: a truncated ball end (sphere with neck + polar flat) that snaps into the
-// next segment's socket. Top: a spherical socket cup that receives the prior segment's ball.
-// Flex slots are cut through the socket-cup wall; a through-bore runs the full axis for coolant.
+// Loc-Line style modular coolant-hose segment: a ball end (bottom) snapping
+// into the socket cup (top) of the next link, joined by a slim waist. One
+// rigid, hollow body — coolant flows straight up the central bore. Defaults
+// model the common 1/4" line: 4.9 mm ball radius, 3.0 mm through-bore.
+function modularHoseSegment(
+  ballRadius = 4.9,
+  boreRadius = 1.5,
+  waistRadius = 2.65,
+  segmentLength = 14,
+  slotCount = 4,
+) {
+  const wall = 1.4; // socket shell thickness around the captured ball
+  const socketR = ballRadius + wall; // outer radius of the cup
+  const ballCenterZ = ballRadius * 0.7; // sphere pulled down so its base truncates flat
+  const waistTop = ballRadius * 1.35; // where the waist blends into the socket body
+  const socketBaseZ = waistTop - 1; // socket cylinder swallows the waist top
+  const seatBottomZ = socketBaseZ + 1.2; // solid floor under the seat keeps the ball attached
+  const seatR = ballRadius + 0.25; // cavity a hair larger than a mating ball
+  const socketSeatZ = seatBottomZ + seatR; // seat centre, so the cavity bottoms out on the floor
 
-const R_BALL = 9; // ball-end radius
-const R_SOCK = 9.4; // socket cavity radius (clearance over a mating ball)
-const WALL = 2; // socket cup wall thickness → socket OD = R_SOCK + WALL
-const NECK_R = 5; // neck radius connecting ball to body
-const NECK_H = 5; // neck length below the body
-const BODY_R = R_SOCK + WALL; // body / socket outer radius
-const BODY_H = 8; // straight body length between ball neck and socket mouth
-const BORE_R = 3; // coolant through-bore radius
-const SLOT_N = 4; // number of flex slots around the socket cup
-const SLOT_W = 2.2; // flex-slot width
-const SLOT_DEPTH_Z = 7; // how far down the slot reaches from the socket mouth
-
-function modularHoseSegment() {
-  // --- Truncated ball end (bottom) -------------------------------------------------
-  // Full sphere centred below the body, then clip its bottom pole flat so it seats / snaps.
-  const ballCenterZ = -NECK_H - R_BALL * 0.55;
-  const ball = sphere(R_BALL, { at: [0, 0, ballCenterZ] });
-  // Keep only the upper portion of the sphere (clip the bottom pole to a flat).
-  const ballKeep = box(4 * R_BALL, 4 * R_BALL, 4 * R_BALL, {
-    at: [0, 0, ballCenterZ - R_BALL * 0.45 + 2 * R_BALL],
+  // --- Ball end: a sphere truncated to a flat neck on the bottom -----------
+  // Intersect with a tall cylinder so the south pole becomes a clean disc the
+  // bore can break through, leaving the recognizable spherical knuckle.
+  const ballSphere = sphere(ballRadius, { at: [0, 0, ballCenterZ] });
+  const ballClip = cylinder(ballRadius + 0.2, ballRadius * 1.7, {
+    at: [0, 0, 0],
   });
-  const truncBall = unwrap(intersect(ball, ballKeep));
+  let body = unwrap(intersect(ballSphere, ballClip));
 
-  // Neck joining the ball to the body.
-  const neck = cylinder(NECK_R, NECK_H + 1, { at: [0, 0, -NECK_H] });
-
-  // --- Body + socket cup (top) ------------------------------------------------------
-  const body = cylinder(BODY_R, BODY_H, { at: [0, 0, 0] });
-
-  // Weld pairwise over real overlaps so the segment is ONE watertight solid.
-  const solidPart = unwrap(fuse(unwrap(fuse(truncBall, neck)), body));
-
-  // Spherical socket cavity at the top of the body (concave hemisphere).
-  const socketCenterZ = BODY_H + R_SOCK * 0.25;
-  const socketBall = sphere(R_SOCK, { at: [0, 0, socketCenterZ] });
-  let part = unwrap(cut(solidPart, socketBall));
-
-  // Coolant through-bore down the full axis (proud of both ends).
-  const bore = cylinder(BORE_R, BODY_H + NECK_H + 2 * R_BALL + 12, {
-    at: [0, 0, ballCenterZ - R_BALL - 4],
+  // --- Waist: slim neck rising off the ball toward the socket --------------
+  const waist = cylinder(waistRadius, waistTop + 1.5, {
+    at: [0, 0, ballRadius - 0.5],
   });
-  part = unwrap(cut(part, bore));
+  body = unwrap(fuse(body, waist));
 
-  // --- Flex slots through the socket-cup wall --------------------------------------
-  // Each slot is a thin radial box biting only ONE side of the cup wall (offset outward so
-  // it does not cross the axis), cutting from the socket mouth downward. Offsetting keeps the
-  // segment a single connected body instead of severing the cup diametrically.
-  const slotMouthZ = BODY_H; // top of body = socket mouth
-  const slotLen = BODY_R - BORE_R + 2; // reach from just outside the bore to past the OD
-  for (let i = 0; i < SLOT_N; i++) {
-    const angle = (360 / SLOT_N) * i;
-    // Box centred at radius so it spans [bore, OD+1] on the +X side only.
-    const slot = translate(box(slotLen, SLOT_W, SLOT_DEPTH_Z), [
-      BORE_R - 1,
-      -SLOT_W / 2,
-      slotMouthZ - SLOT_DEPTH_Z + 1,
-    ]);
-    part = unwrap(cut(part, rotate(slot, angle, { axis: [0, 0, 1] })));
+  // --- Socket housing: the cup that grabs the next link's ball -------------
+  // A cylinder whose base overlaps the waist so the part stays one solid; its
+  // cavity is hollowed out above a solid floor.
+  const socket = cylinder(socketR, segmentLength - socketBaseZ, {
+    at: [0, 0, socketBaseZ],
+  });
+  body = unwrap(fuse(body, socket));
+
+  // --- Hollow the socket: spherical seat + flared mouth --------------------
+  // The seat is a sphere a hair larger than the mating ball; the mouth is a
+  // cone opening upward so a ball can snap in and pivot. The seat bottoms out
+  // on a solid floor, leaving the ball+waist connected to the cup walls.
+  const seat = sphere(seatR, { at: [0, 0, socketSeatZ] });
+  const mouth = cone(ballRadius - 0.6, socketR + 0.5, ballRadius * 1.1, {
+    at: [0, 0, socketSeatZ],
+  });
+  body = unwrap(cut(body, seat));
+  body = unwrap(cut(body, mouth));
+
+  // --- Coolant through-bore: straight up the spine -------------------------
+  const bore = cylinder(boreRadius, segmentLength + 4, { at: [0, 0, -2] });
+  body = unwrap(cut(body, bore));
+
+  // --- Flex slots in the socket wall ---------------------------------------
+  // Radial slabs cut through the cup walls give the segment its springy grip
+  // and the unmistakable Loc-Line silhouette.
+  const slotZ = (socketSeatZ + segmentLength) / 2;
+  const slots = [];
+  for (let i = 0; i < slotCount; i++) {
+    const angle = (360 / slotCount) * i;
+    const slab = cylinder(0.7, socketR * 2.4, {
+      at: [0, 0, slotZ],
+      axis: [1, 0, 0],
+    });
+    slots.push(rotate(translate(slab, [-socketR * 1.2, 0, 0]), angle, { axis: [0, 0, 1] }));
   }
+  body = unwrap(cutAll(body, slots));
 
-  return part;
+  return body;
 }
 
 export default modularHoseSegment();`,
@@ -1555,162 +1633,187 @@ export default vGrooveSlider();
       'A rounded-corner enclosure whose walls carry external mounting ears with elongated obround screw slots and gusseted roots, shown with its registration-ridge base beside the grooved lid.',
     code: `import {
   box,
+  convexHull,
   cut,
-  fuse,
-  fuseAll,
-  fillet,
-  shell,
-  drawRoundedRectangle,
+  cutAll,
   edgeFinder,
-  faceFinder,
-  getBounds,
-  getSolids,
+  fillet,
+  fuse,
   translate,
-  rotate,
-  isSolid,
-  validSolid,
   unwrap,
-  type Face,
 } from 'brepjs/quick';
-import type { Solid } from 'brepjs/quick';
 
-// Wall-mount flanged junction box: a rounded-corner shelled enclosure whose
-// side walls carry external mounting EARS (flat lugs) with elongated OBROUND
-// screw slots and GUSSETED roots, shown beside its grooved lid. Units: mm.
+// Wall-mount flanged junction box (base + lid). A rounded-corner enclosure
+// whose side walls carry external mounting ears: low rounded-rect flanges, each
+// pierced by an elongated (obround) screw slot so the box can be hung and slid
+// on a wall, with a fillet gusset rooting every ear back into the wall. The base
+// is an upward tray with a registration ridge on its top rim; the lid is an
+// inverted tray with a matching groove, laid beside the base like a print plate.
+function wallMountBox({
+  innerLength = 100, // cavity extent along X (the PCB footprint) (mm)
+  innerWidth = 70, // cavity extent along Y (mm)
+  wall = 2.4, // side-wall thickness (mm)
+  floor = 1.8, // base / lid plane thickness (mm)
+  baseWall = 22, // base side-wall height above the floor (mm)
+  lidWall = 8, // lid skirt height (mm)
+  cornerR = 8, // outer vertical corner radius (mm)
+  ridge = 3, // base/lid registration ridge height (mm)
+  slack = 0.25, // ridge-to-groove radial clearance (mm)
+  earReach = 11, // how far each ear sticks out past the wall (mm)
+  earThick = 4, // ear flange thickness (mm)
+  screwDia = 4, // mounting-screw clearance diameter (mm)
+  slotTravel = 8, // length the screw can slide along the slot (mm)
+} = {}) {
+  // Outer footprint = cavity + two walls. Inner corners shrink with the wall.
+  const outerL = innerLength + 2 * wall;
+  const outerW = innerWidth + 2 * wall;
+  const innerR = Math.max(cornerR - wall, 0.6);
 
-const W = 70; // box width  (X)
-const D = 50; // box depth  (Y)
-const H = 36; // box height (Z)
-const WALL = 2.5; // shell wall thickness
-const CORNER_R = 6; // outer vertical corner fillet
+  // A rounded-corner rectangular prism: a centred box with only its four
+  // vertical (Z-running) edges filleted. The building block for every wall,
+  // cavity, ridge and groove so the whole box keeps soft vertical corners.
+  // (A direct shell() is fragile here — inDirection('Z') on the cavity would
+  // also catch the flat faces; cutting an inner cavity keeps the floor intact.)
+  const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
+    const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
+    if (r <= 0) return blk;
+    return unwrap(fillet(blk, edgeFinder().inDirection('Z'), r));
+  };
 
-// Registration ridge that rims the open top of the base (the lid groove mates to it).
-const RIDGE_W = 1.6; // ridge wall thickness (radial)
-const RIDGE_H = 2.5; // ridge height above the rim
+  // --- BASE: a rounded tray, floor on z = 0, opening upward. ---
+  const baseHeight = floor + baseWall;
+  const baseOuter = roundedPrism(outerL, outerW, baseHeight, 0, cornerR);
+  const baseCavity = roundedPrism(innerLength, innerWidth, baseWall + 1, floor, innerR);
+  let base = unwrap(cut(baseOuter, baseCavity));
 
-// Mounting ear (one per left/right wall): flat lug projecting outward.
-const EAR_PROJ = 16; // how far the ear sticks out past the wall (X)
-const EAR_W = 22; // ear width along Y
-const EAR_T = 5; // ear thickness (Z)
-const EAR_OVERLAP = 4; // how far the ear root overlaps into the wall
+  // Registration ridge: a thin perimeter wall rising from the base's top rim,
+  // pulled in by \`slack\` so the lid groove clears it on assembly. Built as a
+  // rounded band minus its own inner cavity so it traces the wall outline.
+  const ridgeOuterL = outerL - 2 * slack;
+  const ridgeOuterW = outerW - 2 * slack;
+  const ridgeBand = unwrap(
+    cut(
+      roundedPrism(ridgeOuterL, ridgeOuterW, ridge, baseHeight, Math.max(cornerR - slack, 0.6)),
+      roundedPrism(innerLength, innerWidth, ridge + 1, baseHeight - 0.5, innerR),
+    ),
+  );
+  base = unwrap(fuse(base, ridgeBand));
 
-// Obround screw slot in each ear.
-const SLOT_LEN = 11; // elongated length (along X)
-const SLOT_W = 6; // slot width -> rounded ends radius = SLOT_W/2
+  // --- Mounting ears welded onto the long (front/back, ±Y) walls. ---
+  // Each ear is a low rounded-rect flange sitting flush with the floor underside
+  // (z from 0 to earThick) and reaching \`earReach\` past the wall. It overlaps
+  // the wall by \`bite\` mm so the fuse takes — an ear merely touching the wall
+  // face would stay a separate, floating solid. The ear carries an obround screw
+  // slot (a convex hull of two bores) and a fillet gusset back to the wall.
+  const bite = 1.5; // how far the ear penetrates into the wall
+  const earWidth = screwDia + 6; // flange width across X
+  const earLen = earReach + bite; // depth in Y, including the buried overlap
+  const wallY = outerW / 2; // outer face of the +Y wall
 
-// Triangular gusset bracing the ear root to the wall.
-const GUSSET_H = 14; // rises up the wall (Z)
-const GUSSET_RUN = 10; // reaches out along the ear (X)
-const GUSSET_T = 3; // rib thickness (Y)
+  // Build one ear about its own local frame centred on the wall face at the
+  // origin (the ear grows out along +Y), then translate/mirror it to each post.
+  const makeEar = (xPos: number, sign: 1 | -1) => {
+    // Flange body: a rounded slab, its inner edge buried \`bite\` into the wall.
+    // Corner radius stays well under half the slab so opposite fillets never
+    // meet (a degenerate fillet that meets in the middle fails the kernel).
+    const earR = Math.min(earWidth * 0.3, earLen * 0.3, earThick);
+    const yCentre = sign * (wallY - bite + earLen / 2);
+    let ear = roundedPrism(earWidth, earLen, earThick, 0, earR);
+    ear = translate(ear, [xPos, yCentre, 0]);
 
-// Lid.
-const LID_T = 4; // lid plate thickness
-const GROOVE_DEPTH = 2.2; // recessed groove that captures the ridge
-const LID_GAP = 28; // gap between base and lid (along Y)
-
-function wallMountBox() {
-  // --- BASE BODY: rounded, shelled enclosure ---
-  const outer = box(W, D, H, { at: [0, 0, H / 2] });
-  const vEdges = edgeFinder().inDirection('Z').findAll(outer);
-  const rounded = unwrap(fillet(outer, vEdges, CORNER_R));
-  const topFace = faceFinder()
-    .inDirection('Z')
-    .when((f: Face) => getBounds(f).zMax > H - 0.5)
-    .findAll(rounded);
-  const hollow = unwrap(shell(rounded, topFace, WALL));
-
-  // Registration ridge: a thin rounded-rect ring standing proud of the rim.
-  const ridgeOuter = drawRoundedRectangle(
-    W - 2 * WALL + 2 * RIDGE_W,
-    D - 2 * WALL + 2 * RIDGE_W,
-    CORNER_R - WALL
-  )
-    .sketchOnPlane('XY')
-    .extrude(RIDGE_H);
-  const ridgeInner = drawRoundedRectangle(
-    W - 2 * WALL,
-    D - 2 * WALL,
-    Math.max(CORNER_R - WALL - RIDGE_W, 0.5)
-  )
-    .sketchOnPlane('XY')
-    .extrude(RIDGE_H);
-  const ridge = translate(unwrap(cut(ridgeOuter, ridgeInner)), [0, 0, H]);
-
-  let base: Solid = unwrap(fuse(hollow, ridge));
-
-  // --- MOUNTING EARS (the defining feature) ---
-  for (const sign of [-1, 1]) {
-    const plateLen = EAR_PROJ + EAR_OVERLAP;
-    const plateCx = sign * (W / 2 + EAR_PROJ / 2 - EAR_OVERLAP / 2);
-    const plate = box(plateLen, EAR_W, EAR_T, { at: [plateCx, 0, EAR_T / 2] });
-
-    // Gusseted root: triangular rib bracing ear-top to the wall.
-    // Start from a full rib box, then slice off the upper-outer triangle with a
-    // rotated box tool so the rib is tall at the wall and tapers to the ear tip.
-    const ribX0 = sign * (W / 2 - 1); // a hair inside the wall for a clean fuse
-    const ribX1 = sign * (W / 2 + GUSSET_RUN);
-    const ribCx = (ribX0 + ribX1) / 2;
-    const ribBox = box(GUSSET_RUN + 1, GUSSET_T, GUSSET_H, {
-      at: [ribCx, 0, EAR_T + GUSSET_H / 2],
-    });
-
-    // Slope tool: a large box rotated 45 deg about Y, positioned so its lower
-    // face slices the rib diagonally from (wall, top) down to (tip, ear-top).
-    const slope = rotate(
-      box(GUSSET_RUN * 3, GUSSET_T + 4, GUSSET_RUN * 3, {
-        at: [ribX1, 0, EAR_T + GUSSET_H],
-      }),
-      sign * 45,
-      { axis: [0, 1, 0], at: [ribX1, 0, EAR_T] }
+    // Fillet gusset: a triangular brace thickening the ear root where it meets
+    // the wall, so the join reads as a moulded flange instead of a flat tab.
+    // Built deterministically as a convex hull (no fragile edge finder): a
+    // right-triangle prism rising up the wall and tapering out over the flange,
+    // buried \`bite\` into the wall on its tall side. A \`slab\` of triangular
+    // section spanning the ear width in X.
+    const gRise = earThick + ridge; // tall side, climbing the wall
+    const gRun = earThick + 3; // how far it tapers out over the flange
+    const yWall = sign * (wallY - bite); // the buried root plane
+    const yOut = yWall + sign * gRun; // where the taper meets the flange top
+    const gx = earWidth / 2;
+    const gusset = unwrap(
+      convexHull([
+        // tall buried face against the wall (rectangle z 0..gRise)
+        [xPos - gx, yWall, 0],
+        [xPos + gx, yWall, 0],
+        [xPos - gx, yWall, gRise],
+        [xPos + gx, yWall, gRise],
+        // toe out on the flange (a line at flange top)
+        [xPos - gx, yOut, earThick],
+        [xPos + gx, yOut, earThick],
+      ]),
     );
-    const rib = unwrap(cut(ribBox, slope));
 
-    const ear = unwrap(fuse(plate, rib));
-    base = unwrap(fuse(base, ear));
+    // Weld the gusset and ear into a single ear assembly (pairwise fuse).
+    return unwrap(fuse(ear, gusset));
+  };
 
-    // Obround screw slot through the ear (proud of both faces).
-    const slotCx = sign * (W / 2 + EAR_PROJ / 2 + EAR_OVERLAP / 2);
-    const slot = drawRoundedRectangle(SLOT_LEN, SLOT_W, SLOT_W / 2)
-      .sketchOnPlane('XY', [slotCx, 0])
-      .extrude(EAR_T + 4);
-    base = unwrap(cut(base, translate(slot, [0, 0, -2])));
+  // Obround screw slot through an ear at xPos on the ±Y side: two clearance
+  // bores \`slotTravel\` apart, hulled into a stadium, punched top-to-bottom.
+  const makeSlot = (xPos: number, sign: 1 | -1) => {
+    const yMid = sign * (wallY + earReach * 0.55); // slot sits out near the tip
+    const ends: [number, number, number][] = [];
+    for (const t of [-1, 1]) {
+      const y = yMid + (t * slotTravel) / 2;
+      // Two rings (top + bottom face) per bore feed the hull a proper cylinder.
+      ends.push([xPos, y, -1]);
+      ends.push([xPos, y, earThick + 1]);
+      ends.push([xPos + screwDia / 2, y, earThick + 1]);
+      ends.push([xPos - screwDia / 2, y, earThick + 1]);
+      ends.push([xPos, y + screwDia / 2, earThick + 1]);
+      ends.push([xPos, y - screwDia / 2, earThick + 1]);
+      ends.push([xPos + screwDia / 2, y, -1]);
+      ends.push([xPos - screwDia / 2, y, -1]);
+      ends.push([xPos, y + screwDia / 2, -1]);
+      ends.push([xPos, y - screwDia / 2, -1]);
+    }
+    return unwrap(convexHull(ends));
+  };
+
+  // Two ears per long wall, near the corners; mirror to both walls (4 total).
+  const earX = innerLength / 2 - earWidth / 2 + wall - 4;
+  const earSpecs: Array<[number, 1 | -1]> = [
+    [-earX, 1],
+    [earX, 1],
+    [-earX, -1],
+    [earX, -1],
+  ];
+  // Weld each ear onto the tray with the 2-way fuse (the N-way fuseAll glues via
+  // BuilderAlgo and leaves every ear a separate solid in a compound). Then punch
+  // the obround slots through the welded body in one cutAll.
+  const slots: ReturnType<typeof makeSlot>[] = [];
+  for (const [x, s] of earSpecs) {
+    base = unwrap(fuse(base, makeEar(x, s)));
+    slots.push(makeSlot(x, s));
   }
+  base = unwrap(cutAll(base, slots));
 
-  if (getSolids(base).length !== 1) {
-    base = unwrap(fuseAll(getSolids(base), { unsafe: true }));
-  }
+  // --- LID: a shallow inverted tray — cap on top, skirt hanging down. ---
+  // Built cap-up directly (cavity open at the bottom) so it needs no flip. A
+  // groove rebated into the skirt's inner rim swallows the base ridge.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerL, outerW, lidH, 0, cornerR);
+  const lidCavity = roundedPrism(innerLength, innerWidth, lidWall + 1, -1, innerR);
+  let lid = unwrap(cut(lidOuter, lidCavity));
+  // Groove: widen the cavity over the bottom \`ridge\` mm to clear the ridge band.
+  const groove = roundedPrism(
+    ridgeOuterL + 2 * slack,
+    ridgeOuterW + 2 * slack,
+    ridge + 0.5,
+    -0.25,
+    Math.max(cornerR - slack, 0.6),
+  );
+  lid = unwrap(cut(lid, groove));
 
-  // --- GROOVED LID (shown beside the base) ---
-  const lidPlateRaw = drawRoundedRectangle(W, D, CORNER_R)
-    .sketchOnPlane('XY')
-    .extrude(LID_T);
-  if (!isSolid(lidPlateRaw)) throw new Error('lid extrude did not yield a Solid');
-  const lidPlate = unwrap(validSolid(lidPlateRaw));
+  // Lay the lid alongside the base (both open faces up) with a print gap.
+  const placedLid = translate(lid, [0, outerW + 16, 0]);
 
-  // Groove on the lid underside that captures the registration ridge.
-  const grooveOuter = drawRoundedRectangle(
-    W - 2 * WALL + 2 * RIDGE_W + 0.4,
-    D - 2 * WALL + 2 * RIDGE_W + 0.4,
-    CORNER_R - WALL
-  )
-    .sketchOnPlane('XY')
-    .extrude(GROOVE_DEPTH);
-  const grooveInner = drawRoundedRectangle(
-    W - 2 * WALL - 0.4,
-    D - 2 * WALL - 0.4,
-    Math.max(CORNER_R - WALL - RIDGE_W, 0.5)
-  )
-    .sketchOnPlane('XY')
-    .extrude(GROOVE_DEPTH);
-  const grooveRing = unwrap(cut(grooveOuter, grooveInner));
-  let lid = unwrap(cut(lidPlate, grooveRing));
-
-  lid = translate(lid, [0, D + LID_GAP, 0]);
-
-  return [base, lid];
+  return [base, placedLid];
 }
 
-export default wallMountBox();`,
+export default wallMountBox();
+`,
   },
   {
     id: 'vented-louvre-case',
@@ -2062,95 +2165,155 @@ export default pClamp();
     code: `import {
   box,
   cut,
+  cutAll,
   edgeFinder,
-  faceFinder,
-  type Face,
   fillet,
   fuse,
-  getBounds,
-  shell,
   translate,
   unwrap,
 } from 'brepjs/quick';
 
-// DIN-rail clip enclosure: a rounded, shelled electronics module box with an
-// integral TS35 DIN-rail snap clip on its back wall, shown beside its lid.
-// Units: mm. Box footprint is X x Y; height is Z. Back wall is the -Y face.
+// DIN-rail clip enclosure (base + lid): a compact rounded-corner module box
+// that snaps onto a standard 35 mm TS35 top-hat rail. The base is an upward
+// tray; its back wall carries an integral DIN-rail clip — a recessed rail
+// channel whose mouth is pinched by two overhang lips that hook the rail
+// flanges, with a screwdriver pry tab hanging off the lower lip. The lid is an
+// inverted tray laid beside the base, the way the two sit on a print plate.
+function dinRailClipEnclosure({
+  innerLength = 70, // cavity extent along X (mm)
+  innerWidth = 45, // cavity extent along Y (mm)
+  wall = 2.2, // side-wall thickness (mm)
+  floor = 1.8, // base / lid plane thickness (mm)
+  baseWall = 28, // base side-wall height above the floor (mm)
+  lidWall = 8, // lid skirt height (mm)
+  cornerR = 4, // outer vertical corner radius (mm)
+  railWidth = 35, // TS35 DIN-rail nominal width (mm)
+  railDepth = 7.5, // TS35 top-hat profile depth (mm)
+  railLip = 1, // rail flange thickness the jaws hook over (mm)
+} = {}) {
+  // Outer footprint = cavity + two walls; inner corners shrink with the wall.
+  const outerL = innerLength + 2 * wall;
+  const outerW = innerWidth + 2 * wall;
+  const innerR = Math.max(cornerR - wall, 0.6);
 
-const WIDTH = 70; // X
-const DEPTH = 50; // Y
-const HEIGHT = 35; // Z
-const WALL = 2; // shell wall thickness
-const CORNER_R = 4; // outer vertical-edge fillet
+  // A rounded-corner rectangular prism: a centred box with only its four
+  // vertical (Z-running) edges filleted — the building block for every wall,
+  // cavity and clip jaw so the box keeps soft vertical corners. (A direct
+  // shell() is fragile here: inDirection('Z') on a cavity also catches the flat
+  // faces; cutting an inner cavity keeps the floor intact.)
+  const roundedPrism = (w: number, d: number, h: number, z: number, r: number) => {
+    const blk = box(w, d, h, { at: [0, 0, z + h / 2] });
+    if (r <= 0) return blk;
+    return unwrap(fillet(blk, edgeFinder().inDirection('Z').findAll(blk), r));
+  };
 
-// TS35 (top-hat) DIN rail: 35 mm overall flange-to-flange, ~7.5 mm deep,
-// ~1 mm flange thickness. The clip grabs both 35 mm flanges.
-const RAIL_SPAN = 35; // distance between the two retaining hooks (Z)
-const RAIL_DEPTH = 8; // how far the rail sits into the clip channel (Y)
-const FLANGE_T = 1.2; // rail flange thickness the hook lips catch behind
-const HOOK_LIP = 2.5; // how far each hook lip reaches in over a flange (Z)
+  // --- BASE: a rounded tray, floor on z = 0, opening upward. ---
+  const baseHeight = floor + baseWall;
+  const baseOuter = roundedPrism(outerL, outerW, baseHeight, 0, cornerR);
+  const baseCavity = roundedPrism(innerLength, innerWidth, baseWall + 1, floor, innerR);
+  let base = unwrap(cut(baseOuter, baseCavity));
 
-const CLIP_W = 40; // clip body width (X)
-const CLIP_PROUD = RAIL_DEPTH + 3; // how far the clip stands off the back wall (Y)
-const BACK_Y = -DEPTH / 2; // back wall plane
+  // --- DIN-rail clip, welded onto the back (+Y) wall of the base. ---------
+  // Geometry intent: a top-hat (TS35) rail seats horizontally (axis along X) in
+  // a channel that opens out the back (+Y). The channel mouth is pinched in Z by
+  // a fixed upper lip and a fixed lower lip that hook over the rail's two
+  // flanges; its throat behind the lips is full rail height, so the rail snaps
+  // past the lips and is trapped. A solid back wall ties the whole clip — both
+  // lips, the side pillars and the channel floor — into the body as one piece.
+  // A pry-tab tongue hangs off the lower lip for screwdriver release.
+  const wallY = outerW / 2; // outer face of the +Y back wall
+  const lip = wall + railLip + 0.4; // lip band thickness in Z
+  const channelH = railWidth + 0.6; // channel throat height (rail + slack)
+  const bite = wall; // how far the block sinks into the wall to weld
+  const clipCenterZ = baseHeight / 2; // clip centred on the wall height
 
-const LID_GAP = 14; // space between box and its lid for the side-by-side view
+  const clipW = railWidth + 12; // clip width across X (wider than the rail)
+  const clipH = channelH + 2 * lip; // full clip height in Z
+  const backWall = wall; // solid back wall behind the channel floor
+  const clipBlockD = railDepth + backWall; // clip stand-off depth past the wall
+  const clipBackY = wallY + clipBlockD; // back plane of the clip block
 
-function dinRailClipEnclosure() {
-  // --- Enclosure body: rounded box, hollowed from the top ---
-  const raw = box(WIDTH, DEPTH, HEIGHT, { centered: true });
-  const vertical = edgeFinder().inDirection('Z').findAll(raw);
-  const rounded = unwrap(fillet(raw, vertical, CORNER_R));
-  const topFace = faceFinder()
-    .inDirection('Z')
-    .when((f: Face) => getBounds(f).zMax > HEIGHT / 2 - 0.5)
-    .findAll(rounded);
-  const enclosure = unwrap(shell(rounded, topFace, WALL));
+  // Clip backing block: a rounded slab standing off the back wall, sunk \`bite\`
+  // into the wall so it welds (a block merely kissing the wall face would stay
+  // a separate, floating solid). Spans the channel throat + both lips in Z.
+  const slabD = clipBlockD + bite;
+  const clip = roundedPrism(clipW, slabD, clipH, 0, Math.min(cornerR, 3));
+  // roundedPrism centres in X/Y and sits base at z = 0; move it onto the
+  // back-wall line and up so it straddles the wall mid-height.
+  const clipBlock = translate(clip, [
+    0,
+    wallY - bite + slabD / 2,
+    clipCenterZ - clipH / 2,
+  ]);
+  base = unwrap(fuse(base, clipBlock));
 
-  // --- Integral TS35 snap clip on the back (-Y) wall ---
-  // Channel that the rail seats into is centered on Z=0, RAIL_SPAN tall.
-  // Build the clip block standing proud of the back wall, then carve the
-  // rail channel and the two hook undercuts that snap behind the flanges.
-  const clipFront = BACK_Y; // clip merges into the wall here
-  const clipBack = BACK_Y - CLIP_PROUD; // outermost clip face
-  const clipCenterY = (clipFront + clipBack) / 2;
+  // Carve the rail channel out of that block as a T-pocket open toward +Y:
+  // a full-height throat that stops short of the mouth, plus a shorter narrow
+  // slot punched out the back. What's left at the mouth is the pair of overhang
+  // lips; behind the throat a \`backWall\`-thick floor stays solid and connected.
+  const lipReachZ = railLip + 0.8; // how far each lip overhangs the flange in Z
+  const mouthH = channelH - 2 * lipReachZ; // open gap between the two lips
+  const floorY = wallY + 0.2; // channel floor, just proud of the wall
+  const throatDepth = railDepth - lipReachZ; // throat stops short of the mouth
+  const cutters = [];
+  // Full-height throat (does NOT reach the back face — leaves the floor).
+  cutters.push(
+    box(railWidth, throatDepth, channelH, {
+      at: [0, floorY + throatDepth / 2, clipCenterZ],
+    }),
+  );
+  // Narrow mouth slot, out the back between the lips (the rail's entry gap).
+  cutters.push(
+    box(railWidth, clipBlockD + 2, mouthH, {
+      at: [0, floorY + (clipBlockD + 2) / 2, clipCenterZ],
+    }),
+  );
 
-  const clipBlock = box(CLIP_W, CLIP_PROUD + 2, RAIL_SPAN + 2 * HOOK_LIP + 6, {
-    at: [0, clipCenterY + 1, 0],
+  // Lip-back relief: undercut the inner face of each lip so it overhangs the
+  // rail flange (the lip is thinner in Y than the throat is deep). A shallow
+  // pocket behind each lip, cut from the throat side, stopping short of the back.
+  const reliefDepth = throatDepth + lipReachZ - railLip; // up to the lip's back
+  for (const sz of [-1, 1]) {
+    const zc = clipCenterZ + sz * (mouthH / 2 + lipReachZ / 2);
+    cutters.push(
+      box(railWidth + 2, reliefDepth, lipReachZ + 0.1, {
+        at: [0, floorY + reliefDepth / 2, zc],
+      }),
+    );
+  }
+
+  base = unwrap(cutAll(base, cutters));
+
+  // Pry tab: a tongue hanging off the bottom lip that you lever with a
+  // screwdriver to spring the box off the rail. A thin slab fused to the lower
+  // lip's back-bottom, overlapping it so it welds into one rigid body.
+  const tabW = 12; // tab width across X
+  const tabThk = 2.6; // tab thickness in Y
+  const tabDrop = 9; // how far the tab hangs below the lower lip
+  const tabZTop = clipCenterZ - clipH / 2 + 1.5; // overlap the lip bottom
+  const tab = box(tabW, tabThk, tabDrop, {
+    at: [0, clipBackY - tabThk / 2, tabZTop - tabDrop / 2],
   });
+  base = unwrap(fuse(base, tab));
 
-  // The rail channel: a slot RAIL_SPAN tall and RAIL_DEPTH deep, open toward
-  // -Y, leaving the two hook lips that overhang the flanges by HOOK_LIP.
-  const channel = box(CLIP_W + 4, RAIL_DEPTH + 0.1, RAIL_SPAN - 2 * HOOK_LIP, {
-    at: [0, clipBack + RAIL_DEPTH / 2, 0],
-  });
+  // --- LID: a shallow inverted tray — cap on top, skirt hanging down. ------
+  // Built cap-up directly (cavity open at the bottom) so it needs no flip; the
+  // downward skirt drops over the base rim on assembly.
+  const lidH = floor + lidWall;
+  const lidOuter = roundedPrism(outerL, outerW, lidH, 0, cornerR);
+  const lidCavity = roundedPrism(innerLength, innerWidth, lidWall + 1, -1, innerR);
+  const lidTray = unwrap(cut(lidOuter, lidCavity));
 
-  // Undercut behind each hook lip so the lip is a thin sprung tongue that
-  // catches behind a FLANGE_T flange (the snap action of a TS35 clip).
-  const undercutDepth = RAIL_DEPTH - FLANGE_T;
-  const topUndercut = box(CLIP_W + 4, undercutDepth + 0.1, RAIL_SPAN + 4, {
-    at: [0, clipBack + undercutDepth / 2, RAIL_SPAN / 2 + HOOK_LIP + 0.05],
-  });
-  const botUndercut = box(CLIP_W + 4, undercutDepth + 0.1, RAIL_SPAN + 4, {
-    at: [0, clipBack + undercutDepth / 2, -(RAIL_SPAN / 2 + HOOK_LIP + 0.05)],
-  });
+  // Lay the lid beside the base along Y (clear of the clip), open faces both up,
+  // exactly how the two would sit on a print plate.
+  const gap = clipBlockD + 14;
+  const placedLid = translate(lidTray, [0, outerW + gap, 0]);
 
-  let clip = unwrap(cut(clipBlock, channel));
-  clip = unwrap(cut(clip, topUndercut));
-  clip = unwrap(cut(clip, botUndercut));
-
-  const withClip = unwrap(fuse(enclosure, clip));
-
-  // --- Matching lid, placed beside the box ---
-  const lidRaw = box(WIDTH, DEPTH, WALL + 1.5, { at: [0, 0, (WALL + 1.5) / 2] });
-  const lidVertical = edgeFinder().inDirection('Z').findAll(lidRaw);
-  const lid = unwrap(fillet(lidRaw, lidVertical, CORNER_R));
-  const lidPlaced = translate(lid, [WIDTH + LID_GAP, 0, -HEIGHT / 2]);
-
-  return [withClip, lidPlaced];
+  return [base, placedLid];
 }
 
-export default dinRailClipEnclosure();`,
+export default dinRailClipEnclosure();
+`,
   },
   {
     id: 'conduit-snap-clip',
@@ -2252,8 +2415,7 @@ export default conduitClip();
   {
     id: 'hobby-rc-servo',
     label: 'Hobby RC Servo Motor',
-    description:
-      'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
+    description: 'A standard-size hobby RC servo: rectangular case with mounting ears, raised gearbox deck, offset gear boss with splined output shaft, and a free-wheel pivot post.',
     code: `import {
   box,
   chamfer,
@@ -2356,89 +2518,114 @@ export default hobbyServo();`,
   {
     id: 'rotary-potentiometer',
     label: 'Panel-mount rotary potentiometer (can, M10 bushing, D-shaft)',
-    description:
-      'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
-    code: `import { box, cylinder, cut, fuse, unwrap } from 'brepjs/quick';
+    description: 'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
+    code: `import {
+  box,
+  chamfer,
+  cut,
+  cutAll,
+  cylinder,
+  edgeFinder,
+  fuse,
+  rotate,
+  torus,
+  unwrap,
+  validSolid,
+} from 'brepjs/quick';
 
-// Z is up = the panel-mount axis. The can sits below the panel face (z=0),
-// the bushing/shaft project up through the panel.
+// Panel-mount rotary potentiometer (16 mm carbon pot, 3/8" / M10 bushing). A
+// crimped sheet-metal can carries a raised boss on its front face, a threaded
+// mounting bushing rising from the boss, an anti-rotation locating pin beside
+// it, and a keyed (D-flat) control shaft up the centre. Three solder lugs hang
+// off the back. Built along +Z: can z=0..bodyH, then boss, bushing and shaft.
+// Everything is fused pairwise with ~1 mm interpenetration so the whole vitamin
+// stays a single rigid solid; the D-flat and the thread grooves are cut.
+function rotaryPot({
+  bodyDia = 24, // diameter of the metal can (mm)
+  bodyH = 14, // height of the can (mm)
+  bushingDia = 10, // mounting thread OD (M10 / 3/8") (mm)
+  bushingH = 7.5, // height of the threaded bushing (mm)
+  bossDia = 14, // raised plinth between can and bushing (mm)
+  bossH = 2.5, // boss height (mm)
+  shaftDia = 6, // control-shaft diameter (mm)
+  shaftLen = 20, // shaft length above the bushing top (mm)
+  flatOffset = 2, // distance from shaft axis to the milled D-flat plane (mm)
+  flatLen = 14, // length of the flatted (keyed) portion (mm)
+  tabOffset = 11, // anti-rotation pin offset from shaft axis (mm)
+} = {}) {
+  const bodyR = bodyDia / 2;
+  const bushR = bushingDia / 2;
+  const bossR = bossDia / 2;
+  const shaftR = shaftDia / 2;
 
-const CAN_R = 8.5; // round metal can radius (mm)
-const CAN_H = 7; // can body height (mm)
-const CRIMP_R = 9.2; // crimped rim proud of the can (mm)
-const CRIMP_H = 1.2; // crimp ring thickness (mm)
+  // Reference heights along the central axis.
+  const bodyTop = bodyH;
+  const bossTop = bodyTop + bossH;
+  const bushTop = bossTop + bushingH;
+  const shaftTop = bushTop + shaftLen;
 
-const BOSS_R = 4.5; // raised front boss radius (mm)
-const BOSS_H = 1.5; // boss height (mm)
+  // --- The metal can: chamfer the front rim so it reads as a rolled crimp. ---
+  const can0 = cylinder(bodyR, bodyH, { at: [0, 0, 0] });
+  const rimEdges = edgeFinder().ofCurveType('CIRCLE').findAll(can0);
+  let can = unwrap(chamfer(unwrap(validSolid(can0)), rimEdges, 1.2));
 
-const BUSH_R = 3.5; // threaded mounting bushing radius (mm)
-const BUSH_H = 7; // bushing height above the front face (mm)
+  // --- Raised boss / plinth on the front face (sinks 1 mm into the can). ---
+  const boss = cylinder(bossR, bossH + 1, { at: [0, 0, bodyTop - 1] });
 
-const SHAFT_R = 3; // round control-shaft radius (mm)
-const SHAFT_H = 15; // shaft length above the bushing top (mm)
-const D_FLAT = 2.0; // distance of the D-flat chord from the shaft axis (mm)
+  // --- Threaded mounting bushing rising from the boss. Chamfer both rims so
+  // the thread lead-in reads cleanly at the top. ---
+  const bushing0 = cylinder(bushR, bushingH + 1, { at: [0, 0, bossTop - 1] });
+  const bushRimEdges = edgeFinder().ofCurveType('CIRCLE').findAll(bushing0);
+  const bushing = unwrap(chamfer(unwrap(validSolid(bushing0)), bushRimEdges, 0.6));
 
-const PIN_R = 0.75; // anti-rotation locating pin radius (mm)
-const PIN_H = 4; // pin length above the front face (mm)
-const PIN_OFFSET = 6.5; // pin distance from the shaft axis (mm)
+  // --- Anti-rotation locating pin on the front face, offset from the axis. ---
+  const pin = box(1.4, 3, bossH + 2.2, { at: [tabOffset, 0, bodyTop + (bossH + 2.2) / 2 - 1] });
 
-const LUG_W = 1.2; // solder lug thickness X (mm)
-const LUG_D = 3; // solder lug width Y (mm)
-const LUG_H = 4; // solder lug drop below the can (mm)
-const LUG_PITCH = 5; // spacing between the three rear lugs (mm)
+  // --- Control shaft up the centre, with a neck step at its base. ---
+  const neck = cylinder(shaftR + 0.6, 2, { at: [0, 0, bushTop - 1] });
+  const shaft = cylinder(shaftR, shaftLen + 1, { at: [0, 0, bushTop - 1] });
 
-function rotaryPotentiometer() {
-  const FRONT = 0; // panel face plane (top of can)
-
-  // Metal can: round body with a crimped rim proud of it at the top.
-  const can = cylinder(CAN_R, CAN_H, { at: [0, 0, -CAN_H] });
-  const crimp = cylinder(CRIMP_R, CRIMP_H, { at: [0, 0, FRONT - CRIMP_H] });
-  let body = unwrap(fuse(can, crimp));
-
-  // Raised boss on the front face, then the threaded bushing on top of it.
-  const boss = cylinder(BOSS_R, BOSS_H + 0.5, { at: [0, 0, FRONT - 0.5] });
-  body = unwrap(fuse(body, boss));
-
-  const bushing = cylinder(BUSH_R, BUSH_H + 0.5, { at: [0, 0, FRONT - 0.5] });
-  body = unwrap(fuse(body, bushing));
-
-  // Anti-rotation locating pin beside the bushing, projecting from the front.
-  const pin = cylinder(PIN_R, PIN_H + 0.5, { at: [PIN_OFFSET, 0, FRONT - 0.5] });
-  body = unwrap(fuse(body, pin));
-
-  // Keyed control shaft: round shaft with a D-flat chord cut off one side.
-  const bushTop = FRONT + BUSH_H;
-  const round = cylinder(SHAFT_R, SHAFT_H + 1, { at: [0, 0, bushTop - 1] });
-  // Cutting box removes everything with x > D_FLAT, leaving a flat chord.
-  const cutter = box(SHAFT_R * 2, SHAFT_R * 4, SHAFT_H + 4, {
-    at: [D_FLAT + SHAFT_R, 0, bushTop + SHAFT_H / 2],
-  });
-  const shaft = unwrap(cut(round, cutter));
-  body = unwrap(fuse(body, shaft));
-
-  // Three rear solder lugs hanging below the can. Each overlaps the can wall
-  // by ~1mm so the weld holds into a single solid.
-  const lugs = [-LUG_PITCH, 0, LUG_PITCH].map((y) =>
-    box(LUG_W + 2, LUG_D, LUG_H + 2, {
-      at: [-CAN_R - LUG_W / 2 + 1, y - LUG_D / 2, -CAN_H - LUG_H / 2 + 1],
-    })
-  );
-
-  let part = body;
-  for (const lug of lugs) {
-    part = unwrap(fuse(part, lug));
+  // --- Solder lugs: three thin tabs hanging off the back of the can. ---
+  const lugs = [];
+  for (let i = 0; i < 3; i++) {
+    const lug = box(3.2, 0.6, 5, { at: [0, bodyR - 0.5, -5 / 2 + 1] });
+    lugs.push(rotate(lug, 90 + (i - 1) * 35, { axis: [0, 0, 1], at: [0, 0, 0] }));
   }
 
-  return part;
+  // --- Fuse everything PAIRWISE into one rigid body (real overlap each time). ---
+  let pot = can;
+  pot = unwrap(fuse(pot, boss));
+  pot = unwrap(fuse(pot, bushing));
+  pot = unwrap(fuse(pot, pin));
+  pot = unwrap(fuse(pot, neck));
+  pot = unwrap(fuse(pot, shaft));
+  for (const lug of lugs) pot = unwrap(fuse(pot, lug));
+
+  // --- Mill the D-flat on the upper part of the shaft (a keyed drive). The
+  // cutter is a slab whose near face sits at y = flatOffset (inside the shaft
+  // radius) and which extends outward past the shaft, removing the cap. ---
+  const flatZ0 = shaftTop - flatLen;
+  const cutDepth = shaftDia; // reaches well past the far wall
+  const flatCutter = box(shaftDia + 2, cutDepth, flatLen + 2, {
+    at: [0, flatOffset + cutDepth / 2, (flatZ0 + shaftTop) / 2 + 1],
+  });
+  pot = unwrap(cut(pot, flatCutter));
+
+  // --- Score the bushing with a few thread grooves (toroidal ring cuts). ---
+  const grooves = [];
+  const pitch = 1.0;
+  for (let z = bossTop + 1.2; z < bushTop - 0.8; z += pitch) {
+    grooves.push(torus(bushR, 0.28, { at: [0, 0, z] }));
+  }
+  return unwrap(cutAll(pot, grooves));
 }
 
-export default rotaryPotentiometer();`,
+export default rotaryPot();`,
   },
   {
     id: 'd-sub-connector',
     label: 'D-sub Connector (DB9)',
-    description:
-      'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
+    description: 'A DB9 / VGA-style panel-mount D-sub connector: a metal flange with two mounting holes, the signature trapezoidal D-shell shrouding two staggered rows of gold pins, plus female hex jack standoffs (with panel-side threaded studs) flanking the shell.',
     code: `import {
   box,
   cut,
@@ -2595,8 +2782,7 @@ export default dSubConnector();`,
   {
     id: 'panel-fuse-holder',
     label: '20 mm Panel Fuse Holder',
-    description:
-      'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
+    description: 'Panel-mount 20 mm fuse holder: slotted flange cap, flatted threaded neck, tapered body with contact slots, spade terminal, and a separate clamping nut.',
     code: `import {
   box,
   chamfer,
@@ -2736,8 +2922,7 @@ export default fuseHolder();`,
   {
     id: 'green-terminal-block',
     label: 'Green PCB Screw-Terminal Block',
-    description:
-      'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
+    description: 'Phoenix-style 5.08 mm green terminal block: tall-front body with a slotted-screw top ridge, per-way wire windows, and PCB solder pins.',
     code: `import { box, cut, cutAll, cylinder, extrude, fuse, polygon, torus, translate, unwrap } from 'brepjs/quick';
 
 // Green PCB screw-terminal block (Phoenix-style, 5.08 mm pitch). The classic
@@ -2845,8 +3030,7 @@ export default greenTerminalBlock();`,
   {
     id: 'button-top-battery-cell',
     label: 'Button-top battery cell (AA / 18650)',
-    description:
-      'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
+    description: 'A parametric dry-cell battery: steel can with a crimped-in top shoulder, a small rounded positive button, a flat negative base scored with an insulator ring, and a chamfered base rim.',
     code: `import {
   cylinder,
   cone,
@@ -2925,60 +3109,111 @@ export default batteryCell();`,
   {
     id: 'finger-tab-split-joint',
     label: 'Interlocking finger-tab split joint',
-    description:
-      'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
-    code: `import { box, fuse, cut, intersect, translate, unwrap } from 'brepjs/quick';
+    description: 'A rigid bar split across a square-wave finger seam into two mating halves — the print-it-in-pieces joint, spread apart to show the comb.',
+    code: `import {
+  box,
+  chamfer,
+  cut,
+  cylinder,
+  edgeFinder,
+  extrude,
+  intersect,
+  polygon,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
 
-// A rigid bar split across a square-wave finger seam into two mating halves,
-// spread apart along X to show the interlocking comb.
+// Interlocking finger-tab split joint: one rigid bar sawn in two across a
+// square-wave seam so a too-long print can be split, then snapped back
+// together. The mating line is a comb of square fingers (tab width \`tab\`,
+// projection \`reach\` past the cut plane) that key the halves against sliding;
+// a small \`slop\` on the front half's slots gives a printable press fit. Bar
+// runs along X, the seam along the Y = 0 plane; the two halves are returned
+// spread apart in Y so you can read the joint.
+function fingerSplitJoint({
+  length = 90, // bar length along the cut axis (X)
+  depth = 34, // total bar depth across the seam (Y)
+  height = 16, // bar height (Z)
+  tab = 11, // finger / slot width along X
+  reach = 7, // how far each finger projects past the seam plane (Y)
+  bore = 5, // through-bore radius for a dowel / cable (mm)
+  edgeR = 1.4, // chamfer on the long top edges (mm)
+  slop = 0.25, // clearance added to the front half's slots (mm)
+  spread = 14, // gap the two halves are pulled apart for display (mm)
+} = {}) {
+  const halfL = length / 2;
+  const halfD = depth / 2;
 
-const BAR_LEN = 80; // X (mm), full bar length before splitting
-const BAR_W = 24; // Y (mm)
-const BAR_H = 12; // Z (mm)
+  // --- The full bar, before splitting: a plain block with chamfered top
+  //     edges and a bore running the length, so each half shows the cut
+  //     surface against a recognizable part rather than a bare cuboid.
+  const blank = box(length, depth, height, { at: [0, 0, height / 2] });
+  const topEdges = edgeFinder().inDirection('X').findAll(blank);
+  const chamfered = unwrap(chamfer(blank, topEdges, edgeR));
+  const dowel = cylinder(bore, length + 2, { axis: [1, 0, 0], at: [-halfL - 1, 0, height / 2] });
+  const bar = unwrap(cut(chamfered, dowel));
 
-const FINGER_COUNT = 6; // teeth across the width
-const FINGER_DEPTH = 8; // X reach of each finger past the seam plane (mm)
-const SPREAD = 18; // gap each half is pulled away from the seam (mm)
+  // --- Seam mask: a closed polygon in XY whose front edge is the square-wave
+  //     finger line and whose back edge runs well behind the bar. Extruded up
+  //     Z it becomes the prism that owns the BACK half (every finger pokes to
+  //     +Y across the seam). \`g\` (gap, 0 for the back, \`slop\` for the front)
+  //     shifts the wave so the front slots open up for a press fit.
+  //
+  //     Walk +X across the seam, alternating a tab that reaches +reach into
+  //     the back region and a notch that sits flush on the cut plane. An even
+  //     finger count keeps the pattern symmetric about the centre.
+  const span = length; // pattern covers the whole length
+  const fingers = Math.max(2, 2 * Math.round(span / tab / 2));
+  const step = span / fingers;
 
-function fingerTabSplitJoint() {
-  const bar = box(BAR_LEN, BAR_W, BAR_H, { centered: true });
+  // The masking prism is built from a polygon laid 1 mm BELOW the bar's base
+  // and extruded 1 mm past its top, so its flat top and bottom never sit
+  // coplanar with the bar's faces — coincident caps make the seam boolean
+  // degenerate and the half come back empty. It straddles the bar in Z and
+  // trims cleanly.
+  const z0 = -1;
+  const prismH = height + 2;
+  const seamPrism = (g: number) => {
+    const pts: [number, number, number][] = [];
+    const back = halfD + 4; // safely past the bar's back face
+    // start at the left edge, on the cut plane
+    pts.push([-halfL, -g, z0]);
+    for (let i = 0; i < fingers; i++) {
+      const x0 = -halfL + i * step;
+      const x1 = x0 + step;
+      if (i % 2 === 0) {
+        // a tab: rise to +reach, run across, drop back to the plane
+        pts.push([x0, reach - g, z0]);
+        pts.push([x1, reach - g, z0]);
+      } else {
+        // a notch: stay on the cut plane (front half fills this)
+        pts.push([x0, -g, z0]);
+        pts.push([x1, -g, z0]);
+      }
+    }
+    // close out along the back, well clear of the bar
+    pts.push([halfL, back, z0]);
+    pts.push([-halfL, back, z0]);
+    return unwrap(extrude(unwrap(polygon(pts)), [0, 0, prismH]));
+  };
 
-  // The "left region" = everything at x < 0 (the base of the left half) PLUS the
-  // left-owned fingers that cross the seam into x > 0. The complementary right
-  // region is whatever the left region does not claim, giving an interlocking
-  // square-wave seam at x = 0.
-  const leftBase = box(BAR_LEN / 2 + 1, BAR_W + 2, BAR_H + 2, {
-    at: [-BAR_LEN / 4, 0, 0],
-  });
+  // Back half: keep only the fingered back side by intersecting with the prism.
+  const backHalf = unwrap(intersect(bar, seamPrism(0)));
 
-  const fingerW = BAR_W / FINGER_COUNT; // Y width of each tooth
-  let leftRegion = leftBase;
-  for (let i = 0; i < FINGER_COUNT; i += 1) {
-    if (i % 2 !== 0) continue; // even bands belong to the left half
-    const yc = -BAR_W / 2 + fingerW * (i + 0.5);
-    const finger = box(FINGER_DEPTH, fingerW, BAR_H + 2, {
-      at: [FINGER_DEPTH / 2, yc, 0],
-    });
-    leftRegion = unwrap(fuse(leftRegion, finger));
-  }
+  // Front half: cut the same wave grown by \`slop\` (so its slots clear the
+  // fingers for a press fit) from the bar, leaving the complementary side.
+  const frontHalf = unwrap(cut(bar, seamPrism(slop)));
 
-  const leftHalf = unwrap(intersect(bar, leftRegion));
-  const rightHalf = unwrap(cut(bar, leftRegion));
-
-  // Spread the two halves apart along X to expose the comb seam.
-  const left = translate(leftHalf, [-SPREAD, 0, 0]);
-  const right = translate(rightHalf, [SPREAD, 0, 0]);
-
-  return [left, right];
+  // Spread the two mating halves apart in Y for display.
+  return [translate(backHalf, [0, spread / 2, 0]), translate(frontHalf, [0, -spread / 2, 0])];
 }
 
-export default fingerTabSplitJoint();`,
+export default fingerSplitJoint();`,
   },
   {
     id: 'conical-pour-funnel',
     label: 'Kitchen / Lab Funnel',
-    description:
-      'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
+    description: 'A thin-walled conical pour funnel: wide bowl necking into a long spout, with a rolled rim and a side hang-loop.',
     code: `import { cone, cylinder, cut, fuse, rotate, torus, translate, unwrap } from 'brepjs/quick';
 
 // Kitchen / lab funnel: a wide conical bowl that necks down into a long thin
@@ -3347,122 +3582,96 @@ export default planetaryReducer();
     code: `import {
   box,
   cylinder,
+  cone,
   fuse,
   cut,
-  rotate,
   translate,
-  getSolids,
+  rotate,
+  fillet,
+  edgeFinder,
   unwrap,
-  type Shape3D,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Hooke / Cardan universal joint, shown articulated 25°.
-// Three distinct bodies: input yoke, cross-spider, output yoke.
-// FIX FOCUS: each yoke's fork bores ride ON the central cross trunnions, so the
-// three parts CONNECT at the trunnions (real touch/overlap), not float apart.
-// Units: mm.
+// Cardan (Hooke) universal joint — display mechanism frozen at a 25° bend.
+// Datums: joint center at origin; shaft A along -X, shaft B tilted by BEND about Z.
+// Built as distinct solids (yokeA, cross, yokeB, 4 pins) so each colors separately.
+const HUB_R = 11; // yoke hub radius (Ø22)
+const HUB_LEN = 8; // hub axial length
+const SHAFT_R = 5; // Ø10 shaft
+const SHAFT_LEN = 16; // shaft length outboard of the hub
+const ARM_W = 6; // fork-arm thickness (across the bore axis)
+const ARM_H = 11; // fork-arm height (kept < FORK_GAP so perpendicular forks clear)
+const FORK_GAP = 14; // clear gap between the two arms
+const ARM_FILLET = 2; // round the proud arm corners
+const ARM_COVER = 2; // arm material outboard of the bore center
+const BORE_R = 2.9; // fork bore radius (radial bearing clearance over the trunnion)
+const CROSS_BODY = 8; // central cross cube edge
+const TRUN_R = 2.5; // cross trunnion radius
+const TRUN_REACH = FORK_GAP / 2 + ARM_W - 1;
+const BORE_X = 14; // bore station radius from the joint center
+const BEND_DEG = 25; // display articulation
 
-const ART_DEG = 25; // articulation angle of the output yoke about Y
+// Yoke in a local frame: shaft along +X, fork opens toward +X, bore axis along Y.
+// After the bore cut it is shifted so the bore station sits at the origin.
+function makeYoke() {
+  const hub = cylinder(HUB_R, HUB_LEN, { axis: [1, 0, 0], at: [-HUB_LEN / 2, 0, 0] });
+  const shaft = cylinder(SHAFT_R, SHAFT_LEN, { axis: [-1, 0, 0], at: [-HUB_LEN / 2, 0, 0] });
+  let body = unwrap(fuse(hub, shaft));
 
-// --- Cross-spider geometry ---
-const HUB = 14; // central cube edge of the spider body
-const TRUN_R = 5; // trunnion (journal) radius
-const TRUN_LEN = 16; // trunnion half-length: hub center -> tip (overhangs the hub)
-const BOSS_R = 2.2; // grease boss radius on each trunnion cap
-const BOSS_H = 3; // grease boss height proud of the trunnion cap
+  // Machined collar where the shaft emerges from the hub face.
+  body = unwrap(fuse(body, cylinder(SHAFT_R + 1.6, 2, { axis: [-1, 0, 0], at: [-HUB_LEN / 2, 0, 0] })));
 
-// --- Yoke geometry ---
-const SHAFT_R = 6; // stub-shaft radius
-const SHAFT_LEN = 34; // stub-shaft length
-const FORK_HALF = TRUN_LEN; // each ear centered on its trunnion tip -> ears at ±TRUN_LEN
-const EAR_T = 8; // fork-ear thickness (along the trunnion / local-X axis)
-const EAR_W = 16; // fork-ear width (local Y)
-const EAR_H = 30; // fork-ear height (radial reach, local Z)
-const BORE_R = TRUN_R; // bore rides directly on the trunnion journal (line-to-line)
-const NECK_H = 12; // yoke neck block height
-const NECK_Z0 = TRUN_R + EAR_H - 4; // neck overlaps the top of the ears
+  // Chamfer-look lead-in at the free shaft end (flat-capped cone — no spheres).
+  const endX = -HUB_LEN / 2 - SHAFT_LEN;
+  const lead = cone(SHAFT_R, SHAFT_R - 2, 2, { axis: [-1, 0, 0], at: [endX + 2, 0, 0] });
+  const rimCut = cylinder(SHAFT_R + 0.5, 2, { axis: [-1, 0, 0], at: [endX + 2, 0, 0] });
+  body = unwrap(fuse(unwrap(cut(body, rimCut)), lead));
 
-// Weld a list of overlapping solids into ONE solid via pairwise fuse, and prove it.
-function weld(parts: Shape3D[], label: string): Shape3D {
-  let acc = parts[0] as Shape3D;
-  for (let i = 1; i < parts.length; i++) {
-    acc = unwrap(fuse(acc, parts[i] as Shape3D));
+  // Two fork arms straddling the cross, proud corners rounded.
+  const armCenterY = FORK_GAP / 2 + ARM_W / 2;
+  const armRootX = HUB_LEN / 2 - 1;
+  const armTipX = BORE_X + ARM_COVER;
+  const armLen = armTipX - armRootX;
+  const armCenterX = (armRootX + armTipX) / 2;
+  for (const sy of [1, -1]) {
+    let arm = box(armLen, ARM_W, ARM_H, { at: [armCenterX, sy * armCenterY, 0] });
+    arm = unwrap(fillet(arm, edgeFinder().inDirection('X'), ARM_FILLET));
+    body = unwrap(fuse(body, arm));
   }
-  const n = getSolids(acc).length;
-  if (n !== 1) throw new Error(\`\${label} did not weld: \${n} solids\`);
-  return acc;
-}
 
-// A single fork yoke about the local +Z shaft axis; the two ears straddle the
-// local X axis and their bores sit on trunnions lying along local X through the
-// joint origin. Built so neck/ears/shaft mutually overlap and weld into 1 solid.
-function yoke(): Shape3D {
-  // Neck bar spanning the full fork width along X so it overlaps BOTH ears.
-  const neckW = 2 * FORK_HALF + EAR_T; // X span, covers both ear positions
-  const neck = box(neckW, EAR_W, NECK_H, { at: [0, 0, NECK_Z0 + NECK_H / 2] });
-
-  // Stub shaft running outward along +Z; sunk into the neck for a real overlap.
-  const shaftBase = NECK_Z0 + NECK_H - 3;
-  const shaft = cylinder(SHAFT_R, SHAFT_LEN, { at: [0, 0, shaftBase] });
-
-  // Two ears at ±FORK_HALF along X; each reaches up to overlap the neck.
-  const earBlank = box(EAR_T, EAR_W, EAR_H, { at: [0, 0, TRUN_R + EAR_H / 2] });
-  const earRight = translate(earBlank, [FORK_HALF, 0, 0]);
-  const earLeft = translate(earBlank, [-FORK_HALF, 0, 0]);
-
-  // Bore through each ear on the trunnion (local X) axis, so the ear rides on it.
-  const boreLen = EAR_T + 4;
-  const boreRight = cylinder(BORE_R, boreLen, {
-    at: [FORK_HALF + boreLen / 2, 0, 0],
-    axis: [-1, 0, 0],
+  // Coaxial trunnion bores through both arms (pin axis = Y).
+  const bore = cylinder(BORE_R, FORK_GAP + 2 * ARM_W + 4, {
+    axis: [0, 1, 0],
+    at: [BORE_X, -(FORK_GAP / 2 + ARM_W + 2), 0],
   });
-  const boreLeft = cylinder(BORE_R, boreLen, {
-    at: [-FORK_HALF - boreLen / 2, 0, 0],
-    axis: [1, 0, 0],
-  });
-  const earRightBored = unwrap(cut(earRight, boreRight));
-  const earLeftBored = unwrap(cut(earLeft, boreLeft));
-
-  return weld([neck, earRightBored, earLeftBored, shaft], 'yoke');
+  return translate(unwrap(cut(body, bore)), [-BORE_X, 0, 0]);
 }
 
-// The cross-spider: central hub + four trunnions (±X, ±Y) + grease bosses.
-// Bosses are sunk into the trunnion ends so everything welds into ONE solid.
-function spider(): Shape3D {
-  const hub = box(HUB, HUB, HUB, { centered: true });
-
-  const trunX = cylinder(TRUN_R, 2 * TRUN_LEN, { at: [-TRUN_LEN, 0, 0], axis: [1, 0, 0] });
-  const trunY = cylinder(TRUN_R, 2 * TRUN_LEN, { at: [0, -TRUN_LEN, 0], axis: [0, 1, 0] });
-
-  // Grease bosses on each trunnion cap; base sunk 1mm into the trunnion end.
-  const sink = 1;
-  const bossXp = cylinder(BOSS_R, BOSS_H, { at: [TRUN_LEN - sink, 0, 0], axis: [1, 0, 0] });
-  const bossXn = cylinder(BOSS_R, BOSS_H, { at: [-TRUN_LEN + sink, 0, 0], axis: [-1, 0, 0] });
-  const bossYp = cylinder(BOSS_R, BOSS_H, { at: [0, TRUN_LEN - sink, 0], axis: [0, 1, 0] });
-  const bossYn = cylinder(BOSS_R, BOSS_H, { at: [0, -TRUN_LEN + sink, 0], axis: [0, -1, 0] });
-
-  return weld([hub, trunX, trunY, bossXp, bossXn, bossYp, bossYn], 'spider');
+// Cross/spider: central cube + a Y-trunnion and a Z-trunnion (a '+'), with a
+// grease boss + blind lube hole on each free ±X face (the canonical Cardan detail).
+function makeCross() {
+  let body = box(CROSS_BODY, CROSS_BODY, CROSS_BODY, { at: [0, 0, 0] });
+  body = unwrap(fuse(body, cylinder(TRUN_R, 2 * TRUN_REACH, { axis: [0, 1, 0], at: [0, -TRUN_REACH, 0] })));
+  body = unwrap(fuse(body, cylinder(TRUN_R, 2 * TRUN_REACH, { axis: [0, 0, 1], at: [0, 0, -TRUN_REACH] })));
+  for (const sx of [1, -1]) {
+    body = unwrap(fuse(body, cylinder(3, 1.4, { axis: [sx, 0, 0], at: [(sx * CROSS_BODY) / 2, 0, 0] })));
+    body = unwrap(cut(body, cylinder(1.1, 2.4, { axis: [-sx, 0, 0], at: [(sx * CROSS_BODY) / 2 + sx * 1.4, 0, 0] })));
+  }
+  return body;
 }
 
-function universalJoint() {
-  // Input yoke: ears straddle the X-trunnions. Flipped so its shaft points -Z.
-  const inputYoke = rotate(yoke(), 180, { axis: [1, 0, 0] });
+// Assemble at the 25° display pose. yokeA unrotated; cross at origin; yokeB
+// re-framed (shaft +X, bore Y -> Z) then tilted by BEND about Z. At this pose the
+// exact Cardan precession is zero, so each fork bore seats on its cross trunnion
+// (bore radius > trunnion radius = a visible bearing gap) by construction.
+const yokeA = makeYoke();
+const cross = makeCross();
+const yokeBBase = rotate(rotate(makeYoke(), 180, { axis: [0, 0, 1] }), 90, { axis: [1, 0, 0] });
+const yokeB = rotate(yokeBBase, BEND_DEG, { axis: [0, 0, 1] });
 
-  // Output yoke: rotate 90° about Z so its ears straddle the Y-trunnions, then
-  // tilt 25° about Y to show the articulation. Shaft points +Z.
-  const outputYoke = rotate(rotate(yoke(), 90, { axis: [0, 0, 1] }), ART_DEG, { axis: [0, 1, 0] });
-
-  const cross = spider();
-
-  return [
-    color(inputYoke, '#3373d9'), // blue input yoke
-    color(cross, '#d9bf40'), // brass cross-spider
-    color(outputYoke, '#cc4040'), // red output yoke
-  ];
-}
-
-export default universalJoint();`,
+export default [color(yokeA, '#b4b9c0'), color(yokeB, '#878d96'), color(cross, '#6b7177')];
+`,
   },
   {
     id: 'geneva-drive',
@@ -3470,437 +3679,407 @@ export default universalJoint();`,
     description:
       'A four-slot Geneva (Maltese cross) intermittent drive: each driver revolution indexes the slotted wheel one quarter-turn while the convex locking cam holds it still between steps. Two colored bodies on stub shafts.',
     code: `import {
-  cylinder,
   box,
+  cylinder,
+  cone,
   cut,
-  fuse,
-  translate,
+  cutAll,
+  fuseAll,
   rotate,
+  translate,
   unwrap,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// ---- Geneva drive geometry (4 slots / quarter-turn index) ----
-const N = 4; // number of slots
-const C = 50; // center distance between the two shafts (mm)
-const BETA = 180 / N; // half-angle subtended by adjacent slots = 45 deg
-const RP = C * Math.sin((BETA * Math.PI) / 180); // drive-pin radius on driver
-const RW = C * Math.cos((BETA * Math.PI) / 180); // slotted-wheel working radius
-const PIN_R = 4; // drive-pin radius (mm)
-const WHEEL_R = RW + 8; // outer radius of the slotted wheel disc
-const WHEEL_H = 10; // thickness of the slotted wheel
-const SLOT_W = PIN_R * 2 + 1; // slot width (pin + clearance)
-
-const DRIVER_R = RP + PIN_R + 3; // driver crank plate radius (carries the pin at the rim)
-const DRIVER_H = 8; // driver crank-plate thickness
-const CAM_R = RW - SLOT_W / 2 - 0.5; // convex locking-cam radius (rides the wheel scallops)
-const CAM_H = 5; // raised locking-cam height above the crank plate
+// Geneva (Maltese cross) 4-slot intermittent drive on a baseplate so it reads as
+// one mechanism. The driver's crank rides in a gap UNDER the wheel; only its drive
+// pin rises into a slot and its locking cam rises (relieved) alongside the wheel
+// rim, so nothing else enters the wheel's swept envelope. The wheel indexes 90°
+// per driver revolution; the convex cam locks it between steps.
+const CENTER_DIST = 36; // C: wheel axis (origin) to driver axis
+const PIN_PITCH_R = CENTER_DIST / Math.SQRT2; // crank/pin radius p = C/√2 (≈25.46)
+const PIN_R = 3; // drive-pin radius
+const PIN_LEADIN_H = 1.5; // conical lead-in at the pin tip
+const PLATE_H = 4; // baseplate thickness
+const GAP_Z = 3; // gap between plate top and wheel disc (the crank lives here)
+const CRANK_Z0 = PLATE_H; // crank bottom face
+const CRANK_H = GAP_Z; // crank thickness (sits entirely in the gap)
+const WHEEL_Z0 = PLATE_H + GAP_Z; // wheel disc bottom face
+const WHEEL_H = 8; // wheel disc thickness
+const WHEEL_R = PIN_PITCH_R - 0.5; // slot tangent to the pin circle (≈24.96)
+const SLOT_W = 2 * PIN_R + 1; // radial slot width (pin Ø6 + clearance)
+const SLOT_INNER_R = CENTER_DIST - PIN_PITCH_R - PIN_R - 1; // slot depth (≈6.5)
+const CAM_R = CENTER_DIST - WHEEL_R - 0.4; // convex locking-cam radius (≈10.6)
+const CAM_TOP_Z = WHEEL_Z0 + WHEEL_H; // cam reaches the top of the wheel disc
+const CAM_RELIEF_R = WHEEL_R + 1.5; // kidney notch (about the wheel axis)
+const ARM_W = 2 * PIN_R + 0.6; // crank-arm width
+const PIN_TOP_Z = WHEEL_Z0 + WHEEL_H / 2 + 1.5; // pin reaches just above mid-slot
+const DRIVER_FOOTPRINT_R = PIN_PITCH_R + PIN_R; // crank reach (sets the baseplate)
 const SHAFT_R = 6; // stub-shaft radius
-const SHAFT_H = 14; // stub-shaft length below each body
+const SHAFT_H = 6; // stub-shaft length into the baseplate boss
+const BORE_R = 4.2; // center bore radius
+const HUB_R = 8; // raised hub-boss collar radius
+const HUB_H = 3; // hub boss proud of the top face
+const PLATE_MARGIN = 6; // plate overhang beyond the wheels' footprint
+const BOSS_R = SHAFT_R + 2.5; // bearing-boss outer radius
+const BOSS_H = SHAFT_H + 1; // boss height
+const BOSS_BORE_R = SHAFT_R + 0.4; // boss bore (clearance over the stub shaft)
 
-// ---- Slotted (Maltese cross) wheel, centered on origin ----
-function slottedWheel() {
-  let wheel = cylinder(WHEEL_R, WHEEL_H);
+// Driven Maltese wheel: 4 radial slots + 4 concave lock recesses, stub shaft, hub.
+function drivenWheel() {
+  const z0 = WHEEL_Z0;
+  const disc = cylinder(WHEEL_R, WHEEL_H, { at: [0, 0, z0] });
+  const slotLen = WHEEL_R - SLOT_INNER_R + 2;
+  const slotTool = box(slotLen, SLOT_W, WHEEL_H + 4, { at: [SLOT_INNER_R + slotLen / 2, 0, z0 + WHEEL_H / 2] });
+  let body = unwrap(cutAll(disc, [0, 90, 180, 270].map((a) => rotate(slotTool, a, { axis: [0, 0, 1] }))));
 
-  // four radial slots, open at the rim, terminating at the working radius RW
-  // (they must NOT cross the center or the hub detaches from the lobes).
-  const slotInner = RW - PIN_R; // deepest the pin seats
-  const slotOuter = WHEEL_R + 4; // open past the rim
-  const slotLen = slotOuter - slotInner;
-  const slotMidY = (slotInner + slotOuter) / 2;
-  for (let i = 0; i < N; i++) {
-    const channel = box(SLOT_W, slotLen, WHEEL_H + 4, {
-      at: [0, slotMidY, WHEEL_H / 2],
-    });
-    // rounded inner end so the drive pin seats cleanly
-    const round = cylinder(SLOT_W / 2, WHEEL_H + 4, { at: [0, slotInner, -2] });
-    const slot = unwrap(fuse(channel, round));
-    wheel = unwrap(cut(wheel, rotate(slot, i * 90, { axis: [0, 0, 1] })));
+  const recessTool = cylinder(CAM_R + 0.5, WHEEL_H + 4, { at: [CENTER_DIST, 0, z0 - 2] });
+  for (const a of [45, 135, 225, 315]) {
+    body = unwrap(cut(body, rotate(recessTool, a, { axis: [0, 0, 1] })));
   }
 
-  // four concave locking scallops at the rim between the slots (45/135/...):
-  // a shallow arc the convex cam rides in. Kept shallow so the central core
-  // ring (radius RW) stays intact and the wheel remains ONE solid.
-  const scallopR = CAM_R;
-  // center the cutter so its inner edge sits just outside the core ring
-  const scallopCenter = RW + scallopR + 1.5;
-  for (let i = 0; i < N; i++) {
-    const arc = cylinder(scallopR, WHEEL_H + 4, { at: [0, 0, -2] });
-    const placed = translate(arc, [0, scallopCenter, 0]);
-    wheel = unwrap(cut(wheel, rotate(placed, 45 + i * 90, { axis: [0, 0, 1] })));
-  }
-
-  // integral stub shaft below, overlapping into the disc so it welds
-  const shaft = cylinder(SHAFT_R, SHAFT_H + WHEEL_H, { at: [0, 0, -SHAFT_H] });
-  return unwrap(fuse(wheel, shaft));
+  const shaft = cylinder(SHAFT_R, z0 + WHEEL_H, { at: [0, 0, 0] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, z0 + WHEEL_H - 1] });
+  body = unwrap(fuseAll([body, shaft, hub], { unsafe: true, strategy: 'pairwise' }));
+  return unwrap(cut(body, cylinder(BORE_R, z0 + WHEEL_H + HUB_H + 4, { at: [0, 0, -2] })));
 }
 
-// ---- Driver: crank plate + convex locking cam + drive pin ----
+// Driver: a kidney-relieved locking-cam disc + a crank arm carrying the drive pin,
+// all riding in the gap under the wheel; stub shaft + hub.
 function driver() {
-  // crank plate carries the drive pin solidly at its rim
-  let body = cylinder(DRIVER_R, DRIVER_H);
+  const camDisc = cylinder(CAM_R, CAM_TOP_Z - CRANK_Z0, { at: [0, 0, CRANK_Z0] });
+  const relief = cylinder(CAM_RELIEF_R, CAM_TOP_Z - CRANK_Z0 + 4, { at: [-CENTER_DIST, 0, CRANK_Z0 - 2] });
+  const cam = unwrap(cut(camDisc, relief));
 
-  // convex locking cam: a raised disc concentric with the driver center that
-  // rides the wheel's concave scallops to lock it between indexing steps.
-  let cam = cylinder(CAM_R, CAM_H, { at: [0, 0, DRIVER_H] });
-  // relief notch cut through the cam on the +Y (wheel) side so the wheel lobe
-  // clears the cam while the pin sweeps through a slot.
-  const relief = box(SLOT_W + 6, CAM_R + 4, CAM_H + 4, {
-    at: [0, RW + 2, DRIVER_H + CAM_H / 2],
-  });
-  cam = unwrap(cut(cam, relief));
-  body = unwrap(fuse(body, cam));
+  const armLen = PIN_PITCH_R + PIN_R;
+  const arm = box(armLen, ARM_W, CRANK_H, { at: [-armLen / 2, 0, CRANK_Z0 + CRANK_H / 2] });
 
-  // drive pin standing proud on the top face, at the pin radius on +Y
-  const pin = cylinder(PIN_R, DRIVER_H + CAM_H + 6, { at: [0, RP, 0] });
-  body = unwrap(fuse(body, pin));
+  const pinShaftH = PIN_TOP_Z - CRANK_Z0 - PIN_LEADIN_H;
+  const pin = cylinder(PIN_R, pinShaftH, { at: [-PIN_PITCH_R, 0, CRANK_Z0] });
+  const pinTip = cone(PIN_R, PIN_R - PIN_LEADIN_H, PIN_LEADIN_H + 0.01, { at: [-PIN_PITCH_R, 0, CRANK_Z0 + pinShaftH] });
 
-  // integral stub shaft below, overlapping into the plate so it welds
-  const shaft = cylinder(SHAFT_R, SHAFT_H + DRIVER_H, { at: [0, 0, -SHAFT_H] });
-  return unwrap(fuse(body, shaft));
+  const shaft = cylinder(SHAFT_R, CRANK_Z0 + CRANK_H, { at: [0, 0, 0] });
+  const hub = cylinder(HUB_R, HUB_H + 1, { at: [0, 0, CAM_TOP_Z - 1] });
+
+  let body = unwrap(fuseAll([cam, arm, pin, pinTip, shaft, hub], { unsafe: true, strategy: 'pairwise' }));
+  return unwrap(cut(body, cylinder(BORE_R, CAM_TOP_Z + HUB_H + 4, { at: [0, 0, -2] })));
 }
 
-const wheelBody = slottedWheel();
-// place the driver one center-distance away on +X, pin pointing toward the wheel
-const driverBody = translate(rotate(driver(), 180, { axis: [0, 0, 1] }), [C, 0, 0]);
+// Baseplate with two raised bearing bosses at the shaft centres.
+function baseplate() {
+  const xMin = -WHEEL_R - PLATE_MARGIN;
+  const xMax = CENTER_DIST + DRIVER_FOOTPRINT_R + PLATE_MARGIN;
+  const yHalf = Math.max(WHEEL_R, DRIVER_FOOTPRINT_R) + PLATE_MARGIN;
+  const plate = box(xMax - xMin, 2 * yHalf, PLATE_H, { at: [(xMin + xMax) / 2, 0, PLATE_H / 2] });
+  const wheelBoss = cylinder(BOSS_R, BOSS_H + 1, { at: [0, 0, PLATE_H - 1] });
+  const driverBoss = cylinder(BOSS_R, BOSS_H + 1, { at: [CENTER_DIST, 0, PLATE_H - 1] });
+  let body = unwrap(fuseAll([plate, wheelBoss, driverBoss], { unsafe: true, strategy: 'pairwise' }));
+  const wheelBore = cylinder(BOSS_BORE_R, BOSS_H + PLATE_H + 4, { at: [0, 0, -2] });
+  const driverBore = cylinder(BOSS_BORE_R, BOSS_H + PLATE_H + 4, { at: [CENTER_DIST, 0, -2] });
+  return unwrap(cutAll(body, [wheelBore, driverBore]));
+}
 
+// Seated display pose: drive pin centred in a slot on the line of centers.
 export default [
-  color(wheelBody, '#b98a3c'),
-  color(driverBody, '#8f99a3'),
-];`,
+  color(baseplate(), '#565b61'),
+  color(drivenWheel(), '#b98a3c'),
+  color(translate(driver(), [CENTER_DIST, 0, 0]), '#8f99a3'),
+];
+`,
   },
   {
     id: 'bench-vise',
     label: 'Machinist Bench Vise',
     description:
       'A machinist bench vise drawn as a product assembly, jaw partway open: a cast body with guide ways and a fixed jaw, a sliding jaw, a real threaded lead screw with a T-handle crank, and two serrated, counterbored jaw plates.',
-    code: `// bench-vise.brep.ts — machinist bench vise, jaw partway open, workpiece clamped.
-// Assembly along +X = screw/travel axis. Fixed jaw at the +X end (integral with the cast body),
-// sliding jaw rides the guide ways toward it. A rectangular workpiece is clamped between the two
-// serrated jaw plates (faces touching the stock). The real (lofted) threaded lead screw runs along
-// X with a T-handle crank held OUTBOARD past the -X end of the body — clear of body and jaw.
-import {
+    code: `import {
   box,
   cylinder,
-  cut,
   fuse,
-  rotate,
+  cut,
+  cutAll,
   translate,
-  line,
-  wire,
-  closedWire,
-  loft,
-  getSolids,
+  rotate,
+  fillet,
+  thread,
+  edgeFinder,
   getBounds,
   unwrap,
+  type Edge,
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// --- datums (mm) ---
-const BODY_W = 70; // X span of the cast body (guide ways live here)
-const BODY_D = 60; // Y
-const BODY_H = 28; // Z (channel sits on top)
-const WAY_W = 34; // width (Y) of the central slide channel
-const WAY_DEPTH = 8; // depth of the guide channel cut into the top
+// Machinist bench vise — product assembly with a real threaded lead screw, jaw
+// partway open. Body base sits on Z=0; the screw axis runs along X at mid-height.
+// Every component is a distinct solid so the parts color separately.
+const P = {
+  baseLen: 110, // body base length along X (mm)
+  baseWidth: 64, // body width along Y (mm)
+  baseHeight: 18, // base slab height (mm)
+  baseFillet: 4, // rounding on the base bottom edges (mm)
+  railWidth: 12, // each way-rail width along Y (mm)
+  railGap: 22, // centre-to-centre spacing of the two rails (mm)
+  railHeight: 8, // rail height above the base top (mm)
+  railFillet: 2.5, // rail top rounding (mm)
+  fixedJawX: 6, // X of the fixed-jaw gripping face (mm)
+  fixedJawThick: 16, // fixed-jaw wall thickness along X (mm)
+  fixedJawWidth: 58, // fixed-jaw width along Y (mm)
+  jawTopZ: 56, // top of the jaws above Z=0 (mm)
+  screwR: 6, // lead-screw shank radius (mm)
+  screwBoreR: 7, // clearance bore radius through fixed jaw/nut (mm)
+  screwPitch: 3, // lead-screw thread pitch (mm)
+  threadLen: 70, // working length of the visible thread run (mm)
+  slideLen: 26, // sliding-jaw length along X (mm)
+  slideWidth: 58, // sliding-jaw width along Y (mm)
+  slideTopZ: 56, // sliding-jaw top above Z=0 (mm)
+  nutBoreR: 6.4, // nut bore radius in the sliding jaw (mm)
+  collarR: 9, // screw collar radius (mm)
+  collarThick: 6, // screw collar thickness along X (mm)
+  handleR: 3.5, // T-handle crossbar radius (mm)
+  handleLen: 44, // crossbar length between knobs (mm)
+  handleHubR: 7, // hub where the bar passes through the screw end (mm)
+  handleHubLen: 13, // hub length (mm)
+  knobR: 5, // flat-capped knob radius (mm)
+  knobLen: 8, // knob length (mm)
+  plateThick: 6, // jaw-plate thickness along X (mm)
+  plateWidth: 50, // jaw-plate width along Y (mm)
+  plateHeight: 34, // jaw-plate height along Z (mm)
+  boltR: 2.4, // through bolt-hole radius (mm)
+  cboreR: 4.2, // counterbore radius (mm)
+  cboreDepth: 3, // counterbore depth (mm)
+  openGap: 24, // display gap between fixed and sliding jaw faces (mm)
+};
 
-const JAW_W = 14; // X thickness of each jaw block
-const JAW_H = 34; // Z height of the jaw blocks (proud of the body)
-const JAW_D = BODY_D; // Y
+const screwZ = P.baseHeight + P.railHeight + (P.jawTopZ - (P.baseHeight + P.railHeight)) / 2;
 
-const PLATE_W = 6; // X thickness of a jaw plate
-const PLATE_H = 30; // Z
-const PLATE_D = 50; // Y
-const SERR = 7; // number of serration grooves
-const CBORE_R = 4; // counterbore radius
-const CBORE_DEPTH = 2.5; // counterbore depth
-const HOLE_R = 2; // through fastener hole radius
+// Body (cast iron): filleted base slab + two filleted way rails + fixed rear jaw,
+// bored along X for the screw.
+function buildBody() {
+  let base = box(P.baseLen, P.baseWidth, P.baseHeight, { at: [P.baseLen / 2, 0, P.baseHeight / 2] });
+  const baseBottom = edgeFinder()
+    .inDirection('X')
+    .when((f: Edge) => getBounds(f).zMin < 1)
+    .findAll(base);
+  base = unwrap(fillet(base, baseBottom, P.baseFillet));
 
-const STOCK_W = 24; // X width of clamped workpiece
-const STOCK_H = 26; // Z
-const STOCK_D = 30; // Y
+  // Rails sink into the base so the booleans weld to one solid.
+  const railTop = P.baseHeight + P.railHeight;
+  const sink = 3;
+  const makeRail = (cy: number) => {
+    const rail = box(P.baseLen, P.railWidth, P.railHeight + sink, { at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2 - sink / 2] });
+    const topEdges = edgeFinder()
+      .inDirection('X')
+      .when((f: Edge) => getBounds(f).zMax > railTop - 0.5)
+      .findAll(rail);
+    return unwrap(fillet(rail, topEdges, P.railFillet));
+  };
 
-// Fixed jaw gripping plane at x=0 (plate face), body extends in +X.
-const FIXED_GRIP_X = 0;
-const STOCK_X0 = FIXED_GRIP_X - PLATE_W; // stock starts at the fixed plate's working face
-// Sliding jaw closes against the far side of the stock.
-const SLIDE_GRIP_X = STOCK_X0 - STOCK_W; // sliding plate working face touches the stock
-
-const SCREW_R = 5.5;
-const SCREW_PITCH = 4;
-const SCREW_TURNS = 9;
-const SCREW_LEN = SCREW_PITCH * SCREW_TURNS; // 36
-const SCREW_Z = BODY_H + JAW_H * 0.45; // screw axis height (through the jaws)
-
-const HANDLE_R = 2.6; // T-handle bar radius
-const HANDLE_LEN = 46; // cross-bar length (Y)
-const HANDLE_KNOB_R = 4;
-
-// ---------- cast body with guide ways + integral fixed jaw ----------
-function castBody() {
-  let b = box(BODY_W, BODY_D, BODY_H, { at: [FIXED_GRIP_X + BODY_W / 2, 0, BODY_H / 2] });
-  // central guide channel on top (the slide ways)
-  const channel = box(BODY_W + 4, WAY_W, WAY_DEPTH + 2, {
-    at: [FIXED_GRIP_X + BODY_W / 2, 0, BODY_H - WAY_DEPTH / 2 + 1],
+  const fixedJaw = box(P.fixedJawThick, P.fixedJawWidth, P.jawTopZ, {
+    at: [P.fixedJawX - P.fixedJawThick / 2, 0, P.jawTopZ / 2],
   });
-  b = unwrap(cut(b, channel));
-  // integral fixed jaw: a wall standing up at the +X working face (x = 0 .. +JAW_W)
-  const fixedJaw = box(JAW_W, JAW_D, JAW_H, {
-    at: [FIXED_GRIP_X + JAW_W / 2, 0, BODY_H + JAW_H / 2],
-  });
-  let body = unwrap(fuse(b, fixedJaw));
-  // screw clearance bore through the fixed jaw so the lead screw passes
-  const bore = cylinder(SCREW_R + 0.8, JAW_W + 6, {
-    at: [FIXED_GRIP_X - 3, 0, SCREW_Z],
-    axis: [1, 0, 0],
-  });
-  body = unwrap(cut(body, bore));
-  return body;
+
+  // Sequential fuse welds the casting into one watertight solid.
+  let body = unwrap(fuse(base, makeRail(-P.railGap / 2)));
+  body = unwrap(fuse(body, makeRail(P.railGap / 2)));
+  body = unwrap(fuse(body, fixedJaw));
+
+  const bore = rotate(cylinder(P.screwBoreR, P.fixedJawThick + 20), 90, { axis: [0, 1, 0] });
+  return unwrap(cut(body, translate(bore, [P.fixedJawX + 10, 0, screwZ])));
 }
 
-// ---------- sliding jaw (rides the ways) ----------
-function slidingJaw() {
-  // jaw block standing on a tongue that sits in the guide channel
-  const blockX = SLIDE_GRIP_X - JAW_W / 2; // jaw block centered just behind the sliding plate
-  const blk = box(JAW_W, JAW_D, JAW_H, { at: [blockX, 0, BODY_H + JAW_H / 2] });
-  const tongue = box(JAW_W + 2, WAY_W - 1, WAY_DEPTH, {
-    at: [blockX, 0, BODY_H - WAY_DEPTH / 2 + 0.5],
-  });
-  let jaw = unwrap(fuse(blk, tongue));
-  // tapped hole in the slider for the lead screw nut
-  const nut = cylinder(SCREW_R + 0.4, JAW_W + 8, { at: [blockX + JAW_W, 0, SCREW_Z], axis: [-1, 0, 0] });
-  jaw = unwrap(cut(jaw, nut));
-  if (getSolids(jaw).length !== 1) throw new Error(\`sliding jaw fragmented: \${getSolids(jaw).length}\`);
-  return jaw;
+// Sliding front jaw: a block straddling the rails (channel cut underneath), nut-bored.
+function buildSlidingJaw() {
+  let jaw = box(P.slideLen, P.slideWidth, P.slideTopZ, { at: [0, 0, P.slideTopZ / 2] });
+  const railTopZ = P.baseHeight + P.railHeight;
+  const channel = box(P.slideLen + 2, P.railGap + P.railWidth + 6, railTopZ + 1.5, { at: [0, 0, (railTopZ + 1.5) / 2 - 0.5] });
+  jaw = unwrap(cut(jaw, channel));
+  const nutBore = rotate(cylinder(P.nutBoreR, P.slideLen + 8), 90, { axis: [0, 1, 0] });
+  jaw = unwrap(cut(jaw, translate(nutBore, [0, 0, screwZ])));
+  const topEdges = edgeFinder()
+    .inDirection('X')
+    .when((f: Edge) => getBounds(f).zMax > P.slideTopZ - 0.5)
+    .findAll(jaw);
+  return unwrap(fillet(jaw, topEdges, 2.5));
 }
 
-// ---------- serrated, counterbored jaw plate ----------
-// gripFaceX = the working (gripping) plane; dir = +1 if material is in +X of the face, -1 if in -X.
-function jawPlate(gripFaceX: number, dir: 1 | -1) {
-  const cx = gripFaceX + dir * (PLATE_W / 2);
-  let plate = box(PLATE_W, PLATE_D, PLATE_H, { at: [cx, 0, SCREW_Z] });
-  // horizontal serration grooves machined into the working face
-  const grooveSpan = PLATE_H * 0.8;
-  const step = grooveSpan / SERR;
-  for (let i = 0; i < SERR; i++) {
-    const gz = SCREW_Z - grooveSpan / 2 + step * (i + 0.5);
-    // a thin triangular-ish groove: use a small rotated box biting into the working face
-    const groove = rotate(box(2.2, PLATE_D + 2, 1.6, { at: [gripFaceX, 0, gz] }), 45, { axis: [0, 1, 0] });
-    plate = unwrap(cut(plate, groove));
+// Lead screw (steel): shank + real thread run + collar + T-handle crank with
+// flat-capped knob ends (no spheres). Built about +Z, laid along X by the caller.
+function buildScrew() {
+  const shankLen = P.threadLen + P.collarThick + 18;
+  let screw = cylinder(P.screwR, shankLen, { at: [0, 0, 0] });
+
+  const ridge = unwrap(thread({ radius: P.screwR, pitch: P.screwPitch, height: P.threadLen, sectionsPerTurn: 16 }));
+  screw = unwrap(fuse(screw, translate(ridge, [0, 0, 4])));
+  screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, P.threadLen + 12] })));
+
+  // T-handle crossbar through a raised hub, flat-capped knob ends (no spheres);
+  // sequential fuse welds the crank into one solid.
+  const handleZ = shankLen - 8;
+  const hub = cylinder(P.handleHubR, P.handleHubLen, { at: [0, 0, handleZ - P.handleHubLen / 2] });
+  const bar = translate(rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }), [0, 0, handleZ]);
+  screw = unwrap(fuse(screw, hub));
+  screw = unwrap(fuse(screw, bar));
+
+  const knobBase = rotate(cylinder(P.knobR, P.knobLen, { at: [0, 0, -P.knobLen / 2] }), 90, { axis: [1, 0, 0] });
+  const off = P.handleLen / 2 + P.knobLen / 2 - 1;
+  screw = unwrap(fuse(screw, translate(knobBase, [0, off, handleZ])));
+  return unwrap(fuse(screw, translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ])));
+}
+
+// Jaw plate (hardened steel): counterbored bolt holes + serration grooves.
+function buildPlate() {
+  let plate = box(P.plateThick, P.plateWidth, P.plateHeight, { at: [P.plateThick / 2, 0, P.plateHeight / 2] });
+  // Bolt head countersunk FLUSH into the grip face (X=plateThick), plain shank
+  // through to the back into the jaw; bolts at top/bottom, clear of the grip band.
+  const tools = [];
+  for (const cz of [P.plateHeight - 7, 7]) {
+    const through = rotate(cylinder(P.boltR, P.plateThick + 4), 90, { axis: [0, 1, 0] });
+    const cbore = rotate(cylinder(P.cboreR, P.cboreDepth + 0.5), 90, { axis: [0, 1, 0] });
+    tools.push(translate(through, [P.plateThick + 2, 0, cz]));
+    tools.push(translate(cbore, [P.plateThick - P.cboreDepth + 0.5, 0, cz]));
   }
-  // two counterbored through-holes for fasteners (back face)
-  for (const oy of [-PLATE_D / 4, PLATE_D / 4]) {
-    const through = cylinder(HOLE_R, PLATE_W + 4, { at: [cx - dir * (PLATE_W / 2 + 2), oy, SCREW_Z], axis: [dir, 0, 0] });
-    plate = unwrap(cut(plate, through));
-    // counterbore opens on the BACK (non-gripping) face
-    const backX = gripFaceX + dir * PLATE_W; // back face plane
-    const cbore = cylinder(CBORE_R, CBORE_DEPTH + 0.5, {
-      at: [backX - dir * (CBORE_DEPTH - 0.5), oy, SCREW_Z],
-      axis: [-dir, 0, 0],
-    });
-    plate = unwrap(cut(plate, cbore));
+  plate = unwrap(cutAll(plate, tools));
+
+  const grooves = [];
+  for (let i = 0; i < 5; i++) {
+    grooves.push(box(1.4, P.plateWidth + 2, 1.0, { at: [P.plateThick - 0.3, 0, 6 + i * 6] }));
   }
-  if (getSolids(plate).length !== 1) throw new Error(\`jaw plate fragmented: \${getSolids(plate).length}\`);
-  return plate;
+  return unwrap(cutAll(plate, grooves));
 }
 
-// ---------- real threaded lead screw (loft through rotated V-tooth sections) ----------
-function leadScrew() {
-  const R = SCREW_R;
-  const DEPTH = 0.6 * SCREW_PITCH;
-  const A = SCREW_PITCH * 0.42;
-  const SPT = 18;
-  const nSec = SCREW_TURNS * SPT;
-  const sections = [];
-  for (let i = 0; i <= nSec; i++) {
-    const th = (i / SPT) * 2 * Math.PI;
-    const z = (SCREW_PITCH * th) / (2 * Math.PI);
-    const cx = R * Math.cos(th),
-      cy = R * Math.sin(th);
-    const rx = Math.cos(th),
-      ry = Math.sin(th);
-    const pt = (u: number, v: number): [number, number, number] => [cx + u * rx, cy + u * ry, z + v];
-    const p1 = pt(-0.3, -A),
-      ap = pt(DEPTH, 0),
-      p3 = pt(-0.3, A);
-    sections.push(unwrap(closedWire(unwrap(wire([line(p1, ap), line(ap, p3), line(p3, p1)])))));
-  }
-  const ridge = unwrap(loft(sections, { ruled: true }));
-  const core = cylinder(R + 0.15, SCREW_LEN, { at: [0, 0, 0] });
-  let screw = unwrap(fuse(core, ridge)); // threaded shaft, built along +Z
-  // a plain shank + collar at the crank end, each given a real axial overlap into the core
-  const collar = cylinder(R + 2.5, 6, { at: [0, 0, SCREW_LEN - 3] }); // straddles the top face
-  const shank = cylinder(R - 0.6, 20, { at: [0, 0, SCREW_LEN - 3] }); // sinks 3mm into the core
-  screw = unwrap(fuse(screw, collar));
-  screw = unwrap(fuse(screw, shank));
-  if (getSolids(screw).length !== 1) throw new Error(\`lead screw fragmented: \${getSolids(screw).length}\`);
-  // orient the screw along -X (thread end toward the jaws, crank end outboard at -X)
-  // built along +Z; rotate so +Z -> -X.
-  screw = rotate(screw, 90, { axis: [0, 1, 0] }); // +Z -> +X
-  screw = rotate(screw, 180, { axis: [0, 0, 1] }); // +X -> -X
-  // After: the screw spans x in [-(SCREW_LEN+...) .. 0] roughly along -X from origin.
-  // Place the threaded section so it engages the sliding jaw and passes through the fixed jaw.
-  // Thread base (was z=0) is now at +X end. Seat that engaging end inside the fixed jaw region.
-  return translate(screw, [SLIDE_GRIP_X + 6, 0, SCREW_Z]);
-}
+// Assemble at the display pose (jaw partway open).
+const slideOpenX = P.fixedJawX + P.openGap + P.slideLen / 2;
+const body = buildBody();
+const slidingJaw = translate(buildSlidingJaw(), [slideOpenX, 0, 0]);
+const screw = translate(rotate(buildScrew(), -90, { axis: [0, 1, 0] }), [P.fixedJawX + P.threadLen - 4, 0, screwZ]);
+const plateFixed = translate(buildPlate(), [P.fixedJawX, 0, 0]);
+const plateSliding = translate(rotate(buildPlate(), 180, { axis: [0, 0, 1] }), [slideOpenX - P.slideLen / 2, 0, 0]);
 
-// ---------- T-handle crank (held outboard, clear of the body) ----------
-function tHandle() {
-  const screw = leadScrew();
-  const sb = getBounds(screw);
-  // outboard end of the screw is its most -X extent (the crank end)
-  const endX = sb.xMin - 4; // sit the crank just beyond the shank, clear of everything
-  // an axial neck running -X from the screw end, then a cross-bar (the "T") with knobs.
-  const NECK_LEN = 14;
-  const neck = cylinder(HANDLE_R + 1.2, NECK_LEN, { at: [endX, 0, SCREW_Z], axis: [-1, 0, 0] });
-  const barX = endX - NECK_LEN + 2; // cross-bar sits 2mm inboard of the neck tip (real overlap)
-  const crossBar = cylinder(HANDLE_R, HANDLE_LEN, { at: [barX, -HANDLE_LEN / 2, SCREW_Z], axis: [0, 1, 0] });
-  // knobs overlap the cross-bar ends by 2mm
-  const knobA = cylinder(HANDLE_KNOB_R, 5, { at: [barX, -HANDLE_LEN / 2 - 3, SCREW_Z], axis: [0, 1, 0] });
-  const knobB = cylinder(HANDLE_KNOB_R, 5, { at: [barX, HANDLE_LEN / 2 - 2, SCREW_Z], axis: [0, 1, 0] });
-  let handle = unwrap(fuse(neck, crossBar));
-  handle = unwrap(fuse(handle, knobA));
-  handle = unwrap(fuse(handle, knobB));
-  if (getSolids(handle).length !== 1) throw new Error(\`T-handle fragmented: \${getSolids(handle).length}\`);
-  return handle;
-}
-
-// ---------- clamped workpiece ----------
-function workpiece() {
-  return box(STOCK_W, STOCK_D, STOCK_H, { at: [STOCK_X0 - STOCK_W / 2, 0, SCREW_Z] });
-}
-
-function benchVise() {
-  const body = castBody();
-  const slider = slidingJaw();
-  const fixedPlate = jawPlate(FIXED_GRIP_X, -1); // material in -X of x=0 face, grips toward -X (the stock)
-  const slidePlate = jawPlate(SLIDE_GRIP_X, 1); // material in +X of slide face, grips toward +X (the stock)
-  const screw = leadScrew();
-  const handle = tHandle();
-  const stock = workpiece();
-
-  return [
-    color(body, '#4d525a'),
-    color(slider, '#565b63'),
-    color(fixedPlate, '#74797f'),
-    color(slidePlate, '#74797f'),
-    color(screw, '#c3c8ce'),
-    color(handle, '#c3c8ce'),
-    color(stock, '#b08d57'),
-  ];
-}
-
-export default benchVise();`,
+export default [
+  color(body, '#4d525a'),
+  color(slidingJaw, '#565b63'),
+  color(screw, '#c3c8ce'),
+  color(plateFixed, '#74797f'),
+  color(plateSliding, '#74797f'),
+];
+`,
   },
   {
     id: 'scotch-yoke',
     label: 'Scotch Yoke',
     description:
       'A Scotch yoke frozen at a 35° crank angle: the offset crank pin rides a vertical slot in the yoke plate, converting rotation into pure sinusoidal linear motion (stroke = 2× crank radius). Three distinct colored bodies — frame, crank, slotted yoke + piston rod.',
-    code: `import { box, cylinder, fuse, cut, unwrap } from 'brepjs/quick';
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  cut,
+  fuse,
+  intersect,
+  rotate,
+  translate,
+  unwrap,
+} from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Scotch yoke frozen at a 35-degree crank angle.
-// Motion plane is XZ: the crank turns about Y, its offset pin rides a VERTICAL (Z) slot in the
-// yoke plate, and the yoke + piston rod translate horizontally along X.
-// stroke = 2 * crank radius.
+// Scotch yoke — crank rotation -> sinusoidal linear motion, frozen at theta=35deg.
+// Datums: baseplate top at Z=0; crank axis along Y at H_AXIS; yoke slides along X.
+// Stroke = 2*crank radius. Three distinct bodies: frame, crank, yoke.
+const PLATE_W = 120, PLATE_D = 46, PLATE_H = 8;
+const H_AXIS = 46;
+const CRANK_R = 16; // pin offset -> 32 mm stroke
+const DISC_R = 22, DISC_T = 8, DISC_Y0 = 8;
+const SHAFT_R = 4, BORE_R = SHAFT_R + 0.4;
+const PIN_R = 4.5, SLOT_W = 2 * PIN_R + 0.4, SLOT_L = 2 * CRANK_R + 2 * PIN_R + 4;
+const ROD_R = 6, GUIDE_R = ROD_R + 0.3;
+const PILLAR_W = 14, PILLAR_D = 8, PILLAR_TOP = H_AXIS + 8;
+const PILLAR_OUTER_Y = -18, PILLAR_INNER_Y = 0;
+const YOKE_Y0 = 20, YOKE_T = 6, YOKE_PLATE_W = 22, YOKE_PLATE_H = SLOT_L + 10;
+const GUIDE_X = PLATE_W / 2 - 14, GUIDE_W = 16, GUIDE_D = 16, GUIDE_H = H_AXIS + 12;
+const DISPLAY_THETA = 35;
 
-const THETA = 35; // crank angle (deg), frozen pose
-const CRANK_R = 18; // crank throw (mm) -> stroke = 36
-const STROKE = 2 * CRANK_R;
-
-const CRANK_AX_R = 7; // crank journal shaft radius (mm)
-const CRANK_DISK_R = 24; // crank web/disk radius (mm)
-const CRANK_THK = 8; // crank disk thickness along Y (mm)
-const PIN_R = 5; // crank pin radius (mm)
-const PIN_LEN = 16; // crank pin length along Y (mm)
-
-const YOKE_W = 36; // yoke plate width  along X (mm)
-const YOKE_H = STROKE + 4 * PIN_R; // yoke plate height along Z (mm) -> slot longer than throw
-const YOKE_THK = 12; // yoke plate thickness along Y (mm)
-const SLOT_CLR = 0.0; // designed sliding contact: pin touches slot walls
-const ROD_LEN = 70; // piston rod length along +X (mm)
-const ROD_R = 6; // piston rod radius (mm)
-
-const FRAME_H = 70; // frame block height along Z (mm)
-const FRAME_THK = 14; // frame bearing-block thickness along Y (mm)
-const FRAME_Y = -9; // frame sits on the -Y side, clear of the crank disk
-const FRAME_BACK_X = -CRANK_DISK_R - 14; // back face of the frame along -X
-const FRAME_FRONT_X = 12; // front face reaches past the rotation axis to journal the shaft
-const FRAME_W = FRAME_FRONT_X - FRAME_BACK_X; // frame block width along X (mm)
-const FRAME_CX = (FRAME_FRONT_X + FRAME_BACK_X) / 2; // frame block center X
-
-// Frozen pin position in the XZ plane.
-const PIN_X = CRANK_R * Math.cos((THETA * Math.PI) / 180);
-const PIN_Z = CRANK_R * Math.sin((THETA * Math.PI) / 180);
-
-// ---- Frame: bearing pedestal whose bore on the rotation axis journals the crank shaft. --------
+// Frame: baseplate + two bored bearing pillars straddling the disc + a bored rod guide boss.
 function frame() {
-  const block = box(FRAME_W, FRAME_THK, FRAME_H, {
-    at: [FRAME_CX, FRAME_Y, 0],
-  });
-  // Journal bore for the crank shaft (along Y, through the block) on the rotation axis at X=0.
-  // Bore radius == shaft radius so the shaft TOUCHES the bore wall (journaled, clearance 0).
-  const bore = cylinder(CRANK_AX_R, FRAME_THK + 4, {
-    at: [0, FRAME_Y - FRAME_THK / 2 - 2, 0],
-    axis: [0, 1, 0],
-  });
-  return unwrap(cut(block, bore));
+  const plate = box(PLATE_W, PLATE_D, PLATE_H, { at: [0, 0, -PLATE_H / 2] });
+  const pillar = (y: number) => {
+    const block = box(PILLAR_W, PILLAR_D, PILLAR_TOP, { at: [0, y, PILLAR_TOP / 2] });
+    const bore = cylinder(BORE_R, PILLAR_D + 4, { at: [0, y - PILLAR_D / 2 - 2, H_AXIS], axis: [0, 1, 0] });
+    return unwrap(cut(block, bore));
+  };
+  let body = unwrap(fuse(plate, pillar(PILLAR_OUTER_Y)));
+  body = unwrap(fuse(body, pillar(PILLAR_INNER_Y)));
+
+  const boss = box(GUIDE_W, GUIDE_D, GUIDE_H, { at: [GUIDE_X, YOKE_Y0 + YOKE_T / 2 - GUIDE_D / 2, GUIDE_H / 2] });
+  body = unwrap(fuse(body, boss));
+  // Turned bearing collar on the rod-entry face (a machined seat, not a raw box face).
+  const collar = cylinder(GUIDE_R + 3, 3, { at: [GUIDE_X - GUIDE_W / 2 - 3, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
+  body = unwrap(fuse(body, collar));
+  const guideBore = cylinder(GUIDE_R, GUIDE_W + 10, { at: [GUIDE_X - GUIDE_W / 2 - 5, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
+  body = unwrap(cut(body, guideBore));
+  return body;
 }
 
-// ---- Crank: journal shaft + disk web + offset pin (the pin RIDES the yoke slot). -------------
+// Crank: disc + shaft (through both pillars) + offset pin + crescent counterweight + flywheel holes.
 function crank() {
-  // Journal shaft along Y, on the rotation axis, passing through the frame bearing block and up
-  // into the crank web. Starts a bit behind the frame's far face.
-  const shaftStartY = FRAME_Y - FRAME_THK / 2 - 3;
-  const shaft = cylinder(CRANK_AX_R, CRANK_THK - shaftStartY, {
-    at: [0, shaftStartY, 0],
-    axis: [0, 1, 0],
-  });
-  // Crank web/disk, thickness along Y, centered on the rotation axis.
-  const disk = cylinder(CRANK_DISK_R, CRANK_THK, {
-    at: [0, CRANK_THK / 2, 0],
-    axis: [0, 1, 0],
-  });
-  // Offset pin, parallel to the axis, at the frozen throw position. Extends +Y to reach the yoke.
-  const pin = cylinder(PIN_R, PIN_LEN, {
-    at: [PIN_X, CRANK_THK, PIN_Z],
-    axis: [0, 1, 0],
-  });
-  const web = unwrap(fuse(shaft, disk));
-  return unwrap(fuse(web, pin));
+  const disc = cylinder(DISC_R, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
+  const shaftY0 = PILLAR_OUTER_Y - 4;
+  const shaftLen = DISC_Y0 + DISC_T - PILLAR_OUTER_Y + 4;
+  const shaft = cylinder(SHAFT_R, shaftLen, { at: [0, shaftY0, H_AXIS], axis: [0, 1, 0] });
+  let body = unwrap(fuse(disc, shaft));
+  // Machined lead-in cone on the exposed shaft end + a stepped hub collar at the disc back face.
+  body = unwrap(fuse(body, cone(SHAFT_R, SHAFT_R - 1.4, 1.6, { at: [0, shaftY0, H_AXIS], axis: [0, -1, 0] })));
+  body = unwrap(fuse(body, cylinder(SHAFT_R + 3, 2, { at: [0, DISC_Y0, H_AXIS], axis: [0, -1, 0] })));
+  // Offset pin (parallel to the Y axis) cantilevered forward into the yoke slot.
+  const pin = cylinder(PIN_R, YOKE_Y0 + YOKE_T - DISC_Y0, { at: [CRANK_R, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
+  body = unwrap(fuse(body, pin));
+  // Crescent counterweight: a ring clipped to the anti-pin (-X) half-space.
+  const ring = unwrap(cut(
+    cylinder(DISC_R + 4, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] }),
+    cylinder(DISC_R - 4, DISC_T + 2, { at: [0, DISC_Y0 - 1, H_AXIS], axis: [0, 1, 0] })
+  ));
+  const halfSpace = box(DISC_R + 8, DISC_T + 2, 2 * (DISC_R + 8), { at: [-(DISC_R + 8) / 2, DISC_Y0, H_AXIS] });
+  body = unwrap(fuse(body, unwrap(intersect(ring, halfSpace))));
+  // Bolt-circle lightening holes through the disc web (flywheel look), clear of shaft/pin/crescent.
+  for (const deg of [60, 120, 240, 300]) {
+    const a = (deg * Math.PI) / 180;
+    body = unwrap(cut(body, cylinder(2.6, DISC_T + 4, { at: [11 * Math.cos(a), DISC_Y0 - 2, H_AXIS + 11 * Math.sin(a)], axis: [0, 1, 0] })));
+  }
+  return body;
 }
 
-// ---- Yoke + piston rod: vertical slot captures the pin; rod runs out along +X. ---------------
+// Yoke: slotted plate (vertical slot rides the pin) + piston rod into the guide + piston nose.
 function yoke() {
-  // Yoke plate placed so its slot is centered on the pin's X position (the yoke has translated to
-  // follow the pin). Plate spans Y so it surrounds the pin.
-  const plate = box(YOKE_W, YOKE_THK, YOKE_H, {
-    at: [PIN_X, CRANK_THK + 2, 0],
-  });
-  // Vertical slot (along Z), width = pin diameter so the pin touches both slot walls in X.
-  // Height = stroke + pin diameter so the pin can travel the full throw, but it is a CLOSED
-  // channel (shorter than the plate) so the plate stays a single solid.
-  const slot = box(2 * PIN_R + SLOT_CLR, YOKE_THK + 6, STROKE + 2 * PIN_R, {
-    at: [PIN_X, CRANK_THK + 2, 0],
-  });
-  const slotted = unwrap(cut(plate, slot));
-  // Piston rod runs horizontally out the +X side of the yoke.
-  const rod = cylinder(ROD_R, ROD_LEN, {
-    at: [PIN_X + YOKE_W / 2, CRANK_THK + 2, 0],
-    axis: [1, 0, 0],
-  });
-  return unwrap(fuse(slotted, rod));
+  const plate = box(YOKE_PLATE_W, YOKE_T, YOKE_PLATE_H, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
+  const slot = box(SLOT_W, YOKE_T + 4, SLOT_L, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
+  let body = unwrap(cut(plate, slot));
+  // Weight-relief holes in the top/bottom bands, clear of the pin's Z travel inside the slot.
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      body = unwrap(cut(body, cylinder(1.8, YOKE_T + 4, { at: [CRANK_R + sx * (YOKE_PLATE_W / 2 - 3.3), YOKE_Y0 - 2, H_AXIS + sz * 22.5], axis: [0, 1, 0] })));
+    }
+  }
+  const rodStartX = CRANK_R + YOKE_PLATE_W / 2;
+  const rodLen = GUIDE_X - rodStartX + GUIDE_W / 2 + 2;
+  const rodY = YOKE_Y0 + YOKE_T / 2;
+  body = unwrap(fuse(body, cylinder(ROD_R, rodLen, { at: [rodStartX, rodY, H_AXIS], axis: [1, 0, 0] })));
+  const pistonX0 = rodStartX + rodLen - 6;
+  body = unwrap(fuse(body, cylinder(GUIDE_R - 0.2, 6, { at: [pistonX0, rodY, H_AXIS], axis: [1, 0, 0] })));
+  body = unwrap(fuse(body, cone(GUIDE_R - 0.2, GUIDE_R - 2, 2, { at: [pistonX0 + 6, rodY, H_AXIS], axis: [1, 0, 0] })));
+  return body;
 }
 
-const FRAME = frame();
-const CRANK = crank();
-const YOKE = yoke();
+// Frozen display pose: crank rotated about Y, yoke shifted X = CRANK_R*cos(theta).
+const x = CRANK_R * Math.cos((DISPLAY_THETA * Math.PI) / 180);
+const frameBody = frame();
+const crankBody = rotate(crank(), DISPLAY_THETA, { at: [0, 0, H_AXIS], axis: [0, 1, 0] });
+const yokeBody = translate(yoke(), [x - CRANK_R, 0, 0]);
 
 export default [
-  color(FRAME, '#d2d4d9'),
-  color(CRANK, '#9aa0a8'),
-  color(YOKE, '#4d5360'),
-];`,
+  color(frameBody, '#d2d4d9'),
+  color(crankBody, '#9aa0a8'),
+  color(yokeBody, '#4d5360'),
+];
+`,
   },
   {
     id: 'worm-gear-drive',
@@ -4085,54 +4264,120 @@ export default [
     label: 'Rack & Pinion',
     description:
       'A module-2 rack & pinion frozen mid-travel: an 18-tooth involute pinion (pitch Ø36) meshing a straight-flanked rack along the pitch line — the pinion axis sits exactly one pitch-radius (18 mm) above the rack, the condition for conjugate rolling. Three distinct colored bodies.',
-    code: `// rack-and-pinion.brep.ts — module-2 rack & pinion frozen mid-travel.
-// 18-tooth involute PINION (pitch Ø36) meshing a full-length straight-flanked RACK on a thin BASE.
-// Pinion axis sits exactly one pitch radius (18mm) above the rack pitch line — conjugate rolling.
-// Three distinct bodies (pinion / rack-with-teeth / base) returned as an array, colored per body.
-import { polygon, extrude, cut, cylinder, box, rotate, unwrap } from 'brepjs/quick';
+    code: `import {
+  box,
+  cylinder,
+  cone,
+  cut,
+  fuse,
+  fillet,
+  rotate,
+  translate,
+  getBounds,
+  edgeFinder,
+  rectangularPattern,
+  polygon,
+  extrude,
+  getSolids,
+  validSolid,
+  unwrap,
+} from 'brepjs/quick';
+import type { Edge } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
+// Rack & pinion (same module m=2 on both members), frozen mid-travel with teeth meshed.
+// Mesh: pinion pitch circle (r=18) tangent to the rack pitch line -> axis 18 mm above it.
 const MODULE = 2.0;
-const PA = (20 * Math.PI) / 180; // 20° pressure angle (standard)
-const THICK = 8.0; // face width (Z)
-const BACKLASH = 0.1;
+const PA = (20 * Math.PI) / 180; // 20deg pressure angle
+const PITCH = Math.PI * MODULE; // circular pitch 6.283
+const WHOLE_DEPTH = 2.25 * MODULE;
+const ADDENDUM = MODULE;
+const BACKLASH = 0.5;
+const PINION_TEETH = 18;
+const PITCH_R = (MODULE * PINION_TEETH) / 2; // 18
+const OUTER_R = PITCH_R + ADDENDUM; // 20 -> OD 40
+const ROOT_R = PITCH_R - 1.25 * MODULE; // 15.5
+const RAIL_H = 10, CHANNEL_FLOOR_Z = 4, RACK_BODY_H = 12;
+const RACK_TIP_Z = CHANNEL_FLOOR_Z + RACK_BODY_H; // 16
+const RACK_PITCH_Z = RACK_TIP_Z - ADDENDUM; // 14
+const PINION_AXIS_Z = RACK_PITCH_Z + PITCH_R; // 32
+const RAIL_LEN = 140, RAIL_WIDTH = 22, STOP_W = 8, STOP_H = 14;
+const CHANNEL_W = 14, RACK_W = CHANNEL_W - 1.0, RACK_LEN = 96;
+const GEAR_THICK = 10, SHAFT_R = 4, BORE_R = 5, POST_THICK = 8, POST_W = 26;
+const FROZEN_THETA = 10;
 
-// ---- Pinion (involute spur gear, N=18) -------------------------------------
-const TEETH = 18;
-const pr = (MODULE * TEETH) / 2; // pitch radius = 18  (pitch Ø36)
-const br = pr * Math.cos(PA); // base radius
-const ra = pr + MODULE; // outer radius
-const rr = pr - 1.25 * MODULE; // root radius
-const halfTooth = Math.PI / (2 * TEETH) - BACKLASH / 2 / pr;
-const BORE = 5; // shaft bore radius
-const STEPS = 10;
-
-const invPt = (th: number): [number, number] => [
-  br * (Math.cos(th) + th * Math.sin(th)),
-  br * (Math.sin(th) - th * Math.cos(th)),
-];
-const thetaAt = (r: number) => Math.sqrt(Math.max(0, (r / br) ** 2 - 1));
-const rot2 = (p: [number, number], a: number): [number, number] => [
-  p[0] * Math.cos(a) - p[1] * Math.sin(a),
-  p[0] * Math.sin(a) + p[1] * Math.cos(a),
-];
-
-function pinionBlank() {
-  const thMax = thetaAt(ra);
-  const phiPitch = Math.atan2(invPt(thetaAt(pr))[1], invPt(thetaAt(pr))[0]);
-  const offset = halfTooth + phiPitch;
-
-  const side: [number, number][] = [];
-  for (let i = STEPS; i >= 0; i--) {
-    const p = invPt((thMax * i) / STEPS);
-    side.push(rot2([p[0], -p[1]], offset)); // mirrored involute: tooth narrows to tip
+// Frame: U-channel guide rail + lightening pockets + 2 end stops (bumpers) + bored bearing post + gussets.
+function frame() {
+  const rail = box(RAIL_LEN, RAIL_WIDTH, RAIL_H, { at: [0, 0, RAIL_H / 2] });
+  const channel = box(RAIL_LEN + 2, CHANNEL_W, RAIL_H - CHANNEL_FLOOR_Z + 2, { at: [0, 0, CHANNEL_FLOOR_Z + (RAIL_H - CHANNEL_FLOOR_Z + 2) / 2] });
+  let body = unwrap(cut(rail, channel));
+  const nPockets = 7, pocketPitch = 16, pocketSpan = (nPockets - 1) * pocketPitch;
+  for (let i = 0; i < nPockets; i++) {
+    const px = -pocketSpan / 2 + i * pocketPitch;
+    for (const sy of [-1, 1]) {
+      body = unwrap(cut(body, box(12, 3.5, 5, { at: [px, sy * (RAIL_WIDTH / 2 - 0.75), RAIL_H / 2] })));
+    }
   }
-  const rSpace = rot2([rr, 0], Math.PI / TEETH);
-  if (rr < br) {
-    const pb = rot2([br, 0], offset);
+  const stopXL = -RAIL_LEN / 2 + STOP_W / 2, stopXR = RAIL_LEN / 2 - STOP_W / 2, stopZ = RAIL_H + STOP_H / 2;
+  body = unwrap(fuse(body, box(STOP_W, RAIL_WIDTH, STOP_H, { at: [stopXL, 0, stopZ] })));
+  body = unwrap(fuse(body, box(STOP_W, RAIL_WIDTH, STOP_H, { at: [stopXR, 0, stopZ] })));
+  body = unwrap(fuse(body, cylinder(3.5, 2, { at: [stopXL + STOP_W / 2 + 1, 0, RAIL_H + 5], axis: [1, 0, 0] })));
+  body = unwrap(fuse(body, cylinder(3.5, 2, { at: [stopXR - STOP_W / 2 - 1, 0, RAIL_H + 5], axis: [1, 0, 0] })));
+
+  const postY = -(RAIL_WIDTH / 2 + POST_THICK / 2);
+  const post = box(POST_W, POST_THICK, PINION_AXIS_Z + 8, { at: [0, postY, (PINION_AXIS_Z + 8) / 2] });
+  const bore = cylinder(SHAFT_R + 0.3, POST_THICK + 4, { at: [0, postY - (POST_THICK + 4) / 2, PINION_AXIS_Z], axis: [0, 1, 0] });
+  const postSolid = unwrap(validSolid(getSolids(unwrap(cut(post, bore)))[0]));
+  const postEdges = edgeFinder().inDirection('Y').when((f: Edge) => getBounds(f).zMax > PINION_AXIS_Z + 6).findAll(postSolid);
+  let postBody = postEdges.length > 0 ? unwrap(fillet(postSolid, postEdges, 3)) : postSolid;
+  // Bracing gussets: triangular webs (X-Z plane) tying the post back to the rail top.
+  const gussetPrism = unwrap(extrude(unwrap(polygon([[-9, RAIL_H, 0], [9, RAIL_H, 0], [-9, RAIL_H + 26, 0]])), 6));
+  const gussetUp = rotate(gussetPrism, 90, { axis: [1, 0, 0] });
+  for (const gx of [-POST_W / 4, POST_W / 4]) {
+    postBody = unwrap(fuse(postBody, translate(gussetUp, [gx, -(RAIL_WIDTH / 2) - 3, 0])));
+  }
+  return unwrap(fuse(body, postBody));
+}
+
+// Rack: bar with trapezoidal (20deg-flank) tooth gaps cut by a rectangularPattern at the circular pitch.
+function rack() {
+  const bar = box(RACK_LEN, RACK_W, RACK_BODY_H, { at: [0, 0, CHANNEL_FLOOR_Z + RACK_BODY_H / 2] });
+  const halfPitch = (PITCH / 2 + BACKLASH) / 2;
+  const overTip = (RACK_TIP_Z + 0.4 - RACK_PITCH_Z) * Math.tan(PA);
+  const underRoot = (RACK_PITCH_Z - (RACK_TIP_Z - WHOLE_DEPTH - 0.4)) * Math.tan(PA);
+  const zTop = RACK_TIP_Z + 0.4, zBot = RACK_TIP_Z - WHOLE_DEPTH - 0.4;
+  const wTop = halfPitch + overTip, wBot = Math.max(0.4, halfPitch - underRoot);
+  // trapezoid authored in X-Y (sketch-Y carries Z height), extruded then rotated upright.
+  const slab = unwrap(extrude(unwrap(polygon([[-wBot, zBot, 0], [wBot, zBot, 0], [wTop, zTop, 0], [-wTop, zTop, 0]])), RACK_W + 4));
+  const cutter = translate(rotate(slab, 90, { axis: [1, 0, 0] }), [0, (RACK_W + 4) / 2, 0]);
+  const nGaps = Math.floor(RACK_LEN / PITCH) - 1;
+  const cutters = unwrap(rectangularPattern(cutter, { xDir: [1, 0, 0], xCount: nGaps, xSpacing: PITCH, yDir: [0, 1, 0], yCount: 1, ySpacing: 1 }));
+  return unwrap(cut(bar, translate(cutters, [-((nGaps - 1) * PITCH) / 2, 0, 0])));
+}
+
+// Pinion: a true involute spur gear (18 teeth) — straight radial teeth jam against the rack, so the
+// flanks are generated from the involute of the base circle (ported from BOSL2 gears.scad).
+const BASE_R = PITCH_R * Math.cos(PA);
+const INV_STEPS = 10;
+const invPt = (th: number): [number, number] => [BASE_R * (Math.cos(th) + th * Math.sin(th)), BASE_R * (Math.sin(th) - th * Math.cos(th))];
+const thetaAt = (r: number) => Math.sqrt(Math.max(0, (r / BASE_R) ** 2 - 1));
+const rot2 = (p: [number, number], a: number): [number, number] => [p[0] * Math.cos(a) - p[1] * Math.sin(a), p[0] * Math.sin(a) + p[1] * Math.cos(a)];
+
+function pinionProfile(): [number, number, number][] {
+  const halfTooth = Math.PI / (2 * PINION_TEETH) - BACKLASH / 2 / PITCH_R;
+  const thMax = thetaAt(OUTER_R);
+  const phiPitch = Math.atan2(invPt(thetaAt(PITCH_R))[1], invPt(thetaAt(PITCH_R))[0]);
+  const offset = halfTooth + phiPitch;
+  const side: [number, number][] = [];
+  for (let i = INV_STEPS; i >= 0; i--) {
+    const p = invPt((thMax * i) / INV_STEPS);
+    side.push(rot2([p[0], -p[1]], offset));
+  }
+  const rSpace = rot2([ROOT_R, 0], Math.PI / PINION_TEETH);
+  if (ROOT_R < BASE_R) {
+    const pb = rot2([BASE_R, 0], offset);
     const nHat: [number, number] = [-Math.sin(offset), Math.cos(offset)];
-    const dx = pb[0] - rSpace[0];
-    const dy = pb[1] - rSpace[1];
+    const dx = pb[0] - rSpace[0], dy = pb[1] - rSpace[1];
     const rf = -(dx * dx + dy * dy) / (2 * (dx * nHat[0] + dy * nHat[1]));
     const cf: [number, number] = [pb[0] + rf * nHat[0], pb[1] + rf * nHat[1]];
     const a0 = Math.atan2(pb[1] - cf[1], pb[0] - cf[0]);
@@ -4140,101 +4385,53 @@ function pinionBlank() {
     let dA = a1 - a0;
     while (dA > Math.PI) dA -= 2 * Math.PI;
     while (dA < -Math.PI) dA += 2 * Math.PI;
-    for (let i = 1; i <= STEPS; i++) {
-      const a = a0 + (dA * i) / STEPS;
+    for (let i = 1; i <= INV_STEPS; i++) {
+      const a = a0 + (dA * i) / INV_STEPS;
       side.push([cf[0] + Math.abs(rf) * Math.cos(a), cf[1] + Math.abs(rf) * Math.sin(a)]);
     }
   } else {
     side.push(rSpace);
   }
-  const tooth = [
-    ...side.map(([x, y]) => [x, -y] as [number, number]).reverse(),
-    ...side.slice(0, -1),
-  ];
+  const tooth = [...side.map(([x, y]) => [x, -y] as [number, number]).reverse(), ...side.slice(0, -1)];
   const pts3: [number, number, number][] = [];
-  for (let t = 0; t < TEETH; t++) {
-    const c = (t * 2 * Math.PI) / TEETH;
+  for (let t = 0; t < PINION_TEETH; t++) {
+    const c = (t * 2 * Math.PI) / PINION_TEETH;
     for (const p of tooth) {
       const q = rot2(p, c);
       pts3.push([q[0], q[1], 0]);
     }
   }
-  const face = unwrap(polygon(pts3));
-  return unwrap(extrude(face, THICK));
+  return pts3;
 }
 
 function pinion() {
-  const blank = pinionBlank();
-  const bore = cylinder(BORE, THICK + 4, { at: [0, 0, -2] });
-  return unwrap(cut(blank, bore));
+  let gear = translate(unwrap(extrude(unwrap(polygon(pinionProfile())), GEAR_THICK)), [0, 0, -GEAR_THICK / 2]);
+  const HUB_PROUD = 3;
+  gear = unwrap(fuse(gear, cylinder(BORE_R + 4, HUB_PROUD, { at: [0, 0, GEAR_THICK / 2 + HUB_PROUD / 2] })));
+  gear = unwrap(cut(gear, cylinder(BORE_R, GEAR_THICK + 4 + HUB_PROUD, { at: [0, 0, -(GEAR_THICK + 4) / 2 + HUB_PROUD / 2] })));
+  gear = unwrap(cut(gear, box(2.2, 1.6, GEAR_THICK + HUB_PROUD + 2, { at: [0, BORE_R, GEAR_THICK / 2 + HUB_PROUD / 2 - 1] })));
+  let shaft = cylinder(SHAFT_R, 22, { at: [0, 0, -7] });
+  const ringOuter = cylinder(SHAFT_R + 1, 1.4, { at: [0, 0, -7.1] });
+  const ringInner = cone(SHAFT_R - 1.2, SHAFT_R + 1, 1.4, { at: [0, 0, -7.1] });
+  shaft = unwrap(cut(shaft, unwrap(cut(ringOuter, ringInner))));
+  gear = unwrap(fuse(gear, shaft));
+  return rotate(gear, 90, { axis: [1, 0, 0] }); // lay axis along Y
 }
 
-// ---- Rack (straight-flanked, full length) ----------------------------------
-const RACK_TEETH = 9;
-const CP = Math.PI * MODULE; // circular pitch
-const ADD = MODULE; // addendum above pitch line
-const DED = 1.25 * MODULE; // dedendum below pitch line
-const tanPA = Math.tan(PA);
-const RACK_PITCH_Y = -pr; // pitch line one pitch radius below pinion axis
-const BASE_TOP_Y = RACK_PITCH_Y - DED; // bottom of tooth = top of rack body
-const rackLen = RACK_TEETH * CP;
-const x0 = -rackLen / 2; // tooth strip centered under the pinion
+// Frozen mesh pose: pinion spun +theta about Y, rack rolled -pitchRadius*theta along X.
+const FRAME = frame();
+const RACK0 = rack();
+const PINION0 = pinion();
+const thetaRad = (FROZEN_THETA * Math.PI) / 180;
+const rackBody = translate(RACK0, [-PITCH_R * thetaRad, 0, 0]);
+const pinionBody = translate(rotate(PINION0, FROZEN_THETA, { axis: [0, 1, 0] }), [0, 0, PINION_AXIS_Z]);
 
-// Trapezoidal rack tooth: narrow at top (addendum), wide at bottom (dedendum),
-// flanks inclined at the pressure angle. Half tooth thickness at pitch = CP/4 - backlash.
-const halfAtPitch = CP / 4 - BACKLASH / 2;
-
-function rackToothStrip() {
-  // One closed polygon: trace the toothed top edge left->right, then back along a baseline.
-  const top: [number, number, number][] = [];
-  for (let k = 0; k < RACK_TEETH; k++) {
-    const cTooth = x0 + (k + 0.5) * CP; // tooth centerline
-    // tooth: bottom-left, top-left, top-right, bottom-right (flanks at PA)
-    const bL = cTooth - (halfAtPitch + DED * tanPA);
-    const tL = cTooth - (halfAtPitch - ADD * tanPA);
-    const tR = cTooth + (halfAtPitch - ADD * tanPA);
-    const bR = cTooth + (halfAtPitch + DED * tanPA);
-    top.push([bL, BASE_TOP_Y, 0]);
-    top.push([tL, RACK_PITCH_Y + ADD, 0]);
-    top.push([tR, RACK_PITCH_Y + ADD, 0]);
-    top.push([bR, BASE_TOP_Y, 0]);
-  }
-  // close the loop along the rack-body top, then down/around a thin backing for the strip
-  const yLow = BASE_TOP_Y - 1; // 1mm backing so the toothed strip is one welded solid
-  const loop: [number, number, number][] = [
-    [x0, yLow, 0],
-    ...top,
-    [x0 + rackLen, yLow, 0],
-  ];
-  const face = unwrap(polygon(loop));
-  return unwrap(extrude(face, THICK));
-}
-
-function rack() {
-  return rackToothStrip();
-}
-
-// thin base plate carrying the rack
-const BASE_H = 4;
-const BASE_TOP = BASE_TOP_Y - 1; // top of base meets bottom of rack strip
-function base() {
-  const w = rackLen + 12;
-  const b = box(w, BASE_H, THICK, { at: [0, BASE_TOP - BASE_H / 2, THICK / 2] });
-  return b;
-}
-
-function rackAndPinion() {
-  // Pinion frozen mid-travel: phase a tooth into a rack space (seated, not tooth-on-tooth).
-  // Pinion axis at origin; rack pitch line at y = -pr. Rotate the pinion so a tooth seats
-  // in the rack tooth-space, and shift the rack to the conjugate position.
-  const phaseDeg = 0.3;
-  const p = rotate(pinion(), phaseDeg, { axis: [0, 0, 1] });
-  const r = rack();
-  const bs = base();
-  return [color(p, '#d1a847'), color(r, '#b3b7bd'), color(bs, '#8c8f96')];
-}
-
-export default rackAndPinion();`,
+export default [
+  color(FRAME, '#8c8f96'),
+  color(rackBody, '#b3b7bd'),
+  color(pinionBody, '#d1a847'),
+];
+`,
   },
   {
     id: 'three-jaw-chuck',

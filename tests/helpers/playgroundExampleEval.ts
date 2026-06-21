@@ -143,17 +143,17 @@ export async function evalAndMeshExample(code: string): Promise<MeshCheck> {
 }
 
 /**
- * Per-returned-body connectivity: how many solids each exported body contains. The
- * corpus-wide gate wants `solids === 1` for every body — a body that is many solids
- * (a failed weld, a part detached from its assembly) passes eval+mesh (a disjoint
- * compound still meshes) yet falls apart on STEP/GLB export. `verify --metrics` caught
- * these one-off (gt2 was 40 solids); this brings the connectivity check in-process.
+ * Run an example and return `getSolids().length` for each exported body. A
+ * multi-part assembly example returns an array of DISTINCT bodies, each of which
+ * should be a single connected solid; a count > 1 means a piece detached (e.g. a
+ * pin floating off its disc). eval+mesh can't catch this — a disjoint compound
+ * still meshes — so connectivity needs its own assertion.
  */
-export async function bodyHealth(code: string): Promise<{ solids: number }[]> {
+export async function bodySolidCounts(code: string): Promise<number[]> {
   const shapes = await runExample(code);
   return shapes.map((s) => {
     const shape = unwrapResultShape(s);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs barrel over WASM handles
-    return { solids: ((brepjs as any).getSolids(shape) as unknown[]).length };
+    return ((brepjs as any).getSolids(shape) as unknown[]).length;
   });
 }

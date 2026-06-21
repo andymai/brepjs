@@ -1,7 +1,7 @@
 export const DEFAULT_CODE = `import {
   box,
   cylinder,
-  fuse,
+  fuseAll,
   cutAll,
   chamfer,
   edgeFinder,
@@ -33,8 +33,8 @@ function studBrick(studsX: number, studsY: number, plateUnits: number) {
   const studs = [];
   for (let i = 0; i < studsX; i++) {
     for (let j = 0; j < studsY; j++) {
-      studs.push(cylinder(studR, studH + 0.3, {
-        at: [i * pitch + pitch / 2, j * pitch + pitch / 2, H - 0.3],
+      studs.push(cylinder(studR, studH, {
+        at: [i * pitch + pitch / 2, j * pitch + pitch / 2, H],
       }));
     }
   }
@@ -48,9 +48,8 @@ function studBrick(studsX: number, studsY: number, plateUnits: number) {
     }
   }
 
-  // Body + studs welded into ONE solid. The studs overlap the top face (sunk 0.3 mm),
-  // and a pairwise fuse() reduce welds reliably where an N-way fuseAll leaves them loose.
-  const body = studs.reduce((acc, s) => unwrap(fuse(acc, s, opts)), box(W, D, H));
+  // Body + studs in one fuse.
+  const body = unwrap(fuseAll([box(W, D, H), ...studs], opts));
 
   // Underside negative space: cavity (carved by tube outers, so the tubes
   // remain solid in the brick) plus the tube interiors. One cut handles all.
