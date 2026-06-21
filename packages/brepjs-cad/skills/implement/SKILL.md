@@ -29,7 +29,7 @@ drops the one feature that makes it itself.
 1. Decompose the brief into named features, then mark the **ONE defining feature** — the geometry without
    which it's a generic blob. `GT2 pulley` → the belt-tooth profile (a smooth groove is not a GT2 pulley);
    `fluted knob` → full-height flutes around the **whole** perimeter (scattered scallops are not flutes);
-   `twisted impeller` → the blade twist (`extrude(h, { twistAngle })`, not flat blades); `scroll chuck` →
+   `twisted impeller` → the blade twist (`sketch.extrude(h, { twistAngle })`, not flat blades); `scroll chuck` →
    the spiral face groove; `involute gear` → the tooth flank (`references/gears.md`).
 2. Build that feature **to spec**, not an eyeballed approximation. Each of the above passes `--check` while
    missing its headline feature — a blob that verifies. If the feature needs real math (gear/thread/involute/
