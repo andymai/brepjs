@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.5](https://github.com/andymai/brepjs/compare/brepjs-v18.99.4...brepjs-v18.99.5) (2026-06-21)
+
+
+### Reverts
+
+* **playground:** restore all examples to last known good (pre-[#1567](https://github.com/andymai/brepjs/issues/1567)) ([#1575](https://github.com/andymai/brepjs/issues/1575)) ([1e50000](https://github.com/andymai/brepjs/commit/1e500008a15fc26bde6e748a7277dbc4c31fd637))
+
 ## [18.99.4](https://github.com/andymai/brepjs/compare/brepjs-v18.99.3...brepjs-v18.99.4) (2026-06-21)
 
 
