@@ -146,7 +146,6 @@ export default (() => {
     code: `import {
   box,
   cylinder,
-  torus,
   fuse,
   cut,
   circularPattern,
