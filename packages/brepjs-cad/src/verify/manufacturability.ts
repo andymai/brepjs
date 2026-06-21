@@ -206,10 +206,7 @@ export function computeMetrics(brep: BrepNs, shape: AnyShape, solids: readonly S
   // Cylindrical features (bores) — independent of body count.
   const feat = computeCylinderFeatures(brep, shape);
   if (feat.minRadius !== undefined) manufacturability.minRadius = feat.minRadius;
-  if (feat.bores.length > 0) {
-    manufacturability.internalCylinderCount = feat.bores.length;
-    manufacturability.bores = feat.bores;
-  }
+  if (feat.bores.length > 0) manufacturability.bores = feat.bores;
 
   if (bodies.length <= 1) return { manufacturability };
   if (bodies.length > MAX_BODIES) {

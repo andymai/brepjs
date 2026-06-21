@@ -87,9 +87,8 @@ export interface VerifyManufacturability {
   minRadius?: number;
   /** Best-effort min wall thickness; absent when not computable. */
   minWallThickness?: number;
-  /** Count of internal cylindrical bores (concave + near-full angular extent). */
-  internalCylinderCount?: number;
-  /** The detected internal bores (axis + radius) — for aimed sections / feature marks. */
+  /** The detected internal bores (axis + radius) — for aimed sections / feature marks. The internal
+   * bore *count* is `bores.length` (derived on read, not stored, so the two can't drift). */
   bores?: BoreInfo[];
   /** True when the relation matrix was capped by the pair/time budget (not exhaustive). */
   relationsTruncated?: boolean;
