@@ -14,7 +14,7 @@ import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
-import { aimedSection } from '../snapshot/aiming.js';
+import { aimedSection, featureMarks } from '../snapshot/aiming.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
 // (Emscripten's default stdout sink). The CLI owns stdout for machine-readable JSON,
@@ -155,10 +155,12 @@ program
               report.manufacturability?.bores ?? [],
               report.measurements.bounds
             );
+            const marks = featureMarks(report.bodies ?? [], report.manufacturability?.bores ?? []);
             const { pngs } = await shoot({
               file: stepPath,
               outDir: opts.snapshot,
               ...(section ? { section } : {}),
+              ...(marks.length > 0 ? { marks } : {}),
             });
             // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
             for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
@@ -273,11 +275,13 @@ program
         report.manufacturability?.bores ?? [],
         report.measurements.bounds
       );
+      const marks = featureMarks(report.bodies ?? [], report.manufacturability?.bores ?? []);
       const { pngs } = await shoot({
         file: stepPath,
         outDir,
         fresh: true,
         ...(section ? { section } : {}),
+        ...(marks.length > 0 ? { marks } : {}),
       });
       for (const p of pngs) process.stdout.write(`${p}\n`);
     } finally {

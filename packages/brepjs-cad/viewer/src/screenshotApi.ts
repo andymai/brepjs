@@ -9,6 +9,12 @@ export interface SectionSpec {
   frac: number;
 }
 
+/** A numbered label anchored at a 3D feature (Set-of-Marks), projected per-view by the renderer. */
+export interface Mark {
+  label: string;
+  pos: readonly [number, number, number];
+}
+
 /** A scene the snapshot pipeline asks the page to render before a capture. */
 export interface SceneControl {
   view: ViewName;
@@ -16,6 +22,8 @@ export interface SceneControl {
   viewMode?: ViewMode;
   /** A section cut to apply (e.g. aimed through a bore). Absent/null = no section. */
   section?: SectionSpec | null;
+  /** Kernel-anchored feature labels to overlay. Absent/empty = no marks. */
+  marks?: readonly Mark[];
 }
 
 type SceneListener = (c: SceneControl) => void;

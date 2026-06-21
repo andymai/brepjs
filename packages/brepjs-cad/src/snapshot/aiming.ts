@@ -9,6 +9,49 @@ export interface SectionSpec {
   frac: number;
 }
 
+/** A numbered label anchored at a 3D feature, projected per-view into the render (Set-of-Marks). */
+export interface Mark {
+  label: string;
+  pos: readonly [number, number, number];
+}
+
+interface MarkBody {
+  index: number;
+  bounds?:
+    | { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number }
+    | undefined;
+}
+interface MarkBore {
+  axisOrigin: readonly [number, number, number];
+}
+
+/**
+ * Kernel-anchored marks for the judge: `B1..` at each body's bbox centroid (only for multi-body
+ * parts — a single body needs no label) and `H1..` at each bore's axis. The same id lands on the same
+ * feature across every view (it's a 3D anchor projected per-view), giving the judge view-invariant,
+ * part-space addressing without per-body mesh color.
+ */
+export function featureMarks(bodies: readonly MarkBody[], bores: readonly MarkBore[]): Mark[] {
+  const marks: Mark[] = [];
+  if (bodies.length > 1) {
+    for (const b of bodies) {
+      if (!b.bounds) continue;
+      marks.push({
+        label: `B${b.index + 1}`,
+        pos: [
+          (b.bounds.xMin + b.bounds.xMax) / 2,
+          (b.bounds.yMin + b.bounds.yMax) / 2,
+          (b.bounds.zMin + b.bounds.zMax) / 2,
+        ],
+      });
+    }
+  }
+  bores.forEach((bore, i) => {
+    marks.push({ label: `H${i + 1}`, pos: bore.axisOrigin });
+  });
+  return marks;
+}
+
 interface AimBore {
   radius: number;
   axisOrigin: readonly [number, number, number];

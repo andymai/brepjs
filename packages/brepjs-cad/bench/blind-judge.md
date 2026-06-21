@@ -17,7 +17,8 @@ part's NL `description` + two rendered images each — **iso + one detail view, 
 both renders** so the A/B comparison is fair (pick the detail view — front/top/right, or **`iso-xray`
 for any part with internal features** like bores/cavities/shelled walls, since it shows them through a
 translucent body — that best exposes the features the description names; for a bored part the `section` cut is the cleanest read of
-the bore + wall thickness) — labeled only **A** and
+the bore + wall thickness; the `marks` view labels each body `B#` / bore `H#` for unambiguous
+reference) — labeled only **A** and
 **B**, **a one-line "measured
 facts" string per render** (body count + interference relations — the ground truth the render can't
 show; see step 1b), + the rubric below. It is told NOTHING about which render is the skill's clean-room

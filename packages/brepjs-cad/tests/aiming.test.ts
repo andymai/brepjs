@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aimedSection } from '@/snapshot/aiming.js';
+import { aimedSection, featureMarks } from '@/snapshot/aiming.js';
 
 const bounds = { xMin: -20, xMax: 20, yMin: -20, yMax: 20, zMin: 0, zMax: 30 };
 
@@ -38,5 +38,52 @@ describe('aimedSection', () => {
   it('clamps frac into [0,1] for an out-of-bounds origin', () => {
     const s = aimedSection([{ radius: 4, axisOrigin: [999, 0, 15], axisDir: [0, 0, 1] }], bounds);
     expect(s?.frac).toBe(1);
+  });
+});
+
+describe('featureMarks', () => {
+  const bounds = (i: number) => ({
+    xMin: i,
+    xMax: i + 2,
+    yMin: 0,
+    yMax: 2,
+    zMin: 0,
+    zMax: 2,
+  });
+
+  it('labels each body B# (multi-body only) at its bbox centroid', () => {
+    const marks = featureMarks(
+      [
+        { index: 0, bounds: bounds(0) },
+        { index: 1, bounds: bounds(10) },
+      ],
+      []
+    );
+    expect(marks.map((m) => m.label)).toEqual(['B1', 'B2']);
+    expect(marks[0]?.pos).toEqual([1, 1, 1]); // centroid of [0..2]^...
+  });
+
+  it('omits B# for a single body, but still labels its bores H#', () => {
+    const marks = featureMarks(
+      [{ index: 0, bounds: bounds(0) }],
+      [{ axisOrigin: [5, 0, 0] }, { axisOrigin: [0, 5, 0] }]
+    );
+    expect(marks.map((m) => m.label)).toEqual(['H1', 'H2']);
+    expect(marks[0]?.pos).toEqual([5, 0, 0]);
+  });
+
+  it('returns empty for a single body with no bores', () => {
+    expect(featureMarks([{ index: 0, bounds: bounds(0) }], [])).toEqual([]);
+  });
+
+  it('combines B# and H# for a multi-body bored part', () => {
+    const marks = featureMarks(
+      [
+        { index: 0, bounds: bounds(0) },
+        { index: 1, bounds: bounds(10) },
+      ],
+      [{ axisOrigin: [1, 1, 1] }]
+    );
+    expect(marks.map((m) => m.label)).toEqual(['B1', 'B2', 'H1']);
   });
 });

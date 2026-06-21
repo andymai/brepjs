@@ -4,16 +4,17 @@ import puppeteer from 'puppeteer';
 import { mkdir } from 'node:fs/promises';
 import { resolve, basename, dirname } from 'node:path';
 import { acquireServer, type AcquireOptions } from './registry.js';
-import type { SectionSpec } from './aiming.js';
+import type { Mark, SectionSpec } from './aiming.js';
 
 export type ViewName = 'iso' | 'front' | 'top' | 'right';
 type ViewMode = 'solid' | 'wireframe' | 'xray';
-/** One capture: a camera view + render mode (+ optional section), written to `<name>.png`. */
+/** One capture: a camera view + render mode (+ optional section/marks), written to `<name>.png`. */
 export interface Shot {
   name: string;
   view: ViewName;
   viewMode?: ViewMode;
   section?: SectionSpec;
+  marks?: readonly Mark[];
 }
 // The default recipe: the four orthographic-ish views plus an xray pass that reveals internal
 // features (bores, shelled walls, internal teeth) an opaque exterior render is blind to — the
@@ -33,6 +34,12 @@ function sectionShots(section: SectionSpec | undefined): Shot[] {
   return section ? [{ name: 'section', view: 'iso', section }] : [];
 }
 
+// A dedicated marked iso capture (kernel-anchored B#/H# labels) so the plain views stay clean while
+// the judge still gets one view-invariant, part-space-addressable reference image.
+function marksShots(marks: readonly Mark[] | undefined): Shot[] {
+  return marks && marks.length > 0 ? [{ name: 'marks', view: 'iso', marks }] : [];
+}
+
 // The viewer boots WASM in-browser, so __ready arrives far later than a plain GLB load.
 const READY_TIMEOUT_MS = 90_000;
 
@@ -43,6 +50,8 @@ export interface ShootOptions extends AcquireOptions {
   shots?: readonly Shot[];
   /** When set (and no explicit `shots`), append an aimed cross-section capture to the default recipe. */
   section?: SectionSpec;
+  /** When set (and no explicit `shots`), append a marked iso capture (Set-of-Marks B#/H# labels). */
+  marks?: readonly Mark[];
   /** Wall-clock ms to let the camera settle before each capture (default 400; raise on slow CI). */
   settleMs?: number;
   /** Burn the model's bbox dimensions into each PNG so the agent can read scale (default true). */
@@ -57,7 +66,11 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   const absFile = resolve(opts.file);
   const dir = dirname(absFile);
   const rel = basename(absFile);
-  const shots = opts.shots ?? [...DEFAULT_SHOTS, ...sectionShots(opts.section)];
+  const shots = opts.shots ?? [
+    ...DEFAULT_SHOTS,
+    ...sectionShots(opts.section),
+    ...marksShots(opts.marks),
+  ];
 
   await mkdir(opts.outDir, { recursive: true });
   const server = await acquireServer(opts);

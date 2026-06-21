@@ -18,8 +18,37 @@ import {
   type ViewMode,
   type ViewName,
 } from 'brepjs-viewer';
+import { Html } from '@react-three/drei';
 import { useModel } from './src/useModel.js';
-import { installScreenshotApi, onScene, markReady } from './src/screenshotApi.js';
+import { installScreenshotApi, onScene, markReady, type Mark } from './src/screenshotApi.js';
+
+// Kernel-anchored Set-of-Marks: numbered badges drawn at 3D feature points (drei <Html> projects them
+// per-view and renders DOM over the canvas, which the screenshot captures). Same id → same feature
+// across views, giving the judge view-invariant, part-space addressing.
+function Marks({ marks }: { marks: readonly Mark[] }) {
+  return (
+    <>
+      {marks.map((m, i) => (
+        <Html key={`${m.label}-${i}`} position={[m.pos[0], m.pos[1], m.pos[2]]} center>
+          <div
+            style={{
+              background: '#ffcc00',
+              color: '#000',
+              font: '700 13px monospace',
+              padding: '1px 5px',
+              borderRadius: 4,
+              border: '1px solid #000',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+            }}
+          >
+            {m.label}
+          </div>
+        </Html>
+      ))}
+    </>
+  );
+}
 
 // The agent snapshot pipeline screenshots this same page, so it loads with ?ui=0 to
 // suppress the toolbar and keep PNGs free of chrome. Human `--serve` links omit it.
@@ -54,6 +83,7 @@ function App() {
   const [sectionAxis, setSectionAxis] = useState<SectionAxis>('x');
   const [sectionPos, setSectionPos] = useState(0);
   const [sectionFlip, setSectionFlip] = useState(false);
+  const [marks, setMarks] = useState<readonly Mark[]>([]);
   const handleFit = useCallback(() => {
     setFitSignal((n) => n + 1);
   }, []);
@@ -79,6 +109,7 @@ function App() {
         } else {
           setSectionOn(false);
         }
+        setMarks(c.marks ?? []);
       }),
     [bounds]
   );
@@ -147,6 +178,7 @@ function App() {
             hoverFaceId={hoverFaceId}
           />
         )}
+        {marks.length > 0 && <Marks marks={marks} />}
       </ViewerCanvas>
       {showControls && (
         <ViewerSelectionPanel
