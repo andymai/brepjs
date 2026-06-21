@@ -8,6 +8,7 @@ import {
   VALIDITY_FAILURE_CODE,
   type VerifyReport,
 } from '@/verify/report.js';
+import { classifyKernelMessage } from '@/verify/runPart.js';
 
 type SerializedReport = VerifyReport & { ok: boolean };
 
@@ -82,6 +83,13 @@ describe('hints', () => {
     });
     expect(hint?.fix).not.toMatch(/No specific fix available/);
     expect(hint?.fix).toMatch(/extrude/i);
+  });
+
+  it('classifyKernelMessage maps the codeless makeLineEdge crash to DEGENERATE_EDGE', () => {
+    expect(classifyKernelMessage('part threw: makeLineEdge: construction failed')).toBe(
+      'DEGENERATE_EDGE'
+    );
+    expect(classifyKernelMessage('part threw: some unrelated kernel error')).toBeUndefined();
   });
 
   it('gives DEGENERATE_EDGE a dedupe hint (codeless makeLineEdge crash)', () => {

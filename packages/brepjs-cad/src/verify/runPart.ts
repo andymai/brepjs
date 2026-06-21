@@ -112,10 +112,12 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
   return { message: `${prefix}: ${String(e)}` };
 }
 
-// Some kernel ops throw a bare message with no structured `code` (e.g. a zero-length edge from
-// coincident polygon points). Map the well-known ones to a code so the hint table still fires.
-function classifyKernelMessage(message: string): string | undefined {
-  if (/makeLineEdge: construction failed|zero[- ]length edge/i.test(message)) return 'DEGENERATE_EDGE';
+// Some kernel ops throw a bare message with no structured `code`. Map the well-known ones to a code
+// so the hint table still fires. `makeLineEdge: construction failed` is the kernel's error when a
+// polygon/wire has coincident consecutive points (a zero-length edge) — observed in computed
+// tooth/gear loops. Add patterns here only for messages a real kernel op is known to emit.
+export function classifyKernelMessage(message: string): string | undefined {
+  if (/makeLineEdge: construction failed/i.test(message)) return 'DEGENERATE_EDGE';
   return undefined;
 }
 
