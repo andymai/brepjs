@@ -46,13 +46,24 @@ deep multi-body stack** is not a datum: bound it generously or measure-first (ru
 report's measured value). That last one is the #1 `EXPECTED_ASSERTION_FAILED` on assemblies — a
 stack's extreme z is usually crowned by a rounded/proud feature (a carrier hub, a ball cap) and sums
 every body's placement error, so **measure it; don't hand-add the stack**. A flat lid-on-base height
-you place is fine; the moment a curved or proud sub-feature defines the extreme, it's governed.
+you place is fine; the moment a curved or proud sub-feature defines the extreme, it's governed. This
+was the #1 first-try failure across the corpus (rotated handles, articulated yokes, flange discs,
+clipped balls): when an operand is **rotated**, a **disc/sphere** crowns an axis, or a cut **clips** an
+extreme, measure that one axis — don't predict it.
+
+A **`chamfer`/`fillet` only REMOVES material** — it never grows the bounding box. A beveled or rounded
+outer corner keeps the original face plane as its bound, so the extent stays at the un-chamfered face:
+predict `xMin = 0` for a corner chamfered at `x = 0`, never `xMin = -chamfer`.
 
 ## Hard rules
 
 - **Import every function you call.** No globals — every op is a named export from `'brepjs'`. A
   used-but-unimported symbol is `TS2304: Cannot find name` and fails `--check` before geometry runs
   (the #1 first-attempt failure). Re-scan the body before finishing.
+- **Transforms are free functions, shape-first** — `translate(shape, [x,y,z])`, `rotate(shape, deg, { axis })`,
+  `mirror`, `scale` (angles in **degrees**), the same shape-first form as booleans. They are NOT methods:
+  `shape.translate(...)` is `TS2339: Property 'translate' does not exist`. Placing assembly parts needs
+  these even when the brief doesn't shout "transform". (`references/transforms.md`.)
 - **Unwrap Results.** Booleans and `measureVolume`/`measureArea` return `Result`: `unwrap(cut(...))`
   and check the `Err` branch before chaining. `TS2322: Result<X> is not assignable to X` (on an
   assignment/return) — or **`TS2345`** when you feed an un-unwrapped `Result` straight into another

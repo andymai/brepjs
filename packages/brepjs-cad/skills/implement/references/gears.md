@@ -63,6 +63,9 @@ of box/slot cutters is **not** a worm wheel — the slots aren't conjugate, so t
   _same module_, teeth helix-angled at the worm lead angle `λ = atan(lead / (π·d_worm))` (loft the
   involute tooth loop across the face with that small conjugate twist). Name it for what it is — a
   **cylindrical / non-throated** worm wheel (a legitimate crossed-helical drive), not a throated one.
+  **Section type differs from the spur extrude:** `loft` takes `closedWire` sections (the tooth loop
+  wrapped `closedWire(wire([...]))`), NOT the bare `polygon` Face the spur `extrude` uses — feeding a
+  Face/polygon to `loft` is `TS2345`. Spur = `polygon` → `extrude`; helical = `closedWire` → `loft`.
 - **Centre distance = `r_worm_pitch + r_wheel_pitch`** — place them there. Do **NOT** open it up to
   make the no-jam sweep pass: that's an air gap, not a mesh (see "Build + verify" step 4). A true
   throated/hobbed wheel (generate it by subtracting rotated copies of the worm from the blank) is
