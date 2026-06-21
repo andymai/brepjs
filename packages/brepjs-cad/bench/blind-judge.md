@@ -14,8 +14,10 @@ is _pairwise_ (author vs reference) and _blind_ (labels stripped), and costs not
 
 One judge subagent (general-purpose — it must `Read` the PNGs) per part. Its **entire input**: the
 part's NL `description` + two rendered images each — **iso + one detail view, the SAME view pair for
-both renders** so the A/B comparison is fair (pick the detail view — front/top/right — that best
-exposes the features the description names) — labeled only **A** and **B**, **a one-line "measured
+both renders** so the A/B comparison is fair (pick the detail view — front/top/right, or **`iso-xray`
+for any part with internal features** like bores/cavities/shelled walls, since it shows them through a
+translucent body — that best exposes the features the description names) — labeled only **A** and
+**B**, **a one-line "measured
 facts" string per render** (body count + interference relations — the ground truth the render can't
 show; see step 1b), + the rubric below. It is told NOTHING about which render is the skill's clean-room
 output vs the playground reference, and never reads any `.brep.ts`, the heal, the orchestration, or

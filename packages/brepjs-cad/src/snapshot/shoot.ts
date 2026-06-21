@@ -6,14 +6,31 @@ import { resolve, basename, dirname } from 'node:path';
 import { acquireServer, type AcquireOptions } from './registry.js';
 
 export type ViewName = 'iso' | 'front' | 'top' | 'right';
-const VIEWS: readonly ViewName[] = ['iso', 'front', 'top', 'right'];
+type ViewMode = 'solid' | 'wireframe' | 'xray';
+/** One capture: a camera view + render mode, written to `<name>.png`. */
+export interface Shot {
+  name: string;
+  view: ViewName;
+  viewMode?: ViewMode;
+}
+// The default recipe: the four orthographic-ish views plus an xray pass that reveals internal
+// features (bores, shelled walls, internal teeth) an opaque exterior render is blind to — the
+// internal-visibility gap that exterior-only shots leave (most of the mechanical corpus has internals).
+const DEFAULT_SHOTS: readonly Shot[] = [
+  { name: 'iso', view: 'iso' },
+  { name: 'front', view: 'front' },
+  { name: 'top', view: 'top' },
+  { name: 'right', view: 'right' },
+  { name: 'iso-xray', view: 'iso', viewMode: 'xray' },
+];
 // The viewer boots WASM in-browser, so __ready arrives far later than a plain GLB load.
 const READY_TIMEOUT_MS = 90_000;
 
 export interface ShootOptions extends AcquireOptions {
   file: string;
   outDir: string;
-  views?: readonly ViewName[];
+  /** Capture recipe; defaults to the four views + an xray internal pass. */
+  shots?: readonly Shot[];
   /** Wall-clock ms to let the camera settle before each capture (default 400; raise on slow CI). */
   settleMs?: number;
   /** Burn the model's bbox dimensions into each PNG so the agent can read scale (default true). */
@@ -28,14 +45,19 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   const absFile = resolve(opts.file);
   const dir = dirname(absFile);
   const rel = basename(absFile);
-  const views = opts.views ?? VIEWS;
+  const shots = opts.shots ?? DEFAULT_SHOTS;
 
   await mkdir(opts.outDir, { recursive: true });
   const server = await acquireServer(opts);
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    args: [
+      '--no-sandbox',
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+    ],
   });
   const pngs: string[] = [];
   try {
@@ -47,12 +69,12 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
     const target = `${server.url}/?dir=${encodeURIComponent(dir)}&file=${encodeURIComponent(rel)}&ui=0${dimsParam}`;
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await page.waitForFunction('window.__ready === true', { timeout: READY_TIMEOUT_MS });
-    for (const view of views) {
-      await page.evaluate((v: string) => {
-        (globalThis as unknown as { __renderView(s: string): void }).__renderView(v);
-      }, view);
+    for (const shot of shots) {
+      await page.evaluate((s: Shot) => {
+        (globalThis as unknown as { __setScene(c: Shot): void }).__setScene(s);
+      }, shot);
       await new Promise((r) => setTimeout(r, opts.settleMs ?? 400));
-      const path = resolve(opts.outDir, `${view}.png`) as `${string}.png`;
+      const path = resolve(opts.outDir, `${shot.name}.png`) as `${string}.png`;
       await page.screenshot({ path });
       pngs.push(path);
     }

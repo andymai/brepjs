@@ -19,7 +19,7 @@ import {
   type ViewName,
 } from 'brepjs-viewer';
 import { useModel } from './src/useModel.js';
-import { installScreenshotApi, onViewChange, markReady } from './src/screenshotApi.js';
+import { installScreenshotApi, onScene, markReady } from './src/screenshotApi.js';
 
 // The agent snapshot pipeline screenshots this same page, so it loads with ?ui=0 to
 // suppress the toolbar and keep PNGs free of chrome. Human `--serve` links omit it.
@@ -54,7 +54,15 @@ function App() {
   const [sectionAxis, setSectionAxis] = useState<SectionAxis>('x');
   const [sectionPos, setSectionPos] = useState(0);
   const [sectionFlip, setSectionFlip] = useState(false);
-  useEffect(() => onViewChange(setView), []); // bridge window.__renderView -> ViewerCanvas.view
+  // bridge window.__renderView / __setScene -> camera + view mode
+  useEffect(
+    () =>
+      onScene((c) => {
+        setView(c.view);
+        setViewMode(c.viewMode ?? 'solid');
+      }),
+    []
+  );
   const handleFit = useCallback(() => {
     setFitSignal((n) => n + 1);
   }, []);
@@ -64,10 +72,7 @@ function App() {
   const handleFaceHover = useCallback((info: FaceInfo | null) => {
     setHoverFaceId(info ? info.faceId : null);
   }, []);
-  const bounds = useMemo(
-    () => (state.status === 'ready' ? meshBounds(state.data) : null),
-    [state],
-  );
+  const bounds = useMemo(() => (state.status === 'ready' ? meshBounds(state.data) : null), [state]);
   const axisIndex = sectionAxis === 'x' ? 0 : sectionAxis === 'y' ? 1 : 2;
   const sectionMin = bounds ? bounds.min[axisIndex] : 0;
   const sectionMax = bounds ? bounds.max[axisIndex] : 1;
@@ -77,7 +82,7 @@ function App() {
       const i = a === 'x' ? 0 : a === 'y' ? 1 : 2;
       return (bounds.min[i] + bounds.max[i]) / 2;
     },
-    [bounds],
+    [bounds]
   );
   const handleToggleSection = useCallback(() => {
     setSectionOn((on) => {
@@ -90,18 +95,22 @@ function App() {
       setSectionAxis(a);
       setSectionPos(midOfAxis(a));
     },
-    [midOfAxis],
+    [midOfAxis]
   );
   const clippingPlanes = useMemo(
     () => (sectionOn && bounds ? [sectionPlane(sectionAxis, sectionPos, sectionFlip)] : undefined),
-    [sectionOn, bounds, sectionAxis, sectionPos, sectionFlip],
+    [sectionOn, bounds, sectionAxis, sectionPos, sectionFlip]
   );
   if (state.status === 'error')
     return (
-      <div style={{ color: '#e88', padding: 16, fontFamily: 'monospace' }}>error: {state.error}</div>
+      <div style={{ color: '#e88', padding: 16, fontFamily: 'monospace' }}>
+        error: {state.error}
+      </div>
     );
   if (state.status !== 'ready')
-    return <div style={{ color: '#9aa', padding: 16, fontFamily: 'monospace' }}>loading model…</div>;
+    return (
+      <div style={{ color: '#9aa', padding: 16, fontFamily: 'monospace' }}>loading model…</div>
+    );
   return (
     <>
       <ViewerCanvas
@@ -117,15 +126,10 @@ function App() {
           data={state.data}
           viewMode={viewMode}
           {...(clippingPlanes ? { clippingPlanes } : {})}
-          {...(showControls
-            ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover }
-            : {})}
+          {...(showControls ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover } : {})}
         />
         {showEdges && viewMode !== 'wireframe' && state.data.edges.length > 0 && (
-          <EdgeRenderer
-            edges={state.data.edges}
-            {...(clippingPlanes ? { clippingPlanes } : {})}
-          />
+          <EdgeRenderer edges={state.data.edges} {...(clippingPlanes ? { clippingPlanes } : {})} />
         )}
         {showControls && (
           <SelectionHighlight
@@ -204,5 +208,5 @@ if (root)
   createRoot(root).render(
     <StrictMode>
       <App />
-    </StrictMode>,
+    </StrictMode>
   );
