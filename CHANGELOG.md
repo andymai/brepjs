@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.2](https://github.com/andymai/brepjs/compare/brepjs-v18.99.1...brepjs-v18.99.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **eval-skill:** rebuild the snapshot viewer when stale, and from the right package ([#1561](https://github.com/andymai/brepjs/issues/1561)) ([8982bf9](https://github.com/andymai/brepjs/commit/8982bf9d26649b4557a0820004be0c05b76d47ad))
+
 ## [18.99.1](https://github.com/andymai/brepjs/compare/brepjs-v18.99.0...brepjs-v18.99.1) (2026-06-21)
 
 
