@@ -51,7 +51,7 @@ describe('featureMarks', () => {
     zMax: 2,
   });
 
-  it('labels each body B# (multi-body only) at its bbox centroid', () => {
+  it('labels each body B<index> (0-based, multi-body only) at its bbox centroid', () => {
     const marks = featureMarks(
       [
         { index: 0, bounds: bounds(0) },
@@ -59,8 +59,20 @@ describe('featureMarks', () => {
       ],
       []
     );
+    expect(marks.map((m) => m.label)).toEqual(['B0', 'B1']); // 0-based, matches the facts digest
+    expect(marks[0]?.pos).toEqual([1, 1, 1]); // centroid of [0..2]^3
+  });
+
+  it('keeps body labels aligned to indices when an earlier body has no bounds (no resequence)', () => {
+    const marks = featureMarks(
+      [
+        { index: 0 }, // unlocatable → no mark, but later labels still match their indices
+        { index: 1, bounds: bounds(10) },
+        { index: 2, bounds: bounds(20) },
+      ],
+      []
+    );
     expect(marks.map((m) => m.label)).toEqual(['B1', 'B2']);
-    expect(marks[0]?.pos).toEqual([1, 1, 1]); // centroid of [0..2]^...
   });
 
   it('omits B# for a single body, but still labels its bores H#', () => {
@@ -84,6 +96,6 @@ describe('featureMarks', () => {
       ],
       [{ axisOrigin: [1, 1, 1] }]
     );
-    expect(marks.map((m) => m.label)).toEqual(['B1', 'B2', 'H1']);
+    expect(marks.map((m) => m.label)).toEqual(['B0', 'B1', 'H1']);
   });
 });

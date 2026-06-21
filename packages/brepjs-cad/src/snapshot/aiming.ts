@@ -26,10 +26,14 @@ interface MarkBore {
 }
 
 /**
- * Kernel-anchored marks for the judge: `B1..` at each body's bbox centroid (only for multi-body
+ * Kernel-anchored marks for the judge: `B<index>` at each body's bbox centroid (only for multi-body
  * parts — a single body needs no label) and `H1..` at each bore's axis. The same id lands on the same
  * feature across every view (it's a 3D anchor projected per-view), giving the judge view-invariant,
  * part-space addressing without per-body mesh color.
+ *
+ * Body labels use the body's INDEX (0-based), matching how the measured-facts digest refers to bodies
+ * ("bodies 0&1: interfering"), so the judge can cross-reference a mark with the facts. A body that
+ * can't be located (no bounds) simply gets no mark — there is no resequenced gap.
  */
 export function featureMarks(bodies: readonly MarkBody[], bores: readonly MarkBore[]): Mark[] {
   const marks: Mark[] = [];
@@ -37,7 +41,7 @@ export function featureMarks(bodies: readonly MarkBody[], bores: readonly MarkBo
     for (const b of bodies) {
       if (!b.bounds) continue;
       marks.push({
-        label: `B${b.index + 1}`,
+        label: `B${b.index}`,
         pos: [
           (b.bounds.xMin + b.bounds.xMax) / 2,
           (b.bounds.yMin + b.bounds.yMax) / 2,
