@@ -19,11 +19,37 @@ import { pathToFileURL } from 'node:url';
 // Render the result WITHOUT `--check`: playground `code` is type-checked against the looser Monaco
 // ambient surface, so strict-CLI type gaps (e.g. `sketchOnPlane('XY')`) are expected and irrelevant
 // to the image the judge needs.
+//
+// `brepjs/playground` (`color`, `present`) is a playground-only runtime the CLI can't resolve. Those
+// helpers are cosmetic — `color(shape, hex)` tags a GLB material, `present(shape, artifacts)` attaches
+// downloads — neither changes geometry, and CLI snapshots are grey anyway. Shim each to identity on
+// the shape so the part runs.
 
 const QUICK = 'brepjs/quick';
 
+/** Replace `import { a, b } from 'brepjs/playground'` with no-op shims returning the shape (1st arg). */
+function shimPlaygroundImports(code: string): string {
+  return code.replace(
+    /import\s*\{([^}]*)\}\s*from\s*['"]brepjs\/playground['"];?/g,
+    (_full, names: string) => {
+      const locals = names
+        .split(',')
+        .map((n) =>
+          n
+            .trim()
+            .split(/\s+as\s+/)
+            .pop()
+            ?.trim()
+        )
+        .filter((n): n is string => Boolean(n));
+      return locals.map((n) => `const ${n} = (shape) => shape;`).join('\n');
+    }
+  );
+}
+
 /** Pure transform: playground example `code` → CLI-renderable reference part source. */
-export function adaptReferenceCode(code: string): string {
+export function adaptReferenceCode(rawCode: string): string {
+  const code = shimPlaygroundImports(rawCode);
   // Keep whatever brepjs entry the example already uses; default to the kernel-auto-init `quick`.
   const usesPlain = /from ['"]brepjs['"]/.test(code) && !/from ['"]brepjs\/quick['"]/.test(code);
   const src = usesPlain ? 'brepjs' : QUICK;

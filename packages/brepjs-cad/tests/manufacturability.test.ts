@@ -83,21 +83,28 @@ describe('digestMetrics (pure)', () => {
     expect(digestMetrics(emptyReport())).toBeUndefined();
   });
 
-  it('projects bodies + relations into a legible digest', () => {
+  it('lists interfering pairs but only counts separate pairs (no O(n²) wall)', () => {
     const report = emptyReport();
     report.bodies = [
       { index: 0, volume: 1000, valid: true },
       { index: 1, volume: 1000, valid: true },
+      { index: 2, volume: 1000, valid: true },
     ];
-    report.bodyRelations = [{ a: 0, b: 1, relation: 'interfering', clearance: 0 }];
+    report.bodyRelations = [
+      { a: 0, b: 1, relation: 'interfering', clearance: 0 },
+      { a: 0, b: 2, relation: 'separate', clearance: 5 },
+      { a: 1, b: 2, relation: 'separate' },
+    ];
     report.manufacturability = { violations: [] };
     const d = digestMetrics(report);
     if (!d) throw new Error('expected a digest');
-    expect(d.bodyCount).toBe(2);
-    expect(d.bodyRelations).toEqual(['bodies 0&1: interfering (clearance 0.00mm)']);
+    expect(d.bodyCount).toBe(3);
+    expect(d.interferences).toEqual(['bodies 0&1: interfering (clearance 0.00mm)']);
+    expect(d.separatePairCount).toBe(2);
     const block = formatDigest(d);
-    expect(block).toContain('distinct bodies: 2');
     expect(block).toContain('bodies 0&1: interfering');
+    expect(block).toContain('2 other body pair(s) sit apart');
+    expect(block).not.toContain('bodies 0&2'); // separate pairs are summarized, not listed
   });
 
   it('surfaces bore count + smallest radius in the digest', () => {

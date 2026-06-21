@@ -70,3 +70,27 @@ describe('adaptReferenceCode (blind-judge reference adaptation)', () => {
     ).toThrow(/no .export default/);
   });
 });
+
+describe('adaptReferenceCode — brepjs/playground shim', () => {
+  it('replaces a brepjs/playground import with identity shims (cosmetic helpers)', () => {
+    const code = [
+      "import { box } from 'brepjs/quick';",
+      "import { color } from 'brepjs/playground';",
+      'export default [color(box(1, 1, 1), "#f00")];',
+    ].join('\n');
+    const out = adaptReferenceCode(code);
+    expect(out).not.toContain("from 'brepjs/playground'");
+    expect(out).toContain('const color = (shape) => shape;');
+  });
+
+  it('shims every name (e.g. color, present) and handles aliases', () => {
+    const code = [
+      "import { color, present as show } from 'brepjs/playground';",
+      "import { box } from 'brepjs/quick';",
+      'export default show(color(box(1, 1, 1), "#f00"), {});',
+    ].join('\n');
+    const out = adaptReferenceCode(code);
+    expect(out).toContain('const color = (shape) => shape;');
+    expect(out).toContain('const show = (shape) => shape;');
+  });
+});

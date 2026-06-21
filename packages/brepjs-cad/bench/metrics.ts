@@ -8,8 +8,11 @@ import type { VerifyReport } from '../src/verify/report.js';
 export interface MetricsDigest {
   /** Number of distinct solid bodies (1 for a single solid). */
   bodyCount: number;
-  /** One human-legible line per body pair, e.g. "bodies 0&1: interfering (clearance 0.00mm)". */
-  bodyRelations: string[];
+  /** Only the non-separate pairs (interfering/touching/nested) — the signal. Separate pairs are
+   * summarized as a count, not listed, so a high-body assembly doesn't dump O(n²) noise. */
+  interferences: string[];
+  /** How many body pairs sit apart (the separate pairs, counted not listed). */
+  separatePairCount: number;
   /** Count of internal cylindrical bores detected (a "has internal features" signal). */
   internalBores?: number;
   /** Smallest *bore* radius (mm) — derived from the bores, not the global min cylinder. */
@@ -23,15 +26,19 @@ export interface MetricsDigest {
 /** Project a report's metrics into a digest, or `undefined` if metrics were not computed. */
 export function digestMetrics(report: VerifyReport): MetricsDigest | undefined {
   if (!report.manufacturability && !report.bodies && !report.bodyRelations) return undefined;
-  const relations = (report.bodyRelations ?? []).map((r) => {
-    const clearance = r.clearance === undefined ? '' : ` (clearance ${r.clearance.toFixed(2)}mm)`;
-    return `bodies ${r.a}&${r.b}: ${r.relation}${clearance}`;
-  });
+  const rels = report.bodyRelations ?? [];
+  const interferences = rels
+    .filter((r) => r.relation !== 'separate')
+    .map((r) => {
+      const clearance = r.clearance === undefined ? '' : ` (clearance ${r.clearance.toFixed(2)}mm)`;
+      return `bodies ${r.a}&${r.b}: ${r.relation}${clearance}`;
+    });
   const m = report.manufacturability;
   const bores = m?.bores ?? [];
   return {
     bodyCount: report.bodies?.length ?? 1,
-    bodyRelations: relations,
+    interferences,
+    separatePairCount: rels.length - interferences.length,
     ...(bores.length > 0
       ? { internalBores: bores.length, minBoreRadius: Math.min(...bores.map((b) => b.radius)) }
       : {}),
@@ -44,7 +51,11 @@ export function digestMetrics(report: VerifyReport): MetricsDigest | undefined {
 export function formatDigest(d: MetricsDigest): string {
   const lines = [`Measured facts (ground truth the render cannot show — trust these):`];
   lines.push(`- distinct bodies: ${d.bodyCount}`);
-  if (d.bodyRelations.length) lines.push(`- body relations: ${d.bodyRelations.join('; ')}`);
+  if (d.interferences.length > 0) {
+    lines.push(`- interfering/touching pairs: ${d.interferences.join('; ')}`);
+  }
+  if (d.separatePairCount > 0)
+    lines.push(`- (${d.separatePairCount} other body pair(s) sit apart)`);
   if (d.internalBores !== undefined) {
     const r =
       d.minBoreRadius !== undefined ? `, smallest bore radius ${d.minBoreRadius.toFixed(2)}mm` : '';
