@@ -12,19 +12,51 @@ const JUDGE_SYSTEM = `You are a meticulous CAD reviewer. You are shown rendered 
 
 Judge ONLY whether the rendered geometry matches the request and rubric: the right features are present (holes, walls, grooves, fillets, slots), the overall shape is right, and proportions are roughly correct. Ignore color, lighting, camera, and exact dimensions you cannot measure from a render. Be strict about missing or wrong features — a bored hole that isn't there, a hollow part rendered solid, or the wrong overall form is a fail.
 
-You may also be given "Measured facts" computed deterministically from the kernel (exact body count, and which bodies sit apart vs touch/overlap). Treat these as ground truth the render cannot show, and reconcile them with what you see — if the facts report N bodies, confirm you see N. A reported interference is ambiguous on its own: decide from the request and image whether it is an intended assembly (e.g. an exploded view or a part that legitimately overlaps another) or an accidental collision. Also judge manufacturability: whether the part reads as a producible object (no zero-thickness walls, stray disconnected bodies, or self-colliding geometry the request did not ask for).`;
+You may also be given "Measured facts" computed deterministically from the kernel (exact body count, and which bodies sit apart vs touch/overlap). Treat these as ground truth the render cannot show, and reconcile them with what you see — if the facts report N bodies, confirm you see N. A reported interference is ambiguous on its own: decide from the request and image whether it is an intended assembly (e.g. an exploded view or a part that legitimately overlaps another) or an accidental collision. Also judge manufacturability: whether the part reads as a producible object (no zero-thickness walls, stray disconnected bodies, or self-colliding geometry the request did not ask for).
+
+Work in this order. FIRST decompose the request into its named features — the holes, bores, walls, bodies, blades, teeth, slots, fillets, etc. it implies — and grade EACH one for \`present\` (legible in the render) and \`correct\` (right count / form / proportion, not faked or distorted), reconciling any count against the measured facts. THEN set \`pass\` true only if every feature the request requires is present and correct; base \`reason\` on the decisive feature(s), naming any that are missing or wrong. Decomposing first guards against a "looks roughly right" pass and against hallucinating features that aren't there.`;
 
 const VERDICT = z.object({
-  pass: z.boolean().describe('true only if the rendered part matches the request and rubric'),
+  features: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .describe(
+            'a feature the request implies, e.g. "motor bore", "ring of twisted blades", "4 corner holes"'
+          ),
+        present: z.boolean().describe('present and legible in the render'),
+        correct: z
+          .boolean()
+          .describe('right count / form / proportion — false if wrong-count, distorted, or faked'),
+      })
+    )
+    .describe(
+      'decompose the request into its named features and grade EACH before the overall verdict'
+    ),
+  pass: z
+    .boolean()
+    .describe('true only if every feature the request requires is present and correct'),
   manufacturable: z
     .boolean()
-    .describe('true if the part reads as producible; false for zero-thickness walls, stray/colliding bodies, or other unmanufacturable geometry the request did not ask for'),
+    .describe(
+      'true if the part reads as producible; false for zero-thickness walls, stray/colliding bodies, or other unmanufacturable geometry the request did not ask for'
+    ),
   usedMetrics: z
     .boolean()
-    .describe('true if the measured facts (body count / relations) changed your verdict versus the images alone'),
-  reason: z.string().describe('one sentence citing the deciding feature(s)'),
+    .describe(
+      'true if the measured facts (body count / relations) changed your verdict versus the images alone'
+    ),
+  reason: z
+    .string()
+    .describe('one sentence citing the deciding feature(s), naming any missing or wrong'),
 });
 export type Verdict = z.infer<typeof VERDICT>;
+
+/** The features the judge marked missing or incorrect — actionable specifics for the retry/heal loop. */
+export function missingFeatures(v: Verdict): string[] {
+  return v.features.filter((f) => !f.present || !f.correct).map((f) => f.name);
+}
 
 export interface JudgeInput {
   prompt: string;
@@ -73,6 +105,7 @@ export async function judge(client: Anthropic, input: JudgeInput): Promise<Verdi
 
   return (
     response.parsed_output ?? {
+      features: [],
       pass: false,
       manufacturable: false,
       usedMetrics: false,

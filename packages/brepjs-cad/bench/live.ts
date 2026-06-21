@@ -8,7 +8,7 @@ import { PROMPTS, type EvalPrompt } from './prompts.js';
 import { playgroundPrompts } from './playgroundCorpus.js';
 import { formatScorecard, type EvalResult, type Scorecard } from './score.js';
 import { runAttemptLoop, type ChatMessage, type LoopDeps } from './loop.js';
-import { judge } from './judge.js';
+import { judge, missingFeatures } from './judge.js';
 import { createTelemetry } from './langfuse.js';
 import { skillVersion } from './skillVersion.js';
 
@@ -169,7 +169,13 @@ async function evalPrompt(
           model: args.judgeModel,
           ...(metrics ? { metrics } : {}),
         });
-        return { pass: v.pass, reason: v.reason, manufacturable: v.manufacturable };
+        // Surface the per-feature decomposition's misses in the reason so the retry/heal feedback
+        // bundle gets actionable specifics ("missing: motor bore") rather than a vague sentence.
+        const missing = missingFeatures(v);
+        const reason = missing.length
+          ? `${v.reason} [missing/wrong: ${missing.join(', ')}]`
+          : v.reason;
+        return { pass: v.pass, reason, manufacturable: v.manufacturable };
       } catch (e) {
         console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
         return null;
@@ -263,7 +269,9 @@ async function main(): Promise<void> {
     // Shard mode: write the scorecard for the combine step, which merges all shards and does the
     // single Langfuse push — shards don't push (avoids N partial aggregate traces + run pushes).
     writeFileSync(args.out, JSON.stringify(card, null, 2));
-    console.log(`wrote ${results.length}-part scorecard to ${args.out} (shard — combine step pushes)`);
+    console.log(
+      `wrote ${results.length}-part scorecard to ${args.out} (shard — combine step pushes)`
+    );
   } else {
     // Record the run for Langfuse trends: aggregate scores on one trace, plus — for the playground
     // corpus — a dataset experiment on brepjs-playground (per-part scores linked to each dataset
@@ -272,7 +280,9 @@ async function main(): Promise<void> {
     if (args.corpus === 'playground') {
       const linked = await telemetry.pushDatasetRun(card);
       if (process.env['LANGFUSE_PUBLIC_KEY'] && process.env['LANGFUSE_SECRET_KEY'])
-        console.log(`langfuse: dataset run "${skillVer}" — ${linked}/${results.length} items linked`);
+        console.log(
+          `langfuse: dataset run "${skillVer}" — ${linked}/${results.length} items linked`
+        );
     }
   }
   await telemetry.shutdown();

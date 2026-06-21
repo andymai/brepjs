@@ -28,10 +28,15 @@ output vs the playground reference, and never reads any `.brep.ts`, the heal, th
 - `confidence`: `high | low`.
 
 **Rubric (put in the judge prompt):** grade each render against the **description** as the absolute
-bar — the named features present and legible, the thing reads as manufactured/designed. Use the
-other render only to calibrate _how polished is achievable_, never to reward mere similarity. A part
-that differs from the other render but realizes the description as a designed object is `designed`.
-Ignore color, lighting, camera, and exact dimensions you can't read from the image.
+bar. **First decompose** the description into its named features (the holes, bores, walls, bodies,
+blades, teeth, slots it implies); for each render, check each feature `present` (legible) and
+`correct` (right count/form/proportion), **reconciling counts against that render's measured-facts
+line** (if the facts say N bodies, confirm you see N; treat a reported interference as intended vs
+accidental per the description). Base the `designed | partial | blob` class on that per-feature pass —
+`designed` only when the described features are present and correct, `partial`/`blob` when features
+are missing, miscounted, or faked. Use the other render only to calibrate _how polished is
+achievable_, never to reward mere similarity. Ignore color, lighting, camera, and exact dimensions
+you can't read from the image.
 
 ## The blind protocol (orchestrator: renders + shuffles + decodes — never grades)
 

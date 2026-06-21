@@ -5,6 +5,7 @@ import { runChecks } from '@/verify/checks.js';
 import { emptyReport } from '@/verify/report.js';
 import { digestMetrics, formatDigest } from '../bench/metrics.js';
 import { formatScorecard, type Scorecard } from '../bench/score.js';
+import { missingFeatures, type Verdict } from '../bench/judge.js';
 
 beforeAll(async () => {
   await init();
@@ -100,5 +101,29 @@ describe('formatScorecard manufacturability axis', () => {
     expect(out).toContain('risky');
     expect(out).toContain('mfg:⚠');
     expect(out).toContain('manufacturable 50%');
+  });
+});
+
+describe('missingFeatures (decomposed rubric)', () => {
+  const verdict = (features: Verdict['features']): Verdict => ({
+    features,
+    pass: false,
+    manufacturable: true,
+    usedMetrics: false,
+    reason: 'x',
+  });
+
+  it('lists features that are absent or incorrect', () => {
+    const v = verdict([
+      { name: 'motor bore', present: true, correct: true },
+      { name: 'twisted blades', present: true, correct: false }, // wrong form
+      { name: 'mounting holes', present: false, correct: false }, // absent
+    ]);
+    expect(missingFeatures(v)).toEqual(['twisted blades', 'mounting holes']);
+  });
+
+  it('returns empty when every feature is present and correct', () => {
+    const v = verdict([{ name: 'hub', present: true, correct: true }]);
+    expect(missingFeatures(v)).toEqual([]);
   });
 });
