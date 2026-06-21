@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.1](https://github.com/andymai/brepjs/compare/brepjs-v18.99.0...brepjs-v18.99.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **playground:** make worm-gear-drive and three-jaw-chuck functional mechanisms ([#1541](https://github.com/andymai/brepjs/issues/1541)) ([2fab9ed](https://github.com/andymai/brepjs/commit/2fab9ed2fd31c0204525b2979668e9989a0c225a))
+
 ## [18.99.0](https://github.com/andymai/brepjs/compare/brepjs-v18.98.0...brepjs-v18.99.0) (2026-06-20)
 
 
