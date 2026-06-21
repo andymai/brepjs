@@ -84,6 +84,18 @@ describe('hints', () => {
     expect(hint?.fix).toMatch(/extrude/i);
   });
 
+  it('gives DEGENERATE_EDGE a dedupe hint (codeless makeLineEdge crash)', () => {
+    // A polygon with coincident consecutive points throws `makeLineEdge: construction failed` with
+    // no structured code; the verify-heal cycle classifies it to DEGENERATE_EDGE so the author gets
+    // an actionable dedupe fix instead of a raw kernel string. Guards that heal.
+    const hint = hintFor({
+      message: 'part threw: makeLineEdge: construction failed',
+      code: 'DEGENERATE_EDGE',
+    });
+    expect(hint?.fix).not.toMatch(/No specific fix available/);
+    expect(hint?.fix).toMatch(/coincident|dedupe|duplicate/i);
+  });
+
   it('falls back to the public BrepError.suggestion for unknown codes', () => {
     const hint = hintFor({
       message: 'something: failed',

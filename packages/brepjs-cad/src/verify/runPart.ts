@@ -103,12 +103,20 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
     // hint table still fires (otherwise a known failure like FILLET_FAILED produces no hint).
     // Anchor on the literal `[KIND] CODE:` shape so a stray `]…:` elsewhere can't be mistaken
     // for the code.
-    const code = e.message.match(/\[[A-Z][A-Z0-9_]*\]\s+([A-Z][A-Z0-9_]+):/)?.[1];
+    const code =
+      e.message.match(/\[[A-Z][A-Z0-9_]*\]\s+([A-Z][A-Z0-9_]+):/)?.[1] ?? classifyKernelMessage(e.message);
     return code
       ? { message: `${prefix}: ${e.message}`, code }
       : { message: `${prefix}: ${e.message}` };
   }
   return { message: `${prefix}: ${String(e)}` };
+}
+
+// Some kernel ops throw a bare message with no structured `code` (e.g. a zero-length edge from
+// coincident polygon points). Map the well-known ones to a code so the hint table still fires.
+function classifyKernelMessage(message: string): string | undefined {
+  if (/makeLineEdge: construction failed|zero[- ]length edge/i.test(message)) return 'DEGENERATE_EDGE';
+  return undefined;
 }
 
 export interface RunPartOptions {
