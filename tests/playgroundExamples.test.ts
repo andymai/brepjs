@@ -58,6 +58,7 @@ describe('playground examples', () => {
     'bench-vise',
     'scotch-yoke',
     'three-jaw-chuck',
+    'worm-gear-drive',
   ];
   for (const id of CONNECTED_BODY_EXAMPLES) {
     it(`every returned body is a single connected solid: ${id}`, async () => {
