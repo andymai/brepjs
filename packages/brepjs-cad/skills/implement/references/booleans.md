@@ -52,5 +52,6 @@ Keep the color literal **inline** (as above) or type any color you factor into a
 - Returning a `Result` from the default export is supported; the verifier unwraps it and reports an `Err`.
 - Booleans on touching-but-not-overlapping solids can yield empty/invalid results; give operands a small overlap. (A `compound` does NOT need overlap; bodies stay distinct.)
 - **`fuse` of solids that only meet on a coplanar face/ring can silently return a loose `Compound`** — `ok:true`, but the bodies are NOT welded (the report's `manifold` flag / an undropped face count is the tell, not `shapeType`). For one watertight solid, give the operands a real overlap and use `fuseAll(shapes, { unsafe: true })`. If it's an assembly, a loose `Compound` is correct — just don't mistake it for a weld.
+- **Don't gate your own guards on `isSolid()`/`shapeType` after a boolean.** A clean, fully-overlapping `cut`/`fuse` of an **extruded** (`Shape3D`) operand frequently reports `shapeType: 'Compound'` and `isSolid() === false` while being a perfectly valid single body (`isValidSolid === true`). A hand-written `if (!isSolid(x)) throw` will false-trip on it — check `isValidSolid` / positive volume instead, and let `verify` judge validity.
 
 See also: docs/function-lookup.md → brepjs/topology.
