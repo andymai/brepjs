@@ -101,7 +101,9 @@ A rack is the involute of an infinite-radius gear, so its flanks **degenerate to
    and doesn't jam. For multi-body drives, also assert the **frame never intersects a moving part**.
    - **gear ↔ gear:** centre distance `m·(N1+N2)/2`; rotate both at the conjugate ratio `−N1/N2`.
    - **rack ↔ pinion:** pinion axis one pitch radius (`m·N/2`) above the rack pitch line; rotate the
-     pinion by θ and translate the rack by `pitchRadius·θ`.
+     pinion by θ and translate the rack by `pitchRadius·θ` (**θ in radians** — the `assemblies-motion.md`
+     template sweeps in degrees, so convert: `rackShift = pitchRadius·θ_deg·π/180`, else the rack
+     crawls ~57× too slowly).
    - **worm ↔ wheel:** centre distance `r_worm_pitch + r_wheel_pitch`; rotate the worm by φ and the
      wheel by `φ/ratio` (`ratio = N_wheel / starts`).
 
