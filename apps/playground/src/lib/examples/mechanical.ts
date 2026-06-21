@@ -2360,85 +2360,75 @@ export default hobbyServo();`,
       'A panel-mount rotary potentiometer body: a crimped metal can with a raised boss, a threaded mounting bushing, an anti-rotation locating pin, a keyed (D-flat) control shaft, and three rear solder lugs — one rigid solid.',
     code: `import { box, cylinder, cut, fuse, unwrap } from 'brepjs/quick';
 
-// Panel-mount rotary potentiometer body, Z-up. The control shaft points +Z out the
-// front; the three solder lugs project -Z from the rear of the can. One rigid solid.
-const CAN_R = 8.5; // round metal can radius (Ø17)
-const CAN_H = 7; // can body height (Z)
-const CAN_Z0 = 0; // can sits z[0, CAN_H]
+// Z is up = the panel-mount axis. The can sits below the panel face (z=0),
+// the bushing/shaft project up through the panel.
 
-const CRIMP_R = 9; // crimped rim slightly proud of the can
-const CRIMP_H = 1.2; // crimp ring height at the rear edge
+const CAN_R = 8.5; // round metal can radius (mm)
+const CAN_H = 7; // can body height (mm)
+const CRIMP_R = 9.2; // crimped rim proud of the can (mm)
+const CRIMP_H = 1.2; // crimp ring thickness (mm)
 
-const BOSS_R = 5.5; // raised boss on the front face
-const BOSS_H = 1.5;
+const BOSS_R = 4.5; // raised front boss radius (mm)
+const BOSS_H = 1.5; // boss height (mm)
 
-const BUSH_R = 3.5; // threaded mounting bushing radius (M7-ish)
-const BUSH_H = 7; // bushing length above the boss
+const BUSH_R = 3.5; // threaded mounting bushing radius (mm)
+const BUSH_H = 7; // bushing height above the front face (mm)
 
-const PIN_R = 0.9; // anti-rotation locating pin
-const PIN_H = 2.5;
-const PIN_OFFSET = 6.2; // pin sits radially off-axis on the front face
+const SHAFT_R = 3; // round control-shaft radius (mm)
+const SHAFT_H = 15; // shaft length above the bushing top (mm)
+const D_FLAT = 2.0; // distance of the D-flat chord from the shaft axis (mm)
 
-const SHAFT_R = 3; // Ø6 control shaft
-const SHAFT_H = 15; // shaft length above the bushing
-const SHAFT_FLAT = 1.2; // depth of the D-flat (chord removed)
+const PIN_R = 0.75; // anti-rotation locating pin radius (mm)
+const PIN_H = 4; // pin length above the front face (mm)
+const PIN_OFFSET = 6.5; // pin distance from the shaft axis (mm)
 
-const LUG_W = 1.5; // solder lug thickness (X)
-const LUG_T = 0.5; // solder lug sheet thickness (Y)
-const LUG_LEN = 4; // how far each lug projects out the rear (Z)
-const LUG_RADIUS = 5.5; // radial spacing of the three lugs from center
-const LUG_HOLE_R = 0.6; // terminal eyelet hole
+const LUG_W = 1.2; // solder lug thickness X (mm)
+const LUG_D = 3; // solder lug width Y (mm)
+const LUG_H = 4; // solder lug drop below the can (mm)
+const LUG_PITCH = 5; // spacing between the three rear lugs (mm)
 
 function rotaryPotentiometer() {
-  // --- Can body + crimp ring (rear) ---
-  const can = cylinder(CAN_R, CAN_H, { at: [0, 0, CAN_Z0] });
-  const crimp = cylinder(CRIMP_R, CRIMP_H, { at: [0, 0, CAN_Z0] }); // proud ring at rear
+  const FRONT = 0; // panel face plane (top of can)
+
+  // Metal can: round body with a crimped rim proud of it at the top.
+  const can = cylinder(CAN_R, CAN_H, { at: [0, 0, -CAN_H] });
+  const crimp = cylinder(CRIMP_R, CRIMP_H, { at: [0, 0, FRONT - CRIMP_H] });
   let body = unwrap(fuse(can, crimp));
 
-  // --- Raised boss + threaded bushing on the front face ---
-  const frontZ = CAN_Z0 + CAN_H;
-  const boss = cylinder(BOSS_R, BOSS_H + 0.5, { at: [0, 0, frontZ - 0.5] }); // sink 0.5 into can
+  // Raised boss on the front face, then the threaded bushing on top of it.
+  const boss = cylinder(BOSS_R, BOSS_H + 0.5, { at: [0, 0, FRONT - 0.5] });
   body = unwrap(fuse(body, boss));
 
-  const bushZ0 = frontZ + BOSS_H;
-  const bushing = cylinder(BUSH_R, BUSH_H + 1, { at: [0, 0, bushZ0 - 1] }); // overlap boss
+  const bushing = cylinder(BUSH_R, BUSH_H + 0.5, { at: [0, 0, FRONT - 0.5] });
   body = unwrap(fuse(body, bushing));
 
-  // --- Anti-rotation locating pin beside the bushing on the front face ---
-  const pin = cylinder(PIN_R, PIN_H + 1, { at: [PIN_OFFSET, 0, frontZ - 1] }); // overlap can
+  // Anti-rotation locating pin beside the bushing, projecting from the front.
+  const pin = cylinder(PIN_R, PIN_H + 0.5, { at: [PIN_OFFSET, 0, FRONT - 0.5] });
   body = unwrap(fuse(body, pin));
 
-  // --- Keyed (D-flat) control shaft above the bushing ---
-  const shaftZ0 = bushZ0 + BUSH_H;
-  let shaft = cylinder(SHAFT_R, SHAFT_H + 1, { at: [0, 0, shaftZ0 - 1] }); // overlap bushing
-  // D-flat: subtract a box covering the +X edge of the shaft.
-  const flatTool = box(SHAFT_R, 2 * SHAFT_R + 2, SHAFT_H + 4, {
-    at: [SHAFT_R + (SHAFT_R - SHAFT_FLAT), 0, shaftZ0 + SHAFT_H / 2],
+  // Keyed control shaft: round shaft with a D-flat chord cut off one side.
+  const bushTop = FRONT + BUSH_H;
+  const round = cylinder(SHAFT_R, SHAFT_H + 1, { at: [0, 0, bushTop - 1] });
+  // Cutting box removes everything with x > D_FLAT, leaving a flat chord.
+  const cutter = box(SHAFT_R * 2, SHAFT_R * 4, SHAFT_H + 4, {
+    at: [D_FLAT + SHAFT_R, 0, bushTop + SHAFT_H / 2],
   });
-  shaft = unwrap(cut(shaft, flatTool));
+  const shaft = unwrap(cut(round, cutter));
   body = unwrap(fuse(body, shaft));
 
-  // --- THREE rear solder lugs/terminals projecting from the back of the can ---
-  // Each lug is a thin flat tab poking out the rear (-Z), spaced 120° apart,
-  // overlapping into the can so it welds as one solid, with an eyelet hole.
-  const lugs = [0, 120, 240].map((deg) => {
-    const a = (deg * Math.PI) / 180;
-    const cx = LUG_RADIUS * Math.cos(a);
-    const cy = LUG_RADIUS * Math.sin(a);
-    // Tab spans from inside the crimp (overlap) out to -LUG_LEN below the rear face.
-    const lugZ = CAN_Z0 - LUG_LEN / 2 + 0.8; // 0.8 overlap into the can rear
-    let tab = box(LUG_W, LUG_T, LUG_LEN + 1.6, { at: [cx, cy, lugZ] });
-    const hole = cylinder(LUG_HOLE_R, LUG_T + 2, {
-      at: [cx, cy + LUG_T / 2 + 1, CAN_Z0 - LUG_LEN + 0.5],
-      axis: [0, -1, 0],
-    });
-    tab = unwrap(cut(tab, hole));
-    return tab;
-  });
+  // Three rear solder lugs hanging below the can. Each overlaps the can wall
+  // by ~1mm so the weld holds into a single solid.
+  const lugs = [-LUG_PITCH, 0, LUG_PITCH].map((y) =>
+    box(LUG_W + 2, LUG_D, LUG_H + 2, {
+      at: [-CAN_R - LUG_W / 2 + 1, y - LUG_D / 2, -CAN_H - LUG_H / 2 + 1],
+    })
+  );
 
-  // Fold pairwise over the real overlaps so each lug welds into the can.
   let part = body;
-  for (const lug of lugs) part = unwrap(fuse(part, lug));
+  for (const lug of lugs) {
+    part = unwrap(fuse(part, lug));
+  }
+
   return part;
 }
 
@@ -3806,117 +3796,111 @@ export default benchVise();`,
     label: 'Scotch Yoke',
     description:
       'A Scotch yoke frozen at a 35° crank angle: the offset crank pin rides a vertical slot in the yoke plate, converting rotation into pure sinusoidal linear motion (stroke = 2× crank radius). Three distinct colored bodies — frame, crank, slotted yoke + piston rod.',
-    code: `import {
-  box,
-  cylinder,
-  cone,
-  cut,
-  fuse,
-  intersect,
-  rotate,
-  translate,
-  unwrap,
-} from 'brepjs/quick';
+    code: `import { box, cylinder, fuse, cut, unwrap } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Scotch yoke — crank rotation -> sinusoidal linear motion, frozen at theta=35deg.
-// Datums: baseplate top at Z=0; crank axis along Y at H_AXIS; yoke slides along X.
-// Stroke = 2*crank radius. Three distinct bodies: frame, crank, yoke.
-const PLATE_W = 120, PLATE_D = 46, PLATE_H = 8;
-const H_AXIS = 46;
-const CRANK_R = 16; // pin offset -> 32 mm stroke
-const DISC_R = 22, DISC_T = 8, DISC_Y0 = 8;
-const SHAFT_R = 4, BORE_R = SHAFT_R + 0.4;
-const PIN_R = 4.5, SLOT_W = 2 * PIN_R + 0.4, SLOT_L = 2 * CRANK_R + 2 * PIN_R + 4;
-const ROD_R = 6, GUIDE_R = ROD_R + 0.3;
-const PILLAR_W = 14, PILLAR_D = 8, PILLAR_TOP = H_AXIS + 8;
-const PILLAR_OUTER_Y = -18, PILLAR_INNER_Y = 0;
-const YOKE_Y0 = 20, YOKE_T = 6, YOKE_PLATE_W = 22, YOKE_PLATE_H = SLOT_L + 10;
-const GUIDE_X = PLATE_W / 2 - 14, GUIDE_W = 16, GUIDE_D = 16, GUIDE_H = H_AXIS + 12;
-const DISPLAY_THETA = 35;
+// Scotch yoke frozen at a 35-degree crank angle.
+// Motion plane is XZ: the crank turns about Y, its offset pin rides a VERTICAL (Z) slot in the
+// yoke plate, and the yoke + piston rod translate horizontally along X.
+// stroke = 2 * crank radius.
 
-// Frame: baseplate + two bored bearing pillars straddling the disc + a bored rod guide boss.
+const THETA = 35; // crank angle (deg), frozen pose
+const CRANK_R = 18; // crank throw (mm) -> stroke = 36
+const STROKE = 2 * CRANK_R;
+
+const CRANK_AX_R = 7; // crank journal shaft radius (mm)
+const CRANK_DISK_R = 24; // crank web/disk radius (mm)
+const CRANK_THK = 8; // crank disk thickness along Y (mm)
+const PIN_R = 5; // crank pin radius (mm)
+const PIN_LEN = 16; // crank pin length along Y (mm)
+
+const YOKE_W = 36; // yoke plate width  along X (mm)
+const YOKE_H = STROKE + 4 * PIN_R; // yoke plate height along Z (mm) -> slot longer than throw
+const YOKE_THK = 12; // yoke plate thickness along Y (mm)
+const SLOT_CLR = 0.0; // designed sliding contact: pin touches slot walls
+const ROD_LEN = 70; // piston rod length along +X (mm)
+const ROD_R = 6; // piston rod radius (mm)
+
+const FRAME_H = 70; // frame block height along Z (mm)
+const FRAME_THK = 14; // frame bearing-block thickness along Y (mm)
+const FRAME_Y = -9; // frame sits on the -Y side, clear of the crank disk
+const FRAME_BACK_X = -CRANK_DISK_R - 14; // back face of the frame along -X
+const FRAME_FRONT_X = 12; // front face reaches past the rotation axis to journal the shaft
+const FRAME_W = FRAME_FRONT_X - FRAME_BACK_X; // frame block width along X (mm)
+const FRAME_CX = (FRAME_FRONT_X + FRAME_BACK_X) / 2; // frame block center X
+
+// Frozen pin position in the XZ plane.
+const PIN_X = CRANK_R * Math.cos((THETA * Math.PI) / 180);
+const PIN_Z = CRANK_R * Math.sin((THETA * Math.PI) / 180);
+
+// ---- Frame: bearing pedestal whose bore on the rotation axis journals the crank shaft. --------
 function frame() {
-  const plate = box(PLATE_W, PLATE_D, PLATE_H, { at: [0, 0, -PLATE_H / 2] });
-  const pillar = (y: number) => {
-    const block = box(PILLAR_W, PILLAR_D, PILLAR_TOP, { at: [0, y, PILLAR_TOP / 2] });
-    const bore = cylinder(BORE_R, PILLAR_D + 4, { at: [0, y - PILLAR_D / 2 - 2, H_AXIS], axis: [0, 1, 0] });
-    return unwrap(cut(block, bore));
-  };
-  let body = unwrap(fuse(plate, pillar(PILLAR_OUTER_Y)));
-  body = unwrap(fuse(body, pillar(PILLAR_INNER_Y)));
-
-  const boss = box(GUIDE_W, GUIDE_D, GUIDE_H, { at: [GUIDE_X, YOKE_Y0 + YOKE_T / 2 - GUIDE_D / 2, GUIDE_H / 2] });
-  body = unwrap(fuse(body, boss));
-  // Turned bearing collar on the rod-entry face (a machined seat, not a raw box face).
-  const collar = cylinder(GUIDE_R + 3, 3, { at: [GUIDE_X - GUIDE_W / 2 - 3, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
-  body = unwrap(fuse(body, collar));
-  const guideBore = cylinder(GUIDE_R, GUIDE_W + 10, { at: [GUIDE_X - GUIDE_W / 2 - 5, YOKE_Y0 + YOKE_T / 2, H_AXIS], axis: [1, 0, 0] });
-  body = unwrap(cut(body, guideBore));
-  return body;
+  const block = box(FRAME_W, FRAME_THK, FRAME_H, {
+    at: [FRAME_CX, FRAME_Y, 0],
+  });
+  // Journal bore for the crank shaft (along Y, through the block) on the rotation axis at X=0.
+  // Bore radius == shaft radius so the shaft TOUCHES the bore wall (journaled, clearance 0).
+  const bore = cylinder(CRANK_AX_R, FRAME_THK + 4, {
+    at: [0, FRAME_Y - FRAME_THK / 2 - 2, 0],
+    axis: [0, 1, 0],
+  });
+  return unwrap(cut(block, bore));
 }
 
-// Crank: disc + shaft (through both pillars) + offset pin + crescent counterweight + flywheel holes.
+// ---- Crank: journal shaft + disk web + offset pin (the pin RIDES the yoke slot). -------------
 function crank() {
-  const disc = cylinder(DISC_R, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
-  const shaftY0 = PILLAR_OUTER_Y - 4;
-  const shaftLen = DISC_Y0 + DISC_T - PILLAR_OUTER_Y + 4;
-  const shaft = cylinder(SHAFT_R, shaftLen, { at: [0, shaftY0, H_AXIS], axis: [0, 1, 0] });
-  let body = unwrap(fuse(disc, shaft));
-  // Machined lead-in cone on the exposed shaft end + a stepped hub collar at the disc back face.
-  body = unwrap(fuse(body, cone(SHAFT_R, SHAFT_R - 1.4, 1.6, { at: [0, shaftY0, H_AXIS], axis: [0, -1, 0] })));
-  body = unwrap(fuse(body, cylinder(SHAFT_R + 3, 2, { at: [0, DISC_Y0, H_AXIS], axis: [0, -1, 0] })));
-  // Offset pin (parallel to the Y axis) cantilevered forward into the yoke slot.
-  const pin = cylinder(PIN_R, YOKE_Y0 + YOKE_T - DISC_Y0, { at: [CRANK_R, DISC_Y0, H_AXIS], axis: [0, 1, 0] });
-  body = unwrap(fuse(body, pin));
-  // Crescent counterweight: a ring clipped to the anti-pin (-X) half-space.
-  const ring = unwrap(cut(
-    cylinder(DISC_R + 4, DISC_T, { at: [0, DISC_Y0, H_AXIS], axis: [0, 1, 0] }),
-    cylinder(DISC_R - 4, DISC_T + 2, { at: [0, DISC_Y0 - 1, H_AXIS], axis: [0, 1, 0] })
-  ));
-  const halfSpace = box(DISC_R + 8, DISC_T + 2, 2 * (DISC_R + 8), { at: [-(DISC_R + 8) / 2, DISC_Y0, H_AXIS] });
-  body = unwrap(fuse(body, unwrap(intersect(ring, halfSpace))));
-  // Bolt-circle lightening holes through the disc web (flywheel look), clear of shaft/pin/crescent.
-  for (const deg of [60, 120, 240, 300]) {
-    const a = (deg * Math.PI) / 180;
-    body = unwrap(cut(body, cylinder(2.6, DISC_T + 4, { at: [11 * Math.cos(a), DISC_Y0 - 2, H_AXIS + 11 * Math.sin(a)], axis: [0, 1, 0] })));
-  }
-  return body;
+  // Journal shaft along Y, on the rotation axis, passing through the frame bearing block and up
+  // into the crank web. Starts a bit behind the frame's far face.
+  const shaftStartY = FRAME_Y - FRAME_THK / 2 - 3;
+  const shaft = cylinder(CRANK_AX_R, CRANK_THK - shaftStartY, {
+    at: [0, shaftStartY, 0],
+    axis: [0, 1, 0],
+  });
+  // Crank web/disk, thickness along Y, centered on the rotation axis.
+  const disk = cylinder(CRANK_DISK_R, CRANK_THK, {
+    at: [0, CRANK_THK / 2, 0],
+    axis: [0, 1, 0],
+  });
+  // Offset pin, parallel to the axis, at the frozen throw position. Extends +Y to reach the yoke.
+  const pin = cylinder(PIN_R, PIN_LEN, {
+    at: [PIN_X, CRANK_THK, PIN_Z],
+    axis: [0, 1, 0],
+  });
+  const web = unwrap(fuse(shaft, disk));
+  return unwrap(fuse(web, pin));
 }
 
-// Yoke: slotted plate (vertical slot rides the pin) + piston rod into the guide + piston nose.
+// ---- Yoke + piston rod: vertical slot captures the pin; rod runs out along +X. ---------------
 function yoke() {
-  const plate = box(YOKE_PLATE_W, YOKE_T, YOKE_PLATE_H, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
-  const slot = box(SLOT_W, YOKE_T + 4, SLOT_L, { at: [CRANK_R, YOKE_Y0 + YOKE_T / 2, H_AXIS] });
-  let body = unwrap(cut(plate, slot));
-  // Weight-relief holes in the top/bottom bands, clear of the pin's Z travel inside the slot.
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      body = unwrap(cut(body, cylinder(1.8, YOKE_T + 4, { at: [CRANK_R + sx * (YOKE_PLATE_W / 2 - 3.3), YOKE_Y0 - 2, H_AXIS + sz * 22.5], axis: [0, 1, 0] })));
-    }
-  }
-  const rodStartX = CRANK_R + YOKE_PLATE_W / 2;
-  const rodLen = GUIDE_X - rodStartX + GUIDE_W / 2 + 2;
-  const rodY = YOKE_Y0 + YOKE_T / 2;
-  body = unwrap(fuse(body, cylinder(ROD_R, rodLen, { at: [rodStartX, rodY, H_AXIS], axis: [1, 0, 0] })));
-  const pistonX0 = rodStartX + rodLen - 6;
-  body = unwrap(fuse(body, cylinder(GUIDE_R - 0.2, 6, { at: [pistonX0, rodY, H_AXIS], axis: [1, 0, 0] })));
-  body = unwrap(fuse(body, cone(GUIDE_R - 0.2, GUIDE_R - 2, 2, { at: [pistonX0 + 6, rodY, H_AXIS], axis: [1, 0, 0] })));
-  return body;
+  // Yoke plate placed so its slot is centered on the pin's X position (the yoke has translated to
+  // follow the pin). Plate spans Y so it surrounds the pin.
+  const plate = box(YOKE_W, YOKE_THK, YOKE_H, {
+    at: [PIN_X, CRANK_THK + 2, 0],
+  });
+  // Vertical slot (along Z), width = pin diameter so the pin touches both slot walls in X.
+  // Height = stroke + pin diameter so the pin can travel the full throw, but it is a CLOSED
+  // channel (shorter than the plate) so the plate stays a single solid.
+  const slot = box(2 * PIN_R + SLOT_CLR, YOKE_THK + 6, STROKE + 2 * PIN_R, {
+    at: [PIN_X, CRANK_THK + 2, 0],
+  });
+  const slotted = unwrap(cut(plate, slot));
+  // Piston rod runs horizontally out the +X side of the yoke.
+  const rod = cylinder(ROD_R, ROD_LEN, {
+    at: [PIN_X + YOKE_W / 2, CRANK_THK + 2, 0],
+    axis: [1, 0, 0],
+  });
+  return unwrap(fuse(slotted, rod));
 }
 
-// Frozen display pose: crank rotated about Y, yoke shifted X = CRANK_R*cos(theta).
-const x = CRANK_R * Math.cos((DISPLAY_THETA * Math.PI) / 180);
-const frameBody = frame();
-const crankBody = rotate(crank(), DISPLAY_THETA, { at: [0, 0, H_AXIS], axis: [0, 1, 0] });
-const yokeBody = translate(yoke(), [x - CRANK_R, 0, 0]);
+const FRAME = frame();
+const CRANK = crank();
+const YOKE = yoke();
 
 export default [
-  color(frameBody, '#d2d4d9'),
-  color(crankBody, '#9aa0a8'),
-  color(yokeBody, '#4d5360'),
-];
-`,
+  color(FRAME, '#d2d4d9'),
+  color(CRANK, '#9aa0a8'),
+  color(YOKE, '#4d5360'),
+];`,
   },
   {
     id: 'worm-gear-drive',
@@ -4102,36 +4086,26 @@ export default [
     description:
       'A module-2 rack & pinion frozen mid-travel: an 18-tooth involute pinion (pitch Ø36) meshing a straight-flanked rack along the pitch line — the pinion axis sits exactly one pitch-radius (18 mm) above the rack, the condition for conjugate rolling. Three distinct colored bodies.',
     code: `// rack-and-pinion.brep.ts — module-2 rack & pinion frozen mid-travel.
-// 18-tooth involute pinion (pitch Ø36) meshing a straight-flanked rack along the pitch line:
-// pinion axis sits exactly one pitch radius (18 mm) above the rack pitch line — conjugate rolling.
-// Three distinct welded bodies (pinion, rack, base); each part is ONE solid (getSolids===1).
-import {
-  polygon,
-  extrude,
-  box,
-  cylinder,
-  cut,
-  fuse,
-  translate,
-  rotate,
-  unwrap,
-} from 'brepjs/quick';
+// 18-tooth involute PINION (pitch Ø36) meshing a full-length straight-flanked RACK on a thin BASE.
+// Pinion axis sits exactly one pitch radius (18mm) above the rack pitch line — conjugate rolling.
+// Three distinct bodies (pinion / rack-with-teeth / base) returned as an array, colored per body.
+import { polygon, extrude, cut, cylinder, box, rotate, unwrap } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
 const MODULE = 2.0;
-const PA = (20 * Math.PI) / 180; // 20° pressure angle (industry standard)
+const PA = (20 * Math.PI) / 180; // 20° pressure angle (standard)
+const THICK = 8.0; // face width (Z)
 const BACKLASH = 0.1;
 
-// ----- pinion (involute spur gear, BOSL2-faithful one-polygon build) -----
+// ---- Pinion (involute spur gear, N=18) -------------------------------------
 const TEETH = 18;
-const THICK = 8.0;
-const STEPS = 10;
-
-const pr = (MODULE * TEETH) / 2; // pitch radius = 18 (pitch Ø36)
+const pr = (MODULE * TEETH) / 2; // pitch radius = 18  (pitch Ø36)
 const br = pr * Math.cos(PA); // base radius
-const ra = pr + MODULE; // outer (addendum) radius = 20
-const rr = pr - 1.25 * MODULE; // root (dedendum) radius = 15.5
+const ra = pr + MODULE; // outer radius
+const rr = pr - 1.25 * MODULE; // root radius
 const halfTooth = Math.PI / (2 * TEETH) - BACKLASH / 2 / pr;
+const BORE = 5; // shaft bore radius
+const STEPS = 10;
 
 const invPt = (th: number): [number, number] => [
   br * (Math.cos(th) + th * Math.sin(th)),
@@ -4143,17 +4117,16 @@ const rot2 = (p: [number, number], a: number): [number, number] => [
   p[0] * Math.sin(a) + p[1] * Math.cos(a),
 ];
 
-function pinionSolid() {
+function pinionBlank() {
   const thMax = thetaAt(ra);
   const phiPitch = Math.atan2(invPt(thetaAt(pr))[1], invPt(thetaAt(pr))[0]);
-  const offset = halfTooth + phiPitch; // mirrored +angle flank narrows the tooth to its tip
+  const offset = halfTooth + phiPitch;
 
   const side: [number, number][] = [];
   for (let i = STEPS; i >= 0; i--) {
     const p = invPt((thMax * i) / STEPS);
-    side.push(rot2([p[0], -p[1]], offset));
+    side.push(rot2([p[0], -p[1]], offset)); // mirrored involute: tooth narrows to tip
   }
-
   const rSpace = rot2([rr, 0], Math.PI / TEETH);
   if (rr < br) {
     const pb = rot2([br, 0], offset);
@@ -4174,12 +4147,10 @@ function pinionSolid() {
   } else {
     side.push(rSpace);
   }
-
   const tooth = [
     ...side.map(([x, y]) => [x, -y] as [number, number]).reverse(),
     ...side.slice(0, -1),
   ];
-
   const pts3: [number, number, number][] = [];
   for (let t = 0; t < TEETH; t++) {
     const c = (t * 2 * Math.PI) / TEETH;
@@ -4188,93 +4159,79 @@ function pinionSolid() {
       pts3.push([q[0], q[1], 0]);
     }
   }
-
-  const blank = unwrap(extrude(unwrap(polygon(pts3)), THICK));
-  // bore + keyway, then weld so the toothed body stays ONE solid
-  const bore = cylinder(5, THICK + 4, { at: [0, 0, -2] });
-  const key = box(3, 4, THICK + 4, { at: [0, 5.5, THICK / 2] });
-  return unwrap(cut(unwrap(cut(blank, bore)), key));
+  const face = unwrap(polygon(pts3));
+  return unwrap(extrude(face, THICK));
 }
 
-// ----- rack (involute of an infinite gear: straight flanks at the pressure angle) -----
+function pinion() {
+  const blank = pinionBlank();
+  const bore = cylinder(BORE, THICK + 4, { at: [0, 0, -2] });
+  return unwrap(cut(blank, bore));
+}
+
+// ---- Rack (straight-flanked, full length) ----------------------------------
 const RACK_TEETH = 9;
 const CP = Math.PI * MODULE; // circular pitch
 const ADD = MODULE; // addendum above pitch line
 const DED = 1.25 * MODULE; // dedendum below pitch line
-const BACK = 6.0; // backing bar below the root
-const RACK_THICK = THICK; // same face width as the pinion
+const tanPA = Math.tan(PA);
+const RACK_PITCH_Y = -pr; // pitch line one pitch radius below pinion axis
+const BASE_TOP_Y = RACK_PITCH_Y - DED; // bottom of tooth = top of rack body
+const rackLen = RACK_TEETH * CP;
+const x0 = -rackLen / 2; // tooth strip centered under the pinion
 
-// Profile in the X(length)–Z(height) plane, pitch line at z=0. Teeth point +Z (up to the pinion).
-// One closed polygon: backing bar + straight-flanked teeth -> a single welded solid by construction.
-function rackSolid() {
-  const t = ADD * Math.tan(PA); // flank horizontal run over the addendum
-  const d = DED * Math.tan(PA); // flank horizontal run over the dedendum
-  // tooth-thickness at pitch line = space-width = CP/2, less backlash
-  const half = CP / 4 - BACKLASH / 2;
-  const len = RACK_TEETH * CP;
-  const x0 = -len / 2;
+// Trapezoidal rack tooth: narrow at top (addendum), wide at bottom (dedendum),
+// flanks inclined at the pressure angle. Half tooth thickness at pitch = CP/4 - backlash.
+const halfAtPitch = CP / 4 - BACKLASH / 2;
 
-  const pts: [number, number][] = [];
-  pts.push([x0, -BACK]); // bottom-left of backing bar
-  for (let i = 0; i < RACK_TEETH; i++) {
-    const cx = x0 + (i + 0.5) * CP; // tooth centre along X
-    // up the leading flank: root -> tip
-    pts.push([cx - half - d, -DED]);
-    pts.push([cx - half + t, ADD]);
-    // across the tip land, then down the trailing flank
-    pts.push([cx + half - t, ADD]);
-    pts.push([cx + half + d, -DED]);
+function rackToothStrip() {
+  // One closed polygon: trace the toothed top edge left->right, then back along a baseline.
+  const top: [number, number, number][] = [];
+  for (let k = 0; k < RACK_TEETH; k++) {
+    const cTooth = x0 + (k + 0.5) * CP; // tooth centerline
+    // tooth: bottom-left, top-left, top-right, bottom-right (flanks at PA)
+    const bL = cTooth - (halfAtPitch + DED * tanPA);
+    const tL = cTooth - (halfAtPitch - ADD * tanPA);
+    const tR = cTooth + (halfAtPitch - ADD * tanPA);
+    const bR = cTooth + (halfAtPitch + DED * tanPA);
+    top.push([bL, BASE_TOP_Y, 0]);
+    top.push([tL, RACK_PITCH_Y + ADD, 0]);
+    top.push([tR, RACK_PITCH_Y + ADD, 0]);
+    top.push([bR, BASE_TOP_Y, 0]);
   }
-  pts.push([x0 + len, -BACK]); // bottom-right of backing bar
-
-  // Build the profile in the XY plane (height along +Y) so extrude follows the +Z normal and
-  // yields a real-thickness solid; the default export rotates it into the meshing orientation.
-  const pts3: [number, number, number][] = pts.map(([x, y]) => [x, y, 0]);
-  const prof = unwrap(polygon(pts3));
-  return unwrap(extrude(prof, RACK_THICK));
+  // close the loop along the rack-body top, then down/around a thin backing for the strip
+  const yLow = BASE_TOP_Y - 1; // 1mm backing so the toothed strip is one welded solid
+  const loop: [number, number, number][] = [
+    [x0, yLow, 0],
+    ...top,
+    [x0 + rackLen, yLow, 0],
+  ];
+  const face = unwrap(polygon(loop));
+  return unwrap(extrude(face, THICK));
 }
 
-// ----- base (support: bed under the rack + bearing pillar carrying the pinion axis) -----
-// Built from overlapping primitives, pairwise-fused into ONE welded solid.
-function baseSolid() {
-  const len = RACK_TEETH * CP + 20;
-  const bed = box(len, RACK_THICK + 24, 8, { at: [0, RACK_THICK / 2, -BACK - 1 - 4] });
-  // pillar at the +X end rises to the pinion axis and carries the shaft bore
-  const pillarX = len / 2 - 8;
-  const pillar = box(14, RACK_THICK + 24, 8 + 18 + 8, {
-    at: [pillarX, RACK_THICK / 2, -BACK - 1 - 4 + (18 + 8) / 2],
-  });
-  // bored shaft hub on the pillar, aligned with the pinion axis (z = +18 above pitch line)
-  const hub = cylinder(7, RACK_THICK + 8, { at: [pillarX, -4, 18], axis: [0, 1, 0] });
-  const shaft = cylinder(2.6, RACK_THICK + 12, { at: [pillarX, -6, 18], axis: [0, 1, 0] });
+function rack() {
+  return rackToothStrip();
+}
 
-  // overlap + pairwise fuse so the base is a single welded solid
-  let body = unwrap(fuse(bed, pillar));
-  body = unwrap(fuse(body, hub));
-  return unwrap(cut(body, shaft));
+// thin base plate carrying the rack
+const BASE_H = 4;
+const BASE_TOP = BASE_TOP_Y - 1; // top of base meets bottom of rack strip
+function base() {
+  const w = rackLen + 12;
+  const b = box(w, BASE_H, THICK, { at: [0, BASE_TOP - BASE_H / 2, THICK / 2] });
+  return b;
 }
 
 function rackAndPinion() {
-  // Rack pitch line sits at world z = -18, so the pinion (axis through origin) is exactly
-  // one pitch radius (18 mm) above it — the conjugate-rolling condition.
-  // rack profile lives in XY (height +Y, extruded +Z). Stand it up: +90° about X maps height→+Z
-  // (teeth point up to the pinion) and the face width to −Y; shift +Y back to y∈[0,8] and drop the
-  // pitch line to world z = −18.
-  const rack = translate(rotate(rackSolid(), 90, { axis: [1, 0, 0] }), [0, RACK_THICK, -18]);
-  // pinion is built in the XY plane (axis Z); tilt its axis to +Y so its teeth lie in the XZ
-  // plane and mesh the rack teeth. Phase it 180/TEETH so a tooth seats in a rack space
-  // (not tooth-on-tooth) at the contact point, then sit it on the pinion axis at the origin.
-  const pinFlat = rotate(pinionSolid(), 180 / TEETH, { axis: [0, 0, 1] });
-  // −90° about X maps the +Z extrusion (thickness 0→8) to +Y, so the pinion face width already
-  // lands on y∈[0,8], aligned with the rack face — no extra Y shift needed.
-  const pinion = rotate(pinFlat, -90, { axis: [1, 0, 0] });
-  const base = translate(baseSolid(), [0, 0, -18]);
-
-  return [
-    color(pinion, '#d1a847'),
-    color(rack, '#b3b7bd'),
-    color(base, '#8c8f96'),
-  ];
+  // Pinion frozen mid-travel: phase a tooth into a rack space (seated, not tooth-on-tooth).
+  // Pinion axis at origin; rack pitch line at y = -pr. Rotate the pinion so a tooth seats
+  // in the rack tooth-space, and shift the rack to the conjugate position.
+  const phaseDeg = 0.3;
+  const p = rotate(pinion(), phaseDeg, { axis: [0, 0, 1] });
+  const r = rack();
+  const bs = base();
+  return [color(p, '#d1a847'), color(r, '#b3b7bd'), color(bs, '#8c8f96')];
 }
 
 export default rackAndPinion();`,
