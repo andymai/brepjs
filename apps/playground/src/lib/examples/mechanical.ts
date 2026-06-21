@@ -4105,14 +4105,14 @@ import { color } from 'brepjs/playground';
 // SAME module at the real 36 mm center distance. Honest classification: a cylindrical (non-throated)
 // crossed-helical worm drive. The frame is a cantilever mount that CLEARS the wheel (no impalement).
 const M = 2;
-const PA = (20 * Math.PI) / 180;
+const PA = (20 * Math.PI) / 180; // involute pressure angle (= the ACME worm flank angle below; both 20°)
 const CENTER = 36; // true center distance = r_worm_pitch(12) + r_wheel_pitch(24)
 const BACKLASH = 0.22;
 const WORM_PITCH_R = 12;
 const WORM_OD_R = 14;
 const WORM_ROOT_R = WORM_PITCH_R - 1.25 * M;
 const LEAD = Math.PI * M; // single-start
-const FLANK = (20 * Math.PI) / 180;
+const FLANK = PA; // ACME worm flank angle — intentionally the same 20° as the pressure angle
 const SPT = 24; // helix sections per turn
 const THREAD_LEN = 30;
 const SHAFT_R = 5;
@@ -4485,7 +4485,7 @@ const THETA_CLOSED = ((BASE_R - BAR_R) / K) * 2 * Math.PI;
 const SCROLL_TO_PINION = SCROLL_R / PINION_R;
 const jawRadius = (theta: number) => BASE_R - (K / (2 * Math.PI)) * theta;
 
-// Chuck body: bored disk + recessed scroll pocket + three radial T-slots + a rim pinion socket.
+// Chuck body: bored disk + recessed scroll pocket + three radial jaw slots + a rim pinion socket.
 function chuckBody(): Shape3D {
   let body: Shape3D = cylinder(BODY_R, BODY_H);
   body = unwrap(cut(body, cylinder(BORE_R, BODY_H + 4, { at: [0, 0, -2] })));
