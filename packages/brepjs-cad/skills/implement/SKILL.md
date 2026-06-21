@@ -29,7 +29,8 @@ drops the one feature that makes it itself.
 1. Decompose the brief into named features, then mark the **ONE defining feature** — the geometry without
    which it's a generic blob. `GT2 pulley` → the belt-tooth profile (a smooth groove is not a GT2 pulley);
    `fluted knob` → full-height flutes around the **whole** perimeter (scattered scallops are not flutes);
-   `twisted impeller` → the blade twist (`sketch.extrude(h, { twistAngle })`, not flat blades); `scroll chuck` →
+   `twisted impeller`/`swept fan` → a **cambered** airfoil section extruded **radially** with a pitch twist
+   (`references/airfoils.md`), not flat blades or `twistAngle` on a paddle; `scroll chuck` →
    the spiral face groove; `involute gear` → the tooth flank (`references/gears.md`).
 2. Build that feature **to spec**, not an eyeballed approximation. Each of the above passes `--check` while
    missing its headline feature — a blob that verifies. If the feature needs real math (gear/thread/involute/
@@ -144,7 +145,8 @@ predict `xMin = 0` for a corner chamfered at `x = 0`, never `xMin = -chamfer`.
 `references/getting-started.md` · `primitives.md` · `sketching-2d.md` · `booleans.md` ·
 `modifiers.md` · `transforms.md` · `measurement-validation.md` · `assemblies-motion.md` ·
 `operation-tiers.md`. Maker recipes: `fdm-conventions.md` · `mechanical-joints.md` ·
-`gridfinity.md` · `gears.md` · `threads.md`. **Backstop:** any symbol not covered →
+`gridfinity.md` · `gears.md` · `threads.md` · `airfoils.md` (fans/props/impellers/vanes).
+**Backstop:** any symbol not covered →
 `reference/llms-full.txt` (every export with signatures), bundled in the package.
 
 ## Examples index (read the closest before authoring)
