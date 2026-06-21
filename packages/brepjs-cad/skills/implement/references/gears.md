@@ -96,10 +96,11 @@ annular disc minus a full external gear of the same `m`/PA, leaving the conjugat
   pair _adds_ radii; the internal pair subtracts). For a planetary set the planets orbit at
   `r_sun + r_planet = r_ring − r_planet`, which forces `N_ring = N_sun + 2·N_planet`; ratio (ring
   fixed, carrier out) = `1 + N_ring/N_sun`.
-- **Backlash sign INVERTS.** Because the cutter is _subtracted_, a fatter cutter tooth makes a
-  _thinner_ ring tooth → more clearance: use **negative** backlash / a slightly oversized cutter
-  (plus a touch of extra addendum to deepen the ring valleys past the planet tip). Counterintuitive —
-  the opposite of an external gear.
+- **The backlash ADJUSTMENT inverts** (the clearance itself stays positive — don't call it "negative
+  backlash", which means an interference fit). Because the cutter is _subtracted_, an **oversized**
+  cutter tooth leaves a _thinner_ ring tooth → more running clearance. So on an internal ring you add
+  clearance by **fattening the cutter**, the inverse of an external gear (where you thin the tooth
+  directly); a touch of extra addendum also deepens the ring valleys past the planet tip.
 
 ## Timing-belt pulleys (non-involute)
 
@@ -137,8 +138,9 @@ hub with `cut`.
      crawls ~57× too slowly).
    - **worm ↔ wheel:** centre distance `r_worm_pitch + r_wheel_pitch`; rotate the worm by φ and the
      wheel by `φ/ratio` (`ratio = N_wheel / starts`).
-   - **planet ↔ ring (internal):** spacing `r_ring − r_planet` (a subtraction); planet spins, ring
-     fixed. (sun ↔ planet is a normal gear↔gear pair.)
+   - **planet ↔ ring (internal):** spacing `r_ring − r_planet` (a subtraction); hold the carrier and
+     rotate the planet in place by θ — the ring is fixed, so there is no second-body ratio. (sun ↔
+     planet is a normal gear↔gear pair.)
 
    Mesh sweeps are **expensive** — `intersect` on two high-face-count involute gears is seconds per
    call, and a multi-mesh assembly (a planetary's sun+3-planet+ring) can blow the CLI timeout. Keep
