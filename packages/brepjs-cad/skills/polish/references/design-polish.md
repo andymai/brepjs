@@ -42,7 +42,8 @@ primitives glued together?"** Specifically:
 - **Cooling fins / ribs** — a stack of thin `cylinder` discs (slightly larger R) at even spacing.
 - **Gusset / web** — a `cone` or triangular prism bracing a post where it meets a base: reads as
   engineered AND carries the load. brepjs `box` is rectangular, so build the triangular prism as a
-  `box` minus a 45°-rotated `box` cutter (or `polygon`+`extrude` a right triangle), then `fuse` it
+  `box` minus a 45°-rotated `box` cutter (or `draw(...).lineTo(...).close().sketchOnPlane(p).extrude()`
+  a right triangle — NOT `polygon().extrude()`, which has no `.extrude()`), then `fuse` it
   spanning the post-to-base corner.
 - **Lightening holes** — small `cut` cylinders through a disc/web (flywheel look); implies stress relief.
 - **Groove / seat** — an annular `cut` (ring tool = outer cylinder − inner cylinder) for a
