@@ -1,77 +1,70 @@
-export const DEFAULT_CODE = `import { box, cylinder, cut, fuse, getSolids, unwrap } from 'brepjs/quick';
+export const DEFAULT_CODE = `import {
+  box,
+  cylinder,
+  fuse,
+  cutAll,
+  chamfer,
+  edgeFinder,
+  unwrap,
+} from 'brepjs/quick';
 
-// Parametric interlocking brick (LEGO-style). Any size from 3 numbers:
-// STUDS_X x STUDS_Y studs in plan, PLATES tall. Units: mm.
-//
-// Interlocking system:
-//  - top: a grid of cylindrical STUDS the next brick's underside grips.
-//  - bottom: a hollow cavity ringed by walls, with interior TUBES (between
-//    studs) that clamp onto the studs of the brick below.
-const PITCH = 8; // stud-to-stud spacing (X and Y)
-const CLEARANCE = 0.2; // shrink off the nominal footprint so bricks sit side by side
-const PLATE_H = 3.2; // height of one plate layer
-const WALL = 1.2; // outer wall thickness
-const STUD_R = 2.4; // stud radius (4.8mm dia)
-const STUD_H = 1.8; // stud height above the top face
-const TUBE_OR = 3.25; // underside clamp tube outer radius
-const TUBE_IR = 2.4; // underside clamp tube inner radius (grips a stud)
+// Parametric stud brick — every standard size falls out of three numbers.
+// Try the call at the bottom:
+//   studBrick(2, 4, 3)  → 2×4 brick
+//   studBrick(2, 4, 1)  → 2×4 plate (a brick is 3 plates tall)
+//   studBrick(1, 6, 3)  → 1×6 brick
+//   studBrick(8, 8, 1)  → 8×8 baseplate
+function studBrick(studsX: number, studsY: number, plateUnits: number) {
+  // Interlocking-brick spec (mm).
+  const pitch = 8;       // stud-to-stud spacing
+  const studR = 2.4;     // stud Ø4.8
+  const studH = 1.8;     // stud height
+  const plateH = 3.2;    // 1 plate = 3.2 mm; brick = 3 plates
+  const wall = 1.6;      // outer wall thickness
+  const tubeR = 3.255;   // anti-stud tube OD = 8√2 − 4.8 = 6.51
 
-// --- size from 3 numbers ---
-const STUDS_X = 4;
-const STUDS_Y = 2;
-const PLATES = 3;
+  const W = studsX * pitch;
+  const D = studsY * pitch;
+  const H = plateUnits * plateH;
+  const opts = { trackEvolution: false };
 
-const bodyW = STUDS_X * PITCH - CLEARANCE; // X footprint
-const bodyD = STUDS_Y * PITCH - CLEARANCE; // Y footprint
-const bodyH = PLATES * PLATE_H; // total wall height
-
-// stud centres sit on a PITCH grid inset half a pitch from the footprint corner
-const studX = (i: number) => (i + 0.5) * PITCH - (STUDS_X * PITCH) / 2;
-const studY = (j: number) => (j + 0.5) * PITCH - (STUDS_Y * PITCH) / 2;
-
-function studBrick() {
-  // Solid body, corner-centred on origin in plan, base on z=0.
-  const body = box(bodyW, bodyD, bodyH, { at: [0, 0, bodyH / 2] });
-
-  // Hollow the underside: leave WALL walls all round and a thin top roof.
-  const cavity = box(bodyW - 2 * WALL, bodyD - 2 * WALL, bodyH - WALL, {
-    at: [0, 0, (bodyH - WALL) / 2 - 0.001],
-  });
-  const shell = unwrap(cut(body, cavity));
-
-  // Studs on the top face.
+  // Collect every primitive up-front, then run two batched booleans —
+  // ~3× faster than fusing/cutting one stud at a time.
   const studs = [];
-  for (let i = 0; i < STUDS_X; i++) {
-    for (let j = 0; j < STUDS_Y; j++) {
-      // sink 0.5mm into the roof so the stud overlaps the body and welds
-      studs.push(cylinder(STUD_R, STUD_H + 0.5, { at: [studX(i), studY(j), bodyH - 0.5] }));
+  for (let i = 0; i < studsX; i++) {
+    for (let j = 0; j < studsY; j++) {
+      studs.push(cylinder(studR, studH + 0.3, {
+        at: [i * pitch + pitch / 2, j * pitch + pitch / 2, H - 0.3],
+      }));
     }
   }
 
-  // Underside clamp tubes: between adjacent studs, hollow, rising inside the cavity.
-  // One tube at each interior (i+0.5, j+0.5) lattice node.
-  const tubes = [];
-  // run the tube up into the roof (overlap by 0.5) so it welds to the body
-  const tubeH = bodyH - WALL + 0.5;
-  for (let i = 0; i < STUDS_X - 1; i++) {
-    for (let j = 0; j < STUDS_Y - 1; j++) {
-      const tx = studX(i) + PITCH / 2;
-      const ty = studY(j) + PITCH / 2;
-      const outer = cylinder(TUBE_OR, tubeH, { at: [tx, ty, 0] });
-      // bore stays below the roof so the tube keeps a closed top inside the body
-      const inner = cylinder(TUBE_IR, bodyH - WALL, { at: [tx, ty, -0.5] });
-      tubes.push(unwrap(cut(outer, inner)));
+  const tubeOuters = [];
+  const tubeInners = [];
+  for (let i = 1; i < studsX; i++) {
+    for (let j = 1; j < studsY; j++) {
+      tubeOuters.push(cylinder(tubeR, H - wall, { at: [i * pitch, j * pitch, 0] }));
+      tubeInners.push(cylinder(studR, H - wall, { at: [i * pitch, j * pitch, 0] }));
     }
   }
 
-  // Pairwise fuse over real overlaps welds reliably into one solid.
-  let brick = shell;
-  for (const part of [...studs, ...tubes]) {
-    brick = unwrap(fuse(brick, part));
-  }
+  // Body + studs welded into ONE solid. The studs overlap the top face (sunk 0.3 mm),
+  // and a pairwise fuse() reduce welds reliably where an N-way fuseAll leaves them loose.
+  const body = studs.reduce((acc, s) => unwrap(fuse(acc, s, opts)), box(W, D, H));
 
-  const solids = getSolids(brick);
-  return solids.length === 1 ? solids[0] : brick;
+  // Underside negative space: cavity (carved by tube outers, so the tubes
+  // remain solid in the brick) plus the tube interiors. One cut handles all.
+  const cavity = box(W - 2 * wall, D - 2 * wall, H - wall, {
+    at: [W / 2, D / 2, (H - wall) / 2],
+  });
+  const negativeSpace = tubeOuters.length === 0
+    ? [cavity]
+    : [unwrap(cutAll(cavity, tubeOuters, opts)), ...tubeInners];
+  const brick = unwrap(cutAll(body, negativeSpace, opts));
+
+  const rims = edgeFinder().ofCurveType('CIRCLE').findAll(brick);
+  return unwrap(chamfer(brick, rims, 0.2));
 }
 
-export default studBrick();`;
+export default studBrick(2, 4, 3);
+`;

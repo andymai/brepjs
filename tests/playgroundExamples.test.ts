@@ -10,7 +10,7 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initOC } from './setup.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
-import { evalAndMeshExample, bodySolidCounts } from './helpers/playgroundExampleEval.js';
+import { evalAndMeshExample, bodyHealth } from './helpers/playgroundExampleEval.js';
 
 beforeAll(async () => {
   await initOC();
@@ -47,34 +47,24 @@ describe('playground examples', () => {
     });
   }
 
-  // Multi-part mechanism/assembly examples return an array of DISTINCT bodies,
-  // each of which must be a single connected solid. A body that is secretly a
-  // multi-solid compound — a pin floating off its disc, parts glued by a fuse
-  // that never welded — passes eval+mesh (a disjoint compound still meshes) yet
-  // detaches on STEP/GLB export. getSolids() is the only thing that catches it.
-  const CONNECTED_BODY_EXAMPLES = [
-    'universal-joint',
-    'geneva-drive',
-    'bench-vise',
-    'scotch-yoke',
-    'three-jaw-chuck',
-    'worm-gear-drive',
-    // welded after the verify --metrics audit caught them fragmented (gt2 was 40 loose
-    // solids and INVALID, fan-guard 141, flanged-tee 9, axial-fan 20) — gate so they
-    // can't silently regress (eval+mesh passes on a fragmented compound).
-    'gt2-pulley',
-    'fan-guard',
-    'flanged-tee',
-    'axial-fan',
-  ];
-  for (const id of CONNECTED_BODY_EXAMPLES) {
-    it(`every returned body is a single connected solid: ${id}`, async () => {
-      const example = EXAMPLES.find((e) => e.id === id);
-      if (!example) throw new Error(`example ${id} not found`);
-      const counts = await bodySolidCounts(example.code);
-      expect(counts.length).toBeGreaterThan(0);
-      counts.forEach((n, i) => {
-        expect(n, `${id} body[${i}] is not one solid (getSolids=${n})`).toBe(1);
+  // CORPUS-WIDE connectivity gate. Every returned body must be a SINGLE connected solid.
+  // eval+mesh can't catch a fragmented body — a disjoint compound (a failed weld, a part
+  // detached from its assembly) still meshes non-empty — yet it falls apart on STEP/GLB
+  // export. `verify --metrics` caught these one-off (gt2 was 40 loose solids, fan-guard 141,
+  // vented-louvre 55, rack-and-pinion split); this gates the whole corpus in-process so no
+  // example can silently fragment again. (Solid VALIDITY is enforced separately by `verify`.)
+  //
+  // Multi-part assemblies return an ARRAY of distinct bodies, EACH a single solid — so this
+  // applies corpus-wide with no allowlist (none of today's examples needs one).
+  for (const example of EXAMPLES) {
+    it(`every returned body is one connected solid: ${example.id}`, async () => {
+      const reports = await bodyHealth(example.code);
+      expect(reports.length).toBeGreaterThan(0);
+      reports.forEach((r, i) => {
+        expect(
+          r.solids,
+          `${example.id} body[${i}] is not one connected solid (getSolids=${r.solids})`
+        ).toBe(1);
       });
     });
   }
