@@ -54,12 +54,18 @@ you place is fine; the moment a curved or proud sub-feature defines the extreme,
   used-but-unimported symbol is `TS2304: Cannot find name` and fails `--check` before geometry runs
   (the #1 first-attempt failure). Re-scan the body before finishing.
 - **Unwrap Results.** Booleans and `measureVolume`/`measureArea` return `Result`: `unwrap(cut(...))`
-  and check the `Err` branch before chaining. `TS2322: Result<X> is not assignable to X` means an
-  op (`cut`/`fuse`/`fillet`/`chamfer`/`shell`/…) was used without `unwrap()`.
+  and check the `Err` branch before chaining. `TS2322: Result<X> is not assignable to X` (on an
+  assignment/return) — or **`TS2345`** when you feed an un-unwrapped `Result` straight into another
+  op's argument (e.g. `fuse(a, cut(b, c))`) — means an op (`cut`/`fuse`/`fillet`/`chamfer`/`shell`/…)
+  was used without `unwrap()`. Unwrap at every step, not just the last.
 - **`fuse` welds only where solids overlap.** Bodies merely touching on a coplanar face/ring may
   return a loose `Compound` (`ok:true`, not one watertight solid). Overlap the operands +
   `fuseAll(shapes, { unsafe: true })` to weld; use `compound` for a distinct-bodies assembly.
-  (`references/booleans.md`.)
+  (`references/booleans.md`.) **But a `Compound` result is NOT a failure to chase:** even genuinely
+  overlapping operands often fuse to `shapeType:Compound` (`ok:true`, correct geometry) rather than a
+  single `Solid` — and that's fine, because `shapeType` is report-only/non-authorable and
+  bounds/volume/validity still pass. Don't burn attempts trying to force a `Solid`; only do so (and
+  then only worry) when a **downstream `fillet`/`shell`/`offset`** needs a `ValidSolid` (next rule).
 - **`fillet`/`chamfer`/`shell`/`offset` need a `ValidSolid`.** Primitives already are one and
   booleans preserve it, so a primitive-rooted chain feeds them directly. A shape from a 2D-sketch
   `.extrude()`/`.revolve()` (or `loft`/`sweep`) is typed `Shape3D`; passing it to these ops is
@@ -81,6 +87,12 @@ you place is fine; the moment a curved or proud sub-feature defines the extreme,
 - **`chamfer` is kernel-fragile.** `CHAMFER_FAILED` is common even with a correct edge list. Prefer
   `fillet`, model the bevel additively (`cut` with an angled tool), or drop it. Re-running the same
   chamfer rarely helps.
+- **A _through_ hole/slot/mortise needs a tool proud of BOTH faces.** Size the cutting
+  `cylinder`/`box` LONGER than the body and place it so it pokes out each end (e.g. height = wall + 2,
+  positioned past both faces) — a tool flush with or short of a face leaves a **blind pocket**, not a
+  through feature, and `--check` can't catch it (the part is still valid). The brief word "through"
+  (or "bore", "passage") is the cue. Confirm it actually passes through with the `section`/xray view,
+  not just the exterior.
 - **`revolve` angle is RADIANS** (`Math.PI * 2` = full turn). Build a revolve profile with
   `polygon(points3D)`, not `draw().close().sketchOnPlane('XZ').face()` (fails `--check`).
   (`references/sketching-2d.md`.)
