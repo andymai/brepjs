@@ -42,7 +42,12 @@ The visual judge needs rendered snapshots → the built CLI + viewer + Chrome. B
 what's missing:
 
 1. Root library — `test -f dist/index.js || npm run build`
-2. Viewer — `test -d packages/brepjs-cad/viewer/dist || npm run build --workspace=brepjs-viewer`
+2. Snapshot viewer — `packages/brepjs-cad/viewer/dist`, built by the **brepjs-cad** viewer build
+   (NOT `brepjs-viewer` — that's a different package whose build does NOT produce this dist).
+   Rebuild if missing **OR stale** — a dist older than `viewer/src` throws
+   `globalThis.__setScene is not a function` and then every `--snapshot` fails silently (this is
+   easy to hit after pulling: a `viewer/src` change leaves the committed dist behind):
+   `[ -f packages/brepjs-cad/viewer/dist/index.html ] && [ -z "$(find packages/brepjs-cad/viewer/src -newer packages/brepjs-cad/viewer/dist/index.html)" ] || (cd packages/brepjs-cad && npx vite build --config viewer/vite.config.ts)`
 3. CLI — `test -f packages/brepjs-cad/dist/cli/main.js || npm run build --workspace=brepjs-cad`
 4. Chrome — `cd packages/brepjs-cad && npx puppeteer browsers install chrome`
 

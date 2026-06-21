@@ -47,7 +47,10 @@ signal above and the same diagnose → fix → RED→GREEN → ship discipline.
 ## 0. Pre-flight (once)
 
 Build only what's missing: root lib (`test -f dist/index.js || npm run build`), CLI
-(`--workspace=brepjs-cad`), viewer (`--workspace=brepjs-viewer`), Chrome
+(`--workspace=brepjs-cad`), snapshot viewer (`packages/brepjs-cad/viewer/dist`, from the
+**brepjs-cad** build — NOT `brepjs-viewer`; rebuild if missing **or stale**, since a dist older than
+`viewer/src` throws `globalThis.__setScene is not a function` and silently fails every `--snapshot`:
+`[ -f packages/brepjs-cad/viewer/dist/index.html ] && [ -z "$(find packages/brepjs-cad/viewer/src -newer packages/brepjs-cad/viewer/dist/index.html)" ] || (cd packages/brepjs-cad && npx vite build --config viewer/vite.config.ts)`), Chrome
 (`cd packages/brepjs-cad && npx puppeteer browsers install chrome`). Scratch ESM dir:
 `mkdir -p /tmp/brepjs-eval && printf '{"type":"module"}\n' > /tmp/brepjs-eval/package.json`.
 **Smoke-test the harness** before fanning out: author a trivial `box` part and `verify --check`;
