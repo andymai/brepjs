@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.3](https://github.com/andymai/brepjs/compare/brepjs-v18.99.2...brepjs-v18.99.3) (2026-06-21)
+
+
+### Bug Fixes
+
+* **playground:** fix fragmented examples found by a verify --metrics audit ([#1569](https://github.com/andymai/brepjs/issues/1569)) ([2712080](https://github.com/andymai/brepjs/commit/27120809d1d959bcc7e93b4d37fd64727bf791ce))
+
 ## [18.99.2](https://github.com/andymai/brepjs/compare/brepjs-v18.99.1...brepjs-v18.99.2) (2026-06-21)
 
 
