@@ -31,7 +31,7 @@ const section = () =>
 //    hub radius, then extrude RADIALLY by SPAN with a pitch twist. Camber + twist = a swept airfoil.
 const blade = () =>
   section()
-    .sketchOnPlane('YZ', [R_HUB, 0, 0])
+    .sketchOnPlane('YZ', R_HUB) // scalar origin = offset R_HUB along the plane normal (+X)
     .extrude(SPAN, { twistAngle: PITCH, origin: [0, 0] });
 
 export default () => {
@@ -51,7 +51,7 @@ export default () => {
 
 ## Notes
 
-- **Span direction sets the fan type.** Extruding the section **radially** (`sketchOnPlane('YZ', [R_HUB,0,0])`
+- **Span direction sets the fan type.** Extruding the section **radially** (`sketchOnPlane('YZ', R_HUB)`
   → +X) gives an **axial** fan / propeller (blades reach out to a shroud). Extruding **up the axis** (+Z)
   gives the barber-pole of fins that reads wrong — that's the common mistake.
 - **Camber is what makes it an airfoil.** Drop the camber (set both sagittas to ±THICK/2) and you get a
