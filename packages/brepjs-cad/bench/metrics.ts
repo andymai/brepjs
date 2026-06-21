@@ -10,6 +10,10 @@ export interface MetricsDigest {
   bodyCount: number;
   /** One human-legible line per body pair, e.g. "bodies 0&1: interfering (clearance 0.00mm)". */
   bodyRelations: string[];
+  /** Count of internal cylindrical bores detected (a "has internal features" signal). */
+  internalBores?: number;
+  /** Smallest substantial cylinder radius (bore/shaft), in mm. */
+  minRadius?: number;
   /** Conservative deterministic hard violations (e.g. a degenerate zero-volume body). */
   violations: string[];
   /** True when the relation matrix was capped (large assembly) — the relations are not exhaustive. */
@@ -23,11 +27,14 @@ export function digestMetrics(report: VerifyReport): MetricsDigest | undefined {
     const clearance = r.clearance === undefined ? '' : ` (clearance ${r.clearance.toFixed(2)}mm)`;
     return `bodies ${r.a}&${r.b}: ${r.relation}${clearance}`;
   });
+  const m = report.manufacturability;
   return {
     bodyCount: report.bodies?.length ?? 1,
     bodyRelations: relations,
-    violations: report.manufacturability?.violations ?? [],
-    ...(report.manufacturability?.relationsTruncated ? { relationsTruncated: true } : {}),
+    ...(m?.internalCylinderCount ? { internalBores: m.internalCylinderCount } : {}),
+    ...(m?.minRadius !== undefined ? { minRadius: m.minRadius } : {}),
+    violations: m?.violations ?? [],
+    ...(m?.relationsTruncated ? { relationsTruncated: true } : {}),
   };
 }
 
@@ -36,6 +43,10 @@ export function formatDigest(d: MetricsDigest): string {
   const lines = [`Measured facts (ground truth the render cannot show — trust these):`];
   lines.push(`- distinct bodies: ${d.bodyCount}`);
   if (d.bodyRelations.length) lines.push(`- body relations: ${d.bodyRelations.join('; ')}`);
+  if (d.internalBores !== undefined) {
+    const r = d.minRadius !== undefined ? `, smallest radius ${d.minRadius.toFixed(2)}mm` : '';
+    lines.push(`- internal bores: ${d.internalBores}${r}`);
+  }
   if (d.relationsTruncated)
     lines.push(`- (relation matrix truncated — large assembly; not exhaustive)`);
   if (d.violations.length) lines.push(`- violations: ${d.violations.join('; ')}`);

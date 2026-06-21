@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as brep from 'brepjs';
-import { init, box, compound } from 'brepjs';
+import { init, box, cylinder, cut, fillet, edgeFinder, unwrap, compound } from 'brepjs';
 import { runChecks } from '@/verify/checks.js';
 import { emptyReport } from '@/verify/report.js';
 import { digestMetrics, formatDigest } from '../bench/metrics.js';
@@ -51,6 +51,34 @@ describe('manufacturability metrics (runChecks --metrics)', () => {
   });
 });
 
+describe('bore detection (--metrics)', () => {
+  it('detects a drilled bore: count, radius, and an axis', () => {
+    const blank = box(40, 40, 30, { centered: true });
+    const bored = unwrap(cut(blank, cylinder(4, 40, { at: [0, 0, -20] })));
+    const m = runChecks(brep, bored, { metrics: true }).manufacturability;
+    expect(m?.internalCylinderCount).toBe(1);
+    expect(m?.minRadius).toBeCloseTo(4, 1);
+    expect(m?.bores?.[0]?.radius).toBeCloseTo(4, 1);
+    // bore runs along Z → axis direction is ~(0,0,±1)
+    expect(Math.abs(m?.bores?.[0]?.axisDir?.[2] ?? 0)).toBeCloseTo(1, 2);
+  });
+
+  it('excludes convex edge fillets — not counted as bores, not in minRadius', () => {
+    const b = box(40, 30, 20, { centered: true });
+    const filleted = unwrap(fillet(b, edgeFinder().inDirection('Z').findAll(b), 3));
+    const m = runChecks(brep, filleted, { metrics: true }).manufacturability;
+    expect(m?.internalCylinderCount).toBeUndefined();
+    expect(m?.bores).toBeUndefined();
+    expect(m?.minRadius).toBeUndefined();
+  });
+
+  it('an external shaft sets minRadius but is not an internal bore', () => {
+    const m = runChecks(brep, cylinder(5, 20), { metrics: true }).manufacturability;
+    expect(m?.minRadius).toBeCloseTo(5, 1);
+    expect(m?.internalCylinderCount).toBeUndefined();
+  });
+});
+
 describe('digestMetrics (pure)', () => {
   it('returns undefined when metrics were not computed', () => {
     expect(digestMetrics(emptyReport())).toBeUndefined();
@@ -71,6 +99,24 @@ describe('digestMetrics (pure)', () => {
     const block = formatDigest(d);
     expect(block).toContain('distinct bodies: 2');
     expect(block).toContain('bodies 0&1: interfering');
+  });
+
+  it('surfaces bore count + smallest radius in the digest', () => {
+    const report = emptyReport();
+    report.manufacturability = {
+      violations: [],
+      internalCylinderCount: 2,
+      minRadius: 1.6,
+      bores: [
+        { radius: 1.6, axisOrigin: [0, 0, 0], axisDir: [0, 0, 1] },
+        { radius: 3, axisOrigin: [10, 0, 0], axisDir: [0, 0, 1] },
+      ],
+    };
+    const d = digestMetrics(report);
+    if (!d) throw new Error('expected a digest');
+    expect(d.internalBores).toBe(2);
+    expect(d.minRadius).toBe(1.6);
+    expect(formatDigest(d)).toContain('internal bores: 2, smallest radius 1.60mm');
   });
 });
 

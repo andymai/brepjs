@@ -66,16 +66,31 @@ export interface BodyRelation {
 }
 
 /**
+ * An internal cylindrical feature (a bore / drilled hole), detected by an outward-normal-vs-radial
+ * test (concave) + a substantial angular extent (so corner/edge fillets don't count). The axis line
+ * lets a later phase aim a section cut or anchor a feature mark; the radius is the bore size.
+ */
+export interface BoreInfo {
+  radius: number;
+  /** A point on the bore's axis line. */
+  axisOrigin: readonly [number, number, number];
+  /** Unit direction of the bore axis. */
+  axisDir: readonly [number, number, number];
+}
+
+/**
  * Deterministic, render-free manufacturability metrics. Computed only on demand (CLI `--metrics`);
  * absent otherwise and on degenerate shapes. Informs the judge — never gates a part on its own.
  */
 export interface VerifyManufacturability {
-  /** Smallest analytic-cylinder radius (bore/pin/pillar). Absent if none found. */
+  /** Smallest substantial analytic-cylinder radius (bore/pin/shaft; fillet strips excluded). Absent if none. */
   minRadius?: number;
   /** Best-effort min wall thickness; absent when not computable. */
   minWallThickness?: number;
-  /** Count of internal (concave / enclosed) cylindrical faces — a "has bores" signal. */
+  /** Count of internal cylindrical bores (concave + near-full angular extent). */
   internalCylinderCount?: number;
+  /** The detected internal bores (axis + radius) — for aimed sections / feature marks. */
+  bores?: BoreInfo[];
   /** True when the relation matrix was capped by the pair/time budget (not exhaustive). */
   relationsTruncated?: boolean;
   /** Conservative deterministic flags no process tolerates (e.g. zero-thickness body). */

@@ -1,6 +1,6 @@
 import type { AnyShape, Solid } from 'brepjs';
 import type { BrepNs } from './brepjsRuntime.js';
-import type { BodyInfo, BodyRelation, VerifyManufacturability } from './report.js';
+import type { BodyInfo, BodyRelation, BoreInfo, VerifyManufacturability } from './report.js';
 
 // Deterministic, render-free metrics that inform the design judge (see bench/blind-judge.md). Computed
 // only on demand (CLI `--metrics`) so the author's hot `--check` loop is untouched. The headline signal
@@ -24,6 +24,21 @@ const RELATION_BUDGET_MS = 15_000;
 const MAX_BODIES = 24;
 // A body below this volume (mm³) is treated as a degenerate sliver — a conservative hard violation.
 const VOL_EPS = 1e-9;
+// A cylindrical face counts as a real bore/shaft (not a fillet strip) only above this angular extent
+// (radians): a drilled bore sweeps ~2π, a corner/edge fillet only ~π/2. Empirically separates them.
+const SUBSTANTIAL_USPAN = 2.5;
+// Outward-material-normal · radial > this ⇒ the cylinder is concave (an internal bore). Boss/shaft
+// faces give ≈ -1, bores ≈ +1, so 0.5 is a safe split. Determined empirically against the kernel.
+const BORE_DOT = 0.5;
+
+type V3 = readonly [number, number, number];
+const v3sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const v3dot = (a: V3, b: V3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const v3scale = (a: V3, s: number): V3 => [a[0] * s, a[1] * s, a[2] * s];
+const v3unit = (a: V3): V3 => {
+  const n = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / n, a[1] / n, a[2] / n];
+};
 
 function diagonalOf(boundsList: readonly Bounds[]): number {
   if (boundsList.length === 0) return 1;
@@ -108,14 +123,93 @@ function computeBodyRelations(
   return { relations, truncated: false };
 }
 
+/**
+ * Cylindrical features: the smallest substantial cylinder radius (bore/shaft; fillet strips excluded
+ * by angular extent) and the internal bores (concave, detected by an outward-normal-vs-radial test).
+ * The bore axis lets a later phase aim a section cut or anchor a feature mark.
+ */
+function computeCylinderFeatures(
+  brep: BrepNs,
+  shape: AnyShape
+): { minRadius?: number; bores: BoreInfo[] } {
+  const {
+    getFaces,
+    faceGeomType,
+    faceCenter,
+    normalAt,
+    faceOrientation,
+    faceAxis,
+    measureCurvatureAtMid,
+    uvBounds,
+    isOk,
+  } = brep;
+  const bores: BoreInfo[] = [];
+  let minRadius: number | undefined;
+  let faces;
+  try {
+    faces = getFaces(shape);
+  } catch {
+    return { bores };
+  }
+  for (const f of faces) {
+    const geom = ((): string | null => {
+      try {
+        return faceGeomType(f);
+      } catch {
+        return null;
+      }
+    })();
+    if (geom !== 'CYLINDRE') continue;
+    const ax = faceAxis(f);
+    if (!ax) continue;
+    const curv = measureCurvatureAtMid(f);
+    if (!isOk(curv)) continue;
+    const k = Math.max(Math.abs(curv.value.maxCurvature), Math.abs(curv.value.minCurvature));
+    if (k <= 0) continue;
+    const radius = 1 / k;
+    // Skip fillet/round strips — only a near-full cylinder is a bore/shaft worth sizing.
+    try {
+      const uv = uvBounds(f);
+      if (uv.uMax - uv.uMin <= SUBSTANTIAL_USPAN) continue;
+    } catch {
+      continue;
+    }
+    minRadius = minRadius === undefined ? radius : Math.min(minRadius, radius);
+    // Internal (bore) test: the outward material normal at the wall points away from the axis.
+    try {
+      const p = faceCenter(f);
+      const o = ax.origin;
+      const d = v3unit(ax.direction);
+      const rel = v3sub(p, o);
+      const radial = v3unit(v3sub(rel, v3scale(d, v3dot(rel, d))));
+      const n = normalAt(f);
+      const out = faceOrientation(f) === 'forward' ? n : v3scale(n, -1);
+      if (v3dot(v3unit(out), radial) > BORE_DOT) {
+        bores.push({ radius, axisOrigin: [o[0], o[1], o[2]], axisDir: [d[0], d[1], d[2]] });
+      }
+    } catch {
+      // a kernel hiccup on one face shouldn't drop the rest
+    }
+  }
+  return { ...(minRadius !== undefined ? { minRadius } : {}), bores };
+}
+
 /** Orchestrate the deterministic metrics for a verified shape. Never throws (caller wraps too). */
-export function computeMetrics(brep: BrepNs, _shape: AnyShape, solids: readonly Solid[]): Metrics {
+export function computeMetrics(brep: BrepNs, shape: AnyShape, solids: readonly Solid[]): Metrics {
   const bodies = computeBodies(brep, solids);
   const violations: string[] = [];
   bodies.forEach((b) => {
     if (b.volume <= VOL_EPS) violations.push(`body ${b.index} has ~zero volume (degenerate)`);
   });
   const manufacturability: VerifyManufacturability = { violations };
+
+  // Cylindrical features (bores) — independent of body count.
+  const feat = computeCylinderFeatures(brep, shape);
+  if (feat.minRadius !== undefined) manufacturability.minRadius = feat.minRadius;
+  if (feat.bores.length > 0) {
+    manufacturability.internalCylinderCount = feat.bores.length;
+    manufacturability.bores = feat.bores;
+  }
 
   if (bodies.length <= 1) return { manufacturability };
   if (bodies.length > MAX_BODIES) {
