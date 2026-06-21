@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.99.4](https://github.com/andymai/brepjs/compare/brepjs-v18.99.3...brepjs-v18.99.4) (2026-06-21)
+
+
+### Bug Fixes
+
+* **playground:** corpus-wide connectivity gate + fix 8 render-audit defects ([#1572](https://github.com/andymai/brepjs/issues/1572)) ([95b61d3](https://github.com/andymai/brepjs/commit/95b61d374b59f11ff1bd1585859f9e70483a70be))
+
 ## [18.99.3](https://github.com/andymai/brepjs/compare/brepjs-v18.99.2...brepjs-v18.99.3) (2026-06-21)
 
 
