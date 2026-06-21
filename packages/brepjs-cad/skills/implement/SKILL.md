@@ -20,6 +20,23 @@ Otherwise: `npx -y -p brepjs-cad brep verify …`.
 - Scaffold with `brep init <name>`. **Edit source, never generated artifacts** (STEP/STL/GLB derive
   from the `.brep.ts`).
 
+## Realize the designed object — not just a valid one
+
+`--check` passing means **buildable**, not **correct**. The bar is the part the brief names, recognisable
+as _that_ designed object — and the way that fails is **simplification**: a valid, generic version that
+drops the one feature that makes it itself.
+
+1. Decompose the brief into named features, then mark the **ONE defining feature** — the geometry without
+   which it's a generic blob. `GT2 pulley` → the belt-tooth profile (a smooth groove is not a GT2 pulley);
+   `fluted knob` → full-height flutes around the **whole** perimeter (scattered scallops are not flutes);
+   `twisted impeller` → the blade twist (`extrude(h, { twistAngle })`, not flat blades); `scroll chuck` →
+   the spiral face groove; `involute gear` → the tooth flank (`references/gears.md`).
+2. Build that feature **to spec**, not an eyeballed approximation. Each of the above passes `--check` while
+   missing its headline feature — a blob that verifies. If the feature needs real math (gear/thread/involute/
+   scroll), use the reference recipe; don't substitute a smooth or sparse stand-in.
+3. Before finishing, re-read the brief noun by noun and confirm each named feature is actually in the
+   geometry — including count (e.g. _four_ mount holes, _N_ teeth), not just present-ish.
+
 ## Choose the operation (reliability tiers)
 
 Prefer ops that succeed first-try; lean on the report and small steps for advanced ops. Full table:
