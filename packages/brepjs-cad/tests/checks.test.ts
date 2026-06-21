@@ -27,6 +27,25 @@ describe('runChecks', () => {
     expect(report.checks.some((c) => c.name === 'positiveVolume' && c.passed)).toBe(true);
   });
 
+  it('flags a multi-body Compound in notes (fragmentation advisory) without failing the report', () => {
+    // Two boxes sitting apart → a 2-solid Compound. An author on plain --check otherwise can't see
+    // the part fragmented; the advisory surfaces the count + fix but must not affect `ok`.
+    const asm = compound([box(10, 10, 10), box(10, 10, 10, { at: [40, 0, 0] })]);
+    const report = runChecks(brep, asm);
+    const note = report.notes?.find((n) => n.includes('2 solids'));
+    expect(note).toBeDefined();
+    expect(note).toMatch(/not welded/i);
+    // advisory only — every check still passes
+    expect(report.checks.every((c) => c.passed)).toBe(true);
+  });
+
+  it('does NOT flag a single solid or a single-solid Compound', () => {
+    expect(runChecks(brep, box(10, 10, 10)).notes).toBeUndefined();
+    // overlapping fuse → one welded solid wrapped in a Compound (solids.length === 1): no advisory
+    const fused = unwrap(fuse(box(10, 10, 10), box(10, 10, 10, { at: [5, 0, 0] })));
+    expect(runChecks(brep, fused).notes).toBeUndefined();
+  });
+
   it('reports topology counts (faces/edges/wires/vertices) for a solid', () => {
     const report = runChecks(brep, box(10, 10, 10));
     expect(report.topology).toBeDefined();

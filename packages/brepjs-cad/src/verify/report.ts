@@ -108,6 +108,12 @@ export interface VerifyReport {
   /** Actionable, code-keyed guidance derived from `errorInfos`. */
   hints: VerifyHint[];
   /**
+   * Non-failing advisories surfaced on the default `--check` path (do NOT affect `ok`). The author
+   * runs `--check` without `--metrics`, so a part that came back as many un-welded bodies is otherwise
+   * invisible to them — the dominant design defect in eval. A multi-body Compound gets a note here.
+   */
+  notes?: string[];
+  /**
    * Measured-vs-expected comparisons from a part's `export const expected`. Empty when the part
    * declares no expectations; when non-empty, `ok` additionally requires every assertion pass.
    */

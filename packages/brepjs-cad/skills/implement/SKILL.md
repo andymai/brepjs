@@ -77,6 +77,9 @@ predict `xMin = 0` for a corner chamfered at `x = 0`, never `xMin = -chamfer`.
   single `Solid` — and that's fine, because `shapeType` is report-only/non-authorable and
   bounds/volume/validity still pass. Don't burn attempts trying to force a `Solid`; only do so (and
   then only worry) when a **downstream `fillet`/`shell`/`offset`** needs a `ValidSolid` (next rule).
+  The report's `notes` flags a **multi-body Compound and its solid count** — if a part you meant as
+  ONE piece comes back as N bodies, the weld failed (overlap + `fuseAll` unsafe); a count matching a
+  deliberate assembly is fine.
 - **`fillet`/`chamfer`/`shell`/`offset` need a `ValidSolid`.** Primitives already are one and
   booleans preserve it, so a primitive-rooted chain feeds them directly. A shape from a 2D-sketch
   `.extrude()`/`.revolve()` (or `loft`/`sweep`) is typed `Shape3D`; passing it to these ops is

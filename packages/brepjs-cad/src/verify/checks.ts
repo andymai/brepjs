@@ -94,6 +94,20 @@ export function runChecks(
     }
   }
 
+  // Fragmentation advisory (non-failing): a part meant to be ONE solid that came back as N un-welded
+  // bodies is the #1 design defect in eval, and it's invisible to an author running plain --check (the
+  // body count needs --metrics). Surface the count + the fix here. Cheap — `solids` is already in hand,
+  // no interference computation (that stays gated behind --metrics). A single-solid Compound (the usual
+  // boolean result) and a real assembly are both legitimate, so this never touches `ok`.
+  if (!isSolid(shape) && solids.length > 1) {
+    (r.notes ??= []).push(
+      `shapeType is ${r.shapeType} with ${solids.length} solids. If this is meant to be ONE part, the ` +
+        `bodies are NOT welded — give the operands a real overlap and fuseAll(shapes, { unsafe: true }). ` +
+        `If it is a deliberate assembly, this is expected. Run --metrics to see whether the bodies touch ` +
+        `(a failed weld) or sit apart (an assembly).`
+    );
+  }
+
   // Volume + positiveVolume for ANY 3D shape. Booleans/modifiers (cut/fuse/chamfer) routinely
   // return a Compound wrapping a single solid; measureVolume sums solids, so gating this on
   // isSolid would silently skip validation for ~half of real multi-feature parts (and leave
