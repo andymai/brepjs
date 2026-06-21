@@ -1903,14 +1903,12 @@ function louvreLid() {
 
   // Angled louvre slots cut across the lid: thin boxes tilted about X.
   const slotTools = [];
-  const halfX = WIDTH / 2 - 14;
   const slotLen = WIDTH - 24;
   for (let y = -DEPTH / 2 + 12; y <= DEPTH / 2 - 12; y += LOUVRE_GAP) {
     const blade = box(slotLen, LOUVRE_W, LID_H + 6, { at: [0, 0, LID_H / 2] });
     const tilted = rotate(blade, 30, { axis: [1, 0, 0], at: [0, y, LID_H / 2] });
     slotTools.push(translate(tilted, [0, y, 0]));
   }
-  void halfX;
   const louvred = unwrap(cut(plate, compound(slotTools)));
 
   // Registration ridge: a downward rectangular lip that nests inside the base walls.
