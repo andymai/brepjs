@@ -20,10 +20,12 @@ sections (`{ ruled: true }` for a clean faceted skin), and `fuse` to a core cyli
 
 ```ts
 const pt = (u, v) => [R * cos(θ) + u * cos(θ), R * sin(θ) + u * sin(θ), z + v]; // u=radial, v=axial
-const section = closedWire(wire([line(p1, apex), line(apex, p3), line(p3, p1)])); // V-tooth
-// ... collect sections, then:
-const ridge = loft(sections, { ruled: true });
-return fuse(cylinder(R + 0.15, HEIGHT), ridge);
+// `wire` AND `closedWire` each return a Result — unwrap both (a bare closedWire(wire(...)) into the
+// sections array is TS2345 when it feeds loft).
+const section = unwrap(closedWire(unwrap(wire([line(p1, apex), line(apex, p3), line(p3, p1)])))); // V-tooth
+// ... collect sections, then (loft + fuse are Results too):
+const ridge = unwrap(loft(sections, { ruled: true }));
+return unwrap(fuse(cylinder(R + 0.15, HEIGHT), ridge));
 ```
 
 - **Profile:** an ISO-ish 60° V is a triangle of radial depth `≈0.6·pitch`, axial half-width

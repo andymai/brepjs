@@ -73,6 +73,13 @@ A **`chamfer`/`fillet` only REMOVES material** — it never grows the bounding b
 outer corner keeps the original face plane as its bound, so the extent stays at the un-chamfered face:
 predict `xMin = 0` for a corner chamfered at `x = 0`, never `xMin = -chamfer`.
 
+An extent is a datum only if you place that **face** directly. A **derived** extent is not — and these
+are the other half of the `EXPECTED_ASSERTION_FAILED`s: a body **translated** beside another (its far
+edge is `offset ± its own half-extent`, not the offset), a face/foot **widened to overlap** a neighbour
+for fusing (its outer edge is the widened size, not the nominal feature length), or a `cylinder`/`cone`
+given a non-default **`axis`** (its far end is `base + axis·length`, e.g. base `x=-15`, axis `-X`,
+length `14` → `xMin=-29`). Compute these from the SAME const that places the geometry, or measure-first.
+
 ## Hard rules
 
 - **Import every function you call.** No globals — every op is a named export from `'brepjs'`. A
@@ -86,10 +93,16 @@ predict `xMin = 0` for a corner chamfered at `x = 0`, never `xMin = -chamfer`.
   and check the `Err` branch before chaining. `TS2322: Result<X> is not assignable to X` (on an
   assignment/return) — or **`TS2345`** when you feed an un-unwrapped `Result` straight into another
   op's argument (e.g. `fuse(a, cut(b, c))`) — means an op (`cut`/`fuse`/`fillet`/`chamfer`/`shell`/…)
-  was used without `unwrap()`. Unwrap at every step, not just the last.
+  was used without `unwrap()`. Unwrap at every step, **including the final return** — a `Result`
+  default export (`export default cut(...)`) slips past `verify` (it auto-unwraps a `Result` default
+  export, so `--check` is green) but renders **nothing** in a viewer/mesh path. Always `unwrap()` the
+  returned shape.
 - **`fuse` welds only where solids overlap.** Bodies merely touching on a coplanar face/ring may
   return a loose `Compound` (`ok:true`, not one watertight solid). Overlap the operands +
-  `fuseAll(shapes, { unsafe: true })` to weld; use `compound` for a distinct-bodies assembly.
+  `fuseAll(shapes, { unsafe: true })` to weld; use `compound` for a distinct-bodies assembly. **For
+  MANY operands** (a grille, a stud grid, a space frame), `fuseAll` unsafe routinely leaves a loose
+  N-solid compound even with overlap — fold with a **pairwise `fuse()` reduce** over real overlaps and
+  confirm `getSolids(part).length === 1`.
   (`references/booleans.md`.) **But a `Compound` result is NOT a failure to chase:** even genuinely
   overlapping operands often fuse to `shapeType:Compound` (`ok:true`, correct geometry) rather than a
   single `Solid` — and that's fine, because `shapeType` is report-only/non-authorable and

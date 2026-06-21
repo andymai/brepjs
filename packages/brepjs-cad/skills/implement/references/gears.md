@@ -113,6 +113,12 @@ mating gear, so there is no meshing pair to validate. Model the trough (an arc o
 the standard and use the same **one closed `polygon` → `extrude`** rim build; add flanges and a bored
 hub with `cut`.
 
+**Build the rim as a single-valued polar curve `r(angle)`**, sweeping angle monotonically `0 → 2π` and
+emitting `[r·cosθ, r·sinθ]` — `r` rides the crest (land) radius and dips into the trough arc per tooth.
+A per-tooth point list assembled from absolute arc endpoints can fold back past the crest (the trough
+arc’s ends don’t land on the land radius), giving a self-intersecting loop that extrudes to a
+`VALIDATION_FAILED` non-manifold solid. The monotonic-angle `r(angle)` curve cannot self-intersect.
+
 ## Build + verify
 
 1. One tooth profile in 2D (involute sampled points, or a trapezoid/straight-rack approximation).
