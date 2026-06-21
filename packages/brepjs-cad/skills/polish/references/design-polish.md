@@ -36,10 +36,14 @@ primitives glued together?"** Specifically:
 (`FILLET_FAILED`). Prefer building the detail from geometry you fuse/cut:
 
 - **Rounded end** — a `sphere` of the shaft radius, flush on a rod end; or a short `cone` taper.
-- **Chamfered rim** — fuse/subtract a `cone` ring at an edge instead of calling `chamfer`.
+- **Chamfered rim** — fuse/subtract a `cone` ring at a circular edge instead of calling `chamfer`.
+  (A continuous rounded-rectangle _outer_ perimeter has no `cone`-ring equivalent — leave it raw, or
+  carefully `fillet` a selected edge list; don't force it.)
 - **Cooling fins / ribs** — a stack of thin `cylinder` discs (slightly larger R) at even spacing.
-- **Gusset / web** — a `cone` or triangular `box` bracing a post where it meets a base: reads as
-  engineered AND carries the load.
+- **Gusset / web** — a `cone` or triangular prism bracing a post where it meets a base: reads as
+  engineered AND carries the load. brepjs `box` is rectangular, so build the triangular prism as a
+  `box` minus a 45°-rotated `box` cutter (or `polygon`+`extrude` a right triangle), then `fuse` it
+  spanning the post-to-base corner.
 - **Lightening holes** — small `cut` cylinders through a disc/web (flywheel look); implies stress relief.
 - **Groove / seat** — an annular `cut` (ring tool = outer cylinder − inner cylinder) for a
   square-bottom groove; **cut a `torus`** for a round-bottom groove (ball raceway, o-ring seat).
@@ -49,7 +53,17 @@ primitives glued together?"** Specifically:
   TAPERED grip, set each cutter's centre at `wallRadius − biteDepth` (not a fixed radius), or the
   bite is uneven and too shallow to read.
 - **D-shaft socket** — a blind `cylinder` bore `cut` with a thin chord `box` gives the shaft flat.
-- **Boss / pad** — a short raised `cylinder`/`box` where another feature mounts.
+- **Boss / pad** — a short raised `cylinder`/`box` where another feature mounts. On a **shelled /
+  thin-wall** part the boss MUST overlap and `fuse` to a real wall or floor (and blend in with a
+  fillet or gusset); a free-standing cylinder dropped into the cavity **floats** — it still passes
+  `ok:true` (it's a disjoint solid), but it detaches on export and reads as a glued-on primitive,
+  _worse_ than the plain shell. After adding bosses to a shell, confirm `getSolids(part).length`
+  equals the body count you expect — a floating boss bumps it.
+- **Shell / enclosure detail** — thin-wall parts have a thinner menu than solid posts/rods. Beyond a
+  wall-`fuse`d boss (above), reach for **screw towers** (a boss fused to a wall, blended with corner
+  gussets), **internal ribs/stiffeners** run flat along a wall face, or a **rim lip / rabbet** (a
+  thin raised step on the opening edge where a lid seats). A free-standing interior cylinder is not
+  polish — it's a floating defect.
 
 When you DO use `fillet`/`chamfer`, **select edges** (`edgeFinder()…findAll`) with small radii, and
 round the edges a human touches first.
