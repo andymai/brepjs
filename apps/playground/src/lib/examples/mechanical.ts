@@ -99,105 +99,45 @@ export default oRing();
     id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
     description: 'An axial cooling fan with a ring of swept, twisted impeller blades.',
-    code: `import {
-  box,
-  cutAll,
-  cylinder,
-  edgeFinder,
-  fillet,
-  fuseAll,
-  line,
-  loft,
-  rotate,
-  unwrap,
-  wire,
-} from 'brepjs/quick';
+    code: `// Axial cooling fan: a ring of swept, cambered, pitch-twisted impeller blades around a hub,
+// enclosed by a shroud ring. Each blade is a CAMBERED airfoil section sketched in the YZ plane
+// at the hub radius, then extruded RADIALLY (+X) across the span with a pitch twist — an axial
+// fan / propeller, not flat fins. (references/airfoils.md)
+import { draw, cylinder, fuse, cut, circularPattern, unwrap } from 'brepjs/quick';
 
-// Axial cooling fan (57×15 form factor): rounded square frame, air bore,
-// four corner mounting holes, a central hub, and a ring of swept, twisted blades.
-function axialFan({
-  width = 57, // outer square width and height (mm)
-  depth = 15, // frame thickness (mm)
-  bore = 48.5, // screw-hole center-to-center separation (mm)
-  hub = 29, // central hub diameter (mm)
-  hubHeight = 2, // hub protrusion above the top face (mm)
-  screwDia = 4.3, // mounting-screw clearance hole diameter (mm)
-  blades = 9, // number of impeller blades
-} = {}) {
-  const cornerR = (width - bore) / 2; // 4.25 mm for the 57x15 default
+const R_HUB = 8; // mm — hub radius (blade roots)
+const R_TIP = 28; // mm — blade tip radius
+const SPAN = R_TIP - R_HUB; // radial blade length
+const CHORD = 18; // mm — airfoil chord
+const CAMBER = 3.2; // mm — airfoil camber (~18% of chord)
+const THICK = 1.6; // mm — section thickness
+const PITCH = 38; // degrees — root→tip blade twist
+const N = 7; // blade count
 
-  // Frame: round the four vertical corners of a plain box.
-  const blank = box(width, width, depth, { at: [0, 0, depth / 2] });
-  const verticalEdges = edgeFinder().inDirection('Z').findAll(blank);
-  const plate = unwrap(fillet(blank, verticalEdges, cornerR));
+// Cambered thin-plate airfoil: upper surface (camber + half-thickness), lower surface returns
+// with (camber − half-thickness) — a crescent, not a flat strip.
+const section = () =>
+  draw([-CHORD / 2, 0])
+    .sagittaArcTo([CHORD / 2, 0], CAMBER + THICK / 2)
+    .sagittaArcTo([-CHORD / 2, 0], -(CAMBER - THICK / 2))
+    .close();
 
-  // Air bore through the centre.
-  const airBore = cylinder(width / 2 - 4, depth + 2, { at: [0, 0, -1] });
+// One blade: section in the plane perpendicular to the span (YZ → extrudes +X) at the hub radius,
+// extruded radially by SPAN with a pitch twist.
+const blade = () =>
+  section().sketchOnPlane('YZ', [R_HUB, 0, 0]).extrude(SPAN, { twistAngle: PITCH, origin: [0, 0] });
 
-  // Four corner mounting holes.
-  const screwHoles = [];
-  for (const sx of [-1, 1]) {
-    for (const sy of [-1, 1]) {
-      screwHoles.push(
-        cylinder(screwDia / 2, depth + 2, {
-          at: [(sx * bore) / 2, (sy * bore) / 2, -1],
-        }),
-      );
-    }
-  }
-
-  const frame = unwrap(cutAll(plate, [airBore, ...screwHoles]));
-
-  // Hub: solid cylinder protruding above the top face.
-  const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
-
-  // A ring of swept, twisted blades. Each blade is lofted through three thin
-  // cross-sections from hub to rim — wider and steeper at the root, narrower and
-  // flatter at the tip — so it reads as a real impeller instead of a flat tab.
-  // Sections are built as wires (4 lines) in planes perpendicular to the radial
-  // axis, each tilted to its local pitch; a non-ruled loft curves between them.
-  const thick = 1.2; // blade thickness
-  const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
-  const rOuter = width / 2 - 5; // tip stays inside the air bore radius
-  const zMid = depth - 4; // blade mid-plane just below the top face
-
-  const bladeSection = (r: number, c: number, pitchDeg: number) => {
-    const th = (pitchDeg * Math.PI) / 180;
-    const cs = Math.cos(th);
-    const sn = Math.sin(th);
-    // A chord×thick rectangle in the (tangential, axial) plane at radius r,
-    // tilted by the local pitch about the radial axis.
-    const corner = (y0: number, z0: number): [number, number, number] => [
-      r,
-      y0 * cs - z0 * sn,
-      zMid + y0 * sn + z0 * cs,
-    ];
-    const a = corner(-c / 2, -thick / 2);
-    const b = corner(c / 2, -thick / 2);
-    const cc = corner(c / 2, thick / 2);
-    const d = corner(-c / 2, thick / 2);
-    return unwrap(wire([line(a, b), line(b, cc), line(cc, d), line(d, a)]));
-  };
-  const makeBlade = () =>
-    unwrap(
-      loft(
-        [
-          bladeSection(rInner, 10, 40),
-          bladeSection((rInner + rOuter) / 2, 8.5, 30),
-          bladeSection(rOuter, 7, 22),
-        ],
-        { ruled: false },
-      ),
-    );
-  const bladeRing = [];
-  for (let i = 0; i < blades; i++) {
-    bladeRing.push(rotate(makeBlade(), (360 * i) / blades, { axis: [0, 0, 1] }));
-  }
-
-  return unwrap(fuseAll([frame, hubBody, ...bladeRing]));
-}
-
-export default axialFan();`,
+export default (() => {
+  const hub = cylinder(R_HUB + 1, 22, { at: [0, 0, -11] });
+  const blades = unwrap(circularPattern(blade(), [0, 0, 1], N));
+  const impeller = unwrap(fuse(hub, blades));
+  // Shroud ring with a little tip clearance over R_TIP.
+  const ring = unwrap(
+    cut(cylinder(R_TIP + 3, 26, { at: [0, 0, -13] }), cylinder(R_TIP + 0.5, 30, { at: [0, 0, -15] }))
+  );
+  // Impeller and shroud are distinct parts (the impeller spins inside the duct).
+  return [impeller, ring];
+})();`,
   },
   {
     id: 'fan-guard',
@@ -206,167 +146,149 @@ export default axialFan();`,
     code: `import {
   box,
   cylinder,
+  torus,
+  fuse,
   cut,
-  cutAll,
-  fuseAll,
-  fillet,
-  edgeFinder,
-  rotate,
+  circularPattern,
+  getSolids,
   unwrap,
+  type Shape3D,
 } from 'brepjs/quick';
 
-// Fan finger guard: a rounded square plate with a circular air opening, filled
-// by a concentric-ring + spoke grille. Solid corners carry the mounting holes.
-// Defaults fit a 60 mm fan (50 mm screw pitch, M4).
-function fanGuard(
-  width = 60, // fan side length (mm) → plate is width × width
-  thickness = 2.5, // plate thickness; also the ring / spoke width
-  holePitch = 50, // centre-to-centre of the diagonal mounting holes (mm)
-  screwClearance = 2.4, // mounting hole radius (M4 clearance ≈ 2.4 mm)
-) {
-  const half = width / 2;
+// Fan finger guard: a square mounting plate with a central opening, four corner
+// bolt holes, and a concentric ring-and-spoke grille filling the opening.
+// Sized for an 80mm axial fan. Units: mm.
+const PLATE = 80; // plate width/depth (X/Y)
+const PLATE_T = 3; // plate thickness (Z)
+const OPENING_R = 37; // central opening radius (74mm flow path)
 
-  // Round the corners FIRST (clean 4-edge fillet on a plain box), THEN punch the
-  // air opening — leaving solid corner gussets for the screws to pass through.
-  const cornerR = Math.min(thickness * 1.5, half - 0.5);
-  const plate = box(width, width, thickness, { at: [0, 0, thickness / 2] });
-  const rounded = unwrap(
-    fillet(plate, edgeFinder().inDirection('Z').findAll(plate), cornerR),
-  );
-  const openingR = half - thickness;
-  const frame = unwrap(cut(rounded, cylinder(openingR, thickness + 2, { at: [0, 0, -1] })));
+const HOLE_R = 2.2; // corner bolt hole radius (M4 clearance)
+const HOLE_INSET = 4; // bolt-hole center inset from each plate edge
 
-  // Central hub the spokes radiate from.
-  const hubRadius = Math.max(thickness * 1.5, width * 0.08);
-  const parts = [frame, cylinder(hubRadius, thickness, { at: [0, 0, 0] })];
+const BAR = 2.4; // grille bar thickness (width of rings/spokes)
+const HUB_R = 5; // central hub radius
+const SPOKE_COUNT = 8; // radial spokes
+const RING_RADII = [13, 24, 33]; // concentric grille ring center radii
 
-  // Concentric rings, each a thin annulus, spaced so gaps stay finger-safe.
-  const ringSpan = half - thickness - hubRadius;
-  const ringCount = Math.max(1, Math.floor(ringSpan / (2 * thickness)));
-  const pitch = ringSpan / ringCount;
-  for (let i = 1; i <= ringCount; i++) {
-    const ro = hubRadius + i * pitch;
-    const ri = ro - thickness / 2;
-    const ring = unwrap(
-      cut(
-        cylinder(ro, thickness, { at: [0, 0, 0] }),
-        cylinder(ri, thickness + 2, { at: [0, 0, -1] }),
-      ),
-    );
-    parts.push(ring);
-  }
+export default (() => {
+  // Plate with a circular central opening, then four corner bolt holes.
+  const plate = box(PLATE, PLATE, PLATE_T, { at: [0, 0, PLATE_T / 2] });
+  const openingTool = cylinder(OPENING_R, PLATE_T + 2, { at: [0, 0, -1] });
+  let frame = unwrap(cut(plate, openingTool));
 
-  // Spokes: full-width bars rotated onto 45° increments, tying rings to frame.
-  const spokeLen = width;
-  for (const angle of [0, 45, 90, 135]) {
-    const bar = box(spokeLen, thickness, thickness, {
-      at: [0, 0, thickness / 2],
-    });
-    parts.push(rotate(bar, angle, { axis: [0, 0, 1], at: [0, 0, 0] }));
-  }
-
-  const grille = unwrap(fuseAll(parts));
-
-  // Drill the four corner mounting holes through the solid gussets.
-  const o = holePitch / 2;
-  const holeCenters = [
-    [-o, -o],
-    [o, -o],
-    [o, o],
-    [-o, o],
+  const hc = PLATE / 2 - HOLE_INSET;
+  const corners: [number, number][] = [
+    [hc, hc],
+    [-hc, hc],
+    [hc, -hc],
+    [-hc, -hc],
   ];
-  const holes = holeCenters.map(([x, y]) =>
-    cylinder(screwClearance, thickness + 2, { at: [x, y, -1] }),
-  );
-  return unwrap(cutAll(grille, holes));
-}
+  for (const [x, y] of corners) {
+    const drill = cylinder(HOLE_R, PLATE_T + 2, { at: [x, y, -1] });
+    frame = unwrap(cut(frame, drill));
+  }
 
-export default fanGuard();`,
+  // Grille pieces, all the full plate thickness so they sit flush in the opening.
+  const pieces: Shape3D[] = [];
+
+  // Central hub disc.
+  pieces.push(cylinder(HUB_R, PLATE_T, { at: [0, 0, 0] }));
+
+  // Concentric rings (annular bars) made by cutting an inner cylinder from an outer.
+  for (const r of RING_RADII) {
+    const outer = cylinder(r + BAR / 2, PLATE_T, { at: [0, 0, 0] });
+    const inner = cylinder(r - BAR / 2, PLATE_T + 2, { at: [0, 0, -1] });
+    pieces.push(unwrap(cut(outer, inner)));
+  }
+
+  // Radial spokes from the hub to the plate rim, patterned around the axis.
+  // One spoke bar lying along +X, overlapping the hub and reaching the rim.
+  const spokeLen = OPENING_R + 1; // reach into the plate rim for a clean weld
+  const spoke = box(spokeLen, BAR, PLATE_T, { at: [spokeLen / 2, 0, PLATE_T / 2] });
+  const spokes = unwrap(circularPattern(spoke, [0, 0, 1], SPOKE_COUNT));
+  pieces.push(spokes);
+
+  // Fold everything (frame + grille pieces) into one body with pairwise fuse over
+  // real overlaps; fuseAll on this many operands leaves a loose compound.
+  let part: Shape3D = frame;
+  for (const p of pieces) {
+    part = unwrap(fuse(part, p));
+  }
+
+  const solids = getSolids(part);
+  return solids.length === 1 ? solids[0] : part;
+})();`,
   },
   {
     id: 'gt2-pulley',
     label: 'GT2 Timing Pulley',
     description: 'A GT2 timing pulley with flanges and a bored hub.',
-    code: `// gt2-pulley.brep.ts — GT2 timing-belt pulley: belt-tooth rim + flanges + bored hub.
-// Defining feature: the GT2 belt-tooth profile — a shallow circular-arc valley repeated
-// at 2 mm pitch around the rim (NOT an involute gear, NOT a smooth groove). Built as one
-// closed polygon of all teeth -> extrude (the reliable rim build), then flanges + bore via cut.
-import { polygon, extrude, cylinder, cut, fuse, unwrap } from 'brepjs/quick';
+    code: `// GT2 timing pulley: belt-toothed rim caged between two flanges, on a hub stub
+// with a through bore and a radial grub-screw hole. GT2x20 for a 5 mm shaft.
+import { polygon, extrude, cylinder, fuse, cut, rotate, translate, unwrap } from 'brepjs/quick';
 
-const PITCH = 2.0; // GT2 belt pitch (mm)
 const TEETH = 20;
-const TOOTH_DEPTH = 0.76; // GT2 tooth depth into the rim
-const TOOTH_R = 0.555; // GT2 tooth groove (valley) arc radius
-const BELT_WIDTH = 6.0; // toothed-rim width (6 mm belt)
-const FLANGE_OD = 18.0; // flange outer diameter
-const FLANGE_T = 1.0; // flange thickness (each)
-const BORE_R = 2.5; // central bore radius (5 mm shaft)
+const PITCH = 2.0; // GT2 belt pitch (mm)
+const TOOTH_DEPTH = 0.75; // groove depth (crest land -> trough bottom)
+const GROOVE_R = 0.555; // GT2 tooth (groove) radius
+const BELT_WIDTH = 7.0; // toothed-rim height (z)
+const FLANGE_DIA = 16.0; // flanges overhang the rim to cage the belt
+const FLANGE_THICK = 1.0;
+const BORE_DIA = 5.0; // shaft bore
+const HUB_DIA = 12.0; // hub diameter
+const HUB_LENGTH = 6.0; // hub stub below the toothed body
+const GRUB_R = 1.5; // M3 grub-screw hole radius
+const SAMPLES_PER_TOOTH = 24;
 
-// Pitch radius: N teeth at PITCH around the circle -> circumference = N*PITCH.
-const PR = (TEETH * PITCH) / (2 * Math.PI); // ~6.366 mm
-const OUTER_R = PR + 0.25; // pitch-line offset to the tooth crest (land) radius
+const PITCH_R = (TEETH * PITCH) / (2 * Math.PI);
+const CREST_R = PITCH_R + 0.25; // outer crest (land) radius
+
 function gt2Pulley() {
-  // One tooth pitch spans 2π/TEETH. The profile is a SINGLE-VALUED polar curve r(angle):
-  // a flat land at OUTER_R over the outer half of each pitch sector, dipping into a circular
-  // GT2 groove (radius TOOTH_R, depth TOOTH_DEPTH) centred on each tooth. Single-valued r(angle)
-  // can't self-intersect, so the closed loop extrudes to a valid solid.
-  const dPitch = (2 * Math.PI) / TEETH;
-  // Groove arc: circle of radius TOOTH_R whose lowest point reaches OUTER_R - TOOTH_DEPTH on the
-  // radial line. Its centre sits at radius grooveCenterR; r(angle) within the groove is the
-  // distance from the origin to the arc at that polar angle.
-  const grooveCenterR = OUTER_R - TOOTH_DEPTH + TOOTH_R;
-  // Angular half-width over which the groove arc dips below the land (where arc radius < OUTER_R).
-  // Solve |center + TOOTH_R*dir| = OUTER_R for the polar half-angle relative to the tooth centre.
-  const grooveHalf = Math.min(
-    dPitch / 2,
-    Math.acos(
-      Math.min(
-        1,
-        (grooveCenterR * grooveCenterR + OUTER_R * OUTER_R - TOOTH_R * TOOTH_R) /
-          (2 * grooveCenterR * OUTER_R)
-      )
-    )
-  );
+  const toothAngle = (2 * Math.PI) / TEETH;
+  const grooveHalf = Math.asin(Math.min(0.999, GROOVE_R / CREST_R)) * 1.4;
 
-  // radius of the groove arc at polar angle phi (measured from the tooth centre radial line)
-  const grooveRadiusAt = (phi: number): number => {
-    // ray from origin at angle phi vs circle centred at (grooveCenterR, 0) radius TOOTH_R.
-    // |r*dir - C|^2 = TOOTH_R^2  ->  r^2 - 2 r grooveCenterR cos(phi) + (grooveCenterR^2 - TOOTH_R^2)=0
-    const b = grooveCenterR * Math.cos(phi);
-    const cterm = grooveCenterR * grooveCenterR - TOOTH_R * TOOTH_R;
-    const disc = Math.max(0, b * b - cterm);
-    return b - Math.sqrt(disc); // inner intersection = the trough surface
+  // Single-valued polar radius r(theta): ride the crest land, dip into a smooth
+  // trough once per tooth (gears.md timing-belt recipe — cannot self-intersect).
+  const radiusAt = (theta: number): number => {
+    const local = ((theta % toothAngle) + toothAngle) % toothAngle;
+    const d = local - toothAngle / 2;
+    if (Math.abs(d) > grooveHalf) return CREST_R;
+    const t = d / grooveHalf;
+    return CREST_R - TOOTH_DEPTH * 0.5 * (1 + Math.cos(Math.PI * t));
   };
 
-  const SAMPLES_PER_PITCH = 24;
-  const loop: [number, number, number][] = [];
-  for (let t = 0; t < TEETH; t++) {
-    const c = t * dPitch;
-    for (let i = 0; i < SAMPLES_PER_PITCH; i++) {
-      // sweep this pitch sector from -dPitch/2 to +dPitch/2 about the tooth centre c
-      const phi = -dPitch / 2 + (dPitch * i) / SAMPLES_PER_PITCH;
-      const r =
-        Math.abs(phi) <= grooveHalf ? grooveRadiusAt(phi) : OUTER_R; // land outside the groove
-      const a = c + phi;
-      loop.push([r * Math.cos(a), r * Math.sin(a), 0]);
-    }
+  const total = TEETH * SAMPLES_PER_TOOTH;
+  const pts: [number, number, number][] = [];
+  for (let i = 0; i < total; i++) {
+    const theta = (i / total) * 2 * Math.PI;
+    const r = radiusAt(theta);
+    pts.push([r * Math.cos(theta), r * Math.sin(theta), 0]);
   }
+  const rim = unwrap(extrude(unwrap(polygon(pts)), BELT_WIDTH));
 
-  const rimFace = unwrap(polygon(loop));
-  const rim = unwrap(extrude(rimFace, BELT_WIDTH));
+  // Hub: a disc closing the rim centre, plus a stub below for the grub screw.
+  const hubDisc = cylinder(HUB_DIA / 2, BELT_WIDTH);
+  const hubStub = cylinder(HUB_DIA / 2, HUB_LENGTH, { at: [0, 0, -HUB_LENGTH] });
+  // Flanges cap the belt channel, slightly proud of the crest.
+  const flangeBottom = cylinder(FLANGE_DIA / 2, FLANGE_THICK, { at: [0, 0, -FLANGE_THICK] });
+  const flangeTop = cylinder(FLANGE_DIA / 2, FLANGE_THICK, { at: [0, 0, BELT_WIDTH] });
 
-  // Flanges: two discs wider than the rim, one at each end of the toothed band.
-  const flangeBottom = cylinder(FLANGE_OD / 2, FLANGE_T, { at: [0, 0, -FLANGE_T] });
-  const flangeTop = cylinder(FLANGE_OD / 2, FLANGE_T, { at: [0, 0, BELT_WIDTH] });
-
-  let body = unwrap(fuse(rim, flangeBottom));
+  // Pairwise-fuse the overlapping concentric bodies into ONE welded solid.
+  let body = unwrap(fuse(rim, hubDisc));
+  body = unwrap(fuse(body, hubStub));
+  body = unwrap(fuse(body, flangeBottom));
   body = unwrap(fuse(body, flangeTop));
 
-  // Central bore through the whole stack (proud of both ends).
-  const bore = cylinder(BORE_R, BELT_WIDTH + 2 * FLANGE_T + 4, {
-    at: [0, 0, -FLANGE_T - 2],
+  // Through bore (proud of both ends) + a radial grub-screw hole through the hub wall.
+  const bore = cylinder(BORE_DIA / 2, HUB_LENGTH + BELT_WIDTH + 2 * FLANGE_THICK + 2, {
+    at: [0, 0, -HUB_LENGTH - FLANGE_THICK - 1],
   });
-  return unwrap(cut(body, bore));
+  const grubLen = HUB_DIA + 2;
+  const grub = translate(
+    rotate(cylinder(GRUB_R, grubLen, { at: [0, 0, -grubLen / 2] }), 90, { axis: [1, 0, 0] }),
+    [0, 0, -HUB_LENGTH / 2]
+  );
+  return unwrap(cut(body, bore, grub));
 }
 
 export default gt2Pulley();`,
@@ -376,70 +298,85 @@ export default gt2Pulley();`,
     label: 'Flanged Pipe Tee',
     description:
       'A bolted pipe tee: the perpendicular run/branch union forms the saddle seam — the canonical B-Rep boolean intersection curve.',
-    code: `import { cylinder, cutAll, fuseAll, unwrap } from 'brepjs/quick';
+    code: `import { cylinder, fuse, cut, rotate, translate, unwrap } from 'brepjs/quick';
+import type { Solid } from 'brepjs/quick';
 
-// Flanged pipe tee — a main run and a perpendicular branch, each capped by a
-// bolted flange. The run/branch union creates the saddle intersection curve
-// (the canonical B-Rep boolean seam), and every bore and bolt leaves an exact
-// circular edge. A pure fuse + cut build.
-function pipeTee({
-  runR = 18, // main run outer radius (mm)
-  runLen = 130, // run length, flange face to flange face (mm)
-  branchR = 15, // branch outer radius (mm)
-  branchH = 60, // branch height above the run centre (mm)
-  flangeR = 30, // run flange radius (mm)
-  flangeT = 8, // flange disc thickness (mm)
-  boltR = 3.5, // bolt hole radius (mm)
-  bolts = 4, // bolt holes per flange
-} = {}) {
-  // Branch flange a touch smaller than the run flanges so its rim stays clear
-  // of the run body at the saddle join.
-  const topFlangeR = flangeR - 4;
+// A bolted pipe tee: a horizontal run pipe and a perpendicular branch pipe,
+// fused so the union forms the saddle seam, with bolt flanges at all three ports.
 
-  // Run along X, branch up Z; both cross the origin so the union is clean.
-  const run = cylinder(runR, runLen, { axis: [1, 0, 0], at: [-runLen / 2, 0, 0] });
-  const branch = cylinder(branchR, branchH, { axis: [0, 0, 1], at: [0, 0, 0] });
+const RUN_LEN = 120; // X span of the run (mm)
+const RUN_OR = 16; // run outer radius (mm)
+const RUN_IR = 11; // run bore radius (mm)
 
-  // One flange disc per open end.
-  const flangeXPlus = cylinder(flangeR, flangeT, { axis: [1, 0, 0], at: [runLen / 2 - flangeT, 0, 0] });
-  const flangeXMinus = cylinder(flangeR, flangeT, { axis: [1, 0, 0], at: [-runLen / 2, 0, 0] });
-  const flangeTop = cylinder(topFlangeR, flangeT, { axis: [0, 0, 1], at: [0, 0, branchH - flangeT] });
+const BRANCH_LEN = 60; // Z height of the branch port above the run axis (mm)
+const BRANCH_OR = 14; // branch outer radius (mm)
+const BRANCH_IR = 9; // branch bore radius (mm)
 
-  const body = unwrap(fuseAll([run, branch, flangeXPlus, flangeXMinus, flangeTop]));
+const FLANGE_T = 8; // flange disc thickness (mm)
+const FLANGE_R = 28; // flange disc radius (mm)
+const BOLT_R = 3.5; // bolt-hole radius (mm)
+const BOLT_CIRCLE = 21; // bolt-circle radius (mm)
+const BOLT_COUNT = 4;
 
-  // Through bores down each pipe.
-  const runBore = cylinder(runR - 7, runLen + 10, { axis: [1, 0, 0], at: [-runLen / 2 - 5, 0, 0] });
-  const branchBore = cylinder(branchR - 6, branchH + 30, { axis: [0, 0, 1], at: [0, 0, -20] });
-
-  // A bolt circle on each flange face; holes offset half a step so none land on
-  // the silhouette.
-  const ring = (r: number, axis: 'x' | 'z', fixed: number) => {
-    const holes = [];
-    for (let i = 0; i < bolts; i++) {
-      const a = ((i + 0.5) * (2 * Math.PI)) / bolts;
-      const u = r * Math.cos(a);
-      const v = r * Math.sin(a);
-      holes.push(
-        axis === 'x'
-          ? cylinder(boltR, flangeT + 4, { axis: [1, 0, 0], at: [fixed, u, v] })
-          : cylinder(boltR, flangeT + 4, { axis: [0, 0, 1], at: [u, v, fixed] }),
-      );
-    }
-    return holes;
-  };
-  const bc = flangeR - 6;
-  const bcTop = topFlangeR - 5;
-  const boltHoles = [
-    ...ring(bc, 'x', runLen / 2 - flangeT - 2),
-    ...ring(bc, 'x', -runLen / 2 - 2),
-    ...ring(bcTop, 'z', branchH - flangeT - 2),
-  ];
-
-  return unwrap(cutAll(body, [runBore, branchBore, ...boltHoles]));
+// One face flange built on the +Z axis: a thick disc bored to the pipe ID with a
+// ring of bolt holes. The caller rotates/translates it onto each port.
+function faceFlange(boreR: number): Solid {
+  const disc = cylinder(FLANGE_R, FLANGE_T);
+  const bore = cylinder(boreR, FLANGE_T + 4, { at: [0, 0, -2] });
+  let f = unwrap(cut(disc, bore));
+  const drill = cylinder(BOLT_R, FLANGE_T + 4, { at: [0, 0, -2] });
+  for (let i = 0; i < BOLT_COUNT; i++) {
+    const a = (i / BOLT_COUNT) * Math.PI * 2;
+    const dx = Math.cos(a) * BOLT_CIRCLE;
+    const dy = Math.sin(a) * BOLT_CIRCLE;
+    f = unwrap(cut(f, translate(drill, [dx, dy, 0])));
+  }
+  return f;
 }
 
-export default pipeTee();
-`,
+export default (() => {
+  // Run pipe along X, centered on the origin.
+  const run = cylinder(RUN_OR, RUN_LEN, { at: [-RUN_LEN / 2, 0, 0], axis: [1, 0, 0] });
+  // Branch pipe along +Z, starting below the run axis so it overlaps the run wall
+  // for a clean welded saddle intersection (the canonical B-Rep seam).
+  const branch = cylinder(BRANCH_OR, BRANCH_LEN + RUN_OR, { at: [0, 0, -RUN_OR], axis: [0, 0, 1] });
+
+  // Tee body: union of run and branch -> the saddle seam.
+  const body = unwrap(fuse(run, branch));
+
+  // Flanges are inset into their pipe by OVERLAP so each weld actually holds
+  // (a flush butt only touches and leaves a loose Compound).
+  const OVERLAP = 2;
+
+  // Branch flange at the +Z port (disc is already +Z-axial).
+  const branchFlange = translate(faceFlange(BRANCH_IR), [0, 0, BRANCH_LEN - OVERLAP]);
+
+  // Run flanges: rotate the +Z disc 90deg about Y so its axis points along X,
+  // then place at each run end. +X port faces +X; -X port faces -X.
+  const flangePosX = translate(
+    rotate(faceFlange(RUN_IR), 90, { axis: [0, 1, 0] }),
+    [RUN_LEN / 2 - OVERLAP, 0, 0],
+  );
+  const flangeNegX = translate(
+    rotate(faceFlange(RUN_IR), -90, { axis: [0, 1, 0] }),
+    [-RUN_LEN / 2 + OVERLAP, 0, 0],
+  );
+
+  // Weld everything into one watertight solid, pairwise over real overlaps.
+  let part = unwrap(fuse(body, branchFlange));
+  part = unwrap(fuse(part, flangePosX));
+  part = unwrap(fuse(part, flangeNegX));
+
+  // Bore the run all the way through (tool proud of both run ports).
+  const runBore = cylinder(RUN_IR, RUN_LEN + 4, { at: [-RUN_LEN / 2 - 2, 0, 0], axis: [1, 0, 0] });
+  part = unwrap(cut(part, runBore));
+
+  // Bore the branch through into the run cavity (proud of the branch port).
+  const branchBore = cylinder(BRANCH_IR, BRANCH_LEN + RUN_OR + 4, { at: [0, 0, -RUN_OR - 2], axis: [0, 0, 1] });
+  part = unwrap(cut(part, branchBore));
+
+  return part;
+})();`,
   },
   {
     id: 'fluted-knob',

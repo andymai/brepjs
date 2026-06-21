@@ -59,6 +59,13 @@ describe('playground examples', () => {
     'scotch-yoke',
     'three-jaw-chuck',
     'worm-gear-drive',
+    // welded after the verify --metrics audit caught them fragmented (gt2 was 40 loose
+    // solids and INVALID, fan-guard 141, flanged-tee 9, axial-fan 20) — gate so they
+    // can't silently regress (eval+mesh passes on a fragmented compound).
+    'gt2-pulley',
+    'fan-guard',
+    'flanged-tee',
+    'axial-fan',
   ];
   for (const id of CONNECTED_BODY_EXAMPLES) {
     it(`every returned body is a single connected solid: ${id}`, async () => {
