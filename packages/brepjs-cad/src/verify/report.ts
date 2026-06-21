@@ -202,6 +202,11 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     fix: 'Pass a non-zero thickness to `.extrude(h)` — a height of 0 is a zero-length vector, no solid.',
     nextStep: 'Set a positive extrusion height (units: mm) and re-verify.',
   },
+  DEGENERATE_EDGE: {
+    fix: 'A polygon/wire has coincident consecutive points (a zero-length edge). Dedupe the point list before building — common in computed tooth/gear loops where a land and a groove point land on the same coordinate.',
+    nextStep:
+      'Remove duplicate consecutive points from the profile (a tooth’s trailing point is the next tooth’s leading point), then re-verify.',
+  },
   ZERO_OFFSET: {
     fix: 'Offset by a non-zero amount — an offset of 0 is a no-op the kernel rejects.',
     nextStep: 'Use a small non-zero offset (positive grows, negative shrinks) and re-verify.',

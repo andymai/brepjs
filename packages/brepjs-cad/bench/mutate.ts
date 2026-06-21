@@ -58,4 +58,18 @@ export default () => box(10, 10, 10);
 // wrong bounds shape — { min, max } instead of { xMin, ... } → EXPECTED_UNKNOWN_KEY.
 export const expected = { bounds: { min: 0, max: 10 } };`,
   },
+  {
+    id: 'dup-vertex',
+    expect: { code: 'DEGENERATE_EDGE' },
+    source: `import { polygon, extrude, unwrap } from 'brepjs';
+// coincident consecutive points ([10,0] repeated) → a zero-length edge: the kernel throws
+// 'makeLineEdge: construction failed' with no code → classified as DEGENERATE_EDGE. Common in
+// computed tooth/gear loops where a land and a groove point land on the same coordinate.
+export default () => {
+  const pts: [number, number, number][] = [
+    [0, 0, 0], [10, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0],
+  ];
+  return unwrap(extrude(unwrap(polygon(pts)), 5));
+};`,
+  },
 ];

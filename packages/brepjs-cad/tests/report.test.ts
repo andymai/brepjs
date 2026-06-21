@@ -8,6 +8,7 @@ import {
   VALIDITY_FAILURE_CODE,
   type VerifyReport,
 } from '@/verify/report.js';
+import { classifyKernelMessage } from '@/verify/runPart.js';
 
 type SerializedReport = VerifyReport & { ok: boolean };
 
@@ -82,6 +83,25 @@ describe('hints', () => {
     });
     expect(hint?.fix).not.toMatch(/No specific fix available/);
     expect(hint?.fix).toMatch(/extrude/i);
+  });
+
+  it('classifyKernelMessage maps the codeless makeLineEdge crash to DEGENERATE_EDGE', () => {
+    expect(classifyKernelMessage('part threw: makeLineEdge: construction failed')).toBe(
+      'DEGENERATE_EDGE'
+    );
+    expect(classifyKernelMessage('part threw: some unrelated kernel error')).toBeUndefined();
+  });
+
+  it('gives DEGENERATE_EDGE a dedupe hint (codeless makeLineEdge crash)', () => {
+    // A polygon with coincident consecutive points throws `makeLineEdge: construction failed` with
+    // no structured code; the verify-heal cycle classifies it to DEGENERATE_EDGE so the author gets
+    // an actionable dedupe fix instead of a raw kernel string. Guards that heal.
+    const hint = hintFor({
+      message: 'part threw: makeLineEdge: construction failed',
+      code: 'DEGENERATE_EDGE',
+    });
+    expect(hint?.fix).not.toMatch(/No specific fix available/);
+    expect(hint?.fix).toMatch(/coincident|dedupe|duplicate/i);
   });
 
   it('falls back to the public BrepError.suggestion for unknown codes', () => {
