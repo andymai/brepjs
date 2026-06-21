@@ -1,13 +1,21 @@
-import type { ViewMode } from 'brepjs-viewer';
+import type { SectionAxis, ViewMode } from 'brepjs-viewer';
 
 export const VIEWS = ['iso', 'front', 'top', 'right'] as const;
 export type ViewName = (typeof VIEWS)[number];
+
+/** A clipping section: cut perpendicular to `axis` at `frac` of that axis's bbox span (0..1). */
+export interface SectionSpec {
+  axis: SectionAxis;
+  frac: number;
+}
 
 /** A scene the snapshot pipeline asks the page to render before a capture. */
 export interface SceneControl {
   view: ViewName;
   /** solid | wireframe | xray. Default solid. `xray` reveals internal features through the body. */
   viewMode?: ViewMode;
+  /** A section cut to apply (e.g. aimed through a bore). Absent/null = no section. */
+  section?: SectionSpec | null;
 }
 
 type SceneListener = (c: SceneControl) => void;

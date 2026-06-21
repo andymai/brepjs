@@ -4,14 +4,16 @@ import puppeteer from 'puppeteer';
 import { mkdir } from 'node:fs/promises';
 import { resolve, basename, dirname } from 'node:path';
 import { acquireServer, type AcquireOptions } from './registry.js';
+import type { SectionSpec } from './aiming.js';
 
 export type ViewName = 'iso' | 'front' | 'top' | 'right';
 type ViewMode = 'solid' | 'wireframe' | 'xray';
-/** One capture: a camera view + render mode, written to `<name>.png`. */
+/** One capture: a camera view + render mode (+ optional section), written to `<name>.png`. */
 export interface Shot {
   name: string;
   view: ViewName;
   viewMode?: ViewMode;
+  section?: SectionSpec;
 }
 // The default recipe: the four orthographic-ish views plus an xray pass that reveals internal
 // features (bores, shelled walls, internal teeth) an opaque exterior render is blind to — the
@@ -31,6 +33,8 @@ export interface ShootOptions extends AcquireOptions {
   outDir: string;
   /** Capture recipe; defaults to the four views + an xray internal pass. */
   shots?: readonly Shot[];
+  /** When set (and no explicit `shots`), append an aimed cross-section capture to the default recipe. */
+  section?: SectionSpec;
   /** Wall-clock ms to let the camera settle before each capture (default 400; raise on slow CI). */
   settleMs?: number;
   /** Burn the model's bbox dimensions into each PNG so the agent can read scale (default true). */
@@ -45,7 +49,11 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   const absFile = resolve(opts.file);
   const dir = dirname(absFile);
   const rel = basename(absFile);
-  const shots = opts.shots ?? DEFAULT_SHOTS;
+  const shots =
+    opts.shots ??
+    (opts.section
+      ? [...DEFAULT_SHOTS, { name: 'section', view: 'iso' as const, section: opts.section }]
+      : DEFAULT_SHOTS);
 
   await mkdir(opts.outDir, { recursive: true });
   const server = await acquireServer(opts);

@@ -8,7 +8,7 @@ import { formatDigest, type MetricsDigest } from './metrics.js';
 // request + rubric, decide whether the geometry matches. Verdict is a structured
 // output (messages.parse + Zod) so the score is a clean boolean, not parsed prose.
 
-const JUDGE_SYSTEM = `You are a meticulous CAD reviewer. You are shown rendered views (iso / front / top / right, plus an xray pass that shows internal features — bores, cavities, shelled walls — through a translucent body) of a 3D part a model produced from a natural-language request, along with the request and a rubric describing what a correct part must show. Use the xray to confirm internal features the opaque views can't show.
+const JUDGE_SYSTEM = `You are a meticulous CAD reviewer. You are shown rendered views (iso / front / top / right, an xray pass that shows internal features — bores, cavities, shelled walls — through a translucent body, and when the part has a bore an aimed section cut that opens it as a clean cross-section) of a 3D part a model produced from a natural-language request, along with the request and a rubric describing what a correct part must show. Use the xray and the section to confirm internal features and wall thickness the opaque views can't show.
 
 Judge ONLY whether the rendered geometry matches the request and rubric: the right features are present (holes, walls, grooves, fillets, slots), the overall shape is right, and proportions are roughly correct. Ignore color, lighting, camera, and exact dimensions you cannot measure from a render. Be strict about missing or wrong features — a bored hole that isn't there, a hollow part rendered solid, or the wrong overall form is a fail.
 

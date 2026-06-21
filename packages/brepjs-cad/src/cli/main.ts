@@ -14,6 +14,7 @@ import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
+import { aimedSection } from '../snapshot/aiming.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
 // (Emscripten's default stdout sink). The CLI owns stdout for machine-readable JSON,
@@ -60,7 +61,10 @@ program
     '--expect-code <code>',
     'exit 0 only if the report emits this error code (for fixtures/eval recall)'
   )
-  .option('--expect-invalid', 'exit 0 only if the part is invalid (ok:false) — for known-bad fixtures')
+  .option(
+    '--expect-invalid',
+    'exit 0 only if the part is invalid (ok:false) — for known-bad fixtures'
+  )
   .option(
     '--metrics',
     'compute deterministic manufacturability metrics (per-body breakdown + interference matrix) for the design judge — slower; off by default'
@@ -97,8 +101,17 @@ program
 
       if (targets.length > 1) {
         // Batch: validity-only JSON array. The single-file artifact flags don't apply.
-        if (opts.step || opts.serve || opts.snapshot || opts.glb || opts.expectCode || opts.expectInvalid) {
-          process.stderr.write('batch mode: --step/--glb/--serve/--snapshot/--expect-code/--expect-invalid ignored (single-file only)\n');
+        if (
+          opts.step ||
+          opts.serve ||
+          opts.snapshot ||
+          opts.glb ||
+          opts.expectCode ||
+          opts.expectInvalid
+        ) {
+          process.stderr.write(
+            'batch mode: --step/--glb/--serve/--snapshot/--expect-code/--expect-invalid ignored (single-file only)\n'
+          );
         }
         const results: { file: string; ok: boolean; report: VerifyReport }[] = [];
         for (const f of targets) {
@@ -124,7 +137,8 @@ program
         step: wantStep,
         glb: Boolean(opts.glb),
         check: Boolean(opts.check),
-        metrics: Boolean(opts.metrics),
+        // A snapshot feeds the design judge, so compute metrics too (bores → an aimed section shot).
+        metrics: Boolean(opts.metrics) || Boolean(opts.snapshot),
       });
       let stepPath: string | undefined = opts.step;
       try {
@@ -137,7 +151,15 @@ program
         if (opts.snapshot && stepPath) {
           const shoot = await loadSnapshotShoot(); // lazy: keeps puppeteer off the default path
           if (shoot) {
-            const { pngs } = await shoot({ file: stepPath, outDir: opts.snapshot });
+            const section = aimedSection(
+              report.manufacturability?.bores ?? [],
+              report.measurements.bounds
+            );
+            const { pngs } = await shoot({
+              file: stepPath,
+              outDir: opts.snapshot,
+              ...(section ? { section } : {}),
+            });
             // Diagnostic paths go to stderr — stdout stays a single clean JSON document.
             for (const p of pngs) process.stderr.write(`snapshot: ${p}\n`);
           }
@@ -219,7 +241,10 @@ program
 
 program
   .command('snapshot')
-  .argument('<file>', 'path to a .brep.ts module; renders iso/front/top/right PNGs (no report assertions)')
+  .argument(
+    '<file>',
+    'path to a .brep.ts module; renders iso/front/top/right PNGs (no report assertions)'
+  )
   .option('--out <dir>', 'output directory for the PNGs (default <file>-shots)')
   .option('--label <tag>', 'subfolder for this render set (e.g. pre, post) for A/B pairing')
   .action(async (file: string, opts: { out?: string; label?: string }) => {
@@ -244,7 +269,16 @@ program
         return;
       }
       // fresh: a private ephemeral render server so parallel snapshots don't contend on :7373.
-      const { pngs } = await shoot({ file: stepPath, outDir, fresh: true });
+      const section = aimedSection(
+        report.manufacturability?.bores ?? [],
+        report.measurements.bounds
+      );
+      const { pngs } = await shoot({
+        file: stepPath,
+        outDir,
+        fresh: true,
+        ...(section ? { section } : {}),
+      });
       for (const p of pngs) process.stdout.write(`${p}\n`);
     } finally {
       disposeShape(shape);

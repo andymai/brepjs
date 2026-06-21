@@ -54,15 +54,6 @@ function App() {
   const [sectionAxis, setSectionAxis] = useState<SectionAxis>('x');
   const [sectionPos, setSectionPos] = useState(0);
   const [sectionFlip, setSectionFlip] = useState(false);
-  // bridge window.__renderView / __setScene -> camera + view mode
-  useEffect(
-    () =>
-      onScene((c) => {
-        setView(c.view);
-        setViewMode(c.viewMode ?? 'solid');
-      }),
-    []
-  );
   const handleFit = useCallback(() => {
     setFitSignal((n) => n + 1);
   }, []);
@@ -73,6 +64,24 @@ function App() {
     setHoverFaceId(info ? info.faceId : null);
   }, []);
   const bounds = useMemo(() => (state.status === 'ready' ? meshBounds(state.data) : null), [state]);
+  // bridge window.__renderView / __setScene -> camera + view mode + section. Depends on `bounds`
+  // so a section `frac` maps to an absolute position on the model.
+  useEffect(
+    () =>
+      onScene((c) => {
+        setView(c.view);
+        setViewMode(c.viewMode ?? 'solid');
+        if (c.section && bounds) {
+          const i = c.section.axis === 'x' ? 0 : c.section.axis === 'y' ? 1 : 2;
+          setSectionAxis(c.section.axis);
+          setSectionPos(bounds.min[i] + c.section.frac * (bounds.max[i] - bounds.min[i]));
+          setSectionOn(true);
+        } else {
+          setSectionOn(false);
+        }
+      }),
+    [bounds]
+  );
   const axisIndex = sectionAxis === 'x' ? 0 : sectionAxis === 'y' ? 1 : 2;
   const sectionMin = bounds ? bounds.min[axisIndex] : 0;
   const sectionMax = bounds ? bounds.max[axisIndex] : 1;
