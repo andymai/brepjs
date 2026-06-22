@@ -3826,11 +3826,11 @@ const P = {
   fixedThick: 22,
   movThick: 26,
   jawGap: 34, // fixed grip face to movable grip face (display, partway open)
-  screwR: 6,
+  screwR: 7, // fat lead-screw core so the shallow thread reads as a rod, not a coil
   pitch: 4,
   screwZ: 41, // axis above the bar, in the open mouth
-  boreR: 6.5, // nut bore through the fixed jaw (thread engages here)
-  movBoreR: 6.4, // smooth bore through the movable jaw (screw is captured, free to spin)
+  boreR: 7.6, // nut bore through the fixed jaw (thread engages here)
+  movBoreR: 7.4, // smooth bore through the movable jaw (screw is captured, free to spin)
   tailLen: 5, // small thread run behind the fixed jaw, capped by a retaining collar
   plateThick: 6,
   plateWidth: 46,
@@ -3933,10 +3933,10 @@ function buildMovingJaw() {
   return unwrap(fillet(jaw, topEdges, 2.5));
 }
 
-// Lead screw (steel): a long threaded run from the rear tail, through the fixed
-// nut and across the open mouth, then a smooth journal captured in the movable
-// jaw by a thrust collar, ending in the T-handle crank. Built about +Z, laid
-// along +X by the caller (worldX = localZ + tailX).
+// Lead-screw body (steel): a long threaded run from the rear tail, through the
+// fixed nut and across the open mouth, then a smooth journal captured in the
+// movable jaw by a thrust collar. The T-handle is added in world coords by the
+// caller. Built about +Z, laid along +X by the caller (worldX = localZ + tailX).
 function buildScrew() {
   const shankLen = crankX + 6 - tailX; // tail .. just past the crank
   let screw = cylinder(P.screwR, shankLen, { at: [0, 0, 0] });
@@ -3949,10 +3949,10 @@ function buildScrew() {
       radius: P.screwR,
       pitch: P.pitch,
       height: threadLen,
-      depth: 2,
-      toothHalfWidth: 1.5,
-      crest: 0.7,
-      sectionsPerTurn: 14,
+      depth: 1.4, // shallow on a fat core -> a textured rod, not a standoff coil
+      toothHalfWidth: 1.7,
+      crest: 0.9,
+      sectionsPerTurn: 20,
     })
   );
   screw = unwrap(fuse(screw, ridge));
@@ -3964,21 +3964,26 @@ function buildScrew() {
   const frontCollarZ = movBack - tailX;
   screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, frontCollarZ] })));
   const rearCollarZ = -5 - tailX; // collar from worldX -5 (screw end) forward 6 mm
-  screw = unwrap(fuse(screw, cylinder(P.collarR - 0.5, 6, { at: [0, 0, rearCollarZ] })));
+  return unwrap(fuse(screw, cylinder(P.collarR - 0.5, 6, { at: [0, 0, rearCollarZ] })));
+}
 
-  // T-handle crank, out in front of the movable jaw on a smooth journal.
-  const handleZ = crankX - tailX;
-  const hub = cylinder(P.handleHubR, P.handleHubLen, { at: [0, 0, handleZ - P.handleHubLen / 2] });
-  screw = unwrap(fuse(screw, hub));
-  const bar = translate(
-    rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }),
-    [0, 0, handleZ]
-  );
-  screw = unwrap(fuse(screw, bar));
-  const knobBase = rotate(cylinder(P.knobR, P.knobLen, { at: [0, 0, -P.knobLen / 2] }), 90, { axis: [1, 0, 0] });
-  const off = P.handleLen / 2 + P.knobLen / 2 - 1;
-  screw = unwrap(fuse(screw, translate(knobBase, [0, off, handleZ])));
-  return unwrap(fuse(screw, translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ])));
+// T-handle crank, built directly in world coords at the front crank station so
+// the crossbar is unambiguously horizontal (along Y) — knobs to the sides, not
+// stabbing below the bed. Fused onto the world-placed screw.
+function addCrank(screw: ReturnType<typeof buildScrew>) {
+  const cz = P.screwZ;
+  const hub = cylinder(P.handleHubR, P.handleHubLen, {
+    at: [crankX - P.handleHubLen / 2, 0, cz],
+    axis: [1, 0, 0],
+  });
+  const bar = cylinder(P.handleR, P.handleLen, { at: [crankX, -P.handleLen / 2, cz], axis: [0, 1, 0] });
+  const yEnd = P.handleLen / 2 - 1;
+  const knobPlus = cylinder(P.knobR, P.knobLen, { at: [crankX, yEnd, cz], axis: [0, 1, 0] });
+  const knobMinus = cylinder(P.knobR, P.knobLen, { at: [crankX, -yEnd, cz], axis: [0, -1, 0] });
+  let out = unwrap(fuse(screw, hub));
+  out = unwrap(fuse(out, bar));
+  out = unwrap(fuse(out, knobPlus));
+  return unwrap(fuse(out, knobMinus));
 }
 
 // Hardened jaw plate: horizontal serrations on the grip face + two counterbored
@@ -4013,7 +4018,7 @@ const up: [number, number, number] = [0, 0, 1];
 
 const bed = buildBed();
 const movingJaw = buildMovingJaw();
-const screw = translate(rotate(buildScrew(), 90, { axis: [0, 1, 0] }), [tailX, 0, P.screwZ]);
+const screw = addCrank(translate(rotate(buildScrew(), 90, { axis: [0, 1, 0] }), [tailX, 0, P.screwZ]));
 const plateFixed = translate(buildPlate(), [fixedGrip + plateInset - P.plateThick, 0, 0]);
 const plateMoving = translate(rotate(buildPlate(), 180, { axis: [0, 0, 1] }), [movGrip - plateInset + P.plateThick, 0, 0]);
 
