@@ -3809,64 +3809,78 @@ export default [
 } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 
-// Machinist bench vise — product assembly with a real threaded lead screw, jaw
-// partway open. Body base sits on Z=0; the screw axis runs along X at mid-height.
-// Every component is a distinct solid so the parts color separately.
+// Machinist bench vise — product assembly, jaws partway open. Datums: base
+// bottom at Z=0; the lead screw runs along X just above the slideway, so the
+// serrated jaw plates sit clear above it as a real gripping mouth.
 const P = {
-  baseLen: 110, // body base length along X (mm)
-  baseWidth: 64, // body width along Y (mm)
-  baseHeight: 18, // base slab height (mm)
-  baseFillet: 4, // rounding on the base bottom edges (mm)
-  railWidth: 12, // each way-rail width along Y (mm)
-  railGap: 22, // centre-to-centre spacing of the two rails (mm)
-  railHeight: 8, // rail height above the base top (mm)
-  railFillet: 2.5, // rail top rounding (mm)
-  fixedJawX: 6, // X of the fixed-jaw gripping face (mm)
-  fixedJawThick: 16, // fixed-jaw wall thickness along X (mm)
-  fixedJawWidth: 58, // fixed-jaw width along Y (mm)
-  jawTopZ: 56, // top of the jaws above Z=0 (mm)
-  screwR: 6, // lead-screw shank radius (mm)
-  screwBoreR: 7, // clearance bore radius through fixed jaw/nut (mm)
-  screwPitch: 3, // lead-screw thread pitch (mm)
-  threadLen: 70, // working length of the visible thread run (mm)
-  slideLen: 26, // sliding-jaw length along X (mm)
-  slideWidth: 58, // sliding-jaw width along Y (mm)
-  slideTopZ: 56, // sliding-jaw top above Z=0 (mm)
-  nutBoreR: 6.4, // nut bore radius in the sliding jaw (mm)
-  collarR: 9, // screw collar radius (mm)
-  collarThick: 6, // screw collar thickness along X (mm)
-  handleR: 3.5, // T-handle crossbar radius (mm)
-  handleLen: 44, // crossbar length between knobs (mm)
-  handleHubR: 7, // hub where the bar passes through the screw end (mm)
-  handleHubLen: 13, // hub length (mm)
-  knobR: 5, // flat-capped knob radius (mm)
-  knobLen: 8, // knob length (mm)
-  plateThick: 6, // jaw-plate thickness along X (mm)
-  plateWidth: 50, // jaw-plate width along Y (mm)
-  plateHeight: 34, // jaw-plate height along Z (mm)
-  boltR: 2.4, // through bolt-hole radius (mm)
-  cboreR: 4.2, // counterbore radius (mm)
-  cboreDepth: 3, // counterbore depth (mm)
-  openGap: 24, // display gap between fixed and sliding jaw faces (mm)
+  baseLen: 110,
+  baseWidth: 64,
+  baseHeight: 18,
+  baseFillet: 4,
+  mountX0: 30, // mounting-hole positions in the base flange (bolt to a bench).
+  mountX1: 87, // X0 clears the fixed-jaw foot; both sit in front of/behind the
+  // moving jaw, leaving open sky above each counterbore for a bolt + driver.
+  mountY: 24.5,
+  mountHoleR: 3.5, // bolt-shank clearance through the base
+  mountCboreR: 6.5, // recessed seat for the bolt head, spotfaced on the base top
+  mountCboreDepth: 5,
+  railWidth: 12,
+  railGap: 22,
+  railHeight: 8,
+  railFillet: 2.5,
+  fixedThick: 16, // fixed jaw wall thickness along X (back flush with base back)
+  jawWidth: 58,
+  jawTopZ: 56,
+  screwR: 6,
+  boreR: 7, // clearance bore through the fixed jaw
+  pitch: 3.5,
+  slideLen: 26,
+  mouth: 24, // open gap between the two serrated jaw faces
+  plateThick: 6,
+  plateWidth: 50,
+  plateBotZ: 40, // jaw plates live in the upper jaw, above the screw line
+  plateTopZ: 54,
+  boltR: 2.4,
+  cboreR: 4.2,
+  cboreDepth: 3,
+  collarR: 9, // thrust collar (> boreR, so it seats on the fixed-jaw back face)
+  collarThick: 6,
+  handleR: 3.5,
+  handleLen: 44,
+  handleHubR: 7,
+  handleHubLen: 12,
+  handleStandoff: 28, // smooth neck behind the body — hand clearance to grip + turn
+
+  knobR: 5,
+  knobLen: 8,
 };
 
-const screwZ = P.baseHeight + P.railHeight + (P.jawTopZ - (P.baseHeight + P.railHeight)) / 2;
+const railTop = P.baseHeight + P.railHeight; // 26
+const screwZ = railTop + P.screwR + 1; // 33 — screw rides just above the ways
+const fixedFront = P.fixedThick; // 16, fixed-jaw grip face (back at X=0)
+const fixedPlateGrip = fixedFront - 1 + P.plateThick; // 21
+const movPlateGrip = fixedPlateGrip + P.mouth; // 45
+const movFront = movPlateGrip + 1; // 46... moving-jaw front face
+const movBack = movFront + P.slideLen; // moving-jaw back face
+const screwTip = movBack - 2; // tip seats in the nut bore, no floating stub
+const plateH = P.plateTopZ - P.plateBotZ;
 
-// Body (cast iron): filleted base slab + two filleted way rails + fixed rear jaw,
-// bored along X for the screw.
+// Body (cast iron): filleted base + two way rails + fixed rear jaw, bored along X.
 function buildBody() {
-  let base = box(P.baseLen, P.baseWidth, P.baseHeight, { at: [P.baseLen / 2, 0, P.baseHeight / 2] });
+  let base = box(P.baseLen, P.baseWidth, P.baseHeight, {
+    at: [P.baseLen / 2, 0, P.baseHeight / 2],
+  });
   const baseBottom = edgeFinder()
     .inDirection('X')
     .when((f: Edge) => getBounds(f).zMin < 1)
     .findAll(base);
   base = unwrap(fillet(base, baseBottom, P.baseFillet));
 
-  // Rails sink into the base so the booleans weld to one solid.
-  const railTop = P.baseHeight + P.railHeight;
   const sink = 3;
   const makeRail = (cy: number) => {
-    const rail = box(P.baseLen, P.railWidth, P.railHeight + sink, { at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2 - sink / 2] });
+    const rail = box(P.baseLen, P.railWidth, P.railHeight + sink, {
+      at: [P.baseLen / 2, cy, P.baseHeight + P.railHeight / 2 - sink / 2],
+    });
     const topEdges = edgeFinder()
       .inDirection('X')
       .when((f: Edge) => getBounds(f).zMax > railTop - 0.5)
@@ -3874,50 +3888,80 @@ function buildBody() {
     return unwrap(fillet(rail, topEdges, P.railFillet));
   };
 
-  const fixedJaw = box(P.fixedJawThick, P.fixedJawWidth, P.jawTopZ, {
-    at: [P.fixedJawX - P.fixedJawThick / 2, 0, P.jawTopZ / 2],
+  // Fixed jaw: back face flush with the base back (X=0), grip face at X=fixedFront.
+  const fixedJaw = box(P.fixedThick, P.jawWidth, P.jawTopZ, {
+    at: [P.fixedThick / 2, 0, P.jawTopZ / 2],
   });
 
-  // Sequential fuse welds the casting into one watertight solid.
   let body = unwrap(fuse(base, makeRail(-P.railGap / 2)));
   body = unwrap(fuse(body, makeRail(P.railGap / 2)));
   body = unwrap(fuse(body, fixedJaw));
 
-  const bore = rotate(cylinder(P.screwBoreR, P.fixedJawThick + 20), 90, { axis: [0, 1, 0] });
-  return unwrap(cut(body, translate(bore, [P.fixedJawX + 10, 0, screwZ])));
+  const bore = cylinder(P.boreR, P.fixedThick + 24, { at: [-12, 0, screwZ], axis: [1, 0, 0] });
+  body = unwrap(cut(body, bore));
+
+  // Counterbored mounting holes through the base flange so the vise bolts down
+  // to a bench: a recessed head seat on the top, a clearance hole to the bottom.
+  const mounts = [];
+  for (const mx of [P.mountX0, P.mountX1]) {
+    for (const my of [-P.mountY, P.mountY]) {
+      mounts.push(cylinder(P.mountHoleR, P.baseHeight + 6, { at: [mx, my, -3], axis: [0, 0, 1] }));
+      mounts.push(
+        cylinder(P.mountCboreR, P.mountCboreDepth + 1, {
+          at: [mx, my, P.baseHeight - P.mountCboreDepth],
+          axis: [0, 0, 1],
+        })
+      );
+    }
+  }
+  return unwrap(cutAll(body, mounts));
 }
 
-// Sliding front jaw: a block straddling the rails (channel cut underneath), nut-bored.
-function buildSlidingJaw() {
-  let jaw = box(P.slideLen, P.slideWidth, P.slideTopZ, { at: [0, 0, P.slideTopZ / 2] });
-  const railTopZ = P.baseHeight + P.railHeight;
-  const channel = box(P.slideLen + 2, P.railGap + P.railWidth + 6, railTopZ + 1.5, { at: [0, 0, (railTopZ + 1.5) / 2 - 0.5] });
+// Sliding front jaw: a block riding the ways (channel underneath clears the
+// rails), bottom kept above the base bottom so it never coplanar-fights the bed.
+function buildMovingJaw() {
+  const cx = movFront + P.slideLen / 2;
+  const botZ = P.baseHeight - 2; // tuck 2 mm into the bed; never reaches Z=0
+  let jaw = box(P.slideLen, P.jawWidth, P.jawTopZ - botZ, {
+    at: [cx, 0, (botZ + P.jawTopZ) / 2],
+  });
+  const channel = box(P.slideLen + 2, P.railGap + P.railWidth + 6, railTop + 1 - botZ + 1, {
+    at: [cx, 0, (botZ - 1 + railTop + 1) / 2],
+  });
   jaw = unwrap(cut(jaw, channel));
-  const nutBore = rotate(cylinder(P.nutBoreR, P.slideLen + 8), 90, { axis: [0, 1, 0] });
-  jaw = unwrap(cut(jaw, translate(nutBore, [0, 0, screwZ])));
+  const nutBore = cylinder(P.boreR - 0.6, P.slideLen + 8, { at: [cx - P.slideLen / 2 - 4, 0, screwZ], axis: [1, 0, 0] });
+  jaw = unwrap(cut(jaw, nutBore));
   const topEdges = edgeFinder()
     .inDirection('X')
-    .when((f: Edge) => getBounds(f).zMax > P.slideTopZ - 0.5)
+    .when((f: Edge) => getBounds(f).zMax > P.jawTopZ - 0.5)
     .findAll(jaw);
   return unwrap(fillet(jaw, topEdges, 2.5));
 }
 
-// Lead screw (steel): shank + real thread run + collar + T-handle crank with
-// flat-capped knob ends (no spheres). Built about +Z, laid along X by the caller.
+// Lead screw (steel): shank + thread run that seats in the nut + thrust collar +
+// T-handle crank with flat-capped knobs. Built about +Z, laid along X by caller.
 function buildScrew() {
-  const shankLen = P.threadLen + P.collarThick + 18;
+  // local z = screwTip - worldX (caller maps z -> worldX = screwTip - z).
+  // The crank stands handleStandoff mm behind the fixed-jaw back (worldX=0) on a
+  // smooth neck, so a hand can wrap a knob and swing it clear of the body.
+  const handleZ = screwTip + P.handleStandoff;
+  const shankLen = handleZ + 8; // tip .. just past the crank
   let screw = cylinder(P.screwR, shankLen, { at: [0, 0, 0] });
 
-  const ridge = unwrap(thread({ radius: P.screwR, pitch: P.screwPitch, height: P.threadLen, sectionsPerTurn: 16 }));
-  screw = unwrap(fuse(screw, translate(ridge, [0, 0, 4])));
-  screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, P.threadLen + 12] })));
+  const threadLen = screwTip + 2; // thread from worldX=-2 (ahead of the collar) to the tip
+  const ridge = unwrap(thread({ radius: P.screwR, pitch: P.pitch, height: threadLen, sectionsPerTurn: 16 }));
+  screw = unwrap(fuse(screw, ridge));
 
-  // T-handle crossbar through a raised hub, flat-capped knob ends (no spheres);
-  // sequential fuse welds the crank into one solid.
-  const handleZ = shankLen - 8;
+  const collarZ = screwTip - 1; // thrust collar overlaps 1 mm into the fixed-jaw back
+  screw = unwrap(fuse(screw, cylinder(P.collarR, P.collarThick, { at: [0, 0, collarZ] })));
+
   const hub = cylinder(P.handleHubR, P.handleHubLen, { at: [0, 0, handleZ - P.handleHubLen / 2] });
-  const bar = translate(rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }), [0, 0, handleZ]);
   screw = unwrap(fuse(screw, hub));
+
+  const bar = translate(
+    rotate(cylinder(P.handleR, P.handleLen, { at: [0, 0, -P.handleLen / 2] }), 90, { axis: [1, 0, 0] }),
+    [0, 0, handleZ]
+  );
   screw = unwrap(fuse(screw, bar));
 
   const knobBase = rotate(cylinder(P.knobR, P.knobLen, { at: [0, 0, -P.knobLen / 2] }), 90, { axis: [1, 0, 0] });
@@ -3926,41 +3970,47 @@ function buildScrew() {
   return unwrap(fuse(screw, translate(rotate(knobBase, 180, { axis: [1, 0, 0] }), [0, -off, handleZ])));
 }
 
-// Jaw plate (hardened steel): counterbored bolt holes + serration grooves.
+// Hardened jaw plate: horizontal serrations on the grip face + two counterbored
+// bolt holes. Grip face is at X = plateThick (the +X face).
 function buildPlate() {
-  let plate = box(P.plateThick, P.plateWidth, P.plateHeight, { at: [P.plateThick / 2, 0, P.plateHeight / 2] });
-  // Bolt head countersunk FLUSH into the grip face (X=plateThick), plain shank
-  // through to the back into the jaw; bolts at top/bottom, clear of the grip band.
+  let plate = box(P.plateThick, P.plateWidth, plateH, {
+    at: [P.plateThick / 2, 0, P.plateBotZ + plateH / 2],
+  });
   const tools = [];
-  for (const cz of [P.plateHeight - 7, 7]) {
-    const through = rotate(cylinder(P.boltR, P.plateThick + 4), 90, { axis: [0, 1, 0] });
-    const cbore = rotate(cylinder(P.cboreR, P.cboreDepth + 0.5), 90, { axis: [0, 1, 0] });
-    tools.push(translate(through, [P.plateThick + 2, 0, cz]));
-    tools.push(translate(cbore, [P.plateThick - P.cboreDepth + 0.5, 0, cz]));
+  for (const cy of [-16, 16]) {
+    const cz = P.plateBotZ + plateH / 2;
+    const through = cylinder(P.boltR, P.plateThick + 4, { at: [-2, cy, cz], axis: [1, 0, 0] });
+    const cbore = cylinder(P.cboreR, P.cboreDepth + 0.5, { at: [P.plateThick - P.cboreDepth, cy, cz], axis: [1, 0, 0] });
+    tools.push(through, cbore);
   }
   plate = unwrap(cutAll(plate, tools));
 
   const grooves = [];
-  for (let i = 0; i < 5; i++) {
-    grooves.push(box(1.4, P.plateWidth + 2, 1.0, { at: [P.plateThick - 0.3, 0, 6 + i * 6] }));
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    const gz = P.plateBotZ + 2 + (i * (plateH - 4)) / (n - 1);
+    grooves.push(box(1.4, P.plateWidth + 2, 1.0, { at: [P.plateThick - 0.3, 0, gz] }));
   }
   return unwrap(cutAll(plate, grooves));
 }
 
-// Assemble at the display pose (jaw partway open).
-const slideOpenX = P.fixedJawX + P.openGap + P.slideLen / 2;
+// Spin the whole assembly about Z so the iso camera catches the serrated jaw
+// face, the lead-screw thread across the open mouth, and the T-handle crank.
+const SPIN = 200;
+const up: [number, number, number] = [0, 0, 1];
+
 const body = buildBody();
-const slidingJaw = translate(buildSlidingJaw(), [slideOpenX, 0, 0]);
-const screw = translate(rotate(buildScrew(), -90, { axis: [0, 1, 0] }), [P.fixedJawX + P.threadLen - 4, 0, screwZ]);
-const plateFixed = translate(buildPlate(), [P.fixedJawX, 0, 0]);
-const plateSliding = translate(rotate(buildPlate(), 180, { axis: [0, 0, 1] }), [slideOpenX - P.slideLen / 2, 0, 0]);
+const movingJaw = buildMovingJaw();
+const screw = translate(rotate(buildScrew(), -90, { axis: [0, 1, 0] }), [screwTip, 0, screwZ]);
+const plateFixed = translate(buildPlate(), [fixedPlateGrip - P.plateThick, 0, 0]);
+const plateMoving = translate(rotate(buildPlate(), 180, { axis: [0, 0, 1] }), [movPlateGrip + P.plateThick, 0, 0]);
 
 export default [
-  color(body, '#4d525a'),
-  color(slidingJaw, '#565b63'),
-  color(screw, '#c3c8ce'),
-  color(plateFixed, '#74797f'),
-  color(plateSliding, '#74797f'),
+  color(rotate(body, SPIN, { axis: up }), '#4d525a'),
+  color(rotate(movingJaw, SPIN, { axis: up }), '#565b63'),
+  color(rotate(screw, SPIN, { axis: up }), '#c3c8ce'),
+  color(rotate(plateFixed, SPIN, { axis: up }), '#74797f'),
+  color(rotate(plateMoving, SPIN, { axis: up }), '#74797f'),
 ];
 `,
   },
