@@ -27,8 +27,15 @@ export interface ThreadOptions {
   height: number;
   /** Radial thread height (crest minus root). Defaults to `0.6 * pitch` (≈ISO 60° V). */
   depth?: number;
-  /** Axial half-width of the V tooth. Defaults to `0.42 * pitch`. */
+  /** Axial half-width of the tooth at the root. Defaults to `0.42 * pitch`. */
   toothHalfWidth?: number;
+  /**
+   * Axial half-width of a flat crest, giving a trapezoidal tooth instead of a
+   * pointed V. `0` (default) is a sharp V (ISO/UN). Use a positive value for a
+   * power-screw profile: `≈0.18 * pitch` ≈ Acme/trapezoidal, up near
+   * `toothHalfWidth` ≈ square thread. Must be `< toothHalfWidth`.
+   */
+  crest?: number;
   /** Loft sections per turn — higher is smoother but slower. Defaults to `20`. */
   sectionsPerTurn?: number;
   /** Left-handed thread. Defaults to `false` (right-handed). */
@@ -61,6 +68,7 @@ export function thread(options: ThreadOptions): Result<Shape3D> {
     height,
     depth = 0.6 * pitch,
     toothHalfWidth = 0.42 * pitch,
+    crest = 0,
     sectionsPerTurn = 20,
     lefthand = false,
     inward = false,
@@ -70,6 +78,9 @@ export function thread(options: ThreadOptions): Result<Shape3D> {
   if (!(pitch > 0)) return err(validationError('THREAD_INVALID_PITCH', 'pitch must be > 0'));
   if (!(height > 0)) return err(validationError('THREAD_INVALID_HEIGHT', 'height must be > 0'));
   if (!(depth > 0)) return err(validationError('THREAD_INVALID_DEPTH', 'depth must be > 0'));
+  if (crest < 0 || crest >= toothHalfWidth) {
+    return err(validationError('THREAD_INVALID_CREST', 'crest must be >= 0 and < toothHalfWidth'));
+  }
   if (sectionsPerTurn < 3) {
     return err(validationError('THREAD_TOO_FEW_SECTIONS', 'sectionsPerTurn must be >= 3'));
   }
@@ -94,17 +105,19 @@ export function thread(options: ThreadOptions): Result<Shape3D> {
     const rx = Math.cos(th);
     const ry = Math.sin(th);
     const pt = (u: number, v: number): Vec3 => [cx + u * rx, cy + u * ry, z + v];
-    const p1 = pt(baseU, -a);
-    const apex = pt(apexU, 0);
-    const p3 = pt(baseU, a);
 
-    // Three line edges form a closed triangular tooth by construction; pass the
-    // wire straight to loft (no closed-wire geometry proof — it needs the B-rep
-    // kernel and isn't required: ThruSections closes geometrically-closed wires).
-    const e1 = scope.register(line(p1, apex));
-    const e2 = scope.register(line(apex, p3));
-    const e3 = scope.register(line(p3, p1));
-    const w = wire([e1, e2, e3]);
+    // A pointed V (crest=0) closes through a single apex; a flat crest (crest>0)
+    // gives a trapezoidal power-screw tooth (Acme/square). Either way the wire is
+    // geometrically closed — pass it straight to loft (ThruSections closes it; no
+    // B-rep closed-wire proof needed).
+    const profile =
+      crest > 0
+        ? [pt(baseU, -a), pt(apexU, -crest), pt(apexU, crest), pt(baseU, a)]
+        : [pt(baseU, -a), pt(apexU, 0), pt(baseU, a)];
+    const edges = profile.map((p, k) =>
+      scope.register(line(p, profile[(k + 1) % profile.length] as Vec3))
+    );
+    const w = wire(edges);
     if (!isOk(w)) return w;
     sections.push(scope.register(w.value));
   }

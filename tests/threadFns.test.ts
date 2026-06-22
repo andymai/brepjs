@@ -44,9 +44,30 @@ describe('thread', () => {
     expect(isOk(thread({ radius: 6, pitch: 2.5, height: 5, lefthand: true }))).toBe(true);
   });
 
+  it('builds a flat-crest (Acme/trapezoidal) thread ridge', () => {
+    const r = thread({
+      radius: 6,
+      pitch: 4,
+      height: 8,
+      depth: 2,
+      toothHalfWidth: 1.5,
+      crest: 0.7,
+    });
+    expect(isOk(r)).toBe(true);
+    const ridge = unwrap(r);
+    expect(isShape3D(ridge)).toBe(true);
+    // crest sits at radius + depth = 8
+    expect(getBounds(ridge).xMax).toBeCloseTo(8, 0);
+    expect(unwrap(measureVolume(ridge))).toBeGreaterThan(0);
+  });
+
   it('rejects invalid parameters', () => {
     expect(isErr(thread({ radius: 0, pitch: 1, height: 2 }))).toBe(true);
     expect(isErr(thread({ radius: 5, pitch: 0, height: 2 }))).toBe(true);
     expect(isErr(thread({ radius: 5, pitch: 1, height: 0 }))).toBe(true);
+    // crest must be < toothHalfWidth
+    expect(isErr(thread({ radius: 5, pitch: 2, height: 2, toothHalfWidth: 0.8, crest: 0.8 }))).toBe(
+      true
+    );
   });
 });
