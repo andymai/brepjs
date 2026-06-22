@@ -7087,7 +7087,7 @@ interface RevolveOptions {
     axis?: Vec3;
     /** Pivot point. Default: [0, 0, 0]. */
     at?: Vec3;
-    /** Rotation angle in degrees. Default: 360 (full revolution). */
+    /** Rotation angle in **radians**. Default: 2π (full revolution). */
     angle?: number;
 }
 
@@ -7135,8 +7135,15 @@ interface ThreadOptions {
     height: number;
     /** Radial thread height (crest minus root). Defaults to `0.6 * pitch` (≈ISO 60° V). */
     depth?: number;
-    /** Axial half-width of the V tooth. Defaults to `0.42 * pitch`. */
+    /** Axial half-width of the tooth at the root. Defaults to `0.42 * pitch`. */
     toothHalfWidth?: number;
+    /**
+     * Axial half-width of a flat crest, giving a trapezoidal tooth instead of a
+     * pointed V. `0` (default) is a sharp V (ISO/UN). Use a positive value for a
+     * power-screw profile: `≈0.18 * pitch` ≈ Acme/trapezoidal, up near
+     * `toothHalfWidth` ≈ square thread. Must be `< toothHalfWidth`.
+     */
+    crest?: number;
     /** Loft sections per turn — higher is smoother but slower. Defaults to `20`. */
     sectionsPerTurn?: number;
     /** Left-handed thread. Defaults to `false` (right-handed). */
