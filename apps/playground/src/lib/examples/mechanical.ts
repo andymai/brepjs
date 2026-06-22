@@ -3816,7 +3816,7 @@ import { color } from 'brepjs/playground';
 // travel reserve, so the jaw genuinely opens and closes. Datums: bed bottom at
 // Z=0, screw axis along X.
 const P = {
-  bedLen: 150,
+  bedLen: 96, // ends just past the movable jaw so the crank cantilevers off the front
   flangeW: 78, // wide mounting foot
   flangeH: 11,
   barW: 46, // central slide bar the movable jaw saddles
@@ -3845,11 +3845,11 @@ const P = {
   handleLen: 46,
   handleHubR: 7,
   handleHubLen: 12,
-  handleStandoff: 26, // crank stands clear in front of the movable jaw
+  handleStandoff: 34, // crank stands clear off the front edge so the knobs swing freely
   knobR: 5,
   knobLen: 8,
-  mountX0: 26, // mounting holes in the flange ears (clear of the bar + jaws)
-  mountX1: 124,
+  mountX0: 14, // mounting holes in the flange ears (clear of the bar + jaws)
+  mountX1: 86,
   mountY: 31,
   mountHoleR: 3.5,
   mountCboreR: 6.5,
