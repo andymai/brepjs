@@ -7087,7 +7087,7 @@ interface RevolveOptions {
     axis?: Vec3;
     /** Pivot point. Default: [0, 0, 0]. */
     at?: Vec3;
-    /** Rotation angle in **radians**. Default: 2π (full revolution). */
+    /** Rotation angle in degrees. Default: 360 (full revolution). */
     angle?: number;
 }
 
