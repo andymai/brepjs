@@ -567,9 +567,13 @@ export interface BrepkitKernel {
   tessellateEdge(edge: number, numPoints: number): Float64Array;
 
   /** @unwired */
-  meshEdges(solid: number, deflection: number): BrepkitEdgeLines;
+  meshEdges(solid: number, deflection: number, angularTolerance?: number | null): BrepkitEdgeLines;
 
-  meshEdgesAll(solid: number, deflection: number): BrepkitEdgeLines;
+  meshEdgesAll(
+    solid: number,
+    deflection: number,
+    angularTolerance?: number | null
+  ): BrepkitEdgeLines;
 
   meshBoolean(
     positionsA: Float64Array | number[],

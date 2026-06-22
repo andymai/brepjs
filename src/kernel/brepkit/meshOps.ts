@@ -11,7 +11,7 @@ import type {
   MeshOptions,
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { type BrepkitHandle, unwrap, toArray, warnOnce, DEFAULT_DEFLECTION } from './helpers.js';
+import { type BrepkitHandle, unwrap, toArray, DEFAULT_DEFLECTION } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 export function mesh(
@@ -48,20 +48,18 @@ export function meshEdges(
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {
-  if (angularTolerance > 0) {
-    warnOnce(
-      'mesh-edges-angular',
-      'meshEdges angularTolerance is not supported; only linear deflection is used.'
-    );
-  }
   const bkHandle = shape as BrepkitHandle;
 
   if (bkHandle.type !== 'solid') {
     return { lines: new Float32Array(0), edgeGroups: [] };
   }
 
+  // Forward the angular tolerance like the face/solid tessellation paths do; a
+  // non-positive value means "unspecified" → the kernel's default angular cap.
+  const angularTol = angularTolerance > 0 ? angularTolerance : undefined;
+
   // Use meshEdgesAll (unfiltered) for OCCT parity
-  const edgeLines = bk.meshEdgesAll(bkHandle.id, tolerance);
+  const edgeLines = bk.meshEdgesAll(bkHandle.id, tolerance, angularTol);
   const positions = edgeLines.positions;
   const offsets = edgeLines.offsets;
   const edgeCount = edgeLines.edgeCount;
