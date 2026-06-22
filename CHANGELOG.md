@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.100.1](https://github.com/andymai/brepjs/compare/brepjs-v18.100.0...brepjs-v18.100.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* **kernel:** forward angularTolerance to brepkit meshEdges ([#1579](https://github.com/andymai/brepjs/issues/1579)) ([b996be2](https://github.com/andymai/brepjs/commit/b996be2027ae9e0206b5369a234d879e09c4ecb7))
+
 ## [18.100.0](https://github.com/andymai/brepjs/compare/brepjs-v18.99.5...brepjs-v18.100.0) (2026-06-22)
 
 
