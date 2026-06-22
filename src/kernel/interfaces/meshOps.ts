@@ -16,10 +16,8 @@ export interface KernelMeshOps {
   mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
 
   /**
-   * Tessellate edges for wireframe display.
-   *
-   * **Cross-kernel note**: brepkit only supports linear deflection;
-   * `angularTolerance` is ignored (a one-time warning is emitted).
+   * Tessellate edges for wireframe display. Both linear `tolerance`
+   * (deflection) and `angularTolerance` are honored across kernels.
    */
   meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
 
