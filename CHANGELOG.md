@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.100.0](https://github.com/andymai/brepjs/compare/brepjs-v18.99.5...brepjs-v18.100.0) (2026-06-22)
+
+
+### Features
+
+* **operations:** add flat-crest (Acme/trapezoidal) thread profile ([9560053](https://github.com/andymai/brepjs/commit/956005346c4817e3705b505bb96a64044d5a31ce))
+
 ## [18.99.5](https://github.com/andymai/brepjs/compare/brepjs-v18.99.4...brepjs-v18.99.5) (2026-06-21)
 
 
