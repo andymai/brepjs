@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.100.2](https://github.com/andymai/brepjs/compare/brepjs-v18.100.1...brepjs-v18.100.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **brepkit:** exact 2D ellipse-arc lift (closes brepkit[#858](https://github.com/andymai/brepjs/issues/858) ellipseTo parity) ([#1588](https://github.com/andymai/brepjs/issues/1588)) ([1b79a89](https://github.com/andymai/brepjs/commit/1b79a8939473242fa4515b2dbb99f912c3203381))
+
 ## [18.100.1](https://github.com/andymai/brepjs/compare/brepjs-v18.100.0...brepjs-v18.100.1) (2026-06-22)
 
 
