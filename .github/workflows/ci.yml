@@ -109,6 +109,9 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run docs:api
+      # Fail if docs/function-lookup.md is stale (regenerate + commit to fix).
+      - run: npm run docs:generate-lookup
+      - run: git diff --exit-code docs/function-lookup.md
 
   playground-build:
     # Mirrors what Vercel runs (`npm run build --workspace=apps/playground`).
