@@ -86,108 +86,6 @@ export function makeCircle2d(
   return g2d.makeCircle2d(cx, cy, radius, sense);
 }
 
-export function makeArc2dThreePoints(
-  x1: number,
-  y1: number,
-  xm: number,
-  ym: number,
-  x2: number,
-  y2: number
-): Curve2dHandle {
-  // Circumscribed circle through 3 points
-  const d = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
-  if (Math.abs(d) < 1e-12) {
-    // Degenerate (collinear): return a line
-    return g2d.makeLine2d(x1, y1, x2, y2);
-  }
-  const cx =
-    ((x1 * x1 + y1 * y1) * (ym - y2) +
-      (xm * xm + ym * ym) * (y2 - y1) +
-      (x2 * x2 + y2 * y2) * (y1 - ym)) /
-    d;
-  const cy =
-    ((x1 * x1 + y1 * y1) * (x2 - xm) +
-      (xm * xm + ym * ym) * (x1 - x2) +
-      (x2 * x2 + y2 * y2) * (xm - x1)) /
-    d;
-  const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
-
-  // Compute angles for start (p1), mid (pm), and end (p2)
-  const a1 = Math.atan2(y1 - cy, x1 - cx);
-  const am = Math.atan2(ym - cy, xm - cx);
-  const a2 = Math.atan2(y2 - cy, x2 - cx);
-
-  // Determine sense: CCW if mid-point angle is between start and end going CCW
-  let da1m = am - a1;
-  if (da1m < 0) da1m += 2 * Math.PI;
-  let da12 = a2 - a1;
-  if (da12 < 0) da12 += 2 * Math.PI;
-  const sense = da1m < da12; // CCW if midpoint comes before endpoint
-
-  const circle = g2d.makeCircle2d(cx, cy, radius, sense);
-  if (!sense) {
-    // CW circle evaluates angle = -t, so parameter t = -angle.
-    const tStart = -a1;
-    let tEnd = -a2;
-    if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
-    return { __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj;
-  }
-  // CCW: ensure tEnd >= tStart
-  let tEnd = a2;
-  if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
-  return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj;
-}
-
-export function makeArc2dTangent(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  ex: number,
-  ey: number
-): Curve2dHandle {
-  const len = Math.sqrt(tx * tx + ty * ty);
-  const ntx = len > 0 ? tx / len : 0;
-  const nty = len > 0 ? ty / len : 0;
-
-  const dx = sx - ex;
-  const dy = sy - ey;
-  const denom = 2 * (dy * ntx - dx * nty);
-
-  if (Math.abs(denom) < 1e-12) {
-    return g2d.makeLine2d(sx, sy, ex, ey);
-  }
-
-  const chord2 = dx * dx + dy * dy;
-  const t = -chord2 / denom;
-  const cx = sx - t * nty;
-  const cy = sy + t * ntx;
-  const radius = Math.abs(t);
-
-  const a1 = Math.atan2(sy - cy, sx - cx);
-  const a2 = Math.atan2(ey - cy, ex - cx);
-
-  const ccwTanX = -(sy - cy) / radius;
-  const ccwTanY = (sx - cx) / radius;
-  const dotCcw = ntx * ccwTanX + nty * ccwTanY;
-
-  let aMid: number;
-  if (dotCcw > 0) {
-    let da = a2 - a1;
-    if (da <= 0) da += 2 * Math.PI;
-    aMid = a1 + da / 2;
-  } else {
-    let da = a2 - a1;
-    if (da >= 0) da -= 2 * Math.PI;
-    aMid = a1 + da / 2;
-  }
-
-  const mx = cx + radius * Math.cos(aMid);
-  const my = cy + radius * Math.sin(aMid);
-
-  return makeArc2dThreePoints(sx, sy, mx, my, ex, ey);
-}
-
 export function makeEllipse2d(
   cx: number,
   cy: number,
@@ -1117,9 +1015,10 @@ export function makeKernel2dOps(oc: KernelInstance) {
     createAxis2d: (px, py, dx, dy) => createAxis2d(px, py, dx, dy),
     makeLine2d: (x1, y1, x2, y2) => makeLine2d(x1, y1, x2, y2),
     makeCircle2d: (cx, cy, radius, sense) => makeCircle2d(cx, cy, radius, sense),
-    makeArc2dThreePoints: (x1, y1, xm, ym, x2, y2) => makeArc2dThreePoints(x1, y1, xm, ym, x2, y2),
+    makeArc2dThreePoints: (x1, y1, xm, ym, x2, y2) =>
+      g2d.makeArc2dThreePoints(x1, y1, xm, ym, x2, y2),
     makeArc2dTangent: (startX, startY, tangentX, tangentY, endX, endY) =>
-      makeArc2dTangent(startX, startY, tangentX, tangentY, endX, endY),
+      g2d.makeArc2dTangent(startX, startY, tangentX, tangentY, endX, endY),
     makeEllipse2d: (cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense) =>
       makeEllipse2d(cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense),
     makeEllipseArc2d: (
