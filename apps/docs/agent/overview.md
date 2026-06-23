@@ -39,14 +39,21 @@ They install separately because Claude Code loads skills from plugins (a git mar
 
 ### Install the skill (Claude Code plugin)
 
-The skill ships through the brepjs plugin marketplace, which is this git repo. Add the marketplace once, then install the plugin:
+The skill ships through the brepjs plugin marketplace, which is this git repo. Add the marketplace once, then install the plugin. In a Claude Code session, use the slash commands:
 
 ```
 /plugin marketplace add andymai/brepjs
 /plugin install brepjs@brepjs
 ```
 
-Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
+Or do the same non-interactively from a terminal — handy for scripts and dotfiles:
+
+```bash
+claude plugin marketplace add andymai/brepjs
+claude plugin install brepjs@brepjs
+```
+
+Pass `--scope user` to make the plugin available in every project, or `--scope project` to share it with a repo via checked-in config. Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
 
 ### Install the runtime (npm)
 

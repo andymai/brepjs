@@ -13,6 +13,8 @@ Five composable, individually-improvable skills — **`brepjs:brainstorm`** (sco
 /plugin install brepjs@brepjs
 ```
 
+Or non-interactively from a terminal (`claude plugin marketplace add andymai/brepjs && claude plugin install brepjs@brepjs`); add `--scope user`/`--scope project` to control reach.
+
 ## 2. The runtime (npm)
 
 The CLI the skill invokes. Install it in **your** project, where `brepjs` + the WASM kernel resolve (Node module resolution is project-local, so the runtime can't live in the plugin dir):
@@ -95,7 +97,7 @@ Once the package is published to npm, the same server is available without a loc
 claude mcp add brep -- npx -y --package brepjs-cad brep-mcp
 ```
 
-The server runs locally as a child process of your agent (stdio); geometry never leaves your machine.
+`claude mcp add` registers the server at local scope (current project) by default; pass `--scope user` to make `brep` available in every project, or `--scope project` to share it with a repo via a checked-in `.mcp.json`. The server runs locally as a child process of your agent (stdio); geometry never leaves your machine.
 
 ## Examples gallery
 

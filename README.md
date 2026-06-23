@@ -111,8 +111,12 @@ Install both; they ride on two rails:
 
 ```bash
 # 1. The skill - Claude Code plugin (delivered via this repo's marketplace)
+#    In a Claude Code session:
 /plugin marketplace add andymai/brepjs
 /plugin install brepjs@brepjs
+#    …or from a terminal, non-interactively:
+claude plugin marketplace add andymai/brepjs
+claude plugin install brepjs@brepjs
 
 # 2. The runtime - the CLI the skill drives
 npm i -D brepjs-cad
