@@ -241,49 +241,19 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // shapeRef.test.ts
     // -----------------------------------------------------------------------
-    'shapeRef.evolutionFuse': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking (fuseWithEvolution) not implemented in brepkit kernel',
-    },
-    'shapeRef.deletedFace': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-    'shapeRef.splitEvolution': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-
-    // -----------------------------------------------------------------------
-    // shapeRefIntegration.test.ts
-    // -----------------------------------------------------------------------
-    'shapeRefIntegration.multiStepReplay': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-    'shapeRefIntegration.filletEvolution': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-    'shapeRefIntegration.cutEvolution': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
+    // shapeRefIntegration.test.ts — the remaining two are not evolution gaps:
     'shapeRefIntegration.geometricFallback': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
+      kind: 'skip',
+      reason:
+        'brepkit: filletWithEvolution uses the geometry heuristic (fillets are not ' +
+        'GFA booleans, so faithful provenance does not apply); a filleted cylinder ' +
+        'resolves fewer than the expected >=2 roles.',
     },
     'shapeRefIntegration.brokenRef': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-    'shapeRefIntegration.rolePropagation': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
-    },
-    'shapeRefIntegration.multipleTrackedFaces': {
-      kind: 'not-implemented',
-      reason: 'Shape evolution tracking not implemented in brepkit kernel',
+      kind: 'skip',
+      reason:
+        'brepkit represents a sphere with 2 faces (vs 1), so assignRoles returns 2 ' +
+        'roles instead of 1 — a primitive-topology difference, not an evolution gap.',
     },
     // -----------------------------------------------------------------------
     // meshFns.test.ts
