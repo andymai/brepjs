@@ -110,7 +110,10 @@ jobs:
       - run: npm run build
       - run: npm run docs:api
       # Fail if docs/function-lookup.md is stale (regenerate + commit to fix).
+      # Prettier-normalize first: the generator emits compact tables, but the
+      # *.md lint-staged rule reformats the committed file to aligned columns.
       - run: npm run docs:generate-lookup
+      - run: npx prettier --write docs/function-lookup.md
       - run: git diff --exit-code docs/function-lookup.md
 
   playground-build:
