@@ -28,12 +28,14 @@ beforeAll(async () => {
 
 describe('kernel divergence coverage', () => {
   // -------------------------------------------------------------------------
-  // fillet on a cylinder's circular edge — brepkit #967
+  // fillet on a cylinder's circular edge — was brepkit #967 (fixed in 2.116.1)
   //
   // A constant-radius fillet on the circular rim(s) of a cylinder must remove
-  // only a thin band of material. occt-wasm/occt round the rims correctly; a
-  // 6283 mm³ cylinder filleted r=0.5 stays ~6276. brepkit collapses it to
-  // ~3978 (−37%), even though a box fillet works.
+  // only a thin band of material. brepkit #967 used to collapse the solid by
+  // ~37–46%; the fix landed in brepkit-wasm 2.116.1, which now tracks the
+  // occt-wasm/occt reference to ~0.013%. The ±0.1% band proves the fix and
+  // still catches any regression toward the old collapse. manifold stays
+  // gated (mesh faceting exceeds this band).
   // -------------------------------------------------------------------------
   describe('filletCylindricalEdge', () => {
     it('a small fillet on a cylinder rim removes almost no material', (ctx) => {
@@ -43,8 +45,9 @@ describe('kernel divergence coverage', () => {
       const result = fillet(cyl, 0.5);
       expect(isOk(result)).toBe(true);
       const vol = unwrap(measureVolume(unwrap(result)));
-      // occt-wasm/occt: 6276.519 — a fillet of r=0.5 removes < 0.2% of the solid.
-      expect(vol).toBeCloseTo(6276.519, 1);
+      // occt-wasm/occt: 6276.519 (removes < 0.2%); brepkit 2.116.1: 6275.70.
+      expect(vol).toBeGreaterThan(6276.519 * 0.999);
+      expect(vol).toBeLessThan(6276.519 * 1.001);
       // Sanity: a rim round can never remove a meaningful fraction of the solid.
       expect(vol).toBeGreaterThan(raw * 0.99);
     });
@@ -55,8 +58,9 @@ describe('kernel divergence coverage', () => {
       const result = fillet(cyl, 2);
       expect(isOk(result)).toBe(true);
       const vol = unwrap(measureVolume(unwrap(result)));
-      // occt-wasm/occt: 6180.134 (removes ~1.6%). brepkit: 3350.585 (−46%).
-      expect(vol).toBeCloseTo(6180.134, 1);
+      // occt-wasm/occt: 6180.134 (removes ~1.6%); brepkit 2.116.1: 6179.18.
+      expect(vol).toBeGreaterThan(6180.134 * 0.999);
+      expect(vol).toBeLessThan(6180.134 * 1.001);
     });
   });
 

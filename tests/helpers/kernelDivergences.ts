@@ -147,14 +147,6 @@ export const divergences: DivergenceMap = {
       reason:
         'brepkit variable fillet produces vol > 1000 (physically impossible -- fillet removes material)',
     },
-    'modifierFns.filletCylindricalEdge': {
-      kind: 'skip',
-      reason:
-        'brepkit constant-radius fillet on a cylinder circular rim collapses the solid: a r=0.5 ' +
-        'fillet on a 6283 mm^3 cylinder yields ~3978 (-37%) where occt-wasm/occt yield ~6276. ' +
-        'Box fillets work; the bug is specific to cylindrical edges. Tracking andymai/brepkit#967.',
-      tracking: 'andymai/brepkit#967',
-    },
     'modifierFns.variableFilletCallback': {
       kind: 'not-implemented',
       reason:
@@ -253,15 +245,6 @@ export const divergences: DivergenceMap = {
     'extrudeFns.nullFace': {
       kind: 'not-implemented',
       reason: 'Tests use raw OCCT API to construct null face; unavailable in brepkit',
-    },
-    'extrudeFns.revolveCircularProfile': {
-      kind: 'skip',
-      reason:
-        'brepkit revolve() of a circular profile undershoots volume ~2% (inscribed-polygon ' +
-        'revolution surface): revolving a circle 360deg gives 773.14 vs analytic/occt-wasm 789.57. ' +
-        'The torus primitive is exact, so the loss is in the revolve sweep (cf. #965/#966). ' +
-        'Tracking andymai/brepkit#968.',
-      tracking: 'andymai/brepkit#968',
     },
     'extrudeFns.revolveNullFace': {
       kind: 'not-implemented',
