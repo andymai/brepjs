@@ -98,6 +98,19 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold does not implement length() for curved wires (e.g. a circle wire) — only straight edges measure.',
     },
+    // -----------------------------------------------------------------------
+    // kernelDivergenceCoverage.test.ts
+    // -----------------------------------------------------------------------
+    'modifierFns.filletCylindricalEdge': {
+      kind: 'skip',
+      reason:
+        'manifold is a mesh kernel: a cylinder rim tessellates to planar facets, so a filleted-rim volume cannot match the analytic B-rep reference at the asserted precision.',
+    },
+    'extrudeFns.revolveCircularProfile': {
+      kind: 'skip',
+      reason:
+        'manifold is a mesh kernel: the revolved (and torus-primitive) surface is faceted, so the volume undershoots the analytic 2π²Rr² reference beyond the asserted tolerance.',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------
