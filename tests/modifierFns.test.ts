@@ -191,8 +191,7 @@ describe('offset', () => {
 });
 
 describe('fillet with array radius', () => {
-  // OCCT V8 RC4: variable radius fillet crashes with memory access out of bounds
-  it.skip('fillets a specific edge with variable radius [r1, r2]', (ctx) => {
+  it('fillets a specific edge with variable radius [r1, r2]', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
@@ -231,8 +230,7 @@ describe('fillet with callback returning null or array', () => {
     expect(unwrapErr(result).code).toBe('FILLET_NO_EDGES');
   });
 
-  // OCCT V8 RC4: variable radius fillet crashes with memory access out of bounds
-  it.skip('callback returning [r1, r2] applies variable fillet', (ctx) => {
+  it('callback returning [r1, r2] applies variable fillet', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.variableFilletCallback');
     const b = box(10, 10, 10);
     const edges = getEdges(b);

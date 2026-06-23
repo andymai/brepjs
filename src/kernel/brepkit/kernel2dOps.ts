@@ -953,13 +953,13 @@ export function liftCurve2dToPlane(
     return makeLineEdge(bk, p1, p2);
   }
 
-  // Circles/arcs: use exact Circle3D edges via makeCircleArc3d when the
-  // basis is a circle. This produces EdgeCurve::Circle edges that extrude
-  // into CylindricalSurface faces (not NURBS), matching the reference
-  // kernel's topology. Ellipse arcs fall through to dense sampling below
-  // until brepkit supports a trimmed elliptical swept surface in extrude.
+  // Circles/arcs and ellipse arcs: use exact analytic 3D edges via
+  // makeCircleArc3d / makeEllipseArc3d when the basis is a circle or ellipse.
+  // These produce EdgeCurve::Circle / EdgeCurve::Ellipse edges that extrude
+  // into exact CylindricalSurface / elliptical swept faces (not NURBS),
+  // matching the reference kernel's topology.
   if (c.__bk2d === 'circle' || c.__bk2d === 'trimmed') {
-    // Unwrap trimmed to find the circle basis.
+    // Unwrap trimmed to find the analytic basis.
     // bk2d curve objects have dynamic structure — suppress type-safety here.
     /* eslint-disable @typescript-eslint/no-explicit-any -- bk2d curve internals */
     let basis: any = c;
@@ -989,6 +989,64 @@ export function liftCurve2dToPlane(
         const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first + seg * segmentSpan);
         const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
         edgeIds.push(bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis));
+      }
+      if (edgeIds.length === 1) return edgeHandle(wasmIndex(edgeIds, 0));
+      return wireHandle(bk.makeWire(edgeIds, false));
+    }
+
+    // Exact ellipse arcs: EdgeCurve::Ellipse edges via makeEllipseArc3d.
+    // brepkit extrudes these over the trimmed arc into an exact elliptical
+    // swept surface, so no dense-NURBS approximation is needed.
+    if (basis.__bk2d === 'ellipse') {
+      const ell = basis;
+      const center3d = lift(ell.cx, ell.cy);
+      // Major-axis reference direction, lifted as a pure direction (no origin).
+      const cosA = Math.cos(ell.xDirAngle);
+      const sinA = Math.sin(ell.xDirAngle);
+      const refDir: [number, number, number] = [
+        cosA * planeX[0] + sinA * y[0],
+        cosA * planeX[1] + sinA * y[1],
+        cosA * planeX[2] + sinA * y[2],
+      ];
+
+      const bounds = bk2d.curveBounds(c);
+      const span = bounds.last - bounds.first;
+
+      // brepkit reconstructs the arc by sweeping CCW around `axis` from start
+      // to end (domain_with_endpoints), so the axis must encode the actual
+      // sweep direction — which trimming can reverse relative to the basis
+      // `sense`. An ellipse is star-shaped about its center, so the polar
+      // angle around the center is monotonic in the parameter; one small
+      // forward step from the start gives the direction unambiguously.
+      const eps = span * 1e-4;
+      const [p0u, p0v] = bk2d.evaluateCurve2d(c, bounds.first);
+      const [p1u, p1v] = bk2d.evaluateCurve2d(c, bounds.first + eps);
+      const cross = (p0u - ell.cx) * (p1v - ell.cy) - (p0v - ell.cy) * (p1u - ell.cx);
+      // cross > 0 => start->next is CCW around +planeZ.
+      const axis: [number, number, number] =
+        cross >= 0 ? planeZ : [-planeZ[0], -planeZ[1], -planeZ[2]];
+
+      // Keep each segment's eccentric-angle span < π so the trimmed-arc
+      // reconstruction from its endpoints is unambiguous.
+      const angularSpan =
+        c.__bk2d === 'trimmed' ? Math.abs((c as any).tEnd - (c as any).tStart) : 2 * Math.PI;
+      const nSegments = angularSpan > Math.PI ? 4 : angularSpan > Math.PI / 2 ? 2 : 1;
+      const segmentSpan = span / nSegments;
+      const edgeIds: number[] = [];
+      for (let seg = 0; seg < nSegments; seg++) {
+        const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first + seg * segmentSpan);
+        const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
+        edgeIds.push(
+          bk.makeEllipseArc3d(
+            ...lift(su, sv),
+            ...lift(eu, ev),
+            ...center3d,
+            ...axis,
+            ...refDir,
+            ell.majorRadius,
+            ell.minorRadius
+          )
+        );
       }
       if (edgeIds.length === 1) return edgeHandle(wasmIndex(edgeIds, 0));
       return wireHandle(bk.makeWire(edgeIds, false));

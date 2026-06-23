@@ -8,6 +8,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelAdapter } from '@/kernel/types.js';
 import {
@@ -392,8 +393,8 @@ describe('ioOps', () => {
     expect((stl as ArrayBuffer).byteLength).toBeGreaterThan(80);
   });
 
-  // OCCT V8 RC4: StlAPI_Reader.Read throws internally — revisit when V8.0.0 final ships
-  it.skip('STL import', () => {
+  it('STL import', (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
     const b = oc(box(10, 10, 10));
     kernel.mesh(b, { tolerance: 0.1, angularTolerance: 0.5 });
     const stl = kernel.exportSTL(b, false);

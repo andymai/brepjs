@@ -165,19 +165,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // sketcher3d.test.ts
-    // -----------------------------------------------------------------------
-    'sketcher3d.ellipseTo': {
-      kind: 'skip',
-      reason:
-        'brepkit: ellipseTo extruded volume is 114.4 vs 115.45 (~1%, outside the ' +
-        'strict tolerance). The 2D arc direction + reverseCurve2d are now fixed, so ' +
-        'the residual is only the dense-NURBS lift approximation; an exact ' +
-        'EdgeCurve::Ellipse lift needs brepkit to build a trimmed elliptical swept ' +
-        'surface in extrude (tracked separately). halfEllipseTo now passes.',
-    },
-
-    // -----------------------------------------------------------------------
     // docs-examples.test.ts
     // -----------------------------------------------------------------------
     'docsExamples.2dTo3dWorkflow': {
@@ -364,6 +351,14 @@ export const divergences: DivergenceMap = {
   },
 
   occt: {
+    // -----------------------------------------------------------------------
+    // importFns.test.ts / kernel-ops.test.ts
+    // -----------------------------------------------------------------------
+    'importFns.stlImport': {
+      kind: 'not-implemented',
+      reason:
+        'occt (OpenCascade.js) StlAPI_Reader.Read returns no shape, so importSTL yields Err; occt-wasm 3.4.0 and brepkit import STL correctly',
+    },
     // -----------------------------------------------------------------------
     // brepkit-only suites (descBk pattern)
     // -----------------------------------------------------------------------
