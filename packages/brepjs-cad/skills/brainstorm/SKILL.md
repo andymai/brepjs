@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Use at the START of a brepjs CAD task to scope what to model — turning a vague or natural-language part request ("a bracket for my router", "a gridfinity bin") into an explicit, buildable spec (dimensions in mm, datums, features, material/finish, tolerances) before any geometry is written. Runs in the main session so it can ask the user clarifying questions.
+description: Use at the START of any request to design, model, create, build, or 3D-print a physical part or assembly in brepjs — a bracket, enclosure, mount, gear, gridfinity bin, fixture, knob, adapter, and the like. This is the entry point to the brepjs CAD pipeline: it turns a vague or natural-language request ("a bracket for my router", "a gridfinity bin") into an explicit, buildable spec (dimensions in mm, datums, features, material/finish, tolerances) before any geometry is written, then hands off to brepjs:design → implement → verify → polish. Runs in the main session so it can ask the user clarifying questions.
 version: 0.1.0
 ---
 

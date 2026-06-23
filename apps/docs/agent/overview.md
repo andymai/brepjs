@@ -53,7 +53,7 @@ claude plugin marketplace add andymai/brepjs
 claude plugin install brepjs@brepjs
 ```
 
-Pass `--scope user` to make the plugin available in every project, or `--scope project` to share it with a repo via checked-in config. Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
+Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
 
 ### Install the runtime (npm)
 
@@ -72,6 +72,20 @@ Prefer not to install anything? Run it straight from npm:
 ```bash
 npx -y -p brepjs-cad brep part.brep.ts
 ```
+
+## Ask for a part
+
+With the skill installed, just ask for a part in plain English — Claude reaches for the brepjs pipeline on its own:
+
+> a 40×20×10 mm bracket with two M4 holes 30 mm apart
+
+It scopes the spec, designs the build sequence, authors the `.brep.ts`, verifies it on the kernel, and hands back a STEP file. To drive the pipeline explicitly, use the slash commands the plugin installs:
+
+```
+/brepjs:cad a wall bracket for a 40 mm pipe with two M4 holes
+```
+
+`/brepjs:cad` runs the whole pipeline and pauses for your confirmation between phases. To run a single phase, invoke it directly: `/brepjs:brainstorm`, `/brepjs:design`, `/brepjs:implement`, `/brepjs:verify`, or `/brepjs:polish`.
 
 ## The `.brep.ts` contract
 

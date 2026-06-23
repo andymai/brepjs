@@ -97,7 +97,7 @@ It's the _build → verify_ step of [the loop](./the-loop.md) as a single call: 
 claude mcp add brep -- npx -y --package brepjs-cad brep-mcp
 ```
 
-That registers `brep` at local scope (this project). Add `--scope user` to expose it in every project, or `--scope project` to share it with a repo via a checked-in `.mcp.json`. Geometry never leaves your machine; the server runs locally as a child process over stdio.
+Geometry never leaves your machine; the server runs locally as a child process over stdio.
 
 ## Troubleshooting
 

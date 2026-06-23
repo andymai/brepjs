@@ -13,7 +13,9 @@ Five composable, individually-improvable skills — **`brepjs:brainstorm`** (sco
 /plugin install brepjs@brepjs
 ```
 
-Or non-interactively from a terminal (`claude plugin marketplace add andymai/brepjs && claude plugin install brepjs@brepjs`); add `--scope user`/`--scope project` to control reach.
+Or non-interactively from a terminal: `claude plugin marketplace add andymai/brepjs && claude plugin install brepjs@brepjs`.
+
+Then ask for a part in plain English and Claude reaches for the pipeline on its own, or drive it explicitly: `/brepjs:cad "a wall bracket for a 40 mm pipe with two M4 holes"` runs the full gated pipeline; `/brepjs:brainstorm` … `/brepjs:polish` run a single phase.
 
 ## 2. The runtime (npm)
 
@@ -97,7 +99,7 @@ Once the package is published to npm, the same server is available without a loc
 claude mcp add brep -- npx -y --package brepjs-cad brep-mcp
 ```
 
-`claude mcp add` registers the server at local scope (current project) by default; pass `--scope user` to make `brep` available in every project, or `--scope project` to share it with a repo via a checked-in `.mcp.json`. The server runs locally as a child process of your agent (stdio); geometry never leaves your machine.
+The server runs locally as a child process of your agent (stdio); geometry never leaves your machine.
 
 ## Examples gallery
 

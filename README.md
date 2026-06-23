@@ -122,6 +122,8 @@ claude plugin install brepjs@brepjs
 npm i -D brepjs-cad
 ```
 
+With the skill installed, ask Claude for a part in plain English, or drive the pipeline explicitly with `/brepjs:cad "a 40×20×10 mm bracket with two M4 holes"`.
+
 `brepjs-cad` bundles its own `brepjs` + `occt-wasm`, so it runs in an empty directory; inside an existing brepjs project it prefers your installed versions so verified parts match what you ship. A model is a module that default-exports a zero-arg function returning a shape:
 
 ```typescript
