@@ -963,7 +963,7 @@ function evaluateBezier(poles: [number, number][], t: number): [number, number] 
   // De Casteljau
   const n = poles.length;
   const work = poles.map(([x, y]) => [x, y] as [number, number]);
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- array indices known valid by loop bounds */
   for (let r = 1; r < n; r++) {
     for (let i = 0; i < n - r; i++) {
       const wi = work[i]!;
@@ -977,7 +977,7 @@ function evaluateBezier(poles: [number, number][], t: number): [number, number] 
 }
 
 function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- knot-vector indices known valid by loop bounds */
   // Expand knots with multiplicities
   const fullKnots: number[] = [];
   for (let i = 0; i < c.knots.length; i++) {
