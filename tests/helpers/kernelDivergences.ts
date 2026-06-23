@@ -365,6 +365,14 @@ export const divergences: DivergenceMap = {
 
   occt: {
     // -----------------------------------------------------------------------
+    // importFns.test.ts / kernel-ops.test.ts
+    // -----------------------------------------------------------------------
+    'importFns.stlImport': {
+      kind: 'not-implemented',
+      reason:
+        'occt (OpenCascade.js) StlAPI_Reader.Read returns no shape, so importSTL yields Err; occt-wasm 3.4.0 and brepkit import STL correctly',
+    },
+    // -----------------------------------------------------------------------
     // brepkit-only suites (descBk pattern)
     // -----------------------------------------------------------------------
     brepkitSketchArc: {

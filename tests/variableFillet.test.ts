@@ -55,7 +55,10 @@ describe.skipIf(shouldSkipSuite('variableFillet'))(
         expect(Math.abs(constVol - varVol)).toBeGreaterThan(0.01);
       });
 
-      // V8 RC4 regression: memory access out of bounds in variable radius fillet
+      // occt-wasm invokes the variable-radius callback once per fillet operation,
+      // not once per edge, so callCount is 1 (not 2) here. The fillet itself
+      // applies correctly (volume is reduced). Skipped pending a decision on the
+      // intended per-edge vs per-operation callback contract.
       it.skip('applies per-edge callback returning variable radius', () => {
         const b = box(10, 10, 10);
         const edges = getEdges(b);

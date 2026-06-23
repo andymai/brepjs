@@ -39,7 +39,8 @@ describe.skipIf(shouldSkipSuite('multiSweepFns'))('OCCT-specific: multiSweepFns'
   });
 
   describe('multiSectionSweep', () => {
-    // OCCT V8 RC4: ThruSections produces zero-volume solid — revisit when V8.0.0 final ships
+    // ThruSections still produces a zero-volume solid under the occt kernel
+    // (verified on occt-wasm 3.4.0); re-enable once the kernel builds a closed solid.
     it.skip('sweeps two circles along a straight line producing a solid with positive volume', () => {
       const spine = makeLineSpine(50);
       const circle1 = makeCircleWire(10);

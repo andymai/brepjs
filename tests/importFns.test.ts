@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   castShape,
@@ -57,8 +58,8 @@ describe('importSTEP', () => {
 });
 
 describe('importSTL', () => {
-  // OCCT V8 RC4: StlAPI_Reader.Read throws internally — revisit when V8.0.0 final ships
-  it.skip('imports an STL file exported from a box', async () => {
+  it('imports an STL file exported from a box', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
     const b = castShape(box(10, 10, 10).wrapped);
     const stlBlob = unwrap(exportSTL(b));
 
@@ -80,8 +81,8 @@ describe('importSTL', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  // OCCT V8 RC4: StlAPI_Reader.Read throws internally — revisit when V8.0.0 final ships
-  it.skip('imports ASCII STL format (closed tetrahedron)', async () => {
+  it('imports ASCII STL format (closed tetrahedron)', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
     // A valid closed tetrahedron with 4 triangular facets
     const asciiStl = [
       'solid tetra',
