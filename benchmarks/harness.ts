@@ -268,7 +268,9 @@ export interface ReportSection {
 function speedupText(baselineMedian: number, compareMedian: number): string {
   if (compareMedian === 0) return '**>100x faster**';
   const ratio = baselineMedian / compareMedian;
-  if (ratio >= 1) {
+  // Within rounding of parity — don't label measurement noise as faster/slower.
+  if (ratio.toFixed(1) === '1.0') return '≈ same';
+  if (ratio > 1) {
     return `**${ratio.toFixed(1)}x faster**`;
   }
   const inverse = 1 / ratio;

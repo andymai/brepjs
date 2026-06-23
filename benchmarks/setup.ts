@@ -30,15 +30,30 @@ export function hasBrepkit(): boolean {
  * Keeps `npm run bench` fast (OCCT-only by default).
  */
 export async function initBenchKernels(): Promise<void> {
-  const mode = process.env['BENCH_KERNELS'] ?? 'occt';
+  const mode = (process.env['BENCH_KERNELS'] ?? 'occt').trim();
   if (mode === 'all' || mode === 'both') {
     await initAllKernels();
-  } else if (mode.includes(',')) {
-    for (const id of mode.split(',').map((s) => s.trim()).filter(Boolean)) {
+    return;
+  }
+
+  const ids = mode.split(',').map((s) => s.trim()).filter(Boolean);
+  if (ids.length === 0) {
+    throw new Error(
+      'BENCH_KERNELS is empty — set a kernel id, a comma-separated list, or "all"/"both".'
+    );
+  }
+  if (ids.length === 1) {
+    // Single kernel: surface a typo loudly rather than silently running nothing.
+    await initKernel(ids[0]!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    return;
+  }
+  // Subset: skip unavailable optional kernels, matching initAllKernels.
+  for (const id of ids) {
+    try {
       await initKernel(id);
+    } catch {
+      console.warn(`[kernel-init] ${id} not available — skipping`);
     }
-  } else {
-    await initKernel(mode);
   }
 }
 
