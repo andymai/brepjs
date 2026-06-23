@@ -258,9 +258,8 @@ export function getCurve2dBounds(curve: Curve2dHandle): { first: number; last: n
 }
 
 export function getCurve2dType(curve: Curve2dHandle): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
-  let cu = c2d(curve) as any;
-  while (cu.__bk2d === 'trimmed' && cu.basis) {
+  let cu = c2d(curve);
+  while (cu.__bk2d === 'trimmed') {
     cu = cu.basis;
   }
   return ow2d.curveTypeName(cu);
@@ -519,13 +518,11 @@ export function projectPointOnCurve2d(
   x: number,
   y: number
 ): { param: number; distance: number } | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-  const c = c2d(curve) as any;
+  const c = c2d(curve);
   const bounds = ow2d.curveBounds(c);
 
   const projectOnBasis = (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- curve obj
-    basis: any,
+    basis: Curve2dObj,
     bFirst: number,
     bLast: number
   ): { param: number; distance: number } | null => {
@@ -551,9 +548,9 @@ export function projectPointOnCurve2d(
     return { param: bestT, distance: Math.sqrt(bestDist) };
   };
 
-  if (c.__bk2d === 'trimmed' && c.basis) {
-    const tStart = c.tStart as number;
-    const tEnd = c.tEnd as number;
+  if (c.__bk2d === 'trimmed') {
+    const tStart = c.tStart;
+    const tEnd = c.tEnd;
     const basisResult = projectOnBasis(c.basis, tStart, tEnd);
     if (!basisResult) return null;
     const range = tEnd - tStart;
@@ -624,9 +621,8 @@ export function approximateCurve2dAsBSpline(
 }
 
 export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-  let cu = c2d(curve) as any;
-  while (cu.__bk2d === 'trimmed' && cu.basis) cu = cu.basis;
+  let cu = c2d(curve);
+  while (cu.__bk2d === 'trimmed') cu = cu.basis;
   if (cu.__bk2d !== 'bspline') return [curve];
 
   const poles: [number, number][] = cu.poles;
@@ -634,7 +630,9 @@ export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle
   // Expand knots+multiplicities into the full knot vector U.
   const U: number[] = [];
   for (let i = 0; i < cu.knots.length; i++) {
-    for (let j = 0; j < cu.multiplicities[i]; j++) U.push(cu.knots[i]);
+    const knot = cu.knots[i] ?? 0;
+    const mult = cu.multiplicities[i] ?? 0;
+    for (let j = 0; j < mult; j++) U.push(knot);
   }
   const n = poles.length - 1;
   const m = n + p + 1;
@@ -737,44 +735,39 @@ export function isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): bool
 export function getCurve2dCircleData(
   curve: Curve2dHandle
 ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-  let c = c2d(curve) as any;
-  while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-  if (c.__bk2d === 'circle')
-    return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense !== false };
+  let c = c2d(curve);
+  while (c.__bk2d === 'trimmed') c = c.basis;
+  if (c.__bk2d === 'circle') return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense };
   return null;
 }
 
 export function getCurve2dEllipseData(
   curve: Curve2dHandle
 ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-  let c = c2d(curve) as any;
-  while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
+  let c = c2d(curve);
+  while (c.__bk2d === 'trimmed') c = c.basis;
   if (c.__bk2d === 'ellipse')
     return {
       majorRadius: c.majorRadius,
       minorRadius: c.minorRadius,
-      xAxisAngle: c.xDirAngle ?? 0,
-      isDirect: c.sense !== false,
+      xAxisAngle: c.xDirAngle,
+      isDirect: c.sense,
     };
   return null;
 }
 
 export function getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-  let c = c2d(curve) as any;
-  while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-  if (c.__bk2d === 'bezier' && Array.isArray(c.poles)) return c.poles as [number, number][];
+  let c = c2d(curve);
+  while (c.__bk2d === 'trimmed') c = c.basis;
+  if (c.__bk2d === 'bezier') return c.poles;
   return null;
 }
 
 export function getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-  let c = c2d(curve) as any;
-  while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-  if (c['__bk2d'] === 'bezier' && Array.isArray(c['poles'])) {
-    return (c['poles'] as unknown[]).length - 1;
+  let c = c2d(curve);
+  while (c.__bk2d === 'trimmed') c = c.basis;
+  if (c.__bk2d === 'bezier') {
+    return c.poles.length - 1;
   }
   return null;
 }
