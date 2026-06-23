@@ -326,7 +326,12 @@ export function generateReport(
 
     for (const [_baseName, group] of groups) {
       const occtResult = group.get('occt');
-      for (const kid of KERNEL_ORDER) {
+      // Known kernels first (stable display order), then any other kernel that
+      // produced results (e.g. one selected via a subset but absent from
+      // KERNEL_ORDER) so a kernel that actually ran is never dropped silently.
+      const known = KERNEL_ORDER.filter((kid) => group.has(kid));
+      const extra = [...group.keys()].filter((kid) => !KERNEL_ORDER.includes(kid));
+      for (const kid of [...known, ...extra]) {
         const r = group.get(kid);
         if (!r) continue;
         const speedup =

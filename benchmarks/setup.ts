@@ -48,12 +48,20 @@ export async function initBenchKernels(): Promise<void> {
     return;
   }
   // Subset: skip unavailable optional kernels, matching initAllKernels.
+  let initialized = 0;
   for (const id of ids) {
     try {
       await initKernel(id);
+      initialized += 1;
     } catch {
       console.warn(`[kernel-init] ${id} not available — skipping`);
     }
+  }
+  // Fail loudly rather than letting the run produce an empty report at exit 0.
+  if (initialized === 0) {
+    throw new Error(
+      `BENCH_KERNELS subset [${ids.join(', ')}] initialized no kernels — all were unavailable.`
+    );
   }
 }
 
