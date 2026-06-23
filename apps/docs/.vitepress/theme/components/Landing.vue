@@ -231,12 +231,11 @@ onBeforeUnmount(() => observer?.disconnect());
               </div>
               <pre
                 class="term"
-              ><code><span class="p">$</span> <span class="c">/plugin marketplace add</span> andymai/brepjs
-<span class="p">$</span> <span class="c">/plugin install</span> brepjs@brepjs
-<span class="p">$</span> <span class="c">npm i -D</span> brepjs-cad brepjs occt-wasm
+              ><code><span class="p">$</span> <span class="c">/plugin install</span> brepjs@brepjs   <span class="cm"># the skill</span>
+<span class="p">$</span> <span class="c">npm i -D</span> brepjs-cad             <span class="cm"># the runtime</span>
 
-<span class="p">$</span> brep <span class="kk">verify</span> bin.ts
-<span class="p">›</span> running on occt-wasm kernel…
+<span class="p">&gt;</span> <span class="c">/brepjs:cad</span> a 1×1 gridfinity bin
+<span class="p">›</span> brainstorm → design → implement → verify
 <span class="ok">✓ valid Solid</span> · vol 14 043.4 mm³ · 91 faces
 <span class="ok">✓ assertions 3/3</span> · wrote bin.step</code></pre>
             </div>
@@ -983,6 +982,9 @@ pre.term {
 }
 .term .c {
   color: var(--teal-200);
+}
+.term .cm {
+  color: var(--ink-2);
 }
 
 /* AI section */
