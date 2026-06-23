@@ -1,4 +1,4 @@
-import type { KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelShape, KernelType, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, CompSolid, Dimension } from '@/core/shapeTypes.js';
 import { castShape } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
@@ -44,7 +44,7 @@ export const asTopo = (entity: TopoEntity): KernelType => {
  * @remarks Uses the kernel adapter's iterShapes rather than direct TopExp_Explorer.
  */
 // Static map: TopoEntity → ShapeType for kernel adapter
-const TOPO_TO_SHAPE_TYPE: Readonly<Record<string, string>> = {
+const TOPO_TO_SHAPE_TYPE: Readonly<Record<TopoEntity, ShapeType>> = {
   vertex: 'vertex',
   edge: 'edge',
   wire: 'wire',
@@ -60,12 +60,8 @@ export const iterTopo = function* iterTopo(
   shape: KernelShape,
   topo: TopoEntity
 ): IterableIterator<KernelShape> {
-  const shapeType = TOPO_TO_SHAPE_TYPE[topo];
-  if (shapeType) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ShapeType string mapping
-    const shapes = getKernel().iterShapes(shape, shapeType as any);
-    for (const s of shapes) yield s;
-  }
+  const shapes = getKernel().iterShapes(shape, TOPO_TO_SHAPE_TYPE[topo]);
+  for (const s of shapes) yield s;
 };
 
 /** Get the TopAbs_ShapeEnum type of an kernel shape, returning Err for null shapes. */

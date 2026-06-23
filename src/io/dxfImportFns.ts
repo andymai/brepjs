@@ -3,6 +3,7 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
 import type { Wire } from '@/core/shapeTypes.js';
 import { createWire } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
@@ -78,7 +79,7 @@ function getNum(data: Map<number, string>, code: number, fallback = 0): number {
   return isNaN(n) ? fallback : n;
 }
 
-function entityToEdge(entity: DXFEntity): unknown {
+function entityToEdge(entity: DXFEntity): KernelShape {
   const { type, data } = entity;
   const kernel = getKernel();
 
@@ -144,8 +145,7 @@ export async function importDXF(blob: Blob, options?: DXFImportOptions): Promise
     return ok([]);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel edge types
-  const edges: Array<any> = [];
+  const edges: KernelShape[] = [];
   try {
     for (const entity of entities) {
       const edge = entityToEdge(entity);

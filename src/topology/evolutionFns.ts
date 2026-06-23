@@ -13,12 +13,9 @@ import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
-import type { BooleanOptions, KernelShape, ShapeEvolution } from '@/kernel/types.js';
+import type { BooleanOptions, KernelShape, ShapeEvolution, KernelType } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
-type KernelType = any;
 
 // ---------------------------------------------------------------------------
 // Types

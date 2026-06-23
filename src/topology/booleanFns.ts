@@ -32,9 +32,6 @@ import {
 } from './metadata/metadataPropagation.js';
 import { makeFace } from './surfaceBuilders.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
-type KernelType = any;
-
 // ---------------------------------------------------------------------------
 // Pre-validation
 // ---------------------------------------------------------------------------
@@ -50,7 +47,7 @@ function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
 // Types
 // ---------------------------------------------------------------------------
 
-import type { BooleanOptions, BooleanDiagnostics } from '@/kernel/types.js';
+import type { BooleanOptions, BooleanDiagnostics, KernelType } from '@/kernel/types.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 export type { BooleanOptions };
 

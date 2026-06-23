@@ -140,10 +140,9 @@ export function makePolygon(points: Vec3[]): Result<OrientedFace & PlanarFace> {
       validationError('POLYGON_MIN_POINTS', 'You need at least 3 points to make a polygon')
     );
 
-  const edges = zip([points, [...points.slice(1), points[0]]]).map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zip returns untyped pairs
-    ([p1, p2]: any) => makeLine(p1, p2)
-  );
+  // points.length >= 3 is guaranteed above, so the wrap-around point is defined.
+  const closing = [...points.slice(1), points[0]] as Vec3[];
+  const edges = zip([points, closing] as [Vec3[], Vec3[]]).map(([p1, p2]) => makeLine(p1, p2));
   // Polygon edges always form a closed, coplanar loop — safe to narrow
   return andThen(assembleWire(edges), (wire) => makeFace(wire as ClosedWire & PlanarWire));
 }

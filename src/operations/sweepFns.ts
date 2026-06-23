@@ -5,11 +5,8 @@
  * Consolidated from extrudeFns, multiSweepFns, and guidedSweepFns.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
-type KernelType = any;
-
 import { getKernel } from '@/kernel/index.js';
-import type { KernelShape } from '@/kernel/types.js';
+import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecAdd, vecLength } from '@/core/vecOps.js';
 import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
