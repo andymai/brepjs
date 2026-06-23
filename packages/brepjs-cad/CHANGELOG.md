@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.31.0...brepjs-cad-v0.31.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+
 ## [0.31.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.30.1...brepjs-cad-v0.31.0) (2026-06-22)
 
 
