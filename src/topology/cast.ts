@@ -87,8 +87,8 @@ export function downcast(shape: KernelShape): Result<GenericTopo> {
   }
   try {
     return ok(getKernel().downcast(shape));
-  } catch {
-    return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
+  } catch (e) {
+    return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type', e));
   }
 }
 

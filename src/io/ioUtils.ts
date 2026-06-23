@@ -49,8 +49,8 @@ export function sewMeshToSolid(
     // If sewing/solid fails, try sewing alone
     try {
       return ok(castShape(kernel.sew(triFaces, tolerance)));
-    } catch {
-      return err(ioError(errorCode, 'Failed to sew triangular faces'));
+    } catch (e) {
+      return err(ioError(errorCode, 'Failed to sew triangular faces', e));
     }
   }
 }

@@ -50,9 +50,13 @@ export function makeFace<D extends Dimension = '3D'>(
       );
     }
     return ok(face as OrientedFace<D> & PlanarFace<D>);
-  } catch {
+  } catch (e) {
     return err(
-      kernelError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
+      kernelError(
+        'FACE_BUILD_FAILED',
+        'Failed to build the face. Your wire might be non planar.',
+        e
+      )
     );
   }
 }
@@ -99,8 +103,8 @@ export function makeNonPlanarFace<D extends Dimension = '3D'>(
       }
       return ok(newFace as OrientedFace<D>);
     });
-  } catch {
-    return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
+  } catch (e) {
+    return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face', e));
   }
 }
 

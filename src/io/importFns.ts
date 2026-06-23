@@ -35,8 +35,8 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
     }
 
     return ok(castShape(shapes[0]));
-  } catch {
-    return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
+  } catch (e) {
+    return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file', e));
   }
 }
 
@@ -64,8 +64,8 @@ export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
     return ok(castShape(shape));
-  } catch {
-    return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
+  } catch (e) {
+    return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file', e));
   }
 }
 
@@ -91,7 +91,7 @@ export async function importIGES(blob: Blob): Promise<Result<UnknownDimShape>> {
     }
 
     return ok(castShape(shapes[0]));
-  } catch {
-    return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));
+  } catch (e) {
+    return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e));
   }
 }

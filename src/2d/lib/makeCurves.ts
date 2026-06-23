@@ -201,8 +201,8 @@ export function make2dInerpolatedBSplineCurve(
       continuity: 'C2',
     });
     return ok(new Curve2D(handle));
-  } catch {
-    return err(computationError('BSPLINE_2D_FAILED', 'B-spline approximation failed'));
+  } catch (e) {
+    return err(computationError('BSPLINE_2D_FAILED', 'B-spline approximation failed', e));
   }
 }
 

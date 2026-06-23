@@ -151,8 +151,8 @@ export function makeBSplineApproximation(
         getKernel().approximatePoints(mutablePoints, { tolerance, degMin, degMax, smoothing })
       )
     );
-  } catch {
-    return err(kernelError('BSPLINE_FAILED', 'B-spline approximation failed'));
+  } catch (e) {
+    return err(kernelError('BSPLINE_FAILED', 'B-spline approximation failed', e));
   }
 }
 
@@ -175,8 +175,8 @@ export function makeBSplineInterpolation(
   try {
     const mutablePoints: [number, number, number][] = points.map((p) => [...p]);
     return ok(createEdge(getKernel().interpolatePoints(mutablePoints, { periodic, tolerance })));
-  } catch {
-    return err(kernelError('BSPLINE_INTERP_FAILED', 'B-spline interpolation failed'));
+  } catch (e) {
+    return err(kernelError('BSPLINE_INTERP_FAILED', 'B-spline interpolation failed', e));
   }
 }
 
