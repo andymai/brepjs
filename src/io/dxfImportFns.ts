@@ -79,7 +79,9 @@ function getNum(data: Map<number, string>, code: number, fallback = 0): number {
   return isNaN(n) ? fallback : n;
 }
 
-function entityToEdge(entity: DXFEntity): KernelShape {
+// Returns `unknown` (not KernelShape) so callers must narrow: the fallthrough
+// path yields undefined for unsupported entity types.
+function entityToEdge(entity: DXFEntity): unknown {
   const { type, data } = entity;
   const kernel = getKernel();
 
