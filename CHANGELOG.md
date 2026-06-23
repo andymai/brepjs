@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.100.3](https://github.com/andymai/brepjs/compare/brepjs-v18.100.2...brepjs-v18.100.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* **tech-debt:** thread kernel error cause through Result.Err builders ([#1593](https://github.com/andymai/brepjs/issues/1593)) ([215c99d](https://github.com/andymai/brepjs/commit/215c99d8090e066af71b6d69a25252596abaac13))
+
 ## [18.100.2](https://github.com/andymai/brepjs/compare/brepjs-v18.100.1...brepjs-v18.100.2) (2026-06-23)
 
 
