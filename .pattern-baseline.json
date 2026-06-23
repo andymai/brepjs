@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-06-23T07:47:44.881Z",
+  "generated": "2026-06-23T08:32:05.468Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -21,6 +21,11 @@
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeEllipseNurbs|#0"
+    },
+    {
+      "file": "src/kernel/brepkit/kernel2dOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/kernel2dOps.ts|max-function-lines|liftCurve2dToPlane|#0"
     },
     {
       "file": "src/kernel/geometry2d.ts",
