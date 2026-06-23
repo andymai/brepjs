@@ -27,8 +27,9 @@ const VOL_EPS = 1e-9;
 // A cylindrical face counts as a real bore/shaft (not a fillet strip) only above this angular extent
 // (radians): a drilled bore sweeps ~2π, a corner/edge fillet only ~π/2. Empirically separates them.
 const SUBSTANTIAL_USPAN = 2.5;
-// Outward-material-normal · radial > this ⇒ the cylinder is concave (an internal bore). Boss/shaft
-// faces give ≈ -1, bores ≈ +1, so 0.5 is a safe split. Determined empirically against the kernel.
+// Outward-material-normal · radial < -this ⇒ the wall faces the axis (an internal bore). A
+// boss/shaft wall faces away (≈ +1), a bore wall faces in (≈ -1), so 0.5 is a safe split.
+// occt-wasm's surfaceNormal is already orientation-aware, so no manual face-orientation flip.
 const BORE_DOT = 0.5;
 
 type V3 = readonly [number, number, number];
@@ -135,9 +136,8 @@ function computeCylinderFeatures(
   const {
     getFaces,
     faceGeomType,
-    faceCenter,
+    pointOnSurface,
     normalAt,
-    faceOrientation,
     faceAxis,
     measureCurvatureAtMid,
     uvBounds,
@@ -175,16 +175,18 @@ function computeCylinderFeatures(
       continue;
     }
     minRadius = minRadius === undefined ? radius : Math.min(minRadius, radius);
-    // Internal (bore) test: the outward material normal at the wall points away from the axis.
+    // Internal (bore) test: the outward material normal at the wall points toward the axis.
+    // Sample the radial at a uv-mid wall point, not the face centroid — for a full cylinder the
+    // centroid sits ON the axis, where the radial is degenerate and its sign is numerically
+    // random (the recall bug from #1551). normalAt is already orientation-aware on occt-wasm.
     try {
-      const p = faceCenter(f);
       const o = ax.origin;
       const d = v3unit(ax.direction);
+      const p = pointOnSurface(f, 0.5, 0.5);
       const rel = v3sub(p, o);
       const radial = v3unit(v3sub(rel, v3scale(d, v3dot(rel, d))));
-      const n = normalAt(f);
-      const out = faceOrientation(f) === 'forward' ? n : v3scale(n, -1);
-      if (v3dot(v3unit(out), radial) > BORE_DOT) {
+      const n = v3unit(normalAt(f));
+      if (v3dot(n, radial) < -BORE_DOT) {
         bores.push({ radius, axisOrigin: [o[0], o[1], o[2]], axisDir: [d[0], d[1], d[2]] });
       }
     } catch {

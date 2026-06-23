@@ -76,6 +76,33 @@ describe('bore detection (--metrics)', () => {
     expect(m?.minRadius).toBeCloseTo(5, 1);
     expect(m?.bores).toBeUndefined();
   });
+
+  // Recall regression (#1551): the centroid-based radial was degenerate for a full cylinder
+  // (centroid on the axis) so the bore/shaft sign was random — these genuine through-holes
+  // were undercounted. The drilled-bracket playground example reported bores: 0.
+  it('detects the drilled-bracket through-hole even after a corner fillet', () => {
+    const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));
+    const part = unwrap(fillet(drilled, edgeFinder().inDirection('Z').findAll(drilled), 1.5));
+    const m = runChecks(brep, part, { metrics: true }).manufacturability;
+    expect(m?.bores?.length).toBe(1);
+    expect(m?.bores?.[0]?.radius).toBeCloseTo(5, 1);
+  });
+
+  it('detects all four corner mount holes (nema-stepper recall)', () => {
+    let plate: brep.AnyShape = box(40, 40, 8, { centered: true });
+    const corners: Array<[number, number]> = [
+      [15, 15],
+      [-15, 15],
+      [15, -15],
+      [-15, -15],
+    ];
+    for (const [x, y] of corners) {
+      plate = unwrap(cut(plate, cylinder(2, 12, { at: [x, y, -6] })));
+    }
+    const m = runChecks(brep, plate, { metrics: true }).manufacturability;
+    expect(m?.bores?.length).toBe(4);
+    expect(m?.minRadius).toBeCloseTo(2, 1);
+  });
 });
 
 describe('digestMetrics (pure)', () => {
