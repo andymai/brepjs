@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-25T16:47:45.082Z",
+  "generated": "2026-06-23T07:47:44.881Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -28,9 +28,104 @@
       "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|numericalIntersect|#0"
     },
     {
-      "file": "src/kernel/occt/hullOps.ts",
+      "file": "src/kernel/manifold/booleanOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|quickHull|#0"
+      "fingerprint": "src/kernel/manifold/booleanOps.ts|max-function-lines|makeBooleanOps|#0"
+    },
+    {
+      "file": "src/kernel/manifold/builderOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/builderOps.ts|max-function-lines|makeBuilderOps|#0"
+    },
+    {
+      "file": "src/kernel/manifold/ioOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/ioOps.ts|max-function-lines|exportGLB|#0"
+    },
+    {
+      "file": "src/kernel/manifold/ioOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/ioOps.ts|max-function-lines|parseGLB|#0"
+    },
+    {
+      "file": "src/kernel/manifold/ioOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/ioOps.ts|max-function-lines|makeIoOps|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|g as unknown as Affine|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|base as unknown as Affine|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|bb as unknown as { min: Vec2; max: Vec2 }|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|bb as unknown as { min: Vec2; max: Vec2 }|#1"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|t as unknown as { min: Vec2; max: Vec2 }|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|o as unknown as { min: Vec2; max: Vec2 }|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|a as unknown as { min: Vec2; max: Vec2 }|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|b as unknown as { min: Vec2; max: Vec2 }|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|no-double-cast|bb as unknown as { min: Vec2; max: Vec2 }|#2"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dNative.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/kernel2dNative.ts|max-function-lines|makeNativeKernel2DOps|#0"
+    },
+    {
+      "file": "src/kernel/manifold/kernel2dOps.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/kernel/manifold/kernel2dOps.ts|no-double-cast|occt as unknown as Record<keyof Kernel2DCapability, (...a: unknown[]) => unkn...|#0"
+    },
+    {
+      "file": "src/kernel/manifold/nativeEdges.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/nativeEdges.ts|max-function-lines|extractEdges|#0"
+    },
+    {
+      "file": "src/kernel/manifold/nativeFaces.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/nativeFaces.ts|max-function-lines|extractFaces|#0"
+    },
+    {
+      "file": "src/kernel/manifold/profileOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/profileOps.ts|max-function-lines|makeProfileBuilders|#0"
+    },
+    {
+      "file": "src/kernel/manifold/sweepOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/manifold/sweepOps.ts|max-function-lines|sweepFamilyEntries|#0"
     },
     {
       "file": "src/operations/straightSkeleton.ts",
