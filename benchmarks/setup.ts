@@ -24,7 +24,8 @@ export function hasBrepkit(): boolean {
  *
  * Reads `BENCH_KERNELS` env var:
  * - `'all'` or `'both'` → initialise all available kernels
- * - otherwise → treat as a kernel id (defaults to `'occt'`)
+ * - a comma-separated list (e.g. `'occt,brepkit'`) → initialise just those
+ * - otherwise → treat as a single kernel id (defaults to `'occt'`)
  *
  * Keeps `npm run bench` fast (OCCT-only by default).
  */
@@ -32,6 +33,10 @@ export async function initBenchKernels(): Promise<void> {
   const mode = process.env['BENCH_KERNELS'] ?? 'occt';
   if (mode === 'all' || mode === 'both') {
     await initAllKernels();
+  } else if (mode.includes(',')) {
+    for (const id of mode.split(',').map((s) => s.trim()).filter(Boolean)) {
+      await initKernel(id);
+    }
   } else {
     await initKernel(mode);
   }

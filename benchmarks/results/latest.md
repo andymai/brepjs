@@ -1,7 +1,7 @@
 # Kernel Comparison
 
-**Date:** 2026-06-20
-**brepkit-wasm version:** 2.112.0
+**Date:** 2026-06-23
+**brepkit-wasm version:** 2.115.8
 **Test:** `benchmarks/kernel-comparison.bench.test.ts`
 **Environment:** Node.js, Linux (x86_64), 5 iterations per benchmark
 
@@ -13,51 +13,83 @@
 
 ### Primitives
 
-| Benchmark                      | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| ------------------------------ | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] makeBox(10,20,30)  | 2.6      | 2.8         | 2.9       | 3.3      | —       |
-| [occt-wasm] makeCylinder(5,20) | 1.1      | 1.1         | 1.1       | 1.2      | —       |
-| [occt-wasm] makeSphere(10)     | 0.8      | 0.8         | 0.8       | 0.8      | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] makeBox(10,20,30) | 2.8 | 3.0 | 3.0 | 3.4 | — |
+| [occt-wasm] makeBox(10,20,30) | 2.9 | 3.0 | 3.0 | 3.2 | **1.0x faster** |
+| [brepkit] makeBox(10,20,30) | 0.2 | 0.2 | 0.4 | 0.7 | **13.2x faster** |
+| [occt] makeCylinder(5,20) | 1.4 | 1.6 | 1.7 | 2.0 | — |
+| [occt-wasm] makeCylinder(5,20) | 1.1 | 1.1 | 1.1 | 1.1 | **1.5x faster** |
+| [brepkit] makeCylinder(5,20) | 0.1 | 0.1 | 0.1 | 0.1 | **14.5x faster** |
+| [occt] makeSphere(10) | 0.9 | 0.9 | 0.9 | 1.0 | — |
+| [occt-wasm] makeSphere(10) | 0.8 | 0.8 | 0.8 | 0.9 | **1.1x faster** |
+| [brepkit] makeSphere(10) | 0.4 | 0.4 | 0.8 | 2.2 | **2.1x faster** |
 
 ### Booleans
 
-| Benchmark                         | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| --------------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] fuse(box,box)         | 45.0     | 46.6        | 48.1      | 53.5     | —       |
-| [occt-wasm] cut(box,cyl)          | 72.6     | 73.8        | 75.1      | 77.8     | —       |
-| [occt-wasm] intersect(box,sphere) | 62.3     | 64.3        | 64.5      | 66.8     | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] fuse(box,box) | 40.5 | 41.0 | 45.3 | 53.9 | — |
+| [occt-wasm] fuse(box,box) | 42.9 | 43.3 | 44.2 | 47.4 | **1.1x SLOWER** |
+| [brepkit] fuse(box,box) | 0.5 | 0.5 | 0.5 | 0.6 | **84.1x faster** |
+| [occt] cut(box,cyl) | 69.0 | 69.8 | 69.8 | 70.7 | — |
+| [occt-wasm] cut(box,cyl) | 71.1 | 72.0 | 72.3 | 73.7 | **1.0x SLOWER** |
+| [brepkit] cut(box,cyl) | 58.9 | 59.6 | 59.7 | 60.7 | **1.2x faster** |
+| [occt] intersect(box,sphere) | 60.7 | 60.9 | 61.2 | 62.6 | — |
+| [occt-wasm] intersect(box,sphere) | 62.1 | 62.6 | 62.6 | 63.2 | **1.0x SLOWER** |
+| [brepkit] intersect(box,sphere) | 0.2 | 0.3 | 0.3 | 0.3 | **236.7x faster** |
 
 ### Transforms
 
-| Benchmark                   | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| --------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] translate ×1000 | 42.0     | 44.0        | 43.7      | 45.0     | —       |
-| [occt-wasm] rotate ×100     | 4.3      | 4.4         | 4.7       | 5.4      | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] translate ×1000 | 42.2 | 42.4 | 43.0 | 45.2 | — |
+| [occt-wasm] translate ×1000 | 41.8 | 42.2 | 42.2 | 43.0 | **1.0x faster** |
+| [brepkit] translate ×1000 | 9.8 | 10.0 | 12.1 | 20.3 | **4.2x faster** |
+| [occt] rotate ×100 | 4.5 | 4.6 | 4.5 | 4.6 | — |
+| [occt-wasm] rotate ×100 | 4.3 | 4.3 | 4.3 | 4.4 | **1.0x faster** |
+| [brepkit] rotate ×100 | 1.1 | 1.1 | 1.3 | 2.1 | **4.0x faster** |
 
 ### Meshing
 
-| Benchmark                          | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| ---------------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] mesh box (tol=0.1)     | 0.5      | 0.5         | 0.5       | 0.8      | —       |
-| [occt-wasm] mesh sphere (tol=0.01) | 52.3     | 58.2        | 57.2      | 60.4     | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] mesh box (tol=0.1) | 0.4 | 0.5 | 0.5 | 0.5 | — |
+| [occt-wasm] mesh box (tol=0.1) | 0.4 | 0.5 | 0.5 | 0.7 | **1.0x SLOWER** |
+| [brepkit] mesh box (tol=0.1) | 0.1 | 0.1 | 0.1 | 0.3 | **7.0x faster** |
+| [occt] mesh sphere (tol=0.01) | 46.6 | 47.3 | 47.4 | 48.1 | — |
+| [occt-wasm] mesh sphere (tol=0.01) | 49.3 | 49.7 | 49.6 | 49.9 | **1.0x SLOWER** |
+| [brepkit] mesh sphere (tol=0.01) | 32.8 | 33.4 | 33.5 | 34.3 | **1.4x faster** |
 
 ### Measurement
 
-| Benchmark                    | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| ---------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] volume ×100      | 8.4      | 8.5         | 9.0       | 10.2     | —       |
-| [occt-wasm] boundingBox ×100 | 0.8      | 0.9         | 0.9       | 0.9      | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] volume ×100 | 8.0 | 8.0 | 8.0 | 8.1 | — |
+| [occt-wasm] volume ×100 | 8.4 | 8.5 | 8.5 | 8.6 | **1.1x SLOWER** |
+| [brepkit] volume ×100 | 3.1 | 3.2 | 3.2 | 3.3 | **2.5x faster** |
+| [occt] boundingBox ×100 | 0.6 | 0.7 | 0.7 | 0.9 | — |
+| [occt-wasm] boundingBox ×100 | 0.7 | 0.8 | 0.8 | 0.8 | **1.2x SLOWER** |
+| [brepkit] boundingBox ×100 | 0.3 | 0.3 | 0.3 | 0.3 | **2.3x faster** |
 
 ### I/O
 
-| Benchmark                  | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| -------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] exportSTEP ×10 | 13.8     | 15.3        | 15.3      | 16.5     | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] exportSTEP ×10 | 15.5 | 15.9 | 15.9 | 16.5 | — |
+| [occt-wasm] exportSTEP ×10 | 18.3 | 18.6 | 18.6 | 18.9 | **1.2x SLOWER** |
+| [brepkit] exportSTEP ×10 | 1.0 | 1.1 | 1.1 | 1.1 | **14.8x faster** |
 
 ### End-to-end
 
-| Benchmark                       | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
-| ------------------------------- | -------- | ----------- | --------- | -------- | ------- |
-| [occt-wasm] box+chamfer         | 5.7      | 7.2         | 7.0       | 8.7      | —       |
-| [occt-wasm] box+fillet          | 5.9      | 6.2         | 6.2       | 6.3      | —       |
-| [occt-wasm] multi-boolean model | 31.2     | 32.4        | 32.1      | 33.0     | —       |
+| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |
+| --- | --- | --- | --- | --- | --- |
+| [occt] box+chamfer | 4.8 | 4.9 | 5.2 | 6.2 | — |
+| [occt-wasm] box+chamfer | 5.6 | 5.6 | 5.6 | 5.6 | **1.1x SLOWER** |
+| [brepkit] box+chamfer | 0.1 | 0.1 | 0.1 | 0.1 | **60.3x faster** |
+| [occt] box+fillet | 5.2 | 5.4 | 5.4 | 5.6 | — |
+| [occt-wasm] box+fillet | 6.2 | 6.3 | 6.3 | 6.5 | **1.2x SLOWER** |
+| [brepkit] box+fillet | 0.3 | 0.3 | 0.3 | 0.3 | **18.1x faster** |
+| [occt] multi-boolean model | 30.5 | 30.7 | 31.0 | 32.5 | — |
+| [occt-wasm] multi-boolean model | 30.7 | 31.2 | 31.2 | 31.8 | **1.0x SLOWER** |
+| [brepkit] multi-boolean model | 6.9 | 7.0 | 7.1 | 7.2 | **4.4x faster** |
