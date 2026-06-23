@@ -185,7 +185,7 @@ function computeCylinderFeatures(
       const p = pointOnSurface(f, 0.5, 0.5);
       const rel = v3sub(p, o);
       const radial = v3unit(v3sub(rel, v3scale(d, v3dot(rel, d))));
-      const n = v3unit(normalAt(f));
+      const n = v3unit(normalAt(f, p));
       if (v3dot(n, radial) < -BORE_DOT) {
         bores.push({ radius, axisOrigin: [o[0], o[1], o[2]], axisDir: [d[0], d[1], d[2]] });
       }
