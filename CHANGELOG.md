@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.103.0](https://github.com/andymai/brepjs/compare/brepjs-v18.102.0...brepjs-v18.103.0) (2026-06-24)
+
+
+### Features
+
+* **csg:** add an Instance node to the CSG IR ([#1616](https://github.com/andymai/brepjs/issues/1616)) ([46c9a99](https://github.com/andymai/brepjs/commit/46c9a99f34b824efa2c06478d1ff9ad310254a0f))
+
 ## [18.102.0](https://github.com/andymai/brepjs/compare/brepjs-v18.101.0...brepjs-v18.102.0) (2026-06-24)
 
 
