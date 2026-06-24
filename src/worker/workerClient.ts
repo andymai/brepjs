@@ -124,7 +124,17 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
 
     executeBatch(operations: ReadonlyArray<BatchOperation>): Promise<BatchItemResult[]> {
       const msg: BatchRequest = { id: nextId(), type: 'batch', operations };
-      return send(msg).then((result) => (result.resultData as BatchItemResult[] | undefined) ?? []);
+      return send(msg).then((result) => {
+        // A correct batch reply carries one result per op in resultData. Reject
+        // anything else (an un-upgraded worker, a single-op shape, or a malformed
+        // response) rather than silently dropping operations or handing the
+        // caller a non-array to map over.
+        const data = result.resultData;
+        if (!Array.isArray(data) || data.length !== operations.length) {
+          throw new Error(`Invalid batch response: expected ${operations.length} results`);
+        }
+        return data as BatchItemResult[];
+      });
     },
 
     dispose(): void {

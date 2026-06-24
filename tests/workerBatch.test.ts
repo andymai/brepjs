@@ -74,13 +74,26 @@ describe('WorkerClient.executeBatch', () => {
     ]);
   });
 
-  it('resolves to [] when the worker returns no resultData', async () => {
+  it('resolves to [] for an empty batch', async () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
     const p = client.executeBatch([]);
     const sent = vi.mocked(worker).postMessage.mock.calls.at(0)?.at(0) as { id: string };
-    getHandler()?.({ data: { id: sent.id, success: true } } as MessageEvent);
+    getHandler()?.({ data: { id: sent.id, success: true, resultData: [] } } as MessageEvent);
     await expect(p).resolves.toEqual([]);
+  });
+
+  it('rejects a malformed batch response instead of silently dropping ops', async () => {
+    const { worker, getHandler } = createMockWorker();
+    const client = createWorkerClient({ worker });
+    // Two ops requested, but the worker replies with a single-op shape (no array).
+    const p = client.executeBatch([
+      { operation: 'a', shapesBrep: [], params: {} },
+      { operation: 'b', shapesBrep: [], params: {} },
+    ]);
+    const sent = vi.mocked(worker).postMessage.mock.calls.at(0)?.at(0) as { id: string };
+    getHandler()?.({ data: { id: sent.id, success: true, resultBrep: 'oops' } } as MessageEvent);
+    await expect(p).rejects.toThrow('Invalid batch response');
   });
 });
 
