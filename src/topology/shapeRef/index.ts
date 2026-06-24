@@ -12,6 +12,10 @@ export type {
   EdgeRef,
   ResolvedEdgeRef,
   BrokenEdgeRef,
+  VertexHint,
+  VertexRef,
+  ResolvedVertexRef,
+  BrokenVertexRef,
 } from './shapeRefTypes.js';
 
 export { type FaceScorer, defaultScorer } from './scoring.js';
@@ -19,3 +23,5 @@ export { type FaceScorer, defaultScorer } from './scoring.js';
 export { captureHint, assignRoles, createRef, updateRoles, resolveRef } from './shapeRefFns.js';
 
 export { createEdgeRef, resolveEdgeRef } from './edgeRefFns.js';
+
+export { createVertexRef, resolveVertexRef } from './vertexRefFns.js';

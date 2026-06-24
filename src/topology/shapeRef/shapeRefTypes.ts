@@ -5,7 +5,7 @@
 
 import type { Vec3 } from '@/core/types.js';
 import type { SurfaceType } from '@/topology/faceFns.js';
-import type { Face, Edge } from '@/core/shapeTypes.js';
+import type { Face, Edge, Vertex } from '@/core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Geometric hint — snapshot of a face's geometric properties
@@ -112,4 +112,40 @@ export interface BrokenEdgeRef {
   // distinguished from never-resolved.
   readonly reason: 'ambiguous' | 'not-found';
   readonly candidates?: readonly Edge[];
+}
+
+// ---------------------------------------------------------------------------
+// VertexRef — lineage-based vertex reference (named by its ≥3 adjacent faces)
+// ---------------------------------------------------------------------------
+
+/** Geometric snapshot of a vertex — a tiebreaker when several candidates survive. */
+export interface VertexHint {
+  readonly entityType: 'vertex';
+  readonly position?: Vec3 | undefined;
+}
+
+/**
+ * A stable reference to a vertex, identified by the roles of the faces meeting
+ * at it. A solid corner is where **≥3** faces meet at a point; two faces meet
+ * along an *edge* (two endpoints → ambiguous), so a vertex needs ≥3 face-roles.
+ * Resolves by finding the vertex common to those roles' current faces.
+ */
+export interface VertexRef {
+  readonly origin: string;
+  /** Roles of the ≥3 faces meeting at this vertex (sorted). */
+  readonly faceRoles: readonly string[];
+  readonly hint: VertexHint;
+}
+
+/** A successfully resolved vertex reference. */
+export interface ResolvedVertexRef {
+  readonly vertex: Vertex;
+  readonly confidence: 'exact' | 'geometric-fallback';
+}
+
+/** A vertex reference that could not be resolved. */
+export interface BrokenVertexRef {
+  readonly ref: VertexRef;
+  readonly reason: 'ambiguous' | 'not-found';
+  readonly candidates?: readonly Vertex[];
 }

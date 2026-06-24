@@ -602,6 +602,8 @@ export {
   edgesOfFace,
   wiresOfFace,
   verticesOfEdge,
+  verticesOfFace,
+  facesOfVertex,
   adjacentFaces,
   sharedEdges,
 } from './topology/adjacencyFns.js';
@@ -732,6 +734,8 @@ export {
   defaultScorer,
   createEdgeRef,
   resolveEdgeRef,
+  createVertexRef,
+  resolveVertexRef,
 } from './topology/shapeRef/index.js';
 export type {
   GeometricHint,
@@ -744,6 +748,10 @@ export type {
   EdgeRef,
   ResolvedEdgeRef,
   BrokenEdgeRef,
+  VertexHint,
+  VertexRef,
+  ResolvedVertexRef,
+  BrokenVertexRef,
 } from './topology/shapeRef/index.js';
 
 export {

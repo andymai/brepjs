@@ -131,6 +131,54 @@ export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge
   return wrapAll<Face<D>>(results, 'face');
 }
 
+/** True if `face` (a raw KernelShape) has a vertex matching `vertexHash`/`vertexWrapped`. */
+function faceHasVertex(
+  kernel: ReturnType<typeof getKernel>,
+  face: KernelShape,
+  vertexHash: number,
+  vertexWrapped: KernelShape
+): boolean {
+  for (const v of kernel.iterShapes(face, 'vertex')) {
+    if (kernel.hashCode(v, HASH_CODE_MAX) === vertexHash && kernel.isSame(v, vertexWrapped)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Get all faces meeting at a vertex (≥3 for a solid corner, fewer on a
+ * boundary). Derived by testing vertex membership against each face — the
+ * vertex equivalent of {@link facesOfEdge}.
+ *
+ * @param parent - The parent shape to search within.
+ * @param vertex - The vertex whose adjacent faces to find.
+ */
+export function facesOfVertex<D extends Dimension>(
+  parent: AnyShape<D>,
+  vertex: Vertex<D>
+): Face<D>[] {
+  const kernel = getKernel();
+  const vHash = kernel.hashCode(vertex.wrapped, HASH_CODE_MAX);
+  const results: KernelShape[] = [];
+  const seen = new Map<number, KernelShape[]>();
+
+  for (const f of kernel.iterShapes(parent.wrapped, 'face')) {
+    if (!faceHasVertex(kernel, f, vHash, vertex.wrapped)) continue;
+    const fHash = kernel.hashCode(f, HASH_CODE_MAX);
+    const bucket = seen.get(fHash);
+    if (!bucket) {
+      seen.set(fHash, [f]);
+      results.push(f);
+    } else if (!bucket.some((r) => kernel.isSame(r, f))) {
+      bucket.push(f);
+      results.push(f);
+    }
+  }
+
+  return wrapAll<Face<D>>(results, 'face');
+}
+
 /**
  * Get all edges bounding a face.
  *
@@ -139,6 +187,15 @@ export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge
  */
 export function edgesOfFace<D extends Dimension>(face: Face<D>): Edge<D>[] {
   return deduplicatedSubShapes<Edge<D>>(face.wrapped, 'edge');
+}
+
+/**
+ * Get all vertices of a face. The vertex equivalent of {@link edgesOfFace}.
+ *
+ * @param face - The face whose vertices to enumerate.
+ */
+export function verticesOfFace<D extends Dimension>(face: Face<D>): Vertex<D>[] {
+  return deduplicatedSubShapes<Vertex<D>>(face.wrapped, 'vertex');
 }
 
 /**
