@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.109.0](https://github.com/andymai/brepjs/compare/brepjs-v18.108.0...brepjs-v18.109.0) (2026-06-24)
+
+
+### Features
+
+* **csg:** cheap location-only transforms for rigid moves ([e13c550](https://github.com/andymai/brepjs/commit/e13c5502e192d5a8e7d592b9bfa1a80b0043a8fb))
+
 ## [18.108.0](https://github.com/andymai/brepjs/compare/brepjs-v18.107.0...brepjs-v18.108.0) (2026-06-24)
 
 
