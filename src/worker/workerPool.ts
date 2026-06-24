@@ -33,7 +33,11 @@ export interface WorkerOperation {
 export interface WorkerPool {
   /** Number of workers in the pool. */
   readonly size: number;
-  /** Initialize every worker (load WASM) in parallel. */
+  /**
+   * Initialize every worker (load WASM) in parallel. Atomic: if any worker
+   * fails, the pool disposes every worker and rejects with the original error,
+   * leaving the pool in a terminal disposed state.
+   */
   init(): Promise<void>;
   /** Run one operation on the least-loaded worker. */
   execute(
@@ -100,11 +104,25 @@ export function createWorkerPool(options: WorkerPoolOptions): WorkerPool {
     });
   }
 
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    for (const slot of slots) slot.client.dispose();
+  }
+
   return {
     size: slots.length,
 
     async init(): Promise<void> {
-      await Promise.all(slots.map((slot) => slot.client.init()));
+      try {
+        await Promise.all(slots.map((slot) => slot.client.init()));
+      } catch (err) {
+        // A partially-initialized pool is unusable — least-loaded dispatch would
+        // still route to the failed worker — and would leak the workers that did
+        // start. Fail atomically: dispose every worker, then rethrow.
+        dispose();
+        throw err;
+      }
     },
 
     execute,
@@ -117,10 +135,6 @@ export function createWorkerPool(options: WorkerPoolOptions): WorkerPool {
       return slots.map((slot) => slot.inFlight);
     },
 
-    dispose(): void {
-      if (disposed) return;
-      disposed = true;
-      for (const slot of slots) slot.client.dispose();
-    },
+    dispose,
   };
 }

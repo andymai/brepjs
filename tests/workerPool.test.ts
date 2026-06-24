@@ -180,18 +180,24 @@ describe('createWorkerPool', () => {
     expect([postCount(a.worker), postCount(b.worker)]).toEqual(afterFirst);
   });
 
-  it('init rejects if any worker fails to load WASM', async () => {
+  it('init failure disposes the whole pool and rethrows the original error', async () => {
     const a = createMockWorker();
     const b = createMockWorker();
     const pool = createWorkerPool({ workers: [a.worker, b.worker] });
 
     const done = pool.init();
-    reply(a, sentMessages(a.worker)[0] as SentMessage, { success: true });
+    reply(a, sentMessages(a.worker)[0] as SentMessage, { success: true }); // a initializes
     reply(b, sentMessages(b.worker)[0] as SentMessage, {
       success: false,
       error: 'WASM load failed',
     });
 
     await expect(done).rejects.toThrow('WASM load failed');
+
+    // Atomic init: the pool is now terminally disposed — no further dispatch, and
+    // even the worker that succeeded was told to dispose so nothing leaks.
+    await expect(pool.execute('fuse', [], {})).rejects.toThrow('disposed');
+    expect(sentMessages(a.worker).some((m) => m.type === 'dispose')).toBe(true);
+    expect(sentMessages(b.worker).some((m) => m.type === 'dispose')).toBe(true);
   });
 });
