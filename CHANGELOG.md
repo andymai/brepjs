@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.108.0](https://github.com/andymai/brepjs/compare/brepjs-v18.107.0...brepjs-v18.108.0) (2026-06-24)
+
+
+### Features
+
+* **csg:** content-addressed mesh cache via Evaluator.evaluateMesh ([#1631](https://github.com/andymai/brepjs/issues/1631)) ([a748c6f](https://github.com/andymai/brepjs/commit/a748c6f5696e62c65437a60358e988f5f0f5fa6c))
+
 ## [18.107.0](https://github.com/andymai/brepjs/compare/brepjs-v18.106.0...brepjs-v18.107.0) (2026-06-24)
 
 
