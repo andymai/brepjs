@@ -58,38 +58,67 @@ export function composeTransform(
   };
 }
 
+/**
+ * Extract a 12-element row-major 3x4 matrix from the trsf representations the
+ * occt-wasm adapter accepts (raw array, `{ matrix }`, `{ elements }`). Returns
+ * undefined when no usable matrix is present.
+ */
+function toMatrix12(trsf: KernelType): number[] | undefined {
+  // brepjs-patterns-disable: no-double-cast
+  const t = trsf;
+  let matrix: number[] | undefined;
+  if (Array.isArray(t)) {
+    matrix = t as number[];
+  } else if (t !== null && typeof t === 'object') {
+    if (Array.isArray(t['matrix'])) matrix = t['matrix'] as number[];
+    else if (Array.isArray(t['elements'])) matrix = t['elements'] as number[];
+  }
+  if (matrix && matrix.length === 16) matrix = matrix.slice(0, 12);
+  return matrix && matrix.length >= 12 ? matrix : undefined;
+}
+
 export function transform(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shape: KernelShape,
   trsf: KernelType
 ): KernelShape {
-  // Handle various transform representations.
-  // brepjs-patterns-disable: no-double-cast
-  const t = trsf;
-  let matrix: number[] | undefined;
-  if (Array.isArray(t)) {
-    matrix = t as number[];
-  } else if (typeof t === 'object') {
-    if (Array.isArray(t['matrix'])) {
-      matrix = t['matrix'] as number[];
-      if (matrix.length === 16) matrix = matrix.slice(0, 12);
-    } else if (Array.isArray(t['elements'])) matrix = t['elements'] as number[];
-  }
+  const matrix = toMatrix12(trsf);
   if (matrix) {
-    if (matrix.length === 16) {
-      matrix = matrix.slice(0, 12);
+    const vec = makeVecDouble(Module, matrix);
+    try {
+      return wrapResult(k, k.transform(unwrap(shape), vec));
+    } finally {
+      vec.delete();
     }
-    if (matrix.length >= 12) {
+  }
+  return handle(k.getShapeType(unwrap(shape)) as ShapeType, k.copy(unwrap(shape)));
+}
+
+/**
+ * Cheap location-only move. Uses the occt-wasm `located` facade method (a
+ * `TopLoc_Location` re-tag that shares the source `TShape`) when the loaded
+ * WASM build exposes it; builds without `located` fall back to the copying
+ * `transform` — same geometry, only the cost differs.
+ */
+export function locate(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shape: KernelShape,
+  trsf: KernelType
+): KernelShape {
+  if (typeof k.located === 'function') {
+    const matrix = toMatrix12(trsf);
+    if (matrix) {
       const vec = makeVecDouble(Module, matrix);
       try {
-        return wrapResult(k, k.transform(unwrap(shape), vec));
+        return wrapResult(k, k.located(unwrap(shape), vec));
       } finally {
         vec.delete();
       }
     }
   }
-  return handle(k.getShapeType(unwrap(shape)) as ShapeType, k.copy(unwrap(shape)));
+  return transform(k, Module, shape, trsf);
 }
 
 export function translate(

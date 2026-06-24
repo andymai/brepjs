@@ -98,6 +98,19 @@ export function transform(oc: KernelInstance, shape: KernelShape, trsf: KernelTy
 }
 
 /**
+ * Apply a rigid transform as a location re-tag. Passing copy=false makes
+ * BRepBuilderAPI_Transform share the source TShape under a new location for a
+ * rigid motion, instead of the deep topology copy {@link transform} (copy=true)
+ * performs. Use only for rigid `trsf` (rotation + translation).
+ */
+export function locate(oc: KernelInstance, shape: KernelShape, trsf: KernelType): KernelShape {
+  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false, false);
+  const result = transformer.ModifiedShape(shape);
+  transformer.delete();
+  return result;
+}
+
+/**
  * Translates a shape by the given offset.
  */
 export function translate(
@@ -250,6 +263,7 @@ export function simplify(oc: KernelInstance, shape: KernelShape): KernelShape {
 export function makeTransformOps(oc: KernelInstance) {
   return {
     transform: (shape, trsf) => transform(oc, shape, trsf),
+    locate: (shape, trsf) => locate(oc, shape, trsf),
     translate: (shape, x, y, z) => translate(oc, shape, x, y, z),
     rotate: (shape, angle, axis, center) => rotate(oc, shape, angle, axis, center),
     mirror: (shape, origin, normal) => mirror(oc, shape, origin, normal),
@@ -261,6 +275,7 @@ export function makeTransformOps(oc: KernelInstance) {
   } satisfies Pick<
     KernelAdapter,
     | 'transform'
+    | 'locate'
     | 'translate'
     | 'rotate'
     | 'mirror'

@@ -329,6 +329,9 @@ export function makeTransformOps(module: ManifoldModule): KernelTransformOps {
   return {
     composeTransform,
     transform,
+    // Mesh kernel: a transform bakes into the vertex buffer (no location
+    // concept to share), so locate is the same operation.
+    locate: transform,
     translate,
     rotate,
     mirror,

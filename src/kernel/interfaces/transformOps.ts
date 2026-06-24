@@ -54,6 +54,17 @@ export interface KernelTransformOps {
   ): { handle: KernelType; dispose: () => void };
 
   transform(shape: KernelShape, trsf: KernelType): KernelShape;
+
+  /**
+   * Apply a rigid transform as a *location re-tag* that shares the source's
+   * underlying geometry instead of deep-copying its topology — O(1) vs
+   * O(topology size). `trsf` MUST be a rigid motion (rotation + translation,
+   * e.g. built from translate/rotate via {@link composeTransform}); non-rigid
+   * input (scale/shear) is unsupported. Kernels with no cheap-location concept
+   * fall back to a copying {@link transform}: the result is geometrically
+   * identical, only the cost differs.
+   */
+  locate(shape: KernelShape, trsf: KernelType): KernelShape;
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
   rotate(
     shape: KernelShape,

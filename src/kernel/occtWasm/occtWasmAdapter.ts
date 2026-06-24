@@ -744,6 +744,10 @@ export class OcctWasmAdapter implements KernelAdapter {
     return transformOps.transform(this.k, this.Module, shape, trsf);
   }
 
+  locate(shape: KernelShape, trsf: KernelType): KernelShape {
+    return transformOps.locate(this.k, this.Module, shape, trsf);
+  }
+
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape {
     return transformOps.translate(this.k, shape, x, y, z);
   }

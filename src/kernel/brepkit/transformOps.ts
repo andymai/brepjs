@@ -194,6 +194,9 @@ export function transformBatch(bk: BrepkitKernel, entries: TransformEntry[]): Ke
 export function makeTransformOps(bk: BrepkitKernel) {
   return {
     transform: (shape, trsf) => transform(bk, shape, trsf),
+    // brepkit's transform already re-tags rather than deep-copies (no cheaper
+    // location primitive to reach for), so locate just delegates to it.
+    locate: (shape, trsf) => transform(bk, shape, trsf),
     translate: (shape, x, y, z) => translate(bk, shape, x, y, z),
     rotate: (shape, angle, axis, center) => rotate(bk, shape, angle, axis, center),
     mirror: (shape, origin, normal) => mirror(bk, shape, origin, normal),
@@ -213,6 +216,7 @@ export function makeTransformOps(bk: BrepkitKernel) {
   } satisfies Pick<
     KernelAdapter,
     | 'transform'
+    | 'locate'
     | 'translate'
     | 'rotate'
     | 'mirror'

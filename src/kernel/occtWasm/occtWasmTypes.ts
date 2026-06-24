@@ -358,6 +358,13 @@ export interface OcctKernelWasm {
   ): number;
   copy(id: number): number;
   transform(id: number, matrix: EmVectorDouble): number;
+  /**
+   * Cheap location-only move (a `TopLoc_Location` re-tag sharing the source
+   * `TShape`). Optional: absent on WASM builds published before this method
+   * landed, so callers must feature-detect (`typeof k.located === 'function'`)
+   * and fall back to {@link transform}.
+   */
+  located?(id: number, matrix: EmVectorDouble): number;
   generalTransform(id: number, matrix: EmVectorDouble): number;
   linearPattern(
     id: number,
