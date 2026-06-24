@@ -9,6 +9,66 @@ export function buildGeometry(data: MeshData): THREE.BufferGeometry {
   return geo;
 }
 
+/** A per-instance transform: a THREE.Matrix4 or a brepjs row-major 4x4. */
+export type InstancePlacement = THREE.Matrix4 | ReadonlyArray<ReadonlyArray<number>>;
+
+/**
+ * Convert a brepjs row-major 4x4 (`[[row0],[row1],[row2],[row3]]`, as returned
+ * by brepjs `instancedMesh().instances`) to a THREE.Matrix4. THREE.Matrix4.set
+ * is row-major, so the rows map directly.
+ */
+export function instanceMatrix(m: ReadonlyArray<ReadonlyArray<number>>): THREE.Matrix4 {
+  const r0 = m[0] as readonly number[];
+  const r1 = m[1] as readonly number[];
+  const r2 = m[2] as readonly number[];
+  const r3 = m[3] as readonly number[];
+  // prettier-ignore
+  return new THREE.Matrix4().set(
+    r0[0] as number, r0[1] as number, r0[2] as number, r0[3] as number,
+    r1[0] as number, r1[1] as number, r1[2] as number, r1[3] as number,
+    r2[0] as number, r2[1] as number, r2[2] as number, r2[3] as number,
+    r3[0] as number, r3[1] as number, r3[2] as number, r3[3] as number,
+  );
+}
+
+export interface InstancedMeshOptions {
+  /** Material color (defaults to data.color, then the viewer's neutral grey). */
+  color?: string;
+}
+
+/**
+ * Build a THREE.InstancedMesh from one source MeshData (meshed once) plus N
+ * per-instance transforms — the "one tessellation, N placements" render of a
+ * brepjs `instancedMesh()` payload, so a 10x10 grid is a single GPU draw.
+ * Placements may be THREE.Matrix4 or brepjs row-major 4x4 arrays.
+ *
+ * The caller owns the returned mesh: dispose its geometry + material on unmount.
+ */
+export function buildInstancedMesh(
+  data: MeshData,
+  placements: ReadonlyArray<InstancePlacement>,
+  opts: InstancedMeshOptions = {},
+): THREE.InstancedMesh {
+  const geometry = buildGeometry(data);
+  geometry.computeBoundingSphere();
+  const color = opts.color ?? data.color ?? '#d4d8dc';
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    metalness: 0,
+    roughness: 0.45,
+    emissive: new THREE.Color(color),
+    emissiveIntensity: 0.08,
+  });
+  const mesh = new THREE.InstancedMesh(geometry, material, placements.length);
+  for (let i = 0; i < placements.length; i++) {
+    const p = placements[i];
+    if (p === undefined) continue;
+    mesh.setMatrixAt(i, p instanceof THREE.Matrix4 ? p : instanceMatrix(p));
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  return mesh;
+}
+
 export interface MeshBounds {
   min: [number, number, number];
   max: [number, number, number];

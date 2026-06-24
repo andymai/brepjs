@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { buildGeometry, findFaceGroupAt, meshBounds, meshSize, sectionPlane } from '@/geometry.js';
+import * as THREE from 'three';
+import {
+  buildGeometry,
+  buildInstancedMesh,
+  instanceMatrix,
+  findFaceGroupAt,
+  meshBounds,
+  meshSize,
+  sectionPlane,
+} from '@/geometry.js';
 import type { MeshData } from '@/types.js';
 
 const data: MeshData = {
@@ -42,5 +51,49 @@ describe('bounds + section', () => {
     const flipped = sectionPlane('x', 1, true);
     expect(flipped.distanceToPoint({ x: 3, y: 0, z: 0 } as never)).toBeLessThan(0);
     expect(flipped.distanceToPoint({ x: -1, y: 0, z: 0 } as never)).toBeGreaterThan(0);
+  });
+});
+
+describe('instancing', () => {
+  const tri: MeshData = {
+    position: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+    normal: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+    index: new Uint32Array([0, 1, 2]),
+    edges: new Float32Array([]),
+  };
+
+  it('instanceMatrix maps a row-major 4x4 to a THREE.Matrix4 translation', () => {
+    const m = instanceMatrix([
+      [1, 0, 0, 5],
+      [0, 1, 0, 6],
+      [0, 0, 1, 7],
+      [0, 0, 0, 1],
+    ]);
+    // THREE stores column-major; the translation lives in elements[12..14].
+    expect(m.elements[12]).toBe(5);
+    expect(m.elements[13]).toBe(6);
+    expect(m.elements[14]).toBe(7);
+  });
+
+  it('buildInstancedMesh is one InstancedMesh + N placements, geometry meshed once', () => {
+    const mesh = buildInstancedMesh(tri, [
+      [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+      [
+        [1, 0, 0, 10],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+    ]);
+    expect(mesh.count).toBe(2);
+    expect(mesh.geometry.getAttribute('position').count).toBe(3); // one source mesh
+    const out = new THREE.Matrix4();
+    mesh.getMatrixAt(1, out);
+    expect(out.elements[12]).toBe(10); // second instance translated +10 in x
   });
 });

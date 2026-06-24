@@ -13,10 +13,14 @@ export {
 export * from './types.js';
 export {
   buildGeometry,
+  buildInstancedMesh,
+  instanceMatrix,
   findFaceGroupAt,
   meshSize,
   meshBounds,
   sectionPlane,
   type MeshBounds,
   type SectionAxis,
+  type InstancePlacement,
+  type InstancedMeshOptions,
 } from './geometry.js';
