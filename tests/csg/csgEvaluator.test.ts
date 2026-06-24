@@ -117,7 +117,7 @@ describe('Evaluator — cache & incremental re-eval', () => {
     ev.evaluate(tree, { w: 5 });
     ev.resetStats();
     ev.evaluate(tree, { w: 7 });
-    expect(ev.cacheStats()).toEqual({ hits: 1, misses: 2, entries: 5 });
+    expect(ev.cacheStats()).toEqual({ hits: 1, misses: 2, entries: 5, evictions: 0 });
   });
 
   it('changing an unrelated env key invalidates nothing', () => {
