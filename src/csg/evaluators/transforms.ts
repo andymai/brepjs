@@ -1,6 +1,10 @@
 // Transforms reject Empty targets: kernel functions can't operate on a null
 // shape, and "transform(Empty) → Empty" is the optimizer's job, not eval-time.
 import { scale as scaleFn, mirror as mirrorFn } from '@/topology/transformFns.js';
+import {
+  hasAnyMetadata,
+  propagateMetadataThroughRelocation,
+} from '@/topology/metadata/metadataPropagation.js';
 import { getKernel } from '@/kernel/index.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { computationError, BrepErrorCode } from '@/core/errors.js';
@@ -38,15 +42,25 @@ type ComposeOp =
  * own location), so the evaluator owns and disposes it like any other
  * materialized node. On kernels without a cheap-location path `locate` falls
  * back to a copy — same geometry, so cached output is unchanged.
+ *
+ * A location re-tag carries no kernel evolution record, so face metadata isn't
+ * propagated automatically and the moved faces carry new (location-dependent)
+ * hashes. Primitives have no metadata (pure O(1) locate); boolean results carry
+ * face tags/colors, which we re-key onto the moved faces (1:1 by iteration
+ * order, since locate shares the source TShape) so a move preserves them —
+ * matching `scale`/`mirror`.
  */
 function relocate<T extends AnyShape<Dimension>>(shape: T, ops: ComposeOp[]): T {
   const kernel = getKernel();
   const { handle, dispose } = kernel.composeTransform(ops);
+  let moved: T;
   try {
-    return castShape(kernel.locate(shape.wrapped, handle)) as T;
+    moved = castShape(kernel.locate(shape.wrapped, handle)) as T;
   } finally {
     dispose();
   }
+  if (hasAnyMetadata(shape)) propagateMetadataThroughRelocation(shape, moved);
+  return moved;
 }
 
 export function evalTranslate(node: TranslateNode, ctx: EvalContext): S {

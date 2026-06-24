@@ -29,12 +29,18 @@ import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
  * Fast-path: returns empty array when no inputs have any metadata (origins,
  * tags, or colors), avoiding expensive WASM topology exploration.
  */
+/**
+ * O(1) check: does a shape carry any propagatable metadata (face origins,
+ * tags, or colors)? Lets callers skip both expensive face iteration and
+ * metadata-preserving slow paths when there's nothing to preserve.
+ */
+export function hasAnyMetadata(shape: AnyShape<Dimension>): boolean {
+  return getFaceOrigins(shape) !== undefined || hasFaceTags(shape) || hasColorMetadata(shape);
+}
+
 export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): number[] {
   // O(1) check: skip expensive face iteration when no metadata exists
-  const hasMetadata = inputs.some(
-    (s) => getFaceOrigins(s) !== undefined || hasFaceTags(s) || hasColorMetadata(s)
-  );
-  if (!hasMetadata) return [];
+  if (!inputs.some(hasAnyMetadata)) return [];
 
   const kernel = getKernel();
   const hashes: number[] = [];
@@ -84,4 +90,37 @@ export function propagateMetadataByHash(
   result: AnyShape<Dimension>
 ): void {
   propagateOriginsByHash(inputs, result);
+}
+
+/**
+ * Propagate all metadata through a *rigid relocation* (a `locate` re-tag).
+ *
+ * A relocated shape shares the source's TShape, so its faces correspond 1:1 to
+ * the source faces in iteration order — but carry new, location-dependent
+ * hashes, so the hash-keyed metadata must be re-keyed rather than left as-is.
+ * This synthesizes a 1:1 `modified` evolution (source face hash → moved face
+ * hash) and runs the standard propagation pipeline, so origins, tags, and
+ * colors all survive a move at `locate` cost (O(faces)), not a full copy.
+ *
+ * Callers should gate on {@link hasAnyMetadata} first: with no metadata this
+ * does pointless face iteration. The face counts always match for a rigid
+ * relocation; the length guard is purely defensive.
+ */
+export function propagateMetadataThroughRelocation(
+  source: AnyShape<Dimension>,
+  moved: AnyShape<Dimension>
+): void {
+  const kernel = getKernel();
+  const srcFaces = [...kernel.iterShapes(source.wrapped, 'face')];
+  const movedFaces = [...kernel.iterShapes(moved.wrapped, 'face')];
+  if (srcFaces.length !== movedFaces.length) return;
+
+  const modified = new Map<number, number[]>();
+  for (let i = 0; i < srcFaces.length; i++) {
+    const sf = srcFaces[i];
+    const mf = movedFaces[i];
+    if (sf === undefined || mf === undefined) continue;
+    modified.set(kernel.hashCode(sf, HASH_CODE_MAX), [kernel.hashCode(mf, HASH_CODE_MAX)]);
+  }
+  propagateAllMetadata({ modified, generated: new Map(), deleted: new Set() }, [source], moved);
 }

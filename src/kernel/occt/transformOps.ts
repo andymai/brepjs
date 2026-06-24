@@ -105,9 +105,11 @@ export function transform(oc: KernelInstance, shape: KernelShape, trsf: KernelTy
  */
 export function locate(oc: KernelInstance, shape: KernelShape, trsf: KernelType): KernelShape {
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false, false);
-  const result = transformer.ModifiedShape(shape);
-  transformer.delete();
-  return result;
+  try {
+    return transformer.ModifiedShape(shape);
+  } finally {
+    transformer.delete();
+  }
 }
 
 /**

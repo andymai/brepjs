@@ -9,6 +9,8 @@ import { initKernel } from '../setup.js';
 import { Evaluator, box, cylinder, fuse, translate, rotate } from '@/csg/index.js';
 import { translate as copyTranslate, rotate as copyRotate } from '@/topology/transformFns.js';
 import { measureVolumeProps, unwrap, type AnyShape, type Dimension } from '@/index.js';
+import { hasAnyMetadata } from '@/topology/metadata/metadataPropagation.js';
+import { getFaceTags } from '@/topology/metadata/faceTagFns.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -73,5 +75,25 @@ describe('CSG locate parity — geometry identical to the deep-copy transform', 
     expect(moved.volume).toBeCloseTo(base.volume, 4);
     for (let i = 0; i < 3; i++)
       expect(moved.com[i] ?? NaN).toBeCloseTo((base.com[i] ?? 0) + (v[i] ?? 0), 4);
+  });
+
+  it('primitives carry no metadata (pure locate); boolean face metadata survives a move', () => {
+    using ev = new Evaluator();
+    // Primitives have no face metadata → relocate takes the pure O(1) locate path.
+    expect(hasAnyMetadata(unwrap(ev.evaluate(box(10, 10, 10))))).toBe(false);
+    expect(hasAnyMetadata(unwrap(ev.evaluate(cylinder(3, 12))))).toBe(false);
+    // Boolean results carry face tags (kernel-dependent). Where they do, a move
+    // must PRESERVE them — re-keyed through the location, not dropped — matching
+    // scale/mirror. Guards Greptile's metadata-loss finding. Comparing tag names
+    // + per-tag face counts catches a dropped or partial re-key, not just absence.
+    const widget = fuse(box(8, 8, 8), cylinder(3, 12));
+    const baseTags = getFaceTags(unwrap(ev.evaluate(widget)));
+    if (baseTags.size > 0) {
+      for (const node of [translate(widget, [5, 0, 0]), rotate(widget, 30, { axis: [0, 0, 1] })]) {
+        const movedTags = getFaceTags(unwrap(ev.evaluate(node)));
+        expect([...movedTags.keys()].sort()).toEqual([...baseTags.keys()].sort());
+        for (const [tag, faces] of baseTags) expect(movedTags.get(tag)?.length).toBe(faces.length);
+      }
+    }
   });
 });
