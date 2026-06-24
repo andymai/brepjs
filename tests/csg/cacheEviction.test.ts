@@ -150,4 +150,29 @@ describe('CSG cache eviction — error path & reentrancy', () => {
       ev[Symbol.dispose]();
     }
   });
+
+  it('protects the returned root when onStep on the root node re-enters', () => {
+    // The root's own onStep fires after the root is cached; a reentrant
+    // evaluate() then inserts newer entries, displacing the root from MRU. The
+    // outer trim must still keep the root (it is touched back to MRU first),
+    // otherwise the returned handle would be disposed.
+    let done = false;
+    const root = fuse(box(7, 7, 7), box(8, 8, 8));
+    const ev = new Evaluator({
+      maxCacheEntries: 1,
+      onStep: (info) => {
+        if (info.node === root && !info.cacheHit && !done) {
+          done = true;
+          unwrap(ev.evaluate(box(9, 9, 9)));
+          unwrap(ev.evaluate(box(10, 10, 10)));
+        }
+      },
+    });
+    try {
+      const r = unwrap(ev.evaluate(root));
+      expect(unwrap(measureVolume(r))).toBeGreaterThan(0);
+    } finally {
+      ev[Symbol.dispose]();
+    }
+  });
 });

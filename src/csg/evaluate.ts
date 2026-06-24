@@ -216,13 +216,23 @@ export class Evaluator implements Disposable {
         const result = this.evaluateInner(node, env);
         // Reconcile the cache only when leaving the OUTERMOST evaluate() —
         // never mid-recursion, and never from a reentrant call. On success the
-        // bound is enforced by LRU eviction (the just-returned result is the
-        // most-recently-used entry, so a bound >= 1 never frees it). On failure
-        // the call's own inserts are rolled back, so a failed evaluation
-        // neither grows the cache nor evicts an older good result.
+        // root is touched back to MRU (a reentrant onStep may have inserted
+        // newer entries after the root was cached, displacing it) before the
+        // bound is enforced by LRU eviction, so the returned shape is never
+        // freed. On failure the call's own inserts are rolled back, so a failed
+        // evaluation neither grows the cache nor evicts an older good result.
         if (outermost && this.maxCacheEntries !== undefined) {
-          if (result.ok) this.trimCache(this.maxCacheEntries);
-          else this.rollbackPending();
+          if (result.ok) {
+            const rootKey = cacheKey(node, env, this.kernelId, this.defaultTolerance);
+            const root = this.cache.get(rootKey);
+            if (root !== undefined) {
+              this.cache.delete(rootKey);
+              this.cache.set(rootKey, root);
+            }
+            this.trimCache(this.maxCacheEntries);
+          } else {
+            this.rollbackPending();
+          }
         }
         return result;
       } finally {
