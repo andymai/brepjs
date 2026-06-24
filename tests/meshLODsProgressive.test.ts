@@ -85,4 +85,31 @@ describe('meshLODsProgressive', () => {
     // non-decreasing triangle count coarse -> fine
     expect([...counts].sort((a, b) => a - b)).toEqual(counts);
   });
+
+  it('a meshLevel that rejects on abort still resolves with the prior levels', async () => {
+    const ctrl = new AbortController();
+    let calls = 0;
+    const meshLevel: MeshLevelFn = async () => {
+      await Promise.resolve(); // simulate the worker round-trip
+      calls += 1;
+      if (calls === 1) return fakeMesh(); // first level succeeds
+      ctrl.abort(); // a worker-backed meshLevel observes the abort...
+      throw new Error('aborted'); // ...and rejects
+    };
+    const levels = await meshLODsProgressive(box(10, 10, 10), {
+      tolerances: [1, 0.1, 0.01],
+      meshLevel,
+      signal: ctrl.signal,
+    });
+    expect(levels.length).toBe(1); // first level kept; abort rejection swallowed as a stop
+  });
+
+  it('rethrows a genuine meshLevel error (not an abort)', async () => {
+    const meshLevel: MeshLevelFn = () => {
+      throw new Error('kernel exploded');
+    };
+    await expect(
+      meshLODsProgressive(box(10, 10, 10), { tolerances: [1], meshLevel })
+    ).rejects.toThrow('kernel exploded');
+  });
 });

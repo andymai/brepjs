@@ -522,12 +522,18 @@ export async function meshLODsProgressive(
   for (const [index, tolerance] of tolerances.entries()) {
     if (options.signal?.aborted) break;
     const angularTolerance = levelAngular(tolerance, finestTol, finestAngular);
+    let levelMesh: ShapeMesh;
+    try {
+      levelMesh = await meshLevel(shape, tolerance, angularTolerance);
+    } catch (e) {
+      // An async (e.g. worker-backed) meshLevel may reject when it observes the
+      // abort; treat that as a clean stop and keep the levels already produced.
+      // Rethrow a genuine meshing failure.
+      if (options.signal?.aborted) break;
+      throw e;
+    }
     // A level that finished meshing is always delivered; abort stops the next one.
-    const level: LODMesh = {
-      tolerance,
-      angularTolerance,
-      mesh: await meshLevel(shape, tolerance, angularTolerance),
-    };
+    const level: LODMesh = { tolerance, angularTolerance, mesh: levelMesh };
     results.push(level);
     options.onLevel?.(level, index);
     if (options.signal?.aborted || index === tolerances.length - 1) break;
