@@ -428,6 +428,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'ioError',
   'is2D',
   'is3D',
+  'isBatchRequest',
   'isChamferRadius',
   'isClosedWire',
   'isCompSolid',

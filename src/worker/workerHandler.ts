@@ -4,8 +4,8 @@
  * Provides a registry-based approach for defining operation handlers.
  */
 
-import type { WorkerRequest, SuccessResponse, ErrorResponse } from './protocol.js';
-import { isInitRequest, isOperationRequest, isDisposeRequest } from './protocol.js';
+import type { WorkerRequest, SuccessResponse, ErrorResponse, BatchItemResult } from './protocol.js';
+import { isInitRequest, isOperationRequest, isDisposeRequest, isBatchRequest } from './protocol.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +46,42 @@ export function registerHandler(
 // Worker handler setup
 // ---------------------------------------------------------------------------
 
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** Run one registered operation, capturing unknown-op and thrown errors as a result. */
+function runOp(
+  registry: OperationRegistry,
+  operation: string,
+  shapesBrep: ReadonlyArray<string>,
+  params: Readonly<Record<string, unknown>>
+): BatchItemResult {
+  const handler = registry.operations.get(operation);
+  if (!handler) return { success: false, error: `Unknown operation: ${operation}` };
+  try {
+    const r = handler(shapesBrep, params);
+    return {
+      success: true,
+      ...(r.resultBrep !== undefined ? { resultBrep: r.resultBrep } : {}),
+      ...(r.resultData !== undefined ? { resultData: r.resultData } : {}),
+    };
+  } catch (e) {
+    return { success: false, error: errorMessage(e) };
+  }
+}
+
+/** Build a single-operation response from a per-op result. */
+function itemToResponse(id: string, item: BatchItemResult): SuccessResponse | ErrorResponse {
+  if (!item.success) return { id, success: false, error: item.error ?? 'operation failed' };
+  return {
+    id,
+    success: true,
+    ...(item.resultBrep !== undefined ? { resultBrep: item.resultBrep } : {}),
+    ...(item.resultData !== undefined ? { resultData: item.resultData } : {}),
+  };
+}
+
 /**
  * Set up message handling in a Web Worker context.
  *
@@ -68,45 +104,25 @@ export function createWorkerHandler(
         const response: SuccessResponse = { id: msg.id, success: true };
         scope.postMessage(response);
       } catch (e) {
-        const response: ErrorResponse = {
-          id: msg.id,
-          success: false,
-          error: e instanceof Error ? e.message : String(e),
-        };
+        const response: ErrorResponse = { id: msg.id, success: false, error: errorMessage(e) };
         scope.postMessage(response);
       }
       return;
     }
 
     if (isOperationRequest(msg)) {
-      const handler = registry.operations.get(msg.operation);
-      if (!handler) {
-        const response: ErrorResponse = {
-          id: msg.id,
-          success: false,
-          error: `Unknown operation: ${msg.operation}`,
-        };
-        scope.postMessage(response);
-        return;
-      }
+      const item = runOp(registry, msg.operation, msg.shapesBrep, msg.parameters);
+      scope.postMessage(itemToResponse(msg.id, item));
+      return;
+    }
 
-      try {
-        const result = handler(msg.shapesBrep, msg.parameters);
-        const response: SuccessResponse = {
-          id: msg.id,
-          success: true,
-          ...(result.resultBrep !== undefined ? { resultBrep: result.resultBrep } : {}),
-          ...(result.resultData !== undefined ? { resultData: result.resultData } : {}),
-        };
-        scope.postMessage(response);
-      } catch (e) {
-        const response: ErrorResponse = {
-          id: msg.id,
-          success: false,
-          error: e instanceof Error ? e.message : String(e),
-        };
-        scope.postMessage(response);
-      }
+    if (isBatchRequest(msg)) {
+      // Per-op results so one failure doesn't discard the rest; sent in resultData.
+      const results = msg.operations.map((op) =>
+        runOp(registry, op.operation, op.shapesBrep, op.params)
+      );
+      const response: SuccessResponse = { id: msg.id, success: true, resultData: results };
+      scope.postMessage(response);
       return;
     }
 

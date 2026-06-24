@@ -10,6 +10,9 @@ import type {
   DisposeRequest,
   WorkerResponse,
   ErrorResponse,
+  BatchRequest,
+  BatchOperation,
+  BatchItemResult,
 } from './protocol.js';
 import { isSuccessResponse } from './protocol.js';
 
@@ -39,6 +42,12 @@ export interface WorkerClient {
     shapesBrep: string[],
     params: Record<string, unknown>
   ): Promise<WorkerResult>;
+  /**
+   * Run several operations in a single message. Resolves with one result per
+   * operation, in order; a failing op yields `{ success: false, error }` rather
+   * than rejecting the whole batch (unlike a worker pool's `executeBatch`).
+   */
+  executeBatch(operations: ReadonlyArray<BatchOperation>): Promise<BatchItemResult[]>;
   /** Dispose the client, rejecting all pending operations. */
   dispose(): void;
 }
@@ -111,6 +120,11 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
         parameters: params,
       };
       return send(msg);
+    },
+
+    executeBatch(operations: ReadonlyArray<BatchOperation>): Promise<BatchItemResult[]> {
+      const msg: BatchRequest = { id: nextId(), type: 'batch', operations };
+      return send(msg).then((result) => (result.resultData as BatchItemResult[] | undefined) ?? []);
     },
 
     dispose(): void {

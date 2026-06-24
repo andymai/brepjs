@@ -13,9 +13,13 @@ export {
   type WorkerResponse,
   type SuccessResponse,
   type ErrorResponse,
+  type BatchRequest,
+  type BatchOperation,
+  type BatchItemResult,
   isInitRequest,
   isOperationRequest,
   isDisposeRequest,
+  isBatchRequest,
   isSuccessResponse,
   isErrorResponse,
 } from './protocol.js';
