@@ -167,4 +167,31 @@ describe('createWorkerPool', () => {
     await expect(inFlight).rejects.toThrow('disposed');
     await expect(pool.execute('fuse', [], {})).rejects.toThrow('disposed');
   });
+
+  it('dispose is idempotent: a second call sends no further messages', () => {
+    const a = createMockWorker();
+    const b = createMockWorker();
+    const pool = createWorkerPool({ workers: [a.worker, b.worker] });
+
+    pool.dispose();
+    const afterFirst = [postCount(a.worker), postCount(b.worker)];
+    pool.dispose(); // guarded — must not re-dispatch dispose to closed workers
+
+    expect([postCount(a.worker), postCount(b.worker)]).toEqual(afterFirst);
+  });
+
+  it('init rejects if any worker fails to load WASM', async () => {
+    const a = createMockWorker();
+    const b = createMockWorker();
+    const pool = createWorkerPool({ workers: [a.worker, b.worker] });
+
+    const done = pool.init();
+    reply(a, sentMessages(a.worker)[0] as SentMessage, { success: true });
+    reply(b, sentMessages(b.worker)[0] as SentMessage, {
+      success: false,
+      error: 'WASM load failed',
+    });
+
+    await expect(done).rejects.toThrow('WASM load failed');
+  });
 });

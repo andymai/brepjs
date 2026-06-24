@@ -48,7 +48,7 @@ export interface WorkerPool {
   executeBatch(operations: ReadonlyArray<WorkerOperation>): Promise<WorkerResult[]>;
   /** In-flight task count per worker, indexed as the pool was constructed. */
   inFlight(): readonly number[];
-  /** Dispose every worker, rejecting all pending and future operations. */
+  /** Dispose every worker, rejecting all pending and future operations. Idempotent. */
   dispose(): void;
 }
 
@@ -118,6 +118,7 @@ export function createWorkerPool(options: WorkerPoolOptions): WorkerPool {
     },
 
     dispose(): void {
+      if (disposed) return;
       disposed = true;
       for (const slot of slots) slot.client.dispose();
     },
