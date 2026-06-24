@@ -12,5 +12,13 @@
   { "name": "brepjs/measurement", "path": "dist/measurement.js", "limit": "500 B" },
   { "name": "brepjs/io", "path": "dist/io.js", "limit": "8 kB" },
   { "name": "brepjs/worker", "path": "dist/worker.js", "limit": "2 kB" },
-  { "name": "brepjs/quick", "path": "dist/quick.js", "limit": "500 B" }
+  { "name": "brepjs/quick", "path": "dist/quick.js", "limit": "500 B" },
+  { "name": "brepjs/text", "path": "dist/text.js", "limit": "500 B" },
+  { "name": "brepjs/projection", "path": "dist/projection.js", "limit": "500 B" },
+  { "name": "brepjs/shapeRef", "path": "dist/shapeRef.js", "limit": "500 B" },
+  {
+    "name": "brepjs/kernel/occtWasm/occtWasmAdapter",
+    "path": "dist/kernel/occtWasm/occtWasmAdapter.js",
+    "limit": "1 kB"
+  }
 ]
