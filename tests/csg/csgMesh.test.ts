@@ -80,4 +80,29 @@ describe('Evaluator.evaluateMesh', () => {
     expect(() => new Evaluator({ maxMeshCacheEntries: 0 })).toThrow('positive integer');
     expect(() => new Evaluator({ maxMeshCacheEntries: 1.5 })).toThrow('positive integer');
   });
+
+  it('throws on an aborted signal even when the mesh is cached', () => {
+    using ev = new Evaluator();
+    const node = box(10, 10, 10);
+    unwrap(ev.evaluateMesh(node)); // populate the content cache
+    const ctrl = new AbortController();
+    ctrl.abort();
+    expect(() => ev.evaluateMesh(node, {}, { signal: ctrl.signal })).toThrow();
+  });
+
+  it('throws on an aborted signal before materializing the node', () => {
+    using ev = new Evaluator();
+    const ctrl = new AbortController();
+    ctrl.abort();
+    expect(() => ev.evaluateMesh(box(10, 10, 10), {}, { signal: ctrl.signal })).toThrow();
+    expect(ev.cacheStats().misses).toBe(0); // the CSG node was never evaluated
+  });
+
+  it('cache: false bypasses the cache and re-meshes each call', () => {
+    using ev = new Evaluator();
+    const node = box(10, 10, 10);
+    const m1 = unwrap(ev.evaluateMesh(node, {}, { cache: false }));
+    const m2 = unwrap(ev.evaluateMesh(node, {}, { cache: false }));
+    expect(m2).not.toBe(m1); // no content cache; cache:false bypasses mesh()'s identity cache too
+  });
 });

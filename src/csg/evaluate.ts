@@ -282,8 +282,14 @@ export class Evaluator implements Disposable {
   evaluateMesh(
     node: IRNode,
     env: Env = {},
-    meshOpts: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean } = {}
+    meshOpts: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
   ): Result<ShapeMesh> {
+    // Honor an already-aborted signal up front, matching mesh()'s contract:
+    // otherwise a cancelled call could still return a cached mesh, or do a full
+    // materialize (and trigger shape-cache eviction) before mesh() finally throws.
+    meshOpts.signal?.throwIfAborted();
+
+    const useCache = meshOpts.cache ?? true;
     const quality = qualityDeflection();
     const tolerance = meshOpts.tolerance ?? quality.tolerance;
     const angularTolerance = meshOpts.angularTolerance ?? quality.angularTolerance;
@@ -295,22 +301,27 @@ export class Evaluator implements Disposable {
       meshOpts.includeUVs ?? false
     )}`;
 
-    const cached = this.meshCache.get(meshKey);
-    if (cached !== undefined) {
-      if (this.maxMeshCacheEntries !== undefined) {
-        this.meshCache.delete(meshKey);
-        this.meshCache.set(meshKey, cached);
+    if (useCache) {
+      const cached = this.meshCache.get(meshKey);
+      if (cached !== undefined) {
+        if (this.maxMeshCacheEntries !== undefined) {
+          this.meshCache.delete(meshKey);
+          this.meshCache.set(meshKey, cached);
+        }
+        return ok(cached);
       }
-      return ok(cached);
     }
 
     const shape = this.evaluate(node, env);
     if (!shape.ok) return shape;
     // Mesh under the evaluator's kernel so getKernel() doesn't pick up an
     // unrelated ambient kernel after evaluate() restores the prior context.
+    // `cache: false` flows through to mesh(), bypassing its identity cache too.
     const built = withKernel(this.kernelId, () => mesh(shape.value, meshOpts));
-    this.meshCache.set(meshKey, built);
-    if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
+    if (useCache) {
+      this.meshCache.set(meshKey, built);
+      if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
+    }
     return ok(built);
   }
 
