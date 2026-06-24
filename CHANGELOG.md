@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.110.0](https://github.com/andymai/brepjs/compare/brepjs-v18.109.0...brepjs-v18.110.0) (2026-06-24)
+
+
+### Features
+
+* **shaperef:** track all split-face successors + edit-survival harness ([7668681](https://github.com/andymai/brepjs/commit/766868192abe1f1172375e555492e129a07db238)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.109.0](https://github.com/andymai/brepjs/compare/brepjs-v18.108.0...brepjs-v18.109.0) (2026-06-24)
 
 
