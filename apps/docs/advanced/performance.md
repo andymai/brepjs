@@ -186,11 +186,30 @@ console.log('LOD levels:', levels.length);
 
 Pass `tolerances: [...]` for absolute control, or tune `relativeTolerance` (finest level as a fraction of the diagonal) and `spacing` (ratio between levels). For just two tiers — preview + export — the older `meshMultiLOD` / `toLODGeometryData` pair still works.
 
+### Progressive refinement
+
+`meshLODsProgressive` delivers the levels over time instead of all at once: the coarse mesh lands first (an instant first frame), and finer levels arrive on later ticks via `onLevel`, so the UI stays responsive. An `AbortSignal` stops refinement when the shape changes.
+
+```typescript
+import { box, meshLODsProgressive } from 'brepjs/quick';
+
+const part = box(40, 40, 40);
+const ac = new AbortController();
+
+await meshLODsProgressive(part, {
+  levels: 3,
+  signal: ac.signal,
+  onLevel: (level) => console.log('LOD ready:', level.mesh.triangles.length / 3, 'tris'),
+});
+```
+
+By default each level is meshed synchronously on the calling thread. To refine truly off the main thread, pass a `meshLevel` that serializes the shape with `toBREP` and meshes it on a worker (see [Web Workers](./workers)): the library owns the coarse-first scheduling and cancellation, you own where the meshing runs.
+
 ## Knobs you do not have
 
 These are optimizations from real-time mesh engines that B-Rep meshing doesn't do for you:
 
-- **Automatic, kernel-side LOD selection**: brepjs gives you `meshLODs` (above), but the kernel meshes one tolerance per call — there's no behind-the-scenes detail switching, and no _progressive_ refinement (meshing is synchronous, so every level is computed up front; mesh the coarsest first if you need an instant first frame).
+- **Automatic, kernel-side LOD selection**: brepjs gives you `meshLODs` and `meshLODsProgressive` (above), but the kernel meshes one tolerance per call — there's no behind-the-scenes detail switching the renderer didn't ask for.
 - **Spatial partitioning of the kernel state**: the kernel sees one shape at a time. There's no octree behind the scenes — build spatial indices on brepjs's bounding boxes (`flatbush`, above) instead.
 - **Streaming booleans**: operations are atomic. You can't progressively refine a boolean — you mesh the finished result at whatever tolerance you choose.
 

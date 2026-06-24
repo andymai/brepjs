@@ -513,6 +513,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'mesh',
   'meshEdges',
   'meshLODs',
+  'meshLODsProgressive',
   'meshMultiLOD',
   'minkowski',
   'mirror',

@@ -401,6 +401,29 @@ function boundsDiagonal(shape: AnyShape<Dimension>): number {
   return Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
 }
 
+/** Per-level linear tolerances for a LOD ladder, coarse (large) → fine (small). */
+function lodTolerances(shape: AnyShape<Dimension>, options: MeshLODsOptions): number[] {
+  let tolerances: number[];
+  if (options.tolerances && options.tolerances.length > 0) {
+    tolerances = [...options.tolerances];
+  } else {
+    const levels = Math.max(1, Math.floor(options.levels ?? 3));
+    const spacing = options.spacing ?? 4;
+    const relative = options.relativeTolerance ?? 0.0005;
+    const finest = relative * boundsDiagonal(shape) || Number.EPSILON;
+    tolerances = [];
+    for (let i = levels - 1; i >= 0; i--) tolerances.push(finest * spacing ** i);
+  }
+  // Sorted so the documented coarse → fine order holds for explicit input and a spacing < 1.
+  tolerances.sort((a, b) => b - a);
+  return tolerances;
+}
+
+/** A level's angular deflection scales with how much coarser it is than the finest (capped at 1 rad). */
+function levelAngular(tolerance: number, finestTol: number, finestAngular: number): number {
+  return Math.min(finestAngular * (tolerance / finestTol), 1);
+}
+
 /**
  * Mesh a shape at several levels of detail, coarse → fine.
  *
@@ -414,29 +437,12 @@ function boundsDiagonal(shape: AnyShape<Dimension>): number {
  * @see toLODGeometryLevels — convert to THREE.LOD geometry data
  */
 export function meshLODs(shape: AnyShape<Dimension>, options: MeshLODsOptions = {}): LODMesh[] {
-  const quality = qualityDeflection();
-  const finestAngular = options.angularTolerance ?? quality.angularTolerance;
+  const finestAngular = options.angularTolerance ?? qualityDeflection().angularTolerance;
   const cache = options.cache ?? true;
-
-  // Per-level linear tolerances. Sorted coarse (large) → fine (small) below so
-  // the documented order holds for explicit input and for a spacing < 1.
-  let tolerances: number[];
-  if (options.tolerances && options.tolerances.length > 0) {
-    tolerances = [...options.tolerances];
-  } else {
-    const levels = Math.max(1, Math.floor(options.levels ?? 3));
-    const spacing = options.spacing ?? 4;
-    const relative = options.relativeTolerance ?? 0.0005;
-    const finest = relative * boundsDiagonal(shape) || Number.EPSILON;
-    tolerances = [];
-    for (let i = levels - 1; i >= 0; i--) tolerances.push(finest * spacing ** i);
-  }
-  tolerances.sort((a, b) => b - a);
-
+  const tolerances = lodTolerances(shape, options);
   const finestTol = Math.min(...tolerances);
   return tolerances.map((tolerance) => {
-    // Scale angular detail with how much coarser this level is than the finest.
-    const angularTolerance = Math.min(finestAngular * (tolerance / finestTol), 1);
+    const angularTolerance = levelAngular(tolerance, finestTol, finestAngular);
     const levelMesh = mesh(shape, {
       tolerance,
       angularTolerance,
@@ -445,4 +451,88 @@ export function meshLODs(shape: AnyShape<Dimension>, options: MeshLODsOptions = 
     });
     return { tolerance, angularTolerance, mesh: levelMesh };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Progressive (async) LOD meshing
+// ---------------------------------------------------------------------------
+
+/**
+ * Mesh one LOD level. Defaults to the synchronous main-thread {@link mesh}; pass
+ * an async implementation (e.g. one that serializes the shape with `toBREP` and
+ * meshes it on a worker) to refine finer levels off the main thread.
+ */
+export type MeshLevelFn = (
+  shape: AnyShape<Dimension>,
+  tolerance: number,
+  angularTolerance: number
+) => ShapeMesh | Promise<ShapeMesh>;
+
+/** Options for {@link meshLODsProgressive}. */
+export interface MeshLODsProgressiveOptions extends MeshLODsOptions {
+  /**
+   * Called as each level finishes, coarsest first, so a viewer can show the
+   * coarse preview immediately and swap in finer meshes as they arrive.
+   */
+  readonly onLevel?: (level: LODMesh, index: number) => void;
+  /** How to mesh one level. Defaults to the synchronous main-thread {@link mesh}. */
+  readonly meshLevel?: MeshLevelFn;
+}
+
+function nextTick(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+/**
+ * Mesh a shape at several levels of detail, delivering them over time coarse →
+ * fine instead of all at once — so a viewer paints the coarse preview first and
+ * refines as finer levels land.
+ *
+ * The coarsest level is meshed first and reported via `onLevel`; control then
+ * yields to the event loop before each finer (heavier) level so the UI stays
+ * responsive. Each level is meshed synchronously on the calling thread by
+ * default; pass `meshLevel` to offload finer levels (e.g. to a worker). An
+ * aborted `signal` stops refinement and resolves with the levels produced so far.
+ *
+ * @returns the delivered LOD levels, coarsest → finest.
+ * @see meshLODs — the synchronous, all-at-once variant
+ */
+export async function meshLODsProgressive(
+  shape: AnyShape<Dimension>,
+  options: MeshLODsProgressiveOptions = {}
+): Promise<LODMesh[]> {
+  const finestAngular = options.angularTolerance ?? qualityDeflection().angularTolerance;
+  const cache = options.cache ?? true;
+  const meshLevel: MeshLevelFn =
+    options.meshLevel ??
+    ((s, tolerance, angularTolerance) =>
+      mesh(s, {
+        tolerance,
+        angularTolerance,
+        cache,
+        ...(options.signal ? { signal: options.signal } : {}),
+      }));
+
+  const tolerances = lodTolerances(shape, options);
+  const finestTol = Math.min(...tolerances);
+  const results: LODMesh[] = [];
+
+  for (const [index, tolerance] of tolerances.entries()) {
+    if (options.signal?.aborted) break;
+    const angularTolerance = levelAngular(tolerance, finestTol, finestAngular);
+    // A level that finished meshing is always delivered; abort stops the next one.
+    const level: LODMesh = {
+      tolerance,
+      angularTolerance,
+      mesh: await meshLevel(shape, tolerance, angularTolerance),
+    };
+    results.push(level);
+    options.onLevel?.(level, index);
+    if (options.signal?.aborted || index === tolerances.length - 1) break;
+    // Yield before the next (finer, heavier) level so the caller can paint.
+    await nextTick();
+  }
+  return results;
 }

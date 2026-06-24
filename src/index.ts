@@ -657,12 +657,15 @@ export {
   exportIGES,
   meshMultiLOD,
   meshLODs,
+  meshLODsProgressive,
   type ShapeMesh,
   type EdgeMesh,
   type MeshOptions,
   type MultiLODMesh,
   type LODMesh,
   type MeshLODsOptions,
+  type MeshLODsProgressiveOptions,
+  type MeshLevelFn,
 } from './topology/meshFns.js';
 
 export { clearMeshCache, createMeshCache, type MeshCacheContext } from './topology/meshCache.js';
