@@ -243,6 +243,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'createWire',
   'createWorkerClient',
   'createWorkerHandler',
+  'createWorkerPool',
   'csg',
   'currentQuality',
   'curve2dBoundingBox',

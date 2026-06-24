@@ -45,3 +45,10 @@ export {
   type OperationHandler,
   type OperationRegistry,
 } from './workerHandler.js';
+
+export {
+  createWorkerPool,
+  type WorkerPool,
+  type WorkerPoolOptions,
+  type WorkerOperation,
+} from './workerPool.js';

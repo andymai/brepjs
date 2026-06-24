@@ -1001,11 +1001,15 @@ export {
   createOperationRegistry,
   registerHandler,
   createWorkerHandler,
+  createWorkerPool,
   type WorkerClient,
   type WorkerClientOptions,
   type WorkerResult,
   type OperationHandler,
   type OperationRegistry,
+  type WorkerPool,
+  type WorkerPoolOptions,
+  type WorkerOperation,
 } from './worker/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
