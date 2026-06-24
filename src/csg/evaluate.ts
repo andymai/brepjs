@@ -8,8 +8,11 @@
 // returned shape is only guaranteed valid until the next successful
 // evaluate() call (a failed evaluate() never evicts).
 import { getActiveKernelId, withKernel } from '@/kernel/index.js';
+import { qualityDeflection } from '@/kernel/quality.js';
 import { ok, type Result } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
+import { buildMeshCacheKey } from '@/topology/meshCache.js';
 import { projectEnv, type Env, type ExprValue } from './expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
 import type { IRNode } from './types.js';
@@ -59,6 +62,14 @@ export interface EvaluatorOptions {
    * (calling it from an onStep callback throws). Must be a positive integer.
    */
   readonly maxCacheEntries?: number | undefined;
+  /**
+   * Upper bound on entries in the {@link Evaluator.evaluateMesh} content cache,
+   * which is independent of the shape cache. Defaults to unbounded. Bounding it
+   * separately is what lets a mesh outlive its (evicted) kernel shape, so a
+   * re-`evaluateMesh` is a pure data hit with no re-materialization. Must be a
+   * positive integer.
+   */
+  readonly maxMeshCacheEntries?: number | undefined;
 }
 
 export interface StepInfo {
@@ -182,6 +193,11 @@ export class Evaluator implements Disposable {
   private readonly kernelId: string;
   private readonly defaultTolerance: number | undefined;
   private readonly maxCacheEntries: number | undefined;
+  private readonly maxMeshCacheEntries: number | undefined;
+  // Content-addressed mesh cache, keyed by the shape's cache key + mesh params.
+  // A mesh is plain data (not a kernel handle), so this can outlive an evicted
+  // shape — a re-evaluateMesh of evicted content is a pure hit, no kernel work.
+  private readonly meshCache = new Map<string, ShapeMesh>();
   private readonly onStep?: (info: StepInfo) => void;
   private hits = 0;
   private misses = 0;
@@ -202,6 +218,13 @@ export class Evaluator implements Disposable {
       );
     }
     this.maxCacheEntries = max;
+    const meshMax = options.maxMeshCacheEntries;
+    if (meshMax !== undefined && (!Number.isInteger(meshMax) || meshMax < 1)) {
+      throw new RangeError(
+        `Evaluator: maxMeshCacheEntries must be a positive integer, got ${String(meshMax)}`
+      );
+    }
+    this.maxMeshCacheEntries = meshMax;
   }
 
   /**
@@ -246,6 +269,49 @@ export class Evaluator implements Disposable {
         this.evaluating = false;
       }
     });
+  }
+
+  /**
+   * Materialize a node and mesh it, caching the mesh by the shape's content key
+   * plus the mesh parameters. The mesh cache is independent of the shape cache:
+   * a hit returns the cached mesh without evaluating or meshing — even after the
+   * shape was LRU-evicted (a mesh is plain data, not a kernel handle). The
+   * returned mesh is borrowed (do not mutate it); it stays valid for the
+   * Evaluator's lifetime, or until `maxMeshCacheEntries` evicts it.
+   */
+  evaluateMesh(
+    node: IRNode,
+    env: Env = {},
+    meshOpts: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean } = {}
+  ): Result<ShapeMesh> {
+    const quality = qualityDeflection();
+    const tolerance = meshOpts.tolerance ?? quality.tolerance;
+    const angularTolerance = meshOpts.angularTolerance ?? quality.angularTolerance;
+    const shapeKey = cacheKey(node, env, this.kernelId, this.defaultTolerance);
+    const meshKey = `${shapeKey}|${buildMeshCacheKey(
+      tolerance,
+      angularTolerance,
+      meshOpts.skipNormals ?? false,
+      meshOpts.includeUVs ?? false
+    )}`;
+
+    const cached = this.meshCache.get(meshKey);
+    if (cached !== undefined) {
+      if (this.maxMeshCacheEntries !== undefined) {
+        this.meshCache.delete(meshKey);
+        this.meshCache.set(meshKey, cached);
+      }
+      return ok(cached);
+    }
+
+    const shape = this.evaluate(node, env);
+    if (!shape.ok) return shape;
+    // Mesh under the evaluator's kernel so getKernel() doesn't pick up an
+    // unrelated ambient kernel after evaluate() restores the prior context.
+    const built = withKernel(this.kernelId, () => mesh(shape.value, meshOpts));
+    this.meshCache.set(meshKey, built);
+    if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
+    return ok(built);
   }
 
   private evaluateInner(node: IRNode, env: Env): Result<AnyShape<Dimension>> {
@@ -305,6 +371,16 @@ export class Evaluator implements Disposable {
     }
   }
 
+  // Evict least-recently-used mesh entries until within `max`. A mesh is plain
+  // data (no kernel handle), so eviction just drops the reference — no disposal.
+  private trimMeshCache(max: number): void {
+    while (this.meshCache.size > max) {
+      const oldest = this.meshCache.keys().next();
+      if (oldest.done) break;
+      this.meshCache.delete(oldest.value);
+    }
+  }
+
   // Undo the inserts made during a failed or thrown evaluate(). Removal is by
   // key (not position), so entries merely touched (hit) during the call are
   // kept — only the call's own new entries are dropped.
@@ -339,6 +415,7 @@ export class Evaluator implements Disposable {
     }
     this.refCounts.clear();
     this.cache.clear();
+    this.meshCache.clear();
   }
 }
 
