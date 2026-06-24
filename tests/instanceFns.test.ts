@@ -13,6 +13,7 @@ import {
   measureVolume,
   unwrap,
   getDisposalStats,
+  type Matrix4x4,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -89,5 +90,45 @@ describe('disposal', () => {
     expect(getDisposalStats().liveHandles).toBe(base + 1); // one source, not N
     inst[Symbol.dispose]();
     expect(getDisposalStats().liveHandles).toBe(base);
+  });
+
+  it('materialize leaves no stray copy handles', () => {
+    const base = getDisposalStats().liveHandles;
+    const inst = instance(box(10, 10, 10), [
+      [0, 0, 0],
+      [20, 0, 0],
+      [40, 0, 0],
+    ]);
+    const solid = unwrap(materialize(inst)); // 3 transient copies, scoped + disposed
+    solid[Symbol.dispose]();
+    inst[Symbol.dispose]();
+    expect(getDisposalStats().liveHandles).toBe(base);
+  });
+});
+
+describe('validation & immutability', () => {
+  it('materialize on an empty instance returns an error', () => {
+    expect(materialize(instance(box(5, 5, 5), [])).ok).toBe(false);
+  });
+
+  it('instanceGrid rejects non-positive-integer counts', () => {
+    expect(() => instanceGrid(box(5, 5, 5), { cols: 0, rows: 2, pitchX: 5, pitchY: 5 })).toThrow(
+      RangeError
+    );
+    expect(() => instanceGrid(box(5, 5, 5), { cols: 2.5, rows: 2, pitchX: 5, pitchY: 5 })).toThrow(
+      RangeError
+    );
+  });
+
+  it('deep-copies matrices so caller mutation does not leak in', () => {
+    const m: Matrix4x4 = [
+      [1, 0, 0, 7],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ];
+    const inst = instance(box(5, 5, 5), [m]);
+    m[0][3] = 999; // mutate after construction
+    expect(inst.placements[0]?.[0]?.[3]).toBe(7);
   });
 });

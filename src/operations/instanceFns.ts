@@ -13,6 +13,7 @@ import type { AnyShape, Dimension, Shape3D } from '@/core/shapeTypes.js';
 import { isShape3D } from '@/core/shapeTypes.js';
 import type { Matrix4x4, Vec3 } from '@/core/types.js';
 import { validationError } from '@/core/errors.js';
+import { withScopeResult } from '@/core/disposal.js';
 import { applyMatrix } from '@/topology/transformFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 import { fuseAll } from '@/topology/booleanFns.js';
@@ -88,7 +89,10 @@ export function instance<D extends Dimension>(
   source: AnyShape<D>,
   placements: readonly Matrix4x4[] | readonly Vec3[]
 ): InstancedShape<D> {
-  const mats = isVec3Array(placements) ? placements.map(translation) : [...placements];
+  // Deep-copy matrices so later caller mutation can't change our placements.
+  const mats = isVec3Array(placements)
+    ? placements.map(translation)
+    : placements.map((m) => m.map((row) => [...row]) as Matrix4x4);
   return make(source, mats);
 }
 
@@ -105,6 +109,11 @@ export function instanceGrid<D extends Dimension>(
   opts: InstanceGridOptions
 ): InstancedShape<D> {
   const { cols, rows, pitchX, pitchY } = opts;
+  if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) {
+    throw new RangeError(
+      `instanceGrid: cols and rows must be positive integers, got ${cols}x${rows}`
+    );
+  }
   const placements: Matrix4x4[] = [];
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
@@ -136,6 +145,10 @@ export function materialize<D extends Dimension>(
 ): Result<AnyShape<Dimension>> {
   const { source, placements, grid } = inst;
 
+  if (placements.length === 0) {
+    return err(validationError('INSTANCE_EMPTY', 'materialize: instance has no placements'));
+  }
+
   if (opts.fuse) {
     if (!isShape3D(source)) {
       return err(
@@ -155,29 +168,31 @@ export function materialize<D extends Dimension>(
         grid.pitchY
       );
     }
-    const copies = materializeCopies(source, placements);
-    if (!copies.ok) return copies;
-    // Arbitrary placements needn't share faces, so no sameFace glue here — the
-    // grid path above takes the faster shared-face route via gridPattern.
-    return fuseAll(copies.value as Shape3D[], { unsafe: true });
+    return combine(source, placements, true);
   }
 
-  const copies = materializeCopies(source, placements);
-  if (!copies.ok) return copies;
-  return ok(makeCompound(copies.value));
+  return combine(source, placements, false);
 }
 
-function materializeCopies<D extends Dimension>(
+// Place the source at each matrix, then combine into a Compound or fused solid.
+// The placed copies are scoped: disposed once the (independent) result is
+// built, and on a failed placement the copies made so far are disposed too —
+// so no kernel handles leak on either path.
+function combine<D extends Dimension>(
   source: AnyShape<D>,
-  placements: ReadonlyArray<Matrix4x4>
-): Result<AnyShape<D>[]> {
-  const out: AnyShape<D>[] = [];
-  for (const m of placements) {
-    const placed = applyMatrix(source, m);
-    if (!placed.ok) return placed;
-    out.push(placed.value);
-  }
-  return ok(out);
+  placements: ReadonlyArray<Matrix4x4>,
+  fuse: boolean
+): Result<AnyShape<Dimension>> {
+  return withScopeResult((scope) => {
+    const copies: AnyShape<D>[] = [];
+    for (const m of placements) {
+      const placed = applyMatrix(source, m);
+      if (!placed.ok) return placed;
+      copies.push(scope.register(placed.value));
+    }
+    // Arbitrary placements needn't share faces, so no sameFace glue here.
+    return fuse ? fuseAll(copies as Shape3D[], { unsafe: true }) : ok(makeCompound(copies));
+  });
 }
 
 export interface InstancedMesh {
