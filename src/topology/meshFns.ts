@@ -352,3 +352,95 @@ export function meshMultiLOD(
 
   return { coarse, fine };
 }
+
+// ---------------------------------------------------------------------------
+// N-level scale-relative LOD meshing
+// ---------------------------------------------------------------------------
+
+/** One level of a multi-resolution mesh: the geometry plus the tolerances it was meshed at. */
+export interface LODMesh {
+  /** Linear deflection (model units) used for this level. */
+  readonly tolerance: number;
+  /** Angular deflection (radians) used for this level. */
+  readonly angularTolerance: number;
+  /** The meshed geometry at this level. */
+  readonly mesh: ShapeMesh;
+}
+
+/** Options for {@link meshLODs}. */
+export interface MeshLODsOptions {
+  /** Number of levels, coarsest → finest (>= 1). Default 3. Ignored when `tolerances` is given. */
+  readonly levels?: number;
+  /**
+   * The finest level's linear tolerance as a fraction of the shape's bounding-box
+   * diagonal, so detail is scale-invariant across part sizes. Default 0.0005
+   * (0.05% of the diagonal). Ignored when `tolerances` is given.
+   */
+  readonly relativeTolerance?: number;
+  /**
+   * Geometric ratio between successive levels: each coarser level's tolerance is
+   * `spacing`× the next finer one. Default 4. Ignored when `tolerances` is given.
+   */
+  readonly spacing?: number;
+  /** Explicit absolute linear tolerances (one per level). Overrides `levels`/`relativeTolerance`/`spacing`; sorted coarse → fine. */
+  readonly tolerances?: readonly number[];
+  /** The finest level's angular deflection (radians). Defaults to the active quality level; coarser levels scale up with the tolerance ratio (capped at 1 rad). */
+  readonly angularTolerance?: number;
+  /** Abort signal forwarded to each level's mesh call. */
+  readonly signal?: AbortSignal;
+  /** Whether to use the mesh cache per level. Default true. */
+  readonly cache?: boolean;
+}
+
+function boundsDiagonal(shape: AnyShape<Dimension>): number {
+  const b = getBounds(shape);
+  const dx = b.xMax - b.xMin;
+  const dy = b.yMax - b.yMin;
+  const dz = b.zMax - b.zMin;
+  // Fall back to 1 for a degenerate/empty bbox so relative tolerance stays positive.
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+}
+
+/**
+ * Mesh a shape at several levels of detail, coarse → fine.
+ *
+ * Tolerances are **scale-relative** by default: the finest level is a fraction
+ * (`relativeTolerance`) of the shape's bounding-box diagonal and each coarser
+ * level steps up by `spacing`×, so the same call gives sensible detail whether
+ * the part is millimetres or metres. Pass `tolerances` for absolute control.
+ * Each level goes through {@link mesh}, so levels are cached individually.
+ *
+ * @returns LOD levels ordered coarsest → finest.
+ * @see toLODGeometryLevels — convert to THREE.LOD geometry data
+ */
+export function meshLODs(shape: AnyShape<Dimension>, options: MeshLODsOptions = {}): LODMesh[] {
+  const quality = qualityDeflection();
+  const finestAngular = options.angularTolerance ?? quality.angularTolerance;
+  const cache = options.cache ?? true;
+
+  // Per-level linear tolerances, coarse (large) → fine (small).
+  let tolerances: number[];
+  if (options.tolerances && options.tolerances.length > 0) {
+    tolerances = [...options.tolerances].sort((a, b) => b - a);
+  } else {
+    const levels = Math.max(1, Math.floor(options.levels ?? 3));
+    const spacing = options.spacing ?? 4;
+    const relative = options.relativeTolerance ?? 0.0005;
+    const finest = relative * boundsDiagonal(shape) || Number.EPSILON;
+    tolerances = [];
+    for (let i = levels - 1; i >= 0; i--) tolerances.push(finest * spacing ** i);
+  }
+
+  const finestTol = Math.min(...tolerances);
+  return tolerances.map((tolerance) => {
+    // Scale angular detail with how much coarser this level is than the finest.
+    const angularTolerance = Math.min(finestAngular * (tolerance / finestTol), 1);
+    const levelMesh = mesh(shape, {
+      tolerance,
+      angularTolerance,
+      cache,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    return { tolerance, angularTolerance, mesh: levelMesh };
+  });
+}

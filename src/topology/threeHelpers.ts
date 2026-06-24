@@ -5,7 +5,7 @@
  * THREE.BufferGeometry.setAttribute(). No three.js dependency required.
  */
 
-import type { ShapeMesh, EdgeMesh, MultiLODMesh } from './meshFns.js';
+import type { ShapeMesh, EdgeMesh, MultiLODMesh, LODMesh } from './meshFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,4 +155,38 @@ export function toLODGeometryData(
     coarseDistance: distances?.coarse ?? 50,
     fineDistance: distances?.fine ?? 0,
   };
+}
+
+/** One LOD level of THREE.LOD-ready geometry: geometry plus its switch distance. */
+export interface LODGeometryLevel {
+  /** Geometry for this level. */
+  readonly geometry: BufferGeometryData;
+  /** Camera distance at which THREE.LOD switches to this level (finest = 0). */
+  readonly distance: number;
+}
+
+/**
+ * Convert N LOD meshes (from `meshLODs`, coarse → fine) into THREE.LOD level
+ * data. The finest level gets distance 0 and each coarser level steps out by
+ * `step`; pass `distances` (indexed coarse → fine) to set them explicitly.
+ *
+ * @example
+ * ```ts
+ * const lod = new THREE.LOD();
+ * for (const { geometry, distance } of toLODGeometryLevels(meshLODs(shape))) {
+ *   lod.addLevel(new THREE.Mesh(toBufferGeometry(geometry), mat), distance);
+ * }
+ * ```
+ */
+export function toLODGeometryLevels(
+  lods: ReadonlyArray<LODMesh>,
+  options?: { readonly distances?: readonly number[]; readonly step?: number }
+): LODGeometryLevel[] {
+  const step = options?.step ?? 50;
+  const last = lods.length - 1;
+  return lods.map((lod, idx) => ({
+    geometry: toBufferGeometryData(lod.mesh),
+    // lods are coarse → fine; finest (last) sits at distance 0, coarser further out.
+    distance: options?.distances?.[idx] ?? (last - idx) * step,
+  }));
 }

@@ -165,15 +165,34 @@ console.log('Fine triangles:', fine.indices.length / 3);
 
 Halving the tolerance roughly quadruples the triangle count. For screen rendering at typical sizes, `tolerance: 0.1` is fine. For 3D printing, set to ~0.05–0.1 mm. For close-up zoom, set lower. Profile the actual render cost before going below 0.01.
 
+## Level of detail (LOD)
+
+Meshing is a pure function of tolerance, so you can mesh one shape at several tolerances and let the renderer pick by camera distance. `meshLODs` builds that ladder for you, with **scale-relative** tolerances derived from the bounding-box diagonal, so the same call gives sensible detail whether the part is millimetres or metres:
+
+```typescript
+import { box, meshLODs, toLODGeometryLevels } from 'brepjs/quick';
+
+const part = box(40, 40, 40);
+
+// Three levels, coarse -> fine. Tolerances are a fraction of the bounding-box
+// diagonal, so this works at any scale; each level is cached independently.
+const lods = meshLODs(part, { levels: 3 });
+console.log(lods.map((l) => `${l.tolerance.toFixed(3)} / ${l.mesh.triangles.length / 3} tris`));
+
+// Wire into THREE.LOD: one { geometry, distance } per level, finest at distance 0.
+const levels = toLODGeometryLevels(lods);
+console.log('LOD levels:', levels.length);
+```
+
+Pass `tolerances: [...]` for absolute control, or tune `relativeTolerance` (finest level as a fraction of the diagonal) and `spacing` (ratio between levels). For just two tiers — preview + export — the older `meshMultiLOD` / `toLODGeometryData` pair still works.
+
 ## Knobs you do not have
 
-These are typical optimizations in mesh libraries that **do not exist** in B-Rep:
+These are optimizations from real-time mesh engines that B-Rep meshing doesn't do for you:
 
-- **LOD (level of detail)**: there's one shape; meshing produces one mesh at one tolerance.
-- **Spatial partitioning of the kernel state**: the kernel sees one shape at a time. There's no octree behind the scenes.
-- **Streaming**: operations are atomic. You can't progressively refine a boolean.
-
-If you need these, you need a mesh library on top of brepjs's output, not a different brepjs configuration.
+- **Automatic, kernel-side LOD selection**: brepjs gives you `meshLODs` (above), but the kernel meshes one tolerance per call — there's no behind-the-scenes detail switching, and no _progressive_ refinement (meshing is synchronous, so every level is computed up front; mesh the coarsest first if you need an instant first frame).
+- **Spatial partitioning of the kernel state**: the kernel sees one shape at a time. There's no octree behind the scenes — build spatial indices on brepjs's bounding boxes (`flatbush`, above) instead.
+- **Streaming booleans**: operations are atomic. You can't progressively refine a boolean — you mesh the finished result at whatever tolerance you choose.
 
 ## Profiling
 
