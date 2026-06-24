@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.106.0](https://github.com/andymai/brepjs/compare/brepjs-v18.105.0...brepjs-v18.106.0) (2026-06-24)
+
+
+### Features
+
+* **worker:** add batched-op message API ([#1626](https://github.com/andymai/brepjs/issues/1626)) ([a3df661](https://github.com/andymai/brepjs/commit/a3df661aa64ed231f8d2ee4a622a0d36cbf20b11))
+
 ## [18.105.0](https://github.com/andymai/brepjs/compare/brepjs-v18.104.0...brepjs-v18.105.0) (2026-06-24)
 
 
