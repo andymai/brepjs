@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.101.0](https://github.com/andymai/brepjs/compare/brepjs-v18.100.3...brepjs-v18.101.0) (2026-06-24)
+
+
+### Features
+
+* **csg:** add opt-in LRU eviction to the evaluator cache ([#1607](https://github.com/andymai/brepjs/issues/1607)) ([861115d](https://github.com/andymai/brepjs/commit/861115db39a3beedaff43246652369756895edf7))
+
 ## [18.100.3](https://github.com/andymai/brepjs/compare/brepjs-v18.100.2...brepjs-v18.100.3) (2026-06-23)
 
 
