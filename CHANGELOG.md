@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.105.0](https://github.com/andymai/brepjs/compare/brepjs-v18.104.0...brepjs-v18.105.0) (2026-06-24)
+
+
+### Features
+
+* **meshing:** add N-level scale-relative LOD meshing ([#1623](https://github.com/andymai/brepjs/issues/1623)) ([3b08d65](https://github.com/andymai/brepjs/commit/3b08d65471aa92e5efac51759c81e2f571b2b454))
+
 ## [18.104.0](https://github.com/andymai/brepjs/compare/brepjs-v18.103.0...brepjs-v18.104.0) (2026-06-24)
 
 
