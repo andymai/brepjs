@@ -5,7 +5,7 @@
 
 import type { Vec3 } from '@/core/types.js';
 import type { SurfaceType } from '@/topology/faceFns.js';
-import type { Face } from '@/core/shapeTypes.js';
+import type { Face, Edge } from '@/core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Geometric hint — snapshot of a face's geometric properties
@@ -66,4 +66,47 @@ export interface BrokenRef {
   readonly ref: ShapeRef;
   readonly reason: 'deleted' | 'ambiguous' | 'not-found';
   readonly candidates?: readonly Face[];
+}
+
+// ---------------------------------------------------------------------------
+// EdgeRef — lineage-based edge reference (named by its two adjacent faces)
+// ---------------------------------------------------------------------------
+
+/**
+ * Geometric snapshot of an edge — a tiebreaker for the rare case where an edge's
+ * two faces share more than one edge.
+ */
+export interface EdgeHint {
+  readonly entityType: 'edge';
+  readonly length?: number | undefined;
+  /** Midpoint of the edge's endpoint vertices. */
+  readonly midpoint?: Vec3 | undefined;
+}
+
+/**
+ * A stable reference to an edge, identified by the roles of its two adjacent
+ * faces — its lineage. An edge *is* the intersection of its two faces, so this
+ * resolves by finding the edge shared by the current faces of those roles
+ * (`sharedEdges`). Identity rides on the already-stable face roles rather than
+ * the edge's own hash, so it survives edits that re-hash the edge — and it
+ * sidesteps the kernel's unreliable `generated`-face hashes entirely.
+ */
+export interface EdgeRef {
+  readonly origin: string;
+  /** Roles of the two faces this edge bounds. */
+  readonly faceRoles: readonly [string, string];
+  readonly hint: EdgeHint;
+}
+
+/** A successfully resolved edge reference. */
+export interface ResolvedEdgeRef {
+  readonly edge: Edge;
+  readonly confidence: 'exact' | 'geometric-fallback';
+}
+
+/** An edge reference that could not be resolved. */
+export interface BrokenEdgeRef {
+  readonly ref: EdgeRef;
+  readonly reason: 'deleted' | 'ambiguous' | 'not-found';
+  readonly candidates?: readonly Edge[];
 }

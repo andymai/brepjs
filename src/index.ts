@@ -730,6 +730,8 @@ export {
   updateRoles,
   resolveRef,
   defaultScorer,
+  createEdgeRef,
+  resolveEdgeRef,
 } from './topology/shapeRef/index.js';
 export type {
   GeometricHint,
@@ -738,6 +740,10 @@ export type {
   ResolvedRef,
   BrokenRef,
   FaceScorer,
+  EdgeHint,
+  EdgeRef,
+  ResolvedEdgeRef,
+  BrokenEdgeRef,
 } from './topology/shapeRef/index.js';
 
 export {
