@@ -53,8 +53,9 @@ export interface EvaluatorOptions {
    * (a handle shared by several entries is freed only when its last entry is
    * evicted). Defaults to unbounded — entries live for the Evaluator's
    * lifetime. With a bound set, a returned shape is only guaranteed valid
-   * until the next successful evaluate() call; a failed evaluate() is
-   * transactional — it leaves the cache unchanged. Must be a positive integer.
+   * until the next successful evaluate() call; a failed or thrown evaluate() is
+   * transactional (the cache is left unchanged), and evaluate() is non-reentrant
+   * (calling it from an onStep callback throws). Must be a positive integer.
    */
   readonly maxCacheEntries?: number | undefined;
 }
@@ -166,14 +167,14 @@ export class Evaluator implements Disposable {
   // DisposalScope can't back this — it can't release one handle on eviction
   // without releasing the rest.)
   private readonly refCounts = new Map<AnyShape<Dimension>, number>();
-  // Depth of the current public evaluate() call. The cache is reconciled
-  // (trim on success / roll back on failure) only when leaving the OUTERMOST
-  // call, so a reentrant evaluate() — e.g. from an onStep callback — can never
-  // evict operands the outer evaluation is still using.
-  private evalDepth = 0;
-  // Keys inserted during the current outermost evaluate(). On failure these are
-  // rolled back, so a failed call leaves the cache exactly as it was (bound
-  // preserved, older results untouched).
+  // True while a public evaluate() is in progress. When bounded, evaluate() is
+  // non-reentrant (an onStep callback must not call it) — that keeps cache
+  // reconciliation simple and rules out a class of use-after-free / contract
+  // hazards that arise from mutating the cache mid-evaluation.
+  private evaluating = false;
+  // Keys inserted during the current evaluate(). On a failed or thrown
+  // evaluation they are rolled back, so the call is transactional: the cache is
+  // left exactly as it was (bound preserved, older results untouched).
   private readonly pendingKeys: string[] = [];
   private readonly kernelId: string;
   private readonly defaultTolerance: number | undefined;
@@ -206,38 +207,40 @@ export class Evaluator implements Disposable {
    * `[Symbol.dispose]()` on it; that would invalidate the cache entry for
    * every future call returning the same handle. By default it stays valid
    * until the Evaluator is disposed; if `maxCacheEntries` is set, only until
-   * the next successful evaluate() call (LRU eviction may free older entries).
+   * the next successful evaluate() call (LRU eviction may free older entries),
+   * and evaluate() is then non-reentrant — calling it from an onStep callback
+   * throws.
    */
   evaluate(node: IRNode, env: Env = {}): Result<AnyShape<Dimension>> {
+    // A bounded cache mutates during evaluate(); a reentrant call (e.g. from an
+    // onStep callback) could evict operands the outer evaluation still holds.
+    // Forbidding reentrancy when bounded keeps reconciliation a simple
+    // commit-on-success / rollback-otherwise at a single, non-nested level.
+    if (this.maxCacheEntries !== undefined && this.evaluating) {
+      throw new Error(
+        'Evaluator.evaluate() is not reentrant when maxCacheEntries is set — ' +
+          'do not call it from an onStep callback.'
+      );
+    }
     return withKernel(this.kernelId, () => {
-      const outermost = this.evalDepth === 0;
-      this.evalDepth++;
+      this.evaluating = true;
+      let committed = false;
       try {
         const result = this.evaluateInner(node, env);
-        // Reconcile the cache only when leaving the OUTERMOST evaluate() —
-        // never mid-recursion, and never from a reentrant call. On success the
-        // root is touched back to MRU (a reentrant onStep may have inserted
-        // newer entries after the root was cached, displacing it) before the
-        // bound is enforced by LRU eviction, so the returned shape is never
-        // freed. On failure the call's own inserts are rolled back, so a failed
-        // evaluation neither grows the cache nor evicts an older good result.
-        if (outermost && this.maxCacheEntries !== undefined) {
-          if (result.ok) {
-            const rootKey = cacheKey(node, env, this.kernelId, this.defaultTolerance);
-            const root = this.cache.get(rootKey);
-            if (root !== undefined) {
-              this.cache.delete(rootKey);
-              this.cache.set(rootKey, root);
-            }
-            this.trimCache(this.maxCacheEntries);
-          } else {
-            this.rollbackPending();
-          }
+        if (this.maxCacheEntries !== undefined && result.ok) {
+          // Success: the result is the most-recently-cached entry (no reentrant
+          // call could have displaced it), so a bound >= 1 never frees it.
+          this.trimCache(this.maxCacheEntries);
         }
+        committed = result.ok;
         return result;
       } finally {
-        this.evalDepth--;
-        if (outermost) this.pendingKeys.length = 0;
+        // Any non-success exit — an Err result or a thrown onStep/kernel error
+        // — rolls back this call's inserts, so the evaluation is transactional
+        // and the bound is never left exceeded.
+        if (!committed && this.maxCacheEntries !== undefined) this.rollbackPending();
+        this.pendingKeys.length = 0;
+        this.evaluating = false;
       }
     });
   }
@@ -299,7 +302,7 @@ export class Evaluator implements Disposable {
     }
   }
 
-  // Undo the inserts made during a failed outermost evaluate(). Removal is by
+  // Undo the inserts made during a failed or thrown evaluate(). Removal is by
   // key (not position), so entries merely touched (hit) during the call are
   // kept — only the call's own new entries are dropped.
   private rollbackPending(): void {

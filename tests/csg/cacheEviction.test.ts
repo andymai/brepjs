@@ -128,49 +128,38 @@ describe('CSG cache eviction — error path & reentrancy', () => {
     expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
   });
 
-  it('does not free outer operands when onStep re-enters evaluate()', () => {
-    // onStep fires mid-recursion. If it calls evaluate() on the same evaluator,
-    // that nested call must not trim the cache (which would dispose operands the
-    // outer Fuse still needs). Only the outermost call reconciles the cache.
-    let reentered = false;
+  it('rejects a reentrant evaluate() from onStep when bounded', () => {
     const ev = new Evaluator({
-      maxCacheEntries: 1,
-      onStep: (info) => {
-        if (!reentered && !info.cacheHit) {
-          reentered = true;
-          unwrap(ev.evaluate(box(9, 9, 9))); // reentrant top-level call
-        }
+      maxCacheEntries: 2,
+      onStep: () => {
+        ev.evaluate(box(9, 9, 9)); // reentrant → must throw
       },
     });
     try {
-      // Throws a disposed-handle error if the nested call evicted box(7,7,7).
-      const r = unwrap(ev.evaluate(fuse(box(7, 7, 7), box(8, 8, 8))));
-      expect(unwrap(measureVolume(r))).toBeGreaterThan(0);
+      expect(() => ev.evaluate(box(7, 7, 7))).toThrow(/not reentrant/i);
+      // The aborted call rolled back its insert — the cache is left clean.
+      expect(ev.cacheStats().entries).toBe(0);
     } finally {
       ev[Symbol.dispose]();
     }
   });
 
-  it('protects the returned root when onStep on the root node re-enters', () => {
-    // The root's own onStep fires after the root is cached; a reentrant
-    // evaluate() then inserts newer entries, displacing the root from MRU. The
-    // outer trim must still keep the root (it is touched back to MRU first),
-    // otherwise the returned handle would be disposed.
-    let done = false;
-    const root = fuse(box(7, 7, 7), box(8, 8, 8));
+  it('a throwing onStep is transactional: bound preserved, prior result kept', () => {
+    let armed = false;
     const ev = new Evaluator({
       maxCacheEntries: 1,
       onStep: (info) => {
-        if (info.node === root && !info.cacheHit && !done) {
-          done = true;
-          unwrap(ev.evaluate(box(9, 9, 9)));
-          unwrap(ev.evaluate(box(10, 10, 10)));
-        }
+        if (armed && !info.cacheHit) throw new Error('boom');
       },
     });
     try {
-      const r = unwrap(ev.evaluate(root));
-      expect(unwrap(measureVolume(r))).toBeGreaterThan(0);
+      const r = unwrap(ev.evaluate(box(5, 5, 5))); // cache:[box5]
+      armed = true;
+      // Caches box6, then onStep throws → the call must roll box6 back,
+      // keeping the bound and the earlier result intact.
+      expect(() => ev.evaluate(box(6, 6, 6))).toThrow(/boom/);
+      expect(ev.cacheStats().entries).toBeLessThanOrEqual(1);
+      expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
     } finally {
       ev[Symbol.dispose]();
     }
