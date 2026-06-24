@@ -123,6 +123,10 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
     },
 
     executeBatch(operations: ReadonlyArray<BatchOperation>): Promise<BatchItemResult[]> {
+      // Snapshot the count now: postMessage structured-clones the batch, but the
+      // caller's array could be mutated before the response lands, which would
+      // make a length check against the live array reject a valid reply.
+      const expected = operations.length;
       const msg: BatchRequest = { id: nextId(), type: 'batch', operations };
       return send(msg).then((result) => {
         // A correct batch reply carries one result per op in resultData. Reject
@@ -130,8 +134,8 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
         // response) rather than silently dropping operations or handing the
         // caller a non-array to map over.
         const data = result.resultData;
-        if (!Array.isArray(data) || data.length !== operations.length) {
-          throw new Error(`Invalid batch response: expected ${operations.length} results`);
+        if (!Array.isArray(data) || data.length !== expected) {
+          throw new Error(`Invalid batch response: expected ${expected} results`);
         }
         return data as BatchItemResult[];
       });

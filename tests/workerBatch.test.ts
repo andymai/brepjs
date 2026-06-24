@@ -95,6 +95,25 @@ describe('WorkerClient.executeBatch', () => {
     getHandler()?.({ data: { id: sent.id, success: true, resultBrep: 'oops' } } as MessageEvent);
     await expect(p).rejects.toThrow('Invalid batch response');
   });
+
+  it('validates against the batch length at call time, not a later mutation', async () => {
+    const { worker, getHandler } = createMockWorker();
+    const client = createWorkerClient({ worker });
+    const ops = [
+      { operation: 'a', shapesBrep: [], params: {} },
+      { operation: 'b', shapesBrep: [], params: {} },
+    ];
+    const p = client.executeBatch(ops);
+    ops.push({ operation: 'c', shapesBrep: [], params: {} }); // mutate after the call
+
+    const sent = vi.mocked(worker).postMessage.mock.calls.at(0)?.at(0) as { id: string };
+    // The worker replies with the 2 results it actually received.
+    getHandler()?.({
+      data: { id: sent.id, success: true, resultData: [{ success: true }, { success: true }] },
+    } as MessageEvent);
+
+    await expect(p).resolves.toHaveLength(2); // not rejected despite ops.length now 3
+  });
 });
 
 describe('handler batch dispatch', () => {
