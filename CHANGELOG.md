@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.104.0](https://github.com/andymai/brepjs/compare/brepjs-v18.103.0...brepjs-v18.104.0) (2026-06-24)
+
+
+### Features
+
+* **worker:** worker pool with least-loaded dispatch ([#1619](https://github.com/andymai/brepjs/issues/1619)) ([1f5ef6c](https://github.com/andymai/brepjs/commit/1f5ef6c21e52aca2ade48be1702c9cb5a3cebf3d))
+
 ## [18.103.0](https://github.com/andymai/brepjs/compare/brepjs-v18.102.0...brepjs-v18.103.0) (2026-06-24)
 
 
