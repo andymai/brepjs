@@ -809,7 +809,20 @@ export {
   type SupportedUnit,
 } from './operations/exporterFns.js';
 
-export { linearPattern, circularPattern } from './operations/patternFns.js';
+export { linearPattern, circularPattern, gridPattern } from './operations/patternFns.js';
+
+export {
+  instance,
+  instanceGrid,
+  materialize,
+  instancedMesh,
+  instanceCount,
+  isInstanced,
+  type InstancedShape,
+  type InstancedMesh,
+  type InstanceGridOptions,
+  type MaterializeOptions,
+} from './operations/instanceFns.js';
 
 export {
   createAssemblyNode,
