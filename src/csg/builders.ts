@@ -354,14 +354,17 @@ export function instance(
   placements: ReadonlyArray<Matrix4x4>,
   fuse = false
 ): InstanceNode {
-  let h = fnvMixInt32(fnvMixBool(mix(startHash('Instance'), source), fuse), placements.length);
-  for (const m of placements) {
+  // Copy matrices so later caller mutation can't desync geometry from the
+  // pre-computed structuralHash.
+  const copied = placements.map((m) => m.map((row) => [...row]) as Matrix4x4);
+  let h = fnvMixInt32(fnvMixBool(mix(startHash('Instance'), source), fuse), copied.length);
+  for (const m of copied) {
     for (const v of m.flat()) h = fnvMixNumber(h, v);
   }
   return {
     kind: 'Instance',
     source,
-    placements,
+    placements: copied,
     fuse,
     structuralHash: h,
     freeParams: depsOf(source),

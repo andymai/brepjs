@@ -11,6 +11,7 @@ import {
   nodeCount,
   forEachNode,
   optimize,
+  outputKindOf,
 } from '@/csg/index.js';
 import { unwrap, measureVolume, type Matrix4x4 } from '@/index.js';
 
@@ -70,5 +71,30 @@ describe('CSG Instance node', () => {
   it('optimize preserves the Instance', () => {
     const opt = optimize(instance(box(5, 5, 5), [at(0), at(10)], true));
     expect(opt.kind).toBe('Instance');
+  });
+
+  it('outputKindOf: fused -> Solid, otherwise Compound', () => {
+    expect(outputKindOf(instance(box(5, 5, 5), [at(0)], true))).toBe('Solid');
+    expect(outputKindOf(instance(box(5, 5, 5), [at(0)]))).toBe('Compound');
+  });
+
+  it('copies placements so caller mutation does not change the node', () => {
+    const m = at(7);
+    const n = instance(box(5, 5, 5), [m]);
+    m[0][3] = 999;
+    expect(n.placements[0]?.[0]?.[3]).toBe(7);
+  });
+
+  it('fromJSON rejects non-finite matrix values', () => {
+    const env = toJSON(instance(box(5, 5, 5), [at(0)]));
+    (env.root as { placements: number[][][] }).placements = [
+      [
+        [Number.NaN, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+    ];
+    expect(fromJSON(env).ok).toBe(false);
   });
 });

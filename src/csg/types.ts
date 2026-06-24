@@ -255,6 +255,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Compound':
       return 'Compound';
     case 'Instance':
-      return node.fuse ? outputKindOf(node.source) : 'Compound';
+      // fuse produces one fused solid; otherwise a Compound of placed copies.
+      return node.fuse ? 'Solid' : 'Compound';
   }
 }

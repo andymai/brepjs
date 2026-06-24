@@ -531,9 +531,7 @@ function isMatrix4x4(v: unknown): v is Matrix4x4 {
   return (
     Array.isArray(v) &&
     v.length === 4 &&
-    v.every(
-      (row) => Array.isArray(row) && row.length === 4 && row.every((n) => typeof n === 'number')
-    )
+    v.every((row) => Array.isArray(row) && row.length === 4 && row.every(isNumber))
   );
 }
 
