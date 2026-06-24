@@ -3,6 +3,7 @@
 // invalidation is scoped to subtrees that actually depend on a changed param.
 
 import type { Expr } from './expressions.js';
+import type { Matrix4x4 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
 // Output kinds
@@ -163,6 +164,15 @@ export interface CompoundNode extends IRNodeBase {
   readonly children: readonly IRNode[];
 }
 
+export interface InstanceNode extends IRNodeBase {
+  readonly kind: 'Instance';
+  readonly source: IRNode;
+  /** Per-instance world transforms (row-major 4x4 literals). */
+  readonly placements: readonly Matrix4x4[];
+  /** Fuse the placed copies into one solid; otherwise a Compound. */
+  readonly fuse: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Unions
 // ---------------------------------------------------------------------------
@@ -183,7 +193,7 @@ export type BooleanNode = FuseNode | CutNode | IntersectNode | FuseAllNode | Cut
 
 export type TransformIRNode = TranslateNode | RotateNode | ScaleNode | MirrorNode;
 
-export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | CompoundNode;
+export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | CompoundNode | InstanceNode;
 
 export type NodeKind = IRNode['kind'];
 
@@ -244,5 +254,7 @@ export function outputKindOf(node: IRNode): OutputKind {
       return outputKindOf(node.target);
     case 'Compound':
       return 'Compound';
+    case 'Instance':
+      return node.fuse ? outputKindOf(node.source) : 'Compound';
   }
 }

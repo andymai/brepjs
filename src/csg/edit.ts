@@ -54,6 +54,8 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       return B.mirror(walk(n.target, pred, repl), { normal: n.normal, at: n.at });
     case 'Compound':
       return B.compound(n.children.map((c) => walk(c, pred, repl)));
+    case 'Instance':
+      return B.instance(walk(n.source, pred, repl), n.placements, n.fuse);
   }
 }
 
@@ -90,6 +92,8 @@ function childrenOf(n: IRNode): readonly IRNode[] {
       return [n.target];
     case 'Compound':
       return n.children;
+    case 'Instance':
+      return [n.source];
   }
 }
 

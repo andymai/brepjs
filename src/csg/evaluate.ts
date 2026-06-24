@@ -34,6 +34,7 @@ import {
 } from './evaluators/booleans.js';
 import { evalTranslate, evalRotate, evalScale, evalMirror } from './evaluators/transforms.js';
 import { evalCompound, evalEmpty } from './evaluators/compound.js';
+import { evalInstance } from './evaluators/instance.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -118,6 +119,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalMirror(node, ctx);
     case 'Compound':
       return evalCompound(node, ctx);
+    case 'Instance':
+      return evalInstance(node, ctx);
   }
 }
 

@@ -1,7 +1,7 @@
 // toJSON expands DAGs to trees (sharing rebuilt on first re-eval via the
 // hash cache). fromJSON is the trust boundary: validates every field and
 // reconstructs via builders so hashes/freeParams stay correct.
-import type { Vec2, Vec3 } from '@/core/types.js';
+import type { Vec2, Vec3, Matrix4x4 } from '@/core/types.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
 import {
@@ -148,6 +148,14 @@ function transformToJson(n: IRNode): unknown {
 
 function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
+  if (n.kind === 'Instance') {
+    return {
+      kind: 'Instance',
+      source: nodeToJson(n.source),
+      placements: n.placements,
+      fuse: n.fuse,
+    };
+  }
   return primitiveToJson(n) ?? booleanToJson(n) ?? transformToJson(n);
 }
 
@@ -314,6 +322,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readTransform(kind, j);
     case 'Compound':
       return readCompound(j);
+    case 'Instance':
+      return readInstance(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -515,4 +525,24 @@ function readMirror(j: Record<string, unknown>, target: IRNode): Result<IRNode> 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {
   const children = readNodeArray(j['children'], 'Compound.children');
   return children.ok ? ok(B.compound(children.value)) : children;
+}
+
+function isMatrix4x4(v: unknown): v is Matrix4x4 {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every(
+      (row) => Array.isArray(row) && row.length === 4 && row.every((n) => typeof n === 'number')
+    )
+  );
+}
+
+function readInstance(j: Record<string, unknown>): Result<IRNode> {
+  const source = readNode(j['source']);
+  if (!source.ok) return source;
+  const placements = j['placements'];
+  if (!Array.isArray(placements) || !placements.every(isMatrix4x4)) {
+    return bad('Instance.placements must be an array of 4x4 number matrices');
+  }
+  return ok(B.instance(source.value, placements, j['fuse'] === true));
 }
