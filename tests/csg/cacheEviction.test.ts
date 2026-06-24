@@ -6,7 +6,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from '../setup.js';
-import { Evaluator, withEvaluator, box, sphere, fuse, emptySolid } from '@/csg/index.js';
+import { Evaluator, withEvaluator, box, sphere, fuse, emptySolid, param } from '@/csg/index.js';
 import { unwrap, measureVolume, getDisposalStats } from '@/index.js';
 
 beforeAll(async () => {
@@ -110,5 +110,18 @@ describe('CSG cache eviction — disposal accounting', () => {
     }
     // Evaluator disposed → its remaining handle is freed too.
     expect(getDisposalStats().liveHandles).toBe(base);
+  });
+});
+
+describe('CSG cache eviction — error path', () => {
+  it('a failed evaluation does not evict a previously-returned good result', () => {
+    using ev = new Evaluator({ maxCacheEntries: 1 });
+    const r = unwrap(ev.evaluate(box(5, 5, 5))); // cache:[box5], r borrowed (MRU)
+    // This tree caches its first operand, then fails on the unbound param `w`.
+    // A failed call must NOT trim — otherwise it would evict + dispose r.
+    const failing = fuse(box(6, 6, 6), box(param('w'), 6, 6));
+    expect(ev.evaluate(failing, {}).ok).toBe(false);
+    expect(ev.cacheStats().evictions).toBe(0);
+    expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3); // r still live
   });
 });

@@ -5,7 +5,8 @@
 // Returned shapes are borrowed — the Evaluator owns disposal; callers must
 // NOT dispose them. By default a returned shape is valid for the Evaluator's
 // whole lifetime. If `maxCacheEntries` is set, the cache is LRU-bounded and a
-// returned shape is only guaranteed valid until the next evaluate() call.
+// returned shape is only guaranteed valid until the next successful
+// evaluate() call (a failed evaluate() never evicts).
 import { getActiveKernelId, withKernel } from '@/kernel/index.js';
 import { ok, type Result } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
@@ -52,7 +53,7 @@ export interface EvaluatorOptions {
    * (a handle shared by several entries is freed only when its last entry is
    * evicted). Defaults to unbounded — entries live for the Evaluator's
    * lifetime. With a bound set, a returned shape is only guaranteed valid
-   * until the next evaluate() call. Must be a positive integer.
+   * until the next successful evaluate() call. Must be a positive integer.
    */
   readonly maxCacheEntries?: number | undefined;
 }
@@ -195,16 +196,20 @@ export class Evaluator implements Disposable {
    * `[Symbol.dispose]()` on it; that would invalidate the cache entry for
    * every future call returning the same handle. By default it stays valid
    * until the Evaluator is disposed; if `maxCacheEntries` is set, only until
-   * the next evaluate() call (LRU eviction may free older entries).
+   * the next successful evaluate() call (LRU eviction may free older entries).
    */
   evaluate(node: IRNode, env: Env = {}): Result<AnyShape<Dimension>> {
     return withKernel(this.kernelId, () => {
       const result = this.evaluateInner(node, env);
-      // Eviction runs only here, between top-level evaluations — never during
-      // the recursive descent, so operands still in flight are never freed.
-      // The just-returned result is the most-recently-used entry, so trimming
-      // to a bound >= 1 never frees the shape the caller just received.
-      if (this.maxCacheEntries !== undefined) this.trimCache(this.maxCacheEntries);
+      // Eviction runs only here, after a SUCCESSFUL top-level evaluation: never
+      // mid-recursion (so in-flight operands are never freed), and never on the
+      // error path (a failed tree may have cached partial children before
+      // failing, and trimming then could dispose a previously-returned good
+      // result). The just-returned result is the most-recently-used entry, so
+      // trimming to a bound >= 1 never frees what the caller just received.
+      if (result.ok && this.maxCacheEntries !== undefined) {
+        this.trimCache(this.maxCacheEntries);
+      }
       return result;
     });
   }
