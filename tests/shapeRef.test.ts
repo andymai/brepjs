@@ -122,10 +122,10 @@ describe('resolveRef', () => {
     const roleTable: RoleTable = new Map([['step_0', roles]]);
 
     // Find the top face
-    const topHash = roles.get('box:top');
-    expect(topHash).toBeDefined();
+    const topHashes = roles.get('box:top');
+    expect(topHashes).toBeDefined();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
-    const topFace = faces.find((f) => getHashCode(f) === topHash)!;
+    const topFace = faces.find((f) => topHashes?.includes(getHashCode(f)))!;
     expect(topFace).toBeDefined();
 
     const ref = createRef('step_0', 'box:top', topFace);
@@ -144,9 +144,9 @@ describe('resolveRef', () => {
     const roles = assignRoles(b, 'box');
 
     // Find the top face and create a ref
-    const topHash = roles.get('box:top');
+    const topHashes = roles.get('box:top');
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test
-    const topFace = faces.find((f) => getHashCode(f) === topHash)!;
+    const topFace = faces.find((f) => topHashes?.includes(getHashCode(f)))!;
     const ref = createRef('step_0', 'box:top', topFace);
 
     // Use an empty role table — forces geometric fallback
@@ -166,9 +166,9 @@ describe('resolveRef', () => {
 
     // Get the top face of a before cut
     const roles = assignRoles(a, 'box');
-    const topHash = roles.get('box:top');
+    const topHashes = roles.get('box:top');
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test
-    const topFace = getFaces(a).find((f) => getHashCode(f) === topHash)!;
+    const topFace = getFaces(a).find((f) => topHashes?.includes(getHashCode(f)))!;
     const ref = createRef('step_0', 'box:top', topFace);
 
     // Cut removes the top face
@@ -240,8 +240,8 @@ describe('full pipeline', () => {
 
       // Step 2: Create refs for all cardinal faces
       const refs = new Map<string, ReturnType<typeof createRef>>();
-      for (const [role, hash] of roles) {
-        const face = getFaces(b).find((f) => getHashCode(f) === hash);
+      for (const [role, hashes] of roles) {
+        const face = getFaces(b).find((f) => hashes.includes(getHashCode(f)));
         expect(face).toBeDefined();
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
         refs.set(role, createRef('step_0', role, face!));

@@ -9,7 +9,6 @@ import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { normalAt, faceCenter, faceGeomType } from '@/topology/faceFns.js';
 import { measureArea } from '@/measurement/measureFns.js';
-import { wasmIndex } from '@/utils/vec3.js';
 import type {
   GeometricHint,
   ShapeRef,
@@ -64,17 +63,18 @@ function boxRoleFromNormal(n: readonly [number, number, number]): string | undef
  *
  * For other types: sequential naming ('opType:face_0', 'opType:face_1', ...).
  *
- * @returns Map from role name to face hash code
+ * @returns Map from role name to its face hash codes (one at assignment time;
+ *   a role accrues more hashes only later, when `updateRoles` tracks a split).
  */
-export function assignRoles(shape: Shape3D, operationType: string): Map<string, number> {
+export function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]> {
   const faces = getFaces(shape);
-  const roles = new Map<string, number>();
+  const roles = new Map<string, number[]>();
 
   if (operationType === 'box') {
     for (const face of faces) {
       const role = boxRoleFromNormal(normalAt(face));
       if (role !== undefined && !roles.has(role)) {
-        roles.set(role, getHashCode(face));
+        roles.set(role, [getHashCode(face)]);
       }
     }
     return roles;
@@ -82,7 +82,7 @@ export function assignRoles(shape: Shape3D, operationType: string): Map<string, 
 
   let index = 0;
   for (const face of faces) {
-    roles.set(`${operationType}:face_${index}`, getHashCode(face));
+    roles.set(`${operationType}:face_${index}`, [getHashCode(face)]);
     index++;
   }
   return roles;
@@ -102,17 +102,37 @@ export function createRef(origin: string, role: string, face: Face): ShapeRef {
 // ---------------------------------------------------------------------------
 
 /**
+ * Advance a role's face hashes through one evolution: drop deleted faces,
+ * replace a modified face with *all* its successors (a 1→many split keeps every
+ * fragment), and keep unchanged faces. Deduped so a shared successor isn't
+ * doubled.
+ */
+function nextHashes(hashes: readonly number[], evolution: ShapeEvolution): number[] {
+  const successors: number[] = [];
+  for (const hash of hashes) {
+    if (evolution.deleted.has(hash)) continue;
+    const modified = evolution.modified.get(hash);
+    const targets = modified && modified.length > 0 ? modified : [hash];
+    for (const h of targets) if (!successors.includes(h)) successors.push(h);
+  }
+  return successors;
+}
+
+/**
  * Propagate a role table through a ShapeEvolution record.
  * Returns a new RoleTable with hashes updated according to the evolution.
  *
- * - Deleted faces: role removed
- * - Modified faces: hash updated to first result hash
- * - Unchanged faces: hash preserved
+ * - Deleted faces: hash dropped (role removed once all its hashes are gone).
+ * - Modified faces: hash replaced by **all** successor hashes — so a 1→many
+ *   split keeps every fragment, and `resolveRef` disambiguates among them.
+ * - Unchanged faces: hash preserved.
  *
- * **Limitation:** When a face splits (1→many in `evolution.modified`), only the
- * first successor hash is tracked. The geometric fallback in `resolveRef` handles
- * cases where this picks the "wrong" successor. A future version may return
- * multi-hash mappings for split-aware resolution.
+ * Note: `evolution.generated` is intentionally not consumed here — on the OCCT
+ * kernels its hashes refer to an intermediate shape, not the final result, so
+ * naming generated faces produces roles that never resolve (verified: 0 live
+ * generated hashes across cut/fuse on occt-wasm). Stable names for generated
+ * geometry (fillet rounds, boolean seams) need history-fidelity work tracked
+ * separately.
  */
 export function updateRoles(
   roles: RoleTable,
@@ -122,30 +142,18 @@ export function updateRoles(
   const originRoles = roles.get(origin);
   if (!originRoles) return roles;
 
-  const updatedOriginRoles = new Map<string, number>();
+  const updatedOriginRoles = new Map<string, number[]>();
 
-  for (const [role, hash] of originRoles) {
-    // Deleted → skip (role removed)
-    if (evolution.deleted.has(hash)) continue;
-
-    // Modified → use first result hash
-    const modifiedHashes = evolution.modified.get(hash);
-    if (modifiedHashes && modifiedHashes.length > 0) {
-      updatedOriginRoles.set(role, wasmIndex(modifiedHashes, 0));
-    } else {
-      // Survived unchanged
-      updatedOriginRoles.set(role, hash);
-    }
+  // Carry each role's faces forward through deleted/modified/unchanged.
+  for (const [role, hashes] of originRoles) {
+    const successors = nextHashes(hashes, evolution);
+    if (successors.length > 0) updatedOriginRoles.set(role, successors);
   }
 
   // Build new RoleTable immutably
-  const newRoles = new Map<string, ReadonlyMap<string, number>>();
+  const newRoles = new Map<string, ReadonlyMap<string, readonly number[]>>();
   for (const [key, value] of roles) {
-    if (key === origin) {
-      newRoles.set(key, updatedOriginRoles);
-    } else {
-      newRoles.set(key, value);
-    }
+    newRoles.set(key, key === origin ? updatedOriginRoles : value);
   }
   return newRoles;
 }
@@ -159,14 +167,63 @@ const AMBIGUITY_THRESHOLD = 0.1;
 /** Minimum score for geometric fallback to accept a match. */
 const MIN_SCORE = 0.5;
 
+/** Outcome of scoring a candidate face set against a hint. */
+type ScoreOutcome =
+  | { kind: 'match'; face: Face }
+  | { kind: 'ambiguous'; candidates: Face[] }
+  | { kind: 'none' };
+
+/**
+ * Score `candidates` against `hint`, returning the best match, a tie within
+ * {@link AMBIGUITY_THRESHOLD}, or nothing above {@link MIN_SCORE}. Scoping the
+ * candidates to a role's tracked successors (rather than every face) is what
+ * makes split-face disambiguation reliable — the fragments compete only with
+ * each other, not with unrelated geometry.
+ */
+function scoreFaces(
+  hint: GeometricHint,
+  candidates: readonly Face[],
+  scoreFn: FaceScorer
+): ScoreOutcome {
+  let bestScore = -Infinity;
+  let bestFace: Face | undefined;
+  let secondBestScore = -Infinity;
+  const scored: Array<[Face, number]> = [];
+
+  for (const face of candidates) {
+    const score = scoreFn(hint, face);
+    if (score > MIN_SCORE) scored.push([face, score]);
+    if (score > bestScore) {
+      secondBestScore = bestScore;
+      bestScore = score;
+      bestFace = face;
+    } else if (score > secondBestScore) {
+      secondBestScore = score;
+    }
+  }
+
+  if (bestFace !== undefined && bestScore > MIN_SCORE) {
+    if (bestScore - secondBestScore < AMBIGUITY_THRESHOLD && scored.length > 1) {
+      const competitive = scored
+        .filter(([, s]) => s >= bestScore - AMBIGUITY_THRESHOLD)
+        .map(([f]) => f);
+      return { kind: 'ambiguous', candidates: competitive };
+    }
+    return { kind: 'match', face: bestFace };
+  }
+  return { kind: 'none' };
+}
+
 /**
  * Resolve a ShapeRef to a face in the current shape.
  *
  * Resolution strategy:
- * 1. Exact lookup via role table hash match
- * 2. Geometric fallback using scorer against all faces
- * 3. Ambiguous if multiple faces score within threshold
- * 4. Not-found if no match above minimum score
+ * 1. Exact: the role's tracked successor hashes. One survivor → exact match;
+ *    several survivors (a face that split) → disambiguate among *only those*
+ *    fragments; none survive → deleted.
+ * 2. Geometric fallback over the whole shape when the role isn't tracked (or a
+ *    scoped score turned up nothing): best-scoring face, else ambiguous /
+ *    not-found.
  */
 export function resolveRef(
   ref: ShapeRef,
@@ -177,51 +234,30 @@ export function resolveRef(
   const faces = getFaces(currentShape);
   const scoreFn = scorer ?? defaultScorer;
 
-  // 1. Exact lookup via role table
-  const originRoles = roles.get(ref.origin);
-  const targetHash = originRoles?.get(ref.role);
-
-  if (targetHash !== undefined) {
-    for (const face of faces) {
-      if (getHashCode(face) === targetHash) {
-        return { face, confidence: 'exact' };
+  // 1. Exact lookup, scoped to the role's tracked successor hashes.
+  const targetHashes = roles.get(ref.origin)?.get(ref.role);
+  if (targetHashes !== undefined && targetHashes.length > 0) {
+    const survivors = faces.filter((f) => targetHashes.includes(getHashCode(f)));
+    if (survivors.length === 1) {
+      const [only] = survivors;
+      if (only !== undefined) return { face: only, confidence: 'exact' };
+    } else if (survivors.length === 0) {
+      return { ref, reason: 'deleted' };
+    } else {
+      // A face that split — pick the right fragment from the tracked set only.
+      const outcome = scoreFaces(ref.hint, survivors, scoreFn);
+      if (outcome.kind === 'match') return { face: outcome.face, confidence: 'geometric-fallback' };
+      if (outcome.kind === 'ambiguous') {
+        return { ref, reason: 'ambiguous', candidates: outcome.candidates };
       }
-    }
-    // Hash was in table but not found in current shape → deleted
-    return { ref, reason: 'deleted' };
-  }
-
-  // 2. Geometric fallback — cache scores to avoid double WASM calls
-  let bestScore = -Infinity;
-  let bestFace: Face | undefined;
-  let secondBestScore = -Infinity;
-  const scored: Array<[Face, number]> = [];
-
-  for (const face of faces) {
-    const score = scoreFn(ref.hint, face);
-    if (score > MIN_SCORE) {
-      scored.push([face, score]);
-    }
-    if (score > bestScore) {
-      secondBestScore = bestScore;
-      bestScore = score;
-      bestFace = face;
-    } else if (score > secondBestScore) {
-      secondBestScore = score;
+      // 'none' → fall through to the whole-shape geometric fallback.
     }
   }
 
-  // 3. Check for ambiguity
-  if (bestFace !== undefined && bestScore > MIN_SCORE) {
-    if (bestScore - secondBestScore < AMBIGUITY_THRESHOLD && scored.length > 1) {
-      const competitive = scored
-        .filter(([, s]) => s >= bestScore - AMBIGUITY_THRESHOLD)
-        .map(([f]) => f);
-      return { ref, reason: 'ambiguous', candidates: competitive };
-    }
-    return { face: bestFace, confidence: 'geometric-fallback' };
-  }
-
-  // 4. Not found
+  // 2. Geometric fallback over all faces.
+  const outcome = scoreFaces(ref.hint, faces, scoreFn);
+  if (outcome.kind === 'match') return { face: outcome.face, confidence: 'geometric-fallback' };
+  if (outcome.kind === 'ambiguous')
+    return { ref, reason: 'ambiguous', candidates: outcome.candidates };
   return { ref, reason: 'not-found' };
 }

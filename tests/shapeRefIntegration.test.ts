@@ -55,8 +55,8 @@ describe('multi-step replay', () => {
       expect(roles0.size).toBe(6);
 
       // Create refs for top and front faces
-      const topFace = getFaces(b).find((f) => roles0.get('box:top') === getHashCode(f));
-      const frontFace = getFaces(b).find((f) => roles0.get('box:front') === getHashCode(f));
+      const topFace = getFaces(b).find((f) => roles0.get('box:top')?.includes(getHashCode(f)));
+      const frontFace = getFaces(b).find((f) => roles0.get('box:front')?.includes(getHashCode(f)));
       expect(topFace).toBeDefined();
       expect(frontFace).toBeDefined();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
@@ -119,9 +119,9 @@ describe('multi-step replay', () => {
       const roles0 = assignRoles(b, 'box');
 
       // Create ref for the bottom face (least likely to be affected by top fuse)
-      const bottomHash = roles0.get('box:bottom');
-      expect(bottomHash).toBeDefined();
-      const bottomFace = getFaces(b).find((f) => getHashCode(f) === bottomHash);
+      const bottomHashes = roles0.get('box:bottom');
+      expect(bottomHashes).toBeDefined();
+      const bottomFace = getFaces(b).find((f) => bottomHashes?.includes(getHashCode(f)));
       expect(bottomFace).toBeDefined();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
       const bottomRef = createRef('step_0', 'box:bottom', bottomFace!);
@@ -172,13 +172,13 @@ describe('symmetric geometry', () => {
       expect(roles.has('box:right')).toBe(true);
 
       // All hashes should be unique
-      const hashes = [...roles.values()];
+      const hashes = [...roles.values()].flat();
       expect(new Set(hashes).size).toBe(6);
 
       // Create refs for all 6 faces
       const refs = new Map<string, ShapeRef>();
-      for (const [role, hash] of roles) {
-        const face = getFaces(cube).find((f) => getHashCode(f) === hash);
+      for (const [role, faceHashes] of roles) {
+        const face = getFaces(cube).find((f) => faceHashes.includes(getHashCode(f)));
         expect(face).toBeDefined();
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
         refs.set(role, createRef('step_0', role, face!));
@@ -223,8 +223,8 @@ describe('symmetric geometry', () => {
 
       // Create refs
       const refs = new Map<string, ShapeRef>();
-      for (const [role, hash] of roles) {
-        const face = getFaces(cyl).find((f) => getHashCode(f) === hash);
+      for (const [role, faceHashes] of roles) {
+        const face = getFaces(cyl).find((f) => faceHashes.includes(getHashCode(f)));
         expect(face).toBeDefined();
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
         refs.set(role, createRef('step_0', role, face!));
@@ -294,9 +294,9 @@ describe('split face tracking', () => {
       const roles = assignRoles(base, 'box');
 
       // Create ref for the top face (30x30 area)
-      const topHash = roles.get('box:top');
-      expect(topHash).toBeDefined();
-      const topFace = getFaces(base).find((f) => getHashCode(f) === topHash);
+      const topHashes = roles.get('box:top');
+      expect(topHashes).toBeDefined();
+      const topFace = getFaces(base).find((f) => topHashes?.includes(getHashCode(f)));
       expect(topFace).toBeDefined();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
       const topRef = createRef('step_0', 'box:top', topFace!);
@@ -334,8 +334,8 @@ describe('split face tracking', () => {
 
       // Create refs for all faces
       const refs = new Map<string, ShapeRef>();
-      for (const [role, hash] of roles) {
-        const face = getFaces(base).find((f) => getHashCode(f) === hash);
+      for (const [role, faceHashes] of roles) {
+        const face = getFaces(base).find((f) => faceHashes.includes(getHashCode(f)));
         expect(face).toBeDefined();
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
         refs.set(role, createRef('step_0', role, face!));

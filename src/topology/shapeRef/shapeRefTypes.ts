@@ -42,10 +42,14 @@ export interface ShapeRef {
 // ---------------------------------------------------------------------------
 
 /**
- * Immutable table mapping `origin -> role -> faceHash`.
+ * Immutable table mapping `origin -> role -> faceHashes`.
  * Updated through evolution records when the model is rebuilt.
+ *
+ * A role usually maps to a single hash, but maps to several after its face
+ * splits (a 1→many `modified` evolution); resolution then disambiguates among
+ * the surviving successors rather than competing against the whole shape.
  */
-export type RoleTable = ReadonlyMap<string, ReadonlyMap<string, number>>;
+export type RoleTable = ReadonlyMap<string, ReadonlyMap<string, readonly number[]>>;
 
 // ---------------------------------------------------------------------------
 // Resolution results
