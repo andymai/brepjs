@@ -418,10 +418,11 @@ export function meshLODs(shape: AnyShape<Dimension>, options: MeshLODsOptions = 
   const finestAngular = options.angularTolerance ?? quality.angularTolerance;
   const cache = options.cache ?? true;
 
-  // Per-level linear tolerances, coarse (large) → fine (small).
+  // Per-level linear tolerances. Sorted coarse (large) → fine (small) below so
+  // the documented order holds for explicit input and for a spacing < 1.
   let tolerances: number[];
   if (options.tolerances && options.tolerances.length > 0) {
-    tolerances = [...options.tolerances].sort((a, b) => b - a);
+    tolerances = [...options.tolerances];
   } else {
     const levels = Math.max(1, Math.floor(options.levels ?? 3));
     const spacing = options.spacing ?? 4;
@@ -430,6 +431,7 @@ export function meshLODs(shape: AnyShape<Dimension>, options: MeshLODsOptions = 
     tolerances = [];
     for (let i = levels - 1; i >= 0; i--) tolerances.push(finest * spacing ** i);
   }
+  tolerances.sort((a, b) => b - a);
 
   const finestTol = Math.min(...tolerances);
   return tolerances.map((tolerance) => {

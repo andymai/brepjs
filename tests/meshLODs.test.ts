@@ -58,6 +58,11 @@ describe('meshLODs', () => {
     expect(desc(ang)).toBe(true); // coarse -> fine: larger angle first
     expect(Math.max(...ang)).toBeLessThanOrEqual(1);
   });
+
+  it('returns coarse -> fine even when spacing < 1', () => {
+    const tols = meshLODs(box(10, 10, 10), { levels: 3, spacing: 0.5 }).map((l) => l.tolerance);
+    expect(desc(tols)).toBe(true);
+  });
 });
 
 describe('toLODGeometryLevels', () => {
@@ -75,5 +80,10 @@ describe('toLODGeometryLevels', () => {
     const lods = meshLODs(box(10, 10, 10), { levels: 2 });
     expect(toLODGeometryLevels(lods, { step: 30 }).map((l) => l.distance)).toEqual([30, 0]);
     expect(toLODGeometryLevels(lods, { distances: [9, 1] }).map((l) => l.distance)).toEqual([9, 1]);
+  });
+
+  it('throws when distances length does not match the level count', () => {
+    const lods = meshLODs(box(10, 10, 10), { levels: 3 });
+    expect(() => toLODGeometryLevels(lods, { distances: [30] })).toThrow('one entry per level');
   });
 });

@@ -183,10 +183,16 @@ export function toLODGeometryLevels(
   options?: { readonly distances?: readonly number[]; readonly step?: number }
 ): LODGeometryLevel[] {
   const step = options?.step ?? 50;
+  const distances = options?.distances;
+  if (distances && distances.length !== lods.length) {
+    throw new Error(
+      `toLODGeometryLevels: distances must have one entry per level (got ${distances.length} for ${lods.length} levels)`
+    );
+  }
   const last = lods.length - 1;
   return lods.map((lod, idx) => ({
     geometry: toBufferGeometryData(lod.mesh),
     // lods are coarse → fine; finest (last) sits at distance 0, coarser further out.
-    distance: options?.distances?.[idx] ?? (last - idx) * step,
+    distance: distances?.[idx] ?? (last - idx) * step,
   }));
 }
