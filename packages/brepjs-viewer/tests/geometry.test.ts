@@ -96,4 +96,25 @@ describe('instancing', () => {
     mesh.getMatrixAt(1, out);
     expect(out.elements[12]).toBe(10); // second instance translated +10 in x
   });
+
+  it('computes instance-aware bounds covering far-translated placements', () => {
+    const mesh = buildInstancedMesh(tri, [
+      [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+      [
+        [1, 0, 0, 100],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+      ],
+    ]);
+    // Source spans x~0..1; the far instance sits at x=100, so the InstancedMesh
+    // bounds must reach it (geometry-only bounds would be ~radius 1).
+    expect(mesh.boundingSphere).not.toBeNull();
+    expect(mesh.boundingSphere?.radius ?? 0).toBeGreaterThan(40);
+  });
 });

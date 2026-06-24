@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { MeshData, FaceGroup } from './types.js';
+import type { MeshData, FaceGroup, ViewMode } from './types.js';
 
 export function buildGeometry(data: MeshData): THREE.BufferGeometry {
   const geo = new THREE.BufferGeometry();
@@ -34,13 +34,21 @@ export function instanceMatrix(m: ReadonlyArray<ReadonlyArray<number>>): THREE.M
 export interface InstancedMeshOptions {
   /** Material color (defaults to data.color, then the viewer's neutral grey). */
   color?: string;
+  /** Render mode, mirroring Renderer: 'solid' (default) | 'wireframe' | 'xray'. */
+  viewMode?: ViewMode;
+  /** Section clipping planes, as built by `sectionPlane`. */
+  clippingPlanes?: THREE.Plane[] | null;
 }
 
 /**
- * Build a THREE.InstancedMesh from one source MeshData (meshed once) plus N
+ * Build a THREE.InstancedMesh from one source mesh (meshed once) plus N
  * per-instance transforms — the "one tessellation, N placements" render of a
  * brepjs `instancedMesh()` payload, so a 10x10 grid is a single GPU draw.
- * Placements may be THREE.Matrix4 or brepjs row-major 4x4 arrays.
+ *
+ * `data` is the source as viewer MeshData — convert a brepjs `ShapeMesh`
+ * (vertices/normals/triangles) the same way you already do for `Renderer`.
+ * `placements` is `instancedMesh().instances` (THREE.Matrix4 or brepjs row-major
+ * 4x4). The material mirrors `Renderer` (color/modes/clipping).
  *
  * The caller owns the returned mesh: dispose its geometry + material on unmount.
  */
@@ -50,14 +58,23 @@ export function buildInstancedMesh(
   opts: InstancedMeshOptions = {},
 ): THREE.InstancedMesh {
   const geometry = buildGeometry(data);
-  geometry.computeBoundingSphere();
   const color = opts.color ?? data.color ?? '#d4d8dc';
+  const viewMode = opts.viewMode ?? 'solid';
   const material = new THREE.MeshStandardMaterial({
     color,
     metalness: 0,
     roughness: 0.45,
     emissive: new THREE.Color(color),
     emissiveIntensity: 0.08,
+    side: viewMode === 'solid' ? THREE.FrontSide : THREE.DoubleSide,
+    wireframe: viewMode === 'wireframe',
+    transparent: viewMode === 'xray',
+    opacity: viewMode === 'xray' ? 0.35 : 1,
+    depthWrite: viewMode !== 'xray',
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+    clippingPlanes: opts.clippingPlanes ?? null,
   });
   const mesh = new THREE.InstancedMesh(geometry, material, placements.length);
   for (let i = 0; i < placements.length; i++) {
@@ -66,6 +83,10 @@ export function buildInstancedMesh(
     mesh.setMatrixAt(i, p instanceof THREE.Matrix4 ? p : instanceMatrix(p));
   }
   mesh.instanceMatrix.needsUpdate = true;
+  // InstancedMesh keeps its own bounds for frustum culling / raycasting, and
+  // setMatrixAt doesn't update them — recompute over the instance matrices so
+  // a grid translated far from the source mesh isn't wrongly culled.
+  mesh.computeBoundingSphere();
   return mesh;
 }
 
