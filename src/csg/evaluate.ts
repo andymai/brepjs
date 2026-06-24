@@ -53,7 +53,8 @@ export interface EvaluatorOptions {
    * (a handle shared by several entries is freed only when its last entry is
    * evicted). Defaults to unbounded — entries live for the Evaluator's
    * lifetime. With a bound set, a returned shape is only guaranteed valid
-   * until the next successful evaluate() call. Must be a positive integer.
+   * until the next successful evaluate() call; a failed evaluate() is
+   * transactional — it leaves the cache unchanged. Must be a positive integer.
    */
   readonly maxCacheEntries?: number | undefined;
 }
@@ -165,6 +166,15 @@ export class Evaluator implements Disposable {
   // DisposalScope can't back this — it can't release one handle on eviction
   // without releasing the rest.)
   private readonly refCounts = new Map<AnyShape<Dimension>, number>();
+  // Depth of the current public evaluate() call. The cache is reconciled
+  // (trim on success / roll back on failure) only when leaving the OUTERMOST
+  // call, so a reentrant evaluate() — e.g. from an onStep callback — can never
+  // evict operands the outer evaluation is still using.
+  private evalDepth = 0;
+  // Keys inserted during the current outermost evaluate(). On failure these are
+  // rolled back, so a failed call leaves the cache exactly as it was (bound
+  // preserved, older results untouched).
+  private readonly pendingKeys: string[] = [];
   private readonly kernelId: string;
   private readonly defaultTolerance: number | undefined;
   private readonly maxCacheEntries: number | undefined;
@@ -200,17 +210,25 @@ export class Evaluator implements Disposable {
    */
   evaluate(node: IRNode, env: Env = {}): Result<AnyShape<Dimension>> {
     return withKernel(this.kernelId, () => {
-      const result = this.evaluateInner(node, env);
-      // Eviction runs only here, after a SUCCESSFUL top-level evaluation: never
-      // mid-recursion (so in-flight operands are never freed), and never on the
-      // error path (a failed tree may have cached partial children before
-      // failing, and trimming then could dispose a previously-returned good
-      // result). The just-returned result is the most-recently-used entry, so
-      // trimming to a bound >= 1 never frees what the caller just received.
-      if (result.ok && this.maxCacheEntries !== undefined) {
-        this.trimCache(this.maxCacheEntries);
+      const outermost = this.evalDepth === 0;
+      this.evalDepth++;
+      try {
+        const result = this.evaluateInner(node, env);
+        // Reconcile the cache only when leaving the OUTERMOST evaluate() —
+        // never mid-recursion, and never from a reentrant call. On success the
+        // bound is enforced by LRU eviction (the just-returned result is the
+        // most-recently-used entry, so a bound >= 1 never frees it). On failure
+        // the call's own inserts are rolled back, so a failed evaluation
+        // neither grows the cache nor evicts an older good result.
+        if (outermost && this.maxCacheEntries !== undefined) {
+          if (result.ok) this.trimCache(this.maxCacheEntries);
+          else this.rollbackPending();
+        }
+        return result;
+      } finally {
+        this.evalDepth--;
+        if (outermost) this.pendingKeys.length = 0;
       }
-      return result;
     });
   }
 
@@ -239,14 +257,26 @@ export class Evaluator implements Disposable {
     const shape = result.value;
     this.refCounts.set(shape, (this.refCounts.get(shape) ?? 0) + 1);
     this.cache.set(key, shape);
+    if (this.maxCacheEntries !== undefined) this.pendingKeys.push(key);
     this.onStep?.({ node, cacheKey: key, cacheHit: false });
     return result;
   }
 
-  // Evict least-recently-used entries until the cache is within `max`. A
-  // handle is disposed only when its final referencing entry leaves the cache
-  // (refCounts → 0); a handle shared across keys survives until its last key
-  // is evicted, so identity short-circuits can never produce a use-after-free.
+  // Decrement a handle's reference count, disposing it once its last cache
+  // entry is gone. A handle shared across keys (via identity short-circuits)
+  // survives until its final key is removed, so eviction can never produce a
+  // use-after-free.
+  private releaseShape(shape: AnyShape<Dimension>): void {
+    const next = (this.refCounts.get(shape) ?? 1) - 1;
+    if (next <= 0) {
+      this.refCounts.delete(shape);
+      shape[Symbol.dispose]();
+    } else {
+      this.refCounts.set(shape, next);
+    }
+  }
+
+  // Evict least-recently-used entries until the cache is within `max`.
   private trimCache(max: number): void {
     while (this.cache.size > max) {
       const oldest = this.cache.keys().next();
@@ -255,14 +285,19 @@ export class Evaluator implements Disposable {
       const shape = this.cache.get(key);
       this.cache.delete(key);
       this.evictions++;
+      if (shape !== undefined) this.releaseShape(shape);
+    }
+  }
+
+  // Undo the inserts made during a failed outermost evaluate(). Removal is by
+  // key (not position), so entries merely touched (hit) during the call are
+  // kept — only the call's own new entries are dropped.
+  private rollbackPending(): void {
+    for (const key of this.pendingKeys) {
+      const shape = this.cache.get(key);
       if (shape === undefined) continue;
-      const next = (this.refCounts.get(shape) ?? 1) - 1;
-      if (next <= 0) {
-        this.refCounts.delete(shape);
-        shape[Symbol.dispose]();
-      } else {
-        this.refCounts.set(shape, next);
-      }
+      this.cache.delete(key);
+      this.releaseShape(shape);
     }
   }
 

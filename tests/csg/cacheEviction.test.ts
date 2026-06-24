@@ -113,15 +113,41 @@ describe('CSG cache eviction — disposal accounting', () => {
   });
 });
 
-describe('CSG cache eviction — error path', () => {
-  it('a failed evaluation does not evict a previously-returned good result', () => {
+describe('CSG cache eviction — error path & reentrancy', () => {
+  it('rolls back a failed call: bound preserved, prior result kept', () => {
     using ev = new Evaluator({ maxCacheEntries: 1 });
-    const r = unwrap(ev.evaluate(box(5, 5, 5))); // cache:[box5], r borrowed (MRU)
-    // This tree caches its first operand, then fails on the unbound param `w`.
-    // A failed call must NOT trim — otherwise it would evict + dispose r.
-    const failing = fuse(box(6, 6, 6), box(param('w'), 6, 6));
-    expect(ev.evaluate(failing, {}).ok).toBe(false);
-    expect(ev.cacheStats().evictions).toBe(0);
-    expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3); // r still live
+    const r = unwrap(ev.evaluate(box(5, 5, 5))); // cache:[box5], r borrowed
+    // Each tree caches its first operand, then fails on the unbound param `w`.
+    // Every failure must roll back its insert — the cache must not grow past
+    // the bound, and the earlier good result must stay live.
+    for (let i = 0; i < 8; i++) {
+      expect(ev.evaluate(fuse(box(6 + i, 6, 6), box(param('w'), 6, 6)), {}).ok).toBe(false);
+    }
+    expect(ev.cacheStats().entries).toBeLessThanOrEqual(1);
+    expect(ev.cacheStats().evictions).toBe(0); // rollbacks are not evictions
+    expect(unwrap(measureVolume(r))).toBeCloseTo(125, 3);
+  });
+
+  it('does not free outer operands when onStep re-enters evaluate()', () => {
+    // onStep fires mid-recursion. If it calls evaluate() on the same evaluator,
+    // that nested call must not trim the cache (which would dispose operands the
+    // outer Fuse still needs). Only the outermost call reconciles the cache.
+    let reentered = false;
+    const ev = new Evaluator({
+      maxCacheEntries: 1,
+      onStep: (info) => {
+        if (!reentered && !info.cacheHit) {
+          reentered = true;
+          unwrap(ev.evaluate(box(9, 9, 9))); // reentrant top-level call
+        }
+      },
+    });
+    try {
+      // Throws a disposed-handle error if the nested call evicted box(7,7,7).
+      const r = unwrap(ev.evaluate(fuse(box(7, 7, 7), box(8, 8, 8))));
+      expect(unwrap(measureVolume(r))).toBeGreaterThan(0);
+    } finally {
+      ev[Symbol.dispose]();
+    }
   });
 });
