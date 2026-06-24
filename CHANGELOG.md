@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.107.0](https://github.com/andymai/brepjs/compare/brepjs-v18.106.0...brepjs-v18.107.0) (2026-06-24)
+
+
+### Features
+
+* **meshing:** add progressive (async) LOD refine ([#1628](https://github.com/andymai/brepjs/issues/1628)) ([ec2549d](https://github.com/andymai/brepjs/commit/ec2549dafd751c65650684024aaf8e58cfaba55a))
+
 ## [18.106.0](https://github.com/andymai/brepjs/compare/brepjs-v18.105.0...brepjs-v18.106.0) (2026-06-24)
 
 
