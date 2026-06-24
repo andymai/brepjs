@@ -22,7 +22,7 @@
 //     ideal for instanced previews, not for a single fused export solid.
 
 import { describe, it, beforeAll } from 'vitest';
-import { box, translate, fuseAll, unwrap } from '../src/index.js';
+import { box, translate, fuseAll, unwrap, DisposalScope } from '../src/index.js';
 import type { Shape3D } from '../src/index.js';
 // gridPattern isn't re-exported from the top-level index (unlike its siblings
 // linearPattern/circularPattern) — a small public-surface gap. Import direct.
@@ -38,13 +38,17 @@ const PITCH = 42;
 const CELL = (): Shape3D => box(PITCH, PITCH, 7);
 
 function handRolled(cols: number, rows: number, sameFace: boolean): void {
+  using scope = new DisposalScope();
   const copies: Shape3D[] = [];
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      copies.push(translate(CELL(), [i * PITCH, j * PITCH, 0]));
+      const cell = scope.register(CELL());
+      copies.push(scope.register(translate(cell, [i * PITCH, j * PITCH, 0])));
     }
   }
-  unwrap(sameFace ? fuseAll(copies, { optimisation: 'sameFace', unsafe: true }) : fuseAll(copies));
+  scope.register(
+    unwrap(sameFace ? fuseAll(copies, { optimisation: 'sameFace', unsafe: true }) : fuseAll(copies))
+  );
 }
 
 for (const [cols, rows] of [
@@ -59,7 +63,9 @@ for (const [cols, rows] of [
       collectResults(
         results,
         await benchBoth(`gridPattern ${cols}x${rows}`, () => {
-          unwrap(gridPattern(CELL(), [1, 0, 0], [0, 1, 0], cols, rows, PITCH, PITCH));
+          using scope = new DisposalScope();
+          const cell = scope.register(CELL());
+          scope.register(unwrap(gridPattern(cell, [1, 0, 0], [0, 1, 0], cols, rows, PITCH, PITCH)));
         })
       );
     });
