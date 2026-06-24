@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.102.0](https://github.com/andymai/brepjs/compare/brepjs-v18.101.0...brepjs-v18.102.0) (2026-06-24)
+
+
+### Features
+
+* **operations:** transform-only instancing layer ([#1613](https://github.com/andymai/brepjs/issues/1613)) ([441ccae](https://github.com/andymai/brepjs/commit/441ccae1346d01ec1eeee8a9e178f6043090c6e9))
+
 ## [18.101.0](https://github.com/andymai/brepjs/compare/brepjs-v18.100.3...brepjs-v18.101.0) (2026-06-24)
 
 
