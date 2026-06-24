@@ -10,9 +10,8 @@
 
 import type { Edge, Face, Shape3D, Vertex } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/core/types.js';
-import { getFaces } from '@/topology/topologyQueryFns.js';
+import { getFaces, vertexPosition } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
-import { vertexPosition } from '@/topology/topologyQueryFns.js';
 import { facesOfEdge, sharedEdges, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { measureLength } from '@/measurement/measureFns.js';
 import type {
@@ -94,10 +93,20 @@ function dedupeEdges(edges: readonly Edge[]): Edge[] {
   return out;
 }
 
-/** Pick the candidate edge closest to the hint (length + endpoint midpoint). */
+/** Hint scores closer than this are treated as indistinguishable (→ ambiguous). */
+const HINT_MARGIN = 1e-6;
+
+/**
+ * Pick the candidate edge closest to the hint (length + endpoint midpoint).
+ * Returns undefined when it genuinely can't discriminate — the hint carries no
+ * signal, or the two best candidates score within {@link HINT_MARGIN} — so the
+ * caller can report `ambiguous` rather than committing to an arbitrary edge.
+ */
 function bestByHint(candidates: readonly Edge[], hint: EdgeHint): Edge | undefined {
+  if (hint.length === undefined && hint.midpoint === undefined) return undefined;
   let best: Edge | undefined;
   let bestScore = Infinity;
+  let secondScore = Infinity;
   for (const edge of candidates) {
     let score = 0;
     if (hint.length !== undefined) {
@@ -109,10 +118,14 @@ function bestByHint(candidates: readonly Edge[], hint: EdgeHint): Edge | undefin
       if (mid !== undefined) score += distance(hint.midpoint, mid);
     }
     if (score < bestScore) {
+      secondScore = bestScore;
       bestScore = score;
       best = edge;
+    } else if (score < secondScore) {
+      secondScore = score;
     }
   }
+  if (best === undefined || secondScore - bestScore < HINT_MARGIN) return undefined;
   return best;
 }
 

@@ -107,6 +107,9 @@ export interface ResolvedEdgeRef {
 /** An edge reference that could not be resolved. */
 export interface BrokenEdgeRef {
   readonly ref: EdgeRef;
-  readonly reason: 'deleted' | 'ambiguous' | 'not-found';
+  // No 'deleted': an edge ref tracks its faces, not the edge's own hash, so a
+  // vanished edge surfaces as 'not-found' (no shared edge) — it can't be
+  // distinguished from never-resolved.
+  readonly reason: 'ambiguous' | 'not-found';
   readonly candidates?: readonly Edge[];
 }
