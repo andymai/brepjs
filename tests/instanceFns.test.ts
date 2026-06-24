@@ -69,6 +69,12 @@ describe('materialize', () => {
     const solid = unwrap(materialize(inst, { fuse: true }));
     expect(unwrap(measureVolume(solid))).toBeCloseTo(2000, 1);
   });
+
+  it('fuse:true with a single placement returns a valid (non-disposed) solid', () => {
+    const inst = instance(box(10, 10, 10), [[5, 0, 0]]);
+    const solid = unwrap(materialize(inst, { fuse: true }));
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(1000, 1);
+  });
 });
 
 describe('instancedMesh', () => {

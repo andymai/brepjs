@@ -13,7 +13,6 @@ import type { AnyShape, Dimension, Shape3D } from '@/core/shapeTypes.js';
 import { isShape3D } from '@/core/shapeTypes.js';
 import type { Matrix4x4, Vec3 } from '@/core/types.js';
 import { validationError } from '@/core/errors.js';
-import { withScopeResult } from '@/core/disposal.js';
 import { applyMatrix } from '@/topology/transformFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 import { fuseAll } from '@/topology/booleanFns.js';
@@ -175,24 +174,30 @@ export function materialize<D extends Dimension>(
 }
 
 // Place the source at each matrix, then combine into a Compound or fused solid.
-// The placed copies are scoped: disposed once the (independent) result is
-// built, and on a failed placement the copies made so far are disposed too —
-// so no kernel handles leak on either path.
+// Transient copies are disposed once the result is built (and on a failed
+// placement) — except one the result aliases, since fuseAll of a single shape
+// returns that shape itself. makeCompound/fuseAll keep their own refcounted
+// references, so disposing the inputs can't corrupt the result.
 function combine<D extends Dimension>(
   source: AnyShape<D>,
   placements: ReadonlyArray<Matrix4x4>,
   fuse: boolean
 ): Result<AnyShape<Dimension>> {
-  return withScopeResult((scope) => {
-    const copies: AnyShape<D>[] = [];
-    for (const m of placements) {
-      const placed = applyMatrix(source, m);
-      if (!placed.ok) return placed;
-      copies.push(scope.register(placed.value));
+  const copies: AnyShape<D>[] = [];
+  for (const m of placements) {
+    const placed = applyMatrix(source, m);
+    if (!placed.ok) {
+      for (const c of copies) c[Symbol.dispose]();
+      return placed;
     }
-    // Arbitrary placements needn't share faces, so no sameFace glue here.
-    return fuse ? fuseAll(copies as Shape3D[], { unsafe: true }) : ok(makeCompound(copies));
-  });
+    copies.push(placed.value);
+  }
+  // Arbitrary placements needn't share faces, so no sameFace glue here.
+  const result = fuse ? fuseAll(copies as Shape3D[], { unsafe: true }) : ok(makeCompound(copies));
+  for (const c of copies) {
+    if (!result.ok || c !== result.value) c[Symbol.dispose]();
+  }
+  return result;
 }
 
 export interface InstancedMesh {
