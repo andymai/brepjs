@@ -118,6 +118,26 @@ describe('CSG placement-stripped mesh reuse (translation + rotation)', () => {
     }
   });
 
+  it('composes a mixed rotate∘translate chain (translate then rotate)', () => {
+    // Inner translate applies before outer rotate: p → p+[5,0,0] → rot90Z = (−by, bx+5, bz).
+    // Exercises peelRigid's Translate branch with a non-identity accumulated rotation
+    // (rv = quatRotate(rot, v)) — the inverse of the translate∘rotate case above.
+    const ev = new Evaluator();
+    const base = unwrap(ev.evaluateMesh(box(8, 8, 8)));
+    const node = rotate(translate(box(8, 8, 8), [5, 0, 0]), 90, { axis: [0, 0, 1] });
+    const moved = unwrap(ev.evaluateMesh(node));
+
+    expect(moved.vertices.length).toBe(base.vertices.length);
+    for (let i = 0; i < base.vertices.length; i += 3) {
+      const bx = base.vertices[i] ?? 0;
+      const by = base.vertices[i + 1] ?? 0;
+      const bz = base.vertices[i + 2] ?? 0;
+      expect(moved.vertices[i]).toBeCloseTo(-by, 4);
+      expect(moved.vertices[i + 1]).toBeCloseTo(bx + 5, 4);
+      expect(moved.vertices[i + 2]).toBeCloseTo(bz, 4);
+    }
+  });
+
   it('rotates about an off-origin pivot (R·(p−c)+c)', () => {
     const ev = new Evaluator();
     const base = unwrap(ev.evaluateMesh(box(6, 6, 6)));

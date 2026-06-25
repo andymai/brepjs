@@ -242,6 +242,37 @@ function isIdentityQuat(q: Quat): boolean {
 }
 
 /**
+ * Write `src` (flat xyz) rigidly transformed by quaternion (qw,qx,qy,qz) then
+ * translation (tx,ty,tz) into `dst`. The quaternion-rotate math is inlined with
+ * scalar locals — no per-vertex array allocation — because this runs once per
+ * mesh vertex/normal and helper-allocated vector math regressed the gridfinity
+ * benchmark 17% (see `utils/vec3.ts`). Pass zero translation for normals.
+ */
+function rotateXyzBuffer(
+  dst: Float32Array,
+  src: Float32Array,
+  qw: number,
+  qx: number,
+  qy: number,
+  qz: number,
+  tx: number,
+  ty: number,
+  tz: number
+): void {
+  for (let i = 0; i < src.length; i += 3) {
+    const vx = src[i] ?? 0;
+    const vy = src[i + 1] ?? 0;
+    const vz = src[i + 2] ?? 0;
+    const cx = 2 * (qy * vz - qz * vy);
+    const cy = 2 * (qz * vx - qx * vz);
+    const cz = 2 * (qx * vy - qy * vx);
+    dst[i] = vx + qw * cx + (qy * cz - qz * cy) + tx;
+    dst[i + 1] = vy + qw * cy + (qz * cx - qx * cz) + ty;
+    dst[i + 2] = vz + qw * cz + (qx * cy - qy * cx) + tz;
+  }
+}
+
+/**
  * Apply a rigid motion to a mesh: vertices get the rotation then translation,
  * normals get the rotation only (a unit rotation preserves length, so no
  * renormalization). UVs and triangles are motion-invariant. A pure translation
@@ -264,20 +295,11 @@ function transformMeshRigid(m: ShapeMesh, rot: Quat, trans: Vec3): ShapeMesh {
     return { ...m, vertices };
   }
 
-  for (let i = 0; i < src.length; i += 3) {
-    const p = quatRotate(rot, [src[i] ?? 0, src[i + 1] ?? 0, src[i + 2] ?? 0]);
-    vertices[i] = p[0] + tx;
-    vertices[i + 1] = p[1] + ty;
-    vertices[i + 2] = p[2] + tz;
-  }
+  const [qw, qx, qy, qz] = rot;
+  rotateXyzBuffer(vertices, src, qw, qx, qy, qz, tx, ty, tz);
   const sn = m.normals;
   const normals = new Float32Array(sn.length);
-  for (let i = 0; i < sn.length; i += 3) {
-    const n = quatRotate(rot, [sn[i] ?? 0, sn[i + 1] ?? 0, sn[i + 2] ?? 0]);
-    normals[i] = n[0];
-    normals[i + 1] = n[1];
-    normals[i + 2] = n[2];
-  }
+  rotateXyzBuffer(normals, sn, qw, qx, qy, qz, 0, 0, 0);
   return { ...m, vertices, normals };
 }
 
