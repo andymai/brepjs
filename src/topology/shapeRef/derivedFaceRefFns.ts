@@ -15,7 +15,7 @@ import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/core/types.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
-import { facesOfEdge, sharedEdges, verticesOfEdge } from '@/topology/adjacencyFns.js';
+import { adjacentFaces, facesOfEdge, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
 import { distance, facesForRole, roleOfFace, vertexCentroid } from './roleLookup.js';
 import type {
@@ -41,17 +41,23 @@ function facesByNormal(shape: Shape3D, normal: Vec3): Face[] {
   return getFaces(shape).filter((f) => normalDot(normalAt(f), normal) > NORMAL_MATCH);
 }
 
-/** Faces sharing an edge with BOTH face sets, excluding the sets themselves. */
+/**
+ * Faces adjacent to BOTH face sets, excluding the sets themselves. Uses the
+ * cached edge→faces adjacency (`adjacentFaces`) rather than an O(F·N) per-pair
+ * `sharedEdges` scan.
+ */
 function betweenFaces(shape: Shape3D, aFaces: readonly Face[], bFaces: readonly Face[]): Face[] {
   const exclude = new Set([...aFaces, ...bFaces].map(getHashCode));
+  const adjacentToA = new Set<number>();
+  for (const a of aFaces) {
+    for (const f of adjacentFaces(shape, a)) adjacentToA.add(getHashCode(f));
+  }
   const result: Face[] = [];
   const seen = new Set<number>();
-  for (const f of getFaces(shape)) {
-    const h = getHashCode(f);
-    if (exclude.has(h) || seen.has(h)) continue;
-    const adjA = aFaces.some((a) => sharedEdges(a, f).length > 0);
-    const adjB = bFaces.some((b) => sharedEdges(b, f).length > 0);
-    if (adjA && adjB) {
+  for (const b of bFaces) {
+    for (const f of adjacentFaces(shape, b)) {
+      const h = getHashCode(f);
+      if (exclude.has(h) || seen.has(h) || !adjacentToA.has(h)) continue;
       seen.add(h);
       result.push(f);
     }

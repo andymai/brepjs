@@ -176,6 +176,11 @@ export interface DerivedFaceHint {
  */
 export interface DerivedFaceRef {
   readonly origin: string;
+  /**
+   * Which op generated the face — descriptive metadata for consumers. Resolution
+   * is op-agnostic (the normal-blend isolates both a fillet round and a chamfer
+   * bevel), so the resolver doesn't consult it.
+   */
   readonly op: 'fillet' | 'chamfer';
   /** Roles of the two faces the generated face bridges. */
   readonly betweenRoles: readonly [string, string];
