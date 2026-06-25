@@ -119,11 +119,24 @@ export function resolveRefIn(ref: LineageRef, shape: Shape3D): LineageResolution
 }
 
 /**
+ * A plain options object worth recursing into for nested refs — a literal `{}`
+ * (or null-prototype) that isn't a lineage ref, a shape handle, or a Date/Map/
+ * class instance (which `Object.entries` would silently flatten away).
+ */
+function isPlainOptions(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value) as object | null;
+  if (proto !== Object.prototype && proto !== null) return false;
+  return !('wrapped' in value);
+}
+
+/**
  * Replace every lineage ref in an operation's params with the live entity it
- * resolves to in `shape`, recursing into arrays (multi-entity selections like a
- * fillet's edge list). Refs that can't resolve are left as-is. Role tables are
- * re-derived once per `origin` and reused across the whole params map. Lets a
- * replay engine pass stable entity selections that survive upstream edits.
+ * resolves to in `shape`, recursing into arrays (a fillet's edge list) and
+ * nested plain objects (a `{ selection: { edge } }` options bag). Refs that
+ * can't resolve are left as-is. Role tables are re-derived once per `origin` and
+ * reused across the whole params map. Lets a replay engine pass stable entity
+ * selections that survive upstream edits.
  */
 export function resolveRefParams(
   params: Readonly<Record<string, unknown>>,
@@ -131,10 +144,17 @@ export function resolveRefParams(
 ): Record<string, unknown> {
   const roleCache = new Map<string, RoleTable>();
   const resolveValue = (value: unknown): unknown => {
+    if (isLineageRef(value)) {
+      const res = resolveLineageRef(value, rolesFor(value, shape, roleCache), shape);
+      return res.ok ? res.entity : value;
+    }
     if (Array.isArray(value)) return value.map(resolveValue);
-    if (!isLineageRef(value)) return value;
-    const res = resolveLineageRef(value, rolesFor(value, shape, roleCache), shape);
-    return res.ok ? res.entity : value;
+    if (isPlainOptions(value)) {
+      const nested: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value)) nested[k] = resolveValue(v);
+      return nested;
+    }
+    return value;
   };
   const out: Record<string, unknown> = { ...params };
   for (const [key, value] of Object.entries(params)) {

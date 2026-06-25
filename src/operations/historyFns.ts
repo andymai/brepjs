@@ -146,17 +146,22 @@ export function registerOperation(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve any lineage refs in a step's params against its primary input shape,
- * so an operation re-targets the SAME entity (edge/face/vertex) after an upstream
- * parameter edit rebuilds the model. A no-op for ref-free params or non-3D
- * inputs. The stored step keeps its refs; resolution happens fresh at replay.
+ * Resolve any lineage refs in a step's params against its input shape, so an
+ * operation re-targets the SAME entity (edge/face/vertex) after an upstream
+ * parameter edit rebuilds the model. The stored step keeps its refs; resolution
+ * happens fresh at replay.
+ *
+ * Only **single-input** steps auto-resolve: with multiple inputs we can't tell
+ * which input a ref targets, and resolving against the wrong one could silently
+ * return an entity from the wrong shape. Multi-input refs (and ref-free or non-3D
+ * cases) are left raw for the operation to resolve against the input it chooses.
  */
 function resolveStepParams(
   params: Readonly<Record<string, unknown>>,
   inputs: readonly AnyShape<Dimension>[]
 ): Record<string, unknown> {
-  const primary = inputs[0];
-  if (primary !== undefined && isShape3D(primary)) {
+  const [primary, second] = inputs;
+  if (primary !== undefined && second === undefined && isShape3D(primary)) {
     return resolveRefParams(params, primary);
   }
   return { ...params };

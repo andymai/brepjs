@@ -103,6 +103,14 @@ describe.skipIf(!isOcctFamily)('lineage refs as a parametric-replay consumer', (
     expect(edges.every((e) => isEdge(e))).toBe(true); // array of refs → live edges
   });
 
+  it('resolveRefParams resolves refs nested inside an options object', () => {
+    const edgeRef = nameTopFrontEdge(box(20, 20, 20));
+    const resolved = resolveRefParams({ selection: { edge: edgeRef }, radius: 2 }, box(20, 20, 40));
+    const selection = resolved['selection'] as { edge: Edge };
+    expect(isEdge(selection.edge)).toBe(true); // nested ref → live edge
+    expect((resolved as { radius: number }).radius).toBe(2);
+  });
+
   it('type guards discriminate the four ref kinds', () => {
     const edgeRef = nameTopFrontEdge(box(20, 20, 20));
     expect(isEdgeRef(edgeRef)).toBe(true);
