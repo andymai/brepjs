@@ -54,14 +54,15 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Auto-merge the root brepjs release PR plus the leaf packages brepjs-bim and
-  # brepjs-sheetmetal. Those leaves depend only on root brepjs (nothing depends
-  # back on them), so the workspace dep graph stays acyclic and node-workspace
-  # propagation terminates after one root->leaves ripple — no release loop is
-  # possible. brepjs-opencascade (expensive WASM build, manual review) and
-  # brepjs-cad / brepjs-viewer are still held: verify cross-links viewer, the
-  # one pairing that historically re-pinned to an unpublished version and looped
-  # the pipeline. Auto-PUBLISH still works — it fires when the release PR merges.
+  # Auto-merge the root brepjs release PR plus the acyclic leaf packages
+  # brepjs-bim, brepjs-sheetmetal, and brepjs-cad. Those leaves depend only on
+  # root brepjs (nothing depends back on them), so the workspace dep graph stays
+  # acyclic and node-workspace propagation terminates after one root->leaves
+  # ripple — no release loop is possible. Only brepjs-opencascade stays held
+  # (expensive WASM build, manual review). The brepjs-cad<->viewer re-pin loop
+  # that once justified holding cad is gone: brepjs-viewer is unmanaged by
+  # release-please, and cad's `brepjs` dep is a caret node-workspace never
+  # re-pins. Auto-PUBLISH fires when each release PR merges.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -101,13 +102,12 @@ jobs:
               echo "PR with no number, skipping"
               continue
             fi
-            # Hold brepjs-opencascade (expensive WASM build, manual review) and
-            # brepjs-cad / brepjs-viewer (verify cross-links viewer — the
-            # pairing that historically looped the pipeline via unpublished
-            # re-pins). The root brepjs PR and the acyclic leaves brepjs-bim /
-            # brepjs-sheetmetal auto-merge.
+            # Hold only brepjs-opencascade (expensive WASM build, manual review).
+            # The root brepjs PR and the acyclic leaves brepjs-bim /
+            # brepjs-sheetmetal / brepjs-cad auto-merge. (cad's old viewer
+            # re-pin loop is gone — viewer is unmanaged by release-please.)
             case "$pr_title" in
-              *brepjs-opencascade* | *brepjs-cad* | *brepjs-viewer*)
+              *brepjs-opencascade*)
                 echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
                 continue
                 ;;
