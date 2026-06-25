@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.0](https://github.com/andymai/brepjs/compare/brepjs-v18.117.1...brepjs-v18.118.0) (2026-06-25)
+
+
+### Features
+
+* **site:** add Vercel Speed Insights to docs and playground ([#1714](https://github.com/andymai/brepjs/issues/1714)) ([c4a1ccb](https://github.com/andymai/brepjs/commit/c4a1ccb7293767cf0c011ef5da916a608242562a))
+
 ## [18.117.1](https://github.com/andymai/brepjs/compare/brepjs-v18.117.0...brepjs-v18.117.1) (2026-06-25)
 
 
