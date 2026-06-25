@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.117.0](https://github.com/andymai/brepjs/compare/brepjs-v18.116.1...brepjs-v18.117.0) (2026-06-25)
+
+
+### Features
+
+* **api:** export locate() — placement-only rigid transform ([#1661](https://github.com/andymai/brepjs/issues/1661)) ([8f8014f](https://github.com/andymai/brepjs/commit/8f8014f0e077a7ad17fe7d9f01ec9711d053c85b))
+
 ## [18.116.1](https://github.com/andymai/brepjs/compare/brepjs-v18.116.0...brepjs-v18.116.1) (2026-06-25)
 
 
