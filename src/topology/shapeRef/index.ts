@@ -31,3 +31,16 @@ export { createEdgeRef, resolveEdgeRef } from './edgeRefFns.js';
 export { createVertexRef, resolveVertexRef } from './vertexRefFns.js';
 
 export { createDerivedFaceRef, resolveDerivedFaceRef } from './derivedFaceRefFns.js';
+
+export {
+  type LineageRef,
+  type ResolvedEntity,
+  isLineageRef,
+  isFaceRef,
+  isEdgeRef,
+  isVertexRef,
+  isDerivedFaceRef,
+  resolveLineageRef,
+  resolveRefIn,
+  resolveRefParams,
+} from './refResolveFns.js';

@@ -738,6 +738,14 @@ export {
   resolveVertexRef,
   createDerivedFaceRef,
   resolveDerivedFaceRef,
+  isLineageRef,
+  isFaceRef,
+  isEdgeRef,
+  isVertexRef,
+  isDerivedFaceRef,
+  resolveLineageRef,
+  resolveRefIn,
+  resolveRefParams,
 } from './topology/shapeRef/index.js';
 export type {
   GeometricHint,
@@ -758,6 +766,8 @@ export type {
   DerivedFaceRef,
   ResolvedDerivedFaceRef,
   BrokenDerivedFaceRef,
+  LineageRef,
+  ResolvedEntity,
 } from './topology/shapeRef/index.js';
 
 export {
