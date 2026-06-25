@@ -77,15 +77,17 @@ function handRolledPipeline(cols: number, rows: number): void {
   }
   const base = cells[0];
   if (!base) return;
-  scope.register(
-    unwrap(
-      booleanPipeline(
-        base,
-        cells.slice(1).map((tool) => ({ op: 'fuse' as const, tool })),
-        { optimisation: 'commonFace' }
-      )
-    )
+  // booleanPipeline falls back to sequential ops when the native pipeline class
+  // is unavailable, but some adapters surface that as an err rather than the
+  // documented fallback — handle the Result instead of unwrap()ing so the bench
+  // never throws on those builds. On occt-wasm 3.6.0 (the findings above) the
+  // native pipeline is present, so this path is exercised.
+  const result = booleanPipeline(
+    base,
+    cells.slice(1).map((tool) => ({ op: 'fuse' as const, tool })),
+    { optimisation: 'commonFace' }
   );
+  if (result.ok) scope.register(result.value);
 }
 
 for (const [cols, rows] of [
