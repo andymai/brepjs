@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.115.1](https://github.com/andymai/brepjs/compare/brepjs-v18.115.0...brepjs-v18.115.1) (2026-06-25)
+
+
+### Performance Improvements
+
+* **csg:** translation-stripped mesh cache — no re-mesh on a pure move ([6d00273](https://github.com/andymai/brepjs/commit/6d00273c2864ebb9dd941d6594827d352196477b))
+
 ## [18.115.0](https://github.com/andymai/brepjs/compare/brepjs-v18.114.0...brepjs-v18.115.0) (2026-06-25)
 
 

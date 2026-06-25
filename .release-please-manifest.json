@@ -1,5 +1,5 @@
 {
-  ".": "18.115.0",
+  ".": "18.115.1",
   "packages/brepjs-opencascade": "0.16.0",
   "packages/brepjs-voxel-wasm": "0.7.0",
   "packages/brepjs-cad": "0.33.1",
