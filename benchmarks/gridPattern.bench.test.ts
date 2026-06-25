@@ -13,16 +13,28 @@
 // hand-rolled array. **occt-wasm is the apples-to-apples comparison** (both
 // produce a single fused solid); read that row when judging the trade-off.
 //
-// FINDINGS (occt-wasm, directional — re-run after kernel bumps):
-//   - gridPattern ≈ hand-rolled at small grids (~16 cells), then pulls ahead
-//     ~20% as the grid grows (36–64 cells). The win is the kernel bulk-copy +
-//     nested row/column fuse, not `sameFace` glue — under occt-wasm,
-//     `+sameFace` ≈ plain `fuseAll` (sameFace helps more under native occt).
+// FINDINGS (occt-wasm 3.6.0, directional — re-run after kernel bumps):
+//   - gridPattern is the FASTEST approach here — faster than every hand-rolled
+//     baseline, pulling ~25% ahead as the grid grows (6x6: 37 vs 46 ms; 8x8:
+//     65 vs 87 ms vs the commonFace hand-roll). The win is the kernel bulk-copy
+//     + balanced row/column fuse, NOT glue.
+//   - Glue is a no-op on this build: `+sameFace` ≈ `+commonFace` ≈ plain
+//     `fuseAll`. The glue lever the consumer's "tuned" path relies on doesn't
+//     engage under occt-wasm (it helps more under native occt).
+//   - The `booleanPipeline + commonFace` baseline (#1659's cited "tuned" path)
+//     is DRAMATICALLY slower — 8x at 36 cells, ~11.5x at 64 (748 vs 65 ms).
+//     Chaining N sequential fuses re-walks the growing accumulator each step;
+//     for many independent cells, gridPattern's batched fuse is the right tool.
+//   - Net: gridPattern already matches/beats the tuned baseline on occt-wasm
+//     (#1659 acceptance #1). The 2.1x gap reported on brepjs 18.104.0 is closed
+//     — a downstream tool should delete its bespoke grid-fuse layer and call
+//     gridPattern (the #1606 goal). The pocket-grid (CUT) case is a different
+//     operation and out of gridPattern's fuse scope.
 //   - Under brepkit, gridPattern returns an unfused compound (near-free):
 //     ideal for instanced previews, not for a single fused export solid.
 
 import { describe, it, beforeAll } from 'vitest';
-import { box, translate, fuseAll, unwrap, DisposalScope } from '../src/index.js';
+import { box, translate, fuseAll, booleanPipeline, unwrap, DisposalScope } from '../src/index.js';
 import type { Shape3D } from '../src/index.js';
 // gridPattern isn't re-exported from the top-level index (unlike its siblings
 // linearPattern/circularPattern) — a small public-surface gap. Import direct.
@@ -37,7 +49,7 @@ beforeAll(async () => {
 const PITCH = 42;
 const CELL = (): Shape3D => box(PITCH, PITCH, 7);
 
-function handRolled(cols: number, rows: number, sameFace: boolean): void {
+function handRolled(cols: number, rows: number, glue: 'none' | 'sameFace' | 'commonFace'): void {
   using scope = new DisposalScope();
   const copies: Shape3D[] = [];
   for (let i = 0; i < cols; i++) {
@@ -47,7 +59,32 @@ function handRolled(cols: number, rows: number, sameFace: boolean): void {
     }
   }
   scope.register(
-    unwrap(sameFace ? fuseAll(copies, { optimisation: 'sameFace', unsafe: true }) : fuseAll(copies))
+    unwrap(
+      glue === 'none' ? fuseAll(copies) : fuseAll(copies, { optimisation: glue, unsafe: true })
+    )
+  );
+}
+
+// The other tuned baseline #1659 names: a commonFace-glued booleanPipeline (one
+// chained WASM call) over translated cells, instead of a pairwise fuseAll.
+function handRolledPipeline(cols: number, rows: number): void {
+  using scope = new DisposalScope();
+  const cells: Shape3D[] = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      cells.push(scope.register(translate(scope.register(CELL()), [i * PITCH, j * PITCH, 0])));
+    }
+  }
+  const base = cells[0];
+  if (!base) return;
+  scope.register(
+    unwrap(
+      booleanPipeline(
+        base,
+        cells.slice(1).map((tool) => ({ op: 'fuse' as const, tool })),
+        { optimisation: 'commonFace' }
+      )
+    )
   );
 }
 
@@ -74,7 +111,7 @@ for (const [cols, rows] of [
       collectResults(
         results,
         await benchBoth(`handrolled ${cols}x${rows}`, () => {
-          handRolled(cols, rows, false);
+          handRolled(cols, rows, 'none');
         })
       );
     });
@@ -83,7 +120,28 @@ for (const [cols, rows] of [
       collectResults(
         results,
         await benchBoth(`handrolled+sameFace ${cols}x${rows}`, () => {
-          handRolled(cols, rows, true);
+          handRolled(cols, rows, 'sameFace');
+        })
+      );
+    });
+
+    // The tuned baseline a downstream consumer (gridfinity-layout-tool) builds by
+    // hand — translate each cell + a commonFace-glued fuse. #1659 is about
+    // gridPattern matching or beating *this*, not just the naive fuseAll.
+    it('hand-rolled fuseAll + commonFace (tuned baseline)', async () => {
+      collectResults(
+        results,
+        await benchBoth(`handrolled+commonFace ${cols}x${rows}`, () => {
+          handRolled(cols, rows, 'commonFace');
+        })
+      );
+    });
+
+    it('hand-rolled booleanPipeline + commonFace (tuned baseline)', async () => {
+      collectResults(
+        results,
+        await benchBoth(`handrolled+pipeline ${cols}x${rows}`, () => {
+          handRolledPipeline(cols, rows);
         })
       );
     });
