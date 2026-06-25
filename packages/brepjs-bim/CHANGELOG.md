@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.3.0...brepjs-bim-v0.3.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **bim:** make BCF XML tokenizer linear (polynomial ReDoS) ([#1666](https://github.com/andymai/brepjs/issues/1666)) ([3c93f03](https://github.com/andymai/brepjs/commit/3c93f036827b5daf158e2a339362c38bf3ea2864))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * brepjs bumped from >=18.0.0 to >=18.117.1
+
 ## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.2.0...brepjs-bim-v0.3.0) (2026-06-18)
 
 
