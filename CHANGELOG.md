@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.116.1](https://github.com/andymai/brepjs/compare/brepjs-v18.116.0...brepjs-v18.116.1) (2026-06-25)
+
+
+### Performance Improvements
+
+* **csg:** rotation-stripped mesh reuse — no re-mesh on a pure rotate ([#1653](https://github.com/andymai/brepjs/issues/1653)) ([92c06f3](https://github.com/andymai/brepjs/commit/92c06f38214060c60d3a949981203274ce62733e))
+
 ## [18.116.0](https://github.com/andymai/brepjs/compare/brepjs-v18.115.1...brepjs-v18.116.0) (2026-06-25)
 
 
