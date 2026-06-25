@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.114.0](https://github.com/andymai/brepjs/compare/brepjs-v18.113.0...brepjs-v18.114.0) (2026-06-25)
+
+
+### Features
+
+* **shaperef:** parametric-replay consumer for lineage refs ([66e60ca](https://github.com/andymai/brepjs/commit/66e60caa640b0de85440a7ac133364cf12f23069)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.113.0](https://github.com/andymai/brepjs/compare/brepjs-v18.112.0...brepjs-v18.113.0) (2026-06-25)
 
 
