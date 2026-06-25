@@ -43,6 +43,8 @@ export {
   resolveDerivedFaceRef,
   type LineageRef,
   type ResolvedEntity,
+  type BrokenReason,
+  type LineageResolution,
   isLineageRef,
   isFaceRef,
   isEdgeRef,

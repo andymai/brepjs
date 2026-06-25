@@ -768,6 +768,8 @@ export type {
   BrokenDerivedFaceRef,
   LineageRef,
   ResolvedEntity,
+  BrokenReason,
+  LineageResolution,
 } from './topology/shapeRef/index.js';
 
 export {

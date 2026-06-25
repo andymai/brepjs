@@ -35,6 +35,8 @@ export { createDerivedFaceRef, resolveDerivedFaceRef } from './derivedFaceRefFns
 export {
   type LineageRef,
   type ResolvedEntity,
+  type BrokenReason,
+  type LineageResolution,
   isLineageRef,
   isFaceRef,
   isEdgeRef,

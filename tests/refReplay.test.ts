@@ -69,29 +69,34 @@ describe.skipIf(!isOcctFamily)('lineage refs as a parametric-replay consumer', (
     // no maintained role table — exactly a parametric edit.
     const rebuilt = box(20, 20, 40);
     const resolved = resolveRefIn(edgeRef, rebuilt);
-    expect(resolved).toBeDefined();
-    expect(resolved !== undefined && isEdge(resolved)).toBe(true);
-    if (resolved === undefined || !isEdge(resolved)) return;
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    const edge = resolved.entity;
+    expect(isEdge(edge)).toBe(true);
+    if (!isEdge(edge)) return;
 
     // It re-targeted the top-front edge of the TALLER box (top is now z=40).
-    const zs = verticesOfEdge(resolved).map((v) => vertexPosition(v)[2]);
+    const zs = verticesOfEdge(edge).map((v) => vertexPosition(v)[2]);
     expect(Math.max(...zs)).toBeCloseTo(40, 4);
 
     // The downstream fillet applies to the correct edge of the rebuilt model.
-    const filleted = unwrap(filletWithEvolution(rebuilt, [resolved], 2)).shape;
+    const filleted = unwrap(filletWithEvolution(rebuilt, [edge], 2)).shape;
     const vBox = unwrap(measureVolume(rebuilt));
     const vFillet = unwrap(measureVolume(filleted));
     expect(vFillet).toBeLessThan(vBox); // the corner was shaved
     expect(vFillet).toBeGreaterThan(vBox * 0.99); // only the corner
   });
 
-  it('resolveRefParams swaps a ref for a live entity, leaving other params', () => {
+  it('resolveRefParams swaps scalar + array refs, leaving other params', () => {
     const edgeRef = nameTopFrontEdge(box(20, 20, 20));
     const rebuilt = box(20, 20, 40);
 
-    const resolved = resolveRefParams({ edge: edgeRef, radius: 2 }, rebuilt);
+    // `edges` is an ARRAY (the fillet/chamfer multi-edge case) — must recurse.
+    const resolved = resolveRefParams({ edge: edgeRef, edges: [edgeRef], radius: 2 }, rebuilt);
     expect(resolved['radius']).toBe(2); // non-ref param untouched
-    expect(isEdge(resolved['edge'] as Edge)).toBe(true); // ref → live edge
+    expect(isEdge(resolved['edge'] as Edge)).toBe(true); // scalar ref → live edge
+    const edges = resolved['edges'] as Edge[];
+    expect(edges.every((e) => isEdge(e))).toBe(true); // array of refs → live edges
   });
 
   it('type guards discriminate the four ref kinds', () => {
