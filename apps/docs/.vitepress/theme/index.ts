@@ -2,6 +2,7 @@ import DefaultTheme from 'vitepress/theme';
 import type { Theme } from 'vitepress';
 import { h } from 'vue';
 import Layout from './Layout.vue';
+import ContactForm from './components/ContactForm.vue';
 import './custom.css';
 
 /**
@@ -77,14 +78,16 @@ async function initPostHog(): Promise<void> {
 const theme: Theme = {
   extends: DefaultTheme,
   Layout: () => h(Layout),
-  enhanceApp() {
+  enhanceApp({ app }) {
+    app.component('ContactForm', ContactForm);
+
     // VitePress prerenders pages, so guard against SSR. inject() wraps
     // history.pushState — VitePress's own router uses it, so route changes
     // emit pageviews automatically once mounted.
     if (typeof window !== 'undefined') {
       void import('@vercel/analytics').then(({ inject }) => inject());
       void import('@vercel/speed-insights').then(({ injectSpeedInsights }) =>
-        injectSpeedInsights(),
+        injectSpeedInsights()
       );
       void initPostHog();
       registerPreloadErrorRecovery();

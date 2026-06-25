@@ -143,6 +143,10 @@ The command exits non-zero unless the report is `ok` (valid **and** every declar
 
 - [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool): Web-based layout generator for Gridfinity storage systems
 
+## Get in touch
+
+I'm Andy Aragon — I build and maintain brepjs and the geometry kernels beneath it ([occt-wasm](https://github.com/andymai/occt-wasm), [brepkit](https://github.com/andymai/brepkit)). Building something on brepjs and want a hand, or just have a question? **[Get in touch →](https://brepjs.dev/support)**
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.

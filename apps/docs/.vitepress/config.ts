@@ -251,6 +251,7 @@ export default withMermaid(
         { text: 'Authoring with AI', link: '/agent/overview' },
         { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
         { text: 'Playground', link: '/playground', target: '_blank', rel: 'noopener noreferrer' },
+        { text: 'Get in touch', link: '/support' },
         {
           text: major,
           items: [
