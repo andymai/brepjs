@@ -399,13 +399,18 @@ export class Evaluator implements Disposable {
         if (!placedShape.ok) return placedShape;
         const placedHashes = getFaces(placedShape.value).map(getHashCode);
         const moved = translateMesh(innerMesh.value, offset);
-        const placed: ShapeMesh = {
-          ...moved,
-          faceGroups: relocateFaceGroups(moved.faceGroups, innerHashes, placedHashes),
-        };
-        this.meshCache.set(meshKey, placed);
-        if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
-        return ok(placed);
+        const faceGroups = relocateFaceGroups(moved.faceGroups, innerHashes, placedHashes);
+        // Trust the reuse only if every group mapped onto a placed face. If the
+        // inner mesh was cached from an earlier, now-evicted inner instance, its
+        // faceIds won't match the fresh innerHashes and won't remap — fall
+        // through to meshing the placed shape so the IDs stay correct.
+        const placedSet = new Set(placedHashes);
+        if (faceGroups.every((g) => placedSet.has(g.faceId))) {
+          const placed: ShapeMesh = { ...moved, faceGroups };
+          this.meshCache.set(meshKey, placed);
+          if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
+          return ok(placed);
+        }
       }
     }
 

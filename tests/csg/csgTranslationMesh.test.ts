@@ -82,4 +82,18 @@ describe('CSG translation-stripped mesh reuse', () => {
     );
     for (const g of moved.faceGroups) expect(placedIds.has(g.faceId)).toBe(true);
   });
+
+  it('falls back to re-mesh when an inner mesh outlives its shape (cache churn)', () => {
+    const ev = new Evaluator({ maxCacheEntries: 1 });
+    ev.evaluateMesh(box(10, 10, 10)); // cache box(10)'s mesh + shape
+    ev.evaluate(box(7, 7, 7)); // evict box(10)'s shape; its mesh stays cached
+    // The reused inner mesh now references an evicted instance; the fast path
+    // must detect the unmappable IDs and re-mesh the placed shape.
+    const moved = unwrap(ev.evaluateMesh(translate(box(10, 10, 10), [5, 0, 0])));
+    expect(moved.faceGroups.length).toBeGreaterThan(0);
+    const placedIds = new Set(
+      getFaces(unwrap(ev.evaluate(translate(box(10, 10, 10), [5, 0, 0])))).map(getHashCode)
+    );
+    for (const g of moved.faceGroups) expect(placedIds.has(g.faceId)).toBe(true);
+  });
 });
