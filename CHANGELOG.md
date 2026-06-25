@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.113.0](https://github.com/andymai/brepjs/compare/brepjs-v18.112.0...brepjs-v18.113.0) (2026-06-25)
+
+
+### Features
+
+* **shaperef:** name generated fillet/chamfer faces by lineage ([21eb345](https://github.com/andymai/brepjs/commit/21eb3450767588f201d4e89f7babe4dc0ff31eea)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.112.0](https://github.com/andymai/brepjs/compare/brepjs-v18.111.0...brepjs-v18.112.0) (2026-06-25)
 
 
