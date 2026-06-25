@@ -57,7 +57,10 @@ interface MutableNode {
 
 function parseAttrs(raw: string): Record<string, string> {
   const attrs: Record<string, string> = {};
-  const attrRe = /([\w:.-]+)\s*=\s*"([^"]*)"/g;
+  // Sticky (`y`), not global (`g`): pin matching to `lastIndex` so a name run with no
+  // `=` can't trigger the global flag's O(n²) re-scan at every offset (polynomial ReDoS).
+  // The leading `\s*` takes over the inter-attribute whitespace skip the forward scan did.
+  const attrRe = /\s*([\w:.-]+)\s*=\s*"([^"]*)"/y;
   let m: RegExpExecArray | null;
   while ((m = attrRe.exec(raw)) !== null) {
     const key = m[1];
@@ -73,12 +76,19 @@ function parseAttrs(raw: string): Record<string, string> {
  * structure (unbalanced tags); callers wrap this in a `Result`.
  */
 export function parseXml(xml: string): XmlNode {
-  const tokenRe = /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<\/([\w:.-]+)\s*>|<([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*"[^"]*")*)\s*(\/?)>|([^<]+)/g;
+  // Sticky (`y`), not global (`g`): match only at `lastIndex`, never scanning forward on
+  // failure. Under `g`, an unterminated `<!--`/`<?` rescans to end-of-input at every `<`
+  // — O(n²) on hostile input (polynomial ReDoS). Sticky fails fast; the `consumed` check
+  // below rejects any untokenizable tail as malformed XML.
+  const tokenRe =
+    /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<\/([\w:.-]+)\s*>|<([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*"[^"]*")*)\s*(\/?)>|([^<]+)/y;
   const root: MutableNode = { tag: '#root', attrs: {}, children: [], text: '' };
   const stack: MutableNode[] = [root];
 
   let m: RegExpExecArray | null;
+  let consumed = 0;
   while ((m = tokenRe.exec(xml)) !== null) {
+    consumed = tokenRe.lastIndex;
     const [full, closeTag, openTag, attrsRaw, selfClose, textRun] = m;
 
     if (full.startsWith('<!--') || full.startsWith('<?')) continue;
@@ -115,6 +125,9 @@ export function parseXml(xml: string): XmlNode {
     }
   }
 
+  if (consumed !== xml.length) {
+    throw new Error(`Malformed XML: unexpected token at offset ${String(consumed)}`);
+  }
   if (stack.length !== 1) {
     throw new Error('Unbalanced XML: unclosed elements remain');
   }
