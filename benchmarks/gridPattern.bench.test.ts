@@ -22,7 +22,10 @@
 //     `fuseAll`. The glue lever the consumer's "tuned" path relies on doesn't
 //     engage under occt-wasm (it helps more under native occt).
 //   - The `booleanPipeline + commonFace` baseline (#1659's cited "tuned" path)
-//     is DRAMATICALLY slower — 8x at 36 cells, ~11.5x at 64 (748 vs 65 ms).
+//     is DRAMATICALLY slower — measured once on occt-wasm 3.6.0 at ~8x (36
+//     cells) to ~11.5x (64 cells: 748 vs 65 ms). It isn't a live row here:
+//     booleanPipeline needs the native pipeline class, which not all builds
+//     ship, and a missing-class run would record a misleading no-fuse timing.
 //     Chaining N sequential fuses re-walks the growing accumulator each step;
 //     for many independent cells, gridPattern's batched fuse is the right tool.
 //   - Net: gridPattern already matches/beats the tuned baseline on occt-wasm
@@ -34,7 +37,7 @@
 //     ideal for instanced previews, not for a single fused export solid.
 
 import { describe, it, beforeAll } from 'vitest';
-import { box, translate, fuseAll, booleanPipeline, unwrap, DisposalScope } from '../src/index.js';
+import { box, translate, fuseAll, unwrap, DisposalScope } from '../src/index.js';
 import type { Shape3D } from '../src/index.js';
 // gridPattern isn't re-exported from the top-level index (unlike its siblings
 // linearPattern/circularPattern) — a small public-surface gap. Import direct.
@@ -63,31 +66,6 @@ function handRolled(cols: number, rows: number, glue: 'none' | 'sameFace' | 'com
       glue === 'none' ? fuseAll(copies) : fuseAll(copies, { optimisation: glue, unsafe: true })
     )
   );
-}
-
-// The other tuned baseline #1659 names: a commonFace-glued booleanPipeline (one
-// chained WASM call) over translated cells, instead of a pairwise fuseAll.
-function handRolledPipeline(cols: number, rows: number): void {
-  using scope = new DisposalScope();
-  const cells: Shape3D[] = [];
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      cells.push(scope.register(translate(scope.register(CELL()), [i * PITCH, j * PITCH, 0])));
-    }
-  }
-  const base = cells[0];
-  if (!base) return;
-  // booleanPipeline falls back to sequential ops when the native pipeline class
-  // is unavailable, but some adapters surface that as an err rather than the
-  // documented fallback — handle the Result instead of unwrap()ing so the bench
-  // never throws on those builds. On occt-wasm 3.6.0 (the findings above) the
-  // native pipeline is present, so this path is exercised.
-  const result = booleanPipeline(
-    base,
-    cells.slice(1).map((tool) => ({ op: 'fuse' as const, tool })),
-    { optimisation: 'commonFace' }
-  );
-  if (result.ok) scope.register(result.value);
 }
 
 for (const [cols, rows] of [
@@ -135,15 +113,6 @@ for (const [cols, rows] of [
         results,
         await benchBoth(`handrolled+commonFace ${cols}x${rows}`, () => {
           handRolled(cols, rows, 'commonFace');
-        })
-      );
-    });
-
-    it('hand-rolled booleanPipeline + commonFace (tuned baseline)', async () => {
-      collectResults(
-        results,
-        await benchBoth(`handrolled+pipeline ${cols}x${rows}`, () => {
-          handRolledPipeline(cols, rows);
         })
       );
     });
