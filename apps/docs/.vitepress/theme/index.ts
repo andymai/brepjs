@@ -83,6 +83,9 @@ const theme: Theme = {
     // emit pageviews automatically once mounted.
     if (typeof window !== 'undefined') {
       void import('@vercel/analytics').then(({ inject }) => inject());
+      void import('@vercel/speed-insights').then(({ injectSpeedInsights }) =>
+        injectSpeedInsights(),
+      );
       void initPostHog();
       registerPreloadErrorRecovery();
     }
