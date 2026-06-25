@@ -29,7 +29,7 @@ Two consequences worth internalizing:
 
 ## Reading the cache stats
 
-`cacheStats()` returns `{ hits, misses, entries, evictions }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size; it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime (unless you cap it — see [Bounding the cache](#bounding-the-cache)). `evictions` counts the entries the LRU bound has dropped over the evaluator's life, and likewise survives `resetStats()`.
+`cacheStats()` returns `{ hits, misses, entries, evictions }`. `hits`, `misses`, and `evictions` are running totals since the evaluator was constructed or `resetStats()` was last called — `resetStats()` zeroes all three (`evictions` counts the entries the LRU bound has dropped). `entries` is different: a live snapshot of the current cache size, so `resetStats()` leaves it untouched (cap it with `maxCacheEntries` — see [Bounding the cache](#bounding-the-cache)).
 
 ```typescript
 import { csg } from 'brepjs/quick';
