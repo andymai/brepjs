@@ -24,6 +24,11 @@ on:
         default: '3'
         type: string
 
+# Least privilege: this workflow only reads the repo and exchanges build
+# artifacts (which use the Actions runtime token, not GITHUB_TOKEN scopes).
+permissions:
+  contents: read
+
 jobs:
   shard:
     # Map: each runner authors + judges a round-robin 1/5 slice of the corpus and uploads its
