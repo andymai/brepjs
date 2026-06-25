@@ -1,6 +1,6 @@
 {
   "name": "brepjs-cad",
-  "version": "0.37.7",
+  "version": "0.37.8",
   "description": "Brainstorm → design → author → verify → polish pipeline for parametric brepjs CAD, with the brep CLI",
   "license": "Apache-2.0",
   "type": "module",
