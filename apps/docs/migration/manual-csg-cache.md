@@ -145,7 +145,7 @@ The manual version can grow all of these; but each one is its own subsystem in y
 Switching costs aren't zero. Stay on the manual cache when:
 
 - **Your tree never changes shape, only inputs.** If the user can only resize a single primitive (no add/remove features, no swap operations, no per-feature toggles), Version B's three-line `cachedFoo` wrappers are easy to skim and your team already understands them.
-- **You need fine-grained control over what's kept hot.** The CSG cache is bounded by the evaluator's lifetime, not a configurable size; large trees with many distinct parameter values can grow it large. (LRU caps are on the [roadmap](https://github.com/andymai/brepjs/issues). File an issue if this would unblock you.)
+- **You need an eviction _policy_ the built-in LRU doesn't express.** The CSG cache is unbounded by default, but you can cap it: pass `maxCacheEntries` for an LRU bound on materialized shapes and `maxMeshCacheEntries` for the independent mesh cache (eviction disposes the evicted kernel handles for you — see [Bounding the cache](/advanced/csg-caching#bounding-the-cache)). If you need something LRU can't express — pinning specific entries hot regardless of recency, or a cost-weighted policy — a hand-rolled cache still gives you that.
 - **You're integrating with code that already speaks `Solid`.** The manual cache returns `Solid` values directly; the IR returns them through `ev.evaluate(node, env)`. Adapting the call sites can be more work than the win for a small project.
 
 For the gridfinity-style live-preview case (slider drag rebuilds a multi-feature parametric tree) the IR wins decisively. For a one-shot CAD batch where you build, export, and exit, neither cache matters.

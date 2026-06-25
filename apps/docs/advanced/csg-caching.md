@@ -29,7 +29,7 @@ Two consequences worth internalizing:
 
 ## Reading the cache stats
 
-`cacheStats()` returns `{ hits, misses, entries }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size; it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime.
+`cacheStats()` returns `{ hits, misses, entries, evictions }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size; it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime (unless you cap it — see [Bounding the cache](#bounding-the-cache)). `evictions` counts the entries the LRU bound has dropped over the evaluator's life, and likewise survives `resetStats()`.
 
 ```typescript
 import { csg } from 'brepjs/quick';
@@ -38,10 +38,10 @@ using ev = new csg.Evaluator();
 const tree = csg.fuse(csg.box(10, 10, 10), csg.sphere(5));
 
 ev.evaluate(tree);
-ev.cacheStats(); // { hits: 0, misses: 3, entries: 3 }
+ev.cacheStats(); // { hits: 0, misses: 3, entries: 3, evictions: 0 }
 
 ev.evaluate(tree);
-ev.cacheStats(); // { hits: 1, misses: 3, entries: 3 }
+ev.cacheStats(); // { hits: 1, misses: 3, entries: 3, evictions: 0 }
 //  one new hit at the root; children short-circuited
 ```
 
@@ -183,6 +183,27 @@ csg.forEachNode(tree, (n) => kinds.push(n.kind));
 
 `replaceNode` is structural; it can't reach into expressions to change a `Param` name, for instance. For parameter changes, just re-evaluate with a new env; that's what the cache is built for.
 
+## Caching meshes: `evaluateMesh`
+
+The cache above holds kernel handles. Tessellation — turning a `Solid` into the triangles a viewer draws — is separate work, and the evaluator caches it separately too. `ev.evaluateMesh(node, env, meshOpts)` materializes the node (reusing the shape cache) and meshes it, keyed by the shape's content key plus the mesh parameters:
+
+```typescript
+import { csg, unwrap } from 'brepjs/quick';
+
+using ev = new csg.Evaluator();
+const tree = csg.cut(csg.box(20, 20, 20), csg.sphere(csg.param('r')));
+
+const m1 = unwrap(ev.evaluateMesh(tree, { r: 6 })); // materialize + mesh
+const m2 = unwrap(ev.evaluateMesh(tree, { r: 6 })); // pure data hit — no re-mesh
+```
+
+Two properties make this more than a convenience wrapper:
+
+- **The mesh cache is independent of the shape cache.** It carries its own LRU bound (`maxMeshCacheEntries`), so a mesh can outlive the kernel shape it came from. If `maxCacheEntries` evicts the `Solid`, a later `evaluateMesh` for the same key still returns the cached triangles without re-materializing — a mesh is plain data, not a kernel handle.
+- **A pure move or rotate reuses the tessellation.** When a node is a rigid-motion chain (a translate/rotate wrapping some inner geometry), `evaluateMesh` meshes the inner shape once and moves the cached mesh per placement instead of re-tessellating the relocated shape. Meshing N copies of one part at N positions costs one mesh, not N.
+
+The returned mesh is borrowed — don't mutate it, and copy out its vertex/index arrays if you need them past the evaluator's lifetime (the same rule as `evaluate`). Pass `cache: false` in `meshOpts` to bypass the cache for a one-off.
+
 ## What doesn't cache
 
 A few things are deliberately _not_ cached, and it's worth knowing why:
@@ -190,7 +211,7 @@ A few things are deliberately _not_ cached, and it's worth knowing why:
 - **The kernel adapter's internal state.** Cached shapes are kernel handles, but cache entries don't persist across kernels. Re-binding the active kernel after evaluation builds a fresh cache if you construct a new `Evaluator`.
 - **Errors.** `Result.err` values aren't cached. A re-evaluation of a node that previously failed will retry. Useful when the failure was transient (e.g. boolean tolerance issue resolved by a parent's tolerance override), but it does mean a persistently broken subtree will repeat its work each call.
 - **`Empty` nodes.** They have no kernel realization; trying to evaluate one alone returns `Result.err`. `Empty` exists as the identity element for booleans; `fuse`/`cut` short-circuit on it as a correctness invariant (not just an optimization), so `fuse(empty, x)` evaluates to `x` directly without needing `optimize()`. The optimizer can still strip them eagerly to shrink trees before they reach the cache.
-- **DOM-side mesh data.** The cache holds kernel handles, not tessellated meshes. If you tessellate after evaluation, that work isn't cached. Run your mesh cache on the same key the evaluator uses (`node.structuralHash` is a fine starting point).
+- **Hand-tessellation via the bare `mesh()` call.** The _shape_ cache holds kernel handles, not triangles, so calling `mesh(shape)` yourself after `evaluate()` isn't deduped by it. Reach for [`evaluateMesh`](#caching-meshes-evaluatemesh) instead — that path _is_ cached (independently, and the mesh survives shape eviction). The bare `mesh()` escape hatch only matters for shapes you materialized outside the evaluator.
 
 ## Cache lifecycle
 
@@ -217,6 +238,23 @@ csg.withEvaluator({}, (ev) => {
 ```
 
 After disposal, every shape returned by `evaluate` is invalid; they were _borrowed_ from the evaluator's `DisposalScope`, not transferred out. Copy out any persistent data (volumes, mesh arrays, exported STEP strings) before the evaluator's lifetime ends.
+
+## Bounding the cache
+
+By default both caches are unbounded — entries live for the evaluator's lifetime, and the disposal above is what releases them. For a long-lived session that evaluates a large tree across many distinct parameter values, that growth can matter. Two options cap it with an LRU bound:
+
+```typescript
+import { csg } from 'brepjs/quick';
+
+using ev = new csg.Evaluator({
+  maxCacheEntries: 500, // LRU bound on materialized shapes
+  maxMeshCacheEntries: 500, // LRU bound on the independent mesh cache
+});
+```
+
+When the shape cache exceeds `maxCacheEntries` after a top-level `evaluate()`, the least-recently-used entries are evicted and their kernel handles disposed for you (a handle shared by several entries is freed only when its last entry is evicted). `cacheStats().evictions` tracks how many have been dropped.
+
+Setting the bound changes one lifetime guarantee: a shape returned by `evaluate()` is then only valid until the **next successful** `evaluate()` call, not for the whole evaluator lifetime. A failed or thrown `evaluate()` is transactional — the cache is left unchanged — and `evaluate()` becomes non-reentrant (calling it from inside an `onStep` callback throws). The mesh cache is bounded separately by `maxMeshCacheEntries`, which is exactly what lets a tessellation outlive its evicted shape.
 
 ## Where to go next
 
