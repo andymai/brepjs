@@ -132,7 +132,7 @@ pool.dispose(); // terminate every worker
 declare const parts: Record<string, unknown>[];
 ```
 
-`execute(operation, shapesBrep, params)` runs a single op on the least-loaded worker; `executeBatch` fans an array of independent ops across the whole pool and resolves with results in input order. Least-loaded dispatch (ties to the first worker) means a burst spreads out instead of piling onto one. `init()` is atomic — if any worker fails to load its WASM, the pool disposes them all and rejects.
+`execute(operation, shapesBrep, params)` runs a single op on the least-loaded worker; `executeBatch` fans an array of independent ops across the whole pool and resolves with results in input order. It's a `Promise.all` under the hood, so one failing op rejects the **whole** batch — wrap the call in `try`/`catch`, or use the single-worker `client.executeBatch` below if you need per-item results. Least-loaded dispatch (ties to the first worker) means a burst spreads out instead of piling onto one. `init()` is atomic — if any worker fails to load its WASM, the pool disposes them all and rejects.
 
 This is the parallelism that fits a single-threaded WASM kernel: **N workers running concurrently**, each building or meshing one job, rather than one operation using many threads (it can't — the kernel build has no pthreads; see the [compatibility notes](../integration/compatibility)).
 

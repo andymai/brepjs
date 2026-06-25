@@ -213,7 +213,7 @@ For an assembly of the _same_ part repeated many times, N `<mesh>` nodes is N te
 <!-- @no-test -->
 
 ```typescript
-import { useMemo, useLayoutEffect, useRef } from 'react';
+import { useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { instanceGrid, instancedMesh, toBufferGeometryData, type Shape3D } from 'brepjs/quick';
 
@@ -235,6 +235,10 @@ function InstancedGrid({ cell }: { cell: Shape3D }) {
     geo.setIndex(new THREE.BufferAttribute(d.index, 1));
     return { geo, instances: payload.instances };
   }, [cell]);
+
+  // The BufferGeometry is created imperatively, so React won't free it — dispose
+  // its GPU buffers when `cell` changes or the component unmounts.
+  useEffect(() => () => geo.dispose(), [geo]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;

@@ -60,9 +60,9 @@ Resolution never throws and never silently returns the wrong entity. A failure i
 
 - **`not-found`** — nothing matched. For a face this usually means the edit deleted it; for an edge or vertex it means the named faces no longer share an edge/corner.
 - **`ambiguous`** — several candidates tied (the `candidates` array carries them). The edit duplicated the feature, and the name no longer picks one.
-- **`deleted`** — a role table had the role, but its successor was removed by the edit.
+- **`deleted`** — _face refs only._ A role table had the role, but its successor was removed by the edit. Edge and vertex refs never report `deleted`: they track their adjacent faces, not their own hash, so a vanished edge or corner surfaces as `not-found` instead.
 
-That distinction is the point: a replay engine can treat `deleted` as "expected, skip this op" while surfacing `ambiguous` as "warn the author — your selection got duplicated."
+That distinction is the point: a replay engine can treat a removed selection (`deleted` for a face, `not-found` for an edge or vertex) as "expected — skip this op," while surfacing `ambiguous` as "warn the author — your selection got duplicated."
 
 ## Parametric replay
 
