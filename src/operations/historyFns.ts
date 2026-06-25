@@ -9,10 +9,12 @@
  */
 
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { computationError } from '@/core/errors.js';
 import { toBREP } from '@/topology/shapeFns.js';
 import { fromBREP } from '@/topology/cast.js';
+import { resolveRefParams } from '@/topology/shapeRef/index.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -144,6 +146,23 @@ export function registerOperation(
 // ---------------------------------------------------------------------------
 
 /**
+ * Resolve any lineage refs in a step's params against its primary input shape,
+ * so an operation re-targets the SAME entity (edge/face/vertex) after an upstream
+ * parameter edit rebuilds the model. A no-op for ref-free params or non-3D
+ * inputs. The stored step keeps its refs; resolution happens fresh at replay.
+ */
+function resolveStepParams(
+  params: Readonly<Record<string, unknown>>,
+  inputs: readonly AnyShape<Dimension>[]
+): Record<string, unknown> {
+  const primary = inputs[0];
+  if (primary !== undefined && isShape3D(primary)) {
+    return resolveRefParams(params, primary);
+  }
+  return { ...params };
+}
+
+/**
  * Replay an entire history from scratch using the given registry.
  *
  * All initial shapes (those not produced by any step) must already be in the
@@ -187,7 +206,7 @@ export function replayHistory(
     }
 
     try {
-      const output = fn(inputs, step.parameters);
+      const output = fn(inputs, resolveStepParams(step.parameters, inputs));
       current = addStep(
         current,
         {
@@ -267,7 +286,7 @@ export function replayFrom(
     }
 
     try {
-      const output = fn(inputs, step.parameters);
+      const output = fn(inputs, resolveStepParams(step.parameters, inputs));
       current = addStep(
         current,
         {
