@@ -105,9 +105,9 @@ The pattern checker (`npm run check:patterns`) flags `async` callbacks to `withK
 
 ## The `*Fns.ts` convention
 
-New domain functionality goes in `*Fns.ts` files: flat functions that take and return branded types. The legacy classes (`Shape`, `Solid`, `Edge` in `topology/`) are deprecated and frozen, with no new methods. The `*Fns` files are the canonical surface that the fluent `shape()` wrapper composes.
+New domain functionality goes in `*Fns.ts` files: flat functions that take and return branded types. There is no class hierarchy — `Shape`, `Solid`, `Edge`, and the rest are lightweight branded `ShapeHandle` types, not classes (the old class-based API was removed). The `*Fns` files are the canonical surface that the fluent `shape()` wrapper composes.
 
-This is why the docs and the migration guides emphasize the functional API: it's the API that's still growing. The class-based wrappers are kept for backwards compatibility and removed in the next major.
+This is why the docs and the migration guides emphasize the functional API: it's the authoring surface. Everything is flat `*Fns` functions over branded handles, with the fluent `shape()` wrapper layered on top for chaining.
 
 ## The pattern checker
 

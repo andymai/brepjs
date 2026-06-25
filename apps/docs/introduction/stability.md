@@ -49,8 +49,8 @@ The `using` keyword (TypeScript 5.2+, browsers/Node since 2024) is the recommend
 
 | brepjs version | OpenCascade kernel                                | brepkit kernel            |
 | -------------- | ------------------------------------------------- | ------------------------- |
-| 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16+     | `brepkit-wasm` 2.x        |
-| 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16+     | `brepkit-wasm` 2.x        |
+| 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16      | `brepkit-wasm` 2.x        |
+| 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16      | `brepkit-wasm` 2.x        |
 | 16.x           | `occt-wasm` 2.x or `brepjs-opencascade` 0.13–0.16 | `brepkit-wasm` 2.x        |
 | 15.x           | `brepjs-opencascade` 0.12–0.15                    | `brepkit-wasm` 1.x or 2.x |
 
@@ -65,7 +65,7 @@ When a function or type is being removed:
 3. The deprecation ships in a minor release
 4. The next major release removes the symbol
 
-The legacy class-based API (`Shape`, `Solid`, `Edge`, `Face` classes in `src/topology/`) is in this state today: still present, marked deprecated, scheduled for removal. New code should use the functional API (`*Fns` files) and the fluent wrapper (`shape()`).
+The class-based API that earlier versions deprecated (the old `Shape`/`Solid`/`Edge`/`Face` classes) has completed this cycle and been removed: `Edge`, `Face`, `Solid`, and the rest are now lightweight branded **types** (`ShapeHandle`), not classes. New code uses the functional API (`*Fns` files) and the fluent `shape()` wrapper.
 
 ## What is not stable
 

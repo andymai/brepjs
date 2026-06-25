@@ -1,5 +1,7 @@
 # Compatibility Matrix
 
+> **This page has moved.** The maintained compatibility matrix now lives at **[brepjs.dev/integration/compatibility](https://brepjs.dev/integration/compatibility)**. This older copy predates the occt-wasm default kernel (it still lists `brepjs_single` as the default) and is kept only for inbound-link compatibility.
+
 ## Runtime Environments
 
 | Environment | Tested     | Notes                       |

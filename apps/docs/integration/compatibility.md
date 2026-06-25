@@ -95,9 +95,9 @@ The supported pattern is **client-only rendering**: wrap brepjs-using components
 | Resource                          | Compressed |
 | --------------------------------- | ---------- |
 | `brepjs` (JS, gzipped)            | ~80 KB     |
-| `occt-wasm` WASM (default kernel) | ~6.6 MB    |
-| `brepjs-opencascade` WASM (alt)   | ~3.2 MB    |
-| `brepkit-wasm` WASM (alt)         | ~2.4 MB    |
+| `occt-wasm` WASM (default kernel) | ~6.7 MB    |
+| `brepjs-opencascade` WASM (alt)   | ~7.6 MB    |
+| `brepkit-wasm` WASM (alt)         | ~1.4 MB    |
 
 The WASM is the dominant cost. brepjs is treeshakeable per sub-path: importing only `brepjs/measurement` skips the topology bundle.
 
@@ -125,7 +125,7 @@ The default 128 MB cap is fine for simple CAD operations but tight for STEP impo
 
 ### Threaded WASM
 
-The threaded build (`brepjs-opencascade-threaded`, optional) requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The standard single-threaded `brepjs-opencascade` build doesn't need these headers, and neither does the default `occt-wasm` kernel.
+The threaded build (the `brepjs_threaded.wasm` artifact shipped inside `brepjs-opencascade`, optional) requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The standard single-threaded `brepjs_single.wasm` build doesn't need these headers, and neither does the default `occt-wasm` kernel.
 
 ## Reporting compatibility issues
 

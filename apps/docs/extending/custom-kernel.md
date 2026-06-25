@@ -153,7 +153,7 @@ Every shape your adapter returns has to be disposable. brepjs tracks shapes and 
 
 ## The `BrepkitAdapter` reference
 
-`src/kernel/brepkit/BrepkitAdapter.ts` in the brepjs source is the reference implementation for a Rust-WASM kernel. It's instructive as a complete, working example of the interface. Every method is implemented or stubbed with a clear `KERNEL_NOT_SUPPORTED` placeholder.
+`src/kernel/brepkit/brepkitAdapter.ts` in the brepjs source is the reference implementation for a Rust-WASM kernel. It's instructive as a complete, working example of the interface. Every method is implemented or stubbed with a clear `KERNEL_NOT_SUPPORTED` placeholder.
 
 The brepkit adapter shows the typical structure:
 
