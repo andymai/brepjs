@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.37.36](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.37.0...brepjs-cad-v0.37.36) (2026-06-25)
+
 ## [0.37.35](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.37.0...brepjs-cad-v0.37.35) (2026-06-25)
 
 ## [0.37.34](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.37.0...brepjs-cad-v0.37.34) (2026-06-25)
