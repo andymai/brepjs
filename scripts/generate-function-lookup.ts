@@ -29,6 +29,7 @@ const SUBPATHS: Record<string, string> = {
   'src/measurement.ts': 'brepjs/measurement',
   'src/io.ts': 'brepjs/io',
   'src/worker.ts': 'brepjs/worker',
+  'src/shapeRef.ts': 'brepjs/shapeRef',
 };
 
 /** Classify an export name into a kind based on naming conventions. */

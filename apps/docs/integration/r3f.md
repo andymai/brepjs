@@ -206,6 +206,54 @@ Render the edges alongside the filled mesh; combined they look like proper engin
 - `<ContactShadows>`: soft ground shadow that makes parts feel "placed"
 - `<GizmoHelper>`: small axis triad for orientation
 
+## Instancing repeated parts
+
+For an assembly of the _same_ part repeated many times, N `<mesh>` nodes is N tessellations and N draw calls. Mesh once and draw many with an `<instancedMesh>`: brepjs `instancedMesh()` gives the single geometry plus one matrix per placement, which you set on the instanced mesh's ref.
+
+<!-- @no-test -->
+
+```typescript
+import { useMemo, useLayoutEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { instanceGrid, instancedMesh, toBufferGeometryData, type Shape3D } from 'brepjs/quick';
+
+// brepjs row-major 4x4 -> THREE.Matrix4 (THREE.Matrix4.set is row-major).
+const toM4 = ([r0, r1, r2, r3]: readonly number[][]) =>
+  new THREE.Matrix4().set(r0[0], r0[1], r0[2], r0[3], r1[0], r1[1], r1[2], r1[3], r2[0], r2[1], r2[2], r2[3], r3[0], r3[1], r3[2], r3[3]);
+
+function InstancedGrid({ cell }: { cell: Shape3D }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+
+  const { geo, instances } = useMemo(() => {
+    const payload = instancedMesh(instanceGrid(cell, { cols: 6, rows: 4, pitchX: 42, pitchY: 42 }), {
+      tolerance: 0.1,
+    });
+    const d = toBufferGeometryData(payload.geometry);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(d.position, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(d.normal, 3));
+    geo.setIndex(new THREE.BufferAttribute(d.index, 1));
+    return { geo, instances: payload.instances };
+  }, [cell]);
+
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    instances.forEach((rows, i) => mesh.setMatrixAt(i, toM4(rows)));
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [instances]);
+
+  return (
+    <instancedMesh ref={ref} args={[geo, undefined, instances.length]}>
+      <meshStandardMaterial color="#c0c0c0" />
+    </instancedMesh>
+  );
+}
+```
+
+One geometry, one draw call, N matrices — far cheaper than N `<mesh>` nodes for a large assembly of identical parts. This is the answer to "virtualization for assemblies of many parts" below when the parts are repeats rather than unique.
+
 ## Performance
 
 - **Memoize meshing**: `useMemo` keyed on the shape, the tolerance, and any pose params.

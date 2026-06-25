@@ -58,6 +58,8 @@ console.log('Same triangle count:', m1.indices.length === m2.indices.length);
 
 `WeakMap` keyed by the shape handle works because every brepjs shape is a JS object. The cache evicts when the handle is GC'd.
 
+Two things make the manual cache less necessary than it looks. First, **`mesh()` already caches by default** — it keeps an internal `WeakMap` keyed by shape identity and tolerance, so calling `mesh(part)` twice on the same handle is already a hit. Roll your own only when you want a cache you control (a different key, explicit eviction). Second, if you drive geometry through the CSG evaluator, a **pure move or rotate doesn't re-mesh at all**: `Evaluator.evaluateMesh` reuses the inner tessellation and just relocates it, so "re-meshes the same shape on every render" is usually only true when you're _rebuilding_ the shape, not moving it (see [CSG caching](./csg-caching)).
+
 ## Batching booleans
 
 Three sequential booleans cost more than one `cutAll`:
@@ -138,9 +140,37 @@ void variantC;
 
 The kernel doesn't share state between cuts (each is a full operation) but you only built the base once.
 
+## Instancing repeated geometry
+
+"Reusing intermediates" shares one base across a few _different_ variants. The opposite case — the _same_ part at many positions (a bolt pattern, a gridfinity baseplate, a row of identical fins) — is what **instancing** is for. Instead of N booleans or N kernel copies, you hold one source shape plus N transforms and pay for real geometry only when you ask for it:
+
+```typescript
+import { box, instanceGrid, instanceCount, materialize, instancedMesh, unwrap } from 'brepjs/quick';
+
+const cell = box(40, 40, 7); // one source shape
+const grid = instanceGrid(cell, { cols: 6, rows: 4, pitchX: 42, pitchY: 42 });
+
+instanceCount(grid); // 24 placements, still 1 kernel solid
+
+// For rendering: mesh the source ONCE, draw it at 24 matrices.
+const { instances } = instancedMesh(grid);
+console.log('1 geometry,', instances.length, 'instances');
+
+// For export: materialize real geometry — the N kernel transforms happen here.
+const solid = unwrap(materialize(grid, { fuse: true }));
+void solid;
+```
+
+Two payoffs:
+
+- **Rendering is one tessellation, N matrices.** `instancedMesh` meshes the source once and hands back that geometry plus a matrix per placement — feed it to a `THREE.InstancedMesh` (see [Three.js integration](../integration/threejs#instancing-repeated-parts)). 100 cells cost one mesh, not 100.
+- **Materialization is deferred.** `materialize` is where the kernel work happens — a `Compound` of placed copies by default, or a single fused solid with `{ fuse: true }`. A grid-built instance fuses through the faster kernel `gridPattern` path. Use `instance(source, placements)` for arbitrary `Matrix4x4` (or `Vec3` translate-only) placements.
+
 ## Workers
 
 For UI-heavy apps that mustn't drop frames, run brepjs in a worker. The chapter on [Web Workers](./workers) covers the protocol; the short version: `brepjs/worker` ships a typed RPC that posts shape descriptions to a worker, runs the operations, and returns the resulting mesh data. The main thread stays unblocked.
+
+For many _independent_ operations at once — meshing every part of an assembly, sweeping an optimizer — `createWorkerPool` spreads them across N workers with least-loaded dispatch, so the work spans cores instead of serializing through one worker. That's the WASM-appropriate kind of parallelism: N single-threaded workers running in parallel, not one multithreaded op (the kernel build is single-threaded). See [A pool of workers](./workers#a-pool-of-workers).
 
 This is how gridfinity-layout-tool runs hundreds of generation operations without freezing the UI.
 

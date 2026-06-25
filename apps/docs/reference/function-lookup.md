@@ -46,18 +46,19 @@ The complete index is one of:
 
 ## Available sub-paths
 
-| Sub-path             | Contents                                                   |
-| -------------------- | ---------------------------------------------------------- |
-| `brepjs/core`        | `Result`, errors, vectors, planes, branded types, disposal |
-| `brepjs/topology`    | Primitives, booleans, modifiers, mesh, healing             |
-| `brepjs/operations`  | Extrude, loft, sweep, patterns, assembly, history          |
-| `brepjs/2d`          | Drawings, 2D curves, 2D booleans                           |
-| `brepjs/sketching`   | Sketcher, drawing-to-sketch, sketch-to-shape ops           |
-| `brepjs/query`       | Edge / face / wire / vertex finders                        |
-| `brepjs/measurement` | Volume, area, length, distance, curvature                  |
-| `brepjs/io`          | STEP, IGES, BREP, STL, OBJ, glTF, DXF, 3MF, SVG            |
-| `brepjs/worker`      | Worker RPC client / server                                 |
-| `brepjs/quick`       | Auto-init re-export of everything (top-level await)        |
+| Sub-path             | Contents                                                                      |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `brepjs/core`        | `Result`, errors, vectors, planes, branded types, disposal                    |
+| `brepjs/topology`    | Primitives, booleans, modifiers, mesh, healing                                |
+| `brepjs/operations`  | Extrude, loft, sweep, patterns, assembly, history                             |
+| `brepjs/2d`          | Drawings, 2D curves, 2D booleans                                              |
+| `brepjs/sketching`   | Sketcher, drawing-to-sketch, sketch-to-shape ops                              |
+| `brepjs/query`       | Edge / face / wire / vertex finders                                           |
+| `brepjs/measurement` | Volume, area, length, distance, curvature                                     |
+| `brepjs/io`          | STEP, IGES, BREP, STL, OBJ, glTF, DXF, 3MF, SVG                               |
+| `brepjs/worker`      | Worker RPC client / server                                                    |
+| `brepjs/shapeRef`    | Stable entity references (faces/edges/vertices) that survive parametric edits |
+| `brepjs/quick`       | Auto-init re-export of everything (top-level await)                           |
 
 ## When the lookup says one thing and TypeDoc says another
 

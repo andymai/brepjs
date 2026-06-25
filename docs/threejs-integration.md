@@ -1,5 +1,7 @@
 # Three.js Integration
 
+> **This page has moved.** The maintained Three.js and React Three Fiber chapters now live at **[brepjs.dev/integration/threejs](https://brepjs.dev/integration/threejs)** and **[brepjs.dev/integration/r3f](https://brepjs.dev/integration/r3f)** — including the `InstancedMesh` path for repeated parts and the worker-pool render loop. This copy is kept for inbound-link compatibility.
+
 Render brepjs shapes in the browser with Three.js. This guide builds up progressively: basic mesh, edge wireframe overlay, per-face colors, and dynamic re-meshing.
 
 All examples use Three.js r175+ ESM imports and `brepjs/quick` for auto-initialization.

@@ -286,6 +286,7 @@ export default withMermaid(
             { text: 'Kernels & withKernel', link: '/concepts/kernels' },
             { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
             { text: 'CSG as an IR', link: '/concepts/csg-ir' },
+            { text: 'Stable References', link: '/concepts/stable-references' },
           ],
         },
         {

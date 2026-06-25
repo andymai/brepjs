@@ -178,6 +178,65 @@ scene.add(group);
 
 Each part is independently selectable, transformable, and disposable on the Three.js side.
 
+## Instancing repeated parts
+
+"Multiple parts" meshes each part separately — right when the parts differ. When it's the _same_ part repeated (a bolt pattern, a gridfinity baseplate, a row of identical fins), don't mesh it N times. brepjs `instancedMesh()` meshes the source once and hands back one geometry plus a transform per placement; feed those to a single `THREE.InstancedMesh` — one GPU draw call for the whole grid:
+
+<!-- @no-test -->
+
+```typescript
+import * as THREE from 'three';
+import { box, instanceGrid, instancedMesh, toBufferGeometryData } from 'brepjs/quick';
+
+const grid = instanceGrid(box(40, 40, 7), { cols: 6, rows: 4, pitchX: 42, pitchY: 42 });
+const { geometry, instances } = instancedMesh(grid, { tolerance: 0.1 });
+
+// One BufferGeometry from the single source mesh.
+const data = toBufferGeometryData(geometry);
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
+geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
+geo.setIndex(new THREE.BufferAttribute(data.index, 1));
+
+const mesh = new THREE.InstancedMesh(
+  geo,
+  new THREE.MeshStandardMaterial({ color: 0xc0c0c0 }),
+  instances.length
+);
+const m = new THREE.Matrix4();
+instances.forEach(([r0, r1, r2, r3], i) => {
+  // brepjs returns a row-major 4x4; THREE.Matrix4.set is row-major too.
+  mesh.setMatrixAt(
+    i,
+    m.set(
+      r0[0],
+      r0[1],
+      r0[2],
+      r0[3],
+      r1[0],
+      r1[1],
+      r1[2],
+      r1[3],
+      r2[0],
+      r2[1],
+      r2[2],
+      r2[3],
+      r3[0],
+      r3[1],
+      r3[2],
+      r3[3]
+    )
+  );
+});
+mesh.instanceMatrix.needsUpdate = true;
+mesh.computeBoundingSphere(); // setMatrixAt doesn't touch bounds — recompute so a far-placed grid isn't frustum-culled
+
+declare const scene: THREE.Scene;
+scene.add(mesh);
+```
+
+24 cells, one tessellation, one draw call. The `brepjs-viewer` package ships `buildInstancedMesh(meshData, placements)` if you'd rather not wire the matrices by hand.
+
 ## Edges as line overlays
 
 The mesh smooths everything out. To see the actual B-Rep edges, overlay a line geometry. Two approaches:

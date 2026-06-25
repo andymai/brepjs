@@ -157,7 +157,7 @@ The IR is purely a build-time abstraction layered on top of the kernel adapter: 
 
 ## The rest of the surface
 
-The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `mirror`, `scale`, `rotate`, `compound`, plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
+The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `mirror`, `scale`, `rotate`, `compound`, and `instance` (transform-only replication — one source × N placements, materialized on export; see [Performance](/advanced/performance#instancing-repeated-geometry)), plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
 
 ## Next steps
 

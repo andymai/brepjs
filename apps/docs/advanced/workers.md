@@ -104,6 +104,42 @@ self.onmessage = (e: MessageEvent) => {
 
 The `transfer` argument hands the underlying ArrayBuffers to the main thread without copying; much faster than structured-cloning megabytes of triangle data.
 
+## A pool of workers
+
+One worker gets brepjs off the main thread; it doesn't give you parallelism. Each worker is its own single-threaded context with its own WASM heap, so the way to use more than one core is to run **several** workers and spread independent work across them. `createWorkerPool` wraps N workers behind the same promise API and dispatches each operation to the least-loaded one:
+
+<!-- @no-test -->
+
+```typescript
+import { createWorkerPool } from 'brepjs/worker';
+
+const pool = createWorkerPool({
+  workers: Array.from(
+    { length: navigator.hardwareConcurrency ?? 4 },
+    () => new Worker(new URL('./brepjsWorker.js', import.meta.url))
+  ),
+});
+
+await pool.init(); // load WASM in every worker, in parallel
+
+// Fan a batch of independent jobs across the pool; results come back in order.
+const results = await pool.executeBatch(
+  parts.map((p) => ({ operation: 'buildPart', shapesBrep: [], params: p }))
+);
+
+pool.dispose(); // terminate every worker
+
+declare const parts: Record<string, unknown>[];
+```
+
+`execute(operation, shapesBrep, params)` runs a single op on the least-loaded worker; `executeBatch` fans an array of independent ops across the whole pool and resolves with results in input order. Least-loaded dispatch (ties to the first worker) means a burst spreads out instead of piling onto one. `init()` is atomic — if any worker fails to load its WASM, the pool disposes them all and rejects.
+
+This is the parallelism that fits a single-threaded WASM kernel: **N workers running concurrently**, each building or meshing one job, rather than one operation using many threads (it can't — the kernel build has no pthreads; see the [compatibility notes](../integration/compatibility)).
+
+### Batching messages to one worker
+
+Independent of the pool, a single client can take a **batch in one message**. `client.executeBatch([...])` posts K operations in a single `postMessage` and gets K results back, cutting per-message round-trip overhead when you have many small ops bound for the same worker. Unlike the pool's `executeBatch`, a per-item failure is reported in that item's result instead of rejecting the whole batch.
+
 ## Initialization in the worker
 
 The worker has to init brepjs just like the main thread. `brepjs/quick` works inside a worker:

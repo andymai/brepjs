@@ -1,5 +1,7 @@
 # Performance Guide
 
+> **This page has moved.** The maintained Performance chapter now lives at **[brepjs.dev/advanced/performance](https://brepjs.dev/advanced/performance)** — it covers instancing, the worker pool, LOD meshing, placement-invariant moves, and the content-addressed mesh cache that this older page predates. This copy is kept for inbound-link compatibility.
+
 For WASM memory cleanup patterns, see [Memory Management](./memory-management.md).
 
 ## Boolean Operations
