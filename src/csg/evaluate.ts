@@ -12,13 +12,14 @@ import { qualityDeflection } from '@/kernel/quality.js';
 import { ok, type Result } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/utils/vec3.js';
+import { quatFromAxisAngle, quatMultiply, quatRotate, type Quat } from '@/utils/quaternion.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
 import { buildMeshCacheKey } from '@/topology/meshCache.js';
-import { evalVec3, projectEnv, type Env, type ExprValue } from './expressions.js';
+import { evalScalar, evalVec3, projectEnv, type Env, type ExprValue } from './expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
-import type { IRNode } from './types.js';
+import type { IRNode, RotateNode } from './types.js';
 import type { EvalContext } from './evaluators/context.js';
 import {
   evalBox,
@@ -170,40 +171,114 @@ function cacheKey(node: IRNode, env: Env, kernelId: string, tolerance: number | 
   return `${toHex(node.structuralHash)}:${kernelId}:${toHex(projHash)}:${tolHash}`;
 }
 
-/**
- * Peel outer Translate nodes off `node`, accumulating their env-evaluated
- * offsets. Pure translations compose by addition, so the inner geometry is
- * placement-independent: it meshes once and the cached mesh is shifted per
- * placement instead of re-tessellating. Stops at the first non-Translate node
- * (or one whose offset can't be evaluated in `env`).
- */
-function peelTranslate(node: IRNode, env: Env): { inner: IRNode; offset: Vec3 } {
-  let inner = node;
-  let ox = 0;
-  let oy = 0;
-  let oz = 0;
-  while (inner.kind === 'Translate') {
-    const v = evalVec3(inner.vector, env, 'evaluateMesh.peelTranslate');
-    if (!v.ok) break;
-    ox += v.value[0];
-    oy += v.value[1];
-    oz += v.value[2];
-    inner = inner.target;
-  }
-  return { inner, offset: [ox, oy, oz] };
+const IDENTITY_QUAT: Quat = [1, 0, 0, 0];
+
+/** Resolve a Rotate node's angle/axis/center in `env`, applying the same
+ *  defaults as the evaluator (Z axis, origin pivot). Null if any free param
+ *  can't be evaluated, so the caller stops peeling there. */
+function evalRotateParams(
+  node: RotateNode,
+  env: Env
+): { angle: number; axis: Vec3; center: Vec3 } | null {
+  const a = evalScalar(node.angle, env, 'evaluateMesh.peelRigid');
+  if (!a.ok) return null;
+  const axis = node.axis ? evalVec3(node.axis, env, 'evaluateMesh.peelRigid') : ok<Vec3>([0, 0, 1]);
+  if (!axis.ok) return null;
+  const center = node.at ? evalVec3(node.at, env, 'evaluateMesh.peelRigid') : ok<Vec3>([0, 0, 0]);
+  if (!center.ok) return null;
+  return { angle: a.value, axis: axis.value, center: center.value };
 }
 
-/** Shift every vertex of a mesh by `offset`; normals, UVs and triangles are unchanged. */
-function translateMesh(m: ShapeMesh, offset: Vec3): ShapeMesh {
-  const [dx, dy, dz] = offset;
-  if (dx === 0 && dy === 0 && dz === 0) return m;
-  const vertices = new Float32Array(m.vertices.length);
-  for (let i = 0; i < m.vertices.length; i += 3) {
-    vertices[i] = (m.vertices[i] ?? 0) + dx;
-    vertices[i + 1] = (m.vertices[i + 1] ?? 0) + dy;
-    vertices[i + 2] = (m.vertices[i + 2] ?? 0) + dz;
+/**
+ * Peel outer rigid-motion nodes (Translate / Rotate) off `node`, composing them
+ * into a single rotation + translation. A rigid motion shares its inner
+ * geometry's tessellation — the shape path re-tags it via `locate` (#1633) — so
+ * the inner meshes once and the cached mesh is moved per placement instead of
+ * re-tessellating. Stops at the first non-rigid node (Scale/Mirror/boolean/…) or
+ * one whose parameters can't be evaluated in `env`.
+ *
+ * Composition is outer∘inner: peeling outward, each node's local transform acts
+ * on points the inner nodes already placed, so it post-multiplies the
+ * accumulator. A pure-translation chain keeps the identity rotation, so the mesh
+ * move below degenerates to the exact vertex-shift fast path (normals untouched).
+ */
+function peelRigid(node: IRNode, env: Env): { inner: IRNode; rot: Quat; trans: Vec3 } {
+  let inner = node;
+  let rot: Quat = IDENTITY_QUAT;
+  let trans: Vec3 = [0, 0, 0];
+  for (;;) {
+    if (inner.kind === 'Translate') {
+      const v = evalVec3(inner.vector, env, 'evaluateMesh.peelRigid');
+      if (!v.ok) break;
+      // f(p + v) = rot·p + (rot·v + trans): the offset enters the current frame.
+      const rv = quatRotate(rot, v.value);
+      trans = [trans[0] + rv[0], trans[1] + rv[1], trans[2] + rv[2]];
+      inner = inner.target;
+    } else if (inner.kind === 'Rotate') {
+      const p = evalRotateParams(inner, env);
+      if (!p) break;
+      // CSG rotate angle is in degrees (the kernel applies ·π/180); match it.
+      const r = quatFromAxisAngle(p.axis, (p.angle * Math.PI) / 180);
+      const newRot = quatMultiply(rot, r);
+      // f(r·(p − c) + c) = (rot·r)·p + [rot·c − (rot·r)·c + trans].
+      const rotC = quatRotate(rot, p.center);
+      const newRotC = quatRotate(newRot, p.center);
+      trans = [
+        trans[0] + rotC[0] - newRotC[0],
+        trans[1] + rotC[1] - newRotC[1],
+        trans[2] + rotC[2] - newRotC[2],
+      ];
+      rot = newRot;
+      inner = inner.target;
+    } else {
+      break;
+    }
   }
-  return { ...m, vertices };
+  return { inner, rot, trans };
+}
+
+function isIdentityQuat(q: Quat): boolean {
+  return q[0] === 1 && q[1] === 0 && q[2] === 0 && q[3] === 0;
+}
+
+/**
+ * Apply a rigid motion to a mesh: vertices get the rotation then translation,
+ * normals get the rotation only (a unit rotation preserves length, so no
+ * renormalization). UVs and triangles are motion-invariant. A pure translation
+ * (identity rotation) keeps the source normals array by reference and only
+ * shifts vertices — the exact previous translation-only fast path.
+ */
+function transformMeshRigid(m: ShapeMesh, rot: Quat, trans: Vec3): ShapeMesh {
+  const [tx, ty, tz] = trans;
+  const pureTranslation = isIdentityQuat(rot);
+  if (pureTranslation && tx === 0 && ty === 0 && tz === 0) return m;
+
+  const src = m.vertices;
+  const vertices = new Float32Array(src.length);
+  if (pureTranslation) {
+    for (let i = 0; i < src.length; i += 3) {
+      vertices[i] = (src[i] ?? 0) + tx;
+      vertices[i + 1] = (src[i + 1] ?? 0) + ty;
+      vertices[i + 2] = (src[i + 2] ?? 0) + tz;
+    }
+    return { ...m, vertices };
+  }
+
+  for (let i = 0; i < src.length; i += 3) {
+    const p = quatRotate(rot, [src[i] ?? 0, src[i + 1] ?? 0, src[i + 2] ?? 0]);
+    vertices[i] = p[0] + tx;
+    vertices[i + 1] = p[1] + ty;
+    vertices[i + 2] = p[2] + tz;
+  }
+  const sn = m.normals;
+  const normals = new Float32Array(sn.length);
+  for (let i = 0; i < sn.length; i += 3) {
+    const n = quatRotate(rot, [sn[i] ?? 0, sn[i + 1] ?? 0, sn[i + 2] ?? 0]);
+    normals[i] = n[0];
+    normals[i + 1] = n[1];
+    normals[i + 2] = n[2];
+  }
+  return { ...m, vertices, normals };
 }
 
 /**
@@ -211,8 +286,8 @@ function translateMesh(m: ShapeMesh, offset: Vec3): ShapeMesh {
  * moved faces location-dependent hashes, so the inner mesh's `faceId`s describe
  * the *unplaced* shape; remap them to the placed faces (1:1 by iteration order,
  * since `locate` shares the source TShape) so face picking and metadata lookup
- * resolve against the placed mesh. Origins are translation-invariant, so only
- * `faceId` changes.
+ * resolve against the placed mesh. Origins are boolean-lineage tags, invariant
+ * under any rigid motion, so only `faceId` changes.
  *
  * Takes pre-captured hash arrays (not shapes): a bounded shape cache can evict
  * and dispose one shape while the other is being evaluated, so the caller reads
@@ -378,12 +453,12 @@ export class Evaluator implements Disposable {
         return ok(cached);
       }
 
-      // Placement-stripped reuse: a pure-translation chain meshes its inner
-      // geometry once (shared across every placement) and shifts the cached mesh
-      // per move, instead of re-tessellating the relocated shape. The placed
-      // shape is still materialized (an O(1) locate) so face groups can be
-      // re-keyed onto its faces; only the expensive tessellation is skipped.
-      const { inner, offset } = peelTranslate(node, env);
+      // Placement-stripped reuse: a rigid-motion chain (translate/rotate) meshes
+      // its inner geometry once (shared across every placement) and moves the
+      // cached mesh per placement, instead of re-tessellating the relocated
+      // shape. The placed shape is still materialized (an O(1) locate) so face
+      // groups can be re-keyed onto its faces; only the tessellation is skipped.
+      const { inner, rot, trans } = peelRigid(node, env);
       if (inner !== node) {
         const innerMesh = this.evaluateMesh(inner, env, meshOpts);
         if (!innerMesh.ok) return innerMesh;
@@ -398,7 +473,7 @@ export class Evaluator implements Disposable {
         const placedShape = this.evaluate(node, env);
         if (!placedShape.ok) return placedShape;
         const placedHashes = getFaces(placedShape.value).map(getHashCode);
-        const moved = translateMesh(innerMesh.value, offset);
+        const moved = transformMeshRigid(innerMesh.value, rot, trans);
         const faceGroups = relocateFaceGroups(moved.faceGroups, innerHashes, placedHashes);
         // Trust the reuse only if every group mapped onto a placed face. If the
         // inner mesh was cached from an earlier, now-evicted inner instance, its
