@@ -1,0 +1,58 @@
+/**
+ * Placement-stripped mesh reuse (#1603 / #1606 item 1). A pure-translation node
+ * meshes its inner geometry once and shifts the cached mesh per placement,
+ * instead of re-tessellating the relocated shape. The shape path already reuses
+ * geometry via locate (#1633); this closes the "no re-mesh on a pure move" half.
+ */
+import { describe, it, expect, beforeAll } from 'vitest';
+import { initKernel } from '../setup.js';
+import { Evaluator, box, translate, rotate } from '@/csg/index.js';
+import { unwrap } from '@/index.js';
+
+beforeAll(async () => {
+  await initKernel();
+}, 30000);
+
+describe('CSG translation-stripped mesh reuse', () => {
+  it('a translated box is the base mesh shifted by the offset', () => {
+    const ev = new Evaluator();
+    const base = unwrap(ev.evaluateMesh(box(10, 10, 10)));
+    const moved = unwrap(ev.evaluateMesh(translate(box(10, 10, 10), [5, 0, 0])));
+
+    expect(moved.vertices.length).toBe(base.vertices.length);
+    expect(moved.triangles.length).toBe(base.triangles.length);
+    for (let i = 0; i < base.vertices.length; i += 3) {
+      expect(moved.vertices[i]).toBeCloseTo((base.vertices[i] ?? 0) + 5, 4);
+      expect(moved.vertices[i + 1]).toBeCloseTo(base.vertices[i + 1] ?? 0, 4);
+      expect(moved.vertices[i + 2]).toBeCloseTo(base.vertices[i + 2] ?? 0, 4);
+    }
+    // A translation leaves normals unchanged.
+    expect(Array.from(moved.normals)).toEqual(Array.from(base.normals));
+  });
+
+  it('composes nested translations into one offset', () => {
+    const ev = new Evaluator();
+    const base = unwrap(ev.evaluateMesh(box(8, 8, 8)));
+    const moved = unwrap(ev.evaluateMesh(translate(translate(box(8, 8, 8), [1, 2, 3]), [4, 5, 6])));
+    for (let i = 0; i < base.vertices.length; i += 3) {
+      expect(moved.vertices[i]).toBeCloseTo((base.vertices[i] ?? 0) + 5, 4); // 1+4
+      expect(moved.vertices[i + 1]).toBeCloseTo((base.vertices[i + 1] ?? 0) + 7, 4); // 2+5
+      expect(moved.vertices[i + 2]).toBeCloseTo((base.vertices[i + 2] ?? 0) + 9, 4); // 3+6
+    }
+  });
+
+  it('reuses one inner mesh across distinct placements (no re-tessellation)', () => {
+    const ev = new Evaluator();
+    const a = unwrap(ev.evaluateMesh(translate(box(6, 6, 6), [1, 0, 0])));
+    const b = unwrap(ev.evaluateMesh(translate(box(6, 6, 6), [9, 0, 0])));
+    // Both are shifts of the SAME cached box mesh, so they share its (untouched)
+    // normals array by reference — impossible if each placement re-meshed.
+    expect(a.normals).toBe(b.normals);
+  });
+
+  it('leaves non-translation nodes on the normal mesh path', () => {
+    const ev = new Evaluator();
+    const m = unwrap(ev.evaluateMesh(rotate(box(10, 10, 10), Math.PI / 4)));
+    expect(m.vertices.length).toBeGreaterThan(0);
+  });
+});
