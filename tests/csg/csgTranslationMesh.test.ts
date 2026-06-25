@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../setup.js';
 import { Evaluator, box, translate, rotate } from '@/csg/index.js';
-import { unwrap } from '@/index.js';
+import { getFaces, getHashCode, unwrap } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -54,5 +54,17 @@ describe('CSG translation-stripped mesh reuse', () => {
     const ev = new Evaluator();
     const m = unwrap(ev.evaluateMesh(rotate(box(10, 10, 10), Math.PI / 4)));
     expect(m.vertices.length).toBeGreaterThan(0);
+  });
+
+  it('re-keys face groups onto the placed shape (picking/metadata stay valid)', () => {
+    const ev = new Evaluator();
+    const placedShape = unwrap(ev.evaluate(translate(box(10, 10, 10), [5, 0, 0])));
+    const placedFaceIds = new Set(getFaces(placedShape).map(getHashCode));
+    const moved = unwrap(ev.evaluateMesh(translate(box(10, 10, 10), [5, 0, 0])));
+    // Each group's faceId is a face of the PLACED shape, not the unplaced inner.
+    expect(moved.faceGroups.length).toBeGreaterThan(0);
+    for (const g of moved.faceGroups) {
+      expect(placedFaceIds.has(g.faceId)).toBe(true);
+    }
   });
 });

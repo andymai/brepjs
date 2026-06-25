@@ -12,6 +12,8 @@ import { qualityDeflection } from '@/kernel/quality.js';
 import { ok, type Result } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/utils/vec3.js';
+import { getFaces } from '@/topology/topologyQueryFns.js';
+import { getHashCode } from '@/topology/shapeFns.js';
 import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
 import { buildMeshCacheKey } from '@/topology/meshCache.js';
 import { evalVec3, projectEnv, type Env, type ExprValue } from './expressions.js';
@@ -204,6 +206,31 @@ function translateMesh(m: ShapeMesh, offset: Vec3): ShapeMesh {
   return { ...m, vertices };
 }
 
+/**
+ * Re-key a reused inner mesh's face groups onto the PLACED shape. `locate` gives
+ * moved faces location-dependent hashes, so the inner mesh's `faceId`s describe
+ * the *unplaced* shape; remap them to the placed faces (1:1 by iteration order,
+ * since `locate` shares the source TShape) so face picking and metadata lookup
+ * resolve against the placed mesh. Origins are translation-invariant, so only
+ * `faceId` changes.
+ */
+function relocateFaceGroups(
+  faceGroups: ShapeMesh['faceGroups'],
+  innerShape: AnyShape<Dimension>,
+  placedShape: AnyShape<Dimension>
+): ShapeMesh['faceGroups'] {
+  const innerFaces = getFaces(innerShape);
+  const placedFaces = getFaces(placedShape);
+  const remap = new Map<number, number>();
+  const n = Math.min(innerFaces.length, placedFaces.length);
+  for (let i = 0; i < n; i++) {
+    const a = innerFaces[i];
+    const b = placedFaces[i];
+    if (a !== undefined && b !== undefined) remap.set(getHashCode(a), getHashCode(b));
+  }
+  return faceGroups.map((g) => ({ ...g, faceId: remap.get(g.faceId) ?? g.faceId }));
+}
+
 // ---------------------------------------------------------------------------
 // Evaluator
 // ---------------------------------------------------------------------------
@@ -350,12 +377,22 @@ export class Evaluator implements Disposable {
 
       // Placement-stripped reuse: a pure-translation chain meshes its inner
       // geometry once (shared across every placement) and shifts the cached mesh
-      // per move, instead of re-tessellating the relocated shape.
+      // per move, instead of re-tessellating the relocated shape. The placed
+      // shape is still materialized (an O(1) locate) so face groups can be
+      // re-keyed onto its faces; only the expensive tessellation is skipped.
       const { inner, offset } = peelTranslate(node, env);
       if (inner !== node) {
         const innerMesh = this.evaluateMesh(inner, env, meshOpts);
         if (!innerMesh.ok) return innerMesh;
-        const placed = translateMesh(innerMesh.value, offset);
+        const placedShape = this.evaluate(node, env);
+        if (!placedShape.ok) return placedShape;
+        const innerShape = this.evaluate(inner, env);
+        if (!innerShape.ok) return innerShape;
+        const moved = translateMesh(innerMesh.value, offset);
+        const placed: ShapeMesh = {
+          ...moved,
+          faceGroups: relocateFaceGroups(moved.faceGroups, innerShape.value, placedShape.value),
+        };
         this.meshCache.set(meshKey, placed);
         if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
         return ok(placed);
