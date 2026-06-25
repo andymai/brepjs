@@ -67,4 +67,19 @@ describe('CSG translation-stripped mesh reuse', () => {
       expect(placedFaceIds.has(g.faceId)).toBe(true);
     }
   });
+
+  it('survives a tiny bounded shape cache (no use-after-dispose)', () => {
+    // maxCacheEntries:1 means evaluating the placed then inner shape evicts and
+    // disposes the first — the fast path must read hashes before that, not hold a
+    // shape handle across the next evaluate.
+    const ev = new Evaluator({ maxCacheEntries: 1 });
+    const moved = unwrap(ev.evaluateMesh(translate(box(10, 10, 10), [5, 0, 0])));
+    expect(moved.vertices.length).toBeGreaterThan(0);
+    expect(moved.faceGroups.length).toBeGreaterThan(0);
+    // faceIds resolve to real placed faces, not garbage from a freed handle.
+    const placedIds = new Set(
+      getFaces(unwrap(ev.evaluate(translate(box(10, 10, 10), [5, 0, 0])))).map(getHashCode)
+    );
+    for (const g of moved.faceGroups) expect(placedIds.has(g.faceId)).toBe(true);
+  });
 });

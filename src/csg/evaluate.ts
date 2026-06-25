@@ -213,20 +213,23 @@ function translateMesh(m: ShapeMesh, offset: Vec3): ShapeMesh {
  * since `locate` shares the source TShape) so face picking and metadata lookup
  * resolve against the placed mesh. Origins are translation-invariant, so only
  * `faceId` changes.
+ *
+ * Takes pre-captured hash arrays (not shapes): a bounded shape cache can evict
+ * and dispose one shape while the other is being evaluated, so the caller reads
+ * each shape's face hashes immediately after evaluating it, never holding a
+ * shape handle across the next `evaluate`.
  */
 function relocateFaceGroups(
   faceGroups: ShapeMesh['faceGroups'],
-  innerShape: AnyShape<Dimension>,
-  placedShape: AnyShape<Dimension>
+  innerHashes: readonly number[],
+  placedHashes: readonly number[]
 ): ShapeMesh['faceGroups'] {
-  const innerFaces = getFaces(innerShape);
-  const placedFaces = getFaces(placedShape);
   const remap = new Map<number, number>();
-  const n = Math.min(innerFaces.length, placedFaces.length);
+  const n = Math.min(innerHashes.length, placedHashes.length);
   for (let i = 0; i < n; i++) {
-    const a = innerFaces[i];
-    const b = placedFaces[i];
-    if (a !== undefined && b !== undefined) remap.set(getHashCode(a), getHashCode(b));
+    const a = innerHashes[i];
+    const b = placedHashes[i];
+    if (a !== undefined && b !== undefined) remap.set(a, b);
   }
   return faceGroups.map((g) => ({ ...g, faceId: remap.get(g.faceId) ?? g.faceId }));
 }
@@ -384,14 +387,21 @@ export class Evaluator implements Disposable {
       if (inner !== node) {
         const innerMesh = this.evaluateMesh(inner, env, meshOpts);
         if (!innerMesh.ok) return innerMesh;
-        const placedShape = this.evaluate(node, env);
-        if (!placedShape.ok) return placedShape;
+        // Order matters under a bounded cache (face hashes are instance-specific):
+        // capture the inner hashes FIRST, from the just-meshed instance (a cache
+        // hit), so they match innerMesh's faceGroups even if evaluating the placed
+        // shape next evicts the inner. Capture each shape's hashes inline (plain
+        // numbers) so no shape handle is held across the next evaluate.
         const innerShape = this.evaluate(inner, env);
         if (!innerShape.ok) return innerShape;
+        const innerHashes = getFaces(innerShape.value).map(getHashCode);
+        const placedShape = this.evaluate(node, env);
+        if (!placedShape.ok) return placedShape;
+        const placedHashes = getFaces(placedShape.value).map(getHashCode);
         const moved = translateMesh(innerMesh.value, offset);
         const placed: ShapeMesh = {
           ...moved,
-          faceGroups: relocateFaceGroups(moved.faceGroups, innerShape.value, placedShape.value),
+          faceGroups: relocateFaceGroups(moved.faceGroups, innerHashes, placedHashes),
         };
         this.meshCache.set(meshKey, placed);
         if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
