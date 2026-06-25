@@ -13,9 +13,9 @@ const errorMessage = ref('');
 
 async function onSubmit(event: Event): Promise<void> {
   const form = event.target as HTMLFormElement;
+  // access_key and subject ride along as hidden inputs so the no-JS native
+  // POST carries them too; FormData picks them up here without re-appending.
   const data = new FormData(form);
-  data.append('access_key', ACCESS_KEY);
-  data.append('subject', 'brepjs — new message from the site');
 
   status.value = 'sending';
   errorMessage.value = '';
@@ -43,12 +43,22 @@ async function onSubmit(event: Event): Promise<void> {
 
 <template>
   <div class="contact-card">
-    <div v-if="status === 'ok'" class="contact-success">
+    <div v-if="status === 'ok'" class="contact-success" role="status">
       <strong>Thanks — message received.</strong>
       <p>I read every inquiry myself and will get back to you at the email you gave.</p>
     </div>
 
-    <form v-else class="contact-form" @submit.prevent="onSubmit">
+    <!-- action/method make this a real POST to Web3Forms when JS is off;
+         @submit.prevent intercepts and submits via fetch when JS is on. -->
+    <form
+      v-else
+      class="contact-form"
+      action="https://api.web3forms.com/submit"
+      method="POST"
+      @submit.prevent="onSubmit"
+    >
+      <input type="hidden" name="access_key" :value="ACCESS_KEY" />
+      <input type="hidden" name="subject" value="brepjs — new message from the site" />
       <!-- Honeypot: real users never see or fill this. -->
       <input type="checkbox" name="botcheck" class="contact-hp" tabindex="-1" autocomplete="off" />
 
@@ -82,7 +92,7 @@ async function onSubmit(event: Event): Promise<void> {
         {{ status === 'sending' ? 'Sending…' : 'Send' }}
       </button>
 
-      <p v-if="status === 'error'" class="contact-error">{{ errorMessage }}</p>
+      <p v-if="status === 'error'" class="contact-error" role="alert">{{ errorMessage }}</p>
     </form>
   </div>
 </template>
