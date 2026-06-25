@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.116.0](https://github.com/andymai/brepjs/compare/brepjs-v18.115.1...brepjs-v18.116.0) (2026-06-25)
+
+
+### Features
+
+* **history:** resolve lineage refs in replay so selections survive edits ([a55a179](https://github.com/andymai/brepjs/commit/a55a1792d5f15232a2fd7767b641f5f7978afac8)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.115.1](https://github.com/andymai/brepjs/compare/brepjs-v18.115.0...brepjs-v18.115.1) (2026-06-25)
 
 
