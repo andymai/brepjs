@@ -9,11 +9,10 @@
  */
 
 import type { Face, Shape3D, Vertex } from '@/core/shapeTypes.js';
-import type { Vec3 } from '@/core/types.js';
 import { vertexPosition } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { facesOfVertex, verticesOfFace } from '@/topology/adjacencyFns.js';
-import { facesForRole, roleOfFace } from './roleLookup.js';
+import { distance, facesForRole, roleOfFace } from './roleLookup.js';
 import type {
   VertexHint,
   VertexRef,
@@ -26,13 +25,6 @@ import type {
 const MIN_VERTEX_FACES = 3;
 /** Hint distances closer than this are indistinguishable (→ ambiguous). */
 const HINT_MARGIN = 1e-6;
-
-function distance(a: Vec3, b: Vec3): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
 
 /** Hashes of all vertices across `faces`, recording one handle per hash. */
 function vertexHashes(faces: readonly Face[], handles: Map<number, Vertex>): Set<number> {

@@ -60,6 +60,8 @@ export interface TopoCacheEntry {
   /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
    *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
   edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
+  /** Vertex hash → vertex-face pairs — the vertex analogue of {@link edgeToFaces}. */
+  vertexToFaces?: Map<number, Array<{ vertex: KernelShape; face: KernelShape }>>;
 }
 
 const topoCache = new WeakMap<object, TopoCacheEntry>();

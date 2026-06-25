@@ -14,7 +14,7 @@ import { vertexPosition } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { facesOfEdge, sharedEdges, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { measureLength } from '@/measurement/measureFns.js';
-import { facesForRole, roleOfFace } from './roleLookup.js';
+import { distance, facesForRole, roleOfFace } from './roleLookup.js';
 import type {
   EdgeHint,
   EdgeRef,
@@ -41,13 +41,6 @@ function endpointMidpoint(verts: readonly Vertex[]): Vec3 | undefined {
   }
   const n = verts.length;
   return [x / n, y / n, z / n];
-}
-
-function distance(a: Vec3, b: Vec3): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  const dz = a[2] - b[2];
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 function captureEdgeHint(edge: Edge): EdgeHint {
