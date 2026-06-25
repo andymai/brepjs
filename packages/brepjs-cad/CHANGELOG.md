@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.37.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.37.0...brepjs-cad-v0.37.1) (2026-06-25)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * brepjs bumped from ^18.83.2 to ^18.117.1
+
 ## [0.37.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.36.1...brepjs-cad-v0.37.0) (2026-06-25)
 
 
