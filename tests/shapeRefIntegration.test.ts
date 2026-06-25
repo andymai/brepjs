@@ -210,16 +210,16 @@ describe('symmetric geometry', () => {
   );
 
   it.skipIf(shouldSkipSuite('shapeRefIntegration.geometricFallback'))(
-    'cylinder: roles assigned sequentially, survive fillet',
+    'cylinder: roles assigned semantically, survive fillet',
     () => {
       const cyl = cylinder(5, 10);
       const roles = assignRoles(cyl, 'cylinder');
 
-      // Cylinder has 3 faces: top cap, bottom cap, barrel
+      // Cylinder has 3 faces, named semantically: top cap, bottom cap, barrel.
       expect(roles.size).toBe(3);
-      expect(roles.has('cylinder:face_0')).toBe(true);
-      expect(roles.has('cylinder:face_1')).toBe(true);
-      expect(roles.has('cylinder:face_2')).toBe(true);
+      expect(roles.has('cylinder:top')).toBe(true);
+      expect(roles.has('cylinder:bottom')).toBe(true);
+      expect(roles.has('cylinder:lateral')).toBe(true);
 
       // Create refs
       const refs = new Map<string, ShapeRef>();
@@ -258,7 +258,7 @@ describe('symmetric geometry', () => {
 
       const ref = createRef(
         'step_0',
-        'sphere:face_0',
+        'sphere:surface',
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- sphere has 1 face
         getFaces(s)[0]!
       );

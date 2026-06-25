@@ -3,6 +3,9 @@ import { initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
+  cylinder,
+  sphere,
+  cone,
   translate,
   getFaces,
   getEdges,
@@ -68,6 +71,25 @@ describe('assignRoles', () => {
     expect(roles.size).toBe(6);
     expect(roles.has('myOp:face_0')).toBe(true);
     expect(roles.has('myOp:face_5')).toBe(true);
+  });
+
+  it('names cylinder faces semantically (caps + lateral wall)', () => {
+    const roles = assignRoles(cylinder(5, 10), 'cylinder');
+    expect(roles.has('cylinder:top')).toBe(true);
+    expect(roles.has('cylinder:bottom')).toBe(true);
+    expect(roles.has('cylinder:lateral')).toBe(true);
+  });
+
+  it('names a sphere by its single spherical face', () => {
+    const roles = assignRoles(sphere(5), 'sphere');
+    expect(roles.has('sphere:surface')).toBe(true);
+  });
+
+  it('names cone/frustum faces semantically (caps + lateral)', () => {
+    const roles = assignRoles(cone(5, 2, 10), 'cone');
+    expect(roles.has('cone:lateral')).toBe(true);
+    expect(roles.has('cone:bottom')).toBe(true);
+    expect(roles.has('cone:top')).toBe(true);
   });
 });
 

@@ -9,9 +9,11 @@ import { initKernel } from './setup.js';
 import { currentKernelId } from './helpers/kernelDivergences.js';
 import {
   box,
+  cylinder,
   getFaces,
   getHashCode,
   isEdge,
+  isFace,
   measureVolume,
   unwrap,
   type Edge,
@@ -19,10 +21,12 @@ import {
 } from '@/index.js';
 import { sharedEdges, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { vertexPosition } from '@/topology/topologyQueryFns.js';
+import { faceGeomType } from '@/topology/faceFns.js';
 import { filletWithEvolution } from '@/topology/evolutionFns.js';
 import {
   assignRoles,
   createEdgeRef,
+  createRef,
   isEdgeRef,
   isFaceRef,
   isLineageRef,
@@ -106,5 +110,22 @@ describe.skipIf(!isOcctFamily)('lineage refs as a parametric-replay consumer', (
     expect(isFaceRef(edgeRef)).toBe(false);
     expect(isLineageRef(edgeRef)).toBe(true);
     expect(isLineageRef({ radius: 2 })).toBe(false);
+  });
+
+  it('a face ref follows a cylinder across a radius rebuild (semantic roles)', () => {
+    // Name the lateral wall on an r=5 cylinder — only possible now that
+    // assignRoles names cylinders semantically, not positionally.
+    const c1 = cylinder(5, 10);
+    const roles1 = assignRoles(c1, 'cylinder');
+    const lateralHashes = roles1.get('cylinder:lateral') ?? [];
+    const lateral = getFaces(c1).find((f) => lateralHashes.includes(getHashCode(f)));
+    if (lateral === undefined) throw new Error('no lateral face');
+    const ref = createRef('cylinder', 'cylinder:lateral', lateral);
+
+    // Rebuild with r=8: the ref re-resolves to the new cylinder's lateral wall.
+    const resolved = resolveRefIn(ref, cylinder(8, 10));
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok || !isFace(resolved.entity)) return;
+    expect(faceGeomType(resolved.entity)).toBe('CYLINDRE');
   });
 });

@@ -52,37 +52,63 @@ function boxRoleFromNormal(n: readonly [number, number, number]): string | undef
   return undefined;
 }
 
+/** Axial cap name for a Z-axis primitive: 'top' (+Z) / 'bottom' (-Z). */
+function axialCapName(prefix: string, face: Face): string | undefined {
+  if (faceGeomType(face) !== 'PLANE') return undefined;
+  const z = normalAt(face)[2];
+  if (z > AXIS_THRESHOLD) return `${prefix}:top`;
+  if (z < -AXIS_THRESHOLD) return `${prefix}:bottom`;
+  return undefined;
+}
+
+/** Semantic role for a Z-axis cylinder face: top/bottom caps + lateral wall. */
+function cylinderRole(face: Face): string | undefined {
+  return faceGeomType(face) === 'CYLINDRE' ? 'cylinder:lateral' : axialCapName('cylinder', face);
+}
+
+/** Semantic role for a Z-axis cone/frustum face: top/bottom caps + lateral. */
+function coneRole(face: Face): string | undefined {
+  return faceGeomType(face) === 'CONE' ? 'cone:lateral' : axialCapName('cone', face);
+}
+
+/** Semantic role for a sphere's single spherical face. */
+function sphereRole(face: Face): string | undefined {
+  return faceGeomType(face) === 'SPHERE' ? 'sphere:surface' : undefined;
+}
+
+/** Per-primitive semantic face namers, keyed by operation type. */
+const ROLE_ASSIGNERS: Record<string, (face: Face) => string | undefined> = {
+  box: (face) => boxRoleFromNormal(normalAt(face)),
+  cylinder: cylinderRole,
+  cone: coneRole,
+  sphere: sphereRole,
+};
+
 /**
- * Auto-assign role names to the faces of a shape based on operation type.
+ * Auto-assign role names to a shape's faces from its operation type.
  *
- * For 'box': uses face normals to assign cardinal names
- * ('box:top', 'box:bottom', 'box:front', 'box:back', 'box:left', 'box:right').
- * **Note:** Box role detection assumes axis-aligned faces (normal within 0.9 of
- * a cardinal axis). Rotated boxes may receive fewer than 6 named roles; remaining
- * faces fall through to sequential naming.
+ * Known primitives get **semantic** names from face geometry — rebuild-stable
+ * across parameter edits that preserve orientation:
+ * - `box`: cardinal names by normal ('box:top'/'bottom'/'front'/'back'/'left'/'right').
+ * - `cylinder`/`cone` (Z-axis): 'top'/'bottom' caps + 'lateral' wall.
+ * - `sphere`: 'sphere:surface'.
  *
- * For other types: sequential naming ('opType:face_0', 'opType:face_1', ...).
+ * Faces a primitive namer doesn't recognize (a rotated box's non-cardinal faces),
+ * and every face of any other operation type, fall back to positional names
+ * ('opType:face_0', 'opType:face_1', ...) — so each face always gets a role.
  *
  * @returns Map from role name to its face hash codes (one at assignment time;
  *   a role accrues more hashes only later, when `updateRoles` tracks a split).
  */
 export function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]> {
-  const faces = getFaces(shape);
   const roles = new Map<string, number[]>();
-
-  if (operationType === 'box') {
-    for (const face of faces) {
-      const role = boxRoleFromNormal(normalAt(face));
-      if (role !== undefined && !roles.has(role)) {
-        roles.set(role, [getHashCode(face)]);
-      }
-    }
-    return roles;
-  }
-
+  const assigner = ROLE_ASSIGNERS[operationType];
   let index = 0;
-  for (const face of faces) {
-    roles.set(`${operationType}:face_${index}`, [getHashCode(face)]);
+  for (const face of getFaces(shape)) {
+    const semantic = assigner?.(face);
+    const role =
+      semantic !== undefined && !roles.has(semantic) ? semantic : `${operationType}:face_${index}`;
+    roles.set(role, [getHashCode(face)]);
     index++;
   }
   return roles;
