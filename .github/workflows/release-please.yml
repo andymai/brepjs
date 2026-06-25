@@ -54,66 +54,82 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Auto-merge the root brepjs release PR plus the acyclic leaf packages
-  # brepjs-bim, brepjs-sheetmetal, and brepjs-cad. Those leaves depend only on
-  # root brepjs (nothing depends back on them), so the workspace dep graph stays
-  # acyclic and node-workspace propagation terminates after one root->leaves
-  # ripple — no release loop is possible. Only brepjs-opencascade stays held
-  # (expensive WASM build, manual review). The brepjs-cad<->viewer re-pin loop
-  # that once justified holding cad is gone: brepjs-viewer is unmanaged by
-  # release-please, and cad's `brepjs` dep is a caret node-workspace never
-  # re-pins. Auto-PUBLISH fires when each release PR merges.
+  # Auto-merge release PRs, but SERIALIZE root brepjs before its leaves.
+  #
+  # The leaves (brepjs-cad / brepjs-bim / brepjs-sheetmetal) consume root brepjs,
+  # and the node-workspace plugin re-pins a leaf's `brepjs` dependency to the
+  # version of the *pending* root release. If a leaf were allowed to merge while
+  # the root brepjs release PR is still open, main would carry a leaf pinned to a
+  # brepjs version that isn't on npm yet — `npm install` then fails with ETARGET
+  # and every Vercel deploy breaks (the 2026-06-25 outage). Merging a leaf early
+  # also conflicts the still-open root PR on the shared .release-please-manifest.
+  #
+  # Fix: while the root brepjs release PR is open, arm auto-merge ONLY on it and
+  # HOLD every leaf. Once root merges (and bumps main + publishes), the next
+  # release-please run regenerates each leaf PR with a now-valid pin against an
+  # up-to-date main, and this job — which runs on every push — arms their
+  # auto-merge then. brepjs-opencascade stays permanently held (expensive WASM
+  # build, manual review). Auto-PUBLISH fires when each release PR merges.
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [release-please]
-    if: ${{ needs.release-please.outputs.prs_created == 'true' }}
+    if: ${{ needs.release-please.result == 'success' }}
     steps:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - name: Enable auto-merge for root brepjs + leaf package release PRs
+      - name: Auto-merge release PRs (root brepjs before leaves)
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          # Prefer the plural `prs` array (separate-pull-requests: true emits
-          # one PR per component); fall back to the singular `pr`.
-          PRS_DATA: ${{ needs.release-please.outputs.prs }}
-          PR_DATA: ${{ needs.release-please.outputs.pr }}
           GH_REPO: ${{ github.repository }}
+          # The root "." component's release branch (component name "brepjs").
+          # Leaf branches carry a `-<pkg>` suffix, so this matches root exactly.
+          ROOT_BRANCH: release-please--branches--main--components--brepjs
         run: |
-          prs_json="$PRS_DATA"
-          if [ -z "$prs_json" ] || [ "$prs_json" = "null" ]; then
-            # Wrap the singular PR object into a one-element array.
-            prs_json=$(echo "$PR_DATA" | jq -c 'if . == null or . == "" then [] else [.] end')
-          fi
+          # Query the live set of open release PRs (release-please labels every
+          # one `autorelease: pending`) rather than trusting the action outputs,
+          # so a held leaf is picked up on whichever later run unblocks it.
+          prs=$(gh pr list --state open --label 'autorelease: pending' \
+            --repo "$GH_REPO" --json number,title,headRefName)
 
-          count=$(echo "$prs_json" | jq 'length')
+          count=$(echo "$prs" | jq 'length')
           if [ "$count" -eq 0 ]; then
-            echo "No release PRs found, skipping"
+            echo "No open release PRs, nothing to do"
             exit 0
           fi
 
-          echo "$prs_json" | jq -c '.[]' | while read -r pr; do
-            pr_number=$(echo "$pr" | jq -r '.number // empty')
-            pr_title=$(echo "$pr" | jq -r '.title // empty')
-            if [ -z "$pr_number" ]; then
-              echo "PR with no number, skipping"
-              continue
-            fi
-            # Hold only brepjs-opencascade (expensive WASM build, manual review).
-            # The root brepjs PR and the acyclic leaves brepjs-bim /
-            # brepjs-sheetmetal / brepjs-cad auto-merge. (cad's old viewer
-            # re-pin loop is gone — viewer is unmanaged by release-please.)
-            case "$pr_title" in
-              *brepjs-opencascade*)
-                echo "Holding auto-merge for PR #$pr_number ($pr_title) — manual merge"
+          root_open=$(echo "$prs" | jq --arg b "$ROOT_BRANCH" \
+            '[.[] | select(.headRefName == $b)] | length')
+
+          echo "$prs" | jq -c '.[]' | while read -r pr; do
+            number=$(echo "$pr" | jq -r '.number')
+            title=$(echo "$pr" | jq -r '.title')
+            branch=$(echo "$pr" | jq -r '.headRefName')
+
+            case "$branch" in
+              *--components--brepjs-opencascade)
+                echo "HOLD #$number ($title) — opencascade is manual (expensive WASM build)"
+                continue
+                ;;
+              "$ROOT_BRANCH")
+                echo "MERGE #$number ($title) — root brepjs release goes first"
+                gh pr merge "$number" --auto --squash --repo "$GH_REPO"
                 continue
                 ;;
             esac
-            echo "Enabling auto-merge for brepjs PR #$pr_number"
-            gh pr merge "$pr_number" --auto --squash --repo "$GH_REPO"
+
+            # Any other component is a leaf. Hold it while the root brepjs
+            # release PR is open; it is regenerated with a valid pin and
+            # auto-merged on the next run, after root merges + publishes.
+            if [ "$root_open" -gt 0 ]; then
+              echo "HOLD #$number ($title) — waiting for root brepjs release to merge first"
+            else
+              echo "MERGE #$number ($title) — no root brepjs release pending"
+              gh pr merge "$number" --auto --squash --repo "$GH_REPO"
+            fi
           done
 
   # brepjs-opencascade is published via publish-opencascade.yml — manual
