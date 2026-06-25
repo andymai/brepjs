@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.112.0](https://github.com/andymai/brepjs/compare/brepjs-v18.111.0...brepjs-v18.112.0) (2026-06-25)
+
+
+### Features
+
+* **shaperef:** lineage-based vertex references named by adjacent faces ([3b73eef](https://github.com/andymai/brepjs/commit/3b73eefd11f89e82320669f1b7948ba181a0636b)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.111.0](https://github.com/andymai/brepjs/compare/brepjs-v18.110.0...brepjs-v18.111.0) (2026-06-24)
 
 
