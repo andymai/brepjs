@@ -13,8 +13,10 @@ import { ok, err } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
 import {
   collectInputFaceHashes,
+  hasAnyMetadata,
   propagateAllMetadata,
   propagateMetadataByHash,
+  propagateMetadataThroughRelocation,
 } from './metadata/metadataPropagation.js';
 
 // ---------------------------------------------------------------------------
@@ -322,6 +324,36 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
   });
   const { handle, dispose } = getKernel().composeTransform(kernelOps);
   return { trsf: handle, cleanup: dispose };
+}
+
+/**
+ * Placement-only rigid move (translate / rotate) via the kernel's cheap location
+ * re-tag — an O(1) `TopLoc_Location` swap on occt-wasm ≥3.6.0, falling back to a
+ * copying transform on kernels without it. Unlike `translate` / `rotate` (which
+ * deep-copy through the history-tracking path), `locate` shares the source
+ * geometry and only re-tags its placement, then re-keys face metadata
+ * (tags/colors) onto the moved faces so it survives — the same metadata
+ * guarantee `translate` gives, at location-swap cost. For per-position placement
+ * of one cached cell (template instancing), this is the move without the copy.
+ *
+ * Accepts a single op or an ordered list (applied first-to-last, e.g. rotate
+ * then translate). Non-rigid ops (`scale`) aren't a placement and don't belong
+ * here — use `applyMatrix` for those.
+ */
+export function locate<T extends AnyShape<Dimension>>(
+  shape: T,
+  placement: TransformOp | readonly TransformOp[]
+): T {
+  const ops = 'type' in placement ? [placement] : placement;
+  const { trsf, cleanup } = composeTransforms(ops);
+  let moved: T;
+  try {
+    moved = castShape(getKernel().locate(shape.wrapped, trsf)) as T;
+  } finally {
+    cleanup();
+  }
+  if (hasAnyMetadata(shape)) propagateMetadataThroughRelocation(shape, moved);
+  return moved;
 }
 
 /**

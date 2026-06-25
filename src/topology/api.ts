@@ -120,6 +120,19 @@ export function transformCopy<T extends AnyShape<Dimension>>(
   return transforms.transformCopy(resolve(shape), composed);
 }
 
+/**
+ * Placement-only rigid move (translate / rotate) via the kernel's cheap location
+ * re-tag — O(1) on occt-wasm ≥3.6.0, falling back to a copy elsewhere. Same
+ * face-metadata guarantee as `translate`, at location-swap cost. Ideal for
+ * placing one cached cell at N positions without paying for N deep copies.
+ */
+export function locate<T extends AnyShape<Dimension>>(
+  shape: Shapeable<T>,
+  placement: transforms.TransformOp | readonly transforms.TransformOp[]
+): T {
+  return transforms.locate(resolve(shape), placement);
+}
+
 // ---------------------------------------------------------------------------
 // Booleans — accept Shapeable, preserve first operand type T
 // ---------------------------------------------------------------------------

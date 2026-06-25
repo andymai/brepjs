@@ -493,6 +493,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'line',
   'linearPattern',
   'loadFont',
+  'locate',
   'loft',
   'loftAll',
   'makeBaseBox',

@@ -1137,6 +1137,7 @@ export {
   mirror,
   scale,
   clone,
+  locate,
   applyMatrix,
   composeTransforms,
   transformCopy,

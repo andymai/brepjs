@@ -78,6 +78,7 @@ export {
   applyMatrix,
   composeTransforms,
   transformCopy,
+  locate,
 } from './transformFns.js';
 export type { TransformOp, ComposedTransform } from './transformFns.js';
 
