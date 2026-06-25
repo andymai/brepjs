@@ -149,3 +149,48 @@ export interface BrokenVertexRef {
   readonly reason: 'ambiguous' | 'not-found';
   readonly candidates?: readonly Vertex[];
 }
+
+// ---------------------------------------------------------------------------
+// DerivedFaceRef — a generated face (fillet/chamfer) named by the faces it bridges
+// ---------------------------------------------------------------------------
+
+/**
+ * Snapshot for re-deriving a generated face. fillet/chamfer evolution is empty
+ * on the OCCT kernels, so the role table can't track the bridged faces — they
+ * are re-found by their captured outward normals; the edge midpoint breaks ties.
+ */
+export interface DerivedFaceHint {
+  readonly entityType: 'derived-face';
+  readonly normalA: Vec3;
+  readonly normalB: Vec3;
+  readonly edgeMidpoint?: Vec3 | undefined;
+}
+
+/**
+ * A reference to a *generated* face — a fillet round or chamfer bevel — named by
+ * the two faces it bridges. The generated face has no stable hash (it didn't
+ * exist at capture time, and fillet evolution is empty), so it's resolved as the
+ * face adjacent to both bridged faces whose normal blends both — the orthogonal
+ * flanking faces are rejected. Lineage-by-neighbors for geometry created by the
+ * very edit being referenced across.
+ */
+export interface DerivedFaceRef {
+  readonly origin: string;
+  readonly op: 'fillet' | 'chamfer';
+  /** Roles of the two faces the generated face bridges. */
+  readonly betweenRoles: readonly [string, string];
+  readonly hint: DerivedFaceHint;
+}
+
+/** A successfully resolved derived-face reference (always geometric). */
+export interface ResolvedDerivedFaceRef {
+  readonly face: Face;
+  readonly confidence: 'geometric-fallback';
+}
+
+/** A derived-face reference that could not be resolved. */
+export interface BrokenDerivedFaceRef {
+  readonly ref: DerivedFaceRef;
+  readonly reason: 'ambiguous' | 'not-found';
+  readonly candidates?: readonly Face[];
+}

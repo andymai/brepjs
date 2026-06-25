@@ -8,13 +8,11 @@
  * never touches the kernel's unreliable `generated`-face hashes.
  */
 
-import type { Edge, Shape3D, Vertex } from '@/core/shapeTypes.js';
-import type { Vec3 } from '@/core/types.js';
-import { vertexPosition } from '@/topology/topologyQueryFns.js';
+import type { Edge, Shape3D } from '@/core/shapeTypes.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { facesOfEdge, sharedEdges, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { measureLength } from '@/measurement/measureFns.js';
-import { distance, facesForRole, roleOfFace } from './roleLookup.js';
+import { distance, facesForRole, roleOfFace, vertexCentroid } from './roleLookup.js';
 import type {
   EdgeHint,
   EdgeRef,
@@ -23,32 +21,12 @@ import type {
   RoleTable,
 } from './shapeRefTypes.js';
 
-// ---------------------------------------------------------------------------
-// Geometry helpers (hint capture + tiebreaking)
-// ---------------------------------------------------------------------------
-
-/** Midpoint of an edge's endpoint vertices (a closed edge collapses to one). */
-function endpointMidpoint(verts: readonly Vertex[]): Vec3 | undefined {
-  if (verts.length === 0) return undefined;
-  let x = 0;
-  let y = 0;
-  let z = 0;
-  for (const v of verts) {
-    const p = vertexPosition(v);
-    x += p[0];
-    y += p[1];
-    z += p[2];
-  }
-  const n = verts.length;
-  return [x / n, y / n, z / n];
-}
-
 function captureEdgeHint(edge: Edge): EdgeHint {
   const lengthResult = measureLength(edge);
   return {
     entityType: 'edge',
     length: lengthResult.ok ? lengthResult.value : undefined,
-    midpoint: endpointMidpoint(verticesOfEdge(edge)),
+    midpoint: vertexCentroid(verticesOfEdge(edge)),
   };
 }
 
@@ -86,7 +64,7 @@ function bestByHint(candidates: readonly Edge[], hint: EdgeHint): Edge | undefin
       if (len.ok) score += Math.abs(len.value - hint.length);
     }
     if (hint.midpoint !== undefined) {
-      const mid = endpointMidpoint(verticesOfEdge(edge));
+      const mid = vertexCentroid(verticesOfEdge(edge));
       if (mid !== undefined) score += distance(hint.midpoint, mid);
     }
     if (score < bestScore) {

@@ -16,6 +16,10 @@ export type {
   VertexRef,
   ResolvedVertexRef,
   BrokenVertexRef,
+  DerivedFaceHint,
+  DerivedFaceRef,
+  ResolvedDerivedFaceRef,
+  BrokenDerivedFaceRef,
 } from './shapeRefTypes.js';
 
 export { type FaceScorer, defaultScorer } from './scoring.js';
@@ -25,3 +29,5 @@ export { captureHint, assignRoles, createRef, updateRoles, resolveRef } from './
 export { createEdgeRef, resolveEdgeRef } from './edgeRefFns.js';
 
 export { createVertexRef, resolveVertexRef } from './vertexRefFns.js';
+
+export { createDerivedFaceRef, resolveDerivedFaceRef } from './derivedFaceRefFns.js';

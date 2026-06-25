@@ -5,9 +5,9 @@
  * deliberately math-free `vec3.ts` is reserved for hot kernel loops.)
  */
 
-import type { Face, Shape3D } from '@/core/shapeTypes.js';
+import type { Face, Shape3D, Vertex } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/core/types.js';
-import { getFaces } from '@/topology/topologyQueryFns.js';
+import { getFaces, vertexPosition } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import type { RoleTable } from './shapeRefTypes.js';
 
@@ -17,6 +17,22 @@ export function distance(a: Vec3, b: Vec3): number {
   const dy = a[1] - b[1];
   const dz = a[2] - b[2];
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/** Mean of a set of vertices' positions (e.g. an edge's endpoints). */
+export function vertexCentroid(verts: readonly Vertex[]): Vec3 | undefined {
+  if (verts.length === 0) return undefined;
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  for (const v of verts) {
+    const p = vertexPosition(v);
+    x += p[0];
+    y += p[1];
+    z += p[2];
+  }
+  const n = verts.length;
+  return [x / n, y / n, z / n];
 }
 
 /** The role whose tracked hashes include this face (reverse lookup). */
