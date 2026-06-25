@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.115.0](https://github.com/andymai/brepjs/compare/brepjs-v18.114.0...brepjs-v18.115.0) (2026-06-25)
+
+
+### Features
+
+* **shaperef:** semantic face roles for cylinder/cone/sphere ([aac3b12](https://github.com/andymai/brepjs/commit/aac3b128389e054f414e98e84a45af5bdf5bc5f9)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+
 ## [18.114.0](https://github.com/andymai/brepjs/compare/brepjs-v18.113.0...brepjs-v18.114.0) (2026-06-25)
 
 
