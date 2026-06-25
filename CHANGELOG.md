@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.117.1](https://github.com/andymai/brepjs/compare/brepjs-v18.117.0...brepjs-v18.117.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **bim:** make BCF XML tokenizer linear (polynomial ReDoS) ([#1666](https://github.com/andymai/brepjs/issues/1666)) ([3c93f03](https://github.com/andymai/brepjs/commit/3c93f036827b5daf158e2a339362c38bf3ea2864))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
 ## [18.117.0](https://github.com/andymai/brepjs/compare/brepjs-v18.116.1...brepjs-v18.117.0) (2026-06-25)
 
 
