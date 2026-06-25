@@ -12,6 +12,9 @@ const status = ref<Status>('idle');
 const errorMessage = ref('');
 
 async function onSubmit(event: Event): Promise<void> {
+  // Guard against a double-submit racing the disabled-button state.
+  if (status.value === 'sending') return;
+
   const form = event.target as HTMLFormElement;
   // access_key and subject ride along as hidden inputs so the no-JS native
   // POST carries them too; FormData picks them up here without re-appending.
@@ -26,13 +29,19 @@ async function onSubmit(event: Event): Promise<void> {
       headers: { Accept: 'application/json' },
       body: data,
     });
-    const json = (await res.json()) as { success?: boolean; message?: string };
+    // A non-JSON error page (proxy/5xx) shouldn't masquerade as a network
+    // error — fall back to an empty object and report the HTTP status.
+    const json = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      message?: string;
+    };
     if (json.success) {
       status.value = 'ok';
       form.reset();
     } else {
       status.value = 'error';
-      errorMessage.value = json.message ?? 'Something went wrong.';
+      errorMessage.value =
+        json.message ?? `Couldn't send (error ${res.status}). Email hi@andymai.com instead.`;
     }
   } catch {
     status.value = 'error';
