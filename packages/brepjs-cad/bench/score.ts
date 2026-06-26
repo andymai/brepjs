@@ -5,8 +5,9 @@ import type { EvalPrompt } from './prompts.js';
 // Pure scoring + scorecard formatting for the live eval. No I/O, no network —
 // unit-tested directly (see tests/liveEvalScore.test.ts).
 
-/** Score/scorecard schema version — bump when the score/scorecard shape changes (vision §H). */
-export const SCHEMA_VERSION = 2;
+/** Score/scorecard schema version — bump when the score/scorecard shape changes (vision §H).
+ * v3 adds the judge's relative `quality` grade to each attempt/result. */
+export const SCHEMA_VERSION = 3;
 
 export interface AutoResult {
   /** Objective signal: valid solid (ok=true) AND any pinned dims within tolerance. */
@@ -313,9 +314,13 @@ export function formatScorecard(card: Scorecard): string {
     lines.push(`  manufacturable ${pct(ok, mfgJudged.length)}  (n=${mfgJudged.length})`);
   }
 
-  // Quality gradient vs the reference exemplar (the gating axis above the floor): how many passing
-  // parts the judge ranked worse/on-par/better than a known-good build of the same request.
-  const graded = card.results.filter((r) => r.quality !== null && r.quality !== undefined);
+  // Quality gradient vs the reference exemplar (the gating axis ABOVE the floor): of the parts that
+  // cleared the floor (valid + judge-pass), how many the judge ranked worse/on-par/better than a
+  // known-good build of the same request. Floor-failing parts are excluded — their grade isn't an
+  // above-floor signal (a missing-feature part can still carry a 'worse' grade).
+  const graded = card.results.filter(
+    (r) => r.quality !== null && r.quality !== undefined && r.auto.pass && r.judgePass === true
+  );
   if (graded.length > 0) {
     const n = (g: QualityGrade): number => graded.filter((r) => r.quality === g).length;
     lines.push(

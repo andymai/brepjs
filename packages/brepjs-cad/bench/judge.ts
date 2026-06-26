@@ -131,14 +131,15 @@ export async function judge(client: Anthropic, input: JudgeInput): Promise<Verdi
     { signal: AbortSignal.timeout(120_000) }
   );
 
-  return (
-    response.parsed_output ?? {
-      features: [],
-      pass: false,
-      quality: null,
-      manufacturable: false,
-      usedMetrics: false,
-      reason: 'judge returned no parseable verdict',
-    }
-  );
+  const verdict = response.parsed_output ?? {
+    features: [],
+    pass: false,
+    quality: null,
+    manufacturable: false,
+    usedMetrics: false,
+    reason: 'judge returned no parseable verdict',
+  };
+  // With no reference shown the relative grade is meaningless — force null so a spurious model
+  // 'worse' can't block the loop's convergence (preserves the no-reference back-compat path).
+  return reference.length === 0 ? { ...verdict, quality: null } : verdict;
 }

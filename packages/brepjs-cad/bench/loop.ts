@@ -77,12 +77,15 @@ function codesFromOutcome(outcome: RunProgramWithStepResult): string[] {
 function buildFeedbackBundle(
   outcome: RunProgramWithStepResult,
   auto: AutoResult,
+  judgePass: boolean | undefined,
   judgeReason: string | undefined,
   quality: QualityGrade | null | undefined
 ): string {
-  // A part can be objectively valid yet graded WORSE than the reference — then the only reason to
-  // retry is quality, and "did not pass" would misdescribe it. Lead with the right framing.
-  const onlyQuality = auto.pass && quality === 'worse';
+  // A part can be objectively valid AND clear the judge's floor yet still be graded WORSE than the
+  // reference — then the only reason to retry is quality, and "did not pass" would misdescribe it.
+  // Require judgePass===true so a real judge FAILURE (a missing/wrong feature) keeps the corrective
+  // framing instead of being softened to a quality nudge.
+  const onlyQuality = auto.pass && judgePass === true && quality === 'worse';
   const lines = [
     onlyQuality
       ? 'The previous attempt is valid but lower quality than a known-good reference part. Improve it and return the full corrected module.'
@@ -173,7 +176,7 @@ export async function runAttemptLoop(
     messages.push({ role: 'assistant', content: code });
     messages.push({
       role: 'user',
-      content: buildFeedbackBundle(outcome, auto, judgeReason, quality),
+      content: buildFeedbackBundle(outcome, auto, judgePass, judgeReason, quality),
     });
   }
 

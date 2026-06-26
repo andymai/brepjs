@@ -109,6 +109,38 @@ describe('formatScorecard', () => {
     // 2/3 valid overall, 1/3 judged matching, 1/3 both.
     expect(out).toMatch(/TOTAL\s+valid 67%\s+judge 33%\s+both 33%/);
   });
+
+  it('counts only floor-clearing parts in the quality-vs-ref summary', () => {
+    const results: EvalResult[] = [
+      // cleared the floor (valid + judge-pass) but graded worse → an above-floor 'worse'.
+      {
+        id: 'crude',
+        category: 'mechanical',
+        auto: { pass: true, failures: [] },
+        judgePass: true,
+        quality: 'worse',
+      },
+      // cleared the floor and on-par.
+      {
+        id: 'good',
+        category: 'mechanical',
+        auto: { pass: true, failures: [] },
+        judgePass: true,
+        quality: 'on-par',
+      },
+      // FAILED the floor yet still carries a 'worse' grade — must NOT count as above-floor quality.
+      {
+        id: 'no-bore',
+        category: 'mechanical',
+        auto: { pass: true, failures: [] },
+        judgePass: false,
+        quality: 'worse',
+      },
+    ];
+    const out = formatScorecard({ model: 'm', brepjsVersion: 'v', date: 'd', results });
+    // worse=1 (crude only — the floor-failing no-bore is excluded), on-par=1, n=2.
+    expect(out).toMatch(/quality vs ref\s+better 0\s+on-par 1\s+worse 1\s+\(n=2\)/);
+  });
 });
 
 describe('runScores', () => {

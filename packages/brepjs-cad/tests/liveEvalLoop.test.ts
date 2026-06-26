@@ -247,6 +247,32 @@ describe('runAttemptLoop', () => {
     expect(second?.[2]?.content).toContain('lower quality');
   });
 
+  it('keeps the "did not pass" framing when the judge FAILED the part, even if also graded worse', async () => {
+    const seen: ChatMessage[][] = [];
+    let n = 0;
+    await runAttemptLoop(
+      PROMPT,
+      deps({
+        author: (messages) => {
+          seen.push(messages);
+          return Promise.resolve(`// v${++n}\nexport default () => box(1,1,1);`);
+        },
+        // judge FAILS the part (missing feature) and grades it worse — the retry must read as a
+        // real failure to fix, not a soft "lower quality" nudge.
+        judge: () =>
+          Promise.resolve(
+            n === 1
+              ? { pass: false, reason: 'missing the bore', quality: 'worse' as const }
+              : { pass: true, reason: 'ok' }
+          ),
+      }),
+      { maxAttempts: 3 }
+    );
+    const second = seen[1];
+    expect(second?.[2]?.content).toContain('did not pass');
+    expect(second?.[2]?.content).not.toContain('lower quality');
+  });
+
   it('an absent quality grade (no reference) does not block convergence', async () => {
     const res = await runAttemptLoop(
       PROMPT,
