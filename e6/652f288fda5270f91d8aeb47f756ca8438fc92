@@ -1,0 +1,48 @@
+packages/brepjs-cad/tests/liveEvalLoop.test.ts
+  s_28daef2a94ca06::t_0834f594d1396c 191-261
+packages/brepjs-cad/bench/live.ts
+  s_28daef2a94ca06::t_db35d71c2b7045 193,201
+  s_28daef2a94ca06::t_2520902a766660 12
+  s_28daef2a94ca06::t_d9f143eeb599c1 152-172
+packages/brepjs-cad/bench/prompts.ts
+  s_28daef2a94ca06::t_acad9c554c8eb2 27-30
+packages/brepjs-cad/tests/manufacturability.test.ts
+  s_28daef2a94ca06::t_3fb89ddd548909 190
+packages/brepjs-cad/bench/loop.ts
+  s_28daef2a94ca06::t_588300005f9125 1-7
+  s_28daef2a94ca06::t_a590b9dac15aaf 158,161-164,174-177
+  s_28daef2a94ca06::t_219e7668bb7ad2 134,144
+  s_28daef2a94ca06::t_ee9f0864cc6ba8 196
+  s_28daef2a94ca06::t_c820c705daf8c1 80-81,83-90,102-105
+  s_28daef2a94ca06::t_d17d924481ec35 36-43
+packages/brepjs-cad/bench/score.ts
+  s_28daef2a94ca06::t_4726ad8b6f1169 17-20
+  s_28daef2a94ca06::t_7d070f8c49e2a2 28-30
+  s_28daef2a94ca06::t_930256dbdcedc5 48-49
+  s_28daef2a94ca06::t_98efcef50dbffe 286-287
+  s_28daef2a94ca06::t_47f6837417c13b 316-317,319-325
+  s_28daef2a94ca06::t_e50bae3b7ec9ce 318
+packages/brepjs-cad/bench/playgroundCorpus.ts
+  s_28daef2a94ca06::t_d587f24f92a07e 37-39
+packages/brepjs-cad/bench/judge.ts
+  s_28daef2a94ca06::t_9291cc61caae87 42-47
+  s_28daef2a94ca06::t_66c55399c89b95 81-85,93-120,128,138
+  s_28daef2a94ca06::t_aad246e52cb09e 76-78
+  s_28daef2a94ca06::t_c675e7b9988b69 15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "e6652f288fda5270f91d8aeb47f756ca8438fc92",
+  "prompts": {},
+  "sessions": {
+    "s_28daef2a94ca06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "127d569b-92bb-4ca1-9924-04276b74a821",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
