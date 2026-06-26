@@ -1,0 +1,19 @@
+packages/brepjs-cad/bench/live.ts
+  s_28daef2a94ca06::t_0707912c376d08 159-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "01bb131ae0eea346ecc0d45f0dbe2e9ff2a68822",
+  "prompts": {},
+  "sessions": {
+    "s_28daef2a94ca06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "127d569b-92bb-4ca1-9924-04276b74a821",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
