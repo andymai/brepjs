@@ -186,12 +186,40 @@ export function translationMatrix(x: number, y: number, z: number): number[] {
   ];
 }
 
+/**
+ * Coerce a possibly-malformed value into a Vec3 tuple, falling back to `fallback`.
+ *
+ * The matrix builders sit at the JS↔WASM boundary where `no-unsafe-*` is off, so
+ * an `axis`/`center` typed as `Vec3` can arrive as a non-iterable at runtime (a
+ * `{x,y,z}` object, `null`, a scalar from a malformed compose op). Default
+ * parameters only guard `undefined`, so destructuring such a value throws a
+ * cryptic `center is not iterable`. This extends the existing `undefined → default`
+ * tolerance to any non-Vec3 input instead of crashing.
+ */
+function asVec3(
+  value: unknown,
+  fallback: readonly [number, number, number]
+): readonly [number, number, number] {
+  if (!Array.isArray(value) || value.length < 3) return fallback;
+  const [x, y, z] = value as [unknown, unknown, unknown];
+  return typeof x === 'number' &&
+    typeof y === 'number' &&
+    typeof z === 'number' &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(z)
+    ? [x, y, z]
+    : fallback;
+}
+
 /** Build a row-major 4x4 rotation matrix (angle in degrees, optional axis/center). */
 export function rotationMatrix(
   angleDeg: number,
-  axis: readonly [number, number, number] = [0, 0, 1],
-  center: readonly [number, number, number] = [0, 0, 0]
+  axisInput: readonly [number, number, number] = [0, 0, 1],
+  centerInput: readonly [number, number, number] = [0, 0, 0]
 ): number[] {
+  const axis = asVec3(axisInput, [0, 0, 1]);
+  const center = asVec3(centerInput, [0, 0, 0]);
   const rad = (angleDeg * Math.PI) / 180;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
@@ -227,8 +255,11 @@ export function rotationMatrix(
 }
 
 /** Build a row-major 4x4 uniform scale matrix about a center point. */
-export function scaleMatrix(center: readonly [number, number, number], factor: number): number[] {
-  const [cx, cy, cz] = center;
+export function scaleMatrix(
+  centerInput: readonly [number, number, number],
+  factor: number
+): number[] {
+  const [cx, cy, cz] = asVec3(centerInput, [0, 0, 0]);
   const tx = cx * (1 - factor);
   const ty = cy * (1 - factor);
   const tz = cz * (1 - factor);
