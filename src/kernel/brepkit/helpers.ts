@@ -218,7 +218,11 @@ export function rotationMatrix(
   axisInput: readonly [number, number, number] = [0, 0, 1],
   centerInput: readonly [number, number, number] = [0, 0, 0]
 ): number[] {
-  const axis = asVec3(axisInput, [0, 0, 1]);
+  const rawAxis = asVec3(axisInput, [0, 0, 1]);
+  // A zero-length axis can't be normalised (len === 0 → division by zero → NaN);
+  // fall back to +Z, matching the `undefined`/non-Vec3 default.
+  const axis: readonly [number, number, number] =
+    rawAxis[0] === 0 && rawAxis[1] === 0 && rawAxis[2] === 0 ? [0, 0, 1] : rawAxis;
   const center = asVec3(centerInput, [0, 0, 0]);
   const rad = (angleDeg * Math.PI) / 180;
   const c = Math.cos(rad);

@@ -45,6 +45,14 @@ describe('brepkit matrix helpers', () => {
       expect(guarded.every((n) => Number.isFinite(n))).toBe(true);
       expect(guarded).toEqual(rotationMatrix(90, [0, 0, 1]));
     });
+
+    // A degenerate zero-length axis is finite (so it passes asVec3) but can't be
+    // normalized — it must fall back to +Z rather than divide by zero.
+    it('falls back to the default Z axis for a degenerate zero-length axis (no NaN)', () => {
+      const guarded = rotationMatrix(90, [0, 0, 0]);
+      expect(guarded.every((n) => Number.isFinite(n))).toBe(true);
+      expect(guarded).toEqual(rotationMatrix(90, [0, 0, 1]));
+    });
   });
 
   describe('scaleMatrix', () => {
