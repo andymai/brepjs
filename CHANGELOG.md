@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.2](https://github.com/andymai/brepjs/compare/brepjs-v18.118.1...brepjs-v18.118.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **kernel:** resolve optional backends via variable specifier ([#1726](https://github.com/andymai/brepjs/issues/1726)) ([#1727](https://github.com/andymai/brepjs/issues/1727)) ([b1fa2dd](https://github.com/andymai/brepjs/commit/b1fa2dd93260f37848ee907e1bd0c37b1ae6e9cc))
+
 ## [18.118.1](https://github.com/andymai/brepjs/compare/brepjs-v18.118.0...brepjs-v18.118.1) (2026-06-26)
 
 
