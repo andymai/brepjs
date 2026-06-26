@@ -14,6 +14,10 @@ export interface AutoResult {
   failures: string[];
 }
 
+/** The judge's quality grade RELATIVE to a reference exemplar — the gradient above the `pass` floor.
+ * null when no reference was shown (the judge graded absolutely). */
+export type QualityGrade = 'worse' | 'on-par' | 'better';
+
 /** The scorer's normalized per-attempt unit — deliberately free of sandbox types. */
 export interface AttemptResult {
   auto: AutoResult;
@@ -21,6 +25,9 @@ export interface AttemptResult {
   judgeReason?: string | undefined;
   /** The judge's manufacturability axis (separate from `pass`/match). Non-gating; recorded only. */
   manufacturable?: boolean | undefined;
+  /** The judge's quality grade vs the reference exemplar; null = no reference, undefined = not judged.
+   * GATES convergence: a 'worse' attempt keeps iterating even when it `pass`es the floor. */
+  quality?: QualityGrade | null | undefined;
   outcome: 'completed' | 'timeout' | 'crashed';
   /** Whether this attempt produced a STEP (a valid solid the judge could render). */
   hasStep: boolean;
@@ -38,6 +45,8 @@ export interface EvalResult {
   judgeReason?: string | undefined;
   /** The eventual attempt's manufacturability axis (non-gating; recorded for the scorecard). */
   manufacturable?: boolean | undefined;
+  /** The eventual attempt's quality grade vs the reference exemplar (null = no reference shown). */
+  quality?: QualityGrade | null | undefined;
   /** undefined when generation/build failed before a report existed. */
   error?: string | undefined;
   /** Per-attempt trail from the bounded loop (absent for the legacy single-shot path). */
@@ -274,7 +283,8 @@ export function formatScorecard(card: Scorecard): string {
     const a = r.error ? 'ERR ' : r.auto.pass ? 'valid' : 'INVALID';
     const j = r.judgePass === undefined ? 'judge:—' : r.judgePass ? 'judge:✓' : 'judge:✗';
     const mfg = r.manufacturable === false ? ' mfg:⚠' : '';
-    lines.push(`  ${r.id.padEnd(pad)}  ${a.padEnd(7)} ${j}${mfg}`);
+    const q = r.quality ? ` q:${r.quality}` : '';
+    lines.push(`  ${r.id.padEnd(pad)}  ${a.padEnd(7)} ${j}${mfg}${q}`);
     if (r.error) lines.push(`        ${r.error}`);
     else {
       for (const f of r.auto.failures) lines.push(`        auto: ${f}`);
@@ -301,6 +311,16 @@ export function formatScorecard(card: Scorecard): string {
   if (mfgJudged.length > 0) {
     const ok = mfgJudged.filter((r) => r.manufacturable === true).length;
     lines.push(`  manufacturable ${pct(ok, mfgJudged.length)}  (n=${mfgJudged.length})`);
+  }
+
+  // Quality gradient vs the reference exemplar (the gating axis above the floor): how many passing
+  // parts the judge ranked worse/on-par/better than a known-good build of the same request.
+  const graded = card.results.filter((r) => r.quality !== null && r.quality !== undefined);
+  if (graded.length > 0) {
+    const n = (g: QualityGrade): number => graded.filter((r) => r.quality === g).length;
+    lines.push(
+      `  quality vs ref  better ${n('better')}  on-par ${n('on-par')}  worse ${n('worse')}  (n=${graded.length})`
+    );
   }
 
   // The lodestar signal: does iterating beat single-shot? (Omitted for legacy single-shot results.)

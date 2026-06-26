@@ -187,6 +187,7 @@ describe('missingFeatures (decomposed rubric)', () => {
   const verdict = (features: Verdict['features']): Verdict => ({
     features,
     pass: false,
+    quality: null,
     manufacturable: true,
     usedMetrics: false,
     reason: 'x',

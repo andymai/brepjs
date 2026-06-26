@@ -9,6 +9,7 @@ import { playgroundPrompts } from './playgroundCorpus.js';
 import { formatScorecard, type EvalResult, type Scorecard } from './score.js';
 import { runAttemptLoop, type ChatMessage, type LoopDeps } from './loop.js';
 import { judge, missingFeatures } from './judge.js';
+import { adaptReferenceCode } from './adaptReference.js';
 import { createTelemetry } from './langfuse.js';
 import { skillVersion } from './skillVersion.js';
 
@@ -148,6 +149,27 @@ async function evalPrompt(
   args: Args,
   workdir: string
 ): Promise<EvalResult> {
+  // Render the reference exemplar once per prompt (the corpus example's own source, adapted to a
+  // CLI-renderable module). Its renders give the judge a known-good build of the SAME request to
+  // grade quality against — the gradient above the absolute pass floor. Best-effort: if the
+  // reference can't build/render, the judge degrades to absolute grading (quality:null).
+  let referencePngPaths: readonly string[] = [];
+  if (p.referenceCode) {
+    try {
+      const refStep = join(workdir, `${p.id}-ref.step`);
+      const refOutcome = await runProgramWithStep(adaptReferenceCode(p.referenceCode), refStep, {
+        metrics: false,
+      });
+      if (refOutcome.outcome === 'completed' && refOutcome.stepPath) {
+        referencePngPaths = await snapshot(refOutcome.stepPath, `${refStep}-shots`);
+      } else {
+        console.warn(`  reference did not build for ${p.id} — judging without exemplar`);
+      }
+    } catch (e) {
+      console.warn(`  reference render skipped (${(e as Error).message.split('\n')[0]})`);
+    }
+  }
+
   // Wire the real author/execute/snapshot/judge into the bounded loop. Execution runs in the
   // sandbox (out-of-process, timeout/OOM-bounded) so an unattended nightly run can't hang on a
   // model-authored infinite loop; the STEP it writes is what the judge renders.
@@ -168,6 +190,7 @@ async function evalPrompt(
           pngPaths: [...pngPaths],
           model: args.judgeModel,
           ...(metrics ? { metrics } : {}),
+          ...(referencePngPaths.length > 0 ? { referencePngPaths } : {}),
         });
         // Surface the per-feature decomposition's misses in the reason so the retry/heal feedback
         // bundle gets actionable specifics ("missing: motor bore") rather than a vague sentence.
@@ -175,7 +198,7 @@ async function evalPrompt(
         const reason = missing.length
           ? `${v.reason} [missing/wrong: ${missing.join(', ')}]`
           : v.reason;
-        return { pass: v.pass, reason, manufacturable: v.manufacturable };
+        return { pass: v.pass, reason, manufacturable: v.manufacturable, quality: v.quality };
       } catch (e) {
         console.warn(`  judge failed (${(e as Error).message.split('\n')[0]})`);
         return null;

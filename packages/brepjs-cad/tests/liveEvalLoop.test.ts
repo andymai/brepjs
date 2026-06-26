@@ -188,6 +188,77 @@ describe('runAttemptLoop', () => {
     expect(res.code).toBe('export default () => box(5, 5, 5);');
   });
 
+  it('keeps iterating when the part passes the floor but is graded WORSE than the reference', async () => {
+    // Valid + judge-pass every attempt, but always 'worse' → the binary would have converged on
+    // attempt 1; the quality gate must keep it iterating to the cap instead.
+    const res = await runAttemptLoop(
+      PROMPT,
+      deps({
+        judge: () => Promise.resolve({ pass: true, reason: 'crude', quality: 'worse' as const }),
+      }),
+      { maxAttempts: 3 }
+    );
+    expect(res.iterations).toBe(3);
+    expect(res.termination).toBe('EXHAUSTED');
+    expect(res.auto.pass).toBe(true); // objectively valid the whole way
+    expect(res.judgePass).toBe(true); // and clears the absolute floor
+    expect(res.quality).toBe('worse'); // but never beats the reference
+  });
+
+  it('converges once quality climbs from worse to on-par (the gradient is climbable)', async () => {
+    let n = 0;
+    const res = await runAttemptLoop(
+      PROMPT,
+      deps({
+        judge: () =>
+          Promise.resolve(
+            ++n === 1
+              ? { pass: true, reason: 'crude', quality: 'worse' as const }
+              : { pass: true, reason: 'clean', quality: 'on-par' as const }
+          ),
+      }),
+      { maxAttempts: 3 }
+    );
+    expect(res.iterations).toBe(2);
+    expect(res.termination).toBe('CONVERGED');
+    expect(res.quality).toBe('on-par');
+  });
+
+  it('frames a worse-grade retry as valid-but-lower-quality, not "did not pass"', async () => {
+    const seen: ChatMessage[][] = [];
+    let n = 0;
+    await runAttemptLoop(
+      PROMPT,
+      deps({
+        author: (messages) => {
+          seen.push(messages);
+          return Promise.resolve(`// v${++n}\nexport default () => box(1,1,1);`);
+        },
+        judge: () =>
+          Promise.resolve(
+            n === 1
+              ? { pass: true, reason: 'crude', quality: 'worse' as const }
+              : { pass: true, reason: 'ok' }
+          ),
+      }),
+      { maxAttempts: 3 }
+    );
+    const second = seen[1];
+    expect(second?.[2]?.content).toContain('lower quality');
+  });
+
+  it('an absent quality grade (no reference) does not block convergence', async () => {
+    const res = await runAttemptLoop(
+      PROMPT,
+      // judge returns no `quality` field → must behave exactly like the pre-grading binary.
+      deps({ judge: () => Promise.resolve({ pass: true, reason: 'ok' }) }),
+      { maxAttempts: 3 }
+    );
+    expect(res.iterations).toBe(1);
+    expect(res.termination).toBe('CONVERGED');
+    expect(res.quality).toBeUndefined();
+  });
+
   it('captures the eventual code after a retry, not the first attempt', async () => {
     let authorN = 0;
     let execN = 0;

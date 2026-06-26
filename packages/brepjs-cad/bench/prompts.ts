@@ -24,6 +24,10 @@ export interface EvalPrompt {
   prompt: string;
   /** What a correct part must show — handed to the multimodal judge. */
   rubric: string;
+  /** A known-good `.brep.ts` source for this request (e.g. the playground example). When present,
+   * the live eval renders it and hands the judge a reference exemplar so it can grade quality
+   * relative to it — the gradient above the absolute pass floor. */
+  referenceCode?: string;
   /** Objective dimensional checks, when the prompt pins them unambiguously. */
   expected?: {
     volume?: number;

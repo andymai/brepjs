@@ -1,4 +1,10 @@
-import { checkAuto, type AttemptResult, type AutoResult, type EvalResult } from './score.js';
+import {
+  checkAuto,
+  type AttemptResult,
+  type AutoResult,
+  type EvalResult,
+  type QualityGrade,
+} from './score.js';
 import { digestMetrics, type MetricsDigest } from './metrics.js';
 import type { EvalPrompt } from './prompts.js';
 import type { RunProgramWithStepResult } from '../src/sandbox/runProgram.js';
@@ -27,7 +33,14 @@ export interface LoopDeps {
   judge: (
     pngPaths: readonly string[],
     metrics?: MetricsDigest
-  ) => Promise<{ pass: boolean; reason: string; manufacturable?: boolean } | null>;
+  ) => Promise<{
+    pass: boolean;
+    reason: string;
+    manufacturable?: boolean;
+    /** Quality vs the reference exemplar (null = no reference shown). A 'worse' verdict keeps the
+     * loop iterating even when the part passes the absolute floor. */
+    quality?: QualityGrade | null;
+  } | null>;
 }
 
 export interface LoopOptions {
@@ -64,9 +77,17 @@ function codesFromOutcome(outcome: RunProgramWithStepResult): string[] {
 function buildFeedbackBundle(
   outcome: RunProgramWithStepResult,
   auto: AutoResult,
-  judgeReason: string | undefined
+  judgeReason: string | undefined,
+  quality: QualityGrade | null | undefined
 ): string {
-  const lines = ['The previous attempt did not pass. Fix it and return the full corrected module.'];
+  // A part can be objectively valid yet graded WORSE than the reference — then the only reason to
+  // retry is quality, and "did not pass" would misdescribe it. Lead with the right framing.
+  const onlyQuality = auto.pass && quality === 'worse';
+  const lines = [
+    onlyQuality
+      ? 'The previous attempt is valid but lower quality than a known-good reference part. Improve it and return the full corrected module.'
+      : 'The previous attempt did not pass. Fix it and return the full corrected module.',
+  ];
   if (outcome.outcome === 'completed') {
     for (const info of outcome.report.errorInfos) lines.push(`- error: ${info.message}`);
     for (const h of outcome.report.hints) lines.push(`- fix (${h.code}): ${h.fix} ${h.nextStep}`);
@@ -78,6 +99,10 @@ function buildFeedbackBundle(
     lines.push(`- the program crashed: ${outcome.detail}`);
   }
   for (const f of auto.failures) lines.push(`- check failed: ${f}`);
+  if (quality === 'worse')
+    lines.push(
+      `- a reviewer judged the rendered part WORSE than a reference build of the same request — improve its form/proportion/feature fidelity.`
+    );
   if (judgeReason) lines.push(`- a reviewer of the rendered part said: ${judgeReason}`);
   return lines.join('\n');
 }
@@ -106,6 +131,7 @@ export async function runAttemptLoop(
     let judgePass: boolean | undefined;
     let judgeReason: string | undefined;
     let manufacturable: boolean | undefined;
+    let quality: QualityGrade | null | undefined;
     if (wantJudge && outcome.outcome === 'completed' && outcome.stepPath) {
       const pngs = await deps.snapshot(outcome.stepPath);
       if (pngs.length > 0) {
@@ -115,6 +141,7 @@ export async function runAttemptLoop(
           judgePass = v.pass;
           judgeReason = v.reason;
           manufacturable = v.manufacturable;
+          quality = v.quality;
         }
       }
     }
@@ -128,10 +155,13 @@ export async function runAttemptLoop(
     if (judgePass !== undefined) result.judgePass = judgePass;
     if (judgeReason !== undefined) result.judgeReason = judgeReason;
     if (manufacturable !== undefined) result.manufacturable = manufacturable;
+    if (quality !== undefined) result.quality = quality;
     attempts.push(result);
 
-    // An absent judge does not block convergence (judge:— is a legitimate skip, not a fail).
-    if (auto.pass && (judgePass ?? true)) {
+    // Converge only when the part clears the absolute floor AND is not graded WORSE than the
+    // reference exemplar. An absent judge or absent reference doesn't block (judge:—/quality:null
+    // are legitimate skips, not fails) — only an explicit 'worse' keeps the loop iterating.
+    if (auto.pass && (judgePass ?? true) && quality !== 'worse') {
       termination = 'CONVERGED';
       break;
     }
@@ -141,7 +171,10 @@ export async function runAttemptLoop(
     }
     // Retry: append the prior code (extracted text only — no raw thinking blocks) + the feedback.
     messages.push({ role: 'assistant', content: code });
-    messages.push({ role: 'user', content: buildFeedbackBundle(outcome, auto, judgeReason) });
+    messages.push({
+      role: 'user',
+      content: buildFeedbackBundle(outcome, auto, judgeReason, quality),
+    });
   }
 
   const firstTry = attempts[0];
@@ -160,5 +193,6 @@ export async function runAttemptLoop(
   if (eventual?.judgePass !== undefined) out.judgePass = eventual.judgePass;
   if (eventual?.judgeReason !== undefined) out.judgeReason = eventual.judgeReason;
   if (eventual?.manufacturable !== undefined) out.manufacturable = eventual.manufacturable;
+  if (eventual?.quality !== undefined) out.quality = eventual.quality;
   return out;
 }

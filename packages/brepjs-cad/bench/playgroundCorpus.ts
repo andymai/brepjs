@@ -34,6 +34,9 @@ export async function playgroundPrompts(): Promise<EvalPrompt[]> {
         category: c.id as EvalPrompt['category'],
         prompt: e.description,
         rubric: e.description,
+        // The example's own source is the known-good reference the judge grades against — so the
+        // eval measures the author's part vs the curated build of the same request, not vs nothing.
+        referenceCode: e.code,
       })
     )
   );
