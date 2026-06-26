@@ -156,6 +156,12 @@ async function evalPrompt(
   let referencePngPaths: readonly string[] = [];
   if (p.referenceCode) {
     try {
+      // The reference is a playground example — the corpus is gated to valid, single-connected
+      // solids (the connectivity test in playgroundExamples.test.ts), so it builds a STEP under the
+      // sandboxed `--check --step` path. A reference that fails to build is excluded (quality:null →
+      // absolute grading): better to fall back than to anchor against a broken exemplar. (The
+      // strict path is the only sandboxed step export; the lenient snapshot/runPart render gates on
+      // Result.Ok not validity, but needs an in-process kernel the eval process doesn't init.)
       const refStep = join(workdir, `${p.id}-ref.step`);
       const refOutcome = await runProgramWithStep(adaptReferenceCode(p.referenceCode), refStep, {
         metrics: false,
