@@ -287,6 +287,7 @@ export default withMermaid(
             { text: 'Kernels & withKernel', link: '/concepts/kernels' },
             { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
             { text: 'CSG as an IR', link: '/concepts/csg-ir' },
+            { text: 'Composing Complex Parts', link: '/concepts/composing-complex-parts' },
             { text: 'Stable References', link: '/concepts/stable-references' },
           ],
         },
