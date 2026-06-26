@@ -82,7 +82,6 @@ export const kernelConfigs: readonly KernelConfig[] = [
     // adapter; they stay excluded even though occt-wasm is now the default project.
     excludeTests: [
       'tests/brepkitExtended.test.ts',
-      'tests/brepkitAdapter.test.ts',
       'tests/brepkitSketchArc.test.ts',
       'tests/brepkitOffsetV2.test.ts',
       'tests/gltfRoundTrip.test.ts',

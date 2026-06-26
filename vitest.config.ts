@@ -8,12 +8,14 @@ import {
 
 /**
  * Tests excluded from all kernel projects:
- * - brepkit-only tests that use a mock BrepKernel or brepkit-only setup
+ * - brepkit-only tests that need a real brepkit-wasm install or local link
  * - cross-kernel comparison tests that manage their own dual-kernel init
  * - standard non-test directories
+ *
+ * Note: brepkitAdapter.test.ts is NOT here — it drives BrepkitAdapter with a
+ * pure mock kernel (no WASM), so it runs in every project's gate as a unit test.
  */
 const alwaysExclude = [
-  'tests/brepkitAdapter.test.ts',
   'tests/brepkit-adapter.test.ts',
   'tests/brepkit-validation.test.ts',
   'tests/kernel-agreement.test.ts',
