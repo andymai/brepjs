@@ -1,0 +1,39 @@
+packages/brepjs-cad/bench/judge.ts
+  s_28daef2a94ca06::t_cd1774bbe573cb 135-140
+  s_1d0cd367c84231::t_7579e92a675ecd 134,141-144
+packages/brepjs-cad/bench/loop.ts
+  s_28daef2a94ca06::t_1c62a3dc965454 179
+  s_28daef2a94ca06::t_ae305d60eb8cc9 80,84-88
+packages/brepjs-cad/bench/score.ts
+  s_28daef2a94ca06::t_52a3ea5ab9c058 8-10
+  s_28daef2a94ca06::t_bf15883640f48e 317-323
+packages/brepjs-cad/tests/liveEvalLoop.test.ts
+  s_28daef2a94ca06::t_1c4feb2aaacd7b 250-273
+  s_1d0cd367c84231::t_d17daa8811c4b7 248-249
+packages/brepjs-cad/tests/liveEvalScore.test.ts
+  s_28daef2a94ca06::t_414cdf469bfdfd 112-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "3e278bac1bcf5a4e3bd6aba9d46e4550987f453b",
+  "prompts": {},
+  "sessions": {
+    "s_1d0cd367c84231": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07317a65-a062-4f74-acf5-9b9f8fb7cf24",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_28daef2a94ca06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "127d569b-92bb-4ca1-9924-04276b74a821",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
