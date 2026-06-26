@@ -8,6 +8,7 @@ import { DefaultAdapter } from './occt/defaultAdapter.js';
 import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 import { ManifoldAdapter } from './manifold/manifoldAdapter.js';
 import { OcctWasmAdapter } from './occtWasm/occtWasmAdapter.js';
+import { importOptionalBackend } from './optionalBackend.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
 import { resetBooleanBatchDetectionCache } from './occt/booleanBatchOps.js';
@@ -263,8 +264,8 @@ export async function init(): Promise<string> {
   // Try occt-wasm first (the default kernel). Browser-safe: OcctKernel.init()
   // auto-locates its .wasm via import.meta.url.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
-    const { OcctKernel } = (await import(/* @vite-ignore */ 'occt-wasm')) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import of optional peer
+    const { OcctKernel } = (await importOptionalBackend('occt-wasm')) as any;
     const kernel = await OcctKernel.init();
     registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
     return 'occt-wasm';
@@ -274,8 +275,8 @@ export async function init(): Promise<string> {
 
   // Fallback: brepjs-opencascade (legacy default kernel)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
-    const mod = (await import(/* @vite-ignore */ 'brepjs-opencascade')) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import of optional peer
+    const mod = (await importOptionalBackend('brepjs-opencascade')) as any;
     const oc = await mod.default();
     initFromOC(oc);
     return 'occt';
@@ -285,8 +286,8 @@ export async function init(): Promise<string> {
 
   // Fallback: brepkit
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
-    const bk = (await import(/* @vite-ignore */ 'brepkit-wasm')) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import of optional peer
+    const bk = (await importOptionalBackend('brepkit-wasm')) as any;
     if (typeof bk.default === 'function') await bk.default();
     registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
     return 'brepkit';

@@ -18,12 +18,17 @@ const root = resolve(__dirname, '..');
 const quickJs = `import { initFromOC, registerKernel, OcctWasmAdapter } from './brepjs.js';
 // occt-wasm first (the default kernel); fall back to brepjs-opencascade.
 // Dynamic imports so an install with only one of the two packages still loads.
+// The specifier is passed through a variable so the import() argument is never a
+// string literal: a computed dynamic import is unanalyzable to every bundler, so
+// an uninstalled optional peer is left as a runtime import instead of breaking a
+// consumer's Vite dep pre-bundling (#1726).
+const importBackend = (specifier) => import(/* @vite-ignore */ specifier);
 try {
-  const { OcctKernel } = await import('occt-wasm');
+  const { OcctKernel } = await importBackend('occt-wasm');
   const kernel = await OcctKernel.init();
   registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 } catch {
-  const { default: opencascade } = await import('brepjs-opencascade');
+  const { default: opencascade } = await importBackend('brepjs-opencascade');
   const oc = await opencascade();
   initFromOC(oc);
 }
