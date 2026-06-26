@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.1](https://github.com/andymai/brepjs/compare/brepjs-v18.118.0...brepjs-v18.118.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **brepkit:** harden rotation/scale matrix builders against non-Vec3 axis/center ([#1720](https://github.com/andymai/brepjs/issues/1720)) ([b9c4e2e](https://github.com/andymai/brepjs/commit/b9c4e2ef1d5af8784346af96f774ba0a783c1ef1))
+
 ## [18.118.0](https://github.com/andymai/brepjs/compare/brepjs-v18.117.1...brepjs-v18.118.0) (2026-06-25)
 
 
