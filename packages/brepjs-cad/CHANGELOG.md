@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.43.0...brepjs-cad-v0.44.0) (2026-06-26)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
 ## [0.43.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.42.1...brepjs-cad-v0.43.0) (2026-06-26)
 
 
