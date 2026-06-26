@@ -1,6 +1,6 @@
 {
   "name": "brepjs-cad",
-  "version": "0.42.1",
+  "version": "0.43.0",
   "description": "Brainstorm → design → author → verify → polish pipeline for parametric brepjs CAD, with the brep CLI",
   "license": "Apache-2.0",
   "type": "module",
@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "brepjs": ">=18.118.2",
+    "brepjs": ">=18.117.1",
     "commander": "^15.0.0",
     "occt-wasm": "^3.0.0",
     "typescript": "^6.0.3"
