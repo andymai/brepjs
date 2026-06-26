@@ -73,7 +73,8 @@ Monorepo packages:
 - Consistent type imports (`import type` enforced)
 - No `var`, strict equality, `prefer-const`, `prefer-readonly`
 - `no-unsafe-*` rules disabled due to WASM type gaps
-- `no-restricted-syntax` bans `.oc` access, `.wrapped.method()` calls in Layer 2+ code, and `export let` everywhere
+- `no-restricted-syntax` bans `.oc` access, `.wrapped.method()` calls in Layer 2+ code, `export let` everywhere, and `enum` (use an `as const` object + literal union)
+- `switch-exhaustiveness-check`: switches over a union/enum must handle every case (a `default` clause counts as exhaustive)
 - `ban-ts-comment` requires `@ts-expect-error -- reason` format; `@ts-ignore` and `@ts-nocheck` are banned
 - `no-console` is an error (only `console.error`/`console.warn` allowed)
 - Pattern checker inline disable: `// brepjs-patterns-disable: <rule-id>` (line above or inline)

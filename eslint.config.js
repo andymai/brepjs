@@ -21,6 +21,10 @@ const sharedRules = {
   '@typescript-eslint/no-unsafe-argument': 'off',
   '@typescript-eslint/no-this-alias': 'error',
   '@typescript-eslint/prefer-readonly': 'error',
+  '@typescript-eslint/switch-exhaustiveness-check': [
+    'error',
+    { considerDefaultExhaustiveForUnions: true },
+  ],
   // Require @ts-expect-error with "-- reason" format; ban @ts-ignore entirely
   '@typescript-eslint/ban-ts-comment': [
     'error',
@@ -43,6 +47,12 @@ const noMutableExport = {
   message: 'Mutable exports (`export let`) are forbidden. Use a getter function or const instead.',
 };
 
+const noEnum = {
+  selector: 'TSEnumDeclaration',
+  message:
+    '`enum` is banned. Use an `as const` object + literal union instead — better refactoring, serialization, and tree-shaking. See CLAUDE.md.',
+};
+
 // ─── Config ──────────────────────────────────────────────────────────
 
 export default tseslint.config(
@@ -58,7 +68,7 @@ export default tseslint.config(
     },
     rules: {
       ...sharedRules,
-      'no-restricted-syntax': ['error', noMutableExport],
+      'no-restricted-syntax': ['error', noMutableExport, noEnum],
     },
   },
   // Kernel internal: suppress redundant-type-constituents since KernelShape=any is intentional
@@ -96,6 +106,7 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         noMutableExport,
+        noEnum,
         {
           selector: 'MemberExpression[property.name="oc"]',
           message:
