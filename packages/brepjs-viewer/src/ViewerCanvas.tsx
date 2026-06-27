@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ErrorInfo, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import SceneSetup from './SceneSetup.js'; // default export; renders its own OrbitControls
+import { ViewerErrorBoundary } from './ErrorBoundary.js';
 import { buildGeometry } from './geometry.js';
 import type { MeshData, Projection, ViewName } from './types.js';
 
@@ -15,6 +16,15 @@ export interface ViewerCanvasProps {
   gridVisible?: boolean;
   projection?: Projection;
   onFirstFrame?: () => void;
+  /**
+   * Called when a render-path error is caught by the built-in error boundary
+   * (instead of white-screening the host page). Forward the real Error to your
+   * error tracker — it carries the stack and component tree the browser's
+   * synthetic `window.onerror` event drops.
+   */
+  onError?: (error: Error, info: ErrorInfo) => void;
+  /** Override the boundary's fallback UI. See {@link ViewerErrorBoundary}. */
+  errorFallback?: ReactNode | ((error: Error, reset: () => void) => ReactNode);
   children?: ReactNode;
 }
 
@@ -116,23 +126,30 @@ export function ViewerCanvas({
   gridVisible = true,
   projection = 'perspective',
   onFirstFrame,
+  onError,
+  errorFallback,
   children,
 }: ViewerCanvasProps) {
   return (
-    // `always` while spinning so the turntable advances; `demand` otherwise keeps the
-    // GPU idle. preserveDrawingBuffer stays on so screenshots read back in both modes.
-    <Canvas frameloop={autoRotate ? 'always' : 'demand'} gl={{ preserveDrawingBuffer: true }}>
-      <LocalClipping />
-      {projection === 'orthographic' && <OrthoCamera />}
-      <SceneSetup autoRotate={autoRotate} gridVisible={gridVisible} />
-      <Framing
-        data={data}
-        view={view}
-        fitSignal={fitSignal}
-        projection={projection}
-        onFirstFrame={onFirstFrame}
-      />
-      {children}
-    </Canvas>
+    // The boundary wraps the Canvas (not its 3D children) because R3F surfaces
+    // render errors from its 3D subtree to the nearest host-tree boundary, and a
+    // throw inside the canvas would otherwise unmount the whole host page.
+    <ViewerErrorBoundary onError={onError} fallback={errorFallback}>
+      {/* `always` while spinning so the turntable advances; `demand` otherwise keeps the
+          GPU idle. preserveDrawingBuffer stays on so screenshots read back in both modes. */}
+      <Canvas frameloop={autoRotate ? 'always' : 'demand'} gl={{ preserveDrawingBuffer: true }}>
+        <LocalClipping />
+        {projection === 'orthographic' && <OrthoCamera />}
+        <SceneSetup autoRotate={autoRotate} gridVisible={gridVisible} />
+        <Framing
+          data={data}
+          view={view}
+          fitSignal={fitSignal}
+          projection={projection}
+          onFirstFrame={onFirstFrame}
+        />
+        {children}
+      </Canvas>
+    </ViewerErrorBoundary>
   );
 }

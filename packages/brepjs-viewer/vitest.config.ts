@@ -13,6 +13,6 @@ export default defineConfig({
     testTimeout: 90000,
     pool: 'forks',
     execArgv: ['--max-old-space-size=6144'],
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
   },
 });

@@ -7,6 +7,10 @@ export default defineConfig({
   build: {
     target: 'es2022',
     minify: false,
+    // Ship source maps so a consuming app's bundler can chain them through its
+    // own minification — error trackers then resolve viewer frames to original
+    // source instead of a stack-less synthetic `e.useCache`-style report.
+    sourcemap: true,
     lib: {
       entry: { 'brepjs-viewer': resolve(__dirname, 'src/index.ts') },
       formats: ['es', 'cjs'],

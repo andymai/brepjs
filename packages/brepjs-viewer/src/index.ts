@@ -1,4 +1,5 @@
 export { Renderer, type RendererProps } from './Renderer.js';
+export { ViewerErrorBoundary, type ViewerErrorBoundaryProps } from './ErrorBoundary.js';
 export { default as EdgeRenderer } from './EdgeRenderer.js';
 export { default as SelectionHighlight } from './SelectionHighlight.js';
 export { default as SceneSetup } from './SceneSetup.js';
