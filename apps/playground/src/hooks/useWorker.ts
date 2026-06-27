@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { ToWorker, FromWorker } from '../workers/workerProtocol';
 import { useEngineStore } from '../stores/engineStore';
+import { isStaleAssetError, reloadForStaleBundle } from '../lib/preloadErrorRecovery';
 
 export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => void) {
   const workerRef = useRef<Worker | null>(null);
@@ -26,6 +27,13 @@ export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => 
           onSettled?.();
           break;
         case 'init-error':
+          // A redeploy renames the worker's content-hashed `brepjs` chunks and
+          // its OCCT WASM 404s on this stale tab — the worker-side twin of the
+          // main thread's `vite:preloadError`. Self-heal with the same
+          // one-reload-per-10s recovery (the reload navigates away, so skip
+          // surfacing the error). If the guard suppresses the reload, the fresh
+          // bundle still failed, so fall through to the error UI.
+          if (isStaleAssetError(msg.error) && reloadForStaleBundle()) break;
           engine.setError(msg.error);
           onSettled?.();
           break;
