@@ -54,7 +54,7 @@ When `autoHeal` leaves `report.isValid === false`:
 
 ## Type-specific healers and their failure codes
 
-`healSolid(solid)` → `Result<ValidSolid>` (`healingFns.ts`) validates the healed result and fails three ways:
+`healSolid(solid)` → `Result<ValidSolid>` (`healingFns.ts`) validates the healed result and resolves to one of three outcomes (one success, two errors):
 
 | Kernel result               | Input state   | Outcome                              |
 | --------------------------- | ------------- | ------------------------------------ |
@@ -62,7 +62,7 @@ When `autoHeal` leaves `report.isValid === false`:
 | `null`                      | invalid       | `HEAL_NO_EFFECT`                     |
 | non-null but re-check fails | —             | `HEAL_SOLID_INCOMPLETE`              |
 
-`healSolid` calls `invalidateShapeCache(cast)` because brepkit heals **in-place** and returns the same handle, so the cached `isValid` would otherwise be stale (`healingFns.ts`). Other healers: `healFace` (`:83`), `healWire(wire, face?)` (`:106`, `face` gives surface context). The polymorphic `heal(shape)` (`:129-141`) dispatches solid/face/wire and returns any other type unchanged.
+`healSolid` calls `invalidateShapeCache(cast)` because brepkit heals **in-place** and returns the same handle, so the cached `isValid` would otherwise be stale (`healingFns.ts`). Other healers: `healFace`, `healWire(wire, face?)` (`face` gives surface context). The polymorphic `heal(shape)` dispatches solid/face/wire and returns any other type unchanged.
 
 ## Validity caching
 

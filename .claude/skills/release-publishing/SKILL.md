@@ -24,7 +24,7 @@ Every release in this repo flows through one workflow: `.github/workflows/releas
    - any other leaf → **held while a root release PR is open**; merged on a later run after root lands.
 4. Root release PR merges. CI passes trivially on release PRs — `ci.yml` skips the paths-filter for `release-please--*` branches, and `ci-pass` treats skipped jobs as pass — so `--auto` completes.
 5. `publish-brepjs` runs inline in `release-please.yml`: `npm ci && npm run build && npm publish --provenance` (OIDC). This is the ONLY package published inline.
-6. Merging bumps `main`. The next release-please run regenerates each leaf PR with a now-valid `brepjs` pin, auto-merges them, and each leaf's publish job dispatches its own `publish-brepjs-<pkg>.yml` with `-f dry_run=false --ref <release-tag>`.
+6. Merging bumps `main`. The next release-please run regenerates each leaf PR with a now-valid `brepjs` pin, auto-merges them, and each **auto-publishing** leaf's job dispatches its own `publish-brepjs-<pkg>.yml` with `-f dry_run=false --ref <release-tag>`. (`brepjs-opencascade` is the exception — always manual via `publish-opencascade.yml`; `brepjs-voxel-wasm` has no publish workflow.)
 
 Leaves dispatch against the **immutable release tag** release-please just created, never `main`: the dispatch API accepts a tag but rejects a raw SHA, and the tag pin avoids publishing the wrong commit if another push lands mid-window.
 
@@ -77,7 +77,7 @@ gh workflow run publish-opencascade.yml -f dry_run=false --ref <release-tag>
 | `brepjs-bim`         | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-bim.yml`                         |
 | `brepjs-sheetmetal`  | yes                      | yes (after root)  | yes, dispatched             | `publish-brepjs-sheetmetal.yml`                  |
 | `brepjs-opencascade` | yes                      | **held (manual)** | **manual only**             | `publish-opencascade.yml` (Docker WASM)          |
-| `brepjs-voxel-wasm`  | yes (bumps `Cargo.toml`) | n/a               | **no workflow, not on npm** | none                                             |
+| `brepjs-voxel-wasm`  | yes (bumps `Cargo.toml`) | yes (after root)  | **no workflow, not on npm** | none                                             |
 | `brepjs-viewer`      | **no**                   | n/a               | manual                      | `publish-brepjs-viewer.yml`                      |
 | `brepjs-voxel`       | no                       | n/a               | not published               | none                                             |
 

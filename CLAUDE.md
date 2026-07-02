@@ -22,8 +22,8 @@ Monorepo packages:
 - `packages/brepjs-bim`: IFC/BIM parametric building elements + IFC import/export (experimental, published)
 - `packages/brepjs-sheetmetal`: Sheet-metal authoring + unfold/flat-pattern + DXF (experimental, published)
 - `packages/brepjs-manifold`: Manifold mesh/CSG preview kernel (experimental, unpublished)
-- `packages/brepjs-viewer`: Shared React/R3F renderer (consumed by the playground and brepjs-cad; not yet published)
-- `packages/brepjs-cad`: Agent skill + verify/preview CLI + WASM viewer (not yet published; skill ships via the repo Claude-plugin marketplace)
+- `packages/brepjs-viewer`: Shared React/R3F renderer (consumed by the playground and brepjs-cad; published, manual publish — unmanaged by release-please)
+- `packages/brepjs-cad`: Agent skill + verify/preview CLI + WASM viewer (published; skill also ships via the repo Claude-plugin marketplace)
 
 ## Commands
 
