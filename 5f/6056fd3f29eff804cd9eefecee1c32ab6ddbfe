@@ -1,0 +1,19 @@
+src/kernel/types.ts
+  s_2ae910953a6256::t_fe1c1598bad1ba 93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "5f6056fd3f29eff804cd9eefecee1c32ab6ddbfe",
+  "prompts": {},
+  "sessions": {
+    "s_2ae910953a6256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbd16fdf-22fc-4886-8c7f-1ced970e403b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
