@@ -90,10 +90,8 @@ export interface MeshOptions {
   /** Linear deflection tolerance for tessellation. */
   tolerance: number;
   /**
-   * Angular deflection tolerance for tessellation.
-   *
-   * **Cross-kernel note**: brepkit only supports linear deflection; this
-   * parameter is ignored (a one-time warning is emitted). OCCT honours both.
+   * Angular deflection tolerance for tessellation. Honoured by both the OCCT
+   * and brepkit kernels; a non-positive value falls back to the kernel default.
    */
   angularTolerance: number;
   skipNormals?: boolean;
