@@ -21,21 +21,21 @@ An example is an `Example { id, label, description, code }` (`apps/playground/sr
 | `apps/playground/src/lib/examples/bim.ts`        | BIM         | imports `brepjs-bim`, uses top-level `await` |
 | `apps/playground/src/lib/examples/index.ts`      | barrel      | builds `CATEGORIES` + flat `EXAMPLES`        |
 
-To add an example: append an `Example` to the appropriate category array. To add a new category: create a file exporting an `Example[]`, then register it in `CATEGORIES` (`index.ts:23-28`).
+To add an example: append an `Example` to the appropriate category array. To add a new category: create a file exporting an `Example[]`, then register it in `CATEGORIES` (`index.ts`).
 
 ### Code-string rules (hard constraints)
 
-The `code` field becomes the Monaco editor buffer verbatim AND is executed by both the browser worker and the root test harness. It must obey (`types.ts:4-9`):
+The `code` field becomes the Monaco editor buffer verbatim AND is executed by both the browser worker and the root test harness. It must obey (`types.ts`):
 
-- **Self-contained.** No shared helpers, no imports of other examples, no TS-only constructs the harness's sucrase strip can't handle (`transforms: ['typescript']`, `tests/helpers/playgroundExampleEval.ts:71-75`).
-- **Named imports only, from the recognized specifiers.** The eval harness rewrites only the `import { … } from '<spec>'` form for these specifiers: `brepjs`, `brepjs/quick`, `brepjs/playground`, `brepjs-sheetmetal`, `brepjs-bim` (`playgroundExampleEval.ts:77-88`). Namespace (`import * as`) and default imports are NOT rewritten and will fail at runtime. Prefer `'brepjs/quick'`.
-- **Ends in `export default <shape | shape[]>`.** Return one shape or an array; an array renders each shape. The harness turns `export default` into `return` (`playgroundExampleEval.ts:88`).
-- **`color()` / `present()` come from `'brepjs/playground'`**, not published API. `color(shape, css)` tags a color; `present(shape, { dxf, ifc, bimTree, overlay2d })` attaches downloadable artifacts. Both are stripped back to the shape before meshing (`playgroundExampleEval.ts:56-65, 108-113`).
+- **Self-contained.** No shared helpers, no imports of other examples, no TS-only constructs the harness's sucrase strip can't handle (`transforms: ['typescript']`, `tests/helpers/playgroundExampleEval.ts`).
+- **Named imports only, from the recognized specifiers.** The eval harness rewrites only the `import { … } from '<spec>'` form for these specifiers: `brepjs`, `brepjs/quick`, `brepjs/playground`, `brepjs-sheetmetal`, `brepjs-bim` (`playgroundExampleEval.ts`). Namespace (`import * as`) and default imports are NOT rewritten and will fail at runtime. Prefer `'brepjs/quick'`.
+- **Ends in `export default <shape | shape[]>`.** Return one shape or an array; an array renders each shape. The harness turns `export default` into `return` (`playgroundExampleEval.ts`).
+- **`color()` / `present()` come from `'brepjs/playground'`**, not published API. `color(shape, css)` tags a color; `present(shape, { dxf, ifc, bimTree, overlay2d })` attaches downloadable artifacts. Both are stripped back to the shape before meshing (`playgroundExampleEval.ts, 108-113`).
 - **`unwrap()` finishing ops — never `x.ok ? x.value : base`.** See Gate 2; the silent-fallback ban is enforced by regex.
 
 ### Comment style
 
-Match `basics.ts`: one punchy header line, aligned trailing dimension comments, terse one-line section notes. Example from `basics.ts:13`:
+Match `basics.ts`: one punchy header line, aligned trailing dimension comments, terse one-line section notes. Example from `basics.ts`:
 
 ```
 const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));

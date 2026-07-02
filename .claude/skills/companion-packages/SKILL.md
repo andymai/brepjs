@@ -9,20 +9,20 @@ The root `package.json` `workspaces` field is the source of truth for the monore
 
 ## Package map
 
-| Workspace                     | Purpose                                                          | npm status                                                                            |
-| ----------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `brepjs` (root)               | Core CAD library                                                 | Published; auto-released via release-please                                           |
-| `packages/brepjs-opencascade` | Custom OpenCascade WASM build (fallback kernel)                  | Published; **manual publish only** (`publish-opencascade.yml` — expensive WASM build) |
-| `packages/brepjs-bim`         | IFC4 parametric building elements + IFC import/export            | Published, experimental; auto-released                                                |
-| `packages/brepjs-sheetmetal`  | Flange authoring, fold/unfold flat patterns, DXF/STEP            | Published, experimental; auto-released                                                |
-| `packages/brepjs-cad`         | Agent skill pipeline + `brep`/`brep-mcp` CLI bins + WASM viewer  | Published; auto-released                                                              |
-| `packages/brepjs-viewer`      | Shared React/R3F renderer (playground + brepjs-cad)              | Published; **manual publish, deliberately unmanaged by release-please**               |
-| `packages/brepjs-manifold`    | Manifold mesh/CSG preview kernel adapter                         | Unpublished, source-shipped (`exports` → `./src/index.ts`, no build)                  |
-| `packages/brepjs-voxel-wasm`  | Rust→WASM voxel/SDF engine (`wasm-pack` build, committed `pkg/`) | Versioned/tagged by release-please but **no publish workflow — not on npm**           |
-| `packages/brepjs-voxel`       | TS loader for brepjs-voxel-wasm                                  | Unpublished, source-shipped                                                           |
-| `packages/brepjs-vscode`      | VS Code extension: live 3D preview for `.brep.ts`                | `private: true` — the only truly-private package                                      |
-| `apps/playground`             | Interactive docs playground (Vercel)                             | `private: true`                                                                       |
-| `apps/docs`                   | VitePress docs site                                              | `private: true`                                                                       |
+| Workspace                     | Purpose                                                          | npm status                                                                                           |
+| ----------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `brepjs` (root)               | Core CAD library                                                 | Published; auto-released via release-please                                                          |
+| `packages/brepjs-opencascade` | Custom OpenCascade WASM build (fallback kernel)                  | Published; **manual publish only** (`publish-opencascade.yml` — expensive WASM build)                |
+| `packages/brepjs-bim`         | IFC4 parametric building elements + IFC import/export            | Published, experimental; auto-released                                                               |
+| `packages/brepjs-sheetmetal`  | Flange authoring, fold/unfold flat patterns, DXF/STEP            | Published, experimental; auto-released                                                               |
+| `packages/brepjs-cad`         | Agent skill pipeline + `brep`/`brep-mcp` CLI bins + WASM viewer  | Published; auto-released                                                                             |
+| `packages/brepjs-viewer`      | Shared React/R3F renderer (playground + brepjs-cad)              | Published; **manual publish, deliberately unmanaged by release-please**                              |
+| `packages/brepjs-manifold`    | Manifold mesh/CSG preview kernel adapter                         | Unpublished, source-shipped (`exports` → `./src/index.ts`, no build)                                 |
+| `packages/brepjs-voxel-wasm`  | Rust→WASM voxel/SDF engine (`wasm-pack` build, committed `pkg/`) | Versioned/tagged by release-please but **no publish workflow — not on npm**                          |
+| `packages/brepjs-voxel`       | TS loader for brepjs-voxel-wasm                                  | Unpublished, source-shipped                                                                          |
+| `packages/brepjs-vscode`      | VS Code extension: live 3D preview for `.brep.ts`                | `private: true` — the only `packages/` workspace that is private (not published, not source-shipped) |
+| `apps/playground`             | Interactive docs playground (Vercel)                             | `private: true`                                                                                      |
+| `apps/docs`                   | VitePress docs site                                              | `private: true`                                                                                      |
 
 Three tiers, and the rules differ per tier:
 

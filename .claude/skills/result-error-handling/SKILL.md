@@ -16,7 +16,7 @@ Pick the channel before writing any error-handling code:
 | Expected failure (bad input, kernel op failed, unsupported capability, file won't parse) | `Result` | `err(validationError(...))`, `kernelCall(...)`, etc.                                               |
 | Programmer bug / broken invariant ("this can never happen")                              | Throw    | `bug(location, message)` from `src/utils/bug.ts` — throws `BrepBugError`, never meant to be caught |
 | Out-of-bounds index that is valid by construction (under `noUncheckedIndexedAccess`)     | Throw    | `safeIndex(arr, i, context)` in `src/core/errors.ts` — the sanctioned `arr[i]!` replacement        |
-| Cooperative cancellation                                                                 | Throw    | `if (signal?.aborted) throw signal.reason` (see `src/topology/booleanFns.ts:131`)                  |
+| Cooperative cancellation                                                                 | Throw    | `if (signal?.aborted) throw signal.reason` (see `src/topology/booleanFns.ts`)                      |
 
 The rule for Layers 2–3 (`.claude/commands/new-operation.md`, CLAUDE.md): **never throw for expected failures — return `ok(...)` or `err(...)`**. No ESLint rule enforces this mechanically, so it must be applied by discipline in every new `*Fns.ts` function. The exceptions above (`bug()`, `safeIndex()`, abort rethrows) are the only tolerated throws.
 
@@ -49,7 +49,7 @@ On exception, the error message becomes `` `${message}: ${translated}` `` where 
 
 ### Manual construction: pick the kind-matching constructor
 
-`BrepError` is a plain object: `{ kind, code, message, suggestion?, cause?, metadata? }` (`src/core/errors.ts:221`). There are 9 kinds, each with a constructor sharing the signature `(code, message, cause?, metadata?, suggestion?)`:
+`BrepError` is a plain object: `{ kind, code, message, suggestion?, cause?, metadata? }` (`src/core/errors.ts`). There are 9 kinds, each with a constructor sharing the signature `(code, message, cause?, metadata?, suggestion?)`:
 
 | Kind               | Constructor          | Use for                                                                                      |
 | ------------------ | -------------------- | -------------------------------------------------------------------------------------------- |
@@ -66,7 +66,7 @@ On exception, the error message becomes `` `${message}: ${translated}` `` where 
 Always thread context through:
 
 - **`cause`**: the original exception. Dropping it destroys kernel diagnostics.
-- **`metadata`**: structured context. Real example from `src/topology/modifierFns.ts:306`:
+- **`metadata`**: structured context. Real example from `src/topology/modifierFns.ts`:
 
 ```ts
 return err(
@@ -82,7 +82,7 @@ return err(
 
 ## Error codes
 
-`BrepErrorCode` (`src/core/errors.ts:35-203`) is an `as const` catalog of ~124 codes grouped by category, with a matching literal-union type. Use `BrepErrorCode.X` instead of a raw string whenever the code exists — but know two caveats:
+`BrepErrorCode` (`src/core/errors.ts`) is an `as const` catalog of ~124 codes grouped by category, with a matching literal-union type. Use `BrepErrorCode.X` instead of a raw string whenever the code exists — but know two caveats:
 
 1. `BrepError.code` is typed **`string`**, not the union — a raw-string typo compiles fine. The catalog is advisory; checking it is on the author.
 2. The catalog is **incomplete**: dozens of codes exist in src only as raw string literals (`FILLET_FAILED`, `WIRE_NOT_CLOSED`, `THREAD_INVALID_PITCH`, and whole families). Grep before assuming a code is new.
@@ -110,7 +110,7 @@ To add a new code:
 | Void success                      | `OK` constant (`Ok<Unit>`)                                                 | For operations with nothing to return                                                             |
 | Nullable → Result                 | `fromNullable(value, errorFn)`                                             |                                                                                                   |
 
-The `unwrap()` policy (CLAUDE.md, `docs/getting-started.md`): sanctioned in **tests** (the standard extractor), **scripts/examples**, and internal calls that are **infallible by construction** — e.g. `unwrap(resolvePlane('XY', origin))` in `src/core/planeOps.ts:150`, where the input is a known-valid literal. Never use it on a user-facing fallible path in production code; use `isOk()`/`match()` there.
+The `unwrap()` policy (CLAUDE.md, `docs/getting-started.md`): sanctioned in **tests** (the standard extractor), **scripts/examples**, and internal calls that are **infallible by construction** — e.g. `unwrap(resolvePlane('XY', origin))` in `src/core/planeOps.ts`, where the input is a known-valid literal. Never use it on a user-facing fallible path in production code; use `isOk()`/`match()` there.
 
 Note the kernel-free subpath `brepjs/core` (`src/core.ts`) exports only a subset of combinators — no `pipeline`, `mapBoth`, `tap`/`tapErr`, `fromNullable`, `or`/`orElse`, `zip`. The full set is on the main `brepjs` entry.
 

@@ -116,13 +116,13 @@ Expected during a release train: while the **root** brepjs release PR (branch `r
 
 ## Blind spots — things CI never runs
 
-- **`alwaysExclude` tests never execute in any CI project** (`vitest.config.ts:18-36`): `tests/brepkit-adapter.test.ts`, `tests/brepkit-validation.test.ts`, `tests/kernel-agreement.test.ts`, `tests/io-stress.test.ts`, plus `benchmarks/`, the cad/viewer packages (own jobs), `apps/`, and worktree dirs. They rot silently — run them locally when touching that code.
+- **`alwaysExclude` tests never execute in any CI project** (`vitest.config.ts`): `tests/brepkit-adapter.test.ts`, `tests/brepkit-validation.test.ts`, `tests/kernel-agreement.test.ts`, `tests/io-stress.test.ts`, plus `benchmarks/`, the cad/viewer packages (own jobs), `apps/`, and worktree dirs. They rot silently — run them locally when touching that code.
 - **The brepkit kernel is not a PR gate**: the default gate runs occt-wasm only. Run `npm run test:brepkit` locally for brepkit-affecting changes (see `kernel-abstraction`).
 - **apps/playground is outside root lint + vitest**: only `tsc -b` (via `playground-build`) gates it in CI. See `playground-examples`.
 
 ## Stale docs — do not inherit
 
-`CONTRIBUTING.md` (~lines 222-235) lists coverage thresholds as **83/73/64/73** and claims "CI runs the full test suite with coverage enforcement." Both are wrong. Actual thresholds (`vitest.config.ts:91-96`): **statements 85, branches 71, functions 91, lines 88**. Coverage is main-only, informational, and `continue-on-error` — never a PR gate. Trust `vitest.config.ts`, not `CONTRIBUTING.md`.
+`CONTRIBUTING.md` (~lines 222-235) lists coverage thresholds as **83/73/64/73** and claims "CI runs the full test suite with coverage enforcement." Both are wrong. Actual thresholds (`vitest.config.ts`): **statements 85, branches 71, functions 91, lines 88**. Coverage is main-only, informational, and `continue-on-error` — never a PR gate. Trust `vitest.config.ts`, not `CONTRIBUTING.md`.
 
 ## Additional resources
 

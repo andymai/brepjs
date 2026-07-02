@@ -2,7 +2,7 @@
 
 ## Kernels and how to run each
 
-Registry: `tests/helpers/kernelRegistry.ts:41-113` — four kernels, `occt-wasm` is the default (`tests/setup-kernel.ts` reads `TEST_KERNEL`, defaulting via `defaultKernelId()`):
+Registry: `tests/helpers/kernelRegistry.ts` — four kernels, `occt-wasm` is the default (`tests/setup-kernel.ts` reads `TEST_KERNEL`, defaulting via `defaultKernelId()`):
 
 | id          | Notes                                                   |
 | ----------- | ------------------------------------------------------- |
@@ -11,7 +11,7 @@ Registry: `tests/helpers/kernelRegistry.ts:41-113` — four kernels, `occt-wasm`
 | `brepkit`   | External `brepkit-wasm`. Local-only.                    |
 | `manifold`  | Mesh/CSG preview kernel. Local-only, several ops gated. |
 
-Commands (root `package.json`): `npm run test` / `test:ci` / `test:full` run the `occt-wasm` project only; `npm run test:occt` and `npm run test:brepkit` run those projects. Each vitest project sets `env: { TEST_KERNEL: k.id }` (`vitest.config.ts:98-102`). **CI runs only `occt-wasm`** (`.github/workflows/ci.yml:254-258`, sharded 4-way) — reproduce brepkit/manifold divergences locally.
+Commands (root `package.json`): `npm run test` / `test:ci` / `test:full` run the `occt-wasm` project only; `npm run test:occt` and `npm run test:brepkit` run those projects. Each vitest project sets `env: { TEST_KERNEL: k.id }` (`vitest.config.ts`). **CI runs only `occt-wasm`** (`.github/workflows/ci.yml:254-258`, sharded 4-way) — reproduce brepkit/manifold divergences locally.
 
 Kernel capability flags (`kernelRegistry.ts`): `projection`, `constraintSketch`, `kernel2D`, `variableFillet`, `offsetSolidV2`, `gridPattern`. `excludeTests` lists files a kernel can't run (occt-wasm excludes brepkit-only + gltfRoundTrip files).
 
@@ -35,19 +35,19 @@ Tests gate with `skipIfDiverges(ctx, key)` (`:548-556`). Cross-kernel assertions
 1. Analytic reference (closed-form volume/area).
 2. An alternate representation of the same shape.
 
-Worked example (#968): a torus **primitive** matches its analytic volume exactly, but a **revolve** sweep of the same profile undershoots by ~2% (inscribed-polygon surface). Two references isolate the loss to the _sweep_, not the primitive (`kernelDivergenceCoverage.test.ts:67-95`).
+Worked example (#968): a torus **primitive** matches its analytic volume exactly, but a **revolve** sweep of the same profile undershoots by ~2% (inscribed-polygon surface). Two references isolate the loss to the _sweep_, not the primitive (`kernelDivergenceCoverage.test.ts`).
 
 ## Known brepkit inscribed-polygon family (#965–968)
 
 Status as of brepkit-wasm 2.116.1:
 
-- **#967** (fillet-on-cylinder-rim collapse) — **FIXED** on brepkit; the test now runs green there as a regression tripwire. Only **manifold** stays gated (`kernelDivergenceCoverage.test.ts:30-39`; registry `manifold.modifierFns.filletCylindricalEdge`).
+- **#967** (fillet-on-cylinder-rim collapse) — **FIXED** on brepkit; the test now runs green there as a regression tripwire. Only **manifold** stays gated (`kernelDivergenceCoverage.test.ts`; registry `manifold.modifierFns.filletCylindricalEdge`).
 - **#968** (`extrudeFns.revolveCircularProfile`) — **still divergent** on brepkit (~2% torus-volume undershoot).
 - #965 (sweep) / #966 (extrude) — same inscribed-polygon family. Tests cite upstream andymai/brepkit issues.
 
 ## occt-wasm has no raw `oc`
 
-The default kernel exposes no raw OCCT handle (`kernelDivergences.ts:421-458`). Raw-API debugging tricks — inspecting `TopoDS_*` null shapes, patching Emscripten `FS.readFile` — do not exist there; use the branded-shape query surface (`describe`, `getBounds`, `measure*`) instead.
+The default kernel exposes no raw OCCT handle (`kernelDivergences.ts`). Raw-API debugging tricks — inspecting `TopoDS_*` null shapes, patching Emscripten `FS.readFile` — do not exist there; use the branded-shape query surface (`describe`, `getBounds`, `measure*`) instead.
 
 ## Conformance matrix
 

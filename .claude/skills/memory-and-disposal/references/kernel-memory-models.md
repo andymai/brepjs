@@ -17,11 +17,11 @@ leak protection on the Embind kernels.
 
 ## occt-wasm arena details (the default)
 
-`handle()` in `src/kernel/occtWasm/helpers.ts:24-38` builds the opaque handle. Its
-`delete` field is the shared `noop` (`helpers.ts:22`). The entity lives in a WASM
+`handle()` in `src/kernel/occtWasm/helpers.ts` builds the opaque handle. Its
+`delete` field is the shared `noop` (`helpers.ts`). The entity lives in a WASM
 linear-memory arena owned by the `occt-wasm` npm package's `OcctKernel`.
 
-Freeing happens only through the adapter (`src/kernel/occtWasm/occtWasmAdapter.ts:182-188`):
+Freeing happens only through the adapter (`src/kernel/occtWasm/occtWasmAdapter.ts`):
 
 ```ts
 dispose(h: { delete(): void }): void {
@@ -33,7 +33,7 @@ dispose(h: { delete(): void }): void {
 }
 ```
 
-Consequence for `createHandle` (`src/core/disposal.ts:144-182`): disposing a branded
+Consequence for `createHandle` (`src/core/disposal.ts`): disposing a branded
 shape calls `ocShape.delete()` (line 153), which is the no-op under occt-wasm. So
 `using`/`Symbol.dispose` on a branded shape:
 
@@ -50,7 +50,7 @@ in the arena until kernel teardown unless internal code calls
 
 Here `.wrapped` is a real `TopoDS_Shape` Embind proxy. `ocShape.delete()` frees
 the WASM object immediately. A missed `using` is a true leak that grows linear
-memory — the `FinalizationRegistry` safety net in `disposal.ts:115-122` is the only
+memory — the `FinalizationRegistry` safety net in `disposal.ts` is the only
 thing that eventually reclaims it, and only on a non-deterministic GC pass.
 
 ## Internal free of raw kernel temporaries
@@ -59,19 +59,19 @@ thing that eventually reclaims it, and only on a non-deterministic GC pass.
 directly with `getKernel().dispose(...)` (not `using`, because these are raw
 `KernelShape`s, not branded handles). Real examples:
 
-- `src/topology/booleanFns.ts:157,248,329` — discarded boolean results
-- `src/operations/loftFns.ts:156` — temp vertices
-- `src/core/validityTypes.ts:112,220` — temp validation shapes
+- `src/topology/booleanFns.ts` — discarded boolean results
+- `src/operations/loftFns.ts` — temp vertices
+- `src/core/validityTypes.ts` — temp validation shapes
 
 ## Embind vector temporaries always need real cleanup
 
-`makeVecU32` / `makeVecInt` / `makeVecDouble` (`src/kernel/occtWasm/helpers.ts:86-102`)
+`makeVecU32` / `makeVecInt` / `makeVecDouble` (`src/kernel/occtWasm/helpers.ts`)
 return Embind vectors that **must** be released via `.delete()` in a `try/finally`
 by the caller, on every kernel — these are not arena handles.
 
 ## Kernel-swap contract
 
 `KernelShape` is opaque (`any`) — "a pointer into a WASM linear memory arena" or
-an integer handle (`src/kernel/types.ts:17-29`; `docs/kernel-swap.md`). Layer 2+
+an integer handle (`src/kernel/types.ts`; `docs/kernel-swap.md`). Layer 2+
 code must never call methods on `.wrapped`; route everything through
 `getKernel().method(shape.wrapped)`. See the `kernel-abstraction` skill.
