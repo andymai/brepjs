@@ -1,0 +1,25 @@
+.claude/skills/release-publishing/SKILL.md
+  s_2ae910953a6256::t_d0e111c2e4e55f 27
+  s_2ae910953a6256::t_c0e97dd6e416a1 80
+CLAUDE.md
+  s_2ae910953a6256::t_2d7e57ae090ad1 25-26
+.claude/skills/debugging-geometry/references/healing.md
+  s_2ae910953a6256::t_a397edd95f7943 65
+  s_2ae910953a6256::t_5070721c9945d3 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "9bd69c0c4db4f513eac228fa929f19cf7b950414",
+  "prompts": {},
+  "sessions": {
+    "s_2ae910953a6256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbd16fdf-22fc-4886-8c7f-1ced970e403b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
