@@ -1,0 +1,69 @@
+# Healing pipeline reference
+
+All symbols in `src/topology/healingFns.ts` unless noted.
+
+## `autoHeal(shape, options?)` → `Result<{ shape, report }>`
+
+The one-call entry point. Dispatches to `ShapeFix_Solid`/`Face`/`Wire` by shape type. Marked `// brepjs-patterns-disable: max-function-lines`.
+
+### `AutoHealOptions` (`healingFns.ts:156-167`)
+
+| Option                | Default | Effect                                     |
+| --------------------- | ------- | ------------------------------------------ |
+| `fixWires`            | `true`  | Fix wire gaps/connectivity                 |
+| `fixFaces`            | `true`  | Fix face orientation/geometry              |
+| `fixSolids`           | `true`  | Fix shell gaps/orientation                 |
+| `sewTolerance`        | _unset_ | **Sewing runs only when this is provided** |
+| `fixSelfIntersection` | `false` | Fix wire self-intersections                |
+
+### `HealingReport` (`healingFns.ts:170-179`)
+
+```
+{ isValid, alreadyValid, wiresHealed, facesHealed, solidHealed, steps: string[], diagnostics: HealingStepDiagnostic[] }
+```
+
+`HealingStepDiagnostic` = `{ name, attempted, succeeded, detail? }`.
+
+- `wiresHealed`/`facesHealed` are `Math.abs(after - before)` **count deltas** (`healingFns.ts:301-305`) — a heuristic change-detector, not a repair count.
+- On the invalid path, diagnostic `name`s appear in order: `sew`, `fixSelfIntersection`, then `healSolid`/`healFace`/`healWire` (or `healShape` with `detail:'skipped by options'`), then `finalValidation` (`healingFns.ts:228-313`).
+
+### The short-circuit (the #1 trap)
+
+When `isValid(shape)` is already true, `autoHeal` returns immediately (`healingFns.ts:202-216`):
+
+```
+report = {
+  isValid: true, alreadyValid: true,
+  wiresHealed: 0, facesHealed: 0, solidHealed: false,
+  steps: ['Shape already valid'],
+  diagnostics: [{ name: 'validation', attempted: true, succeeded: true }],
+}
+```
+
+No `sew`/`fixSelfIntersection`/`healSolid` diagnostics because **those passes never executed**. Do not read an `alreadyValid` report as "healing inspected the shape and found nothing." Confirmed by `tests/autoHeal.test.ts:27-38` and `:100-105`.
+
+## Escalation ladder
+
+When `autoHeal` leaves `report.isValid === false`:
+
+1. Retry with an explicit `sewTolerance` (turns on the sewing pass).
+2. `fixShape(shape)` — general `ShapeFix_Shape` repair (`healingFns.ts:337-345`).
+3. `solidFromShell(shell)` — promote a closed shell to a solid (`healingFns.ts:352-376`).
+4. `fixSelfIntersection(wire)` — targeted self-intersection repair (`healingFns.ts:383-401`).
+5. Give up: surface `HEAL_SOLID_INCOMPLETE` / `HEAL_NO_EFFECT` to the caller.
+
+## Type-specific healers and their failure codes
+
+`healSolid(solid)` → `Result<ValidSolid>` (`healingFns.ts:36-76`) validates the healed result and fails three ways:
+
+| Kernel result               | Input state   | Outcome                              |
+| --------------------------- | ------------- | ------------------------------------ |
+| `null`                      | already valid | returns the original solid unchanged |
+| `null`                      | invalid       | `HEAL_NO_EFFECT`                     |
+| non-null but re-check fails | —             | `HEAL_SOLID_INCOMPLETE`              |
+
+`healSolid` calls `invalidateShapeCache(cast)` because brepkit heals **in-place** and returns the same handle, so the cached `isValid` would otherwise be stale (`healingFns.ts:62-64`). Other healers: `healFace` (`:83`), `healWire(wire, face?)` (`:106`, `face` gives surface context). The polymorphic `heal(shape)` (`:129-141`) dispatches solid/face/wire and returns any other type unchanged.
+
+## Validity caching
+
+`isValid` delegates to `getCachedIsValid` (`healingFns.ts:23-25`). When a value looks stale after an in-place repair, call `invalidateShapeCache` (in `src/topology/topologyQueryFns.ts`, re-exported from the index).
