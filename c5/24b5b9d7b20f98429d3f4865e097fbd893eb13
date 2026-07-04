@@ -1,0 +1,37 @@
+branding/type-specimen.html
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-361
+packages/brepjs-cad/_meshlite.mts
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-16
+scripts/gen-reddit-banner.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-155
+branding/reddit/part/processPart.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-70
+branding/fonts/.gitignore
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-2
+branding/reddit/part/render.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-13
+branding/reddit/part/pipe-tee.step
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-9040
+branding/reddit/part/report.json
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-63
+branding/reddit/part/pipe-tee.brep.ts
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-31
+.size-limit.json
+  s_6b26c9d8511f7e::t_f2d6b50e0c1c80 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c524b5b9d7b20f98429d3f4865e097fbd893eb13",
+  "prompts": {},
+  "sessions": {
+    "s_6b26c9d8511f7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e53c038e-9a30-4e32-ab5c-d99ff5174c02",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
