@@ -1,0 +1,20 @@
+src/topology/metadata/originTrackingFns.ts
+  s_6b26c9d8511f7e::t_70c69c8f26ebc9 255,271-272,290,292
+  s_6b26c9d8511f7e::t_74caaac195b3e7 116-123,128,131-137,140,144-146,151-152,154-156,160,165-169,171-172,174-181,183-185,188-191,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e95e90e5fd9fa251b4344d8c9920a862d8ba4744",
+  "prompts": {},
+  "sessions": {
+    "s_6b26c9d8511f7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e53c038e-9a30-4e32-ab5c-d99ff5174c02",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
