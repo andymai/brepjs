@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.3](https://github.com/andymai/brepjs/compare/brepjs-v18.118.2...brepjs-v18.118.3) (2026-07-04)
+
+
+### Bug Fixes
+
+* **origins:** recover split coplanar face origins across boolean seams ([#1740](https://github.com/andymai/brepjs/issues/1740)) ([e999c2e](https://github.com/andymai/brepjs/commit/e999c2e97e724e646ead325589706162d7eb94e7))
+
 ## [18.118.2](https://github.com/andymai/brepjs/compare/brepjs-v18.118.1...brepjs-v18.118.2) (2026-06-26)
 
 
