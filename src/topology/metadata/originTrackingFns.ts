@@ -102,7 +102,7 @@ export function propagateOriginsFromEvolution(
 /** Max 3D centroid separation (mm²) for a "near" match — the general case. */
 const MAX_MATCH_DIST_SQ = 100;
 
-/** Min |normal·normal| for two faces to count as sharing a plane's orientation. */
+/** Min |outNormal·inNormal| for two faces to count as sharing a plane's orientation. */
 const COPLANAR_NORMAL_MIN = 0.985;
 
 /**
