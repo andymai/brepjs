@@ -1,0 +1,32 @@
+tests/originGeometricFallback.test.ts
+  s_6b26c9d8511f7e::t_abb034dacbfbbe 65,79,81-84,86-87,91-93,96
+  s_6b26c9d8511f7e::t_0c7750f43fc27d 72-73
+  s_6b26c9d8511f7e::t_a9c99ae0f7a7ff 97-134
+  s_6b26c9d8511f7e::t_49b8cd08d71621 3
+  s_6b26c9d8511f7e::t_6d4162bf35221c 13
+  s_6b26c9d8511f7e::t_c9a9df7cc78a1e 28-33
+  s_6b26c9d8511f7e::t_f936ba631c54c2 66-71,74-78,80,85,88-90,94-95
+src/topology/metadata/originTrackingFns.ts
+  s_6b26c9d8511f7e::t_f5e5c0469ada2a 105-107,121-135,156-163,166-171
+  s_6b26c9d8511f7e::t_73637d853d39b4 102-104,109-115,119-120,155,164-165
+  s_6b26c9d8511f7e::t_06115a3fe2b5d1 108
+tests/helpers/kernelDivergences.ts
+  s_6b26c9d8511f7e::t_de7224612dbc38 58
+  s_6b26c9d8511f7e::t_6433341737fd29 55-57,59-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ad629d92f8da9eaa269b88599cb3dd20923c4032",
+  "prompts": {},
+  "sessions": {
+    "s_6b26c9d8511f7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e53c038e-9a30-4e32-ab5c-d99ff5174c02",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
