@@ -113,68 +113,85 @@ const COPLANAR_NORMAL_MIN = 0.985;
  */
 const COPLANAR_OFFSET_SQ = 0.1;
 
+interface OriginSig {
+  readonly normal: readonly [number, number, number];
+  readonly centroid: readonly [number, number, number];
+  readonly origin: number;
+  /** True only for planar surfaces — the coplanar fallback requires it. */
+  readonly planar: boolean;
+}
+
 /**
  * Find the best origin match for a result face by comparing normals and centroids
  * against input face signatures. Returns `undefined` if no good match exists.
  *
- * Two acceptance paths:
+ * Two passes, near strictly preferred:
  *  1. Near match — same-facing normal (signed dot ≥ 0.707) and centroids within
  *     {@link MAX_MATCH_DIST_SQ}. The general case for regenerated seam faces
- *     (feature tops, flush walls). Unchanged legacy behavior.
- *  2. Coplanar match — the output face lies on an input face's plane (parallel
- *     *or* antiparallel normal, tiny perpendicular offset) regardless of how far
- *     its centroid drifted in-plane. Two cases path 1 misses:
+ *     (feature tops, flush walls). Unchanged legacy behavior. If any near match
+ *     exists it wins outright — the coplanar pass never runs — so a distant
+ *     coplanar candidate can't outscore a valid near one.
+ *  2. Coplanar match (only when no near match, and only between PLANAR faces) —
+ *     the output face lies on an input face's plane (parallel *or* antiparallel
+ *     normal, tiny perpendicular offset) regardless of how far its centroid
+ *     drifted in-plane. Two cases pass 1 misses:
  *       • A boolean that splits a large planar face — a wide cutout floor sliced
  *         by an overlapping deeper cutout — leaves pieces >10mm from the parent
- *         centroid (past path 1's cutoff).
+ *         centroid (past pass 1's cutoff).
  *       • A cut flips the cavity face's normal versus the tool face it came from,
  *         so the floor is antiparallel to its origin's input face.
  *     Both left the surface tagless → body color in multi-color consumers
- *     (gridfinity GH #2443). Matching by plane + orientation-agnostic normal
- *     recovers them. Ranked below every near match (offset by −1) so path 1 wins
- *     when both apply; among coplanar candidates the nearest in-plane wins.
+ *     (gridfinity GH #2443). The planar gate keeps a curved output face from
+ *     inheriting an origin off an unrelated face that merely shares a sampled
+ *     tangent plane; among coplanar candidates the nearest in-plane wins.
  */
 function findBestOriginMatch(
   outNormal: readonly [number, number, number],
   outCentroid: readonly [number, number, number],
-  inputSigs: ReadonlyArray<{
-    normal: readonly [number, number, number];
-    centroid: readonly [number, number, number];
-    origin: number;
-  }>
+  outPlanar: boolean,
+  inputSigs: readonly OriginSig[]
 ): number | undefined {
-  let bestScore = -Infinity;
-  let bestOrigin: number | undefined;
+  // Pass 1: near match — always wins when present.
+  let bestNearScore = -Infinity;
+  let bestNear: number | undefined;
   for (const inp of inputSigs) {
     const dot =
       outNormal[0] * inp.normal[0] + outNormal[1] * inp.normal[1] + outNormal[2] * inp.normal[2];
+    if (dot < 0.707) continue;
     const dx = outCentroid[0] - inp.centroid[0];
     const dy = outCentroid[1] - inp.centroid[1];
     const dz = outCentroid[2] - inp.centroid[2];
     const distSq = dx * dx + dy * dy + dz * dz;
-
-    // Path 1: near match with same-facing normal — legacy behavior, unchanged.
-    if (dot >= 0.707 && distSq <= MAX_MATCH_DIST_SQ) {
-      const score = dot - distSq / MAX_MATCH_DIST_SQ;
-      if (score > bestScore) {
-        bestScore = score;
-        bestOrigin = inp.origin;
-      }
-      continue;
-    }
-
-    // Path 2: coplanar (same plane, orientation-agnostic), any in-plane distance.
-    if (Math.abs(dot) < COPLANAR_NORMAL_MIN) continue;
-    const perp = dx * inp.normal[0] + dy * inp.normal[1] + dz * inp.normal[2];
-    if (perp * perp > COPLANAR_OFFSET_SQ) continue;
-    const inPlaneSq = Math.max(0, distSq - perp * perp);
-    const score = Math.abs(dot) - 1 - inPlaneSq / (inPlaneSq + 1);
-    if (score > bestScore) {
-      bestScore = score;
-      bestOrigin = inp.origin;
+    if (distSq > MAX_MATCH_DIST_SQ) continue;
+    const score = dot - distSq / MAX_MATCH_DIST_SQ;
+    if (score > bestNearScore) {
+      bestNearScore = score;
+      bestNear = inp.origin;
     }
   }
-  return bestOrigin;
+  if (bestNear !== undefined) return bestNear;
+
+  // Pass 2: coplanar planar-face fallback. Only planar↔planar surfaces qualify.
+  if (!outPlanar) return undefined;
+  let bestInPlaneSq = Infinity;
+  let bestCoplanar: number | undefined;
+  for (const inp of inputSigs) {
+    if (!inp.planar) continue;
+    const dot =
+      outNormal[0] * inp.normal[0] + outNormal[1] * inp.normal[1] + outNormal[2] * inp.normal[2];
+    if (Math.abs(dot) < COPLANAR_NORMAL_MIN) continue;
+    const dx = outCentroid[0] - inp.centroid[0];
+    const dy = outCentroid[1] - inp.centroid[1];
+    const dz = outCentroid[2] - inp.centroid[2];
+    const perp = dx * inp.normal[0] + dy * inp.normal[1] + dz * inp.normal[2];
+    if (perp * perp > COPLANAR_OFFSET_SQ) continue;
+    const inPlaneSq = Math.max(0, dx * dx + dy * dy + dz * dz - perp * perp);
+    if (inPlaneSq < bestInPlaneSq) {
+      bestInPlaneSq = inPlaneSq;
+      bestCoplanar = inp.origin;
+    }
+  }
+  return bestCoplanar;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,11 +252,7 @@ export function propagateOriginsByHash(
   // Geometric pass: recover origins for boolean-regenerated faces by matching
   // surface normal + centroid against the input faces.
   if (unmatched.length > 0) {
-    const inputSigs: {
-      origin: number;
-      normal: [number, number, number];
-      centroid: [number, number, number];
-    }[] = [];
+    const inputSigs: OriginSig[] = [];
     for (const input of inputs) {
       const origins = getFaceOrigins(input);
       if (!origins) continue;
@@ -255,7 +268,8 @@ export function propagateOriginsByHash(
             0.5 * (bounds.vMin + bounds.vMax)
           );
           const centroid = kernel.surfaceCenterOfMass(f.wrapped);
-          inputSigs.push({ origin, normal, centroid });
+          const planar = kernel.surfaceType(f.wrapped) === 'plane';
+          inputSigs.push({ origin, normal, centroid, planar });
         } catch {
           // skip faces that can't compute normal/centroid
         }
@@ -273,8 +287,9 @@ export function propagateOriginsByHash(
             0.5 * (outBounds.vMin + outBounds.vMax)
           );
           const outCentroid = kernel.surfaceCenterOfMass(f.wrapped);
+          const outPlanar = kernel.surfaceType(f.wrapped) === 'plane';
 
-          const bestOrigin = findBestOriginMatch(outNormal, outCentroid, inputSigs);
+          const bestOrigin = findBestOriginMatch(outNormal, outCentroid, outPlanar, inputSigs);
           if (bestOrigin !== undefined) {
             resultMap.set(hash, bestOrigin);
           }
