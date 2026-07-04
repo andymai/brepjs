@@ -99,9 +99,40 @@ export function propagateOriginsFromEvolution(
 // Geometric matching helper
 // ---------------------------------------------------------------------------
 
+/** Max 3D centroid separation (mm²) for a "near" match — the general case. */
+const MAX_MATCH_DIST_SQ = 100;
+
+/** Min |normal·normal| for two faces to count as sharing a plane's orientation. */
+const COPLANAR_NORMAL_MIN = 0.985;
+
+/**
+ * Max squared perpendicular offset (mm²) from an input face's plane for the
+ * output face to count as *coplanar* with it — i.e. a piece the boolean sliced
+ * off that same planar surface. 0.1mm² tolerates kernel/mesh float noise while
+ * still separating floors that sit even a fraction of a mm apart in depth.
+ */
+const COPLANAR_OFFSET_SQ = 0.1;
+
 /**
  * Find the best origin match for a result face by comparing normals and centroids
  * against input face signatures. Returns `undefined` if no good match exists.
+ *
+ * Two acceptance paths:
+ *  1. Near match — same-facing normal (signed dot ≥ 0.707) and centroids within
+ *     {@link MAX_MATCH_DIST_SQ}. The general case for regenerated seam faces
+ *     (feature tops, flush walls). Unchanged legacy behavior.
+ *  2. Coplanar match — the output face lies on an input face's plane (parallel
+ *     *or* antiparallel normal, tiny perpendicular offset) regardless of how far
+ *     its centroid drifted in-plane. Two cases path 1 misses:
+ *       • A boolean that splits a large planar face — a wide cutout floor sliced
+ *         by an overlapping deeper cutout — leaves pieces >10mm from the parent
+ *         centroid (past path 1's cutoff).
+ *       • A cut flips the cavity face's normal versus the tool face it came from,
+ *         so the floor is antiparallel to its origin's input face.
+ *     Both left the surface tagless → body color in multi-color consumers
+ *     (gridfinity GH #2443). Matching by plane + orientation-agnostic normal
+ *     recovers them. Ranked below every near match (offset by −1) so path 1 wins
+ *     when both apply; among coplanar candidates the nearest in-plane wins.
  */
 function findBestOriginMatch(
   outNormal: readonly [number, number, number],
@@ -117,13 +148,27 @@ function findBestOriginMatch(
   for (const inp of inputSigs) {
     const dot =
       outNormal[0] * inp.normal[0] + outNormal[1] * inp.normal[1] + outNormal[2] * inp.normal[2];
-    if (dot < 0.707) continue;
     const dx = outCentroid[0] - inp.centroid[0];
     const dy = outCentroid[1] - inp.centroid[1];
     const dz = outCentroid[2] - inp.centroid[2];
     const distSq = dx * dx + dy * dy + dz * dz;
-    if (distSq > 100) continue;
-    const score = dot - distSq / 100;
+
+    // Path 1: near match with same-facing normal — legacy behavior, unchanged.
+    if (dot >= 0.707 && distSq <= MAX_MATCH_DIST_SQ) {
+      const score = dot - distSq / MAX_MATCH_DIST_SQ;
+      if (score > bestScore) {
+        bestScore = score;
+        bestOrigin = inp.origin;
+      }
+      continue;
+    }
+
+    // Path 2: coplanar (same plane, orientation-agnostic), any in-plane distance.
+    if (Math.abs(dot) < COPLANAR_NORMAL_MIN) continue;
+    const perp = dx * inp.normal[0] + dy * inp.normal[1] + dz * inp.normal[2];
+    if (perp * perp > COPLANAR_OFFSET_SQ) continue;
+    const inPlaneSq = Math.max(0, distSq - perp * perp);
+    const score = Math.abs(dot) - 1 - inPlaneSq / (inPlaneSq + 1);
     if (score > bestScore) {
       bestScore = score;
       bestOrigin = inp.origin;

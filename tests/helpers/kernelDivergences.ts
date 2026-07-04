@@ -52,6 +52,14 @@ export const divergences: DivergenceMap = {
       reason: 'manifold is a mesh kernel with no hidden-line-removal projection (projectEdges).',
     },
     // -----------------------------------------------------------------------
+    // originGeometricFallback.test.ts — mesh CSG splits/attributes faces its own way
+    // -----------------------------------------------------------------------
+    'origins.coplanarSplitMatch': {
+      kind: 'skip',
+      reason:
+        'The mesh CSG kernel re-tessellates and attributes split coplanar faces through its own path, not the B-rep hash/geometric origin fallback; a split floor piece can pick up the neighbour tool origin. Exercised on the B-rep kernels (occt/brepkit/opencascade) that gridfinity ships.',
+    },
+    // -----------------------------------------------------------------------
     // booleans.test.ts — mesh CSG vs exact B-rep
     // -----------------------------------------------------------------------
     'booleans.cutFuseRecombine': {
