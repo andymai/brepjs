@@ -23,7 +23,9 @@ const config: KnipConfig = {
       // sharp is used only by the local OG generator (scripts/gen-og-docs.mjs via
       // `npm run gen:og`); it's hoisted (transitive) so declaring it would churn
       // the lockfile with sharp's platform binaries for no runtime/CI benefit.
-      ignoreDependencies: ['@types/react', 'sharp'],
+      // brepjs-voxel-wasm is a sibling workspace package imported only by the
+      // out-of-src test suite (tests/voxel*.test.ts), which root `project` excludes.
+      ignoreDependencies: ['@types/react', 'sharp', 'brepjs-voxel-wasm'],
     },
     // examples/ holds runnable demos (entry points, not imported by src); the
     // IfcOpenShell validator under scripts/ is Python. src/ stays fully checked.
