@@ -1,0 +1,27 @@
+.github/workflows/ci.yml
+  s_3728ed872981c4::t_b4d8e58b5c0a24 290
+.github/workflows/playground-smoke.yml
+  s_3728ed872981c4::t_b4d8e58b5c0a24 39
+.release-please-manifest.json
+  s_3728ed872981c4::t_b4d8e58b5c0a24 5
+packages/brepjs-cad/CHANGELOG.md
+  s_3728ed872981c4::t_b4d8e58b5c0a24 3-40
+packages/brepjs-cad/package.json
+  s_3728ed872981c4::t_b4d8e58b5c0a24 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0f6497f33ad3f195d19157b0399bc0f7ef00791b",
+  "prompts": {},
+  "sessions": {
+    "s_3728ed872981c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9908ea04-9ae7-426b-b1a1-6ed61e33f55d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
