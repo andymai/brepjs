@@ -1,0 +1,28 @@
+.github/workflows/ci.yml
+  s_3728ed872981c4::t_bf5ec105f11625 290
+.release-please-manifest.json
+  s_3728ed872981c4::t_bf5ec105f11625 5
+packages/brepjs-cad/package.json
+  s_3728ed872981c4::t_bf5ec105f11625 3
+.github/workflows/playground-smoke.yml
+  s_3728ed872981c4::t_bf5ec105f11625 39
+packages/brepjs-cad/CHANGELOG.md
+  s_3728ed872981c4::t_bf5ec105f11625 3,7-15,17-18
+  s_3728ed872981c4::t_369825f163a1ed 19-37,39,43,45-58,62-80,86-95,99-117,123-132,136-154,160-169,173-191,197-206,210-228,234-243,247-265,269-271,353-355,361-370,374-391,397-406,410-427,433-442,446-463,469-478,482-499,505-514,518-535,541-550,554-571,577,583-592,596-612,618-625,629-643,649-650,654-655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1382ff6cf5edbfb0f5217354f9280d4548e0f1c9",
+  "prompts": {},
+  "sessions": {
+    "s_3728ed872981c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9908ea04-9ae7-426b-b1a1-6ed61e33f55d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
