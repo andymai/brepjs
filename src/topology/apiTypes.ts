@@ -37,9 +37,7 @@ export type FinderFn<T extends AnyShape<Dimension>> = (finder: ShapeFinder<T>) =
  * - callback — per-edge radius; return `null` to skip an edge
  */
 export type FilletRadius =
-  | number
-  | [number, number]
-  | ((edge: Edge<Dimension>) => number | [number, number] | null);
+  number | [number, number] | ((edge: Edge<Dimension>) => number | [number, number] | null);
 
 // ---------------------------------------------------------------------------
 // ChamferDistance — all distance modes for chamfer()

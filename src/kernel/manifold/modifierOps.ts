@@ -70,8 +70,7 @@ function approxShellMesh(
 
 function roundingBall(module: ManifoldModule, radius: number): ManifoldSolid | undefined {
   const Manifold = module?.Manifold as
-    | { sphere?: (r: number, segments?: number) => ManifoldSolid }
-    | undefined;
+    { sphere?: (r: number, segments?: number) => ManifoldSolid } | undefined;
   if (typeof Manifold?.sphere !== 'function') return undefined;
   return Manifold.sphere(radius, ROUNDING_BALL_SEGMENTS);
 }
@@ -122,8 +121,7 @@ function readWitness(handle: KernelShape): Vec3 | undefined {
   if (sub?.box !== undefined) return boxCenter(sub.box);
   const solid = (handle as { manifold?: { boundingBox?: () => unknown } } | null)?.manifold;
   const box = solid?.boundingBox?.() as
-    | { min?: readonly number[]; max?: readonly number[] }
-    | undefined;
+    { min?: readonly number[]; max?: readonly number[] } | undefined;
   return box === undefined ? undefined : boxCenter(box);
 }
 

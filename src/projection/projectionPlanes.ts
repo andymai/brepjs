@@ -9,18 +9,7 @@ export type CubeFace = 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';
 
 /** Named projection plane — axis pairs or cube face names. */
 export type ProjectionPlane =
-  | 'XY'
-  | 'XZ'
-  | 'YZ'
-  | 'YX'
-  | 'ZX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right';
+  'XY' | 'XZ' | 'YZ' | 'YX' | 'ZX' | 'ZY' | 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';
 
 /** Camera direction and X axis for a projection plane. */
 export interface PlaneConfig {

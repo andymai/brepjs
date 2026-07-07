@@ -7,15 +7,7 @@ import { type Result, ok, err } from '@/core/result.js';
 
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 export type TopoEntity =
-  | 'vertex'
-  | 'edge'
-  | 'wire'
-  | 'face'
-  | 'shell'
-  | 'solid'
-  | 'solidCompound'
-  | 'compound'
-  | 'shape';
+  'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'solidCompound' | 'compound' | 'shape';
 
 /** An kernel shape after downcast — same underlying type, used for clarity. */
 export type GenericTopo = KernelShape;

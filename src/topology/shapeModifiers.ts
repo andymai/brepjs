@@ -34,9 +34,7 @@ export type FilletRadius = number | [number, number];
  * A generic way to define radii for fillet or chamfer operations.
  */
 export type RadiusOptions<R = number> =
-  | ((e: Edge) => R | null)
-  | R
-  | { filter: EdgeFinderFn; radius: R; keep?: boolean };
+  ((e: Edge) => R | null) | R | { filter: EdgeFinderFn; radius: R; keep?: boolean };
 
 // ---------------------------------------------------------------------------
 // Type guards

@@ -119,11 +119,7 @@ interface IdenticalResult {
 }
 
 export type BooleanOperationResult =
-  | Blueprint
-  | Blueprints
-  | null
-  | IdenticalResult
-  | NoIntersectionResult;
+  Blueprint | Blueprints | null | IdenticalResult | NoIntersectionResult;
 
 // ---------------------------------------------------------------------------
 // Boolean operation core

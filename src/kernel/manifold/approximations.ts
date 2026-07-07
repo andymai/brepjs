@@ -157,8 +157,7 @@ export function profileCrossSection(profile: unknown): CrossSection {
 /** Project a profile's mesh onto the XY plane to recover a coarse outline. */
 function crossSectionFromMesh(shape: ManifoldShape): CrossSection {
   const solid = unwrap(shape) as
-    | { getMesh?: () => { numProp: number; vertProperties: Float32Array } }
-    | undefined;
+    { getMesh?: () => { numProp: number; vertProperties: Float32Array } } | undefined;
   const mesh = solid?.getMesh?.();
   if (!mesh) {
     throw new Error('manifold: profile carries no recorded outline and no mesh to derive one');

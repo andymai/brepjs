@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "shapeType": "Compound",
+  "checks": [
+    {
+      "name": "positiveVolume",
+      "passed": true
+    }
+  ],
+  "measurements": {
+    "volume": 139490.0154099037,
+    "area": 55012.14162696141,
+    "bounds": {
+      "xMin": -65,
+      "xMax": 65,
+      "yMin": -30,
+      "yMax": 30,
+      "zMin": -30,
+      "zMax": 60
+    }
+  },
+  "errors": [],
+  "errorInfos": [],
+  "hints": [],
+  "assertions": [
+    {
+      "name": "bounds.xMin",
+      "expected": -65,
+      "actual": -65,
+      "passed": true
+    },
+    {
+      "name": "bounds.xMax",
+      "expected": 65,
+      "actual": 65,
+      "passed": true
+    },
+    {
+      "name": "bounds.yMin",
+      "expected": -30,
+      "actual": -30,
+      "passed": true
+    },
+    {
+      "name": "bounds.yMax",
+      "expected": 30,
+      "actual": 30,
+      "passed": true
+    },
+    {
+      "name": "bounds.zMin",
+      "expected": -30,
+      "actual": -30,
+      "passed": true
+    },
+    {
+      "name": "bounds.zMax",
+      "expected": 60,
+      "actual": 60,
+      "passed": true
+    }
+  ]
+}

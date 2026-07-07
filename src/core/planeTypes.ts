@@ -20,18 +20,7 @@ export interface Plane {
  * are both supported. The axis-pair order determines the normal direction.
  */
 export type PlaneName =
-  | 'XY'
-  | 'YZ'
-  | 'ZX'
-  | 'XZ'
-  | 'YX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'left'
-  | 'right'
-  | 'top'
-  | 'bottom';
+  'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom';
 
 /** Accept either an explicit {@link Plane} object or a {@link PlaneName} string. */
 export type PlaneInput = Plane | PlaneName;

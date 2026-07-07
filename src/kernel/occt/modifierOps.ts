@@ -12,9 +12,7 @@ import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 
 export type FilletRadiusSpec =
-  | number
-  | [number, number]
-  | ((edge: KernelShape) => number | [number, number]);
+  number | [number, number] | ((edge: KernelShape) => number | [number, number]);
 
 /**
  * Applies a fillet (rounded edge) to selected edges of a shape.
@@ -48,9 +46,7 @@ export function fillet(
 }
 
 export type ChamferDistSpec =
-  | number
-  | [number, number]
-  | ((edge: KernelShape) => number | [number, number]);
+  number | [number, number] | ((edge: KernelShape) => number | [number, number]);
 
 /**
  * Applies a chamfer (beveled edge) to selected edges of a shape.

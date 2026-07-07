@@ -251,8 +251,7 @@ function mapStringTransitionMode(mode: string): string | undefined {
 }
 
 type PipeShellResult =
-  | KernelShape
-  | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape };
+  KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape };
 
 function wrapPipeShellResult(
   shape: KernelShape,

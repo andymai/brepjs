@@ -60,14 +60,7 @@ export interface BooleanOptions {
 }
 
 export type ShapeType =
-  | 'vertex'
-  | 'edge'
-  | 'wire'
-  | 'face'
-  | 'shell'
-  | 'solid'
-  | 'compsolid'
-  | 'compound';
+  'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound';
 
 /** Surface type discriminant returned by surfaceType(). */
 export type SurfaceType =

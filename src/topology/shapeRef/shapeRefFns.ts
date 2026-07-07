@@ -195,9 +195,7 @@ const MIN_SCORE = 0.5;
 
 /** Outcome of scoring a candidate face set against a hint. */
 type ScoreOutcome =
-  | { kind: 'match'; face: Face }
-  | { kind: 'ambiguous'; candidates: Face[] }
-  | { kind: 'none' };
+  { kind: 'match'; face: Face } | { kind: 'ambiguous'; candidates: Face[] } | { kind: 'none' };
 
 /**
  * Score `candidates` against `hint`, returning the best match, a tie within

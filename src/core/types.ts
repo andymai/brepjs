@@ -15,10 +15,7 @@ export type Vec2 = readonly [number, number];
  * Use `toVec3()` to normalize to Vec3.
  */
 export type PointInput =
-  | Vec3
-  | Vec2
-  | readonly [number, number, number]
-  | readonly [number, number];
+  Vec3 | Vec2 | readonly [number, number, number] | readonly [number, number];
 
 /** Normalize any point input to Vec3 */
 export function toVec3(p: PointInput): Vec3 {

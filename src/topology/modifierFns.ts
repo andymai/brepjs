@@ -190,9 +190,7 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
 // ---------------------------------------------------------------------------
 
 type FilletRadiusArg =
-  | number
-  | [number, number]
-  | ((edge: Edge) => number | [number, number] | null);
+  number | [number, number] | ((edge: Edge) => number | [number, number] | null);
 
 type FilletKernelRadius = number | [number, number] | KernelHashCallback<number | [number, number]>;
 

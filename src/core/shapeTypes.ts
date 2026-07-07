@@ -84,14 +84,7 @@ export interface CurveLike {
 
 /** String discriminant identifying the topological type of a shape. */
 export type ShapeKind =
-  | 'vertex'
-  | 'edge'
-  | 'wire'
-  | 'face'
-  | 'shell'
-  | 'solid'
-  | 'compsolid'
-  | 'compound';
+  'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound';
 
 // ---------------------------------------------------------------------------
 // Branded shape types
