@@ -1,0 +1,19 @@
+package-lock.json
+  s_3728ed872981c4::t_38fa509e5b8819 1168-1190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3bcf7b636f2e048092389b5854ba65d4655a901e",
+  "prompts": {},
+  "sessions": {
+    "s_3728ed872981c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9908ea04-9ae7-426b-b1a1-6ed61e33f55d",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
