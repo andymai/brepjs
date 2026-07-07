@@ -1,0 +1,83 @@
+src/kernel/occt/modifierOps.ts
+  s_3728ed872981c4::t_59a77478b026e8 15,49
+branding/reddit/part/render.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-13
+src/topology/modifierFns.ts
+  s_3728ed872981c4::t_59a77478b026e8 193
+src/topology/shapeModifiers.ts
+  s_3728ed872981c4::t_59a77478b026e8 37
+src/topology/shapeRef/shapeRefFns.ts
+  s_3728ed872981c4::t_59a77478b026e8 198
+branding/reddit/part/report.json
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-63
+src/topology/cast.ts
+  s_3728ed872981c4::t_59a77478b026e8 10
+src/kernel/manifold/modifierOps.ts
+  s_3728ed872981c4::t_59a77478b026e8 73,124
+src/kernel/types.ts
+  s_3728ed872981c4::t_59a77478b026e8 63
+branding/reddit/part/pipe-tee.brep.ts
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-31
+scripts/gen-reddit-banner.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-155
+src/topology/apiTypes.ts
+  s_3728ed872981c4::t_59a77478b026e8 40
+src/core/types.ts
+  s_3728ed872981c4::t_59a77478b026e8 18
+branding/fonts/.gitignore
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-2
+packages/brepjs-vscode/package.json
+  s_3728ed872981c4::t_c32d6cf1511776 108
+src/kernel/brepkit/sweepOps.ts
+  s_3728ed872981c4::t_59a77478b026e8 254
+src/core/planeTypes.ts
+  s_3728ed872981c4::t_59a77478b026e8 23
+branding/reddit/part/processPart.mjs
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-70
+src/2d/blueprints/segmentAssembly.ts
+  s_3728ed872981c4::t_59a77478b026e8 122
+branding/type-specimen.html
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-361
+src/kernel/manifold/approximations.ts
+  s_3728ed872981c4::t_59a77478b026e8 160
+src/projection/projectionPlanes.ts
+  s_3728ed872981c4::t_59a77478b026e8 12
+packages/brepjs-cad/package.json
+  s_3728ed872981c4::t_c32d6cf1511776 76
+branding/reddit/part/pipe-tee.step
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-9040
+packages/brepjs-cad/_meshlite.mts
+  s_6b26c9d8511f7e::t_7304a4afc950d9 1-16
+packages/brepjs-cad/CHANGELOG.md
+  s_3728ed872981c4::t_c32d6cf1511776 7-15,19-37,43,49-58,62-80,86-95,99-117,123-132,136-154,160-169,173-191,197-206,210-228,234-243,247-265,269-271,353-355,361-370,374-391,397-406,410-427,433-442,446-463,469-478,482-499,505-514,518-535,541-550,554-571,577,583-592,596-612,618-625,629-643,649-650,654-655
+packages/brepjs-sheetmetal/package.json
+  s_3728ed872981c4::t_c32d6cf1511776 56
+src/core/shapeTypes.ts
+  s_3728ed872981c4::t_59a77478b026e8 87
+package-lock.json
+  s_3728ed872981c4::t_6bc7d954d3dff2 14697,14721-14723,14727,14763-14769,14789,14807-14809,14813,14816-14822,14896,14915-14917,14921,14947-14953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5b780f2d8701164ceabc82d46d210967a5c52b80",
+  "prompts": {},
+  "sessions": {
+    "s_3728ed872981c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9908ea04-9ae7-426b-b1a1-6ed61e33f55d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_6b26c9d8511f7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e53c038e-9a30-4e32-ab5c-d99ff5174c02",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
