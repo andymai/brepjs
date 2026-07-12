@@ -32,24 +32,24 @@
     "lz-string": "1.5.0",
     "monaco-editor": "0.55.1",
     "occt-wasm": "*",
-    "posthog-js": "1.395.0",
+    "posthog-js": "1.396.6",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "react-resizable-panels": "4.11.2",
+    "react-resizable-panels": "4.12.1",
     "sucrase": "3.35.1",
-    "three": "0.185.0",
+    "three": "0.185.1",
     "web-ifc": "0.0.77",
     "zustand": "5.0.14"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.1",
+    "@tailwindcss/vite": "4.3.2",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.185.0",
     "@vitejs/plugin-react": "6.0.3",
-    "puppeteer": "25.2.1",
-    "tailwindcss": "4.3.1",
-    "tsx": "4.22.4",
+    "puppeteer": "25.3.0",
+    "tailwindcss": "4.3.2",
+    "tsx": "4.23.0",
     "typescript": "6.0.3"
   }
 }
