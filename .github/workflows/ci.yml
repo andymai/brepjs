@@ -34,7 +34,7 @@ jobs:
           if [[ "$HEAD_REF" == release-please--* ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: filter
         if: steps.release-please.outputs.skip != 'true'
         with:
