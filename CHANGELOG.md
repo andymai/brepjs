@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.9](https://github.com/andymai/brepjs/compare/brepjs-v18.118.8...brepjs-v18.118.9) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** stop adjacency queries leaking occt-wasm arena slots ([#1775](https://github.com/andymai/brepjs/issues/1775)) ([3a2e6ad](https://github.com/andymai/brepjs/commit/3a2e6ad4c04241f696a4da4f21cc5445971007aa))
+
 ## [18.118.8](https://github.com/andymai/brepjs/compare/brepjs-v18.118.7...brepjs-v18.118.8) (2026-07-13)
 
 
