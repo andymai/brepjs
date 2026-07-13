@@ -1,0 +1,19 @@
+.size-limit.json
+  s_6f45a88250e548::t_c9153de31abf8f 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "5e9e87a7306e7e0cee7472b79b228f63440d3626",
+  "prompts": {},
+  "sessions": {
+    "s_6f45a88250e548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da1adf1b-23e5-4e3c-9202-f2e1db7dc6a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
