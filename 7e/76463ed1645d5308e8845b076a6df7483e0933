@@ -1,0 +1,30 @@
+tests/wasmArenaDisposal.test.ts
+  s_6f45a88250e548::t_32ad675dc1b307 30-33
+  s_6f45a88250e548::t_4d7d98e27a08f8 262-292
+src/topology/healingFns.ts
+  s_6f45a88250e548::t_c054a16b3ee101 94,96
+  s_6f45a88250e548::t_f70363e613687c 10
+  s_6f45a88250e548::t_84dc82db1efc1c 58-60,62,71
+  s_6f45a88250e548::t_e76a1cf2af386d 118,120
+  s_6f45a88250e548::t_1e2d055d66a9a9 404,406
+  s_6f45a88250e548::t_646018ffe10dd1 291
+  s_6f45a88250e548::t_3ab20758b7a087 356
+  s_6f45a88250e548::t_a0ba9c9c07a84f 233-242,246
+  s_6f45a88250e548::t_b3d515dc99e7d3 371,373,379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7e76463ed1645d5308e8845b076a6df7483e0933",
+  "prompts": {},
+  "sessions": {
+    "s_6f45a88250e548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da1adf1b-23e5-4e3c-9202-f2e1db7dc6a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
