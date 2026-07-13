@@ -382,3 +382,21 @@ export function castShapeWithKnownType<D extends Dimension = '3D'>(
   if (knownType === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
   return createCompound<D>(dc, dim);
 }
+
+/**
+ * The result-owning counterpart to {@link castShapeWithKnownType}: casts a
+ * freshly-iterated sub-shape and releases the orphaned pre-downcast handle.
+ * Use for a raw sub-shape the caller owns outright — e.g. each element of
+ * `iterShapes` — where only the branded downcast result is retained. Identity
+ * downcast kernels (manifold/brepkit) skip the release via the guard in
+ * {@link disposeDowncastSource}.
+ */
+export function castResultShapeWithKnownType<D extends Dimension = '3D'>(
+  ocShape: KernelShape,
+  knownType: ShapeType,
+  dim?: D
+): AnyShape<D> {
+  const cast = castShapeWithKnownType<D>(ocShape, knownType, dim);
+  disposeDowncastSource(ocShape, cast);
+  return cast;
+}

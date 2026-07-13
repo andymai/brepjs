@@ -9,6 +9,7 @@
  */
 
 import type { KernelShape } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
 import type { BrepError } from './errors.js';
 import type { Result } from './result.js';
 
@@ -142,6 +143,13 @@ export interface ShapeHandle {
 
 /** Create a disposable shape handle. */
 export function createHandle(ocShape: KernelShape): ShapeHandle {
+  // Capture the owning kernel now: on the occt-wasm arena kernel a shape's own
+  // `delete()` is a no-op, so the slot is only reclaimed via `kernel.dispose()`
+  // (→ `k.release(id)`). Routing disposal through the kernel makes `using` free
+  // the slot on every kernel. Embind kernels keep their existing `.delete()`
+  // behaviour (`kernel.dispose` falls through to it). `k.release` is idempotent,
+  // so overlap with `disposeResultShape`/`disposeDowncastSource` is safe.
+  const kernel = getKernel();
   let disposed = false;
 
   const dispose = () => {
@@ -150,7 +158,7 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
       trackHandleDisposed();
       registry.unregister(handle);
       try {
-        ocShape.delete();
+        kernel.dispose(ocShape);
       } catch {
         // Already deleted — ignore
       }
@@ -177,7 +185,18 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
   };
 
   trackHandleCreated();
-  registry.register(handle, ocShape, handle);
+  // GC safety net: route the finalizer through the kernel too, else arena slots
+  // survive collection on occt-wasm. The closure holds `ocShape`/`kernel` (not
+  // `handle`), so it never keeps the handle itself alive.
+  registry.register(
+    handle,
+    {
+      delete: () => {
+        kernel.dispose(ocShape);
+      },
+    },
+    handle
+  );
   return handle;
 }
 

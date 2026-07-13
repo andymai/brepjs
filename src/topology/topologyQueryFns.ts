@@ -17,7 +17,7 @@ import type {
   CompSolid,
   ShapeKind,
 } from '@/core/shapeTypes.js';
-import { castShapeWithKnownType } from '@/core/shapeTypes.js';
+import { castResultShapeWithKnownType } from '@/core/shapeTypes.js';
 import { getOrQueryType } from '@/core/shapeTypeCache.js';
 import type { Vec3 } from '@/core/types.js';
 
@@ -35,7 +35,7 @@ function castSubShapes<T>(parentShape: KernelShape, type: ShapeType): T[] {
   const rawShapes = kernel.iterShapes(parentShape, type);
   const result: T[] = new Array(rawShapes.length);
   for (let i = 0; i < rawShapes.length; i++) {
-    result[i] = castShapeWithKnownType(rawShapes[i], type) as T;
+    result[i] = castResultShapeWithKnownType(rawShapes[i], type) as T;
   }
   return result;
 }
@@ -174,49 +174,49 @@ export function getCompSolids(shape: AnyShape<Dimension>): CompSolid[] {
 /** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
 export function* iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>> {
   for (const e of getKernel().iterShapes(shape.wrapped, 'edge')) {
-    yield castShapeWithKnownType(e, 'edge') as Edge<D>;
+    yield castResultShapeWithKnownType(e, 'edge') as Edge<D>;
   }
 }
 
 /** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
 export function* iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>> {
   for (const f of getKernel().iterShapes(shape.wrapped, 'face')) {
-    yield castShapeWithKnownType(f, 'face') as Face<D>;
+    yield castResultShapeWithKnownType(f, 'face') as Face<D>;
   }
 }
 
 /** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
 export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>> {
   for (const w of getKernel().iterShapes(shape.wrapped, 'wire')) {
-    yield castShapeWithKnownType(w, 'wire') as Wire<D>;
+    yield castResultShapeWithKnownType(w, 'wire') as Wire<D>;
   }
 }
 
 /** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
 export function* iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>> {
   for (const v of getKernel().iterShapes(shape.wrapped, 'vertex')) {
-    yield castShapeWithKnownType(v, 'vertex') as Vertex<D>;
+    yield castResultShapeWithKnownType(v, 'vertex') as Vertex<D>;
   }
 }
 
 /** Lazily iterate solids of a shape, yielding branded Solid handles one at a time. */
 export function* iterSolids(shape: AnyShape<Dimension>): Generator<Solid> {
   for (const s of getKernel().iterShapes(shape.wrapped, 'solid')) {
-    yield castShapeWithKnownType(s, 'solid') as Solid;
+    yield castResultShapeWithKnownType(s, 'solid') as Solid;
   }
 }
 
 /** Lazily iterate shells of a shape, yielding branded Shell handles one at a time. */
 export function* iterShells(shape: AnyShape<Dimension>): Generator<Shell> {
   for (const s of getKernel().iterShapes(shape.wrapped, 'shell')) {
-    yield castShapeWithKnownType(s, 'shell') as Shell;
+    yield castResultShapeWithKnownType(s, 'shell') as Shell;
   }
 }
 
 /** Lazily iterate compsolids of a shape, yielding branded CompSolid handles one at a time. */
 export function* iterCompSolids(shape: AnyShape<Dimension>): Generator<CompSolid> {
   for (const s of getKernel().iterShapes(shape.wrapped, 'compsolid')) {
-    yield castShapeWithKnownType(s, 'compsolid') as CompSolid;
+    yield castResultShapeWithKnownType(s, 'compsolid') as CompSolid;
   }
 }
 

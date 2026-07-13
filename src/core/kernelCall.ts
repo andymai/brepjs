@@ -7,7 +7,7 @@
 
 import type { KernelShape } from '@/kernel/types.js';
 import type { AnyShape } from './shapeTypes.js';
-import { castShape } from './shapeTypes.js';
+import { castResultShape } from './shapeTypes.js';
 import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
@@ -70,7 +70,10 @@ export function kernelCall(
   kind: BrepErrorKind = 'KERNEL_OPERATION'
 ): Result<AnyShape> {
   try {
-    return ok(castShape(fn()));
+    // castResultShape (not castShape): fn() returns a fresh kernel result the
+    // caller owns, so release its orphaned pre-downcast slot on the occt-wasm
+    // arena kernel. Identity-downcast kernels skip the release via the guard.
+    return ok(castResultShape(fn()));
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
