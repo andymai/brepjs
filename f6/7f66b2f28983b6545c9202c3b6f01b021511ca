@@ -1,0 +1,23 @@
+src/core/shapeTypes.ts
+  s_7e347a14dc1cd6::t_9f3338fc171d26 332-351
+  s_7e347a14dc1cd6::t_7cf159109a1cdd 331
+src/topology/shapeRef/shapeRefFns.ts
+  s_7e347a14dc1cd6::t_fb5f34eda7029f 9
+  s_7e347a14dc1cd6::t_637a34f6f22248 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "f67f66b2f28983b6545c9202c3b6f01b021511ca",
+  "prompts": {},
+  "sessions": {
+    "s_7e347a14dc1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2f4908a-26ba-49de-aa4f-689c64ec6425",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
