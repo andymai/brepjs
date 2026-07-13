@@ -2,7 +2,7 @@
   ".": "18.118.6",
   "packages/brepjs-opencascade": "0.16.0",
   "packages/brepjs-voxel-wasm": "0.7.0",
-  "packages/brepjs-cad": "0.49.1",
+  "packages/brepjs-cad": "0.50.0",
   "packages/brepjs-bim": "0.3.1",
   "packages/brepjs-sheetmetal": "0.3.0"
 }
