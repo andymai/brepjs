@@ -27,6 +27,10 @@ import {
   getFaces,
   getEdges,
   getVertices,
+  getShells,
+  fixShape,
+  solidFromShell,
+  autoHeal,
   edgesOfFace,
   verticesOfFace,
   facesOfEdge,
@@ -250,6 +254,37 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (!e0 || !f0) throw new Error('box must have edges and faces');
           disposeAll(facesOfEdge(b, e0));
           disposeAll(adjacentFaces(b, f0));
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('healing ops leak nothing', () => {
+    it('fixShape / solidFromShell / autoHeal return the arena to baseline', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = fixShape(b);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const shells = getShells(b);
+          const s0 = shells[0];
+          if (s0) {
+            const r = solidFromShell(s0);
+            if (isOk(r)) unwrap(r)[Symbol.dispose]();
+          }
+          disposeAll(shells);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = autoHeal(b);
+          if (isOk(r)) r.value.shape[Symbol.dispose]();
         })
       ).toBe(0);
     });

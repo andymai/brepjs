@@ -7,7 +7,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension, Face, Wire, Solid, ValidSolid } from '@/core/shapeTypes.js';
-import { castShape, isSolid, isFace, isWire } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isSolid, isFace, isWire } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '@/core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getWires, getFaces } from './shapeFns.js';
@@ -55,8 +55,11 @@ export function healSolid(solid: Solid): Result<ValidSolid> {
         )
       );
     }
-    const cast = castShape(result);
+    // castResultShape releases the orphaned pre-downcast slot on occt-wasm; the
+    // guard skips in-place kernels (brepkit), where the result is the input.
+    const cast = castResultShape(result);
     if (!isSolid(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
     }
     // Invalidate cached validity — kernels that heal in-place (e.g. brepkit)
@@ -65,6 +68,7 @@ export function healSolid(solid: Solid): Result<ValidSolid> {
     // Verify the healed solid actually passes BRepCheck — ShapeFix_Solid
     // makes a best-effort attempt but does not guarantee full repair.
     if (!isValid(cast)) {
+      disposeResultShape(cast);
       return err(
         kernelError('HEAL_SOLID_INCOMPLETE', 'Healed result is still invalid after ShapeFix_Solid')
       );
@@ -87,8 +91,9 @@ export function healFace<D extends Dimension>(face: Face<D>): Result<Face<D>> {
 
   try {
     const result = getKernel().healFace(face.wrapped);
-    const cast = castShape<D>(result);
+    const cast = castResultShape<D>(result);
     if (!isFace(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('HEAL_RESULT_NOT_FACE', 'Healed result is not a face'));
     }
     return ok(cast);
@@ -110,8 +115,9 @@ export function healWire<D extends Dimension>(wire: Wire<D>, face?: Face<D>): Re
 
   try {
     const result = getKernel().healWire(wire.wrapped, face?.wrapped);
-    const cast = castShape<D>(result);
+    const cast = castResultShape<D>(result);
     if (!isWire(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('HEAL_RESULT_NOT_WIRE', 'Healed result is not a wire'));
     }
     return ok(cast);
@@ -224,11 +230,20 @@ export function autoHeal(
   let current: AnyShape<Dimension> = shape;
   let solidHealed = false;
 
+  // Advance the pipeline, releasing the previous intermediate — but never the
+  // caller's input `shape`, and never an in-place result (same handle).
+  const setCurrent = (next: AnyShape<Dimension>): void => {
+    const prev = current;
+    current = next;
+    if (prev !== shape && prev.wrapped !== next.wrapped) {
+      disposeResultShape(prev);
+    }
+  };
+
   // Sewing step (if tolerance provided)
   if (sewTolerance !== undefined) {
     try {
-      const sewResult = castShape(getKernel().sew([current.wrapped], sewTolerance));
-      current = sewResult;
+      setCurrent(castResultShape(getKernel().sew([current.wrapped], sewTolerance)));
       steps.push(`Applied sewing with tolerance ${sewTolerance}`);
       diagnostics.push({
         name: 'sew',
@@ -273,7 +288,7 @@ export function autoHeal(
   if (shouldHealShape) {
     const healResult = heal(current);
     if (isOk(healResult)) {
-      current = healResult.value;
+      setCurrent(healResult.value);
       if (isSolid(shape)) {
         solidHealed = true;
         steps.push('Applied ShapeFix_Solid');
@@ -338,7 +353,7 @@ export function fixShape<D extends Dimension>(shape: AnyShape<D>): Result<AnySha
   try {
     const kernel = getKernel();
     const fixed = kernel.fixShape(shape.wrapped);
-    return ok(castShape<D>(fixed));
+    return ok(castResultShape<D>(fixed));
   } catch (e) {
     return err(kernelError(BrepErrorCode.FIX_SHAPE_FAILED, 'ShapeFix_Shape failed', e));
   }
@@ -353,13 +368,15 @@ export function solidFromShell(shell: AnyShape): Result<ValidSolid> {
   try {
     const kernel = getKernel();
     const solidShape = kernel.solidFromShell(shell.wrapped);
-    const wrapped = castShape(solidShape);
+    const wrapped = castResultShape(solidShape);
     if (!isSolid(wrapped)) {
+      disposeResultShape(wrapped);
       return err(
         kernelError(BrepErrorCode.SOLID_FROM_SHELL_FAILED, 'solidFromShell did not produce a solid')
       );
     }
     if (!isValid(wrapped)) {
+      disposeResultShape(wrapped);
       return err(
         kernelError(
           BrepErrorCode.SOLID_FROM_SHELL_FAILED,
@@ -384,8 +401,9 @@ export function fixSelfIntersection(wire: Wire): Result<Wire> {
   try {
     const kernel = getKernel();
     const fixed = kernel.fixSelfIntersection(wire.wrapped);
-    const wrapped = castShape(fixed);
+    const wrapped = castResultShape(fixed);
     if (!isWire(wrapped)) {
+      disposeResultShape(wrapped);
       return err(kernelError(BrepErrorCode.FIX_SELF_INTERSECTION_FAILED, 'Result is not a wire'));
     }
     return ok(wrapped);
