@@ -9,7 +9,14 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
-import { castShape, castResultShape, disposeDowncastSource, isShape3D } from '@/core/shapeTypes.js';
+import {
+  castShape,
+  castResultShape,
+  disposeDowncastSource,
+  disposeResultShape,
+  getShapeKind,
+  isShape3D,
+} from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
@@ -56,20 +63,9 @@ function castToShape3D(
 ): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
-    const shapeType = shape.ShapeType();
-    const typeNames = [
-      'COMPOUND',
-      'COMPSOLID',
-      'SOLID',
-      'SHELL',
-      'FACE',
-      'WIRE',
-      'EDGE',
-      'VERTEX',
-      'SHAPE',
-    ];
-    const typeName = typeNames[shapeType] ?? `UNKNOWN(${shapeType})`;
-    wrapped[Symbol.dispose]();
+    const typeName = getShapeKind(wrapped).toUpperCase();
+    disposeDowncastSource(shape, wrapped);
+    disposeResultShape(wrapped);
     return err(
       typeCastError(
         errorCode,
@@ -358,6 +354,7 @@ export function filletWithEvolution(
     );
     const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
+      disposeResultShape(cast);
       return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
@@ -449,6 +446,7 @@ export function chamferWithEvolution(
     );
     const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
+      disposeResultShape(cast);
       return err(kernelError(BrepErrorCode.CHAMFER_NOT_3D, 'Chamfer result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
@@ -501,6 +499,7 @@ export function shellWithEvolution(
     );
     const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);

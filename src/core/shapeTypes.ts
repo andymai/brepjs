@@ -350,6 +350,18 @@ export function disposeTransientSubShape(handle: ShapeHandle, rawSource: KernelS
 }
 
 /**
+ * Release a branded shape on an error path — when a cast result is rejected and
+ * discarded. Releases the arena slot (occt-wasm's own `delete` is a no-op) then
+ * runs the handle's disposer for stats/registry. Safe on every kernel: the
+ * disposer's `delete()` runs inside createHandle's try/catch, so the repeated
+ * free after `getKernel().dispose()` is swallowed.
+ */
+export function disposeResultShape(handle: ShapeHandle): void {
+  getKernel().dispose(handle.wrapped);
+  handle[Symbol.dispose]();
+}
+
+/**
  * Fast-path cast when the shape type is already known (e.g., from iterShapes).
  * Skips the shapeType() WASM call — only performs downcast + branded handle creation.
  * Used internally by topology extractors for bulk sub-shape iteration.

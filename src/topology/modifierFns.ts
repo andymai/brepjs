@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
-import { castResultShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
@@ -113,6 +113,7 @@ function finalizeShape3D(
 ): Result<Shape3D> {
   const cast = castResultShape(resultShape);
   if (!isShape3D(cast)) {
+    disposeResultShape(cast);
     return err(kernelError(not3dCode, not3dMessage));
   }
   propagateAllMetadata(evolution, inputs, cast);
@@ -670,7 +671,7 @@ export function variableFillet(
     const result = kernel.filletVariable(shape.wrapped, spec);
     const wrapped = castResultShape(result);
     if (!isShape3D(wrapped)) {
-      wrapped[Symbol.dispose]();
+      disposeResultShape(wrapped);
       return err(
         kernelError(
           BrepErrorCode.VARIABLE_FILLET_FAILED,
@@ -679,7 +680,7 @@ export function variableFillet(
       );
     }
     if (!isSolid(wrapped)) {
-      wrapped[Symbol.dispose]();
+      disposeResultShape(wrapped);
       return err(
         kernelError(
           BrepErrorCode.VARIABLE_FILLET_FAILED,

@@ -15,7 +15,13 @@ import type {
   Vertex,
   Wire,
 } from '@/core/shapeTypes.js';
-import { castShape, disposeDowncastSource, isShape3D } from '@/core/shapeTypes.js';
+import {
+  castShape,
+  disposeDowncastSource,
+  disposeResultShape,
+  getShapeKind,
+  isShape3D,
+} from '@/core/shapeTypes.js';
 import { type Result, ok, err, isErr, unwrap } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { Plane } from '@/core/planeTypes.js';
@@ -64,21 +70,9 @@ function castToShape3D(
 ): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
-    // Include actual shape type in error for debugging
-    const shapeType = shape.ShapeType();
-    const typeNames = [
-      'COMPOUND',
-      'COMPSOLID',
-      'SOLID',
-      'SHELL',
-      'FACE',
-      'WIRE',
-      'EDGE',
-      'VERTEX',
-      'SHAPE',
-    ];
-    const typeName = typeNames[shapeType] ?? `UNKNOWN(${shapeType})`;
-    wrapped[Symbol.dispose]();
+    const typeName = getShapeKind(wrapped).toUpperCase();
+    disposeDowncastSource(shape, wrapped);
+    disposeResultShape(wrapped);
     return err(
       typeCastError(
         errorCode,
