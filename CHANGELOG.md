@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.4](https://github.com/andymai/brepjs/compare/brepjs-v18.118.3...brepjs-v18.118.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** release orphaned WASM shape handles in boolean/evolution/transform helpers ([#1750](https://github.com/andymai/brepjs/issues/1750)) ([753cb43](https://github.com/andymai/brepjs/commit/753cb4353d0e5ea9431f0f306033081e39c94ad0))
+
 ## [18.118.3](https://github.com/andymai/brepjs/compare/brepjs-v18.118.2...brepjs-v18.118.3) (2026-07-04)
 
 
