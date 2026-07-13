@@ -4,7 +4,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Solid } from '@/core/shapeTypes.js';
-import { castShape, isSolid } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { Vec3 } from '@/core/types.js';
@@ -62,10 +62,10 @@ export function polyhedron(
     const kernel = getKernel();
     const ptObjs = points.map(([x, y, z]) => ({ x, y, z }));
     const resultOc = kernel.buildSolidFromFaces(ptObjs, triangles, tolerance);
-    const cast = castShape(resultOc);
+    const cast = castResultShape(resultOc);
 
     if (!isSolid(cast)) {
-      cast[Symbol.dispose]();
+      disposeResultShape(cast);
       return err(
         kernelError(BrepErrorCode.POLYHEDRON_FAILED, 'Polyhedron did not produce a solid')
       );

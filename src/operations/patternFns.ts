@@ -11,7 +11,7 @@ import { vecNormalize, vecIsZero } from '@/core/vecOps.js';
 import { fuseAll, type BooleanOptions } from '@/topology/booleanFns.js';
 import { validationError } from '@/core/errors.js';
 import { getKernel } from '@/kernel/index.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 
 /**
  * Create a linear pattern of a shape along a direction.
@@ -38,7 +38,7 @@ export function linearPattern(
 
   const dir = vecNormalize(direction);
   const ocShapes = getKernel().linearPattern(shape.wrapped, [...dir], spacing, count);
-  const copies = ocShapes.map((s) => castShape(s) as Shape3D);
+  const copies = ocShapes.map((s) => castResultShape(s) as Shape3D);
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
@@ -82,7 +82,7 @@ export function circularPattern(
     angleStep,
     count
   );
-  const copies = ocShapes.map((s) => castShape(s) as Shape3D);
+  const copies = ocShapes.map((s) => castResultShape(s) as Shape3D);
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
@@ -139,7 +139,7 @@ export function gridPattern(
       countX,
       countY
     );
-    return ok(castShape(compound) as Shape3D);
+    return ok(castResultShape(compound) as Shape3D);
   }
 
   // Fallback: nested linearPattern

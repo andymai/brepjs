@@ -7,7 +7,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Shape3D, Solid, Face } from '@/core/shapeTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, typeCastError, BrepErrorCode } from '@/core/errors.js';
 import { getFaces, getVertices } from './shapeFns.js';
@@ -55,9 +55,9 @@ function detectSphere(shape: Shape3D): number | null {
 function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Result<Solid> {
   try {
     const resultShape = getKernel().offset(shape.wrapped, radius, tolerance);
-    const wrapped = castShape(resultShape);
+    const wrapped = castResultShape(resultShape);
     if (!isShape3D(wrapped)) {
-      wrapped[Symbol.dispose]();
+      disposeResultShape(wrapped);
       return err(
         typeCastError(
           BrepErrorCode.MINKOWSKI_NOT_3D,
@@ -121,9 +121,9 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Res
 
     // Compute convex hull of all sum points
     const hullShape = kernel.hullFromPoints(sumPoints, tolerance);
-    const wrapped = castShape(hullShape);
+    const wrapped = castResultShape(hullShape);
     if (!isShape3D(wrapped)) {
-      wrapped[Symbol.dispose]();
+      disposeResultShape(wrapped);
       return err(
         typeCastError(BrepErrorCode.MINKOWSKI_NOT_3D, 'Minkowski hull did not produce a 3D shape')
       );

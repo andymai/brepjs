@@ -4,7 +4,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Shape3D, Edge, Wire } from '@/core/shapeTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { kernelError, BrepErrorCode } from '@/core/errors.js';
 
@@ -27,8 +27,9 @@ export function positionOnCurve(
   try {
     const kernel = getKernel();
     const result = kernel.positionOnCurve(shape.wrapped, spine.wrapped, param);
-    const wrapped = castShape(result);
+    const wrapped = castResultShape(result);
     if (!isShape3D(wrapped)) {
+      disposeResultShape(wrapped);
       return err(
         kernelError(
           BrepErrorCode.POSITION_ON_CURVE_FAILED,

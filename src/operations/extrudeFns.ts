@@ -10,7 +10,13 @@ import type { Vec3 } from '@/core/types.js';
 import { vecLength, vecNormalize } from '@/core/vecOps.js';
 import type { Dimension, OrientedFace, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
-import { castShape, isShape3D, createSolid } from '@/core/shapeTypes.js';
+import {
+  castResultShape,
+  disposeDowncastSource,
+  disposeResultShape,
+  isShape3D,
+  createSolid,
+} from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 
@@ -45,6 +51,7 @@ export function extrude(
     const shape = kernel.extrude(face.wrapped, [...dir], len);
     const downcastShape = kernel.downcast(shape, 'solid');
     const solid = createSolid(downcastShape) as ValidSolid;
+    disposeDowncastSource(shape, solid);
     return ok(solid);
   } catch (e) {
     return err(
@@ -78,9 +85,10 @@ export function revolve(
   try {
     const kernel = getKernel();
     const shape = kernel.revolveVec(face.wrapped, [...center], [...direction], angle);
-    const result = castShape(shape);
+    const result = castResultShape(shape);
 
     if (!isShape3D(result)) {
+      disposeResultShape(result);
       return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
     }
     return ok(result);
@@ -148,7 +156,9 @@ export function extrudeAll(entries: readonly ExtrudeAllEntry[]): Result<ValidSol
     return ok(
       shapes.map((shape) => {
         const downcast = kernel.downcast(shape, 'solid');
-        return createSolid(downcast) as ValidSolid;
+        const solid = createSolid(downcast) as ValidSolid;
+        disposeDowncastSource(shape, solid);
+        return solid;
       })
     );
   } catch (e) {

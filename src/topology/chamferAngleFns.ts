@@ -7,7 +7,12 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Shape3D } from '@/core/shapeTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import {
+  castResultShape,
+  disposeDowncastSource,
+  disposeResultShape,
+  isShape3D,
+} from '@/core/shapeTypes.js';
 import { downcast } from './cast.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError } from '@/core/errors.js';
@@ -84,11 +89,17 @@ export function chamferDistAngle(
   }
 
   const downcastResult = downcast(raw);
-  if (isErr(downcastResult)) return downcastResult;
+  if (isErr(downcastResult)) {
+    getKernel().dispose(raw);
+    return downcastResult;
+  }
 
-  const wrapped = castShape(downcastResult.value);
+  const wrapped = castResultShape(downcastResult.value);
+  // Two downcasts chain here: `downcast(raw)` orphaned `raw` and castResultShape
+  // released its own (intermediate) source, so `raw` still needs releasing.
+  disposeDowncastSource(raw, wrapped);
   if (!isShape3D(wrapped)) {
-    wrapped[Symbol.dispose]();
+    disposeResultShape(wrapped);
     return err(
       typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngle did not produce a 3D shape')
     );

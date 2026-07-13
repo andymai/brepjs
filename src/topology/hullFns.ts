@@ -7,7 +7,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { Solid, AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { castShape, isSolid } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 
@@ -70,9 +70,10 @@ export function hull(
     const kernel = getKernel();
     const ocShapes = shapes.map((s) => s.wrapped);
     const resultOc = kernel.hull(ocShapes, tolerance);
-    const cast = castShape(resultOc);
+    const cast = castResultShape(resultOc);
 
     if (!isSolid(cast)) {
+      disposeResultShape(cast);
       return err(
         kernelError(
           BrepErrorCode.HULL_NOT_3D,

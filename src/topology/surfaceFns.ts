@@ -4,7 +4,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape } from '@/core/shapeTypes.js';
-import { castShape, isFace, isShell } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isFace, isShell } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, ioError, BrepErrorCode } from '@/core/errors.js';
 
@@ -110,11 +110,11 @@ function buildBSplineSurface(
   }
 
   const faceShape = getKernel().bsplineSurface(points, rows, cols);
-  const shape = castShape(faceShape);
+  const shape = castResultShape(faceShape);
   if (isFace(shape)) {
     return ok(shape);
   }
-  shape[Symbol.dispose]();
+  disposeResultShape(shape);
   return err(kernelError(BrepErrorCode.SURFACE_FAILED, 'B-spline surface did not produce a face'));
 }
 
@@ -137,7 +137,7 @@ function buildTriangulatedSurface(
   }
 
   const resultShape = getKernel().triangulatedSurface(points, rows, cols);
-  const shape = castShape(resultShape);
+  const shape = castResultShape(resultShape);
 
   if (isFace(shape)) {
     return ok(shape);
@@ -147,7 +147,7 @@ function buildTriangulatedSurface(
     return ok(shape);
   }
 
-  shape[Symbol.dispose]();
+  disposeResultShape(shape);
   return err(
     kernelError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromGrid: unexpected shape type from sewing')
   );

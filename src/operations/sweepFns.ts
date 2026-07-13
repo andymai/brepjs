@@ -10,7 +10,12 @@ import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecAdd, vecLength } from '@/core/vecOps.js';
 import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
-import { castShape, isShape3D, isWire as isWireGuard } from '@/core/shapeTypes.js';
+import {
+  castResultShape,
+  disposeResultShape,
+  isShape3D,
+  isWire as isWireGuard,
+} from '@/core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import {
   type BrepError,
@@ -61,7 +66,7 @@ function makeSpineWire(start: Vec3, end: Vec3): Wire {
   const kernel = getKernel();
   const edge = kernel.makeLineEdge([...start], [...end]);
   const wire = kernel.makeWire([edge]);
-  return castShape(wire) as Wire;
+  return castResultShape(wire) as Wire;
 }
 
 /** Build a helix wire for twist extrusion. */
@@ -74,7 +79,7 @@ function makeHelixWire(
   leftHanded = false
 ): Wire {
   const kernel = getKernel();
-  return castShape(
+  return castResultShape(
     kernel.makeHelixWire(pitch, height, radius, [...center], [...dir], leftHanded)
   ) as Wire;
 }
@@ -82,6 +87,35 @@ function makeHelixWire(
 // ---------------------------------------------------------------------------
 // Generic sweep
 // ---------------------------------------------------------------------------
+
+/** Cast a shell-mode sweep result `[shell, startWire, endWire]`, releasing all three on any reject. */
+function castSweepShellTuple(result: {
+  shape: KernelShape;
+  firstShape: KernelShape;
+  lastShape: KernelShape;
+}): Result<[Shape3D, Wire, Wire]> {
+  const shape = castResultShape(result.shape);
+  const startWire = castResultShape(result.firstShape);
+  const endWire = castResultShape(result.lastShape);
+  const disposeAll = (): void => {
+    disposeResultShape(shape);
+    disposeResultShape(startWire);
+    disposeResultShape(endWire);
+  };
+  if (!isShape3D(shape)) {
+    disposeAll();
+    return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
+  }
+  if (!isWireGuard(startWire)) {
+    disposeAll();
+    return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
+  }
+  if (!isWireGuard(endWire)) {
+    disposeAll();
+    return err(typeCastError('SWEEP_END_NOT_WIRE', 'Sweep did not produce an end Wire'));
+  }
+  return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
+}
 
 /**
  * Sweep a wire profile along a spine wire to create a 3D shape.
@@ -105,8 +139,9 @@ export function sweep(
   if (config.mode === 'simple' && !shellMode) {
     const kernel = getKernel();
     const resultOc = kernel.simplePipe(wire.wrapped, spine.wrapped);
-    const shape = castShape(resultOc);
+    const shape = castResultShape(resultOc);
     if (!isShape3D(shape)) {
+      disposeResultShape(shape);
       return err(typeCastError('SWEEP_NOT_3D', 'Simple pipe did not produce a 3D shape'));
     }
     return ok(shape);
@@ -147,23 +182,12 @@ export function sweep(
   });
 
   if (shellMode && typeof result === 'object' && 'firstShape' in result) {
-    const shape = castShape(result.shape);
-    if (!isShape3D(shape)) {
-      return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
-    }
-    const startWire = castShape(result.firstShape);
-    const endWire = castShape(result.lastShape);
-    if (!isWireGuard(startWire)) {
-      return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
-    }
-    if (!isWireGuard(endWire)) {
-      return err(typeCastError('SWEEP_END_NOT_WIRE', 'Sweep did not produce an end Wire'));
-    }
-    return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
+    return castSweepShellTuple(result);
   }
 
-  const shape = castShape(result);
+  const shape = castResultShape(result);
   if (!isShape3D(shape)) {
+    disposeResultShape(shape);
     return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
   }
   return ok(shape);
@@ -421,8 +445,9 @@ export function multiSectionSweep(
 
     const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled, tolerance });
 
-    const result = castShape(loftResult);
+    const result = castResultShape(loftResult);
     if (!isShape3D(result)) {
+      disposeResultShape(result);
       return err(
         typeCastError('MULTI_SWEEP_NOT_3D', 'Multi-section sweep did not produce a 3D shape')
       );
@@ -481,8 +506,9 @@ export function guidedSweep(
     const ocShape =
       typeof sweepResult === 'object' && 'shape' in sweepResult ? sweepResult.shape : sweepResult;
 
-    const result = castShape(ocShape);
+    const result = castResultShape(ocShape);
     if (!isShape3D(result)) {
+      disposeResultShape(result);
       return err(typeCastError('GUIDED_SWEEP_NOT_3D', 'Guided sweep did not produce a 3D shape'));
     }
     return ok(result as Solid | Shell);

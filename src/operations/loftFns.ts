@@ -6,7 +6,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { PointInput } from '@/core/types.js';
 import { toVec3 } from '@/core/types.js';
 import type { Dimension, Wire, Shape3D } from '@/core/shapeTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError } from '@/core/errors.js';
 
@@ -67,8 +67,9 @@ export function loft(
       }
     );
 
-    const result = castShape(shape);
+    const result = castResultShape(shape);
     if (!isShape3D(result)) {
+      disposeResultShape(result);
       return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
     }
     return ok(result);
@@ -143,8 +144,9 @@ export function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]> {
 
     const results: Shape3D[] = [];
     for (const shape of shapes) {
-      const cast = castShape(shape);
+      const cast = castResultShape(shape);
       if (!isShape3D(cast)) {
+        disposeResultShape(cast);
         return err(typeCastError('LOFT_ALL_NOT_3D', 'Batch loft entry did not produce a 3D shape'));
       }
       results.push(cast);

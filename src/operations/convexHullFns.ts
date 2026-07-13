@@ -7,7 +7,7 @@
 
 import type { Vec3 } from '@/core/types.js';
 import type { Solid } from '@/core/shapeTypes.js';
-import { castShape, isSolid } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import { getKernel } from '@/kernel/index.js';
@@ -45,9 +45,10 @@ export function convexHull(points: ReadonlyArray<Vec3>): Result<Solid> {
     const kernel = getKernel();
     const objPoints = points.map((p) => ({ x: p[0], y: p[1], z: p[2] }));
     const result = kernel.hullFromPoints(objPoints, 0.1);
-    const cast = castShape(result);
+    const cast = castResultShape(result);
 
     if (!isSolid(cast)) {
+      disposeResultShape(cast);
       return err(
         kernelError(
           BrepErrorCode.HULL_NOT_3D,

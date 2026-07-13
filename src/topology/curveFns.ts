@@ -6,7 +6,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Vec3 } from '@/core/types.js';
 import type { Dimension, Edge, Wire } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape } from '@/core/shapeTypes.js';
 import type { CurveType } from '@/core/typeDiscriminants.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError } from '@/core/errors.js';
@@ -134,7 +134,7 @@ export function getOrientation(shape: Edge<Dimension> | Wire<Dimension>): 'forwa
 
 /** Flip the orientation of an edge or wire. Returns a new shape with the same dimension. */
 export function flipOrientation<D extends Dimension>(shape: Edge<D> | Wire<D>): Edge<D> | Wire<D> {
-  return castShape<D>(getKernel().reverseShape(shape.wrapped)) as Edge<D> | Wire<D>;
+  return castResultShape<D>(getKernel().reverseShape(shape.wrapped)) as Edge<D> | Wire<D>;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,8 +178,9 @@ export function interpolateCurve(
 
   try {
     const result = getKernel().interpolatePoints(points as [number, number, number][], options);
-    const cast = castShape(result);
+    const cast = castResultShape(result);
     if (!isEdge(cast)) {
+      disposeResultShape(cast);
       return err(typeCastError('INTERPOLATE_NOT_EDGE', 'Interpolation did not produce an edge'));
     }
     return ok(cast);
@@ -210,8 +211,9 @@ export function approximateCurve(
 
   try {
     const result = getKernel().approximatePoints(points as [number, number, number][], options);
-    const cast = castShape(result);
+    const cast = castResultShape(result);
     if (!isEdge(cast)) {
+      disposeResultShape(cast);
       return err(typeCastError('APPROXIMATE_NOT_EDGE', 'Approximation did not produce an edge'));
     }
     return ok(cast);
@@ -249,10 +251,10 @@ export function offsetWire2D(
     chamfer: 'intersection', // sharp/miter corners
   };
   const resultShape = getKernel().offsetWire2D(wire.wrapped, offset, joinMap[kind]);
-  const wrapped = castShape(resultShape);
+  const wrapped = castResultShape(resultShape);
 
   if (!isWireGuard(wrapped)) {
-    wrapped[Symbol.dispose]();
+    disposeResultShape(wrapped);
     return err(typeCastError('OFFSET_NOT_WIRE', 'Offset did not produce a Wire'));
   }
   return ok(wrapped);

@@ -17,6 +17,7 @@ import type {
 } from '@/core/shapeTypes.js';
 import {
   castShape,
+  castResultShape,
   disposeDowncastSource,
   disposeResultShape,
   getShapeKind,
@@ -624,7 +625,7 @@ export function section(
   try {
     const kernel = getKernel();
     const resultOc = kernel.section(shape.wrapped, sectionFace, approximation);
-    const wrapped = castShape(resultOc);
+    const wrapped = castResultShape(resultOc);
     return ok(wrapped);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -744,7 +745,7 @@ function assembleWiresFromEdges(edges: EdgeD[]): Wire[] {
     const wireEdges = walkEdgeChain(startEdge, adjacency, visited);
     try {
       const wireOc = kernel.makeWire(wireEdges.map((e) => e.wrapped));
-      wires.push(castShape(wireOc) as Wire);
+      wires.push(castResultShape(wireOc) as Wire);
     } catch {
       // Skip malformed wire components
     }
@@ -867,7 +868,7 @@ export function split(
       shape.wrapped,
       tools.map((t) => t.wrapped)
     );
-    return ok(castShape(result));
+    return ok(castResultShape(result));
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -953,8 +954,9 @@ export function booleanPipeline(
       return err(kernelError('BOOLEAN_PIPELINE_FAILED', 'Boolean pipeline returned null shape'));
     }
 
-    const shape = castShape(result);
+    const shape = castResultShape(result);
     if (!isShape3D(shape)) {
+      disposeResultShape(shape);
       return err(typeCastError('BOOLEAN_PIPELINE_NOT_3D', 'Pipeline result is not a 3D shape'));
     }
     return ok(shape);
