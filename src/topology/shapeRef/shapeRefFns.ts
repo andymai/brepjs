@@ -6,7 +6,7 @@
 import type { Face, Shape3D } from '@/core/shapeTypes.js';
 import type { ShapeEvolution } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
-import { castShapeWithKnownType } from '@/core/shapeTypes.js';
+import { castShapeWithKnownType, disposeTransientSubShape } from '@/core/shapeTypes.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { normalAt, faceCenter, faceGeomType } from '@/topology/faceFns.js';
@@ -112,7 +112,6 @@ export function assignRoles(shape: Shape3D, operationType: string): Map<string, 
   // instead of being retained for the shape's whole lifetime.
   for (const raw of kernel.iterShapes(shape.wrapped, 'face')) {
     const face = castShapeWithKnownType(raw, 'face') as Face;
-    const dc = face.wrapped;
     try {
       const semantic = assigner?.(face);
       const role =
@@ -122,14 +121,7 @@ export function assignRoles(shape: Shape3D, operationType: string): Map<string, 
       roles.set(role, [getHashCode(face)]);
       index++;
     } finally {
-      face[Symbol.dispose]();
-      if (dc !== raw) {
-        // occt-wasm: downcast allocated a distinct arena slot and the handle's
-        // delete above was a no-op, so release both slots. Identity-downcast
-        // kernels (manifold, brepkit) share one object, already freed above.
-        kernel.dispose(dc);
-        kernel.dispose(raw);
-      }
+      disposeTransientSubShape(face, raw);
     }
   }
   return roles;

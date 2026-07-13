@@ -329,6 +329,27 @@ export function castResultShape<D extends Dimension = '3D'>(
 }
 
 /**
+ * Fully release a transiently-branded sub-shape and the raw handle it was cast
+ * from — for a face/edge iterated only to read a property, then discarded.
+ *
+ * `handle`'s dispose updates stats and, on kernels that own their native object
+ * (Embind, manifold, brepkit), frees it. occt-wasm handles are arena-backed
+ * (their delete is a no-op), so when the downcast produced a distinct handle
+ * (`handle.wrapped !== rawSource`) both arena slots are released explicitly. The
+ * identity guard also skips manifold/brepkit — there `handle` *is* `rawSource`,
+ * already freed above, and their `dispose()` has no double-free guard.
+ */
+export function disposeTransientSubShape(handle: ShapeHandle, rawSource: KernelShape): void {
+  const downcast = handle.wrapped;
+  handle[Symbol.dispose]();
+  if (downcast !== rawSource) {
+    const kernel = getKernel();
+    kernel.dispose(downcast);
+    kernel.dispose(rawSource);
+  }
+}
+
+/**
  * Fast-path cast when the shape type is already known (e.g., from iterShapes).
  * Skips the shapeType() WASM call — only performs downcast + branded handle creation.
  * Used internally by topology extractors for bulk sub-shape iteration.
