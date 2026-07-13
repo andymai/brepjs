@@ -26,10 +26,16 @@ import {
   compound,
   getFaces,
   getEdges,
+  edgesOfFace,
+  verticesOfFace,
+  facesOfEdge,
+  adjacentFaces,
+  sharedEdges,
   measureVolume,
   isOk,
   unwrap,
 } from '@/index.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 
 const isOcctWasm = (process.env['TEST_KERNEL'] ?? 'occt') === 'occt-wasm';
@@ -171,6 +177,52 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
+    });
+
+    it('adjacency queries leak nothing per call (warm cache)', () => {
+      // Shared parent with a warm adjacency cache: each query's per-call
+      // allocation must return to baseline. The parent + borrowed sub-shape
+      // handles are intentionally kept alive for the duration.
+      const parent = box(10, 10, 10);
+      const faces = getFaces(parent);
+      const edges = getEdges(parent);
+      const disposeAll = (arr: AnyShape<Dimension>[]): void => {
+        for (const h of arr) h[Symbol.dispose]();
+      };
+      const f0 = faces[0];
+      const f1 = faces[1];
+      const e0 = edges[0];
+      if (!f0 || !f1 || !e0) throw new Error('box must have faces and edges');
+
+      expect(
+        perIterationLeak(() => {
+          disposeAll(edgesOfFace(f0));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          disposeAll(verticesOfFace(f0));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          disposeAll(facesOfEdge(parent, e0));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          disposeAll(adjacentFaces(parent, f0));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          disposeAll(sharedEdges(f0, f1));
+        })
+      ).toBe(0);
+
+      disposeAll(faces);
+      disposeAll(edges);
+      parent[Symbol.dispose]();
     });
   });
 
