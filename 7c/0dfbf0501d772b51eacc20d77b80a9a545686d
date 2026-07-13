@@ -1,0 +1,23 @@
+src/topology/topologyQueryFns.ts
+  s_6f45a88250e548::t_b1eb199ddc1d24 93,95,103-110
+  s_6f45a88250e548::t_28befc0c2b8429 94
+tests/topologyCaching.test.ts
+  s_6f45a88250e548::t_d1db54e2250d29 103-105,107-110,112-115
+  s_6f45a88250e548::t_a61e3e4db4d0d9 106,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7c0dfbf0501d772b51eacc20d77b80a9a545686d",
+  "prompts": {},
+  "sessions": {
+    "s_6f45a88250e548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da1adf1b-23e5-4e3c-9202-f2e1db7dc6a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
