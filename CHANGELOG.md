@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.10](https://github.com/andymai/brepjs/compare/brepjs-v18.118.9...brepjs-v18.118.10) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** release the topology cache when its shape is disposed ([#1779](https://github.com/andymai/brepjs/issues/1779)) ([13c382d](https://github.com/andymai/brepjs/commit/13c382db68431a78d72bb39bbe837696fbfb901f))
+
 ## [18.118.9](https://github.com/andymai/brepjs/compare/brepjs-v18.118.8...brepjs-v18.118.9) (2026-07-13)
 
 
