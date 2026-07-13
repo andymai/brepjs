@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.6](https://github.com/andymai/brepjs/compare/brepjs-v18.118.5...brepjs-v18.118.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** complete castResultShape/disposeResultShape migration across remaining ops ([#1755](https://github.com/andymai/brepjs/issues/1755)) ([#1760](https://github.com/andymai/brepjs/issues/1760)) ([6013994](https://github.com/andymai/brepjs/commit/6013994b9f4528be408a095004664b609e004849))
+
 ## [18.118.5](https://github.com/andymai/brepjs/compare/brepjs-v18.118.4...brepjs-v18.118.5) (2026-07-13)
 
 
