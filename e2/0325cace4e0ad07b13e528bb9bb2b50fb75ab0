@@ -1,0 +1,30 @@
+src/topology/topologyQueryFns.ts
+  s_6f45a88250e548::t_e96d2d2f022bd6 20,38,177,184,191,198,205,212,219
+src/core/shapeTypes.ts
+  s_6f45a88250e548::t_e96d2d2f022bd6 385-402
+src/core/kernelCall.ts
+  s_6f45a88250e548::t_424de8dc23dc80 73-76
+  s_6f45a88250e548::t_4cc7ba6e3c6550 10
+src/core/disposal.ts
+  s_6f45a88250e548::t_e96d2d2f022bd6 12,146-152,161,188-191
+  s_6f45a88250e548::t_7ddef24f03dc85 192-194
+  s_6f45a88250e548::t_16b062353b4b7b 195-199
+tests/wasmArenaDisposal.test.ts
+  s_6f45a88250e548::t_a7712ed042dc96 1-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e20325cace4e0ad07b13e528bb9bb2b50fb75ab0",
+  "prompts": {},
+  "sessions": {
+    "s_6f45a88250e548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da1adf1b-23e5-4e3c-9202-f2e1db7dc6a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
