@@ -1,0 +1,47 @@
+src/kernel/brepkit/topologyOps.ts
+  s_6f45a88250e548::t_f3d6e6cc9ae6a6 295
+  s_6f45a88250e548::t_0c067c69b86aa6 277-279
+src/kernel/occtWasm/topologyOps.ts
+  s_6f45a88250e548::t_dfb49ca2b033e1 55-61
+src/sketching/draw3d.ts
+  s_6f45a88250e548::t_40286bcd860bcf 10,66
+src/sketching/sketch.ts
+  s_6f45a88250e548::t_3e9a601c6a2aad 123,134,139
+  s_6f45a88250e548::t_59c46bb1399783 3
+src/kernel/occt/geometryQueryOps.ts
+  s_6f45a88250e548::t_dcb8b364e96a04 575
+  s_6f45a88250e548::t_20371ff233b196 541-543
+src/topology/shapeFns.ts
+  s_6f45a88250e548::t_0eb50e01d775b2 21,24
+src/sketching/sketchFns.ts
+  s_6f45a88250e548::t_40286bcd860bcf 18,102,372
+src/topology/cast.ts
+  s_6f45a88250e548::t_22ade735a45d08 84-103
+  s_6f45a88250e548::t_28797c2219719b 83
+tests/shapeFns.test.ts
+  s_6f45a88250e548::t_451b0022a089ea 55-69
+src/sketching/faceSketcher.ts
+  s_6f45a88250e548::t_40286bcd860bcf 10,43
+src/kernel/interfaces/topologyOps.ts
+  s_6f45a88250e548::t_a14b2b4cfe3ac7 24-35
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_6f45a88250e548::t_0be19de94355bc 1330-1333
+src/kernel/manifold/topologyOps.ts
+  s_6f45a88250e548::t_e25407f030053c 165-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "3a60381b009899929c59f98d1ab423dfd8d48d07",
+  "prompts": {},
+  "sessions": {
+    "s_6f45a88250e548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da1adf1b-23e5-4e3c-9202-f2e1db7dc6a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
