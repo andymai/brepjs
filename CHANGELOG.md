@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.5](https://github.com/andymai/brepjs/compare/brepjs-v18.118.4...brepjs-v18.118.5) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** plug error-path handle leaks in not-3D reject branches ([#1756](https://github.com/andymai/brepjs/issues/1756)) ([d0a431d](https://github.com/andymai/brepjs/commit/d0a431df0a0ba667f2186a7a6678dc2f665a76be))
+
 ## [18.118.4](https://github.com/andymai/brepjs/compare/brepjs-v18.118.3...brepjs-v18.118.4) (2026-07-13)
 
 
