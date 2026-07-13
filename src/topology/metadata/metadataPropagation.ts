@@ -126,5 +126,8 @@ export function propagateMetadataThroughRelocation(
     if (sf === undefined || mf === undefined) continue;
     modified.set(kernel.hashCode(sf, HASH_CODE_MAX), [kernel.hashCode(mf, HASH_CODE_MAX)]);
   }
+  // Only the hashes are needed; release the transient face handles.
+  for (const f of srcFaces) kernel.dispose(f);
+  for (const f of movedFaces) kernel.dispose(f);
   propagateAllMetadata({ modified, generated: new Map(), deleted: new Set() }, [source], moved);
 }

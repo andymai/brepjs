@@ -18,21 +18,40 @@ import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { makeVecU32, unwrap, wrapResult } from './helpers.js';
 
 /**
+ * The resolved tool id plus a `dispose` that releases any temporary the
+ * resolution allocated. Callers must call `dispose()` after the boolean.
+ */
+export interface ResolvedTool {
+  id: number;
+  dispose: () => void;
+}
+
+/**
  * Normalize a boolean tool to a single fused solid when it is a compound of
  * multiple solids (e.g. engraved text — one solid per glyph). occt-wasm's
  * boolean returns an empty result for such compound tools where opencascade
  * tolerated them; fusing the solids first yields a usable single tool.
  * Single-solid (or non-solid) tools pass through untouched.
  */
-export function resolveBooleanTool(k: OcctKernelWasm, tool: KernelShape): number {
+export function resolveBooleanTool(k: OcctKernelWasm, tool: KernelShape): ResolvedTool {
   const toolId = unwrap(tool);
   const solids = k.getSubShapes(toolId, 'solid');
   try {
-    return solids.size() > 1 ? k.fuseAll(solids) : toolId;
+    if (solids.size() > 1) {
+      // Multi-solid tool: the fused result is a fresh arena slot the caller
+      // must release once the boolean has consumed it.
+      const fusedId = k.fuseAll(solids);
+      return {
+        id: fusedId,
+        dispose: () => {
+          k.release(fusedId);
+        },
+      };
+    }
+    return { id: toolId, dispose: () => {} };
   } finally {
-    // getSubShapes copies each sub-solid into its own arena slot. Deleting the
-    // vector frees only the container, so release the queried solids too —
-    // otherwise every pass-through boolean (single-solid tool) leaks one handle.
+    // getSubShapes copies each sub-solid into its own arena slot; the vector
+    // delete frees only the container, so release the queried copies too.
     // Guard against releasing the tool itself in case a query ever aliases it.
     for (let i = 0, n = solids.size(); i < n; i++) {
       const id = solids.get(i);
@@ -57,7 +76,12 @@ export function cut(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  return wrapResult(k, k.cut(unwrap(shape), resolveBooleanTool(k, tool)));
+  const resolved = resolveBooleanTool(k, tool);
+  try {
+    return wrapResult(k, k.cut(unwrap(shape), resolved.id));
+  } finally {
+    resolved.dispose();
+  }
 }
 
 export function intersect(
@@ -66,7 +90,12 @@ export function intersect(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  return wrapResult(k, k.intersect(unwrap(shape), resolveBooleanTool(k, tool)));
+  const resolved = resolveBooleanTool(k, tool);
+  try {
+    return wrapResult(k, k.intersect(unwrap(shape), resolved.id));
+  } finally {
+    resolved.dispose();
+  }
 }
 
 export function section(

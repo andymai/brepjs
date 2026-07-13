@@ -15,7 +15,7 @@ import type {
   Vertex,
   Wire,
 } from '@/core/shapeTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { castShape, disposeDowncastSource, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isErr, unwrap } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { Plane } from '@/core/planeTypes.js';
@@ -89,12 +89,7 @@ function castToShape3D(
       )
     );
   }
-  // On occt-wasm castShape downcasts into a fresh arena handle, orphaning the
-  // pre-downcast result. Release it so the arena reclaims that slot. Guard on
-  // identity: kernels whose downcast is a no-op (manifold, brepkit) return the
-  // same handle, so `wrapped` *is* `shape` and releasing it would delete the
-  // shape we return.
-  if (wrapped.wrapped !== shape) getKernel().dispose(shape);
+  disposeDowncastSource(shape, wrapped);
   return ok(wrapped);
 }
 

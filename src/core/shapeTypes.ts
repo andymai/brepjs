@@ -298,6 +298,37 @@ export function castShape3D(ocShape: KernelShape): AnyShape {
 }
 
 /**
+ * Release the pre-downcast handle of a freshly-produced kernel result after it
+ * has been cast to `cast`.
+ *
+ * On occt-wasm `downcast` allocates a new arena slot and orphans the input; a
+ * handle's own `delete()` is a no-op there, so the input must be released via
+ * `getKernel().dispose()` to reclaim the slot. Kernels whose `downcast` is
+ * identity (manifold, brepkit) return the same handle as `cast`, so nothing is
+ * released — doing so would delete the shape being returned.
+ *
+ * Use only for a kernel result the caller owns outright — never for a shape
+ * received from elsewhere.
+ */
+export function disposeDowncastSource(source: KernelShape, cast: ShapeHandle): void {
+  if (cast.wrapped !== source) getKernel().dispose(source);
+}
+
+/**
+ * Cast a freshly-produced kernel result to its branded type and release the
+ * orphaned pre-downcast handle. The result-owning counterpart to {@link castShape};
+ * see {@link disposeDowncastSource} for the arena semantics.
+ */
+export function castResultShape<D extends Dimension = '3D'>(
+  ocShape: KernelShape,
+  dim?: D
+): AnyShape<D> {
+  const cast = castShape<D>(ocShape, dim);
+  disposeDowncastSource(ocShape, cast);
+  return cast;
+}
+
+/**
  * Fast-path cast when the shape type is already known (e.g., from iterShapes).
  * Skips the shapeType() WASM call — only performs downcast + branded handle creation.
  * Used internally by topology extractors for bulk sub-shape iteration.

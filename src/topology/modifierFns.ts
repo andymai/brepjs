@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
-import { castShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
+import { castResultShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
@@ -111,7 +111,7 @@ function finalizeShape3D(
   not3dCode: string,
   not3dMessage: string
 ): Result<Shape3D> {
-  const cast = castShape(resultShape);
+  const cast = castResultShape(resultShape);
   if (!isShape3D(cast)) {
     return err(kernelError(not3dCode, not3dMessage));
   }
@@ -176,7 +176,7 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
       inputFaceHashes,
       HASH_CODE_MAX
     );
-    const cast = castShape(resultShape) as Solid;
+    const cast = castResultShape(resultShape) as Solid;
     propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
@@ -276,7 +276,7 @@ export function fillet(
 
     if (!trackEvolution) {
       const resultShape = getKernel().fillet(shape.wrapped, edgeShapes, kernelRadius);
-      const cast = castShape(resultShape);
+      const cast = castResultShape(resultShape);
       if (!isShape3D(cast)) {
         return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
       }
@@ -426,7 +426,7 @@ export function shell(
         thickness,
         tolerance
       );
-      const cast = castShape(resultShape);
+      const cast = castResultShape(resultShape);
       if (!isShape3D(cast)) {
         return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
       }
@@ -442,7 +442,7 @@ export function shell(
       HASH_CODE_MAX,
       tolerance
     );
-    const cast = castShape(resultShape);
+    const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
@@ -487,7 +487,7 @@ export function offset(shape: ValidSolid, distance: number, tolerance = 1e-6): R
       HASH_CODE_MAX,
       tolerance
     );
-    const cast = castShape(resultShape);
+    const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
       return err(kernelError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
     }
@@ -668,7 +668,7 @@ export function variableFillet(
       radii: radii.map((r) => ({ param: r.param, radius: r.radius })),
     });
     const result = kernel.filletVariable(shape.wrapped, spec);
-    const wrapped = castShape(result);
+    const wrapped = castResultShape(result);
     if (!isShape3D(wrapped)) {
       wrapped[Symbol.dispose]();
       return err(

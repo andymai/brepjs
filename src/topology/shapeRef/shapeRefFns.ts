@@ -122,12 +122,11 @@ export function assignRoles(shape: Shape3D, operationType: string): Map<string, 
       roles.set(role, [getHashCode(face)]);
       index++;
     } finally {
-      // Dispose the branded handle (stats + FinalizationRegistry + delete).
       face[Symbol.dispose]();
       if (dc !== raw) {
-        // occt-wasm: downcast allocated a distinct arena slot, and the handle's
-        // delete was a no-op, so release both slots. Identity-downcast kernels
-        // (manifold, brepkit) return the same object, already freed above.
+        // occt-wasm: downcast allocated a distinct arena slot and the handle's
+        // delete above was a no-op, so release both slots. Identity-downcast
+        // kernels (manifold, brepkit) share one object, already freed above.
         kernel.dispose(dc);
         kernel.dispose(raw);
       }

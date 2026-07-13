@@ -6,7 +6,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Vec3, MatrixInput } from '@/core/types.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX, DEG2RAD } from '@/core/constants.js';
 import type { Result } from '@/core/result.js';
 import { ok, err } from '@/core/result.js';
@@ -34,7 +34,7 @@ export function translate<T extends AnyShape<Dimension>>(shape: T, v: Vec3): T {
     inputFaceHashes,
     HASH_CODE_MAX
   );
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateAllMetadata(evolution, [shape], result);
   return result;
 }
@@ -55,7 +55,7 @@ export function rotate<T extends AnyShape<Dimension>>(
     direction,
     position
   );
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateAllMetadata(evolution, [shape], result);
   return result;
 }
@@ -74,7 +74,7 @@ export function mirror<T extends AnyShape<Dimension>>(
     inputFaceHashes,
     HASH_CODE_MAX
   );
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateAllMetadata(evolution, [shape], result);
   return result;
 }
@@ -93,7 +93,7 @@ export function scale<T extends AnyShape<Dimension>>(
     inputFaceHashes,
     HASH_CODE_MAX
   );
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateAllMetadata(evolution, [shape], result);
   return result;
 }
@@ -269,7 +269,7 @@ export function applyMatrix<T extends AnyShape<Dimension>>(
       inputFaceHashes,
       HASH_CODE_MAX
     );
-    const result = castShape(resultShape) as T;
+    const result = castResultShape(resultShape) as T;
     propagateAllMetadata(evolution, [shape], result);
     return ok(result);
   }
@@ -278,7 +278,7 @@ export function applyMatrix<T extends AnyShape<Dimension>>(
   // Requires BRepBuilderAPI_GTransform in the WASM build (see build-config/*.yml)
   /* v8 ignore start -- untestable until WASM is rebuilt with BRepBuilderAPI_GTransform */
   const resultShape = getKernel().generalTransformNonOrthogonal(shape.wrapped, linear, translation);
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateMetadataByHash([shape], result);
   return ok(result);
   /* v8 ignore stop */
@@ -348,7 +348,7 @@ export function locate<T extends AnyShape<Dimension>>(
   const { trsf, cleanup } = composeTransforms(ops);
   let moved: T;
   try {
-    moved = castShape(getKernel().locate(shape.wrapped, trsf)) as T;
+    moved = castResultShape(getKernel().locate(shape.wrapped, trsf)) as T;
   } finally {
     cleanup();
   }
@@ -371,7 +371,7 @@ export function transformCopy<T extends AnyShape<Dimension>>(
     inputFaceHashes,
     HASH_CODE_MAX
   );
-  const result = castShape(resultShape) as T;
+  const result = castResultShape(resultShape) as T;
   propagateAllMetadata(evolution, [shape], result);
   return result;
 }

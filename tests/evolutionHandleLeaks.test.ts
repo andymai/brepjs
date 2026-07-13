@@ -1,14 +1,16 @@
 /**
- * Regression tests for gh #1749 — WASM shape-handle leaks in the
- * WithEvolution / boolean helpers and the face-lineage functions.
+ * Regression tests for gh #1749 — WASM shape-handle leaks in the boolean /
+ * evolution / transform helpers and the face-lineage functions.
  *
  * Two kinds of assertion:
  *  - Kernel-agnostic: assignRoles / setShapeOrigin must not *retain* tracked
  *    face handles (they read hashes transiently), so getDisposalStats().liveHandles
- *    returns to baseline. Before the fix these leaked one handle per face.
- *  - occt-wasm arena: repeated booleans must not grow the arena once results are
- *    released, proving the orphaned pre-downcast handles (castShape) and queried
- *    tool sub-solids (resolveBooleanTool) are reclaimed.
+ *    returns to baseline; and the operations stay geometrically correct (exact
+ *    volumes) after their temporaries are released.
+ *  - occt-wasm arena: repeated operations must not grow the arena once results
+ *    are released, proving the orphaned pre-downcast handles (castResultShape),
+ *    transient faces, and queried tool sub-solids (resolveBooleanTool) are all
+ *    reclaimed.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
@@ -16,11 +18,15 @@ import {
   box,
   translate,
   cut,
+  fillet,
+  compound,
+  getFaces,
   fuseWithEvolution,
   cutWithEvolution,
   intersectWithEvolution,
   filletWithEvolution,
   chamferWithEvolution,
+  shellWithEvolution,
   assignRoles,
   setShapeOrigin,
   getFaceOrigins,
@@ -75,41 +81,54 @@ describe('face-lineage functions do not retain face handles (#1749)', () => {
 });
 
 describe('WithEvolution helpers stay correct after releasing temporaries (#1749)', () => {
-  it('fuse/cut/intersect with evolution still produce valid solids', () => {
-    const a = box(10, 10, 10);
-    const b = translate(box(10, 10, 10), [5, 0, 0]);
+  // box(10) is 1000; the second box overlaps it by a 5×10×10 = 500 slab.
+  const a = () => box(10, 10, 10);
+  const b = () => translate(box(10, 10, 10), [5, 0, 0]);
 
-    const fused = fuseWithEvolution(a, b);
-    expect(isOk(fused)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(fused).shape))).toBeGreaterThan(0);
+  it('fuse with evolution keeps the exact union volume', () => {
+    const r = fuseWithEvolution(a(), b());
+    expect(isOk(r)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(r).shape))).toBeCloseTo(1500, 3);
+  });
 
-    const c = box(10, 10, 10);
-    const d = translate(box(10, 10, 10), [5, 0, 0]);
-    const cutRes = cutWithEvolution(c, d);
-    expect(isOk(cutRes)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(cutRes).shape))).toBeGreaterThan(0);
+  it('cut with evolution keeps the exact difference volume', () => {
+    const r = cutWithEvolution(a(), b());
+    expect(isOk(r)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(r).shape))).toBeCloseTo(500, 3);
+  });
 
-    const e = box(10, 10, 10);
-    const f = translate(box(10, 10, 10), [5, 0, 0]);
-    const intRes = intersectWithEvolution(e, f);
-    expect(isOk(intRes)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(intRes).shape))).toBeGreaterThan(0);
+  it('intersect with evolution keeps the exact common volume', () => {
+    const r = intersectWithEvolution(a(), b());
+    expect(isOk(r)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(r).shape))).toBeCloseTo(500, 3);
   });
 
   it('boolean over metadata-tagged inputs still succeeds (exercises collectInputFaceHashes)', () => {
     // Tagging the inputs forces collectInputFaceHashes off its no-metadata
     // fast path, so its transient faces are actually iterated and released.
-    const a = box(10, 10, 10);
-    const b = translate(box(10, 10, 10), [5, 0, 0]);
-    setShapeOrigin(a, 1);
-    setShapeOrigin(b, 2);
+    const x = a();
+    const y = b();
+    setShapeOrigin(x, 1);
+    setShapeOrigin(y, 2);
 
-    const fused = fuseWithEvolution(a, b);
-    expect(isOk(fused)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(fused).shape))).toBeGreaterThan(0);
+    const r = fuseWithEvolution(x, y);
+    expect(isOk(r)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(r).shape))).toBeCloseTo(1500, 3);
   });
 
-  it('fillet/chamfer with evolution still produce valid solids', () => {
+  it('cut with a multi-solid compound tool still works (exercises resolveBooleanTool fuseAll)', () => {
+    const base = box(20, 20, 20); // 8000
+    const tool = compound([
+      translate(box(4, 4, 4), [2, 2, 2]),
+      translate(box(4, 4, 4), [14, 14, 14]),
+    ]);
+    const r = cut(base, tool, { unsafe: true });
+    expect(isOk(r)).toBe(true);
+    // Two disjoint 4³ = 64 cavities fully inside the base.
+    expect(unwrap(measureVolume(unwrap(r)))).toBeCloseTo(8000 - 128, 3);
+  });
+
+  it('fillet/chamfer/shell with evolution still produce valid solids', () => {
     const fil = filletWithEvolution(box(10, 10, 10), undefined, 1);
     expect(isOk(fil)).toBe(true);
     expect(unwrap(measureVolume(unwrap(fil).shape))).toBeGreaterThan(0);
@@ -117,37 +136,59 @@ describe('WithEvolution helpers stay correct after releasing temporaries (#1749)
     const cham = chamferWithEvolution(box(10, 10, 10), undefined, 1);
     expect(isOk(cham)).toBe(true);
     expect(unwrap(measureVolume(unwrap(cham).shape))).toBeGreaterThan(0);
+
+    const solid = box(10, 10, 10);
+    const top = getFaces(solid)[0];
+    expect(top).toBeDefined();
+    if (top) {
+      const shelled = shellWithEvolution(solid, [top], 1);
+      expect(isOk(shelled)).toBe(true);
+      const vol = unwrap(measureVolume(unwrap(shelled).shape));
+      expect(vol).toBeGreaterThan(0);
+      expect(vol).toBeLessThan(1000); // hollowed, so less than the solid box
+    }
   });
 });
 
-describe('boolean temporaries are reclaimed from the occt-wasm arena (#1749)', () => {
+describe('operation temporaries are reclaimed from the occt-wasm arena (#1749)', () => {
   it.skipIf(currentKernel !== 'occt-wasm')(
-    'repeated cut() does not grow the arena once results are released',
+    'repeated cut/fillet/translate do not grow the arena once results are released',
     () => {
       if (occtWasmShapeCount() === undefined) return; // counter unavailable
 
       const base = box(20, 20, 20);
       const tool = translate(box(10, 10, 10), [5, 5, 5]);
+      const multiTool = compound([
+        translate(box(3, 3, 3), [2, 2, 2]),
+        translate(box(3, 3, 3), [15, 15, 15]),
+      ]);
+
+      const cycle = (): void => {
+        const results = [
+          cut(base, tool), // castToShape3D + resolveBooleanTool (single solid)
+          cut(base, multiTool, { unsafe: true }), // resolveBooleanTool fuseAll branch
+          fillet(base, undefined, 0.5), // modifierFns.finalizeShape3D
+        ];
+        for (const r of results) {
+          expect(isOk(r)).toBe(true);
+          if (isOk(r)) getKernel().dispose(r.value.wrapped);
+        }
+        const moved = translate(base, [1, 0, 0]); // transformFns
+        getKernel().dispose(moved.wrapped);
+      };
 
       // Warm up one-time caches so the measured window is steady-state.
-      const warm = cut(base, tool);
-      expect(isOk(warm)).toBe(true);
-      if (isOk(warm)) getKernel().dispose(warm.value.wrapped);
+      cycle();
 
       const start = occtWasmShapeCount() ?? 0;
-      const iterations = 25;
-      for (let i = 0; i < iterations; i++) {
-        const r = cut(base, tool);
-        expect(isOk(r)).toBe(true);
-        if (isOk(r)) getKernel().dispose(r.value.wrapped);
-      }
+      const iterations = 20;
+      for (let i = 0; i < iterations; i++) cycle();
       const growth = (occtWasmShapeCount() ?? 0) - start;
 
-      // Each iteration used to orphan the pre-downcast result handle plus the
-      // queried tool sub-solid (~2 handles/iter, ~50 over the loop). With the
-      // fix, released results leave the arena flat aside from minor churn.
-      expect(growth).toBeLessThanOrEqual(iterations);
-      expect(growth / iterations).toBeLessThan(1);
+      // Before the fix each cycle orphaned ~5 handles (two boolean results, the
+      // fused sub-solid tool, a fillet result, a transform result) — ~100 over
+      // the loop. With the fix, released results leave the arena flat (0).
+      expect(growth).toBeLessThanOrEqual(5);
     }
   );
 });

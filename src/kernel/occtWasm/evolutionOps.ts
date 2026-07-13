@@ -26,6 +26,7 @@ import {
   wrapResult,
 } from './helpers.js';
 import { resolveBooleanTool } from './booleanOps.js';
+import type { ResolvedTool } from './booleanOps.js';
 
 /**
  * Parse an EvolutionData result from the WASM kernel into a ShapeEvolution.
@@ -235,13 +236,10 @@ export function cutWithHistory(
   _options?: BooleanOptions
 ): DiagnosticOperationResult {
   const hashVec = makeVecInt(Module, inputFaceHashes);
+  let resolved: ResolvedTool | undefined;
   try {
-    const evo = k.cutWithHistory(
-      unwrap(shape),
-      resolveBooleanTool(k, tool),
-      hashVec,
-      hashUpperBound
-    );
+    resolved = resolveBooleanTool(k, tool);
+    const evo = k.cutWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound);
     const { id, evolution } = parseEvolution(evo);
     return {
       shape: wrapResult(k, id),
@@ -250,6 +248,7 @@ export function cutWithHistory(
     };
   } finally {
     hashVec.delete();
+    resolved?.dispose();
   }
 }
 
@@ -263,13 +262,10 @@ export function intersectWithHistory(
   _options?: BooleanOptions
 ): DiagnosticOperationResult {
   const hashVec = makeVecInt(Module, inputFaceHashes);
+  let resolved: ResolvedTool | undefined;
   try {
-    const evo = k.intersectWithHistory(
-      unwrap(shape),
-      resolveBooleanTool(k, tool),
-      hashVec,
-      hashUpperBound
-    );
+    resolved = resolveBooleanTool(k, tool);
+    const evo = k.intersectWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound);
     const { id, evolution } = parseEvolution(evo);
     return {
       shape: wrapResult(k, id),
@@ -278,6 +274,7 @@ export function intersectWithHistory(
     };
   } finally {
     hashVec.delete();
+    resolved?.dispose();
   }
 }
 
