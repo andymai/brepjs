@@ -19,6 +19,11 @@ import {
   sphere,
   translate,
   clone,
+  cut,
+  fuse,
+  intersect,
+  fuseAll,
+  compound,
   getFaces,
   getEdges,
   measureVolume,
@@ -105,6 +110,64 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           using b = box(10, 10, 10);
           const r = clone(b);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('booleans leak nothing when inputs and result are disposed', () => {
+      // Every intermediate is `using`-disposed; the only survivor would be a
+      // leak inside the boolean itself. (An undisposed intermediate here would
+      // read as a false "+1" — the arena counter sees the whole arena.)
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using inner = box(5, 5, 20);
+          using tool = translate(inner, [3, 3, 0]);
+          const r = cut(a, tool);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using inner = box(5, 5, 20);
+          using tool = translate(inner, [3, 3, 0]);
+          const r = fuse(a, tool);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using inner = box(5, 5, 20);
+          using tool = translate(inner, [3, 3, 0]);
+          const r = intersect(a, tool);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('N-way and multi-solid-tool booleans leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b1 = box(10, 10, 10);
+          using i2 = box(10, 10, 10);
+          using b2 = translate(i2, [5, 0, 0]);
+          using i3 = box(10, 10, 10);
+          using b3 = translate(i3, [10, 0, 0]);
+          const r = fuseAll([b1, b2, b3]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(20, 20, 20);
+          using i1 = box(3, 3, 30);
+          using i2 = box(3, 3, 30);
+          using pillar2 = translate(i2, [8, 0, 0]);
+          using tool = compound([i1, pillar2]);
+          const r = cut(a, tool);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
