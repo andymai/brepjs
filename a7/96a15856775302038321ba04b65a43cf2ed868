@@ -1,0 +1,19 @@
+.husky/pre-commit
+  s_7794faded5f018::t_1c44055710c1f1 23-33,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a796a15856775302038321ba04b65a43cf2ed868",
+  "prompts": {},
+  "sessions": {
+    "s_7794faded5f018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1aedd1ec-d0ab-4386-8551-872c28d9185a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
