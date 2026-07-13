@@ -1,0 +1,79 @@
+src/topology/hullFns.ts
+  s_d5f7f59e7bfa3e::t_e930864fc885bf 73,76
+  s_d5f7f59e7bfa3e::t_9ed4fe57bd87c8 10
+src/topology/positionFns.ts
+  s_d5f7f59e7bfa3e::t_fb13457d64d2be 30,32
+  s_d5f7f59e7bfa3e::t_13d9dd6a417227 7
+src/topology/booleanFns.ts
+  s_d5f7f59e7bfa3e::t_90919048fa9953 748
+  s_d5f7f59e7bfa3e::t_dcc5c8f00ec1e3 871
+  s_d5f7f59e7bfa3e::t_2efc27b3c9b25c 628
+  s_d5f7f59e7bfa3e::t_718e903e3f3b3c 957,959
+  s_d5f7f59e7bfa3e::t_2e719ad415af9f 20
+src/operations/extrudeFns.ts
+  s_d5f7f59e7bfa3e::t_37868805623fd2 88,91
+  s_d5f7f59e7bfa3e::t_8aa9c237c638a5 54
+  s_d5f7f59e7bfa3e::t_fc87fa2c22a98b 13-19
+  s_d5f7f59e7bfa3e::t_1abfc2663bb411 159-161
+src/operations/loftFns.ts
+  s_d5f7f59e7bfa3e::t_b2fcaa7a51bbb2 147,149
+  s_d5f7f59e7bfa3e::t_42ad246e0493d8 9
+  s_d5f7f59e7bfa3e::t_bdc669fc0fb414 70,72
+src/operations/patternFns.ts
+  s_d5f7f59e7bfa3e::t_851c414f7fae6d 14
+  s_d5f7f59e7bfa3e::t_262b11d73727b9 41,85,142
+src/topology/curveFns.ts
+  s_d5f7f59e7bfa3e::t_aa873efeb0c2ab 9
+  s_d5f7f59e7bfa3e::t_2467c25931dc31 254,257
+  s_d5f7f59e7bfa3e::t_9a625a72a811d8 137
+  s_d5f7f59e7bfa3e::t_4e68dcb128a849 181,183
+  s_d5f7f59e7bfa3e::t_26f84d7c17fad1 214,216
+src/topology/surfaceFns.ts
+  s_d5f7f59e7bfa3e::t_7510e4f4ea1b0f 113,117
+  s_d5f7f59e7bfa3e::t_969d51df7e0403 140,150
+  s_d5f7f59e7bfa3e::t_5a967b69bc6255 7
+src/operations/convexHullFns.ts
+  s_d5f7f59e7bfa3e::t_4bf25dd616b781 10
+  s_d5f7f59e7bfa3e::t_0422f4152f50f6 48,51
+src/topology/polyhedronFns.ts
+  s_d5f7f59e7bfa3e::t_f997d02f7c64ae 7
+  s_d5f7f59e7bfa3e::t_2537591d5cd07c 65,68
+src/topology/chamferAngleFns.ts
+  s_d5f7f59e7bfa3e::t_7d55f1e7130cd2 10-15
+  s_d5f7f59e7bfa3e::t_54d73ef79a3aea 92-95,97-100,102
+src/operations/sweepFns.ts
+  s_d5f7f59e7bfa3e::t_31a7115541ae70 13-18
+  s_d5f7f59e7bfa3e::t_1fb39bd57bf489 69
+  s_d5f7f59e7bfa3e::t_c2fb603a65911d 82
+  s_d5f7f59e7bfa3e::t_f8f2270e879d7e 448,450
+  s_d5f7f59e7bfa3e::t_ae9943953032cd 142,144
+  s_d5f7f59e7bfa3e::t_9bd9eaf51407b1 188,190
+  s_d5f7f59e7bfa3e::t_195f43c45cfc4e 185
+  s_d5f7f59e7bfa3e::t_c1eff08d62f1dc 91-119
+  s_d5f7f59e7bfa3e::t_3833461c51f51a 509,511
+tests/castResultShapeMigration.test.ts
+  s_d5f7f59e7bfa3e::t_9349d31b022d73 193-224,226-232,243-246
+  s_d5f7f59e7bfa3e::t_e8c84eb04e8b48 73-75
+  s_d5f7f59e7bfa3e::t_7ec1cbbe2c314f 76-98,100-131,133-180
+  s_d5f7f59e7bfa3e::t_e13b0f11cd55f1 1-72,99,132,181-192,225,233-242,247-254
+src/topology/minkowskiFns.ts
+  s_d5f7f59e7bfa3e::t_7627bbe3c6c5b0 10
+  s_d5f7f59e7bfa3e::t_c5b2b8c351047e 58,60
+  s_d5f7f59e7bfa3e::t_a39ce313e06634 124,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "dd0a0abe0ba2604f0e1d7cb369444f01e75d500f",
+  "prompts": {},
+  "sessions": {
+    "s_d5f7f59e7bfa3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "954b01a4-547b-4fbb-bc9e-c00101298e68",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
