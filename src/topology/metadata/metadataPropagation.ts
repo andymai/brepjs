@@ -48,6 +48,10 @@ export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): 
     const faces = kernel.iterShapes(input.wrapped, 'face');
     for (const face of faces) {
       hashes.push(kernel.hashCode(face, HASH_CODE_MAX));
+      // These faces are transient — only their hash is read. Release each so
+      // the occt-wasm arena reclaims the slot instead of accumulating one
+      // handle per input face on every WithHistory boolean.
+      kernel.dispose(face);
     }
   }
   return hashes;

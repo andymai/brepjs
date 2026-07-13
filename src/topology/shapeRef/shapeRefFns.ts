@@ -5,6 +5,8 @@
 
 import type { Face, Shape3D } from '@/core/shapeTypes.js';
 import type { ShapeEvolution } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import { castShapeWithKnownType } from '@/core/shapeTypes.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { normalAt, faceCenter, faceGeomType } from '@/topology/faceFns.js';
@@ -103,13 +105,33 @@ const ROLE_ASSIGNERS: Record<string, (face: Face) => string | undefined> = {
 export function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]> {
   const roles = new Map<string, number[]>();
   const assigner = ROLE_ASSIGNERS[operationType];
+  const kernel = getKernel();
   let index = 0;
-  for (const face of getFaces(shape)) {
-    const semantic = assigner?.(face);
-    const role =
-      semantic !== undefined && !roles.has(semantic) ? semantic : `${operationType}:face_${index}`;
-    roles.set(role, [getHashCode(face)]);
-    index++;
+  // Iterate transient faces rather than the cached getFaces(): only the hash
+  // and geometric role are read, so each face's arena slot is released here
+  // instead of being retained for the shape's whole lifetime.
+  for (const raw of kernel.iterShapes(shape.wrapped, 'face')) {
+    const face = castShapeWithKnownType(raw, 'face') as Face;
+    const dc = face.wrapped;
+    try {
+      const semantic = assigner?.(face);
+      const role =
+        semantic !== undefined && !roles.has(semantic)
+          ? semantic
+          : `${operationType}:face_${index}`;
+      roles.set(role, [getHashCode(face)]);
+      index++;
+    } finally {
+      // Dispose the branded handle (stats + FinalizationRegistry + delete).
+      face[Symbol.dispose]();
+      if (dc !== raw) {
+        // occt-wasm: downcast allocated a distinct arena slot, and the handle's
+        // delete was a no-op, so release both slots. Identity-downcast kernels
+        // (manifold, brepkit) return the same object, already freed above.
+        kernel.dispose(dc);
+        kernel.dispose(raw);
+      }
+    }
   }
   return roles;
 }

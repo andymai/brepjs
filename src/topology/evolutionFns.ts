@@ -80,6 +80,12 @@ function castToShape3D(
       )
     );
   }
+  // On occt-wasm castShape downcasts into a fresh arena handle, orphaning the
+  // pre-downcast result. Release it so the arena reclaims that slot. Guard on
+  // identity: kernels whose downcast is a no-op (manifold, brepkit) return the
+  // same handle, so `wrapped` *is* `shape` and releasing it would delete the
+  // shape we return.
+  if (wrapped.wrapped !== shape) getKernel().dispose(shape);
   return ok(wrapped);
 }
 
@@ -356,6 +362,8 @@ export function filletWithEvolution(
       HASH_CODE_MAX
     );
     const cast = castShape(resultShape);
+    // Release the orphaned pre-downcast handle on occt-wasm (see castToShape3D).
+    if (cast.wrapped !== resultShape) getKernel().dispose(resultShape);
     if (!isShape3D(cast)) {
       return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
     }
@@ -447,6 +455,8 @@ export function chamferWithEvolution(
       HASH_CODE_MAX
     );
     const cast = castShape(resultShape);
+    // Release the orphaned pre-downcast handle on occt-wasm (see castToShape3D).
+    if (cast.wrapped !== resultShape) getKernel().dispose(resultShape);
     if (!isShape3D(cast)) {
       return err(kernelError(BrepErrorCode.CHAMFER_NOT_3D, 'Chamfer result is not a 3D shape'));
     }
@@ -499,6 +509,8 @@ export function shellWithEvolution(
       tolerance
     );
     const cast = castShape(resultShape);
+    // Release the orphaned pre-downcast handle on occt-wasm (see castToShape3D).
+    if (cast.wrapped !== resultShape) getKernel().dispose(resultShape);
     if (!isShape3D(cast)) {
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }

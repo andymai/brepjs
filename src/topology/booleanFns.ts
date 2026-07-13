@@ -89,6 +89,12 @@ function castToShape3D(
       )
     );
   }
+  // On occt-wasm castShape downcasts into a fresh arena handle, orphaning the
+  // pre-downcast result. Release it so the arena reclaims that slot. Guard on
+  // identity: kernels whose downcast is a no-op (manifold, brepkit) return the
+  // same handle, so `wrapped` *is* `shape` and releasing it would delete the
+  // shape we return.
+  if (wrapped.wrapped !== shape) getKernel().dispose(shape);
   return ok(wrapped);
 }
 

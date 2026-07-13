@@ -30,6 +30,14 @@ export function resolveBooleanTool(k: OcctKernelWasm, tool: KernelShape): number
   try {
     return solids.size() > 1 ? k.fuseAll(solids) : toolId;
   } finally {
+    // getSubShapes copies each sub-solid into its own arena slot. Deleting the
+    // vector frees only the container, so release the queried solids too —
+    // otherwise every pass-through boolean (single-solid tool) leaks one handle.
+    // Guard against releasing the tool itself in case a query ever aliases it.
+    for (let i = 0, n = solids.size(); i < n; i++) {
+      const id = solids.get(i);
+      if (id !== toolId) k.release(id);
+    }
     solids.delete();
   }
 }

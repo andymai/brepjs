@@ -19,9 +19,15 @@ import { getOrCreateCache, getCacheEntry, getFaces } from '@/topology/topologyQu
  */
 export function setShapeOrigin(shape: AnyShape<Dimension>, origin: number): void {
   const cache = getOrCreateCache(shape);
+  const kernel = getKernel();
   const map = new Map<number, number>();
-  for (const f of getFaces(shape)) {
-    map.set(getKernel().hashCode(f.wrapped, HASH_CODE_MAX), origin);
+  // Iterate raw faces rather than the cached getFaces(): only the hash is
+  // needed, so each face is released immediately instead of being retained in
+  // the shape's topology cache (which would leave one arena handle per face
+  // alive for the shape's whole lifetime).
+  for (const face of kernel.iterShapes(shape.wrapped, 'face')) {
+    map.set(kernel.hashCode(face, HASH_CODE_MAX), origin);
+    kernel.dispose(face);
   }
   cache.faceOrigins = map;
 }
