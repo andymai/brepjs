@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.7](https://github.com/andymai/brepjs/compare/brepjs-v18.118.6...brepjs-v18.118.7) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** clone via a real copyShape, not an aliasing downcast ([#1767](https://github.com/andymai/brepjs/issues/1767)) ([2105a62](https://github.com/andymai/brepjs/commit/2105a62d05e891bec423e2249261376632ade397))
+
 ## [18.118.6](https://github.com/andymai/brepjs/compare/brepjs-v18.118.5...brepjs-v18.118.6) (2026-07-13)
 
 
