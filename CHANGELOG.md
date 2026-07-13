@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.8](https://github.com/andymai/brepjs/compare/brepjs-v18.118.7...brepjs-v18.118.8) (2026-07-13)
+
+
+### Bug Fixes
+
+* **core:** make using/Symbol.dispose reclaim occt-wasm arena slots ([#1768](https://github.com/andymai/brepjs/issues/1768)) ([76cbadf](https://github.com/andymai/brepjs/commit/76cbadff41a58b8a52c4c59e2e55dab4dadc9bc3))
+
 ## [18.118.7](https://github.com/andymai/brepjs/compare/brepjs-v18.118.6...brepjs-v18.118.7) (2026-07-13)
 
 
