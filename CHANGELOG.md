@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.11](https://github.com/andymai/brepjs/compare/brepjs-v18.118.10...brepjs-v18.118.11) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** register cache-cleanup onDispose once per shape handle ([#1783](https://github.com/andymai/brepjs/issues/1783)) ([fdc5af4](https://github.com/andymai/brepjs/commit/fdc5af4070f72d2fb07df5df69d3ed5b4a960d0c))
+
 ## [18.118.10](https://github.com/andymai/brepjs/compare/brepjs-v18.118.9...brepjs-v18.118.10) (2026-07-13)
 
 
