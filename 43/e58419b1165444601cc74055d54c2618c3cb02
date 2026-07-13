@@ -1,0 +1,35 @@
+src/topology/booleanFns.ts
+  s_7e347a14dc1cd6::t_c1af652b1ecf64 73-75
+  s_7e347a14dc1cd6::t_7a6128d3269beb 18-24
+src/topology/modifierFns.ts
+  s_7e347a14dc1cd6::t_3aec75e2177171 674,683
+  s_7e347a14dc1cd6::t_f3ca89949b587a 11
+  s_7e347a14dc1cd6::t_797cbea5b7a7e8 116
+src/topology/evolutionFns.ts
+  s_7e347a14dc1cd6::t_b1b803e147fcbe 449
+  s_7e347a14dc1cd6::t_55e5eb81b31ce1 12-19
+  s_7e347a14dc1cd6::t_095c1f97a22f63 502
+  s_7e347a14dc1cd6::t_f7700605780a41 357
+  s_7e347a14dc1cd6::t_9019005d0d7def 66-68
+src/core/shapeTypes.ts
+  s_7e347a14dc1cd6::t_f622382f938ee3 353-363
+  s_7e347a14dc1cd6::t_389b14263c391d 352
+tests/errorPathDisposal.test.ts
+  s_7e347a14dc1cd6::t_bc848df9fc1065 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "43e58419b1165444601cc74055d54c2618c3cb02",
+  "prompts": {},
+  "sessions": {
+    "s_7e347a14dc1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2f4908a-26ba-49de-aa4f-689c64ec6425",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
