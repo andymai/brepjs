@@ -100,6 +100,19 @@ describe('topology cache — invalidation', () => {
     expect(edges2).toHaveLength(len);
     expect(edges2[0]?.disposed).toBe(false);
   });
+
+  it('survives repeated invalidate + re-query without stacking cleanup', () => {
+    const b = box(10, 10, 10);
+    getEdges(b); // warm the cache
+    // Repeated invalidation registers cleanup once per handle (not once per
+    // rebuild), so re-extraction stays correct across many cycles.
+    for (let i = 0; i < 5; i++) {
+      invalidateShapeCache(b);
+      const edges = getEdges(b);
+      expect(edges).toHaveLength(12);
+      expect(edges[0]?.disposed).toBe(false);
+    }
+  });
 });
 
 describe('finder cache integration', () => {

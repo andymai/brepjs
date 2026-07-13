@@ -90,6 +90,9 @@ function disposeCacheEntry(key: object): void {
   }
 }
 
+/** Handles whose disposal is already wired to release their cache entry. */
+const cleanupRegistered = new WeakSet();
+
 /** @internal Get or create a cache entry for a shape. Used by originTrackingFns. */
 export function getOrCreateCache(shape: AnyShape<Dimension>): TopoCacheEntry {
   const key = shape.wrapped;
@@ -97,9 +100,14 @@ export function getOrCreateCache(shape: AnyShape<Dimension>): TopoCacheEntry {
   if (!entry) {
     entry = {};
     topoCache.set(key, entry);
-    // Release the cached sub-shape handles when the parent shape is disposed,
-    // so its arena slots don't outlive it. (GC of an undisposed parent drops
-    // the WeakMap entry, letting the handles' own finalizers reclaim them.)
+  }
+  // Release the cached sub-shape handles when the parent shape is disposed, so
+  // its arena slots don't outlive it. (GC of an undisposed parent drops the
+  // WeakMap entry, letting the handles' own finalizers reclaim them.) Register
+  // once per handle — keyed on the handle, not the entry, so a re-query after
+  // invalidateShapeCache rebuilds the entry without stacking dead callbacks.
+  if (!cleanupRegistered.has(shape)) {
+    cleanupRegistered.add(shape);
     shape.onDispose(() => {
       disposeCacheEntry(key);
     });
