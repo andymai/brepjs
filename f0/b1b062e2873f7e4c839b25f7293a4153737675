@@ -1,0 +1,29 @@
+packages/brepjs-vscode/package.json
+  s_7794faded5f018::t_13756b6e6952e3 103
+packages/brepjs-bim/package.json
+  s_7794faded5f018::t_53f8adefa037ed 44
+packages/brepjs-viewer/package.json
+  s_7794faded5f018::t_b35e26c1a3bd7c 39
+apps/playground/package.json
+  s_7794faded5f018::t_6591f154988ca3 13
+packages/brepjs-sheetmetal/package.json
+  s_7794faded5f018::t_5f8507284f84af 46
+packages/brepjs-cad/package.json
+  s_7794faded5f018::t_fe5a55621f39ee 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f0b1b062e2873f7e4c839b25f7293a4153737675",
+  "prompts": {},
+  "sessions": {
+    "s_7794faded5f018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1aedd1ec-d0ab-4386-8551-872c28d9185a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
