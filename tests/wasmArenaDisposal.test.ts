@@ -26,6 +26,7 @@ import {
   compound,
   getFaces,
   getEdges,
+  getVertices,
   edgesOfFace,
   verticesOfFace,
   facesOfEdge,
@@ -53,6 +54,10 @@ function arenaCount(): number {
   const n = typeof raw?.getShapeCount === 'function' ? raw.getShapeCount() : undefined;
   if (typeof n !== 'number') throw new Error('arena counter unavailable');
   return n;
+}
+
+function disposeAll(arr: AnyShape<Dimension>[]): void {
+  for (const h of arr) h[Symbol.dispose]();
 }
 
 /** Run `op` once to warm caches, then N times; return net arena growth per iteration. */
@@ -186,9 +191,6 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       const parent = box(10, 10, 10);
       const faces = getFaces(parent);
       const edges = getEdges(parent);
-      const disposeAll = (arr: AnyShape<Dimension>[]): void => {
-        for (const h of arr) h[Symbol.dispose]();
-      };
       const f0 = faces[0];
       const f1 = faces[1];
       const e0 = edges[0];
@@ -223,6 +225,33 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       disposeAll(faces);
       disposeAll(edges);
       parent[Symbol.dispose]();
+    });
+  });
+
+  describe('disposing a parent releases its cached topology', () => {
+    it('a warm topology + adjacency cache is freed with the parent', () => {
+      // No manual disposal of the borrowed sub-shape handles — the parent's
+      // disposal must release the whole cache (extractors + adjacency maps).
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          getFaces(b);
+          getEdges(b);
+          getVertices(b);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const es = getEdges(b);
+          const fs = getFaces(b);
+          const e0 = es[0];
+          const f0 = fs[0];
+          if (!e0 || !f0) throw new Error('box must have edges and faces');
+          disposeAll(facesOfEdge(b, e0));
+          disposeAll(adjacentFaces(b, f0));
+        })
+      ).toBe(0);
     });
   });
 

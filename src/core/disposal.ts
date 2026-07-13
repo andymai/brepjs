@@ -139,6 +139,15 @@ export interface ShapeHandle {
 
   /** Check if this handle has been disposed */
   readonly disposed: boolean;
+
+  /**
+   * Register a callback to run when this handle is disposed, before its kernel
+   * slot is released. Used to release dependent resources tied to this shape's
+   * lifetime (e.g. its cached sub-shape handles). Callbacks are invoked once,
+   * in registration order; a callback that throws is swallowed. Registering on
+   * an already-disposed handle runs the callback immediately.
+   */
+  onDispose(callback: () => void): void;
 }
 
 /** Create a disposable shape handle. */
@@ -151,12 +160,27 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
   // so overlap with `disposeResultShape`/`disposeDowncastSource` is safe.
   const kernel = getKernel();
   let disposed = false;
+  let onDisposeCallbacks: (() => void)[] | undefined;
+
+  const runOnDispose = () => {
+    if (!onDisposeCallbacks) return;
+    for (const cb of onDisposeCallbacks) {
+      try {
+        cb();
+      } catch {
+        // A dependent-cleanup failure must not abort disposal.
+      }
+    }
+    onDisposeCallbacks = undefined;
+  };
 
   const dispose = () => {
     if (!disposed) {
       disposed = true;
       trackHandleDisposed();
       registry.unregister(handle);
+      // Release dependents (e.g. cached sub-shapes) before this slot goes.
+      runOnDispose();
       try {
         kernel.dispose(ocShape);
       } catch {
@@ -181,6 +205,14 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
 
     delete() {
       dispose();
+    },
+
+    onDispose(callback: () => void) {
+      if (disposed) {
+        callback();
+        return;
+      }
+      (onDisposeCallbacks ??= []).push(callback);
     },
   };
 

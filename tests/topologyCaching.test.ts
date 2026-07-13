@@ -84,15 +84,21 @@ describe('topology cache — getCachedShapeKind', () => {
 });
 
 describe('topology cache — invalidation', () => {
-  it('invalidateShapeCache forces re-extraction', () => {
+  it('invalidateShapeCache releases the stale handles and forces re-extraction', () => {
     const b = box(10, 10, 10);
     const edges1 = getEdges(b);
+    const len = edges1.length;
+    expect(edges1[0]?.disposed).toBe(false);
+
     invalidateShapeCache(b);
+    // The stale cached handles are released (they reference pre-modification
+    // topology); do not touch their `.wrapped` after this point.
+    expect(edges1[0]?.disposed).toBe(true);
+
+    // Re-extraction yields a fresh, live array of the same length.
     const edges2 = getEdges(b);
-    // Different array reference after invalidation
-    expect(edges1).not.toBe(edges2);
-    // But same contents
-    expect(edges2).toHaveLength(edges1.length);
+    expect(edges2).toHaveLength(len);
+    expect(edges2[0]?.disposed).toBe(false);
   });
 });
 

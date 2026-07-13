@@ -66,12 +66,43 @@ export interface TopoCacheEntry {
 
 const topoCache = new WeakMap<object, TopoCacheEntry>();
 
+/**
+ * Release the cached sub-shape handles for a cache entry and drop it. The
+ * extractor arrays own arena slots (their branded downcast handles); the
+ * adjacency maps only alias those same handles, so dropping the maps is enough.
+ * Disposal is idempotent, so a manually-disposed handle here is a safe no-op.
+ */
+function disposeCacheEntry(key: object): void {
+  const entry = topoCache.get(key);
+  if (!entry) return;
+  topoCache.delete(key);
+  const arrays = [
+    entry.edges,
+    entry.faces,
+    entry.wires,
+    entry.vertices,
+    entry.shells,
+    entry.solids,
+    entry.compSolids,
+  ];
+  for (const arr of arrays) {
+    if (arr) for (const handle of arr) handle[Symbol.dispose]();
+  }
+}
+
 /** @internal Get or create a cache entry for a shape. Used by originTrackingFns. */
 export function getOrCreateCache(shape: AnyShape<Dimension>): TopoCacheEntry {
-  let entry = topoCache.get(shape.wrapped);
+  const key = shape.wrapped;
+  let entry = topoCache.get(key);
   if (!entry) {
     entry = {};
-    topoCache.set(shape.wrapped, entry);
+    topoCache.set(key, entry);
+    // Release the cached sub-shape handles when the parent shape is disposed,
+    // so its arena slots don't outlive it. (GC of an undisposed parent drops
+    // the WeakMap entry, letting the handles' own finalizers reclaim them.)
+    shape.onDispose(() => {
+      disposeCacheEntry(key);
+    });
   }
   return entry;
 }
@@ -82,11 +113,12 @@ export function getCacheEntry(shape: AnyShape<Dimension>): TopoCacheEntry | unde
 }
 
 /**
- * Invalidate cached topology data for a shape.
- * Call this after operations that modify a shape in-place (e.g., unifyFaces).
+ * Invalidate cached topology data for a shape, releasing its cached sub-shape
+ * handles. Call this after operations that modify a shape in-place (e.g.,
+ * unifyFaces).
  */
 export function invalidateShapeCache(shape: AnyShape<Dimension>): void {
-  topoCache.delete(shape.wrapped);
+  disposeCacheEntry(shape.wrapped);
 }
 
 // ---------------------------------------------------------------------------
