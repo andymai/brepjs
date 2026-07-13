@@ -20,10 +20,19 @@ wait $PID3 || exit 1
 # Tier 2: Tests (only if Tier 1 passes)
 # Default: run only tests affected by changed files (fast, no coverage thresholds).
 # FULL_TESTS=1: run full suite with coverage thresholds (same as pre-push).
-if [ "${FULL_TESTS:-0}" = "1" ]; then
-  npm run test:full
+#
+# Skip entirely when no code is staged: vitest's forceRerunTriggers treat a
+# package.json/lockfile/vitest-config change as "everything changed", so a
+# manifest-only commit would boot the WASM kernel for the whole suite. CI's
+# test:ci is the full gate regardless.
+if git diff --cached --name-only --diff-filter=ACMR | grep -qE '^(src/|tests/|vitest\.)'; then
+  if [ "${FULL_TESTS:-0}" = "1" ]; then
+    npm run test:full
+  else
+    npm run test
+  fi
 else
-  npm run test
+  echo "⏭  No src/ or tests/ changes staged — skipping changed-file tests (CI runs the full suite)."
 fi
 
 # Tier 3: Non-blocking reminders
