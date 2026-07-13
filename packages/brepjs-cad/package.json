@@ -42,7 +42,7 @@
   ],
   "scripts": {
     "build": "node scripts/copyReference.mjs && vite build && vite build --config viewer/vite.config.ts && node -e \"require('fs').chmodSync('dist/cli/main.js',0o755);require('fs').chmodSync('dist/cli/main.cjs',0o755);require('fs').chmodSync('dist/mcp/server.js',0o755)\"",
-    "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit && tsc -p bench/tsconfig.json",
+    "typecheck": "tsgo --noEmit && tsgo -p viewer/tsconfig.json --noEmit && tsgo -p bench/tsconfig.json",
     "lint": "eslint src tests viewer bench",
     "test": "vitest run",
     "eval": "tsx bench/run.ts",

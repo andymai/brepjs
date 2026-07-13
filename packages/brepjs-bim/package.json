@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "lint": "eslint src tests"
   },

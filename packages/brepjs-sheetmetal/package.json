@@ -43,7 +43,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "snapshot": "tsx harness/snapshot.ts",
     "lint": "eslint src tests"

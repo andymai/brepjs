@@ -10,7 +10,7 @@
     "prebuild": "npm run build:deps",
     "build": "tsc -b && npm run check:examples && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b",
+    "typecheck": "tsgo -b",
     "check:examples": "npx tsx scripts/checkExamples.ts",
     "smoke": "npx tsx scripts/smoke.ts",
     "shoot": "npx tsx scripts/shootExamples.ts",

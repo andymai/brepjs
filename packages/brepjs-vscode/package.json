@@ -100,7 +100,7 @@
     "build": "node esbuild.mjs && vite build --config webview/vite.config.ts",
     "build:ext": "node esbuild.mjs",
     "build:webview": "vite build --config webview/vite.config.ts",
-    "typecheck": "tsc --noEmit && tsc -p webview/tsconfig.json --noEmit"
+    "typecheck": "tsgo --noEmit && tsgo -p webview/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@react-three/drei": "*",
