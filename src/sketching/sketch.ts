@@ -1,6 +1,6 @@
 import type { Plane } from '@/core/planeTypes.js';
 import { unwrap } from '@/core/result.js';
-import { downcast } from '@/topology/cast.js';
+import { copyShape } from '@/topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
@@ -120,7 +120,7 @@ export default class Sketch implements SketchInterface {
 
   set baseFace(newFace: Face | null | undefined) {
     if (this._baseFace) this._baseFace.delete();
-    this._baseFace = newFace ? createFace(unwrap(downcast(newFace.wrapped))) : newFace;
+    this._baseFace = newFace ? createFace(unwrap(copyShape(newFace.wrapped))) : newFace;
   }
 
   /** Release all kernel resources held by this sketch. */
@@ -131,12 +131,12 @@ export default class Sketch implements SketchInterface {
 
   /** Create an independent deep copy of this sketch. */
   clone(): Sketch {
-    const cloned = createWire(unwrap(downcast(this.wire.wrapped))) as ClosedWire & PlanarWire;
+    const cloned = createWire(unwrap(copyShape(this.wire.wrapped))) as ClosedWire & PlanarWire;
     const sketch = new Sketch(cloned, {
       defaultOrigin: this.defaultOrigin,
       defaultDirection: this.defaultDirection,
     });
-    if (this.baseFace) sketch.baseFace = createFace(unwrap(downcast(this.baseFace.wrapped)));
+    if (this.baseFace) sketch.baseFace = createFace(unwrap(copyShape(this.baseFace.wrapped)));
     return sketch;
   }
 

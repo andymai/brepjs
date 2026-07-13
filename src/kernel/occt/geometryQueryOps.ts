@@ -538,6 +538,9 @@ export function makeGeometryQueryOps(oc: KernelInstance) {
     curveParameters: (shape) => curveParameters(oc, shape),
     shapeOrientation: (shape) => shapeOrientation(oc, shape),
     downcast: (shape, type) => downcast(oc, shape, type),
+    // Embind downcast returns a fresh TopoDS wrapper over refcounted geometry,
+    // so it is already safe to dispose independently of the source.
+    copyShape: (shape) => downcast(oc, shape),
     hashCode: (shape, upperBound) => hashCode(oc, shape, upperBound),
     isNull: (shape) => isNull(oc, shape),
     hasTriangulation: (shape) => hasTriangulation(oc, shape),
@@ -569,6 +572,7 @@ export function makeGeometryQueryOps(oc: KernelInstance) {
     | 'curveParameters'
     | 'shapeOrientation'
     | 'downcast'
+    | 'copyShape'
     | 'hashCode'
     | 'isNull'
     | 'hasTriangulation'

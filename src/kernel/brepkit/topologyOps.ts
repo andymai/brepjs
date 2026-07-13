@@ -274,6 +274,9 @@ export function makeTopologyOps(bk: BrepkitKernel) {
     isSame: (a, b) => isSame(bk, a, b),
     isEqual: (a, b) => isEqual(bk, a, b),
     downcast: (shape, type) => downcast(bk, shape, type),
+    // brepkit never frees handles individually (arena; delete is a no-op), so
+    // the aliased handle is safe to "dispose" independently of the source.
+    copyShape: (shape) => downcast(bk, shape),
     hashCode: (shape, upperBound) => hashCode(bk, shape, upperBound),
     isNull: (shape) => isNull(bk, shape),
     shapeOrientation: (shape) => shapeOrientation(bk, shape),
@@ -289,6 +292,7 @@ export function makeTopologyOps(bk: BrepkitKernel) {
     | 'isSame'
     | 'isEqual'
     | 'downcast'
+    | 'copyShape'
     | 'hashCode'
     | 'isNull'
     | 'shapeOrientation'

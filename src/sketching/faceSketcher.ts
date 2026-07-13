@@ -7,7 +7,7 @@ import type { ClosedWire, Wire, Face, PlanarWire } from '@/core/shapeTypes.js';
 import { createEdge, createFace } from '@/core/shapeTypes.js';
 import { uvBounds, pointOnSurface, normalAt } from '@/topology/faceFns.js';
 import { curveStartPoint, curveIsClosed } from '@/topology/curveFns.js';
-import { downcast } from '@/topology/cast.js';
+import { copyShape } from '@/topology/cast.js';
 import type { GenericSketcher } from '@/2d/blueprints/genericSketcher.js';
 import type { KernelType } from '@/kernel/types.js';
 import type { Curve2D, Point2D } from '@/2d/lib/index.js';
@@ -40,7 +40,7 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
 
   constructor(face: Face, origin: Point2D = [0, 0]) {
     super(origin);
-    this.face = createFace(unwrap(downcast(face.wrapped)));
+    this.face = createFace(unwrap(copyShape(face.wrapped)));
     this._bounds = uvBounds(face);
   }
 

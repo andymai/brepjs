@@ -162,6 +162,9 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
     isSame,
     isEqual: isSame,
     downcast: (shape) => shape,
+    // Mesh kernel: handles are value-like and never freed individually, so the
+    // identity result is safe to dispose independently of the source.
+    copyShape: (shape) => shape,
     hashCode,
     isNull,
     shapeOrientation: (_shape: KernelShape): ShapeOrientation => 'forward',

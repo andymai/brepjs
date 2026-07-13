@@ -52,6 +52,21 @@ describe('clone', () => {
     expect(unwrap(measureVolume(box(10, 10, 10)))).toBeCloseTo(1000, 0);
     expect(cloned).toBeDefined();
   });
+
+  it('produces an independently-owned copy, not an alias of the source', () => {
+    // Regression: clone used `downcast`, but on the occt-wasm arena kernel a
+    // same-type downcast returns the *same* handle id — so the "copy" aliased
+    // the source and disposing it would free the original. clone now uses a
+    // real copyShape. Verify same geometry but a distinct kernel entity.
+    const b = box(10, 10, 10);
+    const cloned = unwrap(clone(b));
+    expect(unwrap(measureVolume(cloned))).toBeCloseTo(unwrap(measureVolume(b)), 6);
+    // On the occt-wasm arena kernel a genuine copy occupies a distinct slot.
+    if (process.env['TEST_KERNEL'] === 'occt-wasm') {
+      const idOf = (h: { id?: number }): number | undefined => h.id;
+      expect(idOf(cloned.wrapped as { id?: number })).not.toBe(idOf(b.wrapped as { id?: number }));
+    }
+  });
 });
 
 describe('toBREP', () => {

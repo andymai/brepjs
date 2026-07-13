@@ -81,6 +81,27 @@ export function downcast(shape: KernelShape): Result<GenericTopo> {
 }
 
 /**
+ * Return an independently-disposable copy of a generic KernelShape.
+ *
+ * Like {@link downcast}, but the result can be disposed without affecting the
+ * source — `downcast` is only a cast and aliases the source handle on the
+ * occt-wasm arena kernel. Use when cloning a shape (e.g. a sketch wire) that
+ * outlives, or is disposed apart from, its origin.
+ *
+ * @returns Ok with the copied shape, or Err if the shape is null.
+ */
+export function copyShape(shape: KernelShape): Result<GenericTopo> {
+  if (getKernel().isNull(shape)) {
+    return err(typeCastError('NULL_SHAPE', 'Cannot copy a null shape'));
+  }
+  try {
+    return ok(getKernel().copyShape(shape));
+  } catch (e) {
+    return err(typeCastError('NO_WRAPPER', 'Could not copy this shape', e));
+  }
+}
+
+/**
  * Cast a raw kernel shape to its corresponding branded brepjs type (Vertex, Edge, Face, etc.).
  *
  * Performs downcast + branded handle creation in one step.

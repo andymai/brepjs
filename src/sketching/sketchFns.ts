@@ -15,7 +15,7 @@ import {
   makeSolid,
 } from '@/topology/shapeHelpers.js';
 import { type Result, unwrap } from '@/core/result.js';
-import { downcast } from '@/topology/cast.js';
+import { copyShape } from '@/topology/cast.js';
 import { cutAll } from '@/topology/booleanFns.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import { vecScale, vecNormalize, vecCross } from '@/core/vecOps.js';
@@ -99,7 +99,7 @@ export function sketchFace(sketch: Sketch): OrientedFace & PlanarFace {
 
 /** Return an independent clone of the sketch's wire. */
 export function sketchWires(sketch: Sketch): Wire {
-  return createWire(unwrap(downcast(sketch.wire.wrapped)));
+  return createWire(unwrap(copyShape(sketch.wire.wrapped)));
 }
 
 /**
@@ -369,7 +369,7 @@ export function compoundSketchLoft(
   });
 
   const baseFaceRaw = compoundSketchFace(sketch);
-  const baseFace = createFace(unwrap(downcast(baseFaceRaw.wrapped)));
+  const baseFace = createFace(unwrap(copyShape(baseFaceRaw.wrapped)));
   shells.push(baseFace, compoundSketchFace(other));
 
   return unwrap(makeSolid(shells));

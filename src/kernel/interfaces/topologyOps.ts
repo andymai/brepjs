@@ -21,6 +21,18 @@ export interface KernelTopologyOps {
   isEqual(a: KernelShape, b: KernelShape): boolean;
   /** Downcast a shape to a more specific type (e.g., TopoDS_Shape → TopoDS_Edge). */
   downcast(shape: KernelShape, type?: ShapeType): KernelShape;
+  /**
+   * Return an independently-disposable duplicate of a shape.
+   *
+   * `downcast` is a *cast*, not a copy: on the occt-wasm arena kernel a
+   * same-type downcast returns the very same handle id, so disposing the
+   * "copy" would free the source. `copyShape` guarantees a handle that can be
+   * disposed without affecting the source — a real geometric copy where a
+   * primitive exists (occt-wasm `k.copy`), or the safe existing duplicate on
+   * kernels that never free handles individually (brepkit/manifold) or share
+   * refcounted geometry (occt Embind).
+   */
+  copyShape(shape: KernelShape): KernelShape;
   /** Compute a hash code for a shape (used for face tracking). */
   hashCode(shape: KernelShape, upperBound: number): number;
   /** Check if a shape handle is null. */

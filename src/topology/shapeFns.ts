@@ -18,10 +18,10 @@ import { BrepErrorCode } from '@/core/errors.js';
 // Identity / introspection
 // ---------------------------------------------------------------------------
 
-/** Clone a shape (deep copy via kernel topology downcast). */
+/** Clone a shape (an independently-disposable deep copy). */
 export function clone<T extends AnyShape<Dimension>>(shape: T): Result<T> {
   return kernelCall(
-    () => getKernel().downcast(shape.wrapped),
+    () => getKernel().copyShape(shape.wrapped),
     BrepErrorCode.CLONE_FAILED,
     'Failed to clone shape'
   ) as Result<T>;

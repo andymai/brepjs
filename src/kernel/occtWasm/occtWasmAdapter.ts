@@ -1327,6 +1327,10 @@ export class OcctWasmAdapter implements KernelAdapter {
     return topoOps.downcast(this.k, shape, type);
   }
 
+  copyShape(shape: KernelShape): KernelShape {
+    return topoOps.copyShape(this.k, shape);
+  }
+
   hashCode(shape: KernelShape, upperBound: number): number {
     return topoOps.hashCode(this.k, shape, upperBound);
   }

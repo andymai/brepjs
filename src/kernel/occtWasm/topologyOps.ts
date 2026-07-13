@@ -52,6 +52,13 @@ export function downcast(k: OcctKernelWasm, shape: KernelShape, type?: ShapeType
   return shape;
 }
 
+export function copyShape(k: OcctKernelWasm, shape: KernelShape): KernelShape {
+  // Real geometric copy into a fresh arena slot. `downcast` would alias the
+  // source id, so a copy is the only way to get an independently-disposable
+  // handle on this kernel.
+  return wrapResult(k, k.copy(unwrap(shape)));
+}
+
 export function hashCode(k: OcctKernelWasm, shape: KernelShape, upperBound: number): number {
   return k.hashCode(unwrap(shape), upperBound);
 }

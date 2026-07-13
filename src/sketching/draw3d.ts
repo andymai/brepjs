@@ -7,7 +7,7 @@ import { createFace } from '@/core/shapeTypes.js';
 import { outerWire } from '@/topology/faceFns.js';
 import { getEdges } from '@/topology/shapeFns.js';
 import { makeFace } from '@/topology/shapeHelpers.js';
-import { downcast } from '@/topology/cast.js';
+import { copyShape } from '@/topology/cast.js';
 import type Sketch from './sketch.js';
 import type { ProjectionPlane } from '@/projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '@/projection/cameraFns.js';
@@ -63,7 +63,7 @@ export function drawProjection(
  */
 export function drawFaceOutline(face: Face): Drawing {
   using scope = new DisposalScope();
-  const clonedFace = scope.register(createFace(unwrap(downcast(face.wrapped))));
+  const clonedFace = scope.register(createFace(unwrap(copyShape(face.wrapped))));
   const faceOuterWire = scope.register(outerWire(clonedFace));
   const curves = getEdges(faceOuterWire).map((e) => edgeToCurve(e, face));
 
