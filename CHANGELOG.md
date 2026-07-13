@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.12](https://github.com/andymai/brepjs/compare/brepjs-v18.118.11...brepjs-v18.118.12) (2026-07-13)
+
+
+### Bug Fixes
+
+* **topology:** release healed-result arena slots in healingFns ([#1787](https://github.com/andymai/brepjs/issues/1787)) ([c33b41a](https://github.com/andymai/brepjs/commit/c33b41af99c9be53eb8162f1d40303a4f9b97540))
+
 ## [18.118.11](https://github.com/andymai/brepjs/compare/brepjs-v18.118.10...brepjs-v18.118.11) (2026-07-13)
 
 
