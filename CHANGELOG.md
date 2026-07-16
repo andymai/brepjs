@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.16](https://github.com/andymai/brepjs/compare/brepjs-v18.118.15...brepjs-v18.118.16) (2026-07-16)
+
+
+### Bug Fixes
+
+* **operations:** stop rectangularPattern leaking its translated copies ([#1808](https://github.com/andymai/brepjs/issues/1808)) ([5481460](https://github.com/andymai/brepjs/commit/548146005fdff9906953065f7f65c61d98afee57))
+
 ## [18.118.15](https://github.com/andymai/brepjs/compare/brepjs-v18.118.14...brepjs-v18.118.15) (2026-07-16)
 
 

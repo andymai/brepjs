@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "18.118.15",
+  "version": "18.118.16",
   "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",
