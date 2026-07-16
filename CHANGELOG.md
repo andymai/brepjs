@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.15](https://github.com/andymai/brepjs/compare/brepjs-v18.118.14...brepjs-v18.118.15) (2026-07-16)
+
+
+### Bug Fixes
+
+* **operations:** stop multiSectionSweep leaking its per-section positioned wires ([#1804](https://github.com/andymai/brepjs/issues/1804)) ([f8b5483](https://github.com/andymai/brepjs/commit/f8b54831924661fa3b45bfb64cb163ce0c583bb6))
+
 ## [18.118.14](https://github.com/andymai/brepjs/compare/brepjs-v18.118.13...brepjs-v18.118.14) (2026-07-16)
 
 
