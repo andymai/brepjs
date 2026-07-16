@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.17](https://github.com/andymai/brepjs/compare/brepjs-v18.118.16...brepjs-v18.118.17) (2026-07-16)
+
+
+### Bug Fixes
+
+* **sketching:** plug arena leaks in the sketch facade extrude/revolve/loft ([#1813](https://github.com/andymai/brepjs/issues/1813)) ([c004841](https://github.com/andymai/brepjs/commit/c0048418430f6d7df62388ccd2db852de45b810c))
+
 ## [18.118.16](https://github.com/andymai/brepjs/compare/brepjs-v18.118.15...brepjs-v18.118.16) (2026-07-16)
 
 
