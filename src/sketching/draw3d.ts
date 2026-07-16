@@ -19,6 +19,9 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
   using scope = new DisposalScope();
   // drawRectangle always produces a single closed planar wire — narrow safely.
   const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as Sketch;
+  // The throwaway plane wire is consumed by makeFace; dispose it too so it does
+  // not leak an arena slot per call.
+  scope.register(planeSketch.wire);
   const planeFace = scope.register(unwrap(makeFace(planeSketch.wire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
@@ -50,10 +53,17 @@ export function drawProjection(
 
   const { visible, hidden } = projectEdges(shape, camera);
 
-  return {
-    visible: edgesToDrawing(visible),
-    hidden: edgesToDrawing(hidden),
-  };
+  // projectEdges returns independent edges the caller owns; they are only needed
+  // to build the 2D drawings, so dispose them once converted.
+  try {
+    return {
+      visible: edgesToDrawing(visible),
+      hidden: edgesToDrawing(hidden),
+    };
+  } finally {
+    for (const e of visible) e[Symbol.dispose]();
+    for (const e of hidden) e[Symbol.dispose]();
+  }
 }
 
 /**

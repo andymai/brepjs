@@ -63,6 +63,14 @@ import {
   section,
   roof,
   surfaceFromGrid,
+  createCamera,
+  makeProjectedEdges,
+  drawProjection,
+  createAssemblyNode,
+  addChild,
+  addMate,
+  solveAssembly,
+  faceCenter,
   getWires,
   getFaces,
   getEdges,
@@ -879,6 +887,60 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           s.wire[Symbol.dispose]();
         })
       ).toBe(0);
+    });
+  });
+
+  describe('projection + assembly ops leak nothing', () => {
+    // makeProjectedEdges leaked its 6 HLR result compounds (returned edges were
+    // borrowed from them); it now manages them and returns independent clones.
+    // drawProjection additionally leaked the edges + edgesToDrawing's plane wire.
+    // solveAssembly is pure transform math and allocates no shapes.
+    it('makeProjectedEdges leaks nothing', () => {
+      const cam = unwrap(createCamera([0, 0, 100], [0, 0, 1]));
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10, { centered: true });
+          const { visible, hidden } = makeProjectedEdges(b, cam, true);
+          for (const e of visible) e[Symbol.dispose]();
+          for (const e of hidden) e[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('drawProjection leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10, { centered: true });
+          drawProjection(b, 'front');
+        })
+      ).toBe(0);
+    });
+
+    it('solveAssembly leaks nothing', () => {
+      using b1 = box(10, 10, 10);
+      using b2 = box(6, 6, 6);
+      const topByZ = (fs: ReturnType<typeof getFaces>, top: boolean) =>
+        fs.reduce((best, f) =>
+          (top ? faceCenter(f)[2] > faceCenter(best)[2] : faceCenter(f)[2] < faceCenter(best)[2])
+            ? f
+            : best
+        );
+      const f1 = getFaces(b1);
+      const f2 = getFaces(b2);
+      const topB1 = topByZ(f1, true);
+      const botB2 = topByZ(f2, false);
+      let asm = createAssemblyNode('root');
+      asm = addChild(asm, createAssemblyNode('base', { shape: b1 }));
+      asm = addChild(asm, createAssemblyNode('top', { shape: b2 }));
+      asm = addMate(asm, { type: 'fixed', entity: { node: 'base' } });
+      asm = addMate(asm, {
+        type: 'coincident',
+        entityA: { node: 'base', face: topB1 },
+        entityB: { node: 'top', face: botB2 },
+      });
+      expect(perIterationLeak(() => void solveAssembly(asm))).toBe(0);
+      for (const f of f1) f[Symbol.dispose]();
+      for (const f of f2) f[Symbol.dispose]();
     });
   });
 

@@ -1,13 +1,19 @@
 import { getKernel } from '@/kernel/index.js';
 import type { KernelType } from '@/kernel/types.js';
 import type { Edge, AnyShape } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
-import { getEdges as _getEdges } from '@/topology/shapeFns.js';
+import { castResultShape } from '@/core/shapeTypes.js';
+import { unwrap } from '@/core/result.js';
+import { getEdges as _getEdges, clone } from '@/topology/shapeFns.js';
 import type { Camera } from './cameraFns.js';
 
 const getEdgesFromOc = (shape: KernelType): Edge[] => {
   if (shape.IsNull()) return [];
-  return _getEdges(castShape(shape));
+  // Each projected sub-result is a fresh arena compound; manage it so its slot
+  // (and the borrowed edges cached on it) are freed, and return independent
+  // clones the caller owns. Without this every projectEdges() leaks its result
+  // compounds.
+  using compound = castResultShape(shape);
+  return _getEdges(compound).map((e) => unwrap(clone(e)));
 };
 
 /**
