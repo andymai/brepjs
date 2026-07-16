@@ -1,349 +1,306 @@
 # Changelog
 
-## [18.118.17](https://github.com/andymai/brepjs/compare/brepjs-v18.118.16...brepjs-v18.118.17) (2026-07-16)
-
+## [18.118.18](https://github.com/andymai/brepjs/compare/brepjs-v18.118.17...brepjs-v18.118.18) (2026-07-16)
 
 ### Bug Fixes
 
-* **sketching:** plug arena leaks in the sketch facade extrude/revolve/loft ([#1813](https://github.com/andymai/brepjs/issues/1813)) ([c004841](https://github.com/andymai/brepjs/commit/c0048418430f6d7df62388ccd2db852de45b810c))
+- **core:** compare by slot id in disposeDowncastSource (occt-wasm 3.7 readiness) ([#1817](https://github.com/andymai/brepjs/issues/1817)) ([a0af631](https://github.com/andymai/brepjs/commit/a0af631a7b378ca143d09718e82791a3d340deb0))
+
+## [18.118.17](https://github.com/andymai/brepjs/compare/brepjs-v18.118.16...brepjs-v18.118.17) (2026-07-16)
+
+### Bug Fixes
+
+- **sketching:** plug arena leaks in the sketch facade extrude/revolve/loft ([#1813](https://github.com/andymai/brepjs/issues/1813)) ([c004841](https://github.com/andymai/brepjs/commit/c0048418430f6d7df62388ccd2db852de45b810c))
 
 ## [18.118.16](https://github.com/andymai/brepjs/compare/brepjs-v18.118.15...brepjs-v18.118.16) (2026-07-16)
 
-
 ### Bug Fixes
 
-* **operations:** stop rectangularPattern leaking its translated copies ([#1808](https://github.com/andymai/brepjs/issues/1808)) ([5481460](https://github.com/andymai/brepjs/commit/548146005fdff9906953065f7f65c61d98afee57))
+- **operations:** stop rectangularPattern leaking its translated copies ([#1808](https://github.com/andymai/brepjs/issues/1808)) ([5481460](https://github.com/andymai/brepjs/commit/548146005fdff9906953065f7f65c61d98afee57))
 
 ## [18.118.15](https://github.com/andymai/brepjs/compare/brepjs-v18.118.14...brepjs-v18.118.15) (2026-07-16)
 
-
 ### Bug Fixes
 
-* **operations:** stop multiSectionSweep leaking its per-section positioned wires ([#1804](https://github.com/andymai/brepjs/issues/1804)) ([f8b5483](https://github.com/andymai/brepjs/commit/f8b54831924661fa3b45bfb64cb163ce0c583bb6))
+- **operations:** stop multiSectionSweep leaking its per-section positioned wires ([#1804](https://github.com/andymai/brepjs/issues/1804)) ([f8b5483](https://github.com/andymai/brepjs/commit/f8b54831924661fa3b45bfb64cb163ce0c583bb6))
 
 ## [18.118.14](https://github.com/andymai/brepjs/compare/brepjs-v18.118.13...brepjs-v18.118.14) (2026-07-16)
 
-
 ### Bug Fixes
 
-* plug arena leaks in pocket/boss, mirrorJoin, twist/complexExtrude, blueprint sketches ([#1798](https://github.com/andymai/brepjs/issues/1798)) ([f25b09a](https://github.com/andymai/brepjs/commit/f25b09ae9fa6c977cb7b4cc1f996a7dc455b8c55))
-* plug arena leaks in the projection path (makeProjectedEdges, drawProjection) ([#1799](https://github.com/andymai/brepjs/issues/1799)) ([31585f2](https://github.com/andymai/brepjs/commit/31585f2a9777a860f310a0c86c1992dbf4f3bd2e))
+- plug arena leaks in pocket/boss, mirrorJoin, twist/complexExtrude, blueprint sketches ([#1798](https://github.com/andymai/brepjs/issues/1798)) ([f25b09a](https://github.com/andymai/brepjs/commit/f25b09ae9fa6c977cb7b4cc1f996a7dc455b8c55))
+- plug arena leaks in the projection path (makeProjectedEdges, drawProjection) ([#1799](https://github.com/andymai/brepjs/issues/1799)) ([31585f2](https://github.com/andymai/brepjs/commit/31585f2a9777a860f310a0c86c1992dbf4f3bd2e))
 
 ## [18.118.13](https://github.com/andymai/brepjs/compare/brepjs-v18.118.12...brepjs-v18.118.13) (2026-07-16)
 
-
 ### Bug Fixes
 
-* **core:** comprehensive occt-wasm arena-leak sweep (wire building, positioned primitives, hull, patterns, gear, section, drill, roof) ([#1794](https://github.com/andymai/brepjs/issues/1794)) ([ca791de](https://github.com/andymai/brepjs/commit/ca791dea0c9978b105bfea15755c227e327a73ef))
+- **core:** comprehensive occt-wasm arena-leak sweep (wire building, positioned primitives, hull, patterns, gear, section, drill, roof) ([#1794](https://github.com/andymai/brepjs/issues/1794)) ([ca791de](https://github.com/andymai/brepjs/commit/ca791dea0c9978b105bfea15755c227e327a73ef))
 
 ## [18.118.12](https://github.com/andymai/brepjs/compare/brepjs-v18.118.11...brepjs-v18.118.12) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** release healed-result arena slots in healingFns ([#1787](https://github.com/andymai/brepjs/issues/1787)) ([c33b41a](https://github.com/andymai/brepjs/commit/c33b41af99c9be53eb8162f1d40303a4f9b97540))
+- **topology:** release healed-result arena slots in healingFns ([#1787](https://github.com/andymai/brepjs/issues/1787)) ([c33b41a](https://github.com/andymai/brepjs/commit/c33b41af99c9be53eb8162f1d40303a4f9b97540))
 
 ## [18.118.11](https://github.com/andymai/brepjs/compare/brepjs-v18.118.10...brepjs-v18.118.11) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** register cache-cleanup onDispose once per shape handle ([#1783](https://github.com/andymai/brepjs/issues/1783)) ([fdc5af4](https://github.com/andymai/brepjs/commit/fdc5af4070f72d2fb07df5df69d3ed5b4a960d0c))
+- **topology:** register cache-cleanup onDispose once per shape handle ([#1783](https://github.com/andymai/brepjs/issues/1783)) ([fdc5af4](https://github.com/andymai/brepjs/commit/fdc5af4070f72d2fb07df5df69d3ed5b4a960d0c))
 
 ## [18.118.10](https://github.com/andymai/brepjs/compare/brepjs-v18.118.9...brepjs-v18.118.10) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** release the topology cache when its shape is disposed ([#1779](https://github.com/andymai/brepjs/issues/1779)) ([13c382d](https://github.com/andymai/brepjs/commit/13c382db68431a78d72bb39bbe837696fbfb901f))
+- **topology:** release the topology cache when its shape is disposed ([#1779](https://github.com/andymai/brepjs/issues/1779)) ([13c382d](https://github.com/andymai/brepjs/commit/13c382db68431a78d72bb39bbe837696fbfb901f))
 
 ## [18.118.9](https://github.com/andymai/brepjs/compare/brepjs-v18.118.8...brepjs-v18.118.9) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** stop adjacency queries leaking occt-wasm arena slots ([#1775](https://github.com/andymai/brepjs/issues/1775)) ([3a2e6ad](https://github.com/andymai/brepjs/commit/3a2e6ad4c04241f696a4da4f21cc5445971007aa))
+- **topology:** stop adjacency queries leaking occt-wasm arena slots ([#1775](https://github.com/andymai/brepjs/issues/1775)) ([3a2e6ad](https://github.com/andymai/brepjs/commit/3a2e6ad4c04241f696a4da4f21cc5445971007aa))
 
 ## [18.118.8](https://github.com/andymai/brepjs/compare/brepjs-v18.118.7...brepjs-v18.118.8) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **core:** make using/Symbol.dispose reclaim occt-wasm arena slots ([#1768](https://github.com/andymai/brepjs/issues/1768)) ([76cbadf](https://github.com/andymai/brepjs/commit/76cbadff41a58b8a52c4c59e2e55dab4dadc9bc3))
+- **core:** make using/Symbol.dispose reclaim occt-wasm arena slots ([#1768](https://github.com/andymai/brepjs/issues/1768)) ([76cbadf](https://github.com/andymai/brepjs/commit/76cbadff41a58b8a52c4c59e2e55dab4dadc9bc3))
 
 ## [18.118.7](https://github.com/andymai/brepjs/compare/brepjs-v18.118.6...brepjs-v18.118.7) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** clone via a real copyShape, not an aliasing downcast ([#1767](https://github.com/andymai/brepjs/issues/1767)) ([2105a62](https://github.com/andymai/brepjs/commit/2105a62d05e891bec423e2249261376632ade397))
+- **topology:** clone via a real copyShape, not an aliasing downcast ([#1767](https://github.com/andymai/brepjs/issues/1767)) ([2105a62](https://github.com/andymai/brepjs/commit/2105a62d05e891bec423e2249261376632ade397))
 
 ## [18.118.6](https://github.com/andymai/brepjs/compare/brepjs-v18.118.5...brepjs-v18.118.6) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** complete castResultShape/disposeResultShape migration across remaining ops ([#1755](https://github.com/andymai/brepjs/issues/1755)) ([#1760](https://github.com/andymai/brepjs/issues/1760)) ([6013994](https://github.com/andymai/brepjs/commit/6013994b9f4528be408a095004664b609e004849))
+- **topology:** complete castResultShape/disposeResultShape migration across remaining ops ([#1755](https://github.com/andymai/brepjs/issues/1755)) ([#1760](https://github.com/andymai/brepjs/issues/1760)) ([6013994](https://github.com/andymai/brepjs/commit/6013994b9f4528be408a095004664b609e004849))
 
 ## [18.118.5](https://github.com/andymai/brepjs/compare/brepjs-v18.118.4...brepjs-v18.118.5) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** plug error-path handle leaks in not-3D reject branches ([#1756](https://github.com/andymai/brepjs/issues/1756)) ([d0a431d](https://github.com/andymai/brepjs/commit/d0a431df0a0ba667f2186a7a6678dc2f665a76be))
+- **topology:** plug error-path handle leaks in not-3D reject branches ([#1756](https://github.com/andymai/brepjs/issues/1756)) ([d0a431d](https://github.com/andymai/brepjs/commit/d0a431df0a0ba667f2186a7a6678dc2f665a76be))
 
 ## [18.118.4](https://github.com/andymai/brepjs/compare/brepjs-v18.118.3...brepjs-v18.118.4) (2026-07-13)
 
-
 ### Bug Fixes
 
-* **topology:** release orphaned WASM shape handles in boolean/evolution/transform helpers ([#1750](https://github.com/andymai/brepjs/issues/1750)) ([753cb43](https://github.com/andymai/brepjs/commit/753cb4353d0e5ea9431f0f306033081e39c94ad0))
+- **topology:** release orphaned WASM shape handles in boolean/evolution/transform helpers ([#1750](https://github.com/andymai/brepjs/issues/1750)) ([753cb43](https://github.com/andymai/brepjs/commit/753cb4353d0e5ea9431f0f306033081e39c94ad0))
 
 ## [18.118.3](https://github.com/andymai/brepjs/compare/brepjs-v18.118.2...brepjs-v18.118.3) (2026-07-04)
 
-
 ### Bug Fixes
 
-* **origins:** recover split coplanar face origins across boolean seams ([#1740](https://github.com/andymai/brepjs/issues/1740)) ([e999c2e](https://github.com/andymai/brepjs/commit/e999c2e97e724e646ead325589706162d7eb94e7))
+- **origins:** recover split coplanar face origins across boolean seams ([#1740](https://github.com/andymai/brepjs/issues/1740)) ([e999c2e](https://github.com/andymai/brepjs/commit/e999c2e97e724e646ead325589706162d7eb94e7))
 
 ## [18.118.2](https://github.com/andymai/brepjs/compare/brepjs-v18.118.1...brepjs-v18.118.2) (2026-06-26)
 
-
 ### Bug Fixes
 
-* **kernel:** resolve optional backends via variable specifier ([#1726](https://github.com/andymai/brepjs/issues/1726)) ([#1727](https://github.com/andymai/brepjs/issues/1727)) ([b1fa2dd](https://github.com/andymai/brepjs/commit/b1fa2dd93260f37848ee907e1bd0c37b1ae6e9cc))
+- **kernel:** resolve optional backends via variable specifier ([#1726](https://github.com/andymai/brepjs/issues/1726)) ([#1727](https://github.com/andymai/brepjs/issues/1727)) ([b1fa2dd](https://github.com/andymai/brepjs/commit/b1fa2dd93260f37848ee907e1bd0c37b1ae6e9cc))
 
 ## [18.118.1](https://github.com/andymai/brepjs/compare/brepjs-v18.118.0...brepjs-v18.118.1) (2026-06-26)
 
-
 ### Bug Fixes
 
-* **brepkit:** harden rotation/scale matrix builders against non-Vec3 axis/center ([#1720](https://github.com/andymai/brepjs/issues/1720)) ([b9c4e2e](https://github.com/andymai/brepjs/commit/b9c4e2ef1d5af8784346af96f774ba0a783c1ef1))
+- **brepkit:** harden rotation/scale matrix builders against non-Vec3 axis/center ([#1720](https://github.com/andymai/brepjs/issues/1720)) ([b9c4e2e](https://github.com/andymai/brepjs/commit/b9c4e2ef1d5af8784346af96f774ba0a783c1ef1))
 
 ## [18.118.0](https://github.com/andymai/brepjs/compare/brepjs-v18.117.1...brepjs-v18.118.0) (2026-06-25)
 
-
 ### Features
 
-* **site:** add Vercel Speed Insights to docs and playground ([#1714](https://github.com/andymai/brepjs/issues/1714)) ([c4a1ccb](https://github.com/andymai/brepjs/commit/c4a1ccb7293767cf0c011ef5da916a608242562a))
+- **site:** add Vercel Speed Insights to docs and playground ([#1714](https://github.com/andymai/brepjs/issues/1714)) ([c4a1ccb](https://github.com/andymai/brepjs/commit/c4a1ccb7293767cf0c011ef5da916a608242562a))
 
 ## [18.117.1](https://github.com/andymai/brepjs/compare/brepjs-v18.117.0...brepjs-v18.117.1) (2026-06-25)
 
-
 ### Bug Fixes
 
-* **bim:** make BCF XML tokenizer linear (polynomial ReDoS) ([#1666](https://github.com/andymai/brepjs/issues/1666)) ([3c93f03](https://github.com/andymai/brepjs/commit/3c93f036827b5daf158e2a339362c38bf3ea2864))
-* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+- **bim:** make BCF XML tokenizer linear (polynomial ReDoS) ([#1666](https://github.com/andymai/brepjs/issues/1666)) ([3c93f03](https://github.com/andymai/brepjs/commit/3c93f036827b5daf158e2a339362c38bf3ea2864))
+- **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
 
 ## [18.117.0](https://github.com/andymai/brepjs/compare/brepjs-v18.116.1...brepjs-v18.117.0) (2026-06-25)
 
-
 ### Features
 
-* **api:** export locate() — placement-only rigid transform ([#1661](https://github.com/andymai/brepjs/issues/1661)) ([8f8014f](https://github.com/andymai/brepjs/commit/8f8014f0e077a7ad17fe7d9f01ec9711d053c85b))
+- **api:** export locate() — placement-only rigid transform ([#1661](https://github.com/andymai/brepjs/issues/1661)) ([8f8014f](https://github.com/andymai/brepjs/commit/8f8014f0e077a7ad17fe7d9f01ec9711d053c85b))
 
 ## [18.116.1](https://github.com/andymai/brepjs/compare/brepjs-v18.116.0...brepjs-v18.116.1) (2026-06-25)
 
-
 ### Performance Improvements
 
-* **csg:** rotation-stripped mesh reuse — no re-mesh on a pure rotate ([#1653](https://github.com/andymai/brepjs/issues/1653)) ([92c06f3](https://github.com/andymai/brepjs/commit/92c06f38214060c60d3a949981203274ce62733e))
+- **csg:** rotation-stripped mesh reuse — no re-mesh on a pure rotate ([#1653](https://github.com/andymai/brepjs/issues/1653)) ([92c06f3](https://github.com/andymai/brepjs/commit/92c06f38214060c60d3a949981203274ce62733e))
 
 ## [18.116.0](https://github.com/andymai/brepjs/compare/brepjs-v18.115.1...brepjs-v18.116.0) (2026-06-25)
 
-
 ### Features
 
-* **history:** resolve lineage refs in replay so selections survive edits ([a55a179](https://github.com/andymai/brepjs/commit/a55a1792d5f15232a2fd7767b641f5f7978afac8)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **history:** resolve lineage refs in replay so selections survive edits ([a55a179](https://github.com/andymai/brepjs/commit/a55a1792d5f15232a2fd7767b641f5f7978afac8)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.115.1](https://github.com/andymai/brepjs/compare/brepjs-v18.115.0...brepjs-v18.115.1) (2026-06-25)
 
-
 ### Performance Improvements
 
-* **csg:** translation-stripped mesh cache — no re-mesh on a pure move ([6d00273](https://github.com/andymai/brepjs/commit/6d00273c2864ebb9dd941d6594827d352196477b))
+- **csg:** translation-stripped mesh cache — no re-mesh on a pure move ([6d00273](https://github.com/andymai/brepjs/commit/6d00273c2864ebb9dd941d6594827d352196477b))
 
 ## [18.115.0](https://github.com/andymai/brepjs/compare/brepjs-v18.114.0...brepjs-v18.115.0) (2026-06-25)
 
-
 ### Features
 
-* **shaperef:** semantic face roles for cylinder/cone/sphere ([aac3b12](https://github.com/andymai/brepjs/commit/aac3b128389e054f414e98e84a45af5bdf5bc5f9)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** semantic face roles for cylinder/cone/sphere ([aac3b12](https://github.com/andymai/brepjs/commit/aac3b128389e054f414e98e84a45af5bdf5bc5f9)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.114.0](https://github.com/andymai/brepjs/compare/brepjs-v18.113.0...brepjs-v18.114.0) (2026-06-25)
 
-
 ### Features
 
-* **shaperef:** parametric-replay consumer for lineage refs ([66e60ca](https://github.com/andymai/brepjs/commit/66e60caa640b0de85440a7ac133364cf12f23069)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** parametric-replay consumer for lineage refs ([66e60ca](https://github.com/andymai/brepjs/commit/66e60caa640b0de85440a7ac133364cf12f23069)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.113.0](https://github.com/andymai/brepjs/compare/brepjs-v18.112.0...brepjs-v18.113.0) (2026-06-25)
 
-
 ### Features
 
-* **shaperef:** name generated fillet/chamfer faces by lineage ([21eb345](https://github.com/andymai/brepjs/commit/21eb3450767588f201d4e89f7babe4dc0ff31eea)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** name generated fillet/chamfer faces by lineage ([21eb345](https://github.com/andymai/brepjs/commit/21eb3450767588f201d4e89f7babe4dc0ff31eea)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.112.0](https://github.com/andymai/brepjs/compare/brepjs-v18.111.0...brepjs-v18.112.0) (2026-06-25)
 
-
 ### Features
 
-* **shaperef:** lineage-based vertex references named by adjacent faces ([3b73eef](https://github.com/andymai/brepjs/commit/3b73eefd11f89e82320669f1b7948ba181a0636b)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** lineage-based vertex references named by adjacent faces ([3b73eef](https://github.com/andymai/brepjs/commit/3b73eefd11f89e82320669f1b7948ba181a0636b)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.111.0](https://github.com/andymai/brepjs/compare/brepjs-v18.110.0...brepjs-v18.111.0) (2026-06-24)
 
-
 ### Features
 
-* **shaperef:** lineage-based edge references named by adjacent faces ([abac0a6](https://github.com/andymai/brepjs/commit/abac0a6b735c3c6c8a3b9fde01c123c557597f3b)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** lineage-based edge references named by adjacent faces ([abac0a6](https://github.com/andymai/brepjs/commit/abac0a6b735c3c6c8a3b9fde01c123c557597f3b)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.110.0](https://github.com/andymai/brepjs/compare/brepjs-v18.109.0...brepjs-v18.110.0) (2026-06-24)
 
-
 ### Features
 
-* **shaperef:** track all split-face successors + edit-survival harness ([7668681](https://github.com/andymai/brepjs/commit/766868192abe1f1172375e555492e129a07db238)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
+- **shaperef:** track all split-face successors + edit-survival harness ([7668681](https://github.com/andymai/brepjs/commit/766868192abe1f1172375e555492e129a07db238)), closes [#1606](https://github.com/andymai/brepjs/issues/1606)
 
 ## [18.109.0](https://github.com/andymai/brepjs/compare/brepjs-v18.108.0...brepjs-v18.109.0) (2026-06-24)
 
-
 ### Features
 
-* **csg:** cheap location-only transforms for rigid moves ([e13c550](https://github.com/andymai/brepjs/commit/e13c5502e192d5a8e7d592b9bfa1a80b0043a8fb))
+- **csg:** cheap location-only transforms for rigid moves ([e13c550](https://github.com/andymai/brepjs/commit/e13c5502e192d5a8e7d592b9bfa1a80b0043a8fb))
 
 ## [18.108.0](https://github.com/andymai/brepjs/compare/brepjs-v18.107.0...brepjs-v18.108.0) (2026-06-24)
 
-
 ### Features
 
-* **csg:** content-addressed mesh cache via Evaluator.evaluateMesh ([#1631](https://github.com/andymai/brepjs/issues/1631)) ([a748c6f](https://github.com/andymai/brepjs/commit/a748c6f5696e62c65437a60358e988f5f0f5fa6c))
+- **csg:** content-addressed mesh cache via Evaluator.evaluateMesh ([#1631](https://github.com/andymai/brepjs/issues/1631)) ([a748c6f](https://github.com/andymai/brepjs/commit/a748c6f5696e62c65437a60358e988f5f0f5fa6c))
 
 ## [18.107.0](https://github.com/andymai/brepjs/compare/brepjs-v18.106.0...brepjs-v18.107.0) (2026-06-24)
 
-
 ### Features
 
-* **meshing:** add progressive (async) LOD refine ([#1628](https://github.com/andymai/brepjs/issues/1628)) ([ec2549d](https://github.com/andymai/brepjs/commit/ec2549dafd751c65650684024aaf8e58cfaba55a))
+- **meshing:** add progressive (async) LOD refine ([#1628](https://github.com/andymai/brepjs/issues/1628)) ([ec2549d](https://github.com/andymai/brepjs/commit/ec2549dafd751c65650684024aaf8e58cfaba55a))
 
 ## [18.106.0](https://github.com/andymai/brepjs/compare/brepjs-v18.105.0...brepjs-v18.106.0) (2026-06-24)
 
-
 ### Features
 
-* **worker:** add batched-op message API ([#1626](https://github.com/andymai/brepjs/issues/1626)) ([a3df661](https://github.com/andymai/brepjs/commit/a3df661aa64ed231f8d2ee4a622a0d36cbf20b11))
+- **worker:** add batched-op message API ([#1626](https://github.com/andymai/brepjs/issues/1626)) ([a3df661](https://github.com/andymai/brepjs/commit/a3df661aa64ed231f8d2ee4a622a0d36cbf20b11))
 
 ## [18.105.0](https://github.com/andymai/brepjs/compare/brepjs-v18.104.0...brepjs-v18.105.0) (2026-06-24)
 
-
 ### Features
 
-* **meshing:** add N-level scale-relative LOD meshing ([#1623](https://github.com/andymai/brepjs/issues/1623)) ([3b08d65](https://github.com/andymai/brepjs/commit/3b08d65471aa92e5efac51759c81e2f571b2b454))
+- **meshing:** add N-level scale-relative LOD meshing ([#1623](https://github.com/andymai/brepjs/issues/1623)) ([3b08d65](https://github.com/andymai/brepjs/commit/3b08d65471aa92e5efac51759c81e2f571b2b454))
 
 ## [18.104.0](https://github.com/andymai/brepjs/compare/brepjs-v18.103.0...brepjs-v18.104.0) (2026-06-24)
 
-
 ### Features
 
-* **worker:** worker pool with least-loaded dispatch ([#1619](https://github.com/andymai/brepjs/issues/1619)) ([1f5ef6c](https://github.com/andymai/brepjs/commit/1f5ef6c21e52aca2ade48be1702c9cb5a3cebf3d))
+- **worker:** worker pool with least-loaded dispatch ([#1619](https://github.com/andymai/brepjs/issues/1619)) ([1f5ef6c](https://github.com/andymai/brepjs/commit/1f5ef6c21e52aca2ade48be1702c9cb5a3cebf3d))
 
 ## [18.103.0](https://github.com/andymai/brepjs/compare/brepjs-v18.102.0...brepjs-v18.103.0) (2026-06-24)
 
-
 ### Features
 
-* **csg:** add an Instance node to the CSG IR ([#1616](https://github.com/andymai/brepjs/issues/1616)) ([46c9a99](https://github.com/andymai/brepjs/commit/46c9a99f34b824efa2c06478d1ff9ad310254a0f))
+- **csg:** add an Instance node to the CSG IR ([#1616](https://github.com/andymai/brepjs/issues/1616)) ([46c9a99](https://github.com/andymai/brepjs/commit/46c9a99f34b824efa2c06478d1ff9ad310254a0f))
 
 ## [18.102.0](https://github.com/andymai/brepjs/compare/brepjs-v18.101.0...brepjs-v18.102.0) (2026-06-24)
 
-
 ### Features
 
-* **operations:** transform-only instancing layer ([#1613](https://github.com/andymai/brepjs/issues/1613)) ([441ccae](https://github.com/andymai/brepjs/commit/441ccae1346d01ec1eeee8a9e178f6043090c6e9))
+- **operations:** transform-only instancing layer ([#1613](https://github.com/andymai/brepjs/issues/1613)) ([441ccae](https://github.com/andymai/brepjs/commit/441ccae1346d01ec1eeee8a9e178f6043090c6e9))
 
 ## [18.101.0](https://github.com/andymai/brepjs/compare/brepjs-v18.100.3...brepjs-v18.101.0) (2026-06-24)
 
-
 ### Features
 
-* **csg:** add opt-in LRU eviction to the evaluator cache ([#1607](https://github.com/andymai/brepjs/issues/1607)) ([861115d](https://github.com/andymai/brepjs/commit/861115db39a3beedaff43246652369756895edf7))
+- **csg:** add opt-in LRU eviction to the evaluator cache ([#1607](https://github.com/andymai/brepjs/issues/1607)) ([861115d](https://github.com/andymai/brepjs/commit/861115db39a3beedaff43246652369756895edf7))
 
 ## [18.100.3](https://github.com/andymai/brepjs/compare/brepjs-v18.100.2...brepjs-v18.100.3) (2026-06-23)
 
-
 ### Bug Fixes
 
-* **tech-debt:** thread kernel error cause through Result.Err builders ([#1593](https://github.com/andymai/brepjs/issues/1593)) ([215c99d](https://github.com/andymai/brepjs/commit/215c99d8090e066af71b6d69a25252596abaac13))
+- **tech-debt:** thread kernel error cause through Result.Err builders ([#1593](https://github.com/andymai/brepjs/issues/1593)) ([215c99d](https://github.com/andymai/brepjs/commit/215c99d8090e066af71b6d69a25252596abaac13))
 
 ## [18.100.2](https://github.com/andymai/brepjs/compare/brepjs-v18.100.1...brepjs-v18.100.2) (2026-06-23)
 
-
 ### Bug Fixes
 
-* **brepkit:** exact 2D ellipse-arc lift (closes brepkit[#858](https://github.com/andymai/brepjs/issues/858) ellipseTo parity) ([#1588](https://github.com/andymai/brepjs/issues/1588)) ([1b79a89](https://github.com/andymai/brepjs/commit/1b79a8939473242fa4515b2dbb99f912c3203381))
+- **brepkit:** exact 2D ellipse-arc lift (closes brepkit[#858](https://github.com/andymai/brepjs/issues/858) ellipseTo parity) ([#1588](https://github.com/andymai/brepjs/issues/1588)) ([1b79a89](https://github.com/andymai/brepjs/commit/1b79a8939473242fa4515b2dbb99f912c3203381))
 
 ## [18.100.1](https://github.com/andymai/brepjs/compare/brepjs-v18.100.0...brepjs-v18.100.1) (2026-06-22)
 
-
 ### Bug Fixes
 
-* **kernel:** forward angularTolerance to brepkit meshEdges ([#1579](https://github.com/andymai/brepjs/issues/1579)) ([b996be2](https://github.com/andymai/brepjs/commit/b996be2027ae9e0206b5369a234d879e09c4ecb7))
+- **kernel:** forward angularTolerance to brepkit meshEdges ([#1579](https://github.com/andymai/brepjs/issues/1579)) ([b996be2](https://github.com/andymai/brepjs/commit/b996be2027ae9e0206b5369a234d879e09c4ecb7))
 
 ## [18.100.0](https://github.com/andymai/brepjs/compare/brepjs-v18.99.5...brepjs-v18.100.0) (2026-06-22)
 
-
 ### Features
 
-* **operations:** add flat-crest (Acme/trapezoidal) thread profile ([9560053](https://github.com/andymai/brepjs/commit/956005346c4817e3705b505bb96a64044d5a31ce))
+- **operations:** add flat-crest (Acme/trapezoidal) thread profile ([9560053](https://github.com/andymai/brepjs/commit/956005346c4817e3705b505bb96a64044d5a31ce))
 
 ## [18.99.5](https://github.com/andymai/brepjs/compare/brepjs-v18.99.4...brepjs-v18.99.5) (2026-06-21)
 
-
 ### Reverts
 
-* **playground:** restore all examples to last known good (pre-[#1567](https://github.com/andymai/brepjs/issues/1567)) ([#1575](https://github.com/andymai/brepjs/issues/1575)) ([1e50000](https://github.com/andymai/brepjs/commit/1e500008a15fc26bde6e748a7277dbc4c31fd637))
+- **playground:** restore all examples to last known good (pre-[#1567](https://github.com/andymai/brepjs/issues/1567)) ([#1575](https://github.com/andymai/brepjs/issues/1575)) ([1e50000](https://github.com/andymai/brepjs/commit/1e500008a15fc26bde6e748a7277dbc4c31fd637))
 
 ## [18.99.4](https://github.com/andymai/brepjs/compare/brepjs-v18.99.3...brepjs-v18.99.4) (2026-06-21)
 
-
 ### Bug Fixes
 
-* **playground:** corpus-wide connectivity gate + fix 8 render-audit defects ([#1572](https://github.com/andymai/brepjs/issues/1572)) ([95b61d3](https://github.com/andymai/brepjs/commit/95b61d374b59f11ff1bd1585859f9e70483a70be))
+- **playground:** corpus-wide connectivity gate + fix 8 render-audit defects ([#1572](https://github.com/andymai/brepjs/issues/1572)) ([95b61d3](https://github.com/andymai/brepjs/commit/95b61d374b59f11ff1bd1585859f9e70483a70be))
 
 ## [18.99.3](https://github.com/andymai/brepjs/compare/brepjs-v18.99.2...brepjs-v18.99.3) (2026-06-21)
 
-
 ### Bug Fixes
 
-* **playground:** fix fragmented examples found by a verify --metrics audit ([#1569](https://github.com/andymai/brepjs/issues/1569)) ([2712080](https://github.com/andymai/brepjs/commit/27120809d1d959bcc7e93b4d37fd64727bf791ce))
+- **playground:** fix fragmented examples found by a verify --metrics audit ([#1569](https://github.com/andymai/brepjs/issues/1569)) ([2712080](https://github.com/andymai/brepjs/commit/27120809d1d959bcc7e93b4d37fd64727bf791ce))
 
 ## [18.99.2](https://github.com/andymai/brepjs/compare/brepjs-v18.99.1...brepjs-v18.99.2) (2026-06-21)
 
-
 ### Bug Fixes
 
-* **eval-skill:** rebuild the snapshot viewer when stale, and from the right package ([#1561](https://github.com/andymai/brepjs/issues/1561)) ([8982bf9](https://github.com/andymai/brepjs/commit/8982bf9d26649b4557a0820004be0c05b76d47ad))
+- **eval-skill:** rebuild the snapshot viewer when stale, and from the right package ([#1561](https://github.com/andymai/brepjs/issues/1561)) ([8982bf9](https://github.com/andymai/brepjs/commit/8982bf9d26649b4557a0820004be0c05b76d47ad))
 
 ## [18.99.1](https://github.com/andymai/brepjs/compare/brepjs-v18.99.0...brepjs-v18.99.1) (2026-06-21)
 
-
 ### Bug Fixes
 
-* **playground:** make worm-gear-drive and three-jaw-chuck functional mechanisms ([#1541](https://github.com/andymai/brepjs/issues/1541)) ([2fab9ed](https://github.com/andymai/brepjs/commit/2fab9ed2fd31c0204525b2979668e9989a0c225a))
+- **playground:** make worm-gear-drive and three-jaw-chuck functional mechanisms ([#1541](https://github.com/andymai/brepjs/issues/1541)) ([2fab9ed](https://github.com/andymai/brepjs/commit/2fab9ed2fd31c0204525b2979668e9989a0c225a))
 
 ## [18.99.0](https://github.com/andymai/brepjs/compare/brepjs-v18.98.0...brepjs-v18.99.0) (2026-06-20)
 
-
 ### Features
 
-* **playground:** add scotch yoke, worm gear, rack & pinion, and 3-jaw chuck examples ([#1536](https://github.com/andymai/brepjs/issues/1536)) ([840c70f](https://github.com/andymai/brepjs/commit/840c70f5c6396fdec82aee109d161e8593c485bc))
+- **playground:** add scotch yoke, worm gear, rack & pinion, and 3-jaw chuck examples ([#1536](https://github.com/andymai/brepjs/issues/1536)) ([840c70f](https://github.com/andymai/brepjs/commit/840c70f5c6396fdec82aee109d161e8593c485bc))
 
 ## [18.98.0](https://github.com/andymai/brepjs/compare/brepjs-v18.97.2...brepjs-v18.98.0) (2026-06-20)
 
-
 ### Features
 
-* **playground:** add universal joint, Geneva drive, and bench vise examples ([#1532](https://github.com/andymai/brepjs/issues/1532)) ([e22429e](https://github.com/andymai/brepjs/commit/e22429ed4bfd1962638c219ef14bcfd5e901bd5f))
+- **playground:** add universal joint, Geneva drive, and bench vise examples ([#1532](https://github.com/andymai/brepjs/issues/1532)) ([e22429e](https://github.com/andymai/brepjs/commit/e22429ed4bfd1962638c219ef14bcfd5e901bd5f))
 
 ## [18.97.2](https://github.com/andymai/brepjs/compare/brepjs-v18.97.1...brepjs-v18.97.2) (2026-06-20)
 
