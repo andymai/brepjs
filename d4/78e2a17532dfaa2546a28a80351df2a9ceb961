@@ -1,0 +1,35 @@
+src/operations/compoundOpsFns.ts
+  s_9599a19035c5e3::t_a2bdae83ba90aa 189-193,197,200,204
+  s_9599a19035c5e3::t_49e482b090637f 26
+  s_9599a19035c5e3::t_5959d61a42928a 274
+  s_9599a19035c5e3::t_46d976bac88087 233-237,241,244,248
+  s_9599a19035c5e3::t_ac54ac86db1098 79-84,87,91
+  s_9599a19035c5e3::t_4391f27b765de9 188
+  s_9599a19035c5e3::t_6521f1a397f18b 232
+src/2d/blueprints/blueprint.ts
+  s_9599a19035c5e3::t_c5eb1d34d28e1d 248-250
+  s_9599a19035c5e3::t_a87b98c4dfcb2e 271,275-276
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_8dfa8b3fa2ae69 800-884
+  s_9599a19035c5e3::t_28314b1e6c53d6 56-62
+src/operations/sweepFns.ts
+  s_9599a19035c5e3::t_e3d0a7c8bbf8bd 299-300,304
+  s_9599a19035c5e3::t_f63715d8c9bb0b 254-255
+  s_9599a19035c5e3::t_88269f2ae20fb5 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d478e2a17532dfaa2546a28a80351df2a9ceb961",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
