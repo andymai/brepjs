@@ -380,7 +380,12 @@ export function compoundSketchLoft(
 
   const baseFaceRaw = compoundSketchFace(sketch);
   const baseFace = createFace(unwrap(copyShape(baseFaceRaw.wrapped)));
+  baseFaceRaw[Symbol.dispose](); // orphaned once copied
   shells.push(baseFace, compoundSketchFace(other));
 
-  return unwrap(makeSolid(shells));
+  const solid = unwrap(makeSolid(shells));
+  // makeSolid sews the shells/caps into a closed solid (shared refcounted
+  // TShapes); release the intermediates once it has consumed them.
+  for (const sh of shells) sh[Symbol.dispose]();
+  return solid;
 }

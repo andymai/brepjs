@@ -23,6 +23,8 @@ import {
   createVertex,
   isShape3D,
   isSolid,
+  castResultShape,
+  disposeResultShape,
 } from '@/core/shapeTypes.js';
 import { cast, downcast } from './cast.js';
 import { weldShapes } from './shapeUtils.js';
@@ -150,10 +152,14 @@ export function makeCompound(shapeArray: AnyShape<Dimension>[]): Compound {
  * @category Solids
  */
 export function makeSolid(facesOrShells: Array<Face | Shell>): Result<ValidSolid> {
-  const shell = weldShapes(facesOrShells);
-  return andThen(cast(getKernel().solidFromShell(shell.wrapped)), (solid) => {
-    if (!isSolid(solid))
-      return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
-    return ok(solid as ValidSolid);
-  });
+  // The welded shell is an intermediate consumed by solidFromShell (the solid
+  // shares its refcounted TShape); dispose it. castResultShape releases the
+  // pre-downcast orphan of the solid result.
+  using shell = weldShapes(facesOrShells);
+  const solid = castResultShape(getKernel().solidFromShell(shell.wrapped));
+  if (!isSolid(solid)) {
+    disposeResultShape(solid);
+    return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
+  }
+  return ok(solid as ValidSolid);
 }

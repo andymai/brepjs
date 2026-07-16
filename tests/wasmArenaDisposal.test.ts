@@ -1156,6 +1156,26 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         })
       ).toBe(0);
     });
+
+    it('CompoundSketch.loftWith leaks nothing (makeSolid + weldShapes)', () => {
+      const mk = (z: number) =>
+        new CompoundSketch([
+          sketchRectangle(20, 20, { plane: 'XY', origin: [0, 0, z] }),
+          sketchRectangle(8, 8, { plane: 'XY', origin: [0, 0, z] }),
+        ]);
+      expect(
+        perIterationLeak(() => {
+          const cs1 = mk(0);
+          const cs2 = mk(20);
+          const s = cs1.loftWith(cs2);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          for (const sub of cs1.sketches) sub.wire[Symbol.dispose]();
+          for (const sub of cs2.sketches) sub.wire[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+    });
   });
 
   describe('sketchText is leak-free; CompoundSketch.wires is a disposable resource', () => {
