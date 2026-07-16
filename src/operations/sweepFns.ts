@@ -437,27 +437,38 @@ export function multiSectionSweep(
     if (isErr(paramsResult)) return paramsResult;
     const params = paramsResult.value;
 
-    // Position each profile wire along the spine and loft
+    // Position each profile wire along the spine and loft. positionOnCurve and
+    // downcast each allocate a fresh arena slot per section that loftAdvanced only
+    // consumes (never frees) — track and release them once the loft is built.
+    const positioned: KernelShape[] = [];
     const positionedWires: KernelShape[] = [];
-    for (let i = 0; i < sections.length; i++) {
-      const param = params[i];
-      const section = sections[i];
-      if (param === undefined || section === undefined) continue;
+    try {
+      for (let i = 0; i < sections.length; i++) {
+        const param = params[i];
+        const section = sections[i];
+        if (param === undefined || section === undefined) continue;
 
-      const positioned = kernel.positionOnCurve(section.wire.wrapped, spine.wrapped, param);
-      positionedWires.push(kernel.downcast(positioned, 'wire'));
+        const p = kernel.positionOnCurve(section.wire.wrapped, spine.wrapped, param);
+        positioned.push(p);
+        positionedWires.push(kernel.downcast(p, 'wire'));
+      }
+
+      const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled, tolerance });
+
+      const result = castResultShape(loftResult);
+      if (!isShape3D(result)) {
+        disposeResultShape(result);
+        return err(
+          typeCastError('MULTI_SWEEP_NOT_3D', 'Multi-section sweep did not produce a 3D shape')
+        );
+      }
+      return ok(result as Solid | Shell);
+    } finally {
+      // The loft result shares these wires' refcounted TShapes and survives.
+      // release() is idempotent, so an aliased downcast (occt-wasm) is safe.
+      for (const w of positionedWires) kernel.dispose(w);
+      for (const p of positioned) kernel.dispose(p);
     }
-
-    const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled, tolerance });
-
-    const result = castResultShape(loftResult);
-    if (!isShape3D(result)) {
-      disposeResultShape(result);
-      return err(
-        typeCastError('MULTI_SWEEP_NOT_3D', 'Multi-section sweep did not produce a 3D shape')
-      );
-    }
-    return ok(result as Solid | Shell);
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(

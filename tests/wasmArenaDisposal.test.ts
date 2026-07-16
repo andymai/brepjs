@@ -42,7 +42,10 @@ import {
   extrude,
   revolve,
   loft,
+  loftAll,
   sweep,
+  guidedSweep,
+  multiSectionSweep,
   thread,
   convexHull,
   hull,
@@ -970,6 +973,85 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(perIterationLeak(() => void solveAssembly(asm))).toBe(0);
       for (const f of f1) f[Symbol.dispose]();
       for (const f of f2) f[Symbol.dispose]();
+    });
+  });
+
+  describe('sweep / loft variants leak nothing', () => {
+    // guidedSweep + loftAll were already clean (castResultShape; loftAll disposes
+    // its makeVertex temporaries via kernel.dispose). multiSectionSweep leaked its
+    // per-section positionOnCurve + downcast wires (4/call for 2 sections) — now
+    // released once loftAdvanced has consumed them.
+    const squareWire = (z: number, r: number) => {
+      const f = unwrap(
+        polygon([
+          [-r, -r, z],
+          [r, -r, z],
+          [r, r, z],
+          [-r, r, z],
+        ])
+      );
+      const w = getWires(f)[0];
+      if (!w) throw new Error('polygon face must have a wire');
+      return { face: f, wire: w };
+    };
+
+    it('guidedSweep leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using pf = squareWire(0, 1).face;
+          const pw = getWires(pf)[0];
+          if (!pw) throw new Error('no wire');
+          const profile = unwrap(closedWire(pw));
+          using se = line([0, 0, 0], [0, 0, 20]);
+          using spine = unwrap(wire([se]));
+          using ge = line([3, 0, 0], [3, 0, 20]);
+          using guide = unwrap(wire([ge]));
+          const r = guidedSweep(profile, spine, [guide]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('loftAll leaks nothing (with start/end points)', () => {
+      expect(
+        perIterationLeak(() => {
+          using f1 = squareWire(0, 5).face;
+          using f2 = squareWire(20, 5).face;
+          const w1 = getWires(f1)[0];
+          const w2 = getWires(f2)[0];
+          if (!w1 || !w2) throw new Error('no wires');
+          const r = loftAll([
+            { wires: [w1, w2], ruled: true, startPoint: [0, 0, -5], endPoint: [0, 0, 25] },
+          ]);
+          if (isOk(r)) for (const s of unwrap(r)) s[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('multiSectionSweep leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f1 = squareWire(0, 2).face;
+          using f2 = squareWire(0, 3).face;
+          const w1 = getWires(f1)[0];
+          const w2 = getWires(f2)[0];
+          if (!w1 || !w2) throw new Error('no wires');
+          using se = line([0, 0, 0], [0, 0, 20]);
+          using spine = unwrap(wire([se]));
+          const r = multiSectionSweep(
+            [
+              { wire: w1, location: 0 },
+              { wire: w2, location: 1 },
+            ],
+            spine
+          );
+          if (isOk(r)) {
+            const v = unwrap(r);
+            if (Array.isArray(v)) v.forEach((s) => s[Symbol.dispose]());
+            else v[Symbol.dispose]();
+          }
+        })
+      ).toBe(0);
     });
   });
 
