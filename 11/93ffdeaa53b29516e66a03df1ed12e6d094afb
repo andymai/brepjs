@@ -1,0 +1,26 @@
+src/sketching/draw3d.ts
+  s_9599a19035c5e3::t_21d4d6b3335a08 22-24
+  s_9599a19035c5e3::t_fd62522824b6be 56-66
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_c00e4de18b3b8e 66-73
+  s_9599a19035c5e3::t_8e3818959282a0 893-946
+src/projection/makeProjectedEdges.ts
+  s_9599a19035c5e3::t_338a2b93602682 4-6,11-14,16
+  s_9599a19035c5e3::t_640e8761e853a7 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1193ffdeaa53b29516e66a03df1ed12e6d094afb",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
