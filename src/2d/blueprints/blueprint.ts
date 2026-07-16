@@ -245,6 +245,9 @@ export default class Blueprint implements DrawingInterface {
 
     const edges = curvesAsEdgesOnPlane(this.curves, plane);
     const wire = assembleWire(edges);
+    // Edges are consumed into the wire (shared refcounted TShape); dispose the
+    // per-curve edge handles so they don't leak an arena slot each.
+    for (const e of edges) e[Symbol.dispose]();
 
     return {
       wire,
@@ -265,10 +268,12 @@ export default class Blueprint implements DrawingInterface {
 
     const edges = unwrap(curvesAsEdgesOnFace(this.curves, face, scaleMode));
     const wire = assembleWire(edges);
+    for (const e of edges) e[Symbol.dispose]();
 
     kernel.buildCurves3d(wire.wrapped);
     const fixedWire = kernel.fixWireOnFace(wire.wrapped, face.wrapped, 1e-9);
-    wire.delete();
+    // `.delete()` is a no-op on arena kernels; dispose reclaims the intermediate wire.
+    wire[Symbol.dispose]();
 
     return { wire: createWire(fixedWire), baseFace: face };
   }

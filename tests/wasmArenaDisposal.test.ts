@@ -53,6 +53,13 @@ import {
   torus,
   ellipsoid,
   drill,
+  pocket,
+  boss,
+  mirrorJoin,
+  complexExtrude,
+  twistExtrude,
+  sketchRoundedRectangle,
+  drawCircle,
   section,
   roof,
   surfaceFromGrid,
@@ -787,6 +794,91 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe('compound-op + sweep-variant + blueprint-sketch ops leak nothing', () => {
+    // Follow-up sweep: pocket/boss leaked profile-wire + face + positioned + tool;
+    // mirrorJoin leaked the mirrored half; complex/twistExtrude leaked their spine
+    // (+ helix + makeSpineWire's edge); blueprint sketchOnPlane leaked every
+    // per-curve edge (fixed sketchRoundedRectangle and the pocket/boss profiles).
+    it('mirrorJoin leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 5, 5);
+          const r = mirrorJoin(b, { normal: [1, 0, 0] });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('pocket / boss leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(20, 20, 10, { centered: true });
+          const r = pocket(b, { profile: drawCircle(3), depth: 3 });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(20, 20, 10, { centered: true });
+          const r = boss(b, { profile: drawCircle(3), height: 3 });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('complexExtrude / twistExtrude leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [-5, -5, 0],
+              [5, -5, 0],
+              [5, 5, 0],
+              [-5, 5, 0],
+            ])
+          );
+          const w = getWires(f)[0];
+          if (!w) throw new Error('polygon face must have a wire');
+          const cw = unwrap(closedWire(w));
+          const r = complexExtrude(cw, [0, 0, 0], [0, 0, 10]);
+          if (isOk(r)) {
+            const v = unwrap(r);
+            if (!Array.isArray(v)) v[Symbol.dispose]();
+          }
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [-5, -5, 0],
+              [5, -5, 0],
+              [5, 5, 0],
+              [-5, 5, 0],
+            ])
+          );
+          const w = getWires(f)[0];
+          if (!w) throw new Error('polygon face must have a wire');
+          const cw = unwrap(closedWire(w));
+          const r = twistExtrude(cw, 90, [0, 0, 0], [0, 0, 10]);
+          if (isOk(r)) {
+            const v = unwrap(r);
+            if (!Array.isArray(v)) v[Symbol.dispose]();
+          }
+        })
+      ).toBe(0);
+    });
+
+    it('sketchRoundedRectangle (blueprint sketchOnPlane) leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const s = sketchRoundedRectangle(10, 8, 2);
+          s.wire[Symbol.dispose]();
+        })
+      ).toBe(0);
     });
   });
 

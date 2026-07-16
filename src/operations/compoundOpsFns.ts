@@ -23,6 +23,7 @@ import type {
 import { resolve } from '@/topology/apiTypes.js';
 import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
 import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
+import { DisposalScope } from '@/core/disposal.js';
 import { extrude } from './extrudeFns.js';
 import { faceFinder } from '@/query/finderFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
@@ -75,15 +76,19 @@ function resolveTargetFace(
   return ok(faceSpec);
 }
 
-/** Convert a DrawingLike or Wire to a ClosedWire & PlanarWire (profiles are always closed and planar). */
-function toWire(profile: DrawingLike | Wire): ClosedWire & PlanarWire {
+/**
+ * Convert a DrawingLike or Wire to a ClosedWire & PlanarWire (profiles are always
+ * closed and planar). `owned` is true when we materialised a fresh sketch wire
+ * (the caller must dispose it); false when the caller's own Wire is passed through.
+ */
+function toWire(profile: DrawingLike | Wire): { wire: ClosedWire & PlanarWire; owned: boolean } {
   if ('sketchOnPlane' in profile && typeof profile.sketchOnPlane === 'function') {
     // planar by construction: sketch operates on XY plane
-    return profile.sketchOnPlane('XY').wire as ClosedWire & PlanarWire;
+    return { wire: profile.sketchOnPlane('XY').wire as ClosedWire & PlanarWire, owned: true };
   }
   // planar by construction: remaining cases are either DrawingLike 2D profiles
   // or Wire inputs — callers are expected to pass closed, planar profiles here.
-  return profile as ClosedWire & PlanarWire;
+  return { wire: profile as ClosedWire & PlanarWire, owned: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -180,16 +185,23 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const center = faceCenter(targetFace);
-  const w = toWire(profile);
+
+  // The profile wire (if materialised here), its face, the positioned face, and
+  // the extruded tool are all intermediates consumed by cut — dispose them.
+  using scope = new DisposalScope();
+  const { wire: w, owned } = toWire(profile);
+  if (owned) scope.register(w);
 
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult;
+  scope.register(faceResult.value);
 
   // Position the profile on the target face before extruding
-  const positioned = translate(faceResult.value, center);
+  const positioned = scope.register(translate(faceResult.value, center));
   const extDir = vecScale(vecNormalize(normal), -depth);
   const toolResult = extrude(positioned, extDir);
   if (isErr(toolResult)) return toolResult;
+  scope.register(toolResult.value);
 
   return cut(s, toolResult.value, { unsafe: true }) as Result<T>;
 }
@@ -217,16 +229,23 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const center = faceCenter(targetFace);
-  const w = toWire(profile);
+
+  // The profile wire (if materialised here), its face, the positioned face, and
+  // the extruded tool are all intermediates consumed by fuse — dispose them.
+  using scope = new DisposalScope();
+  const { wire: w, owned } = toWire(profile);
+  if (owned) scope.register(w);
 
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult;
+  scope.register(faceResult.value);
 
   // Position the profile on the target face before extruding
-  const positioned = translate(faceResult.value, center);
+  const positioned = scope.register(translate(faceResult.value, center));
   const extDir = vecScale(vecNormalize(normal), height);
   const toolResult = extrude(positioned, extDir);
   if (isErr(toolResult)) return toolResult;
+  scope.register(toolResult.value);
 
   return fuse(s, toolResult.value, { unsafe: true }) as Result<T>;
 }
@@ -252,7 +271,7 @@ export function mirrorJoin<T extends Shape3D>(
     return err(validationError('MIRROR_ZERO_NORMAL', 'Mirror plane normal cannot be zero'));
   }
 
-  const mirrored = mirror(s, normal, planeOrigin);
+  using mirrored = mirror(s, normal, planeOrigin);
   return fuse(s, mirrored, { unsafe: true }) as Result<T>;
 }
 

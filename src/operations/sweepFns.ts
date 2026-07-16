@@ -66,6 +66,9 @@ function makeSpineWire(start: Vec3, end: Vec3): Wire {
   const kernel = getKernel();
   const edge = kernel.makeLineEdge([...start], [...end]);
   const wire = kernel.makeWire([edge]);
+  // The edge is consumed into the wire (shared refcounted TShape); `.delete()` is
+  // a no-op on arena kernels, so release its slot through kernel.dispose.
+  kernel.dispose(edge);
   return castResultShape(wire) as Wire;
 }
 
@@ -248,7 +251,8 @@ export function complexExtrude(
     );
   }
   const endPoint = vecAdd(center, normal);
-  const spine = makeSpineWire(center, endPoint);
+  // sweep is immutable and does not consume the spine — dispose it on every exit.
+  using spine = makeSpineWire(center, endPoint);
   let law = null;
   if (profileShape) {
     const lawResult = buildLawFromProfile(extrusionLength, profileShape);
@@ -292,11 +296,12 @@ export function twistExtrude(
   }
 
   const endPoint = vecAdd(center, normal);
-  const spine = makeSpineWire(center, endPoint);
+  // sweep is immutable and consumes neither spine — dispose both on every exit.
+  using spine = makeSpineWire(center, endPoint);
 
   const leftHanded = angleDegrees < 0;
   const pitch = (360.0 / Math.abs(angleDegrees)) * extrusionLength;
-  const auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal, leftHanded);
+  using auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal, leftHanded);
 
   let law = null;
   if (profileShape) {
