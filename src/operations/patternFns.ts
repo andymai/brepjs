@@ -42,11 +42,16 @@ export function linearPattern(
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
-  return fuseAll(copies, {
-    optimisation: 'sameFace',
-    ...options,
-    unsafe: true,
-  });
+  try {
+    return fuseAll(copies, {
+      optimisation: 'sameFace',
+      ...options,
+      unsafe: true,
+    });
+  } finally {
+    // fuseAll is immutable and does not consume its inputs — dispose the copies.
+    for (const c of copies) c[Symbol.dispose]();
+  }
 }
 
 /**
@@ -86,11 +91,16 @@ export function circularPattern(
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
-  return fuseAll(copies, {
-    optimisation: 'sameFace',
-    ...options,
-    unsafe: true,
-  });
+  try {
+    return fuseAll(copies, {
+      optimisation: 'sameFace',
+      ...options,
+      unsafe: true,
+    });
+  } finally {
+    // fuseAll is immutable and does not consume its inputs — dispose the copies.
+    for (const c of copies) c[Symbol.dispose]();
+  }
 }
 
 /**
@@ -145,5 +155,12 @@ export function gridPattern(
   // Fallback: nested linearPattern
   const rowResult = linearPattern(shape, directionX, countX, spacingX, options);
   if (!rowResult.ok) return rowResult;
-  return linearPattern(rowResult.value, directionY, countY, spacingY, options);
+  const row = rowResult.value;
+  const out = linearPattern(row, directionY, countY, spacingY, options);
+  // Dispose the intermediate row unless linearPattern short-circuited: countX===1
+  // hands back the caller's own shape, and countY===1 passes `row` straight
+  // through as the result — disposing either would be a use-after-free.
+  const passthrough = out.ok && out.value === row;
+  if (row !== shape && !passthrough) row[Symbol.dispose]();
+  return out;
 }

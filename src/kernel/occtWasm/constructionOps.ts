@@ -265,11 +265,16 @@ export function buildSolidFromFaces(
   }
   const vec = makeVecU32(Module, faceIds);
   try {
-    let sewn = k.sewAndSolidify(vec, tolerance);
-    sewn = k.fixFaceOrientations(sewn);
+    const sewn0 = k.sewAndSolidify(vec, tolerance);
+    const sewn = k.fixFaceOrientations(sewn0);
+    // fixFaceOrientations returns a fresh slot; release the pre-fix intermediate.
+    if (sewn !== sewn0) k.release(sewn0);
     return wrapResult(k, sewn);
   } finally {
     vec.delete();
+    // Each buildTriFace is a fresh arena slot consumed into the sewn solid
+    // (shared refcounted TShape); release the triangles once sewing is done.
+    for (const id of faceIds) k.release(id);
   }
 }
 

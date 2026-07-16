@@ -295,6 +295,9 @@ export function linearPattern(
       iter.delete();
     }
   }
+  // The extracted solids are fresh slots sharing the compound's refcounted
+  // TShape; release the compound container now that they are wrapped.
+  k.release(compoundId);
   return results;
 }
 
@@ -338,6 +341,9 @@ export function circularPattern(
       iter.delete();
     }
   }
+  // The extracted solids are fresh slots sharing the compound's refcounted
+  // TShape; release the compound container now that they are wrapped.
+  k.release(compoundId);
   return results;
 }
 

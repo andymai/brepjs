@@ -446,14 +446,21 @@ function finalizeExternalSolid(
   geom: ReturnType<typeof gearGeometry>,
   diagnostics: GearDiagnostic[]
 ): Result<GearResult> {
+  // The profile wire and its face are consumed by makeFace/extrude (which share
+  // their refcounted TShape); dispose them once the solid is built. The solid is
+  // NOT registered here — it is the returned value on the no-bore path.
+  using profileScope = new DisposalScope();
+  profileScope.register(wire);
   const faceResult = makeFace(wire);
   if (isErr(faceResult)) return faceResult;
+  profileScope.register(faceResult.value);
   const solidResult = extrude(faceResult.value, [0, 0, thickness]);
   if (isErr(solidResult)) return solidResult;
   if (bore <= 0) return ok(buildGearResult(solidResult.value, geom, diagnostics));
 
   // Bore overshoots both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar.
   using boreScope = new DisposalScope();
+  boreScope.register(solidResult.value); // un-bored gear, consumed by cut below
   const boreFaceResult = makeBoreFace(bore / 2);
   if (isErr(boreFaceResult)) return boreFaceResult;
   boreScope.register(boreFaceResult.value);
