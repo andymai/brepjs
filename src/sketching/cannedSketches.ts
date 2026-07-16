@@ -49,7 +49,10 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
       ? { ...planeConfig.plane }
       : unwrap(resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin));
 
-  const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
+  // The circle edge is consumed by assembleWire (the wire shares its refcounted
+  // TShape); dispose it once the wire is built so it doesn't leak an arena slot.
+  using scope = new DisposalScope();
+  const wire = unwrap(assembleWire([scope.register(makeCircle(radius, plane.origin, plane.zDir))]));
   const sketch = new Sketch(wire as ClosedWire & PlanarWire, {
     defaultOrigin: [...plane.origin],
     defaultDirection: [...plane.zDir],
@@ -83,8 +86,11 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
     minR = xRadius;
   }
 
+  // The ellipse edge is consumed by assembleWire (the wire shares its refcounted
+  // TShape); dispose it once the wire is built so it doesn't leak an arena slot.
+  using scope = new DisposalScope();
   const wire = unwrap(
-    assembleWire([unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir))])
+    assembleWire([scope.register(unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir)))])
   );
 
   const sketch = new Sketch(wire as ClosedWire & PlanarWire, {

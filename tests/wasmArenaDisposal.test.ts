@@ -43,6 +43,12 @@ import {
   loft,
   sweep,
   thread,
+  convexHull,
+  hull,
+  linearPattern,
+  circularPattern,
+  sketchCircle,
+  sketchEllipse,
   getWires,
   getFaces,
   getEdges,
@@ -63,6 +69,7 @@ import {
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { DisposalScope } from '@/core/disposal.js';
+import { makeExternalGear } from '@/gear/index.js';
 
 const isOcctWasm = (process.env['TEST_KERNEL'] ?? 'occt') === 'occt-wasm';
 
@@ -568,6 +575,82 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           const r = thread({ radius: 6, pitch: 2.5, height: 7.5 });
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('hull / pattern / gear / canned-sketch ops leak nothing', () => {
+    // buildSolidFromFaces (hull/convexHull) leaked each triangle face slot + the
+    // pre-orientation intermediate; the pattern fns never disposed their fused
+    // copies and the kernel leaked the pattern compound; gear + circle/ellipse
+    // sketches leaked their profile wire/edge. All fixed.
+    it('convexHull leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const r = convexHull([
+            [0, 0, 0],
+            [10, 0, 0],
+            [0, 10, 0],
+            [0, 0, 10],
+            [10, 10, 10],
+          ]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('hull leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using a = box(5, 5, 5);
+          using b = box(5, 5, 5);
+          const r = hull([a, b]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('linearPattern leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(2, 2, 2);
+          const r = linearPattern(b, [1, 0, 0], 3, 5);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('circularPattern leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(2, 2, 2);
+          const r = circularPattern(b, [0, 0, 1], 4, 360, [10, 0, 0]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('makeExternalGear leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const r = makeExternalGear({ teeth: 12, moduleSize: 2, thickness: 5 });
+          if (isOk(r)) r.value.solid[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('sketchCircle / sketchEllipse leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const s = sketchCircle(5);
+          s.wire[Symbol.dispose]();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          const s = sketchEllipse(5, 3);
+          s.wire[Symbol.dispose]();
         })
       ).toBe(0);
     });
