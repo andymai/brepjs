@@ -232,6 +232,34 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
   return handle;
 }
 
+/**
+ * Wrap a raw kernel shape as a **non-owning** handle: `wrapped` exposes the same
+ * arena slot as an owning handle would, but `dispose`/`delete` are no-ops and the
+ * slot is never registered with the finalizer or the stats counters.
+ *
+ * Use for borrowed views into another owner's slot — e.g. the topology cache's
+ * adjacency handles. On occt-wasm >= 3.7.0 an identity `downcast` returns the
+ * *same* slot id (not a duplicate), so branding a cache slot as an owning handle
+ * would let the borrower's dispose free a slot the cache still points at. A
+ * borrowed handle keeps the slot's identity (`isSame`/`hashCode` still match the
+ * cache) while leaving ownership — and disposal — with the cache. The view is
+ * only valid while its owner lives; `clone()`/`copyShape` it to outlive that.
+ */
+export function createBorrowedHandle(ocShape: KernelShape): ShapeHandle {
+  const noop = () => {};
+  return {
+    get wrapped() {
+      return ocShape;
+    },
+    get disposed() {
+      return false;
+    },
+    [Symbol.dispose]: noop,
+    delete: noop,
+    onDispose: noop,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Generic kernel object wrapper
 // ---------------------------------------------------------------------------

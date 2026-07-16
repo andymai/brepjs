@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
-import { castShapeWithKnownType, castResultShapeWithKnownType } from '@/core/shapeTypes.js';
+import { castResultShapeWithKnownType, borrowShapeWithKnownType } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { getOrCreateCache, getFaces, getEdges, getVertices } from './topologyQueryFns.js';
 
@@ -17,12 +17,17 @@ import { getOrCreateCache, getFaces, getEdges, getVertices } from './topologyQue
 // ---------------------------------------------------------------------------
 
 /**
- * Brand cache-owned raw sub-shapes (from the edge/face adjacency maps) without
- * consuming them. Each cast allocates a fresh downcast the caller disposes; the
- * cached source stays intact — so this must NOT release its input.
+ * Brand cache-owned raw sub-shapes (from the edge/face adjacency maps) as
+ * borrowed views. They must keep the cache slot's identity — the toponaming
+ * path compares the returned faces against the parent's topology via
+ * `isSame`/`sharedEdges` — so we cannot copy (a copy is a fresh TShape that
+ * matches nothing). And on occt-wasm >= 3.7.0 an identity `downcast` returns the
+ * SAME slot, so an owning handle here would let the caller's dispose free a slot
+ * the cache still points at. A borrowed handle preserves identity while leaving
+ * ownership (and disposal) with the cache — freed when the parent is disposed.
  */
 function wrapAll<T extends AnyShape<Dimension>>(shapes: KernelShape[], type: ShapeType): T[] {
-  return shapes.map((s) => castShapeWithKnownType(s, type) as T);
+  return shapes.map((s) => borrowShapeWithKnownType(s, type) as T);
 }
 
 /**

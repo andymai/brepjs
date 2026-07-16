@@ -787,17 +787,18 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
 
   describe('section / roof shed their JS-side intermediates', () => {
     // section's cutting-plane face (4 edges + wire + face) and roof's tooth
-    // triangles are now disposed. A single kernel-internal slot remains per call
-    // (BRepAlgoAPI_Section / sewAndSolidify refcount artifact) — a bounded, known
-    // residual, not the pre-fix per-edge/per-triangle growth (section 7, roof 12).
-    it('section leaks at most its kernel residual', () => {
+    // triangles are all disposed. The former +1/call residual was a downcast
+    // artifact: occt-wasm <=3.6 duplicated a slot on the identity downcast in
+    // castResultShape, orphaning the pre-downcast source. occt-wasm >=3.7 returns
+    // the same slot on an identity downcast, so nothing is orphaned — 0/call.
+    it('section leaks nothing', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10, { centered: true });
           const r = section(b, 'XY');
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
-      ).toBeLessThanOrEqual(1);
+      ).toBe(0);
     });
 
     it('surfaceFromGrid leaks nothing (triangulatedSurface tri-faces)', () => {
@@ -814,7 +815,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    it('roof leaks at most its kernel residual', () => {
+    it('roof leaks nothing', () => {
       expect(
         perIterationLeak(() => {
           using f = unwrap(
@@ -830,7 +831,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const r = roof(unwrap(closedWire(w)));
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
-      ).toBeLessThanOrEqual(1);
+      ).toBe(0);
     });
   });
 

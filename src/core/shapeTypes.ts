@@ -17,7 +17,7 @@
 import type { KernelShape, KernelType, ShapeType } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
 import type { ShapeHandle } from './disposal.js';
-import { createHandle } from './disposal.js';
+import { createHandle, createBorrowedHandle } from './disposal.js';
 import { is3D } from './dimensionTypes.js';
 import type { Dimension } from './dimensionTypes.js';
 import { getShapeKind as _getShapeKind } from './typeDiscriminants.js';
@@ -408,4 +408,20 @@ export function castResultShapeWithKnownType<D extends Dimension = '3D'>(
   const cast = castShapeWithKnownType<D>(ocShape, knownType, dim);
   disposeDowncastSource(ocShape, cast);
   return cast;
+}
+
+/**
+ * Brand a slot owned by someone else (e.g. the topology cache) as a **borrowed**
+ * handle of a known type — no `downcast` (it would alias the source on occt-wasm
+ * >= 3.7.0), no ownership, no-op disposal. The returned handle shares the source
+ * slot's identity, so `isSame`/`hashCode` still match it; it is valid only while
+ * the owner lives. See {@link createBorrowedHandle}.
+ */
+export function borrowShapeWithKnownType<D extends Dimension = '3D'>(
+  ocShape: KernelShape,
+  knownType: ShapeType,
+  dim?: D
+): AnyShape<D> {
+  setCachedType(ocShape, knownType);
+  return brandHandle<D>(createBorrowedHandle(ocShape), dim);
 }
