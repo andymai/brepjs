@@ -1,0 +1,21 @@
+src/topology/adjacencyFns.ts
+  s_5e405101d80a5b::t_ebe41c5466af0e 350-355,360-363
+  s_5e405101d80a5b::t_c86f78d2d7958d 8
+  s_5e405101d80a5b::t_7d4939fda6e9d1 356-359,364-365,369-372,378-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7fc5b8c9ad583e1910e346e1a6fb3f0751b800be",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
