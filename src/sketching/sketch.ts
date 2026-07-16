@@ -119,14 +119,17 @@ export default class Sketch implements SketchInterface {
   }
 
   set baseFace(newFace: Face | null | undefined) {
-    if (this._baseFace) this._baseFace.delete();
+    // `.delete()` is a no-op on arena kernels (occt-wasm); dispose reclaims the slot.
+    if (this._baseFace) this._baseFace[Symbol.dispose]();
     this._baseFace = newFace ? createFace(unwrap(copyShape(newFace.wrapped))) : newFace;
   }
 
   /** Release all kernel resources held by this sketch. */
   delete(): void {
-    this.wire.delete();
-    if (this.baseFace) this.baseFace.delete();
+    // Route through Symbol.dispose so the wire/baseFace arena slots are actually
+    // reclaimed on occt-wasm, where the raw `.delete()` is a no-op.
+    this.wire[Symbol.dispose]();
+    if (this.baseFace) this.baseFace[Symbol.dispose]();
   }
 
   /** Create an independent deep copy of this sketch. */

@@ -116,7 +116,7 @@ export function sketchRevolve(
   const center: Vec3 = origin ? toVec3(origin) : sketch.defaultOrigin;
   const dir: Vec3 = revolutionAxis ? toVec3(revolutionAxis) : [0, 0, 1];
   const solid = unwrap(revolve(face, center, dir));
-  face.delete();
+  face[Symbol.dispose](); // `.delete()` is a no-op on arena kernels; dispose the face
   sketch.delete();
   return solid;
 }
@@ -166,6 +166,7 @@ export function sketchExtrude(
 
   const face = unwrap(makeFace(sketch.wire));
   const solid = unwrap(extrude(face, [...extrusionVec]));
+  face[Symbol.dispose](); // extrude shares the face's TShape; release the intermediate
   sketch.delete();
   return solid;
 }
@@ -274,6 +275,9 @@ export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & Plana
     baseFace,
     sketch.innerSketches.map((s) => s.wire)
   );
+  // addHolesInFace returns a fresh face sharing baseFace's TShape — release the
+  // orphaned base (its slot would otherwise leak on arena kernels).
+  baseFace[Symbol.dispose]();
   return newFace as OrientedFace & PlanarFace;
 }
 
@@ -335,7 +339,10 @@ export function compoundSketchExtrude(
         ) as Result<Shape3D> // solid mode (shellMode omitted)
     );
   }
-  return unwrap(extrude(compoundSketchFace(sketch), extrusionVec));
+  const face = compoundSketchFace(sketch);
+  const solid = unwrap(extrude(face, extrusionVec));
+  face[Symbol.dispose](); // extrude shares the face's TShape; release the intermediate
+  return solid;
 }
 
 /** Revolve a compound sketch (outer + holes) around an axis. */
@@ -346,7 +353,10 @@ export function compoundSketchRevolve(
 ): Shape3D {
   const center = origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin;
   const dir = revolutionAxis ? toVec3(revolutionAxis) : ([0, 0, 1] as Vec3);
-  return unwrap(revolve(compoundSketchFace(sketch), center, dir));
+  const face = compoundSketchFace(sketch);
+  const solid = unwrap(revolve(face, center, dir));
+  face[Symbol.dispose](); // `.delete()` no-op on arena kernels; dispose the face
+  return solid;
 }
 
 /** Loft between two compound sketches with matching sub-sketch counts. */

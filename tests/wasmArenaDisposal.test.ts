@@ -55,6 +55,10 @@ import {
   circularPattern,
   sketchCircle,
   sketchEllipse,
+  sketchRectangle,
+  Sketcher,
+  CompoundSketch,
+  isShape3D,
   cone,
   torus,
   ellipsoid,
@@ -1089,6 +1093,66 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
             if (Array.isArray(v)) v.forEach((s) => s[Symbol.dispose]());
             else v[Symbol.dispose]();
           }
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('sketch facade extrude/revolve/loft leak nothing', () => {
+    // The facade consumes the sketch via Sketch.delete() — a no-op on occt-wasm —
+    // and sketchExtrude/sketchRevolve/compoundSketchFace never disposed their
+    // intermediate faces. Fixed: Sketch.delete() routes through Symbol.dispose and
+    // the faces are disposed after extrude/revolve.
+    it('Sketch.extrude leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const s = sketchRectangle(10, 20).extrude(5);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+    });
+
+    it('Sketch.revolve leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const s = new Sketcher('XZ')
+            .movePointerTo([5, 0])
+            .hLine(5)
+            .vLine(5)
+            .hLine(-5)
+            .close()
+            .revolve([0, 0, 1]);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+    });
+
+    it('Sketch.loftWith leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const a = sketchRectangle(10, 10);
+          const b = sketchRectangle(6, 6, { plane: 'XY', origin: [0, 0, 20] });
+          const s = a.loftWith(b);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+    });
+
+    it('CompoundSketch.extrude / revolve leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          const cs = new CompoundSketch([sketchRectangle(20, 20), sketchRectangle(8, 8)]);
+          const s = cs.extrude(5);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          for (const sub of cs.sketches) sub.wire[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
         })
       ).toBe(0);
     });
