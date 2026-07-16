@@ -1019,6 +1019,24 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         })
       ).toBe(0);
     });
+
+    it('Sketches.wires() leaks only its own (disposable) compound', (ctx) => {
+      if (!fontLoaded) return ctx.skip();
+      // Regression: wires() previously read each CompoundSketch's allocating
+      // `.wires` getter and dropped those intermediate compounds — leaking one per
+      // hole glyph even when the caller disposed the result. It now flattens to
+      // borrowed sub-wires, so disposing the returned compound returns to baseline.
+      expect(
+        perIterationLeak(() => {
+          const s = sketchText('O', { fontFamily: 'arena-test', fontSize: 16 });
+          using combined = s.wires();
+          void combined;
+          // dispose the sketch's own contour wires too; only wires()'s unreachable
+          // intermediate (the old bug) could survive this — the new code has none.
+          disposeContourWires(s);
+        })
+      ).toBe(0);
+    });
   });
 
   describe('disposal is real, not a no-op', () => {

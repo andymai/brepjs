@@ -69,15 +69,19 @@ export default class Sketches implements SketchInterface {
   }
 
   /**
-   * All wires combined into a single compound shape.
+   * All contour wires combined into a single compound shape.
    *
-   * @remarks Allocates a **fresh** compound on every call (and reads each
-   * CompoundSketch's `wires`, which allocates too) — the result is a caller-owned
-   * kernel resource. Dispose it (`using`/`Symbol.dispose`) or it leaks an arena
-   * slot on arena kernels.
+   * @remarks Allocates a **fresh** compound on every call — the result is a
+   * caller-owned kernel resource. Dispose it (`using`/`Symbol.dispose`) or it
+   * leaks an arena slot on arena kernels.
    */
   wires(): Compound {
-    const wires = this.sketches.map((s) => (s instanceof Sketch ? s.wire : s.wires));
+    // Flatten to the borrowed per-contour wires. A CompoundSketch's own `.wires`
+    // getter allocates an intermediate compound that makeCompound would only
+    // reference (never free), so read its sub-sketches' wires directly instead.
+    const wires = this.sketches.flatMap((s) =>
+      s instanceof Sketch ? [s.wire] : s.sketches.map((sub) => sub.wire)
+    );
     return makeCompound(wires);
   }
 
