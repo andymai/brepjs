@@ -218,9 +218,10 @@ export function ellipsoid(
   rz: number,
   options?: EllipsoidOptions
 ): ValidSolid {
-  let solid = _makeEllipsoid(rx, ry, rz);
+  const solid = _makeEllipsoid(rx, ry, rz);
   if (options?.at) {
-    solid = translate(solid, options.at);
+    using base = solid; // dispose the origin ellipsoid; translate returns a fresh one
+    return translate(base, options.at);
   }
   return solid;
 }

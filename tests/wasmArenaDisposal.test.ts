@@ -51,9 +51,11 @@ import {
   sketchEllipse,
   cone,
   torus,
+  ellipsoid,
   drill,
   section,
   roof,
+  surfaceFromGrid,
   getWires,
   getFaces,
   getEdges,
@@ -683,7 +685,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    it('sphere / cone with position leak nothing', () => {
+    it('sphere / cone / ellipsoid with position leak nothing', () => {
       expect(
         perIterationLeak(() => {
           using s = sphere(5, { at: [3, 0, 0] });
@@ -694,6 +696,12 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           using c = cone(5, 2, 10, { at: [1, 1, 0], axis: [0, 1, 0] });
           void c;
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using e = ellipsoid(5, 3, 2, { at: [1, 0, 0] });
+          void e;
         })
       ).toBe(0);
     });
@@ -746,6 +754,20 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBeLessThanOrEqual(1);
+    });
+
+    it('surfaceFromGrid leaks nothing (triangulatedSurface tri-faces)', () => {
+      const heights = [
+        [0, 1, 0],
+        [1, 2, 1],
+        [0, 1, 0],
+      ];
+      expect(
+        perIterationLeak(() => {
+          const r = surfaceFromGrid(heights, { width: 10, depth: 10 });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
     });
 
     it('roof leaks at most its kernel residual', () => {
