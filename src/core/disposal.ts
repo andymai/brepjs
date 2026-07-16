@@ -256,6 +256,8 @@ export function createBorrowedHandle(ocShape: KernelShape): ShapeHandle {
     },
     [Symbol.dispose]: noop,
     delete: noop,
+    // Intentionally a no-op: a borrowed view never disposes, so a callback would
+    // never fire. Tie dependent lifetimes to the owning parent's handle instead.
     onDispose: noop,
   };
 }
