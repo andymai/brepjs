@@ -1,0 +1,22 @@
+src/operations/sweepFns.ts
+  s_9599a19035c5e3::t_e596f49b98ba3b 440-443,445-454,456,458-470
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_35a947e524dd70 979-1057
+  s_9599a19035c5e3::t_32332c89de4ea7 45,47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e06eb4d936e8c52abee2d2a03165dd84bbd0fd3c",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
