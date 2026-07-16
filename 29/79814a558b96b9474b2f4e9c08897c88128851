@@ -1,0 +1,22 @@
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_50d81eae13c72d 27-28
+  s_9599a19035c5e3::t_e04c3715b8a22c 981-1017
+src/operations/compoundOpsFns.ts
+  s_9599a19035c5e3::t_a775eb5cc71516 314,323-325,329-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2979814a558b96b9474b2f4e9c08897c88128851",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
