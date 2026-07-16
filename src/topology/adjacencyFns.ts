@@ -5,7 +5,7 @@
  * (built once per parent shape and cached) to avoid redundant WASM calls.
  */
 
-import { getKernel } from '@/kernel/index.js';
+import { getKernel, getActiveKernelId } from '@/kernel/index.js';
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
 import { castResultShapeWithKnownType, borrowShapeWithKnownType } from '@/core/shapeTypes.js';
@@ -347,14 +347,51 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
   return wrapAll<Face<D>>(neighborRaw, 'face');
 }
 
+// Per-kernel memo of whether kernel.sharedEdges is a real implementation. occt-wasm
+// and brepkit compute shared edges natively (kernel-side edge-to-face map); the occt
+// (OpenCascade) adapter stubs it, and manifold has no exact topology of its own. We
+// probe once per kernel, matching only the codebase's three canonical "unsupported
+// operation" sentinels so a genuine geometry error still propagates instead of
+// silently degrading to the JS path.
+const nativeSharedEdgesSupported = new Map<string, boolean>();
+
+function isUnsupportedKernelError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : '';
+  // occt stub | occt-wasm notImplemented | manifold occtOrThrow
+  return /is only available with the|is not yet implemented|requires a registered occt kernel/.test(
+    msg
+  );
+}
+
 /**
  * Get all edges shared between two faces.
+ *
+ * Prefers the kernel's native `sharedEdges` (computed from its internal
+ * edge-to-face adjacency) and falls back to {@link sharedEdgesJS} on kernels
+ * that don't implement it. Both return fresh, caller-owned edge handles.
  *
  * @param face1 - The first face.
  * @param face2 - The second face.
  * @returns Array of edges present in both faces (via isSame comparison).
  */
 export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>): Edge<D>[] {
+  const kernel = getKernel();
+  const kernelId = getActiveKernelId() ?? '';
+  if (nativeSharedEdgesSupported.get(kernelId) !== false) {
+    try {
+      const raw = kernel.sharedEdges(face1.wrapped, face2.wrapped);
+      nativeSharedEdgesSupported.set(kernelId, true);
+      return raw.map((e) => castResultShapeWithKnownType(e, 'edge') as Edge<D>);
+    } catch (e) {
+      if (!isUnsupportedKernelError(e)) throw e;
+      nativeSharedEdgesSupported.set(kernelId, false);
+    }
+  }
+  return sharedEdgesJS(face1, face2);
+}
+
+/** JS fallback for {@link sharedEdges}: match edges of both faces by hash + isSame. */
+function sharedEdgesJS<D extends Dimension>(face1: Face<D>, face2: Face<D>): Edge<D>[] {
   const kernel = getKernel();
   const edges1 = kernel.iterShapes(face1.wrapped, 'edge');
   const edges2 = kernel.iterShapes(face2.wrapped, 'edge');
