@@ -149,7 +149,12 @@ export function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOpti
     tool = _makeCylinder(radius, depth, startPos, dir);
   }
 
-  return cut(s, tool, { unsafe: true }) as Result<T>;
+  try {
+    return cut(s, tool, { unsafe: true }) as Result<T>;
+  } finally {
+    // cut is immutable and does not consume the tool — dispose it.
+    tool[Symbol.dispose]();
+  }
 }
 
 // ---------------------------------------------------------------------------

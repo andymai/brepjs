@@ -8,6 +8,17 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { OcctKernelWasm } from './occtWasmTypes.js';
 import { handle, rotateZToDirection } from './helpers.js';
 
+/**
+ * Apply an id-remapping positioning step (rotate/translate), releasing the
+ * orphaned source slot. rotate/translate return fresh arena slots on occt-wasm;
+ * the repositioned result shares the source's refcounted TShape and survives, so
+ * releasing the pre-move id here plugs a per-positioned-primitive slot leak.
+ */
+function remap(k: OcctKernelWasm, id: number, next: number): number {
+  if (next !== id) k.release(id);
+  return next;
+}
+
 export function makeBox(
   k: OcctKernelWasm,
   width: number,
@@ -25,11 +36,9 @@ export function makeCylinder(
   direction?: [number, number, number]
 ): KernelShape {
   let id = k.makeCylinder(radius, height);
-  if (direction) {
-    id = rotateZToDirection(k, id, direction);
-  }
+  if (direction) id = remap(k, id, rotateZToDirection(k, id, direction));
   if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-    id = k.translate(id, center[0], center[1], center[2]);
+    id = remap(k, id, k.translate(id, center[0], center[1], center[2]));
   }
   return handle('solid', id);
 }
@@ -41,7 +50,7 @@ export function makeSphere(
 ): KernelShape {
   let id = k.makeSphere(radius);
   if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-    id = k.translate(id, center[0], center[1], center[2]);
+    id = remap(k, id, k.translate(id, center[0], center[1], center[2]));
   }
   return handle('solid', id);
 }
@@ -55,11 +64,9 @@ export function makeCone(
   direction?: [number, number, number]
 ): KernelShape {
   let id = k.makeCone(radius1, radius2, height);
-  if (direction) {
-    id = rotateZToDirection(k, id, direction);
-  }
+  if (direction) id = remap(k, id, rotateZToDirection(k, id, direction));
   if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-    id = k.translate(id, center[0], center[1], center[2]);
+    id = remap(k, id, k.translate(id, center[0], center[1], center[2]));
   }
   return handle('solid', id);
 }
@@ -72,11 +79,9 @@ export function makeTorus(
   direction?: [number, number, number]
 ): KernelShape {
   let id = k.makeTorus(majorRadius, minorRadius);
-  if (direction) {
-    id = rotateZToDirection(k, id, direction);
-  }
+  if (direction) id = remap(k, id, rotateZToDirection(k, id, direction));
   if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-    id = k.translate(id, center[0], center[1], center[2]);
+    id = remap(k, id, k.translate(id, center[0], center[1], center[2]));
   }
   return handle('solid', id);
 }

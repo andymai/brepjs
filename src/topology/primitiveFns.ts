@@ -89,7 +89,8 @@ export function box(
 
   const center = options?.at ?? (options?.centered ? ([0, 0, 0] as Vec3) : undefined);
   if (center) {
-    return translate(solid, [center[0] - width / 2, center[1] - depth / 2, center[2] - height / 2]);
+    using base = solid; // dispose the corner-origin box; translate returns a fresh one
+    return translate(base, [center[0] - width / 2, center[1] - depth / 2, center[2] - height / 2]);
   }
   return solid;
 }
@@ -110,14 +111,15 @@ export interface CylinderOptions {
 export function cylinder(radius: number, height: number, options?: CylinderOptions): ValidSolid {
   const at = options?.at ?? [0, 0, 0];
   const axis = options?.axis ?? [0, 0, 1];
-  let solid = _makeCylinder(radius, height, at, axis);
+  const solid = _makeCylinder(radius, height, at, axis);
   if (options?.centered) {
     const halfShift: Vec3 = [
       -axis[0] * height * 0.5,
       -axis[1] * height * 0.5,
       -axis[2] * height * 0.5,
     ];
-    solid = translate(solid, halfShift);
+    using base = solid; // dispose the pre-translate solid; translate returns a fresh one
+    return translate(base, halfShift);
   }
   return solid;
 }
@@ -132,9 +134,10 @@ export interface SphereOptions {
  * Create a sphere with the given radius.
  */
 export function sphere(radius: number, options?: SphereOptions): ValidSolid {
-  let solid = _makeSphere(radius);
+  const solid = _makeSphere(radius);
   if (options?.at) {
-    solid = translate(solid, options.at);
+    using base = solid; // dispose the origin sphere; translate returns a fresh one
+    return translate(base, options.at);
   }
   return solid;
 }
@@ -164,14 +167,15 @@ export function cone(
 ): ValidSolid {
   const at = options?.at ?? [0, 0, 0];
   const axis = options?.axis ?? [0, 0, 1];
-  let solid = _makeCone(bottomRadius, topRadius, height, at, axis);
+  const solid = _makeCone(bottomRadius, topRadius, height, at, axis);
   if (options?.centered) {
     const halfShift: Vec3 = [
       -axis[0] * height * 0.5,
       -axis[1] * height * 0.5,
       -axis[2] * height * 0.5,
     ];
-    solid = translate(solid, halfShift);
+    using base = solid; // dispose the pre-translate cone; translate returns a fresh one
+    return translate(base, halfShift);
   }
   return solid;
 }
