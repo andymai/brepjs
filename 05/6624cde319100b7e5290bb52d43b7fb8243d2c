@@ -1,0 +1,19 @@
+src/core/shapeTypes.ts
+  s_9599a19035c5e3::t_e918b6ff14db92 314-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "056624cde319100b7e5290bb52d43b7fb8243d2c",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
