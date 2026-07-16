@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.18](https://github.com/andymai/brepjs/compare/brepjs-v18.118.17...brepjs-v18.118.18) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** compare by slot id in disposeDowncastSource (occt-wasm 3.7 readiness) ([#1817](https://github.com/andymai/brepjs/issues/1817)) ([a0af631](https://github.com/andymai/brepjs/commit/a0af631a7b378ca143d09718e82791a3d340deb0))
+
 ## [18.118.17](https://github.com/andymai/brepjs/compare/brepjs-v18.118.16...brepjs-v18.118.17) (2026-07-16)
 
 
