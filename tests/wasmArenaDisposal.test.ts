@@ -895,7 +895,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     // borrowed from them); it now manages them and returns independent clones.
     // drawProjection additionally leaked the edges + edgesToDrawing's plane wire.
     // solveAssembly is pure transform math and allocates no shapes.
-    it('makeProjectedEdges leaks nothing', () => {
+    it('makeProjectedEdges leaks nothing (with and without hidden lines)', () => {
       const cam = unwrap(createCamera([0, 0, 100], [0, 0, 1]));
       expect(
         perIterationLeak(() => {
@@ -903,6 +903,15 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const { visible, hidden } = makeProjectedEdges(b, cam, true);
           for (const e of visible) e[Symbol.dispose]();
           for (const e of hidden) e[Symbol.dispose]();
+        })
+      ).toBe(0);
+      // withHiddenLines=false must still dispose the (always-allocated) hidden
+      // result compounds — the `hidden` array is empty and needs no disposal.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10, { centered: true });
+          const { visible } = makeProjectedEdges(b, cam, false);
+          for (const e of visible) e[Symbol.dispose]();
         })
       ).toBe(0);
     });

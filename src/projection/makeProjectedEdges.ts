@@ -41,13 +41,22 @@ export function makeProjectedEdges(
     ...getEdgesFromOc(projected.visible.outline),
   ];
 
-  const hidden = withHiddenLines
-    ? [
-        ...getEdgesFromOc(projected.hidden.sharp),
-        ...getEdgesFromOc(projected.hidden.smooth),
-        ...getEdgesFromOc(projected.hidden.outline),
-      ]
-    : [];
+  // projectEdges always allocates all six result compounds; getEdgesFromOc is the
+  // only thing that disposes them (via `using compound`). So extract the hidden
+  // compounds even when unwanted — then dispose the clones — rather than skipping
+  // the calls and leaking the three hidden compounds' arena slots.
+  const hiddenEdges = [
+    ...getEdgesFromOc(projected.hidden.sharp),
+    ...getEdgesFromOc(projected.hidden.smooth),
+    ...getEdgesFromOc(projected.hidden.outline),
+  ];
+  let hidden: Edge[];
+  if (withHiddenLines) {
+    hidden = hiddenEdges;
+  } else {
+    for (const e of hiddenEdges) e[Symbol.dispose]();
+    hidden = [];
+  }
 
   return { visible, hidden };
 }
