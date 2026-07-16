@@ -385,6 +385,9 @@ export function triangulatedSurface(
     return wrapResult(k, k.sewAndSolidify(vec, 1e-3));
   } finally {
     vec.delete();
+    // Each buildTriFace is a fresh arena slot consumed into the sewn surface
+    // (shared refcounted TShape); release the triangles once sewing is done.
+    for (const id of faceIds) k.release(id);
   }
 }
 
@@ -407,8 +410,11 @@ export function sewAndSolidify(
 ): KernelShape {
   const vec = makeVecU32(Module, faces.map(unwrap));
   try {
-    let sewn = k.sewAndSolidify(vec, tolerance);
-    sewn = k.fixFaceOrientations(sewn);
+    const sewn0 = k.sewAndSolidify(vec, tolerance);
+    const sewn = k.fixFaceOrientations(sewn0);
+    // fixFaceOrientations returns a fresh slot; release the pre-fix intermediate.
+    // (The input `faces` are caller-owned and intentionally left untouched.)
+    if (sewn !== sewn0) k.release(sewn0);
     return handle('solid', sewn);
   } finally {
     vec.delete();
