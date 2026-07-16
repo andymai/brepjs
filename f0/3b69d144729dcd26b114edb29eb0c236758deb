@@ -1,0 +1,40 @@
+src/topology/booleanFns.ts
+  s_9599a19035c5e3::t_3b285356b5e296 645-646
+  s_9599a19035c5e3::t_8391342b0f4b55 596-600
+src/operations/compoundOpsFns.ts
+  s_9599a19035c5e3::t_ee9a4b4e6b57d2 152-157
+src/operations/roofFns.ts
+  s_9599a19035c5e3::t_dfae984fcc2774 270-271,284-287
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_f633a40ea5d7f1 53
+  s_9599a19035c5e3::t_87a177a5464fc1 664-700,725-770
+  s_9599a19035c5e3::t_5a8682df51614a 52,54-56
+  s_9599a19035c5e3::t_73f17e8525e0b3 701-724
+src/kernel/occtWasm/primitiveOps.ts
+  s_9599a19035c5e3::t_4cd1baa9a04819 82,84
+  s_9599a19035c5e3::t_824ece2786ecf3 67,69
+  s_9599a19035c5e3::t_b1825bc0a8dd3a 39,41
+  s_9599a19035c5e3::t_9aafb31c1c2f2a 11-21
+  s_9599a19035c5e3::t_9c8a68ec18b833 53
+src/topology/primitiveFns.ts
+  s_9599a19035c5e3::t_c31c6ad72dd9bb 114,121-122
+  s_9599a19035c5e3::t_b26b6a49953002 137,139-140
+  s_9599a19035c5e3::t_a12b3a7591dc24 170,177-178
+  s_9599a19035c5e3::t_42f930c160dbb3 92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f03b69d144729dcd26b114edb29eb0c236758deb",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
