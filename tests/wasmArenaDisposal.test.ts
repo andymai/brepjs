@@ -24,6 +24,16 @@ import {
   intersect,
   fuseAll,
   compound,
+  fillet,
+  chamfer,
+  shell,
+  offset,
+  thicken,
+  rotate,
+  mirror,
+  scale,
+  applyMatrix,
+  locate,
   getFaces,
   getEdges,
   getVertices,
@@ -285,6 +295,127 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using b = box(10, 10, 10);
           const r = autoHeal(b);
           if (isOk(r)) r.value.shape[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('modifier ops leak nothing when inputs and result are disposed', () => {
+    // Modifiers return a fresh solid whose orphaned pre-downcast slot is released
+    // by castResultShape/finalizeShape3D; the caller disposes the final result and
+    // the source box. Any survivor is a leak inside the modifier itself.
+    // draft/variableFillet are excluded: they don't run on occt-wasm (brepkit-only
+    // / divergent), so their success path can't be exercised by this oracle.
+    it('fillet leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = fillet(b, 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('chamfer leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = chamfer(b, 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('shell leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const f0 = getFaces(b)[0];
+          if (!f0) throw new Error('box must have faces');
+          const r = shell(b, [f0], 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('offset leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = offset(b, 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('thicken leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const f0 = getFaces(b)[0];
+          if (!f0) throw new Error('box must have faces');
+          const r = thicken(f0, 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('transform ops leak nothing when inputs and result are disposed', () => {
+    // rotate/mirror/scale return a fresh shape directly (evolution metadata is
+    // propagated, not retained); applyMatrix/locate return via castResultShape.
+    // translate is covered above; these are its siblings.
+    it('rotate leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using r = rotate(b, 30, [0, 0, 0], [0, 0, 1]);
+          void r;
+        })
+      ).toBe(0);
+    });
+
+    it('mirror leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using r = mirror(b, [0, 1, 0], [0, 0, 0]);
+          void r;
+        })
+      ).toBe(0);
+    });
+
+    it('scale leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using r = scale(b, 2, [0, 0, 0]);
+          void r;
+        })
+      ).toBe(0);
+    });
+
+    it('applyMatrix leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = applyMatrix(b, [
+            [1, 0, 0, 5],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+          ]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('locate leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using r = locate(b, { type: 'translate', v: [5, 0, 0] });
+          void r;
         })
       ).toBe(0);
     });
