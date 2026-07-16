@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.75.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.75.0...brepjs-cad-v0.75.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+
 ## [0.75.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.74.0...brepjs-cad-v0.75.0) (2026-07-16)
 
 ### Features
