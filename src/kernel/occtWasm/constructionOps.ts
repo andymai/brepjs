@@ -50,6 +50,7 @@ export function makeWireFromMixed(
   // throws. Explode each item to its edges first (an edge yields itself),
   // which lets a mix of edges and wires assemble into one wire.
   const edgeIds: number[] = [];
+  const inputIds = new Set(items.map((it) => unwrap(it)));
   for (const item of items) {
     const sub = k.getSubShapes(unwrap(item), 'edge');
     try {
@@ -64,6 +65,10 @@ export function makeWireFromMixed(
     return handle('wire', k.makeWire(vec));
   } finally {
     vec.delete();
+    // getSubShapes copies each edge into its own arena slot; makeWire shares
+    // their refcounted TShape, so release the copies once it has consumed them.
+    // Skip any id that is an input itself (getSubShapes yields an edge as-is).
+    for (const id of edgeIds) if (!inputIds.has(id)) k.release(id);
   }
 }
 

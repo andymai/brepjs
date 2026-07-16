@@ -34,6 +34,16 @@ import {
   scale,
   applyMatrix,
   locate,
+  polygon,
+  line,
+  wire,
+  closedWire,
+  extrude,
+  revolve,
+  loft,
+  sweep,
+  thread,
+  getWires,
   getFaces,
   getEdges,
   getVertices,
@@ -52,6 +62,7 @@ import {
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
+import { DisposalScope } from '@/core/disposal.js';
 
 const isOcctWasm = (process.env['TEST_KERNEL'] ?? 'occt') === 'occt-wasm';
 
@@ -421,7 +432,160 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     });
   });
 
+  describe('profile builders leak nothing when disposed', () => {
+    // Regression: makePolygon built its edges + wire and disposed neither, and
+    // makeWireFromMixed (kernel) exploded each input into edge sub-shape slots it
+    // never released — 1 leaked slot per edge in *every* wire built from edges.
+    it('polygon leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [0, 0, 0],
+              [10, 0, 0],
+              [10, 10, 0],
+              [0, 10, 0],
+            ])
+          );
+          void f;
+        })
+      ).toBe(0);
+    });
+
+    it('wire (assembleWire) leaks nothing per edge', () => {
+      expect(
+        perIterationLeak(() => {
+          using e1 = line([0, 0, 0], [10, 0, 0]);
+          using e2 = line([10, 0, 0], [10, 10, 0]);
+          using e3 = line([10, 10, 0], [0, 0, 0]);
+          const r = wire([e1, e2, e3]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+  });
+
+  describe('construction ops leak nothing when inputs and result are disposed', () => {
+    // extrude/revolve/loft/sweep were already clean (castResultShape); these lock
+    // that together with the profile-builder fixes above. thread leaked 183/call
+    // pre-fix (its ~60 tooth sections × 3 edges each, via makeWireFromMixed +
+    // DisposalScope.register calling the no-op .delete() instead of Symbol.dispose).
+    it('extrude leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [0, 0, 0],
+              [10, 0, 0],
+              [10, 10, 0],
+              [0, 10, 0],
+            ])
+          );
+          const r = extrude(f, [0, 0, 10]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('revolve leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [5, 0, 0],
+              [10, 0, 0],
+              [10, 0, 10],
+              [5, 0, 10],
+            ])
+          );
+          const r = revolve(f, { axis: [0, 0, 1], at: [0, 0, 0] });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('loft leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using f1 = unwrap(
+            polygon([
+              [0, 0, 0],
+              [10, 0, 0],
+              [10, 10, 0],
+              [0, 10, 0],
+            ])
+          );
+          using f2 = unwrap(
+            polygon([
+              [0, 0, 20],
+              [10, 0, 20],
+              [10, 10, 20],
+              [0, 10, 20],
+            ])
+          );
+          const w1 = getWires(f1)[0];
+          const w2 = getWires(f2)[0];
+          if (!w1 || !w2) throw new Error('polygon faces must have wires');
+          const r = loft([w1, w2]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('sweep leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using pf = unwrap(
+            polygon([
+              [-1, -1, 0],
+              [1, -1, 0],
+              [1, 1, 0],
+              [-1, 1, 0],
+            ])
+          );
+          const pw = getWires(pf)[0];
+          if (!pw) throw new Error('polygon face must have a wire');
+          const profile = unwrap(closedWire(pw));
+          using e = line([0, 0, 0], [0, 0, 20]);
+          using spine = unwrap(wire([e]));
+          const r = sweep(profile, spine);
+          if (isOk(r)) {
+            const v = unwrap(r);
+            if (Array.isArray(v)) {
+              v.forEach((s) => {
+                s[Symbol.dispose]();
+              });
+            } else {
+              v[Symbol.dispose]();
+            }
+          }
+        })
+      ).toBe(0);
+    });
+
+    it('thread leaks nothing (was 183 slots/call)', () => {
+      expect(
+        perIterationLeak(() => {
+          const r = thread({ radius: 6, pitch: 2.5, height: 7.5 });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+  });
+
   describe('disposal is real, not a no-op', () => {
+    it('DisposalScope.register frees a registered shape via kernel.dispose', () => {
+      // register() historically called the no-op .delete(); a shape registered
+      // for scope cleanup leaked on occt-wasm. It now routes through Symbol.dispose.
+      const before = arenaCount();
+      {
+        using scope = new DisposalScope();
+        scope.register(box(10, 10, 10));
+        expect(arenaCount()).toBeGreaterThan(before);
+      }
+      expect(arenaCount()).toBe(before);
+    });
+
     it('creating then disposing a box returns the arena to baseline', () => {
       const before = arenaCount();
       const b = box(10, 10, 10);
