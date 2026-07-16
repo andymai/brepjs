@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.19](https://github.com/andymai/brepjs/compare/brepjs-v18.118.18...brepjs-v18.118.19) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+
 ## [18.118.18](https://github.com/andymai/brepjs/compare/brepjs-v18.118.17...brepjs-v18.118.18) (2026-07-16)
 
 ### Bug Fixes
