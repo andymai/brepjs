@@ -1,0 +1,30 @@
+src/core/disposal.ts
+  s_9599a19035c5e3::t_b537de20544c76 295-301
+src/topology/surfaceBuilders.ts
+  s_9599a19035c5e3::t_7ca38679d2d759 10
+  s_9599a19035c5e3::t_2888046e65df46 150-156,158-160
+src/kernel/occtWasm/constructionOps.ts
+  s_9599a19035c5e3::t_eb7d7673793d56 53,68-71
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_809f35da261786 554-560
+  s_9599a19035c5e3::t_1cac6eb5e03403 37-46
+  s_9599a19035c5e3::t_81c10f3ddc1855 65
+  s_9599a19035c5e3::t_aa73cc6b7b8f59 577-588
+  s_9599a19035c5e3::t_d54a60e3424cb8 435-553,561-575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "57115c54697aacaa95e9d35f3337aa3983496d74",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
