@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.118.14](https://github.com/andymai/brepjs/compare/brepjs-v18.118.13...brepjs-v18.118.14) (2026-07-16)
+
+
+### Bug Fixes
+
+* plug arena leaks in pocket/boss, mirrorJoin, twist/complexExtrude, blueprint sketches ([#1798](https://github.com/andymai/brepjs/issues/1798)) ([f25b09a](https://github.com/andymai/brepjs/commit/f25b09ae9fa6c977cb7b4cc1f996a7dc455b8c55))
+* plug arena leaks in the projection path (makeProjectedEdges, drawProjection) ([#1799](https://github.com/andymai/brepjs/issues/1799)) ([31585f2](https://github.com/andymai/brepjs/commit/31585f2a9777a860f310a0c86c1992dbf4f3bd2e))
+
 ## [18.118.13](https://github.com/andymai/brepjs/compare/brepjs-v18.118.12...brepjs-v18.118.13) (2026-07-16)
 
 
