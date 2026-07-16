@@ -7,6 +7,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { Vec3 } from '@/core/types.js';
 import { type Result, ok, err, andThen } from '@/core/result.js';
 import { validationError, kernelError } from '@/core/errors.js';
+import { DisposalScope } from '@/core/disposal.js';
 import type { Dimension, ClosedWire, Face, OrientedFace } from '@/core/shapeTypes.js';
 import { createFace, isFace } from '@/core/shapeTypes.js';
 import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
@@ -146,7 +147,15 @@ export function makePolygon(points: Vec3[]): Result<OrientedFace & PlanarFace> {
 
   // points.length >= 3 is guaranteed above, so the wrap-around point is defined.
   const closing = [...points.slice(1), points[0]] as Vec3[];
-  const edges = zip([points, closing] as [Vec3[], Vec3[]]).map(([p1, p2]) => makeLine(p1, p2));
+  // The per-edge lines and the assembled wire are consumed by makeFace (the face
+  // shares their refcounted TShape), so dispose them once the face is built —
+  // otherwise every polygon() leaks its edges + wire on an arena kernel.
+  using scope = new DisposalScope();
+  const edges = zip([points, closing] as [Vec3[], Vec3[]]).map(([p1, p2]) =>
+    scope.register(makeLine(p1, p2))
+  );
   // Polygon edges always form a closed, coplanar loop — safe to narrow
-  return andThen(assembleWire(edges), (wire) => makeFace(wire as ClosedWire & PlanarWire));
+  return andThen(assembleWire(edges), (wire) =>
+    makeFace(scope.register(wire) as ClosedWire & PlanarWire)
+  );
 }

@@ -292,7 +292,13 @@ export class DisposalScope implements Disposable {
   register<T extends Deletable>(resource: T): T {
     this.handles.push(() => {
       try {
-        resource.delete();
+        // A shape handle's `.delete()` is a no-op on arena kernels (occt-wasm);
+        // its slot is only reclaimed through `Symbol.dispose` → `kernel.dispose`.
+        // Prefer that when present, so a shape registered here is actually freed;
+        // raw WASM objects (no `Symbol.dispose`) fall back to `.delete()`.
+        const disposer = (resource as Partial<Disposable>)[Symbol.dispose];
+        if (typeof disposer === 'function') disposer.call(resource);
+        else resource.delete();
       } catch {
         // Already deleted
       }
