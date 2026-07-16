@@ -311,6 +311,7 @@ export function rectangularPattern<T extends Shape3D>(
   // This replaces sequential fuse() (N-1 pairwise operations on growing shapes)
   // with a single BRepAlgoAPI_BuilderAlgo call.
   const copies: Shape3D[] = [s];
+  const owned: Shape3D[] = []; // the translated copies we allocate (not the caller's `s`)
   for (let xi = 0; xi < xCount; xi++) {
     for (let yi = 0; yi < yCount; yi++) {
       if (xi === 0 && yi === 0) continue; // skip original
@@ -319,9 +320,17 @@ export function rectangularPattern<T extends Shape3D>(
         xNorm[1] * xSpacing * xi + yNorm[1] * ySpacing * yi,
         xNorm[2] * xSpacing * xi + yNorm[2] * ySpacing * yi,
       ];
-      copies.push(translate(s, offset));
+      const c = translate(s, offset);
+      copies.push(c);
+      owned.push(c);
     }
   }
 
-  return fuseAll(copies, { unsafe: true }) as Result<T>;
+  try {
+    return fuseAll(copies, { unsafe: true }) as Result<T>;
+  } finally {
+    // fuseAll is immutable and does not consume its inputs — dispose the copies
+    // we created (never `s`, which the caller owns).
+    for (const c of owned) c[Symbol.dispose]();
+  }
 }

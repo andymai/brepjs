@@ -24,6 +24,8 @@ import {
   fuse,
   intersect,
   fuseAll,
+  cutAll,
+  rectangularPattern,
   compound,
   fillet,
   chamfer,
@@ -973,6 +975,43 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(perIterationLeak(() => void solveAssembly(asm))).toBe(0);
       for (const f of f1) f[Symbol.dispose]();
       for (const f of f2) f[Symbol.dispose]();
+    });
+  });
+
+  describe('boolean variants leak nothing', () => {
+    // fuseAll + drill are covered above. cutAll (batch cut) routes through
+    // castToShape3D, which disposes the downcast source on both paths — clean.
+    // rectangularPattern leaked its translated copies (3/call for a 2x2 grid),
+    // handed to the immutable fuseAll but never disposed — now released.
+    it('cutAll leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using base = box(20, 20, 20);
+          using i1 = box(3, 3, 30);
+          using t1 = translate(i1, [5, 5, 0]);
+          using i2 = box(3, 3, 30);
+          using t2 = translate(i2, [12, 12, 0]);
+          const r = cutAll(base, [t1, t2]);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('rectangularPattern leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(2, 2, 2);
+          const r = rectangularPattern(b, {
+            xDir: [1, 0, 0],
+            xCount: 2,
+            xSpacing: 5,
+            yDir: [0, 1, 0],
+            yCount: 2,
+            ySpacing: 5,
+          });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
     });
   });
 
