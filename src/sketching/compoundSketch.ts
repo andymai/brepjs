@@ -48,7 +48,15 @@ export default class CompoundSketch implements SketchInterface {
     return this.sketches.slice(1);
   }
 
-  /** Return all wires (outer + holes) combined into a compound shape. */
+  /**
+   * All wires (outer + holes) combined into a compound shape.
+   *
+   * @remarks Allocates a **fresh** compound on every access (via `makeCompound`)
+   * — it is a caller-owned kernel resource, not a cheap accessor. Dispose the
+   * returned compound (`using`/`.delete()` → `Symbol.dispose`) or it leaks an
+   * arena slot on arena kernels. The sub-sketch wires themselves belong to this
+   * CompoundSketch and are freed with it.
+   */
   get wires() {
     return fns.compoundSketchWires(this);
   }

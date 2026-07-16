@@ -12,6 +12,7 @@
  * no-free arena; occt/manifold have different memory models).
  */
 import { describe, expect, it, beforeAll } from 'vitest';
+import { readFile, access } from 'node:fs/promises';
 import { initKernel } from './setup.js';
 import {
   box,
@@ -71,6 +72,8 @@ import {
   addMate,
   solveAssembly,
   faceCenter,
+  sketchText,
+  loadFont,
   getWires,
   getFaces,
   getEdges,
@@ -94,9 +97,26 @@ import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
 
 const isOcctWasm = (process.env['TEST_KERNEL'] ?? 'occt') === 'occt-wasm';
+let fontLoaded = false;
 
 beforeAll(async () => {
   await initKernel();
+  // Best-effort font load for the sketchText hole-glyph leak regression below.
+  for (const p of [
+    '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
+    '/usr/share/fonts/dejavu-sans-mono-fonts/DejaVuSansMono.ttf',
+    '/usr/share/fonts/adwaita-mono-fonts/AdwaitaMono-Regular.ttf',
+    '/usr/share/fonts/TTF/DejaVuSansMono.ttf',
+  ]) {
+    try {
+      await access(p);
+      const buf = await readFile(p);
+      fontLoaded = isOk(await loadFont(buf.buffer as ArrayBuffer, 'arena-test'));
+      break;
+    } catch {
+      /* try next candidate */
+    }
+  }
 }, 30000);
 
 /** occt-wasm's live-shape arena counter, the ground-truth leak oracle. */
@@ -950,6 +970,54 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(perIterationLeak(() => void solveAssembly(asm))).toBe(0);
       for (const f of f1) f[Symbol.dispose]();
       for (const f of f2) f[Symbol.dispose]();
+    });
+  });
+
+  describe('sketchText is leak-free; CompoundSketch.wires is a disposable resource', () => {
+    // sketchText itself allocates no leaking slots — earlier "hole-glyph residual"
+    // reports were a probe artifact from reading the side-effecting `.wires` getter
+    // (which allocates a fresh compound via makeCompound) without disposing it.
+    // A hole glyph ('O') returns a CompoundSketch; dispose its per-contour wires.
+    const disposeContourWires = (s: { sketches: unknown[] }): void => {
+      const d = (v: unknown): void => {
+        const disp = (v as { [Symbol.dispose]?: () => void })[Symbol.dispose];
+        if (typeof disp === 'function') disp.call(v);
+      };
+      for (const item of s.sketches) {
+        const sub = (item as { sketches?: { wire?: unknown }[] }).sketches ?? [
+          item as { wire?: unknown },
+        ];
+        for (const one of sub) d(one.wire);
+      }
+    };
+
+    it('sketchText hole glyph leaks nothing when disposed', (ctx) => {
+      if (!fontLoaded) return ctx.skip();
+      expect(
+        perIterationLeak(() => {
+          const s = sketchText('O', { fontFamily: 'arena-test', fontSize: 16 });
+          disposeContourWires(s);
+        })
+      ).toBe(0);
+    });
+
+    it('CompoundSketch.wires compound is disposable to baseline', (ctx) => {
+      if (!fontLoaded) return ctx.skip();
+      expect(
+        perIterationLeak(() => {
+          const s = sketchText('O', { fontFamily: 'arena-test', fontSize: 16 }) as unknown as {
+            sketches: {
+              wires?: { [Symbol.dispose](): void };
+              sketches?: { wire?: { [Symbol.dispose](): void } }[];
+            }[];
+          };
+          for (const item of s.sketches) {
+            // reading `.wires` allocates a fresh compound — the caller owns it
+            item.wires?.[Symbol.dispose]();
+            for (const one of item.sketches ?? []) one.wire?.[Symbol.dispose]();
+          }
+        })
+      ).toBe(0);
     });
   });
 

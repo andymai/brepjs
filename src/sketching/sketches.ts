@@ -68,7 +68,14 @@ export default class Sketches implements SketchInterface {
     return this.soleSketch('sweepSketch').sweepSketch(sketchOnPlane, sweepConfig);
   }
 
-  /** Return all wires combined into a single compound shape. */
+  /**
+   * All wires combined into a single compound shape.
+   *
+   * @remarks Allocates a **fresh** compound on every call (and reads each
+   * CompoundSketch's `wires`, which allocates too) — the result is a caller-owned
+   * kernel resource. Dispose it (`using`/`Symbol.dispose`) or it leaks an arena
+   * slot on arena kernels.
+   */
   wires(): Compound {
     const wires = this.sketches.map((s) => (s instanceof Sketch ? s.wire : s.wires));
     return makeCompound(wires);
