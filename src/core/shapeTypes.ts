@@ -311,7 +311,16 @@ export function castShape3D(ocShape: KernelShape): AnyShape {
  * received from elsewhere.
  */
 export function disposeDowncastSource(source: KernelShape, cast: ShapeHandle): void {
-  if (cast.wrapped !== source) getKernel().dispose(source);
+  // On arena kernels (occt-wasm) a handle carries a slot `id`. An identity
+  // downcast (occt-wasm >= 3.7.0) returns the SAME id wrapped in a fresh object,
+  // so compare by id: a plain `!==` on the wrappers would dispose the slot the
+  // returned shape still points to (use-after-free). Kernels whose shapes carry
+  // no `id` fall back to object identity (the original behavior).
+  const srcId = (source as { id?: unknown }).id;
+  const dstId = (cast.wrapped as { id?: unknown }).id;
+  const sameSlot =
+    srcId !== undefined && dstId !== undefined ? srcId === dstId : cast.wrapped === source;
+  if (!sameSlot) getKernel().dispose(source);
 }
 
 /**
