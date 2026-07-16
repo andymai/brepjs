@@ -1,0 +1,36 @@
+src/kernel/occtWasm/transformOps.ts
+  s_9599a19035c5e3::t_eec75e06d54533 298-300
+  s_9599a19035c5e3::t_d9913a973c1b4f 344-346
+src/operations/patternFns.ts
+  s_9599a19035c5e3::t_b46b832044040a 158
+  s_9599a19035c5e3::t_ca5b37aa13c876 94-103
+  s_9599a19035c5e3::t_63a4791b7ed792 45-54
+  s_9599a19035c5e3::t_12cbae51a418b0 159-165
+src/gear/gearFns.ts
+  s_9599a19035c5e3::t_32d1738e852127 449-453,456,463
+src/kernel/occtWasm/constructionOps.ts
+  s_9599a19035c5e3::t_4bbd08e64c0cb5 268-271,275-277
+src/sketching/cannedSketches.ts
+  s_9599a19035c5e3::t_cb1c1bb856cbb9 52-55
+  s_9599a19035c5e3::t_bf67cf44d91443 89-91,93
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_821811d1690bb0 583-658
+  s_9599a19035c5e3::t_d6c3352398093c 72
+  s_9599a19035c5e3::t_41599517dc71f1 46-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "05aa8b4f33fa8ec4064f00a6d5548289843e7a7d",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}

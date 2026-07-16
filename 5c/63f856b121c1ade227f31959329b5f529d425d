@@ -1,0 +1,26 @@
+src/topology/primitiveFns.ts
+  s_9599a19035c5e3::t_64bba570eb46f6 221,223-224
+src/kernel/occtWasm/constructionOps.ts
+  s_9599a19035c5e3::t_64d1d69db01c5d 388-390
+  s_9599a19035c5e3::t_36de0a55568643 413-417
+tests/wasmArenaDisposal.test.ts
+  s_9599a19035c5e3::t_fd92420939c61d 688,701-704
+  s_9599a19035c5e3::t_6c25c20079b551 705-706,759-772
+  s_9599a19035c5e3::t_a9e931105bbd1e 54,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5c63f856b121c1ade227f31959329b5f529d425d",
+  "prompts": {},
+  "sessions": {
+    "s_9599a19035c5e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32e6f9af-7a7b-4109-9238-7a4db39cad39",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
