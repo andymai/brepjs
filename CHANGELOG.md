@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.13](https://github.com/andymai/brepjs/compare/brepjs-v18.118.12...brepjs-v18.118.13) (2026-07-16)
+
+
+### Bug Fixes
+
+* **core:** comprehensive occt-wasm arena-leak sweep (wire building, positioned primitives, hull, patterns, gear, section, drill, roof) ([#1794](https://github.com/andymai/brepjs/issues/1794)) ([ca791de](https://github.com/andymai/brepjs/commit/ca791dea0c9978b105bfea15755c227e327a73ef))
+
 ## [18.118.12](https://github.com/andymai/brepjs/compare/brepjs-v18.118.11...brepjs-v18.118.12) (2026-07-13)
 
 
