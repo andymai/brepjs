@@ -593,9 +593,11 @@ function makeSectionFace(plane: Plane, size: number): KernelType {
   const wire = kernel.makeWire(edges);
   const face = kernel.makeFace(wire, true);
 
-  // Cleanup temporaries
-  for (const e of edges) e.delete();
-  wire.delete();
+  // Cleanup temporaries. `.delete()` is a no-op on arena kernels (occt-wasm) —
+  // route through kernel.dispose so the edge/wire slots are actually reclaimed
+  // (the face shares their refcounted TShape and survives).
+  for (const e of edges) kernel.dispose(e);
+  kernel.dispose(wire);
 
   return face;
 }
@@ -640,7 +642,8 @@ export function section(
       )
     );
   } finally {
-    sectionFace.delete();
+    // `.delete()` is a no-op on arena kernels; dispose reclaims the slot.
+    getKernel().dispose(sectionFace);
   }
 }
 

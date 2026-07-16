@@ -267,6 +267,8 @@ export function roof(
     try {
       const solid = kernel.sewAndSolidify(triFaces, 1e-6);
       const fixed = kernel.fixShape(solid);
+      // fixShape returns a fresh slot on arena kernels; release the pre-fix solid.
+      if (fixed !== solid) kernel.dispose(solid);
       return ok(createSolid(fixed) as ValidSolid);
     } catch (solidifyErr) {
       try {
@@ -279,6 +281,10 @@ export function roof(
       } catch (sewErr) {
         return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces', sewErr));
       }
+    } finally {
+      // Each buildTriFace is a fresh arena slot consumed into the sewn solid
+      // (shared refcounted TShape); release the triangles once sewing is done.
+      for (const tf of triFaces) kernel.dispose(tf);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
