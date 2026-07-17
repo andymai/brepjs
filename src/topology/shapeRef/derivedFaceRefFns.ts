@@ -63,6 +63,7 @@ function betweenFaces(shape: Shape3D, aFaces: readonly Face[], bFaces: readonly 
     }
   }
 
+  if (betweenHashes.length === 0) return [];
   const byHash = new Map<number, Face>(getFaces(shape).map((f) => [getHashCode(f), f]));
   return betweenHashes.map((h) => byHash.get(h)).filter((f): f is Face => f !== undefined);
 }
