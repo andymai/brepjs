@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.23](https://github.com/andymai/brepjs/compare/brepjs-v18.118.22...brepjs-v18.118.23) (2026-07-17)
+
+
+### Performance Improvements
+
+* **measurement:** bulk-free distance scratch in interference checks via checkpoint ([#1838](https://github.com/andymai/brepjs/issues/1838)) ([d88a3a0](https://github.com/andymai/brepjs/commit/d88a3a056b731dacfeb2e9aab3b9f5cdf82b4102))
+
 ## [18.118.22](https://github.com/andymai/brepjs/compare/brepjs-v18.118.21...brepjs-v18.118.22) (2026-07-17)
 
 
