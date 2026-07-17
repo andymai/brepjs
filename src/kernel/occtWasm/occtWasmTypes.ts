@@ -151,6 +151,10 @@ export interface OcctKernelWasm {
   checkpoint(): number;
   /** Free every handle allocated at or after `mark` in one call (occt-wasm >= 3.7.0). */
   releaseSince(mark: number): void;
+  /** Count sub-shapes of a type without allocating a handle each (occt-wasm >= 3.7.0). */
+  subShapeCount(id: number, shapeType: string): number;
+  /** Deduplicated sub-shape hashes, no per-sub-shape handle allocation (occt-wasm >= 3.7.0). */
+  subShapeHashes(id: number, shapeType: string, hashUpperBound: number): EmVectorInt;
 
   // --- Primitives ---
   makeBox(dx: number, dy: number, dz: number): number;

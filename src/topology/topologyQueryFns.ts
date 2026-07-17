@@ -19,6 +19,7 @@ import type {
 } from '@/core/shapeTypes.js';
 import { castResultShapeWithKnownType } from '@/core/shapeTypes.js';
 import { getOrQueryType } from '@/core/shapeTypeCache.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import type { Vec3 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,39 @@ function castSubShapes<T>(parentShape: KernelShape, type: ShapeType): T[] {
     result[i] = castResultShapeWithKnownType(rawShapes[i], type) as T;
   }
   return result;
+}
+
+/**
+ * Count sub-shapes of a type without materialising (and disposing) a handle per
+ * sub-shape. Uses the kernel's native `subShapeCount` when available (occt-wasm
+ * >= 3.7.0); otherwise iterates and releases. Prefer this over
+ * `getFaces(shape).length` when only the count is needed and the handles aren't
+ * — it neither allocates nor warms the topology cache.
+ */
+export function subShapeCount(shape: AnyShape<Dimension>, type: ShapeType): number {
+  const kernel = getKernel();
+  if (kernel.subShapeCount) return kernel.subShapeCount(shape.wrapped, type);
+  const items = kernel.iterShapes(shape.wrapped, type);
+  for (const item of items) kernel.dispose(item);
+  return items.length;
+}
+
+/**
+ * Deduplicated hashes of a shape's sub-shapes, keyed the same as
+ * {@link getKernel}'s `hashCode(_, HASH_CODE_MAX)`. Uses the native
+ * `subShapeHashes` when available (occt-wasm >= 3.7.0); otherwise iterates,
+ * hashes, and releases. For hash-only paths (origin/tag maps) that would
+ * otherwise allocate a handle per sub-shape just to hash it.
+ */
+export function subShapeHashes(shape: AnyShape<Dimension>, type: ShapeType): number[] {
+  const kernel = getKernel();
+  if (kernel.subShapeHashes) return kernel.subShapeHashes(shape.wrapped, type, HASH_CODE_MAX);
+  const seen = new Set<number>();
+  for (const item of kernel.iterShapes(shape.wrapped, type)) {
+    seen.add(kernel.hashCode(item, HASH_CODE_MAX));
+    kernel.dispose(item);
+  }
+  return [...seen];
 }
 
 // ---------------------------------------------------------------------------
@@ -337,10 +371,12 @@ export interface ShapeDescription {
 export function describe(shape: AnyShape<Dimension>): ShapeDescription {
   return {
     kind: getCachedShapeKind(shape),
-    faceCount: getFaces(shape).length,
-    edgeCount: getEdges(shape).length,
-    wireCount: getWires(shape).length,
-    vertexCount: getVertices(shape).length,
+    // Count-only: subShapeCount avoids allocating (and caching) a handle per
+    // sub-shape just to read `.length`.
+    faceCount: subShapeCount(shape, 'face'),
+    edgeCount: subShapeCount(shape, 'edge'),
+    wireCount: subShapeCount(shape, 'wire'),
+    vertexCount: subShapeCount(shape, 'vertex'),
     valid: getCachedIsValid(shape),
     bounds: getBounds(shape),
   };

@@ -35,6 +35,19 @@ export interface KernelTopologyOps {
   copyShape(shape: KernelShape): KernelShape;
   /** Compute a hash code for a shape (used for face tracking). */
   hashCode(shape: KernelShape, upperBound: number): number;
+  /**
+   * Count sub-shapes of a type without allocating a handle per sub-shape.
+   * Optional native fast path (occt-wasm >= 3.7.0); absent kernels fall back to
+   * iterating handles. See the topology-layer `subShapeCount` wrapper.
+   */
+  subShapeCount?(shape: KernelShape, type: ShapeType): number;
+  /**
+   * Deduplicated sub-shape hashes at `hashUpperBound`, with no per-sub-shape
+   * handle allocation. Hashes agree with {@link hashCode} at the same bound.
+   * Optional native fast path (occt-wasm >= 3.7.0). See the topology-layer
+   * `subShapeHashes` wrapper.
+   */
+  subShapeHashes?(shape: KernelShape, type: ShapeType, hashUpperBound: number): number[];
   /** Check if a shape handle is null. */
   isNull(shape: KernelShape): boolean;
   /** Get the orientation of a shape (forward, reversed, internal, external). */

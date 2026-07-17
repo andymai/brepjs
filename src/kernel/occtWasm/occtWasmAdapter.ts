@@ -1363,6 +1363,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     return topoOps.hashCode(this.k, shape, upperBound);
   }
 
+  subShapeCount(shape: KernelShape, type: ShapeType): number {
+    return topoOps.subShapeCount(this.k, shape, type);
+  }
+
+  subShapeHashes(shape: KernelShape, type: ShapeType, hashUpperBound: number): number[] {
+    return topoOps.subShapeHashes(this.k, shape, type, hashUpperBound);
+  }
+
   isNull(shape: KernelShape): boolean {
     return topoOps.isNull(this.k, shape);
   }

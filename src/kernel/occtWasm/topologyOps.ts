@@ -91,6 +91,26 @@ export function edgeToFaceMap(k: OcctKernelWasm, shape: KernelShape): string {
   return JSON.stringify(map);
 }
 
+/** Count sub-shapes of `type` without materialising a handle per sub-shape (3.7.0). */
+export function subShapeCount(k: OcctKernelWasm, shape: KernelShape, type: ShapeType): number {
+  return k.subShapeCount(unwrap(shape), type);
+}
+
+/** Deduplicated sub-shape hashes at `hashUpperBound`, no per-sub-shape handle (3.7.0). */
+export function subShapeHashes(
+  k: OcctKernelWasm,
+  shape: KernelShape,
+  type: ShapeType,
+  hashUpperBound: number
+): number[] {
+  const vec = k.subShapeHashes(unwrap(shape), type, hashUpperBound);
+  try {
+    return readVecInt(vec);
+  } finally {
+    vec.delete();
+  }
+}
+
 export function sharedEdges(
   k: OcctKernelWasm,
   faceA: KernelShape,

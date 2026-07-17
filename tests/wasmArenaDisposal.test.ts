@@ -102,6 +102,7 @@ import {
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
+import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
 
@@ -195,6 +196,20 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           using b = box(10, 10, 10);
           for (const e of getEdges(b)) e[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('subShapeCount / subShapeHashes allocate no sub-shape handles', () => {
+      // The whole point of the native fast path: read counts/hashes without
+      // materialising a handle per sub-shape. Only the `using` box is allocated.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          subShapeCount(b, 'face');
+          subShapeCount(b, 'edge');
+          subShapeHashes(b, 'face');
+          subShapeHashes(b, 'vertex');
         })
       ).toBe(0);
     });
