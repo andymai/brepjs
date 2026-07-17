@@ -15,6 +15,7 @@
 import type { KernelCurveOps } from '@/kernel/interfaces/curveOps.js';
 import type { KernelSurfaceOps } from '@/kernel/interfaces/surfaceOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
 import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
@@ -64,7 +65,9 @@ function viaOcct<T>(
   if (witness && witness.__manifoldSub && witness.occt) {
     const occt = resolveOcct();
     if (!occt) {
-      throw new Error('manifold: sub-shape geometry query requires a registered occt kernel');
+      throw new UnsupportedKernelOperationError(
+        'manifold: sub-shape geometry query requires a registered occt kernel'
+      );
     }
     return query(witness.occt, occt);
   }
@@ -74,7 +77,7 @@ function viaOcct<T>(
   }
   const occt = resolveOcct();
   if (!occt) {
-    throw new Error(
+    throw new UnsupportedKernelOperationError(
       'manifold: exact geometry query unsupported on manifold kernel; no B-rep kernel registered'
     );
   }

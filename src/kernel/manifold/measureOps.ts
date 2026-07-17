@@ -13,6 +13,7 @@
 
 import type { BulkMeasurement, KernelMeasureOps } from '@/kernel/interfaces/measureOps.js';
 import type { DistanceResult, KernelShape } from '@/kernel/types.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
 import {
@@ -255,7 +256,7 @@ function surfaceCurvature(
 ): ReturnType<KernelMeasureOps['surfaceCurvature']> {
   const occt = resolveOcct();
   if (!occt) {
-    throw new Error(
+    throw new UnsupportedKernelOperationError(
       'manifold: surfaceCurvature requires a registered occt kernel; none is available'
     );
   }
