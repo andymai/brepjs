@@ -8,7 +8,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { getKernel } from '@/kernel/index.js';
 import { supportsProjection, supportsConstraintSketch } from '@/kernel/index.js';
+import {
+  UnsupportedKernelOperationError,
+  isUnsupportedKernelOperationError,
+} from '@/kernel/unsupported.js';
 import { importGLB } from '@/io/gltfImportFns.js';
+import { box } from '@/index.js';
+import { getFaces } from '@/topology/topologyQueryFns.js';
 import { isErr } from '@/core/result.js';
 
 beforeAll(async () => {
@@ -39,5 +45,34 @@ describe('importGLB error handling', () => {
     const blob = new Blob([new Uint8Array([0, 1, 2, 3])]);
     const result = await importGLB(blob);
     expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('UnsupportedKernelOperationError', () => {
+  it('the guard recognizes the marked error and rejects lookalikes', () => {
+    expect(isUnsupportedKernelOperationError(new UnsupportedKernelOperationError('x'))).toBe(true);
+    // A plain error that merely *reads* like the old sentinels must not match —
+    // this is the whole point of moving off message-substring detection.
+    expect(isUnsupportedKernelOperationError(new Error('sharedEdges is not yet implemented'))).toBe(
+      false
+    );
+    expect(isUnsupportedKernelOperationError('is only available with the brepkit kernel')).toBe(
+      false
+    );
+    expect(isUnsupportedKernelOperationError(undefined)).toBe(false);
+  });
+
+  it('a stubbed kernel op throws an error the guard recognizes', () => {
+    // This suite runs on the occt (OpenCascade) kernel, which stubs sharedEdges.
+    using b = box(10, 10, 10);
+    const face = getFaces(b)[0];
+    if (!face) throw new Error('box must have a face');
+    let caught: unknown;
+    try {
+      getKernel().sharedEdges(face.wrapped, face.wrapped);
+    } catch (e) {
+      caught = e;
+    }
+    expect(isUnsupportedKernelOperationError(caught)).toBe(true);
   });
 });

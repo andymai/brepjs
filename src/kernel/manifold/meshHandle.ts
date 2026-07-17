@@ -1,6 +1,7 @@
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { OpNode } from './opGraph.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- manifold-3d object type gap
@@ -50,7 +51,9 @@ export function resolveOcct(): KernelAdapter | undefined {
 export function occtOrThrow(method: string): KernelAdapter {
   const occt = resolveOcct();
   if (!occt) {
-    throw new Error(`manifold: ${method} requires a registered occt kernel; none is available`);
+    throw new UnsupportedKernelOperationError(
+      `manifold: ${method} requires a registered occt kernel; none is available`
+    );
   }
   return occt;
 }

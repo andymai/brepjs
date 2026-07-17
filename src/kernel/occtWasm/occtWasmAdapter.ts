@@ -42,6 +42,7 @@
 
 import type { KernelCapabilities } from '@/kernel/capabilities.js';
 import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type {
   BooleanOpType,
   BooleanOptions,
@@ -110,7 +111,7 @@ import * as hullOps from './hullOps.js';
 // parseEvolution moved to evolutionOps.ts
 
 function notImplemented(method: string): never {
-  throw new Error(`occt-wasm: ${method} is not yet implemented`);
+  throw new UnsupportedKernelOperationError(`occt-wasm: ${method} is not yet implemented`);
 }
 
 // ---------------------------------------------------------------------------

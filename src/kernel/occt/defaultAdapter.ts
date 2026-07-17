@@ -18,6 +18,7 @@ import type { KernelCapabilities } from '@/kernel/capabilities.js';
 import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
 import type { KernelAdapter, KernelMeshResult, KernelInstance } from '@/kernel/types.js';
 import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 
 import { makeBooleanOps } from './booleanOps.js';
 import { makeBooleanPipelineOps } from './booleanPipelineOps.js';
@@ -50,7 +51,7 @@ import { draftWithHistory } from './historyOps.js';
 // brepjs-patterns-disable: max-function-lines
 function makeBrepkitOnlyStubs() {
   const u = (name: string) => () => {
-    throw new Error(`${name} is only available with the brepkit kernel`);
+    throw new UnsupportedKernelOperationError(`${name} is only available with the brepkit kernel`);
   };
   return {
     export3MF: u('export3MF'),
@@ -67,7 +68,9 @@ function makeBrepkitOnlyStubs() {
     detectSmallFeatures: u('detectSmallFeatures'),
     recognizeFeatures: u('recognizeFeatures'),
     meshBoolean: ((): KernelMeshResult => {
-      throw new Error('meshBoolean is only available with the brepkit kernel');
+      throw new UnsupportedKernelOperationError(
+        'meshBoolean is only available with the brepkit kernel'
+      );
     }) as KernelAdapter['meshBoolean'],
     edgeToFaceMap: u('edgeToFaceMap'),
     sharedEdges: u('sharedEdges'),

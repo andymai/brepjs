@@ -6,6 +6,7 @@
  */
 
 import { getKernel, getActiveKernelId } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
 import { castResultShapeWithKnownType, borrowShapeWithKnownType } from '@/core/shapeTypes.js';
@@ -350,18 +351,9 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
 // Per-kernel memo of whether kernel.sharedEdges is a real implementation. occt-wasm
 // and brepkit compute shared edges natively (kernel-side edge-to-face map); the occt
 // (OpenCascade) adapter stubs it, and manifold has no exact topology of its own. We
-// probe once per kernel, matching only the codebase's three canonical "unsupported
-// operation" sentinels so a genuine geometry error still propagates instead of
-// silently degrading to the JS path.
+// probe once per kernel and fall back only for a marked UnsupportedKernelOperationError,
+// so a genuine geometry error still propagates instead of silently degrading to JS.
 const nativeSharedEdgesSupported = new Map<string, boolean>();
-
-function isUnsupportedKernelError(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : '';
-  // occt stub | occt-wasm notImplemented | manifold occtOrThrow
-  return /is only available with the|is not yet implemented|requires a registered occt kernel/.test(
-    msg
-  );
-}
 
 /**
  * Get all edges shared between two faces.
@@ -390,7 +382,7 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
       // already adopted). Then classify: only fall back on the unsupported
       // sentinels, else re-throw a genuine error.
       if (raw) for (const r of raw) kernel.dispose(r);
-      if (!isUnsupportedKernelError(e)) throw e;
+      if (!isUnsupportedKernelOperationError(e)) throw e;
       nativeSharedEdgesSupported.set(kernelId, false);
     }
   }
