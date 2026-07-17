@@ -286,11 +286,22 @@ export function withArenaCheckpoint<T>(fn: () => T): T {
     if (!isUnsupportedKernelOperationError(e)) throw e;
     return fn();
   }
+  let result: T;
   try {
-    return fn();
-  } finally {
-    kernel.restoreCheckpoint(cp);
+    result = fn();
+  } catch (e) {
+    // fn's error is primary: still restore, but never let a restore failure mask
+    // it (a plain `finally { restore() }` would swallow the original throw).
+    try {
+      kernel.restoreCheckpoint(cp);
+    } catch {
+      /* surface fn's error instead */
+    }
+    throw e;
   }
+  // Success path: a restore failure here is a genuine bug — let it surface.
+  kernel.restoreCheckpoint(cp);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
