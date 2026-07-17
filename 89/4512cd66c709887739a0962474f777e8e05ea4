@@ -1,0 +1,26 @@
+src/core/disposal.ts
+  s_5e405101d80a5b::t_46c74db4700366 266-295
+  s_5e405101d80a5b::t_a8695af9181d44 13
+src/measurement/interferenceFns.ts
+  s_5e405101d80a5b::t_be78cab80417dd 14
+  s_5e405101d80a5b::t_a7f79ac2ce7338 89-101
+tests/wasmArenaDisposal.test.ts
+  s_5e405101d80a5b::t_ae2f2d91e2d10a 106
+  s_5e405101d80a5b::t_357154451d9fdb 204-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "894512cd66c709887739a0962474f777e8e05ea4",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
