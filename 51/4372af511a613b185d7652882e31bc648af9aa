@@ -1,0 +1,37 @@
+tests/kernelCapabilityGuards.test.ts
+  s_5e405101d80a5b::t_7d37244e6c4ae3 50-78
+  s_5e405101d80a5b::t_db61f1cd1228b3 11-14,16-17
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_5e405101d80a5b::t_9bb8bd32339741 45
+  s_5e405101d80a5b::t_477a3602b46853 114
+src/topology/adjacencyFns.ts
+  s_5e405101d80a5b::t_2339118d92250b 385
+  s_5e405101d80a5b::t_67135613a2e250 9
+  s_5e405101d80a5b::t_bfddfb28794e69 354-355
+src/kernel/occt/defaultAdapter.ts
+  s_5e405101d80a5b::t_d4e390e9ebc40b 54
+  s_5e405101d80a5b::t_06a3407e1a86c0 71-73
+  s_5e405101d80a5b::t_22a5a935d59672 21
+src/kernel/unsupported.ts
+  s_5e405101d80a5b::t_c0b21d3ee1afdb 26
+  s_5e405101d80a5b::t_4fa284d429adc5 1-25,27
+src/kernel/manifold/meshHandle.ts
+  s_5e405101d80a5b::t_79913c7801f896 4
+  s_5e405101d80a5b::t_76ace3c08e30c5 54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "514372af511a613b185d7652882e31bc648af9aa",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
