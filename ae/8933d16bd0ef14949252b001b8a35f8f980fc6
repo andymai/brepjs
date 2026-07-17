@@ -1,0 +1,21 @@
+tests/subShapeQuery.test.ts
+  s_5e405101d80a5b::t_006c4f28890a2e 55-58
+.size-limit.json
+  s_5e405101d80a5b::t_16633e434236c9 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ae8933d16bd0ef14949252b001b8a35f8f980fc6",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
