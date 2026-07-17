@@ -423,3 +423,40 @@ function sharedEdgesJS<D extends Dimension>(face1: Face<D>, face2: Face<D>): Edg
 
   return shared;
 }
+
+// Per-kernel memo of native kernel.adjacentFaces support (occt-wasm/brepkit native,
+// occt/manifold stub → JS fallback), mirroring nativeSharedEdgesSupported.
+const nativeAdjacentFacesSupported = new Map<string, boolean>();
+
+/**
+ * Hashes of the faces adjacent to `face` within `parent`, keyed like the kernel's
+ * `hashCode(_, HASH_CODE_MAX)` (so they index the parent's cached faces).
+ *
+ * Prefers the kernel-native adjacency (occt-wasm/brepkit) — markedly faster than
+ * the borrowed JS edge-map path, which pays per-call edge extraction + hashing —
+ * and disposes the owned result handles here so none escape. Returns only hashes,
+ * keeping callers clear of the borrowed-vs-owned handle contract; falls back to
+ * the borrowed-view {@link adjacentFaces} where the native op is unsupported.
+ */
+export function adjacentFaceHashes<D extends Dimension>(
+  parent: AnyShape<D>,
+  face: Face<D>
+): number[] {
+  const kernel = getKernel();
+  const kernelId = getActiveKernelId() ?? '';
+  if (nativeAdjacentFacesSupported.get(kernelId) !== false) {
+    try {
+      const raw = kernel.adjacentFaces(parent.wrapped, face.wrapped);
+      nativeAdjacentFacesSupported.set(kernelId, true);
+      try {
+        return raw.map((r) => kernel.hashCode(r, HASH_CODE_MAX));
+      } finally {
+        for (const r of raw) kernel.dispose(r);
+      }
+    } catch (e) {
+      if (!isUnsupportedKernelOperationError(e)) throw e;
+      nativeAdjacentFacesSupported.set(kernelId, false);
+    }
+  }
+  return adjacentFaces(parent, face).map((f) => kernel.hashCode(f.wrapped, HASH_CODE_MAX));
+}

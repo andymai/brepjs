@@ -103,6 +103,7 @@ import {
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
+import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
 import { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
@@ -216,6 +217,19 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           checkAllInterferences([a, b]);
+        })
+      ).toBe(0);
+    });
+
+    it('adjacentFaceHashes leaks nothing (native path disposes its owned results)', () => {
+      // The native kernel.adjacentFaces returns owned fresh slots; adjacentFaceHashes
+      // reads their hashes and disposes them, so nothing survives per call.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const f0 = getFaces(b)[0];
+          if (!f0) throw new Error('box must have a face');
+          adjacentFaceHashes(b, f0);
         })
       ).toBe(0);
     });

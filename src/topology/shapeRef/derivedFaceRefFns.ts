@@ -15,7 +15,7 @@ import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/core/types.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
-import { adjacentFaces, facesOfEdge, verticesOfEdge } from '@/topology/adjacencyFns.js';
+import { adjacentFaceHashes, facesOfEdge, verticesOfEdge } from '@/topology/adjacencyFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
 import { distance, facesForRole, roleOfFace, vertexCentroid } from './roleLookup.js';
 import type {
@@ -42,27 +42,29 @@ function facesByNormal(shape: Shape3D, normal: Vec3): Face[] {
 }
 
 /**
- * Faces adjacent to BOTH face sets, excluding the sets themselves. Uses the
- * cached edge→faces adjacency (`adjacentFaces`) rather than an O(F·N) per-pair
- * `sharedEdges` scan.
+ * Faces adjacent to BOTH face sets, excluding the sets themselves. Works purely
+ * in face-hash space via `adjacentFaceHashes` (kernel-native adjacency where
+ * available, no per-call edge extraction), then maps the surviving hashes back to
+ * the parent's borrowed cache faces — so the returned handles keep the same
+ * borrowed lifetime (freed with `shape`) the resolution path already assumes.
  */
 function betweenFaces(shape: Shape3D, aFaces: readonly Face[], bFaces: readonly Face[]): Face[] {
   const exclude = new Set([...aFaces, ...bFaces].map(getHashCode));
   const adjacentToA = new Set<number>();
-  for (const a of aFaces) {
-    for (const f of adjacentFaces(shape, a)) adjacentToA.add(getHashCode(f));
-  }
-  const result: Face[] = [];
+  for (const a of aFaces) for (const h of adjacentFaceHashes(shape, a)) adjacentToA.add(h);
+
+  const betweenHashes: number[] = [];
   const seen = new Set<number>();
   for (const b of bFaces) {
-    for (const f of adjacentFaces(shape, b)) {
-      const h = getHashCode(f);
+    for (const h of adjacentFaceHashes(shape, b)) {
       if (exclude.has(h) || seen.has(h) || !adjacentToA.has(h)) continue;
       seen.add(h);
-      result.push(f);
+      betweenHashes.push(h);
     }
   }
-  return result;
+
+  const byHash = new Map<number, Face>(getFaces(shape).map((f) => [getHashCode(f), f]));
+  return betweenHashes.map((h) => byHash.get(h)).filter((f): f is Face => f !== undefined);
 }
 
 /** Face whose center is nearest `point`; undefined on a tie (→ ambiguous). */

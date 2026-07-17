@@ -13,6 +13,8 @@ import {
   sharedEdges,
   isSameShape,
 } from '@/index.js';
+import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
+import { getHashCode } from '@/topology/shapeFns.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -132,5 +134,20 @@ describe('sharedEdges', () => {
       const shared = sharedEdges(face0, oppositeFace);
       expect(shared).toHaveLength(0);
     }
+  });
+});
+
+describe('adjacentFaceHashes', () => {
+  it('returns the hashes of the adjacent faces (agrees with adjacentFaces)', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const face0 = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const expected = new Set(adjacentFaces(b, face0).map(getHashCode));
+    const hashes = adjacentFaceHashes(b, face0);
+    expect(hashes).toHaveLength(4); // a box face borders 4 others
+    expect(new Set(hashes)).toEqual(expected);
+    // every returned hash indexes an actual face of the parent
+    const parentFaceHashes = new Set(faces.map(getHashCode));
+    expect(hashes.every((h) => parentFaceHashes.has(h))).toBe(true);
   });
 });
