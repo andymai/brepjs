@@ -10,6 +10,7 @@
 
 import type { KernelShape } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { BrepError } from './errors.js';
 import type { Result } from './result.js';
 
@@ -260,6 +261,36 @@ export function createBorrowedHandle(ocShape: KernelShape): ShapeHandle {
     // never fire. Tie dependent lifetimes to the owning parent's handle instead.
     onDispose: noop,
   };
+}
+
+/**
+ * Run `fn` between an arena checkpoint and restore, reclaiming every slot it
+ * allocates — including kernel-internal query temporaries brepjs holds no handle
+ * for (e.g. `distance`/`boundingBox` scratch) — in a single `restoreCheckpoint`.
+ *
+ * **SAFE ONLY when `fn` returns plain data** (numbers, points, arrays): restore
+ * frees *every* slot allocated after the checkpoint, so a live shape handle in
+ * the return value would dangle. Use for data-returning batch analysis over many
+ * bodies; never to wrap a shape builder. Inputs allocated before the call are
+ * untouched (restore only frees from the mark forward).
+ *
+ * No-op wrapper on kernels without arena checkpoints (occt/manifold): `fn` runs
+ * directly and those kernels' own disposal applies.
+ */
+export function withArenaCheckpoint<T>(fn: () => T): T {
+  const kernel = getKernel();
+  let cp: number;
+  try {
+    cp = kernel.checkpoint();
+  } catch (e) {
+    if (!isUnsupportedKernelOperationError(e)) throw e;
+    return fn();
+  }
+  try {
+    return fn();
+  } finally {
+    kernel.restoreCheckpoint(cp);
+  }
 }
 
 // ---------------------------------------------------------------------------

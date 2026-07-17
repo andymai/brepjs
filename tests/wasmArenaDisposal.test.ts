@@ -103,6 +103,7 @@ import {
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
+import { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
 
@@ -196,6 +197,25 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           using b = box(10, 10, 10);
           for (const e of getEdges(b)) e[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('checkInterference / checkAllInterferences leave no arena residue (checkpoint bulk-free)', () => {
+      // distance() leaves kernel-internal scratch handles brepjs can't free
+      // individually; withArenaCheckpoint reclaims them. Without it this grew
+      // ~16 slots per pair, O(N^2) across the batch.
+      using a = box(10, 10, 10);
+      using b0 = box(10, 10, 10);
+      using b = translate(b0, [5, 0, 0]);
+      expect(
+        perIterationLeak(() => {
+          checkInterference(a, b);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          checkAllInterferences([a, b]);
         })
       ).toBe(0);
     });

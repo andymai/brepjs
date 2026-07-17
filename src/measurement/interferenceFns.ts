@@ -11,6 +11,7 @@ import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
 import { getBounds, type Bounds3D } from '@/topology/shapeFns.js';
+import { withArenaCheckpoint } from '@/core/disposal.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
@@ -84,13 +85,20 @@ export function checkInterference(
       )
     );
   }
-  const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
 
-  return ok({
-    hasInterference: dist.value <= tolerance,
-    minDistance: dist.value,
-    pointOnShape1: dist.point1,
-    pointOnShape2: dist.point2,
+  // The kernel's distance computation leaves internal scratch handles brepjs
+  // holds no reference to — a per-call arena residue that compounds to O(N^2)
+  // across checkAllInterferences. We return only plain data (distance + points),
+  // so bulk-freeing the whole call with a checkpoint is safe and keeps the arena
+  // flat even under heavy pairwise batches.
+  return withArenaCheckpoint(() => {
+    const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
+    return ok({
+      hasInterference: dist.value <= tolerance,
+      minDistance: dist.value,
+      pointOnShape1: dist.point1,
+      pointOnShape2: dist.point2,
+    });
   });
 }
 
