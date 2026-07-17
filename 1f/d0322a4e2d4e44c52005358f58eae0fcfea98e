@@ -1,0 +1,30 @@
+packages/brepjs-cad/package.json
+  s_5e405101d80a5b::t_989639867c3822 64-65
+  s_468b9666d614f8::t_7dcbd5b0879f3e 66
+package-lock.json
+  s_5e405101d80a5b::t_a20d6bb6a900a4 6802,14796-14798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1fd0322a4e2d4e44c52005358f58eae0fcfea98e",
+  "prompts": {},
+  "sessions": {
+    "s_468b9666d614f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3a2d620-32af-4696-b7b7-0665ae01e451",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
