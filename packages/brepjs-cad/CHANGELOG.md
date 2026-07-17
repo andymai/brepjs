@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.87.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.87.0...brepjs-cad-v0.87.1) (2026-07-17)
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
 ## [0.87.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.86.0...brepjs-cad-v0.87.0) (2026-07-17)
 
 
