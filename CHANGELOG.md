@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.21](https://github.com/andymai/brepjs/compare/brepjs-v18.118.20...brepjs-v18.118.21) (2026-07-17)
+
+
+### Performance Improvements
+
+* **kernel:** implement occt-wasm arena checkpoint/releaseSince bulk-free ([#1830](https://github.com/andymai/brepjs/issues/1830)) ([5f0c7f8](https://github.com/andymai/brepjs/commit/5f0c7f83ea8e5101445d233438cf396b0f393d36))
+
 ## [18.118.20](https://github.com/andymai/brepjs/compare/brepjs-v18.118.19...brepjs-v18.118.20) (2026-07-17)
 
 
