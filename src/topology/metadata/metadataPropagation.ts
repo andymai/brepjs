@@ -18,6 +18,7 @@ import {
 } from './originTrackingFns.js';
 import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
 import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
+import { subShapeHashes } from '@/topology/topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Face hash collection
@@ -42,18 +43,12 @@ export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): 
   // O(1) check: skip expensive face iteration when no metadata exists
   if (!inputs.some(hasAnyMetadata)) return [];
 
-  const kernel = getKernel();
+  // Only the face hashes are needed (a membership set for metadata matching), so
+  // use subShapeHashes — the native occt-wasm 3.7.0 path reads them without
+  // allocating a handle per face, avoiding per-face arena churn on every
+  // WithHistory boolean/transform/modifier.
   const hashes: number[] = [];
-  for (const input of inputs) {
-    const faces = kernel.iterShapes(input.wrapped, 'face');
-    for (const face of faces) {
-      hashes.push(kernel.hashCode(face, HASH_CODE_MAX));
-      // These faces are transient — only their hash is read. Release each so
-      // the occt-wasm arena reclaims the slot instead of accumulating one
-      // handle per input face on every WithHistory boolean.
-      kernel.dispose(face);
-    }
-  }
+  for (const input of inputs) hashes.push(...subShapeHashes(input, 'face'));
   return hashes;
 }
 

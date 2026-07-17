@@ -104,6 +104,8 @@ import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
+import { collectInputFaceHashes } from '@/topology/metadata/metadataPropagation.js';
+import { setShapeOrigin } from '@/topology/metadata/originTrackingFns.js';
 import { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
@@ -217,6 +219,18 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           checkAllInterferences([a, b]);
+        })
+      ).toBe(0);
+    });
+
+    it('collectInputFaceHashes (metadata propagation) allocates no face handles', () => {
+      // Runs on every WithHistory boolean/transform when inputs carry metadata.
+      // Now backed by subShapeHashes, so it reads face hashes without a handle each.
+      using b = box(10, 10, 10);
+      setShapeOrigin(b, 1); // give it metadata so the collection actually iterates
+      expect(
+        perIterationLeak(() => {
+          collectInputFaceHashes([b]);
         })
       ).toBe(0);
     });
