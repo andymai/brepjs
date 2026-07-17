@@ -378,11 +378,18 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
   const kernel = getKernel();
   const kernelId = getActiveKernelId() ?? '';
   if (nativeSharedEdgesSupported.get(kernelId) !== false) {
+    let raw: KernelShape[] | undefined;
     try {
-      const raw = kernel.sharedEdges(face1.wrapped, face2.wrapped);
+      raw = kernel.sharedEdges(face1.wrapped, face2.wrapped);
+      const result = raw.map((e) => castResultShapeWithKnownType(e, 'edge') as Edge<D>);
       nativeSharedEdgesSupported.set(kernelId, true);
-      return raw.map((e) => castResultShapeWithKnownType(e, 'edge') as Edge<D>);
+      return result;
     } catch (e) {
+      // On a mid-map cast failure the native slots aren't all owned yet — release
+      // the whole batch so nothing leaks (dispose is idempotent for any the cast
+      // already adopted). Then classify: only fall back on the unsupported
+      // sentinels, else re-throw a genuine error.
+      if (raw) for (const r of raw) kernel.dispose(r);
       if (!isUnsupportedKernelError(e)) throw e;
       nativeSharedEdgesSupported.set(kernelId, false);
     }
