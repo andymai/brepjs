@@ -1,0 +1,24 @@
+src/kernel/manifold/geometryOps.ts
+  s_5e405101d80a5b::t_0597256b6003f2 18
+  s_5e405101d80a5b::t_a33c8acac9dbbf 68-70
+  s_5e405101d80a5b::t_e9c6fdeef88454 80
+src/kernel/manifold/measureOps.ts
+  s_5e405101d80a5b::t_9414f1669eb93b 259
+  s_5e405101d80a5b::t_314cda3baecfe0 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "baf9eba267c16628718e23a9ddd9c88cf83d2bcd",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
