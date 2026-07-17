@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.25](https://github.com/andymai/brepjs/compare/brepjs-v18.118.24...brepjs-v18.118.25) (2026-07-17)
+
+
+### Performance Improvements
+
+* **metadata:** collect input face hashes via subShapeHashes (no per-face handle) ([#1846](https://github.com/andymai/brepjs/issues/1846)) ([bfe9840](https://github.com/andymai/brepjs/commit/bfe98404d68341c808f960d7132228e5e8ab9ca6))
+
 ## [18.118.24](https://github.com/andymai/brepjs/compare/brepjs-v18.118.23...brepjs-v18.118.24) (2026-07-17)
 
 
