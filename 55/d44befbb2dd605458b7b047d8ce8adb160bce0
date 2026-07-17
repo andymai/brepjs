@@ -1,0 +1,21 @@
+benchmarks/metadata-propagation.bench.test.ts
+  s_5e405101d80a5b::t_aaf26d54490b49 1-50,55-71,73-80,82-91
+  s_5e405101d80a5b::t_d1e6df24795445 51-54
+  s_5e405101d80a5b::t_cf66efae511df2 72,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "55d44befbb2dd605458b7b047d8ce8adb160bce0",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
