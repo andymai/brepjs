@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.22](https://github.com/andymai/brepjs/compare/brepjs-v18.118.21...brepjs-v18.118.22) (2026-07-17)
+
+
+### Performance Improvements
+
+* **topology:** use native subShapeCount/subShapeHashes for handle-free queries ([#1834](https://github.com/andymai/brepjs/issues/1834)) ([597ad0b](https://github.com/andymai/brepjs/commit/597ad0b50e1f2aa17465e80f2e7b525b1e73e50c))
+
 ## [18.118.21](https://github.com/andymai/brepjs/compare/brepjs-v18.118.20...brepjs-v18.118.21) (2026-07-17)
 
 
