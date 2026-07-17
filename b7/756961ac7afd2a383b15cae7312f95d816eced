@@ -1,0 +1,25 @@
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_5e405101d80a5b::t_c229b4a0f5134c 195-201,203-205,209-214,217-219,222-225
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_5e405101d80a5b::t_ac8fddd1505a39 150-153
+tests/wasmArenaDisposal.test.ts
+  s_5e405101d80a5b::t_5d8a035855423c 1281-1325
+tests/helpers/kernelDivergences.ts
+  s_5e405101d80a5b::t_04394c2fba8396 371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b7756961ac7afd2a383b15cae7312f95d816eced",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
