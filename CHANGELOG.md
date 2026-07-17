@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.20](https://github.com/andymai/brepjs/compare/brepjs-v18.118.19...brepjs-v18.118.20) (2026-07-17)
+
+
+### Performance Improvements
+
+* **topology:** use the kernel-native sharedEdges when available ([#1824](https://github.com/andymai/brepjs/issues/1824)) ([5dae290](https://github.com/andymai/brepjs/commit/5dae290b8c820a3078442eba1d4db274b3d5639e))
+
 ## [18.118.19](https://github.com/andymai/brepjs/compare/brepjs-v18.118.18...brepjs-v18.118.19) (2026-07-16)
 
 
