@@ -1,0 +1,19 @@
+src/core/disposal.ts
+  s_5e405101d80a5b::t_c5e07dc0f28cc5 289,291-300,302-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ee76f76d3be44c34465a350d51eb08bf0156dfee",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
