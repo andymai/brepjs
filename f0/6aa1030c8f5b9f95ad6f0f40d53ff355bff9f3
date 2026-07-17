@@ -1,0 +1,28 @@
+src/topology/adjacencyFns.ts
+  s_5e405101d80a5b::t_d8f4dd1fbf1678 426-462
+tests/wasmArenaDisposal.test.ts
+  s_5e405101d80a5b::t_4e1d561bf7bdd1 224-236
+  s_5e405101d80a5b::t_95a86909ef442d 106
+tests/adjacencyFns.test.ts
+  s_5e405101d80a5b::t_3a1a39a3a73397 139-153
+  s_5e405101d80a5b::t_6b0a549f21c1af 16-17
+src/topology/shapeRef/derivedFaceRefFns.ts
+  s_5e405101d80a5b::t_7872fdd2af6a1d 45-49,54-56,59,62,65-67
+  s_5e405101d80a5b::t_e3963839795c3d 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f06aa1030c8f5b9f95ad6f0f40d53ff355bff9f3",
+  "prompts": {},
+  "sessions": {
+    "s_5e405101d80a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38b14465-1669-46ed-85ca-11e12ced65df",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
