@@ -1278,3 +1278,48 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     });
   });
 });
+
+describe.skipIf(!isOcctWasm)('occt-wasm arena checkpoint / releaseSince bulk-free', () => {
+  it('restoreCheckpoint frees every slot allocated since the mark in one call', () => {
+    const kernel = getKernel();
+    const baseline = arenaCount();
+    const cp = kernel.checkpoint();
+    expect(cp).toBeGreaterThanOrEqual(0);
+    // Allocate a batch of intermediates, disposing none of them.
+    for (let i = 0; i < 15; i++) box(1 + i, 1, 1);
+    expect(arenaCount()).toBeGreaterThan(baseline);
+    // A single releaseSince reclaims the whole batch.
+    kernel.restoreCheckpoint(cp);
+    expect(arenaCount()).toBe(baseline);
+  });
+
+  it('checkpointCount tracks open marks; discardCheckpoint keeps the handles', () => {
+    const kernel = getKernel();
+    const before = kernel.checkpointCount();
+    const cp = kernel.checkpoint();
+    expect(kernel.checkpointCount()).toBe(before + 1);
+    using b = box(10, 10, 10);
+    const held = arenaCount();
+    kernel.discardCheckpoint(cp);
+    expect(kernel.checkpointCount()).toBe(before);
+    // Discard reclaims nothing — the shape stays live and meshable.
+    expect(arenaCount()).toBe(held);
+    expect(getFaces(b).length).toBe(6);
+  });
+
+  it('nested checkpoints restore independently (LIFO)', () => {
+    const kernel = getKernel();
+    const before = kernel.checkpointCount();
+    const baseline = arenaCount();
+    const outer = kernel.checkpoint();
+    box(2, 2, 2);
+    const inner = kernel.checkpoint();
+    box(3, 3, 3);
+    kernel.restoreCheckpoint(inner); // frees only the inner box
+    expect(arenaCount()).toBeGreaterThan(baseline);
+    expect(kernel.checkpointCount()).toBe(before + 1);
+    kernel.restoreCheckpoint(outer); // frees the outer box too
+    expect(arenaCount()).toBe(baseline);
+    expect(kernel.checkpointCount()).toBe(before);
+  });
+});

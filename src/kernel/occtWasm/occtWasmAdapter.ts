@@ -192,21 +192,37 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('executeBatch');
   }
 
+  // occt-wasm >= 3.7.0 exposes stateless arena marks (checkpoint/releaseSince);
+  // brepjs's interface also reports checkpointCount, so track open marks JS-side.
+  // Bulk-free contract: every handle allocated after a checkpoint is invalidated
+  // by restoreCheckpoint — copy out (as mesh/data) or allocate before the mark
+  // anything that must survive; a live handle used afterward is a use-after-free.
+  private readonly openCheckpoints: number[] = [];
+
   checkpoint(): number {
-    // occt-wasm doesn't have checkpoint support yet
-    notImplemented('checkpoint');
+    const mark = this.k.checkpoint();
+    this.openCheckpoints.push(mark);
+    return mark;
   }
 
   checkpointCount(): number {
-    notImplemented('checkpointCount');
+    return this.openCheckpoints.length;
   }
 
-  restoreCheckpoint(_cp: number): void {
-    notImplemented('restoreCheckpoint');
+  restoreCheckpoint(cp: number): void {
+    this.k.releaseSince(cp);
+    this.closeCheckpoint(cp);
   }
 
-  discardCheckpoint(_cp: number): void {
-    notImplemented('discardCheckpoint');
+  discardCheckpoint(cp: number): void {
+    // Keep every handle; just forget the mark (occt-wasm marks hold no state).
+    this.closeCheckpoint(cp);
+  }
+
+  /** Drop `cp` and any marks nested inside it (LIFO), so the depth stays honest. */
+  private closeCheckpoint(cp: number): void {
+    const idx = this.openCheckpoints.lastIndexOf(cp);
+    if (idx !== -1) this.openCheckpoints.length = idx;
   }
 
   // =========================================================================

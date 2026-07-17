@@ -147,6 +147,10 @@ export interface OcctKernelWasm {
   release(id: number): void;
   releaseAll(): void;
   getShapeCount(): number;
+  /** Mark the current arena high-water point (occt-wasm >= 3.7.0). */
+  checkpoint(): number;
+  /** Free every handle allocated at or after `mark` in one call (occt-wasm >= 3.7.0). */
+  releaseSince(mark: number): void;
 
   // --- Primitives ---
   makeBox(dx: number, dy: number, dz: number): number;

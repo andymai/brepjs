@@ -368,7 +368,7 @@ export const divergences: DivergenceMap = {
     brepkitExtended: {
       kind: 'not-implemented',
       reason:
-        'Extended I/O, advanced modeling, validation, point classification, mesh boolean, batch execution, arena checkpoint are brepkit-only',
+        'Extended I/O, advanced modeling, validation, point classification, mesh boolean, batch execution are brepkit-only (occt-wasm >= 3.7.0 also has arena checkpoint/releaseSince — covered in wasmArenaDisposal.test.ts)',
     },
     gltfRoundTrip: {
       kind: 'not-implemented',
