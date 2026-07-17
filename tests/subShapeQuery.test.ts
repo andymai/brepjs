@@ -52,10 +52,9 @@ describe('subShapeCount / subShapeHashes', () => {
     using t0 = cylinder(3, 20, { centered: true });
     using t = translate(t0, [2, 2, 0]);
     const r = cut(a, t);
-    if (isOk(r)) {
-      using s = unwrap(r);
-      expect(subShapeCount(s, 'edge')).toBe(getEdges(s).length);
-      expect(new Set(subShapeHashes(s, 'edge'))).toEqual(handleHashes(s, 'edge'));
-    }
+    expect(isOk(r)).toBe(true); // fail loudly rather than skip the boolean case
+    using s = unwrap(r);
+    expect(subShapeCount(s, 'edge')).toBe(getEdges(s).length);
+    expect(new Set(subShapeHashes(s, 'edge'))).toEqual(handleHashes(s, 'edge'));
   });
 });
