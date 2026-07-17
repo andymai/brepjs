@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.24](https://github.com/andymai/brepjs/compare/brepjs-v18.118.23...brepjs-v18.118.24) (2026-07-17)
+
+
+### Performance Improvements
+
+* **topology:** native adjacency for betweenFaces via adjacentFaceHashes ([#1842](https://github.com/andymai/brepjs/issues/1842)) ([e5dcc11](https://github.com/andymai/brepjs/commit/e5dcc117a6ed043a88d60fe3536b6173213964d0))
+
 ## [18.118.23](https://github.com/andymai/brepjs/compare/brepjs-v18.118.22...brepjs-v18.118.23) (2026-07-17)
 
 
