@@ -1322,4 +1322,18 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena checkpoint / releaseSince bulk-fre
     expect(arenaCount()).toBe(baseline);
     expect(kernel.checkpointCount()).toBe(before);
   });
+
+  it('restoreCheckpoint rejects a stale/unknown mark instead of erasing live handles', () => {
+    const kernel = getKernel();
+    const cp = kernel.checkpoint();
+    kernel.restoreCheckpoint(cp); // cp is now closed
+    // Restoring it again — or any fabricated mark — must throw, not silently
+    // releaseSince over unrelated live arena handles.
+    expect(() => {
+      kernel.restoreCheckpoint(cp);
+    }).toThrow();
+    expect(() => {
+      kernel.restoreCheckpoint(-1);
+    }).toThrow();
+  });
 });
