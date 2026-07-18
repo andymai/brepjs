@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.27](https://github.com/andymai/brepjs/compare/brepjs-v18.118.26...brepjs-v18.118.27) (2026-07-18)
+
+
+### Bug Fixes
+
+* **kernel:** make manifold copyShape a real copy, not an alias ([#1858](https://github.com/andymai/brepjs/issues/1858)) ([e71c37c](https://github.com/andymai/brepjs/commit/e71c37c9f274fd3c16a0258e0955aba1f1475e94))
+
 ## [18.118.26](https://github.com/andymai/brepjs/compare/brepjs-v18.118.25...brepjs-v18.118.26) (2026-07-17)
 
 
