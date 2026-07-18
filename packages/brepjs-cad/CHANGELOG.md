@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.89.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.88.0...brepjs-cad-v0.89.0) (2026-07-18)
+
+
+### Features
+
+* **brepjs-cad:** add airfoils.md feature recipe (swept fans/props/impellers) ([#1566](https://github.com/andymai/brepjs/issues/1566)) ([8c786db](https://github.com/andymai/brepjs/commit/8c786db69ead59edcdc9d0f8525e43324552e4db))
+* **brepjs-cad:** aimed section cut for the design judge (Phase 3) ([#1543](https://github.com/andymai/brepjs/issues/1543)) ([40e5acd](https://github.com/andymai/brepjs/commit/40e5acd54318d768dc5a620403d17d43e358e698))
+* **brepjs-cad:** decomposed, cross-checked design-judge rubric (Phase 1.5) ([#1539](https://github.com/andymai/brepjs/issues/1539)) ([8059b6d](https://github.com/andymai/brepjs/commit/8059b6d701ae5980e6bb11f51695aa102fe2bb43))
+* **brepjs-cad:** deterministic body/interference metrics for the design judge (Phase 1) ([#1531](https://github.com/andymai/brepjs/issues/1531)) ([d296b54](https://github.com/andymai/brepjs/commit/d296b545f2d7084b861683d61b626ace4747a371))
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+* **brepjs-cad:** kernel-anchored Set-of-Marks for the design judge ([#1545](https://github.com/andymai/brepjs/issues/1545)) ([2b6f5b4](https://github.com/andymai/brepjs/commit/2b6f5b436f2a73c96747cc71f83afc8715765cd0))
+* **brepjs-cad:** reliable internal-bore detection for the design judge (keystone) ([#1542](https://github.com/andymai/brepjs/issues/1542)) ([0d780c3](https://github.com/andymai/brepjs/commit/0d780c3b73c2551dab2f04a6ff31bf9ec8cae2ab))
+* **brepjs-cad:** surface fragmentation in verify --check (the [#1](https://github.com/andymai/brepjs/issues/1) design defect) ([#1560](https://github.com/andymai/brepjs/issues/1560)) ([45a4f6e](https://github.com/andymai/brepjs/commit/45a4f6e268331b7816cd9957fbdab4c0893b2000))
+* **brepjs-cad:** xray internal-reveal shot for the design judge (Phase 2a) ([#1540](https://github.com/andymai/brepjs/issues/1540)) ([eca5bc9](https://github.com/andymai/brepjs/commit/eca5bc9ad20fc7947132d647952245cfe466a7f4))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** add a triangular-gusset recipe to the implement skill (bracket/enclosure eval) ([#1571](https://github.com/andymai/brepjs/issues/1571)) ([346d042](https://github.com/andymai/brepjs/commit/346d0423fefa3bd163f4075f69bf96d478543bf5))
+* **brepjs-cad:** add the "realize the designed object" bar to the implement skill ([#1563](https://github.com/andymai/brepjs/issues/1563)) ([e150357](https://github.com/andymai/brepjs/commit/e1503570aaf271ebef1e39d48be9c70a5ffe8f03))
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **brepjs-cad:** close gear-teeth edge cases found by /eval-skill (ring, worm tip relief, GT2) ([#1548](https://github.com/andymai/brepjs/issues/1548)) ([4bd0494](https://github.com/andymai/brepjs/commit/4bd049401f3affcc3f38e3a31bb9520653a3e89c))
+* **brepjs-cad:** code + hint the degenerate-edge (duplicate-vertex) verify failure ([#1550](https://github.com/andymai/brepjs/issues/1550)) ([502dffc](https://github.com/andymai/brepjs/commit/502dffc4a2ae495ae5c98b0c7966721abe0d5f48))
+* **brepjs-cad:** correct spur-gear example flanks + add root fillet ([#1528](https://github.com/andymai/brepjs/issues/1528)) ([6971c6b](https://github.com/andymai/brepjs/commit/6971c6befa1fea36a8c2f3ee89c4aa20946020c7))
+* **brepjs-cad:** exploded-joint legibility + disjoint-compound caveat (basics eval) ([#1565](https://github.com/andymai/brepjs/issues/1565)) ([9d06121](https://github.com/andymai/brepjs/commit/9d0612111a595e57fcfca6fd191ed9169fc2c062))
+* **brepjs-cad:** handle brepjs/playground refs + summarize body relations in the digest ([#1547](https://github.com/andymai/brepjs/issues/1547)) ([b0acef0](https://github.com/andymai/brepjs/commit/b0acef0ad80cdd61f0d2683f1e6d0ece0cae028e))
+* **brepjs-cad:** heal 6 implement-skill findings from the full-flywheel re-run ([#1568](https://github.com/andymai/brepjs/issues/1568)) ([f63bf3d](https://github.com/andymai/brepjs/commit/f63bf3d5a0aa638d06e11dd7e2c27e84dbf74746))
+* **brepjs-cad:** heal implement + polish skills from clean-room eval ([#1526](https://github.com/andymai/brepjs/issues/1526)) ([0645e16](https://github.com/andymai/brepjs/commit/0645e163e1d8759c95406d0f9526d0aa3b5dd480))
+* **brepjs-cad:** heal implement skill — deep-stack bounds extremes aren't datums ([#1529](https://github.com/andymai/brepjs/issues/1529)) ([5ed366f](https://github.com/andymai/brepjs/commit/5ed366f266b3e6e50ae4b54d5779aa05453e894a))
+* **brepjs-cad:** heal implement skill from the eval flywheel (3 findings) ([#1552](https://github.com/andymai/brepjs/issues/1552)) ([51def82](https://github.com/andymai/brepjs/commit/51def82db4e0600e85f45e4dd828cc9caee58d15))
+* **brepjs-cad:** heal implement skill from the full-corpus eval flywheel (4 findings) ([#1554](https://github.com/andymai/brepjs/issues/1554)) ([3cfc28e](https://github.com/andymai/brepjs/commit/3cfc28ed8b82c46330f1d75f1e98c13fd4d65a06))
+* **brepjs-cad:** make blind-judge reference adaptation render multi-body parts at scale ([#1530](https://github.com/andymai/brepjs/issues/1530)) ([18d4523](https://github.com/andymai/brepjs/commit/18d4523c85e1b22496bb5c0b8fb382a1146429c6))
+* **brepjs-cad:** polish skill — bosses on shells must fuse, or they float (eval finding) ([#1553](https://github.com/andymai/brepjs/issues/1553)) ([07cbf93](https://github.com/andymai/brepjs/commit/07cbf93e47fbf880df53bc2a1cee05bf0d17e2d5))
+* **brepjs-cad:** teach worm-wheel and rack tooth recipes; fix gear-build contradiction ([#1544](https://github.com/andymai/brepjs/issues/1544)) ([b0da85f](https://github.com/andymai/brepjs/commit/b0da85f218d463e0f1ef0ca8760cec54b4814b02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
 ## [0.88.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.87.2...brepjs-cad-v0.88.0) (2026-07-18)
 
 
