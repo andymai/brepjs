@@ -3,18 +3,11 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
 import type { ManifoldShape, ManifoldSolid } from './meshHandle.js';
-import { nodeOf, unwrap, wrap } from './meshHandle.js';
+import { cloneSolid, nodeOf, unwrap, wrap } from './meshHandle.js';
 import { makeNode } from './opGraph.js';
 import { orientPositive } from './approximations.js';
 
 const ROUNDING_BALL_SEGMENTS = 16;
-
-// A pass-through op (no geometric change available) must still yield a distinct
-// manifold object so two handles never alias the same one — otherwise the
-// adapter's dispose() double-frees. translate by zero returns a fresh Manifold.
-function cloneSolid(solid: ManifoldSolid): ManifoldSolid {
-  return typeof solid?.translate === 'function' ? solid.translate([0, 0, 0]) : solid;
-}
 
 // Rolling-ball preview: Minkowski shrink-then-grow rounds convex edges by
 // `radius`. Falls back to a clone of the input solid when the build lacks

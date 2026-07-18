@@ -20,6 +20,13 @@ export function unwrap(shape: ManifoldShape): ManifoldSolid {
   return shape.manifold;
 }
 
+// A pass-through op (no geometric change available) must still yield a distinct
+// manifold object so two handles never alias the same one — otherwise the
+// adapter's dispose() double-frees. translate by zero returns a fresh Manifold.
+export function cloneSolid(solid: ManifoldSolid): ManifoldSolid {
+  return typeof solid?.translate === 'function' ? solid.translate([0, 0, 0]) : solid;
+}
+
 export function nodeOf(shape: ManifoldShape): OpNode {
   return shape.node;
 }

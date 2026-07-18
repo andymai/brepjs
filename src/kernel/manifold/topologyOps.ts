@@ -2,7 +2,16 @@ import type { KernelTopologyOps } from '@/kernel/interfaces/topologyOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape, ShapeOrientation, ShapeType } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
-import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
+import {
+  asManifoldShape,
+  brepCache,
+  cloneSolid,
+  occtOrThrow,
+  resolveOcct,
+  unwrap,
+  wrap,
+} from './meshHandle.js';
+import { makeNode } from './opGraph.js';
 import { replay } from './replay.js';
 import { extractFaces } from './nativeFaces.js';
 import { extractEdges, extractVertices } from './nativeEdges.js';
@@ -162,9 +171,18 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
     isSame,
     isEqual: isSame,
     downcast: (shape) => shape,
-    // Mesh kernel: handles are value-like and never freed individually, so the
-    // identity result is safe to dispose independently of the source.
-    copyShape: (shape) => shape,
+    // dispose() frees the native solid, so a copy must own a distinct one — an
+    // identity result would free the source's solid when the copy is disposed.
+    // The zero-translate node keeps the copy replayable while isolating its
+    // brepCache entry (dispose frees the cached B-rep by node).
+    copyShape: (shape) => {
+      const s = asManifoldShape(shape);
+      if (!s) return shape;
+      return wrap(
+        cloneSolid(unwrap(s)),
+        makeNode('translateShape', { x: 0, y: 0, z: 0 }, [s.node])
+      );
+    },
     hashCode,
     isNull,
     shapeOrientation: (_shape: KernelShape): ShapeOrientation => 'forward',
