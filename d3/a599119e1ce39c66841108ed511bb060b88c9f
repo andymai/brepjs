@@ -1,0 +1,27 @@
+src/kernel/manifold/topologyOps.ts
+  s_6621518790775f::t_95c84a21a3bbeb 5-14
+  s_6621518790775f::t_27cd7c9d193212 174-180,185
+  s_6621518790775f::t_fd236f74175ef2 181-184
+src/kernel/manifold/meshHandle.ts
+  s_6621518790775f::t_7868973618642b 23-29
+tests/manifoldCopyShape.test.ts
+  s_6621518790775f::t_f47cb716f43784 1-47
+src/kernel/manifold/modifierOps.ts
+  s_6621518790775f::t_a408d9066f2500 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d3a599119e1ce39c66841108ed511bb060b88c9f",
+  "prompts": {},
+  "sessions": {
+    "s_6621518790775f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9b17881-bb98-4ecb-aff3-071ae0880f3c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
