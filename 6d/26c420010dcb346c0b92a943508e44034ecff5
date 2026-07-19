@@ -1,0 +1,40 @@
+src/io/gltfImportFns.ts
+  s_ed9e12856b4ac0::t_5bfb3d85fa2bbb 29
+  s_ed9e12856b4ac0::t_7228f19a1a7552 7
+src/io/ioUtils.ts
+  s_ed9e12856b4ac0::t_a20ba38ed52d46 11
+  s_ed9e12856b4ac0::t_1ae87e36754300 47-52,54-56
+src/io/threemfImportFns.ts
+  s_ed9e12856b4ac0::t_fb40f28ed3b5ef 321
+  s_ed9e12856b4ac0::t_187b96e3c71fcf 7
+src/topology/booleanFns.ts
+  s_ed9e12856b4ac0::t_f45d77b961c83a 363-372,375-378,386,390,393,395,397,403-404,414,426,431-434,436,444-449
+  s_ed9e12856b4ac0::t_a8111995c2fb8c 522,528,533-534
+  s_ed9e12856b4ac0::t_549b8f9f9a4aa6 362
+src/io/importFns.ts
+  s_ed9e12856b4ac0::t_2d8ccac8419283 8
+  s_ed9e12856b4ac0::t_2eb640159f0fb0 37-43
+  s_ed9e12856b4ac0::t_f9d972a00d7421 99-105
+  s_ed9e12856b4ac0::t_514116b5cc1c58 72
+src/topology/modifierFns.ts
+  s_ed9e12856b4ac0::t_73aefa9f66afdc 496
+  s_ed9e12856b4ac0::t_778eb140996063 282
+  s_ed9e12856b4ac0::t_79a4f4d39d5ef5 450
+  s_ed9e12856b4ac0::t_476d37a80c3d22 433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6d26c420010dcb346c0b92a943508e44034ecff5",
+  "prompts": {},
+  "sessions": {
+    "s_ed9e12856b4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6b7570-191e-45d6-9081-ec0334dd2b2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
