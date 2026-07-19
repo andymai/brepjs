@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.31](https://github.com/andymai/brepjs/compare/brepjs-v18.118.30...brepjs-v18.118.31) (2026-07-19)
+
+
+### Bug Fixes
+
+* **topology:** size the section cutting face to the shape's bounding box ([#1876](https://github.com/andymai/brepjs/issues/1876)) ([a99015f](https://github.com/andymai/brepjs/commit/a99015f0c4a80d384b3538420fe1a50b96313795))
+
 ## [18.118.30](https://github.com/andymai/brepjs/compare/brepjs-v18.118.29...brepjs-v18.118.30) (2026-07-19)
 
 
