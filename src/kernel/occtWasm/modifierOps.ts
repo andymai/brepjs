@@ -109,17 +109,28 @@ function runFilletVariable(
   endRadius: number
 ): KernelShape {
   const resultId = k.filletVariable(shapeId, edgeId, startRadius, endRadius);
-  const solids = k.getSubShapes(resultId, 'solid');
-  const kept = solids.size() === 1 ? solids.get(0) : -1;
+  // Release resultId on any failure before it is either handed to the caller
+  // (unexpected topology) or released as the compound wrapper below — otherwise a
+  // throw from getSubShapes would leak it.
+  let releaseResult = true;
   try {
-    return wrapResult(k, kept === -1 ? resultId : kept);
-  } finally {
-    for (let i = 0, n = solids.size(); i < n; i++) {
-      const id = solids.get(i);
-      if (id !== kept) k.release(id);
+    const solids = k.getSubShapes(resultId, 'solid');
+    try {
+      const kept = solids.size() === 1 ? solids.get(0) : -1;
+      for (let i = 0, n = solids.size(); i < n; i++) {
+        const id = solids.get(i);
+        if (id !== kept) k.release(id);
+      }
+      if (kept === -1) {
+        releaseResult = false;
+        return wrapResult(k, resultId);
+      }
+      return wrapResult(k, kept);
+    } finally {
+      solids.delete();
     }
-    solids.delete();
-    if (kept !== -1) k.release(resultId);
+  } finally {
+    if (releaseResult) k.release(resultId);
   }
 }
 
@@ -159,8 +170,10 @@ export function filletVariable(k: OcctKernelWasm, shape: KernelShape, spec: stri
     let matchedEdgeId = -1;
     try {
       for (let i = 0, n = edgeVec.size(); i < n; i++) {
-        if (matchedEdgeId === -1 && k.hashCode(edgeVec.get(i), HASH_UPPER_BOUND) === parsed.edge) {
-          matchedEdgeId = edgeVec.get(i);
+        const id = edgeVec.get(i);
+        if (k.hashCode(id, HASH_UPPER_BOUND) === parsed.edge) {
+          matchedEdgeId = id;
+          break;
         }
       }
     } finally {
