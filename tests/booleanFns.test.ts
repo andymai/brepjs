@@ -24,6 +24,7 @@ import {
   isShape3D,
   getShapeKind,
   getEdges,
+  getFaces,
   getKernel,
   createSolid,
   measureVolume,
@@ -207,6 +208,28 @@ describe('boolean edge cases', () => {
       );
       expect(isOk(result)).toBe(true);
       expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(3000, 0);
+    });
+
+    it('pairwise strategy honors simplify for a two-shape fuse (regression)', (ctx) => {
+      // Two face-adjacent boxes fuse into a 20x10x10 solid whose four side faces
+      // stay split at x=10 until simplify (BRepAlgoAPI_Fuse::SimplifyResult) merges
+      // them, dropping the face count from 10 to 6. The pairwise leaf previously
+      // hard-coded simplify:false for the two-input case, silently dropping the
+      // caller's request — with 3+ inputs the top-level combine reapplies it, but a
+      // two-input fuse is a lone leaf with no combine downstream. Only the occt
+      // (opencascade.js) kernel applies the option on fuse; the others ignore it.
+      skipIfDiverges(ctx, 'booleanFns.pairwiseSimplifyFaceMerge');
+      const boxes = (): [Shape3D, Shape3D] => [
+        boxAt(0, 0, 0, 10, 10, 10),
+        boxAt(10, 0, 0, 20, 10, 10),
+      ];
+      const plain = fuseAll(boxes(), { strategy: 'pairwise', simplify: false });
+      const simplified = fuseAll(boxes(), { strategy: 'pairwise', simplify: true });
+      expect(isOk(plain)).toBe(true);
+      expect(isOk(simplified)).toBe(true);
+      const simplifiedShape = unwrap(simplified);
+      expect(unwrap(measureVolume(simplifiedShape))).toBeCloseTo(2000, 0);
+      expect(getFaces(simplifiedShape).length).toBeLessThan(getFaces(unwrap(plain)).length);
     });
 
     it('fuseAll with native strategy (default)', () => {

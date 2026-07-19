@@ -1081,6 +1081,28 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         })
       ).toBe(0);
     });
+
+    it('fuseAll pairwise strategy disposes intermediate solids (regression)', () => {
+      // Divide-and-conquer over 4 inputs produces two owned intermediate solids
+      // (fuse(b0,b1) and fuse(b2,b3)) that the combine step consumes; the pairwise
+      // helper previously returned the combined result without disposing those
+      // operands, leaking ~N-2 arena slots per call. Only the caller-owned leaf
+      // inputs must survive — the guard here is that they, and the result, are
+      // disposed so any residual growth is a genuine intermediate leak.
+      expect(
+        perIterationLeak(() => {
+          using b0 = box(10, 10, 10);
+          using s1 = box(10, 10, 10);
+          using b1 = translate(s1, [10, 0, 0]);
+          using s2 = box(10, 10, 10);
+          using b2 = translate(s2, [20, 0, 0]);
+          using s3 = box(10, 10, 10);
+          using b3 = translate(s3, [30, 0, 0]);
+          const r = fuseAll([b0, b1, b2, b3], { strategy: 'pairwise' });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
   });
 
   describe('sweep / loft variants leak nothing', () => {

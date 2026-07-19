@@ -60,8 +60,13 @@ export const divergences: DivergenceMap = {
         'The mesh CSG kernel re-tessellates and attributes split coplanar faces through its own path, not the B-rep hash/geometric origin fallback; a split floor piece can pick up the neighbour tool origin. Exercised on the B-rep kernels (occt/brepkit/opencascade) that gridfinity ships.',
     },
     // -----------------------------------------------------------------------
-    // booleans.test.ts — mesh CSG vs exact B-rep
+    // booleanFns.test.ts — simplify (SimplifyResult) is occt-only on fuse
     // -----------------------------------------------------------------------
+    'booleanFns.pairwiseSimplifyFaceMerge': {
+      kind: 'skip',
+      reason:
+        'fuse ignores the simplify option on manifold; only the occt (opencascade.js) kernel applies SimplifyResult to merge coplanar faces, so the fused solid face count is unchanged by simplify:true.',
+    },
     'booleans.cutFuseRecombine': {
       kind: 'skip',
       reason:
@@ -121,6 +126,14 @@ export const divergences: DivergenceMap = {
     },
   },
   brepkit: {
+    // -----------------------------------------------------------------------
+    // booleanFns.test.ts — brepkit fuse ignores BooleanOptions (incl. simplify)
+    // -----------------------------------------------------------------------
+    'booleanFns.pairwiseSimplifyFaceMerge': {
+      kind: 'skip',
+      reason:
+        'brepkit fuse warns and ignores BooleanOptions (optimisation/simplify/strategy/fuzzyValue); only the occt (opencascade.js) kernel applies SimplifyResult, so the fused solid face count is unchanged by simplify:true.',
+    },
     // -----------------------------------------------------------------------
     // projection.test.ts — brepkit HLR (projectEdges) is partial
     // -----------------------------------------------------------------------
@@ -427,6 +440,14 @@ export const divergences: DivergenceMap = {
   // excludeTests in kernelRegistry.ts. Add entries here when specific
   // tests need per-test skipping rather than whole-file exclusion.
   'occt-wasm': {
+    // ---------------------------------------------------------------------
+    // booleanFns.test.ts — occt-wasm fuse ignores the simplify option
+    // ---------------------------------------------------------------------
+    'booleanFns.pairwiseSimplifyFaceMerge': {
+      kind: 'skip',
+      reason:
+        'occt-wasm fuse does not apply the simplify option (no SimplifyResult); only the occt (opencascade.js) kernel merges coplanar faces, so the fused solid face count is unchanged by simplify:true.',
+    },
     // ---------------------------------------------------------------------
     // Raw-OCCT-API tests: exercise the Emscripten `oc` object (gp_Vec,
     // TopoDS_*, FS.readFile, raw BREP) that occt-wasm does not expose by
