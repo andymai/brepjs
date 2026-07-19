@@ -408,6 +408,23 @@ describe('section', () => {
     expect(edges.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('sections a far-off-origin shape without clipping (default planeSize)', (ctx) => {
+    skipIfDiverges(ctx, 'booleanFns.sectionOffOrigin');
+    // A 1000-unit box centred ~12500 from the world origin, straddling z=0. The old
+    // fixed +/-1e4 cutting face centred on the plane origin only reached +/-10000, so
+    // it silently clipped this shape to nothing; the bbox-derived, shape-centred face
+    // covers it and yields the full square cross-section at its true location.
+    const b = translate(boxAt(0, 0, 0, 1000, 1000, 10), [12000, 12000, -5]);
+    const result = section(b, 'XY');
+    expect(isOk(result)).toBe(true);
+    const s = unwrap(result);
+    expect(getEdges(s).length).toBeGreaterThanOrEqual(4);
+    const bb = getKernel().boundingBox(s.wrapped);
+    expect(bb.min[0]).toBeGreaterThan(11000);
+    expect(bb.max[0]).toBeLessThan(14000);
+    expect(bb.max[0] - bb.min[0]).toBeCloseTo(1000, 0);
+  });
+
   it('returns result for plane not intersecting shape', () => {
     // Box at z=0..10, plane at z=100 — no intersection
     const b = boxAt(0, 0, 0, 10, 10, 10);

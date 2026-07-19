@@ -87,6 +87,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold is a mesh kernel: a cone tessellates to planar facets, so there is no analytic cone face to extract an axis from',
     },
+    'booleanFns.sectionOffOrigin': {
+      kind: 'not-implemented',
+      reason:
+        "manifold's section requires a plane carrying normal+origin params, not the bounded cutting face section() builds, so it errors for any box (verified at-origin too) — a pre-existing gap unrelated to the plane-sizing fix this test guards.",
+    },
 
     // -----------------------------------------------------------------------
     // measureFns.test.ts — null-shape helpers and analytic-surface measurement
