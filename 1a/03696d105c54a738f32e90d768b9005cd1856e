@@ -1,0 +1,20 @@
+src/kernel/occtWasm/modifierOps.ts
+  s_ed9e12856b4ac0::t_f6c6d99d88113d 112-115,117-130,132-133
+  s_ed9e12856b4ac0::t_90aa1d90ebd4e5 173-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "1a03696d105c54a738f32e90d768b9005cd1856e",
+  "prompts": {},
+  "sessions": {
+    "s_ed9e12856b4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6b7570-191e-45d6-9081-ec0334dd2b2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
