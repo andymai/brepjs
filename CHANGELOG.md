@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.28](https://github.com/andymai/brepjs/compare/brepjs-v18.118.27...brepjs-v18.118.28) (2026-07-19)
+
+
+### Bug Fixes
+
+* plug occt-wasm arena leaks in imports/modifiers and fuseAll pairwise simplify ([#1862](https://github.com/andymai/brepjs/issues/1862)) ([c00728b](https://github.com/andymai/brepjs/commit/c00728b25d168a48ec2cbd02ba03a765e2fc506f))
+
 ## [18.118.27](https://github.com/andymai/brepjs/compare/brepjs-v18.118.26...brepjs-v18.118.27) (2026-07-18)
 
 
