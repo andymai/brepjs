@@ -600,23 +600,30 @@ export function cutAll(
  * Choose the section face's in-plane half-extent and centre so it covers the
  * whole shape. The rectangle is centred on the shape's bounding-box centre
  * projected onto the cutting plane (dropping the normal component keeps the cut
- * at the plane's position while covering an off-origin shape). When the caller
- * doesn't pass a `planeSize`, the half-extent is the bbox diagonal — large enough
- * for any plane orientation — so a big or off-origin shape is not silently clipped.
+ * at the plane's position while covering an off-origin shape). The half-extent is
+ * the bbox diagonal — large enough for any plane orientation — so a big or
+ * off-origin shape is not silently clipped.
+ *
+ * When the caller passes an explicit `planeSize` they've taken manual control, so
+ * the historical plane-origin centring is preserved (only the auto path re-centres
+ * on the shape) to avoid silently changing behaviour for existing callers.
  */
 function resolveSectionPlacement(
   shape: AnyShape<Dimension>,
   plane: Plane,
   planeSize: number | undefined
 ): { size: number; center: Vec3 } {
+  if (planeSize !== undefined) {
+    return { size: planeSize, center: plane.origin };
+  }
   const { min, max } = getKernel().boundingBox(shape.wrapped);
   const bboxCenter: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
   // Project the bbox centre onto the plane: c - ((c - origin)·n) n.
   const normalOffset = vecDot(vecSub(bboxCenter, plane.origin), plane.zDir);
   const center = vecSub(bboxCenter, vecScale(plane.zDir, normalOffset));
   const diagonal = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
-  // Floor guards a degenerate (point/empty) bbox; caller size wins when given.
-  const size = planeSize ?? Math.max(diagonal, 1);
+  // Floor guards a degenerate (point/empty) bbox.
+  const size = Math.max(diagonal, 1);
   return { size, center };
 }
 

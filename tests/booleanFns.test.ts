@@ -420,9 +420,14 @@ describe('section', () => {
     const s = unwrap(result);
     expect(getEdges(s).length).toBeGreaterThanOrEqual(4);
     const bb = getKernel().boundingBox(s.wrapped);
+    // Both in-plane axes must land on the off-origin 1000x1000 footprint (x,y in
+    // [12000, 13000]); a clipped result would be empty or sit near the origin.
     expect(bb.min[0]).toBeGreaterThan(11000);
     expect(bb.max[0]).toBeLessThan(14000);
     expect(bb.max[0] - bb.min[0]).toBeCloseTo(1000, 0);
+    expect(bb.min[1]).toBeGreaterThan(11000);
+    expect(bb.max[1]).toBeLessThan(14000);
+    expect(bb.max[1] - bb.min[1]).toBeCloseTo(1000, 0);
   });
 
   it('returns result for plane not intersecting shape', () => {
