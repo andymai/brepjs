@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.29](https://github.com/andymai/brepjs/compare/brepjs-v18.118.28...brepjs-v18.118.29) (2026-07-19)
+
+
+### Bug Fixes
+
+* **kernel:** reconstruct a real pcurve in occt-wasm extractCurve2dFromEdge ([#1868](https://github.com/andymai/brepjs/issues/1868)) ([07b8793](https://github.com/andymai/brepjs/commit/07b879345fb26862ee301c2246dde0df9985eed8))
+
 ## [18.118.28](https://github.com/andymai/brepjs/compare/brepjs-v18.118.27...brepjs-v18.118.28) (2026-07-19)
 
 
