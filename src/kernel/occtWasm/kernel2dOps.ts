@@ -935,13 +935,17 @@ export function extractCurve2dFromEdge(
   face: KernelShape
 ): Curve2dHandle {
   // occt-wasm exposes no native pcurve adaptor (BRepAdaptor_Curve2d), so
-  // reconstruct the edge's 2D curve on the face: sample the 3D edge and project
-  // each point onto the face surface via uvFromPoint (GeomAPI_ProjectPointOnSurf),
-  // then fit a 2D B-spline — the same projection approach brepkit uses. Projection
-  // resolves to the nearest UV branch, so a seam-crossing edge on a periodic
-  // surface (cylinder/cone) is approximate; planar and non-seam edges are exact.
+  // reconstruct the edge's 2D curve on the face: sample the 3D edge, project each
+  // point onto the face surface via uvFromPoint (GeomAPI_ProjectPointOnSurf), and
+  // fit a 2D B-spline through the samples — the same projection approach brepkit
+  // uses. Accuracy: makeBSpline2d has no fitting solver and treats the samples as
+  // control poles, so a straight (LINE) edge is exact, while a curved pcurve (an
+  // arc/circle on a planar face, or any curved edge) is a smooth approximation
+  // that bows slightly inside the samples — the deviation shrinks as N rises.
+  // Point projection also snaps to the nearest UV branch, so a seam-crossing edge
+  // on a periodic surface (cylinder/cone) can jump branches.
   const [first, last] = curveParameters(k, edge);
-  const N = 30;
+  const N = 60;
   const points: [number, number][] = [];
   for (let i = 0; i <= N; i++) {
     const t = first + ((last - first) * i) / N;
