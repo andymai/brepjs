@@ -150,6 +150,25 @@ describe('edgeToCurve', () => {
       }
     }
   });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'reconstructs a real pcurve on occt-wasm, not a placeholder line',
+    () => {
+      // Regression: occt-wasm previously returned a fixed unit line (0,0)->(1,0)
+      // for every edge (extent 1, identical for all). The real pcurve of a
+      // 10-unit box edge spans ~10 units in the planar face's UV parameterization,
+      // and adjacent edges map to distinct pcurves.
+      const b = box(10, 10, 10);
+      const face = getFaces(b)[0]!;
+      const edges = getEdges(face);
+      const bb0 = curvesBoundingBox([edgeToCurve(edges[0]!, face)]);
+      const bb1 = curvesBoundingBox([edgeToCurve(edges[1]!, face)]);
+      expect(bb0.width + bb0.height).toBeGreaterThan(5);
+      const [c0x, c0y] = bb0.center;
+      const [c1x, c1y] = bb1.center;
+      expect(Math.abs(c0x - c1x) + Math.abs(c0y - c1y)).toBeGreaterThan(0.5);
+    }
+  );
 });
 
 describe('curvesBoundingBox', () => {

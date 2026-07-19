@@ -1948,8 +1948,8 @@ export class OcctWasmAdapter implements KernelAdapter {
   extractSurfaceFromFace(face: KernelShape): KernelType {
     return kernel2dOps.extractSurfaceFromFace(face);
   }
-  extractCurve2dFromEdge(_edge: KernelShape, _face: KernelShape): Curve2dHandle {
-    return kernel2dOps.extractCurve2dFromEdge();
+  extractCurve2dFromEdge(edge: KernelShape, face: KernelShape): Curve2dHandle {
+    return kernel2dOps.extractCurve2dFromEdge(this.k, edge, face);
   }
   buildCurves3d(wire: KernelShape): void {
     kernel2dOps.buildCurves3d(this.k, wire);
