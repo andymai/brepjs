@@ -7,6 +7,13 @@
 import type { KernelShape } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { makeVecU32, resolveUniformRadius, unwrap, wrapResult } from './helpers.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+
+// occt's hashCode upper bound (INT_MAX). Mirrors core's HASH_CODE_MAX but is kept
+// kernel-local so this layer-0 file need not import from core (layer 1); the
+// kernel-agnostic filletVariable spec stores edge hashes at this bound, so the
+// resolution below must hash with the same value.
+const HASH_UPPER_BOUND = 2147483647;
 
 export function fillet(
   k: OcctKernelWasm,
@@ -87,20 +94,95 @@ export function offset(
   return wrapResult(k, k.offset(unwrap(shape), distance, tolerance ?? 1e-6));
 }
 
+/**
+ * Run occt-wasm's variable-fillet primitive and return the resulting solid.
+ * The primitive wraps its result in a single-solid compound (uniform fillet
+ * returns a bare solid); getSubShapes copies that solid into its own arena slot,
+ * so keep it and release the compound wrapper. An unexpected topology (zero or
+ * several solids) is returned as-is for the caller to reject.
+ */
+function runFilletVariable(
+  k: OcctKernelWasm,
+  shapeId: number,
+  edgeId: number,
+  startRadius: number,
+  endRadius: number
+): KernelShape {
+  const resultId = k.filletVariable(shapeId, edgeId, startRadius, endRadius);
+  const solids = k.getSubShapes(resultId, 'solid');
+  const kept = solids.size() === 1 ? solids.get(0) : -1;
+  try {
+    return wrapResult(k, kept === -1 ? resultId : kept);
+  } finally {
+    for (let i = 0, n = solids.size(); i < n; i++) {
+      const id = solids.get(i);
+      if (id !== kept) k.release(id);
+    }
+    solids.delete();
+    if (kept !== -1) k.release(resultId);
+  }
+}
+
 export function filletVariable(k: OcctKernelWasm, shape: KernelShape, spec: string): KernelShape {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON parse
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON parse of a kernel-agnostic spec
   const parsed: any = JSON.parse(spec);
+
+  // Legacy explicit form: { edgeId, startRadius, endRadius }.
   if (
     parsed.edgeId !== undefined &&
     parsed.startRadius !== undefined &&
     parsed.endRadius !== undefined
   ) {
-    return wrapResult(
-      k,
-      k.filletVariable(unwrap(shape), parsed.edgeId, parsed.startRadius, parsed.endRadius)
-    );
+    return runFilletVariable(k, unwrap(shape), parsed.edgeId, parsed.startRadius, parsed.endRadius);
   }
-  throw new Error('occt-wasm: filletVariable (complex spec) not implemented');
+
+  // Form emitted by the high-level variableFillet: { edge: hashCode, radii: [{param, radius}] }.
+  // occt-wasm's primitive builds a single linear start->end taper on one edge, so a constant
+  // (1-point) or linear (2-point) profile maps directly onto it. A genuine multi-point profile
+  // can't be represented and stays unsupported rather than being silently flattened to a line.
+  if (parsed.edge !== undefined && Array.isArray(parsed.radii) && parsed.radii.length > 0) {
+    const radii = parsed.radii;
+    if (radii.length > 2) {
+      throw new UnsupportedKernelOperationError(
+        'occt-wasm: filletVariable supports only a linear (<=2-point) radius profile; ' +
+          'a multi-point variable radius requires the brepkit kernel'
+      );
+    }
+    const startRadius = radii[0].radius;
+    const endRadius = radii[radii.length - 1].radius;
+    // The spec is kernel-agnostic and identifies the edge by stable hash (brepkit resolves it
+    // natively); occt-wasm's primitive takes the edge's arena slot id, so resolve the hash
+    // against the solid's edges. getSubShapes copies each edge into its own slot, so release
+    // every queried copy except the matched one (freed after the fillet runs).
+    const shapeId = unwrap(shape);
+    const edgeVec = k.getSubShapes(shapeId, 'edge');
+    let matchedEdgeId = -1;
+    try {
+      for (let i = 0, n = edgeVec.size(); i < n; i++) {
+        if (matchedEdgeId === -1 && k.hashCode(edgeVec.get(i), HASH_UPPER_BOUND) === parsed.edge) {
+          matchedEdgeId = edgeVec.get(i);
+        }
+      }
+    } finally {
+      for (let i = 0, n = edgeVec.size(); i < n; i++) {
+        const id = edgeVec.get(i);
+        if (id !== matchedEdgeId) k.release(id);
+      }
+      edgeVec.delete();
+    }
+    if (matchedEdgeId === -1) {
+      throw new UnsupportedKernelOperationError(
+        'occt-wasm: filletVariable: target edge not found on the shape'
+      );
+    }
+    try {
+      return runFilletVariable(k, shapeId, matchedEdgeId, startRadius, endRadius);
+    } finally {
+      k.release(matchedEdgeId);
+    }
+  }
+
+  throw new UnsupportedKernelOperationError('occt-wasm: filletVariable: unrecognized spec');
 }
 
 export function draft(

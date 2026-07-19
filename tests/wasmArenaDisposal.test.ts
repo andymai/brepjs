@@ -86,6 +86,7 @@ import {
   getWires,
   getFaces,
   getEdges,
+  variableFillet,
   getVertices,
   getShells,
   fixShape,
@@ -436,13 +437,30 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     // Modifiers return a fresh solid whose orphaned pre-downcast slot is released
     // by castResultShape/finalizeShape3D; the caller disposes the final result and
     // the source box. Any survivor is a leak inside the modifier itself.
-    // draft/variableFillet are excluded: they don't run on occt-wasm (brepkit-only
-    // / divergent), so their success path can't be exercised by this oracle.
+    // draft is excluded: it doesn't run on occt-wasm (brepkit-only / divergent),
+    // so its success path can't be exercised by this oracle.
     it('fillet leaks nothing', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
           const r = fillet(b, 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('variableFillet leaks nothing', () => {
+      // Resolves the edge hash via getSubShapes (per-edge arena copies) and unwraps
+      // the primitive's single-solid compound — both release their queried slots.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const edge = getEdges(b)[0];
+          if (!edge) return;
+          const r = variableFillet(b, edge, [
+            { param: 0, radius: 1 },
+            { param: 1, radius: 3 },
+          ]);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);

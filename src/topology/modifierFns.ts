@@ -642,8 +642,9 @@ export interface VariableFilletRadius {
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
  *
- * **Cross-kernel note:** Only brepkit supports variable-radius fillet.
- * Returns UNSUPPORTED_CAPABILITY error on OCCT.
+ * **Cross-kernel note:** brepkit supports arbitrary multi-point radius profiles.
+ * occt-wasm supports a linear (start/end, <=2-point) profile and returns
+ * UNSUPPORTED for multi-point; the opencascade.js kernel does not implement it.
  */
 export function variableFillet(
   shape: ValidSolid,

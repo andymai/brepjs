@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { initKernel, currentKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
@@ -327,6 +327,51 @@ describe('variableFillet validation', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = variableFillet(b, edges[0]!, [{ param: 0, radius: 0 }]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('VARIABLE_FILLET_FAILED');
+  });
+});
+
+// occt-wasm gained a linear (<=2-point) variable fillet: its primitive takes an
+// edge arena id (the caller passes a stable hash to resolve) and wraps the result
+// in a single-solid compound (uniform fillet returns a bare solid). Gated to
+// occt-wasm — occt (opencascade.js) doesn't implement it and brepkit's variable
+// fillet reports a physically-impossible volume (its own divergence).
+describe.skipIf(currentKernel !== 'occt-wasm')('variableFillet on occt-wasm', () => {
+  it('applies a linear (2-point) taper, yielding a valid smaller solid', () => {
+    const b = box(10, 10, 10);
+    const result = variableFillet(b, getEdges(b)[0]!, [
+      { param: 0, radius: 1 },
+      { param: 1, radius: 3 },
+    ]);
+    expect(isOk(result)).toBe(true);
+    const solid = unwrap(result);
+    expect(isSolid(solid)).toBe(true);
+    const vol = unwrap(measureVolume(solid));
+    expect(vol).toBeLessThan(1000);
+    expect(vol).toBeGreaterThan(900);
+  });
+
+  it('a constant profile matches a uniform fillet of the same radius', () => {
+    const b = box(10, 10, 10);
+    const edge = getEdges(b)[0]!;
+    const variable = variableFillet(b, edge, [{ param: 0, radius: 2 }]);
+    const uniform = fillet(b, [edge], 2);
+    expect(isOk(variable)).toBe(true);
+    expect(isOk(uniform)).toBe(true);
+    expect(unwrap(measureVolume(unwrap(variable)))).toBeCloseTo(
+      unwrap(measureVolume(unwrap(uniform))),
+      3
+    );
+  });
+
+  it('rejects a multi-point (>2) profile as unsupported', () => {
+    const b = box(10, 10, 10);
+    const result = variableFillet(b, getEdges(b)[0]!, [
+      { param: 0, radius: 1 },
+      { param: 0.5, radius: 5 },
+      { param: 1, radius: 1 },
+    ]);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('VARIABLE_FILLET_FAILED');
   });
