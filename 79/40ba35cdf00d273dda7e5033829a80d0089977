@@ -1,0 +1,24 @@
+tests/curves.test.ts
+  s_ed9e12856b4ac0::t_7669af924bdfb2 153-171
+src/kernel/occtWasm/kernel2dOps.ts
+  s_ed9e12856b4ac0::t_c9898cb4bf416b 17-18
+  s_ed9e12856b4ac0::t_b9da38805e29d0 932-956
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_ed9e12856b4ac0::t_b622b71e8adf8b 1951-1952
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7940ba35cdf00d273dda7e5033829a80d0089977",
+  "prompts": {},
+  "sessions": {
+    "s_ed9e12856b4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6b7570-191e-45d6-9081-ec0334dd2b2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
