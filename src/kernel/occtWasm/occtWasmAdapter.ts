@@ -1639,8 +1639,10 @@ export class OcctWasmAdapter implements KernelAdapter {
     return repairOps.fixShape(this.k, shape);
   }
 
-  fixSelfIntersection(_wire: KernelShape): KernelShape {
-    notImplemented('fixSelfIntersection');
+  fixSelfIntersection(wire: KernelShape): KernelShape {
+    // occt-wasm exposes no standalone ShapeFix_Wire::FixSelfIntersection; healWire
+    // runs the ShapeFix_Wire heal (which includes self-intersection repair).
+    return repairOps.healWire(this.k, wire);
   }
 
   // =========================================================================

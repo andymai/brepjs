@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { initKernel, currentKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -305,6 +305,22 @@ describe('autoHeal', () => {
       // so we just confirm no crash and the result is ok.
       const result = autoHeal(b, { fixSelfIntersection: true });
       expect(isOk(result)).toBe(true);
+    });
+
+    // autoHeal short-circuits valid shapes, so it never invokes the kernel's
+    // fixSelfIntersection above. occt-wasm previously threw notImplemented there
+    // (making the public wrapper return Err); it now delegates to healWire
+    // (ShapeFix_Wire), so a direct call heals a well-formed wire to a valid wire.
+    it.skipIf(currentKernel !== 'occt-wasm')('fixSelfIntersection heals a wire directly', () => {
+      const face = getFaces(box(10, 10, 10))[0];
+      expect(face).toBeDefined();
+      if (!face) return;
+      const wire = getWires(face)[0];
+      expect(wire).toBeDefined();
+      if (!wire) return;
+      const result = fixSelfIntersection(wire);
+      expect(isOk(result)).toBe(true);
+      expect(isWire(unwrap(result))).toBe(true);
     });
 
     it('all options explicitly true returns ok for a valid box', () => {
