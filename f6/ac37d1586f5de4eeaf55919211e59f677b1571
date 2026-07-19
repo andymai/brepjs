@@ -1,0 +1,23 @@
+tests/healingFns.test.ts
+  s_ed9e12856b4ac0::t_123438f380e485 315-320
+  s_ed9e12856b4ac0::t_09336c237d1fd6 2
+  s_ed9e12856b4ac0::t_d4bcbbbc88c73c 310-314,321-325
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_ed9e12856b4ac0::t_ee7b9ce33a0675 1642-1645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f6ac37d1586f5de4eeaf55919211e59f677b1571",
+  "prompts": {},
+  "sessions": {
+    "s_ed9e12856b4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6b7570-191e-45d6-9081-ec0334dd2b2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
