@@ -1,0 +1,34 @@
+src/kernel/occtWasm/modifierOps.ts
+  s_ed9e12856b4ac0::t_de670e2eea38e6 97-125,136,154-159,161,163,167-170,172-181
+  s_ed9e12856b4ac0::t_71bbc4a9082a5e 10
+  s_ed9e12856b4ac0::t_464b22c68a4a21 11-16
+  s_ed9e12856b4ac0::t_ae4ede16a445f0 127,129-130,138-144,150,183-185
+  s_ed9e12856b4ac0::t_428b198ca24067 162
+  s_ed9e12856b4ac0::t_ad0401b7459acf 145-149,151-153,160,164-166,171,182
+tests/wasmArenaDisposal.test.ts
+  s_ed9e12856b4ac0::t_1e93640eec4697 89
+  s_ed9e12856b4ac0::t_b5b6c3d609ac80 452-457,461-468
+  s_ed9e12856b4ac0::t_92a8973f282a37 458-460
+  s_ed9e12856b4ac0::t_7d8bbfafd9b408 440-441
+tests/modifierFns.test.ts
+  s_ed9e12856b4ac0::t_cd1e2038c1449a 335-379
+  s_ed9e12856b4ac0::t_31975f187cc65e 3
+src/topology/modifierFns.ts
+  s_ed9e12856b4ac0::t_36cf07514bf85c 645-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d52fb8ef778d2bdeff4bc516f6af88430d3675e5",
+  "prompts": {},
+  "sessions": {
+    "s_ed9e12856b4ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b6b7570-191e-45d6-9081-ec0334dd2b2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
