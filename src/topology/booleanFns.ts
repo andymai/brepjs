@@ -360,7 +360,22 @@ export function intersect(
 // ---------------------------------------------------------------------------
 
 /**
+ * Result of a pairwise fuse subtree. `owned` is true when `shape` is a fresh
+ * fused solid this recursion produced (the parent must dispose it once consumed)
+ * and false when it is a passthrough of a caller-owned input (a `count === 1`
+ * leaf) that must never be disposed here.
+ */
+interface PairwiseNode {
+  shape: Shape3D;
+  owned: boolean;
+}
+
+/**
  * Internal helper for pairwise fuse using index ranges to avoid array allocations.
+ *
+ * `isFinal` marks the subtree whose output is the overall result; only then does
+ * a two-input leaf apply `simplify` (with 3+ inputs the top-level combine already
+ * does, but a two-input fuse is a lone leaf with no combine to reapply it).
  */
 function fuseAllPairwise(
   shapes: Shape3D[],
@@ -368,22 +383,25 @@ function fuseAllPairwise(
   end: number,
   optimisation: 'none' | 'commonFace' | 'sameFace',
   simplify: boolean,
+  isFinal: boolean,
   trackEvolution: boolean,
   signal?: AbortSignal,
   fuzzyValue?: number
-): Result<Shape3D> {
+): Result<PairwiseNode> {
   if (signal?.aborted) throw signal.reason;
   const count = end - start;
-  if (count === 1) return ok(getAtOrThrow(shapes, start));
+  if (count === 1) return ok({ shape: getAtOrThrow(shapes, start), owned: false });
   if (count === 2) {
-    return fuse(getAtOrThrow(shapes, start), getAtOrThrow(shapes, start + 1), {
+    const pair = fuse(getAtOrThrow(shapes, start), getAtOrThrow(shapes, start + 1), {
       optimisation,
-      simplify: false,
+      simplify: isFinal ? simplify : false,
       trackEvolution,
       fuzzyValue,
       unsafe: true,
       ...(signal ? { signal } : {}),
     });
+    if (isErr(pair)) return pair;
+    return ok({ shape: pair.value, owned: true });
   }
 
   const mid = start + Math.ceil(count / 2);
@@ -393,6 +411,7 @@ function fuseAllPairwise(
     mid,
     optimisation,
     simplify,
+    false,
     trackEvolution,
     signal,
     fuzzyValue
@@ -404,13 +423,17 @@ function fuseAllPairwise(
     end,
     optimisation,
     simplify,
+    false,
     trackEvolution,
     signal,
     fuzzyValue
   );
-  if (isErr(rightResult)) return rightResult;
+  if (isErr(rightResult)) {
+    if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
+    return rightResult;
+  }
 
-  return fuse(leftResult.value, rightResult.value, {
+  const combined = fuse(leftResult.value.shape, rightResult.value.shape, {
     optimisation,
     simplify,
     trackEvolution,
@@ -418,6 +441,12 @@ function fuseAllPairwise(
     unsafe: true,
     ...(signal ? { signal } : {}),
   });
+  // The two operands are consumed by the combine; release the ones this
+  // recursion owns (never the caller-owned leaf passthroughs).
+  if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
+  if (rightResult.value.owned) disposeResultShape(rightResult.value.shape);
+  if (isErr(combined)) return combined;
+  return ok({ shape: combined.value, owned: true });
 }
 
 /**
@@ -490,16 +519,19 @@ export function fuseAll(
 
   // Pairwise fallback: recursive divide-and-conquer with index ranges
   // Uses index ranges instead of slice() to avoid array allocations
-  return fuseAllPairwise(
+  const pairwise = fuseAllPairwise(
     shapes,
     0,
     shapes.length,
     optimisation,
     simplify,
+    true,
     trackEvolution,
     signal,
     fuzzyValue
   );
+  if (isErr(pairwise)) return pairwise;
+  return ok(pairwise.value.shape);
 }
 
 /**

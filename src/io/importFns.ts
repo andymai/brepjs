@@ -5,7 +5,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
 
@@ -34,7 +34,13 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
       return err(ioError('STEP_IMPORT_FAILED', 'STEP file contains no valid geometry'));
     }
 
-    return ok(castShape(shapes[0]));
+    // Multi-root files yield several top-level shapes; only the first is
+    // returned, so release the rest to avoid leaking their arena slots.
+    for (let i = 1; i < shapes.length; i++) {
+      const extra = shapes[i];
+      if (extra) getKernel().dispose(extra);
+    }
+    return ok(castResultShape(shapes[0]));
   } catch (e) {
     return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file', e));
   }
@@ -63,7 +69,7 @@ export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
     if (shape.IsNull()) {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
-    return ok(castShape(shape));
+    return ok(castResultShape(shape));
   } catch (e) {
     return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file', e));
   }
@@ -90,7 +96,13 @@ export async function importIGES(blob: Blob): Promise<Result<UnknownDimShape>> {
       return err(ioError('IGES_IMPORT_FAILED', 'IGES file contains no valid geometry'));
     }
 
-    return ok(castShape(shapes[0]));
+    // Multi-root files yield several top-level shapes; only the first is
+    // returned, so release the rest to avoid leaking their arena slots.
+    for (let i = 1; i < shapes.length; i++) {
+      const extra = shapes[i];
+      if (extra) getKernel().dispose(extra);
+    }
+    return ok(castResultShape(shapes[0]));
   } catch (e) {
     return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e));
   }

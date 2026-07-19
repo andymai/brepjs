@@ -4,7 +4,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
 import { sewMeshToSolid } from './ioUtils.js';
@@ -318,7 +318,7 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
 
   try {
     const solid = kernel.buildSolidFromFaces(points, faces, 1e-6);
-    return ok(castShape(solid));
+    return ok(castResultShape(solid));
   } catch {
     // Fallback: resolve indexed triangles to vertex triples and sew
     const triangles: Array<

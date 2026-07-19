@@ -4,7 +4,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
 
@@ -26,7 +26,7 @@ export async function importGLB(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
     const shape = getKernel().importGLB(data);
-    return ok(castShape(shape));
+    return ok(castResultShape(shape));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return err(ioError(BrepErrorCode.GLB_IMPORT_FAILED, `Failed to import GLB: ${msg}`, e));

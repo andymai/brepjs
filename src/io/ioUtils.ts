@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
+import { castShape, castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
 
@@ -44,9 +44,16 @@ export function sewMeshToSolid(
   }
 
   try {
-    return ok(castShape(kernel.sewAndSolidify(triFaces, tolerance)));
+    // sewAndSolidify copies the faces into a fresh solid, so the tri-face slots
+    // can be released and the orphaned pre-downcast handle cast away.
+    const solid = kernel.sewAndSolidify(triFaces, tolerance);
+    const cast = castResultShape(solid);
+    for (const triFace of triFaces) kernel.dispose(triFace);
+    return ok(cast);
   } catch {
-    // If sewing/solid fails, try sewing alone
+    // Open/degenerate surface: sew alone into a shell/compound. On arena kernels
+    // the sewn shell shares the input face slots, so leave the tri-faces and the
+    // pre-downcast handle untouched (castShape, no dispose) to avoid freeing them.
     try {
       return ok(castShape(kernel.sew(triFaces, tolerance)));
     } catch (e) {

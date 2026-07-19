@@ -279,6 +279,7 @@ export function fillet(
       const resultShape = getKernel().fillet(shape.wrapped, edgeShapes, kernelRadius);
       const cast = castResultShape(resultShape);
       if (!isShape3D(cast)) {
+        disposeResultShape(cast);
         return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
       }
       return ok(cast as ValidSolid);
@@ -429,6 +430,7 @@ export function shell(
       );
       const cast = castResultShape(resultShape);
       if (!isShape3D(cast)) {
+        disposeResultShape(cast);
         return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
       }
       return ok(cast as ValidSolid);
@@ -445,6 +447,7 @@ export function shell(
     );
     const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
@@ -490,6 +493,7 @@ export function offset(shape: ValidSolid, distance: number, tolerance = 1e-6): R
     );
     const cast = castResultShape(resultShape);
     if (!isShape3D(cast)) {
+      disposeResultShape(cast);
       return err(kernelError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
