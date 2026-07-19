@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.118.30](https://github.com/andymai/brepjs/compare/brepjs-v18.118.29...brepjs-v18.118.30) (2026-07-19)
+
+
+### Bug Fixes
+
+* **kernel:** implement linear variable fillet on occt-wasm ([#1872](https://github.com/andymai/brepjs/issues/1872)) ([2580795](https://github.com/andymai/brepjs/commit/2580795c0afaffa3d9a7d0fcd724d47fabae9bfc))
+
 ## [18.118.29](https://github.com/andymai/brepjs/compare/brepjs-v18.118.28...brepjs-v18.118.29) (2026-07-19)
 
 
