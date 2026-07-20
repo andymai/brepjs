@@ -37,6 +37,18 @@ export function translate<T extends AnyShape<Dimension>>(shape: Shapeable<T>, v:
   return transforms.translate(resolve(shape), v);
 }
 
+// An array passed where an options object is expected resolves option keys to
+// `Array.prototype` methods — notably `at`, which becomes a function instead of
+// `undefined` and corrupts a plane/pivot origin into NaN, silently producing
+// degenerate geometry rather than an error. Reject it loudly. See issue #1881.
+function assertNotPositionalOptions(options: unknown, fn: string): void {
+  if (Array.isArray(options)) {
+    throw new Error(
+      `${fn}() expects an options object, e.g. ${fn}(shape, { ... }), not an array of coordinates.`
+    );
+  }
+}
+
 /** Options for {@link rotate}. */
 export interface RotateOptions {
   /** Pivot point. Default: [0, 0, 0]. */
@@ -51,6 +63,7 @@ export function rotate<T extends AnyShape<Dimension>>(
   angle: number,
   options?: RotateOptions
 ): T {
+  assertNotPositionalOptions(options, 'rotate');
   const pivotPoint = options?.at;
   return transforms.rotate(resolve(shape), angle, pivotPoint, options?.axis);
 }
@@ -68,6 +81,7 @@ export function mirror<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
   options?: MirrorOptions
 ): T {
+  assertNotPositionalOptions(options, 'mirror');
   const planeOrigin = options?.at;
   return transforms.mirror(resolve(shape), options?.normal ?? [1, 0, 0], planeOrigin);
 }

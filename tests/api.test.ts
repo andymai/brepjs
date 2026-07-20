@@ -66,7 +66,10 @@ import {
   measureArea,
   faceFinder,
   sketchCircle,
+  getFaces,
+  getKernel,
 } from '@/index.js';
+import { faceGeomType } from '@/topology/faceFns.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -292,6 +295,35 @@ describe('mirror()', () => {
     const b = box(10, 10, 10);
     const mirrored = mirror(b, { normal: [0, 1, 0], origin: [0, 5, 0] });
     expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 0);
+  });
+
+  // Regression for #1881: a correctly-mirrored cylinder is a valid (indirect)
+  // solid — non-degenerate volume, a finite analytic radius, and a finite
+  // surface evaluation. The issue's "radius: NaN" symptom came from a malformed
+  // call (an array passed where the options object goes), not from the geometry.
+  it('produces a valid indirect cylinder that keeps a finite radius', () => {
+    const mirrored = mirror(cylinder(5, 10), { normal: [1, 0, 0] });
+    expect(unwrap(measureVolume(mirrored))).toBeCloseTo(Math.PI * 25 * 10, 0);
+
+    const cylFace = getFaces(mirrored).find((f) => faceGeomType(f) === 'CYLINDRE');
+    expect(cylFace).toBeDefined();
+    if (!cylFace) return;
+    const kernel = getKernel();
+    const cylData = kernel.getSurfaceCylinderData(kernel.extractSurfaceFromFace(cylFace.wrapped));
+    expect(cylData?.radius).toBeCloseTo(5, 6);
+    const p = kernel.pointOnSurface(cylFace.wrapped, 1, 5);
+    expect(p.every((c: number) => Number.isFinite(c))).toBe(true);
+  });
+
+  // Regression for #1881: passing positional coordinates where the options
+  // object is expected must fail loudly. An array's `at` key resolves to
+  // `Array.prototype.at`, which previously corrupted the origin into NaN and
+  // silently built a degenerate zero-volume shape.
+  it('rejects an array passed in place of the options object', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deliberate misuse
+    expect(() => mirror(box(10, 10, 10), [0, 0, 0] as any)).toThrow(/options object/);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deliberate misuse
+    expect(() => rotate(box(10, 10, 10), 90, [0, 0, 1] as any)).toThrow(/options object/);
   });
 });
 

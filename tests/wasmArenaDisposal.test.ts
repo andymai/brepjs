@@ -519,7 +519,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = rotate(b, 30, [0, 0, 0], [0, 0, 1]);
+          using r = rotate(b, 30, { at: [0, 0, 0], axis: [0, 0, 1] });
           void r;
         })
       ).toBe(0);
@@ -529,7 +529,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = mirror(b, [0, 1, 0], [0, 0, 0]);
+          using r = mirror(b, { normal: [0, 1, 0], at: [0, 0, 0] });
           void r;
         })
       ).toBe(0);
