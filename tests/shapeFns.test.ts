@@ -125,7 +125,7 @@ describe('translate', () => {
 describe('rotate', () => {
   it('rotates without changing volume', () => {
     const b = box(10, 10, 10);
-    const rotated = rotate(b, 90, { around: [0, 0, 0], axis: [0, 0, 1] });
+    const rotated = rotate(b, 90, { at: [0, 0, 0], axis: [0, 0, 1] });
     expect(rotated).toBeDefined();
     expect(isSolid(rotated)).toBe(true);
   });
@@ -134,7 +134,7 @@ describe('rotate', () => {
 describe('mirror', () => {
   it('mirrors without changing volume', () => {
     const b = box(10, 10, 10);
-    const mirrored = mirror(b, { normal: [0, 1, 0], origin: [0, 0, 0] });
+    const mirrored = mirror(b, { normal: [0, 1, 0], at: [0, 0, 0] });
     expect(mirrored).toBeDefined();
     expect(isSolid(mirrored)).toBe(true);
   });

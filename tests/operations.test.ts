@@ -200,13 +200,13 @@ describe('Shape transformations', () => {
 
   it('mirror with Plane object', () => {
     const plane = unwrap(resolvePlane('YZ'));
-    const b = mirror(box(10, 10, 10), { normal: plane.zDir, origin: plane.origin });
+    const b = mirror(box(10, 10, 10), { normal: plane.zDir, at: plane.origin });
     expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('mirror with Plane and custom origin', () => {
     const plane = unwrap(resolvePlane('YZ'));
-    const b = mirror(box(10, 10, 10), { normal: plane.zDir, origin: [5, 0, 0] });
+    const b = mirror(box(10, 10, 10), { normal: plane.zDir, at: [5, 0, 0] });
     expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 

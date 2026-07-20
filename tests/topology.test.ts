@@ -140,12 +140,12 @@ describe('Shape transforms', () => {
   });
   it('rotate', () => {
     expect(
-      unwrap(measureVolume(rotate(box(10, 10, 10), 90, { around: [0, 0, 0], axis: [1, 0, 0] })))
+      unwrap(measureVolume(rotate(box(10, 10, 10), 90, { at: [0, 0, 0], axis: [1, 0, 0] })))
     ).toBeCloseTo(1000, 0);
   });
   it('mirror', () => {
     expect(
-      unwrap(measureVolume(mirror(box(10, 10, 10), { normal: [0, 1, 0], origin: [0, 0, 0] })))
+      unwrap(measureVolume(mirror(box(10, 10, 10), { normal: [0, 1, 0], at: [0, 0, 0] })))
     ).toBeCloseTo(1000, 0);
   });
   it('scale', () => {

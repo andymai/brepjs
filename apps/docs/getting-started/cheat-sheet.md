@@ -52,7 +52,7 @@ import { translate, rotate, scale, box } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 translate(b, [10, 0, 0]);
-rotate(b, 45, { axis: [0, 0, 1], origin: [0, 0, 0] }); // degrees
+rotate(b, 45, { axis: [0, 0, 1], at: [0, 0, 0] }); // degrees
 scale(b, 2); // uniform
 scale(b, [2, 1, 1]); // per-axis
 ```

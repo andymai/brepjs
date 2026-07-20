@@ -279,7 +279,7 @@ describe('rotate()', () => {
 
   it('supports axis and around options', () => {
     const b = box(10, 10, 10);
-    const rotated = rotate(b, 90, { axis: [1, 0, 0], around: [5, 5, 5] });
+    const rotated = rotate(b, 90, { axis: [1, 0, 0], at: [5, 5, 5] });
     expect(unwrap(measureVolume(rotated))).toBeCloseTo(1000, 0);
   });
 });
@@ -291,9 +291,9 @@ describe('mirror()', () => {
     expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 0);
   });
 
-  it('supports normal and origin options', () => {
+  it('supports normal and at options', () => {
     const b = box(10, 10, 10);
-    const mirrored = mirror(b, { normal: [0, 1, 0], origin: [0, 5, 0] });
+    const mirrored = mirror(b, { normal: [0, 1, 0], at: [0, 5, 0] });
     expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 0);
   });
 

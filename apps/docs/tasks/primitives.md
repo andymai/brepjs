@@ -89,7 +89,7 @@ import { translate, rotate, scale, box, measureVolume, unwrap } from 'brepjs/qui
 const b = box(10, 10, 10);
 
 const moved = translate(b, [10, 0, 0]); // [dx, dy, dz]
-const rotated = rotate(b, 45, { axis: [0, 0, 1], origin: [0, 0, 0] }); // degrees
+const rotated = rotate(b, 45, { axis: [0, 0, 1], at: [0, 0, 0] }); // degrees
 const scaled = scale(b, 2); // uniform 2x
 const stretched = scale(b, [2, 1, 1]); // per-axis
 
