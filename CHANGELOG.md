@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.0](https://github.com/andymai/brepjs/compare/brepjs-v18.118.31...brepjs-v18.119.0) (2026-07-20)
+
+
+### Features
+
+* **kernel:** sketch on indirect cylindrical faces (occt-wasm) ([#1883](https://github.com/andymai/brepjs/issues/1883)) ([58d7f14](https://github.com/andymai/brepjs/commit/58d7f14f42189bfc0aaafc9dfeaba2a584e09f8e))
+
 ## [18.118.31](https://github.com/andymai/brepjs/compare/brepjs-v18.118.30...brepjs-v18.118.31) (2026-07-19)
 
 
