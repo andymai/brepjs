@@ -1,0 +1,33 @@
+apps/docs/getting-started/cheat-sheet.md
+  s_66bc315cd14c9f::t_6a49aa31ac4d3e 55
+tests/api.test.ts
+  s_66bc315cd14c9f::t_f085c0bd4f9c19 282
+  s_66bc315cd14c9f::t_1028e4feaf6074 294,296
+tests/operations.test.ts
+  s_66bc315cd14c9f::t_09a9b6512542f8 209
+  s_66bc315cd14c9f::t_f247f13c3046e9 203
+tests/shapeFns.test.ts
+  s_66bc315cd14c9f::t_a08cd60f81e4f4 137
+  s_66bc315cd14c9f::t_170571d0320358 128
+tests/topology.test.ts
+  s_66bc315cd14c9f::t_4117119defd82e 143
+  s_66bc315cd14c9f::t_9520b4e5eee765 148
+apps/docs/tasks/primitives.md
+  s_66bc315cd14c9f::t_c75b1ed6284d53 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e4a73eb59ace0b838b53094fa84007b59efd8f3a",
+  "prompts": {},
+  "sessions": {
+    "s_66bc315cd14c9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf920e-f24c-4579-9ada-8acb88694731",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
