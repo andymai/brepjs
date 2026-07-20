@@ -1,0 +1,26 @@
+src/topology/api.ts
+  s_66bc315cd14c9f::t_05f90f2daef570 40-51
+  s_66bc315cd14c9f::t_20b796d8b323de 66
+  s_66bc315cd14c9f::t_b340de0285e03f 84
+tests/api.test.ts
+  s_66bc315cd14c9f::t_facc44a4109e2a 69-70,72
+  s_66bc315cd14c9f::t_6ef24aaddccf8d 299-327
+tests/wasmArenaDisposal.test.ts
+  s_66bc315cd14c9f::t_2ba81402e4ab51 522,532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3231a09f2c7306d6f8a2327ab69e172fd08350bd",
+  "prompts": {},
+  "sessions": {
+    "s_66bc315cd14c9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf920e-f24c-4579-9ada-8acb88694731",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
