@@ -442,7 +442,9 @@ export interface OcctKernelWasm {
   surfaceNormal(faceId: number, u: number, v: number): EmVectorDouble;
   pointOnSurface(faceId: number, u: number, v: number): EmVectorDouble;
   outerWire(faceId: number): number;
+  reverseSurfaceU(faceId: number): number;
   uvBounds(faceId: number): EmVectorDouble;
+  getFaceCylinderData(faceId: number): EmVectorDouble;
   uvFromPoint(faceId: number, x: number, y: number, z: number): EmVectorDouble;
   projectPointOnFace(faceId: number, x: number, y: number, z: number): EmVectorDouble;
   classifyPointOnFace(faceId: number, u: number, v: number): string;

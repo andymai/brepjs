@@ -1568,8 +1568,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     return surfaceOps.getSurfaceAxis(this.k, face);
   }
 
-  reverseSurfaceU(_surface: KernelType): KernelType {
-    notImplemented('reverseSurfaceU');
+  reverseSurfaceU(surface: KernelType): KernelType {
+    return surfaceOps.reverseSurfaceU(this.k, surface);
   }
 
   detectSmallFeatures(

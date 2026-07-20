@@ -8,7 +8,19 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
-import { box, cylinder, cut, getFaces, getEdges, isOk, isErr, unwrap, castShape } from '@/index.js';
+import {
+  box,
+  cylinder,
+  cut,
+  mirror,
+  getFaces,
+  getEdges,
+  meshEdges,
+  isOk,
+  isErr,
+  unwrap,
+  castShape,
+} from '@/index.js';
 import {
   curvesAsEdgesOnFace,
   curvesAsEdgesOnPlane,
@@ -86,9 +98,46 @@ describe('curvesAsEdgesOnFace', () => {
     expect(isOk(result)).toBe(true);
   });
 
-  // occt-wasm-specific: it derives isDirect from the (orientation-aware) face
-  // normal. occt reads gp_Cylinder::Direct() directly and brepkit hardcodes true,
-  // so neither exercises the orientation-compensation path this guards.
+  // Regression for occt-wasm reverseSurfaceU (brepjs#1881): sketching onto an
+  // indirect (left-handed) cylindrical face — produced by mirroring a cylinder —
+  // previously threw `reverseSurfaceU is not yet implemented`. It must now map
+  // the profile onto a small finite patch, not NaN or the full circumference.
+  it.skipIf(currentKernel === 'brepkit' || currentKernel === 'manifold')(
+    'projects curves onto an indirect (mirrored) cylindrical face',
+    () => {
+      const kernel = getKernel();
+      const mcyl = mirror(cylinder(5, 10), { normal: [1, 0, 0] });
+      const cylFace = getFaces(mcyl).find((f) => kernel.surfaceType(f.wrapped) === 'cylinder');
+      expect(cylFace).toBeDefined();
+      if (!cylFace) return;
+
+      const cylData = kernel.getSurfaceCylinderData(kernel.extractSurfaceFromFace(cylFace.wrapped));
+      expect(cylData?.radius).toBeCloseTo(5, 6);
+      expect(cylData?.isDirect).toBe(false); // genuinely indirect → reversal path
+
+      const curve = new Curve2D(kernel.makeLine2d(8, 2, 14, 6));
+      const result = curvesAsEdgesOnFace([curve], cylFace, 'original');
+      expect(isOk(result)).toBe(true);
+
+      const edges = unwrap(result);
+      expect(edges.length).toBeGreaterThan(0);
+      const m = meshEdges(edges[0]);
+      expect(m.lines.length).toBeGreaterThan(0);
+      let maxAbsXY = 0;
+      for (let i = 0; i < m.lines.length; i += 3) {
+        expect(Number.isFinite(m.lines[i])).toBe(true);
+        maxAbsXY = Math.max(maxAbsXY, Math.hypot(m.lines[i], m.lines[i + 1]));
+      }
+      // Points lie on the radius-5 cylinder, not scattered/NaN.
+      expect(maxAbsXY).toBeCloseTo(5, 1);
+      for (const e of edges) e[Symbol.dispose]();
+    }
+  );
+
+  // occt-wasm reads gp_Cylinder::Direct() via the facade's getFaceCylinderData;
+  // occt reads it directly and brepkit hardcodes true. This guards that
+  // occt-wasm reports the surface's true handedness for a reversed face rather
+  // than being thrown off by face orientation.
   it.skipIf(currentKernel !== 'occt-wasm')(
     'reports isDirect independent of face orientation (reversed bore)',
     () => {

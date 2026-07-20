@@ -38,6 +38,15 @@ export function outerWire(k: OcctKernelWasm, face: KernelShape): KernelShape {
   return handle('wire', k.outerWire(unwrap(face)));
 }
 
+/**
+ * Reverse a surface's U parametrization. Surfaces are face proxies here, so this
+ * returns a new face carrying the U-reversed geometric surface — evaluating
+ * `pointOnSurface` on it yields the original surface at `UReversedParameter(u)`.
+ */
+export function reverseSurfaceU(k: OcctKernelWasm, surface: KernelShape): KernelShape {
+  return handle('face', k.reverseSurfaceU(unwrap(surface)));
+}
+
 export function surfaceNormal(
   k: OcctKernelWasm,
   face: KernelShape,
@@ -229,8 +238,15 @@ export function getSurfaceCylinderData(
   k: OcctKernelWasm,
   surface: KernelShape
 ): { radius: number; isDirect: boolean } | null {
-  const cyl = deriveCylinder(k, surface);
-  return cyl ? { radius: cyl.radius, isDirect: cyl.isDirect } : null;
+  // OCCT's exact gp_Cylinder accessor (radius + Direct()) — cheaper and more
+  // robust than sampling the surface, which returned NaN for degenerate inputs.
+  const vec = k.getFaceCylinderData(unwrap(surface));
+  try {
+    if (vec.size() < 2) return null; // non-cylinder → facade returns an empty vector
+    return { radius: vec.get(0), isDirect: vec.get(1) === 1 };
+  } finally {
+    vec.delete();
+  }
 }
 
 export function uvFromPoint(
