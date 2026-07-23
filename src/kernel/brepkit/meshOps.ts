@@ -64,16 +64,35 @@ export function meshEdges(
   const offsets = edgeLines.offsets;
   const edgeCount = edgeLines.edgeCount;
 
+  // brepkit returns one POLYLINE per edge (`offsets` indexes each edge's first
+  // point). `lines` is consumed as GL_LINES — disjoint vertex pairs — so the
+  // polylines must be expanded, two vertices per segment, the way OCCT's native
+  // buffer already arrives. Passing the polylines through unchanged both drops
+  // every other segment and, wherever an edge has an odd point count, emits one
+  // segment running from that edge's last point to the next edge's first point:
+  // a stray line between unrelated parts of the model.
+  const segments: number[] = [];
   const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
   for (let i = 0; i < edgeCount; i++) {
     const startIdx = wasmIndex(offsets, i);
     const endIdx = i + 1 < edgeCount ? wasmIndex(offsets, i + 1) : positions.length;
     const pointCount = (endIdx - startIdx) / 3;
-    edgeGroups.push({ start: startIdx / 3, count: pointCount, edgeHash: i });
+    const segStart = segments.length / 3;
+    for (let p = 0; p + 1 < pointCount; p++) {
+      const a = startIdx + p * 3;
+      const b = a + 3;
+      segments.push(positions[a]!, positions[a + 1]!, positions[a + 2]!);
+      segments.push(positions[b]!, positions[b + 1]!, positions[b + 2]!);
+    }
+    edgeGroups.push({
+      start: segStart,
+      count: segments.length / 3 - segStart,
+      edgeHash: i,
+    });
   }
 
   return {
-    lines: new Float32Array(positions),
+    lines: new Float32Array(segments),
     edgeGroups,
   };
 }
