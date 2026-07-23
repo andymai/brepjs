@@ -25,7 +25,17 @@ const config: KnipConfig = {
       // the lockfile with sharp's platform binaries for no runtime/CI benefit.
       // brepjs-voxel-wasm is a sibling workspace package imported only by the
       // out-of-src test suite (tests/voxel*.test.ts), which root `project` excludes.
-      ignoreDependencies: ['@types/react', 'sharp', 'brepjs-voxel-wasm'],
+      // @emnapi/core + @emnapi/runtime are never imported: they are declared only to
+      // stop npm < 11.11 pruning them from the lockfile (they are otherwise reachable
+      // just as hoisted optional peer deps of the *-wasm32-wasi binaries), which made
+      // CI's npm fail every Dependabot PR with "Missing: @emnapi/... from lock file".
+      ignoreDependencies: [
+        '@types/react',
+        'sharp',
+        'brepjs-voxel-wasm',
+        '@emnapi/core',
+        '@emnapi/runtime',
+      ],
     },
     // examples/ holds runnable demos (entry points, not imported by src); the
     // IfcOpenShell validator under scripts/ is Python. src/ stays fully checked.
