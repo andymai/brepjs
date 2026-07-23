@@ -1,0 +1,19 @@
+knip.config.ts
+  s_18dd55480177d2::t_eda84a4bcf6556 28-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6aa53f4f736ada4bb4383ca9072571365fc15fc6",
+  "prompts": {},
+  "sessions": {
+    "s_18dd55480177d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fb2bc9-8cd3-4d75-972d-e364df9d456a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
