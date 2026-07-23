@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.1](https://github.com/andymai/brepjs/compare/brepjs-v18.119.0...brepjs-v18.119.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **deps:** bump dompurify to 3.4.12 for GHSA-c2j3-45gr-mqc4 ([#1892](https://github.com/andymai/brepjs/issues/1892)) ([9ea2d5b](https://github.com/andymai/brepjs/commit/9ea2d5ba15da547f33ed911ca3078947e58158ee))
+
 ## [18.119.0](https://github.com/andymai/brepjs/compare/brepjs-v18.118.31...brepjs-v18.119.0) (2026-07-20)
 
 
