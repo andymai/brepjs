@@ -1,0 +1,21 @@
+src/kernel/brepkit/meshOps.test.ts
+  s_0d544b8727eb96::t_5dd5568b897fa0 4,8-9,12,21-22,25-26,28,39,42-45,55-56
+src/kernel/brepkit/meshOps.ts
+  s_0d544b8727eb96::t_d5f399d9c2412e 15,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0472c4e00318fdb3f3b51c69def146c91a1f05cc",
+  "prompts": {},
+  "sessions": {
+    "s_0d544b8727eb96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83d6e58-79a3-46d1-ab8b-79dfbbccdffa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
