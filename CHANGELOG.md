@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.2](https://github.com/andymai/brepjs/compare/brepjs-v18.119.1...brepjs-v18.119.2) (2026-07-23)
+
+
+### Bug Fixes
+
+* **kernel:** expand brepkit edge polylines into segment pairs ([#1896](https://github.com/andymai/brepjs/issues/1896)) ([39102e0](https://github.com/andymai/brepjs/commit/39102e0a8c5035e1d470e1e9fe0afd969fd0e195))
+
 ## [18.119.1](https://github.com/andymai/brepjs/compare/brepjs-v18.119.0...brepjs-v18.119.1) (2026-07-23)
 
 
