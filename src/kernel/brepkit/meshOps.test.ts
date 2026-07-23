@@ -11,9 +11,22 @@ import { vec3At } from '@/utils/vec3.js';
 function stubKernel(): BrepkitKernel {
   const partial: Partial<BrepkitKernel> = {
     meshEdgesAll: () => ({
-      positions: new Float32Array([
-        0, 0, 0, 1, 0, 0, // edge 0: straight, 2 points
-        5, 0, 0, 5, 1, 0, 5, 2, 0, // edge 1: 3 points (odd)
+      positions: new Float64Array([
+        0,
+        0,
+        0,
+        1,
+        0,
+        0, // edge 0: straight, 2 points
+        5,
+        0,
+        0,
+        5,
+        1,
+        0,
+        5,
+        2,
+        0, // edge 1: 3 points (odd)
       ]),
       offsets: new Uint32Array([0, 6]),
       edgeCount: 2,
@@ -29,11 +42,7 @@ describe('brepkit meshEdges', () => {
   it('expands per-edge polylines into disjoint segment pairs', () => {
     const { lines } = meshEdges(stubKernel(), shape, 0.1, 0.35);
     // edge 0 -> 1 segment, edge 1 -> 2 segments; 3 segments = 6 vertices.
-    expect(Array.from(lines)).toEqual([
-      0, 0, 0, 1, 0, 0,
-      5, 0, 0, 5, 1, 0,
-      5, 1, 0, 5, 2, 0,
-    ]);
+    expect(Array.from(lines)).toEqual([0, 0, 0, 1, 0, 0, 5, 0, 0, 5, 1, 0, 5, 1, 0, 5, 2, 0]);
   });
 
   it('never joins the end of one edge to the start of the next', () => {
