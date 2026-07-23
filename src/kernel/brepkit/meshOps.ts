@@ -12,7 +12,7 @@ import type {
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { type BrepkitHandle, unwrap, toArray, DEFAULT_DEFLECTION } from './helpers.js';
-import { wasmIndex } from '@/utils/vec3.js';
+import { wasmIndex, vec3At } from '@/utils/vec3.js';
 
 export function mesh(
   bk: BrepkitKernel,
@@ -80,9 +80,7 @@ export function meshEdges(
     const segStart = segments.length / 3;
     for (let p = 0; p + 1 < pointCount; p++) {
       const a = startIdx + p * 3;
-      const b = a + 3;
-      segments.push(positions[a]!, positions[a + 1]!, positions[a + 2]!);
-      segments.push(positions[b]!, positions[b + 1]!, positions[b + 2]!);
+      segments.push(...vec3At(positions, a), ...vec3At(positions, a + 3));
     }
     edgeGroups.push({
       start: segStart,
