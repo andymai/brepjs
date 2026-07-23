@@ -65,12 +65,12 @@ export function meshEdges(
   const edgeCount = edgeLines.edgeCount;
 
   // brepkit returns one POLYLINE per edge (`offsets` indexes each edge's first
-  // point). `lines` is consumed as GL_LINES — disjoint vertex pairs — so the
-  // polylines must be expanded, two vertices per segment, the way OCCT's native
-  // buffer already arrives. Passing the polylines through unchanged both drops
-  // every other segment and, wherever an edge has an odd point count, emits one
-  // segment running from that edge's last point to the next edge's first point:
-  // a stray line between unrelated parts of the model.
+  // point, already ×3). `lines` is a flat line list — consecutive point pairs,
+  // one per segment, for THREE.LineSegments — so each polyline has to be
+  // expanded into pairs. Emitting the raw polyline as a line list draws every
+  // other segment and joins the end of one edge to the start of the next,
+  // putting a stray line across empty space wherever those points differ.
+  // Same expansion the occtWasm adapter does; manifold emits pairs directly.
   const segments: number[] = [];
   const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
   for (let i = 0; i < edgeCount; i++) {
@@ -80,7 +80,10 @@ export function meshEdges(
     const segStart = segments.length / 3;
     for (let p = 0; p + 1 < pointCount; p++) {
       const a = startIdx + p * 3;
-      segments.push(...vec3At(positions, a), ...vec3At(positions, a + 3));
+      const [x0, y0, z0] = vec3At(positions, a);
+      const [x1, y1, z1] = vec3At(positions, a + 3);
+      if (x0 === x1 && y0 === y1 && z0 === z1) continue; // degenerate pair
+      segments.push(x0, y0, z0, x1, y1, z1);
     }
     edgeGroups.push({
       start: segStart,

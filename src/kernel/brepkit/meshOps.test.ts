@@ -55,6 +55,19 @@ describe('brepkit meshEdges', () => {
     }
   });
 
+  it('drops degenerate pairs, matching the occtWasm adapter', () => {
+    const partial: Partial<BrepkitKernel> = {
+      meshEdgesAll: () => ({
+        // A repeated point mid-polyline yields a zero-length segment.
+        positions: new Float64Array([0, 0, 0, 1, 0, 0, 1, 0, 0, 2, 0, 0]),
+        offsets: new Uint32Array([0]),
+        edgeCount: 1,
+      }),
+    };
+    const { lines } = meshEdges(partial as BrepkitKernel, shape, 0.1, 0.35);
+    expect(Array.from(lines)).toEqual([0, 0, 0, 1, 0, 0, 1, 0, 0, 2, 0, 0]);
+  });
+
   it('reports edgeGroups indexing the expanded buffer', () => {
     const { lines, edgeGroups } = meshEdges(stubKernel(), shape, 0.1, 0.35);
     expect(edgeGroups).toEqual([
