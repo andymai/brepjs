@@ -60,7 +60,7 @@
     "brepjs": ">=18.117.1",
     "commander": "^15.0.0",
     "occt-wasm": "^3.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "optionalDependencies": {
     "puppeteer": "^25.0.4"
