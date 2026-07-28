@@ -14,6 +14,12 @@ updates:
       # both ship the same code.) Re-allow once opentype.js supports this lookup format.
       - dependency-name: opentype.js
         versions: ['1.3.5', '2.x']
+      # TypeScript 7 cannot resolve: typescript-eslint (through 8.65.0) declares a peer
+      # range of >=4.8.4 <6.1.0, and typedoc 0.28.x conflicts the same way, so `npm
+      # install` fails with ERESOLVE before any job runs. Re-allow once both widen their
+      # peer ranges to accept 7.x.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     groups:
       minor-and-patch:
         update-types:
