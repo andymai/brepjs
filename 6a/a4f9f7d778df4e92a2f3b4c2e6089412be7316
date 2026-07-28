@@ -1,0 +1,21 @@
+.size-limit.json
+  s_6bce5540073f3d::t_aa2b3aa0ae97c4 2
+.github/dependabot.yml
+  s_6bce5540073f3d::t_b8d94444e6cee1 17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6aa4f9f7d778df4e92a2f3b4c2e6089412be7316",
+  "prompts": {},
+  "sessions": {
+    "s_6bce5540073f3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3002b613-6ed5-49a0-9040-63b177b973c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
