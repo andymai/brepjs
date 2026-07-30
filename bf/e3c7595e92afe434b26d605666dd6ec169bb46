@@ -1,0 +1,38 @@
+src/2d/lib/customCorners.ts
+  s_8ecc4a140cf296::t_24ebf27b02a8d8 237-240,250-251
+  s_8ecc4a140cf296::t_87fb8783117143 161-164
+  s_8ecc4a140cf296::t_a04992869f1e01 241-249
+  s_8ecc4a140cf296::t_497018fb8fc0f8 80-81,84-86
+  s_8ecc4a140cf296::t_0bc76d43880eac 115-116
+  s_8ecc4a140cf296::t_c291f9e3855d3b 182-185
+  s_8ecc4a140cf296::t_3ebfc82ec21491 49,51,54,56-63,65-66,68-70
+  s_8ecc4a140cf296::t_deca9c6979f2a3 90-91,93
+  s_8ecc4a140cf296::t_68d57e493fbf8c 24-28,30,34-48
+  s_8ecc4a140cf296::t_20c062ed32e238 126-127,129
+  s_8ecc4a140cf296::t_c3922abbee87d5 117-119
+  s_8ecc4a140cf296::t_8e1b86734a97cb 120-125,128,130-132
+  s_8ecc4a140cf296::t_c890ba9a8e45e0 52-53,55,64,67
+  s_8ecc4a140cf296::t_0f2f3581b1c5b5 206-207,211-213
+  s_8ecc4a140cf296::t_806d3c3f946768 50,160,181
+tests/customCornerHandleLeaks.test.ts
+  s_8ecc4a140cf296::t_5c52c682059b2e 60,62-65
+  s_8ecc4a140cf296::t_b97e75c6cb2efd 61,66-70
+  s_8ecc4a140cf296::t_764dee7bb31e31 144-152
+  s_8ecc4a140cf296::t_aa45127ef92fed 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "bfe3c7595e92afe434b26d605666dd6ec169bb46",
+  "prompts": {},
+  "sessions": {
+    "s_8ecc4a140cf296": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fea52fd-73c8-4d84-a509-cea3ba79b0b1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
