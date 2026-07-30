@@ -58,6 +58,10 @@ export class Curve2D {
   delete(): void {
     if (!this._deleted) {
       this._deleted = true;
+      if (this._boundingBox) {
+        this._boundingBox.delete();
+        this._boundingBox = null;
+      }
       if (typeof this._wrapped.delete === 'function') {
         unregisterFromCleanup(this._wrapped);
         this._wrapped.delete();
@@ -69,7 +73,12 @@ export class Curve2D {
     this.delete();
   }
 
-  /** Compute (and cache) the 2D bounding box of this curve. */
+  /**
+   * Compute (and cache) the 2D bounding box of this curve.
+   *
+   * @remarks The returned box is owned by the curve and is disposed when the
+   * curve is deleted. Clone it if it must outlive the curve.
+   */
   get boundingBox() {
     if (this._boundingBox) return this._boundingBox;
     const kernel = getKernel();

@@ -12,6 +12,7 @@ import {
   curve2dIsOnCurve,
   curve2dDistanceFrom,
 } from '@/2d/lib/curve2dFns.js';
+import { intersectCurves } from '@/2d/lib/intersections.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -24,7 +25,7 @@ function getLineCurve() {
 }
 
 /** Get a circular curve */
-function _getCircleCurve() {
+function getCircleCurve() {
   const drawing = drawCircle(5);
   return drawing.blueprint.curves[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
 }
@@ -123,6 +124,51 @@ describe('curve2dDistanceFrom', () => {
   it('distant point has large distance', () => {
     const curve = getLineCurve();
     expect(curve2dDistanceFrom(curve, [1000, 1000])).toBeGreaterThan(10);
+  });
+});
+
+describe('Curve2D disposal', () => {
+  it('frees the cached bounding box when the curve is deleted', () => {
+    const curve = getLineCurve();
+    const box = curve2dBoundingBox(curve);
+    expect(box.width).toBeGreaterThan(0);
+
+    curve.delete();
+
+    expect(() => box.wrapped).toThrow();
+    expect(curve._boundingBox).toBeNull();
+  });
+
+  it('is idempotent after the bounding box has been read', () => {
+    const curve = getLineCurve();
+    curve2dBoundingBox(curve);
+    curve.delete();
+    expect(() => {
+      curve.delete();
+    }).not.toThrow();
+  });
+
+  it('intersectCurves leaves no box behind once its operands are disposed', () => {
+    const first = getLineCurve();
+    const second = getCircleCurve();
+
+    const result = intersectCurves(first, second);
+    expect(result.ok).toBe(true);
+    if (result.ok)
+      result.value.commonSegments.forEach((c) => {
+        c.delete();
+      });
+
+    const firstBox = first._boundingBox;
+    const secondBox = second._boundingBox;
+    expect(firstBox).not.toBeNull();
+    expect(secondBox).not.toBeNull();
+
+    first.delete();
+    second.delete();
+
+    expect(() => firstBox?.wrapped).toThrow();
+    expect(() => secondBox?.wrapped).toThrow();
   });
 });
 

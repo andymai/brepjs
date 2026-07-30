@@ -68,7 +68,9 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 90000,
     pool: 'forks',
-    execArgv: ['--max-old-space-size=6144'],
+    // --expose-gc lets the handle-leak probes force collection so a
+    // FinalizationRegistry-only reclaim reads as a leak instead of passing.
+    execArgv: ['--max-old-space-size=6144', '--expose-gc'],
     maxWorkers,
     coverage: {
       provider: 'v8',

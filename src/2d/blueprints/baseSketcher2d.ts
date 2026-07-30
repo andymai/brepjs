@@ -27,6 +27,17 @@ const cornerModeFns = {
   fillet: filletCurves,
 } as const;
 
+/**
+ * Delete the curves a corner function consumed. Corner functions return their
+ * inputs untouched when they bail (collinear curves, failed offset), so only
+ * the ones absent from the result are ours to free.
+ */
+function disposeConsumedCurves(consumed: Curve2D[], produced: Curve2D[]): void {
+  consumed.forEach((curve) => {
+    if (!produced.includes(curve)) curve.delete();
+  });
+}
+
 function buildCornerFunction(
   radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
   mode: 'chamfer' | 'fillet' | 'dogbone'
@@ -131,7 +142,9 @@ export class BaseSketcher2d {
     if (!previousCurve)
       bug('Sketcher2d.saveCurve', 'No previous curve available for custom corner');
 
-    this.pendingCurves.push(...this._nextCorner(previousCurve, curve));
+    const cornered = this._nextCorner(previousCurve, curve);
+    disposeConsumedCurves([previousCurve, curve], cornered);
+    this.pendingCurves.push(...cornered);
     this._nextCorner = null;
   }
 
@@ -435,7 +448,9 @@ export class BaseSketcher2d {
     if (!previousCurve || !curve)
       bug('Sketcher2d._customCornerLastWithFirst', 'Not enough curves to close and fillet');
 
-    this.pendingCurves.push(...buildCornerFunction(radius, mode)(previousCurve, curve));
+    const cornered = buildCornerFunction(radius, mode)(previousCurve, curve);
+    disposeConsumedCurves([previousCurve, curve], cornered);
+    this.pendingCurves.push(...cornered);
   }
 
   protected _closeSketch(): void {
