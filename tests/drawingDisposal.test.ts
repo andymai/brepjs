@@ -14,6 +14,7 @@ import { drawCircle, drawRectangle } from '@/index.js';
 import { Drawing } from '@/sketching/drawing.js';
 import { getDisposalStats } from '@/core/disposal.js';
 import Blueprints from '@/2d/blueprints/blueprints.js';
+import type { DrawingInterface } from '@/2d/blueprints/lib.js';
 import CompoundBlueprint from '@/2d/blueprints/compoundBlueprint.js';
 
 beforeAll(async () => {
@@ -100,6 +101,23 @@ describe('blueprint container disposal', () => {
 
     expect(() => containerBox.wrapped).toThrow();
     expect(() => childBox.wrapped).toThrow();
+  });
+
+  it('is reachable through the DrawingInterface contract', () => {
+    const shapes: DrawingInterface[] = [
+      drawRectangle(10, 10).blueprint,
+      new Blueprints([drawRectangle(4, 4).blueprint]),
+      new CompoundBlueprint([drawCircle(10).blueprint, drawCircle(4).blueprint]),
+    ];
+    const boxes = shapes.map((shape) => shape.boundingBox);
+
+    shapes.forEach((shape) => {
+      shape.delete();
+    });
+
+    boxes.forEach((box) => {
+      expect(() => box.wrapped).toThrow();
+    });
   });
 
   it('CompoundBlueprint disposes its own box and its children', () => {
