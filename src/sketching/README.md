@@ -35,3 +35,4 @@ graph LR
 4. **Mirror symmetry**: `closeWithMirror()` mirrors the drawn path around the start-to-end axis to create symmetric shapes.
 5. **UV coordinates**: `FaceSketcher` works on curved 3D surfaces using UV parametric coordinates, not Cartesian.
 6. **API differences**: `draw()` returns `DrawingPen` (2D, immutable), `new Sketcher(plane)` creates a 3D plane sketcher (mutable, consumable).
+7. **Drawing disposal**: `Drawing` implements `delete()` / `Symbol.dispose`, cascading to its blueprints, their curves, and every cached bounding box. Since operations return new instances, each intermediate in a chain is its own drawing to dispose. A `boundingBox` read from a drawing is borrowed and dies with it.
