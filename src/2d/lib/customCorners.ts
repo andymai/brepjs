@@ -11,7 +11,6 @@ import {
 } from './makeCurves.js';
 import { make2dOffset } from './offset.js';
 import { add2d, crossProduct2d, normalize2d, scalarMultiply2d } from './vectorOperations.js';
-import { wasmIndex } from '@/utils/vec3.js';
 
 /** Unwrap an intersection, discarding the common-segment curves the caller does not use. */
 function intersectionPoints(first: Curve2D, second: Curve2D): Point2D[] {
@@ -22,11 +21,51 @@ function intersectionPoints(first: Curve2D, second: Curve2D): Point2D[] {
   return result.intersections;
 }
 
-/** Delete every split piece that is neither kept nor the curve that was split. */
-function disposeUnusedSplits(pieces: Curve2D[], kept: Curve2D, source: Curve2D): void {
+/**
+ * Delete the split pieces the caller is discarding. `splitAt` returns the curve
+ * itself when there is nothing to split, so the source is never deleted here.
+ */
+function disposeSplitPieces(pieces: Curve2D[], source: Curve2D, kept?: Curve2D): void {
   pieces.forEach((piece) => {
-    if (piece !== kept && piece !== source) piece.delete();
+    if (piece !== source && piece !== kept) piece.delete();
   });
+}
+
+/**
+ * Run `split` and, if it throws, dispose the pieces an earlier split already
+ * produced. Splitting the second curve of a corner can fail (its parameter may
+ * not project onto the offset), stranding the first curve's pieces.
+ */
+function splitOrDiscard(
+  split: () => Curve2D[],
+  earlier: { pieces: Curve2D[]; source: Curve2D }
+): Curve2D[] {
+  try {
+    return split();
+  } catch (e) {
+    disposeSplitPieces(earlier.pieces, earlier.source);
+    throw e;
+  }
+}
+
+/**
+ * Build the corner result, disposing the trimmed halves if the connecting curve
+ * cannot be built. They are unreachable once the error propagates.
+ */
+function discardTrimsOnError(
+  firstCurve: Curve2D,
+  secondCurve: Curve2D,
+  first: Curve2D,
+  second: Curve2D,
+  build: () => Curve2D[]
+): Curve2D[] {
+  try {
+    return build();
+  } catch (e) {
+    if (first !== firstCurve) first.delete();
+    if (second !== secondCurve) second.delete();
+    throw e;
+  }
 }
 
 function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
@@ -38,15 +77,20 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
   const orientationCorrection = sinAngle > 0 ? -1 : 1;
   const offset = Math.abs(radius) * orientationCorrection;
 
-  const firstOffset = make2dOffset(firstCurve, offset);
-  const secondOffset = make2dOffset(secondCurve, offset);
+  let firstOffset: ReturnType<typeof make2dOffset> | null = null;
+  let secondOffset: ReturnType<typeof make2dOffset> | null = null;
 
   try {
+    firstOffset = make2dOffset(firstCurve, offset);
+    secondOffset = make2dOffset(secondCurve, offset);
+
     if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
       return null;
     }
+    const firstOffsetCurve: Curve2D = firstOffset;
+    const secondOffsetCurve: Curve2D = secondOffset;
 
-    const intersectionResult = intersectCurves(firstOffset, secondOffset, 1e-9);
+    const intersectionResult = intersectCurves(firstOffsetCurve, secondOffsetCurve, 1e-9);
     if (!isOk(intersectionResult)) {
       return null;
     }
@@ -68,12 +112,24 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
       return curve.splitAt([splitParam]);
     };
 
-    const firstSplit = splitForFillet(firstCurve, firstOffset);
-    const secondSplit = splitForFillet(secondCurve, secondOffset);
-    const first = wasmIndex(firstSplit, 0);
-    const second = wasmIndex(secondSplit, 1);
-    disposeUnusedSplits(firstSplit, first, firstCurve);
-    disposeUnusedSplits(secondSplit, second, secondCurve);
+    const firstSplit = splitForFillet(firstCurve, firstOffsetCurve);
+    const secondSplit = splitOrDiscard(() => splitForFillet(secondCurve, secondOffsetCurve), {
+      pieces: firstSplit,
+      source: firstCurve,
+    });
+    const first = firstSplit[0];
+    const second = secondSplit[1];
+
+    // A radius that consumes a whole segment splits it at its own endpoint, so
+    // splitAt hands back the curve itself and there is no trimmed half to keep.
+    if (!first || !second) {
+      disposeSplitPieces(firstSplit, firstCurve);
+      disposeSplitPieces(secondSplit, secondCurve);
+      return null;
+    }
+
+    disposeSplitPieces(firstSplit, firstCurve, first);
+    disposeSplitPieces(secondSplit, secondCurve, second);
     return { first, second, center };
   } finally {
     if (firstOffset instanceof Curve2D) firstOffset.delete();
@@ -101,7 +157,11 @@ export function filletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: 
 
   const { first, second, center } = cornerRemoved;
 
-  return [first, make2dArcFromCenter(first.lastPoint, second.firstPoint, center), second];
+  return discardTrimsOnError(firstCurve, secondCurve, first, second, () => [
+    first,
+    make2dArcFromCenter(first.lastPoint, second.firstPoint, center),
+    second,
+  ]);
 }
 
 /**
@@ -118,7 +178,11 @@ export function chamferCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius:
 
   const { first, second } = cornerRemoved;
 
-  return [first, make2dSegmentCurve(first.lastPoint, second.firstPoint), second];
+  return discardTrimsOnError(firstCurve, secondCurve, first, second, () => [
+    first,
+    make2dSegmentCurve(first.lastPoint, second.firstPoint),
+    second,
+  ]);
 }
 
 /**
@@ -139,11 +203,14 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
 
   const offset = Math.abs(radius) * Math.sin(a / 2) * orientationCorrection;
 
-  const firstOffset = make2dOffset(firstCurve, offset);
-  const secondOffset = make2dOffset(secondCurve, offset);
+  let firstOffset: ReturnType<typeof make2dOffset> | null = null;
+  let secondOffset: ReturnType<typeof make2dOffset> | null = null;
   let circle: Curve2D | null = null;
 
   try {
+    firstOffset = make2dOffset(firstCurve, offset);
+    secondOffset = make2dOffset(secondCurve, offset);
+
     if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
       return [firstCurve, secondCurve];
     }
@@ -167,11 +234,21 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
     if (!firstInt || !secondInt) return [firstCurve, secondCurve];
 
     const firstSplit = firstCurve.splitAt([firstInt]);
-    const secondSplit = secondCurve.splitAt([secondInt]);
-    const firstPart = wasmIndex(firstSplit, 0);
-    const secondPart = wasmIndex(secondSplit, secondSplit.length - 1);
-    disposeUnusedSplits(firstSplit, firstPart, firstCurve);
-    disposeUnusedSplits(secondSplit, secondPart, secondCurve);
+    const secondSplit = splitOrDiscard(() => secondCurve.splitAt([secondInt]), {
+      pieces: firstSplit,
+      source: firstCurve,
+    });
+    const firstPart = firstSplit[0];
+    const secondPart = secondSplit[secondSplit.length - 1];
+
+    if (!firstPart || !secondPart) {
+      disposeSplitPieces(firstSplit, firstCurve);
+      disposeSplitPieces(secondSplit, secondCurve);
+      return [firstCurve, secondCurve];
+    }
+
+    disposeSplitPieces(firstSplit, firstCurve, firstPart);
+    disposeSplitPieces(secondSplit, secondCurve, secondPart);
 
     try {
       return [

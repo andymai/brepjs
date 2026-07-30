@@ -57,6 +57,18 @@ describe('custom corner handle leaks', () => {
   );
 
   gcIt(
+    'a corner that bails on a degenerate radius leaks nothing',
+    async () => {
+      const leak = await leakPerCall(() => {
+        // 10 consumes the whole 10-long segment, so the trim produces no halves
+        draw([0, 0]).lineTo([10, 0]).customCorner(10).lineTo([10, 10]).lineTo([0, 10]).close();
+      });
+      expect(leak).toBeLessThan(0.5);
+    },
+    60000
+  );
+
+  gcIt(
     'a filleted corner leaks nothing',
     async () => {
       const leak = await leakPerCall(() => {
@@ -127,6 +139,15 @@ describe.skipIf(!getKernelCapabilities(currentKernel).kernel2D)(
         expect(start[0]).toBeCloseTo(end[0], 6);
         expect(start[1]).toBeCloseTo(end[1], 6);
       }
+    });
+
+    it('a radius that consumes a whole segment bails instead of throwing', () => {
+      const [first, second] = cornerCurves();
+
+      const result = filletCurves(first, second, 10);
+
+      expect(result).toEqual([first, second]);
+      expect(curve2dBoundingBox(first).width).toBeGreaterThan(0);
     });
 
     it('collinear curves are returned untouched and still usable', () => {
