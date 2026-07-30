@@ -51,6 +51,21 @@ export default class CompoundBlueprint implements DrawingInterface {
     this._boundingBox = null;
   }
 
+  /** Release the resources held by every child blueprint and the cached bounding box. */
+  delete(): void {
+    this.blueprints.forEach((bp) => {
+      bp.delete();
+    });
+    if (this._boundingBox) {
+      this._boundingBox.delete();
+      this._boundingBox = null;
+    }
+  }
+
+  [Symbol.dispose](): void {
+    this.delete();
+  }
+
   /** Return a deep copy of this compound blueprint and all its children. */
   clone(): CompoundBlueprint {
     return new CompoundBlueprint(this.blueprints.map((bp) => bp.clone()));

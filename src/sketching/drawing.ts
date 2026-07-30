@@ -68,9 +68,23 @@ function wrapBlueprintResult(
  */
 export class Drawing {
   private readonly innerShape: Shape2D;
+  private _emptyBoundingBox: BoundingBox2d | null = null;
 
   constructor(innerShape: Shape2D = null) {
     this.innerShape = innerShape;
+  }
+
+  /** Release the resources held by the underlying 2D shape and its bounding boxes. */
+  delete(): void {
+    this.innerShape?.delete();
+    if (this._emptyBoundingBox) {
+      this._emptyBoundingBox.delete();
+      this._emptyBoundingBox = null;
+    }
+  }
+
+  [Symbol.dispose](): void {
+    this.delete();
   }
 
   /** Create an independent deep copy of this drawing. */
@@ -110,9 +124,17 @@ export class Drawing {
     return JSON.stringify(serializeHelper(this.innerShape));
   }
 
-  /** Get the axis-aligned 2D bounding box of this drawing. */
+  /**
+   * Get the axis-aligned 2D bounding box of this drawing.
+   *
+   * @remarks The box is borrowed from the drawing and is disposed with it.
+   */
   get boundingBox(): BoundingBox2d {
-    if (!this.innerShape) return new BoundingBox2d();
+    if (!this.innerShape) {
+      // Cached rather than minted per read, so delete() can free it
+      this._emptyBoundingBox ??= new BoundingBox2d();
+      return this._emptyBoundingBox;
+    }
     return this.innerShape.boundingBox;
   }
 
