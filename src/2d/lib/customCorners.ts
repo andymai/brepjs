@@ -1,4 +1,5 @@
 import { Curve2D } from './curve2D.js';
+import type { Point2D } from './definitions.js';
 import { isPoint2D } from './definitions.js';
 import { intersectCurves } from './intersections.js';
 import { unwrap, isOk } from '@/core/result.js';
@@ -12,6 +13,22 @@ import { make2dOffset } from './offset.js';
 import { add2d, crossProduct2d, normalize2d, scalarMultiply2d } from './vectorOperations.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
+/** Unwrap an intersection, discarding the common-segment curves the caller does not use. */
+function intersectionPoints(first: Curve2D, second: Curve2D): Point2D[] {
+  const result = unwrap(intersectCurves(first, second));
+  result.commonSegments.forEach((c) => {
+    c.delete();
+  });
+  return result.intersections;
+}
+
+/** Delete every split piece that is neither kept nor the curve that was split. */
+function disposeUnusedSplits(pieces: Curve2D[], kept: Curve2D, source: Curve2D): void {
+  pieces.forEach((piece) => {
+    if (piece !== kept && piece !== source) piece.delete();
+  });
+}
+
 function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const sinAngle = crossProduct2d(firstCurve.tangentAt(1), secondCurve.tangentAt(0));
 
@@ -24,34 +41,44 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
   const firstOffset = make2dOffset(firstCurve, offset);
   const secondOffset = make2dOffset(secondCurve, offset);
 
-  if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
-    return null;
+  try {
+    if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
+      return null;
+    }
+
+    const intersectionResult = intersectCurves(firstOffset, secondOffset, 1e-9);
+    if (!isOk(intersectionResult)) {
+      return null;
+    }
+    intersectionResult.value.commonSegments.forEach((c) => {
+      c.delete();
+    });
+
+    const potentialCenter = intersectionResult.value.intersections.at(-1);
+    if (!isPoint2D(potentialCenter)) {
+      return null;
+    }
+    const center = potentialCenter;
+
+    const splitForFillet = (curve: Curve2D, offsetCurve: Curve2D) => {
+      const [x, y] = offsetCurve.tangentAt(center);
+      const normal = normalize2d([-y, x]);
+      const splitPoint = add2d(center, scalarMultiply2d(normal, offset));
+      const splitParam = unwrap(curve.parameter(splitPoint, 1e-6));
+      return curve.splitAt([splitParam]);
+    };
+
+    const firstSplit = splitForFillet(firstCurve, firstOffset);
+    const secondSplit = splitForFillet(secondCurve, secondOffset);
+    const first = wasmIndex(firstSplit, 0);
+    const second = wasmIndex(secondSplit, 1);
+    disposeUnusedSplits(firstSplit, first, firstCurve);
+    disposeUnusedSplits(secondSplit, second, secondCurve);
+    return { first, second, center };
+  } finally {
+    if (firstOffset instanceof Curve2D) firstOffset.delete();
+    if (secondOffset instanceof Curve2D) secondOffset.delete();
   }
-
-  const intersectionResult = intersectCurves(firstOffset, secondOffset, 1e-9);
-  if (!isOk(intersectionResult)) {
-    return null;
-  }
-
-  const potentialCenter = intersectionResult.value.intersections.at(-1);
-  if (!isPoint2D(potentialCenter)) {
-    return null;
-  }
-  const center = potentialCenter;
-
-  const splitForFillet = (curve: Curve2D, offsetCurve: Curve2D) => {
-    const [x, y] = offsetCurve.tangentAt(center);
-    const normal = normalize2d([-y, x]);
-    const splitPoint = add2d(center, scalarMultiply2d(normal, offset));
-    const splitParam = unwrap(curve.parameter(splitPoint, 1e-6));
-    return curve.splitAt([splitParam]);
-  };
-
-  const firstSplit = splitForFillet(firstCurve, firstOffset);
-  const secondSplit = splitForFillet(secondCurve, secondOffset);
-  const first = wasmIndex(firstSplit, 0);
-  const second = wasmIndex(secondSplit, 1);
-  return { first, second, center };
 }
 
 /**
@@ -114,38 +141,52 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
 
   const firstOffset = make2dOffset(firstCurve, offset);
   const secondOffset = make2dOffset(secondCurve, offset);
-
-  if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
-    return [firstCurve, secondCurve];
-  }
-
-  const intersectionResult2 = intersectCurves(firstOffset, secondOffset, 1e-9);
-  if (!isOk(intersectionResult2)) {
-    return [firstCurve, secondCurve];
-  }
-  const potentialCenter = intersectionResult2.value.intersections.at(-1);
-  if (!isPoint2D(potentialCenter)) {
-    return [firstCurve, secondCurve];
-  }
-
-  const circle = make2dCircle(radius, potentialCenter);
-  const firstInt = unwrap(intersectCurves(firstCurve, circle)).intersections[0];
-  const secondInt = unwrap(intersectCurves(secondCurve, circle)).intersections.at(-1);
-
-  if (!firstInt || !secondInt) return [firstCurve, secondCurve];
-
-  const firstSplit = firstCurve.splitAt([firstInt]);
-  const secondSplit = secondCurve.splitAt([secondInt]);
-  const firstPart = wasmIndex(firstSplit, 0);
-  const secondPart = wasmIndex(secondSplit, secondSplit.length - 1);
+  let circle: Curve2D | null = null;
 
   try {
-    return [
-      firstPart,
-      make2dThreePointArc(firstPart.lastPoint, firstCurve.lastPoint, secondPart.firstPoint),
-      secondPart,
-    ];
-  } catch {
-    return [firstCurve, secondCurve];
+    if (!(firstOffset instanceof Curve2D) || !(secondOffset instanceof Curve2D)) {
+      return [firstCurve, secondCurve];
+    }
+
+    const intersectionResult2 = intersectCurves(firstOffset, secondOffset, 1e-9);
+    if (!isOk(intersectionResult2)) {
+      return [firstCurve, secondCurve];
+    }
+    intersectionResult2.value.commonSegments.forEach((c) => {
+      c.delete();
+    });
+    const potentialCenter = intersectionResult2.value.intersections.at(-1);
+    if (!isPoint2D(potentialCenter)) {
+      return [firstCurve, secondCurve];
+    }
+
+    circle = make2dCircle(radius, potentialCenter);
+    const firstInt = intersectionPoints(firstCurve, circle)[0];
+    const secondInt = intersectionPoints(secondCurve, circle).at(-1);
+
+    if (!firstInt || !secondInt) return [firstCurve, secondCurve];
+
+    const firstSplit = firstCurve.splitAt([firstInt]);
+    const secondSplit = secondCurve.splitAt([secondInt]);
+    const firstPart = wasmIndex(firstSplit, 0);
+    const secondPart = wasmIndex(secondSplit, secondSplit.length - 1);
+    disposeUnusedSplits(firstSplit, firstPart, firstCurve);
+    disposeUnusedSplits(secondSplit, secondPart, secondCurve);
+
+    try {
+      return [
+        firstPart,
+        make2dThreePointArc(firstPart.lastPoint, firstCurve.lastPoint, secondPart.firstPoint),
+        secondPart,
+      ];
+    } catch {
+      if (firstPart !== firstCurve) firstPart.delete();
+      if (secondPart !== secondCurve) secondPart.delete();
+      return [firstCurve, secondCurve];
+    }
+  } finally {
+    if (firstOffset instanceof Curve2D) firstOffset.delete();
+    if (secondOffset instanceof Curve2D) secondOffset.delete();
+    circle?.delete();
   }
 }

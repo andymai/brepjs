@@ -23,7 +23,12 @@ export function reverseCurve(curve: Curve2D): Curve2D {
   return cloned;
 }
 
-/** Get the bounding box of a 2D curve. */
+/**
+ * Get the bounding box of a 2D curve.
+ *
+ * @remarks The box is borrowed from the curve's cache and is disposed with the
+ * curve. Clone it if it must outlive the curve.
+ */
 export function curve2dBoundingBox(curve: Curve2D): BoundingBox2d {
   return curve.boundingBox;
 }
