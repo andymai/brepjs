@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.3](https://github.com/andymai/brepjs/compare/brepjs-v18.119.2...brepjs-v18.119.3) (2026-07-30)
+
+
+### Bug Fixes
+
+* **2d:** free 2D handles stranded by custom corners ([#1907](https://github.com/andymai/brepjs/issues/1907)) ([f8207f1](https://github.com/andymai/brepjs/commit/f8207f1655bfe5d15472585eb73033a8e5ce1d3d))
+
 ## [18.119.2](https://github.com/andymai/brepjs/compare/brepjs-v18.119.1...brepjs-v18.119.2) (2026-07-23)
 
 
