@@ -1,0 +1,19 @@
+src/sketching/README.md
+  s_8ecc4a140cf296::t_02a3e729dc86d8 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1adc408fea2d91c661b15472a8b2cf730bdd1ab6",
+  "prompts": {},
+  "sessions": {
+    "s_8ecc4a140cf296": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fea52fd-73c8-4d84-a509-cea3ba79b0b1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
