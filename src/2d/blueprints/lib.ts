@@ -158,6 +158,14 @@ export interface SketchData {
 
 export interface DrawingInterface {
   clone(): DrawingInterface;
+
+  /**
+   * Release the resources held by this drawing, cascading to child blueprints
+   * and their curves. The `boundingBox` handed out earlier dies with it.
+   */
+  delete(): void;
+  [Symbol.dispose](): void;
+
   boundingBox: BoundingBox2d;
   stretch(ratio: number, direction: Point2D, origin: Point2D): DrawingInterface;
 

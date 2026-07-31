@@ -106,7 +106,10 @@ export default class Blueprint implements DrawingInterface {
     this.curves.forEach((c) => {
       c.delete();
     });
-    if (this._boundingBox) this._boundingBox.delete();
+    if (this._boundingBox) {
+      this._boundingBox.delete();
+      this._boundingBox = null;
+    }
   }
 
   [Symbol.dispose](): void {

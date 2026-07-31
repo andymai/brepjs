@@ -34,6 +34,21 @@ export default class Blueprints implements DrawingInterface {
     this._boundingBox = null;
   }
 
+  /** Release the resources held by every child blueprint and the cached bounding box. */
+  delete(): void {
+    this.blueprints.forEach((bp) => {
+      bp.delete();
+    });
+    if (this._boundingBox) {
+      this._boundingBox.delete();
+      this._boundingBox = null;
+    }
+  }
+
+  [Symbol.dispose](): void {
+    this.delete();
+  }
+
   /** Return a multi-line debug representation of every child blueprint. */
   get repr() {
     return ['Blueprints', ...this.blueprints.map((b) => b.repr)].join('\n');
