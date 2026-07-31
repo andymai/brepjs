@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.4](https://github.com/andymai/brepjs/compare/brepjs-v18.119.3...brepjs-v18.119.4) (2026-07-31)
+
+
+### Bug Fixes
+
+* **2d:** make Drawing and blueprint containers disposable ([#1912](https://github.com/andymai/brepjs/issues/1912)) ([1d86146](https://github.com/andymai/brepjs/commit/1d86146c7d46f57c5c78dbb33efd3ae8f34421f2))
+
 ## [18.119.3](https://github.com/andymai/brepjs/compare/brepjs-v18.119.2...brepjs-v18.119.3) (2026-07-30)
 
 
