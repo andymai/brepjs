@@ -12,3 +12,63 @@ ignoreUntil = 2026-09-15
 # and breaks the vitepress build, and vitepress' stable line still pins vite
 # 6.x. Re-evaluate once vitepress 2.x (newer vite/esbuild) ships.
 reason = "esbuild dev-only via vitepress; Deno/NPM_CONFIG_REGISTRY vector not reachable in Node CI; fix breaks docs build"
+
+# --- dompurify via monaco-editor (3 advisories) ---------------------------
+# monaco-editor 0.56.0 declares `dompurify: 3.4.8` as an exact pin, which is
+# what the scanner matches on. That copy is never executed, for two reasons.
+#
+# 1. monaco never imports the package. It vendors its own DOMPurify at
+#    esm/vs/base/browser/dompurify/dompurify.js and domSanitize.js imports
+#    `./dompurify/dompurify.js`. There is no bare `dompurify` import anywhere
+#    in monaco's esm/ or min/ output.
+# 2. The playground never bundles monaco at all. It uses @monaco-editor/react,
+#    and with no loader.config() override the default applies: monaco is
+#    fetched at runtime from cdn.jsdelivr.net. No DOMPurify appears in any
+#    apps/playground/dist chunk.
+#
+# So node_modules/monaco-editor is a build-time, types-only dependency here.
+# An npm override would raise a copy that is neither imported nor shipped,
+# turning this table green without changing a byte of what executes. That is
+# worse than an explicit exception: it hides the exposure instead of recording
+# it. Bumping monaco is the only real fix and upstream has not shipped one.
+#
+# All three advisories also need a DOMPurify API monaco never calls. monaco
+# passes config per-call to purify.sanitize() and calls purify.removeAllHooks()
+# in a finally, so none of the cross-call config persistence these bugs rely on
+# happens. Verified against the vendored source, not just the package.json.
+#
+# SEPARATE, NOT FIXED HERE: because monaco is CDN-loaded, the editor actually
+# running in the playground is whatever version @monaco-editor/loader defaults
+# to (0.55.1 today), not the 0.56.0 pinned in apps/playground/package.json.
+# 0.55.1 vendors DOMPurify 3.2.7, i.e. older than the version flagged above.
+# That runtime dependency is invisible to this scanner, which only reads
+# package-lock.json. Tracking separately; it is a monaco-version and
+# supply-chain question, not something an override or ignore here can address.
+#
+# Re-evaluate when monaco-editor > 0.56.0 ships with a newer bundled DOMPurify.
+
+[[IgnoredVulns]]
+id = "GHSA-cmwh-pvxp-8882"
+ignoreUntil = 2026-11-01
+# Needs setConfig() to pollute ALLOWED_ATTR across calls. The only setConfig
+# occurrences in monaco's esm/ are DOMPurify's own definition plus unrelated
+# same-named methods in the TypeScript language service and monaco's own
+# configuration layer. DOMPurify.setConfig is never invoked.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; setConfig() never called"
+
+[[IgnoredVulns]]
+id = "GHSA-c2j3-45gr-mqc4"
+ignoreUntil = 2026-11-01
+# Needs CUSTOM_ELEMENT_HANDLING to be configured for the afterSanitizeElements
+# bypass. The identifier appears only inside the vendored dompurify.js; monaco
+# never sets it.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; CUSTOM_ELEMENT_HANDLING never configured"
+
+[[IgnoredVulns]]
+id = "GHSA-vxr8-fq34-vvx9"
+ignoreUntil = 2026-11-01
+# Needs a Trusted Types policy to survive clearConfig() and poison a later
+# RETURN_TRUSTED_TYPE call. monaco does use RETURN_TRUSTED_TYPE, but the sole
+# clearConfig occurrence in esm/ is DOMPurify's own definition; monaco never
+# calls it, so no config survives between sanitize() calls.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; clearConfig() never called"
