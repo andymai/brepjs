@@ -38,21 +38,24 @@ export function setupMonaco(monaco: Monaco) {
   // explicitly hits a Monaco bug where the reference isn't expanded
   // transitively, leaving user code with "Cannot find name 'Math'" errors
   // (issue #761).
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.ES2022,
-    module: monaco.languages.typescript.ModuleKind.ESNext,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+  // monaco 0.56 moved the TypeScript language service off `languages.typescript`
+  // to a top-level `typescript` namespace. The old path silently reads
+  // undefined, so setupMonaco throws and the editor never mounts.
+  monaco.typescript.typescriptDefaults.setCompilerOptions({
+    target: monaco.typescript.ScriptTarget.ES2022,
+    module: monaco.typescript.ModuleKind.ESNext,
+    moduleResolution: monaco.typescript.ModuleResolutionKind.NodeJs,
     strict: true,
     noEmit: true,
     allowJs: true,
   });
 
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+  monaco.typescript.typescriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
   });
 
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(
+  monaco.typescript.typescriptDefaults.addExtraLib(
     buildBrepjsModuleDts(ambientTypes, sheetmetalAmbientTypes, bimAmbientTypes),
     'file:///node_modules/@types/brepjs/index.d.ts'
   );
