@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.109.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.109.0...brepjs-cad-v0.109.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+
 ## [0.109.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.108.0...brepjs-cad-v0.109.0) (2026-08-01)
 
 
