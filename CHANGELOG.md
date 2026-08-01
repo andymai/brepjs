@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.6](https://github.com/andymai/brepjs/compare/brepjs-v18.119.5...brepjs-v18.119.6) (2026-08-01)
+
+
+### Bug Fixes
+
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+
 ## [18.119.5](https://github.com/andymai/brepjs/compare/brepjs-v18.119.4...brepjs-v18.119.5) (2026-08-01)
 
 
