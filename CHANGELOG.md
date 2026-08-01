@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.5](https://github.com/andymai/brepjs/compare/brepjs-v18.119.4...brepjs-v18.119.5) (2026-08-01)
+
+
+### Bug Fixes
+
+* **deps:** drop redundant brace-expansion override ([#1916](https://github.com/andymai/brepjs/issues/1916)) ([b63686b](https://github.com/andymai/brepjs/commit/b63686bfff611fe753ed63c7ace3586199270499))
+
 ## [18.119.4](https://github.com/andymai/brepjs/compare/brepjs-v18.119.3...brepjs-v18.119.4) (2026-07-31)
 
 
