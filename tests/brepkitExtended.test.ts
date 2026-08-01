@@ -10,7 +10,19 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, fillet, castShape, getEdges, getFaces, isSolid, unwrap } from '@/index.js';
+import {
+  box,
+  fillet,
+  castShape,
+  compound,
+  getEdges,
+  getFaces,
+  isSolid,
+  measureVolume,
+  rotate,
+  translate,
+  unwrap,
+} from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 
@@ -678,5 +690,41 @@ descOcct('Brepkit-only methods throw on OCCT', () => {
   it('meshBoolean throws', () => {
     const kernel = getKernel();
     expect(() => kernel.meshBoolean([], [], [], [], 'union', 1e-6)).toThrow(/brepkit/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Transforming compounds
+// ---------------------------------------------------------------------------
+
+// A compound reaches applyMatrix whenever a caller rotates or translates a
+// multi-part shape. The gridfinity floor and divider pattern builders both lay
+// out a panel compound exactly that way, and every scenario in both families
+// failed outright on "applyMatrix does not support 'compound' shapes".
+descBk('Transforming compounds (brepkit)', () => {
+  it('translates an all-solid compound', () => {
+    const c = compound([box(1, 1, 1), translate(box(1, 1, 1), [5, 0, 0])]);
+    const bb = getKernel().boundingBox(translate(c, [0, 0, 10]).wrapped);
+    expect(bb.min[2]).toBeCloseTo(10, 3);
+    expect(bb.max[2]).toBeCloseTo(11, 3);
+    expect(bb.max[0]).toBeCloseTo(6, 3);
+  });
+
+  it('leaves the source compound where it was', () => {
+    const c = compound([box(1, 1, 1), translate(box(1, 1, 1), [5, 0, 0])]);
+    translate(c, [0, 0, 10]);
+    expect(getKernel().boundingBox(c.wrapped).min[2]).toBeCloseTo(0, 3);
+  });
+
+  it('preserves every member, not just the first', () => {
+    const c = compound([box(2, 2, 2), translate(box(2, 2, 2), [5, 0, 0])]);
+    const moved = translate(c, [0, 0, 3]);
+    expect(unwrap(measureVolume(moved))).toBeCloseTo(16, 1);
+  });
+
+  it('rotates a compound about Z', () => {
+    const c = compound([box(4, 1, 1), translate(box(4, 1, 1), [0, 3, 0])]);
+    const bb = getKernel().boundingBox(rotate(c, 90, { axis: [0, 0, 1] }).wrapped);
+    expect(bb.max[1] - bb.min[1]).toBeCloseTo(4, 2);
   });
 });

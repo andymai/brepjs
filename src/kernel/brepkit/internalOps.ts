@@ -16,6 +16,10 @@ import {
   faceHandle,
   edgeHandle,
   wireHandle,
+  compoundHandle,
+  syntheticCompounds,
+  nextSyntheticId,
+  toArray,
   unwrap,
   DEFAULT_DEFLECTION,
 } from './helpers.js';
@@ -63,6 +67,24 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
       const copy = bk.copyEdge(h.id);
       bk.transformEdge(copy, matrix);
       return edgeHandle(copy);
+    }
+    case 'compound': {
+      // A compound is either a real brepkit compound (all-solid children, held
+      // in the arena) or a JS-side synthetic one holding wires/faces/edges;
+      // `makeCompound` picks between them, so both have to be handled here.
+      const children = syntheticCompounds.get(h.id);
+      if (children) {
+        const moved = children.map((child) => applyMatrix(bk, child, matrix) as BrepkitHandle);
+        const syntheticId = nextSyntheticId();
+        syntheticCompounds.set(syntheticId, moved);
+        return compoundHandle(syntheticId);
+      }
+      const copies = toArray(bk.getCompoundSolids(h.id)).map((solidId) => {
+        const copy = bk.copySolid(solidId);
+        bk.transformSolid(copy, matrix);
+        return copy;
+      });
+      return compoundHandle(bk.makeCompound(copies));
     }
     default:
       throw new Error(`brepkit: applyMatrix does not support '${h.type}' shapes`);
