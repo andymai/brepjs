@@ -2,17 +2,6 @@
 # OSV Scan workflow (.github/workflows/osv-scan.yml). Each entry must carry a
 # reason and a review date so exceptions don't outlive their justification.
 
-[[IgnoredVulns]]
-id = "GHSA-gv7w-rqvm-qjhr"
-ignoreUntil = 2026-09-15
-# esbuild 0.25.10 reaches the tree only via vitepress -> vite@6.4.x, a dev-only
-# docs-site build dependency. The advisory is the Deno install path trusting a
-# malicious NPM_CONFIG_REGISTRY; not reachable from our Node-only trusted CI
-# build. The fix (esbuild 0.28.1) drops destructuring->es2020 transform support
-# and breaks the vitepress build, and vitepress' stable line still pins vite
-# 6.x. Re-evaluate once vitepress 2.x (newer vite/esbuild) ships.
-reason = "esbuild dev-only via vitepress; Deno/NPM_CONFIG_REGISTRY vector not reachable in Node CI; fix breaks docs build"
-
 # --- dompurify via monaco-editor (3 advisories) ---------------------------
 # monaco-editor 0.56.0 declares `dompurify: 3.4.8` as an exact pin, which is
 # what the scanner matches on. That copy is never executed, for two reasons.
