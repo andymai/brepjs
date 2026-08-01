@@ -1,3 +1,4 @@
+import '../../lib/monacoLoader';
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
