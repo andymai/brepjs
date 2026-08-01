@@ -1,0 +1,19 @@
+osv-scanner.toml
+  s_23c1301abc215a::t_ab4bc583962b7a 17-18,20-27,29-37,40-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "012f5066335ffba68ffcaab3c716ad63af33b83e",
+  "prompts": {},
+  "sessions": {
+    "s_23c1301abc215a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "103b3a03-8eb8-42e6-b748-651472954876",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
