@@ -1,0 +1,21 @@
+src/kernel/brepkit/internalOps.ts
+  s_4d29bdcd922200::t_80267bd7299735 19,72-87
+tests/brepkitExtended.test.ts
+  s_4d29bdcd922200::t_3d96ae388a2411 22,24,727-751
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "24a56aa49c9051770db2dd46f2f10d01e230905a",
+  "prompts": {},
+  "sessions": {
+    "s_4d29bdcd922200": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e911a193-bda2-4dfa-8b36-a1ed3a295646",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
