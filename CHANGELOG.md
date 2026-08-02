@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.7](https://github.com/andymai/brepjs/compare/brepjs-v18.119.6...brepjs-v18.119.7) (2026-08-02)
+
+
+### Bug Fixes
+
+* **brepkit:** transform compounds in applyMatrix ([#1925](https://github.com/andymai/brepjs/issues/1925)) ([da83863](https://github.com/andymai/brepjs/commit/da83863043ec0f7a68399eb5951c3e2f3ef46fb6))
+
 ## [18.119.6](https://github.com/andymai/brepjs/compare/brepjs-v18.119.5...brepjs-v18.119.6) (2026-08-01)
 
 
