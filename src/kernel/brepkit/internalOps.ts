@@ -16,6 +16,11 @@ import {
   faceHandle,
   edgeHandle,
   wireHandle,
+  vertexHandle,
+  compoundHandle,
+  syntheticCompounds,
+  nextSyntheticId,
+  toArray,
   unwrap,
   DEFAULT_DEFLECTION,
 } from './helpers.js';
@@ -63,6 +68,40 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
       const copy = bk.copyEdge(h.id);
       bk.transformEdge(copy, matrix);
       return edgeHandle(copy);
+    }
+    case 'vertex': {
+      // A vertex has no surface to offset, just a point to move. It reaches
+      // here through the compound branch below: the public `compound()`
+      // accepts vertices, so a synthetic compound can hold them, and without
+      // this arm transforming such a compound throws.
+      const p = bk.getVertexPosition(h.id);
+      const m = matrix;
+      const [x, y, z] = [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0];
+      return vertexHandle(
+        bk.makeVertex(
+          (m[0] ?? 0) * x + (m[1] ?? 0) * y + (m[2] ?? 0) * z + (m[3] ?? 0),
+          (m[4] ?? 0) * x + (m[5] ?? 0) * y + (m[6] ?? 0) * z + (m[7] ?? 0),
+          (m[8] ?? 0) * x + (m[9] ?? 0) * y + (m[10] ?? 0) * z + (m[11] ?? 0)
+        )
+      );
+    }
+    case 'compound': {
+      // A compound is either a real brepkit compound (all-solid children, held
+      // in the arena) or a JS-side synthetic one holding wires/faces/edges;
+      // `makeCompound` picks between them, so both have to be handled here.
+      const children = syntheticCompounds.get(h.id);
+      if (children) {
+        const moved = children.map((child) => applyMatrix(bk, child, matrix) as BrepkitHandle);
+        const syntheticId = nextSyntheticId();
+        syntheticCompounds.set(syntheticId, moved);
+        return compoundHandle(syntheticId);
+      }
+      const copies = toArray(bk.getCompoundSolids(h.id)).map((solidId) => {
+        const copy = bk.copySolid(solidId);
+        bk.transformSolid(copy, matrix);
+        return copy;
+      });
+      return compoundHandle(bk.makeCompound(copies));
     }
     default:
       throw new Error(`brepkit: applyMatrix does not support '${h.type}' shapes`);
