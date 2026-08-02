@@ -19,7 +19,9 @@ import {
   getFaces,
   isSolid,
   measureVolume,
+  polygon,
   rotate,
+  vertex,
   translate,
   unwrap,
 } from '@/index.js';
@@ -720,6 +722,31 @@ descBk('Transforming compounds (brepkit)', () => {
     const c = compound([box(2, 2, 2), translate(box(2, 2, 2), [5, 0, 0])]);
     const moved = translate(c, [0, 0, 3]);
     expect(unwrap(measureVolume(moved))).toBeCloseTo(16, 1);
+  });
+
+  // The all-solid cases above take the ARENA path. A compound with any
+  // non-solid child is stored JS-side instead and transformed by recursing
+  // per child, which is a different code path and was previously uncovered.
+  it('translates a synthetic compound holding a face', () => {
+    const face = unwrap(
+      polygon([
+        [0, 0, 0],
+        [2, 0, 0],
+        [2, 2, 0],
+      ])
+    );
+    const c = compound([box(1, 1, 1), face]);
+    const bb = getKernel().boundingBox(translate(c, [0, 0, 7]).wrapped);
+    expect(bb.min[2]).toBeCloseTo(7, 3);
+  });
+
+  it('translates a synthetic compound holding a vertex', () => {
+    // `compound()` accepts vertices, so the recursive path must be able to
+    // move one; without a vertex arm in applyMatrix this threw.
+    const c = compound([box(1, 1, 1), vertex([0, 0, 0])]);
+    const bb = getKernel().boundingBox(translate(c, [0, 0, 5]).wrapped);
+    expect(bb.min[2]).toBeCloseTo(5, 3);
+    expect(bb.max[2]).toBeCloseTo(6, 3);
   });
 
   it('rotates a compound about Z', () => {
