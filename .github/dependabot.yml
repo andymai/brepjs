@@ -20,6 +20,15 @@ updates:
       # peer ranges to accept 7.x.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # knip 6.28.0 (webpro-nl/knip#1895) started reporting unused re-exports when
+      # `ignoreExportsUsedInFile` is set. That flags 74 exports + 42 exported types
+      # across the barrel files that make up the public API surface (src/*/index.ts
+      # re-exported through src/index.ts), so `npm run knip` fails. Adopting the
+      # stricter reporting is a deliberate triage of knip.config.ts, not a bump.
+      # Re-allow once that config work is done.
+      - dependency-name: knip
+        update-types:
+          ['version-update:semver-minor', 'version-update:semver-major']
     groups:
       minor-and-patch:
         update-types:
