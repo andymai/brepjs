@@ -45,6 +45,14 @@ export const isBrepkit: boolean = currentKernelId === 'brepkit';
 export const divergences: DivergenceMap = {
   manifold: {
     // -----------------------------------------------------------------------
+    // modifierFns.test.ts
+    // -----------------------------------------------------------------------
+    'modifierFns.defeatureFilletFace': {
+      kind: 'not-implemented',
+      reason:
+        'manifold has no B-rep feature recognition; its defeature clones the input unchanged, so no face removal restores the original volume.',
+    },
+    // -----------------------------------------------------------------------
     // projection.test.ts — manifold has no HLR
     // -----------------------------------------------------------------------
     'projection.makeProjectedEdges': {
@@ -172,6 +180,12 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'brepkit defeature rejects non-planar input with "invalid input: defeaturing currently only supports planar faces", so a fillet (cylindrical) face cannot be removed. Passed on 2.127.10.',
+      since: '2.128.20',
+    },
+    'modifierFns.defeatureFilletFace': {
+      kind: 'not-implemented',
+      reason:
+        'Same planar-only restriction as brepkitExtended.defeatureNonPlanarFace: removing a fillet surface raises "defeaturing currently only supports planar faces".',
       since: '2.128.20',
     },
 
@@ -370,6 +384,14 @@ export const divergences: DivergenceMap = {
   },
 
   occt: {
+    // -----------------------------------------------------------------------
+    // modifierFns.test.ts
+    // -----------------------------------------------------------------------
+    'modifierFns.defeatureFilletFace': {
+      kind: 'not-implemented',
+      reason:
+        'The occt (OpenCascade.js) adapter has no defeature binding and raises UnsupportedKernelOperationError.',
+    },
     // -----------------------------------------------------------------------
     // importFns.test.ts / kernel-ops.test.ts
     // -----------------------------------------------------------------------

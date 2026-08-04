@@ -230,7 +230,7 @@ export function defeature(
 ): KernelShape {
   const vec = makeVecU32(Module, faces.map(unwrap));
   try {
-    return wrapResult(k, k.defeature(unwrap(shape), vec, 1e-3));
+    return wrapResult(k, k.defeature(unwrap(shape), vec, 0));
   } finally {
     vec.delete();
   }
