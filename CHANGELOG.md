@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.8](https://github.com/andymai/brepjs/compare/brepjs-v18.119.7...brepjs-v18.119.8) (2026-08-04)
+
+
+### Bug Fixes
+
+* **deps:** bump occt-wasm to 3.8.3 and brepkit-wasm to 2.128.20 ([#1938](https://github.com/andymai/brepjs/issues/1938)) ([7112120](https://github.com/andymai/brepjs/commit/7112120feceb35aa44e9a9eb9293d70c2600dc02))
+
 ## [18.119.7](https://github.com/andymai/brepjs/compare/brepjs-v18.119.6...brepjs-v18.119.7) (2026-08-02)
 
 
