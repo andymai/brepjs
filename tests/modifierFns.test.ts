@@ -190,6 +190,25 @@ describe('offset', () => {
   });
 });
 
+describe('defeature', () => {
+  it('removes the fillet face and heals back to the original box volume', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.defeatureFilletFace');
+    const b = box(20, 20, 20);
+    const edges = getEdges(b);
+    const filleted = unwrap(fillet(b, [edges[0]!], 2));
+    expect(unwrap(measureVolume(filleted))).toBeLessThan(8000);
+
+    const kernel = getKernel();
+    const volumes = getFaces(filleted).map((f) =>
+      unwrap(measureVolume(castShape(kernel.defeature(filleted.wrapped, [f.wrapped]))))
+    );
+
+    // Only the fillet surface is a removable feature; every other face is left
+    // untouched, so exactly one removal restores the original box.
+    expect(volumes.filter((v) => Math.abs(v - 8000) < 1e-6)).toHaveLength(1);
+  });
+});
+
 describe('fillet with array radius', () => {
   it('fillets a specific edge with variable radius [r1, r2]', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
