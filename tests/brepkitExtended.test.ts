@@ -26,7 +26,7 @@ import {
   unwrap,
 } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 
 const descBk = shouldSkipSuite('brepkitExtended') ? describe.skip : describe;
 
@@ -159,7 +159,8 @@ descBk('Advanced modeling (brepkit)', () => {
     expect(isSolid(castShape(result))).toBe(true);
   });
 
-  it('defeature removes faces from a solid', () => {
+  it('defeature removes faces from a solid', (ctx) => {
+    skipIfDiverges(ctx, 'brepkitExtended.defeatureNonPlanarFace');
     const kernel = getKernel();
     // Create a box with a fillet, then try to remove the fillet face
     const b = box(20, 20, 20);

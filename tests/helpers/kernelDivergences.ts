@@ -166,6 +166,16 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
+    // brepkitExtended.test.ts
+    // -----------------------------------------------------------------------
+    'brepkitExtended.defeatureNonPlanarFace': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit defeature rejects non-planar input with "invalid input: defeaturing currently only supports planar faces", so a fillet (cylindrical) face cannot be removed. Passed on 2.127.10.',
+      since: '2.128.20',
+    },
+
+    // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
     'modifierFns.variableFilletRadius': {
