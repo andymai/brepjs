@@ -1,0 +1,18 @@
+package-lock.json
+  h_b755e1950659f4 40,7231,7278-7280,8521,10604,10616-10617,12004,12854,14887
+package.json
+  h_b755e1950659f4 268
+src/kernel/brepkit/brepkitWasmTypes.ts
+  h_b755e1950659f4 5,918,926,929,932,935
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "38d24fb2cc1a4524b1d3e0769a24f5c419aaeab1",
+  "prompts": {},
+  "humans": {
+    "h_b755e1950659f4": {
+      "author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
