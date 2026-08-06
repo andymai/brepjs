@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.9](https://github.com/andymai/brepjs/compare/brepjs-v18.119.8...brepjs-v18.119.9) (2026-08-06)
+
+
+### Bug Fixes
+
+* **deps:** bump brepkit-wasm to 2.129.8 ([#1942](https://github.com/andymai/brepjs/issues/1942)) ([6957347](https://github.com/andymai/brepjs/commit/6957347d3c130c76ae637529ba6d661869af254e))
+
 ## [18.119.8](https://github.com/andymai/brepjs/compare/brepjs-v18.119.7...brepjs-v18.119.8) (2026-08-04)
 
 
