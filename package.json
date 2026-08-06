@@ -265,7 +265,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "@vitest/coverage-v8": "4.1.10",
     "brepjs-opencascade": "*",
-    "brepkit-wasm": "2.128.20",
+    "brepkit-wasm": "2.129.8",
     "eslint": "10.8.0",
     "fast-check": "4.9.0",
     "husky": "9.1.7",
