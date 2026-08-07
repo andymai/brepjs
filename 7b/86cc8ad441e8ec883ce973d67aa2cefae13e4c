@@ -1,0 +1,23 @@
+CONTRIBUTING.md
+  s_b95dcdcfb35c91::t_eb632a67faf315 3-8
+.github/CLA.md
+  s_b95dcdcfb35c91::t_2c4e32640fce4a 1-73
+.github/workflows/cla.yml
+  s_b95dcdcfb35c91::t_b0c24a4280de15 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7b86cc8ad441e8ec883ce973d67aa2cefae13e4c",
+  "prompts": {},
+  "sessions": {
+    "s_b95dcdcfb35c91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22be951d-2383-4b4c-86b4-a2ffe5c6ed18",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
