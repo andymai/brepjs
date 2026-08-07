@@ -1,0 +1,14 @@
+scripts/sync-brepkit-types.ts
+  h_b755e1950659f4 15,548,641-644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1662f4907456b9e53a19d67146bfc6923d92fcb7",
+  "prompts": {},
+  "humans": {
+    "h_b755e1950659f4": {
+      "author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
