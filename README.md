@@ -163,4 +163,12 @@ brepjs.dev and the playground are hosted on [Vercel](https://vercel.com) through
 
 ## License
 
-[Apache-2.0](./LICENSE)
+brepjs itself is [Apache-2.0](./LICENSE). The kernel you register carries its own license, and a shipped product must comply with both brepjs's license and the registered kernel's:
+
+| Package                        | License                                                | What it means for your product                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brepjs` (this package)        | Apache-2.0                                             | Use freely, open or proprietary                                                                                                                                                                      |
+| `occt-wasm` kernel             | LGPL-2.1-only (WASM output; tooling MIT OR Apache-2.0) | Proprietary use permitted under the LGPL's terms                                                                                                                                                     |
+| `brepkit-wasm` kernel (3.0.0+) | AGPL-3.0-only or commercial                            | Open-source products use it freely under the AGPL; proprietary products need a [commercial license](https://github.com/andymai/brepkit/blob/main/COMMERCIAL-LICENSE.md) from Collective Context, LLC |
+
+`brepkit-wasm` versions through 2.129.x were published under MIT OR Apache-2.0 and remain available under those terms.
