@@ -4,7 +4,8 @@
 
 All contributors must sign our [CLA](.github/CLA.md) before their first PR
 can be merged. When you open a PR, a bot will prompt you to sign by posting
-a comment. This is a one-time requirement.
+a comment. You sign once per repository: brepkit and brepjs keep separate
+signature stores, and the agreement terms are identical in both.
 
 ## Getting Started
 
