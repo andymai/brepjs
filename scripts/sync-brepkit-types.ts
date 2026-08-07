@@ -12,6 +12,7 @@
  *   4. Generates the types file with `@unwired` tags for unused methods
  */
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -544,7 +545,7 @@ function generate(): void {
   lines.push('  /** Triangle indices (groups of 3). */');
   lines.push('  readonly indices: Uint32Array;');
   lines.push(
-    "  /** Per-face start offsets into `indices`; last element equals `indices.length`. */"
+    '  /** Per-face start offsets into `indices`; last element equals `indices.length`. */'
   );
   lines.push('  readonly faceOffsets: Uint32Array;');
   lines.push('}');
@@ -637,6 +638,10 @@ function generate(): void {
   lines.push('');
 
   writeFileSync(OUTPUT_FILE, lines.join('\n'));
+  // The generated file must satisfy the repo's format gate directly; a sync
+  // that leaves prettier violations turns every kernel bump into a two-step
+  // edit.
+  execFileSync('npx', ['prettier', '--write', OUTPUT_FILE], { stdio: 'inherit' });
 
   const wiredCount = methods.filter((m) => wired.has(m.name)).length;
   const totalCount = methods.length;
