@@ -1,0 +1,23 @@
+.github/workflows/cla.yml
+  s_b95dcdcfb35c91::t_5fd1efed15328f 20
+CONTRIBUTING.md
+  s_b95dcdcfb35c91::t_6e5222ebd01ac6 7-8
+packages/brepjs-opencascade/src/brepjs_single.d.ts
+  s_b95dcdcfb35c91::t_36ea1823089d75 1-2,6-57,62-63,67-140,145-191,199-201,203-233,241-295,303-304,307-308,311-406,411-412,415-416,419-472,477-508,511-517,519-568,573-638,643-692,697-712,717-12475,12480-12483,12485-12488,12494,12503-12533,12535,12546-12561,12568-12572,12594-13168,13170-13187,13193-13197,13203-13223,13229-13248,13254-13265,13271-13280,13286,13292-13335,13341-13352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e32bfbbce2ab0e990b661b78ed0e714a74b0e90d",
+  "prompts": {},
+  "sessions": {
+    "s_b95dcdcfb35c91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22be951d-2383-4b4c-86b4-a2ffe5c6ed18",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
