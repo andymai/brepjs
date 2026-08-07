@@ -1,0 +1,14 @@
+CONTRIBUTING.md
+  h_b755e1950659f4 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4dbbea1787449b6f05398aed30de80f4f29fa4c5",
+  "prompts": {},
+  "humans": {
+    "h_b755e1950659f4": {
+      "author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
