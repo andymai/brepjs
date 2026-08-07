@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.119.10](https://github.com/andymai/brepjs/compare/brepjs-v18.119.9...brepjs-v18.119.10) (2026-08-07)
+
+
+### Bug Fixes
+
+* **scripts:** format the generated kernel types in the sync itself ([#1950](https://github.com/andymai/brepjs/issues/1950)) ([096e78f](https://github.com/andymai/brepjs/commit/096e78fd50af97598d751ddf1ef0f864050fb994))
+
 ## [18.119.9](https://github.com/andymai/brepjs/compare/brepjs-v18.119.8...brepjs-v18.119.9) (2026-08-06)
 
 
