@@ -378,21 +378,6 @@ export function hasIgnoredBooleanOptions(opts: {
   );
 }
 
-/** Check if a BooleanOptions object has any meaningful (non-signal) property set. */
-export function hasBooleanOptions(opts: {
-  optimisation?: unknown;
-  simplify?: unknown;
-  strategy?: unknown;
-  fuzzyValue?: unknown;
-}): boolean {
-  return (
-    opts.optimisation !== undefined ||
-    opts.simplify !== undefined ||
-    opts.strategy !== undefined ||
-    opts.fuzzyValue !== undefined
-  );
-}
-
 // ---------------------------------------------------------------------------
 // 2D handle casts
 // ---------------------------------------------------------------------------
