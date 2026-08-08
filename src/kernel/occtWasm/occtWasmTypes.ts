@@ -227,6 +227,24 @@ export interface OcctKernelWasm {
   ): number;
   sweep(wireId: number, spineId: number, transitionMode: number): number;
   sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
+  /** occt-wasm >= 4.1.0. Absent on the 3.8.x / 4.0.x peers the range still allows. */
+  sweepAdvanced?(
+    profileId: number,
+    spineId: number,
+    mode: number,
+    upX: number,
+    upY: number,
+    upZ: number,
+    auxSpineId: number,
+    curvilinearEquivalence: boolean,
+    guideContact: number,
+    transitionMode: number,
+    withContact: boolean,
+    withCorrection: boolean,
+    tol3d: number,
+    boundTol: number,
+    tolAngular: number
+  ): number;
   draftPrism(shapeId: number, dx: number, dy: number, dz: number, angleDeg: number): number;
   revolveVec(
     shapeId: number,

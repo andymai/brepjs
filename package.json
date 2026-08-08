@@ -272,7 +272,7 @@
     "knip": "6.27.0",
     "lint-staged": "17.2.0",
     "lz-string": "1.5.0",
-    "occt-wasm": "4.0.0",
+    "occt-wasm": "4.1.0",
     "prettier": "3.9.6",
     "puppeteer": "25.4.0",
     "size-limit": "12.1.0",
@@ -318,5 +318,9 @@
     "vitepress": {
       "vite": "6.4.3"
     }
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.25.10": true
   }
 }

@@ -8,6 +8,70 @@ import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { makeVecU32, unwrap, wrapResult } from './helpers.js';
 
+// occt-wasm SweepMode / SweepContact / TransitionMode ordinals. Mirrored rather
+// than imported so the adapter keeps working against the raw Embind kernel,
+// which carries no enum objects.
+const SWEEP_MODE_FIXED = 0;
+const SWEEP_MODE_FRENET = 1;
+const SWEEP_MODE_AUXILIARY = 3;
+const GUIDE_CONTACT_NONE = 0;
+
+/**
+ * Map brepjs's transition mode onto BRepBuilderAPI_TransitionMode, matching
+ * `getTransitionMode` in the opencascade adapter. Absent means Transformed,
+ * which is what OCCT applies when SetTransitionMode is never called.
+ */
+function transitionModeValue(mode?: 'transformed' | 'round' | 'right'): number {
+  switch (mode) {
+    case 'round':
+      return 2;
+    case 'right':
+      return 1;
+    case 'transformed':
+    default:
+      return 0;
+  }
+}
+
+let warnedMissingSweepAdvanced = false;
+
+/** Name the options a pre-4.1.0 occt-wasm cannot honour, once per process. */
+function warnMissingSweepAdvanced(options?: {
+  auxiliary?: KernelShape;
+  contact?: boolean;
+  correction?: boolean;
+  tolerance?: number | undefined;
+  transitionMode?: 'transformed' | 'round' | 'right';
+}): void {
+  if (warnedMissingSweepAdvanced) return;
+  const dropped: string[] = [];
+  if (options?.auxiliary) dropped.push('auxiliary');
+  if (options?.contact) dropped.push('contact');
+  if (options?.correction) dropped.push('correction');
+  if (options?.tolerance !== undefined) dropped.push('tolerance');
+  if (options?.transitionMode === 'right') dropped.push("transitionMode 'right'");
+  if (dropped.length === 0) return;
+  warnedMissingSweepAdvanced = true;
+  console.warn(
+    `occt-wasm: sweep ignored ${dropped.join(', ')} — sweepAdvanced requires occt-wasm >= 4.1.0.`
+  );
+}
+
+/** Split a pipe-shell result into its shape plus first/last wires. */
+function splitShellWires(
+  k: OcctKernelWasm,
+  result: KernelShape
+): { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
+  const edges = k.getSubShapes(unwrap(result), 'wire');
+  try {
+    const firstWire = edges.size() > 0 ? wrapResult(k, edges.get(0)) : result;
+    const lastWire = edges.size() > 1 ? wrapResult(k, edges.get(edges.size() - 1)) : result;
+    return { shape: result, firstShape: firstWire, lastShape: lastWire };
+  } finally {
+    edges.delete();
+  }
+}
+
 export function extrude(
   k: OcctKernelWasm,
   face: KernelShape,
@@ -91,21 +155,63 @@ export function sweepPipeShell(
     maxSegments?: number | undefined;
   }
 ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-  const freenet = options?.frenet ?? false;
-  const smooth = options?.transitionMode === 'round';
   const shellMode = options?.shellMode ?? false;
-  const result = wrapResult(k, k.sweepPipeShell(unwrap(profile), unwrap(spine), freenet, smooth));
-  if (shellMode) {
-    const edges = k.getSubShapes(unwrap(result), 'wire');
-    try {
-      const firstWire = edges.size() > 0 ? wrapResult(k, edges.get(0)) : result;
-      const lastWire = edges.size() > 1 ? wrapResult(k, edges.get(edges.size() - 1)) : result;
-      return { shape: result, firstShape: firstWire, lastShape: lastWire };
-    } finally {
-      edges.delete();
-    }
+
+  // A guide overrides Frenet, matching the opencascade adapter's ordering
+  // (SetMode_5 is applied after SetMode_1 there).
+  const auxiliary = options?.auxiliary;
+  const mode = auxiliary
+    ? SWEEP_MODE_AUXILIARY
+    : options?.frenet
+      ? SWEEP_MODE_FRENET
+      : SWEEP_MODE_FIXED;
+
+  // OCCT's SetTolerance defaults are absolute; mirror the opencascade adapter's
+  // fallbacks rather than the facade's so both kernels approximate alike.
+  const tolerance = options?.tolerance;
+  const tol3d = tolerance ?? 0;
+  const boundTol = tolerance === undefined ? 0 : (options?.boundTolerance ?? tolerance);
+  const tolAngular = tolerance === undefined ? 0 : (options?.angularTolerance ?? 1e-7);
+
+  // sweepAdvanced landed in occt-wasm 4.1.0, but the peer range still accepts
+  // 3.8.x and 4.0.x. Fall back to the narrower entry point there rather than
+  // throwing, and say once which options are being left on the floor — that
+  // silent drop is the bug this function exists to fix.
+  if (typeof k.sweepAdvanced !== 'function') {
+    warnMissingSweepAdvanced(options);
+    const legacy = wrapResult(
+      k,
+      k.sweepPipeShell(
+        unwrap(profile),
+        unwrap(spine),
+        options?.frenet ?? false,
+        options?.transitionMode === 'round'
+      )
+    );
+    return shellMode ? splitShellWires(k, legacy) : legacy;
   }
-  return result;
+
+  const result = wrapResult(
+    k,
+    k.sweepAdvanced(
+      unwrap(profile),
+      unwrap(spine),
+      mode,
+      0,
+      0,
+      1,
+      auxiliary ? unwrap(auxiliary) : 0,
+      false,
+      GUIDE_CONTACT_NONE,
+      transitionModeValue(options?.transitionMode),
+      options?.contact ?? false,
+      options?.correction ?? false,
+      tol3d,
+      boundTol,
+      tolAngular
+    )
+  );
+  return shellMode ? splitShellWires(k, result) : result;
 }
 
 export function loftAdvanced(
