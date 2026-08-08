@@ -161,6 +161,20 @@ export interface BrepkitKernel {
 
   intersect(a: number, b: number): number;
 
+  /** brepkit-wasm >= 3.2: boolean with post-processing (simplify = unify co-surface fragments). */
+  fuseWithOptions?(a: number, b: number, simplify: boolean): number;
+
+  cutWithOptions?(a: number, b: number, simplify: boolean): number;
+
+  intersectWithOptions?(a: number, b: number, simplify: boolean): number;
+
+  /**
+   * brepkit-wasm >= 3.2: process-wide count of booleans that used the mesh
+   * (co-refinement) fallback. Snapshot around a chain; growth means at least
+   * one approximate, possibly non-watertight result.
+   */
+  meshFallbackCount?(): number;
+
   compoundCut(target: number, toolIds: Uint32Array | number[]): number;
 
   convexHull(coords: Float64Array | number[]): number;

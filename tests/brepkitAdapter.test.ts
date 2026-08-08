@@ -33,6 +33,9 @@ function createMockBrepKernel() {
 
     // Booleans
     fuse: vi.fn((_a: number, _b: number) => allocId()),
+    fuseWithOptions: vi.fn((_a: number, _b: number, _simplify: boolean) => allocId()),
+    cutWithOptions: vi.fn((_a: number, _b: number, _simplify: boolean) => allocId()),
+    intersectWithOptions: vi.fn((_a: number, _b: number, _simplify: boolean) => allocId()),
     cut: vi.fn((_a: number, _b: number) => allocId()),
     compoundCut: vi.fn((_target: number, _toolIds: Uint32Array | number[]) => allocId()),
     intersect: vi.fn((_a: number, _b: number) => allocId()),
@@ -331,6 +334,33 @@ describe('BrepkitAdapter', () => {
 
       expect(mock.fuse).toHaveBeenCalledWith((a as BrepkitHandle).id, (b as BrepkitHandle).id);
       expect((result as BrepkitHandle).type).toBe('solid');
+    });
+
+    it('fuse with simplify routes through fuseWithOptions', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const a = adapter.makeBox(1, 1, 1);
+      const b = adapter.makeBox(1, 1, 1);
+      adapter.fuse(a, b, { simplify: true });
+
+      expect(mock.fuseWithOptions).toHaveBeenCalledWith(
+        (a as BrepkitHandle).id,
+        (b as BrepkitHandle).id,
+        true
+      );
+      expect(mock.fuse).not.toHaveBeenCalled();
+    });
+
+    it('fuse with simplify falls back to plain fuse on kernels without fuseWithOptions', () => {
+      const mock = createMockBrepKernel();
+      // Simulate an older brepkit-wasm without the options entry point.
+      (mock as { fuseWithOptions?: unknown }).fuseWithOptions = undefined;
+      const adapter = new BrepkitAdapter(mock);
+      const a = adapter.makeBox(1, 1, 1);
+      const b = adapter.makeBox(1, 1, 1);
+      adapter.fuse(a, b, { simplify: true });
+
+      expect(mock.fuse).toHaveBeenCalled();
     });
 
     it('cut delegates to kernel', () => {
