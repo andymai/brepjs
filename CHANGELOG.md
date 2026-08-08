@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.122.0](https://github.com/andymai/brepjs/compare/brepjs-v18.121.0...brepjs-v18.122.0) (2026-08-08)
+
+
+### Features
+
+* **kernel:** route BooleanOptions.simplify through brepkit boolean WithOptions ([#1966](https://github.com/andymai/brepjs/issues/1966)) ([9a27ffa](https://github.com/andymai/brepjs/commit/9a27ffab26142f9f5c7e6aa6d0f286a5ebe766eb))
+
 ## [18.121.0](https://github.com/andymai/brepjs/compare/brepjs-v18.120.0...brepjs-v18.121.0) (2026-08-08)
 
 
