@@ -28,3 +28,13 @@ jobs:
           # commits carry it as the committer, so it must be allowlisted or
           # every release PR fails the CLA check.
           allowlist: 'andymai,web-flow,dependabot[bot],github-actions[bot],brepkit[bot],*[bot]'
+          # Defaults to true, which locks every PR the moment it merges.
+          # release-please comments on the release PR right after tagging it,
+          # so a locked PR fails that comment, and the failure propagates: the
+          # action's outputs never publish, `publish-brepjs` is skipped on its
+          # `brepjs_release_created` gate, and the release ends up tagged on
+          # GitHub but absent from npm (18.121.0 landed this way).
+          # Locking only stops contributors deleting their signature *comment*;
+          # the authoritative record is signatures/cla.json on the
+          # cla-signatures branch, which locking does not protect.
+          lock-pullrequest-aftermerge: false
