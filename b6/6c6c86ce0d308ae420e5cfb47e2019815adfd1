@@ -1,0 +1,47 @@
+src/kernel/occtWasm/sweepOps.ts
+  s_89ebab1cd8d9f3::t_a9eecfa2b8ece2 11-35
+  s_89ebab1cd8d9f3::t_cde57fa781f382 124-128
+  s_89ebab1cd8d9f3::t_798d3d8a981890 120-123,129-156
+docs/kernel-conformance.md
+  s_89ebab1cd8d9f3::t_c0251eeb215135 3
+  s_89ebab1cd8d9f3::t_30ababcef7a559 68
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_89ebab1cd8d9f3::t_9110cdaaa5da39 230-246
+package.json
+  s_89ebab1cd8d9f3::t_94b98e256c4edb 275
+  s_925980a33fb88d::t_f2570f2ef3386e 321-324
+tests/guidedSweepFns.test.ts
+  s_89ebab1cd8d9f3::t_6f9b61c11ee400 4-9,13-14,17,22,34-35,38,67,69-73,76-78,82,87
+  s_89ebab1cd8d9f3::t_ea6a03cc93ef93 10-12,23-24,28-29
+  s_89ebab1cd8d9f3::t_401a5279ab9290 43-56,60-66,68,74-75,79-81,83-86,88-90
+  s_89ebab1cd8d9f3::t_cde57fa781f382 27,57-59
+  s_89ebab1cd8d9f3::t_eaf46423884902 91-92
+tests/helpers/kernelDivergences.ts
+  s_89ebab1cd8d9f3::t_b0ce7bd2bb93a7 88-92
+package-lock.json
+  s_89ebab1cd8d9f3::t_5376842d5326a0 47,11275-11277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b66c6c86ce0d308ae420e5cfb47e2019815adfd1",
+  "prompts": {},
+  "sessions": {
+    "s_89ebab1cd8d9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66a1fbe-8127-4890-8649-771e75111e0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_925980a33fb88d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9681142-7653-41be-9c63-be438e15b10d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
