@@ -1,0 +1,29 @@
+package-lock.json
+  s_8b449c7ef64a35::t_501936e7f9f3c6 40,7278-7280
+package.json
+  s_8b449c7ef64a35::t_ac7298af01346e 268
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_8b449c7ef64a35::t_45b9426d0c714d 164-177
+src/kernel/brepkit/helpers.ts
+  s_8b449c7ef64a35::t_2930ee80a9bcfa 370-380
+tests/booleanSimplify.test.ts
+  s_8b449c7ef64a35::t_6d95e6ce1aba8a 1-32
+tests/brepkitAdapter.test.ts
+  s_8b449c7ef64a35::t_6b56727081e45f 36-38,339-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "85b9c93c7353eab59a0fb410942c7e18e7946455",
+  "prompts": {},
+  "sessions": {
+    "s_8b449c7ef64a35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fda9d98b-5159-4373-b1b4-cb5cf7cb52e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
