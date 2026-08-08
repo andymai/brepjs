@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.121.0](https://github.com/andymai/brepjs/compare/brepjs-v18.120.0...brepjs-v18.121.0) (2026-08-08)
+
+
+### Features
+
+* **kernel:** route occt-wasm sweeps through sweepAdvanced ([#1963](https://github.com/andymai/brepjs/issues/1963)) ([cecec42](https://github.com/andymai/brepjs/commit/cecec42d9e60d494dc90db666e43854c246513e7))
+
 ## [18.120.0](https://github.com/andymai/brepjs/compare/brepjs-v18.119.10...brepjs-v18.120.0) (2026-08-07)
 
 
