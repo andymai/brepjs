@@ -23,7 +23,7 @@ import {
   isBrepkitHandle,
   toArray,
   warnOnce,
-  hasBooleanOptions,
+  hasIgnoredBooleanOptions,
   nextSyntheticId,
   syntheticCompounds,
 } from './helpers.js';
@@ -59,16 +59,42 @@ function emptyCompound(bk: BrepkitKernel): KernelShape {
   return compoundHandle(bk.makeCompound([]));
 }
 
+/** Kernel boolean honoring `simplify` when the kernel supports it (brepkit-wasm >= 3.2). */
+function kernelBoolean(
+  bk: BrepkitKernel,
+  op: 'fuse' | 'cut' | 'intersect',
+  a: number,
+  b: number,
+  options?: BooleanOptions
+): number {
+  if (options?.simplify) {
+    if (op === 'fuse' && typeof bk.fuseWithOptions === 'function') {
+      return bk.fuseWithOptions(a, b, true);
+    }
+    if (op === 'cut' && typeof bk.cutWithOptions === 'function') {
+      return bk.cutWithOptions(a, b, true);
+    }
+    if (op === 'intersect' && typeof bk.intersectWithOptions === 'function') {
+      return bk.intersectWithOptions(a, b, true);
+    }
+    warnOnce(
+      'boolean-simplify',
+      'BooleanOptions.simplify needs brepkit-wasm >= 3.2; ignored on this kernel.'
+    );
+  }
+  return bk[op](a, b);
+}
+
 export function fuse(
   bk: BrepkitKernel,
   shape: KernelShape,
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  if (_options && hasBooleanOptions(_options)) {
+  if (_options && hasIgnoredBooleanOptions(_options)) {
     warnOnce(
       'boolean-options',
-      'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
+      'BooleanOptions (optimisation, strategy, fuzzyValue) not supported; ignored.'
     );
   }
   // Identity: fuse(∅, X) = X, fuse(X, ∅) = X.
@@ -80,11 +106,11 @@ export function fuse(
     const toolSolidIds: number[] = toArray(bk.getCompoundSolids(toolHandle.id));
     let currentId = baseId;
     for (const toolSolidId of toolSolidIds) {
-      currentId = bk.fuse(currentId, toolSolidId);
+      currentId = kernelBoolean(bk, 'fuse', currentId, toolSolidId, _options);
     }
     return solidHandle(currentId);
   }
-  const result = bk.fuse(baseId, unwrapSolidOrThrow(tool, 'fuse'));
+  const result = kernelBoolean(bk, 'fuse', baseId, unwrapSolidOrThrow(tool, 'fuse'), _options);
   return solidHandle(result);
 }
 
@@ -94,10 +120,10 @@ export function cut(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  if (_options && hasBooleanOptions(_options)) {
+  if (_options && hasIgnoredBooleanOptions(_options)) {
     warnOnce(
       'boolean-options',
-      'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
+      'BooleanOptions (optimisation, strategy, fuzzyValue) not supported; ignored.'
     );
   }
   // Identity: cut(∅, X) = ∅, cut(X, ∅) = X.
@@ -110,7 +136,7 @@ export function cut(
     let currentId = baseId;
     for (const toolSolidId of toolSolidIds) {
       try {
-        currentId = bk.cut(currentId, toolSolidId);
+        currentId = kernelBoolean(bk, 'cut', currentId, toolSolidId, _options);
       } catch (e) {
         if (isEmptyBooleanError(e)) return emptyCompound(bk);
         throw e;
@@ -119,7 +145,7 @@ export function cut(
     return solidHandle(currentId);
   }
   try {
-    const result = bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
+    const result = kernelBoolean(bk, 'cut', baseId, unwrapSolidOrThrow(tool, 'cut'), _options);
     return solidHandle(result);
   } catch (e) {
     if (isEmptyBooleanError(e)) return emptyCompound(bk);
@@ -133,10 +159,10 @@ export function intersect(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  if (_options && hasBooleanOptions(_options)) {
+  if (_options && hasIgnoredBooleanOptions(_options)) {
     warnOnce(
       'boolean-options',
-      'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
+      'BooleanOptions (optimisation, strategy, fuzzyValue) not supported; ignored.'
     );
   }
   // Identity: intersect(∅, _) = ∅, intersect(_, ∅) = ∅.
@@ -144,9 +170,12 @@ export function intersect(
     return emptyCompound(bk);
   }
   try {
-    const result = bk.intersect(
+    const result = kernelBoolean(
+      bk,
+      'intersect',
       unwrapSolidOrThrow(shape, 'intersect'),
-      unwrapSolidOrThrow(tool, 'intersect')
+      unwrapSolidOrThrow(tool, 'intersect'),
+      _options
     );
     return solidHandle(result);
   } catch (e) {

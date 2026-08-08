@@ -367,18 +367,14 @@ export function warnOnce(key: string, message: string): void {
   console.warn(`brepkit: ${message}`);
 }
 
-/** Check if a BooleanOptions object has any meaningful (non-signal) property set. */
-export function hasBooleanOptions(opts: {
+/** Check if a BooleanOptions object sets an option brepkit still ignores. */
+export function hasIgnoredBooleanOptions(opts: {
   optimisation?: unknown;
-  simplify?: unknown;
   strategy?: unknown;
   fuzzyValue?: unknown;
 }): boolean {
   return (
-    opts.optimisation !== undefined ||
-    opts.simplify !== undefined ||
-    opts.strategy !== undefined ||
-    opts.fuzzyValue !== undefined
+    opts.optimisation !== undefined || opts.strategy !== undefined || opts.fuzzyValue !== undefined
   );
 }
 
