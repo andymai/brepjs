@@ -227,7 +227,8 @@ export interface OcctKernelWasm {
   ): number;
   sweep(wireId: number, spineId: number, transitionMode: number): number;
   sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
-  sweepAdvanced(
+  /** occt-wasm >= 4.1.0. Absent on the 3.8.x / 4.0.x peers the range still allows. */
+  sweepAdvanced?(
     profileId: number,
     spineId: number,
     mode: number,

@@ -33,6 +33,45 @@ function transitionModeValue(mode?: 'transformed' | 'round' | 'right'): number {
   }
 }
 
+let warnedMissingSweepAdvanced = false;
+
+/** Name the options a pre-4.1.0 occt-wasm cannot honour, once per process. */
+function warnMissingSweepAdvanced(options?: {
+  auxiliary?: KernelShape;
+  contact?: boolean;
+  correction?: boolean;
+  tolerance?: number | undefined;
+  transitionMode?: 'transformed' | 'round' | 'right';
+}): void {
+  if (warnedMissingSweepAdvanced) return;
+  const dropped: string[] = [];
+  if (options?.auxiliary) dropped.push('auxiliary');
+  if (options?.contact) dropped.push('contact');
+  if (options?.correction) dropped.push('correction');
+  if (options?.tolerance !== undefined) dropped.push('tolerance');
+  if (options?.transitionMode === 'right') dropped.push("transitionMode 'right'");
+  if (dropped.length === 0) return;
+  warnedMissingSweepAdvanced = true;
+  console.warn(
+    `occt-wasm: sweep ignored ${dropped.join(', ')} — sweepAdvanced requires occt-wasm >= 4.1.0.`
+  );
+}
+
+/** Split a pipe-shell result into its shape plus first/last wires. */
+function splitShellWires(
+  k: OcctKernelWasm,
+  result: KernelShape
+): { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
+  const edges = k.getSubShapes(unwrap(result), 'wire');
+  try {
+    const firstWire = edges.size() > 0 ? wrapResult(k, edges.get(0)) : result;
+    const lastWire = edges.size() > 1 ? wrapResult(k, edges.get(edges.size() - 1)) : result;
+    return { shape: result, firstShape: firstWire, lastShape: lastWire };
+  } finally {
+    edges.delete();
+  }
+}
+
 export function extrude(
   k: OcctKernelWasm,
   face: KernelShape,
@@ -134,6 +173,24 @@ export function sweepPipeShell(
   const boundTol = tolerance === undefined ? 0 : (options?.boundTolerance ?? tolerance);
   const tolAngular = tolerance === undefined ? 0 : (options?.angularTolerance ?? 1e-7);
 
+  // sweepAdvanced landed in occt-wasm 4.1.0, but the peer range still accepts
+  // 3.8.x and 4.0.x. Fall back to the narrower entry point there rather than
+  // throwing, and say once which options are being left on the floor — that
+  // silent drop is the bug this function exists to fix.
+  if (typeof k.sweepAdvanced !== 'function') {
+    warnMissingSweepAdvanced(options);
+    const legacy = wrapResult(
+      k,
+      k.sweepPipeShell(
+        unwrap(profile),
+        unwrap(spine),
+        options?.frenet ?? false,
+        options?.transitionMode === 'round'
+      )
+    );
+    return shellMode ? splitShellWires(k, legacy) : legacy;
+  }
+
   const result = wrapResult(
     k,
     k.sweepAdvanced(
@@ -154,17 +211,7 @@ export function sweepPipeShell(
       tolAngular
     )
   );
-  if (shellMode) {
-    const edges = k.getSubShapes(unwrap(result), 'wire');
-    try {
-      const firstWire = edges.size() > 0 ? wrapResult(k, edges.get(0)) : result;
-      const lastWire = edges.size() > 1 ? wrapResult(k, edges.get(edges.size() - 1)) : result;
-      return { shape: result, firstShape: firstWire, lastShape: lastWire };
-    } finally {
-      edges.delete();
-    }
-  }
-  return result;
+  return shellMode ? splitShellWires(k, result) : result;
 }
 
 export function loftAdvanced(
