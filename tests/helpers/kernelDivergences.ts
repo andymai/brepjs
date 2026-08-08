@@ -85,6 +85,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
     },
+    guidedSweepFns: {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel with no BRepOffsetAPI_MakePipeShell: a circular profile wire sweeps to a near-empty volume and an auxiliary guide does not orient the section at all.',
+    },
     'curves.cylinderUnwrapOriginal': {
       kind: 'not-implemented',
       reason:
@@ -513,10 +518,6 @@ export const divergences: DivergenceMap = {
     'geometry.findCurveType': {
       kind: 'not-implemented',
       reason: 'Test feeds raw oc.GeomAbs_CurveType enums; getKernel().curveType works on occt-wasm',
-    },
-    guidedSweepFns: {
-      kind: 'not-implemented',
-      reason: 'Test builds the spine via raw `oc` (gp_Ax2_4/gp_Circ_2); occt-wasm exposes no `oc`',
     },
     multiSweepFns: {
       kind: 'not-implemented',

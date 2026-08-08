@@ -227,6 +227,23 @@ export interface OcctKernelWasm {
   ): number;
   sweep(wireId: number, spineId: number, transitionMode: number): number;
   sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
+  sweepAdvanced(
+    profileId: number,
+    spineId: number,
+    mode: number,
+    upX: number,
+    upY: number,
+    upZ: number,
+    auxSpineId: number,
+    curvilinearEquivalence: boolean,
+    guideContact: number,
+    transitionMode: number,
+    withContact: boolean,
+    withCorrection: boolean,
+    tol3d: number,
+    boundTol: number,
+    tolAngular: number
+  ): number;
   draftPrism(shapeId: number, dx: number, dy: number, dz: number, angleDeg: number): number;
   revolveVec(
     shapeId: number,

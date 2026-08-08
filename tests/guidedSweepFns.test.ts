@@ -1,75 +1,95 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
-import { guidedSweep, isOk, unwrap, isSolid, measureVolume, getKernel } from '@/index.js';
-import { castShape } from '@/core/shapeTypes.js';
-import { DisposalScope } from '@/core/disposal.js';
+import {
+  guidedSweep,
+  isOk,
+  unwrap,
+  isSolid,
+  measureVolume,
+  circle,
+  line,
+  wire,
+  getBounds,
+} from '@/index.js';
 import type { Wire } from '@/core/shapeTypes.js';
 
-describe.skipIf(shouldSkipSuite('guidedSweepFns'))('OCCT-specific: guidedSweepFns', () => {
+describe.skipIf(shouldSkipSuite('guidedSweepFns'))('guidedSweepFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
 
-  function makeCircleWire(radius: number): Wire {
-    const oc = getKernel().oc;
-    const scope = new DisposalScope();
-    const ax = scope.register(
-      new oc.gp_Ax2_4(
-        scope.register(new oc.gp_Pnt_3(0, 0, 0)),
-        scope.register(new oc.gp_Dir_5(0, 0, 1))
-      )
-    );
-    const circ = scope.register(new oc.gp_Circ_2(ax, radius));
-    const em = scope.register(new oc.BRepBuilderAPI_MakeEdge_8(circ));
-    const wm = scope.register(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
-    return castShape(wm.Wire()) as Wire;
+  function circleWire(radius: number): Wire {
+    using edge = circle(radius);
+    return unwrap(wire([edge]));
   }
 
-  function makeLineWire(
-    x1: number,
-    y1: number,
-    z1: number,
-    x2: number,
-    y2: number,
-    z2: number
-  ): Wire {
-    const oc = getKernel().oc;
-    const scope = new DisposalScope();
-    const em = scope.register(
-      new oc.BRepBuilderAPI_MakeEdge_3(
-        scope.register(new oc.gp_Pnt_3(x1, y1, z1)),
-        scope.register(new oc.gp_Pnt_3(x2, y2, z2))
-      )
-    );
-    const wm = scope.register(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
-    return castShape(wm.Wire()) as Wire;
+  function lineWire(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Wire {
+    using edge = line([x1, y1, z1], [x2, y2, z2]);
+    return unwrap(wire([edge]));
   }
 
   describe('guidedSweep', () => {
     it('sweeps a circle along a line producing a solid', () => {
-      const profile = makeCircleWire(5);
-      const spine = makeLineWire(0, 0, 0, 0, 0, 20);
-      // No guides — basic sweep as fallback
+      using profile = circleWire(5);
+      using spine = lineWire(0, 0, 0, 0, 0, 20);
       const result = guidedSweep(profile, spine, []);
       expect(isOk(result)).toBe(true);
-      const shape = unwrap(result);
+      using shape = unwrap(result);
       expect(isSolid(shape)).toBe(true);
       expect(unwrap(measureVolume(shape))).toBeGreaterThan(1000);
     });
 
-    it('sweeps with an auxiliary guide wire', () => {
-      const profile = makeCircleWire(5);
-      const spine = makeLineWire(0, 0, 0, 0, 0, 20);
-      const guide = makeLineWire(5, 0, 0, 8, 0, 20);
-      const result = guidedSweep(profile, spine, [guide]);
-      // May succeed or fail depending on kernel WASM guide support
-      // At minimum, the function should not crash
-      if (isOk(result)) {
-        expect(isSolid(unwrap(result))).toBe(true);
-        expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(500);
-      }
-      // If it fails, that's acceptable — guide sweep is best-effort in WASM
+    // An auxiliary guide ORIENTS the section (GeomFill_GuideTrihedronPlan); it
+    // does not widen or scale it. A circular profile is rotationally symmetric,
+    // so rotating it is invisible — volume AND bounding box are identical with
+    // and without a guide. Use an asymmetric profile and a guide that swings a
+    // quarter turn around the spine, then watch the axis the section rotates
+    // INTO. Without the guide reaching the kernel, that extent cannot move.
+    it('rotates an asymmetric section to follow the guide', () => {
+      const rectWire = (halfX: number, halfY: number): Wire => {
+        const corners: [number, number, number][] = [
+          [-halfX, -halfY, 0],
+          [halfX, -halfY, 0],
+          [halfX, halfY, 0],
+          [-halfX, halfY, 0],
+        ];
+        const edges = corners.map((c, i) =>
+          line(c, corners[(i + 1) % corners.length] as [number, number, number])
+        );
+        try {
+          return unwrap(wire(edges));
+        } finally {
+          edges.forEach((e) => {
+            e.delete();
+          });
+        }
+      };
+
+      const build = (guides: Wire[]) => {
+        using profile = rectWire(6, 1);
+        using spine = lineWire(0, 0, 0, 0, 0, 20);
+        const result = guidedSweep(profile, spine, guides);
+        expect(isOk(result)).toBe(true);
+        using shape = unwrap(result);
+        expect(isSolid(shape)).toBe(true);
+        const b = getBounds(shape);
+        return { xMax: b.xMax, yMax: b.yMax };
+      };
+
+      const plain = build([]);
+      // Swings from +X to +Y over the length of the spine, asking the section
+      // for a quarter turn.
+      using guide = lineWire(10, 0, 0, 0, 10, 20);
+      const guided = build([guide]);
+
+      // Unguided: the 12x2 section stays put, so it is wide in X and thin in Y.
+      expect(plain.xMax).toBeCloseTo(6, 3);
+      expect(plain.yMax).toBeCloseTo(1, 3);
+
+      // Guided: the section turns toward +Y, so the solid must reach far more
+      // in Y than the 1 it would if the guide were dropped.
+      expect(guided.yMax).toBeGreaterThan(3);
     });
   });
 });

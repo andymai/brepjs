@@ -8,6 +8,31 @@ import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { makeVecU32, unwrap, wrapResult } from './helpers.js';
 
+// occt-wasm SweepMode / SweepContact / TransitionMode ordinals. Mirrored rather
+// than imported so the adapter keeps working against the raw Embind kernel,
+// which carries no enum objects.
+const SWEEP_MODE_FIXED = 0;
+const SWEEP_MODE_FRENET = 1;
+const SWEEP_MODE_AUXILIARY = 3;
+const GUIDE_CONTACT_NONE = 0;
+
+/**
+ * Map brepjs's transition mode onto BRepBuilderAPI_TransitionMode, matching
+ * `getTransitionMode` in the opencascade adapter. Absent means Transformed,
+ * which is what OCCT applies when SetTransitionMode is never called.
+ */
+function transitionModeValue(mode?: 'transformed' | 'round' | 'right'): number {
+  switch (mode) {
+    case 'round':
+      return 2;
+    case 'right':
+      return 1;
+    case 'transformed':
+    default:
+      return 0;
+  }
+}
+
 export function extrude(
   k: OcctKernelWasm,
   face: KernelShape,
@@ -91,10 +116,44 @@ export function sweepPipeShell(
     maxSegments?: number | undefined;
   }
 ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-  const freenet = options?.frenet ?? false;
-  const smooth = options?.transitionMode === 'round';
   const shellMode = options?.shellMode ?? false;
-  const result = wrapResult(k, k.sweepPipeShell(unwrap(profile), unwrap(spine), freenet, smooth));
+
+  // A guide overrides Frenet, matching the opencascade adapter's ordering
+  // (SetMode_5 is applied after SetMode_1 there).
+  const auxiliary = options?.auxiliary;
+  const mode = auxiliary
+    ? SWEEP_MODE_AUXILIARY
+    : options?.frenet
+      ? SWEEP_MODE_FRENET
+      : SWEEP_MODE_FIXED;
+
+  // OCCT's SetTolerance defaults are absolute; mirror the opencascade adapter's
+  // fallbacks rather than the facade's so both kernels approximate alike.
+  const tolerance = options?.tolerance;
+  const tol3d = tolerance ?? 0;
+  const boundTol = tolerance === undefined ? 0 : (options?.boundTolerance ?? tolerance);
+  const tolAngular = tolerance === undefined ? 0 : (options?.angularTolerance ?? 1e-7);
+
+  const result = wrapResult(
+    k,
+    k.sweepAdvanced(
+      unwrap(profile),
+      unwrap(spine),
+      mode,
+      0,
+      0,
+      1,
+      auxiliary ? unwrap(auxiliary) : 0,
+      false,
+      GUIDE_CONTACT_NONE,
+      transitionModeValue(options?.transitionMode),
+      options?.contact ?? false,
+      options?.correction ?? false,
+      tol3d,
+      boundTol,
+      tolAngular
+    )
+  );
   if (shellMode) {
     const edges = k.getSubShapes(unwrap(result), 'wire');
     try {
