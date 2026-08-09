@@ -1,0 +1,27 @@
+tests/helpers/kernelDivergences.ts
+  s_89ebab1cd8d9f3::t_b272b80f4bfee4 88-92
+docs/kernel-conformance.md
+  s_89ebab1cd8d9f3::t_deb1950e3b6755 3
+  s_89ebab1cd8d9f3::t_488a8c63f30496 65
+src/kernel/manifold/sweepOps.ts
+  s_89ebab1cd8d9f3::t_2027ede799290f 148-150,152-154
+  s_89ebab1cd8d9f3::t_e21d67fc85ce7c 606-623
+tests/operations-extrude.test.ts
+  s_89ebab1cd8d9f3::t_b272b80f4bfee4 137-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a64ea7cca8404f12662fbbf77909de6823a02145",
+  "prompts": {},
+  "sessions": {
+    "s_89ebab1cd8d9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66a1fbe-8127-4890-8649-771e75111e0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
