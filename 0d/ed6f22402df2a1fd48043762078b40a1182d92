@@ -1,0 +1,31 @@
+src/kernel/manifold/transformOps.ts
+  s_89ebab1cd8d9f3::t_f4a672ad191a29 154-255,290
+  s_89ebab1cd8d9f3::t_7366eedf9d8994 282-285
+  s_ebd5d306222845::t_078fe1b45a1351 256-260,286-289
+tests/manifoldProfileTransform.test.ts
+  s_89ebab1cd8d9f3::t_237c7593faada0 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0ded6f22402df2a1fd48043762078b40a1182d92",
+  "prompts": {},
+  "sessions": {
+    "s_89ebab1cd8d9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66a1fbe-8127-4890-8649-771e75111e0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_ebd5d306222845": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38a9d413-25be-4e02-bbe0-cc4e043536bf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
