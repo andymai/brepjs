@@ -34,6 +34,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+          cache: npm
 
       - name: Cache puppeteer browser download
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -41,13 +42,16 @@ jobs:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json', 'apps/playground/package.json') }}
 
-      - name: Install playground dependencies
-        working-directory: apps/playground
-        # --ignore-scripts skips the root `prepare` (husky + ensure-wasm)
-        # which we don't need in a smoke runner. We then run puppeteer's
-        # browser install explicitly below since --ignore-scripts also
-        # suppressed it.
-        run: npm install --legacy-peer-deps --no-audit --no-fund --ignore-scripts
+      - name: Install dependencies
+        # Root `npm ci` pins the smoke runner to the lockfile, matching every
+        # other workflow. The previous `npm install --legacy-peer-deps` re-resolved
+        # the tree on each run and silently dropped peer-only packages, the same
+        # install divergence that hid the broken production deploy in #2001.
+        #
+        # --ignore-scripts skips the root `prepare` (husky + ensure-wasm), which a
+        # smoke runner doesn't need. It also suppresses puppeteer's browser
+        # download, so that runs explicitly below.
+        run: npm ci --no-audit --no-fund --ignore-scripts
 
       - name: Install Chrome for Puppeteer
         working-directory: apps/playground
