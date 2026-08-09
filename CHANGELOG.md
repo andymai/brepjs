@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.0](https://github.com/andymai/brepjs/compare/brepjs-v18.123.1...brepjs-v18.124.0) (2026-08-09)
+
+
+### Features
+
+* **manifold:** implement the 2D curve ops natively ([#1978](https://github.com/andymai/brepjs/issues/1978)) ([f7b54a9](https://github.com/andymai/brepjs/commit/f7b54a91c599b5aa841d4df2f38072d0ee7096ea))
+
 ## [18.123.1](https://github.com/andymai/brepjs/compare/brepjs-v18.123.0...brepjs-v18.123.1) (2026-08-09)
 
 
