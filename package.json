@@ -275,7 +275,7 @@
     "occt-wasm": "4.2.0",
     "prettier": "3.9.6",
     "puppeteer": "25.4.0",
-    "size-limit": "12.1.0",
+    "size-limit": "13.0.1",
     "sucrase": "3.35.1",
     "tsx": "4.23.4",
     "typedoc": "0.28.20",
