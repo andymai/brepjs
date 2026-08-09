@@ -124,6 +124,60 @@ function affineMatrix(linear: Mat3, translation: Vec3): Mat4 {
   return m;
 }
 
+/**
+ * Profile shapes — edges, wires and faces — have no Manifold counterpart, so
+ * they carry a placeholder value and live purely as op-graph nodes holding
+ * their points. Calling Manifold's solid transform on one throws
+ * `solid.transform is not a function`.
+ *
+ * Transform them by baking the matrix into the recorded points and emitting a
+ * node of the same kind. `ringOrPts` reads points off the node and does not
+ * walk inputs, so a transform-shaped node would read as an empty profile;
+ * replay rebuilds profile nodes from those same points, so a baked transform
+ * applies exactly once.
+ */
+const PROFILE_POINT_KEYS = ['pts', 'ring', 'outline'] as const;
+
+function isVec3(v: unknown): v is readonly [number, number, number] {
+  return Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number');
+}
+
+function applyMat4(m: Mat4, v: readonly [number, number, number]): [number, number, number] {
+  const g = (i: number): number => m[i] ?? 0;
+  return [
+    g(0) * v[0] + g(4) * v[1] + g(8) * v[2] + g(12),
+    g(1) * v[0] + g(5) * v[1] + g(9) * v[2] + g(13),
+    g(2) * v[0] + g(6) * v[1] + g(10) * v[2] + g(14),
+  ];
+}
+
+function transformProfileNode(node: OpNode, matrix: Mat4, input: OpNode): ManifoldShape {
+  const src = (node as { params?: Record<string, unknown> }).params ?? {};
+  const params: Record<string, unknown> = { ...src };
+  for (const k of PROFILE_POINT_KEYS) {
+    const pts: unknown = src[k];
+    if (!Array.isArray(pts)) continue;
+    params[k] = (pts as unknown[]).map((v) => (isVec3(v) ? applyMat4(matrix, v) : v));
+  }
+  // Point-valued frame fields travel with the geometry; direction-valued ones
+  // are rotated without translation.
+  for (const k of ['origin'] as const) {
+    const v: unknown = src[k];
+    if (isVec3(v)) params[k] = applyMat4(matrix, v);
+  }
+  for (const k of ['xAxis', 'yAxis'] as const) {
+    const v: unknown = src[k];
+    if (!isVec3(v)) continue;
+    const a = applyMat4(matrix, [0, 0, 0]);
+    const b = applyMat4(matrix, v);
+    params[k] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  }
+  const kind = (node as { op?: string }).op ?? 'profileWire';
+  // Same inert stand-in profileOps uses: a profile has no Manifold value.
+  const placeholder: unknown = { delete: () => {}, isEmpty: () => false };
+  return wrap(placeholder, makeNode(kind, params, [input]));
+}
+
 function applyMatrix(
   solid: ManifoldSolid,
   matrix: Mat4,
@@ -131,6 +185,14 @@ function applyMatrix(
   params: Readonly<Record<string, unknown>>,
   input: OpNode
 ): ManifoldShape {
+  // Profile shapes (wires/faces built from points) are backed by a placeholder,
+  // not a Manifold, so they have no transform(). Bake the matrix into their
+  // recorded points instead. Probing the backing object rather than the node's
+  // params matters: solid-producing nodes also carry point arrays, and matching
+  // on those diverted real solids into the profile path untransformed.
+  if (typeof (solid as { transform?: unknown }).transform !== 'function') {
+    return transformProfileNode(input, matrix, input);
+  }
   const next = solid.transform(matrix);
   return wrap(next, makeNode(op, params, [input]));
 }
