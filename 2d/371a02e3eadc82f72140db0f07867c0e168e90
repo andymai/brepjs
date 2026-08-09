@@ -1,0 +1,21 @@
+src/kernel/brepkit/booleanOps.ts
+  s_55f022b7d30325::t_6e39d916f35b39 281-305
+tests/brepkitAdapter.test.ts
+  s_55f022b7d30325::t_cc81f7d8df39c9 407-456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2d371a02e3eadc82f72140db0f07867c0e168e90",
+  "prompts": {},
+  "sessions": {
+    "s_55f022b7d30325": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57d14345-a683-4f94-8bff-fcd1b3b48f27",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
