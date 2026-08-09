@@ -313,6 +313,22 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
   profileEdge: (t, p) => {
     const pts = (p['pts'] as Array<readonly [number, number, number]> | undefined) ?? [];
     const a = pts[0] ?? [0, 0, 0];
+    // Interpolate through every sample when there are interior points. Taking
+    // only the endpoints turns a sampled curve into its chord, and a closed one
+    // (first === last) into a degenerate edge — so a profile whose analytic
+    // descriptor is absent would replay as the wrong shape rather than as a
+    // lower-precision version of the right one.
+    if (pts.length > 2) {
+      const closed = dist2(a, pts[pts.length - 1] ?? a) < 1e-18;
+      const through = (closed ? pts.slice(0, -1) : pts).map((q): [number, number, number] => [
+        q[0],
+        q[1],
+        q[2],
+      ]);
+      if (through.length > 2) {
+        return t.interpolatePoints(through, { periodic: closed });
+      }
+    }
     const b = pts.length > 1 ? (pts[pts.length - 1] ?? a) : [a[0] + 1e-3, a[1], a[2]];
     return t.makeLineEdge([a[0], a[1], a[2]], [b[0], b[1], b[2]]);
   },

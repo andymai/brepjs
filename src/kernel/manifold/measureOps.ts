@@ -289,8 +289,27 @@ export function makeMeasureOps(_module: ManifoldModule): KernelMeasureOps {
       if (e && e.__nativeEdge && typeof e.length === 'number') return e.length;
       // Standalone profile edges carry an exact analytic descriptor.
       const ms = asManifoldShape(shape);
-      const node = ms?.node as { op?: string; params?: { curve?: CurveDesc } } | undefined;
+      const node = ms?.node as
+        | { op?: string; params?: { curve?: CurveDesc; pts?: ReadonlyArray<readonly number[]> } }
+        | undefined;
       if (node?.op === 'profileEdge' && node.params?.curve) return descLength(node.params.curve);
+      // No descriptor (a transform the descriptor's form could not represent
+      // dropped it) — measure the sampled polyline, which is the geometry that
+      // actually travelled with the shape.
+      const pts = node?.op === 'profileEdge' ? node.params?.pts : undefined;
+      if (pts && pts.length > 1) {
+        let total = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1] ?? [];
+          const b = pts[i] ?? [];
+          total += Math.hypot(
+            (b[0] ?? 0) - (a[0] ?? 0),
+            (b[1] ?? 0) - (a[1] ?? 0),
+            (b[2] ?? 0) - (a[2] ?? 0)
+          );
+        }
+        return total;
+      }
       return notImplemented('length');
     },
     centerOfMass: (shape) => centerOfMass(shape),

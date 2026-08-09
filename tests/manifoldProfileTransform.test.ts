@@ -67,14 +67,12 @@ describe('manifold profile transforms', () => {
     // express, so the descriptor is dropped and length falls back rather than
     // confidently reporting the original circumference.
     const sheared = k.generalTransformNonOrthogonal(circle, [2, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]);
-    let reported: number | undefined;
-    try {
-      reported = k.length(sheared);
-    } catch {
-      reported = undefined;
-    }
-    if (reported !== undefined) {
-      expect(reported).not.toBeCloseTo(CIRCUMFERENCE, 6);
-    }
+    // Falls back to the sampled polyline rather than throwing or reporting the
+    // source-frame circumference. Stretching x by 2 makes an ellipse with
+    // semi-axes 10 and 5, whose perimeter is ~48.4 by Ramanujan's approximation.
+    const reported = k.length(sheared);
+    expect(reported).not.toBeCloseTo(CIRCUMFERENCE, 1);
+    expect(reported).toBeGreaterThan(CIRCUMFERENCE);
+    expect(reported).toBeCloseTo(48.4, 0);
   });
 });
