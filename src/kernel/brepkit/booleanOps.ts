@@ -286,7 +286,7 @@ export function cutAll(
     const survivors: number[] = [];
     for (const childId of toArray(bk.getCompoundSolids(baseHandle.id))) {
       try {
-        survivors.push(bk.compoundCut(childId, new Uint32Array(toolIds)));
+        survivors.push(bk.compoundCut(childId, toolIds));
       } catch (e) {
         if (!isEmptyBooleanError(e)) throw e;
       }
