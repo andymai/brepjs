@@ -54,13 +54,20 @@ jobs:
               - '.prettierrc*'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
+            # Must cover every input `npm run build:site` reads, or a change to
+            # one skips site-build and still gets a green required check — the
+            # false-green this job exists to prevent. That includes the root
+            # library build it chains through: scripts/, vite.config.ts, tsconfig.
             site:
               - 'src/**'
               - 'packages/**'
               - 'apps/playground/**'
               - 'apps/docs/**'
+              - 'scripts/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vite.config.ts'
               - 'vercel.json'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
