@@ -49,13 +49,22 @@ export const intersectCurves = (
     return err(computationError('INTERSECTION_FAILED', 'Intersections failed between curves', e));
   }
 
-  const segmentsAsPoints = commonSegments
-    .filter((c) => samePoint(c.firstPoint, c.lastPoint, precision))
-    .map((c) => c.firstPoint);
+  // Coincident endpoints alone do not make a common segment degenerate: a
+  // closed overlap — two identical circles share their whole outline — starts
+  // and ends at the same point while spanning the entire curve. Demoting on
+  // the endpoints alone discards that overlap before any boolean sees it, so
+  // require the midpoint to sit on the endpoints too.
+  const isDegenerate = (c: Curve2D): boolean => {
+    if (!samePoint(c.firstPoint, c.lastPoint, precision)) return false;
+    const mid = c.value((c.firstParameter + c.lastParameter) / 2);
+    return samePoint(mid, c.firstPoint, precision);
+  };
+
+  const segmentsAsPoints = commonSegments.filter(isDegenerate).map((c) => c.firstPoint);
 
   if (segmentsAsPoints.length) {
     intersections.push(...segmentsAsPoints);
-    commonSegments = commonSegments.filter((c) => !samePoint(c.firstPoint, c.lastPoint, precision));
+    commonSegments = commonSegments.filter((c) => !isDegenerate(c));
   }
 
   const commonSegmentsPoints = commonSegments.flatMap((c) => [c.firstPoint, c.lastPoint]);
