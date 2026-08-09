@@ -9,6 +9,15 @@
  * onto the 3D plane and emits a native manifold edge (a `profileEdge` op-node,
  * consumed by makeWire/makeFace). Exact/NURBS/introspection ops that have no
  * native form fall back to OCCT (see kernel2dOps).
+ *
+ * Accuracy: the query ops (projection, intersection, curve distance) are
+ * sampling-based, with the step count derived from each curve's extent and the
+ * caller's tolerance rather than fixed. That bounds the error to the tolerance
+ * for ordinary geometry, but it cannot promise to catch a feature narrower than
+ * its own step — a hairline tangency on a wiggly high-degree bezier can still be
+ * missed. Resolving those exactly means root-finding on the distance polynomial,
+ * which belongs to a real curve engine; callers needing that guarantee should
+ * register an OCCT kernel, which these ops then delegate to.
  * @module
  */
 
@@ -82,9 +91,9 @@ function closestParamOn(c: LineC | ConicC | BezierC, x: number, y: number): numb
       );
       return clampToArc(a, c.a0, c.a1);
     }
-    return bracketedMin(c.a0, c.a1, (t) => distSqAt(c, t, x, y));
+    return bracketedMin(c.a0, c.a1, (t) => distSqAt(c, t, x, y), stepsFor(c, CHORD_TOL));
   }
-  return bracketedMin(0, 1, (t) => distSqAt(c, t, x, y));
+  return bracketedMin(0, 1, (t) => distSqAt(c, t, x, y), stepsFor(c, CHORD_TOL));
 }
 
 /**
@@ -95,8 +104,8 @@ function closestParamOn(c: LineC | ConicC | BezierC, x: number, y: number): numb
  * bezier can have several. So scan coarsely for the best sample, then refine
  * only inside the bracket around it, which is unimodal by construction.
  */
-function bracketedMin(lo: number, hi: number, f: (t: number) => number): number {
-  const N = 96;
+function bracketedMin(lo: number, hi: number, f: (t: number) => number, steps: number): number {
+  const N = Math.max(8, steps);
   let bestI = 0;
   let best = Infinity;
   for (let i = 0; i <= N; i++) {
@@ -213,6 +222,13 @@ function intersectNative(
   // within tolerance: a run of length is a common segment, an isolated dip is
   // a tangential point.
   const { first, last } = nativeBounds(a);
+  // Deliberately at the shim's discretization resolution, not the caller's
+  // tolerance. Raising it does find more genuine coincidences, but the 2D
+  // boolean downstream cannot yet absorb them: at tolerance-derived density the
+  // shared-segment cases in boolean2dRegression (issue #712) collapse to
+  // degenerate output (`expected -Infinity to be greater than 0`). Detecting
+  // more contacts than the consumer can handle is a net loss, so this stays put
+  // until that path is hardened.
   const M = 192;
   const on: boolean[] = [];
   for (let i = 0; i <= M; i++) {
@@ -227,10 +243,16 @@ function intersectNative(
     const inside = i <= M && on[i] === true;
     if (inside && runStart < 0) runStart = i;
     if (!inside && runStart >= 0) {
-      const spanSteps = i - runStart;
       const t0 = first + ((last - first) * runStart) / M;
       const t1 = first + ((last - first) * (i - 1)) / M;
-      if (spanSteps > 1) {
+      // Classify by how long the contact physically is, not by how many
+      // samples landed on it: a sample-count test makes the segment/point
+      // answer move with the sampling density, which is exactly the coupling
+      // that made a denser scan reclassify contacts it had called points.
+      const p0 = nativeAt(a, t0);
+      const p1 = nativeAt(a, t1);
+      const physical = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      if (physical > Math.max(tol, CHORD_TOL)) {
         segments.push(trimNative(a, t0, t1));
       } else {
         // Single sample touching b: a tangential contact, reported as a point
@@ -263,6 +285,40 @@ function segSeg(p1: Vec2, p2: Vec2, p3: Vec2, p4: Vec2): Vec2 | null {
   const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
   if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) return null;
   return [p1[0] + d1x * t, p1[1] + d1y * t];
+}
+
+/**
+ * How many parameter steps resolve `c` to within `tol`.
+ *
+ * A fixed step count is wrong at both ends: wasteful on a short line and blind
+ * to a feature narrower than one interval on a long or wiggly curve. Deriving
+ * it from the curve's own extent — control-polygon length for a bezier, arc
+ * length for a conic — ties the resolution to the geometry and the caller's
+ * tolerance, the same way conicSegments already does for discretization.
+ *
+ * This bounds the miss, it does not remove it: any sampling scheme can still
+ * step over a feature narrower than its own interval. Exactly resolving that
+ * needs polynomial root-finding on the distance function, which is a different
+ * and much larger piece of machinery than this shim carries.
+ */
+function stepsFor(c: LineC | ConicC | BezierC, tol: number): number {
+  const t = Math.max(tol, 1e-9);
+  if (c.k === 'line') return 2;
+  let extent: number;
+  if (c.k === 'conic') {
+    const r = Math.max(Math.hypot(c.u[0], c.u[1]), Math.hypot(c.v[0], c.v[1]));
+    extent = Math.abs(c.a1 - c.a0) * r;
+  } else {
+    extent = 0;
+    for (let i = 0; i + 1 < c.pts.length; i++) {
+      const a = c.pts[i] as Vec2;
+      const b = c.pts[i + 1] as Vec2;
+      extent += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    }
+  }
+  // Two steps per tolerance-width feature, so a contact of width `tol` spans an
+  // interval rather than falling between two samples.
+  return Math.min(20000, Math.max(64, Math.ceil((2 * extent) / t)));
 }
 
 /** Parameter range of a native curve, matching getCurve2dBounds. */
