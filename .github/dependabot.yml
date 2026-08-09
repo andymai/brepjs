@@ -34,6 +34,19 @@ updates:
         update-types:
           - minor
           - patch
+      # @size-limit/* peer-depend on an EXACT size-limit version, so raising one
+      # without the other is an unresolvable ERESOLVE. Ungrouped majors get one
+      # PR per package, and since npm ci then fails at install, every downstream
+      # job fails with it — which reads as broad breakage rather than a version
+      # conflict. Group all update types so the pair always travels together.
+      size-limit:
+        patterns:
+          - size-limit
+          - '@size-limit/*'
+        update-types:
+          - major
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
