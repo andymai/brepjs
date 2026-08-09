@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      playground: ${{ steps.filter.outputs.playground }}
+      site: ${{ steps.filter.outputs.site }}
       voxel: ${{ steps.filter.outputs.voxel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,12 +54,14 @@ jobs:
               - '.prettierrc*'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
-            playground:
+            site:
               - 'src/**'
               - 'packages/**'
               - 'apps/playground/**'
+              - 'apps/docs/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'vercel.json'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
             voxel:
@@ -116,25 +118,30 @@ jobs:
       - run: npx prettier --write docs/function-lookup.md
       - run: git diff --exit-code docs/function-lookup.md
 
-  playground-build:
-    # Mirrors what Vercel runs (`npm run build --workspace=apps/playground`).
-    # Catches type-resolution and bundler regressions in the playground
-    # before they break Preview deploys — e.g. the duplicate `@types/three`
-    # install in #963 that broke `tsc -b` only inside apps/playground.
+  site-build:
+    # Runs Vercel's exact buildCommand (`npm run build:site`) on the exact tree
+    # its installCommand produces, so a broken deploy fails the PR instead of
+    # only production. Both halves matter: this job previously ran a subset of
+    # build:site and still went green while every deploy failed, because Vercel
+    # installed with `npm install --legacy-peer-deps` while CI used `npm ci` —
+    # the flag drops peer-only packages, so the two trees differed (#1998).
+    # Keep this in step with vercel.json; divergence is what hid that outage.
+    #
+    # Also catches type-resolution and bundler regressions in the playground —
+    # e.g. the duplicate `@types/three` install in #963 that broke `tsc -b`
+    # only inside apps/playground.
     needs: changes
-    if: needs.changes.outputs.playground == 'true'
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
-      # The playground resolves `brepjs` (and the brepjs-bim / brepjs-sheetmetal
-      # domain packages its worker imports) via package exports → `dist/`. Build
-      # the libraries first so `tsc -b` and `vite build` see real type/runtime files.
-      - run: npm run build
-      - run: npm run build --workspace=brepjs-bim
-      - run: npm run build --workspace=brepjs-sheetmetal
-      - run: npm run build --workspace=apps/playground
+      # build:site chains the library builds that the playground and docs
+      # resolve via package exports → `dist/`, then the vitepress build and the
+      # playground → `.vitepress/dist/playground` copy that Vercel serves.
+      # provision-fonts is a no-op without FONT_BLOB_URLS, so it is CI-safe.
+      - run: npm run build:site
 
   packages-viewer:
     # Shared React/R3F renderer extracted from the playground; gated on its own
@@ -437,7 +444,7 @@ jobs:
         lint,
         quality,
         build,
-        playground-build,
+        site-build,
         packages-viewer,
         packages-verify,
         packages-sheetmetal,
