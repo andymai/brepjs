@@ -85,6 +85,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
     },
+    'extrudeFns.shellModeWires': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel with no B-rep wires: a shell-mode sweep hands back the input profile as its start/end cap rather than real wires, so the tuple cast fails with SWEEP_START_NOT_WIRE.',
+    },
     'extrudeFns.complexExtrudeLaw': {
       kind: 'not-implemented',
       reason:
