@@ -266,9 +266,7 @@ export function cutAll(
   options?: BooleanOptions
 ): KernelShape {
   if (tools.length === 0) return shape;
-  if (tools.length === 1) return cut(bk, shape, tools[0], options);
 
-  const baseId = unwrapSolidOrThrow(shape, 'cutAll');
   const toolIds: number[] = [];
   for (const tool of tools) {
     const h = tool as BrepkitHandle;
@@ -280,8 +278,31 @@ export function cutAll(
   }
   if (toolIds.length === 0) return shape;
 
-  const result = bk.compoundCut(baseId, new Uint32Array(toolIds));
-  return solidHandle(result);
+  // cutAll's own output is a compound whenever a cut disconnects or empties
+  // the base, so the base must be consumable as one (brepkit#1499). Cut each
+  // child solid; a child fully consumed by the tools is dropped.
+  const baseHandle = shape as BrepkitHandle;
+  if (isBrepkitHandle(shape) && baseHandle.type === 'compound') {
+    const survivors: number[] = [];
+    for (const childId of toArray(bk.getCompoundSolids(baseHandle.id))) {
+      try {
+        survivors.push(bk.compoundCut(childId, new Uint32Array(toolIds)));
+      } catch (e) {
+        if (!isEmptyBooleanError(e)) throw e;
+      }
+    }
+    return compoundHandle(bk.makeCompound(survivors));
+  }
+
+  if (tools.length === 1) return cut(bk, shape, tools[0], options);
+
+  const baseId = unwrapSolidOrThrow(shape, 'cutAll');
+  try {
+    return solidHandle(bk.compoundCut(baseId, new Uint32Array(toolIds)));
+  } catch (e) {
+    if (isEmptyBooleanError(e)) return emptyCompound(bk);
+    throw e;
+  }
 }
 
 export function split(bk: BrepkitKernel, shape: KernelShape, tools: KernelShape[]): KernelShape {
