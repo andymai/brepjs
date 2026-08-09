@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.123.0](https://github.com/andymai/brepjs/compare/brepjs-v18.122.0...brepjs-v18.123.0) (2026-08-09)
+
+
+### Features
+
+* **kernel:** honour sweep law, support and budget on occt-wasm ([#1970](https://github.com/andymai/brepjs/issues/1970)) ([62cec67](https://github.com/andymai/brepjs/commit/62cec676cb28f2990ee4df10eb677b65410152de))
+
 ## [18.122.0](https://github.com/andymai/brepjs/compare/brepjs-v18.121.0...brepjs-v18.122.0) (2026-08-08)
 
 
