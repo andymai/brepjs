@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.124.2](https://github.com/andymai/brepjs/compare/brepjs-v18.124.1...brepjs-v18.124.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **brepkit:** cutAll accepts a compound base so its output can be chained ([#1996](https://github.com/andymai/brepjs/issues/1996)) ([cf80f24](https://github.com/andymai/brepjs/commit/cf80f24e723c7c2f3c853572a765ae6adcec428d))
+* **manifold:** transform profile shapes by baking the matrix into their points ([#1982](https://github.com/andymai/brepjs/issues/1982)) ([2c5ee65](https://github.com/andymai/brepjs/commit/2c5ee65fc271b07c4e38f0dc2b7adb76e10355d4))
+
 ## [18.124.1](https://github.com/andymai/brepjs/compare/brepjs-v18.124.0...brepjs-v18.124.1) (2026-08-09)
 
 
