@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.3](https://github.com/andymai/brepjs/compare/brepjs-v18.124.2...brepjs-v18.124.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **playground:** hoist @react-three/fiber so vercel builds resolve drei ([#1998](https://github.com/andymai/brepjs/issues/1998)) ([92b1a09](https://github.com/andymai/brepjs/commit/92b1a09c7870f0e437f9d2e2eab6da3259584a8b))
+
 ## [18.124.2](https://github.com/andymai/brepjs/compare/brepjs-v18.124.1...brepjs-v18.124.2) (2026-08-09)
 
 
