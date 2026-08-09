@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.4](https://github.com/andymai/brepjs/compare/brepjs-v18.124.3...brepjs-v18.124.4) (2026-08-09)
+
+
+### Bug Fixes
+
+* **ci:** deploy vercel from npm ci so production matches the tested tree ([#2001](https://github.com/andymai/brepjs/issues/2001)) ([e9928e1](https://github.com/andymai/brepjs/commit/e9928e123305f6dfc67176a0fb0c919647d077f2))
+
 ## [18.124.3](https://github.com/andymai/brepjs/compare/brepjs-v18.124.2...brepjs-v18.124.3) (2026-08-09)
 
 
