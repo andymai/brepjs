@@ -59,6 +59,15 @@ export async function initKernel(id?: string): Promise<void> {
     (module as { setCircularSegments?: (n: number) => void }).setCircularSegments?.(512);
     initFromManifold(module);
     _available.push('manifold');
+    // The manifold adapter is a hybrid: mesh CSG runs natively, but exact
+    // geometry/topology queries replay the op-graph onto a registered B-rep
+    // kernel (see replay.ts, meshHandle.resolveOcct). Manifold alone is not a
+    // configuration the adapter targets — production pairs it with occt-wasm —
+    // so register one or every exact query fails on "no B-rep kernel
+    // registered" rather than on anything the mesh kernel actually does.
+    // Registered after initFromManifold because registerKernel() hands the
+    // default to whichever kernel registers first, and manifold must stay it.
+    await initKernel('occt-wasm');
   } else if (kernel === 'occt') {
     await initOCCT();
   } else {
