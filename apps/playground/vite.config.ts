@@ -129,9 +129,15 @@ export default defineConfig({
     // may live at the workspace root or nested in apps/playground depending on how npm
     // hoists once sibling workspaces (brepjs-viewer) pull the same React major, so
     // resolve the package dir at config time rather than hardcoding either location.
+    // @react-three/fiber needs the same treatment for a stricter reason: drei only
+    // *peer*-depends on it, so drei's own imports resolve solely by fiber being hoisted
+    // beside it. Vercel installs with --legacy-peer-deps, which drops peer-only entries,
+    // so a bump that de-hoists fiber makes drei unresolvable there while every local
+    // install still works.
     alias: {
       react: dirname(reactRequire.resolve('react/package.json')),
       'react-dom': dirname(reactRequire.resolve('react-dom/package.json')),
+      '@react-three/fiber': dirname(reactRequire.resolve('@react-three/fiber/package.json')),
     },
   },
   build: {
