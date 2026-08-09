@@ -52,6 +52,216 @@ interface Affine {
 
 const CHORD_TOL = 0.004; // max polygon sagitta (mm) when discretizing conic arcs
 
+/**
+ * Closest parameter on a native curve to (x, y), in that curve's own
+ * parametrization: signed distance for a line, angle for a conic, [0,1] for a
+ * bezier. Exact where the geometry allows it, and a bounded golden-section
+ * search where it does not (general ellipse, bezier) — both of which are
+ * unimodal in distance over a single arc, so the search cannot land on a
+ * spurious local minimum.
+ */
+function closestParamOn(c: LineC | ConicC | BezierC, x: number, y: number): number {
+  if (c.k === 'line') {
+    const dx = c.p2[0] - c.p1[0];
+    const dy = c.p2[1] - c.p1[1];
+    const len = Math.hypot(dx, dy);
+    if (len === 0) return 0;
+    const t = ((x - c.p1[0]) * dx + (y - c.p1[1]) * dy) / len;
+    return Math.min(Math.max(t, 0), len);
+  }
+  if (c.k === 'conic') {
+    const ru = Math.hypot(c.u[0], c.u[1]);
+    const rv = Math.hypot(c.v[0], c.v[1]);
+    // A circle (equal conjugate radii, orthogonal axes) closes in one step.
+    if (Math.abs(ru - rv) < 1e-12 && Math.abs(c.u[0] * c.v[0] + c.u[1] * c.v[1]) < 1e-12) {
+      const px = x - c.c[0];
+      const py = y - c.c[1];
+      const a = Math.atan2(
+        (px * c.v[0] + py * c.v[1]) / (rv * rv || 1),
+        (px * c.u[0] + py * c.u[1]) / (ru * ru || 1)
+      );
+      return clampToArc(a, c.a0, c.a1);
+    }
+    return goldenMin(c.a0, c.a1, (t) => distSqAt(c, t, x, y));
+  }
+  return goldenMin(0, 1, (t) => distSqAt(c, t, x, y));
+}
+
+/** Wrap an angle into [a0, a1] where possible, else clamp to the nearer end. */
+function clampToArc(a: number, a0: number, a1: number): number {
+  const span = a1 - a0;
+  if (span >= 2 * Math.PI - 1e-12) return a;
+  let t = a;
+  while (t < a0) t += 2 * Math.PI;
+  while (t > a0 + 2 * Math.PI) t -= 2 * Math.PI;
+  if (t <= a1) return t;
+  // Outside the arc: whichever endpoint the angle sits nearer to.
+  return t - a1 < a0 + 2 * Math.PI - t ? a1 : a0;
+}
+
+function distSqAt(c: LineC | ConicC | BezierC, t: number, x: number, y: number): number {
+  const p = nativeAt(c, t);
+  const dx = p[0] - x;
+  const dy = p[1] - y;
+  return dx * dx + dy * dy;
+}
+
+function nativeAt(c: LineC | ConicC | BezierC, t: number): Vec2 {
+  if (c.k === 'line') {
+    const dx = c.p2[0] - c.p1[0];
+    const dy = c.p2[1] - c.p1[1];
+    const len = Math.hypot(dx, dy) || 1;
+    return [c.p1[0] + (dx * t) / len, c.p1[1] + (dy * t) / len];
+  }
+  if (c.k === 'bezier') return bezierAt(c.pts, t);
+  return [
+    c.c[0] + c.u[0] * Math.cos(t) + c.v[0] * Math.sin(t),
+    c.c[1] + c.u[1] * Math.cos(t) + c.v[1] * Math.sin(t),
+  ];
+}
+
+/** Golden-section minimum of a unimodal f over [lo, hi]. */
+function goldenMin(lo: number, hi: number, f: (t: number) => number): number {
+  const phi = (Math.sqrt(5) - 1) / 2;
+  let a = lo;
+  let b = hi;
+  let c1 = b - phi * (b - a);
+  let d1 = a + phi * (b - a);
+  for (let i = 0; i < 80 && b - a > 1e-12; i++) {
+    if (f(c1) < f(d1)) {
+      b = d1;
+      d1 = c1;
+      c1 = b - phi * (b - a);
+    } else {
+      a = c1;
+      c1 = d1;
+      d1 = a + phi * (b - a);
+    }
+  }
+  return (a + b) / 2;
+}
+
+/**
+ * Curve-curve intersection over the shim's own polyline discretization.
+ *
+ * Manifold has no exact curve algebra, so candidate crossings come from
+ * segment pairs and are then refined by alternating projection: each point is
+ * projected onto the other curve until it stops moving. That converges to a
+ * genuine crossing when the segments really cross, and to the closest approach
+ * when they only nearly touch — which the tolerance check then rejects.
+ */
+function intersectNative(
+  a: NativeCurve,
+  b: NativeCurve,
+  tol: number
+): { points: Vec2[]; params: number[] } {
+  const pa = sample(a);
+  const pb = sample(b);
+  const points: Vec2[] = [];
+  const params: number[] = [];
+  for (let i = 0; i + 1 < pa.length; i++) {
+    for (let j = 0; j + 1 < pb.length; j++) {
+      const hit = segSeg(pa[i] as Vec2, pa[i + 1] as Vec2, pb[j] as Vec2, pb[j + 1] as Vec2);
+      if (!hit) continue;
+      let p = hit;
+      for (let k = 0; k < 24; k++) {
+        const ta = closestParamOn(a, p[0], p[1]);
+        const qa = nativeAt(a, ta);
+        const tb = closestParamOn(b, qa[0], qa[1]);
+        const qb = nativeAt(b, tb);
+        const moved = Math.hypot(qb[0] - p[0], qb[1] - p[1]);
+        p = [(qa[0] + qb[0]) / 2, (qa[1] + qb[1]) / 2];
+        if (moved < 1e-12) break;
+      }
+      const ta = closestParamOn(a, p[0], p[1]);
+      const tb = closestParamOn(b, p[0], p[1]);
+      const d = sub2(nativeAt(a, ta), nativeAt(b, tb));
+      const gap = Math.hypot(d[0], d[1]);
+      if (gap > Math.max(tol, 1e-7)) continue;
+      if (points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) <= Math.max(tol, 1e-9))) continue;
+      points.push(p);
+      params.push(ta);
+    }
+  }
+  return { points, params };
+}
+
+function sub2(a: Vec2, b: Vec2): Vec2 {
+  return [a[0] - b[0], a[1] - b[1]];
+}
+
+/** Intersection point of two segments, or null when they do not cross. */
+function segSeg(p1: Vec2, p2: Vec2, p3: Vec2, p4: Vec2): Vec2 | null {
+  const d1x = p2[0] - p1[0];
+  const d1y = p2[1] - p1[1];
+  const d2x = p4[0] - p3[0];
+  const d2y = p4[1] - p3[1];
+  const den = d1x * d2y - d1y * d2x;
+  if (Math.abs(den) < 1e-15) return null;
+  const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / den;
+  const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / den;
+  if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) return null;
+  return [p1[0] + d1x * t, p1[1] + d1y * t];
+}
+
+/** Parameter range of a native curve, matching getCurve2dBounds. */
+function nativeBounds(c: LineC | ConicC | BezierC): { first: number; last: number } {
+  if (c.k === 'conic') return { first: c.a0, last: c.a1 };
+  if (c.k === 'line') {
+    return { first: 0, last: Math.hypot(c.p2[0] - c.p1[0], c.p2[1] - c.p1[1]) };
+  }
+  return { first: 0, last: 1 };
+}
+
+/** Restrict a native curve to [from, to] in its own parametrization. */
+function trimNative(c: NativeCurve, from: number, to: number): NativeCurve {
+  if (c.k === 'conic') return { ...c, a0: from, a1: to };
+  if (c.k === 'line') {
+    const p1 = nativeAt(c, from);
+    const p2 = nativeAt(c, to);
+    return { ...c, p1, p2 };
+  }
+  // de Casteljau twice: drop [0,from], then rescale and drop the tail.
+  const right = deCasteljauRight(c.pts, from);
+  const span = 1 - from;
+  const t2 = span <= 1e-15 ? 1 : (to - from) / span;
+  return { ...c, pts: deCasteljauLeft(right, t2) };
+}
+
+function deCasteljauLeft(pts: Vec2[], t: number): Vec2[] {
+  const out: Vec2[] = [];
+  let cur = pts.map((p): Vec2 => [p[0], p[1]]);
+  out.push(cur[0] as Vec2);
+  while (cur.length > 1) {
+    const next: Vec2[] = [];
+    for (let i = 0; i + 1 < cur.length; i++) {
+      const a = cur[i] as Vec2;
+      const b = cur[i + 1] as Vec2;
+      next.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+    cur = next;
+    out.push(cur[0] as Vec2);
+  }
+  return out;
+}
+
+function deCasteljauRight(pts: Vec2[], t: number): Vec2[] {
+  const out: Vec2[] = [];
+  let cur = pts.map((p): Vec2 => [p[0], p[1]]);
+  out.push(cur[cur.length - 1] as Vec2);
+  while (cur.length > 1) {
+    const next: Vec2[] = [];
+    for (let i = 0; i + 1 < cur.length; i++) {
+      const a = cur[i] as Vec2;
+      const b = cur[i + 1] as Vec2;
+      next.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+    cur = next;
+    out.push(cur[cur.length - 1] as Vec2);
+  }
+  return out.reverse();
+}
+
 function isNative(x: unknown): x is NativeCurve {
   return !!x && typeof x === 'object' && (x as { __nativeC2d?: boolean }).__nativeC2d === true;
 }
@@ -601,19 +811,41 @@ function makeNativeKernel2DOps(
     // first (toOcct) so the genuinely-OCCT engine receives real B-rep curves.
     makeBSpline2d: (points, options) => occtOr('makeBSpline2d').makeBSpline2d(points, options),
     offsetCurve2d: (c, offset) => occtOr('offsetCurve2d').offsetCurve2d(toOcct(c), offset),
-    intersectCurves2d: (c1, c2, tol) =>
-      occtOr('intersectCurves2d').intersectCurves2d(toOcct(c1), toOcct(c2), tol),
-    projectPointOnCurve2d: (c, x, y) =>
-      occtOr('projectPointOnCurve2d').projectPointOnCurve2d(toOcct(c), x, y),
-    distanceBetweenCurves2d: (c1, c2, s1, e1, s2, e2) =>
-      occtOr('distanceBetweenCurves2d').distanceBetweenCurves2d(
-        toOcct(c1),
-        toOcct(c2),
-        s1,
-        e1,
-        s2,
-        e2
-      ),
+    intersectCurves2d: (c1, c2, tol) => {
+      if (!isNative(c1) || !isNative(c2)) {
+        return occtOr('intersectCurves2d').intersectCurves2d(c1, c2, tol);
+      }
+      const { points } = intersectNative(asC(c1), asC(c2), tol);
+      // No native overlap detection: coincident spans report as crossings, not
+      // as common segments, which is what the mesh construction path consumes.
+      return { points: points.map((p): [number, number] => [p[0], p[1]]), segments: [] };
+    },
+    projectPointOnCurve2d: (c, x, y) => {
+      if (!isNative(c)) return occtOr('projectPointOnCurve2d').projectPointOnCurve2d(c, x, y);
+      const n = asC(c);
+      const param = closestParamOn(n, x, y);
+      return { param, distance: Math.sqrt(distSqAt(n, param, x, y)) };
+    },
+    distanceBetweenCurves2d: (c1, c2, s1, e1, s2, e2) => {
+      if (!isNative(c1) || !isNative(c2)) {
+        return occtOr('distanceBetweenCurves2d').distanceBetweenCurves2d(c1, c2, s1, e1, s2, e2);
+      }
+      // Sample one curve and project each sample onto the other: the minimum
+      // over a dense sampling is within the sampling step of the true minimum,
+      // which is the same accuracy class as the shim's chord tolerance.
+      const a = asC(c1);
+      const b = asC(c2);
+      const N = 256;
+      let best = Infinity;
+      for (let i = 0; i <= N; i++) {
+        const t = s1 + ((e1 - s1) * i) / N;
+        const p = nativeAt(a, t);
+        const q = closestParamOn(b, p[0], p[1]);
+        const qc = Math.min(Math.max(q, Math.min(s2, e2)), Math.max(s2, e2));
+        best = Math.min(best, Math.sqrt(distSqAt(b, qc, p[0], p[1])));
+      }
+      return best;
+    },
     approximateCurve2dAsBSpline: (c, tol, cont, maxSeg) =>
       occtOr('approximateCurve2dAsBSpline').approximateCurve2dAsBSpline(
         toOcct(c),
@@ -623,9 +855,34 @@ function makeNativeKernel2DOps(
       ),
     decomposeBSpline2dToBeziers: (c) =>
       occtOr('decomposeBSpline2dToBeziers').decomposeBSpline2dToBeziers(toOcct(c)),
-    serializeCurve2d: (c) => occtOr('serializeCurve2d').serializeCurve2d(toOcct(c)),
-    deserializeCurve2d: (data) => occtOr('deserializeCurve2d').deserializeCurve2d(data),
-    splitCurve2d: (c, params) => occtOr('splitCurve2d').splitCurve2d(toOcct(c), params),
+    // The native descriptor is already a closed value form, so round-tripping
+    // it needs no OCCT. Tagged so deserialize can tell it from OCCT payloads.
+    serializeCurve2d: (c) =>
+      isNative(c)
+        ? JSON.stringify({ __nativeC2d: 1, c: asC(c) })
+        : occtOr('serializeCurve2d').serializeCurve2d(c),
+    deserializeCurve2d: (data) => {
+      if (data.startsWith('{"__nativeC2d"')) {
+        const parsed = JSON.parse(data) as { c: LineC | ConicC | BezierC };
+        return { __nativeC2d: true, ...parsed.c };
+      }
+      return occtOr('deserializeCurve2d').deserializeCurve2d(data);
+    },
+    splitCurve2d: (c, params) => {
+      if (!isNative(c)) return occtOr('splitCurve2d').splitCurve2d(c, params);
+      const n = asC(c);
+      const { first, last } = nativeBounds(n);
+      const cuts = [
+        first,
+        ...params.filter((t) => t > first && t < last).sort((a, b) => a - b),
+        last,
+      ];
+      const out: Curve2dHandle[] = [];
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        out.push(trimNative(n, cuts[i] ?? 0, cuts[i + 1] ?? 0));
+      }
+      return out;
+    },
     getCurve2dEllipseData: (c) => occtOr('getCurve2dEllipseData').getCurve2dEllipseData(toOcct(c)),
     getCurve2dBezierPoles: (c) => occtOr('getCurve2dBezierPoles').getCurve2dBezierPoles(toOcct(c)),
     getCurve2dBezierDegree: (c) =>
