@@ -1,0 +1,23 @@
+src/kernel/manifold/kernel2dNative.ts
+  s_89ebab1cd8d9f3::t_0db1b350532b11 225-231
+  s_89ebab1cd8d9f3::t_9315037e363d66 94,96,107-108,290-321
+  s_89ebab1cd8d9f3::t_7336a4e4c2fc69 248-255
+  s_89ebab1cd8d9f3::t_a0dddfa984e08f 12-20
+  s_89ebab1cd8d9f3::t_523982f87e100b 322-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "feab58d193435b16562486d446a46500b3dab46d",
+  "prompts": {},
+  "sessions": {
+    "s_89ebab1cd8d9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66a1fbe-8127-4890-8649-771e75111e0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
