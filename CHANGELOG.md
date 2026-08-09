@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.6](https://github.com/andymai/brepjs/compare/brepjs-v18.124.5...brepjs-v18.124.6) (2026-08-09)
+
+
+### Bug Fixes
+
+* **ci:** verify release PRs still install before they auto-merge ([#2010](https://github.com/andymai/brepjs/issues/2010)) ([ed9c213](https://github.com/andymai/brepjs/commit/ed9c2131e5be7911f66f8c7bd22cf6d7f15db0b4))
+
 ## [18.124.5](https://github.com/andymai/brepjs/compare/brepjs-v18.124.4...brepjs-v18.124.5) (2026-08-09)
 
 
