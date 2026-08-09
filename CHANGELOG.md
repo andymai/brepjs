@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.5](https://github.com/andymai/brepjs/compare/brepjs-v18.124.4...brepjs-v18.124.5) (2026-08-09)
+
+
+### Bug Fixes
+
+* **ci:** install the playground smoke runner with npm ci ([#2005](https://github.com/andymai/brepjs/issues/2005)) ([4f23083](https://github.com/andymai/brepjs/commit/4f2308316f2796a414c0a7f18da355314a3e6c6f))
+
 ## [18.124.4](https://github.com/andymai/brepjs/compare/brepjs-v18.124.3...brepjs-v18.124.4) (2026-08-09)
 
 
