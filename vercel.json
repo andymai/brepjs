@@ -1,7 +1,7 @@
 {
   "framework": "vitepress",
   "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in *components--brepjs-cad) exit 0 ;; *) exit 1 ;; esac",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build:site",
   "outputDirectory": "apps/docs/.vitepress/dist",
   "cleanUrls": true,
