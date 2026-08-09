@@ -1,0 +1,39 @@
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_89ebab1cd8d9f3::t_c3b8ef4c60506f 230-253
+tests/helpers/kernelDivergences.ts
+  s_89ebab1cd8d9f3::t_7b9e2923e45b31 301-305
+  s_89ebab1cd8d9f3::t_e2a2b2712fabcf 88-92
+tests/operations-extrude.test.ts
+  s_89ebab1cd8d9f3::t_ac8feb15c50335 105-109,112-125
+  s_89ebab1cd8d9f3::t_7b9e2923e45b31 3,110-111
+src/kernel/occtWasm/sweepOps.ts
+  s_89ebab1cd8d9f3::t_bf8723f2a01f9a 36-38,40-71
+  s_89ebab1cd8d9f3::t_66208b700341f1 230,303,354-356,362,364-366,369
+  s_89ebab1cd8d9f3::t_9db4047ede2403 278,322-324
+  s_89ebab1cd8d9f3::t_f47ff39601ba20 152-167,169-181,184,186,192-229,231-241,276-277,279-293,295-302,304-321,325,330,334,337-345,347-353,357-361,363,367,372-373
+  s_89ebab1cd8d9f3::t_0835be67f2c496 346,368,370-371
+  s_89ebab1cd8d9f3::t_c750a02674dd46 242-258,260-261,263-275,294
+package.json
+  s_89ebab1cd8d9f3::t_5a12b0ec72d614 275
+docs/kernel-conformance.md
+  s_89ebab1cd8d9f3::t_e2a2b2712fabcf 3
+  s_89ebab1cd8d9f3::t_cb8fdab4d28961 61
+package-lock.json
+  s_89ebab1cd8d9f3::t_2c5cb46eaa3967 47,11275-11277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "969f4c5e7ea73efe5bf6a7c07fb0361a07135b4f",
+  "prompts": {},
+  "sessions": {
+    "s_89ebab1cd8d9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66a1fbe-8127-4890-8649-771e75111e0d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
