@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.1](https://github.com/andymai/brepjs/compare/brepjs-v18.124.0...brepjs-v18.124.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **security:** document GHSA-55q2-fjhq-7xh7 as unreachable via monaco ([#1984](https://github.com/andymai/brepjs/issues/1984)) ([42eb540](https://github.com/andymai/brepjs/commit/42eb5403e5926257043edc3d22e6da6ee16cd3b5))
+
 ## [18.124.0](https://github.com/andymai/brepjs/compare/brepjs-v18.123.1...brepjs-v18.124.0) (2026-08-09)
 
 
