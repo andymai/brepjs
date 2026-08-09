@@ -2,7 +2,7 @@
 # OSV Scan workflow (.github/workflows/osv-scan.yml). Each entry must carry a
 # reason and a review date so exceptions don't outlive their justification.
 
-# --- dompurify via monaco-editor (3 advisories) ---------------------------
+# --- dompurify via monaco-editor (4 advisories) ---------------------------
 # monaco-editor 0.56.0 declares `dompurify: 3.4.8` as an exact pin, which is
 # what the scanner matches on. That copy is never executed, for two reasons.
 #
@@ -61,3 +61,18 @@ ignoreUntil = 2026-11-01
 # clearConfig occurrence in esm/ is DOMPurify's own definition; monaco never
 # calls it, so no config survives between sanitize() calls.
 reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; clearConfig() never called"
+
+[[IgnoredVulns]]
+id = "GHSA-55q2-fjhq-7xh7"
+ignoreUntil = 2026-11-01
+# Needs IN_PLACE sanitization plus a hook that removes a containing element, so
+# that _sanitizeElements() returns after the hook detaches a node without
+# neutralizing its descendants. monaco has the hook half — domSanitize.js
+# registers replaceWithPlainTextHook on uponSanitizeElement — but never the
+# IN_PLACE half: both sanitize() call sites pass RETURN_DOM_FRAGMENT or
+# RETURN_TRUSTED_TYPE, and outside DOMPurify's own definition IN_PLACE appears
+# nowhere in monaco's esm/ or min/. The vendored copy also forces it off for
+# string input (`typeof dirty == "string" && (IN_PLACE = false)`), which is what
+# monaco passes. Without IN_PLACE, sanitize builds a fresh document rather than
+# mutating the input, so the detached-subtree path is unreachable.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; IN_PLACE never set, so the detached-subtree path is unreachable"
