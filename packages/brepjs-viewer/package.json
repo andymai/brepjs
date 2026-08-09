@@ -41,23 +41,23 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "@react-three/drei": ">=10",
+    "@react-three/fiber": ">=9",
     "react": ">=19",
     "react-dom": ">=19",
-    "three": ">=0.184",
-    "@react-three/fiber": ">=9",
-    "@react-three/drei": ">=10"
+    "three": ">=0.184"
   },
   "devDependencies": {
     "@eslint/js": "*",
-    "@react-three/test-renderer": "*",
-    "@types/react": "19.2.17",
-    "@types/three": "0.185.1",
+    "@react-three/drei": "10.7.7",
+    "@react-three/fiber": "9.7.0",
+    "@react-three/test-renderer": "9.1.1",
+    "@types/react": "19.2.18",
+    "@types/three": "0.185.3",
     "eslint": "*",
     "jsdom": "*",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "@react-three/fiber": "9.6.1",
-    "@react-three/drei": "10.7.7",
     "three": "0.185.1",
     "typescript": "*",
     "typescript-eslint": "*",
