@@ -22,10 +22,13 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       site: ${{ steps.filter.outputs.site }}
       voxel: ${{ steps.filter.outputs.voxel }}
+      release_please: ${{ steps.release-please.outputs.skip }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Release-please PRs only touch CHANGELOG.md, package.json versions,
       # and .release-please-manifest.json — no code changes to validate.
+      # They are not unconditionally safe though: node-workspace rewrites
+      # cross-package dependency ranges, so release-install-check still runs.
       - name: Skip release-please PRs
         id: release-please
         env:
@@ -124,6 +127,32 @@ jobs:
       - run: npm run docs:generate-lookup
       - run: npx prettier --write docs/function-lookup.md
       - run: git diff --exit-code docs/function-lookup.md
+
+  release-install-check:
+    # The one thing worth proving on a release-please PR, which skips the rest
+    # of CI. release-please's node-workspace plugin rewrites cross-package
+    # dependency ranges as it bumps versions — in #1711 it re-pinned
+    # brepjs-cad to `brepjs@^18.117.1` while only 18.117.0 was published, and
+    # auto-merge landed it on main. Every deploy then died on ETARGET at
+    # install, before any build ran, and so did every other PR's `npm ci`.
+    #
+    # `npm ci` reproduces that failure exactly (verified: an unsatisfiable
+    # floor exits 1 with the same ETARGET), so installing the tree the PR
+    # proposes is a sufficient guard. Nothing is built — a release PR changes
+    # only versions, changelogs and the ranges checked here.
+    needs: changes
+    if: needs.changes.outputs.release_please == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      # --ignore-scripts skips the root `prepare` (husky + ensure-wasm); this
+      # job only needs resolution to succeed, not a usable build environment.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
 
   site-build:
     # Runs Vercel's exact buildCommand (`npm run build:site`) on the exact tree
@@ -447,6 +476,7 @@ jobs:
     needs:
       [
         changes,
+        release-install-check,
         typecheck,
         lint,
         quality,
