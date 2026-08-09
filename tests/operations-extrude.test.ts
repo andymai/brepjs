@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import Sketcher from '@/sketching/sketcher.js';
 import {
   sketchCircle,
@@ -99,6 +100,27 @@ describe('complexExtrude', () => {
     const solid = unwrap(result);
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
+  });
+
+  // A scaling profile is the entire point of complexExtrude, and volume is the
+  // only thing that shows whether it reached the kernel: `isOk` and a positive
+  // volume pass just as well when the law is dropped and the result is a plain
+  // prism. A circle of radius 5 swept 10 units is pi*25*10 unscaled; a linear
+  // law to endFactor f sweeps the frustum pi*h*(r^2 + r*R + R^2)/3 with R = f*r.
+  it('scales the section by the linear profile endFactor', (ctx) => {
+    skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
+    const frustum = (f: number) => {
+      const r = 5;
+      const R = f * r;
+      return (Math.PI * 10 * (r * r + r * R + R * R)) / 3;
+    };
+    for (const endFactor of [0.5, 2]) {
+      using w = sketchCircle(5).wire;
+      const result = complexExtrude(w, [0, 0, 0], [0, 0, 10], { profile: 'linear', endFactor });
+      expect(isOk(result)).toBe(true);
+      using solid = unwrap(result);
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(frustum(endFactor), 1);
+    }
   });
 
   it('extrudes a rectangle without profile (no law)', () => {

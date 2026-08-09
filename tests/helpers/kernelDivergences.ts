@@ -85,6 +85,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
     },
+    'extrudeFns.complexExtrudeLaw': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel with no scaling-law sweep: complexExtrude returns the unscaled prism whatever endFactor asks for.',
+    },
     guidedSweepFns: {
       kind: 'not-implemented',
       reason:
@@ -293,6 +298,11 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // extrudeFns.test.ts
     // -----------------------------------------------------------------------
+    'extrudeFns.complexExtrudeLaw': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no scaling-law sweep: complexExtrude returns the unscaled prism (785.40 for a radius-5 circle over 10) whatever endFactor asks for, where the B-rep kernels sweep the frustum.',
+    },
     'extrudeFns.circleExtrude': {
       kind: 'not-implemented',
       reason: 'brepkit circle extrude uses sketchCircle + castShape path that differs from OCCT',

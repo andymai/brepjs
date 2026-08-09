@@ -33,28 +33,42 @@ function transitionModeValue(mode?: 'transformed' | 'round' | 'right'): number {
   }
 }
 
-let warnedMissingSweepAdvanced = false;
+const LAW_NONE = 0;
+const LAW_LINEAR = 1;
+const LAW_S_CURVE = 2;
 
-/** Name the options a pre-4.1.0 occt-wasm cannot honour, once per process. */
-function warnMissingSweepAdvanced(options?: {
-  auxiliary?: KernelShape;
-  contact?: boolean;
-  correction?: boolean;
-  tolerance?: number | undefined;
-  transitionMode?: 'transformed' | 'round' | 'right';
-}): void {
-  if (warnedMissingSweepAdvanced) return;
-  const dropped: string[] = [];
-  if (options?.auxiliary) dropped.push('auxiliary');
-  if (options?.contact) dropped.push('contact');
-  if (options?.correction) dropped.push('correction');
-  if (options?.tolerance !== undefined) dropped.push('tolerance');
-  if (options?.transitionMode === 'right') dropped.push("transitionMode 'right'");
-  if (dropped.length === 0) return;
-  warnedMissingSweepAdvanced = true;
-  console.warn(
-    `occt-wasm: sweep ignored ${dropped.join(', ')} — sweepAdvanced requires occt-wasm >= 4.1.0.`
-  );
+/**
+ * The law object occt-wasm's adapter hands back from `buildExtrusionLaw`. The
+ * kernel has no Law_Function handles to pass around, so the JS side carries
+ * the shape of the law and the facade rebuilds it.
+ */
+interface OcctWasmLaw {
+  __occtWasmLaw?: boolean;
+  profile?: 'linear' | 's-curve';
+  length?: number;
+  endFactor?: number;
+}
+
+function lawKindValue(law: unknown): number {
+  const p = (law as OcctWasmLaw | undefined)?.profile;
+  if (p === 'linear') return LAW_LINEAR;
+  if (p === 's-curve') return LAW_S_CURVE;
+  return LAW_NONE;
+}
+
+const warnedOnce = new Set<string>();
+
+/**
+ * Name the options the resolved kernel cannot honour, once per shortfall.
+ *
+ * Older occt-wasm is still inside the peer range, so a sweep may land on a
+ * narrower entry point than the caller's options need. Dropping those quietly
+ * is the defect this module exists to remove, so say which ones and why.
+ */
+function warnUnhonoured(key: string, dropped: string[], since: string): void {
+  if (dropped.length === 0 || warnedOnce.has(key)) return;
+  warnedOnce.add(key);
+  console.warn(`occt-wasm: sweep ignored ${dropped.join(', ')} — ${since}.`);
 }
 
 /** Split a pipe-shell result into its shape plus first/last wires. */
@@ -135,83 +149,232 @@ export function simplePipe(
   return wrapResult(k, k.simplePipe(unwrap(profile), unwrap(spine)));
 }
 
-export function sweepPipeShell(
-  k: OcctKernelWasm,
-  profile: KernelShape,
-  spine: KernelShape,
-  options?: {
-    transitionMode?: 'transformed' | 'round' | 'right';
-    auxiliary?: KernelShape;
-    law?: KernelType;
-    contact?: boolean;
-    correction?: boolean;
-    frenet?: boolean;
-    support?: KernelType;
-    shellMode?: boolean;
-    tolerance?: number | undefined;
-    boundTolerance?: number | undefined;
-    angularTolerance?: number | undefined;
-    maxDegree?: number | undefined;
-    maxSegments?: number | undefined;
-  }
-): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-  const shellMode = options?.shellMode ?? false;
+/** Options accepted by {@link sweepPipeShell}. */
+interface SweepPipeShellOptions {
+  transitionMode?: 'transformed' | 'round' | 'right';
+  auxiliary?: KernelShape;
+  law?: KernelType;
+  contact?: boolean;
+  correction?: boolean;
+  frenet?: boolean;
+  support?: KernelType;
+  shellMode?: boolean;
+  tolerance?: number | undefined;
+  boundTolerance?: number | undefined;
+  angularTolerance?: number | undefined;
+  maxDegree?: number | undefined;
+  maxSegments?: number | undefined;
+}
 
+/** The subset of a sweep request every entry point shares, resolved once. */
+interface ResolvedSweep {
+  mode: number;
+  transitionMode: number;
+  auxiliaryId: number;
+  contact: boolean;
+  correction: boolean;
+  tol3d: number;
+  boundTol: number;
+  tolAngular: number;
+}
+
+function resolveSweep(o: SweepPipeShellOptions | undefined): ResolvedSweep {
   // A guide overrides Frenet, matching the opencascade adapter's ordering
   // (SetMode_5 is applied after SetMode_1 there).
-  const auxiliary = options?.auxiliary;
-  const mode = auxiliary
+  const mode = o?.auxiliary
     ? SWEEP_MODE_AUXILIARY
-    : options?.frenet
+    : o?.frenet
       ? SWEEP_MODE_FRENET
       : SWEEP_MODE_FIXED;
 
   // OCCT's SetTolerance defaults are absolute; mirror the opencascade adapter's
   // fallbacks rather than the facade's so both kernels approximate alike.
-  const tolerance = options?.tolerance;
-  const tol3d = tolerance ?? 0;
-  const boundTol = tolerance === undefined ? 0 : (options?.boundTolerance ?? tolerance);
-  const tolAngular = tolerance === undefined ? 0 : (options?.angularTolerance ?? 1e-7);
+  const tolerance = o?.tolerance;
+  return {
+    mode,
+    transitionMode: transitionModeValue(o?.transitionMode),
+    auxiliaryId: o?.auxiliary ? unwrap(o.auxiliary) : 0,
+    contact: o?.contact ?? false,
+    correction: o?.correction ?? false,
+    tol3d: tolerance ?? 0,
+    boundTol: tolerance === undefined ? 0 : (o?.boundTolerance ?? tolerance),
+    tolAngular: tolerance === undefined ? 0 : (o?.angularTolerance ?? 1e-7),
+  };
+}
 
-  // sweepAdvanced landed in occt-wasm 4.1.0, but the peer range still accepts
-  // 3.8.x and 4.0.x. Fall back to the narrower entry point there rather than
-  // throwing, and say once which options are being left on the floor — that
-  // silent drop is the bug this function exists to fix.
-  if (typeof k.sweepAdvanced !== 'function') {
-    warnMissingSweepAdvanced(options);
-    const legacy = wrapResult(
-      k,
-      k.sweepPipeShell(
-        unwrap(profile),
-        unwrap(spine),
-        options?.frenet ?? false,
-        options?.transitionMode === 'round'
-      )
-    );
-    return shellMode ? splitShellWires(k, legacy) : legacy;
+/**
+ * Sweep a profile along a spine.
+ *
+ * Three tiers, because the peer range still accepts kernels older than the
+ * entry points these options need: sweepFull (>= 4.2.0) honours everything,
+ * sweepAdvanced (>= 4.1.0) drops the law, support and approximation budget,
+ * and the original sweepPipeShell drops the guide and placement too. Each
+ * lower tier names what it could not honour rather than dropping it quietly.
+ */
+export function sweepPipeShell(
+  k: OcctKernelWasm,
+  profile: KernelShape,
+  spine: KernelShape,
+  options?: SweepPipeShellOptions
+): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
+  const shellMode = options?.shellMode ?? false;
+  const r = resolveSweep(options);
+  const lawKind = lawKindValue(options?.law);
+
+  const result =
+    typeof k.sweepFull === 'function'
+      ? sweepViaFull(k, profile, spine, options, r, lawKind)
+      : typeof k.sweepAdvanced === 'function'
+        ? sweepViaAdvanced(k, profile, spine, options, r, lawKind)
+        : sweepViaLegacy(k, profile, spine, options, lawKind);
+
+  return shellMode ? splitShellWires(k, result) : result;
+}
+
+function sweepViaFull(
+  k: OcctKernelWasm,
+  profile: KernelShape,
+  spine: KernelShape,
+  o: SweepPipeShellOptions | undefined,
+  r: ResolvedSweep,
+  lawKind: number
+): KernelShape {
+  // OCCT rejects a support that does not carry the spine. sweepFull reports
+  // that; the opencascade adapter discards the same signal and lets OCCT fall
+  // back to its default frame, so retry without the support to keep the two
+  // kernels agreeing — but say so, because the caller asked for something the
+  // geometry could not provide.
+  if (o?.support) {
+    try {
+      return sweepFullCall(k, profile, spine, o, r, lawKind, unwrap(o.support));
+    } catch (e) {
+      if (!(e instanceof Error) || !e.message.includes('not a valid spine support')) throw e;
+      warnUnhonoured(
+        'support-invalid',
+        ['support'],
+        'the support shape does not carry the spine, so OCCT swept with its default frame'
+      );
+      return sweepFullCall(k, profile, spine, o, r, lawKind, 0);
+    }
   }
+  return sweepFullCall(k, profile, spine, o, r, lawKind, 0);
+}
 
-  const result = wrapResult(
+function sweepFullCall(
+  k: OcctKernelWasm,
+  profile: KernelShape,
+  spine: KernelShape,
+  o: SweepPipeShellOptions | undefined,
+  r: ResolvedSweep,
+  lawKind: number,
+  supportId: number
+): KernelShape {
+  const law = o?.law as OcctWasmLaw | undefined;
+  if (typeof k.sweepFull !== 'function') {
+    throw new Error('occt-wasm: sweepFull is unavailable');
+  }
+  return wrapResult(
+    k,
+    k.sweepFull(
+      unwrap(profile),
+      unwrap(spine),
+      r.mode,
+      0,
+      0,
+      1,
+      r.auxiliaryId,
+      false,
+      GUIDE_CONTACT_NONE,
+      r.transitionMode,
+      r.contact,
+      r.correction,
+      r.tol3d,
+      r.boundTol,
+      r.tolAngular,
+      supportId,
+      o?.maxDegree ?? 0,
+      o?.maxSegments ?? 0,
+      lawKind,
+      law?.length ?? 0,
+      law?.endFactor ?? 1
+    )
+  );
+}
+
+function sweepViaAdvanced(
+  k: OcctKernelWasm,
+  profile: KernelShape,
+  spine: KernelShape,
+  o: SweepPipeShellOptions | undefined,
+  r: ResolvedSweep,
+  lawKind: number
+): KernelShape {
+  warnUnhonoured(
+    'sweepFull',
+    [
+      ...(lawKind !== LAW_NONE ? ['law'] : []),
+      ...(o?.support ? ['support'] : []),
+      ...(o?.maxDegree ? ['maxDegree'] : []),
+      ...(o?.maxSegments ? ['maxSegments'] : []),
+    ],
+    'sweepFull requires occt-wasm >= 4.2.0'
+  );
+  if (typeof k.sweepAdvanced !== 'function') {
+    throw new Error('occt-wasm: sweepAdvanced is unavailable');
+  }
+  return wrapResult(
     k,
     k.sweepAdvanced(
       unwrap(profile),
       unwrap(spine),
-      mode,
+      r.mode,
       0,
       0,
       1,
-      auxiliary ? unwrap(auxiliary) : 0,
+      r.auxiliaryId,
       false,
       GUIDE_CONTACT_NONE,
-      transitionModeValue(options?.transitionMode),
-      options?.contact ?? false,
-      options?.correction ?? false,
-      tol3d,
-      boundTol,
-      tolAngular
+      r.transitionMode,
+      r.contact,
+      r.correction,
+      r.tol3d,
+      r.boundTol,
+      r.tolAngular
     )
   );
-  return shellMode ? splitShellWires(k, result) : result;
+}
+
+function sweepViaLegacy(
+  k: OcctKernelWasm,
+  profile: KernelShape,
+  spine: KernelShape,
+  o: SweepPipeShellOptions | undefined,
+  lawKind: number
+): KernelShape {
+  warnUnhonoured(
+    'sweepAdvanced',
+    [
+      ...(o?.auxiliary ? ['auxiliary'] : []),
+      ...(o?.contact ? ['contact'] : []),
+      ...(o?.correction ? ['correction'] : []),
+      ...(o?.tolerance !== undefined ? ['tolerance'] : []),
+      ...(o?.transitionMode === 'right' ? ["transitionMode 'right'"] : []),
+      ...(lawKind !== LAW_NONE ? ['law'] : []),
+      ...(o?.support ? ['support'] : []),
+      ...(o?.maxDegree ? ['maxDegree'] : []),
+      ...(o?.maxSegments ? ['maxSegments'] : []),
+    ],
+    'sweepAdvanced requires occt-wasm >= 4.1.0'
+  );
+  return wrapResult(
+    k,
+    k.sweepPipeShell(
+      unwrap(profile),
+      unwrap(spine),
+      o?.frenet ?? false,
+      o?.transitionMode === 'round'
+    )
+  );
 }
 
 export function loftAdvanced(
