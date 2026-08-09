@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.123.1](https://github.com/andymai/brepjs/compare/brepjs-v18.123.0...brepjs-v18.123.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **manifold:** sweep along the real spine and trim the extrusion law ([#1974](https://github.com/andymai/brepjs/issues/1974)) ([19cf2b4](https://github.com/andymai/brepjs/commit/19cf2b4caad755726f6621b16dbc05e80cab3d30))
+
 ## [18.123.0](https://github.com/andymai/brepjs/compare/brepjs-v18.122.0...brepjs-v18.123.0) (2026-08-09)
 
 
