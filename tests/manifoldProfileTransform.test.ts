@@ -75,4 +75,23 @@ describe('manifold profile transforms', () => {
     expect(reported).toBeGreaterThan(CIRCUMFERENCE);
     expect(reported).toBeCloseTo(48.4, 0);
   });
+
+  it('replays a descriptor-less closed profile as a closed curve', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const circle = k.makeCircleEdge([0, 0, 0], [0, 0, 1], RADIUS);
+    const sheared = k.generalTransformNonOrthogonal(circle, [2, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]);
+    // Replay must interpolate through every sample and return to the start.
+    // Requesting a periodic curve is not enough: the opencascade adapter drops
+    // that option and yields an open spline, leaving the seam apart.
+    const [t0, t1] = k.curveParameters(sheared);
+    const start = k.curvePointAtParam(sheared, t0);
+    const end = k.curvePointAtParam(sheared, t1);
+    const gap = Math.hypot(end[0] - start[0], end[1] - start[1], end[2] - start[2]);
+    expect(gap).toBeLessThan(1e-6);
+    // And the shape is the sheared ellipse, not the source circle.
+    const box = k.boundingBox(sheared);
+    expect(box.max[0] - box.min[0]).toBeCloseTo(4 * RADIUS, 3);
+    expect(box.max[1] - box.min[1]).toBeCloseTo(2 * RADIUS, 3);
+  });
 });
