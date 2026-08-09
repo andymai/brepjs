@@ -404,6 +404,56 @@ describe('BrepkitAdapter', () => {
       const toolIds = Array.from(mock.compoundCut.mock.calls[0]?.[1] as ArrayLike<number>);
       expect(toolIds).toHaveLength(2);
     });
+
+    it('cutAll accepts a compound base by cutting each child solid (brepkit#1499)', () => {
+      const mock = createMockBrepKernel();
+      mock.getCompoundSolids = vi.fn(() => [11, 12]);
+      const adapter = new BrepkitAdapter(mock);
+      const a = adapter.makeBox(2, 2, 2);
+      const b = adapter.makeBox(2, 2, 2);
+      const base = adapter.makeCompound([a, b]);
+      const tools = [adapter.makeBox(1, 1, 1), adapter.makeBox(1, 1, 1)];
+
+      const result = adapter.cutAll(base, tools);
+
+      expect(mock.compoundCut).toHaveBeenCalledTimes(2);
+      expect(mock.compoundCut.mock.calls.map((c) => c[0])).toEqual([11, 12]);
+      expect((result as BrepkitHandle).type).toBe('compound');
+    });
+
+    it('cutAll drops a compound-base child fully consumed by the tools', () => {
+      const mock = createMockBrepKernel();
+      mock.getCompoundSolids = vi.fn(() => [11, 12]);
+      mock.compoundCut = vi.fn((target: number) => {
+        if (target === 11) throw new Error('empty result: Cut with target fully contained in tool');
+        return 99;
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const a = adapter.makeBox(2, 2, 2);
+      const b = adapter.makeBox(2, 2, 2);
+      const base = adapter.makeCompound([a, b]);
+      const tools = [adapter.makeBox(3, 3, 3), adapter.makeBox(1, 1, 1)];
+
+      const result = adapter.cutAll(base, tools);
+
+      expect((result as BrepkitHandle).type).toBe('compound');
+      const survivors = mock.makeCompound.mock.calls.at(-1)?.[0] as number[];
+      expect(Array.from(survivors)).toEqual([99]);
+    });
+
+    it('cutAll on a solid base returns an empty compound when the batch empties it', () => {
+      const mock = createMockBrepKernel();
+      mock.compoundCut = vi.fn(() => {
+        throw new Error('empty result: Cut with target fully contained in tool');
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const base = adapter.makeBox(1, 1, 1);
+      const tools = [adapter.makeBox(3, 3, 3), adapter.makeBox(3, 3, 3)];
+
+      const result = adapter.cutAll(base, tools);
+
+      expect((result as BrepkitHandle).type).toBe('compound');
+    });
   });
 
   describe('transforms', () => {
