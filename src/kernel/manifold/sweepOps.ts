@@ -145,8 +145,13 @@ function meshVertices(shape: ManifoldShape): Vec3[] {
 function spinePath(spine: KernelShape, segments: number): Vec3[] {
   const shape = asShape(spine);
   const params = (shape.node as { params?: Record<string, unknown> } | undefined)?.params;
+  // `ring` is what profileOps.wireFrom actually records for a wire; without it
+  // a spine built from edges falls through to the synthetic unit path below and
+  // the sweep silently comes out scaled by 1/spineLength.
   const recorded =
-    (params?.['path'] as Vec3[] | undefined) ?? (params?.['points'] as Vec3[] | undefined);
+    (params?.['path'] as Vec3[] | undefined) ??
+    (params?.['points'] as Vec3[] | undefined) ??
+    (params?.['ring'] as Vec3[] | undefined);
   if (recorded && recorded.length >= 2) {
     return recorded.map((p): Vec3 => [p[0], p[1], p[2]]);
   }
@@ -598,12 +603,24 @@ export function makeSweepOps(module: ManifoldModule): KernelSweepOps {
     ...sweepFamilyEntries(module),
     draftPrism: (shape, face, _baseFace, height, angleDeg, fuse) =>
       draftPrismOp(module, shape, face, height, angleDeg, fuse),
-    buildExtrusionLaw: (profile, length, endFactor): KernelType => ({
-      type: 'extrusionLaw',
-      profile,
-      length,
-      endFactor,
-    }),
+    // Callers trim the law before handing it to a sweep (see
+    // buildLawFromProfile), so the descriptor has to carry Trim even though
+    // manifold's mesh sweep cannot apply a scaling law — without it the call
+    // dies with `law.Trim is not a function` rather than degrading.
+    buildExtrusionLaw: (profile, length, endFactor): KernelType => {
+      const law = {
+        type: 'extrusionLaw',
+        profile,
+        length,
+        endFactor,
+        Trim: (first: number, last: number, _tol: number): KernelType =>
+          ({ ...law, trimFirst: first, trimLast: last }) as KernelType,
+        delete: () => {
+          /* descriptor only; nothing native to release */
+        },
+      };
+      return law as KernelType;
+    },
     loftBatch: () => notImplemented('loftBatch'),
     extrudeBatch: (entries) => entries.map((e) => extrudeOp(module, e.face, e.direction, e.length)),
   };

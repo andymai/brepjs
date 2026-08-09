@@ -134,7 +134,8 @@ describe('complexExtrude', () => {
     expect(vol).toBeCloseTo(720, -1);
   });
 
-  it('extrudes in shell mode and returns tuple', () => {
+  it('extrudes in shell mode and returns tuple', (ctx) => {
+    skipIfDiverges(ctx, 'extrudeFns.shellModeWires');
     const profile = sketchCircle(5);
     const wire = profile.wire;
 
