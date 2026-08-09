@@ -361,6 +361,8 @@ function sweepViaLegacy(
       ...(o?.transitionMode === 'right' ? ["transitionMode 'right'"] : []),
       ...(lawKind !== LAW_NONE ? ['law'] : []),
       ...(o?.support ? ['support'] : []),
+      ...(o?.maxDegree ? ['maxDegree'] : []),
+      ...(o?.maxSegments ? ['maxSegments'] : []),
     ],
     'sweepAdvanced requires occt-wasm >= 4.1.0'
   );
