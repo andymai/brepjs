@@ -1,0 +1,97 @@
+// @vitest-environment node
+/**
+ * Profile-shape transforms on the manifold adapter.
+ *
+ * Profile edges are backed by an inert placeholder rather than a Manifold
+ * solid, so the transform is baked into their recorded points. They also carry
+ * an exact analytic curve descriptor that geometryOps/measureOps prefer over
+ * those points — a descriptor left in the source frame answers point and length
+ * queries in the pre-transform space.
+ */
+import { describe, it, beforeAll, expect } from 'vitest';
+import { initKernel, initOCCT } from './setup.js';
+import { getKernel } from '@/kernel/index.js';
+
+let haveManifold = false;
+beforeAll(async () => {
+  await initOCCT();
+  try {
+    await initKernel('manifold');
+    haveManifold = true;
+  } catch {
+    haveManifold = false;
+  }
+}, 60_000);
+
+const RADIUS = 5;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+describe('manifold profile transforms', () => {
+  it('translates a circle edge without changing its length', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const circle = k.makeCircleEdge([0, 0, 0], [0, 0, 1], RADIUS);
+    expect(k.length(circle)).toBeCloseTo(CIRCUMFERENCE, 6);
+
+    const moved = k.translate(circle, 10, 0, 0);
+    expect(k.length(moved)).toBeCloseTo(CIRCUMFERENCE, 6);
+    // The descriptor must follow the geometry, not stay at the origin.
+    const box = k.boundingBox(moved);
+    expect(box.min[0]).toBeCloseTo(10 - RADIUS, 4);
+    expect(box.max[0]).toBeCloseTo(10 + RADIUS, 4);
+  });
+
+  it('scales a circle edge length by the scale factor', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const circle = k.makeCircleEdge([0, 0, 0], [0, 0, 1], RADIUS);
+    const scaled = k.scale(circle, [0, 0, 0], 2);
+    // Reading a stale descriptor would return the original circumference.
+    expect(k.length(scaled)).toBeCloseTo(2 * CIRCUMFERENCE, 6);
+  });
+
+  it('keeps a line edge exact under a non-uniform transform', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const line = k.makeLineEdge([0, 0, 0], [1, 0, 0]);
+    // Lines are point-defined, so they survive any affine map.
+    const stretched = k.generalTransformNonOrthogonal(line, [3, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]);
+    expect(k.length(stretched)).toBeCloseTo(3, 6);
+  });
+
+  it('drops the conic descriptor under a shear rather than answering in the old frame', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const circle = k.makeCircleEdge([0, 0, 0], [0, 0, 1], RADIUS);
+    // A sheared circle is an ellipse whose axes rx/ry against unit x/y cannot
+    // express, so the descriptor is dropped and length falls back rather than
+    // confidently reporting the original circumference.
+    const sheared = k.generalTransformNonOrthogonal(circle, [2, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]);
+    // Falls back to the sampled polyline rather than throwing or reporting the
+    // source-frame circumference. Stretching x by 2 makes an ellipse with
+    // semi-axes 10 and 5, whose perimeter is ~48.4 by Ramanujan's approximation.
+    const reported = k.length(sheared);
+    expect(reported).not.toBeCloseTo(CIRCUMFERENCE, 1);
+    expect(reported).toBeGreaterThan(CIRCUMFERENCE);
+    expect(reported).toBeCloseTo(48.4, 0);
+  });
+
+  it('replays a descriptor-less closed profile as a closed curve', () => {
+    if (!haveManifold) return;
+    const k = getKernel('manifold');
+    const circle = k.makeCircleEdge([0, 0, 0], [0, 0, 1], RADIUS);
+    const sheared = k.generalTransformNonOrthogonal(circle, [2, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]);
+    // Replay must interpolate through every sample and return to the start.
+    // Requesting a periodic curve is not enough: the opencascade adapter drops
+    // that option and yields an open spline, leaving the seam apart.
+    const [t0, t1] = k.curveParameters(sheared);
+    const start = k.curvePointAtParam(sheared, t0);
+    const end = k.curvePointAtParam(sheared, t1);
+    const gap = Math.hypot(end[0] - start[0], end[1] - start[1], end[2] - start[2]);
+    expect(gap).toBeLessThan(1e-6);
+    // And the shape is the sheared ellipse, not the source circle.
+    const box = k.boundingBox(sheared);
+    expect(box.max[0] - box.min[0]).toBeCloseTo(4 * RADIUS, 3);
+    expect(box.max[1] - box.min[1]).toBeCloseTo(2 * RADIUS, 3);
+  });
+});

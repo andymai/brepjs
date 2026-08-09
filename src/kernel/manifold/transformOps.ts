@@ -124,6 +124,176 @@ function affineMatrix(linear: Mat3, translation: Vec3): Mat4 {
   return m;
 }
 
+/**
+ * Profile shapes — edges, wires and faces — have no Manifold counterpart, so
+ * they carry a placeholder value and live purely as op-graph nodes holding
+ * their points. Calling Manifold's solid transform on one throws
+ * `solid.transform is not a function`.
+ *
+ * Transform them by baking the matrix into the recorded points and emitting a
+ * node of the same kind. `ringOrPts` reads points off the node and does not
+ * walk inputs, so a transform-shaped node would read as an empty profile;
+ * replay rebuilds profile nodes from those same points, so a baked transform
+ * applies exactly once.
+ */
+const PROFILE_POINT_KEYS = ['pts', 'ring', 'outline'] as const;
+
+function isVec3(v: unknown): v is readonly [number, number, number] {
+  return Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number');
+}
+
+function applyMat4(m: Mat4, v: readonly [number, number, number]): [number, number, number] {
+  const g = (i: number): number => m[i] ?? 0;
+  return [
+    g(0) * v[0] + g(4) * v[1] + g(8) * v[2] + g(12),
+    g(1) * v[0] + g(5) * v[1] + g(9) * v[2] + g(13),
+    g(2) * v[0] + g(6) * v[1] + g(10) * v[2] + g(14),
+  ];
+}
+
+function numOf(v: unknown, fallback = 0): number {
+  return typeof v === 'number' ? v : fallback;
+}
+
+// Directions carry no translation, so map the vector and subtract the mapped origin.
+function transformDir(
+  matrix: Mat4,
+  v: readonly [number, number, number]
+): [number, number, number] {
+  const o = applyMat4(matrix, [0, 0, 0]);
+  const p = applyMat4(matrix, v);
+  return [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+}
+
+function unit3(v: [number, number, number]): [number, number, number] {
+  const n = Math.hypot(v[0], v[1], v[2]);
+  return n < 1e-12 ? v : [v[0] / n, v[1] / n, v[2] / n];
+}
+
+// Uniform scale factor of the matrix's linear part, or undefined when it scales
+// non-uniformly or shears.
+function similarityScale(m: Mat4): number | undefined {
+  const g = (i: number): number => m[i] ?? 0;
+  const cx: readonly [number, number, number] = [g(0), g(1), g(2)];
+  const cy: readonly [number, number, number] = [g(4), g(5), g(6)];
+  const cz: readonly [number, number, number] = [g(8), g(9), g(10)];
+  const len = (v: readonly [number, number, number]): number => Math.hypot(v[0], v[1], v[2]);
+  const dot = (
+    a: readonly [number, number, number],
+    b: readonly [number, number, number]
+  ): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const nx = len(cx);
+  const ny = len(cy);
+  const nz = len(cz);
+  if (nx < 1e-12 || ny < 1e-12 || nz < 1e-12) return undefined;
+  const tol = 1e-9 * nx;
+  if (Math.abs(nx - ny) > tol || Math.abs(nx - nz) > tol) return undefined;
+  if (Math.abs(dot(cx, cy)) > tol * ny) return undefined;
+  if (Math.abs(dot(cx, cz)) > tol * nz) return undefined;
+  if (Math.abs(dot(cy, cz)) > tol * nz) return undefined;
+  return nx;
+}
+
+// The transformed descriptor, or undefined when the result cannot be expressed
+// in the descriptor's own form.
+//
+// Dropping is deliberate. Without a descriptor, curve queries fall back to the
+// sample points, which this function's caller has already transformed; keeping a
+// stale one leaves geometryOps/measureOps answering exactly, in the old space.
+function transformCurveDesc(
+  desc: Record<string, unknown>,
+  matrix: Mat4
+): Record<string, unknown> | undefined {
+  const kind = desc['k'];
+  // Lines and Beziers are defined purely by points, so any affine map applies.
+  if (kind === 'line') {
+    const p1: unknown = desc['p1'];
+    const p2: unknown = desc['p2'];
+    if (!isVec3(p1) || !isVec3(p2)) return undefined;
+    return { ...desc, p1: applyMat4(matrix, p1), p2: applyMat4(matrix, p2) };
+  }
+  if (kind === 'bezier') {
+    const pts: unknown = desc['points'];
+    if (!Array.isArray(pts)) return undefined;
+    return {
+      ...desc,
+      points: (pts as unknown[]).map((p) => (isVec3(p) ? applyMat4(matrix, p) : p)),
+    };
+  }
+  // Conics and helices hold radii and pitch as scalars against unit axes, a form
+  // only a similarity preserves: shear turns a circle into an ellipse whose axes
+  // these fields cannot express, and a sheared helix is not a helix at all.
+  const s = similarityScale(matrix);
+  if (s === undefined) return undefined;
+  if (kind === 'conic') {
+    const c: unknown = desc['center'];
+    const x: unknown = desc['x'];
+    const y: unknown = desc['y'];
+    if (!isVec3(c) || !isVec3(x) || !isVec3(y)) return undefined;
+    return {
+      ...desc,
+      center: applyMat4(matrix, c),
+      x: unit3(transformDir(matrix, x)),
+      y: unit3(transformDir(matrix, y)),
+      rx: numOf(desc['rx']) * s,
+      ry: numOf(desc['ry']) * s,
+    };
+  }
+  if (kind === 'helix') {
+    const c: unknown = desc['center'];
+    const ax: unknown = desc['axis'];
+    const x: unknown = desc['x'];
+    const y: unknown = desc['y'];
+    if (!isVec3(c) || !isVec3(ax) || !isVec3(x) || !isVec3(y)) return undefined;
+    return {
+      ...desc,
+      center: applyMat4(matrix, c),
+      axis: unit3(transformDir(matrix, ax)),
+      x: unit3(transformDir(matrix, x)),
+      y: unit3(transformDir(matrix, y)),
+      radius: numOf(desc['radius']) * s,
+      pitch: numOf(desc['pitch']) * s,
+    };
+  }
+  return undefined;
+}
+
+function transformProfileNode(node: OpNode, matrix: Mat4, input: OpNode): ManifoldShape {
+  const src = (node as { params?: Record<string, unknown> }).params ?? {};
+  const params: Record<string, unknown> = { ...src };
+  for (const k of PROFILE_POINT_KEYS) {
+    const pts: unknown = src[k];
+    if (!Array.isArray(pts)) continue;
+    params[k] = (pts as unknown[]).map((v) => (isVec3(v) ? applyMat4(matrix, v) : v));
+  }
+  // Point-valued frame fields travel with the geometry; direction-valued ones
+  // are rotated without translation.
+  for (const k of ['origin'] as const) {
+    const v: unknown = src[k];
+    if (isVec3(v)) params[k] = applyMat4(matrix, v);
+  }
+  for (const k of ['xAxis', 'yAxis'] as const) {
+    const v: unknown = src[k];
+    if (!isVec3(v)) continue;
+    const a = applyMat4(matrix, [0, 0, 0]);
+    const b = applyMat4(matrix, v);
+    params[k] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  }
+  // profileEdge carries an exact curve descriptor that geometryOps and
+  // measureOps prefer over the sample points; leaving it in the source frame
+  // would answer point and length queries in the pre-transform space.
+  const curve: unknown = src['curve'];
+  if (curve !== null && typeof curve === 'object') {
+    const moved = transformCurveDesc(curve as Record<string, unknown>, matrix);
+    if (moved === undefined) delete params['curve'];
+    else params['curve'] = moved;
+  }
+  const kind = (node as { op?: string }).op ?? 'profileWire';
+  // Same inert stand-in profileOps uses: a profile has no Manifold value.
+  const placeholder: unknown = { delete: () => {}, isEmpty: () => false };
+  return wrap(placeholder, makeNode(kind, params, [input]));
+}
+
 function applyMatrix(
   solid: ManifoldSolid,
   matrix: Mat4,
@@ -131,6 +301,14 @@ function applyMatrix(
   params: Readonly<Record<string, unknown>>,
   input: OpNode
 ): ManifoldShape {
+  // Profile shapes (wires/faces built from points) are backed by a placeholder,
+  // not a Manifold, so they have no transform(). Bake the matrix into their
+  // recorded points instead. Probing the backing object rather than the node's
+  // params matters: solid-producing nodes also carry point arrays, and matching
+  // on those diverted real solids into the profile path untransformed.
+  if (typeof (solid as { transform?: unknown }).transform !== 'function') {
+    return transformProfileNode(input, matrix, input);
+  }
   const next = solid.transform(matrix);
   return wrap(next, makeNode(op, params, [input]));
 }
