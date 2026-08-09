@@ -1,0 +1,20 @@
+.github/workflows/playground-smoke.yml
+  s_b89ca006d78788::t_7da4724f42db6f 37
+  s_b89ca006d78788::t_1cf97cdbc4e598 45-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "eefdf7df97ea7b9ec92775b06d221cd537c1e6f1",
+  "prompts": {},
+  "sessions": {
+    "s_b89ca006d78788": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b24d9603-9859-46be-8615-80d73fc58a52",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
