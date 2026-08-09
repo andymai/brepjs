@@ -82,9 +82,33 @@ function closestParamOn(c: LineC | ConicC | BezierC, x: number, y: number): numb
       );
       return clampToArc(a, c.a0, c.a1);
     }
-    return goldenMin(c.a0, c.a1, (t) => distSqAt(c, t, x, y));
+    return bracketedMin(c.a0, c.a1, (t) => distSqAt(c, t, x, y));
   }
-  return goldenMin(0, 1, (t) => distSqAt(c, t, x, y));
+  return bracketedMin(0, 1, (t) => distSqAt(c, t, x, y));
+}
+
+/**
+ * Global minimum of f over [lo, hi].
+ *
+ * Distance to an eccentric ellipse or a cubic-or-higher bezier is NOT unimodal
+ * — a point inside a flat ellipse has one minimum per end, and a self-nearing
+ * bezier can have several. So scan coarsely for the best sample, then refine
+ * only inside the bracket around it, which is unimodal by construction.
+ */
+function bracketedMin(lo: number, hi: number, f: (t: number) => number): number {
+  const N = 96;
+  let bestI = 0;
+  let best = Infinity;
+  for (let i = 0; i <= N; i++) {
+    const v = f(lo + ((hi - lo) * i) / N);
+    if (v < best) {
+      best = v;
+      bestI = i;
+    }
+  }
+  const a = lo + ((hi - lo) * Math.max(0, bestI - 1)) / N;
+  const b = lo + ((hi - lo) * Math.min(N, bestI + 1)) / N;
+  return goldenMin(a, b, f);
 }
 
 /** Wrap an angle into [a0, a1] where possible, else clamp to the nearer end. */
@@ -154,7 +178,7 @@ function intersectNative(
   a: NativeCurve,
   b: NativeCurve,
   tol: number
-): { points: Vec2[]; params: number[] } {
+): { points: Vec2[]; params: number[]; segments: NativeCurve[] } {
   const pa = sample(a);
   const pb = sample(b);
   const points: Vec2[] = [];
@@ -183,7 +207,44 @@ function intersectNative(
       params.push(ta);
     }
   }
-  return { points, params };
+  // Coincident spans and tangential touches never register as segment
+  // crossings — collinear chords are parallel, and a tangency grazes without
+  // passing through. Walk a's parameter range and keep the runs that lie on b
+  // within tolerance: a run of length is a common segment, an isolated dip is
+  // a tangential point.
+  const { first, last } = nativeBounds(a);
+  const M = 192;
+  const on: boolean[] = [];
+  for (let i = 0; i <= M; i++) {
+    const t = first + ((last - first) * i) / M;
+    const p = nativeAt(a, t);
+    const tb = closestParamOn(b, p[0], p[1]);
+    on.push(Math.sqrt(distSqAt(b, tb, p[0], p[1])) <= Math.max(tol, 1e-9));
+  }
+  const segments: NativeCurve[] = [];
+  let runStart = -1;
+  for (let i = 0; i <= M + 1; i++) {
+    const inside = i <= M && on[i] === true;
+    if (inside && runStart < 0) runStart = i;
+    if (!inside && runStart >= 0) {
+      const spanSteps = i - runStart;
+      const t0 = first + ((last - first) * runStart) / M;
+      const t1 = first + ((last - first) * (i - 1)) / M;
+      if (spanSteps > 1) {
+        segments.push(trimNative(a, t0, t1));
+      } else {
+        // Single sample touching b: a tangential contact, reported as a point
+        // if the crossing search did not already find it.
+        const p = nativeAt(a, t0);
+        if (!points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) <= Math.max(tol, 1e-9))) {
+          points.push(p);
+          params.push(t0);
+        }
+      }
+      runStart = -1;
+    }
+  }
+  return { points, params, segments };
 }
 
 function sub2(a: Vec2, b: Vec2): Vec2 {
@@ -813,22 +874,31 @@ function makeNativeKernel2DOps(
     offsetCurve2d: (c, offset) => occtOr('offsetCurve2d').offsetCurve2d(toOcct(c), offset),
     intersectCurves2d: (c1, c2, tol) => {
       if (!isNative(c1) || !isNative(c2)) {
-        return occtOr('intersectCurves2d').intersectCurves2d(c1, c2, tol);
+        return occtOr('intersectCurves2d').intersectCurves2d(toOcct(c1), toOcct(c2), tol);
       }
-      const { points } = intersectNative(asC(c1), asC(c2), tol);
-      // No native overlap detection: coincident spans report as crossings, not
-      // as common segments, which is what the mesh construction path consumes.
-      return { points: points.map((p): [number, number] => [p[0], p[1]]), segments: [] };
+      const { points, segments } = intersectNative(asC(c1), asC(c2), tol);
+      return {
+        points: points.map((p): [number, number] => [p[0], p[1]]),
+        segments: segments,
+      };
     },
     projectPointOnCurve2d: (c, x, y) => {
-      if (!isNative(c)) return occtOr('projectPointOnCurve2d').projectPointOnCurve2d(c, x, y);
+      if (!isNative(c))
+        return occtOr('projectPointOnCurve2d').projectPointOnCurve2d(toOcct(c), x, y);
       const n = asC(c);
       const param = closestParamOn(n, x, y);
       return { param, distance: Math.sqrt(distSqAt(n, param, x, y)) };
     },
     distanceBetweenCurves2d: (c1, c2, s1, e1, s2, e2) => {
       if (!isNative(c1) || !isNative(c2)) {
-        return occtOr('distanceBetweenCurves2d').distanceBetweenCurves2d(c1, c2, s1, e1, s2, e2);
+        return occtOr('distanceBetweenCurves2d').distanceBetweenCurves2d(
+          toOcct(c1),
+          toOcct(c2),
+          s1,
+          e1,
+          s2,
+          e2
+        );
       }
       // Sample one curve and project each sample onto the other: the minimum
       // over a dense sampling is within the sampling step of the true minimum,
@@ -860,7 +930,7 @@ function makeNativeKernel2DOps(
     serializeCurve2d: (c) =>
       isNative(c)
         ? JSON.stringify({ __nativeC2d: 1, c: asC(c) })
-        : occtOr('serializeCurve2d').serializeCurve2d(c),
+        : occtOr('serializeCurve2d').serializeCurve2d(toOcct(c)),
     deserializeCurve2d: (data) => {
       if (data.startsWith('{"__nativeC2d"')) {
         const parsed = JSON.parse(data) as { c: LineC | ConicC | BezierC };
@@ -869,7 +939,7 @@ function makeNativeKernel2DOps(
       return occtOr('deserializeCurve2d').deserializeCurve2d(data);
     },
     splitCurve2d: (c, params) => {
-      if (!isNative(c)) return occtOr('splitCurve2d').splitCurve2d(c, params);
+      if (!isNative(c)) return occtOr('splitCurve2d').splitCurve2d(toOcct(c), params);
       const n = asC(c);
       const { first, last } = nativeBounds(n);
       const cuts = [
