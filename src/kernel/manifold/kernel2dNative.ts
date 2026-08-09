@@ -216,15 +216,29 @@ function intersectNative(
       params.push(ta);
     }
   }
-  // Coincident spans and tangential touches never register as segment
-  // crossings — collinear chords are parallel, and a tangency grazes without
-  // passing through. Walk a's parameter range and keep the runs that lie on b
-  // within tolerance: a run of length is a common segment, an isolated dip is
-  // a tangential point.
+  const contacts = contactRuns(a, b, tol, points, params);
+  return dropOverlapPoints(points, params, contacts, tol);
+}
+
+/**
+ * Spans of `a` that lie on `b` within tolerance.
+ *
+ * Coincident spans and tangential touches never register as segment crossings —
+ * collinear chords are parallel, and a tangency grazes without passing through.
+ * Walking a's parameter range finds both: a run with length is a common
+ * segment, an isolated dip is a tangential point (appended to `points`).
+ */
+function contactRuns(
+  a: NativeCurve,
+  b: NativeCurve,
+  tol: number,
+  points: Vec2[],
+  params: number[]
+): NativeCurve[] {
   const { first, last } = nativeBounds(a);
   // Deliberately at the shim's discretization resolution, not the caller's
   // tolerance. Raising it does find more genuine coincidences, but the 2D
-  // boolean downstream cannot yet absorb them: at tolerance-derived density the
+  // boolean downstream cannot absorb them: at tolerance-derived density the
   // shared-segment cases in boolean2dRegression (issue #712) collapse to
   // degenerate output (`expected -Infinity to be greater than 0`). Detecting
   // more contacts than the consumer can handle is a net loss, so this stays put
@@ -242,31 +256,58 @@ function intersectNative(
   for (let i = 0; i <= M + 1; i++) {
     const inside = i <= M && on[i] === true;
     if (inside && runStart < 0) runStart = i;
-    if (!inside && runStart >= 0) {
-      const t0 = first + ((last - first) * runStart) / M;
-      const t1 = first + ((last - first) * (i - 1)) / M;
-      // Classify by how long the contact physically is, not by how many
-      // samples landed on it: a sample-count test makes the segment/point
-      // answer move with the sampling density, which is exactly the coupling
-      // that made a denser scan reclassify contacts it had called points.
-      const p0 = nativeAt(a, t0);
-      const p1 = nativeAt(a, t1);
-      const physical = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
-      if (physical > Math.max(tol, CHORD_TOL)) {
-        segments.push(trimNative(a, t0, t1));
-      } else {
-        // Single sample touching b: a tangential contact, reported as a point
-        // if the crossing search did not already find it.
-        const p = nativeAt(a, t0);
-        if (!points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) <= Math.max(tol, 1e-9))) {
-          points.push(p);
-          params.push(t0);
-        }
-      }
-      runStart = -1;
+    if (inside || runStart < 0) continue;
+    const t0 = first + ((last - first) * runStart) / M;
+    const t1 = first + ((last - first) * (i - 1)) / M;
+    // Length ALONG the run, not end to end: a closed curve coincident over its
+    // whole length returns to its start, so an endpoint chord is zero and a
+    // fully shared circle would be reported as a single point.
+    let physical = 0;
+    for (let k = runStart; k < i - 1; k++) {
+      const q0 = nativeAt(a, first + ((last - first) * k) / M);
+      const q1 = nativeAt(a, first + ((last - first) * (k + 1)) / M);
+      physical += Math.hypot(q1[0] - q0[0], q1[1] - q0[1]);
     }
+    if (physical > Math.max(tol, CHORD_TOL)) {
+      segments.push(trimNative(a, t0, t1));
+    } else {
+      const p = nativeAt(a, t0);
+      if (!points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) <= Math.max(tol, 1e-9))) {
+        points.push(p);
+        params.push(t0);
+      }
+    }
+    runStart = -1;
   }
-  return { points, params, segments };
+  return segments;
+}
+
+/**
+ * A coincident span makes the crossing search fire at every sampled chord pair
+ * along it — 79 "intersections" for two identical circles. Those points are the
+ * overlap, not isolated crossings, so drop any that land on a reported segment.
+ */
+function dropOverlapPoints(
+  points: Vec2[],
+  params: number[],
+  segments: NativeCurve[],
+  tol: number
+): { points: Vec2[]; params: number[]; segments: NativeCurve[] } {
+  if (segments.length === 0) return { points, params, segments };
+  const keep: number[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i] as Vec2;
+    const onSeg = segments.some((seg) => {
+      const t = closestParamOn(seg, p[0], p[1]);
+      return Math.sqrt(distSqAt(seg, t, p[0], p[1])) <= Math.max(tol, CHORD_TOL);
+    });
+    if (!onSeg) keep.push(i);
+  }
+  return {
+    points: keep.map((i) => points[i] as Vec2),
+    params: keep.map((i) => params[i] as number),
+    segments,
+  };
 }
 
 function sub2(a: Vec2, b: Vec2): Vec2 {
