@@ -86,6 +86,20 @@ function kernelBoolean(
 }
 
 /**
+ * A compound base routes through the kernel's n-way `fuseAll` / `compoundCut`,
+ * neither of which takes the post-boolean `simplify` flag the two-operand
+ * `*WithOptions` entry points do. Say so rather than silently returning
+ * unsimplified topology, the same way an old kernel reports it.
+ */
+function warnCompoundBaseSimplify(options: BooleanOptions | undefined, op: string): void {
+  if (!options?.simplify) return;
+  warnOnce(
+    `boolean-simplify-compound-base-${op}`,
+    `BooleanOptions.simplify is not applied when ${op} receives a compound base; ignored.`
+  );
+}
+
+/**
  * Solid ids behind a shape: a solid contributes itself, a compound its children.
  * Throws with the method name for anything else, matching `unwrapSolidOrThrow`.
  */
@@ -120,6 +134,7 @@ export function fuse(
   // a boolean, so children the tool never touches survive intact.
   const baseHandle = shape as BrepkitHandle;
   if (isBrepkitHandle(shape) && baseHandle.type === 'compound') {
+    warnCompoundBaseSimplify(_options, 'fuse');
     const ids = solidIdsOf(bk, shape, 'fuse');
     ids.push(...solidIdsOf(bk, tool, 'fuse'));
     if (ids.length === 0) throw new Error('brepkit: fuse resolved to zero solid IDs');
@@ -160,6 +175,7 @@ export function cut(
   // the same shape `cutAll` uses for a compound base (brepkit#1499).
   const cutBase = shape as BrepkitHandle;
   if (isBrepkitHandle(shape) && cutBase.type === 'compound') {
+    warnCompoundBaseSimplify(_options, 'cut');
     const toolIds = solidIdsOf(bk, tool, 'cut');
     const survivors: number[] = [];
     for (const childId of toArray(bk.getCompoundSolids(cutBase.id))) {
