@@ -12,7 +12,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   box,
+  cut,
   fillet,
+  fuse,
   castShape,
   compound,
   getEdges,
@@ -697,6 +699,49 @@ descOcct('Brepkit-only methods throw on OCCT', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Booleans with a compound BASE
+// ---------------------------------------------------------------------------
+
+// `fuse` and `cut` accepted a compound as the tool but demanded a solid as the
+// base, so anything built as a compound could not be fused or cut. Text is a
+// compound of glyph solids, which is how this reached the tool: "fuse requires
+// a solid, got compound" (brepkit#1537).
+descBk('Booleans with a compound base (brepkit)', () => {
+  it('fuses a compound base with a solid tool', () => {
+    // Two disjoint unit boxes plus a tool overlapping only the first.
+    const base = compound([box(2, 2, 2), translate(box(2, 2, 2), [10, 0, 0])]);
+    const result = unwrap(fuse(base, translate(box(2, 2, 2), [1, 0, 0])));
+    // 8 + 8 for the pair, plus the 4 the tool adds beyond the first box.
+    expect(unwrap(measureVolume(result))).toBeCloseTo(20, 1);
+  });
+
+  it('keeps a compound-base child the tool never touches', () => {
+    const base = compound([box(2, 2, 2), translate(box(2, 2, 2), [10, 0, 0])]);
+    const fused = unwrap(fuse(base, translate(box(2, 2, 2), [1, 0, 0])));
+    const bb = getKernel().boundingBox(fused.wrapped);
+    expect(bb.max[0]).toBeCloseTo(12, 3);
+  });
+
+  it('fuses a compound base with a compound tool', () => {
+    const base = compound([box(2, 2, 2), translate(box(2, 2, 2), [10, 0, 0])]);
+    const tool = compound([translate(box(2, 2, 2), [20, 0, 0])]);
+    expect(unwrap(measureVolume(unwrap(fuse(base, tool))))).toBeCloseTo(24, 1);
+  });
+
+  it('cuts every child of a compound base', () => {
+    // A slab spanning both children removes the lower half of each.
+    const base = compound([box(2, 2, 2), translate(box(2, 2, 2), [10, 0, 0])]);
+    const result = unwrap(cut(base, translate(box(20, 4, 1), [-1, -1, 0])));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(8, 1);
+  });
+
+  it('drops a compound-base child the tool consumes whole', () => {
+    const base = compound([box(2, 2, 2), translate(box(2, 2, 2), [10, 0, 0])]);
+    const result = unwrap(cut(base, translate(box(4, 4, 4), [-1, -1, -1])));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(8, 1);
+  });
+});
+
 // Transforming compounds
 // ---------------------------------------------------------------------------
 
