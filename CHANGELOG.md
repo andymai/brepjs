@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.7](https://github.com/andymai/brepjs/compare/brepjs-v18.124.6...brepjs-v18.124.7) (2026-08-10)
+
+
+### Bug Fixes
+
+* **brepkit:** mesh compound shapes instead of throwing ([#2012](https://github.com/andymai/brepjs/issues/2012)) ([3b5ee8d](https://github.com/andymai/brepjs/commit/3b5ee8db2047ba020e1e5fd3346dc740dc87be48))
+
 ## [18.124.6](https://github.com/andymai/brepjs/compare/brepjs-v18.124.5...brepjs-v18.124.6) (2026-08-09)
 
 
