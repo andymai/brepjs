@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.124.8](https://github.com/andymai/brepjs/compare/brepjs-v18.124.7...brepjs-v18.124.8) (2026-08-10)
+
+
+### Bug Fixes
+
+* **brepkit:** accept a compound base in fuse and cut ([#2016](https://github.com/andymai/brepjs/issues/2016)) ([52ef55e](https://github.com/andymai/brepjs/commit/52ef55e07fe1686f7692d2d69bad2fb822d34cdf))
+
 ## [18.124.7](https://github.com/andymai/brepjs/compare/brepjs-v18.124.6...brepjs-v18.124.7) (2026-08-10)
 
 
