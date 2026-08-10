@@ -938,9 +938,6 @@ export interface BrepkitKernel {
   ): number;
 
   /** @future Not in brepkit-wasm 3.0.0. Referenced with feature detection in adapter. */
-  compoundFuse?(solidIds: Uint32Array | number[]): number;
-
-  /** @future Not in brepkit-wasm 3.0.0. Referenced with feature detection in adapter. */
   copyEdge?(edge: number): number;
 
   /** @future Not in brepkit-wasm 3.0.0. Referenced with feature detection in adapter. */

@@ -85,6 +85,32 @@ function kernelBoolean(
   return bk[op](a, b);
 }
 
+/**
+ * A compound base routes through the kernel's n-way `fuseAll` / `compoundCut`,
+ * neither of which takes the post-boolean `simplify` flag the two-operand
+ * `*WithOptions` entry points do. Say so rather than silently returning
+ * unsimplified topology, the same way an old kernel reports it.
+ */
+function warnCompoundBaseSimplify(options: BooleanOptions | undefined, op: string): void {
+  if (!options?.simplify) return;
+  warnOnce(
+    `boolean-simplify-compound-base-${op}`,
+    `BooleanOptions.simplify is not applied when ${op} receives a compound base; ignored.`
+  );
+}
+
+/**
+ * Solid ids behind a shape: a solid contributes itself, a compound its children.
+ * Throws with the method name for anything else, matching `unwrapSolidOrThrow`.
+ */
+function solidIdsOf(bk: BrepkitKernel, shape: KernelShape, methodName: string): number[] {
+  const h = shape as BrepkitHandle;
+  if (isBrepkitHandle(shape) && h.type === 'compound') {
+    return toArray(bk.getCompoundSolids(h.id));
+  }
+  return [unwrapSolidOrThrow(shape, methodName)];
+}
+
 export function fuse(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -100,6 +126,21 @@ export function fuse(
   // Identity: fuse(∅, X) = X, fuse(X, ∅) = X.
   if (isEmptyCompound(bk, shape as BrepkitHandle)) return tool;
   if (isEmptyCompound(bk, tool as BrepkitHandle)) return shape;
+
+  // A compound base is one operand, not a container to pick a solid out of:
+  // the union has to cover every child. Text is a compound of glyph solids, so
+  // without this the whole "text fused onto a bin" path throws before any
+  // geometry runs. brepkit's n-way fuse merges disjoint groups without running
+  // a boolean, so children the tool never touches survive intact.
+  const baseHandle = shape as BrepkitHandle;
+  if (isBrepkitHandle(shape) && baseHandle.type === 'compound') {
+    warnCompoundBaseSimplify(_options, 'fuse');
+    const ids = solidIdsOf(bk, shape, 'fuse');
+    ids.push(...solidIdsOf(bk, tool, 'fuse'));
+    if (ids.length === 0) throw new Error('brepkit: fuse resolved to zero solid IDs');
+    return solidHandle(bk.fuseAll(new Uint32Array(ids)));
+  }
+
   const baseId = unwrapSolidOrThrow(shape, 'fuse');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
@@ -129,6 +170,25 @@ export function cut(
   // Identity: cut(∅, X) = ∅, cut(X, ∅) = X.
   if (isEmptyCompound(bk, shape as BrepkitHandle)) return emptyCompound(bk);
   if (isEmptyCompound(bk, tool as BrepkitHandle)) return shape;
+
+  // Cut each child independently and drop the ones the tool consumes whole,
+  // the same shape `cutAll` uses for a compound base (brepkit#1499).
+  const cutBase = shape as BrepkitHandle;
+  if (isBrepkitHandle(shape) && cutBase.type === 'compound') {
+    warnCompoundBaseSimplify(_options, 'cut');
+    const toolIds = solidIdsOf(bk, tool, 'cut');
+    const survivors: number[] = [];
+    for (const childId of toArray(bk.getCompoundSolids(cutBase.id))) {
+      try {
+        survivors.push(bk.compoundCut(childId, new Uint32Array(toolIds)));
+      } catch (e) {
+        if (!isEmptyBooleanError(e)) throw e;
+      }
+    }
+    if (survivors.length === 0) return emptyCompound(bk);
+    return compoundHandle(bk.makeCompound(survivors));
+  }
+
   const baseId = unwrapSolidOrThrow(shape, 'cut');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
@@ -227,21 +287,18 @@ export function fuseAll(
   if (shapes.length === 0) throw new Error('brepkit: fuseAll requires at least one shape');
   if (shapes.length === 1) return wasmIndex(shapes, 0);
 
-  if (bk.compoundFuse) {
+  // brepkit exposes its n-way GFA fuse as `fuseAll`. This probed `compoundFuse`,
+  // a name brepkit has never had, so the fast path was dead and every call fell
+  // through to the pairwise tree below.
+  if (typeof bk.fuseAll === 'function') {
     const solidIds: number[] = [];
     for (const shape of shapes) {
-      const h = shape as BrepkitHandle;
-      if (h.type === 'compound') {
-        solidIds.push(...toArray(bk.getCompoundSolids(h.id)));
-      } else {
-        solidIds.push(unwrapSolidOrThrow(shape, 'fuseAll'));
-      }
+      solidIds.push(...solidIdsOf(bk, shape, 'fuseAll'));
     }
     if (solidIds.length === 0) {
       throw new Error('brepkit: fuseAll resolved to zero solid IDs');
     }
-    const result = bk.compoundFuse(new Uint32Array(solidIds));
-    return solidHandle(result);
+    return solidHandle(bk.fuseAll(new Uint32Array(solidIds)));
   }
 
   let current = [...shapes];
