@@ -11,7 +11,13 @@ import type {
   MeshOptions,
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { type BrepkitHandle, unwrap, toArray, DEFAULT_DEFLECTION } from './helpers.js';
+import {
+  type BrepkitHandle,
+  unwrap,
+  toArray,
+  DEFAULT_DEFLECTION,
+  syntheticCompounds,
+} from './helpers.js';
 import { wasmIndex, vec3At } from '@/utils/vec3.js';
 
 export function mesh(
@@ -29,6 +35,8 @@ export function mesh(
     result = meshSolid(bk, h, deflection, !!options.includeUVs, angularTol);
   } else if (bkHandle.type === 'face') {
     result = meshSingleFace(bk, h, deflection, 0, angularTol);
+  } else if (bkHandle.type === 'compound') {
+    result = meshCompound(bk, h, deflection, !!options.includeUVs, angularTol);
   } else {
     throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
   }
@@ -40,6 +48,87 @@ export function mesh(
     result.uvs = new Float32Array(0);
   }
   return result;
+}
+
+/**
+ * Mesh every solid in a compound and concatenate the results.
+ *
+ * Text solids are compounds — one solid per glyph — so without this the whole
+ * text path throws before any geometry runs, which reads as a geometry failure
+ * when it is really a missing adapter capability.
+ *
+ * Triangle indices are vertex-relative, so each part's are rebased by the
+ * running vertex count; `faceGroups` index into the triangle list, so their
+ * `start` is rebased by the running triangle count. `uvs` are only carried
+ * when every part supplied them, since a partial UV array would misalign
+ * against the concatenated vertices.
+ *
+ * Compounds come in two flavours and only one is arena-backed. A synthetic
+ * compound (non-solid children, id from `nextSyntheticId`) exists JS-side only,
+ * so asking the kernel to resolve it raises an invalid-handle error; its
+ * children are read from `syntheticCompounds` instead. Non-solid children
+ * contribute no triangles and are skipped rather than throwing, matching how a
+ * wire or edge meshes to nothing elsewhere in this adapter.
+ */
+function meshCompound(
+  bk: BrepkitKernel,
+  compoundId: number,
+  deflection: number,
+  includeUVs: boolean,
+  angularTolerance?: number
+): KernelMeshResult {
+  const synthetic = syntheticCompounds.get(compoundId);
+  const solidIds: number[] = synthetic
+    ? synthetic.filter((c) => c.type === 'solid').map((c) => c.id)
+    : toArray(bk.getCompoundSolids(compoundId));
+  const parts = solidIds.map((id) => meshSolid(bk, id, deflection, includeUVs, angularTolerance));
+
+  if (parts.length === 1) return wasmIndex(parts, 0);
+  if (parts.length === 0) {
+    return {
+      vertices: new Float32Array(0),
+      normals: new Float32Array(0),
+      triangles: new Uint32Array(0),
+      uvs: new Float32Array(0),
+      faceGroups: [],
+    };
+  }
+
+  const total = (pick: (p: KernelMeshResult) => { length: number }): number =>
+    parts.reduce((n, p) => n + pick(p).length, 0);
+  const vertices = new Float32Array(total((p) => p.vertices));
+  const normals = new Float32Array(total((p) => p.normals));
+  const triangles = new Uint32Array(total((p) => p.triangles));
+  const keepUVs = parts.every((p) => p.uvs.length > 0);
+  const uvs = new Float32Array(keepUVs ? total((p) => p.uvs) : 0);
+  const faceGroups: KernelMeshResult['faceGroups'] = [];
+
+  let vOff = 0;
+  let nOff = 0;
+  let tOff = 0;
+  let uvOff = 0;
+  for (const part of parts) {
+    vertices.set(part.vertices, vOff);
+    normals.set(part.normals, nOff);
+    if (keepUVs) {
+      uvs.set(part.uvs, uvOff);
+      uvOff += part.uvs.length;
+    }
+    // Indices address vertices, so rebase by vertices already written (3 floats
+    // per vertex); faceGroups address triangles, so rebase by triangle count.
+    const vertexBase = vOff / 3;
+    for (let i = 0; i < part.triangles.length; i++) {
+      triangles[tOff + i] = wasmIndex(part.triangles, i) + vertexBase;
+    }
+    for (const g of part.faceGroups) {
+      faceGroups.push({ ...g, start: g.start + tOff });
+    }
+    vOff += part.vertices.length;
+    nOff += part.normals.length;
+    tOff += part.triangles.length;
+  }
+
+  return { vertices, normals, triangles, uvs, faceGroups };
 }
 
 export function meshEdges(
