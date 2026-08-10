@@ -11,7 +11,13 @@ import type {
   MeshOptions,
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { type BrepkitHandle, unwrap, toArray, DEFAULT_DEFLECTION } from './helpers.js';
+import {
+  type BrepkitHandle,
+  unwrap,
+  toArray,
+  DEFAULT_DEFLECTION,
+  syntheticCompounds,
+} from './helpers.js';
 import { wasmIndex, vec3At } from '@/utils/vec3.js';
 
 export function mesh(
@@ -56,6 +62,13 @@ export function mesh(
  * `start` is rebased by the running triangle count. `uvs` are only carried
  * when every part supplied them, since a partial UV array would misalign
  * against the concatenated vertices.
+ *
+ * Compounds come in two flavours and only one is arena-backed. A synthetic
+ * compound (non-solid children, id from `nextSyntheticId`) exists JS-side only,
+ * so asking the kernel to resolve it raises an invalid-handle error; its
+ * children are read from `syntheticCompounds` instead. Non-solid children
+ * contribute no triangles and are skipped rather than throwing, matching how a
+ * wire or edge meshes to nothing elsewhere in this adapter.
  */
 function meshCompound(
   bk: BrepkitKernel,
@@ -64,7 +77,10 @@ function meshCompound(
   includeUVs: boolean,
   angularTolerance?: number
 ): KernelMeshResult {
-  const solidIds: number[] = toArray(bk.getCompoundSolids(compoundId));
+  const synthetic = syntheticCompounds.get(compoundId);
+  const solidIds: number[] = synthetic
+    ? synthetic.filter((c) => c.type === 'solid').map((c) => c.id)
+    : toArray(bk.getCompoundSolids(compoundId));
   const parts = solidIds.map((id) => meshSolid(bk, id, deflection, includeUVs, angularTolerance));
 
   if (parts.length === 1) return wasmIndex(parts, 0);
