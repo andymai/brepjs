@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "4.7.0",
-    "@react-three/drei": "10.7.7",
+    "@react-three/drei": "10.7.8",
     "@react-three/fiber": "9.7.0",
     "@vercel/analytics": "2.0.1",
     "@vercel/speed-insights": "2.0.0",
@@ -32,7 +32,7 @@
     "lz-string": "1.5.0",
     "monaco-editor": "0.56.0",
     "occt-wasm": "*",
-    "posthog-js": "1.409.5",
+    "posthog-js": "1.414.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-resizable-panels": "4.12.2",
@@ -45,11 +45,11 @@
     "@tailwindcss/vite": "4.3.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "@types/three": "0.185.3",
+    "@types/three": "0.185.4",
     "@vitejs/plugin-react": "6.0.5",
-    "puppeteer": "25.4.0",
+    "puppeteer": "25.5.0",
     "tailwindcss": "4.3.3",
-    "tsx": "4.23.4",
+    "tsx": "4.23.11",
     "typescript": "6.0.3"
   }
 }

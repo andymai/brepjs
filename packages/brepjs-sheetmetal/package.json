@@ -53,10 +53,10 @@
   },
   "devDependencies": {
     "@eslint/js": "*",
-    "@types/node": "26.1.2",
+    "@types/node": "26.2.0",
     "brepjs-opencascade": ">=0.16.0",
     "eslint": "*",
-    "tsx": "4.23.4",
+    "tsx": "4.23.11",
     "typescript": "*",
     "typescript-eslint": "*",
     "vite": "^8.0.0",
