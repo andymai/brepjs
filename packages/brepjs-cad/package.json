@@ -80,6 +80,7 @@
     "@vitejs/plugin-react": "6.0.5",
     "brepjs-viewer": "*",
     "eslint": "^10.4.0",
+    "jsdom": "^30.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "three": "0.185.1",
