@@ -1,0 +1,23 @@
+packages/brepjs-cad/package.json
+  s_a40f5b42d699c7::t_71ecaf526d38d9 83
+packages/brepjs-viewer/package.json
+  s_a40f5b42d699c7::t_5e8deaa20cbbd4 58
+package-lock.json
+  s_a40f5b42d699c7::t_a5bf79caa139dd 496-498,502-503,505-506,509,513-515,521-522,525,1023-1025,1047-1049,1063-1064,1098-1100,8461,9937-9992,10559,10571-10572,11960,12799,12912-12914,13214-13216,13220,15124,15295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f380fde656f80f5a59aa331bb7b941ec7c8709d8",
+  "prompts": {},
+  "sessions": {
+    "s_a40f5b42d699c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3e5ce40-e52b-4da8-95cb-5b0374e08d61",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
