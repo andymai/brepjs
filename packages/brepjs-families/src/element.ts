@@ -32,18 +32,20 @@ export interface FamilyComponent<P> {
   readonly renderErased: (props: object) => Element;
 }
 
-export interface FamilyOptions {
+export interface FamilyOptions<P = unknown> {
   readonly role?: 'fill' | undefined;
   /** Optional Zod schema validated at element construction (the earliest
    *  point with a useful stack). Schema output replaces the props, so
-   *  defaults and transforms apply before render. `key` is not validated. */
-  readonly props?: ZodType | undefined;
+   *  defaults and transforms apply before render — the output type must be
+   *  assignable to the render props `P`, enforced by this parameter.
+   *  `key` is not validated. */
+  readonly props?: ZodType<P> | undefined;
 }
 
 export function family<P extends object>(
   name: string,
   render: (props: P) => Element,
-  options?: FamilyOptions
+  options?: FamilyOptions<P>
 ): FamilyComponent<P> {
   const schema = options?.props;
   const make = (props: P & WithKey): Element => {
