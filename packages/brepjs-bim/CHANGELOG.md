@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.3.1...brepjs-bim-v0.4.0) (2026-08-17)
+
+
+### Features
+
+* **bim:** add the families-to-bim adapter with key-path identity ([#2063](https://github.com/andymai/brepjs/issues/2063)) ([93eeacf](https://github.com/andymai/brepjs/commit/93eeacf01c97c583901c35efdef6eb6048dc2366))
+
 ## [0.3.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.3.0...brepjs-bim-v0.3.1) (2026-06-25)
 
 
