@@ -58,6 +58,8 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       return B.instance(walk(n.source, pred, repl), n.placements, n.fuse);
     case 'Extrude':
       return B.extrude(walk(n.profile, pred, repl), n.vector);
+    case 'Revolve':
+      return B.revolve(walk(n.profile, pred, repl), n.angle, { axis: n.axis, at: n.at });
   }
 }
 
@@ -97,6 +99,7 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Instance':
       return [n.source];
     case 'Extrude':
+    case 'Revolve':
       return [n.profile];
   }
 }

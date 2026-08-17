@@ -161,6 +161,11 @@ function optimizeNode(n: IRNode): IRNode {
       return B.instance(optimizeNode(n.source), n.placements, n.fuse);
     case 'Extrude':
       return B.extrude(optimizeNode(n.profile), foldExpr(n.vector));
+    case 'Revolve':
+      return B.revolve(optimizeNode(n.profile), foldExpr(n.angle), {
+        axis: n.axis ? foldExpr(n.axis) : undefined,
+        at: n.at ? foldExpr(n.at) : undefined,
+      });
   }
 }
 
