@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.134.0](https://github.com/andymai/brepjs/compare/brepjs-v18.133.0...brepjs-v18.134.0) (2026-08-17)
+
+
+### Features
+
+* **bim:** map families openings onto doors, windows, and IfcRelVoids ([#2067](https://github.com/andymai/brepjs/issues/2067)) ([cfe2f76](https://github.com/andymai/brepjs/commit/cfe2f767517b18094bbe0e43671c83a0583b3561))
+* **families:** make meshes the primary evaluateModel output ([#2068](https://github.com/andymai/brepjs/issues/2068)) ([24f826a](https://github.com/andymai/brepjs/commit/24f826afa30e5cc86fd5ab36ac1523cee3bfb0e3))
+
 ## [18.133.0](https://github.com/andymai/brepjs/compare/brepjs-v18.132.0...brepjs-v18.133.0) (2026-08-17)
 
 
