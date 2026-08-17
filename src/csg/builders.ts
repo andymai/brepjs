@@ -37,6 +37,7 @@ import type {
   ScaleNode,
   MirrorNode,
   ExtrudeNode,
+  RevolveNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -353,6 +354,35 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+export interface RevolveOptions {
+  readonly axis?: Vec3Input | undefined;
+  readonly at?: Vec3Input | undefined;
+}
+
+/** Angle is in degrees (matching `rotate`); defaults to a full revolution
+ *  around the Z axis at the origin. */
+export function revolve(
+  profile: FaceNode,
+  angle: ScalarInput = 360,
+  options?: RevolveOptions
+): RevolveNode {
+  const ae = asScalarExpr(angle);
+  const axisE = optVec3(options?.axis);
+  const atE = optVec3(options?.at);
+  let h = mix(mix(startHash('Revolve'), profile), ae);
+  h = mixOptExpr(h, axisE);
+  h = mixOptExpr(h, atE);
+  return {
+    kind: 'Revolve',
+    profile,
+    angle: ae,
+    axis: axisE,
+    at: atE,
+    structuralHash: h,
+    freeParams: depsOf(profile, ae, axisE, atE),
   };
 }
 

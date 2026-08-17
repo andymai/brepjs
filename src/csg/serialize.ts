@@ -150,6 +150,15 @@ function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Extrude') {
     return { kind: 'Extrude', profile: nodeToJson(n.profile), vector: exprToJson(n.vector) };
   }
+  if (n.kind === 'Revolve') {
+    return {
+      kind: 'Revolve',
+      profile: nodeToJson(n.profile),
+      angle: exprToJson(n.angle),
+      axis: optExprToJson(n.axis),
+      at: optExprToJson(n.at),
+    };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -329,6 +338,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readInstance(j);
     case 'Extrude':
       return readExtrude(j);
+    case 'Revolve':
+      return readRevolve(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -533,6 +544,18 @@ function readExtrude(j: Record<string, unknown>): Result<IRNode> {
   const vector = readExpr(j['vector']);
   if (!vector.ok) return vector;
   return ok(B.extrude(profile.value, vector.value));
+}
+
+function readRevolve(j: Record<string, unknown>): Result<IRNode> {
+  const profile = readNode(j['profile']);
+  if (!profile.ok) return profile;
+  const angle = readExpr(j['angle']);
+  if (!angle.ok) return angle;
+  const axis = readOptExpr(j, 'axis');
+  if (!axis.ok) return axis;
+  const at = readOptExpr(j, 'at');
+  if (!at.ok) return at;
+  return ok(B.revolve(profile.value, angle.value, { axis: axis.value, at: at.value }));
 }
 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {
