@@ -129,6 +129,19 @@ describe('Revolve node', () => {
     expect(shifted.structuralHash).not.toBe(node.structuralHash);
   });
 
+  itBrep('clamps over-full angles to one revolution (kernel-deterministic)', () => {
+    using ev = new Evaluator();
+    const r = ev.evaluate(revolve(washerProfile(), 720));
+    expect(isOk(r)).toBe(true);
+    expect(vol(unwrap(r))).toBeCloseTo(WASHER_VOL, 0);
+  });
+
+  it('rejects non-positive angles with a Result error', () => {
+    using ev = new Evaluator();
+    expect(isOk(ev.evaluate(revolve(washerProfile(), 0)))).toBe(false);
+    expect(isOk(ev.evaluate(revolve(washerProfile(), -90)))).toBe(false);
+  });
+
   it('rejects a non-face profile at evaluation with a Result error', () => {
     using ev = new Evaluator();
     const r = ev.evaluate(revolve(box(10, 10, 10)));

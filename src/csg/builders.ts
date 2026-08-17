@@ -363,7 +363,8 @@ export interface RevolveOptions {
 }
 
 /** Angle is in degrees (matching `rotate`); defaults to a full revolution
- *  around the Z axis at the origin. */
+ *  around the Z axis at the origin. Evaluation clamps angles above 360 to one
+ *  revolution (kernels diverge past 2*pi) and rejects non-positive angles. */
 export function revolve(
   profile: FaceNode,
   angle: ScalarInput = 360,
