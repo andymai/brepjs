@@ -106,6 +106,16 @@ describe('Color node', () => {
     }
   });
 
+  it('rejects out-of-range RGBA components at the trust boundary', () => {
+    const envelope = JSON.parse(JSON.stringify(toJSON(color(box(1, 2, 3), '#ffffff')))) as {
+      root: { color: number[] };
+    };
+    envelope.root.color = [2, 0, 0, 1];
+    expect(isOk(fromJSON(envelope))).toBe(false);
+    envelope.root.color = [0.5, -0.1, 0, 1];
+    expect(isOk(fromJSON(envelope))).toBe(false);
+  });
+
   it('envelope version is 4; versions 1..4 load, 5 rejects', () => {
     expect(CSG_VERSION).toBe(4);
     const envelope = JSON.parse(JSON.stringify(toJSON(box(1, 2, 3)))) as {

@@ -724,8 +724,8 @@ function readColor(j: Record<string, unknown>): Result<IRNode> {
   const target = readNode(j['target']);
   if (!target.ok) return target;
   const c = j['color'];
-  if (!Array.isArray(c) || c.length !== 4 || !c.every(isNumber)) {
-    return bad('Color.color: expected an RGBA array of 4 finite numbers');
+  if (!Array.isArray(c) || c.length !== 4 || !c.every((v) => isNumber(v) && v >= 0 && v <= 1)) {
+    return bad('Color.color: expected an RGBA array of 4 numbers in [0, 1]');
   }
   return ok(B.color(target.value, [c[0], c[1], c[2], c[3]] as [number, number, number, number]));
 }

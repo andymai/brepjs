@@ -1,6 +1,6 @@
 import { getKernel } from '@/kernel/index.js';
 import { ok, type Result } from '@/core/result.js';
-import { castShape, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
+import { castResultShape, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 import { colorShape } from '@/topology/metadata/colorFns.js';
 import {
   hasAnyMetadata,
@@ -20,7 +20,7 @@ export function evalColor(node: ColorNode, ctx: EvalContext): Result<AnyShape<Di
   const { handle, dispose } = kernel.composeTransform([{ type: 'translate', x: 0, y: 0, z: 0 }]);
   let moved: AnyShape<Dimension>;
   try {
-    moved = castShape(kernel.locate(t.value.wrapped, handle));
+    moved = castResultShape(kernel.locate(t.value.wrapped, handle));
   } finally {
     dispose();
   }
