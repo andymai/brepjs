@@ -12,6 +12,7 @@ import { family, el, resolve, evaluateModel, tTranslate, type Element } from 'br
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
+import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
 
 beforeAll(async () => {
   await initOCCT();
@@ -214,7 +215,13 @@ describe('familiesToBim openings', () => {
     const projected = familiesToBim(storey, { project: PROJECT });
     expect(isOk(projected)).toBe(true);
     using model = unwrap(projected).model;
+    // Both synthesized identities are mapped: the opening and its filler.
+    expect(unwrap(projected).idByKeyPath.has('storey-1/w1/voids:d1')).toBe(true);
     expect(unwrap(projected).idByKeyPath.has('storey-1/w1/voids:d1/fill')).toBe(true);
+    // The filler is spatially contained; the model passes integrity checks.
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
 
     const ifc = await ifcText(model);
     expect(ifc).toContain('IFCOPENINGELEMENT');

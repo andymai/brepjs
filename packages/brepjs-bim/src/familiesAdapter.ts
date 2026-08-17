@@ -21,6 +21,7 @@ import { parseSlabSpec } from './specs/slabSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
+import type { FillsOpeningRel } from './types/relationships.js';
 
 export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
@@ -141,6 +142,7 @@ function addOpenings(
   model: BimModel,
   host: ResolvedElement,
   wallId: LocalId,
+  containerId: LocalId,
   idByKeyPath: Map<string, LocalId>
 ): Result<void, BimError> {
   const hostT = peelTranslates(host.geometry).total;
@@ -168,7 +170,16 @@ function addOpenings(
       openingStableKey: opening.keyPath,
     });
     if (!added.ok) return added;
+    // Fillers are spatially contained like any element (openings are not:
+    // they relate to the wall through IfcRelVoidsElement alone).
+    model.placeIn(added.value, containerId);
     idByKeyPath.set(fill.keyPath, added.value);
+    const fillsRel = model
+      .getAllRelationships()
+      .find(
+        (r): r is FillsOpeningRel => r.kind === 'FILLS_OPENING' && r.fillerLocalId === added.value
+      );
+    if (fillsRel !== undefined) idByKeyPath.set(opening.keyPath, fillsRel.openingLocalId);
   }
   return ok(undefined);
 }
@@ -223,7 +234,7 @@ export function familiesToBim(
       }
       model.placeIn(added.value, containerId);
       if (el.type === 'Wall') {
-        const opened = addOpenings(model, el, added.value, idByKeyPath);
+        const opened = addOpenings(model, el, added.value, containerId, idByKeyPath);
         if (!opened.ok) return opened;
       }
     } else if (el.type === 'Opening') {
