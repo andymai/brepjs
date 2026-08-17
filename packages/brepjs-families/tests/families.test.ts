@@ -228,15 +228,15 @@ describe('identity beside content addressing (Phase 3 gate)', () => {
         ],
       })
     );
-    const model = evaluateModel(storey, ev);
+    const model = evaluateModel(storey, ev, {}, { shapes: true });
     const n1 = model.byKeyPath.get('storey-1/w1');
     const n2 = model.byKeyPath.get('storey-1/w2');
     expect(n1 && n2).toBeTruthy();
     if (!n1 || !n2) return;
-    // One materialized solid under two identities.
-    expect(isOk(n1.result) && isOk(n2.result)).toBe(true);
-    if (isOk(n1.result) && isOk(n2.result)) {
-      expect(n1.result.value).toBe(n2.result.value);
+    // One materialized solid under two identities (shapes opted in).
+    expect(n1.shape && isOk(n1.shape) && n2.shape && isOk(n2.shape)).toBe(true);
+    if (n1.shape && isOk(n1.shape) && n2.shape && isOk(n2.shape)) {
+      expect(n1.shape.value).toBe(n2.shape.value);
     }
     expect(ev.cacheStats().entries).toBe(1);
     // Distinct identity records beside the shared geometry.
@@ -245,5 +245,71 @@ describe('identity beside content addressing (Phase 3 gate)', () => {
     expect(n2.attributes['psets']).toEqual({ Pset_WallCommon: { FireRating: '90' } });
     // Containers are identity-only: no geometry entry for the storey.
     expect(model.byKeyPath.has('storey-1')).toBe(false);
+  });
+});
+
+describe('mesh-primary evaluation (Phase 5 gate)', () => {
+  const dims = { length: 400, height: 270, thickness: 20 };
+
+  function threeWalls(w1Length: number): ResolvedElement {
+    return resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Wall({ key: 'w1', ...dims, length: w1Length }),
+          Wall({ key: 'w2', ...dims }),
+          Wall({ key: 'w3', ...dims }),
+        ],
+      })
+    );
+  }
+
+  it('meshes are the primary output; identical recipes share one tessellation', () => {
+    using ev = new csg.Evaluator();
+    const model = evaluateModel(threeWalls(500), ev);
+    const n2 = model.byKeyPath.get('s/w2');
+    const n3 = model.byKeyPath.get('s/w3');
+    expect(n2 && n3).toBeTruthy();
+    if (!n2 || !n3) return;
+    expect(isOk(n2.mesh)).toBe(true);
+    if (isOk(n2.mesh)) {
+      expect(n2.mesh.value.vertices.length).toBeGreaterThan(0);
+      expect(n2.mesh.value.triangles.length).toBeGreaterThan(0);
+    }
+    // One tessellation under two identities, straight from the mesh cache.
+    if (isOk(n2.mesh) && isOk(n3.mesh)) expect(n2.mesh.value).toBe(n3.mesh.value);
+    // Shapes are strictly opt-in.
+    expect(n2.shape).toBeUndefined();
+  });
+
+  it('a prop edit re-meshes only the edited element', () => {
+    using ev = new csg.Evaluator();
+    const before = evaluateModel(threeWalls(500), ev);
+    const after = evaluateModel(threeWalls(600), ev);
+    const pick = (m: typeof before, k: string) => {
+      const n = m.byKeyPath.get(k);
+      if (!n || !isOk(n.mesh)) throw new Error(`no mesh for ${k}`);
+      return n.mesh.value;
+    };
+    // Unchanged siblings are pure mesh-cache hits (same object).
+    expect(pick(after, 's/w2')).toBe(pick(before, 's/w2'));
+    expect(pick(after, 's/w3')).toBe(pick(before, 's/w3'));
+    expect(pick(after, 's/w1')).not.toBe(pick(before, 's/w1'));
+  });
+
+  it('meshes survive shape-cache eviction as pure data hits', () => {
+    using ev = new csg.Evaluator({ maxCacheEntries: 1 });
+    const storey = threeWalls(500);
+    const first = evaluateModel(storey, ev);
+    // Evict every wall shape by materializing an unrelated node.
+    ev.evaluate(csg.box(5, 6, 7));
+    const missesBefore = ev.cacheStats().misses;
+    const again = evaluateModel(storey, ev);
+    const n1a = first.byKeyPath.get('s/w1');
+    const n1b = again.byKeyPath.get('s/w1');
+    if (!n1a || !isOk(n1a.mesh) || !n1b || !isOk(n1b.mesh)) throw new Error('mesh missing');
+    expect(n1b.mesh.value).toBe(n1a.mesh.value);
+    // No shape was re-materialized to serve the cached meshes.
+    expect(ev.cacheStats().misses).toBe(missesBefore);
   });
 });
