@@ -1,0 +1,21 @@
+packages/brepjs-families/tests/registry.test.ts
+  s_951c9e48d7e90e::t_55977795017747 135-149
+packages/brepjs-families/registry/families/room.ts
+  s_951c9e48d7e90e::t_ec8d2699434750 14,25-44,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3a251ecbca280d8d0aa0f997ba5487c836d91661",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
