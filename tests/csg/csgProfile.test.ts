@@ -72,6 +72,19 @@ describe('Profile node', () => {
     expect(area(unwrap(r))).toBeCloseTo(1200, 1);
   });
 
+  itBrep('near-closed contour (sub-tolerance gap) still closes', () => {
+    using ev = new Evaluator();
+    // Ends 5e-7 short of the start: too far apart for wire closure, small
+    // enough that a fixed auto-close threshold above EPS would skip it.
+    const c = contour(
+      [0, 0],
+      [lineTo([40, 0]), lineTo([40, 30]), lineTo([0, 30]), lineTo([0, 5e-7])]
+    );
+    const r = ev.evaluate(profile(c));
+    expect(isOk(r)).toBe(true);
+    expect(area(unwrap(r))).toBeCloseTo(1200, 1);
+  });
+
   itBrep('explicit closing segment produces the same face', () => {
     using ev = new Evaluator();
     const explicit = contour(

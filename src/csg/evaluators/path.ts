@@ -250,7 +250,10 @@ export function buildSegmentWire(
     if (!end.ok) return end;
     cur = end.value;
   }
-  if (autoClose && Math.hypot(cur[0] - start0.value[0], cur[1] - start0.value[1]) > 1e-6) {
+  // Close on any gap above coincidence (EPS): a larger threshold would leave
+  // a dead zone where the gap is too big for the kernel's closure check but
+  // too small to trigger the closing segment.
+  if (autoClose && Math.hypot(cur[0] - start0.value[0], cur[1] - start0.value[1]) > EPS) {
     const closing = makeLine(v3(cur), v3(start0.value));
     scope.register(closing);
     edges.push(closing);
