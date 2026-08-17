@@ -107,6 +107,35 @@ export {
   type EllipseArcOptions,
 } from './segments.js';
 
+// Canned profiles (bim parametric profile set)
+export {
+  rectangularProfile,
+  circularProfile,
+  iBeamProfile,
+  asymmetricIProfile,
+  lShapeProfile,
+  tShapeProfile,
+  uShapeProfile,
+  zShapeProfile,
+  cShapeProfile,
+  ellipseProfile,
+  trapeziumProfile,
+  rectangleHollowProfile,
+  circleHollowProfile,
+  arbitraryClosedProfile,
+  arbitraryProfileWithVoids,
+  type IBeamParams,
+  type AsymmetricIParams,
+  type LShapeParams,
+  type TShapeParams,
+  type UShapeParams,
+  type ZShapeParams,
+  type CShapeParams,
+  type TrapeziumParams,
+  type RectangleHollowParams,
+  type CircleHollowParams,
+} from './profiles.js';
+
 // Evaluator
 export {
   Evaluator,
