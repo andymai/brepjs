@@ -132,4 +132,19 @@ describe('starter families', () => {
       /invalid props for family 'Wall'/
     );
   });
+
+  it('a door that cannot fit its room is rejected at construction', () => {
+    // Wider than the south wall (centered placement goes negative).
+    expect(() => Room({ key: 'r', width: 900, depth: 900, height: 2400 })).toThrow(
+      /does not fit/
+    );
+    // Explicit placement overflowing the wall.
+    expect(() =>
+      Room({ key: 'r', width: 3000, depth: 3000, height: 2400, doorAlong: 2500 })
+    ).toThrow(/does not fit/);
+    // Taller than the room.
+    expect(() =>
+      Room({ key: 'r', width: 3000, depth: 3000, height: 2000, doorHeight: 2100 })
+    ).toThrow(/exceeds the room height/);
+  });
 });

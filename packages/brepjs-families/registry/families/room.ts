@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { Wall } from './wall.js';
 import { Door } from './door.js';
 
-export const roomSchema = z.object({
+const roomShape = z.object({
   width: z.number().positive(),
   depth: z.number().positive(),
   height: z.number().positive(),
@@ -22,13 +22,33 @@ export const roomSchema = z.object({
   materialName: z.string().min(1).default('Concrete'),
 });
 
+/** Explicit `doorAlong`, or centered in the south wall when 0. */
+function doorAlongOf(p: z.output<typeof roomShape>): number {
+  return p.doorAlong > 0 ? p.doorAlong : (p.width - p.doorWidth) / 2;
+}
+
+export const roomSchema = roomShape.superRefine((p, ctx) => {
+  if (doorAlongOf(p) < 0 || doorAlongOf(p) + p.doorWidth > p.width) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `door (along ${doorAlongOf(p)} + width ${p.doorWidth}) does not fit the ${p.width} south wall`,
+    });
+  }
+  if (p.doorHeight > p.height) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `door height ${p.doorHeight} exceeds the room height ${p.height}`,
+    });
+  }
+});
+
 export type RoomProps = z.input<typeof roomSchema>;
 
 export const Room = family(
   'Room',
   (p: z.output<typeof roomSchema>) => {
     const { width: w, depth: d, height, thickness: t, materialName } = p;
-    const doorAlong = p.doorAlong > 0 ? p.doorAlong : (w - p.doorWidth) / 2;
+    const doorAlong = doorAlongOf(p);
     const shared = { height, thickness: t, materialName };
     return el('Group', {}, [
       Wall({
