@@ -63,6 +63,12 @@ export interface ElementIdentityOptions {
   readonly stableKey?: string | undefined;
 }
 
+/** Identity options for adders that create TWO elements: `stableKey` names
+ *  the filler (door/window), `openingStableKey` the synthesized opening. */
+export interface OpeningIdentityOptions extends ElementIdentityOptions {
+  readonly openingStableKey?: string | undefined;
+}
+
 export class BimModel {
   readonly #elements = new Map<LocalId, AnyBimElement>();
   readonly #relationships = new Map<LocalId, BimRelationship>();
@@ -129,6 +135,22 @@ export class BimModel {
     const key = options?.stableKey;
     if (key !== undefined && this.#usedStableKeys.has(key)) {
       return err(specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${key}'`));
+    }
+    return ok(undefined);
+  }
+
+  #checkOpeningKeys(options: OpeningIdentityOptions | undefined): Result<void, BimError> {
+    const filler = this.#checkStableKey(options);
+    if (!filler.ok) return filler;
+    const opening = this.#checkStableKey({ stableKey: options?.openingStableKey });
+    if (!opening.ok) return opening;
+    if (options?.stableKey !== undefined && options.stableKey === options.openingStableKey) {
+      return err(
+        specError(
+          'DUPLICATE_STABLE_KEY',
+          `BimModel: stableKey and openingStableKey are both '${options.stableKey}'`
+        )
+      );
     }
     return ok(undefined);
   }
@@ -489,7 +511,9 @@ export class BimModel {
     return ok(id);
   }
 
-  addDoor(spec: DoorSpec): Result<LocalId, BimError> {
+  addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkOpeningKeys(options);
+    if (!keyCheck.ok) return keyCheck;
     const wall = this.#elements.get(spec.wallLocalId);
     if (wall === undefined || wall.category !== 'WALL') {
       return err(specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
@@ -512,9 +536,9 @@ export class BimModel {
     if (!cutResult.ok) return err(cutResult.error);
     this.#replaceWallGeometry(wall, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null);
+    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
     this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
-    const doorId = this.#makeElement('DOOR', spec, null);
+    const doorId = this.#makeElement('DOOR', spec, null, options?.stableKey);
     this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: doorId });
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
@@ -524,7 +548,9 @@ export class BimModel {
     return ok(doorId);
   }
 
-  addWindow(spec: WindowSpec): Result<LocalId, BimError> {
+  addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkOpeningKeys(options);
+    if (!keyCheck.ok) return keyCheck;
     const wall = this.#elements.get(spec.wallLocalId);
     if (wall === undefined || wall.category !== 'WALL') {
       return err(specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
@@ -547,9 +573,9 @@ export class BimModel {
     if (!cutResult.ok) return err(cutResult.error);
     this.#replaceWallGeometry(wall, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null);
+    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
     this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
-    const windowId = this.#makeElement('WINDOW', spec, null);
+    const windowId = this.#makeElement('WINDOW', spec, null, options?.stableKey);
     this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: windowId });
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
@@ -559,7 +585,9 @@ export class BimModel {
     return ok(windowId);
   }
 
-  addSlabOpening(input: SlabOpeningInput): Result<LocalId, BimError> {
+  addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const slab = this.#elements.get(input.slabLocalId);
     if (slab === undefined || slab.category !== 'SLAB') {
       return err(specError('SLAB_OPENING_SLAB_NOT_FOUND', `No slab found for localId ${input.slabLocalId}`));
@@ -602,7 +630,7 @@ export class BimModel {
     if (!cutResult.ok) return err(cutResult.error);
     this.#replaceSlabGeometry(slab, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null);
+    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.stableKey);
     this.#makeRel<VoidsSlabRel>({ kind: 'VOIDS_SLAB', slabLocalId: input.slabLocalId, openingLocalId: openingId });
     return ok(openingId);
   }

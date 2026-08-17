@@ -156,3 +156,153 @@ describe('familiesToBim', () => {
     expect(isOk(r)).toBe(false);
   });
 });
+
+interface FillProps {
+  readonly width: number;
+  readonly height: number;
+  /** [alongWall, sill] in the host wall's local frame. */
+  readonly at: readonly [number, number];
+}
+
+const Door = family<FillProps>(
+  'Door',
+  (p) =>
+    el('Box', {
+      size: [p.width, 300, p.height],
+      transform: [tTranslate([p.at[0], 0, p.at[1]])],
+    }),
+  { role: 'fill' }
+);
+
+const Window = family<FillProps>(
+  'Window',
+  (p) =>
+    el('Box', {
+      size: [p.width, 300, p.height],
+      transform: [tTranslate([p.at[0], 0, p.at[1]])],
+    }),
+  { role: 'fill' }
+);
+
+const VoidedWall = family<
+  WallProps & {
+    readonly voids: readonly Element[];
+    readonly transform?: readonly ReturnType<typeof tTranslate>[] | undefined;
+  }
+>('Wall', (p) =>
+  el('Box', {
+    size: [p.length, p.thickness, p.height],
+    voids: p.voids,
+    ...(p.transform ? { transform: p.transform } : {}),
+  })
+);
+
+const WALL_DIMS = { length: 3000, height: 2700, thickness: 200 };
+
+function voidedStorey(voids: readonly Element[], transform?: readonly ReturnType<typeof tTranslate>[]) {
+  return resolve(
+    Storey({
+      key: 'storey-1',
+      walls: [VoidedWall({ key: 'w1', ...WALL_DIMS, voids, ...(transform ? { transform } : {}) })],
+    })
+  );
+}
+
+describe('familiesToBim openings', () => {
+  it('maps a door void onto IfcOpeningElement + IfcRelVoids/Fills with key-path GlobalIds', async () => {
+    const storey = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [600, 0] })]);
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(unwrap(projected).idByKeyPath.has('storey-1/w1/voids:d1/fill')).toBe(true);
+
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCOPENINGELEMENT');
+    expect(ifc).toContain('IFCDOOR');
+    expect(ifc).toContain('IFCRELVOIDSELEMENT');
+    expect(ifc).toContain('IFCRELFILLSELEMENT');
+    // Opening and filler GlobalIds derive from families key paths.
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:storey-1/w1/voids:d1'));
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:storey-1/w1/voids:d1/fill'));
+  });
+
+  it('maps a window fill onto IfcWindow', async () => {
+    const storey = voidedStorey([Window({ key: 'n1', width: 1200, height: 1000, at: [1500, 900] })]);
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCWINDOW');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:storey-1/w1/voids:n1'));
+  });
+
+  it('derives wall-relative offsets from the void geometry (bounds probes)', () => {
+    // 2200 + 900 > 3000: only a correctly derived offsetAlongWall can trip this.
+    const alongOverflow = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [2200, 0] })]);
+    expect(isOk(familiesToBim(alongOverflow, { project: PROJECT }))).toBe(false);
+    // 700 + 2100 > 2700: same probe for the sill axis.
+    const sillOverflow = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [600, 700] })]);
+    expect(isOk(familiesToBim(sillOverflow, { project: PROJECT }))).toBe(false);
+  });
+
+  it('offsets stay wall-relative under a host transform', () => {
+    const moved = voidedStorey(
+      [Door({ key: 'd1', width: 900, height: 2100, at: [600, 0] })],
+      [tTranslate([5000, 0, 0])]
+    );
+    const okCase = familiesToBim(moved, { project: PROJECT });
+    expect(isOk(okCase)).toBe(true);
+    if (isOk(okCase)) unwrap(okCase).model[Symbol.dispose]();
+    // Absolute (not relative) offsets would put 600 + 5000 far out of bounds.
+    const stillOverflow = voidedStorey(
+      [Door({ key: 'd1', width: 900, height: 2100, at: [2200, 0] })],
+      [tTranslate([5000, 0, 0])]
+    );
+    expect(isOk(familiesToBim(stillOverflow, { project: PROJECT }))).toBe(false);
+  });
+
+  it('rejects an unmapped fill type', () => {
+    const Widget = family<FillProps>(
+      'Widget',
+      (p) => el('Box', { size: [p.width, 300, p.height] }),
+      { role: 'fill' }
+    );
+    const bad = voidedStorey([Widget({ key: 'x', width: 100, height: 100, at: [0, 0] })]);
+    expect(isOk(familiesToBim(bad, { project: PROJECT }))).toBe(false);
+  });
+
+  it('rejects an opening synthesized outside a wall', () => {
+    const VoidedSlab = family<{ readonly voids: readonly Element[] }>('Slab', (p) =>
+      el('Box', { size: [4000, 4000, 200], voids: p.voids })
+    );
+    const bad = resolve(
+      Storey({
+        key: 's',
+        walls: [VoidedSlab({ key: 'slab', voids: [Door({ key: 'd', width: 900, height: 2100, at: [0, 0] })] })],
+      })
+    );
+    expect(isOk(familiesToBim(bad, { project: PROJECT }))).toBe(false);
+  });
+
+  it('duplicate filler and opening stable keys error via Result', () => {
+    const storey = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [600, 0] })]);
+    const projected = familiesToBim(storey, { project: PROJECT });
+    using model = unwrap(projected).model;
+    const wallId = unwrap(projected).idByKeyPath.get('storey-1/w1');
+    if (wallId === undefined) throw new Error('wall id missing');
+    const spec = {
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 600,
+      offsetFromFloor: 0,
+      wallLocalId: wallId,
+      materialName: 'Wood',
+    };
+    const dupFiller = model.addDoor(spec, { stableKey: 'storey-1/w1/voids:d1/fill' });
+    expect(isOk(dupFiller)).toBe(false);
+    const dupOpening = model.addDoor(spec, { openingStableKey: 'storey-1/w1/voids:d1' });
+    expect(isOk(dupOpening)).toBe(false);
+    const selfCollision = model.addDoor(spec, { stableKey: 'k', openingStableKey: 'k' });
+    expect(isOk(selfCollision)).toBe(false);
+  });
+});
