@@ -1,0 +1,34 @@
+src/2d/lib/approximations.ts
+  s_951c9e48d7e90e::t_8de5fc205ef394 90-93
+src/kernel/geometry2d.ts
+  s_951c9e48d7e90e::t_4cc12614057eb4 459-463
+  s_951c9e48d7e90e::t_8554274cff003c 392-403
+  s_951c9e48d7e90e::t_1e47d5ffcc1750 511-523
+  s_951c9e48d7e90e::t_b6d3cc8a31e8e7 474
+tests/geometry2dTransforms.test.ts
+  s_951c9e48d7e90e::t_8cfdb52dd58fb4 1-121
+tests/svgPathRegression.test.ts
+  s_951c9e48d7e90e::t_33e67e6d25c7c3 53
+  s_951c9e48d7e90e::t_c1fbc8ded4c71c 1-52,54-69
+src/2d/lib/svgPath.ts
+  s_951c9e48d7e90e::t_94cf0f54dba80e 20-67
+  s_951c9e48d7e90e::t_2cac909047e9c5 98
+src/kernel/occtWasm/kernel2dOps.ts
+  s_951c9e48d7e90e::t_f454625040a6ab 488-497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a5e521338a2fb56e2df6bddbb0e614d445926cc2",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
