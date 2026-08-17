@@ -1,7 +1,15 @@
 // Edits are immutable: rebuild from the bottom up via builders so hashes and
 // freeParams stay correct. For parameter changes, use `evaluate(tree, env)`.
 import * as B from './builders.js';
-import type { IRNode } from './types.js';
+import type {
+  IRNode,
+  ExtrudeNode,
+  RevolveNode,
+  LoftNode,
+  SweepNode,
+  ColorNode,
+  FilletNode,
+} from './types.js';
 
 export type NodePredicate = (node: IRNode) => boolean;
 
@@ -59,6 +67,22 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
     case 'Instance':
       return B.instance(walk(n.source, pred, repl), n.placements, n.fuse);
     case 'Extrude':
+    case 'Revolve':
+    case 'Loft':
+    case 'Sweep':
+    case 'Color':
+    case 'Fillet':
+      return rebuildFeature(n, pred, repl);
+  }
+}
+
+function rebuildFeature(
+  n: ExtrudeNode | RevolveNode | LoftNode | SweepNode | ColorNode | FilletNode,
+  pred: NodePredicate,
+  repl: IRNode
+): IRNode {
+  switch (n.kind) {
+    case 'Extrude':
       return B.extrude(walk(n.profile, pred, repl), n.vector);
     case 'Revolve':
       return B.revolve(walk(n.profile, pred, repl), n.angle, { axis: n.axis, at: n.at });
@@ -73,6 +97,8 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       });
     case 'Color':
       return B.color(walk(n.target, pred, repl), [...n.color]);
+    case 'Fillet':
+      return B.fillet(walk(n.target, pred, repl), n.ref, n.radius);
   }
 }
 
@@ -109,6 +135,7 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Scale':
     case 'Mirror':
     case 'Color':
+    case 'Fillet':
       return [n.target];
     case 'Compound':
       return n.children;

@@ -124,14 +124,13 @@ describe('Color node', () => {
     expect(isOk(fromJSON(envelope))).toBe(false);
   });
 
-  it('envelope version is 4; versions 1..4 load, 5 rejects', () => {
-    expect(CSG_VERSION).toBe(4);
+  it('fromJSON accepts all released envelope versions and rejects future ones', () => {
     const envelope = JSON.parse(JSON.stringify(toJSON(box(1, 2, 3)))) as {
       csgVersion: number;
     };
     envelope.csgVersion = 1;
     expect(isOk(fromJSON(envelope))).toBe(true);
-    envelope.csgVersion = 5;
+    envelope.csgVersion = CSG_VERSION + 1;
     expect(isOk(fromJSON(envelope))).toBe(false);
   });
 

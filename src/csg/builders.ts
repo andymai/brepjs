@@ -27,6 +27,7 @@ import {
 } from './hash.js';
 import type { Matrix4x4 } from '@/core/types.js';
 import { parseColor, type ColorInput } from '@/topology/metadata/colorFns.js';
+import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type {
   BoxNode,
   SphereNode,
@@ -54,6 +55,7 @@ import type {
   ProfileNode,
   PathNode,
   ColorNode,
+  FilletNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -381,6 +383,39 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+function hashEdgeRef(h0: bigint, ref: EdgeRef): bigint {
+  let h = fnvMixString(h0, ref.origin);
+  h = fnvMixString(h, ref.faceRoles[0]);
+  h = fnvMixString(h, ref.faceRoles[1]);
+  const hint = ref.hint;
+  h = fnvMixBool(h, hint.length !== undefined);
+  if (hint.length !== undefined) h = fnvMixNumber(h, hint.length);
+  h = fnvMixBool(h, hint.midpoint !== undefined);
+  if (hint.midpoint) {
+    for (const c of hint.midpoint) h = fnvMixNumber(h, c);
+  }
+  return h;
+}
+
+/** Fillet the edge named by a lineage ref on the evaluated target. The ref is
+ *  serializable node data (the cache key stays purely structural); it
+ *  resolves against the materialized target at evaluation, so an upstream
+ *  parameter edit re-targets the same edge by its face roles. */
+export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): FilletNode {
+  const re = asScalarExpr(radius);
+  let h = mix(startHash('Fillet'), target);
+  h = hashEdgeRef(h, ref);
+  h = mix(h, re);
+  return {
+    kind: 'Fillet',
+    target,
+    ref,
+    radius: re,
+    structuralHash: h,
+    freeParams: depsOf(target, re),
   };
 }
 
