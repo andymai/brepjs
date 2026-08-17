@@ -1,0 +1,61 @@
+src/csg/types.ts
+  s_951c9e48d7e90e::t_3c1056ae996388 180-187
+  s_951c9e48d7e90e::t_3ac40ea3db7532 307-308
+  s_951c9e48d7e90e::t_c551164c21e4d4 6
+  s_951c9e48d7e90e::t_e877f061060eba 242
+src/csg/optimize.ts
+  s_951c9e48d7e90e::t_a8fe4c3d20d6c3 182-186
+  s_951c9e48d7e90e::t_1186c2ff86941c 166
+  s_951c9e48d7e90e::t_7ab02fbf0c4647 15
+  s_951c9e48d7e90e::t_650cfcda4591b4 16
+  s_951c9e48d7e90e::t_3e20dca5270406 171
+tests/csg/csgPath.test.ts
+  s_951c9e48d7e90e::t_7b4c1697deb9b1 1-157
+.size-limit.json
+  s_951c9e48d7e90e::t_3cc458fd77b2ea 3
+src/csg/index.ts
+  s_951c9e48d7e90e::t_16c1f80acc1bc8 92-102
+  s_951c9e48d7e90e::t_84a67e6211eeba 36
+  s_951c9e48d7e90e::t_b7ffc89034a0dd 82
+src/csg/expressions.ts
+  s_951c9e48d7e90e::t_6ef20a97943fcc 358-366
+src/csg/edit.ts
+  s_951c9e48d7e90e::t_e020f68b1f5692 29
+  s_951c9e48d7e90e::t_c0d037dd19209d 89
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_98512a1d09407a 5,9,12
+  s_951c9e48d7e90e::t_ebe0dceab4c3ed 45
+  s_951c9e48d7e90e::t_7e3b887ed16b3d 376-392
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_485bf4cc79dbc5 20
+  s_951c9e48d7e90e::t_bc1900d432327f 378-379
+  s_951c9e48d7e90e::t_dd5b1ae60d48d8 119-144
+  s_951c9e48d7e90e::t_1a2bb704e5a331 608-679
+  s_951c9e48d7e90e::t_20e4e0d30190fe 192-194
+src/csg/evaluators/path.ts
+  s_951c9e48d7e90e::t_41e18da40603db 1-195
+  s_951c9e48d7e90e::t_063e7b73ebdc6a 196-203
+src/csg/evaluate.ts
+  s_951c9e48d7e90e::t_5e49c46ce18056 48
+  s_951c9e48d7e90e::t_b6744f7bbdb5d2 149-150
+src/csg/segments.ts
+  s_951c9e48d7e90e::t_1511242a8ca9bf 15
+  s_951c9e48d7e90e::t_cc247f5a0cd117 1-14,16-106,108-159
+  s_951c9e48d7e90e::t_f73c92fda05d03 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "42cf065afd2ee893378b561b2b670334aa2d847d",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
