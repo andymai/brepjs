@@ -496,9 +496,6 @@ export function shell(
   refs: ReadonlyArray<ShapeRef>,
   thickness: ScalarInput
 ): ShellNode {
-  if (refs.length === 0) {
-    throw new Error('shell: at least one face ref is required');
-  }
   const copied = refs.map(copyShapeRef);
   const te = asScalarExpr(thickness);
   let h = fnvMixInt32(startHash('Shell'), copied.length);

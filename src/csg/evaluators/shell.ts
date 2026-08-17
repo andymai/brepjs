@@ -19,6 +19,9 @@ export function evalShell(node: ShellNode, ctx: EvalContext): Result<AnyShape<Di
       )
     );
   }
+  if (node.refs.length === 0) {
+    return err(validationError('CSG_SHELL_REFS', 'Shell needs at least one face ref'));
+  }
   const t = ctx.evalNode(node.target);
   if (!t.ok) return t;
   if (!isSolid(t.value)) {

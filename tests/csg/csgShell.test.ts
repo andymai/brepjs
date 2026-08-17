@@ -139,8 +139,10 @@ describe('Shell node', () => {
     expect(vol(unwrap(r))).toBeCloseTo(openTopVol(100, 40, 30, 5), -1);
   });
 
-  it('an empty ref list throws at construction', () => {
-    expect(() => shell(box(10, 10, 10), [], 2)).toThrow(/at least one/i);
+  itBrep('an empty ref list surfaces as a Result error at evaluation', () => {
+    using ev = new Evaluator();
+    const r = ev.evaluate(shell(box(10, 10, 10), [], 2));
+    expect(isOk(r)).toBe(false);
   });
 
   itBrep('rejects a non-solid 3D target with a Result error', () => {
