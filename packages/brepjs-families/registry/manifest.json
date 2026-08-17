@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "name": "brepjs-families starter registry",
+  "families": [
+    {
+      "name": "storey",
+      "version": 1,
+      "description": "Spatial container mapping onto IfcBuildingStorey",
+      "files": ["families/storey.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "wall",
+      "version": 1,
+      "description": "Solid wall along a configurable axis with fill-role voids",
+      "files": ["families/wall.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "slab",
+      "version": 1,
+      "description": "Horizontal plate: floor, roof, landing, or base slab",
+      "files": ["families/slab.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "door",
+      "version": 1,
+      "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
+      "files": ["families/door.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "window",
+      "version": 1,
+      "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
+      "files": ["families/window.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "room",
+      "version": 1,
+      "description": "Composed family: four keyed perimeter walls with a door",
+      "files": ["families/room.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": ["wall", "door"]
+    }
+  ]
+}
