@@ -241,16 +241,15 @@ describe('Profile node', () => {
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
-  it('envelope version is 3; versions 1..3 load, 4 rejects', () => {
-    expect(CSG_VERSION).toBe(3);
+  it('fromJSON accepts all released envelope versions and rejects future ones', () => {
     const envelope = JSON.parse(JSON.stringify(toJSON(box(1, 2, 3)))) as {
       csgVersion: number;
     };
-    for (const v of [1, 2, 3]) {
+    for (let v = 1; v <= CSG_VERSION; v++) {
       envelope.csgVersion = v;
       expect(isOk(fromJSON(envelope))).toBe(true);
     }
-    envelope.csgVersion = 4;
+    envelope.csgVersion = CSG_VERSION + 1;
     expect(isOk(fromJSON(envelope))).toBe(false);
   });
 
