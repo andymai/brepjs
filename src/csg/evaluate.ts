@@ -19,7 +19,19 @@ import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
 import { buildMeshCacheKey } from '@/topology/meshCache.js';
 import { evalScalar, evalVec3, projectEnv, type Env, type ExprValue } from './expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
-import type { IRNode, RotateNode } from './types.js';
+import type {
+  IRNode,
+  RotateNode,
+  ExtrudeNode,
+  RevolveNode,
+  LoftNode,
+  PathNode,
+  SweepNode,
+  ProfileNode,
+  ColorNode,
+  FilletNode,
+  ChamferNode,
+} from './types.js';
 import type { EvalContext } from './evaluators/context.js';
 import {
   evalBox,
@@ -50,6 +62,7 @@ import { evalSweep } from './evaluators/sweep.js';
 import { evalProfile } from './evaluators/profile.js';
 import { evalColor } from './evaluators/color.js';
 import { evalFillet } from './evaluators/fillet.js';
+import { evalChamfer } from './evaluators/chamfer.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -145,6 +158,32 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
     case 'Instance':
       return evalInstance(node, ctx);
     case 'Extrude':
+    case 'Revolve':
+    case 'Loft':
+    case 'Path':
+    case 'Sweep':
+    case 'Profile':
+    case 'Color':
+    case 'Fillet':
+    case 'Chamfer':
+      return dispatchFeature(node, ctx);
+  }
+}
+
+type FeatureIRNode =
+  | ExtrudeNode
+  | RevolveNode
+  | LoftNode
+  | PathNode
+  | SweepNode
+  | ProfileNode
+  | ColorNode
+  | FilletNode
+  | ChamferNode;
+
+function dispatchFeature(node: FeatureIRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
+  switch (node.kind) {
+    case 'Extrude':
       return evalExtrude(node, ctx);
     case 'Revolve':
       return evalRevolve(node, ctx);
@@ -160,6 +199,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalColor(node, ctx);
     case 'Fillet':
       return evalFillet(node, ctx);
+    case 'Chamfer':
+      return evalChamfer(node, ctx);
   }
 }
 

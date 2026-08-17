@@ -27,12 +27,13 @@ import {
   type Segment2D,
 } from './segments.js';
 import type { IRNode } from './types.js';
+import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
 // (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color;
-// 5 adds Fillet. Additive only, so fromJSON accepts the full range
-// [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 5;
+// 5 adds Fillet; 6 adds Chamfer. Additive only, so fromJSON accepts the
+// full range [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 6;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -155,6 +156,18 @@ function segmentToJson(s: Segment2D): unknown {
   }
 }
 
+function edgeRefToJson(ref: EdgeRef): unknown {
+  return {
+    origin: ref.origin,
+    faceRoles: [...ref.faceRoles],
+    hint: {
+      entityType: 'edge',
+      length: ref.hint.length,
+      midpoint: ref.hint.midpoint ? [...ref.hint.midpoint] : undefined,
+    },
+  };
+}
+
 function contourToJson(c: Contour): unknown {
   return { start: exprToJson(c.start), segments: c.segments.map(segmentToJson) };
 }
@@ -231,16 +244,16 @@ function nodeToJson(n: IRNode): unknown {
     return {
       kind: 'Fillet',
       target: nodeToJson(n.target),
-      ref: {
-        origin: n.ref.origin,
-        faceRoles: [...n.ref.faceRoles],
-        hint: {
-          entityType: 'edge',
-          length: n.ref.hint.length,
-          midpoint: n.ref.hint.midpoint ? [...n.ref.hint.midpoint] : undefined,
-        },
-      },
+      ref: edgeRefToJson(n.ref),
       radius: exprToJson(n.radius),
+    };
+  }
+  if (n.kind === 'Chamfer') {
+    return {
+      kind: 'Chamfer',
+      target: nodeToJson(n.target),
+      ref: edgeRefToJson(n.ref),
+      distance: exprToJson(n.distance),
     };
   }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
@@ -437,6 +450,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readColor(j);
     case 'Fillet':
       return readFillet(j);
+    case 'Chamfer':
+      return readChamfer(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -738,40 +753,49 @@ function readContour(j: unknown, where: string): Result<Contour> {
   return ok(contour(start.value, segments));
 }
 
+function readEdgeRef(j: unknown, where: string): Result<EdgeRef> {
+  if (!isObj(j)) return bad(`${where}: not an object`);
+  const origin = j['origin'];
+  if (!isString(origin)) return bad(`${where}.origin: not a string`);
+  const roles = j['faceRoles'];
+  if (!Array.isArray(roles) || roles.length !== 2 || !roles.every(isString)) {
+    return bad(`${where}.faceRoles: expected two role strings`);
+  }
+  const hintRaw = j['hint'];
+  if (!isObj(hintRaw)) return bad(`${where}.hint: not an object`);
+  const length = hintRaw['length'];
+  if (length !== undefined && !isNumber(length)) return bad(`${where}.hint.length`);
+  let midpoint: Vec3 | undefined;
+  if (hintRaw['midpoint'] !== undefined) {
+    const m = readVec3(hintRaw['midpoint'], `${where}.hint.midpoint`);
+    if (!m.ok) return m;
+    midpoint = m.value;
+  }
+  return ok({
+    origin,
+    faceRoles: [roles[0] as string, roles[1] as string],
+    hint: { entityType: 'edge', length, midpoint },
+  });
+}
+
 function readFillet(j: Record<string, unknown>): Result<IRNode> {
   const target = readNode(j['target']);
   if (!target.ok) return target;
   const radius = readExpr(j['radius']);
   if (!radius.ok) return radius;
-  const ref = j['ref'];
-  if (!isObj(ref)) return bad('Fillet.ref: not an object');
-  const origin = ref['origin'];
-  if (!isString(origin)) return bad('Fillet.ref.origin: not a string');
-  const roles = ref['faceRoles'];
-  if (!Array.isArray(roles) || roles.length !== 2 || !roles.every(isString)) {
-    return bad('Fillet.ref.faceRoles: expected two role strings');
-  }
-  const hintRaw = ref['hint'];
-  if (!isObj(hintRaw)) return bad('Fillet.ref.hint: not an object');
-  const length = hintRaw['length'];
-  if (length !== undefined && !isNumber(length)) return bad('Fillet.ref.hint.length');
-  let midpoint: Vec3 | undefined;
-  if (hintRaw['midpoint'] !== undefined) {
-    const m = readVec3(hintRaw['midpoint'], 'Fillet.ref.hint.midpoint');
-    if (!m.ok) return m;
-    midpoint = m.value;
-  }
-  return ok(
-    B.fillet(
-      target.value,
-      {
-        origin,
-        faceRoles: [roles[0] as string, roles[1] as string],
-        hint: { entityType: 'edge', length, midpoint },
-      },
-      radius.value
-    )
-  );
+  const ref = readEdgeRef(j['ref'], 'Fillet.ref');
+  if (!ref.ok) return ref;
+  return ok(B.fillet(target.value, ref.value, radius.value));
+}
+
+function readChamfer(j: Record<string, unknown>): Result<IRNode> {
+  const target = readNode(j['target']);
+  if (!target.ok) return target;
+  const distance = readExpr(j['distance']);
+  if (!distance.ok) return distance;
+  const ref = readEdgeRef(j['ref'], 'Chamfer.ref');
+  if (!ref.ok) return ref;
+  return ok(B.chamfer(target.value, ref.value, distance.value));
 }
 
 function readColor(j: Record<string, unknown>): Result<IRNode> {

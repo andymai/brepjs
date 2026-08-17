@@ -1,7 +1,8 @@
 /**
- * Fillet node — a serializable EdgeRef inside a content-hashed node. The
- * cache key stays purely structural (the ref is node data); resolution runs
- * inside evaluation and re-targets the same edge under upstream param edits.
+ * Chamfer node — mirrors the Fillet pattern: a serializable EdgeRef inside a
+ * content-hashed node, resolved inside evaluation, re-targeting the same
+ * edge under upstream param edits. A 45-degree chamfer of distance d on an
+ * edge of length L removes exactly a triangular prism: V - (d^2/2) L.
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
@@ -9,7 +10,7 @@ import { initKernel, currentKernel } from '../setup.js';
 import {
   box,
   compound,
-  fillet,
+  chamfer,
   param,
   optimize,
   outputKindOf,
@@ -35,9 +36,10 @@ function vol(s: AnyShape<Dimension>): number {
 
 const itBrep = it.skipIf(currentKernel === 'manifold');
 
-/** Volume of a w x d x h box with one edge (length w) filleted at radius r. */
-function filletedVol(w: number, d: number, h: number, r: number): number {
-  return w * d * h - (1 - Math.PI / 4) * r * r * w;
+/** Volume of a w x d x h box with one edge (length w) chamfered at 45 degrees
+ *  and distance c: a triangular prism of section c^2/2 is removed. */
+function chamferedVol(w: number, d: number, h: number, c: number): number {
+  return w * d * h - (c * c * w) / 2;
 }
 
 function near3(a: readonly number[], b: readonly [number, number, number]): boolean {
@@ -62,28 +64,28 @@ function topFrontEdgeRef(ev: Evaluator, w: number, h: number, env = {}): EdgeRef
   throw new Error('top-front edge not found');
 }
 
-describe('Fillet node', () => {
-  itBrep('fillets the referenced edge with exact volume', () => {
+describe('Chamfer node', () => {
+  itBrep('chamfers the referenced edge with exact volume', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
-    const node = fillet(box(param('w'), 40, 30), ref, 5);
+    const node = chamfer(box(param('w'), 40, 30), ref, 5);
     expect(outputKindOf(node)).toBe('Solid');
     const r = ev.evaluate(node, { w: 100 });
     expect(isOk(r)).toBe(true);
-    expect(vol(unwrap(r))).toBeCloseTo(filletedVol(100, 40, 30, 5), -1);
+    expect(vol(unwrap(r))).toBeCloseTo(chamferedVol(100, 40, 30, 5), -1);
   });
 
   itBrep('cache is sound: pure hit on same env, re-target on upstream edit', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
-    const node = fillet(box(param('w'), 40, 30), ref, 5);
+    const node = chamfer(box(param('w'), 40, 30), ref, 5);
 
     const r1 = ev.evaluate(node, { w: 100 });
     expect(isOk(r1)).toBe(true);
     const s1 = ev.cacheStats();
 
     // Same env: the Fillet node itself is a cache hit — no re-resolution,
-    // no kernel fillet, same handle.
+    // no kernel chamfer, same handle.
     const r2 = ev.evaluate(node, { w: 100 });
     expect(unwrap(r2)).toBe(unwrap(r1));
     const s2 = ev.cacheStats();
@@ -93,47 +95,41 @@ describe('Fillet node', () => {
     // stale) must re-target the SAME top-front edge, now 160 long.
     const r3 = ev.evaluate(node, { w: 160 });
     expect(isOk(r3)).toBe(true);
-    expect(vol(unwrap(r3))).toBeCloseTo(filletedVol(160, 40, 30, 5), -1);
+    expect(vol(unwrap(r3))).toBeCloseTo(chamferedVol(160, 40, 30, 5), -1);
   });
 
   itBrep('ref data and radius enter the content address', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
     const t = box(param('w'), 40, 30);
-    expect(fillet(t, ref, 5).structuralHash).not.toBe(fillet(t, ref, 6).structuralHash);
+    expect(chamfer(t, ref, 5).structuralHash).not.toBe(chamfer(t, ref, 6).structuralHash);
     const other: EdgeRef = { ...ref, faceRoles: [ref.faceRoles[0], 'box:back'] };
-    expect(fillet(t, other, 5).structuralHash).not.toBe(fillet(t, ref, 5).structuralHash);
-    expect(fillet(t, ref, 5).structuralHash).toBe(
-      fillet(box(param('w'), 40, 30), { ...ref }, 5).structuralHash
+    expect(chamfer(t, other, 5).structuralHash).not.toBe(chamfer(t, ref, 5).structuralHash);
+    expect(chamfer(t, ref, 5).structuralHash).toBe(
+      chamfer(box(param('w'), 40, 30), { ...ref }, 5).structuralHash
     );
   });
 
   itBrep('serialize round-trip preserves the structural hash', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
-    const node = fillet(box(param('w'), 40, 30), ref, param('r'));
+    const node = chamfer(box(param('w'), 40, 30), ref, param('r'));
     const back = fromJSON(toJSON(node));
     expect(isOk(back)).toBe(true);
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
-  it('fromJSON accepts all released envelope versions', () => {
-    const envelope = JSON.parse(JSON.stringify(toJSON(box(1, 2, 3)))) as {
-      csgVersion: number;
-    };
-    envelope.csgVersion = 1;
-    expect(isOk(fromJSON(envelope))).toBe(true);
-    envelope.csgVersion = CSG_VERSION + 1;
-    expect(isOk(fromJSON(envelope))).toBe(false);
+  it('envelope version is 6', () => {
+    expect(CSG_VERSION).toBe(6);
   });
 
   itBrep('optimize() and replaceNode rebuild through Fillet', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
-    const node = fillet(box(param('w'), 40, 30), ref, 5);
+    const node = chamfer(box(param('w'), 40, 30), ref, 5);
     expect(optimize(node).structuralHash).toBe(node.structuralHash);
     const swapped = replaceNode(node, (n) => n.kind === 'Box', box(200, 40, 30));
-    expect(swapped.kind).toBe('Fillet');
+    expect(swapped.kind).toBe('Chamfer');
     expect(swapped.structuralHash).not.toBe(node.structuralHash);
   });
 
@@ -145,27 +141,35 @@ describe('Fillet node', () => {
       faceRoles: [ref.faceRoles[0], ref.faceRoles[1]] as [string, string],
       hint: { ...ref.hint },
     };
-    const node = fillet(box(param('w'), 40, 30), mutable, 5);
+    const node = chamfer(box(param('w'), 40, 30), mutable, 5);
     mutable.faceRoles[1] = 'box:back';
     mutable.origin = 'mutated';
     expect(node.ref.faceRoles[1]).toBe(ref.faceRoles[1]);
     const r = ev.evaluate(node, { w: 100 });
     expect(isOk(r)).toBe(true);
-    expect(vol(unwrap(r))).toBeCloseTo(filletedVol(100, 40, 30, 5), -1);
+    expect(vol(unwrap(r))).toBeCloseTo(chamferedVol(100, 40, 30, 5), -1);
   });
 
   itBrep('rejects a non-solid 3D target with a Result error', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
     const compoundTarget = compound([box(10, 10, 10), box(5, 5, 5)]);
-    expect(isOk(ev.evaluate(fillet(compoundTarget, ref, 2)))).toBe(false);
+    expect(isOk(ev.evaluate(chamfer(compoundTarget, ref, 2)))).toBe(false);
+  });
+
+  itBrep('rejects non-finite distances with a Result error', () => {
+    using ev = new Evaluator();
+    const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
+    const t = box(param('w'), 40, 30);
+    expect(isOk(ev.evaluate(chamfer(t, ref, Number.NaN), { w: 100 }))).toBe(false);
+    expect(isOk(ev.evaluate(chamfer(t, ref, Number.POSITIVE_INFINITY), { w: 100 }))).toBe(false);
   });
 
   itBrep('an unresolvable ref surfaces as a Result error', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
     const bogus: EdgeRef = { ...ref, faceRoles: ['box:nope', 'box:missing'] };
-    const r = ev.evaluate(fillet(box(param('w'), 40, 30), bogus, 5), { w: 100 });
+    const r = ev.evaluate(chamfer(box(param('w'), 40, 30), bogus, 5), { w: 100 });
     expect(isOk(r)).toBe(false);
   });
 });

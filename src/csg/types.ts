@@ -188,6 +188,14 @@ export interface FilletNode extends IRNodeBase {
   readonly radius: Expr;
 }
 
+export interface ChamferNode extends IRNodeBase {
+  readonly kind: 'Chamfer';
+  readonly target: IRNode;
+  /** Serializable lineage ref naming the edge by its two adjacent face roles. */
+  readonly ref: EdgeRef;
+  readonly distance: Expr;
+}
+
 export interface ColorNode extends IRNodeBase {
   readonly kind: 'Color';
   readonly target: IRNode;
@@ -280,6 +288,7 @@ export type IRNode =
   | PathNode
   | ColorNode
   | FilletNode
+  | ChamferNode
   | CompoundNode
   | InstanceNode;
 
@@ -346,6 +355,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Loft':
     case 'Sweep':
     case 'Fillet':
+    case 'Chamfer':
       return 'Solid';
     case 'Profile':
       return 'Face';

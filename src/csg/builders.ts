@@ -56,6 +56,7 @@ import type {
   PathNode,
   ColorNode,
   FilletNode,
+  ChamferNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -404,10 +405,10 @@ function hashEdgeRef(h0: bigint, ref: EdgeRef): bigint {
  *  serializable node data (the cache key stays purely structural); it
  *  resolves against the materialized target at evaluation, so an upstream
  *  parameter edit re-targets the same edge by its face roles. */
-export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): FilletNode {
-  // Deep-copy so later caller mutation can't desync the ref from the
-  // pre-computed structuralHash (same contract as the n-ary builders).
-  const copied: EdgeRef = {
+// Deep-copy so later caller mutation can't desync the ref from the
+// pre-computed structuralHash (same contract as the n-ary builders).
+function copyEdgeRef(ref: EdgeRef): EdgeRef {
+  return {
     origin: ref.origin,
     faceRoles: [ref.faceRoles[0], ref.faceRoles[1]],
     hint: {
@@ -416,6 +417,10 @@ export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): Fille
       midpoint: ref.hint.midpoint ? [...ref.hint.midpoint] : undefined,
     },
   };
+}
+
+export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): FilletNode {
+  const copied = copyEdgeRef(ref);
   const re = asScalarExpr(radius);
   let h = mix(startHash('Fillet'), target);
   h = hashEdgeRef(h, copied);
@@ -427,6 +432,24 @@ export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): Fille
     radius: re,
     structuralHash: h,
     freeParams: depsOf(target, re),
+  };
+}
+
+/** Chamfer the edge named by a lineage ref on the evaluated target. Same
+ *  contract as `fillet`: the ref is deep-copied, serializable node data. */
+export function chamfer(target: IRNode, ref: EdgeRef, distance: ScalarInput): ChamferNode {
+  const copied = copyEdgeRef(ref);
+  const de = asScalarExpr(distance);
+  let h = mix(startHash('Chamfer'), target);
+  h = hashEdgeRef(h, copied);
+  h = mix(h, de);
+  return {
+    kind: 'Chamfer',
+    target,
+    ref: copied,
+    distance: de,
+    structuralHash: h,
+    freeParams: depsOf(target, de),
   };
 }
 
