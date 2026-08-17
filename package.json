@@ -26,6 +26,7 @@
     "packages/brepjs-bim",
     "packages/brepjs-sheetmetal",
     "packages/brepjs-manifold",
+    "packages/brepjs-families",
     "packages/brepjs-voxel-wasm",
     "packages/brepjs-voxel",
     "packages/brepjs-cad",
