@@ -31,6 +31,7 @@ import type {
   ColorNode,
   FilletNode,
   ChamferNode,
+  ShellNode,
 } from './types.js';
 import type { EvalContext } from './evaluators/context.js';
 import {
@@ -63,6 +64,7 @@ import { evalProfile } from './evaluators/profile.js';
 import { evalColor } from './evaluators/color.js';
 import { evalFillet } from './evaluators/fillet.js';
 import { evalChamfer } from './evaluators/chamfer.js';
+import { evalShell } from './evaluators/shell.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -166,6 +168,7 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
     case 'Color':
     case 'Fillet':
     case 'Chamfer':
+    case 'Shell':
       return dispatchFeature(node, ctx);
   }
 }
@@ -179,7 +182,8 @@ type FeatureIRNode =
   | ProfileNode
   | ColorNode
   | FilletNode
-  | ChamferNode;
+  | ChamferNode
+  | ShellNode;
 
 function dispatchFeature(node: FeatureIRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
   switch (node.kind) {
@@ -201,6 +205,8 @@ function dispatchFeature(node: FeatureIRNode, ctx: EvalContext): Result<AnyShape
       return evalFillet(node, ctx);
     case 'Chamfer':
       return evalChamfer(node, ctx);
+    case 'Shell':
+      return evalShell(node, ctx);
   }
 }
 

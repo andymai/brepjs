@@ -27,7 +27,7 @@ import {
 } from './hash.js';
 import type { Matrix4x4 } from '@/core/types.js';
 import { parseColor, type ColorInput } from '@/topology/metadata/colorFns.js';
-import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
+import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type {
   BoxNode,
   SphereNode,
@@ -55,6 +55,7 @@ import type {
   ProfileNode,
   PathNode,
   ColorNode,
+  ShellNode,
   FilletNode,
   ChamferNode,
   CompoundNode,
@@ -450,6 +451,67 @@ export function chamfer(target: IRNode, ref: EdgeRef, distance: ScalarInput): Ch
     distance: de,
     structuralHash: h,
     freeParams: depsOf(target, de),
+  };
+}
+
+function hashShapeRef(h0: bigint, ref: ShapeRef): bigint {
+  let h = fnvMixString(h0, ref.origin);
+  h = fnvMixString(h, ref.role);
+  const hint = ref.hint;
+  h = fnvMixBool(h, hint.surfaceType !== undefined);
+  if (hint.surfaceType !== undefined) h = fnvMixString(h, hint.surfaceType);
+  h = fnvMixBool(h, hint.normal !== undefined);
+  if (hint.normal) for (const c of hint.normal) h = fnvMixNumber(h, c);
+  h = fnvMixBool(h, hint.centroid !== undefined);
+  if (hint.centroid) for (const c of hint.centroid) h = fnvMixNumber(h, c);
+  h = fnvMixBool(h, hint.area !== undefined);
+  if (hint.area !== undefined) h = fnvMixNumber(h, hint.area);
+  return h;
+}
+
+// Deep-copy so later caller mutation can't desync the ref from the
+// pre-computed structuralHash (same contract as `copyEdgeRef`).
+function copyShapeRef(ref: ShapeRef): ShapeRef {
+  const hint = ref.hint;
+  return {
+    origin: ref.origin,
+    role: ref.role,
+    hint: {
+      entityType: 'face',
+      ...(hint.surfaceType !== undefined ? { surfaceType: hint.surfaceType } : {}),
+      ...(hint.normal ? { normal: [...hint.normal] as [number, number, number] } : {}),
+      ...(hint.centroid ? { centroid: [...hint.centroid] as [number, number, number] } : {}),
+      ...(hint.area !== undefined ? { area: hint.area } : {}),
+    },
+  };
+}
+
+/** Hollow the evaluated target to walls of `thickness`, leaving the faces
+ *  named by `refs` open. Refs are serializable node data (the cache key stays
+ *  purely structural); they resolve against the materialized target at
+ *  evaluation, so an upstream parameter edit re-targets the same faces by
+ *  role. Ref order is content-significant. */
+export function shell(
+  target: IRNode,
+  refs: ReadonlyArray<ShapeRef>,
+  thickness: ScalarInput
+): ShellNode {
+  if (refs.length === 0) {
+    throw new Error('shell: at least one face ref is required');
+  }
+  const copied = refs.map(copyShapeRef);
+  const te = asScalarExpr(thickness);
+  let h = fnvMixInt32(startHash('Shell'), copied.length);
+  h = mix(h, target);
+  for (const ref of copied) h = hashShapeRef(h, ref);
+  h = mix(h, te);
+  return {
+    kind: 'Shell',
+    target,
+    refs: copied,
+    thickness: te,
+    structuralHash: h,
+    freeParams: depsOf(target, te),
   };
 }
 

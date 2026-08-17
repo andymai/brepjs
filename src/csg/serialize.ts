@@ -27,13 +27,14 @@ import {
   type Segment2D,
 } from './segments.js';
 import type { IRNode } from './types.js';
-import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
+import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
+import type { SurfaceType } from '@/topology/faceFns.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
 // (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color;
-// 5 adds Fillet; 6 adds Chamfer. Additive only, so fromJSON accepts the
-// full range [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 6;
+// 5 adds Fillet; 6 adds Chamfer; 7 adds Shell. Additive only, so fromJSON
+// accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 7;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -168,6 +169,20 @@ function edgeRefToJson(ref: EdgeRef): unknown {
   };
 }
 
+function shapeRefToJson(ref: ShapeRef): unknown {
+  return {
+    origin: ref.origin,
+    role: ref.role,
+    hint: {
+      entityType: 'face',
+      surfaceType: ref.hint.surfaceType,
+      normal: ref.hint.normal ? [...ref.hint.normal] : undefined,
+      centroid: ref.hint.centroid ? [...ref.hint.centroid] : undefined,
+      area: ref.hint.area,
+    },
+  };
+}
+
 function contourToJson(c: Contour): unknown {
   return { start: exprToJson(c.start), segments: c.segments.map(segmentToJson) };
 }
@@ -254,6 +269,14 @@ function nodeToJson(n: IRNode): unknown {
       target: nodeToJson(n.target),
       ref: edgeRefToJson(n.ref),
       distance: exprToJson(n.distance),
+    };
+  }
+  if (n.kind === 'Shell') {
+    return {
+      kind: 'Shell',
+      target: nodeToJson(n.target),
+      refs: n.refs.map(shapeRefToJson),
+      thickness: exprToJson(n.thickness),
     };
   }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
@@ -452,6 +475,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readFillet(j);
     case 'Chamfer':
       return readChamfer(j);
+    case 'Shell':
+      return readShell(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -776,6 +801,77 @@ function readEdgeRef(j: unknown, where: string): Result<EdgeRef> {
     faceRoles: [roles[0] as string, roles[1] as string],
     hint: { entityType: 'edge', length, midpoint },
   });
+}
+
+const SURFACE_TYPES: ReadonlySet<string> = new Set([
+  'PLANE',
+  'CYLINDRE',
+  'CONE',
+  'SPHERE',
+  'TORUS',
+  'BEZIER_SURFACE',
+  'BSPLINE_SURFACE',
+  'REVOLUTION_SURFACE',
+  'EXTRUSION_SURFACE',
+  'OFFSET_SURFACE',
+  'OTHER_SURFACE',
+]);
+
+function readShapeRef(j: unknown, where: string): Result<ShapeRef> {
+  if (!isObj(j)) return bad(`${where}: not an object`);
+  const origin = j['origin'];
+  if (!isString(origin)) return bad(`${where}.origin: not a string`);
+  const role = j['role'];
+  if (!isString(role)) return bad(`${where}.role: not a string`);
+  const hintRaw = j['hint'];
+  if (!isObj(hintRaw)) return bad(`${where}.hint: not an object`);
+  const surfaceType = hintRaw['surfaceType'];
+  if (surfaceType !== undefined && (!isString(surfaceType) || !SURFACE_TYPES.has(surfaceType))) {
+    return bad(`${where}.hint.surfaceType`);
+  }
+  const area = hintRaw['area'];
+  if (area !== undefined && !isNumber(area)) return bad(`${where}.hint.area`);
+  let normal: Vec3 | undefined;
+  if (hintRaw['normal'] !== undefined) {
+    const n = readVec3(hintRaw['normal'], `${where}.hint.normal`);
+    if (!n.ok) return n;
+    normal = n.value;
+  }
+  let centroid: Vec3 | undefined;
+  if (hintRaw['centroid'] !== undefined) {
+    const c = readVec3(hintRaw['centroid'], `${where}.hint.centroid`);
+    if (!c.ok) return c;
+    centroid = c.value;
+  }
+  return ok({
+    origin,
+    role,
+    hint: {
+      entityType: 'face',
+      ...(surfaceType !== undefined ? { surfaceType: surfaceType as SurfaceType } : {}),
+      ...(normal ? { normal } : {}),
+      ...(centroid ? { centroid } : {}),
+      ...(area !== undefined ? { area } : {}),
+    },
+  });
+}
+
+function readShell(j: Record<string, unknown>): Result<IRNode> {
+  const target = readNode(j['target']);
+  if (!target.ok) return target;
+  const thickness = readExpr(j['thickness']);
+  if (!thickness.ok) return thickness;
+  const rawRefs = j['refs'];
+  if (!Array.isArray(rawRefs) || rawRefs.length === 0) {
+    return bad('Shell.refs: expected a non-empty array');
+  }
+  const refs: ShapeRef[] = [];
+  for (const [i, raw] of rawRefs.entries()) {
+    const ref = readShapeRef(raw, `Shell.refs[${i}]`);
+    if (!ref.ok) return ref;
+    refs.push(ref.value);
+  }
+  return ok(B.shell(target.value, refs, thickness.value));
 }
 
 function readFillet(j: Record<string, unknown>): Result<IRNode> {

@@ -27,6 +27,7 @@ import type {
   ColorNode,
   FilletNode,
   ChamferNode,
+  ShellNode,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -173,6 +174,7 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Color':
     case 'Fillet':
     case 'Chamfer':
+    case 'Shell':
       return optimizeFeature(n);
   }
 }
@@ -186,7 +188,8 @@ type FeatureNode =
   | PathNode
   | ColorNode
   | FilletNode
-  | ChamferNode;
+  | ChamferNode
+  | ShellNode;
 
 function optimizeFeature(n: FeatureNode): IRNode {
   switch (n.kind) {
@@ -217,6 +220,8 @@ function optimizeFeature(n: FeatureNode): IRNode {
       return B.fillet(optimizeNode(n.target), n.ref, foldExpr(n.radius));
     case 'Chamfer':
       return B.chamfer(optimizeNode(n.target), n.ref, foldExpr(n.distance));
+    case 'Shell':
+      return B.shell(optimizeNode(n.target), n.refs, foldExpr(n.thickness));
   }
 }
 
