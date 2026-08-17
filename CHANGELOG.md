@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.129.0](https://github.com/andymai/brepjs/compare/brepjs-v18.128.0...brepjs-v18.129.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add color node with evaluation-time metadata attachment ([#2047](https://github.com/andymai/brepjs/issues/2047)) ([a8869e0](https://github.com/andymai/brepjs/commit/a8869e0a8a47036e10380f38dfbf1e0f46720559))
+
 ## [18.128.0](https://github.com/andymai/brepjs/compare/brepjs-v18.127.0...brepjs-v18.128.0) (2026-08-17)
 
 
