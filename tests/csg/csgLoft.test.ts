@@ -110,6 +110,18 @@ describe('Loft node', () => {
     expect(swapped.structuralHash).not.toBe(node.structuralHash);
   });
 
+  itBrep('is immune to caller mutation of the sections array', () => {
+    using ev = new Evaluator();
+    const sections = [rectAt(0, 20, 15), rectAt(20, 20, 15)];
+    const node = loft(sections);
+    sections.push(rectAt(40, 5, 5));
+    sections[0] = rectAt(0, 1, 1);
+    expect(node.sections).toHaveLength(2);
+    const r = ev.evaluate(node);
+    expect(isOk(r)).toBe(true);
+    expect(vol(unwrap(r))).toBeCloseTo(40 * 30 * 20, 0);
+  });
+
   it('rejects fewer than two sections with a Result error', () => {
     using ev = new Evaluator();
     expect(isOk(ev.evaluate(loft([rectAt(0, 20, 15)])))).toBe(false);

@@ -364,11 +364,20 @@ export interface LoftOptions {
 
 /** Loft through two or more face-producing sections (default ruled). */
 export function loft(sections: ReadonlyArray<FaceNode>, options?: LoftOptions): LoftNode {
+  // Copy so later caller mutation can't desync the children from the
+  // pre-computed structuralHash (same contract as `instance`).
+  const copied = [...sections];
   const ruled = options?.ruled ?? true;
-  let h = fnvMixInt32(startHash('Loft'), sections.length);
-  for (const s of sections) h = mix(h, s);
+  let h = fnvMixInt32(startHash('Loft'), copied.length);
+  for (const s of copied) h = mix(h, s);
   h = fnvMixBool(h, ruled);
-  return { kind: 'Loft', sections, ruled, structuralHash: h, freeParams: depsOf(...sections) };
+  return {
+    kind: 'Loft',
+    sections: copied,
+    ruled,
+    structuralHash: h,
+    freeParams: depsOf(...copied),
+  };
 }
 
 export interface RevolveOptions {
