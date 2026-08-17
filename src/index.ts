@@ -335,6 +335,7 @@ export { makeBaseBox } from './sketching/shortcuts.js';
 
 export type { Drawing } from './sketching/drawing.js';
 export { deserializeDrawing } from './sketching/drawing.js';
+export { blueprintToContour, type BlueprintContourOptions } from './sketching/blueprintContour.js';
 export type { DrawingPen } from './sketching/drawingPen.js';
 export { draw } from './sketching/drawingPen.js';
 export {
