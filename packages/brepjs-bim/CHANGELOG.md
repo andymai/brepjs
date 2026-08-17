@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.4.0...brepjs-bim-v0.5.0) (2026-08-17)
+
+
+### Features
+
+* **bim:** map families openings onto doors, windows, and IfcRelVoids ([#2067](https://github.com/andymai/brepjs/issues/2067)) ([cfe2f76](https://github.com/andymai/brepjs/commit/cfe2f767517b18094bbe0e43671c83a0583b3561))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * brepjs bumped from >=18.0.0 to >=18.135.0
+
 ## [0.4.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.3.1...brepjs-bim-v0.4.0) (2026-08-17)
 
 
