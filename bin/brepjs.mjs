@@ -189,9 +189,20 @@ async function add(args) {
     writes.push(p);
   }
 
+  // Copies are idempotent (re-running converges on the same closure), so a
+  // mid-apply failure surfaces as an explicit partial-state report rather
+  // than staging/rollback machinery.
   const written = [];
   for (const w of writes) {
-    await guardedWrite(targetRoot, w.target, w.content);
+    try {
+      await guardedWrite(targetRoot, w.target, w.content);
+    } catch (err) {
+      for (const t of written) console.warn(`wrote ${t}`);
+      console.error(
+        `partial write: ${written.length} of ${writes.length} files written before the failure — fix the cause and re-run to complete the closure`
+      );
+      throw err;
+    }
     written.push(w.target);
   }
 
