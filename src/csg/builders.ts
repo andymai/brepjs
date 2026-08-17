@@ -38,6 +38,7 @@ import type {
   MirrorNode,
   ExtrudeNode,
   RevolveNode,
+  LoftNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -355,6 +356,19 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     structuralHash: h,
     freeParams: depsOf(profile, ve),
   };
+}
+
+export interface LoftOptions {
+  readonly ruled?: boolean | undefined;
+}
+
+/** Loft through two or more face-producing sections (default ruled). */
+export function loft(sections: ReadonlyArray<FaceNode>, options?: LoftOptions): LoftNode {
+  const ruled = options?.ruled ?? true;
+  let h = fnvMixInt32(startHash('Loft'), sections.length);
+  for (const s of sections) h = mix(h, s);
+  h = fnvMixBool(h, ruled);
+  return { kind: 'Loft', sections, ruled, structuralHash: h, freeParams: depsOf(...sections) };
 }
 
 export interface RevolveOptions {
