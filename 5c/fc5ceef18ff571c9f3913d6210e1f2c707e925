@@ -1,0 +1,25 @@
+tests/csg/csgChamfer.test.ts
+  s_951c9e48d7e90e::t_519bc210d978ed 160-167
+src/csg/evaluators/revolve.ts
+  s_951c9e48d7e90e::t_519bc210d978ed 14
+src/csg/evaluators/chamfer.ts
+  s_951c9e48d7e90e::t_519bc210d978ed 14
+src/csg/evaluators/fillet.ts
+  s_951c9e48d7e90e::t_519bc210d978ed 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5cfc5ceef18ff571c9f3913d6210e1f2c707e925",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
