@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.130.0](https://github.com/andymai/brepjs/compare/brepjs-v18.129.0...brepjs-v18.130.0) (2026-08-17)
+
+
+### Features
+
+* **families:** scaffold the brepjs-families package ([#2051](https://github.com/andymai/brepjs/issues/2051)) ([11fb885](https://github.com/andymai/brepjs/commit/11fb885bdd6d17bd0b0b43b243f86ea4826db403))
+
 ## [18.129.0](https://github.com/andymai/brepjs/compare/brepjs-v18.128.0...brepjs-v18.129.0) (2026-08-17)
 
 
