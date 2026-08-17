@@ -49,6 +49,7 @@ import { evalPath } from './evaluators/path.js';
 import { evalSweep } from './evaluators/sweep.js';
 import { evalProfile } from './evaluators/profile.js';
 import { evalColor } from './evaluators/color.js';
+import { evalFillet } from './evaluators/fillet.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -157,6 +158,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalProfile(node, ctx);
     case 'Color':
       return evalColor(node, ctx);
+    case 'Fillet':
+      return evalFillet(node, ctx);
   }
 }
 

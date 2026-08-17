@@ -29,10 +29,10 @@ import {
 import type { IRNode } from './types.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
-// (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color.
-// Additive only, so fromJSON accepts the full range
+// (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color;
+// 5 adds Fillet. Additive only, so fromJSON accepts the full range
 // [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 4;
+export const CSG_VERSION = 5;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -227,6 +227,22 @@ function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Color') {
     return { kind: 'Color', target: nodeToJson(n.target), color: [...n.color] };
   }
+  if (n.kind === 'Fillet') {
+    return {
+      kind: 'Fillet',
+      target: nodeToJson(n.target),
+      ref: {
+        origin: n.ref.origin,
+        faceRoles: [...n.ref.faceRoles],
+        hint: {
+          entityType: 'edge',
+          length: n.ref.hint.length,
+          midpoint: n.ref.hint.midpoint ? [...n.ref.hint.midpoint] : undefined,
+        },
+      },
+      radius: exprToJson(n.radius),
+    };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -419,6 +435,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readProfile(j);
     case 'Color':
       return readColor(j);
+    case 'Fillet':
+      return readFillet(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -718,6 +736,42 @@ function readContour(j: unknown, where: string): Result<Contour> {
     segments.push(r.value);
   }
   return ok(contour(start.value, segments));
+}
+
+function readFillet(j: Record<string, unknown>): Result<IRNode> {
+  const target = readNode(j['target']);
+  if (!target.ok) return target;
+  const radius = readExpr(j['radius']);
+  if (!radius.ok) return radius;
+  const ref = j['ref'];
+  if (!isObj(ref)) return bad('Fillet.ref: not an object');
+  const origin = ref['origin'];
+  if (!isString(origin)) return bad('Fillet.ref.origin: not a string');
+  const roles = ref['faceRoles'];
+  if (!Array.isArray(roles) || roles.length !== 2 || !roles.every(isString)) {
+    return bad('Fillet.ref.faceRoles: expected two role strings');
+  }
+  const hintRaw = ref['hint'];
+  if (!isObj(hintRaw)) return bad('Fillet.ref.hint: not an object');
+  const length = hintRaw['length'];
+  if (length !== undefined && !isNumber(length)) return bad('Fillet.ref.hint.length');
+  let midpoint: Vec3 | undefined;
+  if (hintRaw['midpoint'] !== undefined) {
+    const m = readVec3(hintRaw['midpoint'], 'Fillet.ref.hint.midpoint');
+    if (!m.ok) return m;
+    midpoint = m.value;
+  }
+  return ok(
+    B.fillet(
+      target.value,
+      {
+        origin,
+        faceRoles: [roles[0] as string, roles[1] as string],
+        hint: { entityType: 'edge', length, midpoint },
+      },
+      radius.value
+    )
+  );
 }
 
 function readColor(j: Record<string, unknown>): Result<IRNode> {

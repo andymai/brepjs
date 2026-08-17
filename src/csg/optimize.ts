@@ -15,6 +15,9 @@ import {
 import { foldSegment, foldContour } from './segments.js';
 import type {
   IRNode,
+  RotateNode,
+  ScaleNode,
+  MirrorNode,
   ExtrudeNode,
   RevolveNode,
   LoftNode,
@@ -22,6 +25,7 @@ import type {
   ProfileNode,
   PathNode,
   ColorNode,
+  FilletNode,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -152,19 +156,9 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Translate':
       return optimizeTranslate(n.target, n.vector);
     case 'Rotate':
-      return B.rotate(optimizeNode(n.target), foldExpr(n.angle), {
-        axis: n.axis ? foldExpr(n.axis) : undefined,
-        at: n.at ? foldExpr(n.at) : undefined,
-      });
     case 'Scale':
-      return B.scale(optimizeNode(n.target), foldExpr(n.factor), {
-        center: n.center ? foldExpr(n.center) : undefined,
-      });
     case 'Mirror':
-      return B.mirror(optimizeNode(n.target), {
-        normal: n.normal ? foldExpr(n.normal) : undefined,
-        at: n.at ? foldExpr(n.at) : undefined,
-      });
+      return optimizeTransform(n);
     case 'Compound':
       return B.compound(n.children.map(optimizeNode).filter((c) => c.kind !== 'Empty'));
     case 'Instance':
@@ -176,12 +170,20 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Profile':
     case 'Path':
     case 'Color':
+    case 'Fillet':
       return optimizeFeature(n);
   }
 }
 
 type FeatureNode =
-  ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode | ColorNode;
+  | ExtrudeNode
+  | RevolveNode
+  | LoftNode
+  | SweepNode
+  | ProfileNode
+  | PathNode
+  | ColorNode
+  | FilletNode;
 
 function optimizeFeature(n: FeatureNode): IRNode {
   switch (n.kind) {
@@ -208,6 +210,27 @@ function optimizeFeature(n: FeatureNode): IRNode {
       );
     case 'Color':
       return B.color(optimizeNode(n.target), [...n.color]);
+    case 'Fillet':
+      return B.fillet(optimizeNode(n.target), n.ref, foldExpr(n.radius));
+  }
+}
+
+function optimizeTransform(n: RotateNode | ScaleNode | MirrorNode): IRNode {
+  switch (n.kind) {
+    case 'Rotate':
+      return B.rotate(optimizeNode(n.target), foldExpr(n.angle), {
+        axis: n.axis ? foldExpr(n.axis) : undefined,
+        at: n.at ? foldExpr(n.at) : undefined,
+      });
+    case 'Scale':
+      return B.scale(optimizeNode(n.target), foldExpr(n.factor), {
+        center: n.center ? foldExpr(n.center) : undefined,
+      });
+    case 'Mirror':
+      return B.mirror(optimizeNode(n.target), {
+        normal: n.normal ? foldExpr(n.normal) : undefined,
+        at: n.at ? foldExpr(n.at) : undefined,
+      });
   }
 }
 

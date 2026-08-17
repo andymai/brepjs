@@ -4,6 +4,7 @@
 
 import type { Expr } from './expressions.js';
 import type { Contour, Segment2D } from './segments.js';
+import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type { Matrix4x4 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -177,6 +178,16 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface FilletNode extends IRNodeBase {
+  readonly kind: 'Fillet';
+  readonly target: IRNode;
+  /** Serializable lineage ref naming the edge by its two adjacent face roles.
+   *  Pure data, so it hashes like any other field; resolution against the
+   *  materialized target happens inside evaluation. */
+  readonly ref: EdgeRef;
+  readonly radius: Expr;
+}
+
 export interface ColorNode extends IRNodeBase {
   readonly kind: 'Color';
   readonly target: IRNode;
@@ -268,6 +279,7 @@ export type IRNode =
   | ProfileNode
   | PathNode
   | ColorNode
+  | FilletNode
   | CompoundNode
   | InstanceNode;
 
@@ -333,6 +345,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Revolve':
     case 'Loft':
     case 'Sweep':
+    case 'Fillet':
       return 'Solid';
     case 'Profile':
       return 'Face';
