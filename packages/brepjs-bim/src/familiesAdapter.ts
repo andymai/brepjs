@@ -160,12 +160,19 @@ function addOpenings(
     const keyed = requireKeyed(opening);
     if (!keyed.ok) return keyed;
     const fillT = peelTranslates(opening.geometry).total;
+    // Project the frame difference onto the wall's along axis so openings on
+    // rotated walls (axisX from props) land at the right wall-relative offset;
+    // the sill stays the world-Z difference (axisZ is up in v1).
+    const axisX = (host.props['axisX'] as readonly [number, number, number] | undefined) ?? [
+      1, 0, 0,
+    ];
+    const delta = [fillT[0] - hostT[0], fillT[1] - hostT[1], fillT[2] - hostT[2]] as const;
     const input = {
       materialName: SPEC_DEFAULTS.materialName,
       ...stripGeometryProps(fill.props),
       wallLocalId: wallId,
-      offsetAlongWall: fillT[0] - hostT[0],
-      offsetFromFloor: fillT[2] - hostT[2],
+      offsetAlongWall: delta[0] * axisX[0] + delta[1] * axisX[1] + delta[2] * axisX[2],
+      offsetFromFloor: delta[2],
     };
     const added = addFill(model, fill, input, {
       stableKey: fill.keyPath,
