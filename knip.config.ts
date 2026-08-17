@@ -55,6 +55,10 @@ const config: KnipConfig = {
     'packages/brepjs-families': {
       ignore: ['**'],
     },
+    // Scaffolding CLI: a bin plus copied-out template files, no exports.
+    'packages/create-brepjs': {
+      ignore: ['**'],
+    },
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },
