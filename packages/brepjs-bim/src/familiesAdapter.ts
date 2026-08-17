@@ -157,6 +157,8 @@ function addOpenings(
         )
       );
     }
+    const keyed = requireKeyed(opening);
+    if (!keyed.ok) return keyed;
     const fillT = peelTranslates(opening.geometry).total;
     const input = {
       materialName: SPEC_DEFAULTS.materialName,
@@ -184,6 +186,19 @@ function addOpenings(
   return ok(undefined);
 }
 
+/** Every element that mints an IFC identity needs an explicit key: an
+ *  index-fallback path is order-dependent, which would silently break the
+ *  reorder-stable GlobalId contract. */
+function requireKeyed(el: ResolvedElement): Result<void, BimError> {
+  if (el.keyed) return ok(undefined);
+  return err(
+    specError(
+      'FAMILIES_UNKEYED_ELEMENT',
+      `familiesToBim: '${el.keyPath}' has no explicit key — IFC identity needs order-independent key paths (add a key to the element)`
+    )
+  );
+}
+
 /**
  * Project a resolved families tree into an eager BimModel. The caller owns
  * the returned model (`using`); families stays domain-neutral — this adapter
@@ -204,6 +219,8 @@ export function familiesToBim(
   const walk = (el: ResolvedElement, storeyId: LocalId | null): Result<void, BimError> => {
     let containerId = storeyId;
     if (el.type === 'Storey') {
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
       const id = model.addStorey(
         {
           name: (el.attributes['name'] as string | undefined) ?? el.keyPath,
@@ -215,6 +232,8 @@ export function familiesToBim(
       idByKeyPath.set(el.keyPath, id);
       containerId = id;
     } else if (el.type === 'Wall' || el.type === 'Slab') {
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
       const parsed =
         el.type === 'Wall' ? parseWallSpec(specInput(el)) : parseSlabSpec(specInput(el));
       if (!parsed.ok) return parsed;

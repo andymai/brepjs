@@ -291,6 +291,23 @@ describe('familiesToBim openings', () => {
     expect(isOk(familiesToBim(bad, { project: PROJECT }))).toBe(false);
   });
 
+  it('rejects unkeyed identity-mapped elements', () => {
+    // An index-fallback key path is order-dependent; minting a GlobalId from
+    // it would silently break reorder stability.
+    const unkeyedWall = resolve(
+      Storey({ key: 's', walls: [VoidedWall({ ...WALL_DIMS, voids: [] })] })
+    );
+    expect(isOk(familiesToBim(unkeyedWall, { project: PROJECT }))).toBe(false);
+
+    const unkeyedStorey = resolve(
+      Storey({ walls: [VoidedWall({ key: 'w', ...WALL_DIMS, voids: [] })] })
+    );
+    expect(isOk(familiesToBim(unkeyedStorey, { project: PROJECT }))).toBe(false);
+
+    const unkeyedVoid = voidedStorey([Door({ width: 900, height: 2100, at: [600, 0] })]);
+    expect(isOk(familiesToBim(unkeyedVoid, { project: PROJECT }))).toBe(false);
+  });
+
   it('duplicate filler and opening stable keys error via Result', () => {
     const storey = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [600, 0] })]);
     const projected = familiesToBim(storey, { project: PROJECT });
