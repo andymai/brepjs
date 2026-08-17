@@ -173,6 +173,17 @@ describe('key paths and opening synthesis', () => {
     ).toThrow(/duplicate void slot/i);
   });
 
+  it("rejects ':' in user keys (reserved for prop-embedded slot segments)", () => {
+    expect(() =>
+      resolve(
+        Storey({
+          key: 's',
+          walls: [Wall({ key: 'voids:d1', length: 100, height: 100, thickness: 10 })],
+        })
+      )
+    ).toThrow(/reserved/i);
+  });
+
   it('a transformed host carries its openings and fills into the same frame', () => {
     const TransformedWall = family<WallProps & { readonly at: readonly [number, number, number] }>(
       'TWall',

@@ -114,6 +114,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
   voids.forEach((v, i) => {
     const fillRole = isFamily(v.type) && v.type.role === 'fill';
     if (fillRole && hostPath !== null) {
+      if (v.key !== undefined) assertKeyAllowed(v.key, hostPath);
       const slotKey = v.key ?? String(i);
       if (slotKeys.has(slotKey)) {
         throw new Error(
@@ -153,6 +154,16 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
   return { geometry, openings, hostRelationships };
 }
 
+/** ':' is reserved for prop-embedded slot segments (`voids:d1`), which makes
+ *  synthesized paths structurally collision-free against child keys. */
+function assertKeyAllowed(key: string, path: string): void {
+  if (key.includes(':')) {
+    throw new Error(
+      `brepjs-families: key '${key}' under '${path}' contains ':', which is reserved for prop-embedded slots`
+    );
+  }
+}
+
 function resolveAt(elem: Element, path: string): ResolvedElement {
   const { intrinsic, typeName } = renderToIntrinsic(elem);
   const d = desugar(intrinsic, path);
@@ -160,6 +171,7 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
   const children: ResolvedElement[] = [];
   const seen = new Set<string>();
   intrinsic.children.forEach((c, i) => {
+    if (c.key !== undefined) assertKeyAllowed(c.key, path);
     const seg = c.key ?? `${typeNameOf(c)}[${i}]`;
     if (seen.has(seg)) {
       throw new Error(`brepjs-families: duplicate sibling key '${seg}' under '${path}'`);
