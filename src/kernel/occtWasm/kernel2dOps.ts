@@ -485,7 +485,16 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
     return scaleCurve2d(curve, Number(t['sx']) || 1, Number(t['cx']) || 0, Number(t['cy']) || 0);
   }
   if (t['type'] === 'mirror2d') {
-    return mirrorCurve2dAtPoint(curve, Number(t['ox']) || 0, Number(t['oy']) || 0);
+    if (t['mode'] === 'axis') {
+      return mirrorCurve2dAcrossAxis(
+        curve,
+        Number(t['originX']) || 0,
+        Number(t['originY']) || 0,
+        Number(t['dirX']) || 0,
+        Number(t['dirY']) || 0
+      );
+    }
+    return mirrorCurve2dAtPoint(curve, Number(t['cx']) || 0, Number(t['cy']) || 0);
   }
   if (t['type'] === 'affinity2d') {
     return affinityCurve2d(
