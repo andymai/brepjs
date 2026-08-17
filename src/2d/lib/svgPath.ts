@@ -3,6 +3,8 @@ import { bug } from '@/core/errors.js';
 import { getKernel2D } from '@/kernel/index.js';
 import { round2, round5 } from '@/utils/precisionRound.js';
 import { wasmIndex } from '@/utils/vec3.js';
+import { samePoint } from './vectorOperations.js';
+import { PRECISION_POINT } from './precision.js';
 import type { Point2D } from './definitions.js';
 import type { Curve2D } from './curve2D.js';
 
@@ -37,7 +39,7 @@ function circleArcPathElem(curve: Curve2D, endX: number, endY: number, endpoint:
 
   const [startX, startY] = curve.firstPoint;
   // A closed loop cannot be a single A command; nudge the endpoint.
-  if (Math.abs(endX - startX) < 1e-9 && Math.abs(endY - startY) < 1e-9) {
+  if (samePoint([startX, startY], [endX, endY])) {
     return `A ${radius} ${radius} 0 1 ${isDirect ? '1' : '0'} ${round5(endX)} ${round5(
       endY + 0.0001
     )}`;
@@ -45,8 +47,10 @@ function circleArcPathElem(curve: Curve2D, endX: number, endY: number, endpoint:
 
   const bounds = k2d.getCurve2dBounds(curve.wrapped);
   const [midX, midY] = curve.value((bounds.first + bounds.last) / 2);
+  // |d| is 2x the triangle area: below chord * PRECISION_POINT, the midpoint
+  // deviates from the chord by less than the point tolerance — degenerate.
   const d = 2 * (startX * (midY - endY) + midX * (endY - startY) + endX * (startY - midY));
-  if (Math.abs(d) < 1e-12) {
+  if (Math.abs(d) < Math.hypot(endX - startX, endY - startY) * PRECISION_POINT) {
     return `L ${endpoint}`;
   }
   const s2 = startX * startX + startY * startY;
