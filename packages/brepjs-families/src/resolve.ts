@@ -84,17 +84,43 @@ interface DesugarOut {
 /** Normative desugaring order: voids (local frame) -> fuse -> transform.
  *  With a hostPath, fill-role voids synthesize Opening elements; pathless
  *  desugaring (projection) treats every void as plain geometry. */
+function applyOps(geometry: csg.IRNode, ops: readonly TransformOp[]): csg.IRNode {
+  let out = geometry;
+  for (const op of ops) {
+    out = csg.translate(out, op.v);
+  }
+  return out;
+}
+
+/** Rebuild a resolved subtree with the host's transform applied to every
+ *  geometry (identity fields untouched): synthesized openings and fills are
+ *  cut in the host's LOCAL frame, so a transformed host must carry them. */
+function transformResolved(node: ResolvedElement, ops: readonly TransformOp[]): ResolvedElement {
+  return {
+    ...node,
+    geometry: applyOps(node.geometry, ops),
+    children: node.children.map((c) => transformResolved(c, ops)),
+  };
+}
+
 function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
   let geometry = baseGeometry(intrinsic);
-  const openings: ResolvedElement[] = [];
+  let openings: ResolvedElement[] = [];
   const hostRelationships: Relationship[] = [];
 
   const voids = (intrinsic.props['voids'] as readonly Element[] | undefined) ?? [];
   const tools: csg.IRNode[] = [];
+  const slotKeys = new Set<string>();
   voids.forEach((v, i) => {
     const fillRole = isFamily(v.type) && v.type.role === 'fill';
     if (fillRole && hostPath !== null) {
       const slotKey = v.key ?? String(i);
+      if (slotKeys.has(slotKey)) {
+        throw new Error(
+          `brepjs-families: duplicate void slot key '${slotKey}' under '${hostPath}'`
+        );
+      }
+      slotKeys.add(slotKey);
       const openingPath = `${hostPath}/voids:${slotKey}`;
       const fill = resolveAt(v, `${openingPath}/fill`);
       openings.push({
@@ -117,8 +143,11 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
   if (fuses.length > 0) geometry = csg.fuseAll([geometry, ...fuses.map(project)]);
 
   const ops = (intrinsic.props['transform'] as readonly TransformOp[] | undefined) ?? [];
-  for (const op of ops) {
-    geometry = csg.translate(geometry, op.v);
+  if (ops.length > 0) {
+    geometry = applyOps(geometry, ops);
+    // Openings/fills were cut in the local frame; the host transform carries
+    // them into the same frame as the host's own geometry.
+    openings = openings.map((o) => transformResolved(o, ops));
   }
 
   return { geometry, openings, hostRelationships };

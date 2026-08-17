@@ -158,6 +158,50 @@ describe('key paths and opening synthesis', () => {
     const w = (): Element => Wall({ key: 'w1', length: 100, height: 100, thickness: 10 });
     expect(() => resolve(Storey({ key: 's', walls: [w(), w()] }))).toThrow(/duplicate/i);
   });
+
+  it('duplicate void slot keys throw (explicit and index-fallback collisions)', () => {
+    const door = (key?: string): Element =>
+      key !== undefined
+        ? Door({ key, width: 90, height: 210, thickness: 20, at: [100, 0, 0] })
+        : Door({ width: 90, height: 210, thickness: 20, at: [200, 0, 0] });
+    expect(() =>
+      resolve(Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('d1'), door('d1')] }))
+    ).toThrow(/duplicate void slot/i);
+    // Explicit key '1' collides with the second void's index fallback.
+    expect(() =>
+      resolve(Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('1'), door()] }))
+    ).toThrow(/duplicate void slot/i);
+  });
+
+  it('a transformed host carries its openings and fills into the same frame', () => {
+    const TransformedWall = family<WallProps & { readonly at: readonly [number, number, number] }>(
+      'TWall',
+      (p) =>
+        el('Box', {
+          size: [p.length, p.thickness, p.height],
+          voids: p.voids ?? [],
+          transform: [tTranslate(p.at)],
+        })
+    );
+    const door = Door({ key: 'd1', width: 90, height: 210, thickness: 20, at: [100, 0, 0] });
+    const wall = resolve(
+      TransformedWall({
+        key: 'w',
+        length: 400,
+        height: 270,
+        thickness: 20,
+        at: [1000, 2000, 0],
+        voids: [door],
+      })
+    );
+    const opening = wall.children[0];
+    const fill = opening?.children[0];
+    // Expected: the door's local recipe wrapped in the host transform.
+    const localDoor = csg.translate(csg.box(90, 20, 210), [100, 0, 0]);
+    const worldDoor = csg.translate(localDoor, [1000, 2000, 0]);
+    expect(opening?.geometry.structuralHash).toBe(worldDoor.structuralHash);
+    expect(fill?.geometry.structuralHash).toBe(worldDoor.structuralHash);
+  });
 });
 
 describe('identity beside content addressing (Phase 3 gate)', () => {
