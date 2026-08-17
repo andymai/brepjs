@@ -12,7 +12,7 @@ import {
   buildVec,
   type Expr,
 } from './expressions.js';
-import type { IRNode } from './types.js';
+import type { IRNode, ExtrudeNode, RevolveNode, LoftNode } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -160,12 +160,23 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Instance':
       return B.instance(optimizeNode(n.source), n.placements, n.fuse);
     case 'Extrude':
+    case 'Revolve':
+    case 'Loft':
+      return optimizeFeature(n);
+  }
+}
+
+function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode): IRNode {
+  switch (n.kind) {
+    case 'Extrude':
       return B.extrude(optimizeNode(n.profile), foldExpr(n.vector));
     case 'Revolve':
       return B.revolve(optimizeNode(n.profile), foldExpr(n.angle), {
         axis: n.axis ? foldExpr(n.axis) : undefined,
         at: n.at ? foldExpr(n.at) : undefined,
       });
+    case 'Loft':
+      return B.loft(n.sections.map(optimizeNode), { ruled: n.ruled });
   }
 }
 

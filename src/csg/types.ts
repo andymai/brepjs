@@ -176,6 +176,15 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface LoftNode extends IRNodeBase {
+  readonly kind: 'Loft';
+  /** Each section must produce OutputKind 'Face'; at least two required. */
+  readonly sections: readonly IRNode[];
+  /** Canonicalized by the builder (default true) so the default and the
+   *  explicit form share one content address. */
+  readonly ruled: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Compound
 // ---------------------------------------------------------------------------
@@ -220,6 +229,7 @@ export type IRNode =
   | TransformIRNode
   | ExtrudeNode
   | RevolveNode
+  | LoftNode
   | CompoundNode
   | InstanceNode;
 
@@ -282,6 +292,7 @@ export function outputKindOf(node: IRNode): OutputKind {
       return outputKindOf(node.target);
     case 'Extrude':
     case 'Revolve':
+    case 'Loft':
       return 'Solid';
     case 'Compound':
       return 'Compound';

@@ -44,6 +44,7 @@ import { evalCompound, evalEmpty } from './evaluators/compound.js';
 import { evalInstance } from './evaluators/instance.js';
 import { evalExtrude } from './evaluators/extrude.js';
 import { evalRevolve } from './evaluators/revolve.js';
+import { evalLoft } from './evaluators/loft.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -142,6 +143,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalExtrude(node, ctx);
     case 'Revolve':
       return evalRevolve(node, ctx);
+    case 'Loft':
+      return evalLoft(node, ctx);
   }
 }
 

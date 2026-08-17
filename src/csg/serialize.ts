@@ -159,6 +159,9 @@ function nodeToJson(n: IRNode): unknown {
       at: optExprToJson(n.at),
     };
   }
+  if (n.kind === 'Loft') {
+    return { kind: 'Loft', sections: n.sections.map(nodeToJson), ruled: n.ruled };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -340,6 +343,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readExtrude(j);
     case 'Revolve':
       return readRevolve(j);
+    case 'Loft':
+      return readLoft(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -556,6 +561,16 @@ function readRevolve(j: Record<string, unknown>): Result<IRNode> {
   const at = readOptExpr(j, 'at');
   if (!at.ok) return at;
   return ok(B.revolve(profile.value, angle.value, { axis: axis.value, at: at.value }));
+}
+
+function readLoft(j: Record<string, unknown>): Result<IRNode> {
+  const sections = readNodeArray(j['sections'], 'Loft.sections');
+  if (!sections.ok) return sections;
+  const ruled = j['ruled'];
+  if (ruled !== undefined && typeof ruled !== 'boolean') {
+    return bad('Loft.ruled: not a boolean');
+  }
+  return ok(B.loft(sections.value, { ruled }));
 }
 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {

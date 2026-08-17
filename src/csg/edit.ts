@@ -60,6 +60,11 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       return B.extrude(walk(n.profile, pred, repl), n.vector);
     case 'Revolve':
       return B.revolve(walk(n.profile, pred, repl), n.angle, { axis: n.axis, at: n.at });
+    case 'Loft':
+      return B.loft(
+        n.sections.map((s) => walk(s, pred, repl)),
+        { ruled: n.ruled }
+      );
   }
 }
 
@@ -101,6 +106,8 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Extrude':
     case 'Revolve':
       return [n.profile];
+    case 'Loft':
+      return n.sections;
   }
 }
 
