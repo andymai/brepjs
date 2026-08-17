@@ -1,0 +1,25 @@
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_951c9e48d7e90e::t_9a18a8e6c21a26 24
+  s_951c9e48d7e90e::t_805d5ca629bfa1 145,173-175,177-178,182
+  s_951c9e48d7e90e::t_e6e317b32e12d5 179-181
+  s_951c9e48d7e90e::t_feca31f8bbbd23 237
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_951c9e48d7e90e::t_60884269ff5013 15
+  s_951c9e48d7e90e::t_2e8080cb1fdbaf 218-219,221-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "45dbe0fb7a40785a467af3fa20a606370c33184b",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
