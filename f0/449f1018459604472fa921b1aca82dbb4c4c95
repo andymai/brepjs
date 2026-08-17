@@ -1,0 +1,21 @@
+src/2d/lib/svgPath.ts
+  s_951c9e48d7e90e::t_a2c4ec38b34559 50-51,53
+  s_951c9e48d7e90e::t_dbffe660810dfe 42
+  s_951c9e48d7e90e::t_21f9c96e8a123c 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f0449f1018459604472fa921b1aca82dbb4c4c95",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
