@@ -1,4 +1,8 @@
-export { BimModel } from './model/bimModel.js';
+export {
+  BimModel,
+  type ElementIdentityOptions,
+  type OpeningIdentityOptions,
+} from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { placedSolids } from './elementFns/placedGeometry.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';

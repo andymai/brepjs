@@ -5,18 +5,23 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * v1 scope: Storey containers and Wall/Slab elements. Openings, fills, and
- * relationship wiring (IfcRelVoidsElement) follow with the opening writer.
+ * Scope: Storey containers, Wall/Slab elements, and wall openings — a
+ * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
+ * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
+ * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
+ * voids stay IR-only and never reach the spec path.
  */
 
 import { ok, err, type Result, type csg } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
-import { BimModel } from './model/bimModel.js';
+import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
 import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
+import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
+import type { FillsOpeningRel } from './types/relationships.js';
 
 export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
@@ -39,38 +44,53 @@ const SPEC_DEFAULTS = {
 
 const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
 
-/** Fold the resolved geometry's OUTER literal translate chain into the spec
- *  placement origin, so IfcLocalPlacement matches the IR world frame no
- *  matter where the transform came from (family-internal or prop-level).
- *  Parameter-driven translations cannot fold and keep the default origin. */
+/** Total of the resolved geometry's OUTER literal translate chain. The
+ *  transform vocabulary is translate-only, so frame differences are exact
+ *  subtractions. Parameter-driven translations stop the peel. */
+function peelTranslates(node: csg.IRNode): {
+  readonly total: readonly [number, number, number];
+  readonly moved: boolean;
+} {
+  const total: [number, number, number] = [0, 0, 0];
+  let moved = false;
+  let cur = node;
+  while (cur.kind === 'Translate') {
+    const v = cur.vector;
+    if (v.kind !== 'Vec3Lit') break;
+    total[0] += v.value[0];
+    total[1] += v.value[1];
+    total[2] += v.value[2];
+    moved = true;
+    cur = cur.target;
+  }
+  return { total, moved };
+}
+
+/** Fold the resolved geometry's outer translate chain into the spec placement
+ *  origin, so IfcLocalPlacement matches the IR world frame no matter where the
+ *  transform came from (family-internal or prop-level). */
 function composedOrigin(el: ResolvedElement): [number, number, number] | undefined {
   const base = (el.props['origin'] as [number, number, number] | undefined) ?? [0, 0, 0];
-  const out: [number, number, number] = [...base];
-  let moved = false;
-  let node: csg.IRNode = el.geometry;
-  while (node.kind === 'Translate') {
-    const v = node.vector;
-    if (v.kind !== 'Vec3Lit') break;
-    out[0] += v.value[0];
-    out[1] += v.value[1];
-    out[2] += v.value[2];
-    moved = true;
-    node = node.target;
+  const { total, moved } = peelTranslates(el.geometry);
+  if (!moved && el.props['origin'] === undefined) return undefined;
+  return [base[0] + total[0], base[1] + total[1], base[2] + total[2]];
+}
+
+function stripGeometryProps(props: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (!GEOMETRY_PROPS.has(k)) out[k] = v;
   }
-  return moved || el.props['origin'] !== undefined ? out : undefined;
+  return out;
 }
 
 function specInput(el: ResolvedElement): Record<string, unknown> {
   // Pre-desugared props feed the spec 1:1 (geometry-only props stripped);
   // identity-side attributes carry pset-shaped fields under their spec names.
-  const fromProps: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(el.props)) {
-    if (!GEOMETRY_PROPS.has(k)) fromProps[k] = v;
-  }
   const origin = composedOrigin(el);
   return {
     ...SPEC_DEFAULTS,
-    ...fromProps,
+    ...stripGeometryProps(el.props),
     ...(origin ? { origin } : {}),
     ...collectSpecProps(el),
   };
@@ -89,6 +109,79 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
   }
   delete out['psets'];
   return out;
+}
+
+function addFill(
+  model: BimModel,
+  fill: ResolvedElement,
+  input: Record<string, unknown>,
+  identity: OpeningIdentityOptions
+): Result<LocalId, BimError> {
+  if (fill.type === 'Door') {
+    const parsed = parseDoorSpec(input);
+    if (!parsed.ok) return parsed;
+    return model.addDoor(parsed.value, identity);
+  }
+  if (fill.type === 'Window') {
+    const parsed = parseWindowSpec(input);
+    if (!parsed.ok) return parsed;
+    return model.addWindow(parsed.value, identity);
+  }
+  return err(
+    specError(
+      'FAMILIES_UNSUPPORTED_FILL',
+      `familiesToBim: no fill mapping for element type '${fill.type}' at '${fill.keyPath}'`
+    )
+  );
+}
+
+/** Map a wall's synthesized Opening children onto addDoor/addWindow. The
+ *  wall-relative offsets come from the void geometry's frame minus the host's:
+ *  exact because both carry the same outer host transform. */
+function addOpenings(
+  model: BimModel,
+  host: ResolvedElement,
+  wallId: LocalId,
+  containerId: LocalId,
+  idByKeyPath: Map<string, LocalId>
+): Result<void, BimError> {
+  const hostT = peelTranslates(host.geometry).total;
+  for (const opening of host.children) {
+    if (opening.type !== 'Opening') continue;
+    const fill = opening.children[0];
+    if (fill === undefined) {
+      return err(
+        specError(
+          'FAMILIES_OPENING_NO_FILL',
+          `familiesToBim: opening '${opening.keyPath}' has no fill element`
+        )
+      );
+    }
+    const fillT = peelTranslates(opening.geometry).total;
+    const input = {
+      materialName: SPEC_DEFAULTS.materialName,
+      ...stripGeometryProps(fill.props),
+      wallLocalId: wallId,
+      offsetAlongWall: fillT[0] - hostT[0],
+      offsetFromFloor: fillT[2] - hostT[2],
+    };
+    const added = addFill(model, fill, input, {
+      stableKey: fill.keyPath,
+      openingStableKey: opening.keyPath,
+    });
+    if (!added.ok) return added;
+    // Fillers are spatially contained like any element (openings are not:
+    // they relate to the wall through IfcRelVoidsElement alone).
+    model.placeIn(added.value, containerId);
+    idByKeyPath.set(fill.keyPath, added.value);
+    const fillsRel = model
+      .getAllRelationships()
+      .find(
+        (r): r is FillsOpeningRel => r.kind === 'FILLS_OPENING' && r.fillerLocalId === added.value
+      );
+    if (fillsRel !== undefined) idByKeyPath.set(opening.keyPath, fillsRel.openingLocalId);
+  }
+  return ok(undefined);
 }
 
 /**
@@ -140,7 +233,18 @@ export function familiesToBim(
         );
       }
       model.placeIn(added.value, containerId);
-    } else if (el.type !== 'Opening' && el.type !== 'Group' && el.geometry.kind !== 'Empty') {
+      if (el.type === 'Wall') {
+        const opened = addOpenings(model, el, added.value, containerId, idByKeyPath);
+        if (!opened.ok) return opened;
+      }
+    } else if (el.type === 'Opening') {
+      return err(
+        specError(
+          'FAMILIES_OPENING_OUTSIDE_WALL',
+          `familiesToBim: opening '${el.keyPath}' is not hosted by a Wall — only wall openings are mapped`
+        )
+      );
+    } else if (el.type !== 'Group' && el.geometry.kind !== 'Empty') {
       return err(
         specError(
           'FAMILIES_UNSUPPORTED_TYPE',
@@ -149,6 +253,7 @@ export function familiesToBim(
       );
     }
     for (const child of el.children) {
+      if (el.type === 'Wall' && child.type === 'Opening') continue;
       const r = walk(child, containerId);
       if (!r.ok) return r;
     }
