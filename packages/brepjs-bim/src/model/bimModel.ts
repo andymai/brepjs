@@ -73,6 +73,7 @@ export class BimModel {
   // not collide. Set from the project identity in init() before any element is
   // created; empty until init() runs.
   #modelScope = '';
+  readonly #usedStableKeys = new Set<string>();
 
   init(spec: ProjectSpec): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
@@ -915,7 +916,14 @@ export class BimModel {
     // Deterministic GUID. Default key: (category, localId), so re-serializing
     // an identical model is byte-for-byte stable. A caller-supplied stableKey
     // (e.g. a families key path) replaces the positional key, making the
-    // GlobalId stable under element reordering as well.
+    // GlobalId stable under element reordering as well. Duplicates would mint
+    // two elements sharing a GlobalId — an IFC validity break — so they throw.
+    if (stableKey !== undefined) {
+      if (this.#usedStableKeys.has(stableKey)) {
+        throw new Error(`BimModel: duplicate stableKey '${stableKey}'`);
+      }
+      this.#usedStableKeys.add(stableKey);
+    }
     const guid: IfcGuid = deriveIfcGuidSync(
       stableKey !== undefined
         ? `elem:${this.#modelScope}:${stableKey}`

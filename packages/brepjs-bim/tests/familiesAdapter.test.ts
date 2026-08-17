@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { csg, isOk, unwrap } from 'brepjs';
-import { family, el, resolve, evaluateModel, type Element } from 'brepjs-families';
+import { family, el, resolve, evaluateModel, tTranslate, type Element } from 'brepjs-families';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
@@ -98,6 +98,37 @@ describe('familiesToBim', () => {
     // The same wall keeps the same GlobalId regardless of insertion order.
     expect(ifcA).toContain(g1);
     expect(ifcB).toContain(g1);
+  });
+
+  it('folds the transform chain into the IFC placement origin', async () => {
+    const Moved = family<WallProps & { readonly at: readonly [number, number, number] }>(
+      'Wall',
+      (p) =>
+        el('Box', {
+          size: [p.length, p.thickness, p.height],
+          transform: [tTranslate(p.at)],
+        })
+    );
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Moved({ key: 'w', length: 3000, height: 2700, thickness: 200, at: [1234, 0, 0] }),
+        ],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    // The writer emits meters: 1234 mm arrives as a 1.234 placement point.
+    expect(await ifcText(model)).toContain('(1.234,0.,0.)');
+  });
+
+  it('rejects a wall without a storey ancestor', () => {
+    const orphan = resolve(
+      Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 })
+    );
+    expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);
   });
 
   it('rejects unmapped element types with a Result error', () => {

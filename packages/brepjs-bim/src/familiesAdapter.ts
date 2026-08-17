@@ -9,7 +9,7 @@
  * relationship wiring (IfcRelVoidsElement) follow with the opening writer.
  */
 
-import { ok, err, type Result } from 'brepjs';
+import { ok, err, type Result, type csg } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { BimModel } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -39,6 +39,27 @@ const SPEC_DEFAULTS = {
 
 const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
 
+/** Fold the resolved geometry's OUTER literal translate chain into the spec
+ *  placement origin, so IfcLocalPlacement matches the IR world frame no
+ *  matter where the transform came from (family-internal or prop-level).
+ *  Parameter-driven translations cannot fold and keep the default origin. */
+function composedOrigin(el: ResolvedElement): [number, number, number] | undefined {
+  const base = (el.props['origin'] as [number, number, number] | undefined) ?? [0, 0, 0];
+  const out: [number, number, number] = [...base];
+  let moved = false;
+  let node: csg.IRNode = el.geometry;
+  while (node.kind === 'Translate') {
+    const v = node.vector;
+    if (v.kind !== 'Vec3Lit') break;
+    out[0] += v.value[0];
+    out[1] += v.value[1];
+    out[2] += v.value[2];
+    moved = true;
+    node = node.target;
+  }
+  return moved || el.props['origin'] !== undefined ? out : undefined;
+}
+
 function specInput(el: ResolvedElement): Record<string, unknown> {
   // Pre-desugared props feed the spec 1:1 (geometry-only props stripped);
   // identity-side attributes carry pset-shaped fields under their spec names.
@@ -46,7 +67,13 @@ function specInput(el: ResolvedElement): Record<string, unknown> {
   for (const [k, v] of Object.entries(el.props)) {
     if (!GEOMETRY_PROPS.has(k)) fromProps[k] = v;
   }
-  return { ...SPEC_DEFAULTS, ...fromProps, ...collectSpecProps(el) };
+  const origin = composedOrigin(el);
+  return {
+    ...SPEC_DEFAULTS,
+    ...fromProps,
+    ...(origin ? { origin } : {}),
+    ...collectSpecProps(el),
+  };
 }
 
 function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
@@ -104,7 +131,15 @@ export function familiesToBim(
           : model.addSlab(parsed.value as never, { stableKey: el.keyPath });
       if (!added.ok) return added;
       idByKeyPath.set(el.keyPath, added.value);
-      if (containerId !== null) model.placeIn(added.value, containerId);
+      if (containerId === null) {
+        return err(
+          specError(
+            'FAMILIES_NO_STOREY',
+            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment`
+          )
+        );
+      }
+      model.placeIn(added.value, containerId);
     } else if (el.type !== 'Opening' && el.type !== 'Group' && el.geometry.kind !== 'Empty') {
       return err(
         specError(
