@@ -27,6 +27,7 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
     case 'Vertex':
     case 'Empty':
     case 'Path':
+    case 'Profile':
       return n;
     case 'Fuse':
       return B.fuse(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
@@ -91,6 +92,7 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Vertex':
     case 'Empty':
     case 'Path':
+    case 'Profile':
       return [];
     case 'Fuse':
     case 'Cut':

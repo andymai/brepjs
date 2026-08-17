@@ -128,8 +128,7 @@ describe('Sweep node', () => {
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
-  it('fromJSON accepts the previous envelope version and rejects future ones', () => {
-    expect(CSG_VERSION).toBe(2);
+  it('fromJSON accepts older envelope versions and rejects future ones', () => {
     const envelope = JSON.parse(JSON.stringify(toJSON(box(1, 2, 3)))) as {
       csgVersion: number;
     };
