@@ -32,6 +32,10 @@ export interface ResolvedElement {
    *  `${hostPath}/${propName}:${slotKey}`. */
   readonly keyPath: string;
   readonly geometry: csg.IRNode;
+  /** The element's own pre-desugared props (dimensions, placement, ...) — an
+   *  adapter feeds these into parametric spec paths (e.g. IFC) that cannot
+   *  recover parameters from baked geometry. */
+  readonly props: Readonly<Record<string, unknown>>;
   /** Identity-side data (psets, ...) — beside the geometry, never inside it. */
   readonly attributes: Readonly<Record<string, unknown>>;
   readonly relationships: readonly Relationship[];
@@ -128,6 +132,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
         type: 'Opening',
         keyPath: openingPath,
         geometry: fill.geometry,
+        props: {},
         attributes: {},
         relationships: [{ kind: 'Fills', target: fill.keyPath }],
         children: [fill],
@@ -186,6 +191,7 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
     type: typeName,
     keyPath: path,
     geometry: d.geometry,
+    props: elem.props,
     attributes: identityAttributes(elem),
     relationships,
     children,

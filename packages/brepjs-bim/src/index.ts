@@ -265,3 +265,8 @@ export type {
 } from './bcf/index.js';
 
 export { bcfError, idsError } from './errors/bimError.js';
+export {
+  familiesToBim,
+  type FamiliesToBimOptions,
+  type FamiliesBimResult,
+} from './familiesAdapter.js';

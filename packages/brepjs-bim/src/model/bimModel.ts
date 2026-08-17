@@ -57,6 +57,12 @@ import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
 import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
 
+/** Optional identity override for created elements: a stable key (e.g. a
+ *  families key path) that replaces the positional GlobalId derivation. */
+export interface ElementIdentityOptions {
+  readonly stableKey?: string | undefined;
+}
+
 export class BimModel {
   readonly #elements = new Map<LocalId, AnyBimElement>();
   readonly #relationships = new Map<LocalId, BimRelationship>();
@@ -67,6 +73,7 @@ export class BimModel {
   // not collide. Set from the project identity in init() before any element is
   // created; empty until init() runs.
   #modelScope = '';
+  readonly #usedStableKeys = new Set<string>();
 
   init(spec: ProjectSpec): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
@@ -108,27 +115,41 @@ export class BimModel {
     return this.#makeElement('SITE', spec, null);
   }
 
-  addBuilding(spec: BuildingSpec): LocalId {
-    return this.#makeElement('BUILDING', spec, null);
+  addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): LocalId {
+    return this.#makeElement('BUILDING', spec, null, options?.stableKey);
   }
 
-  addStorey(spec: StoreySpec): LocalId {
-    return this.#makeElement('STOREY', spec, null);
+  addStorey(spec: StoreySpec, options?: ElementIdentityOptions): LocalId {
+    return this.#makeElement('STOREY', spec, null, options?.stableKey);
   }
 
-  addWall(spec: WallSpec): Result<LocalId, BimError> {
+  /** Reject a duplicate stableKey BEFORE any geometry is built, so the
+   *  Result-returning adders never allocate a solid they cannot store. */
+  #checkStableKey(options: ElementIdentityOptions | undefined): Result<void, BimError> {
+    const key = options?.stableKey;
+    if (key !== undefined && this.#usedStableKeys.has(key)) {
+      return err(specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${key}'`));
+    }
+    return ok(undefined);
+  }
+
+  addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = wallToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('WALL', spec, geomResult.value);
+    const id = this.#makeElement('WALL', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
   }
 
-  addSlab(spec: SlabSpec): Result<LocalId, BimError> {
+  addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = slabToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('SLAB', spec, geomResult.value);
+    const id = this.#makeElement('SLAB', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -902,12 +923,26 @@ export class BimModel {
   #makeElement<C extends AnyBimElement['category']>(
     category: C,
     spec: Extract<AnyBimElement, { category: C }>['spec'],
-    geometry: Extract<AnyBimElement, { category: C }>['geometry']
+    geometry: Extract<AnyBimElement, { category: C }>['geometry'],
+    stableKey?: string
   ): LocalId {
     const localId = this.#counter.next();
-    // Deterministic GUID keyed on (category, localId) so re-serializing an
-    // identical model yields byte-for-byte identical GlobalIds.
-    const guid: IfcGuid = deriveIfcGuidSync(makeElementKey(this.#modelScope, category, localId));
+    // Deterministic GUID. Default key: (category, localId), so re-serializing
+    // an identical model is byte-for-byte stable. A caller-supplied stableKey
+    // (e.g. a families key path) replaces the positional key, making the
+    // GlobalId stable under element reordering as well. Duplicates would mint
+    // two elements sharing a GlobalId — an IFC validity break — so they throw.
+    if (stableKey !== undefined) {
+      if (this.#usedStableKeys.has(stableKey)) {
+        throw new Error(`BimModel: duplicate stableKey '${stableKey}'`);
+      }
+      this.#usedStableKeys.add(stableKey);
+    }
+    const guid: IfcGuid = deriveIfcGuidSync(
+      stableKey !== undefined
+        ? `elem:${this.#modelScope}:${stableKey}`
+        : makeElementKey(this.#modelScope, category, localId)
+    );
     const el = { guid, localId, category, spec, geometry } as AnyBimElement;
     this.#elements.set(localId, el);
     return localId;
