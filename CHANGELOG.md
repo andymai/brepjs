@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.125.0](https://github.com/andymai/brepjs/compare/brepjs-v18.124.8...brepjs-v18.125.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add extrude node ([#2025](https://github.com/andymai/brepjs/issues/2025)) ([8a174c9](https://github.com/andymai/brepjs/commit/8a174c9631374be689731a18fe3c4dec89382e74))
+
 ## [18.124.8](https://github.com/andymai/brepjs/compare/brepjs-v18.124.7...brepjs-v18.124.8) (2026-08-10)
 
 
