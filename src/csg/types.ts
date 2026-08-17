@@ -4,7 +4,7 @@
 
 import type { Expr } from './expressions.js';
 import type { Contour, Segment2D } from './segments.js';
-import type { EdgeRef } from '@/topology/shapeRef/shapeRefTypes.js';
+import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type { Matrix4x4 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -196,6 +196,15 @@ export interface ChamferNode extends IRNodeBase {
   readonly distance: Expr;
 }
 
+export interface ShellNode extends IRNodeBase {
+  readonly kind: 'Shell';
+  readonly target: IRNode;
+  /** Faces left open, named by serializable role refs. Order is
+   *  content-significant (it enters the structural hash). */
+  readonly refs: readonly ShapeRef[];
+  readonly thickness: Expr;
+}
+
 export interface ColorNode extends IRNodeBase {
   readonly kind: 'Color';
   readonly target: IRNode;
@@ -289,6 +298,7 @@ export type IRNode =
   | ColorNode
   | FilletNode
   | ChamferNode
+  | ShellNode
   | CompoundNode
   | InstanceNode;
 
@@ -356,6 +366,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Sweep':
     case 'Fillet':
     case 'Chamfer':
+    case 'Shell':
       return 'Solid';
     case 'Profile':
       return 'Face';

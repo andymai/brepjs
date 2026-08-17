@@ -119,8 +119,8 @@ describe('Chamfer node', () => {
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
-  it('envelope version is 6', () => {
-    expect(CSG_VERSION).toBe(6);
+  it('envelope version is 7', () => {
+    expect(CSG_VERSION).toBe(7);
   });
 
   itBrep('optimize() and replaceNode rebuild through Fillet', () => {

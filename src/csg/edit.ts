@@ -10,6 +10,7 @@ import type {
   ColorNode,
   FilletNode,
   ChamferNode,
+  ShellNode,
 } from './types.js';
 
 export type NodePredicate = (node: IRNode) => boolean;
@@ -74,12 +75,21 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
     case 'Color':
     case 'Fillet':
     case 'Chamfer':
+    case 'Shell':
       return rebuildFeature(n, pred, repl);
   }
 }
 
 function rebuildFeature(
-  n: ExtrudeNode | RevolveNode | LoftNode | SweepNode | ColorNode | FilletNode | ChamferNode,
+  n:
+    | ExtrudeNode
+    | RevolveNode
+    | LoftNode
+    | SweepNode
+    | ColorNode
+    | FilletNode
+    | ChamferNode
+    | ShellNode,
   pred: NodePredicate,
   repl: IRNode
 ): IRNode {
@@ -103,6 +113,8 @@ function rebuildFeature(
       return B.fillet(walk(n.target, pred, repl), n.ref, n.radius);
     case 'Chamfer':
       return B.chamfer(walk(n.target, pred, repl), n.ref, n.distance);
+    case 'Shell':
+      return B.shell(walk(n.target, pred, repl), n.refs, n.thickness);
   }
 }
 
@@ -141,6 +153,7 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Color':
     case 'Fillet':
     case 'Chamfer':
+    case 'Shell':
       return [n.target];
     case 'Compound':
       return n.children;
