@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.127.0](https://github.com/andymai/brepjs/compare/brepjs-v18.126.0...brepjs-v18.127.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add sweep node and bump envelope version ([#2036](https://github.com/andymai/brepjs/issues/2036)) ([519f629](https://github.com/andymai/brepjs/commit/519f629d4b04f989f8ee5072adcb619a7be9b4c5))
+
 ## [18.126.0](https://github.com/andymai/brepjs/compare/brepjs-v18.125.0...brepjs-v18.126.0) (2026-08-17)
 
 
