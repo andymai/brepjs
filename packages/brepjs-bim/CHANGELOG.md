@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.6.0...brepjs-bim-v0.7.0) (2026-08-17)
+
+
+### Features
+
+* **bim:** add the declarative families sample building with IfcOpenShell gate ([#2079](https://github.com/andymai/brepjs/issues/2079)) ([f54dd42](https://github.com/andymai/brepjs/commit/f54dd42ed4838d500738ae2a67cd7cb7a8e3a8f5))
+
 ## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.5.0...brepjs-bim-v0.6.0) (2026-08-17)
 
 
