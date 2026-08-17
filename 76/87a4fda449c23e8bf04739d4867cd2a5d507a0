@@ -1,0 +1,66 @@
+src/csg/optimize.ts
+  s_951c9e48d7e90e::t_528b04f20dcacc 175,181-183
+  s_951c9e48d7e90e::t_99285749b45327 15-24
+  s_951c9e48d7e90e::t_2468997e2d345c 196-200
+src/csg/types.ts
+  s_951c9e48d7e90e::t_9f648f7c11d9b2 261
+  s_951c9e48d7e90e::t_57b3f2b8f8574e 328-329
+  s_951c9e48d7e90e::t_fbf0b5a80b495f 6
+  s_951c9e48d7e90e::t_3b7af327260756 180-187
+src/csg/segments.ts
+  s_951c9e48d7e90e::t_386ffe1bb4094b 152-159,164-169
+  s_951c9e48d7e90e::t_3151303321eafa 101-115
+  s_951c9e48d7e90e::t_bb8d08a390a43a 170
+src/csg/evaluators/profile.ts
+  s_951c9e48d7e90e::t_00db69b315bcb7 1-50
+src/csg/evaluate.ts
+  s_951c9e48d7e90e::t_b42245cd07a40b 50
+  s_951c9e48d7e90e::t_9a843488949894 155-156
+.size-limit.json
+  s_951c9e48d7e90e::t_3b84235306b0c7 3
+src/csg/index.ts
+  s_951c9e48d7e90e::t_433d36615a46c3 37
+  s_951c9e48d7e90e::t_ee7b427e43dedb 97,103-104
+  s_951c9e48d7e90e::t_e8def106f7caab 86
+src/csg/evaluators/path.ts
+  s_951c9e48d7e90e::t_3c3a3d77e80b8f 13-19,21,33,226-241,243-244,253-257,260-265
+  s_951c9e48d7e90e::t_fb3693c0f13041 266
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_d94ef244a70453 53
+  s_951c9e48d7e90e::t_dff307a51a8c4d 385-404
+  s_951c9e48d7e90e::t_6bb390ed46f27c 12-19
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_f505c998373963 219-225
+  s_951c9e48d7e90e::t_40b4ea56b186d3 414-415
+  s_951c9e48d7e90e::t_c5aab812111205 32-34
+  s_951c9e48d7e90e::t_a36d21a47c2d89 157-160
+  s_951c9e48d7e90e::t_eea72e2c456027 20-28
+  s_951c9e48d7e90e::t_3f31f5f9a31484 702-730
+src/csg/edit.ts
+  s_951c9e48d7e90e::t_eec0e16aa9860f 30
+  s_951c9e48d7e90e::t_b1f241f946c565 95
+tests/csg/csgSweep.test.ts
+  s_951c9e48d7e90e::t_ed4530d4df3808 131
+tests/csg/csgProfile.test.ts
+  s_951c9e48d7e90e::t_cf58c32061390b 1-20,22-52,57-136,138-191,193,196-198,201-263
+  s_951c9e48d7e90e::t_5d32610ef66d41 21
+  s_951c9e48d7e90e::t_8212a5d8fab12f 137
+  s_951c9e48d7e90e::t_cd3355be0ed5a7 192,194-195,199-200
+  s_951c9e48d7e90e::t_cc053b9ea0b2a3 53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7687a4fda449c23e8bf04739d4867cd2a5d507a0",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
