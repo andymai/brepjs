@@ -1,0 +1,54 @@
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_760e852a9290e5 45
+  s_951c9e48d7e90e::t_b7c2dcfb5bac91 377-397
+src/csg/optimize.ts
+  s_951c9e48d7e90e::t_6b0fe3cebfe494 166
+  s_951c9e48d7e90e::t_2c0f0f6fb10bec 16
+  s_951c9e48d7e90e::t_a85eed71f23890 183
+  s_951c9e48d7e90e::t_a7b67bda12b565 184
+  s_951c9e48d7e90e::t_b5451ef077b1ed 172
+src/csg/evaluators/sweep.ts
+  s_951c9e48d7e90e::t_240249fc98fb69 33
+  s_951c9e48d7e90e::t_c2924fa6eea742 1-11,13-32,34-53
+  s_951c9e48d7e90e::t_51b40d5fc837e6 12
+src/csg/evaluate.ts
+  s_951c9e48d7e90e::t_bf2d7bbbe23fed 49
+  s_951c9e48d7e90e::t_c1c4422987ce9a 152-153
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_4edf12f6ed10e9 682-690
+  s_951c9e48d7e90e::t_d7255f5197d0e7 23-27
+  s_951c9e48d7e90e::t_158c624d942205 257-259
+  s_951c9e48d7e90e::t_57cf04989b2bcf 394
+  s_951c9e48d7e90e::t_8bca38ff9d7730 199-206
+  s_951c9e48d7e90e::t_59dae2d891189f 393
+  s_951c9e48d7e90e::t_08d11b74460a99 681
+src/csg/index.ts
+  s_951c9e48d7e90e::t_5e1286a03e119c 84
+  s_951c9e48d7e90e::t_3e102dcb65a385 36,42
+src/csg/types.ts
+  s_951c9e48d7e90e::t_21b977fada680c 252
+  s_951c9e48d7e90e::t_178b5cfc9415c4 317
+  s_951c9e48d7e90e::t_895f1d00727552 180-189
+src/csg/edit.ts
+  s_951c9e48d7e90e::t_5e4bd0a134d148 69-72
+  s_951c9e48d7e90e::t_8d45dfe70febfb 117-118
+tests/csg/csgSweep.test.ts
+  s_951c9e48d7e90e::t_71a56b78a6074b 101-107
+  s_951c9e48d7e90e::t_61e3d53ce5066c 1-100,108-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9f7d0961b65353422981bf365e5ad111b0e304cd",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
