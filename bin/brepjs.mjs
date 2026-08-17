@@ -18,7 +18,7 @@
 
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { join, resolve as resolvePath } from 'node:path';
+import { join, resolve as resolvePath, sep } from 'node:path';
 import process from 'node:process';
 
 const DEFAULT_REGISTRY =
@@ -51,12 +51,36 @@ async function fetchText(registry, rel) {
   return readFile(join(registry, rel), 'utf8');
 }
 
-async function loadManifest(registry) {
-  const manifest = JSON.parse(await fetchText(registry, 'manifest.json'));
+// The manifest is the trust boundary: registry file entries become local
+// write paths and npmDeps become `npm install` arguments, so both are held
+// to strict allowlists before anything else touches them.
+const FILE_ENTRY = /^families\/[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*$/;
+const NPM_NAME = /^(@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
+
+function validateManifest(manifest) {
   if (manifest.schemaVersion !== 1) {
     throw new Error(`unsupported registry schemaVersion: ${manifest.schemaVersion}`);
   }
+  for (const fam of manifest.families) {
+    for (const file of fam.files) {
+      if (!FILE_ENTRY.test(file) || file.includes('..')) {
+        throw new Error(`registry file entry outside families/: ${file}`);
+      }
+    }
+    for (const dep of fam.npmDeps) {
+      if (!NPM_NAME.test(dep)) {
+        throw new Error(`invalid npm dependency name in registry: ${dep}`);
+      }
+    }
+  }
   return manifest;
+}
+
+async function loadManifest(registry) {
+  if (registry.startsWith('http://')) {
+    throw new Error('plaintext http registries are not supported — use https or a local path');
+  }
+  return validateManifest(JSON.parse(await fetchText(registry, 'manifest.json')));
 }
 
 function familyByName(manifest, name) {
@@ -105,7 +129,10 @@ async function add(args) {
   for (const fam of families) {
     for (const file of fam.files) {
       const content = await fetchText(args.registry, file);
-      const target = join(targetRoot, file.replace(/^families\//, ''));
+      const target = resolvePath(targetRoot, file.replace(/^families\//, ''));
+      if (!target.startsWith(targetRoot + sep)) {
+        throw new Error(`registry file entry escapes the target directory: ${file}`);
+      }
       if (await exists(target)) {
         const current = await readFile(target, 'utf8');
         if (current === content) {

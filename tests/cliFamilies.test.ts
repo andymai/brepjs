@@ -114,3 +114,53 @@ describe('usage', () => {
     expect(r.out).toContain('usage:');
   });
 });
+
+describe('registry trust boundary', () => {
+  async function withRegistry(
+    mutate: (manifest: { families: { files: string[]; npmDeps: string[] }[] }) => void
+  ): Promise<string> {
+    const dir = join(cwd, 'evil-registry');
+    const manifest = JSON.parse(await readFile(join(REGISTRY, 'manifest.json'), 'utf8')) as {
+      families: { files: string[]; npmDeps: string[] }[];
+    };
+    mutate(manifest);
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(join(dir, 'families'), { recursive: true });
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify(manifest));
+    return dir;
+  }
+
+  function runAgainst(registry: string, ...args: string[]): { status: number | null; out: string } {
+    const r = spawnSync(process.execPath, [BIN, ...args, '--registry', registry], {
+      cwd,
+      encoding: 'utf8',
+    });
+    return { status: r.status, out: `${r.stdout}${r.stderr}` };
+  }
+
+  it('rejects manifest file entries that escape families/', async () => {
+    const evil = await withRegistry((m) => {
+      const fam = m.families[0];
+      if (fam) fam.files = ['families/../../escape.ts'];
+    });
+    const r = runAgainst(evil, 'add', 'alpha');
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('outside families/');
+  });
+
+  it('rejects npm dependency names that could smuggle arguments', async () => {
+    const evil = await withRegistry((m) => {
+      const fam = m.families[0];
+      if (fam) fam.npmDeps = ['--registry=https://evil.example'];
+    });
+    const r = runAgainst(evil, 'add', 'alpha');
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('invalid npm dependency name');
+  });
+
+  it('rejects plaintext http registries', () => {
+    const r = runAgainst('http://registry.example/reg', 'add', 'alpha');
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('https');
+  });
+});
