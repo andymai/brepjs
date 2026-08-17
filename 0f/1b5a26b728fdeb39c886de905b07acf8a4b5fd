@@ -1,0 +1,39 @@
+packages/brepjs-families/src/resolve.ts
+  s_951c9e48d7e90e::t_33db11c22702dd 134,138
+  s_951c9e48d7e90e::t_1629fde3829c37 177,190,198,208
+  s_951c9e48d7e90e::t_e06468c1838e2f 34-37
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_951c9e48d7e90e::t_02027025487b57 294-308
+  s_951c9e48d7e90e::t_259ff12c1ac8c6 292-293
+packages/brepjs-families/src/element.ts
+  s_951c9e48d7e90e::t_368557da198511 7-8
+  s_951c9e48d7e90e::t_d59e5669389c44 37-40,48,51-61
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_951c9e48d7e90e::t_cf20436a5ca1c8 189-201
+  s_951c9e48d7e90e::t_2d6714d27fa765 160-161
+  s_951c9e48d7e90e::t_cab658df8f3cb6 222-223
+  s_951c9e48d7e90e::t_fd9a55ba83d23c 235-236
+packages/brepjs-families/tests/families.test.ts
+  s_951c9e48d7e90e::t_ac83fdb8bd37ad 317-359
+  s_951c9e48d7e90e::t_ee783da6fea74a 9
+packages/brepjs-families/package.json
+  s_951c9e48d7e90e::t_cee046199f3571 31-33
+package-lock.json
+  s_951c9e48d7e90e::t_34425ddf7d4d14 15243-15245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0f1b5a26b728fdeb39c886de905b07acf8a4b5fd",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
