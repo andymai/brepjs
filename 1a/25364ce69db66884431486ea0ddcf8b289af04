@@ -1,0 +1,24 @@
+tests/cliFamilies.test.ts
+  s_951c9e48d7e90e::t_311538fb464d42 117-166
+bin/brepjs.mjs
+  s_951c9e48d7e90e::t_0f4c80c9b7c0fa 54-60,64-75,79-83
+  s_951c9e48d7e90e::t_a0b7fe51c46057 21
+  s_951c9e48d7e90e::t_abc4b8438b03ef 132-135
+  s_951c9e48d7e90e::t_4f58e33726302c 84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1a25364ce69db66884431486ea0ddcf8b289af04",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
