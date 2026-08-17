@@ -17,8 +17,18 @@ const TEMPLATES = join(dirname(fileURLToPath(import.meta.url)), '../templates');
 
 async function main() {
   const name = process.argv[2] ?? 'brepjs-app';
-  if (!/^[a-z0-9@][a-z0-9-_./]*$/i.test(name)) {
-    console.error(`create-brepjs: invalid project name '${name}'`);
+  // A relative path is allowed; its basename becomes the package name. No
+  // traversal, no absolute paths, no scopes (a scope is not a directory).
+  const segments = name.split('/');
+  const base = segments[segments.length - 1] ?? '';
+  const valid =
+    !name.startsWith('/') &&
+    !name.endsWith('/') &&
+    segments.every((s) => /^[a-z0-9][a-z0-9-_.]*$/.test(s) && s !== '.' && s !== '..');
+  if (!valid) {
+    console.error(
+      `create-brepjs: invalid project name '${name}' (relative path ending in a lowercase package name; no '..', no scopes)`
+    );
     process.exitCode = 1;
     return;
   }
@@ -39,7 +49,7 @@ async function main() {
   await rename(join(target, 'gitignore'), join(target, '.gitignore'));
   const pkgPath = join(target, 'package.json');
   const pkg = JSON.parse(await readFile(pkgPath, 'utf8'));
-  pkg.name = name.split('/').pop();
+  pkg.name = base;
   await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
   console.warn(`Scaffolded ${target}`);

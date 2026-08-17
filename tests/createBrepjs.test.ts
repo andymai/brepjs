@@ -59,8 +59,27 @@ describe('create-brepjs', () => {
   });
 
   it('rejects hostile project names', () => {
-    const r = run('--oops');
-    expect(r.status).toBe(1);
-    expect(r.out).toContain('invalid project name');
+    for (const name of [
+      '--oops',
+      '../escape',
+      'a/../../b',
+      '/абс',
+      '/abs',
+      'name/',
+      '@scope/pkg',
+    ]) {
+      const r = run(name);
+      expect(r.status, name).toBe(1);
+      expect(r.out, name).toContain('invalid project name');
+    }
+  });
+
+  it('accepts a nested relative path and names the package by its basename', async () => {
+    const r = run('models/tiny-house');
+    expect(r.status).toBe(0);
+    const pkg = JSON.parse(await readFile(join(cwd, 'models/tiny-house/package.json'), 'utf8')) as {
+      name: string;
+    };
+    expect(pkg.name).toBe('tiny-house');
   });
 });
