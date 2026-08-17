@@ -2,11 +2,14 @@
 // literal inputs to expressions and pre-compute structuralHash + freeParams.
 import {
   asScalarExpr,
+  asVec2Expr,
   asVec3Expr,
   type Expr,
   type ScalarInput,
+  type Vec2Input,
   type Vec3Input,
 } from './expressions.js';
+import { hashSegments, segmentFreeParams, type Segment2D } from './segments.js';
 import {
   fnvInit,
   fnvMixString,
@@ -39,6 +42,7 @@ import type {
   ExtrudeNode,
   RevolveNode,
   LoftNode,
+  PathNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -366,6 +370,23 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+/** Open (or incidentally closed) planar path in the XY plane at z = 0,
+ *  producing a Wire. Segments come from `lineTo`/`arcTo`/`bezierTo`/
+ *  `ellipseArcTo`. */
+export function path(start: Vec2Input, segments: ReadonlyArray<Segment2D>): PathNode {
+  const se = asVec2Expr(start);
+  const copied = [...segments];
+  let h = mix(startHash('Path'), se);
+  h = hashSegments(h, copied);
+  return {
+    kind: 'Path',
+    start: se,
+    segments: copied,
+    structuralHash: h,
+    freeParams: depsOf(se, ...segmentFreeParams(copied)),
   };
 }
 

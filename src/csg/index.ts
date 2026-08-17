@@ -33,6 +33,7 @@ export {
   extrude,
   revolve,
   loft,
+  path,
   compound,
   instance,
   type RevolveOptions,
@@ -78,6 +79,7 @@ export type {
   ExtrudeNode,
   RevolveNode,
   LoftNode,
+  PathNode,
   InstanceNode,
   SolidNode,
   FaceNode,
@@ -86,6 +88,17 @@ export type {
   AnyNode,
 } from './types.js';
 export { outputKindOf } from './types.js';
+
+// Segments (shared by Path now, Profile later)
+export {
+  lineTo,
+  arcTo,
+  bezierTo,
+  ellipseArcTo,
+  type Segment2D,
+  type SegmentOptions,
+  type EllipseArcOptions,
+} from './segments.js';
 
 // Evaluator
 export {
