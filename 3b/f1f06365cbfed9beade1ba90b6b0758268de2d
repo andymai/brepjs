@@ -1,0 +1,41 @@
+packages/brepjs-families/tsconfig.test.json
+  s_951c9e48d7e90e::t_83d021e1e2e71f 6,8
+packages/brepjs-families/registry/manifest.json
+  s_951c9e48d7e90e::t_67e1426939ed78 1-54
+packages/brepjs-families/tests/registry.test.ts
+  s_951c9e48d7e90e::t_8646f598f00141 1-135
+packages/brepjs-families/package.json
+  s_951c9e48d7e90e::t_83d021e1e2e71f 28
+packages/brepjs-families/eslint.config.js
+  s_951c9e48d7e90e::t_ab1444529b0f31 27
+packages/brepjs-families/src/element.ts
+  s_951c9e48d7e90e::t_017d286760d89b 25-28,30-31,39,46,49,52-53,55,69
+packages/brepjs-families/registry/families/window.ts
+  s_951c9e48d7e90e::t_9a08936e174bd6 1-32
+packages/brepjs-families/registry/families/slab.ts
+  s_951c9e48d7e90e::t_7a8e60476b0e99 1-31
+packages/brepjs-families/registry/families/wall.ts
+  s_951c9e48d7e90e::t_64e8bfcd2773d0 1-44
+packages/brepjs-families/registry/families/storey.ts
+  s_951c9e48d7e90e::t_fdf2ed2b5caaf0 1-21
+packages/brepjs-families/registry/families/door.ts
+  s_951c9e48d7e90e::t_5b6ae953515b9f 1-33
+packages/brepjs-families/registry/families/room.ts
+  s_951c9e48d7e90e::t_b1c55725691094 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3bf1f06365cbfed9beade1ba90b6b0758268de2d",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
