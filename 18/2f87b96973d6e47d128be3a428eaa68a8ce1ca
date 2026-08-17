@@ -1,0 +1,20 @@
+packages/brepjs-bim/tests/irDrift.test.ts
+  s_951c9e48d7e90e::t_237a1e40953cff 127-135
+  s_951c9e48d7e90e::t_eb5af23d575359 1-126,136-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "182f87b96973d6e47d128be3a428eaa68a8ce1ca",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
