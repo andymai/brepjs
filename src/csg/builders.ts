@@ -36,6 +36,7 @@ import type {
   RotateNode,
   ScaleNode,
   MirrorNode,
+  ExtrudeNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -336,6 +337,22 @@ export function mirror(target: IRNode, options?: MirrorOptions): MirrorNode {
     at: atE,
     structuralHash: h,
     freeParams: depsOf(target, nE, atE),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Feature nodes
+// ---------------------------------------------------------------------------
+
+export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
+  const ve = asVec3Expr(vector);
+  const h = mix(mix(startHash('Extrude'), profile), ve);
+  return {
+    kind: 'Extrude',
+    profile,
+    vector: ve,
+    structuralHash: h,
+    freeParams: depsOf(profile, ve),
   };
 }
 

@@ -56,6 +56,8 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       return B.compound(n.children.map((c) => walk(c, pred, repl)));
     case 'Instance':
       return B.instance(walk(n.source, pred, repl), n.placements, n.fuse);
+    case 'Extrude':
+      return B.extrude(walk(n.profile, pred, repl), n.vector);
   }
 }
 
@@ -94,6 +96,8 @@ function childrenOf(n: IRNode): readonly IRNode[] {
       return n.children;
     case 'Instance':
       return [n.source];
+    case 'Extrude':
+      return [n.profile];
   }
 }
 
