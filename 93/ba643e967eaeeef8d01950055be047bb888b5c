@@ -1,0 +1,36 @@
+packages/brepjs-bim/package.json
+  s_951c9e48d7e90e::t_e8648e300b5d50 4,62-64
+packages/brepjs-bim/src/index.ts
+  s_951c9e48d7e90e::t_e8648e300b5d50 268-272
+packages/brepjs-bim/src/model/bimModel.ts
+  s_951c9e48d7e90e::t_9c1f3882e83f8d 60-65,117-118,121-122,125,128,134,137,911-912,915-923
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_951c9e48d7e90e::t_e5ea7ef03b111a 18-19
+  s_951c9e48d7e90e::t_e8648e300b5d50 14-15
+  s_951c9e48d7e90e::t_0d8bbd84f5a443 30,83-84,88-91
+  s_951c9e48d7e90e::t_8d6ee2e01e5f98 40-41,43-49
+  s_951c9e48d7e90e::t_362ab89c7ce13a 1-13,16-17,20-29,31-39,42,50-82,85-87,92-129
+packages/brepjs-families/src/resolve.ts
+  s_951c9e48d7e90e::t_8d6ee2e01e5f98 35-38,135,194
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_951c9e48d7e90e::t_26f2ca97e7879a 1-44,58,60-76,78-80,83,85-86,88-89,91-95,98-111
+  s_951c9e48d7e90e::t_fe5e0318d485fc 45-57,59,77,81-82,84,87,90,96-97
+package-lock.json
+  s_951c9e48d7e90e::t_4adec78f52bf8f 15099-15101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "93ba643e967eaeeef8d01950055be047bb888b5c",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
