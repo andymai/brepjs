@@ -1,0 +1,19 @@
+packages/brepjs-families/src/element.ts
+  s_951c9e48d7e90e::t_08a2bde47db2e4 35,39-42,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6679d50350feafb81943a514366f9a4b6a2154ef",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
