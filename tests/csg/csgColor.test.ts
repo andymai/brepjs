@@ -106,6 +106,14 @@ describe('Color node', () => {
     }
   });
 
+  it('clamps out-of-range tuple components to canonical RGBA', () => {
+    const node = color(box(1, 2, 3), [2, -1, 0.5, 3]);
+    expect(node.color).toEqual([1, 0, 0.5, 1]);
+    const back = fromJSON(toJSON(node));
+    expect(isOk(back)).toBe(true);
+    expect(unwrap(back).structuralHash).toBe(node.structuralHash);
+  });
+
   it('rejects out-of-range RGBA components at the trust boundary', () => {
     const envelope = JSON.parse(JSON.stringify(toJSON(color(box(1, 2, 3), '#ffffff')))) as {
       root: { color: number[] };

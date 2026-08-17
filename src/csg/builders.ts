@@ -390,7 +390,10 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
  *  handle before coloring, so plain consumers of the same subtree stay
  *  metadata-free. */
 export function color(target: IRNode, input: ColorInput): ColorNode {
-  const rgba = parseColor(input);
+  const parsed = parseColor(input);
+  // Canonical form is clamped RGBA: out-of-range tuple components would
+  // otherwise serialize verbatim and fail the fromJSON range check.
+  const rgba = parsed.map((c) => Math.min(1, Math.max(0, c))) as [number, number, number, number];
   let h = mix(startHash('Color'), target);
   for (const c of rgba) h = fnvMixNumber(h, c);
   return {
