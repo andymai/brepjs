@@ -1,0 +1,22 @@
+tests/csg/filletRefSpike.ts
+  s_951c9e48d7e90e::t_409e9c9b16600c 1-153
+tests/csg/familiesSpikeC.test.ts
+  s_951c9e48d7e90e::t_59529c12d2cf83 78-80,92,107
+  s_951c9e48d7e90e::t_17a013139cdd05 1-77,81-91,93-106,108-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9982b0e58d741d182694bbb42c607ffdf7eea816",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
