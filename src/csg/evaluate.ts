@@ -46,6 +46,7 @@ import { evalExtrude } from './evaluators/extrude.js';
 import { evalRevolve } from './evaluators/revolve.js';
 import { evalLoft } from './evaluators/loft.js';
 import { evalPath } from './evaluators/path.js';
+import { evalSweep } from './evaluators/sweep.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -148,6 +149,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalLoft(node, ctx);
     case 'Path':
       return evalPath(node, ctx);
+    case 'Sweep':
+      return evalSweep(node, ctx);
   }
 }
 

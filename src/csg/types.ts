@@ -177,6 +177,16 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface SweepNode extends IRNodeBase {
+  readonly kind: 'Sweep';
+  /** Must produce OutputKind 'Face'. */
+  readonly profile: IRNode;
+  /** Must produce OutputKind 'Wire' or 'Edge' (Line, Circle, Path). */
+  readonly spine: IRNode;
+  /** Canonicalized by the builder (default false). */
+  readonly frenet: boolean;
+}
+
 export interface PathNode extends IRNodeBase {
   readonly kind: 'Path';
   /** Vec2 start point; the path lies in the XY plane (z = 0) and is lifted
@@ -239,6 +249,7 @@ export type IRNode =
   | ExtrudeNode
   | RevolveNode
   | LoftNode
+  | SweepNode
   | PathNode
   | CompoundNode
   | InstanceNode;
@@ -303,6 +314,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
+    case 'Sweep':
       return 'Solid';
     case 'Path':
       return 'Wire';

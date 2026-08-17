@@ -13,7 +13,7 @@ import {
   type Expr,
 } from './expressions.js';
 import { foldSegment } from './segments.js';
-import type { IRNode, ExtrudeNode, RevolveNode, LoftNode, PathNode } from './types.js';
+import type { IRNode, ExtrudeNode, RevolveNode, LoftNode, SweepNode, PathNode } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -163,12 +163,13 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
+    case 'Sweep':
     case 'Path':
       return optimizeFeature(n);
   }
 }
 
-function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode | PathNode): IRNode {
+function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode | SweepNode | PathNode): IRNode {
   switch (n.kind) {
     case 'Extrude':
       return B.extrude(optimizeNode(n.profile), foldExpr(n.vector));
@@ -179,6 +180,8 @@ function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode | PathNode): IR
       });
     case 'Loft':
       return B.loft(n.sections.map(optimizeNode), { ruled: n.ruled });
+    case 'Sweep':
+      return B.sweep(optimizeNode(n.profile), optimizeNode(n.spine), { frenet: n.frenet });
     case 'Path':
       return B.path(
         foldExpr(n.start),

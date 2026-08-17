@@ -66,6 +66,10 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
         n.sections.map((s) => walk(s, pred, repl)),
         { ruled: n.ruled }
       );
+    case 'Sweep':
+      return B.sweep(walk(n.profile, pred, repl), walk(n.spine, pred, repl), {
+        frenet: n.frenet,
+      });
   }
 }
 
@@ -110,6 +114,8 @@ function childrenOf(n: IRNode): readonly IRNode[] {
       return [n.profile];
     case 'Loft':
       return n.sections;
+    case 'Sweep':
+      return [n.profile, n.spine];
   }
 }
 
