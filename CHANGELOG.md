@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.135.0](https://github.com/andymai/brepjs/compare/brepjs-v18.134.0...brepjs-v18.135.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add the shell node with serializable face refs ([#2069](https://github.com/andymai/brepjs/issues/2069)) ([ba15ff0](https://github.com/andymai/brepjs/commit/ba15ff00b94dad7c36739cc9447fddda11d7a050))
+* **families:** validate props with zod and require keys for identity ([#2074](https://github.com/andymai/brepjs/issues/2074)) ([205f924](https://github.com/andymai/brepjs/commit/205f924d26aee340b9f9b790b80834f680476c9e))
+
 ## [18.134.0](https://github.com/andymai/brepjs/compare/brepjs-v18.133.0...brepjs-v18.134.0) (2026-08-17)
 
 
