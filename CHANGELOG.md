@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.131.0](https://github.com/andymai/brepjs/compare/brepjs-v18.130.0...brepjs-v18.131.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add fillet node carrying an edge lineage ref ([#2055](https://github.com/andymai/brepjs/issues/2055)) ([3d388fe](https://github.com/andymai/brepjs/commit/3d388fe62a3f509048af1389e99b2330795eb40b))
+
 ## [18.130.0](https://github.com/andymai/brepjs/compare/brepjs-v18.129.0...brepjs-v18.130.0) (2026-08-17)
 
 
