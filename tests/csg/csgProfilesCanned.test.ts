@@ -28,7 +28,8 @@ import {
   type IRNode,
 } from '@/csg/index.js';
 import { isOk, unwrap, measureArea, measureVolume } from '@/index.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { faceCenter } from '@/topology/faceFns.js';
+import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -87,8 +88,10 @@ const GOLDENS: readonly Golden[] = [
   },
   {
     name: 'Z_SHAPE',
+    // bim contract: flangeWidth reaches from web center to tip, so total
+    // flange area is (flangeWidth - web) * flangeThickness.
     node: () => zShapeProfile({ depth: 100, flangeWidth: 50, webThickness: 6, flangeThickness: 8 }),
-    area: 6 * 100 + 2 * (50 - 6) * 8,
+    area: 6 * 100 + (50 - 6) * 8,
   },
   {
     name: 'C_SHAPE',
@@ -153,6 +156,35 @@ describe('canned bim profiles', () => {
       expect(area(unwrap(r))).toBeCloseTo(g.area, 1);
     });
   }
+
+  itBrep('TRAPEZIUM: topXOffset shifts the top-edge CENTER (bim contract)', () => {
+    using ev = new Evaluator();
+    const p = { bottomXDim: 60, topXDim: 40, yDim: 30, topXOffset: 20 };
+    const r = ev.evaluate(trapeziumProfile(p));
+    expect(isOk(r)).toBe(true);
+    // Independent oracle: polygon centroid of the bim-contract vertices.
+    const pts: ReadonlyArray<readonly [number, number]> = [
+      [-30, -15],
+      [30, -15],
+      [40, 15],
+      [0, 15],
+    ];
+    let a2 = 0;
+    let cx = 0;
+    let cy = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x0, y0] = pts[i] as [number, number];
+      const [x1, y1] = pts[(i + 1) % pts.length] as [number, number];
+      const cross = x0 * y1 - x1 * y0;
+      a2 += cross;
+      cx += (x0 + x1) * cross;
+      cy += (y0 + y1) * cross;
+    }
+    const centroid = [cx / (3 * a2), cy / (3 * a2)];
+    const center = faceCenter(unwrap(r) as Face);
+    expect(center[0]).toBeCloseTo(centroid[0] ?? 0, 1);
+    expect(center[1]).toBeCloseTo(centroid[1] ?? 0, 1);
+  });
 
   itOcct('tall ELLIPSE (semiAxis2 > semiAxis1) via edge relocation', () => {
     using ev = new Evaluator();

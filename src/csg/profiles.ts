@@ -206,20 +206,23 @@ export interface ZShapeParams {
 }
 
 export function zShapeProfile(p: ZShapeParams): ProfileNode {
-  const b = p.flangeWidth;
-  const d = p.depth;
-  const tf = p.flangeThickness;
-  const tw = p.webThickness;
+  // Matches the brepjs-bim Z_SHAPE contract: flangeWidth reaches from the web
+  // CENTER to the flange tip (each flange extends (flangeWidth - web)/2 past
+  // the web), bottom flange to -X, top flange to +X.
+  const halfFw = p.flangeWidth / 2;
+  const halfD = p.depth / 2;
+  const halfWeb = p.webThickness / 2;
+  const ft = p.flangeThickness;
   return profile(
     centeredPoly([
-      [tw / 2 - b, -d / 2],
-      [tw / 2, -d / 2],
-      [tw / 2, d / 2 - tf],
-      [b - tw / 2, d / 2 - tf],
-      [b - tw / 2, d / 2],
-      [-tw / 2, d / 2],
-      [-tw / 2, -d / 2 + tf],
-      [tw / 2 - b, -d / 2 + tf],
+      [-halfFw, -halfD],
+      [halfWeb, -halfD],
+      [halfWeb, halfD - ft],
+      [halfFw, halfD - ft],
+      [halfFw, halfD],
+      [-halfWeb, halfD],
+      [-halfWeb, -halfD + ft],
+      [-halfFw, -halfD + ft],
     ])
   );
 }
@@ -269,13 +272,18 @@ export interface TrapeziumParams {
 }
 
 export function trapeziumProfile(p: TrapeziumParams): ProfileNode {
+  // Matches the brepjs-bim TRAPEZIUM contract: bottom edge centered on the
+  // origin, top edge centered at topXOffset (an offset of centers, not of
+  // left corners) — deliberately NOT bbox-recentered.
+  const halfB = p.bottomXDim / 2;
+  const halfY = p.yDim / 2;
+  const topLeft = -p.topXDim / 2 + p.topXOffset;
+  const topRight = p.topXDim / 2 + p.topXOffset;
   return profile(
-    centeredPoly([
-      [0, 0],
-      [p.bottomXDim, 0],
-      [p.topXOffset + p.topXDim, p.yDim],
-      [p.topXOffset, p.yDim],
-    ])
+    contour(
+      [-halfB, -halfY],
+      [lineTo([halfB, -halfY]), lineTo([topRight, halfY]), lineTo([topLeft, halfY])]
+    )
   );
 }
 
