@@ -31,6 +31,10 @@ export interface ResolvedElement {
   /** Ancestor chain joined with '/'; prop-embedded elements use
    *  `${hostPath}/${propName}:${slotKey}`. */
   readonly keyPath: string;
+  /** True when the element (or, for synthesized openings/fills, its void
+   *  slot) carried an explicit key. Index-fallback paths are order-dependent,
+   *  so identity consumers reject unkeyed elements. */
+  readonly keyed: boolean;
   readonly geometry: csg.IRNode;
   /** The element's own pre-desugared props (dimensions, placement, ...) — an
    *  adapter feeds these into parametric spec paths (e.g. IFC) that cannot
@@ -127,10 +131,11 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
       }
       slotKeys.add(slotKey);
       const openingPath = `${hostPath}/voids:${slotKey}`;
-      const fill = resolveAt(v, `${openingPath}/fill`);
+      const fill = resolveAt(v, `${openingPath}/fill`, v.key !== undefined);
       openings.push({
         type: 'Opening',
         keyPath: openingPath,
+        keyed: v.key !== undefined,
         geometry: fill.geometry,
         props: {},
         attributes: {},
@@ -169,7 +174,7 @@ function assertKeyAllowed(key: string, path: string): void {
   }
 }
 
-function resolveAt(elem: Element, path: string): ResolvedElement {
+function resolveAt(elem: Element, path: string, keyed: boolean): ResolvedElement {
   const { intrinsic, typeName } = renderToIntrinsic(elem);
   const d = desugar(intrinsic, path);
   const relationships: Relationship[] = [...d.hostRelationships];
@@ -182,7 +187,7 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
       throw new Error(`brepjs-families: duplicate sibling key '${seg}' under '${path}'`);
     }
     seen.add(seg);
-    const rc = resolveAt(c, `${path}/${seg}`);
+    const rc = resolveAt(c, `${path}/${seg}`, c.key !== undefined);
     children.push(rc);
     relationships.push({ kind: 'Contains', target: rc.keyPath });
   });
@@ -190,6 +195,7 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
   return {
     type: typeName,
     keyPath: path,
+    keyed,
     geometry: d.geometry,
     props: elem.props,
     attributes: identityAttributes(elem),
@@ -199,5 +205,5 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
 }
 
 export function resolve(root: Element): ResolvedElement {
-  return resolveAt(root, root.key ?? `${typeNameOf(root)}[0]`);
+  return resolveAt(root, root.key ?? `${typeNameOf(root)}[0]`, root.key !== undefined);
 }

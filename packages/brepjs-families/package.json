@@ -28,6 +28,9 @@
     "lint": "eslint src tests",
     "test": "vitest run"
   },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "peerDependencies": {
     "brepjs": ">=18.0.0"
   },

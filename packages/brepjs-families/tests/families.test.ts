@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
+import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
 import { csg, isOk, unwrap, measureVolume } from 'brepjs';
 import type { AnyShape, Dimension } from 'brepjs';
@@ -311,5 +312,48 @@ describe('mesh-primary evaluation (Phase 5 gate)', () => {
     expect(n1b.mesh.value).toBe(n1a.mesh.value);
     // No shape was re-materialized to serve the cached meshes.
     expect(ev.cacheStats().misses).toBe(missesBefore);
+  });
+});
+
+describe('props validation (Zod)', () => {
+  const Sized = family<{ readonly size: number; readonly label?: string }>(
+    'Sized',
+    (p) => el('Box', { size: [p.size, p.size, p.size] }),
+    { props: z.object({ size: z.number().positive(), label: z.string().default('unit') }) }
+  );
+
+  it('rejects invalid props at element construction', () => {
+    expect(() => Sized({ key: 's', size: -1 })).toThrow(/invalid props for family 'Sized'/);
+  });
+
+  it('applies schema defaults before render and identity capture', () => {
+    const r = resolve(Sized({ key: 's', size: 2 }));
+    expect(r.props['label']).toBe('unit');
+  });
+
+  it('families without a schema accept props untouched', () => {
+    const Free = family<{ readonly anything: unknown }>('Free', () =>
+      el('Box', { size: [1, 1, 1] })
+    );
+    expect(() => Free({ key: 'f', anything: { odd: true } })).not.toThrow();
+  });
+});
+
+describe('keyed tracking', () => {
+  it('marks explicit keys, index fallbacks, and void slots', () => {
+    const keyedWall = Wall({ key: 'w1', length: 100, height: 100, thickness: 10 });
+    const unkeyedWall = Wall({ length: 100, height: 100, thickness: 10 });
+    const storey = resolve(Storey({ key: 's', walls: [keyedWall, unkeyedWall] }));
+    expect(storey.keyed).toBe(true);
+    expect(storey.children[0]?.keyed).toBe(true);
+    expect(storey.children[1]?.keyed).toBe(false);
+
+    const unkeyedDoor = Door({ width: 90, height: 210, thickness: 20, at: [100, 0, 0] });
+    const voided = resolve(
+      Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [unkeyedDoor] })
+    );
+    const opening = voided.children[0];
+    expect(opening?.keyed).toBe(false);
+    expect(opening?.children[0]?.keyed).toBe(false);
   });
 });
