@@ -1,5 +1,14 @@
 # Changelog
 
+## [18.128.0](https://github.com/andymai/brepjs/compare/brepjs-v18.127.0...brepjs-v18.128.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add canned bim profile builders ([#2041](https://github.com/andymai/brepjs/issues/2041)) ([f18c44e](https://github.com/andymai/brepjs/commit/f18c44edc70550bbafab3a3ca032713ff5f54975))
+* **csg:** add profile node with contours and holes ([#2040](https://github.com/andymai/brepjs/issues/2040)) ([6d77c83](https://github.com/andymai/brepjs/commit/6d77c831509fe835345f0351e4612b27eef3188a))
+* **sketching:** add blueprint to contour bridge ([#2042](https://github.com/andymai/brepjs/issues/2042)) ([01b2616](https://github.com/andymai/brepjs/commit/01b2616ab5ce4dd66bc7498b52ccd2f4a28ea734))
+
 ## [18.127.0](https://github.com/andymai/brepjs/compare/brepjs-v18.126.0...brepjs-v18.127.0) (2026-08-17)
 
 
