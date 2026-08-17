@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.132.0](https://github.com/andymai/brepjs/compare/brepjs-v18.131.0...brepjs-v18.132.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add chamfer node mirroring the fillet ref pattern ([#2059](https://github.com/andymai/brepjs/issues/2059)) ([f2d2e54](https://github.com/andymai/brepjs/commit/f2d2e540c2b989c7eece83f56778364323d6d574))
+
 ## [18.131.0](https://github.com/andymai/brepjs/compare/brepjs-v18.130.0...brepjs-v18.131.0) (2026-08-17)
 
 
