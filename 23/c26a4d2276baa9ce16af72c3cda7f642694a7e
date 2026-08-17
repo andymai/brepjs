@@ -1,0 +1,24 @@
+src/csg/profiles.ts
+  s_951c9e48d7e90e::t_5436f75aca740f 209-215,218-225
+  s_951c9e48d7e90e::t_85a63efcd5a629 275-281,283-286
+tests/csg/csgProfilesCanned.test.ts
+  s_951c9e48d7e90e::t_91b229be100c50 160-188
+  s_951c9e48d7e90e::t_f63c90bbad77ae 31-32
+  s_951c9e48d7e90e::t_42bec4e91a80bb 91-92,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "23c26a4d2276baa9ce16af72c3cda7f642694a7e",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
