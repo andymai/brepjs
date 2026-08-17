@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.5.0...brepjs-bim-v0.6.0) (2026-08-17)
+
+
+### Features
+
+* **families:** validate props with zod and require keys for identity ([#2074](https://github.com/andymai/brepjs/issues/2074)) ([205f924](https://github.com/andymai/brepjs/commit/205f924d26aee340b9f9b790b80834f680476c9e))
+
 ## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.4.0...brepjs-bim-v0.5.0) (2026-08-17)
 
 
