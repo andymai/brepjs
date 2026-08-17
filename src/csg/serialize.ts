@@ -147,6 +147,9 @@ function transformToJson(n: IRNode): unknown {
 }
 
 function nodeToJson(n: IRNode): unknown {
+  if (n.kind === 'Extrude') {
+    return { kind: 'Extrude', profile: nodeToJson(n.profile), vector: exprToJson(n.vector) };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -324,6 +327,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readCompound(j);
     case 'Instance':
       return readInstance(j);
+    case 'Extrude':
+      return readExtrude(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -520,6 +525,14 @@ function readMirror(j: Record<string, unknown>, target: IRNode): Result<IRNode> 
   const at = readOptExpr(j, 'at');
   if (!at.ok) return at;
   return ok(B.mirror(target, { normal: normal.value, at: at.value }));
+}
+
+function readExtrude(j: Record<string, unknown>): Result<IRNode> {
+  const profile = readNode(j['profile']);
+  if (!profile.ok) return profile;
+  const vector = readExpr(j['vector']);
+  if (!vector.ok) return vector;
+  return ok(B.extrude(profile.value, vector.value));
 }
 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {

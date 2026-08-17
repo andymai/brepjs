@@ -159,6 +159,8 @@ function optimizeNode(n: IRNode): IRNode {
       return B.compound(n.children.map(optimizeNode).filter((c) => c.kind !== 'Empty'));
     case 'Instance':
       return B.instance(optimizeNode(n.source), n.placements, n.fuse);
+    case 'Extrude':
+      return B.extrude(optimizeNode(n.profile), foldExpr(n.vector));
   }
 }
 

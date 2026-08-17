@@ -42,6 +42,7 @@ import {
 import { evalTranslate, evalRotate, evalScale, evalMirror } from './evaluators/transforms.js';
 import { evalCompound, evalEmpty } from './evaluators/compound.js';
 import { evalInstance } from './evaluators/instance.js';
+import { evalExtrude } from './evaluators/extrude.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -136,6 +137,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalCompound(node, ctx);
     case 'Instance':
       return evalInstance(node, ctx);
+    case 'Extrude':
+      return evalExtrude(node, ctx);
   }
 }
 
