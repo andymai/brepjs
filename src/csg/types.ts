@@ -3,6 +3,7 @@
 // invalidation is scoped to subtrees that actually depend on a changed param.
 
 import type { Expr } from './expressions.js';
+import type { Segment2D } from './segments.js';
 import type { Matrix4x4 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,14 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface PathNode extends IRNodeBase {
+  readonly kind: 'Path';
+  /** Vec2 start point; the path lies in the XY plane (z = 0) and is lifted
+   *  into 3D by transform nodes. */
+  readonly start: Expr;
+  readonly segments: readonly Segment2D[];
+}
+
 export interface LoftNode extends IRNodeBase {
   readonly kind: 'Loft';
   /** Each section must produce OutputKind 'Face'; at least two required. */
@@ -230,6 +239,7 @@ export type IRNode =
   | ExtrudeNode
   | RevolveNode
   | LoftNode
+  | PathNode
   | CompoundNode
   | InstanceNode;
 
@@ -294,6 +304,8 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Revolve':
     case 'Loft':
       return 'Solid';
+    case 'Path':
+      return 'Wire';
     case 'Compound':
       return 'Compound';
     case 'Instance':

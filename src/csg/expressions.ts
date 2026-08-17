@@ -355,6 +355,15 @@ export function evalVec3(expr: Expr, env: Env, where: string): Result<Vec3> {
   return ok([a as number, b as number, c as number]);
 }
 
+export function evalVec2(expr: Expr, env: Env, where: string): Result<Vec2> {
+  const r = evalExpr(expr, env);
+  if (!r.ok) return r;
+  const v = expectVecLen(r.value, 2, where);
+  if (!v.ok) return v;
+  const [a, b] = v.value;
+  return ok([a as number, b as number]);
+}
+
 // ---------------------------------------------------------------------------
 // Projection — restrict env to the keys a node actually depends on, so cache
 // keys are insensitive to unrelated env changes.

@@ -17,6 +17,7 @@ import {
   type UnaryOp,
 } from './expressions.js';
 import * as B from './builders.js';
+import { lineTo, arcTo, bezierTo, ellipseArcTo, type Segment2D } from './segments.js';
 import type { IRNode } from './types.js';
 
 export const CSG_VERSION = 1;
@@ -115,6 +116,32 @@ function optExprToJson(e: Expr | undefined): unknown {
   return e ? exprToJson(e) : undefined;
 }
 
+function segmentToJson(s: Segment2D): unknown {
+  switch (s.kind) {
+    case 'Line':
+      return { kind: 'Line', to: exprToJson(s.to) };
+    case 'Arc':
+      return {
+        kind: 'Arc',
+        to: exprToJson(s.to),
+        radius: exprToJson(s.radius),
+        largeArc: s.largeArc,
+        clockwise: s.clockwise,
+      };
+    case 'Bezier':
+      return { kind: 'Bezier', controls: s.controls.map(exprToJson), to: exprToJson(s.to) };
+    case 'EllipseArc':
+      return {
+        kind: 'EllipseArc',
+        to: exprToJson(s.to),
+        radii: exprToJson(s.radii),
+        rotation: exprToJson(s.rotation),
+        largeArc: s.largeArc,
+        clockwise: s.clockwise,
+      };
+  }
+}
+
 function transformToJson(n: IRNode): unknown {
   switch (n.kind) {
     case 'Translate':
@@ -161,6 +188,9 @@ function nodeToJson(n: IRNode): unknown {
   }
   if (n.kind === 'Loft') {
     return { kind: 'Loft', sections: n.sections.map(nodeToJson), ruled: n.ruled };
+  }
+  if (n.kind === 'Path') {
+    return { kind: 'Path', start: exprToJson(n.start), segments: n.segments.map(segmentToJson) };
   }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
@@ -345,6 +375,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readRevolve(j);
     case 'Loft':
       return readLoft(j);
+    case 'Path':
+      return readPath(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -571,6 +603,78 @@ function readLoft(j: Record<string, unknown>): Result<IRNode> {
     return bad('Loft.ruled: not a boolean');
   }
   return ok(B.loft(sections.value, { ruled }));
+}
+
+function readFlag(j: Record<string, unknown>, key: string): Result<boolean> {
+  const v = j[key];
+  if (v === undefined) return ok(false);
+  return typeof v === 'boolean' ? ok(v) : bad(`${key}: not a boolean`);
+}
+
+function readSegment(j: unknown): Result<Segment2D> {
+  if (!isObj(j)) return bad('segment: not an object');
+  const to = readExpr(j['to']);
+  if (!to.ok) return to;
+  const kind = j['kind'];
+  switch (kind) {
+    case 'Line':
+      return ok(lineTo(to.value));
+    case 'Arc': {
+      const radius = readExpr(j['radius']);
+      if (!radius.ok) return radius;
+      const largeArc = readFlag(j, 'largeArc');
+      if (!largeArc.ok) return largeArc;
+      const clockwise = readFlag(j, 'clockwise');
+      if (!clockwise.ok) return clockwise;
+      return ok(
+        arcTo(to.value, radius.value, { largeArc: largeArc.value, clockwise: clockwise.value })
+      );
+    }
+    case 'Bezier': {
+      const raw = j['controls'];
+      if (!Array.isArray(raw)) return bad('Bezier.controls: not array');
+      const controls: Expr[] = [];
+      for (const c of raw) {
+        const r = readExpr(c);
+        if (!r.ok) return r;
+        controls.push(r.value);
+      }
+      return ok(bezierTo(controls, to.value));
+    }
+    case 'EllipseArc': {
+      const radii = readExpr(j['radii']);
+      if (!radii.ok) return radii;
+      const rotation = readExpr(j['rotation']);
+      if (!rotation.ok) return rotation;
+      const largeArc = readFlag(j, 'largeArc');
+      if (!largeArc.ok) return largeArc;
+      const clockwise = readFlag(j, 'clockwise');
+      if (!clockwise.ok) return clockwise;
+      return ok(
+        ellipseArcTo(to.value, radii.value, {
+          rotation: rotation.value,
+          largeArc: largeArc.value,
+          clockwise: clockwise.value,
+        })
+      );
+    }
+    default:
+      return bad(`unknown segment kind: ${String(kind)}`);
+  }
+}
+
+function readPath(j: Record<string, unknown>): Result<IRNode> {
+  const start = readExpr(j['start']);
+  if (!start.ok) return start;
+  const raw = j['segments'];
+  if (!Array.isArray(raw)) return bad('Path.segments: not array');
+  const segments: Segment2D[] = [];
+  for (const s of raw) {
+    const r = readSegment(s);
+    if (!r.ok) return r;
+    segments.push(r.value);
+  }
+  return ok(B.path(start.value, segments));
 }
 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {
