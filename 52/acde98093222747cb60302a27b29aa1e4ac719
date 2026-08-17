@@ -1,0 +1,46 @@
+tests/csg/csgLoft.test.ts
+  s_951c9e48d7e90e::t_af9c301e7483c9 1-122
+src/csg/index.ts
+  s_951c9e48d7e90e::t_15ea04a0f92d29 80
+  s_951c9e48d7e90e::t_e3e17f2c0b5770 35,39
+src/csg/types.ts
+  s_951c9e48d7e90e::t_ef803d22d9dc1b 295
+  s_951c9e48d7e90e::t_e7b28beeaf9bcd 179-187
+  s_951c9e48d7e90e::t_c3c9b871d728df 232
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_20a5c6a9d48b68 41
+  s_951c9e48d7e90e::t_8a3603138e25d2 361-373
+src/csg/evaluate.ts
+  s_951c9e48d7e90e::t_fd5721aba1d9f3 47
+  s_951c9e48d7e90e::t_74ad11ce3f3185 146-147
+src/csg/optimize.ts
+  s_951c9e48d7e90e::t_08c31387b8b6ab 15
+  s_951c9e48d7e90e::t_aafba6d114d3bc 163-170
+  s_951c9e48d7e90e::t_ea0bacf6f18336 178-179
+  s_951c9e48d7e90e::t_83a962b04b935f 162
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_e6f71280dd3ddd 346-347
+  s_951c9e48d7e90e::t_a9a7f0f8e399ff 162-164
+  s_951c9e48d7e90e::t_193942a710f200 566-575
+src/csg/evaluators/loft.ts
+  s_951c9e48d7e90e::t_3df6b3c5a607ba 1-33
+src/csg/edit.ts
+  s_951c9e48d7e90e::t_1079f64a4d9775 109-110
+  s_951c9e48d7e90e::t_d467e4afb0867f 63-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "52acde98093222747cb60302a27b29aa1e4ac719",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
