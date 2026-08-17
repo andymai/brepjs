@@ -42,6 +42,7 @@ import type {
   ExtrudeNode,
   RevolveNode,
   LoftNode,
+  SweepNode,
   PathNode,
   CompoundNode,
   InstanceNode,
@@ -370,6 +371,27 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+export interface SweepNodeOptions {
+  readonly frenet?: boolean | undefined;
+}
+
+/** Sweep a face-producing profile along a Wire/Edge-producing spine.
+ *  `frenet` is canonicalized (default false) so the default and explicit
+ *  forms share one content address. */
+export function sweep(profile: FaceNode, spine: IRNode, options?: SweepNodeOptions): SweepNode {
+  const frenet = options?.frenet ?? false;
+  let h = mix(mix(startHash('Sweep'), profile), spine);
+  h = fnvMixBool(h, frenet);
+  return {
+    kind: 'Sweep',
+    profile,
+    spine,
+    frenet,
+    structuralHash: h,
+    freeParams: depsOf(profile, spine),
   };
 }
 

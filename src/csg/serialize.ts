@@ -20,7 +20,11 @@ import * as B from './builders.js';
 import { lineTo, arcTo, bezierTo, ellipseArcTo, type Segment2D } from './segments.js';
 import type { IRNode } from './types.js';
 
-export const CSG_VERSION = 1;
+// Version history: 1 = the original vocabulary; 2 adds the feature nodes
+// (Extrude, Revolve, Loft, Sweep, Path). Additive only, so fromJSON accepts
+// the full range [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 2;
+const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
   readonly csgVersion: number;
@@ -192,6 +196,14 @@ function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Path') {
     return { kind: 'Path', start: exprToJson(n.start), segments: n.segments.map(segmentToJson) };
   }
+  if (n.kind === 'Sweep') {
+    return {
+      kind: 'Sweep',
+      profile: nodeToJson(n.profile),
+      spine: nodeToJson(n.spine),
+      frenet: n.frenet,
+    };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -242,8 +254,9 @@ function readVec2(v: unknown, where: string): Result<Vec2> {
 export function fromJSON(envelope: unknown): Result<IRNode> {
   if (!isObj(envelope)) return bad('input is not an object');
   const v = envelope['csgVersion'];
-  if (v !== CSG_VERSION)
-    return bad(`unsupported csgVersion ${String(v)} (expected ${CSG_VERSION})`);
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < MIN_CSG_VERSION || v > CSG_VERSION) {
+    return bad(`unsupported csgVersion ${String(v)} (expected ${MIN_CSG_VERSION}..${CSG_VERSION})`);
+  }
   const root = envelope['root'];
   return readNode(root);
 }
@@ -377,6 +390,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readLoft(j);
     case 'Path':
       return readPath(j);
+    case 'Sweep':
+      return readSweep(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -661,6 +676,16 @@ function readSegment(j: unknown): Result<Segment2D> {
     default:
       return bad(`unknown segment kind: ${String(kind)}`);
   }
+}
+
+function readSweep(j: Record<string, unknown>): Result<IRNode> {
+  const profile = readNode(j['profile']);
+  if (!profile.ok) return profile;
+  const spine = readNode(j['spine']);
+  if (!spine.ok) return spine;
+  const frenet = readFlag(j, 'frenet');
+  if (!frenet.ok) return frenet;
+  return ok(B.sweep(profile.value, spine.value, { frenet: frenet.value }));
 }
 
 function readPath(j: Record<string, unknown>): Result<IRNode> {
