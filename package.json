@@ -206,8 +206,12 @@
       }
     }
   },
+  "bin": {
+    "brepjs": "bin/brepjs.mjs"
+  },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
     "build": "vite build && node scripts/build-quick.js",
