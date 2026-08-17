@@ -24,7 +24,8 @@ import {
   type Segment2D,
 } from '@/csg/index.js';
 import { isOk, unwrap, measureLength } from '@/index.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { curvePointAt, curveStartPoint, curveEndPoint } from '@/topology/curveFns.js';
+import type { AnyShape, Dimension, Edge, Wire } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -37,6 +38,11 @@ function len(s: AnyShape<Dimension>): number {
 // The manifold preview kernel is mesh-CSG only; B-rep wires are out of its
 // scope (same divergence class as the other feature-node tests).
 const itBrep = it.skipIf(currentKernel === 'manifold');
+
+// Direction probes need faithful curvePointAt/locate on edges; brepkit's
+// adapter diverges there (parameter-space pointAt, no edge relocation), so
+// these orientation oracles run on the OCCT kernels only.
+const itOcct = it.skipIf(!currentKernel.startsWith('occt'));
 
 describe('Path node', () => {
   it('reports Wire output kind', () => {
@@ -86,6 +92,65 @@ describe('Path node', () => {
       arc += Math.hypot(a * (Math.cos(t1) - Math.cos(t0)), b * (Math.sin(t1) - Math.sin(t0)));
     }
     expect(len(unwrap(r))).toBeCloseTo(arc, 1);
+  });
+
+  itOcct('ellipse-arc direction: side selection and parametric order per flags', () => {
+    using ev = new Evaluator();
+    const cases = [
+      // [radii, clockwise, expected midpoint y sign]
+      { radii: [30, 20] as const, clockwise: false, midY: 20 },
+      { radii: [30, 20] as const, clockwise: true, midY: -20 },
+      // ry > rx exercises the major/minor axis swap
+      { radii: [20, 30] as const, clockwise: false, midY: 30 },
+      { radii: [20, 30] as const, clockwise: true, midY: -30 },
+    ];
+    for (const c of cases) {
+      const rx = c.radii[0];
+      const node = path([rx, 0], [ellipseArcTo([-rx, 0], c.radii, { clockwise: c.clockwise })]);
+      const r = ev.evaluate(node);
+      expect(isOk(r)).toBe(true);
+      const wire = unwrap(r) as Edge | Wire;
+      const mid = curvePointAt(wire, 0.5);
+      expect(mid[1]).toBeCloseTo(c.midY, 1);
+      // Parametric direction must follow path order: from -> to.
+      const start = curveStartPoint(wire);
+      const end = curveEndPoint(wire);
+      expect(start[0]).toBeCloseTo(rx, 1);
+      expect(end[0]).toBeCloseTo(-rx, 1);
+    }
+  });
+
+  itOcct('clockwise circular arc keeps path-order parametric direction', () => {
+    using ev = new Evaluator();
+    // Clockwise from 9 o'clock (-10,0) to 3 o'clock (10,0) passes 12 o'clock.
+    const node = path([-10, 0], [arcTo([10, 0], 10, { clockwise: true })]);
+    const r = ev.evaluate(node);
+    expect(isOk(r)).toBe(true);
+    const wire = unwrap(r) as Edge | Wire;
+    expect(curvePointAt(wire, 0.5)[1]).toBeCloseTo(10, 1);
+    expect(curveStartPoint(wire)[0]).toBeCloseTo(-10, 1);
+    expect(curveEndPoint(wire)[0]).toBeCloseTo(10, 1);
+  });
+
+  itOcct('rotated ellipse-arc lands endpoints on the rotated frame', () => {
+    using ev = new Evaluator();
+    // Half-ellipse (a=30, b=20) rotated 30 deg: endpoints on the rotated
+    // major axis, on-arc midpoint at the rotated minor apex.
+    const phi = Math.PI / 6;
+    const a = 30;
+    const b = 20;
+    const p: [number, number] = [a * Math.cos(phi), a * Math.sin(phi)];
+    const q: [number, number] = [-p[0], -p[1]];
+    const node = path(p, [ellipseArcTo(q, [a, b], { rotation: 30 })]);
+    const r = ev.evaluate(node);
+    expect(isOk(r)).toBe(true);
+    const wire = unwrap(r) as Edge | Wire;
+    const start = curveStartPoint(wire);
+    expect(start[0]).toBeCloseTo(p[0], 1);
+    expect(start[1]).toBeCloseTo(p[1], 1);
+    const mid = curvePointAt(wire, 0.5);
+    expect(mid[0]).toBeCloseTo(-b * Math.sin(phi), 1);
+    expect(mid[1]).toBeCloseTo(b * Math.cos(phi), 1);
   });
 
   itBrep('bezier segment evaluates and composes with transforms', () => {

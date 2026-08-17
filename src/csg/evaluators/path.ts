@@ -5,10 +5,12 @@ import {
   makeEllipseArc,
   assembleWire,
 } from '@/topology/curveBuilders.js';
+import { flipOrientation } from '@/topology/curveFns.js';
+import { getKernel } from '@/kernel/index.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { ok, err, type Result } from '@/core/result.js';
-import { validationError } from '@/core/errors.js';
-import type { AnyShape, Dimension, Edge } from '@/core/shapeTypes.js';
+import { validationError, kernelError } from '@/core/errors.js';
+import { castShape, type AnyShape, type Dimension, type Edge } from '@/core/shapeTypes.js';
 import type { Vec2, Vec3 } from '@/core/types.js';
 import { evalScalar, evalVec2 } from '../expressions.js';
 import type { Segment2D } from '../segments.js';
@@ -124,22 +126,56 @@ function ellipseEdge(from: Vec2, seg: Segment2D, ctx: EvalContext): Result<Edge>
   const p = ellipseArcParams(from, to.value, radii.value, phi, seg.largeArc, seg.clockwise);
   if (!p.ok) return p;
   const { center, theta1, theta2, rx, ry } = p.value;
+  // Build AXIS-ALIGNED (no xDir: the kernel's makeEllipseArc silently ignores
+  // it on occt-wasm) and rotate the edge into the true frame afterwards. The
+  // major axis must come first, so a tall ellipse builds major-along-X with
+  // angles shifted by -90 deg and picks up the extra quarter turn here.
+  let arc: Result<Edge>;
+  let psi: number;
   if (rx >= ry) {
-    const xDir: Vec3 = [Math.cos(phi), Math.sin(phi), 0];
-    return makeEllipseArc(rx, ry, theta1, theta2, v3(center), [0, 0, 1], xDir);
+    arc = makeEllipseArc(rx, ry, theta1, theta2, v3(center), [0, 0, 1]);
+    psi = phi;
+  } else {
+    arc = makeEllipseArc(ry, rx, theta1 - Math.PI / 2, theta2 - Math.PI / 2, v3(center), [0, 0, 1]);
+    psi = phi + Math.PI / 2;
   }
-  // Kernel wants major >= minor: swap axes (major along the rotated y-axis)
-  // and shift angles by -90 deg relative to the new major axis.
-  const yDir: Vec3 = [-Math.sin(phi), Math.cos(phi), 0];
-  return makeEllipseArc(
-    ry,
-    rx,
-    theta1 - Math.PI / 2,
-    theta2 - Math.PI / 2,
-    v3(center),
-    [0, 0, 1],
-    yDir
-  );
+  if (!arc.ok) return arc;
+  let edge = arc.value;
+  if (Math.abs(psi) > EPS) {
+    using tmp = edge;
+    const rotated = rotateEdgeAbout(tmp, (psi * 180) / Math.PI, center);
+    if (!rotated.ok) return rotated;
+    edge = rotated.value;
+  }
+  if (seg.clockwise) {
+    // The kernel draws ccw, so a clockwise segment was built with swapped
+    // angles: right point set, reversed parametric direction. Flip so the
+    // edge runs from -> to in path order (spine direction depends on it).
+    using tmp = edge;
+    edge = flipOrientation(tmp) as Edge;
+  }
+  return ok(edge);
+}
+
+/** Rotate an edge about the Z axis at `center` (degrees) via a cheap location
+ *  re-tag; returns a fresh, independently-disposable handle. Kernels without
+ *  an edge-relocation path (brepkit) surface as a Result error, not a throw. */
+function rotateEdgeAbout(edge: Edge, angleDeg: number, center: Vec2): Result<Edge> {
+  const kernel = getKernel();
+  const { handle, dispose } = kernel.composeTransform([
+    { type: 'rotate', angle: angleDeg, axis: [0, 0, 1], center: [center[0], center[1], 0] },
+  ]);
+  try {
+    return ok(castShape(kernel.locate(edge.wrapped, handle)) as Edge);
+  } catch (e) {
+    return err(
+      kernelError('CSG_PATH_ELLIPSE_ROTATE', 'Path: kernel cannot relocate ellipse-arc edges', e, {
+        operation: 'evalPath',
+      })
+    );
+  } finally {
+    dispose();
+  }
 }
 
 function segmentEnd(seg: Segment2D, ctx: EvalContext): Result<Vec2> {
