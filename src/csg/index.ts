@@ -34,6 +34,7 @@ export {
   revolve,
   loft,
   sweep,
+  profile,
   path,
   compound,
   instance,
@@ -82,6 +83,7 @@ export type {
   RevolveNode,
   LoftNode,
   SweepNode,
+  ProfileNode,
   PathNode,
   InstanceNode,
   SolidNode,
@@ -92,12 +94,14 @@ export type {
 } from './types.js';
 export { outputKindOf } from './types.js';
 
-// Segments (shared by Path now, Profile later)
+// Segments and contours (shared by Path and Profile)
 export {
   lineTo,
   arcTo,
   bezierTo,
   ellipseArcTo,
+  contour,
+  type Contour,
   type Segment2D,
   type SegmentOptions,
   type EllipseArcOptions,

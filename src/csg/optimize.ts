@@ -12,8 +12,16 @@ import {
   buildVec,
   type Expr,
 } from './expressions.js';
-import { foldSegment } from './segments.js';
-import type { IRNode, ExtrudeNode, RevolveNode, LoftNode, SweepNode, PathNode } from './types.js';
+import { foldSegment, foldContour } from './segments.js';
+import type {
+  IRNode,
+  ExtrudeNode,
+  RevolveNode,
+  LoftNode,
+  SweepNode,
+  ProfileNode,
+  PathNode,
+} from './types.js';
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -164,12 +172,15 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Revolve':
     case 'Loft':
     case 'Sweep':
+    case 'Profile':
     case 'Path':
       return optimizeFeature(n);
   }
 }
 
-function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode | SweepNode | PathNode): IRNode {
+type FeatureNode = ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode;
+
+function optimizeFeature(n: FeatureNode): IRNode {
   switch (n.kind) {
     case 'Extrude':
       return B.extrude(optimizeNode(n.profile), foldExpr(n.vector));
@@ -182,6 +193,11 @@ function optimizeFeature(n: ExtrudeNode | RevolveNode | LoftNode | SweepNode | P
       return B.loft(n.sections.map(optimizeNode), { ruled: n.ruled });
     case 'Sweep':
       return B.sweep(optimizeNode(n.profile), optimizeNode(n.spine), { frenet: n.frenet });
+    case 'Profile':
+      return B.profile(
+        foldContour(n.outline, foldExpr),
+        n.holes.map((hole) => foldContour(hole, foldExpr))
+      );
     case 'Path':
       return B.path(
         foldExpr(n.start),

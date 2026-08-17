@@ -99,6 +99,21 @@ export function ellipseArcTo(
 }
 
 // ---------------------------------------------------------------------------
+// Contour — a closed outline (auto-closed at evaluation when the final
+// segment does not return to start), shared by Profile outlines and holes
+// ---------------------------------------------------------------------------
+
+export interface Contour {
+  /** Vec2 start point. */
+  readonly start: Expr;
+  readonly segments: readonly Segment2D[];
+}
+
+export function contour(start: Vec2Input, segments: ReadonlyArray<Segment2D>): Contour {
+  return { start: asVec2Expr(start), segments: [...segments] };
+}
+
+// ---------------------------------------------------------------------------
 // Hashing and dependency collection
 // ---------------------------------------------------------------------------
 
@@ -134,9 +149,24 @@ export function segmentFreeParams(segments: readonly Segment2D[]): Expr[] {
   return out;
 }
 
+export function hashContour(h0: bigint, c: Contour): bigint {
+  return hashSegments(fnvMixHash(h0, c.start.structuralHash), c.segments);
+}
+
+export function contourFreeParams(c: Contour): Expr[] {
+  return [c.start, ...segmentFreeParams(c.segments)];
+}
+
 // ---------------------------------------------------------------------------
 // Folding (used by optimize)
 // ---------------------------------------------------------------------------
+
+export function foldContour(c: Contour, foldExpr: (e: Expr) => Expr): Contour {
+  return {
+    start: foldExpr(c.start),
+    segments: c.segments.map((s) => foldSegment(s, foldExpr)),
+  };
+}
 
 export function foldSegment(s: Segment2D, foldExpr: (e: Expr) => Expr): Segment2D {
   switch (s.kind) {

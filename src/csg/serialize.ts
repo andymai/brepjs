@@ -17,13 +17,21 @@ import {
   type UnaryOp,
 } from './expressions.js';
 import * as B from './builders.js';
-import { lineTo, arcTo, bezierTo, ellipseArcTo, type Segment2D } from './segments.js';
+import {
+  lineTo,
+  arcTo,
+  bezierTo,
+  ellipseArcTo,
+  contour,
+  type Contour,
+  type Segment2D,
+} from './segments.js';
 import type { IRNode } from './types.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
-// (Extrude, Revolve, Loft, Sweep, Path). Additive only, so fromJSON accepts
-// the full range [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 2;
+// (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile. Additive only, so
+// fromJSON accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 3;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -146,6 +154,10 @@ function segmentToJson(s: Segment2D): unknown {
   }
 }
 
+function contourToJson(c: Contour): unknown {
+  return { start: exprToJson(c.start), segments: c.segments.map(segmentToJson) };
+}
+
 function transformToJson(n: IRNode): unknown {
   switch (n.kind) {
     case 'Translate':
@@ -202,6 +214,13 @@ function nodeToJson(n: IRNode): unknown {
       profile: nodeToJson(n.profile),
       spine: nodeToJson(n.spine),
       frenet: n.frenet,
+    };
+  }
+  if (n.kind === 'Profile') {
+    return {
+      kind: 'Profile',
+      outline: contourToJson(n.outline),
+      holes: n.holes.map(contourToJson),
     };
   }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
@@ -392,6 +411,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readPath(j);
     case 'Sweep':
       return readSweep(j);
+    case 'Profile':
+      return readProfile(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -676,6 +697,35 @@ function readSegment(j: unknown): Result<Segment2D> {
     default:
       return bad(`unknown segment kind: ${String(kind)}`);
   }
+}
+
+function readContour(j: unknown, where: string): Result<Contour> {
+  if (!isObj(j)) return bad(`${where}: not an object`);
+  const start = readExpr(j['start']);
+  if (!start.ok) return start;
+  const raw = j['segments'];
+  if (!Array.isArray(raw)) return bad(`${where}.segments: not array`);
+  const segments: Segment2D[] = [];
+  for (const s of raw) {
+    const r = readSegment(s);
+    if (!r.ok) return r;
+    segments.push(r.value);
+  }
+  return ok(contour(start.value, segments));
+}
+
+function readProfile(j: Record<string, unknown>): Result<IRNode> {
+  const outline = readContour(j['outline'], 'Profile.outline');
+  if (!outline.ok) return outline;
+  const rawHoles = j['holes'];
+  if (rawHoles !== undefined && !Array.isArray(rawHoles)) return bad('Profile.holes: not array');
+  const holes: Contour[] = [];
+  for (const [i, h] of (Array.isArray(rawHoles) ? rawHoles : []).entries()) {
+    const r = readContour(h, `Profile.holes[${i}]`);
+    if (!r.ok) return r;
+    holes.push(r.value);
+  }
+  return ok(B.profile(outline.value, holes));
 }
 
 function readSweep(j: Record<string, unknown>): Result<IRNode> {

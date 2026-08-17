@@ -9,7 +9,14 @@ import {
   type Vec2Input,
   type Vec3Input,
 } from './expressions.js';
-import { hashSegments, segmentFreeParams, type Segment2D } from './segments.js';
+import {
+  hashSegments,
+  segmentFreeParams,
+  hashContour,
+  contourFreeParams,
+  type Contour,
+  type Segment2D,
+} from './segments.js';
 import {
   fnvInit,
   fnvMixString,
@@ -43,6 +50,7 @@ import type {
   RevolveNode,
   LoftNode,
   SweepNode,
+  ProfileNode,
   PathNode,
   CompoundNode,
   InstanceNode,
@@ -371,6 +379,26 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+/** Planar face from a closed outline contour with optional first-class holes.
+ *  Contours auto-close at evaluation when the final segment does not return
+ *  to the start point. */
+export function profile(outline: Contour, holes: ReadonlyArray<Contour> = []): ProfileNode {
+  const copiedHoles = [...holes];
+  let h = hashContour(startHash('Profile'), outline);
+  h = fnvMixInt32(h, copiedHoles.length);
+  for (const hole of copiedHoles) h = hashContour(h, hole);
+  return {
+    kind: 'Profile',
+    outline,
+    holes: copiedHoles,
+    structuralHash: h,
+    freeParams: depsOf(
+      ...contourFreeParams(outline),
+      ...copiedHoles.flatMap((hole) => contourFreeParams(hole))
+    ),
   };
 }
 

@@ -3,7 +3,7 @@
 // invalidation is scoped to subtrees that actually depend on a changed param.
 
 import type { Expr } from './expressions.js';
-import type { Segment2D } from './segments.js';
+import type { Contour, Segment2D } from './segments.js';
 import type { Matrix4x4 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -177,6 +177,14 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface ProfileNode extends IRNodeBase {
+  readonly kind: 'Profile';
+  /** Closed outline in the XY plane (auto-closed at evaluation). */
+  readonly outline: Contour;
+  /** First-class holes — closed contours inside the outline. */
+  readonly holes: readonly Contour[];
+}
+
 export interface SweepNode extends IRNodeBase {
   readonly kind: 'Sweep';
   /** Must produce OutputKind 'Face'. */
@@ -250,6 +258,7 @@ export type IRNode =
   | RevolveNode
   | LoftNode
   | SweepNode
+  | ProfileNode
   | PathNode
   | CompoundNode
   | InstanceNode;
@@ -316,6 +325,8 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Loft':
     case 'Sweep':
       return 'Solid';
+    case 'Profile':
+      return 'Face';
     case 'Path':
       return 'Wire';
     case 'Compound':

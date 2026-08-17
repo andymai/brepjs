@@ -10,9 +10,15 @@ import { getKernel } from '@/kernel/index.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError, kernelError } from '@/core/errors.js';
-import { castShape, type AnyShape, type Dimension, type Edge } from '@/core/shapeTypes.js';
+import {
+  castShape,
+  type AnyShape,
+  type Dimension,
+  type Edge,
+  type Wire,
+} from '@/core/shapeTypes.js';
 import type { Vec2, Vec3 } from '@/core/types.js';
-import { evalScalar, evalVec2 } from '../expressions.js';
+import { evalScalar, evalVec2, type Expr } from '../expressions.js';
 import type { Segment2D } from '../segments.js';
 import type { PathNode } from '../types.js';
 import type { EvalContext } from './context.js';
@@ -24,7 +30,7 @@ function v3(p: Vec2): Vec3 {
 }
 
 function fail(msg: string): Result<never> {
-  return err(validationError('CSG_PATH_SEGMENT', `Path: ${msg}`));
+  return err(validationError('CSG_PATH_SEGMENT', `contour segment: ${msg}`));
 }
 
 /** SVG-style endpoint circular arc: recover the on-arc midpoint so the edge
@@ -217,16 +223,25 @@ function segmentToEdge(from: Vec2, seg: Segment2D, ctx: EvalContext): Result<Edg
   }
 }
 
-export function evalPath(node: PathNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
-  if (node.segments.length === 0) return fail('at least one segment required');
-  const start = evalVec2(node.start, ctx.env, 'Path.start');
-  if (!start.ok) return start;
-  // Edges are intermediates consumed by wire assembly; the wire is the fresh
-  // handle handed to the evaluator cache.
-  using scope = new DisposalScope();
+/** Build a wire from a segment list. Edges register into `scope`; the wire is
+ *  returned unregistered (the caller decides its ownership). With `autoClose`,
+ *  an endpoint away from start gains a closing line segment (SVG Z). */
+export function buildSegmentWire(
+  start: Expr,
+  segments: readonly Segment2D[],
+  ctx: EvalContext,
+  scope: DisposalScope,
+  autoClose: boolean,
+  where: string
+): Result<Wire> {
+  if (segments.length === 0) {
+    return err(validationError('CSG_PATH_SEGMENT', `${where}: at least one segment required`));
+  }
+  const start0 = evalVec2(start, ctx.env, `${where}.start`);
+  if (!start0.ok) return start0;
   const edges: Edge[] = [];
-  let cur = start.value;
-  for (const seg of node.segments) {
+  let cur = start0.value;
+  for (const seg of segments) {
     const e = segmentToEdge(cur, seg, ctx);
     if (!e.ok) return e;
     scope.register(e.value);
@@ -235,5 +250,20 @@ export function evalPath(node: PathNode, ctx: EvalContext): Result<AnyShape<Dime
     if (!end.ok) return end;
     cur = end.value;
   }
+  // Close on any gap above coincidence (EPS): a larger threshold would leave
+  // a dead zone where the gap is too big for the kernel's closure check but
+  // too small to trigger the closing segment.
+  if (autoClose && Math.hypot(cur[0] - start0.value[0], cur[1] - start0.value[1]) > EPS) {
+    const closing = makeLine(v3(cur), v3(start0.value));
+    scope.register(closing);
+    edges.push(closing);
+  }
   return assembleWire(edges);
+}
+
+export function evalPath(node: PathNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
+  // Edges are intermediates consumed by wire assembly; the wire is the fresh
+  // handle handed to the evaluator cache.
+  using scope = new DisposalScope();
+  return buildSegmentWire(node.start, node.segments, ctx, scope, false, 'Path');
 }
