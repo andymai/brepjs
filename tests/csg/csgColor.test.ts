@@ -114,6 +114,15 @@ describe('Color node', () => {
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
+  it('canonicalizes non-finite components (malformed hex, NaN tuples)', () => {
+    const malformed = color(box(1, 2, 3), '#zz0000');
+    expect(malformed.color.every((c) => Number.isFinite(c))).toBe(true);
+    expect(isOk(fromJSON(toJSON(malformed)))).toBe(true);
+    const nans = color(box(1, 2, 3), [Number.NaN, 0.5, 0, Number.NaN]);
+    expect(nans.color).toEqual([0, 0.5, 0, 1]);
+    expect(isOk(fromJSON(toJSON(nans)))).toBe(true);
+  });
+
   it('rejects out-of-range RGBA components at the trust boundary', () => {
     const envelope = JSON.parse(JSON.stringify(toJSON(color(box(1, 2, 3), '#ffffff')))) as {
       root: { color: number[] };

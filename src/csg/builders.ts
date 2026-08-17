@@ -391,9 +391,12 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
  *  metadata-free. */
 export function color(target: IRNode, input: ColorInput): ColorNode {
   const parsed = parseColor(input);
-  // Canonical form is clamped RGBA: out-of-range tuple components would
-  // otherwise serialize verbatim and fail the fromJSON range check.
-  const rgba = parsed.map((c) => Math.min(1, Math.max(0, c))) as [number, number, number, number];
+  // Canonical form is clamped, finite RGBA: out-of-range or NaN components
+  // (e.g. a malformed hex string) would otherwise serialize verbatim and
+  // fail the fromJSON range check. Non-finite falls back to 0 (alpha to 1).
+  const rgba = parsed.map((c, i) =>
+    Number.isFinite(c) ? Math.min(1, Math.max(0, c)) : i === 3 ? 1 : 0
+  ) as [number, number, number, number];
   let h = mix(startHash('Color'), target);
   for (const c of rgba) h = fnvMixNumber(h, c);
   return {
