@@ -1,0 +1,23 @@
+tests/csg/csgColor.test.ts
+  s_951c9e48d7e90e::t_0dffac0b5f3bf1 109-118
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_d816a573a2e855 727-728
+src/csg/evaluators/color.ts
+  s_951c9e48d7e90e::t_d816a573a2e855 3,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "834c10f035abcba44ab0d04d79019c60515359c6",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
