@@ -123,7 +123,19 @@ export class BimModel {
     return this.#makeElement('STOREY', spec, null, options?.stableKey);
   }
 
+  /** Reject a duplicate stableKey BEFORE any geometry is built, so the
+   *  Result-returning adders never allocate a solid they cannot store. */
+  #checkStableKey(options: ElementIdentityOptions | undefined): Result<void, BimError> {
+    const key = options?.stableKey;
+    if (key !== undefined && this.#usedStableKeys.has(key)) {
+      return err(specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${key}'`));
+    }
+    return ok(undefined);
+  }
+
   addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = wallToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('WALL', spec, geomResult.value, options?.stableKey);
@@ -133,6 +145,8 @@ export class BimModel {
   }
 
   addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = slabToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('SLAB', spec, geomResult.value, options?.stableKey);

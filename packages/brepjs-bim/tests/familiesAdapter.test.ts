@@ -131,6 +131,22 @@ describe('familiesToBim', () => {
     expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);
   });
 
+  it('duplicate stable keys return a Result error before building geometry', () => {
+    const projected = familiesToBim(buildStorey(), { project: PROJECT });
+    using model = unwrap(projected).model;
+    const spec = {
+      length: 100,
+      height: 100,
+      thickness: 10,
+      origin: [0, 0, 0] as [number, number, number],
+      axisX: [1, 0, 0] as [number, number, number],
+      axisZ: [0, 0, 1] as [number, number, number],
+      materialName: 'Concrete',
+    };
+    const dup = model.addWall(spec, { stableKey: 'storey-1/w1' });
+    expect(isOk(dup)).toBe(false);
+  });
+
   it('rejects unmapped element types with a Result error', () => {
     const Widget = family<{ readonly size: number }>('Widget', (p) =>
       el('Box', { size: [p.size, p.size, p.size] })
