@@ -1,0 +1,29 @@
+tests/fixtures/cliRegistry/manifest.json
+  s_951c9e48d7e90e::t_21a27614f8912f 1-22
+bin/brepjs.mjs
+  s_951c9e48d7e90e::t_135d300a49f6be 1-204
+package.json
+  s_951c9e48d7e90e::t_8ace9a9d85e3b7 209-211,213-214
+tests/cliFamilies.test.ts
+  s_951c9e48d7e90e::t_6e38154999ae92 1-116
+tests/fixtures/cliRegistry/families/alpha.ts
+  s_951c9e48d7e90e::t_21a27614f8912f 1-2
+tests/fixtures/cliRegistry/families/beta.ts
+  s_951c9e48d7e90e::t_21a27614f8912f 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e3c0d8b8703586a8c5aaf1241a5c2df8dbec245d",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
