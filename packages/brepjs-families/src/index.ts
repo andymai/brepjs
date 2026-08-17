@@ -21,4 +21,9 @@ export {
   type Relationship,
   type ResolvedElement,
 } from './resolve.js';
-export { evaluateModel, type EvaluatedModel, type EvaluatedNode } from './evaluateModel.js';
+export {
+  evaluateModel,
+  type EvaluatedModel,
+  type EvaluatedNode,
+  type EvaluateModelOptions,
+} from './evaluateModel.js';
