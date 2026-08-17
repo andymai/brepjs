@@ -1,0 +1,21 @@
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_b4ba10d2afc1f0 236-238,240-242,244-250,258,260-261,266,269,429-437
+tests/csg/csgBuilderImmutability.test.ts
+  s_951c9e48d7e90e::t_ecbc5111a431fd 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "00a0df8cde459b71f40868f53621b8f3cea9f955",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
