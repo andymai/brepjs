@@ -1,7 +1,7 @@
 /**
  * Blueprint -> Contour bridge — exact area oracles per curve branch (lines,
- * arcs, beziers, ellipses incl. closed-curve splitting), composition into
- * Profile/Extrude, and pure-data guarantees.
+ * arcs, beziers, ellipses incl. closed-curve splitting), reversed-curve
+ * handling, composition into Profile/Extrude, and pure-data guarantees.
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
@@ -10,6 +10,7 @@ import {
   blueprintToContour,
   roundedRectangleBlueprint,
   polysidesBlueprint,
+  reverseCurve,
   isOk,
   unwrap,
   measureArea,
@@ -38,46 +39,65 @@ function evalArea(c: ReturnType<typeof blueprintToContour>): number {
   return area(unwrap(r));
 }
 
+/** Run `fn` against a blueprint, disposing its kernel curves afterwards. */
+function withBlueprint(bp: Blueprint, fn: (bp: Blueprint) => void): void {
+  try {
+    fn(bp);
+  } finally {
+    bp.delete();
+  }
+}
+
+function c2d(handle: { readonly raw: unknown }): Curve2D {
+  return new Curve2D(handle.raw as ConstructorParameters<typeof Curve2D>[0]);
+}
+
 describe('blueprintToContour', () => {
   itBrep('rounded rectangle (lines + corner arcs) bridges with exact area', () => {
-    const c = blueprintToContour(roundedRectangleBlueprint(40, 30, 5));
-    expect(isOk(c)).toBe(true);
-    // Pure data: the contour serializes through the csg envelope and rebuilds
-    // to the identical content address (no kernel handles in the tree).
-    const node = profile(unwrap(c));
-    expect(unwrap(fromJSON(toJSON(node))).structuralHash).toBe(node.structuralHash);
-    expect(evalArea(c)).toBeCloseTo(40 * 30 - (4 - Math.PI) * 25, 1);
+    withBlueprint(roundedRectangleBlueprint(40, 30, 5), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      // Pure data: the contour serializes through the csg envelope and
+      // rebuilds to the identical content address (no kernel handles inside).
+      const node = profile(unwrap(c));
+      expect(unwrap(fromJSON(toJSON(node))).structuralHash).toBe(node.structuralHash);
+      expect(evalArea(c)).toBeCloseTo(40 * 30 - (4 - Math.PI) * 25, 1);
+    });
   });
 
   itBrep('regular polygon bridges with exact area', () => {
-    const c = blueprintToContour(polysidesBlueprint(20, 6));
-    expect(isOk(c)).toBe(true);
-    expect(evalArea(c)).toBeCloseTo(0.5 * 6 * 400 * Math.sin((2 * Math.PI) / 6), 1);
+    withBlueprint(polysidesBlueprint(20, 6), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      expect(evalArea(c)).toBeCloseTo(0.5 * 6 * 400 * Math.sin((2 * Math.PI) / 6), 1);
+    });
   });
 
   itBrep('bezier curves bridge with exact pole-area', () => {
     // Quadratic bezier arch over a straight chord: bulge = w * P / 3.
-    const arch = new Curve2D(
+    const arch = c2d(
       unwrap(
         bezier2d([
           [0, 0],
           [20, 30],
           [40, 0],
         ])
-      ).raw
+      )
     );
-    const base = new Curve2D(unwrap(line2d([40, 0], [0, 0])).raw);
-    const bp = new Blueprint([arch, base]);
-    const c = blueprintToContour(bp);
-    expect(isOk(c)).toBe(true);
-    expect(evalArea(c)).toBeCloseTo((40 * 30) / 3, 1);
+    const base = c2d(unwrap(line2d([40, 0], [0, 0])));
+    withBlueprint(new Blueprint([arch, base]), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      expect(evalArea(c)).toBeCloseTo((40 * 30) / 3, 1);
+    });
   });
 
   itBrep('a closed ellipse splits into two halves with exact area', () => {
-    const bp = new Blueprint([new Curve2D(unwrap(ellipse2d([0, 0], 30, 20)).raw)]);
-    const c = blueprintToContour(bp);
-    expect(isOk(c)).toBe(true);
-    expect(evalArea(c)).toBeCloseTo(Math.PI * 600, 1);
+    withBlueprint(new Blueprint([c2d(unwrap(ellipse2d([0, 0], 30, 20)))]), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      expect(evalArea(c)).toBeCloseTo(Math.PI * 600, 1);
+    });
   });
 
   itBrep('bspline curves approximate per curve and bridge faithfully', () => {
@@ -93,19 +113,52 @@ describe('blueprintToContour', () => {
       const t = (2 * Math.PI * i) / n;
       pts.push([r * Math.cos(t), r * Math.sin(t)]);
     }
-    const spline = new Curve2D(unwrap(bspline2d(pts)).raw);
-    const c = blueprintToContour(new Blueprint([spline]));
-    expect(isOk(c)).toBe(true);
-    const a = evalArea(c);
-    expect(a).toBeGreaterThan(1100);
-    expect(a).toBeLessThan(Math.PI * r * r);
+    withBlueprint(new Blueprint([c2d(unwrap(bspline2d(pts)))]), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      const a = evalArea(c);
+      expect(a).toBeGreaterThan(1100);
+      expect(a).toBeLessThan(Math.PI * r * r);
+    });
+  });
+
+  itBrep('a reversed mid-chain bspline bridges to the same area as forward', () => {
+    const splinePts: Array<[number, number]> = [
+      [10, 0],
+      [15, 10],
+      [25, 10],
+      [30, 0],
+    ];
+    const outline = (spline: Curve2D): Curve2D[] => [
+      c2d(unwrap(line2d([0, 0], [10, 0]))),
+      spline,
+      c2d(unwrap(line2d([30, 0], [40, 0]))),
+      c2d(unwrap(line2d([40, 0], [40, 20]))),
+      c2d(unwrap(line2d([40, 20], [0, 20]))),
+      c2d(unwrap(line2d([0, 20], [0, 0]))),
+    ];
+    let forwardArea = 0;
+    withBlueprint(new Blueprint(outline(c2d(unwrap(bspline2d(splinePts))))), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      forwardArea = evalArea(c);
+    });
+    // Same outline with the bspline stored REVERSED: its approximation pieces
+    // arrive in anti-path order and must be re-chained.
+    withBlueprint(new Blueprint(outline(reverseCurve(c2d(unwrap(bspline2d(splinePts)))))), (bp) => {
+      const c = blueprintToContour(bp);
+      expect(isOk(c)).toBe(true);
+      expect(evalArea(c)).toBeCloseTo(forwardArea, 3);
+    });
   });
 
   itBrep('bridged contour composes into profile + extrude', () => {
-    using ev = new Evaluator();
-    const c = blueprintToContour(roundedRectangleBlueprint(40, 30, 5));
-    const r = ev.evaluate(extrude(profile(unwrap(c)), [0, 0, 10]));
-    expect(isOk(r)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(r)))).toBeCloseTo((40 * 30 - (4 - Math.PI) * 25) * 10, 0);
+    withBlueprint(roundedRectangleBlueprint(40, 30, 5), (bp) => {
+      using ev = new Evaluator();
+      const c = blueprintToContour(bp);
+      const r = ev.evaluate(extrude(profile(unwrap(c)), [0, 0, 10]));
+      expect(isOk(r)).toBe(true);
+      expect(unwrap(measureVolume(unwrap(r)))).toBeCloseTo((40 * 30 - (4 - Math.PI) * 25) * 10, 0);
+    });
   });
 });

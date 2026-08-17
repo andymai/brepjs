@@ -217,6 +217,19 @@ export function blueprintToContour(
       : approximateAsSvgCompatibleCurve([c], { tolerance, continuity: 'C0', maxSegments: 300 });
     const owned = pieces[0] !== c;
     try {
+      // A reversed source curve decomposes into pieces whose parametric order
+      // runs against the path; if the head does not chain to the current
+      // point, walk the pieces back to front (each piece is itself consumed
+      // endpoint-agnostically).
+      const head = pieces[0];
+      if (
+        pieces.length > 1 &&
+        head !== undefined &&
+        !near(p2(head.firstPoint), cur) &&
+        !near(p2(head.lastPoint), cur)
+      ) {
+        pieces.reverse();
+      }
       for (const piece of pieces) {
         const r = consumePiece(piece, cur, segments);
         if (!r.ok) return r;
