@@ -175,6 +175,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'assignRoles',
   'autoHeal',
   'bezier',
+  'blueprintToContour',
   'blueprintToDXF',
   'booleanPipeline',
   'booleans',
