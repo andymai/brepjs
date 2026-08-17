@@ -233,11 +233,21 @@ export function intersect(a: SolidNode, b: SolidNode, tolerance?: number): Inter
   };
 }
 
+// N-ary builders copy their input arrays so later caller mutation can't
+// desync the children from the pre-computed structuralHash (same contract
+// as `instance` and `loft`).
 export function fuseAll(shapes: ReadonlyArray<SolidNode>, tolerance?: number): FuseAllNode {
-  let h = fnvMixInt32(startHash('FuseAll'), shapes.length);
-  for (const s of shapes) h = mix(h, s);
+  const copied = [...shapes];
+  let h = fnvMixInt32(startHash('FuseAll'), copied.length);
+  for (const s of copied) h = mix(h, s);
   h = mixOptNumber(h, tolerance);
-  return { kind: 'FuseAll', shapes, tolerance, structuralHash: h, freeParams: depsOf(...shapes) };
+  return {
+    kind: 'FuseAll',
+    shapes: copied,
+    tolerance,
+    structuralHash: h,
+    freeParams: depsOf(...copied),
+  };
 }
 
 export function cutAll(
@@ -245,17 +255,18 @@ export function cutAll(
   tools: ReadonlyArray<SolidNode>,
   tolerance?: number
 ): CutAllNode {
+  const copied = [...tools];
   let h = mix(startHash('CutAll'), base);
-  h = fnvMixInt32(h, tools.length);
-  for (const t of tools) h = mix(h, t);
+  h = fnvMixInt32(h, copied.length);
+  for (const t of copied) h = mix(h, t);
   h = mixOptNumber(h, tolerance);
   return {
     kind: 'CutAll',
     base,
-    tools,
+    tools: copied,
     tolerance,
     structuralHash: h,
-    freeParams: depsOf(base, ...tools),
+    freeParams: depsOf(base, ...copied),
   };
 }
 
@@ -415,9 +426,15 @@ export function revolve(
 // ---------------------------------------------------------------------------
 
 export function compound(children: ReadonlyArray<IRNode>): CompoundNode {
-  let h = fnvMixInt32(startHash('Compound'), children.length);
-  for (const c of children) h = mix(h, c);
-  return { kind: 'Compound', children, structuralHash: h, freeParams: depsOf(...children) };
+  const copied = [...children];
+  let h = fnvMixInt32(startHash('Compound'), copied.length);
+  for (const c of copied) h = mix(h, c);
+  return {
+    kind: 'Compound',
+    children: copied,
+    structuralHash: h,
+    freeParams: depsOf(...copied),
+  };
 }
 
 export function instance(
