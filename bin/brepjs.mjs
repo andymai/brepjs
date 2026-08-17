@@ -16,7 +16,8 @@
  * directory works — point --registry at a firm-internal copy to self-host.
  */
 
-import { mkdir, readFile, writeFile, access, lstat, realpath } from 'node:fs/promises';
+import { mkdir, open, readFile, writeFile, access, realpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve as resolvePath, sep } from 'node:path';
 import process from 'node:process';
@@ -119,9 +120,11 @@ async function exists(path) {
   }
 }
 
-/** Refuse writes through symlinks: the file itself must not be a symlink and
- *  its (created) parent must really live under the target root. A symlinked
- *  target root itself is respected as the user's own layout choice. */
+/** Refuse writes through symlinks: the (created) parent must really live
+ *  under the target root, and the file is opened with O_NOFOLLOW so a
+ *  symlinked target is rejected atomically at open time (no check-then-write
+ *  race on the final component). A symlinked target root itself is respected
+ *  as the user's own layout choice. */
 async function guardedWrite(targetRoot, target, content) {
   await mkdir(join(target, '..'), { recursive: true });
   const rootReal = await realpath(targetRoot);
@@ -129,11 +132,23 @@ async function guardedWrite(targetRoot, target, content) {
   if (parentReal !== rootReal && !parentReal.startsWith(rootReal + sep)) {
     throw new Error(`refusing to write outside the target directory: ${target}`);
   }
-  const stat = await lstat(target).catch(() => null);
-  if (stat?.isSymbolicLink()) {
-    throw new Error(`refusing to write through a symlink: ${target}`);
+  let handle;
+  try {
+    handle = await open(
+      target,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW
+    );
+  } catch (err) {
+    if (err && (err.code === 'ELOOP' || err.code === 'EMLINK')) {
+      throw new Error(`refusing to write through a symlink: ${target}`);
+    }
+    throw err;
   }
-  await writeFile(target, content);
+  try {
+    await handle.writeFile(content);
+  } finally {
+    await handle.close();
+  }
 }
 
 async function add(args) {
