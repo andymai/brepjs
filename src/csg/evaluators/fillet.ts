@@ -2,7 +2,7 @@ import { fillet as filletFn } from '@/topology/modifierFns.js';
 import { resolveRefIn } from '@/topology/shapeRef/refResolveFns.js';
 import { err, type Result } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
-import { isEdge, isShape3D, type AnyShape, type Dimension, type Solid } from '@/core/shapeTypes.js';
+import { isEdge, isSolid, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 import { validSolid } from '@/core/validityTypes.js';
 import { evalScalar } from '../expressions.js';
 import type { FilletNode } from '../types.js';
@@ -18,10 +18,10 @@ export function evalFillet(node: FilletNode, ctx: EvalContext): Result<AnyShape<
   }
   const t = ctx.evalNode(node.target);
   if (!t.ok) return t;
-  if (!isShape3D(t.value)) {
-    return err(validationError('CSG_FILLET_TARGET', 'Fillet.target did not produce a 3D shape'));
+  if (!isSolid(t.value)) {
+    return err(validationError('CSG_FILLET_TARGET', 'Fillet.target did not produce a Solid'));
   }
-  const solid = validSolid(t.value as Solid);
+  const solid = validSolid(t.value);
   if (!solid.ok) return err(validationError('CSG_FILLET_TARGET', solid.error));
   const resolved = resolveRefIn(node.ref, t.value);
   if (!resolved.ok) {

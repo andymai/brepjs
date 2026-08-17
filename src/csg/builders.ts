@@ -405,14 +405,25 @@ function hashEdgeRef(h0: bigint, ref: EdgeRef): bigint {
  *  resolves against the materialized target at evaluation, so an upstream
  *  parameter edit re-targets the same edge by its face roles. */
 export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): FilletNode {
+  // Deep-copy so later caller mutation can't desync the ref from the
+  // pre-computed structuralHash (same contract as the n-ary builders).
+  const copied: EdgeRef = {
+    origin: ref.origin,
+    faceRoles: [ref.faceRoles[0], ref.faceRoles[1]],
+    hint: {
+      entityType: 'edge',
+      length: ref.hint.length,
+      midpoint: ref.hint.midpoint ? [...ref.hint.midpoint] : undefined,
+    },
+  };
   const re = asScalarExpr(radius);
   let h = mix(startHash('Fillet'), target);
-  h = hashEdgeRef(h, ref);
+  h = hashEdgeRef(h, copied);
   h = mix(h, re);
   return {
     kind: 'Fillet',
     target,
-    ref,
+    ref: copied,
     radius: re,
     structuralHash: h,
     freeParams: depsOf(target, re),

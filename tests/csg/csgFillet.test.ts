@@ -8,6 +8,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from '../setup.js';
 import {
   box,
+  compound,
   fillet,
   param,
   optimize,
@@ -128,6 +129,30 @@ describe('Fillet node', () => {
     const swapped = replaceNode(node, (n) => n.kind === 'Box', box(200, 40, 30));
     expect(swapped.kind).toBe('Fillet');
     expect(swapped.structuralHash).not.toBe(node.structuralHash);
+  });
+
+  itBrep('is immune to caller mutation of the ref after construction', () => {
+    using ev = new Evaluator();
+    const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
+    const mutable = {
+      origin: ref.origin,
+      faceRoles: [ref.faceRoles[0], ref.faceRoles[1]] as [string, string],
+      hint: { ...ref.hint },
+    };
+    const node = fillet(box(param('w'), 40, 30), mutable, 5);
+    mutable.faceRoles[1] = 'box:back';
+    mutable.origin = 'mutated';
+    expect(node.ref.faceRoles[1]).toBe(ref.faceRoles[1]);
+    const r = ev.evaluate(node, { w: 100 });
+    expect(isOk(r)).toBe(true);
+    expect(vol(unwrap(r))).toBeCloseTo(filletedVol(100, 40, 30, 5), -1);
+  });
+
+  itBrep('rejects a non-solid 3D target with a Result error', () => {
+    using ev = new Evaluator();
+    const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
+    const compoundTarget = compound([box(10, 10, 10), box(5, 5, 5)]);
+    expect(isOk(ev.evaluate(fillet(compoundTarget, ref, 2)))).toBe(false);
   });
 
   itBrep('an unresolvable ref surfaces as a Result error', () => {
