@@ -1,5 +1,19 @@
 # Changelog
 
+## [18.126.0](https://github.com/andymai/brepjs/compare/brepjs-v18.125.0...brepjs-v18.126.0) (2026-08-17)
+
+
+### Features
+
+* **csg:** add loft node ([#2030](https://github.com/andymai/brepjs/issues/2030)) ([7c73303](https://github.com/andymai/brepjs/commit/7c733036f71faab2039ab92d18fdde144df20a9c))
+* **csg:** add path node and segment vocabulary ([#2032](https://github.com/andymai/brepjs/issues/2032)) ([6218671](https://github.com/andymai/brepjs/commit/6218671d4910ba72ba741902380cd5ea2f007ed0))
+* **csg:** add revolve node ([#2029](https://github.com/andymai/brepjs/issues/2029)) ([8cbd235](https://github.com/andymai/brepjs/commit/8cbd2350a6f980366c9893073fd1011bb9cb7ba5))
+
+
+### Bug Fixes
+
+* **csg:** copy input arrays in n-ary builders ([#2031](https://github.com/andymai/brepjs/issues/2031)) ([024ead1](https://github.com/andymai/brepjs/commit/024ead1666cb79350b27c0a6028e0aa6e6b5c7fb))
+
 ## [18.125.0](https://github.com/andymai/brepjs/compare/brepjs-v18.124.8...brepjs-v18.125.0) (2026-08-17)
 
 
