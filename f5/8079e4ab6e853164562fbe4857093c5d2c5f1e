@@ -1,0 +1,21 @@
+tests/csg/csgProfile.test.ts
+  s_951c9e48d7e90e::t_ebfc41ed3e3bdd 75-87
+src/csg/evaluators/path.ts
+  s_951c9e48d7e90e::t_0ebf7ed6fe1d1f 253-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f58079e4ab6e853164562fbe4857093c5d2c5f1e",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
