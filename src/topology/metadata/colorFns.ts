@@ -48,7 +48,9 @@ function getFaceColorMap(shape: AnyShape<Dimension>): Map<number, Color> {
 // Color parsing
 // ---------------------------------------------------------------------------
 
-function parseColor(input: ColorInput): Color {
+/** Parse any accepted color input into canonical RGBA (exported so content-
+ *  addressed consumers can canonicalize before hashing). */
+export function parseColor(input: ColorInput): Color {
   if (typeof input === 'string') {
     let hex = input.startsWith('#') ? input.slice(1) : input;
     if (hex.length === 3) {

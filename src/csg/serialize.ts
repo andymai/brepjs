@@ -29,9 +29,10 @@ import {
 import type { IRNode } from './types.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
-// (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile. Additive only, so
-// fromJSON accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 3;
+// (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color.
+// Additive only, so fromJSON accepts the full range
+// [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 4;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -223,6 +224,9 @@ function nodeToJson(n: IRNode): unknown {
       holes: n.holes.map(contourToJson),
     };
   }
+  if (n.kind === 'Color') {
+    return { kind: 'Color', target: nodeToJson(n.target), color: [...n.color] };
+  }
   if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
   if (n.kind === 'Instance') {
     return {
@@ -413,6 +417,8 @@ function readNode(j: unknown): Result<IRNode> {
       return readSweep(j);
     case 'Profile':
       return readProfile(j);
+    case 'Color':
+      return readColor(j);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -712,6 +718,16 @@ function readContour(j: unknown, where: string): Result<Contour> {
     segments.push(r.value);
   }
   return ok(contour(start.value, segments));
+}
+
+function readColor(j: Record<string, unknown>): Result<IRNode> {
+  const target = readNode(j['target']);
+  if (!target.ok) return target;
+  const c = j['color'];
+  if (!Array.isArray(c) || c.length !== 4 || !c.every((v) => isNumber(v) && v >= 0 && v <= 1)) {
+    return bad('Color.color: expected an RGBA array of 4 numbers in [0, 1]');
+  }
+  return ok(B.color(target.value, [c[0], c[1], c[2], c[3]] as [number, number, number, number]));
 }
 
 function readProfile(j: Record<string, unknown>): Result<IRNode> {

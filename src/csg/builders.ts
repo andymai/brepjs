@@ -26,6 +26,7 @@ import {
   fnvMixInt32,
 } from './hash.js';
 import type { Matrix4x4 } from '@/core/types.js';
+import { parseColor, type ColorInput } from '@/topology/metadata/colorFns.js';
 import type {
   BoxNode,
   SphereNode,
@@ -52,6 +53,7 @@ import type {
   SweepNode,
   ProfileNode,
   PathNode,
+  ColorNode,
   CompoundNode,
   InstanceNode,
   IRNode,
@@ -379,6 +381,27 @@ export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode {
     vector: ve,
     structuralHash: h,
     freeParams: depsOf(profile, ve),
+  };
+}
+
+/** Attach a color (hex string or RGB/RGBA tuple, canonicalized to RGBA) to
+ *  the evaluated result of `target`. Metadata rides beside the geometry: the
+ *  evaluator re-tags the shared target materialization with an independent
+ *  handle before coloring, so plain consumers of the same subtree stay
+ *  metadata-free. */
+export function color(target: IRNode, input: ColorInput): ColorNode {
+  const parsed = parseColor(input);
+  // Canonical form is clamped RGBA: out-of-range tuple components would
+  // otherwise serialize verbatim and fail the fromJSON range check.
+  const rgba = parsed.map((c) => Math.min(1, Math.max(0, c))) as [number, number, number, number];
+  let h = mix(startHash('Color'), target);
+  for (const c of rgba) h = fnvMixNumber(h, c);
+  return {
+    kind: 'Color',
+    target,
+    color: rgba,
+    structuralHash: h,
+    freeParams: target.freeParams,
   };
 }
 

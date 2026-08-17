@@ -177,6 +177,13 @@ export interface RevolveNode extends IRNodeBase {
   readonly at?: Expr | undefined;
 }
 
+export interface ColorNode extends IRNodeBase {
+  readonly kind: 'Color';
+  readonly target: IRNode;
+  /** Canonical RGBA, each component in [0, 1]. */
+  readonly color: readonly [number, number, number, number];
+}
+
 export interface ProfileNode extends IRNodeBase {
   readonly kind: 'Profile';
   /** Closed outline in the XY plane (auto-closed at evaluation). */
@@ -260,6 +267,7 @@ export type IRNode =
   | SweepNode
   | ProfileNode
   | PathNode
+  | ColorNode
   | CompoundNode
   | InstanceNode;
 
@@ -319,6 +327,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Rotate':
     case 'Scale':
     case 'Mirror':
+    case 'Color':
       return outputKindOf(node.target);
     case 'Extrude':
     case 'Revolve':

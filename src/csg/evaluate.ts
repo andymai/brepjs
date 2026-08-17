@@ -48,6 +48,7 @@ import { evalLoft } from './evaluators/loft.js';
 import { evalPath } from './evaluators/path.js';
 import { evalSweep } from './evaluators/sweep.js';
 import { evalProfile } from './evaluators/profile.js';
+import { evalColor } from './evaluators/color.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -154,6 +155,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalSweep(node, ctx);
     case 'Profile':
       return evalProfile(node, ctx);
+    case 'Color':
+      return evalColor(node, ctx);
   }
 }
 

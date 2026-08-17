@@ -71,6 +71,8 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
       return B.sweep(walk(n.profile, pred, repl), walk(n.spine, pred, repl), {
         frenet: n.frenet,
       });
+    case 'Color':
+      return B.color(walk(n.target, pred, repl), [...n.color]);
   }
 }
 
@@ -106,6 +108,7 @@ function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Rotate':
     case 'Scale':
     case 'Mirror':
+    case 'Color':
       return [n.target];
     case 'Compound':
       return n.children;

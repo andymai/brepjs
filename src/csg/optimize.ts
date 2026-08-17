@@ -21,6 +21,7 @@ import type {
   SweepNode,
   ProfileNode,
   PathNode,
+  ColorNode,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -174,11 +175,13 @@ function optimizeNode(n: IRNode): IRNode {
     case 'Sweep':
     case 'Profile':
     case 'Path':
+    case 'Color':
       return optimizeFeature(n);
   }
 }
 
-type FeatureNode = ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode;
+type FeatureNode =
+  ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode | ColorNode;
 
 function optimizeFeature(n: FeatureNode): IRNode {
   switch (n.kind) {
@@ -203,6 +206,8 @@ function optimizeFeature(n: FeatureNode): IRNode {
         foldExpr(n.start),
         n.segments.map((s) => foldSegment(s, foldExpr))
       );
+    case 'Color':
+      return B.color(optimizeNode(n.target), [...n.color]);
   }
 }
 
