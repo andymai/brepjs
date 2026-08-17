@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.137.0](https://github.com/andymai/brepjs/compare/brepjs-v18.136.0...brepjs-v18.137.0) (2026-08-17)
+
+
+### Features
+
+* **families:** add the starter registry with manifest and version markers ([#2080](https://github.com/andymai/brepjs/issues/2080)) ([59a0c8d](https://github.com/andymai/brepjs/commit/59a0c8d90c3f0be149305da54ad2cb718db2b899))
+
 ## [18.136.0](https://github.com/andymai/brepjs/compare/brepjs-v18.135.0...brepjs-v18.136.0) (2026-08-17)
 
 
