@@ -1,0 +1,41 @@
+src/csg/evaluators/chamfer.ts
+  s_951c9e48d7e90e::t_c9fd1316116615 1-39
+src/csg/index.ts
+  s_951c9e48d7e90e::t_0c125a8865f21d 41,93
+src/csg/evaluate.ts
+  s_951c9e48d7e90e::t_c9fd1316116615 65,202-203
+  s_951c9e48d7e90e::t_823c70063d85c3 22-34,160-185
+tests/csg/csgChamfer.test.ts
+  s_951c9e48d7e90e::t_2c3ace2fc02b3d 1-167
+src/csg/optimize.ts
+  s_951c9e48d7e90e::t_c9fd1316116615 29,175,188-189,218-219
+tests/csg/csgFillet.test.ts
+  s_951c9e48d7e90e::t_2c3ace2fc02b3d 120-127
+src/csg/serialize.ts
+  s_951c9e48d7e90e::t_0c125a8865f21d 30,34-36,159-170,247,251-258,453-454,756-760,762,764-765,767,770,774-798
+src/csg/edit.ts
+  s_951c9e48d7e90e::t_c9fd1316116615 12,76,82,104-105,143
+.size-limit.json
+  s_951c9e48d7e90e::t_bda7c968cce4ab 3
+src/csg/builders.ts
+  s_951c9e48d7e90e::t_e9c78dc338285d 59,408-411,420-423,438-452,454
+  s_951c9e48d7e90e::t_465bb04734c652 453,455
+src/csg/types.ts
+  s_951c9e48d7e90e::t_e9c78dc338285d 191-198,291,358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "91cbf43dffa891ffd3ce92915be3301f3bdf0850",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
