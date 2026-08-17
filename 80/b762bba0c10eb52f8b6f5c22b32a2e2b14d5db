@@ -1,0 +1,30 @@
+tests/csg/csgPath.test.ts
+  s_951c9e48d7e90e::t_6e32e971aafaf9 125,130,133-134,136-153
+  s_951c9e48d7e90e::t_0ddb21f460f11b 42-46
+  s_951c9e48d7e90e::t_876be842cfc401 98-122,124,126-129,131-132,154-155
+  s_951c9e48d7e90e::t_5ab02e68f5910e 97,123,135
+  s_951c9e48d7e90e::t_6e562eeda8e7e3 27-28
+src/csg/evaluators/path.ts
+  s_951c9e48d7e90e::t_6954b88d965fb3 9,13
+  s_951c9e48d7e90e::t_5ed3e2d0afdea0 8
+  s_951c9e48d7e90e::t_18dde4f4215872 12
+  s_951c9e48d7e90e::t_51b40465bf7bda 129-132,134,136-137,139-141,143-145,149-160,164-168,176-177
+  s_951c9e48d7e90e::t_90d41ee8ea852a 133,138,142
+  s_951c9e48d7e90e::t_4b2df18ef86229 146-148,161-163,169-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "80b762bba0c10eb52f8b6f5c22b32a2e2b14d5db",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
