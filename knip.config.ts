@@ -50,6 +50,11 @@ const config: KnipConfig = {
     'packages/brepjs-voxel-wasm': {
       ignore: ['**'],
     },
+    // API-surface satellite consumed by out-of-repo users; exports are the
+    // product, so unused-export analysis has nothing to check yet.
+    'packages/brepjs-families': {
+      ignore: ['**'],
+    },
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },

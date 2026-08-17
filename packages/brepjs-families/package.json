@@ -1,0 +1,44 @@
+{
+  "name": "brepjs-families",
+  "version": "0.1.0",
+  "description": "Declarative family layer for brepjs: element trees, key paths, and projection onto the content-addressed CSG IR",
+  "keywords": [
+    "cad",
+    "bim",
+    "parametric",
+    "families",
+    "jsx"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "src"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andymai/brepjs.git",
+    "directory": "packages/brepjs-families"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "brepjs": ">=18.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./jsx-runtime": {
+      "types": "./src/jsxRuntime.ts",
+      "default": "./src/jsxRuntime.ts"
+    }
+  }
+}
