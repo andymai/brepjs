@@ -87,7 +87,10 @@ export function approximateAsSvgCompatibleCurve(
       curveType === 'ELLIPSE' ||
       (curveType === 'CIRCLE' && samePoint(curve.firstPoint, curve.lastPoint))
     ) {
-      return curve.splitAt([0.5]);
+      // splitAt takes RAW parameters: a full conic spans [0, 2*PI], so the
+      // literal 0.5 split a closed circle into a 0.5 rad sliver and a 5.78
+      // rad remainder instead of two halves.
+      return curve.splitAt([(curve.firstParameter + curve.lastParameter) / 2]);
     }
 
     if (['LINE', 'ELLIPSE', 'CIRCLE'].includes(curveType)) {

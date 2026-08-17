@@ -17,6 +17,54 @@ import type { Curve2D } from './curve2D.js';
  * @param lastPoint - The endpoint of the curve, used as the SVG command target.
  * @returns An SVG path command such as `L`, `Q`, `C`, or `A`.
  */
+/** Positive CCW angular distance from `from` to `to`. */
+const ccwFrom = (from: number, to: number): number => {
+  let a = (to - from) % (2 * Math.PI);
+  if (a < 0) a += 2 * Math.PI;
+  return a;
+};
+
+/** Emit an `A` command for a circular arc, deriving the large-arc and sweep
+ *  flags from geometry: trimmed-curve bounds may be normalized rather than
+ *  angular, so the on-arc midpoint (the parameter midpoint IS the angular
+ *  midpoint on a circle) decides the traversal direction and which of the
+ *  two candidate arcs this is. */
+function circleArcPathElem(curve: Curve2D, endX: number, endY: number, endpoint: string): string {
+  const k2d = getKernel2D();
+  const circleData = k2d.getCurve2dCircleData(curve.wrapped);
+  if (!circleData) bug('adaptedCurveToPathElem', 'Expected circle data');
+  const { radius, isDirect } = circleData;
+
+  const [startX, startY] = curve.firstPoint;
+  // A closed loop cannot be a single A command; nudge the endpoint.
+  if (Math.abs(endX - startX) < 1e-9 && Math.abs(endY - startY) < 1e-9) {
+    return `A ${radius} ${radius} 0 1 ${isDirect ? '1' : '0'} ${round5(endX)} ${round5(
+      endY + 0.0001
+    )}`;
+  }
+
+  const bounds = k2d.getCurve2dBounds(curve.wrapped);
+  const [midX, midY] = curve.value((bounds.first + bounds.last) / 2);
+  const d = 2 * (startX * (midY - endY) + midX * (endY - startY) + endX * (startY - midY));
+  if (Math.abs(d) < 1e-12) {
+    return `L ${endpoint}`;
+  }
+  const s2 = startX * startX + startY * startY;
+  const m2 = midX * midX + midY * midY;
+  const e2 = endX * endX + endY * endY;
+  const cx = (s2 * (midY - endY) + m2 * (endY - startY) + e2 * (startY - midY)) / d;
+  const cy = (s2 * (endX - midX) + m2 * (startX - endX) + e2 * (midX - startX)) / d;
+  const thetaS = Math.atan2(startY - cy, startX - cx);
+  const thetaM = Math.atan2(midY - cy, midX - cx);
+  const thetaE = Math.atan2(endY - cy, endX - cx);
+  const goesCcw = ccwFrom(thetaS, thetaM) <= ccwFrom(thetaS, thetaE);
+  const sweepAngle = goesCcw ? ccwFrom(thetaS, thetaE) : ccwFrom(thetaE, thetaS);
+
+  return `A ${radius} ${radius} 0 ${sweepAngle > Math.PI ? '1' : '0'} ${
+    goesCcw ? '1' : '0'
+  } ${endpoint}`;
+}
+
 export const adaptedCurveToPathElem = (curve: Curve2D, lastPoint: Point2D): string => {
   const k2d = getKernel2D();
   const curveType = curve.geomType;
@@ -47,18 +95,7 @@ export const adaptedCurveToPathElem = (curve: Curve2D, lastPoint: Point2D): stri
     }
   }
   if (curveType === 'CIRCLE') {
-    const circleData = k2d.getCurve2dCircleData(curve.wrapped);
-    if (!circleData) bug('adaptedCurveToPathElem', 'Expected circle data');
-    const { radius, isDirect } = circleData;
-
-    const bounds = k2d.getCurve2dBounds(curve.wrapped);
-    const paramAngle = (bounds.last - bounds.first) * RAD2DEG;
-
-    const end = paramAngle !== 360 ? endpoint : `${round5(endX)} ${round5(endY + 0.0001)}`;
-
-    return `A ${radius} ${radius} 0 ${Math.abs(paramAngle) > 180 ? '1' : '0'} ${
-      isDirect ? '1' : '0'
-    } ${end}`;
+    return circleArcPathElem(curve, endX, endY, endpoint);
   }
 
   if (curveType === 'ELLIPSE') {

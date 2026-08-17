@@ -389,8 +389,18 @@ export function rotateCurve2d(c: Curve2dObj, angle: number, cx: number, cy: numb
       return { ...c, poles: c.poles.map(([x, y]) => rotatePoint(x, y)) };
     case 'bspline':
       return { ...c, poles: c.poles.map(([x, y]) => rotatePoint(x, y)) };
-    case 'trimmed':
-      return { ...c, basis: rotateCurve2d(c.basis, angle, cx, cy) };
+    case 'trimmed': {
+      const basis = rotateCurve2d(c.basis, angle, cx, cy);
+      // A circle carries no frame angle, so its rotation must land in the
+      // trim range: parameter IS the geometric angle (negated when
+      // sense=false). Without this shift, rotating an arc about its own
+      // circle center was a silent no-op.
+      if (basis.__bk2d === 'circle') {
+        const shift = basis.sense ? angle : -angle;
+        return { ...c, basis, tStart: c.tStart + shift, tEnd: c.tEnd + shift };
+      }
+      return { ...c, basis };
+    }
   }
 }
 
@@ -446,7 +456,11 @@ export function scaleCurve2d(c: Curve2dObj, factor: number, cx: number, cy: numb
 }
 
 export function mirrorAtPoint(c: Curve2dObj, cx: number, cy: number): Curve2dObj {
-  return scaleCurve2d(c, -1, cx, cy);
+  // A point mirror IS a half-turn. Routing through rotate keeps every curve
+  // type's parameterization exact: scale(-1) reflected conic centers but left
+  // their angular parameterization behind, so trimmed-arc endpoints came back
+  // point-reflected through the center.
+  return rotateCurve2d(c, Math.PI, cx, cy);
 }
 
 export function mirrorAcrossAxis(
@@ -457,6 +471,7 @@ export function mirrorAcrossAxis(
   dy: number
 ): Curve2dObj {
   const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1e-15) return c;
   const nx = dx / len;
   const ny = dy / len;
 
@@ -493,8 +508,19 @@ export function mirrorAcrossAxis(
       return { ...c, poles: c.poles.map(([x, y]) => reflectPoint(x, y)) };
     case 'bspline':
       return { ...c, poles: c.poles.map(([x, y]) => reflectPoint(x, y)) };
-    case 'trimmed':
-      return { ...c, basis: mirrorAcrossAxis(c.basis, ox, oy, dx, dy) };
+    case 'trimmed': {
+      const basis = mirrorAcrossAxis(c.basis, ox, oy, dx, dy);
+      // Reflection maps a circle's geometric angle theta to 2*phi - theta
+      // (phi = axis angle). The sense flip on the basis absorbs the negation;
+      // the 2*phi rotation has nowhere to live on a frameless circle, so it
+      // lands in the trim range (sign follows the ORIGINAL sense).
+      if (c.basis.__bk2d === 'circle' && basis.__bk2d === 'circle') {
+        const phi = Math.atan2(ny, nx);
+        const shift = c.basis.sense ? -2 * phi : 2 * phi;
+        return { ...c, basis, tStart: c.tStart + shift, tEnd: c.tEnd + shift };
+      }
+      return { ...c, basis };
+    }
   }
 }
 
