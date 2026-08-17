@@ -156,6 +156,17 @@ export interface MirrorNode extends IRNodeBase {
 }
 
 // ---------------------------------------------------------------------------
+// Feature nodes
+// ---------------------------------------------------------------------------
+
+export interface ExtrudeNode extends IRNodeBase {
+  readonly kind: 'Extrude';
+  /** Must produce OutputKind 'Face'. */
+  readonly profile: IRNode;
+  readonly vector: Expr;
+}
+
+// ---------------------------------------------------------------------------
 // Compound
 // ---------------------------------------------------------------------------
 
@@ -193,7 +204,8 @@ export type BooleanNode = FuseNode | CutNode | IntersectNode | FuseAllNode | Cut
 
 export type TransformIRNode = TranslateNode | RotateNode | ScaleNode | MirrorNode;
 
-export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | CompoundNode | InstanceNode;
+export type IRNode =
+  PrimitiveNode | BooleanNode | TransformIRNode | ExtrudeNode | CompoundNode | InstanceNode;
 
 export type NodeKind = IRNode['kind'];
 
@@ -252,6 +264,8 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Scale':
     case 'Mirror':
       return outputKindOf(node.target);
+    case 'Extrude':
+      return 'Solid';
     case 'Compound':
       return 'Compound';
     case 'Instance':
