@@ -1,0 +1,48 @@
+packages/brepjs-families/tests/families.test.ts
+  s_951c9e48d7e90e::t_3de984656e4762 1-194
+packages/brepjs-families/vitest.config.ts
+  s_951c9e48d7e90e::t_4137fce5be93d4 1-18
+packages/brepjs-families/tsconfig.json
+  s_951c9e48d7e90e::t_a27f1fe555a677 1-10
+packages/brepjs-families/eslint.config.js
+  s_951c9e48d7e90e::t_56ff65207762d8 1-45
+packages/brepjs-families/package.json
+  s_951c9e48d7e90e::t_56a9107537617c 27-28
+  s_951c9e48d7e90e::t_87669352c89f0a 1-26,29-44
+knip.config.ts
+  s_951c9e48d7e90e::t_56a9107537617c 53-57
+packages/brepjs-families/src/resolve.ts
+  s_951c9e48d7e90e::t_3095beb94cd279 1-156
+packages/brepjs-families/tsconfig.test.json
+  s_951c9e48d7e90e::t_6a72bf9b668e8d 1-10
+packages/brepjs-families/src/evaluateModel.ts
+  s_951c9e48d7e90e::t_40a82012ad21ee 1-47
+packages/brepjs-families/src/element.ts
+  s_951c9e48d7e90e::t_aa8f2b6900c190 1-72
+.github/workflows/ci.yml
+  s_951c9e48d7e90e::t_56a9107537617c 243-259,506
+packages/brepjs-families/src/index.ts
+  s_951c9e48d7e90e::t_93f0e9919457a0 1-24
+packages/brepjs-families/src/jsxRuntime.ts
+  s_951c9e48d7e90e::t_570f6dae2c57bb 1-29
+package.json
+  s_951c9e48d7e90e::t_378cf658dfb198 29
+package-lock.json
+  s_951c9e48d7e90e::t_fe4835bbccb416 16,7187-7190,15237-15243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "543a6e216eb686a0263339b3e4d4aed6bacef850",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
