@@ -16,7 +16,7 @@
  * directory works — point --registry at a firm-internal copy to self-host.
  */
 
-import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, access, lstat, realpath } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { join, resolve as resolvePath, sep } from 'node:path';
 import process from 'node:process';
@@ -119,13 +119,32 @@ async function exists(path) {
   }
 }
 
+/** Refuse writes through symlinks: the file itself must not be a symlink and
+ *  its (created) parent must really live under the target root. A symlinked
+ *  target root itself is respected as the user's own layout choice. */
+async function guardedWrite(targetRoot, target, content) {
+  await mkdir(join(target, '..'), { recursive: true });
+  const rootReal = await realpath(targetRoot);
+  const parentReal = await realpath(join(target, '..'));
+  if (parentReal !== rootReal && !parentReal.startsWith(rootReal + sep)) {
+    throw new Error(`refusing to write outside the target directory: ${target}`);
+  }
+  const stat = await lstat(target).catch(() => null);
+  if (stat?.isSymbolicLink()) {
+    throw new Error(`refusing to write through a symlink: ${target}`);
+  }
+  await writeFile(target, content);
+}
+
 async function add(args) {
   const manifest = await loadManifest(args.registry);
   const families = resolveClosure(manifest, args._);
   const targetRoot = resolvePath(args.dir);
-  const written = [];
-  const skipped = [];
 
+  // Plan first, write after: a conflict anywhere in the closure aborts the
+  // whole command before any file is touched, so a failed add never leaves a
+  // partially installed family set.
+  const planned = [];
   for (const fam of families) {
     for (const file of fam.files) {
       const content = await fetchText(args.registry, file);
@@ -133,22 +152,32 @@ async function add(args) {
       if (!target.startsWith(targetRoot + sep)) {
         throw new Error(`registry file entry escapes the target directory: ${file}`);
       }
-      if (await exists(target)) {
-        const current = await readFile(target, 'utf8');
-        if (current === content) {
-          skipped.push(target);
-          continue;
-        }
-        if (!args.force) {
-          console.error(`refusing to overwrite modified file (use --force): ${target}`);
-          process.exitCode = 1;
-          return;
-        }
-      }
-      await mkdir(join(target, '..'), { recursive: true });
-      await writeFile(target, content);
-      written.push(target);
+      planned.push({ target, content });
     }
+  }
+
+  const writes = [];
+  const skipped = [];
+  for (const p of planned) {
+    if (await exists(p.target)) {
+      const current = await readFile(p.target, 'utf8');
+      if (current === p.content) {
+        skipped.push(p.target);
+        continue;
+      }
+      if (!args.force) {
+        console.error(`refusing to overwrite modified file (use --force): ${p.target}`);
+        process.exitCode = 1;
+        return;
+      }
+    }
+    writes.push(p);
+  }
+
+  const written = [];
+  for (const w of writes) {
+    await guardedWrite(targetRoot, w.target, w.content);
+    written.push(w.target);
   }
 
   for (const t of written) console.warn(`wrote ${t}`);

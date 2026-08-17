@@ -163,4 +163,32 @@ describe('registry trust boundary', () => {
     expect(r.status).toBe(1);
     expect(r.out).toContain('https');
   });
+
+  it('a conflict anywhere in the closure aborts before any file is written', async () => {
+    // Copy beta (which brings alpha), locally modify beta, delete alpha:
+    // re-adding beta must refuse AND not recreate alpha (plan-then-apply).
+    expect(run('add', 'beta').status).toBe(0);
+    await writeFile(
+      join(cwd, 'src/families/beta.ts'),
+      '// brepjs-family: beta@1\nexport const beta = 99;\n'
+    );
+    await rm(join(cwd, 'src/families/alpha.ts'));
+    const r = run('add', 'beta');
+    expect(r.status).toBe(1);
+    await expect(readFile(join(cwd, 'src/families/alpha.ts'), 'utf8')).rejects.toThrow();
+  });
+
+  it('refuses to write through a symlinked file even with --force', async () => {
+    expect(run('add', 'alpha').status).toBe(0);
+    const outside = join(cwd, 'outside.ts');
+    await writeFile(outside, 'precious');
+    const target = join(cwd, 'src/families/alpha.ts');
+    await rm(target);
+    const { symlink } = await import('node:fs/promises');
+    await symlink(outside, target);
+    const r = run('add', 'alpha', '--force');
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('symlink');
+    expect(await readFile(outside, 'utf8')).toBe('precious');
+  });
 });
