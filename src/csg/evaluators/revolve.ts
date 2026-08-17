@@ -11,7 +11,7 @@ import { resolveProfileFace } from './profileFace.js';
 export function evalRevolve(node: RevolveNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
   const a = evalScalar(node.angle, ctx.env, 'Revolve.angle');
   if (!a.ok) return a;
-  if (a.value <= 0) {
+  if (!Number.isFinite(a.value) || a.value <= 0) {
     return err(
       validationError(
         'CSG_REVOLVE_ANGLE',

@@ -157,6 +157,14 @@ describe('Chamfer node', () => {
     expect(isOk(ev.evaluate(chamfer(compoundTarget, ref, 2)))).toBe(false);
   });
 
+  itBrep('rejects non-finite distances with a Result error', () => {
+    using ev = new Evaluator();
+    const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });
+    const t = box(param('w'), 40, 30);
+    expect(isOk(ev.evaluate(chamfer(t, ref, Number.NaN), { w: 100 }))).toBe(false);
+    expect(isOk(ev.evaluate(chamfer(t, ref, Number.POSITIVE_INFINITY), { w: 100 }))).toBe(false);
+  });
+
   itBrep('an unresolvable ref surfaces as a Result error', () => {
     using ev = new Evaluator();
     const ref = topFrontEdgeRef(ev, 100, 30, { w: 100 });

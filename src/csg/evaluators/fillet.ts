@@ -11,7 +11,7 @@ import type { EvalContext } from './context.js';
 export function evalFillet(node: FilletNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
   const radius = evalScalar(node.radius, ctx.env, 'Fillet.radius');
   if (!radius.ok) return radius;
-  if (radius.value <= 0) {
+  if (!Number.isFinite(radius.value) || radius.value <= 0) {
     return err(
       validationError('CSG_FILLET_RADIUS', `Fillet.radius must be positive, got ${radius.value}`)
     );

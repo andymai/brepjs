@@ -11,7 +11,7 @@ import type { EvalContext } from './context.js';
 export function evalChamfer(node: ChamferNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
   const distance = evalScalar(node.distance, ctx.env, 'Chamfer.distance');
   if (!distance.ok) return distance;
-  if (distance.value <= 0) {
+  if (!Number.isFinite(distance.value) || distance.value <= 0) {
     return err(
       validationError(
         'CSG_CHAMFER_DISTANCE',
