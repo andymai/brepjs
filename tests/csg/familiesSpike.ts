@@ -116,8 +116,21 @@ export interface ResolvedElement {
   readonly type: string;
   readonly keyPath: string;
   readonly geometry: IRNode;
+  /** Identity-side data (psets, ...) — carried beside the content-addressed
+   *  geometry, never inside it. */
+  readonly attributes: Readonly<Record<string, unknown>>;
   readonly relationships: readonly Relationship[];
   readonly children: readonly ResolvedElement[];
+}
+
+const IDENTITY_PROPS = ['psets'] as const;
+
+function identityAttributes(elem: Element): Readonly<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const key of IDENTITY_PROPS) {
+    if (elem.props[key] !== undefined) out[key] = elem.props[key];
+  }
+  return out;
 }
 
 function isFamily(t: Element['type']): t is FamilyComponent<never> {
@@ -181,6 +194,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
         type: 'Opening',
         keyPath: openingPath,
         geometry: fill.geometry,
+        attributes: {},
         relationships: [{ kind: 'Fills', target: fill.keyPath }],
         children: [fill],
       });
@@ -220,7 +234,14 @@ function resolveAt(elem: Element, path: string): ResolvedElement {
     relationships.push({ kind: 'Contains', target: rc.keyPath });
   });
   children.push(...d.openings);
-  return { type: typeName, keyPath: path, geometry: d.geometry, relationships, children };
+  return {
+    type: typeName,
+    keyPath: path,
+    geometry: d.geometry,
+    attributes: identityAttributes(elem),
+    relationships,
+    children,
+  };
 }
 
 export function resolve(root: Element): ResolvedElement {
@@ -238,7 +259,12 @@ export function evaluateModel(
 ): Map<string, Result<AnyShape<Dimension>>> {
   const out = new Map<string, Result<AnyShape<Dimension>>>();
   const walk = (n: ResolvedElement): void => {
-    out.set(n.keyPath, ev.evaluate(n.geometry, env));
+    // A pure container's geometry is the Empty identity node, which is not
+    // directly materializable (evalEmpty errors by design) — skip it; the
+    // element exists for identity/containment only.
+    if (n.geometry.kind !== 'Empty') {
+      out.set(n.keyPath, ev.evaluate(n.geometry, env));
+    }
     for (const c of n.children) walk(c);
   };
   walk(root);
