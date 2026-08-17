@@ -22,9 +22,13 @@ interface WithKey {
  * declared name and render function. The component REFERENCE is the identity
  * (copy-in files make name lookup collide); the declared name serves key-path
  * fallbacks and display only.
+ *
+ * `I` is the INVOCATION props type: with a schema carrying defaults or
+ * transforms, callers pass the schema's input while render receives its
+ * output `P`. Schema-less families use one type for both.
  */
-export interface FamilyComponent<P> {
-  (props: P & WithKey): Element;
+export interface FamilyComponent<P, I = P> {
+  (props: I & WithKey): Element;
   readonly familyName: string;
   /** `'fill'` marks a family whose instances fill an opening when placed in a
    *  host's `voids` (doors, windows): resolution synthesizes the Opening. */
@@ -32,23 +36,23 @@ export interface FamilyComponent<P> {
   readonly renderErased: (props: object) => Element;
 }
 
-export interface FamilyOptions<P = unknown> {
+export interface FamilyOptions<P = unknown, I = P> {
   readonly role?: 'fill' | undefined;
   /** Optional Zod schema validated at element construction (the earliest
    *  point with a useful stack). Schema output replaces the props, so
    *  defaults and transforms apply before render — the output type must be
    *  assignable to the render props `P`, enforced by this parameter.
    *  `key` is not validated. */
-  readonly props?: ZodType<P> | undefined;
+  readonly props?: ZodType<P, I> | undefined;
 }
 
-export function family<P extends object>(
+export function family<P extends object, I extends object = P>(
   name: string,
   render: (props: P) => Element,
-  options?: FamilyOptions<P>
-): FamilyComponent<P> {
+  options?: FamilyOptions<P, I>
+): FamilyComponent<P, I> {
   const schema = options?.props;
-  const make = (props: P & WithKey): Element => {
+  const make = (props: I & WithKey): Element => {
     const { key, ...rest } = props;
     let validated: Readonly<Record<string, unknown>> = rest;
     if (schema) {
@@ -62,7 +66,7 @@ export function family<P extends object>(
     }
     return { type: component, key, props: validated, children: [] };
   };
-  const component: FamilyComponent<P> = Object.assign(make, {
+  const component: FamilyComponent<P, I> = Object.assign(make, {
     familyName: name,
     role: options?.role,
     renderErased: (props: object) => render(props as P),
