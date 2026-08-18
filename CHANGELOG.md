@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.147.1](https://github.com/andymai/brepjs/compare/brepjs-v18.147.0...brepjs-v18.147.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **bim:** normalize bare scientific reals to valid step tokens ([#2148](https://github.com/andymai/brepjs/issues/2148)) ([bcb5570](https://github.com/andymai/brepjs/commit/bcb557049ba9be82c92bce7c4b864150f01e9857))
+
 ## [18.147.0](https://github.com/andymai/brepjs/compare/brepjs-v18.146.0...brepjs-v18.147.0) (2026-08-18)
 
 
