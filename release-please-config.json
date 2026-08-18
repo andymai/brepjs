@@ -48,8 +48,22 @@
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-sheetmetal",
       "bump-minor-pre-major": true
+    },
+    "packages/brepjs-families": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "component": "brepjs-families",
+      "bump-minor-pre-major": true
+    },
+    "packages/create-brepjs": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "component": "create-brepjs",
+      "bump-minor-pre-major": true
     }
   },
-  "plugins": ["node-workspace"],
+  "plugins": [
+    "node-workspace"
+  ],
   "separate-pull-requests": true
 }

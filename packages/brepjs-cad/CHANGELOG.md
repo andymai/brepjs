@@ -1,5 +1,125 @@
 # Changelog
 
+## [0.172.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.171.0...brepjs-cad-v0.172.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
+## [0.171.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.170.1...brepjs-cad-v0.171.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
+## [0.170.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.169.0...brepjs-cad-v0.170.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
+## [0.169.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.168.1...brepjs-cad-v0.169.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
+## [0.168.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.167.0...brepjs-cad-v0.168.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
+## [0.167.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.166.1...brepjs-cad-v0.167.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
 ## [0.166.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.165.0...brepjs-cad-v0.166.0) (2026-08-18)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.3.0...brepjs-sheetmetal-v0.3.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **sheetmetal:** drop the unused brepjs-opencascade devdep ([#2108](https://github.com/andymai/brepjs/issues/2108)) ([6240ab3](https://github.com/andymai/brepjs/commit/6240ab34e158c6058f19034e542155c5d76cedff))
+
 ## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.2.0...brepjs-sheetmetal-v0.3.0) (2026-06-18)
 
 

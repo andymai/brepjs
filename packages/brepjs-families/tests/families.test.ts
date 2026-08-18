@@ -357,3 +357,68 @@ describe('keyed tracking', () => {
     expect(opening?.children[0]?.keyed).toBe(false);
   });
 });
+
+describe('intrinsic vocabulary', () => {
+  it('Cylinder resolves and materializes with exact volume', () => {
+    const Column = family<{ readonly radius: number; readonly height: number }>('Column', (p) =>
+      el('Cylinder', { radius: p.radius, height: p.height })
+    );
+    using ev = new csg.Evaluator();
+    const model = evaluateModel(
+      resolve(Column({ key: 'c1', radius: 150, height: 3000 })),
+      ev,
+      {},
+      { shapes: true }
+    );
+    const node = model.byKeyPath.get('c1');
+    expect(node?.shape && isOk(node.shape)).toBe(true);
+    if (node?.shape && isOk(node.shape)) {
+      expect(vol(node.shape.value)).toBeCloseTo(Math.PI * 150 * 150 * 3000, -2);
+    }
+  });
+
+  it('Geometry bridges the full csg vocabulary (profile + extrude wall)', () => {
+    const ProfiledWall = family<{ readonly length: number; readonly height: number }>(
+      'Wall',
+      (p) =>
+        el('Geometry', {
+          node: csg.extrude(
+            csg.profile(
+              csg.contour([0, 0], [
+                csg.lineTo([p.length, 0]),
+                csg.lineTo([p.length, 200]),
+                csg.lineTo([0, 200]),
+              ])
+            ),
+            [0, 0, p.height]
+          ),
+          voids: [
+            el('Box', { size: [1000, 300, 2100], transform: [tTranslate([1500, -50, 0])] }),
+          ],
+        })
+    );
+    using ev = new csg.Evaluator();
+    const model = evaluateModel(
+      resolve(ProfiledWall({ key: 'w', length: 4000, height: 2700 })),
+      ev,
+      {},
+      { shapes: true }
+    );
+    const node = model.byKeyPath.get('w');
+    expect(node?.shape && isOk(node.shape)).toBe(true);
+    if (node?.shape && isOk(node.shape)) {
+      // 4000 x 200 x 2700 wall minus a 1000 x 200 x 2100 doorway.
+      expect(vol(node.shape.value)).toBeCloseTo(4000 * 200 * 2700 - 1000 * 200 * 2100, -2);
+    }
+  });
+
+  it('Geometry without an IR node throws with a clear message', () => {
+    const Bad = family<Record<string, never>>('Bad', () => el('Geometry', { node: { not: 'a node' } }));
+    expect(() => resolve(Bad({ key: 'b' }))).toThrow(/requires a csg IR node/);
+  });
+
+  it('unknown intrinsics name the vocabulary in the error', () => {
+    const Bad = family<Record<string, never>>('Bad', () => el('Torus', {}));
+    expect(() => resolve(Bad({ key: 'b' }))).toThrow(/intrinsics: Box, Cylinder, Geometry/);
+  });
+});

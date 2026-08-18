@@ -38,6 +38,10 @@ jobs:
       brepjs_bim_tag_name: ${{ steps.release.outputs['packages/brepjs-bim--tag_name'] }}
       brepjs_sheetmetal_release_created: ${{ steps.release.outputs['packages/brepjs-sheetmetal--release_created'] }}
       brepjs_sheetmetal_tag_name: ${{ steps.release.outputs['packages/brepjs-sheetmetal--tag_name'] }}
+      brepjs_families_release_created: ${{ steps.release.outputs['packages/brepjs-families--release_created'] }}
+      brepjs_families_tag_name: ${{ steps.release.outputs['packages/brepjs-families--tag_name'] }}
+      create_brepjs_release_created: ${{ steps.release.outputs['packages/create-brepjs--release_created'] }}
+      create_brepjs_tag_name: ${{ steps.release.outputs['packages/create-brepjs--tag_name'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
       prs: ${{ steps.release.outputs.prs }}
@@ -70,6 +74,10 @@ jobs:
   # up-to-date main, and this job — which runs on every push — arms their
   # auto-merge then. brepjs-opencascade stays permanently held (expensive WASM
   # build, manual review). Auto-PUBLISH fires when each release PR merges.
+  #
+  # A second ordering edge exists INSIDE the leaves: brepjs-bim depends on
+  # brepjs-families, so bim additionally holds while a families release PR is
+  # open (same ETARGET failure mode, one level down).
   auto-merge:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -104,6 +112,13 @@ jobs:
           root_open=$(echo "$prs" | jq --arg b "$ROOT_BRANCH" \
             '[.[] | select(.headRefName == $b)] | length')
 
+          # brepjs-bim depends on brepjs-families the same way every leaf
+          # depends on root brepjs: node-workspace re-pins bim's
+          # `brepjs-families` dependency to the pending families release, so
+          # bim must not merge while a families release PR is open.
+          families_open=$(echo "$prs" | jq \
+            '[.[] | select(.headRefName | endswith("--components--brepjs-families"))] | length')
+
           echo "$prs" | jq -c '.[]' | while read -r pr; do
             number=$(echo "$pr" | jq -r '.number')
             title=$(echo "$pr" | jq -r '.title')
@@ -121,11 +136,18 @@ jobs:
                 ;;
             esac
 
+            is_bim=false
+            case "$branch" in
+              *--components--brepjs-bim) is_bim=true ;;
+            esac
+
             # Any other component is a leaf. Hold it while the root brepjs
             # release PR is open; it is regenerated with a valid pin and
             # auto-merged on the next run, after root merges + publishes.
             if [ "$root_open" -gt 0 ]; then
               echo "HOLD #$number ($title) — waiting for root brepjs release to merge first"
+            elif [ "$families_open" -gt 0 ] && [ "$is_bim" = true ]; then
+              echo "HOLD #$number ($title) — waiting for brepjs-families release to merge first"
             else
               echo "MERGE #$number ($title) — no root brepjs release pending"
               gh pr merge "$number" --auto --squash --repo "$GH_REPO"
@@ -214,6 +236,44 @@ jobs:
           # Dispatch against the immutable release tag, not main (see verify above).
           GH_REF: ${{ needs.release-please.outputs.brepjs_bim_tag_name }}
         run: gh workflow run publish-brepjs-bim.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+
+  # Auto-publish brepjs-families — same pattern as brepjs-bim above.
+  publish-brepjs-families:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [release-please]
+    if: ${{ needs.release-please.outputs.brepjs_families_release_created == 'true' }}
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
+          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
+      - name: Dispatch publish-brepjs-families (real publish)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          GH_REF: ${{ needs.release-please.outputs.brepjs_families_tag_name }}
+        run: gh workflow run publish-brepjs-families.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
+
+  # Auto-publish create-brepjs — same pattern as brepjs-bim above.
+  publish-create-brepjs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [release-please]
+    if: ${{ needs.release-please.outputs.create_brepjs_release_created == 'true' }}
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
+          private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
+      - name: Dispatch publish-create-brepjs (real publish)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          GH_REF: ${{ needs.release-please.outputs.create_brepjs_tag_name }}
+        run: gh workflow run publish-create-brepjs.yml -f dry_run=false --ref "$GH_REF" --repo "$GH_REPO"
 
   # Auto-publish brepjs-sheetmetal — same pattern as brepjs-bim above.
   publish-brepjs-sheetmetal:

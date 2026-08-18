@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "cli test registry",
+  "families": [
+    {
+      "name": "alpha",
+      "version": 2,
+      "description": "standalone family",
+      "files": ["families/alpha.ts"],
+      "npmDeps": ["brepjs-families"],
+      "familyDeps": []
+    },
+    {
+      "name": "beta",
+      "version": 1,
+      "description": "depends on alpha",
+      "files": ["families/beta.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": ["alpha"]
+    }
+  ]
+}
