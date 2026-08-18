@@ -1,0 +1,47 @@
+packages/brepjs-bim/src/model/bimModel.ts
+  s_f7654670ddf29a::t_e520948189292b 214,236,239,245-247,250,256-258,261,294-296,299,310-316
+  s_f7654670ddf29a::t_d3b2dd826d3376 209-211,231-233
+  s_f7654670ddf29a::t_ada1651881c496 234-235
+packages/brepjs-bim/tests/bimModel.test.ts
+  s_f7654670ddf29a::t_8078df465dceea 5,7-9,22-53,171,183,213,243,297,325,328,346,468,490,503,539,560,585,588
+  s_f7654670ddf29a::t_4dd31fe653f6e0 168-170
+  s_f7654670ddf29a::t_0ef226e3ff554b 180-182
+  s_f7654670ddf29a::t_3b5119f895fe84 184-185
+  s_f7654670ddf29a::t_1e79e3236092b0 212
+  s_f7654670ddf29a::t_e52c576ef1ce67 214-216
+  s_f7654670ddf29a::t_a1a1ce1636d9a9 241-242
+  s_f7654670ddf29a::t_a8e5a42b5e1b4b 244-246
+  s_f7654670ddf29a::t_836e8c02d0f3e7 294-296
+  s_f7654670ddf29a::t_74753ed47d8c27 298-300
+  s_f7654670ddf29a::t_0fc8f1030e710f 323-324
+  s_f7654670ddf29a::t_590811d604c57a 326-327
+  s_f7654670ddf29a::t_417f52bef15e77 344-345
+  s_f7654670ddf29a::t_b468200a8a9a8d 347
+  s_f7654670ddf29a::t_595ab5f397de94 469-471
+  s_f7654670ddf29a::t_03c29e94b1256a 487-489
+  s_f7654670ddf29a::t_55954d29bd6668 491-493,500-502
+  s_f7654670ddf29a::t_c3a78cc8d240d0 504
+  s_f7654670ddf29a::t_39acfaff4eb022 538
+  s_f7654670ddf29a::t_a3c17d329c5be0 540-541
+  s_f7654670ddf29a::t_4aa354f361a483 557-559
+  s_f7654670ddf29a::t_00d2ccf85c3bdf 561
+  s_f7654670ddf29a::t_7ca75f6047bcce 583-584
+  s_f7654670ddf29a::t_4f3e4ef47d76c4 586-587
+  s_f7654670ddf29a::t_8dfeaea1b255e1 589-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "668e47dd577abc369683cba80b15f0db27b22c9a",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
