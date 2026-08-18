@@ -1,0 +1,61 @@
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_f7654670ddf29a::t_6e3f2d2fc5da48 1129-1146,1514-1520
+packages/brepjs-bim/scripts/generateQtoDefinitions.py
+  s_f7654670ddf29a::t_d0aaa227496967 1-35
+packages/brepjs-bim/src/validation/gherkinChecks.ts
+  s_f7654670ddf29a::t_9b087294b11567 25-27,43-67,94-96,106-111,148-155,160-165,171-176,191-196,200-205
+  s_f7654670ddf29a::t_0e90a0e5734897 1-24,28-42,68-93,97-105,112-147,156-159,166-170,177-190,197-199,206-227
+packages/brepjs-bim/src/serialize/toIfc.ts
+  s_f7654670ddf29a::t_9b087294b11567 1113-1119
+  s_f7654670ddf29a::t_1302a82675ab2b 116,1107
+  s_f7654670ddf29a::t_874b80637ca6ed 4,167-173
+packages/brepjs-bim/src/ifc-writer/psetWriter.ts
+  s_f7654670ddf29a::t_f6b95c504f82dd 586-588,592,642-643
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_f7654670ddf29a::t_3e504448b4d630 11
+packages/brepjs-bim/src/index.ts
+  s_f7654670ddf29a::t_1302a82675ab2b 41
+packages/brepjs-bim/examples/sample-building.ifc
+  s_f7654670ddf29a::t_3e504448b4d630 11,15-414
+packages/brepjs-bim/examples/interop-fixture.ifc
+  s_f7654670ddf29a::t_3e504448b4d630 11,15-66,68-84,86-562,573,578-857
+packages/brepjs-bim/eslint.config.js
+  s_f7654670ddf29a::t_6e3f2d2fc5da48 5
+packages/brepjs-bim/VALIDATION.md
+  s_f7654670ddf29a::t_6e3f2d2fc5da48 61-70
+packages/brepjs-bim/examples/sampleBuilding.mjs
+  s_f7654670ddf29a::t_9b087294b11567 27-37
+packages/brepjs-bim/src/specs/spatialSpec.ts
+  s_f7654670ddf29a::t_6e9a04b93ed9cb 12-36
+packages/brepjs-bim/examples/interopFixture.mjs
+  s_f7654670ddf29a::t_9b087294b11567 28-38
+packages/brepjs-bim/tests/gherkinChecks.test.ts
+  s_f7654670ddf29a::t_df007be37091d2 1-18,20-94
+  s_f7654670ddf29a::t_9b087294b11567 19
+.prettierignore
+  s_f7654670ddf29a::t_6e3f2d2fc5da48 2
+packages/brepjs-bim/src/ifc-writer/stairWriter.ts
+  s_f7654670ddf29a::t_e89532697cb11d 114-119,123-137,143-185
+  s_f7654670ddf29a::t_9b087294b11567 138-142
+packages/brepjs-bim/src/ifc-writer/headerWriter.ts
+  s_f7654670ddf29a::t_6e9a04b93ed9cb 3,13,109-145,150-152
+  s_f7654670ddf29a::t_9b087294b11567 146-149
+packages/brepjs-bim/src/validation/qtoDefinitions.generated.ts
+  s_f7654670ddf29a::t_0ddb0b3313be2b 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1f4e91abee2444f0829df2ab5bc5de28614db66e",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
