@@ -1,0 +1,19 @@
+packages/brepjs-bim/src/ids/idsEngine.ts
+  s_f7654670ddf29a::t_1917927ee45a60 546-552,559-565,567,576-581,583-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "aef6516a7be54ff5686f6822094e89272309ef1c",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
