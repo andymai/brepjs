@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.148.1](https://github.com/andymai/brepjs/compare/brepjs-v18.148.0...brepjs-v18.148.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **bim:** clear the gherkin-layer findings and gate them locally ([#2157](https://github.com/andymai/brepjs/issues/2157)) ([35b51c2](https://github.com/andymai/brepjs/commit/35b51c2926d4ee121ea759d8316fd5122f531fb3))
+
 ## [18.148.0](https://github.com/andymai/brepjs/compare/brepjs-v18.147.2...brepjs-v18.148.0) (2026-08-18)
 
 
