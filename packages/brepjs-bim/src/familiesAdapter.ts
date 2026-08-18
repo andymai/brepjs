@@ -5,7 +5,7 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers, Wall/Slab/Column elements, and wall openings — a
+ * Scope: Storey containers, Wall/Slab/Column/Beam elements, and wall openings — a
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
@@ -19,6 +19,7 @@ import type { LocalId } from './identity/localId.js';
 import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
 import { parseColumnSpec } from './specs/columnSpec.js';
+import { parseBeamSpec } from './specs/beamSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
@@ -44,6 +45,32 @@ const SPEC_DEFAULTS = {
 };
 
 const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
+
+const SPEC_ROUTES = {
+  Wall: {
+    parse: parseWallSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addWall(spec as never, { stableKey: key }),
+  },
+  Slab: {
+    parse: parseSlabSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addSlab(spec as never, { stableKey: key }),
+  },
+  Column: {
+    parse: parseColumnSpec,
+    add: (m: BimModel, spec: unknown, key: string) =>
+      m.addColumn(spec as never, { stableKey: key }),
+  },
+  Beam: {
+    parse: parseBeamSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addBeam(spec as never, { stableKey: key }),
+  },
+} as const;
+
+function specRoute(type: string): (typeof SPEC_ROUTES)[keyof typeof SPEC_ROUTES] | undefined {
+  return Object.hasOwn(SPEC_ROUTES, type)
+    ? SPEC_ROUTES[type as keyof typeof SPEC_ROUTES]
+    : undefined;
+}
 
 /** Total of the resolved geometry's OUTER literal translate chain. The
  *  transform vocabulary is translate-only, so frame differences are exact
@@ -226,6 +253,7 @@ export function familiesToBim(
   const idByKeyPath = new Map<string, LocalId>();
   const walk = (el: ResolvedElement, storeyId: LocalId | null): Result<void, BimError> => {
     let containerId = storeyId;
+    const route = specRoute(el.type);
     if (el.type === 'Storey') {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
@@ -239,22 +267,12 @@ export function familiesToBim(
       model.aggregate(buildingId, id);
       idByKeyPath.set(el.keyPath, id);
       containerId = id;
-    } else if (el.type === 'Wall' || el.type === 'Slab' || el.type === 'Column') {
+    } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const parsed =
-        el.type === 'Wall'
-          ? parseWallSpec(specInput(el))
-          : el.type === 'Slab'
-            ? parseSlabSpec(specInput(el))
-            : parseColumnSpec(specInput(el));
+      const parsed = route.parse(specInput(el));
       if (!parsed.ok) return parsed;
-      const added =
-        el.type === 'Wall'
-          ? model.addWall(parsed.value as never, { stableKey: el.keyPath })
-          : el.type === 'Slab'
-            ? model.addSlab(parsed.value as never, { stableKey: el.keyPath })
-            : model.addColumn(parsed.value as never, { stableKey: el.keyPath });
+      const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;
       idByKeyPath.set(el.keyPath, added.value);
       if (containerId === null) {

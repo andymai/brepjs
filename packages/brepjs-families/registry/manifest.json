@@ -28,10 +28,18 @@
     },
     {
       "name": "column",
-      "version": 1,
-      "description": "Vertical circular column mapping onto IfcColumn",
+      "version": 2,
+      "description": "Vertical column (rectangular / circular / I-shape) mapping onto IfcColumn",
       "files": ["families/column.ts"],
-      "npmDeps": ["brepjs-families", "zod"],
+      "npmDeps": ["brepjs", "brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
+      "name": "beam",
+      "version": 1,
+      "description": "Linear beam (rectangular / circular / I-shape) mapping onto IfcBeam",
+      "files": ["families/beam.ts"],
+      "npmDeps": ["brepjs", "brepjs-families", "zod"],
       "familyDeps": []
     },
     {

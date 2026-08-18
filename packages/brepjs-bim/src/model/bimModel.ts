@@ -184,10 +184,12 @@ export class BimModel {
     return ok(id);
   }
 
-  addBeam(spec: BeamSpec): Result<LocalId, BimError> {
+  addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = beamToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('BEAM', spec, geomResult.value);
+    const id = this.#makeElement('BEAM', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
