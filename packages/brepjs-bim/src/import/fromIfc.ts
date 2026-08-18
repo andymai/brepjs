@@ -363,7 +363,7 @@ function buildTypePredefinedMap(reader: SpfReader): Map<number, string> {
     const typeLine = reader.getLine<Record<string, unknown>>(typeId);
     if (typeLine === null) continue;
     const pred = readPredefinedType(typeLine);
-    if (pred === undefined || pred === 'NOTDEFINED') continue;
+    if (pred === undefined) continue;
     const related = rel['RelatedObjects'];
     if (!Array.isArray(related)) continue;
     for (const ref of related) {
