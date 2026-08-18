@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.13.0...brepjs-bim-v0.14.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** accept stable identity keys on every element-minting method ([#2140](https://github.com/andymai/brepjs/issues/2140)) ([32a2c15](https://github.com/andymai/brepjs/commit/32a2c1520a1634bab6af3bb1c1fb0b1e33365dfe))
+
 ## [0.13.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.12.0...brepjs-bim-v0.13.0) (2026-08-18)
 
 
