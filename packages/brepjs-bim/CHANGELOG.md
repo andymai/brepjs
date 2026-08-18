@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.16.0...brepjs-bim-v0.16.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **bim:** clear the gherkin-layer findings and gate them locally ([#2157](https://github.com/andymai/brepjs/issues/2157)) ([35b51c2](https://github.com/andymai/brepjs/commit/35b51c2926d4ee121ea759d8316fd5122f531fb3))
+
 ## [0.16.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.15.2...brepjs-bim-v0.16.0) (2026-08-18)
 
 
