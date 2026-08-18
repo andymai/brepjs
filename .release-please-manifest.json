@@ -4,5 +4,7 @@
   "packages/brepjs-voxel-wasm": "0.7.0",
   "packages/brepjs-cad": "0.166.0",
   "packages/brepjs-bim": "0.7.0",
-  "packages/brepjs-sheetmetal": "0.3.0"
+  "packages/brepjs-sheetmetal": "0.3.0",
+  "packages/brepjs-families": "0.1.0",
+  "packages/create-brepjs": "0.1.0"
 }
