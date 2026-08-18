@@ -105,6 +105,20 @@ describe('brepjs diff', () => {
     expect(r.status).toBe(1);
     expect(r.out).toContain('not copied in');
   });
+
+  it('refuses to diff through a symlinked local file (no content leak)', async () => {
+    expect(run('add', 'alpha').status).toBe(0);
+    const secret = join(cwd, 'secret.txt');
+    await writeFile(secret, 'TOP-SECRET-TOKEN');
+    const target = join(cwd, 'src/families/alpha.ts');
+    await rm(target);
+    const { symlink } = await import('node:fs/promises');
+    await symlink(secret, target);
+    const r = run('diff', 'alpha');
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('symlink');
+    expect(r.out).not.toContain('TOP-SECRET-TOKEN');
+  });
 });
 
 describe('usage', () => {

@@ -16,7 +16,7 @@
  * directory works — point --registry at a firm-internal copy to self-host.
  */
 
-import { mkdir, open, readFile, writeFile, access, realpath } from 'node:fs/promises';
+import { mkdir, open, readFile, writeFile, access, lstat, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve as resolvePath, sep } from 'node:path';
@@ -244,8 +244,16 @@ async function diff(args) {
   for (const file of fam.files) {
     const registryContent = await fetchText(args.registry, file);
     const target = join(resolvePath(args.dir), file.replace(/^families\//, ''));
-    if (!(await exists(target))) {
+    const stat = await lstat(target).catch(() => null);
+    if (stat === null) {
       console.error(`not copied in: ${target}`);
+      dirty = true;
+      continue;
+    }
+    // Never read or diff through a symlink: in CI, a committed link could
+    // leak whatever readable file it points at into the job output.
+    if (stat.isSymbolicLink()) {
+      console.error(`${target}: is a symlink — refusing to diff through it`);
       dirty = true;
       continue;
     }
