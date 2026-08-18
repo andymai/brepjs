@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.140.1](https://github.com/andymai/brepjs/compare/brepjs-v18.140.0...brepjs-v18.140.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **sheetmetal:** drop the unused brepjs-opencascade devdep ([#2108](https://github.com/andymai/brepjs/issues/2108)) ([6240ab3](https://github.com/andymai/brepjs/commit/6240ab34e158c6058f19034e542155c5d76cedff))
+
 ## [18.140.0](https://github.com/andymai/brepjs/compare/brepjs-v18.139.0...brepjs-v18.140.0) (2026-08-18)
 
 
