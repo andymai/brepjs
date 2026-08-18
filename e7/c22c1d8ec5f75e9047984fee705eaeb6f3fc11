@@ -1,0 +1,32 @@
+packages/brepjs-families/vite.config.ts
+  s_f7654670ddf29a::t_af5a5db9397aad 11-12
+  s_f7654670ddf29a::t_354eab953f5f62 1-10,13-20
+.github/workflows/ci.yml
+  s_f7654670ddf29a::t_6beb3d9d8db237 259,262-266,275
+.github/workflows/publish-brepjs-bim.yml
+  s_f7654670ddf29a::t_6beb3d9d8db237 33-35,39
+.github/workflows/publish-brepjs-families.yml
+  s_f7654670ddf29a::t_6beb3d9d8db237 7,18,33-40
+packages/brepjs-families/package.json
+  s_f7654670ddf29a::t_354eab953f5f62 15,26-28,30,41-45,48-55,58-65
+packages/brepjs-bim/vitest.config.ts
+  s_f7654670ddf29a::t_6beb3d9d8db237 9
+package-lock.json
+  s_f7654670ddf29a::t_432224f5f5b539 15148,15328-15332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e7c22c1d8ec5f75e9047984fee705eaeb6f3fc11",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
