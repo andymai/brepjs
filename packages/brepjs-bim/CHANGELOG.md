@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.7.1...brepjs-bim-v0.8.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** add the declarative families sample building with IfcOpenShell gate ([#2079](https://github.com/andymai/brepjs/issues/2079)) ([f54dd42](https://github.com/andymai/brepjs/commit/f54dd42ed4838d500738ae2a67cd7cb7a8e3a8f5))
+* **bim:** add the families-to-bim adapter with key-path identity ([#2063](https://github.com/andymai/brepjs/issues/2063)) ([93eeacf](https://github.com/andymai/brepjs/commit/93eeacf01c97c583901c35efdef6eb6048dc2366))
+* **bim:** map families openings onto doors, windows, and IfcRelVoids ([#2067](https://github.com/andymai/brepjs/issues/2067)) ([cfe2f76](https://github.com/andymai/brepjs/commit/cfe2f767517b18094bbe0e43671c83a0583b3561))
+* **families:** validate props with zod and require keys for identity ([#2074](https://github.com/andymai/brepjs/issues/2074)) ([205f924](https://github.com/andymai/brepjs/commit/205f924d26aee340b9f9b790b80834f680476c9e))
+
+
+### Bug Fixes
+
+* **bim:** make BCF XML tokenizer linear (polynomial ReDoS) ([#1666](https://github.com/andymai/brepjs/issues/1666)) ([3c93f03](https://github.com/andymai/brepjs/commit/3c93f036827b5daf158e2a339362c38bf3ea2864))
+
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.6.0...brepjs-bim-v0.7.0) (2026-08-17)
 
 
