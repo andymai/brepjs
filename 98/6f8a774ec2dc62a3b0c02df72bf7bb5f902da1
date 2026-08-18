@@ -1,0 +1,21 @@
+packages/brepjs-sheetmetal/package.json
+  s_951c9e48d7e90e::t_5f8d012c5b8aaa 57
+package-lock.json
+  s_951c9e48d7e90e::t_4dcc88bc01bb93 15281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "986f8a774ec2dc62a3b0c02df72bf7bb5f902da1",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
