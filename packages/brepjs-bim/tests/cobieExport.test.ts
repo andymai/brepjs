@@ -16,9 +16,9 @@ function unwrap<T>(r: { ok: true; value: T } | { ok: false; error: { message: st
 function buildModel(): BimModel {
   const model = new BimModel();
   unwrap(model.init({ name: 'Test Project', description: 'COBie export project' }));
-  const siteId = model.addSite({ name: 'Test Site' });
-  const buildingId = model.addBuilding({ name: 'Test Building' });
-  const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Test Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Test Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 

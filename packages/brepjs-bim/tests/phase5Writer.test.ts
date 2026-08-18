@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
@@ -5,7 +6,9 @@ import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import type { BimModelMeta } from '../src/ifc-writer/headerWriter.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const META: BimModelMeta = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
@@ -14,16 +17,20 @@ function buildModel(): BimModel {
   const initResult = model.init({ name: 'Phase5 Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const wall = model.addWall({
-    length: 5000, height: 3000, thickness: 250,
-    origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+    length: 5000,
+    height: 3000,
+    thickness: 250,
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
     materialName: 'Concrete',
   });
   if (!wall.ok) throw new Error(wall.error.message);
@@ -108,15 +115,19 @@ describe('Phase 5 writer integration', () => {
     const initResult = model.init({ name: 'No-density Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectId = initResult.value;
-    const siteId = model.addSite({ name: 'Site' });
-    const buildingId = model.addBuilding({ name: 'Building' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'Site' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(projectId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Unobtainium',
     });
     if (!wall.ok) throw new Error(wall.error.message);

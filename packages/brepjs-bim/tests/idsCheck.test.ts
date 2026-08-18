@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
@@ -77,9 +78,9 @@ function buildWallModel(withIsExternal: boolean): BimModel {
   const initResult = model.init({ name: 'IDS Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);

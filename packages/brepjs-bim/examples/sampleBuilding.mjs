@@ -6,6 +6,7 @@
 // Importing 'brepjs/quick' initialises the OCCT-WASM kernel (top-level await)
 // before any geometry is built; brepjs-bim shares that same kernel singleton.
 import 'brepjs/quick';
+import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -15,7 +16,9 @@ const outFile = resolve(dirname(fileURLToPath(import.meta.url)), 'sample-buildin
 
 function expect(result, label) {
   if (result && result.ok === false) {
-    throw new Error(`${label} failed: ${result.error?.code ?? ''} ${result.error?.message ?? result.error}`);
+    throw new Error(
+      `${label} failed: ${result.error?.code ?? ''} ${result.error?.message ?? result.error}`
+    );
   }
   return result && 'value' in result ? result.value : result;
 }
@@ -25,10 +28,10 @@ model.init({ name: 'brepjs-bim Sample Office' });
 
 // Spatial structure: project → site → building → two storeys.
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Riverside Plot' });
-const buildingId = model.addBuilding({ name: 'Office Block A' });
-const groundId = model.addStorey({ name: 'Ground Floor', elevation: 0 });
-const firstId = model.addStorey({ name: 'First Floor', elevation: 3200 });
+const siteId = unwrap(model.addSite({ name: 'Riverside Plot' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Office Block A' }));
+const groundId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+const firstId = unwrap(model.addStorey({ name: 'First Floor', elevation: 3200 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, groundId);
@@ -59,8 +62,8 @@ const wallIds = wallDefs.map((d, i) =>
       loadBearing: true,
       fireRating: 'REI 120',
     }),
-    `addWall[${i}]`,
-  ),
+    `addWall[${i}]`
+  )
 );
 for (const id of wallIds) model.placeIn(id, groundId);
 
@@ -76,7 +79,7 @@ const windowId = expect(
     isExternal: true,
     thermalTransmittance: 1.4,
   }),
-  'addWindow',
+  'addWindow'
 );
 const doorId = expect(
   model.addDoor({
@@ -89,7 +92,7 @@ const doorId = expect(
     isExternal: true,
     fireRating: 'EI 60',
   }),
-  'addDoor',
+  'addDoor'
 );
 model.placeIn(windowId, groundId);
 model.placeIn(doorId, groundId);
@@ -108,7 +111,7 @@ const slabGround = expect(
     isExternal: false,
     loadBearing: true,
   }),
-  'addSlab[ground]',
+  'addSlab[ground]'
 );
 model.placeIn(slabGround, groundId);
 const slabFirst = expect(
@@ -123,7 +126,7 @@ const slabFirst = expect(
     materialName: 'Concrete',
     loadBearing: true,
   }),
-  'addSlab[first]',
+  'addSlab[first]'
 );
 model.placeIn(slabFirst, firstId);
 
@@ -142,7 +145,7 @@ for (const [cx, cy] of [
       materialName: 'Steel',
       loadBearing: true,
     }),
-    'addColumn',
+    'addColumn'
   );
   model.placeIn(col, groundId);
 }
@@ -154,7 +157,7 @@ model.addClassification(
     code: 'EF_25_10',
     name: 'Walls',
   },
-  wallIds,
+  wallIds
 );
 
 const result = await toIfcValidated(model, {

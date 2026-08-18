@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
-import { measureVolume } from 'brepjs';
+import { measureVolume, unwrap } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -26,9 +26,9 @@ function buildWallModel(): BimModel {
   const initResult = model.init({ name: 'Geometry RoundTrip' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -61,9 +61,9 @@ function buildCircularColumnModel(): BimModel {
   const ir = model.init({ name: 'Column RoundTrip' });
   if (!ir.ok) throw new Error(ir.error.message);
   const pid = ir.value;
-  const sid = model.addSite({ name: 'Site' });
-  const bid = model.addBuilding({ name: 'Building' });
-  const stid = model.addStorey({ name: 'L1', elevation: 0 });
+  const sid = unwrap(model.addSite({ name: 'Site' }));
+  const bid = unwrap(model.addBuilding({ name: 'Building' }));
+  const stid = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(pid, sid);
   model.aggregate(sid, bid);
   model.aggregate(bid, stid);
@@ -85,9 +85,9 @@ function buildIBeamModel(): BimModel {
   const ir = model.init({ name: 'IBeam RoundTrip' });
   if (!ir.ok) throw new Error(ir.error.message);
   const pid = ir.value;
-  const sid = model.addSite({ name: 'Site' });
-  const bid = model.addBuilding({ name: 'Building' });
-  const stid = model.addStorey({ name: 'L1', elevation: 0 });
+  const sid = unwrap(model.addSite({ name: 'Site' }));
+  const bid = unwrap(model.addBuilding({ name: 'Building' }));
+  const stid = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(pid, sid);
   model.aggregate(sid, bid);
   model.aggregate(bid, stid);

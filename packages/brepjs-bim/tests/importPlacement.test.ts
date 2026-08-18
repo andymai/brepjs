@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { initOCCT } from '../../../tests/setup.js';
@@ -35,10 +36,10 @@ function buildPlacedModel(): PlacedModel {
   const initResult = model.init({ name: 'Placement Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
   const storeyElevation = 3500;
-  const storeyId = model.addStorey({ name: 'L1', elevation: storeyElevation });
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: storeyElevation }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -178,9 +179,9 @@ describe('placement round-trip', () => {
     const initResult = model.init({ name: 'Origin Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectId = initResult.value;
-    const siteId = model.addSite({ name: 'Site' });
-    const buildingId = model.addBuilding({ name: 'Building' });
-    const storeyId = model.addStorey({ name: 'L0', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'Site' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L0', elevation: 0 }));
     model.aggregate(projectId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);

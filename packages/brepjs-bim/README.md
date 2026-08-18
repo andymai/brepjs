@@ -67,15 +67,16 @@ Author a small model and export IFC:
 
 ```ts
 import { BimModel, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs';
 
 const model = new BimModel();
 model.init({ name: 'Example' });
 
 // Spatial structure: project → site → building → storey.
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Site' });
-const buildingId = model.addBuilding({ name: 'Building' });
-const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);

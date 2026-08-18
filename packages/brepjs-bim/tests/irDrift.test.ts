@@ -47,10 +47,7 @@ const PLACEMENT = {
 
 /** Corner-origin rectangle contour in the XY plane. */
 function cornerRect(w: number, h: number) {
-  return csg.contour(
-    [0, 0],
-    [csg.lineTo([w, 0]), csg.lineTo([w, h]), csg.lineTo([0, h])]
-  );
+  return csg.contour([0, 0], [csg.lineTo([w, 0]), csg.lineTo([w, h]), csg.lineTo([0, h])]);
 }
 
 describe('IR drift gate: profile+extrude vs *ToSolid', () => {
@@ -123,7 +120,16 @@ describe('IR drift gate: profile+extrude vs *ToSolid', () => {
       bottomFlangeWidth: 260,
       bottomFlangeThickness: 18,
     };
-    using beam = unwrap(beamToSolid({ length: 5000, profile, materialName: 'Steel', origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] }));
+    using beam = unwrap(
+      beamToSolid({
+        length: 5000,
+        profile,
+        materialName: 'Steel',
+        origin: [0, 0, 0],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+      })
+    );
     // Mirror the spec convention in IR: extrude along +Z, then rotate +90
     // about Y so the beam length runs along +X.
     const ir = unwrap(

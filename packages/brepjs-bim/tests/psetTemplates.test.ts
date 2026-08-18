@@ -28,9 +28,7 @@ describe('psetTemplates — measure type table', () => {
   });
 
   it('maps ThermalTransmittance to its specific measure type, not IFCREAL', () => {
-    expect(PSET_PROPERTY_TYPE_TABLE['ThermalTransmittance']).toBe(
-      'IFCTHERMALTRANSMITTANCEMEASURE'
-    );
+    expect(PSET_PROPERTY_TYPE_TABLE['ThermalTransmittance']).toBe('IFCTHERMALTRANSMITTANCEMEASURE');
     expect(PSET_PROPERTY_TYPE_TABLE['ThermalTransmittance']).not.toBe('IFCREAL');
   });
 
@@ -44,18 +42,14 @@ describe('psetTemplates — measure type table', () => {
   });
 
   it('maps ratio/fraction properties to IFCPOSITIVERATIOMEASURE', () => {
-    expect(PSET_PROPERTY_TYPE_TABLE['GlazingAreaFraction']).toBe(
-      'IFCPOSITIVERATIOMEASURE'
-    );
+    expect(PSET_PROPERTY_TYPE_TABLE['GlazingAreaFraction']).toBe('IFCPOSITIVERATIOMEASURE');
   });
 });
 
 describe('psetTemplates — measureTypeFor helper', () => {
   it('returns the measure type for a known property', () => {
     expect(measureTypeFor('IsExternal')).toBe('IFCBOOLEAN');
-    expect(measureTypeFor('ThermalTransmittance')).toBe(
-      'IFCTHERMALTRANSMITTANCEMEASURE'
-    );
+    expect(measureTypeFor('ThermalTransmittance')).toBe('IFCTHERMALTRANSMITTANCEMEASURE');
   });
 
   it('returns undefined for an unknown property', () => {
@@ -122,9 +116,7 @@ describe('psetTemplates — per-category templates', () => {
 
   it('marks Status as an enumerated value with the standard status set', () => {
     for (const category of ALL_CATEGORIES) {
-      const status = PSET_TEMPLATES[category].properties.find(
-        (p) => p.name === 'Status'
-      );
+      const status = PSET_TEMPLATES[category].properties.find((p) => p.name === 'Status');
       expect(status, `${category} missing Status`).toBeDefined();
       if (status === undefined) continue;
       expect(status.kind).toBe('enumerated');
@@ -141,9 +133,7 @@ describe('psetTemplates — per-category templates', () => {
   });
 
   it('marks non-enumerated properties as single values', () => {
-    const isExternal = PSET_TEMPLATES.WALL.properties.find(
-      (p) => p.name === 'IsExternal'
-    );
+    const isExternal = PSET_TEMPLATES.WALL.properties.find((p) => p.name === 'IsExternal');
     expect(isExternal?.kind).toBe('single');
     expect(isExternal?.enumValues).toBeUndefined();
   });

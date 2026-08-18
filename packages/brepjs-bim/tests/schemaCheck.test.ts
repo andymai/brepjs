@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
@@ -14,9 +15,9 @@ function buildModel(): BimModel {
   const initResult = model.init({ name: 'Schema Test Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectLocalId = initResult.value;
-  const siteLocalId = model.addSite({ name: 'Test Site' });
-  const buildingLocalId = model.addBuilding({ name: 'Test Building' });
-  const storeyLocalId = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+  const siteLocalId = unwrap(model.addSite({ name: 'Test Site' }));
+  const buildingLocalId = unwrap(model.addBuilding({ name: 'Test Building' }));
+  const storeyLocalId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
   model.aggregate(projectLocalId, siteLocalId);
   model.aggregate(siteLocalId, buildingLocalId);
   model.aggregate(buildingLocalId, storeyLocalId);

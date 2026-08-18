@@ -4,7 +4,9 @@ import { wallToSolid } from '../src/elementFns/wallFns.js';
 import { parseWallSpec } from '../src/specs/wallSpec.js';
 import { measureVolume } from 'brepjs';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 describe('wallToSolid', () => {
   const spec = {
@@ -128,7 +130,7 @@ describe('parseWallSpec', () => {
     const result = parseWallSpec({
       ...valid,
       customProperties: {
-        'Pset_AcousticPerformance': { SoundReductionIndex: 45 },
+        Pset_AcousticPerformance: { SoundReductionIndex: 45 },
       },
     });
     expect(result.ok).toBe(true);

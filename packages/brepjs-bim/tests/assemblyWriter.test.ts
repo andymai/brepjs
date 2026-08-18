@@ -115,7 +115,15 @@ describe('assemblyWriter', () => {
     const w = await makeWriter();
     const oh = writeOwnerHistory(w);
     const assemblyGuid = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 2));
-    const assembly = writeElementAssemblyEntity(w, assemblyGuid, 'Frame', 'RIGID_FRAME', oh, null, null);
+    const assembly = writeElementAssemblyEntity(
+      w,
+      assemblyGuid,
+      'Frame',
+      'RIGID_FRAME',
+      oh,
+      null,
+      null
+    );
     const memberA = writeBeam(w, oh);
     const memberB = writeBeam(w, oh);
 

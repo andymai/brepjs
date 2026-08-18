@@ -120,7 +120,7 @@ describe('checkReferentialIntegrity', () => {
       const { elements, relationships } = cleanModel();
       // Drop the wall (5) from the only containment rel.
       const broken = relationships.map((r) =>
-        r.kind === 'CONTAINED_IN' ? containedIn(103, 4, [6, 8]) : r,
+        r.kind === 'CONTAINED_IN' ? containedIn(103, 4, [6, 8]) : r
       );
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       expect(hasErrors(report)).toBe(true);
@@ -167,7 +167,7 @@ describe('checkReferentialIntegrity', () => {
       const { elements, relationships } = cleanModel();
       // Opening 7 voids a nonexistent wall (99).
       const broken = relationships.map((r) =>
-        r.kind === 'VOIDS_WALL' ? voidsWall(104, 99, 7) : r,
+        r.kind === 'VOIDS_WALL' ? voidsWall(104, 99, 7) : r
       );
       const report = checkReferentialIntegrity({ elements, relationships: broken });
       const issue = report.issues.find((i) => i.code === 'VOID_HOST_MISSING');

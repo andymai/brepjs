@@ -120,9 +120,9 @@ describe('BimModel', () => {
   it('addWall returns a LocalId on success', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'P' }));
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (project === null) throw new Error('Expected project to exist');
     model.aggregate(project.localId, siteId);
@@ -169,9 +169,9 @@ describe('BimModel', () => {
   it('getWalls returns only wall elements', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'P' }));
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (project === null) throw new Error('Expected project to exist');
     model.aggregate(project.localId, siteId);
@@ -773,9 +773,9 @@ describe('BimModel.toTreeSummary', () => {
     unwrap(model.init({ name: 'Project' }));
     const project = model.getProject();
     if (!project) throw new Error('no project');
-    const siteId = model.addSite({ name: 'Site' });
-    const buildingId = model.addBuilding({ name: 'Building' });
-    const storeyId = model.addStorey({ name: 'Level 1', elevation: 3000 });
+    const siteId = unwrap(model.addSite({ name: 'Site' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+    const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 3000 }));
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);

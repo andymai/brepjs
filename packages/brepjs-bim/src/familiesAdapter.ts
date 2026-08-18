@@ -274,9 +274,18 @@ export function familiesToBim(
   const model = new BimModel();
   const initResult = model.init(options.project);
   if (!initResult.ok) return initResult;
-  const siteId = model.addSite({ name: options.siteName ?? 'Site' });
-  const buildingId = model.addBuilding({ name: options.buildingName ?? 'Building' });
-  model.aggregate(siteId, buildingId);
+  const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
+  if (!siteResult.ok) {
+    model[Symbol.dispose]();
+    return siteResult;
+  }
+  const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
+  if (!buildingResult.ok) {
+    model[Symbol.dispose]();
+    return buildingResult;
+  }
+  const buildingId = buildingResult.value;
+  model.aggregate(siteResult.value, buildingId);
 
   const idByKeyPath = new Map<string, LocalId>();
   const walk = (el: ResolvedElement, storeyId: LocalId | null): Result<void, BimError> => {
@@ -285,16 +294,17 @@ export function familiesToBim(
     if (el.type === 'Storey') {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const id = model.addStorey(
+      const storeyResult = model.addStorey(
         {
           name: (el.attributes['name'] as string | undefined) ?? el.keyPath,
           elevation: (el.props['elevation'] as number | undefined) ?? 0,
         },
         { stableKey: el.keyPath }
       );
-      model.aggregate(buildingId, id);
-      idByKeyPath.set(el.keyPath, id);
-      containerId = id;
+      if (!storeyResult.ok) return storeyResult;
+      model.aggregate(buildingId, storeyResult.value);
+      idByKeyPath.set(el.keyPath, storeyResult.value);
+      containerId = storeyResult.value;
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;

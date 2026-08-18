@@ -124,16 +124,22 @@ export class BimModel {
     }
   }
 
-  addSite(spec: SiteSpec): LocalId {
-    return this.#makeElement('SITE', spec, null);
+  addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('SITE', spec, null, options?.stableKey));
   }
 
-  addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): LocalId {
-    return this.#makeElement('BUILDING', spec, null, options?.stableKey);
+  addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('BUILDING', spec, null, options?.stableKey));
   }
 
-  addStorey(spec: StoreySpec, options?: ElementIdentityOptions): LocalId {
-    return this.#makeElement('STOREY', spec, null, options?.stableKey);
+  addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('STOREY', spec, null, options?.stableKey));
   }
 
   /** Reject a duplicate stableKey BEFORE any geometry is built, so the
@@ -334,26 +340,35 @@ export class BimModel {
    * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
    * (IfcRelNests, order-preserving). Returns the assembly's localId.
    */
-  addElementAssembly(spec: ElementAssemblySpec): LocalId {
-    return this.#makeElement('ELEMENT_ASSEMBLY', spec, null);
+  addElementAssembly(
+    spec: ElementAssemblySpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('ELEMENT_ASSEMBLY', spec, null, options?.stableKey));
   }
 
   /**
    * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
    * carries no geometry; attach members (spaces or other elements) with
-   * {@link assignToGroup}. Returns the zone's localId.
+   * {@link assignToGroup}. Returns the zone's localId as a Result.
    */
-  addZone(spec: ZoneSpec): LocalId {
-    return this.#makeElement('ZONE', spec, null);
+  addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('ZONE', spec, null, options?.stableKey));
   }
 
   /**
    * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
    * system carries no geometry; attach members with {@link assignToGroup}.
-   * Returns the system's localId.
+   * Returns the system's localId as a Result.
    */
-  addSystem(spec: SystemSpec): LocalId {
-    return this.#makeElement('SYSTEM', spec, null);
+  addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('SYSTEM', spec, null, options?.stableKey));
   }
 
   /**

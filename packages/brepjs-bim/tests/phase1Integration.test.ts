@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
@@ -6,7 +7,9 @@ import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { hasErrors } from '../src/validation/severity.js';
 import { DEFAULT_MVD_VIEW_DEFINITION } from '../src/ifc-writer/ifcWriter.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
@@ -15,25 +18,34 @@ function buildModel(): BimModel {
   const initResult = model.init({ name: 'Phase1 Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const wall = model.addWall({
-    length: 5000, height: 3000, thickness: 250,
-    origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+    length: 5000,
+    height: 3000,
+    thickness: 250,
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
     materialName: 'Concrete',
   });
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
   const slab = model.addSlab({
-    length: 6000, width: 4000, thickness: 250,
-    origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-    predefinedType: 'FLOOR', materialName: 'Concrete',
+    length: 6000,
+    width: 4000,
+    thickness: 250,
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    predefinedType: 'FLOOR',
+    materialName: 'Concrete',
   });
   if (!slab.ok) throw new Error(slab.error.message);
   model.placeIn(slab.value, storeyId);
@@ -77,7 +89,10 @@ describe('Phase 1 integration', () => {
   });
 
   it('honors a custom mvdViewDefinition from meta', async () => {
-    const result = await toIfc(buildModel(), { ...META, mvdViewDefinition: 'DesignTransferView_V1.0' });
+    const result = await toIfc(buildModel(), {
+      ...META,
+      mvdViewDefinition: 'DesignTransferView_V1.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
     const text = new TextDecoder().decode(result.value.subarray(0, 1024));
     expect(text).toContain('ViewDefinition [DesignTransferView_V1.0]');
@@ -122,8 +137,12 @@ describe('Phase 1 integration', () => {
     if (!initResult.ok) throw new Error(initResult.error.message);
     // Wall added but never placed in a spatial structure → ELEMENT_NOT_CONTAINED.
     const wall = model.addWall({
-      length: 3000, height: 2700, thickness: 200,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 3000,
+      height: 2700,
+      thickness: 200,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wall.ok) throw new Error(wall.error.message);

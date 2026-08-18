@@ -17,9 +17,9 @@ declare class BimModel {
     #private;
     init(spec: ProjectSpec): Result<LocalId, BimError>;
     [Symbol.dispose](): void;
-    addSite(spec: SiteSpec): LocalId;
-    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): LocalId;
-    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): LocalId;
+    addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
@@ -52,19 +52,19 @@ declare class BimModel {
      * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
      * (IfcRelNests, order-preserving). Returns the assembly's localId.
      */
-    addElementAssembly(spec: ElementAssemblySpec): LocalId;
+    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
      * carries no geometry; attach members (spaces or other elements) with
-     * {@link assignToGroup}. Returns the zone's localId.
+     * {@link assignToGroup}. Returns the zone's localId as a Result.
      */
-    addZone(spec: ZoneSpec): LocalId;
+    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
      * system carries no geometry; attach members with {@link assignToGroup}.
-     * Returns the system's localId.
+     * Returns the system's localId as a Result.
      */
-    addSystem(spec: SystemSpec): LocalId;
+    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
      * for the same group extend the single relationship in call order. Returns the

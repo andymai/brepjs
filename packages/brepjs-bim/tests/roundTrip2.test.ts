@@ -15,9 +15,9 @@ function buildModel(): BimModel {
   unwrap(model.init({ name: 'Round-trip Project' }));
   const project = model.getProject();
   if (!project) throw new Error('expected project');
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(project.localId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -32,7 +32,7 @@ function buildModel(): BimModel {
       axisZ: [0, 0, 1],
       materialName: 'Concrete',
       isExternal: true,
-    }),
+    })
   );
   model.placeIn(wall, storeyId);
 
@@ -46,7 +46,7 @@ function buildModel(): BimModel {
       axisZ: [0, 0, 1],
       predefinedType: 'FLOOR',
       materialName: 'Concrete',
-    }),
+    })
   );
   model.placeIn(slab, storeyId);
 
@@ -59,7 +59,7 @@ function buildModel(): BimModel {
       axisZ: [0, 0, 1],
       predefinedType: 'BEAM',
       materialName: 'Steel',
-    }),
+    })
   );
   model.placeIn(beam, storeyId);
 
@@ -72,7 +72,7 @@ function buildModel(): BimModel {
       axisZ: [0, 0, 1],
       predefinedType: 'COLUMN',
       materialName: 'Concrete',
-    }),
+    })
   );
   model.placeIn(column, storeyId);
 

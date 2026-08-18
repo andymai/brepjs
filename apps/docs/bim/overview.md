@@ -18,13 +18,14 @@ Two ways in:
 
 ```typescript
 import { BimModel, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs';
 
 const model = new BimModel();
 model.init({ name: 'Example' });
 
-const siteId = model.addSite({ name: 'Site' });
-const buildingId = model.addBuilding({ name: 'Building' });
-const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
