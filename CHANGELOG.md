@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.138.0](https://github.com/andymai/brepjs/compare/brepjs-v18.137.0...brepjs-v18.138.0) (2026-08-18)
+
+
+### Features
+
+* **cli:** add the create-brepjs project scaffold ([#2085](https://github.com/andymai/brepjs/issues/2085)) ([33aff89](https://github.com/andymai/brepjs/commit/33aff89591e244ae028050bd2ca83621bec446e2))
+
 ## [18.137.0](https://github.com/andymai/brepjs/compare/brepjs-v18.136.0...brepjs-v18.137.0) (2026-08-17)
 
 
