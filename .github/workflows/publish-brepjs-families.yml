@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run (pack only, skip publish)'
+        description: 'Dry run (build + pack only, skip publish)'
         required: false
         type: boolean
         default: true
@@ -15,7 +15,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
@@ -30,7 +30,14 @@ jobs:
 
       - run: npm ci
 
-      # brepjs-families ships TypeScript source (files: ["src"]) — no build step.
+      # Build the root brepjs first: brepjs-families externalizes `brepjs` at
+      # runtime, but vite-plugin-dts needs brepjs's emitted types to resolve
+      # `import type`s when generating brepjs-families's declarations.
+      - name: Build brepjs-families (root brepjs prerequisite)
+        run: |
+          npm run build
+          npm run build --workspace=brepjs-families
+
       - name: Pack preview
         run: npm pack --dry-run -w brepjs-families
 

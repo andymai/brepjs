@@ -30,12 +30,13 @@ jobs:
 
       - run: npm ci
 
-      # Build the root brepjs first: brepjs-bim externalizes `brepjs` at runtime,
-      # but vite-plugin-dts needs brepjs's emitted types to resolve `import type`s
-      # when generating brepjs-bim's declarations.
+      # Build the root brepjs and brepjs-families first: brepjs-bim externalizes
+      # `brepjs` at runtime, but vite-plugin-dts needs both packages' emitted
+      # types to resolve `import type`s when generating brepjs-bim's declarations.
       - name: Build brepjs-bim (root brepjs prerequisite)
         run: |
           npm run build
+          npm run build --workspace=brepjs-families
           npm run build --workspace=brepjs-bim
 
       # Authenticates via OIDC trusted publisher (configured for this exact
