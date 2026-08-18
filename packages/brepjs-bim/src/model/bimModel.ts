@@ -6,7 +6,12 @@ import type { LocalId } from '../identity/localId.js';
 import { makeLocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError } from '../errors/bimError.js';
-import type { AnyBimElement, BimElement, WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import type {
+  AnyBimElement,
+  BimElement,
+  WallOpeningSpec,
+  SlabOpeningSpec,
+} from '../types/bimTypes.js';
 import type { BimTreeNode, BimTreeSummary } from './treeSummary.js';
 import type {
   BimRelationship,
@@ -83,7 +88,9 @@ export class BimModel {
 
   init(spec: ProjectSpec): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
-      return err(specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model'));
+      return err(
+        specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model')
+      );
     }
     // Prefer an explicit, globally-unique projectId; otherwise fall back to the
     // project name+description (stable, but unique only per distinct name).
@@ -186,10 +193,12 @@ export class BimModel {
     return ok(id);
   }
 
-  addColumn(spec: ColumnSpec): Result<LocalId, BimError> {
+  addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = columnToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('COLUMN', spec, geomResult.value);
+    const id = this.#makeElement('COLUMN', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -519,10 +528,14 @@ export class BimModel {
       return err(specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
     }
     if (spec.offsetAlongWall + spec.width > wall.spec.length) {
-      return err(specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetAlongWall + width) exceeds wall length'));
+      return err(
+        specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetAlongWall + width) exceeds wall length')
+      );
     }
     if (spec.offsetFromFloor + spec.height > wall.spec.height) {
-      return err(specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetFromFloor + height) exceeds wall height'));
+      return err(
+        specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetFromFloor + height) exceeds wall height')
+      );
     }
     const openingSpec: WallOpeningSpec = {
       kind: 'WALL_OPENING',
@@ -537,9 +550,17 @@ export class BimModel {
     this.#replaceWallGeometry(wall, cutResult.value);
 
     const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
-    this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
+    this.#makeRel<VoidsWallRel>({
+      kind: 'VOIDS_WALL',
+      wallLocalId: spec.wallLocalId,
+      openingLocalId: openingId,
+    });
     const doorId = this.#makeElement('DOOR', spec, null, options?.stableKey);
-    this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: doorId });
+    this.#makeRel<FillsOpeningRel>({
+      kind: 'FILLS_OPENING',
+      openingLocalId: openingId,
+      fillerLocalId: doorId,
+    });
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
       materialName: spec.materialName,
@@ -553,13 +574,25 @@ export class BimModel {
     if (!keyCheck.ok) return keyCheck;
     const wall = this.#elements.get(spec.wallLocalId);
     if (wall === undefined || wall.category !== 'WALL') {
-      return err(specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
+      return err(
+        specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`)
+      );
     }
     if (spec.offsetAlongWall + spec.width > wall.spec.length) {
-      return err(specError('WINDOW_EXCEEDS_WALL_BOUNDS', 'Window (offsetAlongWall + width) exceeds wall length'));
+      return err(
+        specError(
+          'WINDOW_EXCEEDS_WALL_BOUNDS',
+          'Window (offsetAlongWall + width) exceeds wall length'
+        )
+      );
     }
     if (spec.offsetFromFloor + spec.height > wall.spec.height) {
-      return err(specError('WINDOW_EXCEEDS_WALL_BOUNDS', 'Window (offsetFromFloor + height) exceeds wall height'));
+      return err(
+        specError(
+          'WINDOW_EXCEEDS_WALL_BOUNDS',
+          'Window (offsetFromFloor + height) exceeds wall height'
+        )
+      );
     }
     const openingSpec: WallOpeningSpec = {
       kind: 'WALL_OPENING',
@@ -574,9 +607,17 @@ export class BimModel {
     this.#replaceWallGeometry(wall, cutResult.value);
 
     const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
-    this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
+    this.#makeRel<VoidsWallRel>({
+      kind: 'VOIDS_WALL',
+      wallLocalId: spec.wallLocalId,
+      openingLocalId: openingId,
+    });
     const windowId = this.#makeElement('WINDOW', spec, null, options?.stableKey);
-    this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: windowId });
+    this.#makeRel<FillsOpeningRel>({
+      kind: 'FILLS_OPENING',
+      openingLocalId: openingId,
+      fillerLocalId: windowId,
+    });
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
       materialName: spec.materialName,
@@ -585,18 +626,33 @@ export class BimModel {
     return ok(windowId);
   }
 
-  addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+  addSlabOpening(
+    input: SlabOpeningInput,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError> {
     const keyCheck = this.#checkStableKey(options);
     if (!keyCheck.ok) return keyCheck;
     const slab = this.#elements.get(input.slabLocalId);
     if (slab === undefined || slab.category !== 'SLAB') {
-      return err(specError('SLAB_OPENING_SLAB_NOT_FOUND', `No slab found for localId ${input.slabLocalId}`));
+      return err(
+        specError('SLAB_OPENING_SLAB_NOT_FOUND', `No slab found for localId ${input.slabLocalId}`)
+      );
     }
     if (input.offsetX + input.sizeX > slab.spec.length) {
-      return err(specError('SLAB_OPENING_EXCEEDS_SLAB_BOUNDS', 'Opening (offsetX + sizeX) exceeds slab length'));
+      return err(
+        specError(
+          'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
+          'Opening (offsetX + sizeX) exceeds slab length'
+        )
+      );
     }
     if (input.offsetY + input.sizeY > slab.spec.width) {
-      return err(specError('SLAB_OPENING_EXCEEDS_SLAB_BOUNDS', 'Opening (offsetY + sizeY) exceeds slab width'));
+      return err(
+        specError(
+          'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
+          'Opening (offsetY + sizeY) exceeds slab width'
+        )
+      );
     }
     // Reject overlap with existing slab openings — overlapping rectangles would
     // double-subtract from NetArea/NetVolume in Qto_SlabBaseQuantities.
@@ -614,7 +670,12 @@ export class BimModel {
       const by0 = other.spec.offsetY;
       const by1 = other.spec.offsetY + other.spec.sizeY;
       if (ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1) {
-        return err(specError('SLAB_OPENING_OVERLAP', 'Slab opening overlaps an existing opening on the same slab'));
+        return err(
+          specError(
+            'SLAB_OPENING_OVERLAP',
+            'Slab opening overlaps an existing opening on the same slab'
+          )
+        );
       }
     }
 
@@ -631,7 +692,11 @@ export class BimModel {
     this.#replaceSlabGeometry(slab, cutResult.value);
 
     const openingId = this.#makeElement('OPENING', openingSpec, null, options?.stableKey);
-    this.#makeRel<VoidsSlabRel>({ kind: 'VOIDS_SLAB', slabLocalId: input.slabLocalId, openingLocalId: openingId });
+    this.#makeRel<VoidsSlabRel>({
+      kind: 'VOIDS_SLAB',
+      slabLocalId: input.slabLocalId,
+      openingLocalId: openingId,
+    });
     return ok(openingId);
   }
 
@@ -976,9 +1041,7 @@ export class BimModel {
     return localId;
   }
 
-  #makeRel<R extends BimRelationship>(
-    fields: Omit<R, 'guid' | 'localId'>
-  ): LocalId {
+  #makeRel<R extends BimRelationship>(fields: Omit<R, 'guid' | 'localId'>): LocalId {
     const localId = this.#counter.next();
     // Deterministic GUID keyed on (kind, localId). localIds are assigned in a
     // fixed sequence, so an identical model produces identical relationship GUIDs.
