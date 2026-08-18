@@ -2,8 +2,11 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { unwrap, measureVolume } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
+import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const WALL_SPEC = {
   length: 5000,
@@ -16,6 +19,38 @@ const WALL_SPEC = {
 };
 
 describe('BimModel', () => {
+  it('every minting method accepts a stableKey and rejects duplicates via Result', () => {
+    using model = new BimModel();
+    unwrap(model.init({ name: 'P', projectId: 'proj' }));
+    const spaceSpec = {
+      name: 'Office',
+      length: 4000,
+      width: 3000,
+      height: 2700,
+      origin: [0, 0, 0] as [number, number, number],
+      axisX: [1, 0, 0] as [number, number, number],
+      axisZ: [0, 0, 1] as [number, number, number],
+      materialName: 'Air',
+    };
+    const space = unwrap(model.addSpace(spaceSpec, { stableKey: 'zone/office' }));
+    const el = model.getAllElements().find((e) => e.localId === space);
+    expect(el?.guid).toBe(deriveIfcGuidSync('elem:proj:zone/office'));
+
+    const railing = model.addRailing(
+      {
+        length: 2000,
+        height: 1000,
+        thickness: 50,
+        origin: [0, 0, 0],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        materialName: 'Steel',
+      },
+      { stableKey: 'zone/office' }
+    );
+    expect(railing.ok).toBe(false);
+  });
+
   it('init creates a project element', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'Test Project' }));
@@ -99,8 +134,12 @@ describe('BimModel.addDoor', () => {
     const initResult = model.init({ name: 'Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const wallResult = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
@@ -110,8 +149,12 @@ describe('BimModel.addDoor', () => {
   it('adds a door and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
     const result = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
-      wallLocalId, materialName: 'Wood',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 500,
+      offsetFromFloor: 0,
+      wallLocalId,
+      materialName: 'Wood',
     });
     expect(result.ok).toBe(true);
     expect(model.getDoors()).toHaveLength(1);
@@ -120,8 +163,12 @@ describe('BimModel.addDoor', () => {
   it('rejects door that exceeds wall length', () => {
     const { model, wallLocalId } = buildWallModel();
     const result = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 4500, offsetFromFloor: 0,
-      wallLocalId, materialName: 'Wood',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 4500,
+      offsetFromFloor: 0,
+      wallLocalId,
+      materialName: 'Wood',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('DOOR_EXCEEDS_WALL_BOUNDS');
@@ -130,8 +177,12 @@ describe('BimModel.addDoor', () => {
   it('rejects door that exceeds wall height', () => {
     const { model, wallLocalId } = buildWallModel();
     const result = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 1000,
-      wallLocalId, materialName: 'Wood',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 500,
+      offsetFromFloor: 1000,
+      wallLocalId,
+      materialName: 'Wood',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('DOOR_EXCEEDS_WALL_BOUNDS');
@@ -140,7 +191,14 @@ describe('BimModel.addDoor', () => {
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input path
-    const result = model.addDoor({ width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0, wallLocalId: 9999 as any, materialName: 'Wood' });
+    const result = model.addDoor({
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 500,
+      offsetFromFloor: 0,
+      wallLocalId: 9999 as any,
+      materialName: 'Wood',
+    });
     expect(result.ok).toBe(false);
   });
 });
@@ -151,8 +209,12 @@ describe('BimModel.addWindow', () => {
     const initResult = model.init({ name: 'Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const wallResult = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
@@ -162,8 +224,12 @@ describe('BimModel.addWindow', () => {
   it('adds a window and creates opening + relationships', () => {
     const { model, wallLocalId } = buildWallModel();
     const result = model.addWindow({
-      width: 1200, height: 1400, offsetAlongWall: 1000, offsetFromFloor: 900,
-      wallLocalId, materialName: 'Aluminum',
+      width: 1200,
+      height: 1400,
+      offsetAlongWall: 1000,
+      offsetFromFloor: 900,
+      wallLocalId,
+      materialName: 'Aluminum',
     });
     expect(result.ok).toBe(true);
     expect(model.getWindows()).toHaveLength(1);
@@ -172,8 +238,12 @@ describe('BimModel.addWindow', () => {
   it('rejects window that exceeds wall bounds', () => {
     const { model, wallLocalId } = buildWallModel();
     const result = model.addWindow({
-      width: 1200, height: 1400, offsetAlongWall: 4500, offsetFromFloor: 900,
-      wallLocalId, materialName: 'Aluminum',
+      width: 1200,
+      height: 1400,
+      offsetAlongWall: 4500,
+      offsetFromFloor: 900,
+      wallLocalId,
+      materialName: 'Aluminum',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('WINDOW_EXCEEDS_WALL_BOUNDS');
@@ -199,8 +269,12 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     const doorResult = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 1000, offsetFromFloor: 0,
-      wallLocalId: wallId, materialName: 'Wood',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 1000,
+      offsetFromFloor: 0,
+      wallLocalId: wallId,
+      materialName: 'Wood',
     });
     expect(doorResult.ok).toBe(true);
 
@@ -213,14 +287,26 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const { model, wallId } = buildWallModel();
     const grossVol = wallVolume(model);
 
-    unwrap(model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
-      wallLocalId: wallId, materialName: 'Wood',
-    }));
-    unwrap(model.addWindow({
-      width: 1200, height: 1500, offsetAlongWall: 2500, offsetFromFloor: 900,
-      wallLocalId: wallId, materialName: 'Glass',
-    }));
+    unwrap(
+      model.addDoor({
+        width: 900,
+        height: 2100,
+        offsetAlongWall: 500,
+        offsetFromFloor: 0,
+        wallLocalId: wallId,
+        materialName: 'Wood',
+      })
+    );
+    unwrap(
+      model.addWindow({
+        width: 1200,
+        height: 1500,
+        offsetAlongWall: 2500,
+        offsetFromFloor: 900,
+        wallLocalId: wallId,
+        materialName: 'Glass',
+      })
+    );
 
     const netVol = wallVolume(model);
     const expectedDelta = (900 * 2100 + 1200 * 1500) * WALL_SPEC.thickness;
@@ -234,9 +320,12 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     const result = model.addDoor({
-      width: WALL_SPEC.length + 100, height: 2100,
-      offsetAlongWall: 0, offsetFromFloor: 0,
-      wallLocalId: wallId, materialName: 'Wood',
+      width: WALL_SPEC.length + 100,
+      height: 2100,
+      offsetAlongWall: 0,
+      offsetFromFloor: 0,
+      wallLocalId: wallId,
+      materialName: 'Wood',
     });
     expect(result.ok).toBe(false);
 
@@ -252,9 +341,13 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const grossVol = wallVolume(model);
 
     const result = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 0, offsetFromFloor: 0,
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 0,
+      offsetFromFloor: 0,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input
-      wallLocalId: 9999 as any, materialName: 'Wood',
+      wallLocalId: 9999 as any,
+      materialName: 'Wood',
     });
     expect(result.ok).toBe(false);
 
@@ -323,9 +416,7 @@ describe('BimModel.addSlab', () => {
     const model = new BimModel();
     const result = model.addSlab(SLAB_SPEC);
     if (!result.ok) throw new Error(result.error.message);
-    const matRels = model
-      .getAllRelationships()
-      .filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
+    const matRels = model.getAllRelationships().filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
     expect(matRels).toHaveLength(1);
     expect(matRels[0]?.materialName).toBe('Concrete');
   });
@@ -359,7 +450,10 @@ describe('BimModel.addSlabOpening (M6)', () => {
   it('adds a slab opening and creates VOIDS_SLAB rel', () => {
     const { model, slabId } = buildSlabModel();
     const result = model.addSlabOpening({
-      sizeX: 1000, sizeY: 1500, offsetX: 1000, offsetY: 800,
+      sizeX: 1000,
+      sizeY: 1500,
+      offsetX: 1000,
+      offsetY: 800,
       slabLocalId: slabId,
     });
     expect(result.ok).toBe(true);
@@ -371,10 +465,15 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const { model, slabId } = buildSlabModel();
     const grossVol = slabVolume(model);
 
-    unwrap(model.addSlabOpening({
-      sizeX: 1000, sizeY: 1500, offsetX: 1000, offsetY: 800,
-      slabLocalId: slabId,
-    }));
+    unwrap(
+      model.addSlabOpening({
+        sizeX: 1000,
+        sizeY: 1500,
+        offsetX: 1000,
+        offsetY: 800,
+        slabLocalId: slabId,
+      })
+    );
 
     const netVol = slabVolume(model);
     const expectedDelta = 1000 * 1500 * SLAB_SPEC.thickness;
@@ -385,14 +484,24 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const { model, slabId } = buildSlabModel();
     const grossVol = slabVolume(model);
 
-    unwrap(model.addSlabOpening({
-      sizeX: 800, sizeY: 1200, offsetX: 200, offsetY: 200,
-      slabLocalId: slabId,
-    }));
-    unwrap(model.addSlabOpening({
-      sizeX: 600, sizeY: 600, offsetX: 4000, offsetY: 2500,
-      slabLocalId: slabId,
-    }));
+    unwrap(
+      model.addSlabOpening({
+        sizeX: 800,
+        sizeY: 1200,
+        offsetX: 200,
+        offsetY: 200,
+        slabLocalId: slabId,
+      })
+    );
+    unwrap(
+      model.addSlabOpening({
+        sizeX: 600,
+        sizeY: 600,
+        offsetX: 4000,
+        offsetY: 2500,
+        slabLocalId: slabId,
+      })
+    );
 
     const netVol = slabVolume(model);
     const expectedDelta = (800 * 1200 + 600 * 600) * SLAB_SPEC.thickness;
@@ -406,8 +515,10 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const grossVol = slabVolume(model);
 
     const result = model.addSlabOpening({
-      sizeX: SLAB_SPEC.length + 100, sizeY: 100,
-      offsetX: 0, offsetY: 0,
+      sizeX: SLAB_SPEC.length + 100,
+      sizeY: 100,
+      offsetX: 0,
+      offsetY: 0,
       slabLocalId: slabId,
     });
     expect(result.ok).toBe(false);
@@ -424,7 +535,10 @@ describe('BimModel.addSlabOpening (M6)', () => {
     const relsBefore = model.getAllRelationships().length;
 
     const result = model.addSlabOpening({
-      sizeX: 500, sizeY: 500, offsetX: 0, offsetY: 0,
+      sizeX: 500,
+      sizeY: 500,
+      offsetX: 0,
+      offsetY: 0,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input
       slabLocalId: 9999 as any,
     });
@@ -436,16 +550,24 @@ describe('BimModel.addSlabOpening (M6)', () => {
 
   it('addSlabOpening rejects overlap with an existing opening on the same slab', () => {
     const { model, slabId } = buildSlabModel();
-    unwrap(model.addSlabOpening({
-      sizeX: 1000, sizeY: 1000, offsetX: 500, offsetY: 500,
-      slabLocalId: slabId,
-    }));
+    unwrap(
+      model.addSlabOpening({
+        sizeX: 1000,
+        sizeY: 1000,
+        offsetX: 500,
+        offsetY: 500,
+        slabLocalId: slabId,
+      })
+    );
     const elementsBefore = model.getAllElements().length;
     const relsBefore = model.getAllRelationships().length;
     const volAfterFirst = slabVolume(model);
 
     const result = model.addSlabOpening({
-      sizeX: 600, sizeY: 600, offsetX: 1000, offsetY: 1000,
+      sizeX: 600,
+      sizeY: 600,
+      offsetX: 1000,
+      offsetY: 1000,
       slabLocalId: slabId,
     });
     expect(result.ok).toBe(false);
@@ -458,12 +580,20 @@ describe('BimModel.addSlabOpening (M6)', () => {
 
   it('addSlabOpening allows two openings that touch edge-to-edge (non-overlap)', () => {
     const { model, slabId } = buildSlabModel();
-    unwrap(model.addSlabOpening({
-      sizeX: 1000, sizeY: 1000, offsetX: 0, offsetY: 0,
-      slabLocalId: slabId,
-    }));
+    unwrap(
+      model.addSlabOpening({
+        sizeX: 1000,
+        sizeY: 1000,
+        offsetX: 0,
+        offsetY: 0,
+        slabLocalId: slabId,
+      })
+    );
     const second = model.addSlabOpening({
-      sizeX: 1000, sizeY: 1000, offsetX: 1000, offsetY: 0,
+      sizeX: 1000,
+      sizeY: 1000,
+      offsetX: 1000,
+      offsetY: 0,
       slabLocalId: slabId,
     });
     expect(second.ok).toBe(true);
@@ -519,9 +649,7 @@ describe('BimModel.addBeam (M7)', () => {
     const model = new BimModel();
     const result = model.addBeam(BEAM_SPEC);
     if (!result.ok) throw new Error(result.error.message);
-    const matRels = model
-      .getAllRelationships()
-      .filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
+    const matRels = model.getAllRelationships().filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
     expect(matRels).toHaveLength(1);
     expect(matRels[0]?.materialName).toBe('Steel');
   });
