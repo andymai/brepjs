@@ -2,7 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['src/ids/idsSchema.generated.ts'] },
+  { ignores: ['src/ids/idsSchema.generated.ts', 'src/validation/qtoDefinitions.generated.ts'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

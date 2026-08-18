@@ -583,11 +583,13 @@ export function writeRoofBaseQuantities(
   const grossAreaM2 = lengthM * widthM;
   const grossVolumeM3 = grossAreaM2 * thicknessM;
 
+  // Qto_RoofBaseQuantities defines only the three area quantities (QTY001);
+  // roof volumes have no standard home and are not emitted.
+  void grossVolumeM3;
   const qtyIds = [
     writeQtyArea(w, 'GrossArea', grossAreaM2),
     writeQtyArea(w, 'NetArea', grossAreaM2),
-    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
-    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+    writeQtyArea(w, 'ProjectedArea', grossAreaM2),
   ];
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_RoofBaseQuantities', qtyIds);
@@ -637,7 +639,8 @@ export function writeFootingBaseQuantities(
   const qtyIds = [
     writeQtyLength(w, 'Length', lengthM),
     writeQtyLength(w, 'Width', widthM),
-    writeQtyLength(w, 'Depth', depthM),
+    // Qto_FootingBaseQuantities names the vertical extent 'Height' (QTY001).
+    writeQtyLength(w, 'Height', depthM),
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
     writeQtyVolume(w, 'NetVolume', grossVolumeM3),
   ];

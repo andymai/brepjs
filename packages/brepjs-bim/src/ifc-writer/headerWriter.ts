@@ -1,5 +1,6 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
+import type { ProjectCrs } from '../specs/spatialSpec.js';
 import { writeOwnerHistory } from './ownerHistoryWriter.js';
 import type { OwnerHistoryAuthor } from './ownerHistoryWriter.js';
 import type { IfcSchema } from './schemaVersion.js';
@@ -9,6 +10,7 @@ export interface HeaderIds {
   geomContextId: number;
   geomSubContextId: number;
   unitAssignmentId: number;
+  lengthUnitId: number;
 }
 
 export interface BimModelMeta {
@@ -104,7 +106,50 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     UserDefinedTargetView: null,
   });
 
-  return { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId };
+  return { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId };
+}
+
+/**
+ * Writes IfcProjectedCRS + IfcMapConversion georeferencing the model context
+ * (GRF003). Coordinates are metres; rotation defaults to identity.
+ */
+export function writeMapConversion(
+  w: IfcWriter,
+  crs: ProjectCrs,
+  geomContextId: number,
+  lengthUnitId: number
+): number {
+  const crsId = w.nextId();
+  w.writeLine({
+    expressID: crsId,
+    type: WebIFC.IFCPROJECTEDCRS,
+    Name: w.mkType(WebIFC.IFCLABEL, crs.name),
+    Description: crs.description !== undefined ? w.mkType(WebIFC.IFCTEXT, crs.description) : null,
+    GeodeticDatum:
+      crs.geodeticDatum !== undefined ? w.mkType(WebIFC.IFCIDENTIFIER, crs.geodeticDatum) : null,
+    VerticalDatum:
+      crs.verticalDatum !== undefined ? w.mkType(WebIFC.IFCIDENTIFIER, crs.verticalDatum) : null,
+    MapProjection:
+      crs.mapProjection !== undefined ? w.mkType(WebIFC.IFCIDENTIFIER, crs.mapProjection) : null,
+    MapZone: crs.mapZone !== undefined ? w.mkType(WebIFC.IFCIDENTIFIER, crs.mapZone) : null,
+    MapUnit: w.ref(lengthUnitId),
+  });
+  const conversionId = w.nextId();
+  w.writeLine({
+    expressID: conversionId,
+    type: WebIFC.IFCMAPCONVERSION,
+    SourceCRS: w.ref(geomContextId),
+    TargetCRS: w.ref(crsId),
+    Eastings: w.mkType(WebIFC.IFCLENGTHMEASURE, crs.eastings ?? 0),
+    Northings: w.mkType(WebIFC.IFCLENGTHMEASURE, crs.northings ?? 0),
+    OrthogonalHeight: w.mkType(WebIFC.IFCLENGTHMEASURE, crs.orthogonalHeight ?? 0),
+    XAxisAbscissa:
+      crs.xAxisAbscissa !== undefined ? w.mkType(WebIFC.IFCREAL, crs.xAxisAbscissa) : null,
+    XAxisOrdinate:
+      crs.xAxisOrdinate !== undefined ? w.mkType(WebIFC.IFCREAL, crs.xAxisOrdinate) : null,
+    Scale: crs.scale !== undefined ? w.mkType(WebIFC.IFCREAL, crs.scale) : null,
+  });
+  return crsId;
 }
 
 export function writeAxis2Placement3D(

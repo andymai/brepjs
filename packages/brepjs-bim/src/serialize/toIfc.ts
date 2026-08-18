@@ -1,7 +1,7 @@
 import type { BimModel } from '../model/bimModel.js';
 import type { BimModelMeta } from '../ifc-writer/headerWriter.js';
 import { IfcWriter } from '../ifc-writer/ifcWriter.js';
-import { writeHeader } from '../ifc-writer/headerWriter.js';
+import { writeHeader, writeMapConversion } from '../ifc-writer/headerWriter.js';
 import {
   writeProject,
   writeSite,
@@ -113,6 +113,7 @@ import type { BimRelationship } from '../types/relationships.js';
 import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
 import { checkSchema } from '../validation/schemaCheck.js';
 import { checkRoundTrip } from '../validation/roundTrip.js';
+import { checkGherkinRules } from '../validation/gherkinChecks.js';
 import {
   hasErrors,
   issue,
@@ -163,10 +164,13 @@ export async function toIfc(
   const zones = model.getZones();
   const systems = model.getSystems();
 
-  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(
-    w,
-    meta
-  );
+  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId } =
+    writeHeader(w, meta);
+
+  // Georeference the model context when the project declares a CRS (GRF003).
+  if (project.spec.crs !== undefined) {
+    writeMapConversion(w, project.spec.crs, geomContextId, lengthUnitId);
+  }
 
   const densityByElement = buildDensityMap(relationships);
 
@@ -1100,12 +1104,19 @@ export async function toIfcValidated(
   const geometry = collectGeometryIssues(model);
   const schema = await checkSchema(bytes);
   const roundTrip = await checkRoundTrip(bytes);
+  const gherkin = await checkGherkinRules(bytes);
 
   // Integrity warnings (e.g. orphaned openings) are carried through alongside the
   // geometry-validity and post-save diagnostics; integrity errors already
   // short-circuited above.
   const report: ValidationReport = {
-    issues: [...integrity.issues, ...geometry.issues, ...schema.issues, ...roundTrip.issues],
+    issues: [
+      ...integrity.issues,
+      ...geometry.issues,
+      ...schema.issues,
+      ...roundTrip.issues,
+      ...gherkin,
+    ],
   };
   return ok({ bytes, report });
 }

@@ -111,12 +111,77 @@ function writeStairFlightEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    NumberOfRisers: w.mkType(WebIFC.IFCINTEGER, flight.numberOfRisers),
-    NumberOfTreads: w.mkType(WebIFC.IFCINTEGER, flight.numberOfRisers - 1),
-    RiserHeight: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.riserHeight)),
-    TreadLength: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.treadLength)),
+    // The four flight attributes are deprecated in IFC4 (IFC102); the data
+    // lives in Pset_StairFlightCommon instead.
+    NumberOfRisers: null,
+    NumberOfTreads: null,
+    RiserHeight: null,
+    TreadLength: null,
     // Carried by the paired type object (OJT001): occurrence stays empty.
     PredefinedType: null,
+  });
+  writeStairFlightCommonPset(w, ownerHistoryId, id, flight);
+  return id;
+}
+
+/** Pset_StairFlightCommon: the standard home for the flight geometry data the
+ *  deprecated IfcStairFlight attributes used to carry. Note the standard's
+ *  singular `NumberOfRiser`. */
+function writeStairFlightCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  flightExpressId: number,
+  flight: StairFlightSpec
+): void {
+  const props = [
+    writeSingleValue(w, 'NumberOfRiser', w.mkType(WebIFC.IFCCOUNTMEASURE, flight.numberOfRisers)),
+    writeSingleValue(
+      w,
+      'NumberOfTreads',
+      w.mkType(WebIFC.IFCCOUNTMEASURE, flight.numberOfRisers - 1)
+    ),
+    writeSingleValue(
+      w,
+      'RiserHeight',
+      w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.riserHeight))
+    ),
+    writeSingleValue(
+      w,
+      'TreadLength',
+      w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.treadLength))
+    ),
+  ];
+  const psetId = w.nextId();
+  w.writeLine({
+    expressID: psetId,
+    type: WebIFC.IFCPROPERTYSET,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(psetId)),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, 'Pset_StairFlightCommon'),
+    Description: null,
+    HasProperties: props.map((id) => w.ref(id)),
+  });
+  w.writeLine({
+    expressID: w.nextId(),
+    type: WebIFC.IFCRELDEFINESBYPROPERTIES,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(psetId + 100000)),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: null,
+    Description: null,
+    RelatedObjects: [w.ref(flightExpressId)],
+    RelatingPropertyDefinition: w.ref(psetId),
+  });
+}
+
+function writeSingleValue(w: IfcWriter, name: string, value: unknown): number {
+  const id = w.nextId();
+  w.writeLine({
+    expressID: id,
+    type: WebIFC.IFCPROPERTYSINGLEVALUE,
+    Name: w.mkType(WebIFC.IFCIDENTIFIER, name),
+    Description: null,
+    NominalValue: value,
+    Unit: null,
   });
   return id;
 }

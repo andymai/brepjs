@@ -25,7 +25,17 @@ function expect(result, label) {
 }
 
 const model = new BimModel();
-model.init({ name: 'brepjs-bim Interop Fixture' });
+model.init({
+  name: 'brepjs-bim Interop Fixture',
+  crs: {
+    name: 'EPSG:25832',
+    geodeticDatum: 'ETRS89',
+    mapProjection: 'UTM',
+    mapZone: '32N',
+    eastings: 401200,
+    northings: 5701500,
+  },
+});
 
 const project = model.getProject();
 const siteId = unwrap(model.addSite({ name: 'Interop Site' }));

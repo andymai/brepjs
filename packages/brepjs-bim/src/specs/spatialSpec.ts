@@ -9,6 +9,31 @@ export interface ProjectSpec {
    * (stable, but unique only per distinct name).
    */
   readonly projectId?: string;
+  /**
+   * Optional geodetic coordinate reference system. When present the writer
+   * emits IfcProjectedCRS + IfcMapConversion against the model context, which
+   * establishes proper georeferencing (buildingSMART rule GRF003 asks for a
+   * CRS whenever facilities such as buildings are modelled).
+   */
+  readonly crs?: ProjectCrs;
+}
+
+export interface ProjectCrs {
+  /** CRS name, conventionally an EPSG code (e.g. "EPSG:25832"). */
+  readonly name: string;
+  readonly description?: string | undefined;
+  readonly geodeticDatum?: string | undefined;
+  readonly verticalDatum?: string | undefined;
+  readonly mapProjection?: string | undefined;
+  readonly mapZone?: string | undefined;
+  /** Map coordinates of the model origin, in metres. Default 0. */
+  readonly eastings?: number | undefined;
+  readonly northings?: number | undefined;
+  readonly orthogonalHeight?: number | undefined;
+  /** Rotation of the model X axis in the map plane (abscissa/ordinate pair). */
+  readonly xAxisAbscissa?: number | undefined;
+  readonly xAxisOrdinate?: number | undefined;
+  readonly scale?: number | undefined;
 }
 
 export interface SiteSpec {

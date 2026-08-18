@@ -58,6 +58,16 @@ and the importer resolves it through `IfcRelDefinesByType`), and `Qto_*` element
 with `express_rules=True`, which reproduces the service's entity-rule findings locally — the local
 gate is the QA loop, the service is confirmation.
 
+## Gherkin-layer rules, locally
+
+`toIfcValidated` also runs local implementations of the Validation Service's gherkin normative
+rules that touch this writer's vocabulary: IFC102 (no deprecated IFC4 entities or attributes —
+stair-flight geometry lives in `Pset_StairFlightCommon`), QTY001 (every `Qto_*` set validated
+against the official `qto_definitions.csv`, generated into
+`src/validation/qtoDefinitions.generated.ts`), and GRF003 (a facility model warns unless
+`ProjectSpec.crs` declares a coordinate reference system, emitted as
+`IfcProjectedCRS` + `IfcMapConversion`).
+
 ## IDS conformance
 
 The IDS 1.0 checker (`parseIdsXml` + `checkIdsData`) is validated against the complete official
