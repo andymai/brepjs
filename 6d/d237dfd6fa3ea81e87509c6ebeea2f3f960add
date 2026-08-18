@@ -1,0 +1,21 @@
+packages/brepjs-bim/package.json
+  s_951c9e48d7e90e::t_038e74fe69ba6b 64
+package-lock.json
+  s_951c9e48d7e90e::t_d783727f9b6a16 15152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6dd237dfd6fa3ea81e87509c6ebeea2f3f960add",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
