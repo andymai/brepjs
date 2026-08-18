@@ -1,0 +1,21 @@
+vitest.config.ts
+  s_f7654670ddf29a::t_2fc364b5859745 64
+.github/workflows/ci.yml
+  s_f7654670ddf29a::t_2fc364b5859745 246-249,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "11db150acc5931e8428258e4b7ece08f55ad94ee",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
