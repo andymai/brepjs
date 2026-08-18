@@ -1,0 +1,24 @@
+packages/brepjs-bim/vitest.config.ts
+  s_f7654670ddf29a::t_5d337b33f08c9f 28-30,32-35
+  s_f7654670ddf29a::t_a928f0b76869de 22-23
+.github/workflows/ci.yml
+  s_f7654670ddf29a::t_4ebc3d23274423 281-289
+packages/brepjs-bim/src/ids/idsEngine.ts
+  s_f7654670ddf29a::t_840b9cc90dade4 582-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "beb1796eecef17298a10d6e3b1a2822e3e791569",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
