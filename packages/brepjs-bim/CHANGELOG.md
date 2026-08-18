@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.10.0...brepjs-bim-v0.11.0) (2026-08-18)
+
+
+### Features
+
+* **families:** beam mapping and the profile bridge for columns and beams ([#2125](https://github.com/andymai/brepjs/issues/2125)) ([705bbbb](https://github.com/andymai/brepjs/commit/705bbbb44baba0b468076e6c8e9897d411cbfb95))
+
 ## [0.10.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.9.0...brepjs-bim-v0.10.0) (2026-08-18)
 
 
