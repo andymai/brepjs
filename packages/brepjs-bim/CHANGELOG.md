@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.11.0...brepjs-bim-v0.12.0) (2026-08-18)
+
+
+### Features
+
+* **families:** roof mapping with shaped geometry, profile-bridge hardening ([#2129](https://github.com/andymai/brepjs/issues/2129)) ([4306fb1](https://github.com/andymai/brepjs/commit/4306fb1358d79ce6fb69463fa634ec5d5e470bc4))
+* **families:** stair mapping with per-flight placement and honest assembly ids ([#2136](https://github.com/andymai/brepjs/issues/2136)) ([bdb2c79](https://github.com/andymai/brepjs/commit/bdb2c79744884e55b2a1554156b443fa8333b53c))
+
 ## [0.11.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.10.0...brepjs-bim-v0.11.0) (2026-08-18)
 
 
