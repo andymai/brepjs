@@ -1,0 +1,32 @@
+apps/docs/.vitepress/config.ts
+  s_951c9e48d7e90e::t_65038f8831bb3f 317
+apps/docs/reference/decisions.md
+  s_951c9e48d7e90e::t_65038f8831bb3f 31-33
+docs/decisions/0014-identity-beside-content.md
+  s_951c9e48d7e90e::t_65038f8831bb3f 1-48
+apps/docs/families/copy-in.md
+  s_951c9e48d7e90e::t_7af924b63cf838 1-103
+apps/docs/reference/errors.md
+  s_951c9e48d7e90e::t_db887724c25161 266-297
+apps/docs/getting-started/cheat-sheet.md
+  s_951c9e48d7e90e::t_db887724c25161 226-251
+apps/docs/reference/glossary.md
+  s_951c9e48d7e90e::t_e12a8723520538 60-61,70-73,108-109,146-147,170
+  s_951c9e48d7e90e::t_3bb5fb4011d8fe 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5ff5f841ab96567149729108fa6bea1f55b17e27",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
