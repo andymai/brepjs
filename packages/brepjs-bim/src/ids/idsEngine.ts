@@ -579,10 +579,11 @@ function matchString(candidate: string, restriction: IdsRestriction): boolean {
 const MAX_PATTERN_LENGTH = 512;
 const MAX_PATTERN_CANDIDATE_LENGTH = 4096;
 
-// A quantifier applied to a group that itself contains a quantifier is the
-// canonical catastrophic-backtracking shape ((a+)+, (a*)*, (a|aa)+ …); such
-// patterns are rejected outright since length caps cannot bound their cost.
-const NESTED_QUANTIFIER_RE = /\([^)]*[+*{][^)]*\)[+*{]/;
+// A quantified group whose body contains a quantifier ((a+)+, (a*)*) or an
+// alternation ((a|aa)+) is the canonical catastrophic-backtracking shape;
+// such patterns are rejected outright since length caps cannot bound their
+// exponential cost. Un-quantified groups keep full alternation support.
+const NESTED_QUANTIFIER_RE = /\([^)]*[+*{|][^)]*\)[+*{]/;
 
 function safePatternTest(pattern: string, candidate: string): boolean {
   if (pattern.length > MAX_PATTERN_LENGTH || candidate.length > MAX_PATTERN_CANDIDATE_LENGTH) {
