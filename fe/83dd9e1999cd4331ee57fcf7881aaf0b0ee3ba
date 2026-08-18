@@ -1,0 +1,38 @@
+packages/brepjs-bim/src/model/bimModel.ts
+  s_f7654670ddf29a::t_1a7ea94dfe8912 196-198,201
+  s_f7654670ddf29a::t_c93010451ff710 9-14,91-93,531-533,536-538,553-557,559-563,577-579,582-587,590-595,610-614,616-620,629-632,637-639,642-647,650-655,673-678,695-699,1044
+packages/brepjs-families/registry/manifest.json
+  s_f7654670ddf29a::t_c93010451ff710 33-34
+  s_f7654670ddf29a::t_1a7ea94dfe8912 30-32,35-36
+  s_f7654670ddf29a::t_0ef6240f9f1633 29
+packages/brepjs-families/tests/registry.test.ts
+  s_f7654670ddf29a::t_c93010451ff710 130,154
+  s_f7654670ddf29a::t_39524007f72a9a 20,125-129,131-137
+  s_f7654670ddf29a::t_0758b738fee04b 138-139
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_f7654670ddf29a::t_3a4e1c7252a0fd 8,21,242,246-250,255-257
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_f7654670ddf29a::t_c93010451ff710 116,166,238-241,275-277,288-290,293-295,332-337
+  s_f7654670ddf29a::t_39524007f72a9a 126-149,151-164
+  s_f7654670ddf29a::t_64b69c33e6cd81 165
+apps/docs/families/for-bim-professionals.md
+  s_f7654670ddf29a::t_b846707d7a19f3 47
+packages/brepjs-families/registry/families/column.ts
+  s_f7654670ddf29a::t_1a7ea94dfe8912 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fe83dd9e1999cd4331ee57fcf7881aaf0b0ee3ba",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
