@@ -24,7 +24,17 @@ function expect(result, label) {
 }
 
 const model = new BimModel();
-model.init({ name: 'brepjs-bim Sample Office' });
+model.init({
+  name: 'brepjs-bim Sample Office',
+  crs: {
+    name: 'EPSG:25832',
+    geodeticDatum: 'ETRS89',
+    mapProjection: 'UTM',
+    mapZone: '32N',
+    eastings: 400000,
+    northings: 5700000,
+  },
+});
 
 // Spatial structure: project → site → building → two storeys.
 const project = model.getProject();

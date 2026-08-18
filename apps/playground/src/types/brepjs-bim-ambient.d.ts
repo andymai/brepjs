@@ -1126,6 +1126,24 @@ declare function checkRoundTrip(bytes: Uint8Array): Promise<RoundTripReport>;
  */
 declare function checkGeometryValidity(solids: ValidSolid | readonly ValidSolid[], entity?: string): ValidationReport;
 
+/**
+ * Local implementations of the buildingSMART Validation Service's gherkin
+ * normative rules that apply to the entity vocabulary this writer emits:
+ *
+ * - IFC102 — absence of deprecated entities and attributes (IFC4 lists from
+ *   the official rule definition).
+ * - QTY001 — every `Qto_*` element quantity uses the standard set name,
+ *   quantity names, quantity entity types, applicable element, and
+ *   `MethodOfMeasurement='BaseQuantities'` (table generated from the official
+ *   qto_definitions.csv).
+ * - GRF003 — a model containing facilities (IfcBuilding) declares a
+ *   coordinate reference system (warning severity, like the service).
+ *
+ * These run inside `toIfcValidated`, so the local gate covers the gherkin
+ * layer before anything is uploaded.
+ */
+declare function checkGherkinRules(bytes: Uint8Array): Promise<readonly ValidationIssue[]>;
+
 type ValidationSeverity = 'error' | 'warning' | 'info';
 
 interface ValidationIssue {
@@ -1493,6 +1511,13 @@ interface ProjectSpec {
      * (stable, but unique only per distinct name).
      */
     readonly projectId?: string;
+    /**
+     * Optional geodetic coordinate reference system. When present the writer
+     * emits IfcProjectedCRS + IfcMapConversion against the model context, which
+     * establishes proper georeferencing (buildingSMART rule GRF003 asks for a
+     * CRS whenever facilities such as buildings are modelled).
+     */
+    readonly crs?: ProjectCrs;
 }
 
 interface SiteSpec {

@@ -8,7 +8,7 @@ HEADER;
 * Issues: https://github.com/ThatOpen/engine_web-ifc/issues
 ******************************************************/
 FILE_DESCRIPTION(('ViewDefinition [ReferenceView_v1.2]'),'2;1');
-FILE_NAME('web-ifc-model-0.ifc','2026-08-18T05:37:34',(''),(''),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
+FILE_NAME('web-ifc-model-0.ifc','2026-08-18T14:57:57',(''),(''),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
 FILE_SCHEMA(('IFC4'));
 ENDSEC;
 DATA;

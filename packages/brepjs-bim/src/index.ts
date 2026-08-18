@@ -38,6 +38,7 @@ export { checkReferentialIntegrity } from './validation/referentialIntegrity.js'
 export { checkSchema } from './validation/schemaCheck.js';
 export { checkRoundTrip } from './validation/roundTrip.js';
 export { checkGeometryValidity } from './validation/geometryValidity.js';
+export { checkGherkinRules } from './validation/gherkinChecks.js';
 export { issue, emptyReport, hasErrors, countBySeverity } from './validation/severity.js';
 export { writeIfcType } from './ifc-writer/typeWriter.js';
 export {
