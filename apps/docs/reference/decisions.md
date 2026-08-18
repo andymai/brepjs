@@ -28,6 +28,9 @@ The brepjs ADRs are intentionally short, typically a page or two each. Longer th
 | 0009 | [Tolerance as type parameter](https://github.com/andymai/brepjs/blob/main/docs/decisions/0009-tolerance-as-type-parameter.md)   | Whether tolerance should be encoded in the type system                                  |
 | 0010 | [Layer 2 domain audit](https://github.com/andymai/brepjs/blob/main/docs/decisions/0010-layer2-domain-audit.md)                  | Audit of what belongs in each Layer 2 module                                            |
 | 0011 | [Geometric validity brands](https://github.com/andymai/brepjs/blob/main/docs/decisions/0011-geometric-validity-brands.md)       | The validity brand system (extending 0005 with concrete patterns)                       |
+| 0012 | [Layer 3 audit](https://github.com/andymai/brepjs/blob/main/docs/decisions/0012-layer3-audit.md)                                | Audit of what belongs in Layer 3 modules                                                |
+| 0013 | [Voxel domain](https://github.com/andymai/brepjs/blob/main/docs/decisions/0013-voxel-domain.md)                                 | Scope and boundaries of the voxel/SDF domain                                            |
+| 0014 | [Identity beside content](https://github.com/andymai/brepjs/blob/main/docs/decisions/0014-identity-beside-content.md)           | Why families identity lives beside the content-addressed IR, never inside it            |
 
 The list grows as decisions accumulate. The full directory is the source of truth.
 

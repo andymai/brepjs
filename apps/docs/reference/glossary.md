@@ -57,6 +57,8 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **`edgeFinder`**: query builder for selecting edges. Filters chain (`inDirection`, `withLength`, `ofCurveType`, etc.). See [Finders & Queries](../tasks/finders).
 
+**Element** (families): a node in a `brepjs-families` description tree, carrying an optional key, props, and children. Built by calling a family or `el()`; projected onto the CSG IR by `resolve()`. See [Why a Family Layer](../families/overview).
+
 **`extrude`**: operation that pushes a face along its normal to make a solid. `extrude(face, height)`. See [Lofts, Sweeps, Revolves](../tasks/lofts-sweeps).
 
 ## F
@@ -64,6 +66,10 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 **Face**: a bounded region of a mathematical surface. The most common surface types: `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS`, `BSPLINE_SURFACE`. See [Topology](../concepts/topology).
 
 **`faceFinder`**: query builder for selecting faces. Filters chain (`inDirection`, `withArea`, `ofSurfaceType`, etc.).
+
+**Family**: a plain function from props to an element tree, created with `family(name, render, options)`. The component reference is the identity; optional Zod schema validates props at construction. See [Why a Family Layer](../families/overview).
+
+**Fill role**: `role: 'fill'` on a family (doors, windows). Placed in a host's `voids`, a fill-role instance synthesizes an `Opening` element with identity and relationships instead of an anonymous cut. See [Openings & Voids](../families/openings).
 
 **Fillet**: circular-arc edge rounding. `fillet(shape, edges, radius)`. See [Fillets & Chamfers](../tasks/fillets).
 
@@ -98,6 +104,8 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 **Kernel**: the WASM-based geometry library underlying brepjs. Two ship: OpenCascade (production) and brepkit (development). See [Kernels](../concepts/kernels).
 
 **`KernelInterface`**: the abstract interface every kernel adapter implements. Located at `src/kernel/types.ts`.
+
+**Key path** (families): an element's ancestor chain of keys joined with `/` (`ground/w1`). The identity axis of a families model: stable under sibling reordering, the seed of IFC GlobalIds. See [Elements, Key Paths & Identity](../families/identity).
 
 ## L
 
@@ -135,6 +143,8 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 ## R
 
+**Registry** (families): a static `manifest.json` plus family source files, consumed by `brepjs add` / `brepjs diff`. Self-hostable: any static host or directory works. See [Copy-In Distribution](../families/copy-in).
+
 **Replicad**: a peer code-CAD library wrapping OpenCascade. brepjs's closest comparison. See [Coming from Replicad](../migration/replicad).
 
 **`Result<T, E>`**: discriminated-union type for fallible operations. `{ ok: true, value }` or `{ ok: false, error }`. See [Result and Errors](../concepts/result).
@@ -156,6 +166,8 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 **Smart constructor**: function that performs a runtime check and returns a validity-branded type if the check passes. Examples: `closedWire(w)`, `manifoldShell(s)`.
 
 **Solid**: a 3D volume bounded by one or more closed shells. The output of most CAD operations.
+
+**Stable key**: a caller-supplied identity key (a families key path) that replaces positional GlobalId derivation in `brepjs-bim`, making element identity survive reordering. Single-use per model. See [IFC Export](../families/ifc-export).
 
 **STEP**: ISO 10303 file format for B-Rep shapes. Round-trips with desktop CAD. Exported via `exportSTEP`, imported via `importSTEP`.
 
