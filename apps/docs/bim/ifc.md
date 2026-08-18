@@ -1,6 +1,6 @@
 ---
 title: IFC Export & Import
-description: 'toIfc serializes a BimModel to IFC-SPF bytes (IFC4 or IFC2X3); fromIfc and SpfReader read IFC back into elements, psets, and a spatial tree.'
+description: 'toIfc serializes a BimModel to IFC-SPF bytes (IFC4 or IFC4X3); fromIfc and SpfReader read IFC back into elements, psets, and a spatial tree.'
 ---
 
 # IFC Export & Import
