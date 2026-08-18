@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.2.0...brepjs-families-v0.3.0) (2026-08-18)
+
+
+### Features
+
+* **families:** ship built dist with type declarations ([#2116](https://github.com/andymai/brepjs/issues/2116)) ([7f75bff](https://github.com/andymai/brepjs/commit/7f75bffe9778ab2eabb4f1d679b5d538d0fc00dd))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.1.0...brepjs-families-v0.2.0) (2026-08-18)
 
 
