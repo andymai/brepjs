@@ -1,0 +1,22 @@
+bin/brepjs.mjs
+  s_951c9e48d7e90e::t_718f06e8ca8d76 19,247-248,253-256
+  s_951c9e48d7e90e::t_36ae78b329b158 257-259
+tests/cliFamilies.test.ts
+  s_951c9e48d7e90e::t_e43a52242488f6 108-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "77b6a2dd930990c561a2cbebd0f63ef64951d6c6",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
