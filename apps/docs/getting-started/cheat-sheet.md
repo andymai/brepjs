@@ -223,3 +223,29 @@ void geo;
 - [B-Rep vs Mesh](../concepts/brep-vs-mesh): what makes B-Rep precise
 - [Types That Prove Geometry Is Valid](../concepts/types): the type system that catches bugs at compile time
 - Pick a task: [Booleans](../tasks/booleans) · [Sketching](../tasks/sketching) · [Three.js](../integration/threejs)
+
+## Families (declarative models)
+
+```typescript
+import { family, el, resolve, evaluateModel, tTranslate } from 'brepjs-families';
+
+const Wall = family<{ length: number }>('Wall', (p) => el('Box', { size: [p.length, 200, 2700] }));
+const Door = family<{ w: number; h: number }>(
+  'Door',
+  (p) => el('Box', { size: [p.w, 300, p.h] }),
+  { role: 'fill' } // synthesizes an Opening when placed in voids
+);
+
+const model = resolve(Wall({ key: 'south', length: 4000 })); // keys = identity
+using ev = new csg.Evaluator();
+const out = evaluateModel(model, ev); // meshes primary; { shapes: true } to opt in
+out.byKeyPath.get('south')?.mesh; // Result<ShapeMesh>, nothing to dispose
+```
+
+```sh
+npm create brepjs@latest my-building   # scaffold
+npx brepjs add room storey slab        # copy families in as owned source
+npx brepjs diff room                   # compare against the registry, exit 1 on drift
+```
+
+See [Why a Family Layer](../families/overview).
