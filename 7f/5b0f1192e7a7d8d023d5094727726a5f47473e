@@ -1,0 +1,21 @@
+apps/docs/bim/ifc.md
+  s_f7654670ddf29a::t_dc9dcd32dfa17d 3
+apps/docs/bim/validation.md
+  s_f7654670ddf29a::t_7f63648911c1d5 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7f5b0f1192e7a7d8d023d5094727726a5f47473e",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
