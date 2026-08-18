@@ -243,8 +243,10 @@ jobs:
   packages-families:
     # Declarative family layer satellite (element trees over the CSG IR).
     # Build root brepjs first so the package typecheck resolves `brepjs` via
-    # package exports -> dist/; tests resolve `brepjs` to source through the
-    # vitest alias and need the OCCT WASM the setup composite restores.
+    # package exports -> dist/, then the families dist itself: the package's
+    # tests and registry lint-resolve `brepjs-families` via its own exports ->
+    # dist/. Tests resolve `brepjs` to source through the vitest alias and need
+    # the OCCT WASM the setup composite restores.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -253,10 +255,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
       - run: npm run build
+      - run: npm run build --workspace=brepjs-families
       - run: npm run typecheck --workspace=brepjs-families
       - run: npm run lint --workspace=brepjs-families
       - run: npm run test --workspace=brepjs-families
-      - run: npm run build --workspace=brepjs-families
 
   packages-bim:
     # Experimental BIM (IFC4) domain satellite. Build root brepjs and

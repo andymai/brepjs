@@ -61,6 +61,7 @@ export default defineConfig({
       // the last-published dist) and don't need a dist build in CI.
       'brepjs-sheetmetal': resolve(__dirname, 'packages/brepjs-sheetmetal/src/index.ts'),
       'brepjs-bim': resolve(__dirname, 'packages/brepjs-bim/src/index.ts'),
+      'brepjs-families': resolve(__dirname, 'packages/brepjs-families/src/index.ts'),
     },
   },
   test: {
