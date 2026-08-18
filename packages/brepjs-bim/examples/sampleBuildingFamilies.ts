@@ -36,9 +36,7 @@ interface WallProps {
 const Wall = family<WallProps>('Wall', (p) => {
   const alongY = (p.axisX ?? [1, 0, 0])[1] !== 0;
   return el('Box', {
-    size: alongY
-      ? [p.thickness, p.length, p.height]
-      : [p.length, p.thickness, p.height],
+    size: alongY ? [p.thickness, p.length, p.height] : [p.length, p.thickness, p.height],
     voids: p.voids ?? [],
     // A +Y wall's thickness spans world -X (axisY = axisZ x axisX), so the
     // IR box shifts to coincide with the spec solid.
@@ -62,9 +60,7 @@ interface FillProps {
 const fillRender = (p: FillProps): Element =>
   el('Box', {
     size: p.alongY ? [p.depth, p.width, p.height] : [p.width, p.depth, p.height],
-    transform: [
-      tTranslate(p.alongY ? [0, p.at[0], p.at[1]] : [p.at[0], 0, p.at[1]]),
-    ],
+    transform: [tTranslate(p.alongY ? [0, p.at[0], p.at[1]] : [p.at[0], 0, p.at[1]])],
   });
 
 const Door = family<FillProps>('Door', fillRender, { role: 'fill' });
@@ -105,6 +101,14 @@ const T = 200;
 export const SAMPLE_PROJECT = {
   name: 'brepjs-families Sample Office',
   projectId: 'families-sample-office',
+  crs: {
+    name: 'EPSG:25832',
+    geodeticDatum: 'ETRS89',
+    mapProjection: 'UTM',
+    mapZone: '32N',
+    eastings: 402000,
+    northings: 5702000,
+  },
 };
 
 export const SAMPLE_OPTIONS = {

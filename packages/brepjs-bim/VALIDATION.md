@@ -58,6 +58,17 @@ and the importer resolves it through `IfcRelDefinesByType`), and `Qto_*` element
 with `express_rules=True`, which reproduces the service's entity-rule findings locally — the local
 gate is the QA loop, the service is confirmation.
 
+## The complete official rule catalog, locally
+
+`scripts/setupGherkinRunner.sh /path/to/workdir` builds a local instance of the exact rule engine
+behind the buildingSMART Validation Service (buildingSMART/ifc-gherkin-rules, pinned), then
+`run-gherkin.sh model.ifc` executes every normative rule — the full catalog of 100+ ALB/GEM/GRF/
+IFC/OJT/PJS/PSE/QTY/SPS/... features, not just the subset reimplemented below. All three committed
+fixtures pass it completely (950 scenarios, 0 failed, 0 undefined), including PSE001
+standard-property-set validation. The script documents the five environment fixes it applies
+(behave pin, sibling data model, two step-loading shims, a CSV-parser patch); none alter rule
+logic.
+
 ## Gherkin-layer rules, locally
 
 `toIfcValidated` also runs local implementations of the Validation Service's gherkin normative
