@@ -62,8 +62,6 @@
       "bump-minor-pre-major": true
     }
   },
-  "plugins": [
-    "node-workspace"
-  ],
+  "plugins": [],
   "separate-pull-requests": true
 }
