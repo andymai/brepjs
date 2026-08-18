@@ -319,6 +319,16 @@ export default withMermaid(
           ],
         },
         {
+          text: 'BIM (IFC4)',
+          items: [
+            { text: 'The BIM Layer', link: '/bim/overview' },
+            { text: 'Element Catalog', link: '/bim/elements' },
+            { text: 'IFC Export & Import', link: '/bim/ifc' },
+            { text: 'Validation', link: '/bim/validation' },
+            { text: 'Interop: COBie, IDS, BCF', link: '/bim/interop' },
+          ],
+        },
+        {
           text: 'Advanced',
           items: [
             { text: 'Memory Management', link: '/advanced/memory' },
