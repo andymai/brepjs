@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.165.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.164.1...brepjs-cad-v0.165.0) (2026-08-18)
+
+
+### Features
+
+* **brepjs-cad:** add airfoils.md feature recipe (swept fans/props/impellers) ([#1566](https://github.com/andymai/brepjs/issues/1566)) ([8c786db](https://github.com/andymai/brepjs/commit/8c786db69ead59edcdc9d0f8525e43324552e4db))
+* **brepjs-cad:** grade judge quality against a reference exemplar ([#1731](https://github.com/andymai/brepjs/issues/1731)) ([9d4aaeb](https://github.com/andymai/brepjs/commit/9d4aaeb8e4830c6be78668854730367194b6a9e5))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** add a triangular-gusset recipe to the implement skill (bracket/enclosure eval) ([#1571](https://github.com/andymai/brepjs/issues/1571)) ([346d042](https://github.com/andymai/brepjs/commit/346d0423fefa3bd163f4075f69bf96d478543bf5))
+* **brepjs-cad:** bore detector misses full-cylinder through-holes ([#1551](https://github.com/andymai/brepjs/issues/1551)) ([#1586](https://github.com/andymai/brepjs/issues/1586)) ([b6d61eb](https://github.com/andymai/brepjs/commit/b6d61eb6d88e2e4a3aa1c55b78dc2e76315ebc02))
+* **brepjs-cad:** heal 6 implement-skill findings from the full-flywheel re-run ([#1568](https://github.com/andymai/brepjs/issues/1568)) ([f63bf3d](https://github.com/andymai/brepjs/commit/f63bf3d5a0aa638d06e11dd7e2c27e84dbf74746))
+* **core:** bump occt-wasm to 3.7.0 with borrowed adjacency handles ([#1821](https://github.com/andymai/brepjs/issues/1821)) ([4b76974](https://github.com/andymai/brepjs/commit/4b76974833f2d9900740fffcec2dd589de952ff9))
+* **deps:** clear all remaining OSV findings to get main green ([#1917](https://github.com/andymai/brepjs/issues/1917)) ([2456ef4](https://github.com/andymai/brepjs/commit/2456ef40860129a59027d055978c002004104925))
+* **release:** unbreak Vercel — repin brepjs-cad to brepjs &gt;=18.0.0 ([#1711](https://github.com/andymai/brepjs/issues/1711)) ([78c780a](https://github.com/andymai/brepjs/commit/78c780a3ab2fcc78f26b32029df72795582e145c))
+
+
+### Reverts
+
+* restore brepjs-cad brepjs dep floor — "*" did not fix the release churn ([#1854](https://github.com/andymai/brepjs/issues/1854)) ([194caba](https://github.com/andymai/brepjs/commit/194cabaa6c7196ee38a3b3ddaa68a881909ae263))
+
 ## [0.164.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.163.0...brepjs-cad-v0.164.0) (2026-08-17)
 
 
