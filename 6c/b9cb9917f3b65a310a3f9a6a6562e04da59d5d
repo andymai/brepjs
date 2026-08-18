@@ -1,0 +1,134 @@
+packages/brepjs-bim/tests/openingFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 9-14,23-28,50-55
+packages/brepjs-bim/tests/coveringFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 16-18
+packages/brepjs-bim/examples/sampleBuilding.mjs
+  s_f7654670ddf29a::t_d01e714a100029 19-21,65-66,82,95,114,129,148,160
+  s_f7654670ddf29a::t_b56a324927b314 31-34
+  s_f7654670ddf29a::t_e6174319c70ae9 9
+packages/brepjs-bim/tests/cobieExport.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 19-21
+packages/brepjs-bim/tests/phase2Geometry.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 3,22-24
+packages/brepjs-bim/tests/phase5Api.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,53-55,101
+  s_f7654670ddf29a::t_d01e714a100029 61-66,73-78,85-90,96-98
+packages/brepjs-bim/tests/idsCheck.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,81-83
+packages/brepjs-bim/tests/roundTrip2.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 18-20
+  s_f7654670ddf29a::t_d01e714a100029 35,49,62,75
+packages/brepjs-bim/README.md
+  s_f7654670ddf29a::t_2ffd4eb0860dd2 77-79
+  s_f7654670ddf29a::t_d01e714a100029 70
+packages/brepjs-bim/tests/psetTemplates.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 31,45,52,119,136
+packages/brepjs-bim/tests/phase2Data.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,19-21
+  s_f7654670ddf29a::t_d01e714a100029 8-10,47-52,85-90,112-117,149-154,174-176,190-195,212-217
+packages/brepjs-bim/examples/sample-building.ifc
+  s_f7654670ddf29a::t_20d7b7a1403ef4 11
+packages/brepjs-bim/tests/spfReader.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,20-22
+  s_f7654670ddf29a::t_d01e714a100029 9-11,28-33
+packages/brepjs-bim/examples/interopFixture.mjs
+  s_f7654670ddf29a::t_b56a324927b314 31-33
+  s_f7654670ddf29a::t_e6174319c70ae9 10
+packages/brepjs-bim/tests/importData.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,37-39
+packages/brepjs-bim/tests/phase3GroupA.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 10-12,34-39,46-55,62-70,76-87,93-101,107-115,205-206,246-249,260-264
+  s_f7654670ddf29a::t_b56a324927b314 1,26-28,257
+packages/brepjs-bim/tests/curtainWallFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 12-14
+packages/brepjs-bim/tests/schemaCheck.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,18-20
+packages/brepjs-bim/tests/importSpatialTree.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,37-40
+packages/brepjs-bim/tests/importGeometry.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 3,29-31,64-66,88-90
+packages/brepjs-bim/tests/assemblyWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 118-126
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_f7654670ddf29a::t_9e2349d8d36444 277-288,297,304-307
+packages/brepjs-bim/tests/bimGeometryIfc.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 17-19,99-101
+  s_f7654670ddf29a::t_d01e714a100029 108-116,122-130,136-147
+packages/brepjs-bim/tests/qtoWeights.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 75
+packages/brepjs-bim/tests/styleWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 85-91
+packages/brepjs-bim/tests/foundationFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 9-14,18-20,181-186
+packages/brepjs-bim/tests/typeWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 83,101
+packages/brepjs-bim/tests/importPlacement.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,39-40,42,182-184
+packages/brepjs-bim/tests/groupWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 14-16,76-83,128-135
+apps/playground/src/lib/examples/bim.ts
+  s_f7654670ddf29a::t_482f921183a012 141
+  s_f7654670ddf29a::t_dcbc7531bc64c3 17,66
+  s_f7654670ddf29a::t_0df0c83280b136 28-30,77-79,152-154,196-198,262-264,343-345,417-419,457-459
+  s_f7654670ddf29a::t_ed83e754a4f38e 232
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_f7654670ddf29a::t_482f921183a012 20-22,55,59,61,65,67
+packages/brepjs-bim/tests/ownerHistoryWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 93-95
+packages/brepjs-bim/tests/profilesExtended.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 5
+packages/brepjs-bim/src/model/bimModel.ts
+  s_f7654670ddf29a::t_bc495c9cdfb154 127-130,133-136,139-142,343-349,355,357-360,366,368-371
+packages/brepjs-bim/tests/phase1Integration.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 10-12,29-34,41-48,92-95,140-145
+  s_f7654670ddf29a::t_b56a324927b314 1,21-23
+packages/brepjs-bim/tests/roundTrip.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 8-10,40-43,51-54,85-88,117,136-139,242-247,283-288,295-302,307-314,318-321,373-376,390-393,461-467,515-521,525-530,567-569,592-595,641-644,657-660,735-738,743-746,750-753,789-792,842-845,848-851,883-913,917-920,962-965,976-991,1086-1108,1112-1115,1164-1168
+  s_f7654670ddf29a::t_b56a324927b314 18-20,126-128,235-237,276-278,454-456,508-510,573-575,724-726,821-823,874-876,1077-1079
+packages/brepjs-bim/tests/familiesSampleBuilding.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 61,109,125
+packages/brepjs-bim/tests/classificationWriter.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 132-133
+packages/brepjs-bim/tests/wallFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 7-9,133
+packages/brepjs-bim/tests/severity.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 48
+packages/brepjs-bim/tests/irDrift.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 50,123-132
+packages/brepjs-bim/tests/phase5Writer.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,20-22,118-120
+  s_f7654670ddf29a::t_d01e714a100029 9-11,28-33,125-130
+packages/brepjs-bim/tests/bimModel.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 123-125,172-174,776-778
+packages/brepjs-bim/tests/bcf.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 136-139
+packages/brepjs-bim/tests/railingFns.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 12-14
+packages/brepjs-bim/tests/referentialIntegrity.test.ts
+  s_f7654670ddf29a::t_d01e714a100029 123,170
+packages/brepjs-bim/examples/interop-fixture.ifc
+  s_f7654670ddf29a::t_20d7b7a1403ef4 11,158
+packages/brepjs-bim/tests/phase4RoundTrip.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 2,27-29
+apps/docs/bim/overview.md
+  s_f7654670ddf29a::t_2ffd4eb0860dd2 21,26-28
+packages/brepjs-bim/tests/phase3GroupB.test.ts
+  s_f7654670ddf29a::t_b56a324927b314 1,31-33
+  s_f7654670ddf29a::t_d01e714a100029 8-10,44-51,54-61,74-81,89-94,101-108,116-123,131-133,216-219,235-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6cb9cb9917f3b65a310a3f9a6a6562e04da59d5d",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
