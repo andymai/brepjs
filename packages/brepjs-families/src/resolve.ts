@@ -67,13 +67,37 @@ function renderToIntrinsic(elem: Element): { intrinsic: Element; typeName: strin
   return { intrinsic: cur, typeName };
 }
 
+function isIRNode(v: unknown): v is csg.IRNode {
+  return typeof v === 'object' && v !== null && 'structuralHash' in v && 'kind' in v;
+}
+
 function baseGeometry(intrinsic: Element): csg.IRNode {
   if (intrinsic.type === 'Box') {
     const size = intrinsic.props['size'] as readonly [number, number, number];
     return csg.box(size[0], size[1], size[2]);
   }
+  if (intrinsic.type === 'Cylinder') {
+    return csg.cylinder(
+      intrinsic.props['radius'] as number,
+      intrinsic.props['height'] as number
+    );
+  }
+  // The bridge to the full csg vocabulary (Profile, Extrude, Revolve, Sweep,
+  // Loft, booleans, ...): render functions build any IR node and hand it over;
+  // voids/fuse/transform desugaring composes on top as usual.
+  if (intrinsic.type === 'Geometry') {
+    const node = intrinsic.props['node'];
+    if (!isIRNode(node)) {
+      throw new Error(
+        "brepjs-families: 'Geometry' requires a csg IR node in props.node"
+      );
+    }
+    return node;
+  }
   if (intrinsic.type === 'Group' || intrinsic.type === 'Fragment') return csg.emptySolid();
-  throw new Error(`brepjs-families: unknown intrinsic element '${String(intrinsic.type)}'`);
+  throw new Error(
+    `brepjs-families: unknown intrinsic element '${String(intrinsic.type)}' (intrinsics: Box, Cylinder, Geometry, Group, Fragment)`
+  );
 }
 
 /** Identity-free projection: element -> IR only. Used for plain geometry
