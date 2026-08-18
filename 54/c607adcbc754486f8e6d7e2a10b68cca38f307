@@ -1,0 +1,32 @@
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_f7654670ddf29a::t_f8542e23de1e67 11,352
+packages/brepjs-bim/tests/ifcWriterHeader.test.ts
+  s_f7654670ddf29a::t_e8dfa7b282b443 52-54
+  s_f7654670ddf29a::t_5ace7593568251 4-6,47-51,55-60
+  s_f7654670ddf29a::t_f2ff7b755d5716 61-62
+packages/brepjs-bim/src/ifc-writer/ifcWriter.ts
+  s_f7654670ddf29a::t_e8dfa7b282b443 48-51
+  s_f7654670ddf29a::t_3540b5150dc63f 39-47,52-55,138
+packages/brepjs-bim/examples/sample-building.ifc
+  s_f7654670ddf29a::t_80973cf98757d5 11,413
+packages/brepjs-bim/VALIDATION.md
+  s_f7654670ddf29a::t_e8dfa7b282b443 45-50
+packages/brepjs-bim/examples/interop-fixture.ifc
+  s_f7654670ddf29a::t_80973cf98757d5 11,848
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "54c607adcbc754486f8e6d7e2a10b68cca38f307",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
