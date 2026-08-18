@@ -36,7 +36,7 @@ const Door = family<DoorProps>(
 );
 ```
 
-`role: 'fill'` is the load-bearing line. A plain element placed in a wall's `voids` is just a boolean cut: geometry only, no identity. A **fill-role family** in `voids` additionally synthesizes an `Opening` element during resolution, with its own key path and a `Fills` relationship to the door. That distinction is what lets a BIM export later emit a real `IfcOpeningElement` instead of an anonymous hole.
+`role: 'fill'` is the detail that matters. A plain element placed in a wall's `voids` is just a boolean cut: geometry only, no identity. A **fill-role family** in `voids` additionally synthesizes an `Opening` element during resolution, with its own key path and a `Fills` relationship to the door. That distinction is what lets a BIM export later emit a real `IfcOpeningElement` instead of an anonymous hole.
 
 The door's box is 300 mm deep against a 200 mm wall: cut tools may overshoot their host freely, only the intersection is removed.
 

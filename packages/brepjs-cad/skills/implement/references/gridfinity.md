@@ -17,7 +17,7 @@ the skill ships worked examples (`gridfinity-baseplate`, `gridfinity-bin`, `grid
 ## Notes
 
 - The spec is a community "work in progress" — treat exact lip geometry as the example encodes it,
-  and keep the 42 mm grid / 7 mm U / Ø6×2 magnets as the load-bearing invariants.
+  and treat the 42 mm grid / 7 mm U / Ø6×2 magnets as invariants.
 - Generate feet by tiling one foot block per cell on the 42 mm grid (`fuseAll`/`compound`), hollow
   the body from the top, add the stacking lip, then drill magnet pockets up from below — see
   `gridfinity-bin.brep.ts`.

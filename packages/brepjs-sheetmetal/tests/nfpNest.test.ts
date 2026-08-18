@@ -205,7 +205,7 @@ describe('nest — true-shape (nfp)', () => {
         }
       }
       // Exhaustive: NO two placed outline polygons overlap (with spacing clearance).
-      // This is the load-bearing correctness check — concave parts whose bounding
+      // This is the central correctness check — concave parts whose bounding
       // boxes overlap must still not overlap at the true-outline level.
       for (let i = 0; i < polys.length; i += 1) {
         for (let j = i + 1; j < polys.length; j += 1) {
