@@ -58,6 +58,20 @@ and the importer resolves it through `IfcRelDefinesByType`), and `Qto_*` element
 with `express_rules=True`, which reproduces the service's entity-rule findings locally — the local
 gate is the QA loop, the service is confirmation.
 
+## IDS conformance
+
+The IDS 1.0 checker (`parseIdsXml` + `checkIdsData`) is validated against the complete official
+buildingSMART conformance suite — 334 of 334 test cases. Reproduce:
+
+```bash
+git clone --depth 1 https://github.com/buildingSMART/IDS /tmp/IDS
+npx tsx scripts/idsConformance.ts /tmp/IDS/Documentation/ImplementersDocumentation/TestCases
+```
+
+The audit layer validates documents against a schema table generated from IfcOpenShell's EXPRESS
+schemas (`scripts/generateIdsSchema.py` → `src/ids/idsSchema.generated.ts`, IFC2X3 + IFC4 + IFC4X3
+with per-schema masks).
+
 ## External tool checklist
 
 Manual gates for the 1.0 flip, run per tool against **both** fixtures

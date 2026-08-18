@@ -364,6 +364,8 @@ declare class SpfReader {
     /** Express ids of every line in the model. */
     getAllLines(): number[];
     /** IFC type code for an express id. */
+    /** Uppercased IFC entity name of the instance (e.g. `IFCWALL`). */
+    typeNameOf(expressId: number): string;
     getLineType(expressId: number): number;
     /** Builds web-ifc's internal GUID→expressId index; call before guid lookups. */
     buildGuidMap(): void;
@@ -1884,65 +1886,40 @@ interface CobieJson {
 /**
  * Parses an IDS 1.0 XML document string into a typed {@link IdsDocument}.
  *
- * Supported structure: `<ids><info><title/></info><specifications>` with one or
- * more `<specification>` carrying `<applicability>` and `<requirements>`. Inside
- * those, the facets `entity`, `attribute`, `property`, `classification`,
- * `material`, and `partOf` are recognised. Each value field accepts either a
- * `<simpleValue>` or an `<xs:restriction>` with `<xs:enumeration>` or
- * `<xs:pattern>` children.
+ * Value fields accept a `<simpleValue>` or an `<xs:restriction>` carrying any
+ * combination of `xs:enumeration`, `xs:pattern`, numeric bounds
+ * (`xs:minInclusive` / `xs:maxInclusive` / `xs:minExclusive` /
+ * `xs:maxExclusive`), and length constraints (`xs:length` / `xs:minLength` /
+ * `xs:maxLength`).
  *
- * Cardinality is read from the specification's `minOccurs`/`maxOccurs` (or the
- * `cardinality` attribute when present): `prohibited` when `maxOccurs="0"`,
- * `optional` when `minOccurs="0"`, otherwise `required`.
+ * Specification cardinality reads the applicability's `minOccurs`/`maxOccurs`:
+ * `prohibited` when `maxOccurs="0"`, `optional` when `minOccurs="0"`, else
+ * `required`. Requirement facets carry their own `cardinality` attribute.
+ * A prohibited specification with requirement facets is rejected as invalid,
+ * matching the official audit tool.
  *
- * Never throws — malformed XML or a missing root returns `err(idsError(...))`.
+ * Never throws — malformed XML or an invalid structure returns `err(...)`.
  */
 declare function parseIdsXml(xml: string): Result<IdsDocument, BimError>;
 
 /**
- * Checks an imported model against an IDS document, returning a per-specification
- * pass/fail report keyed by the specification name. The check is synchronous,
- * never throws, and surfaces all problems as {@link ValidationIssue}s.
- *
- * For each specification the applicability facets select the matching elements,
- * then the requirement facets are evaluated against each applicable element per
- * the spec's cardinality:
- * - `required` — every applicable element must satisfy all requirements
- *   (a failure is an `error`).
- * - `optional` — requirement failures are reported as `info` and never fail.
- * - `prohibited` — an applicable element that *does* satisfy the requirements is
- *   a violation (`error`).
- *
- * Unsupported facet features (the `PartOf` facet, numeric-bound restrictions,
- * and invalid `xs:pattern` dialects) are recorded in
- * {@link IdsCheckReport.unsupportedFacets} and the affected requirement is
- * skipped rather than failing the element.
+ * Checks IFC file bytes against an IDS document, evaluating every entity
+ * instance in the file against each specification. This is the
+ * conformance-grade checker validated against the official buildingSMART IDS
+ * test suite; see `scripts/idsConformance.ts`.
  */
-declare function checkModelAgainstIds(model: ImportedModel, ids: IdsDocument): IdsCheckReport;
+declare function checkIdsData(bytes: Uint8Array, ids: IdsDocument): Promise<Result<IdsCheckReport, BimError>>;
 
-/**
- * A value constraint on an IDS facet field. IDS expresses these either as a
- * literal `<simpleValue>` or as an `<xs:restriction>` carrying an enumeration or
- * a pattern. The numeric bound dialect (`xs:minInclusive` etc.) is intentionally
- * not modelled — facets that use it fall through to a `pattern`-less restriction
- * and are reported as unsupported by the checker.
- */
 type IdsRestriction = {
     readonly kind: 'simple';
     readonly value: string;
-} | {
-    readonly kind: 'enumeration';
-    readonly values: readonly string[];
-} | {
-    readonly kind: 'pattern';
-    readonly pattern: string;
-};
+} | ({
+    readonly kind: 'restriction';
+} & IdsRestrictionConstraints);
 
-/**
- * The IDS facet kinds this subset understands. `PartOf` is parsed but always
- * reported as unsupported by the checker (spatial-tree resolution is out of
- * scope); every other kind is fully evaluated.
- */
+/** Cardinality of a specification or of an individual requirement facet. */
+type IdsCardinality = 'required' | 'optional' | 'prohibited';
+
 type IdsFacet = {
     readonly kind: 'Entity';
     readonly name: IdsRestriction;
@@ -1951,34 +1928,44 @@ type IdsFacet = {
     readonly kind: 'Attribute';
     readonly name: IdsRestriction;
     readonly value?: IdsRestriction | undefined;
+    readonly cardinality: IdsCardinality;
 } | {
     readonly kind: 'Property';
     readonly psetName: IdsRestriction;
     readonly baseName: IdsRestriction;
     readonly value?: IdsRestriction | undefined;
+    readonly dataType?: string | undefined;
+    readonly cardinality: IdsCardinality;
 } | {
     readonly kind: 'Classification';
     readonly system?: IdsRestriction | undefined;
     readonly value?: IdsRestriction | undefined;
+    readonly cardinality: IdsCardinality;
 } | {
     readonly kind: 'Material';
     readonly value?: IdsRestriction | undefined;
+    readonly cardinality: IdsCardinality;
 } | {
     readonly kind: 'PartOf';
-    readonly relation?: string | undefined;
+    readonly entity?: {
+        readonly name: IdsRestriction;
+        readonly predefinedType?: IdsRestriction | undefined;
+    } | undefined;
+    readonly relation?: IdsPartOfRelation | undefined;
+    readonly cardinality: IdsCardinality;
 };
-
-type IdsCardinality = 'required' | 'optional' | 'prohibited';
 
 interface IdsSpecification {
     readonly name: string;
+    /** Declared schema versions. Purely metadata: never filters checking. */
     readonly ifcVersion: readonly string[];
     /**
-     * Cardinality of the *requirements* against applicable elements:
-     * - `required` — every applicable element must satisfy all requirement facets.
-     * - `optional` — requirements are informational; failures are reported as
-     *   warnings and do not fail the spec.
-     * - `prohibited` — applicable elements must *not* satisfy the requirements.
+     * Cardinality of the applicability set:
+     * - `required` — at least one element must be applicable, and every
+     *   applicable element must satisfy the requirements.
+     * - `optional` — applicable elements must satisfy the requirements, but an
+     *   empty applicability set still passes.
+     * - `prohibited` — no element may match the applicability at all.
      */
     readonly cardinality: IdsCardinality;
     readonly applicability: readonly IdsFacet[];
@@ -1993,11 +1980,11 @@ interface IdsDocument {
 interface IdsCheckResult {
     readonly specificationName: string;
     readonly pass: boolean;
-    /** Number of model elements matched by the applicability facets. */
+    /** Number of model entity instances matched by the applicability facets. */
     readonly applicableCount: number;
-    /** Applicable elements that satisfied the cardinality contract. */
+    /** Applicable instances that satisfied every requirement. */
     readonly passedCount: number;
-    /** Applicable elements that violated the cardinality contract. */
+    /** Applicable instances that violated at least one requirement. */
     readonly failedCount: number;
     readonly issues: readonly ValidationIssue[];
 }
@@ -2007,8 +1994,8 @@ interface IdsCheckReport {
     readonly results: readonly IdsCheckResult[];
     /**
      * Human-readable identifiers of facet features that were encountered but not
-     * evaluated (e.g. `PartOf in 'spec name'`). Their presence never aborts the
-     * check; the affected requirement is skipped with a warning.
+     * evaluated. Their presence never aborts the check; the affected requirement
+     * is skipped with a warning.
      */
     readonly unsupportedFacets: readonly string[];
 }
@@ -2169,4 +2156,4 @@ interface BimElement<C extends BimCategory> {
 // ── Aliases ──
 
 declare const exportCobie: typeof deriveCobieModel;
-declare const checkIds: typeof checkModelAgainstIds;
+declare const checkIds: typeof checkIdsData;

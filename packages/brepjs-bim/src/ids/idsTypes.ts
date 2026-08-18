@@ -1,22 +1,34 @@
 import type { ValidationIssue } from '../validation/severity.js';
 
 /**
- * A value constraint on an IDS facet field. IDS expresses these either as a
- * literal `<simpleValue>` or as an `<xs:restriction>` carrying an enumeration or
- * a pattern. The numeric bound dialect (`xs:minInclusive` etc.) is intentionally
- * not modelled — facets that use it fall through to a `pattern`-less restriction
- * and are reported as unsupported by the checker.
+ * A value constraint on an IDS facet field: a literal `<simpleValue>` or an
+ * `<xs:restriction>` carrying any combination of enumeration, pattern, numeric
+ * bounds, and length constraints. `base` is the xs type the restriction
+ * declares (e.g. `xs:double`), which drives typed comparison.
  */
+export interface IdsRestrictionConstraints {
+  readonly base: string | undefined;
+  readonly values?: readonly string[] | undefined;
+  readonly pattern?: readonly string[] | undefined;
+  readonly minInclusive?: number | undefined;
+  readonly maxInclusive?: number | undefined;
+  readonly minExclusive?: number | undefined;
+  readonly maxExclusive?: number | undefined;
+  readonly length?: number | undefined;
+  readonly minLength?: number | undefined;
+  readonly maxLength?: number | undefined;
+}
+
 export type IdsRestriction =
   | { readonly kind: 'simple'; readonly value: string }
-  | { readonly kind: 'enumeration'; readonly values: readonly string[] }
-  | { readonly kind: 'pattern'; readonly pattern: string };
+  | ({ readonly kind: 'restriction' } & IdsRestrictionConstraints);
 
-/**
- * The IDS facet kinds this subset understands. `PartOf` is parsed but always
- * reported as unsupported by the checker (spatial-tree resolution is out of
- * scope); every other kind is fully evaluated.
- */
+/** Cardinality of a specification or of an individual requirement facet. */
+export type IdsCardinality = 'required' | 'optional' | 'prohibited';
+
+export type IdsPartOfRelation =
+  'IFCRELAGGREGATES' | 'IFCRELASSIGNSTOGROUP' | 'IFCRELCONTAINEDINSPATIALSTRUCTURE' | 'IFCRELNESTS';
+
 export type IdsFacet =
   | {
       readonly kind: 'Entity';
@@ -27,32 +39,47 @@ export type IdsFacet =
       readonly kind: 'Attribute';
       readonly name: IdsRestriction;
       readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
     }
   | {
       readonly kind: 'Property';
       readonly psetName: IdsRestriction;
       readonly baseName: IdsRestriction;
       readonly value?: IdsRestriction | undefined;
+      readonly dataType?: string | undefined;
+      readonly cardinality: IdsCardinality;
     }
   | {
       readonly kind: 'Classification';
       readonly system?: IdsRestriction | undefined;
       readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
     }
-  | { readonly kind: 'Material'; readonly value?: IdsRestriction | undefined }
-  | { readonly kind: 'PartOf'; readonly relation?: string | undefined };
-
-export type IdsCardinality = 'required' | 'optional' | 'prohibited';
+  | {
+      readonly kind: 'Material';
+      readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
+    }
+  | {
+      readonly kind: 'PartOf';
+      readonly entity?:
+        | { readonly name: IdsRestriction; readonly predefinedType?: IdsRestriction | undefined }
+        | undefined;
+      readonly relation?: IdsPartOfRelation | undefined;
+      readonly cardinality: IdsCardinality;
+    };
 
 export interface IdsSpecification {
   readonly name: string;
+  /** Declared schema versions. Purely metadata: never filters checking. */
   readonly ifcVersion: readonly string[];
   /**
-   * Cardinality of the *requirements* against applicable elements:
-   * - `required` — every applicable element must satisfy all requirement facets.
-   * - `optional` — requirements are informational; failures are reported as
-   *   warnings and do not fail the spec.
-   * - `prohibited` — applicable elements must *not* satisfy the requirements.
+   * Cardinality of the applicability set:
+   * - `required` — at least one element must be applicable, and every
+   *   applicable element must satisfy the requirements.
+   * - `optional` — applicable elements must satisfy the requirements, but an
+   *   empty applicability set still passes.
+   * - `prohibited` — no element may match the applicability at all.
    */
   readonly cardinality: IdsCardinality;
   readonly applicability: readonly IdsFacet[];
@@ -67,11 +94,11 @@ export interface IdsDocument {
 export interface IdsCheckResult {
   readonly specificationName: string;
   readonly pass: boolean;
-  /** Number of model elements matched by the applicability facets. */
+  /** Number of model entity instances matched by the applicability facets. */
   readonly applicableCount: number;
-  /** Applicable elements that satisfied the cardinality contract. */
+  /** Applicable instances that satisfied every requirement. */
   readonly passedCount: number;
-  /** Applicable elements that violated the cardinality contract. */
+  /** Applicable instances that violated at least one requirement. */
   readonly failedCount: number;
   readonly issues: readonly ValidationIssue[];
 }
@@ -81,8 +108,8 @@ export interface IdsCheckReport {
   readonly results: readonly IdsCheckResult[];
   /**
    * Human-readable identifiers of facet features that were encountered but not
-   * evaluated (e.g. `PartOf in 'spec name'`). Their presence never aborts the
-   * check; the affected requirement is skipped with a warning.
+   * evaluated. Their presence never aborts the check; the affected requirement
+   * is skipped with a warning.
    */
   readonly unsupportedFacets: readonly string[];
 }
