@@ -12,7 +12,7 @@
   "type": "module",
   "sideEffects": false,
   "files": [
-    "src"
+    "dist"
   ],
   "license": "MIT",
   "repository": {
@@ -23,7 +23,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "main": "./dist/brepjs-families.cjs",
+  "module": "./dist/brepjs-families.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "vite build",
     "typecheck": "tsgo --noEmit",
     "lint": "eslint src tests registry",
     "test": "vitest run"
@@ -34,14 +38,31 @@
   "peerDependencies": {
     "brepjs": ">=18.0.0"
   },
+  "devDependencies": {
+    "typescript": "*",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^5.0.0"
+  },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-families.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-families.cjs"
+      }
     },
     "./jsx-runtime": {
-      "types": "./src/jsxRuntime.ts",
-      "default": "./src/jsxRuntime.ts"
+      "import": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.js"
+      },
+      "require": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.cjs"
+      }
     }
   }
 }

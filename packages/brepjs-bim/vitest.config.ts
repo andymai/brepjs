@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, '../../src'),
       brepjs: resolve(__dirname, '../../src/index.ts'),
+      'brepjs-families': resolve(__dirname, '../brepjs-families/src/index.ts'),
     },
   },
   test: {
