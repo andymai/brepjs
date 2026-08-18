@@ -61,7 +61,7 @@ What the pieces buy you:
 
 ## Starter registry
 
-The package ships a copy-in starter registry (`registry/`): storey, wall, slab, column, beam, roof, door, window, and room families with spec-shaped props that feed the IFC specs in brepjs-bim 1:1. `npm create brepjs` scaffolds a project with them.
+A copy-in starter registry (storey, wall, slab, column, beam, roof, door, window, and room families, spec-shaped props feeding the IFC specs in brepjs-bim 1:1) is distributed shadcn-style, not inside this package: the families become source files you own. `npm create brepjs` scaffolds a working project, then `npx brepjs add wall room` copies family sources into `src/families/`, resolving the registry from GitHub by default or from any static host via `--registry`. See [Copy-In Distribution](https://brepjs.dev/families/copy-in).
 
 ## BIM projection
 
