@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.140.2](https://github.com/andymai/brepjs/compare/brepjs-v18.140.1...brepjs-v18.140.2) (2026-08-18)
+
+
+### Bug Fixes
+
+* **release:** remove node-workspace re-pinning and widen the bim pin ([#2113](https://github.com/andymai/brepjs/issues/2113)) ([858cb16](https://github.com/andymai/brepjs/commit/858cb165c6dcfe73cd545f3b81d8e27b5b3ee2ae))
+
 ## [18.140.1](https://github.com/andymai/brepjs/compare/brepjs-v18.140.0...brepjs-v18.140.1) (2026-08-18)
 
 
