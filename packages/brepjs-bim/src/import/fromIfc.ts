@@ -112,6 +112,7 @@ export async function fromIfc(
     const scale = readLengthScale(reader);
     const spatialRoot = buildSpatialTree(reader, scale);
     const containment = buildElementContainmentMap(reader);
+    const typeEnums = buildTypePredefinedMap(reader);
 
     const elements: ImportedElement[] = [];
     const byExpressId = new Map<number, ImportedElement>();
@@ -123,6 +124,7 @@ export async function fromIfc(
           category,
           scale,
           containment,
+          typeEnums,
           options.skipGeometry ?? false,
           diagnostics
         );
@@ -162,6 +164,7 @@ function readElement(
   category: ImportedElementCategory,
   scale: number,
   containment: ReadonlyMap<number, number>,
+  typeEnums: ReadonlyMap<number, string>,
   skipGeometry: boolean,
   diagnostics: ValidationIssue[]
 ): ImportedElement | null {
@@ -169,14 +172,21 @@ function readElement(
     const line = reader.getLine<Record<string, unknown>>(expressId);
     if (line === null) {
       diagnostics.push(
-        issue('error', 'ELEMENT_READ_FAILED', `Element line ${expressId} could not be read`, expressId)
+        issue(
+          'error',
+          'ELEMENT_READ_FAILED',
+          `Element line ${expressId} could not be read`,
+          expressId
+        )
       );
       return null;
     }
 
     const guid = readGuid(line);
     const name = readName(reader, line);
-    const predefinedType = readPredefinedType(line);
+    // Conformant exports carry the enum on the relating type object (OJT001)
+    // with the occurrence attribute empty; fall back through IfcRelDefinesByType.
+    const predefinedType = readPredefinedType(line) ?? typeEnums.get(expressId);
 
     const voids = readVoids(reader, expressId);
     const voidedBy = voids.map((v) => v.openingExpressId);
@@ -340,6 +350,28 @@ function brandGuid(s: string): IfcGuid {
 function readName(reader: SpfReader, line: Record<string, unknown>): string {
   const raw = (line['Name'] as { value?: unknown } | null | undefined)?.value;
   return typeof raw === 'string' ? reader.decodeText(raw) : '';
+}
+
+/** occurrence expressId -> the relating type object's PredefinedType literal. */
+function buildTypePredefinedMap(reader: SpfReader): Map<number, string> {
+  const map = new Map<number, string>();
+  for (const relId of reader.getLinesOfType(WebIFC.IFCRELDEFINESBYTYPE)) {
+    const rel = reader.getLine<Record<string, unknown>>(relId);
+    if (rel === null) continue;
+    const typeId = refValue(rel['RelatingType']);
+    if (typeId === undefined) continue;
+    const typeLine = reader.getLine<Record<string, unknown>>(typeId);
+    if (typeLine === null) continue;
+    const pred = readPredefinedType(typeLine);
+    if (pred === undefined || pred === 'NOTDEFINED') continue;
+    const related = rel['RelatedObjects'];
+    if (!Array.isArray(related)) continue;
+    for (const ref of related) {
+      const id = refValue(ref);
+      if (id !== undefined) map.set(id, pred);
+    }
+  }
+  return map;
 }
 
 function readPredefinedType(line: Record<string, unknown>): string | undefined {

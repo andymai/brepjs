@@ -1,17 +1,5 @@
-import {
-  polygon,
-  addHoles,
-  outerWire,
-  isClosedWire,
-  isPlanarWire,
-} from 'brepjs';
-import type {
-  OrientedFace,
-  PlanarFace,
-  ClosedWire,
-  PlanarWire,
-  Result,
-} from 'brepjs';
+import { polygon, addHoles, outerWire, isClosedWire, isPlanarWire } from 'brepjs';
+import type { OrientedFace, PlanarFace, ClosedWire, PlanarWire, Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
@@ -150,13 +138,11 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       );
     case 'T_SHAPE': {
       const flangeArea = profile.flangeWidth * profile.flangeThickness;
-      const webArea =
-        (profile.depth - profile.flangeThickness) * profile.webThickness;
+      const webArea = (profile.depth - profile.flangeThickness) * profile.webThickness;
       return flangeArea + webArea;
     }
     case 'U_SHAPE': {
-      const flangeArea =
-        2 * (profile.flangeWidth - profile.webThickness) * profile.flangeThickness;
+      const flangeArea = 2 * (profile.flangeWidth - profile.webThickness) * profile.flangeThickness;
       const webArea = profile.depth * profile.webThickness;
       return flangeArea + webArea;
     }
@@ -173,15 +159,12 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       // corners: depth + 2*width + 2*girth - 4*t (thin-wall, one t^2 correction
       // per the 4 internal corners). Verified against the drawn polygon (shoelace).
       const t = profile.wallThickness;
-      const perimeter =
-        profile.depth + 2 * profile.width + 2 * profile.girth - 4 * t;
+      const perimeter = profile.depth + 2 * profile.width + 2 * profile.girth - 4 * t;
       return perimeter * t;
     }
     case 'ASYMMETRIC_I': {
       const webHeight =
-        profile.overallDepth -
-        profile.topFlangeThickness -
-        profile.bottomFlangeThickness;
+        profile.overallDepth - profile.topFlangeThickness - profile.bottomFlangeThickness;
       return (
         profile.topFlangeWidth * profile.topFlangeThickness +
         profile.bottomFlangeWidth * profile.bottomFlangeThickness +
@@ -194,8 +177,7 @@ export function extendedProfileArea(profile: ExtendedProfile): number {
       return ((profile.bottomXDim + profile.topXDim) / 2) * profile.yDim;
     case 'RECTANGLE_HOLLOW': {
       const inner =
-        (profile.xDim - 2 * profile.wallThickness) *
-        (profile.yDim - 2 * profile.wallThickness);
+        (profile.xDim - 2 * profile.wallThickness) * (profile.yDim - 2 * profile.wallThickness);
       return profile.xDim * profile.yDim - inner;
     }
     case 'CIRCLE_HOLLOW': {
@@ -409,7 +391,10 @@ function validateProfile(profile: ExtendedProfile): BimError | null {
   switch (profile.kind) {
     case 'L_SHAPE':
       if (profile.legThickness >= profile.width || profile.legThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', 'L_SHAPE legThickness must be smaller than width and depth');
+        return specError(
+          'INVALID_PROFILE',
+          'L_SHAPE legThickness must be smaller than width and depth'
+        );
       }
       return null;
     case 'T_SHAPE':
@@ -423,26 +408,50 @@ function validateProfile(profile: ExtendedProfile): BimError | null {
     case 'U_SHAPE':
     case 'Z_SHAPE':
       if (2 * profile.flangeThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', `${profile.kind} flangeThickness × 2 must be less than depth`);
+        return specError(
+          'INVALID_PROFILE',
+          `${profile.kind} flangeThickness × 2 must be less than depth`
+        );
       }
       if (profile.webThickness >= profile.flangeWidth) {
-        return specError('INVALID_PROFILE', `${profile.kind} webThickness must be less than flangeWidth`);
+        return specError(
+          'INVALID_PROFILE',
+          `${profile.kind} webThickness must be less than flangeWidth`
+        );
       }
       return null;
     case 'C_SHAPE':
-      if (2 * profile.wallThickness >= profile.width || 2 * profile.wallThickness >= profile.depth) {
-        return specError('INVALID_PROFILE', 'C_SHAPE wallThickness × 2 must be less than width and depth');
+      if (
+        2 * profile.wallThickness >= profile.width ||
+        2 * profile.wallThickness >= profile.depth
+      ) {
+        return specError(
+          'INVALID_PROFILE',
+          'C_SHAPE wallThickness × 2 must be less than width and depth'
+        );
       }
       if (profile.girth >= profile.depth / 2 || profile.girth <= profile.wallThickness) {
-        return specError('INVALID_PROFILE', 'C_SHAPE girth must exceed wallThickness and be less than depth/2');
+        return specError(
+          'INVALID_PROFILE',
+          'C_SHAPE girth must exceed wallThickness and be less than depth/2'
+        );
       }
       return null;
     case 'ASYMMETRIC_I':
       if (profile.topFlangeThickness + profile.bottomFlangeThickness >= profile.overallDepth) {
-        return specError('INVALID_PROFILE', 'ASYMMETRIC_I flange thicknesses must sum to less than overallDepth');
+        return specError(
+          'INVALID_PROFILE',
+          'ASYMMETRIC_I flange thicknesses must sum to less than overallDepth'
+        );
       }
-      if (profile.webThickness >= profile.topFlangeWidth || profile.webThickness >= profile.bottomFlangeWidth) {
-        return specError('INVALID_PROFILE', 'ASYMMETRIC_I webThickness must be less than both flange widths');
+      if (
+        profile.webThickness >= profile.topFlangeWidth ||
+        profile.webThickness >= profile.bottomFlangeWidth
+      ) {
+        return specError(
+          'INVALID_PROFILE',
+          'ASYMMETRIC_I webThickness must be less than both flange widths'
+        );
       }
       return null;
     case 'ELLIPSE':
@@ -457,7 +466,10 @@ function validateProfile(profile: ExtendedProfile): BimError | null {
       return null;
     case 'RECTANGLE_HOLLOW':
       if (2 * profile.wallThickness >= profile.xDim || 2 * profile.wallThickness >= profile.yDim) {
-        return specError('INVALID_PROFILE', 'RECTANGLE_HOLLOW wallThickness × 2 must be less than xDim and yDim');
+        return specError(
+          'INVALID_PROFILE',
+          'RECTANGLE_HOLLOW wallThickness × 2 must be less than xDim and yDim'
+        );
       }
       return null;
     case 'CIRCLE_HOLLOW':
@@ -472,10 +484,16 @@ function validateProfile(profile: ExtendedProfile): BimError | null {
       return null;
     case 'ARBITRARY_WITH_VOIDS':
       if (profile.outerPoints.length < 3) {
-        return specError('INVALID_PROFILE', 'ARBITRARY_WITH_VOIDS outer loop requires at least three points');
+        return specError(
+          'INVALID_PROFILE',
+          'ARBITRARY_WITH_VOIDS outer loop requires at least three points'
+        );
       }
       if (profile.voids.some((v) => v.length < 3)) {
-        return specError('INVALID_PROFILE', 'ARBITRARY_WITH_VOIDS each void requires at least three points');
+        return specError(
+          'INVALID_PROFILE',
+          'ARBITRARY_WITH_VOIDS each void requires at least three points'
+        );
       }
       return null;
   }
@@ -523,7 +541,11 @@ export function extendedProfileToFace(
     if (!holeFaceResult.ok) {
       disposeHoleFaces();
       return err(
-        fromBrepError(holeFaceResult.error, 'PROFILE_HOLE_FAILED', 'Failed to build profile hole loop')
+        fromBrepError(
+          holeFaceResult.error,
+          'PROFILE_HOLE_FAILED',
+          'Failed to build profile hole loop'
+        )
       );
     }
     const holeFace = holeFaceResult.value;
@@ -531,7 +553,9 @@ export function extendedProfileToFace(
     const wire = outerWire(holeFace);
     if (!isClosedWire(wire) || !isPlanarWire(wire)) {
       disposeHoleFaces();
-      return err(geometryError('PROFILE_HOLE_WIRE_INVALID', 'Profile hole wire is not a closed planar wire'));
+      return err(
+        geometryError('PROFILE_HOLE_WIRE_INVALID', 'Profile hole wire is not a closed planar wire')
+      );
     }
     holeWires.push(wire);
   }

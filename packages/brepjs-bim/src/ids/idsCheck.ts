@@ -1,11 +1,6 @@
 import type { ImportedElement, ImportedModel } from '../import/importedModel.js';
 import { issue, type ValidationIssue } from '../validation/severity.js';
-import type {
-  IdsCheckReport,
-  IdsCheckResult,
-  IdsFacet,
-  IdsSpecification,
-} from './idsTypes.js';
+import type { IdsCheckReport, IdsCheckResult, IdsFacet, IdsSpecification } from './idsTypes.js';
 import {
   evalAttributeFacet,
   evalClassificationFacet,
@@ -109,7 +104,12 @@ function scanUnsupported(
     const restrictions = restrictionsOf(facet);
     for (const r of restrictions) {
       if (r.kind === 'pattern' && !isValidPattern(r.pattern)) {
-        markUnsupported(`unsupported pattern in "${spec.name}"`, unsupportedFacets, issues, spec.name);
+        markUnsupported(
+          `unsupported pattern in "${spec.name}"`,
+          unsupportedFacets,
+          issues,
+          spec.name
+        );
       }
     }
   }
@@ -121,7 +121,8 @@ function restrictionsOf(
 ): ReadonlyArray<{ readonly kind: string; readonly pattern: string }> {
   const out: { readonly kind: string; readonly pattern: string }[] = [];
   const push = (r: { readonly kind: string; readonly pattern?: string } | undefined): void => {
-    if (r?.kind === 'pattern' && r.pattern !== undefined) out.push({ kind: r.kind, pattern: r.pattern });
+    if (r?.kind === 'pattern' && r.pattern !== undefined)
+      out.push({ kind: r.kind, pattern: r.pattern });
   };
   switch (facet.kind) {
     case 'Entity':
@@ -150,7 +151,10 @@ function restrictionsOf(
   return out;
 }
 
-function satisfiesCardinality(cardinality: IdsSpecification['cardinality'], satisfies: boolean): boolean {
+function satisfiesCardinality(
+  cardinality: IdsSpecification['cardinality'],
+  satisfies: boolean
+): boolean {
   switch (cardinality) {
     case 'required':
     case 'optional':
@@ -197,16 +201,24 @@ function evalFacet(
 ): boolean {
   switch (facet.kind) {
     case 'Entity':
-      return guardPatterns([facet.name, facet.predefinedType], specName, unsupportedFacets, issues, () =>
-        evalEntityFacet(el, facet.name, facet.predefinedType)
+      return guardPatterns(
+        [facet.name, facet.predefinedType],
+        specName,
+        unsupportedFacets,
+        issues,
+        () => evalEntityFacet(el, facet.name, facet.predefinedType)
       );
     case 'Attribute':
       return guardPatterns([facet.name, facet.value], specName, unsupportedFacets, issues, () =>
         evalAttributeFacet(el, facet.name, facet.value)
       );
     case 'Property':
-      return guardPatterns([facet.psetName, facet.baseName, facet.value], specName, unsupportedFacets, issues, () =>
-        evalPropertyFacet(el, facet.psetName, facet.baseName, facet.value)
+      return guardPatterns(
+        [facet.psetName, facet.baseName, facet.value],
+        specName,
+        unsupportedFacets,
+        issues,
+        () => evalPropertyFacet(el, facet.psetName, facet.baseName, facet.value)
       );
     case 'Classification':
       return guardPatterns([facet.system, facet.value], specName, unsupportedFacets, issues, () =>
@@ -238,7 +250,12 @@ function guardPatterns(
   evaluate: () => boolean
 ): boolean {
   for (const r of restrictions) {
-    if (r !== undefined && r.kind === 'pattern' && r.pattern !== undefined && !isValidPattern(r.pattern)) {
+    if (
+      r !== undefined &&
+      r.kind === 'pattern' &&
+      r.pattern !== undefined &&
+      !isValidPattern(r.pattern)
+    ) {
       markUnsupported(`unsupported pattern in "${specName}"`, unsupportedFacets, issues, specName);
       return true;
     }
@@ -255,6 +272,11 @@ function markUnsupported(
   if (unsupportedFacets.includes(label)) return;
   unsupportedFacets.push(label);
   issues.push(
-    issue('warning', 'IDS_UNSUPPORTED_FACET', `Unsupported facet feature skipped: ${label}`, specName)
+    issue(
+      'warning',
+      'IDS_UNSUPPORTED_FACET',
+      `Unsupported facet feature skipped: ${label}`,
+      specName
+    )
   );
 }

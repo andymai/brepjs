@@ -26,7 +26,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
   if (bytes.byteLength === 0) {
     return appendIssue(
       emptyReport(),
-      issue('error', 'EMPTY_MODEL', 'IFC byte buffer is empty; nothing to validate'),
+      issue('error', 'EMPTY_MODEL', 'IFC byte buffer is empty; nothing to validate')
     );
   }
 
@@ -39,7 +39,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
   } catch (e) {
     return appendIssue(
       emptyReport(),
-      issue('error', 'PARSE_FAILED', `web-ifc failed to open the model: ${describeError(e)}`),
+      issue('error', 'PARSE_FAILED', `web-ifc failed to open the model: ${describeError(e)}`)
     );
   }
 
@@ -50,11 +50,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
     } catch (e) {
       return appendIssue(
         emptyReport(),
-        issue(
-          'error',
-          'PARSE_FAILED',
-          `web-ifc failed to read model lines: ${describeError(e)}`,
-        ),
+        issue('error', 'PARSE_FAILED', `web-ifc failed to read model lines: ${describeError(e)}`)
       );
     }
 
@@ -62,7 +58,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
     if (lineCount === 0) {
       return appendIssue(
         emptyReport(),
-        issue('error', 'EMPTY_MODEL', 'Parsed model contains no entities'),
+        issue('error', 'EMPTY_MODEL', 'Parsed model contains no entities')
       );
     }
 
@@ -72,7 +68,7 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
     if (projects.size() === 0) {
       report = appendIssue(
         report,
-        issue('error', 'MISSING_PROJECT', 'Model has no IfcProject root'),
+        issue('error', 'MISSING_PROJECT', 'Model has no IfcProject root')
       );
     }
 
@@ -82,8 +78,8 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
         issue(
           'error',
           'MISSING_SPATIAL_STRUCTURE',
-          'Model has no spatial structure (IfcSite, IfcBuilding, or IfcBuildingStorey)',
-        ),
+          'Model has no spatial structure (IfcSite, IfcBuilding, or IfcBuildingStorey)'
+        )
       );
     }
 
@@ -104,7 +100,7 @@ function checkGlobalIds(
   api: WebIFC.IfcAPI,
   modelId: number,
   lineIds: WebIFC.Vector<number>,
-  lineCount: number,
+  lineCount: number
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const seen = new Map<string, number>();
@@ -127,8 +123,8 @@ function checkGlobalIds(
           'INVALID_GUID',
           `GlobalId '${guid}' is not a valid 22-character IFC GUID`,
           expressId,
-          { guid },
-        ),
+          { guid }
+        )
       );
       continue;
     }
@@ -141,8 +137,8 @@ function checkGlobalIds(
           'DUPLICATE_GUID',
           `GlobalId '${guid}' is used by more than one IfcRoot entity`,
           expressId,
-          { guid, firstSeenAt },
-        ),
+          { guid, firstSeenAt }
+        )
       );
       continue;
     }

@@ -1,6 +1,7 @@
 import type { BrepError } from 'brepjs';
 
-export type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT' | 'BIM_BCF' | 'BIM_IDS';
+export type BimErrorKind =
+  'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT' | 'BIM_BCF' | 'BIM_IDS';
 
 export interface BimError {
   readonly kind: BimErrorKind;

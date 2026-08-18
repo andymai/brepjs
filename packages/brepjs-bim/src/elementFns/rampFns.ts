@@ -75,7 +75,9 @@ export function rampFlightToSolid(spec: RampFlightSpec): Result<RampFlightSolid,
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('RAMP_FLIGHT_INVALID_SOLID', 'Ramp flight solid failed validity check'));
+    return err(
+      geometryError('RAMP_FLIGHT_INVALID_SOLID', 'Ramp flight solid failed validity check')
+    );
   }
   return ok({ solid, geometrySimplified: true });
 }

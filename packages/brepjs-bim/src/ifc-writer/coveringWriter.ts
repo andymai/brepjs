@@ -109,7 +109,7 @@ export function writeCoveringEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: CoveringPredefinedType,
+  _predefinedType: CoveringPredefinedType,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -126,7 +126,8 @@ export function writeCoveringEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }

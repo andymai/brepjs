@@ -29,14 +29,18 @@ export function slabToSolid(spec: SlabSpec): Result<ValidSolid, BimError> {
   ]);
 
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'SLAB_PROFILE_FAILED', 'Failed to create slab profile'));
+    return err(
+      fromBrepError(profileResult.error, 'SLAB_PROFILE_FAILED', 'Failed to create slab profile')
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, thickness]);
 
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'SLAB_EXTRUDE_FAILED', 'Failed to extrude slab profile'));
+    return err(
+      fromBrepError(solidResult.error, 'SLAB_EXTRUDE_FAILED', 'Failed to extrude slab profile')
+    );
   }
 
   const solid = solidResult.value;

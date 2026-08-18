@@ -285,6 +285,8 @@ export function familiesToBim(
     return buildingResult;
   }
   const buildingId = buildingResult.value;
+  const project = model.getProject();
+  if (project !== null) model.aggregate(project.localId, siteResult.value);
   model.aggregate(siteResult.value, buildingId);
 
   const idByKeyPath = new Map<string, LocalId>();

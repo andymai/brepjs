@@ -30,7 +30,9 @@ const IFC_TYPE_TO_CATEGORY: Readonly<Record<string, ImportedElementCategory>> = 
 };
 
 /** Returns the categories an entity-name restriction can resolve to. */
-export function categoriesForRestriction(name: IdsRestriction): ReadonlySet<ImportedElementCategory> {
+export function categoriesForRestriction(
+  name: IdsRestriction
+): ReadonlySet<ImportedElementCategory> {
   const out = new Set<ImportedElementCategory>();
   for (const [token, category] of Object.entries(IFC_TYPE_TO_CATEGORY)) {
     if (matchesRestriction(token, name)) out.add(category);

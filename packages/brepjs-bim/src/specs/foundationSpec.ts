@@ -20,10 +20,7 @@ export type FootingPredefinedType =
 export type PilePredefinedType = 'BORED' | 'DRIVEN' | 'JETGROUTING' | 'NOTDEFINED';
 
 export type PileConstructionType =
-  | 'CAST_IN_PLACE'
-  | 'COMPOSITE'
-  | 'PRECAST_CONCRETE'
-  | 'PREFAB_STEEL';
+  'CAST_IN_PLACE' | 'COMPOSITE' | 'PRECAST_CONCRETE' | 'PREFAB_STEEL';
 
 // A rectangular pad/strip footing. All dimensions in mm. Profile lies in the
 // local XY plane (length × width); the footing extrudes along local +Z by
@@ -54,8 +51,7 @@ export interface FootingSpec {
   readonly classification?: ClassificationRef | undefined;
 
   readonly customProperties?:
-    | Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-    | undefined;
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 // A pile: cross-section profile extruded along axisZ by length (depth). All
@@ -81,23 +77,21 @@ export interface PileSpec {
   readonly classification?: ClassificationRef | undefined;
 
   readonly customProperties?:
-    | Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-    | undefined;
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
-const unitVec = z.tuple([z.number(), z.number(), z.number()]).refine(
-  (v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6,
-  { error: 'must be a unit vector' }
-);
+const unitVec = z
+  .tuple([z.number(), z.number(), z.number()])
+  .refine((v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6, {
+    error: 'must be a unit vector',
+  });
 
 function orthogonalAxes(
   data: { axisX: [number, number, number]; axisZ: [number, number, number] },
   ctx: z.RefinementCtx
 ): void {
   const dot =
-    data.axisX[0] * data.axisZ[0] +
-    data.axisX[1] * data.axisZ[1] +
-    data.axisX[2] * data.axisZ[2];
+    data.axisX[0] * data.axisZ[0] + data.axisX[1] * data.axisZ[1] + data.axisX[2] * data.axisZ[2];
   if (Math.abs(dot) > 1e-6) {
     ctx.addIssue({
       code: 'custom',
@@ -107,56 +101,66 @@ function orthogonalAxes(
   }
 }
 
-const customPropertiesSchema = z.record(
-  z.string(),
-  z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-).optional();
+const customPropertiesSchema = z
+  .record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])))
+  .optional();
 
-const FootingSpecSchema = z.object({
-  length: z.number().positive(),
-  width: z.number().positive(),
-  thickness: z.number().positive(),
-  origin: z.tuple([z.number(), z.number(), z.number()]),
-  axisX: unitVec,
-  axisZ: unitVec,
-  predefinedType: z
-    .enum(['CAISSON_FOUNDATION', 'FOOTING_BEAM', 'PAD_FOOTING', 'PILE_CAP', 'STRIP_FOOTING', 'NOTDEFINED'])
-    .default('NOTDEFINED'),
-  materialName: z.string().min(1),
+const FootingSpecSchema = z
+  .object({
+    length: z.number().positive(),
+    width: z.number().positive(),
+    thickness: z.number().positive(),
+    origin: z.tuple([z.number(), z.number(), z.number()]),
+    axisX: unitVec,
+    axisZ: unitVec,
+    predefinedType: z
+      .enum([
+        'CAISSON_FOUNDATION',
+        'FOOTING_BEAM',
+        'PAD_FOOTING',
+        'PILE_CAP',
+        'STRIP_FOOTING',
+        'NOTDEFINED',
+      ])
+      .default('NOTDEFINED'),
+    materialName: z.string().min(1),
 
-  isExternal: z.boolean().optional(),
-  loadBearing: z.boolean().optional(),
-  fireRating: z.string().optional(),
-  status: z.string().optional(),
+    isExternal: z.boolean().optional(),
+    loadBearing: z.boolean().optional(),
+    fireRating: z.string().optional(),
+    status: z.string().optional(),
 
-  materialLayers: z.array(MaterialLayerSchema).optional(),
-  layerSetName: z.string().optional(),
-  classification: ClassificationRefSchema.optional(),
+    materialLayers: z.array(MaterialLayerSchema).optional(),
+    layerSetName: z.string().optional(),
+    classification: ClassificationRefSchema.optional(),
 
-  customProperties: customPropertiesSchema,
-}).superRefine(orthogonalAxes);
+    customProperties: customPropertiesSchema,
+  })
+  .superRefine(orthogonalAxes);
 
-const PileSpecSchema = z.object({
-  length: z.number().positive(),
-  profile: ProfileSchema,
-  origin: z.tuple([z.number(), z.number(), z.number()]),
-  axisX: unitVec,
-  axisZ: unitVec,
-  predefinedType: z.enum(['BORED', 'DRIVEN', 'JETGROUTING', 'NOTDEFINED']).default('NOTDEFINED'),
-  constructionType: z
-    .enum(['CAST_IN_PLACE', 'COMPOSITE', 'PRECAST_CONCRETE', 'PREFAB_STEEL'])
-    .optional(),
-  materialName: z.string().min(1),
+const PileSpecSchema = z
+  .object({
+    length: z.number().positive(),
+    profile: ProfileSchema,
+    origin: z.tuple([z.number(), z.number(), z.number()]),
+    axisX: unitVec,
+    axisZ: unitVec,
+    predefinedType: z.enum(['BORED', 'DRIVEN', 'JETGROUTING', 'NOTDEFINED']).default('NOTDEFINED'),
+    constructionType: z
+      .enum(['CAST_IN_PLACE', 'COMPOSITE', 'PRECAST_CONCRETE', 'PREFAB_STEEL'])
+      .optional(),
+    materialName: z.string().min(1),
 
-  loadBearing: z.boolean().optional(),
-  status: z.string().optional(),
+    loadBearing: z.boolean().optional(),
+    status: z.string().optional(),
 
-  materialLayers: z.array(MaterialLayerSchema).optional(),
-  layerSetName: z.string().optional(),
-  classification: ClassificationRefSchema.optional(),
+    materialLayers: z.array(MaterialLayerSchema).optional(),
+    layerSetName: z.string().optional(),
+    classification: ClassificationRefSchema.optional(),
 
-  customProperties: customPropertiesSchema,
-}).superRefine(orthogonalAxes);
+    customProperties: customPropertiesSchema,
+  })
+  .superRefine(orthogonalAxes);
 
 export function parseFootingSpec(input: unknown): Result<FootingSpec, BimError> {
   const result = FootingSpecSchema.safeParse(input);

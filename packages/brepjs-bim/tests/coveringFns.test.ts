@@ -193,8 +193,9 @@ describe('covering IFC serialization', () => {
 
     const covering = api.GetLine(mid, coveringIds.get(0)) as Record<string, unknown>;
     expect(covering['Representation']).not.toBeNull();
-    const pred = (covering['PredefinedType'] as { value?: string } | undefined)?.value;
-    expect(pred).toBe('FLOORING');
+    // The enum rides the paired IfcCoveringType in full exports (OJT001).
+    const pred = (covering['PredefinedType'] as { value?: string } | null | undefined)?.value;
+    expect(pred).toBeUndefined();
 
     api.CloseModel(mid);
   });

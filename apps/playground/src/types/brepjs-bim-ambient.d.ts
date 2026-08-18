@@ -707,7 +707,7 @@ interface RoofSpec {
 
 declare function parseRoofSpec(input: unknown): Result<RoofSpec, BimError>;
 
-type CurtainWallPredefinedType = 'CURTAIN_WALL' | 'NOTDEFINED' | 'USERDEFINED';
+type CurtainWallPredefinedType = 'NOTDEFINED' | 'USERDEFINED';
 
 /**
  * A planar curtain wall, modelled as a rectangular grid of glazing panels

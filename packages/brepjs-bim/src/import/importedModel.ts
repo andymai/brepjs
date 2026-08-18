@@ -14,11 +14,7 @@ export type { ImportedSchema } from './spfReader.js';
  *   close into a solid); `solid` is null, `meshVertices`/`meshIndices` carry it.
  * - `NONE` — no recognised body representation was found.
  */
-export type GeometryFidelity =
-  | 'PARAMETRIC'
-  | 'TESSELLATED_MANIFOLD'
-  | 'TESSELLATED_LOSSY'
-  | 'NONE';
+export type GeometryFidelity = 'PARAMETRIC' | 'TESSELLATED_MANIFOLD' | 'TESSELLATED_LOSSY' | 'NONE';
 
 export interface ImportedGeometry {
   readonly fidelity: GeometryFidelity;
@@ -47,9 +43,7 @@ export interface ImportedPset {
 export interface ImportedMaterial {
   readonly kind: 'SIMPLE' | 'LAYER_SET';
   readonly name: string;
-  readonly layers?:
-    | readonly { readonly name: string; readonly thicknessMm: number }[]
-    | undefined;
+  readonly layers?: readonly { readonly name: string; readonly thicknessMm: number }[] | undefined;
 }
 
 export interface ImportedClassification {

@@ -241,7 +241,11 @@ function readLayerSet(
 }
 
 /** Resolves an IfcRelAssociatesMaterial RelatingMaterial into an ImportedMaterial. */
-function resolveMaterial(reader: SpfReader, materialId: number, scale: number): ImportedMaterial | null {
+function resolveMaterial(
+  reader: SpfReader,
+  materialId: number,
+  scale: number
+): ImportedMaterial | null {
   const type = reader.getLineType(materialId);
   const line = reader.getLine<Record<string, unknown>>(materialId);
   if (line === null) return null;
@@ -341,9 +345,7 @@ export function readVoids(reader: SpfReader, elementExpressId: number): VoidRela
     if (openingExpressId === undefined) continue;
     const fillerExpressId = findFiller(reader, openingExpressId);
     out.push(
-      fillerExpressId !== undefined
-        ? { openingExpressId, fillerExpressId }
-        : { openingExpressId }
+      fillerExpressId !== undefined ? { openingExpressId, fillerExpressId } : { openingExpressId }
     );
   }
   return out;
@@ -377,9 +379,6 @@ export function readOwnerHistory(
   const applicationName = stringValue(reader, appLine?.['ApplicationFullName']);
   if (applicationName === undefined) return null;
   const creationTyped = asTyped(line['CreationDate']);
-  const creationDate =
-    typeof creationTyped?.value === 'number' ? creationTyped.value : undefined;
-  return creationDate !== undefined
-    ? { applicationName, creationDate }
-    : { applicationName };
+  const creationDate = typeof creationTyped?.value === 'number' ? creationTyped.value : undefined;
+  return creationDate !== undefined ? { applicationName, creationDate } : { applicationName };
 }

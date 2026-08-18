@@ -12,7 +12,9 @@ import { stairFlightToSolid } from './stairFns.js';
 function place(solid: ValidSolid, frame: FrameInput): Result<ValidSolid, BimError> {
   const result = applyMatrix(solid, placementToMatrix(frame));
   if (!result.ok) {
-    return err(fromBrepError(result.error, 'PLACED_GEOMETRY_FAILED', 'Failed to place element geometry'));
+    return err(
+      fromBrepError(result.error, 'PLACED_GEOMETRY_FAILED', 'Failed to place element geometry')
+    );
   }
   return ok(result.value);
 }
@@ -72,7 +74,11 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
       const out: ValidSolid[] = [];
       for (const c of [...el.geometry.panels, ...el.geometry.mullions]) {
         // Two-level: place by the component-local origin, then by the wall frame.
-        const componentLocal = place(c.solid, { origin: c.origin, axisX: [1, 0, 0], axisZ: [0, 0, 1] });
+        const componentLocal = place(c.solid, {
+          origin: c.origin,
+          axisX: [1, 0, 0],
+          axisZ: [0, 0, 1],
+        });
         if (!componentLocal.ok) {
           disposeAll(out);
           return componentLocal;

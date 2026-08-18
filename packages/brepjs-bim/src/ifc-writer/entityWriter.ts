@@ -164,7 +164,7 @@ export function writeSlabEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB',
+  _predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB',
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -181,7 +181,8 @@ export function writeSlabEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -201,7 +202,7 @@ export function writeBeamEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: BeamPredefinedTypeIfc,
+  _predefinedType: BeamPredefinedTypeIfc,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -218,7 +219,8 @@ export function writeBeamEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -229,7 +231,7 @@ export function writeColumnEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: ColumnPredefinedTypeIfc,
+  _predefinedType: ColumnPredefinedTypeIfc,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -246,7 +248,8 @@ export function writeColumnEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }

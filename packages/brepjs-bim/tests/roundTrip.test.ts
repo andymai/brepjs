@@ -9,6 +9,31 @@ beforeAll(async () => {
   await initOCCT();
 }, 30000);
 
+/** Resolves an occurrence's effective PredefinedType: the occurrence attribute
+ *  when present, else the relating type object's (OJT001 inheritance). */
+function effectivePredefined(
+  api: WebIFC.IfcAPI,
+  mid: number,
+  expressId: number
+): string | undefined {
+  const line = api.GetLine(mid, expressId) as Record<string, unknown>;
+  const own = (line['PredefinedType'] as { value?: string } | null | undefined)?.value;
+  if (own !== undefined && own !== 'NOTDEFINED') return own;
+  const rels = api.GetLineIDsWithType(mid, WebIFC.IFCRELDEFINESBYTYPE);
+  for (let i = 0; i < rels.size(); i++) {
+    const rel = api.GetLine(mid, rels.get(i)) as Record<string, unknown>;
+    const related = rel['RelatedObjects'];
+    if (!Array.isArray(related)) continue;
+    if (!related.some((r) => (r as { value?: number }).value === expressId)) continue;
+    const typeRef = (rel['RelatingType'] as { value?: number } | undefined)?.value;
+    if (typeRef === undefined) continue;
+    const typeLine = api.GetLine(mid, typeRef) as Record<string, unknown>;
+    const pred = (typeLine['PredefinedType'] as { value?: string } | null | undefined)?.value;
+    if (pred !== undefined) return pred;
+  }
+  return own;
+}
+
 describe('IFC round-trip (M1)', () => {
   function buildModel(): BimModel {
     const model = new BimModel();
@@ -613,8 +638,7 @@ describe('IFC Slab round-trip (M5)', () => {
     expect(slabIds.size()).toBe(2);
     const types: string[] = [];
     for (let i = 0; i < slabIds.size(); i++) {
-      const slab = api.GetLine(mid, slabIds.get(i)) as Record<string, unknown>;
-      const pred = (slab['PredefinedType'] as { value?: string } | undefined)?.value;
+      const pred = effectivePredefined(api, mid, slabIds.get(i));
       if (pred !== undefined) types.push(pred);
     }
     expect(types.sort()).toEqual(['FLOOR', 'ROOF']);
@@ -937,8 +961,7 @@ describe('IFC Beam round-trip (M7)', () => {
     const beamIds = api.GetLineIDsWithType(mid, WebIFC.IFCBEAM);
     const types: string[] = [];
     for (let i = 0; i < beamIds.size(); i++) {
-      const b = api.GetLine(mid, beamIds.get(i)) as Record<string, unknown>;
-      const pred = (b['PredefinedType'] as { value?: string } | undefined)?.value;
+      const pred = effectivePredefined(api, mid, beamIds.get(i));
       if (pred !== undefined) types.push(pred);
     }
     expect(types.sort()).toEqual(['BEAM', 'JOIST']);
@@ -1132,8 +1155,7 @@ describe('IFC Column round-trip (M7)', () => {
     const ids = api.GetLineIDsWithType(mid, WebIFC.IFCCOLUMN);
     const types: string[] = [];
     for (let i = 0; i < ids.size(); i++) {
-      const c = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
-      const pred = (c['PredefinedType'] as { value?: string } | undefined)?.value;
+      const pred = effectivePredefined(api, mid, ids.get(i));
       if (pred !== undefined) types.push(pred);
     }
     expect(types.sort()).toEqual(['COLUMN', 'PILASTER']);

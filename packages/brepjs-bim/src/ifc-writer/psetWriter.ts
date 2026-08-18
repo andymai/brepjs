@@ -150,9 +150,7 @@ function writeCommonPsetFromTemplate(
     const value = values[prop.name];
     if (value === undefined) continue;
     if (prop.kind === 'enumerated') {
-      propIds.push(
-        writePropertyEnumeratedValue(w, prop.name, String(value), prop.enumValues)
-      );
+      propIds.push(writePropertyEnumeratedValue(w, prop.name, String(value), prop.enumValues));
     } else {
       propIds.push(writePropertySingleValueTyped(w, prop.name, value));
     }
@@ -187,7 +185,8 @@ export function writeWallCommonPset(
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
   if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
   if (spec.status !== undefined) values['Status'] = spec.status;
   writeCommonPset(w, ownerHistoryId, wallExpressId, 'WALL', values);
@@ -292,7 +291,8 @@ function writeElementQuantity(
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, qtoName),
     Description: null,
-    MethodOfMeasurement: null,
+    // QTY001: Qto_* element quantities must declare the standard method.
+    MethodOfMeasurement: w.mkType(WebIFC.IFCLABEL, 'BaseQuantities'),
     Quantities: quantityIds.map((id) => w.ref(id)),
   });
   return qtoId;
@@ -385,7 +385,8 @@ export function writeSlabCommonPset(
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
   if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
   if (spec.combustible !== undefined) values['Combustible'] = spec.combustible;
   if (spec.compartmentation !== undefined) values['Compartmentation'] = spec.compartmentation;
@@ -448,7 +449,8 @@ function buildCommonValues(spec: CommonStructuralFields): Record<string, PsetVal
   if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
   if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.status !== undefined) values['Status'] = spec.status;
   return values;
 }
@@ -563,7 +565,8 @@ export function writeRoofCommonPset(
   const values: Record<string, PsetValue> = {};
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.status !== undefined) values['Status'] = spec.status;
   writeCommonPset(w, ownerHistoryId, roofExpressId, 'ROOF', values);
 }
@@ -600,7 +603,8 @@ export function writeCurtainWallCommonPset(
   const values: Record<string, PsetValue> = {};
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.status !== undefined) values['Status'] = spec.status;
   writeCommonPset(w, ownerHistoryId, curtainWallExpressId, 'CURTAIN_WALL', values);
 }
@@ -719,7 +723,8 @@ export function writeCoveringCommonPset(
   const values: Record<string, PsetValue> = {};
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   if (spec.status !== undefined) values['Status'] = spec.status;
   writeCommonPset(w, ownerHistoryId, coveringExpressId, 'COVERING', values);
 }

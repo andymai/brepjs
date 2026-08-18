@@ -158,8 +158,9 @@ describe('railing IFC serialization', () => {
 
     const railing = api.GetLine(mid, railingIds.get(0)) as Record<string, unknown>;
     expect(railing['Representation']).not.toBeNull();
-    const pred = (railing['PredefinedType'] as { value?: string } | undefined)?.value;
-    expect(pred).toBe('GUARDRAIL');
+    // The enum rides the paired IfcRailingType in full exports (OJT001).
+    const pred = (railing['PredefinedType'] as { value?: string } | null | undefined)?.value;
+    expect(pred).toBeUndefined();
     const extrusions = api.GetLineIDsWithType(mid, WebIFC.IFCEXTRUDEDAREASOLID);
     expect(extrusions.size()).toBe(1);
 

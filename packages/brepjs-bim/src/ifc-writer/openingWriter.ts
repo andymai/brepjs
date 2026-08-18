@@ -27,10 +27,7 @@ function writeAxis2Placement2D(w: IfcWriter): number {
   w.writeLine({
     expressID: originId,
     type: WebIFC.IFCCARTESIANPOINT,
-    Coordinates: [
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-    ],
+    Coordinates: [w.mkType(WebIFC.IFCLENGTHMEASURE, 0), w.mkType(WebIFC.IFCLENGTHMEASURE, 0)],
   });
   const id = w.nextId();
   w.writeLine({
@@ -63,7 +60,11 @@ export function writeOpeningGeometry(
     w,
     // Wall SweptSolid is centered in local Z ([-h/2, +h/2]); shift the void down
     // by wallHeight/2 so offsetFromFloor is measured from the wall base.
-    [offsetAlongWallM + widthM / 2, thicknessM / 2, -wallHeightM / 2 + offsetFromFloorM + heightM / 2],
+    [
+      offsetAlongWallM + widthM / 2,
+      thicknessM / 2,
+      -wallHeightM / 2 + offsetFromFloorM + heightM / 2,
+    ],
     [0, -1, 0],
     [1, 0, 0]
   );
@@ -312,7 +313,11 @@ export function writeDoorEntity(
 
   const depthM = toIfcLengthM(nominalDepthMm ?? DEFAULT_PANEL_DEPTH_MM);
   const productDefinitionShapeId = writePanelBody(
-    w, overallWidthM, overallHeightM, depthM, geomSubContextId
+    w,
+    overallWidthM,
+    overallHeightM,
+    depthM,
+    geomSubContextId
   );
 
   const id = w.nextId();
@@ -358,7 +363,11 @@ export function writeWindowEntity(
 
   const depthM = toIfcLengthM(nominalDepthMm ?? DEFAULT_PANEL_DEPTH_MM);
   const productDefinitionShapeId = writePanelBody(
-    w, overallWidthM, overallHeightM, depthM, geomSubContextId
+    w,
+    overallWidthM,
+    overallHeightM,
+    depthM,
+    geomSubContextId
   );
 
   const id = w.nextId();
@@ -425,7 +434,8 @@ function buildOpeningPsetValues(spec: OpeningPsetSpec): Record<string, PsetValue
   if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
   if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
   if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.thermalTransmittance !== undefined)
+    values['ThermalTransmittance'] = spec.thermalTransmittance;
   return values;
 }
 

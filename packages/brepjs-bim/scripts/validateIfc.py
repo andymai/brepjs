@@ -45,7 +45,7 @@ def main(argv: list[str]) -> int:
 
     # 2. EXPRESS schema + where-rule validation.
     logger = ifcopenshell.validate.json_logger()
-    ifcopenshell.validate.validate(model, logger)
+    ifcopenshell.validate.validate(model, logger, express_rules=True)
     schema_issues = logger.statements
     if schema_issues:
         print(f"[2] Schema validation: {len(schema_issues)} issue(s)")

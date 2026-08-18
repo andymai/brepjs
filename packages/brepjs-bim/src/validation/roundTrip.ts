@@ -112,8 +112,8 @@ export function compareCounts(first: EntityCounts, second: EntityCounts): Valida
         'ROUNDTRIP_TOTAL_COUNT_DELTA',
         `Total entity-line count changed across round-trip: ${first.totalCount} → ${second.totalCount}`,
         undefined,
-        { first: first.totalCount, second: second.totalCount },
-      ),
+        { first: first.totalCount, second: second.totalCount }
+      )
     );
   }
 
@@ -127,8 +127,8 @@ export function compareCounts(first: EntityCounts, second: EntityCounts): Valida
           'ROUNDTRIP_TYPE_COUNT_DELTA',
           `${name} count changed across round-trip: ${firstCount} → ${secondCount}`,
           name,
-          { first: firstCount, second: secondCount },
-        ),
+          { first: firstCount, second: secondCount }
+        )
       );
     }
   }

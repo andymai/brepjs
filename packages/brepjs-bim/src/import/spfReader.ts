@@ -64,22 +64,24 @@ export class SpfReader {
 
     let modelId: number;
     try {
-      modelId = api.OpenModel(bytes, { COORDINATE_TO_ORIGIN: settings.coordinateToOrigin ?? false });
+      modelId = api.OpenModel(bytes, {
+        COORDINATE_TO_ORIGIN: settings.coordinateToOrigin ?? false,
+      });
     } catch (e) {
       return err(importError('OPEN_MODEL_FAILED', 'web-ifc OpenModel threw', e));
     }
 
     if (modelId < 0 || !api.IsModelOpen(modelId)) {
       if (modelId >= 0) api.CloseModel(modelId);
-      return err(importError('OPEN_MODEL_FAILED', 'web-ifc OpenModel returned an invalid model id'));
+      return err(
+        importError('OPEN_MODEL_FAILED', 'web-ifc OpenModel returned an invalid model id')
+      );
     }
 
     const schemaRaw = api.GetModelSchema(modelId);
     if (!SUPPORTED_SCHEMAS.includes(schemaRaw)) {
       api.CloseModel(modelId);
-      return err(
-        importError('SCHEMA_UNSUPPORTED', `Unsupported IFC schema "${schemaRaw}"`)
-      );
+      return err(importError('SCHEMA_UNSUPPORTED', `Unsupported IFC schema "${schemaRaw}"`));
     }
 
     return ok(new SpfReader(api, modelId, schemaRaw as ImportedSchema));

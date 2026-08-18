@@ -61,8 +61,8 @@ function parseVersion(xml: string): Result<BcfVersion, BimError> {
     return err(
       bcfError(
         'BCF_VERSION_UNSUPPORTED',
-        `Unsupported BCF version "${versionId ?? '(none)'}"; only 3.0 is supported`,
-      ),
+        `Unsupported BCF version "${versionId ?? '(none)'}"; only 3.0 is supported`
+      )
     );
   }
   const detailedVersion = childText(root, 'DetailedVersion');

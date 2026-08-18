@@ -3,7 +3,13 @@ import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import { writeProfile } from './geometryWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { FootingSpec, PileSpec, FootingPredefinedType, PilePredefinedType, PileConstructionType } from '../specs/foundationSpec.js';
+import type {
+  FootingSpec,
+  PileSpec,
+  FootingPredefinedType,
+  PilePredefinedType,
+  PileConstructionType,
+} from '../specs/foundationSpec.js';
 import { toIfcLengthM } from '../units/units.js';
 
 export interface FoundationRepresentationIds {
@@ -156,7 +162,7 @@ export function writeFootingEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: FootingPredefinedType,
+  _predefinedType: FootingPredefinedType,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -173,7 +179,8 @@ export function writeFootingEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -182,7 +189,7 @@ export function writePileEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: PilePredefinedType,
+  _predefinedType: PilePredefinedType,
   constructionType: PileConstructionType | null,
   ownerHistoryId: number,
   localPlacementId: number,
@@ -200,7 +207,8 @@ export function writePileEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
     ConstructionType: constructionType !== null ? { type: 3, value: constructionType } : null,
   });
   return id;

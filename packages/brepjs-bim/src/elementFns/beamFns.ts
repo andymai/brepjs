@@ -28,7 +28,9 @@ export function beamToSolid(spec: BeamSpec): Result<ValidSolid, BimError> {
     using face = faceResult.value;
     const prismResult = extrude(face, [0, 0, spec.length]);
     if (!prismResult.ok) {
-      return err(fromBrepError(prismResult.error, 'BEAM_EXTRUDE_FAILED', 'Failed to extrude beam profile'));
+      return err(
+        fromBrepError(prismResult.error, 'BEAM_EXTRUDE_FAILED', 'Failed to extrude beam profile')
+      );
     }
     using prism = prismResult.value;
     const solid = rotate(prism, 90, { axis: [0, 1, 0] });
@@ -43,17 +45,25 @@ export function beamToSolid(spec: BeamSpec): Result<ValidSolid, BimError> {
   // profile lies in the YZ plane at x=0 ready to extrude along +X.
   const profilePtsResult = profileToPolygon(spec.profile);
   if (!profilePtsResult.ok) return err(profilePtsResult.error);
-  const profilePts = profilePtsResult.value.map<[number, number, number]>(([px, py]) => [0, px, py]);
+  const profilePts = profilePtsResult.value.map<[number, number, number]>(([px, py]) => [
+    0,
+    px,
+    py,
+  ]);
 
   const profileResult = polygon(profilePts);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'BEAM_PROFILE_FAILED', 'Failed to create beam profile'));
+    return err(
+      fromBrepError(profileResult.error, 'BEAM_PROFILE_FAILED', 'Failed to create beam profile')
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [spec.length, 0, 0]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'BEAM_EXTRUDE_FAILED', 'Failed to extrude beam profile'));
+    return err(
+      fromBrepError(solidResult.error, 'BEAM_EXTRUDE_FAILED', 'Failed to extrude beam profile')
+    );
   }
 
   const solid = solidResult.value;

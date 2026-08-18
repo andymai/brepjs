@@ -225,10 +225,7 @@ function writeAxis2Placement2D(w: IfcWriter): number {
   w.writeLine({
     expressID: originId,
     type: WebIFC.IFCCARTESIANPOINT,
-    Coordinates: [
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-      w.mkType(WebIFC.IFCLENGTHMEASURE, 0),
-    ],
+    Coordinates: [w.mkType(WebIFC.IFCLENGTHMEASURE, 0), w.mkType(WebIFC.IFCLENGTHMEASURE, 0)],
   });
   const id = w.nextId();
   w.writeLine({

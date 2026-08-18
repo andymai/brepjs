@@ -39,9 +39,7 @@ export function parseIdsXml(xml: string): Result<IdsDocument, BimError> {
   }
 
   if (root.tag !== 'ids') {
-    return err(
-      idsError('IDS_INVALID_SCHEMA', `Expected root element <ids>, found <${root.tag}>`)
-    );
+    return err(idsError('IDS_INVALID_SCHEMA', `Expected root element <ids>, found <${root.tag}>`));
   }
 
   const info = firstChild(root, 'info');
@@ -122,9 +120,7 @@ function parseFacet(el: XmlElement): IdsFacet | null {
       const name = restrictionFrom(firstChild(el, 'name'));
       if (name === undefined) return null;
       const value = restrictionFrom(firstChild(el, 'value'));
-      return value === undefined
-        ? { kind: 'Attribute', name }
-        : { kind: 'Attribute', name, value };
+      return value === undefined ? { kind: 'Attribute', name } : { kind: 'Attribute', name, value };
     }
     case 'property': {
       const psetName = restrictionFrom(firstChild(el, 'propertySet'));
@@ -150,9 +146,7 @@ function parseFacet(el: XmlElement): IdsFacet | null {
     }
     case 'partOf': {
       const relation = el.attributes['relation'];
-      return relation === undefined
-        ? { kind: 'PartOf' }
-        : { kind: 'PartOf', relation };
+      return relation === undefined ? { kind: 'PartOf' } : { kind: 'PartOf', relation };
     }
     default:
       return null;

@@ -24,12 +24,16 @@ export function columnToSolid(spec: ColumnSpec): Result<ValidSolid, BimError> {
     using face = faceResult.value;
     const extResult = extrude(face, [0, 0, spec.height]);
     if (!extResult.ok) {
-      return err(fromBrepError(extResult.error, 'COLUMN_EXTRUDE_FAILED', 'Failed to extrude column profile'));
+      return err(
+        fromBrepError(extResult.error, 'COLUMN_EXTRUDE_FAILED', 'Failed to extrude column profile')
+      );
     }
     const extSolid = extResult.value;
     if (!isValidSolid(extSolid)) {
       extSolid[Symbol.dispose]();
-      return err(geometryError('COLUMN_INVALID_SOLID', 'Extruded column solid failed validity check'));
+      return err(
+        geometryError('COLUMN_INVALID_SOLID', 'Extruded column solid failed validity check')
+      );
     }
     return ok(extSolid);
   }
@@ -40,19 +44,25 @@ export function columnToSolid(spec: ColumnSpec): Result<ValidSolid, BimError> {
 
   const profileResult = polygon(profilePts);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'COLUMN_PROFILE_FAILED', 'Failed to create column profile'));
+    return err(
+      fromBrepError(profileResult.error, 'COLUMN_PROFILE_FAILED', 'Failed to create column profile')
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, spec.height]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'COLUMN_EXTRUDE_FAILED', 'Failed to extrude column profile'));
+    return err(
+      fromBrepError(solidResult.error, 'COLUMN_EXTRUDE_FAILED', 'Failed to extrude column profile')
+    );
   }
 
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('COLUMN_INVALID_SOLID', 'Extruded column solid failed validity check'));
+    return err(
+      geometryError('COLUMN_INVALID_SOLID', 'Extruded column solid failed validity check')
+    );
   }
   return ok(solid);
 }

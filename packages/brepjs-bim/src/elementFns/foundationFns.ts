@@ -31,19 +31,33 @@ export function footingToSolid(spec: FootingSpec): Result<ValidSolid, BimError> 
     [0, width, 0],
   ]);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'FOOTING_PROFILE_FAILED', 'Failed to create footing profile'));
+    return err(
+      fromBrepError(
+        profileResult.error,
+        'FOOTING_PROFILE_FAILED',
+        'Failed to create footing profile'
+      )
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, thickness]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'FOOTING_EXTRUDE_FAILED', 'Failed to extrude footing profile'));
+    return err(
+      fromBrepError(
+        solidResult.error,
+        'FOOTING_EXTRUDE_FAILED',
+        'Failed to extrude footing profile'
+      )
+    );
   }
 
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('FOOTING_INVALID_SOLID', 'Extruded footing solid failed validity check'));
+    return err(
+      geometryError('FOOTING_INVALID_SOLID', 'Extruded footing solid failed validity check')
+    );
   }
   return ok(solid);
 }
@@ -64,7 +78,9 @@ export function pileToSolid(spec: PileSpec): Result<ValidSolid, BimError> {
     using face = faceResult.value;
     const extResult = extrude(face, [0, 0, spec.length]);
     if (!extResult.ok) {
-      return err(fromBrepError(extResult.error, 'PILE_EXTRUDE_FAILED', 'Failed to extrude pile profile'));
+      return err(
+        fromBrepError(extResult.error, 'PILE_EXTRUDE_FAILED', 'Failed to extrude pile profile')
+      );
     }
     const extSolid = extResult.value;
     if (!isValidSolid(extSolid)) {
@@ -80,13 +96,17 @@ export function pileToSolid(spec: PileSpec): Result<ValidSolid, BimError> {
 
   const profileResult = polygon(profilePts);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'PILE_PROFILE_FAILED', 'Failed to create pile profile'));
+    return err(
+      fromBrepError(profileResult.error, 'PILE_PROFILE_FAILED', 'Failed to create pile profile')
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, spec.length]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'PILE_EXTRUDE_FAILED', 'Failed to extrude pile profile'));
+    return err(
+      fromBrepError(solidResult.error, 'PILE_EXTRUDE_FAILED', 'Failed to extrude pile profile')
+    );
   }
 
   const solid = solidResult.value;

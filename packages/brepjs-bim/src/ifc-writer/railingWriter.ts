@@ -122,14 +122,19 @@ export function writeRailingGeometry(
     Representations: [w.ref(shapeRepId)],
   });
 
-  return { localPlacementId, productDefinitionShapeId, bodyItemId: extrusionId, usedFallback: false };
+  return {
+    localPlacementId,
+    productDefinitionShapeId,
+    bodyItemId: extrusionId,
+    usedFallback: false,
+  };
 }
 
 export function writeRailingEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: RailingPredefinedType,
+  _predefinedType: RailingPredefinedType,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -146,7 +151,8 @@ export function writeRailingEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }

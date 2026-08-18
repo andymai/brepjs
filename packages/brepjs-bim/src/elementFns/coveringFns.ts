@@ -30,20 +30,34 @@ export function coveringToSolid(spec: CoveringSpec): Result<ValidSolid, BimError
   ]);
 
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'COVERING_PROFILE_FAILED', 'Failed to create covering profile'));
+    return err(
+      fromBrepError(
+        profileResult.error,
+        'COVERING_PROFILE_FAILED',
+        'Failed to create covering profile'
+      )
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, thickness]);
 
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'COVERING_EXTRUDE_FAILED', 'Failed to extrude covering profile'));
+    return err(
+      fromBrepError(
+        solidResult.error,
+        'COVERING_EXTRUDE_FAILED',
+        'Failed to extrude covering profile'
+      )
+    );
   }
 
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('COVERING_INVALID_SOLID', 'Extruded covering solid failed validity check'));
+    return err(
+      geometryError('COVERING_INVALID_SOLID', 'Extruded covering solid failed validity check')
+    );
   }
   return ok(solid);
 }
