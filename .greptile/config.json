@@ -1,7 +1,11 @@
 {
   "strictness": 1,
   "triggerOnUpdates": true,
-  "patternRepositories": ["andymai/brepkit"],
+  "patternRepositories": [
+    "andymai/brepkit",
+    "buildingSMART/IDS",
+    "buildingSMART/ifc-gherkin-rules"
+  ],
   "ignorePatterns": "dist/**\nnode_modules/**\ncoverage/**\ndocs/function-lookup.md\n**/*.generated.*",
   "rules": [
     {
@@ -12,18 +16,41 @@
     {
       "id": "no-wrapped-access",
       "rule": "Never call methods directly on .wrapped handles. Always use getKernel().method(shape.wrapped) instead of shape.wrapped.SomeMethod(). Direct .wrapped method calls bypass the kernel abstraction layer.",
-      "scope": ["src/topology/**", "src/operations/**", "src/2d/**", "src/query/**", "src/measurement/**", "src/io/**", "src/worker/**", "src/sketching/**", "src/text/**", "src/projection/**"],
+      "scope": [
+        "src/topology/**",
+        "src/operations/**",
+        "src/2d/**",
+        "src/query/**",
+        "src/measurement/**",
+        "src/io/**",
+        "src/worker/**",
+        "src/sketching/**",
+        "src/text/**",
+        "src/projection/**"
+      ],
       "severity": "high"
     },
     {
       "id": "use-kernel-abstraction",
       "rule": "All geometry operations must go through getKernel() from src/kernel/index.ts. Never access the raw OpenCascade 'oc' object directly. Layer 2+ code treats shapes as opaque handles.",
-      "scope": ["src/core/**", "src/topology/**", "src/operations/**", "src/2d/**", "src/query/**", "src/measurement/**", "src/io/**", "src/worker/**", "src/sketching/**", "src/text/**", "src/projection/**"],
+      "scope": [
+        "src/core/**",
+        "src/topology/**",
+        "src/operations/**",
+        "src/2d/**",
+        "src/query/**",
+        "src/measurement/**",
+        "src/io/**",
+        "src/worker/**",
+        "src/sketching/**",
+        "src/text/**",
+        "src/projection/**"
+      ],
       "severity": "high"
     },
     {
       "id": "disposal-required",
-      "rule": "Kernel objects allocated in WASM memory require explicit cleanup. Use 'using' keyword with Symbol.dispose, or DisposalScope with register(). Temporaries in loops must be disposed each iteration. Watch for shapes stored in arrays without cleanup. DisposalScope disposes in LIFO order — register dependencies after their dependees.",
+      "rule": "Kernel objects allocated in WASM memory require explicit cleanup. Use 'using' keyword with Symbol.dispose, or DisposalScope with register(). Temporaries in loops must be disposed each iteration. Watch for shapes stored in arrays without cleanup. DisposalScope disposes in LIFO order \u2014 register dependencies after their dependees.",
       "severity": "high"
     },
     {
