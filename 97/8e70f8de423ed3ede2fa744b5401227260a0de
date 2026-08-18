@@ -1,0 +1,28 @@
+.release-please-manifest.json
+  s_951c9e48d7e90e::t_e0b279c859ce2c 7-9
+.github/workflows/publish-create-brepjs.yml
+  s_951c9e48d7e90e::t_8f4c17e7153774 1-41
+.github/workflows/publish-brepjs-families.yml
+  s_951c9e48d7e90e::t_8f4c17e7153774 1-41
+release-please-config.json
+  s_951c9e48d7e90e::t_e0b279c859ce2c 51-62,65-67
+.github/workflows/release-please.yml
+  s_951c9e48d7e90e::t_b1633e4e9d991e 139-143,149
+  s_951c9e48d7e90e::t_d0d04a98129f58 41-44,77-80,115-121,150,240-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "978e70f8de423ed3ede2fa744b5401227260a0de",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
