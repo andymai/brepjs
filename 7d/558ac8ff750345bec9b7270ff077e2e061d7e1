@@ -1,0 +1,33 @@
+packages/brepjs-bim/VALIDATION.md
+  s_f7654670ddf29a::t_825c62c3a965e0 29-80
+packages/brepjs-bim/examples/interopFixture.mjs
+  s_f7654670ddf29a::t_47c1d6131a6765 19-21,52-61,70-75,81-86,94-106,114-122,131-136,144-155,163-174,185-194,200-209,215-224,238-245,248-255,265-273,289-291
+  s_f7654670ddf29a::t_e3d9995eeac508 1-12,14-18,22-51,62-67,69,76-78,80,87-89,91-93,107-113,123-130,137-143,156-162,175-184,195-199,210-214,225-237,246-247,256-264,274-288,292-295
+  s_f7654670ddf29a::t_234812e3168c3e 13,68,79,90
+packages/brepjs-bim/examples/interop-fixture.ifc
+  s_f7654670ddf29a::t_234812e3168c3e 1-10,12-125,127-140,142-150,152-559,561-578,580-597,599-864
+  s_f7654670ddf29a::t_3956d14c31ad03 11,126,141,151,560,579,598
+packages/brepjs-bim/src/ifc-writer/tessellationWriter.ts
+  s_f7654670ddf29a::t_47c1d6131a6765 106
+  s_f7654670ddf29a::t_3a5c941767f449 231
+  s_f7654670ddf29a::t_b51d626d77a5a3 105
+packages/brepjs-bim/tests/stairFns.test.ts
+  s_f7654670ddf29a::t_251369b7771e07 295-299
+  s_f7654670ddf29a::t_47c1d6131a6765 15-18,161-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7d558ac8ff750345bec9b7270ff077e2e061d7e1",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
