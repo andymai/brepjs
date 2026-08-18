@@ -1,0 +1,44 @@
+packages/brepjs-bim/src/serialize/toIfc.ts
+  s_f7654670ddf29a::t_fe62b9262d5d1a 43,116-121,166-169,177-182,196-197,199-203,212-213,215-220,250-251,253-256,259-264,274-277,285-286,288-291,294-300,310-313,321-322,324-327,330-336,350-351,353-356,359-365,379-380,382-385,388-390,392-394,405-406,408-411,414-416,419-421,434-435,437-441,447-453,467-468,473-475,478-480,491-492,494-497,500-506,519-520,522-525,528-531,533-535,548-549,551-553,555-557,565-570,577-582,589-590,592-598,607-608,610-616,625-626,633-639,654-655,657-660,663-669,699-705,729-735,751-758,774-781,806-810,820-825,863-868,878-885,1108,1159-1162,1178,1225-1228
+packages/brepjs-bim/tests/rampFns.test.ts
+  s_f7654670ddf29a::t_39c04df7fce988 197,252
+  s_f7654670ddf29a::t_fe62b9262d5d1a 15-18,130-133
+packages/brepjs-families/registry/manifest.json
+  s_f7654670ddf29a::t_b1fa33e89487e8 53-56,59-60
+  s_f7654670ddf29a::t_fe62b9262d5d1a 57-58
+packages/brepjs-bim/src/model/bimModel.ts
+  s_f7654670ddf29a::t_b1fa33e89487e8 261-264
+  s_f7654670ddf29a::t_11dc2d712d43c7 274-277
+packages/brepjs-families/registry/families/stair.ts
+  s_f7654670ddf29a::t_1209b019fd1883 1-100
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_f7654670ddf29a::t_b1fa33e89487e8 8,24,73-77,80-96,301
+packages/brepjs-families/tests/registry.test.ts
+  s_f7654670ddf29a::t_d93b16411ecab1 23,183-203
+  s_f7654670ddf29a::t_0ce14787a52180 204-205
+packages/brepjs-bim/src/ifc-writer/stairWriter.ts
+  s_f7654670ddf29a::t_11dc2d712d43c7 205-207,217,241,321,342
+apps/docs/families/for-bim-professionals.md
+  s_f7654670ddf29a::t_d93b16411ecab1 47
+packages/brepjs-bim/tests/stairFns.test.ts
+  s_f7654670ddf29a::t_39c04df7fce988 228,285,306,328
+  s_f7654670ddf29a::t_fe62b9262d5d1a 15-18,161-164
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_f7654670ddf29a::t_d93b16411ecab1 269-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c965e9cf81d0eeb0c583458343df03a557e34514",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
