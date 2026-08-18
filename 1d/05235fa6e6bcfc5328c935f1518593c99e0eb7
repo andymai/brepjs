@@ -1,0 +1,23 @@
+.github/workflows/ci.yml
+  s_f7654670ddf29a::t_8d52961aaac826 280
+packages/brepjs-bim/package.json
+  s_f7654670ddf29a::t_8d52961aaac826 4,46
+packages/brepjs-bim/vitest.config.ts
+  s_f7654670ddf29a::t_8d52961aaac826 19-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1d05235fa6e6bcfc5328c935f1518593c99e0eb7",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
