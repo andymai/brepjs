@@ -37,9 +37,15 @@ rm -rf ifc-gherkin-rules/ifc_validation_models
 cp -r ifc-validation-data-model ifc-gherkin-rules/ifc_validation_models
 
 [ -d venv ] || python3 -m venv venv
-./venv/bin/pip install --quiet "behave==1.2.6" ifcopenshell pytest pandas numpy tabulate \
-  pyparsing pydantic sqlalchemy python-dotenv django pyspellchecker pydot parse-type \
-  mpmath networkx rtree shapely scipy pyproj deprecated
+# Every version pinned to the set the fixtures were proven against — an
+# unpinned behave upgrade is exactly what silently broke step matching once.
+./venv/bin/pip install --quiet \
+  "behave==1.2.6" "parse==1.22.1" "parse_type==0.6.6" "ifcopenshell==0.8.5" \
+  "pytest==9.1.1" "pandas==3.0.5" "numpy==2.5.2" "tabulate==0.10.0" \
+  "pyparsing==3.3.2" "pydantic==2.13.4" "SQLAlchemy==2.0.52" \
+  "python-dotenv==1.2.3" "Django==6.1" "pyspellchecker==0.9.0" "pydot==4.0.1" \
+  "mpmath==1.4.1" "networkx==3.6.1" "rtree==1.4.1" "shapely==2.1.2" \
+  "scipy==1.18.0" "pyproj==3.7.2" "Deprecated==1.3.1"
 
 cat > ifc-gherkin-rules/features/steps/aaa_local_type_registration.py <<'EOF'
 # Local shim: behave skips __init__.py, so the custom parse types registered
