@@ -1,0 +1,25 @@
+packages/brepjs-cad/skills/implement/references/gridfinity.md
+  s_f7654670ddf29a::t_2f16a9b94a7ad3 20
+apps/docs/families/first-building.md
+  s_f7654670ddf29a::t_2f16a9b94a7ad3 39
+packages/brepjs-bim/tests/bcfXml.test.ts
+  s_f7654670ddf29a::t_2f16a9b94a7ad3 6
+packages/brepjs-sheetmetal/tests/nfpNest.test.ts
+  s_f7654670ddf29a::t_2f16a9b94a7ad3 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4048536618e54c7853ba6649c48e8e34027ad565",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
