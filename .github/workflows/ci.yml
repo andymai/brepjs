@@ -277,7 +277,7 @@ jobs:
       - run: npm run build --workspace=brepjs-families
       - run: npm run typecheck --workspace=brepjs-bim
       - run: npm run lint --workspace=brepjs-bim
-      - run: npm run test --workspace=brepjs-bim
+      - run: npm run test:coverage --workspace=brepjs-bim
       - run: npm run build --workspace=brepjs-bim
 
   voxel-wasm-rust:
