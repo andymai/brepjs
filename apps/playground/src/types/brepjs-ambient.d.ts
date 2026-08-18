@@ -347,10 +347,8 @@ interface KernelMeasureOps {
 interface KernelMeshOps {
     mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
     /**
-     * Tessellate edges for wireframe display.
-     *
-     * **Cross-kernel note**: brepkit only supports linear deflection;
-     * `angularTolerance` is ignored (a one-time warning is emitted).
+     * Tessellate edges for wireframe display. Both linear `tolerance`
+     * (deflection) and `angularTolerance` are honored across kernels.
      */
     meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
     /** Check if a shape already has triangulation data. */
@@ -591,8 +589,33 @@ interface KernelTopologyOps {
     isEqual(a: KernelShape, b: KernelShape): boolean;
     /** Downcast a shape to a more specific type (e.g., any → TopoDS_Edge). */
     downcast(shape: KernelShape, type?: ShapeType): KernelShape;
+    /**
+     * Return an independently-disposable duplicate of a shape.
+     *
+     * `downcast` is a *cast*, not a copy: on the occt-wasm arena kernel a
+     * same-type downcast returns the very same handle id, so disposing the
+     * "copy" would free the source. `copyShape` guarantees a handle that can be
+     * disposed without affecting the source — a real geometric copy where a
+     * primitive exists (occt-wasm `k.copy`), or the safe existing duplicate on
+     * kernels that never free handles individually (brepkit/manifold) or share
+     * refcounted geometry (occt Embind).
+     */
+    copyShape(shape: KernelShape): KernelShape;
     /** Compute a hash code for a shape (used for face tracking). */
     hashCode(shape: KernelShape, upperBound: number): number;
+    /**
+     * Count sub-shapes of a type without allocating a handle per sub-shape.
+     * Optional native fast path (occt-wasm >= 3.7.0); absent kernels fall back to
+     * iterating handles. See the topology-layer `subShapeCount` wrapper.
+     */
+    subShapeCount?(shape: KernelShape, type: ShapeType): number;
+    /**
+     * Deduplicated sub-shape hashes at `hashUpperBound`, with no per-sub-shape
+     * handle allocation. Hashes agree with {@link hashCode} at the same bound.
+     * Optional native fast path (occt-wasm >= 3.7.0). See the topology-layer
+     * `subShapeHashes` wrapper.
+     */
+    subShapeHashes?(shape: KernelShape, type: ShapeType, hashUpperBound: number): number[];
     /** Check if a shape handle is null. */
     isNull(shape: KernelShape): boolean;
     /** Get the orientation of a shape (forward, reversed, internal, external). */
@@ -624,6 +647,16 @@ interface KernelTransformOps {
         dispose: () => void;
     };
     transform(shape: KernelShape, trsf: KernelType): KernelShape;
+    /**
+     * Apply a rigid transform as a *location re-tag* that shares the source's
+     * underlying geometry instead of deep-copying its topology — O(1) vs
+     * O(topology size). `trsf` MUST be a rigid motion (rotation + translation,
+     * e.g. built from translate/rotate via {@link composeTransform}); non-rigid
+     * input (scale/shear) is unsupported. Kernels with no cheap-location concept
+     * fall back to a copying {@link transform}: the result is geometrically
+     * identical, only the cost differs.
+     */
+    locate(shape: KernelShape, trsf: KernelType): KernelShape;
     translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
     rotate(shape: KernelShape, angle: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): KernelShape;
     mirror(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number]): KernelShape;
@@ -691,6 +724,14 @@ interface OcctKernelWasm {
     release(id: number): void;
     releaseAll(): void;
     getShapeCount(): number;
+    /** Mark the current arena high-water point (occt-wasm >= 3.7.0). */
+    checkpoint(): number;
+    /** Free every handle allocated at or after `mark` in one call (occt-wasm >= 3.7.0). */
+    releaseSince(mark: number): void;
+    /** Count sub-shapes of a type without allocating a handle each (occt-wasm >= 3.7.0). */
+    subShapeCount(id: number, shapeType: string): number;
+    /** Deduplicated sub-shape hashes, no per-sub-shape handle allocation (occt-wasm >= 3.7.0). */
+    subShapeHashes(id: number, shapeType: string, hashUpperBound: number): EmVectorInt;
     makeBox(dx: number, dy: number, dz: number): number;
     makeBoxFromCorners(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): number;
     makeCylinder(radius: number, height: number): number;
@@ -721,6 +762,10 @@ interface OcctKernelWasm {
     loftWithVertices(wireIds: EmVectorUint32, isSolid: boolean, ruled: boolean, startVertexId: number, endVertexId: number): number;
     sweep(wireId: number, spineId: number, transitionMode: number): number;
     sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
+    /** occt-wasm >= 4.2.0. Supersedes sweepAdvanced; adds law, support and the approximation budget. */
+    sweepFull?(profileId: number, spineId: number, mode: number, upX: number, upY: number, upZ: number, auxSpineId: number, curvilinearEquivalence: boolean, guideContact: number, transitionMode: number, withContact: boolean, withCorrection: boolean, tol3d: number, boundTol: number, tolAngular: number, supportId: number, maxDegree: number, maxSegments: number, lawKind: number, lawLength: number, lawEndFactor: number): number;
+    /** occt-wasm >= 4.1.0. Absent on the 3.8.x / 4.0.x peers the range still allows. */
+    sweepAdvanced?(profileId: number, spineId: number, mode: number, upX: number, upY: number, upZ: number, auxSpineId: number, curvilinearEquivalence: boolean, guideContact: number, transitionMode: number, withContact: boolean, withCorrection: boolean, tol3d: number, boundTol: number, tolAngular: number): number;
     draftPrism(shapeId: number, dx: number, dy: number, dz: number, angleDeg: number): number;
     revolveVec(shapeId: number, cx: number, cy: number, cz: number, dx: number, dy: number, dz: number, angle: number): number;
     makeVertex(x: number, y: number, z: number): number;
@@ -752,6 +797,13 @@ interface OcctKernelWasm {
     mirror(id: number, px: number, py: number, pz: number, nx: number, ny: number, nz: number): number;
     copy(id: number): number;
     transform(id: number, matrix: EmVectorDouble): number;
+    /**
+     * Cheap location-only move (a `TopLoc_Location` re-tag sharing the source
+     * `TShape`). Optional: absent on WASM builds published before this method
+     * landed, so callers must feature-detect (`typeof k.located === 'function'`)
+     * and fall back to {@link transform}.
+     */
+    located?(id: number, matrix: EmVectorDouble): number;
     generalTransform(id: number, matrix: EmVectorDouble): number;
     linearPattern(id: number, dx: number, dy: number, dz: number, spacing: number, count: number): number;
     circularPattern(id: number, cx: number, cy: number, cz: number, ax: number, ay: number, az: number, angle: number, count: number): number;
@@ -794,7 +846,9 @@ interface OcctKernelWasm {
     surfaceNormal(faceId: number, u: number, v: number): EmVectorDouble;
     pointOnSurface(faceId: number, u: number, v: number): EmVectorDouble;
     outerWire(faceId: number): number;
+    reverseSurfaceU(faceId: number): number;
     uvBounds(faceId: number): EmVectorDouble;
+    getFaceCylinderData(faceId: number): EmVectorDouble;
     uvFromPoint(faceId: number, x: number, y: number, z: number): EmVectorDouble;
     projectPointOnFace(faceId: number, x: number, y: number, z: number): EmVectorDouble;
     classifyPointOnFace(faceId: number, u: number, v: number): string;
@@ -1426,6 +1480,14 @@ interface ShapeHandle {
     delete(): void;
     /** Check if this handle has been disposed */
     readonly disposed: boolean;
+    /**
+     * Register a callback to run when this handle is disposed, before its kernel
+     * slot is released. Used to release dependent resources tied to this shape's
+     * lifetime (e.g. its cached sub-shape handles). Callbacks are invoked once,
+     * in registration order; a callback that throws is swallowed. Registering on
+     * an already-disposed handle runs the callback immediately.
+     */
+    onDispose(callback: () => void): void;
 }
 
 /** Create a disposable shape handle. */
@@ -1687,7 +1749,12 @@ declare class Curve2D {
     get wrapped(): KernelType;
     delete(): void;
     [Symbol.dispose](): void;
-    /** Compute (and cache) the 2D bounding box of this curve. */
+    /**
+     * Compute (and cache) the 2D bounding box of this curve.
+     *
+     * @remarks The returned box is owned by the curve and is disposed when the
+     * curve is deleted. Clone it if it must outlive the curve.
+     */
     get boundingBox(): BoundingBox2d;
     /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
     get repr(): string;
@@ -1755,6 +1822,12 @@ interface SketchData {
 
 interface DrawingInterface {
     clone(): DrawingInterface;
+    /**
+     * Release the resources held by this drawing, cascading to child blueprints
+     * and their curves. The `boundingBox` handed out earlier dies with it.
+     */
+    delete(): void;
+    [Symbol.dispose](): void;
     boundingBox: BoundingBox2d;
     stretch(ratio: number, direction: Point2D, origin: Point2D): DrawingInterface;
     rotate(angle: number, center: Point2D): DrawingInterface;
@@ -1961,7 +2034,12 @@ type ScaleMode = 'original' | 'bounds' | 'native';
  */
 declare function reverseCurve(curve: Curve2D): Curve2D;
 
-/** Get the bounding box of a 2D curve. */
+/**
+ * Get the bounding box of a 2D curve.
+ *
+ * @remarks The box is borrowed from the curve's cache and is disposed with the
+ * curve. Clone it if it must outlive the curve.
+ */
 declare function curve2dBoundingBox(curve: Curve2D): BoundingBox2d;
 
 /** Get the first point of a 2D curve. */
@@ -3376,12 +3454,20 @@ declare const makeBaseBox: (xLength: number, yLength: number, zLength: number) =
  */
 declare class Drawing {
     private readonly innerShape;
+    private _emptyBoundingBox;
     constructor(innerShape?: Shape2D);
+    /** Release the resources held by the underlying 2D shape and its bounding boxes. */
+    delete(): void;
+    [Symbol.dispose](): void;
     /** Create an independent deep copy of this drawing. */
     clone(): Drawing;
     /** Serialize the drawing to a JSON string for persistence or transfer. */
     serialize(): string;
-    /** Get the axis-aligned 2D bounding box of this drawing. */
+    /**
+     * Get the axis-aligned 2D bounding box of this drawing.
+     *
+     * @remarks The box is borrowed from the drawing and is disposed with it.
+     */
     get boundingBox(): BoundingBox2d;
     /** Stretch the drawing by a ratio along a direction from an origin point. */
     stretch(ratio: number, direction: Point2D, origin: Point2D): Drawing;
@@ -3460,6 +3546,18 @@ declare class Drawing {
  * generated by `Drawing.serialize()`.
  */
 declare function deserializeDrawing(data: string): Drawing;
+
+interface BlueprintContourOptions {
+    /** Approximation tolerance for non-SVG curves (bsplines). Default 1e-4. */
+    readonly tolerance?: number | undefined;
+}
+
+/**
+ * Convert a Blueprint outline to a pure-data {@link Contour} for the Profile
+ * IR node. One-way and lossy: bsplines are approximated per curve (SVG-
+ * compatible pass) and kernel handles never enter the result.
+ */
+declare function blueprintToContour(bp: Blueprint, options?: BlueprintContourOptions): Result<Contour>;
 
 /**
  * Creates a drawing pen to programatically draw in 2D.
@@ -4235,8 +4333,9 @@ type PlaneName = 'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'l
 type PlaneInput = Plane | PlaneName;
 
 /**
- * Invalidate cached topology data for a shape.
- * Call this after operations that modify a shape in-place (e.g., unifyFaces).
+ * Invalidate cached topology data for a shape, releasing its cached sub-shape
+ * handles. Call this after operations that modify a shape in-place (e.g.,
+ * unifyFaces).
  */
 declare function invalidateShapeCache(shape: AnyShape<Dimension>): void;
 
@@ -4716,6 +4815,78 @@ declare function meshMultiLOD(shape: AnyShape<Dimension>, options?: {
     readonly angularTolerance?: number | undefined;
 }): MultiLODMesh;
 
+/** One level of a multi-resolution mesh: the geometry plus the tolerances it was meshed at. */
+interface LODMesh {
+    /** Linear deflection (model units) used for this level. */
+    readonly tolerance: number;
+    /** Angular deflection (radians) used for this level. */
+    readonly angularTolerance: number;
+    /** The meshed geometry at this level. */
+    readonly mesh: ShapeMesh;
+}
+
+/** Options for {@link meshLODs}. */
+interface MeshLODsOptions {
+    /** Number of levels, coarsest → finest (>= 1). Default 3. Ignored when `tolerances` is given. */
+    readonly levels?: number;
+    /**
+     * The finest level's linear tolerance as a fraction of the shape's bounding-box
+     * diagonal, so detail is scale-invariant across part sizes. Default 0.0005
+     * (0.05% of the diagonal). Ignored when `tolerances` is given.
+     */
+    readonly relativeTolerance?: number;
+    /**
+     * Geometric ratio between successive levels: each coarser level's tolerance is
+     * `spacing`× the next finer one. Default 4. Ignored when `tolerances` is given.
+     */
+    readonly spacing?: number;
+    /** Explicit absolute linear tolerances (one per level). Overrides `levels`/`relativeTolerance`/`spacing`; sorted coarse → fine. */
+    readonly tolerances?: readonly number[];
+    /** The finest level's angular deflection (radians). Defaults to the active quality level; coarser levels scale up with the tolerance ratio (capped at 1 rad). */
+    readonly angularTolerance?: number;
+    /** Abort signal forwarded to each level's mesh call. */
+    readonly signal?: AbortSignal;
+    /** Whether to use the mesh cache per level. Default true. */
+    readonly cache?: boolean;
+}
+
+/**
+ * Mesh a shape at several levels of detail, coarse → fine.
+ *
+ * Tolerances are **scale-relative** by default: the finest level is a fraction
+ * (`relativeTolerance`) of the shape's bounding-box diagonal and each coarser
+ * level steps up by `spacing`×, so the same call gives sensible detail whether
+ * the part is millimetres or metres. Pass `tolerances` for absolute control.
+ * Each level goes through {@link mesh}, so levels are cached individually.
+ *
+ * @returns LOD levels ordered coarsest → finest.
+ * @see toLODGeometryLevels — convert to THREE.LOD geometry data
+ */
+declare function meshLODs(shape: AnyShape<Dimension>, options?: MeshLODsOptions): LODMesh[];
+
+/**
+ * Mesh one LOD level. Defaults to the synchronous main-thread {@link mesh}; pass
+ * an async implementation (e.g. one that serializes the shape with `toBREP` and
+ * meshes it on a worker) to refine finer levels off the main thread.
+ */
+type MeshLevelFn = (shape: AnyShape<Dimension>, tolerance: number, angularTolerance: number) => ShapeMesh | Promise<ShapeMesh>;
+
+/**
+ * Mesh a shape at several levels of detail, delivering them over time coarse →
+ * fine instead of all at once — so a viewer paints the coarse preview first and
+ * refines as finer levels land.
+ *
+ * The coarsest level is meshed first and reported via `onLevel`; control then
+ * yields to the event loop before each finer (heavier) level so the UI stays
+ * responsive. Each level is meshed synchronously on the calling thread by
+ * default; pass `meshLevel` to offload finer levels (e.g. to a worker). An
+ * aborted `signal` stops refinement and resolves with the levels produced so far.
+ *
+ * @returns the delivered LOD levels, coarsest → finest.
+ * @see meshLODs — the synchronous, all-at-once variant
+ */
+declare function meshLODsProgressive(shape: AnyShape<Dimension>, options?: MeshLODsProgressiveOptions): Promise<LODMesh[]>;
+
 /**
  * Clear all mesh caches. Call this after modifying shapes to avoid stale results.
  */
@@ -4832,6 +5003,32 @@ declare function toLODGeometryData(multiLOD: MultiLODMesh, distances?: {
     readonly coarse?: number | undefined;
     readonly fine?: number | undefined;
 }): LODGeometryData;
+
+/** One LOD level of THREE.LOD-ready geometry: geometry plus its switch distance. */
+interface LODGeometryLevel {
+    /** Geometry for this level. */
+    readonly geometry: BufferGeometryData;
+    /** Camera distance at which THREE.LOD switches to this level (finest = 0). */
+    readonly distance: number;
+}
+
+/**
+ * Convert N LOD meshes (from `meshLODs`, coarse → fine) into THREE.LOD level
+ * data. The finest level gets distance 0 and each coarser level steps out by
+ * `step`; pass `distances` (indexed coarse → fine) to set them explicitly.
+ *
+ * @example
+ * ```ts
+ * const lod = new THREE.LOD();
+ * for (const { geometry, distance } of toLODGeometryLevels(meshLODs(shape))) {
+ *   lod.addLevel(new THREE.Mesh(toBufferGeometry(geometry), mat), distance);
+ * }
+ * ```
+ */
+declare function toLODGeometryLevels(lods: ReadonlyArray<LODMesh>, options?: {
+    readonly distances?: readonly number[];
+    readonly step?: number;
+}): LODGeometryLevel[];
 
 /** Options shared by all boolean and compound operations. */
 interface BooleanOptions {
@@ -5030,10 +5227,14 @@ interface ShapeRef {
 }
 
 /**
- * Immutable table mapping `origin -> role -> faceHash`.
+ * Immutable table mapping `origin -> role -> faceHashes`.
  * Updated through evolution records when the model is rebuilt.
+ *
+ * A role usually maps to a single hash, but maps to several after its face
+ * splits (a 1→many `modified` evolution); resolution then disambiguates among
+ * the surviving successors rather than competing against the whole shape.
  */
-type RoleTable = ReadonlyMap<string, ReadonlyMap<string, number>>;
+type RoleTable = ReadonlyMap<string, ReadonlyMap<string, readonly number[]>>;
 
 /** A successfully resolved face reference. */
 interface ResolvedRef {
@@ -5045,6 +5246,123 @@ interface ResolvedRef {
 interface BrokenRef {
     readonly ref: ShapeRef;
     readonly reason: 'deleted' | 'ambiguous' | 'not-found';
+    readonly candidates?: readonly Face[];
+}
+
+/**
+ * Geometric snapshot of an edge — a tiebreaker for the rare case where an edge's
+ * two faces share more than one edge.
+ */
+interface EdgeHint {
+    readonly entityType: 'edge';
+    readonly length?: number | undefined;
+    /** Midpoint of the edge's endpoint vertices. */
+    readonly midpoint?: Vec3 | undefined;
+}
+
+/**
+ * A stable reference to an edge, identified by the roles of its two adjacent
+ * faces — its lineage. An edge *is* the intersection of its two faces, so this
+ * resolves by finding the edge shared by the current faces of those roles
+ * (`sharedEdges`). Identity rides on the already-stable face roles rather than
+ * the edge's own hash, so it survives edits that re-hash the edge — and it
+ * sidesteps the kernel's unreliable `generated`-face hashes entirely.
+ */
+interface EdgeRef {
+    readonly origin: string;
+    /** Roles of the two faces this edge bounds. */
+    readonly faceRoles: readonly [string, string];
+    readonly hint: EdgeHint;
+}
+
+/** A successfully resolved edge reference. */
+interface ResolvedEdgeRef {
+    readonly edge: Edge;
+    readonly confidence: 'exact' | 'geometric-fallback';
+}
+
+/** An edge reference that could not be resolved. */
+interface BrokenEdgeRef {
+    readonly ref: EdgeRef;
+    readonly reason: 'ambiguous' | 'not-found';
+    readonly candidates?: readonly Edge[];
+}
+
+/** Geometric snapshot of a vertex — a tiebreaker when several candidates survive. */
+interface VertexHint {
+    readonly entityType: 'vertex';
+    readonly position?: Vec3 | undefined;
+}
+
+/**
+ * A stable reference to a vertex, identified by the roles of the faces meeting
+ * at it. A solid corner is where **≥3** faces meet at a point; two faces meet
+ * along an *edge* (two endpoints → ambiguous), so a vertex needs ≥3 face-roles.
+ * Resolves by finding the vertex common to those roles' current faces.
+ */
+interface VertexRef {
+    readonly origin: string;
+    /** Roles of the ≥3 faces meeting at this vertex (sorted). */
+    readonly faceRoles: readonly string[];
+    readonly hint: VertexHint;
+}
+
+/** A successfully resolved vertex reference. */
+interface ResolvedVertexRef {
+    readonly vertex: Vertex;
+    readonly confidence: 'exact' | 'geometric-fallback';
+}
+
+/** A vertex reference that could not be resolved. */
+interface BrokenVertexRef {
+    readonly ref: VertexRef;
+    readonly reason: 'ambiguous' | 'not-found';
+    readonly candidates?: readonly Vertex[];
+}
+
+/**
+ * Snapshot for re-deriving a generated face. fillet/chamfer evolution is empty
+ * on the OCCT kernels, so the role table can't track the bridged faces — they
+ * are re-found by their captured outward normals; the edge midpoint breaks ties.
+ */
+interface DerivedFaceHint {
+    readonly entityType: 'derived-face';
+    readonly normalA: Vec3;
+    readonly normalB: Vec3;
+    readonly edgeMidpoint?: Vec3 | undefined;
+}
+
+/**
+ * A reference to a *generated* face — a fillet round or chamfer bevel — named by
+ * the two faces it bridges. The generated face has no stable hash (it didn't
+ * exist at capture time, and fillet evolution is empty), so it's resolved as the
+ * face adjacent to both bridged faces whose normal blends both — the orthogonal
+ * flanking faces are rejected. Lineage-by-neighbors for geometry created by the
+ * very edit being referenced across.
+ */
+interface DerivedFaceRef {
+    readonly origin: string;
+    /**
+     * Which op generated the face — descriptive metadata for consumers. Resolution
+     * is op-agnostic (the normal-blend isolates both a fillet round and a chamfer
+     * bevel), so the resolver doesn't consult it.
+     */
+    readonly op: 'fillet' | 'chamfer';
+    /** Roles of the two faces the generated face bridges. */
+    readonly betweenRoles: readonly [string, string];
+    readonly hint: DerivedFaceHint;
+}
+
+/** A successfully resolved derived-face reference (always geometric). */
+interface ResolvedDerivedFaceRef {
+    readonly face: Face;
+    readonly confidence: 'geometric-fallback';
+}
+
+/** A derived-face reference that could not be resolved. */
+interface BrokenDerivedFaceRef {
+    readonly ref: DerivedFaceRef;
+    readonly reason: 'ambiguous' | 'not-found';
     readonly candidates?: readonly Face[];
 }
 
@@ -5067,19 +5385,22 @@ declare function defaultScorer(hint: GeometricHint, face: Face): number;
 declare function captureHint(face: Face): GeometricHint;
 
 /**
- * Auto-assign role names to the faces of a shape based on operation type.
+ * Auto-assign role names to a shape's faces from its operation type.
  *
- * For 'box': uses face normals to assign cardinal names
- * ('box:top', 'box:bottom', 'box:front', 'box:back', 'box:left', 'box:right').
- * **Note:** Box role detection assumes axis-aligned faces (normal within 0.9 of
- * a cardinal axis). Rotated boxes may receive fewer than 6 named roles; remaining
- * faces fall through to sequential naming.
+ * Known primitives get **semantic** names from face geometry — rebuild-stable
+ * across parameter edits that preserve orientation:
+ * - `box`: cardinal names by normal ('box:top'/'bottom'/'front'/'back'/'left'/'right').
+ * - `cylinder`/`cone` (Z-axis): 'top'/'bottom' caps + 'lateral' wall.
+ * - `sphere`: 'sphere:surface'.
  *
- * For other types: sequential naming ('opType:face_0', 'opType:face_1', ...).
+ * Faces a primitive namer doesn't recognize (a rotated box's non-cardinal faces),
+ * and every face of any other operation type, fall back to positional names
+ * ('opType:face_0', 'opType:face_1', ...) — so each face always gets a role.
  *
- * @returns Map from role name to face hash code
+ * @returns Map from role name to its face hash codes (one at assignment time;
+ *   a role accrues more hashes only later, when `updateRoles` tracks a split).
  */
-declare function assignRoles(shape: Shape3D, operationType: string): Map<string, number>;
+declare function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]>;
 
 /** Create a ShapeRef from an origin ID, role name, and face. */
 declare function createRef(origin: string, role: string, face: Face): ShapeRef;
@@ -5088,14 +5409,17 @@ declare function createRef(origin: string, role: string, face: Face): ShapeRef;
  * Propagate a role table through a ShapeEvolution record.
  * Returns a new RoleTable with hashes updated according to the evolution.
  *
- * - Deleted faces: role removed
- * - Modified faces: hash updated to first result hash
- * - Unchanged faces: hash preserved
+ * - Deleted faces: hash dropped (role removed once all its hashes are gone).
+ * - Modified faces: hash replaced by **all** successor hashes — so a 1→many
+ *   split keeps every fragment, and `resolveRef` disambiguates among them.
+ * - Unchanged faces: hash preserved.
  *
- * **Limitation:** When a face splits (1→many in `evolution.modified`), only the
- * first successor hash is tracked. The geometric fallback in `resolveRef` handles
- * cases where this picks the "wrong" successor. A future version may return
- * multi-hash mappings for split-aware resolution.
+ * Note: `evolution.generated` is intentionally not consumed here — on the OCCT
+ * kernels its hashes refer to an intermediate shape, not the final result, so
+ * naming generated faces produces roles that never resolve (verified: 0 live
+ * generated hashes across cut/fuse on occt-wasm). Stable names for generated
+ * geometry (fillet rounds, boolean seams) need history-fidelity work tracked
+ * separately.
  */
 declare function updateRoles(roles: RoleTable, origin: string, evolution: ShapeEvolution): RoleTable;
 
@@ -5103,12 +5427,123 @@ declare function updateRoles(roles: RoleTable, origin: string, evolution: ShapeE
  * Resolve a ShapeRef to a face in the current shape.
  *
  * Resolution strategy:
- * 1. Exact lookup via role table hash match
- * 2. Geometric fallback using scorer against all faces
- * 3. Ambiguous if multiple faces score within threshold
- * 4. Not-found if no match above minimum score
+ * 1. Exact: the role's tracked successor hashes. One survivor → exact match;
+ *    several survivors (a face that split) → disambiguate among *only those*
+ *    fragments; none survive → deleted.
+ * 2. Geometric fallback over the whole shape when the role isn't tracked (or a
+ *    scoped score turned up nothing): best-scoring face, else ambiguous /
+ *    not-found.
  */
 declare function resolveRef(ref: ShapeRef, roles: RoleTable, currentShape: Shape3D, scorer?: FaceScorer): ResolvedRef | BrokenRef;
+
+/**
+ * Capture a lineage-based reference to `edge`: its two adjacent faces' roles
+ * plus a geometric hint. Returns undefined when the edge doesn't bound two faces
+ * (a boundary/degenerate edge) or when either bounding face has no role yet.
+ */
+declare function createEdgeRef(origin: string, edge: Edge, shape: Shape3D, roles: RoleTable): EdgeRef | undefined;
+
+/**
+ * Resolve an EdgeRef in `shape`: resolve its two face-roles to current faces,
+ * then return the edge they share. One shared edge → exact; several (the two
+ * faces meet along more than one edge) → disambiguate by hint; none, or a
+ * missing bounding face → broken.
+ */
+declare function resolveEdgeRef(ref: EdgeRef, roles: RoleTable, shape: Shape3D): ResolvedEdgeRef | BrokenEdgeRef;
+
+/**
+ * Capture a lineage-based reference to `vertex`: the roles of the ≥3 faces
+ * meeting at it, plus a position hint. Returns undefined when fewer than three
+ * named faces meet there (a 2-face "vertex" is ambiguous — an edge has two).
+ */
+declare function createVertexRef(origin: string, vertex: Vertex, shape: Shape3D, roles: RoleTable): VertexRef | undefined;
+
+/**
+ * Resolve a VertexRef in `shape`: gather the current faces of each role, then
+ * return the vertex common to all of them. One common vertex → exact; several →
+ * disambiguate by hint position; none, or a missing role → broken.
+ */
+declare function resolveVertexRef(ref: VertexRef, roles: RoleTable, shape: Shape3D): ResolvedVertexRef | BrokenVertexRef;
+
+/**
+ * Capture a reference to the face an `op` (fillet/chamfer) will generate across
+ * `edge`: the roles of the edge's two faces, their outward normals, and the edge
+ * midpoint. Call this on the PRE-op shape. Returns undefined when the edge
+ * doesn't bound two named faces.
+ */
+declare function createDerivedFaceRef(origin: string, op: 'fillet' | 'chamfer', edge: Edge, preShape: Shape3D, roles: RoleTable): DerivedFaceRef | undefined;
+
+/**
+ * Resolve a DerivedFaceRef in the post-op `shape`: re-derive the two bridged
+ * faces (role table, else by captured normal), then return the face adjacent to
+ * both whose normal blends both. One survivor → resolved; several →
+ * nearest-to-edge-midpoint; none → broken.
+ */
+declare function resolveDerivedFaceRef(ref: DerivedFaceRef, roles: RoleTable, shape: Shape3D): ResolvedDerivedFaceRef | BrokenDerivedFaceRef;
+
+/** Any of the four lineage reference kinds. */
+type LineageRef = ShapeRef | EdgeRef | VertexRef | DerivedFaceRef;
+
+/** The live entity a lineage ref resolves to. */
+type ResolvedEntity = Face | Edge | Vertex;
+
+/** Why a lineage ref failed to resolve (preserved from the underlying resolver). */
+type BrokenReason = 'ambiguous' | 'not-found' | 'deleted';
+
+/**
+ * Outcome of resolving a lineage ref. Carries the failure `reason` (and any tied
+ * `candidates`) rather than collapsing to undefined, so a replay engine can tell
+ * "deleted by the edit" (expected — skip) from "ambiguous" (warn the author).
+ */
+type LineageResolution = {
+    readonly ok: true;
+    readonly entity: ResolvedEntity;
+} | {
+    readonly ok: false;
+    readonly reason: BrokenReason;
+    readonly candidates?: readonly ResolvedEntity[];
+};
+
+/** A generated-face ref: carries the bridged roles + the op that made it. */
+declare function isDerivedFaceRef(v: unknown): v is DerivedFaceRef;
+
+/** An edge ref: exactly two adjacent face-roles. */
+declare function isEdgeRef(v: unknown): v is EdgeRef;
+
+/** A vertex ref: three or more adjacent face-roles. */
+declare function isVertexRef(v: unknown): v is VertexRef;
+
+/** A face ref: a single role name. */
+declare function isFaceRef(v: unknown): v is ShapeRef;
+
+/** True for any of the four lineage reference kinds. */
+declare function isLineageRef(v: unknown): v is LineageRef;
+
+/**
+ * Resolve a lineage ref against `shape` using a prepared role table (the robust
+ * path — the table is maintained across edits via `updateRoles`). Returns the
+ * live entity on success, or the failure reason (and tied candidates) on failure.
+ */
+declare function resolveLineageRef(ref: LineageRef, roles: RoleTable, shape: Shape3D): LineageResolution;
+
+/**
+ * Resolve a lineage ref against a freshly rebuilt `shape` with no maintained
+ * role table, re-deriving roles via `assignRoles(shape, ref.origin)`. The ref's
+ * `origin` must therefore be the role-assignment scheme (e.g. `'box'`), and
+ * stability is bounded by that scheme — `'box'` names faces semantically
+ * (rebuild-stable); other schemes fall back to positional `face_N`.
+ */
+declare function resolveRefIn(ref: LineageRef, shape: Shape3D): LineageResolution;
+
+/**
+ * Replace every lineage ref in an operation's params with the live entity it
+ * resolves to in `shape`, recursing into arrays (a fillet's edge list) and
+ * nested plain objects (a `{ selection: { edge } }` options bag). Refs that
+ * can't resolve are left as-is. Role tables are re-derived once per `origin` and
+ * reused across the whole params map. Lets a replay engine pass stable entity
+ * selections that survive upstream edits.
+ */
+declare function resolveRefParams(params: Readonly<Record<string, unknown>>, shape: Shape3D): Record<string, unknown>;
 
 interface SurfaceFromGridOptions {
     /** Physical width in X direction. Default: number of columns - 1. */
@@ -5225,8 +5660,9 @@ interface VariableFilletRadius {
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
  *
- * **Cross-kernel note:** Only brepkit supports variable-radius fillet.
- * Returns UNSUPPORTED_CAPABILITY error on OCCT.
+ * **Cross-kernel note:** brepkit supports arbitrary multi-point radius profiles.
+ * occt-wasm supports a linear (start/end, <=2-point) profile and returns
+ * UNSUPPORTED for multi-point; the opencascade.js kernel does not implement it.
  */
 declare function variableFillet(shape: ValidSolid, edge: Edge, radii: ReadonlyArray<VariableFilletRadius>): Result<ValidSolid>;
 
@@ -5591,6 +6027,53 @@ declare function linearPattern(shape: Shape3D, direction: Vec3, count: number, s
  * @returns Fused shape of all copies
  */
 declare function circularPattern(shape: Shape3D, axis: Vec3, count: number, fullAngle?: number, center?: Vec3, options?: BooleanOptions): Result<Shape3D>;
+
+/**
+ * Create a 2D grid pattern of a shape along two directions.
+ *
+ * @param shape - The shape to replicate
+ * @param directionX - First direction vector for the grid
+ * @param directionY - Second direction vector for the grid
+ * @param countX - Number of copies along directionX
+ * @param countY - Number of copies along directionY
+ * @param spacingX - Distance between copies along directionX
+ * @param spacingY - Distance between copies along directionY
+ * @param options - Boolean options for the fuse operation (used in fallback path)
+ * @returns Compound shape containing all copies, or fused result
+ */
+declare function gridPattern(shape: Shape3D, directionX: Vec3, directionY: Vec3, countX: number, countY: number, spacingX: number, spacingY: number, options?: BooleanOptions): Result<Shape3D>;
+
+/** Type guard for an InstancedShape. */
+declare function isInstanced(x: unknown): x is InstancedShape<Dimension>;
+
+interface InstanceGridOptions {
+    readonly cols: number;
+    readonly rows: number;
+    readonly pitchX: number;
+    readonly pitchY: number;
+}
+
+/** Number of placements. */
+declare function instanceCount(inst: InstancedShape<Dimension>): number;
+
+interface MaterializeOptions {
+    /** Fuse the placed copies into a single solid (3D only). Default: false —
+     *  returns a Compound of separate placed parts. */
+    readonly fuse?: boolean;
+}
+
+interface InstancedMesh {
+    /** The source shape meshed ONCE. */
+    readonly geometry: ShapeMesh;
+    /** Per-instance transforms — feed to e.g. three.js InstancedMesh. */
+    readonly instances: ReadonlyArray<Matrix4x4>;
+}
+
+/**
+ * Mesh the source once and return it alongside the placements — the
+ * "one tessellation, N placements" render payload for an instanced draw.
+ */
+declare function instancedMesh(inst: InstancedShape<Dimension>, opts?: MeshOptions): InstancedMesh;
 
 interface AssemblyNode {
     readonly name: string;
@@ -6475,7 +6958,29 @@ interface WorkerRequest {
     /** Unique identifier for correlating requests with responses. */
     readonly id: string;
     /** Discriminant indicating the kind of request. */
-    readonly type: 'init' | 'operation' | 'dispose';
+    readonly type: 'init' | 'operation' | 'dispose' | 'batch';
+}
+
+/** A single operation inside a {@link BatchRequest}. */
+interface BatchOperation {
+    /** Name of the registered operation to invoke. */
+    readonly operation: string;
+    /** BREP-serialized input shapes. */
+    readonly shapesBrep: ReadonlyArray<string>;
+    /** Parameters forwarded to the operation handler. */
+    readonly params: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Outcome of one operation in a batch. Each item carries its own success/error,
+ * so one failing op doesn't discard the others. Returned (as `resultData`) in
+ * the batch's {@link SuccessResponse}.
+ */
+interface BatchItemResult {
+    readonly success: boolean;
+    readonly resultBrep?: string;
+    readonly resultData?: unknown;
+    readonly error?: string;
 }
 
 /** Base interface for all messages sent from a worker back to the main thread. */
@@ -6494,6 +6999,9 @@ declare function isOperationRequest(msg: WorkerRequest): msg is OperationRequest
 
 /** Narrow a {@link WorkerRequest} to a {@link DisposeRequest}. */
 declare function isDisposeRequest(msg: WorkerRequest): msg is DisposeRequest;
+
+/** Narrow a {@link WorkerRequest} to a {@link BatchRequest}. */
+declare function isBatchRequest(msg: WorkerRequest): msg is BatchRequest;
 
 /** Narrow a {@link WorkerResponse} to a {@link SuccessResponse}. */
 declare function isSuccessResponse(msg: WorkerResponse): msg is SuccessResponse;
@@ -6539,11 +7047,6 @@ declare function isEmpty<T>(queue: TaskQueue<T>): boolean;
 /** Reject all pending tasks with the given reason. */
 declare function rejectAll<T>(queue: TaskQueue<T>, reason: unknown): TaskQueue<T>;
 
-/**
- * Worker client for offloading CAD operations to a Web Worker.
- *
- * Provides a promise-based API over the worker message protocol.
- */
 interface WorkerClientOptions {
     /** The Worker instance to communicate with. */
     worker: Worker;
@@ -6562,6 +7065,12 @@ interface WorkerClient {
     init(): Promise<void>;
     /** Execute a named operation with BREP-serialized shapes and parameters. */
     execute(operation: string, shapesBrep: string[], params: Record<string, unknown>): Promise<WorkerResult>;
+    /**
+     * Run several operations in a single message. Resolves with one result per
+     * operation, in order; a failing op yields `{ success: false, error }` rather
+     * than rejecting the whole batch (unlike a worker pool's `executeBatch`).
+     */
+    executeBatch(operations: ReadonlyArray<BatchOperation>): Promise<BatchItemResult[]>;
     /** Dispose the client, rejecting all pending operations. */
     dispose(): void;
 }
@@ -6593,6 +7102,55 @@ declare function registerHandler(registry: OperationRegistry, name: string, hand
  * @param initFn - Async function called on InitRequest (e.g., to load WASM).
  */
 declare function createWorkerHandler(registry: OperationRegistry, initFn: (wasmUrl?: string) => Promise<void>): void;
+
+interface WorkerPoolOptions {
+    /** The Worker instances to pool over; each is wrapped in a WorkerClient. */
+    workers: Worker[];
+    /** Optional URL for the WASM binary, forwarded to every worker on init. */
+    wasmUrl?: string;
+}
+
+/** A single operation for {@link WorkerPool.executeBatch}. */
+interface WorkerOperation {
+    /** Name of the registered operation to invoke. */
+    operation: string;
+    /** BREP-serialized input shapes. */
+    shapesBrep: string[];
+    /** Parameters forwarded to the operation handler. */
+    params: Record<string, unknown>;
+}
+
+interface WorkerPool {
+    /** Number of workers in the pool. */
+    readonly size: number;
+    /**
+     * Initialize every worker (load WASM) in parallel. Atomic: if any worker
+     * fails, the pool disposes every worker and rejects with the original error,
+     * leaving the pool in a terminal disposed state.
+     */
+    init(): Promise<void>;
+    /** Run one operation on the least-loaded worker. */
+    execute(operation: string, shapesBrep: string[], params: Record<string, unknown>): Promise<WorkerResult>;
+    /**
+     * Run a batch of independent operations, fanned across the pool concurrently.
+     * Resolves with results in the same order as `operations`.
+     */
+    executeBatch(operations: ReadonlyArray<WorkerOperation>): Promise<WorkerResult[]>;
+    /** In-flight task count per worker, indexed as the pool was constructed. */
+    inFlight(): readonly number[];
+    /** Dispose every worker, rejecting all pending and future operations. Idempotent. */
+    dispose(): void;
+}
+
+/**
+ * Create a worker pool over the given Worker instances.
+ *
+ * Dispatch is least-loaded: each operation goes to the worker with the fewest
+ * in-flight tasks (ties resolve to the first). The count is bumped synchronously
+ * at dispatch, so a burst of calls spreads across workers rather than piling
+ * onto one. Under uniform op cost this degrades to round-robin.
+ */
+declare function createWorkerPool(options: WorkerPoolOptions): WorkerPool;
 
 /**
  * Structural type matching a Drawing's wire-producing interface.
@@ -7087,7 +7645,7 @@ interface RevolveOptions {
     axis?: Vec3;
     /** Pivot point. Default: [0, 0, 0]. */
     at?: Vec3;
-    /** Rotation angle in degrees. Default: 360 (full revolution). */
+    /** Rotation angle in **radians**. Default: 2π (full revolution). */
     angle?: number;
 }
 
@@ -7420,10 +7978,13 @@ declare class OcctWasmAdapter implements KernelAdapter {
         delete(): void;
     }): void;
     executeBatch(_json: string): string;
+    private readonly openCheckpoints;
     checkpoint(): number;
     checkpointCount(): number;
-    restoreCheckpoint(_cp: number): void;
-    discardCheckpoint(_cp: number): void;
+    restoreCheckpoint(cp: number): void;
+    discardCheckpoint(cp: number): void;
+    /** Drop `cp` and any marks nested inside it (LIFO), so the depth stays honest. */
+    private closeCheckpoint;
     makeBox(width: number, height: number, depth: number): KernelShape;
     makeCylinder(radius: number, height: number, center?: [number, number, number], direction?: [number, number, number]): KernelShape;
     makeSphere(radius: number, center?: [number, number, number]): KernelShape;
@@ -7547,6 +8108,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
         dispose: () => void;
     };
     transform(shape: KernelShape, trsf: KernelType): KernelShape;
+    locate(shape: KernelShape, trsf: KernelType): KernelShape;
     translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
     rotate(shape: KernelShape, angle: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): KernelShape;
     mirror(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number]): KernelShape;
@@ -7646,7 +8208,10 @@ declare class OcctWasmAdapter implements KernelAdapter {
     isSame(a: KernelShape, b: KernelShape): boolean;
     isEqual(a: KernelShape, b: KernelShape): boolean;
     downcast(shape: KernelShape, type?: ShapeType): KernelShape;
+    copyShape(shape: KernelShape): KernelShape;
     hashCode(shape: KernelShape, upperBound: number): number;
+    subShapeCount(shape: KernelShape, type: ShapeType): number;
+    subShapeHashes(shape: KernelShape, type: ShapeType, hashUpperBound: number): number[];
     isNull(shape: KernelShape): boolean;
     shapeOrientation(shape: KernelShape): ShapeOrientation;
     edgeToFaceMap(shape: KernelShape): string;
@@ -7705,7 +8270,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
         origin: [number, number, number];
         direction: [number, number, number];
     } | null;
-    reverseSurfaceU(_surface: KernelType): KernelType;
+    reverseSurfaceU(surface: KernelType): KernelType;
     detectSmallFeatures(_shape: KernelShape, _areaThreshold: number, _tolerance: number): KernelShape[];
     recognizeFeatures(_shape: KernelShape, _tolerance: number): string;
     projectEdges(shape: KernelShape, cameraOrigin: [number, number, number], cameraDirection: [number, number, number], cameraXAxis?: [number, number, number]): {
@@ -7728,7 +8293,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     removeDegenerateEdges(shape: KernelShape, tolerance: number): number;
     fixFaceOrientations(shape: KernelShape): number;
     fixShape(shape: KernelShape): KernelShape;
-    fixSelfIntersection(_wire: KernelShape): KernelShape;
+    fixSelfIntersection(wire: KernelShape): KernelShape;
     createPoint2d(x: number, y: number): KernelType;
     createDirection2d(x: number, y: number): KernelType;
     createVector2d(x: number, y: number): KernelType;
@@ -7827,7 +8392,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     liftCurve2dToPlane(curve: Curve2dHandle, planeOrigin: [number, number, number], planeZ: [number, number, number], planeX: [number, number, number]): KernelShape;
     buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape;
     extractSurfaceFromFace(face: KernelShape): KernelType;
-    extractCurve2dFromEdge(_edge: KernelShape, _face: KernelShape): Curve2dHandle;
+    extractCurve2dFromEdge(edge: KernelShape, face: KernelShape): Curve2dHandle;
     buildCurves3d(wire: KernelShape): void;
     fixWireOnFace(wire: KernelShape, face: KernelShape, tolerance: number): KernelShape;
     fillSurface(_wires: KernelShape[], _options?: {
@@ -8067,6 +8632,9 @@ declare class CompoundBlueprint implements DrawingInterface {
      * @throws BrepBugError if the array is empty (use {@link createCompoundBlueprint} for Result-based validation).
      */
     constructor(blueprints: Blueprint[]);
+    /** Release the resources held by every child blueprint and the cached bounding box. */
+    delete(): void;
+    [Symbol.dispose](): void;
     /** Return a deep copy of this compound blueprint and all its children. */
     clone(): CompoundBlueprint;
     /** Compute (and cache) the combined bounding box of all child blueprints. */
@@ -8130,6 +8698,9 @@ declare class Blueprints implements DrawingInterface {
     protected _boundingBox: BoundingBox2d | null;
     /** Create a collection from an array of blueprints and/or compound blueprints. */
     constructor(blueprints: Array<Blueprint | CompoundBlueprint>);
+    /** Release the resources held by every child blueprint and the cached bounding box. */
+    delete(): void;
+    [Symbol.dispose](): void;
     /** Return a multi-line debug representation of every child blueprint. */
     get repr(): string;
     /** Return a deep copy of this collection and all its children. */
@@ -8452,7 +9023,15 @@ declare class CompoundSketch implements SketchInterface {
     get outerSketch(): Sketch;
     /** Get the hole sketches (all but the first). */
     get innerSketches(): Sketch[];
-    /** Return all wires (outer + holes) combined into a compound shape. */
+    /**
+     * All wires (outer + holes) combined into a compound shape.
+     *
+     * @remarks Allocates a **fresh** compound on every access (via `makeCompound`)
+     * — it is a caller-owned kernel resource, not a cheap accessor. Dispose the
+     * returned compound (`using`/`.delete()` → `Symbol.dispose`) or it leaks an
+     * arena slot on arena kernels. The sub-sketch wires themselves belong to this
+     * CompoundSketch and are freed with it.
+     */
     get wires(): import('../core/shapeTypes.js').Compound;
     /** Build a face from the outer boundary with inner wires subtracted as holes. */
     face(): Face;
@@ -8513,7 +9092,13 @@ declare class Sketches implements SketchInterface {
     loftWith(otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
     /** Sweep a profile along the sole contained sketch's wire. */
     sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => SketchInterface, sweepConfig?: SweepOptions): Shape3D;
-    /** Return all wires combined into a single compound shape. */
+    /**
+     * All contour wires combined into a single compound shape.
+     *
+     * @remarks Allocates a **fresh** compound on every call — the result is a
+     * caller-owned kernel resource. Dispose it (`using`/`Symbol.dispose`) or it
+     * leaks an arena slot on arena kernels.
+     */
     wires(): Compound;
     /** Return all sketch faces combined into a single compound shape. */
     faces(): Compound;
@@ -8776,12 +9361,29 @@ declare function iterVertices<D extends Dimension>(shape: AnyShape<D>): Generato
 declare function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge<D>): Face<D>[];
 
 /**
+ * Get all faces meeting at a vertex (≥3 for a solid corner, fewer on a
+ * boundary), via the cached vertex→faces map. The vertex equivalent of
+ * {@link facesOfEdge}, with the same hash-bucket + isSame verification.
+ *
+ * @param parent - The parent shape to search within.
+ * @param vertex - The vertex whose adjacent faces to find.
+ */
+declare function facesOfVertex<D extends Dimension>(parent: AnyShape<D>, vertex: Vertex<D>): Face<D>[];
+
+/**
  * Get all edges bounding a face.
  *
  * @param face - The face whose edges to enumerate.
  * @returns Array of unique edges forming the face boundary.
  */
 declare function edgesOfFace<D extends Dimension>(face: Face<D>): Edge<D>[];
+
+/**
+ * Get all vertices of a face. The vertex equivalent of {@link edgesOfFace}.
+ *
+ * @param face - The face whose vertices to enumerate.
+ */
+declare function verticesOfFace<D extends Dimension>(face: Face<D>): Vertex<D>[];
 
 /**
  * Get all wires of a face (outer wire + inner hole wires).
@@ -8813,6 +9415,10 @@ declare function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: F
 
 /**
  * Get all edges shared between two faces.
+ *
+ * Prefers the kernel's native `sharedEdges` (computed from its internal
+ * edge-to-face adjacency) and falls back to {@link sharedEdgesJS} on kernels
+ * that don't implement it. Both return fresh, caller-owned edge handles.
  *
  * @param face1 - The first face.
  * @param face2 - The second face.
@@ -8861,6 +9467,37 @@ declare function healWire<D extends Dimension>(wire: Wire<D>, face?: Face<D>): R
  * Fixes orientations, missing curves, and other common issues.
  */
 declare function fixShape<D extends Dimension>(shape: AnyShape<D>): Result<AnyShape<D>>;
+
+/**
+ * One source shape replicated across N placements. Not a kernel-backed shape
+ * (no `.wrapped`) — an app-level container that owns the single source handle.
+ */
+interface InstancedShape<D extends Dimension = '3D'> extends Disposable {
+    readonly __instanced: true;
+    /** The single shared source shape (owned — disposed with this container). */
+    readonly source: AnyShape<D>;
+    /** Per-instance world transforms (row-major 4x4). */
+    readonly placements: ReadonlyArray<Matrix4x4>;
+    /** Present when built by `instanceGrid` — enables the gridPattern fuse path. */
+    readonly grid?: GridSpec | undefined;
+    [Symbol.dispose](): void;
+}
+
+/**
+ * Instance a shape across explicit placements. `Vec3[]` is translate-only sugar
+ * for `Matrix4x4[]`. The source is owned by the returned container.
+ */
+declare function instance<D extends Dimension>(source: AnyShape<D>, placements: readonly Matrix4x4[] | readonly Vec3[]): InstancedShape<D>;
+
+/** Instance a shape across a cols x rows grid in the XY plane. */
+declare function instanceGrid<D extends Dimension>(source: AnyShape<D>, opts: InstanceGridOptions): InstancedShape<D>;
+
+/**
+ * Produce real geometry: a Compound of N placed copies (default), or a single
+ * fused solid (`fuse: true`, 3D only). This is where the N kernel transforms
+ * happen. A grid-built instance fuses via the faster kernel `gridPattern`.
+ */
+declare function materialize<D extends Dimension>(inst: InstancedShape<D>, opts?: MaterializeOptions): Result<AnyShape<Dimension>>;
 
 /**
  * Remove holes from a face by rebuilding it from only the outer wire.
@@ -8958,6 +9595,17 @@ declare function mirrorJoin<T extends Shape3D>(shape: Shapeable<T>, options?: Mi
  */
 declare function rectangularPattern<T extends Shape3D>(shape: Shapeable<T>, options: RectangularPatternOptions): Result<T>;
 
+/** Options for {@link meshLODsProgressive}. */
+interface MeshLODsProgressiveOptions extends MeshLODsOptions {
+    /**
+     * Called as each level finishes, coarsest first, so a viewer can show the
+     * coarse preview immediately and swap in finer meshes as they arrive.
+     */
+    readonly onLevel?: (level: LODMesh, index: number) => void;
+    /** How to mesh one level. Defaults to the synchronous main-thread {@link mesh}. */
+    readonly meshLevel?: MeshLevelFn;
+}
+
 /** BufferGeometry data with per-face material groups. */
 interface GroupedBufferGeometryData extends BufferGeometryData {
     /** Face groups for use with THREE.BufferGeometry.addGroup(). */
@@ -9033,6 +9681,17 @@ interface OperationRequest extends WorkerRequest {
 /** Request to dispose the worker, releasing all resources. */
 interface DisposeRequest extends WorkerRequest {
     readonly type: 'dispose';
+}
+
+/**
+ * Request to run several operations in a single message, instead of one
+ * message per op. Cuts per-message round-trip + serialization overhead when a
+ * caller has many small ops for one worker.
+ */
+interface BatchRequest extends WorkerRequest {
+    readonly type: 'batch';
+    /** Operations to run, in order. */
+    readonly operations: ReadonlyArray<BatchOperation>;
 }
 
 /** Response indicating that the requested operation completed successfully. */
@@ -9149,6 +9808,14 @@ declare function applyMatrix<T extends AnyShape<Dimension>>(shape: Shapeable<T>,
  * Much faster than separate clone() + translate() + rotate() calls for batch patterns.
  */
 declare function transformCopy<T extends AnyShape<Dimension>>(shape: Shapeable<T>, composed: transforms.ComposedTransform): T;
+
+/**
+ * Placement-only rigid move (translate / rotate) via the kernel's cheap location
+ * re-tag — O(1) on occt-wasm ≥3.6.0, falling back to a copy elsewhere. Same
+ * face-metadata guarantee as `translate`, at location-swap cost. Ideal for
+ * placing one cached cell at N positions without paying for N deep copies.
+ */
+declare function locate<T extends AnyShape<Dimension>>(shape: Shapeable<T>, placement: transforms.TransformOp | readonly transforms.TransformOp[]): T;
 
 /** Heal a shape using the appropriate fixer. */
 declare function heal<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T>;

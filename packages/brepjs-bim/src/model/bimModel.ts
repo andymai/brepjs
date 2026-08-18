@@ -206,10 +206,12 @@ export class BimModel {
     return ok(id);
   }
 
-  addSpace(spec: SpaceSpec): Result<LocalId, BimError> {
+  addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = spaceToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('SPACE', spec, geomResult.value);
+    const id = this.#makeElement('SPACE', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -226,28 +228,37 @@ export class BimModel {
     return ok(id);
   }
 
-  addCurtainWall(spec: CurtainWallSpec): Result<LocalId, BimError> {
+  addCurtainWall(
+    spec: CurtainWallSpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const gridResult = curtainWallToGrid(spec);
     if (!gridResult.ok) return err(gridResult.error);
-    const id = this.#makeElement('CURTAIN_WALL', spec, gridResult.value);
+    const id = this.#makeElement('CURTAIN_WALL', spec, gridResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
   }
 
-  addFooting(spec: FootingSpec): Result<LocalId, BimError> {
+  addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = footingToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('FOOTING', spec, geomResult.value);
+    const id = this.#makeElement('FOOTING', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
   }
 
-  addPile(spec: PileSpec): Result<LocalId, BimError> {
+  addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = pileToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('PILE', spec, geomResult.value);
+    const id = this.#makeElement('PILE', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -280,10 +291,12 @@ export class BimModel {
     return ok(id);
   }
 
-  addRailing(spec: RailingSpec): Result<LocalId, BimError> {
+  addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = railingToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('RAILING', spec, geomResult.value);
+    const id = this.#makeElement('RAILING', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -294,10 +307,16 @@ export class BimModel {
    * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
    * finishes) is recorded for export.
    */
-  addCovering(spec: CoveringSpec, hostLocalId?: LocalId): Result<LocalId, BimError> {
+  addCovering(
+    spec: CoveringSpec,
+    hostLocalId?: LocalId,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = coveringToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('COVERING', spec, geomResult.value);
+    const id = this.#makeElement('COVERING', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     if (hostLocalId !== undefined) {
@@ -513,11 +532,13 @@ export class BimModel {
    * and disposes it on model disposal; the caller must not dispose it (see
    * {@link ProxySpec.solid}).
    */
-  addProxy(spec: ProxySpec): Result<LocalId, BimError> {
+  addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     if (spec.solid === null || spec.solid === undefined) {
       return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
     }
-    const id = this.#makeElement('PROXY', spec, spec.solid);
+    const id = this.#makeElement('PROXY', spec, spec.solid, options?.stableKey);
     if (spec.materialName !== undefined) {
       this.#makeRel<AssociatesMaterialRel>({
         kind: 'ASSOCIATES_MATERIAL',
