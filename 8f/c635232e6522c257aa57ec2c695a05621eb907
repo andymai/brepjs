@@ -1,0 +1,62 @@
+packages/brepjs-sheetmetal/package.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 3
+packages/brepjs-cad/package.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 3
+.github/workflows/publish-brepjs-families.yml
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-41
+tests/fixtures/cliRegistry/manifest.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-22
+packages/brepjs-sheetmetal/CHANGELOG.md
+  s_951c9e48d7e90e::t_e559e4739d91d5 3-9
+packages/brepjs-families/src/resolve.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 70-73,79-96,98-100
+release-please-config.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 51-62,65-67
+packages/brepjs-families/tests/families.test.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 360-424
+.release-please-manifest.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 2,5-9
+packages/create-brepjs/package.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 3
+packages/brepjs-cad/CHANGELOG.md
+  s_951c9e48d7e90e::t_e559e4739d91d5 3-122
+CHANGELOG.md
+  s_951c9e48d7e90e::t_e559e4739d91d5 3-24
+tests/cliFamilies.test.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-224
+packages/brepjs-bim/tests/familiesRoundTrip.test.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-123
+.github/workflows/release-please.yml
+  s_951c9e48d7e90e::t_e559e4739d91d5 41-44,77-80,115-121,139-143,149-150,240-276
+  s_951c9e48d7e90e::t_dbbc6d59459911 277
+.github/workflows/publish-create-brepjs.yml
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-41
+bin/brepjs.mjs
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-310
+packages/create-brepjs/CHANGELOG.md
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-8
+package.json
+  s_951c9e48d7e90e::t_e559e4739d91d5 3,210-212,214-215
+tests/fixtures/cliRegistry/families/alpha.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-2
+tests/fixtures/cliRegistry/families/beta.ts
+  s_951c9e48d7e90e::t_e559e4739d91d5 1-2
+package-lock.json
+  s_951c9e48d7e90e::t_ec67855cc639d4 3,9,7173,15084,15101,15105,15109,15113,15245,15248,15252,15276,15293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8fc635232e6522c257aa57ec2c695a05621eb907",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
