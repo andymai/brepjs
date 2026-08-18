@@ -306,6 +306,14 @@ export default withMermaid(
           ],
         },
         {
+          text: 'Declarative Models',
+          items: [
+            { text: 'Why a Family Layer', link: '/families/overview' },
+            { text: 'Your First Building', link: '/families/first-building' },
+            { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
+          ],
+        },
+        {
           text: 'Advanced',
           items: [
             { text: 'Memory Management', link: '/advanced/memory' },
