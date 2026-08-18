@@ -1,0 +1,32 @@
+apps/docs/families/props-and-validation.md
+  s_951c9e48d7e90e::t_b19f875c927714 1-106
+apps/docs/.vitepress/config.ts
+  s_951c9e48d7e90e::t_a4752a9ae8ccff 314-316
+apps/docs/families/ifc-export.md
+  s_951c9e48d7e90e::t_8a779fc6fc4d27 1-79
+apps/docs/families/openings.md
+  s_951c9e48d7e90e::t_46f72c5a4658ed 15,45-49,73-81
+  s_951c9e48d7e90e::t_12d391921ed46b 1-14,16-44,50-72,82-101
+  s_951c9e48d7e90e::t_46e8ea34281f5f 102-105
+apps/docs/families/overview.md
+  s_951c9e48d7e90e::t_a4752a9ae8ccff 45-47,76
+  s_951c9e48d7e90e::t_b645754dfcb891 41-44
+apps/docs/families/identity.md
+  s_951c9e48d7e90e::t_a4752a9ae8ccff 52,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3a554bd984ce798f69794e73f01397851c1968e6",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
