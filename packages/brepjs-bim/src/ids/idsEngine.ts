@@ -543,17 +543,28 @@ function matchValue(candidate: TypedValue, restriction: IdsRestriction): boolean
   return true;
 }
 
+const BOOLEAN_LEXICALS: Readonly<Record<string, string>> = {
+  TRUE: 'true',
+  FALSE: 'false',
+  T: 'true',
+  F: 'false',
+};
+
 function matchLiteral(candidate: TypedValue, literal: string): boolean {
   if (candidate.num !== undefined) {
     const v = Number(literal);
     return !Number.isNaN(v) && numEq(candidate.num, v);
   }
   if (candidate.text === undefined) return false;
-  if (candidate.typeName === 'IFCBOOLEAN' || candidate.typeName === 'IFCLOGICAL') {
+  const isBooleanTag = candidate.typeName === 'IFCBOOLEAN' || candidate.typeName === 'IFCLOGICAL';
+  // Untagged enum-form booleans surface as bare .T./.F. lexicals; when the IDS
+  // literal is a lowercase boolean, map them rather than comparing raw text.
+  if (
+    isBooleanTag ||
+    ((literal === 'true' || literal === 'false') && candidate.text in BOOLEAN_LEXICALS)
+  ) {
     // Booleans are specified as lowercase strings; UNKNOWN never matches.
-    return (
-      (candidate.text === 'TRUE' ? 'true' : candidate.text === 'FALSE' ? 'false' : '') === literal
-    );
+    return (BOOLEAN_LEXICALS[candidate.text] ?? '') === literal;
   }
   return candidate.text === literal;
 }
@@ -562,7 +573,16 @@ function matchString(candidate: string, restriction: IdsRestriction): boolean {
   return matchValue({ text: candidate, num: undefined, typeName: undefined }, restriction);
 }
 
+// Bounds on untrusted xs:pattern execution: JS regexes have no timeout, so a
+// backtracking-heavy pattern against a long value could block the thread.
+// Oversize inputs simply fail to match.
+const MAX_PATTERN_LENGTH = 512;
+const MAX_PATTERN_CANDIDATE_LENGTH = 4096;
+
 function safePatternTest(pattern: string, candidate: string): boolean {
+  if (pattern.length > MAX_PATTERN_LENGTH || candidate.length > MAX_PATTERN_CANDIDATE_LENGTH) {
+    return false;
+  }
   try {
     return new RegExp(`^(?:${pattern})$`, 'u').test(candidate);
   } catch {
