@@ -40,7 +40,7 @@ const config: KnipConfig = {
     // examples/ holds runnable demos (entry points, not imported by src); the
     // IfcOpenShell validator under scripts/ is Python. src/ stays fully checked.
     'packages/brepjs-bim': {
-      ignore: ['examples/**'],
+      ignore: ['examples/**', 'scripts/**'],
     },
     'packages/brepjs-opencascade': {
       ignore: ['**'],
