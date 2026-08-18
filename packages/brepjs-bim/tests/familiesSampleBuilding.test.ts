@@ -58,9 +58,7 @@ describe('families sample building (Phase 6 gate)', () => {
     const scope = SAMPLE_PROJECT.projectId;
     expect(ifc).toContain(deriveIfcGuidSync(`elem:${scope}:office/ground/south`));
     expect(ifc).toContain(deriveIfcGuidSync(`elem:${scope}:office/ground/east/voids:door-1`));
-    expect(ifc).toContain(
-      deriveIfcGuidSync(`elem:${scope}:office/ground/south/voids:win-1/fill`)
-    );
+    expect(ifc).toContain(deriveIfcGuidSync(`elem:${scope}:office/ground/south/voids:win-1/fill`));
     expect(ifc).toContain(deriveIfcGuidSync(`elem:${scope}:office/first/floor`));
   });
 
@@ -108,9 +106,7 @@ describe('families sample building (Phase 6 gate)', () => {
             thickness: 200,
             axisX: [0, 1, 0],
             materialName: 'Concrete',
-            voids: [
-              YDoor({ key: 'd', along, width: 1000, height: 2100, materialName: 'Timber' }),
-            ],
+            voids: [YDoor({ key: 'd', along, width: 1000, height: 2100, materialName: 'Timber' })],
           }),
         ],
       });
@@ -126,10 +122,7 @@ describe('families sample building (Phase 6 gate)', () => {
 
   it('matches the committed fixture (regenerate via the example script on change)', async () => {
     const fixture = await readFile(
-      join(
-        dirname(fileURLToPath(import.meta.url)),
-        '../examples/sample-building-families.ifc'
-      ),
+      join(dirname(fileURLToPath(import.meta.url)), '../examples/sample-building-families.ifc'),
       'utf8'
     );
     const stripHeader = (s: string): string =>

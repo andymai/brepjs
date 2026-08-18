@@ -72,8 +72,7 @@ describe('qtoWeights — quantity builder', () => {
     const w = {
       nextId: () => 1,
       mkType: (type: number, value: unknown) => ({ type, value }),
-      writeLine: (entity: { expressID: number } & Record<string, unknown>) =>
-        entity.expressID,
+      writeLine: (entity: { expressID: number } & Record<string, unknown>) => entity.expressID,
     };
     writeWeightQuantity(w, 'GrossWeight', 1, 2400);
     expect(warn).not.toHaveBeenCalled();

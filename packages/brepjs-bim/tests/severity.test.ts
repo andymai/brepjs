@@ -45,10 +45,7 @@ describe('severity model', () => {
     });
 
     it('appendIssues appends many without mutating the original', () => {
-      const base: ValidationReport = appendIssue(
-        emptyReport(),
-        issue('info', 'NOTE', 'first'),
-      );
+      const base: ValidationReport = appendIssue(emptyReport(), issue('info', 'NOTE', 'first'));
       const more: readonly ValidationIssue[] = [
         issue('error', 'A', 'a'),
         issue('warning', 'B', 'b'),

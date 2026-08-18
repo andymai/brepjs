@@ -129,9 +129,8 @@ describe('classificationWriter', () => {
     const rel = api.GetLine(mid, relIds.get(0)) as Record<string, unknown>;
     const related = (rel['RelatedObjects'] ?? []) as Array<{ value: number }>;
     expect(related.map((r) => r.value)).toContain(wall);
-    const relatingClassification = (
-      rel['RelatingClassification'] as { value?: number } | undefined
-    )?.value;
+    const relatingClassification = (rel['RelatingClassification'] as { value?: number } | undefined)
+      ?.value;
     expect(relatingClassification).toBe(refIds.get(0));
 
     // The rel carries a valid 22-char deterministic GlobalId.

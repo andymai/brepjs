@@ -2,10 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { measureArea } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
-import {
-  extendedProfileToFace,
-  extendedProfileArea,
-} from '../src/specs/profilesExtended.js';
+import { extendedProfileToFace, extendedProfileArea } from '../src/specs/profilesExtended.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeExtendedProfileDef } from '../src/ifc-writer/profileDefWriter.js';

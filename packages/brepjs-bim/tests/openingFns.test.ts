@@ -6,8 +6,12 @@ import { openingToSolid } from '../src/elementFns/openingFns.js';
 
 describe('parseDoorSpec', () => {
   const BASE = {
-    width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
-    wallLocalId: 1, materialName: 'Wood',
+    width: 900,
+    height: 2100,
+    offsetAlongWall: 500,
+    offsetFromFloor: 0,
+    wallLocalId: 1,
+    materialName: 'Wood',
   };
 
   it('accepts minimal valid door spec', () => {
@@ -16,7 +20,12 @@ describe('parseDoorSpec', () => {
   });
 
   it('accepts optional Pset fields', () => {
-    const result = parseDoorSpec({ ...BASE, isExternal: true, fireRating: 'EI60', acousticRating: 'Rw 35' });
+    const result = parseDoorSpec({
+      ...BASE,
+      isExternal: true,
+      fireRating: 'EI60',
+      acousticRating: 'Rw 35',
+    });
     expect(result.ok).toBe(true);
   });
 
@@ -38,8 +47,12 @@ describe('parseDoorSpec', () => {
 
 describe('parseWindowSpec', () => {
   const BASE = {
-    width: 1200, height: 1400, offsetAlongWall: 1000, offsetFromFloor: 900,
-    wallLocalId: 1, materialName: 'Aluminum',
+    width: 1200,
+    height: 1400,
+    offsetAlongWall: 1000,
+    offsetFromFloor: 900,
+    wallLocalId: 1,
+    materialName: 'Aluminum',
   };
 
   it('accepts minimal valid window spec', () => {

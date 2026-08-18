@@ -90,7 +90,9 @@ describe('ownerHistoryWriter', () => {
     const appIds = api.GetLineIDsWithType(mid, WebIFC.IFCAPPLICATION);
     expect(appIds.size()).toBe(1);
     const app = api.GetLine(mid, appIds.get(0)) as Record<string, unknown>;
-    expect((app['ApplicationFullName'] as { value?: string } | undefined)?.value).toBe('My CAD App');
+    expect((app['ApplicationFullName'] as { value?: string } | undefined)?.value).toBe(
+      'My CAD App'
+    );
     expect((app['Version'] as { value?: string } | undefined)?.value).toBe('3.1.4');
 
     api.CloseModel(mid);

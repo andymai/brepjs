@@ -14,6 +14,7 @@ export const BIM_EXAMPLES: readonly Example[] = [
       'A parametric structural-steel wide-flange (I-beam) authored through a BimModel, complete with the rolled root fillets where the web meets the flanges. The element carries a brepjs solid for display and the model serializes to IFC.',
     code: `import { BimModel } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
+import { unwrap } from 'brepjs/quick';
 
 // A parametric structural-steel I-beam authored through the BIM model (it also
 // serializes to IFC via toIfc(model)). filletRadius adds the rolled root fillets
@@ -24,9 +25,9 @@ model.init({ name: 'Beam example' });
 
 // Spatial structure — what makes this a BIM model, not just geometry.
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Site' });
-const buildingId = model.addBuilding({ name: 'Building' });
-const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
@@ -62,6 +63,7 @@ export default present(model.getBeams()[0].geometry, {
       'A parametric wall hosting a door and a window, placed in a project → site → building → storey spatial structure. The BIM panel shows the live IFC model tree.',
     code: `import { BimModel, toIfc } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
+import { unwrap } from 'brepjs/quick';
 
 // A parametric wall hosting a door and a window, organised into a real IFC
 // spatial structure (project → site → building → storey). Each opening is a void
@@ -72,9 +74,9 @@ model.init({ name: 'Wall example' });
 
 // Spatial structure — what makes this a BIM model, not just geometry.
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Site' });
-const buildingId = model.addBuilding({ name: 'Building' });
-const storeyId = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
@@ -136,7 +138,7 @@ export default present(model.getWalls()[0].geometry, {
       'A parametric curtain-wall facade — a grid of glazing panels framed by vertical and horizontal mullions, each placed from its IFC local origin.',
     code: `import { BimModel } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
-import { translate } from 'brepjs/quick';
+import { translate, unwrap } from 'brepjs/quick';
 
 // A parametric curtain wall: a columns x rows grid of glazing panels framed by
 // mullions. The model returns each panel and mullion as a local-origin solid
@@ -147,9 +149,9 @@ model.init({ name: 'Curtain wall' });
 
 // Spatial structure — what makes this a BIM model, not just geometry.
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Site' });
-const buildingId = model.addBuilding({ name: 'Building' });
-const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
@@ -191,9 +193,9 @@ import { color, present } from 'brepjs/playground';
 // A two-bay steel frame: 3x2 columns, a beam grid over their heads, a floor deck.
 const model = new BimModel();
 model.init({ name: 'Steel frame' });
-const site = model.addSite({ name: 'Site' });
-const building = model.addBuilding({ name: 'Building' });
-const storey = model.addStorey({ name: 'Level 1', elevation: 0 });
+const site = unwrap(model.addSite({ name: 'Site' }));
+const building = unwrap(model.addBuilding({ name: 'Building' }));
+const storey = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, site);
 model.aggregate(site, building);
@@ -227,7 +229,7 @@ const deck = model.addSlab({ length: SPAN_X, width: SPAN_Y, thickness: 150, orig
 if (!deck.ok) throw deck.error;
 model.placeIn(deck.value, storey);
 
-const assembly = model.addElementAssembly({ name: 'Frame' });
+const assembly = unwrap(model.addElementAssembly({ name: 'Frame' }));
 for (const e of [...model.getColumns(), ...model.getBeams(), ...model.getSlabs()]) model.aggregate(assembly, e.localId);
 
 // Playground runtime owns the displayed geometry for this eval; snippets don't dispose it.
@@ -257,9 +259,9 @@ import { color, present } from 'brepjs/playground';
 // corners, a door + two windows, a gable roof seated on the wall heads, + an IfcSpace.
 const model = new BimModel();
 model.init({ name: 'Building shell' });
-const site = model.addSite({ name: 'Site' });
-const building = model.addBuilding({ name: 'Building' });
-const storey = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+const site = unwrap(model.addSite({ name: 'Site' }));
+const building = unwrap(model.addBuilding({ name: 'Building' }));
+const storey = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, site);
 model.aggregate(site, building);
@@ -338,9 +340,9 @@ import { color, present } from 'brepjs/playground';
 // landing. Each flight is a real stepped solid read back via placedSolids().
 const model = new BimModel();
 model.init({ name: 'Stair core' });
-const site = model.addSite({ name: 'Site' });
-const building = model.addBuilding({ name: 'Building' });
-const storey = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+const site = unwrap(model.addSite({ name: 'Site' }));
+const building = unwrap(model.addBuilding({ name: 'Building' }));
+const storey = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, site);
 model.aggregate(site, building);
@@ -412,9 +414,9 @@ import { present } from 'brepjs/playground';
 
 const model = new BimModel();
 model.init({ name: 'Roof gallery' });
-const site = model.addSite({ name: 'Site' });
-const building = model.addBuilding({ name: 'Building' });
-const storey = model.addStorey({ name: 'Level', elevation: 0 });
+const site = unwrap(model.addSite({ name: 'Site' }));
+const building = unwrap(model.addBuilding({ name: 'Building' }));
+const storey = unwrap(model.addStorey({ name: 'Level', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, site);
 model.aggregate(site, building);
@@ -452,9 +454,9 @@ import { color, present } from 'brepjs/playground';
 
 const model = new BimModel();
 model.init({ name: 'Space' });
-const site = model.addSite({ name: 'Site' });
-const building = model.addBuilding({ name: 'Building' });
-const storey = model.addStorey({ name: 'Level', elevation: 0 });
+const site = unwrap(model.addSite({ name: 'Site' }));
+const building = unwrap(model.addBuilding({ name: 'Building' }));
+const storey = unwrap(model.addStorey({ name: 'Level', elevation: 0 }));
 const project = model.getProject();
 if (project) model.aggregate(project.localId, site);
 model.aggregate(site, building);

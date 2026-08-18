@@ -5,7 +5,9 @@ import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 describe('IFC round-trip (M1)', () => {
   function buildModel(): BimModel {
@@ -13,9 +15,9 @@ describe('IFC round-trip (M1)', () => {
     const initResult = model.init({ name: 'Test Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectLocalId = initResult.value;
-    const siteLocalId = model.addSite({ name: 'Test Site' });
-    const buildingLocalId = model.addBuilding({ name: 'Test Building' });
-    const storeyLocalId = model.addStorey({ name: 'Ground Floor', elevation: 0 });
+    const siteLocalId = unwrap(model.addSite({ name: 'Test Site' }));
+    const buildingLocalId = unwrap(model.addBuilding({ name: 'Test Building' }));
+    const storeyLocalId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
     model.aggregate(projectLocalId, siteLocalId);
     model.aggregate(siteLocalId, buildingLocalId);
     model.aggregate(buildingLocalId, storeyLocalId);
@@ -35,7 +37,10 @@ describe('IFC round-trip (M1)', () => {
 
   it('toIfc produces non-empty bytes', async () => {
     const model = buildModel();
-    const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim',
+      applicationVersion: '0.1.0',
+    });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.byteLength).toBeGreaterThan(0);
@@ -43,7 +48,10 @@ describe('IFC round-trip (M1)', () => {
 
   it('exported bytes parse back with web-ifc', async () => {
     const model = buildModel();
-    const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim',
+      applicationVersion: '0.1.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
 
     const api = new WebIFC.IfcAPI();
@@ -74,7 +82,10 @@ describe('IFC round-trip (M1)', () => {
 
   it('exported IFC contains IfcRelContainedInSpatialStructure', async () => {
     const model = buildModel();
-    const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim',
+      applicationVersion: '0.1.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
 
     const api = new WebIFC.IfcAPI();
@@ -103,7 +114,7 @@ describe('IFC Pset/Qto round-trip (M2)', () => {
     loadBearing: true,
     manufacturerName: 'Wienerberger',
     customProperties: {
-      'Pset_Acoustic': { SoundReductionIndex: 45 },
+      Pset_Acoustic: { SoundReductionIndex: 45 },
     },
   };
 
@@ -112,9 +123,9 @@ describe('IFC Pset/Qto round-trip (M2)', () => {
     const initResult = model.init({ name: 'Pset Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectLocalId = initResult.value;
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(projectLocalId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
@@ -122,7 +133,10 @@ describe('IFC Pset/Qto round-trip (M2)', () => {
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     model.placeIn(wallResult.value, storeyId);
 
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
 
     const api = new WebIFC.IfcAPI();
@@ -218,15 +232,19 @@ describe('IFC Pset/Qto round-trip (M2)', () => {
     const initResult = model.init({ name: 'No-Pset Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectLocalId = initResult.value;
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(projectLocalId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
     const wallResult = model.addWall({
-      length: 3000, height: 2700, thickness: 200,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 3000,
+      height: 2700,
+      thickness: 200,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
@@ -255,35 +273,52 @@ describe('IFC Opening round-trip (M3)', () => {
     const initResult = model.init({ name: 'Opening Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
     const projectLocalId = initResult.value;
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(projectLocalId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
     const wallResult = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     model.placeIn(wallResult.value, storeyId);
 
     const doorResult = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
-      wallLocalId: wallResult.value, materialName: 'Wood',
-      isExternal: false, fireRating: 'EI30',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 500,
+      offsetFromFloor: 0,
+      wallLocalId: wallResult.value,
+      materialName: 'Wood',
+      isExternal: false,
+      fireRating: 'EI30',
     });
     if (!doorResult.ok) throw new Error(doorResult.error.message);
 
     const windowResult = model.addWindow({
-      width: 1200, height: 1400, offsetAlongWall: 2000, offsetFromFloor: 900,
-      wallLocalId: wallResult.value, materialName: 'Aluminum',
-      isExternal: true, thermalTransmittance: 1.2,
+      width: 1200,
+      height: 1400,
+      offsetAlongWall: 2000,
+      offsetFromFloor: 900,
+      wallLocalId: wallResult.value,
+      materialName: 'Aluminum',
+      isExternal: true,
+      thermalTransmittance: 1.2,
     });
     if (!windowResult.ok) throw new Error(windowResult.error.message);
 
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
 
     const api = new WebIFC.IfcAPI();
@@ -335,7 +370,10 @@ describe('IFC Opening round-trip (M3)', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- web-ifc GetLine returns any
       const pset = api.GetLine(mid, ids.get(i));
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- web-ifc GetLine returns any
-      if ((pset.Name?.value as string | undefined) === 'Pset_DoorCommon') { found = true; break; }
+      if ((pset.Name?.value as string | undefined) === 'Pset_DoorCommon') {
+        found = true;
+        break;
+      }
     }
     expect(found).toBe(true);
     api.CloseModel(mid);
@@ -349,7 +387,10 @@ describe('IFC Opening round-trip (M3)', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- web-ifc GetLine returns any
       const pset = api.GetLine(mid, ids.get(i));
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- web-ifc GetLine returns any
-      if ((pset.Name?.value as string | undefined) === 'Pset_WindowCommon') { found = true; break; }
+      if ((pset.Name?.value as string | undefined) === 'Pset_WindowCommon') {
+        found = true;
+        break;
+      }
     }
     expect(found).toBe(true);
     api.CloseModel(mid);
@@ -360,7 +401,6 @@ describe('IFC Opening round-trip (M3)', () => {
     const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
     let qto: Record<string, unknown> | undefined;
     for (let i = 0; i < elemQuantities.size(); i++) {
-       
       const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
       const name = (candidate['Name'] as { value?: string } | undefined)?.value;
       if (name === 'Qto_WallBaseQuantities') {
@@ -374,7 +414,6 @@ describe('IFC Opening round-trip (M3)', () => {
     const numericByName = new Map<string, number>();
     const refs = qto['Quantities'] as Array<{ value: number }>;
     for (const ref of refs) {
-       
       const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
       const name = (q['Name'] as { value?: string } | undefined)?.value;
       if (name === undefined) continue;
@@ -412,15 +451,20 @@ describe('IFC Opening round-trip (M3)', () => {
     const model = new BimModel();
     const initResult = model.init({ name: 'No-Op Wall' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(initResult.value, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
     const wallResult = model.addWall({
-      length: 4000, height: 2800, thickness: 200,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1], materialName: 'Concrete',
+      length: 4000,
+      height: 2800,
+      thickness: 200,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     model.placeIn(wallResult.value, storeyId);
@@ -446,7 +490,6 @@ describe('IFC Opening round-trip (M3)', () => {
     let net = 0;
     const refs = qto['Quantities'] as Array<{ value: number }>;
     for (const ref of refs) {
-       
       const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
       const name = (q['Name'] as { value?: string } | undefined)?.value;
       const vol = (q['VolumeValue'] as { value?: number } | undefined)?.value;
@@ -462,20 +505,29 @@ describe('IFC Opening round-trip (M3)', () => {
     const model = new BimModel();
     const initResult = model.init({ name: 'GUID Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(initResult.value, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
     const wallResult = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1], materialName: 'Concrete',
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
     });
     if (!wallResult.ok) throw new Error(wallResult.error.message);
     const doorResult = model.addDoor({
-      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
-      wallLocalId: wallResult.value, materialName: 'Wood',
+      width: 900,
+      height: 2100,
+      offsetAlongWall: 500,
+      offsetFromFloor: 0,
+      wallLocalId: wallResult.value,
+      materialName: 'Wood',
     });
     if (!doorResult.ok) throw new Error(doorResult.error.message);
 
@@ -512,13 +564,15 @@ describe('IFC Slab round-trip (M5)', () => {
     compartmentation: true,
   };
 
-  async function buildSlabModel(extra?: { roof?: boolean }): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+  async function buildSlabModel(extra?: {
+    roof?: boolean;
+  }): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
     const model = new BimModel();
     const initResult = model.init({ name: 'Slab Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(initResult.value, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
@@ -535,7 +589,10 @@ describe('IFC Slab round-trip (M5)', () => {
       if (!roofResult.ok) throw new Error(roofResult.error.message);
       model.placeIn(roofResult.value, storeyId);
     }
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
     await api.Init();
@@ -581,7 +638,10 @@ describe('IFC Slab round-trip (M5)', () => {
     for (let i = 0; i < ids.size(); i++) {
       const pset = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
       const name = (pset['Name'] as { value?: string } | undefined)?.value;
-      if (name === 'Pset_SlabCommon') { found = true; break; }
+      if (name === 'Pset_SlabCommon') {
+        found = true;
+        break;
+      }
     }
     expect(found).toBe(true);
     api.CloseModel(mid);
@@ -594,7 +654,10 @@ describe('IFC Slab round-trip (M5)', () => {
     for (let i = 0; i < elemQuantities.size(); i++) {
       const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
       const name = (candidate['Name'] as { value?: string } | undefined)?.value;
-      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+      if (name === 'Qto_SlabBaseQuantities') {
+        qto = candidate;
+        break;
+      }
     }
     if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
 
@@ -658,9 +721,9 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     const model = new BimModel();
     const initResult = model.init({ name: 'Slab Opening Test' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(initResult.value, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
@@ -669,16 +732,25 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     model.placeIn(slabResult.value, storeyId);
     // Stairwell + MEP penetration
     const o1 = model.addSlabOpening({
-      sizeX: 1200, sizeY: 1500, offsetX: 500, offsetY: 500,
+      sizeX: 1200,
+      sizeY: 1500,
+      offsetX: 500,
+      offsetY: 500,
       slabLocalId: slabResult.value,
     });
     if (!o1.ok) throw new Error(o1.error.message);
     const o2 = model.addSlabOpening({
-      sizeX: 400, sizeY: 400, offsetX: 4500, offsetY: 3000,
+      sizeX: 400,
+      sizeY: 400,
+      offsetX: 4500,
+      offsetY: 3000,
       slabLocalId: slabResult.value,
     });
     if (!o2.ok) throw new Error(o2.error.message);
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
     await api.Init();
@@ -714,7 +786,10 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     for (let i = 0; i < elemQuantities.size(); i++) {
       const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
       const name = (candidate['Name'] as { value?: string } | undefined)?.value;
-      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+      if (name === 'Qto_SlabBaseQuantities') {
+        qto = candidate;
+        break;
+      }
     }
     if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
 
@@ -743,9 +818,9 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     const model = new BimModel();
     const initResult = model.init({ name: 'No-op Slab' });
     if (!initResult.ok) throw new Error(initResult.error.message);
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     model.aggregate(initResult.value, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
@@ -764,10 +839,16 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     for (let i = 0; i < elemQuantities.size(); i++) {
       const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
       const name = (candidate['Name'] as { value?: string } | undefined)?.value;
-      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+      if (name === 'Qto_SlabBaseQuantities') {
+        qto = candidate;
+        break;
+      }
     }
     if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
-    let grossArea = 0, netArea = 0, grossVol = 0, netVol = 0;
+    let grossArea = 0,
+      netArea = 0,
+      grossVol = 0,
+      netVol = 0;
     const refs = qto['Quantities'] as Array<{ value: number }>;
     for (const ref of refs) {
       const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
@@ -790,36 +871,53 @@ describe('IFC Beam round-trip (M7)', () => {
   async function buildBeamModel(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
     const model = new BimModel();
     unwrap(model.init({ name: 'Beam Test' }));
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (!project) throw new Error('expected project');
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
 
-    const rect = unwrap(model.addBeam({
-      length: 5000,
-      profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
-      origin: [0, 0, 3000], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-      predefinedType: 'BEAM',
-      materialName: 'Steel',
-      isExternal: false,
-      loadBearing: true,
-      fireRating: 'R60',
-    }));
-    const ibeam = unwrap(model.addBeam({
-      length: 5000,
-      profile: { kind: 'I_BEAM', overallWidth: 200, overallDepth: 400, flangeThickness: 15, webThickness: 10 },
-      origin: [0, 2000, 3000], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-      predefinedType: 'JOIST',
-      materialName: 'Steel',
-    }));
+    const rect = unwrap(
+      model.addBeam({
+        length: 5000,
+        profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+        origin: [0, 0, 3000],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        predefinedType: 'BEAM',
+        materialName: 'Steel',
+        isExternal: false,
+        loadBearing: true,
+        fireRating: 'R60',
+      })
+    );
+    const ibeam = unwrap(
+      model.addBeam({
+        length: 5000,
+        profile: {
+          kind: 'I_BEAM',
+          overallWidth: 200,
+          overallDepth: 400,
+          flangeThickness: 15,
+          webThickness: 10,
+        },
+        origin: [0, 2000, 3000],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        predefinedType: 'JOIST',
+        materialName: 'Steel',
+      })
+    );
     model.placeIn(rect, storeyId);
     model.placeIn(ibeam, storeyId);
 
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
     await api.Init();
@@ -861,7 +959,10 @@ describe('IFC Beam round-trip (M7)', () => {
     for (let i = 0; i < ids.size(); i++) {
       const pset = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
       const name = (pset['Name'] as { value?: string } | undefined)?.value;
-      if (name === 'Pset_BeamCommon') { found = true; break; }
+      if (name === 'Pset_BeamCommon') {
+        found = true;
+        break;
+      }
     }
     expect(found).toBe(true);
     api.CloseModel(mid);
@@ -872,12 +973,22 @@ describe('IFC Beam round-trip (M7)', () => {
     // and height along +Z in world space.
     const model = new BimModel();
     unwrap(model.init({ name: 'Orient Test' }));
-    unwrap(model.addBeam({
-      length: 5000,
-      profile: { kind: 'I_BEAM', overallWidth: 200, overallDepth: 400, flangeThickness: 15, webThickness: 10 },
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-      materialName: 'Steel',
-    }));
+    unwrap(
+      model.addBeam({
+        length: 5000,
+        profile: {
+          kind: 'I_BEAM',
+          overallWidth: 200,
+          overallDepth: 400,
+          flangeThickness: 15,
+          webThickness: 10,
+        },
+        origin: [0, 0, 0],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        materialName: 'Steel',
+      })
+    );
     const result = await toIfc(model, { applicationName: 't', applicationVersion: '0' });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
@@ -963,34 +1074,45 @@ describe('IFC Column round-trip (M7)', () => {
   async function buildColumnModel(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
     const model = new BimModel();
     unwrap(model.init({ name: 'Column Test' }));
-    const siteId = model.addSite({ name: 'S' });
-    const buildingId = model.addBuilding({ name: 'B' });
-    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const siteId = unwrap(model.addSite({ name: 'S' }));
+    const buildingId = unwrap(model.addBuilding({ name: 'B' }));
+    const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
     const project = model.getProject();
     if (!project) throw new Error('expected project');
     model.aggregate(project.localId, siteId);
     model.aggregate(siteId, buildingId);
     model.aggregate(buildingId, storeyId);
 
-    const round = unwrap(model.addColumn({
-      height: 3000,
-      profile: { kind: 'CIRCULAR', radius: 200 },
-      origin: [1000, 1000, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-      predefinedType: 'COLUMN',
-      materialName: 'Concrete',
-      loadBearing: true,
-    }));
-    const pilaster = unwrap(model.addColumn({
-      height: 3000,
-      profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
-      origin: [2000, 2000, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
-      predefinedType: 'PILASTER',
-      materialName: 'Concrete',
-    }));
+    const round = unwrap(
+      model.addColumn({
+        height: 3000,
+        profile: { kind: 'CIRCULAR', radius: 200 },
+        origin: [1000, 1000, 0],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        predefinedType: 'COLUMN',
+        materialName: 'Concrete',
+        loadBearing: true,
+      })
+    );
+    const pilaster = unwrap(
+      model.addColumn({
+        height: 3000,
+        profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+        origin: [2000, 2000, 0],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        predefinedType: 'PILASTER',
+        materialName: 'Concrete',
+      })
+    );
     model.placeIn(round, storeyId);
     model.placeIn(pilaster, storeyId);
 
-    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    const result = await toIfc(model, {
+      applicationName: 'brepjs-bim-test',
+      applicationVersion: '0.0.0',
+    });
     if (!result.ok) throw new Error(result.error.message);
     const api = new WebIFC.IfcAPI();
     await api.Init();
@@ -1039,7 +1161,11 @@ describe('IFC Column round-trip (M7)', () => {
         const qName = (q['Name'] as { value?: string } | undefined)?.value;
         const area = (q['AreaValue'] as { value?: number } | undefined)?.value;
         // Round column area in m² = π × 0.2² ≈ 0.12566
-        if (qName === 'CrossSectionArea' && area !== undefined && Math.abs(area - Math.PI * 0.04) < 1e-4) {
+        if (
+          qName === 'CrossSectionArea' &&
+          area !== undefined &&
+          Math.abs(area - Math.PI * 0.04) < 1e-4
+        ) {
           roundQto = candidate;
         }
       }

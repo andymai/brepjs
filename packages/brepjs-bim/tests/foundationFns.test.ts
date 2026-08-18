@@ -6,11 +6,18 @@ import { footingToSolid, pileToSolid } from '../src/elementFns/foundationFns.js'
 import { parseFootingSpec, parsePileSpec } from '../src/specs/foundationSpec.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
-import { writeFootingEntity, writeFootingGeometry, writePileEntity, writePileGeometry } from '../src/ifc-writer/foundationWriter.js';
+import {
+  writeFootingEntity,
+  writeFootingGeometry,
+  writePileEntity,
+  writePileGeometry,
+} from '../src/ifc-writer/foundationWriter.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import type { FootingSpec, PileSpec } from '../src/specs/foundationSpec.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const footingSpec: FootingSpec = {
   length: 2000,
@@ -171,7 +178,12 @@ describe('parsePileSpec', () => {
   });
 
   it('accepts each construction type', () => {
-    for (const constructionType of ['CAST_IN_PLACE', 'COMPOSITE', 'PRECAST_CONCRETE', 'PREFAB_STEEL'] as const) {
+    for (const constructionType of [
+      'CAST_IN_PLACE',
+      'COMPOSITE',
+      'PRECAST_CONCRETE',
+      'PREFAB_STEEL',
+    ] as const) {
       expect(parsePileSpec({ ...pileSpec, constructionType }).ok).toBe(true);
     }
   });

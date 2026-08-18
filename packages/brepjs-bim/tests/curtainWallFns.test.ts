@@ -9,7 +9,9 @@ import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
 import { writeCurtainWall } from '../src/ifc-writer/curtainWallWriter.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 // A 2 × 2 grid: 4 panels, 3 vertical mullions + 3 horizontal mullions = 6.
 const SPEC: CurtainWallSpec = {

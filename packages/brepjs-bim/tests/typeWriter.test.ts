@@ -80,9 +80,7 @@ function writeWall(w: IfcWriter, ownerHistoryId: number): number {
   });
 }
 
-async function openSaved(
-  w: IfcWriter
-): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+async function openSaved(w: IfcWriter): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
   const saved = w.save();
   if (!saved.ok) throw new Error(saved.error.message);
   const api = new WebIFC.IfcAPI();
@@ -100,10 +98,7 @@ describe('typeWriter', () => {
     const typeGuid = await deriveIfcGuid('type:WALL:NOTDEFINED');
     const relGuid = await deriveIfcGuid('rel-type:WALL:NOTDEFINED');
 
-    const res = writeIfcType(w, oh, 'IFCWALLTYPE', typeGuid, relGuid, 'NOTDEFINED', [
-      wall1,
-      wall2,
-    ]);
+    const res = writeIfcType(w, oh, 'IFCWALLTYPE', typeGuid, relGuid, 'NOTDEFINED', [wall1, wall2]);
     expect(res.typeExpressId).toBeGreaterThan(0);
     expect(res.relExpressId).toBeGreaterThan(0);
 

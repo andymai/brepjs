@@ -9,7 +9,9 @@ import { deriveIfcGuidSync, makeElementKey } from '../src/identity/guidDerivatio
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
 import { measureVolume } from 'brepjs';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const spec = {
   length: 4000,

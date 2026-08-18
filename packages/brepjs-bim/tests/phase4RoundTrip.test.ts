@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { measureVolume } from 'brepjs';
+import { measureVolume, unwrap } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -24,9 +24,9 @@ function buildRoundTripModel(): BuiltModel {
   const initResult = model.init({ name: 'RoundTrip Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site A' });
-  const buildingId = model.addBuilding({ name: 'Building A' });
-  const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site A' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building A' }));
+  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);

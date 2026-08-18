@@ -8,7 +8,7 @@ HEADER;
 * Issues: https://github.com/ThatOpen/engine_web-ifc/issues
 ******************************************************/
 FILE_DESCRIPTION(('ViewDefinition [ReferenceView_v1.2]'),'2;1');
-FILE_NAME('web-ifc-model-0.ifc','2026-08-18T04:17:23',(''),('brepjs'),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
+FILE_NAME('web-ifc-model-0.ifc','2026-08-18T04:45:08',(''),('brepjs'),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
 FILE_SCHEMA(('IFC4'));
 ENDSEC;
 DATA;
@@ -155,7 +155,7 @@ DATA;
 #708=IFCDIRECTION((1.,0.,0.));
 #707=IFCDIRECTION((0.,0.,1.));
 #706=IFCCARTESIANPOINT((0.5,0.5,0.));
-#705=IFCSTAIR('1X2g0G2ofJWOlV7SAqroPB',#6,'Main Stair',$,$,#704,$,$,.HALF_TURN_STAIR.);
+#705=IFCSTAIR('1CsMJNg$nLV9IVDK459TnE',#6,'Main Stair',$,$,#704,$,$,.HALF_TURN_STAIR.);
 #704=IFCLOCALPLACEMENT(#34,#703);
 #703=IFCAXIS2PLACEMENT3D(#700,#701,#702);
 #702=IFCDIRECTION((1.,0.,0.));

@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
@@ -33,10 +34,10 @@ function buildMultiStoreyModel(): { model: BimModel; meta: RoundTrip } {
   const initResult = model.init({ name: 'Tree Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site A' });
-  const buildingId = model.addBuilding({ name: 'Building A' });
-  const level1Id = model.addStorey({ name: 'Level 1', elevation: 0 });
-  const level2Id = model.addStorey({ name: 'Level 2', elevation: 3000 });
+  const siteId = unwrap(model.addSite({ name: 'Site A' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building A' }));
+  const level1Id = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+  const level2Id = unwrap(model.addStorey({ name: 'Level 2', elevation: 3000 }));
 
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);

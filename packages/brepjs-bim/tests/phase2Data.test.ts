@@ -1,10 +1,13 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
@@ -13,9 +16,9 @@ function spatialModel(): { model: BimModel; storeyId: number } {
   const initResult = model.init({ name: 'Phase2 Data' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -41,8 +44,12 @@ describe('Phase 2 data integration', () => {
   it('emits Pset_WallCommon properties with correct (non-IFCREAL) measure types', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
       isExternal: true,
       fireRating: 'REI120',
@@ -75,8 +82,12 @@ describe('Phase 2 data integration', () => {
   it('emits the Status property as an IfcPropertyEnumeratedValue', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 4000, height: 2700, thickness: 200,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 4000,
+      height: 2700,
+      thickness: 200,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
       status: 'EXISTING',
     });
@@ -98,8 +109,12 @@ describe('Phase 2 data integration', () => {
   it('associates a layered material via IfcRelAssociatesMaterial + IfcMaterialLayerSet', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 300,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 300,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Wall Buildup',
       layerSetName: 'Cavity Wall',
       materialLayers: [
@@ -131,8 +146,12 @@ describe('Phase 2 data integration', () => {
   it('associates a classification reference via IfcRelAssociatesClassification', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
       classification: {
         system: 'Uniclass2015',
@@ -152,7 +171,9 @@ describe('Phase 2 data integration', () => {
     const refIds = api.GetLineIDsWithType(mid, WebIFC.IFCCLASSIFICATIONREFERENCE);
     expect(refIds.size()).toBe(1);
     const refLine = api.GetLine(mid, refIds.get(0)) as Record<string, unknown>;
-    expect((refLine['Identification'] as { value?: string } | undefined)?.value).toBe('Ss_25_10_30');
+    expect((refLine['Identification'] as { value?: string } | undefined)?.value).toBe(
+      'Ss_25_10_30'
+    );
 
     const rels = api.GetLineIDsWithType(mid, WebIFC.IFCRELASSOCIATESCLASSIFICATION);
     expect(rels.size()).toBe(1);
@@ -166,8 +187,12 @@ describe('Phase 2 data integration', () => {
   it('addClassification associates an existing element after the fact', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wall.ok) throw new Error(wall.error.message);
@@ -184,8 +209,12 @@ describe('Phase 2 data integration', () => {
   it('keeps the bare-material path for walls without layers (backward compat)', async () => {
     const { model, storeyId } = spatialModel();
     const wall = model.addWall({
-      length: 5000, height: 3000, thickness: 250,
-      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      length: 5000,
+      height: 3000,
+      thickness: 250,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
       materialName: 'Concrete',
     });
     if (!wall.ok) throw new Error(wall.error.message);

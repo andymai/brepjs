@@ -7,6 +7,7 @@
 // `python scripts/validateIfc.py examples/interop-fixture.ifc` and the
 // checklist in VALIDATION.md. Run: `node examples/interopFixture.mjs`.
 import 'brepjs/quick';
+import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -27,9 +28,9 @@ const model = new BimModel();
 model.init({ name: 'brepjs-bim Interop Fixture' });
 
 const project = model.getProject();
-const siteId = model.addSite({ name: 'Interop Site' });
-const buildingId = model.addBuilding({ name: 'Interop Pavilion' });
-const groundId = model.addStorey({ name: 'Ground', elevation: 0 });
+const siteId = unwrap(model.addSite({ name: 'Interop Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Interop Pavilion' }));
+const groundId = unwrap(model.addStorey({ name: 'Ground', elevation: 0 }));
 if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, groundId);

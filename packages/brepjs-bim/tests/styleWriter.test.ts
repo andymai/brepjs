@@ -82,7 +82,13 @@ describe('styleWriter', () => {
 
   it('writes an IfcStyledItem linking a geometry item to a surface style', async () => {
     const w = await makeWriter();
-    const styleId = writeSurfaceStyle(w, { name: 'Glass', r: 0.6, g: 0.8, b: 0.9, transparency: 0.6 });
+    const styleId = writeSurfaceStyle(w, {
+      name: 'Glass',
+      r: 0.6,
+      g: 0.8,
+      b: 0.9,
+      transparency: 0.6,
+    });
     const geomItem = writePoint(w);
 
     writeStyledItem(w, geomItem, styleId);

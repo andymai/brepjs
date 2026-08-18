@@ -133,7 +133,10 @@ describe('BCF 3.0 read/write', () => {
   it('fails with BCF_VERSION_UNSUPPORTED for a non-3.0 container', () => {
     const data = buildContainer();
     const files = serializeBcfFiles(data);
-    files.set('bcf.version', '<?xml version="1.0" encoding="UTF-8"?>\n<Version VersionId="2.1"></Version>');
+    files.set(
+      'bcf.version',
+      '<?xml version="1.0" encoding="UTF-8"?>\n<Version VersionId="2.1"></Version>'
+    );
     const parsed = parseBcfFiles(files);
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {

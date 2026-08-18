@@ -1,10 +1,13 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
@@ -25,9 +28,9 @@ function buildGroupBModel(): GroupBModel {
   const initResult = model.init({ name: 'Phase3 GroupB Project' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Site' });
-  const buildingId = model.addBuilding({ name: 'Building' });
-  const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+  const storeyId = unwrap(model.addStorey({ name: 'L1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
@@ -38,12 +41,24 @@ function buildGroupBModel(): GroupBModel {
     materialName: 'Concrete',
     flights: [
       {
-        width: 1200, riserHeight: 175, treadLength: 280, numberOfRisers: 9,
-        origin: [0, 0, 0], axisX: XAXIS, axisZ: UP, materialName: 'Concrete',
+        width: 1200,
+        riserHeight: 175,
+        treadLength: 280,
+        numberOfRisers: 9,
+        origin: [0, 0, 0],
+        axisX: XAXIS,
+        axisZ: UP,
+        materialName: 'Concrete',
       },
       {
-        width: 1200, riserHeight: 175, treadLength: 280, numberOfRisers: 9,
-        origin: [3000, 0, 1575], axisX: XAXIS, axisZ: UP, materialName: 'Concrete',
+        width: 1200,
+        riserHeight: 175,
+        treadLength: 280,
+        numberOfRisers: 9,
+        origin: [3000, 0, 1575],
+        axisX: XAXIS,
+        axisZ: UP,
+        materialName: 'Concrete',
       },
     ],
   });
@@ -56,8 +71,14 @@ function buildGroupBModel(): GroupBModel {
     materialName: 'Concrete',
     flights: [
       {
-        width: 1500, length: 4000, slope: 0.08, thickness: 200,
-        origin: [0, 6000, 0], axisX: XAXIS, axisZ: UP, materialName: 'Concrete',
+        width: 1500,
+        length: 4000,
+        slope: 0.08,
+        thickness: 200,
+        origin: [0, 6000, 0],
+        axisX: XAXIS,
+        axisZ: UP,
+        materialName: 'Concrete',
       },
     ],
   });
@@ -65,17 +86,26 @@ function buildGroupBModel(): GroupBModel {
   model.placeIn(ramp.value, storeyId);
 
   const slab = model.addSlab({
-    length: 5000, width: 4000, thickness: 200,
-    origin: [0, 0, 0], axisX: XAXIS, axisZ: UP,
+    length: 5000,
+    width: 4000,
+    thickness: 200,
+    origin: [0, 0, 0],
+    axisX: XAXIS,
+    axisZ: UP,
     materialName: 'Concrete',
   });
   if (!slab.ok) throw new Error(slab.error.message);
   model.placeIn(slab.value, storeyId);
 
   const railing = model.addRailing({
-    length: 3000, height: 1100, thickness: 50,
-    origin: [0, 0, 0], axisX: XAXIS, axisZ: UP,
-    predefinedType: 'GUARDRAIL', materialName: 'Steel',
+    length: 3000,
+    height: 1100,
+    thickness: 50,
+    origin: [0, 0, 0],
+    axisX: XAXIS,
+    axisZ: UP,
+    predefinedType: 'GUARDRAIL',
+    materialName: 'Steel',
   });
   if (!railing.ok) throw new Error(railing.error.message);
   model.placeIn(railing.value, storeyId);
@@ -83,9 +113,14 @@ function buildGroupBModel(): GroupBModel {
 
   const covering = model.addCovering(
     {
-      length: 5000, width: 4000, thickness: 20,
-      origin: [0, 0, 200], axisX: XAXIS, axisZ: UP,
-      predefinedType: 'FLOORING', materialName: 'Tile',
+      length: 5000,
+      width: 4000,
+      thickness: 20,
+      origin: [0, 0, 200],
+      axisX: XAXIS,
+      axisZ: UP,
+      predefinedType: 'FLOORING',
+      materialName: 'Tile',
     },
     slab.value
   );
@@ -93,7 +128,9 @@ function buildGroupBModel(): GroupBModel {
   model.placeIn(covering.value, storeyId);
 
   // Element assembly nesting the railing (ordered nesting via IfcRelNests).
-  const assemblyId = model.addElementAssembly({ name: 'Guard Assembly', predefinedType: 'ACCESSORY_ASSEMBLY' });
+  const assemblyId = unwrap(
+    model.addElementAssembly({ name: 'Guard Assembly', predefinedType: 'ACCESSORY_ASSEMBLY' })
+  );
   model.placeIn(assemblyId, storeyId);
   model.nest(assemblyId, railing.value);
 
@@ -176,7 +213,10 @@ describe('Phase 3 Group B integration', () => {
       const line = api.GetLine(mid, flightIds.get(i)) as Record<string, unknown>;
       expect(line['Representation']).not.toBeNull();
     }
-    const stair = api.GetLine(mid, api.GetLineIDsWithType(mid, WebIFC.IFCSTAIR).get(0)) as Record<string, unknown>;
+    const stair = api.GetLine(mid, api.GetLineIDsWithType(mid, WebIFC.IFCSTAIR).get(0)) as Record<
+      string,
+      unknown
+    >;
     expect(stair['Representation']).toBeNull();
 
     api.CloseModel(mid);
@@ -192,7 +232,8 @@ describe('Phase 3 Group B integration', () => {
     expect(countOf(api, mid, WebIFC.IFCSTYLEDITEM)).toBe(1);
 
     const styledItem = api.GetLine(
-      mid, api.GetLineIDsWithType(mid, WebIFC.IFCSTYLEDITEM).get(0)
+      mid,
+      api.GetLineIDsWithType(mid, WebIFC.IFCSTYLEDITEM).get(0)
     ) as Record<string, unknown>;
     const itemRef = (styledItem['Item'] as { value?: number } | undefined)?.value;
     expect(itemRef).toBeDefined();

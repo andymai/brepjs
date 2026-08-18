@@ -11,7 +11,9 @@ import {
 import { parseZoneSpec, parseSystemSpec } from '../src/specs/groupSpec.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 
-beforeAll(async () => { await initOCCT(); }, 30000);
+beforeAll(async () => {
+  await initOCCT();
+}, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
@@ -71,7 +73,14 @@ describe('groupWriter', () => {
     const spaceBId = writeMinimalSpace(w, ownerHistoryId, 'Space B');
 
     const zoneGuid = deriveIfcGuidSync('test:zone:1');
-    const zoneId = writeZoneEntity(w, zoneGuid, 'Thermal Zone A', 'Top Floor Thermal Zone', null, ownerHistoryId);
+    const zoneId = writeZoneEntity(
+      w,
+      zoneGuid,
+      'Thermal Zone A',
+      'Top Floor Thermal Zone',
+      null,
+      ownerHistoryId
+    );
 
     const relGuid = deriveIfcGuidSync('test:rel:zone:1');
     writeRelAssignsToGroup(w, relGuid, ownerHistoryId, zoneId, [spaceAId, spaceBId]);
@@ -116,7 +125,14 @@ describe('groupWriter', () => {
     const elemBId = writeMinimalProxy(w, ownerHistoryId, 'Duct 2');
 
     const sysGuid = deriveIfcGuidSync('test:system:1');
-    const systemId = writeSystemEntity(w, sysGuid, 'HVAC Supply', 'Supply Air System', null, ownerHistoryId);
+    const systemId = writeSystemEntity(
+      w,
+      sysGuid,
+      'HVAC Supply',
+      'Supply Air System',
+      null,
+      ownerHistoryId
+    );
 
     const relGuid = deriveIfcGuidSync('test:rel:system:1');
     writeRelAssignsToGroup(w, relGuid, ownerHistoryId, systemId, [elemAId, elemBId]);

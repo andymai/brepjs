@@ -1,3 +1,4 @@
+import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import {
@@ -49,41 +50,55 @@ function buildModel(): { model: BimModel; spaceAId: number } {
   const initResult = model.init({ name: 'Phase5 API Project', description: 'End-to-end fixture' });
   if (!initResult.ok) throw new Error(initResult.error.message);
   const projectId = initResult.value;
-  const siteId = model.addSite({ name: 'Main Site' });
-  const buildingId = model.addBuilding({ name: 'HQ' });
-  const storeyId = model.addStorey({ name: 'Level 1', elevation: 0 });
+  const siteId = unwrap(model.addSite({ name: 'Main Site' }));
+  const buildingId = unwrap(model.addBuilding({ name: 'HQ' }));
+  const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
   model.aggregate(projectId, siteId);
   model.aggregate(siteId, buildingId);
   model.aggregate(buildingId, storeyId);
 
   const wall = model.addWall({
-    length: 5000, height: 3000, thickness: 200,
-    origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+    length: 5000,
+    height: 3000,
+    thickness: 200,
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
     materialName: 'Concrete',
   });
   if (!wall.ok) throw new Error(wall.error.message);
   model.placeIn(wall.value, storeyId);
 
   const spaceA = model.addSpace({
-    name: 'Office 101', longName: 'Open-plan office',
-    length: 4000, width: 3000, height: 3000, origin: [0, 0, 0],
+    name: 'Office 101',
+    longName: 'Open-plan office',
+    length: 4000,
+    width: 3000,
+    height: 3000,
+    origin: [0, 0, 0],
     isExternal: false,
   });
   if (!spaceA.ok) throw new Error(spaceA.error.message);
   model.placeIn(spaceA.value, storeyId);
 
   const spaceB = model.addSpace({
-    name: 'Office 102', longName: 'Private office',
-    length: 4000, width: 3000, height: 3000, origin: [4000, 0, 0],
+    name: 'Office 102',
+    longName: 'Private office',
+    length: 4000,
+    width: 3000,
+    height: 3000,
+    origin: [4000, 0, 0],
     isExternal: false,
   });
   if (!spaceB.ok) throw new Error(spaceB.error.message);
   model.placeIn(spaceB.value, storeyId);
 
-  const zoneId = model.addZone({ name: 'Thermal Zone 1', longName: 'Ground-floor thermal zone' });
+  const zoneId = unwrap(
+    model.addZone({ name: 'Thermal Zone 1', longName: 'Ground-floor thermal zone' })
+  );
   model.assignToGroup(zoneId, [spaceA.value, spaceB.value]);
 
-  const systemId = model.addSystem({ name: 'HVAC Supply', longName: 'Air supply network' });
+  const systemId = unwrap(model.addSystem({ name: 'HVAC Supply', longName: 'Air supply network' }));
   model.assignToGroup(systemId, [wall.value]);
 
   return { model, spaceAId: spaceA.value };
