@@ -215,10 +215,12 @@ export class BimModel {
     return ok(id);
   }
 
-  addRoof(spec: RoofSpec): Result<LocalId, BimError> {
+  addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
     const geomResult = roofToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('ROOF', spec, geomResult.value);
+    const id = this.#makeElement('ROOF', spec, geomResult.value, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);

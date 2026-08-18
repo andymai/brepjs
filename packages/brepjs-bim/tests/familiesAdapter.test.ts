@@ -231,6 +231,41 @@ describe('familiesToBim', () => {
     expect(ifc).toContain('IFCRECTANGLEPROFILEDEF');
   });
 
+  it('maps a pitched gable roof onto IfcRoof', async () => {
+    const Roof = family<{
+      readonly length: number;
+      readonly width: number;
+      readonly thickness: number;
+      readonly predefinedType: string;
+      readonly pitch: number;
+    }>('Roof', (p) => el('Box', { size: [p.length, p.width, p.thickness] }));
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Roof({
+            key: 'r1',
+            length: 8000,
+            width: 5000,
+            thickness: 200,
+            predefinedType: 'GABLE_ROOF',
+            pitch: 30,
+          }),
+        ],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(unwrap(projected).idByKeyPath.has('s/r1')).toBe(true);
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCROOF');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/r1'));
+  });
+
   it('rejects a wall without a storey ancestor', () => {
     const orphan = resolve(Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 }));
     expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);

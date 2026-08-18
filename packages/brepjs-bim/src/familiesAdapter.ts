@@ -5,7 +5,7 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers, Wall/Slab/Column/Beam elements, and wall openings — a
+ * Scope: Storey containers, Wall/Slab/Column/Beam/Roof elements, and wall openings — a
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
@@ -20,6 +20,7 @@ import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
 import { parseColumnSpec } from './specs/columnSpec.js';
 import { parseBeamSpec } from './specs/beamSpec.js';
+import { parseRoofSpec } from './specs/roofSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
@@ -63,6 +64,10 @@ const SPEC_ROUTES = {
   Beam: {
     parse: parseBeamSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addBeam(spec as never, { stableKey: key }),
+  },
+  Roof: {
+    parse: parseRoofSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addRoof(spec as never, { stableKey: key }),
   },
 } as const;
 
