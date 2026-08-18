@@ -48,6 +48,16 @@ A `family()` is a plain function from props to an element tree. There is no Reac
 
 The split is strict by construction: the IR node under an element carries none of the identity, so nothing you attach to an element can perturb geometry hashing or fragment the cache.
 
+## The intrinsic vocabulary
+
+Render functions bottom out in a small set of intrinsic elements:
+
+- **`Box`** (`size`) and **`Cylinder`** (`radius`, `height`): the common building primitives.
+- **`Group`** / **`Fragment`**: pure containers; structure and identity, no geometry.
+- **`Geometry`** (`node`): the bridge to the [full csg vocabulary](/concepts/csg-ir). A render function builds any IR node (a profile extruded into a wall, a revolve, a boolean composition) and hands it over; `voids`, `fuse`, and `transform` compose on top exactly as they do for `Box`.
+
+The vocabulary stays deliberately small because `Geometry` makes it complete: anything the csg builders can express, a family can render.
+
 ## Evaluation is mesh-first
 
 `evaluateModel` walks the resolved tree and returns one record per geometry-bearing element. The primary output is a **mesh**: plain data with no kernel lifetimes to manage, cached by content so a re-evaluation after an edit only re-meshes what changed.

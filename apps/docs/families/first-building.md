@@ -123,10 +123,10 @@ const southAfter = second.byKeyPath.get('ground/south');
 const northBefore = first.byKeyPath.get('ground/north');
 const northAfter = second.byKeyPath.get('ground/north');
 
-if (southBefore?.mesh.ok && southAfter.mesh.ok) {
+if (southBefore?.mesh.ok && southAfter?.mesh.ok) {
   console.log(southAfter.mesh.value === southBefore.mesh.value); // false: re-meshed
 }
-if (northBefore?.mesh.ok && northAfter.mesh.ok) {
+if (northBefore?.mesh.ok && northAfter?.mesh.ok) {
   console.log(northAfter.mesh.value === northBefore.mesh.value); // true: SAME object
 }
 ```
