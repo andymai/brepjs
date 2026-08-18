@@ -1,0 +1,49 @@
+---
+title: IFC Export & Import
+description: 'toIfc serializes a BimModel to IFC-SPF bytes (IFC4 or IFC2X3); fromIfc and SpfReader read IFC back into elements, psets, and a spatial tree.'
+---
+
+# IFC Export & Import
+
+## Export
+
+`toIfc(model, meta)` walks the model and returns IFC-SPF bytes.
+
+```typescript
+import { toIfc } from 'brepjs-bim';
+
+const result = await toIfc(model, {
+  name: 'Office Block A',
+  author: 'jane@example.com',
+  organization: 'Example Ltd',
+});
+if (result.ok) await writeFile('model.ifc', result.value);
+```
+
+- **Schema**: IFC4 by default; pass `schema: 'IFC2X3'` for consumers stuck on the older schema.
+- **Units**: specs are millimeters; the writer emits SI metres (`toIfcLengthM` / `toLengthMm` convert explicitly).
+- **Owner history**: author and organization metadata become a proper `IfcOwnerHistory`.
+- **Determinism**: element GUIDs and local id counters are stable, so re-exporting an unchanged model yields byte-identical content (modulo the timestamped `FILE_NAME` header line).
+
+`toIfcValidated` runs export plus the [validation suite](/bim/validation) in one call and returns the bytes together with the reports.
+
+## Import
+
+`fromIfc(bytes)` parses an IFC file (via `web-ifc`) into an `ImportedModel`: elements with geometry, property sets, materials, and the spatial tree.
+
+```typescript
+import { fromIfc, disposeImportedModel } from 'brepjs-bim';
+
+const imported = await fromIfc(bytes);
+if (imported.ok) {
+  const model = imported.value;
+  // model.elements, model.spatialTree, model.psets, ...
+  disposeImportedModel(model);
+}
+```
+
+Imported geometry pins kernel memory; call `disposeImportedModel` when done. For header-level inspection without geometry, `SpfReader` parses the STEP structure directly.
+
+## Round-tripping
+
+Export → import → compare is a first-class operation, not a demo: `checkRoundTrip` re-reads an exported model and reports entity counts and losses, and the test suite gates on semantic round-trip fidelity (identity, relationships, psets, containment, and volumes within 0.5%). If you build on the families layer, GlobalIds additionally survive **source-level** edits: they derive from key paths, not insertion order.
