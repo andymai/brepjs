@@ -6,5 +6,5 @@
   "packages/brepjs-bim": "0.7.1",
   "packages/brepjs-sheetmetal": "0.3.0",
   "packages/brepjs-families": "0.1.0",
-  "packages/create-brepjs": "0.1.0"
+  "packages/create-brepjs": "0.2.0"
 }
