@@ -49,7 +49,7 @@ graph TD
 
 ## Key paths are the identity axis
 
-Every resolved element's `keyPath` is its ancestor chain of keys joined with `/`: `ground/w1`. The path is what downstream consumers derive durable identifiers from; in the IFC projection it becomes the seed of a deterministic GlobalId, which is why the same wall keeps the same GlobalId across rebuilds and across reordering its siblings.
+Every resolved element's `keyPath` is its ancestor chain of keys joined with `/`: `ground/w1`. The path is what downstream consumers derive durable identifiers from; in the [IFC projection](/families/ifc-export) it becomes the seed of a deterministic GlobalId, which is why the same wall keeps the same GlobalId across rebuilds and across reordering its siblings.
 
 Three rules keep paths sound:
 
@@ -80,7 +80,7 @@ interface ResolvedElement {
 
 Two fields deserve emphasis:
 
-- **`props` are the invocation props, pre-desugaring.** An adapter that needs parameters (IFC's extruded-solid path cannot recover `length` from baked geometry) reads them here, exactly as the author wrote them, after any schema validation applied defaults.
+- **`props` are the invocation props, pre-desugaring.** An adapter that needs parameters (IFC's extruded-solid path cannot recover `length` from baked geometry) reads them here, exactly as the author wrote them, after any [schema validation](/families/props-and-validation) applied defaults.
 - **`attributes` are captured, not rendered.** `psets`, `material`, and `classification` props are lifted off the element before render, so identity-side data structurally cannot reach the geometry hash.
 
 ## Synthesized openings

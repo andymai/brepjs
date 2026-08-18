@@ -38,13 +38,13 @@ A `family()` is a plain function from props to an element tree. There is no Reac
 
 ## What a family carries
 
-| Concern                  | Where it lives                                      |
-| ------------------------ | --------------------------------------------------- |
-| Geometry recipe          | The rendered IR subtree (content-addressed, cached) |
-| Identity                 | The element's key path (`ground/north`)             |
-| Properties               | `props`, validated by an optional Zod schema        |
-| Property sets, materials | `attributes`, captured beside the geometry          |
-| Containment and openings | `relationships` derived during resolution           |
+| Concern                  | Where it lives                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| Geometry recipe          | The rendered IR subtree (content-addressed, cached)                            |
+| Identity                 | The element's key path (`ground/north`)                                        |
+| Properties               | `props`, validated by an optional [Zod schema](/families/props-and-validation) |
+| Property sets, materials | `attributes`, captured beside the geometry                                     |
+| Containment and openings | `relationships` derived during resolution                                      |
 
 The split is strict by construction: the IR node under an element carries none of the identity, so nothing you attach to an element can perturb geometry hashing or fragment the cache.
 
@@ -73,7 +73,7 @@ Families are distributed on the copy-in model: `npx brepjs add wall door` writes
 | Material assignment                  | GlobalId derivation                        |
 | Which geometry recipe to use         | Spatial aggregation, relationship emission |
 
-A family that needs to reimplement IFC writing means the boundary was drawn wrong; that capability belongs in `brepjs-bim`.
+A family that needs to reimplement IFC writing means the boundary was drawn wrong; that capability belongs in [brepjs-bim](/families/ifc-export).
 
 ## Installing
 
