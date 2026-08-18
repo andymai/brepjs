@@ -1,5 +1,13 @@
 # Changelog
 
+## [18.139.0](https://github.com/andymai/brepjs/compare/brepjs-v18.138.0...brepjs-v18.139.0) (2026-08-18)
+
+
+### Features
+
+* **ci:** autopublish brepjs-families and create-brepjs via release-please ([#2092](https://github.com/andymai/brepjs/issues/2092)) ([bb14046](https://github.com/andymai/brepjs/commit/bb140464333211d654e771a6dee9d5bbf5613395))
+* **cli:** add brepjs add and diff for copy-in family distribution ([#2084](https://github.com/andymai/brepjs/issues/2084)) ([a0b78a8](https://github.com/andymai/brepjs/commit/a0b78a8222db82eab4ade8261d77b0e4b8479339))
+
 ## [18.138.0](https://github.com/andymai/brepjs/compare/brepjs-v18.137.0...brepjs-v18.138.0) (2026-08-18)
 
 
