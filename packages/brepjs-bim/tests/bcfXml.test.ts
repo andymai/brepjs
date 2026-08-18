@@ -3,7 +3,7 @@ import { parseXml, findChild, childText } from '../src/bcf/bcfXml.js';
 
 /**
  * Low-level BCF XML tokenizer tests. The tokenizer reads untrusted `.bcfzip`
- * payloads, so the ReDoS-resistance cases below are load-bearing, not cosmetic:
+ * payloads, so the ReDoS-resistance cases below are essential, not cosmetic:
  * the sticky-flag tokenizer must stay linear on hostile input.
  */
 
