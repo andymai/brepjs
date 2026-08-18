@@ -88,7 +88,6 @@ export function withKernelDir<T>(v: Vec3, fn: (ocDir: KernelType) => T): T {
 
 /**
  * Create a kernel 3D axis-1 from point and direction. Caller must delete.
- * @testOnly Exercised by tests/occtBoundary.test.ts.
  */
 export function makeKernelAx1(center: Vec3, dir: Vec3): KernelType {
   return getKernel().createAxis1(center[0], center[1], center[2], dir[0], dir[1], dir[2]);
@@ -96,7 +95,6 @@ export function makeKernelAx1(center: Vec3, dir: Vec3): KernelType {
 
 /**
  * Create a kernel 3D axis-2 from origin and z direction (+optional x direction). Caller must delete.
- * @testOnly Exercised by tests/occtBoundary.test.ts.
  */
 export function makeKernelAx2(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType {
   if (xDir) {
@@ -117,7 +115,6 @@ export function makeKernelAx2(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType
 
 /**
  * Create a kernel 3D axis-3 from origin, z direction, and optional x direction. Caller must delete.
- * @testOnly Exercised by tests/occtBoundary.test.ts.
  */
 export function makeKernelAx3(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType {
   if (xDir) {
