@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.140.0](https://github.com/andymai/brepjs/compare/brepjs-v18.139.0...brepjs-v18.140.0) (2026-08-18)
+
+
+### Features
+
+* **families:** add cylinder and geometry intrinsics ([#2102](https://github.com/andymai/brepjs/issues/2102)) ([cce2446](https://github.com/andymai/brepjs/commit/cce24469420efdbcd1a0642471c9f8af01c493c9))
+
 ## [18.139.0](https://github.com/andymai/brepjs/compare/brepjs-v18.138.0...brepjs-v18.139.0) (2026-08-18)
 
 
