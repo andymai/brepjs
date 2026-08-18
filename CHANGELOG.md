@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.148.0](https://github.com/andymai/brepjs/compare/brepjs-v18.147.2...brepjs-v18.148.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** ids checker passes the full official conformance suite ([#2152](https://github.com/andymai/brepjs/issues/2152)) ([468a6d3](https://github.com/andymai/brepjs/commit/468a6d39727cb259e894b75cfdb432fb3ed325f0))
+
 ## [18.147.2](https://github.com/andymai/brepjs/compare/brepjs-v18.147.1...brepjs-v18.147.2) (2026-08-18)
 
 
