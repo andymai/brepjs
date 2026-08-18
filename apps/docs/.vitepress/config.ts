@@ -309,6 +309,7 @@ export default withMermaid(
           text: 'Declarative Models',
           items: [
             { text: 'Why a Family Layer', link: '/families/overview' },
+            { text: 'For BIM Professionals', link: '/families/for-bim-professionals' },
             { text: 'Your First Building', link: '/families/first-building' },
             { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
             { text: 'Openings & Voids', link: '/families/openings' },

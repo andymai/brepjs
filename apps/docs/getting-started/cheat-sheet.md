@@ -227,6 +227,7 @@ void geo;
 ## Families (declarative models)
 
 ```typescript
+import { csg } from 'brepjs';
 import { family, el, resolve, evaluateModel, tTranslate } from 'brepjs-families';
 
 const Wall = family<{ length: number }>('Wall', (p) => el('Box', { size: [p.length, 200, 2700] }));
