@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.147.2](https://github.com/andymai/brepjs/compare/brepjs-v18.147.1...brepjs-v18.147.2) (2026-08-18)
+
+
+### Bug Fixes
+
+* **bim:** sweep the buildingsmart semantic findings, gate them locally ([#2151](https://github.com/andymai/brepjs/issues/2151)) ([0e54661](https://github.com/andymai/brepjs/commit/0e5466118207de654fb80c6342bb13610f69743b))
+
 ## [18.147.1](https://github.com/andymai/brepjs/compare/brepjs-v18.147.0...brepjs-v18.147.1) (2026-08-18)
 
 
