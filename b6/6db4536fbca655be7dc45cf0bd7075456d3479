@@ -1,0 +1,19 @@
+packages/brepjs-bim/scripts/setupGherkinRunner.sh
+  s_f7654670ddf29a::t_2211339fb1485b 40-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b66db4536fbca655be7dc45cf0bd7075456d3479",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
