@@ -16,7 +16,7 @@
  * directory works — point --registry at a firm-internal copy to self-host.
  */
 
-import { mkdir, open, readFile, writeFile, access, lstat, realpath } from 'node:fs/promises';
+import { mkdir, open, readFile, writeFile, access, lstat, realpath, rename, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve as resolvePath, sep } from 'node:path';
@@ -132,22 +132,24 @@ async function guardedWrite(targetRoot, target, content) {
   if (parentReal !== rootReal && !parentReal.startsWith(rootReal + sep)) {
     throw new Error(`refusing to write outside the target directory: ${target}`);
   }
-  let handle;
-  try {
-    handle = await open(
-      target,
-      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW
-    );
-  } catch (err) {
-    if (err && (err.code === 'ELOOP' || err.code === 'EMLINK')) {
-      throw new Error(`refusing to write through a symlink: ${target}`);
-    }
-    throw err;
+  const stat = await lstat(target).catch(() => null);
+  if (stat?.isSymbolicLink()) {
+    throw new Error(`refusing to write through a symlink: ${target}`);
   }
+  // Write a sibling temp file, then rename over the target: rename is atomic
+  // and never follows symlinks, so a failed write leaves the target intact
+  // (no O_TRUNC damage to report) and a racing symlink is replaced, never
+  // followed.
+  const tmp = `${target}.brepjs-tmp-${process.pid}`;
+  const handle = await open(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL);
   try {
     await handle.writeFile(content);
-  } finally {
     await handle.close();
+    await rename(tmp, target);
+  } catch (err) {
+    await handle.close().catch(() => {});
+    await rm(tmp, { force: true });
+    throw err;
   }
 }
 
