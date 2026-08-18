@@ -258,8 +258,10 @@ export class BimModel {
    * the IFC layer from `spec.flights`; the STAIR element itself carries no solid
    * (the assembly container's Representation is null, valid per IFC4).
    */
-  addStair(spec: StairSpec): Result<LocalId, BimError> {
-    const id = this.#makeElement('STAIR', spec, null);
+  addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    const id = this.#makeElement('STAIR', spec, null, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -269,8 +271,10 @@ export class BimModel {
    * Adds an IfcRamp assembly. Geometry for each flight is built and written by the
    * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
    */
-  addRamp(spec: RampSpec): Result<LocalId, BimError> {
-    const id = this.#makeElement('RAMP', spec, null);
+  addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    const id = this.#makeElement('RAMP', spec, null, options?.stableKey);
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);

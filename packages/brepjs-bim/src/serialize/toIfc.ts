@@ -40,10 +40,7 @@ import {
   writeCoveringEntity,
   writeRelCoversBldgElements,
 } from '../ifc-writer/coveringWriter.js';
-import {
-  writeElementAssemblyEntity,
-  writeRelNests,
-} from '../ifc-writer/assemblyWriter.js';
+import { writeElementAssemblyEntity, writeRelNests } from '../ifc-writer/assemblyWriter.js';
 import {
   writeZoneEntity,
   writeSystemEntity,
@@ -116,7 +113,12 @@ import type { BimRelationship } from '../types/relationships.js';
 import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
 import { checkSchema } from '../validation/schemaCheck.js';
 import { checkRoundTrip } from '../validation/roundTrip.js';
-import { hasErrors, issue, type ValidationReport, type ValidationIssue } from '../validation/severity.js';
+import {
+  hasErrors,
+  issue,
+  type ValidationReport,
+  type ValidationIssue,
+} from '../validation/severity.js';
 
 export async function toIfc(
   model: BimModel,
@@ -161,7 +163,10 @@ export async function toIfc(
   const zones = model.getZones();
   const systems = model.getSystems();
 
-  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, meta);
+  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(
+    w,
+    meta
+  );
 
   const densityByElement = buildDensityMap(relationships);
 
@@ -169,7 +174,12 @@ export async function toIfc(
   const placementMap = new Map<LocalId, number>();
 
   const projectExpressId = writeProject(
-    w, project.guid, project.spec.name, ownerHistoryId, unitAssignmentId, geomContextId
+    w,
+    project.guid,
+    project.spec.name,
+    ownerHistoryId,
+    unitAssignmentId,
+    geomContextId
   );
   idMap.set(project.localId, projectExpressId);
 
@@ -183,9 +193,14 @@ export async function toIfc(
   for (const el of elements) {
     if (el.category !== 'BUILDING') continue;
     const parentSiteId = findParentOf(el.localId, relationships);
-    const parentPlacementId = parentSiteId !== null ? (placementMap.get(parentSiteId) ?? null) : null;
+    const parentPlacementId =
+      parentSiteId !== null ? (placementMap.get(parentSiteId) ?? null) : null;
     const { entityId, placementId } = writeBuilding(
-      w, el.guid, el.spec.name, ownerHistoryId, parentPlacementId
+      w,
+      el.guid,
+      el.spec.name,
+      ownerHistoryId,
+      parentPlacementId
     );
     idMap.set(el.localId, entityId);
     placementMap.set(el.localId, placementId);
@@ -194,9 +209,15 @@ export async function toIfc(
   for (const el of elements) {
     if (el.category !== 'STOREY') continue;
     const parentBuildingId = findParentOf(el.localId, relationships);
-    const parentPlacementId = parentBuildingId !== null ? (placementMap.get(parentBuildingId) ?? null) : null;
+    const parentPlacementId =
+      parentBuildingId !== null ? (placementMap.get(parentBuildingId) ?? null) : null;
     const { entityId, placementId } = writeStorey(
-      w, el.guid, el.spec.name, el.spec.elevation, ownerHistoryId, parentPlacementId
+      w,
+      el.guid,
+      el.spec.name,
+      el.spec.elevation,
+      ownerHistoryId,
+      parentPlacementId
     );
     idMap.set(el.localId, entityId);
     placementMap.set(el.localId, placementId);
@@ -226,12 +247,21 @@ export async function toIfc(
 
   for (const [i, wall] of walls.entries()) {
     const containingId = findContainerOf(wall.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeWallGeometry(
-      w, wall.spec, geomSubContextId, storeyPlacementId
+      w,
+      wall.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const wallExpressId = writeWallEntity(
-      w, wall.guid, `Wall ${i + 1}`, ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      wall.guid,
+      `Wall ${i + 1}`,
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(wall.localId, wallExpressId);
     placementMap.set(wall.localId, localPlacementId);
@@ -241,7 +271,10 @@ export async function toIfc(
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
     writeWallBaseQuantities(
-      w, ownerHistoryId, wallExpressId, wall.spec,
+      w,
+      ownerHistoryId,
+      wallExpressId,
+      wall.spec,
       openingsByWall.get(wall.localId) ?? [],
       densityByElement.get(wall.localId)
     );
@@ -249,13 +282,22 @@ export async function toIfc(
 
   for (const [i, slab] of slabs.entries()) {
     const containingId = findContainerOf(slab.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeSlabGeometry(
-      w, slab.spec, geomSubContextId, storeyPlacementId
+      w,
+      slab.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const slabExpressId = writeSlabEntity(
-      w, slab.guid, `Slab ${i + 1}`, slab.spec.predefinedType,
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      slab.guid,
+      `Slab ${i + 1}`,
+      slab.spec.predefinedType,
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(slab.localId, slabExpressId);
     placementMap.set(slab.localId, localPlacementId);
@@ -265,7 +307,10 @@ export async function toIfc(
       writeCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
     }
     writeSlabBaseQuantities(
-      w, ownerHistoryId, slabExpressId, slab.spec,
+      w,
+      ownerHistoryId,
+      slabExpressId,
+      slab.spec,
       openingsBySlab.get(slab.localId) ?? [],
       densityByElement.get(slab.localId)
     );
@@ -273,13 +318,22 @@ export async function toIfc(
 
   for (const [i, beam] of beams.entries()) {
     const containingId = findContainerOf(beam.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeBeamGeometry(
-      w, beam.spec, geomSubContextId, storeyPlacementId
+      w,
+      beam.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const beamExpressId = writeBeamEntity(
-      w, beam.guid, `Beam ${i + 1}`, beam.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      beam.guid,
+      `Beam ${i + 1}`,
+      beam.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(beam.localId, beamExpressId);
     placementMap.set(beam.localId, localPlacementId);
@@ -293,13 +347,22 @@ export async function toIfc(
 
   for (const [i, column] of columns.entries()) {
     const containingId = findContainerOf(column.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeColumnGeometry(
-      w, column.spec, geomSubContextId, storeyPlacementId
+      w,
+      column.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const columnExpressId = writeColumnEntity(
-      w, column.guid, `Column ${i + 1}`, column.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      column.guid,
+      `Column ${i + 1}`,
+      column.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(column.localId, columnExpressId);
     placementMap.set(column.localId, localPlacementId);
@@ -313,14 +376,22 @@ export async function toIfc(
 
   for (const [i, proxy] of proxies.entries()) {
     const containingId = findContainerOf(proxy.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeProxyGeometry(
-      w, proxy.spec, geomSubContextId, storeyPlacementId
+      w,
+      proxy.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const proxyExpressId = writeProxyEntity(
-      w, proxy.guid, proxy.spec.name || `Proxy ${i + 1}`,
+      w,
+      proxy.guid,
+      proxy.spec.name || `Proxy ${i + 1}`,
       proxy.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(proxy.localId, proxyExpressId);
     placementMap.set(proxy.localId, localPlacementId);
@@ -331,15 +402,23 @@ export async function toIfc(
 
   for (const [i, space] of spaces.entries()) {
     const containingId = findContainerOf(space.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeSpaceGeometry(
-      w, space.spec, geomSubContextId, storeyPlacementId
+      w,
+      space.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const spaceExpressId = writeSpaceEntity(
-      w, space.guid, space.spec.name || `Space ${i + 1}`,
+      w,
+      space.guid,
+      space.spec.name || `Space ${i + 1}`,
       space.spec.longName ?? null,
       space.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(space.localId, spaceExpressId);
     placementMap.set(space.localId, localPlacementId);
@@ -352,16 +431,26 @@ export async function toIfc(
 
   for (const [i, roof] of roofs.entries()) {
     const containingId = findContainerOf(roof.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId, usedFallback } = writeRoofGeometry(
-      w, roof.spec, roof.geometry, geomSubContextId, storeyPlacementId
+      w,
+      roof.spec,
+      roof.geometry,
+      geomSubContextId,
+      storeyPlacementId
     );
     if (usedFallback) {
       console.warn(`Roof ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
     }
     const roofExpressId = writeRoofEntity(
-      w, roof.guid, `Roof ${i + 1}`, roof.spec.predefinedType,
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      roof.guid,
+      `Roof ${i + 1}`,
+      roof.spec.predefinedType,
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(roof.localId, roofExpressId);
     placementMap.set(roof.localId, localPlacementId);
@@ -375,15 +464,20 @@ export async function toIfc(
 
   for (const [i, curtainWall] of curtainWalls.entries()) {
     const containingId = findContainerOf(curtainWall.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     // The writer also emits the wall's plates/members plus the IfcRelAggregates
     // decomposing them into the wall. Only the wall is tracked in idMap so the
     // spatial-containment relationship references the wall, not its parts.
     const { curtainWallId } = writeCurtainWall(
-      w, curtainWall.spec, curtainWall.geometry,
+      w,
+      curtainWall.spec,
+      curtainWall.geometry,
       `elem:CURTAIN_WALL:${curtainWall.localId}`,
       `Curtain Wall ${i + 1}`,
-      ownerHistoryId, geomSubContextId, storeyPlacementId
+      ownerHistoryId,
+      geomSubContextId,
+      storeyPlacementId
     );
     idMap.set(curtainWall.localId, curtainWallId);
     writeCurtainWallCommonPset(w, ownerHistoryId, curtainWallId, curtainWall.spec);
@@ -394,13 +488,22 @@ export async function toIfc(
 
   for (const [i, footing] of footings.entries()) {
     const containingId = findContainerOf(footing.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeFootingGeometry(
-      w, footing.spec, geomSubContextId, storeyPlacementId
+      w,
+      footing.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const footingExpressId = writeFootingEntity(
-      w, footing.guid, `Footing ${i + 1}`, footing.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      footing.guid,
+      `Footing ${i + 1}`,
+      footing.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(footing.localId, footingExpressId);
     placementMap.set(footing.localId, localPlacementId);
@@ -413,14 +516,23 @@ export async function toIfc(
 
   for (const [i, pile] of piles.entries()) {
     const containingId = findContainerOf(pile.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writePileGeometry(
-      w, pile.spec, geomSubContextId, storeyPlacementId
+      w,
+      pile.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const pileExpressId = writePileEntity(
-      w, pile.guid, `Pile ${i + 1}`, pile.spec.predefinedType ?? 'NOTDEFINED',
+      w,
+      pile.guid,
+      `Pile ${i + 1}`,
+      pile.spec.predefinedType ?? 'NOTDEFINED',
       pile.spec.constructionType ?? null,
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(pile.localId, pileExpressId);
     placementMap.set(pile.localId, localPlacementId);
@@ -433,11 +545,16 @@ export async function toIfc(
 
   for (const [i, assembly] of assemblies.entries()) {
     const containingId = findContainerOf(assembly.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const assemblyExpressId = writeElementAssemblyEntity(
-      w, assembly.guid, assembly.spec.name ?? `Assembly ${i + 1}`,
+      w,
+      assembly.guid,
+      assembly.spec.name ?? `Assembly ${i + 1}`,
       assembly.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, storeyPlacementId, null,
+      ownerHistoryId,
+      storeyPlacementId,
+      null,
       assembly.spec.assemblyPlace ?? 'NOTDEFINED'
     );
     idMap.set(assembly.localId, assemblyExpressId);
@@ -445,25 +562,40 @@ export async function toIfc(
 
   for (const zone of zones) {
     const zoneExpressId = writeZoneEntity(
-      w, zone.guid, zone.spec.name, zone.spec.longName ?? null,
-      zone.spec.objectType ?? null, ownerHistoryId
+      w,
+      zone.guid,
+      zone.spec.name,
+      zone.spec.longName ?? null,
+      zone.spec.objectType ?? null,
+      ownerHistoryId
     );
     idMap.set(zone.localId, zoneExpressId);
   }
 
   for (const system of systems) {
     const systemExpressId = writeSystemEntity(
-      w, system.guid, system.spec.name, system.spec.longName ?? null,
-      system.spec.objectType ?? null, ownerHistoryId
+      w,
+      system.guid,
+      system.spec.name,
+      system.spec.longName ?? null,
+      system.spec.objectType ?? null,
+      ownerHistoryId
     );
     idMap.set(system.localId, systemExpressId);
   }
 
   for (const stair of stairs) {
     const containingId = findContainerOf(stair.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const result = writeStairAssembly(
-      w, stair.spec, `${stair.localId}`, ownerHistoryId, geomSubContextId, storeyPlacementId
+      w,
+      stair.spec,
+      `${stair.localId}`,
+      stair.guid,
+      ownerHistoryId,
+      geomSubContextId,
+      storeyPlacementId
     );
     if (!result.ok) return err(result.error);
     idMap.set(stair.localId, result.value.assemblyExpressId);
@@ -472,9 +604,16 @@ export async function toIfc(
 
   for (const ramp of ramps) {
     const containingId = findContainerOf(ramp.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const result = writeRampAssembly(
-      w, ramp.spec, `${ramp.localId}`, ownerHistoryId, geomSubContextId, storeyPlacementId
+      w,
+      ramp.spec,
+      `${ramp.localId}`,
+      ramp.guid,
+      ownerHistoryId,
+      geomSubContextId,
+      storeyPlacementId
     );
     if (!result.ok) return err(result.error);
     idMap.set(ramp.localId, result.value.assemblyExpressId);
@@ -483,15 +622,21 @@ export async function toIfc(
 
   for (const [i, railing] of railings.entries()) {
     const containingId = findContainerOf(railing.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId, bodyItemId, usedFallback } =
       writeRailingGeometry(w, railing.spec, railing.geometry, geomSubContextId, storeyPlacementId);
     if (usedFallback) {
       console.warn(`Railing ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
     }
     const railingExpressId = writeRailingEntity(
-      w, railing.guid, `Railing ${i + 1}`, railing.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      railing.guid,
+      `Railing ${i + 1}`,
+      railing.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(railing.localId, railingExpressId);
     placementMap.set(railing.localId, localPlacementId);
@@ -506,13 +651,22 @@ export async function toIfc(
 
   for (const [i, covering] of coverings.entries()) {
     const containingId = findContainerOf(covering.localId, relationships);
-    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const storeyPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId, bodyItemId } = writeCoveringGeometry(
-      w, covering.spec, geomSubContextId, storeyPlacementId
+      w,
+      covering.spec,
+      geomSubContextId,
+      storeyPlacementId
     );
     const coveringExpressId = writeCoveringEntity(
-      w, covering.guid, `Covering ${i + 1}`, covering.spec.predefinedType ?? 'NOTDEFINED',
-      ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w,
+      covering.guid,
+      `Covering ${i + 1}`,
+      covering.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
     );
     idMap.set(covering.localId, coveringExpressId);
     placementMap.set(covering.localId, localPlacementId);
@@ -542,7 +696,13 @@ export async function toIfc(
     if (!isWallOpening(openingElement.spec)) continue;
 
     const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
-      w, openingElement.guid, openingElement.spec, wallElement.spec, wallPlacementId, geomSubContextId, ownerHistoryId
+      w,
+      openingElement.guid,
+      openingElement.spec,
+      wallElement.spec,
+      wallPlacementId,
+      geomSubContextId,
+      ownerHistoryId
     );
     idMap.set(rel.openingLocalId, openingEntityId);
     openingPlacementMap.set(rel.openingLocalId, openingPlacementId);
@@ -566,7 +726,13 @@ export async function toIfc(
     if (!isSlabOpening(openingElement.spec)) continue;
 
     const { openingEntityId } = writeSlabOpeningGeometry(
-      w, openingElement.guid, openingElement.spec, slabElement.spec, slabPlacementId, geomSubContextId, ownerHistoryId
+      w,
+      openingElement.guid,
+      openingElement.spec,
+      slabElement.spec,
+      slabPlacementId,
+      geomSubContextId,
+      ownerHistoryId
     );
     idMap.set(rel.openingLocalId, openingEntityId);
 
@@ -582,8 +748,14 @@ export async function toIfc(
     const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
     if (openingPlacementId === undefined || openingEntityId === undefined) continue;
     const doorExpressId = writeDoorEntity(
-      w, door.guid, `Door ${i + 1}`, ownerHistoryId, openingPlacementId, geomSubContextId,
-      toIfcLengthM(door.spec.width), toIfcLengthM(door.spec.height)
+      w,
+      door.guid,
+      `Door ${i + 1}`,
+      ownerHistoryId,
+      openingPlacementId,
+      geomSubContextId,
+      toIfcLengthM(door.spec.width),
+      toIfcLengthM(door.spec.height)
     );
     idMap.set(door.localId, doorExpressId);
     writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, doorExpressId);
@@ -599,8 +771,14 @@ export async function toIfc(
     const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
     if (openingPlacementId === undefined || openingEntityId === undefined) continue;
     const windowExpressId = writeWindowEntity(
-      w, win.guid, `Window ${i + 1}`, ownerHistoryId, openingPlacementId, geomSubContextId,
-      toIfcLengthM(win.spec.width), toIfcLengthM(win.spec.height)
+      w,
+      win.guid,
+      `Window ${i + 1}`,
+      ownerHistoryId,
+      openingPlacementId,
+      geomSubContextId,
+      toIfcLengthM(win.spec.width),
+      toIfcLengthM(win.spec.height)
     );
     idMap.set(win.localId, windowExpressId);
     writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, windowExpressId);
@@ -625,7 +803,11 @@ export async function toIfc(
       .filter((id): id is number => id !== undefined);
     if (structureExpressId === undefined || elementExpressIds.length === 0) continue;
     writeRelContainedInSpatialStructure(
-      w, rel.guid, ownerHistoryId, structureExpressId, elementExpressIds
+      w,
+      rel.guid,
+      ownerHistoryId,
+      structureExpressId,
+      elementExpressIds
     );
   }
 
@@ -635,7 +817,12 @@ export async function toIfc(
     const elementExpressId = idMap.get(rel.elementLocalId);
     if (spaceExpressId === undefined || elementExpressId === undefined) continue;
     writeRelSpaceBoundary(
-      w, rel.guid, ownerHistoryId, spaceExpressId, elementExpressId, rel.connectionType
+      w,
+      rel.guid,
+      ownerHistoryId,
+      spaceExpressId,
+      elementExpressId,
+      rel.connectionType
     );
   }
 
@@ -673,7 +860,12 @@ export async function toIfc(
     const relatedExpressId = idMap.get(rel.relatedElementLocalId);
     if (relatingExpressId === undefined || relatedExpressId === undefined) continue;
     writeRelConnectsElements(
-      w, rel.guid, ownerHistoryId, relatingExpressId, relatedExpressId, rel.description ?? null
+      w,
+      rel.guid,
+      ownerHistoryId,
+      relatingExpressId,
+      relatedExpressId,
+      rel.description ?? null
     );
   }
 
@@ -683,8 +875,14 @@ export async function toIfc(
     const relatedExpressId = idMap.get(rel.relatedElementLocalId);
     if (relatingExpressId === undefined || relatedExpressId === undefined) continue;
     writeRelConnectsPathElements(
-      w, rel.guid, ownerHistoryId, relatingExpressId, relatedExpressId,
-      rel.relatingConnectionType, rel.relatedConnectionType, rel.description ?? null
+      w,
+      rel.guid,
+      ownerHistoryId,
+      relatingExpressId,
+      relatedExpressId,
+      rel.relatingConnectionType,
+      rel.relatedConnectionType,
+      rel.description ?? null
     );
   }
 
@@ -907,12 +1105,7 @@ export async function toIfcValidated(
   // geometry-validity and post-save diagnostics; integrity errors already
   // short-circuited above.
   const report: ValidationReport = {
-    issues: [
-      ...integrity.issues,
-      ...geometry.issues,
-      ...schema.issues,
-      ...roundTrip.issues,
-    ],
+    issues: [...integrity.issues, ...geometry.issues, ...schema.issues, ...roundTrip.issues],
   };
   return ok({ bytes, report });
 }
@@ -963,7 +1156,10 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
   model.getCurtainWalls().forEach((cw, index) => {
     const components = [...cw.geometry.panels, ...cw.geometry.mullions];
     components.forEach((component, ci) => {
-      const report = checkGeometryValidity(component.solid, `CurtainWall ${index + 1} component ${ci + 1}`);
+      const report = checkGeometryValidity(
+        component.solid,
+        `CurtainWall ${index + 1} component ${ci + 1}`
+      );
       issues.push(...report.issues);
     });
   });
@@ -979,9 +1175,7 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
  * whose material has no resolvable density are absent from the map and emit no
  * weight quantity.
  */
-function buildDensityMap(
-  relationships: readonly BimRelationship[]
-): ReadonlyMap<LocalId, number> {
+function buildDensityMap(relationships: readonly BimRelationship[]): ReadonlyMap<LocalId, number> {
   const map = new Map<LocalId, number>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
@@ -1028,7 +1222,10 @@ function applySurfaceStyle(
   writeStyledItem(w, bodyItemId, styleId);
 }
 
-function findContainerOf(elementId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {
+function findContainerOf(
+  elementId: LocalId,
+  relationships: readonly BimRelationship[]
+): LocalId | null {
   for (const rel of relationships) {
     if (rel.kind === 'CONTAINED_IN' && rel.relatedElements.includes(elementId)) {
       return rel.relatingStructure;

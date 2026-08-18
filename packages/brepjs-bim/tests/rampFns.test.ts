@@ -12,7 +12,10 @@ import {
   writeBuilding,
   writeStorey,
 } from '../src/ifc-writer/entityWriter.js';
-import { writeRelAggregates, writeRelContainedInSpatialStructure } from '../src/ifc-writer/relWriter.js';
+import {
+  writeRelAggregates,
+  writeRelContainedInSpatialStructure,
+} from '../src/ifc-writer/relWriter.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { writeRampAssembly } from '../src/ifc-writer/stairWriter.js';
 
@@ -124,7 +127,10 @@ async function buildBaseModel(): Promise<{
   const writerResult = await IfcWriter.create();
   if (!writerResult.ok) throw new Error(writerResult.error.message);
   const w = writerResult.value;
-  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, META);
+  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(
+    w,
+    META
+  );
 
   const projectId = writeProject(
     w,
@@ -188,6 +194,7 @@ describe('writeRampAssembly serialization + aggregation', () => {
       base.w,
       rampSpec,
       'ramp-1',
+      deriveIfcGuidSync('elem:RAMP:ramp-1'),
       base.ownerHistoryId,
       base.geomSubContextId,
       base.storeyPlacementId
@@ -242,6 +249,7 @@ describe('writeRampAssembly serialization + aggregation', () => {
       base.w,
       rampSpec,
       'ramp-2',
+      deriveIfcGuidSync('elem:RAMP:ramp-2'),
       base.ownerHistoryId,
       base.geomSubContextId,
       base.storeyPlacementId

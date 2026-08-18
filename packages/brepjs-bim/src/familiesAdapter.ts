@@ -5,7 +5,7 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers, Wall/Slab/Column/Beam/Roof elements, and wall openings — a
+ * Scope: Storey containers, Wall/Slab/Column/Beam/Roof/Stair elements, and wall openings — a
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
@@ -21,6 +21,7 @@ import { parseSlabSpec } from './specs/slabSpec.js';
 import { parseColumnSpec } from './specs/columnSpec.js';
 import { parseBeamSpec } from './specs/beamSpec.js';
 import { parseRoofSpec } from './specs/roofSpec.js';
+import { parseStairSpec } from './specs/stairSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
@@ -69,7 +70,29 @@ const SPEC_ROUTES = {
     parse: parseRoofSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addRoof(spec as never, { stableKey: key }),
   },
+  Stair: {
+    parse: parseStairSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addStair(spec as never, { stableKey: key }),
+    input: stairSpecInput,
+  },
 } as const;
+
+/** StairSpec has no top-level origin — placement lives per flight — so the
+ *  element's folded translate lands on every flight's origin instead. */
+function stairSpecInput(el: ResolvedElement): Record<string, unknown> {
+  const base = specInput(el);
+  const fold = (base['origin'] as readonly [number, number, number] | undefined) ?? [0, 0, 0];
+  const flights = Array.isArray(base['flights'])
+    ? (base['flights'] as ReadonlyArray<Record<string, unknown>>)
+    : [];
+  return {
+    ...base,
+    flights: flights.map((f) => {
+      const fo = (f['origin'] as readonly [number, number, number] | undefined) ?? [0, 0, 0];
+      return { ...f, origin: [fo[0] + fold[0], fo[1] + fold[1], fo[2] + fold[2]] };
+    }),
+  };
+}
 
 function specRoute(type: string): (typeof SPEC_ROUTES)[keyof typeof SPEC_ROUTES] | undefined {
   return Object.hasOwn(SPEC_ROUTES, type)
@@ -275,7 +298,7 @@ export function familiesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const parsed = route.parse(specInput(el));
+      const parsed = route.parse(('input' in route ? route.input : specInput)(el));
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;

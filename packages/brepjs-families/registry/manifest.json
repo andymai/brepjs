@@ -51,6 +51,14 @@
       "familyDeps": []
     },
     {
+      "name": "stair",
+      "version": 1,
+      "description": "Multi-flight stair (stepped sawtooth flights) mapping onto IfcStair",
+      "files": ["families/stair.ts"],
+      "npmDeps": ["brepjs", "brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
       "name": "door",
       "version": 1,
       "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
