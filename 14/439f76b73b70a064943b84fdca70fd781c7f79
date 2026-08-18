@@ -1,0 +1,19 @@
+packages/brepjs-bim/src/import/fromIfc.ts
+  s_f7654670ddf29a::t_84a1ceb8cbc27f 366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "14439f76b73b70a064943b84fdca70fd781c7f79",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}

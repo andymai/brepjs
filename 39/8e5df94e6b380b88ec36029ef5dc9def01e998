@@ -1,0 +1,193 @@
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_f7654670ddf29a::t_f8542e23de1e67 353
+  s_f7654670ddf29a::t_c2e45a4af94c0d 11,15-33,38,60,78,96
+  s_f7654670ddf29a::t_52db547af78177 115,128,146,159,177,215,253,291,361,363
+packages/brepjs-bim/tests/ifcWriterHeader.test.ts
+  s_f7654670ddf29a::t_e8dfa7b282b443 52-54
+  s_f7654670ddf29a::t_5ace7593568251 4-6,47-51,55-60
+  s_f7654670ddf29a::t_f2ff7b755d5716 61-62
+packages/brepjs-bim/src/ifc-writer/ifcWriter.ts
+  s_f7654670ddf29a::t_e8dfa7b282b443 48-51
+  s_f7654670ddf29a::t_3540b5150dc63f 39-47,52-55,138
+packages/brepjs-bim/examples/sample-building.ifc
+  s_f7654670ddf29a::t_80973cf98757d5 413
+  s_f7654670ddf29a::t_52db547af78177 11,16,18,20,22,24,122,130,148,156,174,187,205,219,237,275,313,351,421
+packages/brepjs-bim/VALIDATION.md
+  s_f7654670ddf29a::t_e8dfa7b282b443 45-50
+  s_f7654670ddf29a::t_2581b73b283336 51-60
+packages/brepjs-bim/examples/interop-fixture.ifc
+  s_f7654670ddf29a::t_80973cf98757d5 848
+  s_f7654670ddf29a::t_52db547af78177 11,16,18,20,22,24,26,28,30,32,34,123,134,136,138,148,158,542,549,557,568,576,587,595,606,614,632,640,658,666,684,697,715,753,791,856,858
+packages/brepjs-bim/src/specs/beamSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 58,61-65,67-87,89-94,96-98,100-102,104-118
+packages/brepjs-bim/tests/roundTrip.test.ts
+  s_f7654670ddf29a::t_4e37e9c062caae 12-36,641
+  s_f7654670ddf29a::t_1ded1cd3d769a5 964,1158
+packages/brepjs-bim/src/ifc-writer/typeWriter.ts
+  s_f7654670ddf29a::t_bdb23f850c115a 40-41,46,63-69
+packages/brepjs-bim/src/ifc-writer/foundationWriter.ts
+  s_f7654670ddf29a::t_fc132f16fbf155 165,192
+  s_f7654670ddf29a::t_7634f8d51548fe 182-183,210-211
+  s_f7654670ddf29a::t_f5485d3a12457d 6-12
+packages/brepjs-bim/src/bcf/bcfRead.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 64-65
+packages/brepjs-bim/src/import/dataRead.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 244-248,348,382-383
+packages/brepjs-bim/src/ifc-writer/stairWriter.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 294,305,397,408
+  s_f7654670ddf29a::t_fc132f16fbf155 128,156,183
+  s_f7654670ddf29a::t_bdb23f850c115a 59,72
+  s_f7654670ddf29a::t_7634f8d51548fe 118-119,146-147,173-174,199-200
+packages/brepjs-bim/src/elementFns/railingFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 19-25,30-32,92-94
+packages/brepjs-bim/src/types/bimTypes.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 21
+packages/brepjs-bim/src/validation/geometryValidity.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 37,66-67,78-79,93-94,106-107
+packages/brepjs-bim/src/ifc-writer/coveringWriter.ts
+  s_f7654670ddf29a::t_7634f8d51548fe 129-130
+  s_f7654670ddf29a::t_fc132f16fbf155 112
+packages/brepjs-bim/src/ifc-writer/ownerHistoryWriter.ts
+  s_f7654670ddf29a::t_bdb23f850c115a 42-44,48,74-76
+packages/brepjs-bim/src/bcf/bcfWrite.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 46-48,81-82
+packages/brepjs-bim/tests/roofFns.test.ts
+  s_f7654670ddf29a::t_d28ac9c2fa867b 223,235-237
+packages/brepjs-bim/src/ids/idsCheck.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 3,107-112,124-125,154-157,204-209,216-221,253-258,275-280
+packages/brepjs-bim/src/specs/coveringSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 54,57-61,63-86,88-91,93-95,97-99,101-115
+packages/brepjs-bim/src/specs/foundationSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 23,54,80,83-87,94,104-163
+packages/brepjs-bim/src/import/spfReader.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 67-69,76-78,84
+packages/brepjs-bim/src/specs/wallSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 42,45-49,51-59,61-66,68-70,72-74,76-90
+packages/brepjs-bim/src/errors/bimError.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 3-4
+packages/brepjs-bim/scripts/validateIfc.py
+  s_f7654670ddf29a::t_bdb23f850c115a 48
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 710
+packages/brepjs-bim/src/elementFns/openingFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 30
+packages/brepjs-bim/src/import/fromIfc.ts
+  s_f7654670ddf29a::t_66e329663650f4 115,127,167,187-189,355-374
+  s_f7654670ddf29a::t_f5485d3a12457d 175-180
+  s_f7654670ddf29a::t_2cac2c03a7a67e 375-376
+packages/brepjs-bim/src/ifc-writer/railingWriter.ts
+  s_f7654670ddf29a::t_fc132f16fbf155 137
+  s_f7654670ddf29a::t_7634f8d51548fe 154-155
+  s_f7654670ddf29a::t_f5485d3a12457d 125-130
+packages/brepjs-bim/src/elementFns/roofFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 30-31,34-35,49-50,53-54,69-70,73-74,108-109,135-136,153-154
+packages/brepjs-bim/src/ifc-writer/profileDefWriter.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 228
+packages/brepjs-bim/src/elementFns/coveringFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 33-39,46-52,58-60
+packages/brepjs-bim/src/elementFns/slabOpeningFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 31,72-75
+packages/brepjs-bim/src/validation/roundTrip.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 115-116,130-131
+packages/brepjs-bim/src/validation/severity.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 20,41
+packages/brepjs-bim/src/validation/referentialIntegrity.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 95-96,105-106,128-129,144-145,157,166-167,178-179,188,197-198,206-208,211-212
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_f7654670ddf29a::t_c2e45a4af94c0d 288-289
+packages/brepjs-bim/src/import/placement.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 12-27,175,184,212,228,234,243,245,250,258-273,297,337,357-372,377,411
+packages/brepjs-bim/src/ifc-writer/entityWriter.ts
+  s_f7654670ddf29a::t_fc132f16fbf155 167,205,234
+  s_f7654670ddf29a::t_7634f8d51548fe 184-185,222-223,251-252
+packages/brepjs-bim/src/import/importedModel.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 17,46
+packages/brepjs-bim/src/ifc-writer/openingWriter.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 30,63-67,316-320,366-370,437-438
+packages/brepjs-bim/src/elementFns/curtainWallFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 30,38-44,49-51,56-61,95-100
+packages/brepjs-bim/src/ids/idsParser.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 42,123,149
+packages/brepjs-bim/src/elementFns/beamFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 31-33,48-52,56-58,64-66
+packages/brepjs-bim/src/ifc-writer/curtainWallWriter.ts
+  s_f7654670ddf29a::t_7634f8d51548fe 197
+packages/brepjs-bim/src/elementFns/foundationFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 34-40,46-52,58-60,81-83,99-101,107-109
+packages/brepjs-bim/src/index.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 41,121,145-152
+packages/brepjs-bim/src/specs/slabSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 50,53-57,59-68,70-77,79-81,83-85,87-101
+packages/brepjs-bim/tests/foundationFns.test.ts
+  s_f7654670ddf29a::t_d28ac9c2fa867b 246-248,254,260
+packages/brepjs-bim/src/elementFns/rampFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 78-80
+packages/brepjs-bim/src/ids/idsTypes.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 21-30,37-41
+packages/brepjs-bim/src/specs/columnSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 48,51-55,57-65,67-72,74-76,78-80,82-96
+packages/brepjs-bim/src/ids/idsFacets.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 33-35
+packages/brepjs-bim/src/elementFns/columnFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 27-29,34-36,47-49,55-57,63-65
+packages/brepjs-bim/src/specs/profilesExtended.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 1-2,141,145,162,167,180,394-397,411-414,417-420,424-431,434-437,442-445,447-454,469-472,487-490,493-496,544-548,556-558
+packages/brepjs-bim/src/specs/proxySpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 21
+packages/brepjs-bim/src/elementFns/slabFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 32-34,41-43
+packages/brepjs-bim/src/elementFns/wallFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 32-34,41-43
+packages/brepjs-bim/src/specs/spaceSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 10,38,41-45,47-56,58-61,63-66,68,70-84
+packages/brepjs-bim/src/specs/curtainWallSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 46,49-53,55-67,69-72,74-77,79,81-113
+  s_f7654670ddf29a::t_7634f8d51548fe 9
+packages/brepjs-bim/src/ifc-writer/roofWriter.ts
+  s_f7654670ddf29a::t_7634f8d51548fe 35-36,65
+  s_f7654670ddf29a::t_fc132f16fbf155 18
+packages/brepjs-bim/src/specs/railingSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 49,52-56,58-68,70-72,74-76,78-80,82-96
+packages/brepjs-bim/src/elementFns/placedGeometry.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 15-17,77-81
+packages/brepjs-bim/src/ifc-writer/psetWriter.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 153,188-189,388-389,452-453,568-569,606-607,726-727
+  s_f7654670ddf29a::t_7634f8d51548fe 294-295
+packages/brepjs-bim/src/elementFns/stairFns.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 96-98
+packages/brepjs-bim/src/import/geometryRead.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 457-460,462-520,522-560
+packages/brepjs-bim/src/specs/rampSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 46-50,57
+packages/brepjs-bim/src/ifc-writer/spaceWriter.ts
+  s_f7654670ddf29a::t_7634f8d51548fe 129-130
+  s_f7654670ddf29a::t_fc132f16fbf155 111
+packages/brepjs-bim/tests/railingFns.test.ts
+  s_f7654670ddf29a::t_d28ac9c2fa867b 161-163
+packages/brepjs-bim/tests/coveringFns.test.ts
+  s_f7654670ddf29a::t_4e37e9c062caae 196-198
+packages/brepjs-bim/src/specs/roofSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 69,89-134
+packages/brepjs-bim/src/specs/stairSpec.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 51-55,62
+packages/brepjs-bim/src/validation/schemaCheck.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 29,42,53,61,71,81-82,103,126-127,140-141
+packages/brepjs-bim/src/cobie/cobieExport.ts
+  s_f7654670ddf29a::t_f5485d3a12457d 346-349,365,393-401,403-411,431-433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "398e5df94e6b380b88ec36029ef5dc9def01e998",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
