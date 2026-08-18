@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.9.0...brepjs-bim-v0.10.0) (2026-08-18)
+
+
+### Features
+
+* **families:** map circular columns onto IfcColumn through the adapter ([#2121](https://github.com/andymai/brepjs/issues/2121)) ([c8fc51e](https://github.com/andymai/brepjs/commit/c8fc51eaab8b07bdf4c048c63fd3a313d757b2e0))
+
 ## [0.9.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.8.1...brepjs-bim-v0.9.0) (2026-08-18)
 
 
