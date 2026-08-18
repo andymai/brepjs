@@ -1,0 +1,14 @@
+bin/brepjs.mjs
+  h_b755e1950659f4 227-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fd02516911ac338391fda3831f848a4e14f3cba9",
+  "prompts": {},
+  "humans": {
+    "h_b755e1950659f4": {
+      "author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
