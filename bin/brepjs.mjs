@@ -224,7 +224,11 @@ async function add(args) {
   if (missing.length > 0) {
     if (args.install) {
       console.warn(`installing: ${missing.join(' ')}`);
-      const r = spawnSync('npm', ['install', ...missing], { stdio: 'inherit' });
+      // Copy-in means choosing to trust the registry's code, but install-time
+      // lifecycle scripts are a surprise nobody opted into: suppress them.
+      const r = spawnSync('npm', ['install', '--ignore-scripts', ...missing], {
+        stdio: 'inherit',
+      });
       if (r.status !== 0) process.exitCode = r.status ?? 1;
     } else {
       console.warn(`missing npm deps — run: npm install ${missing.join(' ')}`);
