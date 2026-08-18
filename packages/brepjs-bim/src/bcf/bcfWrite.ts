@@ -43,7 +43,9 @@ export function serializeBcfFiles(data: BcfContainerData): BcfFiles {
 function writeVersion(data: BcfContainerData): string {
   const lines: string[] = [`<Version VersionId="${escapeXmlAttr(data.version.versionId)}">`];
   if (data.version.detailedVersion !== undefined) {
-    lines.push(`  <DetailedVersion>${escapeXmlText(data.version.detailedVersion)}</DetailedVersion>`);
+    lines.push(
+      `  <DetailedVersion>${escapeXmlText(data.version.detailedVersion)}</DetailedVersion>`
+    );
   }
   lines.push('</Version>');
   return xmlDocument(lines.join('\n'));
@@ -76,7 +78,8 @@ function writeMarkup(topic: BcfTopic): string {
 function writeTopic(topic: BcfTopic): string[] {
   const attrs: string[] = [`Guid="${escapeXmlAttr(topic.guid)}"`];
   if (topic.topicType !== undefined) attrs.push(`TopicType="${escapeXmlAttr(topic.topicType)}"`);
-  if (topic.topicStatus !== undefined) attrs.push(`TopicStatus="${escapeXmlAttr(topic.topicStatus)}"`);
+  if (topic.topicStatus !== undefined)
+    attrs.push(`TopicStatus="${escapeXmlAttr(topic.topicStatus)}"`);
 
   const lines: string[] = [`<Topic ${attrs.join(' ')}>`];
   const inner: string[] = [];

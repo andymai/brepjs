@@ -37,12 +37,13 @@ const TYPE_CONSTANT: Record<IfcTypeName, number> = {
 function commonTypeFields(
   w: IfcWriter,
   guid: IfcGuid,
-  ownerHistoryId: number
+  ownerHistoryId: number,
+  name: string
 ): Record<string, unknown> {
   return {
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
     OwnerHistory: w.ref(ownerHistoryId),
-    Name: null,
+    Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ApplicableOccurrence: null,
     HasPropertySets: null,
@@ -59,7 +60,13 @@ function writeTypeObject(
   predefinedType: string
 ): number {
   const id = w.nextId();
-  const base = commonTypeFields(w, guid, ownerHistoryId);
+  // IfcTypeObject.NameRequired: every type object must carry a Name.
+  const label = typeName
+    .slice(3, -4)
+    .replace('CURTAINWALL', 'CURTAIN WALL')
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+  const base = commonTypeFields(w, guid, ownerHistoryId, `${label} Type`);
 
   // IfcDoorType carries door-specific required attributes and does not share the
   // ElementType/PredefinedType tail of the other IfcElementTypes.

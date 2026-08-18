@@ -48,6 +48,16 @@ representation context's precision), and both web-ifc and IfcOpenShell tolerate 
 while the official validator's strict STEP grammar rejects the whole file. The writer now
 normalizes bare reals post-save (`1.E-05`), with a regression test on the full export path.
 
+The second service run reached the semantic layer and surfaced six more writer defects, all fixed:
+`IfcOwnerHistory.ChangeAction` claimed ADDED without a LastModifiedDate, the default `IfcPerson`
+carried no identification, every type object lacked the required `Name`, the curtain wall emitted
+a `CURTAIN_WALL` literal that `IfcCurtainWallTypeEnum` does not define, occurrences duplicated the
+`PredefinedType` their relating type already carried (OJT001 — the enum now rides the type object
+and the importer resolves it through `IfcRelDefinesByType`), and `Qto_*` element quantities omitted
+`MethodOfMeasurement='BaseQuantities'` (QTY001). `scripts/validateIfc.py` now runs IfcOpenShell
+with `express_rules=True`, which reproduces the service's entity-rule findings locally — the local
+gate is the QA loop, the service is confirmation.
+
 ## External tool checklist
 
 Manual gates for the 1.0 flip, run per tool against **both** fixtures

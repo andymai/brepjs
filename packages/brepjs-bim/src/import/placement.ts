@@ -9,10 +9,22 @@ import type { SpfReader } from './spfReader.js';
  * [0,0,0,1].
  */
 export type Mat4x4 = readonly [
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
 ];
 
 export type Vec3 = readonly [number, number, number];
@@ -160,7 +172,7 @@ function siPrefixFactor(prefix: string | null): number {
 export function composeWorldMatrix(
   reader: SpfReader,
   placementExpressId: number,
-  scale: number,
+  scale: number
 ): Mat4x4 | null {
   return composeLocalPlacement(reader, placementExpressId, scale, new Set());
 }
@@ -169,7 +181,7 @@ function composeLocalPlacement(
   reader: SpfReader,
   placementExpressId: number,
   scale: number,
-  seen: Set<number>,
+  seen: Set<number>
 ): Mat4x4 | null {
   if (seen.has(placementExpressId)) return null; // guard against malformed cycles
   seen.add(placementExpressId);
@@ -197,7 +209,7 @@ function composeLocalPlacement(
 export function composeWorldPlacement(
   reader: SpfReader,
   placementExpressId: number,
-  scale: number,
+  scale: number
 ): WorldPlacement | null {
   const matrix = composeWorldMatrix(reader, placementExpressId, scale);
   if (matrix === null) return null;
@@ -213,14 +225,13 @@ export function composeWorldPlacement(
 export function readAxis2Placement3D(
   reader: SpfReader,
   placementExpressId: number,
-  scale: number,
+  scale: number
 ): Mat4x4 | null {
   const placement = reader.getLine<Record<string, unknown>>(placementExpressId);
   if (placement === null) return null;
 
   const locationId = refValue(placement['Location']);
-  const location =
-    locationId !== null ? readCartesianPoint(reader, locationId) : [0, 0, 0];
+  const location = locationId !== null ? readCartesianPoint(reader, locationId) : [0, 0, 0];
   const originMm: Vec3 = [
     (location[0] ?? 0) * scale * 1000,
     (location[1] ?? 0) * scale * 1000,
@@ -229,19 +240,14 @@ export function readAxis2Placement3D(
 
   const axisId = refValue(placement['Axis']);
   const refDirId = refValue(placement['RefDirection']);
-  const axisZraw: Vec3 =
-    axisId !== null ? readDirection(reader, axisId) ?? [0, 0, 1] : [0, 0, 1];
+  const axisZraw: Vec3 = axisId !== null ? (readDirection(reader, axisId) ?? [0, 0, 1]) : [0, 0, 1];
   const refXraw: Vec3 =
-    refDirId !== null ? readDirection(reader, refDirId) ?? [1, 0, 0] : [1, 0, 0];
+    refDirId !== null ? (readDirection(reader, refDirId) ?? [1, 0, 0]) : [1, 0, 0];
 
   const z = normalize(axisZraw);
   // Project RefDirection onto the plane perpendicular to Z, per IFC axis rules.
   const dot = z[0] * refXraw[0] + z[1] * refXraw[1] + z[2] * refXraw[2];
-  const projX: Vec3 = [
-    refXraw[0] - dot * z[0],
-    refXraw[1] - dot * z[1],
-    refXraw[2] - dot * z[2],
-  ];
+  const projX: Vec3 = [refXraw[0] - dot * z[0], refXraw[1] - dot * z[1], refXraw[2] - dot * z[2]];
   // Test the projected (un-normalized) vector: normalize() returns a safe unit
   // fallback for near-zero input, so checking it post-normalize would never fire
   // and would leave x parallel to z (making y = cross(z, x) the zero vector).
@@ -249,10 +255,22 @@ export function readAxis2Placement3D(
   const y = cross(z, x);
 
   return [
-    x[0], x[1], x[2], 0,
-    y[0], y[1], y[2], 0,
-    z[0], z[1], z[2], 0,
-    originMm[0], originMm[1], originMm[2], 1,
+    x[0],
+    x[1],
+    x[2],
+    0,
+    y[0],
+    y[1],
+    y[2],
+    0,
+    z[0],
+    z[1],
+    z[2],
+    0,
+    originMm[0],
+    originMm[1],
+    originMm[2],
+    1,
   ];
 }
 
@@ -276,11 +294,7 @@ export interface FrameInput {
 export function placementToMatrix(f: FrameInput): MatrixTransform {
   const z = normalize(f.axisZ);
   const dot = z[0] * f.axisX[0] + z[1] * f.axisX[1] + z[2] * f.axisX[2];
-  const projX: Vec3 = [
-    f.axisX[0] - dot * z[0],
-    f.axisX[1] - dot * z[1],
-    f.axisX[2] - dot * z[2],
-  ];
+  const projX: Vec3 = [f.axisX[0] - dot * z[0], f.axisX[1] - dot * z[1], f.axisX[2] - dot * z[2]];
   const x = lengthSq(projX) < 1e-12 ? normalize(orthogonal(z)) : normalize(projX);
   const y = cross(z, x);
   return {
@@ -320,8 +334,7 @@ export function readGeoref(reader: SpfReader, scale: number): Georef | null {
   const orthogonalHeight = (numericValue(conv['OrthogonalHeight']) ?? 0) * scale * 1000;
   const abscissa = numericValue(conv['XAxisAbscissa']);
   const ordinate = numericValue(conv['XAxisOrdinate']);
-  const rotation =
-    abscissa !== null && ordinate !== null ? Math.atan2(ordinate, abscissa) : 0;
+  const rotation = abscissa !== null && ordinate !== null ? Math.atan2(ordinate, abscissa) : 0;
 
   return { eastings, northings, orthogonalHeight, rotation };
 }
@@ -341,19 +354,27 @@ function multiply(a: Mat4x4, b: Mat4x4): Mat4x4 {
     }
   }
   return [
-    out[0] ?? 0, out[1] ?? 0, out[2] ?? 0, out[3] ?? 0,
-    out[4] ?? 0, out[5] ?? 0, out[6] ?? 0, out[7] ?? 0,
-    out[8] ?? 0, out[9] ?? 0, out[10] ?? 0, out[11] ?? 0,
-    out[12] ?? 0, out[13] ?? 0, out[14] ?? 0, out[15] ?? 0,
+    out[0] ?? 0,
+    out[1] ?? 0,
+    out[2] ?? 0,
+    out[3] ?? 0,
+    out[4] ?? 0,
+    out[5] ?? 0,
+    out[6] ?? 0,
+    out[7] ?? 0,
+    out[8] ?? 0,
+    out[9] ?? 0,
+    out[10] ?? 0,
+    out[11] ?? 0,
+    out[12] ?? 0,
+    out[13] ?? 0,
+    out[14] ?? 0,
+    out[15] ?? 0,
   ];
 }
 
 function cross(a: Vec3, b: Vec3): Vec3 {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
 function lengthSq(v: Vec3): number {
@@ -387,11 +408,7 @@ function readDirection(reader: SpfReader, expressId: number): Vec3 | null {
   const dir = reader.getLine<Record<string, unknown>>(expressId);
   const ratios = dir?.['DirectionRatios'];
   if (!Array.isArray(ratios)) return null;
-  return [
-    numericValue(ratios[0]) ?? 0,
-    numericValue(ratios[1]) ?? 0,
-    numericValue(ratios[2]) ?? 0,
-  ];
+  return [numericValue(ratios[0]) ?? 0, numericValue(ratios[1]) ?? 0, numericValue(ratios[2]) ?? 0];
 }
 
 // web-ifc references appear as `{ type, value: expressId }`; extract the id.

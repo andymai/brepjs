@@ -243,20 +243,21 @@ describe('foundationWriter serialize round-trip', () => {
     const footings = api.GetLineIDsWithType(mid, WebIFC.IFCFOOTING);
     expect(footings.size()).toBe(1);
     const footing = api.GetLine(mid, footings.get(0)) as Record<string, unknown>;
-    const pred = (footing['PredefinedType'] as { value?: string } | undefined)?.value;
-    expect(pred).toBe('PAD_FOOTING');
+    // The enum rides the paired IfcFootingType in full exports (OJT001).
+    const pred = (footing['PredefinedType'] as { value?: string } | null | undefined)?.value;
+    expect(pred).toBeUndefined();
     const rep = (footing['Representation'] as { value?: number } | undefined)?.value;
     expect(typeof rep).toBe('number');
     api.CloseModel(mid);
   });
 
-  it('emits one IfcPile with PredefinedType and ConstructionType', async () => {
+  it('emits one IfcPile with an empty occurrence PredefinedType (OJT001)', async () => {
     const { api, mid } = await buildModel();
     const piles = api.GetLineIDsWithType(mid, WebIFC.IFCPILE);
     expect(piles.size()).toBe(1);
     const pile = api.GetLine(mid, piles.get(0)) as Record<string, unknown>;
     const pred = (pile['PredefinedType'] as { value?: string } | undefined)?.value;
-    expect(pred).toBe('BORED');
+    expect(pred).toBeUndefined();
     const ctype = (pile['ConstructionType'] as { value?: string } | undefined)?.value;
     expect(ctype).toBe('CAST_IN_PLACE');
     const rep = (pile['Representation'] as { value?: number } | undefined)?.value;

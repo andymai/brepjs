@@ -16,12 +16,20 @@ function panelRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
     [0, 0, height],
   ]);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'RAILING_PROFILE_FAILED', 'Failed to create railing profile'));
+    return err(
+      fromBrepError(
+        profileResult.error,
+        'RAILING_PROFILE_FAILED',
+        'Failed to create railing profile'
+      )
+    );
   }
   using profile = profileResult.value;
   const solidResult = extrude(profile, [length, 0, 0]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'RAILING_EXTRUDE_FAILED', 'Failed to sweep railing profile'));
+    return err(
+      fromBrepError(solidResult.error, 'RAILING_EXTRUDE_FAILED', 'Failed to sweep railing profile')
+    );
   }
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
@@ -81,7 +89,9 @@ function postedRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
   const result: Solid = survivor;
   if (!isValidSolid(result)) {
     result[Symbol.dispose]();
-    return err(geometryError('RAILING_INVALID_SOLID', 'Posted railing solid failed validity check'));
+    return err(
+      geometryError('RAILING_INVALID_SOLID', 'Posted railing solid failed validity check')
+    );
   }
   return ok(result);
 }

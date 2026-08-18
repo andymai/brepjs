@@ -29,14 +29,18 @@ export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
   ]);
 
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'WALL_PROFILE_FAILED', 'Failed to create wall profile'));
+    return err(
+      fromBrepError(profileResult.error, 'WALL_PROFILE_FAILED', 'Failed to create wall profile')
+    );
   }
 
   using profile = profileResult.value;
   const solidResult = extrude(profile, [length, 0, 0]);
 
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'WALL_EXTRUDE_FAILED', 'Failed to extrude wall profile'));
+    return err(
+      fromBrepError(solidResult.error, 'WALL_EXTRUDE_FAILED', 'Failed to extrude wall profile')
+    );
   }
 
   const solid = solidResult.value;

@@ -48,19 +48,18 @@ export interface StairSpec {
   readonly classification?: ClassificationRef | undefined;
 }
 
-const unitVec = z.tuple([z.number(), z.number(), z.number()]).refine(
-  (v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6,
-  { error: 'must be a unit vector' }
-);
+const unitVec = z
+  .tuple([z.number(), z.number(), z.number()])
+  .refine((v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6, {
+    error: 'must be a unit vector',
+  });
 
 const orthogonal = (data: {
   axisX: [number, number, number];
   axisZ: [number, number, number];
 }): boolean => {
   const dot =
-    data.axisX[0] * data.axisZ[0] +
-    data.axisX[1] * data.axisZ[1] +
-    data.axisX[2] * data.axisZ[2];
+    data.axisX[0] * data.axisZ[0] + data.axisX[1] * data.axisZ[1] + data.axisX[2] * data.axisZ[2];
   return Math.abs(dot) <= 1e-6;
 };
 

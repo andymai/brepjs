@@ -38,12 +38,7 @@ export { checkReferentialIntegrity } from './validation/referentialIntegrity.js'
 export { checkSchema } from './validation/schemaCheck.js';
 export { checkRoundTrip } from './validation/roundTrip.js';
 export { checkGeometryValidity } from './validation/geometryValidity.js';
-export {
-  issue,
-  emptyReport,
-  hasErrors,
-  countBySeverity,
-} from './validation/severity.js';
+export { issue, emptyReport, hasErrors, countBySeverity } from './validation/severity.js';
 export { writeIfcType } from './ifc-writer/typeWriter.js';
 export {
   writeZoneEntity,
@@ -123,11 +118,7 @@ export type {
   PilePredefinedType,
   PileConstructionType,
 } from './specs/foundationSpec.js';
-export type {
-  StairSpec,
-  StairFlightSpec,
-  StairPredefinedType,
-} from './specs/stairSpec.js';
+export type { StairSpec, StairFlightSpec, StairPredefinedType } from './specs/stairSpec.js';
 export type {
   RampSpec,
   RampFlightSpec,
@@ -151,7 +142,14 @@ export type { PathConnectionTypeIfc } from './ifc-writer/connectivityWriter.js';
 export type { DoorSpec, WindowSpec, SlabOpeningInput } from './specs/openingSpec.js';
 export type { ProxySpec } from './specs/proxySpec.js';
 export type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from './specs/spatialSpec.js';
-export type { BimCategory, BimElement, AnyBimElement, OpeningSpec, WallOpeningSpec, SlabOpeningSpec } from './types/bimTypes.js';
+export type {
+  BimCategory,
+  BimElement,
+  AnyBimElement,
+  OpeningSpec,
+  WallOpeningSpec,
+  SlabOpeningSpec,
+} from './types/bimTypes.js';
 export { isWallOpening, isSlabOpening } from './types/bimTypes.js';
 export type {
   BimRelationship,

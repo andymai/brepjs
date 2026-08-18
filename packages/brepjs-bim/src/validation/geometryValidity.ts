@@ -34,7 +34,7 @@ const MIN_VOLUME_MM3 = 1e-6;
  */
 export function checkGeometryValidity(
   solids: ValidSolid | readonly ValidSolid[],
-  entity?: string,
+  entity?: string
 ): ValidationReport {
   const list = Array.isArray(solids) ? (solids as readonly ValidSolid[]) : [solids as ValidSolid];
 
@@ -63,8 +63,8 @@ function checkOne(solid: ValidSolid, entity: string | undefined): readonly Valid
           'HEALED_GEOMETRY',
           'Solid was invalid but autoHeal repaired it; the exported geometry differs from the authored solid',
           entity,
-          { steps: heal.value.report.steps },
-        ),
+          { steps: heal.value.report.steps }
+        )
       );
       // Volume of the original invalid solid is meaningless; the healed solid is
       // what would be exported. Skip the volume check rather than measure garbage.
@@ -75,8 +75,8 @@ function checkOne(solid: ValidSolid, entity: string | undefined): readonly Valid
           'error',
           'INVALID_GEOMETRY',
           'Solid fails BRepCheck validity and could not be auto-healed',
-          entity,
-        ),
+          entity
+        )
       );
       // A solid that fails validity has no trustworthy volume; stop here.
       return issues;
@@ -90,8 +90,8 @@ function checkOne(solid: ValidSolid, entity: string | undefined): readonly Valid
         'error',
         'VOLUME_FAILED',
         `Volume could not be measured: ${volume.error.message}`,
-        entity,
-      ),
+        entity
+      )
     );
     return issues;
   }
@@ -103,8 +103,8 @@ function checkOne(solid: ValidSolid, entity: string | undefined): readonly Valid
         'ZERO_VOLUME',
         `Solid has zero or negligible volume (${volume.value} mm³); it carries no usable geometry`,
         entity,
-        { volumeMm3: volume.value },
-      ),
+        { volumeMm3: volume.value }
+      )
     );
   }
 

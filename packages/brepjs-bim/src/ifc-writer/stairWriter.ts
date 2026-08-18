@@ -56,6 +56,7 @@ function writeLocalPlacement(
 function writeAssemblyType(
   w: IfcWriter,
   typeConstant: number,
+  typeName: string,
   typeGuid: string,
   relGuid: string,
   predefinedType: string,
@@ -68,7 +69,7 @@ function writeAssemblyType(
     type: typeConstant,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, typeGuid),
     OwnerHistory: w.ref(ownerHistoryId),
-    Name: null,
+    Name: w.mkType(WebIFC.IFCLABEL, typeName),
     Description: null,
     ApplicableOccurrence: null,
     HasPropertySets: null,
@@ -114,7 +115,8 @@ function writeStairFlightEntity(
     NumberOfTreads: w.mkType(WebIFC.IFCINTEGER, flight.numberOfRisers - 1),
     RiserHeight: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.riserHeight)),
     TreadLength: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, toIfcLengthM(flight.treadLength)),
-    PredefinedType: { type: 3, value: 'STRAIGHT' },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -123,7 +125,7 @@ function writeStairEntity(
   w: IfcWriter,
   guid: string,
   name: string,
-  predefinedType: string,
+  _predefinedType: string,
   ownerHistoryId: number,
   localPlacementId: number
 ): number {
@@ -141,7 +143,8 @@ function writeStairEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: null,
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -150,7 +153,7 @@ function writeRampFlightEntity(
   w: IfcWriter,
   guid: string,
   name: string,
-  predefinedType: string,
+  _predefinedType: string,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -167,7 +170,8 @@ function writeRampFlightEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -176,7 +180,7 @@ function writeRampEntity(
   w: IfcWriter,
   guid: string,
   name: string,
-  predefinedType: string,
+  _predefinedType: string,
   ownerHistoryId: number,
   localPlacementId: number
 ): number {
@@ -192,7 +196,8 @@ function writeRampEntity(
     ObjectPlacement: w.ref(localPlacementId),
     Representation: null,
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -286,6 +291,7 @@ export function writeStairAssembly(
   writeAssemblyType(
     w,
     WebIFC.IFCSTAIRTYPE,
+    'Stair Type',
     deriveIfcGuidSync(`type:STAIR:${stairKey}`),
     deriveIfcGuidSync(`rel-type:STAIR:${stairKey}`),
     predefinedType,
@@ -296,6 +302,7 @@ export function writeStairAssembly(
     writeAssemblyType(
       w,
       WebIFC.IFCSTAIRFLIGHTTYPE,
+      'Stair Flight Type',
       deriveIfcGuidSync(`type:STAIR_FLIGHT:${stairKey}`),
       deriveIfcGuidSync(`rel-type:STAIR_FLIGHT:${stairKey}`),
       'STRAIGHT',
@@ -387,6 +394,7 @@ export function writeRampAssembly(
   writeAssemblyType(
     w,
     WebIFC.IFCRAMPTYPE,
+    'Ramp Type',
     deriveIfcGuidSync(`type:RAMP:${rampKey}`),
     deriveIfcGuidSync(`rel-type:RAMP:${rampKey}`),
     predefinedType,
@@ -397,6 +405,7 @@ export function writeRampAssembly(
     writeAssemblyType(
       w,
       WebIFC.IFCRAMPFLIGHTTYPE,
+      'Ramp Flight Type',
       deriveIfcGuidSync(`type:RAMP_FLIGHT:${rampKey}`),
       deriveIfcGuidSync(`rel-type:RAMP_FLIGHT:${rampKey}`),
       'STRAIGHT',

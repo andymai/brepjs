@@ -18,15 +18,27 @@ export type IdsRestriction =
  * scope); every other kind is fully evaluated.
  */
 export type IdsFacet =
-  | { readonly kind: 'Entity'; readonly name: IdsRestriction; readonly predefinedType?: IdsRestriction | undefined }
-  | { readonly kind: 'Attribute'; readonly name: IdsRestriction; readonly value?: IdsRestriction | undefined }
+  | {
+      readonly kind: 'Entity';
+      readonly name: IdsRestriction;
+      readonly predefinedType?: IdsRestriction | undefined;
+    }
+  | {
+      readonly kind: 'Attribute';
+      readonly name: IdsRestriction;
+      readonly value?: IdsRestriction | undefined;
+    }
   | {
       readonly kind: 'Property';
       readonly psetName: IdsRestriction;
       readonly baseName: IdsRestriction;
       readonly value?: IdsRestriction | undefined;
     }
-  | { readonly kind: 'Classification'; readonly system?: IdsRestriction | undefined; readonly value?: IdsRestriction | undefined }
+  | {
+      readonly kind: 'Classification';
+      readonly system?: IdsRestriction | undefined;
+      readonly value?: IdsRestriction | undefined;
+    }
   | { readonly kind: 'Material'; readonly value?: IdsRestriction | undefined }
   | { readonly kind: 'PartOf'; readonly relation?: string | undefined };
 

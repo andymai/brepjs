@@ -93,7 +93,9 @@ export function stairFlightToSolid(spec: StairFlightSpec): Result<StairFlightSol
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('STAIR_FLIGHT_INVALID_SOLID', 'Stair flight solid failed validity check'));
+    return err(
+      geometryError('STAIR_FLIGHT_INVALID_SOLID', 'Stair flight solid failed validity check')
+    );
   }
   return ok({ solid, geometrySimplified: false });
 }

@@ -27,9 +27,7 @@ export function openingToSolid(
     return err(specError('OPENING_ZERO_HEIGHT', 'Opening height must be positive'));
   }
   if (wallThickness <= 0) {
-    return err(
-      specError('OPENING_ZERO_WALL_THICKNESS', 'Wall thickness must be positive')
-    );
+    return err(specError('OPENING_ZERO_WALL_THICKNESS', 'Wall thickness must be positive'));
   }
 
   const x0 = spec.offsetAlongWall;

@@ -15,7 +15,7 @@ export function writeRoofEntity(
   w: IfcWriter,
   guid: IfcGuid,
   name: string,
-  predefinedType: RoofTypeEnum,
+  _predefinedType: RoofTypeEnum,
   ownerHistoryId: number,
   localPlacementId: number | null,
   productDefinitionShapeId: number | null
@@ -32,7 +32,8 @@ export function writeRoofEntity(
     ObjectPlacement: localPlacementId === null ? null : w.ref(localPlacementId),
     Representation: productDefinitionShapeId === null ? null : w.ref(productDefinitionShapeId),
     Tag: null,
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
   });
   return id;
 }
@@ -61,7 +62,7 @@ export function writeRoofType(
     type: WebIFC.IFCROOFTYPE,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, typeGuid),
     OwnerHistory: w.ref(ownerHistoryId),
-    Name: null,
+    Name: w.mkType(WebIFC.IFCLABEL, 'Roof Type'),
     Description: null,
     ApplicableOccurrence: null,
     HasPropertySets: null,

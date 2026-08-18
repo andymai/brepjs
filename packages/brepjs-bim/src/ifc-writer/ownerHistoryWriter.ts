@@ -39,10 +39,13 @@ export function writeOwnerHistory(w: IfcWriter, meta: OwnerHistoryMeta): number 
   const addressRefs = writePersonAddresses(w, meta.author.email);
 
   const personId = w.nextId();
+  // IfcPerson.IdentifiablePerson requires identification, family, or given
+  // name; when the caller supplies neither name, emit a fallback identifier.
+  const hasName = meta.author.familyName !== undefined || meta.author.givenName !== undefined;
   w.writeLine({
     expressID: personId,
     type: WebIFC.IFCPERSON,
-    Identification: null,
+    Identification: hasName ? null : w.mkType(WebIFC.IFCIDENTIFIER, 'unknown'),
     FamilyName: optionalLabel(w, meta.author.familyName),
     GivenName: optionalLabel(w, meta.author.givenName),
     MiddleNames: null,
@@ -68,7 +71,9 @@ export function writeOwnerHistory(w: IfcWriter, meta: OwnerHistoryMeta): number 
     OwningUser: w.ref(personAndOrgId),
     OwningApplication: w.ref(appId),
     State: null,
-    ChangeAction: { type: 3, value: 'ADDED' },
+    // NOTDEFINED, not ADDED: IfcOwnerHistory.CorrectChangeAction requires a
+    // LastModifiedDate for any other action, and this writer never records one.
+    ChangeAction: { type: 3, value: 'NOTDEFINED' },
     LastModifiedDate: null,
     LastModifyingUser: null,
     LastModifyingApplication: null,

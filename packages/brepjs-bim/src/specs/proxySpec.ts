@@ -18,6 +18,5 @@ export interface ProxySpec {
   readonly materialName?: string | undefined;
   readonly predefinedType?: 'COMPLEX' | 'ELEMENT' | 'NOTDEFINED' | 'PARTIAL' | undefined;
   readonly customProperties?:
-    | Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-    | undefined;
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }

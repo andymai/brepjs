@@ -18,12 +18,7 @@ import type { RailingSpec } from '../specs/railingSpec.js';
 import type { CoveringSpec } from '../specs/coveringSpec.js';
 import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
 import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
-import type {
-  ProjectSpec,
-  SiteSpec,
-  BuildingSpec,
-  StoreySpec,
-} from '../specs/spatialSpec.js';
+import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 
 export type BimCategory =
   | 'WALL'

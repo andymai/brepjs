@@ -28,9 +28,7 @@ export function slabOpeningToSolid(
     return err(specError('SLAB_OPENING_ZERO_SIZE_Y', 'Slab opening sizeY must be positive'));
   }
   if (slabThickness <= 0) {
-    return err(
-      specError('SLAB_OPENING_ZERO_SLAB_THICKNESS', 'Slab thickness must be positive')
-    );
+    return err(specError('SLAB_OPENING_ZERO_SLAB_THICKNESS', 'Slab thickness must be positive'));
   }
 
   const x0 = spec.offsetX;
@@ -71,7 +69,10 @@ export function slabOpeningToSolid(
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
     return err(
-      geometryError('SLAB_OPENING_INVALID_SOLID', 'Extruded slab opening solid failed validity check')
+      geometryError(
+        'SLAB_OPENING_INVALID_SOLID',
+        'Extruded slab opening solid failed validity check'
+      )
     );
   }
   return ok(solid);

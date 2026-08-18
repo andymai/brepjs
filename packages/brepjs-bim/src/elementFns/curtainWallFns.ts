@@ -27,11 +27,7 @@ export interface CurtainWallGrid {
 // Builds a single axis-aligned box solid with one corner at the local origin,
 // extending by [sizeX, sizeY, sizeZ]. Returned solid is unplaced template
 // geometry; placement is applied IFC-side.
-function boxSolid(
-  sizeX: number,
-  sizeY: number,
-  sizeZ: number
-): Result<ValidSolid, BimError> {
+function boxSolid(sizeX: number, sizeY: number, sizeZ: number): Result<ValidSolid, BimError> {
   const profileResult = polygon([
     [0, 0, 0],
     [sizeX, 0, 0],
@@ -39,17 +35,30 @@ function boxSolid(
     [0, sizeY, 0],
   ]);
   if (!profileResult.ok) {
-    return err(fromBrepError(profileResult.error, 'CURTAIN_WALL_PROFILE_FAILED', 'Failed to create component profile'));
+    return err(
+      fromBrepError(
+        profileResult.error,
+        'CURTAIN_WALL_PROFILE_FAILED',
+        'Failed to create component profile'
+      )
+    );
   }
   using profile = profileResult.value;
   const solidResult = extrude(profile, [0, 0, sizeZ]);
   if (!solidResult.ok) {
-    return err(fromBrepError(solidResult.error, 'CURTAIN_WALL_EXTRUDE_FAILED', 'Failed to extrude component'));
+    return err(
+      fromBrepError(solidResult.error, 'CURTAIN_WALL_EXTRUDE_FAILED', 'Failed to extrude component')
+    );
   }
   const solid = solidResult.value;
   if (!isValidSolid(solid)) {
     solid[Symbol.dispose]();
-    return err(geometryError('CURTAIN_WALL_INVALID_SOLID', 'Extruded curtain wall component failed validity check'));
+    return err(
+      geometryError(
+        'CURTAIN_WALL_INVALID_SOLID',
+        'Extruded curtain wall component failed validity check'
+      )
+    );
   }
   return ok(solid);
 }
@@ -83,10 +92,12 @@ export function curtainWallToGrid(spec: CurtainWallSpec): Result<CurtainWallGrid
   const panelWidth = cellWidth - mullionWidth;
   const panelHeight = cellHeight - mullionWidth;
   if (panelWidth <= 0 || panelHeight <= 0) {
-    return err(geometryError(
-      'CURTAIN_WALL_DEGENERATE_PANEL',
-      'mullionWidth leaves no room for panels in the grid'
-    ));
+    return err(
+      geometryError(
+        'CURTAIN_WALL_DEGENERATE_PANEL',
+        'mullionWidth leaves no room for panels in the grid'
+      )
+    );
   }
 
   const panels: CurtainWallComponent[] = [];

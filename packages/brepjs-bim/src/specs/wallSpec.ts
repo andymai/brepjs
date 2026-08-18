@@ -39,56 +39,55 @@ export interface WallSpec {
   readonly manufacturerProductionYear?: number | undefined;
 
   readonly customProperties?:
-    | Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-    | undefined;
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
-const unitVec = z.tuple([z.number(), z.number(), z.number()]).refine(
-  (v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6,
-  { error: 'must be a unit vector' }
-);
+const unitVec = z
+  .tuple([z.number(), z.number(), z.number()])
+  .refine((v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6, {
+    error: 'must be a unit vector',
+  });
 
-const WallSpecSchema = z.object({
-  length: z.number().positive(),
-  height: z.number().positive(),
-  thickness: z.number().positive(),
-  origin: z.tuple([z.number(), z.number(), z.number()]),
-  axisX: unitVec,
-  axisZ: unitVec,
-  materialName: z.string().min(1),
+const WallSpecSchema = z
+  .object({
+    length: z.number().positive(),
+    height: z.number().positive(),
+    thickness: z.number().positive(),
+    origin: z.tuple([z.number(), z.number(), z.number()]),
+    axisX: unitVec,
+    axisZ: unitVec,
+    materialName: z.string().min(1),
 
-  isExternal: z.boolean().optional(),
-  fireRating: z.string().optional(),
-  acousticRating: z.string().optional(),
-  thermalTransmittance: z.number().positive().optional(),
-  loadBearing: z.boolean().optional(),
-  status: z.string().optional(),
+    isExternal: z.boolean().optional(),
+    fireRating: z.string().optional(),
+    acousticRating: z.string().optional(),
+    thermalTransmittance: z.number().positive().optional(),
+    loadBearing: z.boolean().optional(),
+    status: z.string().optional(),
 
-  materialLayers: z.array(MaterialLayerSchema).optional(),
-  layerSetName: z.string().optional(),
-  classification: ClassificationRefSchema.optional(),
+    materialLayers: z.array(MaterialLayerSchema).optional(),
+    layerSetName: z.string().optional(),
+    classification: ClassificationRefSchema.optional(),
 
-  manufacturerName: z.string().optional(),
-  manufacturerModel: z.string().optional(),
-  manufacturerProductionYear: z.number().int().positive().optional(),
+    manufacturerName: z.string().optional(),
+    manufacturerModel: z.string().optional(),
+    manufacturerProductionYear: z.number().int().positive().optional(),
 
-  customProperties: z.record(
-    z.string(),
-    z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-  ).optional(),
-}).superRefine((data, ctx) => {
-  const dot =
-    data.axisX[0] * data.axisZ[0] +
-    data.axisX[1] * data.axisZ[1] +
-    data.axisX[2] * data.axisZ[2];
-  if (Math.abs(dot) > 1e-6) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'axisX and axisZ must be orthogonal',
-      path: ['axisZ'],
-    });
-  }
-});
+    customProperties: z
+      .record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])))
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    const dot =
+      data.axisX[0] * data.axisZ[0] + data.axisX[1] * data.axisZ[1] + data.axisX[2] * data.axisZ[2];
+    if (Math.abs(dot) > 1e-6) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'axisX and axisZ must be orthogonal',
+        path: ['axisZ'],
+      });
+    }
+  });
 
 export function parseWallSpec(input: unknown): Result<WallSpec, BimError> {
   const result = WallSpecSchema.safeParse(input);

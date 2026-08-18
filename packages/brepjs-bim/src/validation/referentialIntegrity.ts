@@ -92,8 +92,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
           'error',
           'ELEMENT_NOT_CONTAINED',
           `${el.category} (localId ${el.localId}) is not contained in any spatial structure`,
-          el.localId,
-        ),
+          el.localId
+        )
       );
     } else if (count > 1) {
       issues.push(
@@ -102,8 +102,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
           'ELEMENT_DOUBLE_CONTAINED',
           `${el.category} (localId ${el.localId}) is contained in ${count} spatial structures (expected 1)`,
           el.localId,
-          { count },
-        ),
+          { count }
+        )
       );
     }
   }
@@ -125,8 +125,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
             'error',
             'FILL_FILLER_MISSING',
             `FILLS_OPENING references filler localId ${rel.fillerLocalId}, which does not exist`,
-            rel.fillerLocalId,
-          ),
+            rel.fillerLocalId
+          )
         );
       }
     }
@@ -141,8 +141,8 @@ export function checkReferentialIntegrity(input: IntegrityInput): ValidationRepo
           'warning',
           'ORPHANED_OPENING',
           `OPENING (localId ${el.localId}) is not referenced by any void relationship`,
-          el.localId,
-        ),
+          el.localId
+        )
       );
     }
   }
@@ -154,7 +154,7 @@ function checkVoidHost(
   issues: ValidationIssue[],
   elementsById: ReadonlyMap<LocalId, AnyBimElement>,
   hostId: LocalId,
-  expected: BimCategory,
+  expected: BimCategory
 ): void {
   const host = elementsById.get(hostId);
   if (host === undefined) {
@@ -163,8 +163,8 @@ function checkVoidHost(
         'error',
         'VOID_HOST_MISSING',
         `Void references host localId ${hostId}, which does not exist`,
-        hostId,
-      ),
+        hostId
+      )
     );
     return;
   }
@@ -175,8 +175,8 @@ function checkVoidHost(
         'VOID_HOST_WRONG_CATEGORY',
         `Void references host localId ${hostId}, expected ${expected} but found ${host.category}`,
         hostId,
-        { expected, actual: host.category },
-      ),
+        { expected, actual: host.category }
+      )
     );
   }
 }
@@ -185,7 +185,7 @@ function checkOpeningExists(
   issues: ValidationIssue[],
   elementsById: ReadonlyMap<LocalId, AnyBimElement>,
   openingId: LocalId,
-  code: 'VOID_OPENING_MISSING' | 'FILL_OPENING_MISSING',
+  code: 'VOID_OPENING_MISSING' | 'FILL_OPENING_MISSING'
 ): void {
   const opening = elementsById.get(openingId);
   if (opening === undefined) {
@@ -194,8 +194,8 @@ function checkOpeningExists(
         'error',
         code,
         `References opening localId ${openingId}, which does not exist`,
-        openingId,
-      ),
+        openingId
+      )
     );
     return;
   }
@@ -203,11 +203,13 @@ function checkOpeningExists(
     issues.push(
       issue(
         'error',
-        code === 'VOID_OPENING_MISSING' ? 'VOID_OPENING_WRONG_CATEGORY' : 'FILL_OPENING_WRONG_CATEGORY',
+        code === 'VOID_OPENING_MISSING'
+          ? 'VOID_OPENING_WRONG_CATEGORY'
+          : 'FILL_OPENING_WRONG_CATEGORY',
         `References opening localId ${openingId}, expected OPENING but found ${opening.category}`,
         openingId,
-        { actual: opening.category },
-      ),
+        { actual: opening.category }
+      )
     );
   }
 }

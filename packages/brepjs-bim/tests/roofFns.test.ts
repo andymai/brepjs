@@ -220,7 +220,7 @@ async function openSaved(w: IfcWriter): Promise<{ api: WebIFC.IfcAPI; mid: numbe
 }
 
 describe('roofWriter serialization', () => {
-  it('writes an IfcRoof that round-trips with the correct PredefinedType', async () => {
+  it('writes an IfcRoof with an empty occurrence PredefinedType (OJT001)', async () => {
     const w = await makeWriter();
     const oh = writeOwnerHistory(w);
     const guid = deriveIfcGuidSync('elem:ROOF:1');
@@ -232,8 +232,9 @@ describe('roofWriter serialization', () => {
     expect(roofIds.size()).toBe(1);
 
     const roof = api.GetLine(mid, roofIds.get(0)) as Record<string, unknown>;
-    const predefined = (roof['PredefinedType'] as { value?: string } | undefined)?.value;
-    expect(predefined).toBe('GABLE_ROOF');
+    // The enum rides the paired IfcRoofType in full exports (OJT001).
+    const predefined = (roof['PredefinedType'] as { value?: string } | null | undefined)?.value;
+    expect(predefined).toBeUndefined();
     api.CloseModel(mid);
   });
 

@@ -343,7 +343,10 @@ function groupMemberNames(
  * Derives Attribute rows from the `customProperties` of every element spec, one
  * row per property. The owning row is keyed by the element's display name.
  */
-function deriveAttributes(model: BimModel, elements: readonly AnyBimElement[]): CobieAttributeRow[] {
+function deriveAttributes(
+  model: BimModel,
+  elements: readonly AnyBimElement[]
+): CobieAttributeRow[] {
   const attributes: CobieAttributeRow[] = [];
 
   // Reproduce per-category numbering so attribute row names line up with components.
@@ -359,8 +362,7 @@ function deriveAttributes(model: BimModel, elements: readonly AnyBimElement[]): 
   for (const el of elements) {
     const spec = el.spec as {
       customProperties?:
-        | Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-        | undefined;
+        Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
       name?: string | undefined;
     };
     const props = spec.customProperties;
@@ -388,9 +390,25 @@ function deriveAttributes(model: BimModel, elements: readonly AnyBimElement[]): 
 /** Column order per sheet, defining the CSV header row and field projection. */
 const SHEET_COLUMNS = {
   Contact: ['email', 'givenName', 'familyName', 'company', 'phone'],
-  Facility: ['name', 'createdBy', 'category', 'projectName', 'siteName', 'description', 'externalIdentifier'],
+  Facility: [
+    'name',
+    'createdBy',
+    'category',
+    'projectName',
+    'siteName',
+    'description',
+    'externalIdentifier',
+  ],
   Floor: ['name', 'createdBy', 'category', 'description', 'elevation', 'externalIdentifier'],
-  Space: ['name', 'createdBy', 'category', 'floorName', 'description', 'roomTag', 'externalIdentifier'],
+  Space: [
+    'name',
+    'createdBy',
+    'category',
+    'floorName',
+    'description',
+    'roomTag',
+    'externalIdentifier',
+  ],
   Zone: ['name', 'createdBy', 'category', 'spaceName', 'externalIdentifier'],
   Type: ['name', 'createdBy', 'category', 'description', 'assetType'],
   Component: ['name', 'createdBy', 'typeName', 'space', 'description', 'externalIdentifier'],
@@ -410,7 +428,9 @@ const SHEET_HEADERS: Readonly<Record<keyof typeof SHEET_COLUMNS, string>> = {
   Attribute: 'Name,CreatedBy,SheetName,RowName,Value',
 };
 
-const SHEET_ROWS: Readonly<Record<keyof typeof SHEET_COLUMNS, (m: CobieModel) => readonly object[]>> = {
+const SHEET_ROWS: Readonly<
+  Record<keyof typeof SHEET_COLUMNS, (m: CobieModel) => readonly object[]>
+> = {
   Contact: (m) => m.contact,
   Facility: (m) => m.facility,
   Floor: (m) => m.floor,

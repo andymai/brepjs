@@ -454,20 +454,110 @@ const PARAMETRIC_PROFILE_BUILDERS: ReadonlyMap<number, ProfileBuilder> = new Map
   number,
   ProfileBuilder
 >([
-  [WebIFC.IFCRECTANGLEPROFILEDEF, (f) => ({ kind: 'RECTANGULAR', width: f('XDim'), height: f('YDim') })],
+  [
+    WebIFC.IFCRECTANGLEPROFILEDEF,
+    (f) => ({ kind: 'RECTANGULAR', width: f('XDim'), height: f('YDim') }),
+  ],
   [WebIFC.IFCCIRCLEPROFILEDEF, (f) => ({ kind: 'CIRCULAR', radius: f('Radius') })],
-  [WebIFC.IFCISHAPEPROFILEDEF, (f) => ({ kind: 'I_BEAM', overallWidth: f('OverallWidth'), overallDepth: f('OverallDepth'), webThickness: f('WebThickness'), flangeThickness: f('FlangeThickness') })],
-  [WebIFC.IFCLSHAPEPROFILEDEF, (f) => ({ kind: 'L_SHAPE', depth: f('Depth'), width: f('Width'), legThickness: f('Thickness') })],
-  [WebIFC.IFCTSHAPEPROFILEDEF, (f) => ({ kind: 'T_SHAPE', depth: f('Depth'), flangeWidth: f('FlangeWidth'), webThickness: f('WebThickness'), flangeThickness: f('FlangeThickness') })],
-  [WebIFC.IFCUSHAPEPROFILEDEF, (f) => ({ kind: 'U_SHAPE', depth: f('Depth'), flangeWidth: f('FlangeWidth'), webThickness: f('WebThickness'), flangeThickness: f('FlangeThickness') })],
-  [WebIFC.IFCZSHAPEPROFILEDEF, (f) => ({ kind: 'Z_SHAPE', depth: f('Depth'), flangeWidth: f('FlangeWidth'), webThickness: f('WebThickness'), flangeThickness: f('FlangeThickness') })],
-  [WebIFC.IFCCSHAPEPROFILEDEF, (f) => ({ kind: 'C_SHAPE', depth: f('Depth'), width: f('Width'), wallThickness: f('WallThickness'), girth: f('Girth') })],
+  [
+    WebIFC.IFCISHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'I_BEAM',
+      overallWidth: f('OverallWidth'),
+      overallDepth: f('OverallDepth'),
+      webThickness: f('WebThickness'),
+      flangeThickness: f('FlangeThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCLSHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'L_SHAPE',
+      depth: f('Depth'),
+      width: f('Width'),
+      legThickness: f('Thickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCTSHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'T_SHAPE',
+      depth: f('Depth'),
+      flangeWidth: f('FlangeWidth'),
+      webThickness: f('WebThickness'),
+      flangeThickness: f('FlangeThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCUSHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'U_SHAPE',
+      depth: f('Depth'),
+      flangeWidth: f('FlangeWidth'),
+      webThickness: f('WebThickness'),
+      flangeThickness: f('FlangeThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCZSHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'Z_SHAPE',
+      depth: f('Depth'),
+      flangeWidth: f('FlangeWidth'),
+      webThickness: f('WebThickness'),
+      flangeThickness: f('FlangeThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCCSHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'C_SHAPE',
+      depth: f('Depth'),
+      width: f('Width'),
+      wallThickness: f('WallThickness'),
+      girth: f('Girth'),
+    }),
+  ],
   // Writer maps bottom flange → OverallWidth/FlangeThickness, top → TopFlange*.
-  [WebIFC.IFCASYMMETRICISHAPEPROFILEDEF, (f) => ({ kind: 'ASYMMETRIC_I', overallDepth: f('OverallDepth'), webThickness: f('WebThickness'), bottomFlangeWidth: f('OverallWidth'), bottomFlangeThickness: f('FlangeThickness'), topFlangeWidth: f('TopFlangeWidth'), topFlangeThickness: f('TopFlangeThickness') })],
-  [WebIFC.IFCELLIPSEPROFILEDEF, (f) => ({ kind: 'ELLIPSE', semiAxis1: f('SemiAxis1'), semiAxis2: f('SemiAxis2') })],
-  [WebIFC.IFCTRAPEZIUMPROFILEDEF, (f, def, scale) => ({ kind: 'TRAPEZIUM', bottomXDim: f('BottomXDim'), topXDim: f('TopXDim'), yDim: f('YDim'), topXOffset: (readMeasure(def['TopXOffset']) ?? 0) * scale * 1000 })],
-  [WebIFC.IFCRECTANGLEHOLLOWPROFILEDEF, (f) => ({ kind: 'RECTANGLE_HOLLOW', xDim: f('XDim'), yDim: f('YDim'), wallThickness: f('WallThickness') })],
-  [WebIFC.IFCCIRCLEHOLLOWPROFILEDEF, (f) => ({ kind: 'CIRCLE_HOLLOW', radius: f('Radius'), wallThickness: f('WallThickness') })],
+  [
+    WebIFC.IFCASYMMETRICISHAPEPROFILEDEF,
+    (f) => ({
+      kind: 'ASYMMETRIC_I',
+      overallDepth: f('OverallDepth'),
+      webThickness: f('WebThickness'),
+      bottomFlangeWidth: f('OverallWidth'),
+      bottomFlangeThickness: f('FlangeThickness'),
+      topFlangeWidth: f('TopFlangeWidth'),
+      topFlangeThickness: f('TopFlangeThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCELLIPSEPROFILEDEF,
+    (f) => ({ kind: 'ELLIPSE', semiAxis1: f('SemiAxis1'), semiAxis2: f('SemiAxis2') }),
+  ],
+  [
+    WebIFC.IFCTRAPEZIUMPROFILEDEF,
+    (f, def, scale) => ({
+      kind: 'TRAPEZIUM',
+      bottomXDim: f('BottomXDim'),
+      topXDim: f('TopXDim'),
+      yDim: f('YDim'),
+      topXOffset: (readMeasure(def['TopXOffset']) ?? 0) * scale * 1000,
+    }),
+  ],
+  [
+    WebIFC.IFCRECTANGLEHOLLOWPROFILEDEF,
+    (f) => ({
+      kind: 'RECTANGLE_HOLLOW',
+      xDim: f('XDim'),
+      yDim: f('YDim'),
+      wallThickness: f('WallThickness'),
+    }),
+  ],
+  [
+    WebIFC.IFCCIRCLEHOLLOWPROFILEDEF,
+    (f) => ({ kind: 'CIRCLE_HOLLOW', radius: f('Radius'), wallThickness: f('WallThickness') }),
+  ],
 ]);
 
 /**

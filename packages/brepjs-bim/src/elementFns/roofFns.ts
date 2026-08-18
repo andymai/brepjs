@@ -27,10 +27,12 @@ function flatRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
     [length, width, 0],
     [0, width, 0],
   ]);
-  if (!face.ok) return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create roof profile'));
+  if (!face.ok)
+    return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create roof profile'));
   using profile = face.value;
   const solid = extrude(profile, [0, 0, thickness]);
-  if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude roof profile'));
+  if (!solid.ok)
+    return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude roof profile'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
@@ -44,10 +46,12 @@ function shedRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
     [0, width, thickness + rise],
     [0, 0, thickness],
   ]);
-  if (!face.ok) return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create shed profile'));
+  if (!face.ok)
+    return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create shed profile'));
   using profile = face.value;
   const solid = extrude(profile, [length, 0, 0]);
-  if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude shed roof'));
+  if (!solid.ok)
+    return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude shed roof'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
@@ -62,10 +66,12 @@ function gableRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> 
     [0, width / 2, thickness + ridge],
     [0, 0, thickness],
   ]);
-  if (!face.ok) return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create gable profile'));
+  if (!face.ok)
+    return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create gable profile'));
   using profile = face.value;
   const solid = extrude(profile, [length, 0, 0]);
-  if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude gable roof'));
+  if (!solid.ok)
+    return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude gable roof'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
@@ -99,7 +105,8 @@ function hipRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
     ];
   }
   const solid = convexHull([...base, ...ridge]);
-  if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_HIP_FAILED', 'Failed to build hip roof'));
+  if (!solid.ok)
+    return err(fromBrepError(solid.error, 'ROOF_HIP_FAILED', 'Failed to build hip roof'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
@@ -125,7 +132,8 @@ function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
   }
   pts.push([cx, cy, r]);
   const solid = convexHull(pts);
-  if (!solid.ok) return err(fromBrepError(solid.error, 'ROOF_DOME_FAILED', 'Failed to build dome roof'));
+  if (!solid.ok)
+    return err(fromBrepError(solid.error, 'ROOF_DOME_FAILED', 'Failed to build dome roof'));
   return gate(solid.value, 'ROOF_INVALID_SOLID');
 }
 
@@ -142,7 +150,8 @@ function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
 export function roofToSolid(spec: RoofSpec): Result<ValidSolid, BimError> {
   if (spec.length <= 0) return err(specError('ROOF_ZERO_LENGTH', 'Roof length must be positive'));
   if (spec.width <= 0) return err(specError('ROOF_ZERO_WIDTH', 'Roof width must be positive'));
-  if (spec.thickness <= 0) return err(specError('ROOF_ZERO_THICKNESS', 'Roof thickness must be positive'));
+  if (spec.thickness <= 0)
+    return err(specError('ROOF_ZERO_THICKNESS', 'Roof thickness must be positive'));
 
   if (spec.pitch === undefined) return flatRoof(spec);
   switch (spec.predefinedType) {

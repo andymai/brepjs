@@ -194,7 +194,7 @@ export function writeCurtainWall(
     RelativePlacement: w.ref(placement3DId),
   });
 
-  const predefinedType = spec.predefinedType ?? 'CURTAIN_WALL';
+  const predefinedType = spec.predefinedType ?? 'NOTDEFINED';
   const curtainWallId = w.nextId();
   w.writeLine({
     expressID: curtainWallId,

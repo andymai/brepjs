@@ -17,7 +17,7 @@ export function issue(
   code: string,
   message: string,
   entity?: string | number,
-  context?: Readonly<Record<string, unknown>>,
+  context?: Readonly<Record<string, unknown>>
 ): ValidationIssue {
   // entity/context are exactOptionalPropertyTypes-sensitive: omit when undefined.
   const base: ValidationIssue = { severity, code, message };
@@ -38,7 +38,7 @@ export function appendIssue(report: ValidationReport, next: ValidationIssue): Va
 
 export function appendIssues(
   report: ValidationReport,
-  next: readonly ValidationIssue[],
+  next: readonly ValidationIssue[]
 ): ValidationReport {
   if (next.length === 0) return report;
   return { issues: [...report.issues, ...next] };

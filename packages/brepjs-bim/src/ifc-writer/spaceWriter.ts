@@ -108,7 +108,7 @@ export function writeSpaceEntity(
   guid: IfcGuid,
   name: string,
   longName: string | null,
-  predefinedType: SpacePredefinedType,
+  _predefinedType: SpacePredefinedType,
   ownerHistoryId: number,
   localPlacementId: number,
   productDefinitionShapeId: number
@@ -126,7 +126,8 @@ export function writeSpaceEntity(
     Representation: w.ref(productDefinitionShapeId),
     LongName: longName !== null ? w.mkType(WebIFC.IFCLABEL, longName) : null,
     CompositionType: { type: 3, value: 'ELEMENT' },
-    PredefinedType: { type: 3, value: predefinedType },
+    // Carried by the paired type object (OJT001): occurrence stays empty.
+    PredefinedType: null,
     ElevationWithFlooring: null,
   });
   return id;
