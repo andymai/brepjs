@@ -20,6 +20,7 @@ import { Slab } from '../registry/families/slab.js';
 import { Column } from '../registry/families/column.js';
 import { Beam } from '../registry/families/beam.js';
 import { Roof } from '../registry/families/roof.js';
+import { Stair } from '../registry/families/stair.js';
 import { Window } from '../registry/families/window.js';
 import { Wall } from '../registry/families/wall.js';
 
@@ -177,6 +178,29 @@ describe('starter families', () => {
     const model = evaluateModel(storey, ev);
     const roof = model.byKeyPath.get(`s/${shape['key'] as string}`);
     expect(roof && isOk(roof.mesh)).toBe(true);
+  });
+
+  it('a two-flight return stair materializes', () => {
+    using ev = new csg.Evaluator();
+    const flight = { width: 1200, riserHeight: 175, treadLength: 280, numberOfRisers: 8 };
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [
+          Stair({
+            key: 'main',
+            predefinedType: 'HALF_TURN_STAIR',
+            flights: [
+              { ...flight },
+              { ...flight, origin: [8 * 280, 1400, 8 * 175], axisX: [-1, 0, 0] },
+            ],
+          }),
+        ],
+      })
+    );
+    const model = evaluateModel(storey, ev);
+    const stair = model.byKeyPath.get('s/main');
+    expect(stair && isOk(stair.mesh)).toBe(true);
   });
 
   it('a rectangular column materializes through the profile bridge', () => {

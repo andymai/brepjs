@@ -202,7 +202,9 @@ function writeRampEntity(
  * per `spec.flights[i]` (each with a tessellated stepped-solid body), and a single
  * IfcRelAggregates linking the flights to the stair. Flight placements are
  * relative to the stair placement, which is relative to `parentPlacementId`
- * (typically the storey). GUIDs are deterministic, keyed on `stairKey`/index so
+ * (typically the storey). The assembly's GlobalId is the element's stored guid
+ * (stableKey-derived when the caller provided one); flight, type, and
+ * relationship GUIDs are deterministic, keyed on `stairKey`/index so
  * re-serializing an identical model is byte-stable.
  *
  * Returns a BimError if any flight solid cannot be built. Stair flights are real
@@ -212,6 +214,7 @@ export function writeStairAssembly(
   w: IfcWriter,
   spec: StairSpec,
   stairKey: string,
+  assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
   parentPlacementId: number | null
@@ -235,7 +238,7 @@ export function writeStairAssembly(
     [1, 0, 0],
     parentPlacementId
   );
-  const stairGuid = deriveIfcGuidSync(`elem:STAIR:${stairKey}`);
+  const stairGuid = assemblyGuid;
   const assemblyExpressId = writeStairEntity(
     w,
     stairGuid,
@@ -315,6 +318,7 @@ export function writeRampAssembly(
   w: IfcWriter,
   spec: RampSpec,
   rampKey: string,
+  assemblyGuid: string,
   ownerHistoryId: number,
   geomSubContextId: number,
   parentPlacementId: number | null
@@ -335,7 +339,7 @@ export function writeRampAssembly(
     [1, 0, 0],
     parentPlacementId
   );
-  const rampGuid = deriveIfcGuidSync(`elem:RAMP:${rampKey}`);
+  const rampGuid = assemblyGuid;
   const assemblyExpressId = writeRampEntity(
     w,
     rampGuid,

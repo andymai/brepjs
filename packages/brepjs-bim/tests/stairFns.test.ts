@@ -12,7 +12,10 @@ import {
   writeBuilding,
   writeStorey,
 } from '../src/ifc-writer/entityWriter.js';
-import { writeRelAggregates, writeRelContainedInSpatialStructure } from '../src/ifc-writer/relWriter.js';
+import {
+  writeRelAggregates,
+  writeRelContainedInSpatialStructure,
+} from '../src/ifc-writer/relWriter.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { writeStairAssembly } from '../src/ifc-writer/stairWriter.js';
 
@@ -155,7 +158,10 @@ async function buildBaseModel(): Promise<{
   const writerResult = await IfcWriter.create();
   if (!writerResult.ok) throw new Error(writerResult.error.message);
   const w = writerResult.value;
-  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, META);
+  const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(
+    w,
+    META
+  );
 
   const projectId = writeProject(
     w,
@@ -219,6 +225,7 @@ describe('writeStairAssembly serialization + aggregation', () => {
       base.w,
       stairSpec,
       'stair-1',
+      deriveIfcGuidSync('elem:STAIR:stair-1'),
       base.ownerHistoryId,
       base.geomSubContextId,
       base.storeyPlacementId
@@ -275,6 +282,7 @@ describe('writeStairAssembly serialization + aggregation', () => {
       base.w,
       stairSpec,
       'stair-2',
+      deriveIfcGuidSync('elem:STAIR:stair-2'),
       base.ownerHistoryId,
       base.geomSubContextId,
       base.storeyPlacementId
@@ -295,6 +303,7 @@ describe('writeStairAssembly serialization + aggregation', () => {
       base.w,
       stairSpec,
       'stair-3',
+      deriveIfcGuidSync('elem:STAIR:stair-3'),
       base.ownerHistoryId,
       base.geomSubContextId,
       base.storeyPlacementId
@@ -316,6 +325,7 @@ describe('writeStairAssembly serialization + aggregation', () => {
         base.w,
         stairSpec,
         'stair-x',
+        deriveIfcGuidSync('elem:STAIR:stair-x'),
         base.ownerHistoryId,
         base.geomSubContextId,
         base.storeyPlacementId

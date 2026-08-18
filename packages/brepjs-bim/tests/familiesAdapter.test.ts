@@ -266,6 +266,46 @@ describe('familiesToBim', () => {
     expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/r1'));
   });
 
+  it('maps a stair onto IfcStair and folds the element translate into flight origins', async () => {
+    const Stair = family<{
+      readonly flights: ReadonlyArray<Record<string, unknown>>;
+      readonly at: readonly [number, number, number];
+    }>('Stair', (p) =>
+      el('Box', {
+        size: [2240, 1200, 1400],
+        transform: [tTranslate(p.at)],
+      })
+    );
+    const flight = {
+      width: 1200,
+      riserHeight: 175,
+      treadLength: 280,
+      numberOfRisers: 8,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
+    };
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [Stair({ key: 'st1', flights: [flight], at: [1000, 0, 0] })],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(unwrap(projected).idByKeyPath.has('s/st1')).toBe(true);
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCSTAIR');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/st1'));
+    // The element-level translate lands on the flight placement (metres).
+    expect(ifc).toContain('(1.,0.,0.)');
+  });
+
   it('rejects a wall without a storey ancestor', () => {
     const orphan = resolve(Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 }));
     expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);
