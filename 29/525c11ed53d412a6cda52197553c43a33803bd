@@ -1,0 +1,42 @@
+apps/docs/.vitepress/config.ts
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 317
+packages/brepjs-sheetmetal/package.json
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 3-4
+apps/docs/reference/decisions.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 31-33
+apps/docs/getting-started/cheat-sheet.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 226-251
+apps/docs/reference/errors.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 266-297
+docs/decisions/0014-identity-beside-content.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 1-48
+packages/brepjs-sheetmetal/CHANGELOG.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 3-9
+.release-please-manifest.json
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 5,7
+packages/brepjs-cad/CHANGELOG.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 3-42
+packages/brepjs-cad/package.json
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 3
+apps/docs/reference/glossary.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 60-61,70-73,108-109,146-147,170
+  s_951c9e48d7e90e::t_78428cdfcc9509 171
+apps/docs/families/copy-in.md
+  s_951c9e48d7e90e::t_24ca7d9e311d6c 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "29525c11ed53d412a6cda52197553c43a33803bd",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
