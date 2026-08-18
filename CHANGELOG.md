@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.144.0](https://github.com/andymai/brepjs/compare/brepjs-v18.143.0...brepjs-v18.144.0) (2026-08-18)
+
+
+### Features
+
+* **families:** roof mapping with shaped geometry, profile-bridge hardening ([#2129](https://github.com/andymai/brepjs/issues/2129)) ([4306fb1](https://github.com/andymai/brepjs/commit/4306fb1358d79ce6fb69463fa634ec5d5e470bc4))
+
 ## [18.143.0](https://github.com/andymai/brepjs/compare/brepjs-v18.142.0...brepjs-v18.143.0) (2026-08-18)
 
 
