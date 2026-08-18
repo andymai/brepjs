@@ -1,0 +1,31 @@
+{
+  "name": "create-brepjs",
+  "version": "0.1.0",
+  "description": "Scaffold a brepjs + brepjs-families project (npm create brepjs)",
+  "keywords": [
+    "cad",
+    "bim",
+    "create",
+    "scaffold"
+  ],
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andymai/brepjs.git",
+    "directory": "packages/create-brepjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "create-brepjs": "bin/create-brepjs.mjs"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
