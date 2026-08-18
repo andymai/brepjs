@@ -294,6 +294,11 @@ describe('writeStairAssembly serialization + aggregation', () => {
     const { api, mid } = await open(saved.value);
     const faceSets = api.GetLineIDsWithType(mid, WebIFC.IFCTRIANGULATEDFACESET);
     expect(faceSets.size()).toBe(2);
+    // Closed must be a definite .T. — a raw JS boolean serializes as .U.
+    // (UNKNOWN), which IfcOpenShell's where-rules reject (caught by the
+    // interop fixture).
+    const fs0 = api.GetLine(mid, faceSets.get(0)) as Record<string, unknown>;
+    expect((fs0['Closed'] as { value?: unknown } | undefined)?.value).toBe(true);
     api.CloseModel(mid);
   });
 
