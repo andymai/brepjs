@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.8.1...brepjs-bim-v0.9.0) (2026-08-18)
+
+
+### Features
+
+* **families:** ship built dist with type declarations ([#2116](https://github.com/andymai/brepjs/issues/2116)) ([7f75bff](https://github.com/andymai/brepjs/commit/7f75bffe9778ab2eabb4f1d679b5d538d0fc00dd))
+
 ## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.8.0...brepjs-bim-v0.8.1) (2026-08-18)
 
 
