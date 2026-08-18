@@ -43,7 +43,7 @@ export.
 | Spatial structure | project → site → building → storey aggregation; `placeIn` to assign elements to a storey                 |
 | Property sets     | IFC pset templates + measure types; quantity sets for takeoff                                            |
 | Data layers       | materials (layer/profile/simple sets), classification refs, surface styles, zones/systems                |
-| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC2X3 / IFC4 schema selection; owner history                          |
+| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC4 / IFC4X3 schema selection; owner history                          |
 | IFC import        | `fromIfc` / `SpfReader` → `ImportedModel` (elements, geometry, psets, materials, spatial tree)           |
 | Validation        | referential integrity, schema check, geometry validity, IFC round-trip report                            |
 | Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                        |
@@ -57,8 +57,9 @@ validator and generates geometry for every product. See [VALIDATION.md](./VALIDA
 to reproduce, and `examples/sampleBuilding.mjs` for the model it validates.
 
 > **Not yet:** the official buildingSMART Validation Service and desktop-tool
-> interop (Revit / ArchiCAD / Solibri) are unverified. This is an early-stage
-> (`0.1.x`) experimental package and the API will change.
+> interop (Revit / Solibri) are unverified — the fixtures and per-tool
+> checklists are ready in [VALIDATION.md](./VALIDATION.md). This is an
+> experimental pre-1.0 package and the API may change.
 
 ## Usage
 

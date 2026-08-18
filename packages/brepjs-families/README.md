@@ -61,11 +61,11 @@ What the pieces buy you:
 
 ## Starter registry
 
-A copy-in starter registry (storey, wall, slab, column, beam, roof, door, window, and room families, spec-shaped props feeding the IFC specs in brepjs-bim 1:1) is distributed shadcn-style, not inside this package: the families become source files you own. `npm create brepjs` scaffolds a working project, then `npx brepjs add wall room` copies family sources into `src/families/`, resolving the registry from GitHub by default or from any static host via `--registry`. See [Copy-In Distribution](https://brepjs.dev/families/copy-in).
+A copy-in starter registry (storey, wall, slab, column, beam, roof, stair, door, window, and room families, spec-shaped props feeding the IFC specs in brepjs-bim 1:1) is distributed shadcn-style, not inside this package: the families become source files you own. `npm create brepjs` scaffolds a working project, then `npx brepjs add wall room` copies family sources into `src/families/`, resolving the registry from GitHub by default or from any static host via `--registry`. See [Copy-In Distribution](https://brepjs.dev/families/copy-in).
 
 ## BIM projection
 
-`brepjs-bim`'s `familiesToBim()` projects a resolved tree into a `BimModel`: storeys, walls, slabs, columns, beams, roofs, and wall openings, with property sets, materials, spatial containment, and reorder-stable GlobalIds, exportable to IFC with independent validation. See the [families docs](https://brepjs.dev/families/overview) and [for BIM professionals](https://brepjs.dev/families/for-bim-professionals).
+`brepjs-bim`'s `familiesToBim()` projects a resolved tree into a `BimModel`: storeys, walls, slabs, columns, beams, roofs, stairs, and wall openings, with property sets, materials, spatial containment, and reorder-stable GlobalIds, exportable to IFC with independent validation. See the [families docs](https://brepjs.dev/families/overview) and [for BIM professionals](https://brepjs.dev/families/for-bim-professionals).
 
 ## Docs
 
