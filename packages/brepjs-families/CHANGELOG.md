@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.6.0...brepjs-families-v0.7.0) (2026-08-18)
+
+
+### Features
+
+* **families:** stair mapping with per-flight placement and honest assembly ids ([#2136](https://github.com/andymai/brepjs/issues/2136)) ([bdb2c79](https://github.com/andymai/brepjs/commit/bdb2c79744884e55b2a1554156b443fa8333b53c))
+
 ## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.5.0...brepjs-families-v0.6.0) (2026-08-18)
 
 
