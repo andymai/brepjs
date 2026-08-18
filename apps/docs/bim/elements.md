@@ -32,7 +32,7 @@ Beams and columns extrude a **profile**, one vocabulary shared by both:
 - Core: `RECTANGULAR`, `CIRCULAR`, `I_BEAM` (with optional root `filletRadius`)
 - Extended: L / T / U / Z / C shapes, asymmetric I, ellipse, trapezium, hollow rectangular and circular sections, and arbitrary polygons with voids
 
-Core profiles emit parametric IFC profile defs (`IfcRectangleProfileDef`, `IfcCircleProfileDef`, `IfcIShapeProfileDef`); extended profiles build faces via `extendedProfileToFace` and serialize as `IfcArbitraryClosedProfileDef` (with voids where applicable). `profileCrossSectionArea` gives closed-form areas for takeoff.
+Core profiles emit parametric IFC profile defs (`IfcRectangleProfileDef`, `IfcCircleProfileDef`, `IfcIShapeProfileDef`); extended profiles build faces via `extendedProfileToFace` and serialize as `IfcArbitraryClosedProfileDef` (with voids where applicable), with `extendedProfileArea` giving closed-form areas for takeoff.
 
 ## Shaped roofs
 

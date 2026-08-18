@@ -14,17 +14,20 @@ Four composable checks, each returning a severity-tagged report:
 - `checkReferentialIntegrity(model)`: every relationship points at an element that exists; containment, voids, fills, aggregation, and group membership all resolve.
 - `checkSchema(bytes)`: the exported file re-parses and passes structural schema checks.
 - `checkGeometryValidity(model)`: every element's solid passes brepjs validity (closed, manifold, positive volume).
-- `checkRoundTrip(model)`: export → import → compare entity counts; losses are reported per type.
+- `checkRoundTrip(bytes)`: re-read an exported file and compare entity counts; losses are reported per type.
 
 `toIfcValidated(model, meta)` runs export plus the suite in one call:
 
 ```typescript
 import { toIfcValidated } from 'brepjs-bim';
 
-const validated = await toIfcValidated(model, { name: 'Office' });
+const validated = await toIfcValidated(model, {
+  applicationName: 'office-tool',
+  applicationVersion: '1.0',
+});
 if (validated.ok) {
-  const { bytes, reports } = validated.value;
-  // reports.integrity, reports.schema, reports.geometry, reports.roundTrip
+  const { bytes, report } = validated.value;
+  // report.issues: severity-tagged findings from every gate
 }
 ```
 

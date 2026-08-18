@@ -14,24 +14,25 @@ IFC carries the model; three sibling formats carry the workflows around it.
 ```typescript
 import { deriveCobieModel, serializeCobieToCsv, serializeCobieToJson } from 'brepjs-bim';
 
-const cobie = deriveCobieModel(model, { createdBy: 'jane@example.com' });
-if (cobie.ok) {
-  const csv = serializeCobieToCsv(cobie.value); // one CSV per sheet
-  const json = serializeCobieToJson(cobie.value);
-}
+const cobie = deriveCobieModel(model, {
+  contact: { email: 'jane@example.com', givenName: 'Jane', familyName: 'Doe' },
+});
+const csv = serializeCobieToCsv(cobie); // one CSV per sheet
+const json = serializeCobieToJson(cobie);
 ```
 
 ## IDS 1.0 (requirement checking)
 
-The Information Delivery Specification is buildingSMART's machine-readable requirements format ("every external wall must carry a FireRating"). `parseIdsXml` reads an IDS document; `checkModelAgainstIds` (alias `checkIds`) evaluates every specification against the model and reports pass / fail per element with the failing facet.
+The Information Delivery Specification is buildingSMART's machine-readable requirements format ("every external wall must carry a FireRating"). `parseIdsXml` reads an IDS document; `checkModelAgainstIds` (alias `checkIds`) evaluates every specification against an **imported** model (the exported file read back with `fromIfc`, so requirements are checked against what consumers will actually receive) and reports pass / fail per element with the failing facet.
 
 ```typescript
-import { parseIdsXml, checkIds } from 'brepjs-bim';
+import { fromIfc, parseIdsXml, checkIds } from 'brepjs-bim';
 
+const imported = await fromIfc(bytes);
 const ids = parseIdsXml(idsXml);
-if (ids.ok) {
-  const report = checkIds(model, ids.value);
-  // report.value.results: per-spec, per-element outcomes
+if (imported.ok && ids.ok) {
+  const report = checkIds(imported.value, ids.value);
+  // report.results: per-spec, per-element outcomes
 }
 ```
 

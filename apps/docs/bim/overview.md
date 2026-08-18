@@ -41,7 +41,7 @@ const wall = model.addWall({
 });
 if (wall.ok) model.placeIn(wall.value, storeyId);
 
-const ifc = await toIfc(model, { name: 'Example', author: 'me' });
+const ifc = await toIfc(model, { applicationName: 'example-app', applicationVersion: '1' });
 // ifc.ok && ifc.value instanceof Uint8Array
 ```
 

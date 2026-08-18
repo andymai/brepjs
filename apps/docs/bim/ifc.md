@@ -13,17 +13,18 @@ description: 'toIfc serializes a BimModel to IFC-SPF bytes (IFC4 or IFC2X3); fro
 import { toIfc } from 'brepjs-bim';
 
 const result = await toIfc(model, {
-  name: 'Office Block A',
-  author: 'jane@example.com',
-  organization: 'Example Ltd',
+  applicationName: 'office-tool',
+  applicationVersion: '1.0',
+  author: { givenName: 'Jane', familyName: 'Doe', email: 'jane@example.com' },
+  organizationName: 'Example Ltd',
 });
 if (result.ok) await writeFile('model.ifc', result.value);
 ```
 
-- **Schema**: IFC4 by default; pass `schema: 'IFC2X3'` for consumers stuck on the older schema.
+- **Schema**: IFC4 by default; pass `ifcSchema: 'IFC4X3'` to target the newer schema.
 - **Units**: specs are millimeters; the writer emits SI metres (`toIfcLengthM` / `toLengthMm` convert explicitly).
 - **Owner history**: author and organization metadata become a proper `IfcOwnerHistory`.
-- **Determinism**: element GUIDs and local id counters are stable, so re-exporting an unchanged model yields byte-identical content (modulo the timestamped `FILE_NAME` header line).
+- **Determinism**: element GUIDs and local id counters are stable, and `creationTimestamp` defaults to the epoch, so re-exporting an unchanged model yields byte-identical content (modulo the timestamped `FILE_NAME` header line).
 
 `toIfcValidated` runs export plus the [validation suite](/bim/validation) in one call and returns the bytes together with the reports.
 
@@ -46,4 +47,4 @@ Imported geometry pins kernel memory; call `disposeImportedModel` when done. For
 
 ## Round-tripping
 
-Export → import → compare is a first-class operation, not a demo: `checkRoundTrip` re-reads an exported model and reports entity counts and losses, and the test suite gates on semantic round-trip fidelity (identity, relationships, psets, containment, and volumes within 0.5%). If you build on the families layer, GlobalIds additionally survive **source-level** edits: they derive from key paths, not insertion order.
+Export → import → compare is a first-class operation, not a demo: `checkRoundTrip(bytes)` re-reads an exported file and reports entity counts and losses, and the test suite gates on semantic round-trip fidelity (identity, relationships, psets, containment, and volumes within 0.5%). If you build on the families layer, GlobalIds additionally survive **source-level** edits: they derive from key paths, not insertion order.
