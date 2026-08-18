@@ -263,6 +263,38 @@ The `cause` field carries the underlying kernel error (often a string from the O
 - **New codes can be added** in minor versions. Don't write `default: throw` unless you really mean it.
 - **Codes are removed** only in major versions, with deprecation warnings in advance.
 
+## Families and BIM identity
+
+### `FAMILIES_UNKEYED_ELEMENT`
+
+`familiesToBim` refused to mint IFC identity for an element without an explicit key. Index-fallback key paths are order-dependent, so a GlobalId derived from one silently changes when siblings reorder.
+
+**Fix**: Give the element (or its void slot) an explicit `key`. See [Elements, Key Paths & Identity](../families/identity).
+
+### `FAMILIES_NO_STOREY`
+
+A wall or slab has no `Storey` ancestor. IFC requires spatial containment for building elements.
+
+**Fix**: Nest geometry-bearing elements under a keyed `Storey`.
+
+### `FAMILIES_UNSUPPORTED_TYPE`
+
+An element's type has no spec mapping in the adapter. Nothing is silently dropped from the file.
+
+**Fix**: Use a mapped type (`Storey`, `Wall`, `Slab`, fill-role `Door`/`Window`), or keep the element out of the projected subtree.
+
+### `FAMILIES_UNSUPPORTED_FILL` / `FAMILIES_OPENING_OUTSIDE_WALL`
+
+A fill-role element other than `Door`/`Window` was placed in `voids`, or an opening was synthesized under a host that is not a `Wall` (for example a slab). Wall openings are the mapped case.
+
+**Fix**: Restrict fill-role voids to doors and windows on walls; use plain voids for anonymous cuts elsewhere.
+
+### `DUPLICATE_STABLE_KEY`
+
+Two elements resolved to the same stable key: one GlobalId claimed twice, which would be an IFC validity break. The check runs before any geometry is built.
+
+**Fix**: Ensure key paths are unique; duplicate sibling keys already throw at `resolve()`, so this usually means two adapters or manual `add*` calls reused a key.
+
 ## Next steps
 
 - [Result and Errors](../concepts/result): the type and patterns above
