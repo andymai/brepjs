@@ -8,7 +8,7 @@ HEADER;
 * Issues: https://github.com/ThatOpen/engine_web-ifc/issues
 ******************************************************/
 FILE_DESCRIPTION(('ViewDefinition [ReferenceView_v1.2]'),'2;1');
-FILE_NAME('web-ifc-model-0.ifc','2026-08-18T04:45:08',(''),('brepjs'),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
+FILE_NAME('web-ifc-model-0.ifc','2026-08-18T05:19:09',(''),('brepjs'),'thatopen/web-ifc-api','thatopen/web-ifc-api','');
 FILE_SCHEMA(('IFC4'));
 ENDSEC;
 DATA;
@@ -845,7 +845,7 @@ DATA;
 #18=IFCCARTESIANPOINT((0.,0.,0.));
 #17=IFCPROJECT('39InrBayPTqhyMRldG0qim',#6,'brepjs-bim Interop Fixture',$,$,$,$,(#11),#10);
 #16=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#11,$,.MODEL_VIEW.,$);
-#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1E-05,#15,$);
+#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#15,$);
 #15=IFCAXIS2PLACEMENT3D(#12,#13,#14);
 #14=IFCDIRECTION((1.,0.,0.));
 #13=IFCDIRECTION((0.,0.,1.));

@@ -42,6 +42,12 @@ Its first run caught a real cross-implementation bug: `IfcTriangulatedFaceSet.Cl
 as `.U.` (a raw JS boolean, serialized by web-ifc as UNKNOWN) on every tessellated body — web-ifc
 accepts it, IfcOpenShell's where-rules reject it. The writer now emits a typed `.T.`.
 
+The first buildingSMART Validation Service run caught a second one, a level deeper: web-ifc prints
+integral-mantissa scientific reals without the decimal point ISO 10303-21 requires (`1E-05` in the
+representation context's precision), and both web-ifc and IfcOpenShell tolerate the invalid token
+while the official validator's strict STEP grammar rejects the whole file. The writer now
+normalizes bare reals post-save (`1.E-05`), with a regression test on the full export path.
+
 ## External tool checklist
 
 Manual gates for the 1.0 flip, run per tool against **both** fixtures

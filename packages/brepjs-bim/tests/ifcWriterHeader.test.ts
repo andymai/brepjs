@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
+import { unwrap } from 'brepjs';
+import { BimModel } from '../src/model/bimModel.js';
+import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
   await initOCCT();
@@ -39,5 +42,21 @@ describe('IfcWriter STEP header', () => {
     // Still a LIST with one (empty) STRING element — satisfies the [1:?] cardinality.
     expect(line).toContain("(''),(''),");
     expect(line).not.toContain('($)');
+  });
+});
+
+describe('STEP real token conformance', () => {
+  it('emits no integral-mantissa scientific reals (strict Part 21 grammar)', async () => {
+    using model = new BimModel();
+    unwrap(model.init({ name: 'Reals' }));
+    const bytes = unwrap(
+      await toIfc(model, { applicationName: 'reals-test', applicationVersion: '1' })
+    );
+    const text = new TextDecoder().decode(bytes);
+    // The representation context precision is the known emitter of a bare
+    // `1E-05`; after normalization it must carry the mantissa point, and no
+    // bare scientific real may survive anywhere outside quoted strings.
+    expect(text).toContain('1.E-05');
+    expect(text).not.toMatch(/[,(=]-?\d+E[+-]?\d+/);
   });
 });

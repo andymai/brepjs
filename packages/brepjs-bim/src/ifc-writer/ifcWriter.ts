@@ -36,6 +36,23 @@ export interface IfcHeaderMeta {
   readonly organization?: string | undefined;
 }
 
+// ISO 10303-21 REAL tokens must carry a decimal point in the mantissa;
+// web-ifc prints integral-mantissa scientific reals as `1E-05`, which the
+// buildingSMART validator's strict STEP grammar rejects while web-ifc and
+// IfcOpenShell both tolerate it. Insert the missing point, leaving quoted
+// strings (which may legitimately contain E-notation text) untouched.
+const STRING_OR_BARE_REAL_RE = /'(?:[^']|'')*'|(?<![\d.])(-?\d+)E([+-]?\d+)/g;
+
+function normalizeStepReals(bytes: Uint8Array): Uint8Array {
+  const text = new TextDecoder().decode(bytes);
+  const fixed = text.replace(
+    STRING_OR_BARE_REAL_RE,
+    (match, mantissa?: string, exponent?: string) =>
+      mantissa === undefined || exponent === undefined ? match : `${mantissa}.E${exponent}`
+  );
+  return fixed === text ? bytes : new TextEncoder().encode(fixed);
+}
+
 export class IfcWriter {
   readonly #api: IfcAPI;
   readonly #modelId: number;
@@ -118,7 +135,7 @@ export class IfcWriter {
     }
     try {
       const bytes = this.#api.SaveModel(this.#modelId);
-      return ok(this.#patchHeader(bytes));
+      return ok(normalizeStepReals(this.#patchHeader(bytes)));
     } catch (e) {
       return err(ifcError('IFC_SAVE_FAILED', 'Failed to serialize IFC model', e));
     } finally {
