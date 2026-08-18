@@ -12,22 +12,44 @@ import { csg } from 'brepjs';
 import { family, el, tTranslate } from 'brepjs-families';
 import { z } from 'zod';
 
-const profileSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('RECTANGULAR'),
-    width: z.number().positive(),
-    height: z.number().positive(),
-  }),
-  z.object({ kind: z.literal('CIRCULAR'), radius: z.number().positive() }),
-  z.object({
-    kind: z.literal('I_BEAM'),
-    overallWidth: z.number().positive(),
-    overallDepth: z.number().positive(),
-    flangeThickness: z.number().positive(),
-    webThickness: z.number().positive(),
-    filletRadius: z.number().positive().optional(),
-  }),
-]);
+// Mirrors the BIM parseProfile constraints so invalid dimensions fail at
+// family construction instead of surviving to a rejected BIM projection.
+const profileSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('RECTANGULAR'),
+      width: z.number().positive(),
+      height: z.number().positive(),
+    }),
+    z.object({ kind: z.literal('CIRCULAR'), radius: z.number().positive() }),
+    z.object({
+      kind: z.literal('I_BEAM'),
+      overallWidth: z.number().positive(),
+      overallDepth: z.number().positive(),
+      flangeThickness: z.number().positive(),
+      webThickness: z.number().positive(),
+      filletRadius: z.number().positive().optional(),
+    }),
+  ])
+  .superRefine((v, ctx) => {
+    if (v.kind !== 'I_BEAM') return;
+    if (2 * v.flangeThickness >= v.overallDepth) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'flangeThickness × 2 must be less than overallDepth',
+      });
+    }
+    if (v.webThickness >= v.overallWidth) {
+      ctx.addIssue({ code: 'custom', message: 'webThickness must be less than overallWidth' });
+    }
+    if (v.filletRadius !== undefined) {
+      const clearHeight = v.overallDepth / 2 - v.flangeThickness;
+      const clearSpan = (v.overallWidth - v.webThickness) / 2;
+      if (v.filletRadius >= clearHeight || v.filletRadius >= clearSpan) {
+        ctx.addIssue({ code: 'custom', message: 'filletRadius must fit the web-flange notch' });
+      }
+    }
+  });
 
 export const columnSchema = z.object({
   height: z.number().positive(),

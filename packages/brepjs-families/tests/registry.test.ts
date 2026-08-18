@@ -19,6 +19,7 @@ import { Storey } from '../registry/families/storey.js';
 import { Slab } from '../registry/families/slab.js';
 import { Column } from '../registry/families/column.js';
 import { Beam } from '../registry/families/beam.js';
+import { Roof } from '../registry/families/roof.js';
 import { Window } from '../registry/families/window.js';
 import { Wall } from '../registry/families/wall.js';
 
@@ -161,6 +162,23 @@ describe('starter families', () => {
     }
   });
 
+  const ROOF_DIMS = { length: 8000, width: 5000, thickness: 200 };
+  const ROOF_SHAPES: ReadonlyArray<Record<string, unknown>> = [
+    { key: 'flat' },
+    { key: 'shed', predefinedType: 'SHED_ROOF', pitch: 15 },
+    { key: 'gable', predefinedType: 'GABLE_ROOF', pitch: 30 },
+    { key: 'hip', predefinedType: 'HIP_ROOF', pitch: 25 },
+    { key: 'dome', predefinedType: 'DOME_ROOF', pitch: 1 },
+  ];
+
+  it.each(ROOF_SHAPES)('starter roof shape $key materializes', (shape) => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(Storey({ key: 's', items: [Roof({ ...ROOF_DIMS, ...shape })] }));
+    const model = evaluateModel(storey, ev);
+    const roof = model.byKeyPath.get(`s/${shape['key'] as string}`);
+    expect(roof && isOk(roof.mesh)).toBe(true);
+  });
+
   it('a rectangular column materializes through the profile bridge', () => {
     using ev = new csg.Evaluator();
     const storey = resolve(
@@ -199,6 +217,43 @@ describe('starter families', () => {
     const slab = resolve(Slab({ key: 'f', length: 100, width: 100, thickness: 10 }));
     expect(slab.props['predefinedType']).toBe('FLOOR');
     expect(slab.props['materialName']).toBe('Concrete');
+  });
+
+  it('degenerate I-profiles and unsupported beam axes are rejected at construction', () => {
+    expect(() =>
+      Beam({
+        key: 'b',
+        length: 4000,
+        profile: {
+          kind: 'I_BEAM',
+          overallWidth: 100,
+          overallDepth: 200,
+          flangeThickness: 100,
+          webThickness: 5.6,
+        },
+      })
+    ).toThrow(/invalid props for family 'Beam'/);
+    expect(() =>
+      Column({
+        key: 'c',
+        height: 3000,
+        profile: {
+          kind: 'I_BEAM',
+          overallWidth: 100,
+          overallDepth: 200,
+          flangeThickness: 8.5,
+          webThickness: 100,
+        },
+      })
+    ).toThrow(/invalid props for family 'Column'/);
+    expect(() =>
+      Beam({
+        key: 'b',
+        length: 4000,
+        profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+        axisX: [0, -1, 0] as never,
+      })
+    ).toThrow(/invalid props for family 'Beam'/);
   });
 
   it('invalid starter props throw with the family name', () => {

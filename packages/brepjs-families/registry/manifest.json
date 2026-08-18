@@ -43,6 +43,14 @@
       "familyDeps": []
     },
     {
+      "name": "roof",
+      "version": 1,
+      "description": "Rectangular roof (flat / shed / gable / hip / dome) mapping onto IfcRoof",
+      "files": ["families/roof.ts"],
+      "npmDeps": ["brepjs", "brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
       "name": "door",
       "version": 1,
       "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
