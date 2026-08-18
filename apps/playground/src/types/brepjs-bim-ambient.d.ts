@@ -1520,6 +1520,24 @@ interface ProjectSpec {
     readonly crs?: ProjectCrs;
 }
 
+interface ProjectCrs {
+    /** CRS name, conventionally an EPSG code (e.g. "EPSG:25832"). */
+    readonly name: string;
+    readonly description?: string | undefined;
+    readonly geodeticDatum?: string | undefined;
+    readonly verticalDatum?: string | undefined;
+    readonly mapProjection?: string | undefined;
+    readonly mapZone?: string | undefined;
+    /** Map coordinates of the model origin, in metres. Default 0. */
+    readonly eastings?: number | undefined;
+    readonly northings?: number | undefined;
+    readonly orthogonalHeight?: number | undefined;
+    /** Rotation of the model X axis in the map plane (abscissa/ordinate pair). */
+    readonly xAxisAbscissa?: number | undefined;
+    readonly xAxisOrdinate?: number | undefined;
+    readonly scale?: number | undefined;
+}
+
 interface SiteSpec {
     readonly name: string;
     readonly description?: string;

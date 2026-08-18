@@ -142,7 +142,13 @@ export type {
 export type { PathConnectionTypeIfc } from './ifc-writer/connectivityWriter.js';
 export type { DoorSpec, WindowSpec, SlabOpeningInput } from './specs/openingSpec.js';
 export type { ProxySpec } from './specs/proxySpec.js';
-export type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from './specs/spatialSpec.js';
+export type {
+  ProjectSpec,
+  ProjectCrs,
+  SiteSpec,
+  BuildingSpec,
+  StoreySpec,
+} from './specs/spatialSpec.js';
 export type {
   BimCategory,
   BimElement,
