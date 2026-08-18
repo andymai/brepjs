@@ -1,0 +1,21 @@
+packages/brepjs-bim/README.md
+  s_e8ab06c629db83::t_6fbdeb7cb8833d 46,60-62
+packages/brepjs-families/README.md
+  s_e8ab06c629db83::t_70c68855eb3f6c 64,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3fa0c262f35853031d0278f5191332ea40e7e9a1",
+  "prompts": {},
+  "sessions": {
+    "s_e8ab06c629db83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "474a1e6b-ec62-4a52-be8c-cc5262c82b90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
