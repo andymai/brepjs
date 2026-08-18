@@ -119,6 +119,22 @@ describe('brepjs diff', () => {
     expect(r.out).toContain('symlink');
     expect(r.out).not.toContain('TOP-SECRET-TOKEN');
   });
+
+  it('refuses to diff when a parent directory symlink escapes the project', async () => {
+    const { mkdir, symlink, mkdtemp } = await import('node:fs/promises');
+    const outside = await mkdtemp(join(tmpdir(), 'brepjs-outside-'));
+    try {
+      await writeFile(join(outside, 'alpha.ts'), '// brepjs-family: alpha@2\nOUTSIDE-SECRET\n');
+      await mkdir(join(cwd, 'src'), { recursive: true });
+      await symlink(outside, join(cwd, 'src/families'));
+      const r = run('diff', 'alpha');
+      expect(r.status).toBe(1);
+      expect(r.out).toContain('outside the project');
+      expect(r.out).not.toContain('OUTSIDE-SECRET');
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('usage', () => {

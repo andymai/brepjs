@@ -257,6 +257,16 @@ async function diff(args) {
       dirty = true;
       continue;
     }
+    // Same for symlinked parent directories: the fully resolved path must
+    // stay inside the project, or a committed dir link exfiltrates files
+    // beyond the checkout.
+    const projectRoot = await realpath(process.cwd());
+    const real = await realpath(target);
+    if (real !== projectRoot && !real.startsWith(projectRoot + sep)) {
+      console.error(`${target}: resolves outside the project — refusing to diff`);
+      dirty = true;
+      continue;
+    }
     const local = await readFile(target, 'utf8');
     const localMarker = markerOf(local);
     if (localMarker && localMarker.version !== fam.version) {
