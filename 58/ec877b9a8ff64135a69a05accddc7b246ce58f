@@ -1,0 +1,28 @@
+apps/playground/src/types/brepjs-ambient.d.ts
+  s_f7654670ddf29a::t_95fb5c694ce476 350-351,592-603,606-618,650-659,727-734,765-768,800-806,849,851,1483-1490,1752-1757,1825-1830,2037-2042,3457,3459-3461,3466-3470,3550-3561,4336-4338,4818-4889,5007-5032,5230,5232-5235,5237,5252-5368,5388,5390-5394,5396-5398,5400-5401,5403,5412-5415,5417-5422,5430-5435,5439-5547,5663-5665,6031-6077,6961-6983,7003-7005,7068-7073,7106-7154,7648,7981,7984-7987,8111,8211,8213-8214,8273,8296,8395,8635-8637,8701-8703,9026-9034,9095-9101,9363-9372,9381-9387,9419-9422,9471-9501,9598-9608,9686-9696,9812-9818
+  s_f7654670ddf29a::t_32b403c4ec5959 9819
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_f7654670ddf29a::t_95fb5c694ce476 10-15,21-31,37,42-43,49,113-116,2131-2154
+  s_f7654670ddf29a::t_97bd1d383d90f4 2155
+packages/brepjs-bim/tests/bimModel.test.ts
+  s_f7654670ddf29a::t_cffe2d4ad998ce 2,64-72,77-102
+  s_f7654670ddf29a::t_fe6054321b924d 52-63,73-76,103-109,256
+apps/playground/src/types/brepjs-sheetmetal-ambient.d.ts
+  s_f7654670ddf29a::t_95fb5c694ce476 735-741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "58ec877b9a8ff64135a69a05accddc7b246ce58f",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
