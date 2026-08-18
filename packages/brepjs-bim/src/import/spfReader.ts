@@ -139,6 +139,11 @@ export class SpfReader {
   }
 
   /** IFC type code for an express id. */
+  /** Uppercased IFC entity name of the instance (e.g. `IFCWALL`). */
+  typeNameOf(expressId: number): string {
+    return this.#api.GetNameFromTypeCode(this.getLineType(expressId)).toUpperCase();
+  }
+
   getLineType(expressId: number): number {
     const t: unknown = this.#api.GetLineType(this.modelId, expressId);
     return typeof t === 'number' ? t : Number((t as { value?: unknown } | undefined)?.value ?? t);

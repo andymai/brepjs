@@ -234,11 +234,7 @@ export type {
 
 // IDS 1.0 checker (checkModelAgainstIds is the canonical name; checkIds is the
 // friendly public alias).
-export {
-  parseIdsXml,
-  checkModelAgainstIds,
-  checkModelAgainstIds as checkIds,
-} from './ids/index.js';
+export { parseIdsXml, checkIdsData, checkIdsData as checkIds } from './ids/index.js';
 export type {
   IdsDocument,
   IdsSpecification,

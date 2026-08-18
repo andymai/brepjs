@@ -1,5 +1,5 @@
 export { parseIdsXml } from './idsParser.js';
-export { checkModelAgainstIds } from './idsCheck.js';
+export { checkIdsData } from './idsEngine.js';
 export type {
   IdsDocument,
   IdsSpecification,

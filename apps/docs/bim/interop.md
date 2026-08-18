@@ -23,18 +23,21 @@ const json = serializeCobieToJson(cobie);
 
 ## IDS 1.0 (requirement checking)
 
-The Information Delivery Specification is buildingSMART's machine-readable requirements format ("every external wall must carry a FireRating"). `parseIdsXml` reads an IDS document; `checkModelAgainstIds` (alias `checkIds`) evaluates every specification against an **imported** model (the exported file read back with `fromIfc`, so requirements are checked against what consumers will actually receive) and reports pass / fail per element with the failing facet.
+The Information Delivery Specification is buildingSMART's machine-readable requirements format ("every external wall must carry a FireRating"). `parseIdsXml` reads and **audits** an IDS document the way the official IDS Audit tool does (entity names validated against the IFC schemas, attribute names against the applicable entities, value constraints against the declared data types — an invalid document is rejected, never silently mis-checked). `checkIdsData` (alias `checkIds`) then evaluates every specification against IFC file bytes directly, covering every entity instance in the file.
 
 ```typescript
-import { fromIfc, parseIdsXml, checkIds } from 'brepjs-bim';
+import { parseIdsXml, checkIds } from 'brepjs-bim';
 
-const imported = await fromIfc(bytes);
 const ids = parseIdsXml(idsXml);
-if (imported.ok && ids.ok) {
-  const report = checkIds(imported.value, ids.value);
-  // report.results: per-spec, per-element outcomes
+if (ids.ok) {
+  const report = await checkIds(ifcBytes, ids.value);
+  if (report.ok) {
+    // report.value.results: per-spec outcomes with counts and issues
+  }
 }
 ```
+
+The checker passes the complete official buildingSMART IDS conformance suite (334 of 334 test cases across entity, attribute, property, classification, material, partOf, restriction, and tolerance facets, including the floating-point tolerance contract, unit conversion to SI, the IFC2X3 type-mapping table, and per-facet cardinality). Reproduce with `scripts/idsConformance.ts` against a clone of [buildingSMART/IDS](https://github.com/buildingSMART/IDS).
 
 ## BCF 3.0 (issue exchange)
 

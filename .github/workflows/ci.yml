@@ -278,6 +278,15 @@ jobs:
       - run: npm run typecheck --workspace=brepjs-bim
       - run: npm run lint --workspace=brepjs-bim
       - run: npm run test:coverage --workspace=brepjs-bim
+      # The IDS checker's primary gate: the complete official buildingSMART
+      # conformance suite (334 cases), pinned for determinism. Coverage floors
+      # cannot see this validation, so it runs as its own step.
+      - name: IDS conformance suite
+        run: |
+          git clone --filter=blob:none https://github.com/buildingSMART/IDS /tmp/bsi-ids
+          git -C /tmp/bsi-ids checkout dba4549e57a3a98e725e086991e19800a76850b8
+          OUT=$(npx tsx packages/brepjs-bim/scripts/idsConformance.ts /tmp/bsi-ids/Documentation/ImplementersDocumentation/TestCases 2>&1 | tee /dev/stderr | grep '^TOTAL')
+          [ "$OUT" = "TOTAL: 334/334 match" ] || { echo "conformance regressed: $OUT"; exit 1; }
       - run: npm run build --workspace=brepjs-bim
 
   voxel-wasm-rust:

@@ -4,7 +4,6 @@ import { initOCCT } from '../../../tests/setup.js';
 import {
   BimModel,
   toIfc,
-  fromIfc,
   exportCobie,
   serializeCobieToCsv,
   checkIds,
@@ -143,17 +142,16 @@ describe('Phase 5 public API — COBie + IDS end-to-end', () => {
     expect(zoneSheet).toContain('Thermal Zone 1');
   });
 
-  it('checkIds passes against a matching IDS via a fromIfc round-trip', async () => {
+  it('checkIds passes against a matching IDS on the exported bytes', async () => {
     const { model } = buildModel();
     const bytes = await toIfc(model, META);
     if (!bytes.ok) throw new Error(bytes.error.message);
-    const imported = await fromIfc(bytes.value);
-    if (!imported.ok) throw new Error(imported.error.message);
-
     const parsed = parseIdsXml(SPACE_IS_EXTERNAL_IDS);
     if (!parsed.ok) throw new Error(parsed.error.message);
 
-    const report = checkIds(imported.value, parsed.value);
+    const checked = await checkIds(bytes.value, parsed.value);
+    if (!checked.ok) throw new Error(checked.error.message);
+    const report = checked.value;
     expect(report.pass).toBe(true);
     const result = report.results[0];
     expect(result?.specificationName).toBe('Spaces must declare IsExternal');

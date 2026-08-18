@@ -16,7 +16,6 @@ const cache = new WeakMap<any, ShapeType>();
 
 /**
  * Get the cached type for a shape, or undefined if not cached.
- * @testOnly Exercised by tests/shapeTypeCache.test.ts.
  */
 export function getCachedType(shape: KernelShape): ShapeType | undefined {
   return cache.get(shape);
@@ -29,7 +28,6 @@ export function setCachedType(shape: KernelShape, type: ShapeType): void {
 
 /**
  * Check if a shape has a cached type.
- * @testOnly Exercised by tests/shapeTypeCache.test.ts.
  */
 export function hasCachedType(shape: KernelShape): boolean {
   return cache.has(shape);

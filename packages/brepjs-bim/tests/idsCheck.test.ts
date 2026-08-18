@@ -3,9 +3,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
-import { fromIfc } from '../src/import/fromIfc.js';
 import { parseIdsXml } from '../src/ids/idsParser.js';
-import { checkModelAgainstIds } from '../src/ids/idsCheck.js';
+import { checkIdsData } from '../src/ids/idsEngine.js';
 
 beforeAll(async () => {
   await initOCCT();
@@ -45,13 +44,13 @@ const WALL_IS_EXTERNAL_IDS = `<?xml version="1.0" encoding="UTF-8"?>
   </specifications>
 </ids>`;
 
-const WALL_PROHIBITED_PARTOF_IDS = `<?xml version="1.0" encoding="UTF-8"?>
+const WALL_PARTOF_IDS = `<?xml version="1.0" encoding="UTF-8"?>
 <ids xmlns="http://standards.buildingsmart.org/IDS">
   <info>
-    <title>Walls must not be part of an assembly</title>
+    <title>Walls must be spatially contained</title>
   </info>
   <specifications>
-    <specification name="No wall in assembly" ifcVersion="IFC4" cardinality="prohibited">
+    <specification name="Wall containment" ifcVersion="IFC4">
       <applicability minOccurs="1" maxOccurs="unbounded">
         <entity>
           <name>
@@ -60,10 +59,10 @@ const WALL_PROHIBITED_PARTOF_IDS = `<?xml version="1.0" encoding="UTF-8"?>
         </entity>
       </applicability>
       <requirements>
-        <partOf relation="IFCRELAGGREGATES">
+        <partOf relation="IFCRELCONTAINEDINSPATIALSTRUCTURE">
           <entity>
             <name>
-              <simpleValue>IFCELEMENTASSEMBLY</simpleValue>
+              <simpleValue>IFCBUILDINGSTOREY</simpleValue>
             </name>
           </entity>
         </partOf>
@@ -124,13 +123,11 @@ describe('IDS check — Pset_WallCommon.IsExternal requirement', () => {
     const model = buildWallModel(true);
     const bytes = await toIfc(model, META);
     if (!bytes.ok) throw new Error(bytes.error.message);
-    const imported = await fromIfc(bytes.value);
-    if (!imported.ok) throw new Error(imported.error.message);
 
     const parsed = parseIdsXml(WALL_IS_EXTERNAL_IDS);
     if (!parsed.ok) throw new Error(parsed.error.message);
 
-    const report = checkModelAgainstIds(imported.value, parsed.value);
+    const report = unwrap(await checkIdsData(bytes.value, parsed.value));
     expect(report.pass).toBe(true);
     expect(report.results).toHaveLength(1);
     const result = report.results[0];
@@ -145,13 +142,11 @@ describe('IDS check — Pset_WallCommon.IsExternal requirement', () => {
     const model = buildWallModel(false);
     const bytes = await toIfc(model, META);
     if (!bytes.ok) throw new Error(bytes.error.message);
-    const imported = await fromIfc(bytes.value);
-    if (!imported.ok) throw new Error(imported.error.message);
 
     const parsed = parseIdsXml(WALL_IS_EXTERNAL_IDS);
     if (!parsed.ok) throw new Error(parsed.error.message);
 
-    const report = checkModelAgainstIds(imported.value, parsed.value);
+    const report = unwrap(await checkIdsData(bytes.value, parsed.value));
     expect(report.pass).toBe(false);
     const result = report.results[0];
     expect(result?.pass).toBe(false);
@@ -162,55 +157,19 @@ describe('IDS check — Pset_WallCommon.IsExternal requirement', () => {
     expect(errors[0]?.code).toBe('IDS_REQUIREMENT_FAILED');
   });
 
-  it('flags unsupported facets without aborting the check', () => {
-    const idsWithPartOf = `<?xml version="1.0" encoding="UTF-8"?>
-<ids xmlns="http://standards.buildingsmart.org/IDS">
-  <info><title>PartOf demo</title></info>
-  <specifications>
-    <specification name="PartOf spec" ifcVersion="IFC4">
-      <applicability>
-        <entity><name><simpleValue>IFCWALL</simpleValue></name></entity>
-      </applicability>
-      <requirements>
-        <partOf relation="IFCRELAGGREGATES">
-          <entity><name><simpleValue>IFCBUILDINGSTOREY</simpleValue></name></entity>
-        </partOf>
-      </requirements>
-    </specification>
-  </specifications>
-</ids>`;
-    const parsed = parseIdsXml(idsWithPartOf);
-    if (!parsed.ok) throw new Error(parsed.error.message);
-
-    const model = buildWallModel(true);
-    // Native BimModel path is out of scope here; an empty ImportedModel-shaped
-    // stub exercises the unsupported-facet flagging without WASM.
-    const emptyModel = {
-      schema: 'IFC4' as const,
-      spatialTree: null,
-      elements: [],
-      byExpressId: new Map(),
-      diagnostics: { issues: [] },
-    };
-    const report = checkModelAgainstIds(emptyModel, parsed.value);
-    expect(report.unsupportedFacets.length).toBeGreaterThan(0);
-    expect(report.unsupportedFacets.some((f) => f.includes('PartOf'))).toBe(true);
-    // The model used to build the IFC is not needed for this pure-parse path.
-    void model;
-  });
-
-  it('does not flag a prohibited spec whose requirement is an unsupported PartOf', async () => {
+  it('evaluates PartOf: a contained wall passes a containment requirement', async () => {
     const model = buildWallModel(true);
     const bytes = await toIfc(model, META);
     if (!bytes.ok) throw new Error(bytes.error.message);
-    const imported = await fromIfc(bytes.value);
-    if (!imported.ok) throw new Error(imported.error.message);
-    const parsed = parseIdsXml(WALL_PROHIBITED_PARTOF_IDS);
+    const parsed = parseIdsXml(WALL_PARTOF_IDS);
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const report = checkModelAgainstIds(imported.value, parsed.value);
-    // The PartOf requirement is unsupported; a prohibited spec must NOT raise a
-    // spurious violation for a facet it cannot evaluate.
+    const report = unwrap(await checkIdsData(bytes.value, parsed.value));
     expect(report.pass).toBe(true);
-    expect(report.unsupportedFacets.some((f) => f.includes('PartOf'))).toBe(true);
+    expect(report.unsupportedFacets).toEqual([]);
+  });
+
+  it('rejects an audit-invalid document (unknown entity class)', () => {
+    const parsed = parseIdsXml(WALL_IS_EXTERNAL_IDS.replace(/IFCWALL/g, 'IFCWALDO'));
+    expect(parsed.ok).toBe(false);
   });
 });
