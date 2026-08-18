@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.143.0](https://github.com/andymai/brepjs/compare/brepjs-v18.142.0...brepjs-v18.143.0) (2026-08-18)
+
+
+### Features
+
+* **families:** beam mapping and the profile bridge for columns and beams ([#2125](https://github.com/andymai/brepjs/issues/2125)) ([705bbbb](https://github.com/andymai/brepjs/commit/705bbbb44baba0b468076e6c8e9897d411cbfb95))
+
 ## [18.142.0](https://github.com/andymai/brepjs/compare/brepjs-v18.141.0...brepjs-v18.142.0) (2026-08-18)
 
 
