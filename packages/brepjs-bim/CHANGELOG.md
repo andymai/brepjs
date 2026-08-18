@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.12.0...brepjs-bim-v0.13.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** interop fixture, external-tool checklist, closed tessellation fix ([#2137](https://github.com/andymai/brepjs/issues/2137)) ([d0d0d78](https://github.com/andymai/brepjs/commit/d0d0d78e32848e0e3bbdd92fc36296db231ec514))
+
 ## [0.12.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.11.0...brepjs-bim-v0.12.0) (2026-08-18)
 
 
