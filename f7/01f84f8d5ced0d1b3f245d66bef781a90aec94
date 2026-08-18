@@ -1,0 +1,58 @@
+packages/brepjs-cad/package.json
+  s_951c9e48d7e90e::t_32e2e006031256 3
+CHANGELOG.md
+  s_951c9e48d7e90e::t_32e2e006031256 3-17
+packages/brepjs-cad/CHANGELOG.md
+  s_951c9e48d7e90e::t_32e2e006031256 3-82
+packages/brepjs-families/src/resolve.ts
+  s_951c9e48d7e90e::t_32e2e006031256 70-73,79-96,98-100
+.github/workflows/publish-brepjs-families.yml
+  s_951c9e48d7e90e::t_32e2e006031256 1-41
+tests/fixtures/cliRegistry/families/alpha.ts
+  s_951c9e48d7e90e::t_32e2e006031256 1-2
+release-please-config.json
+  s_951c9e48d7e90e::t_32e2e006031256 51-62,65-67
+tests/fixtures/cliRegistry/manifest.json
+  s_951c9e48d7e90e::t_32e2e006031256 1-22
+tests/fixtures/cliRegistry/families/beta.ts
+  s_951c9e48d7e90e::t_32e2e006031256 1-2
+.github/workflows/publish-create-brepjs.yml
+  s_951c9e48d7e90e::t_32e2e006031256 1-41
+package.json
+  s_951c9e48d7e90e::t_32e2e006031256 3,210-212,214-215
+.release-please-manifest.json
+  s_951c9e48d7e90e::t_32e2e006031256 2,5-9
+tests/cliFamilies.test.ts
+  s_951c9e48d7e90e::t_32e2e006031256 1-224
+bin/brepjs.mjs
+  s_951c9e48d7e90e::t_32e2e006031256 1-310
+packages/brepjs-bim/tests/familiesRoundTrip.test.ts
+  s_951c9e48d7e90e::t_32e2e006031256 1-123
+packages/brepjs-families/tests/families.test.ts
+  s_951c9e48d7e90e::t_32e2e006031256 360-424
+packages/create-brepjs/package.json
+  s_951c9e48d7e90e::t_32e2e006031256 3
+packages/create-brepjs/CHANGELOG.md
+  s_951c9e48d7e90e::t_32e2e006031256 1-8
+.github/workflows/release-please.yml
+  s_951c9e48d7e90e::t_32e2e006031256 41-44,77-80,115-121,139-143,149-150,240-276
+  s_951c9e48d7e90e::t_71247a040249f4 277
+package-lock.json
+  s_951c9e48d7e90e::t_da7a61ff89ede2 3,9,7173,15084,15101,15105,15109,15113,15245,15248,15252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f701f84f8d5ced0d1b3f245d66bef781a90aec94",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
