@@ -1,0 +1,26 @@
+packages/brepjs-bim/examples/sampleBuildingFamilies.ts
+  s_f7654670ddf29a::t_910df671364ae7 104-111
+  s_f7654670ddf29a::t_f129d6143eb5a2 39,63
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_f7654670ddf29a::t_910df671364ae7 11,15-354
+packages/brepjs-bim/scripts/setupGherkinRunner.sh
+  s_f7654670ddf29a::t_6aab3b2b44c87f 1-108
+packages/brepjs-bim/VALIDATION.md
+  s_f7654670ddf29a::t_efa19bec41695f 61-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ed3bdbd29d6b57fa25fa48ecbd954e8c5ef3dc62",
+  "prompts": {},
+  "sessions": {
+    "s_f7654670ddf29a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef413640-f9cc-478d-adba-06a438ff96e2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
