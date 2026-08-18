@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.149.0](https://github.com/andymai/brepjs/compare/brepjs-v18.148.1...brepjs-v18.149.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** run the complete official validation rule catalog locally ([#2160](https://github.com/andymai/brepjs/issues/2160)) ([311209c](https://github.com/andymai/brepjs/commit/311209cfae7d0fa61e5873f06e2d8e14a8b040a8))
+
 ## [18.148.1](https://github.com/andymai/brepjs/compare/brepjs-v18.148.0...brepjs-v18.148.1) (2026-08-18)
 
 
