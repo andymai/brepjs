@@ -311,6 +311,9 @@ export default withMermaid(
             { text: 'Why a Family Layer', link: '/families/overview' },
             { text: 'Your First Building', link: '/families/first-building' },
             { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
+            { text: 'Openings & Voids', link: '/families/openings' },
+            { text: 'Props & Validation', link: '/families/props-and-validation' },
+            { text: 'IFC Export', link: '/families/ifc-export' },
           ],
         },
         {
