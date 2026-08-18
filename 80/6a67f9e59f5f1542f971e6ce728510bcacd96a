@@ -1,0 +1,27 @@
+apps/docs/.vitepress/config.ts
+  s_951c9e48d7e90e::t_7647247df4f2e2 312
+apps/docs/families/overview.md
+  s_951c9e48d7e90e::t_7647247df4f2e2 51-60
+apps/docs/families/for-bim-professionals.md
+  s_951c9e48d7e90e::t_3d460a6607b64c 1-55
+apps/docs/getting-started/cheat-sheet.md
+  s_951c9e48d7e90e::t_7647247df4f2e2 230
+apps/docs/families/first-building.md
+  s_951c9e48d7e90e::t_452681de4e5cf6 126,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "806a67f9e59f5f1542f971e6ce728510bcacd96a",
+  "prompts": {},
+  "sessions": {
+    "s_951c9e48d7e90e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72627f61-b482-45fc-a3cf-7d7e17abcdbb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
