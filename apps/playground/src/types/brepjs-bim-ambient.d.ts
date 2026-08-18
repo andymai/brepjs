@@ -7,40 +7,46 @@
 
 import type { BrepError, OrientedFace, PlanarFace, Result, ValidSolid } from 'brepjs';
 
+/** Optional identity override for created elements: a stable key (e.g. a
+ *  families key path) that replaces the positional GlobalId derivation. */
+interface ElementIdentityOptions {
+    readonly stableKey?: string | undefined;
+}
+
 declare class BimModel {
     #private;
     init(spec: ProjectSpec): Result<LocalId, BimError>;
     [Symbol.dispose](): void;
     addSite(spec: SiteSpec): LocalId;
-    addBuilding(spec: BuildingSpec): LocalId;
-    addStorey(spec: StoreySpec): LocalId;
-    addWall(spec: WallSpec): Result<LocalId, BimError>;
-    addSlab(spec: SlabSpec): Result<LocalId, BimError>;
-    addBeam(spec: BeamSpec): Result<LocalId, BimError>;
-    addColumn(spec: ColumnSpec): Result<LocalId, BimError>;
-    addSpace(spec: SpaceSpec): Result<LocalId, BimError>;
-    addRoof(spec: RoofSpec): Result<LocalId, BimError>;
-    addCurtainWall(spec: CurtainWallSpec): Result<LocalId, BimError>;
-    addFooting(spec: FootingSpec): Result<LocalId, BimError>;
-    addPile(spec: PileSpec): Result<LocalId, BimError>;
+    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): LocalId;
+    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): LocalId;
+    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcStair assembly. Geometry for each flight is built and written by
      * the IFC layer from `spec.flights`; the STAIR element itself carries no solid
      * (the assembly container's Representation is null, valid per IFC4).
      */
-    addStair(spec: StairSpec): Result<LocalId, BimError>;
+    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcRamp assembly. Geometry for each flight is built and written by the
      * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
      */
-    addRamp(spec: RampSpec): Result<LocalId, BimError>;
-    addRailing(spec: RailingSpec): Result<LocalId, BimError>;
+    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcCovering. When `hostLocalId` is supplied, an
      * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
      * finishes) is recorded for export.
      */
-    addCovering(spec: CoveringSpec, hostLocalId?: LocalId): Result<LocalId, BimError>;
+    addCovering(spec: CoveringSpec, hostLocalId?: LocalId, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     /**
      * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
      * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
@@ -104,10 +110,10 @@ declare class BimModel {
      * and disposes it on model disposal; the caller must not dispose it (see
      * {@link ProxySpec.solid}).
      */
-    addProxy(spec: ProxySpec): Result<LocalId, BimError>;
-    addDoor(spec: DoorSpec): Result<LocalId, BimError>;
-    addWindow(spec: WindowSpec): Result<LocalId, BimError>;
-    addSlabOpening(input: SlabOpeningInput): Result<LocalId, BimError>;
+    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+    addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+    addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<LocalId, BimError>;
     getDoors(): BimElement<'DOOR'>[];
     getWindows(): BimElement<'WINDOW'>[];
     aggregate(parentId: LocalId, childId: LocalId): void;
@@ -2121,6 +2127,31 @@ declare function serializeBcfFiles(data: BcfContainerData): BcfFiles;
  * unzip it into a `Map<path, string>` (external ZIP library) before calling.
  */
 declare function parseBcfFiles(files: BcfFiles): Result<BcfContainerData, BimError>;
+
+interface FamiliesToBimOptions {
+    readonly project: ProjectSpec;
+    readonly siteName?: string | undefined;
+    readonly buildingName?: string | undefined;
+}
+
+interface FamiliesBimResult {
+    readonly model: BimModel;
+    /** LocalId per geometry-bearing families key path. */
+    readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+}
+
+/**
+ * Project a resolved families tree into an eager BimModel. The caller owns
+ * the returned model (`using`); families stays domain-neutral — this adapter
+ * is where families types meet the IFC vocabulary.
+ */
+declare function familiesToBim(root: ResolvedElement, options: FamiliesToBimOptions): Result<FamiliesBimResult, BimError>;
+
+/** Identity options for adders that create TWO elements: `stableKey` names
+ *  the filler (door/window), `openingStableKey` the synthesized opening. */
+interface OpeningIdentityOptions extends ElementIdentityOptions {
+    readonly openingStableKey?: string | undefined;
+}
 
 interface RoundTripReport extends ValidationReport {
     readonly firstPass: EntityCounts;

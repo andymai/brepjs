@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { unwrap, measureVolume } from 'brepjs';
+import { unwrap, measureVolume, box } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
@@ -49,6 +49,64 @@ describe('BimModel', () => {
       { stableKey: 'zone/office' }
     );
     expect(railing.ok).toBe(false);
+
+    const frame = {
+      origin: [0, 0, 0] as [number, number, number],
+      axisX: [1, 0, 0] as [number, number, number],
+      axisZ: [0, 0, 1] as [number, number, number],
+      materialName: 'Concrete',
+    };
+    const minted: Array<[string, { ok: boolean; value?: unknown }]> = [
+      [
+        'cw',
+        model.addCurtainWall(
+          {
+            width: 3000,
+            height: 2700,
+            columns: 3,
+            rows: 2,
+            panelThickness: 30,
+            mullionWidth: 60,
+            mullionDepth: 120,
+            ...frame,
+            materialName: 'Aluminium',
+          },
+          { stableKey: 'k/cw' }
+        ),
+      ],
+      [
+        'footing',
+        model.addFooting(
+          { length: 1200, width: 1200, thickness: 400, ...frame },
+          { stableKey: 'k/footing' }
+        ),
+      ],
+      [
+        'pile',
+        model.addPile(
+          { length: 6000, profile: { kind: 'CIRCULAR', radius: 300 }, ...frame },
+          { stableKey: 'k/pile' }
+        ),
+      ],
+      [
+        'covering',
+        model.addCovering(
+          { length: 2000, width: 2000, thickness: 20, ...frame, predefinedType: 'FLOORING' },
+          undefined,
+          { stableKey: 'k/covering' }
+        ),
+      ],
+      [
+        'proxy',
+        model.addProxy({ name: 'Blob', solid: box(100, 100, 100) }, { stableKey: 'k/proxy' }),
+      ],
+    ];
+    for (const [label, added] of minted) {
+      expect(added.ok, label).toBe(true);
+      const id = (added as { value: unknown }).value;
+      const elem = model.getAllElements().find((e) => e.localId === id);
+      expect(elem?.guid, label).toBe(deriveIfcGuidSync(`elem:proj:k/${label}`));
+    }
   });
 
   it('init creates a project element', () => {
@@ -190,12 +248,12 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input path
     const result = model.addDoor({
       width: 900,
       height: 2100,
       offsetAlongWall: 500,
       offsetFromFloor: 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input path
       wallLocalId: 9999 as any,
       materialName: 'Wood',
     });

@@ -732,6 +732,13 @@ interface FlatPatternPolylines {
     holes: Polygon[];
     /** Bend lines, each with its fold direction. */
     bendLines: FlatPatternBendLine[];
+    /** Open form-feature cut paths in the blank (e.g. louver/lance three-sided cuts). */
+    formCuts: Polygon[];
+    /** Form-feature hinge lines (the uncut fold edge a louver/lance forms up along). */
+    formHinges: {
+        from: Pt2;
+        to: Pt2;
+    }[];
 }
 
 /**
