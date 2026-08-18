@@ -44,7 +44,7 @@ A door in a wall is not a boolean subtraction that happens to look right. The mo
 
 ## Current scope, stated plainly
 
-The IFC projection today maps **storeys, walls, slabs, doors, and windows** (with their openings, property sets, and materials). Columns, beams, roofs, stairs, and the rest of the `brepjs-bim` catalog exist in the underlying library but are not yet driven from the families layer. If your models are mostly walls-slabs-openings (residential, fit-out, early massing for data), the pipeline is complete; if you need the full structural catalog through this declarative surface, that mapping work is visible on the project roadmap.
+The IFC projection today maps **storeys, walls, slabs, doors, windows, and circular columns** (with their openings, property sets, and materials). Beams, roofs, stairs, and the rest of the `brepjs-bim` catalog exist in the underlying library but are not yet driven from the families layer. If your models are mostly walls-slabs-openings (residential, fit-out, early massing for data), the pipeline is complete; if you need the full structural catalog through this declarative surface, that mapping work is visible on the project roadmap.
 
 This is also not a Revit or ArchiCAD replacement. There is no drawing sheet, no annotation, no GUI authoring. It is a **programmatic model pipeline**: configurators, generative studies, firm-standard component libraries, and automated IFC production feeding the tools you already use.
 

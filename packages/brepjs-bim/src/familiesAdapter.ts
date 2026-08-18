@@ -5,7 +5,7 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers, Wall/Slab elements, and wall openings — a
+ * Scope: Storey containers, Wall/Slab/Column elements, and wall openings — a
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
@@ -18,6 +18,7 @@ import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
 import { parseWallSpec } from './specs/wallSpec.js';
 import { parseSlabSpec } from './specs/slabSpec.js';
+import { parseColumnSpec } from './specs/columnSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
@@ -238,16 +239,22 @@ export function familiesToBim(
       model.aggregate(buildingId, id);
       idByKeyPath.set(el.keyPath, id);
       containerId = id;
-    } else if (el.type === 'Wall' || el.type === 'Slab') {
+    } else if (el.type === 'Wall' || el.type === 'Slab' || el.type === 'Column') {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
       const parsed =
-        el.type === 'Wall' ? parseWallSpec(specInput(el)) : parseSlabSpec(specInput(el));
+        el.type === 'Wall'
+          ? parseWallSpec(specInput(el))
+          : el.type === 'Slab'
+            ? parseSlabSpec(specInput(el))
+            : parseColumnSpec(specInput(el));
       if (!parsed.ok) return parsed;
       const added =
         el.type === 'Wall'
           ? model.addWall(parsed.value as never, { stableKey: el.keyPath })
-          : model.addSlab(parsed.value as never, { stableKey: el.keyPath });
+          : el.type === 'Slab'
+            ? model.addSlab(parsed.value as never, { stableKey: el.keyPath })
+            : model.addColumn(parsed.value as never, { stableKey: el.keyPath });
       if (!added.ok) return added;
       idByKeyPath.set(el.keyPath, added.value);
       if (containerId === null) {

@@ -27,6 +27,14 @@
       "familyDeps": []
     },
     {
+      "name": "column",
+      "version": 1,
+      "description": "Vertical circular column mapping onto IfcColumn",
+      "files": ["families/column.ts"],
+      "npmDeps": ["brepjs-families", "zod"],
+      "familyDeps": []
+    },
+    {
       "name": "door",
       "version": 1,
       "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",

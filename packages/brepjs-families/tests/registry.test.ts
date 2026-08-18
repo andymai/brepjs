@@ -17,6 +17,7 @@ import { resolve, evaluateModel } from '../src/index.js';
 import { Room } from '../registry/families/room.js';
 import { Storey } from '../registry/families/storey.js';
 import { Slab } from '../registry/families/slab.js';
+import { Column } from '../registry/families/column.js';
 import { Window } from '../registry/families/window.js';
 import { Wall } from '../registry/families/wall.js';
 
@@ -121,6 +122,21 @@ describe('starter families', () => {
     expect(wall && isOk(wall.mesh)).toBe(true);
   });
 
+  it('a starter column resolves and materializes with a mesh', () => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [Column({ key: 'c1', height: 3000, profile: { kind: 'CIRCULAR', radius: 150 } })],
+      })
+    );
+    const model = evaluateModel(storey, ev);
+    const col = model.byKeyPath.get('s/c1');
+    expect(col && isOk(col.mesh)).toBe(true);
+    expect(storey.children[0]?.props['predefinedType']).toBe('COLUMN');
+    expect(storey.children[0]?.props['materialName']).toBe('Concrete');
+  });
+
   it('schema defaults apply at construction', () => {
     const slab = resolve(Slab({ key: 'f', length: 100, width: 100, thickness: 10 }));
     expect(slab.props['predefinedType']).toBe('FLOOR');
@@ -135,9 +151,7 @@ describe('starter families', () => {
 
   it('a door that cannot fit its room is rejected at construction', () => {
     // Wider than the south wall (centered placement goes negative).
-    expect(() => Room({ key: 'r', width: 900, depth: 900, height: 2400 })).toThrow(
-      /does not fit/
-    );
+    expect(() => Room({ key: 'r', width: 900, depth: 900, height: 2400 })).toThrow(/does not fit/);
     // Explicit placement overflowing the wall.
     expect(() =>
       Room({ key: 'r', width: 3000, depth: 3000, height: 2400, doorAlong: 2500 })

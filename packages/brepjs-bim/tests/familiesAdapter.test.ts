@@ -113,9 +113,7 @@ describe('familiesToBim', () => {
     const storey = resolve(
       Storey({
         key: 's',
-        walls: [
-          Moved({ key: 'w', length: 3000, height: 2700, thickness: 200, at: [1234, 0, 0] }),
-        ],
+        walls: [Moved({ key: 'w', length: 3000, height: 2700, thickness: 200, at: [1234, 0, 0] })],
       })
     );
     const projected = familiesToBim(storey, { project: PROJECT });
@@ -125,10 +123,47 @@ describe('familiesToBim', () => {
     expect(await ifcText(model)).toContain('(1.234,0.,0.)');
   });
 
-  it('rejects a wall without a storey ancestor', () => {
-    const orphan = resolve(
-      Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 })
+  it('maps a column onto IfcColumn with key-path identity and folded placement', async () => {
+    const Column = family<{
+      readonly height: number;
+      readonly profile: { readonly kind: 'CIRCULAR'; readonly radius: number };
+      readonly at: readonly [number, number, number];
+    }>('Column', (p) =>
+      el('Cylinder', {
+        radius: p.profile.radius,
+        height: p.height,
+        transform: [tTranslate(p.at)],
+      })
     );
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Column({
+            key: 'c1',
+            height: 3000,
+            profile: { kind: 'CIRCULAR', radius: 150 },
+            at: [500, 250, 0],
+          }),
+        ],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(unwrap(projected).idByKeyPath.has('s/c1')).toBe(true);
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCCOLUMN');
+    expect(ifc).toContain('IFCCIRCLEPROFILEDEF');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/c1'));
+    expect(ifc).toContain('(0.5,0.25,0.)');
+  });
+
+  it('rejects a wall without a storey ancestor', () => {
+    const orphan = resolve(Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 }));
     expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);
   });
 
@@ -200,7 +235,10 @@ const VoidedWall = family<
 
 const WALL_DIMS = { length: 3000, height: 2700, thickness: 200 };
 
-function voidedStorey(voids: readonly Element[], transform?: readonly ReturnType<typeof tTranslate>[]) {
+function voidedStorey(
+  voids: readonly Element[],
+  transform?: readonly ReturnType<typeof tTranslate>[]
+) {
   return resolve(
     Storey({
       key: 'storey-1',
@@ -234,7 +272,9 @@ describe('familiesToBim openings', () => {
   });
 
   it('maps a window fill onto IfcWindow', async () => {
-    const storey = voidedStorey([Window({ key: 'n1', width: 1200, height: 1000, at: [1500, 900] })]);
+    const storey = voidedStorey([
+      Window({ key: 'n1', width: 1200, height: 1000, at: [1500, 900] }),
+    ]);
     const projected = familiesToBim(storey, { project: PROJECT });
     expect(isOk(projected)).toBe(true);
     using model = unwrap(projected).model;
@@ -245,10 +285,14 @@ describe('familiesToBim openings', () => {
 
   it('derives wall-relative offsets from the void geometry (bounds probes)', () => {
     // 2200 + 900 > 3000: only a correctly derived offsetAlongWall can trip this.
-    const alongOverflow = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [2200, 0] })]);
+    const alongOverflow = voidedStorey([
+      Door({ key: 'd1', width: 900, height: 2100, at: [2200, 0] }),
+    ]);
     expect(isOk(familiesToBim(alongOverflow, { project: PROJECT }))).toBe(false);
     // 700 + 2100 > 2700: same probe for the sill axis.
-    const sillOverflow = voidedStorey([Door({ key: 'd1', width: 900, height: 2100, at: [600, 700] })]);
+    const sillOverflow = voidedStorey([
+      Door({ key: 'd1', width: 900, height: 2100, at: [600, 700] }),
+    ]);
     expect(isOk(familiesToBim(sillOverflow, { project: PROJECT }))).toBe(false);
   });
 
@@ -285,7 +329,12 @@ describe('familiesToBim openings', () => {
     const bad = resolve(
       Storey({
         key: 's',
-        walls: [VoidedSlab({ key: 'slab', voids: [Door({ key: 'd', width: 900, height: 2100, at: [0, 0] })] })],
+        walls: [
+          VoidedSlab({
+            key: 'slab',
+            voids: [Door({ key: 'd', width: 900, height: 2100, at: [0, 0] })],
+          }),
+        ],
       })
     );
     expect(isOk(familiesToBim(bad, { project: PROJECT }))).toBe(false);
