@@ -1,0 +1,41 @@
+name: Publish brepjs-families
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (pack only, skip publish)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - run: npm ci
+
+      # brepjs-families ships TypeScript source (files: ["src"]) — no build step.
+      - name: Pack preview
+        run: npm pack --dry-run -w brepjs-families
+
+      # Authenticates via OIDC trusted publisher (configured for this exact
+      # workflow filename on npmjs.com -> brepjs-families -> Trusted Publisher Mgmt).
+      - name: Publish brepjs-families
+        if: ${{ inputs.dry_run != true }}
+        run: npm publish -w brepjs-families --provenance
