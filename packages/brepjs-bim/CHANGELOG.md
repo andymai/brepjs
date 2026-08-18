@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.14.0...brepjs-bim-v0.15.0) (2026-08-18)
+
+
+### Features
+
+* **bim:** spatial and group adds return Result like the rest of the api ([#2145](https://github.com/andymai/brepjs/issues/2145)) ([d895092](https://github.com/andymai/brepjs/commit/d895092d62756a2ef1784b24564a5a07fcfc6ae0))
+
 ## [0.14.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.13.0...brepjs-bim-v0.14.0) (2026-08-18)
 
 
