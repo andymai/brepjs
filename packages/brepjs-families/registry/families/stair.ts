@@ -29,7 +29,7 @@ const flightSchema = z.object({
   origin: vec3.default([0, 0, 0]),
   axisX: flightAxis.default([1, 0, 0]),
   axisZ: z.tuple([z.literal(0), z.literal(0), z.literal(1)]).default([0, 0, 1]),
-  materialName: z.string().min(1).default('Concrete'),
+  materialName: z.string().min(1).optional(),
 });
 
 export const stairSchema = z.object({
@@ -57,9 +57,17 @@ export const stairSchema = z.object({
   materialName: z.string().min(1).default('Concrete'),
 });
 
+/** Flights inherit the stair's material unless they set their own, so a
+ *  stair-level material choice reaches the flight specs instead of being
+ *  silently shadowed by a per-flight default. */
+const stairPropsSchema = stairSchema.transform((p) => ({
+  ...p,
+  flights: p.flights.map((f) => ({ ...f, materialName: f.materialName ?? p.materialName })),
+}));
+
 export type StairProps = z.input<typeof stairSchema>;
 
-type Flight = z.output<typeof flightSchema>;
+type Flight = z.output<typeof stairPropsSchema>['flights'][number];
 
 /** Side silhouette of the flight in local travel(x)/rise(z) coordinates,
  *  mirroring stairFlightToSolid: sawtooth nosing up, flat soffit back. */
@@ -91,10 +99,10 @@ function flightNode(f: Flight): csg.IRNode {
 
 export const Stair = family(
   'Stair',
-  (p: z.output<typeof stairSchema>) => {
+  (p: z.output<typeof stairPropsSchema>) => {
     const flights = p.flights.map(flightNode);
     const node = flights.length === 1 && flights[0] ? flights[0] : csg.compound(flights);
     return el('Geometry', { node, transform: [tTranslate(p.at)] });
   },
-  { props: stairSchema }
+  { props: stairPropsSchema }
 );
