@@ -102,10 +102,8 @@ export function writeTessellation(
     type: WebIFC.IFCTRIANGULATEDFACESET,
     Coordinates: w.ref(pointListId),
     Normals: null,
-    Closed: true,
-    CoordIndex: coordIndex.map((tri) =>
-      tri.map((idx) => w.mkType(WebIFC.IFCPOSITIVEINTEGER, idx))
-    ),
+    Closed: w.mkType(WebIFC.IFCBOOLEAN, true),
+    CoordIndex: coordIndex.map((tri) => tri.map((idx) => w.mkType(WebIFC.IFCPOSITIVEINTEGER, idx))),
     PnIndex: null,
   });
 
@@ -230,7 +228,7 @@ function writeFacetedBrepFallback(
     expressID: faceOuterBoundId,
     type: WebIFC.IFCFACEOUTERBOUND,
     Bound: w.ref(loopId),
-    Orientation: true,
+    Orientation: w.mkType(WebIFC.IFCBOOLEAN, true),
   });
 
   const faceId = w.nextId();

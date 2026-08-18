@@ -26,6 +26,58 @@ python scripts/validateIfc.py                # exit 0 = all gates pass
 (EXPRESS schema + where-rules), spatial-root presence, GlobalId validity/uniqueness, and
 geometry generation for every product with a representation.
 
+## The interop fixture
+
+`examples/interop-fixture.ifc` (generate: `node examples/interopFixture.mjs`) concentrates the
+geometry kinds most likely to break in desktop tools, where the sample building is the friendly
+baseline: gable / hip / dome roofs and a two-flight stair and posted railing (tessellated bodies),
+a curtain-wall panel grid, and circular + I-shape columns and beams (parametric profile defs).
+Validate it the same way:
+
+```bash
+python scripts/validateIfc.py examples/interop-fixture.ifc
+```
+
+Its first run caught a real cross-implementation bug: `IfcTriangulatedFaceSet.Closed` was emitted
+as `.U.` (a raw JS boolean, serialized by web-ifc as UNKNOWN) on every tessellated body — web-ifc
+accepts it, IfcOpenShell's where-rules reject it. The writer now emits a typed `.T.`.
+
+## External tool checklist
+
+Manual gates for the 1.0 flip, run per tool against **both** fixtures
+(`examples/sample-building.ifc`, `examples/interop-fixture.ifc`). Record results below with date,
+tool version, and screenshots in `examples/interop-results/`.
+
+### buildingSMART Validation Service ([validate.buildingsmart.org](https://validate.buildingsmart.org))
+
+1. Sign in, upload both files.
+2. Wait for the report: syntax, schema, normative IA/IP rules, industry practices.
+3. Record: overall verdict per file + any rule ids flagged. Export the report PDF if offered.
+
+- [ ] sample-building.ifc — result:
+- [ ] interop-fixture.ifc — result:
+
+### Solibri Anywhere (free viewer)
+
+1. File → Open both IFC files.
+2. Check: every element visible (3 roofs, stair with 2 flights, curtain-wall grid, railing posts,
+   profiled columns/beams); no "geometry could not be created" warnings in the log.
+3. Pick two elements (a wall, the stair): confirm psets, material, and classification show in Info.
+4. Record: screenshot of the 3D view + the model tree.
+
+- [ ] sample-building.ifc — result:
+- [ ] interop-fixture.ifc — result:
+
+### Revit (trial, via IFC open)
+
+1. Open IFC (not link) both files in a blank project.
+2. Check: category mapping (walls→Walls, stair→Stairs, roofs→Roofs), no dropped elements in the
+   import log, storey/level structure intact.
+3. Record: screenshot of the 3D view + the import log summary.
+
+- [ ] sample-building.ifc — result:
+- [ ] interop-fixture.ifc — result:
+
 ## Result
 
 The committed fixture `examples/sample-building.ifc` — a two-storey office with walls,
