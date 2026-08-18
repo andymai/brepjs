@@ -18,6 +18,7 @@ import { Room } from '../registry/families/room.js';
 import { Storey } from '../registry/families/storey.js';
 import { Slab } from '../registry/families/slab.js';
 import { Column } from '../registry/families/column.js';
+import { Beam } from '../registry/families/beam.js';
 import { Window } from '../registry/families/window.js';
 import { Wall } from '../registry/families/wall.js';
 
@@ -120,6 +121,63 @@ describe('starter families', () => {
     const model = evaluateModel(storey, ev);
     const wall = model.byKeyPath.get('s/w');
     expect(wall && isOk(wall.mesh)).toBe(true);
+  });
+
+  it('starter beams materialize for every profile kind and both axes', () => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [
+          Beam({
+            key: 'rect',
+            length: 4000,
+            profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+          }),
+          Beam({
+            key: 'round',
+            length: 4000,
+            profile: { kind: 'CIRCULAR', radius: 120 },
+            axisX: [0, 1, 0],
+          }),
+          Beam({
+            key: 'ipe',
+            length: 4000,
+            profile: {
+              kind: 'I_BEAM',
+              overallWidth: 100,
+              overallDepth: 200,
+              flangeThickness: 8.5,
+              webThickness: 5.6,
+            },
+          }),
+        ],
+      })
+    );
+    const model = evaluateModel(storey, ev);
+    for (const key of ['s/rect', 's/round', 's/ipe']) {
+      const beam = model.byKeyPath.get(key);
+      expect(beam && isOk(beam.mesh), key).toBe(true);
+    }
+  });
+
+  it('a rectangular column materializes through the profile bridge', () => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [
+          Column({
+            key: 'c1',
+            height: 3000,
+            profile: { kind: 'RECTANGULAR', width: 300, height: 300 },
+          }),
+        ],
+      })
+    );
+    const model = evaluateModel(storey, ev);
+    const col = model.byKeyPath.get('s/c1');
+    expect(col && isOk(col.mesh)).toBe(true);
   });
 
   it('a starter column resolves and materializes with a mesh', () => {

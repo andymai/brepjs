@@ -162,6 +162,75 @@ describe('familiesToBim', () => {
     expect(ifc).toContain('(0.5,0.25,0.)');
   });
 
+  it('maps a beam onto IfcBeam with an I-shape profile and key-path identity', async () => {
+    const Beam = family<{
+      readonly length: number;
+      readonly profile: Readonly<Record<string, unknown>>;
+      readonly at: readonly [number, number, number];
+    }>('Beam', (p) =>
+      el('Box', {
+        size: [p.length, 100, 200],
+        transform: [tTranslate(p.at)],
+      })
+    );
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Beam({
+            key: 'b1',
+            length: 4000,
+            profile: {
+              kind: 'I_BEAM',
+              overallWidth: 100,
+              overallDepth: 200,
+              flangeThickness: 8.5,
+              webThickness: 5.6,
+            },
+            at: [0, 0, 2700],
+          }),
+        ],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(unwrap(projected).idByKeyPath.has('s/b1')).toBe(true);
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCBEAM');
+    expect(ifc).toContain('IFCISHAPEPROFILEDEF');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/b1'));
+    expect(ifc).toContain('(0.,0.,2.7)');
+  });
+
+  it('maps a rectangular column onto IfcRectangleProfileDef', async () => {
+    const Column = family<{
+      readonly height: number;
+      readonly profile: Readonly<Record<string, unknown>>;
+    }>('Column', (p) => el('Box', { size: [300, 300, p.height] }));
+    const storey = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          Column({
+            key: 'c1',
+            height: 3000,
+            profile: { kind: 'RECTANGULAR', width: 300, height: 300 },
+          }),
+        ],
+      })
+    );
+    const projected = familiesToBim(storey, { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    const ifc = await ifcText(model);
+    expect(ifc).toContain('IFCCOLUMN');
+    expect(ifc).toContain('IFCRECTANGLEPROFILEDEF');
+  });
+
   it('rejects a wall without a storey ancestor', () => {
     const orphan = resolve(Wall({ key: 'lonely', length: 3000, height: 2700, thickness: 200 }));
     expect(isOk(familiesToBim(orphan, { project: PROJECT }))).toBe(false);
