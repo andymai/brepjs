@@ -18,7 +18,7 @@ schema validator and geometry engine is a genuine cross-implementation check.
 node examples/sampleBuilding.mjs            # writes examples/sample-building.ifc
 
 # 2. Validate it with IfcOpenShell (independent of web-ifc):
-pip install ifcopenshell                     # Python 3.9–3.12
+pip install ifcopenshell pytest              # Python 3.9–3.12; express-rule checks import pytest
 python scripts/validateIfc.py                # exit 0 = all gates pass
 ```
 

@@ -14,8 +14,10 @@ The root `package.json` `workspaces` field is the source of truth for the monore
 | `brepjs` (root)               | Core CAD library                                                 | Published; auto-released via release-please                                                          |
 | `packages/brepjs-opencascade` | Custom OpenCascade WASM build (fallback kernel)                  | Published; **manual publish only** (`publish-opencascade.yml` — expensive WASM build)                |
 | `packages/brepjs-bim`         | IFC4 parametric building elements + IFC import/export            | Published, experimental; auto-released                                                               |
+| `packages/brepjs-families`    | Declarative family layer: element trees, key paths → CSG IR      | Published, experimental; auto-released (dist build; bim type-imports it, bundles nothing)            |
 | `packages/brepjs-sheetmetal`  | Flange authoring, fold/unfold flat patterns, DXF/STEP            | Published, experimental; auto-released                                                               |
 | `packages/brepjs-cad`         | Agent skill pipeline + `brep`/`brep-mcp` CLI bins + WASM viewer  | Published; auto-released                                                                             |
+| `packages/create-brepjs`      | `npm create brepjs` scaffolder (dependency-free bin + templates) | Published; auto-released                                                                             |
 | `packages/brepjs-viewer`      | Shared React/R3F renderer (playground + brepjs-cad)              | Published; **manual publish, deliberately unmanaged by release-please**                              |
 | `packages/brepjs-manifold`    | Manifold mesh/CSG preview kernel adapter                         | Unpublished, source-shipped (`exports` → `./src/index.ts`, no build)                                 |
 | `packages/brepjs-voxel-wasm`  | Rust→WASM voxel/SDF engine (`wasm-pack` build, committed `pkg/`) | Versioned/tagged by release-please but **no publish workflow — not on npm**                          |
@@ -26,15 +28,16 @@ The root `package.json` `workspaces` field is the source of truth for the monore
 
 Three tiers, and the rules differ per tier:
 
-1. **Published satellites** (opencascade, bim, sheetmetal, cad, viewer): consumers may resolve them from the npm registry, so their manifests must always describe an installable package.
+1. **Published satellites** (opencascade, bim, families, sheetmetal, cad, viewer, create-brepjs): consumers may resolve them from the npm registry, so their manifests must always describe an installable package.
 2. **Source-shipped internals** (manifold, voxel, voxel-wasm): resolved only through workspace symlinks; manifold and voxel have no build step at all — editing their `src/` is immediately live for consumers.
 3. **Private** (vscode, playground, docs): never published; playground and docs deploy via Vercel/Pages instead.
 
-READMEs exist only for bim, sheetmetal, cad, and viewer — point users there for per-package API detail rather than restating it.
+READMEs exist only for bim, families, sheetmetal, cad, and viewer — point users there for per-package API detail rather than restating it.
 
 ## Workspace dependency rules
 
-- **Satellites depend on `brepjs` as a floor-ranged peerDependency**: `"brepjs": ">=18.0.0"` in `packages/brepjs-bim/package.json` and `packages/brepjs-sheetmetal/package.json`. Exception: `brepjs-cad` takes brepjs as a real dependency (`">=18.117.1"`) because its CLI must run standalone.
+- **Satellites depend on `brepjs` as a floor-ranged peerDependency**: `"brepjs": ">=18.0.0"` in `packages/brepjs-bim/package.json`, `packages/brepjs-families/package.json`, and `packages/brepjs-sheetmetal/package.json`. Exception: `brepjs-cad` takes brepjs as a real dependency (`">=18.117.1"`) because its CLI must run standalone.
+- **bim depends on families as a bounded range**: `"brepjs-families": ">=0.1.0 <1.0.0"` in `packages/brepjs-bim/package.json` (runtime dep for `familiesToBim` consumers; the adapter itself only type-imports families, so bim's dist bundles none of it). Release ordering: the families release PR merges before bim's.
 - **Root brepjs's kernel packages are optional peers**: `brepjs-manifold`, `brepjs-opencascade`, `brepkit-wasm`, `occt-wasm` are all `optional: true` under `peerDependenciesMeta` in the root `package.json`. Never promote one to a hard dependency — consumers pick exactly one kernel.
 - **Internal cross-references use `"*"`** (e.g. `"brepjs-viewer": "*"` in `apps/playground` and in brepjs-cad's devDependencies). npm workspaces symlink these locally. Gotcha: Dependabot scans each sub-manifest without a co-located lockfile, so an unconstrained `"*"` on an _external_ dev tool reads as permitting every vulnerable version. Fix by constraining a floor on the flagged spec (`"vite": "^8.0.0"`, `"vitest": "^4.0.0"` — see `packages/brepjs-viewer/package.json`), not by lockfile churn.
 - **`brepjs-viewer` role differs per consumer**: runtime `dependency` of the playground; build-time `devDependency` of brepjs-cad (its viewer bundle inlines it — see the `packages-verify` comment in `.github/workflows/ci.yml`). Viewer declares its react/three/fiber/drei peers as floor ranges (`>=19`, `>=0.184`, etc.) compatible with the playground's versions, so npm dedups to one copy monorepo-wide; rationale in `packages/brepjs-viewer/README.md`.

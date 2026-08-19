@@ -10,8 +10,9 @@
  *
  *   npx tsx packages/brepjs-bim/examples/sampleBuildingFamilies.ts
  *
- * Columns and classifications from the imperative sample are out of scope:
- * the adapter maps Storey, Wall, Slab, and wall openings in v1.
+ * The fixture sticks to storeys, walls, slabs, and wall openings; the wider
+ * adapter catalog (columns, beams, roofs, stairs) is covered by the adapter
+ * tests, and the imperative interop fixture carries the shaped geometry.
  */
 
 import { family, el, tTranslate, type Element } from 'brepjs-families';
