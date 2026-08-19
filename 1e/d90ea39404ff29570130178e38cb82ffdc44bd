@@ -1,0 +1,30 @@
+.claude/skills/companion-packages/SKILL.md
+  s_40e59e3654e10d::t_f4a2613e1dc645 17,20
+  s_40e59e3654e10d::t_d30f1eec184bba 39-40
+  s_40e59e3654e10d::t_44408d91ef6c0d 35
+  s_40e59e3654e10d::t_2df9b17dce8ecd 31
+packages/brepjs-bim/VALIDATION.md
+  s_40e59e3654e10d::t_68cfd0ada8b1a8 21
+packages/brepjs-bim/examples/sampleBuildingFamilies.ts
+  s_40e59e3654e10d::t_0cff2192a89880 13
+  s_40e59e3654e10d::t_758da60328f8da 14-15
+CLAUDE.md
+  s_40e59e3654e10d::t_4c7f2317ffbe35 28
+  s_40e59e3654e10d::t_dab2632b853ef8 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1ed90ea39404ff29570130178e38cb82ffdc44bd",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
