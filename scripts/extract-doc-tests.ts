@@ -2,7 +2,10 @@
  * Extracts ```typescript / ```ts code blocks from apps/docs/**\/*.md and emits
  * tests/docs/extracted.test.ts. The generated test file initializes the OCCT
  * kernel once, injects all brepjs exports onto globalThis, then evaluates each
- * snippet inside an AsyncFunction so `await` works.
+ * snippet inside an AsyncFunction so `await` works. Satellite imports
+ * (brepjs-families, brepjs-bim, brepjs-sheetmetal, zod) are rewritten into
+ * destructures from injected namespaces, so satellite docs snippets can opt in
+ * without their names colliding with root exports.
  *
  * Markers (placed in HTML comments immediately above a fenced block):
  *   <!-- @run-test --> : opt this block IN to the test suite (default: skipped)
@@ -136,6 +139,21 @@ function generateTestFile(snippets: Snippet[]): string {
 import { beforeAll, describe, it } from 'vitest';
 import { initOC } from '../setup.js';
 import * as brepjsExports from '@/index.js';
+import * as familiesExports from 'brepjs-families';
+import * as bimExports from 'brepjs-bim';
+import * as sheetmetalExports from 'brepjs-sheetmetal';
+import * as zodExports from 'zod';
+
+// Satellite namespaces injected per snippet. Unlike root brepjs (whose exports
+// land on globalThis), satellite imports are REWRITTEN into destructures from
+// this map, so satellite names can never clobber root exports (families'
+// resolve() vs topology's resolve(), for one).
+const SATELLITE_NS: Record<string, unknown> = {
+  'brepjs-families': familiesExports,
+  'brepjs-bim': bimExports,
+  'brepjs-sheetmetal': sheetmetalExports,
+  zod: zodExports,
+};
 
 beforeAll(async () => {
   await initOC();
@@ -172,6 +190,20 @@ function stripModuleSyntax(code: string): string {
         if (/^[ \\t]*import\\s+['\"][^'\"]+['\"];?[ \\t]*$/.test(cur)) break;
         j++;
       }
+      // Satellite imports become destructures from the injected namespace map;
+      // root brepjs imports stay no-ops (exports already live on globalThis).
+      const stmt = lines.slice(i, j + 1).join(' ');
+      const spec = stmt.match(/from\\s+['\"]([^'\"]+)['\"]/)?.[1];
+      if (spec && Object.prototype.hasOwnProperty.call(SATELLITE_NS, spec)) {
+        const named = stmt.match(/import\\s*\\{([^}]*)\\}/);
+        const star = stmt.match(/import\\s*\\*\\s*as\\s+(\\w+)/);
+        if (named) {
+          const bindings = named[1].replace(/\\bas\\b/g, ':');
+          out.push('const {' + bindings + '} = __ns[' + JSON.stringify(spec) + '];');
+        } else if (star) {
+          out.push('const ' + star[1] + ' = __ns[' + JSON.stringify(spec) + '];');
+        }
+      }
       i = j + 1;
       continue;
     }
@@ -189,8 +221,8 @@ function stripModuleSyntax(code: string): string {
 
 async function runSnippet(code: string): Promise<void> {
   const stripped = stripModuleSyntax(code);
-  const fn = new AsyncFunction(stripped);
-  await fn();
+  const fn = new AsyncFunction('__ns', stripped);
+  await fn(SATELLITE_NS);
 }
 
 ${blocks || '// no snippets extracted'}
