@@ -44,16 +44,29 @@ export function buildModuleDts(packages: AmbientPackage[]): string {
 export function buildBrepjsModuleDts(
   brepjsAmbient: string,
   sheetmetalAmbient: string,
-  bimAmbient: string
+  bimAmbient: string,
+  familiesAmbient: string
 ): string {
   return (
     buildModuleDts([
-      { moduleIds: ['brepjs', 'brepjs/quick'], ambient: brepjsAmbient },
+      { moduleIds: ['brepjs'], ambient: brepjsAmbient },
       { moduleIds: ['brepjs-sheetmetal'], ambient: sheetmetalAmbient },
       { moduleIds: ['brepjs-bim'], ambient: bimAmbient },
-    ]) + PLAYGROUND_MODULE_DTS
+      { moduleIds: ['brepjs-families'], ambient: familiesAmbient },
+    ]) +
+    QUICK_MODULE_DTS +
+    PLAYGROUND_MODULE_DTS
   );
 }
+
+// `brepjs/quick` re-exports `brepjs` instead of duplicating its body: nominal
+// types (classes with private state, e.g. csg.Evaluator) must be the SAME
+// declaration under both specifiers, or values from one fail to type-check
+// against APIs declared in terms of the other.
+const QUICK_MODULE_DTS = `declare module 'brepjs/quick' {
+  export * from 'brepjs';
+}
+`;
 
 // Hand-written declarations for the playground-only `brepjs/playground` helpers
 // the worker injects at runtime (not part of any published package). Both return

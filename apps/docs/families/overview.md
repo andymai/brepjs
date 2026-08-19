@@ -9,6 +9,8 @@ The [CSG IR](/concepts/csg-ir) is deliberately anonymous. Two identical wall rec
 
 `brepjs-families` resolves that tension by adding a second tree **beside** the IR, not inside it. You describe a model as a tree of **elements**, each optionally carrying a key, properties, and property sets. Resolution projects every element onto the content-addressed IR for geometry, while identity rides on the element tree and never enters a cache key. Identical recipes still share one materialization; identities stay distinct.
 
+> **Try it live:** the <a href="/playground/examples/families-building" target="_blank" rel="noopener">Declarative Building</a> playground example runs this layer in the browser, and the playground's Families category has three more, including <a href="/playground/examples/families-ifc" target="_blank" rel="noopener">a projection to IFC</a>.
+
 ```typescript
 import { family, el, resolve, evaluateModel, type Element } from 'brepjs-families';
 import { csg } from 'brepjs';
