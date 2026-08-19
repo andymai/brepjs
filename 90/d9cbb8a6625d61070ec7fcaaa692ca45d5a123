@@ -1,0 +1,21 @@
+src/2d/lib/ellipseArcFlags.ts
+  s_40e59e3654e10d::t_ec7a784f435516 51-53,55
+tests/svgPathRegression.test.ts
+  s_40e59e3654e10d::t_dbf09c8a4c91f3 87-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "90d9cbb8a6625d61070ec7fcaaa692ca45d5a123",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
