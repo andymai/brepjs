@@ -5,7 +5,7 @@ description: This skill should be used when orienting in the brepjs monorepo's p
 
 # Monorepo companion packages
 
-The root `package.json` `workspaces` field is the source of truth for the monorepo layout: 9 packages under `packages/` plus `apps/playground` and `apps/docs`. The `## Packages` list in `CLAUDE.md` is a curated subset — when it disagrees with the manifests, trust the manifests.
+The root `package.json` `workspaces` field is the source of truth for the monorepo layout: 11 packages under `packages/` plus `apps/playground` and `apps/docs`. The `## Packages` list in `CLAUDE.md` is a curated subset — when it disagrees with the manifests, trust the manifests.
 
 ## Package map
 
@@ -61,7 +61,7 @@ Three ordered chains, all encoded in scripts (prefer running the script over han
 
 The package topology that shapes the pipeline lives in [references/publish-pipeline.md](references/publish-pipeline.md); the operator mechanics live in the **release-publishing** skill. The shape:
 
-- `release-please-config.json` manages 6 components: root, opencascade, voxel-wasm, cad, bim, sheetmetal — with the `node-workspace` plugin and separate PRs per component. Viewer and voxel are deliberately excluded.
+- `release-please-config.json` manages 8 components: root, opencascade, voxel-wasm, cad, bim, families, sheetmetal, create-brepjs; separate PRs per component and no plugins (`plugins: []`). Viewer and voxel are deliberately excluded.
 - Leaf release PRs are **held until the root brepjs release merges** — merging a leaf first pins it to an unpublished brepjs version and breaks `npm ci` with ETARGET.
 - npm OIDC trusted publishers are bound to specific workflow **filenames**, so release-please _dispatches_ each `publish-brepjs-*.yml` rather than inlining `npm publish`.
 - Every `publish-*.yml` is `workflow_dispatch` with `dry_run` defaulting to **true** — a bare manual dispatch is a safe dry run; pass `dry_run=false` to actually publish.
