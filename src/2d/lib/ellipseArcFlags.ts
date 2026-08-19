@@ -48,8 +48,11 @@ export function ellipseArcFlags(
     b *= s;
   }
   const num = a * a * b * b - a * a * hy * hy - b * b * hx * hx;
+  // den is zero only when both half-chord components are (the lam guard above
+  // already excluded that), so an exact-zero check suffices: any absolute
+  // threshold here would misclassify valid arcs on small-radius ellipses.
   const den = a * a * hy * hy + b * b * hx * hx;
-  if (den < 1e-12) return null;
+  if (den === 0) return null;
   const coef = Math.sqrt(Math.max(0, num / den));
   const mx = (f[0] + l[0]) / 2;
   const my = (f[1] + l[1]) / 2;

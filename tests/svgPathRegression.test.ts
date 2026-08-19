@@ -84,6 +84,14 @@ describe('toSVGPathD', () => {
     expect(flags[4]).toBe('1');
   });
 
+  it('a micro-scale ellipse arc still emits an arc, not a degenerate line', () => {
+    const arc = make2dEllipseArc(1e-4, 5e-5, Math.PI / 2, 2 * Math.PI, [0, 0], [1, 0]);
+    const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
+    const flags = elem.trim().split(/\s+/);
+    expect(flags[0]).toBe('A');
+    expect(flags[4]).toBe('1');
+  });
+
   it('splits a closed circle at the true parametric midpoint (antipodal halves)', () => {
     const pieces = approximateAsSvgCompatibleCurve([make2dCircle(5)]);
     expect(pieces.length).toBe(2);
