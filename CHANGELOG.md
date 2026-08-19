@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.150.1](https://github.com/andymai/brepjs/compare/brepjs-v18.150.0...brepjs-v18.150.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **2d:** geometric ellipse arc flags and honored ellipse-arc trims ([#2168](https://github.com/andymai/brepjs/issues/2168)) ([4bc2b77](https://github.com/andymai/brepjs/commit/4bc2b7738402a3d29f26f66201b23a9a34da4c1d))
+
 ## [18.150.0](https://github.com/andymai/brepjs/compare/brepjs-v18.149.0...brepjs-v18.150.0) (2026-08-19)
 
 
