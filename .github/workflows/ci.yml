@@ -329,6 +329,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
+      # Docs snippets gate here too: the extracted test file is gitignored, so
+      # without this step opted-in snippets only ever ran locally.
+      - run: npm run docs:extract-tests
       - run: npm run test:ci -- --shard=${{ matrix.shard }}/4 --reporter=default --reporter=github-actions
 
   coverage:

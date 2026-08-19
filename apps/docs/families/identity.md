@@ -9,6 +9,8 @@ The [CSG IR](/concepts/csg-ir) answers "have I built this shape before?" by hash
 
 ## Two identical walls, one materialization
 
+<!-- @run-test -->
+
 ```typescript
 import { family, el, resolve, evaluateModel, type Element } from 'brepjs-families';
 import { csg } from 'brepjs';

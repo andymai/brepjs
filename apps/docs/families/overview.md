@@ -11,6 +11,8 @@ The [CSG IR](/concepts/csg-ir) is deliberately anonymous. Two identical wall rec
 
 > **Try it live:** the <a href="/playground/examples/families-building" target="_blank" rel="noopener">Declarative Building</a> playground example runs this layer in the browser, and the playground's Families category has three more, including <a href="/playground/examples/families-ifc" target="_blank" rel="noopener">a projection to IFC</a>.
 
+<!-- @setup -->
+
 ```typescript
 import { family, el, resolve, evaluateModel, type Element } from 'brepjs-families';
 import { csg } from 'brepjs';
@@ -63,6 +65,8 @@ The vocabulary stays deliberately small because `Geometry` makes it complete: an
 ## Evaluation is mesh-first
 
 `evaluateModel` walks the resolved tree and returns one record per geometry-bearing element. The primary output is a **mesh**: plain data with no kernel lifetimes to manage, cached by content so a re-evaluation after an edit only re-meshes what changed.
+
+<!-- @run-test -->
 
 ```typescript
 using evaluator = new csg.Evaluator();

@@ -11,6 +11,8 @@ A hole in a wall is two different things depending on who is asking. To the geom
 
 Any element placed in a host's `voids` becomes a cut tool:
 
+<!-- @setup -->
+
 ```typescript
 import { family, el, tTranslate, type Element } from 'brepjs-families';
 
@@ -30,6 +32,8 @@ The tool is projected to IR, cut from the host, and that is the end of it: no ke
 ## Fill-role voids: an Opening is synthesized
 
 Declare a family with `role: 'fill'` and place an _instance of it_ in `voids`, and resolution builds more than a cut:
+
+<!-- @setup -->
 
 ```typescript
 const Door = family<{
@@ -72,6 +76,8 @@ graph LR
 ## Transforms carry openings
 
 Desugaring order is voids first, then `fuse`, then the host `transform`. Openings and fills are cut in the host's **local frame** and then carried by the host's transform, so this wall and its doorway move as one:
+
+<!-- @run-test -->
 
 ```typescript
 const MovedWall = family<{ readonly voids: readonly Element[] }>('Wall', (p) =>

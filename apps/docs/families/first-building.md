@@ -17,6 +17,8 @@ A `Storey` containing two `Wall`s along X, 4 m and 3 m long, 200 mm thick, 2.7 m
 
 ## Step 1: The door is a family with a role
 
+<!-- @setup -->
+
 ```typescript
 import { family, el, tTranslate, type Element } from 'brepjs-families';
 
@@ -44,6 +46,8 @@ The door's box is 300 mm deep against a 200 mm wall: cut tools may overshoot the
 
 ## Step 2: Walls accept voids
 
+<!-- @setup -->
+
 ```typescript
 interface WallProps {
   readonly length: number;
@@ -70,6 +74,8 @@ Desugaring order is normative and worth internalizing: **voids are cut in the ho
 `Storey` renders to a `Group`: a pure container with no geometry of its own. Containers exist for structure and identity, and evaluation skips them.
 
 ## Step 3: Resolve and evaluate
+
+<!-- @setup -->
 
 ```typescript
 import { csg } from 'brepjs';
@@ -116,6 +122,8 @@ Three things to notice:
 ## Step 4: Edit a prop, count what re-meshed
 
 Stretch the south wall from 4 m to 4.2 m and evaluate again with the same evaluator:
+
+<!-- @run-test -->
 
 ```typescript
 const second = evaluateModel(building(4200), evaluator);

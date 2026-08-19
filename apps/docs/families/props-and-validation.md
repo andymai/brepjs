@@ -11,6 +11,8 @@ A family's props are its entire public surface, and they travel further than mos
 
 Pass a [Zod](https://zod.dev) schema as `props` and every invocation is checked before an element exists:
 
+<!-- @setup -->
+
 ```typescript
 import { family, el } from 'brepjs-families';
 import { z } from 'zod';
@@ -28,7 +30,9 @@ const Slab = family(
   (p: z.output<typeof slabSchema>) => el('Box', { size: [p.length, p.width, p.thickness] }),
   { props: slabSchema }
 );
+```
 
+```typescript
 Slab({ key: 'floor', length: 6000, width: 4000, thickness: -250 });
 // throws: brepjs-families: invalid props for family 'Slab': ...
 ```
@@ -38,6 +42,8 @@ Failures throw with the family's name in the message. This is deliberately a thr
 ## Schema output replaces the props
 
 Validation is not a gate, it is a transformation: the schema's **output** becomes the element's props. Defaults and transforms apply before the render function runs and before identity capture, so everything downstream sees one consistent, completed value:
+
+<!-- @run-test -->
 
 ```typescript
 const slab = Slab({ key: 'floor', length: 6000, width: 4000, thickness: 250 });
@@ -66,6 +72,8 @@ The schema's output type must be assignable to the render props, and the compile
 ## Cross-field rules
 
 Real components have constraints between fields. The starter `room` family refuses a door that cannot fit its own south wall:
+
+<!-- @run-test -->
 
 ```typescript
 const roomSchema = z
