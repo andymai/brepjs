@@ -1,0 +1,25 @@
+.claude/skills/playground-examples/SKILL.md
+  s_40e59e3654e10d::t_11e384e9e22b1d 22
+  s_40e59e3654e10d::t_8c38778312a2d3 107
+  s_40e59e3654e10d::t_7ba8431f211988 16-21,23,105-106,108-111
+  s_40e59e3654e10d::t_913808950d09db 67
+  s_40e59e3654e10d::t_849c5725bd2f65 32
+  s_40e59e3654e10d::t_b267d147fbac46 55
+  s_40e59e3654e10d::t_f71f9f642d7b01 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2875536a673fd639fd53755cf84bd07a405901bc",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
