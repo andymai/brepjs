@@ -36,8 +36,12 @@ export function ellipseArcFlags(
   const m = rotInto(onArc, xAxisAngle);
   const hx = (f[0] - l[0]) / 2;
   const hy = (f[1] - l[1]) / 2;
-  // F.6.6 correction: scale the radii up when the chord cannot fit them.
   const lam = (hx * hx) / (a * a) + (hy * hy) / (b * b);
+  // lam is the squared half-chord in normalized ellipse coordinates, so this
+  // degeneracy cutoff tracks the radii rather than the drawing's absolute
+  // scale (chord below ~1e-9 of the radius reads as coincident endpoints).
+  if (lam < 1e-18) return null;
+  // F.6.6 correction: scale the radii up when the chord cannot fit them.
   if (lam > 1) {
     const s = Math.sqrt(lam);
     a *= s;
