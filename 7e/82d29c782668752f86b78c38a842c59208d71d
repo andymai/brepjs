@@ -1,0 +1,65 @@
+apps/docs/families/overview.md
+  s_40e59e3654e10d::t_22b63bd6c67488 12-13
+apps/playground/src/lib/examples/families.ts
+  s_40e59e3654e10d::t_f62b66df82aabf 258-259,264
+  s_40e59e3654e10d::t_602d32b391c524 1-257,260-263,265-397
+apps/playground/src/workers/cad.worker.ts
+  s_40e59e3654e10d::t_4621d7504ad76f 244
+  s_40e59e3654e10d::t_3ff19b8ea07e32 282-294,300
+  s_40e59e3654e10d::t_a5c41e5daee4cf 323-325
+  s_40e59e3654e10d::t_1b6335a56df339 235
+  s_40e59e3654e10d::t_ba2e6cabe65b36 22-23,28
+tests/helpers/playgroundExampleEval.ts
+  s_40e59e3654e10d::t_77192a114ea8e8 24
+  s_40e59e3654e10d::t_17c67292fb5d22 109,112
+  s_40e59e3654e10d::t_8bb75170349667 85
+apps/playground/src/lib/ambientModule.ts
+  s_40e59e3654e10d::t_af187cc70f7f91 52,56-58,62-69
+  s_40e59e3654e10d::t_c3b8f552c999ea 47-48,55
+  s_40e59e3654e10d::t_5fd73b09f56363 70
+apps/playground/scripts/generate-ambient-types.ts
+  s_40e59e3654e10d::t_57a2ad67f347e8 560
+  s_40e59e3654e10d::t_bff5e9e64d3dff 62-66
+  s_40e59e3654e10d::t_ae8a03ab196534 590-604
+  s_40e59e3654e10d::t_5c30fb0348fd7a 19
+  s_40e59e3654e10d::t_d25f77a24d401c 302
+  s_40e59e3654e10d::t_0235bd57722c10 37-45,50-55
+  s_40e59e3654e10d::t_f42b8eb2a96b74 89
+  s_40e59e3654e10d::t_6a2274fbec6a0d 526-547
+apps/playground/scripts/checkExamples.ts
+  s_40e59e3654e10d::t_699c8a357a7844 24
+  s_40e59e3654e10d::t_fd6356c510f3dc 69-70
+apps/playground/package.json
+  s_40e59e3654e10d::t_c52f756299ef77 30
+  s_40e59e3654e10d::t_7380f392e1c3a6 7
+apps/playground/src/types/brepjs-ambient.d.ts
+  s_40e59e3654e10d::t_d7dc8faac3a48f 9998-10536
+apps/docs/families/first-building.md
+  s_40e59e3654e10d::t_4126646d835c36 12-13
+apps/playground/src/types/brepjs-families-ambient.d.ts
+  s_40e59e3654e10d::t_1bfc53568e8428 1-118
+apps/playground/src/lib/monacoSetup.ts
+  s_40e59e3654e10d::t_5bcf44bfb9be9b 5
+  s_40e59e3654e10d::t_1c8b35e1851687 60
+apps/playground/src/lib/examples/index.ts
+  s_40e59e3654e10d::t_0d4ee4a1e27fd1 29
+  s_40e59e3654e10d::t_c4a7dbab1f98ca 16
+package-lock.json
+  s_40e59e3654e10d::t_9e5e09bd140de7 119,1216,15150,15325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7e82d29c782668752f86b78c38a842c59208d71d",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
