@@ -13,13 +13,14 @@ For bulk import from an OpenSCAD reference library, use the `/scad-to-playground
 
 An example is an `Example { id, label, description, code }` (`apps/playground/src/lib/examples/types.ts`). Examples live in category files and are aggregated by a barrel:
 
-| File                                             | Category    | Notes                                        |
-| ------------------------------------------------ | ----------- | -------------------------------------------- |
-| `apps/playground/src/lib/examples/basics.ts`     | Basics      | Calibration for house comment style          |
-| `apps/playground/src/lib/examples/mechanical.ts` | Mechanical  | Largest set                                  |
-| `apps/playground/src/lib/examples/sheetMetal.ts` | Sheet Metal | imports `brepjs-sheetmetal`                  |
-| `apps/playground/src/lib/examples/bim.ts`        | BIM         | imports `brepjs-bim`, uses top-level `await` |
-| `apps/playground/src/lib/examples/index.ts`      | barrel      | builds `CATEGORIES` + flat `EXAMPLES`        |
+| File                                             | Category    | Notes                                                             |
+| ------------------------------------------------ | ----------- | ----------------------------------------------------------------- |
+| `apps/playground/src/lib/examples/basics.ts`     | Basics      | Calibration for house comment style                               |
+| `apps/playground/src/lib/examples/mechanical.ts` | Mechanical  | Largest set                                                       |
+| `apps/playground/src/lib/examples/sheetMetal.ts` | Sheet Metal | imports `brepjs-sheetmetal`                                       |
+| `apps/playground/src/lib/examples/bim.ts`        | BIM         | imports `brepjs-bim`, uses top-level `await`                      |
+| `apps/playground/src/lib/examples/families.ts`   | Families    | imports `brepjs-families` (+ `brepjs-bim` for the IFC projection) |
+| `apps/playground/src/lib/examples/index.ts`      | barrel      | builds `CATEGORIES` + flat `EXAMPLES`                             |
 
 To add an example: append an `Example` to the appropriate category array. To add a new category: create a file exporting an `Example[]`, then register it in `CATEGORIES` (`index.ts`).
 
@@ -28,7 +29,7 @@ To add an example: append an `Example` to the appropriate category array. To add
 The `code` field becomes the Monaco editor buffer verbatim AND is executed by both the browser worker and the root test harness. It must obey (`types.ts`):
 
 - **Self-contained.** No shared helpers, no imports of other examples, no TS-only constructs the harness's sucrase strip can't handle (`transforms: ['typescript']`, `tests/helpers/playgroundExampleEval.ts`).
-- **Named imports only, from the recognized specifiers.** The eval harness rewrites only the `import { … } from '<spec>'` form for these specifiers: `brepjs`, `brepjs/quick`, `brepjs/playground`, `brepjs-sheetmetal`, `brepjs-bim` (`playgroundExampleEval.ts`). Namespace (`import * as`) and default imports are NOT rewritten and will fail at runtime. Prefer `'brepjs/quick'`.
+- **Named imports only, from the recognized specifiers.** The eval harness rewrites only the `import { … } from '<spec>'` form for these specifiers: `brepjs`, `brepjs/quick`, `brepjs/playground`, `brepjs-sheetmetal`, `brepjs-bim`, `brepjs-families` (`playgroundExampleEval.ts`). Namespace (`import * as`) and default imports are NOT rewritten and will fail at runtime. Prefer `'brepjs/quick'`.
 - **Ends in `export default <shape | shape[]>`.** Return one shape or an array; an array renders each shape. The harness turns `export default` into `return` (`playgroundExampleEval.ts`).
 - **`color()` / `present()` come from `'brepjs/playground'`**, not published API. `color(shape, css)` tags a color; `present(shape, { dxf, ifc, bimTree, overlay2d })` attaches downloadable artifacts. Both are stripped back to the shape before meshing (`playgroundExampleEval.ts, 108-113`).
 - **`unwrap()` finishing ops — never `x.ok ? x.value : base`.** See Gate 2; the silent-fallback ban is enforced by regex.
@@ -51,7 +52,7 @@ Keep comments concise — they are read in a small Monaco pane. Avoid multi-line
 cd apps/playground && npm run check:examples
 ```
 
-`apps/playground/scripts/checkExamples.ts` type-checks every example's `code` against the generated ambient `.d.ts` files (`src/types/brepjs-ambient.d.ts`, `-sheetmetal-`, `-bim-`), wrapped into `declare module` blocks by the same `buildBrepjsModuleDts` the Monaco editor uses, with the editor's compiler options (ES2022, moduleResolution Bundler, strict, skipLibCheck). Passing == "no red squiggles in the editor". It also checks the docs landing hero snippet `docs-hero:PLAYGROUND_PROGRAM` extracted from `apps/docs/.vitepress/theme/components/CodeCadHero.vue` — if that template literal is renamed or moved, the script exits 1 with a pointed message.
+`apps/playground/scripts/checkExamples.ts` type-checks every example's `code` against the generated ambient `.d.ts` files (`src/types/brepjs-ambient.d.ts`, `-sheetmetal-`, `-bim-`, `-families-`), wrapped into `declare module` blocks by the same `buildBrepjsModuleDts` the Monaco editor uses, with the editor's compiler options (ES2022, moduleResolution Bundler, strict, skipLibCheck). Passing == "no red squiggles in the editor". It also checks the docs landing hero snippet `docs-hero:PLAYGROUND_PROGRAM` extracted from `apps/docs/.vitepress/theme/components/CodeCadHero.vue` — if that template literal is renamed or moved, the script exits 1 with a pointed message.
 
 On failure, decide the cause:
 
@@ -63,7 +64,7 @@ On failure, decide the cause:
 
 Regenerating types: `generate-ambient-types.ts` reads each package's built `node_modules/<pkg>/dist/index.d.ts` (build the package first), and deliberately excludes the experimental `implicit/` modules (`EXCLUDED_MODULE_RE = /(^|\/)implicit\//`, generator lines 60-64) because they re-export core primitives aliased as `sdfCylinder` etc. that would otherwise overwrite the real `cylinder`/`box`/`cone`. Satellite packages re-emit their brepjs-sourced names as a top-of-file `import type { … } from 'brepjs'` that resolves against the sibling `declare module 'brepjs'` at consumption time — leave that mechanism intact. See kernel-abstraction and companion-packages skills for package build order.
 
-Where it runs in CI: the playground `build` script is `tsc -b && npm run check:examples && vite build` (`package.json:11`), executed by the `playground-build` job (`.github/workflows/ci.yml:119`), path-gated on `apps/playground/**`. CI builds `brepjs`, `brepjs-bim`, `brepjs-sheetmetal` before building the playground.
+Where it runs in CI: the playground `build` script is `tsc -b && npm run check:examples && vite build` (`package.json`), reached through the `site-build` job's `npm run build:site` (path-gated on the site filter in `.github/workflows/ci.yml`). The playground's `prebuild` hook (`build:deps`) builds `brepjs-families`, `brepjs-bim`, `brepjs-sheetmetal`, and `brepjs-viewer` first.
 
 ### Gate 2 — geometry (`tests/playgroundExamples.test.ts`)
 
@@ -71,7 +72,7 @@ Where it runs in CI: the playground `build` script is `tsc -b && npm run check:e
 npx vitest run --project occt-wasm tests/playgroundExamples.test.ts
 ```
 
-Run from the repo root. This lives in `tests/`, so it is part of the root suite and needs no dist build — root vitest aliases `brepjs`, `brepjs-sheetmetal`, `brepjs-bim` to live `src` (`vitest.config.ts`). Pre-commit's changed-file run (`vitest run --project occt-wasm --changed`) picks it up when an example file changes, because vitest `--changed` follows the import graph into `apps/playground/src/lib/examples/`.
+Run from the repo root. This lives in `tests/`, so it is part of the root suite and needs no dist build — root vitest aliases `brepjs`, `brepjs-sheetmetal`, `brepjs-bim`, and `brepjs-families` to live `src` (`vitest.config.ts`). Pre-commit's changed-file run (`vitest run --project occt-wasm --changed`) picks it up when an example file changes, because vitest `--changed` follows the import graph into `apps/playground/src/lib/examples/`.
 
 Four assertion families (`tests/playgroundExamples.test.ts`):
 
@@ -101,13 +102,13 @@ Visual-repair loop: `npm run shoot "$PORT_URL" tmp/shots <id>` writes a full-pag
 
 ## Symptom → cause → fix
 
-| Symptom                                                   | Cause                                                                                                            | Fix                                                                                                                                                                                |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gates green, browser shows blank/broken viewer            | Stale companion `dist` (worker lazy-imports `brepjs-bim`/`brepjs-sheetmetal` from their built `dist`, not `src`) | `build:deps` runs on `predev`/`prebuild` and auto-heals; restart a long-running dev server after editing `brepjs-bim`/`brepjs-sheetmetal`/`brepjs-viewer`. See companion-packages. |
-| Namespace/default import fails at runtime but type-checks | Harness only rewrites `import { … } from` form                                                                   | Convert to named imports                                                                                                                                                           |
-| Example edit not lint/format-checked locally              | Playground app code is outside root lint/typecheck/lint-staged                                                   | Its own gates are `tsc -b` + `check:examples` + `vite build` in the path-gated `playground-build` CI job                                                                           |
-| Thumbnail command fails to connect                        | Wrong port                                                                                                       | Sniff the port from the dev-server log                                                                                                                                             |
-| `check:examples` fails on the hero snippet                | Hero literal moved in `CodeCadHero.vue`                                                                          | Keep `PLAYGROUND_PROGRAM` intact or update `checkExamples.ts`                                                                                                                      |
+| Symptom                                                   | Cause                                                                                                                              | Fix                                                                                                                                                                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gates green, browser shows blank/broken viewer            | Stale companion `dist` (worker lazy-imports `brepjs-bim`/`brepjs-sheetmetal`/`brepjs-families` from their built `dist`, not `src`) | `build:deps` runs on `predev`/`prebuild` and auto-heals; restart a long-running dev server after editing `brepjs-bim`/`brepjs-sheetmetal`/`brepjs-families`/`brepjs-viewer`. See companion-packages. |
+| Namespace/default import fails at runtime but type-checks | Harness only rewrites `import { … } from` form                                                                                     | Convert to named imports                                                                                                                                                                             |
+| Example edit not lint/format-checked locally              | Playground app code is outside root lint/typecheck/lint-staged                                                                     | Its own gates are `tsc -b` + `check:examples` + `vite build` in the path-gated `playground-build` CI job                                                                                             |
+| Thumbnail command fails to connect                        | Wrong port                                                                                                                         | Sniff the port from the dev-server log                                                                                                                                                               |
+| `check:examples` fails on the hero snippet                | Hero literal moved in `CodeCadHero.vue`                                                                                            | Keep `PLAYGROUND_PROGRAM` intact or update `checkExamples.ts`                                                                                                                                        |
 
 Note: the production `playground-smoke` workflow only checks the deployed engine boots; it does NOT verify examples. Gate 2 is the sole guard that each example runs.
 
