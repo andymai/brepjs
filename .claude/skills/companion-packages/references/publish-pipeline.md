@@ -4,7 +4,7 @@ How the monorepo's package layout shapes what release-please manages and how the
 
 ## What release-please manages
 
-Six components, each with its own release PR (`separate-pull-requests: true`) and the `node-workspace` plugin:
+Eight components, each with its own release PR (`separate-pull-requests: true`) and no release plugins (`plugins: []`):
 
 | Component            | Path                          | Published by                                                                                                             |
 | -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -13,16 +13,18 @@ Six components, each with its own release PR (`separate-pull-requests: true`) an
 | `brepjs-voxel-wasm`  | `packages/brepjs-voxel-wasm`  | **Nobody** — versioned and tagged (with a `Cargo.toml` extra-file bump) but no publish workflow exists; it is not on npm |
 | `brepjs-cad`         | `packages/brepjs-cad`         | Dispatched `publish-brepjs-cad.yml`                                                                                      |
 | `brepjs-bim`         | `packages/brepjs-bim`         | Dispatched `publish-brepjs-bim.yml`                                                                                      |
+| `brepjs-families`    | `packages/brepjs-families`    | Dispatched `publish-brepjs-families.yml` (its release PR merges before bim's)                                            |
 | `brepjs-sheetmetal`  | `packages/brepjs-sheetmetal`  | Dispatched `publish-brepjs-sheetmetal.yml`                                                                               |
+| `create-brepjs`      | `packages/create-brepjs`      | Dispatched `publish-create-brepjs.yml`                                                                                   |
 
 ## What is deliberately unmanaged
 
-- `brepjs-viewer` — the `node-workspace` plugin kept re-pinning brepjs-cad's build-time `brepjs-viewer` devDependency to viewer's pending, unpublished version on every release, repeatedly breaking `npm ci`. Viewer is versioned by hand and published via manual `publish-brepjs-viewer.yml` dispatch. Rationale comment: bottom of `release-please.yml`.
+- `brepjs-viewer`: versioned by hand and published via manual `publish-brepjs-viewer.yml` dispatch, because automated version re-pinning of brepjs-cad's build-time `brepjs-viewer` devDependency repeatedly broke `npm ci`. Rationale comment: bottom of `release-please.yml`.
 - `brepjs-voxel` — an unpublished workspace consumer, so there is nothing to release.
 
 ## The `exclude-paths` nuance
 
-`brepjs-voxel`, `packages/brepjs-cad`, `packages/brepjs-viewer`, and `apps` are listed in the root component's `exclude-paths` so root commits touching them do not bump the root library version. Note `packages/brepjs-cad` appears in _both_ the managed list (its own component) and the root's `exclude-paths` (so cad-only commits do not bump root). Adding a new managed package that root does not import means adding it to `exclude-paths` too.
+`brepjs-voxel`, `packages/brepjs-cad`, `packages/brepjs-viewer`, and `apps` are listed in the root component's `exclude-paths` so root commits touching them do not bump the root library version. Note `packages/brepjs-cad` appears in _both_ the managed list (its own component) and the root's `exclude-paths` (so cad-only commits do not bump root). The other satellite paths (opencascade, voxel-wasm, bim, families, sheetmetal, create-brepjs) are not excluded, so commits there bump the root library as well: that is why a satellite release pairs with a root `brepjs` release each cycle. When adding a new managed package, decide explicitly whether its commits should ride the root version or be added to `exclude-paths`.
 
 ## Build prerequisites inside publish workflows
 
