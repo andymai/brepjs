@@ -45,6 +45,14 @@ export const isBrepkit: boolean = currentKernelId === 'brepkit';
 export const divergences: DivergenceMap = {
   manifold: {
     // -----------------------------------------------------------------------
+    // csgPath.test.ts — no B-rep wire/edge vocabulary on the mesh kernel
+    // -----------------------------------------------------------------------
+    'csgPath.orientationProbes': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel with no B-rep wire/edge vocabulary; Path evaluation and edge curve queries are out of scope (same class as the feature-node skips).',
+    },
+    // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
     'modifierFns.defeatureFilletFace': {
@@ -154,6 +162,14 @@ export const divergences: DivergenceMap = {
     },
   },
   brepkit: {
+    // -----------------------------------------------------------------------
+    // csgPath.test.ts — direction probes need faithful curvePointAt/locate
+    // -----------------------------------------------------------------------
+    'csgPath.orientationProbes': {
+      kind: 'skip',
+      reason:
+        'brepkit curvePointAt evaluates raw curve parameter space (not a normalized arc-length fraction) and locate cannot relocate lone edges (the optional copyEdge/transformEdge WASM exports are absent), so midpoint/endpoint direction oracles read wrong positions. Surfaced in the Path node work (#2032).',
+    },
     // -----------------------------------------------------------------------
     // booleanFns.test.ts — brepkit fuse ignores BooleanOptions (incl. simplify)
     // -----------------------------------------------------------------------

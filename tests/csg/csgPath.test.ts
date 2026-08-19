@@ -6,6 +6,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from '../setup.js';
+import { skipIfDiverges } from '../helpers/kernelDivergences.js';
 import {
   path,
   lineTo,
@@ -39,10 +40,8 @@ function len(s: AnyShape<Dimension>): number {
 // scope (same divergence class as the other feature-node tests).
 const itBrep = it.skipIf(currentKernel === 'manifold');
 
-// Direction probes need faithful curvePointAt/locate on edges; brepkit's
-// adapter diverges there (parameter-space pointAt, no edge relocation), so
-// these orientation oracles run on the OCCT kernels only.
-const itOcct = it.skipIf(!currentKernel.startsWith('occt'));
+// Direction probes need faithful curvePointAt/locate on edges; the divergence
+// registry ('csgPath.orientationProbes') skips them per kernel.
 
 describe('Path node', () => {
   it('reports Wire output kind', () => {
@@ -94,7 +93,8 @@ describe('Path node', () => {
     expect(len(unwrap(r))).toBeCloseTo(arc, 1);
   });
 
-  itOcct('ellipse-arc direction: side selection and parametric order per flags', () => {
+  it('ellipse-arc direction: side selection and parametric order per flags', (ctx) => {
+    skipIfDiverges(ctx, 'csgPath.orientationProbes');
     using ev = new Evaluator();
     const cases = [
       // [radii, clockwise, expected midpoint y sign]
@@ -120,7 +120,8 @@ describe('Path node', () => {
     }
   });
 
-  itOcct('clockwise circular arc keeps path-order parametric direction', () => {
+  it('clockwise circular arc keeps path-order parametric direction', (ctx) => {
+    skipIfDiverges(ctx, 'csgPath.orientationProbes');
     using ev = new Evaluator();
     // Clockwise from 9 o'clock (-10,0) to 3 o'clock (10,0) passes 12 o'clock.
     const node = path([-10, 0], [arcTo([10, 0], 10, { clockwise: true })]);
@@ -132,7 +133,8 @@ describe('Path node', () => {
     expect(curveEndPoint(wire)[0]).toBeCloseTo(10, 1);
   });
 
-  itOcct('rotated ellipse-arc lands endpoints on the rotated frame', () => {
+  it('rotated ellipse-arc lands endpoints on the rotated frame', (ctx) => {
+    skipIfDiverges(ctx, 'csgPath.orientationProbes');
     using ev = new Evaluator();
     // Half-ellipse (a=30, b=20) rotated 30 deg: endpoints on the rotated
     // major axis, on-arc midpoint at the rotated minor apex.
