@@ -1,0 +1,19 @@
+src/2d/lib/ellipseArcFlags.ts
+  s_40e59e3654e10d::t_53f60415343904 40-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "25f851139336bd149320a907d3392536242ccce0",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
