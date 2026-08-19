@@ -10,7 +10,7 @@ import { initKernel } from './setup.js';
 import { roundedRectangleBlueprint } from '@/2d/blueprints/cannedBlueprints.js';
 import { adaptedCurveToPathElem } from '@/2d/lib/svgPath.js';
 import { approximateAsSvgCompatibleCurve } from '@/2d/lib/approximations.js';
-import { make2dCircle } from '@/2d/lib/makeCurves.js';
+import { make2dCircle, make2dEllipseArc } from '@/2d/lib/makeCurves.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -55,6 +55,39 @@ describe('toSVGPathD', () => {
     const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
     const flags = elem.trim().split(/\s+/);
     // A rx ry rot largeArc sweep x y
+    expect(flags[0]).toBe('A');
+    expect(flags[4]).toBe('1');
+  });
+
+  it('a 270-degree ellipse arc gets the large-arc flag from geometry, not trim bounds', () => {
+    const arc = make2dEllipseArc(10, 5, Math.PI / 2, 2 * Math.PI, [0, 0], [1, 0]);
+    const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
+    const flags = elem.trim().split(/\s+/);
+    // A rx ry rot largeArc sweep x y
+    expect(flags[0]).toBe('A');
+    expect(flags[4]).toBe('1');
+  });
+
+  it('a 90-degree ellipse arc keeps the small-arc flag', () => {
+    const arc = make2dEllipseArc(10, 5, 0, Math.PI / 2, [0, 0], [1, 0]);
+    const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
+    const flags = elem.trim().split(/\s+/);
+    expect(flags[0]).toBe('A');
+    expect(flags[4]).toBe('0');
+  });
+
+  it('a rotated-frame 270-degree ellipse arc keeps the large-arc flag', () => {
+    const arc = make2dEllipseArc(10, 5, Math.PI / 2, 2 * Math.PI, [0, 0], [0, 1]);
+    const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
+    const flags = elem.trim().split(/\s+/);
+    expect(flags[0]).toBe('A');
+    expect(flags[4]).toBe('1');
+  });
+
+  it('a micro-scale ellipse arc still emits an arc, not a degenerate line', () => {
+    const arc = make2dEllipseArc(1e-4, 5e-5, Math.PI / 2, 2 * Math.PI, [0, 0], [1, 0]);
+    const elem = adaptedCurveToPathElem(arc, arc.lastPoint);
+    const flags = elem.trim().split(/\s+/);
     expect(flags[0]).toBe('A');
     expect(flags[4]).toBe('1');
   });

@@ -195,8 +195,17 @@ export function makeEllipseArc2d(
     xDirY ?? 0,
     sense ?? true
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-  return c2dWrap({ ...full, __bk2d: 'ellipse', startAngle, endAngle } as any);
+  // Evaluation negates the parameter for sense=false, so the trim range
+  // flips sign with it (same mapping as the circle-arc makers above).
+  if (!(sense ?? true)) {
+    const tStart = -startAngle;
+    let tEnd = -endAngle;
+    if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
+    return c2dWrap({ __bk2d: 'trimmed', basis: full, tStart, tEnd });
+  }
+  let tEnd = endAngle;
+  if (tEnd < startAngle - 1e-9) tEnd += 2 * Math.PI;
+  return c2dWrap({ __bk2d: 'trimmed', basis: full, tStart: startAngle, tEnd });
 }
 
 export function makeBezier2d(points: [number, number][]): Curve2dHandle {

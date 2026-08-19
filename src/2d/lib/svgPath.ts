@@ -5,6 +5,7 @@ import { round2, round5 } from '@/utils/precisionRound.js';
 import { wasmIndex } from '@/utils/vec3.js';
 import { samePoint } from './vectorOperations.js';
 import { PRECISION_POINT } from './precision.js';
+import { ellipseArcFlags } from './ellipseArcFlags.js';
 import type { Point2D } from './definitions.js';
 import type { Curve2D } from './curve2D.js';
 
@@ -106,17 +107,26 @@ export const adaptedCurveToPathElem = (curve: Curve2D, lastPoint: Point2D): stri
     const ellipseData = k2d.getCurve2dEllipseData(curve.wrapped);
     if (!ellipseData) bug('adaptedCurveToPathElem', 'Expected ellipse data');
     const { majorRadius: rx, minorRadius: ry, xAxisAngle, isDirect } = ellipseData;
-
-    const bounds = k2d.getCurve2dBounds(curve.wrapped);
-    const paramAngle = (bounds.last - bounds.first) * RAD2DEG;
-
-    const end = paramAngle !== 360 ? endpoint : `${round5(endX)} ${round5(endY + 0.0001)}`;
-
     const angle = 180 - xAxisAngle * RAD2DEG;
 
-    return `A ${round5(rx)} ${round5(ry)} ${round5(angle)} ${
-      Math.abs(paramAngle) > 180 ? '1' : '0'
-    } ${isDirect ? '1' : '0'} ${end}`;
+    const [startX, startY] = curve.firstPoint;
+    // A closed loop cannot be a single A command; nudge the endpoint.
+    if (samePoint([startX, startY], [endX, endY])) {
+      return `A ${round5(rx)} ${round5(ry)} ${round5(angle)} 1 ${isDirect ? '1' : '0'} ${round5(
+        endX
+      )} ${round5(endY + 0.0001)}`;
+    }
+
+    // Flags from geometry, like the circle branch: the on-arc parameter
+    // midpoint disambiguates the F.6.5 candidate centers and the direction.
+    const bounds = k2d.getCurve2dBounds(curve.wrapped);
+    const [midX, midY] = curve.value((bounds.first + bounds.last) / 2);
+    const flags = ellipseArcFlags([startX, startY], [endX, endY], [midX, midY], rx, ry, xAxisAngle);
+    if (!flags) return `L ${endpoint}`;
+
+    return `A ${round5(rx)} ${round5(ry)} ${round5(angle)} ${flags.largeArc ? '1' : '0'} ${
+      flags.ccw ? '1' : '0'
+    } ${endpoint}`;
   }
 
   bug('adaptedCurveToPathElem', `Unsupported curve type: ${curveType}`);

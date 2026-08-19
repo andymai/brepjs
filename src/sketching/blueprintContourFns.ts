@@ -14,6 +14,7 @@
 import type Blueprint from '@/2d/blueprints/blueprint.js';
 import { approximateAsSvgCompatibleCurve } from '@/2d/lib/approximations.js';
 import type { Curve2D } from '@/2d/lib/curve2D.js';
+import { ellipseArcFlags } from '@/2d/lib/ellipseArcFlags.js';
 import { getKernel2D } from '@/kernel/index.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
@@ -75,59 +76,16 @@ interface EllipseFrame {
   readonly phi: number;
 }
 
-function rotInto(p: Pt, phi: number): Pt {
-  const c = Math.cos(phi);
-  const s = Math.sin(phi);
-  return [c * p[0] + s * p[1], -s * p[0] + c * p[1]];
-}
-
-/** Endpoint-parametrized ellipse-arc flags via SVG F.6.5 candidate centers,
- *  disambiguated by an on-arc interior sample. */
+/** Endpoint-parametrized ellipse-arc flags via SVG F.6.5 candidate centers
+ *  (shared with the SVG emitter), disambiguated by an on-arc interior sample. */
 function ellipseArcSegment(from: Pt, to: Pt, mid: Pt, frame: EllipseFrame): Result<Segment2D> {
-  let { a, b } = frame;
-  const phi = frame.phi;
-  const f = rotInto(from, phi);
-  const l = rotInto(to, phi);
-  const m = rotInto(mid, phi);
-  const hx = (f[0] - l[0]) / 2;
-  const hy = (f[1] - l[1]) / 2;
-  const lam = (hx * hx) / (a * a) + (hy * hy) / (b * b);
-  if (lam > 1) {
-    const s = Math.sqrt(lam);
-    a *= s;
-    b *= s;
-  }
-  const num = a * a * b * b - a * a * hy * hy - b * b * hx * hx;
-  const den = a * a * hy * hy + b * b * hx * hx;
-  if (den < 1e-12) return fail('ellipse: coincident endpoints');
-  const coef = Math.sqrt(Math.max(0, num / den));
-  const mx = (f[0] + l[0]) / 2;
-  const my = (f[1] + l[1]) / 2;
-  const candidates: Pt[] = [
-    [mx + (coef * a * hy) / b, my - (coef * b * hx) / a],
-    [mx - (coef * a * hy) / b, my + (coef * b * hx) / a],
-  ];
-  const residual = (c: Pt): number => {
-    const dx = (m[0] - c[0]) / a;
-    const dy = (m[1] - c[1]) / b;
-    return Math.abs(dx * dx + dy * dy - 1);
-  };
-  const center =
-    residual(candidates[0] as Pt) <= residual(candidates[1] as Pt)
-      ? (candidates[0] as Pt)
-      : (candidates[1] as Pt);
-  const theta = (p: Pt): number => Math.atan2((p[1] - center[1]) / b, (p[0] - center[0]) / a);
-  const tau = 2 * Math.PI;
-  const tf = theta(f);
-  const tm = (((theta(m) - tf) % tau) + tau) % tau;
-  const tl = (((theta(l) - tf) % tau) + tau) % tau;
-  const ccw = tm < tl;
-  const sweep = ccw ? tl : tau - tl;
+  const flags = ellipseArcFlags(from, to, mid, frame.a, frame.b, frame.phi);
+  if (!flags) return fail('ellipse: coincident endpoints');
   return ok(
     ellipseArcTo(to, [frame.a, frame.b], {
-      rotation: (phi * 180) / Math.PI,
-      largeArc: sweep > Math.PI,
-      clockwise: !ccw,
+      rotation: (frame.phi * 180) / Math.PI,
+      largeArc: flags.largeArc,
+      clockwise: !flags.ccw,
     })
   );
 }
