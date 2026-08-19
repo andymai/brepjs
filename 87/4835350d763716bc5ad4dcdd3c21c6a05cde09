@@ -1,0 +1,26 @@
+tests/csg/csgPath.test.ts
+  s_40e59e3654e10d::t_7acd954a450d69 9
+  s_40e59e3654e10d::t_b64e2b65183d37 96-97
+  s_40e59e3654e10d::t_82d3d5bddb2c9f 123-124
+  s_40e59e3654e10d::t_2f85302812e75c 136-137
+  s_40e59e3654e10d::t_c249725d4aabaf 43-44
+tests/helpers/kernelDivergences.ts
+  s_40e59e3654e10d::t_71e4f71ac68b2a 48-54
+  s_40e59e3654e10d::t_b487987efdea3c 47,165-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "874835350d763716bc5ad4dcdd3c21c6a05cde09",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
