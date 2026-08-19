@@ -21,6 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const AMBIENT = resolve(__dirname, '../src/types/brepjs-ambient.d.ts');
 const SHEETMETAL_AMBIENT = resolve(__dirname, '../src/types/brepjs-sheetmetal-ambient.d.ts');
 const BIM_AMBIENT = resolve(__dirname, '../src/types/brepjs-bim-ambient.d.ts');
+const FAMILIES_AMBIENT = resolve(__dirname, '../src/types/brepjs-families-ambient.d.ts');
 
 // Mirror the editor's compiler options (see src/lib/monacoSetup.ts). `lib` is
 // omitted so the default lib for the target is used, exactly as Monaco does.
@@ -65,7 +66,8 @@ virtual.set(
   buildBrepjsModuleDts(
     readFileSync(AMBIENT, 'utf-8'),
     readFileSync(SHEETMETAL_AMBIENT, 'utf-8'),
-    readFileSync(BIM_AMBIENT, 'utf-8')
+    readFileSync(BIM_AMBIENT, 'utf-8'),
+    readFileSync(FAMILIES_AMBIENT, 'utf-8')
   )
 );
 for (const s of snippets) virtual.set(fileForExample(s.id), s.code);

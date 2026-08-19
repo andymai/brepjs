@@ -19,10 +19,13 @@ let brepjs: any = null;
 let sheetmetal: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs-bim module
 let bim: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs-families module
+let families: any = null;
 
 let brepjsBlobUrl: string | null = null;
 let sheetmetalBlobUrl: string | null = null;
 let bimBlobUrl: string | null = null;
+let familiesBlobUrl: string | null = null;
 
 // Per-eval cancellation: ids land here when the main thread sends `cancel`
 // or when a newer eval supersedes them. Each `handleEval` checks the set at
@@ -229,6 +232,7 @@ async function handleInit() {
 
 const SHEETMETAL_IMPORT_RE = /\bfrom\s+(['"])brepjs-sheetmetal\1/;
 const BIM_IMPORT_RE = /\bfrom\s+(['"])brepjs-bim\1/;
+const FAMILIES_IMPORT_RE = /\bfrom\s+(['"])brepjs-families\1/;
 
 // In-flight load locks. handleEval is async, so the worker can pick up a second
 // eval at any `await`; without a lock two concurrent evals importing the same
@@ -237,6 +241,7 @@ const BIM_IMPORT_RE = /\bfrom\s+(['"])brepjs-bim\1/;
 // load run exactly once; it's cleared on failure so a later eval can retry.
 let sheetmetalLoading: Promise<void> | null = null;
 let bimLoading: Promise<void> | null = null;
+let familiesLoading: Promise<void> | null = null;
 
 // Satellite domain packages are loaded lazily the first time an eval imports
 // them, not at worker init — brepjs-bim alone pulls in the multi-megabyte
@@ -274,11 +279,25 @@ function ensureBimLoaded(): Promise<void> {
   return bimLoading;
 }
 
+function ensureFamiliesLoaded(): Promise<void> {
+  if (familiesBlobUrl) return Promise.resolve();
+  familiesLoading ??= (async () => {
+    families = await import('brepjs-families');
+    (self as unknown as { __brepjs_families: unknown }).__brepjs_families = families;
+    familiesBlobUrl = buildWrapperUrl(families, '__brepjs_families', false);
+  })().catch((e: unknown) => {
+    familiesLoading = null;
+    throw e;
+  });
+  return familiesLoading;
+}
+
 // Load whichever satellite packages the about-to-run code imports, so their
 // wrapper URLs exist before rewriteImports rewrites the specifiers.
 async function ensureImportsLoaded(code: string): Promise<void> {
   if (SHEETMETAL_IMPORT_RE.test(code)) await ensureSheetmetalLoaded();
   if (BIM_IMPORT_RE.test(code)) await ensureBimLoaded();
+  if (FAMILIES_IMPORT_RE.test(code)) await ensureFamiliesLoaded();
 }
 
 // Rewrite each supported bare specifier to its live-module wrapper URL. Anchored
@@ -300,6 +319,9 @@ function rewriteImports(code: string): string {
   }
   if (bimBlobUrl) {
     out = out.replace(/(\bfrom\s+)(['"])brepjs-bim\2/g, `$1'${bimBlobUrl}'`);
+  }
+  if (familiesBlobUrl) {
+    out = out.replace(/(\bfrom\s+)(['"])brepjs-families\2/g, `$1'${familiesBlobUrl}'`);
   }
   return out;
 }

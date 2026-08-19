@@ -2,6 +2,7 @@ import type { Monaco } from '@monaco-editor/react';
 import ambientTypes from '../types/brepjs-ambient.d.ts?raw';
 import sheetmetalAmbientTypes from '../types/brepjs-sheetmetal-ambient.d.ts?raw';
 import bimAmbientTypes from '../types/brepjs-bim-ambient.d.ts?raw';
+import familiesAmbientTypes from '../types/brepjs-families-ambient.d.ts?raw';
 import { buildBrepjsModuleDts } from './ambientModule';
 
 let initialized = false;
@@ -56,7 +57,7 @@ export function setupMonaco(monaco: Monaco) {
   });
 
   monaco.typescript.typescriptDefaults.addExtraLib(
-    buildBrepjsModuleDts(ambientTypes, sheetmetalAmbientTypes, bimAmbientTypes),
+    buildBrepjsModuleDts(ambientTypes, sheetmetalAmbientTypes, bimAmbientTypes, familiesAmbientTypes),
     'file:///node_modules/@types/brepjs/index.d.ts'
   );
 }

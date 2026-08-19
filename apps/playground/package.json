@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build:deps": "npm -C ../../packages/brepjs-bim run build && npm -C ../../packages/brepjs-sheetmetal run build && npm -C ../../packages/brepjs-viewer run build",
+    "build:deps": "npm -C ../../packages/brepjs-families run build && npm -C ../../packages/brepjs-bim run build && npm -C ../../packages/brepjs-sheetmetal run build && npm -C ../../packages/brepjs-viewer run build",
     "predev": "npm run build:deps",
     "dev": "vite",
     "prebuild": "npm run build:deps",
@@ -27,6 +27,7 @@
     "@vercel/speed-insights": "2.0.0",
     "brepjs": "*",
     "brepjs-bim": "*",
+    "brepjs-families": "*",
     "brepjs-sheetmetal": "*",
     "brepjs-viewer": "*",
     "lz-string": "1.5.0",

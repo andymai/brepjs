@@ -9995,3 +9995,542 @@ declare const getHistoryShape: typeof getShape;
 type HistoryOperationRegistry = OperationRegistry;
 type CleanLoftOptions = LoftOptions;
 type CleanSweepOptions = SweepOptions;
+
+// ── `csg` namespace (barrel `export * as csg`, from dist/csg/index.d.ts) ──
+
+declare namespace csg {
+  export function box(x: ScalarInput, y: ScalarInput, z: ScalarInput): BoxNode;
+
+  export function sphere(radius: ScalarInput): SphereNode;
+
+  export function cylinder(radius: ScalarInput, height: ScalarInput): CylinderNode;
+
+  export function cone(radius1: ScalarInput, radius2: ScalarInput, height: ScalarInput): ConeNode;
+
+  export function torus(majorRadius: ScalarInput, minorRadius: ScalarInput): TorusNode;
+
+  export function polygon(points: ReadonlyArray<Vec3Input>): PolygonNode;
+
+  export function circle(radius: ScalarInput): CircleNode;
+
+  export function line(from: Vec3Input, to: Vec3Input): LineNode;
+
+  export function vertex(point: Vec3Input): VertexLitNode;
+
+  export function emptySolid(): EmptyNode;
+
+  export function emptyFace(): EmptyNode;
+
+  export function emptyWire(): EmptyNode;
+
+  export function fuse(a: SolidNode, b: SolidNode, tolerance?: number): FuseNode;
+
+  export function cut(a: SolidNode, b: SolidNode, tolerance?: number): CutNode;
+
+  export function intersect(a: SolidNode, b: SolidNode, tolerance?: number): IntersectNode;
+
+  export function fuseAll(shapes: ReadonlyArray<SolidNode>, tolerance?: number): FuseAllNode;
+
+  export function cutAll(base: SolidNode, tools: ReadonlyArray<SolidNode>, tolerance?: number): CutAllNode;
+
+  export function translate(target: IRNode, vector: Vec3Input): TranslateNode;
+
+  export interface RotateOptions {
+      readonly axis?: Vec3Input | undefined;
+      readonly at?: Vec3Input | undefined;
+  }
+
+  export function rotate(target: IRNode, angle: ScalarInput, options?: RotateOptions): RotateNode;
+
+  export interface ScaleOptions {
+      readonly center?: Vec3Input | undefined;
+  }
+
+  export function scale(target: IRNode, factor: ScalarInput, options?: ScaleOptions): ScaleNode;
+
+  export interface MirrorOptions {
+      readonly normal?: Vec3Input | undefined;
+      readonly at?: Vec3Input | undefined;
+  }
+
+  export function mirror(target: IRNode, options?: MirrorOptions): MirrorNode;
+
+  export function extrude(profile: FaceNode, vector: Vec3Input): ExtrudeNode;
+
+  export function fillet(target: IRNode, ref: EdgeRef, radius: ScalarInput): FilletNode;
+
+  /** Chamfer the edge named by a lineage ref on the evaluated target. Same
+   *  contract as `fillet`: the ref is deep-copied, serializable node data. */
+  export function chamfer(target: IRNode, ref: EdgeRef, distance: ScalarInput): ChamferNode;
+
+  /** Hollow the evaluated target to walls of `thickness`, leaving the faces
+   *  named by `refs` open. Refs are serializable node data (the cache key stays
+   *  purely structural); they resolve against the materialized target at
+   *  evaluation, so an upstream parameter edit re-targets the same faces by
+   *  role. Ref order is content-significant. */
+  export function shell(target: IRNode, refs: ReadonlyArray<ShapeRef>, thickness: ScalarInput): ShellNode;
+
+  /** Attach a color (hex string or RGB/RGBA tuple, canonicalized to RGBA) to
+   *  the evaluated result of `target`. Metadata rides beside the geometry: the
+   *  evaluator re-tags the shared target materialization with an independent
+   *  handle before coloring, so plain consumers of the same subtree stay
+   *  metadata-free. */
+  export function color(target: IRNode, input: ColorInput): ColorNode;
+
+  /** Planar face from a closed outline contour with optional first-class holes.
+   *  Contours auto-close at evaluation when the final segment does not return
+   *  to the start point. */
+  export function profile(outline: Contour, holes?: ReadonlyArray<Contour>): ProfileNode;
+
+  export interface SweepNodeOptions {
+      readonly frenet?: boolean | undefined;
+  }
+
+  /** Sweep a face-producing profile along a Wire/Edge-producing spine.
+   *  `frenet` is canonicalized (default false) so the default and explicit
+   *  forms share one content address. */
+  export function sweep(profile: FaceNode, spine: IRNode, options?: SweepNodeOptions): SweepNode;
+
+  /** Open (or incidentally closed) planar path in the XY plane at z = 0,
+   *  producing a Wire. Segments come from `lineTo`/`arcTo`/`bezierTo`/
+   *  `ellipseArcTo`. */
+  export function path(start: Vec2Input, segments: ReadonlyArray<Segment2D>): PathNode;
+
+  export interface LoftOptions {
+      readonly ruled?: boolean | undefined;
+  }
+
+  /** Loft through two or more face-producing sections (default ruled). */
+  export function loft(sections: ReadonlyArray<FaceNode>, options?: LoftOptions): LoftNode;
+
+  export interface RevolveOptions {
+      readonly axis?: Vec3Input | undefined;
+      readonly at?: Vec3Input | undefined;
+  }
+
+  /** Angle is in degrees (matching `rotate`); defaults to a full revolution
+   *  around the Z axis at the origin. Evaluation clamps angles above 360 to one
+   *  revolution (kernels diverge past 2*pi) and rejects non-positive angles. */
+  export function revolve(profile: FaceNode, angle?: ScalarInput, options?: RevolveOptions): RevolveNode;
+
+  export function compound(children: ReadonlyArray<IRNode>): CompoundNode;
+
+  export function instance(source: IRNode, placements: ReadonlyArray<Matrix4x4>, fuse?: boolean): InstanceNode;
+
+  export type BinaryOp = '+' | '-' | '*' | '/';
+
+  export type UnaryOp = 'neg' | 'sin' | 'cos' | 'sqrt' | 'abs';
+
+  export type Expr = NumLitExpr | Vec3LitExpr | Vec2LitExpr | ParamExpr | BinOpExpr | UnaryOpExpr | ComponentExpr | BuildVecExpr;
+
+  /** Value an expression can evaluate to. */
+  export type ExprValue = number | Vec2 | Vec3;
+
+  /** Parameter binding environment. */
+  export type Env = Readonly<Record<string, ExprValue>>;
+
+  /** Input shape for builder params — a literal or an expression. */
+  export type ScalarInput = number | Expr;
+
+  /** Either a literal Vec3, a mixed `[scalar-or-expr, ...]` tuple, or a bare Expr. */
+  export type Vec3Input = Vec3 | readonly [ScalarInput, ScalarInput, ScalarInput] | Expr;
+
+  export type Vec2Input = Vec2 | readonly [ScalarInput, ScalarInput] | Expr;
+
+  export function numLit(value: number): NumLitExpr;
+
+  export function vec3Lit(value: Vec3): Vec3LitExpr;
+
+  export function vec2Lit(value: Vec2): Vec2LitExpr;
+
+  export function param(name: string): ParamExpr;
+
+  export function binOp(op: BinaryOp, a: Expr, b: Expr): BinOpExpr;
+
+  export function unaryOp(op: UnaryOp, arg: Expr): UnaryOpExpr;
+
+  export function component(vec: Expr, index: 0 | 1 | 2): ComponentExpr;
+
+  export function buildVec(dim: 2 | 3, components: readonly Expr[]): BuildVecExpr;
+
+  export const add: (a: Expr, b: Expr) => BinOpExpr;
+
+  export const mul: (a: Expr, b: Expr) => BinOpExpr;
+
+  export function asScalarExpr(input: ScalarInput): Expr;
+
+  export function asVec3Expr(input: Vec3Input): Expr;
+
+  export function asVec2Expr(input: Vec2Input): Expr;
+
+  export type OutputKind = 'Solid' | 'Face' | 'Wire' | 'Edge' | 'Vertex' | 'Compound';
+
+  export interface ExtrudeNode extends IRNodeBase {
+      readonly kind: 'Extrude';
+      /** Must produce OutputKind 'Face'. */
+      readonly profile: IRNode;
+      readonly vector: Expr;
+  }
+
+  export interface RevolveNode extends IRNodeBase {
+      readonly kind: 'Revolve';
+      /** Must produce OutputKind 'Face'. */
+      readonly profile: IRNode;
+      /** Degrees, matching Rotate. */
+      readonly angle: Expr;
+      readonly axis?: Expr | undefined;
+      readonly at?: Expr | undefined;
+  }
+
+  export interface FilletNode extends IRNodeBase {
+      readonly kind: 'Fillet';
+      readonly target: IRNode;
+      /** Serializable lineage ref naming the edge by its two adjacent face roles.
+       *  Pure data, so it hashes like any other field; resolution against the
+       *  materialized target happens inside evaluation. */
+      readonly ref: EdgeRef;
+      readonly radius: Expr;
+  }
+
+  export interface ChamferNode extends IRNodeBase {
+      readonly kind: 'Chamfer';
+      readonly target: IRNode;
+      /** Serializable lineage ref naming the edge by its two adjacent face roles. */
+      readonly ref: EdgeRef;
+      readonly distance: Expr;
+  }
+
+  export interface ShellNode extends IRNodeBase {
+      readonly kind: 'Shell';
+      readonly target: IRNode;
+      /** Faces left open, named by serializable role refs. Order is
+       *  content-significant (it enters the structural hash). */
+      readonly refs: readonly ShapeRef[];
+      readonly thickness: Expr;
+  }
+
+  export interface ColorNode extends IRNodeBase {
+      readonly kind: 'Color';
+      readonly target: IRNode;
+      /** Canonical RGBA, each component in [0, 1]. */
+      readonly color: readonly [number, number, number, number];
+  }
+
+  export interface ProfileNode extends IRNodeBase {
+      readonly kind: 'Profile';
+      /** Closed outline in the XY plane (auto-closed at evaluation). */
+      readonly outline: Contour;
+      /** First-class holes — closed contours inside the outline. */
+      readonly holes: readonly Contour[];
+  }
+
+  export interface SweepNode extends IRNodeBase {
+      readonly kind: 'Sweep';
+      /** Must produce OutputKind 'Face'. */
+      readonly profile: IRNode;
+      /** Must produce OutputKind 'Wire' or 'Edge' (Line, Circle, Path). */
+      readonly spine: IRNode;
+      /** Canonicalized by the builder (default false). */
+      readonly frenet: boolean;
+  }
+
+  export interface PathNode extends IRNodeBase {
+      readonly kind: 'Path';
+      /** Vec2 start point; the path lies in the XY plane (z = 0) and is lifted
+       *  into 3D by transform nodes. */
+      readonly start: Expr;
+      readonly segments: readonly Segment2D[];
+  }
+
+  export interface LoftNode extends IRNodeBase {
+      readonly kind: 'Loft';
+      /** Each section must produce OutputKind 'Face'; at least two required. */
+      readonly sections: readonly IRNode[];
+      /** Canonicalized by the builder (default true) so the default and the
+       *  explicit form share one content address. */
+      readonly ruled: boolean;
+  }
+
+  export interface InstanceNode extends IRNodeBase {
+      readonly kind: 'Instance';
+      readonly source: IRNode;
+      /** Per-instance world transforms (row-major 4x4 literals). */
+      readonly placements: readonly Matrix4x4[];
+      /** Fuse the placed copies into one solid; otherwise a Compound. */
+      readonly fuse: boolean;
+  }
+
+  export type PrimitiveNode = BoxNode | SphereNode | CylinderNode | ConeNode | TorusNode | PolygonNode | CircleNode | LineNode | VertexLitNode | EmptyNode;
+
+  export type BooleanNode = FuseNode | CutNode | IntersectNode | FuseAllNode | CutAllNode;
+
+  export type TransformIRNode = TranslateNode | RotateNode | ScaleNode | MirrorNode;
+
+  export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode | ColorNode | FilletNode | ChamferNode | ShellNode | CompoundNode | InstanceNode;
+
+  export type NodeKind = IRNode['kind'];
+
+  export type AnyNode = IRNode;
+
+  /** Nodes that produce a 3D solid. */
+  export type SolidNode = AnyNode;
+
+  /** Nodes that produce a 2D or 3D face. */
+  export type FaceNode = AnyNode;
+
+  /** Nodes that produce an edge. */
+  export type EdgeNode = AnyNode;
+
+  /** Nodes that produce a vertex. */
+  export type VertexNode = AnyNode;
+
+  export function outputKindOf(node: IRNode): OutputKind;
+
+  export type Segment2D = LineSegment | ArcSegment | BezierSegment | EllipseArcSegment;
+
+  export interface SegmentOptions {
+      readonly largeArc?: boolean | undefined;
+      readonly clockwise?: boolean | undefined;
+  }
+
+  export function lineTo(to: Vec2Input): Segment2D;
+
+  export function arcTo(to: Vec2Input, radius: ScalarInput, options?: SegmentOptions): Segment2D;
+
+  export function bezierTo(controls: ReadonlyArray<Vec2Input>, to: Vec2Input): Segment2D;
+
+  export function ellipseArcTo(to: Vec2Input, radii: Vec2Input, options?: EllipseArcOptions): Segment2D;
+
+  export interface Contour {
+      /** Vec2 start point. */
+      readonly start: Expr;
+      readonly segments: readonly Segment2D[];
+  }
+
+  export function contour(start: Vec2Input, segments: ReadonlyArray<Segment2D>): Contour;
+
+  export function rectangularProfile(width: number, height: number): ProfileNode;
+
+  export function circularProfile(radius: number): ProfileNode;
+
+  export interface IBeamParams {
+      readonly overallWidth: number;
+      readonly overallDepth: number;
+      readonly flangeThickness: number;
+      readonly webThickness: number;
+  }
+
+  export function iBeamProfile(p: IBeamParams): ProfileNode;
+
+  export interface AsymmetricIParams {
+      readonly overallDepth: number;
+      readonly webThickness: number;
+      readonly topFlangeWidth: number;
+      readonly topFlangeThickness: number;
+      readonly bottomFlangeWidth: number;
+      readonly bottomFlangeThickness: number;
+  }
+
+  export function asymmetricIProfile(p: AsymmetricIParams): ProfileNode;
+
+  export interface LShapeParams {
+      readonly depth: number;
+      readonly width: number;
+      readonly legThickness: number;
+  }
+
+  export function lShapeProfile(p: LShapeParams): ProfileNode;
+
+  export interface TShapeParams {
+      readonly depth: number;
+      readonly flangeWidth: number;
+      readonly webThickness: number;
+      readonly flangeThickness: number;
+  }
+
+  export function tShapeProfile(p: TShapeParams): ProfileNode;
+
+  export interface UShapeParams {
+      readonly depth: number;
+      readonly flangeWidth: number;
+      readonly webThickness: number;
+      readonly flangeThickness: number;
+  }
+
+  export function uShapeProfile(p: UShapeParams): ProfileNode;
+
+  export interface ZShapeParams {
+      readonly depth: number;
+      readonly flangeWidth: number;
+      readonly webThickness: number;
+      readonly flangeThickness: number;
+  }
+
+  export function zShapeProfile(p: ZShapeParams): ProfileNode;
+
+  export interface CShapeParams {
+      readonly depth: number;
+      readonly width: number;
+      readonly wallThickness: number;
+      readonly girth: number;
+  }
+
+  export function cShapeProfile(p: CShapeParams): ProfileNode;
+
+  export function ellipseProfile(semiAxis1: number, semiAxis2: number): ProfileNode;
+
+  export interface TrapeziumParams {
+      readonly bottomXDim: number;
+      readonly topXDim: number;
+      readonly yDim: number;
+      readonly topXOffset: number;
+  }
+
+  export function trapeziumProfile(p: TrapeziumParams): ProfileNode;
+
+  export interface RectangleHollowParams {
+      readonly xDim: number;
+      readonly yDim: number;
+      readonly wallThickness: number;
+  }
+
+  export function rectangleHollowProfile(p: RectangleHollowParams): ProfileNode;
+
+  export interface CircleHollowParams {
+      readonly radius: number;
+      readonly wallThickness: number;
+  }
+
+  export function circleHollowProfile(p: CircleHollowParams): ProfileNode;
+
+  export function arbitraryClosedProfile(points: ReadonlyArray<Pt2>): ProfileNode;
+
+  export function arbitraryProfileWithVoids(outerPoints: ReadonlyArray<Pt2>, voids: ReadonlyArray<ReadonlyArray<Pt2>>): ProfileNode;
+
+  export interface EvaluatorOptions {
+      /** Kernel id to materialize against. Defaults to the currently-active kernel. */
+      readonly kernel?: string | undefined;
+      /** Default boolean tolerance applied when a node doesn't override it. */
+      readonly tolerance?: number | undefined;
+      /** Optional callback fired after every node visit, including cache hits (`info.cacheHit` discriminates). */
+      readonly onStep?: ((info: StepInfo) => void) | undefined;
+      /**
+       * Upper bound on the number of materialized entries kept in the content
+       * cache. When the cache exceeds this after a top-level evaluate(), the
+       * least-recently-used entries are evicted and their kernel handles disposed
+       * (a handle shared by several entries is freed only when its last entry is
+       * evicted). Defaults to unbounded — entries live for the Evaluator's
+       * lifetime. With a bound set, a returned shape is only guaranteed valid
+       * until the next successful evaluate() call; a failed or thrown evaluate() is
+       * transactional (the cache is left unchanged), and evaluate() is non-reentrant
+       * (calling it from an onStep callback throws). Must be a positive integer.
+       */
+      readonly maxCacheEntries?: number | undefined;
+      /**
+       * Upper bound on entries in the {@link Evaluator.evaluateMesh} content cache,
+       * which is independent of the shape cache. Defaults to unbounded. Bounding it
+       * separately is what lets a mesh outlive its (evicted) kernel shape, so a
+       * re-`evaluateMesh` is a pure data hit with no re-materialization. Must be a
+       * positive integer.
+       */
+      readonly maxMeshCacheEntries?: number | undefined;
+  }
+
+  export interface StepInfo {
+      readonly node: IRNode;
+      readonly cacheKey: string;
+      readonly cacheHit: boolean;
+  }
+
+  export interface CacheStats {
+      readonly hits: number;
+      readonly misses: number;
+      readonly entries: number;
+      /** Number of entries evicted by the LRU bound over this Evaluator's life. */
+      readonly evictions: number;
+  }
+
+  export class Evaluator implements Disposable {
+      private readonly cache;
+      private readonly refCounts;
+      private evaluating;
+      private readonly pendingKeys;
+      private readonly kernelId;
+      private readonly defaultTolerance;
+      private readonly maxCacheEntries;
+      private readonly maxMeshCacheEntries;
+      private readonly meshCache;
+      private readonly onStep?;
+      private hits;
+      private misses;
+      private evictions;
+      constructor(options?: EvaluatorOptions);
+      /**
+       * Materialize a CSG IR tree against the given parameter environment.
+       * The returned shape is borrowed — callers must NOT call `.delete()` /
+       * `[Symbol.dispose]()` on it; that would invalidate the cache entry for
+       * every future call returning the same handle. By default it stays valid
+       * until the Evaluator is disposed; if `maxCacheEntries` is set, only until
+       * the next successful evaluate() call (LRU eviction may free older entries),
+       * and evaluate() is then non-reentrant — calling it from an onStep callback
+       * throws.
+       */
+      evaluate(node: IRNode, env?: Env): Result<AnyShape<Dimension>>;
+      /**
+       * Materialize a node and mesh it, caching the mesh by the shape's content key
+       * plus the mesh parameters. The mesh cache is independent of the shape cache:
+       * a hit returns the cached mesh without evaluating or meshing — even after the
+       * shape was LRU-evicted (a mesh is plain data, not a kernel handle). The
+       * returned mesh is borrowed (do not mutate it); it stays valid for the
+       * Evaluator's lifetime, or until `maxMeshCacheEntries` evicts it.
+       */
+      evaluateMesh(node: IRNode, env?: Env, meshOpts?: MeshOptions & {
+          skipNormals?: boolean;
+          includeUVs?: boolean;
+          cache?: boolean;
+      }): Result<ShapeMesh>;
+      private evaluateInner;
+      private releaseShape;
+      private trimCache;
+      private trimMeshCache;
+      private rollbackPending;
+      cacheStats(): CacheStats;
+      resetStats(): void;
+      [Symbol.dispose](): void;
+  }
+
+  /**
+   * Run a callback with a fresh Evaluator that is disposed when the callback
+   * returns. Sync-only: an async callback would resolve after disposal,
+   * leaving borrowed shapes pointing at freed WASM memory. Mirrors the
+   * Promise-guard pattern in `withKernel`.
+   */
+  export function withEvaluator<T extends Exclude<unknown, Promise<unknown>>>(options: EvaluatorOptions, fn: (evaluator: Evaluator) => T): T;
+
+  export const CSG_VERSION = 7;
+
+  export interface CsgEnvelope {
+      readonly csgVersion: number;
+      readonly root: unknown;
+  }
+
+  export function toJSON(node: IRNode): CsgEnvelope;
+
+  export function fromJSON(envelope: unknown): Result<IRNode>;
+
+  export function optimize(node: IRNode): IRNode;
+
+  export function foldExpr(e: Expr): Expr;
+
+  export type NodePredicate = (node: IRNode) => boolean;
+
+  export function replaceNode(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode;
+
+  export function forEachNode(root: IRNode, fn: (node: IRNode) => void): void;
+
+  export function nodeCount(root: IRNode): number;
+
+  export interface EllipseArcOptions extends SegmentOptions {
+      readonly rotation?: ScalarInput | undefined;
+  }
+}

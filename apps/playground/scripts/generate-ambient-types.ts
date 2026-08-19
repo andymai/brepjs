@@ -16,7 +16,7 @@
  */
 
 import ts from 'typescript';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,16 +34,36 @@ interface PackageConfig {
   out: string;
   /** Bare module whose referenced types are re-imported instead of inlined. */
   crossImport?: string;
+  /** Entry .d.ts relative to the package dir; defaults to dist/index.d.ts. */
+  entry?: string;
+  /**
+   * Wrap the generated declarations in `declare namespace <name>` and APPEND
+   * them to `out` (which an earlier config must have written). Serves barrel
+   * namespace re-exports (`export * as csg from ...`), which the flat
+   * declaration extraction cannot represent at top level.
+   */
+  wrapNamespace?: string;
 }
 
 const PACKAGES: PackageConfig[] = [
   { name: 'brepjs', out: resolve(TYPES_DIR, 'brepjs-ambient.d.ts') },
+  {
+    name: 'brepjs',
+    entry: 'dist/csg/index.d.ts',
+    wrapNamespace: 'csg',
+    out: resolve(TYPES_DIR, 'brepjs-ambient.d.ts'),
+  },
   {
     name: 'brepjs-sheetmetal',
     out: resolve(TYPES_DIR, 'brepjs-sheetmetal-ambient.d.ts'),
     crossImport: 'brepjs',
   },
   { name: 'brepjs-bim', out: resolve(TYPES_DIR, 'brepjs-bim-ambient.d.ts'), crossImport: 'brepjs' },
+  {
+    name: 'brepjs-families',
+    out: resolve(TYPES_DIR, 'brepjs-families-ambient.d.ts'),
+    crossImport: 'brepjs',
+  },
 ];
 
 // ── Kernel types that should be replaced with `any` ──
@@ -66,7 +86,7 @@ const EXCLUDED_MODULE_RE = /(^|\/)implicit\//;
 
 function generatePackage(pkg: PackageConfig): void {
   const DIST = resolve(NODE_MODULES, pkg.name, 'dist');
-  const ENTRY = resolve(DIST, 'index.d.ts');
+  const ENTRY = pkg.entry ? resolve(NODE_MODULES, pkg.name, pkg.entry) : resolve(DIST, 'index.d.ts');
   const OUT = pkg.out;
 
   // Names imported from the crossImport module (e.g. `brepjs`) across every
@@ -279,7 +299,7 @@ function generatePackage(pkg: PackageConfig): void {
 
   // ── Step 1: Parse entry point ──
 
-  console.log(`[${pkg.name}] Parsing ${pkg.name}/dist/index.d.ts...`);
+  console.log(`[${pkg.name}] Parsing ${pkg.name}/${pkg.entry ?? 'dist/index.d.ts'}...`);
 
   const indexSf = parseFile(ENTRY);
   if (!indexSf) throw new Error(`Missing ${ENTRY} — build ${pkg.name} first.`);
@@ -503,16 +523,28 @@ function generatePackage(pkg: PackageConfig): void {
     output += aliases.join('\n');
   }
 
-  output = output.replace(/^export declare /gm, 'declare ');
-  output = output.replace(/^export interface /gm, 'interface ');
-  output = output.replace(/^export type /gm, 'type ');
-  output = output.replace(/^export enum /gm, 'declare enum ');
-  output = output.replace(/^export const enum /gm, 'declare const enum ');
-  output = output.replace(/^export class /gm, 'declare class ');
-  output = output.replace(/^export abstract class /gm, 'declare abstract class ');
-  output = output.replace(/^export default /gm, 'declare ');
-  output = output.replace(/^export function /gm, 'declare function ');
-  output = output.replace(/^export const /gm, 'declare const ');
+  if (pkg.wrapNamespace) {
+    // Namespace members live inside `declare namespace`, an ambient context:
+    // `declare` is illegal there and visibility needs an explicit `export`.
+    output = output.replace(/^export declare /gm, 'export ');
+    output = output.replace(/^declare /gm, 'export ');
+    output = output.replace(
+      /^(abstract class|class|interface|enum|function|const|let|var)\b/gm,
+      'export $1'
+    );
+    output = output.replace(/^type(\s+\w+\b)/gm, 'export type$1');
+  } else {
+    output = output.replace(/^export declare /gm, 'declare ');
+    output = output.replace(/^export interface /gm, 'interface ');
+    output = output.replace(/^export type /gm, 'type ');
+    output = output.replace(/^export enum /gm, 'declare enum ');
+    output = output.replace(/^export const enum /gm, 'declare const enum ');
+    output = output.replace(/^export class /gm, 'declare class ');
+    output = output.replace(/^export abstract class /gm, 'declare abstract class ');
+    output = output.replace(/^export default /gm, 'declare ');
+    output = output.replace(/^export function /gm, 'declare function ');
+    output = output.replace(/^export const /gm, 'declare const ');
+  }
 
   // Remove leftover import/export lines (the cross-package import is added back
   // below, after this strip, so it survives).
@@ -525,7 +557,7 @@ function generatePackage(pkg: PackageConfig): void {
 
   // brepjs-only: stub internal base types referenced via `extends` but not
   // exported, so Monaco doesn't error on the class declarations.
-  if (pkg.name === 'brepjs') {
+  if (pkg.name === 'brepjs' && !pkg.wrapNamespace) {
     const internalBaseStubs = [
       '/** @internal */ declare abstract class Finder<Type, FilterType> {}',
       '/** @internal */ declare abstract class Finder3d<Type> extends Finder<Type, AnyShape> {}',
@@ -554,6 +586,21 @@ function generatePackage(pkg: PackageConfig): void {
   }
 
   // ── Step 4: Write output ──
+
+  if (pkg.wrapNamespace) {
+    const indented = output
+      .split('\n')
+      .map((line) => (line.length > 0 ? '  ' + line : line))
+      .join('\n');
+    const block =
+      `\n// ── \`${pkg.wrapNamespace}\` namespace (barrel \`export * as ${pkg.wrapNamespace}\`, from ${pkg.entry}) ──\n\n` +
+      `declare namespace ${pkg.wrapNamespace} {\n${indented}\n}\n`;
+    appendFileSync(OUT, block, 'utf-8');
+    console.log(
+      `[${pkg.name}] Appended namespace '${pkg.wrapNamespace}' to ${OUT} (+${(Buffer.byteLength(block) / 1024).toFixed(1)} KB)`
+    );
+    return;
+  }
 
   const header = `/**
  * AUTO-GENERATED — do not edit manually.

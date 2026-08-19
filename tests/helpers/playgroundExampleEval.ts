@@ -21,6 +21,7 @@ import { transform } from 'sucrase';
 import * as brepjs from '@/index.js';
 import * as sheetmetal from 'brepjs-sheetmetal';
 import * as bim from 'brepjs-bim';
+import * as families from 'brepjs-families';
 
 // An AsyncFunction so example bodies can use top-level await — e.g. a BIM
 // example that does `await toIfc(...)` before its default export. The worker
@@ -81,6 +82,7 @@ function transpileExample(code: string): string {
       'const {$1} = __sheetmetal;'
     )
     .replace(/import\s+\{([^}]*)\}\s+from\s+(['"])brepjs-bim\2;?/g, 'const {$1} = __bim;')
+    .replace(/import\s+\{([^}]*)\}\s+from\s+(['"])brepjs-families\2;?/g, 'const {$1} = __families;')
     .replace(
       /import\s+\{([^}]*)\}\s+from\s+(['"])brepjs(?:\/quick)?\2;?/g,
       'const {$1} = __brepjs;'
@@ -104,10 +106,10 @@ function unwrapResultShape(shape: unknown): unknown {
 /** Run an example's source and return the exported shape(s) as an array. */
 export async function runExample(code: string): Promise<unknown[]> {
   const body = transpileExample(code);
-  const fn = new AsyncBodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', body);
+  const fn = new AsyncBodyFunction('__brepjs', '__pg', '__sheetmetal', '__bim', '__families', body);
   // A present() wrapper carries downloadable artifacts alongside the shown
   // shape; mesh the shape, ignore the artifacts here.
-  const raw = await fn(brepjs, playgroundModule, sheetmetal, bim);
+  const raw = await fn(brepjs, playgroundModule, sheetmetal, bim, families);
   const exported = isPresentWrapper(raw) ? raw.shape : raw;
   if (exported === null || exported === undefined) return [];
   return Array.isArray(exported) ? exported : [exported];
