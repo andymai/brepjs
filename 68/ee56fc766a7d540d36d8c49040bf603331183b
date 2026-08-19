@@ -1,0 +1,25 @@
+.claude/skills/companion-packages/SKILL.md
+  s_40e59e3654e10d::t_89957803b02315 64
+  s_40e59e3654e10d::t_5c225687276f35 8
+.claude/skills/companion-packages/references/publish-pipeline.md
+  s_40e59e3654e10d::t_2287a064e50859 16,18
+  s_40e59e3654e10d::t_1714563c204c9f 27
+  s_40e59e3654e10d::t_58a03185930c75 7
+  s_40e59e3654e10d::t_2fd20ff855f134 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "68ee56fc766a7d540d36d8c49040bf603331183b",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
