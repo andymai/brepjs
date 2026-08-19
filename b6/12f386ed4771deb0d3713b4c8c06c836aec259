@@ -1,0 +1,40 @@
+scripts/extract-doc-tests.ts
+  s_40e59e3654e10d::t_08b6d7d4843bde 142-156
+  s_40e59e3654e10d::t_116a694e5002cc 193-206
+  s_40e59e3654e10d::t_44ba37f5af654b 5-8
+  s_40e59e3654e10d::t_3ee14f95b3fecd 224-225
+apps/docs/families/openings.md
+  s_40e59e3654e10d::t_97a79a4cedc64f 14-15,36-37,80
+  s_40e59e3654e10d::t_f9a2fae1dc6ad7 81
+.github/workflows/ci.yml
+  s_40e59e3654e10d::t_758285d0a1921f 332-334
+.claude/skills/playground-examples/SKILL.md
+  s_40e59e3654e10d::t_6d85317b5b6aaf 109
+apps/docs/families/props-and-validation.md
+  s_40e59e3654e10d::t_7e11d6c9f8d7d8 14-15,33,35,46-47,76
+  s_40e59e3654e10d::t_98defb0ad491f2 77
+apps/docs/families/overview.md
+  s_40e59e3654e10d::t_97a79a4cedc64f 14-15,69
+  s_40e59e3654e10d::t_fd85644674a036 70
+apps/docs/families/first-building.md
+  s_40e59e3654e10d::t_97a79a4cedc64f 20-21,49-50,78-79,126
+  s_40e59e3654e10d::t_bb77c71a19362e 127
+apps/docs/families/identity.md
+  s_40e59e3654e10d::t_97a79a4cedc64f 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b612f386ed4771deb0d3713b4c8c06c836aec259",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
