@@ -1,0 +1,20 @@
+docs/kernel-conformance.md
+  s_40e59e3654e10d::t_1dcecab9842ce5 3
+  s_40e59e3654e10d::t_cab26ee3397620 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d0378c28f2c0820e8b69765bd15d500081396bf8",
+  "prompts": {},
+  "sessions": {
+    "s_40e59e3654e10d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fe09eec-279d-4099-85d5-6aa0d8d7965b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
