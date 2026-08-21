@@ -1058,4 +1058,631 @@ export default present(shown, {
 });
 `,
   },
+  {
+    id: 'bim-takeoff',
+    label: 'Quantity Takeoff',
+    description:
+      'A quantity schedule computed from the model rather than counted by hand: net volume per category and material, grouped the way a takeoff sheet is. Openings are already subtracted, so the wall figure is net, not gross. The console shows the schedule and the Files button saves it as CSV.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { measureVolume, unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// A quantity schedule, computed from the model rather than counted by hand.
+// Every element carries a spec and a solid, so net volume comes straight off
+// the geometry after openings are cut. Open the console panel for the
+// schedule; the Files button saves it as CSV for a takeoff sheet.
+const model = new BimModel();
+model.init({ name: 'Takeoff demo', projectId: 'takeoff-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Block A' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const L = 8000;
+const W = 5000;
+const H = 3000;
+const T = 250;
+
+const slab = model.addSlab({
+  length: L,
+  width: W,
+  thickness: 300,
+  origin: [0, 0, -300],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOOR',
+  materialName: 'Concrete C30/37',
+});
+if (!slab.ok) throw slab.error;
+model.placeIn(slab.value, storeyId);
+
+// Four perimeter walls. Front and back run the full length; the sides fit
+// between them so the corners meet without doubling up, which would otherwise
+// inflate the concrete quantity by two corner volumes.
+const wallDefs: {
+  origin: [number, number, number];
+  axisX: [number, number, number];
+  len: number;
+}[] = [
+  { origin: [0, 0, 0], axisX: [1, 0, 0], len: L },
+  { origin: [0, W - T, 0], axisX: [1, 0, 0], len: L },
+  { origin: [T, T, 0], axisX: [0, 1, 0], len: W - 2 * T },
+  { origin: [L, T, 0], axisX: [0, 1, 0], len: W - 2 * T },
+];
+const wallIds = wallDefs.map((d) => {
+  const wall = model.addWall({
+    length: d.len,
+    height: H,
+    thickness: T,
+    origin: d.origin,
+    axisX: d.axisX,
+    axisZ: [0, 0, 1],
+    materialName: 'Concrete C30/37',
+    isExternal: true,
+  });
+  if (!wall.ok) throw wall.error;
+  model.placeIn(wall.value, storeyId);
+  return wall.value;
+});
+
+const door = model.addDoor({
+  wallLocalId: wallIds[0],
+  width: 1200,
+  height: 2400,
+  offsetAlongWall: 900,
+  offsetFromFloor: 0,
+  materialName: 'Timber',
+});
+if (!door.ok) throw door.error;
+model.placeIn(door.value, storeyId);
+
+for (const at of [3200, 5600]) {
+  const win = model.addWindow({
+    wallLocalId: wallIds[0],
+    width: 1600,
+    height: 1400,
+    offsetAlongWall: at,
+    offsetFromFloor: 900,
+    materialName: 'Aluminium + Glazing',
+  });
+  if (!win.ok) throw win.error;
+  model.placeIn(win.value, storeyId);
+}
+
+const steel = { kind: 'I_BEAM', overallWidth: 180, overallDepth: 360, flangeThickness: 14, webThickness: 9 } as const;
+for (const x of [2000, 6000]) {
+  const beam = model.addBeam({
+    length: W,
+    profile: steel,
+    origin: [x, 0, H],
+    axisX: [0, 1, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Steel S355',
+  });
+  if (!beam.ok) throw beam.error;
+  model.placeIn(beam.value, storeyId);
+}
+
+// Volume comes from the placed solid, so the openings cut into the front wall
+// are already subtracted: this is net quantity, not gross. Group by category
+// and material the way a takeoff sheet does.
+type Row = { category: string; material: string; count: number; m3: number };
+const rows = new Map<string, Row>();
+for (const el of model.getAllElements()) {
+  // Fillers and spatial containers legitimately have no solid; placedSolids
+  // returns an empty list for them rather than an error.
+  const solids = unwrap(placedSolids(el));
+  if (solids.length === 0) continue;
+  const material = (el.spec as { materialName?: string }).materialName ?? '(none)';
+  const key = el.category + '|' + material;
+  const row = rows.get(key) ?? { category: el.category, material, count: 0, m3: 0 };
+  row.count += 1;
+  // Millimetres in, cubic metres out: 1 m3 is 1e9 mm3.
+  for (const s of solids) row.m3 += unwrap(measureVolume(s)) / 1e9;
+  rows.set(key, row);
+}
+
+const ordered = [...rows.values()].sort((a, b) => b.m3 - a.m3);
+console.log('category         material                count      m3');
+let total = 0;
+for (const r of ordered) {
+  total += r.m3;
+  console.log(
+    r.category.padEnd(17) + r.material.padEnd(24) + String(r.count).padStart(5) + r.m3.toFixed(2).padStart(8)
+  );
+}
+console.log('total concrete + steel volume: ' + total.toFixed(2) + ' m3');
+
+const csv = ['Category,Material,Count,NetVolume_m3']
+  .concat(ordered.map((r) => r.category + ',' + r.material + ',' + r.count + ',' + r.m3.toFixed(3)))
+  .join(String.fromCharCode(10));
+
+// Playground runtime owns the displayed geometry for this eval.
+const TINT: Record<string, string> = {
+  WALL: '#d9d3c7',
+  SLAB: '#9a948a',
+  BEAM: '#8a99ad',
+};
+const shown = model
+  .getAllElements()
+  .flatMap((el) => unwrap(placedSolids(el)).map((solid) => color(solid, TINT[el.category] ?? '#8b5a2b')));
+
+export default present(shown, {
+  bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+  files: () => [{ name: 'takeoff.csv', data: csv, mime: 'text/csv' }],
+});
+`,
+  },
+  {
+    id: 'bim-foundations',
+    label: 'Foundations to Roof',
+    description:
+      'A structural section from the ground up: bored piles, pile caps, ground beams, columns, and the suspended slab they carry. Foundations are first-class IFC elements (IfcPile, IfcFooting) rather than boxes below zero, which is what lets a structural model schedule and coordinate them.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// A structural section from the ground up: bored piles, pile caps, ground beams,
+// columns, and the suspended slab they carry. Foundations are first-class IFC
+// elements (IfcPile, IfcFooting), not just boxes below zero, which is what lets
+// a structural model schedule and coordinate them.
+const model = new BimModel();
+model.init({ name: 'Foundations', projectId: 'foundations-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Block A' }));
+const storeyId = unwrap(model.addStorey({ name: 'Substructure', elevation: -1200 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const GRID_X = [0, 4000, 8000];
+const GRID_Y = [0, 4000];
+const PILE_LEN = 6000;
+const CAP = 1200;
+const CAP_T = 700;
+const COL_H = 3400;
+
+// Each grid node gets a pile driven down from the cap soffit, then a pad cap
+// sitting on it, then the column above. Piles take a profile like any other
+// linear member, so a circular bored pile is just a CIRCULAR section.
+for (const x of GRID_X) {
+  for (const y of GRID_Y) {
+    const pile = model.addPile({
+      length: PILE_LEN,
+      profile: { kind: 'CIRCULAR', radius: 225 },
+      origin: [x, y, -PILE_LEN - CAP_T],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      predefinedType: 'BORED',
+      materialName: 'Concrete C32/40',
+    });
+    if (!pile.ok) throw pile.error;
+    model.placeIn(pile.value, storeyId);
+
+    const cap = model.addFooting({
+      length: CAP,
+      width: CAP,
+      thickness: CAP_T,
+      origin: [x - CAP / 2, y - CAP / 2, -CAP_T],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      predefinedType: 'PILE_CAP',
+      materialName: 'Concrete C32/40',
+    });
+    if (!cap.ok) throw cap.error;
+    model.placeIn(cap.value, storeyId);
+
+    const col = model.addColumn({
+      height: COL_H,
+      profile: { kind: 'RECTANGULAR', width: 400, height: 400 },
+      origin: [x, y, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete C32/40',
+    });
+    if (!col.ok) throw col.error;
+    model.placeIn(col.value, storeyId);
+  }
+}
+
+// Ground beams tying the caps together, at cap level rather than up at the head.
+for (const y of GRID_Y) {
+  const gb = model.addBeam({
+    length: 8000,
+    profile: { kind: 'RECTANGULAR', width: 300, height: 600 },
+    origin: [0, y, -CAP_T / 2],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    predefinedType: 'BEAM',
+    materialName: 'Concrete C32/40',
+  });
+  if (!gb.ok) throw gb.error;
+  model.placeIn(gb.value, storeyId);
+}
+
+// The suspended slab the columns carry.
+const deck = model.addSlab({
+  length: 8400,
+  width: 4400,
+  thickness: 300,
+  origin: [-200, -200, COL_H],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOOR',
+  materialName: 'Concrete C32/40',
+});
+if (!deck.ok) throw deck.error;
+model.placeIn(deck.value, storeyId);
+
+console.log(
+  model.getPiles().length + ' piles, ' + model.getFootings().length + ' pile caps, ' +
+    model.getColumns().length + ' columns, ' + model.getBeams().length + ' ground beams'
+);
+
+// Playground runtime owns the displayed geometry for this eval.
+const tint = (cat: string): string => {
+  if (cat === 'PILE') return '#6f6a60';
+  if (cat === 'FOOTING') return '#8a8378';
+  if (cat === 'SLAB') return '#cfcabb';
+  return '#a8a196';
+};
+const shown = model
+  .getAllElements()
+  .flatMap((el) => unwrap(placedSolids(el)).map((solid) => color(solid, tint(el.category))));
+
+export default present(shown, {
+  bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+});
+`,
+  },
+  {
+    id: 'bim-spaces-zones',
+    label: 'Room Schedule and Zones',
+    description:
+      'The room programme rather than the walls around it. Each room is an IfcSpace with a name, area and volume, and zones group them into departments across the plan. Prints a room schedule with per-department totals and percentages, the layer an area take or an energy model reads from.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { measureVolume, unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// The room programme, not the walls around it. An IfcSpace is a first-class
+// element with a name, an area and a volume, and zones group spaces across the
+// plan the way a department or a fire compartment does. This is the layer a
+// space schedule, an area take, and an energy model all read from.
+const model = new BimModel();
+model.init({ name: 'Space programme', projectId: 'spaces-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Block A' }));
+const storeyId = unwrap(model.addStorey({ name: 'Level 1', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const H = 3000;
+const T = 150;
+
+// name, x, y, length, depth, department
+const PROGRAMME: [string, number, number, number, number, string][] = [
+  ['Studio 01', 0, 0, 5200, 4800, 'Workplace'],
+  ['Studio 02', 5350, 0, 5200, 4800, 'Workplace'],
+  ['Meeting', 0, 4950, 3400, 3200, 'Workplace'],
+  ['Kitchen', 3550, 4950, 2600, 3200, 'Amenity'],
+  ['WC', 6300, 4950, 1800, 3200, 'Amenity'],
+  ['Plant', 8250, 4950, 2300, 3200, 'Service'],
+];
+
+const spaceIds = PROGRAMME.map(([name, x, y, len, depth]) => {
+  const space = model.addSpace({
+    name,
+    length: len,
+    width: depth,
+    height: H,
+    origin: [x, y, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Air',
+  });
+  if (!space.ok) throw space.error;
+  model.placeIn(space.value, storeyId);
+  return space.value;
+});
+
+// Zones cut across the plan: a space belongs to a department regardless of
+// where it sits. assignToGroup is the IfcRelAssignsToGroup relationship.
+const departments = [...new Set(PROGRAMME.map((p) => p[5]))];
+for (const dept of departments) {
+  const zone = model.addZone({ name: dept, longName: dept + ' zone' });
+  if (!zone.ok) throw zone.error;
+  const members = spaceIds.filter((_, i) => PROGRAMME[i][5] === dept);
+  model.assignToGroup(zone.value, members);
+}
+
+// Dividing walls between the studios and along the back, so the spaces read as
+// rooms rather than floating blocks.
+for (const d of [
+  { origin: [5200, 0, 0] as [number, number, number], axisX: [0, 1, 0] as [number, number, number], len: 4800 },
+  { origin: [0, 4800, 0] as [number, number, number], axisX: [1, 0, 0] as [number, number, number], len: 10550 },
+]) {
+  const wall = model.addWall({
+    length: d.len,
+    height: H,
+    thickness: T,
+    origin: d.origin,
+    axisX: d.axisX,
+    axisZ: [0, 0, 1],
+    materialName: 'Plasterboard',
+  });
+  if (!wall.ok) throw wall.error;
+  model.placeIn(wall.value, storeyId);
+}
+
+// The schedule a space plan is actually judged on: area per room, totals per
+// department, and the ratio of usable to serviced area.
+// Look the programme entry up by the space's own name rather than by position:
+// a schedule that depends on insertion order silently mislabels every row the
+// day someone reorders the model.
+const byName = new Map(PROGRAMME.map((p) => [p[0], p]));
+console.log('room          department     area m2   volume m3');
+const byDept = new Map<string, number>();
+let totalArea = 0;
+for (const el of model.getSpaces()) {
+  const name = (el.spec as { name?: string }).name ?? '(unnamed)';
+  const entry = byName.get(name);
+  if (!entry) continue;
+  const area = (entry[3] * entry[4]) / 1e6;
+  const vol = unwrap(placedSolids(el)).reduce((a, s) => a + unwrap(measureVolume(s)) / 1e9, 0);
+  totalArea += area;
+  byDept.set(entry[5], (byDept.get(entry[5]) ?? 0) + area);
+  console.log(name.padEnd(14) + entry[5].padEnd(15) + area.toFixed(1).padStart(7) + vol.toFixed(1).padStart(11));
+}
+console.log('total area ' + totalArea.toFixed(1) + ' m2 across ' + model.getSpaces().length + ' rooms');
+for (const [dept, area] of byDept) {
+  console.log('  ' + dept.padEnd(12) + area.toFixed(1).padStart(7) + ' m2  (' + ((area / totalArea) * 100).toFixed(0) + '%)');
+}
+
+// Playground runtime owns the displayed geometry for this eval.
+const DEPT_TINT: Record<string, string> = {
+  Workplace: '#4fd1c5',
+  Amenity: '#f6c177',
+  Service: '#c4a7e7',
+};
+const spaces = model.getSpaces().flatMap((el) => {
+  const name = (el.spec as { name?: string }).name ?? '';
+  const dept = byName.get(name)?.[5] ?? '';
+  return unwrap(placedSolids(el)).map((solid) => color(solid, DEPT_TINT[dept] ?? '#4fd1c5'));
+});
+const walls = model
+  .getWalls()
+  .flatMap((el) => unwrap(placedSolids(el)))
+  .map((s) => color(s, '#d9d3c7'));
+
+export default present([...spaces, ...walls], {
+  bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+});
+`,
+  },
+  {
+    id: 'bim-finishes',
+    label: 'Finishes and Access',
+    description:
+      'Floor, ceiling and cladding as separate IfcCovering elements, each with its own material and thickness, plus a 1:15 entrance ramp with a landing and a posted guardrail. Finishes live on their own layer so a specification and a maintenance schedule can read them independently of the structure.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// Finishes and an accessible entrance. Coverings are the layer a specification
+// and a maintenance schedule live on: a floor finish is its own IfcCovering
+// with its own material, not a property of the slab underneath. The ramp is
+// built to a 1:15 gradient with a landing and a guardrail.
+const model = new BimModel();
+model.init({ name: 'Finishes and access', projectId: 'finishes-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Block A' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const L = 6000;
+const W = 4500;
+const H = 3000;
+const T = 200;
+const RISE = 450; // entrance threshold above external ground
+
+// Structural slab at the raised floor level, plus the wall behind it.
+const slab = model.addSlab({
+  length: L,
+  width: W,
+  thickness: 250,
+  origin: [0, 0, RISE - 250],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOOR',
+  materialName: 'Concrete',
+});
+if (!slab.ok) throw slab.error;
+model.placeIn(slab.value, storeyId);
+
+const wall = model.addWall({
+  length: L,
+  height: H,
+  thickness: T,
+  origin: [0, W - T, RISE],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  materialName: 'Blockwork',
+  isExternal: true,
+});
+if (!wall.ok) throw wall.error;
+model.placeIn(wall.value, storeyId);
+
+// Three coverings, each a separate element with its own thickness and material:
+// the floor finish on top of the slab, the ceiling below the soffit, and
+// external cladding on the wall face.
+const flooring = model.addCovering({
+  length: L,
+  width: W,
+  thickness: 18,
+  origin: [0, 0, RISE],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOORING',
+  materialName: 'Oak parquet',
+});
+if (!flooring.ok) throw flooring.error;
+model.placeIn(flooring.value, storeyId);
+
+const ceiling = model.addCovering({
+  length: L,
+  width: W,
+  thickness: 12,
+  origin: [0, 0, RISE + H - 400],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'CEILING',
+  materialName: 'Acoustic tile',
+});
+if (!ceiling.ok) throw ceiling.error;
+model.placeIn(ceiling.value, storeyId);
+
+// A vertical covering needs its frame handed correctly: a covering's local +Y
+// is axisZ x axisX, so axisZ=[0,1,0] with axisX=[1,0,0] would point the panel's
+// height at world -Z and hang it below ground. axisX=[-1,0,0] flips it upright,
+// which is why the panel runs back from x = L.
+const cladding = model.addCovering({
+  length: L,
+  width: H,
+  thickness: 40,
+  origin: [L, W, RISE],
+  axisX: [-1, 0, 0],
+  axisZ: [0, 1, 0],
+  predefinedType: 'CLADDING',
+  materialName: 'Fibre cement panel',
+});
+if (!cladding.ok) throw cladding.error;
+model.placeIn(cladding.value, storeyId);
+
+// A 1:15 ramp reaching the threshold, plus its top landing. slope is rise over
+// run, so the run follows from the rise the ramp has to climb.
+const SLOPE = 1 / 15;
+const RUN = RISE / SLOPE;
+const ramp = model.addRamp({
+  name: 'Entrance ramp',
+  predefinedType: 'STRAIGHT_RUN_RAMP',
+  materialName: 'Concrete',
+  flights: [
+    {
+      width: 1500,
+      length: RUN,
+      slope: SLOPE,
+      thickness: 180,
+      origin: [1000, -RUN, 0],
+      axisX: [0, 1, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
+      predefinedType: 'STRAIGHT',
+    },
+  ],
+});
+if (!ramp.ok) throw ramp.error;
+model.placeIn(ramp.value, storeyId);
+
+const landing = model.addSlab({
+  length: 1500,
+  width: 1500,
+  thickness: 180,
+  origin: [1000, -1500, RISE - 180],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'LANDING',
+  materialName: 'Concrete',
+});
+if (!landing.ok) throw landing.error;
+model.placeIn(landing.value, storeyId);
+
+// A posted guardrail along the open edge of the ramp run.
+const rail = model.addRailing({
+  length: RUN,
+  height: 1100,
+  thickness: 60,
+  origin: [1000, -RUN, RISE - 180],
+  axisX: [0, 1, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'GUARDRAIL',
+  infill: 'POSTED',
+  materialName: 'Steel',
+});
+if (!rail.ok) throw rail.error;
+model.placeIn(rail.value, storeyId);
+
+console.log('ramp: rise ' + RISE + ' mm over ' + RUN + ' mm run (1:15), landing 1500 mm deep');
+for (const c of model.getCoverings()) {
+  const spec = c.spec as { predefinedType?: string; materialName: string; thickness: number };
+  console.log(
+    '  ' + (spec.predefinedType ?? 'COVERING').padEnd(10) + spec.materialName.padEnd(22) + spec.thickness + ' mm'
+  );
+}
+
+// Playground runtime owns the displayed geometry for this eval.
+const tint = (cat: string, spec: unknown): string => {
+  if (cat === 'COVERING') {
+    const t = (spec as { predefinedType?: string }).predefinedType;
+    if (t === 'FLOORING') return '#a9743f';
+    if (t === 'CEILING') return '#e8e4dc';
+    return '#7d8b8f';
+  }
+  if (cat === 'RAILING') return '#8a99ad';
+  if (cat === 'RAMP') return '#b9b2a6';
+  return '#cfcabb';
+};
+const shown = model
+  .getAllElements()
+  .flatMap((el) => unwrap(placedSolids(el)).map((solid) => color(solid, tint(el.category, el.spec))));
+
+export default present(shown, {
+  bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
+});
+`,
+  },
 ];

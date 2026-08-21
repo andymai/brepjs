@@ -23,7 +23,8 @@ curtain walls, a panel/mullion grid). Element geometry is **unplaced template ge
 coordinates — placement (`origin` / `axisX` / `axisZ`) is applied by the IFC layer via
 `IfcLocalPlacement`, not baked into the brepjs solid. Use `placedSolids(element)` to read an
 element's geometry already transformed to its world placement as fresh, caller-owned solids
-(stairs return one solid per flight) — handy for display so the on-screen scene matches the IFC
+(stairs and ramps return one solid per flight, curtain walls their panels and mullions) — handy
+for display so the on-screen scene matches the IFC
 export.
 
 - Units default to mm; IFC export emits SI metres.

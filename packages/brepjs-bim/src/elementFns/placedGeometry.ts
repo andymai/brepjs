@@ -5,6 +5,7 @@ import type { BimError } from '../errors/bimError.js';
 import { fromBrepError } from '../errors/bimError.js';
 import { placementToMatrix, type FrameInput } from '../import/placement.js';
 import { stairFlightToSolid } from './stairFns.js';
+import { rampFlightToSolid } from './rampFns.js';
 
 // Applies an (origin, axisX, axisZ) frame to a local solid, returning a fresh
 // caller-owned solid. Orthonormal frames use the validity-preserving transform
@@ -32,10 +33,10 @@ function disposeAll(solids: readonly ValidSolid[]): void {
  * failure the solids already built for this call are disposed before the error is
  * returned, so no partial array is leaked.
  *
- * Stairs carry no element solid (`.geometry` is null), so flight solids are built
- * from `spec.flights` and placed per flight. Curtain walls return placed panels +
- * mullions. Elements with no solid geometry (doors/windows/ramps/groups/spatial)
- * return an empty array.
+ * Stairs and ramps carry no element solid (`.geometry` is null), so flight
+ * solids are built from `spec.flights` and placed per flight. Curtain walls
+ * return placed panels + mullions. Elements with no solid geometry
+ * (doors/windows/groups/spatial) return an empty array.
  */
 export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError> {
   switch (el.category) {
@@ -47,6 +48,7 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
     case 'ROOF':
     case 'FOOTING':
     case 'PILE':
+    case 'COVERING':
     case 'RAILING': {
       const placed = place(el.geometry, el.spec);
       if (!placed.ok) return placed;
@@ -56,6 +58,26 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
       const out: ValidSolid[] = [];
       for (const flight of el.spec.flights) {
         const built = stairFlightToSolid(flight);
+        if (!built.ok) {
+          disposeAll(out);
+          return err(built.error);
+        }
+        using local = built.value.solid;
+        const placed = place(local, flight);
+        if (!placed.ok) {
+          disposeAll(out);
+          return placed;
+        }
+        out.push(placed.value);
+      }
+      return ok(out);
+    }
+    case 'RAMP': {
+      // Ramps mirror stairs: no element solid, one inclined-slab solid per
+      // flight, each placed by its own frame.
+      const out: ValidSolid[] = [];
+      for (const flight of el.spec.flights) {
+        const built = rampFlightToSolid(flight);
         if (!built.ok) {
           disposeAll(out);
           return err(built.error);
