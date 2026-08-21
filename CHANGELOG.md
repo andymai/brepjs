@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.151.1](https://github.com/andymai/brepjs/compare/brepjs-v18.151.0...brepjs-v18.151.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **bim:** return proxy solids from placedSolids ([#2180](https://github.com/andymai/brepjs/issues/2180)) ([e289cc8](https://github.com/andymai/brepjs/commit/e289cc821d96cb0ff156d505ff7095916d5527b2))
+
 ## [18.151.0](https://github.com/andymai/brepjs/compare/brepjs-v18.150.2...brepjs-v18.151.0) (2026-08-21)
 
 
