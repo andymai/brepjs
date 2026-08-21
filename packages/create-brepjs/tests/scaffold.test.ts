@@ -99,10 +99,33 @@ describe('create-brepjs scaffold', () => {
     }
   });
 
-  it('configures the lib support that using-declarations need', async () => {
-    const tsconfig = await readJson<{ compilerOptions: { lib: readonly string[] } }>(
-      join(target, 'tsconfig.json')
-    );
+  it('configures the libs and types the template code needs', async () => {
+    const tsconfig = await readJson<{
+      compilerOptions: { lib: readonly string[]; types: readonly string[] };
+    }>(join(target, 'tsconfig.json'));
     expect(tsconfig.compilerOptions.lib).toContain('ESNext.Disposable');
+    // TypeScript 6 no longer auto-includes @types packages.
+    expect(tsconfig.compilerOptions.types).toContain('node');
   });
+
+  // The full user journey against the live npm registry: install, typecheck,
+  // evaluate the template model. Minutes of network-bound work, so it runs
+  // where the packages-create CI job opts in rather than on every local run.
+  const smoke = process.env['SCAFFOLD_SMOKE'] === '1' ? it : it.skip;
+
+  smoke(
+    'installs, typechecks, and runs against the published registry',
+    async () => {
+      // Drop the parent `npm run`'s npm_config_* env: leaked workspace flags
+      // (e.g. allow-scripts) are rejected by the nested project-scoped install.
+      const env = Object.fromEntries(
+        Object.entries(process.env).filter(([k]) => !k.toLowerCase().startsWith('npm_config_'))
+      );
+      await run('npm', ['install', '--no-audit', '--no-fund'], { cwd: target, env });
+      await run('npm', ['run', 'typecheck'], { cwd: target, env });
+      const { stdout } = await run('npm', ['start'], { cwd: target, env });
+      expect(stdout).toContain('triangles');
+    },
+    600_000
+  );
 });
