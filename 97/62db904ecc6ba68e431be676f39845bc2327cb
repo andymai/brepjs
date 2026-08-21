@@ -1,0 +1,22 @@
+packages/create-brepjs/templates/package.json.tpl
+  s_828c72638e0a06::t_139e3ee052fdc7 11
+packages/create-brepjs/tests/scaffold.test.ts
+  s_828c72638e0a06::t_48c4de7e43f85f 24-62,65-67,71,73-79
+  s_828c72638e0a06::t_6e8b1961f5ae02 80-81,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9762db904ecc6ba68e431be676f39845bc2327cb",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
