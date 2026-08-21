@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.1...brepjs-families-v0.7.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **families:** carry identity props past zod schemas into BIM export ([#2188](https://github.com/andymai/brepjs/issues/2188)) ([f80bda6](https://github.com/andymai/brepjs/commit/f80bda6c321b24f33309fac4d0ac99f252d50fc2))
+
 ## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.0...brepjs-families-v0.7.1) (2026-08-21)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "brepjs-families",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Declarative family layer for brepjs: element trees, key paths, and projection onto the content-addressed CSG IR",
   "keywords": [
     "cad",
