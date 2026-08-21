@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_828c72638e0a06::t_2a45981992abee 269-270,274,279-280
+packages/create-brepjs/tests/scaffold.test.ts
+  s_828c72638e0a06::t_29949791f7a0e2 102-105,107-108
+  s_828c72638e0a06::t_4f39fa341f763d 119-126
+  s_828c72638e0a06::t_b01428f18727ab 110-118,127-130
+packages/create-brepjs/templates/tsconfig.json
+  s_828c72638e0a06::t_2b525dc4eb1593 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "93c6023e332cd3c7b87d494605cb10d687115c48",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
