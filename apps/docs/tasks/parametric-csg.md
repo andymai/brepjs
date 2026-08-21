@@ -165,6 +165,7 @@ isErr(r3); // true
 
 ## Where to go next
 
+- **[Declarative Models](/families/overview)**: wrap trees like this one in prop-driven `brepjs-families` components — the bin becomes `<Bin length={42} wall={1.2} />` with key-path identity and free dedup on this same evaluator.
 - **[CSG caching internals](/advanced/csg-caching)**: `cacheStats`, what's in the cache key, when to call `optimize()`, JSON round-trip, and tree-editing primitives like `replaceNode`.
 - **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)**: if you've already built `Map<key, Solid>` plumbing around the eager API, here's the side-by-side translation.
 - **[The eager topology API](/tasks/booleans)**: when you build a single part and don't need re-evaluation, plain `fuse`/`cut`/`intersect` is leaner.

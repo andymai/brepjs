@@ -406,6 +406,24 @@ onBeforeUnmount(() => observer?.disconnect());
         </div>
       </section>
 
+      <!-- ──────────────────── DECLARATIVE MODELS ──────────────────── -->
+      <section class="band alt" data-reveal>
+        <div class="wrap narrow">
+          <p class="eyebrow">Declarative models</p>
+          <h2>Parametric components, down to IFC.</h2>
+          <p class="lead">
+            brepjs-families gives you React-like components for parametric models: prop-driven,
+            composable, zod-validated, deduplicated for free by the content-addressed CSG IR.
+            Scaffold a project with <code>npm create brepjs</code>, copy in starter families with
+            <code>npx brepjs add</code>, and project one tree to viewport meshes — or to IFC through
+            brepjs-bim, with stable GlobalIds derived from your component keys.
+          </p>
+          <p class="lead">
+            <a href="/families/overview">Read the Declarative Models guide →</a>
+          </p>
+        </div>
+      </section>
+
       <!-- ──────────────────── SCOPE ──────────────────── -->
       <section class="band" data-reveal>
         <div class="wrap narrow">

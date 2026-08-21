@@ -14,6 +14,13 @@ and serializes the result to a valid **IFC-SPF** file — with a matching import
 Pipeline: **author spec → `BimModel` (typed element + brepjs geometry) → spatial structure +
 property sets + classification → export IFC / COBie, validate, round-trip.**
 
+The declarative entry point is
+[`brepjs-families`](https://www.npmjs.com/package/brepjs-families): author the building as a tree of
+prop-driven components, then `familiesToBim(tree, { project })` projects it onto a `BimModel` with
+stable GlobalIds derived from component key paths. Hand-authoring specs against `BimModel` remains
+the low-level path (and covers elements the declarative route doesn't yet). See the
+[Declarative Models guide](https://brepjs.dev/families/overview).
+
 ## Scope
 
 Parametric authoring of the common IFC4 building elements plus the data layers that make a model
