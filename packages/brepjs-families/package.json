@@ -63,6 +63,16 @@
         "types": "./dist/jsxRuntime.d.ts",
         "default": "./dist/jsxRuntime.cjs"
       }
+    },
+    "./jsx-dev-runtime": {
+      "import": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.js"
+      },
+      "require": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.cjs"
+      }
     }
   }
 }

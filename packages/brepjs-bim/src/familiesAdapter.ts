@@ -123,6 +123,19 @@ function peelTranslates(node: csg.IRNode): {
   return { total, moved };
 }
 
+/** True when the outer placement chain carries a rotation. The spec path can
+ *  fold only translations into IfcLocalPlacement (walls orient via `axisX`),
+ *  so a rotated routed element would export un-rotated while the viewport
+ *  shows it rotated — reject instead of diverging. */
+function hasOuterRotation(node: csg.IRNode): boolean {
+  let cur = node;
+  while (cur.kind === 'Translate') {
+    if (cur.vector.kind !== 'Vec3Lit') break;
+    cur = cur.target;
+  }
+  return cur.kind === 'Rotate';
+}
+
 /** Fold the resolved geometry's outer translate chain into the spec placement
  *  origin, so IfcLocalPlacement matches the IR world frame no matter where the
  *  transform came from (family-internal or prop-level). */
@@ -356,6 +369,14 @@ export function familiesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
+      if (hasOuterRotation(el.geometry)) {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_TRANSFORM',
+            `familiesToBim: '${el.keyPath}' carries a rotated placement — the spec path folds only translations into IfcLocalPlacement; orient walls via axisX instead of tRotate`
+          )
+        );
+      }
       // The spec path rebuilds the body parametrically: an anonymous
       // (non-fill) void cuts only the IR/viewport geometry, so exporting it
       // silently would diverge the IFC body from what the user sees.
