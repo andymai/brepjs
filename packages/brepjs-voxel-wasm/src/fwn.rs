@@ -50,11 +50,11 @@ impl Mesh {
     /// Build from the flat f32 buffers crossing the wasm boundary.
     pub fn from_flat(verts: &[f32], tris: &[u32]) -> Self {
         let verts = verts
-            .chunks_exact(3)
+            .as_chunks::<3>().0.iter()
             .map(|c| [c[0] as f64, c[1] as f64, c[2] as f64])
             .collect();
         let tris = tris
-            .chunks_exact(3)
+            .as_chunks::<3>().0.iter()
             .map(|c| [c[0] as usize, c[1] as usize, c[2] as usize])
             .collect();
         Mesh { verts, tris }

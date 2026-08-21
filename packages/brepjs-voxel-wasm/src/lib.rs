@@ -121,7 +121,7 @@ fn check_lattice_params(period: f32, thickness: f32) -> Result<(), JsError> {
 fn bbox(verts: &[f32]) -> ([f32; 3], [f32; 3]) {
     let mut min = [f32::INFINITY; 3];
     let mut max = [f32::NEG_INFINITY; 3];
-    for p in verts.chunks_exact(3) {
+    for p in verts.as_chunks::<3>().0 {
         for axis in 0..3 {
             if p[axis] < min[axis] {
                 min[axis] = p[axis];
@@ -717,7 +717,7 @@ impl Sdf {
                 "sweep spine must be flat xyz with at least 2 stations (length 3·N, N >= 2)",
             ));
         }
-        let pts: Vec<[f64; 3]> = spine.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let pts: Vec<[f64; 3]> = spine.as_chunks::<3>().0.iter().map(|c| [c[0], c[1], c[2]]).collect();
         if !pts.iter().all(|p| p.iter().all(|c| c.is_finite())) {
             return Err(JsError::new("sweep spine coordinates must be finite"));
         }
@@ -1049,7 +1049,7 @@ fn check_axis(axis: u32) -> Result<usize, JsError> {
 pub fn winding_numbers(verts: &[f32], tris: &[u32], queries: &[f32]) -> Vec<f32> {
     let mesh = fwn::Mesh::from_flat(verts, tris);
     queries
-        .chunks_exact(3)
+        .as_chunks::<3>().0.iter()
         .map(|q| mesh.winding_number([q[0] as f64, q[1] as f64, q[2] as f64]) as f32)
         .collect()
 }
@@ -1062,7 +1062,7 @@ pub fn winding_numbers(verts: &[f32], tris: &[u32], queries: &[f32]) -> Vec<f32>
 pub fn points_inside(verts: &[f32], tris: &[u32], queries: &[f32]) -> Vec<u8> {
     let mesh = fwn::Mesh::from_flat(verts, tris);
     queries
-        .chunks_exact(3)
+        .as_chunks::<3>().0.iter()
         .map(|q| u8::from(mesh.is_inside([q[0] as f64, q[1] as f64, q[2] as f64])))
         .collect()
 }
@@ -1138,7 +1138,7 @@ mod tests {
         let (verts_a, tris_a) = unit_cube();
         // Second cube shifted +0.5 on x so the two overlap.
         let (mut verts_b, tris_b) = unit_cube();
-        for p in verts_b.chunks_exact_mut(3) {
+        for p in verts_b.as_chunks_mut::<3>().0 {
             p[0] += 0.5;
         }
         let r = voxel_boolean(&verts_a, &tris_a, &verts_b, &tris_b, 0, 24, 2)
@@ -1161,7 +1161,7 @@ mod tests {
     fn boolean_of_co_registers_and_is_chainable() {
         let (verts_a, tris_a) = unit_cube();
         let (mut verts_b, tris_b) = unit_cube();
-        for p in verts_b.chunks_exact_mut(3) {
+        for p in verts_b.as_chunks_mut::<3>().0 {
             p[0] += 0.5;
         }
         let field = VoxelField::boolean_of(&verts_a, &tris_a, &verts_b, &tris_b, 0, 24, 2)
@@ -1184,7 +1184,7 @@ mod tests {
     fn offset_after_union_reinit_changes_surface() {
         let (verts_a, tris_a) = unit_cube();
         let (mut verts_b, tris_b) = unit_cube();
-        for p in verts_b.chunks_exact_mut(3) {
+        for p in verts_b.as_chunks_mut::<3>().0 {
             p[0] += 0.5;
         }
         let d = 0.2_f32;
@@ -1205,7 +1205,7 @@ mod tests {
         // The reinit shifts the min/max-blended join saddle, so the two contoured
         // surfaces are NOT identical: their max-extent differs near the join.
         let extent = |pos: &[f32]| {
-            pos.chunks_exact(3)
+            pos.as_chunks::<3>().0.iter()
                 .fold(f32::NEG_INFINITY, |m, p| m.max(p[1]).max(p[0]).max(p[2]))
         };
         let e_with = extent(&with_mesh.positions);
