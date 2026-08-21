@@ -162,5 +162,6 @@ The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `transl
 ## Next steps
 
 - **[Parametric CSG walkthrough](/tasks/parametric-csg)**: build a gridfinity-style bin with named parameters, change a slider, watch the cache absorb the unchanged subtrees.
+- **[Declarative Models](/families/overview)**: the component layer built on this IR — `brepjs-families` projects prop-driven element trees onto it, so identical components share one materialization while each keeps its own identity.
 - **[CSG caching internals](/advanced/csg-caching)**: `cacheStats`, `optimize`, serialization, what the cache key actually contains, and what _doesn't_ cache.
 - **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)**: if you've built your own `Map<key, Solid>` cache around eager geometry, here's the IR equivalent and what you'd inherit by switching.

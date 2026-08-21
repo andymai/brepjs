@@ -60,6 +60,8 @@ To set expectations, this project deliberately does not:
 npm install brepjs occt-wasm
 ```
 
+Starting fresh? `npm create brepjs my-project` scaffolds a TypeScript app with the kernel and the declarative family layer preconfigured.
+
 `brepjs/quick` handles WASM init automatically via top-level await (ESM only). Other options:
 
 ```typescript
@@ -84,6 +86,7 @@ The chapter-based guide is the recommended starting point:
 - **[Cheat Sheet](https://brepjs.dev/getting-started/cheat-sheet)**: single-page reference
 - **[Core Concepts](https://brepjs.dev/concepts/brep-vs-mesh)**: B-Rep, topology, types, kernels, tolerance
 - **[Common Tasks](https://brepjs.dev/tasks/booleans)**: booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
+- **[Declarative Models](https://brepjs.dev/families/overview)**: React-like parametric components (brepjs-families), key-path identity, IFC export
 - **[Three.js Integration](https://brepjs.dev/integration/threejs)**: meshing and rendering
 - **[Migration](https://brepjs.dev/migration/replicad)**: coming from Replicad, OpenSCAD, or Three.js
 - **[Extending brepjs](https://brepjs.dev/extending/architecture)**: custom kernels, custom operations, architecture
@@ -138,6 +141,27 @@ npx -y -p brepjs-cad brep bracket.brep.ts --check --step bracket.step --json rep
 ```
 
 The command exits non-zero unless the report is `ok` (valid **and** every declared dimension within tolerance), so it drops straight into CI or an agent loop. For MCP-capable agents the package also ships a stdio MCP server (`brep-mcp`) exposing the same build-and-verify step as a `run_program` tool. See the [**Authoring with AI**](https://brepjs.dev/agent/overview) guide for the full loop, CLI reference, the MCP server, examples, and the measurement eval.
+
+## Declarative models and BIM (brepjs-families + brepjs-bim)
+
+[`brepjs-families`](https://www.npmjs.com/package/brepjs-families) is a React-like component layer over the CSG IR: parametric parts are prop-driven, composable, zod-validated components, and identical subtrees materialize once because the IR is content-addressed. [`brepjs-bim`](https://www.npmjs.com/package/brepjs-bim) projects the same tree to IFC4 with stable GlobalIds derived from component key paths — walls, slabs, columns, beams, roofs, stairs, and real openings (`IfcOpeningElement` + `IfcRelFillsElement`).
+
+```typescript
+const Wall = family('Wall', (p: WallProps) =>
+  el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] })
+);
+const wall = Wall({ key: 'south', length: 4000, thickness: 200, height: 2700 });
+const tree = resolve(Storey({ key: 'ground', items: [wall] }));
+evaluateModel(tree, evaluator); // viewport meshes, one per key path
+familiesToBim(tree, { project }); // IFC via brepjs-bim
+```
+
+```bash
+npm create brepjs my-building   # scaffold a project
+npx brepjs add room storey slab # copy in starter families (code you own)
+```
+
+See the [**Declarative Models**](https://brepjs.dev/families/overview) guide.
 
 ## Projects Using brepjs
 
