@@ -1,0 +1,31 @@
+apps/docs/getting-started/install.md
+  s_828c72638e0a06::t_d6bee7b738d5ac 163-166,171
+apps/docs/tasks/parametric-csg.md
+  s_828c72638e0a06::t_a4e4555e6dc210 168
+apps/docs/.vitepress/theme/components/Landing.vue
+  s_828c72638e0a06::t_7d76ef0d9b7591 409-426
+README.md
+  s_828c72638e0a06::t_1dc6da0bb0cab0 89
+  s_828c72638e0a06::t_1b299125215b73 145-164
+  s_828c72638e0a06::t_66b9c6eb8938ba 63-64
+apps/docs/concepts/csg-ir.md
+  s_828c72638e0a06::t_2381876ebcd800 165
+packages/brepjs-bim/README.md
+  s_828c72638e0a06::t_e665b03801127d 17-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6bbc9e2b607bd076327cc37f9ad984546952c2d5",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
