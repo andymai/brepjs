@@ -33,6 +33,7 @@ export function useCodeExecution() {
   const latestStepIdRef = useRef<string>('');
   const latestDxfIdRef = useRef<string>('');
   const latestIfcIdRef = useRef<string>('');
+  const latestFilesIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
@@ -128,6 +129,24 @@ export function useCodeExecution() {
           if (msg.id !== latestIfcIdRef.current) return;
           downloadBlob(msg.ifc, 'model.ifc', 'application/x-ifc');
           break;
+        case 'export-files-result': {
+          if (msg.id !== latestFilesIdRef.current) return;
+          // One save per file, staggered: browsers drop rapid-fire downloads
+          // from a single gesture. Examples attach a handful, not a whole
+          // serializer's output, so this stays a short burst.
+          //
+          // The stagger opens a window the synchronous dxf/ifc handlers do not
+          // have: a second export started mid-burst must not let the first
+          // one's pending timers keep saving, so each re-checks the latest id.
+          const exportId = msg.id;
+          msg.files.forEach((f, i) => {
+            setTimeout(() => {
+              if (latestFilesIdRef.current !== exportId) return;
+              downloadBlob(f.data, f.name, f.mime);
+            }, i * 150);
+          });
+          break;
+        }
         case 'export-error':
           store.setError(msg.error);
           break;
@@ -231,6 +250,16 @@ export function useCodeExecution() {
     [engineStatus, postMessage]
   );
 
+  const exportFiles = useCallback(
+    (code: string) => {
+      if (engineStatus !== 'ready') return;
+      const id = `files-${++evalCounter}`;
+      latestFilesIdRef.current = id;
+      postMessage({ type: 'export-files', id, code });
+    },
+    [engineStatus, postMessage]
+  );
+
   const exportIFC = useCallback(
     (code: string) => {
       if (engineStatus !== 'ready') return;
@@ -257,5 +286,5 @@ export function useCodeExecution() {
     };
   }, []);
 
-  return { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, debouncedRun };
+  return { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, exportFiles, debouncedRun };
 }
