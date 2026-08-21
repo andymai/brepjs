@@ -134,8 +134,16 @@ export function useCodeExecution() {
           // One save per file, staggered: browsers drop rapid-fire downloads
           // from a single gesture. Examples attach a handful, not a whole
           // serializer's output, so this stays a short burst.
+          //
+          // The stagger opens a window the synchronous dxf/ifc handlers do not
+          // have: a second export started mid-burst must not let the first
+          // one's pending timers keep saving, so each re-checks the latest id.
+          const exportId = msg.id;
           msg.files.forEach((f, i) => {
-            setTimeout(() => downloadBlob(f.data, f.name, f.mime), i * 150);
+            setTimeout(() => {
+              if (latestFilesIdRef.current !== exportId) return;
+              downloadBlob(f.data, f.name, f.mime);
+            }, i * 150);
           });
           break;
         }
