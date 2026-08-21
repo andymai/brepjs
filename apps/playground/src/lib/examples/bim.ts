@@ -617,4 +617,445 @@ export default present(parts, {
 });
 `,
   },
+  {
+    id: 'bim-validation',
+    label: 'Validated Export',
+    description:
+      'One toIfcValidated call exports the model and runs the whole checker suite: referential integrity before serializing, then schema, round-trip, geometry validity, and the buildingSMART gherkin rules. Findings are severity-tagged, and this model deliberately trips a real one. Exports against IFC4 and IFC4X3; the Files button saves the full report.',
+    code: `import { BimModel, countBySeverity, placedSolids, toIfcValidated } from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// toIfcValidated exports the model and runs the whole checker suite in one
+// call: referential integrity before serializing, then schema, round-trip,
+// geometry validity, and the buildingSMART gherkin rules that touch this
+// writer's vocabulary. Findings are severity-tagged, never thrown.
+//
+// Open the console panel below to read the report. web-ifc chatters
+// "Attempt to Access Invalid ExpressID" while saving a model that has
+// openings; that is its own logging during SaveModel, not a finding.
+const model = new BimModel();
+model.init({ name: 'Validated building', projectId: 'validation-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const L = 4000;
+const W = 3000;
+const H = 2700;
+const T = 200;
+
+const slab = model.addSlab({
+  length: L,
+  width: W,
+  thickness: 250,
+  origin: [0, 0, -250],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOOR',
+  materialName: 'Concrete',
+});
+if (!slab.ok) throw slab.error;
+model.placeIn(slab.value, storeyId);
+
+const wall = model.addWall({
+  length: L,
+  height: H,
+  thickness: T,
+  origin: [0, 0, 0],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  materialName: 'Concrete',
+});
+if (!wall.ok) throw wall.error;
+model.placeIn(wall.value, storeyId);
+
+const win = model.addWindow({
+  wallLocalId: wall.value,
+  width: 1200,
+  height: 1000,
+  offsetAlongWall: 1400,
+  offsetFromFloor: 900,
+  materialName: 'Aluminium',
+});
+if (!win.ok) throw win.error;
+model.placeIn(win.value, storeyId);
+
+// A severity summary is the useful read. Note what actually blocks: only a
+// referential-integrity failure makes toIfcValidated return Err. Schema,
+// round-trip, geometry and gherkin findings come back in the report alongside
+// usable bytes, so the caller decides whether they are shippable.
+// This model deliberately omits a coordinate reference system, so the gherkin
+// layer raises GRF003. Passing crs: { name: 'EPSG:25832', eastings: ..., northings: ... }
+// to model.init() clears it. A checker that only ever prints zeroes teaches
+// nothing about what it checks.
+const report = (label: string, issues: readonly { severity: string; code: string; message: string }[]) => {
+  const counts = { error: 0, warning: 0, info: 0 };
+  for (const i of issues) counts[i.severity as 'error' | 'warning' | 'info'] += 1;
+  console.log(
+    label + ': ' + counts.error + ' errors, ' + counts.warning + ' warnings, ' + counts.info + ' info'
+  );
+  for (const i of issues.slice(0, 4)) console.log('   [' + i.severity + '] ' + i.code + ' ' + i.message);
+};
+
+const ifc4 = await toIfcValidated(model, {
+  applicationName: 'brepjs playground',
+  applicationVersion: '1.0',
+});
+if (!ifc4.ok) throw ifc4.error;
+report('IFC4', ifc4.value.report.issues);
+
+// The same model against the newer schema: ifcSchema is the only change, and
+// the suite runs identically. countBySeverity is the one-line version of the
+// tally above.
+const ifc4x3 = await toIfcValidated(model, {
+  applicationName: 'brepjs playground',
+  applicationVersion: '1.0',
+  ifcSchema: 'IFC4X3',
+});
+if (!ifc4x3.ok) throw ifc4x3.error;
+const x3 = countBySeverity(ifc4x3.value.report);
+console.log('IFC4X3: ' + x3.error + ' errors, ' + x3.warning + ' warnings, ' + x3.info + ' info');
+
+// Playground runtime owns the displayed geometry for this eval.
+const walls = model
+  .getWalls()
+  .flatMap((e) => unwrap(placedSolids(e)))
+  .map((s) => color(s, '#d9d3c7'));
+const slabs = model
+  .getSlabs()
+  .flatMap((e) => unwrap(placedSolids(e)))
+  .map((s) => color(s, '#9a948a'));
+
+export default present([...walls, ...slabs], {
+  bimTree: model.toTreeSummary(),
+  ifc: () => ifc4.value.bytes,
+  // The Files button saves the full report; the console shows the summary.
+  files: () => [
+    {
+      name: 'validation-report.json',
+      data: JSON.stringify({ ifc4: ifc4.value.report.issues, ifc4x3: ifc4x3.value.report.issues }, null, 2),
+      mime: 'application/json',
+    },
+  ],
+});
+`,
+  },
+  {
+    id: 'bim-interop',
+    label: 'COBie, IDS and BCF',
+    description:
+      'The three formats that carry the workflows around a model: COBie 2.4 handover sheets derived from the spatial structure, an IDS 1.0 requirement checked against the exported file, and a BCF 3.0 issue filed against a wall by its GlobalId. Results print to the console; the Files button saves the COBie sheets and the BCF markup.',
+    code: `import {
+  BimModel,
+  checkIds,
+  deriveCobieModel,
+  newIfcGuid,
+  parseIdsXml,
+  placedSolids,
+  serializeBcfFiles,
+  serializeCobieToCsv,
+  toIfc,
+} from 'brepjs-bim';
+import { unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// IFC carries the model; three sibling formats carry the workflows around it.
+// COBie is the handover spreadsheet, IDS is machine-readable requirements, BCF
+// is issue exchange. All three key off the same model, and off GlobalIds.
+// Console panel shows the results; the Files button saves them.
+const model = new BimModel();
+model.init({ name: 'Interop demo', projectId: 'interop-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Riverside Block' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const L = 6000;
+const W = 4000;
+const H = 2700;
+const T = 200;
+
+// Two rooms behind one external wall. Spaces are what COBie's Space sheet is
+// built from, so a handover export needs them to be real elements.
+const rooms = [
+  { key: 'Office 01', x: 0, len: 3400 },
+  { key: 'Office 02', x: 3600, len: 2400 },
+];
+for (const r of rooms) {
+  const space = model.addSpace({
+    name: r.key,
+    length: r.len,
+    width: W - 2 * T,
+    height: H,
+    origin: [r.x + T, T, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Air',
+  });
+  if (!space.ok) throw space.error;
+  model.placeIn(space.value, storeyId);
+}
+
+const wall = model.addWall({
+  length: L,
+  height: H,
+  thickness: T,
+  origin: [0, 0, 0],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  materialName: 'Concrete',
+  isExternal: true,
+});
+if (!wall.ok) throw wall.error;
+model.placeIn(wall.value, storeyId);
+
+const bytesResult = await toIfc(model, {
+  applicationName: 'brepjs playground',
+  applicationVersion: '1.0',
+});
+if (!bytesResult.ok) throw bytesResult.error;
+const bytes = bytesResult.value;
+
+// COBie 2.4: the facility-management view, derived from the spatial structure
+// and property sets rather than from geometry.
+const cobie = deriveCobieModel(model, {
+  contact: { email: 'fm@example.com', givenName: 'Facilities', familyName: 'Team' },
+});
+const sheets = serializeCobieToCsv(cobie);
+console.log('COBie sheets: ' + [...sheets.keys()].join(', '));
+console.log(
+  '  ' + cobie.space.length + ' spaces, ' + cobie.floor.length + ' floors, ' + cobie.component.length + ' components'
+);
+
+// IDS 1.0: a requirement written the way a client would issue it. Applicability
+// picks the entities to test, requirements say what they must carry.
+// Joined with a space, not a newline: this whole example is itself a template
+// literal, so a backslash escape here would be consumed before the example ever
+// runs. XML does not care about the whitespace.
+const IDS_XML = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<ids xmlns="http://standards.buildingsmart.org/IDS">',
+  '  <info><title>External walls declare IsExternal</title></info>',
+  '  <specifications>',
+  '    <specification name="External walls declare IsExternal" ifcVersion="IFC4">',
+  '      <applicability minOccurs="1" maxOccurs="unbounded">',
+  '        <entity><name><simpleValue>IFCWALL</simpleValue></name></entity>',
+  '      </applicability>',
+  '      <requirements>',
+  '        <property>',
+  '          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>',
+  '          <baseName><simpleValue>IsExternal</simpleValue></baseName>',
+  '        </property>',
+  '      </requirements>',
+  '    </specification>',
+  '  </specifications>',
+  '</ids>',
+].join(' ');
+
+const ids = parseIdsXml(IDS_XML);
+if (!ids.ok) throw ids.error;
+const idsReport = await checkIds(bytes, ids.value);
+if (!idsReport.ok) throw idsReport.error;
+console.log('IDS: ' + (idsReport.value.pass ? 'PASS' : 'FAIL'));
+for (const r of idsReport.value.results) {
+  console.log(
+    '  ' + r.specificationName + ': ' + r.passedCount + '/' + r.applicableCount + ' applicable entities pass'
+  );
+}
+
+// BCF 3.0: an issue filed against a specific element by its GlobalId, which is
+// why stable ids matter. Zip packaging is the caller's job, so this is the
+// unzipped container as a name to contents map.
+const wallGuid = model.getWalls()[0].guid;
+const bcf = serializeBcfFiles({
+  version: { versionId: '3.0' },
+  project: { projectId: 'interop-demo', name: 'Riverside Block' },
+  topics: [
+    {
+      guid: newIfcGuid(),
+      title: 'Confirm external wall U-value',
+      topicType: 'Issue',
+      topicStatus: 'Open',
+      creationAuthor: 'fm@example.com',
+      creationDate: '2026-01-05T09:00:00Z',
+      description: 'Pset_WallCommon carries IsExternal but no ThermalTransmittance.',
+      comments: [],
+      viewpoints: [
+        {
+          guid: newIfcGuid(),
+          components: { selection: [{ ifcGuid: wallGuid }] },
+        },
+      ],
+    },
+  ],
+});
+console.log('BCF container: ' + [...bcf.keys()].join(', '));
+
+// Topic files are nested under the topic guid, so select by suffix rather than
+// by position: the container also holds bcf.version and project.bcfp.
+const markupKey = [...bcf.keys()].find((k) => k.endsWith('/markup.bcf')) ?? '';
+
+// Playground runtime owns the displayed geometry for this eval.
+const walls = model
+  .getWalls()
+  .flatMap((e) => unwrap(placedSolids(e)))
+  .map((s) => color(s, '#d9d3c7'));
+const spaces = model
+  .getSpaces()
+  .flatMap((e) => unwrap(placedSolids(e)))
+  .map((s) => color(s, '#4fd1c5'));
+
+export default present([...walls, ...spaces], {
+  bimTree: model.toTreeSummary(),
+  ifc: () => bytes,
+  // A curated few rather than all nine COBie sheets: the Files button saves one
+  // file per entry and nobody wants nine clicks' worth of empty sheets.
+  files: () => [
+    { name: 'cobie-Facility.csv', data: sheets.get('Facility') ?? '', mime: 'text/csv' },
+    { name: 'cobie-Space.csv', data: sheets.get('Space') ?? '', mime: 'text/csv' },
+    { name: 'markup.bcf', data: bcf.get(markupKey) ?? '', mime: 'application/xml' },
+  ],
+});
+`,
+  },
+  {
+    id: 'bim-round-trip',
+    label: 'IFC Round Trip',
+    description:
+      'Export to IFC, read the file straight back with fromIfc, and render what came back. Every solid on screen was reconstructed from the exported file rather than kept from the source model, so a writer/importer disagreement would be visible. Reports geometry fidelity per element and how many GlobalIds survived.',
+    code: `import { BimModel, disposeImportedModel, fromIfc, toIfc } from 'brepjs-bim';
+import { clone, unwrap } from 'brepjs/quick';
+import { color, present } from 'brepjs/playground';
+
+// Export to IFC, then read the file straight back with fromIfc and render what
+// came back. Open the console panel below for the element and fidelity counts.
+// Nothing on screen is the original geometry: every solid here was
+// reconstructed from the exported file's IfcExtrudedAreaSolid definitions, so
+// if the writer and importer disagreed you would see it immediately.
+const model = new BimModel();
+model.init({ name: 'Round trip', projectId: 'round-trip-demo' });
+
+const project = model.getProject();
+const siteId = unwrap(model.addSite({ name: 'Site' }));
+const buildingId = unwrap(model.addBuilding({ name: 'Building' }));
+const storeyId = unwrap(model.addStorey({ name: 'Ground Floor', elevation: 0 }));
+if (project) model.aggregate(project.localId, siteId);
+model.aggregate(siteId, buildingId);
+model.aggregate(buildingId, storeyId);
+
+const L = 5000;
+const W = 3600;
+const H = 2700;
+const T = 200;
+
+const slab = model.addSlab({
+  length: L,
+  width: W,
+  thickness: 250,
+  origin: [0, 0, -250],
+  axisX: [1, 0, 0],
+  axisZ: [0, 0, 1],
+  predefinedType: 'FLOOR',
+  materialName: 'Concrete',
+});
+if (!slab.ok) throw slab.error;
+model.placeIn(slab.value, storeyId);
+
+// Two walls meeting at a corner, so a placement error in either direction
+// shows up as a gap or an overlap rather than hiding at the origin.
+const defs: { origin: [number, number, number]; axisX: [number, number, number]; len: number }[] = [
+  { origin: [0, 0, 0], axisX: [1, 0, 0], len: L },
+  { origin: [L, 0, 0], axisX: [0, 1, 0], len: W },
+];
+const walls = defs.map((d) => {
+  const wall = model.addWall({
+    length: d.len,
+    height: H,
+    thickness: T,
+    origin: d.origin,
+    axisX: d.axisX,
+    axisZ: [0, 0, 1],
+    materialName: 'Concrete',
+  });
+  if (!wall.ok) throw wall.error;
+  model.placeIn(wall.value, storeyId);
+  return wall.value;
+});
+
+const door = model.addDoor({
+  wallLocalId: walls[0],
+  width: 1000,
+  height: 2100,
+  offsetAlongWall: 1600,
+  offsetFromFloor: 0,
+  materialName: 'Timber',
+});
+if (!door.ok) throw door.error;
+model.placeIn(door.value, storeyId);
+
+const exported = await toIfc(model, {
+  applicationName: 'brepjs playground',
+  applicationVersion: '1.0',
+});
+if (!exported.ok) throw exported.error;
+const bytes = exported.value;
+
+const imported = await fromIfc(bytes);
+if (!imported.ok) throw imported.error;
+const back = imported.value;
+
+console.log('exported ' + bytes.length + ' bytes, schema ' + back.schema);
+console.log('read back ' + back.elements.length + ' elements');
+
+// Geometry fidelity is reported per element. PARAMETRIC means the importer
+// rebuilt a real B-Rep solid from the profile and extrusion in the file, not a
+// mesh; TESSELLATED_LOSSY would mean triangles only, with no solid to show.
+const byFidelity = new Map<string, number>();
+for (const e of back.elements) {
+  byFidelity.set(e.geometry.fidelity, (byFidelity.get(e.geometry.fidelity) ?? 0) + 1);
+}
+for (const [f, n] of byFidelity) console.log('  ' + f + ': ' + n);
+
+// GlobalIds are the identity contract across the boundary: every id the writer
+// minted must come back naming the same element.
+const original = new Set(model.getAllElements().map((e) => e.guid));
+const survived = back.elements.filter((e) => original.has(e.guid)).length;
+console.log(survived + ' of ' + back.elements.length + ' imported GlobalIds match the source model');
+
+// The imported solids, not the originals. An ImportedModel pins kernel memory
+// for every element it read, including the openings filtered out above, and
+// those have no other release path. So clone what gets displayed, hand the
+// clones to the runtime, and release the imported model here the way a real
+// app would.
+const PALETTE: Record<string, string> = {
+  WALL: '#d9d3c7',
+  SLAB: '#9a948a',
+  DOOR: '#8b5a2b',
+};
+// Openings come back as elements with their own solid (the void box). They are
+// holes, not things to draw, so they are filtered out here exactly as the
+// direct-API examples never display them.
+const shown = back.elements.flatMap((e) =>
+  e.category !== 'OPENING' && e.geometry.solid
+    ? [color(unwrap(clone(e.geometry.solid)), PALETTE[e.category] ?? '#8a99ad')]
+    : []
+);
+disposeImportedModel(back);
+
+export default present(shown, {
+  bimTree: model.toTreeSummary(),
+  ifc: () => bytes,
+});
+`,
+  },
 ];
