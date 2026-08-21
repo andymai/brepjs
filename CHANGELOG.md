@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.151.0](https://github.com/andymai/brepjs/compare/brepjs-v18.150.2...brepjs-v18.151.0) (2026-08-21)
+
+
+### Features
+
+* **playground:** add bim-professional examples, fix placedSolids gaps ([#2177](https://github.com/andymai/brepjs/issues/2177)) ([dbebf82](https://github.com/andymai/brepjs/commit/dbebf82889a428c6ca3883d08be0638e68192e53))
+
 ## [18.150.2](https://github.com/andymai/brepjs/compare/brepjs-v18.150.1...brepjs-v18.150.2) (2026-08-21)
 
 
