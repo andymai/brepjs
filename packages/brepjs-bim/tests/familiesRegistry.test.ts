@@ -10,6 +10,7 @@ import { initOCCT } from '../../../tests/setup.js';
 import { isOk, unwrap } from 'brepjs';
 import { z } from 'zod';
 import { family, el, resolve, tRotate } from 'brepjs-families';
+import { Beam } from '../../brepjs-families/registry/families/beam.js';
 import { Wall } from '../../brepjs-families/registry/families/wall.js';
 import { Door } from '../../brepjs-families/registry/families/door.js';
 import { Room } from '../../brepjs-families/registry/families/room.js';
@@ -121,6 +122,28 @@ describe('registry families through familiesToBim', () => {
     };
     expect(wallAt('g/r/south')).toEqual([1000, 2000, 0]);
     expect(wallAt('g/r/north')).toEqual([1000, 2000 + 3000 - 200, 0]);
+  });
+
+  it('routes a circular beam whose render orients its body internally', () => {
+    // The beam family bakes a csg.rotate into its body to run along axisX;
+    // that is body orientation the spec rebuilds from props, not a placement
+    // rotation, and must not trip the tRotate rejection.
+    const tree = resolve(
+      Storey({
+        key: 'g',
+        items: [
+          Beam({
+            key: 'b',
+            length: 3000,
+            profile: { kind: 'CIRCULAR', radius: 100 },
+            axisX: [0, 1, 0],
+          }),
+        ],
+      })
+    );
+    const projected = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using _model = projected.model;
+    expect(projected.idByKeyPath.has('g/b')).toBe(true);
   });
 
   it('rejects a rotated routed element instead of exporting a diverged body', () => {
