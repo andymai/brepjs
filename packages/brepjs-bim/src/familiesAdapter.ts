@@ -173,10 +173,14 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
   const psets = el.attributes['psets'];
   if (psets && typeof psets === 'object') {
     const custom: Record<string, Record<string, string | number | boolean>> = {};
+    // Only the element's OWN common pset maps onto spec fields — a foreign
+    // Common pset (e.g. Pset_DoorCommon on a Wall) must not be relabeled onto
+    // this element's common pset, so it flows through as a custom pset.
+    const ownCommonPset = `Pset_${el.type}Common`;
     for (const [psetName, fields] of Object.entries(psets as Record<string, unknown>)) {
       if (!fields || typeof fields !== 'object') continue;
       const record = fields as Record<string, unknown>;
-      if (/^Pset_[A-Za-z]+Common$/.test(psetName)) {
+      if (psetName === ownCommonPset) {
         for (const [field, specKey] of Object.entries(COMMON_PSET_FIELDS)) {
           if (record[field] !== undefined) out[specKey] = record[field];
         }
@@ -267,6 +271,7 @@ function addOpenings(
     const input = {
       materialName: SPEC_DEFAULTS.materialName,
       ...stripGeometryProps(fill.props),
+      ...collectSpecProps(fill),
       wallLocalId: wallId,
       offsetAlongWall: delta[0] * axisX[0] + delta[1] * axisX[1] + delta[2] * axisX[2],
       offsetFromFloor: delta[2],

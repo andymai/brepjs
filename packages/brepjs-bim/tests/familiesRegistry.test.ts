@@ -37,8 +37,21 @@ describe('registry families through familiesToBim', () => {
             height: 2700,
             thickness: 200,
             isExternal: true,
-            psets: { Pset_ProjectSpecific: { Zone: 'A', Occupancy: 12 } },
-            voids: [Door({ key: 'entry', width: 1000, height: 2100, at: [1500, 0] })],
+            // Pset_SlabCommon is foreign to a Wall: it must flow through as a
+            // custom pset, not be relabeled onto the wall's own common pset.
+            psets: {
+              Pset_ProjectSpecific: { Zone: 'A', Occupancy: 12 },
+              Pset_SlabCommon: { IsExternal: false },
+            },
+            voids: [
+              Door({
+                key: 'entry',
+                width: 1000,
+                height: 2100,
+                at: [1500, 0],
+                psets: { Pset_DoorCommon: { FireRating: 'EI30' } },
+              }),
+            ],
           }),
         ],
       })
@@ -54,6 +67,10 @@ describe('registry families through familiesToBim', () => {
     expect(text).toContain('IFCRELFILLSELEMENT');
     expect(text).toContain('Pset_ProjectSpecific');
     expect(text).toContain('Zone');
+    // The door's own common pset reaches its spec fields through the fill path.
+    expect(text).toContain('EI30');
+    // The foreign common pset survives as a custom pset under its own name.
+    expect(text).toContain('Pset_SlabCommon');
   });
 
   it('adopts the material attribute when a family declares no materialName', async () => {
