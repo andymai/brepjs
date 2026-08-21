@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.150.2](https://github.com/andymai/brepjs/compare/brepjs-v18.150.1...brepjs-v18.150.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **playground:** correct bim placement defects and cover the mapped catalog ([#2171](https://github.com/andymai/brepjs/issues/2171)) ([9da38fd](https://github.com/andymai/brepjs/commit/9da38fde50f5a884e4d633df5adbee44be197358))
+
 ## [18.150.1](https://github.com/andymai/brepjs/compare/brepjs-v18.150.0...brepjs-v18.150.1) (2026-08-19)
 
 
