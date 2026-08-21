@@ -37,7 +37,7 @@ Exported files are checked three ways, by implementations that share no code:
 2. **The buildingSMART Validation Service's own rule engine**, run locally. The complete normative catalog (the same ALB / GEM / GRF / IFC / OJT / PJS / PSE / QTY / SPS rules the online service applies) executes against a file in about a second. The committed fixtures pass all 950 scenarios.
 3. **IfcOpenShell** (the engine behind BlenderBIM/Bonsai): EXPRESS schema and where-rule validation, spatial structure, GlobalId uniqueness and syntax, and geometry generation for every product.
 
-The repository's sample building runs this gauntlet in automation; a model that stops passing cannot ship unnoticed. Round-tripping through desktop authoring tools (Revit, ArchiCAD, Solibri) is the part still done by hand.
+Which of these run automatically is worth stating plainly. Continuous integration runs the writer's own validation on every change, plus the complete official IDS conformance suite. The buildingSMART rule catalog and IfcOpenShell are run on demand rather than per-commit, because both need a toolchain outside the JavaScript build. Round-tripping through desktop authoring tools (Revit, ArchiCAD, Solibri) is done by hand against the committed fixtures.
 
 ## Openings are first-class
 
