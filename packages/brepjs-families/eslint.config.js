@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tests/**/*.ts', 'registry/**/*.ts'],
+    files: ['tests/**/*.{ts,tsx}', 'registry/**/*.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.test.json',
