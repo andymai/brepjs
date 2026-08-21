@@ -1,0 +1,42 @@
+apps/playground/src/components/playground/MobileActionSheet.tsx
+  s_cbbd0a17a1913f::t_c809403d2d2a7b 13,34,40,99-104
+  s_cbbd0a17a1913f::t_8f730beb56cfba 105-108
+apps/playground/src/hooks/useCodeExecution.ts
+  s_cbbd0a17a1913f::t_5b9ad8dac1b468 132-141,245-254,281
+  s_cbbd0a17a1913f::t_e40aa728fb9b6f 36
+apps/playground/src/components/playground/Toolbar.tsx
+  s_cbbd0a17a1913f::t_28b96ca1ba0943 12,31,47,143-150
+  s_cbbd0a17a1913f::t_af7264c7d58c4a 151-152
+apps/playground/src/hooks/usePlaygroundActions.ts
+  s_cbbd0a17a1913f::t_fd989456fdf0f9 23
+  s_cbbd0a17a1913f::t_d4fc915f336db4 161,176
+  s_cbbd0a17a1913f::t_b89067e0eb52d6 86-92
+  s_cbbd0a17a1913f::t_e40aa728fb9b6f 34-35
+apps/playground/src/components/playground/PlaygroundPage.tsx
+  s_cbbd0a17a1913f::t_c809403d2d2a7b 129,185
+apps/playground/src/lib/ambientModule.ts
+  s_cbbd0a17a1913f::t_27f087926a15ef 84-91
+apps/playground/src/workers/cad.worker.ts
+  s_cbbd0a17a1913f::t_f3fdbf5ea7f79b 97
+  s_cbbd0a17a1913f::t_ed97fc773c01ef 82-87,93-96
+  s_cbbd0a17a1913f::t_5b22f7130d4d4c 861-863
+  s_cbbd0a17a1913f::t_070359b640ac4f 799-832
+apps/playground/src/workers/workerProtocol.ts
+  s_cbbd0a17a1913f::t_0f1894e0caa22b 42-43,70-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e09247892a72b8a6be478ae71e4a44885ea5d412",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
