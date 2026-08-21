@@ -1,0 +1,25 @@
+apps/docs/bim/elements.md
+  s_cbbd0a17a1913f::t_74a0d91c194dee 35-39
+apps/playground/src/lib/examples/bim.ts
+  s_cbbd0a17a1913f::t_82207a652391f1 526,531-535
+  s_cbbd0a17a1913f::t_5f9d2a90be30b9 536-537,551,553-554,595
+  s_cbbd0a17a1913f::t_cf3423e6640bf6 549-550,552
+  s_cbbd0a17a1913f::t_45622e4feadeb0 521-525,527-530,538-548,555-594,596-617
+  s_cbbd0a17a1913f::t_5507ef3340bee7 520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f17751131b83dda399d8daed2cfbf91b4eec3afc",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
