@@ -686,9 +686,10 @@ const win = model.addWindow({
 if (!win.ok) throw win.error;
 model.placeIn(win.value, storeyId);
 
-// A severity summary is the useful read: errors block, warnings are advisory.
-// A clean model still reports info-level findings, which is the point of a
-// severity-tagged report rather than a boolean.
+// A severity summary is the useful read. Note what actually blocks: only a
+// referential-integrity failure makes toIfcValidated return Err. Schema,
+// round-trip, geometry and gherkin findings come back in the report alongside
+// usable bytes, so the caller decides whether they are shippable.
 // This model deliberately omits a coordinate reference system, so the gherkin
 // layer raises GRF003. Passing crs: { name: 'EPSG:25832', eastings: ..., northings: ... }
 // to model.init() clears it. A checker that only ever prints zeroes teaches
@@ -932,8 +933,8 @@ export default present([...walls, ...spaces], {
     label: 'IFC Round Trip',
     description:
       'Export to IFC, read the file straight back with fromIfc, and render what came back. Every solid on screen was reconstructed from the exported file rather than kept from the source model, so a writer/importer disagreement would be visible. Reports geometry fidelity per element and how many GlobalIds survived.',
-    code: `import { BimModel, fromIfc, toIfc } from 'brepjs-bim';
-import { unwrap } from 'brepjs/quick';
+    code: `import { BimModel, disposeImportedModel, fromIfc, toIfc } from 'brepjs-bim';
+import { clone, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // Export to IFC, then read the file straight back with fromIfc and render what
@@ -1031,8 +1032,11 @@ const original = new Set(model.getAllElements().map((e) => e.guid));
 const survived = back.elements.filter((e) => original.has(e.guid)).length;
 console.log(survived + ' of ' + back.elements.length + ' imported GlobalIds match the source model');
 
-// The imported solids, not the originals. Playground runtime owns them for this
-// eval, so no disposeImportedModel() here; a real app calls it when done.
+// The imported solids, not the originals. An ImportedModel pins kernel memory
+// for every element it read, including the openings filtered out above, and
+// those have no other release path. So clone what gets displayed, hand the
+// clones to the runtime, and release the imported model here the way a real
+// app would.
 const PALETTE: Record<string, string> = {
   WALL: '#d9d3c7',
   SLAB: '#9a948a',
@@ -1043,9 +1047,10 @@ const PALETTE: Record<string, string> = {
 // direct-API examples never display them.
 const shown = back.elements.flatMap((e) =>
   e.category !== 'OPENING' && e.geometry.solid
-    ? [color(e.geometry.solid, PALETTE[e.category] ?? '#8a99ad')]
+    ? [color(unwrap(clone(e.geometry.solid)), PALETTE[e.category] ?? '#8a99ad')]
     : []
 );
+disposeImportedModel(back);
 
 export default present(shown, {
   bimTree: model.toTreeSummary(),
