@@ -1,0 +1,25 @@
+tests/csg/csgMeshScale.test.ts
+  s_828c72638e0a06::t_c41b8cf1467a53 73-74,78-83
+  s_828c72638e0a06::t_903277394ebe58 12
+  s_828c72638e0a06::t_d57aeda20bfb74 75-77
+src/csg/evaluate.ts
+  s_828c72638e0a06::t_8f6a253e4e2e50 650-652,654-656
+  s_828c72638e0a06::t_1ad2550739d46e 613-616
+  s_828c72638e0a06::t_bfc7a74b2b0a68 647-649,653,657-658
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d15d60dd51634bf1ad045089b7147b37df7ccb2e",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
