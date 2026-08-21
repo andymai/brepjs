@@ -1,0 +1,19 @@
+apps/playground/src/lib/examples/bim.ts
+  s_cbbd0a17a1913f::t_37c79fdc8e1531 689-692,936-937,1035-1039,1050,1053
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8f8c3d4ed4f127238b1413bca1f9142ea356a442",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
