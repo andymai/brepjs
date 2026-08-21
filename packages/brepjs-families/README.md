@@ -56,7 +56,7 @@ What the pieces buy you:
 - **Families** are typed, validated constructors (`family(name, render, { props })` takes a zod schema). Invalid props fail at construction, not at export.
 - **Key paths** (`ground/south/voids:entry`) are order-independent identity. Reorder siblings and every element keeps its identity; a BIM projection derives stable IFC GlobalIds from them.
 - **The CSG IR** is content-addressed: two identical walls evaluate once and share one materialization, while each keeps its own identity.
-- **Fill roles** make openings real: a `role: 'fill'` family inside a wall's `voids` synthesizes an `Opening` element with a `Fills` relationship, which a BIM export turns into `IfcOpeningElement` + `IfcRelFilledElement` rather than an anonymous boolean hole.
+- **Fill roles** make openings real: a `role: 'fill'` family inside a wall's `voids` synthesizes an `Opening` element with a `Fills` relationship, which a BIM export turns into `IfcOpeningElement` + `IfcRelFillsElement` rather than an anonymous boolean hole.
 - **JSX optional**: `jsxImportSource: "brepjs-families"` lets you write the same trees as JSX. The plain-function API is primary.
 
 ## Starter registry

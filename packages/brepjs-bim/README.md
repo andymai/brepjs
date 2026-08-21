@@ -35,18 +35,18 @@ export.
 
 ## Status
 
-| Area              | State                                                                                                    |
-| ----------------- | -------------------------------------------------------------------------------------------------------- |
-| Elements          | wall, slab, beam, column, roof, curtain wall, space, footing/pile, stair, ramp, railing, covering, proxy |
-| Profiles          | rectangular / circular / I-shape cores + extended L/T/U/Z/C, hollow, ellipse, arbitrary-with-voids       |
-| Openings          | door / window / slab openings cut as boolean voids; `FillsOpening` / `Voids*` relationships              |
-| Spatial structure | project → site → building → storey aggregation; `placeIn` to assign elements to a storey                 |
-| Property sets     | IFC pset templates + measure types; quantity sets for takeoff                                            |
-| Data layers       | materials (layer/profile/simple sets), classification refs, surface styles, zones/systems                |
-| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC4 / IFC4X3 schema selection; owner history                          |
-| IFC import        | `fromIfc` / `SpfReader` → `ImportedModel` (elements, geometry, psets, materials, spatial tree)           |
-| Validation        | referential integrity, schema check, geometry validity, IFC round-trip report                            |
-| Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                        |
+| Area              | State                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| Elements          | wall, slab, beam, column, roof, curtain wall, space, footing/pile, stair, ramp, railing, covering, proxy   |
+| Profiles          | rectangular / circular / I-shape cores + extended L/T/U/Z/C, hollow, ellipse, arbitrary-with-voids         |
+| Openings          | door / window / slab openings cut as boolean voids; `FillsOpening` / `Voids*` relationships                |
+| Spatial structure | project → site → building → storey aggregation; `placeIn` to assign elements to a storey                   |
+| Property sets     | IFC pset templates + measure types; quantity sets for takeoff                                              |
+| Data layers       | materials (layer/profile/simple sets), classification refs, surface styles, zones/systems                  |
+| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC4 / IFC4X3 schema selection; owner history                            |
+| IFC import        | `fromIfc` / `SpfReader` → `ImportedModel` (elements, geometry, psets, materials, spatial tree)             |
+| Validation        | referential integrity, schema check, geometry validity, IFC round-trip report, buildingSMART gherkin rules |
+| Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                          |
 
 ### Independent validation
 
@@ -56,9 +56,13 @@ web-ifc parser used internally), not just self-checked. The committed sample
 validator and generates geometry for every product. See [VALIDATION.md](./VALIDATION.md)
 to reproduce, and `examples/sampleBuilding.mjs` for the model it validates.
 
-> **Not yet:** the official buildingSMART Validation Service and desktop-tool
-> interop (Revit / Solibri) are unverified — the fixtures and per-tool
-> checklists are ready in [VALIDATION.md](./VALIDATION.md). This is an
+The buildingSMART Validation Service's complete normative rule catalog also runs
+locally (`scripts/setupGherkinRunner.sh` builds the service's own engine; all three
+committed fixtures pass 950 scenarios with zero failures), so service findings are
+reproducible before upload.
+
+> **Not yet:** desktop-tool interop (Revit / Solibri) is unverified. The fixtures
+> and per-tool checklists are ready in [VALIDATION.md](./VALIDATION.md). This is an
 > experimental pre-1.0 package and the API may change.
 
 ## Usage
@@ -98,7 +102,7 @@ if (wall.ok) model.placeIn(wall.value, storeyId);
 const solid = model.getWalls()[0]?.geometry;
 
 // Serialize to an IFC-SPF byte buffer.
-const ifc = await toIfc(model, { name: 'Example', author: 'brepjs-bim' });
+const ifc = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '1.0' });
 // ifc.ok && ifc.value instanceof Uint8Array
 ```
 

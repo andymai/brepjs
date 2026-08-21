@@ -34,11 +34,15 @@ The adapter returns a `Result`; the model it produces owns kernel geometry, so h
 | `Storey`                           | `IfcBuildingStorey`, aggregated under site and building                                               |
 | `Wall`                             | `IfcWall` with an extruded-solid body                                                                 |
 | `Slab`                             | `IfcSlab` (`FLOOR`, `ROOF`, `LANDING`, `BASESLAB`)                                                    |
+| `Column`                           | `IfcColumn`, rectangular / circular / I-shape profile extruded along `axisZ`                          |
+| `Beam`                             | `IfcBeam`, the same profile vocabulary extruded along `axisX`                                         |
+| `Roof`                             | `IfcRoof`, flat by default, shaped (shed / gable / hip / dome) when `pitch` is present                |
+| `Stair`                            | `IfcStair` assembly, one `IfcStairFlight` per flight with its own placement                           |
 | Fill-role `Door` in `voids`        | `IfcDoor` + synthesized `IfcOpeningElement`, wired with `IfcRelVoidsElement` and `IfcRelFillsElement` |
 | Fill-role `Window` in `voids`      | `IfcWindow`, same opening wiring                                                                      |
 | `Group` and other empty containers | Structure only, no IFC element                                                                        |
 
-Walls and slabs must sit under a `Storey` ancestor: IFC requires spatial containment, and the adapter returns a `Result` error rather than emit an uncontained element. Fillers are contained in their wall's storey, openings are related to their wall through `IfcRelVoidsElement` alone, exactly as the schema intends.
+Every mapped element must sit under a `Storey` ancestor: IFC requires spatial containment, and the adapter returns `FAMILIES_NO_STOREY` rather than emit an uncontained element. Fillers are contained in their wall's storey, openings are related to their wall through `IfcRelVoidsElement` alone, exactly as the schema intends. Openings are a wall-only mapping; a fill-role element hosted by anything else returns `FAMILIES_OPENING_OUTSIDE_WALL`.
 
 ## Two sources, one element
 

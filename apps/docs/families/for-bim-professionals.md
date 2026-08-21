@@ -31,12 +31,13 @@ Every element carries an explicit name (a key), and its IFC GlobalId derives fro
 
 ## Validation posture
 
-Exported files are checked twice, by implementations that share no code:
+Exported files are checked three ways, by implementations that share no code:
 
 1. The writer's own validation: referential integrity (everything contained, nothing dangling) and a schema check on the produced bytes.
-2. **IfcOpenShell** (the engine behind BlenderBIM/Bonsai): EXPRESS schema and where-rule validation, spatial structure, GlobalId uniqueness and syntax, and geometry generation for every product.
+2. **The buildingSMART Validation Service's own rule engine**, run locally. The complete normative catalog (the same ALB / GEM / GRF / IFC / OJT / PJS / PSE / QTY / SPS rules the online service applies) executes against a file in about a second. The committed fixtures pass all 950 scenarios.
+3. **IfcOpenShell** (the engine behind BlenderBIM/Bonsai): EXPRESS schema and where-rule validation, spatial structure, GlobalId uniqueness and syntax, and geometry generation for every product.
 
-The repository's sample building runs this gauntlet in automation; a model that stops passing cannot ship unnoticed.
+The repository's sample building runs this gauntlet in automation; a model that stops passing cannot ship unnoticed. Round-tripping through desktop authoring tools (Revit, ArchiCAD, Solibri) is the part still done by hand.
 
 ## Openings are first-class
 

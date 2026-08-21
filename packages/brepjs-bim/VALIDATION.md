@@ -162,9 +162,7 @@ IfcOpenShell — both now fixed and regression-tested:
 
 ## Not yet covered
 
-- The official [buildingSMART Validation Service](https://validate.buildingsmart.org/)
-  (reporting-rule / MVD conformance) has not been run here — run a sample through it
-  before claiming certification.
-- Round-tripping through desktop authoring tools (Revit, ArchiCAD, Solibri) is unverified.
+- Round-tripping through desktop authoring tools (Revit, ArchiCAD, Solibri) is unverified;
+  the per-tool checklists above are the remaining manual gate.
 - Validation covers the elements exercised by the sample; element types not present in
   `examples/sampleBuilding.mjs` are covered only by the internal suite.
