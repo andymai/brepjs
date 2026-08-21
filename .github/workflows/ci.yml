@@ -262,6 +262,23 @@ jobs:
       - run: npm run lint --workspace=brepjs-families
       - run: npm run test --workspace=brepjs-families
 
+  packages-create:
+    # npm-create scaffolder: assert the template scaffolds, substitutes the
+    # project name, and declares dependency ranges the current workspace
+    # versions satisfy (a stale caret here ships a broken `npm create brepjs`).
+    # SCAFFOLD_SMOKE additionally installs the scaffold against the live npm
+    # registry and runs its typecheck + start — the full user journey.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: npm run test --workspace=create-brepjs
+        env:
+          SCAFFOLD_SMOKE: '1'
+
   packages-bim:
     # Experimental BIM (IFC4) domain satellite. Build root brepjs and
     # brepjs-families first so the package typecheck/build resolve both via
@@ -537,6 +554,7 @@ jobs:
         packages-sheetmetal,
         packages-bim,
         packages-families,
+        packages-create,
         voxel-wasm-rust,
         test,
         docs-tests,
