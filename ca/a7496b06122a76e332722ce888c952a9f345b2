@@ -1,0 +1,39 @@
+apps/docs/families/first-building.md
+  s_cbbd0a17a1913f::t_dbc7fd2c59dd03 12
+packages/brepjs-families/README.md
+  s_cbbd0a17a1913f::t_0715b70d69d26c 59
+apps/docs/families/overview.md
+  s_cbbd0a17a1913f::t_465209a86948cc 100
+apps/docs/families/ifc-export.md
+  s_cbbd0a17a1913f::t_4fa2bcdbe22fd5 45
+  s_cbbd0a17a1913f::t_c2b7432b497e3e 37-40
+apps/docs/families/for-bim-professionals.md
+  s_cbbd0a17a1913f::t_3d409b4cfceaa8 34,37-38,40
+packages/brepjs-bim/README.md
+  s_cbbd0a17a1913f::t_54a325443fa33b 48
+  s_cbbd0a17a1913f::t_33eb0050fa747d 59-65
+  s_cbbd0a17a1913f::t_842e5bbef2c569 38-47,49
+  s_cbbd0a17a1913f::t_0657d4d95726e0 105
+packages/brepjs-bim/VALIDATION.md
+  s_cbbd0a17a1913f::t_6fd5febba13068 165-166
+apps/docs/bim/validation.md
+  s_cbbd0a17a1913f::t_6cbb628f71d966 3,8,12,18
+  s_cbbd0a17a1913f::t_3c015a1a913126 35-40
+  s_cbbd0a17a1913f::t_bed8e3cbf254ae 51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "caa7496b06122a76e332722ce888c952a9f345b2",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
