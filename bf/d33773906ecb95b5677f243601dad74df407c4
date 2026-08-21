@@ -1,0 +1,19 @@
+apps/docs/families/for-bim-professionals.md
+  s_cbbd0a17a1913f::t_11aa7ca3f3da9c 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "bfd33773906ecb95b5677f243601dad74df407c4",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
