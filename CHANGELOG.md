@@ -1,5 +1,17 @@
 # Changelog
 
+## [18.152.0](https://github.com/andymai/brepjs/compare/brepjs-v18.151.2...brepjs-v18.152.0) (2026-08-21)
+
+
+### Features
+
+* **families:** structural composition — children, hierarchical transforms, rotation ([#2196](https://github.com/andymai/brepjs/issues/2196)) ([f0659e6](https://github.com/andymai/brepjs/commit/f0659e6aaa2d06778eb738f38d525a9fb6c454a3))
+
+
+### Bug Fixes
+
+* **csg:** linear DAG walks + registry pinned to the installed release ([#2197](https://github.com/andymai/brepjs/issues/2197)) ([4783cbd](https://github.com/andymai/brepjs/commit/4783cbd4dcb04f3c806478885cda0e6f2cae6caa))
+
 ## [18.151.2](https://github.com/andymai/brepjs/compare/brepjs-v18.151.1...brepjs-v18.151.2) (2026-08-21)
 
 
