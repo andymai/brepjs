@@ -8,15 +8,17 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, isOk, unwrap, measureVolume } from 'brepjs';
+import { csg, getBounds, isOk, unwrap, measureVolume } from 'brepjs';
 import type { AnyShape, Dimension } from 'brepjs';
 import {
   family,
   el,
   jsx,
+  Fragment,
   resolve,
   evaluateModel,
   tTranslate,
+  tRotate,
   type Element,
   type ResolvedElement,
 } from '../src/index.js';
@@ -166,11 +168,15 @@ describe('key paths and opening synthesis', () => {
         ? Door({ key, width: 90, height: 210, thickness: 20, at: [100, 0, 0] })
         : Door({ width: 90, height: 210, thickness: 20, at: [200, 0, 0] });
     expect(() =>
-      resolve(Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('d1'), door('d1')] }))
+      resolve(
+        Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('d1'), door('d1')] })
+      )
     ).toThrow(/duplicate void slot/i);
     // Explicit key '1' collides with the second void's index fallback.
     expect(() =>
-      resolve(Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('1'), door()] }))
+      resolve(
+        Wall({ key: 'w', length: 400, height: 270, thickness: 20, voids: [door('1'), door()] })
+      )
     ).toThrow(/duplicate void slot/i);
   });
 
@@ -337,6 +343,29 @@ describe('props validation (Zod)', () => {
     );
     expect(() => Free({ key: 'f', anything: { odd: true } })).not.toThrow();
   });
+
+  it('identity props ride past the schema into attributes', () => {
+    const r = resolve(
+      Sized({
+        key: 's',
+        size: 2,
+        name: 'South wall',
+        material: 'Brick',
+        psets: { Pset_WallCommon: { IsExternal: true } },
+      })
+    );
+    expect(r.attributes['name']).toBe('South wall');
+    expect(r.attributes['material']).toBe('Brick');
+    expect(r.attributes['psets']).toEqual({ Pset_WallCommon: { IsExternal: true } });
+  });
+
+  it('a schema-declared identity prop keeps its validated value', () => {
+    const Named = family<{ readonly name: string }>('Named', () => el('Box', { size: [1, 1, 1] }), {
+      props: z.object({ name: z.string().transform((s) => s.toUpperCase()) }),
+    });
+    const r = resolve(Named({ key: 'n', name: 'ground' }));
+    expect(r.attributes['name']).toBe('GROUND');
+  });
 });
 
 describe('keyed tracking', () => {
@@ -378,24 +407,19 @@ describe('intrinsic vocabulary', () => {
   });
 
   it('Geometry bridges the full csg vocabulary (profile + extrude wall)', () => {
-    const ProfiledWall = family<{ readonly length: number; readonly height: number }>(
-      'Wall',
-      (p) =>
-        el('Geometry', {
-          node: csg.extrude(
-            csg.profile(
-              csg.contour([0, 0], [
-                csg.lineTo([p.length, 0]),
-                csg.lineTo([p.length, 200]),
-                csg.lineTo([0, 200]),
-              ])
-            ),
-            [0, 0, p.height]
+    const ProfiledWall = family<{ readonly length: number; readonly height: number }>('Wall', (p) =>
+      el('Geometry', {
+        node: csg.extrude(
+          csg.profile(
+            csg.contour(
+              [0, 0],
+              [csg.lineTo([p.length, 0]), csg.lineTo([p.length, 200]), csg.lineTo([0, 200])]
+            )
           ),
-          voids: [
-            el('Box', { size: [1000, 300, 2100], transform: [tTranslate([1500, -50, 0])] }),
-          ],
-        })
+          [0, 0, p.height]
+        ),
+        voids: [el('Box', { size: [1000, 300, 2100], transform: [tTranslate([1500, -50, 0])] })],
+      })
     );
     using ev = new csg.Evaluator();
     const model = evaluateModel(
@@ -413,12 +437,110 @@ describe('intrinsic vocabulary', () => {
   });
 
   it('Geometry without an IR node throws with a clear message', () => {
-    const Bad = family<Record<string, never>>('Bad', () => el('Geometry', { node: { not: 'a node' } }));
+    const Bad = family<Record<string, never>>('Bad', () =>
+      el('Geometry', { node: { not: 'a node' } })
+    );
     expect(() => resolve(Bad({ key: 'b' }))).toThrow(/requires a csg IR node/);
   });
 
   it('unknown intrinsics name the vocabulary in the error', () => {
     const Bad = family<Record<string, never>>('Bad', () => el('Torus', {}));
     expect(() => resolve(Bad({ key: 'b' }))).toThrow(/intrinsics: Box, Cylinder, Geometry/);
+  });
+});
+
+describe('composition (children, hierarchical transforms, rotation)', () => {
+  const Level = family<{ readonly children?: readonly Element[] | undefined }>('Level', (p) =>
+    el('Group', {}, p.children ?? [])
+  );
+
+  it('children passed to a family reach its render function', () => {
+    const tree = resolve(
+      Level({ key: 'l', children: [Wall({ key: 'w', length: 100, height: 50, thickness: 10 })] })
+    );
+    expect(tree.children).toHaveLength(1);
+    expect(tree.children[0]?.keyPath).toBe('l/w');
+  });
+
+  it('jsx invokes the component: schema validation and defaults apply', () => {
+    const Sized = family<{ readonly size: number; readonly label?: string }>(
+      'Sized',
+      (p) => el('Box', { size: [p.size, p.size, p.size] }),
+      { props: z.object({ size: z.number().positive(), label: z.string().default('unit') }) }
+    );
+    expect(() => jsx(Sized, { size: -1 }, 's')).toThrow(/invalid props for family 'Sized'/);
+    const e = jsx(Sized, { size: 2 }, 's');
+    expect(e.props['label']).toBe('unit');
+  });
+
+  it('jsx normalizes children: conditionals and nested arrays compose', () => {
+    const walls = [
+      Wall({ key: 'a', length: 100, height: 50, thickness: 10 }),
+      Wall({ key: 'b', length: 100, height: 50, thickness: 10 }),
+    ];
+    const e = jsx(Level, { children: [false, null, walls, undefined] }, 'l');
+    expect(e.children).toHaveLength(2);
+  });
+
+  it('a parent transform carries resolved children with it', () => {
+    const tree = resolve(
+      Level({
+        key: 'l',
+        children: [
+          el('Group', { key: 'g', transform: [tTranslate([1000, 0, 0])] }, [
+            Wall({ key: 'w', length: 100, height: 50, thickness: 10 }),
+          ]),
+        ],
+      })
+    );
+    const wall = tree.children[0]?.children[0];
+    expect(wall?.keyPath).toBe('l/g/w');
+    using ev = new csg.Evaluator();
+    const shape = unwrap(ev.evaluate(wall?.geometry as csg.IRNode));
+    const b = getBounds(shape);
+    expect(b.xMin).toBeCloseTo(1000, 5);
+    expect(b.xMax).toBeCloseTo(1100, 5);
+  });
+
+  it('nested transforms compose parent-out', () => {
+    const inner = el('Group', { key: 'inner', transform: [tTranslate([0, 200, 0])] }, [
+      Wall({ key: 'w', length: 100, height: 50, thickness: 10 }),
+    ]);
+    const tree = resolve(
+      el('Group', { key: 'outer', transform: [tTranslate([1000, 0, 0])] }, [inner])
+    );
+    const wall = tree.children[0]?.children[0];
+    using ev = new csg.Evaluator();
+    const b = getBounds(unwrap(ev.evaluate(wall?.geometry as csg.IRNode)));
+    expect(b.xMin).toBeCloseTo(1000, 5);
+    expect(b.yMin).toBeCloseTo(200, 5);
+  });
+
+  it('tRotate rotates in degrees about the given axis', () => {
+    const Beam = family<Record<string, never>>('Beam', () =>
+      el('Box', { size: [400, 10, 10], transform: [tRotate(90, { axis: [0, 0, 1] })] })
+    );
+    const tree = resolve(Beam({ key: 'b' }));
+    using ev = new csg.Evaluator();
+    const b = getBounds(unwrap(ev.evaluate(tree.geometry)));
+    expect(b.yMax - b.yMin).toBeCloseTo(400, 5);
+    expect(b.xMax - b.xMin).toBeCloseTo(10, 5);
+  });
+
+  it('fragments inline: no key-path segment, children join the parent', () => {
+    const tree = resolve(
+      Level({
+        key: 'l',
+        children: [
+          jsx(Fragment, {
+            children: [
+              Wall({ key: 'w1', length: 100, height: 50, thickness: 10 }),
+              Wall({ key: 'w2', length: 100, height: 50, thickness: 10 }),
+            ],
+          }),
+        ],
+      })
+    );
+    expect(tree.children.map((c) => c.keyPath)).toEqual(['l/w1', 'l/w2']);
   });
 });

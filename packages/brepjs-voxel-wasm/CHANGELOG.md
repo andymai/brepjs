@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.7.0...brepjs-voxel-wasm-v0.7.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **voxel:** adopt as_chunks over chunks_exact for constant chunk sizes ([#2198](https://github.com/andymai/brepjs/issues/2198)) ([26647f2](https://github.com/andymai/brepjs/commit/26647f29b0ec27e994fb3794462fc98db95e0ffe))
+
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-voxel-wasm-v0.6.0...brepjs-voxel-wasm-v0.7.0) (2026-06-10)
 
 

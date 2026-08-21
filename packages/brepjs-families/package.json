@@ -1,6 +1,6 @@
 {
   "name": "brepjs-families",
-  "version": "0.7.1",
+  "version": "0.8.1",
   "description": "Declarative family layer for brepjs: element trees, key paths, and projection onto the content-addressed CSG IR",
   "keywords": [
     "cad",
@@ -55,6 +55,16 @@
       }
     },
     "./jsx-runtime": {
+      "import": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.js"
+      },
+      "require": {
+        "types": "./dist/jsxRuntime.d.ts",
+        "default": "./dist/jsxRuntime.cjs"
+      }
+    },
+    "./jsx-dev-runtime": {
       "import": {
         "types": "./dist/jsxRuntime.d.ts",
         "default": "./dist/jsxRuntime.js"

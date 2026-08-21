@@ -160,8 +160,13 @@ import { ok, isOk, unwrap, type Result } from 'brepjs/core';
 
 All sub-paths re-export a subset of the main `brepjs` entry. You can mix and match.
 
+## Scaffold a project
+
+Rather not wire this up by hand? `npm create brepjs my-project` scaffolds a TypeScript app with the kernel, `brepjs-families` (the declarative component layer), and a working example model preconfigured. `npx brepjs add room storey slab` then copies starter families into `src/families/` as code you own. See [Copy-in components](../families/copy-in) for the full flow.
+
 ## Next steps
 
 - [Your First Solid](./first-solid): the canonical drill-fillet-export workflow
 - [Cheat Sheet](./cheat-sheet): single-page quick reference
+- [Declarative Models](../families/overview): parametric components, key-path identity, IFC export
 - [B-Rep vs Mesh](../concepts/brep-vs-mesh): why brepjs is different from Three.js

@@ -1304,7 +1304,7 @@ mod tests {
         let bbox = |pos: &[f32]| {
             let mut lo = [f32::INFINITY; 3];
             let mut hi = [f32::NEG_INFINITY; 3];
-            for p in pos.chunks_exact(3) {
+            for p in pos.as_chunks::<3>().0 {
                 for d in 0..3 {
                     lo[d] = lo[d].min(p[d]);
                     hi[d] = hi[d].max(p[d]);
@@ -1600,12 +1600,12 @@ mod tests {
             let h = g.spacing();
             let before_pts: Vec<[f32; 3]> = before
                 .positions
-                .chunks_exact(3)
+                .as_chunks::<3>().0.iter()
                 .map(|p| [p[0], p[1], p[2]])
                 .collect();
             let after_pts: Vec<[f32; 3]> = after
                 .positions
-                .chunks_exact(3)
+                .as_chunks::<3>().0.iter()
                 .map(|p| [p[0], p[1], p[2]])
                 .collect();
             let mut max_drift = 0.0f32;
@@ -1694,7 +1694,7 @@ mod tests {
         let join_y_extent = |g: &Grid| -> f32 {
             let m = surface_nets_mesh(g);
             let mut max_y = f32::NEG_INFINITY;
-            for p in m.positions.chunks_exact(3) {
+            for p in m.positions.as_chunks::<3>().0 {
                 // Slab around the join plane x ≈ 0.3, near z = 0.
                 if (p[0] - 0.3).abs() < 0.15 && p[2].abs() < 0.15 {
                     max_y = max_y.max(p[1]);

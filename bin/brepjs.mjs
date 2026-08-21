@@ -19,14 +19,46 @@
 import { mkdir, open, readFile, writeFile, access, lstat, realpath, rename, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { join, resolve as resolvePath, sep } from 'node:path';
+import { dirname, join, resolve as resolvePath, sep } from 'node:path';
 import process from 'node:process';
 
-const DEFAULT_REGISTRY =
-  'https://raw.githubusercontent.com/andymai/brepjs/main/packages/brepjs-families/registry';
+// The default registry pins to the release tag of the INSTALLED
+// brepjs-families, so copied sources match the package the project compiles
+// against instead of tracking main (which can drift ahead). Without a local
+// install, fall back to main.
+const REGISTRY_PATH = 'packages/brepjs-families/registry';
+
+async function installedFamiliesVersion() {
+  // Walk ancestor node_modules like Node's resolver, so a hoisted install
+  // (workspaces, monorepos) still pins the registry.
+  let dir = process.cwd();
+  for (;;) {
+    try {
+      const pkg = JSON.parse(
+        await readFile(join(dir, 'node_modules', 'brepjs-families', 'package.json'), 'utf8')
+      );
+      if (typeof pkg.version === 'string' && /^\d+\.\d+\.\d+$/.test(pkg.version)) {
+        return pkg.version;
+      }
+    } catch {
+      // keep walking
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+async function defaultRegistry() {
+  const version = await installedFamiliesVersion();
+  if (version !== null) {
+    return `https://raw.githubusercontent.com/andymai/brepjs/brepjs-families-v${version}/${REGISTRY_PATH}`;
+  }
+  return `https://raw.githubusercontent.com/andymai/brepjs/main/${REGISTRY_PATH}`;
+}
 
 function parseArgs(argv) {
-  const args = { _: [], registry: DEFAULT_REGISTRY, dir: 'src/families', force: false, install: false };
+  const args = { _: [], registry: null, dir: 'src/families', force: false, install: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--registry') args.registry = argv[++i];
@@ -295,6 +327,7 @@ async function diff(args) {
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const args = parseArgs(rest);
+  args.registry = args.registry ?? (await defaultRegistry());
   if (cmd === 'add' && args._.length > 0) return add(args);
   if (cmd === 'diff' && args._.length === 1) return diff(args);
   console.error(

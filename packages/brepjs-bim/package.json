@@ -1,6 +1,6 @@
 {
   "name": "brepjs-bim",
-  "version": "0.17.1",
+  "version": "0.18.0",
   "description": "BIM layer for brepjs — IFC4-aligned parametric building elements",
   "keywords": [
     "bim",

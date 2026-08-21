@@ -267,7 +267,11 @@ describe('edit', () => {
   it('replaceNode swaps every matching node', () => {
     const tree = compound([box(1, 1, 1), box(2, 2, 2), sphere(5)]);
     const edited = replaceNode(tree, (n) => n.kind === 'Box', sphere(99));
-    expect(nodeCount(edited)).toBe(nodeCount(tree));
+    // Walks are identity-deduplicated: both Box slots now hold the ONE
+    // replacement node, so the edited tree has 3 distinct nodes to the
+    // original's 4 (Compound + two boxes + sphere).
+    expect(nodeCount(tree)).toBe(4);
+    expect(nodeCount(edited)).toBe(3);
     let boxes = 0;
     forEachNode(edited, (n) => {
       if (n.kind === 'Box') boxes++;

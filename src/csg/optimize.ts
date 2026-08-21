@@ -123,7 +123,20 @@ function foldBuildVec(dim: 2 | 3, comps: readonly Expr[]): Expr | undefined {
 // Node-level rewrites
 // ---------------------------------------------------------------------------
 
+// Pure node -> optimized-node rewrite, memoized by identity so a shared
+// subtree rewrites once and a self-referencing DAG optimizes in linear time
+// (results stay valid across calls because the rewrite is deterministic).
+const optimized = new WeakMap<IRNode, IRNode>();
+
 function optimizeNode(n: IRNode): IRNode {
+  const cached = optimized.get(n);
+  if (cached !== undefined) return cached;
+  const out = rewriteNode(n);
+  optimized.set(n, out);
+  return out;
+}
+
+function rewriteNode(n: IRNode): IRNode {
   switch (n.kind) {
     case 'Box':
       return B.box(foldExpr(n.x), foldExpr(n.y), foldExpr(n.z));

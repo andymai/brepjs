@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.8.0...brepjs-families-v0.8.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **families:** give the dome roof a true hemispherical cap ([#2202](https://github.com/andymai/brepjs/issues/2202)) ([0841379](https://github.com/andymai/brepjs/commit/0841379ef59a139f499ae1721c5e46b8f4d76a6b))
+
+## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.2...brepjs-families-v0.8.0) (2026-08-21)
+
+
+### Features
+
+* **families:** structural composition — children, hierarchical transforms, rotation ([#2196](https://github.com/andymai/brepjs/issues/2196)) ([f0659e6](https://github.com/andymai/brepjs/commit/f0659e6aaa2d06778eb738f38d525a9fb6c454a3))
+
+## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.1...brepjs-families-v0.7.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **families:** carry identity props past zod schemas into BIM export ([#2188](https://github.com/andymai/brepjs/issues/2188)) ([f80bda6](https://github.com/andymai/brepjs/commit/f80bda6c321b24f33309fac4d0ac99f252d50fc2))
+
 ## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.0...brepjs-families-v0.7.1) (2026-08-21)
 
 

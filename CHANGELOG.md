@@ -1,5 +1,38 @@
 # Changelog
 
+## [18.152.2](https://github.com/andymai/brepjs/compare/brepjs-v18.152.1...brepjs-v18.152.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **voxel:** adopt as_chunks over chunks_exact for constant chunk sizes ([#2198](https://github.com/andymai/brepjs/issues/2198)) ([26647f2](https://github.com/andymai/brepjs/commit/26647f29b0ec27e994fb3794462fc98db95e0ffe))
+
+## [18.152.1](https://github.com/andymai/brepjs/compare/brepjs-v18.152.0...brepjs-v18.152.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **families:** give the dome roof a true hemispherical cap ([#2202](https://github.com/andymai/brepjs/issues/2202)) ([0841379](https://github.com/andymai/brepjs/commit/0841379ef59a139f499ae1721c5e46b8f4d76a6b))
+
+## [18.152.0](https://github.com/andymai/brepjs/compare/brepjs-v18.151.2...brepjs-v18.152.0) (2026-08-21)
+
+
+### Features
+
+* **families:** structural composition — children, hierarchical transforms, rotation ([#2196](https://github.com/andymai/brepjs/issues/2196)) ([f0659e6](https://github.com/andymai/brepjs/commit/f0659e6aaa2d06778eb738f38d525a9fb6c454a3))
+
+
+### Bug Fixes
+
+* **csg:** linear DAG walks + registry pinned to the installed release ([#2197](https://github.com/andymai/brepjs/issues/2197)) ([4783cbd](https://github.com/andymai/brepjs/commit/4783cbd4dcb04f3c806478885cda0e6f2cae6caa))
+
+## [18.151.2](https://github.com/andymai/brepjs/compare/brepjs-v18.151.1...brepjs-v18.151.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **csg:** scale the default mesh deflection with model size ([#2187](https://github.com/andymai/brepjs/issues/2187)) ([461da5e](https://github.com/andymai/brepjs/commit/461da5eb586d0eb1ad3a99088875737012d48bfe))
+
 ## [18.151.1](https://github.com/andymai/brepjs/compare/brepjs-v18.151.0...brepjs-v18.151.1) (2026-08-21)
 
 

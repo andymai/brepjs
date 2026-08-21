@@ -44,7 +44,7 @@
     },
     {
       "name": "roof",
-      "version": 1,
+      "version": 2,
       "description": "Rectangular roof (flat / shed / gable / hip / dome) mapping onto IfcRoof",
       "files": ["families/roof.ts"],
       "npmDeps": ["brepjs", "brepjs-families", "zod"],
@@ -76,7 +76,7 @@
     },
     {
       "name": "room",
-      "version": 2,
+      "version": 3,
       "description": "Composed family: four keyed perimeter walls with a door, placed by its south-west corner",
       "files": ["families/room.ts"],
       "npmDeps": ["brepjs-families", "zod"],

@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, isOk } from 'brepjs';
+import { csg, isOk, measureVolume, unwrap } from 'brepjs';
 import { resolve, evaluateModel } from '../src/index.js';
 import { Room } from '../registry/families/room.js';
 import { Storey } from '../registry/families/storey.js';
@@ -104,9 +104,8 @@ describe('starter families', () => {
     expect(opening?.keyed).toBe(true);
   });
 
-  // A composed family must thread its own placement into the children it
-  // builds: element trees carry no hierarchical transform, so two rooms that
-  // ignored `at` would render one on top of the other.
+  // The room's `at` becomes a group transform that carries the walls with it,
+  // so two rooms that ignored `at` would render one on top of the other.
   it('places each room by its own corner instead of stacking them', () => {
     const suite = resolve(
       Storey({
@@ -124,6 +123,29 @@ describe('starter families', () => {
           ?.children.find((w) => w.keyPath.endsWith('/south'))?.geometry.structuralHash
       );
     expect(southOf('a')).not.toBe(southOf('b'));
+  });
+
+  // Hierarchical placement keeps wall props room-local, so identically-sized
+  // rooms share every wall's inner materialization: only the outer placement
+  // node differs between room a and room b.
+  it('identically-sized rooms share wall materializations across placements', () => {
+    const suite = resolve(
+      Storey({
+        key: 'ground',
+        items: [
+          Room({ key: 'a', width: 4000, depth: 3000, height: 2700 }),
+          Room({ key: 'b', width: 4000, depth: 3000, height: 2700, at: [4200, 0] }),
+        ],
+      })
+    );
+    const southInner = (key: string): string => {
+      const geometry = suite.children
+        .find((c) => c.keyPath === `ground/${key}`)
+        ?.children.find((w) => w.keyPath.endsWith('/south'))?.geometry;
+      expect(geometry?.kind).toBe('Translate');
+      return String((geometry as { target: csg.IRNode }).target.structuralHash);
+    };
+    expect(southInner('a')).toBe(southInner('b'));
   });
 
   it('starter walls and windows materialize with meshes', () => {
@@ -200,6 +222,23 @@ describe('starter families', () => {
     const model = evaluateModel(storey, ev);
     const roof = model.byKeyPath.get(`s/${shape['key'] as string}`);
     expect(roof && isOk(roof.mesh)).toBe(true);
+  });
+
+  it('the dome roof is a true hemispherical cap', () => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [Roof({ ...ROOF_DIMS, key: 'dome', predefinedType: 'DOME_ROOF', pitch: 1 })],
+      })
+    );
+    const model = evaluateModel(storey, ev, {}, { shapes: true });
+    const shape = model.byKeyPath.get('s/dome')?.shape;
+    expect(shape !== undefined && isOk(shape)).toBe(true);
+    if (shape && isOk(shape)) {
+      const r = Math.min(ROOF_DIMS.length, ROOF_DIMS.width) / 2;
+      expect(unwrap(measureVolume(unwrap(shape)))).toBeCloseTo((2 / 3) * Math.PI * r ** 3, -7);
+    }
   });
 
   it('a two-flight return stair materializes', () => {
