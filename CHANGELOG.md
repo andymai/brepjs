@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.152.3](https://github.com/andymai/brepjs/compare/brepjs-v18.152.2...brepjs-v18.152.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* **create-brepjs:** ship a scaffold that installs and runs ([#2186](https://github.com/andymai/brepjs/issues/2186)) ([8f12774](https://github.com/andymai/brepjs/commit/8f12774e137a91dec699c4ee18fa971b1ef60ddc))
+
 ## [18.152.2](https://github.com/andymai/brepjs/compare/brepjs-v18.152.1...brepjs-v18.152.2) (2026-08-21)
 
 
