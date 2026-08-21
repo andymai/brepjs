@@ -1,0 +1,25 @@
+packages/brepjs-bim/tests/placedGeometry.test.ts
+  s_02b98d936b56b3::t_38959b13ea4c1b 2
+  s_02b98d936b56b3::t_80cb69b0d17707 100-104,106-111,116-122
+  s_02b98d936b56b3::t_93115c83832e94 112,115
+  s_02b98d936b56b3::t_85317771866d6e 105,113-114
+packages/brepjs-bim/src/elementFns/placedGeometry.ts
+  s_02b98d936b56b3::t_e8fe7b7f3d335b 97-103
+  s_02b98d936b56b3::t_1723304b5676b7 38-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "cc004cdb8c18d16c5cc2a26454fc53f7267eeefc",
+  "prompts": {},
+  "sessions": {
+    "s_02b98d936b56b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f3e6065-5a72-4842-aaf1-2d95e219c363",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
