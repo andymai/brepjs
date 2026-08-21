@@ -7,10 +7,7 @@ export { ViewerCanvas, type ViewerCanvasProps } from './ViewerCanvas.js';
 export { ViewerControls, type ViewerControlsProps } from './ViewerControls.js';
 export { ViewerInfoPanel, type ViewerInfoPanelProps } from './ViewerInfoPanel.js';
 export { ViewerSelectionPanel, type ViewerSelectionPanelProps } from './ViewerSelectionPanel.js';
-export {
-  ViewerSectionControls,
-  type ViewerSectionControlsProps,
-} from './ViewerSectionControls.js';
+export { ViewerSectionControls, type ViewerSectionControlsProps } from './ViewerSectionControls.js';
 export * from './types.js';
 export {
   buildGeometry,
@@ -25,3 +22,12 @@ export {
   type InstancePlacement,
   type InstancedMeshOptions,
 } from './geometry.js';
+export {
+  modelToMeshData,
+  findElementAt,
+  type ElementMesh,
+  type ElementRange,
+  type EvaluatedModelLike,
+  type EvaluatedNodeLike,
+  type ModelMeshResult,
+} from './model.js';
