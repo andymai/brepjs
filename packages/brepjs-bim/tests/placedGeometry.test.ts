@@ -27,6 +27,76 @@ describe('placedSolids', () => {
     await initOCCT();
   }, 30000);
 
+  // Coverings store a solid like any other plate element, and ramps mirror
+  // stairs (no element solid, one inclined slab per flight). Both used to fall
+  // through to the empty-array default, so a finish schedule or an accessible
+  // entrance had nothing to display.
+  it('returns a placed solid for a covering', () => {
+    const m = new BimModel();
+    m.init({ name: 'T' });
+    unwrap(
+      m.addCovering({
+        length: 2000,
+        width: 1000,
+        thickness: 20,
+        origin: [0, 0, 300],
+        axisX: [1, 0, 0],
+        axisZ: [0, 0, 1],
+        predefinedType: 'FLOORING',
+        materialName: 'Oak',
+      })
+    );
+    const covering = m.getCoverings()[0];
+    const placed = unwrap(placedSolids(covering));
+    expect(placed.length).toBe(1);
+    expect(isValidSolid(placed[0])).toBe(true);
+    // 2000 x 1000 x 20 mm, lifted to z = 300.
+    expect(unwrap(measureVolumeProps(placed[0])).mass).toBeCloseTo(2000 * 1000 * 20, -3);
+    expect(unwrap(measureVolumeProps(placed[0])).centerOfMass[2]).toBeCloseTo(310, 1);
+  });
+
+  it('returns one placed solid per ramp flight', () => {
+    const m = new BimModel();
+    m.init({ name: 'T' });
+    unwrap(
+      m.addRamp({
+        name: 'R',
+        materialName: 'Concrete',
+        flights: [
+          {
+            width: 1500,
+            length: 3000,
+            slope: 1 / 15,
+            thickness: 180,
+            origin: [0, 0, 0],
+            axisX: [1, 0, 0],
+            axisZ: [0, 0, 1],
+            materialName: 'Concrete',
+          },
+          {
+            width: 1500,
+            length: 3000,
+            slope: 1 / 15,
+            thickness: 180,
+            origin: [4000, 0, 200],
+            axisX: [1, 0, 0],
+            axisZ: [0, 0, 1],
+            materialName: 'Concrete',
+          },
+        ],
+      })
+    );
+    const ramp = m.getRamps()[0];
+    const placed = unwrap(placedSolids(ramp));
+    expect(placed.length).toBe(2);
+    expect(placed.every((sol) => isValidSolid(sol))).toBe(true);
+    // The second flight is placed 4000 along X and 200 up from the first.
+    const a = unwrap(measureVolumeProps(placed[0])).centerOfMass;
+    const b = unwrap(measureVolumeProps(placed[1])).centerOfMass;
+    expect(b[0] - a[0]).toBeCloseTo(4000, 1);
+    expect(b[2] - a[2]).toBeCloseTo(200, 1);
+  });
+
   it('places a solid element at its world origin (centroid shifts by origin)', () => {
     const m = new BimModel();
     m.init({ name: 'T' });
