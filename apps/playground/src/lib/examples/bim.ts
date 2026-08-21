@@ -488,7 +488,9 @@ model.aggregate(building, storey);
 const L = 4000, W = 3000, H = 2700, T = 200;
 // A cutaway enclosure: three walls (back + two sides) with the front wall removed,
 // so the tinted space reads as a volume nested *inside* the room rather than a slab
-// floating on top. Each side wall extrudes its thickness inward (toward the room).
+// floating on top. Wall thickness extrudes along local +Y (= axisZ x axisX, which
+// is -X for the Y-running sides), placing all three interior faces flush with the
+// space at x = T, x = L - T and y = W - T.
 const wallDefs: { origin: [number, number, number]; axisX: [number, number, number]; len: number }[] = [
   { origin: [T, W - T, 0], axisX: [1, 0, 0], len: L - 2 * T }, // back, between the sides
   { origin: [T, 0, 0], axisX: [0, 1, 0], len: W },             // left side, full depth
@@ -1424,9 +1426,11 @@ for (const dept of departments) {
 }
 
 // Dividing walls between the studios and along the back, so the spaces read as
-// rooms rather than floating blocks.
+// rooms rather than floating blocks. Wall thickness extrudes along local +Y
+// (= axisZ x axisX, which is -X for the Y-running divider), so its origin sits
+// on the east edge of the 150 mm gap between the studios.
 for (const d of [
-  { origin: [5200, 0, 0] as [number, number, number], axisX: [0, 1, 0] as [number, number, number], len: 4800 },
+  { origin: [5350, 0, 0] as [number, number, number], axisX: [0, 1, 0] as [number, number, number], len: 4800 },
   { origin: [0, 4800, 0] as [number, number, number], axisX: [1, 0, 0] as [number, number, number], len: 10550 },
 ]) {
   const wall = model.addWall({
@@ -1556,10 +1560,11 @@ model.placeIn(wall.value, storeyId);
 
 // Three coverings, each a separate element with its own thickness and material:
 // the floor finish on top of the slab, the ceiling below the soffit, and
-// external cladding on the wall face.
+// external cladding on the wall face. Floor and ceiling stop at the wall's
+// inner face (width W - T) rather than running through the wall.
 const flooring = model.addCovering({
   length: L,
-  width: W,
+  width: W - T,
   thickness: 18,
   origin: [0, 0, RISE],
   axisX: [1, 0, 0],
@@ -1572,7 +1577,7 @@ model.placeIn(flooring.value, storeyId);
 
 const ceiling = model.addCovering({
   length: L,
-  width: W,
+  width: W - T,
   thickness: 12,
   origin: [0, 0, RISE + H - 400],
   axisX: [1, 0, 0],
@@ -1601,7 +1606,10 @@ if (!cladding.ok) throw cladding.error;
 model.placeIn(cladding.value, storeyId);
 
 // A 1:15 ramp reaching the threshold, plus its top landing. slope is rise over
-// run, so the run follows from the rise the ramp has to climb.
+// run, so the run follows from the rise the ramp has to climb. Flight width
+// extrudes along local +Y (= axisZ x axisX, -X for this Y-running flight), so
+// the origin sits on the ramp's east edge; the run ends where the landing
+// begins, meeting its top flush at z = RISE.
 const SLOPE = 1 / 15;
 const RUN = RISE / SLOPE;
 const ramp = model.addRamp({
@@ -1614,7 +1622,7 @@ const ramp = model.addRamp({
       length: RUN,
       slope: SLOPE,
       thickness: 180,
-      origin: [1000, -RUN, 0],
+      origin: [2500, -RUN - 1500, 0],
       axisX: [0, 1, 0],
       axisZ: [0, 0, 1],
       materialName: 'Concrete',
@@ -1638,12 +1646,14 @@ const landing = model.addSlab({
 if (!landing.ok) throw landing.error;
 model.placeIn(landing.value, storeyId);
 
-// A posted guardrail along the open edge of the ramp run.
+// A posted guardrail on the landing's open west edge. Railings are horizontal
+// bodies, so the sloped run itself stays unrailed (the switchback-stair example
+// rails only its flat landing for the same reason).
 const rail = model.addRailing({
-  length: RUN,
+  length: 1500,
   height: 1100,
   thickness: 60,
-  origin: [1000, -RUN, RISE - 180],
+  origin: [1060, -1500, RISE],
   axisX: [0, 1, 0],
   axisZ: [0, 0, 1],
   predefinedType: 'GUARDRAIL',
@@ -1737,9 +1747,10 @@ const CRAH = { kW: 74.6, airM3h: 15000, w: 2050, d: 890, h: 1970 }; // chilled-w
 const RPP_KVA = 150; // row-end panel; each feed alone carries its row (80 kW at 0.9 pf)
 const BUS_A = 250; // track busway, 415 V 3-phase, A + B runs per row
 
-// Structural slab, then the access floor 600 above it.
+// Structural slab (200 past the hall on the walled sides, so the walls bear on
+// it), then the access floor 600 above it.
 const base = unwrap(model.addSlab({
-  length: HALL_X, width: HALL_Y, thickness: 250, origin: [0, 0, -250],
+  length: HALL_X + 200, width: HALL_Y + 200, thickness: 250, origin: [0, 0, -250],
   axisX: [1, 0, 0], axisZ: [0, 0, 1], predefinedType: 'BASESLAB', materialName: 'Concrete',
 }));
 model.placeIn(base, storeyId);
@@ -1750,10 +1761,13 @@ const raised = unwrap(model.addSlab({
 model.placeIn(raised, storeyId);
 
 // Two of the four hall walls, so the interior stays readable in the viewer.
+// Thickness extrudes along axisZ x axisX (+Y for the north wall, -X for the
+// east), so both origins put the wall just OUTSIDE the hall footprint, inner
+// face flush with the tile field and clear of the raised floor and CRAHs.
 const WALL_H = 4400;
 for (const d of [
   { origin: [0, HALL_Y, 0] as [number, number, number], axisX: [1, 0, 0] as [number, number, number], len: HALL_X },
-  { origin: [HALL_X, 0, 0] as [number, number, number], axisX: [0, 1, 0] as [number, number, number], len: HALL_Y },
+  { origin: [HALL_X + 200, 0, 0] as [number, number, number], axisX: [0, 1, 0] as [number, number, number], len: HALL_Y },
 ]) {
   const wall = unwrap(model.addWall({
     length: d.len, height: WALL_H, thickness: 200,
