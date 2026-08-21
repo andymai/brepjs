@@ -3,6 +3,8 @@
     "target": "ES2022",
     "lib": ["ES2022", "ESNext.Disposable"],
     "types": ["node"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "brepjs-families",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
