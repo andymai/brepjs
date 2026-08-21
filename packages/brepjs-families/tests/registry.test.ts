@@ -104,6 +104,28 @@ describe('starter families', () => {
     expect(opening?.keyed).toBe(true);
   });
 
+  // A composed family must thread its own placement into the children it
+  // builds: element trees carry no hierarchical transform, so two rooms that
+  // ignored `at` would render one on top of the other.
+  it('places each room by its own corner instead of stacking them', () => {
+    const suite = resolve(
+      Storey({
+        key: 'ground',
+        items: [
+          Room({ key: 'a', width: 4000, depth: 3000, height: 2700 }),
+          Room({ key: 'b', width: 4000, depth: 3000, height: 2700, at: [4200, 0] }),
+        ],
+      })
+    );
+    const southOf = (key: string): string =>
+      String(
+        suite.children
+          .find((c) => c.keyPath === `ground/${key}`)
+          ?.children.find((w) => w.keyPath.endsWith('/south'))?.geometry.structuralHash
+      );
+    expect(southOf('a')).not.toBe(southOf('b'));
+  });
+
   it('starter walls and windows materialize with meshes', () => {
     using ev = new csg.Evaluator();
     const storey = resolve(

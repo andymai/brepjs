@@ -76,8 +76,8 @@
     },
     {
       "name": "room",
-      "version": 1,
-      "description": "Composed family: four keyed perimeter walls with a door",
+      "version": 2,
+      "description": "Composed family: four keyed perimeter walls with a door, placed by its south-west corner",
       "files": ["families/room.ts"],
       "npmDeps": ["brepjs-families", "zod"],
       "familyDeps": ["wall", "door"]
