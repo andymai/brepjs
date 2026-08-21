@@ -9,7 +9,8 @@
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
- * voids stay IR-only and never reach the spec path.
+ * voids are rejected: they cut only the IR/viewport geometry, and exporting
+ * the uncut spec body would silently diverge from what the user sees.
  */
 
 import { ok, err, type Result, type csg } from 'brepjs';
@@ -152,18 +153,62 @@ function specInput(el: ResolvedElement): Record<string, unknown> {
   };
 }
 
+/** `Pset_<Type>Common` fields the specs model first-class: mapped onto their
+ *  spec names so the writer emits them in the element's own common pset. */
+const COMMON_PSET_FIELDS: Readonly<Record<string, string>> = {
+  IsExternal: 'isExternal',
+  FireRating: 'fireRating',
+  AcousticRating: 'acousticRating',
+  ThermalTransmittance: 'thermalTransmittance',
+  LoadBearing: 'loadBearing',
+  Status: 'status',
+};
+
 function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
-  const psets = el.attributes['psets'];
   const out: Record<string, unknown> = {};
+  const material = el.attributes['material'];
+  if (typeof material === 'string' && el.props['materialName'] === undefined) {
+    out['materialName'] = material;
+  }
+  const psets = el.attributes['psets'];
   if (psets && typeof psets === 'object') {
-    const common = (psets as Record<string, unknown>)['Pset_WallCommon'];
-    if (common && typeof common === 'object') {
-      const c = common as Record<string, unknown>;
-      if (typeof c['IsExternal'] === 'boolean') out['isExternal'] = c['IsExternal'];
-      if (typeof c['FireRating'] === 'string') out['fireRating'] = c['FireRating'];
+    const custom: Record<string, Record<string, string | number | boolean>> = {};
+    // Only the element's OWN common pset maps onto spec fields — a foreign
+    // Common pset (e.g. Pset_DoorCommon on a Wall) must not be relabeled onto
+    // this element's common pset, so it flows through as a custom pset.
+    const ownCommonPset = `Pset_${el.type}Common`;
+    for (const [psetName, fields] of Object.entries(psets as Record<string, unknown>)) {
+      if (!fields || typeof fields !== 'object') continue;
+      const record = fields as Record<string, unknown>;
+      if (psetName === ownCommonPset) {
+        for (const [field, specKey] of Object.entries(COMMON_PSET_FIELDS)) {
+          if (record[field] !== undefined) out[specKey] = record[field];
+        }
+      } else {
+        // Non-Common psets flow through as custom properties; the writer emits
+        // them verbatim. The element's own common pset stays spec-generated,
+        // so it is never duplicated here.
+        const values: Record<string, string | number | boolean> = {};
+        for (const [field, value] of Object.entries(record)) {
+          if (
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean'
+          ) {
+            values[field] = value;
+          }
+        }
+        if (Object.keys(values).length > 0) custom[psetName] = values;
+      }
+    }
+    if (Object.keys(custom).length > 0) {
+      const declared = el.props['customProperties'];
+      out['customProperties'] =
+        declared && typeof declared === 'object'
+          ? { ...custom, ...(declared as Record<string, unknown>) }
+          : custom;
     }
   }
-  delete out['psets'];
   return out;
 }
 
@@ -226,6 +271,7 @@ function addOpenings(
     const input = {
       materialName: SPEC_DEFAULTS.materialName,
       ...stripGeometryProps(fill.props),
+      ...collectSpecProps(fill),
       wallLocalId: wallId,
       offsetAlongWall: delta[0] * axisX[0] + delta[1] * axisX[1] + delta[2] * axisX[2],
       offsetFromFloor: delta[2],
@@ -310,6 +356,21 @@ export function familiesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
+      // The spec path rebuilds the body parametrically: an anonymous
+      // (non-fill) void cuts only the IR/viewport geometry, so exporting it
+      // silently would diverge the IFC body from what the user sees.
+      const voids = el.props['voids'];
+      if (Array.isArray(voids)) {
+        const openings = el.children.filter((c) => c.type === 'Opening').length;
+        if (voids.length > openings) {
+          return err(
+            specError(
+              'FAMILIES_ANONYMOUS_VOID',
+              `familiesToBim: '${el.keyPath}' has ${voids.length - openings} anonymous void(s) the IFC body cannot carry — use a fill-role family (Door/Window) for each void`
+            )
+          );
+        }
+      }
       const parsed = route.parse(('input' in route ? route.input : specInput)(el));
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);

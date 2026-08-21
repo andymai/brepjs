@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.151.2](https://github.com/andymai/brepjs/compare/brepjs-v18.151.1...brepjs-v18.151.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **csg:** scale the default mesh deflection with model size ([#2187](https://github.com/andymai/brepjs/issues/2187)) ([461da5e](https://github.com/andymai/brepjs/commit/461da5eb586d0eb1ad3a99088875737012d48bfe))
+
 ## [18.151.1](https://github.com/andymai/brepjs/compare/brepjs-v18.151.0...brepjs-v18.151.1) (2026-08-21)
 
 

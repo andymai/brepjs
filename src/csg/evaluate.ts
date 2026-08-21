@@ -9,11 +9,12 @@
 // evaluate() call (a failed evaluate() never evicts).
 import { getActiveKernelId, withKernel } from '@/kernel/index.js';
 import { qualityDeflection } from '@/kernel/quality.js';
-import { ok, type Result } from '@/core/result.js';
+import { err, ok, type Result } from '@/core/result.js';
+import { BrepErrorCode, kernelError } from '@/core/errors.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/utils/vec3.js';
 import { quatFromAxisAngle, quatMultiply, quatRotate, type Quat } from '@/utils/quaternion.js';
-import { getFaces } from '@/topology/topologyQueryFns.js';
+import { getBounds, getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
 import { buildMeshCacheKey } from '@/topology/meshCache.js';
@@ -402,6 +403,28 @@ function relocateFaceGroups(
   return faceGroups.map((g) => ({ ...g, faceId: remap.get(g.faceId) ?? g.faceId }));
 }
 
+// Beyond this bounding-box diagonal (model units) the default deflection grows
+// linearly with size, keeping default meshes scale-invariant; below it the
+// absolute tier default applies unchanged. Quality deflections are absolute
+// model units tuned for ~unit-scale parts: adopting them unscaled at BIM
+// (mm) scale explodes a curved surface into 10^5-10^6 triangles and can
+// exhaust the WASM heap.
+const SCALE_INVARIANT_DIAGONAL = 10;
+
+function scaleDefaultTolerance(base: number, shape: AnyShape<Dimension>): number {
+  let diagonal: number;
+  try {
+    const b = getBounds(shape);
+    const dx = b.xMax - b.xMin;
+    const dy = b.yMax - b.yMin;
+    const dz = b.zMax - b.zMin;
+    diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  } catch {
+    return base;
+  }
+  return base * Math.max(1, diagonal / SCALE_INVARIANT_DIAGONAL);
+}
+
 // ---------------------------------------------------------------------------
 // Evaluator
 // ---------------------------------------------------------------------------
@@ -526,11 +549,16 @@ export class Evaluator implements Disposable {
 
     const useCache = meshOpts.cache ?? true;
     const quality = qualityDeflection();
-    const tolerance = meshOpts.tolerance ?? quality.tolerance;
+    const explicitTolerance = meshOpts.tolerance;
     const angularTolerance = meshOpts.angularTolerance ?? quality.angularTolerance;
     const shapeKey = cacheKey(node, env, this.kernelId, this.defaultTolerance);
-    const meshKey = `${shapeKey}|${buildMeshCacheKey(
-      tolerance,
+    // Without an explicit tolerance the default deflection is scale-relative
+    // (see scaleDefaultTolerance): the resolved value needs the materialized
+    // shape's bounds, but it is a pure function of the content-addressed shape,
+    // so keying on a relative-mode marker instead of the resolved number keeps
+    // cache hits evaluation-free.
+    const meshKey = `${shapeKey}|${explicitTolerance === undefined ? 'rel|' : ''}${buildMeshCacheKey(
+      explicitTolerance ?? quality.tolerance,
       angularTolerance,
       meshOpts.skipNormals ?? false,
       meshOpts.includeUVs ?? false
@@ -582,17 +610,50 @@ export class Evaluator implements Disposable {
       }
     }
 
+    // Resolve the default tolerance BEFORE evaluating the placed shape: only a
+    // number crosses the next evaluate, so a bounded cache evicting either
+    // shape in between cannot leave a disposed handle in this call's hands.
+    const tolerance = explicitTolerance ?? this.defaultToleranceFor(node, env, quality.tolerance);
     const shape = this.evaluate(node, env);
     if (!shape.ok) return shape;
+    const resolvedOpts = { ...meshOpts, tolerance, angularTolerance };
     // Mesh under the evaluator's kernel so getKernel() doesn't pick up an
     // unrelated ambient kernel after evaluate() restores the prior context.
     // `cache: false` flows through to mesh(), bypassing its identity cache too.
-    const built = withKernel(this.kernelId, () => mesh(shape.value, meshOpts));
+    let built: ShapeMesh;
+    try {
+      built = withKernel(this.kernelId, () => mesh(shape.value, resolvedOpts));
+    } catch (e) {
+      // A cancelled signal keeps throwing (matching the up-front
+      // throwIfAborted); anything else — including a WASM heap-exhaustion
+      // RuntimeError from an over-fine deflection — surfaces as this
+      // Result-returning API's Err instead of escaping as a throw.
+      if (meshOpts.signal?.aborted) throw e;
+      return err(
+        kernelError(
+          BrepErrorCode.MESH_FAILED,
+          `evaluateMesh: ${e instanceof Error ? e.message : String(e)}`,
+          e
+        )
+      );
+    }
     if (useCache) {
       this.meshCache.set(meshKey, built);
       if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
     }
     return ok(built);
+  }
+
+  /** Scale-relative default deflection, derived from the placement-stripped
+   *  geometry so the resolved density is identical whether or not the
+   *  rigid-reuse path served the call: a rotated placement's axis-aligned
+   *  bounds inflate the diagonal by up to sqrt(3). The bounds are read while
+   *  the just-evaluated shape is live; only the number outlives it. */
+  private defaultToleranceFor(node: IRNode, env: Env, base: number): number {
+    const { inner } = peelRigid(node, env);
+    const source = this.evaluate(inner, env);
+    if (!source.ok) return base;
+    return scaleDefaultTolerance(base, source.value);
   }
 
   private evaluateInner(node: IRNode, env: Env): Result<AnyShape<Dimension>> {
