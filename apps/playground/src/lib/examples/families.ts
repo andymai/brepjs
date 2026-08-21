@@ -331,7 +331,7 @@ export default [...row.byKeyPath.values()].flatMap((n) =>
     id: 'families-room',
     label: 'Room Composition',
     description:
-      'A Room family composed from Wall and Door, copied from the starter registry (npx brepjs add room). Families are source files you own and compose like components. Two rooms with identical dimensions share one wall materialization through the content-addressed cache while each keeps its own key path.',
+      'A Room family composed from Wall and Door, copied from the starter registry (npx brepjs add room). Families are source files you own and compose like components, and a composed family threads its own placement into the children it builds. Key paths nest through the composition: suite/a/south, suite/b/south/voids:door.',
     code: `import { csg, unwrap } from 'brepjs/quick';
 import { color } from 'brepjs/playground';
 import { family, el, resolve, evaluateModel, tTranslate, type Element } from 'brepjs-families';
@@ -452,10 +452,6 @@ const walls = [...model.byKeyPath.values()].flatMap((n) =>
 const doors = [...model.byKeyPath.values()].flatMap((n) =>
   n.type === 'Door' && n.shape ? [color(unwrap(n.shape), '#8b5a2b')] : []
 );
-
-// Both rooms are the same size, so matching walls share one cache entry while
-// staying separate elements with separate key paths.
-console.log(ev.cacheStats().entries + ' cache entries for ' + (walls.length + doors.length) + ' solids');
 
 export default [...walls, ...doors];
 `,
