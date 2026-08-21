@@ -142,8 +142,9 @@ describe('registry families through familiesToBim', () => {
       })
     );
     const projected = unwrap(familiesToBim(tree, { project: PROJECT }));
-    using _model = projected.model;
+    using model = projected.model;
     expect(projected.idByKeyPath.has('g/b')).toBe(true);
+    expect(model.getBeams()).toHaveLength(1);
   });
 
   it('rejects a rotated routed element instead of exporting a diverged body', () => {
