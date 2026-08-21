@@ -1,0 +1,27 @@
+src/csg/edit.ts
+  s_828c72638e0a06::t_1769eaa98a6c0d 19,22-30,33-38,54,56,58,61,66-67,71,73,75,77,79,81,90,105-106,110,112,115,119,123,125,127,129,133-134,136-143
+src/csg/optimize.ts
+  s_828c72638e0a06::t_cbd8baea08e9f0 126-130,132-139
+tests/csg/csgCoverage.test.ts
+  s_828c72638e0a06::t_ec121d9650b16b 770,773,775-778
+tests/csg/csgIR.test.ts
+  s_828c72638e0a06::t_1daf4872fbfb15 270-274
+tests/csg/csgDagWalks.test.ts
+  s_828c72638e0a06::t_8b102b6641ed65 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e6b3e8e02b1c7c6b279daf84d16477685837134a",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
