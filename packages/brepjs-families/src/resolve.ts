@@ -10,7 +10,7 @@
  */
 
 import { csg } from 'brepjs';
-import { isFamily, typeNameOf, type Element } from './element.js';
+import { IDENTITY_PROPS, isFamily, typeNameOf, type Element } from './element.js';
 
 export interface TransformOp {
   readonly op: 'translate';
@@ -45,8 +45,6 @@ export interface ResolvedElement {
   readonly relationships: readonly Relationship[];
   readonly children: readonly ResolvedElement[];
 }
-
-const IDENTITY_PROPS = ['psets', 'material', 'classification'] as const;
 
 function identityAttributes(elem: Element): Readonly<Record<string, unknown>> {
   const out: Record<string, unknown> = {};

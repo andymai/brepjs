@@ -18,6 +18,26 @@ interface WithKey {
 }
 
 /**
+ * Identity-side props accepted by every family invocation, beside the
+ * family's own schema. Zod object schemas strip undeclared keys, so these are
+ * re-attached after validation — a semantic component carries IFC-facing data
+ * without every schema declaring it. `resolve()` captures them into
+ * `ResolvedElement.attributes`.
+ */
+export const IDENTITY_PROPS = ['name', 'psets', 'material', 'classification'] as const;
+
+export interface IdentityProps {
+  /** Display name an exporter may adopt (e.g. IfcBuildingStorey.Name). */
+  readonly name?: string | undefined;
+  /** Property sets keyed by pset name (e.g. `Pset_WallCommon`). */
+  readonly psets?: Readonly<Record<string, Readonly<Record<string, unknown>>>> | undefined;
+  /** Material name an exporter may adopt when the family declares none. */
+  readonly material?: string | undefined;
+  /** Classification reference (system/code/...); the exporter defines the shape. */
+  readonly classification?: Readonly<Record<string, unknown>> | undefined;
+}
+
+/**
  * A family component: a callable that constructs Elements, carrying its
  * declared name and render function. The component REFERENCE is the identity
  * (copy-in files make name lookup collide); the declared name serves key-path
@@ -28,7 +48,7 @@ interface WithKey {
  * output `P`. Schema-less families use one type for both.
  */
 export interface FamilyComponent<P, I = P> {
-  (props: I & WithKey): Element;
+  (props: I & WithKey & IdentityProps): Element;
   readonly familyName: string;
   /** `'fill'` marks a family whose instances fill an opening when placed in a
    *  host's `voids` (doors, windows): resolution synthesizes the Opening. */
@@ -52,7 +72,7 @@ export function family<P extends object, I extends object = P>(
   options?: FamilyOptions<P, I>
 ): FamilyComponent<P, I> {
   const schema = options?.props;
-  const make = (props: I & WithKey): Element => {
+  const make = (props: I & WithKey & IdentityProps): Element => {
     const { key, ...rest } = props;
     let validated: Readonly<Record<string, unknown>> = rest;
     if (schema) {
@@ -62,7 +82,15 @@ export function family<P extends object, I extends object = P>(
           `brepjs-families: invalid props for family '${name}': ${parsed.error.message}`
         );
       }
-      validated = parsed.data as Readonly<Record<string, unknown>>;
+      const out = { ...(parsed.data as Record<string, unknown>) };
+      // Zod strips undeclared keys; identity props are contract, not schema
+      // surface, so they ride past validation (a schema that declares one
+      // keeps its own validated value).
+      const raw = rest as Record<string, unknown>;
+      for (const k of IDENTITY_PROPS) {
+        if (raw[k] !== undefined && out[k] === undefined) out[k] = raw[k];
+      }
+      validated = out;
     }
     return { type: component, key, props: validated, children: [] };
   };

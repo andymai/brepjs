@@ -337,6 +337,31 @@ describe('props validation (Zod)', () => {
     );
     expect(() => Free({ key: 'f', anything: { odd: true } })).not.toThrow();
   });
+
+  it('identity props ride past the schema into attributes', () => {
+    const r = resolve(
+      Sized({
+        key: 's',
+        size: 2,
+        name: 'South wall',
+        material: 'Brick',
+        psets: { Pset_WallCommon: { IsExternal: true } },
+      })
+    );
+    expect(r.attributes['name']).toBe('South wall');
+    expect(r.attributes['material']).toBe('Brick');
+    expect(r.attributes['psets']).toEqual({ Pset_WallCommon: { IsExternal: true } });
+  });
+
+  it('a schema-declared identity prop keeps its validated value', () => {
+    const Named = family<{ readonly name: string }>(
+      'Named',
+      () => el('Box', { size: [1, 1, 1] }),
+      { props: z.object({ name: z.string().transform((s) => s.toUpperCase()) }) }
+    );
+    const r = resolve(Named({ key: 'n', name: 'ground' }));
+    expect(r.attributes['name']).toBe('GROUND');
+  });
 });
 
 describe('keyed tracking', () => {

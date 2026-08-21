@@ -9,9 +9,11 @@
 export {
   family,
   el,
+  IDENTITY_PROPS,
   type Element,
   type FamilyComponent,
   type FamilyOptions,
+  type IdentityProps,
 } from './element.js';
 export { jsx, jsxs, Fragment } from './jsxRuntime.js';
 export {
