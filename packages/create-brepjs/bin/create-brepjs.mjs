@@ -51,6 +51,9 @@ async function main() {
   const pkg = JSON.parse(await readFile(pkgPath, 'utf8'));
   pkg.name = base;
   await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  const readmePath = join(target, 'README.md');
+  const readme = await readFile(readmePath, 'utf8');
+  await writeFile(readmePath, readme.replace('# brepjs-app', `# ${base}`));
 
   console.warn(`Scaffolded ${target}`);
   console.warn('');
