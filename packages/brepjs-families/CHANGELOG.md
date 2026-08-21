@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.8.0...brepjs-families-v0.8.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **families:** give the dome roof a true hemispherical cap ([#2202](https://github.com/andymai/brepjs/issues/2202)) ([0841379](https://github.com/andymai/brepjs/commit/0841379ef59a139f499ae1721c5e46b8f4d76a6b))
+
 ## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.2...brepjs-families-v0.8.0) (2026-08-21)
 
 
