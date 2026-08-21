@@ -1,0 +1,19 @@
+apps/playground/src/hooks/useCodeExecution.ts
+  s_cbbd0a17a1913f::t_816044a77970fd 137-141,143-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "27a9f33895548b60c7f55446eedae12a8616d312",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
