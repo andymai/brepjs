@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Use when authoring or editing a brepjs `.brep.ts` part — writing the geometry with the functional API (box, cylinder, fuse, cut, fillet, sketch→extrude…), declaring an `expected` block, and following the hard rules (import every function, unwrap Results, select edges, coordinate semantics). This is the authoring step; pair it with brepjs:verify to check the result.
+description: Use when authoring or editing a brepjs `.brep.ts` part — writing the geometry with the functional API (box, cylinder, fuse, cut, fillet, sketch→extrude…), declaring an `expected` block, and following the hard rules (import every function, unwrap Results, select edges, coordinate semantics). Also covers buildings/BIM/IFC via the declarative family layer (references/families-bim.md). This is the authoring step; pair it with brepjs:verify to check the result.
 version: 0.1.0
 ---
 
@@ -159,6 +159,7 @@ length `14` → `xMin=-29`). Compute these from the SAME const that places the g
 `modifiers.md` · `transforms.md` · `measurement-validation.md` · `assemblies-motion.md` ·
 `operation-tiers.md`. Maker recipes: `fdm-conventions.md` · `mechanical-joints.md` ·
 `gridfinity.md` · `gears.md` · `threads.md` · `airfoils.md` (fans/props/impellers/vanes).
+Buildings/BIM/IFC: `families-bim.md` (declarative components → viewport meshes + IFC export).
 **Backstop:** any symbol not covered →
 `reference/llms-full.txt` (every export with signatures), bundled in the package.
 
