@@ -97,7 +97,7 @@ A family that needs to reimplement IFC writing means the boundary was drawn wron
 npm install brepjs-families
 ```
 
-The package currently ships TypeScript source, so use it with a bundler (Vite, esbuild, webpack) or a TS-aware runner like `tsx`. `npm create brepjs` scaffolds a ready-to-run project with both wired up.
+The package ships a built ESM and CJS bundle with TypeScript declarations, so it works in any bundler or Node setup without extra configuration. `npm create brepjs` scaffolds a ready-to-run project around it.
 
 ## Next steps
 

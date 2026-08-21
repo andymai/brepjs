@@ -9,7 +9,7 @@ This walkthrough builds a one-storey model: two walls, one of them with a door o
 
 If you haven't read **[Why a Family Layer](/families/overview)** yet, start there. This page assumes you know that families render to elements and elements project onto the [CSG IR](/concepts/csg-ir).
 
-> **Try it live:** the <a href="/playground/examples/families-building" target="_blank" rel="noopener">Declarative Building</a> playground example is this walkthrough's model, ready to run and edit in the browser.
+> **Try it live:** the <a href="/playground/examples/families-building" target="_blank" rel="noopener">Declarative Building</a> playground example builds on this walkthrough, adding the remaining perimeter walls, a floor slab, and a window, ready to run and edit in the browser.
 
 ## The model
 
