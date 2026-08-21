@@ -10,6 +10,9 @@ STEP is the canonical, lossless output, the source of truth. Mesh formats (STL/3
 
 GLB/3MF sidecars are emitted by the verify CLI (`--glb`), not authored in the model.
 
+For **buildings/BIM**, the deliverable is IFC, not STEP: author with `brepjs-families` and export
+via `brepjs-bim`'s `familiesToBim` + `toIfc` (see the implement skill's `references/families-bim.md`).
+
 The GLB sidecar is **Y-up** (glTF's required convention) via a root-node rotation, so it opens upright in three.js, model-viewer, Blender, etc. Vertices remain Z-up, matching the STEP/STL. To paint the GLB, a part may `export const materials` (a per-face `MaterialFn`, or one `GltfMaterial` for the whole part); see `references/booleans.md` → "Coloring an assembly".
 
 ## Importing + modifying
