@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/andymai/brepjs/compare/create-brepjs-v0.2.0...create-brepjs-v0.2.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **create-brepjs:** ship a scaffold that installs and runs ([#2186](https://github.com/andymai/brepjs/issues/2186)) ([8f12774](https://github.com/andymai/brepjs/commit/8f12774e137a91dec699c4ee18fa971b1ef60ddc))
+
 ## [0.2.0](https://github.com/andymai/brepjs/compare/create-brepjs-v0.1.0...create-brepjs-v0.2.0) (2026-08-18)
 
 
