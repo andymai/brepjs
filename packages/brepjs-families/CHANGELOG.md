@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.0...brepjs-families-v0.7.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **playground:** correct bim placement defects and cover the mapped catalog ([#2171](https://github.com/andymai/brepjs/issues/2171)) ([9da38fd](https://github.com/andymai/brepjs/commit/9da38fde50f5a884e4d633df5adbee44be197358))
+
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.6.0...brepjs-families-v0.7.0) (2026-08-18)
 
 

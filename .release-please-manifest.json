@@ -5,6 +5,6 @@
   "packages/brepjs-cad": "0.172.0",
   "packages/brepjs-bim": "0.16.1",
   "packages/brepjs-sheetmetal": "0.3.1",
-  "packages/brepjs-families": "0.7.0",
+  "packages/brepjs-families": "0.7.1",
   "packages/create-brepjs": "0.2.0"
 }
