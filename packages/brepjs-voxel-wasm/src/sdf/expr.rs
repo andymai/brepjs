@@ -1187,7 +1187,7 @@ mod tests {
         assert!(!mesh.indices.is_empty(), "modulated shell must contour to triangles");
 
         let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
-        for tri in mesh.indices.chunks_exact(3) {
+        for tri in mesh.indices.as_chunks::<3>().0 {
             for &(a, b) in &[(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
                 let key = if a < b { (a, b) } else { (b, a) };
                 *edges.entry(key).or_insert(0) += 1;
@@ -1204,7 +1204,7 @@ mod tests {
     fn watertight(indices: &[u32]) -> bool {
         use std::collections::HashMap;
         let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
-        for tri in indices.chunks_exact(3) {
+        for tri in indices.as_chunks::<3>().0 {
             for &(a, b) in &[(tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0])] {
                 let key = if a < b { (a, b) } else { (b, a) };
                 *edges.entry(key).or_insert(0) += 1;

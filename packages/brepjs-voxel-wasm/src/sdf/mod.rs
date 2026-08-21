@@ -314,7 +314,7 @@ mod tests {
     /// Every undirected edge is shared by exactly two triangles.
     fn is_watertight(indices: &[u32]) -> bool {
         let mut edges: HashMap<(u32, u32), i32> = HashMap::new();
-        for t in indices.chunks_exact(3) {
+        for t in indices.as_chunks::<3>().0 {
             for &(a, b) in &[(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
                 let k = if a < b { (a, b) } else { (b, a) };
                 *edges.entry(k).or_insert(0) += 1;
@@ -326,7 +326,7 @@ mod tests {
     fn flat_bbox(verts: &[f32]) -> ([f32; 3], [f32; 3]) {
         let mut mn = [f32::INFINITY; 3];
         let mut mx = [f32::NEG_INFINITY; 3];
-        for p in verts.chunks_exact(3) {
+        for p in verts.as_chunks::<3>().0 {
             for a in 0..3 {
                 mn[a] = mn[a].min(p[a]);
                 mx[a] = mx[a].max(p[a]);

@@ -472,7 +472,7 @@ mod tests {
         }
 
         // Extracted vertices should sit near the cube surface (world coords).
-        for p in mesh.positions.chunks_exact(3) {
+        for p in mesh.positions.as_chunks::<3>().0 {
             assert!(
                 p[0] > -0.5 && p[0] < 1.5 && p[1] > -0.5 && p[1] < 1.5 && p[2] > -0.5 && p[2] < 1.5,
                 "vertex {p:?} is far from the unit cube"
@@ -661,7 +661,7 @@ mod tests {
         }
 
         let mut tris: Vec<[u32; 3]> = Vec::new();
-        for t in m.indices.chunks_exact(3) {
+        for t in m.indices.as_chunks::<3>().0 {
             let mut tri = [remap[t[0] as usize], remap[t[1] as usize], remap[t[2] as usize]];
             // Rotate so the smallest index is first (preserves winding).
             let mn = tri.iter().copied().enumerate().min_by_key(|&(_, v)| v).map(|(i, _)| i).unwrap();
@@ -676,7 +676,7 @@ mod tests {
     fn is_watertight(m: &ContourMesh) -> bool {
         use std::collections::HashMap as Map;
         let mut edges: Map<(u32, u32), i32> = Map::new();
-        for t in m.indices.chunks_exact(3) {
+        for t in m.indices.as_chunks::<3>().0 {
             for &(a, b) in &[(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
                 let k = if a < b { (a, b) } else { (b, a) };
                 *edges.entry(k).or_insert(0) += 1;
