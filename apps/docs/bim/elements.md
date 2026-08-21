@@ -32,7 +32,11 @@ Beams and columns extrude a **profile**, one vocabulary shared by both:
 - Core: `RECTANGULAR`, `CIRCULAR`, `I_BEAM` (with optional root `filletRadius`)
 - Extended: L / T / U / Z / C shapes, asymmetric I, ellipse, trapezium, hollow rectangular and circular sections, and arbitrary polygons with voids
 
-Core profiles emit parametric IFC profile defs (`IfcRectangleProfileDef`, `IfcCircleProfileDef`, `IfcIShapeProfileDef`); extended profiles build faces via `extendedProfileToFace` and serialize as `IfcArbitraryClosedProfileDef` (with voids where applicable), with `extendedProfileArea` giving closed-form areas for takeoff.
+Every **named** profile emits its own parametric IFC profile def, extended kinds included: `IfcRectangleProfileDef` / `IfcCircleProfileDef` / `IfcIShapeProfileDef` for the core three, and `IfcLShapeProfileDef`, `IfcTShapeProfileDef`, `IfcUShapeProfileDef`, `IfcZShapeProfileDef`, `IfcCShapeProfileDef`, `IfcAsymmetricIShapeProfileDef`, `IfcEllipseProfileDef`, `IfcTrapeziumProfileDef`, `IfcRectangleHollowProfileDef` and `IfcCircleHollowProfileDef` for the rest. The section stays editable parametric data in the exported file rather than a baked outline.
+
+Only the two point-list kinds serialize as outlines, which is inherent to what they are: `ARBITRARY_CLOSED` becomes `IfcArbitraryClosedProfileDef` and `ARBITRARY_WITH_VOIDS` becomes `IfcArbitraryProfileDefWithVoids`.
+
+On the brepjs side, `extendedProfileToFace` builds the section face for the solid and `extendedProfileArea` gives closed-form areas for takeoff.
 
 ## Shaped roofs
 
