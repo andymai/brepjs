@@ -1,0 +1,45 @@
+apps/docs/families/overview.md
+  s_cbbd0a17a1913f::t_631a6cbaf8628f 12
+packages/brepjs-families/registry/manifest.json
+  s_cbbd0a17a1913f::t_d9572f4595bc00 79-80
+apps/playground/src/lib/examples/families.ts
+  s_cbbd0a17a1913f::t_bd9c686b054300 266-277
+  s_cbbd0a17a1913f::t_144ccb1621df43 763
+  s_cbbd0a17a1913f::t_608c94339e87f9 126-130
+  s_cbbd0a17a1913f::t_3a279235cd3c6d 119-120,122
+  s_cbbd0a17a1913f::t_aa1b1a2109e879 334,339-342,347,349,351-355,357-361,363-370,372-376,380-383,388,390-392,394-396,399-400,404-405,407-416,418-420,426-434,439-440,448,456-458
+  s_cbbd0a17a1913f::t_d4391944d8f2fe 462-466,468-472,478-527,529-548,550-580,583-607,609-698,705-713,716-717,719-720,722-734,739-746,758-759,765-805
+  s_cbbd0a17a1913f::t_8dfb51cf0fb763 528,549,581-582,608
+  s_cbbd0a17a1913f::t_5469d388e05411 699-704,714-715,718,721,735-738,747-757,760-762,764
+  s_cbbd0a17a1913f::t_4953ee7c679653 467,473-477
+  s_cbbd0a17a1913f::t_eaec195a63e511 459,461
+packages/brepjs-families/registry/families/room.ts
+  s_cbbd0a17a1913f::t_d9572f4595bc00 1,7-11,24,59,65,76-78
+packages/brepjs-families/tests/registry.test.ts
+  s_cbbd0a17a1913f::t_baa6f68190b2ce 107-128
+apps/playground/src/lib/examples/bim.ts
+  s_cbbd0a17a1913f::t_50cecf8f20b128 150,152,155
+  s_cbbd0a17a1913f::t_7dc4993f7cc3e8 149
+  s_cbbd0a17a1913f::t_bdb12b5c80d2b4 15,19-22
+  s_cbbd0a17a1913f::t_8e90569436dfc7 129-132
+  s_cbbd0a17a1913f::t_856c52616d94a4 55
+  s_cbbd0a17a1913f::t_68f56f358a8f79 53-54,56,58-65
+  s_cbbd0a17a1913f::t_192594e563d962 169-171,181,188-192,196-203
+  s_cbbd0a17a1913f::t_5f17eafed678ca 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "74d4752b8e0e1a38350f062747db456ef4678a0d",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
