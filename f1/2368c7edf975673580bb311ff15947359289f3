@@ -1,0 +1,60 @@
+packages/brepjs-families/README.md
+  s_828c72638e0a06::t_3c9b786c02868a 57
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_828c72638e0a06::t_824dc8d683b557 126-138
+  s_828c72638e0a06::t_d03a166e1d1e84 372-379
+packages/brepjs-families/package.json
+  s_828c72638e0a06::t_cbee49c153713d 66-75
+packages/brepjs-families/src/index.ts
+  s_828c72638e0a06::t_6f49c6a537f8a9 18,22
+packages/brepjs-bim/tests/familiesRegistry.test.ts
+  s_828c72638e0a06::t_c69609b6105c5c 94-98,109-117,124-141,151
+  s_828c72638e0a06::t_963f27b2407c4f 118-123
+  s_828c72638e0a06::t_8d399f09180b87 12,15
+  s_828c72638e0a06::t_e174bcc3fe4a7e 93,99,150,152-156
+packages/brepjs-families/src/jsxRuntime.ts
+  s_828c72638e0a06::t_928168f7a6906d 5-7,10,20-23,29-40
+packages/brepjs-families/src/resolve.ts
+  s_828c72638e0a06::t_32bb4dbfe32f94 40,99,242-247,250-252,257-260,264,271,275,280,289
+  s_828c72638e0a06::t_5928fa01c18a99 220-223
+  s_828c72638e0a06::t_c5ce4c81dc6754 148-158
+  s_828c72638e0a06::t_55a55b49b45917 76-78,83-85,90-98
+  s_828c72638e0a06::t_8dbbd99b999ede 253-256
+  s_828c72638e0a06::t_97cd0527ff7194 194-196
+  s_828c72638e0a06::t_8f88b362eea312 15-22,28-39
+  s_828c72638e0a06::t_7c711cb855dd20 41,100,111,119
+packages/brepjs-families/registry/manifest.json
+  s_828c72638e0a06::t_062efb0fe25c05 79
+packages/brepjs-families/registry/families/room.ts
+  s_828c72638e0a06::t_7dd5c1c2ece187 1,8-11,14,59,74-76
+packages/brepjs-families/src/element.ts
+  s_828c72638e0a06::t_6109c77670755a 20-39
+  s_828c72638e0a06::t_cb96c681562ec2 71
+  s_828c72638e0a06::t_df03116f9ec380 115-117
+  s_828c72638e0a06::t_233e34b8eb41de 95-96
+packages/brepjs-families/tests/families.test.ts
+  s_828c72638e0a06::t_8ba158560d800d 177,363,440,451-546
+  s_828c72638e0a06::t_53adf48c8f07bc 11,17,21
+  s_828c72638e0a06::t_efacb23e2de943 171-173,178-179,364-365,410-417,419-422,441-442
+packages/brepjs-families/tests/registry.test.ts
+  s_828c72638e0a06::t_f2abbf72305081 107-108,128-148
+  s_828c72638e0a06::t_c42b8927454850 149-150
+package-lock.json
+  s_828c72638e0a06::t_6d16b4d7007558 15150,15313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f12368c7edf975673580bb311ff15947359289f3",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
