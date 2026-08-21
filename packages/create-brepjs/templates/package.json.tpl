@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "brepjs": "^18.0.0",
-    "brepjs-families": "^0.7.0",
+    "brepjs-families": ">=0.8.0 <1.0.0",
     "occt-wasm": "^4.0.0",
     "zod": "^4.0.0"
   },

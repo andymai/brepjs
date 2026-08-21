@@ -21,31 +21,64 @@ async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, 'utf8')) as T;
 }
 
-// Minimal ^-range check for the shapes the template uses ("^x.y.z", "||"),
-// so the test needs no semver dependency.
-function caretSatisfies(version: string, range: string): boolean {
-  return range.split('||').some((part) => {
-    const clause = part.trim();
-    if (!clause.startsWith('^')) return false;
-    const lower = clause.slice(1).split('.').map(Number);
-    const actual = version.split('.').map(Number);
-    if (lower.some(Number.isNaN) || actual.some(Number.isNaN)) return false;
-    const [lMaj = 0, lMin = 0, lPat = 0] = lower;
-    const [aMaj = 0, aMin = 0, aPat = 0] = actual;
-    if (aMaj !== lMaj) return false;
-    if (lMaj > 0) return aMin > lMin || (aMin === lMin && aPat >= lPat);
-    if (aMin !== lMin) return false;
-    return aPat >= lPat;
+// Minimal range check for the shapes the template uses ("^x.y.z",
+// ">=x.y.z <a.b.c", "||"), so the test needs no semver dependency.
+function parseVersion(v: string): readonly [number, number, number] {
+  const [maj = NaN, min = NaN, pat = NaN] = v.split('.').map(Number);
+  return [maj, min, pat];
+}
+
+function compare(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number]
+): number {
+  for (let i = 0; i < 3; i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+function caretSatisfies(version: string, clause: string): boolean {
+  const lower = parseVersion(clause.slice(1));
+  const actual = parseVersion(version);
+  if (lower.some(Number.isNaN) || actual.some(Number.isNaN)) return false;
+  if (actual[0] !== lower[0]) return false;
+  if (lower[0] > 0) return compare(actual, lower) >= 0;
+  if (actual[1] !== lower[1]) return false;
+  return actual[2] >= lower[2];
+}
+
+function comparatorSatisfies(version: string, clause: string): boolean {
+  const actual = parseVersion(version);
+  if (actual.some(Number.isNaN)) return false;
+  return clause.split(/\s+/).every((token) => {
+    if (token.startsWith('>=')) return compare(actual, parseVersion(token.slice(2))) >= 0;
+    if (token.startsWith('<')) return compare(actual, parseVersion(token.slice(1))) < 0;
+    return false;
   });
 }
 
-describe('caretSatisfies', () => {
+function rangeSatisfies(version: string, range: string): boolean {
+  return range.split('||').some((part) => {
+    const clause = part.trim();
+    return clause.startsWith('^')
+      ? caretSatisfies(version, clause)
+      : comparatorSatisfies(version, clause);
+  });
+}
+
+describe('rangeSatisfies', () => {
   it('handles the range shapes the template uses', () => {
-    expect(caretSatisfies('18.151.1', '^18.0.0')).toBe(true);
-    expect(caretSatisfies('19.0.0', '^18.0.0')).toBe(false);
-    expect(caretSatisfies('0.7.1', '^0.7.0')).toBe(true);
-    expect(caretSatisfies('0.7.1', '^0.1.0')).toBe(false);
-    expect(caretSatisfies('6.0.3', '^5.2.0 || ^6.0.0')).toBe(true);
+    expect(rangeSatisfies('18.151.1', '^18.0.0')).toBe(true);
+    expect(rangeSatisfies('19.0.0', '^18.0.0')).toBe(false);
+    expect(rangeSatisfies('0.7.1', '^0.7.0')).toBe(true);
+    expect(rangeSatisfies('0.7.1', '^0.1.0')).toBe(false);
+    expect(rangeSatisfies('6.0.3', '^5.2.0 || ^6.0.0')).toBe(true);
+    expect(rangeSatisfies('0.8.1', '>=0.8.0 <1.0.0')).toBe(true);
+    expect(rangeSatisfies('0.9.4', '>=0.8.0 <1.0.0')).toBe(true);
+    expect(rangeSatisfies('1.0.0', '>=0.8.0 <1.0.0')).toBe(false);
+    expect(rangeSatisfies('0.7.9', '>=0.8.0 <1.0.0')).toBe(false);
   });
 });
 
@@ -93,7 +126,7 @@ describe('create-brepjs scaffold', () => {
       const range = pkg.dependencies[dep];
       expect(range, `template must depend on ${dep}`).toBeDefined();
       expect(
-        caretSatisfies(version, range ?? ''),
+        rangeSatisfies(version, range ?? ''),
         `template range ${dep}@${range} must match the workspace version ${version}`
       ).toBe(true);
     }
