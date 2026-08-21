@@ -35,8 +35,10 @@ function disposeAll(solids: readonly ValidSolid[]): void {
  *
  * Stairs and ramps carry no element solid (`.geometry` is null), so flight
  * solids are built from `spec.flights` and placed per flight. Curtain walls
- * return placed panels + mullions. Elements with no solid geometry
- * (doors/windows/groups/spatial) return an empty array.
+ * return placed panels + mullions. Proxies are authored in world coordinates
+ * (no placement frame), so their solid is returned as a fresh identity-placed
+ * copy. Elements with no solid geometry (doors/windows/groups/spatial) return
+ * an empty array.
  */
 export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError> {
   switch (el.category) {
@@ -91,6 +93,13 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
         out.push(placed.value);
       }
       return ok(out);
+    }
+    case 'PROXY': {
+      // No frame on ProxySpec: the identity transform still routes through the
+      // kernel, minting a caller-owned copy of the model-owned solid.
+      const placed = place(el.geometry, { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] });
+      if (!placed.ok) return placed;
+      return ok([placed.value]);
     }
     case 'CURTAIN_WALL': {
       const out: ValidSolid[] = [];

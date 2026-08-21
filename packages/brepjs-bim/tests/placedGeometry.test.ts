@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { measureVolumeProps, isValidSolid, unwrap } from 'brepjs';
+import { measureVolumeProps, isValidSolid, unwrap, box } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placementToMatrix } from '../src/import/placement.js';
@@ -95,6 +95,29 @@ describe('placedSolids', () => {
     const b = unwrap(measureVolumeProps(placed[1])).centerOfMass;
     expect(b[0] - a[0]).toBeCloseTo(4000, 1);
     expect(b[2] - a[2]).toBeCloseTo(200, 1);
+  });
+
+  // Proxies used to fall through to the empty-array default, so any equipment
+  // modeled as IfcBuildingElementProxy rendered nothing and took off at 0 m3.
+  it('returns a fresh caller-owned copy of a proxy solid', () => {
+    const m = new BimModel();
+    m.init({ name: 'T' });
+    unwrap(m.addProxy({ name: 'Rack', solid: box(600, 1070, 2000) }));
+    const proxy = m.getProxies()[0];
+    const placed = unwrap(placedSolids(proxy));
+    expect(placed.length).toBe(1);
+    expect(isValidSolid(placed[0])).toBe(true);
+    // World coordinates pass through unchanged (proxies carry no frame).
+    expect(unwrap(measureVolumeProps(placed[0])).mass).toBeCloseTo(600 * 1070 * 2000, -3);
+    const com = unwrap(measureVolumeProps(placed[0])).centerOfMass;
+    expect(com[0]).toBeCloseTo(300, 1);
+    expect(com[1]).toBeCloseTo(535, 1);
+    expect(com[2]).toBeCloseTo(1000, 1);
+    // The copy is independent: disposing it must not touch the model's solid.
+    for (const s of placed) s[Symbol.dispose]();
+    const again = unwrap(placedSolids(proxy));
+    expect(unwrap(measureVolumeProps(again[0])).mass).toBeCloseTo(600 * 1070 * 2000, -3);
+    for (const s of again) s[Symbol.dispose]();
   });
 
   it('places a solid element at its world origin (centroid shifts by origin)', () => {
