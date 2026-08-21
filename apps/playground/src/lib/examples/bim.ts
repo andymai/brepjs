@@ -1170,8 +1170,17 @@ for (const x of [2000, 6000]) {
 // Volume comes from the placed solid, so the openings cut into the front wall
 // are already subtracted: this is net quantity, not gross. Group by category
 // and material the way a takeoff sheet does.
+// placedSolids mints fresh caller-owned solids on every call, so measure and
+// display from ONE pass rather than building a throwaway set to measure and a
+// second set to show.
+const TINT: Record<string, string> = {
+  WALL: '#d9d3c7',
+  SLAB: '#9a948a',
+  BEAM: '#8a99ad',
+};
 type Row = { category: string; material: string; count: number; m3: number };
 const rows = new Map<string, Row>();
+const shown = [];
 for (const el of model.getAllElements()) {
   // Fillers and spatial containers legitimately have no solid; placedSolids
   // returns an empty list for them rather than an error.
@@ -1181,8 +1190,11 @@ for (const el of model.getAllElements()) {
   const key = el.category + '|' + material;
   const row = rows.get(key) ?? { category: el.category, material, count: 0, m3: 0 };
   row.count += 1;
-  // Millimetres in, cubic metres out: 1 m3 is 1e9 mm3.
-  for (const s of solids) row.m3 += unwrap(measureVolume(s)) / 1e9;
+  for (const s of solids) {
+    // Millimetres in, cubic metres out: 1 m3 is 1e9 mm3.
+    row.m3 += unwrap(measureVolume(s)) / 1e9;
+    shown.push(color(s, TINT[el.category] ?? '#8b5a2b'));
+  }
   rows.set(key, row);
 }
 
@@ -1202,15 +1214,6 @@ const csv = ['Category,Material,Count,NetVolume_m3']
   .join(String.fromCharCode(10));
 
 // Playground runtime owns the displayed geometry for this eval.
-const TINT: Record<string, string> = {
-  WALL: '#d9d3c7',
-  SLAB: '#9a948a',
-  BEAM: '#8a99ad',
-};
-const shown = model
-  .getAllElements()
-  .flatMap((el) => unwrap(placedSolids(el)).map((solid) => color(solid, TINT[el.category] ?? '#8b5a2b')));
-
 export default present(shown, {
   bimTree: model.toTreeSummary(),
   ifc: async () => {
@@ -1448,12 +1451,24 @@ const byName = new Map(PROGRAMME.map((p) => [p[0], p]));
 console.log('room          department     area m2   volume m3');
 const byDept = new Map<string, number>();
 let totalArea = 0;
+const DEPT_TINT: Record<string, string> = {
+  Workplace: '#4fd1c5',
+  Amenity: '#f6c177',
+  Service: '#c4a7e7',
+};
+// One pass again: placedSolids allocates on every call, so the solids measured
+// for the schedule are the same ones handed to the viewer.
+const spaces = [];
 for (const el of model.getSpaces()) {
   const name = (el.spec as { name?: string }).name ?? '(unnamed)';
   const entry = byName.get(name);
   if (!entry) continue;
   const area = (entry[3] * entry[4]) / 1e6;
-  const vol = unwrap(placedSolids(el)).reduce((a, s) => a + unwrap(measureVolume(s)) / 1e9, 0);
+  let vol = 0;
+  for (const s of unwrap(placedSolids(el))) {
+    vol += unwrap(measureVolume(s)) / 1e9;
+    spaces.push(color(s, DEPT_TINT[entry[5]] ?? '#4fd1c5'));
+  }
   totalArea += area;
   byDept.set(entry[5], (byDept.get(entry[5]) ?? 0) + area);
   console.log(name.padEnd(14) + entry[5].padEnd(15) + area.toFixed(1).padStart(7) + vol.toFixed(1).padStart(11));
@@ -1464,16 +1479,6 @@ for (const [dept, area] of byDept) {
 }
 
 // Playground runtime owns the displayed geometry for this eval.
-const DEPT_TINT: Record<string, string> = {
-  Workplace: '#4fd1c5',
-  Amenity: '#f6c177',
-  Service: '#c4a7e7',
-};
-const spaces = model.getSpaces().flatMap((el) => {
-  const name = (el.spec as { name?: string }).name ?? '';
-  const dept = byName.get(name)?.[5] ?? '';
-  return unwrap(placedSolids(el)).map((solid) => color(solid, DEPT_TINT[dept] ?? '#4fd1c5'));
-});
 const walls = model
   .getWalls()
   .flatMap((el) => unwrap(placedSolids(el)))
