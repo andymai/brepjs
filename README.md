@@ -150,7 +150,8 @@ The command exits non-zero unless the report is `ok` (valid **and** every declar
 const Wall = family('Wall', (p: WallProps) =>
   el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] })
 );
-const tree = resolve(Storey({ key: 'ground', items: [Wall({ key: 'south', ... })] }));
+const wall = Wall({ key: 'south', length: 4000, thickness: 200, height: 2700 });
+const tree = resolve(Storey({ key: 'ground', items: [wall] }));
 evaluateModel(tree, evaluator); // viewport meshes, one per key path
 familiesToBim(tree, { project }); // IFC via brepjs-bim
 ```
