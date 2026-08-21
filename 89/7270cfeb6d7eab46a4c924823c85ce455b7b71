@@ -1,0 +1,52 @@
+apps/docs/.vitepress/config.ts
+  s_828c72638e0a06::t_782514b72d2c9e 317
+packages/brepjs-families/tsconfig.jsx.json
+  s_828c72638e0a06::t_2854583604cdf2 1-16
+packages/brepjs-families/tsconfig.test.json
+  s_828c72638e0a06::t_caee7bd87332b7 6
+  s_828c72638e0a06::t_623e7962150454 4,11,15
+  s_828c72638e0a06::t_b0238ea9955bdb 7-10,12-13
+packages/brepjs-families/src/element.ts
+  s_828c72638e0a06::t_0c058a45fddbc4 20-23,25
+packages/brepjs-families/package.json
+  s_828c72638e0a06::t_8436854adddf36 31
+packages/brepjs-families/tests/familiesJsx.test.tsx
+  s_828c72638e0a06::t_2c461ac3f6a59e 10,24
+  s_828c72638e0a06::t_825b9833a1f054 2-9,11-23,25-80
+  s_828c72638e0a06::t_0bdfa08b93c2dd 1
+packages/brepjs-families/src/index.ts
+  s_828c72638e0a06::t_2c461ac3f6a59e 15
+  s_828c72638e0a06::t_49528a228349ba 20
+apps/docs/families/jsx.md
+  s_828c72638e0a06::t_adb9975ea5c482 1-78
+packages/brepjs-families/vitest.config.ts
+  s_828c72638e0a06::t_c6f3467fff3e3f 6-9,14-24,31
+  s_828c72638e0a06::t_e985d5ac99cba7 10-13
+packages/brepjs-families/src/jsxRuntime.ts
+  s_828c72638e0a06::t_caee7bd87332b7 10-15,17-18,25
+  s_828c72638e0a06::t_1ce70712527217 16,19,23-24,26-32
+  s_828c72638e0a06::t_2d30d8e76d1605 20-22
+packages/brepjs-families/src/intrinsics.ts
+  s_828c72638e0a06::t_caee7bd87332b7 22
+  s_828c72638e0a06::t_2c461ac3f6a59e 9,17
+  s_828c72638e0a06::t_221d1321ca77d5 1-8,10-16,18-21,23-41
+  s_828c72638e0a06::t_f3a691fc042237 42-43
+packages/brepjs-families/eslint.config.js
+  s_828c72638e0a06::t_8436854adddf36 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "897270cfeb6d7eab46a4c924823c85ce455b7b71",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
