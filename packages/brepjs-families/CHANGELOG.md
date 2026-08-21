@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.2...brepjs-families-v0.8.0) (2026-08-21)
+
+
+### Features
+
+* **families:** structural composition — children, hierarchical transforms, rotation ([#2196](https://github.com/andymai/brepjs/issues/2196)) ([f0659e6](https://github.com/andymai/brepjs/commit/f0659e6aaa2d06778eb738f38d525a9fb6c454a3))
+
 ## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-families-v0.7.1...brepjs-families-v0.7.2) (2026-08-21)
 
 
