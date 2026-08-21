@@ -9,6 +9,7 @@ interface ToolbarProps {
   onExportSTEP: () => void;
   onExportDXF: () => void;
   onExportIFC: () => void;
+  onExportFiles: () => void;
   onShare: () => void;
   onOpenCommandPalette: () => void;
   onOpenHelp: () => void;
@@ -27,6 +28,7 @@ export default function Toolbar({
   onExportSTEP,
   onExportDXF,
   onExportIFC,
+  onExportFiles,
   onShare,
   onOpenCommandPalette,
   onOpenHelp,
@@ -42,6 +44,7 @@ export default function Toolbar({
   // patterns / BIM models); show each button only when the model exposes it.
   const canExportDXF = usePlaygroundStore((s) => s.availableArtifacts.includes('dxf'));
   const canExportIFC = usePlaygroundStore((s) => s.availableArtifacts.includes('ifc'));
+  const canExportFiles = usePlaygroundStore((s) => s.availableArtifacts.includes('files'));
 
   return (
     <div className="pt-safe border-b border-border-subtle bg-surface">
@@ -135,6 +138,16 @@ export default function Toolbar({
                   className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
                 >
                   IFC
+                </button>
+              )}
+              {canExportFiles && (
+                <button
+                  onClick={onExportFiles}
+                  disabled={!engineReady || isRunning}
+                  title="Download the data files this model produces (COBie, BCF, reports)"
+                  className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+                >
+                  Files
                 </button>
               )}
               <div className="mx-1 h-4 w-px bg-border-subtle" />

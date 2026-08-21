@@ -10,6 +10,7 @@ interface MobileActionSheetProps {
   onExportSTEP: () => void;
   onExportDXF: () => void;
   onExportIFC: () => void;
+  onExportFiles: () => void;
 }
 
 interface ActionDef {
@@ -30,11 +31,13 @@ export default function MobileActionSheet({
   onExportSTEP,
   onExportDXF,
   onExportIFC,
+  onExportFiles,
 }: MobileActionSheetProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
   const isRunning = usePlaygroundStore((s) => s.isRunning);
   const canExportDXF = usePlaygroundStore((s) => s.availableArtifacts.includes('dxf'));
   const canExportIFC = usePlaygroundStore((s) => s.availableArtifacts.includes('ifc'));
+  const canExportFiles = usePlaygroundStore((s) => s.availableArtifacts.includes('files'));
   const sheetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -89,6 +92,16 @@ export default function MobileActionSheet({
             label: 'Export IFC',
             hint: 'BIM model',
             onSelect: onExportIFC,
+            disabled: exportDisabled,
+          },
+        ]
+      : []),
+    ...(canExportFiles
+      ? [
+          {
+            label: 'Export files',
+            hint: 'COBie, BCF, reports',
+            onSelect: onExportFiles,
             disabled: exportDisabled,
           },
         ]

@@ -81,6 +81,14 @@ const PLAYGROUND_MODULE_DTS = `declare module 'brepjs/playground' {
     dxf?: string;
     /** IFC-SPF bytes offered for download, or a thunk producing them (deferred to the download click). */
     ifc?: Uint8Array | (() => Uint8Array | Promise<Uint8Array>);
+    /** Named side files (COBie sheets, a BCF container, a report) offered for download via the Files
+     *  button, or a thunk producing them (deferred to the click, like \`ifc\`). One save fires per
+     *  file, so attach a curated few rather than a serializer's whole output. */
+    files?:
+      | readonly { name: string; data: string | Uint8Array; mime?: string }[]
+      | (() =>
+          | readonly { name: string; data: string | Uint8Array; mime?: string }[]
+          | Promise<readonly { name: string; data: string | Uint8Array; mime?: string }[]>);
     /** A serializable BIM tree summary (BimModel.toTreeSummary()) for the domain panel. */
     bimTree?: unknown;
     /** Serializable flat-pattern polylines (flatPatternToPolylines()) for the 2D overlay. */

@@ -126,6 +126,7 @@ export default function PlaygroundPage() {
         onExportSTEP={actions.handleExportSTEP}
         onExportDXF={actions.handleExportDXF}
         onExportIFC={actions.handleExportIFC}
+        onExportFiles={actions.handleExportFiles}
         onShare={actions.handleShare}
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}
@@ -181,6 +182,7 @@ export default function PlaygroundPage() {
         onExportSTEP={actions.handleExportSTEP}
         onExportDXF={actions.handleExportDXF}
         onExportIFC={actions.handleExportIFC}
+        onExportFiles={actions.handleExportFiles}
       />
     </div>
   );

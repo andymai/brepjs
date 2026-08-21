@@ -79,12 +79,22 @@ function isColoredShape(v: unknown): v is ColoredShape {
 // wrapper down to `shape` for meshing and forwards the artifacts.
 const PLAYGROUND_PRESENT_TAG = '__brepjsPlaygroundPresent';
 // Artifact kinds offered as toolbar downloads (the rest are display-only).
-const DOWNLOAD_ARTIFACT_KEYS = ['dxf', 'ifc'] as const;
+const DOWNLOAD_ARTIFACT_KEYS = ['dxf', 'ifc', 'files'] as const;
+interface PresentFile {
+  name: string;
+  data: string | Uint8Array;
+  mime?: string;
+}
 interface PresentArtifacts {
   dxf?: string;
   // IFC bytes, or a thunk that produces them — toIfc re-inits web-ifc on every
   // call, so examples pass a thunk to defer that work to the download click.
   ifc?: Uint8Array | (() => Uint8Array | Promise<Uint8Array>);
+  // Named side files (COBie sheets, a BCF container, a validation report).
+  // A thunk defers work that needs web-ifc to the download click, like `ifc`.
+  // Downloads fire one per file, so examples attach a curated few rather than
+  // every sheet a serializer produces.
+  files?: readonly PresentFile[] | (() => readonly PresentFile[] | Promise<readonly PresentFile[]>);
   // A serializable BimModel.toTreeSummary() result, rendered in the domain panel.
   bimTree?: unknown;
   // A serializable flatPatternToPolylines() result, rendered as a 2D overlay.
@@ -786,6 +796,40 @@ async function handleExportIFC(id: string, code: string) {
   }
 }
 
+// Return the named side files an example attached via present(shape, { files }).
+// Same deferral rationale as `ifc`: a thunk means COBie derivation or an IDS
+// check (both of which need an IFC export) run on the download click, not on
+// every render. Strings are encoded here so the main thread only handles bytes.
+async function handleExportFiles(id: string, code: string) {
+  try {
+    const { files } = await evalArtifacts(code);
+    const list = typeof files === 'function' ? await files() : files;
+    if (!Array.isArray(list) || list.length === 0) {
+      post({
+        type: 'export-error',
+        id,
+        error: 'This model has no files to export — attach them with present(shape, { files }).',
+      });
+      return;
+    }
+    const encoder = new TextEncoder();
+    const out: { name: string; data: ArrayBuffer; mime: string }[] = [];
+    const transfer: ArrayBuffer[] = [];
+    for (const f of list as readonly PresentFile[]) {
+      const bytes = typeof f.data === 'string' ? encoder.encode(f.data) : f.data;
+      const buf = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength
+      ) as ArrayBuffer;
+      out.push({ name: f.name, data: buf, mime: f.mime ?? 'application/octet-stream' });
+      transfer.push(buf);
+    }
+    post({ type: 'export-files-result', id, files: out }, transfer);
+  } catch (e) {
+    post({ type: 'export-error', id, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 addEventListener('message', (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   switch (msg.type) {
@@ -813,6 +857,9 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       break;
     case 'export-ifc':
       void handleExportIFC(msg.id, msg.code);
+      break;
+    case 'export-files':
+      void handleExportFiles(msg.id, msg.code);
       break;
   }
 });

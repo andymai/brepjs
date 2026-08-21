@@ -39,7 +39,8 @@ export type ToWorker =
   | { type: 'export-stl'; id: string; code: string }
   | { type: 'export-step'; id: string; code: string }
   | { type: 'export-dxf'; id: string; code: string }
-  | { type: 'export-ifc'; id: string; code: string };
+  | { type: 'export-ifc'; id: string; code: string }
+  | { type: 'export-files'; id: string; code: string };
 
 // -- Worker -> Main --
 
@@ -66,4 +67,11 @@ export type FromWorker =
   | { type: 'export-step-result'; id: string; step: ArrayBuffer }
   | { type: 'export-dxf-result'; id: string; dxf: string }
   | { type: 'export-ifc-result'; id: string; ifc: ArrayBuffer }
+  // Named side files (COBie sheets, a BCF container, a report) from
+  // present(shape, { files }); the main thread saves each one.
+  | {
+      type: 'export-files-result';
+      id: string;
+      files: { name: string; data: ArrayBuffer; mime: string }[];
+    }
   | { type: 'export-error'; id: string; error: string };

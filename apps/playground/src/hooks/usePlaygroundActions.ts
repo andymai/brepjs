@@ -20,6 +20,7 @@ export interface PlaygroundActions {
   handleExportSTEP: () => void;
   handleExportDXF: () => void;
   handleExportIFC: () => void;
+  handleExportFiles: () => void;
   handleCopyCode: () => void;
   handleResetToDefault: () => void;
   handleResetViewer: () => void;
@@ -30,7 +31,8 @@ export interface PlaygroundActions {
 export function usePlaygroundActions(): PlaygroundActions {
   const code = usePlaygroundStore((s) => s.code);
   const addToast = useToastStore((s) => s.addToast);
-  const { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, debouncedRun } = useCodeExecution();
+  const { runCode, exportSTL, exportSTEP, exportDXF, exportIFC, exportFiles, debouncedRun } =
+    useCodeExecution();
   const { updateUrl, copyShareUrl, buildShareUrl } = useUrlState();
   const handleScreenshot = useScreenshot();
   const resetViewerDefaults = useViewerStore((s) => s.resetViewerDefaults);
@@ -80,6 +82,13 @@ export function usePlaygroundActions(): PlaygroundActions {
     track('playground_export', { format: 'ifc' });
     captureEvent('playground_export', { format: 'ifc' });
   }, [exportIFC, code, addToast]);
+
+  const handleExportFiles = useCallback(() => {
+    exportFiles(code);
+    addToast('Exporting files...');
+    track('playground_export', { format: 'files' });
+    captureEvent('playground_export', { format: 'files' });
+  }, [exportFiles, code, addToast]);
 
   // On touch devices with the Web Share API, hand the permalink to the native
   // share sheet (Messages / AirDrop / etc.); everywhere else fall back to the
@@ -149,6 +158,7 @@ export function usePlaygroundActions(): PlaygroundActions {
       handleExportSTEP,
       handleExportDXF,
       handleExportIFC,
+      handleExportFiles,
       handleCopyCode,
       handleResetToDefault,
       handleResetViewer,
@@ -163,6 +173,7 @@ export function usePlaygroundActions(): PlaygroundActions {
       handleExportSTEP,
       handleExportDXF,
       handleExportIFC,
+      handleExportFiles,
       handleCopyCode,
       handleResetToDefault,
       handleResetViewer,
