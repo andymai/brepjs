@@ -19,7 +19,7 @@
 import { mkdir, open, readFile, writeFile, access, lstat, realpath, rename, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { join, resolve as resolvePath, sep } from 'node:path';
+import { dirname, join, resolve as resolvePath, sep } from 'node:path';
 import process from 'node:process';
 
 // The default registry pins to the release tag of the INSTALLED
@@ -28,19 +28,31 @@ import process from 'node:process';
 // install, fall back to main.
 const REGISTRY_PATH = 'packages/brepjs-families/registry';
 
-async function defaultRegistry() {
-  try {
-    const pkg = JSON.parse(
-      await readFile(
-        join(process.cwd(), 'node_modules', 'brepjs-families', 'package.json'),
-        'utf8'
-      )
-    );
-    if (typeof pkg.version === 'string' && /^\d+\.\d+\.\d+$/.test(pkg.version)) {
-      return `https://raw.githubusercontent.com/andymai/brepjs/brepjs-families-v${pkg.version}/${REGISTRY_PATH}`;
+async function installedFamiliesVersion() {
+  // Walk ancestor node_modules like Node's resolver, so a hoisted install
+  // (workspaces, monorepos) still pins the registry.
+  let dir = process.cwd();
+  for (;;) {
+    try {
+      const pkg = JSON.parse(
+        await readFile(join(dir, 'node_modules', 'brepjs-families', 'package.json'), 'utf8')
+      );
+      if (typeof pkg.version === 'string' && /^\d+\.\d+\.\d+$/.test(pkg.version)) {
+        return pkg.version;
+      }
+    } catch {
+      // keep walking
     }
-  } catch {
-    // No local brepjs-families: track main.
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+async function defaultRegistry() {
+  const version = await installedFamiliesVersion();
+  if (version !== null) {
+    return `https://raw.githubusercontent.com/andymai/brepjs/brepjs-families-v${version}/${REGISTRY_PATH}`;
   }
   return `https://raw.githubusercontent.com/andymai/brepjs/main/${REGISTRY_PATH}`;
 }
