@@ -1,9 +1,14 @@
-// brepjs-family: room@1
+// brepjs-family: room@2
 /**
  * Room — a composed family: four keyed perimeter walls with a door in the
  * south wall. Copy-in composes (it only calls other families and the
  * brepjs-families surface); it never reaches around them into IFC writing.
  * Depends on: wall, door.
+ *
+ * `at` is the room's south-west corner. A composed family has to thread its
+ * own placement down to the children it builds: element trees carry no
+ * hierarchical transform, so wrapping the group in one would move the
+ * group's geometry and leave every wall behind at the origin.
  */
 
 import { family, el } from 'brepjs-families';
@@ -16,6 +21,7 @@ const roomShape = z.object({
   depth: z.number().positive(),
   height: z.number().positive(),
   thickness: z.number().positive().default(200),
+  at: z.tuple([z.number(), z.number()]).default([0, 0]),
   doorWidth: z.number().positive().default(1000),
   doorHeight: z.number().positive().default(2100),
   doorAlong: z.number().nonnegative().default(0),
@@ -50,12 +56,13 @@ export const Room = family(
     const { width: w, depth: d, height, thickness: t, materialName } = p;
     const doorAlong = doorAlongOf(p);
     const shared = { height, thickness: t, materialName };
+    const [x, y] = p.at;
     return el('Group', {}, [
       Wall({
         key: 'south',
         ...shared,
         length: w,
-        at: [0, 0, 0],
+        at: [x, y, 0],
         voids: [
           Door({
             key: 'door',
@@ -66,9 +73,9 @@ export const Room = family(
           }),
         ],
       }),
-      Wall({ key: 'north', ...shared, length: w, at: [0, d - t, 0] }),
-      Wall({ key: 'west', ...shared, length: d, at: [t, 0, 0], axisX: [0, 1, 0] }),
-      Wall({ key: 'east', ...shared, length: d, at: [w, 0, 0], axisX: [0, 1, 0] }),
+      Wall({ key: 'north', ...shared, length: w, at: [x, y + d - t, 0] }),
+      Wall({ key: 'west', ...shared, length: d, at: [x + t, y, 0], axisX: [0, 1, 0] }),
+      Wall({ key: 'east', ...shared, length: d, at: [x + w, y, 0], axisX: [0, 1, 0] }),
     ]);
   },
   { props: roomSchema }

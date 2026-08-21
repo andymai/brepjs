@@ -12,14 +12,14 @@ export const BIM_EXAMPLES: readonly Example[] = [
     label: 'Steel I-Beam',
     description:
       'A parametric structural-steel wide-flange (I-beam) authored through a BimModel, complete with the rolled root fillets where the web meets the flanges. The element carries a brepjs solid for display and the model serializes to IFC.',
-    code: `import { BimModel } from 'brepjs-bim';
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
 import { unwrap } from 'brepjs/quick';
 
-// A parametric structural-steel I-beam authored through the BIM model (it also
-// serializes to IFC via toIfc(model)). filletRadius adds the rolled root fillets
-// real wide-flange sections carry where the web meets the flanges. Placed in a
-// project → site → building → storey so the BIM panel shows a real model tree.
+// A parametric structural-steel I-beam authored through the BIM model.
+// filletRadius adds the rolled root fillets real wide-flange sections carry
+// where the web meets the flanges. Placed in a project → site → building →
+// storey so the BIM panel shows a real model tree.
 const model = new BimModel();
 model.init({ name: 'Beam example' });
 
@@ -50,9 +50,19 @@ const beam = model.addBeam({
 if (!beam.ok) throw beam.error;
 model.placeIn(beam.value, storeyId);
 
-// Show the beam solid and the live IFC model tree in the BIM panel.
-export default present(model.getBeams()[0].geometry, {
+// placedSolids() applies the element's (origin, axisX, axisZ) frame, so the
+// scene matches the IFC. Reading .geometry instead would show the unplaced
+// local solid, identical here only because this beam sits at the origin.
+export default present(unwrap(placedSolids(model.getBeams()[0])), {
   bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
 });
 `,
   },
@@ -61,7 +71,7 @@ export default present(model.getBeams()[0].geometry, {
     label: 'Wall with Openings',
     description:
       'A parametric wall hosting a door and a window, placed in a project → site → building → storey spatial structure. The BIM panel shows the live IFC model tree.',
-    code: `import { BimModel, toIfc } from 'brepjs-bim';
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
 import { unwrap } from 'brepjs/quick';
 
@@ -116,9 +126,10 @@ if (!win.ok) throw win.error;
 model.placeIn(win.value, storeyId);
 
 // Show the wall solid (with its openings), the IFC tree for the panel, and an
-// IFC export. The ifc thunk runs only when you click the IFC button — serializing
-// IFC re-initializes web-ifc, so it's deferred from every render.
-export default present(model.getWalls()[0].geometry, {
+// IFC export. placedSolids() applies the wall's frame so the scene matches the
+// exported file. The ifc thunk runs only when you click the IFC button —
+// serializing IFC re-initializes web-ifc, so it's deferred from every render.
+export default present(unwrap(placedSolids(model.getWalls()[0])), {
   bimTree: model.toTreeSummary(),
   ifc: async () => {
     const result = await toIfc(model, {
@@ -135,14 +146,13 @@ export default present(model.getWalls()[0].geometry, {
     id: 'bim-curtain-wall',
     label: 'Curtain Wall',
     description:
-      'A parametric curtain-wall facade — a grid of glazing panels framed by vertical and horizontal mullions, each placed from its IFC local origin.',
-    code: `import { BimModel } from 'brepjs-bim';
+      'A parametric curtain-wall facade: a grid of glazing panels framed by vertical and horizontal mullions, standing on a wall line skewed 30 degrees off the X axis. Placement is two-level (component origin, then the wall frame) and placedSolids() applies both.',
+    code: `import { BimModel, placedSolids, toIfc } from 'brepjs-bim';
 import { present } from 'brepjs/playground';
-import { translate, unwrap } from 'brepjs/quick';
+import { unwrap } from 'brepjs/quick';
 
 // A parametric curtain wall: a columns x rows grid of glazing panels framed by
-// mullions. The model returns each panel and mullion as a local-origin solid
-// plus its placement origin; we translate each into place and show them all.
+// mullions, standing on a wall line that runs 30 degrees off the X axis.
 // Placed in a project → site → building → storey so the BIM panel shows a tree.
 const model = new BimModel();
 model.init({ name: 'Curtain wall' });
@@ -156,6 +166,9 @@ if (project) model.aggregate(project.localId, siteId);
 model.aggregate(siteId, buildingId);
 model.aggregate(buildingId, storeyId);
 
+// A facade rarely runs along world X, so this one is skewed 30 degrees to make
+// the placement real rather than incidental.
+const A = Math.PI / 6;
 const cw = model.addCurtainWall({
   width: 2700,
   height: 2000,
@@ -165,19 +178,29 @@ const cw = model.addCurtainWall({
   mullionWidth: 50,
   mullionDepth: 120,
   origin: [0, 0, 0],
-  axisX: [1, 0, 0],
+  axisX: [Math.cos(A), Math.sin(A), 0],
   axisZ: [0, 0, 1],
   materialName: 'Aluminium',
 });
 if (!cw.ok) throw cw.error;
 model.placeIn(cw.value, storeyId);
 
-const grid = model.getCurtainWalls()[0].geometry;
-const parts = [...grid.panels, ...grid.mullions].map((c) => translate(c.solid, c.origin));
+// Curtain-wall placement is two-level: each panel/mullion carries a grid-local
+// origin, and the whole grid then sits on the wall's own frame. placedSolids()
+// applies both. Translating by the component origin alone would build the grid
+// flat along X and silently drop the 30-degree rotation.
+const parts = unwrap(placedSolids(model.getCurtainWalls()[0]));
 
-// Show every panel + mullion solid and the live IFC model tree in the BIM panel.
 export default present(parts, {
   bimTree: model.toTreeSummary(),
+  ifc: async () => {
+    const r = await toIfc(model, {
+      applicationName: 'brepjs playground',
+      applicationVersion: '1.0',
+    });
+    if (!r.ok) throw r.error;
+    return r.value;
+  },
 });
 `,
   },
