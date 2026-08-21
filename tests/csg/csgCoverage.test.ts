@@ -767,10 +767,15 @@ describe('edit — coverage', () => {
     const tree = compound([fuseAll([box(1, 1, 1), sphere(1)]), cutAll(box(2, 2, 2), [sphere(1)])]);
     const edited = replaceNode(tree, (n) => n.kind === 'Sphere', cylinder(1, 1));
     let cyls = 0;
+    let spheres = 0;
     forEachNode(edited, (n) => {
       if (n.kind === 'Cylinder') cyls++;
+      if (n.kind === 'Sphere') spheres++;
     });
-    expect(cyls).toBe(2);
+    // Both sphere slots hold the ONE replacement node; walks are
+    // identity-deduplicated, so it is reported once and no Sphere survives.
+    expect(cyls).toBe(1);
+    expect(spheres).toBe(0);
   });
 
   it('replaceNode handles transforms', () => {

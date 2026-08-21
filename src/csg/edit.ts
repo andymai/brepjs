@@ -16,15 +16,26 @@ import type {
 export type NodePredicate = (node: IRNode) => boolean;
 
 export function replaceNode(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode {
-  return walk(root, pred, replacement);
+  return walk(root, pred, replacement, new Map());
 }
 
-function walk(node: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
-  if (pred(node)) return repl;
-  return rebuildChildren(node, pred, repl);
+// Memoized by node identity: a shared subtree rebuilds once and STAYS shared
+// in the output, and a self-referencing DAG walks in linear time instead of
+// expanding to its exponential path count.
+function walk(node: IRNode, pred: NodePredicate, repl: IRNode, memo: Map<IRNode, IRNode>): IRNode {
+  const cached = memo.get(node);
+  if (cached !== undefined) return cached;
+  const out = pred(node) ? repl : rebuildChildren(node, pred, repl, memo);
+  memo.set(node, out);
+  return out;
 }
 
-function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
+function rebuildChildren(
+  n: IRNode,
+  pred: NodePredicate,
+  repl: IRNode,
+  memo: Map<IRNode, IRNode>
+): IRNode {
   switch (n.kind) {
     case 'Box':
     case 'Sphere':
@@ -40,34 +51,34 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
     case 'Profile':
       return n;
     case 'Fuse':
-      return B.fuse(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
+      return B.fuse(walk(n.a, pred, repl, memo), walk(n.b, pred, repl, memo), n.tolerance);
     case 'Cut':
-      return B.cut(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
+      return B.cut(walk(n.a, pred, repl, memo), walk(n.b, pred, repl, memo), n.tolerance);
     case 'Intersect':
-      return B.intersect(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
+      return B.intersect(walk(n.a, pred, repl, memo), walk(n.b, pred, repl, memo), n.tolerance);
     case 'FuseAll':
       return B.fuseAll(
-        n.shapes.map((c) => walk(c, pred, repl)),
+        n.shapes.map((c) => walk(c, pred, repl, memo)),
         n.tolerance
       );
     case 'CutAll':
       return B.cutAll(
-        walk(n.base, pred, repl),
-        n.tools.map((c) => walk(c, pred, repl)),
+        walk(n.base, pred, repl, memo),
+        n.tools.map((c) => walk(c, pred, repl, memo)),
         n.tolerance
       );
     case 'Translate':
-      return B.translate(walk(n.target, pred, repl), n.vector);
+      return B.translate(walk(n.target, pred, repl, memo), n.vector);
     case 'Rotate':
-      return B.rotate(walk(n.target, pred, repl), n.angle, { axis: n.axis, at: n.at });
+      return B.rotate(walk(n.target, pred, repl, memo), n.angle, { axis: n.axis, at: n.at });
     case 'Scale':
-      return B.scale(walk(n.target, pred, repl), n.factor, { center: n.center });
+      return B.scale(walk(n.target, pred, repl, memo), n.factor, { center: n.center });
     case 'Mirror':
-      return B.mirror(walk(n.target, pred, repl), { normal: n.normal, at: n.at });
+      return B.mirror(walk(n.target, pred, repl, memo), { normal: n.normal, at: n.at });
     case 'Compound':
-      return B.compound(n.children.map((c) => walk(c, pred, repl)));
+      return B.compound(n.children.map((c) => walk(c, pred, repl, memo)));
     case 'Instance':
-      return B.instance(walk(n.source, pred, repl), n.placements, n.fuse);
+      return B.instance(walk(n.source, pred, repl, memo), n.placements, n.fuse);
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
@@ -76,7 +87,7 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
     case 'Fillet':
     case 'Chamfer':
     case 'Shell':
-      return rebuildFeature(n, pred, repl);
+      return rebuildFeature(n, pred, repl, memo);
   }
 }
 
@@ -91,36 +102,45 @@ function rebuildFeature(
     | ChamferNode
     | ShellNode,
   pred: NodePredicate,
-  repl: IRNode
+  repl: IRNode,
+  memo: Map<IRNode, IRNode>
 ): IRNode {
   switch (n.kind) {
     case 'Extrude':
-      return B.extrude(walk(n.profile, pred, repl), n.vector);
+      return B.extrude(walk(n.profile, pred, repl, memo), n.vector);
     case 'Revolve':
-      return B.revolve(walk(n.profile, pred, repl), n.angle, { axis: n.axis, at: n.at });
+      return B.revolve(walk(n.profile, pred, repl, memo), n.angle, { axis: n.axis, at: n.at });
     case 'Loft':
       return B.loft(
-        n.sections.map((s) => walk(s, pred, repl)),
+        n.sections.map((s) => walk(s, pred, repl, memo)),
         { ruled: n.ruled }
       );
     case 'Sweep':
-      return B.sweep(walk(n.profile, pred, repl), walk(n.spine, pred, repl), {
+      return B.sweep(walk(n.profile, pred, repl, memo), walk(n.spine, pred, repl, memo), {
         frenet: n.frenet,
       });
     case 'Color':
-      return B.color(walk(n.target, pred, repl), [...n.color]);
+      return B.color(walk(n.target, pred, repl, memo), [...n.color]);
     case 'Fillet':
-      return B.fillet(walk(n.target, pred, repl), n.ref, n.radius);
+      return B.fillet(walk(n.target, pred, repl, memo), n.ref, n.radius);
     case 'Chamfer':
-      return B.chamfer(walk(n.target, pred, repl), n.ref, n.distance);
+      return B.chamfer(walk(n.target, pred, repl, memo), n.ref, n.distance);
     case 'Shell':
-      return B.shell(walk(n.target, pred, repl), n.refs, n.thickness);
+      return B.shell(walk(n.target, pred, repl, memo), n.refs, n.thickness);
   }
 }
 
+/** Visits each DISTINCT node once (identity-deduplicated), so a shared
+ *  subtree is reported once and a self-referencing DAG walks in linear time. */
 export function forEachNode(root: IRNode, fn: (node: IRNode) => void): void {
-  fn(root);
-  for (const child of childrenOf(root)) forEachNode(child, fn);
+  const seen = new Set<IRNode>();
+  const visit = (node: IRNode): void => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    fn(node);
+    for (const child of childrenOf(node)) visit(child);
+  };
+  visit(root);
 }
 
 function childrenOf(n: IRNode): readonly IRNode[] {
