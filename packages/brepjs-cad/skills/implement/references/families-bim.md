@@ -72,6 +72,9 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
   (`axisX: [0,1,0]`) grows its thickness toward **−X**. Probe placement with `getBounds`, not by eye.
 - **Wall/slab dims must contain their openings** — a door wider than the wall fails with
   `DOOR_EXCEEDS_WALL_BOUNDS` at add time, not at export.
+- **`familiesToBim` and `toIfc` return `Result`.** `unwrap` is fine in a throwaway script; in an
+  agent loop, check the `Err` branch — spec/identity failures carry the codes above plus the
+  offending key path, which tells you exactly what to fix.
 
 ## Starter components (copy-in, shadcn-style)
 
@@ -89,5 +92,8 @@ reach IFC — a custom-geometry family is viewport-only until you add it imperat
 ## Scale
 
 Identical subtrees share one materialization (content-addressed IR): a hundred identical walls mesh
-once. Give repeated elements identical props and distinct keys; never bake the position into props
-that could otherwise be shared — use `transform`/`at` instead.
+once. Placement via `transform`/`at` preserves that sharing — it wraps the shared geometry in a
+`Translate` node, so the placed shape is a cheap relocation and rigid placements reuse the inner
+tessellation. What forks the whole subtree is baking position into the geometry itself (polygon
+coordinates, per-instance dimensions): keep repeated elements' geometric props identical and vary
+only keys and placement.
