@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.173.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.172.0...brepjs-cad-v0.173.0) (2026-08-21)
+
+
+### Features
+
+* **cad:** teach the agent skill the declarative families/IFC path ([#2189](https://github.com/andymai/brepjs/issues/2189)) ([94eac20](https://github.com/andymai/brepjs/commit/94eac20e73e677abca3103e7baf7ba89ec66a8a1))
+
 ## [0.172.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.171.0...brepjs-cad-v0.172.0) (2026-08-18)
 
 
