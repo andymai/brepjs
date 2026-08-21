@@ -1,0 +1,26 @@
+apps/playground/src/lib/examples/bim.ts
+  s_1489c200684616::t_f2041d6937c134 1563-1564,1567
+  s_1489c200684616::t_a87c9fe23085e9 1609-1612,1625
+  s_1489c200684616::t_6c387ea1559539 1649-1651,1653,1656
+  s_1489c200684616::t_05ee6b2dc482ca 491-493
+  s_1489c200684616::t_79db426bae38ec 1429-1431,1433
+  s_1489c200684616::t_45fc2e07f3af93 1750-1751,1753
+  s_1489c200684616::t_7ff62f31d1f6db 1764-1766,1770
+  s_1489c200684616::t_313bb9a534b7b3 1580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "9d1c79bba05cc3fc044fc863f396a020466f1bb1",
+  "prompts": {},
+  "sessions": {
+    "s_1489c200684616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "227a3915-7874-42b2-aa2a-d2a96958f637",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
