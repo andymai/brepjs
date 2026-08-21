@@ -1,0 +1,19 @@
+apps/playground/src/lib/examples/bim.ts
+  s_02b98d936b56b3::t_d01a1fc128e2c1 1950-1951,1964-1982
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3678dad3e6d7e4a882f9c763a0a8fa54914dd3eb",
+  "prompts": {},
+  "sessions": {
+    "s_02b98d936b56b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f3e6065-5a72-4842-aaf1-2d95e219c363",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
