@@ -1,0 +1,32 @@
+packages/brepjs-bim/src/elementFns/placedGeometry.ts
+  s_cbbd0a17a1913f::t_31a1d639d121af 8,36-39,51,64-80,82
+  s_cbbd0a17a1913f::t_8e02ed281f4589 81,83
+apps/playground/src/lib/examples/bim.ts
+  s_cbbd0a17a1913f::t_d28543eb515b5d 1212
+  s_cbbd0a17a1913f::t_9ebea1cedceb25 1444-1447,1451-1454,1459-1460,1472-1476
+  s_cbbd0a17a1913f::t_f28f226c13540a 1176-1179,1185,1343-1345,1456,1671-1673
+  s_cbbd0a17a1913f::t_277343f40ea752 1581-1584,1589-1590
+  s_cbbd0a17a1913f::t_df024c2d02e925 1059-1175,1180-1184,1186-1211,1213-1342,1346-1443,1448-1450,1455,1457-1458,1461-1471,1477-1580,1585-1588,1591-1670,1674-1685
+packages/brepjs-bim/tests/placedGeometry.test.ts
+  s_cbbd0a17a1913f::t_909ca1713f72ab 30-99
+apps/docs/bim/elements.md
+  s_cbbd0a17a1913f::t_eea1463842a00e 47
+packages/brepjs-bim/README.md
+  s_cbbd0a17a1913f::t_82315d8609b966 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "473d0b438ada8f4398ba354d38a69e2abe416d11",
+  "prompts": {},
+  "sessions": {
+    "s_cbbd0a17a1913f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be0e94aa-5452-4a14-ace3-4f0f4c8c1258",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
