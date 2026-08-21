@@ -9,7 +9,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from '../setup.js';
-import { Evaluator, cylinder, sphere, translate } from '@/csg/index.js';
+import { Evaluator, cylinder, rotate, sphere, translate } from '@/csg/index.js';
 import { unwrap } from '@/index.js';
 
 beforeAll(async () => {
@@ -69,5 +69,16 @@ describe('Evaluator.evaluateMesh scale-relative default', () => {
     const sourceMesh = unwrap(ev.evaluateMesh(source));
     const placedMesh = unwrap(ev.evaluateMesh(placed));
     expect(placedMesh.triangles.length).toBe(sourceMesh.triangles.length);
+  });
+
+  it('resolves the same default density with and without the mesh cache for a rotated placement', () => {
+    // A rotated placement's axis-aligned bounds inflate the diagonal; the
+    // default must come from the placement-stripped shape on both paths.
+    const node = rotate(cylinder(200, 4000), 45, { axis: [1, 0, 0] });
+    using cached = new Evaluator();
+    const viaReuse = unwrap(cached.evaluateMesh(node));
+    using uncached = new Evaluator();
+    const direct = unwrap(uncached.evaluateMesh(node, {}, { cache: false }));
+    expect(direct.triangles.length).toBe(viaReuse.triangles.length);
   });
 });

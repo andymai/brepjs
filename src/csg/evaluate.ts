@@ -610,9 +610,12 @@ export class Evaluator implements Disposable {
       }
     }
 
+    // Resolve the default tolerance BEFORE evaluating the placed shape: only a
+    // number crosses the next evaluate, so a bounded cache evicting either
+    // shape in between cannot leave a disposed handle in this call's hands.
+    const tolerance = explicitTolerance ?? this.defaultToleranceFor(node, env, quality.tolerance);
     const shape = this.evaluate(node, env);
     if (!shape.ok) return shape;
-    const tolerance = explicitTolerance ?? scaleDefaultTolerance(quality.tolerance, shape.value);
     const resolvedOpts = { ...meshOpts, tolerance, angularTolerance };
     // Mesh under the evaluator's kernel so getKernel() doesn't pick up an
     // unrelated ambient kernel after evaluate() restores the prior context.
@@ -639,6 +642,18 @@ export class Evaluator implements Disposable {
       if (this.maxMeshCacheEntries !== undefined) this.trimMeshCache(this.maxMeshCacheEntries);
     }
     return ok(built);
+  }
+
+  /** Scale-relative default deflection, derived from the placement-stripped
+   *  geometry so the resolved density is identical whether or not the
+   *  rigid-reuse path served the call: a rotated placement's axis-aligned
+   *  bounds inflate the diagonal by up to sqrt(3). The bounds are read while
+   *  the just-evaluated shape is live; only the number outlives it. */
+  private defaultToleranceFor(node: IRNode, env: Env, base: number): number {
+    const { inner } = peelRigid(node, env);
+    const source = this.evaluate(inner, env);
+    if (!source.ok) return base;
+    return scaleDefaultTolerance(base, source.value);
   }
 
   private evaluateInner(node: IRNode, env: Env): Result<AnyShape<Dimension>> {
