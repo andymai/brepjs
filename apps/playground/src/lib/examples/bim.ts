@@ -1947,8 +1947,8 @@ for (const b of buses) schedule.push(b.tag + ',Track busway,' + BUS_A + ' A 415 
 
 // Playground runtime owns the displayed geometry for this eval.
 const PALETTE: Record<string, string> = {
-  Concrete: '#c9c4b8', 'Raised access floor': '#b8bcc2', 'Perforated tile, 25% open': '#4a5568',
-  'Steel, powder coated': '#454c56', 'Steel, light grey': '#7d848d', 'Galvanized steel': '#9aa3ab',
+  Concrete: '#c9c4b8', 'Raised access floor': '#c4bfb5', 'Perforated tile, 25% open': '#4f5c73',
+  'Steel, powder coated': '#454c56', 'Steel, light grey': '#8b9199', 'Galvanized steel': '#9aa3ab',
   'Polycarbonate panel': '#d9a441',
 };
 const FEED_TINT: Record<string, string> = { A: '#b5443c', B: '#3c66b5' };
@@ -1961,7 +1961,25 @@ const shown = model.getAllElements().flatMap((el) => {
   return unwrap(placedSolids(el)).map((s) => color(s, css));
 });
 
-export default present(shown, {
+// Display-only dressing the viewer needs but the model does not: a proud
+// front door per rack and a tap-off drop from each busway run every third
+// rack. The BIM model stays one element per asset.
+const doors = seq(ROWS).flatMap((r) => seq(PER_ROW).map((j) => {
+  const cx = END + TILE * (1 + j) + TILE / 2;
+  const yFront = rowBand(r) + BAND / 2 + (facesUp(r) ? 1 : -1) * (RACK.d / 2 + 15);
+  return color(box(RACK.w - 100, 30, RACK.h - 160, { at: [cx, yFront, RF + RACK.h / 2] }), '#5f6774');
+}));
+const DROP_H = 3275 - 75 - RACK.h; // busway underside down to the rack top
+const drops = seq(ROWS).flatMap((r) =>
+  ([['A', 350], ['B', -350]] as const).flatMap(([feed, off]) =>
+    [0, 3, 6, 9].map((j) => color(
+      box(60, 60, DROP_H, {
+        at: [END + TILE * (1 + j) + TILE / 2, rowBand(r) + BAND / 2 + off, RF + RACK.h + DROP_H / 2],
+      }),
+      FEED_TINT[feed]
+    ))));
+
+export default present([...shown, ...doors, ...drops], {
   bimTree: model.toTreeSummary(),
   ifc: () => exported.value.bytes,
   files: () => [{ name: 'equipment-schedule.csv', data: schedule.join(String.fromCharCode(10)), mime: 'text/csv' }],
