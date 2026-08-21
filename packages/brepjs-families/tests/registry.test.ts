@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, isOk } from 'brepjs';
+import { csg, isOk, measureVolume, unwrap } from 'brepjs';
 import { resolve, evaluateModel } from '../src/index.js';
 import { Room } from '../registry/families/room.js';
 import { Storey } from '../registry/families/storey.js';
@@ -222,6 +222,23 @@ describe('starter families', () => {
     const model = evaluateModel(storey, ev);
     const roof = model.byKeyPath.get(`s/${shape['key'] as string}`);
     expect(roof && isOk(roof.mesh)).toBe(true);
+  });
+
+  it('the dome roof is a true hemispherical cap', () => {
+    using ev = new csg.Evaluator();
+    const storey = resolve(
+      Storey({
+        key: 's',
+        items: [Roof({ ...ROOF_DIMS, key: 'dome', predefinedType: 'DOME_ROOF', pitch: 1 })],
+      })
+    );
+    const model = evaluateModel(storey, ev, {}, { shapes: true });
+    const shape = model.byKeyPath.get('s/dome')?.shape;
+    expect(shape !== undefined && isOk(shape)).toBe(true);
+    if (shape && isOk(shape)) {
+      const r = Math.min(ROOF_DIMS.length, ROOF_DIMS.width) / 2;
+      expect(unwrap(measureVolume(unwrap(shape)))).toBeCloseTo((2 / 3) * Math.PI * r ** 3, -7);
+    }
   });
 
   it('a two-flight return stair materializes', () => {

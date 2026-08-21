@@ -1,14 +1,13 @@
-// brepjs-family: roof@1
+// brepjs-family: roof@2
 /**
  * Roof — a rectangular roof over a corner-origin length × width footprint.
  * Props feed the IFC roof spec 1:1 in a BIM projection. Presence of `pitch`
  * opts into shaped geometry for the predefinedType (shed / gable / hip /
  * dome), matching the spec-solid rule; flat otherwise. Flat, shed, and gable
  * renders reproduce the spec solid exactly; hip is the intersection of two
- * gable prisms (the classic construction) and dome is a stepped stack of
- * 24-gon prisms over the spec path's hull rings. Both use planar faces only:
- * lofted, conical, and spherical surfaces all hang the occt-wasm mesher. The
- * IFC body stays authoritative.
+ * gable prisms (the classic construction); dome is a true hemispherical cap
+ * clipped to the footprint. The IFC body (tessellated hull rings for the
+ * dome) stays authoritative.
  */
 
 import { csg } from 'brepjs';
@@ -98,23 +97,10 @@ function hipNode(l: number, w: number, pitch: number): csg.IRNode {
 
 function domeNode(l: number, w: number): csg.IRNode {
   const r = Math.min(l, w) / 2;
-  const cx = l / 2;
-  const cy = w / 2;
-  const segments = 24;
-  const rings = [0, 0.4, 0.7, 0.9, 0.995];
-  const steps: csg.IRNode[] = [];
-  for (let i = 0; i < rings.length - 1; i++) {
-    const h0 = rings[i] ?? 0;
-    const h1 = rings[i + 1] ?? 0;
-    const ringR = r * Math.sqrt(1 - h0 * h0);
-    const pts: Array<[number, number, number]> = [];
-    for (let j = 0; j < segments; j++) {
-      const a = (2 * Math.PI * j) / segments;
-      pts.push([cx + ringR * Math.cos(a), cy + ringR * Math.sin(a), r * h0]);
-    }
-    steps.push(csg.extrude(csg.polygon(pts), [0, 0, r * (h1 - h0)]));
-  }
-  return csg.fuseAll(steps);
+  // A real hemispherical cap: the sphere at footprint center, clipped to the
+  // upper half by the footprint box. Default meshing is scale-relative, so
+  // the curved surface tessellates sanely even at mm building scale.
+  return csg.intersect(csg.translate(csg.sphere(r), [l / 2, w / 2, 0]), csg.box(l, w, r));
 }
 
 function roofNode(p: z.output<typeof roofSchema>): csg.IRNode {
