@@ -1,0 +1,25 @@
+packages/brepjs-voxel-wasm/src/lib.rs
+  s_828c72638e0a06::t_d6a05b5091fbaa 124,720,1052,1065,1141,1164,1187,1208
+packages/brepjs-voxel-wasm/src/ops.rs
+  s_828c72638e0a06::t_d6a05b5091fbaa 1307,1603,1608,1697
+packages/brepjs-voxel-wasm/src/contour.rs
+  s_828c72638e0a06::t_d6a05b5091fbaa 475,664,679
+packages/brepjs-voxel-wasm/src/fwn.rs
+  s_828c72638e0a06::t_d6a05b5091fbaa 53,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a967f3607c17575180b49403c033a481940bbba1",
+  "prompts": {},
+  "sessions": {
+    "s_828c72638e0a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bbe9253-f7cf-466a-97c2-fd161ccd9ae6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
