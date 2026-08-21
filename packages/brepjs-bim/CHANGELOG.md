@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.17.2...brepjs-bim-v0.18.0) (2026-08-21)
+
+
+### Features
+
+* **families:** structural composition — children, hierarchical transforms, rotation ([#2196](https://github.com/andymai/brepjs/issues/2196)) ([f0659e6](https://github.com/andymai/brepjs/commit/f0659e6aaa2d06778eb738f38d525a9fb6c454a3))
+
 ## [0.17.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.17.1...brepjs-bim-v0.17.2) (2026-08-21)
 
 
