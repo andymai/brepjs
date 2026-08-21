@@ -12,13 +12,31 @@
 import { csg } from 'brepjs';
 import { IDENTITY_PROPS, isFamily, typeNameOf, type Element } from './element.js';
 
-export interface TransformOp {
-  readonly op: 'translate';
-  readonly v: readonly [number, number, number];
-}
+export type TransformOp =
+  | { readonly op: 'translate'; readonly v: readonly [number, number, number] }
+  | {
+      readonly op: 'rotate';
+      readonly angleDeg: number;
+      readonly axis?: readonly [number, number, number] | undefined;
+      readonly at?: readonly [number, number, number] | undefined;
+    };
 
 export function tTranslate(v: readonly [number, number, number]): TransformOp {
   return { op: 'translate', v };
+}
+
+/** Rotation in degrees about `axis` (default Z) through `at` (default origin).
+ *  Viewport-first: a parametric BIM projection folds only translations into
+ *  IfcLocalPlacement and rejects rotated routed elements (walls orient via
+ *  `axisX` instead). */
+export function tRotate(
+  angleDeg: number,
+  options?: {
+    readonly axis?: readonly [number, number, number] | undefined;
+    readonly at?: readonly [number, number, number] | undefined;
+  }
+): TransformOp {
+  return { op: 'rotate', angleDeg, axis: options?.axis, at: options?.at };
 }
 
 export interface Relationship {
@@ -55,14 +73,29 @@ function identityAttributes(elem: Element): Readonly<Record<string, unknown>> {
 }
 
 /** Run family render functions until an intrinsic element remains. The
- *  outermost family supplies the resolved type name. */
+ *  outermost family supplies the resolved type name. An element's children
+ *  reach the render function as `props.children` (the React contract), so a
+ *  container family decides where they land in its intrinsic tree. */
 function renderToIntrinsic(elem: Element): { intrinsic: Element; typeName: string } {
   const typeName = typeNameOf(elem);
   let cur = elem;
   while (isFamily(cur.type)) {
-    cur = cur.type.renderErased(cur.props);
+    cur = cur.type.renderErased(
+      cur.children.length > 0 ? { ...cur.props, children: cur.children } : cur.props
+    );
   }
   return { intrinsic: cur, typeName };
+}
+
+/** Fragments inline: their children join the parent's child list and the
+ *  fragment itself never contributes a key-path segment. */
+function expandFragments(children: readonly Element[]): Element[] {
+  const out: Element[] = [];
+  for (const c of children) {
+    if (c.type === 'Fragment') out.push(...expandFragments(c.children));
+    else out.push(c);
+  }
+  return out;
 }
 
 function isIRNode(v: unknown): v is csg.IRNode {
@@ -75,10 +108,7 @@ function baseGeometry(intrinsic: Element): csg.IRNode {
     return csg.box(size[0], size[1], size[2]);
   }
   if (intrinsic.type === 'Cylinder') {
-    return csg.cylinder(
-      intrinsic.props['radius'] as number,
-      intrinsic.props['height'] as number
-    );
+    return csg.cylinder(intrinsic.props['radius'] as number, intrinsic.props['height'] as number);
   }
   // The bridge to the full csg vocabulary (Profile, Extrude, Revolve, Sweep,
   // Loft, booleans, ...): render functions build any IR node and hand it over;
@@ -86,9 +116,7 @@ function baseGeometry(intrinsic: Element): csg.IRNode {
   if (intrinsic.type === 'Geometry') {
     const node = intrinsic.props['node'];
     if (!isIRNode(node)) {
-      throw new Error(
-        "brepjs-families: 'Geometry' requires a csg IR node in props.node"
-      );
+      throw new Error("brepjs-families: 'Geometry' requires a csg IR node in props.node");
     }
     return node;
   }
@@ -117,7 +145,17 @@ interface DesugarOut {
 function applyOps(geometry: csg.IRNode, ops: readonly TransformOp[]): csg.IRNode {
   let out = geometry;
   for (const op of ops) {
-    out = csg.translate(out, op.v);
+    switch (op.op) {
+      case 'translate':
+        out = csg.translate(out, op.v);
+        break;
+      case 'rotate':
+        out = csg.rotate(out, op.angleDeg, {
+          ...(op.axis ? { axis: op.axis } : {}),
+          ...(op.at ? { at: op.at } : {}),
+        });
+        break;
+    }
   }
   return out;
 }
@@ -153,7 +191,9 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
       }
       slotKeys.add(slotKey);
       const openingPath = `${hostPath}/voids:${slotKey}`;
-      const fill = resolveAt(v, `${openingPath}/fill`, v.key !== undefined);
+      // Fills resolve in the host's LOCAL frame; the host's own and inherited
+      // transforms are applied afterwards via transformResolved.
+      const fill = resolveAt(v, `${openingPath}/fill`, v.key !== undefined, []);
       openings.push({
         type: 'Opening',
         keyPath: openingPath,
@@ -177,7 +217,10 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
 
   const ops = (intrinsic.props['transform'] as readonly TransformOp[] | undefined) ?? [];
   if (ops.length > 0) {
-    geometry = applyOps(geometry, ops);
+    // Empty container geometry stays Empty: wrapping it in a transform would
+    // make it look materializable (and fail) downstream. The transform still
+    // reaches descendants through resolveAt's inherited chain.
+    if (geometry.kind !== 'Empty') geometry = applyOps(geometry, ops);
     // Openings/fills were cut in the local frame; the host transform carries
     // them into the same frame as the host's own geometry.
     openings = openings.map((o) => transformResolved(o, ops));
@@ -196,29 +239,45 @@ function assertKeyAllowed(key: string, path: string): void {
   }
 }
 
-function resolveAt(elem: Element, path: string, keyed: boolean): ResolvedElement {
+function resolveAt(
+  elem: Element,
+  path: string,
+  keyed: boolean,
+  inherited: readonly TransformOp[]
+): ResolvedElement {
   const { intrinsic, typeName } = renderToIntrinsic(elem);
   const d = desugar(intrinsic, path);
+  // The element's own transform is applied inside desugar (local frame, after
+  // voids/fuse); ancestor transforms compose outside it, and thread down so
+  // children ride with their parent — a composed family places as a unit.
+  const geometry =
+    inherited.length > 0 && d.geometry.kind !== 'Empty'
+      ? applyOps(d.geometry, inherited)
+      : d.geometry;
+  const openings =
+    inherited.length > 0 ? d.openings.map((o) => transformResolved(o, inherited)) : d.openings;
+  const ownOps = (intrinsic.props['transform'] as readonly TransformOp[] | undefined) ?? [];
+  const childInherited = ownOps.length > 0 ? [...ownOps, ...inherited] : inherited;
   const relationships: Relationship[] = [...d.hostRelationships];
   const children: ResolvedElement[] = [];
   const seen = new Set<string>();
-  intrinsic.children.forEach((c, i) => {
+  expandFragments(intrinsic.children).forEach((c, i) => {
     if (c.key !== undefined) assertKeyAllowed(c.key, path);
     const seg = c.key ?? `${typeNameOf(c)}[${i}]`;
     if (seen.has(seg)) {
       throw new Error(`brepjs-families: duplicate sibling key '${seg}' under '${path}'`);
     }
     seen.add(seg);
-    const rc = resolveAt(c, `${path}/${seg}`, c.key !== undefined);
+    const rc = resolveAt(c, `${path}/${seg}`, c.key !== undefined, childInherited);
     children.push(rc);
     relationships.push({ kind: 'Contains', target: rc.keyPath });
   });
-  children.push(...d.openings);
+  children.push(...openings);
   return {
     type: typeName,
     keyPath: path,
     keyed,
-    geometry: d.geometry,
+    geometry,
     props: elem.props,
     attributes: identityAttributes(elem),
     relationships,
@@ -227,5 +286,5 @@ function resolveAt(elem: Element, path: string, keyed: boolean): ResolvedElement
 }
 
 export function resolve(root: Element): ResolvedElement {
-  return resolveAt(root, root.key ?? `${typeNameOf(root)}[0]`, root.key !== undefined);
+  return resolveAt(root, root.key ?? `${typeNameOf(root)}[0]`, root.key !== undefined, []);
 }

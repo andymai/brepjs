@@ -123,6 +123,22 @@ function peelTranslates(node: csg.IRNode): {
   return { total, moved };
 }
 
+/** True when the element's transform PROP carries a rotation. The spec path
+ *  folds only translations into IfcLocalPlacement (walls orient via `axisX`),
+ *  so a tRotate placement would export un-rotated while the viewport shows it
+ *  rotated — reject instead of diverging. Rotations a family render bakes
+ *  into its own body geometry (e.g. a circular beam oriented along axisX) are
+ *  fine: the spec rebuilds that body parametrically from props. */
+function hasRotateOp(el: ResolvedElement): boolean {
+  const ops = el.props['transform'];
+  return (
+    Array.isArray(ops) &&
+    ops.some(
+      (op) => typeof op === 'object' && op !== null && (op as { op?: unknown }).op === 'rotate'
+    )
+  );
+}
+
 /** Fold the resolved geometry's outer translate chain into the spec placement
  *  origin, so IfcLocalPlacement matches the IR world frame no matter where the
  *  transform came from (family-internal or prop-level). */
@@ -336,7 +352,14 @@ export function familiesToBim(
   model.aggregate(siteResult.value, buildingId);
 
   const idByKeyPath = new Map<string, LocalId>();
-  const walk = (el: ResolvedElement, storeyId: LocalId | null): Result<void, BimError> => {
+  const walk = (
+    el: ResolvedElement,
+    storeyId: LocalId | null,
+    rotated: boolean
+  ): Result<void, BimError> => {
+    // A rotate op anywhere on the ancestor chain taints every routed
+    // descendant: inherited transforms carry it into their geometry.
+    const rotatedHere = rotated || hasRotateOp(el);
     let containerId = storeyId;
     const route = specRoute(el.type);
     if (el.type === 'Storey') {
@@ -356,6 +379,14 @@ export function familiesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
+      if (rotatedHere) {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_TRANSFORM',
+            `familiesToBim: '${el.keyPath}' carries a rotated placement — the spec path folds only translations into IfcLocalPlacement; orient walls via axisX instead of tRotate`
+          )
+        );
+      }
       // The spec path rebuilds the body parametrically: an anonymous
       // (non-fill) void cuts only the IR/viewport geometry, so exporting it
       // silently would diverge the IFC body from what the user sees.
@@ -406,13 +437,13 @@ export function familiesToBim(
     }
     for (const child of el.children) {
       if (el.type === 'Wall' && child.type === 'Opening') continue;
-      const r = walk(child, containerId);
+      const r = walk(child, containerId, rotatedHere);
       if (!r.ok) return r;
     }
     return ok(undefined);
   };
 
-  const walked = walk(root, null);
+  const walked = walk(root, null, false);
   if (!walked.ok) {
     model[Symbol.dispose]();
     return walked;

@@ -54,6 +54,7 @@ model.byKeyPath.get('ground/south'); // mesh + identity for the wall
 What the pieces buy you:
 
 - **Families** are typed, validated constructors (`family(name, render, { props })` takes a zod schema). Invalid props fail at construction, not at export.
+- **Composition is structural**: a family receives its JSX (or `children:` prop) children in `props.children`, a parent's `transform` carries every descendant with it (translate + `tRotate`), and fragments inline without touching key paths. A composed family places as a unit while identical children keep sharing one materialization.
 - **Identity props** (`name`, `psets`, `material`, `classification`) are accepted by every family and ride past schema validation into `ResolvedElement.attributes`, so a component carries IFC-facing data without declaring it in its schema; a BIM projection consumes them (storey names, common psets, custom psets, material fallback).
 - **Key paths** (`ground/south/voids:entry`) are order-independent identity. Reorder siblings and every element keeps its identity; a BIM projection derives stable IFC GlobalIds from them.
 - **The CSG IR** is content-addressed: two identical walls evaluate once and share one materialization, while each keeps its own identity.

@@ -15,10 +15,11 @@ export {
   type FamilyOptions,
   type IdentityProps,
 } from './element.js';
-export { jsx, jsxs, Fragment } from './jsxRuntime.js';
+export { jsx, jsxs, jsxDEV, Fragment } from './jsxRuntime.js';
 export {
   resolve,
   tTranslate,
+  tRotate,
   type TransformOp,
   type Relationship,
   type ResolvedElement,

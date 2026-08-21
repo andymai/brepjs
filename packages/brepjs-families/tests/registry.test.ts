@@ -104,9 +104,8 @@ describe('starter families', () => {
     expect(opening?.keyed).toBe(true);
   });
 
-  // A composed family must thread its own placement into the children it
-  // builds: element trees carry no hierarchical transform, so two rooms that
-  // ignored `at` would render one on top of the other.
+  // The room's `at` becomes a group transform that carries the walls with it,
+  // so two rooms that ignored `at` would render one on top of the other.
   it('places each room by its own corner instead of stacking them', () => {
     const suite = resolve(
       Storey({
@@ -124,6 +123,29 @@ describe('starter families', () => {
           ?.children.find((w) => w.keyPath.endsWith('/south'))?.geometry.structuralHash
       );
     expect(southOf('a')).not.toBe(southOf('b'));
+  });
+
+  // Hierarchical placement keeps wall props room-local, so identically-sized
+  // rooms share every wall's inner materialization: only the outer placement
+  // node differs between room a and room b.
+  it('identically-sized rooms share wall materializations across placements', () => {
+    const suite = resolve(
+      Storey({
+        key: 'ground',
+        items: [
+          Room({ key: 'a', width: 4000, depth: 3000, height: 2700 }),
+          Room({ key: 'b', width: 4000, depth: 3000, height: 2700, at: [4200, 0] }),
+        ],
+      })
+    );
+    const southInner = (key: string): string => {
+      const geometry = suite.children
+        .find((c) => c.keyPath === `ground/${key}`)
+        ?.children.find((w) => w.keyPath.endsWith('/south'))?.geometry;
+      expect(geometry?.kind).toBe('Translate');
+      return String((geometry as { target: csg.IRNode }).target.structuralHash);
+    };
+    expect(southInner('a')).toBe(southInner('b'));
   });
 
   it('starter walls and windows materialize with meshes', () => {
