@@ -13,7 +13,7 @@ import { familiesToBim, toIfc } from 'brepjs-bim';
 const Door = family<{ width: number; height: number; at: number }>(
   'Door',
   (p) => el('Box', { size: [p.width, 300, p.height], transform: [tTranslate([p.at, 0, 0])] }),
-  { role: 'fill' } // fill-role: placed in a host's voids, becomes a real IfcOpening + IfcDoor
+  { role: 'fill', archetype: 'door' } // placed in a host's voids, becomes a real IfcOpening + IfcDoor
 );
 
 const Wall = family<{
@@ -71,7 +71,7 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
   (non-fill) void is rejected (`FAMILIES_ANONYMOUS_VOID`): it would cut the viewport solid while the
   parametric IFC body stays solid.
 - **Routed archetypes:** `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `storey`, plus
-  `Door`/`Window` as fills. The family's **archetype** routes it
+  `door`/`window` as fills. The family's **archetype** routes it
   (`family('Wall', …, { archetype: 'wall' })`), so a renamed family keeps its mapping; declare none
   and it falls back to matching the family name. Anything else with geometry →
   `FAMILIES_UNSUPPORTED_TYPE`; drop to the imperative `BimModel` adders

@@ -60,6 +60,8 @@ family('Level', render, { archetype: 'storey' }); // still IfcBuildingStorey
 family('Partition', render, { archetype: 'wall' }); // still IfcWall
 ```
 
+Fillers route the same way: `archetype: 'door'` or `'window'` on a `role: 'fill'` family picks the IFC entity, so a `Glazing` family still becomes an `IfcWindow`. The mapped archetypes are `storey`, `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `door`, and `window`.
+
 `archetype` is a plain string that brepjs-families never interprets: the vocabulary belongs to the adapter, which is what keeps the family layer free of IFC.
 
 A family that declares none falls back to matching its display name, so families written before `archetype` existed keep working. The fallback carries the original trap, though: rename an undeclared family and it quietly stops routing. Without `proxyEvaluator` that is a hard `FAMILIES_UNSUPPORTED_TYPE` error, but with one set it becomes an `IfcBuildingElementProxy` instead of the element you meant, which is a valid file that is wrong. Every proxied element is reported so you can catch it:

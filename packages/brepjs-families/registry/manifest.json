@@ -60,7 +60,7 @@
     },
     {
       "name": "door",
-      "version": 1,
+      "version": 2,
       "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
       "files": ["families/door.ts"],
       "npmDeps": ["brepjs-families", "zod"],
@@ -68,7 +68,7 @@
     },
     {
       "name": "window",
-      "version": 1,
+      "version": 2,
       "description": "Fill-role void: synthesizes an Opening with IfcRelVoids/Fills",
       "files": ["families/window.ts"],
       "npmDeps": ["brepjs-families", "zod"],

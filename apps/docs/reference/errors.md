@@ -285,9 +285,9 @@ An element's archetype has no spec mapping in the adapter. Nothing is silently d
 
 ### `FAMILIES_UNSUPPORTED_FILL` / `FAMILIES_OPENING_OUTSIDE_WALL`
 
-A fill-role element other than `Door`/`Window` was placed in `voids`, or an opening was synthesized under a host that is not a `Wall` (for example a slab). Wall openings are the mapped case.
+A fill-role element whose archetype is neither `door` nor `window` was placed in `voids`, or an opening was synthesized under a host whose archetype is not `wall` (for example a slab). Wall openings are the mapped case.
 
-**Fix**: Restrict fill-role voids to doors and windows on walls; use plain voids for anonymous cuts elsewhere.
+**Fix**: Declare `archetype: 'door'` or `'window'` on the filler and `archetype: 'wall'` on the host; use plain voids for anonymous cuts elsewhere.
 
 ### `DUPLICATE_STABLE_KEY`
 

@@ -579,6 +579,75 @@ describe('archetype routing', () => {
     expect(result.proxied).toEqual([{ keyPath: 'l1/p1', type: 'Partition', archetype: undefined }]);
   });
 
+  it('a renamed wall keeps its openings, filler and relationships', async () => {
+    const Entrance = family<{ readonly width: number; readonly height: number }>(
+      'Entrance',
+      (p) => el('Box', { size: [p.width, 300, p.height], transform: [tTranslate([500, 0, 0])] }),
+      { role: 'fill', archetype: 'door' }
+    );
+    const VoidedPartition = family<WallProps & { readonly voids: readonly Element[] }>(
+      'Partition',
+      (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids }),
+      { archetype: 'wall' }
+    );
+
+    const tree = resolve(
+      Level({
+        key: 'l1',
+        items: [
+          VoidedPartition({
+            key: 'p1',
+            ...DIMS,
+            voids: [Entrance({ key: 'entry', width: 1000, height: 2100 })],
+          }),
+        ],
+      })
+    );
+
+    const result = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using model = result.model;
+
+    // Both halves of the opening path must agree on the archetype: addOpenings
+    // is gated on it, and the child walk suppresses the synthesized Opening on
+    // the same condition. Disagree and the door vanishes from a valid file.
+    expect(result.idByKeyPath.has('l1/p1/voids:entry')).toBe(true);
+    expect(result.idByKeyPath.has('l1/p1/voids:entry/fill')).toBe(true);
+
+    const text = await ifcText(model);
+    expect(text).toContain('IFCOPENINGELEMENT');
+    expect(text).toContain('IFCDOOR');
+    expect(text).toContain('IFCRELVOIDSELEMENT');
+    expect(text).toContain('IFCRELFILLSELEMENT');
+  });
+
+  it('a renamed window filler still reaches IfcWindow', async () => {
+    const Glazing = family<{ readonly width: number; readonly height: number }>(
+      'Glazing',
+      (p) => el('Box', { size: [p.width, 300, p.height], transform: [tTranslate([500, 0, 900])] }),
+      { role: 'fill', archetype: 'window' }
+    );
+    const VoidedPartition = family<WallProps & { readonly voids: readonly Element[] }>(
+      'Partition',
+      (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids }),
+      { archetype: 'wall' }
+    );
+    const tree = resolve(
+      Level({
+        key: 'l1',
+        items: [
+          VoidedPartition({
+            key: 'p1',
+            ...DIMS,
+            voids: [Glazing({ key: 'w', width: 1000, height: 1200 })],
+          }),
+        ],
+      })
+    );
+    const result = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using model = result.model;
+    expect(await ifcText(model)).toContain('IFCWINDOW');
+  });
+
   it('an archetype overrides a display name that would route elsewhere', () => {
     // Named 'Wall' (which the legacy fallback routes), declared a column.
     const Confusing = family<{

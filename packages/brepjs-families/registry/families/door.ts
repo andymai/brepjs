@@ -1,4 +1,4 @@
-// brepjs-family: door@1
+// brepjs-family: door@2
 /**
  * Door — a fill-role family: placed in a wall's `voids`, resolution
  * synthesizes an Opening (IfcRelVoidsElement + IfcRelFillsElement in a BIM
@@ -29,5 +29,5 @@ export const Door = family(
       size: p.alongY ? [p.depth, p.width, p.height] : [p.width, p.depth, p.height],
       transform: [tTranslate(p.alongY ? [0, p.at[0], p.at[1]] : [p.at[0], 0, p.at[1]])],
     }),
-  { role: 'fill', props: doorSchema }
+  { role: 'fill', archetype: 'door', props: doorSchema }
 );

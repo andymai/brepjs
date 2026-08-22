@@ -134,6 +134,8 @@ const NAME_ARCHETYPES: Readonly<Record<string, string>> = {
   Beam: 'beam',
   Roof: 'roof',
   Stair: 'stair',
+  Door: 'door',
+  Window: 'window',
 };
 
 function archetypeFor(el: ResolvedElement): string | undefined {
@@ -281,12 +283,13 @@ function addFill(
   input: Record<string, unknown>,
   identity: OpeningIdentityOptions
 ): Result<LocalId, BimError> {
-  if (fill.type === 'Door') {
+  const archetype = archetypeFor(fill);
+  if (archetype === 'door') {
     const parsed = parseDoorSpec(input);
     if (!parsed.ok) return parsed;
     return model.addDoor(parsed.value, identity);
   }
-  if (fill.type === 'Window') {
+  if (archetype === 'window') {
     const parsed = parseWindowSpec(input);
     if (!parsed.ok) return parsed;
     return model.addWindow(parsed.value, identity);
@@ -294,7 +297,7 @@ function addFill(
   return err(
     specError(
       'FAMILIES_UNSUPPORTED_FILL',
-      `familiesToBim: no fill mapping for element type '${fill.type}' at '${fill.keyPath}'`
+      `familiesToBim: no fill mapping for element type '${fill.type}' at '${fill.keyPath}' (archetype: ${archetype ?? 'none'}) — a filler needs archetype: 'door' or 'window'`
     )
   );
 }
@@ -539,7 +542,7 @@ export function familiesToBim(
         );
       }
       model.placeIn(added.value, containerId);
-      if (el.type === 'Wall') {
+      if (archetype === 'wall') {
         const opened = addOpenings(model, el, added.value, containerId, idByKeyPath);
         if (!opened.ok) return opened;
       }

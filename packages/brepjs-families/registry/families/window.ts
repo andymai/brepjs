@@ -1,4 +1,4 @@
-// brepjs-family: window@1
+// brepjs-family: window@2
 /**
  * Window — a fill-role family: placed in a wall's `voids`, resolution
  * synthesizes an Opening. `at` is [along-wall, sill] in the host wall's
@@ -28,5 +28,5 @@ export const Window = family(
       size: p.alongY ? [p.depth, p.width, p.height] : [p.width, p.depth, p.height],
       transform: [tTranslate(p.alongY ? [0, p.at[0], p.at[1]] : [p.at[0], 0, p.at[1]])],
     }),
-  { role: 'fill', props: windowSchema }
+  { role: 'fill', archetype: 'window', props: windowSchema }
 );
