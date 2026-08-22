@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
-import { isOk, unwrap } from 'brepjs';
+import { csg, isOk, unwrap } from 'brepjs';
 import { z } from 'zod';
 import { family, el, resolve, tRotate } from 'brepjs-families';
 import { Beam } from '../../brepjs-families/registry/families/beam.js';
@@ -161,6 +161,45 @@ describe('registry families through familiesToBim', () => {
     const projected = familiesToBim(tree, { project: PROJECT });
     expect(isOk(projected)).toBe(false);
     if (!projected.ok) expect(projected.error.code).toBe('FAMILIES_UNSUPPORTED_TRANSFORM');
+  });
+
+  it('routes unrouted geometry through the proxy escape hatch when enabled', async () => {
+    const Plinth = family<{ readonly radius: number; readonly height: number }>('Plinth', (p) => {
+      const pts: Array<[number, number, number]> = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (2 * Math.PI * i) / 6;
+        pts.push([p.radius * Math.cos(a), p.radius * Math.sin(a), 0]);
+      }
+      return el('Geometry', { node: csg.extrude(csg.polygon(pts), [0, 0, p.height]) });
+    });
+    const tree = resolve(
+      Storey({
+        key: 'g',
+        items: [
+          Plinth({
+            key: 'plinth',
+            name: 'Hex plinth',
+            material: 'Granite',
+            radius: 400,
+            height: 900,
+          }),
+        ],
+      })
+    );
+
+    const withoutHatch = familiesToBim(tree, { project: PROJECT });
+    expect(isOk(withoutHatch)).toBe(false);
+    if (!withoutHatch.ok) expect(withoutHatch.error.code).toBe('FAMILIES_UNSUPPORTED_TYPE');
+
+    using ev = new csg.Evaluator();
+    const projected = unwrap(familiesToBim(tree, { project: PROJECT, proxyEvaluator: ev }));
+    using model = projected.model;
+    expect(projected.idByKeyPath.has('g/plinth')).toBe(true);
+    expect(model.getProxies()).toHaveLength(1);
+    const text = new TextDecoder().decode(unwrap(await toIfc(model, META)));
+    expect(text).toContain('IFCBUILDINGELEMENTPROXY');
+    expect(text).toContain('Hex plinth');
+    expect(text).toContain('Granite');
   });
 
   it('rejects an anonymous void instead of silently diverging the IFC body', () => {
