@@ -1,0 +1,51 @@
+tests/csg/csgChamfer.test.ts
+  s_f370c23b15b6eb::t_1da48e40610b4f 122-123
+src/csg/serialize.ts
+  s_f370c23b15b6eb::t_81080a96ed2b15 270-300,302-304,537,539,543,547
+  s_f370c23b15b6eb::t_f3a8e6e135672c 686-689
+  s_f370c23b15b6eb::t_0d5710aa9f3273 759,766-767
+  s_f370c23b15b6eb::t_2dd0fdf24148b7 978
+  s_f370c23b15b6eb::t_75610c4d13e253 705
+  s_f370c23b15b6eb::t_8b150455dec395 239,242,246,254,261
+  s_f370c23b15b6eb::t_bdb283d4823100 306,311,319,327,332-334,338
+  s_f370c23b15b6eb::t_1910c3cc00ec9c 940
+  s_f370c23b15b6eb::t_167816f2b9873b 958
+  s_f370c23b15b6eb::t_bebc23027b0102 500
+  s_f370c23b15b6eb::t_cde7bcd07e2b11 51,54-59,61-90
+  s_f370c23b15b6eb::t_d4556ae4f6ded1 343-345
+  s_f370c23b15b6eb::t_c02381a783bdd4 31
+  s_f370c23b15b6eb::t_ac29b3676edea8 1026
+  s_f370c23b15b6eb::t_65f2d2e33daeae 1002
+  s_f370c23b15b6eb::t_0638d35c784777 150,155-160,162-166,170-171
+  s_f370c23b15b6eb::t_a333153e991d8d 38-39,41,46
+  s_f370c23b15b6eb::t_98626eed7cad0b 667
+  s_f370c23b15b6eb::t_a5b127ee80d5d5 779
+  s_f370c23b15b6eb::t_9a83308a39ce2b 390-399,685,698
+  s_f370c23b15b6eb::t_be7cc9ff2343a1 493-494,496-499,501-504
+  s_f370c23b15b6eb::t_27ca843f7c40c4 968
+  s_f370c23b15b6eb::t_fca9bbddc27fe9 1039
+  s_f370c23b15b6eb::t_5c0ea0e7b34718 1-5
+  s_f370c23b15b6eb::t_c74c3490d43726 389,475,479,492,521,524,529,531,533,535,549,551,553,666,669,671,693,696,704,707,758,778,939,957,967,977,1001,1004,1025,1038
+apps/playground/src/types/brepjs-ambient.d.ts
+  s_f370c23b15b6eb::t_344a98fbb3ccfd 1279,10493-10498,10517,10521,10537-10538
+tests/csg/csgSerializeDag.test.ts
+  s_f370c23b15b6eb::t_1c771e527d6706 1-102
+src/csg/edit.ts
+  s_f370c23b15b6eb::t_93d49e1ea0103b 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "83560b0ac715ff05405a892fcde45d1ad1950ce4",
+  "prompts": {},
+  "sessions": {
+    "s_f370c23b15b6eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07d1242b-d663-4930-8889-d5a3290c5029",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
