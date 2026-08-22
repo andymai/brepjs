@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.8.1...brepjs-families-v0.9.0) (2026-08-22)
+
+
+### Features
+
+* **families:** typed JSX intrinsics and a compiled-path gate ([#2207](https://github.com/andymai/brepjs/issues/2207)) ([27fd27d](https://github.com/andymai/brepjs/commit/27fd27d0860982edf701d1f0fbbe72b6f89f634b))
+
 ## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-families-v0.8.0...brepjs-families-v0.8.1) (2026-08-21)
 
 
