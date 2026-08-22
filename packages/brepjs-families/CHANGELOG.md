@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.9.0...brepjs-families-v0.10.0) (2026-08-22)
+
+
+### Features
+
+* **families:** route BIM export on a declared archetype, not the family name ([#2222](https://github.com/andymai/brepjs/issues/2222)) ([53c90ae](https://github.com/andymai/brepjs/commit/53c90aef092ad24d11483fc2fbbff99b0e8eb285))
+
 ## [0.9.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.8.1...brepjs-families-v0.9.0) (2026-08-22)
 
 
