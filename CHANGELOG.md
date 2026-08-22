@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.155.0](https://github.com/andymai/brepjs/compare/brepjs-v18.154.0...brepjs-v18.155.0) (2026-08-22)
+
+
+### Features
+
+* **csg:** preserve DAG sharing in toJSON via a $ref defs table ([#2216](https://github.com/andymai/brepjs/issues/2216)) ([9e49d41](https://github.com/andymai/brepjs/commit/9e49d4123ce879533f1b58c4f2904c497e78132a))
+
 ## [18.154.0](https://github.com/andymai/brepjs/compare/brepjs-v18.153.0...brepjs-v18.154.0) (2026-08-22)
 
 
