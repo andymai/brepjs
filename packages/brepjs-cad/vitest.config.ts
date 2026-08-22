@@ -1,9 +1,9 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
 
-const pkgSrc = resolve(__dirname, 'src');
-const rootSrc = resolve(__dirname, '../../src');
-const viewerSrc = resolve(__dirname, 'viewer/src');
+const pkgSrc = resolve(import.meta.dirname, 'src');
+const rootSrc = resolve(import.meta.dirname, '../../src');
+const viewerSrc = resolve(import.meta.dirname, 'viewer/src');
 
 export default defineConfig({
   resolve: {

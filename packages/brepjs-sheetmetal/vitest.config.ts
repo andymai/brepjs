@@ -4,8 +4,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': resolve(__dirname, '../../src'),
-      brepjs: resolve(__dirname, '../../src/index.ts'),
+      '@': resolve(import.meta.dirname, '../../src'),
+      brepjs: resolve(import.meta.dirname, '../../src/index.ts'),
     },
   },
   test: {

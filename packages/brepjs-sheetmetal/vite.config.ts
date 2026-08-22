@@ -8,7 +8,7 @@ export default defineConfig({
     target: 'es2022',
     minify: false,
     lib: {
-      entry: { 'brepjs-sheetmetal': resolve(__dirname, 'src/index.ts') },
+      entry: { 'brepjs-sheetmetal': resolve(import.meta.dirname, 'src/index.ts') },
       formats: ['es', 'cjs'],
     },
     rollupOptions: {

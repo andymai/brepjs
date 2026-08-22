@@ -8,7 +8,7 @@ export default defineConfig({
     target: 'es2022',
     minify: false,
     lib: {
-      entry: { 'brepjs-bim': resolve(__dirname, 'src/index.ts') },
+      entry: { 'brepjs-bim': resolve(import.meta.dirname, 'src/index.ts') },
       formats: ['es', 'cjs'],
     },
     rollupOptions: {

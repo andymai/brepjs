@@ -5,7 +5,7 @@ import { resolve } from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': resolve(import.meta.dirname, 'src'),
     },
   },
   plugins: [
@@ -20,23 +20,23 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: {
-        brepjs: resolve(__dirname, 'src/index.ts'),
-        core: resolve(__dirname, 'src/core.ts'),
-        result: resolve(__dirname, 'src/result.ts'),
-        vectors: resolve(__dirname, 'src/vectors.ts'),
-        topology: resolve(__dirname, 'src/topology.ts'),
-        operations: resolve(__dirname, 'src/operations.ts'),
-        '2d': resolve(__dirname, 'src/2d.ts'),
-        sketching: resolve(__dirname, 'src/sketching.ts'),
-        text: resolve(__dirname, 'src/text.ts'),
-        projection: resolve(__dirname, 'src/projection.ts'),
-        query: resolve(__dirname, 'src/query.ts'),
-        measurement: resolve(__dirname, 'src/measurement.ts'),
-        io: resolve(__dirname, 'src/io.ts'),
-        worker: resolve(__dirname, 'src/worker.ts'),
-        shapeRef: resolve(__dirname, 'src/shapeRef.ts'),
+        brepjs: resolve(import.meta.dirname, 'src/index.ts'),
+        core: resolve(import.meta.dirname, 'src/core.ts'),
+        result: resolve(import.meta.dirname, 'src/result.ts'),
+        vectors: resolve(import.meta.dirname, 'src/vectors.ts'),
+        topology: resolve(import.meta.dirname, 'src/topology.ts'),
+        operations: resolve(import.meta.dirname, 'src/operations.ts'),
+        '2d': resolve(import.meta.dirname, 'src/2d.ts'),
+        sketching: resolve(import.meta.dirname, 'src/sketching.ts'),
+        text: resolve(import.meta.dirname, 'src/text.ts'),
+        projection: resolve(import.meta.dirname, 'src/projection.ts'),
+        query: resolve(import.meta.dirname, 'src/query.ts'),
+        measurement: resolve(import.meta.dirname, 'src/measurement.ts'),
+        io: resolve(import.meta.dirname, 'src/io.ts'),
+        worker: resolve(import.meta.dirname, 'src/worker.ts'),
+        shapeRef: resolve(import.meta.dirname, 'src/shapeRef.ts'),
         'kernel/occtWasm/occtWasmAdapter': resolve(
-          __dirname,
+          import.meta.dirname,
           'src/kernel/occtWasm/occtWasmAdapter.ts'
         ),
       },
