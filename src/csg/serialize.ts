@@ -1,6 +1,8 @@
-// toJSON expands DAGs to trees (sharing rebuilt on first re-eval via the
-// hash cache). fromJSON is the trust boundary: validates every field and
-// reconstructs via builders so hashes/freeParams stay correct.
+// toJSON preserves DAGs: subtrees referenced more than once (by identity)
+// are emitted once into the envelope's `defs` table and `{ $ref: i }` at
+// each use site. fromJSON is the trust boundary: validates every field and
+// reconstructs via builders so hashes/freeParams stay correct, resolving
+// each $ref to the same rebuilt node so sharing survives the round trip.
 import type { Vec2, Vec3, Matrix4x4 } from '@/core/types.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
@@ -26,28 +28,66 @@ import {
   type Contour,
   type Segment2D,
 } from './segments.js';
+import { childrenOf } from './edit.js';
 import type { IRNode } from './types.js';
 import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type { SurfaceType } from '@/topology/faceFns.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
 // (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color;
-// 5 adds Fillet; 6 adds Chamfer; 7 adds Shell. Additive only, so fromJSON
+// 5 adds Fillet; 6 adds Chamfer; 7 adds Shell; 8 adds DAG sharing (the
+// `defs` table and `{ $ref }` use sites). Additive only, so fromJSON
 // accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 7;
+export const CSG_VERSION = 8;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
   readonly csgVersion: number;
+  readonly defs?: readonly unknown[];
   readonly root: unknown;
 }
 
 // ---------------------------------------------------------------------------
-// toJSON — expanded tree
+// toJSON — DAG-preserving
 // ---------------------------------------------------------------------------
 
+interface SerializeCtx {
+  readonly counts: ReadonlyMap<IRNode, number>;
+  readonly ids: Map<IRNode, number>;
+  readonly defs: unknown[];
+}
+
 export function toJSON(node: IRNode): CsgEnvelope {
-  return { csgVersion: CSG_VERSION, root: nodeToJson(node) };
+  const ctx: SerializeCtx = { counts: countRefs(node), ids: new Map(), defs: [] };
+  const root = emitNode(node, ctx);
+  return ctx.defs.length > 0
+    ? { csgVersion: CSG_VERSION, defs: ctx.defs, root }
+    : { csgVersion: CSG_VERSION, root };
+}
+
+function countRefs(root: IRNode): Map<IRNode, number> {
+  const counts = new Map<IRNode, number>();
+  const visit = (n: IRNode): void => {
+    const seen = counts.get(n) ?? 0;
+    counts.set(n, seen + 1);
+    if (seen === 0) for (const child of childrenOf(n)) visit(child);
+  };
+  visit(root);
+  return counts;
+}
+
+// Shared nodes are pushed to `defs` post-order (children of a def serialize
+// before the def itself gets an index), so a def body only ever references
+// lower indices — fromJSON relies on this to reject forward/cyclic refs.
+function emitNode(n: IRNode, ctx: SerializeCtx): unknown {
+  if ((ctx.counts.get(n) ?? 0) < 2) return nodeToJson(n, ctx);
+  const existing = ctx.ids.get(n);
+  if (existing !== undefined) return { $ref: existing };
+  const body = nodeToJson(n, ctx);
+  const id = ctx.defs.length;
+  ctx.defs.push(body);
+  ctx.ids.set(n, id);
+  return { $ref: id };
 }
 
 function exprToJson(e: Expr): unknown {
@@ -107,19 +147,28 @@ function primitiveToJson(n: IRNode): unknown {
   }
 }
 
-function booleanToJson(n: IRNode): unknown {
+function booleanToJson(n: IRNode, ctx: SerializeCtx): unknown {
   switch (n.kind) {
     case 'Fuse':
     case 'Cut':
     case 'Intersect':
-      return { kind: n.kind, a: nodeToJson(n.a), b: nodeToJson(n.b), tolerance: n.tolerance };
+      return {
+        kind: n.kind,
+        a: emitNode(n.a, ctx),
+        b: emitNode(n.b, ctx),
+        tolerance: n.tolerance,
+      };
     case 'FuseAll':
-      return { kind: 'FuseAll', shapes: n.shapes.map(nodeToJson), tolerance: n.tolerance };
+      return {
+        kind: 'FuseAll',
+        shapes: n.shapes.map((s) => emitNode(s, ctx)),
+        tolerance: n.tolerance,
+      };
     case 'CutAll':
       return {
         kind: 'CutAll',
-        base: nodeToJson(n.base),
-        tools: n.tools.map(nodeToJson),
+        base: emitNode(n.base, ctx),
+        tools: n.tools.map((t) => emitNode(t, ctx)),
         tolerance: n.tolerance,
       };
     default:
@@ -187,14 +236,14 @@ function contourToJson(c: Contour): unknown {
   return { start: exprToJson(c.start), segments: c.segments.map(segmentToJson) };
 }
 
-function transformToJson(n: IRNode): unknown {
+function transformToJson(n: IRNode, ctx: SerializeCtx): unknown {
   switch (n.kind) {
     case 'Translate':
-      return { kind: 'Translate', target: nodeToJson(n.target), vector: exprToJson(n.vector) };
+      return { kind: 'Translate', target: emitNode(n.target, ctx), vector: exprToJson(n.vector) };
     case 'Rotate':
       return {
         kind: 'Rotate',
-        target: nodeToJson(n.target),
+        target: emitNode(n.target, ctx),
         angle: exprToJson(n.angle),
         axis: optExprToJson(n.axis),
         at: optExprToJson(n.at),
@@ -202,14 +251,14 @@ function transformToJson(n: IRNode): unknown {
     case 'Scale':
       return {
         kind: 'Scale',
-        target: nodeToJson(n.target),
+        target: emitNode(n.target, ctx),
         factor: exprToJson(n.factor),
         center: optExprToJson(n.center),
       };
     case 'Mirror':
       return {
         kind: 'Mirror',
-        target: nodeToJson(n.target),
+        target: emitNode(n.target, ctx),
         normal: optExprToJson(n.normal),
         at: optExprToJson(n.at),
       };
@@ -218,47 +267,48 @@ function transformToJson(n: IRNode): unknown {
   }
 }
 
-function nodeToJson(n: IRNode): unknown {
-  if (n.kind === 'Extrude') {
-    return { kind: 'Extrude', profile: nodeToJson(n.profile), vector: exprToJson(n.vector) };
+function featureToJson(n: IRNode, ctx: SerializeCtx): unknown {
+  switch (n.kind) {
+    case 'Extrude':
+      return { kind: 'Extrude', profile: emitNode(n.profile, ctx), vector: exprToJson(n.vector) };
+    case 'Revolve':
+      return {
+        kind: 'Revolve',
+        profile: emitNode(n.profile, ctx),
+        angle: exprToJson(n.angle),
+        axis: optExprToJson(n.axis),
+        at: optExprToJson(n.at),
+      };
+    case 'Loft':
+      return { kind: 'Loft', sections: n.sections.map((s) => emitNode(s, ctx)), ruled: n.ruled };
+    case 'Path':
+      return { kind: 'Path', start: exprToJson(n.start), segments: n.segments.map(segmentToJson) };
+    case 'Sweep':
+      return {
+        kind: 'Sweep',
+        profile: emitNode(n.profile, ctx),
+        spine: emitNode(n.spine, ctx),
+        frenet: n.frenet,
+      };
+    case 'Profile':
+      return {
+        kind: 'Profile',
+        outline: contourToJson(n.outline),
+        holes: n.holes.map(contourToJson),
+      };
+    default:
+      return undefined;
   }
-  if (n.kind === 'Revolve') {
-    return {
-      kind: 'Revolve',
-      profile: nodeToJson(n.profile),
-      angle: exprToJson(n.angle),
-      axis: optExprToJson(n.axis),
-      at: optExprToJson(n.at),
-    };
-  }
-  if (n.kind === 'Loft') {
-    return { kind: 'Loft', sections: n.sections.map(nodeToJson), ruled: n.ruled };
-  }
-  if (n.kind === 'Path') {
-    return { kind: 'Path', start: exprToJson(n.start), segments: n.segments.map(segmentToJson) };
-  }
-  if (n.kind === 'Sweep') {
-    return {
-      kind: 'Sweep',
-      profile: nodeToJson(n.profile),
-      spine: nodeToJson(n.spine),
-      frenet: n.frenet,
-    };
-  }
-  if (n.kind === 'Profile') {
-    return {
-      kind: 'Profile',
-      outline: contourToJson(n.outline),
-      holes: n.holes.map(contourToJson),
-    };
-  }
+}
+
+function nodeToJson(n: IRNode, ctx: SerializeCtx): unknown {
   if (n.kind === 'Color') {
-    return { kind: 'Color', target: nodeToJson(n.target), color: [...n.color] };
+    return { kind: 'Color', target: emitNode(n.target, ctx), color: [...n.color] };
   }
   if (n.kind === 'Fillet') {
     return {
       kind: 'Fillet',
-      target: nodeToJson(n.target),
+      target: emitNode(n.target, ctx),
       ref: edgeRefToJson(n.ref),
       radius: exprToJson(n.radius),
     };
@@ -266,7 +316,7 @@ function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Chamfer') {
     return {
       kind: 'Chamfer',
-      target: nodeToJson(n.target),
+      target: emitNode(n.target, ctx),
       ref: edgeRefToJson(n.ref),
       distance: exprToJson(n.distance),
     };
@@ -274,21 +324,25 @@ function nodeToJson(n: IRNode): unknown {
   if (n.kind === 'Shell') {
     return {
       kind: 'Shell',
-      target: nodeToJson(n.target),
+      target: emitNode(n.target, ctx),
       refs: n.refs.map(shapeRefToJson),
       thickness: exprToJson(n.thickness),
     };
   }
-  if (n.kind === 'Compound') return { kind: 'Compound', children: n.children.map(nodeToJson) };
+  if (n.kind === 'Compound') {
+    return { kind: 'Compound', children: n.children.map((c) => emitNode(c, ctx)) };
+  }
   if (n.kind === 'Instance') {
     return {
       kind: 'Instance',
-      source: nodeToJson(n.source),
+      source: emitNode(n.source, ctx),
       placements: n.placements,
       fuse: n.fuse,
     };
   }
-  return primitiveToJson(n) ?? booleanToJson(n) ?? transformToJson(n);
+  return (
+    featureToJson(n, ctx) ?? primitiveToJson(n) ?? booleanToJson(n, ctx) ?? transformToJson(n, ctx)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -332,8 +386,17 @@ export function fromJSON(envelope: unknown): Result<IRNode> {
   if (typeof v !== 'number' || !Number.isInteger(v) || v < MIN_CSG_VERSION || v > CSG_VERSION) {
     return bad(`unsupported csgVersion ${String(v)} (expected ${MIN_CSG_VERSION}..${CSG_VERSION})`);
   }
-  const root = envelope['root'];
-  return readNode(root);
+  const rawDefs = envelope['defs'];
+  const defs: IRNode[] = [];
+  if (rawDefs !== undefined) {
+    if (!Array.isArray(rawDefs)) return bad('defs: not an array');
+    for (const raw of rawDefs) {
+      const r = readNode(raw, defs);
+      if (!r.ok) return r;
+      defs.push(r.value);
+    }
+  }
+  return readNode(envelope['root'], defs);
 }
 
 function readExpr(j: unknown): Result<Expr> {
@@ -409,11 +472,11 @@ function readBuildVec(j: Record<string, unknown>): Result<Expr> {
   return ok(buildVec(dim, out));
 }
 
-function readNodeArray(j: unknown, where: string): Result<IRNode[]> {
+function readNodeArray(j: unknown, where: string, defs: readonly IRNode[]): Result<IRNode[]> {
   if (!Array.isArray(j)) return bad(`${where}: not array`);
   const out: IRNode[] = [];
   for (const c of j) {
-    const r = readNode(c);
+    const r = readNode(c, defs);
     if (!r.ok) return r;
     out.push(r.value);
   }
@@ -426,8 +489,19 @@ function readOptTolerance(j: Record<string, unknown>): Result<number | undefined
   return isNumber(t) ? ok(t) : bad('tolerance: not a finite number');
 }
 
-function readNode(j: unknown): Result<IRNode> {
+// Defs parse sequentially, so `defs` only holds indices below the def being
+// parsed — a forward or cyclic $ref lands out of range and is rejected.
+function readNode(j: unknown, defs: readonly IRNode[]): Result<IRNode> {
   if (!isObj(j)) return bad('node: not an object');
+  const ref = j['$ref'];
+  if (ref !== undefined) {
+    if (!isNumber(ref) || !Number.isInteger(ref) || ref < 0) {
+      return bad('$ref: expected a non-negative integer def index');
+    }
+    const node = defs[ref];
+    if (node === undefined) return bad(`$ref: ${ref} is out of range (forward refs are rejected)`);
+    return ok(node);
+  }
   const kind = j['kind'];
   switch (kind) {
     case 'Box':
@@ -444,39 +518,39 @@ function readNode(j: unknown): Result<IRNode> {
     case 'Fuse':
     case 'Cut':
     case 'Intersect':
-      return readBinaryBool(kind, j);
+      return readBinaryBool(kind, j, defs);
     case 'FuseAll':
     case 'CutAll':
-      return readNaryBool(kind, j);
+      return readNaryBool(kind, j, defs);
     case 'Translate':
     case 'Rotate':
     case 'Scale':
     case 'Mirror':
-      return readTransform(kind, j);
+      return readTransform(kind, j, defs);
     case 'Compound':
-      return readCompound(j);
+      return readCompound(j, defs);
     case 'Instance':
-      return readInstance(j);
+      return readInstance(j, defs);
     case 'Extrude':
-      return readExtrude(j);
+      return readExtrude(j, defs);
     case 'Revolve':
-      return readRevolve(j);
+      return readRevolve(j, defs);
     case 'Loft':
-      return readLoft(j);
+      return readLoft(j, defs);
     case 'Path':
       return readPath(j);
     case 'Sweep':
-      return readSweep(j);
+      return readSweep(j, defs);
     case 'Profile':
       return readProfile(j);
     case 'Color':
-      return readColor(j);
+      return readColor(j, defs);
     case 'Fillet':
-      return readFillet(j);
+      return readFillet(j, defs);
     case 'Chamfer':
-      return readChamfer(j);
+      return readChamfer(j, defs);
     case 'Shell':
-      return readShell(j);
+      return readShell(j, defs);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -589,11 +663,12 @@ function readEmpty(j: Record<string, unknown>): Result<IRNode> {
 
 function readBinaryBool(
   kind: 'Fuse' | 'Cut' | 'Intersect',
-  j: Record<string, unknown>
+  j: Record<string, unknown>,
+  defs: readonly IRNode[]
 ): Result<IRNode> {
-  const a = readNode(j['a']);
+  const a = readNode(j['a'], defs);
   if (!a.ok) return a;
-  const b = readNode(j['b']);
+  const b = readNode(j['b'], defs);
   if (!b.ok) return b;
   const t = readOptTolerance(j);
   if (!t.ok) return t;
@@ -607,24 +682,29 @@ function readBinaryBool(
   }
 }
 
-function readNaryBool(kind: 'FuseAll' | 'CutAll', j: Record<string, unknown>): Result<IRNode> {
+function readNaryBool(
+  kind: 'FuseAll' | 'CutAll',
+  j: Record<string, unknown>,
+  defs: readonly IRNode[]
+): Result<IRNode> {
   const t = readOptTolerance(j);
   if (!t.ok) return t;
   if (kind === 'FuseAll') {
-    const shapes = readNodeArray(j['shapes'], 'FuseAll.shapes');
+    const shapes = readNodeArray(j['shapes'], 'FuseAll.shapes', defs);
     return shapes.ok ? ok(B.fuseAll(shapes.value, t.value)) : shapes;
   }
-  const base = readNode(j['base']);
+  const base = readNode(j['base'], defs);
   if (!base.ok) return base;
-  const tools = readNodeArray(j['tools'], 'CutAll.tools');
+  const tools = readNodeArray(j['tools'], 'CutAll.tools', defs);
   return tools.ok ? ok(B.cutAll(base.value, tools.value, t.value)) : tools;
 }
 
 function readTransform(
   kind: 'Translate' | 'Rotate' | 'Scale' | 'Mirror',
-  j: Record<string, unknown>
+  j: Record<string, unknown>,
+  defs: readonly IRNode[]
 ): Result<IRNode> {
-  const tgt = readNode(j['target']);
+  const tgt = readNode(j['target'], defs);
   if (!tgt.ok) return tgt;
   switch (kind) {
     case 'Translate':
@@ -675,16 +755,16 @@ function readMirror(j: Record<string, unknown>, target: IRNode): Result<IRNode> 
   return ok(B.mirror(target, { normal: normal.value, at: at.value }));
 }
 
-function readExtrude(j: Record<string, unknown>): Result<IRNode> {
-  const profile = readNode(j['profile']);
+function readExtrude(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const profile = readNode(j['profile'], defs);
   if (!profile.ok) return profile;
   const vector = readExpr(j['vector']);
   if (!vector.ok) return vector;
   return ok(B.extrude(profile.value, vector.value));
 }
 
-function readRevolve(j: Record<string, unknown>): Result<IRNode> {
-  const profile = readNode(j['profile']);
+function readRevolve(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const profile = readNode(j['profile'], defs);
   if (!profile.ok) return profile;
   const angle = readExpr(j['angle']);
   if (!angle.ok) return angle;
@@ -695,8 +775,8 @@ function readRevolve(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.revolve(profile.value, angle.value, { axis: axis.value, at: at.value }));
 }
 
-function readLoft(j: Record<string, unknown>): Result<IRNode> {
-  const sections = readNodeArray(j['sections'], 'Loft.sections');
+function readLoft(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const sections = readNodeArray(j['sections'], 'Loft.sections', defs);
   if (!sections.ok) return sections;
   const ruled = j['ruled'];
   if (ruled !== undefined && typeof ruled !== 'boolean') {
@@ -856,8 +936,8 @@ function readShapeRef(j: unknown, where: string): Result<ShapeRef> {
   });
 }
 
-function readShell(j: Record<string, unknown>): Result<IRNode> {
-  const target = readNode(j['target']);
+function readShell(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const target = readNode(j['target'], defs);
   if (!target.ok) return target;
   const thickness = readExpr(j['thickness']);
   if (!thickness.ok) return thickness;
@@ -874,8 +954,8 @@ function readShell(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.shell(target.value, refs, thickness.value));
 }
 
-function readFillet(j: Record<string, unknown>): Result<IRNode> {
-  const target = readNode(j['target']);
+function readFillet(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const target = readNode(j['target'], defs);
   if (!target.ok) return target;
   const radius = readExpr(j['radius']);
   if (!radius.ok) return radius;
@@ -884,8 +964,8 @@ function readFillet(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.fillet(target.value, ref.value, radius.value));
 }
 
-function readChamfer(j: Record<string, unknown>): Result<IRNode> {
-  const target = readNode(j['target']);
+function readChamfer(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const target = readNode(j['target'], defs);
   if (!target.ok) return target;
   const distance = readExpr(j['distance']);
   if (!distance.ok) return distance;
@@ -894,8 +974,8 @@ function readChamfer(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.chamfer(target.value, ref.value, distance.value));
 }
 
-function readColor(j: Record<string, unknown>): Result<IRNode> {
-  const target = readNode(j['target']);
+function readColor(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const target = readNode(j['target'], defs);
   if (!target.ok) return target;
   const c = j['color'];
   if (!Array.isArray(c) || c.length !== 4 || !c.every((v) => isNumber(v) && v >= 0 && v <= 1)) {
@@ -918,10 +998,10 @@ function readProfile(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.profile(outline.value, holes));
 }
 
-function readSweep(j: Record<string, unknown>): Result<IRNode> {
-  const profile = readNode(j['profile']);
+function readSweep(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const profile = readNode(j['profile'], defs);
   if (!profile.ok) return profile;
-  const spine = readNode(j['spine']);
+  const spine = readNode(j['spine'], defs);
   if (!spine.ok) return spine;
   const frenet = readFlag(j, 'frenet');
   if (!frenet.ok) return frenet;
@@ -942,8 +1022,8 @@ function readPath(j: Record<string, unknown>): Result<IRNode> {
   return ok(B.path(start.value, segments));
 }
 
-function readCompound(j: Record<string, unknown>): Result<IRNode> {
-  const children = readNodeArray(j['children'], 'Compound.children');
+function readCompound(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const children = readNodeArray(j['children'], 'Compound.children', defs);
   return children.ok ? ok(B.compound(children.value)) : children;
 }
 
@@ -955,8 +1035,8 @@ function isMatrix4x4(v: unknown): v is Matrix4x4 {
   );
 }
 
-function readInstance(j: Record<string, unknown>): Result<IRNode> {
-  const source = readNode(j['source']);
+function readInstance(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const source = readNode(j['source'], defs);
   if (!source.ok) return source;
   const placements = j['placements'];
   if (!Array.isArray(placements) || !placements.every(isMatrix4x4)) {

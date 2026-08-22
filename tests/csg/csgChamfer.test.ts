@@ -119,8 +119,8 @@ describe('Chamfer node', () => {
     expect(unwrap(back).structuralHash).toBe(node.structuralHash);
   });
 
-  it('envelope version is 7', () => {
-    expect(CSG_VERSION).toBe(7);
+  it('envelope version covers Chamfer (added in 6)', () => {
+    expect(CSG_VERSION).toBeGreaterThanOrEqual(6);
   });
 
   itBrep('optimize() and replaceNode rebuild through Fillet', () => {
