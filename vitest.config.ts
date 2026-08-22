@@ -61,6 +61,16 @@ export default defineConfig({
       // the last-published dist) and don't need a dist build in CI.
       'brepjs-sheetmetal': resolve(__dirname, 'packages/brepjs-sheetmetal/src/index.ts'),
       'brepjs-bim': resolve(__dirname, 'packages/brepjs-bim/src/index.ts'),
+      // Subpath entries first: object-form aliases are exact-match, so the
+      // automatic-JSX runtime imports need their own rows (no dist in CI).
+      'brepjs-families/jsx-runtime': resolve(
+        __dirname,
+        'packages/brepjs-families/src/jsxRuntime.ts'
+      ),
+      'brepjs-families/jsx-dev-runtime': resolve(
+        __dirname,
+        'packages/brepjs-families/src/jsxRuntime.ts'
+      ),
       'brepjs-families': resolve(__dirname, 'packages/brepjs-families/src/index.ts'),
     },
   },
