@@ -544,3 +544,48 @@ describe('composition (children, hierarchical transforms, rotation)', () => {
     expect(tree.children.map((c) => c.keyPath)).toEqual(['l/w1', 'l/w2']);
   });
 });
+
+describe('archetype', () => {
+  const Door = family<{ readonly w: number }>(
+    'Door',
+    (p) => el('Box', { size: [p.w, 300, 2100] }),
+    {
+      role: 'fill',
+      archetype: 'door',
+    }
+  );
+
+  it('rides from the family declaration onto the resolved element', () => {
+    const Level = family<{ readonly items: readonly Element[] }>(
+      'Level',
+      (p) => el('Group', {}, p.items),
+      { archetype: 'storey' }
+    );
+    const tree = resolve(Level({ key: 'l', items: [] }));
+    expect(tree.type).toBe('Level');
+    expect(tree.archetype).toBe('storey');
+  });
+
+  it('is undefined for families that declare none, and for intrinsics', () => {
+    const Plain = family('Plain', () => el('Box', { size: [1, 1, 1] }));
+    expect(resolve(Plain({ key: 'p' })).archetype).toBeUndefined();
+    expect(resolve(el('Box', { key: 'b', size: [1, 1, 1] })).archetype).toBeUndefined();
+  });
+
+  it('comes from the outermost family when one wraps another', () => {
+    const Inner = family('Inner', () => el('Box', { size: [1, 1, 1] }), { archetype: 'inner' });
+    const Outer = family('Outer', () => Inner({}), { archetype: 'outer' });
+    expect(resolve(Outer({ key: 'o' })).archetype).toBe('outer');
+  });
+
+  it('marks synthesized openings, and fills keep their own', () => {
+    const Wall = family<{ readonly voids: readonly Element[] }>('Wall', (p) =>
+      el('Box', { size: [4000, 200, 2700], voids: p.voids })
+    );
+    const tree = resolve(Wall({ key: 'w', voids: [Door({ key: 'd', w: 1000 })] }));
+    const opening = tree.children[0];
+    expect(opening?.type).toBe('Opening');
+    expect(opening?.archetype).toBe('opening');
+    expect(opening?.children[0]?.archetype).toBe('door');
+  });
+});

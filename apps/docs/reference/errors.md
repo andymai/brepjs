@@ -273,15 +273,15 @@ The `cause` field carries the underlying kernel error (often a string from the O
 
 ### `FAMILIES_NO_STOREY`
 
-A wall or slab has no `Storey` ancestor. IFC requires spatial containment for building elements.
+A wall or slab has no `Storey` ancestor. IFC requires spatial containment for building elements. A container family is recognised by `archetype: 'storey'`, not by being called `Storey`, so a renamed container that declares none reads as an ordinary group.
 
-**Fix**: Nest geometry-bearing elements under a keyed `Storey`.
+**Fix**: Nest geometry-bearing elements under a keyed storey container, and declare `archetype: 'storey'` on it.
 
 ### `FAMILIES_UNSUPPORTED_TYPE`
 
-An element's type has no spec mapping in the adapter. Nothing is silently dropped from the file.
+An element's archetype has no spec mapping in the adapter. Nothing is silently dropped from the file. The message reports the archetype it resolved, which is `none` when the family declares one neither directly nor by display-name fallback.
 
-**Fix**: Use a mapped type (`Storey`, `Wall`, `Slab`, fill-role `Door`/`Window`), or keep the element out of the projected subtree.
+**Fix**: Declare a mapped `archetype` (`storey`, `wall`, `slab`, `column`, `beam`, `roof`, `stair`) or use a fill-role `Door`/`Window`, add a spec route, or keep the element out of the projected subtree.
 
 ### `FAMILIES_UNSUPPORTED_FILL` / `FAMILIES_OPENING_OUTSIDE_WALL`
 

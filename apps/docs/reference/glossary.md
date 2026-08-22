@@ -13,6 +13,8 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **Adapter** (kernel adapter): a class implementing `KernelInterface` that bridges brepjs to a specific geometry kernel. Two ship: OCCT and brepkit. See [Writing a Custom Kernel](../extending/custom-kernel).
 
+**Archetype**: `archetype: 'wall'` on a family. The domain-neutral kind a BIM export routes on, so a copied registry family keeps its IFC mapping after being renamed. Undeclared families fall back to matching their display name. See [IFC Export](../families/ifc-export).
+
 ## B
 
 **B-Rep** (Boundary Representation): a 3D shape representation as a set of mathematical surfaces (faces) bounded by curves (edges) connected at points (vertices). Contrast with mesh (triangles). See [B-Rep vs Mesh](../concepts/brep-vs-mesh).

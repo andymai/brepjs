@@ -77,11 +77,23 @@ export interface FamilyComponent<P, I = P> {
   /** `'fill'` marks a family whose instances fill an opening when placed in a
    *  host's `voids` (doors, windows): resolution synthesizes the Opening. */
   readonly role: 'fill' | undefined;
+  /** Domain-neutral kind an adapter dispatches on, decoupled from the display
+   *  name so a renamed copy of a registry family keeps its mapping. */
+  readonly archetype: string | undefined;
   readonly renderErased: (props: object) => Element;
 }
 
 export interface FamilyOptions<P = unknown, I = P> {
   readonly role?: 'fill' | undefined;
+  /**
+   * What kind of thing this family is, independent of what it is called.
+   * Adapters route on this instead of `familyName`, so copy-in families
+   * survive being renamed (`Storey` -> `Level` -> `Etage`). Values are the
+   * adapter's vocabulary, not this layer's: brepjs-families never interprets
+   * one, which is what keeps it domain-neutral. The starter registry uses its
+   * own manifest names (`'wall'`, `'storey'`, ...).
+   */
+  readonly archetype?: string | undefined;
   /** Optional Zod schema validated at element construction (the earliest
    *  point with a useful stack). Schema output replaces the props, so
    *  defaults and transforms apply before render — the output type must be
@@ -123,6 +135,7 @@ export function family<P extends object, I extends object = P>(
   const component: FamilyComponent<P, I> = Object.assign(make, {
     familyName: name,
     role: options?.role,
+    archetype: options?.archetype,
     renderErased: (props: object) => render(props as P),
   });
   return component;
@@ -146,4 +159,8 @@ export function isFamily(t: Element['type']): t is FamilyComponent<never> {
 
 export function typeNameOf(e: Element): string {
   return isFamily(e.type) ? e.type.familyName : e.type;
+}
+
+export function archetypeOf(e: Element): string | undefined {
+  return isFamily(e.type) ? e.type.archetype : undefined;
 }

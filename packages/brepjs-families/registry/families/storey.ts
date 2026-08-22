@@ -1,4 +1,4 @@
-// brepjs-family: storey@1
+// brepjs-family: storey@2
 /**
  * Storey — a pure spatial container: no geometry of its own, maps onto
  * IfcBuildingStorey in a BIM projection. Children are the storey's elements.
@@ -17,5 +17,5 @@ export type StoreyProps = z.input<typeof storeySchema>;
 export const Storey = family(
   'Storey',
   (p: z.output<typeof storeySchema>) => el('Group', {}, p.items),
-  { props: storeySchema }
+  { archetype: 'storey', props: storeySchema }
 );

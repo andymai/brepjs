@@ -1,4 +1,4 @@
-// brepjs-family: stair@1
+// brepjs-family: stair@2
 /**
  * Stair — one or more straight flights, each a stepped sawtooth solid. Props
  * feed the IFC stair spec 1:1: every flight carries its own spec-shaped
@@ -104,5 +104,5 @@ export const Stair = family(
     const node = flights.length === 1 && flights[0] ? flights[0] : csg.compound(flights);
     return el('Geometry', { node, transform: [tTranslate(p.at)] });
   },
-  { props: stairPropsSchema }
+  { archetype: 'stair', props: stairPropsSchema }
 );

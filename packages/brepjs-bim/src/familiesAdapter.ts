@@ -44,10 +44,25 @@ export interface FamiliesToBimOptions {
   readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
 
+export interface ProxiedElement {
+  readonly keyPath: string;
+  /** The family's display name, as resolved. */
+  readonly type: string;
+  readonly archetype: string | undefined;
+}
+
 export interface FamiliesBimResult {
   readonly model: BimModel;
   /** LocalId per geometry-bearing families key path. */
   readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+  /**
+   * Elements exported as IfcBuildingElementProxy because no spec route
+   * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
+   * without it an unrouted element is a hard error instead. A renamed family
+   * that has lost its routing lands here rather than in the file as the type
+   * you meant, so check this before trusting an export.
+   */
+  readonly proxied: readonly ProxiedElement[];
 }
 
 const SPEC_DEFAULTS = {
@@ -60,28 +75,28 @@ const SPEC_DEFAULTS = {
 const GEOMETRY_PROPS = new Set(['voids', 'fuse', 'transform', 'psets']);
 
 const SPEC_ROUTES = {
-  Wall: {
+  wall: {
     parse: parseWallSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addWall(spec as never, { stableKey: key }),
   },
-  Slab: {
+  slab: {
     parse: parseSlabSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addSlab(spec as never, { stableKey: key }),
   },
-  Column: {
+  column: {
     parse: parseColumnSpec,
     add: (m: BimModel, spec: unknown, key: string) =>
       m.addColumn(spec as never, { stableKey: key }),
   },
-  Beam: {
+  beam: {
     parse: parseBeamSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addBeam(spec as never, { stableKey: key }),
   },
-  Roof: {
+  roof: {
     parse: parseRoofSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addRoof(spec as never, { stableKey: key }),
   },
-  Stair: {
+  stair: {
     parse: parseStairSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addStair(spec as never, { stableKey: key }),
     input: stairSpecInput,
@@ -105,9 +120,31 @@ function stairSpecInput(el: ResolvedElement): Record<string, unknown> {
   };
 }
 
-function specRoute(type: string): (typeof SPEC_ROUTES)[keyof typeof SPEC_ROUTES] | undefined {
-  return Object.hasOwn(SPEC_ROUTES, type)
-    ? SPEC_ROUTES[type as keyof typeof SPEC_ROUTES]
+/**
+ * Families predating `archetype` are routed by their display name. Keeping
+ * this fallback makes the declaration purely additive, at the cost of the
+ * original trap surviving for undeclared families: rename one and it stops
+ * routing.
+ */
+const NAME_ARCHETYPES: Readonly<Record<string, string>> = {
+  Storey: 'storey',
+  Wall: 'wall',
+  Slab: 'slab',
+  Column: 'column',
+  Beam: 'beam',
+  Roof: 'roof',
+  Stair: 'stair',
+};
+
+function archetypeFor(el: ResolvedElement): string | undefined {
+  return el.archetype ?? NAME_ARCHETYPES[el.type];
+}
+
+function specRoute(
+  archetype: string | undefined
+): (typeof SPEC_ROUTES)[keyof typeof SPEC_ROUTES] | undefined {
+  return archetype !== undefined && Object.hasOwn(SPEC_ROUTES, archetype)
+    ? SPEC_ROUTES[archetype as keyof typeof SPEC_ROUTES]
     : undefined;
 }
 
@@ -435,6 +472,7 @@ export function familiesToBim(
   model.aggregate(siteResult.value, buildingId);
 
   const idByKeyPath = new Map<string, LocalId>();
+  const proxied: ProxiedElement[] = [];
   const walk = (
     el: ResolvedElement,
     storeyId: LocalId | null,
@@ -443,10 +481,11 @@ export function familiesToBim(
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
     const rotatedHere = rotated || hasRotateOp(el);
-    let proxied = false;
+    let proxiedHere = false;
     let containerId = storeyId;
-    const route = specRoute(el.type);
-    if (el.type === 'Storey') {
+    const archetype = archetypeFor(el);
+    const route = specRoute(archetype);
+    if (archetype === 'storey') {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
       const storeyResult = model.addStorey(
@@ -495,7 +534,7 @@ export function familiesToBim(
         return err(
           specError(
             'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment`
+            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }
@@ -516,7 +555,7 @@ export function familiesToBim(
         return err(
           specError(
             'FAMILIES_UNSUPPORTED_TYPE',
-            `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}' — add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
+            `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}' (archetype: ${el.archetype ?? 'none'}) — routing is by archetype, so declare one on the family, add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
           )
         );
       }
@@ -526,7 +565,7 @@ export function familiesToBim(
         return err(
           specError(
             'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment`
+            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }
@@ -534,13 +573,14 @@ export function familiesToBim(
       if (!added.ok) return added;
       model.placeIn(added.value, containerId);
       idByKeyPath.set(el.keyPath, added.value);
-      proxied = true;
+      proxied.push({ keyPath: el.keyPath, type: el.type, archetype: el.archetype });
+      proxiedHere = true;
     }
     for (const child of el.children) {
       // A wall's openings were mapped by addOpenings; a proxy's are baked
       // into its authoritative tessellated body — neither wants the
       // outside-wall rejection on the synthesized Opening child.
-      if ((el.type === 'Wall' || proxied) && child.type === 'Opening') continue;
+      if ((archetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
       const r = walk(child, containerId, rotatedHere);
       if (!r.ok) return r;
     }
@@ -552,5 +592,5 @@ export function familiesToBim(
     model[Symbol.dispose]();
     return walked;
   }
-  return ok({ model, idByKeyPath });
+  return ok({ model, idByKeyPath, proxied });
 }

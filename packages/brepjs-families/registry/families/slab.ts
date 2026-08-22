@@ -1,4 +1,4 @@
-// brepjs-family: slab@1
+// brepjs-family: slab@2
 /**
  * Slab — a horizontal plate (floor, roof, landing, base slab). Props feed
  * the IFC slab spec 1:1 in a BIM projection.
@@ -27,5 +27,5 @@ export const Slab = family(
       size: [p.length, p.width, p.thickness],
       transform: [tTranslate(p.at)],
     }),
-  { props: slabSchema }
+  { archetype: 'slab', props: slabSchema }
 );

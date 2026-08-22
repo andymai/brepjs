@@ -2175,10 +2175,25 @@ interface FamiliesToBimOptions {
     readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
 
+interface ProxiedElement {
+    readonly keyPath: string;
+    /** The family's display name, as resolved. */
+    readonly type: string;
+    readonly archetype: string | undefined;
+}
+
 interface FamiliesBimResult {
     readonly model: BimModel;
     /** LocalId per geometry-bearing families key path. */
     readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+    /**
+     * Elements exported as IfcBuildingElementProxy because no spec route
+     * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
+     * without it an unrouted element is a hard error instead. A renamed family
+     * that has lost its routing lands here rather than in the file as the type
+     * you meant, so check this before trusting an export.
+     */
+    readonly proxied: readonly ProxiedElement[];
 }
 
 /**

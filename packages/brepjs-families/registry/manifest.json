@@ -4,7 +4,7 @@
   "families": [
     {
       "name": "storey",
-      "version": 1,
+      "version": 2,
       "description": "Spatial container mapping onto IfcBuildingStorey",
       "files": ["families/storey.ts"],
       "npmDeps": ["brepjs-families", "zod"],
@@ -12,7 +12,7 @@
     },
     {
       "name": "wall",
-      "version": 1,
+      "version": 2,
       "description": "Solid wall along a configurable axis with fill-role voids",
       "files": ["families/wall.ts"],
       "npmDeps": ["brepjs-families", "zod"],
@@ -20,7 +20,7 @@
     },
     {
       "name": "slab",
-      "version": 1,
+      "version": 2,
       "description": "Horizontal plate: floor, roof, landing, or base slab",
       "files": ["families/slab.ts"],
       "npmDeps": ["brepjs-families", "zod"],
@@ -28,7 +28,7 @@
     },
     {
       "name": "column",
-      "version": 2,
+      "version": 3,
       "description": "Vertical column (rectangular / circular / I-shape) mapping onto IfcColumn",
       "files": ["families/column.ts"],
       "npmDeps": ["brepjs", "brepjs-families", "zod"],
@@ -36,7 +36,7 @@
     },
     {
       "name": "beam",
-      "version": 1,
+      "version": 2,
       "description": "Linear beam (rectangular / circular / I-shape) mapping onto IfcBeam",
       "files": ["families/beam.ts"],
       "npmDeps": ["brepjs", "brepjs-families", "zod"],
@@ -44,7 +44,7 @@
     },
     {
       "name": "roof",
-      "version": 2,
+      "version": 3,
       "description": "Rectangular roof (flat / shed / gable / hip / dome) mapping onto IfcRoof",
       "files": ["families/roof.ts"],
       "npmDeps": ["brepjs", "brepjs-families", "zod"],
@@ -52,7 +52,7 @@
     },
     {
       "name": "stair",
-      "version": 1,
+      "version": 2,
       "description": "Multi-flight stair (stepped sawtooth flights) mapping onto IfcStair",
       "files": ["families/stair.ts"],
       "npmDeps": ["brepjs", "brepjs-families", "zod"],

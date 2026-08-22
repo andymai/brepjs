@@ -56,6 +56,16 @@ npx brepjs diff wall
 
 `diff` compares your copy against the registry: stale version markers are called out (`local wall@1, registry wall@2`), content drift renders as a git diff, and the exit code is 1 on any difference, which makes it usable as a CI guard for teams that want to know when their copies diverge from upstream.
 
+## Renaming what you copied
+
+A copied family is yours, including its name, and `Storey` in particular is the IFC spelling rather than the one every team uses. Rename it freely; the `archetype` in the file is what a BIM export routes on, not the name:
+
+```typescript
+export const Level = family('Level', render, { archetype: 'storey', props: storeySchema });
+```
+
+Keep the `// brepjs-family: storey@2` marker on the first line whatever you call the family. `diff` anchors on it, and it is how you find out the upstream file moved on.
+
 ## Self-hosting a registry
 
 The registry is data: a `manifest.json` plus source files, no server logic.

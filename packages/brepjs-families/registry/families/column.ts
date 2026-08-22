@@ -1,4 +1,4 @@
-// brepjs-family: column@2
+// brepjs-family: column@3
 /**
  * Column — a vertical column (cross-section centred on `at`, extruded up by
  * `height`). Props feed the IFC column spec 1:1 in a BIM projection. The
@@ -117,5 +117,5 @@ export const Column = family(
       transform: [tTranslate(p.at)],
     });
   },
-  { props: columnSchema }
+  { archetype: 'column', props: columnSchema }
 );

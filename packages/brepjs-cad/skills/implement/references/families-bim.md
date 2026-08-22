@@ -21,10 +21,16 @@ const Wall = family<{
   height: number;
   thickness: number;
   voids?: readonly ReturnType<typeof Door>[];
-}>('Wall', (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] }));
+}>(
+  'Wall',
+  (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] }),
+  { archetype: 'wall' } // archetype routes it to IfcWall, whatever the family is named
+);
 
-const Storey = family<{ items: readonly unknown[] }>('Storey', (p) =>
-  el('Group', {}, p.items as never)
+const Storey = family<{ items: readonly unknown[] }>(
+  'Storey',
+  (p) => el('Group', {}, p.items as never),
+  { archetype: 'storey' }
 );
 
 const tree = resolve(
@@ -64,9 +70,11 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
 - **Openings are fill-role families in the host's `voids`** — never a bare cut. An anonymous
   (non-fill) void is rejected (`FAMILIES_ANONYMOUS_VOID`): it would cut the viewport solid while the
   parametric IFC body stays solid.
-- **Routed element types:** `Wall`, `Slab`, `Column`, `Beam`, `Roof`, `Stair`, `Storey`, plus
-  `Door`/`Window` as fills. The family's **name string** routes it (`family('Wall', …)`). Anything
-  else with geometry → `FAMILIES_UNSUPPORTED_TYPE`; drop to the imperative `BimModel` adders
+- **Routed archetypes:** `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `storey`, plus
+  `Door`/`Window` as fills. The family's **archetype** routes it
+  (`family('Wall', …, { archetype: 'wall' })`), so a renamed family keeps its mapping; declare none
+  and it falls back to matching the family name. Anything else with geometry →
+  `FAMILIES_UNSUPPORTED_TYPE`; drop to the imperative `BimModel` adders
   (`addSpace`, `addFooting`, `addRailing`, …) for the rest.
 - **Placement frame:** an element's thickness extrudes along `axisZ × axisX`, so a wall running +Y
   (`axisX: [0,1,0]`) grows its thickness toward **−X**. Probe placement with `getBounds`, not by eye.

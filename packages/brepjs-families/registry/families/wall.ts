@@ -1,4 +1,4 @@
-// brepjs-family: wall@1
+// brepjs-family: wall@2
 /**
  * Wall — a solid wall running along `axisX` with optional fill-role voids
  * (doors, windows). Props feed the IFC wall spec 1:1 when projected through
@@ -31,14 +31,10 @@ export const Wall = family(
   (p: z.output<typeof wallSchema>) => {
     const alongY = p.axisX[1] !== 0;
     return el('Box', {
-      size: alongY
-        ? [p.thickness, p.length, p.height]
-        : [p.length, p.thickness, p.height],
+      size: alongY ? [p.thickness, p.length, p.height] : [p.length, p.thickness, p.height],
       voids: p.voids,
-      transform: [
-        tTranslate(alongY ? [p.at[0] - p.thickness, p.at[1], p.at[2]] : p.at),
-      ],
+      transform: [tTranslate(alongY ? [p.at[0] - p.thickness, p.at[1], p.at[2]] : p.at)],
     });
   },
-  { props: wallSchema }
+  { archetype: 'wall', props: wallSchema }
 );
