@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.154.0](https://github.com/andymai/brepjs/compare/brepjs-v18.153.0...brepjs-v18.154.0) (2026-08-22)
+
+
+### Features
+
+* **bim:** proxy escape hatch for unrouted families geometry ([#2212](https://github.com/andymai/brepjs/issues/2212)) ([2b45e72](https://github.com/andymai/brepjs/commit/2b45e72e9179c6ca1c82236dbff277d490baf995))
+
 ## [18.153.0](https://github.com/andymai/brepjs/compare/brepjs-v18.152.3...brepjs-v18.153.0) (2026-08-22)
 
 
