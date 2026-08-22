@@ -308,15 +308,6 @@ function addProxyElement(
       )
     );
   }
-  if (!isSolid(copy.value)) {
-    copy.value[Symbol.dispose]();
-    return err(
-      specError(
-        'FAMILIES_PROXY_NOT_SOLID',
-        `familiesToBim: '${el.keyPath}' materialized to a non-solid — a proxy body must be a solid`
-      )
-    );
-  }
   const valid = validSolid(copy.value);
   if (!valid.ok) {
     copy.value[Symbol.dispose]();
