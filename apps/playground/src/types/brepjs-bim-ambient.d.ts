@@ -5,7 +5,7 @@
  * Ambient type declarations for brepjs-bim available in the playground editor.
  */
 
-import type { BrepError, OrientedFace, PlanarFace, Result, ValidSolid } from 'brepjs';
+import type { BrepError, OrientedFace, PlanarFace, Result, ValidSolid, csg } from 'brepjs';
 
 /** Optional identity override for created elements: a stable key (e.g. a
  *  families key path) that replaces the positional GlobalId derivation. */
@@ -179,10 +179,12 @@ interface BimTreeSummary {
  * failure the solids already built for this call are disposed before the error is
  * returned, so no partial array is leaked.
  *
- * Stairs carry no element solid (`.geometry` is null), so flight solids are built
- * from `spec.flights` and placed per flight. Curtain walls return placed panels +
- * mullions. Elements with no solid geometry (doors/windows/ramps/groups/spatial)
- * return an empty array.
+ * Stairs and ramps carry no element solid (`.geometry` is null), so flight
+ * solids are built from `spec.flights` and placed per flight. Curtain walls
+ * return placed panels + mullions. Proxies are authored in world coordinates
+ * (no placement frame), so their solid is returned as a fresh identity-placed
+ * copy. Elements with no solid geometry (doors/windows/groups/spatial) return
+ * an empty array.
  */
 declare function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError>;
 
@@ -2162,6 +2164,15 @@ interface FamiliesToBimOptions {
     readonly project: ProjectSpec;
     readonly siteName?: string | undefined;
     readonly buildingName?: string | undefined;
+    /**
+     * Enables the proxy route: an unrouted geometry-bearing element is
+     * materialized through this evaluator and exported as an
+     * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
+     * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
+     * evaluator's handles stay borrowed; the adapter clones what it hands the
+     * model.
+     */
+    readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
 
 interface FamiliesBimResult {
