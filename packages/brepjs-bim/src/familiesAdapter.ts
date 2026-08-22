@@ -13,7 +13,7 @@
  * the uncut spec body would silently diverge from what the user sees.
  */
 
-import { ok, err, type Result, type csg } from 'brepjs';
+import { clone, err, getSolids, isSolid, ok, validSolid, type Result, type csg } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -24,6 +24,7 @@ import { parseBeamSpec } from './specs/beamSpec.js';
 import { parseRoofSpec } from './specs/roofSpec.js';
 import { parseStairSpec } from './specs/stairSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
+import type { ProxySpec } from './specs/proxySpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
@@ -32,6 +33,15 @@ export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
   readonly siteName?: string | undefined;
   readonly buildingName?: string | undefined;
+  /**
+   * Enables the proxy route: an unrouted geometry-bearing element is
+   * materialized through this evaluator and exported as an
+   * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
+   * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
+   * evaluator's handles stay borrowed; the adapter clones what it hands the
+   * model.
+   */
+  readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
 
 export interface FamiliesBimResult {
@@ -252,6 +262,79 @@ function addFill(
   );
 }
 
+/** Materialize an unrouted element's IR and add it as a proxy. The body is
+ *  authoritative for a proxy (no parametric spec to diverge from), so baked
+ *  transforms — rotations included — are fine here. */
+function addProxyElement(
+  model: BimModel,
+  el: ResolvedElement,
+  evaluator: csg.Evaluator
+): Result<LocalId, BimError> {
+  const evaluated = evaluator.evaluate(el.geometry);
+  if (!evaluated.ok) {
+    return err(
+      specError(
+        'FAMILIES_PROXY_EVAL_FAILED',
+        `familiesToBim: '${el.keyPath}' failed to materialize for the proxy route: ${evaluated.error.message}`,
+        evaluated.error
+      )
+    );
+  }
+  // Booleans can materialize as a compound wrapping one solid; accept that,
+  // reject anything that is not exactly one solid body.
+  let source = evaluated.value;
+  if (!isSolid(source)) {
+    const solids = getSolids(source);
+    const only = solids.length === 1 ? solids[0] : undefined;
+    if (only === undefined) {
+      return err(
+        specError(
+          'FAMILIES_PROXY_NOT_SOLID',
+          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — a proxy body must be exactly one`
+        )
+      );
+    }
+    source = only;
+  }
+  // The evaluator (or its topology cache) owns `source`; addProxy takes
+  // ownership of what it is handed, so give the model an independent copy.
+  const copy = clone(source);
+  if (!copy.ok) {
+    return err(
+      specError(
+        'FAMILIES_PROXY_EVAL_FAILED',
+        `familiesToBim: '${el.keyPath}' could not copy the materialized body`,
+        copy.error
+      )
+    );
+  }
+  const valid = validSolid(copy.value);
+  if (!valid.ok) {
+    copy.value[Symbol.dispose]();
+    return err(
+      specError(
+        'FAMILIES_PROXY_INVALID',
+        `familiesToBim: '${el.keyPath}' materialized to an invalid solid: ${valid.error}`
+      )
+    );
+  }
+  const nameAttr = el.attributes['name'];
+  const materialProp = el.props['materialName'];
+  const specProps = collectSpecProps(el);
+  return model.addProxy(
+    {
+      name: typeof nameAttr === 'string' ? nameAttr : el.type,
+      solid: valid.value,
+      materialName:
+        typeof materialProp === 'string'
+          ? materialProp
+          : (specProps['materialName'] as string | undefined),
+      customProperties: specProps['customProperties'] as ProxySpec['customProperties'],
+    },
+    { stableKey: el.keyPath }
+  );
+}
+
 /** Map a wall's synthesized Opening children onto addDoor/addWindow. The
  *  wall-relative offsets come from the void geometry's frame minus the host's:
  *  exact because both carry the same outer host transform. */
@@ -360,6 +443,7 @@ export function familiesToBim(
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
     const rotatedHere = rotated || hasRotateOp(el);
+    let proxied = false;
     let containerId = storeyId;
     const route = specRoute(el.type);
     if (el.type === 'Storey') {
@@ -428,15 +512,35 @@ export function familiesToBim(
         )
       );
     } else if (el.type !== 'Group' && el.geometry.kind !== 'Empty') {
-      return err(
-        specError(
-          'FAMILIES_UNSUPPORTED_TYPE',
-          `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}'`
-        )
-      );
+      if (options.proxyEvaluator === undefined) {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_TYPE',
+            `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}' — add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
+          )
+        );
+      }
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
+      if (containerId === null) {
+        return err(
+          specError(
+            'FAMILIES_NO_STOREY',
+            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment`
+          )
+        );
+      }
+      const added = addProxyElement(model, el, options.proxyEvaluator);
+      if (!added.ok) return added;
+      model.placeIn(added.value, containerId);
+      idByKeyPath.set(el.keyPath, added.value);
+      proxied = true;
     }
     for (const child of el.children) {
-      if (el.type === 'Wall' && child.type === 'Opening') continue;
+      // A wall's openings were mapped by addOpenings; a proxy's are baked
+      // into its authoritative tessellated body — neither wants the
+      // outside-wall rejection on the synthesized Opening child.
+      if ((el.type === 'Wall' || proxied) && child.type === 'Opening') continue;
       const r = walk(child, containerId, rotatedHere);
       if (!r.ok) return r;
     }
