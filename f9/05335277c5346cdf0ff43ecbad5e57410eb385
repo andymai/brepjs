@@ -1,0 +1,21 @@
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_f370c23b15b6eb::t_571b3b70331794 8,182-187,2167-2175
+apps/playground/src/types/brepjs-families-ambient.d.ts
+  s_f370c23b15b6eb::t_d85c7af9396b73 17-40,52,79-84,87-110,113-118,122-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f905335277c5346cdf0ff43ecbad5e57410eb385",
+  "prompts": {},
+  "sessions": {
+    "s_f370c23b15b6eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07d1242b-d663-4930-8889-d5a3290c5029",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
