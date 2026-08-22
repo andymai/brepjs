@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, vi } from 'vitest';
-import { initKernel } from './setup.js';
+import { initKernel, currentKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
@@ -70,6 +70,68 @@ describe('meshFns', () => {
       const mesh2 = mesh(b, { tolerance: 0.1, cache: false });
       // Not cached — different object
       expect(mesh2).not.toBe(mesh1);
+    });
+  });
+
+  describe('scale-relative default deflection', () => {
+    // The manifold preview kernel tessellates from build-time segments and
+    // ignores extract-time deflection, so density comparisons only hold on
+    // B-rep kernels.
+    const itBrep = it.skipIf(currentKernel === 'manifold');
+
+    itBrep('meshes a BIM-scale sphere with a bounded triangle count', () => {
+      using s = sphere(2000);
+      const m = mesh(s, { cache: false });
+      expect(m.triangles.length / 3).toBeGreaterThan(100);
+      expect(m.triangles.length / 3).toBeLessThan(100_000);
+    });
+
+    itBrep('leaves small shapes on the absolute tier default', () => {
+      // Diagonal below 10 model units: the resolved default must equal the
+      // absolute standard-tier deflection, triangle for triangle. Separate
+      // instances so neither call re-uses the other's triangulation.
+      using a = sphere(2);
+      using b = sphere(2);
+      const byDefault = mesh(a, { cache: false });
+      const explicit = mesh(b, { tolerance: 1e-3, cache: false });
+      expect(byDefault.triangles.length).toBe(explicit.triangles.length);
+    });
+
+    it.skipIf(currentKernel === 'manifold' || shouldSkipSuite('meshFns.deflectionDensity'))(
+      'an explicit tolerance still overrides the relative default',
+      () => {
+        using a = sphere(2000);
+        using b = sphere(2000);
+        const byDefault = mesh(a, { cache: false });
+        const coarse = mesh(b, { tolerance: 40, angularTolerance: 0.5, cache: false });
+        expect(coarse.triangles.length).toBeLessThan(byDefault.triangles.length);
+      }
+    );
+
+    it.skipIf(currentKernel === 'manifold' || shouldSkipSuite('meshFns.edgeDeflection'))(
+      'meshEdges edge density is scale-invariant at the relative default',
+      () => {
+        // Segments per edge go as sqrt(r / deflection); the relative default's
+        // deflection grows linearly with r, so the count is scale-invariant.
+        // Under the absolute tier default the 10x larger sphere would carry
+        // ~sqrt(10) times the segments.
+        using a = sphere(2000);
+        using b = sphere(20000);
+        const small = meshEdges(a, { cache: false });
+        const large = meshEdges(b, { cache: false });
+        expect(small.lines.length).toBeGreaterThan(0);
+        const ratio = large.lines.length / small.lines.length;
+        expect(ratio).toBeGreaterThan(0.7);
+        expect(ratio).toBeLessThan(1.4);
+      }
+    );
+
+    itBrep('exportSTL tessellates large shapes at the relative default', () => {
+      using s = sphere(2000);
+      const blob = unwrap(exportSTL(s, { binary: true }));
+      // Binary STL is 84 header bytes + 50 per triangle: a bounded blob proves
+      // the absolute tier default did not apply at this scale.
+      expect(blob.size).toBeLessThan(84 + 50 * 100_000);
     });
   });
 

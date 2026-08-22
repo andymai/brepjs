@@ -4773,7 +4773,9 @@ interface EdgeMesh {
 
 /** Shared options for meshing operations. */
 interface MeshOptions {
-    /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active quality level. */
+    /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active
+     *  quality level, scaled with the shape's bounding-box diagonal beyond 10
+     *  model units so default meshes stay scale-invariant. */
     tolerance?: number;
     /** Angular deflection tolerance in radians. Smaller = finer mesh on curved surfaces. Defaults to the active quality level. */
     angularTolerance?: number;

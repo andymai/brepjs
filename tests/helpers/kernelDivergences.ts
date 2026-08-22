@@ -365,6 +365,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Mesh deflection control uses OCCT-specific API',
     },
+    'meshFns.deflectionDensity': {
+      kind: 'skip',
+      reason:
+        'brepkit tessellation/wireframe density is not driven by linear deflection, so relative-vs-absolute density comparisons do not hold',
+    },
 
     // -----------------------------------------------------------------------
     // Whole-suite OCCT-only (describe.skipIf)
@@ -541,6 +546,11 @@ export const divergences: DivergenceMap = {
     'meshFns.meshDeflection': {
       kind: 'not-implemented',
       reason: 'STL read-error test patches oc.FS.readFile — not exposed by occt-wasm',
+    },
+    'meshFns.edgeDeflection': {
+      kind: 'skip',
+      reason:
+        "occt-wasm's wireframe() passes the linear deflection into GCPnts_TangentialDeflection's angular slot (the curvature deflection is a fixed 0.5), so edge density does not follow linear tolerance. Remove when occt-wasm ships the wireframe parameter-order fix.",
     },
     'cast.garbageInput': {
       kind: 'not-implemented',
