@@ -14,6 +14,30 @@ interface Element {
     readonly children: readonly Element[];
 }
 
+/** What a caller (JSX or direct) may pass as children: single, nested arrays,
+ *  and conditional results. Normalized to a flat Element[] before render. */
+type FamilyChildren = Element | boolean | null | undefined | readonly FamilyChildren[];
+
+/**
+ * Identity-side props accepted by every family invocation, beside the
+ * family's own schema. Zod object schemas strip undeclared keys, so these are
+ * re-attached after validation — a semantic component carries IFC-facing data
+ * without every schema declaring it. `resolve()` captures them into
+ * `ResolvedElement.attributes`.
+ */
+declare const IDENTITY_PROPS: readonly ["name", "psets", "material", "classification"];
+
+interface IdentityProps {
+    /** Display name an exporter may adopt (e.g. IfcBuildingStorey.Name). */
+    readonly name?: string | undefined;
+    /** Property sets keyed by pset name (e.g. `Pset_WallCommon`). */
+    readonly psets?: Readonly<Record<string, Readonly<Record<string, unknown>>>> | undefined;
+    /** Material name an exporter may adopt when the family declares none. */
+    readonly material?: string | undefined;
+    /** Classification reference (system/code/...); the exporter defines the shape. */
+    readonly classification?: Readonly<Record<string, unknown>> | undefined;
+}
+
 /**
  * A family component: a callable that constructs Elements, carrying its
  * declared name and render function. The component REFERENCE is the identity
@@ -25,7 +49,7 @@ interface Element {
  * output `P`. Schema-less families use one type for both.
  */
 interface FamilyComponent<P, I = P> {
-    (props: I & WithKey): Element;
+    (props: I & WithKey & IdentityProps & WithChildren): Element;
     readonly familyName: string;
     /** `'fill'` marks a family whose instances fill an opening when placed in a
      *  host's `voids` (doors, windows): resolution synthesizes the Opening. */
@@ -52,15 +76,57 @@ declare function jsx(type: string | FamilyComponent<never>, props: Readonly<Reco
 
 declare const jsxs: typeof jsx;
 
-/** Fragment renders nothing itself; its children inline into the parent. */
+/** Development-runtime entry (`jsx: "react-jsxdev"`): same construction, the
+ *  extra dev metadata (source/self) is not used. */
+declare function jsxDEV(type: string | FamilyComponent<never>, props: Readonly<Record<string, unknown>>, key?: string): Element;
+
+/** Fragment renders nothing itself; resolution inlines its children into the
+ *  parent, so it never contributes a key-path segment. */
 declare const Fragment = "Fragment";
 
-interface TransformOp {
-    readonly op: 'translate';
-    readonly v: readonly [number, number, number];
+interface IntrinsicProps {
+    readonly key?: string | undefined;
+    readonly voids?: readonly Element[] | undefined;
+    readonly fuse?: readonly Element[] | undefined;
+    readonly transform?: readonly TransformOp[] | undefined;
+    readonly children?: FamilyChildren;
 }
 
+declare function Box(props: IntrinsicProps & {
+    readonly size: readonly [number, number, number];
+}): Element;
+
+declare function Cylinder(props: IntrinsicProps & {
+    readonly radius: number;
+    readonly height: number;
+}): Element;
+
+declare function Geometry(props: IntrinsicProps & {
+    readonly node: csg.IRNode;
+}): Element;
+
+declare function Group(props?: IntrinsicProps): Element;
+
+type TransformOp = {
+    readonly op: 'translate';
+    readonly v: readonly [number, number, number];
+} | {
+    readonly op: 'rotate';
+    readonly angleDeg: number;
+    readonly axis?: readonly [number, number, number] | undefined;
+    readonly at?: readonly [number, number, number] | undefined;
+};
+
 declare function tTranslate(v: readonly [number, number, number]): TransformOp;
+
+/** Rotation in degrees about `axis` (default Z) through `at` (default origin).
+ *  Viewport-first: a parametric BIM projection folds only translations into
+ *  IfcLocalPlacement and rejects rotated routed elements (walls orient via
+ *  `axisX` instead). */
+declare function tRotate(angleDeg: number, options?: {
+    readonly axis?: readonly [number, number, number] | undefined;
+    readonly at?: readonly [number, number, number] | undefined;
+}): TransformOp;
 
 interface Relationship {
     readonly kind: 'Voids' | 'Fills' | 'Contains';
