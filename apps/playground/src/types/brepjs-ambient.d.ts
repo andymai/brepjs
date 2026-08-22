@@ -1276,6 +1276,7 @@ declare const BrepErrorCode: {
     readonly FIX_SHAPE_FAILED: "FIX_SHAPE_FAILED";
     readonly SOLID_FROM_SHELL_FAILED: "SOLID_FROM_SHELL_FAILED";
     readonly FIX_SELF_INTERSECTION_FAILED: "FIX_SELF_INTERSECTION_FAILED";
+    readonly MESH_FAILED: "MESH_FAILED";
     readonly ELLIPSE_RADII: "ELLIPSE_RADII";
     readonly FUSE_ALL_EMPTY: "FUSE_ALL_EMPTY";
     readonly FILLET_NO_EDGES: "FILLET_NO_EDGES";
@@ -10489,6 +10490,12 @@ declare namespace csg {
           includeUVs?: boolean;
           cache?: boolean;
       }): Result<ShapeMesh>;
+      /** Scale-relative default deflection, derived from the placement-stripped
+       *  geometry so the resolved density is identical whether or not the
+       *  rigid-reuse path served the call: a rotated placement's axis-aligned
+       *  bounds inflate the diagonal by up to sqrt(3). The bounds are read while
+       *  the just-evaluated shape is live; only the number outlives it. */
+      private defaultToleranceFor;
       private evaluateInner;
       private releaseShape;
       private trimCache;
@@ -10507,10 +10514,11 @@ declare namespace csg {
    */
   export function withEvaluator<T extends Exclude<unknown, Promise<unknown>>>(options: EvaluatorOptions, fn: (evaluator: Evaluator) => T): T;
 
-  export const CSG_VERSION = 7;
+  export const CSG_VERSION = 8;
 
   export interface CsgEnvelope {
       readonly csgVersion: number;
+      readonly defs?: readonly unknown[];
       readonly root: unknown;
   }
 
@@ -10526,6 +10534,8 @@ declare namespace csg {
 
   export function replaceNode(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode;
 
+  /** Visits each DISTINCT node once (identity-deduplicated), so a shared
+   *  subtree is reported once and a self-referencing DAG walks in linear time. */
   export function forEachNode(root: IRNode, fn: (node: IRNode) => void): void;
 
   export function nodeCount(root: IRNode): number;

@@ -143,7 +143,7 @@ export function forEachNode(root: IRNode, fn: (node: IRNode) => void): void {
   visit(root);
 }
 
-function childrenOf(n: IRNode): readonly IRNode[] {
+export function childrenOf(n: IRNode): readonly IRNode[] {
   switch (n.kind) {
     case 'Box':
     case 'Sphere':
