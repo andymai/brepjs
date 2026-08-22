@@ -1,0 +1,80 @@
+/** @jsxRuntime automatic @jsxImportSource brepjs-families */
+/**
+ * Typed JSX authoring — the real compiler path (react-jsx transform through
+ * `jsxImportSource: "brepjs-families"`), not direct jsx() calls. Pure data:
+ * resolution builds IR nodes without a kernel, so no WASM setup here.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import { Box, Group, family, resolve, tTranslate, type FamilyChildren } from '../src/index.js';
+
+const wallSchema = z.object({
+  length: z.number().positive(),
+  height: z.number().positive(),
+  thickness: z.number().positive().default(200),
+});
+
+const Wall = family(
+  'Wall',
+  (p: z.output<typeof wallSchema>) => <Box size={[p.length, p.thickness, p.height]} />,
+  { props: wallSchema }
+);
+
+const Storey = family<{ readonly children?: FamilyChildren }>('Storey', (p) => (
+  <Group>{p.children}</Group>
+));
+
+describe('typed JSX authoring', () => {
+  it('compiles intrinsics and components, applying schema defaults', () => {
+    const tree = resolve(
+      <Storey key="ground">
+        <Wall key="south" length={4000} height={2700} />
+      </Storey>
+    );
+    const wall = tree.children[0];
+    expect(wall?.keyPath).toBe('ground/south');
+    expect(wall?.props['thickness']).toBe(200);
+  });
+
+  it('rejects invalid props on the JSX path', () => {
+    expect(() => <Wall key="bad" length={-1} height={2700} />).toThrow(/invalid props/);
+  });
+
+  it('conditional and mapped children compose', () => {
+    const show = false;
+    const tree = resolve(
+      <Storey key="g">
+        {show && <Wall key="hidden" length={100} height={100} />}
+        {[1, 2].map((i) => (
+          <Wall key={`w${i}`} length={1000 * i} height={2700} />
+        ))}
+      </Storey>
+    );
+    expect(tree.children.map((c) => c.keyPath)).toEqual(['g/w1', 'g/w2']);
+  });
+
+  it('fragments inline without a key-path segment', () => {
+    const tree = resolve(
+      <Storey key="g">
+        <>
+          <Wall key="a" length={100} height={100} />
+          <Wall key="b" length={100} height={100} />
+        </>
+      </Storey>
+    );
+    expect(tree.children.map((c) => c.keyPath)).toEqual(['g/a', 'g/b']);
+  });
+
+  it('intrinsic transform and voids props type-check and resolve', () => {
+    const Bin = family<{ readonly size: number }>('Bin', (p) => (
+      <Box
+        size={[p.size, p.size, p.size]}
+        voids={[<Box size={[p.size / 2, p.size / 2, p.size / 2]} />]}
+        transform={[tTranslate([1, 2, 3])]}
+      />
+    ));
+    const tree = resolve(<Bin key="b" size={10} />);
+    expect(tree.geometry.kind).toBe('Translate');
+  });
+});

@@ -28,7 +28,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsgo --noEmit && tsgo -p tsconfig.jsx.json --noEmit",
     "lint": "eslint src tests registry",
     "test": "vitest run"
   },

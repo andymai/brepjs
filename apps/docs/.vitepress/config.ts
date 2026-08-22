@@ -314,6 +314,7 @@ export default withMermaid(
             { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
             { text: 'Openings & Voids', link: '/families/openings' },
             { text: 'Props & Validation', link: '/families/props-and-validation' },
+            { text: 'JSX Authoring', link: '/families/jsx' },
             { text: 'IFC Export', link: '/families/ifc-export' },
             { text: 'Copy-In Distribution', link: '/families/copy-in' },
           ],

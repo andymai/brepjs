@@ -17,8 +17,12 @@ interface WithKey {
   readonly key?: string | undefined;
 }
 
+/** What a caller (JSX or direct) may pass as children: single, nested arrays,
+ *  and conditional results. Normalized to a flat Element[] before render. */
+export type FamilyChildren = Element | boolean | null | undefined | readonly FamilyChildren[];
+
 interface WithChildren {
-  readonly children?: Element | readonly Element[] | undefined;
+  readonly children?: FamilyChildren;
 }
 
 /** Flatten nested child arrays and drop null/undefined/boolean, so JSX idioms

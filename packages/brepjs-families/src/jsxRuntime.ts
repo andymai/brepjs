@@ -7,7 +7,29 @@
  * paths.
  */
 
-import { isFamily, normalizeChildren, type Element, type FamilyComponent } from './element.js';
+import {
+  isFamily,
+  normalizeChildren,
+  type Element as ElementModel,
+  type FamilyComponent,
+} from './element.js';
+
+type Element = ElementModel;
+
+// The compiler reads this namespace off the module named by `jsxImportSource`;
+// it is what makes `.tsx` components, keys, and children type-check. There are
+// no lowercase intrinsic tags: Box/Cylinder/Geometry/Group are real exported
+// components (see intrinsics.ts), typed by their own signatures.
+// eslint-disable-next-line @typescript-eslint/no-namespace -- TS's contract for typed JSX
+export namespace JSX {
+  export type Element = ElementModel;
+  export interface ElementChildrenAttribute {
+    children: unknown;
+  }
+  export interface IntrinsicAttributes {
+    readonly key?: string | undefined;
+  }
+}
 
 export function jsx(
   type: string | FamilyComponent<never>,

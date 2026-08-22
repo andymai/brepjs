@@ -12,10 +12,12 @@ export {
   IDENTITY_PROPS,
   type Element,
   type FamilyComponent,
+  type FamilyChildren,
   type FamilyOptions,
   type IdentityProps,
 } from './element.js';
 export { jsx, jsxs, jsxDEV, Fragment } from './jsxRuntime.js';
+export { Box, Cylinder, Geometry, Group, type IntrinsicProps } from './intrinsics.js';
 export {
   resolve,
   tTranslate,

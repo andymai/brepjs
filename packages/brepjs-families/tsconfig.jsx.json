@@ -1,9 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "../..",
+    "rootDir": ".",
     "noEmit": true,
-    "types": ["node"],
     "jsx": "react-jsx",
     "jsxImportSource": "brepjs-families",
     "paths": {
@@ -12,6 +11,6 @@
       "brepjs-families": ["./src/index.ts"]
     }
   },
-  "include": ["tests/**/*.ts", "tests/**/*.tsx", "registry/**/*.ts", "src/**/*.ts"],
+  "include": ["tests/**/*.tsx", "src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
