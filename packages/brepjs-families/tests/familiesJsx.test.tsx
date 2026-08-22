@@ -1,4 +1,3 @@
-/** @jsxRuntime automatic @jsxImportSource brepjs-families */
 /**
  * Typed JSX authoring — the real compiler path (react-jsx transform through
  * `jsxImportSource: "brepjs-families"`), not direct jsx() calls. Pure data:
@@ -7,7 +6,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { Box, Group, family, resolve, tTranslate, type FamilyChildren } from '../src/index.js';
+import {
+  Box,
+  Group,
+  family,
+  resolve,
+  tTranslate,
+  type Element,
+  type FamilyChildren,
+} from '../src/index.js';
 
 const wallSchema = z.object({
   length: z.number().positive(),
@@ -76,5 +83,27 @@ describe('typed JSX authoring', () => {
     ));
     const tree = resolve(<Bin key="b" size={10} />);
     expect(tree.geometry.kind).toBe('Translate');
+  });
+
+  it('fill-role instances in a voids prop synthesize the opening triangle', () => {
+    const Door = family<{ readonly width: number; readonly height: number }>(
+      'Door',
+      (p) => <Box size={[p.width, 300, p.height]} />,
+      { role: 'fill' }
+    );
+    const VoidedWall = family<{ readonly voids: readonly Element[] }>('Wall', (p) => (
+      <Box size={[4000, 200, 2700]} voids={p.voids} />
+    ));
+
+    const tree = resolve(
+      <VoidedWall key="south" voids={[<Door key="entry" width={1000} height={2100} />]} />
+    );
+
+    expect(tree.relationships).toEqual([{ kind: 'Voids', target: 'south/voids:entry' }]);
+    const opening = tree.children[0];
+    expect(opening?.type).toBe('Opening');
+    expect(opening?.keyPath).toBe('south/voids:entry');
+    expect(opening?.relationships).toEqual([{ kind: 'Fills', target: 'south/voids:entry/fill' }]);
+    expect(opening?.children[0]?.type).toBe('Door');
   });
 });
