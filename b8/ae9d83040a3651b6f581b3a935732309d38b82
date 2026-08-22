@@ -1,0 +1,68 @@
+packages/brepjs-families/registry/families/roof.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,126
+packages/brepjs-bim/src/index.ts
+  s_5c497b714ed350::t_5449855df014f7 277
+packages/brepjs-families/registry/families/column.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,120
+apps/docs/families/copy-in.md
+  s_5c497b714ed350::t_ea99111f4592b9 59-68
+packages/brepjs-families/tests/families.test.ts
+  s_5c497b714ed350::t_b8b35ed943bac0 547-548,557-591
+  s_5c497b714ed350::t_6f21a058c136f4 549-556
+packages/brepjs-families/src/element.ts
+  s_5c497b714ed350::t_0dd5e33813d081 80-82,88-96,138,163-165
+  s_5c497b714ed350::t_22734fbba9edfa 166
+packages/brepjs-families/registry/families/slab.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,30
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_5c497b714ed350::t_da9f3457d1fab4 584-589,591-594
+  s_5c497b714ed350::t_e2a44b77701731 526-578,580-583,590,595-603
+  s_5c497b714ed350::t_6f21a058c136f4 579
+packages/brepjs-families/registry/manifest.json
+  s_5c497b714ed350::t_c159799dd4208a 7,15,23,31,39,47,55
+packages/brepjs-families/registry/families/beam.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,141
+apps/docs/reference/errors.md
+  s_5c497b714ed350::t_ce59a6ab90758d 276,278,282,284
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_5c497b714ed350::t_64f8dca45c4048 2178-2184,2189-2196
+packages/brepjs-families/registry/families/stair.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,107
+apps/playground/src/types/brepjs-families-ambient.d.ts
+  s_5c497b714ed350::t_c1e83cb09d8107 57-59,65-73,150-152
+packages/brepjs-families/src/resolve.ts
+  s_5c497b714ed350::t_53d810025a6132 13,49-51,82-86,88,95,207,257,287
+packages/brepjs-families/registry/families/wall.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,39
+  s_5c497b714ed350::t_6f21a058c136f4 34,36
+packages/brepjs-cad/skills/implement/references/families-bim.md
+  s_5c497b714ed350::t_bc81c62e02ff36 24-28,30-33,73-77
+apps/docs/families/ifc-export.md
+  s_5c497b714ed350::t_ea99111f4592b9 47-71
+apps/docs/reference/glossary.md
+  s_5c497b714ed350::t_87dd9966531c24 16-17
+packages/brepjs-families/registry/families/storey.ts
+  s_5c497b714ed350::t_c159799dd4208a 1,20
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_5c497b714ed350::t_ce59a6ab90758d 537,558,568
+  s_5c497b714ed350::t_1c4d5ef2214338 47-53,58-65,475,484,576-577,583,595
+  s_5c497b714ed350::t_85091b2a7e1459 78,82,86,91,95,99,123-147,486-488
+packages/brepjs-families/README.md
+  s_5c497b714ed350::t_5f66ccd71fb0b5 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "b8ae9d83040a3651b6f581b3a935732309d38b82",
+  "prompts": {},
+  "sessions": {
+    "s_5c497b714ed350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a696f35-5cea-4799-a7a8-8d6bfaa0432e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
