@@ -274,4 +274,5 @@ export {
   familiesToBim,
   type FamiliesToBimOptions,
   type FamiliesBimResult,
+  type ProxiedElement,
 } from './familiesAdapter.js';

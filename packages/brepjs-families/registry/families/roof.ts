@@ -1,4 +1,4 @@
-// brepjs-family: roof@2
+// brepjs-family: roof@3
 /**
  * Roof — a rectangular roof over a corner-origin length × width footprint.
  * Props feed the IFC roof spec 1:1 in a BIM projection. Presence of `pitch`
@@ -123,5 +123,5 @@ export const Roof = family(
   'Roof',
   (p: z.output<typeof roofSchema>) =>
     el('Geometry', { node: roofNode(p), transform: [tTranslate(p.at)] }),
-  { props: roofSchema }
+  { archetype: 'roof', props: roofSchema }
 );

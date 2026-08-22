@@ -1,4 +1,4 @@
-// brepjs-family: beam@1
+// brepjs-family: beam@2
 /**
  * Beam — a linear member (cross-section centred on the beam axis, extruded
  * along `axisX` by `length`). Props feed the IFC beam spec 1:1 in a BIM
@@ -138,5 +138,5 @@ export const Beam = family(
     }
     return el('Geometry', { node, transform: [tTranslate(p.at)] });
   },
-  { props: beamSchema }
+  { archetype: 'beam', props: beamSchema }
 );

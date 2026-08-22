@@ -44,6 +44,33 @@ The adapter returns a `Result`; the model it produces owns kernel geometry, so h
 
 Every mapped element must sit under a `Storey` ancestor: IFC requires spatial containment, and the adapter returns `FAMILIES_NO_STOREY` rather than emit an uncontained element. Fillers are contained in their wall's storey, openings are related to their wall through `IfcRelVoidsElement` alone, exactly as the schema intends. Openings are a wall-only mapping; a fill-role element hosted by anything else returns `FAMILIES_OPENING_OUTSIDE_WALL`.
 
+## Routing is by archetype, not by name
+
+The left column above lists the starter registry's names, but the adapter does not match on them. Each family declares an `archetype`, and that is what selects the mapping:
+
+```typescript
+family('Storey', render, { archetype: 'storey' });
+family('Wall', render, { archetype: 'wall' });
+```
+
+The registry files are yours once copied, so renaming them is expected. Keep the archetype and the mapping follows:
+
+```typescript
+family('Level', render, { archetype: 'storey' }); // still IfcBuildingStorey
+family('Partition', render, { archetype: 'wall' }); // still IfcWall
+```
+
+Fillers route the same way: `archetype: 'door'` or `'window'` on a `role: 'fill'` family picks the IFC entity, so a `Glazing` family still becomes an `IfcWindow`. The mapped archetypes are `storey`, `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `door`, and `window`.
+
+`archetype` is a plain string that brepjs-families never interprets: the vocabulary belongs to the adapter, which is what keeps the family layer free of IFC.
+
+A family that declares none falls back to matching its display name, so families written before `archetype` existed keep working. The fallback carries the original trap, though: rename an undeclared family and it quietly stops routing. Without `proxyEvaluator` that is a hard `FAMILIES_UNSUPPORTED_TYPE` error, but with one set it becomes an `IfcBuildingElementProxy` instead of the element you meant, which is a valid file that is wrong. Every proxied element is reported so you can catch it:
+
+```typescript
+const { model, proxied } = unwrap(familiesToBim(tree, { project, proxyEvaluator: ev }));
+// proxied: [{ keyPath: 'l1/p1', type: 'Partition', archetype: undefined }]
+```
+
 ## Two sources, one element
 
 The adapter reads each element twice, on purpose:
