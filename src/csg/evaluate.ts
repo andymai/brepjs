@@ -14,9 +14,14 @@ import { BrepErrorCode, kernelError } from '@/core/errors.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/utils/vec3.js';
 import { quatFromAxisAngle, quatMultiply, quatRotate, type Quat } from '@/utils/quaternion.js';
-import { getBounds, getFaces } from '@/topology/topologyQueryFns.js';
+import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
-import { mesh, type ShapeMesh, type MeshOptions } from '@/topology/meshFns.js';
+import {
+  mesh,
+  scaleDefaultTolerance,
+  type ShapeMesh,
+  type MeshOptions,
+} from '@/topology/meshFns.js';
 import { buildMeshCacheKey } from '@/topology/meshCache.js';
 import { evalScalar, evalVec3, projectEnv, type Env, type ExprValue } from './expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
@@ -401,28 +406,6 @@ function relocateFaceGroups(
     if (a !== undefined && b !== undefined) remap.set(a, b);
   }
   return faceGroups.map((g) => ({ ...g, faceId: remap.get(g.faceId) ?? g.faceId }));
-}
-
-// Beyond this bounding-box diagonal (model units) the default deflection grows
-// linearly with size, keeping default meshes scale-invariant; below it the
-// absolute tier default applies unchanged. Quality deflections are absolute
-// model units tuned for ~unit-scale parts: adopting them unscaled at BIM
-// (mm) scale explodes a curved surface into 10^5-10^6 triangles and can
-// exhaust the WASM heap.
-const SCALE_INVARIANT_DIAGONAL = 10;
-
-function scaleDefaultTolerance(base: number, shape: AnyShape<Dimension>): number {
-  let diagonal: number;
-  try {
-    const b = getBounds(shape);
-    const dx = b.xMax - b.xMin;
-    const dy = b.yMax - b.yMin;
-    const dz = b.zMax - b.zMin;
-    diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  } catch {
-    return base;
-  }
-  return base * Math.max(1, diagonal / SCALE_INVARIANT_DIAGONAL);
 }
 
 // ---------------------------------------------------------------------------

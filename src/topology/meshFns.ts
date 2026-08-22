@@ -47,12 +47,36 @@ export interface EdgeMesh {
 
 /** Shared options for meshing operations. */
 export interface MeshOptions {
-  /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active quality level. */
+  /** Linear deflection tolerance. Smaller = finer mesh. Defaults to the active
+   *  quality level, scaled with the shape's bounding-box diagonal beyond 10
+   *  model units so default meshes stay scale-invariant. */
   tolerance?: number;
   /** Angular deflection tolerance in radians. Smaller = finer mesh on curved surfaces. Defaults to the active quality level. */
   angularTolerance?: number;
   /** Abort signal to cancel mesh generation between face iterations. */
   signal?: AbortSignal;
+}
+
+// Beyond this bounding-box diagonal (model units) the default deflection grows
+// linearly with size, keeping default meshes scale-invariant; below it the
+// absolute tier default applies unchanged. Quality deflections are absolute
+// model units tuned for ~unit-scale parts: adopting them unscaled at BIM
+// (mm) scale explodes a curved surface into 10^5-10^6 triangles and can
+// exhaust the WASM heap.
+const SCALE_INVARIANT_DIAGONAL = 10;
+
+export function scaleDefaultTolerance(base: number, shape: AnyShape<Dimension>): number {
+  let diagonal: number;
+  try {
+    const b = getBounds(shape);
+    const dx = b.xMax - b.xMin;
+    const dy = b.yMax - b.yMin;
+    const dz = b.zMax - b.zMin;
+    diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  } catch {
+    return base;
+  }
+  return base * Math.max(1, diagonal / SCALE_INVARIANT_DIAGONAL);
 }
 
 // ---------------------------------------------------------------------------
@@ -73,10 +97,12 @@ export function mesh(
   opts: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
 ): ShapeMesh {
   // Unspecified deflection defaults to the active quality level (see
-  // withQuality / withTier). 'standard' reproduces the historical 1e-3 / 0.1.
+  // withQuality / withTier), scaled with the shape's size beyond a 10-unit
+  // bounding diagonal (see scaleDefaultTolerance). The resolved value is a
+  // pure function of the shape, so it keys the cache like an explicit one.
   const quality = qualityDeflection();
   const {
-    tolerance = quality.tolerance,
+    tolerance = scaleDefaultTolerance(quality.tolerance, shape),
     angularTolerance = quality.angularTolerance,
     skipNormals = false,
     includeUVs = false,
@@ -137,10 +163,10 @@ export function meshEdges(
   shape: AnyShape<Dimension>,
   opts: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
-  // Default deflection follows the active quality level (see mesh()).
+  // Default deflection follows mesh(): quality level, scale-relative.
   const quality = qualityDeflection();
   const {
-    tolerance = quality.tolerance,
+    tolerance = scaleDefaultTolerance(quality.tolerance, shape),
     angularTolerance = quality.angularTolerance,
     cache = true,
   } = opts;
@@ -285,10 +311,10 @@ export function exportSTL(
   shape: AnyShape<Dimension>,
   opts: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
-  // Default deflection follows the active quality level (see mesh()).
+  // Default deflection follows mesh(): quality level, scale-relative.
   const quality = qualityDeflection();
   const {
-    tolerance = quality.tolerance,
+    tolerance = scaleDefaultTolerance(quality.tolerance, shape),
     angularTolerance = quality.angularTolerance,
     binary = false,
   } = opts;
