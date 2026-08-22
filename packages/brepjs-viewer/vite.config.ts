@@ -12,7 +12,7 @@ export default defineConfig({
     // source instead of a stack-less synthetic `e.useCache`-style report.
     sourcemap: true,
     lib: {
-      entry: { 'brepjs-viewer': resolve(__dirname, 'src/index.ts') },
+      entry: { 'brepjs-viewer': resolve(import.meta.dirname, 'src/index.ts') },
       formats: ['es', 'cjs'],
     },
     rollupOptions: {

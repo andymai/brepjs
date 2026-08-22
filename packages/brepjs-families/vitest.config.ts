@@ -8,20 +8,19 @@ export default defineConfig({
     alias: [
       {
         find: 'brepjs-families/jsx-dev-runtime',
-        replacement: resolve(__dirname, 'src/jsxRuntime.ts'),
+        replacement: resolve(import.meta.dirname, 'src/jsxRuntime.ts'),
       },
       {
         find: 'brepjs-families/jsx-runtime',
-        replacement: resolve(__dirname, 'src/jsxRuntime.ts'),
+        replacement: resolve(import.meta.dirname, 'src/jsxRuntime.ts'),
       },
-      { find: 'brepjs-families', replacement: resolve(__dirname, 'src/index.ts') },
-      { find: 'brepjs', replacement: resolve(__dirname, '../../src/index.ts') },
-      { find: '@', replacement: resolve(__dirname, '../../src') },
+      { find: 'brepjs-families', replacement: resolve(import.meta.dirname, 'src/index.ts') },
+      { find: 'brepjs', replacement: resolve(import.meta.dirname, '../../src/index.ts') },
+      { find: '@', replacement: resolve(import.meta.dirname, '../../src') },
     ],
   },
-  esbuild: {
-    jsx: 'automatic',
-    jsxImportSource: 'brepjs-families',
+  oxc: {
+    jsx: { runtime: 'automatic', importSource: 'brepjs-families' },
   },
   test: {
     globals: true,

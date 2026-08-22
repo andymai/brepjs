@@ -9,10 +9,10 @@ function copyResolveHook() {
   return {
     name: 'copy-brepjs-resolve-hook',
     closeBundle() {
-      const outDir = resolve(__dirname, 'dist/loader');
+      const outDir = resolve(import.meta.dirname, 'dist/loader');
       mkdirSync(outDir, { recursive: true });
       copyFileSync(
-        resolve(__dirname, 'src/loader/brepjsResolve.mjs'),
+        resolve(import.meta.dirname, 'src/loader/brepjsResolve.mjs'),
         resolve(outDir, 'brepjsResolve.mjs')
       );
     },
@@ -29,15 +29,15 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: {
-        'brepjs-cad': resolve(__dirname, 'src/index.ts'),
-        'cli/main': resolve(__dirname, 'src/cli/main.ts'),
+        'brepjs-cad': resolve(import.meta.dirname, 'src/index.ts'),
+        'cli/main': resolve(import.meta.dirname, 'src/cli/main.ts'),
         // Pinned so the CLI's dynamic imports land on stable dist/snapshot/*.js paths
         // (preserves the ../../viewer/dist sibling-depth invariant static.ts relies on).
-        'snapshot/static': resolve(__dirname, 'src/snapshot/static.ts'),
-        'snapshot/registry': resolve(__dirname, 'src/snapshot/registry.ts'),
-        'snapshot/shoot': resolve(__dirname, 'src/snapshot/shoot.ts'),
-        'snapshot/serve': resolve(__dirname, 'src/snapshot/serve.ts'),
-        'mcp/server': resolve(__dirname, 'src/mcp/server.ts'),
+        'snapshot/static': resolve(import.meta.dirname, 'src/snapshot/static.ts'),
+        'snapshot/registry': resolve(import.meta.dirname, 'src/snapshot/registry.ts'),
+        'snapshot/shoot': resolve(import.meta.dirname, 'src/snapshot/shoot.ts'),
+        'snapshot/serve': resolve(import.meta.dirname, 'src/snapshot/serve.ts'),
+        'mcp/server': resolve(import.meta.dirname, 'src/mcp/server.ts'),
       },
       formats: ['es', 'cjs'],
     },

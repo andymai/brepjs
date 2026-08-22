@@ -4,7 +4,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
+      'brepkit-wasm': resolve(
+        import.meta.dirname,
+        'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'
+      ),
     },
   },
   test: {

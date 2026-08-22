@@ -49,29 +49,32 @@ export default defineConfig({
       // Vite resolves the "import" exports condition by default, hitting the ESM
       // bundler entry that uses the unsupported WASM ESM integration proposal.
       // Alias to the Node CJS entry so brepkit tests run under vitest.
-      '@': resolve(__dirname, 'src'),
-      'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
+      '@': resolve(import.meta.dirname, 'src'),
+      'brepkit-wasm': resolve(
+        import.meta.dirname,
+        'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'
+      ),
       // The voxel engine ships as a committed wasm-pack artifact; point the bare
       // specifier at the built ESM entry so voxel tests resolve it under vitest.
-      'brepjs-voxel-wasm': resolve(__dirname, 'packages/brepjs-voxel-wasm/pkg/index.js'),
+      'brepjs-voxel-wasm': resolve(import.meta.dirname, 'packages/brepjs-voxel-wasm/pkg/index.js'),
       // node_modules/brepjs is a stale published copy; route to live src.
-      brepjs: resolve(__dirname, 'src/index.ts'),
+      brepjs: resolve(import.meta.dirname, 'src/index.ts'),
       // Same for the satellite domain packages the playground-example regression
       // test meshes: route to live src so tests run against current source (not
       // the last-published dist) and don't need a dist build in CI.
-      'brepjs-sheetmetal': resolve(__dirname, 'packages/brepjs-sheetmetal/src/index.ts'),
-      'brepjs-bim': resolve(__dirname, 'packages/brepjs-bim/src/index.ts'),
+      'brepjs-sheetmetal': resolve(import.meta.dirname, 'packages/brepjs-sheetmetal/src/index.ts'),
+      'brepjs-bim': resolve(import.meta.dirname, 'packages/brepjs-bim/src/index.ts'),
       // Subpath entries first: object-form aliases are exact-match, so the
       // automatic-JSX runtime imports need their own rows (no dist in CI).
       'brepjs-families/jsx-runtime': resolve(
-        __dirname,
+        import.meta.dirname,
         'packages/brepjs-families/src/jsxRuntime.ts'
       ),
       'brepjs-families/jsx-dev-runtime': resolve(
-        __dirname,
+        import.meta.dirname,
         'packages/brepjs-families/src/jsxRuntime.ts'
       ),
-      'brepjs-families': resolve(__dirname, 'packages/brepjs-families/src/index.ts'),
+      'brepjs-families': resolve(import.meta.dirname, 'packages/brepjs-families/src/index.ts'),
     },
   },
   test: {
