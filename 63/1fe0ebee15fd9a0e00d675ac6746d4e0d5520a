@@ -1,0 +1,38 @@
+tests/meshFns.test.ts
+  s_f370c23b15b6eb::t_8734211cf3e12c 106-108
+  s_f370c23b15b6eb::t_75464460443541 2
+  s_f370c23b15b6eb::t_0c9ecf600b819d 109-113
+  s_f370c23b15b6eb::t_84f771ffbc45ff 98-104
+  s_f370c23b15b6eb::t_18620f48d057f0 114-120
+  s_f370c23b15b6eb::t_5fc0f14b60aef0 76-96,105,121-129
+  s_f370c23b15b6eb::t_7cc35e6593318d 97
+src/topology/meshFns.ts
+  s_f370c23b15b6eb::t_e3048efca087d7 314,317
+  s_f370c23b15b6eb::t_341859e2dc56c2 50-52
+  s_f370c23b15b6eb::t_4e6a6c42e1f0c8 60-81
+  s_f370c23b15b6eb::t_78ac35c04eb031 166,169
+  s_f370c23b15b6eb::t_be9412cff84dc4 100-102,105
+apps/playground/src/types/brepjs-ambient.d.ts
+  s_f370c23b15b6eb::t_606a3ab6555000 4776-4778
+src/csg/evaluate.ts
+  s_f370c23b15b6eb::t_bd2e83d2f036e8 17,19-24
+tests/helpers/kernelDivergences.ts
+  s_f370c23b15b6eb::t_fd30d856e25a8b 368-372
+  s_f370c23b15b6eb::t_de3c97e653d30c 550-554
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "631fe0ebee15fd9a0e00d675ac6746d4e0d5520a",
+  "prompts": {},
+  "sessions": {
+    "s_f370c23b15b6eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07d1242b-d663-4930-8889-d5a3290c5029",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
