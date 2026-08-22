@@ -1,0 +1,19 @@
+tests/meshFns.test.ts
+  s_f370c23b15b6eb::t_a933fd4c331da1 83-84,93-96,103-106,118-121,130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1bacaf7c1a921c03a331c801ce753e407739f7cb",
+  "prompts": {},
+  "sessions": {
+    "s_f370c23b15b6eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07d1242b-d663-4930-8889-d5a3290c5029",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
