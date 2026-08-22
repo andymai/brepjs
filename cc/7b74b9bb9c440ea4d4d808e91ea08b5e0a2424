@@ -1,0 +1,34 @@
+packages/brepjs-families/registry/manifest.json
+  s_5c497b714ed350::t_caaee66ef5a9bd 63,71
+apps/docs/reference/errors.md
+  s_5c497b714ed350::t_90c92cc27473b3 288,290
+packages/brepjs-bim/tests/familiesAdapter.test.ts
+  s_5c497b714ed350::t_377742a47ac47b 582-650
+packages/brepjs-cad/skills/implement/references/families-bim.md
+  s_5c497b714ed350::t_90c92cc27473b3 16,74
+packages/brepjs-families/registry/families/window.ts
+  s_5c497b714ed350::t_caaee66ef5a9bd 1,31
+apps/docs/families/ifc-export.md
+  s_5c497b714ed350::t_90c92cc27473b3 63-64
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_5c497b714ed350::t_a80f287d0766b1 287,292,545
+  s_5c497b714ed350::t_a0992388a235a3 137-138,286,300
+packages/brepjs-families/registry/families/door.ts
+  s_5c497b714ed350::t_caaee66ef5a9bd 1,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "cc7b74b9bb9c440ea4d4d808e91ea08b5e0a2424",
+  "prompts": {},
+  "sessions": {
+    "s_5c497b714ed350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a696f35-5cea-4799-a7a8-8d6bfaa0432e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
