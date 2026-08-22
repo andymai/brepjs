@@ -94,21 +94,22 @@ const model = evaluateModel(tree, ev, {}, { shapes: true });
 
 // byKeyPath is the identity axis: stable addresses instead of array indices.
 // Void slots path as host/voids:slot; the filling element is its /fill child.
-const at = (keyPath: string) => {
-  const node = model.byKeyPath.get(keyPath);
-  if (!node || !node.shape) throw new Error('no geometry at ' + keyPath);
-  return unwrap(node.shape);
+if (!model.byKeyPath.has('ground/south/voids:entry/fill')) throw new Error('door missing');
+
+// Render by iterating that same axis and coloring by element type — add a
+// wall above and it shows up here untouched. Opening nodes are skipped:
+// their geometry is the fill's cut body, already rendered as Door/Window.
+const COLORS: Record<string, string> = {
+  Wall: '#cfc4b0',
+  Slab: '#8f8f8f',
+  Door: '#8b5a2b',
+  Window: '#7ec8e3',
 };
 
-export default [
-  color(at('ground/south'), '#cfc4b0'),
-  color(at('ground/north'), '#cfc4b0'),
-  color(at('ground/east'), '#cfc4b0'),
-  color(at('ground/west'), '#cfc4b0'),
-  color(at('ground/floor'), '#8f8f8f'),
-  color(at('ground/south/voids:entry/fill'), '#8b5a2b'),
-  color(at('ground/south/voids:win/fill'), '#7ec8e3'),
-];
+export default [...model.byKeyPath.values()].flatMap((n) => {
+  const css = COLORS[n.type];
+  return css && n.shape ? [color(unwrap(n.shape), css)] : [];
+});
 `,
   },
   {
