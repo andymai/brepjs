@@ -1,7 +1,13 @@
+/** @jsxRuntime automatic @jsxImportSource brepjs-families */
 /**
  * Typed JSX authoring — the real compiler path (react-jsx transform through
  * `jsxImportSource: "brepjs-families"`), not direct jsx() calls. Pure data:
  * resolution builds IR nodes without a kernel, so no WASM setup here.
+ *
+ * The pragma above is required, not decorative: this file is run by two vitest
+ * configs (the package's own and the root suite), and the root one cannot set a
+ * global jsxImportSource without committing every future .tsx in it to this
+ * package's runtime.
  */
 
 import { describe, expect, it } from 'vitest';
