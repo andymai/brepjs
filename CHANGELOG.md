@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.156.0](https://github.com/andymai/brepjs/compare/brepjs-v18.155.0...brepjs-v18.156.0) (2026-08-22)
+
+
+### Features
+
+* **topology:** scale-relative default mesh deflection on the eager path ([#2219](https://github.com/andymai/brepjs/issues/2219)) ([c4a52f8](https://github.com/andymai/brepjs/commit/c4a52f8ad26769d9b8803c981466375ebe3a9302))
+
 ## [18.155.0](https://github.com/andymai/brepjs/compare/brepjs-v18.154.0...brepjs-v18.155.0) (2026-08-22)
 
 
