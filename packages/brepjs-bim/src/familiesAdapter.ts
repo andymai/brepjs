@@ -13,7 +13,7 @@
  * the uncut spec body would silently diverge from what the user sees.
  */
 
-import { clone, err, isSolid, ok, validSolid, type Result, type csg } from 'brepjs';
+import { clone, err, getSolids, isSolid, ok, validSolid, type Result, type csg } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -280,9 +280,25 @@ function addProxyElement(
       )
     );
   }
-  // The evaluator owns its handles and addProxy takes ownership of the solid,
-  // so hand the model an independent copy.
-  const copy = clone(evaluated.value);
+  // Booleans can materialize as a compound wrapping one solid; accept that,
+  // reject anything that is not exactly one solid body.
+  let source = evaluated.value;
+  if (!isSolid(source)) {
+    const solids = getSolids(source);
+    const only = solids.length === 1 ? solids[0] : undefined;
+    if (only === undefined) {
+      return err(
+        specError(
+          'FAMILIES_PROXY_NOT_SOLID',
+          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — a proxy body must be exactly one`
+        )
+      );
+    }
+    source = only;
+  }
+  // The evaluator (or its topology cache) owns `source`; addProxy takes
+  // ownership of what it is handed, so give the model an independent copy.
+  const copy = clone(source);
   if (!copy.ok) {
     return err(
       specError(
@@ -436,6 +452,7 @@ export function familiesToBim(
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
     const rotatedHere = rotated || hasRotateOp(el);
+    let proxied = false;
     let containerId = storeyId;
     const route = specRoute(el.type);
     if (el.type === 'Storey') {
@@ -526,9 +543,13 @@ export function familiesToBim(
       if (!added.ok) return added;
       model.placeIn(added.value, containerId);
       idByKeyPath.set(el.keyPath, added.value);
+      proxied = true;
     }
     for (const child of el.children) {
-      if (el.type === 'Wall' && child.type === 'Opening') continue;
+      // A wall's openings were mapped by addOpenings; a proxy's are baked
+      // into its authoritative tessellated body — neither wants the
+      // outside-wall rejection on the synthesized Opening child.
+      if ((el.type === 'Wall' || proxied) && child.type === 'Opening') continue;
       const r = walk(child, containerId, rotatedHere);
       if (!r.ok) return r;
     }

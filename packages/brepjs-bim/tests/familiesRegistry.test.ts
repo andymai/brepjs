@@ -202,6 +202,30 @@ describe('registry families through familiesToBim', () => {
     expect(text).toContain('Granite');
   });
 
+  it('a proxied element with a fill-role void keeps its baked opening', () => {
+    const Slot = family<{ readonly w: number }>(
+      'Slot',
+      (p) => el('Box', { size: [p.w, 400, 400] }),
+      {
+        role: 'fill',
+      }
+    );
+    const Cabin = family<{ readonly size: number }>('Cabin', (p) =>
+      el('Geometry', {
+        node: csg.box(p.size, p.size, p.size),
+        voids: [Slot({ key: 'hatch', w: 600 })],
+      })
+    );
+    const tree = resolve(Storey({ key: 'g', items: [Cabin({ key: 'cabin', size: 2000 })] }));
+    using ev = new csg.Evaluator();
+    const projected = unwrap(familiesToBim(tree, { project: PROJECT, proxyEvaluator: ev }));
+    using model = projected.model;
+    // The body is authoritative: the hole is baked into the tessellated proxy,
+    // and the synthesized Opening child must not trip the wall-only mapping.
+    expect(model.getProxies()).toHaveLength(1);
+    expect(projected.idByKeyPath.has('g/cabin')).toBe(true);
+  });
+
   it('rejects an anonymous void instead of silently diverging the IFC body', () => {
     const Hole = family<{ readonly size?: number }>('Hole', () =>
       el('Box', { size: [500, 500, 500] })
