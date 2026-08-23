@@ -1,0 +1,23 @@
+.release-please-manifest.json
+  s_9c919aa75d8138::t_868a8903c879bd 6
+packages/brepjs-bim/CHANGELOG.md
+  s_9c919aa75d8138::t_6217fa7f63e216 3-9
+packages/brepjs-bim/package.json
+  s_9c919aa75d8138::t_7f09a32107be29 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "08705568b6fe94d04256e8601ac178737fd75bb6",
+  "prompts": {},
+  "sessions": {
+    "s_9c919aa75d8138": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41e047b9-a219-4901-8cd4-a750eef168cc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
