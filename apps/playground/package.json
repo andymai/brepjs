@@ -33,14 +33,14 @@
     "lz-string": "1.5.0",
     "monaco-editor": "0.56.0",
     "occt-wasm": "*",
-    "posthog-js": "1.414.0",
+    "posthog-js": "1.417.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-resizable-panels": "4.12.2",
     "sucrase": "3.35.1",
     "three": "0.185.1",
     "web-ifc": "0.0.77",
-    "zustand": "5.0.14"
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
@@ -48,9 +48,9 @@
     "@types/react-dom": "19.2.4",
     "@types/three": "0.185.4",
     "@vitejs/plugin-react": "6.0.5",
-    "puppeteer": "25.5.0",
+    "puppeteer": "25.7.0",
     "tailwindcss": "4.3.3",
-    "tsx": "4.23.11",
+    "tsx": "4.23.12",
     "typescript": "6.0.3"
   }
 }

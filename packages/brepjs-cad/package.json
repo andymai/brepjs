@@ -66,7 +66,7 @@
     "puppeteer": "^25.0.4"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "0.116.0",
+    "@anthropic-ai/sdk": "0.117.1",
     "@langfuse/client": "5.10.0",
     "@langfuse/otel": "5.10.0",
     "@langfuse/tracing": "5.10.0",
@@ -84,7 +84,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "three": "0.185.1",
-    "tsx": "4.23.11",
+    "tsx": "4.23.12",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^5.0.1",
     "vitest": "^4.0.0",

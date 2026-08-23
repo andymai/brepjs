@@ -55,7 +55,7 @@
     "@eslint/js": "*",
     "@types/node": "26.2.0",
     "eslint": "*",
-    "tsx": "4.23.11",
+    "tsx": "4.23.12",
     "typescript": "*",
     "typescript-eslint": "*",
     "vite": "^8.0.0",
