@@ -12,6 +12,7 @@ import {
   meshSize,
   meshBounds,
   sectionPlane,
+  findElementAt,
   type FaceInfo,
   type Projection,
   type SectionAxis,
@@ -19,7 +20,7 @@ import {
   type ViewName,
 } from 'brepjs-viewer';
 import { Html } from '@react-three/drei';
-import { useModel } from './src/useModel.js';
+import { useModel, type PreviewInfo } from './src/useModel.js';
 import { installScreenshotApi, onScene, markReady, type Mark } from './src/screenshotApi.js';
 
 // Kernel-anchored Set-of-Marks: numbered badges drawn at 3D feature points (drei <Html> projects them
@@ -68,6 +69,43 @@ function downloadCanvasPng(): void {
   a.click();
 }
 
+// Element identity panel for `brep preview`: counts, the picked element's key path,
+// and every failed key path (failed elements are absent from the merged mesh, so the
+// list is the only place they surface visually).
+function PreviewPanel({ preview, selected }: { preview: PreviewInfo; selected: string | null }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        maxWidth: 340,
+        maxHeight: '60vh',
+        overflowY: 'auto',
+        background: 'rgba(16, 20, 24, 0.85)',
+        color: '#cfd6dc',
+        font: '12px monospace',
+        padding: '8px 10px',
+        borderRadius: 6,
+        pointerEvents: 'auto',
+      }}
+    >
+      <div>
+        elements: {preview.elements.length}
+        {preview.failed.length > 0 && (
+          <span style={{ color: '#e88' }}> · {preview.failed.length} failed</span>
+        )}
+      </div>
+      {selected && <div style={{ color: '#ffd479' }}>selected: {selected}</div>}
+      {preview.failed.map((keyPath) => (
+        <div key={keyPath} style={{ color: '#e88' }}>
+          ✗ {keyPath}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const state = useModel({ inspect: showControls });
   const [view, setView] = useState<ViewName>('iso');
@@ -84,6 +122,15 @@ function App() {
   const [sectionPos, setSectionPos] = useState(0);
   const [sectionFlip, setSectionFlip] = useState(false);
   const [marks, setMarks] = useState<readonly Mark[]>([]);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const preview: PreviewInfo | undefined = state.status === 'ready' ? state.preview : undefined;
+  const handleTrianglePick = useCallback(
+    (triangleIndex: number) => {
+      if (!preview) return;
+      setSelectedElement(findElementAt(preview.elements, triangleIndex)?.keyPath ?? null);
+    },
+    [preview]
+  );
   const handleFit = useCallback(() => {
     setFitSignal((n) => n + 1);
   }, []);
@@ -167,6 +214,7 @@ function App() {
           viewMode={viewMode}
           {...(clippingPlanes ? { clippingPlanes } : {})}
           {...(showControls ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover } : {})}
+          {...(preview ? { onTrianglePick: handleTrianglePick } : {})}
         />
         {showEdges && viewMode !== 'wireframe' && state.data.edges.length > 0 && (
           <EdgeRenderer edges={state.data.edges} {...(clippingPlanes ? { clippingPlanes } : {})} />
@@ -214,6 +262,7 @@ function App() {
         />
       )}
       {!showControls && showDims && <ViewerInfoPanel dims={meshSize(state.data)} />}
+      {preview && <PreviewPanel preview={preview} selected={selectedElement} />}
       {showControls && (
         <ViewerControls
           viewMode={viewMode}

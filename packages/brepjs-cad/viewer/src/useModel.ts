@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { MeshData } from 'brepjs-viewer';
+import { decodePreviewPayload } from 'brepjs-viewer';
+import type { ElementRange, MeshData, PreviewTreeNode } from 'brepjs-viewer';
 import type { FromWorker, LoadRequest } from './kernelWorker.js';
 import type { ModelMeasurements } from './loaders.js';
 
@@ -17,10 +18,17 @@ export function extOf(file: string): string {
   return d === -1 ? '' : file.slice(d).toLowerCase();
 }
 
+/** Element identity riding on a preview payload (brep preview). */
+export interface PreviewInfo {
+  elements: readonly ElementRange[];
+  failed: readonly string[];
+  tree: PreviewTreeNode | null;
+}
+
 export type ModelState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; data: MeshData; measurements: ModelMeasurements }
+  | { status: 'ready'; data: MeshData; measurements: ModelMeasurements; preview?: PreviewInfo }
   | { status: 'error'; error: string };
 
 export interface UseModelOptions {
@@ -30,6 +38,40 @@ export interface UseModelOptions {
 export function useModel({ inspect = false }: UseModelOptions = {}): ModelState {
   const [state, setState] = useState<ModelState>({ status: 'idle' });
   useEffect(() => {
+    // Preview mode (`brep preview`): the payload is server-evaluated — fetch it and
+    // re-fetch on each SSE ping. No kernel worker, no ?dir=/?file= routes involved.
+    if (new URLSearchParams(window.location.search).has('preview')) {
+      setState({ status: 'loading' });
+      let cancelled = false;
+      const load = async (): Promise<void> => {
+        try {
+          const r = await fetch('/__preview/model');
+          if (!r.ok) throw new Error(`fetch preview model: ${r.status}`);
+          const payload = decodePreviewPayload(await r.arrayBuffer());
+          if (cancelled) return;
+          setState({
+            status: 'ready',
+            data: payload.data,
+            measurements: { valid: payload.failed.length === 0 },
+            preview: {
+              elements: payload.elements,
+              failed: payload.failed,
+              tree: payload.tree,
+            },
+          });
+        } catch (err) {
+          if (!cancelled)
+            setState({ status: 'error', error: err instanceof Error ? err.message : String(err) });
+        }
+      };
+      void load();
+      const events = new EventSource('/__preview/events');
+      events.onmessage = () => void load();
+      return () => {
+        cancelled = true;
+        events.close();
+      };
+    }
     const params = parseModelParams(window.location.search);
     if (!params) {
       setState({ status: 'error', error: 'missing ?file= parameter' });

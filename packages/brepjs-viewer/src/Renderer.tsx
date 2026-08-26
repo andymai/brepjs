@@ -12,6 +12,9 @@ export interface RendererProps {
   onFacePick?: (info: FaceInfo, additive: boolean, pos: ScreenPos) => void;
   onFaceHover?: (info: FaceInfo | null, pos?: ScreenPos) => void;
   onFaceContextMenu?: (info: FaceInfo, pos: ScreenPos) => void;
+  /** Raw triangle-index pick — works without faceInfos (element-identity payloads
+   *  map it back to a key path via findElementAt). */
+  onTrianglePick?: (triangleIndex: number, pos: ScreenPos) => void;
 }
 
 export function Renderer({
@@ -21,9 +24,11 @@ export function Renderer({
   onFacePick,
   onFaceHover,
   onFaceContextMenu,
+  onTrianglePick,
 }: RendererProps) {
   const pickable = Boolean(
-    data.faceGroups && data.faceInfos && (onFacePick || onFaceHover || onFaceContextMenu)
+    (data.faceGroups && data.faceInfos && (onFacePick || onFaceHover || onFaceContextMenu)) ||
+    onTrianglePick
   );
   const geometry = useMemo(() => buildGeometry(data), [data.position, data.normal, data.index]);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -61,12 +66,16 @@ export function Renderer({
       // Swallow the tap the browser synthesizes when a touch long-press just
       // opened the context menu, so it doesn't also select the entity.
       if (longPress.consumeFired()) return;
+      if (onTrianglePick && e.faceIndex !== undefined && e.faceIndex !== null) {
+        e.stopPropagation();
+        onTrianglePick(e.faceIndex, { x: e.clientX, y: e.clientY });
+      }
       const info = resolveFace(e);
       if (!info) return;
       e.stopPropagation();
       onFacePick?.(info, e.shiftKey, { x: e.clientX, y: e.clientY });
     },
-    [resolveFace, onFacePick, longPress]
+    [resolveFace, onFacePick, onTrianglePick, longPress]
   );
   const onCtx = useCallback(
     (e: ThreeEvent<MouseEvent>) => {

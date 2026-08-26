@@ -60,7 +60,7 @@ function typesEntryOf(pkg: { types?: unknown; exports?: unknown }): string | und
   return typeof pkg.types === 'string' ? pkg.types : undefined;
 }
 
-function packageRootOf(startDir: string, name: string): string | undefined {
+export function packageRootOf(startDir: string, name: string): string | undefined {
   let dir = startDir;
   const root = parsePath(dir).root;
   for (;;) {

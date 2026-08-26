@@ -37,6 +37,7 @@ export default defineConfig({
         'snapshot/registry': resolve(import.meta.dirname, 'src/snapshot/registry.ts'),
         'snapshot/shoot': resolve(import.meta.dirname, 'src/snapshot/shoot.ts'),
         'snapshot/serve': resolve(import.meta.dirname, 'src/snapshot/serve.ts'),
+        'preview/preview': resolve(import.meta.dirname, 'src/preview/preview.ts'),
         'mcp/server': resolve(import.meta.dirname, 'src/mcp/server.ts'),
       },
       formats: ['es', 'cjs'],
@@ -44,6 +45,8 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'brepjs',
+        // Resolved at runtime from the USER's project (preview element trees); never bundled.
+        'brepjs-families',
         'occt-wasm',
         'commander',
         'puppeteer',

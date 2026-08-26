@@ -31,3 +31,13 @@ export {
   type EvaluatedNodeLike,
   type ModelMeshResult,
 } from './model.js';
+export {
+  encodePreviewPayload,
+  decodePreviewPayload,
+  PREVIEW_PAYLOAD_MAGIC,
+  PREVIEW_PAYLOAD_VERSION,
+  type PreviewModelPayload,
+  type PreviewTreeNode,
+  type PreviewBounds,
+  type PreviewMeasurements,
+} from './payload.js';

@@ -10,6 +10,7 @@ import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
 import {
+  createSerialRunner,
   debounce,
   DEFAULT_DEBOUNCE_MS,
   isWatchRelevant,
@@ -328,31 +329,10 @@ program
         process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
       }
     };
-    // Serialize runs: a save landing mid-verify must not start a second runPart on the
-    // shared kernel (reports would interleave out of order). Edits during a run coalesce
-    // into exactly one trailing rerun.
-    let inFlight = false;
-    let rerunQueued = false;
-    const start = (fresh: boolean): void => {
-      inFlight = true;
-      void run(fresh).finally(() => {
-        inFlight = false;
-        if (rerunQueued) {
-          rerunQueued = false;
-          start(true);
-        }
-      });
-    };
-    const schedule = (): void => {
-      if (inFlight) {
-        rerunQueued = true;
-        return;
-      }
-      start(true);
-    };
-    const { trigger } = debounce(schedule, DEFAULT_DEBOUNCE_MS);
+    const runner = createSerialRunner(run);
+    const { trigger } = debounce(runner.trigger, DEFAULT_DEBOUNCE_MS);
     process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
-    start(false); // initial verify
+    runner.start(false); // initial verify
     // Watch the whole project tree (nearest package.json/tsconfig.json above the entry):
     // editors often replace a file (rename) on save, which drops a watcher bound to the
     // inode itself — and a multi-file project must re-verify when any source OR the root
@@ -367,6 +347,41 @@ program
     process.on('SIGINT', stop);
     process.on('SIGTERM', stop); // supervisors (docker stop, systemctl) send SIGTERM
   });
+
+program
+  .command('preview')
+  .argument(
+    '<file>',
+    'path to a model module (.ts/.tsx); a families element tree renders per element'
+  )
+  .option('--watch', 're-evaluate on save and push updates to the open viewer tab')
+  .option('--write-only', 'write artifacts and exit without starting the viewer server')
+  .option('--glb <out>', 'write a merged GLB of the whole model')
+  .option('--json <out>', 'write the JSON summary to this path')
+  .option('--port <n>', 'viewer server port (default: OS-assigned)', (v: string) => parseInt(v, 10))
+  .option('--no-open', 'do not auto-open the browser')
+  .action(
+    async (
+      file: string,
+      opts: {
+        watch?: boolean;
+        writeOnly?: boolean;
+        glb?: string;
+        json?: string;
+        port?: number;
+        open?: boolean;
+      }
+    ) => {
+      // Lazy: keeps the viewer server + evaluation graph off the default CLI path.
+      const { runPreview } = await import('../preview/preview.js');
+      try {
+        await runPreview(resolve(file), opts);
+      } catch (e) {
+        process.stderr.write(`preview failed: ${(e as Error).message}\n`);
+        process.exitCode = 1;
+      }
+    }
+  );
 
 program
   .command('export')

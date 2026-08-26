@@ -39,6 +39,28 @@ describe('modelToMeshData', () => {
     expect(data.edges.length).toBe(0);
   });
 
+  it('merges per-element edge segments into MeshData.edges', () => {
+    const withEdges = (offset: number): EvaluatedNodeLike => {
+      const base = tri(offset);
+      if (!base.mesh.ok) throw new Error('unreachable');
+      return {
+        mesh: {
+          ok: true,
+          value: { ...base.mesh.value, edges: new Float32Array([offset, 0, 0, offset + 1, 0, 0]) },
+        },
+      };
+    };
+    const model = {
+      byKeyPath: new Map([
+        ['a', withEdges(0)],
+        ['b', withEdges(10)],
+        ['c', tri(20)],
+      ]),
+    };
+    const { data } = modelToMeshData(model);
+    expect(Array.from(data.edges)).toEqual([0, 0, 0, 1, 0, 0, 10, 0, 0, 11, 0, 0]);
+  });
+
   it('collects failed elements instead of dropping them silently', () => {
     const model = {
       byKeyPath: new Map<string, EvaluatedNodeLike>([

@@ -16,6 +16,9 @@ export interface ElementMesh {
   readonly vertices: Float32Array;
   readonly normals: Float32Array;
   readonly faceGroups?: readonly { start: number; count: number; faceId: number }[] | undefined;
+  /** Optional edge line segments (x,y,z interleaved, 2 vertices per segment) —
+   *  merged into `MeshData.edges` so the EdgeRenderer has real wireframe data. */
+  readonly edges?: Float32Array | undefined;
 }
 
 export interface EvaluatedNodeLike {
@@ -55,11 +58,13 @@ export function modelToMeshData(model: EvaluatedModelLike): ModelMeshResult {
   const failed: string[] = [];
   let floats = 0;
   let indices = 0;
+  let edgeFloats = 0;
   for (const [keyPath, node] of model.byKeyPath) {
     if (node.mesh.ok) {
       parts.push({ keyPath, mesh: node.mesh.value });
       floats += node.mesh.value.vertices.length;
       indices += node.mesh.value.triangles.length;
+      edgeFloats += node.mesh.value.edges?.length ?? 0;
     } else {
       failed.push(keyPath);
     }
@@ -68,11 +73,17 @@ export function modelToMeshData(model: EvaluatedModelLike): ModelMeshResult {
   const position = new Float32Array(floats);
   const normal = new Float32Array(floats);
   const index = new Uint32Array(indices);
+  const edges = new Float32Array(edgeFloats);
   const faceGroups: FaceGroup[] = [];
   const elements: ElementRange[] = [];
   let floatOffset = 0;
   let indexOffset = 0;
+  let edgeOffset = 0;
   for (const { keyPath, mesh } of parts) {
+    if (mesh.edges) {
+      edges.set(mesh.edges, edgeOffset);
+      edgeOffset += mesh.edges.length;
+    }
     position.set(mesh.vertices, floatOffset);
     normal.set(mesh.normals, floatOffset);
     const vertexBase = floatOffset / 3;
@@ -91,7 +102,7 @@ export function modelToMeshData(model: EvaluatedModelLike): ModelMeshResult {
     position,
     normal,
     index,
-    edges: new Float32Array(0),
+    edges,
     ...(faceGroups.length > 0 ? { faceGroups } : {}),
   };
   return { data, elements, failed };
