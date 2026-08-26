@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.161.0](https://github.com/andymai/brepjs/compare/brepjs-v18.160.0...brepjs-v18.161.0) (2026-08-26)
+
+
+### Features
+
+* **brepjs-cad:** brep export --3dm — element-aware Rhino export ([#2236](https://github.com/andymai/brepjs/issues/2236)) ([91b0235](https://github.com/andymai/brepjs/commit/91b02355d9ba005f69dd4c72002a946600179398))
+
 ## [18.160.0](https://github.com/andymai/brepjs/compare/brepjs-v18.159.0...brepjs-v18.160.0) (2026-08-26)
 
 
