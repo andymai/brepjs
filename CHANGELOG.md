@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.162.0](https://github.com/andymai/brepjs/compare/brepjs-v18.161.3...brepjs-v18.162.0) (2026-08-26)
+
+
+### Features
+
+* **playground:** per-example og cards and unfurl meta ([#2249](https://github.com/andymai/brepjs/issues/2249)) ([8ea7201](https://github.com/andymai/brepjs/commit/8ea7201d4b2226dee511e73c1ad133821e51c7af))
+
 ## [18.161.3](https://github.com/andymai/brepjs/compare/brepjs-v18.161.2...brepjs-v18.161.3) (2026-08-26)
 
 
