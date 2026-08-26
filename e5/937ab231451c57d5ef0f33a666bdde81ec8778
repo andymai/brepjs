@@ -1,0 +1,64 @@
+packages/brepjs-viewer/tests/model.test.ts
+  s_3f41f7f80a23af::t_2ff08a8cf1832c 42-63
+packages/brepjs-cad/src/preview/evaluate.ts
+  s_3f41f7f80a23af::t_2a2acccd2fec83 1-95,99-101,105-182,189-207,209-259
+  s_3f41f7f80a23af::t_45c4ec28c64fe9 96-98
+  s_3f41f7f80a23af::t_91f303f1b6a1da 102-104,183-188,208
+packages/brepjs-cad/viewer/src/useModel.ts
+  s_3f41f7f80a23af::t_c681703607cc07 2-3,21-27,31,41-74
+packages/brepjs-cad/vite.config.ts
+  s_3f41f7f80a23af::t_94559b3fc343d8 40,48-49
+packages/brepjs-viewer/src/payload.ts
+  s_3f41f7f80a23af::t_4c7d701688fdac 1-137
+packages/brepjs-cad/viewer/main.tsx
+  s_3f41f7f80a23af::t_77b40644b8bb03 15,23,72-108,125-133,217,265
+packages/brepjs-cad/src/snapshot/static.ts
+  s_3f41f7f80a23af::t_91f303f1b6a1da 62-67,101
+  s_3f41f7f80a23af::t_598389f2b731d4 9,43,53
+packages/brepjs-cad/tests/fixtures/tsxProject/model.tsx
+  s_3f41f7f80a23af::t_c5abeec069d1ce 1-10
+packages/brepjs-viewer/src/model.ts
+  s_3f41f7f80a23af::t_2ff08a8cf1832c 19-21,61,67,76,81,83-86,105
+packages/brepjs-viewer/src/index.ts
+  s_3f41f7f80a23af::t_970f407aa2dc83 34-43
+packages/brepjs-cad/src/preview/preview.ts
+  s_3f41f7f80a23af::t_91f303f1b6a1da 81
+  s_3f41f7f80a23af::t_6341324b1edace 1-80,82-101
+packages/brepjs-cad/tests/preview.test.ts
+  s_3f41f7f80a23af::t_b58d3f3297a43a 1-29,41-62,64-68,78-83,85-86,88-97,106-145
+  s_3f41f7f80a23af::t_91f303f1b6a1da 30-40,69-77,98-105
+  s_3f41f7f80a23af::t_c5abeec069d1ce 63,84,87
+packages/brepjs-viewer/tests/payload.test.ts
+  s_3f41f7f80a23af::t_d1432ff8fe04d2 1-61
+packages/brepjs-viewer/src/Renderer.tsx
+  s_3f41f7f80a23af::t_91f303f1b6a1da 31
+  s_3f41f7f80a23af::t_d1432ff8fe04d2 15-17,27,30,69-72,78
+packages/brepjs-cad/src/cli/main.ts
+  s_3f41f7f80a23af::t_0c7edaf4fc0c37 13,332-333,335
+  s_3f41f7f80a23af::t_94559b3fc343d8 352,357-385
+  s_3f41f7f80a23af::t_91f303f1b6a1da 353-356
+  s_3f41f7f80a23af::t_15f4e4155edbc8 351
+packages/brepjs-cad/src/preview/server.ts
+  s_3f41f7f80a23af::t_91f303f1b6a1da 55-57
+  s_3f41f7f80a23af::t_6341324b1edace 1-54,58-87
+packages/brepjs-cad/src/cli/watch.ts
+  s_3f41f7f80a23af::t_4c249c1258d1eb 112-142
+packages/brepjs-cad/src/verify/runPart.ts
+  s_3f41f7f80a23af::t_299dcacd386e66 63,66,71,194,207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "e5937ab231451c57d5ef0f33a666bdde81ec8778",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
