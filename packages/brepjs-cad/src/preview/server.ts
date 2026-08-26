@@ -44,6 +44,9 @@ export function startPreviewServer(
       res.write(`data: {"seq":${seq}}\n\n`);
       clients.add(res);
       res.on('close', () => clients.delete(res));
+      // A write racing a socket teardown emits 'error' on the response; without a
+      // listener that throws process-wide.
+      res.on('error', () => clients.delete(res));
       return;
     }
     const abs = safeJoin(VIEWER_DIST, pathname === '/' ? 'index.html' : pathname);
@@ -61,10 +64,19 @@ export function startPreviewServer(
   return new Promise((resolvePromise, reject) => {
     const server: Server = createServer((req, res) => {
       const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
-      void handle(pathname, res);
+      void handle(pathname, res).catch(() => {
+        if (!res.headersSent) res.writeHead(500);
+        res.end('error');
+      });
     });
     server.on('error', reject);
     server.listen(opts.port ?? 0, '127.0.0.1', () => {
+      // The promise is settled; a later server error must not call reject on it —
+      // report and keep the process (and the watch loop) alive.
+      server.removeListener('error', reject);
+      server.on('error', (e) => {
+        process.stderr.write(`preview server error: ${(e).message}\n`);
+      });
       const port = (server.address() as { port: number }).port;
       resolvePromise({
         port,

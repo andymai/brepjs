@@ -113,6 +113,12 @@ describe('brep preview server', () => {
       expect(events.headers.get('content-type')).toBe('text/event-stream');
       await events.body?.cancel();
 
+      // A malformed percent escape must 403, not crash the server (decodeURIComponent
+      // would otherwise throw through the async handler and kill the process).
+      const malformed = await fetch(`${origin}/%zz`);
+      expect(malformed.status).toBe(403);
+      expect((await fetchPayload(origin)).elements).toHaveLength(1);
+
       writeFileSync(
         join(dir, 'dims.ts'),
         'export const panelSize: readonly [number, number, number] = [20, 10, 8];\n'

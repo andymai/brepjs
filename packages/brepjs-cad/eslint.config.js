@@ -9,7 +9,14 @@ export default tseslint.config(
   // tests/fixtures/tsxProject is runtime-loaded test data for the TS/TSX loader hook —
   // deliberately outside every tsconfig project (it carries its own), so type-aware rules
   // can't run on it.
-  { ignores: ['dist/**', 'viewer/dist/**', 'tests/fixtures/tsxProject/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'viewer/dist/**',
+      'tests/fixtures/tsxProject/**',
+      'tests/fixtures/tsxPreserve/**',
+    ],
+  },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

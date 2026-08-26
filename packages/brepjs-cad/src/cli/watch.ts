@@ -1,5 +1,6 @@
 import { watch, readdirSync, existsSync } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export const DEFAULT_DEBOUNCE_MS = 150;
@@ -45,13 +46,18 @@ export function isWatchRelevant(filename: string | Buffer | null | undefined): b
  * and `../` imports live one level up. Nearest package.json or tsconfig.json walking up
  * wins; entries with no project marker fall back to their own directory.
  */
-export function watchRootFor(entryPath: string): string {
+export function watchRootFor(entryPath: string, stopDir: string = homedir()): string {
   const start = dirname(entryPath);
   let dir = start;
   for (;;) {
+    // Never root at (or above) the home directory: a stray ~/package.json would put
+    // the whole home tree under per-directory watches — thousands of inotify handles.
+    if (dir === stopDir) return start;
     if (existsSync(join(dir, 'package.json')) || existsSync(join(dir, 'tsconfig.json'))) {
       return dir;
     }
+    // A .git directory is a hard project boundary even without a manifest.
+    if (existsSync(join(dir, '.git'))) return dir;
     const parent = dirname(dir);
     if (parent === dir) return start;
     dir = parent;
@@ -72,16 +78,20 @@ export function watchTree(
   onEvent: (filename: string | Buffer | null | undefined) => void
 ): () => void {
   const watchers = new Map<string, FSWatcher>();
+  const drop = (dir: string): void => {
+    watchers.get(dir)?.close();
+    watchers.delete(dir);
+  };
   const add = (dir: string): void => {
     if (watchers.has(dir)) return;
     try {
-      watchers.set(
-        dir,
-        watch(dir, (_event, filename) => {
-          scan(dir);
-          onEvent(filename);
-        })
-      );
+      const watcher = watch(dir, (_event, filename) => {
+        scan(dir);
+        onEvent(filename);
+      });
+      // A deleted directory surfaces as a watcher error; keep the map bounded.
+      watcher.on('error', () => drop(dir));
+      watchers.set(dir, watcher);
     } catch {
       // directory vanished between scan and watch
     }
@@ -91,6 +101,7 @@ export function watchTree(
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {
+      drop(dir);
       return;
     }
     for (const entry of entries) {

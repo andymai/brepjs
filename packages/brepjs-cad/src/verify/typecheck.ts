@@ -47,17 +47,27 @@ function brepjsTypesFor(fromUrl: string): string | undefined {
 }
 
 function typesEntryOf(pkg: { types?: unknown; exports?: unknown }): string | undefined {
-  const exportsRoot = (pkg.exports as Record<string, unknown> | undefined)?.['.'];
-  if (exportsRoot && typeof exportsRoot === 'object') {
-    const imp = (exportsRoot as Record<string, unknown>)['import'];
-    if (imp && typeof imp === 'object') {
-      const t = (imp as Record<string, unknown>)['types'];
-      if (typeof t === 'string') return t;
-    }
-    const t = (exportsRoot as Record<string, unknown>)['types'];
-    if (typeof t === 'string') return t;
+  return (
+    exportsField(pkg.exports, 'types') ?? (typeof pkg.types === 'string' ? pkg.types : undefined)
+  );
+}
+
+/**
+ * Read `pkg.exports['.'].import.<key>`, falling back to `pkg.exports['.'].<key>` — the
+ * two shapes a conditional exports map uses for a subpath's declared entry (types, an
+ * ESM default, etc). Shared with `esmEntryOf` in preview/evaluate.ts, which resolves the
+ * same map for a different key.
+ */
+export function exportsField(exportsValue: unknown, key: string): string | undefined {
+  const root = (exportsValue as Record<string, unknown> | undefined)?.['.'];
+  if (!root || typeof root !== 'object') return undefined;
+  const imp = (root as Record<string, unknown>)['import'];
+  if (imp && typeof imp === 'object') {
+    const v = (imp as Record<string, unknown>)[key];
+    if (typeof v === 'string') return v;
   }
-  return typeof pkg.types === 'string' ? pkg.types : undefined;
+  const v = (root as Record<string, unknown>)[key];
+  return typeof v === 'string' ? v : undefined;
 }
 
 export function packageRootOf(startDir: string, name: string): string | undefined {
@@ -99,7 +109,13 @@ function jsxCompilerOptions(partPath: string): ts.CompilerOptions {
       }
     }
   }
-  if (partPath.endsWith('.tsx') && out.jsx === undefined) out.jsx = ts.JsxEmit.ReactJSX;
+  if (partPath.endsWith('.tsx')) {
+    const emitsJsx =
+      out.jsx === ts.JsxEmit.React ||
+      out.jsx === ts.JsxEmit.ReactJSX ||
+      out.jsx === ts.JsxEmit.ReactJSXDev;
+    if (!emitsJsx) out.jsx = ts.JsxEmit.ReactJSX;
+  }
   return out;
 }
 

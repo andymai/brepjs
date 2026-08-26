@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { encodePreviewPayload, decodePreviewPayload, type PreviewModelPayload } from '@/payload.js';
+import {
+  encodePreviewPayload,
+  decodePreviewPayload,
+  PREVIEW_PAYLOAD_MAGIC,
+  PREVIEW_PAYLOAD_VERSION,
+  type PreviewModelPayload,
+} from '@/payload.js';
 
 function samplePayload(): PreviewModelPayload {
   return {
@@ -54,8 +60,32 @@ describe('preview payload codec', () => {
   it('rejects garbage and version drift', () => {
     expect(() => decodePreviewPayload(new ArrayBuffer(4))).toThrow(/magic/);
     const buf = encodePreviewPayload(samplePayload());
-    const bad = buf.slice(0);
-    new DataView(bad).setUint32(0, 0xdeadbeef, true);
-    expect(() => decodePreviewPayload(bad)).toThrow(/magic/);
+    expect(new DataView(buf).getUint32(0, true)).toBe(PREVIEW_PAYLOAD_MAGIC);
+    const badMagic = buf.slice(0);
+    new DataView(badMagic).setUint32(0, 0xdeadbeef, true);
+    expect(() => decodePreviewPayload(badMagic)).toThrow(/magic/);
+    // A stale viewer tab against a newer CLI must fail loudly, not misparse.
+    expect(() => decodePreviewPayload(withHeaderVersion(buf, PREVIEW_PAYLOAD_VERSION + 1))).toThrow(
+      /unsupported preview payload version/
+    );
   });
 });
+
+function withHeaderVersion(buf: ArrayBuffer, version: number): ArrayBuffer {
+  const view = new DataView(buf);
+  const headerLength = view.getUint32(4, true);
+  const header = JSON.parse(
+    new TextDecoder().decode(new Uint8Array(buf, 8, headerLength))
+  ) as Record<string, unknown>;
+  header['version'] = version;
+  const headerBytes = new TextEncoder().encode(JSON.stringify(header));
+  const pad4 = (n: number): number => (n + 3) & ~3;
+  const oldBody = new Uint8Array(buf, 8 + pad4(headerLength));
+  const out = new ArrayBuffer(8 + pad4(headerBytes.length) + oldBody.length);
+  const outView = new DataView(out);
+  outView.setUint32(0, view.getUint32(0, true), true);
+  outView.setUint32(4, headerBytes.length, true);
+  new Uint8Array(out, 8, headerBytes.length).set(headerBytes);
+  new Uint8Array(out, 8 + pad4(headerBytes.length)).set(oldBody);
+  return out;
+}

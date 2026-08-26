@@ -51,7 +51,14 @@ export async function sendFile(res: ServerResponse, absPath: string): Promise<vo
 }
 
 export function safeJoin(root: string, rel: string): string | null {
-  const abs = resolve(root, normalize(decodeURIComponent(rel.replace(/^\/+/, ''))));
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(rel.replace(/^\/+/, ''));
+  } catch {
+    // A malformed percent escape (e.g. a bare '%') must 403, not crash the server.
+    return null;
+  }
+  const abs = resolve(root, normalize(decoded));
   if (abs !== root && !abs.startsWith(root + sep)) return null;
   return abs;
 }

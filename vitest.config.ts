@@ -27,6 +27,9 @@ const alwaysExclude = [
   'packages/brepjs-cad/**',
   // brepjs-viewer likewise aliases `@`→its own src and runs via its own vitest config + CI job.
   'packages/brepjs-viewer/**',
+  // Scaffold payload, not repo code: the template's test runs inside generated projects
+  // (and in the registry smoke), never against the workspace kernels.
+  'packages/create-brepjs/templates/**',
   'apps/**',
   '.worktrees/**',
   // Git worktrees created under .claude/ (parallel-agent branches) carry their

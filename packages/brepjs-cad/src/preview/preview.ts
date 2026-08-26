@@ -1,5 +1,6 @@
-import { writeFileSync } from 'node:fs';
-import { encodePreviewPayload } from 'brepjs-viewer';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { encodePreviewPayload, type PreviewModelPayload } from 'brepjs-viewer';
 import { evaluatePreview, type PreviewBuild } from './evaluate.js';
 import { startPreviewServer, type PreviewServer } from './server.js';
 import {
@@ -40,42 +41,69 @@ function summarize(build: PreviewBuild, viewerUrl?: string): PreviewSummary {
   };
 }
 
-async function writeArtifacts(build: PreviewBuild, opts: PreviewOptions): Promise<void> {
+const EMPTY_PAYLOAD: PreviewModelPayload = {
+  data: {
+    position: new Float32Array(0),
+    normal: new Float32Array(0),
+    index: new Uint32Array(0),
+    edges: new Float32Array(0),
+  },
+  elements: [],
+  failed: [],
+  tree: null,
+  measurements: { elementCount: 0, failedCount: 0, triangleCount: 0 },
+};
+
+async function writeArtifacts(
+  build: PreviewBuild,
+  opts: PreviewOptions,
+  viewerUrl?: string
+): Promise<void> {
   if (opts.glb) {
     const brep = await loadBrep();
+    mkdirSync(dirname(opts.glb), { recursive: true });
     writeFileSync(opts.glb, Buffer.from(brep.exportGlb(build.merged)));
   }
   if (opts.json && opts.json !== '-') {
-    writeFileSync(opts.json, JSON.stringify(summarize(build), null, 2));
+    mkdirSync(dirname(opts.json), { recursive: true });
+    writeFileSync(opts.json, JSON.stringify(summarize(build, viewerUrl), null, 2));
   }
 }
 
 export async function runPreview(entryPath: string, opts: PreviewOptions): Promise<void> {
-  const initial = await evaluatePreview(entryPath);
-  await writeArtifacts(initial, opts);
-
-  if (opts.writeOnly && !opts.watch) {
-    process.stdout.write(JSON.stringify(summarize(initial), null, 2) + '\n');
-    if (!initial.ok) process.exitCode = 1;
-    return;
+  let initial: PreviewBuild | undefined;
+  try {
+    initial = await evaluatePreview(entryPath);
+  } catch (e) {
+    // Watch mode tolerates a broken initial state — fixing it live is the point.
+    // Everything else fails fast so scripts see the error.
+    if (!opts.watch) throw e;
+    process.stderr.write(`preview build failed: ${(e as Error).message}\n`);
   }
 
   let server: PreviewServer | undefined;
   if (!opts.writeOnly) {
-    server = await startPreviewServer(encodePreviewPayload(initial.payload), {
+    server = await startPreviewServer(encodePreviewPayload(initial?.payload ?? EMPTY_PAYLOAD), {
       ...(opts.port !== undefined ? { port: opts.port } : {}),
     });
     process.stderr.write(`viewer: ${server.url}\n`);
     if (opts.open !== false && shouldAutoOpen()) openBrowser(server.url);
   }
-  process.stdout.write(JSON.stringify(summarize(initial, server?.url), null, 2) + '\n');
+  if (initial) {
+    await writeArtifacts(initial, opts, server?.url);
+    process.stdout.write(JSON.stringify(summarize(initial, server?.url), null, 2) + '\n');
+  }
+  if (opts.writeOnly && !opts.watch) {
+    if (!initial?.ok) process.exitCode = 1;
+    return;
+  }
 
   if (opts.watch) {
     const runner = createSerialRunner(async (fresh) => {
       try {
         const build = await evaluatePreview(entryPath, { fresh });
         server?.update(encodePreviewPayload(build.payload));
-        await writeArtifacts(build, opts);
+        await writeArtifacts(build, opts, server?.url);
         const failedNote =
           build.payload.failed.length > 0 ? `, ${build.payload.failed.length} failed` : '';
         process.stderr.write(`preview: ${build.payload.elements.length} elements${failedNote}\n`);

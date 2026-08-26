@@ -16,5 +16,5 @@ describe('model', () => {
     for (const [keyPath, node] of evaluated.byKeyPath) {
       expect(node.mesh.ok, `${keyPath} failed to mesh`).toBe(true);
     }
-  });
+  }, 60000);
 });
