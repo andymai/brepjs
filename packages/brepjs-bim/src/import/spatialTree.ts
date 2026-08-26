@@ -3,9 +3,9 @@ import type { SpfReader } from './spfReader.js';
 
 /**
  * A reconstructed spatial-structure node. The tree mirrors the IFC spatial
- * containment hierarchy (`IfcProject → IfcSite → IfcBuilding → IfcBuildingStorey`)
+ * containment hierarchy (including building and IFC4X3 civil spatial nodes)
  * rebuilt from `IfcRelAggregates`, with physical elements attached to their
- * storey via `IfcRelContainedInSpatialStructure`.
+ * direct spatial structure via `IfcRelContainedInSpatialStructure`.
  *
  * Nodes are addressable by {@link SpatialNode.guid} (the IFC `GlobalId`).
  */
@@ -13,7 +13,7 @@ export interface SpatialNode {
   readonly expressId: number;
   readonly guid: string;
   readonly name: string;
-  readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY';
+  readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY' | 'BRIDGE' | 'BRIDGE_PART';
   /** Storey elevation in mm; present on `STOREY` nodes only. */
   readonly elevation?: number | undefined;
   readonly children: readonly SpatialNode[];
@@ -36,6 +36,8 @@ const CATEGORY_BY_TYPE: ReadonlyMap<number, SpatialNode['category']> = new Map([
   [WebIFC.IFCSITE, 'SITE'],
   [WebIFC.IFCBUILDING, 'BUILDING'],
   [WebIFC.IFCBUILDINGSTOREY, 'STOREY'],
+  [WebIFC.IFCBRIDGE, 'BRIDGE'],
+  [WebIFC.IFCBRIDGEPART, 'BRIDGE_PART'],
 ]);
 
 function refId(ref: unknown): number | undefined {

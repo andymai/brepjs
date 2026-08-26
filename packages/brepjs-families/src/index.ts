@@ -34,6 +34,7 @@ export {
 } from './evaluateModel.js';
 export {
   civilSemantics,
+  type CivilSemanticsBase,
   type CivilEngineeringSemantics,
   type EngineeringProperties,
   type EngineeringProperty,

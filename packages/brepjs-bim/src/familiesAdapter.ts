@@ -5,9 +5,11 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers; Wall/Slab/Column/Beam/Roof/Stair, Footing/Pile,
- * Railing/Ramp, Covering/CurtainWall, and Space elements; and wall openings — a
- * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
+ * Scope: building Storey containers; civil Site/Bridge/recursive Bridge Part
+ * structure and Earthworks Fill bodies; Wall/Slab/Column/Beam/Roof/Stair,
+ * Footing/Pile, Railing/Ramp, Covering/CurtainWall, and Space elements; and
+ * wall openings — a fill-role void (Door/Window family) maps onto
+ * addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
  * voids are rejected: they cut only the IR/viewport geometry, and exporting
@@ -174,6 +176,23 @@ const SPEC_ROUTES = {
   },
 } as const;
 
+const CIVIL_PRODUCT_ROUTES: Readonly<
+  Record<
+    string,
+    {
+      readonly archetype: keyof typeof SPEC_ROUTES;
+      readonly roles: readonly string[];
+    }
+  >
+> = {
+  beam: { archetype: 'beam', roles: ['beam', 'cross-girder', 'girder'] },
+  column: { archetype: 'column', roles: ['pier-stem'] },
+  footing: { archetype: 'footing', roles: ['pad'] },
+  railing: { archetype: 'railing', roles: ['guardrail'] },
+  slab: { archetype: 'slab', roles: ['deck'] },
+  wall: { archetype: 'wall', roles: ['wall'] },
+};
+
 /** Stair and ramp specs have no top-level origin — placement lives per flight —
  *  so the element's folded translate lands on every flight's origin instead. */
 function flightsSpecInput(el: ResolvedElement): Record<string, unknown> {
@@ -226,6 +245,94 @@ function specRoute(
   return archetype !== undefined && Object.hasOwn(SPEC_ROUTES, archetype)
     ? SPEC_ROUTES[archetype as keyof typeof SPEC_ROUTES]
     : undefined;
+}
+
+function civilProductArchetype(el: ResolvedElement): keyof typeof SPEC_ROUTES | undefined {
+  if (el.semantics?.kind !== 'product') return undefined;
+  const definition = CIVIL_PRODUCT_ROUTES[el.semantics.category];
+  if (definition === undefined || !definition.roles.includes(el.semantics.role)) return undefined;
+  return definition.archetype;
+}
+
+function semanticDimension(el: ResolvedElement, ...names: readonly string[]): number | undefined {
+  if (el.semantics?.kind !== 'product') return undefined;
+  for (const name of names) {
+    const value = el.semantics.dimensionsMm[name];
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
+ * Adapts target-independent civil envelope dimensions onto existing typed BIM
+ * spec inputs. Reference infrastructure Families intentionally author domain
+ * props such as `depth`, `capOffset`, and compound railing profiles rather than
+ * BIM `profile`/`thickness` fields; semantics is the stable projection seam.
+ */
+function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
+  const base = specInput(el);
+  if (el.semantics?.kind !== 'product') return base;
+  const length = semanticDimension(el, 'length');
+  const width = semanticDimension(el, 'width');
+  const height = semanticDimension(el, 'height');
+  switch (el.semantics.category) {
+    case 'beam':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        profile:
+          base['profile'] ??
+          (width !== undefined && height !== undefined
+            ? { kind: 'RECTANGULAR', width, height }
+            : undefined),
+        predefinedType: base['predefinedType'] ?? 'BEAM',
+      };
+    case 'column':
+      return {
+        ...base,
+        height: height ?? base['height'],
+        profile:
+          base['profile'] ??
+          (length !== undefined && width !== undefined
+            ? { kind: 'RECTANGULAR', width: length, height: width }
+            : undefined),
+        predefinedType: base['predefinedType'] ?? 'COLUMN',
+      };
+    case 'footing':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        width: width ?? base['width'],
+        thickness: height ?? base['thickness'],
+        predefinedType: base['predefinedType'] ?? 'PAD_FOOTING',
+      };
+    case 'railing':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        thickness: width ?? base['thickness'],
+        height: height ?? base['height'],
+        predefinedType: base['predefinedType'] ?? 'GUARDRAIL',
+      };
+    case 'slab':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        width: width ?? base['width'],
+        thickness: height ?? base['thickness'],
+        predefinedType: base['predefinedType'] ?? 'FLOOR',
+      };
+    case 'wall':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        thickness: width ?? base['thickness'],
+        height: height ?? base['height'],
+        predefinedType: base['predefinedType'] ?? 'NOTDEFINED',
+      };
+    default:
+      return base;
+  }
 }
 
 /** Total of the resolved geometry's OUTER literal translate chain. The
@@ -304,8 +411,10 @@ const COMMON_PSET_FIELDS: Readonly<Record<string, string>> = {
 function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const material = el.attributes['material'];
-  if (typeof material === 'string' && el.props['materialName'] === undefined) {
-    out['materialName'] = material;
+  const semanticsMaterial = el.semantics?.kind === 'product' ? el.semantics.material : undefined;
+  if (el.props['materialName'] === undefined) {
+    if (typeof material === 'string') out['materialName'] = material;
+    else if (semanticsMaterial !== undefined) out['materialName'] = semanticsMaterial;
   }
   const psets = el.attributes['psets'];
   if (psets && typeof psets === 'object') {
@@ -901,7 +1010,9 @@ export function familiesToBim(
     const archetype = archetypeFor(el);
     // An explicitly authored civil Product is routed by its semantic category.
     // Do not let a coincidental legacy archetype silently change its IFC class.
-    const route = el.semantics?.kind === 'product' ? undefined : specRoute(archetype);
+    const effectiveArchetype =
+      el.semantics?.kind === 'product' ? civilProductArchetype(el) : archetype;
+    const route = specRoute(effectiveArchetype);
     const civilKind = civilSpatialKind(el);
     if (civilKind !== undefined) {
       if (
@@ -1025,7 +1136,10 @@ export function familiesToBim(
           );
         }
       }
-      const routedInput = ('input' in route ? route.input : specInput)(el);
+      const routedInput =
+        el.semantics?.kind === 'product'
+          ? civilProductSpecInput(el)
+          : ('input' in route ? route.input : specInput)(el);
       const parsed = route.parse(
         usesAuthoredCivilHierarchy
           ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
@@ -1049,7 +1163,7 @@ export function familiesToBim(
         );
       }
       model.placeIn(added.value, nextSpatialStructureId);
-      if (archetype === 'wall') {
+      if (effectiveArchetype === 'wall') {
         const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
       }
@@ -1065,7 +1179,7 @@ export function familiesToBim(
         return err(
           specError(
             'FAMILIES_UNSUPPORTED_TYPE',
-            `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}' (archetype: ${el.archetype ?? 'none'}) — routing is by archetype, so declare one on the family, add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
+            `familiesToBim: no supported spec mapping for element type '${el.type}' at '${el.keyPath}' (archetype: ${el.archetype ?? 'none'}) — declare a recognized archetype or civil Product category/role, add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
           )
         );
       }
@@ -1098,7 +1212,7 @@ export function familiesToBim(
       // A wall's openings were mapped by addOpenings; a proxy's are baked
       // into its authoritative tessellated body — neither wants the
       // outside-wall rejection on the synthesized Opening child.
-      if ((archetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
+      if ((effectiveArchetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
       const r = walk(child, {
         spatialStructureId: nextSpatialStructureId,
         civilParent: nextCivilParent,

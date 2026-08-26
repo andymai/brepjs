@@ -7,9 +7,9 @@ npm install brepjs-bim
 ```
 
 A BIM (Building Information Modeling) layer for [brepjs](https://github.com/andymai/brepjs). It
-authors IFC4-aligned parametric building elements (walls, slabs, beams, columns, roofs, curtain
-walls, stairs, …), assembles them into a spatial structure (project → site → building → storey),
-and serializes the result to a valid **IFC-SPF** file — with a matching importer to read IFC back in.
+authors IFC4-aligned parametric building elements and a focused IFC4X3 civil bridge profile,
+assembles them into a spatial structure, and serializes the result to a valid **IFC-SPF** file —
+with a matching importer to read IFC back in.
 
 Pipeline: **author spec → `BimModel` (typed element + brepjs geometry) → spatial structure +
 property sets + classification → export IFC / COBie, validate, round-trip.**
@@ -43,18 +43,46 @@ coordinates. This is especially important for parent-local Proxy and Earthworks 
 
 ## Status
 
-| Area              | State                                                                                                      |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| Elements          | wall, slab, beam, column, roof, curtain wall, space, footing/pile, stair, ramp, railing, covering, proxy   |
-| Profiles          | rectangular / circular / I-shape cores + extended L/T/U/Z/C, hollow, ellipse, arbitrary-with-voids         |
-| Openings          | door / window / slab openings cut as boolean voids; `FillsOpening` / `Voids*` relationships                |
-| Spatial structure | project → site → building → storey aggregation; `placeIn` to assign elements to a storey                   |
-| Property sets     | IFC pset templates + measure types; quantity sets for takeoff                                              |
-| Data layers       | materials (layer/profile/simple sets), classification refs, surface styles, zones/systems                  |
-| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC4 / IFC4X3 schema selection; owner history                            |
-| IFC import        | `fromIfc` / `SpfReader` → `ImportedModel` (elements, geometry, psets, materials, spatial tree)             |
-| Validation        | referential integrity, schema check, geometry validity, IFC round-trip report, buildingSMART gherkin rules |
-| Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                          |
+| Area              | State                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Elements          | wall, slab, beam, column, roof, curtain wall, space, footing/pile, stair, ramp, railing, covering, Earthworks Fill, proxy |
+| Profiles          | rectangular / circular / I-shape cores + extended L/T/U/Z/C, hollow, ellipse, arbitrary-with-voids                        |
+| Openings          | door / window / slab openings cut as boolean voids; `FillsOpening` / `Voids*` relationships                               |
+| Spatial structure | building: project → site → building → storey; civil: project → site → bridge → recursive bridge part                      |
+| Property sets     | IFC pset templates + measure types; quantity sets for takeoff                                                             |
+| Data layers       | materials (layer/profile/simple sets), classification refs, surface styles, zones/systems                                 |
+| IFC export        | `toIfc` → IFC-SPF (`Uint8Array`); IFC4 / IFC4X3 schema selection; owner history                                           |
+| IFC import        | `fromIfc` / `SpfReader` → `ImportedModel` (elements, geometry, psets, materials, spatial tree)                            |
+| Validation        | referential integrity, schema check, geometry validity, IFC round-trip report, buildingSMART gherkin rules                |
+| Interop           | COBie 2.4 export (CSV/JSON), IDS 1.0 checking, BCF 3.0 read/write                                                         |
+
+### Focused IFC4X3 civil bridge profile
+
+The declarative `civilSemantics` → `resolve` → `familiesToBim` path supports authored Site,
+Bridge, recursively nested Bridge Part, and exact tessellated Earthworks Fill bodies. Products are
+contained by their nearest Bridge Part; stable IFC identity derives from Families key paths.
+
+The migrated civil Product vocabulary additionally routes these existing typed product families:
+
+- `beam`: beam, cross-girder, girder
+- `column`: pier-stem
+- `footing`: pad
+- `railing`: guardrail
+- `slab`: deck
+- `wall`: wall
+
+Their semantic material becomes the normal typed element material when `materialName` is not
+otherwise supplied. Existing non-semantic Families archetypes continue to use the ordinary route
+registry beneath Bridge Parts. Bridge, Bridge Part, and Earthworks Fill require IFC4X3; `fromIfc`
+reconstructs their civil spatial hierarchy, direct containment, and typed Earthworks inventory.
+
+The existing typed routes adapt semantic envelope dimensions from the reference Families into
+their parametric BIM specs. They do not promise exact preservation of compound or voided source
+bodies; exact authored-body preservation in this profile is specific to Earthworks Fill.
+
+This is deliberately not a claim of complete IFC infrastructure coverage or unchanged parity with
+the full scratch prototype. Member and Sign remain outside the profile: without `proxyEvaluator`
+they are hard errors; with it they are reported `IfcBuildingElementProxy` occurrences.
 
 ### Independent validation
 
@@ -122,10 +150,11 @@ warnings travel inside the payload rather than throwing.
 
 ## Design
 
-Each `add*` call parses and validates the spec (the `parse*Spec` functions are also exported for
-standalone use), builds the brepjs solid analytically from the spec, and stores a typed `BimElement`
-keyed by a `LocalId`. The IFC writer walks the model, applies placement, and emits schema-correct
-IFC entities; the importer is the inverse. No kernel/WASM changes are required.
+Each `add*` call parses and validates its spec and stores a typed `BimElement` keyed by a `LocalId`.
+Parametric physical elements build an analytical brepjs solid; civil spatial elements are body-less,
+and arbitrary-body products such as Earthworks Fill take ownership of a validated authored solid.
+The IFC writer walks the model, applies placement, and emits schema-correct IFC entities; the
+importer is the inverse. No kernel/WASM changes are required.
 
 ## Development
 

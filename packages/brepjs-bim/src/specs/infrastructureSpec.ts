@@ -44,7 +44,7 @@ export type EarthworksFillPredefinedType =
   | 'USERDEFINED'
   | 'NOTDEFINED';
 
-interface CivilSpatialSpec extends SpatialPlacementSpec {
+export interface CivilSpatialSpec extends SpatialPlacementSpec {
   readonly name: string;
   readonly description?: string | undefined;
   readonly compositionType?: IfcElementCompositionType | undefined;

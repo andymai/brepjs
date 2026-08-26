@@ -6,7 +6,7 @@ export type SpatialComposition = 'collection' | 'element' | 'partial';
 
 export type SpatialSubdivision = 'lateral' | 'longitudinal' | 'vertical' | 'regional';
 
-interface CivilSemanticsBase<K extends string> {
+export interface CivilSemanticsBase<K extends string> {
   readonly kind: K;
   readonly category: string;
   readonly role: string;
@@ -55,9 +55,7 @@ function requireNonEmptyString(value: unknown, path: string): void {
   }
 }
 
-export function validateCivilSemantics(
-  value: unknown
-): asserts value is CivilEngineeringSemantics {
+export function validateCivilSemantics(value: unknown): asserts value is CivilEngineeringSemantics {
   if (!isRecord(value)) invalid('semantics', 'expected an object');
   const kind = value['kind'];
   if (!['site', 'facility', 'spatial-part', 'product'].includes(String(kind))) {

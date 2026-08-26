@@ -6,6 +6,7 @@ export {
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { placedSolids } from './elementFns/placedGeometry.js';
 export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
+export type { FrameInput } from './import/placement.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { setIfcWasmLocateFile } from './ifcRuntime.js';
@@ -147,6 +148,7 @@ export type { ProxySpec } from './specs/proxySpec.js';
 export type {
   BridgeSpec,
   BridgePartSpec,
+  CivilSpatialSpec,
   BridgePredefinedType,
   BridgePartPredefinedType,
   EarthworksFillSpec,

@@ -5,23 +5,26 @@ description: 'Every parametric element brepjs-bim authors: structural, spatial, 
 
 # Element Catalog
 
-Every element follows the same contract: a typed spec in millimeters, an analytically built brepjs solid in local coordinates, and placement applied downstream via `IfcLocalPlacement`. The `parse*Spec` functions validate specs standalone; the `add*` methods validate, build, and store.
+Every element has a typed, validated spec in millimeters. Parametric physical elements build analytical brepjs solids in local coordinates; civil spatial elements are body-less, and Earthworks Fill accepts an arbitrary validated body. Placement is applied downstream via `IfcLocalPlacement`.
 
-| Element        | Method                   | Notes                                                                                |
-| -------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| Wall           | `addWall`                | Length along `axisX`, openings cut via `addDoor` / `addWindow`                       |
-| Slab           | `addSlab`                | `FLOOR` / `ROOF` / `LANDING` / `BASESLAB`; slab openings via `parseSlabOpeningInput` |
-| Beam           | `addBeam`                | Profile extruded along `axisX` by length                                             |
-| Column         | `addColumn`              | Profile extruded along `axisZ` by height                                             |
-| Roof           | `addRoof`                | Flat slab, or shaped (shed / gable / hip / dome) when `pitch` is present             |
-| Curtain wall   | `addCurtainWall`         | Panel and mullion grid                                                               |
-| Space          | `addSpace`               | Room volumes for zoning and COBie                                                    |
-| Footing / pile | `addFooting` / `addPile` | Foundations                                                                          |
-| Stair          | `addStair`               | One or more flights, each a stepped sawtooth solid with its own placement            |
-| Ramp           | `addRamp`                | Flights like stairs, inclined slabs                                                  |
-| Railing        | `addRailing`             | Posts + rails with `infill: 'POSTED'`, or a single swept panel                       |
-| Covering       | `addCovering`            | Finishes: flooring, cladding, ceilings                                               |
-| Proxy          | `addProxy`               | Anything else, carrying arbitrary brepjs geometry                                    |
+| Element         | Method                   | Notes                                                                                |
+| --------------- | ------------------------ | ------------------------------------------------------------------------------------ |
+| Wall            | `addWall`                | Length along `axisX`, openings cut via `addDoor` / `addWindow`                       |
+| Slab            | `addSlab`                | `FLOOR` / `ROOF` / `LANDING` / `BASESLAB`; slab openings via `parseSlabOpeningInput` |
+| Beam            | `addBeam`                | Profile extruded along `axisX` by length                                             |
+| Column          | `addColumn`              | Profile extruded along `axisZ` by height                                             |
+| Roof            | `addRoof`                | Flat slab, or shaped (shed / gable / hip / dome) when `pitch` is present             |
+| Curtain wall    | `addCurtainWall`         | Panel and mullion grid                                                               |
+| Space           | `addSpace`               | Room volumes for zoning and COBie                                                    |
+| Footing / pile  | `addFooting` / `addPile` | Foundations                                                                          |
+| Stair           | `addStair`               | One or more flights, each a stepped sawtooth solid with its own placement            |
+| Ramp            | `addRamp`                | Flights like stairs, inclined slabs                                                  |
+| Railing         | `addRailing`             | Posts + rails with `infill: 'POSTED'`, or a single swept panel                       |
+| Covering        | `addCovering`            | Finishes: flooring, cladding, ceilings                                               |
+| Bridge          | `addBridge`              | IFC4X3 spatial facility; no independent Body                                         |
+| Bridge part     | `addBridgePart`          | IFC4X3 recursive spatial part with mandatory usage type                              |
+| Earthworks fill | `addEarthworksFill`      | IFC4X3 typed arbitrary Product Body, material, and spatial containment               |
+| Proxy           | `addProxy`               | Anything else, carrying arbitrary brepjs geometry                                    |
 
 Doors and windows are not free-standing: `addDoor` / `addWindow` take a host wall, cut the opening as a boolean void, and wire `IfcRelVoidsElement` + `IfcRelFillsElement`.
 
