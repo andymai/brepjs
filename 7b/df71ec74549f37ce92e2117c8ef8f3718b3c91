@@ -1,0 +1,28 @@
+packages/brepjs-cad/vitest.config.ts
+  s_3f41f7f80a23af::t_7071236e49237d 16
+packages/brepjs-cad/tests/fixtures/tsxProject/component.tsx
+  s_3f41f7f80a23af::t_6a9efeef2d0026 1-5
+packages/brepjs-cad/src/verify/typecheck.ts
+  s_3f41f7f80a23af::t_7071236e49237d 63
+packages/brepjs-cad/tests/preview.test.ts
+  s_3f41f7f80a23af::t_6a9efeef2d0026 8,57-74
+  s_3f41f7f80a23af::t_ae3fae0f3c6030 75-76
+packages/brepjs-cad/src/preview/evaluate.ts
+  s_3f41f7f80a23af::t_7071236e49237d 1-4,17,74-75,78,116,121-136,138-143,145-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7bdf71ec74549f37ce92e2117c8ef8f3718b3c91",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
