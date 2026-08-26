@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.176.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.175.0...brepjs-cad-v0.176.0) (2026-08-26)
+
+
+### Features
+
+* **brepjs-cad:** brep preview — element-aware model viewer with live watch ([#2231](https://github.com/andymai/brepjs/issues/2231)) ([002a20f](https://github.com/andymai/brepjs/commit/002a20f9ad8d38cb812f00a875583bdb850a004d))
+
 ## [0.175.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.174.0...brepjs-cad-v0.175.0) (2026-08-26)
 
 
