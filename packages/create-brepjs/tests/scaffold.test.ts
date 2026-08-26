@@ -102,7 +102,7 @@ describe('create-brepjs scaffold', () => {
     const readme = await readFile(join(target, 'README.md'), 'utf8');
     expect(readme.startsWith('# demo-app\n')).toBe(true);
     await expect(readFile(join(target, '.gitignore'), 'utf8')).resolves.toContain('node_modules');
-    await expect(readFile(join(target, 'src', 'main.ts'), 'utf8')).resolves.toContain(
+    await expect(readFile(join(target, 'src', 'main.tsx'), 'utf8')).resolves.toContain(
       'brepjs-families'
     );
   });
@@ -114,15 +114,14 @@ describe('create-brepjs scaffold', () => {
 
   it('declares ranges the current workspace versions satisfy', async () => {
     const pkg = await readJson<ScaffoldPkg>(join(target, 'package.json'));
-    const workspaceVersions: Record<string, string> = {
-      brepjs: (await readJson<{ version: string }>(join(repoRoot, 'package.json'))).version,
-      'brepjs-families': (
-        await readJson<{ version: string }>(
-          join(repoRoot, 'packages', 'brepjs-families', 'package.json')
-        )
-      ).version,
+    const workspaceVersion = async (rel: string): Promise<string> =>
+      (await readJson<{ version: string }>(join(repoRoot, rel, 'package.json'))).version;
+    const deps: Record<string, string> = {
+      brepjs: await workspaceVersion('.'),
+      'brepjs-families': await workspaceVersion('packages/brepjs-families'),
+      'brepjs-bim': await workspaceVersion('packages/brepjs-bim'),
     };
-    for (const [dep, version] of Object.entries(workspaceVersions)) {
+    for (const [dep, version] of Object.entries(deps)) {
       const range = pkg.dependencies[dep];
       expect(range, `template must depend on ${dep}`).toBeDefined();
       expect(
@@ -130,6 +129,13 @@ describe('create-brepjs scaffold', () => {
         `template range ${dep}@${range} must match the workspace version ${version}`
       ).toBe(true);
     }
+    const cadRange = pkg.devDependencies?.['brepjs-cad'];
+    const cadVersion = await workspaceVersion('packages/brepjs-cad');
+    expect(cadRange, 'template must dev-depend on brepjs-cad').toBeDefined();
+    expect(
+      rangeSatisfies(cadVersion, cadRange ?? ''),
+      `template range brepjs-cad@${cadRange} must match the workspace version ${cadVersion}`
+    ).toBe(true);
   });
 
   it('configures the libs and types the template code needs', async () => {
@@ -158,7 +164,17 @@ describe('create-brepjs scaffold', () => {
       await run('npm', ['run', 'typecheck'], { cwd: target, env });
       const { stdout } = await run('npm', ['start'], { cwd: target, env });
       expect(stdout).toContain('triangles');
+      const preview = await run('npm', ['run', 'preview', '--', '--write-only'], {
+        cwd: target,
+        env,
+      });
+      expect(preview.stdout).toContain('"ok": true');
+      await run('npm', ['run', 'export:ifc'], { cwd: target, env });
+      await expect(readFile(join(target, 'dist', 'model.ifc'), 'utf8')).resolves.toContain(
+        'IFCWALL'
+      );
+      await run('npm', ['test'], { cwd: target, env });
     },
-    600_000
+    900_000
   );
 });
