@@ -43,7 +43,9 @@ describe('create-brepjs', () => {
     expect(pkg.name).toBe('my-model');
     expect(Object.keys(pkg.dependencies)).toContain('brepjs-families');
     await expect(readFile(join(root, '.gitignore'), 'utf8')).resolves.toContain('node_modules');
-    await expect(readFile(join(root, 'src/main.ts'), 'utf8')).resolves.toContain('evaluateModel');
+    await expect(readFile(join(root, 'src/main.tsx'), 'utf8')).resolves.toContain(
+      'brepjs-families'
+    );
     await expect(readFile(join(root, 'tsconfig.json'), 'utf8')).resolves.toBeTruthy();
     // The template placeholder never leaks through.
     await expect(readFile(join(root, 'package.json.tpl'), 'utf8')).rejects.toThrow();
