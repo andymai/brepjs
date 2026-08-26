@@ -48,6 +48,23 @@ describe('brep watch', () => {
       );
       await waitFor(() => reports.length >= 2, 90000, 'post-edit watch report');
       expect(reports[1]?.measurements.volume).toBeCloseTo(1600, 1);
+      // Edit tsconfig.json: the rerun must read the NEW jsx config (per-generation cache
+      // invalidation in the hook), so a bogus jsxImportSource now fails the import.
+      writeFileSync(
+        join(dir, 'tsconfig.json'),
+        JSON.stringify({
+          compilerOptions: {
+            module: 'esnext',
+            moduleResolution: 'bundler',
+            target: 'es2022',
+            strict: true,
+            jsx: 'react-jsx',
+            jsxImportSource: 'brepjs-families/bogus',
+          },
+        })
+      );
+      await waitFor(() => reports.length >= 3, 90000, 'post-tsconfig-edit watch report');
+      expect(reports[2]?.ok).toBe(false);
     } finally {
       child.kill('SIGTERM');
       await new Promise((res) => child.once('exit', res));

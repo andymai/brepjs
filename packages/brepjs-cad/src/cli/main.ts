@@ -322,9 +322,31 @@ program
         process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
       }
     };
-    const { trigger } = debounce(() => run(true), DEFAULT_DEBOUNCE_MS);
+    // Serialize runs: a save landing mid-verify must not start a second runPart on the
+    // shared kernel (reports would interleave out of order). Edits during a run coalesce
+    // into exactly one trailing rerun.
+    let inFlight = false;
+    let rerunQueued = false;
+    const start = (fresh: boolean): void => {
+      inFlight = true;
+      void run(fresh).finally(() => {
+        inFlight = false;
+        if (rerunQueued) {
+          rerunQueued = false;
+          start(true);
+        }
+      });
+    };
+    const schedule = (): void => {
+      if (inFlight) {
+        rerunQueued = true;
+        return;
+      }
+      start(true);
+    };
+    const { trigger } = debounce(schedule, DEFAULT_DEBOUNCE_MS);
     process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
-    void run(false); // initial verify
+    start(false); // initial verify
     // Watch the entry's whole directory tree: editors often replace a file (rename) on
     // save, which drops a watcher bound to the inode itself — and a multi-file project
     // must re-verify when any of its source files changes, not just the entry.

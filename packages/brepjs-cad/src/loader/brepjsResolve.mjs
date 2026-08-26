@@ -133,6 +133,17 @@ function loadTypescript() {
 // parsing honors `extends`.
 const jsxOptionsCache = new Map();
 
+// Each watch rerun imports with a fresh `?v=N`; treat a new generation as a config
+// epoch so tsconfig edits made between reruns are picked up instead of served stale.
+let jsxOptionsGeneration;
+
+function bumpJsxOptionsGeneration(version) {
+  if (version !== null && version !== jsxOptionsGeneration) {
+    jsxOptionsGeneration = version;
+    jsxOptionsCache.clear();
+  }
+}
+
 function jsxOptionsFor(ts, filePath) {
   const dir = dirname(filePath);
   const cached = jsxOptionsCache.get(dir);
@@ -164,6 +175,7 @@ export async function load(url, context, nextLoad) {
   const filePath = fileURLToPath(parsed);
   const source = readFileSync(filePath, 'utf8');
   const ts = await loadTypescript();
+  bumpJsxOptionsGeneration(parsed.searchParams.get('v'));
   const { outputText } = ts.transpileModule(source, {
     fileName: filePath,
     compilerOptions: {

@@ -33,7 +33,10 @@ const SOURCE_FILE_RE = /\.(?:m?[jt]s|[jt]sx)$/;
 // "something changed" — treat it as relevant rather than dropping the event.
 export function isWatchRelevant(filename: string | Buffer | null | undefined): boolean {
   if (filename === undefined || filename === null) return true;
-  return SOURCE_FILE_RE.test(filename.toString());
+  const name = filename.toString();
+  // tsconfig edits change how sources transpile (JSX dialect), so they re-verify too.
+  if (/(?:^|[\\/])tsconfig(?:\..+)?\.json$/.test(name)) return true;
+  return SOURCE_FILE_RE.test(name);
 }
 
 const IGNORED_DIR_NAMES = new Set(['node_modules', 'dist', '.git']);

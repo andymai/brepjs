@@ -57,6 +57,12 @@ describe('isWatchRelevant', () => {
       expect(isWatchRelevant(name)).toBe(false);
     }
   });
+
+  it('accepts tsconfig edits (they change how sources transpile)', () => {
+    for (const name of ['tsconfig.json', 'tsconfig.test.json', 'sub/tsconfig.json']) {
+      expect(isWatchRelevant(name)).toBe(true);
+    }
+  });
 });
 
 describe('watchTree', () => {
