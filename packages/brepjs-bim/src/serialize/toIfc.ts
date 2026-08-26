@@ -41,7 +41,12 @@ import {
   writeRelCoversBldgElements,
 } from '../ifc-writer/coveringWriter.js';
 import { writeElementAssemblyEntity, writeRelNests } from '../ifc-writer/assemblyWriter.js';
-import { writeBridge, writeBridgePart } from '../ifc-writer/infrastructureWriter.js';
+import {
+  writeBridge,
+  writeBridgePart,
+  writeEarthworksFillEntity,
+} from '../ifc-writer/infrastructureWriter.js';
+import { writeTessellatedProductGeometry } from '../ifc-writer/tessellatedProductWriter.js';
 import {
   writeZoneEntity,
   writeSystemEntity,
@@ -131,13 +136,15 @@ export async function toIfc(
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
   if (
-    (model.getBridges().length > 0 || model.getBridgeParts().length > 0) &&
+    (model.getBridges().length > 0 ||
+      model.getBridgeParts().length > 0 ||
+      model.getEarthworksFills().length > 0) &&
     (meta.ifcSchema ?? 'IFC4') !== 'IFC4X3'
   ) {
     return err(
       ifcError(
         'IFC4X3_REQUIRED',
-        'Bridge and Bridge Part entities require IFC4X3 serialization'
+        'Bridge, Bridge Part, and Earthworks Fill entities require IFC4X3 serialization'
       )
     );
   }
@@ -161,6 +168,7 @@ export async function toIfc(
   const beams = model.getBeams();
   const bridges = model.getBridges();
   const bridgeParts = model.getBridgeParts();
+  const earthworksFills = model.getEarthworksFills();
   const columns = model.getColumns();
   const doors = model.getDoors();
   const windows = model.getWindows();
@@ -451,6 +459,31 @@ export async function toIfc(
     placementMap.set(proxy.localId, localPlacementId);
     if (proxy.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec.customProperties);
+    }
+  }
+
+  for (const fill of earthworksFills) {
+    const containingId = findContainerOf(fill.localId, relationships);
+    const parentPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeTessellatedProductGeometry(
+      w,
+      fill.geometry,
+      geomSubContextId,
+      parentPlacementId
+    );
+    const expressId = writeEarthworksFillEntity(
+      w,
+      fill.guid,
+      fill.spec,
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
+    );
+    idMap.set(fill.localId, expressId);
+    placementMap.set(fill.localId, localPlacementId);
+    if (fill.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, expressId, fill.spec.customProperties);
     }
   }
 
@@ -1184,6 +1217,7 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
     ['Beam', model.getBeams()],
     ['Column', model.getColumns()],
     ['Proxy', model.getProxies()],
+    ['Earthworks Fill', model.getEarthworksFills()],
     ['Space', model.getSpaces()],
     ['Roof', model.getRoofs()],
     ['Footing', model.getFootings()],

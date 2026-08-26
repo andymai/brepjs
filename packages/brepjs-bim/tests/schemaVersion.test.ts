@@ -54,6 +54,8 @@ describe('schemaSupports', () => {
     // IfcAlignment and related linear-infrastructure entities are new in IFC4X3.
     expect(schemaSupports('IFC4X3', 'IfcAlignment')).toBe(true);
     expect(schemaSupports('IFC4', 'IfcAlignment')).toBe(false);
+    expect(schemaSupports('IFC4X3', 'IfcEarthworksFill')).toBe(true);
+    expect(schemaSupports('IFC4', 'IfcEarthworksFill')).toBe(false);
   });
 
   it('reports a shared entity as supported in both schemas', () => {

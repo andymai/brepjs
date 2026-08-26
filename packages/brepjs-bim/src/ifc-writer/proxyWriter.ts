@@ -1,16 +1,13 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
-import { writeAxis2Placement3D } from './headerWriter.js';
-import { writeTessellation } from './tessellationWriter.js';
-import type { TessellationOutput } from './tessellationWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { ProxySpec } from '../specs/proxySpec.js';
+import {
+  writeTessellatedProductGeometry,
+  type TessellatedProductRepresentationIds,
+} from './tessellatedProductWriter.js';
 
-export interface ProxyRepresentationIds {
-  readonly localPlacementId: number;
-  readonly productDefinitionShapeId: number;
-  readonly tessellation: TessellationOutput;
-}
+export type ProxyRepresentationIds = TessellatedProductRepresentationIds;
 
 /**
  * Writes the IfcLocalPlacement (at origin, relative to parentPlacementId) and a
@@ -24,22 +21,7 @@ export function writeProxyGeometry(
   geomSubContextId: number,
   parentPlacementId: number | null
 ): ProxyRepresentationIds {
-  const placement3DId = writeAxis2Placement3D(w, [0, 0, 0]);
-  const localPlacementId = w.nextId();
-  w.writeLine({
-    expressID: localPlacementId,
-    type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
-    RelativePlacement: w.ref(placement3DId),
-  });
-
-  const tessellation = writeTessellation(w, spec.solid, geomSubContextId, localPlacementId);
-
-  return {
-    localPlacementId,
-    productDefinitionShapeId: tessellation.productDefinitionShapeId,
-    tessellation,
-  };
+  return writeTessellatedProductGeometry(w, spec.solid, geomSubContextId, parentPlacementId);
 }
 
 export function writeProxyEntity(

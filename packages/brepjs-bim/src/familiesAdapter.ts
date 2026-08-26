@@ -14,7 +14,18 @@
  * the uncut spec body would silently diverge from what the user sees.
  */
 
-import { clone, err, getSolids, isSolid, ok, validSolid, type Result, type csg } from 'brepjs';
+import {
+  clone,
+  err,
+  getSolids,
+  isSolid,
+  ok,
+  translate,
+  validSolid,
+  type Result,
+  type ValidSolid,
+  type csg,
+} from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -36,6 +47,8 @@ import {
   parseBridgeSpec,
   type BridgePartPredefinedType,
   type BridgePredefinedType,
+  type EarthworksFillSpec,
+  type EarthworksFillPredefinedType,
   type FacilityUsageType,
 } from './specs/infrastructureSpec.js';
 import type { ProxySpec } from './specs/proxySpec.js';
@@ -52,12 +65,19 @@ export interface FamiliesToBimOptions {
   readonly siteName?: string | undefined;
   readonly buildingName?: string | undefined;
   /**
+   * Materializes exact evaluated Product Bodies for supported typed routes
+   * such as Earthworks Fill. Supplying this option does not opt unsupported
+   * products into the proxy fallback.
+   */
+  readonly bodyEvaluator?: csg.Evaluator | undefined;
+  /**
    * Enables the proxy route: an unrouted geometry-bearing element is
    * materialized through this evaluator and exported as an
    * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
    * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
    * evaluator's handles stay borrowed; the adapter clones what it hands the
-   * model.
+   * model. For backward compatibility it also supplies the body evaluator when
+   * `bodyEvaluator` is absent.
    */
   readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
@@ -354,20 +374,24 @@ function addFill(
   );
 }
 
-/** Materialize an unrouted element's IR and add it as a proxy. The body is
- *  authoritative for a proxy (no parametric spec to diverge from), so baked
- *  transforms — rotations included — are fine here. */
-function addProxyElement(
-  model: BimModel,
+interface BodyMaterializationErrors {
+  readonly evalCode: string;
+  readonly notSolidCode: string;
+  readonly invalidCode: string;
+  readonly routeName: string;
+}
+
+function materializeOwnedSolid(
   el: ResolvedElement,
-  evaluator: csg.Evaluator
-): Result<LocalId, BimError> {
+  evaluator: csg.Evaluator,
+  errors: BodyMaterializationErrors
+): Result<ValidSolid, BimError> {
   const evaluated = evaluator.evaluate(el.geometry);
   if (!evaluated.ok) {
     return err(
       specError(
-        'FAMILIES_PROXY_EVAL_FAILED',
-        `familiesToBim: '${el.keyPath}' failed to materialize for the proxy route: ${evaluated.error.message}`,
+        errors.evalCode,
+        `familiesToBim: '${el.keyPath}' failed to materialize for the ${errors.routeName} route: ${evaluated.error.message}`,
         evaluated.error
       )
     );
@@ -381,8 +405,8 @@ function addProxyElement(
     if (only === undefined) {
       return err(
         specError(
-          'FAMILIES_PROXY_NOT_SOLID',
-          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — a proxy body must be exactly one`
+          errors.notSolidCode,
+          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — the ${errors.routeName} body must be exactly one`
         )
       );
     }
@@ -394,7 +418,7 @@ function addProxyElement(
   if (!copy.ok) {
     return err(
       specError(
-        'FAMILIES_PROXY_EVAL_FAILED',
+        errors.evalCode,
         `familiesToBim: '${el.keyPath}' could not copy the materialized body`,
         copy.error
       )
@@ -405,18 +429,36 @@ function addProxyElement(
     copy.value[Symbol.dispose]();
     return err(
       specError(
-        'FAMILIES_PROXY_INVALID',
+        errors.invalidCode,
         `familiesToBim: '${el.keyPath}' materialized to an invalid solid: ${valid.error}`
       )
     );
   }
+  return ok(valid.value);
+}
+
+/** Materialize an unrouted element's IR and add it as a proxy. The body is
+ *  authoritative for a proxy (no parametric spec to diverge from), so baked
+ *  transforms — rotations included — are fine here. */
+function addProxyElement(
+  model: BimModel,
+  el: ResolvedElement,
+  evaluator: csg.Evaluator
+): Result<LocalId, BimError> {
+  const body = materializeOwnedSolid(el, evaluator, {
+    evalCode: 'FAMILIES_PROXY_EVAL_FAILED',
+    notSolidCode: 'FAMILIES_PROXY_NOT_SOLID',
+    invalidCode: 'FAMILIES_PROXY_INVALID',
+    routeName: 'proxy',
+  });
+  if (!body.ok) return body;
   const nameAttr = el.attributes['name'];
   const materialProp = el.props['materialName'];
   const specProps = collectSpecProps(el);
   return model.addProxy(
     {
       name: typeof nameAttr === 'string' ? nameAttr : el.type,
-      solid: valid.value,
+      solid: body.value,
       materialName:
         typeof materialProp === 'string'
           ? materialProp
@@ -539,6 +581,16 @@ const CIVIL_USAGE: Readonly<Record<string, FacilityUsageType>> = {
   vertical: 'VERTICAL',
 };
 
+const EARTHWORKS_FILL_ROLE: Readonly<Record<string, EarthworksFillPredefinedType>> = {
+  backfill: 'BACKFILL',
+  counterweight: 'COUNTERWEIGHT',
+  embankment: 'EMBANKMENT',
+  'slope-fill': 'SLOPEFILL',
+  subgrade: 'SUBGRADE',
+  'subgrade-bed': 'SUBGRADEBED',
+  'transition-section': 'TRANSITIONSECTION',
+};
+
 function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
   const semantics = el.semantics;
   if (semantics?.kind === 'site' && semantics.category === 'site') return 'site';
@@ -551,6 +603,10 @@ function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
 
 function hasCivilSpatialSemantics(el: ResolvedElement): boolean {
   return civilSpatialKind(el) !== undefined || el.children.some(hasCivilSpatialSemantics);
+}
+
+function isEarthworksFillOccurrence(el: ResolvedElement): boolean {
+  return el.semantics?.kind === 'product' && el.semantics.category === 'earthworks-fill';
 }
 
 function semanticName(el: ResolvedElement): string {
@@ -666,6 +722,64 @@ function relativeSpecInput(
     };
   }
   return { ...input, origin: relativeOrigin(input['origin']) };
+}
+
+function addEarthworksFillElement(
+  model: BimModel,
+  el: ResolvedElement,
+  evaluator: csg.Evaluator,
+  projectedSpatialTranslation: Translation
+): Result<LocalId, BimError> {
+  if (el.semantics?.kind !== 'product') {
+    return err(
+      specError(
+        'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+        `familiesToBim: '${el.keyPath}' is not authored as a civil Product`
+      )
+    );
+  }
+  const body = materializeOwnedSolid(el, evaluator, {
+    evalCode: 'FAMILIES_EARTHWORKS_EVAL_FAILED',
+    notSolidCode: 'FAMILIES_EARTHWORKS_NOT_SOLID',
+    invalidCode: 'FAMILIES_EARTHWORKS_INVALID',
+    routeName: 'Earthworks Fill',
+  });
+  if (!body.ok) return body;
+
+  let localBody = body.value;
+  if (hasTranslation(projectedSpatialTranslation)) {
+    try {
+      localBody = translate(body.value, [
+        -projectedSpatialTranslation[0],
+        -projectedSpatialTranslation[1],
+        -projectedSpatialTranslation[2],
+      ]);
+    } catch (cause) {
+      body.value[Symbol.dispose]();
+      return err(
+        specError(
+          'FAMILIES_EARTHWORKS_LOCALIZE_FAILED',
+          `familiesToBim: '${el.keyPath}' could not move its body into the Bridge Part frame`,
+          cause
+        )
+      );
+    }
+    body.value[Symbol.dispose]();
+  }
+
+  const specProps = collectSpecProps(el);
+  const added = model.addEarthworksFill(
+    {
+      name: semanticName(el),
+      solid: localBody,
+      materialName: el.semantics.material,
+      predefinedType: EARTHWORKS_FILL_ROLE[el.semantics.role] ?? 'NOTDEFINED',
+      customProperties: specProps['customProperties'] as EarthworksFillSpec['customProperties'],
+    },
+    { stableKey: el.keyPath }
+  );
+  if (!added.ok) localBody[Symbol.dispose]();
+  return added;
 }
 
 interface ProjectionWalkState {
@@ -789,6 +903,39 @@ export function familiesToBim(
       model.aggregate(buildingId, storeyResult.value);
       idByKeyPath.set(el.keyPath, storeyResult.value);
       nextSpatialStructureId = storeyResult.value;
+    } else if (isEarthworksFillOccurrence(el)) {
+      if (
+        !usesAuthoredCivilHierarchy ||
+        nextSpatialStructureId === null ||
+        state.civilParent !== 'bridge-part'
+      ) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs a Bridge Part ancestor`
+          )
+        );
+      }
+      const bodyEvaluator = options.bodyEvaluator ?? options.proxyEvaluator;
+      if (bodyEvaluator === undefined) {
+        return err(
+          specError(
+            'FAMILIES_EARTHWORKS_EVALUATOR_REQUIRED',
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Product Body`
+          )
+        );
+      }
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
+      const added = addEarthworksFillElement(
+        model,
+        el,
+        bodyEvaluator,
+        state.projectedSpatialTranslation
+      );
+      if (!added.ok) return added;
+      model.placeIn(added.value, nextSpatialStructureId);
+      idByKeyPath.set(el.keyPath, added.value);
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;

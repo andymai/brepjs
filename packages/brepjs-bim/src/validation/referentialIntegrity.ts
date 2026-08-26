@@ -16,6 +16,7 @@ const CONTAINABLE_CATEGORIES: ReadonlySet<BimCategory> = new Set<BimCategory>([
   'SLAB',
   'BEAM',
   'COLUMN',
+  'EARTHWORKS_FILL',
   'DOOR',
   'WINDOW',
 ]);

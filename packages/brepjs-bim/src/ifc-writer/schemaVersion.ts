@@ -53,6 +53,7 @@ const IFC4X3_ONLY_ENTITIES: ReadonlySet<string> = new Set([
   'IfcRailway',
   'IfcBridge',
   'IfcBridgePart',
+  'IfcEarthworksFill',
   'IfcMarineFacility',
 ]);
 

@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { unwrap } from 'brepjs';
+import { csg, getBounds, measureVolume, unwrap, type ValidSolid } from 'brepjs';
 import { civilSemantics, el, family, resolve, tTranslate, type Element } from 'brepjs-families';
 import { initOCCT } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
-import { toIfc } from '../src/serialize/toIfc.js';
+import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkSchema } from '../src/validation/schemaCheck.js';
 import { checkRoundTrip } from '../src/validation/roundTrip.js';
@@ -72,7 +72,30 @@ const Beam = family<{
   }
 );
 
-function civilModel(siteProps: Partial<SpatialProps> = {}): ReturnType<typeof resolve> {
+const EarthFill = family(
+  'EarthFill',
+  () =>
+    el('Geometry', {
+      node: csg.fuse(
+        csg.box(4_000, 3_000, 1_000),
+        csg.translate(csg.box(2_000, 3_000, 1_000), [1_000, 0, 1_000])
+      ),
+    }),
+  {
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'earthworks-fill',
+      role: 'embankment',
+      material: 'Compacted soil',
+      dimensionsMm: { length: 4_000, width: 3_000, height: 2_000 },
+    }),
+  }
+);
+
+function civilModel(
+  siteProps: Partial<SpatialProps> = {},
+  additionalProducts: readonly Element[] = []
+): ReturnType<typeof resolve> {
   return resolve(
     el('Group', { key: 'civil-model' }, [
       Site({
@@ -98,6 +121,7 @@ function civilModel(siteProps: Partial<SpatialProps> = {}): ReturnType<typeof re
                     profile: { kind: 'RECTANGULAR', width: 400, height: 800 },
                     materialName: 'Structural steel',
                   }),
+                  ...additionalProducts,
                 ],
               }),
             ],
@@ -234,5 +258,100 @@ describe('civil Families Projection', () => {
       ok: false,
       error: { kind: 'BIM_SPEC', code: 'INVALID_SITE_SPEC' },
     });
+  });
+
+  it('requires an evaluator for an authored Earthworks Product Body', () => {
+    const result = familiesToBim(civilModel({}, [EarthFill({ key: 'embankment' })]), {
+      project: { name: 'Civil gate', projectId: 'civil-gate' },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_EARTHWORKS_EVALUATOR_REQUIRED' },
+    });
+  });
+
+  it('projects an exact irregular Earthworks Fill body as a typed contained product', async () => {
+    const root = civilModel({}, [EarthFill({ key: 'embankment', name: 'Approach embankment' })]);
+    const fillOccurrence = root.children[0]?.children[0]?.children[0]?.children[1];
+    expect(fillOccurrence?.keyPath).toBe('civil-model/north-site/river-bridge/deck/embankment');
+
+    using evaluator = new csg.Evaluator();
+    const source = unwrap(evaluator.evaluate(fillOccurrence?.geometry ?? csg.emptySolid()));
+    let ownedBody: ValidSolid | undefined;
+    {
+      const projected = unwrap(
+        familiesToBim(root, {
+          project: { name: 'Civil gate', projectId: 'civil-gate' },
+          bodyEvaluator: evaluator,
+        })
+      );
+      using model = projected.model;
+
+      const fill = model.getEarthworksFills()[0];
+      ownedBody = fill?.geometry;
+      expect(fill?.guid).toBe(
+        deriveIfcGuidSync('elem:civil-gate:civil-model/north-site/river-bridge/deck/embankment')
+      );
+      expect(fill?.spec).toMatchObject({
+        name: 'Approach embankment',
+        materialName: 'Compacted soil',
+        predefinedType: 'EMBANKMENT',
+      });
+      expect(projected.proxied).toEqual([]);
+
+      const sourceVolume = unwrap(measureVolume(source));
+      const projectedVolume = unwrap(measureVolume(fill?.geometry ?? source));
+      expect(projectedVolume).toBeCloseTo(sourceVolume, 3);
+      const sourceBounds = getBounds(source);
+      const bounds = getBounds(fill?.geometry ?? source);
+      expect(bounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
+      expect(bounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
+      const boundsVolume =
+        (bounds.xMax - bounds.xMin) * (bounds.yMax - bounds.yMin) * (bounds.zMax - bounds.zMin);
+      expect(projectedVolume).toBeLessThan(boundsVolume);
+
+      const fillId = projected.idByKeyPath.get(
+        'civil-model/north-site/river-bridge/deck/embankment'
+      );
+      const partId = projected.idByKeyPath.get('civil-model/north-site/river-bridge/deck');
+      const containment = model
+        .getAllRelationships()
+        .find((rel) => rel.kind === 'CONTAINED_IN' && rel.relatingStructure === partId);
+      expect(containment?.kind === 'CONTAINED_IN' && containment.relatedElements).toContain(fillId);
+      expect(model.getAllRelationships()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'ASSOCIATES_MATERIAL',
+            materialName: 'Compacted soil',
+            relatedObjects: [fillId],
+          }),
+        ])
+      );
+
+      const validated = unwrap(
+        await toIfcValidated(model, {
+          applicationName: 'civil-test',
+          applicationVersion: '1',
+          ifcSchema: 'IFC4X3',
+        })
+      );
+      expect(validated.report.issues.filter(({ severity }) => severity === 'error')).toEqual([]);
+      const bytes = validated.bytes;
+      const ifc = new TextDecoder().decode(bytes);
+      expect(ifc).toContain('IFCEARTHWORKSFILL(');
+      expect(ifc).toContain('.EMBANKMENT.');
+      expect(ifc).toContain('IFCTRIANGULATEDFACESET(');
+      expect(ifc).toContain('Compacted soil');
+      expect(ifc).not.toContain('Qto_EarthworksFillBaseQuantities');
+      expect(
+        (await checkSchema(bytes)).issues.filter(({ severity }) => severity === 'error')
+      ).toEqual([]);
+      expect(
+        (await checkRoundTrip(bytes)).issues.filter(({ severity }) => severity === 'error')
+      ).toEqual([]);
+    }
+    expect(ownedBody?.disposed).toBe(true);
+    expect(source.disposed).toBe(false);
   });
 });

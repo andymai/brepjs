@@ -1,6 +1,10 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { BridgePartSpec, BridgeSpec } from '../specs/infrastructureSpec.js';
+import type {
+  BridgePartSpec,
+  BridgeSpec,
+  EarthworksFillSpec,
+} from '../specs/infrastructureSpec.js';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeSpatialLocalPlacement } from './entityWriter.js';
 
@@ -55,4 +59,29 @@ export function writeBridgePart(
     PredefinedType: { type: 3, value: spec.predefinedType ?? 'NOTDEFINED' },
   });
   return { entityId, placementId };
+}
+
+export function writeEarthworksFillEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  spec: EarthworksFillSpec,
+  ownerHistoryId: number,
+  localPlacementId: number,
+  productDefinitionShapeId: number
+): number {
+  const entityId = w.nextId();
+  w.writeLine({
+    expressID: entityId,
+    type: WebIFC.IFCEARTHWORKSFILL,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, spec.name),
+    Description: null,
+    ObjectType: null,
+    ObjectPlacement: w.ref(localPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
+    Tag: null,
+    PredefinedType: { type: 3, value: spec.predefinedType ?? 'NOTDEFINED' },
+  });
+  return entityId;
 }
