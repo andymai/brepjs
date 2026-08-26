@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.158.0](https://github.com/andymai/brepjs/compare/brepjs-v18.157.0...brepjs-v18.158.0) (2026-08-26)
+
+
+### Features
+
+* **brepjs-cad:** transpiling loader for multi-file TS/TSX projects + working watch ([#2228](https://github.com/andymai/brepjs/issues/2228)) ([980ead6](https://github.com/andymai/brepjs/commit/980ead6508867c31fcec1fd06a683f03bacb1e6f))
+
 ## [18.157.0](https://github.com/andymai/brepjs/compare/brepjs-v18.156.0...brepjs-v18.157.0) (2026-08-22)
 
 
