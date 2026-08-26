@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.161.3](https://github.com/andymai/brepjs/compare/brepjs-v18.161.2...brepjs-v18.161.3) (2026-08-26)
+
+
+### Bug Fixes
+
+* playground example permalinks 404 on vercel ([#2250](https://github.com/andymai/brepjs/issues/2250)) ([f5df1c7](https://github.com/andymai/brepjs/commit/f5df1c798c2634d3ae7fdc81ce05036765593c81))
+
 ## [18.161.2](https://github.com/andymai/brepjs/compare/brepjs-v18.161.1...brepjs-v18.161.2) (2026-08-26)
 
 
