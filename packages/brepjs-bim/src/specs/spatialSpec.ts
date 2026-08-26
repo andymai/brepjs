@@ -36,6 +36,11 @@ export interface ProjectCrs {
   readonly scale?: number | undefined;
 }
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcElementCompositionEnum`
+ * in the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 export type IfcElementCompositionType = 'COMPLEX' | 'ELEMENT' | 'PARTIAL';
 
 export interface SpatialPlacementSpec {

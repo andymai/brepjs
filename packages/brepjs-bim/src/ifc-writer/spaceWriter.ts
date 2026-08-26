@@ -133,6 +133,11 @@ export function writeSpaceEntity(
   return id;
 }
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcPhysicalOrVirtualEnum` in
+ * the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 export type SpaceBoundaryConnectionType = 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
 
 // Writes an IfcRelSpaceBoundary linking a space to one of its bounding building

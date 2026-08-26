@@ -4,6 +4,16 @@ import { specError, type BimError } from '../errors/bimError.js';
 import type { IfcElementCompositionType, SpatialPlacementSpec } from './spatialSpec.js';
 import { spatialPlacementFields, validateSpatialAxes } from './spatialSpec.js';
 
+/**
+ * IFC enumeration literals in this module are transcribed verbatim from the
+ * buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema, specifically
+ * `IfcBridgeTypeEnum`, `IfcBridgePartTypeEnum`, `IfcFacilityUsageEnum`, and
+ * `IfcEarthworksFillTypeEnum`:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ *
+ * The Families-facing civil vocabulary stays target-independent; projection
+ * into these IFC-owned keywords occurs in `familiesAdapter.ts`.
+ */
 export type BridgePredefinedType =
   | 'ARCHED'
   | 'CABLE_STAYED'
