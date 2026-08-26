@@ -7,6 +7,7 @@ npm install
 npm run preview                    # live viewer; add -- --watch to re-render on save
 npm start                          # evaluate src/main.tsx and print mesh stats
 npm run export:ifc                 # write dist/model.ifc
+npm run export:3dm                 # write dist/main.3dm (needs: npm i rhino3dm)
 npm test                           # resolve + mesh every element
 npx brepjs add room storey slab    # copy starter families into src/families/
 npx brepjs diff room               # compare a copied family against the registry

@@ -9,6 +9,7 @@
     "start": "tsx scripts/report.ts",
     "preview": "brep preview src/main.tsx",
     "export:ifc": "tsx scripts/exportIfc.ts",
+    "export:3dm": "brep export src/main.tsx --3dm --out dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

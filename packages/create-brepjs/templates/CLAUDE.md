@@ -7,6 +7,7 @@ Parametric building model on brepjs. Units are mm end to end.
 - `npm run preview` — live viewer (`-- --watch` re-evaluates on save; clicking an element shows its key path; failed elements are listed)
 - `npm start` — per-element mesh stats
 - `npm run export:ifc` — write `dist/model.ifc`
+- `npm run export:3dm` — Rhino export, one named object per element (needs the optional `rhino3dm` install)
 - `npm test` / `npm run typecheck`
 
 ## Model contract

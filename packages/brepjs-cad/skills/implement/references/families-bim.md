@@ -70,12 +70,13 @@ const bytes = unwrap(await toIfc(bim, { applicationName: 'agent', applicationVer
 - **Openings are fill-role families in the host's `voids`** — never a bare cut. An anonymous
   (non-fill) void is rejected (`FAMILIES_ANONYMOUS_VOID`): it would cut the viewport solid while the
   parametric IFC body stays solid.
-- **Routed archetypes:** `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `storey`, plus
-  `door`/`window` as fills. The family's **archetype** routes it
-  (`family('Wall', …, { archetype: 'wall' })`), so a renamed family keeps its mapping; declare none
-  and it falls back to matching the family name. Anything else with geometry →
-  `FAMILIES_UNSUPPORTED_TYPE`; drop to the imperative `BimModel` adders
-  (`addSpace`, `addFooting`, `addRailing`, …) for the rest.
+- **Routed archetypes:** `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `storey`, `footing`,
+  `pile`, `railing`, `ramp`, `covering`, `curtainWall`, `space`, plus `door`/`window` as fills. The
+  family's **archetype** routes it (`family('Wall', …, { archetype: 'wall' })`), so a renamed family
+  keeps its mapping; declare none and it falls back to matching the family name. Anything else with
+  geometry → `FAMILIES_UNSUPPORTED_TYPE` (or an `IfcBuildingElementProxy` when a proxy evaluator is
+  passed); drop to the imperative `BimModel` adders (`addZone`, `addSystem`,
+  `addElementAssembly`, …) for pure grouping objects.
 - **Placement frame:** an element's thickness extrudes along `axisZ × axisX`, so a wall running +Y
   (`axisX: [0,1,0]`) grows its thickness toward **−X**. Probe placement with `getBounds`, not by eye.
 - **Wall/slab dims must contain their openings** — a door wider than the wall fails with
@@ -96,6 +97,22 @@ own. `npx brepjs diff room` shows upstream drift. Registry props feed the IFC sp
 `el('Geometry', { node })` accepts any `csg` IR node (profile→extrude, revolve, loft, booleans), so
 a family can own real modeling while keeping key-path identity for the viewport. Only routed types
 reach IFC — a custom-geometry family is viewport-only until you add it imperatively.
+
+## Project workflow (scaffolded projects)
+
+A `npm create brepjs` project default-exports the element tree from `src/main.tsx`; the tools own
+evaluation — never put top-level kernel work in the model module.
+
+- `npm run preview` (→ `brep preview src/main.tsx`): element-aware live viewer. Clicking an element
+  reports its key path; failed elements are listed. Add `-- --watch` to re-evaluate on save (the
+  kernel stays warm — edits to any project source or tsconfig re-render). `--write-only` +
+  `--json`/`--glb` for CI.
+- `npm run export:ifc`: `resolve()` → `familiesToBim` → `toIfc` → `dist/model.ifc`. Check
+  `projected.proxied` — a key path there means the element lost its typed route.
+- `brep export src/main.tsx --3dm`: Rhino export, one named mesh object per element (name = key
+  path), layered by archetype/key-path prefix. Needs the optional `rhino3dm` install.
+- The `brep` CLI transpiles TS/TSX itself (tsconfig-driven JSX) and maps `./x.js` specifiers onto
+  `.ts`/`.tsx` sources — multi-file TSX projects run without a bundler, in ONE kernel realm.
 
 ## Scale
 

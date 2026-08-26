@@ -92,30 +92,9 @@ export async function evaluatePreview(
   entryPath: string,
   opts: { fresh?: boolean } = {}
 ): Promise<PreviewBuild> {
-  const brep = await loadBrep();
-  await initOcctWasm(brep);
-  const mod = await loadPart(entryPath, opts.fresh ?? false);
-  if (mod.default === undefined) {
-    throw new Error(
-      'module has no default export (expected a shape, a families element tree, or a function returning one)'
-    );
-  }
-  const produced: unknown = await Promise.resolve(
-    typeof mod.default === 'function' ? (mod.default as () => unknown)() : mod.default
-  );
-  let value = produced;
-  if (isResultLike(value)) {
-    if (!value.ok) {
-      throw new Error(
-        `model returned Err: ${String((value.error as Error)?.message ?? value.error)}`
-      );
-    }
-    value = value.value;
-  }
-  if (isResolvedElementLike(value) || isElementLike(value)) {
-    return evaluateTree(brep, value, entryPath);
-  }
-  return evaluateShape(brep, value as AnyShape);
+  const { nodes, tree } = await evaluateElements(entryPath, opts);
+  const { data, elements, failed } = modelToMeshData({ byKeyPath: nodes });
+  return finish(data, elements, failed, tree);
 }
 
 /**
@@ -176,11 +155,48 @@ async function importFamilies(entryPath: string): Promise<FamiliesNs | undefined
   }
 }
 
-async function evaluateTree(
+/** Per-element stage shared by preview (which merges) and the .3dm exporter
+ *  (which needs each element separately, named and layered). */
+export interface EvaluatedElements {
+  readonly nodes: ReadonlyMap<string, EvaluatedNodeLike>;
+  readonly tree: PreviewTreeNode;
+}
+
+export async function evaluateElements(
+  entryPath: string,
+  opts: { fresh?: boolean } = {}
+): Promise<EvaluatedElements> {
+  const brep = await loadBrep();
+  await initOcctWasm(brep);
+  const mod = await loadPart(entryPath, opts.fresh ?? false);
+  if (mod.default === undefined) {
+    throw new Error(
+      'module has no default export (expected a shape, a families element tree, or a function returning one)'
+    );
+  }
+  const produced: unknown = await Promise.resolve(
+    typeof mod.default === 'function' ? (mod.default as () => unknown)() : mod.default
+  );
+  let value = produced;
+  if (isResultLike(value)) {
+    if (!value.ok) {
+      throw new Error(
+        `model returned Err: ${String((value.error as Error)?.message ?? value.error)}`
+      );
+    }
+    value = value.value;
+  }
+  if (isResolvedElementLike(value) || isElementLike(value)) {
+    return treeElements(brep, value, entryPath);
+  }
+  return shapeElements(brep, value as AnyShape);
+}
+
+async function treeElements(
   brep: BrepNs,
   value: unknown,
   entryPath: string
-): Promise<PreviewBuild> {
+): Promise<EvaluatedElements> {
   const fam = await importFamilies(entryPath);
   if (fam === undefined) {
     throw new Error(
@@ -221,11 +237,10 @@ async function evaluateTree(
       },
     });
   }
-  const { data, elements, failed } = modelToMeshData({ byKeyPath: nodes });
-  return finish(data, elements, failed, toTree(model.root));
+  return { nodes, tree: toTree(model.root) };
 }
 
-function evaluateShape(brep: BrepNs, shape: AnyShape): PreviewBuild {
+function shapeElements(brep: BrepNs, shape: AnyShape): EvaluatedElements {
   try {
     const m = brep.mesh(shape);
     let edges: Float32Array | undefined;
@@ -246,14 +261,13 @@ function evaluateShape(brep: BrepNs, shape: AnyShape): PreviewBuild {
         },
       },
     };
-    const { data, elements, failed } = modelToMeshData({ byKeyPath: new Map([['part', node]]) });
     const tree: PreviewTreeNode = {
       keyPath: 'part',
       type: 'Shape',
       hasGeometry: true,
       children: [],
     };
-    return finish(data, elements, failed, tree);
+    return { nodes: new Map([['part', node]]), tree };
   } finally {
     // A plain-shape module hands ownership to the caller — verify's contract too.
     disposeShape(shape);
