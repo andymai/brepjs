@@ -697,13 +697,14 @@ describe('familiesToBim route breadth', () => {
       el('Box', { size: [p.length, p.width, p.thickness], transform: [tTranslate(p.at)] })
     );
     const { ifc, ids } = await project(
-      Footing({ key: 'f1', length: 2000, width: 1500, thickness: 500, at: [1000, 0, 0] })
+      Footing({ key: 'f1', length: 2000, width: 1500, thickness: 500, at: [1234, 0, 0] })
     );
     expect(ids.has('s/f1')).toBe(true);
     expect(ifc).toContain('IFCFOOTING');
     expect(ifc).toContain('Qto_FootingBaseQuantities');
     expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/f1'));
-    expect(ifc).toContain('(1.,0.,0.)');
+    // 1234 mm folds to a 1.234 m placement point — a value no axis tuple can emit.
+    expect(ifc).toContain('(1.234,0.,0.)');
   });
 
   it('maps a pile onto IfcPile', async () => {
@@ -747,12 +748,13 @@ describe('familiesToBim route breadth', () => {
       axisZ: [0, 0, 1],
       materialName: 'Concrete',
     };
-    const { ifc, ids } = await project(Ramp({ key: 'ra1', flights: [flight], at: [1000, 0, 0] }));
+    const { ifc, ids } = await project(Ramp({ key: 'ra1', flights: [flight], at: [1234, 0, 0] }));
     expect(ids.has('s/ra1')).toBe(true);
     expect(ifc).toContain('IFCRAMP');
     expect(ifc).toContain('IFCRAMPFLIGHT');
     expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/ra1'));
-    expect(ifc).toContain('(1.,0.,0.)');
+    // 1234 mm folds onto the flight origin as 1.234 m — unambiguous vs axis tuples.
+    expect(ifc).toContain('(1.234,0.,0.)');
   });
 
   it('maps a covering onto IfcCovering', async () => {
