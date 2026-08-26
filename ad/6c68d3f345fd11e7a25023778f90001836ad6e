@@ -1,0 +1,36 @@
+packages/brepjs-cad/src/preview/evaluate.ts
+  s_3f41f7f80a23af::t_f2dceb108d014e 95-97,158-195,199,240,243,270
+packages/brepjs-cad/src/cli/main.ts
+  s_3f41f7f80a23af::t_1c53706edbe67a 394,399-406,408-411,413-429,431-442,447,451
+  s_3f41f7f80a23af::t_a95e2010436467 24,412
+  s_3f41f7f80a23af::t_16648554f135cd 430
+packages/brepjs-cad/package.json
+  s_3f41f7f80a23af::t_28553e94817db9 66
+  s_3f41f7f80a23af::t_f2dceb108d014e 67
+packages/brepjs-cad/src/export3dm/export3dm.ts
+  s_3f41f7f80a23af::t_614321605a653a 1-2,4-93
+  s_3f41f7f80a23af::t_1c53706edbe67a 3
+packages/brepjs-cad/vite.config.ts
+  s_3f41f7f80a23af::t_1c53706edbe67a 41,54
+packages/brepjs-cad/tests/export3dm.test.ts
+  s_3f41f7f80a23af::t_2d33a698da00e8 1-22,24-64
+  s_3f41f7f80a23af::t_b1f506bb7c2219 23
+package-lock.json
+  s_3f41f7f80a23af::t_546f46a8091bb6 12141-12147,15156,15181,15188,15224-15225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ad6c68d3f345fd11e7a25023778f90001836ad6e",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
