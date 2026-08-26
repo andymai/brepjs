@@ -1,0 +1,30 @@
+apps/playground/package.json
+  s_fc48c8a5c147a6::t_c2c23a126285ad 11,20-21
+scripts/gen-og-docs.mjs
+  s_fc48c8a5c147a6::t_e6a605248f5809 6-7,13,16-22,29-30,69,107
+package.json
+  s_fc48c8a5c147a6::t_c2c23a126285ad 256
+scripts/lib/ogCard.mjs
+  s_fc48c8a5c147a6::t_19839421259681 1-190
+apps/playground/scripts/genExampleShells.ts
+  s_fc48c8a5c147a6::t_c2c23a126285ad 1-52,54-66,68-73
+  s_fc48c8a5c147a6::t_eea26617b42e28 53,67
+apps/playground/scripts/genOgExamples.ts
+  s_fc48c8a5c147a6::t_c2c23a126285ad 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b38732dda620704aba3f5f165c2d492256fc132b",
+  "prompts": {},
+  "sessions": {
+    "s_fc48c8a5c147a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a670381-ba33-4e36-9d78-a4ede62da56f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
