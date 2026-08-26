@@ -1,6 +1,6 @@
 {
   "name": "create-brepjs",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Scaffold a brepjs + brepjs-families project (npm create brepjs)",
   "keywords": [
     "cad",
