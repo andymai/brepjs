@@ -1,0 +1,41 @@
+packages/create-brepjs/templates/tsconfig.json
+  s_3f41f7f80a23af::t_1328e5f2fe1602 13,15
+packages/create-brepjs/tests/scaffold.test.ts
+  s_3f41f7f80a23af::t_1328e5f2fe1602 105,117-122,124,132-138,167-176,178
+packages/create-brepjs/templates/AGENTS.md
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-24
+packages/create-brepjs/templates/README.md
+  s_3f41f7f80a23af::t_1328e5f2fe1602 7-10,15
+.github/workflows/ci.yml
+  s_3f41f7f80a23af::t_1328e5f2fe1602 273-274,278
+packages/create-brepjs/templates/scripts/report.ts
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-15
+packages/create-brepjs/bin/create-brepjs.mjs
+  s_3f41f7f80a23af::t_1328e5f2fe1602 19-24,69
+packages/create-brepjs/templates/scripts/exportIfc.ts
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-19
+packages/create-brepjs/templates/CLAUDE.md
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-24
+packages/create-brepjs/templates/package.json.tpl
+  s_3f41f7f80a23af::t_1328e5f2fe1602 5-7,9-13,17-18,24,26-27
+packages/create-brepjs/templates/src/main.tsx
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-60
+packages/create-brepjs/templates/tests/model.test.ts
+  s_3f41f7f80a23af::t_1328e5f2fe1602 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "579461ea01051a204024bcf3ebd94be4e58d3b87",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
