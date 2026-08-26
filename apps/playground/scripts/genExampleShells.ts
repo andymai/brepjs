@@ -11,7 +11,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EXAMPLES } from '../src/lib/examples';
+import { EXAMPLES } from '../src/lib/examples/index.js';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const distDir = resolve(scriptDir, '../dist');

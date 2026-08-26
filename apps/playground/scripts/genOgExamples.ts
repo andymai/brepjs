@@ -16,7 +16,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES } from '../src/lib/examples';
+import { CATEGORIES } from '../src/lib/examples/index.js';
 import {
   cardHtml,
   createOgRenderer,
