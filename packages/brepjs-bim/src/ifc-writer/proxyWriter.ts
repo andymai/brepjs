@@ -11,9 +11,9 @@ export type ProxyRepresentationIds = TessellatedProductRepresentationIds;
 
 /**
  * Writes the IfcLocalPlacement (at origin, relative to parentPlacementId) and a
- * tessellated body (IfcTriangulatedFaceSet) for a proxy's solid. The solid is
- * exported in its authored coordinate frame; placement is identity because proxy
- * solids carry their own world positions in the brepjs geometry.
+ * tessellated body (IfcTriangulatedFaceSet) for a proxy's solid. Solid
+ * coordinates are emitted as supplied; the caller is responsible for matching
+ * them to the containing spatial structure's frame.
  */
 export function writeProxyGeometry(
   w: IfcWriter,

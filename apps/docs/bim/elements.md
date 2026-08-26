@@ -44,7 +44,7 @@ On the brepjs side, `extendedProfileToFace` builds the section face for the soli
 
 ## Placement and display
 
-Element geometry is **unplaced template geometry**. A wall's solid starts at the local origin and runs along local +X regardless of where the wall stands; `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. When you need world-placed solids (display, clash checks), `placedSolids(element)` returns fresh, caller-owned solids already transformed, so the scene you render matches the IFC you export. Most elements return one solid; stairs and ramps return one per flight, and curtain walls return their panels and mullions. Elements that are purely relational (doors, windows, groups, spatial containers) return an empty list rather than an error.
+Element geometry is **unplaced template geometry**. A wall's solid starts at the local origin and runs along local +X regardless of where the wall stands; `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. `placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates for display or clash checks. Most elements return one solid; stairs and ramps return one per flight, and curtain walls return their panels and mullions. Elements that are purely relational (doors, windows, groups, spatial containers) return an empty list rather than an error.
 
 ## Data layers
 

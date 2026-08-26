@@ -73,7 +73,7 @@ export interface FamiliesToBimOptions {
   /**
    * Enables the proxy route: an unrouted geometry-bearing element is
    * materialized through this evaluator and exported as an
-   * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
+   * IfcBuildingElementProxy (tessellated authoritative body). Without it,
    * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
    * evaluator's handles stay borrowed; the adapter clones what it hands the
    * model. For backward compatibility it also supplies the body evaluator when
@@ -443,7 +443,8 @@ function materializeOwnedSolid(
 function addProxyElement(
   model: BimModel,
   el: ResolvedElement,
-  evaluator: csg.Evaluator
+  evaluator: csg.Evaluator,
+  projectedSpatialTranslation: Translation
 ): Result<LocalId, BimError> {
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_PROXY_EVAL_FAILED',
@@ -452,13 +453,21 @@ function addProxyElement(
     routeName: 'proxy',
   });
   if (!body.ok) return body;
+  const localized = localizeOwnedSolid(
+    el,
+    body.value,
+    projectedSpatialTranslation,
+    'FAMILIES_PROXY_LOCALIZE_FAILED',
+    'spatial parent'
+  );
+  if (!localized.ok) return localized;
   const nameAttr = el.attributes['name'];
   const materialProp = el.props['materialName'];
   const specProps = collectSpecProps(el);
-  return model.addProxy(
+  const added = model.addProxy(
     {
       name: typeof nameAttr === 'string' ? nameAttr : el.type,
-      solid: body.value,
+      solid: localized.value,
       materialName:
         typeof materialProp === 'string'
           ? materialProp
@@ -467,6 +476,8 @@ function addProxyElement(
     },
     { stableKey: el.keyPath }
   );
+  if (!added.ok) localized.value[Symbol.dispose]();
+  return added;
 }
 
 /** Map a wall's synthesized Opening children onto addDoor/addWindow. The
@@ -591,6 +602,18 @@ const EARTHWORKS_FILL_ROLE: Readonly<Record<string, EarthworksFillPredefinedType
   'transition-section': 'TRANSITIONSECTION',
 };
 
+function unsupportedCivilRole(
+  el: ResolvedElement,
+  entity: 'Site' | 'Bridge' | 'Bridge Part' | 'Earthworks Fill'
+): Result<never, BimError> {
+  return err(
+    specError(
+      'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+      `familiesToBim: unsupported ${entity} role '${el.semantics?.role ?? ''}' at '${el.keyPath}'`
+    )
+  );
+}
+
 function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
   const semantics = el.semantics;
   if (semantics?.kind === 'site' && semantics.category === 'site') return 'site';
@@ -601,8 +624,16 @@ function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
   return undefined;
 }
 
-function hasCivilSpatialSemantics(el: ResolvedElement): boolean {
-  return civilSpatialKind(el) !== undefined || el.children.some(hasCivilSpatialSemantics);
+function isCivilSpatialIntent(el: ResolvedElement): boolean {
+  return (
+    el.semantics?.kind === 'site' ||
+    el.semantics?.kind === 'facility' ||
+    el.semantics?.kind === 'spatial-part'
+  );
+}
+
+function hasCivilSpatialIntent(el: ResolvedElement): boolean {
+  return isCivilSpatialIntent(el) || el.children.some(hasCivilSpatialIntent);
 }
 
 function isEarthworksFillOccurrence(el: ResolvedElement): boolean {
@@ -632,6 +663,34 @@ function subtractTranslation(a: Translation, b: Translation): Translation {
 
 function hasTranslation(value: Translation): boolean {
   return value[0] !== 0 || value[1] !== 0 || value[2] !== 0;
+}
+
+function localizeOwnedSolid(
+  el: ResolvedElement,
+  body: ValidSolid,
+  projectedSpatialTranslation: Translation,
+  errorCode: string,
+  frameName: string
+): Result<ValidSolid, BimError> {
+  if (!hasTranslation(projectedSpatialTranslation)) return ok(body);
+  try {
+    const localized = translate(body, [
+      -projectedSpatialTranslation[0],
+      -projectedSpatialTranslation[1],
+      -projectedSpatialTranslation[2],
+    ]);
+    body[Symbol.dispose]();
+    return ok(localized);
+  } catch (cause) {
+    body[Symbol.dispose]();
+    return err(
+      specError(
+        errorCode,
+        `familiesToBim: '${el.keyPath}' could not move its body into the ${frameName} frame`,
+        cause
+      )
+    );
+  }
 }
 
 function authoredTranslation(el: ResolvedElement): Translation {
@@ -678,20 +737,25 @@ function addCivilSpatialOccurrence(
   localTranslation: Translation
 ): Result<LocalId, BimError> {
   if (kind === 'site') {
+    if (el.semantics?.role !== 'transport-site') return unsupportedCivilRole(el, 'Site');
     const parsed = parseSiteSpec(civilSpatialInput(el, localTranslation));
     return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   if (kind === 'bridge') {
+    const predefinedType = BRIDGE_ROLE[el.semantics?.role ?? ''];
+    if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge');
     const parsed = parseBridgeSpec({
       ...civilSpatialInput(el, localTranslation),
-      predefinedType: BRIDGE_ROLE[el.semantics?.role ?? ''] ?? 'NOTDEFINED',
+      predefinedType,
     });
     return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
+  const predefinedType = BRIDGE_PART_ROLE[el.semantics?.role ?? ''];
+  if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge Part');
   const parsed = parseBridgePartSpec({
     ...civilSpatialInput(el, localTranslation),
-    predefinedType: BRIDGE_PART_ROLE[el.semantics?.role ?? ''] ?? 'NOTDEFINED',
+    predefinedType,
     usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
   });
   return parsed.ok ? model.addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
@@ -738,6 +802,8 @@ function addEarthworksFillElement(
       )
     );
   }
+  const predefinedType = EARTHWORKS_FILL_ROLE[el.semantics.role];
+  if (predefinedType === undefined) return unsupportedCivilRole(el, 'Earthworks Fill');
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_EARTHWORKS_EVAL_FAILED',
     notSolidCode: 'FAMILIES_EARTHWORKS_NOT_SOLID',
@@ -746,39 +812,27 @@ function addEarthworksFillElement(
   });
   if (!body.ok) return body;
 
-  let localBody = body.value;
-  if (hasTranslation(projectedSpatialTranslation)) {
-    try {
-      localBody = translate(body.value, [
-        -projectedSpatialTranslation[0],
-        -projectedSpatialTranslation[1],
-        -projectedSpatialTranslation[2],
-      ]);
-    } catch (cause) {
-      body.value[Symbol.dispose]();
-      return err(
-        specError(
-          'FAMILIES_EARTHWORKS_LOCALIZE_FAILED',
-          `familiesToBim: '${el.keyPath}' could not move its body into the Bridge Part frame`,
-          cause
-        )
-      );
-    }
-    body.value[Symbol.dispose]();
-  }
+  const localized = localizeOwnedSolid(
+    el,
+    body.value,
+    projectedSpatialTranslation,
+    'FAMILIES_EARTHWORKS_LOCALIZE_FAILED',
+    'Bridge Part'
+  );
+  if (!localized.ok) return localized;
 
   const specProps = collectSpecProps(el);
   const added = model.addEarthworksFill(
     {
       name: semanticName(el),
-      solid: localBody,
+      solid: localized.value,
       materialName: el.semantics.material,
-      predefinedType: EARTHWORKS_FILL_ROLE[el.semantics.role] ?? 'NOTDEFINED',
+      predefinedType,
       customProperties: specProps['customProperties'] as EarthworksFillSpec['customProperties'],
     },
     { stableKey: el.keyPath }
   );
-  if (!added.ok) localBody[Symbol.dispose]();
+  if (!added.ok) localized.value[Symbol.dispose]();
   return added;
 }
 
@@ -799,7 +853,7 @@ export function familiesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
-  const usesAuthoredCivilHierarchy = hasCivilSpatialSemantics(root);
+  const usesAuthoredCivilHierarchy = hasCivilSpatialIntent(root);
   if (usesAuthoredCivilHierarchy) {
     const keyed = requireKeyed(root);
     if (!keyed.ok) return keyed;
@@ -845,7 +899,9 @@ export function familiesToBim(
     let nextCivilParent = state.civilParent;
     let nextProjectedSpatialTranslation = state.projectedSpatialTranslation;
     const archetype = archetypeFor(el);
-    const route = specRoute(archetype);
+    // An explicitly authored civil Product is routed by its semantic category.
+    // Do not let a coincidental legacy archetype silently change its IFC class.
+    const route = el.semantics?.kind === 'product' ? undefined : specRoute(archetype);
     const civilKind = civilSpatialKind(el);
     if (civilKind !== undefined) {
       if (
@@ -881,6 +937,13 @@ export function familiesToBim(
       nextSpatialStructureId = added.value;
       nextCivilParent = civilKind;
       nextProjectedSpatialTranslation = cumulativeTranslationHere;
+    } else if (isCivilSpatialIntent(el)) {
+      return err(
+        specError(
+          'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+          `familiesToBim: unsupported civil '${el.semantics?.kind ?? 'unknown'}' category '${el.semantics?.category ?? ''}' at '${el.keyPath}'`
+        )
+      );
     } else if (archetype === 'storey') {
       if (buildingId === null) {
         return err(
@@ -1019,7 +1082,12 @@ export function familiesToBim(
           )
         );
       }
-      const added = addProxyElement(model, el, options.proxyEvaluator);
+      const added = addProxyElement(
+        model,
+        el,
+        options.proxyEvaluator,
+        state.projectedSpatialTranslation
+      );
       if (!added.ok) return added;
       model.placeIn(added.value, nextSpatialStructureId);
       idByKeyPath.set(el.keyPath, added.value);

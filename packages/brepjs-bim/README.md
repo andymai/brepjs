@@ -28,11 +28,11 @@ useful downstream (psets, classification, materials, quantities), with import, e
 validation. Geometry is produced by brepjs (OCCT); each element carries a `ValidSolid` (or, for
 curtain walls, a panel/mullion grid). Element geometry is **unplaced template geometry** in local
 coordinates — placement (`origin` / `axisX` / `axisZ`) is applied by the IFC layer via
-`IfcLocalPlacement`, not baked into the brepjs solid. Use `placedSolids(element)` to read an
-element's geometry already transformed to its world placement as fresh, caller-owned solids
-(stairs and ramps return one solid per flight, curtain walls their panels and mullions) — handy
-for display so the on-screen scene matches the IFC
-export.
+`IfcLocalPlacement`, not baked into the brepjs solid. Use `placedSolids(element)` to read fresh,
+caller-owned solids transformed by the element's own placement (stairs and ramps return one solid
+per flight, curtain walls their panels and mullions). When an element is beneath a placed spatial
+structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world
+coordinates. This is especially important for parent-local Proxy and Earthworks Fill bodies.
 
 - Units default to mm; IFC export emits SI metres.
 - Stable identity: deterministic IFC GUIDs (`deriveIfcGuid`) and local id counters.

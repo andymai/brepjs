@@ -1,8 +1,19 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { csg, getBounds, measureVolume, unwrap, type ValidSolid } from 'brepjs';
-import { civilSemantics, el, family, resolve, tTranslate, type Element } from 'brepjs-families';
+import {
+  civilSemantics,
+  el,
+  family,
+  resolve,
+  tTranslate,
+  type Element,
+  type ResolvedElement,
+  type SpatialComposition,
+  type SpatialSubdivision,
+} from 'brepjs-families';
 import { initOCCT } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
+import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkSchema } from '../src/validation/schemaCheck.js';
@@ -26,6 +37,20 @@ function spatialGroup(props: SpatialProps): Element {
     { transform: props.at !== undefined ? [tTranslate(props.at)] : undefined },
     props.children
   );
+}
+
+function required<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Expected ${label}`);
+  return value;
+}
+
+function findByKeyPath(root: ResolvedElement, keyPath: string): ResolvedElement | undefined {
+  if (root.keyPath === keyPath) return root;
+  for (const child of root.children) {
+    const found = findByKeyPath(child, keyPath);
+    if (found !== undefined) return found;
+  }
+  return undefined;
 }
 
 const Site = family<SpatialProps>('TransportSite', spatialGroup, {
@@ -88,6 +113,103 @@ const EarthFill = family(
       role: 'embankment',
       material: 'Compacted soil',
       dimensionsMm: { length: 4_000, width: 3_000, height: 2_000 },
+    }),
+  }
+);
+
+interface FlexibleSpatialProps extends SpatialProps {
+  readonly composition: SpatialComposition;
+  readonly role: string;
+  readonly subdivision?: SpatialSubdivision | undefined;
+}
+
+const FlexibleSite = family<FlexibleSpatialProps>('FlexibleSite', spatialGroup, {
+  semantics: (props) =>
+    civilSemantics({
+      kind: 'site',
+      category: 'site',
+      role: props.role,
+      composition: props.composition,
+    }),
+});
+
+const FlexibleBridge = family<FlexibleSpatialProps>('FlexibleBridge', spatialGroup, {
+  semantics: (props) =>
+    civilSemantics({
+      kind: 'facility',
+      category: 'bridge',
+      role: props.role,
+      composition: props.composition,
+    }),
+});
+
+const FlexiblePart = family<FlexibleSpatialProps>('FlexibleBridgePart', spatialGroup, {
+  semantics: (props) =>
+    civilSemantics({
+      kind: 'spatial-part',
+      category: 'bridge-part',
+      role: props.role,
+      composition: props.composition,
+      ...(props.subdivision !== undefined ? { subdivision: props.subdivision } : {}),
+    }),
+});
+
+const UnsupportedFacility = family<SpatialProps>('UnsupportedFacility', spatialGroup, {
+  semantics: civilSemantics({
+    kind: 'facility',
+    category: 'road',
+    role: 'road',
+    composition: 'element',
+  }),
+});
+
+const UnsupportedMember = family(
+  'UnsupportedMember',
+  () => el('Box', { size: [1_000, 200, 300] }),
+  {
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'member',
+      role: 'arch-segment',
+      material: 'Steel',
+      dimensionsMm: { length: 1_000, width: 200, height: 300 },
+    }),
+  }
+);
+
+const UnsupportedBeamMember = family<{
+  readonly length: number;
+  readonly profile: {
+    readonly kind: 'RECTANGULAR';
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly materialName: string;
+}>(
+  'UnsupportedBeamMember',
+  (props) => el('Box', { size: [props.length, props.profile.width, props.profile.height] }),
+  {
+    archetype: 'beam',
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'member',
+      role: 'arch-segment',
+      material: 'Steel',
+      dimensionsMm: { length: 1_000, width: 200, height: 300 },
+    }),
+  }
+);
+
+const UnsupportedEarthworksRole = family(
+  'UnsupportedEarthworksRole',
+  () => el('Box', { size: [1_000, 1_000, 1_000] }),
+  {
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'earthworks-fill',
+      role: 'roadbed',
+      material: 'Soil',
+      dimensionsMm: { length: 1_000, width: 1_000, height: 1_000 },
     }),
   }
 );
@@ -273,7 +395,10 @@ describe('civil Families Projection', () => {
 
   it('projects an exact irregular Earthworks Fill body as a typed contained product', async () => {
     const root = civilModel({}, [EarthFill({ key: 'embankment', name: 'Approach embankment' })]);
-    const fillOccurrence = root.children[0]?.children[0]?.children[0]?.children[1];
+    const fillOccurrence = findByKeyPath(
+      root,
+      'civil-model/north-site/river-bridge/deck/embankment'
+    );
     expect(fillOccurrence?.keyPath).toBe('civil-model/north-site/river-bridge/deck/embankment');
 
     using evaluator = new csg.Evaluator();
@@ -288,7 +413,7 @@ describe('civil Families Projection', () => {
       );
       using model = projected.model;
 
-      const fill = model.getEarthworksFills()[0];
+      const fill = required(model.getEarthworksFills()[0], 'projected Earthworks Fill');
       ownedBody = fill?.geometry;
       expect(fill?.guid).toBe(
         deriveIfcGuidSync('elem:civil-gate:civil-model/north-site/river-bridge/deck/embankment')
@@ -310,6 +435,20 @@ describe('civil Families Projection', () => {
       const boundsVolume =
         (bounds.xMax - bounds.xMin) * (bounds.yMax - bounds.yMin) * (bounds.zMax - bounds.zMin);
       expect(projectedVolume).toBeLessThan(boundsVolume);
+
+      const placed = unwrap(
+        placedSolids(fill, {
+          parentFrame: {
+            origin: [6_000, 0, 0],
+            axisX: [1, 0, 0],
+            axisZ: [0, 0, 1],
+          },
+        })
+      );
+      using worldBody = required(placed[0], 'world-placed Earthworks Fill body');
+      const worldBounds = getBounds(worldBody);
+      expect(worldBounds.xMin).toBeCloseTo(sourceBounds.xMin, 5);
+      expect(worldBounds.xMax).toBeCloseTo(sourceBounds.xMax, 5);
 
       const fillId = projected.idByKeyPath.get(
         'civil-model/north-site/river-bridge/deck/embankment'
@@ -353,5 +492,326 @@ describe('civil Families Projection', () => {
     }
     expect(ownedBody?.disposed).toBe(true);
     expect(source.disposed).toBe(false);
+  });
+
+  it('projects multiple Bridges and recursive Parts with exact composition and usage', () => {
+    const root = resolve(
+      el('Group', { key: 'network' }, [
+        FlexibleSite({
+          key: 'road-site',
+          name: 'Road site',
+          role: 'transport-site',
+          composition: 'collection',
+          children: [
+            FlexibleBridge({
+              key: 'arched-bridge',
+              name: 'Arched bridge',
+              role: 'arched',
+              composition: 'partial',
+              children: [
+                FlexiblePart({
+                  key: 'superstructure',
+                  name: 'Superstructure',
+                  role: 'superstructure',
+                  composition: 'partial',
+                  subdivision: 'regional',
+                  children: [
+                    FlexiblePart({
+                      key: 'deck',
+                      name: 'Nested deck',
+                      role: 'deck',
+                      composition: 'element',
+                      subdivision: 'longitudinal',
+                      children: [
+                        Beam({
+                          key: 'deck-beam',
+                          length: 8_000,
+                          profile: { kind: 'RECTANGULAR', width: 300, height: 500 },
+                          materialName: 'Steel',
+                        }),
+                      ],
+                    }),
+                    FlexiblePart({
+                      key: 'pier',
+                      name: 'Pier region',
+                      role: 'pier',
+                      composition: 'collection',
+                      subdivision: 'vertical',
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+        FlexibleSite({
+          key: 'rail-site',
+          name: 'Rail site',
+          role: 'transport-site',
+          composition: 'element',
+          children: [
+            FlexibleBridge({
+              key: 'girder-bridge',
+              name: 'Girder bridge',
+              role: 'girder',
+              composition: 'element',
+              children: [
+                FlexiblePart({
+                  key: 'approach',
+                  name: 'Approach',
+                  role: 'surface-structure',
+                  composition: 'element',
+                  subdivision: 'lateral',
+                }),
+                FlexiblePart({
+                  key: 'unspecified',
+                  name: 'Unspecified part',
+                  role: 'substructure',
+                  composition: 'element',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ])
+    );
+
+    const projected = unwrap(
+      familiesToBim(root, { project: { name: 'Network', projectId: 'network' } })
+    );
+    using model = projected.model;
+
+    expect(model.getAllElements().filter(({ category }) => category === 'SITE')).toHaveLength(2);
+    expect(model.getBridges()).toHaveLength(2);
+    expect(model.getBridgeParts()).toHaveLength(5);
+    expect(model.getAllElements().some(({ category }) => category === 'BUILDING')).toBe(false);
+    expect(
+      model
+        .getAllElements()
+        .find(({ category, spec }) => category === 'SITE' && spec.name === 'Road site')?.spec
+    ).toMatchObject({ compositionType: 'COMPLEX' });
+    expect(
+      model.getBridges().find(({ spec }) => spec.name === 'Arched bridge')?.spec
+    ).toMatchObject({ compositionType: 'PARTIAL', predefinedType: 'ARCHED' });
+    expect(
+      model.getBridgeParts().map(({ spec }) => [spec.name, spec.compositionType, spec.usageType])
+    ).toEqual(
+      expect.arrayContaining([
+        ['Superstructure', 'PARTIAL', 'REGION'],
+        ['Nested deck', 'ELEMENT', 'LONGITUDINAL'],
+        ['Pier region', 'COMPLEX', 'VERTICAL'],
+        ['Approach', 'ELEMENT', 'LATERAL'],
+        ['Unspecified part', 'ELEMENT', 'NOTDEFINED'],
+      ])
+    );
+
+    const superstructureId = projected.idByKeyPath.get(
+      'network/road-site/arched-bridge/superstructure'
+    );
+    const deckId = projected.idByKeyPath.get('network/road-site/arched-bridge/superstructure/deck');
+    const beamId = projected.idByKeyPath.get(
+      'network/road-site/arched-bridge/superstructure/deck/deck-beam'
+    );
+    const nestedParts = model
+      .getAllRelationships()
+      .find((rel) => rel.kind === 'AGGREGATES' && rel.relatingObject === superstructureId);
+    expect(nestedParts?.kind === 'AGGREGATES' && nestedParts.relatedObjects).toContain(deckId);
+    expect(model.getAllRelationships()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'CONTAINED_IN',
+          relatingStructure: deckId,
+          relatedElements: [beamId],
+        }),
+      ])
+    );
+  });
+
+  it('returns structured errors for invalid hierarchy and unsupported spatial meaning', () => {
+    const invalidHierarchy = familiesToBim(
+      resolve(el('Group', { key: 'invalid' }, [Bridge({ key: 'orphan-bridge', children: [] })])),
+      { project: { name: 'Invalid', projectId: 'invalid' } }
+    );
+    expect(invalidHierarchy).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_INVALID_CIVIL_HIERARCHY' },
+    });
+
+    const unsupportedSpatial = familiesToBim(
+      resolve(
+        el('Group', { key: 'unsupported' }, [
+          Site({
+            key: 'site',
+            children: [UnsupportedFacility({ key: 'road', children: [] })],
+          }),
+        ])
+      ),
+      { project: { name: 'Unsupported', projectId: 'unsupported' } }
+    );
+    if (unsupportedSpatial.ok) unsupportedSpatial.value.model[Symbol.dispose]();
+    expect(unsupportedSpatial).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS' },
+    });
+  });
+
+  it('rejects unsupported civil roles instead of silently writing NOTDEFINED', () => {
+    const unsupportedBridgeRole = familiesToBim(
+      resolve(
+        el('Group', { key: 'unsupported-bridge-role' }, [
+          FlexibleSite({
+            key: 'site',
+            role: 'transport-site',
+            composition: 'element',
+            children: [
+              FlexibleBridge({
+                key: 'bridge',
+                role: 'road',
+                composition: 'element',
+              }),
+            ],
+          }),
+        ])
+      ),
+      { project: { name: 'Unsupported roles', projectId: 'unsupported-bridge-role' } }
+    );
+    expect(unsupportedBridgeRole).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS' },
+    });
+
+    const unsupportedPartRole = familiesToBim(
+      resolve(
+        el('Group', { key: 'unsupported-part-role' }, [
+          Site({
+            key: 'site',
+            children: [
+              Bridge({
+                key: 'bridge',
+                children: [
+                  FlexiblePart({
+                    key: 'part',
+                    role: 'roadbed',
+                    composition: 'element',
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ])
+      ),
+      { project: { name: 'Unsupported roles', projectId: 'unsupported-part-role' } }
+    );
+    expect(unsupportedPartRole).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS' },
+    });
+
+    using bodyEvaluator = new csg.Evaluator();
+    const unsupportedEarthworksRole = familiesToBim(
+      civilModel({}, [UnsupportedEarthworksRole({ key: 'roadbed' })]),
+      {
+        project: { name: 'Unsupported roles', projectId: 'unsupported-earthworks-role' },
+        bodyEvaluator,
+      }
+    );
+    expect(unsupportedEarthworksRole).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS' },
+    });
+  });
+
+  it('never lets an archetype override an unsupported Product semantic class', () => {
+    const root = civilModel({}, [
+      UnsupportedBeamMember({
+        key: 'semantic-member',
+        length: 1_000,
+        profile: { kind: 'RECTANGULAR', width: 200, height: 300 },
+        materialName: 'Steel',
+      }),
+    ]);
+
+    const strict = familiesToBim(root, {
+      project: { name: 'Civil gate', projectId: 'civil-gate' },
+    });
+    expect(strict).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_TYPE' },
+    });
+
+    using proxyEvaluator = new csg.Evaluator();
+    const projected = unwrap(
+      familiesToBim(root, {
+        project: { name: 'Civil gate', projectId: 'civil-gate' },
+        proxyEvaluator,
+      })
+    );
+    using model = projected.model;
+    expect(model.getBeams()).toHaveLength(1);
+    expect(model.getProxies()).toHaveLength(1);
+    expect(projected.proxied).toEqual([
+      expect.objectContaining({
+        keyPath: 'civil-model/north-site/river-bridge/deck/semantic-member',
+        archetype: 'beam',
+      }),
+    ]);
+  });
+
+  it('keeps unsupported Products strict unless proxy fallback is explicitly enabled', () => {
+    const root = civilModel({}, [UnsupportedMember({ key: 'arch-member' })]);
+
+    using bodyEvaluator = new csg.Evaluator();
+    const bodyOnly = familiesToBim(root, {
+      project: { name: 'Civil gate', projectId: 'civil-gate' },
+      bodyEvaluator,
+    });
+    expect(bodyOnly).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_TYPE' },
+    });
+
+    const memberOccurrence = findByKeyPath(
+      root,
+      'civil-model/north-site/river-bridge/deck/arch-member'
+    );
+    using proxyEvaluator = new csg.Evaluator();
+    const source = unwrap(proxyEvaluator.evaluate(memberOccurrence?.geometry ?? csg.emptySolid()));
+    const projected = unwrap(
+      familiesToBim(root, {
+        project: { name: 'Civil gate', projectId: 'civil-gate' },
+        proxyEvaluator,
+      })
+    );
+    using model = projected.model;
+    expect(projected.proxied).toEqual([
+      {
+        keyPath: 'civil-model/north-site/river-bridge/deck/arch-member',
+        type: 'UnsupportedMember',
+        archetype: undefined,
+      },
+    ]);
+    expect(model.getProxies()).toHaveLength(1);
+    expect(model.getAllElements().some(({ category }) => category === 'EARTHWORKS_FILL')).toBe(
+      false
+    );
+    const sourceBounds = getBounds(source);
+    const proxy = required(model.getProxies()[0], 'projected proxy');
+    const proxyBounds = getBounds(proxy.geometry);
+    expect(proxyBounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
+    expect(proxyBounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
+
+    const placed = unwrap(
+      placedSolids(proxy, {
+        parentFrame: {
+          origin: [6_000, 0, 0],
+          axisX: [1, 0, 0],
+          axisZ: [0, 0, 1],
+        },
+      })
+    );
+    using worldBody = required(placed[0], 'world-placed proxy body');
+    const worldBounds = getBounds(worldBody);
+    expect(worldBounds.xMin).toBeCloseTo(sourceBounds.xMin, 5);
+    expect(worldBounds.xMax).toBeCloseTo(sourceBounds.xMax, 5);
   });
 });

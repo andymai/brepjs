@@ -49,7 +49,7 @@ const ifc = await toIfc(model, { applicationName: 'example-app', applicationVers
 Three design decisions carry the package:
 
 1. **Specs are the source of truth.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use), builds the brepjs solid analytically, and stores a typed element. The IFC writer emits parametric entities (`IfcExtrudedAreaSolid`, profile defs) from the same spec, so the exported file stays editable data, not frozen triangles.
-2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. Use `placedSolids(element)` when you need world-placed solids for display.
+2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. `placedSolids(element)` applies the element frame; when its spatial parent is placed, pass the cumulative `parentFrame` to obtain world coordinates.
 3. **Results, not exceptions.** Every operation returns `Result<T, BimError>` from brepjs. Validation issues travel inside reports; nothing throws across the API boundary.
 
 Dimensions are millimeters everywhere; IFC export emits SI metres. Reading element geometry needs only the brepjs kernel; `toIfc` / `fromIfc` additionally load the `web-ifc` peer dependency.
