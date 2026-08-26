@@ -11,5 +11,6 @@ for (const [keyPath, node] of evaluated.byKeyPath) {
     console.log(`${keyPath}: ${node.mesh.value.triangles.length / 3} triangles`);
   } else {
     console.error(`${keyPath}: ${node.mesh.error.message}`);
+    process.exitCode = 1;
   }
 }
