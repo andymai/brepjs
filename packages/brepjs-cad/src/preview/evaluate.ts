@@ -1,3 +1,7 @@
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { AnyShape, ShapeMesh } from 'brepjs';
 import {
   modelToMeshData,
@@ -10,6 +14,7 @@ import {
 } from 'brepjs-viewer';
 import { loadBrep, initOcctWasm, type BrepNs } from '../verify/brepjsRuntime.js';
 import { loadPart } from '../verify/runPart.js';
+import { packageRootOf } from '../verify/typecheck.js';
 import { disposeShape } from '../disposeShape.js';
 
 // Structural views of brepjs-families — the package is dynamically imported from the
@@ -66,9 +71,11 @@ function isResolvedElementLike(v: unknown): v is ResolvedElementLike {
 }
 
 function isElementLike(v: unknown): boolean {
+  // A families Element's type is an intrinsic name OR a family component function
+  // (a tree rooted at <MyFamily/> arrives un-rendered — resolve() renders it).
   return (
     isRecord(v) &&
-    typeof v['type'] === 'string' &&
+    (typeof v['type'] === 'string' || typeof v['type'] === 'function') &&
     isRecord(v['props']) &&
     Array.isArray(v['children']) &&
     !('keyPath' in v)
@@ -106,16 +113,76 @@ export async function evaluatePreview(
     value = value.value;
   }
   if (isResolvedElementLike(value) || isElementLike(value)) {
-    return evaluateTree(brep, value);
+    return evaluateTree(brep, value, entryPath);
   }
   return evaluateShape(brep, value as AnyShape);
 }
 
-async function evaluateTree(brep: BrepNs, value: unknown): Promise<PreviewBuild> {
-  let fam: FamiliesNs;
+/**
+ * Resolve the ESM entry of the PROJECT's brepjs-families install, walking from the
+ * entry module. A globally installed CLI is not inside the project's node_modules, so
+ * a bare import would miss (or load the wrong copy); resolving from the entry lands on
+ * the same file URL the model itself imports — one module instance, matching runtime
+ * identities.
+ */
+export function resolveFamiliesEntry(entryPath: string): string | undefined {
+  let requireEntry: string;
   try {
-    fam = (await import('brepjs-families')) as unknown as FamiliesNs;
+    requireEntry = createRequire(pathToFileURL(entryPath).href).resolve('brepjs-families');
   } catch {
+    return undefined;
+  }
+  const pkgDir = packageRootOf(dirname(requireEntry), 'brepjs-families');
+  if (pkgDir === undefined) return requireEntry;
+  try {
+    const pkg = JSON.parse(readFileSync(resolvePath(pkgDir, 'package.json'), 'utf8')) as {
+      exports?: unknown;
+      module?: unknown;
+    };
+    const rel = esmEntryOf(pkg);
+    return rel === undefined ? requireEntry : resolvePath(pkgDir, rel);
+  } catch {
+    return requireEntry;
+  }
+}
+
+function esmEntryOf(pkg: { exports?: unknown; module?: unknown }): string | undefined {
+  const root = (pkg.exports as Record<string, unknown> | undefined)?.['.'];
+  if (root && typeof root === 'object') {
+    const imp = (root as Record<string, unknown>)['import'];
+    if (imp && typeof imp === 'object') {
+      const d = (imp as Record<string, unknown>)['default'];
+      if (typeof d === 'string') return d;
+    }
+    const d = (root as Record<string, unknown>)['default'];
+    if (typeof d === 'string') return d;
+  }
+  return typeof pkg.module === 'string' ? pkg.module : undefined;
+}
+
+async function importFamilies(entryPath: string): Promise<FamiliesNs | undefined> {
+  try {
+    // Dev-dependency install: the CLI lives inside the project's node_modules, so the
+    // bare specifier resolves to the project's copy.
+    return (await import('brepjs-families')) as unknown as FamiliesNs;
+  } catch {
+    const abs = resolveFamiliesEntry(entryPath);
+    if (abs === undefined) return undefined;
+    try {
+      return (await import(pathToFileURL(abs).href)) as FamiliesNs;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+async function evaluateTree(
+  brep: BrepNs,
+  value: unknown,
+  entryPath: string
+): Promise<PreviewBuild> {
+  const fam = await importFamilies(entryPath);
+  if (fam === undefined) {
     throw new Error(
       "the model is a families element tree, but 'brepjs-families' is not installed in this project"
     );

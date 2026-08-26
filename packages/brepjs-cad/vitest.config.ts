@@ -13,7 +13,7 @@ export default defineConfig({
     // `@/utils`/`@/kernel` imports and breaks any test that imports `brepjs`.
     alias: [
       { find: /^@viewer\//, replacement: `${viewerSrc}/` },
-      { find: /^@\/(verify|snapshot|cli|sandbox|mcp)\//, replacement: `${pkgSrc}/$1/` },
+      { find: /^@\/(verify|snapshot|cli|sandbox|mcp|preview)\//, replacement: `${pkgSrc}/$1/` },
       { find: /^@\//, replacement: `${rootSrc}/` },
       { find: 'brepjs', replacement: resolve(rootSrc, 'index.ts') },
     ],

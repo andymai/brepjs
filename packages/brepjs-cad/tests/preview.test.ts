@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodePreviewPayload, type PreviewModelPayload } from 'brepjs-viewer';
+import { resolveFamiliesEntry } from '@/preview/evaluate.js';
 
 interface PreviewSummary {
   ok: boolean;
@@ -51,6 +52,26 @@ describe('brep preview --write-only', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   }, 120000);
+});
+
+describe('brep preview module contract', () => {
+  it('previews a tree rooted at a family component (function-typed element)', () => {
+    const stdout = execFileSync(
+      'npx',
+      ['tsx', cli, 'preview', join(fixtureDir, 'component.tsx'), '--write-only'],
+      { encoding: 'utf8', cwd: pkgRoot }
+    );
+    const summary = JSON.parse(stdout) as PreviewSummary;
+    expect(summary.ok).toBe(true);
+    expect(summary.elements).toBe(1);
+  }, 120000);
+
+  it('resolves the project-local brepjs-families ESM entry from the model path', () => {
+    const abs = resolveFamiliesEntry(join(fixtureDir, 'main.tsx'));
+    expect(abs).toBeDefined();
+    expect(abs).toMatch(/brepjs-families[\\/]dist[\\/]/);
+    expect(abs?.endsWith('.js')).toBe(true);
+  });
 });
 
 describe('brep preview server', () => {
