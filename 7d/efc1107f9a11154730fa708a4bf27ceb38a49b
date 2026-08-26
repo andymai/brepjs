@@ -1,0 +1,19 @@
+packages/brepjs-cad/skills/implement/references/families-bim.md
+  s_3f41f7f80a23af::t_35c172dfcd913d 73-79,101-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7defc1107f9a11154730fa708a4bf27ceb38a49b",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
