@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.177.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.176.0...brepjs-cad-v0.177.0) (2026-08-26)
+
+
+### Features
+
+* **brepjs-cad:** brep export --3dm — element-aware Rhino export ([#2236](https://github.com/andymai/brepjs/issues/2236)) ([91b0235](https://github.com/andymai/brepjs/commit/91b02355d9ba005f69dd4c72002a946600179398))
+
+
+### Bug Fixes
+
+* **brepjs-cad:** quality pass over the preview/loader/3dm/scaffold delta ([#2243](https://github.com/andymai/brepjs/issues/2243)) ([b6ae66e](https://github.com/andymai/brepjs/commit/b6ae66e6a1c4175bfd13846b382972e1d7356adc))
+
 ## [0.176.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.175.0...brepjs-cad-v0.176.0) (2026-08-26)
 
 
