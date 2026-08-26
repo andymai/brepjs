@@ -27,16 +27,15 @@ const Wall = family<{
   readonly height: number;
   readonly thickness: number;
   readonly voids?: readonly ReturnType<typeof Doorway>[];
-}>(
-  'Wall',
-  (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] }),
-  { archetype: 'wall' }
-);
+}>('Wall', (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids ?? [] }), {
+  archetype: 'wall',
+});
 
 const Slab = family<{
   readonly length: number;
   readonly width: number;
   readonly thickness: number;
+  readonly predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB';
 }>('Slab', (p) => el('Box', { size: [p.length, p.width, p.thickness] }), { archetype: 'slab' });
 
 const Storey = family<{ readonly children?: unknown }>(
@@ -47,7 +46,14 @@ const Storey = family<{ readonly children?: unknown }>(
 
 export default (
   <Storey key="ground" name="Ground floor">
-    <Slab key="slab" length={6000} width={4000} thickness={200} material="Concrete" />
+    <Slab
+      key="slab"
+      length={6000}
+      width={4000}
+      thickness={200}
+      predefinedType="FLOOR"
+      material="Concrete"
+    />
     <Wall
       key="south"
       length={6000}
