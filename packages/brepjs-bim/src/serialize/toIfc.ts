@@ -41,6 +41,7 @@ import {
   writeRelCoversBldgElements,
 } from '../ifc-writer/coveringWriter.js';
 import { writeElementAssemblyEntity, writeRelNests } from '../ifc-writer/assemblyWriter.js';
+import { writeBridge, writeBridgePart } from '../ifc-writer/infrastructureWriter.js';
 import {
   writeZoneEntity,
   writeSystemEntity,
@@ -129,6 +130,17 @@ export async function toIfc(
   if (!project) {
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
+  if (
+    (model.getBridges().length > 0 || model.getBridgeParts().length > 0) &&
+    (meta.ifcSchema ?? 'IFC4') !== 'IFC4X3'
+  ) {
+    return err(
+      ifcError(
+        'IFC4X3_REQUIRED',
+        'Bridge and Bridge Part entities require IFC4X3 serialization'
+      )
+    );
+  }
 
   const authorName = [meta.author?.givenName, meta.author?.familyName]
     .filter((p): p is string => Boolean(p))
@@ -147,6 +159,8 @@ export async function toIfc(
   const walls = model.getWalls();
   const slabs = model.getSlabs();
   const beams = model.getBeams();
+  const bridges = model.getBridges();
+  const bridgeParts = model.getBridgeParts();
   const columns = model.getColumns();
   const doors = model.getDoors();
   const windows = model.getWindows();
@@ -189,9 +203,45 @@ export async function toIfc(
 
   for (const el of elements) {
     if (el.category !== 'SITE') continue;
-    const { entityId, placementId } = writeSite(w, el.guid, el.spec.name, ownerHistoryId);
+    const parentId = findParentOf(el.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeSite(
+      w,
+      el.guid,
+      el.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
     idMap.set(el.localId, entityId);
     placementMap.set(el.localId, placementId);
+  }
+
+  for (const bridge of bridges) {
+    const parentId = findParentOf(bridge.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeBridge(
+      w,
+      bridge.guid,
+      bridge.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
+    idMap.set(bridge.localId, entityId);
+    placementMap.set(bridge.localId, placementId);
+  }
+
+  for (const part of bridgeParts) {
+    const parentId = findParentOf(part.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeBridgePart(
+      w,
+      part.guid,
+      part.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
+    idMap.set(part.localId, entityId);
+    placementMap.set(part.localId, placementId);
   }
 
   for (const el of elements) {

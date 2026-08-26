@@ -31,8 +31,19 @@ import { parseCoveringSpec } from './specs/coveringSpec.js';
 import { parseCurtainWallSpec } from './specs/curtainWallSpec.js';
 import { parseSpaceSpec } from './specs/spaceSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
+import {
+  parseBridgePartSpec,
+  parseBridgeSpec,
+  type BridgePartPredefinedType,
+  type BridgePredefinedType,
+  type FacilityUsageType,
+} from './specs/infrastructureSpec.js';
 import type { ProxySpec } from './specs/proxySpec.js';
-import type { ProjectSpec } from './specs/spatialSpec.js';
+import {
+  parseSiteSpec,
+  type IfcElementCompositionType,
+  type ProjectSpec,
+} from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
 
@@ -219,20 +230,14 @@ function peelTranslates(node: csg.IRNode): {
   return { total, moved };
 }
 
-/** True when the element's transform PROP carries a rotation. The spec path
+/** True when the element's rendered local transform carries a rotation. The spec path
  *  folds only translations into IfcLocalPlacement (walls orient via `axisX`),
  *  so a tRotate placement would export un-rotated while the viewport shows it
  *  rotated — reject instead of diverging. Rotations a family render bakes
  *  into its own body geometry (e.g. a circular beam oriented along axisX) are
  *  fine: the spec rebuilds that body parametrically from props. */
 function hasRotateOp(el: ResolvedElement): boolean {
-  const ops = el.props['transform'];
-  return (
-    Array.isArray(ops) &&
-    ops.some(
-      (op) => typeof op === 'object' && op !== null && (op as { op?: unknown }).op === 'rotate'
-    )
-  );
+  return el.localTransforms.some((op) => op.op === 'rotate');
 }
 
 /** Fold the resolved geometry's outer translate chain into the spec placement
@@ -494,6 +499,183 @@ function requireKeyed(el: ResolvedElement): Result<void, BimError> {
   );
 }
 
+type CivilSpatialKind = 'site' | 'bridge' | 'bridge-part';
+type CivilParentKind = 'project' | CivilSpatialKind;
+
+const BRIDGE_ROLE: Readonly<Record<string, BridgePredefinedType>> = {
+  arched: 'ARCHED',
+  'cable-stayed': 'CABLE_STAYED',
+  cantilever: 'CANTILEVER',
+  culvert: 'CULVERT',
+  framework: 'FRAMEWORK',
+  girder: 'GIRDER',
+  suspension: 'SUSPENSION',
+  truss: 'TRUSS',
+};
+
+const BRIDGE_PART_ROLE: Readonly<Record<string, BridgePartPredefinedType>> = {
+  abutment: 'ABUTMENT',
+  deck: 'DECK',
+  'deck-segment': 'DECK_SEGMENT',
+  foundation: 'FOUNDATION',
+  pier: 'PIER',
+  'pier-segment': 'PIER_SEGMENT',
+  pylon: 'PYLON',
+  substructure: 'SUBSTRUCTURE',
+  superstructure: 'SUPERSTRUCTURE',
+  'surface-structure': 'SURFACESTRUCTURE',
+};
+
+const CIVIL_COMPOSITION: Readonly<Record<string, IfcElementCompositionType>> = {
+  collection: 'COMPLEX',
+  element: 'ELEMENT',
+  partial: 'PARTIAL',
+};
+
+const CIVIL_USAGE: Readonly<Record<string, FacilityUsageType>> = {
+  lateral: 'LATERAL',
+  longitudinal: 'LONGITUDINAL',
+  regional: 'REGION',
+  vertical: 'VERTICAL',
+};
+
+function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
+  const semantics = el.semantics;
+  if (semantics?.kind === 'site' && semantics.category === 'site') return 'site';
+  if (semantics?.kind === 'facility' && semantics.category === 'bridge') return 'bridge';
+  if (semantics?.kind === 'spatial-part' && semantics.category === 'bridge-part') {
+    return 'bridge-part';
+  }
+  return undefined;
+}
+
+function hasCivilSpatialSemantics(el: ResolvedElement): boolean {
+  return civilSpatialKind(el) !== undefined || el.children.some(hasCivilSpatialSemantics);
+}
+
+function semanticName(el: ResolvedElement): string {
+  const name = el.attributes['name'];
+  if (typeof name === 'string' && name.trim().length > 0) return name;
+  const semanticNameValue = el.semantics?.properties?.['name'];
+  return typeof semanticNameValue === 'string' && semanticNameValue.trim().length > 0
+    ? semanticNameValue
+    : el.keyPath;
+}
+
+type Translation = readonly [number, number, number];
+
+const ZERO_TRANSLATION: Translation = [0, 0, 0];
+
+function addTranslation(a: Translation, b: Translation): Translation {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function subtractTranslation(a: Translation, b: Translation): Translation {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function hasTranslation(value: Translation): boolean {
+  return value[0] !== 0 || value[1] !== 0 || value[2] !== 0;
+}
+
+function authoredTranslation(el: ResolvedElement): Translation {
+  const total: [number, number, number] = [0, 0, 0];
+  for (const op of el.localTransforms) {
+    if (op.op !== 'translate') continue;
+    total[0] += op.v[0];
+    total[1] += op.v[1];
+    total[2] += op.v[2];
+  }
+  return total;
+}
+
+function civilSpatialInput(
+  el: ResolvedElement,
+  localTranslation: Translation
+): Record<string, unknown> {
+  const semantics = el.semantics;
+  const composition =
+    semantics !== undefined && 'composition' in semantics
+      ? CIVIL_COMPOSITION[semantics.composition]
+      : undefined;
+  const explicitOrigin = (el.props['origin'] as Translation | undefined) ?? ZERO_TRANSLATION;
+  const origin = addTranslation(explicitOrigin, localTranslation);
+  return {
+    name: semanticName(el),
+    ...(el.props['origin'] !== undefined || hasTranslation(localTranslation) ? { origin } : {}),
+    ...(el.props['axisX'] !== undefined ? { axisX: el.props['axisX'] } : {}),
+    ...(el.props['axisZ'] !== undefined ? { axisZ: el.props['axisZ'] } : {}),
+    ...(composition !== undefined ? { compositionType: composition } : {}),
+  };
+}
+
+function civilParentAccepts(kind: CivilSpatialKind, parent: CivilParentKind): boolean {
+  if (kind === 'site') return parent === 'project';
+  if (kind === 'bridge') return parent === 'site';
+  return parent === 'bridge' || parent === 'bridge-part';
+}
+
+function addCivilSpatialOccurrence(
+  model: BimModel,
+  el: ResolvedElement,
+  kind: CivilSpatialKind,
+  localTranslation: Translation
+): Result<LocalId, BimError> {
+  if (kind === 'site') {
+    const parsed = parseSiteSpec(civilSpatialInput(el, localTranslation));
+    return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
+  }
+  if (kind === 'bridge') {
+    const parsed = parseBridgeSpec({
+      ...civilSpatialInput(el, localTranslation),
+      predefinedType: BRIDGE_ROLE[el.semantics?.role ?? ''] ?? 'NOTDEFINED',
+    });
+    return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
+  }
+  const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
+  const parsed = parseBridgePartSpec({
+    ...civilSpatialInput(el, localTranslation),
+    predefinedType: BRIDGE_PART_ROLE[el.semantics?.role ?? ''] ?? 'NOTDEFINED',
+    usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
+  });
+  return parsed.ok ? model.addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
+}
+
+function relativeSpecInput(
+  input: Record<string, unknown>,
+  projectedSpatialTranslation: Translation
+): Record<string, unknown> {
+  const relativeOrigin = (origin: unknown): unknown =>
+    Array.isArray(origin) &&
+    origin.length === 3 &&
+    origin.every((value) => typeof value === 'number')
+      ? subtractTranslation(origin as [number, number, number], projectedSpatialTranslation)
+      : origin;
+  if (Array.isArray(input['flights'])) {
+    const flights: readonly unknown[] = input['flights'];
+    return {
+      ...input,
+      flights: flights.map((flight): unknown => {
+        if (typeof flight !== 'object' || flight === null) return flight;
+        const flightInput = flight as Record<string, unknown>;
+        return {
+          ...flightInput,
+          origin: relativeOrigin(flightInput['origin']),
+        };
+      }),
+    };
+  }
+  return { ...input, origin: relativeOrigin(input['origin']) };
+}
+
+interface ProjectionWalkState {
+  readonly spatialStructureId: LocalId | null;
+  readonly civilParent: CivilParentKind;
+  readonly rotated: boolean;
+  readonly cumulativeTranslation: Translation;
+  readonly projectedSpatialTranslation: Translation;
+}
+
 /**
  * Project a resolved families tree into an eager BimModel. The caller owns
  * the returned model (`using`); families stays domain-neutral — this adapter
@@ -503,39 +685,97 @@ export function familiesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
+  const usesAuthoredCivilHierarchy = hasCivilSpatialSemantics(root);
+  if (usesAuthoredCivilHierarchy) {
+    const keyed = requireKeyed(root);
+    if (!keyed.ok) return keyed;
+  }
   const model = new BimModel();
-  const initResult = model.init(options.project);
+  const initResult = model.init(
+    options.project,
+    usesAuthoredCivilHierarchy ? { stableKey: root.keyPath } : undefined
+  );
   if (!initResult.ok) return initResult;
-  const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
-  if (!siteResult.ok) {
-    model[Symbol.dispose]();
-    return siteResult;
+  const projectId = initResult.value;
+  let buildingId: LocalId | null = null;
+  if (!usesAuthoredCivilHierarchy) {
+    const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
+    if (!siteResult.ok) {
+      model[Symbol.dispose]();
+      return siteResult;
+    }
+    const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
+    if (!buildingResult.ok) {
+      model[Symbol.dispose]();
+      return buildingResult;
+    }
+    buildingId = buildingResult.value;
+    model.aggregate(projectId, siteResult.value);
+    model.aggregate(siteResult.value, buildingId);
   }
-  const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
-  if (!buildingResult.ok) {
-    model[Symbol.dispose]();
-    return buildingResult;
-  }
-  const buildingId = buildingResult.value;
-  const project = model.getProject();
-  if (project !== null) model.aggregate(project.localId, siteResult.value);
-  model.aggregate(siteResult.value, buildingId);
 
-  const idByKeyPath = new Map<string, LocalId>();
+  const idByKeyPath = new Map<string, LocalId>(
+    usesAuthoredCivilHierarchy ? [[root.keyPath, projectId]] : []
+  );
   const proxied: ProxiedElement[] = [];
-  const walk = (
-    el: ResolvedElement,
-    storeyId: LocalId | null,
-    rotated: boolean
-  ): Result<void, BimError> => {
+  const walk = (el: ResolvedElement, state: ProjectionWalkState): Result<void, BimError> => {
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
-    const rotatedHere = rotated || hasRotateOp(el);
+    const rotatedHere = state.rotated || hasRotateOp(el);
+    const cumulativeTranslationHere = addTranslation(
+      state.cumulativeTranslation,
+      authoredTranslation(el)
+    );
     let proxiedHere = false;
-    let containerId = storeyId;
+    let nextSpatialStructureId = state.spatialStructureId;
+    let nextCivilParent = state.civilParent;
+    let nextProjectedSpatialTranslation = state.projectedSpatialTranslation;
     const archetype = archetypeFor(el);
     const route = specRoute(archetype);
-    if (archetype === 'storey') {
+    const civilKind = civilSpatialKind(el);
+    if (civilKind !== undefined) {
+      if (
+        !usesAuthoredCivilHierarchy ||
+        !civilParentAccepts(civilKind, state.civilParent) ||
+        state.spatialStructureId === null
+      ) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: civil '${civilKind}' at '${el.keyPath}' cannot occur under '${state.civilParent}'`
+          )
+        );
+      }
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
+      if (rotatedHere) {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_TRANSFORM',
+            `familiesToBim: civil spatial element '${el.keyPath}' carries a rotated placement — use axisX and axisZ`
+          )
+        );
+      }
+      const localTranslation = subtractTranslation(
+        cumulativeTranslationHere,
+        state.projectedSpatialTranslation
+      );
+      const added = addCivilSpatialOccurrence(model, el, civilKind, localTranslation);
+      if (!added.ok) return added;
+      model.aggregate(state.spatialStructureId, added.value);
+      idByKeyPath.set(el.keyPath, added.value);
+      nextSpatialStructureId = added.value;
+      nextCivilParent = civilKind;
+      nextProjectedSpatialTranslation = cumulativeTranslationHere;
+    } else if (archetype === 'storey') {
+      if (buildingId === null) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: Storey '${el.keyPath}' is not part of the civil Bridge hierarchy`
+          )
+        );
+      }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
       const storeyResult = model.addStorey(
@@ -548,7 +788,7 @@ export function familiesToBim(
       if (!storeyResult.ok) return storeyResult;
       model.aggregate(buildingId, storeyResult.value);
       idByKeyPath.set(el.keyPath, storeyResult.value);
-      containerId = storeyResult.value;
+      nextSpatialStructureId = storeyResult.value;
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
@@ -575,22 +815,32 @@ export function familiesToBim(
           );
         }
       }
-      const parsed = route.parse(('input' in route ? route.input : specInput)(el));
+      const routedInput = ('input' in route ? route.input : specInput)(el);
+      const parsed = route.parse(
+        usesAuthoredCivilHierarchy
+          ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
+          : routedInput
+      );
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;
       idByKeyPath.set(el.keyPath, added.value);
-      if (containerId === null) {
+      if (
+        nextSpatialStructureId === null ||
+        (usesAuthoredCivilHierarchy && state.civilParent !== 'bridge-part')
+      ) {
         return err(
           specError(
-            'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
+            usesAuthoredCivilHierarchy ? 'FAMILIES_INVALID_CIVIL_HIERARCHY' : 'FAMILIES_NO_STOREY',
+            usesAuthoredCivilHierarchy
+              ? `familiesToBim: physical product '${el.keyPath}' needs a Bridge Part ancestor`
+              : `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }
-      model.placeIn(added.value, containerId);
+      model.placeIn(added.value, nextSpatialStructureId);
       if (archetype === 'wall') {
-        const opened = addOpenings(model, el, added.value, containerId, idByKeyPath);
+        const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
       }
     } else if (el.type === 'Opening') {
@@ -611,7 +861,10 @@ export function familiesToBim(
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      if (containerId === null) {
+      if (
+        nextSpatialStructureId === null ||
+        (usesAuthoredCivilHierarchy && state.civilParent !== 'bridge-part')
+      ) {
         return err(
           specError(
             'FAMILIES_NO_STOREY',
@@ -621,7 +874,7 @@ export function familiesToBim(
       }
       const added = addProxyElement(model, el, options.proxyEvaluator);
       if (!added.ok) return added;
-      model.placeIn(added.value, containerId);
+      model.placeIn(added.value, nextSpatialStructureId);
       idByKeyPath.set(el.keyPath, added.value);
       proxied.push({ keyPath: el.keyPath, type: el.type, archetype: el.archetype });
       proxiedHere = true;
@@ -631,13 +884,25 @@ export function familiesToBim(
       // into its authoritative tessellated body — neither wants the
       // outside-wall rejection on the synthesized Opening child.
       if ((archetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
-      const r = walk(child, containerId, rotatedHere);
+      const r = walk(child, {
+        spatialStructureId: nextSpatialStructureId,
+        civilParent: nextCivilParent,
+        rotated: rotatedHere,
+        cumulativeTranslation: cumulativeTranslationHere,
+        projectedSpatialTranslation: nextProjectedSpatialTranslation,
+      });
       if (!r.ok) return r;
     }
     return ok(undefined);
   };
 
-  const walked = walk(root, null, false);
+  const walked = walk(root, {
+    spatialStructureId: usesAuthoredCivilHierarchy ? projectId : null,
+    civilParent: 'project',
+    rotated: false,
+    cumulativeTranslation: ZERO_TRANSLATION,
+    projectedSpatialTranslation: ZERO_TRANSLATION,
+  });
   if (!walked.ok) {
     model[Symbol.dispose]();
     return walked;

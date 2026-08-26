@@ -60,6 +60,10 @@ export interface ResolvedElement {
    *  so identity consumers reject unkeyed elements. */
   readonly keyed: boolean;
   readonly geometry: csg.IRNode;
+  /** Transform operations authored by this rendered intrinsic, before any
+   *  inherited ancestor operations. Empty Groups retain them here even though
+   *  their geometry deliberately remains `Empty`. */
+  readonly localTransforms: readonly TransformOp[];
   /** The element's own pre-desugared props (dimensions, placement, ...) — an
    *  adapter feeds these into parametric spec paths (e.g. IFC) that cannot
    *  recover parameters from baked geometry. */
@@ -216,6 +220,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
         keyPath: openingPath,
         keyed: v.key !== undefined,
         geometry: fill.geometry,
+        localTransforms: [],
         props: {},
         attributes: {},
         relationships: [{ kind: 'Fills', target: fill.keyPath }],
@@ -297,6 +302,7 @@ function resolveAt(
     keyPath: path,
     keyed,
     geometry,
+    localTransforms: ownOps,
     props: elem.props,
     attributes: identityAttributes(elem),
     relationships,

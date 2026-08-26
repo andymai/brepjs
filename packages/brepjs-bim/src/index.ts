@@ -31,6 +31,7 @@ export { parseElementAssemblySpec } from './specs/assemblySpec.js';
 export { parseZoneSpec, parseSystemSpec } from './specs/groupSpec.js';
 export { parseSurfaceStyleSpec } from './specs/styleSpec.js';
 export { parseDoorSpec, parseWindowSpec, parseSlabOpeningInput } from './specs/openingSpec.js';
+export { parseBridgeSpec, parseBridgePartSpec } from './specs/infrastructureSpec.js';
 export { newIfcGuid, isValidIfcGuid } from './identity/ifcGuid.js';
 export { deriveIfcGuid, deriveIfcGuidSync } from './identity/guidDerivation.js';
 export { makeLocalIdCounter } from './identity/localId.js';
@@ -143,8 +144,17 @@ export type { PathConnectionTypeIfc } from './ifc-writer/connectivityWriter.js';
 export type { DoorSpec, WindowSpec, SlabOpeningInput } from './specs/openingSpec.js';
 export type { ProxySpec } from './specs/proxySpec.js';
 export type {
+  BridgeSpec,
+  BridgePartSpec,
+  BridgePredefinedType,
+  BridgePartPredefinedType,
+  FacilityUsageType,
+} from './specs/infrastructureSpec.js';
+export type {
   ProjectSpec,
   ProjectCrs,
+  IfcElementCompositionType,
+  SpatialPlacementSpec,
   SiteSpec,
   BuildingSpec,
   StoreySpec,
