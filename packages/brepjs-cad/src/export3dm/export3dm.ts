@@ -60,51 +60,76 @@ export async function export3dm(entryPath: string, outPath: string): Promise<Exp
   const { nodes, tree } = await evaluateElements(entryPath);
   const rh = await rhino3dm();
   const doc = new rh.File3dm();
-  const layerIndexByName = new Map<string, number>();
-  const identities = identityByKeyPath(tree);
-  const failed: string[] = [];
-  let elements = 0;
-  for (const [keyPath, node] of nodes) {
-    if (!node.mesh.ok) {
-      failed.push(keyPath);
-      continue;
+  try {
+    const layerIndexByName = new Map<string, number>();
+    const identities = identityByKeyPath(tree);
+    const failed: string[] = [];
+    let elements = 0;
+    for (const [keyPath, node] of nodes) {
+      if (!node.mesh.ok) {
+        failed.push(keyPath);
+        continue;
+      }
+      const layerName = layerNameFor(keyPath, identities.get(keyPath));
+      let layerIndex = layerIndexByName.get(layerName);
+      if (layerIndex === undefined) {
+        const color = LAYER_COLORS[layerIndexByName.size % LAYER_COLORS.length];
+        layerIndex = doc.layers().addLayer(layerName, color ?? { r: 128, g: 128, b: 128, a: 255 });
+        layerIndexByName.set(layerName, layerIndex);
+      }
+      addElementMesh(rh, doc, node.mesh.value, keyPath, layerIndex);
+      elements += 1;
     }
-    const layerName = layerNameFor(keyPath, identities.get(keyPath));
-    let layerIndex = layerIndexByName.get(layerName);
-    if (layerIndex === undefined) {
-      const color = LAYER_COLORS[layerIndexByName.size % LAYER_COLORS.length];
-      layerIndex = doc.layers().addLayer(layerName, color ?? { r: 128, g: 128, b: 128, a: 255 });
-      layerIndexByName.set(layerName, layerIndex);
-    }
-    const m = node.mesh.value;
-    const mesh = new rh.Mesh();
-    const vertices = mesh.vertices();
+    const bytes = doc.toByteArray();
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, bytes);
+    return { elements, failed };
+  } finally {
+    release(doc);
+  }
+}
+
+type RhinoModule = Awaited<ReturnType<typeof rhino3dm>>;
+
+function addElementMesh(
+  rh: RhinoModule,
+  doc: InstanceType<RhinoModule['File3dm']>,
+  m: { vertices: Float32Array; normals: Float32Array; triangles: Uint32Array },
+  keyPath: string,
+  layerIndex: number
+): void {
+  const mesh = new rh.Mesh();
+  const attrs = new rh.ObjectAttributes();
+  let vertices: unknown;
+  let normals: unknown;
+  let faces: unknown;
+  try {
+    const v = mesh.vertices();
+    vertices = v;
     for (let i = 0; i + 2 < m.vertices.length; i += 3) {
-      vertices.add(m.vertices[i] ?? 0, m.vertices[i + 1] ?? 0, m.vertices[i + 2] ?? 0);
+      v.add(m.vertices[i] ?? 0, m.vertices[i + 1] ?? 0, m.vertices[i + 2] ?? 0);
     }
-    const normals = mesh.normals();
+    const n = mesh.normals();
+    normals = n;
     for (let i = 0; i + 2 < m.normals.length; i += 3) {
-      normals.add(m.normals[i] ?? 0, m.normals[i + 1] ?? 0, m.normals[i + 2] ?? 0);
+      n.add(m.normals[i] ?? 0, m.normals[i + 1] ?? 0, m.normals[i + 2] ?? 0);
     }
-    const faces = mesh.faces();
+    const f = mesh.faces();
+    faces = f;
     for (let i = 0; i + 2 < m.triangles.length; i += 3) {
-      faces.addTriFace(m.triangles[i] ?? 0, m.triangles[i + 1] ?? 0, m.triangles[i + 2] ?? 0);
+      f.addTriFace(m.triangles[i] ?? 0, m.triangles[i + 1] ?? 0, m.triangles[i + 2] ?? 0);
     }
-    const attrs = new rh.ObjectAttributes();
     attrs.name = keyPath;
     attrs.layerIndex = layerIndex;
     // addMesh(mesh) has no attributes overload — the generic add carries them.
     doc.objects().add(mesh, attrs);
+  } finally {
+    // The doc copied what it needs; the staging wasm objects are freed on every
+    // path, including a throw mid-construction.
     release(vertices);
     release(normals);
     release(faces);
     release(mesh);
     release(attrs);
-    elements += 1;
   }
-  const bytes = doc.toByteArray();
-  release(doc);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, bytes);
-  return { elements, failed };
 }
