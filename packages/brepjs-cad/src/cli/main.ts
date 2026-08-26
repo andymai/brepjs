@@ -17,7 +17,7 @@ import {
   watchRootFor,
   watchTree,
 } from './watch.js';
-import { exportPart } from './exportPart.js';
+import { exportPart, stem } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
@@ -316,8 +316,6 @@ program
   .argument('<file>', 'path to a .brep.ts module; re-verifies on each save until Ctrl-C')
   .action((file: string) => {
     const path = resolve(file);
-    // Reruns import with a fresh cache-busting query — the ESM cache is keyed by URL, so
-    // without it every rerun would re-execute the first version of the part forever.
     const run = async (fresh: boolean) => {
       try {
         const { report, shape } = await runPart(path, { freshImport: fresh });
@@ -356,7 +354,10 @@ program
     'path to a model module (.ts/.tsx); a families element tree renders per element'
   )
   .option('--watch', 're-evaluate on save and push updates to the open viewer tab')
-  .option('--write-only', 'write artifacts and exit without starting the viewer server')
+  .option(
+    '--write-only',
+    'write artifacts without starting the viewer server (exits unless --watch)'
+  )
   .option('--glb <out>', 'write a merged GLB of the whole model')
   .option('--json <out>', 'write the JSON summary to this path')
   .option('--port <n>', 'viewer server port (default: OS-assigned)', (v: string) => parseInt(v, 10))
@@ -386,7 +387,10 @@ program
 
 program
   .command('export')
-  .argument('<file>', 'path to a .brep.ts module')
+  .argument(
+    '<file>',
+    'path to a part (.brep.ts) module; --3dm also accepts a model (.ts/.tsx) default-exporting a families element tree'
+  )
   .option('--step', 'write a STEP artifact')
   .option('--glb', 'write a GLB artifact')
   .option('--stl', 'write an STL artifact')
@@ -406,6 +410,13 @@ program
       }
     ) => {
       const path = resolve(file);
+      if (opts['3dm'] && (opts.step || opts.glb || opts.stl || opts.all)) {
+        // The .3dm path evaluates the element-aware module contract; the other formats
+        // run the shape contract — one invocation cannot honor both.
+        process.stderr.write('--3dm cannot be combined with --step/--glb/--stl/--all\n');
+        process.exitCode = 1;
+        return;
+      }
       if (opts['3dm']) {
         // Lazy: rhino3dm is an optionalDependency; a missing install must fail with an
         // actionable message, not a resolution stack.
@@ -417,7 +428,7 @@ program
           process.exitCode = 1;
           return;
         }
-        const outPath = join(resolve(opts.out), basename(path).replace(/\.[^.]+$/, '') + '.3dm');
+        const outPath = join(resolve(opts.out), stem(path) + '.3dm');
         try {
           const r = await run(path, outPath);
           process.stderr.write(`wrote: ${outPath}\n`);

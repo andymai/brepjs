@@ -30,6 +30,23 @@ describe('TSX loader', () => {
     // executed in the one kernel realm.
     expect(json.measurements.volume).toBeCloseTo(800, 1);
   }, 120000);
+
+  it('normalizes a non-emitting tsconfig jsx mode (preserve) to the automatic runtime', () => {
+    const stdout = execFileSync(
+      'npx',
+      [
+        'tsx',
+        cli,
+        fileURLToPath(new URL('./fixtures/tsxPreserve/main.tsx', import.meta.url)),
+        '--check',
+      ],
+      { encoding: 'utf8', cwd: pkgRoot }
+    );
+    const json = JSON.parse(stdout) as SerializedReport;
+    expect(json.errors, json.errors.join('; ')).toEqual([]);
+    expect(json.ok).toBe(true);
+    expect(json.measurements.volume).toBeCloseTo(1000, 1);
+  }, 120000);
 });
 
 describe('brep watch', () => {

@@ -11,16 +11,17 @@ Prefix any command with `npx -y` to run without installing.
 
 ## Commands
 
-| Command                | What it does                                                                                                                                                                                              |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brep verify <file>`   | **Default command.** Loads the part, runs deterministic checks, prints the JSON report. Flags: `--check`, `--json <out>`, `--step <out>`, `--glb <out>`, `--snapshot <dir>`, `--serve`.                   |
-| `brep init <name>`     | Scaffolds a parameterized `<name>.brep.ts` + `tsconfig.json` + `README.md` into `./<name>` (or `--out <dir>`). Never overwrites existing files.                                                           |
-| `brep watch <file>`    | Re-verifies on every save until Ctrl-C (debounced; watches the parent dir to survive editor rename-on-save).                                                                                              |
-| `brep export <file>`   | Batch artifacts behind a validity gate: `--step`, `--glb`, `--stl`, or `--all`; `--out <dir>` (default `.`). Exits non-zero on failure.                                                                   |
-| `brep measure <a> [b]` | Measurements for one part; with a second module, the distance between the two parts.                                                                                                                      |
-| `brep diff <a> <b>`    | Compares the measurements of a baseline and a comparison module.                                                                                                                                          |
-| `brep snapshot`        | Multi-view PNG capture, usually surfaced via `verify --snapshot <dir>`. Needs the optional `puppeteer`/Chrome dependency.                                                                                 |
-| `brep serve`           | Preview server with a `?dir=&file=` deep link, usually surfaced via `verify --serve`. Auto-opens the browser in an interactive terminal; suppressed under CI / non-TTY / no display, or with `--no-open`. |
+| Command                | What it does                                                                                                                                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brep verify <file>`   | **Default command.** Loads the part, runs deterministic checks, prints the JSON report. Flags: `--check`, `--json <out>`, `--step <out>`, `--glb <out>`, `--snapshot <dir>`, `--serve`.                                                                  |
+| `brep init <name>`     | Scaffolds a parameterized `<name>.brep.ts` + `tsconfig.json` + `README.md` into `./<name>` (or `--out <dir>`). Never overwrites existing files.                                                                                                          |
+| `brep watch <file>`    | Re-verifies on every save until Ctrl-C (debounced; watches the parent dir to survive editor rename-on-save).                                                                                                                                             |
+| `brep preview <file>`  | Element-aware live viewer for a model module (families element tree, resolved tree, or plain shape). `--watch` re-evaluates on save; `--write-only` (CI), `--glb <out>`, `--json <out>`, `--port <n>`, `--no-open`.                                      |
+| `brep export <file>`   | Batch artifacts behind a validity gate: `--step`, `--glb`, `--stl`, or `--all`; `--3dm` writes an element-aware Rhino file (optional `rhino3dm` install; not combinable with the other formats); `--out <dir>` (default `.`). Exits non-zero on failure. |
+| `brep measure <a> [b]` | Measurements for one part; with a second module, the distance between the two parts.                                                                                                                                                                     |
+| `brep diff <a> <b>`    | Compares the measurements of a baseline and a comparison module.                                                                                                                                                                                         |
+| `brep snapshot`        | Multi-view PNG capture, usually surfaced via `verify --snapshot <dir>`. Needs the optional `puppeteer`/Chrome dependency.                                                                                                                                |
+| `brep serve`           | Preview server with a `?dir=&file=` deep link, usually surfaced via `verify --serve`. Auto-opens the browser in an interactive terminal; suppressed under CI / non-TTY / no display, or with `--no-open`.                                                |
 
 ## `verify` flags
 

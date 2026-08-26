@@ -176,15 +176,21 @@ export async function load(url, context, nextLoad) {
   const source = readFileSync(filePath, 'utf8');
   const ts = await loadTypescript();
   bumpJsxOptionsGeneration(parsed.searchParams.get('v'));
+  const jsxConfig = jsxOptionsFor(ts, filePath);
+  // A non-emitting jsx mode (preserve/react-native/none — e.g. a Next.js root tsconfig)
+  // would leave raw JSX in the output and fail the module parse; normalize .tsx to the
+  // automatic runtime while keeping the configured jsxImportSource.
+  const emitsJsx =
+    jsxConfig.jsx === ts.JsxEmit.React ||
+    jsxConfig.jsx === ts.JsxEmit.ReactJSX ||
+    jsxConfig.jsx === ts.JsxEmit.ReactJSXDev;
   const { outputText } = ts.transpileModule(source, {
     fileName: filePath,
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2022,
-      // A .tsx with no configured dialect still needs SOME emit mode; the automatic
-      // runtime is TS's modern default recommendation and what the scaffold ships.
-      ...(parsed.pathname.endsWith('.tsx') ? { jsx: ts.JsxEmit.ReactJSX } : {}),
-      ...jsxOptionsFor(ts, filePath),
+      ...jsxConfig,
+      ...(parsed.pathname.endsWith('.tsx') && !emitsJsx ? { jsx: ts.JsxEmit.ReactJSX } : {}),
       inlineSourceMap: true,
     },
   });

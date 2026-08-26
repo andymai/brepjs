@@ -14,7 +14,7 @@ import {
 } from 'brepjs-viewer';
 import { loadBrep, initOcctWasm, type BrepNs } from '../verify/brepjsRuntime.js';
 import { loadPart } from '../verify/runPart.js';
-import { packageRootOf } from '../verify/typecheck.js';
+import { exportsField, packageRootOf } from '../verify/typecheck.js';
 import { disposeShape } from '../disposeShape.js';
 
 // Structural views of brepjs-families — the package is dynamically imported from the
@@ -126,17 +126,10 @@ export function resolveFamiliesEntry(entryPath: string): string | undefined {
 }
 
 function esmEntryOf(pkg: { exports?: unknown; module?: unknown }): string | undefined {
-  const root = (pkg.exports as Record<string, unknown> | undefined)?.['.'];
-  if (root && typeof root === 'object') {
-    const imp = (root as Record<string, unknown>)['import'];
-    if (imp && typeof imp === 'object') {
-      const d = (imp as Record<string, unknown>)['default'];
-      if (typeof d === 'string') return d;
-    }
-    const d = (root as Record<string, unknown>)['default'];
-    if (typeof d === 'string') return d;
-  }
-  return typeof pkg.module === 'string' ? pkg.module : undefined;
+  return (
+    exportsField(pkg.exports, 'default') ??
+    (typeof pkg.module === 'string' ? pkg.module : undefined)
+  );
 }
 
 async function importFamilies(entryPath: string): Promise<FamiliesNs | undefined> {
@@ -192,6 +185,30 @@ export async function evaluateElements(
   return shapeElements(brep, value as AnyShape);
 }
 
+// Edges are cosmetic, so a meshEdges failure must not fail the element.
+function tryMeshEdges(brep: BrepNs, shape: AnyShape): Float32Array | undefined {
+  try {
+    return brep.meshEdges(shape).lines;
+  } catch {
+    return undefined;
+  }
+}
+
+function toEvaluatedNode(m: ShapeMesh, edges: Float32Array | undefined): EvaluatedNodeLike {
+  return {
+    mesh: {
+      ok: true,
+      value: {
+        triangles: m.triangles,
+        vertices: m.vertices,
+        normals: m.normals,
+        faceGroups: m.faceGroups,
+        ...(edges ? { edges } : {}),
+      },
+    },
+  };
+}
+
 async function treeElements(
   brep: BrepNs,
   value: unknown,
@@ -213,54 +230,16 @@ async function treeElements(
       nodes.set(keyPath, { mesh: { ok: false } });
       continue;
     }
-    // Shapes are borrowed from the Evaluator's cache (do not dispose); edges are
-    // cosmetic, so a meshEdges failure must not fail the element.
-    let edges: Float32Array | undefined;
+    // Shapes are borrowed from the Evaluator's cache (do not dispose).
     const shape = node.shape?.ok ? node.shape.value : undefined;
-    if (shape) {
-      try {
-        edges = brep.meshEdges(shape).lines;
-      } catch {
-        edges = undefined;
-      }
-    }
-    nodes.set(keyPath, {
-      mesh: {
-        ok: true,
-        value: {
-          triangles: m.triangles,
-          vertices: m.vertices,
-          normals: m.normals,
-          faceGroups: m.faceGroups,
-          ...(edges ? { edges } : {}),
-        },
-      },
-    });
+    nodes.set(keyPath, toEvaluatedNode(m, shape ? tryMeshEdges(brep, shape) : undefined));
   }
   return { nodes, tree: toTree(model.root) };
 }
 
 function shapeElements(brep: BrepNs, shape: AnyShape): EvaluatedElements {
   try {
-    const m = brep.mesh(shape);
-    let edges: Float32Array | undefined;
-    try {
-      edges = brep.meshEdges(shape).lines;
-    } catch {
-      edges = undefined;
-    }
-    const node: EvaluatedNodeLike = {
-      mesh: {
-        ok: true,
-        value: {
-          triangles: m.triangles,
-          vertices: m.vertices,
-          normals: m.normals,
-          faceGroups: m.faceGroups,
-          ...(edges ? { edges } : {}),
-        },
-      },
-    };
+    const node = toEvaluatedNode(brep.mesh(shape), tryMeshEdges(brep, shape));
     const tree: PreviewTreeNode = {
       keyPath: 'part',
       type: 'Shape',

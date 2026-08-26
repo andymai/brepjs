@@ -4,7 +4,7 @@
  *
  *   npm create brepjs@latest my-project
  *
- * Copies the template (package.json, tsconfig, a working src/main.ts) into
+ * Copies the template (package.json, tsconfig, a working src/main.tsx) into
  * the target directory and prints the copy-in next steps (`npx brepjs add`).
  */
 

@@ -18,10 +18,10 @@ export interface ExportResult {
   errors: string[];
 }
 
-function stem(file: string): string {
+export function stem(file: string): string {
   return basename(file)
     .replace(/\.brep\.ts$/, '')
-    .replace(/\.ts$/, '');
+    .replace(/\.(?:m?ts|tsx)$/, '');
 }
 
 export async function exportPart(
