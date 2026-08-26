@@ -1,0 +1,25 @@
+packages/create-brepjs/templates/AGENTS.md
+  s_3f41f7f80a23af::t_24ef31af8f66d3 10
+packages/create-brepjs/templates/CLAUDE.md
+  s_3f41f7f80a23af::t_a4e0f30996ce62 10
+packages/create-brepjs/templates/README.md
+  s_3f41f7f80a23af::t_a9223ebcffbb99 10
+packages/create-brepjs/templates/package.json.tpl
+  s_3f41f7f80a23af::t_23431432b79af6 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "af5e0aec9c2528d6b528a6ea84d04b3227555216",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
