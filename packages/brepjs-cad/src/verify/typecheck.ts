@@ -78,6 +78,31 @@ function packageRootOf(startDir: string, name: string): string | undefined {
   }
 }
 
+/**
+ * JSX options for a part come from the nearest tsconfig.json — the same source the
+ * runtime load hook reads — so `--check` and execution agree on the dialect
+ * (families projects set `jsx: react-jsx` + `jsxImportSource: brepjs-families`).
+ * A `.tsx` part with nothing configured defaults to the automatic runtime.
+ */
+function jsxCompilerOptions(partPath: string): ts.CompilerOptions {
+  const out: ts.CompilerOptions = {};
+  const configPath = ts.findConfigFile(dirname(partPath), (f) => ts.sys.fileExists(f));
+  if (configPath) {
+    const host: ts.ParseConfigFileHost = {
+      ...ts.sys,
+      onUnRecoverableConfigFileDiagnostic: () => {},
+    };
+    const parsed = ts.getParsedCommandLineOfConfigFile(configPath, undefined, host);
+    if (parsed) {
+      for (const key of ['jsx', 'jsxImportSource', 'jsxFactory', 'jsxFragmentFactory']) {
+        if (parsed.options[key] !== undefined) out[key] = parsed.options[key];
+      }
+    }
+  }
+  if (partPath.endsWith('.tsx') && out.jsx === undefined) out.jsx = ts.JsxEmit.ReactJSX;
+  return out;
+}
+
 const COMPILER_OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2022,
   module: ts.ModuleKind.ESNext,
@@ -138,7 +163,7 @@ export interface TypecheckResult {
  */
 export function typecheckPart(partPath: string, toolDir?: string): TypecheckResult {
   const dts = resolveBrepjsTypes(partPath, toolDir);
-  const options: ts.CompilerOptions = { ...COMPILER_OPTIONS };
+  const options: ts.CompilerOptions = { ...COMPILER_OPTIONS, ...jsxCompilerOptions(partPath) };
   if (dts) {
     options.paths = { brepjs: [dts] };
   }

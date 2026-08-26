@@ -43,10 +43,15 @@ export function toolDir(): string {
 }
 
 function loaderUrl(dir: string): string {
-  // Hand-authored ESM hook. The build copies it to dist/loader/; in dev/test it lives in
-  // src/loader/. Probe both so the same module works built and from source.
-  const built = resolvePath(dir, 'dist', 'loader', 'brepjsResolve.mjs');
+  // Hand-authored ESM hook. The build copies it to dist/loader/; in dev/test this module
+  // runs from src/. Pick by where THIS module runs — probing dist first would let a stale
+  // dist/ from an earlier build shadow the live source in dev.
   const source = resolvePath(dir, 'src', 'loader', 'brepjsResolve.mjs');
+  const built = resolvePath(dir, 'dist', 'loader', 'brepjsResolve.mjs');
+  const runningFromSrc = import.meta.url.startsWith(
+    pathToFileURL(resolvePath(dir, 'src') + '/').href
+  );
+  if (runningFromSrc) return pathToFileURL(source).href;
   return pathToFileURL(existsSync(built) ? built : source).href;
 }
 

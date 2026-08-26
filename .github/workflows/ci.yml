@@ -199,8 +199,10 @@ jobs:
   packages-verify:
     # brepjs-cad skill runtime (verify CLI + WASM viewer). Build root brepjs and
     # brepjs-viewer dist first so the package typecheck/viewer build resolve their
-    # types (brepjs-viewer is a runtime dep, not externalized). The setup
-    # composite restores the OCCT WASM the viewer build copies.
+    # types (brepjs-viewer is a runtime dep, not externalized). brepjs-families dist
+    # is needed too: the TSX loader tests resolve brepjs-families/jsx-runtime through
+    # the workspace symlink. The setup composite restores the OCCT WASM the viewer
+    # build copies.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -210,6 +212,7 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run build --workspace=brepjs-viewer
+      - run: npm run build --workspace=brepjs-families
       - run: npm run typecheck --workspace=brepjs-cad
       - run: npm run lint --workspace=brepjs-cad
       - run: npm run test --workspace=brepjs-cad

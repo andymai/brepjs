@@ -54,15 +54,20 @@ function buildMaterialMap(
   return map.size > 0 ? { map } : {};
 }
 
-// Author parts are `.brep.ts`. Node strips types natively (engines requires >=24),
-// but only in an ESM context — so a part loaded under a CommonJS project fails. A
-// transpiler fallback (tsx) is NOT viable: it loads `brepjs` in a separate module
-// realm, so the part gets an uninitialized kernel. Surface a clear fix instead.
+// TS/TSX parts load through the registered hook (transpile + `.js`->`.ts` fallback), all
+// in ONE module realm — a transpiler runner like tsx would give the part an uninitialized
+// kernel in a second realm. `fresh` busts the ESM module cache with a `?v=N` query (the
+// hook propagates it across the part's own imports) so watch reruns pick up edits.
+let importGeneration = 0;
+
 async function loadPart(
-  modulePath: string
+  modulePath: string,
+  fresh = false
 ): Promise<{ default?: PartFn; expected?: unknown; materials?: unknown }> {
+  const url = new URL(pathToFileURL(modulePath).href);
+  if (fresh) url.searchParams.set('v', String(++importGeneration));
   try {
-    return (await import(pathToFileURL(modulePath).href)) as {
+    return (await import(url.href)) as {
       default?: PartFn;
       expected?: unknown;
       materials?: unknown;
@@ -74,7 +79,7 @@ async function loadPart(
     if (/\.[mc]?tsx?$/.test(modulePath) && /import statement|file extension/i.test(msg)) {
       throw new Error(
         `cannot load TypeScript part "${modulePath}": author parts in an ESM project ` +
-          `(set "type": "module" in package.json) or rename the file to .mts. (${msg})`,
+          `(set "type": "module" in package.json). (${msg})`,
         { cause: e }
       );
     }
@@ -104,7 +109,8 @@ function toErrorInfo(prefix: string, e: unknown): ErrorInfo {
     // Anchor on the literal `[KIND] CODE:` shape so a stray `]…:` elsewhere can't be mistaken
     // for the code.
     const code =
-      e.message.match(/\[[A-Z][A-Z0-9_]*\]\s+([A-Z][A-Z0-9_]+):/)?.[1] ?? classifyKernelMessage(e.message);
+      e.message.match(/\[[A-Z][A-Z0-9_]*\]\s+([A-Z][A-Z0-9_]+):/)?.[1] ??
+      classifyKernelMessage(e.message);
     return code
       ? { message: `${prefix}: ${e.message}`, code }
       : { message: `${prefix}: ${e.message}` };
@@ -135,6 +141,11 @@ export interface RunPartOptions {
    * judge/snapshot path opts in; the author `--check` loop stays fast.
    */
   metrics?: boolean;
+  /**
+   * Bust the ESM module cache for the part and its own imports (watch reruns pick up
+   * edits). The kernel realm (`brepjs`/`occt-wasm`) keeps its stable URLs either way.
+   */
+  freshImport?: boolean;
 }
 
 export interface RunPartResult {
@@ -182,7 +193,7 @@ export async function runPart(
   const { isOk, mesh, exportGlb, exportSTEP } = brep;
   let mod: { default?: PartFn; expected?: unknown; materials?: unknown };
   try {
-    mod = await loadPart(modulePath);
+    mod = await loadPart(modulePath, opts.freshImport);
   } catch (e) {
     pushError(report, toErrorInfo('import failed', e));
     return finalize({ shape: null, report });

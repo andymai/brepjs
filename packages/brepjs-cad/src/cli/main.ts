@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync, watch as fsWatch, realpathSync, globSync } from 'node:fs';
+import { writeFileSync, realpathSync, globSync } from 'node:fs';
 import { resolve, join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,7 @@ import { pushError, reportOk, serializeReport, type VerifyReport } from '../veri
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
-import { debounce, DEFAULT_DEBOUNCE_MS } from './watch.js';
+import { debounce, DEFAULT_DEBOUNCE_MS, isWatchRelevant, watchTree } from './watch.js';
 import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
@@ -308,9 +308,11 @@ program
   .argument('<file>', 'path to a .brep.ts module; re-verifies on each save until Ctrl-C')
   .action((file: string) => {
     const path = resolve(file);
-    const run = async () => {
+    // Reruns import with a fresh cache-busting query — the ESM cache is keyed by URL, so
+    // without it every rerun would re-execute the first version of the part forever.
+    const run = async (fresh: boolean) => {
       try {
-        const { report, shape } = await runPart(path);
+        const { report, shape } = await runPart(path, { freshImport: fresh });
         try {
           process.stdout.write(serializeReport(report) + '\n');
         } finally {
@@ -320,20 +322,17 @@ program
         process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
       }
     };
-    const { trigger } = debounce(run, DEFAULT_DEBOUNCE_MS);
+    const { trigger } = debounce(() => run(true), DEFAULT_DEBOUNCE_MS);
     process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
-    void run(); // initial verify
-    // Watch the parent dir: editors often replace the file (rename) on save,
-    // which drops a watcher bound to the file inode itself.
-    const watcher = fsWatch(dirname(path), (_event, filename) => {
-      if (filename === undefined || filename === null) {
-        trigger();
-        return;
-      }
-      if (basename(path) === filename.toString()) trigger();
+    void run(false); // initial verify
+    // Watch the entry's whole directory tree: editors often replace a file (rename) on
+    // save, which drops a watcher bound to the inode itself — and a multi-file project
+    // must re-verify when any of its source files changes, not just the entry.
+    const stopWatching = watchTree(dirname(path), (filename) => {
+      if (isWatchRelevant(filename)) trigger();
     });
     const stop = () => {
-      watcher.close();
+      stopWatching();
       process.exit(0);
     };
     process.on('SIGINT', stop);
