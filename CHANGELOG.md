@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.161.2](https://github.com/andymai/brepjs/compare/brepjs-v18.161.1...brepjs-v18.161.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* **ci:** stop executing workflow_run head_sha in docs deploy ([#2245](https://github.com/andymai/brepjs/issues/2245)) ([0a03772](https://github.com/andymai/brepjs/commit/0a03772f8b640ac44aaf639604c4b29e893d65ba))
+
 ## [18.161.1](https://github.com/andymai/brepjs/compare/brepjs-v18.161.0...brepjs-v18.161.1) (2026-08-26)
 
 
