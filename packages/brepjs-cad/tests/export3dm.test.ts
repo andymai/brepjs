@@ -29,11 +29,12 @@ describe('brep export --3dm', () => {
   it('writes one named, layered mesh object per element of a families tree', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-3dm-'));
     try {
-      const summary = run3dm(join(fixtureDir, 'model.tsx'), dir);
+      // A nested, not-yet-existing out dir: the exporter must create it.
+      const summary = run3dm(join(fixtureDir, 'model.tsx'), join(dir, 'nested', 'out'));
       expect(summary.ok).toBe(true);
       expect(summary.elements).toBe(1);
       const rh = await rhino3dm();
-      const doc = rh.File3dm.fromByteArray(readFileSync(join(dir, 'model.3dm')));
+      const doc = rh.File3dm.fromByteArray(readFileSync(join(dir, 'nested', 'out', 'model.3dm')));
       expect(doc.objects().count).toBe(1);
       const obj = doc.objects().get(0);
       expect(obj.attributes().name).toBe('assembly/panel');

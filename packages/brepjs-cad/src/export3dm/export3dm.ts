@@ -1,4 +1,5 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import rhino3dm from 'rhino3dm';
 import type { PreviewTreeNode } from 'brepjs-viewer';
 import { evaluateElements } from '../preview/evaluate.js';
@@ -35,6 +36,14 @@ function identityByKeyPath(tree: PreviewTreeNode): Map<string, ElementIdentity> 
 
 /** Layer name: the element's archetype when declared, else the key path's first
  *  segment (the containing family/group), else the element type. */
+// rhino3dm objects are Emscripten-bound wasm allocations; the typings do not declare
+// the embind delete(), so release through a guarded probe. File3dm.objects().add copies
+// into the document, which makes the staging objects safe to free immediately.
+function release(obj: unknown): void {
+  const d = (obj as { delete?: () => void }).delete;
+  if (typeof d === 'function') d.call(obj);
+}
+
 function layerNameFor(keyPath: string, identity: ElementIdentity | undefined): string {
   if (identity?.archetype !== undefined) return identity.archetype;
   const prefix = keyPath.split('/')[0];
@@ -86,8 +95,16 @@ export async function export3dm(entryPath: string, outPath: string): Promise<Exp
     attrs.layerIndex = layerIndex;
     // addMesh(mesh) has no attributes overload — the generic add carries them.
     doc.objects().add(mesh, attrs);
+    release(vertices);
+    release(normals);
+    release(faces);
+    release(mesh);
+    release(attrs);
     elements += 1;
   }
-  writeFileSync(outPath, doc.toByteArray());
+  const bytes = doc.toByteArray();
+  release(doc);
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, bytes);
   return { elements, failed };
 }
