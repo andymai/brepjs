@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { writeFileSync, realpathSync, globSync } from 'node:fs';
-import { resolve, join, basename, dirname } from 'node:path';
+import { resolve, join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
@@ -9,7 +9,13 @@ import { pushError, reportOk, serializeReport, type VerifyReport } from '../veri
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
-import { debounce, DEFAULT_DEBOUNCE_MS, isWatchRelevant, watchTree } from './watch.js';
+import {
+  debounce,
+  DEFAULT_DEBOUNCE_MS,
+  isWatchRelevant,
+  watchRootFor,
+  watchTree,
+} from './watch.js';
 import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
@@ -347,10 +353,11 @@ program
     const { trigger } = debounce(schedule, DEFAULT_DEBOUNCE_MS);
     process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
     start(false); // initial verify
-    // Watch the entry's whole directory tree: editors often replace a file (rename) on
-    // save, which drops a watcher bound to the inode itself — and a multi-file project
-    // must re-verify when any of its source files changes, not just the entry.
-    const stopWatching = watchTree(dirname(path), (filename) => {
+    // Watch the whole project tree (nearest package.json/tsconfig.json above the entry):
+    // editors often replace a file (rename) on save, which drops a watcher bound to the
+    // inode itself — and a multi-file project must re-verify when any source OR the root
+    // tsconfig changes, not just files beside the entry.
+    const stopWatching = watchTree(watchRootFor(path), (filename) => {
       if (isWatchRelevant(filename)) trigger();
     });
     const stop = () => {

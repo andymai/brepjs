@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { debounce, DEFAULT_DEBOUNCE_MS, isWatchRelevant, watchTree } from '@/cli/watch.js';
+import {
+  debounce,
+  DEFAULT_DEBOUNCE_MS,
+  isWatchRelevant,
+  watchRootFor,
+  watchTree,
+} from '@/cli/watch.js';
 
 describe('debounce', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -86,6 +92,26 @@ describe('watchTree', () => {
       expect(events).not.toContain('index.js');
     } finally {
       stop();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('watchRootFor', () => {
+  it('roots at the nearest project marker above the entry, else the entry dir', async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const root = mkdtempSync(join(tmpdir(), 'brepjs-cad-watchroot-'));
+    try {
+      mkdirSync(join(root, 'proj', 'src'), { recursive: true });
+      writeFileSync(join(root, 'proj', 'tsconfig.json'), '{}\n');
+      expect(watchRootFor(join(root, 'proj', 'src', 'main.tsx'))).toBe(join(root, 'proj'));
+      mkdirSync(join(root, 'bare', 'deep'), { recursive: true });
+      expect(watchRootFor(join(root, 'bare', 'deep', 'part.brep.ts'))).toBe(
+        join(root, 'bare', 'deep')
+      );
+    } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });

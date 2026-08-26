@@ -1,6 +1,6 @@
-import { watch, readdirSync } from 'node:fs';
+import { watch, readdirSync, existsSync } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 export const DEFAULT_DEBOUNCE_MS = 150;
 
@@ -37,6 +37,25 @@ export function isWatchRelevant(filename: string | Buffer | null | undefined): b
   // tsconfig edits change how sources transpile (JSX dialect), so they re-verify too.
   if (/(?:^|[\\/])tsconfig(?:\..+)?\.json$/.test(name)) return true;
   return SOURCE_FILE_RE.test(name);
+}
+
+/**
+ * Root the watcher at the project, not the entry's own directory: with the common
+ * `src/main.ts` layout, tsconfig.json (whose JSX options change how sources transpile)
+ * and `../` imports live one level up. Nearest package.json or tsconfig.json walking up
+ * wins; entries with no project marker fall back to their own directory.
+ */
+export function watchRootFor(entryPath: string): string {
+  const start = dirname(entryPath);
+  let dir = start;
+  for (;;) {
+    if (existsSync(join(dir, 'package.json')) || existsSync(join(dir, 'tsconfig.json'))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return start;
+    dir = parent;
+  }
 }
 
 const IGNORED_DIR_NAMES = new Set(['node_modules', 'dist', '.git']);
