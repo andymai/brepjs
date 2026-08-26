@@ -6,7 +6,7 @@ import { dirname, join, normalize, resolve, sep, extname } from 'node:path';
 
 export const SERVER_API_VERSION = 1;
 const moduleDir = dirname(fileURLToPath(import.meta.url));
-const VIEWER_DIST = resolve(moduleDir, '../../viewer/dist');
+export const VIEWER_DIST = resolve(moduleDir, '../../viewer/dist');
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -40,7 +40,7 @@ export interface ServerDescriptor {
   serverApiVersion: number;
 }
 
-async function sendFile(res: ServerResponse, absPath: string): Promise<void> {
+export async function sendFile(res: ServerResponse, absPath: string): Promise<void> {
   const info = await stat(absPath);
   if (!info.isFile()) {
     res.writeHead(404).end('not found');
@@ -50,7 +50,7 @@ async function sendFile(res: ServerResponse, absPath: string): Promise<void> {
   createReadStream(absPath).pipe(res);
 }
 
-function safeJoin(root: string, rel: string): string | null {
+export function safeJoin(root: string, rel: string): string | null {
   const abs = resolve(root, normalize(decodeURIComponent(rel.replace(/^\/+/, ''))));
   if (abs !== root && !abs.startsWith(root + sep)) return null;
   return abs;
@@ -59,7 +59,12 @@ function safeJoin(root: string, rel: string): string | null {
 async function handle(req: IncomingMessage, res: ServerResponse, port: number): Promise<void> {
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`);
   if (url.pathname === '/__cad/server') {
-    const d: ServerDescriptor = { app: 'brepjs-viewer', port, dynamicRoot: true, serverApiVersion: SERVER_API_VERSION };
+    const d: ServerDescriptor = {
+      app: 'brepjs-viewer',
+      port,
+      dynamicRoot: true,
+      serverApiVersion: SERVER_API_VERSION,
+    };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(d));
     return;
@@ -93,7 +98,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, port: number): 
   }
   // SPA fallback so ?dir=&file= bare paths still serve index.html.
   await sendFile(res, abs).catch(() =>
-    sendFile(res, join(VIEWER_DIST, 'index.html')).catch(() => res.writeHead(404).end('not found')),
+    sendFile(res, join(VIEWER_DIST, 'index.html')).catch(() => res.writeHead(404).end('not found'))
   );
 }
 

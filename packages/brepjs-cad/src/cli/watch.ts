@@ -109,3 +109,34 @@ export function watchTree(
     watchers.clear();
   };
 }
+
+/**
+ * Serialize an async job: while one run is in flight, triggers coalesce into exactly
+ * one trailing rerun (verify/preview runs share one kernel — overlapping runs would
+ * interleave output and reorder reports).
+ */
+export function createSerialRunner(run: (fresh: boolean) => Promise<void>): {
+  start: (fresh: boolean) => void;
+  trigger: () => void;
+} {
+  let inFlight = false;
+  let rerunQueued = false;
+  const start = (fresh: boolean): void => {
+    inFlight = true;
+    void run(fresh).finally(() => {
+      inFlight = false;
+      if (rerunQueued) {
+        rerunQueued = false;
+        start(true);
+      }
+    });
+  };
+  const trigger = (): void => {
+    if (inFlight) {
+      rerunQueued = true;
+      return;
+    }
+    start(true);
+  };
+  return { start, trigger };
+}

@@ -60,15 +60,15 @@ function buildMaterialMap(
 // hook propagates it across the part's own imports) so watch reruns pick up edits.
 let importGeneration = 0;
 
-async function loadPart(
+export async function loadPart(
   modulePath: string,
   fresh = false
-): Promise<{ default?: PartFn; expected?: unknown; materials?: unknown }> {
+): Promise<{ default?: unknown; expected?: unknown; materials?: unknown }> {
   const url = new URL(pathToFileURL(modulePath).href);
   if (fresh) url.searchParams.set('v', String(++importGeneration));
   try {
     return (await import(url.href)) as {
-      default?: PartFn;
+      default?: unknown;
       expected?: unknown;
       materials?: unknown;
     };
@@ -191,7 +191,7 @@ export async function runPart(
     return finalize({ shape: null, report });
   }
   const { isOk, mesh, exportGlb, exportSTEP } = brep;
-  let mod: { default?: PartFn; expected?: unknown; materials?: unknown };
+  let mod: { default?: unknown; expected?: unknown; materials?: unknown };
   try {
     mod = await loadPart(modulePath, opts.freshImport);
   } catch (e) {
@@ -204,7 +204,7 @@ export async function runPart(
   }
   let out: unknown;
   try {
-    out = await mod.default();
+    out = await (mod.default as PartFn)();
   } catch (e) {
     pushError(report, toErrorInfo('part threw', e));
     return finalize({ shape: null, report });
