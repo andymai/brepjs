@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.160.0](https://github.com/andymai/brepjs/compare/brepjs-v18.159.0...brepjs-v18.160.0) (2026-08-26)
+
+
+### Features
+
+* **create-brepjs:** tsx template with preview, ifc export, tests, and agent docs ([#2237](https://github.com/andymai/brepjs/issues/2237)) ([76ea555](https://github.com/andymai/brepjs/commit/76ea5556bd91dab80430f610e02d78028d20a8fe))
+
 ## [18.159.0](https://github.com/andymai/brepjs/compare/brepjs-v18.158.0...brepjs-v18.159.0) (2026-08-26)
 
 
