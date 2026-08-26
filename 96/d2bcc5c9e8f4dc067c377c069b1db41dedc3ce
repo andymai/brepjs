@@ -1,0 +1,19 @@
+.github/workflows/docs.yml
+  s_b3b1ec23814350::t_9f177dbf115f12 22-24,28-29,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "96d2bcc5c9e8f4dc067c377c069b1db41dedc3ce",
+  "prompts": {},
+  "sessions": {
+    "s_b3b1ec23814350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7be8b6ef-b551-4233-a8d9-de7834faeed5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
