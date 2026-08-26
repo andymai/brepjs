@@ -670,3 +670,146 @@ describe('archetype routing', () => {
     expect(model.getWalls()).toHaveLength(0);
   });
 });
+
+describe('familiesToBim route breadth', () => {
+  const inStorey = (child: Element): ReturnType<typeof resolve> =>
+    resolve(Storey({ key: 's', walls: [child] }));
+
+  async function project(
+    child: Element
+  ): Promise<{ ifc: string; ids: ReadonlyMap<string, unknown> }> {
+    const projected = familiesToBim(inStorey(child), { project: PROJECT });
+    expect(isOk(projected)).toBe(true);
+    using model = unwrap(projected).model;
+    expect(checkReferentialIntegrity(model).issues.filter((i) => i.severity === 'error')).toEqual(
+      []
+    );
+    return { ifc: await ifcText(model), ids: unwrap(projected).idByKeyPath };
+  }
+
+  it('maps a footing onto IfcFooting with base quantities and folded placement', async () => {
+    const Footing = family<{
+      readonly length: number;
+      readonly width: number;
+      readonly thickness: number;
+      readonly at: readonly [number, number, number];
+    }>('Footing', (p) =>
+      el('Box', { size: [p.length, p.width, p.thickness], transform: [tTranslate(p.at)] })
+    );
+    const { ifc, ids } = await project(
+      Footing({ key: 'f1', length: 2000, width: 1500, thickness: 500, at: [1000, 0, 0] })
+    );
+    expect(ids.has('s/f1')).toBe(true);
+    expect(ifc).toContain('IFCFOOTING');
+    expect(ifc).toContain('Qto_FootingBaseQuantities');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/f1'));
+    expect(ifc).toContain('(1.,0.,0.)');
+  });
+
+  it('maps a pile onto IfcPile', async () => {
+    const Pile = family<{
+      readonly length: number;
+      readonly profile: { readonly kind: 'CIRCULAR'; readonly radius: number };
+    }>('Pile', (p) => el('Cylinder', { radius: p.profile.radius, height: p.length }));
+    const { ifc, ids } = await project(
+      Pile({ key: 'p1', length: 12000, profile: { kind: 'CIRCULAR', radius: 300 } })
+    );
+    expect(ids.has('s/p1')).toBe(true);
+    expect(ifc).toContain('IFCPILE');
+    expect(ifc).toContain('Qto_PileBaseQuantities');
+  });
+
+  it('maps a railing onto IfcRailing', async () => {
+    const Railing = family<{
+      readonly length: number;
+      readonly height: number;
+      readonly thickness: number;
+    }>('Railing', (p) => el('Box', { size: [p.length, p.thickness, p.height] }));
+    const { ifc, ids } = await project(
+      Railing({ key: 'r1', length: 3000, height: 1100, thickness: 100 })
+    );
+    expect(ids.has('s/r1')).toBe(true);
+    expect(ifc).toContain('IFCRAILING');
+  });
+
+  it('maps a ramp onto IfcRamp and folds the element translate into flight origins', async () => {
+    const Ramp = family<{
+      readonly flights: ReadonlyArray<Record<string, unknown>>;
+      readonly at: readonly [number, number, number];
+    }>('Ramp', (p) => el('Box', { size: [6000, 1200, 500], transform: [tTranslate(p.at)] }));
+    const flight = {
+      width: 1200,
+      length: 6000,
+      slope: 1 / 12,
+      thickness: 200,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
+    };
+    const { ifc, ids } = await project(Ramp({ key: 'ra1', flights: [flight], at: [1000, 0, 0] }));
+    expect(ids.has('s/ra1')).toBe(true);
+    expect(ifc).toContain('IFCRAMP');
+    expect(ifc).toContain('IFCRAMPFLIGHT');
+    expect(ifc).toContain(deriveIfcGuidSync('elem:gate-project:s/ra1'));
+    expect(ifc).toContain('(1.,0.,0.)');
+  });
+
+  it('maps a covering onto IfcCovering', async () => {
+    const Covering = family<{
+      readonly length: number;
+      readonly width: number;
+      readonly thickness: number;
+    }>('Covering', (p) => el('Box', { size: [p.length, p.width, p.thickness] }));
+    const { ifc, ids } = await project(
+      Covering({
+        key: 'c1',
+        length: 4000,
+        width: 3000,
+        thickness: 20,
+        predefinedType: 'FLOORING',
+      } as never)
+    );
+    expect(ids.has('s/c1')).toBe(true);
+    expect(ifc).toContain('IFCCOVERING');
+  });
+
+  it('maps a curtain wall onto IfcCurtainWall with plate/member parts', async () => {
+    const CurtainWall = family<{
+      readonly width: number;
+      readonly height: number;
+    }>('CurtainWall', (p) => el('Box', { size: [p.width, 30, p.height] }));
+    const { ifc, ids } = await project(
+      CurtainWall({
+        key: 'cw1',
+        width: 6000,
+        height: 3000,
+        columns: 3,
+        rows: 2,
+        panelThickness: 30,
+        mullionWidth: 60,
+        mullionDepth: 100,
+      } as never)
+    );
+    expect(ids.has('s/cw1')).toBe(true);
+    expect(ifc).toContain('IFCCURTAINWALL');
+    expect(ifc).toContain('IFCPLATE');
+    expect(ifc).toContain('IFCMEMBER');
+  });
+
+  it('maps a space onto IfcSpace with base quantities', async () => {
+    const Space = family<{
+      readonly name: string;
+      readonly length: number;
+      readonly width: number;
+      readonly height: number;
+    }>('Space', (p) => el('Box', { size: [p.length, p.width, p.height] }));
+    const { ifc, ids } = await project(
+      Space({ key: 'sp1', name: 'Office 101', length: 4000, width: 3000, height: 2700 })
+    );
+    expect(ids.has('s/sp1')).toBe(true);
+    expect(ifc).toContain('IFCSPACE');
+    expect(ifc).toContain('Qto_SpaceBaseQuantities');
+    expect(ifc).toContain('Office 101');
+  });
+});

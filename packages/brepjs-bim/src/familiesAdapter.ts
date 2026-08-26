@@ -5,7 +5,8 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers, Wall/Slab/Column/Beam/Roof/Stair elements, and wall openings — a
+ * Scope: Storey containers; Wall/Slab/Column/Beam/Roof/Stair, Footing/Pile,
+ * Railing/Ramp, Covering/CurtainWall, and Space elements; and wall openings — a
  * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
@@ -23,6 +24,12 @@ import { parseColumnSpec } from './specs/columnSpec.js';
 import { parseBeamSpec } from './specs/beamSpec.js';
 import { parseRoofSpec } from './specs/roofSpec.js';
 import { parseStairSpec } from './specs/stairSpec.js';
+import { parseFootingSpec, parsePileSpec } from './specs/foundationSpec.js';
+import { parseRailingSpec } from './specs/railingSpec.js';
+import { parseRampSpec } from './specs/rampSpec.js';
+import { parseCoveringSpec } from './specs/coveringSpec.js';
+import { parseCurtainWallSpec } from './specs/curtainWallSpec.js';
+import { parseSpaceSpec } from './specs/spaceSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
 import type { ProxySpec } from './specs/proxySpec.js';
 import type { ProjectSpec } from './specs/spatialSpec.js';
@@ -99,13 +106,46 @@ const SPEC_ROUTES = {
   stair: {
     parse: parseStairSpec,
     add: (m: BimModel, spec: unknown, key: string) => m.addStair(spec as never, { stableKey: key }),
-    input: stairSpecInput,
+    input: flightsSpecInput,
+  },
+  footing: {
+    parse: parseFootingSpec,
+    add: (m: BimModel, spec: unknown, key: string) =>
+      m.addFooting(spec as never, { stableKey: key }),
+  },
+  pile: {
+    parse: parsePileSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addPile(spec as never, { stableKey: key }),
+  },
+  railing: {
+    parse: parseRailingSpec,
+    add: (m: BimModel, spec: unknown, key: string) =>
+      m.addRailing(spec as never, { stableKey: key }),
+  },
+  ramp: {
+    parse: parseRampSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addRamp(spec as never, { stableKey: key }),
+    input: flightsSpecInput,
+  },
+  covering: {
+    parse: parseCoveringSpec,
+    add: (m: BimModel, spec: unknown, key: string) =>
+      m.addCovering(spec as never, undefined, { stableKey: key }),
+  },
+  curtainWall: {
+    parse: parseCurtainWallSpec,
+    add: (m: BimModel, spec: unknown, key: string) =>
+      m.addCurtainWall(spec as never, { stableKey: key }),
+  },
+  space: {
+    parse: parseSpaceSpec,
+    add: (m: BimModel, spec: unknown, key: string) => m.addSpace(spec as never, { stableKey: key }),
   },
 } as const;
 
-/** StairSpec has no top-level origin — placement lives per flight — so the
- *  element's folded translate lands on every flight's origin instead. */
-function stairSpecInput(el: ResolvedElement): Record<string, unknown> {
+/** Stair and ramp specs have no top-level origin — placement lives per flight —
+ *  so the element's folded translate lands on every flight's origin instead. */
+function flightsSpecInput(el: ResolvedElement): Record<string, unknown> {
   const base = specInput(el);
   const fold = (base['origin'] as readonly [number, number, number] | undefined) ?? [0, 0, 0];
   const flights = Array.isArray(base['flights'])
@@ -136,6 +176,13 @@ const NAME_ARCHETYPES: Readonly<Record<string, string>> = {
   Stair: 'stair',
   Door: 'door',
   Window: 'window',
+  Footing: 'footing',
+  Pile: 'pile',
+  Railing: 'railing',
+  Ramp: 'ramp',
+  Covering: 'covering',
+  CurtainWall: 'curtainWall',
+  Space: 'space',
 };
 
 function archetypeFor(el: ResolvedElement): string | undefined {
