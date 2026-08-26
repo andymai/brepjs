@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync, watch as fsWatch, realpathSync, globSync } from 'node:fs';
-import { resolve, join, basename, dirname } from 'node:path';
+import { writeFileSync, realpathSync, globSync } from 'node:fs';
+import { resolve, join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '../verify/runPart.js';
@@ -9,7 +9,13 @@ import { pushError, reportOk, serializeReport, type VerifyReport } from '../veri
 import { runMeasure } from '../verify/measure.js';
 import { runDiff } from '../verify/diff.js';
 import { scaffoldPart } from './scaffold.js';
-import { debounce, DEFAULT_DEBOUNCE_MS } from './watch.js';
+import {
+  debounce,
+  DEFAULT_DEBOUNCE_MS,
+  isWatchRelevant,
+  watchRootFor,
+  watchTree,
+} from './watch.js';
 import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
@@ -308,9 +314,11 @@ program
   .argument('<file>', 'path to a .brep.ts module; re-verifies on each save until Ctrl-C')
   .action((file: string) => {
     const path = resolve(file);
-    const run = async () => {
+    // Reruns import with a fresh cache-busting query — the ESM cache is keyed by URL, so
+    // without it every rerun would re-execute the first version of the part forever.
+    const run = async (fresh: boolean) => {
       try {
-        const { report, shape } = await runPart(path);
+        const { report, shape } = await runPart(path, { freshImport: fresh });
         try {
           process.stdout.write(serializeReport(report) + '\n');
         } finally {
@@ -320,20 +328,40 @@ program
         process.stderr.write(`watch run failed: ${(e as Error).message}\n`);
       }
     };
-    const { trigger } = debounce(run, DEFAULT_DEBOUNCE_MS);
-    process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
-    void run(); // initial verify
-    // Watch the parent dir: editors often replace the file (rename) on save,
-    // which drops a watcher bound to the file inode itself.
-    const watcher = fsWatch(dirname(path), (_event, filename) => {
-      if (filename === undefined || filename === null) {
-        trigger();
+    // Serialize runs: a save landing mid-verify must not start a second runPart on the
+    // shared kernel (reports would interleave out of order). Edits during a run coalesce
+    // into exactly one trailing rerun.
+    let inFlight = false;
+    let rerunQueued = false;
+    const start = (fresh: boolean): void => {
+      inFlight = true;
+      void run(fresh).finally(() => {
+        inFlight = false;
+        if (rerunQueued) {
+          rerunQueued = false;
+          start(true);
+        }
+      });
+    };
+    const schedule = (): void => {
+      if (inFlight) {
+        rerunQueued = true;
         return;
       }
-      if (basename(path) === filename.toString()) trigger();
+      start(true);
+    };
+    const { trigger } = debounce(schedule, DEFAULT_DEBOUNCE_MS);
+    process.stderr.write(`watching ${path} (Ctrl-C to stop)\n`);
+    start(false); // initial verify
+    // Watch the whole project tree (nearest package.json/tsconfig.json above the entry):
+    // editors often replace a file (rename) on save, which drops a watcher bound to the
+    // inode itself — and a multi-file project must re-verify when any source OR the root
+    // tsconfig changes, not just files beside the entry.
+    const stopWatching = watchTree(watchRootFor(path), (filename) => {
+      if (isWatchRelevant(filename)) trigger();
     });
     const stop = () => {
-      watcher.close();
+      stopWatching();
       process.exit(0);
     };
     process.on('SIGINT', stop);

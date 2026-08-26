@@ -6,7 +6,10 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   // Never lint build output — `eslint src tests viewer` walks viewer/ which contains the emitted
   // viewer/dist after a build; type-checked rules choke on those un-projected .js chunks.
-  { ignores: ['dist/**', 'viewer/dist/**'] },
+  // tests/fixtures/tsxProject is runtime-loaded test data for the TS/TSX loader hook —
+  // deliberately outside every tsconfig project (it carries its own), so type-aware rules
+  // can't run on it.
+  { ignores: ['dist/**', 'viewer/dist/**', 'tests/fixtures/tsxProject/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
@@ -16,7 +19,7 @@ export default tseslint.config(
     files: ['src/loader/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
-      globals: { console: 'readonly' },
+      globals: { console: 'readonly', URL: 'readonly' },
     },
   },
   {
