@@ -38,6 +38,7 @@ export default defineConfig({
         'snapshot/shoot': resolve(import.meta.dirname, 'src/snapshot/shoot.ts'),
         'snapshot/serve': resolve(import.meta.dirname, 'src/snapshot/serve.ts'),
         'preview/preview': resolve(import.meta.dirname, 'src/preview/preview.ts'),
+        'export3dm/export3dm': resolve(import.meta.dirname, 'src/export3dm/export3dm.ts'),
         'mcp/server': resolve(import.meta.dirname, 'src/mcp/server.ts'),
       },
       formats: ['es', 'cjs'],
@@ -50,6 +51,7 @@ export default defineConfig({
         'occt-wasm',
         'commander',
         'puppeteer',
+        'rhino3dm',
         'typescript',
         /^@modelcontextprotocol\/sdk/,
         // Optional MCP telemetry — kept external so src/mcp/telemetry.ts can dynamic-import them at

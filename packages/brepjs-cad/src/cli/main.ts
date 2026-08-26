@@ -21,6 +21,7 @@ import { exportPart } from './exportPart.js';
 import { openBrowser, shouldAutoOpen } from './openBrowser.js';
 import { disposeShape } from '../disposeShape.js';
 import type { shoot as ShootFn } from '../snapshot/shoot.js';
+import type { export3dm as Export3dmFn } from '../export3dm/export3dm.js';
 import { aimedSection, featureMarks } from '../snapshot/aiming.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
@@ -390,21 +391,64 @@ program
   .option('--glb', 'write a GLB artifact')
   .option('--stl', 'write an STL artifact')
   .option('--all', 'write STEP + GLB + STL')
+  .option('--3dm', 'write a Rhino .3dm (element-aware: one named object per element, layered)')
   .option('--out <dir>', 'output directory', '.')
   .action(
     async (
       file: string,
-      opts: { step?: boolean; glb?: boolean; stl?: boolean; all?: boolean; out: string }
+      opts: {
+        step?: boolean;
+        glb?: boolean;
+        stl?: boolean;
+        all?: boolean;
+        '3dm'?: boolean;
+        out: string;
+      }
     ) => {
+      const path = resolve(file);
+      if (opts['3dm']) {
+        // Lazy: rhino3dm is an optionalDependency; a missing install must fail with an
+        // actionable message, not a resolution stack.
+        let run: typeof Export3dmFn;
+        try {
+          ({ export3dm: run } = await import('../export3dm/export3dm.js'));
+        } catch {
+          process.stderr.write('.3dm export needs rhino3dm — run: npm i rhino3dm\n');
+          process.exitCode = 1;
+          return;
+        }
+        const outPath = join(resolve(opts.out), basename(path).replace(/\.[^.]+$/, '') + '.3dm');
+        try {
+          const r = await run(path, outPath);
+          process.stderr.write(`wrote: ${outPath}\n`);
+          process.stdout.write(
+            JSON.stringify(
+              {
+                ok: r.failed.length === 0,
+                written: [outPath],
+                elements: r.elements,
+                failed: r.failed,
+              },
+              null,
+              2
+            ) + '\n'
+          );
+          if (r.failed.length > 0) process.exitCode = 1;
+        } catch (e) {
+          process.stderr.write(`3dm export failed: ${(e as Error).message}\n`);
+          process.exitCode = 1;
+        }
+        return;
+      }
       const formats = opts.all
         ? { step: true, glb: true, stl: true }
         : { step: Boolean(opts.step), glb: Boolean(opts.glb), stl: Boolean(opts.stl) };
       if (!formats.step && !formats.glb && !formats.stl) {
-        process.stderr.write('no formats requested — pass --step/--glb/--stl or --all\n');
+        process.stderr.write('no formats requested — pass --step/--glb/--stl/--3dm or --all\n');
         process.exitCode = 1;
         return;
       }
-      const result = await exportPart(resolve(file), formats, resolve(opts.out));
+      const result = await exportPart(path, formats, resolve(opts.out));
       for (const p of result.written) process.stderr.write(`wrote: ${p}\n`);
       for (const e of result.errors) process.stderr.write(`error: ${e}\n`);
       process.stdout.write(
