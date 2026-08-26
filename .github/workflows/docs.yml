@@ -19,15 +19,18 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-    # workflow_dispatch bypasses CI gate (intentional for emergency redeploys, restricted to main)
+    # workflow_dispatch bypasses CI gate (intentional for emergency redeploys, restricted to main).
+    # The workflow_run leg requires event == 'push' because the branches filter matches the
+    # triggering run's head-branch NAME, which a fork branch named "main" would satisfy.
     if: >-
       (github.event_name == 'workflow_dispatch' &&
         github.ref == 'refs/heads/main') ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push')
     steps:
+      # no ref: the default checkout is the repo's main tip, never workflow_run.head_sha
+      # (untrusted for fork-triggered CI runs)
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
