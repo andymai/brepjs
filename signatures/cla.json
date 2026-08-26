@@ -1,3 +1,12 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "viktar-b",
+      "id": 60892287,
+      "comment_id": 5428165864,
+      "created_at": "2026-08-26T16:39:20Z",
+      "repoId": 1147545446,
+      "pullRequestNo": 2253
+    }
+  ]
 }
