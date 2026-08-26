@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.161.1](https://github.com/andymai/brepjs/compare/brepjs-v18.161.0...brepjs-v18.161.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** quality pass over the preview/loader/3dm/scaffold delta ([#2243](https://github.com/andymai/brepjs/issues/2243)) ([b6ae66e](https://github.com/andymai/brepjs/commit/b6ae66e6a1c4175bfd13846b382972e1d7356adc))
+
 ## [18.161.0](https://github.com/andymai/brepjs/compare/brepjs-v18.160.0...brepjs-v18.161.0) (2026-08-26)
 
 
