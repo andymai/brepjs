@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.159.0](https://github.com/andymai/brepjs/compare/brepjs-v18.158.0...brepjs-v18.159.0) (2026-08-26)
+
+
+### Features
+
+* **brepjs-bim:** route footing, pile, railing, ramp, covering, curtain wall, and space through familiesToBim ([#2232](https://github.com/andymai/brepjs/issues/2232)) ([1971005](https://github.com/andymai/brepjs/commit/1971005db46e51d37f7a688de4872b9334fb56d3))
+
 ## [18.158.0](https://github.com/andymai/brepjs/compare/brepjs-v18.157.0...brepjs-v18.158.0) (2026-08-26)
 
 
