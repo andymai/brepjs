@@ -1,0 +1,20 @@
+packages/create-brepjs/templates/src/main.tsx
+  s_3f41f7f80a23af::t_d017a5bfd790eb 38,49
+  s_3f41f7f80a23af::t_2c8b304a6cae30 30-32,50-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ccea0e58d9af434e0916f8e65fc14b2fd22b7608",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
