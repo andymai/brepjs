@@ -1,0 +1,19 @@
+packages/brepjs-cad/src/export3dm/export3dm.ts
+  s_3f41f7f80a23af::t_9cca5c91f4211d 63-81,83-108,110,112-113,115,117-118,120,126-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7ad8f6f7778e047d7221b636614d2476c276afa4",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
