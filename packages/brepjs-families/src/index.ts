@@ -32,3 +32,16 @@ export {
   type EvaluatedNode,
   type EvaluateModelOptions,
 } from './evaluateModel.js';
+export {
+  civilSemantics,
+  type CivilEngineeringSemantics,
+  type EngineeringProperties,
+  type EngineeringProperty,
+  type EngineeringSemantics,
+  type FacilityEngineeringSemantics,
+  type ProductEngineeringSemantics,
+  type SiteEngineeringSemantics,
+  type SpatialComposition,
+  type SpatialPartEngineeringSemantics,
+  type SpatialSubdivision,
+} from './engineeringSemantics.js';

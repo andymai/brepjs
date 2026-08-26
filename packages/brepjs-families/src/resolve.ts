@@ -11,6 +11,7 @@
 
 import { csg } from 'brepjs';
 import { archetypeOf, IDENTITY_PROPS, isFamily, typeNameOf, type Element } from './element.js';
+import type { EngineeringSemantics } from './engineeringSemantics.js';
 
 export type TransformOp =
   | { readonly op: 'translate'; readonly v: readonly [number, number, number] }
@@ -49,6 +50,8 @@ export interface ResolvedElement {
   /** The family's declared `archetype`, or undefined for intrinsics. Adapters
    *  route on this so a renamed family keeps its mapping. */
   readonly archetype: string | undefined;
+  /** Target-independent meaning declared by the outermost Family. */
+  readonly semantics: EngineeringSemantics | undefined;
   /** Ancestor chain joined with '/'; prop-embedded elements use
    *  `${hostPath}/${propName}:${slotKey}`. */
   readonly keyPath: string;
@@ -83,16 +86,20 @@ function renderToIntrinsic(elem: Element): {
   intrinsic: Element;
   typeName: string;
   archetype: string | undefined;
+  semantics: EngineeringSemantics | undefined;
 } {
   const typeName = typeNameOf(elem);
   const archetype = archetypeOf(elem);
+  const semantics = isFamily(elem.type)
+    ? elem.type.resolveSemanticsErased?.(elem.props)
+    : undefined;
   let cur = elem;
   while (isFamily(cur.type)) {
     cur = cur.type.renderErased(
       cur.children.length > 0 ? { ...cur.props, children: cur.children } : cur.props
     );
   }
-  return { intrinsic: cur, typeName, archetype };
+  return { intrinsic: cur, typeName, archetype, semantics };
 }
 
 /** Fragments inline: their children join the parent's child list and the
@@ -205,6 +212,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
       openings.push({
         type: 'Opening',
         archetype: 'opening',
+        semantics: undefined,
         keyPath: openingPath,
         keyed: v.key !== undefined,
         geometry: fill.geometry,
@@ -254,7 +262,7 @@ function resolveAt(
   keyed: boolean,
   inherited: readonly TransformOp[]
 ): ResolvedElement {
-  const { intrinsic, typeName, archetype } = renderToIntrinsic(elem);
+  const { intrinsic, typeName, archetype, semantics } = renderToIntrinsic(elem);
   const d = desugar(intrinsic, path);
   // The element's own transform is applied inside desugar (local frame, after
   // voids/fuse); ancestor transforms compose outside it, and thread down so
@@ -285,6 +293,7 @@ function resolveAt(
   return {
     type: typeName,
     archetype,
+    semantics,
     keyPath: path,
     keyed,
     geometry,
