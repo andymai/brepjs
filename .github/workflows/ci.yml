@@ -270,11 +270,12 @@ jobs:
     # project name, and declares dependency ranges the current workspace
     # versions satisfy (a stale caret here ships a broken `npm create brepjs`).
     # SCAFFOLD_SMOKE additionally installs the scaffold against the live npm
-    # registry and runs its typecheck + start — the full user journey.
+    # registry and runs its typecheck + start + preview + export:ifc + test —
+    # the full user journey.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup

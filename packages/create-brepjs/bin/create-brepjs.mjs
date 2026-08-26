@@ -16,6 +16,12 @@ import process from 'node:process';
 const TEMPLATES = join(dirname(fileURLToPath(import.meta.url)), '../templates');
 
 async function main() {
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  if (Number.isFinite(nodeMajor) && nodeMajor < 24) {
+    console.warn(
+      `create-brepjs: Node ${process.versions.node} detected — the generated project needs Node >=24`
+    );
+  }
   const name = process.argv[2] ?? 'brepjs-app';
   // A relative path is allowed; its basename becomes the package name. No
   // traversal, no absolute paths, no scopes (a scope is not a directory).
@@ -60,8 +66,8 @@ async function main() {
   console.warn('Next steps:');
   console.warn(`  cd ${name}`);
   console.warn('  npm install');
+  console.warn('  npm run preview                   # live viewer (add -- --watch)');
   console.warn('  npx brepjs add room storey slab   # copy in starter families');
-  console.warn('  npx tsx src/main.ts');
 }
 
 main().catch((err) => {
