@@ -1,0 +1,19 @@
+vercel.json
+  s_fc48c8a5c147a6::t_f1d2fc66205272 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fdacc216ab91133f765ebad8fa122c749c5f7c96",
+  "prompts": {},
+  "sessions": {
+    "s_fc48c8a5c147a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a670381-ba33-4e36-9d78-a4ede62da56f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
