@@ -1,0 +1,29 @@
+.release-please-manifest.json
+  s_3f41f7f80a23af::t_8396c788516cd2 2,5
+CHANGELOG.md
+  s_3f41f7f80a23af::t_f618492fdda6df 3-9
+package-lock.json
+  s_3f41f7f80a23af::t_8d353a6bb9b934 3,9
+package.json
+  s_3f41f7f80a23af::t_8937b466f721c3 3
+packages/brepjs-cad/CHANGELOG.md
+  s_3f41f7f80a23af::t_18a7e77fa2e104 3-9
+packages/brepjs-cad/package.json
+  s_3f41f7f80a23af::t_589ba8f72b824d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "31cbd831709bb2accc345a023c3376c1fd1ec537",
+  "prompts": {},
+  "sessions": {
+    "s_3f41f7f80a23af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee56a3e-e459-408d-a7df-654ac90b63fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
