@@ -2,7 +2,7 @@
 
 Shared React + [@react-three/fiber](https://github.com/pmndrs/react-three-fiber) renderer for brepjs meshes. Extracted from the playground so both `apps/playground` and the `brepjs-agent` standalone viewer render through one source of truth (no drift).
 
-It is a thin, store-agnostic rendering layer: it takes a `MeshData` and optional selection callbacks; it owns no application state and never imports a consumer.
+It is a thin, store-agnostic rendering layer: it takes a `MeshData` and optional selection callbacks; it owns no application state and never imports a consumer. Coordinates stay in brepjs's native CAD convention: X/Y form the ground plane and +Z is up.
 
 ## Exports
 

@@ -5,7 +5,7 @@ const vertexShader = /* glsl */ `
   varying vec2 vWorldPos;
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    vWorldPos = worldPos.xz;
+    vWorldPos = worldPos.xy;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
@@ -61,7 +61,7 @@ export default function InfiniteGrid({
   }, []);
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
+    <mesh rotation={[0, 0, 0]} position={[0, 0, -0.01]}>
       <planeGeometry args={[planeSize, planeSize]} />
       <shaderMaterial
         ref={matRef}
@@ -80,7 +80,7 @@ export default function InfiniteGrid({
         // Bias grid fragments slightly deeper than coplanar geometry so
         // shapes resting on z=0 always win the depth test, even at
         // oblique camera angles where float precision degrades. Combined
-        // with the y=-0.01 position above, this is a belt-and-suspenders
+        // with the z=-0.01 position above, this is a belt-and-suspenders
         // fix for shapes whose bottom face touches the grid plane.
         polygonOffset
         polygonOffsetFactor={1}

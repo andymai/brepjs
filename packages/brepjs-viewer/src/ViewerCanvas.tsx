@@ -30,11 +30,13 @@ export interface ViewerCanvasProps {
 
 // Explicit ViewName -> camera direction. Do NOT reuse the playground's CameraPreset enum
 // (keyed by the incompatible 'front'|'side'|'top'|'isometric' and driven by the store).
+// brepjs model-space is Z-up; these vectors preserve the previous visual viewpoints
+// without rotating the geometry into three.js's conventional Y-up coordinates.
 const VIEW_DIR: Record<ViewName, THREE.Vector3> = {
-  iso: new THREE.Vector3(0.6, 0.5, 0.6),
-  front: new THREE.Vector3(0, 0.3, 1),
-  top: new THREE.Vector3(0, 1, -0.01),
-  right: new THREE.Vector3(1, 0.3, 0),
+  iso: new THREE.Vector3(0.6, -0.6, 0.5),
+  front: new THREE.Vector3(0, -1, 0.3),
+  top: new THREE.Vector3(0, 0.01, 1),
+  right: new THREE.Vector3(1, 0, 0.3),
 };
 
 function Framing({
@@ -70,6 +72,7 @@ function Framing({
   }, [data]);
   useEffect(() => {
     const dir = VIEW_DIR[view].clone().normalize();
+    camera.up.set(0, 0, 1);
     camera.position.copy(center).addScaledVector(dir, radius * 3);
     camera.near = radius / 100;
     camera.far = radius * 100;
@@ -102,7 +105,16 @@ function OrthoCamera() {
     camera.position.y,
     camera.position.z,
   ]);
-  return <OrthographicCamera makeDefault position={initial.current} zoom={20} near={0.1} far={2000} />;
+  return (
+    <OrthographicCamera
+      makeDefault
+      position={initial.current}
+      up={[0, 0, 1]}
+      zoom={20}
+      near={0.1}
+      far={2000}
+    />
+  );
 }
 
 // Enables material-level (local) clipping planes. Set once; harmless when no material
@@ -137,7 +149,11 @@ export function ViewerCanvas({
     <ViewerErrorBoundary onError={onError} fallback={errorFallback}>
       {/* `always` while spinning so the turntable advances; `demand` otherwise keeps the
           GPU idle. preserveDrawingBuffer stays on so screenshots read back in both modes. */}
-      <Canvas frameloop={autoRotate ? 'always' : 'demand'} gl={{ preserveDrawingBuffer: true }}>
+      <Canvas
+        camera={{ position: [1, -1, 1], up: [0, 0, 1] }}
+        frameloop={autoRotate ? 'always' : 'demand'}
+        gl={{ preserveDrawingBuffer: true }}
+      >
         <LocalClipping />
         {projection === 'orthographic' && <OrthoCamera />}
         <SceneSetup autoRotate={autoRotate} gridVisible={gridVisible} />
