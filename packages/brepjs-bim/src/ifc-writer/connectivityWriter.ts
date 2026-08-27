@@ -2,7 +2,12 @@ import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 
-/** IfcConnectionTypeEnum values used by IfcRelConnectsPathElements path ends. */
+/**
+ * Enumeration literals transcribed verbatim from `IfcConnectionTypeEnum` in
+ * the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ * These values identify the path ends used by `IfcRelConnectsPathElements`.
+ */
 export type PathConnectionTypeIfc = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
 
 /**

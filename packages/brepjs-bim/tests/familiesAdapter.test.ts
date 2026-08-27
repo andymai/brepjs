@@ -8,7 +8,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { csg, isOk, unwrap } from 'brepjs';
-import { family, el, resolve, evaluateModel, tTranslate, type Element } from 'brepjs-families';
+import {
+  civilSemantics,
+  family,
+  el,
+  resolve,
+  evaluateModel,
+  tTranslate,
+  type Element,
+} from 'brepjs-families';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
@@ -618,6 +626,43 @@ describe('archetype routing', () => {
     expect(text).toContain('IFCDOOR');
     expect(text).toContain('IFCRELVOIDSELEMENT');
     expect(text).toContain('IFCRELFILLSELEMENT');
+  });
+
+  it('a civil-semantic wall keeps wall opening lifecycle behavior without an archetype', async () => {
+    const SemanticWall = family<WallProps & { readonly voids: readonly Element[] }>(
+      'RetainingPanel',
+      (p) => el('Box', { size: [p.length, p.thickness, p.height], voids: p.voids }),
+      {
+        semantics: civilSemantics({
+          kind: 'product',
+          category: 'wall',
+          role: 'wall',
+          material: 'Concrete',
+          dimensionsMm: { length: 3000, width: 200, height: 2700 },
+        }),
+      }
+    );
+    const tree = resolve(
+      Storey({
+        key: 's',
+        walls: [
+          SemanticWall({
+            key: 'wall',
+            ...WALL_DIMS,
+            voids: [Door({ key: 'door', width: 900, height: 2100, at: [600, 0] })],
+          }),
+        ],
+      })
+    );
+    const result = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using model = result.model;
+
+    expect(result.idByKeyPath.has('s/wall/voids:door')).toBe(true);
+    expect(result.idByKeyPath.has('s/wall/voids:door/fill')).toBe(true);
+    const text = await ifcText(model);
+    expect(text).toContain('IFCWALL');
+    expect(text).toContain('IFCOPENINGELEMENT');
+    expect(text).toContain('IFCDOOR');
   });
 
   it('a renamed window filler still reaches IfcWindow', async () => {

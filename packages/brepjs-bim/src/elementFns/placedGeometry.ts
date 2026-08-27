@@ -24,23 +24,49 @@ function disposeAll(solids: readonly ValidSolid[]): void {
   for (const s of solids) s[Symbol.dispose]();
 }
 
+export interface PlacedSolidsOptions {
+  /**
+   * Cumulative frame of the element's containing spatial structure. Element
+   * specs and stored arbitrary bodies are relative to that structure; pass its
+   * frame here when world coordinates are required.
+   */
+  readonly parentFrame?: FrameInput | undefined;
+}
+
+function placeWithinParent(
+  solid: ValidSolid,
+  localFrame: FrameInput,
+  parentFrame: FrameInput | undefined
+): Result<ValidSolid, BimError> {
+  const local = place(solid, localFrame);
+  if (!local.ok || parentFrame === undefined) return local;
+  using localSolid = local.value;
+  return place(localSolid, parentFrame);
+}
+
 /**
- * Returns each element's geometry transformed to its world placement, as fresh
- * caller-owned solids, wrapped in a `Result` (Layer-2 code prefers `Result` over
- * throwing). **Dispose the returned solids** (e.g. via `using` / `[Symbol.dispose]`)
- * when you own their lifetime — they are independent of the model
+ * Returns each element's geometry transformed to its element-local placement,
+ * and optionally through the cumulative frame of its containing spatial
+ * structure, as fresh caller-owned solids. Pass `parentFrame` to obtain world
+ * coordinates for elements beneath a placed Site, Bridge, Bridge Part, or
+ * other spatial structure. **Dispose the returned solids** (e.g. via `using` /
+ * `[Symbol.dispose]`) when you own their lifetime — they are independent of the model
  * (`BimModel[Symbol.dispose]` frees only the stored, unplaced `.geometry`). On any
  * failure the solids already built for this call are disposed before the error is
  * returned, so no partial array is leaked.
  *
  * Stairs and ramps carry no element solid (`.geometry` is null), so flight
  * solids are built from `spec.flights` and placed per flight. Curtain walls
- * return placed panels + mullions. Proxies are authored in world coordinates
- * (no placement frame), so their solid is returned as a fresh identity-placed
- * copy. Elements with no solid geometry (doors/windows/groups/spatial) return
- * an empty array.
+ * return placed panels + mullions. Proxy and Earthworks Fill bodies are stored
+ * relative to their containing spatial structure, so their body is copied and
+ * then transformed by `parentFrame` when supplied. Elements with no solid geometry
+ * (doors/windows/groups/spatial) return an empty array.
  */
-export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError> {
+export function placedSolids(
+  el: AnyBimElement,
+  options: PlacedSolidsOptions = {}
+): Result<readonly ValidSolid[], BimError> {
+  const parentFrame = options.parentFrame;
   switch (el.category) {
     case 'WALL':
     case 'SLAB':
@@ -52,7 +78,7 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
     case 'PILE':
     case 'COVERING':
     case 'RAILING': {
-      const placed = place(el.geometry, el.spec);
+      const placed = placeWithinParent(el.geometry, el.spec, parentFrame);
       if (!placed.ok) return placed;
       return ok([placed.value]);
     }
@@ -65,7 +91,7 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
           return err(built.error);
         }
         using local = built.value.solid;
-        const placed = place(local, flight);
+        const placed = placeWithinParent(local, flight, parentFrame);
         if (!placed.ok) {
           disposeAll(out);
           return placed;
@@ -85,7 +111,7 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
           return err(built.error);
         }
         using local = built.value.solid;
-        const placed = place(local, flight);
+        const placed = placeWithinParent(local, flight, parentFrame);
         if (!placed.ok) {
           disposeAll(out);
           return placed;
@@ -94,10 +120,15 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
       }
       return ok(out);
     }
-    case 'PROXY': {
-      // No frame on ProxySpec: the identity transform still routes through the
-      // kernel, minting a caller-owned copy of the model-owned solid.
-      const placed = place(el.geometry, { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] });
+    case 'PROXY':
+    case 'EARTHWORKS_FILL': {
+      // No frame on either body spec: identity mints a caller-owned copy, then
+      // parentFrame (when supplied) takes the parent-local body into world space.
+      const placed = placeWithinParent(
+        el.geometry,
+        { origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1] },
+        parentFrame
+      );
       if (!placed.ok) return placed;
       return ok([placed.value]);
     }
@@ -115,7 +146,7 @@ export function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], B
           return componentLocal;
         }
         using local = componentLocal.value;
-        const placed = place(local, el.spec);
+        const placed = placeWithinParent(local, el.spec, parentFrame);
         if (!placed.ok) {
           disposeAll(out);
           return placed;

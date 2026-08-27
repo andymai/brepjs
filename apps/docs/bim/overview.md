@@ -1,11 +1,11 @@
 ---
 title: The BIM Layer
-description: 'brepjs-bim authors IFC4-aligned parametric building elements on brepjs geometry: typed specs in, a validated BimModel out, IFC-SPF at the end.'
+description: 'brepjs-bim authors IFC4-aligned parametric building elements and a focused IFC4X3 civil bridge profile on brepjs geometry.'
 ---
 
 # The BIM Layer
 
-`brepjs-bim` turns brepjs geometry into building information. You describe elements as typed parametric specs (a wall is a length, height, thickness, placement, and material, not a mesh); the model assembles them into a spatial structure (project → site → building → storey), layers on property sets, materials, quantities, and classifications, and serializes the result to a valid **IFC-SPF** file. A matching importer reads IFC back in.
+`brepjs-bim` turns brepjs geometry into building information. You describe elements as typed parametric specs (a wall is a length, height, thickness, placement, and material, not a mesh); the model assembles them into a building or focused civil spatial structure, layers on property sets, materials, quantities, and classifications, and serializes the result to a valid **IFC-SPF** file. A matching importer reads IFC back in.
 
 ```bash
 npm install brepjs-bim brepjs web-ifc
@@ -48,10 +48,18 @@ const ifc = await toIfc(model, { applicationName: 'example-app', applicationVers
 
 Three design decisions carry the package:
 
-1. **Specs are the source of truth.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use), builds the brepjs solid analytically, and stores a typed element. The IFC writer emits parametric entities (`IfcExtrudedAreaSolid`, profile defs) from the same spec, so the exported file stays editable data, not frozen triangles.
-2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. Use `placedSolids(element)` when you need world-placed solids for display.
+1. **Specs are the source of truth.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use) and stores a typed element. Parametric physical specs build analytical solids and editable IFC representations; civil spatial elements are body-less, while explicitly arbitrary bodies such as Earthworks Fill serialize as tessellation.
+2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. `placedSolids(element)` applies the element frame; when its spatial parent is placed, pass the cumulative `parentFrame` to obtain world coordinates.
 3. **Results, not exceptions.** Every operation returns `Result<T, BimError>` from brepjs. Validation issues travel inside reports; nothing throws across the API boundary.
 
 Dimensions are millimeters everywhere; IFC export emits SI metres. Reading element geometry needs only the brepjs kernel; `toIfc` / `fromIfc` additionally load the `web-ifc` peer dependency.
+
+## Focused civil bridge profile
+
+For IFC4X3, the public Families path supports Project → Site → Bridge → recursively nested Bridge Part, exact Earthworks Fill bodies, and nearest-part product containment. Civil Product semantics route the infrastructure fixture's existing Beam (`beam`, `cross-girder`, `girder`), Column (`pier-stem`), Footing (`pad`), Railing (`guardrail`), Slab (`deck`), and Wall (`wall`) categories to their normal typed BIM elements. Semantic material is used when the element does not separately provide `materialName`.
+
+Those existing typed routes adapt the reference Families' semantic envelope dimensions to their parametric BIM specs; they do not promise exact preservation of compound or voided source bodies. Exact authored-body preservation in this profile is specific to Earthworks Fill.
+
+Member and Sign are explicitly outside this profile. They remain hard unsupported-type errors unless `proxyEvaluator` is deliberately enabled, in which case `projected.proxied` reports them. This profile does not claim complete IFC infrastructure coverage or unchanged full scratch-example parity.
 
 Continue with the [element catalog](/bim/elements), [IFC export & import](/bim/ifc), [validation](/bim/validation), and [interop](/bim/interop).

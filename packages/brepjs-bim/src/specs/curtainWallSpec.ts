@@ -6,6 +6,11 @@ import { ok, err } from 'brepjs';
 import type { ClassificationRef } from '../types/classificationTypes.js';
 import { ClassificationRefSchema } from './materialSpec.js';
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcCurtainWallTypeEnum` in
+ * the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 export type CurtainWallPredefinedType = 'NOTDEFINED' | 'USERDEFINED';
 
 /**
@@ -66,7 +71,6 @@ const CurtainWallSpecSchema = z
     axisZ: unitVec,
     materialName: z.string().min(1),
 
-    // IfcCurtainWallTypeEnum defines only USERDEFINED and NOTDEFINED (IFC4).
     predefinedType: z.enum(['NOTDEFINED', 'USERDEFINED']).optional(),
     panelMaterialName: z.string().min(1).optional(),
     mullionMaterialName: z.string().min(1).optional(),

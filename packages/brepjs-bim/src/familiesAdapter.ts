@@ -5,16 +5,29 @@
  * while the IR path serves the viewport and dedup. GlobalIds derive from
  * families key paths (stable under reordering), not insertion order.
  *
- * Scope: Storey containers; Wall/Slab/Column/Beam/Roof/Stair, Footing/Pile,
- * Railing/Ramp, Covering/CurtainWall, and Space elements; and wall openings — a
- * fill-role void (Door/Window family) maps onto addDoor/addWindow, which cut
+ * Scope: building Storey containers; civil Site/Bridge/recursive Bridge Part
+ * structure and Earthworks Fill bodies; Wall/Slab/Column/Beam/Roof/Stair,
+ * Footing/Pile, Railing/Ramp, Covering/CurtainWall, and Space elements; and
+ * wall openings — a fill-role void (Door/Window family) maps onto
+ * addDoor/addWindow, which cut
  * the wall and wire IfcRelVoidsElement + IfcRelFillsElement; the opening and
  * filler GlobalIds derive from the synthesized key paths. Anonymous (non-fill)
  * voids are rejected: they cut only the IR/viewport geometry, and exporting
  * the uncut spec body would silently diverge from what the user sees.
  */
 
-import { clone, err, getSolids, isSolid, ok, validSolid, type Result, type csg } from 'brepjs';
+import {
+  clone,
+  err,
+  getSolids,
+  isSolid,
+  ok,
+  translate,
+  validSolid,
+  type Result,
+  type ValidSolid,
+  type csg,
+} from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -31,8 +44,21 @@ import { parseCoveringSpec } from './specs/coveringSpec.js';
 import { parseCurtainWallSpec } from './specs/curtainWallSpec.js';
 import { parseSpaceSpec } from './specs/spaceSpec.js';
 import { parseDoorSpec, parseWindowSpec } from './specs/openingSpec.js';
+import {
+  parseBridgePartSpec,
+  parseBridgeSpec,
+  type BridgePartPredefinedType,
+  type BridgePredefinedType,
+  type EarthworksFillSpec,
+  type EarthworksFillPredefinedType,
+  type FacilityUsageType,
+} from './specs/infrastructureSpec.js';
 import type { ProxySpec } from './specs/proxySpec.js';
-import type { ProjectSpec } from './specs/spatialSpec.js';
+import {
+  parseSiteSpec,
+  type IfcElementCompositionType,
+  type ProjectSpec,
+} from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
 
@@ -41,12 +67,19 @@ export interface FamiliesToBimOptions {
   readonly siteName?: string | undefined;
   readonly buildingName?: string | undefined;
   /**
+   * Materializes exact evaluated Product Bodies for supported typed routes
+   * such as Earthworks Fill. Supplying this option does not opt unsupported
+   * products into the proxy fallback.
+   */
+  readonly bodyEvaluator?: csg.Evaluator | undefined;
+  /**
    * Enables the proxy route: an unrouted geometry-bearing element is
    * materialized through this evaluator and exported as an
-   * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
+   * IfcBuildingElementProxy (tessellated authoritative body). Without it,
    * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
    * evaluator's handles stay borrowed; the adapter clones what it hands the
-   * model.
+   * model. For backward compatibility it also supplies the body evaluator when
+   * `bodyEvaluator` is absent.
    */
   readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
@@ -143,6 +176,23 @@ const SPEC_ROUTES = {
   },
 } as const;
 
+const CIVIL_PRODUCT_ROUTES: Readonly<
+  Record<
+    string,
+    {
+      readonly archetype: keyof typeof SPEC_ROUTES;
+      readonly roles: readonly string[];
+    }
+  >
+> = {
+  beam: { archetype: 'beam', roles: ['beam', 'cross-girder', 'girder'] },
+  column: { archetype: 'column', roles: ['pier-stem'] },
+  footing: { archetype: 'footing', roles: ['pad'] },
+  railing: { archetype: 'railing', roles: ['guardrail'] },
+  slab: { archetype: 'slab', roles: ['deck'] },
+  wall: { archetype: 'wall', roles: ['wall'] },
+};
+
 /** Stair and ramp specs have no top-level origin — placement lives per flight —
  *  so the element's folded translate lands on every flight's origin instead. */
 function flightsSpecInput(el: ResolvedElement): Record<string, unknown> {
@@ -186,7 +236,7 @@ const NAME_ARCHETYPES: Readonly<Record<string, string>> = {
 };
 
 function archetypeFor(el: ResolvedElement): string | undefined {
-  return el.archetype ?? NAME_ARCHETYPES[el.type];
+  return el.archetype ?? lookup(NAME_ARCHETYPES, el.type);
 }
 
 function specRoute(
@@ -195,6 +245,124 @@ function specRoute(
   return archetype !== undefined && Object.hasOwn(SPEC_ROUTES, archetype)
     ? SPEC_ROUTES[archetype as keyof typeof SPEC_ROUTES]
     : undefined;
+}
+
+/** Own-property lookup: semantics categories and roles are free-form author
+ *  strings, so Object.prototype keys must never resolve to a route. */
+function lookup<T>(map: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
+function civilProductArchetype(el: ResolvedElement): keyof typeof SPEC_ROUTES | undefined {
+  if (el.semantics?.kind !== 'product') return undefined;
+  const definition = lookup(CIVIL_PRODUCT_ROUTES, el.semantics.category);
+  if (definition === undefined || !definition.roles.includes(el.semantics.role)) return undefined;
+  return definition.archetype;
+}
+
+function semanticDimension(el: ResolvedElement, ...names: readonly string[]): number | undefined {
+  if (el.semantics?.kind !== 'product') return undefined;
+  for (const name of names) {
+    const value = el.semantics.dimensionsMm[name];
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/** Beam/column solids centre their cross-section on the placement axis, while
+ *  the semantics envelope sits corner-anchored at the folded IR origin — shift
+ *  the origin to the envelope centre so the exported body occupies the same
+ *  space as the viewport body. */
+function centreOrigin(
+  base: Record<string, unknown>,
+  shift: readonly [number, number, number]
+): [number, number, number] {
+  const origin = (base['origin'] as readonly [number, number, number] | undefined) ?? [0, 0, 0];
+  return [origin[0] + shift[0], origin[1] + shift[1], origin[2] + shift[2]];
+}
+
+/**
+ * Adapts target-independent civil envelope dimensions onto existing typed BIM
+ * spec inputs. Reference infrastructure Families intentionally author domain
+ * props such as `depth`, `capOffset`, and compound railing profiles rather than
+ * BIM `profile`/`thickness` fields; semantics is the stable projection seam.
+ */
+function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
+  const base = specInput(el);
+  if (el.semantics?.kind !== 'product') return base;
+  const length = semanticDimension(el, 'length');
+  const width = semanticDimension(el, 'width');
+  const height = semanticDimension(el, 'height');
+  switch (el.semantics.category) {
+    case 'beam': {
+      const synthesized =
+        base['profile'] === undefined && width !== undefined && height !== undefined
+          ? {
+              profile: { kind: 'RECTANGULAR', width, height },
+              shift: [0, width / 2, height / 2] as const,
+            }
+          : undefined;
+      return {
+        ...base,
+        ...(synthesized !== undefined
+          ? { origin: centreOrigin(base, synthesized.shift), profile: synthesized.profile }
+          : {}),
+        length: length ?? base['length'],
+        predefinedType: base['predefinedType'] ?? 'BEAM',
+      };
+    }
+    case 'column': {
+      const synthesized =
+        base['profile'] === undefined && length !== undefined && width !== undefined
+          ? {
+              profile: { kind: 'RECTANGULAR', width: length, height: width },
+              shift: [length / 2, width / 2, 0] as const,
+            }
+          : undefined;
+      return {
+        ...base,
+        ...(synthesized !== undefined
+          ? { origin: centreOrigin(base, synthesized.shift), profile: synthesized.profile }
+          : {}),
+        height: height ?? base['height'],
+        predefinedType: base['predefinedType'] ?? 'COLUMN',
+      };
+    }
+    case 'footing':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        width: width ?? base['width'],
+        thickness: height ?? base['thickness'],
+        predefinedType: base['predefinedType'] ?? 'PAD_FOOTING',
+      };
+    case 'railing':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        thickness: width ?? base['thickness'],
+        height: height ?? base['height'],
+        predefinedType: base['predefinedType'] ?? 'GUARDRAIL',
+      };
+    case 'slab':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        width: width ?? base['width'],
+        thickness: height ?? base['thickness'],
+        predefinedType: base['predefinedType'] ?? 'FLOOR',
+      };
+    case 'wall':
+      return {
+        ...base,
+        length: length ?? base['length'],
+        thickness: width ?? base['thickness'],
+        height: height ?? base['height'],
+        predefinedType: base['predefinedType'] ?? 'NOTDEFINED',
+      };
+    default:
+      return base;
+  }
 }
 
 /** Total of the resolved geometry's OUTER literal translate chain. The
@@ -219,20 +387,14 @@ function peelTranslates(node: csg.IRNode): {
   return { total, moved };
 }
 
-/** True when the element's transform PROP carries a rotation. The spec path
+/** True when the element's rendered local transform carries a rotation. The spec path
  *  folds only translations into IfcLocalPlacement (walls orient via `axisX`),
  *  so a tRotate placement would export un-rotated while the viewport shows it
  *  rotated — reject instead of diverging. Rotations a family render bakes
  *  into its own body geometry (e.g. a circular beam oriented along axisX) are
  *  fine: the spec rebuilds that body parametrically from props. */
 function hasRotateOp(el: ResolvedElement): boolean {
-  const ops = el.props['transform'];
-  return (
-    Array.isArray(ops) &&
-    ops.some(
-      (op) => typeof op === 'object' && op !== null && (op as { op?: unknown }).op === 'rotate'
-    )
-  );
+  return el.localTransforms.some((op) => op.op === 'rotate');
 }
 
 /** Fold the resolved geometry's outer translate chain into the spec placement
@@ -279,12 +441,14 @@ const COMMON_PSET_FIELDS: Readonly<Record<string, string>> = {
 function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const material = el.attributes['material'];
-  if (typeof material === 'string' && el.props['materialName'] === undefined) {
-    out['materialName'] = material;
+  const semanticsMaterial = el.semantics?.kind === 'product' ? el.semantics.material : undefined;
+  if (el.props['materialName'] === undefined) {
+    if (typeof material === 'string') out['materialName'] = material;
+    else if (semanticsMaterial !== undefined) out['materialName'] = semanticsMaterial;
   }
   const psets = el.attributes['psets'];
+  const custom: Record<string, Record<string, string | number | boolean>> = {};
   if (psets && typeof psets === 'object') {
-    const custom: Record<string, Record<string, string | number | boolean>> = {};
     // Only the element's OWN common pset maps onto spec fields — a foreign
     // Common pset (e.g. Pset_DoorCommon on a Wall) must not be relabeled onto
     // this element's common pset, so it flows through as a custom pset.
@@ -313,14 +477,24 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
         if (Object.keys(values).length > 0) custom[psetName] = values;
       }
     }
-    if (Object.keys(custom).length > 0) {
-      const declared = el.props['customProperties'];
-      out['customProperties'] =
-        declared && typeof declared === 'object'
-          ? { ...custom, ...(declared as Record<string, unknown>) }
-          : custom;
+  }
+  // Declared `customProperties` merge over attribute-derived psets, sanitized to
+  // primitive fields so the writer never enumerates a non-pset-shaped value —
+  // and they survive when no psets attribute exists.
+  const declared = el.props['customProperties'];
+  if (declared && typeof declared === 'object' && !Array.isArray(declared)) {
+    for (const [psetName, fields] of Object.entries(declared as Record<string, unknown>)) {
+      if (!fields || typeof fields !== 'object' || Array.isArray(fields)) continue;
+      const values: Record<string, string | number | boolean> = {};
+      for (const [field, value] of Object.entries(fields as Record<string, unknown>)) {
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          values[field] = value;
+        }
+      }
+      if (Object.keys(values).length > 0) custom[psetName] = values;
     }
   }
+  if (Object.keys(custom).length > 0) out['customProperties'] = custom;
   return out;
 }
 
@@ -349,20 +523,24 @@ function addFill(
   );
 }
 
-/** Materialize an unrouted element's IR and add it as a proxy. The body is
- *  authoritative for a proxy (no parametric spec to diverge from), so baked
- *  transforms — rotations included — are fine here. */
-function addProxyElement(
-  model: BimModel,
+interface BodyMaterializationErrors {
+  readonly evalCode: string;
+  readonly notSolidCode: string;
+  readonly invalidCode: string;
+  readonly routeName: string;
+}
+
+function materializeOwnedSolid(
   el: ResolvedElement,
-  evaluator: csg.Evaluator
-): Result<LocalId, BimError> {
+  evaluator: csg.Evaluator,
+  errors: BodyMaterializationErrors
+): Result<ValidSolid, BimError> {
   const evaluated = evaluator.evaluate(el.geometry);
   if (!evaluated.ok) {
     return err(
       specError(
-        'FAMILIES_PROXY_EVAL_FAILED',
-        `familiesToBim: '${el.keyPath}' failed to materialize for the proxy route: ${evaluated.error.message}`,
+        errors.evalCode,
+        `familiesToBim: '${el.keyPath}' failed to materialize for the ${errors.routeName} route: ${evaluated.error.message}`,
         evaluated.error
       )
     );
@@ -376,8 +554,8 @@ function addProxyElement(
     if (only === undefined) {
       return err(
         specError(
-          'FAMILIES_PROXY_NOT_SOLID',
-          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — a proxy body must be exactly one`
+          errors.notSolidCode,
+          `familiesToBim: '${el.keyPath}' materialized to ${solids.length} solids — the ${errors.routeName} body must be exactly one`
         )
       );
     }
@@ -389,7 +567,7 @@ function addProxyElement(
   if (!copy.ok) {
     return err(
       specError(
-        'FAMILIES_PROXY_EVAL_FAILED',
+        errors.evalCode,
         `familiesToBim: '${el.keyPath}' could not copy the materialized body`,
         copy.error
       )
@@ -400,18 +578,45 @@ function addProxyElement(
     copy.value[Symbol.dispose]();
     return err(
       specError(
-        'FAMILIES_PROXY_INVALID',
+        errors.invalidCode,
         `familiesToBim: '${el.keyPath}' materialized to an invalid solid: ${valid.error}`
       )
     );
   }
+  return ok(valid.value);
+}
+
+/** Materialize an unrouted element's IR and add it as a proxy. The body is
+ *  authoritative for a proxy (no parametric spec to diverge from), so baked
+ *  transforms — rotations included — are fine here. */
+function addProxyElement(
+  model: BimModel,
+  el: ResolvedElement,
+  evaluator: csg.Evaluator,
+  projectedSpatialTranslation: Translation
+): Result<LocalId, BimError> {
+  const body = materializeOwnedSolid(el, evaluator, {
+    evalCode: 'FAMILIES_PROXY_EVAL_FAILED',
+    notSolidCode: 'FAMILIES_PROXY_NOT_SOLID',
+    invalidCode: 'FAMILIES_PROXY_INVALID',
+    routeName: 'proxy',
+  });
+  if (!body.ok) return body;
+  const localized = localizeOwnedSolid(
+    el,
+    body.value,
+    projectedSpatialTranslation,
+    'FAMILIES_PROXY_LOCALIZE_FAILED',
+    'spatial parent'
+  );
+  if (!localized.ok) return localized;
   const nameAttr = el.attributes['name'];
   const materialProp = el.props['materialName'];
   const specProps = collectSpecProps(el);
-  return model.addProxy(
+  const added = model.addProxy(
     {
       name: typeof nameAttr === 'string' ? nameAttr : el.type,
-      solid: valid.value,
+      solid: localized.value,
       materialName:
         typeof materialProp === 'string'
           ? materialProp
@@ -420,6 +625,8 @@ function addProxyElement(
     },
     { stableKey: el.keyPath }
   );
+  if (!added.ok) localized.value[Symbol.dispose]();
+  return added;
 }
 
 /** Map a wall's synthesized Opening children onto addDoor/addWindow. The
@@ -494,6 +701,331 @@ function requireKeyed(el: ResolvedElement): Result<void, BimError> {
   );
 }
 
+type CivilSpatialKind = 'site' | 'bridge' | 'bridge-part';
+type CivilParentKind = 'project' | CivilSpatialKind;
+
+const BRIDGE_ROLE: Readonly<Record<string, BridgePredefinedType>> = {
+  arched: 'ARCHED',
+  'cable-stayed': 'CABLE_STAYED',
+  cantilever: 'CANTILEVER',
+  culvert: 'CULVERT',
+  framework: 'FRAMEWORK',
+  girder: 'GIRDER',
+  suspension: 'SUSPENSION',
+  truss: 'TRUSS',
+};
+
+const BRIDGE_PART_ROLE: Readonly<Record<string, BridgePartPredefinedType>> = {
+  abutment: 'ABUTMENT',
+  deck: 'DECK',
+  'deck-segment': 'DECK_SEGMENT',
+  foundation: 'FOUNDATION',
+  pier: 'PIER',
+  'pier-segment': 'PIER_SEGMENT',
+  pylon: 'PYLON',
+  substructure: 'SUBSTRUCTURE',
+  superstructure: 'SUPERSTRUCTURE',
+  'surface-structure': 'SURFACESTRUCTURE',
+};
+
+const CIVIL_COMPOSITION: Readonly<Record<string, IfcElementCompositionType>> = {
+  collection: 'COMPLEX',
+  element: 'ELEMENT',
+  partial: 'PARTIAL',
+};
+
+const CIVIL_USAGE: Readonly<Record<string, FacilityUsageType>> = {
+  lateral: 'LATERAL',
+  longitudinal: 'LONGITUDINAL',
+  regional: 'REGION',
+  vertical: 'VERTICAL',
+};
+
+const EARTHWORKS_FILL_ROLE: Readonly<Record<string, EarthworksFillPredefinedType>> = {
+  backfill: 'BACKFILL',
+  counterweight: 'COUNTERWEIGHT',
+  embankment: 'EMBANKMENT',
+  'slope-fill': 'SLOPEFILL',
+  subgrade: 'SUBGRADE',
+  'subgrade-bed': 'SUBGRADEBED',
+  'transition-section': 'TRANSITIONSECTION',
+};
+
+function unsupportedCivilRole(
+  el: ResolvedElement,
+  entity: 'Site' | 'Bridge' | 'Bridge Part' | 'Earthworks Fill'
+): Result<never, BimError> {
+  return err(
+    specError(
+      'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+      `familiesToBim: unsupported ${entity} role '${el.semantics?.role ?? ''}' at '${el.keyPath}'`
+    )
+  );
+}
+
+function civilSpatialKind(el: ResolvedElement): CivilSpatialKind | undefined {
+  const semantics = el.semantics;
+  if (semantics?.kind === 'site' && semantics.category === 'site') return 'site';
+  if (semantics?.kind === 'facility' && semantics.category === 'bridge') return 'bridge';
+  if (semantics?.kind === 'spatial-part' && semantics.category === 'bridge-part') {
+    return 'bridge-part';
+  }
+  return undefined;
+}
+
+function isCivilSpatialIntent(el: ResolvedElement): boolean {
+  return (
+    el.semantics?.kind === 'site' ||
+    el.semantics?.kind === 'facility' ||
+    el.semantics?.kind === 'spatial-part'
+  );
+}
+
+function hasCivilSpatialIntent(el: ResolvedElement): boolean {
+  return isCivilSpatialIntent(el) || el.children.some(hasCivilSpatialIntent);
+}
+
+function isEarthworksFillOccurrence(el: ResolvedElement): boolean {
+  return el.semantics?.kind === 'product' && el.semantics.category === 'earthworks-fill';
+}
+
+function semanticName(el: ResolvedElement): string {
+  const name = el.attributes['name'];
+  if (typeof name === 'string' && name.trim().length > 0) return name;
+  const semanticNameValue = el.semantics?.properties?.['name'];
+  return typeof semanticNameValue === 'string' && semanticNameValue.trim().length > 0
+    ? semanticNameValue
+    : el.keyPath;
+}
+
+type Translation = readonly [number, number, number];
+
+const ZERO_TRANSLATION: Translation = [0, 0, 0];
+
+function addTranslation(a: Translation, b: Translation): Translation {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function subtractTranslation(a: Translation, b: Translation): Translation {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function hasTranslation(value: Translation): boolean {
+  return value[0] !== 0 || value[1] !== 0 || value[2] !== 0;
+}
+
+const DEFAULT_AXIS_X: Translation = [1, 0, 0];
+const DEFAULT_AXIS_Z: Translation = [0, 0, 1];
+
+function axisEquals(value: unknown, axis: Translation): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((component, i) => typeof component === 'number' && component === axis[i])
+  );
+}
+
+/** Civil descendant relativization is translation-only, so a civil frame with
+ *  non-default axes would rotate the exported hierarchy away from the IR. */
+function hasRotatedAxes(el: ResolvedElement): boolean {
+  const axisX = el.props['axisX'];
+  const axisZ = el.props['axisZ'];
+  return (
+    (axisX !== undefined && !axisEquals(axisX, DEFAULT_AXIS_X)) ||
+    (axisZ !== undefined && !axisEquals(axisZ, DEFAULT_AXIS_Z))
+  );
+}
+
+function authoredSpecOrigin(el: ResolvedElement): Translation {
+  const origin = el.props['origin'];
+  return Array.isArray(origin) && origin.length === 3 && origin.every((c) => typeof c === 'number')
+    ? (origin as unknown as Translation)
+    : ZERO_TRANSLATION;
+}
+
+function localizeOwnedSolid(
+  el: ResolvedElement,
+  body: ValidSolid,
+  projectedSpatialTranslation: Translation,
+  errorCode: string,
+  frameName: string
+): Result<ValidSolid, BimError> {
+  if (!hasTranslation(projectedSpatialTranslation)) return ok(body);
+  try {
+    const localized = translate(body, [
+      -projectedSpatialTranslation[0],
+      -projectedSpatialTranslation[1],
+      -projectedSpatialTranslation[2],
+    ]);
+    body[Symbol.dispose]();
+    return ok(localized);
+  } catch (cause) {
+    body[Symbol.dispose]();
+    return err(
+      specError(
+        errorCode,
+        `familiesToBim: '${el.keyPath}' could not move its body into the ${frameName} frame`,
+        cause
+      )
+    );
+  }
+}
+
+function authoredTranslation(el: ResolvedElement): Translation {
+  const total: [number, number, number] = [0, 0, 0];
+  for (const op of el.localTransforms) {
+    if (op.op !== 'translate') continue;
+    total[0] += op.v[0];
+    total[1] += op.v[1];
+    total[2] += op.v[2];
+  }
+  return total;
+}
+
+function civilSpatialInput(
+  el: ResolvedElement,
+  localTranslation: Translation
+): Record<string, unknown> {
+  const semantics = el.semantics;
+  const composition =
+    semantics !== undefined && 'composition' in semantics
+      ? CIVIL_COMPOSITION[semantics.composition]
+      : undefined;
+  const explicitOrigin = (el.props['origin'] as Translation | undefined) ?? ZERO_TRANSLATION;
+  const origin = addTranslation(explicitOrigin, localTranslation);
+  return {
+    name: semanticName(el),
+    ...(el.props['origin'] !== undefined || hasTranslation(localTranslation) ? { origin } : {}),
+    ...(el.props['axisX'] !== undefined ? { axisX: el.props['axisX'] } : {}),
+    ...(el.props['axisZ'] !== undefined ? { axisZ: el.props['axisZ'] } : {}),
+    ...(composition !== undefined ? { compositionType: composition } : {}),
+  };
+}
+
+function civilParentAccepts(kind: CivilSpatialKind, parent: CivilParentKind): boolean {
+  if (kind === 'site') return parent === 'project';
+  if (kind === 'bridge') return parent === 'site';
+  return parent === 'bridge' || parent === 'bridge-part';
+}
+
+function addCivilSpatialOccurrence(
+  model: BimModel,
+  el: ResolvedElement,
+  kind: CivilSpatialKind,
+  localTranslation: Translation
+): Result<LocalId, BimError> {
+  if (kind === 'site') {
+    if (el.semantics?.role !== 'transport-site') return unsupportedCivilRole(el, 'Site');
+    const parsed = parseSiteSpec(civilSpatialInput(el, localTranslation));
+    return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
+  }
+  if (kind === 'bridge') {
+    const predefinedType = lookup(BRIDGE_ROLE, el.semantics?.role ?? '');
+    if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge');
+    const parsed = parseBridgeSpec({
+      ...civilSpatialInput(el, localTranslation),
+      predefinedType,
+    });
+    return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
+  }
+  const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
+  const predefinedType = lookup(BRIDGE_PART_ROLE, el.semantics?.role ?? '');
+  if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge Part');
+  const parsed = parseBridgePartSpec({
+    ...civilSpatialInput(el, localTranslation),
+    predefinedType,
+    usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
+  });
+  return parsed.ok ? model.addBridgePart(parsed.value, { stableKey: el.keyPath }) : parsed;
+}
+
+function relativeSpecInput(
+  input: Record<string, unknown>,
+  projectedSpatialTranslation: Translation
+): Record<string, unknown> {
+  const relativeOrigin = (origin: unknown): unknown =>
+    Array.isArray(origin) &&
+    origin.length === 3 &&
+    origin.every((value) => typeof value === 'number')
+      ? subtractTranslation(origin as [number, number, number], projectedSpatialTranslation)
+      : origin;
+  if (Array.isArray(input['flights'])) {
+    const flights: readonly unknown[] = input['flights'];
+    return {
+      ...input,
+      flights: flights.map((flight): unknown => {
+        if (typeof flight !== 'object' || flight === null) return flight;
+        const flightInput = flight as Record<string, unknown>;
+        return {
+          ...flightInput,
+          origin: relativeOrigin(flightInput['origin']),
+        };
+      }),
+    };
+  }
+  return { ...input, origin: relativeOrigin(input['origin']) };
+}
+
+function addEarthworksFillElement(
+  model: BimModel,
+  el: ResolvedElement,
+  evaluator: csg.Evaluator,
+  projectedSpatialTranslation: Translation
+): Result<LocalId, BimError> {
+  if (el.semantics?.kind !== 'product') {
+    return err(
+      specError(
+        'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+        `familiesToBim: '${el.keyPath}' is not authored as a civil Product`
+      )
+    );
+  }
+  const predefinedType = lookup(EARTHWORKS_FILL_ROLE, el.semantics.role);
+  if (predefinedType === undefined) return unsupportedCivilRole(el, 'Earthworks Fill');
+  const body = materializeOwnedSolid(el, evaluator, {
+    evalCode: 'FAMILIES_EARTHWORKS_EVAL_FAILED',
+    notSolidCode: 'FAMILIES_EARTHWORKS_NOT_SOLID',
+    invalidCode: 'FAMILIES_EARTHWORKS_INVALID',
+    routeName: 'Earthworks Fill',
+  });
+  if (!body.ok) return body;
+
+  const localized = localizeOwnedSolid(
+    el,
+    body.value,
+    projectedSpatialTranslation,
+    'FAMILIES_EARTHWORKS_LOCALIZE_FAILED',
+    'Bridge Part'
+  );
+  if (!localized.ok) return localized;
+
+  const specProps = collectSpecProps(el);
+  const authoredMaterial = el.props['materialName'];
+  const added = model.addEarthworksFill(
+    {
+      name: semanticName(el),
+      solid: localized.value,
+      materialName:
+        typeof authoredMaterial === 'string'
+          ? authoredMaterial
+          : ((specProps['materialName'] as string | undefined) ?? el.semantics.material),
+      predefinedType,
+      customProperties: specProps['customProperties'] as EarthworksFillSpec['customProperties'],
+    },
+    { stableKey: el.keyPath }
+  );
+  if (!added.ok) localized.value[Symbol.dispose]();
+  return added;
+}
+
+interface ProjectionWalkState {
+  readonly spatialStructureId: LocalId | null;
+  readonly civilParent: CivilParentKind;
+  readonly rotated: boolean;
+  readonly cumulativeTranslation: Translation;
+  readonly projectedSpatialTranslation: Translation;
+}
+
 /**
  * Project a resolved families tree into an eager BimModel. The caller owns
  * the returned model (`using`); families stays domain-neutral — this adapter
@@ -503,39 +1035,128 @@ export function familiesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
+  const usesAuthoredCivilHierarchy = hasCivilSpatialIntent(root);
+  if (usesAuthoredCivilHierarchy) {
+    const keyed = requireKeyed(root);
+    if (!keyed.ok) return keyed;
+  }
   const model = new BimModel();
-  const initResult = model.init(options.project);
+  // A root that is itself the civil Site would otherwise collide with the
+  // Project's stableKey.
+  const initResult = model.init(
+    options.project,
+    usesAuthoredCivilHierarchy
+      ? {
+          stableKey:
+            civilSpatialKind(root) !== undefined ? `${root.keyPath}#project` : root.keyPath,
+        }
+      : undefined
+  );
   if (!initResult.ok) return initResult;
-  const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
-  if (!siteResult.ok) {
-    model[Symbol.dispose]();
-    return siteResult;
+  const projectId = initResult.value;
+  let buildingId: LocalId | null = null;
+  if (!usesAuthoredCivilHierarchy) {
+    const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
+    if (!siteResult.ok) {
+      model[Symbol.dispose]();
+      return siteResult;
+    }
+    const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
+    if (!buildingResult.ok) {
+      model[Symbol.dispose]();
+      return buildingResult;
+    }
+    buildingId = buildingResult.value;
+    model.aggregate(projectId, siteResult.value);
+    model.aggregate(siteResult.value, buildingId);
   }
-  const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
-  if (!buildingResult.ok) {
-    model[Symbol.dispose]();
-    return buildingResult;
-  }
-  const buildingId = buildingResult.value;
-  const project = model.getProject();
-  if (project !== null) model.aggregate(project.localId, siteResult.value);
-  model.aggregate(siteResult.value, buildingId);
 
-  const idByKeyPath = new Map<string, LocalId>();
+  const idByKeyPath = new Map<string, LocalId>(
+    usesAuthoredCivilHierarchy ? [[root.keyPath, projectId]] : []
+  );
   const proxied: ProxiedElement[] = [];
-  const walk = (
-    el: ResolvedElement,
-    storeyId: LocalId | null,
-    rotated: boolean
-  ): Result<void, BimError> => {
+  const walk = (el: ResolvedElement, state: ProjectionWalkState): Result<void, BimError> => {
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
-    const rotatedHere = rotated || hasRotateOp(el);
+    const rotatedHere = state.rotated || hasRotateOp(el);
+    const cumulativeTranslationHere = addTranslation(
+      state.cumulativeTranslation,
+      authoredTranslation(el)
+    );
     let proxiedHere = false;
-    let containerId = storeyId;
+    let nextSpatialStructureId = state.spatialStructureId;
+    let nextCivilParent = state.civilParent;
+    let nextProjectedSpatialTranslation = state.projectedSpatialTranslation;
     const archetype = archetypeFor(el);
-    const route = specRoute(archetype);
-    if (archetype === 'storey') {
+    // An explicitly authored civil Product is routed by its semantic category.
+    // Do not let a coincidental legacy archetype silently change its IFC class.
+    const effectiveArchetype =
+      el.semantics?.kind === 'product' ? civilProductArchetype(el) : archetype;
+    const route = specRoute(effectiveArchetype);
+    const civilKind = civilSpatialKind(el);
+    if (civilKind !== undefined) {
+      if (
+        !usesAuthoredCivilHierarchy ||
+        !civilParentAccepts(civilKind, state.civilParent) ||
+        state.spatialStructureId === null
+      ) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: civil '${civilKind}' at '${el.keyPath}' cannot occur under '${state.civilParent}'`
+          )
+        );
+      }
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
+      if (rotatedHere || hasRotatedAxes(el)) {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_TRANSFORM',
+            `familiesToBim: civil spatial element '${el.keyPath}' carries a rotated frame — descendants are relativized by translation only, so bake the orientation into child geometry`
+          )
+        );
+      }
+      if (el.geometry.kind !== 'Empty') {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+            `familiesToBim: civil spatial element '${el.keyPath}' carries its own geometry — Site/Bridge/Bridge Part export no body, so author it as a child Product (e.g. Earthworks Fill)`
+          )
+        );
+      }
+      const localTranslation = subtractTranslation(
+        cumulativeTranslationHere,
+        state.projectedSpatialTranslation
+      );
+      const added = addCivilSpatialOccurrence(model, el, civilKind, localTranslation);
+      if (!added.ok) return added;
+      model.aggregate(state.spatialStructureId, added.value);
+      idByKeyPath.set(el.keyPath, added.value);
+      nextSpatialStructureId = added.value;
+      nextCivilParent = civilKind;
+      // The frame's IfcLocalPlacement origin includes the spec `origin` prop on
+      // top of the walk's translates, so descendants relativize by both.
+      nextProjectedSpatialTranslation = addTranslation(
+        cumulativeTranslationHere,
+        authoredSpecOrigin(el)
+      );
+    } else if (isCivilSpatialIntent(el)) {
+      return err(
+        specError(
+          'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+          `familiesToBim: unsupported civil '${el.semantics?.kind ?? 'unknown'}' category '${el.semantics?.category ?? ''}' at '${el.keyPath}'`
+        )
+      );
+    } else if (archetype === 'storey') {
+      if (buildingId === null) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: Storey '${el.keyPath}' is not part of the civil Bridge hierarchy`
+          )
+        );
+      }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
       const storeyResult = model.addStorey(
@@ -548,7 +1169,40 @@ export function familiesToBim(
       if (!storeyResult.ok) return storeyResult;
       model.aggregate(buildingId, storeyResult.value);
       idByKeyPath.set(el.keyPath, storeyResult.value);
-      containerId = storeyResult.value;
+      nextSpatialStructureId = storeyResult.value;
+    } else if (isEarthworksFillOccurrence(el)) {
+      if (
+        !usesAuthoredCivilHierarchy ||
+        nextSpatialStructureId === null ||
+        state.civilParent !== 'bridge-part'
+      ) {
+        return err(
+          specError(
+            'FAMILIES_INVALID_CIVIL_HIERARCHY',
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs a Bridge Part ancestor`
+          )
+        );
+      }
+      const bodyEvaluator = options.bodyEvaluator ?? options.proxyEvaluator;
+      if (bodyEvaluator === undefined) {
+        return err(
+          specError(
+            'FAMILIES_EARTHWORKS_EVALUATOR_REQUIRED',
+            `familiesToBim: Earthworks Fill '${el.keyPath}' needs bodyEvaluator to materialize its exact Product Body`
+          )
+        );
+      }
+      const keyed = requireKeyed(el);
+      if (!keyed.ok) return keyed;
+      const added = addEarthworksFillElement(
+        model,
+        el,
+        bodyEvaluator,
+        state.projectedSpatialTranslation
+      );
+      if (!added.ok) return added;
+      model.placeIn(added.value, nextSpatialStructureId);
+      idByKeyPath.set(el.keyPath, added.value);
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
@@ -575,22 +1229,35 @@ export function familiesToBim(
           );
         }
       }
-      const parsed = route.parse(('input' in route ? route.input : specInput)(el));
+      const routedInput =
+        el.semantics?.kind === 'product'
+          ? civilProductSpecInput(el)
+          : ('input' in route ? route.input : specInput)(el);
+      const parsed = route.parse(
+        usesAuthoredCivilHierarchy
+          ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
+          : routedInput
+      );
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;
       idByKeyPath.set(el.keyPath, added.value);
-      if (containerId === null) {
+      if (
+        nextSpatialStructureId === null ||
+        (usesAuthoredCivilHierarchy && state.civilParent !== 'bridge-part')
+      ) {
         return err(
           specError(
-            'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
+            usesAuthoredCivilHierarchy ? 'FAMILIES_INVALID_CIVIL_HIERARCHY' : 'FAMILIES_NO_STOREY',
+            usesAuthoredCivilHierarchy
+              ? `familiesToBim: physical product '${el.keyPath}' needs a Bridge Part ancestor`
+              : `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }
-      model.placeIn(added.value, containerId);
-      if (archetype === 'wall') {
-        const opened = addOpenings(model, el, added.value, containerId, idByKeyPath);
+      model.placeIn(added.value, nextSpatialStructureId);
+      if (effectiveArchetype === 'wall') {
+        const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
       }
     } else if (el.type === 'Opening') {
@@ -605,23 +1272,33 @@ export function familiesToBim(
         return err(
           specError(
             'FAMILIES_UNSUPPORTED_TYPE',
-            `familiesToBim: no spec mapping for element type '${el.type}' at '${el.keyPath}' (archetype: ${el.archetype ?? 'none'}) — routing is by archetype, so declare one on the family, add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
+            `familiesToBim: no supported spec mapping for element type '${el.type}' at '${el.keyPath}' (archetype: ${el.archetype ?? 'none'}) — declare a recognized archetype or civil Product category/role, add a spec route, or pass proxyEvaluator to export it as an IfcBuildingElementProxy`
           )
         );
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      if (containerId === null) {
+      if (
+        nextSpatialStructureId === null ||
+        (usesAuthoredCivilHierarchy && state.civilParent !== 'bridge-part')
+      ) {
         return err(
           specError(
-            'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
+            usesAuthoredCivilHierarchy ? 'FAMILIES_INVALID_CIVIL_HIERARCHY' : 'FAMILIES_NO_STOREY',
+            usesAuthoredCivilHierarchy
+              ? `familiesToBim: physical product '${el.keyPath}' needs a Bridge Part ancestor`
+              : `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }
-      const added = addProxyElement(model, el, options.proxyEvaluator);
+      const added = addProxyElement(
+        model,
+        el,
+        options.proxyEvaluator,
+        state.projectedSpatialTranslation
+      );
       if (!added.ok) return added;
-      model.placeIn(added.value, containerId);
+      model.placeIn(added.value, nextSpatialStructureId);
       idByKeyPath.set(el.keyPath, added.value);
       proxied.push({ keyPath: el.keyPath, type: el.type, archetype: el.archetype });
       proxiedHere = true;
@@ -630,14 +1307,26 @@ export function familiesToBim(
       // A wall's openings were mapped by addOpenings; a proxy's are baked
       // into its authoritative tessellated body — neither wants the
       // outside-wall rejection on the synthesized Opening child.
-      if ((archetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
-      const r = walk(child, containerId, rotatedHere);
+      if ((effectiveArchetype === 'wall' || proxiedHere) && child.type === 'Opening') continue;
+      const r = walk(child, {
+        spatialStructureId: nextSpatialStructureId,
+        civilParent: nextCivilParent,
+        rotated: rotatedHere,
+        cumulativeTranslation: cumulativeTranslationHere,
+        projectedSpatialTranslation: nextProjectedSpatialTranslation,
+      });
       if (!r.ok) return r;
     }
     return ok(undefined);
   };
 
-  const walked = walk(root, null, false);
+  const walked = walk(root, {
+    spatialStructureId: usesAuthoredCivilHierarchy ? projectId : null,
+    civilParent: 'project',
+    rotated: false,
+    cumulativeTranslation: ZERO_TRANSLATION,
+    projectedSpatialTranslation: ZERO_TRANSLATION,
+  });
   if (!walked.ok) {
     model[Symbol.dispose]();
     return walked;

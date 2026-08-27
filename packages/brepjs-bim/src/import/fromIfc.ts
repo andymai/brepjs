@@ -68,6 +68,7 @@ const ELEMENT_TYPES: ReadonlyArray<readonly [number, ImportedElementCategory]> =
   [WebIFC.IFCRAILING, 'RAILING'],
   [WebIFC.IFCCOVERING, 'COVERING'],
   [WebIFC.IFCELEMENTASSEMBLY, 'ELEMENT_ASSEMBLY'],
+  [WebIFC.IFCEARTHWORKSFILL, 'EARTHWORKS_FILL'],
   [WebIFC.IFCBUILDINGELEMENTPROXY, 'PROXY'],
 ];
 
@@ -199,7 +200,7 @@ function readElement(
     const psets = readPsets(reader, expressId).map(toImportedPset);
     const material = readMaterial(reader, expressId, scale);
     const classification = readClassification(reader, expressId);
-    const storeyExpressId = containment.get(expressId);
+    const spatialStructureExpressId = containment.get(expressId);
 
     return {
       expressId,
@@ -207,7 +208,9 @@ function readElement(
       name,
       category,
       ...(predefinedType !== undefined ? { predefinedType } : {}),
-      ...(storeyExpressId !== undefined ? { storeyExpressId } : {}),
+      ...(spatialStructureExpressId !== undefined
+        ? { spatialStructureExpressId, storeyExpressId: spatialStructureExpressId }
+        : {}),
       geometry,
       psets,
       material,

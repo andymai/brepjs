@@ -2,7 +2,12 @@ import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 
-/** IfcAssemblyPlaceEnum values; SITE for in-place assemblies, FACTORY for prefabricated. */
+/**
+ * Enumeration literals transcribed verbatim from `IfcAssemblyPlaceEnum` in the
+ * buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ * SITE denotes in-place assemblies; FACTORY denotes prefabricated assemblies.
+ */
 export type AssemblyPlaceIfc = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /** IfcElementAssemblyTypeEnum values (IFC4). */

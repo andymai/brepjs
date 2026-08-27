@@ -10,142 +10,180 @@ import type { BrepError, OrientedFace, PlanarFace, Result, ValidSolid, csg } fro
 /** Optional identity override for created elements: a stable key (e.g. a
  *  families key path) that replaces the positional GlobalId derivation. */
 interface ElementIdentityOptions {
-    readonly stableKey?: string | undefined;
+  readonly stableKey?: string | undefined;
 }
 
 declare class BimModel {
-    #private;
-    init(spec: ProjectSpec): Result<LocalId, BimError>;
-    [Symbol.dispose](): void;
-    addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addCurtainWall(spec: CurtainWallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcStair assembly. Geometry for each flight is built and written by
-     * the IFC layer from `spec.flights`; the STAIR element itself carries no solid
-     * (the assembly container's Representation is null, valid per IFC4).
-     */
-    addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcRamp assembly. Geometry for each flight is built and written by the
-     * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
-     */
-    addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcCovering. When `hostLocalId` is supplied, an
-     * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
-     * finishes) is recorded for export.
-     */
-    addCovering(spec: CoveringSpec, hostLocalId?: LocalId, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
-     * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
-     * (IfcRelNests, order-preserving). Returns the assembly's localId.
-     */
-    addElementAssembly(spec: ElementAssemblySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
-     * carries no geometry; attach members (spaces or other elements) with
-     * {@link assignToGroup}. Returns the zone's localId as a Result.
-     */
-    addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
-     * system carries no geometry; attach members with {@link assignToGroup}.
-     * Returns the system's localId as a Result.
-     */
-    addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    /**
-     * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
-     * for the same group extend the single relationship in call order. Returns the
-     * relationship's localId.
-     */
-    assignToGroup(groupId: LocalId, memberIds: readonly LocalId[]): LocalId;
-    /**
-     * Records an order-preserving IfcRelNests decomposing `parentId` into
-     * `childId`. Unlike {@link aggregate}, repeated calls extend the same nesting
-     * relationship in call order.
-     */
-    nest(parentId: LocalId, childId: LocalId): void;
-    /**
-     * Records an IfcRelConnectsElements logical connection between two elements.
-     * Returns the relationship's localId.
-     */
-    connectElements(relatingElementLocalId: LocalId, relatedElementLocalId: LocalId, description?: string): LocalId;
-    /**
-     * Records an IfcRelConnectsPathElements connection between two path-based
-     * elements at the given path ends. Returns the relationship's localId.
-     */
-    connectPathElements(relatingElementLocalId: LocalId, relatedElementLocalId: LocalId, relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED', description?: string): LocalId;
-    /**
-     * Assigns a surface style (colour + transparency) to an element. On export the
-     * style is emitted as IfcSurfaceStyle and linked to the element's body geometry
-     * via IfcStyledItem (currently honoured for railings and coverings, whose body
-     * representation item is surfaced by their geometry writers).
-     */
-    setSurfaceStyle(elementLocalId: LocalId, style: SurfaceStyleSpec): void;
-    getSurfaceStyle(elementLocalId: LocalId): SurfaceStyleSpec | null;
-    /**
-     * Records an IfcRelSpaceBoundary between a space and one of its bounding
-     * building elements. Returns the relationship's localId.
-     */
-    addSpaceBoundary(spaceLocalId: LocalId, elementLocalId: LocalId, connectionType?: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED'): LocalId;
-    /**
-     * Associates a classification reference with one or more elements, creating an
-     * IfcRelAssociatesClassification on export. Returns the relationship's localId.
-     */
-    addClassification(ref: ClassificationRef, elementLocalIds: readonly LocalId[]): LocalId;
-    /**
-     * Adds an IfcBuildingElementProxy. The model TAKES OWNERSHIP of `spec.solid`
-     * and disposes it on model disposal; the caller must not dispose it (see
-     * {@link ProxySpec.solid}).
-     */
-    addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
-    addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
-    addSlabOpening(input: SlabOpeningInput, options?: ElementIdentityOptions): Result<LocalId, BimError>;
-    getDoors(): BimElement<'DOOR'>[];
-    getWindows(): BimElement<'WINDOW'>[];
-    aggregate(parentId: LocalId, childId: LocalId): void;
-    placeIn(elementId: LocalId, containerId: LocalId): void;
-    getProject(): BimElement<'PROJECT'> | null;
-    getElement(id: LocalId): AnyBimElement | null;
-    /**
-     * A serializable summary of the model's structure, rooted at the project and
-     * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
-     * storey) plus the elements contained in each storey (placeIn). Useful for a
-     * read-only tree view of the model across a worker boundary.
-     */
-    toTreeSummary(): BimTreeSummary;
-    getWalls(): BimElement<'WALL'>[];
-    getSlabs(): BimElement<'SLAB'>[];
-    getBeams(): BimElement<'BEAM'>[];
-    getColumns(): BimElement<'COLUMN'>[];
-    getProxies(): BimElement<'PROXY'>[];
-    getSpaces(): BimElement<'SPACE'>[];
-    getRoofs(): BimElement<'ROOF'>[];
-    getCurtainWalls(): BimElement<'CURTAIN_WALL'>[];
-    getFootings(): BimElement<'FOOTING'>[];
-    getPiles(): BimElement<'PILE'>[];
-    getStairs(): BimElement<'STAIR'>[];
-    getRamps(): BimElement<'RAMP'>[];
-    getRailings(): BimElement<'RAILING'>[];
-    getCoverings(): BimElement<'COVERING'>[];
-    getElementAssemblies(): BimElement<'ELEMENT_ASSEMBLY'>[];
-    getZones(): BimElement<'ZONE'>[];
-    getSystems(): BimElement<'SYSTEM'>[];
-    getAllElements(): AnyBimElement[];
-    getAllRelationships(): BimRelationship[];
+  #private;
+  init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  [Symbol.dispose](): void;
+  addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /** Adds a typed IfcEarthworksFill body. Ownership of `spec.solid` transfers
+   * to the model only when this call succeeds. */
+  addEarthworksFill(
+    spec: EarthworksFillSpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError>;
+  addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addCurtainWall(
+    spec: CurtainWallSpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError>;
+  addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcStair assembly. Geometry for each flight is built and written by
+   * the IFC layer from `spec.flights`; the STAIR element itself carries no solid
+   * (the assembly container's Representation is null, valid per IFC4).
+   */
+  addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcRamp assembly. Geometry for each flight is built and written by the
+   * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
+   */
+  addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcCovering. When `hostLocalId` is supplied, an
+   * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
+   * finishes) is recorded for export.
+   */
+  addCovering(
+    spec: CoveringSpec,
+    hostLocalId?: LocalId,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
+   * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
+   * (IfcRelNests, order-preserving). Returns the assembly's localId.
+   */
+  addElementAssembly(
+    spec: ElementAssemblySpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
+   * carries no geometry; attach members (spaces or other elements) with
+   * {@link assignToGroup}. Returns the zone's localId as a Result.
+   */
+  addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /**
+   * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
+   * system carries no geometry; attach members with {@link assignToGroup}.
+   * Returns the system's localId as a Result.
+   */
+  addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  /**
+   * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
+   * for the same group extend the single relationship in call order. Returns the
+   * relationship's localId.
+   */
+  assignToGroup(groupId: LocalId, memberIds: readonly LocalId[]): LocalId;
+  /**
+   * Records an order-preserving IfcRelNests decomposing `parentId` into
+   * `childId`. Unlike {@link aggregate}, repeated calls extend the same nesting
+   * relationship in call order.
+   */
+  nest(parentId: LocalId, childId: LocalId): void;
+  /**
+   * Records an IfcRelConnectsElements logical connection between two elements.
+   * Returns the relationship's localId.
+   */
+  connectElements(
+    relatingElementLocalId: LocalId,
+    relatedElementLocalId: LocalId,
+    description?: string
+  ): LocalId;
+  /**
+   * Records an IfcRelConnectsPathElements connection between two path-based
+   * elements at the given path ends. Returns the relationship's localId.
+   */
+  connectPathElements(
+    relatingElementLocalId: LocalId,
+    relatedElementLocalId: LocalId,
+    relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    description?: string
+  ): LocalId;
+  /**
+   * Assigns a surface style (colour + transparency) to an element. On export the
+   * style is emitted as IfcSurfaceStyle and linked to the element's body geometry
+   * via IfcStyledItem (currently honoured for railings and coverings, whose body
+   * representation item is surfaced by their geometry writers).
+   */
+  setSurfaceStyle(elementLocalId: LocalId, style: SurfaceStyleSpec): void;
+  getSurfaceStyle(elementLocalId: LocalId): SurfaceStyleSpec | null;
+  /**
+   * Records an IfcRelSpaceBoundary between a space and one of its bounding
+   * building elements. Returns the relationship's localId.
+   */
+  addSpaceBoundary(
+    spaceLocalId: LocalId,
+    elementLocalId: LocalId,
+    connectionType?: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED'
+  ): LocalId;
+  /**
+   * Associates a classification reference with one or more elements, creating an
+   * IfcRelAssociatesClassification on export. Returns the relationship's localId.
+   */
+  addClassification(ref: ClassificationRef, elementLocalIds: readonly LocalId[]): LocalId;
+  /**
+   * Adds an IfcBuildingElementProxy. The model TAKES OWNERSHIP of `spec.solid`
+   * and disposes it on model disposal; the caller must not dispose it (see
+   * {@link ProxySpec.solid}).
+   */
+  addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
+  addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+  addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError>;
+  addSlabOpening(
+    input: SlabOpeningInput,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError>;
+  getDoors(): BimElement<'DOOR'>[];
+  getWindows(): BimElement<'WINDOW'>[];
+  aggregate(parentId: LocalId, childId: LocalId): void;
+  placeIn(elementId: LocalId, containerId: LocalId): void;
+  getProject(): BimElement<'PROJECT'> | null;
+  getElement(id: LocalId): AnyBimElement | null;
+  /**
+   * A serializable summary of the model's structure, rooted at the project and
+   * walking the IFC spatial hierarchy (AGGREGATES: project → site → building →
+   * storey) plus the elements contained in each storey (placeIn). Useful for a
+   * read-only tree view of the model across a worker boundary.
+   */
+  toTreeSummary(): BimTreeSummary;
+  getWalls(): BimElement<'WALL'>[];
+  getSlabs(): BimElement<'SLAB'>[];
+  getBeams(): BimElement<'BEAM'>[];
+  getBridges(): BimElement<'BRIDGE'>[];
+  getBridgeParts(): BimElement<'BRIDGE_PART'>[];
+  getEarthworksFills(): BimElement<'EARTHWORKS_FILL'>[];
+  getColumns(): BimElement<'COLUMN'>[];
+  getProxies(): BimElement<'PROXY'>[];
+  getSpaces(): BimElement<'SPACE'>[];
+  getRoofs(): BimElement<'ROOF'>[];
+  getCurtainWalls(): BimElement<'CURTAIN_WALL'>[];
+  getFootings(): BimElement<'FOOTING'>[];
+  getPiles(): BimElement<'PILE'>[];
+  getStairs(): BimElement<'STAIR'>[];
+  getRamps(): BimElement<'RAMP'>[];
+  getRailings(): BimElement<'RAILING'>[];
+  getCoverings(): BimElement<'COVERING'>[];
+  getElementAssemblies(): BimElement<'ELEMENT_ASSEMBLY'>[];
+  getZones(): BimElement<'ZONE'>[];
+  getSystems(): BimElement<'SYSTEM'>[];
+  getAllElements(): AnyBimElement[];
+  getAllRelationships(): BimRelationship[];
 }
 
 /**
@@ -153,46 +191,67 @@ declare class BimModel {
  * (plain numbers/strings) so it can be posted across a worker boundary.
  */
 interface BimTreeNode {
-    /** The element's local id. */
-    readonly id: number;
-    /** Display label — the element's name, or its category when unnamed. */
-    readonly label: string;
-    /** The element's IFC category. */
-    readonly category: BimCategory;
-    readonly children: readonly BimTreeNode[];
+  /** The element's local id. */
+  readonly id: number;
+  /** Display label — the element's name, or its category when unnamed. */
+  readonly label: string;
+  /** The element's IFC category. */
+  readonly category: BimCategory;
+  readonly children: readonly BimTreeNode[];
 }
 
 /** A serializable summary of a model's structure, rooted at the project. */
 interface BimTreeSummary {
-    /** The project node and its nested spatial structure + contained elements. */
-    readonly root: BimTreeNode | null;
-    /** Number of nodes in the tree (the project and everything reachable from it). */
-    readonly elementCount: number;
+  /** The project node and its nested spatial structure + contained elements. */
+  readonly root: BimTreeNode | null;
+  /** Number of nodes in the tree (the project and everything reachable from it). */
+  readonly elementCount: number;
+}
+
+interface PlacedSolidsOptions {
+  /**
+   * Cumulative frame of the element's containing spatial structure. Element
+   * specs and stored arbitrary bodies are relative to that structure; pass its
+   * frame here when world coordinates are required.
+   */
+  readonly parentFrame?: FrameInput | undefined;
 }
 
 /**
- * Returns each element's geometry transformed to its world placement, as fresh
- * caller-owned solids, wrapped in a `Result` (Layer-2 code prefers `Result` over
- * throwing). **Dispose the returned solids** (e.g. via `using` / `[Symbol.dispose]`)
- * when you own their lifetime — they are independent of the model
+ * Returns each element's geometry transformed to its element-local placement,
+ * and optionally through the cumulative frame of its containing spatial
+ * structure, as fresh caller-owned solids. Pass `parentFrame` to obtain world
+ * coordinates for elements beneath a placed Site, Bridge, Bridge Part, or
+ * other spatial structure. **Dispose the returned solids** (e.g. via `using` /
+ * `[Symbol.dispose]`) when you own their lifetime — they are independent of the model
  * (`BimModel[Symbol.dispose]` frees only the stored, unplaced `.geometry`). On any
  * failure the solids already built for this call are disposed before the error is
  * returned, so no partial array is leaked.
  *
  * Stairs and ramps carry no element solid (`.geometry` is null), so flight
  * solids are built from `spec.flights` and placed per flight. Curtain walls
- * return placed panels + mullions. Proxies are authored in world coordinates
- * (no placement frame), so their solid is returned as a fresh identity-placed
- * copy. Elements with no solid geometry (doors/windows/groups/spatial) return
- * an empty array.
+ * return placed panels + mullions. Proxy and Earthworks Fill bodies are stored
+ * relative to their containing spatial structure, so their body is copied and
+ * then transformed by `parentFrame` when supplied. Elements with no solid geometry
+ * (doors/windows/groups/spatial) return an empty array.
  */
-declare function placedSolids(el: AnyBimElement): Result<readonly ValidSolid[], BimError>;
+declare function placedSolids(
+  el: AnyBimElement,
+  options?: PlacedSolidsOptions
+): Result<readonly ValidSolid[], BimError>;
+
+/** An (origin, axisX, axisZ) frame in mm — the authoring/display side of a placement. */
+interface FrameInput {
+  readonly origin: Vec3;
+  readonly axisX: Vec3;
+  readonly axisZ: Vec3;
+}
 
 declare function toIfc(model: BimModel, meta: BimModelMeta): Promise<Result<Uint8Array, BimError>>;
 
 interface ValidatedIfcResult {
-    readonly bytes: Uint8Array;
-    readonly report: ValidationReport;
+  readonly bytes: Uint8Array;
+  readonly report: ValidationReport;
 }
 
 /**
@@ -203,7 +262,10 @@ interface ValidatedIfcResult {
  * INTEGRITY_FAILURE BimError without serializing (unlike plain {@link toIfc},
  * which serializes unconditionally).
  */
-declare function toIfcValidated(model: BimModel, meta: BimModelMeta): Promise<Result<ValidatedIfcResult, BimError>>;
+declare function toIfcValidated(
+  model: BimModel,
+  meta: BimModelMeta
+): Promise<Result<ValidatedIfcResult, BimError>>;
 
 /**
  * Override how web-ifc finds its `.wasm` file. Applied by every web-ifc entry
@@ -211,13 +273,15 @@ declare function toIfcValidated(model: BimModel, meta: BimModelMeta): Promise<Re
  * and validation. Required when brepjs-bim is bundled into a worker that serves
  * the wasm itself; not needed in Node.
  */
-declare function setIfcWasmLocateFile(locate: ((path: string, prefix: string) => string) | undefined): void;
+declare function setIfcWasmLocateFile(
+  locate: ((path: string, prefix: string) => string) | undefined
+): void;
 
 interface FromIfcOptions {
-    /** Activate web-ifc's large-coordinate recentering on open. Default false. */
-    readonly coordinateToOrigin?: boolean | undefined;
-    /** Skip body-geometry reconstruction for fast metadata-only reads. Default false. */
-    readonly skipGeometry?: boolean | undefined;
+  /** Activate web-ifc's large-coordinate recentering on open. Default false. */
+  readonly coordinateToOrigin?: boolean | undefined;
+  /** Skip body-geometry reconstruction for fast metadata-only reads. Default false. */
+  readonly skipGeometry?: boolean | undefined;
 }
 
 /**
@@ -233,7 +297,10 @@ interface FromIfcOptions {
  *
  * The web-ifc model handle is always closed in a `finally` block.
  */
-declare function fromIfc(bytes: Uint8Array, options?: FromIfcOptions): Promise<Result<ImportedModel, BimError>>;
+declare function fromIfc(
+  bytes: Uint8Array,
+  options?: FromIfcOptions
+): Promise<Result<ImportedModel, BimError>>;
 
 /** Schema strings web-ifc reports and this reader supports. */
 type ImportedSchema = 'IFC2X3' | 'IFC4' | 'IFC4X3';
@@ -250,71 +317,95 @@ type ImportedSchema = 'IFC2X3' | 'IFC4' | 'IFC4X3';
 type GeometryFidelity = 'PARAMETRIC' | 'TESSELLATED_MANIFOLD' | 'TESSELLATED_LOSSY' | 'NONE';
 
 interface ImportedGeometry {
-    readonly fidelity: GeometryFidelity;
-    /** The reconstructed solid; null when fidelity is `NONE` or `TESSELLATED_LOSSY`. */
-    readonly solid: ValidSolid | null;
-    /** Raw triangle vertices (interleaved xyz), present only for `TESSELLATED_LOSSY`. */
-    readonly meshVertices?: Float32Array | undefined;
-    /** Raw triangle indices, present only for `TESSELLATED_LOSSY`. */
-    readonly meshIndices?: Uint32Array | undefined;
+  readonly fidelity: GeometryFidelity;
+  /** The reconstructed solid; null when fidelity is `NONE` or `TESSELLATED_LOSSY`. */
+  readonly solid: ValidSolid | null;
+  /** Raw triangle vertices (interleaved xyz), present only for `TESSELLATED_LOSSY`. */
+  readonly meshVertices?: Float32Array | undefined;
+  /** Raw triangle indices, present only for `TESSELLATED_LOSSY`. */
+  readonly meshIndices?: Uint32Array | undefined;
 }
 
 interface ImportedPset {
-    readonly name: string;
-    /** `true` when sourced from an IfcElementQuantity rather than an IfcPropertySet. */
-    readonly isQuantity: boolean;
-    readonly properties: Readonly<Record<string, string | number | boolean>>;
-    /**
-     * Per-property IFC measure-type codes (web-ifc type constants), keyed by the
-     * same property name as `properties`. Lets callers distinguish e.g. an
-     * IfcThermalTransmittanceMeasure from a plain IfcReal. Absent entries fall back
-     * to the value's JS type.
-     */
-    readonly measureTypes: Readonly<Record<string, number>>;
+  readonly name: string;
+  /** `true` when sourced from an IfcElementQuantity rather than an IfcPropertySet. */
+  readonly isQuantity: boolean;
+  readonly properties: Readonly<Record<string, string | number | boolean>>;
+  /**
+   * Per-property IFC measure-type codes (web-ifc type constants), keyed by the
+   * same property name as `properties`. Lets callers distinguish e.g. an
+   * IfcThermalTransmittanceMeasure from a plain IfcReal. Absent entries fall back
+   * to the value's JS type.
+   */
+  readonly measureTypes: Readonly<Record<string, number>>;
 }
 
 interface ImportedMaterial {
-    readonly kind: 'SIMPLE' | 'LAYER_SET';
-    readonly name: string;
-    readonly layers?: readonly {
+  readonly kind: 'SIMPLE' | 'LAYER_SET';
+  readonly name: string;
+  readonly layers?:
+    | readonly {
         readonly name: string;
         readonly thicknessMm: number;
-    }[] | undefined;
+      }[]
+    | undefined;
 }
 
 interface ImportedClassification {
-    readonly system: string;
-    readonly code: string;
-    readonly description?: string | undefined;
+  readonly system: string;
+  readonly code: string;
+  readonly description?: string | undefined;
 }
 
-type ImportedElementCategory = 'WALL' | 'SLAB' | 'BEAM' | 'COLUMN' | 'DOOR' | 'WINDOW' | 'OPENING' | 'SPACE' | 'ROOF' | 'CURTAIN_WALL' | 'FOOTING' | 'PILE' | 'STAIR' | 'RAMP' | 'RAILING' | 'COVERING' | 'ELEMENT_ASSEMBLY' | 'PROXY';
+type ImportedElementCategory =
+  | 'WALL'
+  | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
+  | 'DOOR'
+  | 'WINDOW'
+  | 'OPENING'
+  | 'SPACE'
+  | 'ROOF'
+  | 'CURTAIN_WALL'
+  | 'FOOTING'
+  | 'PILE'
+  | 'STAIR'
+  | 'RAMP'
+  | 'RAILING'
+  | 'COVERING'
+  | 'ELEMENT_ASSEMBLY'
+  | 'EARTHWORKS_FILL'
+  | 'PROXY';
 
 interface ImportedElement {
-    readonly expressId: number;
-    readonly guid: IfcGuid;
-    readonly name: string;
-    readonly category: ImportedElementCategory;
-    readonly predefinedType?: string | undefined;
-    readonly storeyExpressId?: number | undefined;
-    readonly geometry: ImportedGeometry;
-    readonly psets: readonly ImportedPset[];
-    readonly material: ImportedMaterial | null;
-    readonly classification: ImportedClassification | null;
-    /** Express ids of opening elements that void this element. */
-    readonly voidedBy: readonly number[];
-    /** Express id of the opening this element fills (doors/windows only). */
-    readonly fills?: number | undefined;
+  readonly expressId: number;
+  readonly guid: IfcGuid;
+  readonly name: string;
+  readonly category: ImportedElementCategory;
+  readonly predefinedType?: string | undefined;
+  /** Express id of the directly containing spatial structure. */
+  readonly spatialStructureExpressId?: number | undefined;
+  /** @deprecated Use `spatialStructureExpressId`; retained as a compatibility alias. */
+  readonly storeyExpressId?: number | undefined;
+  readonly geometry: ImportedGeometry;
+  readonly psets: readonly ImportedPset[];
+  readonly material: ImportedMaterial | null;
+  readonly classification: ImportedClassification | null;
+  /** Express ids of opening elements that void this element. */
+  readonly voidedBy: readonly number[];
+  /** Express id of the opening this element fills (doors/windows only). */
+  readonly fills?: number | undefined;
 }
 
 interface ImportedSpatialNode {
-    readonly expressId: number;
-    readonly guid: IfcGuid;
-    readonly name: string;
-    readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY';
-    readonly elevationMm?: number | undefined;
-    readonly children: readonly ImportedSpatialNode[];
-    readonly containedElements: readonly number[];
+  readonly expressId: number;
+  readonly guid: IfcGuid;
+  readonly name: string;
+  readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY' | 'BRIDGE' | 'BRIDGE_PART';
+  readonly elevationMm?: number | undefined;
+  readonly children: readonly ImportedSpatialNode[];
+  readonly containedElements: readonly number[];
 }
 
 /**
@@ -329,96 +420,103 @@ declare function disposeImportedModel(model: ImportedModel): void;
  * call {@link disposeImportedModel} when finished to avoid leaking them.
  */
 interface ImportedModel {
-    readonly schema: ImportedSchema;
-    readonly spatialTree: ImportedSpatialNode | null;
-    readonly elements: readonly ImportedElement[];
-    /** Express id → ImportedElement for fast lookup. */
-    readonly byExpressId: ReadonlyMap<number, ImportedElement>;
-    readonly diagnostics: ValidationReport;
-    readonly applicationName?: string | undefined;
+  readonly schema: ImportedSchema;
+  readonly spatialTree: ImportedSpatialNode | null;
+  readonly elements: readonly ImportedElement[];
+  /** Express id → ImportedElement for fast lookup. */
+  readonly byExpressId: ReadonlyMap<number, ImportedElement>;
+  readonly diagnostics: ValidationReport;
+  readonly applicationName?: string | undefined;
 }
 
 interface SpfReaderSettings {
-    /**
-     * Activate web-ifc's built-in large-coordinate recentering on open. Defaults
-     * to false; set true for georeferenced models with far-from-origin geometry.
-     */
-    readonly coordinateToOrigin?: boolean;
+  /**
+   * Activate web-ifc's built-in large-coordinate recentering on open. Defaults
+   * to false; set true for georeferenced models with far-from-origin geometry.
+   */
+  readonly coordinateToOrigin?: boolean;
 }
 
 declare class SpfReader {
-    #private;
-    readonly schema: ImportedSchema;
-    readonly modelId: number;
-    private constructor();
-    static create(bytes: Uint8Array, settings?: SpfReaderSettings): Promise<Result<SpfReader, BimError>>;
-    /** Always issues CloseModel; safe to call more than once. */
-    close(): void;
-    [Symbol.dispose](): void;
-    /**
-     * Raw line object for an express id. With `flatten=false` (default) references
-     * appear as `{ type, value }` wrappers and nested entities are not resolved;
-     * pass `flatten=true` to recursively inline referenced lines.
-     */
-    getLine<T = unknown>(expressId: number, flatten?: boolean): T | null;
-    /** Express ids of every line whose type equals `type` (no inherited types). */
-    getLinesOfType(type: number): number[];
-    /** Express ids of every line in the model. */
-    getAllLines(): number[];
-    /** IFC type code for an express id. */
-    /** Uppercased IFC entity name of the instance (e.g. `IFCWALL`). */
-    typeNameOf(expressId: number): string;
-    getLineType(expressId: number): number;
-    /** Builds web-ifc's internal GUID→expressId index; call before guid lookups. */
-    buildGuidMap(): void;
-    /** expressId for a GlobalId, or undefined. Requires {@link buildGuidMap} first. */
-    expressIdFromGuid(guid: string): number | undefined;
-    /** GlobalId for an express id, or undefined. Requires {@link buildGuidMap} first. */
-    guidFromExpressId(expressId: number): string | undefined;
-    /**
-     * Composed world transform (column-major 16-float matrix) for a placement
-     * express id, resolving the full IfcLocalPlacement chain.
-     */
-    getWorldTransform(placementExpressId: number): number[];
-    /** Streams placed meshes for the given product express ids. */
-    streamMeshes(expressIds: number[], cb: (mesh: FlatMesh, index: number, total: number) => void): void;
-    /** Geometry buffers for a geometry express id; caller MUST call `.delete()`. */
-    getGeometry(geometryExpressId: number): IfcGeometry;
-    /** Reads a Float32Array view of vertex data from a WASM pointer. */
-    getVertexArray(ptr: number, size: number): Float32Array;
-    /** Reads a Uint32Array view of index data from a WASM pointer. */
-    getIndexArray(ptr: number, size: number): Uint32Array;
-    /** Decodes IFC STEP string escapes (`\X2\`, `\S\`, `\X\`) in a raw value. */
-    decodeText(s: string): string;
+  #private;
+  readonly schema: ImportedSchema;
+  readonly modelId: number;
+  private constructor();
+  static create(
+    bytes: Uint8Array,
+    settings?: SpfReaderSettings
+  ): Promise<Result<SpfReader, BimError>>;
+  /** Always issues CloseModel; safe to call more than once. */
+  close(): void;
+  [Symbol.dispose](): void;
+  /**
+   * Raw line object for an express id. With `flatten=false` (default) references
+   * appear as `{ type, value }` wrappers and nested entities are not resolved;
+   * pass `flatten=true` to recursively inline referenced lines.
+   */
+  getLine<T = unknown>(expressId: number, flatten?: boolean): T | null;
+  /** Express ids of every line whose type equals `type` (no inherited types). */
+  getLinesOfType(type: number): number[];
+  /** Express ids of every line in the model. */
+  getAllLines(): number[];
+  /** IFC type code for an express id. */
+  /** Uppercased IFC entity name of the instance (e.g. `IFCWALL`). */
+  typeNameOf(expressId: number): string;
+  getLineType(expressId: number): number;
+  /** Builds web-ifc's internal GUID→expressId index; call before guid lookups. */
+  buildGuidMap(): void;
+  /** expressId for a GlobalId, or undefined. Requires {@link buildGuidMap} first. */
+  expressIdFromGuid(guid: string): number | undefined;
+  /** GlobalId for an express id, or undefined. Requires {@link buildGuidMap} first. */
+  guidFromExpressId(expressId: number): string | undefined;
+  /**
+   * Composed world transform (column-major 16-float matrix) for a placement
+   * express id, resolving the full IfcLocalPlacement chain.
+   */
+  getWorldTransform(placementExpressId: number): number[];
+  /** Streams placed meshes for the given product express ids. */
+  streamMeshes(
+    expressIds: number[],
+    cb: (mesh: FlatMesh, index: number, total: number) => void
+  ): void;
+  /** Geometry buffers for a geometry express id; caller MUST call `.delete()`. */
+  getGeometry(geometryExpressId: number): IfcGeometry;
+  /** Reads a Float32Array view of vertex data from a WASM pointer. */
+  getVertexArray(ptr: number, size: number): Float32Array;
+  /** Reads a Uint32Array view of index data from a WASM pointer. */
+  getIndexArray(ptr: number, size: number): Uint32Array;
+  /** Decodes IFC STEP string escapes (`\X2\`, `\S\`, `\X\`) in a raw value. */
+  decodeText(s: string): string;
 }
 
 /** A straight wall aligned along an arbitrary axis in 3D. All dimensions in mm. */
 interface WallSpec {
-    readonly length: number;
-    readonly height: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly loadBearing?: boolean | undefined;
-    readonly status?: string | undefined;
-    /**
-     * When present, the wall is associated via a layered IfcMaterialLayerSet built
-     * from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the wall with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly height: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly status?: string | undefined;
+  /**
+   * When present, the wall is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the wall with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseWallSpec(input: unknown): Result<WallSpec, BimError>;
@@ -426,66 +524,77 @@ declare function parseWallSpec(input: unknown): Result<WallSpec, BimError>;
 type SlabPredefinedType = 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB';
 
 interface SlabSpec {
-    readonly length: number;
-    readonly width: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType: SlabPredefinedType;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly loadBearing?: boolean | undefined;
-    readonly combustible?: boolean | undefined;
-    readonly compartmentation?: boolean | undefined;
-    readonly status?: string | undefined;
-    /**
-     * When present, the slab is associated via a layered IfcMaterialLayerSet built
-     * from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the slab with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly width: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType: SlabPredefinedType;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly combustible?: boolean | undefined;
+  readonly compartmentation?: boolean | undefined;
+  readonly status?: string | undefined;
+  /**
+   * When present, the slab is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the slab with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseSlabSpec(input: unknown): Result<SlabSpec, BimError>;
 
-type BeamPredefinedType = 'BEAM' | 'JOIST' | 'LINTEL' | 'HOLLOWCORE' | 'PURLIN' | 'RAFTER' | 'SPANDREL' | 'T_BEAM' | 'NOTDEFINED';
+type BeamPredefinedType =
+  | 'BEAM'
+  | 'JOIST'
+  | 'LINTEL'
+  | 'HOLLOWCORE'
+  | 'PURLIN'
+  | 'RAFTER'
+  | 'SPANDREL'
+  | 'T_BEAM'
+  | 'NOTDEFINED';
 
 interface BeamSpec {
-    readonly length: number;
-    readonly profile: Profile;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: BeamPredefinedType | undefined;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly loadBearing?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly status?: string | undefined;
-    /**
-     * When present, the beam is associated via a layered IfcMaterialLayerSet built
-     * from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the beam with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly profile: Profile;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: BeamPredefinedType | undefined;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+  /**
+   * When present, the beam is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the beam with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseBeamSpec(input: unknown): Result<BeamSpec, BimError>;
@@ -493,53 +602,54 @@ declare function parseBeamSpec(input: unknown): Result<BeamSpec, BimError>;
 type ColumnPredefinedType = 'COLUMN' | 'PILASTER' | 'NOTDEFINED';
 
 interface ColumnSpec {
-    readonly height: number;
-    readonly profile: Profile;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: ColumnPredefinedType | undefined;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly loadBearing?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly status?: string | undefined;
-    /**
-     * When present, the column is associated via a layered IfcMaterialLayerSet
-     * built from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the column with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly height: number;
+  readonly profile: Profile;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: ColumnPredefinedType | undefined;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+  /**
+   * When present, the column is associated via a layered IfcMaterialLayerSet
+   * built from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the column with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseColumnSpec(input: unknown): Result<ColumnSpec, BimError>;
 
 type RectangularProfile = {
-    readonly kind: 'RECTANGULAR';
-    readonly width: number;
-    readonly height: number;
+  readonly kind: 'RECTANGULAR';
+  readonly width: number;
+  readonly height: number;
 };
 
 type CircularProfile = {
-    readonly kind: 'CIRCULAR';
-    readonly radius: number;
+  readonly kind: 'CIRCULAR';
+  readonly radius: number;
 };
 
 type IShapeProfile = {
-    readonly kind: 'I_BEAM';
-    readonly overallWidth: number;
-    readonly overallDepth: number;
-    readonly flangeThickness: number;
-    readonly webThickness: number;
-    readonly filletRadius?: number | undefined;
+  readonly kind: 'I_BEAM';
+  readonly overallWidth: number;
+  readonly overallDepth: number;
+  readonly flangeThickness: number;
+  readonly webThickness: number;
+  readonly filletRadius?: number | undefined;
 };
 
 type CoreProfile = RectangularProfile | CircularProfile | IShapeProfile;
@@ -552,161 +662,191 @@ declare function isExtendedProfile(profile: Profile): profile is ExtendedProfile
 declare function parseProfile(input: unknown): Result<Profile, BimError>;
 
 interface LShapeProfile {
-    readonly kind: 'L_SHAPE';
-    readonly depth: number;
-    readonly width: number;
-    readonly legThickness: number;
-    readonly filletRadius?: number | undefined;
+  readonly kind: 'L_SHAPE';
+  readonly depth: number;
+  readonly width: number;
+  readonly legThickness: number;
+  readonly filletRadius?: number | undefined;
 }
 
 interface TShapeProfile {
-    readonly kind: 'T_SHAPE';
-    readonly depth: number;
-    readonly flangeWidth: number;
-    readonly webThickness: number;
-    readonly flangeThickness: number;
-    readonly filletRadius?: number | undefined;
+  readonly kind: 'T_SHAPE';
+  readonly depth: number;
+  readonly flangeWidth: number;
+  readonly webThickness: number;
+  readonly flangeThickness: number;
+  readonly filletRadius?: number | undefined;
 }
 
 interface UShapeProfile {
-    readonly kind: 'U_SHAPE';
-    readonly depth: number;
-    readonly flangeWidth: number;
-    readonly webThickness: number;
-    readonly flangeThickness: number;
+  readonly kind: 'U_SHAPE';
+  readonly depth: number;
+  readonly flangeWidth: number;
+  readonly webThickness: number;
+  readonly flangeThickness: number;
 }
 
 interface ZShapeProfile {
-    readonly kind: 'Z_SHAPE';
-    readonly depth: number;
-    readonly flangeWidth: number;
-    readonly webThickness: number;
-    readonly flangeThickness: number;
+  readonly kind: 'Z_SHAPE';
+  readonly depth: number;
+  readonly flangeWidth: number;
+  readonly webThickness: number;
+  readonly flangeThickness: number;
 }
 
 interface CShapeProfile {
-    readonly kind: 'C_SHAPE';
-    readonly depth: number;
-    readonly width: number;
-    readonly wallThickness: number;
-    readonly girth: number;
-    readonly internalFilletRadius?: number | undefined;
+  readonly kind: 'C_SHAPE';
+  readonly depth: number;
+  readonly width: number;
+  readonly wallThickness: number;
+  readonly girth: number;
+  readonly internalFilletRadius?: number | undefined;
 }
 
 interface AsymmetricIShapeProfile {
-    readonly kind: 'ASYMMETRIC_I';
-    readonly overallDepth: number;
-    readonly webThickness: number;
-    readonly topFlangeWidth: number;
-    readonly topFlangeThickness: number;
-    readonly bottomFlangeWidth: number;
-    readonly bottomFlangeThickness: number;
+  readonly kind: 'ASYMMETRIC_I';
+  readonly overallDepth: number;
+  readonly webThickness: number;
+  readonly topFlangeWidth: number;
+  readonly topFlangeThickness: number;
+  readonly bottomFlangeWidth: number;
+  readonly bottomFlangeThickness: number;
 }
 
 interface EllipseProfile {
-    readonly kind: 'ELLIPSE';
-    readonly semiAxis1: number;
-    readonly semiAxis2: number;
+  readonly kind: 'ELLIPSE';
+  readonly semiAxis1: number;
+  readonly semiAxis2: number;
 }
 
 interface TrapeziumProfile {
-    readonly kind: 'TRAPEZIUM';
-    readonly bottomXDim: number;
-    readonly topXDim: number;
-    readonly yDim: number;
-    readonly topXOffset: number;
+  readonly kind: 'TRAPEZIUM';
+  readonly bottomXDim: number;
+  readonly topXDim: number;
+  readonly yDim: number;
+  readonly topXOffset: number;
 }
 
 interface RectangleHollowProfile {
-    readonly kind: 'RECTANGLE_HOLLOW';
-    readonly xDim: number;
-    readonly yDim: number;
-    readonly wallThickness: number;
-    readonly innerFilletRadius?: number | undefined;
-    readonly outerFilletRadius?: number | undefined;
+  readonly kind: 'RECTANGLE_HOLLOW';
+  readonly xDim: number;
+  readonly yDim: number;
+  readonly wallThickness: number;
+  readonly innerFilletRadius?: number | undefined;
+  readonly outerFilletRadius?: number | undefined;
 }
 
 interface CircleHollowProfile {
-    readonly kind: 'CIRCLE_HOLLOW';
-    readonly radius: number;
-    readonly wallThickness: number;
+  readonly kind: 'CIRCLE_HOLLOW';
+  readonly radius: number;
+  readonly wallThickness: number;
 }
 
 interface ArbitraryClosedProfile {
-    readonly kind: 'ARBITRARY_CLOSED';
-    readonly points: ReadonlyArray<Pt2>;
+  readonly kind: 'ARBITRARY_CLOSED';
+  readonly points: ReadonlyArray<Pt2>;
 }
 
 interface ArbitraryProfileWithVoids {
-    readonly kind: 'ARBITRARY_WITH_VOIDS';
-    readonly outerPoints: ReadonlyArray<Pt2>;
-    readonly voids: ReadonlyArray<ReadonlyArray<Pt2>>;
+  readonly kind: 'ARBITRARY_WITH_VOIDS';
+  readonly outerPoints: ReadonlyArray<Pt2>;
+  readonly voids: ReadonlyArray<ReadonlyArray<Pt2>>;
 }
 
-type ExtendedProfile = LShapeProfile | TShapeProfile | UShapeProfile | ZShapeProfile | CShapeProfile | AsymmetricIShapeProfile | EllipseProfile | TrapeziumProfile | RectangleHollowProfile | CircleHollowProfile | ArbitraryClosedProfile | ArbitraryProfileWithVoids;
+type ExtendedProfile =
+  | LShapeProfile
+  | TShapeProfile
+  | UShapeProfile
+  | ZShapeProfile
+  | CShapeProfile
+  | AsymmetricIShapeProfile
+  | EllipseProfile
+  | TrapeziumProfile
+  | RectangleHollowProfile
+  | CircleHollowProfile
+  | ArbitraryClosedProfile
+  | ArbitraryProfileWithVoids;
 
 declare function extendedProfileArea(profile: ExtendedProfile): number;
 
-declare function extendedProfileToFace(profile: ExtendedProfile): Result<OrientedFace & PlanarFace, BimError>;
+declare function extendedProfileToFace(
+  profile: ExtendedProfile
+): Result<OrientedFace & PlanarFace, BimError>;
 
 type SpacePredefinedType = 'SPACE' | 'PARKING' | 'GFA' | 'INTERNAL' | 'EXTERNAL' | 'NOTDEFINED';
 
 interface SpaceSpec {
-    readonly name: string;
-    readonly length: number;
-    readonly width: number;
-    readonly height: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly materialName: string;
-    readonly predefinedType?: SpacePredefinedType | undefined;
-    readonly longName?: string | undefined;
-    readonly isExternal?: boolean | undefined;
-    readonly status?: string | undefined;
-    readonly finishCeiling?: string | undefined;
-    readonly finishFloor?: string | undefined;
-    /** When present, associates the space with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly name: string;
+  readonly length: number;
+  readonly width: number;
+  readonly height: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly materialName: string;
+  readonly predefinedType?: SpacePredefinedType | undefined;
+  readonly longName?: string | undefined;
+  readonly isExternal?: boolean | undefined;
+  readonly status?: string | undefined;
+  readonly finishCeiling?: string | undefined;
+  readonly finishFloor?: string | undefined;
+  /** When present, associates the space with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseSpaceSpec(input: unknown): Result<SpaceSpec, BimError>;
 
-type RoofPredefinedType = 'FLAT_ROOF' | 'SHED_ROOF' | 'GABLE_ROOF' | 'HIP_ROOF' | 'HIPPED_GABLE_ROOF' | 'GAMBREL_ROOF' | 'MANSARD_ROOF' | 'BARREL_ROOF' | 'RAINBOW_ROOF' | 'BUTTERFLY_ROOF' | 'PAVILION_ROOF' | 'DOME_ROOF' | 'FREEFORM' | 'NOTDEFINED';
+type RoofPredefinedType =
+  | 'FLAT_ROOF'
+  | 'SHED_ROOF'
+  | 'GABLE_ROOF'
+  | 'HIP_ROOF'
+  | 'HIPPED_GABLE_ROOF'
+  | 'GAMBREL_ROOF'
+  | 'MANSARD_ROOF'
+  | 'BARREL_ROOF'
+  | 'RAINBOW_ROOF'
+  | 'BUTTERFLY_ROOF'
+  | 'PAVILION_ROOF'
+  | 'DOME_ROOF'
+  | 'FREEFORM'
+  | 'NOTDEFINED';
 
 interface RoofSpec {
-    readonly length: number;
-    readonly width: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType: RoofPredefinedType;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly status?: string | undefined;
-    /**
-     * Optional roof slope in degrees (0 < pitch < 90). Its PRESENCE opts the roof
-     * into shaped geometry built for `predefinedType` (shed/gable/hip/dome); when
-     * absent the roof is a flat slab regardless of predefinedType (backward-
-     * compatible). Ignored geometrically for DOME_ROOF (a hemisphere).
-     */
-    readonly pitch?: number | undefined;
-    /**
-     * When present, the roof is associated via a layered IfcMaterialLayerSet built
-     * from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the roof with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly width: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType: RoofPredefinedType;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+  /**
+   * Optional roof slope in degrees (0 < pitch < 90). Its PRESENCE opts the roof
+   * into shaped geometry built for `predefinedType` (shed/gable/hip/dome); when
+   * absent the roof is a flat slab regardless of predefinedType (backward-
+   * compatible). Ignored geometrically for DOME_ROOF (a hemisphere).
+   */
+  readonly pitch?: number | undefined;
+  /**
+   * When present, the roof is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the roof with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseRoofSpec(input: unknown): Result<RoofSpec, BimError>;
@@ -724,131 +864,162 @@ type CurtainWallPredefinedType = 'NOTDEFINED' | 'USERDEFINED';
  * IfcLocalPlacement.
  */
 interface CurtainWallSpec {
-    readonly width: number;
-    readonly height: number;
-    readonly columns: number;
-    readonly rows: number;
-    readonly panelThickness: number;
-    readonly mullionWidth: number;
-    readonly mullionDepth: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly materialName: string;
-    readonly predefinedType?: CurtainWallPredefinedType | undefined;
-    readonly panelMaterialName?: string | undefined;
-    readonly mullionMaterialName?: string | undefined;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly status?: string | undefined;
-    readonly classification?: ClassificationRef | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly width: number;
+  readonly height: number;
+  readonly columns: number;
+  readonly rows: number;
+  readonly panelThickness: number;
+  readonly mullionWidth: number;
+  readonly mullionDepth: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly materialName: string;
+  readonly predefinedType?: CurtainWallPredefinedType | undefined;
+  readonly panelMaterialName?: string | undefined;
+  readonly mullionMaterialName?: string | undefined;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+  readonly classification?: ClassificationRef | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseCurtainWallSpec(input: unknown): Result<CurtainWallSpec, BimError>;
 
-type FootingPredefinedType = 'CAISSON_FOUNDATION' | 'FOOTING_BEAM' | 'PAD_FOOTING' | 'PILE_CAP' | 'STRIP_FOOTING' | 'NOTDEFINED';
+type FootingPredefinedType =
+  | 'CAISSON_FOUNDATION'
+  | 'FOOTING_BEAM'
+  | 'PAD_FOOTING'
+  | 'PILE_CAP'
+  | 'STRIP_FOOTING'
+  | 'NOTDEFINED';
 
 type PilePredefinedType = 'BORED' | 'DRIVEN' | 'JETGROUTING' | 'NOTDEFINED';
 
 type PileConstructionType = 'CAST_IN_PLACE' | 'COMPOSITE' | 'PRECAST_CONCRETE' | 'PREFAB_STEEL';
 
 interface FootingSpec {
-    readonly length: number;
-    readonly width: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: FootingPredefinedType | undefined;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly loadBearing?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly status?: string | undefined;
-    /**
-     * When present, the footing is associated via a layered IfcMaterialLayerSet
-     * built from these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the footing with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly width: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: FootingPredefinedType | undefined;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly status?: string | undefined;
+  /**
+   * When present, the footing is associated via a layered IfcMaterialLayerSet
+   * built from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the footing with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 interface PileSpec {
-    readonly length: number;
-    readonly profile: Profile;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: PilePredefinedType | undefined;
-    readonly constructionType?: PileConstructionType | undefined;
-    readonly materialName: string;
-    readonly loadBearing?: boolean | undefined;
-    readonly status?: string | undefined;
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    /** When present, associates the pile with an external classification code. */
-    readonly classification?: ClassificationRef | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly profile: Profile;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: PilePredefinedType | undefined;
+  readonly constructionType?: PileConstructionType | undefined;
+  readonly materialName: string;
+  readonly loadBearing?: boolean | undefined;
+  readonly status?: string | undefined;
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  /** When present, associates the pile with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseFootingSpec(input: unknown): Result<FootingSpec, BimError>;
 
 declare function parsePileSpec(input: unknown): Result<PileSpec, BimError>;
 
-type StairPredefinedType = 'STRAIGHT_RUN_STAIR' | 'TWO_STRAIGHT_RUN_STAIR' | 'QUARTER_WINDING_STAIR' | 'QUARTER_TURN_STAIR' | 'HALF_WINDING_STAIR' | 'HALF_TURN_STAIR' | 'TWO_QUARTER_WINDING_STAIR' | 'TWO_QUARTER_TURN_STAIR' | 'THREE_QUARTER_WINDING_STAIR' | 'THREE_QUARTER_TURN_STAIR' | 'SPIRAL_STAIR' | 'DOUBLE_RETURN_STAIR' | 'CURVED_RUN_STAIR' | 'TWO_CURVED_RUN_STAIR' | 'NOTDEFINED';
+type StairPredefinedType =
+  | 'STRAIGHT_RUN_STAIR'
+  | 'TWO_STRAIGHT_RUN_STAIR'
+  | 'QUARTER_WINDING_STAIR'
+  | 'QUARTER_TURN_STAIR'
+  | 'HALF_WINDING_STAIR'
+  | 'HALF_TURN_STAIR'
+  | 'TWO_QUARTER_WINDING_STAIR'
+  | 'TWO_QUARTER_TURN_STAIR'
+  | 'THREE_QUARTER_WINDING_STAIR'
+  | 'THREE_QUARTER_TURN_STAIR'
+  | 'SPIRAL_STAIR'
+  | 'DOUBLE_RETURN_STAIR'
+  | 'CURVED_RUN_STAIR'
+  | 'TWO_CURVED_RUN_STAIR'
+  | 'NOTDEFINED';
 
 interface StairFlightSpec {
-    readonly width: number;
-    readonly riserHeight: number;
-    readonly treadLength: number;
-    readonly numberOfRisers: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly materialName: string;
+  readonly width: number;
+  readonly riserHeight: number;
+  readonly treadLength: number;
+  readonly numberOfRisers: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly materialName: string;
 }
 
 interface StairSpec {
-    readonly name?: string | undefined;
-    readonly predefinedType?: StairPredefinedType | undefined;
-    readonly flights: readonly StairFlightSpec[];
-    readonly materialName: string;
-    readonly status?: string | undefined;
-    readonly classification?: ClassificationRef | undefined;
+  readonly name?: string | undefined;
+  readonly predefinedType?: StairPredefinedType | undefined;
+  readonly flights: readonly StairFlightSpec[];
+  readonly materialName: string;
+  readonly status?: string | undefined;
+  readonly classification?: ClassificationRef | undefined;
 }
 
 declare function parseStairFlightSpec(input: unknown): Result<StairFlightSpec, BimError>;
 
 declare function parseStairSpec(input: unknown): Result<StairSpec, BimError>;
 
-type RampPredefinedType = 'STRAIGHT_RUN_RAMP' | 'TWO_STRAIGHT_RUN_RAMP' | 'QUARTER_TURN_RAMP' | 'TWO_QUARTER_TURN_RAMP' | 'HALF_TURN_RAMP' | 'SPIRAL_RAMP' | 'NOTDEFINED';
+type RampPredefinedType =
+  | 'STRAIGHT_RUN_RAMP'
+  | 'TWO_STRAIGHT_RUN_RAMP'
+  | 'QUARTER_TURN_RAMP'
+  | 'TWO_QUARTER_TURN_RAMP'
+  | 'HALF_TURN_RAMP'
+  | 'SPIRAL_RAMP'
+  | 'NOTDEFINED';
 
 type RampFlightPredefinedType = 'STRAIGHT' | 'SPIRAL' | 'NOTDEFINED';
 
 interface RampFlightSpec {
-    readonly width: number;
-    readonly length: number;
-    readonly slope: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly materialName: string;
-    readonly predefinedType?: RampFlightPredefinedType | undefined;
+  readonly width: number;
+  readonly length: number;
+  readonly slope: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly materialName: string;
+  readonly predefinedType?: RampFlightPredefinedType | undefined;
 }
 
 interface RampSpec {
-    readonly name?: string | undefined;
-    readonly predefinedType?: RampPredefinedType | undefined;
-    readonly flights: readonly RampFlightSpec[];
-    readonly materialName: string;
-    readonly status?: string | undefined;
-    readonly classification?: ClassificationRef | undefined;
+  readonly name?: string | undefined;
+  readonly predefinedType?: RampPredefinedType | undefined;
+  readonly flights: readonly RampFlightSpec[];
+  readonly materialName: string;
+  readonly status?: string | undefined;
+  readonly classification?: ClassificationRef | undefined;
 }
 
 declare function parseRampFlightSpec(input: unknown): Result<RampFlightSpec, BimError>;
@@ -864,35 +1035,47 @@ type RailingPredefinedType = 'BALUSTRADE' | 'GUARDRAIL' | 'HANDRAIL' | 'NOTDEFIN
  * origin/axisX/axisZ position the railing in world space via IfcLocalPlacement.
  */
 interface RailingSpec {
-    readonly length: number;
-    readonly height: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: RailingPredefinedType | undefined;
-    readonly materialName: string;
-    /**
-     * Geometric infill style. 'PANEL' (default) is a single swept panel; 'POSTED'
-     * is vertical posts plus top & bottom rails. Orthogonal to `predefinedType`
-     * (which is the IFC usage role, not a geometry descriptor).
-     */
-    readonly infill?: 'PANEL' | 'POSTED' | undefined;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly status?: string | undefined;
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly height: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: RailingPredefinedType | undefined;
+  readonly materialName: string;
+  /**
+   * Geometric infill style. 'PANEL' (default) is a single swept panel; 'POSTED'
+   * is vertical posts plus top & bottom rails. Orthogonal to `predefinedType`
+   * (which is the IFC usage role, not a geometry descriptor).
+   */
+  readonly infill?: 'PANEL' | 'POSTED' | undefined;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly status?: string | undefined;
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseRailingSpec(input: unknown): Result<RailingSpec, BimError>;
 
-type CoveringPredefinedType = 'CEILING' | 'FLOORING' | 'CLADDING' | 'ROOFING' | 'MOLDING' | 'SKIRTINGBOARD' | 'INSULATION' | 'MEMBRANE' | 'SLEEVING' | 'WRAPPING' | 'NOTDEFINED';
+type CoveringPredefinedType =
+  | 'CEILING'
+  | 'FLOORING'
+  | 'CLADDING'
+  | 'ROOFING'
+  | 'MOLDING'
+  | 'SKIRTINGBOARD'
+  | 'INSULATION'
+  | 'MEMBRANE'
+  | 'SLEEVING'
+  | 'WRAPPING'
+  | 'NOTDEFINED';
 
 /**
  * A thin rectangular covering sheet (floor finish, ceiling, cladding panel).
@@ -901,30 +1084,42 @@ type CoveringPredefinedType = 'CEILING' | 'FLOORING' | 'CLADDING' | 'ROOFING' | 
  * origin/axisX/axisZ position the covering in world space via IfcLocalPlacement.
  */
 interface CoveringSpec {
-    readonly length: number;
-    readonly width: number;
-    readonly thickness: number;
-    readonly origin: [number, number, number];
-    readonly axisX: [number, number, number];
-    readonly axisZ: [number, number, number];
-    readonly predefinedType?: CoveringPredefinedType | undefined;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
-    readonly status?: string | undefined;
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
-    readonly classification?: ClassificationRef | undefined;
-    readonly manufacturerName?: string | undefined;
-    readonly manufacturerModel?: string | undefined;
-    readonly manufacturerProductionYear?: number | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly length: number;
+  readonly width: number;
+  readonly thickness: number;
+  readonly origin: [number, number, number];
+  readonly axisX: [number, number, number];
+  readonly axisZ: [number, number, number];
+  readonly predefinedType?: CoveringPredefinedType | undefined;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+  readonly classification?: ClassificationRef | undefined;
+  readonly manufacturerName?: string | undefined;
+  readonly manufacturerModel?: string | undefined;
+  readonly manufacturerProductionYear?: number | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 declare function parseCoveringSpec(input: unknown): Result<CoveringSpec, BimError>;
 
-type AssemblyPredefinedType = 'ACCESSORY_ASSEMBLY' | 'ARCH' | 'BEAM_GRID' | 'BRACED_FRAME' | 'GIRDER' | 'REINFORCEMENT_UNIT' | 'RIGID_FRAME' | 'SLAB_FIELD' | 'TRUSS' | 'USERDEFINED' | 'NOTDEFINED';
+type AssemblyPredefinedType =
+  | 'ACCESSORY_ASSEMBLY'
+  | 'ARCH'
+  | 'BEAM_GRID'
+  | 'BRACED_FRAME'
+  | 'GIRDER'
+  | 'REINFORCEMENT_UNIT'
+  | 'RIGID_FRAME'
+  | 'SLAB_FIELD'
+  | 'TRUSS'
+  | 'USERDEFINED'
+  | 'NOTDEFINED';
 
 type AssemblyPlace = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
@@ -934,9 +1129,9 @@ type AssemblyPlace = 'SITE' | 'FACTORY' | 'NOTDEFINED';
  * {@link BimModel.nest} (IfcRelNests, order-preserving).
  */
 interface ElementAssemblySpec {
-    readonly name?: string | undefined;
-    readonly predefinedType?: AssemblyPredefinedType | undefined;
-    readonly assemblyPlace?: AssemblyPlace | undefined;
+  readonly name?: string | undefined;
+  readonly predefinedType?: AssemblyPredefinedType | undefined;
+  readonly assemblyPlace?: AssemblyPlace | undefined;
 }
 
 declare function parseElementAssemblySpec(input: unknown): Result<ElementAssemblySpec, BimError>;
@@ -948,10 +1143,10 @@ declare function parseElementAssemblySpec(input: unknown): Result<ElementAssembl
  * member localIds; the zone itself carries no geometry.
  */
 interface ZoneSpec {
-    readonly name: string;
-    readonly longName?: string | undefined;
-    readonly description?: string | undefined;
-    readonly objectType?: string | undefined;
+  readonly name: string;
+  readonly longName?: string | undefined;
+  readonly description?: string | undefined;
+  readonly objectType?: string | undefined;
 }
 
 /**
@@ -960,10 +1155,10 @@ interface ZoneSpec {
  * pure grouping object; members are linked via an ASSIGNS_TO_GROUP relationship.
  */
 interface SystemSpec {
-    readonly name: string;
-    readonly longName?: string | undefined;
-    readonly description?: string | undefined;
-    readonly objectType?: string | undefined;
+  readonly name: string;
+  readonly longName?: string | undefined;
+  readonly description?: string | undefined;
+  readonly objectType?: string | undefined;
 }
 
 declare function parseZoneSpec(input: unknown): Result<ZoneSpec, BimError>;
@@ -971,44 +1166,44 @@ declare function parseZoneSpec(input: unknown): Result<ZoneSpec, BimError>;
 declare function parseSystemSpec(input: unknown): Result<SystemSpec, BimError>;
 
 interface SurfaceStyleSpec {
-    readonly name: string;
-    /** Red channel, 0–1. */
-    readonly r: number;
-    /** Green channel, 0–1. */
-    readonly g: number;
-    /** Blue channel, 0–1. */
-    readonly b: number;
-    /** 0 = opaque (default), 1 = fully transparent. */
-    readonly transparency?: number;
+  readonly name: string;
+  /** Red channel, 0–1. */
+  readonly r: number;
+  /** Green channel, 0–1. */
+  readonly g: number;
+  /** Blue channel, 0–1. */
+  readonly b: number;
+  /** 0 = opaque (default), 1 = fully transparent. */
+  readonly transparency?: number;
 }
 
 declare function parseSurfaceStyleSpec(input: unknown): Result<SurfaceStyleSpec, BimError>;
 
 /** A door opening in a wall. All dimensions in mm. */
 interface DoorSpec {
-    readonly width: number;
-    readonly height: number;
-    readonly offsetAlongWall: number;
-    readonly offsetFromFloor: number;
-    readonly wallLocalId: LocalId;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
+  readonly width: number;
+  readonly height: number;
+  readonly offsetAlongWall: number;
+  readonly offsetFromFloor: number;
+  readonly wallLocalId: LocalId;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
 }
 
 /** A window opening in a wall. All dimensions in mm. */
 interface WindowSpec {
-    readonly width: number;
-    readonly height: number;
-    readonly offsetAlongWall: number;
-    readonly offsetFromFloor: number;
-    readonly wallLocalId: LocalId;
-    readonly materialName: string;
-    readonly isExternal?: boolean | undefined;
-    readonly fireRating?: string | undefined;
-    readonly acousticRating?: string | undefined;
-    readonly thermalTransmittance?: number | undefined;
+  readonly width: number;
+  readonly height: number;
+  readonly offsetAlongWall: number;
+  readonly offsetFromFloor: number;
+  readonly wallLocalId: LocalId;
+  readonly materialName: string;
+  readonly isExternal?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
 }
 
 declare function parseDoorSpec(input: unknown): Result<DoorSpec, BimError>;
@@ -1020,17 +1215,72 @@ declare function parseWindowSpec(input: unknown): Result<WindowSpec, BimError>;
  * All dimensions in mm, offsets in the slab's local XY frame.
  */
 interface SlabOpeningInput {
-    readonly sizeX: number;
-    readonly sizeY: number;
-    readonly offsetX: number;
-    readonly offsetY: number;
-    readonly slabLocalId: LocalId;
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly slabLocalId: LocalId;
 }
 
 declare function parseSlabOpeningInput(input: unknown): Result<SlabOpeningInput, BimError>;
 
+type BridgePredefinedType =
+  | 'ARCHED'
+  | 'CABLE_STAYED'
+  | 'CANTILEVER'
+  | 'CULVERT'
+  | 'FRAMEWORK'
+  | 'GIRDER'
+  | 'SUSPENSION'
+  | 'TRUSS'
+  | 'USERDEFINED'
+  | 'NOTDEFINED';
+
+type BridgePartPredefinedType =
+  | 'ABUTMENT'
+  | 'DECK'
+  | 'DECK_SEGMENT'
+  | 'FOUNDATION'
+  | 'PIER'
+  | 'PIER_SEGMENT'
+  | 'PYLON'
+  | 'SUBSTRUCTURE'
+  | 'SUPERSTRUCTURE'
+  | 'SURFACESTRUCTURE'
+  | 'USERDEFINED'
+  | 'NOTDEFINED';
+
+type FacilityUsageType =
+  'LATERAL' | 'LONGITUDINAL' | 'REGION' | 'VERTICAL' | 'USERDEFINED' | 'NOTDEFINED';
+
+type EarthworksFillPredefinedType =
+  | 'BACKFILL'
+  | 'COUNTERWEIGHT'
+  | 'EMBANKMENT'
+  | 'SLOPEFILL'
+  | 'SUBGRADE'
+  | 'SUBGRADEBED'
+  | 'TRANSITIONSECTION'
+  | 'USERDEFINED'
+  | 'NOTDEFINED';
+
+/** Typed arbitrary body for IfcEarthworksFill. The model takes ownership of
+ * `solid` on a successful add and disposes it with the model. */
+interface EarthworksFillSpec {
+  readonly name: string;
+  readonly solid: ValidSolid;
+  readonly materialName: string;
+  readonly predefinedType?: EarthworksFillPredefinedType | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+}
+
+declare function parseBridgeSpec(input: unknown): Result<BridgeSpec, BimError>;
+
+declare function parseBridgePartSpec(input: unknown): Result<BridgePartSpec, BimError>;
+
 type IfcGuid = string & {
-    readonly [__ifcGuidBrand]: true;
+  readonly [__ifcGuidBrand]: true;
 };
 
 declare function newIfcGuid(): IfcGuid;
@@ -1052,19 +1302,19 @@ declare function deriveIfcGuidSync(stableKey: string): IfcGuid;
 declare function deriveIfcGuid(stableKey: string): Promise<IfcGuid>;
 
 type LocalId = number & {
-    readonly [__localIdBrand]: true;
+  readonly [__localIdBrand]: true;
 };
 
 interface LocalIdCounter {
-    next(): LocalId;
-    current(): LocalId;
+  next(): LocalId;
+  current(): LocalId;
 }
 
 declare function makeLocalIdCounter(start?: number): LocalIdCounter;
 
 interface ModelGraph {
-    readonly elements: readonly AnyBimElement[];
-    readonly relationships: readonly BimRelationship[];
+  readonly elements: readonly AnyBimElement[];
+  readonly relationships: readonly BimRelationship[];
 }
 
 type IntegrityInput = ModelGraph | ModelAccessor;
@@ -1096,10 +1346,10 @@ declare function checkReferentialIntegrity(input: IntegrityInput): ValidationRep
 declare function checkSchema(bytes: Uint8Array): Promise<ValidationReport>;
 
 interface EntityCounts {
-    /** Total number of entity lines in the model. */
-    readonly totalCount: number;
-    /** Count per key entity, keyed by IFC entity name. */
-    readonly typeCounts: Readonly<Record<string, number>>;
+  /** Total number of entity lines in the model. */
+  readonly totalCount: number;
+  /** Count per key entity, keyed by IFC entity name. */
+  readonly typeCounts: Readonly<Record<string, number>>;
 }
 
 /**
@@ -1126,7 +1376,10 @@ declare function checkRoundTrip(bytes: Uint8Array): Promise<RoundTripReport>;
  * `entity` is the human-readable identifier surfaced on each ValidationIssue.
  * When validating a list it is appended with the element index.
  */
-declare function checkGeometryValidity(solids: ValidSolid | readonly ValidSolid[], entity?: string): ValidationReport;
+declare function checkGeometryValidity(
+  solids: ValidSolid | readonly ValidSolid[],
+  entity?: string
+): ValidationReport;
 
 /**
  * Local implementations of the buildingSMART Validation Service's gherkin
@@ -1149,18 +1402,24 @@ declare function checkGherkinRules(bytes: Uint8Array): Promise<readonly Validati
 type ValidationSeverity = 'error' | 'warning' | 'info';
 
 interface ValidationIssue {
-    readonly code: string;
-    readonly severity: ValidationSeverity;
-    readonly message: string;
-    readonly entity?: string | number;
-    readonly context?: Readonly<Record<string, unknown>>;
+  readonly code: string;
+  readonly severity: ValidationSeverity;
+  readonly message: string;
+  readonly entity?: string | number;
+  readonly context?: Readonly<Record<string, unknown>>;
 }
 
 interface ValidationReport {
-    readonly issues: readonly ValidationIssue[];
+  readonly issues: readonly ValidationIssue[];
 }
 
-declare function issue(severity: ValidationSeverity, code: string, message: string, entity?: string | number, context?: Readonly<Record<string, unknown>>): ValidationIssue;
+declare function issue(
+  severity: ValidationSeverity,
+  code: string,
+  message: string,
+  entity?: string | number,
+  context?: Readonly<Record<string, unknown>>
+): ValidationIssue;
 
 declare function emptyReport(): ValidationReport;
 
@@ -1170,11 +1429,22 @@ type SeverityCounts = Readonly<Record<ValidationSeverity, number>>;
 
 declare function countBySeverity(report: ValidationReport): SeverityCounts;
 
-type IfcTypeName = 'IFCWALLTYPE' | 'IFCSLABTYPE' | 'IFCBEAMTYPE' | 'IFCCOLUMNTYPE' | 'IFCDOORTYPE' | 'IFCWINDOWTYPE' | 'IFCSPACETYPE' | 'IFCFOOTINGTYPE' | 'IFCPILETYPE' | 'IFCRAILINGTYPE' | 'IFCCOVERINGTYPE';
+type IfcTypeName =
+  | 'IFCWALLTYPE'
+  | 'IFCSLABTYPE'
+  | 'IFCBEAMTYPE'
+  | 'IFCCOLUMNTYPE'
+  | 'IFCDOORTYPE'
+  | 'IFCWINDOWTYPE'
+  | 'IFCSPACETYPE'
+  | 'IFCFOOTINGTYPE'
+  | 'IFCPILETYPE'
+  | 'IFCRAILINGTYPE'
+  | 'IFCCOVERINGTYPE';
 
 interface TypeWriteResult {
-    typeExpressId: number;
-    relExpressId: number;
+  typeExpressId: number;
+  relExpressId: number;
 }
 
 /**
@@ -1182,27 +1452,55 @@ interface TypeWriteResult {
  * links it to the given occurrence expressIDs. `typeGuid`/`relGuid` are the
  * deterministic GUIDs derived for the type object and its relationship.
  */
-declare function writeIfcType(w: IfcWriter, ownerHistoryId: number, typeName: IfcTypeName, typeGuid: IfcGuid, relGuid: IfcGuid, predefinedType: string, occurrenceExpressIds: readonly number[]): TypeWriteResult;
+declare function writeIfcType(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  typeName: IfcTypeName,
+  typeGuid: IfcGuid,
+  relGuid: IfcGuid,
+  predefinedType: string,
+  occurrenceExpressIds: readonly number[]
+): TypeWriteResult;
 
 /**
  * Emits an IfcZone grouping object. `longName` (a descriptive label such as
  * "Top Floor Thermal Zone") maps to the entity Description since IfcZone has no
  * LongName attribute; `objectType` maps to ObjectType.
  */
-declare function writeZoneEntity(w: IfcWriter, guid: IfcGuid, name: string, longName: string | null, objectType: string | null, ownerHistoryId: number): number;
+declare function writeZoneEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  longName: string | null,
+  objectType: string | null,
+  ownerHistoryId: number
+): number;
 
 /**
  * Emits an IfcSystem grouping object. As with {@link writeZoneEntity}, `longName`
  * maps to Description and `objectType` to ObjectType.
  */
-declare function writeSystemEntity(w: IfcWriter, guid: IfcGuid, name: string, longName: string | null, objectType: string | null, ownerHistoryId: number): number;
+declare function writeSystemEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  longName: string | null,
+  objectType: string | null,
+  ownerHistoryId: number
+): number;
 
 /**
  * Links a group (zone or system) to its members via IfcRelAssignsToGroup.
  * `groupExpressId` becomes RelatingGroup; each member id becomes a RelatedObjects
  * reference. Member entities must already be written so their express ids exist.
  */
-declare function writeRelAssignsToGroup(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, groupExpressId: number, memberExpressIds: readonly number[]): void;
+declare function writeRelAssignsToGroup(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  groupExpressId: number,
+  memberExpressIds: readonly number[]
+): void;
 
 /**
  * IFC schema-version abstraction for the writer.
@@ -1216,7 +1514,7 @@ declare function writeRelAssignsToGroup(w: IfcWriter, guid: IfcGuid, ownerHistor
  * the default is {@link DEFAULT_IFC_SCHEMA}.
  */
 /** Writer-supported IFC schemas, in declared order. */
-declare const IFC_SCHEMAS: readonly ["IFC4", "IFC4X3"];
+declare const IFC_SCHEMAS: readonly ['IFC4', 'IFC4X3'];
 
 /** Union of writer-supported IFC schema identifiers. */
 type IfcSchema = (typeof IFC_SCHEMAS)[number];
@@ -1250,7 +1548,18 @@ declare function schemaSupports(schema: IfcSchema, entityName: string): boolean;
 type AssemblyPlaceIfc = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /** IfcElementAssemblyTypeEnum values (IFC4). */
-type ElementAssemblyPredefinedTypeIfc = 'ACCESSORY_ASSEMBLY' | 'ARCH' | 'BEAM_GRID' | 'BRACED_FRAME' | 'GIRDER' | 'REINFORCEMENT_UNIT' | 'RIGID_FRAME' | 'SLAB_FIELD' | 'TRUSS' | 'USERDEFINED' | 'NOTDEFINED';
+type ElementAssemblyPredefinedTypeIfc =
+  | 'ACCESSORY_ASSEMBLY'
+  | 'ARCH'
+  | 'BEAM_GRID'
+  | 'BRACED_FRAME'
+  | 'GIRDER'
+  | 'REINFORCEMENT_UNIT'
+  | 'RIGID_FRAME'
+  | 'SLAB_FIELD'
+  | 'TRUSS'
+  | 'USERDEFINED'
+  | 'NOTDEFINED';
 
 /**
  * Emits an IfcElementAssembly grouping container. The assembly itself carries no
@@ -1258,14 +1567,29 @@ type ElementAssemblyPredefinedTypeIfc = 'ACCESSORY_ASSEMBLY' | 'ARCH' | 'BEAM_GR
  * {@link writeRelAggregatesElements} (or {@link writeRelNests} for ordered nesting).
  * Pass `productDefinitionShapeId` only when the assembly has an explicit envelope.
  */
-declare function writeElementAssemblyEntity(w: IfcWriter, guid: IfcGuid, name: string, predefinedType: ElementAssemblyPredefinedTypeIfc, ownerHistoryId: number, localPlacementId: number | null, productDefinitionShapeId: number | null, assemblyPlace?: AssemblyPlaceIfc): number;
+declare function writeElementAssemblyEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  predefinedType: ElementAssemblyPredefinedTypeIfc,
+  ownerHistoryId: number,
+  localPlacementId: number | null,
+  productDefinitionShapeId: number | null,
+  assemblyPlace?: AssemblyPlaceIfc
+): number;
 
 /**
  * Links child elements to an assembly via IfcRelAggregates. Use this for the
  * element-level (non-spatial) decomposition of an IfcElementAssembly into parts.
  * `relatedObjectIds` must be non-empty; an empty set is a no-op.
  */
-declare function writeRelAggregatesElements(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, relatingObjectId: number, relatedObjectIds: readonly number[]): void;
+declare function writeRelAggregatesElements(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  relatingObjectId: number,
+  relatedObjectIds: readonly number[]
+): void;
 
 /**
  * Links ordered child elements to a parent via IfcRelNests. Unlike
@@ -1273,7 +1597,13 @@ declare function writeRelAggregatesElements(w: IfcWriter, guid: IfcGuid, ownerHi
  * which is the correct relationship for ordered members (e.g. stair/ramp
  * flights within their assembly). An empty set is a no-op.
  */
-declare function writeRelNests(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, relatingObjectId: number, relatedObjectIds: readonly number[]): void;
+declare function writeRelNests(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  relatingObjectId: number,
+  relatedObjectIds: readonly number[]
+): void;
 
 /**
  * Emits IfcColourRgb + IfcSurfaceStyleRendering + IfcSurfaceStyle and returns the
@@ -1294,7 +1624,11 @@ declare function writeStyledItem(w: IfcWriter, geomItemId: number, styleId: numb
  * named layer. An empty `itemIds` set is a no-op (IFC requires a non-empty
  * AssignedItems set).
  */
-declare function writePresentationLayer(w: IfcWriter, layerName: string, itemIds: readonly number[]): void;
+declare function writePresentationLayer(
+  w: IfcWriter,
+  layerName: string,
+  itemIds: readonly number[]
+): void;
 
 /** IfcConnectionTypeEnum values used by IfcRelConnectsPathElements path ends. */
 type PathConnectionTypeIfc = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
@@ -1304,29 +1638,45 @@ type PathConnectionTypeIfc = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
  * elements. `description` optionally annotates the connection; geometry of the
  * connection is left null (logical connectivity only).
  */
-declare function writeRelConnectsElements(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, relatingElementId: number, relatedElementId: number, description?: string | null): void;
+declare function writeRelConnectsElements(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  relatingElementId: number,
+  relatedElementId: number,
+  description?: string | null
+): void;
 
 /**
  * Emits an IfcRelConnectsPathElements recording a connection between two
  * path-based elements (e.g. walls, beams) at specified path ends. Priority
  * arrays are emitted empty; connection geometry is left null.
  */
-declare function writeRelConnectsPathElements(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, relatingElementId: number, relatedElementId: number, relatingConnectionType: PathConnectionTypeIfc, relatedConnectionType: PathConnectionTypeIfc, description?: string | null): void;
+declare function writeRelConnectsPathElements(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  relatingElementId: number,
+  relatedElementId: number,
+  relatingConnectionType: PathConnectionTypeIfc,
+  relatedConnectionType: PathConnectionTypeIfc,
+  description?: string | null
+): void;
 
 interface MaterialLayerSetSpec {
-    readonly kind: 'LAYER_SET';
-    readonly layerSetName: string;
-    readonly layers: readonly MaterialLayer[];
-    /** Offset of the layer set from the element reference line, in mm (default 0). */
-    readonly offsetFromReferenceLine?: number | undefined;
+  readonly kind: 'LAYER_SET';
+  readonly layerSetName: string;
+  readonly layers: readonly MaterialLayer[];
+  /** Offset of the layer set from the element reference line, in mm (default 0). */
+  readonly offsetFromReferenceLine?: number | undefined;
 }
 
 interface MaterialProfileSpec {
-    readonly kind: 'PROFILE_SET';
-    readonly profileSetName: string;
-    /** Name of the profile; the profile geometry is referenced by name only. */
-    readonly profileName: string;
-    readonly materialName: string;
+  readonly kind: 'PROFILE_SET';
+  readonly profileSetName: string;
+  /** Name of the profile; the profile geometry is referenced by name only. */
+  readonly profileName: string;
+  readonly materialName: string;
 }
 
 type MaterialSpec = MaterialLayerSetSpec | MaterialProfileSpec;
@@ -1338,7 +1688,14 @@ type MaterialSpec = MaterialLayerSetSpec | MaterialProfileSpec;
  * Returns the IfcRelAssociatesMaterial express ID, or 0 if the layer list is
  * empty (nothing is written).
  */
-declare function writeMaterialLayerSet(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, spec: MaterialLayerSetSpec, relatedObjectIds: readonly number[], direction?: 'AXIS2' | 'AXIS3'): number;
+declare function writeMaterialLayerSet(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  spec: MaterialLayerSetSpec,
+  relatedObjectIds: readonly number[],
+  direction?: 'AXIS2' | 'AXIS3'
+): number;
 
 /**
  * Writes a IfcMaterialProfileSet referencing a single named profile + material,
@@ -1346,13 +1703,25 @@ declare function writeMaterialLayerSet(w: IfcWriter, guid: IfcGuid, ownerHistory
  * Profile geometry is referenced by name only (no IfcProfileDef geometry).
  * Returns the IfcRelAssociatesMaterial express ID.
  */
-declare function writeMaterialProfileSet(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, spec: MaterialProfileSpec, relatedObjectIds: readonly number[]): number;
+declare function writeMaterialProfileSet(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  spec: MaterialProfileSpec,
+  relatedObjectIds: readonly number[]
+): number;
 
 /**
  * Writes a bare IfcMaterial + IfcRelAssociatesMaterial. This is the
  * single-material path used when no layer/profile spec is present.
  */
-declare function writeMaterialSimple(w: IfcWriter, guid: IfcGuid, ownerHistoryId: number, materialName: string, relatedObjectIds: readonly number[]): void;
+declare function writeMaterialSimple(
+  w: IfcWriter,
+  guid: IfcGuid,
+  ownerHistoryId: number,
+  materialName: string,
+  relatedObjectIds: readonly number[]
+): void;
 
 /**
  * Writes the IFC classification entities for a set of references and associates
@@ -1368,22 +1737,55 @@ declare function writeMaterialSimple(w: IfcWriter, guid: IfcGuid, ownerHistoryId
  * @param refs maps each classification reference to the express IDs of the IFC
  *   elements it classifies.
  */
-declare function writeClassificationRefs(w: IfcWriter, ownerHistoryId: number, refs: ReadonlyMap<ClassificationRef, readonly number[]>): void;
+declare function writeClassificationRefs(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  refs: ReadonlyMap<ClassificationRef, readonly number[]>
+): void;
 
 /**
  * IFC measure types used by the standard Pset_*Common property sets.
  * Each maps to a web-ifc defined-type constant via {@link webIfcConstantFor}.
  */
-type PsetMeasureType = 'IFCBOOLEAN' | 'IFCIDENTIFIER' | 'IFCLABEL' | 'IFCTEXT' | 'IFCREAL' | 'IFCINTEGER' | 'IFCLENGTHMEASURE' | 'IFCPOSITIVELENGTHMEASURE' | 'IFCAREAMEASURE' | 'IFCVOLUMEMEASURE' | 'IFCRATIOMEASURE' | 'IFCPOSITIVERATIOMEASURE' | 'IFCPLANEANGLEMEASURE' | 'IFCTHERMALTRANSMITTANCEMEASURE';
+type PsetMeasureType =
+  | 'IFCBOOLEAN'
+  | 'IFCIDENTIFIER'
+  | 'IFCLABEL'
+  | 'IFCTEXT'
+  | 'IFCREAL'
+  | 'IFCINTEGER'
+  | 'IFCLENGTHMEASURE'
+  | 'IFCPOSITIVELENGTHMEASURE'
+  | 'IFCAREAMEASURE'
+  | 'IFCVOLUMEMEASURE'
+  | 'IFCRATIOMEASURE'
+  | 'IFCPOSITIVERATIOMEASURE'
+  | 'IFCPLANEANGLEMEASURE'
+  | 'IFCTHERMALTRANSMITTANCEMEASURE';
 
 /** The element categories that carry a standard Pset_*Common set. */
-type PsetCategory = 'WALL' | 'SLAB' | 'BEAM' | 'COLUMN' | 'DOOR' | 'WINDOW' | 'SPACE' | 'ROOF' | 'CURTAIN_WALL' | 'FOOTING' | 'PILE' | 'STAIR' | 'RAMP' | 'RAILING' | 'COVERING';
+type PsetCategory =
+  | 'WALL'
+  | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
+  | 'DOOR'
+  | 'WINDOW'
+  | 'SPACE'
+  | 'ROOF'
+  | 'CURTAIN_WALL'
+  | 'FOOTING'
+  | 'PILE'
+  | 'STAIR'
+  | 'RAMP'
+  | 'RAILING'
+  | 'COVERING';
 
 type PsetPropertyTemplate = SingleValueTemplate | EnumeratedValueTemplate;
 
 interface PsetTemplate {
-    readonly psetName: string;
-    readonly properties: readonly PsetPropertyTemplate[];
+  readonly psetName: string;
+  readonly properties: readonly PsetPropertyTemplate[];
 }
 
 /**
@@ -1407,7 +1809,7 @@ declare function templateFor(category: PsetCategory): PsetTemplate;
 type LengthUnit = 'mm' | 'm' | 'in' | 'ft';
 
 interface UnitSystem {
-    readonly length: LengthUnit;
+  readonly length: LengthUnit;
 }
 
 declare const DEFAULT_UNITS: UnitSystem;
@@ -1419,11 +1821,11 @@ declare function toIfcLengthM(mm: number): number;
 type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT' | 'BIM_BCF' | 'BIM_IDS';
 
 interface BimError {
-    readonly kind: BimErrorKind;
-    readonly code: string;
-    readonly message: string;
-    readonly cause?: unknown;
-    readonly metadata?: Readonly<Record<string, unknown>>;
+  readonly kind: BimErrorKind;
+  readonly code: string;
+  readonly message: string;
+  readonly cause?: unknown;
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 declare function specError(code: string, message: string, cause?: unknown): BimError;
@@ -1471,15 +1873,15 @@ declare function fromBrepError(inner: BrepError, code: string, message: string):
  * geometry (corner at 0,0,0).
  */
 interface CurtainWallComponent {
-    readonly origin: [number, number, number];
-    readonly size: [number, number, number];
-    readonly solid: ValidSolid;
+  readonly origin: [number, number, number];
+  readonly size: [number, number, number];
+  readonly solid: ValidSolid;
 }
 
 /** A curtain wall decomposed into glazing panels (plates) and mullions (members). */
 interface CurtainWallGrid {
-    readonly panels: readonly CurtainWallComponent[];
-    readonly mullions: readonly CurtainWallComponent[];
+  readonly panels: readonly CurtainWallComponent[];
+  readonly mullions: readonly CurtainWallComponent[];
 }
 
 /**
@@ -1490,87 +1892,120 @@ interface CurtainWallGrid {
  * not a plain serializable object and is validated structurally, not via Zod.
  */
 interface ProxySpec {
-    readonly name: string;
-    /**
-     * The proxy body. OWNERSHIP TRANSFERS to the BimModel on addProxy(): the model
-     * disposes this handle when it is disposed, so the caller MUST NOT dispose it
-     * itself (no `using`) — doing so double-frees the underlying WASM shape.
-     */
-    readonly solid: ValidSolid;
-    readonly materialName?: string | undefined;
-    readonly predefinedType?: 'COMPLEX' | 'ELEMENT' | 'NOTDEFINED' | 'PARTIAL' | undefined;
-    readonly customProperties?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
+  readonly name: string;
+  /**
+   * The proxy body. Its coordinates are written as supplied under an identity
+   * placement relative to its containing spatial structure. OWNERSHIP TRANSFERS
+   * to the BimModel on addProxy(): the model disposes this handle when it is
+   * disposed, so the caller MUST NOT dispose it itself (no `using`) — doing so
+   * double-frees the underlying WASM shape.
+   */
+  readonly solid: ValidSolid;
+  readonly materialName?: string | undefined;
+  readonly predefinedType?: 'COMPLEX' | 'ELEMENT' | 'NOTDEFINED' | 'PARTIAL' | undefined;
+  readonly customProperties?:
+    Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>> | undefined;
 }
 
 interface ProjectSpec {
-    readonly name: string;
-    readonly description?: string;
-    /**
-     * Optional stable, globally-unique project identifier used to scope all derived
-     * GlobalIds. Supply a UUID (or any stable unique string) when the model will be
-     * federated/diffed/exported to COBie/BCF so its GlobalIds are unique across
-     * models. When omitted, the scope falls back to the project name+description
-     * (stable, but unique only per distinct name).
-     */
-    readonly projectId?: string;
-    /**
-     * Optional geodetic coordinate reference system. When present the writer
-     * emits IfcProjectedCRS + IfcMapConversion against the model context, which
-     * establishes proper georeferencing (buildingSMART rule GRF003 asks for a
-     * CRS whenever facilities such as buildings are modelled).
-     */
-    readonly crs?: ProjectCrs;
+  readonly name: string;
+  readonly description?: string;
+  /**
+   * Optional stable, globally-unique project identifier used to scope all derived
+   * GlobalIds. Supply a UUID (or any stable unique string) when the model will be
+   * federated/diffed/exported to COBie/BCF so its GlobalIds are unique across
+   * models. When omitted, the scope falls back to the project name+description
+   * (stable, but unique only per distinct name).
+   */
+  readonly projectId?: string;
+  /**
+   * Optional geodetic coordinate reference system. When present the writer
+   * emits IfcProjectedCRS + IfcMapConversion against the model context, which
+   * establishes proper georeferencing (buildingSMART rule GRF003 asks for a
+   * CRS whenever facilities such as buildings are modelled).
+   */
+  readonly crs?: ProjectCrs;
 }
 
 interface ProjectCrs {
-    /** CRS name, conventionally an EPSG code (e.g. "EPSG:25832"). */
-    readonly name: string;
-    readonly description?: string | undefined;
-    readonly geodeticDatum?: string | undefined;
-    readonly verticalDatum?: string | undefined;
-    readonly mapProjection?: string | undefined;
-    readonly mapZone?: string | undefined;
-    /** Map coordinates of the model origin, in metres. Default 0. */
-    readonly eastings?: number | undefined;
-    readonly northings?: number | undefined;
-    readonly orthogonalHeight?: number | undefined;
-    /** Rotation of the model X axis in the map plane (abscissa/ordinate pair). */
-    readonly xAxisAbscissa?: number | undefined;
-    readonly xAxisOrdinate?: number | undefined;
-    readonly scale?: number | undefined;
+  /** CRS name, conventionally an EPSG code (e.g. "EPSG:25832"). */
+  readonly name: string;
+  readonly description?: string | undefined;
+  readonly geodeticDatum?: string | undefined;
+  readonly verticalDatum?: string | undefined;
+  readonly mapProjection?: string | undefined;
+  readonly mapZone?: string | undefined;
+  /** Map coordinates of the model origin, in metres. Default 0. */
+  readonly eastings?: number | undefined;
+  readonly northings?: number | undefined;
+  readonly orthogonalHeight?: number | undefined;
+  /** Rotation of the model X axis in the map plane (abscissa/ordinate pair). */
+  readonly xAxisAbscissa?: number | undefined;
+  readonly xAxisOrdinate?: number | undefined;
+  readonly scale?: number | undefined;
 }
 
-interface SiteSpec {
-    readonly name: string;
-    readonly description?: string;
+type IfcElementCompositionType = 'COMPLEX' | 'ELEMENT' | 'PARTIAL';
+
+interface SpatialPlacementSpec {
+  readonly origin?: [number, number, number] | undefined;
+  readonly axisX?: [number, number, number] | undefined;
+  readonly axisZ?: [number, number, number] | undefined;
 }
 
 interface BuildingSpec {
-    readonly name: string;
-    readonly description?: string;
+  readonly name: string;
+  readonly description?: string;
 }
 
 interface StoreySpec {
-    readonly name: string;
-    readonly elevation: number;
+  readonly name: string;
+  readonly elevation: number;
 }
 
-type BimCategory = 'WALL' | 'SLAB' | 'BEAM' | 'COLUMN' | 'OPENING' | 'DOOR' | 'WINDOW' | 'PROXY' | 'SPACE' | 'ROOF' | 'CURTAIN_WALL' | 'FOOTING' | 'PILE' | 'STAIR' | 'RAMP' | 'RAILING' | 'COVERING' | 'ELEMENT_ASSEMBLY' | 'ZONE' | 'SYSTEM' | 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY';
+type BimCategory =
+  | 'WALL'
+  | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
+  | 'OPENING'
+  | 'DOOR'
+  | 'WINDOW'
+  | 'PROXY'
+  | 'SPACE'
+  | 'ROOF'
+  | 'CURTAIN_WALL'
+  | 'FOOTING'
+  | 'PILE'
+  | 'STAIR'
+  | 'RAMP'
+  | 'RAILING'
+  | 'COVERING'
+  | 'ELEMENT_ASSEMBLY'
+  | 'ZONE'
+  | 'SYSTEM'
+  | 'PROJECT'
+  | 'SITE'
+  | 'BRIDGE'
+  | 'BRIDGE_PART'
+  | 'EARTHWORKS_FILL'
+  | 'BUILDING'
+  | 'STOREY';
 
 type WallOpeningSpec = {
-    readonly kind: 'WALL_OPENING';
-    readonly width: number;
-    readonly height: number;
-    readonly offsetAlongWall: number;
-    readonly offsetFromFloor: number;
+  readonly kind: 'WALL_OPENING';
+  readonly width: number;
+  readonly height: number;
+  readonly offsetAlongWall: number;
+  readonly offsetFromFloor: number;
 };
 
 type SlabOpeningSpec = {
-    readonly kind: 'SLAB_OPENING';
-    readonly sizeX: number;
-    readonly sizeY: number;
-    readonly offsetX: number;
-    readonly offsetY: number;
+  readonly kind: 'SLAB_OPENING';
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
 };
 
 type OpeningSpec = WallOpeningSpec | SlabOpeningSpec;
@@ -1579,101 +2014,128 @@ declare function isWallOpening(spec: OpeningSpec): spec is WallOpeningSpec;
 
 declare function isSlabOpening(spec: OpeningSpec): spec is SlabOpeningSpec;
 
-type AnyBimElement = BimElement<'WALL'> | BimElement<'SLAB'> | BimElement<'BEAM'> | BimElement<'COLUMN'> | BimElement<'OPENING'> | BimElement<'DOOR'> | BimElement<'WINDOW'> | BimElement<'PROXY'> | BimElement<'SPACE'> | BimElement<'ROOF'> | BimElement<'CURTAIN_WALL'> | BimElement<'FOOTING'> | BimElement<'PILE'> | BimElement<'STAIR'> | BimElement<'RAMP'> | BimElement<'RAILING'> | BimElement<'COVERING'> | BimElement<'ELEMENT_ASSEMBLY'> | BimElement<'ZONE'> | BimElement<'SYSTEM'> | BimElement<'PROJECT'> | BimElement<'SITE'> | BimElement<'BUILDING'> | BimElement<'STOREY'>;
+type AnyBimElement =
+  | BimElement<'WALL'>
+  | BimElement<'SLAB'>
+  | BimElement<'BEAM'>
+  | BimElement<'COLUMN'>
+  | BimElement<'OPENING'>
+  | BimElement<'DOOR'>
+  | BimElement<'WINDOW'>
+  | BimElement<'PROXY'>
+  | BimElement<'SPACE'>
+  | BimElement<'ROOF'>
+  | BimElement<'CURTAIN_WALL'>
+  | BimElement<'FOOTING'>
+  | BimElement<'PILE'>
+  | BimElement<'STAIR'>
+  | BimElement<'RAMP'>
+  | BimElement<'RAILING'>
+  | BimElement<'COVERING'>
+  | BimElement<'ELEMENT_ASSEMBLY'>
+  | BimElement<'ZONE'>
+  | BimElement<'SYSTEM'>
+  | BimElement<'PROJECT'>
+  | BimElement<'SITE'>
+  | BimElement<'BRIDGE'>
+  | BimElement<'BRIDGE_PART'>
+  | BimElement<'EARTHWORKS_FILL'>
+  | BimElement<'BUILDING'>
+  | BimElement<'STOREY'>;
 
 interface AssociatesMaterialRel {
-    readonly kind: 'ASSOCIATES_MATERIAL';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly materialName: string;
-    readonly relatedObjects: readonly LocalId[];
-    /**
-     * When present, the element is associated via an IfcMaterialLayerSet built from
-     * these layers instead of the bare `materialName` IfcMaterial.
-     */
-    readonly materialLayers?: readonly MaterialLayer[] | undefined;
-    readonly layerSetName?: string | undefined;
+  readonly kind: 'ASSOCIATES_MATERIAL';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly materialName: string;
+  readonly relatedObjects: readonly LocalId[];
+  /**
+   * When present, the element is associated via an IfcMaterialLayerSet built from
+   * these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
 }
 
 interface AssociatesClassificationRel {
-    readonly kind: 'ASSOCIATES_CLASSIFICATION';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly ref: ClassificationRef;
-    readonly relatedObjects: readonly LocalId[];
+  readonly kind: 'ASSOCIATES_CLASSIFICATION';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly ref: ClassificationRef;
+  readonly relatedObjects: readonly LocalId[];
 }
 
 interface VoidsWallRel {
-    readonly kind: 'VOIDS_WALL';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly wallLocalId: LocalId;
-    readonly openingLocalId: LocalId;
+  readonly kind: 'VOIDS_WALL';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly wallLocalId: LocalId;
+  readonly openingLocalId: LocalId;
 }
 
 interface VoidsSlabRel {
-    readonly kind: 'VOIDS_SLAB';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly slabLocalId: LocalId;
-    readonly openingLocalId: LocalId;
+  readonly kind: 'VOIDS_SLAB';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly slabLocalId: LocalId;
+  readonly openingLocalId: LocalId;
 }
 
 interface FillsOpeningRel {
-    readonly kind: 'FILLS_OPENING';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly openingLocalId: LocalId;
-    readonly fillerLocalId: LocalId;
+  readonly kind: 'FILLS_OPENING';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly openingLocalId: LocalId;
+  readonly fillerLocalId: LocalId;
 }
 
 interface SpaceBoundaryRel {
-    readonly kind: 'SPACE_BOUNDARY';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly spaceLocalId: LocalId;
-    readonly elementLocalId: LocalId;
-    readonly connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
+  readonly kind: 'SPACE_BOUNDARY';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly spaceLocalId: LocalId;
+  readonly elementLocalId: LocalId;
+  readonly connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
 }
 
 /** Element-level decomposition of an IfcElementAssembly into its parts. */
 interface NestsRel {
-    readonly kind: 'NESTS';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingObject: LocalId;
-    readonly relatedObjects: readonly LocalId[];
+  readonly kind: 'NESTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingObject: LocalId;
+  readonly relatedObjects: readonly LocalId[];
 }
 
 /** Logical connection between two elements (IfcRelConnectsElements). */
 interface ConnectsElementsRel {
-    readonly kind: 'CONNECTS_ELEMENTS';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingElementLocalId: LocalId;
-    readonly relatedElementLocalId: LocalId;
-    readonly description?: string | undefined;
+  readonly kind: 'CONNECTS_ELEMENTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingElementLocalId: LocalId;
+  readonly relatedElementLocalId: LocalId;
+  readonly description?: string | undefined;
 }
 
 /** Connection between two path-based elements at specified ends (IfcRelConnectsPathElements). */
 interface ConnectsPathElementsRel {
-    readonly kind: 'CONNECTS_PATH_ELEMENTS';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly relatingElementLocalId: LocalId;
-    readonly relatedElementLocalId: LocalId;
-    readonly relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
-    readonly relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
-    readonly description?: string | undefined;
+  readonly kind: 'CONNECTS_PATH_ELEMENTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingElementLocalId: LocalId;
+  readonly relatedElementLocalId: LocalId;
+  readonly relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+  readonly relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+  readonly description?: string | undefined;
 }
 
 /** Links a covering to the building element it covers (IfcRelCoversBldgElements). */
 interface CoversElementRel {
-    readonly kind: 'COVERS_ELEMENT';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly hostLocalId: LocalId;
-    readonly coveringLocalId: LocalId;
+  readonly kind: 'COVERS_ELEMENT';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly hostLocalId: LocalId;
+  readonly coveringLocalId: LocalId;
 }
 
 /**
@@ -1682,14 +2144,27 @@ interface CoversElementRel {
  * spaces or elements.
  */
 interface AssignsToGroupRel {
-    readonly kind: 'ASSIGNS_TO_GROUP';
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly groupLocalId: LocalId;
-    readonly memberLocalIds: readonly LocalId[];
+  readonly kind: 'ASSIGNS_TO_GROUP';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly groupLocalId: LocalId;
+  readonly memberLocalIds: readonly LocalId[];
 }
 
-type BimRelationship = AggregatesRel | ContainedInRel | AssociatesMaterialRel | AssociatesClassificationRel | VoidsWallRel | VoidsSlabRel | FillsOpeningRel | SpaceBoundaryRel | NestsRel | ConnectsElementsRel | ConnectsPathElementsRel | CoversElementRel | AssignsToGroupRel;
+type BimRelationship =
+  | AggregatesRel
+  | ContainedInRel
+  | AssociatesMaterialRel
+  | AssociatesClassificationRel
+  | VoidsWallRel
+  | VoidsSlabRel
+  | FillsOpeningRel
+  | SpaceBoundaryRel
+  | NestsRel
+  | ConnectsElementsRel
+  | ConnectsPathElementsRel
+  | CoversElementRel
+  | AssignsToGroupRel;
 
 /**
  * Shared material-association value types. Pure data, no imports, so they are
@@ -1698,12 +2173,12 @@ type BimRelationship = AggregatesRel | ContainedInRel | AssociatesMaterialRel | 
  */
 /** One physical layer in a layered material set (e.g. a wall build-up). */
 interface MaterialLayer {
-    readonly name: string;
-    readonly thicknessMm: number;
-    readonly isVentilated?: boolean | undefined;
-    readonly priority?: number | undefined;
-    /** Bulk density (kg/m³) for analytic weight quantities; nominal lookup used when absent. */
-    readonly densityKgM3?: number | undefined;
+  readonly name: string;
+  readonly thicknessMm: number;
+  readonly isVentilated?: boolean | undefined;
+  readonly priority?: number | undefined;
+  /** Bulk density (kg/m³) for analytic weight quantities; nominal lookup used when absent. */
+  readonly densityKgM3?: number | undefined;
 }
 
 /**
@@ -1711,43 +2186,43 @@ interface MaterialLayer {
  * OmniClass). Pure data, no imports, so it is safe to import from any layer.
  */
 interface ClassificationRef {
-    /** Classification system name, e.g. 'Uniclass2015'. */
-    readonly system: string;
-    /** Edition of the system, e.g. '2015'. */
-    readonly edition?: string | undefined;
-    /** URL locating the system or table. */
-    readonly location?: string | undefined;
-    /** The classification code, e.g. 'Ss_15_10_30_14'. */
-    readonly code: string;
-    /** Human-readable label for the referenced code. */
-    readonly description?: string | undefined;
+  /** Classification system name, e.g. 'Uniclass2015'. */
+  readonly system: string;
+  /** Edition of the system, e.g. '2015'. */
+  readonly edition?: string | undefined;
+  /** URL locating the system or table. */
+  readonly location?: string | undefined;
+  /** The classification code, e.g. 'Ss_15_10_30_14'. */
+  readonly code: string;
+  /** Human-readable label for the referenced code. */
+  readonly description?: string | undefined;
 }
 
 interface BimModelMeta {
-    applicationName: string;
-    applicationVersion: string;
-    /** MVD ViewDefinition declared in the STEP FILE_DESCRIPTION header. */
-    mvdViewDefinition?: string | undefined;
-    /** Authoring person for the IfcOwnerHistory chain. Defaults to an empty person. */
-    author?: OwnerHistoryAuthor | undefined;
-    /** Owning organization name for the IfcOwnerHistory chain. Defaults to "Unknown". */
-    organizationName?: string | undefined;
-    /**
-     * Unix epoch seconds for IfcOwnerHistory.CreationDate. Defaults to 0 (epoch)
-     * so serialized output stays byte-deterministic; pass a real timestamp to
-     * record authoring time.
-     */
-    creationTimestamp?: number | undefined;
-    /** Target IFC schema (FILE_SCHEMA + CreateModel). Defaults to IFC4. */
-    ifcSchema?: IfcSchema | undefined;
+  applicationName: string;
+  applicationVersion: string;
+  /** MVD ViewDefinition declared in the STEP FILE_DESCRIPTION header. */
+  mvdViewDefinition?: string | undefined;
+  /** Authoring person for the IfcOwnerHistory chain. Defaults to an empty person. */
+  author?: OwnerHistoryAuthor | undefined;
+  /** Owning organization name for the IfcOwnerHistory chain. Defaults to "Unknown". */
+  organizationName?: string | undefined;
+  /**
+   * Unix epoch seconds for IfcOwnerHistory.CreationDate. Defaults to 0 (epoch)
+   * so serialized output stays byte-deterministic; pass a real timestamp to
+   * record authoring time.
+   */
+  creationTimestamp?: number | undefined;
+  /** Target IFC schema (FILE_SCHEMA + CreateModel). Defaults to IFC4. */
+  ifcSchema?: IfcSchema | undefined;
 }
 
 /** Authoring person for the IfcOwnerHistory chain. */
 interface OwnerHistoryAuthor {
-    readonly givenName?: string | undefined;
-    readonly familyName?: string | undefined;
-    /** Optional contact email; emitted as an IfcTelecomAddress on the person. */
-    readonly email?: string | undefined;
+  readonly givenName?: string | undefined;
+  readonly familyName?: string | undefined;
+  /** Optional contact email; emitted as an IfcTelecomAddress on the person. */
+  readonly email?: string | undefined;
 }
 
 /**
@@ -1756,12 +2231,12 @@ interface OwnerHistoryAuthor {
  * to keep serialized output byte-deterministic.
  */
 interface OwnerHistoryMeta {
-    readonly author: OwnerHistoryAuthor;
-    readonly organizationName: string;
-    readonly applicationName: string;
-    readonly applicationVersion: string;
-    /** Unix epoch seconds for IfcOwnerHistory.CreationDate. Default 0 (epoch). */
-    readonly creationTimestamp?: number | undefined;
+  readonly author: OwnerHistoryAuthor;
+  readonly organizationName: string;
+  readonly applicationName: string;
+  readonly applicationVersion: string;
+  /** Unix epoch seconds for IfcOwnerHistory.CreationDate. Default 0 (epoch). */
+  readonly creationTimestamp?: number | undefined;
 }
 
 /**
@@ -1800,132 +2275,132 @@ declare function serializeCobieToJson(model: CobieModel): CobieJson;
  */
 /** Minimal contact metadata used to populate the COBie Contact sheet. */
 interface CobieContactMeta {
-    readonly email?: string | undefined;
-    readonly givenName?: string | undefined;
-    readonly familyName?: string | undefined;
-    readonly organizationName?: string | undefined;
-    readonly company?: string | undefined;
-    readonly phone?: string | undefined;
+  readonly email?: string | undefined;
+  readonly givenName?: string | undefined;
+  readonly familyName?: string | undefined;
+  readonly organizationName?: string | undefined;
+  readonly company?: string | undefined;
+  readonly phone?: string | undefined;
 }
 
 /** Optional metadata consumed by {@link deriveCobieModel}. */
 interface CobieExportMeta {
-    readonly contact?: CobieContactMeta | undefined;
+  readonly contact?: CobieContactMeta | undefined;
 }
 
 interface CobieContactRow {
-    /** COBie Contact key — the contact's email address. */
-    readonly email: string;
-    readonly givenName: string;
-    readonly familyName: string;
-    readonly company: string;
-    readonly phone: string;
+  /** COBie Contact key — the contact's email address. */
+  readonly email: string;
+  readonly givenName: string;
+  readonly familyName: string;
+  readonly company: string;
+  readonly phone: string;
 }
 
 interface CobieFacilityRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    readonly projectName: string;
-    readonly siteName: string;
-    readonly description: string;
-    /** IfcProject GlobalId. */
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  readonly projectName: string;
+  readonly siteName: string;
+  readonly description: string;
+  /** IfcProject GlobalId. */
+  readonly externalIdentifier: string;
 }
 
 interface CobieFloorRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    readonly description: string;
-    readonly elevation: number;
-    /** IfcBuildingStorey GlobalId. */
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  readonly description: string;
+  readonly elevation: number;
+  /** IfcBuildingStorey GlobalId. */
+  readonly externalIdentifier: string;
 }
 
 interface CobieSpaceRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    /** Name of the Floor this space sits on (resolved via the spatial tree). */
-    readonly floorName: string;
-    readonly description: string;
-    readonly roomTag: string;
-    /** IfcSpace GlobalId. */
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  /** Name of the Floor this space sits on (resolved via the spatial tree). */
+  readonly floorName: string;
+  readonly description: string;
+  readonly roomTag: string;
+  /** IfcSpace GlobalId. */
+  readonly externalIdentifier: string;
 }
 
 interface CobieZoneRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    /** Name of a space that is a member of this zone. */
-    readonly spaceName: string;
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  /** Name of a space that is a member of this zone. */
+  readonly spaceName: string;
+  readonly externalIdentifier: string;
 }
 
 interface CobieTypeRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    readonly description: string;
-    readonly assetType: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  readonly description: string;
+  readonly assetType: string;
 }
 
 interface CobieComponentRow {
-    readonly name: string;
-    readonly createdBy: string;
-    /** Name of the Type row this component is an occurrence of. */
-    readonly typeName: string;
-    /** Name of the Space this component is contained in, when resolvable. */
-    readonly space: string;
-    readonly description: string;
-    /** Element GlobalId. */
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  /** Name of the Type row this component is an occurrence of. */
+  readonly typeName: string;
+  /** Name of the Space this component is contained in, when resolvable. */
+  readonly space: string;
+  readonly description: string;
+  /** Element GlobalId. */
+  readonly externalIdentifier: string;
 }
 
 interface CobieSystemRow {
-    readonly name: string;
-    readonly createdBy: string;
-    readonly category: string;
-    /** Name of a component that is a member of this system. */
-    readonly componentNames: string;
-    readonly externalIdentifier: string;
+  readonly name: string;
+  readonly createdBy: string;
+  readonly category: string;
+  /** Name of a component that is a member of this system. */
+  readonly componentNames: string;
+  readonly externalIdentifier: string;
 }
 
 interface CobieAttributeRow {
-    readonly name: string;
-    readonly createdBy: string;
-    /** Name of the sheet row this attribute belongs to (e.g. a component name). */
-    readonly sheetName: string;
-    readonly rowName: string;
-    readonly value: string;
+  readonly name: string;
+  readonly createdBy: string;
+  /** Name of the sheet row this attribute belongs to (e.g. a component name). */
+  readonly sheetName: string;
+  readonly rowName: string;
+  readonly value: string;
 }
 
 /** All populated COBie sheets derived from a model. */
 interface CobieModel {
-    readonly contact: readonly CobieContactRow[];
-    readonly facility: readonly CobieFacilityRow[];
-    readonly floor: readonly CobieFloorRow[];
-    readonly space: readonly CobieSpaceRow[];
-    readonly zone: readonly CobieZoneRow[];
-    readonly type: readonly CobieTypeRow[];
-    readonly component: readonly CobieComponentRow[];
-    readonly system: readonly CobieSystemRow[];
-    readonly attribute: readonly CobieAttributeRow[];
+  readonly contact: readonly CobieContactRow[];
+  readonly facility: readonly CobieFacilityRow[];
+  readonly floor: readonly CobieFloorRow[];
+  readonly space: readonly CobieSpaceRow[];
+  readonly zone: readonly CobieZoneRow[];
+  readonly type: readonly CobieTypeRow[];
+  readonly component: readonly CobieComponentRow[];
+  readonly system: readonly CobieSystemRow[];
+  readonly attribute: readonly CobieAttributeRow[];
 }
 
 /** JSON serialization of a {@link CobieModel} — one array per sheet name. */
 interface CobieJson {
-    readonly Contact: readonly CobieContactRow[];
-    readonly Facility: readonly CobieFacilityRow[];
-    readonly Floor: readonly CobieFloorRow[];
-    readonly Space: readonly CobieSpaceRow[];
-    readonly Zone: readonly CobieZoneRow[];
-    readonly Type: readonly CobieTypeRow[];
-    readonly Component: readonly CobieComponentRow[];
-    readonly System: readonly CobieSystemRow[];
-    readonly Attribute: readonly CobieAttributeRow[];
+  readonly Contact: readonly CobieContactRow[];
+  readonly Facility: readonly CobieFacilityRow[];
+  readonly Floor: readonly CobieFloorRow[];
+  readonly Space: readonly CobieSpaceRow[];
+  readonly Zone: readonly CobieZoneRow[];
+  readonly Type: readonly CobieTypeRow[];
+  readonly Component: readonly CobieComponentRow[];
+  readonly System: readonly CobieSystemRow[];
+  readonly Attribute: readonly CobieAttributeRow[];
 }
 
 /**
@@ -1953,96 +2428,109 @@ declare function parseIdsXml(xml: string): Result<IdsDocument, BimError>;
  * conformance-grade checker validated against the official buildingSMART IDS
  * test suite; see `scripts/idsConformance.ts`.
  */
-declare function checkIdsData(bytes: Uint8Array, ids: IdsDocument): Promise<Result<IdsCheckReport, BimError>>;
+declare function checkIdsData(
+  bytes: Uint8Array,
+  ids: IdsDocument
+): Promise<Result<IdsCheckReport, BimError>>;
 
-type IdsRestriction = {
-    readonly kind: 'simple';
-    readonly value: string;
-} | ({
-    readonly kind: 'restriction';
-} & IdsRestrictionConstraints);
+type IdsRestriction =
+  | {
+      readonly kind: 'simple';
+      readonly value: string;
+    }
+  | ({
+      readonly kind: 'restriction';
+    } & IdsRestrictionConstraints);
 
 /** Cardinality of a specification or of an individual requirement facet. */
 type IdsCardinality = 'required' | 'optional' | 'prohibited';
 
-type IdsFacet = {
-    readonly kind: 'Entity';
-    readonly name: IdsRestriction;
-    readonly predefinedType?: IdsRestriction | undefined;
-} | {
-    readonly kind: 'Attribute';
-    readonly name: IdsRestriction;
-    readonly value?: IdsRestriction | undefined;
-    readonly cardinality: IdsCardinality;
-} | {
-    readonly kind: 'Property';
-    readonly psetName: IdsRestriction;
-    readonly baseName: IdsRestriction;
-    readonly value?: IdsRestriction | undefined;
-    readonly dataType?: string | undefined;
-    readonly cardinality: IdsCardinality;
-} | {
-    readonly kind: 'Classification';
-    readonly system?: IdsRestriction | undefined;
-    readonly value?: IdsRestriction | undefined;
-    readonly cardinality: IdsCardinality;
-} | {
-    readonly kind: 'Material';
-    readonly value?: IdsRestriction | undefined;
-    readonly cardinality: IdsCardinality;
-} | {
-    readonly kind: 'PartOf';
-    readonly entity?: {
-        readonly name: IdsRestriction;
-        readonly predefinedType?: IdsRestriction | undefined;
-    } | undefined;
-    readonly relation?: IdsPartOfRelation | undefined;
-    readonly cardinality: IdsCardinality;
-};
+type IdsFacet =
+  | {
+      readonly kind: 'Entity';
+      readonly name: IdsRestriction;
+      readonly predefinedType?: IdsRestriction | undefined;
+    }
+  | {
+      readonly kind: 'Attribute';
+      readonly name: IdsRestriction;
+      readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
+    }
+  | {
+      readonly kind: 'Property';
+      readonly psetName: IdsRestriction;
+      readonly baseName: IdsRestriction;
+      readonly value?: IdsRestriction | undefined;
+      readonly dataType?: string | undefined;
+      readonly cardinality: IdsCardinality;
+    }
+  | {
+      readonly kind: 'Classification';
+      readonly system?: IdsRestriction | undefined;
+      readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
+    }
+  | {
+      readonly kind: 'Material';
+      readonly value?: IdsRestriction | undefined;
+      readonly cardinality: IdsCardinality;
+    }
+  | {
+      readonly kind: 'PartOf';
+      readonly entity?:
+        | {
+            readonly name: IdsRestriction;
+            readonly predefinedType?: IdsRestriction | undefined;
+          }
+        | undefined;
+      readonly relation?: IdsPartOfRelation | undefined;
+      readonly cardinality: IdsCardinality;
+    };
 
 interface IdsSpecification {
-    readonly name: string;
-    /** Declared schema versions. Purely metadata: never filters checking. */
-    readonly ifcVersion: readonly string[];
-    /**
-     * Cardinality of the applicability set:
-     * - `required` — at least one element must be applicable, and every
-     *   applicable element must satisfy the requirements.
-     * - `optional` — applicable elements must satisfy the requirements, but an
-     *   empty applicability set still passes.
-     * - `prohibited` — no element may match the applicability at all.
-     */
-    readonly cardinality: IdsCardinality;
-    readonly applicability: readonly IdsFacet[];
-    readonly requirements: readonly IdsFacet[];
+  readonly name: string;
+  /** Declared schema versions. Purely metadata: never filters checking. */
+  readonly ifcVersion: readonly string[];
+  /**
+   * Cardinality of the applicability set:
+   * - `required` — at least one element must be applicable, and every
+   *   applicable element must satisfy the requirements.
+   * - `optional` — applicable elements must satisfy the requirements, but an
+   *   empty applicability set still passes.
+   * - `prohibited` — no element may match the applicability at all.
+   */
+  readonly cardinality: IdsCardinality;
+  readonly applicability: readonly IdsFacet[];
+  readonly requirements: readonly IdsFacet[];
 }
 
 interface IdsDocument {
-    readonly title: string;
-    readonly specifications: readonly IdsSpecification[];
+  readonly title: string;
+  readonly specifications: readonly IdsSpecification[];
 }
 
 interface IdsCheckResult {
-    readonly specificationName: string;
-    readonly pass: boolean;
-    /** Number of model entity instances matched by the applicability facets. */
-    readonly applicableCount: number;
-    /** Applicable instances that satisfied every requirement. */
-    readonly passedCount: number;
-    /** Applicable instances that violated at least one requirement. */
-    readonly failedCount: number;
-    readonly issues: readonly ValidationIssue[];
+  readonly specificationName: string;
+  readonly pass: boolean;
+  /** Number of model entity instances matched by the applicability facets. */
+  readonly applicableCount: number;
+  /** Applicable instances that satisfied every requirement. */
+  readonly passedCount: number;
+  /** Applicable instances that violated at least one requirement. */
+  readonly failedCount: number;
+  readonly issues: readonly ValidationIssue[];
 }
 
 interface IdsCheckReport {
-    readonly pass: boolean;
-    readonly results: readonly IdsCheckResult[];
-    /**
-     * Human-readable identifiers of facet features that were encountered but not
-     * evaluated. Their presence never aborts the check; the affected requirement
-     * is skipped with a warning.
-     */
-    readonly unsupportedFacets: readonly string[];
+  readonly pass: boolean;
+  readonly results: readonly IdsCheckResult[];
+  /**
+   * Human-readable identifiers of facet features that were encountered but not
+   * evaluated. Their presence never aborts the check; the affected requirement
+   * is skipped with a warning.
+   */
+  readonly unsupportedFacets: readonly string[];
 }
 
 /**
@@ -2058,83 +2546,83 @@ interface IdsCheckReport {
 type BcfFiles = Map<string, string>;
 
 interface BcfContainerData {
-    readonly version: BcfVersion;
-    readonly project: BcfProject;
-    readonly topics: readonly BcfTopic[];
+  readonly version: BcfVersion;
+  readonly project: BcfProject;
+  readonly topics: readonly BcfTopic[];
 }
 
 interface BcfVersion {
-    readonly versionId: '3.0';
-    readonly detailedVersion?: string | undefined;
+  readonly versionId: '3.0';
+  readonly detailedVersion?: string | undefined;
 }
 
 interface BcfProject {
-    readonly projectId: string;
-    readonly name: string;
+  readonly projectId: string;
+  readonly name: string;
 }
 
 interface BcfTopic {
-    readonly guid: string;
-    readonly title: string;
-    readonly topicType?: string | undefined;
-    readonly topicStatus?: string | undefined;
-    readonly priority?: string | undefined;
-    readonly index?: number | undefined;
-    readonly labels?: readonly string[] | undefined;
-    /** ISO 8601 timestamp. */
-    readonly creationDate?: string | undefined;
-    readonly creationAuthor?: string | undefined;
-    readonly modifiedDate?: string | undefined;
-    readonly modifiedAuthor?: string | undefined;
-    readonly description?: string | undefined;
-    readonly assignedTo?: string | undefined;
-    readonly dueDate?: string | undefined;
-    readonly comments: readonly BcfComment[];
-    readonly viewpoints: readonly BcfViewpoint[];
-    readonly relatedTopics?: readonly string[] | undefined;
+  readonly guid: string;
+  readonly title: string;
+  readonly topicType?: string | undefined;
+  readonly topicStatus?: string | undefined;
+  readonly priority?: string | undefined;
+  readonly index?: number | undefined;
+  readonly labels?: readonly string[] | undefined;
+  /** ISO 8601 timestamp. */
+  readonly creationDate?: string | undefined;
+  readonly creationAuthor?: string | undefined;
+  readonly modifiedDate?: string | undefined;
+  readonly modifiedAuthor?: string | undefined;
+  readonly description?: string | undefined;
+  readonly assignedTo?: string | undefined;
+  readonly dueDate?: string | undefined;
+  readonly comments: readonly BcfComment[];
+  readonly viewpoints: readonly BcfViewpoint[];
+  readonly relatedTopics?: readonly string[] | undefined;
 }
 
 interface BcfComment {
-    readonly guid: string;
-    readonly date: string;
-    readonly author: string;
-    readonly comment: string;
-    /** GUID of a viewpoint owned by the same topic. */
-    readonly viewpointRef?: string | undefined;
-    readonly modifiedDate?: string | undefined;
-    readonly modifiedAuthor?: string | undefined;
+  readonly guid: string;
+  readonly date: string;
+  readonly author: string;
+  readonly comment: string;
+  /** GUID of a viewpoint owned by the same topic. */
+  readonly viewpointRef?: string | undefined;
+  readonly modifiedDate?: string | undefined;
+  readonly modifiedAuthor?: string | undefined;
 }
 
 interface BcfViewpoint {
-    readonly guid: string;
-    readonly viewpointFile?: string | undefined;
-    readonly snapshotFile?: string | undefined;
-    readonly index?: number | undefined;
-    readonly components?: BcfComponents | undefined;
+  readonly guid: string;
+  readonly viewpointFile?: string | undefined;
+  readonly snapshotFile?: string | undefined;
+  readonly index?: number | undefined;
+  readonly components?: BcfComponents | undefined;
 }
 
 interface BcfComponents {
-    readonly selection?: readonly BcfComponent[] | undefined;
-    readonly coloring?: readonly BcfColoring[] | undefined;
-    readonly visibility?: BcfVisibility | undefined;
+  readonly selection?: readonly BcfComponent[] | undefined;
+  readonly coloring?: readonly BcfColoring[] | undefined;
+  readonly visibility?: BcfVisibility | undefined;
 }
 
 interface BcfComponent {
-    /** IFC GlobalId of the referenced element. */
-    readonly ifcGuid?: string | undefined;
-    readonly originatingSystem?: string | undefined;
-    readonly authoringToolId?: string | undefined;
+  /** IFC GlobalId of the referenced element. */
+  readonly ifcGuid?: string | undefined;
+  readonly originatingSystem?: string | undefined;
+  readonly authoringToolId?: string | undefined;
 }
 
 interface BcfColoring {
-    /** Hex ARGB colour, e.g. `FFFF0000`. */
-    readonly color: string;
-    readonly components: readonly BcfComponent[];
+  /** Hex ARGB colour, e.g. `FFFF0000`. */
+  readonly color: string;
+  readonly components: readonly BcfComponent[];
 }
 
 interface BcfVisibility {
-    readonly defaultVisibility: boolean;
-    readonly exceptions?: readonly BcfComponent[] | undefined;
+  readonly defaultVisibility: boolean;
+  readonly exceptions?: readonly BcfComponent[] | undefined;
 }
 
 /**
@@ -2161,39 +2649,46 @@ declare function serializeBcfFiles(data: BcfContainerData): BcfFiles;
 declare function parseBcfFiles(files: BcfFiles): Result<BcfContainerData, BimError>;
 
 interface FamiliesToBimOptions {
-    readonly project: ProjectSpec;
-    readonly siteName?: string | undefined;
-    readonly buildingName?: string | undefined;
-    /**
-     * Enables the proxy route: an unrouted geometry-bearing element is
-     * materialized through this evaluator and exported as an
-     * IfcBuildingElementProxy (tessellated, world-frame body). Without it,
-     * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
-     * evaluator's handles stay borrowed; the adapter clones what it hands the
-     * model.
-     */
-    readonly proxyEvaluator?: csg.Evaluator | undefined;
+  readonly project: ProjectSpec;
+  readonly siteName?: string | undefined;
+  readonly buildingName?: string | undefined;
+  /**
+   * Materializes exact evaluated Product Bodies for supported typed routes
+   * such as Earthworks Fill. Supplying this option does not opt unsupported
+   * products into the proxy fallback.
+   */
+  readonly bodyEvaluator?: csg.Evaluator | undefined;
+  /**
+   * Enables the proxy route: an unrouted geometry-bearing element is
+   * materialized through this evaluator and exported as an
+   * IfcBuildingElementProxy (tessellated authoritative body). Without it,
+   * unrouted types stay a hard FAMILIES_UNSUPPORTED_TYPE error. The
+   * evaluator's handles stay borrowed; the adapter clones what it hands the
+   * model. For backward compatibility it also supplies the body evaluator when
+   * `bodyEvaluator` is absent.
+   */
+  readonly proxyEvaluator?: csg.Evaluator | undefined;
 }
 
 interface ProxiedElement {
-    readonly keyPath: string;
-    /** The family's display name, as resolved. */
-    readonly type: string;
-    readonly archetype: string | undefined;
+  readonly keyPath: string;
+  /** The family's display name, as resolved. */
+  readonly type: string;
+  readonly archetype: string | undefined;
 }
 
 interface FamiliesBimResult {
-    readonly model: BimModel;
-    /** LocalId per geometry-bearing families key path. */
-    readonly idByKeyPath: ReadonlyMap<string, LocalId>;
-    /**
-     * Elements exported as IfcBuildingElementProxy because no spec route
-     * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
-     * without it an unrouted element is a hard error instead. A renamed family
-     * that has lost its routing lands here rather than in the file as the type
-     * you meant, so check this before trusting an export.
-     */
-    readonly proxied: readonly ProxiedElement[];
+  readonly model: BimModel;
+  /** LocalId per geometry-bearing families key path. */
+  readonly idByKeyPath: ReadonlyMap<string, LocalId>;
+  /**
+   * Elements exported as IfcBuildingElementProxy because no spec route
+   * matched, in walk order. Only ever non-empty when `proxyEvaluator` is set:
+   * without it an unrouted element is a hard error instead. A renamed family
+   * that has lost its routing lands here rather than in the file as the type
+   * you meant, so check this before trusting an export.
+   */
+  readonly proxied: readonly ProxiedElement[];
 }
 
 /**
@@ -2201,25 +2696,49 @@ interface FamiliesBimResult {
  * the returned model (`using`); families stays domain-neutral — this adapter
  * is where families types meet the IFC vocabulary.
  */
-declare function familiesToBim(root: ResolvedElement, options: FamiliesToBimOptions): Result<FamiliesBimResult, BimError>;
+declare function familiesToBim(
+  root: ResolvedElement,
+  options: FamiliesToBimOptions
+): Result<FamiliesBimResult, BimError>;
 
 /** Identity options for adders that create TWO elements: `stableKey` names
  *  the filler (door/window), `openingStableKey` the synthesized opening. */
 interface OpeningIdentityOptions extends ElementIdentityOptions {
-    readonly openingStableKey?: string | undefined;
+  readonly openingStableKey?: string | undefined;
 }
 
 interface RoundTripReport extends ValidationReport {
-    readonly firstPass: EntityCounts;
-    readonly secondPass: EntityCounts;
+  readonly firstPass: EntityCounts;
+  readonly secondPass: EntityCounts;
+}
+
+interface CivilSpatialSpec extends SpatialPlacementSpec {
+  readonly name: string;
+  readonly description?: string | undefined;
+  readonly compositionType?: IfcElementCompositionType | undefined;
+}
+
+interface SiteSpec extends SpatialPlacementSpec {
+  readonly name: string;
+  readonly description?: string;
+  readonly compositionType?: IfcElementCompositionType | undefined;
 }
 
 interface BimElement<C extends BimCategory> {
-    readonly guid: IfcGuid;
-    readonly localId: LocalId;
-    readonly category: C;
-    readonly spec: BimSpecFor<C>;
-    readonly geometry: BimGeometryFor<C>;
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly category: C;
+  readonly spec: BimSpecFor<C>;
+  readonly geometry: BimGeometryFor<C>;
+}
+
+interface BridgeSpec extends CivilSpatialSpec {
+  readonly predefinedType?: BridgePredefinedType | undefined;
+}
+
+interface BridgePartSpec extends CivilSpatialSpec {
+  readonly usageType: FacilityUsageType;
+  readonly predefinedType?: BridgePartPredefinedType | undefined;
 }
 
 // ── Aliases ──

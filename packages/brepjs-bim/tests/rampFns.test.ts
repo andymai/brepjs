@@ -140,7 +140,7 @@ async function buildBaseModel(): Promise<{
     unitAssignmentId,
     geomContextId
   );
-  const site = writeSite(w, deriveIfcGuidSync('elem:SITE:1'), 'Site', ownerHistoryId);
+  const site = writeSite(w, deriveIfcGuidSync('elem:SITE:1'), { name: 'Site' }, ownerHistoryId);
   const building = writeBuilding(
     w,
     deriveIfcGuidSync('elem:BUILDING:2'),

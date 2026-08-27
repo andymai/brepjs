@@ -45,6 +45,11 @@ if (imported.ok) {
 
 Imported geometry pins kernel memory; call `disposeImportedModel` when done. For header-level inspection without geometry, `SpfReader` parses the STEP structure directly.
 
+The IFC4X3 importer recognizes Bridge and Bridge Part nodes in `spatialTree` and imports
+`IfcEarthworksFill` as `EARTHWORKS_FILL`. Each imported product exposes
+`spatialStructureExpressId` for its direct Storey or civil Spatial Part;
+`storeyExpressId` remains as a compatibility alias.
+
 ## Round-tripping
 
 Export → import → compare is a first-class operation, not a demo: `checkRoundTrip(bytes)` re-reads an exported file and reports entity counts and losses, and the test suite gates on semantic round-trip fidelity (identity, relationships, psets, containment, and volumes within 0.5%). If you build on the families layer, GlobalIds additionally survive **source-level** edits: they derive from key paths, not insertion order.

@@ -42,6 +42,12 @@ import {
 } from '../ifc-writer/coveringWriter.js';
 import { writeElementAssemblyEntity, writeRelNests } from '../ifc-writer/assemblyWriter.js';
 import {
+  writeBridge,
+  writeBridgePart,
+  writeEarthworksFillEntity,
+} from '../ifc-writer/infrastructureWriter.js';
+import { writeTessellatedProductGeometry } from '../ifc-writer/tessellatedProductWriter.js';
+import {
   writeZoneEntity,
   writeSystemEntity,
   writeRelAssignsToGroup,
@@ -129,6 +135,19 @@ export async function toIfc(
   if (!project) {
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
+  if (
+    (model.getBridges().length > 0 ||
+      model.getBridgeParts().length > 0 ||
+      model.getEarthworksFills().length > 0) &&
+    (meta.ifcSchema ?? 'IFC4') !== 'IFC4X3'
+  ) {
+    return err(
+      ifcError(
+        'IFC4X3_REQUIRED',
+        'Bridge, Bridge Part, and Earthworks Fill entities require IFC4X3 serialization'
+      )
+    );
+  }
 
   const authorName = [meta.author?.givenName, meta.author?.familyName]
     .filter((p): p is string => Boolean(p))
@@ -147,6 +166,9 @@ export async function toIfc(
   const walls = model.getWalls();
   const slabs = model.getSlabs();
   const beams = model.getBeams();
+  const bridges = model.getBridges();
+  const bridgeParts = model.getBridgeParts();
+  const earthworksFills = model.getEarthworksFills();
   const columns = model.getColumns();
   const doors = model.getDoors();
   const windows = model.getWindows();
@@ -189,9 +211,55 @@ export async function toIfc(
 
   for (const el of elements) {
     if (el.category !== 'SITE') continue;
-    const { entityId, placementId } = writeSite(w, el.guid, el.spec.name, ownerHistoryId);
+    const parentId = findParentOf(el.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeSite(
+      w,
+      el.guid,
+      el.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
     idMap.set(el.localId, entityId);
     placementMap.set(el.localId, placementId);
+  }
+
+  for (const bridge of bridges) {
+    const parentId = findParentOf(bridge.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeBridge(
+      w,
+      bridge.guid,
+      bridge.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
+    idMap.set(bridge.localId, entityId);
+    placementMap.set(bridge.localId, placementId);
+  }
+
+  // Bridge Parts nest recursively and getBridgeParts() yields insertion order,
+  // so write a part only once its parent's placement exists — a child written
+  // first would silently anchor at the project origin.
+  const pendingParts = [...bridgeParts];
+  while (pendingParts.length > 0) {
+    const readyIndex = pendingParts.findIndex((candidate) => {
+      const candidateParentId = findParentOf(candidate.localId, relationships);
+      return candidateParentId === null || placementMap.has(candidateParentId);
+    });
+    const [part] = pendingParts.splice(readyIndex === -1 ? 0 : readyIndex, 1);
+    if (part === undefined) break;
+    const parentId = findParentOf(part.localId, relationships);
+    const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
+    const { entityId, placementId } = writeBridgePart(
+      w,
+      part.guid,
+      part.spec,
+      ownerHistoryId,
+      parentPlacementId
+    );
+    idMap.set(part.localId, entityId);
+    placementMap.set(part.localId, placementId);
   }
 
   for (const el of elements) {
@@ -401,6 +469,31 @@ export async function toIfc(
     placementMap.set(proxy.localId, localPlacementId);
     if (proxy.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec.customProperties);
+    }
+  }
+
+  for (const fill of earthworksFills) {
+    const containingId = findContainerOf(fill.localId, relationships);
+    const parentPlacementId =
+      containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeTessellatedProductGeometry(
+      w,
+      fill.geometry,
+      geomSubContextId,
+      parentPlacementId
+    );
+    const expressId = writeEarthworksFillEntity(
+      w,
+      fill.guid,
+      fill.spec,
+      ownerHistoryId,
+      localPlacementId,
+      productDefinitionShapeId
+    );
+    idMap.set(fill.localId, expressId);
+    placementMap.set(fill.localId, localPlacementId);
+    if (fill.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, expressId, fill.spec.customProperties);
     }
   }
 
@@ -1134,6 +1227,7 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
     ['Beam', model.getBeams()],
     ['Column', model.getColumns()],
     ['Proxy', model.getProxies()],
+    ['Earthworks Fill', model.getEarthworksFills()],
     ['Space', model.getSpaces()],
     ['Roof', model.getRoofs()],
     ['Footing', model.getFootings()],

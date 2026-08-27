@@ -5,6 +5,10 @@
  */
 
 import type { ZodType } from 'zod';
+import {
+  validateCivilSemantics,
+  type EngineeringSemantics,
+} from './engineeringSemantics.js';
 
 export interface Element {
   readonly type: string | FamilyComponent<never>;
@@ -80,6 +84,10 @@ export interface FamilyComponent<P, I = P> {
   /** Domain-neutral kind an adapter dispatches on, decoupled from the display
    *  name so a renamed copy of a registry family keeps its mapping. */
   readonly archetype: string | undefined;
+  /** Target-independent meaning owned by the Family definition. */
+  readonly resolveSemanticsErased?:
+    | ((props: object) => EngineeringSemantics | undefined)
+    | undefined;
   readonly renderErased: (props: object) => Element;
 }
 
@@ -94,6 +102,11 @@ export interface FamilyOptions<P = unknown, I = P> {
    * own manifest names (`'wall'`, `'storey'`, ...).
    */
   readonly archetype?: string | undefined;
+  /** Target-independent meaning shared by, or derived for, Family Occurrences. */
+  readonly semantics?:
+    | EngineeringSemantics
+    | ((props: P) => EngineeringSemantics)
+    | undefined;
   /** Optional Zod schema validated at element construction (the earliest
    *  point with a useful stack). Schema output replaces the props, so
    *  defaults and transforms apply before render — the output type must be
@@ -108,6 +121,9 @@ export function family<P extends object, I extends object = P>(
   options?: FamilyOptions<P, I>
 ): FamilyComponent<P, I> {
   const schema = options?.props;
+  if (options?.semantics !== undefined && typeof options.semantics !== 'function') {
+    validateCivilSemantics(options.semantics);
+  }
   const make = (props: I & WithKey & IdentityProps & WithChildren): Element => {
     const { key, children, ...rest } = props;
     let validated: Readonly<Record<string, unknown>> = rest;
@@ -136,6 +152,14 @@ export function family<P extends object, I extends object = P>(
     familyName: name,
     role: options?.role,
     archetype: options?.archetype,
+    resolveSemanticsErased: (props: object) => {
+      const semantics =
+        typeof options?.semantics === 'function'
+          ? options.semantics(props as P)
+          : options?.semantics;
+      if (semantics !== undefined) validateCivilSemantics(semantics);
+      return semantics;
+    },
     renderErased: (props: object) => render(props as P),
   });
   return component;
