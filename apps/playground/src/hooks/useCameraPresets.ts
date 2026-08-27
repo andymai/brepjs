@@ -2,12 +2,12 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useViewerStore, type CameraPreset } from '../stores/viewerStore';
 
-/** Unit direction vectors for each preset (Y-up coordinate system). */
+/** Unit direction vectors for each preset in native brepjs Z-up coordinates. */
 const PRESET_DIRECTIONS: Record<CameraPreset, THREE.Vector3> = {
-  front: new THREE.Vector3(0, 0.3, 1).normalize(),
-  side: new THREE.Vector3(1, 0.3, 0).normalize(),
-  top: new THREE.Vector3(0, 1, -0.01).normalize(),
-  isometric: new THREE.Vector3(0.6, 0.5, 0.6).normalize(),
+  front: new THREE.Vector3(0, -1, 0.3).normalize(),
+  side: new THREE.Vector3(1, 0, 0.3).normalize(),
+  top: new THREE.Vector3(0, 0.01, 1).normalize(),
+  isometric: new THREE.Vector3(0.6, -0.6, 0.5).normalize(),
 };
 
 const TRANSITION_MS = 500;

@@ -35,8 +35,7 @@ function meshKey(m: MeshData, fallback: number): string {
 }
 
 /**
- * Compute bounding box from mesh position data in CAD coordinates,
- * then return center and radius in display coordinates (Z-up -> Y-up).
+ * Compute bounding box center and radius in native brepjs Z-up coordinates.
  */
 function computeBounds(meshes: MeshData[]) {
   if (meshes.length === 0) return null;
@@ -63,13 +62,11 @@ function computeBounds(meshes: MeshData[]) {
     }
   }
 
-  // CAD center
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const cz = (minZ + maxZ) / 2;
 
-  // Rotated center (after -90deg X): x stays, y' = z, z' = -y
-  const center = new THREE.Vector3(cx, cz, -cy);
+  const center = new THREE.Vector3(cx, cy, cz);
 
   // Bounding sphere radius (half-diagonal of axis-aligned box)
   const dx = maxX - minX;
@@ -104,8 +101,8 @@ function fitCamera(
   const angle = Math.PI / 4;
   camera.position.set(
     center.x + dist * Math.cos(angle) * Math.cos(angle),
-    center.y + dist * Math.sin(angle),
-    center.z + dist * Math.cos(angle) * Math.sin(angle)
+    center.y + dist * Math.cos(angle) * Math.sin(angle),
+    center.z + dist * Math.sin(angle)
   );
 
   if (isOrtho) {
@@ -290,6 +287,7 @@ function OrthoCameraSwitch() {
     <OrthographicCamera
       makeDefault
       position={initialPosition.current}
+      up={[0, 0, 1]}
       zoom={20}
       near={0.1}
       far={2000}
@@ -396,7 +394,7 @@ export default function ViewerPanel() {
       }}
     >
       <Canvas
-        camera={{ position: [40, 30, 40], fov: 45, near: 0.1, far: 2000 }}
+        camera={{ position: [40, -40, 30], up: [0, 0, 1], fov: 45, near: 0.1, far: 2000 }}
         frameloop="demand"
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         onPointerMissed={handlePointerMissed}
@@ -412,23 +410,21 @@ export default function ViewerPanel() {
         <AutoFit meshes={meshes} projection={projection} />
         <CameraPresetBridge meshes={meshes} />
         {import.meta.env.DEV && <ScreenshotOrbitBridge />}
-        <group rotation={[-Math.PI / 2, 0, 0]}>
-          {meshes.map((m, i) => (
-            <group key={meshKey(m, i)}>
-              <ShapeRenderer data={m} />
-              {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
-                <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
-              )}
-              <SelectionHighlight
-                data={m}
-                selectedFaceIds={selectedFaceIds}
-                selectedEdgeIds={selectedEdgeIds}
-                hoverFaceId={hoverFaceId}
-                hoverEdgeId={hoverEdgeId}
-              />
-            </group>
-          ))}
-        </group>
+        {meshes.map((m, i) => (
+          <group key={meshKey(m, i)}>
+            <ShapeRenderer data={m} />
+            {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
+              <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
+            )}
+            <SelectionHighlight
+              data={m}
+              selectedFaceIds={selectedFaceIds}
+              selectedEdgeIds={selectedEdgeIds}
+              hoverFaceId={hoverFaceId}
+              hoverEdgeId={hoverEdgeId}
+            />
+          </group>
+        ))}
       </Canvas>
       <ViewerToolbar />
       <GenerationOverlay />
