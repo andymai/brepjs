@@ -211,7 +211,9 @@ function checkQuantitySets(reader: SpfReader): ValidationIssue[] {
 }
 
 function checkGeoreferencing(reader: SpfReader): ValidationIssue[] {
-  const hasFacility = reader.getLinesOfType(WebIFC.IFCBUILDING).length > 0;
+  const hasFacility =
+    reader.getLinesOfType(WebIFC.IFCBUILDING).length > 0 ||
+    reader.getLinesOfType(WebIFC.IFCBRIDGE).length > 0;
   if (!hasFacility) return [];
   const hasCrs =
     reader.getLinesOfType(WebIFC.IFCPROJECTEDCRS).length > 0 ||

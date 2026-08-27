@@ -49,6 +49,11 @@ import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
 import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
 import type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
+import type {
+  BridgePartSpec,
+  BridgeSpec,
+  EarthworksFillSpec,
+} from '../specs/infrastructureSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 import { slabToSolid } from '../elementFns/slabFns.js';
 import { beamToSolid } from '../elementFns/beamFns.js';
@@ -86,7 +91,7 @@ export class BimModel {
   #modelScope = '';
   readonly #usedStableKeys = new Set<string>();
 
-  init(spec: ProjectSpec): Result<LocalId, BimError> {
+  init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
       return err(
         specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model')
@@ -95,7 +100,9 @@ export class BimModel {
     // Prefer an explicit, globally-unique projectId; otherwise fall back to the
     // project name+description (stable, but unique only per distinct name).
     this.#modelScope = spec.projectId ?? `${spec.name}::${spec.description ?? ''}`;
-    const id = this.#makeElement('PROJECT', spec, null);
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    const id = this.#makeElement('PROJECT', spec, null, options?.stableKey);
     this.#projectId = id;
     return ok(id);
   }
@@ -108,6 +115,7 @@ export class BimModel {
         el.category === 'BEAM' ||
         el.category === 'COLUMN' ||
         el.category === 'PROXY' ||
+        el.category === 'EARTHWORKS_FILL' ||
         el.category === 'SPACE' ||
         el.category === 'ROOF' ||
         el.category === 'FOOTING' ||
@@ -128,6 +136,34 @@ export class BimModel {
     const keyCheck = this.#checkStableKey(options);
     if (!keyCheck.ok) return keyCheck;
     return ok(this.#makeElement('SITE', spec, null, options?.stableKey));
+  }
+
+  addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('BRIDGE', spec, null, options?.stableKey));
+  }
+
+  addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    return ok(this.#makeElement('BRIDGE_PART', spec, null, options?.stableKey));
+  }
+
+  /** Adds a typed IfcEarthworksFill body. Ownership of `spec.solid` transfers
+   * to the model only when this call succeeds. */
+  addEarthworksFill(
+    spec: EarthworksFillSpec,
+    options?: ElementIdentityOptions
+  ): Result<LocalId, BimError> {
+    const keyCheck = this.#checkStableKey(options);
+    if (!keyCheck.ok) return keyCheck;
+    if (spec.solid === null || spec.solid === undefined) {
+      return err(specError('EARTHWORKS_FILL_NO_GEOMETRY', 'EarthworksFillSpec.solid is required'));
+    }
+    const id = this.#makeElement('EARTHWORKS_FILL', spec, spec.solid, options?.stableKey);
+    this.#associateMaterial(id, spec);
+    return ok(id);
   }
 
   addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
@@ -935,6 +971,30 @@ export class BimModel {
       if (el.category === 'BEAM') beams.push(el);
     }
     return beams;
+  }
+
+  getBridges(): BimElement<'BRIDGE'>[] {
+    const bridges: BimElement<'BRIDGE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BRIDGE') bridges.push(el);
+    }
+    return bridges;
+  }
+
+  getBridgeParts(): BimElement<'BRIDGE_PART'>[] {
+    const parts: BimElement<'BRIDGE_PART'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BRIDGE_PART') parts.push(el);
+    }
+    return parts;
+  }
+
+  getEarthworksFills(): BimElement<'EARTHWORKS_FILL'>[] {
+    const fills: BimElement<'EARTHWORKS_FILL'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'EARTHWORKS_FILL') fills.push(el);
+    }
+    return fills;
   }
 
   getColumns(): BimElement<'COLUMN'>[] {

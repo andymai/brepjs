@@ -19,6 +19,11 @@ import type { CoveringSpec } from '../specs/coveringSpec.js';
 import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
 import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
+import type {
+  BridgePartSpec,
+  BridgeSpec,
+  EarthworksFillSpec,
+} from '../specs/infrastructureSpec.js';
 
 export type BimCategory =
   | 'WALL'
@@ -43,6 +48,9 @@ export type BimCategory =
   | 'SYSTEM'
   | 'PROJECT'
   | 'SITE'
+  | 'BRIDGE'
+  | 'BRIDGE_PART'
+  | 'EARTHWORKS_FILL'
   | 'BUILDING'
   | 'STOREY';
 
@@ -116,11 +124,17 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
                                           ? ProjectSpec
                                           : C extends 'SITE'
                                             ? SiteSpec
-                                            : C extends 'BUILDING'
-                                              ? BuildingSpec
-                                              : C extends 'STOREY'
-                                                ? StoreySpec
-                                                : never;
+                                            : C extends 'BRIDGE'
+                                              ? BridgeSpec
+                                              : C extends 'BRIDGE_PART'
+                                                ? BridgePartSpec
+                                                : C extends 'EARTHWORKS_FILL'
+                                                  ? EarthworksFillSpec
+                                                  : C extends 'BUILDING'
+                                                    ? BuildingSpec
+                                                    : C extends 'STOREY'
+                                                      ? StoreySpec
+                                                      : never;
 
 export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
   ? CurtainWallGrid
@@ -130,6 +144,7 @@ export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
         | 'BEAM'
         | 'COLUMN'
         | 'PROXY'
+        | 'EARTHWORKS_FILL'
         | 'SPACE'
         | 'ROOF'
         | 'FOOTING'
@@ -170,5 +185,8 @@ export type AnyBimElement =
   | BimElement<'SYSTEM'>
   | BimElement<'PROJECT'>
   | BimElement<'SITE'>
+  | BimElement<'BRIDGE'>
+  | BimElement<'BRIDGE_PART'>
+  | BimElement<'EARTHWORKS_FILL'>
   | BimElement<'BUILDING'>
   | BimElement<'STOREY'>;

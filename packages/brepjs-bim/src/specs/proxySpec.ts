@@ -10,9 +10,11 @@ import type { ValidSolid } from 'brepjs';
 export interface ProxySpec {
   readonly name: string;
   /**
-   * The proxy body. OWNERSHIP TRANSFERS to the BimModel on addProxy(): the model
-   * disposes this handle when it is disposed, so the caller MUST NOT dispose it
-   * itself (no `using`) — doing so double-frees the underlying WASM shape.
+   * The proxy body. Its coordinates are written as supplied under an identity
+   * placement relative to its containing spatial structure. OWNERSHIP TRANSFERS
+   * to the BimModel on addProxy(): the model disposes this handle when it is
+   * disposed, so the caller MUST NOT dispose it itself (no `using`) — doing so
+   * double-frees the underlying WASM shape.
    */
   readonly solid: ValidSolid;
   readonly materialName?: string | undefined;

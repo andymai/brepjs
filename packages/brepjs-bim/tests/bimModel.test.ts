@@ -166,6 +166,44 @@ describe('BimModel', () => {
     expect(wall.geometry.disposed).toBe(true);
   });
 
+  it('addEarthworksFill keeps a rejected duplicate body caller-owned', () => {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Civil', projectId: 'civil' }));
+    const acceptedBody = box(400, 300, 200);
+    const rejectedBody = box(200, 150, 100);
+    unwrap(
+      model.addEarthworksFill(
+        {
+          name: 'Accepted fill',
+          solid: acceptedBody,
+          materialName: 'Soil',
+          predefinedType: 'EMBANKMENT',
+        },
+        { stableKey: 'fill' }
+      )
+    );
+
+    const rejected = model.addEarthworksFill(
+      {
+        name: 'Rejected fill',
+        solid: rejectedBody,
+        materialName: 'Soil',
+        predefinedType: 'EMBANKMENT',
+      },
+      { stableKey: 'fill' }
+    );
+    expect(rejected).toMatchObject({
+      ok: false,
+      error: { code: 'DUPLICATE_STABLE_KEY' },
+    });
+    expect(rejectedBody.disposed).toBe(false);
+
+    model[Symbol.dispose]();
+    expect(acceptedBody.disposed).toBe(true);
+    expect(rejectedBody.disposed).toBe(false);
+    rejectedBody[Symbol.dispose]();
+  });
+
   it('getWalls returns only wall elements', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'P' }));

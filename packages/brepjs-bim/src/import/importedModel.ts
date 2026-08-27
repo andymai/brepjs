@@ -70,6 +70,7 @@ export type ImportedElementCategory =
   | 'RAILING'
   | 'COVERING'
   | 'ELEMENT_ASSEMBLY'
+  | 'EARTHWORKS_FILL'
   | 'PROXY';
 
 export interface ImportedElement {
@@ -78,6 +79,9 @@ export interface ImportedElement {
   readonly name: string;
   readonly category: ImportedElementCategory;
   readonly predefinedType?: string | undefined;
+  /** Express id of the directly containing spatial structure. */
+  readonly spatialStructureExpressId?: number | undefined;
+  /** @deprecated Use `spatialStructureExpressId`; retained as a compatibility alias. */
   readonly storeyExpressId?: number | undefined;
   readonly geometry: ImportedGeometry;
   readonly psets: readonly ImportedPset[];
@@ -93,7 +97,7 @@ export interface ImportedSpatialNode {
   readonly expressId: number;
   readonly guid: IfcGuid;
   readonly name: string;
-  readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY';
+  readonly category: 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY' | 'BRIDGE' | 'BRIDGE_PART';
   readonly elevationMm?: number | undefined;
   readonly children: readonly ImportedSpatialNode[];
   readonly containedElements: readonly number[];

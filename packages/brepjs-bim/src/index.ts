@@ -5,6 +5,8 @@ export {
 } from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { placedSolids } from './elementFns/placedGeometry.js';
+export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
+export type { FrameInput } from './import/placement.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { setIfcWasmLocateFile } from './ifcRuntime.js';
@@ -31,6 +33,7 @@ export { parseElementAssemblySpec } from './specs/assemblySpec.js';
 export { parseZoneSpec, parseSystemSpec } from './specs/groupSpec.js';
 export { parseSurfaceStyleSpec } from './specs/styleSpec.js';
 export { parseDoorSpec, parseWindowSpec, parseSlabOpeningInput } from './specs/openingSpec.js';
+export { parseBridgeSpec, parseBridgePartSpec } from './specs/infrastructureSpec.js';
 export { newIfcGuid, isValidIfcGuid } from './identity/ifcGuid.js';
 export { deriveIfcGuid, deriveIfcGuidSync } from './identity/guidDerivation.js';
 export { makeLocalIdCounter } from './identity/localId.js';
@@ -143,8 +146,20 @@ export type { PathConnectionTypeIfc } from './ifc-writer/connectivityWriter.js';
 export type { DoorSpec, WindowSpec, SlabOpeningInput } from './specs/openingSpec.js';
 export type { ProxySpec } from './specs/proxySpec.js';
 export type {
+  BridgeSpec,
+  BridgePartSpec,
+  CivilSpatialSpec,
+  BridgePredefinedType,
+  BridgePartPredefinedType,
+  EarthworksFillSpec,
+  EarthworksFillPredefinedType,
+  FacilityUsageType,
+} from './specs/infrastructureSpec.js';
+export type {
   ProjectSpec,
   ProjectCrs,
+  IfcElementCompositionType,
+  SpatialPlacementSpec,
   SiteSpec,
   BuildingSpec,
   StoreySpec,

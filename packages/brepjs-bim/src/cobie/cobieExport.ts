@@ -38,6 +38,7 @@ const COMPONENT_CATEGORIES: ReadonlySet<BimCategory> = new Set<BimCategory>([
   'RAMP',
   'RAILING',
   'COVERING',
+  'EARTHWORKS_FILL',
 ]);
 
 /**
@@ -61,6 +62,7 @@ const CATEGORY_LABEL: Readonly<Record<string, string>> = {
   RAMP: 'Ramp',
   RAILING: 'Railing',
   COVERING: 'Covering',
+  EARTHWORKS_FILL: 'EarthworksFill',
 };
 
 function categoryLabel(category: BimCategory): string {
