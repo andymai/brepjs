@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.163.0](https://github.com/andymai/brepjs/compare/brepjs-v18.162.0...brepjs-v18.163.0) (2026-08-27)
+
+
+### Features
+
+* **bim:** add civil semantics and bridge projection ([#2253](https://github.com/andymai/brepjs/issues/2253)) ([3824bc6](https://github.com/andymai/brepjs/commit/3824bc6f2fa0e90616f60b92c777d3acd4652b07))
+
 ## [18.162.0](https://github.com/andymai/brepjs/compare/brepjs-v18.161.3...brepjs-v18.162.0) (2026-08-26)
 
 
