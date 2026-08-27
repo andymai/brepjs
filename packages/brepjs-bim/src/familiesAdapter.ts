@@ -236,7 +236,7 @@ const NAME_ARCHETYPES: Readonly<Record<string, string>> = {
 };
 
 function archetypeFor(el: ResolvedElement): string | undefined {
-  return el.archetype ?? NAME_ARCHETYPES[el.type];
+  return el.archetype ?? lookup(NAME_ARCHETYPES, el.type);
 }
 
 function specRoute(
@@ -247,9 +247,15 @@ function specRoute(
     : undefined;
 }
 
+/** Own-property lookup: semantics categories and roles are free-form author
+ *  strings, so Object.prototype keys must never resolve to a route. */
+function lookup<T>(map: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
 function civilProductArchetype(el: ResolvedElement): keyof typeof SPEC_ROUTES | undefined {
   if (el.semantics?.kind !== 'product') return undefined;
-  const definition = CIVIL_PRODUCT_ROUTES[el.semantics.category];
+  const definition = lookup(CIVIL_PRODUCT_ROUTES, el.semantics.category);
   if (definition === undefined || !definition.roles.includes(el.semantics.role)) return undefined;
   return definition.archetype;
 }
@@ -261,6 +267,18 @@ function semanticDimension(el: ResolvedElement, ...names: readonly string[]): nu
     if (value !== undefined) return value;
   }
   return undefined;
+}
+
+/** Beam/column solids centre their cross-section on the placement axis, while
+ *  the semantics envelope sits corner-anchored at the folded IR origin — shift
+ *  the origin to the envelope centre so the exported body occupies the same
+ *  space as the viewport body. */
+function centreOrigin(
+  base: Record<string, unknown>,
+  shift: readonly [number, number, number]
+): [number, number, number] {
+  const origin = (base['origin'] as readonly [number, number, number] | undefined) ?? [0, 0, 0];
+  return [origin[0] + shift[0], origin[1] + shift[1], origin[2] + shift[2]];
 }
 
 /**
@@ -276,28 +294,40 @@ function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
   const width = semanticDimension(el, 'width');
   const height = semanticDimension(el, 'height');
   switch (el.semantics.category) {
-    case 'beam':
+    case 'beam': {
+      const synthesized =
+        base['profile'] === undefined && width !== undefined && height !== undefined
+          ? {
+              profile: { kind: 'RECTANGULAR', width, height },
+              shift: [0, width / 2, height / 2] as const,
+            }
+          : undefined;
       return {
         ...base,
+        ...(synthesized !== undefined
+          ? { origin: centreOrigin(base, synthesized.shift), profile: synthesized.profile }
+          : {}),
         length: length ?? base['length'],
-        profile:
-          base['profile'] ??
-          (width !== undefined && height !== undefined
-            ? { kind: 'RECTANGULAR', width, height }
-            : undefined),
         predefinedType: base['predefinedType'] ?? 'BEAM',
       };
-    case 'column':
+    }
+    case 'column': {
+      const synthesized =
+        base['profile'] === undefined && length !== undefined && width !== undefined
+          ? {
+              profile: { kind: 'RECTANGULAR', width: length, height: width },
+              shift: [length / 2, width / 2, 0] as const,
+            }
+          : undefined;
       return {
         ...base,
+        ...(synthesized !== undefined
+          ? { origin: centreOrigin(base, synthesized.shift), profile: synthesized.profile }
+          : {}),
         height: height ?? base['height'],
-        profile:
-          base['profile'] ??
-          (length !== undefined && width !== undefined
-            ? { kind: 'RECTANGULAR', width: length, height: width }
-            : undefined),
         predefinedType: base['predefinedType'] ?? 'COLUMN',
       };
+    }
     case 'footing':
       return {
         ...base,
@@ -417,8 +447,8 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
     else if (semanticsMaterial !== undefined) out['materialName'] = semanticsMaterial;
   }
   const psets = el.attributes['psets'];
+  const custom: Record<string, Record<string, string | number | boolean>> = {};
   if (psets && typeof psets === 'object') {
-    const custom: Record<string, Record<string, string | number | boolean>> = {};
     // Only the element's OWN common pset maps onto spec fields — a foreign
     // Common pset (e.g. Pset_DoorCommon on a Wall) must not be relabeled onto
     // this element's common pset, so it flows through as a custom pset.
@@ -447,14 +477,24 @@ function collectSpecProps(el: ResolvedElement): Record<string, unknown> {
         if (Object.keys(values).length > 0) custom[psetName] = values;
       }
     }
-    if (Object.keys(custom).length > 0) {
-      const declared = el.props['customProperties'];
-      out['customProperties'] =
-        declared && typeof declared === 'object'
-          ? { ...custom, ...(declared as Record<string, unknown>) }
-          : custom;
+  }
+  // Declared `customProperties` merge over attribute-derived psets, sanitized to
+  // primitive fields so the writer never enumerates a non-pset-shaped value —
+  // and they survive when no psets attribute exists.
+  const declared = el.props['customProperties'];
+  if (declared && typeof declared === 'object' && !Array.isArray(declared)) {
+    for (const [psetName, fields] of Object.entries(declared as Record<string, unknown>)) {
+      if (!fields || typeof fields !== 'object' || Array.isArray(fields)) continue;
+      const values: Record<string, string | number | boolean> = {};
+      for (const [field, value] of Object.entries(fields as Record<string, unknown>)) {
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          values[field] = value;
+        }
+      }
+      if (Object.keys(values).length > 0) custom[psetName] = values;
     }
   }
+  if (Object.keys(custom).length > 0) out['customProperties'] = custom;
   return out;
 }
 
@@ -774,6 +814,35 @@ function hasTranslation(value: Translation): boolean {
   return value[0] !== 0 || value[1] !== 0 || value[2] !== 0;
 }
 
+const DEFAULT_AXIS_X: Translation = [1, 0, 0];
+const DEFAULT_AXIS_Z: Translation = [0, 0, 1];
+
+function axisEquals(value: unknown, axis: Translation): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((component, i) => typeof component === 'number' && component === axis[i])
+  );
+}
+
+/** Civil descendant relativization is translation-only, so a civil frame with
+ *  non-default axes would rotate the exported hierarchy away from the IR. */
+function hasRotatedAxes(el: ResolvedElement): boolean {
+  const axisX = el.props['axisX'];
+  const axisZ = el.props['axisZ'];
+  return (
+    (axisX !== undefined && !axisEquals(axisX, DEFAULT_AXIS_X)) ||
+    (axisZ !== undefined && !axisEquals(axisZ, DEFAULT_AXIS_Z))
+  );
+}
+
+function authoredSpecOrigin(el: ResolvedElement): Translation {
+  const origin = el.props['origin'];
+  return Array.isArray(origin) && origin.length === 3 && origin.every((c) => typeof c === 'number')
+    ? (origin as unknown as Translation)
+    : ZERO_TRANSLATION;
+}
+
 function localizeOwnedSolid(
   el: ResolvedElement,
   body: ValidSolid,
@@ -851,7 +920,7 @@ function addCivilSpatialOccurrence(
     return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   if (kind === 'bridge') {
-    const predefinedType = BRIDGE_ROLE[el.semantics?.role ?? ''];
+    const predefinedType = lookup(BRIDGE_ROLE, el.semantics?.role ?? '');
     if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge');
     const parsed = parseBridgeSpec({
       ...civilSpatialInput(el, localTranslation),
@@ -860,7 +929,7 @@ function addCivilSpatialOccurrence(
     return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
-  const predefinedType = BRIDGE_PART_ROLE[el.semantics?.role ?? ''];
+  const predefinedType = lookup(BRIDGE_PART_ROLE, el.semantics?.role ?? '');
   if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge Part');
   const parsed = parseBridgePartSpec({
     ...civilSpatialInput(el, localTranslation),
@@ -911,7 +980,7 @@ function addEarthworksFillElement(
       )
     );
   }
-  const predefinedType = EARTHWORKS_FILL_ROLE[el.semantics.role];
+  const predefinedType = lookup(EARTHWORKS_FILL_ROLE, el.semantics.role);
   if (predefinedType === undefined) return unsupportedCivilRole(el, 'Earthworks Fill');
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_EARTHWORKS_EVAL_FAILED',
@@ -931,11 +1000,15 @@ function addEarthworksFillElement(
   if (!localized.ok) return localized;
 
   const specProps = collectSpecProps(el);
+  const authoredMaterial = el.props['materialName'];
   const added = model.addEarthworksFill(
     {
       name: semanticName(el),
       solid: localized.value,
-      materialName: el.semantics.material,
+      materialName:
+        typeof authoredMaterial === 'string'
+          ? authoredMaterial
+          : ((specProps['materialName'] as string | undefined) ?? el.semantics.material),
       predefinedType,
       customProperties: specProps['customProperties'] as EarthworksFillSpec['customProperties'],
     },
@@ -968,9 +1041,16 @@ export function familiesToBim(
     if (!keyed.ok) return keyed;
   }
   const model = new BimModel();
+  // A root that is itself the civil Site would otherwise collide with the
+  // Project's stableKey.
   const initResult = model.init(
     options.project,
-    usesAuthoredCivilHierarchy ? { stableKey: root.keyPath } : undefined
+    usesAuthoredCivilHierarchy
+      ? {
+          stableKey:
+            civilSpatialKind(root) !== undefined ? `${root.keyPath}#project` : root.keyPath,
+        }
+      : undefined
   );
   if (!initResult.ok) return initResult;
   const projectId = initResult.value;
@@ -1029,11 +1109,19 @@ export function familiesToBim(
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      if (rotatedHere) {
+      if (rotatedHere || hasRotatedAxes(el)) {
         return err(
           specError(
             'FAMILIES_UNSUPPORTED_TRANSFORM',
-            `familiesToBim: civil spatial element '${el.keyPath}' carries a rotated placement — use axisX and axisZ`
+            `familiesToBim: civil spatial element '${el.keyPath}' carries a rotated frame — descendants are relativized by translation only, so bake the orientation into child geometry`
+          )
+        );
+      }
+      if (el.geometry.kind !== 'Empty') {
+        return err(
+          specError(
+            'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS',
+            `familiesToBim: civil spatial element '${el.keyPath}' carries its own geometry — Site/Bridge/Bridge Part export no body, so author it as a child Product (e.g. Earthworks Fill)`
           )
         );
       }
@@ -1047,7 +1135,12 @@ export function familiesToBim(
       idByKeyPath.set(el.keyPath, added.value);
       nextSpatialStructureId = added.value;
       nextCivilParent = civilKind;
-      nextProjectedSpatialTranslation = cumulativeTranslationHere;
+      // The frame's IfcLocalPlacement origin includes the spec `origin` prop on
+      // top of the walk's translates, so descendants relativize by both.
+      nextProjectedSpatialTranslation = addTranslation(
+        cumulativeTranslationHere,
+        authoredSpecOrigin(el)
+      );
     } else if (isCivilSpatialIntent(el)) {
       return err(
         specError(
@@ -1191,8 +1284,10 @@ export function familiesToBim(
       ) {
         return err(
           specError(
-            'FAMILIES_NO_STOREY',
-            `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
+            usesAuthoredCivilHierarchy ? 'FAMILIES_INVALID_CIVIL_HIERARCHY' : 'FAMILIES_NO_STOREY',
+            usesAuthoredCivilHierarchy
+              ? `familiesToBim: physical product '${el.keyPath}' needs a Bridge Part ancestor`
+              : `familiesToBim: '${el.keyPath}' has no Storey ancestor — IFC elements need spatial containment; a container family needs archetype: 'storey' to be recognised under any name`
           )
         );
       }

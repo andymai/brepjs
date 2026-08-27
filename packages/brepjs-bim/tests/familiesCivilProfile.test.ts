@@ -63,13 +63,13 @@ describe('focused civil BIM Capability Profile', () => {
       'EARTHWORKS_FILL',
     ]);
     expect(model.getBeams()[0]?.spec).toMatchObject({
-      origin: [-4_000, -300, 0],
+      origin: [-4_000, -150, 250],
       profile: { kind: 'RECTANGULAR', width: 300, height: 500 },
       materialName: 'Steel',
       predefinedType: 'BEAM',
     });
     expect(model.getColumns()[0]?.spec).toMatchObject({
-      origin: [-250, -250, -2_300],
+      origin: [0, 0, -2_300],
       profile: { kind: 'RECTANGULAR', width: 500, height: 500 },
       materialName: 'Concrete',
       predefinedType: 'COLUMN',

@@ -371,14 +371,78 @@ describe('civil Families Projection', () => {
     });
   });
 
-  it('rejects parallel axes before writing an invalid spatial placement', () => {
+  it('rejects a rotated civil frame before projecting descendants', () => {
     const result = familiesToBim(civilModel({ axisX: [0, 0, 1] }), {
       project: { name: 'Civil gate', projectId: 'civil-gate' },
     });
 
     expect(result).toMatchObject({
       ok: false,
-      error: { kind: 'BIM_SPEC', code: 'INVALID_SITE_SPEC' },
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_TRANSFORM' },
+    });
+  });
+
+  it('projects a root-level Site without colliding with the Project stableKey', () => {
+    const projected = unwrap(
+      familiesToBim(
+        resolve(
+          Site({
+            key: 'lone-site',
+            children: [Bridge({ key: 'river-bridge', children: [BridgePart({ key: 'deck' })] })],
+          })
+        ),
+        { project: { name: 'Civil gate', projectId: 'civil-gate' } }
+      )
+    );
+    using model = projected.model;
+
+    expect(model.getAllElements().map(({ category }) => category)).toEqual([
+      'PROJECT',
+      'SITE',
+      'BRIDGE',
+      'BRIDGE_PART',
+    ]);
+    const site = model.getAllElements().find(({ category }) => category === 'SITE');
+    expect(site?.guid).toBe(deriveIfcGuidSync('elem:civil-gate:lone-site'));
+    expect(projected.idByKeyPath.get('lone-site')).toBe(site?.localId);
+  });
+
+  it('relativizes descendants by an authored spatial origin prop', () => {
+    const projected = unwrap(
+      familiesToBim(civilModel({ origin: [10_000, 0, 0], at: undefined }), {
+        project: { name: 'Civil gate', projectId: 'civil-gate' },
+      })
+    );
+    using model = projected.model;
+
+    expect(model.getAllElements().find(({ category }) => category === 'SITE')?.spec).toMatchObject({
+      origin: [10_000, 0, 0],
+    });
+    expect(model.getBridges()[0]?.spec).toMatchObject({ origin: [-8_000, 0, 0] });
+    expect(model.getBeams()[0]?.spec).toMatchObject({ origin: [0, 0, 0] });
+  });
+
+  it('rejects a civil spatial family that carries its own geometry', () => {
+    const GeoSite = family<SpatialProps>(
+      'GeoSite',
+      () => el('Box', { size: [1_000, 1_000, 100] }),
+      {
+        semantics: civilSemantics({
+          kind: 'site',
+          category: 'site',
+          role: 'transport-site',
+          composition: 'element',
+        }),
+      }
+    );
+    const result = familiesToBim(
+      resolve(el('Group', { key: 'root' }, [GeoSite({ key: 'site' })])),
+      { project: { name: 'Civil gate', projectId: 'civil-gate' } }
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_CIVIL_SEMANTICS' },
     });
   });
 

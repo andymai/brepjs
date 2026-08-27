@@ -238,7 +238,17 @@ export async function toIfc(
     placementMap.set(bridge.localId, placementId);
   }
 
-  for (const part of bridgeParts) {
+  // Bridge Parts nest recursively and getBridgeParts() yields insertion order,
+  // so write a part only once its parent's placement exists — a child written
+  // first would silently anchor at the project origin.
+  const pendingParts = [...bridgeParts];
+  while (pendingParts.length > 0) {
+    const readyIndex = pendingParts.findIndex((candidate) => {
+      const candidateParentId = findParentOf(candidate.localId, relationships);
+      return candidateParentId === null || placementMap.has(candidateParentId);
+    });
+    const [part] = pendingParts.splice(readyIndex === -1 ? 0 : readyIndex, 1);
+    if (part === undefined) break;
     const parentId = findParentOf(part.localId, relationships);
     const parentPlacementId = parentId !== null ? (placementMap.get(parentId) ?? null) : null;
     const { entityId, placementId } = writeBridgePart(

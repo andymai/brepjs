@@ -92,7 +92,13 @@ export async function checkSchema(bytes: Uint8Array): Promise<ValidationReport> 
 }
 
 function hasSpatialStructure(api: WebIFC.IfcAPI, modelId: number): boolean {
-  const spatialTypes = [WebIFC.IFCSITE, WebIFC.IFCBUILDING, WebIFC.IFCBUILDINGSTOREY];
+  const spatialTypes = [
+    WebIFC.IFCSITE,
+    WebIFC.IFCBUILDING,
+    WebIFC.IFCBUILDINGSTOREY,
+    WebIFC.IFCBRIDGE,
+    WebIFC.IFCBRIDGEPART,
+  ];
   return spatialTypes.some((t) => api.GetLineIDsWithType(modelId, t).size() > 0);
 }
 
