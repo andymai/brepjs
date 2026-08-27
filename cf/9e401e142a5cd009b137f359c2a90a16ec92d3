@@ -1,0 +1,36 @@
+packages/brepjs-bim/src/serialize/toIfc.ts
+  s_d5454a8b0bae68::t_26586d274575b4 241-251
+packages/brepjs-bim/tests/rampFns.test.ts
+  s_d5454a8b0bae68::t_26586d274575b4 143
+packages/brepjs-bim/tests/stairFns.test.ts
+  s_d5454a8b0bae68::t_26586d274575b4 174
+packages/brepjs-bim/src/validation/gherkinChecks.ts
+  s_d5454a8b0bae68::t_26586d274575b4 214-216
+packages/brepjs-bim/tests/familiesCivil.test.ts
+  s_d5454a8b0bae68::t_36ca91d73d8cb1 391,426-437
+  s_d5454a8b0bae68::t_60850dd1708aec 374,381-390,392-425,438-445
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_d5454a8b0bae68::t_26586d274575b4 239,250-255,258,272-283,297-304,307-309,313-321,324-326,330,450,480-494,497,817-845,923,932,983,1003,1008-1011,1044-1045,1048-1053,1112,1116-1124,1138-1143,1287-1290
+packages/brepjs-bim/src/cobie/cobieExport.ts
+  s_d5454a8b0bae68::t_26586d274575b4 41,65
+packages/brepjs-bim/src/validation/schemaCheck.ts
+  s_d5454a8b0bae68::t_26586d274575b4 95-101
+packages/brepjs-bim/tests/familiesCivilProfile.test.ts
+  s_d5454a8b0bae68::t_26586d274575b4 66,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "cf9e401e142a5cd009b137f359c2a90a16ec92d3",
+  "prompts": {},
+  "sessions": {
+    "s_d5454a8b0bae68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "558caa37-a197-421a-ac0f-adc7bbcb846d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
