@@ -371,15 +371,31 @@ describe('civil Families Projection', () => {
     });
   });
 
-  it('rejects a rotated civil frame before projecting descendants', () => {
+  it('folds an authored civil Site frame (axisX) into its placement and subtree', () => {
+    const projected = unwrap(
+      familiesToBim(civilModel({ axisX: [0, 1, 0] }), {
+        project: { name: 'Civil gate', projectId: 'civil-gate' },
+      })
+    );
+    using model = projected.model;
+    const site = model.getAllElements().find(({ category }) => category === 'SITE');
+    const spec = site?.spec as { origin: number[]; axisX: number[]; axisZ: number[] };
+    // The authored axisX yaws the Site frame; the same frame relativizes its
+    // subtree, which still projects.
+    expect(spec.axisX[0]).toBeCloseTo(0, 6);
+    expect(spec.axisX[1]).toBeCloseTo(1, 6);
+    expect(spec.axisX[2]).toBeCloseTo(0, 6);
+    expect(spec.origin[0]).toBeCloseTo(1_000, 6);
+    expect(model.getBeams()).toHaveLength(1);
+  });
+
+  it('rejects a degenerate civil frame (axisX parallel to axisZ)', () => {
     const result = familiesToBim(civilModel({ axisX: [0, 0, 1] }), {
       project: { name: 'Civil gate', projectId: 'civil-gate' },
     });
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { kind: 'BIM_SPEC', code: 'FAMILIES_UNSUPPORTED_TRANSFORM' },
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe('BIM_SPEC');
   });
 
   it('projects a root-level Site without colliding with the Project stableKey', () => {

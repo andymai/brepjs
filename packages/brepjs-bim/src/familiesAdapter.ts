@@ -17,6 +17,7 @@
  */
 
 import {
+  applyMatrix,
   clone,
   err,
   getSolids,
@@ -29,6 +30,19 @@ import {
   type csg,
 } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
+import { placementToMatrix, type Vec3 } from './import/placement.js';
+import {
+  IDENTITY_FRAME,
+  decomposeFrame,
+  frameFromOps,
+  frameFromPlacement,
+  frameInverse,
+  frameMul,
+  frameOrigin,
+  isPureTranslation,
+  translationFrame,
+  type Frame,
+} from './placementFrame.js';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
 import { parseWallSpec } from './specs/wallSpec.js';
@@ -281,6 +295,36 @@ function centreOrigin(
   return [origin[0] + shift[0], origin[1] + shift[1], origin[2] + shift[2]];
 }
 
+/** A cross-section synthesized from civil envelope dimensions, plus the
+ *  placement shift that centres it on the beam/column axis. Shared by the
+ *  translation path (which bakes the shift into `origin`) and the rotation path
+ *  (which folds it into the placement frame), so the two never drift. */
+interface SynthesizedProfile {
+  readonly profile: {
+    readonly kind: 'RECTANGULAR';
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly shift: readonly [number, number, number];
+}
+
+function synthesizedProfile(el: ResolvedElement): SynthesizedProfile | undefined {
+  if (el.semantics?.kind !== 'product' || el.props['profile'] !== undefined) return undefined;
+  const length = semanticDimension(el, 'length');
+  const width = semanticDimension(el, 'width');
+  const height = semanticDimension(el, 'height');
+  if (el.semantics.category === 'beam' && width !== undefined && height !== undefined) {
+    return { profile: { kind: 'RECTANGULAR', width, height }, shift: [0, width / 2, height / 2] };
+  }
+  if (el.semantics.category === 'column' && length !== undefined && width !== undefined) {
+    return {
+      profile: { kind: 'RECTANGULAR', width: length, height: width },
+      shift: [length / 2, width / 2, 0],
+    };
+  }
+  return undefined;
+}
+
 /**
  * Adapts target-independent civil envelope dimensions onto existing typed BIM
  * spec inputs. Reference infrastructure Families intentionally author domain
@@ -295,13 +339,7 @@ function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
   const height = semanticDimension(el, 'height');
   switch (el.semantics.category) {
     case 'beam': {
-      const synthesized =
-        base['profile'] === undefined && width !== undefined && height !== undefined
-          ? {
-              profile: { kind: 'RECTANGULAR', width, height },
-              shift: [0, width / 2, height / 2] as const,
-            }
-          : undefined;
+      const synthesized = synthesizedProfile(el);
       return {
         ...base,
         ...(synthesized !== undefined
@@ -312,13 +350,7 @@ function civilProductSpecInput(el: ResolvedElement): Record<string, unknown> {
       };
     }
     case 'column': {
-      const synthesized =
-        base['profile'] === undefined && length !== undefined && width !== undefined
-          ? {
-              profile: { kind: 'RECTANGULAR', width: length, height: width },
-              shift: [length / 2, width / 2, 0] as const,
-            }
-          : undefined;
+      const synthesized = synthesizedProfile(el);
       return {
         ...base,
         ...(synthesized !== undefined
@@ -387,12 +419,12 @@ function peelTranslates(node: csg.IRNode): {
   return { total, moved };
 }
 
-/** True when the element's rendered local transform carries a rotation. The spec path
- *  folds only translations into IfcLocalPlacement (walls orient via `axisX`),
- *  so a tRotate placement would export un-rotated while the viewport shows it
- *  rotated — reject instead of diverging. Rotations a family render bakes
- *  into its own body geometry (e.g. a circular beam oriented along axisX) are
- *  fine: the spec rebuilds that body parametrically from props. */
+/** True when the element's rendered local transform carries a rotation, which
+ *  switches the walk to the rigid-frame placement path (the composed rotation
+ *  folds into origin + axisX + axisZ). Only authored `transform` rotations
+ *  count: a rotation a family render bakes into its own body geometry (e.g. a
+ *  circular beam oriented along axisX) stays in the body, which the spec
+ *  rebuilds parametrically from props. */
 function hasRotateOp(el: ResolvedElement): boolean {
   return el.localTransforms.some((op) => op.op === 'rotate');
 }
@@ -593,7 +625,7 @@ function addProxyElement(
   model: BimModel,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
-  projectedSpatialTranslation: Translation
+  spatialFrame: Frame
 ): Result<LocalId, BimError> {
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_PROXY_EVAL_FAILED',
@@ -602,10 +634,10 @@ function addProxyElement(
     routeName: 'proxy',
   });
   if (!body.ok) return body;
-  const localized = localizeOwnedSolid(
+  const localized = localizeBodyToFrame(
     el,
     body.value,
-    projectedSpatialTranslation,
+    spatialFrame,
     'FAMILIES_PROXY_LOCALIZE_FAILED',
     'spatial parent'
   );
@@ -825,8 +857,9 @@ function axisEquals(value: unknown, axis: Translation): boolean {
   );
 }
 
-/** Civil descendant relativization is translation-only, so a civil frame with
- *  non-default axes would rotate the exported hierarchy away from the IR. */
+/** True when a civil node authors non-default `axisX`/`axisZ` props: like a
+ *  tRotate, this puts the node (and its subtree) on the rigid-frame placement
+ *  path so descendants relativize against the rotated parent frame. */
 function hasRotatedAxes(el: ResolvedElement): boolean {
   const axisX = el.props['axisX'];
   const axisZ = el.props['axisZ'];
@@ -882,6 +915,132 @@ function authoredTranslation(el: ResolvedElement): Translation {
   return total;
 }
 
+function authoredAxisX(el: ResolvedElement): Vec3 {
+  const v = el.props['axisX'];
+  return Array.isArray(v) && v.length === 3 ? (v as unknown as Vec3) : DEFAULT_AXIS_X;
+}
+
+function authoredAxisZ(el: ResolvedElement): Vec3 {
+  const v = el.props['axisZ'];
+  return Array.isArray(v) && v.length === 3 ? (v as unknown as Vec3) : DEFAULT_AXIS_Z;
+}
+
+/** The placement shift that centres a synthesized beam/column cross-section on
+ *  its axis, in the element's own (body) frame. Zero for every other route. */
+function specLocalShift(el: ResolvedElement): Vec3 {
+  return synthesizedProfile(el)?.shift ?? [0, 0, 0];
+}
+
+/** World frame of an element's own body: the walk's cumulative frame (all
+ *  authored transforms, ancestors + own) composed with the body's authored axes
+ *  (`axisX`/`axisZ` props) and its local origin (`origin` prop + centring
+ *  shift). Under no rotation this reduces to `composedOrigin` + shift. */
+function elementBodyFrame(el: ResolvedElement, cumulativeFrame: Frame): Frame {
+  const axes = frameFromPlacement({
+    origin: authoredSpecOrigin(el),
+    axisX: authoredAxisX(el),
+    axisZ: authoredAxisZ(el),
+  });
+  return frameMul(frameMul(cumulativeFrame, axes), translationFrame(specLocalShift(el)));
+}
+
+/** World frame of a civil spatial node: cumulative transforms composed with any
+ *  authored `origin`/`axisX`/`axisZ` props (identity when default). */
+function civilNodeFrame(el: ResolvedElement, cumulativeFrame: Frame): Frame {
+  return frameMul(
+    cumulativeFrame,
+    frameFromPlacement({
+      origin: authoredSpecOrigin(el),
+      axisX: authoredAxisX(el),
+      axisZ: authoredAxisZ(el),
+    })
+  );
+}
+
+/** Places a routed element's spec input through the composed placement frame:
+ *  the flat spec input keeps its dimensions/profile/psets, but `origin`/`axisX`/
+ *  `axisZ` are recomputed from the element's world frame relative to its spatial
+ *  container. Stair/ramp flights, which carry their own per-flight frame, are
+ *  each re-placed the same way. */
+function rotatedRoutedInput(
+  flatInput: Record<string, unknown>,
+  el: ResolvedElement,
+  cumulativeFrame: Frame,
+  spatialFrame: Frame
+): Record<string, unknown> {
+  const toSpatial = frameInverse(spatialFrame);
+  if (Array.isArray(flatInput['flights'])) {
+    // The spec has no top-level placement, so each flight's authored frame
+    // composes under the element's full body frame — cumulative transforms plus
+    // the element's own `origin`/`axisX`/`axisZ` props, matching what
+    // flightsSpecInput folds into flight origins on the unrotated path.
+    const elementFrame = elementBodyFrame(el, cumulativeFrame);
+    const flights: readonly unknown[] = flatInput['flights'];
+    return {
+      ...flatInput,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      flights: flights.map((flight): unknown => {
+        if (typeof flight !== 'object' || flight === null) return flight;
+        const f = flight as Record<string, unknown>;
+        const world = frameMul(
+          elementFrame,
+          frameFromPlacement({
+            origin: (f['origin'] as Vec3 | undefined) ?? [0, 0, 0],
+            axisX: (f['axisX'] as Vec3 | undefined) ?? DEFAULT_AXIS_X,
+            axisZ: (f['axisZ'] as Vec3 | undefined) ?? DEFAULT_AXIS_Z,
+          })
+        );
+        const placed = decomposeFrame(frameMul(toSpatial, world));
+        return { ...f, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
+      }),
+    };
+  }
+  const placed = decomposeFrame(frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame)));
+  return { ...flatInput, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
+}
+
+/** Moves an owned world-baked body into its spatial container's local frame.
+ *  A pure translation keeps the fast `translate` path (identical to the prior
+ *  behaviour); a rotated container applies the inverse frame via `applyMatrix`. */
+function localizeBodyToFrame(
+  el: ResolvedElement,
+  body: ValidSolid,
+  spatialFrame: Frame,
+  errorCode: string,
+  frameName: string
+): Result<ValidSolid, BimError> {
+  if (isPureTranslation(spatialFrame)) {
+    return localizeOwnedSolid(el, body, frameOrigin(spatialFrame), errorCode, frameName);
+  }
+  const inverse = decomposeFrame(frameInverse(spatialFrame));
+  try {
+    const localized = applyMatrix(body, placementToMatrix(inverse));
+    if (!localized.ok) {
+      body[Symbol.dispose]();
+      return err(
+        specError(
+          errorCode,
+          `familiesToBim: '${el.keyPath}' could not move its body into the ${frameName} frame`,
+          localized.error
+        )
+      );
+    }
+    body[Symbol.dispose]();
+    return ok(localized.value);
+  } catch (cause) {
+    body[Symbol.dispose]();
+    return err(
+      specError(
+        errorCode,
+        `familiesToBim: '${el.keyPath}' could not move its body into the ${frameName} frame`,
+        cause
+      )
+    );
+  }
+}
+
 function civilSpatialInput(
   el: ResolvedElement,
   localTranslation: Translation
@@ -902,6 +1061,28 @@ function civilSpatialInput(
   };
 }
 
+/** Relativizes a civil node's world frame against its parent civil frame into
+ *  the origin/axisX/axisZ the spatial specs consume. */
+function civilSpatialFrameInput(
+  el: ResolvedElement,
+  nodeFrame: Frame,
+  parentFrame: Frame
+): Record<string, unknown> {
+  const semantics = el.semantics;
+  const composition =
+    semantics !== undefined && 'composition' in semantics
+      ? CIVIL_COMPOSITION[semantics.composition]
+      : undefined;
+  const local = decomposeFrame(frameMul(frameInverse(parentFrame), nodeFrame));
+  return {
+    name: semanticName(el),
+    origin: local.origin,
+    axisX: local.axisX,
+    axisZ: local.axisZ,
+    ...(composition !== undefined ? { compositionType: composition } : {}),
+  };
+}
+
 function civilParentAccepts(kind: CivilSpatialKind, parent: CivilParentKind): boolean {
   if (kind === 'site') return parent === 'project';
   if (kind === 'bridge') return parent === 'site';
@@ -912,27 +1093,24 @@ function addCivilSpatialOccurrence(
   model: BimModel,
   el: ResolvedElement,
   kind: CivilSpatialKind,
-  localTranslation: Translation
+  input: Record<string, unknown>
 ): Result<LocalId, BimError> {
   if (kind === 'site') {
     if (el.semantics?.role !== 'transport-site') return unsupportedCivilRole(el, 'Site');
-    const parsed = parseSiteSpec(civilSpatialInput(el, localTranslation));
+    const parsed = parseSiteSpec(input);
     return parsed.ok ? model.addSite(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   if (kind === 'bridge') {
     const predefinedType = lookup(BRIDGE_ROLE, el.semantics?.role ?? '');
     if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge');
-    const parsed = parseBridgeSpec({
-      ...civilSpatialInput(el, localTranslation),
-      predefinedType,
-    });
+    const parsed = parseBridgeSpec({ ...input, predefinedType });
     return parsed.ok ? model.addBridge(parsed.value, { stableKey: el.keyPath }) : parsed;
   }
   const subdivision = el.semantics?.kind === 'spatial-part' ? el.semantics.subdivision : undefined;
   const predefinedType = lookup(BRIDGE_PART_ROLE, el.semantics?.role ?? '');
   if (predefinedType === undefined) return unsupportedCivilRole(el, 'Bridge Part');
   const parsed = parseBridgePartSpec({
-    ...civilSpatialInput(el, localTranslation),
+    ...input,
     predefinedType,
     usageType: subdivision !== undefined ? CIVIL_USAGE[subdivision] : 'NOTDEFINED',
   });
@@ -970,7 +1148,7 @@ function addEarthworksFillElement(
   model: BimModel,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
-  projectedSpatialTranslation: Translation
+  spatialFrame: Frame
 ): Result<LocalId, BimError> {
   if (el.semantics?.kind !== 'product') {
     return err(
@@ -990,10 +1168,10 @@ function addEarthworksFillElement(
   });
   if (!body.ok) return body;
 
-  const localized = localizeOwnedSolid(
+  const localized = localizeBodyToFrame(
     el,
     body.value,
-    projectedSpatialTranslation,
+    spatialFrame,
     'FAMILIES_EARTHWORKS_LOCALIZE_FAILED',
     'Bridge Part'
   );
@@ -1024,6 +1202,14 @@ interface ProjectionWalkState {
   readonly rotated: boolean;
   readonly cumulativeTranslation: Translation;
   readonly projectedSpatialTranslation: Translation;
+  /** World frame of the current element's parent: every authored transform
+   *  (ancestors, composed) as a rigid motion. Drives the rotation-aware
+   *  placement path; its translation column equals `cumulativeTranslation`. */
+  readonly cumulativeFrame: Frame;
+  /** World frame of the nearest enclosing spatial container (Storey / Site /
+   *  Bridge / Bridge Part). A routed element's IfcLocalPlacement is its world
+   *  frame relative to this. Pure translation on the building path. */
+  readonly spatialFrame: Frame;
 }
 
 /**
@@ -1083,10 +1269,14 @@ export function familiesToBim(
       state.cumulativeTranslation,
       authoredTranslation(el)
     );
+    const cumulativeFrameHere = frameMul(state.cumulativeFrame, frameFromOps(el.localTransforms));
     let proxiedHere = false;
+    let nextRotated = rotatedHere;
     let nextSpatialStructureId = state.spatialStructureId;
     let nextCivilParent = state.civilParent;
     let nextProjectedSpatialTranslation = state.projectedSpatialTranslation;
+    let nextCumulativeFrame = cumulativeFrameHere;
+    let nextSpatialFrame = state.spatialFrame;
     const archetype = archetypeFor(el);
     // An explicitly authored civil Product is routed by its semantic category.
     // Do not let a coincidental legacy archetype silently change its IFC class.
@@ -1109,14 +1299,6 @@ export function familiesToBim(
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      if (rotatedHere || hasRotatedAxes(el)) {
-        return err(
-          specError(
-            'FAMILIES_UNSUPPORTED_TRANSFORM',
-            `familiesToBim: civil spatial element '${el.keyPath}' carries a rotated frame — descendants are relativized by translation only, so bake the orientation into child geometry`
-          )
-        );
-      }
       if (el.geometry.kind !== 'Empty') {
         return err(
           specError(
@@ -1125,18 +1307,33 @@ export function familiesToBim(
           )
         );
       }
-      const localTranslation = subtractTranslation(
-        cumulativeTranslationHere,
-        state.projectedSpatialTranslation
-      );
-      const added = addCivilSpatialOccurrence(model, el, civilKind, localTranslation);
+      const nodeFrame = civilNodeFrame(el, cumulativeFrameHere);
+      // A rotated frame (from a tRotate ancestor/self or authored axisX/axisZ)
+      // relativizes this node against its parent civil frame; a pure translation
+      // keeps the exact-subtraction path. Either way descendants inherit the full
+      // frame, so a rotated Site/Bridge/Bridge Part orients its children.
+      const rotatedFrame = rotatedHere || hasRotatedAxes(el);
+      const input = rotatedFrame
+        ? civilSpatialFrameInput(el, nodeFrame, state.spatialFrame)
+        : civilSpatialInput(
+            el,
+            subtractTranslation(cumulativeTranslationHere, state.projectedSpatialTranslation)
+          );
+      const added = addCivilSpatialOccurrence(model, el, civilKind, input);
       if (!added.ok) return added;
       model.aggregate(state.spatialStructureId, added.value);
       idByKeyPath.set(el.keyPath, added.value);
       nextSpatialStructureId = added.value;
       nextCivilParent = civilKind;
+      nextRotated = rotatedFrame;
+      // Descendants inherit the node's full frame (transforms + authored axes +
+      // origin prop), so their own transforms compose in the node's coordinate
+      // system and relativize against it.
+      nextCumulativeFrame = nodeFrame;
+      nextSpatialFrame = nodeFrame;
       // The frame's IfcLocalPlacement origin includes the spec `origin` prop on
-      // top of the walk's translates, so descendants relativize by both.
+      // top of the walk's translates, so translation-path descendants relativize
+      // by both.
       nextProjectedSpatialTranslation = addTranslation(
         cumulativeTranslationHere,
         authoredSpecOrigin(el)
@@ -1194,26 +1391,13 @@ export function familiesToBim(
       }
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      const added = addEarthworksFillElement(
-        model,
-        el,
-        bodyEvaluator,
-        state.projectedSpatialTranslation
-      );
+      const added = addEarthworksFillElement(model, el, bodyEvaluator, state.spatialFrame);
       if (!added.ok) return added;
       model.placeIn(added.value, nextSpatialStructureId);
       idByKeyPath.set(el.keyPath, added.value);
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
-      if (rotatedHere) {
-        return err(
-          specError(
-            'FAMILIES_UNSUPPORTED_TRANSFORM',
-            `familiesToBim: '${el.keyPath}' carries a rotated placement — the spec path folds only translations into IfcLocalPlacement; orient walls via axisX instead of tRotate`
-          )
-        );
-      }
       // The spec path rebuilds the body parametrically: an anonymous
       // (non-fill) void cuts only the IR/viewport geometry, so exporting it
       // silently would diverge the IFC body from what the user sees.
@@ -1233,11 +1417,18 @@ export function familiesToBim(
         el.semantics?.kind === 'product'
           ? civilProductSpecInput(el)
           : ('input' in route ? route.input : specInput)(el);
-      const parsed = route.parse(
-        usesAuthoredCivilHierarchy
+      // A tRotate on the element or its ancestors folds into the IfcLocalPlacement
+      // frame (origin + axisX + axisZ); the translation-only path stays the exact
+      // subtraction so unrotated placements are byte-identical. Flight routes
+      // re-place off the UNFOLDED flights (specInput): flightsSpecInput already
+      // adds the element origin to each flight, which the frame would double-count.
+      const rotatedBase = Array.isArray(routedInput['flights']) ? specInput(el) : routedInput;
+      const placedInput = rotatedHere
+        ? rotatedRoutedInput(rotatedBase, el, cumulativeFrameHere, state.spatialFrame)
+        : usesAuthoredCivilHierarchy
           ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
-          : routedInput
-      );
+          : routedInput;
+      const parsed = route.parse(placedInput);
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;
@@ -1291,12 +1482,7 @@ export function familiesToBim(
           )
         );
       }
-      const added = addProxyElement(
-        model,
-        el,
-        options.proxyEvaluator,
-        state.projectedSpatialTranslation
-      );
+      const added = addProxyElement(model, el, options.proxyEvaluator, state.spatialFrame);
       if (!added.ok) return added;
       model.placeIn(added.value, nextSpatialStructureId);
       idByKeyPath.set(el.keyPath, added.value);
@@ -1311,9 +1497,11 @@ export function familiesToBim(
       const r = walk(child, {
         spatialStructureId: nextSpatialStructureId,
         civilParent: nextCivilParent,
-        rotated: rotatedHere,
+        rotated: nextRotated,
         cumulativeTranslation: cumulativeTranslationHere,
         projectedSpatialTranslation: nextProjectedSpatialTranslation,
+        cumulativeFrame: nextCumulativeFrame,
+        spatialFrame: nextSpatialFrame,
       });
       if (!r.ok) return r;
     }
@@ -1326,6 +1514,8 @@ export function familiesToBim(
     rotated: false,
     cumulativeTranslation: ZERO_TRANSLATION,
     projectedSpatialTranslation: ZERO_TRANSLATION,
+    cumulativeFrame: IDENTITY_FRAME,
+    spatialFrame: IDENTITY_FRAME,
   });
   if (!walked.ok) {
     model[Symbol.dispose]();
