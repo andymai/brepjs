@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.11.0...brepjs-families-v0.12.0) (2026-08-28)
+
+
+### Features
+
+* **bim:** fold tRotate into IFC placement for typed products and civil nodes ([#2260](https://github.com/andymai/brepjs/issues/2260)) ([a705ab3](https://github.com/andymai/brepjs/commit/a705ab3bbdb6d278f9e73bd23d488bcd08fffb9a))
+
 ## [0.11.0](https://github.com/andymai/brepjs/compare/brepjs-families-v0.10.0...brepjs-families-v0.11.0) (2026-08-27)
 
 
