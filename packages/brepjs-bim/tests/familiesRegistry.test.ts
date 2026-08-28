@@ -147,7 +147,7 @@ describe('registry families through familiesToBim', () => {
     expect(model.getBeams()).toHaveLength(1);
   });
 
-  it('rejects a rotated routed element instead of exporting a diverged body', () => {
+  it('folds a rotated wing into the wall IfcLocalPlacement axisX', () => {
     const tree = resolve(
       Storey({
         key: 'g',
@@ -158,9 +158,22 @@ describe('registry families through familiesToBim', () => {
         ],
       })
     );
-    const projected = familiesToBim(tree, { project: PROJECT });
-    expect(isOk(projected)).toBe(false);
-    if (!projected.ok) expect(projected.error.code).toBe('FAMILIES_UNSUPPORTED_TRANSFORM');
+    const projected = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using model = projected.model;
+    const wall = model.getWalls()[0];
+    expect(wall).toBeDefined();
+    // The inherited tRotate(30) about Z lands on the wall's placement axes, not
+    // on a diverged (un-rotated) body: axisX = [cos30, sin30, 0].
+    const spec = wall?.spec as { origin: number[]; axisX: number[]; axisZ: number[] };
+    expect(spec.axisX[0]).toBeCloseTo(0.866025, 5);
+    expect(spec.axisX[1]).toBeCloseTo(0.5, 5);
+    expect(spec.axisX[2]).toBeCloseTo(0, 5);
+    expect(spec.axisZ[0]).toBeCloseTo(0, 5);
+    expect(spec.axisZ[1]).toBeCloseTo(0, 5);
+    expect(spec.axisZ[2]).toBeCloseTo(1, 5);
+    expect(spec.origin[0]).toBeCloseTo(0, 5);
+    expect(spec.origin[1]).toBeCloseTo(0, 5);
+    expect(spec.origin[2]).toBeCloseTo(0, 5);
   });
 
   it('routes unrouted geometry through the proxy escape hatch when enabled', async () => {
