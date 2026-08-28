@@ -1,0 +1,21 @@
+packages/brepjs-bim/tests/familiesRotation.test.ts
+  s_b46d667a645d2b::t_c7d4b0ff272e79 214-253
+packages/brepjs-bim/src/familiesAdapter.ts
+  s_b46d667a645d2b::t_6b53afeaec887c 973-977,988
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "cf3f85d12b6b3adaf2a725b2a84036f8aa0748cf",
+  "prompts": {},
+  "sessions": {
+    "s_b46d667a645d2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c39588-3153-4181-9198-7a45f167986a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
