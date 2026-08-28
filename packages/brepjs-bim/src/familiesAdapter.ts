@@ -970,8 +970,11 @@ function rotatedRoutedInput(
 ): Record<string, unknown> {
   const toSpatial = frameInverse(spatialFrame);
   if (Array.isArray(flatInput['flights'])) {
-    // Flights place per-flight (no element-level origin); compose each flight's
-    // authored frame under the element's world transform.
+    // The spec has no top-level placement, so each flight's authored frame
+    // composes under the element's full body frame — cumulative transforms plus
+    // the element's own `origin`/`axisX`/`axisZ` props, matching what
+    // flightsSpecInput folds into flight origins on the unrotated path.
+    const elementFrame = elementBodyFrame(el, cumulativeFrame);
     const flights: readonly unknown[] = flatInput['flights'];
     return {
       ...flatInput,
@@ -982,7 +985,7 @@ function rotatedRoutedInput(
         if (typeof flight !== 'object' || flight === null) return flight;
         const f = flight as Record<string, unknown>;
         const world = frameMul(
-          cumulativeFrame,
+          elementFrame,
           frameFromPlacement({
             origin: (f['origin'] as Vec3 | undefined) ?? [0, 0, 0],
             axisX: (f['axisX'] as Vec3 | undefined) ?? DEFAULT_AXIS_X,

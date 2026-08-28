@@ -211,6 +211,46 @@ describe('familiesToBim rotation fold', () => {
     expectVec(placed.origin, [0, 1000, 0]);
     expectVec(placed.axisX, [0, 1, 0]);
   });
+
+  it('folds a stair element-level origin prop into rotated flight placements', () => {
+    const Stair = family<{
+      readonly flights: ReadonlyArray<Record<string, unknown>>;
+      readonly origin: readonly [number, number, number];
+    }>('Stair', () => el('Box', { size: [2240, 1200, 1400] }), { archetype: 'stair' });
+    const flight = {
+      width: 1200,
+      riserHeight: 175,
+      treadLength: 280,
+      numberOfRisers: 8,
+      origin: [0, 0, 0],
+      axisX: [1, 0, 0],
+      axisZ: [0, 0, 1],
+      materialName: 'Concrete',
+    };
+    const tree = resolve(
+      Storey({
+        key: 'g',
+        items: [
+          el('Group', { key: 'wing', transform: [tRotate(90)] }, [
+            Stair({ key: 'st', flights: [flight], origin: [1000, 0, 0] }),
+          ]),
+        ],
+      })
+    );
+    const projected = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using model = projected.model;
+    const localId = projected.idByKeyPath.get('g/wing/st');
+    if (localId === undefined) throw new Error('stair not projected');
+    const spec = model.getElement(localId)?.spec as {
+      flights: ReadonlyArray<{ origin: number[]; axisX: number[] }>;
+    };
+    const placed = spec.flights[0];
+    if (placed === undefined) throw new Error('no flight');
+    // The origin PROP places the element like flightsSpecInput does unrotated:
+    // +1000x under the wing's 90deg yaw -> +1000y, on the flight, once.
+    expectVec(placed.origin, [0, 1000, 0]);
+    expectVec(placed.axisX, [0, 1, 0]);
+  });
 });
 
 // --- civil spatial nodes -----------------------------------------------------
