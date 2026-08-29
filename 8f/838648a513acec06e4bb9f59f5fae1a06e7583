@@ -1,0 +1,19 @@
+packages/brepjs-cad/README.md
+  s_bea10f88755985::t_22a49719143606 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8f838648a513acec06e4bb9f59f5fae1a06e7583",
+  "prompts": {},
+  "sessions": {
+    "s_bea10f88755985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "917192ef-22ef-46fa-8727-affa4e6933ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
