@@ -53,7 +53,7 @@ npx -y -p brepjs-cad brep part.brep.ts --serve                               # p
 npx -y -p brepjs-cad brep part.brep.ts --serve --no-open                     # preview server; just print the URL (no browser)
 ```
 
-`--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). The `--serve` link is interactive: a toolbar offers view presets + fit, solid/wireframe/x-ray modes, edge/grid toggles, a turntable, click-to-inspect face picking, a section/clipping plane, a measurements panel, and an in-browser PNG screenshot. `--snapshot` loads the same page with `ui=0` to suppress the toolbar, and burns the bounding-box size into each PNG (`dims=1`) so the agent can read scale from the image.
+`--snapshot`/`--serve` use the bundled viewer (shipped under `viewer/dist`, including the OCCT WASM). It renders in brepjs's native Z-up coordinates: Z is up, the XY plane is horizontal, and models are never rotated to fit the renderer's convention. The `--serve` link is interactive: a toolbar offers view presets + fit, solid/wireframe/x-ray modes, edge/grid toggles, a turntable, click-to-inspect face picking, a section/clipping plane, a measurements panel, and an in-browser PNG screenshot. `--snapshot` loads the same page with `ui=0` to suppress the toolbar, and burns the bounding-box size into each PNG (`dims=1`) so the agent can read scale from the image.
 
 `--serve` prints the viewer URL and, in an interactive terminal, opens it in your default browser. Auto-open is skipped when it would be unwanted: when the server is reused (a tab is already open), under CI, when output is piped (non-TTY, e.g. agent runs), or on Linux with no display server. Pass `--no-open` to always suppress it.
 
