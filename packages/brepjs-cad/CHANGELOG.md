@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.178.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.177.0...brepjs-cad-v0.178.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** ship the Z-up preview camera in the bundled viewer ([#2265](https://github.com/andymai/brepjs/issues/2265)) ([9993376](https://github.com/andymai/brepjs/commit/9993376b323ff47ee67583a57d88f82f0d343fc2)), closes [#2264](https://github.com/andymai/brepjs/issues/2264)
+
 ## [0.177.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.176.0...brepjs-cad-v0.177.0) (2026-08-26)
 
 
