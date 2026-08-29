@@ -1,6 +1,6 @@
 {
   "name": "brepjs-viewer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared React/R3F renderer for brepjs meshes (used by the playground and the brepjs-agent viewer)",
   "license": "Apache-2.0",
   "repository": {
