@@ -1,0 +1,19 @@
+packages/brepjs-cad/skills/implement/references/measurement-validation.md
+  s_bea10f88755985::t_cf291533e88569 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c82efbccef60cfc1a8f045abc557a22a40f28e39",
+  "prompts": {},
+  "sessions": {
+    "s_bea10f88755985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "917192ef-22ef-46fa-8727-affa4e6933ec",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
