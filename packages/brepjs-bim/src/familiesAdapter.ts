@@ -931,13 +931,36 @@ function specLocalShift(el: ResolvedElement): Vec3 {
   return synthesizedProfile(el)?.shift ?? [0, 0, 0];
 }
 
+/** Skip the resolver occurrence wrappers already owned by `cumulativeFrame`,
+ *  then recover only the Body's outer literal Datum translations. An unexpected
+ *  wrapper shape returns zero rather than risking an occurrence transform twice. */
+function bodyLocalTranslation(
+  el: ResolvedElement,
+  occurrenceTransformDepth: number
+): Translation {
+  let body = el.geometry;
+  for (let i = 0; i < occurrenceTransformDepth; i++) {
+    if (body.kind !== 'Translate' && body.kind !== 'Rotate') return ZERO_TRANSLATION;
+    body = body.target;
+  }
+  return peelTranslates(body).total;
+}
+
 /** World frame of an element's own body: the walk's cumulative frame (all
  *  authored transforms, ancestors + own) composed with the body's authored axes
- *  (`axisX`/`axisZ` props) and its local origin (`origin` prop + centring
- *  shift). Under no rotation this reduces to `composedOrigin` + shift. */
-function elementBodyFrame(el: ResolvedElement, cumulativeFrame: Frame): Frame {
+ *  (`axisX`/`axisZ` props) and its local origin (`origin` prop + literal Body
+ *  Datum + centring shift). Under no rotation this reduces to `composedOrigin`
+ *  + shift. */
+function elementBodyFrame(
+  el: ResolvedElement,
+  cumulativeFrame: Frame,
+  occurrenceTransformDepth: number
+): Frame {
   const axes = frameFromPlacement({
-    origin: authoredSpecOrigin(el),
+    origin: addTranslation(
+      authoredSpecOrigin(el),
+      bodyLocalTranslation(el, occurrenceTransformDepth)
+    ),
     axisX: authoredAxisX(el),
     axisZ: authoredAxisZ(el),
   });
@@ -966,6 +989,7 @@ function rotatedRoutedInput(
   flatInput: Record<string, unknown>,
   el: ResolvedElement,
   cumulativeFrame: Frame,
+  occurrenceTransformDepth: number,
   spatialFrame: Frame
 ): Record<string, unknown> {
   const toSpatial = frameInverse(spatialFrame);
@@ -974,7 +998,7 @@ function rotatedRoutedInput(
     // composes under the element's full body frame — cumulative transforms plus
     // the element's own `origin`/`axisX`/`axisZ` props, matching what
     // flightsSpecInput folds into flight origins on the unrotated path.
-    const elementFrame = elementBodyFrame(el, cumulativeFrame);
+    const elementFrame = elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth);
     const flights: readonly unknown[] = flatInput['flights'];
     return {
       ...flatInput,
@@ -997,7 +1021,9 @@ function rotatedRoutedInput(
       }),
     };
   }
-  const placed = decomposeFrame(frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame)));
+  const placed = decomposeFrame(
+    frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth))
+  );
   return { ...flatInput, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
 }
 
@@ -1202,6 +1228,8 @@ interface ProjectionWalkState {
   readonly rotated: boolean;
   readonly cumulativeTranslation: Translation;
   readonly projectedSpatialTranslation: Translation;
+  /** Resolver transform wrappers already represented by `cumulativeFrame`. */
+  readonly occurrenceTransformDepth: number;
   /** World frame of the current element's parent: every authored transform
    *  (ancestors, composed) as a rigid motion. Drives the rotation-aware
    *  placement path; its translation column equals `cumulativeTranslation`. */
@@ -1269,6 +1297,8 @@ export function familiesToBim(
       state.cumulativeTranslation,
       authoredTranslation(el)
     );
+    const occurrenceTransformDepthHere =
+      state.occurrenceTransformDepth + el.localTransforms.length;
     const cumulativeFrameHere = frameMul(state.cumulativeFrame, frameFromOps(el.localTransforms));
     let proxiedHere = false;
     let nextRotated = rotatedHere;
@@ -1424,7 +1454,13 @@ export function familiesToBim(
       // adds the element origin to each flight, which the frame would double-count.
       const rotatedBase = Array.isArray(routedInput['flights']) ? specInput(el) : routedInput;
       const placedInput = rotatedHere
-        ? rotatedRoutedInput(rotatedBase, el, cumulativeFrameHere, state.spatialFrame)
+        ? rotatedRoutedInput(
+            rotatedBase,
+            el,
+            cumulativeFrameHere,
+            occurrenceTransformDepthHere,
+            state.spatialFrame
+          )
         : usesAuthoredCivilHierarchy
           ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
           : routedInput;
@@ -1500,6 +1536,7 @@ export function familiesToBim(
         rotated: nextRotated,
         cumulativeTranslation: cumulativeTranslationHere,
         projectedSpatialTranslation: nextProjectedSpatialTranslation,
+        occurrenceTransformDepth: occurrenceTransformDepthHere,
         cumulativeFrame: nextCumulativeFrame,
         spatialFrame: nextSpatialFrame,
       });
@@ -1514,6 +1551,7 @@ export function familiesToBim(
     rotated: false,
     cumulativeTranslation: ZERO_TRANSLATION,
     projectedSpatialTranslation: ZERO_TRANSLATION,
+    occurrenceTransformDepth: 0,
     cumulativeFrame: IDENTITY_FRAME,
     spatialFrame: IDENTITY_FRAME,
   });
