@@ -47,6 +47,24 @@ interface PadProps {
   readonly transform?: readonly TransformOp[] | undefined;
 }
 
+const DatumSlab = family<PadProps>(
+  'DatumSlab',
+  ({ length, width, thickness, transform }) =>
+    el('Geometry', {
+      node: csg.translate(csg.box(length, width, thickness), [-length, 0, -thickness]),
+      transform: transform ?? [],
+    }),
+  {
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'slab',
+      role: 'deck',
+      material: 'Concrete',
+      dimensionsMm: { length: 500, width: 300, height: 40 },
+    }),
+  }
+);
+
 const Pad = family<PadProps>(
   'Pad',
   ({ length, width, thickness, transform }) =>
@@ -109,7 +127,73 @@ function expectVec(actual: readonly number[], expected: readonly number[], preci
     expect(actual[i]).toBeCloseTo(expected[i] ?? 0, precision);
 }
 
+function projectedBounds(tree: ReturnType<typeof resolve>, keyPath: string) {
+  const projected = unwrap(familiesToBim(tree, { project: PROJECT }));
+  using model = projected.model;
+  const localId = projected.idByKeyPath.get(keyPath);
+  if (localId === undefined) throw new Error(`${keyPath} not projected`);
+  const element = model.getElement(localId);
+  if (element === null) throw new Error(`${keyPath} element missing`);
+  const solids = unwrap(placedSolids(element));
+  const solid = solids[0];
+  if (solid === undefined) throw new Error(`${keyPath} body missing`);
+  using disposeSolid = solid;
+  return getBounds(disposeSolid);
+}
+
 describe('familiesToBim rotation fold', () => {
+  it('preserves a typed Product Body Datum through rotation', () => {
+    const tree = resolve(
+      Storey({
+        key: 'g',
+        items: [
+          DatumSlab({
+            key: 'slab',
+            length: 500,
+            width: 300,
+            thickness: 40,
+            transform: [tRotate(30), tTranslate([1_000, 2_000, 3_000])],
+          }),
+        ],
+      })
+    );
+    const bounds = projectedBounds(tree, 'g/slab');
+
+    expect(bounds.xMin).toBeCloseTo(416.987298, 4);
+    expect(bounds.xMax).toBeCloseTo(1_000, 4);
+    expect(bounds.yMin).toBeCloseTo(1_750, 4);
+    expect(bounds.yMax).toBeCloseTo(2_259.807621, 4);
+    expect(bounds.zMin).toBeCloseTo(2_960, 4);
+    expect(bounds.zMax).toBeCloseTo(3_000, 4);
+  });
+
+  it('preserves a Body Datum after inherited and local occurrence transforms', () => {
+    const tree = resolve(
+      Storey({
+        key: 'g',
+        items: [
+          el('Group', { key: 'wing', transform: [tRotate(90)] }, [
+            DatumSlab({
+              key: 'slab',
+              length: 500,
+              width: 300,
+              thickness: 40,
+              transform: [tTranslate([1_000, 0, 0])],
+            }),
+          ]),
+        ],
+      })
+    );
+    const bounds = projectedBounds(tree, 'g/wing/slab');
+
+    expect(bounds.xMin).toBeCloseTo(-300, 4);
+    expect(bounds.xMax).toBeCloseTo(0, 4);
+    expect(bounds.yMin).toBeCloseTo(500, 4);
+    expect(bounds.yMax).toBeCloseTo(1_000, 4);
+    expect(bounds.zMin).toBeCloseTo(-40, 4);
+    expect(bounds.zMax).toBeCloseTo(0, 4);
+  });
+
   it('folds a typed Product local tRotate(30) into IFC axisX (issue repro)', async () => {
     const world = await padWorldPlacement([tRotate(30)]);
     expectVec(world.axisX, [COS30, SIN30, 0]);
