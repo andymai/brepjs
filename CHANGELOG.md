@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.164.2](https://github.com/andymai/brepjs/compare/brepjs-v18.164.1...brepjs-v18.164.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **bim:** import every Product Body representation item ([#2278](https://github.com/andymai/brepjs/issues/2278)) ([747c69b](https://github.com/andymai/brepjs/commit/747c69b8a115126c728a58e68aaa0abb9a9aedf7))
+
 ## [18.164.1](https://github.com/andymai/brepjs/compare/brepjs-v18.164.0...brepjs-v18.164.1) (2026-09-02)
 
 
