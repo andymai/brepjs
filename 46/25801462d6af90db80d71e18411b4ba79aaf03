@@ -1,0 +1,19 @@
+.github/workflows/pr-title.yml
+  s_ee066a55fb9428::t_e5b4665a38d202 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4625801462d6af90db80d71e18411b4ba79aaf03",
+  "prompts": {},
+  "sessions": {
+    "s_ee066a55fb9428": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f741172-81a0-4a51-a177-734ee44a1c0c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
