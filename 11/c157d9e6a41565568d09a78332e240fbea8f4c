@@ -1,0 +1,25 @@
+src/topology/transformFns.ts
+  s_af0553a091dda2::t_64243c88d99471 208-213,218,229-230,232-234,237-238
+tests/applyMatrix.test.ts
+  s_af0553a091dda2::t_f09a0618f498db 11-15,258-293,295-301,303-319
+  s_af0553a091dda2::t_64243c88d99471 294,302
+  s_af0553a091dda2::t_2ee05710b45234 320
+src/kernel/occtWasm/transformOps.ts
+  s_af0553a091dda2::t_f09a0618f498db 173,192-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "11c157d9e6a41565568d09a78332e240fbea8f4c",
+  "prompts": {},
+  "sessions": {
+    "s_af0553a091dda2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8e3cdbf-3aba-447e-924e-721bfefe5b6d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
