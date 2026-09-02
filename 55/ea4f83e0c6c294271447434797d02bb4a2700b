@@ -1,0 +1,36 @@
+packages/brepjs-bim/src/ifc-writer/openingWriter.ts
+  s_ee066a55fb9428::t_7beb0bf00f8ca8 57-58,61
+packages/brepjs-bim/src/ifc-writer/geometryWriter.ts
+  s_ee066a55fb9428::t_7beb0bf00f8ca8 62-64,309-312
+  s_ee066a55fb9428::t_773ba81314cacc 304
+packages/brepjs-bim/src/import/spfReader.ts
+  s_ee066a55fb9428::t_2c9a537490d59f 83-86
+  s_ee066a55fb9428::t_8f9a788982ccb3 31-32,87
+packages/brepjs-bim/src/import/geometryRead.ts
+  s_ee066a55fb9428::t_9d33c1053ed5ad 166-168,170-172,191,245-247,251-254,256-257,286,667,691-695,698,700-703,705-718,741-755
+  s_ee066a55fb9428::t_96d0248f3d5cea 316-317,323,353-374,376,378-381,383-405
+  s_ee066a55fb9428::t_532d74772103bb 351-352,375,377,382
+  s_ee066a55fb9428::t_1021f102514d40 406,445-449,664-666,668-686,931-949,974-976
+  s_ee066a55fb9428::t_773ba81314cacc 248,255,719-740,930
+  s_ee066a55fb9428::t_3469bcb37dddbb 407,977
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_ee066a55fb9428::t_8764892f34c73b 11,95,113,208,246,284,322
+packages/brepjs-bim/tests/placementRoundTrip.test.ts
+  s_ee066a55fb9428::t_24379e750d2650 1-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "55ea4f83e0c6c294271447434797d02bb4a2700b",
+  "prompts": {},
+  "sessions": {
+    "s_ee066a55fb9428": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f741172-81a0-4a51-a177-734ee44a1c0c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
