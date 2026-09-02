@@ -36,9 +36,11 @@ coordinates. This is especially important for parent-local Proxy and Earthworks 
 
 IFC import reconstructs every supported Body item independently. `ImportedGeometry.solids` owns
 the resulting World-placed handles and `completeness` reports `COMPLETE`, `PARTIAL`, or `NONE`.
-The legacy `.solid` property is a borrowed alias only for a complete one-solid Body. Dispose import
-geometry through `disposeImportedModel()` rather than through either property. Complete Bodies
-also expose aggregate `bounds` and `volumeMm3`; both are `null` for partial or missing Bodies.
+`fidelity` reports the least faithful retained item. Raw mesh siblings are combined in
+`meshVertices` and `meshIndices`. The legacy `.solid` property is a borrowed alias only for a
+complete one-solid Body. Dispose import geometry through `disposeImportedModel()` rather than
+through either property. Complete Bodies also expose aggregate `bounds` and `volumeMm3`; both are
+`null` when aggregate measurement fails or when the Body is partial or missing.
 
 - Units default to mm; IFC export emits SI metres.
 - Stable identity: deterministic IFC GUIDs (`deriveIfcGuid`) and local id counters.
