@@ -1,0 +1,23 @@
+name: PR title
+
+# Squash merges use the PR title as the commit subject and release-please only
+# reads conventional-commit subjects. commitlint runs in the local git hooks,
+# which external PRs never pass through, so the title is checked here.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Lint the PR title as a commit subject
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | npx commitlint
