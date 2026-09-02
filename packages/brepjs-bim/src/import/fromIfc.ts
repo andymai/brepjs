@@ -282,42 +282,45 @@ function reconstructGeometry(
   diagnostics: ValidationIssue[]
 ): ImportedGeometry {
   const base = toImportedGeometry(reader, expressId, scale, diagnostics);
-  if (
-    base.fidelity !== 'PARAMETRIC' ||
-    base.completeness !== 'COMPLETE' ||
-    base.solid === null ||
-    voidedBy.length === 0
-  ) {
+  if (base.fidelity !== 'PARAMETRIC' || base.completeness !== 'COMPLETE' || voidedBy.length === 0) {
     return base;
   }
+
+  const firstHost = base.solids[0];
+  if (firstHost === undefined) return base;
+  const hosts: [ValidSolid, ...ValidSolid[]] = [firstHost, ...base.solids.slice(1)];
 
   // cut<ValidSolid> preserves the base's solid type; the kernel may wrap the
   // result in a single-solid compound, so we trust the typed Result rather than
   // re-running isSolid (which rejects the compound wrapper) — mirroring how
   // BimModel applies opening cuts on the write side.
-  let host: ValidSolid = base.solid;
   for (const openingId of voidedBy) {
     const opening = readBodyGeometry(reader, openingId, scale, diagnostics);
     if (opening.kind !== 'SOLID') continue;
-    const cutResult = cut<ValidSolid>(host, opening.solid);
-    // cut() consumes neither input; free the opening tool every iteration.
-    opening.solid[Symbol.dispose]();
-    if (!cutResult.ok) {
-      diagnostics.push(
-        issue(
-          'warning',
-          'VOID_SUBTRACTION_FAILED',
-          `Opening ${openingId} could not be subtracted from element ${expressId}: ${cutResult.error.message}`,
-          expressId
-        )
-      );
-      continue;
+    try {
+      for (let hostIndex = 0; hostIndex < hosts.length; hostIndex++) {
+        const host = hosts[hostIndex];
+        if (host === undefined) continue;
+        const cutResult = cut<ValidSolid>(host, opening.solid);
+        if (!cutResult.ok) {
+          diagnostics.push(
+            issue(
+              'warning',
+              'VOID_SUBTRACTION_FAILED',
+              `Opening ${openingId} could not be subtracted from element ${expressId}: ${cutResult.error.message}`,
+              expressId
+            )
+          );
+          continue;
+        }
+        host[Symbol.dispose]();
+        hosts[hostIndex] = cutResult.value;
+      }
+    } finally {
+      opening.solid[Symbol.dispose]();
     }
-    // Free the prior host (the base body on the first cut) before adopting the result.
-    host[Symbol.dispose]();
-    host = cutResult.value;
   }
-  return completeImportedGeometry('PARAMETRIC', [host], expressId, diagnostics);
+  return completeImportedGeometry('PARAMETRIC', hosts, expressId, diagnostics);
 }
 
 function toImportedGeometry(
@@ -329,13 +332,18 @@ function toImportedGeometry(
   const body = readBodyItems(reader, expressId, scale, diagnostics);
   const solids: ValidSolid[] = [];
   let hasTessellatedSolid = false;
-  let lossyMesh: { readonly vertices: Float32Array; readonly indices: Uint32Array } | null = null;
+  let lossyMesh: { readonly vertices: number[]; readonly indices: number[] } | null = null;
   for (const item of body.items) {
     if (item.kind === 'SOLID') {
       solids.push(item.solid);
       hasTessellatedSolid ||= item.lossy;
-    } else if (item.kind === 'MESH' && lossyMesh === null) {
-      lossyMesh = { vertices: item.vertices, indices: item.indices };
+    } else if (item.kind === 'MESH') {
+      const meshAccumulator: { readonly vertices: number[]; readonly indices: number[] } =
+        lossyMesh ?? { vertices: [], indices: [] };
+      lossyMesh = meshAccumulator;
+      const vertexOffset = meshAccumulator.vertices.length / 3;
+      for (const vertex of item.vertices) meshAccumulator.vertices.push(vertex);
+      for (const index of item.indices) meshAccumulator.indices.push(vertexOffset + index);
     }
   }
 
@@ -368,13 +376,13 @@ function toImportedGeometry(
   }
 
   const fidelity =
-    solids.length > 0
-      ? hasTessellatedSolid
+    lossyMesh !== null
+      ? 'TESSELLATED_LOSSY'
+      : hasTessellatedSolid
         ? 'TESSELLATED_MANIFOLD'
-        : 'PARAMETRIC'
-      : lossyMesh !== null
-        ? 'TESSELLATED_LOSSY'
-        : 'NONE';
+        : solids.length > 0
+          ? 'PARAMETRIC'
+          : 'NONE';
   const aggregate =
     completeness === 'COMPLETE'
       ? measureCompleteBody(solids, expressId, diagnostics)
@@ -386,7 +394,10 @@ function toImportedGeometry(
     solid: completeness === 'COMPLETE' && solids.length === 1 ? (solids[0] ?? null) : null,
     ...aggregate,
     ...(lossyMesh !== null
-      ? { meshVertices: lossyMesh.vertices, meshIndices: lossyMesh.indices }
+      ? {
+          meshVertices: new Float32Array(lossyMesh.vertices),
+          meshIndices: new Uint32Array(lossyMesh.indices),
+        }
       : {}),
   };
 }

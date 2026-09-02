@@ -314,12 +314,12 @@ declare function fromIfc(
 type ImportedSchema = 'IFC2X3' | 'IFC4' | 'IFC4X3';
 
 /**
- * How faithfully a product's body geometry was reconstructed:
+ * How faithfully the least faithful retained Body item was reconstructed:
  * - `PARAMETRIC` — rebuilt losslessly from a swept solid (extrude/revolve).
  * - `TESSELLATED_MANIFOLD` — a tessellated mesh was recovered as a closed solid
  *   by sewing its triangles; geometrically faithful but topology was re-derived.
- * - `TESSELLATED_LOSSY` — geometry exists only as raw triangles (mesh did not
- *   close into a solid); `solid` is null, `meshVertices`/`meshIndices` carry it.
+ * - `TESSELLATED_LOSSY` — at least one item exists only as raw triangles because
+ *   its mesh did not close into a solid. More faithful siblings may remain in `solids`.
  * - `NONE` — no recognised body representation was found.
  */
 type GeometryFidelity = 'PARAMETRIC' | 'TESSELLATED_MANIFOLD' | 'TESSELLATED_LOSSY' | 'NONE';
@@ -334,13 +334,13 @@ interface ImportedGeometry {
   readonly solids: readonly ValidSolid[];
   /** Borrowed alias for a COMPLETE one-solid Body. Otherwise null. */
   readonly solid: ValidSolid | null;
-  /** Component-wise union of all item bounds for a COMPLETE Body. Otherwise null. */
+  /** Component-wise union of all item bounds for a COMPLETE Body. Null if measurement fails. */
   readonly bounds: Bounds3D | null;
-  /** Sum of item volumes in mm³ for a COMPLETE Body. Otherwise null. */
+  /** Sum of item volumes in mm³ for a COMPLETE Body. Null if measurement fails. */
   readonly volumeMm3: number | null;
-  /** Raw triangle vertices (interleaved xyz), present only for `TESSELLATED_LOSSY`. */
+  /** Combined raw triangle vertices (interleaved xyz), present for `TESSELLATED_LOSSY`. */
   readonly meshVertices?: Float32Array | undefined;
-  /** Raw triangle indices, present only for `TESSELLATED_LOSSY`. */
+  /** Combined raw triangle indices, present for `TESSELLATED_LOSSY`. */
   readonly meshIndices?: Uint32Array | undefined;
 }
 
