@@ -5,7 +5,15 @@
  * Ambient type declarations for brepjs-bim available in the playground editor.
  */
 
-import type { BrepError, OrientedFace, PlanarFace, Result, ValidSolid, csg } from 'brepjs';
+import type {
+  Bounds3D,
+  BrepError,
+  OrientedFace,
+  PlanarFace,
+  Result,
+  ValidSolid,
+  csg,
+} from 'brepjs';
 
 /** Optional identity override for created elements: a stable key (e.g. a
  *  families key path) that replaces the positional GlobalId derivation. */
@@ -306,23 +314,33 @@ declare function fromIfc(
 type ImportedSchema = 'IFC2X3' | 'IFC4' | 'IFC4X3';
 
 /**
- * How faithfully a product's body geometry was reconstructed:
+ * How faithfully the least faithful retained Body item was reconstructed:
  * - `PARAMETRIC` — rebuilt losslessly from a swept solid (extrude/revolve).
  * - `TESSELLATED_MANIFOLD` — a tessellated mesh was recovered as a closed solid
- *   via an STL round-trip; geometrically faithful but topology was re-derived.
- * - `TESSELLATED_LOSSY` — geometry exists only as raw triangles (mesh did not
- *   close into a solid); `solid` is null, `meshVertices`/`meshIndices` carry it.
+ *   by sewing its triangles; geometrically faithful but topology was re-derived.
+ * - `TESSELLATED_LOSSY` — at least one item exists only as raw triangles because
+ *   its mesh did not close into a solid. More faithful siblings may remain in `solids`.
  * - `NONE` — no recognised body representation was found.
  */
 type GeometryFidelity = 'PARAMETRIC' | 'TESSELLATED_MANIFOLD' | 'TESSELLATED_LOSSY' | 'NONE';
 
+type ImportedBodyCompleteness = 'COMPLETE' | 'PARTIAL' | 'NONE';
+
 interface ImportedGeometry {
   readonly fidelity: GeometryFidelity;
-  /** The reconstructed solid; null when fidelity is `NONE` or `TESSELLATED_LOSSY`. */
+  /** Whether every IFC Body item reconstructed into an owned solid. */
+  readonly completeness: ImportedBodyCompleteness;
+  /** Owned World-placed reconstructed handles. Dispose them through disposeImportedModel(). */
+  readonly solids: readonly ValidSolid[];
+  /** Borrowed alias for a COMPLETE one-solid Body. Otherwise null. */
   readonly solid: ValidSolid | null;
-  /** Raw triangle vertices (interleaved xyz), present only for `TESSELLATED_LOSSY`. */
+  /** Component-wise union of all item bounds for a COMPLETE Body. Null if measurement fails. */
+  readonly bounds: Bounds3D | null;
+  /** Sum of item volumes in mm³ for a COMPLETE Body. Null if measurement fails. */
+  readonly volumeMm3: number | null;
+  /** Combined raw triangle vertices (interleaved xyz), present for `TESSELLATED_LOSSY`. */
   readonly meshVertices?: Float32Array | undefined;
-  /** Raw triangle indices, present only for `TESSELLATED_LOSSY`. */
+  /** Combined raw triangle indices, present for `TESSELLATED_LOSSY`. */
   readonly meshIndices?: Uint32Array | undefined;
 }
 
