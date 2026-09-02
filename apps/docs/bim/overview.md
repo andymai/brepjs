@@ -48,7 +48,7 @@ const ifc = await toIfc(model, { applicationName: 'example-app', applicationVers
 
 Three design decisions carry the package:
 
-1. **Specs are the source of truth.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use) and stores a typed element. Parametric physical specs build analytical solids and editable IFC representations; civil spatial elements are body-less, while explicitly arbitrary bodies such as Earthworks Fill serialize as tessellation.
+1. **Typed specs anchor the model.** Every `add*` call validates its spec (zod schemas; the `parse*Spec` functions are exported for standalone use) and stores a typed element. Parametric physical specs build analytical solids and editable IFC representations; civil spatial elements are body-less, while explicitly arbitrary bodies such as Earthworks Fill serialize as tessellation. Families-projected civil walls and railings retain an evaluated exact Body when it differs from their post-opening parametric candidate.
 2. **Geometry is unplaced template geometry.** Element solids live in local coordinates; `origin` / `axisX` / `axisZ` are applied by the IFC layer via `IfcLocalPlacement`. `placedSolids(element)` applies the element frame; when its spatial parent is placed, pass the cumulative `parentFrame` to obtain world coordinates.
 3. **Results, not exceptions.** Every operation returns `Result<T, BimError>` from brepjs. Validation issues travel inside reports; nothing throws across the API boundary.
 
@@ -58,7 +58,7 @@ Dimensions are millimeters everywhere; IFC export emits SI metres. Reading eleme
 
 For IFC4X3, the public Families path supports Project → Site → Bridge → recursively nested Bridge Part, exact Earthworks Fill bodies, and nearest-part product containment. Civil Product semantics route the infrastructure fixture's existing Beam (`beam`, `cross-girder`, `girder`), Column (`pier-stem`), Footing (`pad`), Railing (`guardrail`), Slab (`deck`), and Wall (`wall`) categories to their normal typed BIM elements. Semantic material is used when the element does not separately provide `materialName`.
 
-Those existing typed routes adapt the reference Families' semantic envelope dimensions to their parametric BIM specs; they do not promise exact preservation of compound or voided source bodies. Exact authored-body preservation in this profile is specific to Earthworks Fill.
+Civil wall and railing routes need `bodyEvaluator` (or `proxyEvaluator` as a compatibility fallback) to verify their authored Product Bodies. Registered wall openings are applied first. A coincident authored Body keeps editable parametric IFC; a compound, voided, or otherwise different Body remains a typed Wall or Railing and exports all of its items as tessellation. Other typed civil routes continue to use the reference Families' semantic envelope dimensions.
 
 Member and Sign are explicitly outside this profile. They remain hard unsupported-type errors unless `proxyEvaluator` is deliberately enabled, in which case `projected.proxied` reports them. This profile does not claim complete IFC infrastructure coverage or unchanged full scratch-example parity.
 

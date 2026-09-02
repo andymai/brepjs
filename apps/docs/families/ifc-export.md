@@ -27,6 +27,8 @@ const ifc = await toIfcValidated(model, {
 
 The adapter returns a `Result`; the model it produces owns kernel geometry, so hold it in a `using` scope. `idByKeyPath` on the result maps each families key path to its element in the model.
 
+Civil-semantic walls and railings require `bodyEvaluator` so the adapter can verify their authored Product Bodies. It applies registered wall openings before comparison. Bodies that coincide with the typed spec remain editable parametric IFC; compound, voided, or otherwise different bodies keep their Wall or Railing classification and export each exact item as tessellation. `proxyEvaluator` remains a compatibility fallback for this evaluation but also enables the separate proxy route described below.
+
 ## What maps to what
 
 | Families element                   | IFC                                                                                                   |

@@ -2705,9 +2705,11 @@ interface FamiliesToBimOptions {
   readonly siteName?: string | undefined;
   readonly buildingName?: string | undefined;
   /**
-   * Materializes exact evaluated Product Bodies for supported typed routes
-   * such as Earthworks Fill. Supplying this option does not opt unsupported
-   * products into the proxy fallback.
+   * Materializes exact evaluated Product Bodies for supported typed routes.
+   * Earthworks Fill always retains that Body; civil walls and railings compare
+   * it with their post-opening parametric Body and retain it when they differ.
+   * Supplying this option does not opt unsupported products into the proxy
+   * fallback.
    */
   readonly bodyEvaluator?: csg.Evaluator | undefined;
   /**

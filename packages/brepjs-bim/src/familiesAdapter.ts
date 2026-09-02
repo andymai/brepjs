@@ -1,9 +1,9 @@
 /**
  * brepjs-families -> BimModel adapter. Consumes a resolved element tree and
- * feeds each element's PRE-DESUGARED props into the parametric specs — the
- * spec path stays authoritative for IFC (IfcExtrudedAreaSolid + placement),
- * while the IR path serves the viewport and dedup. GlobalIds derive from
- * families key paths (stable under reordering), not insertion order.
+ * feeds each element's PRE-DESUGARED props into parametric specs. Civil wall
+ * and railing Products additionally compare the evaluated authored Body with
+ * that spec Body and retain an exact Body when they diverge. GlobalIds derive
+ * from families key paths (stable under reordering), not insertion order.
  *
  * Scope: building Storey containers; civil Site/Bridge/recursive Bridge Part
  * structure and Earthworks Fill bodies; Wall/Slab/Column/Beam/Roof/Stair,
@@ -75,15 +75,19 @@ import {
 } from './specs/spatialSpec.js';
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
+import { disposeProductBody } from './types/productBody.js';
+import { selectCivilProductBody } from './familiesProductBody.js';
 
 export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
   readonly siteName?: string | undefined;
   readonly buildingName?: string | undefined;
   /**
-   * Materializes exact evaluated Product Bodies for supported typed routes
-   * such as Earthworks Fill. Supplying this option does not opt unsupported
-   * products into the proxy fallback.
+   * Materializes exact evaluated Product Bodies for supported typed routes.
+   * Earthworks Fill always retains that Body; civil walls and railings compare
+   * it with their post-opening parametric Body and retain it when they differ.
+   * Supplying this option does not opt unsupported products into the proxy
+   * fallback.
    */
   readonly bodyEvaluator?: csg.Evaluator | undefined;
   /**
@@ -117,6 +121,20 @@ export interface FamiliesBimResult {
    * you meant, so check this before trusting an export.
    */
   readonly proxied: readonly ProxiedElement[];
+}
+
+export interface FamiliesAdapterTestHooks {
+  readonly afterCivilProductBody?:
+    ((model: BimModel, localId: LocalId, element: ResolvedElement) => void) | undefined;
+}
+
+let testHooks: FamiliesAdapterTestHooks | null = null;
+
+/** Package-internal deterministic failure seam for projection ownership tests. */
+export function setFamiliesAdapterTestHooksForTesting(
+  hooks: FamiliesAdapterTestHooks | null
+): void {
+  testHooks = hooks;
 }
 
 const SPEC_DEFAULTS = {
@@ -272,6 +290,16 @@ function civilProductArchetype(el: ResolvedElement): keyof typeof SPEC_ROUTES | 
   const definition = lookup(CIVIL_PRODUCT_ROUTES, el.semantics.category);
   if (definition === undefined || !definition.roles.includes(el.semantics.role)) return undefined;
   return definition.archetype;
+}
+
+function civilProductBodyCategory(
+  el: ResolvedElement,
+  archetype: string | undefined
+): 'WALL' | 'RAILING' | null {
+  if (el.semantics?.kind !== 'product') return null;
+  if (archetype === 'wall') return 'WALL';
+  if (archetype === 'railing') return 'RAILING';
+  return null;
 }
 
 function semanticDimension(el: ResolvedElement, ...names: readonly string[]): number | undefined {
@@ -934,10 +962,7 @@ function specLocalShift(el: ResolvedElement): Vec3 {
 /** Skip the resolver occurrence wrappers already owned by `cumulativeFrame`,
  *  then recover only the Body's outer literal Datum translations. An unexpected
  *  wrapper shape returns zero rather than risking an occurrence transform twice. */
-function bodyLocalTranslation(
-  el: ResolvedElement,
-  occurrenceTransformDepth: number
-): Translation {
+function bodyLocalTranslation(el: ResolvedElement, occurrenceTransformDepth: number): Translation {
   let body = el.geometry;
   for (let i = 0; i < occurrenceTransformDepth; i++) {
     if (body.kind !== 'Translate' && body.kind !== 'Rotate') return ZERO_TRANSLATION;
@@ -1222,6 +1247,38 @@ function addEarthworksFillElement(
   return added;
 }
 
+function installCivilProductBody(
+  model: BimModel,
+  el: ResolvedElement,
+  localId: LocalId,
+  category: 'WALL' | 'RAILING',
+  evaluator: csg.Evaluator,
+  productWorldFrame: Frame
+): Result<void, BimError> {
+  const target = model.getElement(localId);
+  if (target === null || target.category !== category || target.geometry.kind !== 'PARAMETRIC') {
+    return err(
+      specError(
+        'FAMILIES_PRODUCT_BODY_TARGET_INVALID',
+        `familiesToBim: '${el.keyPath}' could not find its parametric ${category} Body after projection`
+      )
+    );
+  }
+  const selected = selectCivilProductBody({
+    element: el,
+    category,
+    evaluator,
+    productWorldFrame,
+    parametricBody: target.geometry,
+  });
+  if (!selected.ok) return selected;
+  if (selected.value.kind === 'PARAMETRIC') return ok(undefined);
+
+  const takeover = model.takeExactProductBody(localId, selected.value.body);
+  if (!takeover.ok) disposeProductBody(selected.value.body);
+  return takeover;
+}
+
 interface ProjectionWalkState {
   readonly spatialStructureId: LocalId | null;
   readonly civilParent: CivilParentKind;
@@ -1249,12 +1306,35 @@ export function familiesToBim(
   root: ResolvedElement,
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
+  const model = new BimModel();
+  let transferred = false;
+  try {
+    const projected = projectFamiliesToBim(root, options, model);
+    transferred = projected.ok;
+    return projected;
+  } catch (cause) {
+    return err(
+      specError(
+        'FAMILIES_PROJECTION_FAILED',
+        `familiesToBim: unexpected projection failure at '${root.keyPath}'`,
+        cause
+      )
+    );
+  } finally {
+    if (!transferred) model[Symbol.dispose]();
+  }
+}
+
+function projectFamiliesToBim(
+  root: ResolvedElement,
+  options: FamiliesToBimOptions,
+  model: BimModel
+): Result<FamiliesBimResult, BimError> {
   const usesAuthoredCivilHierarchy = hasCivilSpatialIntent(root);
   if (usesAuthoredCivilHierarchy) {
     const keyed = requireKeyed(root);
     if (!keyed.ok) return keyed;
   }
-  const model = new BimModel();
   // A root that is itself the civil Site would otherwise collide with the
   // Project's stableKey.
   const initResult = model.init(
@@ -1271,15 +1351,9 @@ export function familiesToBim(
   let buildingId: LocalId | null = null;
   if (!usesAuthoredCivilHierarchy) {
     const siteResult = model.addSite({ name: options.siteName ?? 'Site' });
-    if (!siteResult.ok) {
-      model[Symbol.dispose]();
-      return siteResult;
-    }
+    if (!siteResult.ok) return siteResult;
     const buildingResult = model.addBuilding({ name: options.buildingName ?? 'Building' });
-    if (!buildingResult.ok) {
-      model[Symbol.dispose]();
-      return buildingResult;
-    }
+    if (!buildingResult.ok) return buildingResult;
     buildingId = buildingResult.value;
     model.aggregate(projectId, siteResult.value);
     model.aggregate(siteResult.value, buildingId);
@@ -1297,8 +1371,7 @@ export function familiesToBim(
       state.cumulativeTranslation,
       authoredTranslation(el)
     );
-    const occurrenceTransformDepthHere =
-      state.occurrenceTransformDepth + el.localTransforms.length;
+    const occurrenceTransformDepthHere = state.occurrenceTransformDepth + el.localTransforms.length;
     const cumulativeFrameHere = frameMul(state.cumulativeFrame, frameFromOps(el.localTransforms));
     let proxiedHere = false;
     let nextRotated = rotatedHere;
@@ -1428,6 +1501,20 @@ export function familiesToBim(
     } else if (route !== undefined) {
       const keyed = requireKeyed(el);
       if (!keyed.ok) return keyed;
+      const productBodyCategory = civilProductBodyCategory(el, effectiveArchetype);
+      const productBodyEvaluator =
+        productBodyCategory === null
+          ? undefined
+          : (options.bodyEvaluator ?? options.proxyEvaluator);
+      if (productBodyCategory !== null && productBodyEvaluator === undefined) {
+        return err({
+          ...specError(
+            'FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED',
+            `familiesToBim: civil Product '${el.keyPath}' mapped to ${productBodyCategory} needs bodyEvaluator or proxyEvaluator to verify its authoritative Body`
+          ),
+          metadata: { keyPath: el.keyPath, category: productBodyCategory },
+        });
+      }
       // The spec path rebuilds the body parametrically: an anonymous
       // (non-fill) void cuts only the IR/viewport geometry, so exporting it
       // silently would diverge the IFC body from what the user sees.
@@ -1486,6 +1573,18 @@ export function familiesToBim(
       if (effectiveArchetype === 'wall') {
         const opened = addOpenings(model, el, added.value, nextSpatialStructureId, idByKeyPath);
         if (!opened.ok) return opened;
+      }
+      if (productBodyCategory !== null && productBodyEvaluator !== undefined) {
+        const installed = installCivilProductBody(
+          model,
+          el,
+          added.value,
+          productBodyCategory,
+          productBodyEvaluator,
+          elementBodyFrame(el, cumulativeFrameHere, occurrenceTransformDepthHere)
+        );
+        if (!installed.ok) return installed;
+        testHooks?.afterCivilProductBody?.(model, added.value, el);
       }
     } else if (el.type === 'Opening') {
       return err(
@@ -1556,7 +1655,6 @@ export function familiesToBim(
     spatialFrame: IDENTITY_FRAME,
   });
   if (!walked.ok) {
-    model[Symbol.dispose]();
     return walked;
   }
   return ok({ model, idByKeyPath, proxied });
