@@ -3,8 +3,12 @@ name: PR title
 # Squash merges use the PR title as the commit subject and release-please only
 # reads conventional-commit subjects. commitlint runs in the local git hooks,
 # which external PRs never pass through, so the title is checked here.
+#
+# pull_request_target: the title comes from the event payload and both this
+# workflow and commitlint.config.js come from the base branch, so a PR cannot
+# loosen the rules it is checked against. No PR code is checked out or run.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
@@ -13,11 +17,24 @@ permissions:
 jobs:
   commitlint:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup
+        with:
+          sparse-checkout: commitlint.config.js
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      # The sparse checkout has no package.json, so this installs commitlint and
+      # the shared config alone (about 75 packages) next to commitlint.config.js.
+      # The stub keeps the ESM config loadable. Versions track the root
+      # devDependencies.
+      - name: Install commitlint
+        run: |
+          printf '{ "type": "module", "private": true }\n' > package.json
+          npm install --no-package-lock --no-audit --no-fund @commitlint/cli@21.2.2 @commitlint/config-conventional@21.2.2
       - name: Lint the PR title as a commit subject
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: printf '%s\n' "$PR_TITLE" | npx commitlint
+        run: printf '%s\n' "$PR_TITLE" | ./node_modules/.bin/commitlint
