@@ -53,18 +53,12 @@ export function writeOpeningGeometry(
   const offsetAlongWallM = toIfcLengthM(openingSpec.offsetAlongWall);
   const offsetFromFloorM = toIfcLengthM(openingSpec.offsetFromFloor);
   const thicknessM = toIfcLengthM(wallSpec.thickness);
-  const wallHeightM = toIfcLengthM(wallSpec.height);
 
-  // Placement: centered on opening, starting at outer face (+thicknessM/2) so extrusion covers full wall depth
+  // Centred on the opening at the wall's outer face (y = thickness); the
+  // extrusion runs along -Y through the full wall depth.
   const placement3DId = writeAxis2Placement3D(
     w,
-    // Wall SweptSolid is centered in local Z ([-h/2, +h/2]); shift the void down
-    // by wallHeight/2 so offsetFromFloor is measured from the wall base.
-    [
-      offsetAlongWallM + widthM / 2,
-      thicknessM / 2,
-      -wallHeightM / 2 + offsetFromFloorM + heightM / 2,
-    ],
+    [offsetAlongWallM + widthM / 2, thicknessM, offsetFromFloorM + heightM / 2],
     [0, -1, 0],
     [1, 0, 0]
   );

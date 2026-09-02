@@ -163,8 +163,13 @@ function reconstructExtrusion(
     return NONE;
   }
 
+  // The profile's Position places the face inside the swept solid's frame, so
+  // sweep in the profile's own frame and fold that Position into the placement.
+  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
   const depthMm = depth * scale * 1000;
-  const extrudeDir = readDirection(reader, ext['ExtrudedDirection']) ?? [0, 0, 1];
+  const sweptDir = readDirection(reader, ext['ExtrudedDirection']) ?? [0, 0, 1];
+  const extrudeDir =
+    profileFrame === null ? sweptDir : rotateByTranspose(profileFrame.linear, sweptDir);
   const extrudeVec: Vec3 = [
     extrudeDir[0] * depthMm,
     extrudeDir[1] * depthMm,
@@ -182,9 +187,8 @@ function reconstructExtrusion(
     return NONE;
   }
 
-  // Compose: extrusion-local frame (Position) then the product world placement.
   const localFrame = readAxis2Placement3D(reader, ext['Position'], scale);
-  const placed = placeSolid(solidResult.value, localFrame, worldTransform);
+  const placed = placeSolid(solidResult.value, [worldTransform, localFrame, profileFrame]);
   if (!placed.ok) {
     diagnostics.push(issue('warning', placed.error.code, placed.error.message, extrusionId));
     return NONE;
@@ -238,12 +242,19 @@ function reconstructRevolution(
   }
 
   const axis1 = reader.getLine<Record<string, unknown>>(axisRef.value);
-  const center = (axis1 === null ? undefined : readPoint(reader, axis1['Location'], scale)) ?? [
-    0, 0, 0,
-  ];
-  const direction = (axis1 === null ? undefined : readDirection(reader, axis1['Axis'])) ?? [
+  const sweptCenter = (axis1 === null
+    ? undefined
+    : readPoint(reader, axis1['Location'], scale)) ?? [0, 0, 0];
+  const sweptDirection = (axis1 === null ? undefined : readDirection(reader, axis1['Axis'])) ?? [
     0, 0, 1,
   ];
+  // Revolve in the profile's own frame (see reconstructExtrusion): the axis
+  // moves by the inverse of the profile Position, which is then folded into
+  // the placement chain.
+  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
+  const center = profileFrame === null ? sweptCenter : inverseRigidPoint(profileFrame, sweptCenter);
+  const direction =
+    profileFrame === null ? sweptDirection : rotateByTranspose(profileFrame.linear, sweptDirection);
 
   const revolved = (() => {
     using face = faceResult.value;
@@ -272,7 +283,7 @@ function reconstructRevolution(
   }
 
   const localFrame = readAxis2Placement3D(reader, rev['Position'], scale);
-  const placed = placeSolid(revolved.value, localFrame, worldTransform);
+  const placed = placeSolid(revolved.value, [worldTransform, localFrame, profileFrame]);
   if (!placed.ok) {
     diagnostics.push(issue('warning', placed.error.code, placed.error.message, revolutionId));
     return NONE;
@@ -302,38 +313,14 @@ function reconstructTessellated(
     return NONE;
   }
 
-  // web-ifc emits geometry in metres; STL import expects mm to match the
-  // parametric path's units.
-  const stl = packBinaryStl(mesh.vertices, mesh.indices, 1000);
-  let solid: ValidSolid | null = null;
-  try {
-    // getKernel().importSTL returns the kernel's KernelShape (typed `any` at the
-    // WASM boundary); castShape brands it back into a brepjs handle.
-    const cast = castShape(getKernel().importSTL(stl.buffer as ArrayBuffer));
-    if (isSolid(cast)) {
-      const valid = validSolid(cast);
-      if (valid.ok) solid = valid.value;
-      else cast[Symbol.dispose]();
-    } else {
-      cast[Symbol.dispose]();
-    }
-  } catch (e) {
-    diagnostics.push(
-      issue(
-        'info',
-        'TESSELLATION_NOT_MANIFOLD',
-        `STL round-trip failed: ${errMsg(e)}`,
-        productExpressId
-      )
-    );
-  }
-
+  // web-ifc emits geometry in metres; the parametric path works in mm.
+  const solid = sewMeshToSolid(mesh, 1000, productExpressId, diagnostics);
   if (solid !== null) {
     diagnostics.push(
       issue(
         'info',
         'TESSELLATED_MANIFOLD',
-        'Tessellated mesh recovered as a closed solid via STL round-trip',
+        'Tessellated mesh recovered as a closed solid by sewing its triangles',
         productExpressId
       )
     );
@@ -359,6 +346,79 @@ function reconstructTessellated(
 interface MeshData {
   readonly vertices: Float32Array;
   readonly indices: Uint32Array;
+}
+
+/** Kernel handles are `any` at the WASM boundary; the dispose contract is the honest shape. */
+type KernelHandle = Parameters<ReturnType<typeof getKernel>['dispose']>[0];
+
+/** Loose enough to weld float32 vertices web-ifc emits per face, in mm. */
+const MESH_SEW_TOLERANCE_MM = 1e-3;
+
+/**
+ * Brands a fresh kernel result and releases its pre-downcast arena slot when
+ * the cast moved to a new one (occt-wasm); in-place kernels share the slot and
+ * are left alone. Mirrors brepjs's internal castResultShape.
+ */
+function castFreshResult(raw: unknown): ReturnType<typeof castShape> {
+  const cast = castShape(raw);
+  const rawId = (raw as { id?: unknown }).id;
+  const castId = (cast.wrapped as { id?: unknown }).id;
+  const sameSlot =
+    rawId !== undefined && castId !== undefined ? rawId === castId : cast.wrapped === raw;
+  if (!sameSlot) getKernel().dispose(raw as KernelHandle);
+  return cast;
+}
+
+/**
+ * Sews the streamed triangles into a closed solid through the kernel's mesh
+ * builder, the same path brepjs's mesh importers use. Null when the mesh is
+ * open or the kernel rejects it.
+ */
+function sewMeshToSolid(
+  mesh: MeshData,
+  scaleToMm: number,
+  productExpressId: number,
+  diagnostics: ValidationIssue[]
+): ValidSolid | null {
+  const kernel = getKernel();
+  const { vertices, indices } = mesh;
+  const point = (index: number): [number, number, number] => [
+    (vertices[index * 3] ?? 0) * scaleToMm,
+    (vertices[index * 3 + 1] ?? 0) * scaleToMm,
+    (vertices[index * 3 + 2] ?? 0) * scaleToMm,
+  ];
+  const triangles: KernelHandle[] = [];
+  for (let t = 0; t + 2 < indices.length; t += 3) {
+    const face: unknown = kernel.buildTriFace(
+      point(indices[t] ?? 0),
+      point(indices[t + 1] ?? 0),
+      point(indices[t + 2] ?? 0)
+    );
+    if (face !== null) triangles.push(face as KernelHandle);
+  }
+  if (triangles.length === 0) return null;
+  try {
+    // sewAndSolidify copies the faces into a fresh solid, so the triangle
+    // slots are released in `finally` on every path.
+    const sewn: unknown = kernel.sewAndSolidify(triangles, MESH_SEW_TOLERANCE_MM);
+    const cast = castFreshResult(sewn);
+    const valid = isSolid(cast) ? validSolid(cast) : null;
+    if (valid !== null && valid.ok) return valid.value;
+    cast[Symbol.dispose]();
+    return null;
+  } catch (e) {
+    diagnostics.push(
+      issue(
+        'info',
+        'TESSELLATION_NOT_MANIFOLD',
+        `Mesh sewing failed: ${errMsg(e)}`,
+        productExpressId
+      )
+    );
+    return null;
+  } finally {
+    for (const face of triangles) kernel.dispose(face);
+  }
 }
 
 function collectMesh(reader: SpfReader, productExpressId: number): MeshData | null {
@@ -398,41 +458,16 @@ function collectMesh(reader: SpfReader, productExpressId: number): MeshData | nu
         }
       }
     } finally {
-      flatMesh.delete();
+      // web-ifc streams IfcFlatMesh as an embind value object: the nested
+      // geometries vector is the WASM-owned handle, and neither is guaranteed
+      // to expose delete().
+      releaseEmbind(flatMesh.geometries);
+      releaseEmbind(flatMesh);
     }
   });
 
   if (vertices.length === 0) return null;
   return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices) };
-}
-
-// Packs interleaved triangle data into a binary STL buffer. `scaleToMm` converts
-// the source units (metres) to millimetres so the imported solid matches the
-// parametric reconstruction's coordinate space.
-function packBinaryStl(
-  vertices: Float32Array,
-  indices: Uint32Array,
-  scaleToMm: number
-): Uint8Array {
-  const triCount = Math.floor(indices.length / 3);
-  const buffer = new ArrayBuffer(84 + triCount * 50);
-  const view = new DataView(buffer);
-  view.setUint32(80, triCount, true);
-
-  let offset = 84;
-  for (let t = 0; t < triCount; t++) {
-    // Normal left as zero; OCCT recomputes face normals on import.
-    offset += 12;
-    for (let c = 0; c < 3; c++) {
-      const vi = (indices[t * 3 + c] ?? 0) * 3;
-      view.setFloat32(offset, (vertices[vi] ?? 0) * scaleToMm, true);
-      view.setFloat32(offset + 4, (vertices[vi + 1] ?? 0) * scaleToMm, true);
-      view.setFloat32(offset + 8, (vertices[vi + 2] ?? 0) * scaleToMm, true);
-      offset += 12;
-    }
-    offset += 2; // attribute byte count
-  }
-  return new Uint8Array(buffer);
 }
 
 // ---------------------------------------------------------------------------
@@ -642,32 +677,98 @@ function profileToFace(profile: Profile): Result<OrientedFace & PlanarFace, BimE
   return ok(face.value);
 }
 
+/**
+ * IfcParameterizedProfileDef.Position places the profile inside the swept
+ * solid's XY plane; the writers rely on it to corner-anchor centred rectangle
+ * profiles. Absent on arbitrary (polyline) profiles.
+ */
+function readProfilePosition(
+  reader: SpfReader,
+  profileExpressId: number,
+  scale: number
+): MatrixTransform | null {
+  const def = reader.getLine<Record<string, unknown>>(profileExpressId);
+  const positionRef = def === null ? undefined : asRef(def['Position']);
+  if (positionRef === undefined) return null;
+  const position = reader.getLine<Record<string, unknown>>(positionRef.value);
+  if (position === null) return null;
+  const [x, y] = readPoint2D(reader, position['Location'], scale) ?? [0, 0];
+  const [dx, dy] = readDirection2D(reader, position['RefDirection']) ?? [1, 0];
+  const len = Math.hypot(dx, dy);
+  const c = len < 1e-12 ? 1 : dx / len;
+  const s = len < 1e-12 ? 0 : dy / len;
+  return { linear: [c, -s, 0, s, c, 0, 0, 0, 1], translation: [x, y, 0] };
+}
+
 // ---------------------------------------------------------------------------
 // Placement & matrix helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Applies the placement chain (outermost first) as one composed rigid motion.
+ * A second applyMatrix on an already-transformed solid can fail BRepCheck on
+ * occt-wasm, so the frames are never applied one after another.
+ */
 function placeSolid(
   solid: Solid,
-  localFrame: MatrixTransform | null,
-  worldTransform: MatrixTransform | null
+  frames: readonly (MatrixTransform | null)[]
 ): Result<Solid, BimError> {
-  let current = solid;
-  for (const transform of [localFrame, worldTransform]) {
-    if (transform === null || isIdentity(transform)) continue;
-    const applied = applyMatrix(current, transform);
-    if (!applied.ok) {
-      // Free the solid we own (the input on iter 1, an intermediate after) before
-      // bailing — applyMatrix returns a fresh solid and does not consume its input.
-      current[Symbol.dispose]();
-      return err(
-        importError('PLACEMENT_READ_FAILED', `Placement transform failed: ${applied.error.message}`)
-      );
-    }
-    // Dispose the prior solid (caller's input on iter 1, which this consumes).
-    current[Symbol.dispose]();
-    current = applied.value;
+  let composed: MatrixTransform | null = null;
+  for (const frame of frames) {
+    if (frame === null) continue;
+    composed = composed === null ? frame : composeRigid(composed, frame);
   }
-  return ok(current);
+  if (composed === null || isIdentity(composed)) return ok(solid);
+  const applied = applyMatrix(solid, composed);
+  // applyMatrix returns a fresh solid and does not consume its input.
+  solid[Symbol.dispose]();
+  if (!applied.ok) {
+    return err(
+      importError('PLACEMENT_READ_FAILED', `Placement transform failed: ${applied.error.message}`)
+    );
+  }
+  return ok(applied.value);
+}
+
+/** `outer ∘ inner`: the motion that applies `inner` first, then `outer`. */
+function composeRigid(outer: MatrixTransform, inner: MatrixTransform): MatrixTransform {
+  const [a00, a01, a02, a10, a11, a12, a20, a21, a22] = outer.linear;
+  const [b00, b01, b02, b10, b11, b12, b20, b21, b22] = inner.linear;
+  const [tx, ty, tz] = inner.translation;
+  const [ux, uy, uz] = outer.translation;
+  return {
+    linear: [
+      a00 * b00 + a01 * b10 + a02 * b20,
+      a00 * b01 + a01 * b11 + a02 * b21,
+      a00 * b02 + a01 * b12 + a02 * b22,
+      a10 * b00 + a11 * b10 + a12 * b20,
+      a10 * b01 + a11 * b11 + a12 * b21,
+      a10 * b02 + a11 * b12 + a12 * b22,
+      a20 * b00 + a21 * b10 + a22 * b20,
+      a20 * b01 + a21 * b11 + a22 * b21,
+      a20 * b02 + a21 * b12 + a22 * b22,
+    ],
+    translation: [
+      a00 * tx + a01 * ty + a02 * tz + ux,
+      a10 * tx + a11 * ty + a12 * tz + uy,
+      a20 * tx + a21 * ty + a22 * tz + uz,
+    ],
+  };
+}
+
+/** Rᵀ·v for a rigid frame's rotation part. */
+function rotateByTranspose(linear: MatrixTransform['linear'], v: Vec3): Vec3 {
+  return [
+    linear[0] * v[0] + linear[3] * v[1] + linear[6] * v[2],
+    linear[1] * v[0] + linear[4] * v[1] + linear[7] * v[2],
+    linear[2] * v[0] + linear[5] * v[1] + linear[8] * v[2],
+  ];
+}
+
+/** Maps a point from the frame's parent space into the frame: Rᵀ·(p − t). */
+function inverseRigidPoint(frame: MatrixTransform, p: Vec3): Vec3 {
+  const t = frame.translation;
+  return rotateByTranspose(frame.linear, [p[0] - t[0], p[1] - t[1], p[2] - t[2]]);
 }
 
 function finalizeSolid(
@@ -842,6 +943,26 @@ function readPolylinePoints(
   return out.length >= 3 ? out : undefined;
 }
 
+function readPoint2D(reader: SpfReader, ref: unknown, scale: number): [number, number] | undefined {
+  const pointRef = asRef(ref);
+  if (pointRef === undefined) return undefined;
+  const pt = reader.getLine<Record<string, unknown>>(pointRef.value);
+  if (pt === null) return undefined;
+  const coords = asMeasureArray(pt['Coordinates']);
+  if (coords.length < 2) return undefined;
+  return [(coords[0] ?? 0) * scale * 1000, (coords[1] ?? 0) * scale * 1000];
+}
+
+function readDirection2D(reader: SpfReader, ref: unknown): [number, number] | undefined {
+  const dirRef = asRef(ref);
+  if (dirRef === undefined) return undefined;
+  const dir = reader.getLine<Record<string, unknown>>(dirRef.value);
+  if (dir === null) return undefined;
+  const ratios = asMeasureArray(dir['DirectionRatios']);
+  if (ratios.length < 2) return undefined;
+  return [ratios[0] ?? 0, ratios[1] ?? 0];
+}
+
 function readPoint(reader: SpfReader, ref: unknown, scale: number): Vec3 | undefined {
   const pointRef = asRef(ref);
   if (pointRef === undefined) return undefined;
@@ -864,6 +985,10 @@ function readDirection(reader: SpfReader, ref: unknown): Vec3 | undefined {
   const ratios = asMeasureArray(dir['DirectionRatios']);
   if (ratios.length < 3) return undefined;
   return [ratios[0] ?? 0, ratios[1] ?? 0, ratios[2] ?? 0];
+}
+
+function releaseEmbind(value: unknown): void {
+  (value as { delete?: () => void }).delete?.();
 }
 
 function asRef(value: unknown): IfcRef | undefined {
