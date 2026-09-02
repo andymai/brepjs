@@ -28,6 +28,8 @@ export interface SpfReaderSettings {
  * MUST call {@link SpfReader.close} (it always issues `CloseModel`, preventing
  * WASM handle leaks). The handle is `using`-friendly via `Symbol.dispose`.
  */
+const IFC_Z_UP_TRANSFORMATION: number[] = [1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1];
+
 // web-ifc's Emscripten-bound vectors expose `.delete()` at runtime to free WASM
 // heap memory, but the type does not declare it. The optional-method parameter
 // type accepts any object and calls delete() when present — no cast, no `any`.
@@ -77,6 +79,11 @@ export class SpfReader {
         importError('OPEN_MODEL_FAILED', 'web-ifc OpenModel returned an invalid model id')
       );
     }
+
+    // web-ifc composes every streamed mesh placement with its Y-up viewer
+    // normalisation (x, y, z) -> (x, z, -y) regardless of this matrix, so the
+    // inverse is set to get IFC's native Z-up frame back.
+    api.SetGeometryTransformation(modelId, IFC_Z_UP_TRANSFORMATION);
 
     const schemaRaw = api.GetModelSchema(modelId);
     if (!SUPPORTED_SCHEMAS.includes(schemaRaw)) {
