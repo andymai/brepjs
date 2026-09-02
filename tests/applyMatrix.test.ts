@@ -8,6 +8,11 @@ import {
   getBounds,
   measureVolume,
   getKernel,
+  polygon,
+  extrude,
+  isValid,
+  getFaces,
+  getSurfaceType,
   type Matrix4x4,
   type MatrixTransform,
   unwrap,
@@ -248,6 +253,69 @@ describe('applyMatrix', () => {
       const after = getBounds(b);
       expect(after.xMin).toBeCloseTo(before.xMin, 5);
       expect(after.xMax).toBeCloseTo(before.xMax, 5);
+    });
+  });
+  // ── Chained orthogonal transforms ──
+
+  describe('applyMatrix — chained orthogonal transforms', () => {
+    /** Rotation with a 5.7° pitch about X, orthonormal to 2e-16 (from a civil IFC placement). */
+    const PITCHED_ROTATION: MatrixTransform = {
+      linear: [-0.861727, 0.5, 0.086173, -0.497519, -0.866025, 0.049752, 0.099504, 0, 0.995037],
+      translation: [22801.998, 35243.201, -199.007],
+    };
+    const OFFSET: MatrixTransform = {
+      linear: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+      translation: [1217.648, 1800, 0],
+    };
+    const MIRROR_X: Matrix4x4 = [
+      [-1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ];
+
+    function prism() {
+      const rect = unwrap(
+        polygon([
+          [-1217.648, -1800, 0],
+          [1217.648, -1800, 0],
+          [1217.648, 1800, 0],
+          [-1217.648, 1800, 0],
+        ])
+      );
+      return unwrap(extrude(rect, [0, 0, 200]));
+    }
+
+    it('keeps a polygon prism valid through two pitched rotations', () => {
+      const p = prism();
+      const once = unwrap(applyMatrix(p, PITCHED_ROTATION));
+      const twice = unwrap(applyMatrix(once, PITCHED_ROTATION));
+      expect(isValid(twice)).toBe(true);
+      expect(unwrap(measureVolume(twice)) / unwrap(measureVolume(p))).toBeCloseTo(1, 5);
+    });
+
+    it('keeps a polygon prism valid through a translation then a pitched rotation', () => {
+      const p = prism();
+      const moved = unwrap(applyMatrix(p, OFFSET));
+      const placed = unwrap(applyMatrix(moved, PITCHED_ROTATION));
+      expect(isValid(placed)).toBe(true);
+      expect(unwrap(measureVolume(placed)) / unwrap(measureVolume(p))).toBeCloseTo(1, 5);
+    });
+
+    it('keeps planar faces planar through a rotation', () => {
+      const rotated = unwrap(applyMatrix(prism(), PITCHED_ROTATION));
+      const types = getFaces(rotated).map((face) => unwrap(getSurfaceType(face)));
+      expect(types).toEqual(Array<string>(6).fill('PLANE'));
+    });
+
+    it('mirrors a box across X and keeps it valid', () => {
+      const mirrored = unwrap(applyMatrix(box(10, 20, 5), MIRROR_X));
+      expect(isValid(mirrored)).toBe(true);
+      const bounds = getBounds(mirrored);
+      expect(bounds.xMin).toBeCloseTo(-10, 5);
+      expect(bounds.xMax).toBeCloseTo(0, 5);
+      expect(bounds.yMax).toBeCloseTo(20, 5);
+      expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 3);
     });
   });
 });

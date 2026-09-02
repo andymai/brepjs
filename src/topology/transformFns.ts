@@ -205,11 +205,17 @@ function det3x3(
 /**
  * Check if a 3x3 matrix is orthogonal (possibly with uniform scale).
  * M is orthogonal-with-scale if M^T * M = s^2 * I for some scalar s.
+ *
+ * The tolerance is relative to s^2 and deliberately loose: rotations read from
+ * file formats are often rounded to six decimals, which perturbs M^T * M by
+ * about 1e-6. Those must still take the rigid path, which re-orthogonalizes
+ * them, rather than the general affine path, which re-approximates every
+ * surface as a BSpline and drifts out of tolerance when chained.
  */
 function isOrthogonalMatrix(
   m: readonly [number, number, number, number, number, number, number, number, number]
 ): boolean {
-  const TOL = 1e-8;
+  const REL_TOL = 1e-5;
 
   // Compute M^T * M directly: (M^T*M)[i][j] = col_i · col_j
   // Columns of M (row-major): col0 = [m[0],m[3],m[6]], col1 = [m[1],m[4],m[7]], col2 = [m[2],m[5],m[8]]
@@ -220,14 +226,16 @@ function isOrthogonalMatrix(
   const d02 = m[0] * m[2] + m[3] * m[5] + m[6] * m[8];
   const d12 = m[1] * m[2] + m[4] * m[5] + m[7] * m[8];
 
+  const tol = (REL_TOL * (d00 + d11 + d22)) / 3;
+
   // Off-diagonal must be ≈ 0
-  if (Math.abs(d01) > TOL) return false;
-  if (Math.abs(d02) > TOL) return false;
-  if (Math.abs(d12) > TOL) return false;
+  if (Math.abs(d01) > tol) return false;
+  if (Math.abs(d02) > tol) return false;
+  if (Math.abs(d12) > tol) return false;
 
   // Diagonal elements must be equal (uniform scale)
-  if (Math.abs(d00 - d11) > TOL) return false;
-  if (Math.abs(d00 - d22) > TOL) return false;
+  if (Math.abs(d00 - d11) > tol) return false;
+  if (Math.abs(d00 - d22) > tol) return false;
 
   return true;
 }
