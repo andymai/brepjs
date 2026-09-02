@@ -1,23 +1,44 @@
-import { applyMatrix, ok, err } from 'brepjs';
+import { ok, err } from 'brepjs';
 import type { ValidSolid, Result } from 'brepjs';
 import type { AnyBimElement } from '../types/bimTypes.js';
 import type { BimError } from '../errors/bimError.js';
-import { fromBrepError } from '../errors/bimError.js';
-import { placementToMatrix, type FrameInput } from '../import/placement.js';
+import { geometryError } from '../errors/bimError.js';
+import type { FrameInput } from '../import/placement.js';
 import { stairFlightToSolid } from './stairFns.js';
 import { rampFlightToSolid } from './rampFns.js';
+import { bodySolids } from '../types/productBody.js';
+import { locateShapeInFrame } from '../rigidPlacement.js';
+
+export interface PlacedGeometryTestHooks {
+  readonly afterPlaced?: ((solid: ValidSolid) => void) | undefined;
+}
+
+let testHooks: PlacedGeometryTestHooks | null = null;
+
+/** Package-internal deterministic failure seam for placement ownership tests. */
+export function setPlacedGeometryTestHooksForTesting(hooks: PlacedGeometryTestHooks | null): void {
+  testHooks = hooks;
+}
 
 // Applies an (origin, axisX, axisZ) frame to a local solid, returning a fresh
 // caller-owned solid. Orthonormal frames use the validity-preserving transform
 // path, so the result is a ValidSolid.
 function place(solid: ValidSolid, frame: FrameInput): Result<ValidSolid, BimError> {
-  const result = applyMatrix(solid, placementToMatrix(frame));
-  if (!result.ok) {
+  let placed: ValidSolid | null = null;
+  try {
+    placed = locateShapeInFrame(solid, frame);
+    testHooks?.afterPlaced?.(placed);
+    return ok(placed);
+  } catch (cause) {
+    placed?.[Symbol.dispose]();
     return err(
-      fromBrepError(result.error, 'PLACED_GEOMETRY_FAILED', 'Failed to place element geometry')
+      geometryError(
+        'PLACED_GEOMETRY_FAILED',
+        'Element placement threw while transforming geometry',
+        cause
+      )
     );
   }
-  return ok(result.value);
 }
 
 function disposeAll(solids: readonly ValidSolid[]): void {
@@ -69,6 +90,18 @@ export function placedSolids(
   const parentFrame = options.parentFrame;
   switch (el.category) {
     case 'WALL':
+    case 'RAILING': {
+      const out: ValidSolid[] = [];
+      for (const solid of bodySolids(el.geometry)) {
+        const placed = placeWithinParent(solid, el.spec, parentFrame);
+        if (!placed.ok) {
+          disposeAll(out);
+          return placed;
+        }
+        out.push(placed.value);
+      }
+      return ok(out);
+    }
     case 'SLAB':
     case 'BEAM':
     case 'COLUMN':
@@ -76,8 +109,7 @@ export function placedSolids(
     case 'ROOF':
     case 'FOOTING':
     case 'PILE':
-    case 'COVERING':
-    case 'RAILING': {
+    case 'COVERING': {
       const placed = placeWithinParent(el.geometry, el.spec, parentFrame);
       if (!placed.ok) return placed;
       return ok([placed.value]);

@@ -375,6 +375,27 @@ export function writeWallBaseQuantities(
   writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, qtoId);
 }
 
+export function writeExactWallBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  wallExpressId: number,
+  values: {
+    readonly lengthM: number;
+    readonly widthM: number;
+    readonly heightM: number;
+    readonly netVolumeM3: number;
+  }
+): void {
+  const qtyIds = [
+    writeQtyLength(w, 'Length', values.lengthM),
+    writeQtyLength(w, 'Width', values.widthM),
+    writeQtyLength(w, 'Height', values.heightM),
+    writeQtyVolume(w, 'NetVolume', values.netVolumeM3),
+  ];
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_WallBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, qtoId);
+}
+
 export function writeSlabCommonPset(
   w: IfcWriter,
   ownerHistoryId: number,

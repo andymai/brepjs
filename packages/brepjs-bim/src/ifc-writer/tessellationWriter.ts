@@ -3,6 +3,8 @@ import { mesh } from 'brepjs';
 import type { ValidSolid } from 'brepjs';
 import type { IfcWriter } from './ifcWriter.js';
 import { toIfcLengthM } from '../units/units.js';
+import { writeAxis2Placement3D } from './headerWriter.js';
+import type { FrameInput } from '../import/placement.js';
 
 export interface TessellationResult {
   readonly productDefinitionShapeId: number;
@@ -22,6 +24,65 @@ export type TessellationOutput = TessellationResult | TessellationFallbackResult
 // validators do not require fine meshes; finer values bloat the SPF file.
 const IFC_MESH_TOLERANCE_MM = 5;
 const IFC_MESH_ANGULAR_TOLERANCE_RAD = 0.3;
+
+export interface PreparedTessellation {
+  readonly coordList: readonly (readonly [number, number, number])[];
+  readonly coordIndex: readonly (readonly [number, number, number])[];
+}
+
+export type TessellationPreparation =
+  | { readonly ok: true; readonly value: PreparedTessellation }
+  | { readonly ok: false; readonly reason: string; readonly cause?: unknown };
+
+export interface ExactBodyRepresentationIds {
+  readonly localPlacementId: number;
+  readonly productDefinitionShapeId: number;
+  readonly bodyItemIds: readonly number[];
+}
+
+export function prepareTessellation(
+  solid: ValidSolid,
+  toleranceMm: number = IFC_MESH_TOLERANCE_MM
+): TessellationPreparation {
+  let meshData;
+  try {
+    meshData = mesh(solid, {
+      tolerance: toleranceMm,
+      angularTolerance: IFC_MESH_ANGULAR_TOLERANCE_RAD,
+    });
+  } catch (cause) {
+    return {
+      ok: false,
+      reason: cause instanceof Error ? cause.message : String(cause),
+      cause,
+    };
+  }
+
+  const { vertices, triangles } = meshData;
+  if (vertices.length === 0 || triangles.length === 0) {
+    return { ok: false, reason: 'mesh() returned an empty triangle set' };
+  }
+
+  const coordList: Array<readonly [number, number, number]> = [];
+  for (let i = 0; i + 2 < vertices.length; i += 3) {
+    coordList.push([
+      toIfcLengthM(vertices[i] ?? 0),
+      toIfcLengthM(vertices[i + 1] ?? 0),
+      toIfcLengthM(vertices[i + 2] ?? 0),
+    ]);
+  }
+
+  const coordIndex: Array<readonly [number, number, number]> = [];
+  for (let i = 0; i + 2 < triangles.length; i += 3) {
+    coordIndex.push([
+      (triangles[i] ?? 0) + 1,
+      (triangles[i + 1] ?? 0) + 1,
+      (triangles[i + 2] ?? 0) + 1,
+    ]);
+  }
+
+  return { ok: true, value: { coordList, coordIndex } };
+}
 
 /**
  * Writes an IfcTriangulatedFaceSet (preferred IFC4 tessellation) from a brepjs
@@ -47,66 +108,27 @@ export function writeTessellation(
   _localPlacementId: number | null,
   toleranceMm: number = IFC_MESH_TOLERANCE_MM
 ): TessellationOutput {
-  let meshData;
-  try {
-    meshData = mesh(solid, {
-      tolerance: toleranceMm,
-      angularTolerance: IFC_MESH_ANGULAR_TOLERANCE_RAD,
-    });
-  } catch (e) {
-    const reason = e instanceof Error ? e.message : String(e);
+  const prepared = prepareTessellation(solid, toleranceMm);
+  if (!prepared.ok) {
+    const reason = prepared.reason;
     console.warn(`writeTessellation: mesh() failed, using IfcFacetedBrep fallback: ${reason}`);
     return writeFacetedBrepFallback(w, geomSubContextId, reason);
   }
+  const { productDefinitionShapeId } = writePreparedTessellationBody(
+    w,
+    [prepared.value],
+    geomSubContextId
+  );
 
-  const { vertices, triangles } = meshData;
-  if (vertices.length === 0 || triangles.length === 0) {
-    const reason = 'mesh() returned an empty triangle set';
-    console.warn(`writeTessellation: ${reason}, using IfcFacetedBrep fallback`);
-    return writeFacetedBrepFallback(w, geomSubContextId, reason);
-  }
+  return { productDefinitionShapeId, usedFallback: false };
+}
 
-  // Build the coordinate list (metres) as [x, y, z] triples. vertices is a
-  // flat Float32Array of interleaved positions in mm.
-  const coordList: number[][] = [];
-  for (let i = 0; i + 2 < vertices.length; i += 3) {
-    coordList.push([
-      toIfcLengthM(vertices[i] ?? 0),
-      toIfcLengthM(vertices[i + 1] ?? 0),
-      toIfcLengthM(vertices[i + 2] ?? 0),
-    ]);
-  }
-
-  const pointListId = w.nextId();
-  w.writeLine({
-    expressID: pointListId,
-    type: WebIFC.IFCCARTESIANPOINTLIST3D,
-    CoordList: coordList.map((pt) => pt.map((v) => w.mkType(WebIFC.IFCLENGTHMEASURE, v))),
-    TagList: null,
-  });
-
-  // Build 1-based 3-tuple coordinate indices directly from the Uint32Array to
-  // avoid an intermediate flat allocation. triangles holds 0-based vertex ids.
-  const coordIndex: number[][] = [];
-  for (let i = 0; i + 2 < triangles.length; i += 3) {
-    coordIndex.push([
-      (triangles[i] ?? 0) + 1,
-      (triangles[i + 1] ?? 0) + 1,
-      (triangles[i + 2] ?? 0) + 1,
-    ]);
-  }
-
-  const faceSetId = w.nextId();
-  w.writeLine({
-    expressID: faceSetId,
-    type: WebIFC.IFCTRIANGULATEDFACESET,
-    Coordinates: w.ref(pointListId),
-    Normals: null,
-    Closed: w.mkType(WebIFC.IFCBOOLEAN, true),
-    CoordIndex: coordIndex.map((tri) => tri.map((idx) => w.mkType(WebIFC.IFCPOSITIVEINTEGER, idx))),
-    PnIndex: null,
-  });
-
+export function writePreparedTessellationBody(
+  w: IfcWriter,
+  items: readonly PreparedTessellation[],
+  geomSubContextId: number
+): { readonly productDefinitionShapeId: number; readonly bodyItemIds: readonly number[] } {
+  const bodyItemIds = items.map((item) => writePreparedTessellationItem(w, item));
   const shapeRepId = w.nextId();
   w.writeLine({
     expressID: shapeRepId,
@@ -114,7 +136,7 @@ export function writeTessellation(
     ContextOfItems: w.ref(geomSubContextId),
     RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
     RepresentationType: w.mkType(WebIFC.IFCLABEL, 'Tessellation'),
-    Items: [w.ref(faceSetId)],
+    Items: bodyItemIds.map((id) => w.ref(id)),
   });
 
   const productDefinitionShapeId = w.nextId();
@@ -125,8 +147,64 @@ export function writeTessellation(
     Description: null,
     Representations: [w.ref(shapeRepId)],
   });
+  return { productDefinitionShapeId, bodyItemIds };
+}
 
-  return { productDefinitionShapeId, usedFallback: false };
+export function writeExactBodyGeometry(
+  w: IfcWriter,
+  placement: FrameInput,
+  items: readonly PreparedTessellation[],
+  geomSubContextId: number,
+  parentPlacementId: number | null
+): ExactBodyRepresentationIds {
+  const placement3DId = writeAxis2Placement3D(
+    w,
+    [
+      toIfcLengthM(placement.origin[0]),
+      toIfcLengthM(placement.origin[1]),
+      toIfcLengthM(placement.origin[2]),
+    ],
+    [placement.axisZ[0], placement.axisZ[1], placement.axisZ[2]],
+    [placement.axisX[0], placement.axisX[1], placement.axisX[2]]
+  );
+  const localPlacementId = w.nextId();
+  w.writeLine({
+    expressID: localPlacementId,
+    type: WebIFC.IFCLOCALPLACEMENT,
+    PlacementRelTo: parentPlacementId === null ? null : w.ref(parentPlacementId),
+    RelativePlacement: w.ref(placement3DId),
+  });
+  const body = writePreparedTessellationBody(w, items, geomSubContextId);
+  return { localPlacementId, ...body };
+}
+
+export function writePreparedTessellationItem(
+  w: IfcWriter,
+  prepared: PreparedTessellation
+): number {
+  const pointListId = w.nextId();
+  w.writeLine({
+    expressID: pointListId,
+    type: WebIFC.IFCCARTESIANPOINTLIST3D,
+    CoordList: prepared.coordList.map((point) =>
+      point.map((value) => w.mkType(WebIFC.IFCLENGTHMEASURE, value))
+    ),
+    TagList: null,
+  });
+
+  const faceSetId = w.nextId();
+  w.writeLine({
+    expressID: faceSetId,
+    type: WebIFC.IFCTRIANGULATEDFACESET,
+    Coordinates: w.ref(pointListId),
+    Normals: null,
+    Closed: w.mkType(WebIFC.IFCBOOLEAN, true),
+    CoordIndex: prepared.coordIndex.map((triangle) =>
+      triangle.map((index) => w.mkType(WebIFC.IFCPOSITIVEINTEGER, index))
+    ),
+    PnIndex: null,
+  });
+  return faceSetId;
 }
 
 /**

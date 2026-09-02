@@ -9,6 +9,24 @@ import { initIfcApi } from '../ifcRuntime.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 
+export interface IfcWriterApiForTesting {
+  WriteLine(modelId: number, entity: unknown): void;
+  CreateIfcType(modelId: number, type: number, value: unknown): Record<string, unknown>;
+  SaveModel(modelId: number): Uint8Array;
+  CloseModel(modelId: number): void;
+}
+
+export interface IfcWriterTestHooks {
+  readonly afterClose?: (() => void) | undefined;
+}
+
+let testHooks: IfcWriterTestHooks | null = null;
+
+/** Package-internal deterministic lifecycle observation seam. */
+export function setIfcWriterTestHooksForTesting(hooks: IfcWriterTestHooks | null): void {
+  testHooks = hooks;
+}
+
 /** Default MVD ViewDefinition declared in the STEP FILE_DESCRIPTION header. */
 export const DEFAULT_MVD_VIEW_DEFINITION = 'ReferenceView_v1.2';
 
@@ -54,7 +72,7 @@ function normalizeStepReals(bytes: Uint8Array): Uint8Array {
 }
 
 export class IfcWriter {
-  readonly #api: IfcAPI;
+  readonly #api: IfcWriterApiForTesting;
   readonly #modelId: number;
   readonly #mvdViewDefinition: string;
   readonly #author: string;
@@ -66,7 +84,7 @@ export class IfcWriter {
   #modelScope = '';
 
   private constructor(
-    api: IfcAPI,
+    api: IfcWriterApiForTesting,
     modelId: number,
     mvdViewDefinition: string,
     header: IfcHeaderMeta
@@ -93,6 +111,11 @@ export class IfcWriter {
     }
   }
 
+  /** Package-internal lifecycle seam for deterministic writer cleanup tests. */
+  static fromApiForTesting(api: IfcWriterApiForTesting, modelId = 0): IfcWriter {
+    return new IfcWriter(api, modelId, DEFAULT_MVD_VIEW_DEFINITION, {});
+  }
+
   nextId(): number {
     return this.#nextExpressId++;
   }
@@ -112,8 +135,7 @@ export class IfcWriter {
   }
 
   writeLine(entity: { expressID: number } & Record<string, unknown>): number {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
-    this.#api.WriteLine(this.#modelId, entity as any);
+    this.#api.WriteLine(this.#modelId, entity);
     return entity.expressID;
   }
 
@@ -125,8 +147,18 @@ export class IfcWriter {
   }
 
   mkType(type: number, value: unknown): Record<string, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
-    return this.#api.CreateIfcType(this.#modelId, type, value as any) as Record<string, unknown>;
+    return this.#api.CreateIfcType(this.#modelId, type, value);
+  }
+
+  close(): void {
+    if (this.#closed) return;
+    this.#closed = true;
+    this.#api.CloseModel(this.#modelId);
+    testHooks?.afterClose?.();
+  }
+
+  [Symbol.dispose](): void {
+    this.close();
   }
 
   save(): Result<Uint8Array, BimError> {
@@ -139,9 +171,9 @@ export class IfcWriter {
     } catch (e) {
       return err(ifcError('IFC_SAVE_FAILED', 'Failed to serialize IFC model', e));
     } finally {
-      // CloseModel always runs to prevent WASM handle leaks; a failed save is therefore terminal.
-      this.#api.CloseModel(this.#modelId);
-      this.#closed = true;
+      // A failed save is terminal, and close() remains safe when the surrounding
+      // using scope runs afterward.
+      this.close();
     }
   }
 

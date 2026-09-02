@@ -15,8 +15,19 @@ export function specError(code: string, message: string, cause?: unknown): BimEr
   return { kind: 'BIM_SPEC', code, message, cause };
 }
 
-export function ifcError(code: string, message: string, cause?: unknown): BimError {
-  return { kind: 'BIM_IFC', code, message, cause };
+export function ifcError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Readonly<Record<string, unknown>>
+): BimError {
+  return {
+    kind: 'BIM_IFC',
+    code,
+    message,
+    cause,
+    ...(metadata !== undefined ? { metadata } : {}),
+  };
 }
 
 export function geometryError(code: string, message: string, cause?: unknown): BimError {

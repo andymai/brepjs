@@ -61,6 +61,20 @@ declare class BimModel {
   addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
   addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError>;
   /**
+   * Atomically replaces a parametric wall or railing Body with authoritative,
+   * caller-owned exact solids. Success transfers every supplied handle to this
+   * model. Failure leaves both the model and all supplied handles unchanged.
+   */
+  takeExactProductBody(
+    localId: LocalId,
+    body: Extract<
+      ProductBody,
+      {
+        readonly kind: 'EXACT';
+      }
+    >
+  ): Result<void, BimError>;
+  /**
    * Adds an IfcCovering. When `hostLocalId` is supplied, an
    * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
    * finishes) is recorded for export.
@@ -247,6 +261,21 @@ declare function placedSolids(
   el: AnyBimElement,
   options?: PlacedSolidsOptions
 ): Result<readonly ValidSolid[], BimError>;
+
+type NonEmpty<T> = readonly [T, ...T[]];
+
+type ProductBody =
+  | {
+      readonly kind: 'PARAMETRIC';
+      readonly solid: ValidSolid;
+    }
+  | {
+      readonly kind: 'EXACT';
+      readonly solids: NonEmpty<ValidSolid>;
+    };
+
+/** Returns borrowed Product-local solids. The model retains ownership. */
+declare function bodySolids(body: ProductBody): NonEmpty<ValidSolid>;
 
 /** An (origin, axisX, axisZ) frame in mm — the authoring/display side of a placement. */
 interface FrameInput {
@@ -1848,7 +1877,12 @@ interface BimError {
 
 declare function specError(code: string, message: string, cause?: unknown): BimError;
 
-declare function ifcError(code: string, message: string, cause?: unknown): BimError;
+declare function ifcError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Readonly<Record<string, unknown>>
+): BimError;
 
 declare function geometryError(code: string, message: string, cause?: unknown): BimError;
 
