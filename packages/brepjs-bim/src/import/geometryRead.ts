@@ -355,6 +355,21 @@ type KernelHandle = Parameters<ReturnType<typeof getKernel>['dispose']>[0];
 const MESH_SEW_TOLERANCE_MM = 1e-3;
 
 /**
+ * Brands a fresh kernel result and releases its pre-downcast arena slot when
+ * the cast moved to a new one (occt-wasm); in-place kernels share the slot and
+ * are left alone. Mirrors brepjs's internal castResultShape.
+ */
+function castFreshResult(raw: unknown): ReturnType<typeof castShape> {
+  const cast = castShape(raw);
+  const rawId = (raw as { id?: unknown }).id;
+  const castId = (cast.wrapped as { id?: unknown }).id;
+  const sameSlot =
+    rawId !== undefined && castId !== undefined ? rawId === castId : cast.wrapped === raw;
+  if (!sameSlot) getKernel().dispose(raw as KernelHandle);
+  return cast;
+}
+
+/**
  * Sews the streamed triangles into a closed solid through the kernel's mesh
  * builder, the same path brepjs's mesh importers use. Null when the mesh is
  * open or the kernel rejects it.
@@ -385,7 +400,8 @@ function sewMeshToSolid(
   try {
     // sewAndSolidify copies the faces into a fresh solid, so the triangle
     // slots are released in `finally` on every path.
-    const cast = castShape(kernel.sewAndSolidify(triangles, MESH_SEW_TOLERANCE_MM));
+    const sewn: unknown = kernel.sewAndSolidify(triangles, MESH_SEW_TOLERANCE_MM);
+    const cast = castFreshResult(sewn);
     const valid = isSolid(cast) ? validSolid(cast) : null;
     if (valid !== null && valid.ok) return valid.value;
     cast[Symbol.dispose]();
