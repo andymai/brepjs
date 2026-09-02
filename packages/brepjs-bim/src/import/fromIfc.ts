@@ -1,6 +1,6 @@
 import * as WebIFC from 'web-ifc';
-import type { Result, ValidSolid } from 'brepjs';
-import { ok, err, cut } from 'brepjs';
+import type { Bounds3D, Result, ValidSolid } from 'brepjs';
+import { ok, err, cut, getBounds, measureVolume } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { importError } from '../errors/bimError.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
@@ -14,7 +14,7 @@ import {
 import { SpfReader, type SpfReaderSettings } from './spfReader.js';
 import { readLengthScale } from './placement.js';
 import { buildSpatialTree, buildElementContainmentMap, type SpatialNode } from './spatialTree.js';
-import { readBodyGeometry, type GeometryResult } from './geometryRead.js';
+import { readBodyGeometry, readBodyItems } from './geometryRead.js';
 import {
   readPsets,
   readMaterial,
@@ -39,6 +39,19 @@ export interface FromIfcOptions {
   readonly coordinateToOrigin?: boolean | undefined;
   /** Skip body-geometry reconstruction for fast metadata-only reads. Default false. */
   readonly skipGeometry?: boolean | undefined;
+}
+
+export interface FromIfcTestHooks {
+  readonly afterGeometry?: ((expressId: number, geometry: ImportedGeometry) => void) | undefined;
+  readonly afterElement?:
+    ((element: ImportedElement, accumulatedCount: number) => void) | undefined;
+}
+
+let testHooks: FromIfcTestHooks | null = null;
+
+/** Package-internal deterministic failure seam for import ownership tests. */
+export function setFromIfcTestHooksForTesting(hooks: FromIfcTestHooks | null): void {
+  testHooks = hooks;
 }
 
 /**
@@ -95,6 +108,7 @@ export async function fromIfc(
   const readerResult = await SpfReader.create(bytes, settings);
   if (!readerResult.ok) return err(readerResult.error);
   const reader = readerResult.value;
+  const elements: ImportedElement[] = [];
 
   try {
     reader.buildGuidMap();
@@ -115,7 +129,6 @@ export async function fromIfc(
     const containment = buildElementContainmentMap(reader);
     const typeEnums = buildTypePredefinedMap(reader);
 
-    const elements: ImportedElement[] = [];
     const byExpressId = new Map<number, ImportedElement>();
     for (const [type, category] of ELEMENT_TYPES) {
       for (const expressId of reader.getLinesOfType(type)) {
@@ -132,6 +145,7 @@ export async function fromIfc(
         if (element === null) continue;
         elements.push(element);
         byExpressId.set(element.expressId, element);
+        testHooks?.afterElement?.(element, elements.length);
       }
     }
 
@@ -148,6 +162,7 @@ export async function fromIfc(
     };
     return ok(model);
   } catch (e) {
+    disposeElements(elements);
     return err(importError('IMPORT_FAILED', 'Unexpected failure during IFC import', e));
   } finally {
     reader.close();
@@ -169,6 +184,7 @@ function readElement(
   skipGeometry: boolean,
   diagnostics: ValidationIssue[]
 ): ImportedElement | null {
+  let geometry: ImportedGeometry | null = null;
   try {
     const line = reader.getLine<Record<string, unknown>>(expressId);
     if (line === null) {
@@ -193,9 +209,17 @@ function readElement(
     const voidedBy = voids.map((v) => v.openingExpressId);
     const fills = findFills(reader, expressId);
 
-    const geometry: ImportedGeometry = skipGeometry
-      ? { fidelity: 'NONE', solid: null }
+    geometry = skipGeometry
+      ? {
+          fidelity: 'NONE',
+          completeness: 'NONE',
+          solids: [],
+          solid: null,
+          bounds: null,
+          volumeMm3: null,
+        }
       : reconstructGeometry(reader, expressId, scale, voidedBy, diagnostics);
+    testHooks?.afterGeometry?.(expressId, geometry);
 
     const psets = readPsets(reader, expressId).map(toImportedPset);
     const material = readMaterial(reader, expressId, scale);
@@ -219,6 +243,7 @@ function readElement(
       ...(fills !== undefined ? { fills } : {}),
     };
   } catch (e) {
+    if (geometry !== null) disposeGeometry(geometry);
     diagnostics.push(
       issue(
         'error',
@@ -256,8 +281,13 @@ function reconstructGeometry(
   voidedBy: readonly number[],
   diagnostics: ValidationIssue[]
 ): ImportedGeometry {
-  const base = toImportedGeometry(readBodyGeometry(reader, expressId, scale, diagnostics));
-  if (base.fidelity !== 'PARAMETRIC' || base.solid === null || voidedBy.length === 0) {
+  const base = toImportedGeometry(reader, expressId, scale, diagnostics);
+  if (
+    base.fidelity !== 'PARAMETRIC' ||
+    base.completeness !== 'COMPLETE' ||
+    base.solid === null ||
+    voidedBy.length === 0
+  ) {
     return base;
   }
 
@@ -287,25 +317,144 @@ function reconstructGeometry(
     host[Symbol.dispose]();
     host = cutResult.value;
   }
-  return { fidelity: 'PARAMETRIC', solid: host };
+  return completeImportedGeometry('PARAMETRIC', [host], expressId, diagnostics);
 }
 
-function toImportedGeometry(result: GeometryResult): ImportedGeometry {
-  if (result.kind === 'SOLID') {
-    return {
-      fidelity: result.lossy ? 'TESSELLATED_MANIFOLD' : 'PARAMETRIC',
-      solid: result.solid,
-    };
+function toImportedGeometry(
+  reader: SpfReader,
+  expressId: number,
+  scale: number,
+  diagnostics: ValidationIssue[]
+): ImportedGeometry {
+  const body = readBodyItems(reader, expressId, scale, diagnostics);
+  const solids: ValidSolid[] = [];
+  let hasTessellatedSolid = false;
+  let lossyMesh: { readonly vertices: Float32Array; readonly indices: Uint32Array } | null = null;
+  for (const item of body.items) {
+    if (item.kind === 'SOLID') {
+      solids.push(item.solid);
+      hasTessellatedSolid ||= item.lossy;
+    } else if (item.kind === 'MESH' && lossyMesh === null) {
+      lossyMesh = { vertices: item.vertices, indices: item.indices };
+    }
   }
-  if (result.kind === 'MESH') {
-    return {
-      fidelity: 'TESSELLATED_LOSSY',
-      solid: null,
-      meshVertices: result.vertices,
-      meshIndices: result.indices,
-    };
+
+  const completeness =
+    body.hasBody && body.itemCount > 0 && solids.length === body.itemCount
+      ? 'COMPLETE'
+      : solids.length > 0
+        ? 'PARTIAL'
+        : 'NONE';
+  if (completeness === 'PARTIAL') {
+    diagnostics.push(
+      issue(
+        'warning',
+        'PARTIAL_BODY_RECONSTRUCTION',
+        `Reconstructed ${solids.length} of ${body.itemCount} Body items`,
+        expressId,
+        { reconstructedItems: solids.length, bodyItems: body.itemCount }
+      )
+    );
+  } else if (completeness === 'NONE' && body.hasBody) {
+    diagnostics.push(
+      issue(
+        'warning',
+        'BODY_RECONSTRUCTION_NONE',
+        `The Product has ${body.itemCount} Body item(s), but none reconstructed as solids`,
+        expressId,
+        { bodyItems: body.itemCount }
+      )
+    );
   }
-  return { fidelity: 'NONE', solid: null };
+
+  const fidelity =
+    solids.length > 0
+      ? hasTessellatedSolid
+        ? 'TESSELLATED_MANIFOLD'
+        : 'PARAMETRIC'
+      : lossyMesh !== null
+        ? 'TESSELLATED_LOSSY'
+        : 'NONE';
+  const aggregate =
+    completeness === 'COMPLETE'
+      ? measureCompleteBody(solids, expressId, diagnostics)
+      : { bounds: null, volumeMm3: null };
+  return {
+    fidelity,
+    completeness,
+    solids,
+    solid: completeness === 'COMPLETE' && solids.length === 1 ? (solids[0] ?? null) : null,
+    ...aggregate,
+    ...(lossyMesh !== null
+      ? { meshVertices: lossyMesh.vertices, meshIndices: lossyMesh.indices }
+      : {}),
+  };
+}
+
+function completeImportedGeometry(
+  fidelity: ImportedGeometry['fidelity'],
+  solids: readonly [ValidSolid, ...ValidSolid[]],
+  expressId: number,
+  diagnostics: ValidationIssue[]
+): ImportedGeometry {
+  return {
+    fidelity,
+    completeness: 'COMPLETE',
+    solids,
+    solid: solids.length === 1 ? solids[0] : null,
+    ...measureCompleteBody(solids, expressId, diagnostics),
+  };
+}
+
+function measureCompleteBody(
+  solids: readonly ValidSolid[],
+  expressId: number,
+  diagnostics: ValidationIssue[]
+): { readonly bounds: Bounds3D | null; readonly volumeMm3: number | null } {
+  try {
+    const first = solids[0];
+    if (first === undefined) return { bounds: null, volumeMm3: null };
+    const initial = getBounds(first);
+    let xMin = initial.xMin;
+    let xMax = initial.xMax;
+    let yMin = initial.yMin;
+    let yMax = initial.yMax;
+    let zMin = initial.zMin;
+    let zMax = initial.zMax;
+    let volumeMm3 = 0;
+    for (const solid of solids) {
+      const measured = measureVolume(solid);
+      if (!measured.ok) throw new Error(measured.error.message);
+      volumeMm3 += measured.value;
+      const itemBounds = getBounds(solid);
+      xMin = Math.min(xMin, itemBounds.xMin);
+      xMax = Math.max(xMax, itemBounds.xMax);
+      yMin = Math.min(yMin, itemBounds.yMin);
+      yMax = Math.max(yMax, itemBounds.yMax);
+      zMin = Math.min(zMin, itemBounds.zMin);
+      zMax = Math.max(zMax, itemBounds.zMax);
+    }
+    const bounds: Bounds3D = { xMin, xMax, yMin, yMax, zMin, zMax };
+    return { bounds, volumeMm3 };
+  } catch (cause) {
+    diagnostics.push(
+      issue(
+        'warning',
+        'BODY_AGGREGATE_MEASUREMENT_FAILED',
+        `Complete Body aggregate measurement failed: ${errMsg(cause)}`,
+        expressId
+      )
+    );
+    return { bounds: null, volumeMm3: null };
+  }
+}
+
+function disposeGeometry(geometry: ImportedGeometry): void {
+  for (const solid of geometry.solids) solid[Symbol.dispose]();
+}
+
+function disposeElements(elements: readonly ImportedElement[]): void {
+  for (const element of elements) disposeGeometry(element.geometry);
 }
 
 function toImportedPset(pset: DataPset): ImportedPset {
