@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.23.0...brepjs-bim-v0.23.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **bim:** keep element placement through the IFC round trip ([#2273](https://github.com/andymai/brepjs/issues/2273)) ([141d919](https://github.com/andymai/brepjs/commit/141d919d6542547db6168dc2f876622b9cb6161d))
+
 ## [0.23.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.22.0...brepjs-bim-v0.23.0) (2026-08-28)
 
 
