@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "brepjs": "^18.0.0",
+    "brepjs": "^19.0.0",
     "brepjs-bim": ">=0.21.0 <1.0.0",
     "brepjs-families": ">=0.10.0 <1.0.0",
     "occt-wasm": "^4.0.0",
