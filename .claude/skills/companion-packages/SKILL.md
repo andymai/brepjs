@@ -100,7 +100,7 @@ Two consequences worth internalizing: root `npm run validate` does **not** cover
 1. Add the directory to root `package.json` `workspaces`.
 2. Decide the tier: published (needs build, `files`, exports to `dist/`, a `publish-<name>.yml` workflow, and an npm trusted-publisher entry bound to that filename), source-shipped (`exports` → `./src/index.ts`, no build — copy `packages/brepjs-voxel/package.json`), or `private: true`.
 3. Dependency shape: `brepjs` as `">=18.0.0"` peerDependency for library satellites; internal siblings as `"*"`; floor-constrain any external dev tool that Dependabot might flag.
-4. If published: add entries to `release-please-config.json` and `.release-please-manifest.json`, and a dispatch job in `release-please.yml` (mirror `publish-brepjs-bim`). If it must not auto-release (like viewer), leave it out of the config _and_ add it to the root component's `exclude-paths`.
+4. Add the directory to the root component's `exclude-paths` in `release-please-config.json` (every `packages/*` is excluded so satellite-only commits never bump root). If published: add entries to `release-please-config.json` and `.release-please-manifest.json`, and a dispatch job in `release-please.yml` (mirror `publish-brepjs-bim`). If it must not auto-release (like viewer), leave it out of the managed config.
 5. Add a CI job in `ci.yml` modeled on `packages-bim` (build root first if the package imports `brepjs` through dist exports).
 6. If the playground consumes it, append it to `build:deps` in `apps/playground/package.json`.
 7. `npm install` from the repo root to register the workspace in the lockfile — never regenerate the lockfile wholesale.
