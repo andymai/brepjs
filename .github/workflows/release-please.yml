@@ -97,6 +97,15 @@ jobs:
           # Leaf branches carry a `-<pkg>` suffix, so this matches root exactly.
           ROOT_BRANCH: release-please--branches--main--components--brepjs
         run: |
+          # GitHub rejects enablePullRequestAutoMerge on a PR that is already
+          # mergeable ("Pull request is in clean status"), which is exactly the
+          # state a held leaf reaches once its checks finish while it waits for
+          # root. Merge such a PR directly; branch protection still gates it.
+          merge_release_pr() {
+            gh pr merge "$1" --auto --squash --repo "$GH_REPO" \
+              || gh pr merge "$1" --squash --repo "$GH_REPO"
+          }
+
           # Query the live set of open release PRs (release-please labels every
           # one `autorelease: pending`) rather than trusting the action outputs,
           # so a held leaf is picked up on whichever later run unblocks it.
@@ -131,7 +140,7 @@ jobs:
                 ;;
               "$ROOT_BRANCH")
                 echo "MERGE #$number ($title) — root brepjs release goes first"
-                gh pr merge "$number" --auto --squash --repo "$GH_REPO"
+                merge_release_pr "$number"
                 continue
                 ;;
             esac
@@ -150,7 +159,7 @@ jobs:
               echo "HOLD #$number ($title) — waiting for brepjs-families release to merge first"
             else
               echo "MERGE #$number ($title) — no root brepjs release pending"
-              gh pr merge "$number" --auto --squash --repo "$GH_REPO"
+              merge_release_pr "$number"
             fi
           done
 
