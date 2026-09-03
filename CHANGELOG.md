@@ -1,5 +1,16 @@
 # Changelog
 
+## [19.0.0](https://github.com/andymai/brepjs/compare/brepjs-v18.164.3...brepjs-v19.0.0) (2026-09-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **bim:** preserve authoritative exact Product Bodies ([#2286](https://github.com/andymai/brepjs/issues/2286))
+
+### Bug Fixes
+
+* **bim:** preserve authoritative exact Product Bodies ([#2286](https://github.com/andymai/brepjs/issues/2286)) ([15871a0](https://github.com/andymai/brepjs/commit/15871a0bcb0f7665593196329b8114f3228abe15))
+
 ## [18.164.3](https://github.com/andymai/brepjs/compare/brepjs-v18.164.2...brepjs-v18.164.3) (2026-09-03)
 
 
