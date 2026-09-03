@@ -7,9 +7,17 @@
       "bump-minor-pre-major": true,
       "exclude-paths": [
         "apps",
+        "packages/brepjs-bim",
         "packages/brepjs-cad",
+        "packages/brepjs-families",
+        "packages/brepjs-manifold",
+        "packages/brepjs-opencascade",
+        "packages/brepjs-sheetmetal",
         "packages/brepjs-viewer",
-        "packages/brepjs-voxel"
+        "packages/brepjs-voxel",
+        "packages/brepjs-voxel-wasm",
+        "packages/brepjs-vscode",
+        "packages/create-brepjs"
       ]
     },
     "packages/brepjs-opencascade": {

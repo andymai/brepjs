@@ -52,7 +52,7 @@ Note: `scripts/pre-commit-help.sh` and `CONTRIBUTING.md` still say coverage thre
 
 Format: `type(scope): subject`. Types and examples: `CONTRIBUTING.md` "Commit Conventions" (feat, fix, docs, style, refactor, perf, test, chore).
 
-**The `!` breaking-marker trap.** In `release-please-config.json`, the root `brepjs` package excludes only `apps`, `packages/brepjs-cad`, `packages/brepjs-viewer`, and `packages/brepjs-voxel`. Everything else at the repo root — including `docs/`, `scripts/`, and CI config — feeds the root release. Any commit with `!` (or a `BREAKING CHANGE:` footer) touching those paths major-bumps the published `brepjs` library. Never put `!` on site, docs, or tooling commits. When a change genuinely is breaking, confirm it touches the library surface before marking it. Full release pipeline: release-publishing skill.
+**The `!` breaking-marker trap.** In `release-please-config.json`, the root `brepjs` package excludes `apps` and every `packages/*` workspace, so satellite-only commits never touch the root version. Everything else at the repo root — including `docs/`, `scripts/`, and CI config — feeds the root release. Any commit with `!` (or a `BREAKING CHANGE:` footer) touching those paths major-bumps the published `brepjs` library. Never put `!` on site, docs, or tooling commits. When a change genuinely is breaking, confirm it touches the library surface (`src/`) before marking it. Full release pipeline: release-publishing skill.
 
 ## Branches and worktrees
 

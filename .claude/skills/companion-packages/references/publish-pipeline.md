@@ -24,7 +24,7 @@ Eight components, each with its own release PR (`separate-pull-requests: true`) 
 
 ## The `exclude-paths` nuance
 
-`brepjs-voxel`, `packages/brepjs-cad`, `packages/brepjs-viewer`, and `apps` are listed in the root component's `exclude-paths` so root commits touching them do not bump the root library version. Note `packages/brepjs-cad` appears in _both_ the managed list (its own component) and the root's `exclude-paths` (so cad-only commits do not bump root). The other satellite paths (opencascade, voxel-wasm, bim, families, sheetmetal, create-brepjs) are not excluded, so commits there bump the root library as well: that is why a satellite release pairs with a root `brepjs` release each cycle. When adding a new managed package, decide explicitly whether its commits should ride the root version or be added to `exclude-paths`.
+`apps` and every `packages/*` workspace are listed in the root component's `exclude-paths`, so a commit that touches only satellite paths does not bump the root library version. A managed satellite such as `packages/brepjs-bim` therefore appears in _both_ the managed list (its own component) and the root's `exclude-paths`: bim-only commits release bim alone, and a satellite release no longer drags a root `brepjs` release with it. Root still attributes every other repo path (`src/`, `docs/`, `scripts/`, `.github/`), so a `!` on a docs or tooling commit majors root. A new `packages/*` directory must be added to the root `exclude-paths` list, or its commits ride the root version again.
 
 ## Build prerequisites inside publish workflows
 
