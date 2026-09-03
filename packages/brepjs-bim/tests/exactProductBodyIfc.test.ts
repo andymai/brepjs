@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, fuseAll, measureVolume, translate } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
@@ -11,6 +11,10 @@ import type { WallSpec } from '../src/specs/wallSpec.js';
 beforeAll(async () => {
   await initKernel();
 }, 30_000);
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const WALL_SPEC: WallSpec = {
   length: 1_000,
@@ -145,7 +149,6 @@ describe('IfcWriter cleanup', () => {
     writer[Symbol.dispose]();
     expect(result.ok).toBe(!failSave);
     expect(api.closeCalls).toBe(1);
-    vi.restoreAllMocks();
   });
 
   it('closes exactly once when a write throws before save', () => {
