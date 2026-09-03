@@ -14,6 +14,7 @@ import {
   type ExactBodyItemPreparer,
 } from '../src/serialize/exactBodyPreflight.js';
 import { setIfcWriterTestHooksForTesting } from '../src/ifc-writer/ifcWriter.js';
+import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { fromIfc } from '../src/import/fromIfc.js';
 import { disposeImportedModel } from '../src/import/importedModel.js';
 
@@ -350,23 +351,36 @@ describe('exact Product Body IFC integration', () => {
     model[Symbol.dispose]();
   });
 
-  it('closes the IFC writer on a returned exact-item preflight error', async () => {
+  it('preflights every exact Body before writing IFC lines', async () => {
     const model = initializedModel();
     const wallId = required(model.addWall(WALL_SPEC));
-    const exact = box(100, 100, 100);
-    required(model.takeExactProductBody(wallId, { kind: 'EXACT', solids: [exact] }));
-    const failingPreparer: ExactBodyItemPreparer = () => ({
-      ok: false,
-      reason: 'injected preflight failure',
-    });
+    const railingId = required(model.addRailing(RAILING_SPEC));
+    const exactWall = box(100, 100, 100);
+    const exactRailing = box(200, 20, 20);
+    required(model.takeExactProductBody(wallId, { kind: 'EXACT', solids: [exactWall] }));
+    required(model.takeExactProductBody(railingId, { kind: 'EXACT', solids: [exactRailing] }));
+    let prepareCalls = 0;
+    const failingPreparer: ExactBodyItemPreparer = (solid) => {
+      prepareCalls++;
+      return prepareCalls === 2
+        ? { ok: false, reason: 'injected later preflight failure' }
+        : prepareTessellation(solid);
+    };
     setExactBodyItemPreparerForTesting(failingPreparer);
     let closeCalls = 0;
-    setIfcWriterTestHooksForTesting({ afterClose: () => closeCalls++ });
+    let writeCalls = 0;
+    setIfcWriterTestHooksForTesting({
+      afterClose: () => closeCalls++,
+      afterWriteLine: () => writeCalls++,
+    });
 
     const serialized = await toIfc(model, META);
     expect(errorCode(serialized)).toBe('EXACT_BODY_TESSELLATION_FAILED');
+    expect(prepareCalls).toBe(2);
+    expect(writeCalls).toBe(0);
     expect(closeCalls).toBe(1);
-    expect(exact.disposed).toBe(false);
+    expect(exactWall.disposed).toBe(false);
+    expect(exactRailing.disposed).toBe(false);
     model[Symbol.dispose]();
   });
 });

@@ -1,6 +1,7 @@
 import { err, ok, type Result, type ValidSolid } from 'brepjs';
 import { ifcError, type BimError } from '../errors/bimError.js';
 import type { LocalId } from '../identity/localId.js';
+import type { NonEmpty } from '../types/productBody.js';
 import {
   prepareTessellation,
   type PreparedTessellation,
@@ -20,17 +21,19 @@ export function setExactBodyItemPreparerForTesting(
 
 export interface ExactBodyPreflightInput {
   readonly localId: LocalId;
-  readonly solids: readonly ValidSolid[];
+  readonly solids: NonEmpty<ValidSolid>;
   readonly prepareItem?: ExactBodyItemPreparer | undefined;
 }
 
 /** Prepares every exact Body item without writing IFC lines. Source solids remain borrowed. */
 export function preflightExactBody(
   input: ExactBodyPreflightInput
-): Result<readonly PreparedTessellation[], BimError> {
-  const prepared: PreparedTessellation[] = [];
+): Result<NonEmpty<PreparedTessellation>, BimError> {
   const prepareItem = input.prepareItem ?? testItemPreparer ?? prepareTessellation;
-  for (const [itemIndex, solid] of input.solids.entries()) {
+  const prepareAt = (
+    solid: ValidSolid,
+    itemIndex: number
+  ): Result<PreparedTessellation, BimError> => {
     const item = prepareItem(solid);
     if (!item.ok) {
       return err(
@@ -42,7 +45,18 @@ export function preflightExactBody(
         )
       );
     }
-    prepared.push(item.value);
+    return ok(item.value);
+  };
+
+  const [firstSolid, ...remainingSolids] = input.solids;
+  const first = prepareAt(firstSolid, 0);
+  if (!first.ok) return first;
+
+  const remainingPrepared: PreparedTessellation[] = [];
+  for (const [remainingIndex, solid] of remainingSolids.entries()) {
+    const item = prepareAt(solid, remainingIndex + 1);
+    if (!item.ok) return item;
+    remainingPrepared.push(item.value);
   }
-  return ok(prepared);
+  return ok([first.value, ...remainingPrepared]);
 }

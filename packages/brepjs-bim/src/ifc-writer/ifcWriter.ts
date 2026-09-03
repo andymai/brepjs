@@ -17,6 +17,7 @@ export interface IfcWriterApiForTesting {
 }
 
 export interface IfcWriterTestHooks {
+  readonly afterWriteLine?: (() => void) | undefined;
   readonly afterClose?: (() => void) | undefined;
 }
 
@@ -136,6 +137,7 @@ export class IfcWriter {
 
   writeLine(entity: { expressID: number } & Record<string, unknown>): number {
     this.#api.WriteLine(this.#modelId, entity);
+    testHooks?.afterWriteLine?.();
     return entity.expressID;
   }
 

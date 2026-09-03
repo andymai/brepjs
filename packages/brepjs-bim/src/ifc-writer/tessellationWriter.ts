@@ -5,6 +5,7 @@ import type { IfcWriter } from './ifcWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 import { writeAxis2Placement3D } from './headerWriter.js';
 import type { FrameInput } from '../import/placement.js';
+import type { NonEmpty } from '../types/productBody.js';
 
 export interface TessellationResult {
   readonly productDefinitionShapeId: number;
@@ -125,7 +126,7 @@ export function writeTessellation(
 
 export function writePreparedTessellationBody(
   w: IfcWriter,
-  items: readonly PreparedTessellation[],
+  items: NonEmpty<PreparedTessellation>,
   geomSubContextId: number
 ): { readonly productDefinitionShapeId: number; readonly bodyItemIds: readonly number[] } {
   const bodyItemIds = items.map((item) => writePreparedTessellationItem(w, item));
@@ -153,7 +154,7 @@ export function writePreparedTessellationBody(
 export function writeExactBodyGeometry(
   w: IfcWriter,
   placement: FrameInput,
-  items: readonly PreparedTessellation[],
+  items: NonEmpty<PreparedTessellation>,
   geomSubContextId: number,
   parentPlacementId: number | null
 ): ExactBodyRepresentationIds {

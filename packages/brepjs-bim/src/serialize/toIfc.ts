@@ -132,9 +132,50 @@ import {
   type ValidationIssue,
 } from '../validation/severity.js';
 import { bodySolids } from '../types/productBody.js';
+import type { NonEmpty } from '../types/productBody.js';
 import { preflightExactBody } from './exactBodyPreflight.js';
 import { deriveExactWallQuantities } from './exactWallQuantities.js';
-import { writeExactBodyGeometry } from '../ifc-writer/tessellationWriter.js';
+import {
+  writeExactBodyGeometry,
+  type PreparedTessellation,
+} from '../ifc-writer/tessellationWriter.js';
+
+type ExactBodyCapableElement = BimElement<'WALL'> | BimElement<'RAILING'>;
+
+type PreflightedProductElement<E extends ExactBodyCapableElement> =
+  | {
+      readonly kind: 'PARAMETRIC';
+      readonly element: E;
+      readonly solid: ValidSolid;
+    }
+  | {
+      readonly kind: 'EXACT';
+      readonly element: E;
+      readonly solids: NonEmpty<ValidSolid>;
+      readonly items: NonEmpty<PreparedTessellation>;
+    };
+
+function preflightProductBodies<E extends ExactBodyCapableElement>(
+  elements: readonly E[]
+): Result<readonly PreflightedProductElement<E>[], BimError> {
+  const preflighted: PreflightedProductElement<E>[] = [];
+  for (const element of elements) {
+    const body = element.geometry;
+    if (body.kind === 'PARAMETRIC') {
+      preflighted.push({ kind: 'PARAMETRIC', element, solid: body.solid });
+      continue;
+    }
+    const prepared = preflightExactBody({ localId: element.localId, solids: body.solids });
+    if (!prepared.ok) return err(prepared.error);
+    preflighted.push({
+      kind: 'EXACT',
+      element,
+      solids: body.solids,
+      items: prepared.value,
+    });
+  }
+  return ok(preflighted);
+}
 
 export async function toIfc(
   model: BimModel,
@@ -194,6 +235,13 @@ export async function toIfc(
   const assemblies = model.getElementAssemblies();
   const zones = model.getZones();
   const systems = model.getSystems();
+
+  const preflightedWallsResult = preflightProductBodies(walls);
+  if (!preflightedWallsResult.ok) return err(preflightedWallsResult.error);
+  const preflightedRailingsResult = preflightProductBodies(railings);
+  if (!preflightedRailingsResult.ok) return err(preflightedRailingsResult.error);
+  const preflightedWalls = preflightedWallsResult.value;
+  const preflightedRailings = preflightedRailingsResult.value;
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId } =
     writeHeader(w, meta);
@@ -326,26 +374,22 @@ export async function toIfc(
     openingsBySlab.set(rel.slabLocalId, list);
   }
 
-  for (const [i, wall] of walls.entries()) {
+  for (const [i, preflighted] of preflightedWalls.entries()) {
+    const wall = preflighted.element;
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const exactPrepared =
-      wall.geometry.kind === 'EXACT'
-        ? preflightExactBody({ localId: wall.localId, solids: wall.geometry.solids })
-        : null;
-    if (exactPrepared !== null && !exactPrepared.ok) return err(exactPrepared.error);
     const exactQuantities =
-      wall.geometry.kind === 'EXACT'
-        ? deriveExactWallQuantities({ spec: wall.spec, solids: wall.geometry.solids })
+      preflighted.kind === 'EXACT'
+        ? deriveExactWallQuantities({ spec: wall.spec, solids: preflighted.solids })
         : null;
 
     const { localPlacementId, productDefinitionShapeId } =
-      wall.geometry.kind === 'EXACT' && exactPrepared !== null && exactPrepared.ok
+      preflighted.kind === 'EXACT'
         ? writeExactBodyGeometry(
             w,
             wall.spec,
-            exactPrepared.value,
+            preflighted.items,
             geomSubContextId,
             storeyPlacementId
           )
@@ -365,7 +409,7 @@ export async function toIfc(
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
-    if (wall.geometry.kind === 'EXACT') {
+    if (preflighted.kind === 'EXACT') {
       if (exactQuantities !== null && exactQuantities.ok) {
         writeExactWallBaseQuantities(w, ownerHistoryId, wallExpressId, exactQuantities.value);
       }
@@ -746,22 +790,18 @@ export async function toIfc(
     writeRampCommonPset(w, ownerHistoryId, result.value.assemblyExpressId, ramp.spec);
   }
 
-  for (const [i, railing] of railings.entries()) {
+  for (const [i, preflighted] of preflightedRailings.entries()) {
+    const railing = preflighted.element;
     const containingId = findContainerOf(railing.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const exactPrepared =
-      railing.geometry.kind === 'EXACT'
-        ? preflightExactBody({ localId: railing.localId, solids: railing.geometry.solids })
-        : null;
-    if (exactPrepared !== null && !exactPrepared.ok) return err(exactPrepared.error);
     let representation: RailingRepresentationIds;
     let exactBodyItemIds: readonly number[] = [];
-    if (railing.geometry.kind === 'EXACT' && exactPrepared !== null && exactPrepared.ok) {
+    if (preflighted.kind === 'EXACT') {
       const exact = writeExactBodyGeometry(
         w,
         railing.spec,
-        exactPrepared.value,
+        preflighted.items,
         geomSubContextId,
         storeyPlacementId
       );
@@ -771,9 +811,7 @@ export async function toIfc(
       representation = writeRailingGeometry(
         w,
         railing.spec,
-        railing.geometry.kind === 'PARAMETRIC'
-          ? railing.geometry.solid
-          : railing.geometry.solids[0],
+        preflighted.solid,
         geomSubContextId,
         storeyPlacementId
       );
@@ -799,7 +837,7 @@ export async function toIfc(
       writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
     }
     // POSTED railings tessellate and have no single styleable body item.
-    if (railing.geometry.kind === 'EXACT') {
+    if (preflighted.kind === 'EXACT') {
       for (const itemId of exactBodyItemIds) {
         applySurfaceStyle(w, model, railing.localId, itemId);
       }
