@@ -1,0 +1,21 @@
+src/topology/transformFns.ts
+  s_a811f067ed8298::t_242601a5ee8437 231-235
+tests/applyMatrix.test.ts
+  s_a811f067ed8298::t_3bc138f8e8ffb8 278,290-292,298-300,306-307,313-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7dc6f04714a492c4cd108652aeaaa121efdd804e",
+  "prompts": {},
+  "sessions": {
+    "s_a811f067ed8298": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8572dec6-edfe-4e83-b117-87ef836975aa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
