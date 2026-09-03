@@ -402,6 +402,14 @@ export class BimModel {
         specError('EXACT_BODY_EMPTY', 'An exact Product Body must contain at least one solid')
       );
     }
+    if (solids.includes(target.geometry.solid)) {
+      return err(
+        specError(
+          'EXACT_BODY_SOLID_OWNERSHIP_CONFLICT',
+          `Exact Product Body for ${localId} reuses the target parametric solid`
+        )
+      );
+    }
     const identities = new Set<ValidSolid>();
     for (const [itemIndex, solid] of solids.entries()) {
       if (identities.has(solid)) {

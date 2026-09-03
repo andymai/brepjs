@@ -112,6 +112,25 @@ describe('exact wall quantities', () => {
     });
     expect(quantities.ok).toBe(true);
   });
+
+  it('maps a thrown singleton measurement to the omission error', () => {
+    using solid = box(100, 100, 100);
+    const quantities = deriveExactWallQuantities({
+      spec: WALL_SPEC,
+      solids: [solid],
+      dependencies: {
+        measure: () => {
+          throw new Error('injected singleton measurement failure');
+        },
+      },
+    });
+
+    expect(quantities.ok).toBe(false);
+    if (!quantities.ok) {
+      expect(quantities.error.code).toBe('IFC_EXACT_WALL_QUANTITY_DERIVATION_FAILED');
+    }
+    expect(solid.disposed).toBe(false);
+  });
 });
 
 describe('IfcWriter cleanup', () => {

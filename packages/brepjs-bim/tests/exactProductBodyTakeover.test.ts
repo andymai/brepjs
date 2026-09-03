@@ -172,6 +172,26 @@ describe('BimModel.takeExactProductBody', () => {
     rejected[Symbol.dispose]();
     expect(rejectedDisposals).toBe(1);
   });
+
+  it('rejects reuse of the model-owned parametric solid', () => {
+    const model = new BimModel();
+    const wallId = required(model.addWall(WALL_SPEC));
+    const original = requiredElement(model, wallId, 'WALL').geometry;
+    if (original.kind !== 'PARAMETRIC') throw new Error('Expected a parametric wall Body');
+    let originalDisposals = 0;
+    original.solid.onDispose(() => originalDisposals++);
+
+    const takeover = model.takeExactProductBody(wallId, {
+      kind: 'EXACT',
+      solids: [original.solid],
+    });
+
+    expect(errorCode(takeover)).toBe('EXACT_BODY_SOLID_OWNERSHIP_CONFLICT');
+    expect(requiredElement(model, wallId, 'WALL').geometry).toBe(original);
+    expect(original.solid.disposed).toBe(false);
+    model[Symbol.dispose]();
+    expect(originalDisposals).toBe(1);
+  });
 });
 
 describe('exact wall mutation and multi-solid placement', () => {

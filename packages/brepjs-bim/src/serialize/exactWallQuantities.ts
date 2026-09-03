@@ -29,9 +29,13 @@ export function deriveExactWallQuantities(
   let volumeMm3: number;
 
   if (input.solids.length === 1) {
-    const measured = measure(input.solids[0]);
-    if (!measured.ok) return exactVolumeError(measured.error);
-    volumeMm3 = measured.value;
+    try {
+      const measured = measure(input.solids[0]);
+      if (!measured.ok) return exactVolumeError(measured.error);
+      volumeMm3 = measured.value;
+    } catch (cause) {
+      return exactVolumeError(cause);
+    }
   } else {
     const fuse = input.dependencies?.fuse ?? fuseAll;
     let union: ValidSolid | null = null;
