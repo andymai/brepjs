@@ -252,7 +252,12 @@ function measureBody(body: ProductBody): number | null {
 }
 
 function volumesClose(a: number, b: number): boolean {
-  return Math.abs(a - b) <= RELATIVE_VOLUME_TOLERANCE * Math.max(Math.abs(a), Math.abs(b), 1);
+  // Pure relative 1e-6, with Number.EPSILON only so both-zero stays defined.
+  // A unit-volume floor would treat disjoint sub-1 mm³ solids as coincident.
+  return (
+    Math.abs(a - b) <=
+    RELATIVE_VOLUME_TOLERANCE * Math.max(Math.abs(a), Math.abs(b), Number.EPSILON)
+  );
 }
 
 function asNonEmpty(solids: ValidSolid[]): readonly [ValidSolid, ...ValidSolid[]] {

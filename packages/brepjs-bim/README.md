@@ -95,13 +95,16 @@ otherwise supplied. Existing non-semantic Families archetypes continue to use th
 registry beneath Bridge Parts. Bridge, Bridge Part, and Earthworks Fill require IFC4X3; `fromIfc`
 reconstructs their civil spatial hierarchy, direct containment, and typed Earthworks inventory.
 
-The wall and railing routes require `bodyEvaluator` (or the backward-compatible
-`proxyEvaluator` fallback) so the adapter can verify the authored Product Body. It first applies
-registered wall openings to the parametric candidate, then compares that candidate with the
-evaluated source in Product-local coordinates. Coincident bodies retain editable parametric IFC;
-compound, voided, or otherwise different bodies retain their typed Wall or Railing classification
-and export every authoritative item as tessellation. The evaluator's source handles remain
-borrowed. Other typed civil routes continue to use their semantic envelope dimensions.
+Civil-semantic wall and railing routes require `bodyEvaluator` (or the
+`proxyEvaluator` fallback) so the adapter can verify the authored Product Body. Missing the
+evaluator is `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` (element path and mapped category); the
+adapter does not silently keep a parametric envelope. Conventional archetype walls and railings
+stay specification-authoritative and do not need an evaluator. When the evaluator is present, the
+adapter applies registered wall openings to the parametric candidate, then compares that candidate
+with the evaluated source in Product-local coordinates. Coincident bodies retain editable
+parametric IFC; compound, voided, or otherwise different bodies retain their typed Wall or Railing
+classification and export every authoritative item as tessellation. The evaluator's source handles
+remain borrowed. Other typed civil routes continue to use their semantic envelope dimensions.
 
 This is deliberately not a claim of complete IFC infrastructure coverage or unchanged parity with
 the full scratch prototype. Member and Sign remain outside the profile: without `proxyEvaluator`

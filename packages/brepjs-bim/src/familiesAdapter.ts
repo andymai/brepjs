@@ -84,10 +84,15 @@ export interface FamiliesToBimOptions {
   readonly buildingName?: string | undefined;
   /**
    * Materializes exact evaluated Product Bodies for supported typed routes.
-   * Earthworks Fill always retains that Body; civil walls and railings compare
-   * it with their post-opening parametric Body and retain it when they differ.
-   * Supplying this option does not opt unsupported products into the proxy
-   * fallback.
+   * Earthworks Fill always retains that Body. Civil-semantic walls and railings
+   * require this evaluator (or `proxyEvaluator`) before projection: absence
+   * returns FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED with the element path and
+   * mapped category, and does not fall back to a parametric envelope.
+   * Conventional archetype walls and railings stay specification-authoritative
+   * and do not require an evaluator. When present, civil walls and railings
+   * compare the evaluated Body with their post-opening parametric Body and
+   * retain the authored Body when they differ. Supplying this option does not
+   * opt unsupported products into the proxy fallback.
    */
   readonly bodyEvaluator?: csg.Evaluator | undefined;
   /**

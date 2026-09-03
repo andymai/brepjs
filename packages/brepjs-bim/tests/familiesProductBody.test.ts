@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { csg, getSolids, isSolid, unwrap, type Solid } from 'brepjs';
+import { csg, getSolids, isSolid, measureVolume, unwrap, type Solid } from 'brepjs';
 import {
   civilSemantics,
   el,
@@ -67,6 +67,20 @@ const ShiftedWall = family(
   { semantics: wallSemantics() }
 );
 
+const TinyUnequalWall = family(
+  'TinyUnequalWall',
+  () => el('Geometry', { node: csg.box(0.008, 0.008, 0.008) }),
+  {
+    semantics: civilSemantics({
+      kind: 'product',
+      category: 'wall',
+      role: 'wall',
+      material: 'Concrete',
+      dimensionsMm: { length: 0.01, width: 0.01, height: 0.01 },
+    }),
+  }
+);
+
 const MultiSolidRailing = family(
   'MultiSolidRailing',
   () =>
@@ -115,6 +129,38 @@ describe('Families civil Product Body authority', () => {
     const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
     expect(wall.geometry.kind).toBe('EXACT');
     expect(bodySolids(wall.geometry)).toHaveLength(1);
+  });
+
+  it('selects EXACT when two sub-1 mm³ volumes disagree relatively', () => {
+    const root = oneProduct(TinyUnequalWall({ key: 'wall' }));
+    using evaluator = new csg.Evaluator();
+    let candidateVolumes: readonly [number, number] | null = null;
+    setFamiliesProductBodyTestHooksForTesting({
+      beforeCoincidence: (exact, parametric) => {
+        const exactSolid = bodySolids(exact)[0];
+        const parametricSolid = bodySolids(parametric)[0];
+        if (exactSolid === undefined || parametricSolid === undefined) {
+          throw new Error('Expected coincidence solids');
+        }
+        candidateVolumes = [
+          unwrap(measureVolume(exactSolid)),
+          unwrap(measureVolume(parametricSolid)),
+        ];
+      },
+    });
+    const projected = unwrap(familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator }));
+    using model = projected.model;
+    const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
+    expect(wall.geometry.kind).toBe('EXACT');
+    expect(candidateVolumes).not.toBeNull();
+    if (candidateVolumes === null) throw new Error('Expected coincidence volumes');
+    const [authoredVolume, parametricVolume] = candidateVolumes;
+    expect(authoredVolume).toBeLessThan(1);
+    expect(parametricVolume).toBeLessThan(1);
+    expect(Math.abs(authoredVolume - parametricVolume)).toBeLessThan(1e-6);
+    expect(Math.abs(authoredVolume - parametricVolume)).toBeGreaterThan(
+      1e-6 * Math.max(Math.abs(authoredVolume), Math.abs(parametricVolume))
+    );
   });
 
   it('requires an evaluator for every activated civil wall or railing', () => {

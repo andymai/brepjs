@@ -680,15 +680,13 @@ describe('archetype routing', () => {
     const wall = model.getElement(wallId);
     expect(wall?.category).toBe('WALL');
     if (wall?.category !== 'WALL') throw new Error('Expected projected wall');
-    expect(candidateVolumes).toEqual([
-      3_000 * 200 * 2_700 - 900 * 200 * 2_100,
-      3_000 * 200 * 2_700 - 900 * 200 * 2_100,
-    ]);
+    const expectedVolume = 3_000 * 200 * 2_700 - 900 * 200 * 2_100;
+    expect(candidateVolumes).not.toBeNull();
+    if (candidateVolumes === null) throw new Error('Expected coincidence volumes');
+    expect(candidateVolumes[0]).toBeCloseTo(expectedVolume, 3);
+    expect(candidateVolumes[1]).toBeCloseTo(expectedVolume, 3);
     expect(wall.geometry.kind).toBe('PARAMETRIC');
-    expect(unwrap(measureVolume(bodySolids(wall.geometry)[0]))).toBeCloseTo(
-      3_000 * 200 * 2_700 - 900 * 200 * 2_100,
-      3
-    );
+    expect(unwrap(measureVolume(bodySolids(wall.geometry)[0]))).toBeCloseTo(expectedVolume, 3);
     expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS_WALL')).toHaveLength(1);
     expect(model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')).toHaveLength(
       1
