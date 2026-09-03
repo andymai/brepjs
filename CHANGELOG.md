@@ -1,5 +1,12 @@
 # Changelog
 
+## [19.0.1](https://github.com/andymai/brepjs/compare/brepjs-v19.0.0...brepjs-v19.0.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **create-brepjs:** track brepjs 19 in the scaffold template ([#2289](https://github.com/andymai/brepjs/issues/2289)) ([66010dd](https://github.com/andymai/brepjs/commit/66010ddfd4c548c035a9bfbb59d8c64b958abb0d))
+
 ## [19.0.0](https://github.com/andymai/brepjs/compare/brepjs-v18.164.3...brepjs-v19.0.0) (2026-09-03)
 
 
