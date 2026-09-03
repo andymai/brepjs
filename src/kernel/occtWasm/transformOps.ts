@@ -170,7 +170,7 @@ export function generalTransform(
   shape: KernelShape,
   linear: readonly [number, number, number, number, number, number, number, number, number],
   translation: readonly [number, number, number],
-  _isOrthogonal: boolean
+  isOrthogonal: boolean
 ): KernelShape {
   // 3x4 row-major matrix from 3x3 linear + translation (C++ facade expects 12 elements).
   const matrix = [
@@ -189,7 +189,14 @@ export function generalTransform(
   ];
   const vec = makeVecDouble(Module, matrix);
   try {
-    return wrapResult(k, k.generalTransform(unwrap(shape), vec));
+    // The facade's generalTransform is gp_GTrsf + BRepBuilderAPI_GTransform, which
+    // re-approximates every surface and curve as a BSpline. Rigid motions, uniform
+    // scale and mirrors must take the gp_Trsf path so planar faces stay planar and a
+    // chain of transforms stays within tolerance.
+    return wrapResult(
+      k,
+      isOrthogonal ? k.transform(unwrap(shape), vec) : k.generalTransform(unwrap(shape), vec)
+    );
   } finally {
     vec.delete();
   }
