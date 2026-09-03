@@ -228,6 +228,11 @@ function isOrthogonalMatrix(
 
   const tol = (REL_TOL * (d00 + d11 + d22)) / 3;
 
+  // Overflow (entries ≈1e154+) or NaN entries make the trace non-finite; an
+  // unverifiable Gram matrix can't be claimed rigid, so fall through to the general path.
+  /* v8 ignore next -- reachable only for degenerate non-finite matrices */
+  if (!Number.isFinite(tol)) return false;
+
   // Off-diagonal must be ≈ 0
   if (Math.abs(d01) > tol) return false;
   if (Math.abs(d02) > tol) return false;

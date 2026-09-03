@@ -275,7 +275,7 @@ describe('applyMatrix', () => {
     ];
 
     function prism() {
-      const rect = unwrap(
+      using rect = unwrap(
         polygon([
           [-1217.648, -1800, 0],
           [1217.648, -1800, 0],
@@ -287,29 +287,31 @@ describe('applyMatrix', () => {
     }
 
     it('keeps a polygon prism valid through two pitched rotations', () => {
-      const p = prism();
-      const once = unwrap(applyMatrix(p, PITCHED_ROTATION));
-      const twice = unwrap(applyMatrix(once, PITCHED_ROTATION));
+      using p = prism();
+      using once = unwrap(applyMatrix(p, PITCHED_ROTATION));
+      using twice = unwrap(applyMatrix(once, PITCHED_ROTATION));
       expect(isValid(twice)).toBe(true);
       expect(unwrap(measureVolume(twice)) / unwrap(measureVolume(p))).toBeCloseTo(1, 5);
     });
 
     it('keeps a polygon prism valid through a translation then a pitched rotation', () => {
-      const p = prism();
-      const moved = unwrap(applyMatrix(p, OFFSET));
-      const placed = unwrap(applyMatrix(moved, PITCHED_ROTATION));
+      using p = prism();
+      using moved = unwrap(applyMatrix(p, OFFSET));
+      using placed = unwrap(applyMatrix(moved, PITCHED_ROTATION));
       expect(isValid(placed)).toBe(true);
       expect(unwrap(measureVolume(placed)) / unwrap(measureVolume(p))).toBeCloseTo(1, 5);
     });
 
     it('keeps planar faces planar through a rotation', () => {
-      const rotated = unwrap(applyMatrix(prism(), PITCHED_ROTATION));
+      using base = prism();
+      using rotated = unwrap(applyMatrix(base, PITCHED_ROTATION));
       const types = getFaces(rotated).map((face) => unwrap(getSurfaceType(face)));
       expect(types).toEqual(Array<string>(6).fill('PLANE'));
     });
 
     it('mirrors a box across X and keeps it valid', () => {
-      const mirrored = unwrap(applyMatrix(box(10, 20, 5), MIRROR_X));
+      using src = box(10, 20, 5);
+      using mirrored = unwrap(applyMatrix(src, MIRROR_X));
       expect(isValid(mirrored)).toBe(true);
       const bounds = getBounds(mirrored);
       expect(bounds.xMin).toBeCloseTo(-10, 5);
