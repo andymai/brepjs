@@ -1,0 +1,19 @@
+.github/workflows/release-please.yml
+  s_51fcfdc2bade70::t_b26b043490fbd9 100-108,143,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f8f05ac83f506435b1c6950a933c807f8144062d",
+  "prompts": {},
+  "sessions": {
+    "s_51fcfdc2bade70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51432e00-e4fe-41bd-b4c9-e0a8990f2e68",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
