@@ -1,5 +1,5 @@
 import type { Result, ValidSolid } from 'brepjs';
-import { ok, err, cut } from 'brepjs';
+import { ok, err, cut, isValidSolid } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync, makeElementKey, makeRelKey } from '../identity/guidDerivation.js';
 import type { LocalId } from '../identity/localId.js';
@@ -66,6 +66,7 @@ import { curtainWallToGrid } from '../elementFns/curtainWallFns.js';
 import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
 import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
+import { disposeProductBody, type ProductBody } from '../types/productBody.js';
 
 /** Optional identity override for created elements: a stable key (e.g. a
  *  families key path) that replaces the positional GlobalId derivation. */
@@ -77,6 +78,15 @@ export interface ElementIdentityOptions {
  *  the filler (door/window), `openingStableKey` the synthesized opening. */
 export interface OpeningIdentityOptions extends ElementIdentityOptions {
   readonly openingStableKey?: string | undefined;
+}
+
+function exactWallBodyImmutable(): Result<never, BimError> {
+  return err(
+    specError(
+      'EXACT_WALL_BODY_IMMUTABLE',
+      'Cannot add an opening after a wall has taken an exact Product Body'
+    )
+  );
 }
 
 export class BimModel {
@@ -110,7 +120,6 @@ export class BimModel {
   [Symbol.dispose](): void {
     for (const el of this.#elements.values()) {
       if (
-        el.category === 'WALL' ||
         el.category === 'SLAB' ||
         el.category === 'BEAM' ||
         el.category === 'COLUMN' ||
@@ -120,10 +129,11 @@ export class BimModel {
         el.category === 'ROOF' ||
         el.category === 'FOOTING' ||
         el.category === 'PILE' ||
-        el.category === 'RAILING' ||
         el.category === 'COVERING'
       ) {
         el.geometry[Symbol.dispose]();
+      } else if (el.category === 'WALL' || el.category === 'RAILING') {
+        disposeProductBody(el.geometry);
       } else if (el.category === 'CURTAIN_WALL') {
         // Curtain wall geometry is a grid of component solids (panels + mullions).
         for (const panel of el.geometry.panels) panel.solid[Symbol.dispose]();
@@ -209,7 +219,12 @@ export class BimModel {
     if (!keyCheck.ok) return keyCheck;
     const geomResult = wallToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('WALL', spec, geomResult.value, options?.stableKey);
+    const id = this.#makeElement(
+      'WALL',
+      spec,
+      { kind: 'PARAMETRIC', solid: geomResult.value },
+      options?.stableKey
+    );
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
@@ -338,10 +353,106 @@ export class BimModel {
     if (!keyCheck.ok) return keyCheck;
     const geomResult = railingToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('RAILING', spec, geomResult.value, options?.stableKey);
+    const id = this.#makeElement(
+      'RAILING',
+      spec,
+      { kind: 'PARAMETRIC', solid: geomResult.value },
+      options?.stableKey
+    );
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
+  }
+
+  /**
+   * Atomically replaces a parametric wall or railing Body with authoritative,
+   * caller-owned exact solids. Success transfers every supplied handle to this
+   * model. Failure leaves both the model and all supplied handles unchanged.
+   */
+  takeExactProductBody(
+    localId: LocalId,
+    body: Extract<ProductBody, { readonly kind: 'EXACT' }>
+  ): Result<void, BimError> {
+    const target = this.#elements.get(localId);
+    if (target === undefined) {
+      return err(
+        specError('EXACT_BODY_TARGET_NOT_FOUND', `No element found for localId ${localId}`)
+      );
+    }
+    if (target.category !== 'WALL' && target.category !== 'RAILING') {
+      return err(
+        specError(
+          'EXACT_BODY_UNSUPPORTED_CATEGORY',
+          `Exact Product Bodies are supported only for walls and railings, not ${target.category}`
+        )
+      );
+    }
+    if (target.geometry.kind === 'EXACT') {
+      return err(
+        specError(
+          'EXACT_BODY_ALREADY_EXACT',
+          `Element ${localId} already has an exact Product Body`
+        )
+      );
+    }
+
+    const solids: readonly ValidSolid[] = body.solids;
+    if (solids.length === 0) {
+      return err(
+        specError('EXACT_BODY_EMPTY', 'An exact Product Body must contain at least one solid')
+      );
+    }
+    if (solids.includes(target.geometry.solid)) {
+      return err(
+        specError(
+          'EXACT_BODY_SOLID_OWNERSHIP_CONFLICT',
+          `Exact Product Body for ${localId} reuses the target parametric solid`
+        )
+      );
+    }
+    const identities = new Set<ValidSolid>();
+    for (const [itemIndex, solid] of solids.entries()) {
+      if (identities.has(solid)) {
+        return err(
+          specError(
+            'EXACT_BODY_DUPLICATE_SOLID',
+            `Exact Product Body item ${itemIndex} duplicates an earlier handle`
+          )
+        );
+      }
+      identities.add(solid);
+      if (solid.disposed) {
+        return err(
+          specError(
+            'EXACT_BODY_SOLID_DISPOSED',
+            `Exact Product Body item ${itemIndex} is already disposed`
+          )
+        );
+      }
+      try {
+        if (!isValidSolid(solid)) {
+          return err(
+            specError(
+              'EXACT_BODY_SOLID_INVALID',
+              `Exact Product Body item ${itemIndex} is not a valid solid`
+            )
+          );
+        }
+      } catch (cause) {
+        return err(
+          specError(
+            'EXACT_BODY_SOLID_INVALID',
+            `Exact Product Body item ${itemIndex} could not be validated`,
+            cause
+          )
+        );
+      }
+    }
+
+    const replaced = { ...target, geometry: body } as BimElement<'WALL'> | BimElement<'RAILING'>;
+    this.#elements.set(localId, replaced);
+    disposeProductBody(target.geometry);
+    return ok(undefined);
   }
 
   /**
@@ -601,12 +712,13 @@ export class BimModel {
   }
 
   addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkOpeningKeys(options);
-    if (!keyCheck.ok) return keyCheck;
     const wall = this.#elements.get(spec.wallLocalId);
     if (wall === undefined || wall.category !== 'WALL') {
       return err(specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
     }
+    if (wall.geometry.kind === 'EXACT') return exactWallBodyImmutable();
+    const keyCheck = this.#checkOpeningKeys(options);
+    if (!keyCheck.ok) return keyCheck;
     if (spec.offsetAlongWall + spec.width > wall.spec.length) {
       return err(
         specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetAlongWall + width) exceeds wall length')
@@ -650,14 +762,15 @@ export class BimModel {
   }
 
   addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkOpeningKeys(options);
-    if (!keyCheck.ok) return keyCheck;
     const wall = this.#elements.get(spec.wallLocalId);
     if (wall === undefined || wall.category !== 'WALL') {
       return err(
         specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`)
       );
     }
+    if (wall.geometry.kind === 'EXACT') return exactWallBodyImmutable();
+    const keyCheck = this.#checkOpeningKeys(options);
+    if (!keyCheck.ok) return keyCheck;
     if (spec.offsetAlongWall + spec.width > wall.spec.length) {
       return err(
         specError(
@@ -784,10 +897,13 @@ export class BimModel {
     wall: BimElement<'WALL'>,
     openingSpec: WallOpeningSpec
   ): Result<ValidSolid, BimError> {
+    if (wall.geometry.kind === 'EXACT') {
+      return exactWallBodyImmutable();
+    }
     const toolResult = openingToSolid(openingSpec, wall.spec.thickness);
     if (!toolResult.ok) return err(toolResult.error);
     using tool = toolResult.value;
-    const cutResult = cut(wall.geometry, tool);
+    const cutResult = cut(wall.geometry.solid, tool);
     if (!cutResult.ok) {
       return err(
         fromBrepError(cutResult.error, 'WALL_CUT_FAILED', 'Boolean cut of wall with opening failed')
@@ -798,9 +914,12 @@ export class BimModel {
 
   #replaceWallGeometry(wall: BimElement<'WALL'>, newGeometry: ValidSolid): void {
     const oldGeometry = wall.geometry;
-    const replaced: BimElement<'WALL'> = { ...wall, geometry: newGeometry };
+    const replaced: BimElement<'WALL'> = {
+      ...wall,
+      geometry: { kind: 'PARAMETRIC', solid: newGeometry },
+    };
     this.#elements.set(wall.localId, replaced);
-    oldGeometry[Symbol.dispose]();
+    disposeProductBody(oldGeometry);
   }
 
   #cutSlabGeometry(

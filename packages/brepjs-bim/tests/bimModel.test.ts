@@ -162,8 +162,10 @@ describe('BimModel', () => {
     if (!result.ok) throw new Error(result.error.message);
     const wall = model.getElement(result.value);
     if (!wall || wall.category !== 'WALL') throw new Error('Expected wall element');
+    expect(wall.geometry.kind).toBe('PARAMETRIC');
+    if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
     model[Symbol.dispose]();
-    expect(wall.geometry.disposed).toBe(true);
+    expect(wall.geometry.solid.disposed).toBe(true);
   });
 
   it('addEarthworksFill keeps a rejected duplicate body caller-owned', () => {
@@ -357,7 +359,8 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
   function wallVolume(model: BimModel): number {
     const wall = model.getWalls()[0];
     if (!wall) throw new Error('Expected one wall');
-    return unwrap(measureVolume(wall.geometry));
+    if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
+    return unwrap(measureVolume(wall.geometry.solid));
   }
 
   it('wall volume drops by door volume after addDoor', () => {

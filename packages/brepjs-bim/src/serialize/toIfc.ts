@@ -34,7 +34,11 @@ import {
   writePileEntity,
 } from '../ifc-writer/foundationWriter.js';
 import { writeStairAssembly, writeRampAssembly } from '../ifc-writer/stairWriter.js';
-import { writeRailingGeometry, writeRailingEntity } from '../ifc-writer/railingWriter.js';
+import {
+  writeRailingGeometry,
+  writeRailingEntity,
+  type RailingRepresentationIds,
+} from '../ifc-writer/railingWriter.js';
 import {
   writeCoveringGeometry,
   writeCoveringEntity,
@@ -70,6 +74,7 @@ import {
   writeManufacturerPset,
   writeCustomPsets,
   writeWallBaseQuantities,
+  writeExactWallBaseQuantities,
   writeSlabCommonPset,
   writeSlabBaseQuantities,
   writeBeamCommonPset,
@@ -126,6 +131,51 @@ import {
   type ValidationReport,
   type ValidationIssue,
 } from '../validation/severity.js';
+import { bodySolids } from '../types/productBody.js';
+import type { NonEmpty } from '../types/productBody.js';
+import { preflightExactBody } from './exactBodyPreflight.js';
+import { deriveExactWallQuantities } from './exactWallQuantities.js';
+import {
+  writeExactBodyGeometry,
+  type PreparedTessellation,
+} from '../ifc-writer/tessellationWriter.js';
+
+type ExactBodyCapableElement = BimElement<'WALL'> | BimElement<'RAILING'>;
+
+type PreflightedProductElement<E extends ExactBodyCapableElement> =
+  | {
+      readonly kind: 'PARAMETRIC';
+      readonly element: E;
+      readonly solid: ValidSolid;
+    }
+  | {
+      readonly kind: 'EXACT';
+      readonly element: E;
+      readonly solids: NonEmpty<ValidSolid>;
+      readonly items: NonEmpty<PreparedTessellation>;
+    };
+
+function preflightProductBodies<E extends ExactBodyCapableElement>(
+  elements: readonly E[]
+): Result<readonly PreflightedProductElement<E>[], BimError> {
+  const preflighted: PreflightedProductElement<E>[] = [];
+  for (const element of elements) {
+    const body = element.geometry;
+    if (body.kind === 'PARAMETRIC') {
+      preflighted.push({ kind: 'PARAMETRIC', element, solid: body.solid });
+      continue;
+    }
+    const prepared = preflightExactBody({ localId: element.localId, solids: body.solids });
+    if (!prepared.ok) return err(prepared.error);
+    preflighted.push({
+      kind: 'EXACT',
+      element,
+      solids: body.solids,
+      items: prepared.value,
+    });
+  }
+  return ok(preflighted);
+}
 
 export async function toIfc(
   model: BimModel,
@@ -157,7 +207,7 @@ export async function toIfc(
     organization: meta.organizationName,
   });
   if (!writerResult.ok) return writerResult;
-  const w = writerResult.value;
+  using w = writerResult.value;
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
   w.setModelScope(project.guid);
 
@@ -185,6 +235,13 @@ export async function toIfc(
   const assemblies = model.getElementAssemblies();
   const zones = model.getZones();
   const systems = model.getSystems();
+
+  const preflightedWallsResult = preflightProductBodies(walls);
+  if (!preflightedWallsResult.ok) return err(preflightedWallsResult.error);
+  const preflightedRailingsResult = preflightProductBodies(railings);
+  if (!preflightedRailingsResult.ok) return err(preflightedRailingsResult.error);
+  const preflightedWalls = preflightedWallsResult.value;
+  const preflightedRailings = preflightedRailingsResult.value;
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId } =
     writeHeader(w, meta);
@@ -317,16 +374,26 @@ export async function toIfc(
     openingsBySlab.set(rel.slabLocalId, list);
   }
 
-  for (const [i, wall] of walls.entries()) {
+  for (const [i, preflighted] of preflightedWalls.entries()) {
+    const wall = preflighted.element;
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId } = writeWallGeometry(
-      w,
-      wall.spec,
-      geomSubContextId,
-      storeyPlacementId
-    );
+    const exactQuantities =
+      preflighted.kind === 'EXACT'
+        ? deriveExactWallQuantities({ spec: wall.spec, solids: preflighted.solids })
+        : null;
+
+    const { localPlacementId, productDefinitionShapeId } =
+      preflighted.kind === 'EXACT'
+        ? writeExactBodyGeometry(
+            w,
+            wall.spec,
+            preflighted.items,
+            geomSubContextId,
+            storeyPlacementId
+          )
+        : writeWallGeometry(w, wall.spec, geomSubContextId, storeyPlacementId);
     const wallExpressId = writeWallEntity(
       w,
       wall.guid,
@@ -342,14 +409,20 @@ export async function toIfc(
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
-    writeWallBaseQuantities(
-      w,
-      ownerHistoryId,
-      wallExpressId,
-      wall.spec,
-      openingsByWall.get(wall.localId) ?? [],
-      densityByElement.get(wall.localId)
-    );
+    if (preflighted.kind === 'EXACT') {
+      if (exactQuantities !== null && exactQuantities.ok) {
+        writeExactWallBaseQuantities(w, ownerHistoryId, wallExpressId, exactQuantities.value);
+      }
+    } else {
+      writeWallBaseQuantities(
+        w,
+        ownerHistoryId,
+        wallExpressId,
+        wall.spec,
+        openingsByWall.get(wall.localId) ?? [],
+        densityByElement.get(wall.localId)
+      );
+    }
   }
 
   for (const [i, slab] of slabs.entries()) {
@@ -717,12 +790,33 @@ export async function toIfc(
     writeRampCommonPset(w, ownerHistoryId, result.value.assemblyExpressId, ramp.spec);
   }
 
-  for (const [i, railing] of railings.entries()) {
+  for (const [i, preflighted] of preflightedRailings.entries()) {
+    const railing = preflighted.element;
     const containingId = findContainerOf(railing.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const { localPlacementId, productDefinitionShapeId, bodyItemId, usedFallback } =
-      writeRailingGeometry(w, railing.spec, railing.geometry, geomSubContextId, storeyPlacementId);
+    let representation: RailingRepresentationIds;
+    let exactBodyItemIds: readonly number[] = [];
+    if (preflighted.kind === 'EXACT') {
+      const exact = writeExactBodyGeometry(
+        w,
+        railing.spec,
+        preflighted.items,
+        geomSubContextId,
+        storeyPlacementId
+      );
+      exactBodyItemIds = exact.bodyItemIds;
+      representation = { ...exact, bodyItemId: null, usedFallback: false };
+    } else {
+      representation = writeRailingGeometry(
+        w,
+        railing.spec,
+        preflighted.solid,
+        geomSubContextId,
+        storeyPlacementId
+      );
+    }
+    const { localPlacementId, productDefinitionShapeId, bodyItemId, usedFallback } = representation;
     if (usedFallback) {
       console.warn(`Railing ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
     }
@@ -743,7 +837,13 @@ export async function toIfc(
       writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
     }
     // POSTED railings tessellate and have no single styleable body item.
-    if (bodyItemId !== null) applySurfaceStyle(w, model, railing.localId, bodyItemId);
+    if (preflighted.kind === 'EXACT') {
+      for (const itemId of exactBodyItemIds) {
+        applySurfaceStyle(w, model, railing.localId, itemId);
+      }
+    } else if (bodyItemId !== null) {
+      applySurfaceStyle(w, model, railing.localId, bodyItemId);
+    }
   }
 
   for (const [i, covering] of coverings.entries()) {
@@ -1222,7 +1322,6 @@ export async function toIfcValidated(
 function collectGeometryIssues(model: BimModel): ValidationReport {
   const issues: ValidationIssue[] = [];
   const groups: ReadonlyArray<readonly [string, ReadonlyArray<{ geometry: ValidSolid }>]> = [
-    ['Wall', model.getWalls()],
     ['Slab', model.getSlabs()],
     ['Beam', model.getBeams()],
     ['Column', model.getColumns()],
@@ -1232,13 +1331,28 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
     ['Roof', model.getRoofs()],
     ['Footing', model.getFootings()],
     ['Pile', model.getPiles()],
-    ['Railing', model.getRailings()],
     ['Covering', model.getCoverings()],
   ];
   for (const [label, elements] of groups) {
     elements.forEach((el, index) => {
       const report = checkGeometryValidity(el.geometry, `${label} ${index + 1}`);
       issues.push(...report.issues);
+    });
+  }
+
+  const productGroups = [
+    ['Wall', model.getWalls()],
+    ['Railing', model.getRailings()],
+  ] as const;
+  for (const [label, elements] of productGroups) {
+    elements.forEach((el, index) => {
+      bodySolids(el.geometry).forEach((solid, itemIndex) => {
+        const report = checkGeometryValidity(
+          solid,
+          `${label} ${index + 1} Body item ${itemIndex + 1}`
+        );
+        issues.push(...report.issues);
+      });
     });
   }
 

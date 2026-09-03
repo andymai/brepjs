@@ -24,6 +24,7 @@ import type {
   BridgeSpec,
   EarthworksFillSpec,
 } from '../specs/infrastructureSpec.js';
+import type { ProductBody } from './productBody.js';
 
 export type BimCategory =
   | 'WALL'
@@ -138,21 +139,21 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
 
 export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
   ? CurtainWallGrid
-  : C extends
-        | 'WALL'
-        | 'SLAB'
-        | 'BEAM'
-        | 'COLUMN'
-        | 'PROXY'
-        | 'EARTHWORKS_FILL'
-        | 'SPACE'
-        | 'ROOF'
-        | 'FOOTING'
-        | 'PILE'
-        | 'RAILING'
-        | 'COVERING'
-    ? ValidSolid
-    : null;
+  : C extends 'WALL' | 'RAILING'
+    ? ProductBody
+    : C extends
+          | 'SLAB'
+          | 'BEAM'
+          | 'COLUMN'
+          | 'PROXY'
+          | 'EARTHWORKS_FILL'
+          | 'SPACE'
+          | 'ROOF'
+          | 'FOOTING'
+          | 'PILE'
+          | 'COVERING'
+      ? ValidSolid
+      : null;
 
 export interface BimElement<C extends BimCategory> {
   readonly guid: IfcGuid;
