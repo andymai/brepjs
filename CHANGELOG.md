@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.164.3](https://github.com/andymai/brepjs/compare/brepjs-v18.164.2...brepjs-v18.164.3) (2026-09-03)
+
+
+### Bug Fixes
+
+* **transform:** keep rounded rotations on the rigid path in applyMatrix ([#2284](https://github.com/andymai/brepjs/issues/2284)) ([ee3b287](https://github.com/andymai/brepjs/commit/ee3b287fd3c79facfc3568626aba92c21ab8193d))
+
 ## [18.164.2](https://github.com/andymai/brepjs/compare/brepjs-v18.164.1...brepjs-v18.164.2) (2026-09-02)
 
 
