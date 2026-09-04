@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.0...brepjs-bim-v0.24.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **bim:** preserve authoritative civil Product Bodies ([#2295](https://github.com/andymai/brepjs/issues/2295)) ([679e02b](https://github.com/andymai/brepjs/commit/679e02bab24008101635334bfe51e3cb831ceb5c))
+
 ## [0.24.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.23.2...brepjs-bim-v0.24.0) (2026-09-03)
 
 
