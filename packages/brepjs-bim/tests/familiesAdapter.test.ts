@@ -5,9 +5,9 @@
  * distinct pset-backed spec fields; IFC output is byte-identical across runs.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, isOk, unwrap } from 'brepjs';
+import { csg, isOk, measureVolume, unwrap } from 'brepjs';
 import {
   civilSemantics,
   family,
@@ -21,10 +21,16 @@ import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
+import { bodySolids } from '../src/types/productBody.js';
+import { setFamiliesProductBodyTestHooksForTesting } from '../src/familiesProductBody.js';
 
 beforeAll(async () => {
   await initOCCT();
 }, 30000);
+
+afterEach(() => {
+  setFamiliesProductBodyTestHooksForTesting(null);
+});
 
 interface WallProps {
   readonly length: number;
@@ -654,13 +660,41 @@ describe('archetype routing', () => {
         ],
       })
     );
-    const result = unwrap(familiesToBim(tree, { project: PROJECT }));
+    using evaluator = new csg.Evaluator();
+    let candidateVolumes: readonly [number, number] | null = null;
+    setFamiliesProductBodyTestHooksForTesting({
+      beforeCoincidence: (exact, parametric) => {
+        candidateVolumes = [
+          unwrap(measureVolume(bodySolids(exact)[0])),
+          unwrap(measureVolume(bodySolids(parametric)[0])),
+        ];
+      },
+    });
+    const result = unwrap(familiesToBim(tree, { project: PROJECT, bodyEvaluator: evaluator }));
     using model = result.model;
 
     expect(result.idByKeyPath.has('s/wall/voids:door')).toBe(true);
     expect(result.idByKeyPath.has('s/wall/voids:door/fill')).toBe(true);
+    const wallId = result.idByKeyPath.get('s/wall');
+    if (wallId === undefined) throw new Error('Expected projected wall id');
+    const wall = model.getElement(wallId);
+    expect(wall?.category).toBe('WALL');
+    if (wall?.category !== 'WALL') throw new Error('Expected projected wall');
+    const expectedVolume = 3_000 * 200 * 2_700 - 900 * 200 * 2_100;
+    expect(candidateVolumes).not.toBeNull();
+    if (candidateVolumes === null) throw new Error('Expected coincidence volumes');
+    expect(candidateVolumes[0]).toBeCloseTo(expectedVolume, 3);
+    expect(candidateVolumes[1]).toBeCloseTo(expectedVolume, 3);
+    expect(wall.geometry.kind).toBe('PARAMETRIC');
+    expect(unwrap(measureVolume(bodySolids(wall.geometry)[0]))).toBeCloseTo(expectedVolume, 3);
+    expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS_WALL')).toHaveLength(1);
+    expect(model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')).toHaveLength(
+      1
+    );
     const text = await ifcText(model);
     expect(text).toContain('IFCWALL');
+    expect(text).toContain('IFCEXTRUDEDAREASOLID');
+    expect(text).not.toContain('IFCTRIANGULATEDFACESET');
     expect(text).toContain('IFCOPENINGELEMENT');
     expect(text).toContain('IFCDOOR');
   });

@@ -95,9 +95,16 @@ otherwise supplied. Existing non-semantic Families archetypes continue to use th
 registry beneath Bridge Parts. Bridge, Bridge Part, and Earthworks Fill require IFC4X3; `fromIfc`
 reconstructs their civil spatial hierarchy, direct containment, and typed Earthworks inventory.
 
-The existing typed routes adapt semantic envelope dimensions from the reference Families into
-their parametric BIM specs. They do not promise exact preservation of compound or voided source
-bodies; exact authored-body preservation in this profile is specific to Earthworks Fill.
+Civil-semantic wall and railing routes require `bodyEvaluator` (or the
+`proxyEvaluator` fallback) so the adapter can verify the authored Product Body. Missing the
+evaluator is `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` (element path and mapped category); the
+adapter does not silently keep a parametric envelope. Conventional archetype walls and railings
+stay specification-authoritative and do not need an evaluator. When the evaluator is present, the
+adapter applies registered wall openings to the parametric candidate, then compares that candidate
+with the evaluated source in Product-local coordinates. Coincident bodies retain editable
+parametric IFC; compound, voided, or otherwise different bodies retain their typed Wall or Railing
+classification and export every authoritative item as tessellation. The evaluator's source handles
+remain borrowed. Other typed civil routes continue to use their semantic envelope dimensions.
 
 This is deliberately not a claim of complete IFC infrastructure coverage or unchanged parity with
 the full scratch prototype. Member and Sign remain outside the profile: without `proxyEvaluator`
@@ -172,6 +179,8 @@ warnings travel inside the payload rather than throwing.
 Each `add*` call parses and validates its spec and stores a typed `BimElement` keyed by a `LocalId`.
 Parametric physical elements build an analytical brepjs solid; civil spatial elements are body-less,
 and arbitrary-body products such as Earthworks Fill take ownership of a validated authored solid.
+Families-projected civil walls and railings retain evaluated authored solids when their Bodies do
+not coincide with the post-opening parametric candidate.
 The IFC writer walks the model, applies placement, and emits schema-correct IFC entities; the
 importer is the inverse. No kernel/WASM changes are required.
 
