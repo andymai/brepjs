@@ -53,9 +53,9 @@
   },
   "devDependencies": {
     "@eslint/js": "*",
-    "@types/node": "26.2.0",
+    "@types/node": "26.4.0",
     "eslint": "*",
-    "tsx": "4.23.12",
+    "tsx": "4.23.13",
     "typescript": "*",
     "typescript-eslint": "*",
     "vite": "^8.0.0",
