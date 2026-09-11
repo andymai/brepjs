@@ -1,0 +1,19 @@
+packages/brepjs-cad/scripts/smokeStandalone.mjs
+  s_d4b5e8b5d2ef9c::t_a17dc51b744242 34-46,93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "107ac37e2e56c315fef747042d6f7c8ada0bfe36",
+  "prompts": {},
+  "sessions": {
+    "s_d4b5e8b5d2ef9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e96f419-8b68-42f3-b384-2c4290a2adff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
