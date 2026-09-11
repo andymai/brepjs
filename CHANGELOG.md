@@ -1,5 +1,12 @@
 # Changelog
 
+## [19.0.3](https://github.com/andymai/brepjs/compare/brepjs-v19.0.2...brepjs-v19.0.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **cad:** read the packed tarball name on npm 12 ([#2308](https://github.com/andymai/brepjs/issues/2308)) ([9764e11](https://github.com/andymai/brepjs/commit/9764e11eb058c75b8510d54b21f48d3e35d4bde8))
+
 ## [19.0.2](https://github.com/andymai/brepjs/compare/brepjs-v19.0.1...brepjs-v19.0.2) (2026-09-11)
 
 
