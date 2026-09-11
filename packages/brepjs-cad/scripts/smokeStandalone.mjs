@@ -31,6 +31,19 @@ function run(cmd, args, cwd) {
   return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
 }
 
+// `npm pack --json` reports the packed tarball in two shapes: npm 11 and earlier emit an array
+// of entries, npm 12 emits an object keyed by package name. The repo's packageManager pin is
+// not enforced (corepack is off in CI's setup action), so contributors run both.
+function packedFilename(packJson) {
+  const parsed = JSON.parse(packJson);
+  const entries = Array.isArray(parsed) ? parsed : Object.values(parsed);
+  const filename = entries[0]?.filename;
+  if (typeof filename !== 'string') {
+    throw new Error(`npm pack --json reported no tarball filename: ${packJson.slice(0, 200)}`);
+  }
+  return filename;
+}
+
 // Install the tarball into a fresh consumer project that adds NO brepjs of its own, author a
 // part that imports bare 'brepjs', run the installed `brep` bin, and assert a valid solid.
 // `extraInstallArgs` lets the caller vary the install mode (e.g. --legacy-peer-deps). This is
@@ -77,7 +90,7 @@ try {
   run('npm', ['run', 'build'], pkgRoot);
   process.stderr.write('packing brepjs-cad...\n');
   const packJson = run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', workRoot], pkgRoot);
-  tarball = join(workRoot, JSON.parse(packJson)[0].filename);
+  tarball = join(workRoot, packedFilename(packJson));
   if (!existsSync(tarball)) throw new Error(`pack produced no tarball at ${tarball}`);
 
   installAndVerify('default', []);
