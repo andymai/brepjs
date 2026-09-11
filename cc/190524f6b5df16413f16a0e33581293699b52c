@@ -1,0 +1,23 @@
+packages/brepjs-cad/skills/implement/examples/chamfered-block.expected.json
+  s_d4b5e8b5d2ef9c::t_a3a36800806de6 3
+packages/brepjs-cad/skills/implement/examples/flanged-coupler.expected.json
+  s_d4b5e8b5d2ef9c::t_b17dda73d65882 3
+packages/brepjs-cad/skills/implement/examples/rounded-block.expected.json
+  s_d4b5e8b5d2ef9c::t_93bb8d0afa1f68 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cc190524f6b5df16413f16a0e33581293699b52c",
+  "prompts": {},
+  "sessions": {
+    "s_d4b5e8b5d2ef9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e96f419-8b68-42f3-b384-2c4290a2adff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
