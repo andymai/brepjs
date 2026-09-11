@@ -1,5 +1,12 @@
 # Changelog
 
+## [19.0.2](https://github.com/andymai/brepjs/compare/brepjs-v19.0.1...brepjs-v19.0.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** accept occt-wasm v5 in the peer range ([#2304](https://github.com/andymai/brepjs/issues/2304)) ([6fd4c50](https://github.com/andymai/brepjs/commit/6fd4c509aaef7e5af2811a8cf388feebdbd60106))
+
 ## [19.0.1](https://github.com/andymai/brepjs/compare/brepjs-v19.0.0...brepjs-v19.0.1) (2026-09-03)
 
 
