@@ -11,7 +11,7 @@
   "dependencies": {
     "@vercel/analytics": "2.0.1",
     "@vercel/speed-insights": "2.0.0",
-    "posthog-js": "1.422.5",
+    "posthog-js": "1.427.2",
     "three": "0.185.1",
     "three-stdlib": "2.36.1"
   },
