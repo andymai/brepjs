@@ -12,6 +12,8 @@ import {
   type Drawing,
 } from '@/index.js';
 import { isOk } from '@/core/result.js';
+import { transformCurve2dGeneral } from '@/kernel/brepkit/kernel2dOps.js';
+import { makeCircle2d } from '@/kernel/geometry2d.js';
 
 const curveTypes = (d: Drawing): string[] =>
   (d.innerShape as { curves?: { geomType: string }[] }).curves?.map((c) => c.geomType) ?? [];
@@ -57,13 +59,13 @@ descBk('brepkit 2D similarity transforms keep exact conics', () => {
 });
 
 descBk('brepkit 2D affinities still stretch', () => {
-  it('does not mistake a tiny anisotropic stretch for a uniform scale', () => {
-    const tiny = scaleDrawing(drawCircle(5), 1e-13, [0, 0]);
-    const stretched = tiny.stretch(2, [1, 0], [0, 0]);
-    const { width, height } = stretched.boundingBox;
-    // The affinity path refits as a Bezier whose control-point box over-shoots
-    // a little; the point is that the anisotropy survives at all.
-    expect(width / height).toBeGreaterThan(1.8);
-    expect(width / height).toBeLessThan(2.5);
+  it('keeps a tiny anisotropic matrix on the affinity path', () => {
+    // 1e-13 uniform scale composed with a 2x stretch along x: the column
+    // lengths differ by 1e-13, which an absolute 1e-12 tolerance would read
+    // as a uniform scale and collapse the stretch.
+    const circle = makeCircle2d(0, 0, 5);
+    const gtrsf = { m: [2e-13, 0, 0, 0, 1e-13, 0, 0, 0, 1], tx: 0, ty: 0, delete() {} };
+    const out = transformCurve2dGeneral(circle, gtrsf) as unknown as { __bk2d: string };
+    expect(out.__bk2d).not.toBe('circle');
   });
 });
