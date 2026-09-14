@@ -432,11 +432,14 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   const colLen0 = Math.hypot(m0, m3);
   const colLen1 = Math.hypot(m1, m4);
   const colDot = m0 * m1 + m3 * m4;
-  const similarityTol = 1e-12 * Math.max(1, colLen0);
+  // Relative to the column lengths, so a tiny anisotropic transform is still
+  // seen as an affinity.
+  const scaleRef = Math.max(colLen0, colLen1);
   if (
-    colLen0 > 1e-15 &&
-    Math.abs(colLen0 - colLen1) < similarityTol &&
-    Math.abs(colDot) < similarityTol * colLen0
+    colLen0 > 0 &&
+    colLen1 > 0 &&
+    Math.abs(colLen0 - colLen1) <= 1e-12 * scaleRef &&
+    Math.abs(colDot) <= 1e-12 * colLen0 * colLen1
   ) {
     const det = m0 * m4 - m1 * m3;
     const angle = Math.atan2(m3, m0);

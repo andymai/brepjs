@@ -55,3 +55,15 @@ descBk('brepkit 2D similarity transforms keep exact conics', () => {
     expect(volume.value).toBeCloseTo(expected, 5);
   });
 });
+
+descBk('brepkit 2D affinities still stretch', () => {
+  it('does not mistake a tiny anisotropic stretch for a uniform scale', () => {
+    const tiny = scaleDrawing(drawCircle(5), 1e-13, [0, 0]);
+    const stretched = tiny.stretch(2, [1, 0], [0, 0]);
+    const { width, height } = stretched.boundingBox;
+    // The affinity path refits as a Bezier whose control-point box over-shoots
+    // a little; the point is that the anisotropy survives at all.
+    expect(width / height).toBeGreaterThan(1.8);
+    expect(width / height).toBeLessThan(2.5);
+  });
+});
