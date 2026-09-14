@@ -560,17 +560,15 @@ function circleThrough3(p1: Vec2, pm: Vec2, p2: Vec2): NativeCurve {
   } else {
     a1 = a0 - norm(a0 - a1); // CW
   }
-  void am;
   return conic(center, [r, 0], [0, r], a0, a1);
 }
 
 function makeNativeKernel2DOps(
-  module: ManifoldModule,
+  _module: ManifoldModule,
   occt: () => Partial<Kernel2DCapability> | undefined
 ): Partial<Kernel2DCapability> {
   // Inert placeholder for the lifted edge handle (consumed via op-node params).
   const PLACEHOLDER: unknown = { delete: () => {}, isEmpty: () => false };
-  void module;
 
   function delegate(method: keyof Kernel2DCapability, ...args: unknown[]): unknown {
     const o = occt();
@@ -654,8 +652,6 @@ function makeNativeKernel2DOps(
       const a0 = Math.atan2(sy - cy, sx - cx);
       let a1 = Math.atan2(ey - cy, ex - cx);
       // pick the sweep matching the tangent direction
-      const ccw = nx * tx + ny * ty < 0 ? false : true;
-      void ccw;
       const norm = (x: number): number => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
       // tangent at start for CCW is perpendicular (+90°); choose direction by dot
       const tangCCW: Vec2 = [-(sy - cy), sx - cx];
