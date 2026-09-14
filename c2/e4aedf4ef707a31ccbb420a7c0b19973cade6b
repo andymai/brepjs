@@ -1,0 +1,25 @@
+src/kernel/brepkit/constructionOps.ts
+  s_bbd929af8e1daa::t_28267a5c9a062e 497-514,516,520
+src/kernel/brepkit/kernel2dOps.ts
+  s_bbd929af8e1daa::t_dfc95a60d36548 429-452
+tests/brepkitCompoundOfCompounds.test.ts
+  s_bbd929af8e1daa::t_2fa916f6b64828 1-24
+tests/brepkitDrawingSimilarity.test.ts
+  s_bbd929af8e1daa::t_e4a6b3681071ae 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c2e4aedf4ef707a31ccbb420a7c0b19973cade6b",
+  "prompts": {},
+  "sessions": {
+    "s_bbd929af8e1daa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0631772-c6c2-4092-8be8-285450875ed9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
