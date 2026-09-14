@@ -1,0 +1,19 @@
+tests/brepkitDrawingSimilarity.test.ts
+  s_bbd929af8e1daa::t_c5214b0c0843eb 15-16,62-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "54e68403c14e6a3197927b12026f886cb4634b45",
+  "prompts": {},
+  "sessions": {
+    "s_bbd929af8e1daa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0631772-c6c2-4092-8be8-285450875ed9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
