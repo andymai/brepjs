@@ -199,3 +199,5 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof DefaultAdapter>
 ) => KernelAdapter;
 const _check: _AssertSatisfiesKernelAdapter = (oc) => new DefaultAdapter(oc);
+// eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator -- keeps the compile-time guard live under noUnusedLocals
+void _check;

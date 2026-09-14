@@ -159,3 +159,5 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof BrepkitAdapter>
 ) => KernelAdapter & ConstraintSketchCapability & BrepkitExtensions;
 const _check: _AssertSatisfiesKernelAdapter = (k) => new BrepkitAdapter(k);
+// eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator -- keeps the compile-time guard live under noUnusedLocals
+void _check;

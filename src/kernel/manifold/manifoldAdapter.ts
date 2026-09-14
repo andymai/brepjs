@@ -127,3 +127,5 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof ManifoldAdapter>
 ) => KernelAdapter;
 const _check: _AssertSatisfiesKernelAdapter = (m) => new ManifoldAdapter(m);
+// eslint-disable-next-line @typescript-eslint/no-meaningless-void-operator -- keeps the compile-time guard live under noUnusedLocals
+void _check;

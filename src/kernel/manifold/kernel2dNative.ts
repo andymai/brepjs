@@ -652,7 +652,6 @@ function makeNativeKernel2DOps(
       const a0 = Math.atan2(sy - cy, sx - cx);
       let a1 = Math.atan2(ey - cy, ex - cx);
       // pick the sweep matching the tangent direction
-      const _ccw = nx * tx + ny * ty < 0 ? false : true;
       const norm = (x: number): number => ((x % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
       // tangent at start for CCW is perpendicular (+90°); choose direction by dot
       const tangCCW: Vec2 = [-(sy - cy), sx - cx];
