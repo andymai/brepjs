@@ -127,4 +127,3 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof ManifoldAdapter>
 ) => KernelAdapter;
 const _check: _AssertSatisfiesKernelAdapter = (m) => new ManifoldAdapter(m);
-void _check;

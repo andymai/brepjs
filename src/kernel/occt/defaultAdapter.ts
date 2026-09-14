@@ -199,4 +199,3 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof DefaultAdapter>
 ) => KernelAdapter;
 const _check: _AssertSatisfiesKernelAdapter = (oc) => new DefaultAdapter(oc);
-void _check;

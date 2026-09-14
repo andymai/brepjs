@@ -159,4 +159,3 @@ type _AssertSatisfiesKernelAdapter = (
   ...args: ConstructorParameters<typeof BrepkitAdapter>
 ) => KernelAdapter & ConstraintSketchCapability & BrepkitExtensions;
 const _check: _AssertSatisfiesKernelAdapter = (k) => new BrepkitAdapter(k);
-void _check;
