@@ -1,0 +1,23 @@
+src/kernel/occt/defaultAdapter.ts
+  s_c52af896165baf::t_caf9b408c03d6f 202-203
+src/kernel/brepkit/brepkitAdapter.ts
+  s_c52af896165baf::t_473fb77e64a04d 162-163
+src/kernel/manifold/manifoldAdapter.ts
+  s_c52af896165baf::t_113455b338baf3 130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "720b6d6fea2497a65ae5999ff132052cb0122a5e",
+  "prompts": {},
+  "sessions": {
+    "s_c52af896165baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "655168c7-0c90-4397-8704-aa801294d4dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
