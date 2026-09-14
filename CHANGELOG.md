@@ -1,5 +1,12 @@
 # Changelog
 
+## [19.0.4](https://github.com/andymai/brepjs/compare/brepjs-v19.0.3...brepjs-v19.0.4) (2026-09-14)
+
+
+### Bug Fixes
+
+* **brepkit:** keep conics exact under similarity transforms and mesh nested compounds ([#2314](https://github.com/andymai/brepjs/issues/2314)) ([8e82dac](https://github.com/andymai/brepjs/commit/8e82dac6e7d5e30d09bb5117e40ee41fe518f00e))
+
 ## [19.0.3](https://github.com/andymai/brepjs/compare/brepjs-v19.0.2...brepjs-v19.0.3) (2026-09-11)
 
 
