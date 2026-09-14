@@ -494,13 +494,30 @@ export function makeCompound(bk: BrepkitKernel, shapes: KernelShape[]): KernelSh
   if (handles.length === 0) {
     throw new Error('brepkit: makeCompound requires at least one shape');
   }
-  const allSolids = handles.every((h) => h.type === 'solid');
+  // Compound children are flattened to their solids: text glyphs and other
+  // per-piece results arrive as compounds, and a synthetic compound whose
+  // children are compounds would mesh as empty.
+  const flat: BrepkitHandle[] = [];
+  const collect = (h: BrepkitHandle): void => {
+    if (h.type !== 'compound') {
+      flat.push(h);
+      return;
+    }
+    const synthetic = syntheticCompounds.get(h.id);
+    if (synthetic) {
+      synthetic.forEach(collect);
+      return;
+    }
+    for (const id of toArray(bk.getCompoundSolids(h.id))) flat.push(solidHandle(id));
+  };
+  handles.forEach(collect);
+  const allSolids = flat.every((h) => h.type === 'solid');
   if (allSolids) {
-    const id = bk.makeCompound(handles.map((h) => h.id));
+    const id = bk.makeCompound(flat.map((h) => h.id));
     return compoundHandle(id);
   }
   const id = nextSyntheticId();
-  syntheticCompounds.set(id, handles);
+  syntheticCompounds.set(id, flat);
   return compoundHandle(id);
 }
 

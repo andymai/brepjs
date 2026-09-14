@@ -426,7 +426,33 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   if (isIdentityMatrix) {
     return bk2d.translateCurve2d(c, tx, ty);
   }
-  // General: sample, transform, refit as Bezier polyline
+  // A similarity (uniform scale, rotation, reflection, translation) maps every
+  // curve kind onto itself, so it is applied exactly; only a true affinity
+  // falls through to the sampled fit below.
+  const colLen0 = Math.hypot(m0, m3);
+  const colLen1 = Math.hypot(m1, m4);
+  const colDot = m0 * m1 + m3 * m4;
+  // Relative to the column lengths, so a tiny anisotropic transform is still
+  // seen as an affinity.
+  const scaleRef = Math.max(colLen0, colLen1);
+  if (
+    colLen0 > 0 &&
+    colLen1 > 0 &&
+    Math.abs(colLen0 - colLen1) <= 1e-12 * scaleRef &&
+    Math.abs(colDot) <= 1e-12 * colLen0 * colLen1
+  ) {
+    const det = m0 * m4 - m1 * m3;
+    const angle = Math.atan2(m3, m0);
+    let out = Math.abs(colLen0 - 1) < 1e-15 ? c : bk2d.scaleCurve2d(c, colLen0, 0, 0);
+    if (det > 0) {
+      if (Math.abs(angle) > 1e-15) out = bk2d.rotateCurve2d(out, angle, 0, 0);
+    } else {
+      // s * R(angle) * diag(1, -1) is one reflection across the axis at angle / 2.
+      out = bk2d.mirrorAcrossAxis(out, 0, 0, Math.cos(angle / 2), Math.sin(angle / 2));
+    }
+    return tx !== 0 || ty !== 0 ? bk2d.translateCurve2d(out, tx, ty) : out;
+  }
+  // General affinity: sample, transform, refit as Bezier polyline
   const bounds = bk2d.curveBounds(c);
   const N = 20;
   const pts: [number, number][] = [];
