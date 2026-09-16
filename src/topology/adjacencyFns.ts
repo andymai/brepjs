@@ -11,6 +11,7 @@ import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
 import { castResultShapeWithKnownType, borrowShapeWithKnownType } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
+import { GeometryCleanupError } from '@/core/cleanupError.js';
 import { getOrCreateCache, getFaces, getEdges, getVertices } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
@@ -373,20 +374,60 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
     let raw: KernelShape[] | undefined;
     try {
       raw = kernel.sharedEdges(face1.wrapped, face2.wrapped);
-      const result = raw.map((e) => castResultShapeWithKnownType(e, 'edge') as Edge<D>);
-      nativeSharedEdgesSupported.set(kernelId, true);
-      return result;
     } catch (e) {
-      // On a mid-map cast failure the native slots aren't all owned yet — release
-      // the whole batch so nothing leaks (dispose is idempotent for any the cast
-      // already adopted). Then classify: only fall back on the unsupported
-      // sentinels, else re-throw a genuine error.
-      if (raw) for (const r of raw) kernel.dispose(r);
       if (!isUnsupportedKernelOperationError(e)) throw e;
       nativeSharedEdgesSupported.set(kernelId, false);
     }
+    if (raw !== undefined) {
+      const result = castSharedEdges<D>(raw);
+      nativeSharedEdgesSupported.set(kernelId, true);
+      return result;
+    }
   }
   return sharedEdgesJS(face1, face2);
+}
+
+/** Each cast consumes its raw result on success or failure; only untouched raws remain ours. */
+function castSharedEdges<D extends Dimension>(raw: KernelShape[]): Edge<D>[] {
+  const result: Edge<D>[] = [];
+  let attempted = 0;
+  try {
+    for (const edge of raw) {
+      attempted++;
+      result.push(castResultShapeWithKnownType(edge, 'edge') as Edge<D>);
+    }
+    return result;
+  } catch (cause) {
+    const cleanupFailures: GeometryCleanupError[] = [];
+    const retire = (release: () => void): void => {
+      try {
+        release();
+      } catch (cleanupCause) {
+        cleanupFailures.push(
+          new GeometryCleanupError({
+            message: 'Shared-edge result cleanup failed',
+            resourceKind: 'SHAPE',
+            cause: cleanupCause,
+          })
+        );
+      }
+    };
+    for (const edge of result)
+      retire(() => {
+        edge[Symbol.dispose]();
+      });
+    for (const edge of raw.slice(attempted))
+      retire(() => {
+        getKernel().dispose(edge);
+      });
+    if (cleanupFailures.length > 0)
+      throw new AggregateError(
+        [cause, ...cleanupFailures],
+        'Shared-edge query and cleanup failed',
+        { cause }
+      );
+    throw cause;
+  }
 }
 
 /** JS fallback for {@link sharedEdges}: match edges of both faces by hash + isSame. */

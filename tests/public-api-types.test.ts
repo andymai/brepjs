@@ -24,6 +24,7 @@ import {
 
   // Error types
   BrepErrorCode,
+  GeometryCleanupError,
   kernelError,
   validationError,
   typeCastError,
@@ -151,6 +152,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'DisposalScope',
   'EXACT_BREP_CAPABILITIES',
   'FaceSketcher',
+  'GeometryCleanupError',
   'HASH_CODE_MAX',
   'OK',
   'OcctWasmAdapter',
@@ -1002,6 +1004,26 @@ describe('Type structures — runtime field verification', () => {
         expect(e.kind).toBe(expectedKind);
       }
     });
+  });
+
+  describe('GeometryCleanupError', () => {
+    it.each(['SHAPE', 'TRANSFORM'] as const)(
+      'identifies a failed %s release and preserves its cause',
+      (resourceKind) => {
+        const cause = new Error('Native release failed');
+        const error: GeometryCleanupError = new GeometryCleanupError({
+          message: 'Cleanup failed',
+          resourceKind,
+          cause,
+        });
+        const resource: 'SHAPE' | 'TRANSFORM' = error.resourceKind;
+        expect(error).toBeInstanceOf(Error);
+        expect(error.name).toBe('GeometryCleanupError');
+        expect(error.message).toBe('Cleanup failed');
+        expect(resource).toBe(resourceKind);
+        expect(error.cause).toBe(cause);
+      }
+    );
   });
 
   describe('BrepErrorCode', () => {
