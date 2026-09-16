@@ -139,10 +139,12 @@ export function transformCopy<T extends AnyShape<Dimension>>(
  * re-tag — O(1) on occt-wasm ≥3.6.0, falling back to a copy elsewhere. Same
  * face-metadata guarantee as `translate`, at location-swap cost. Ideal for
  * placing one cached cell at N positions without paying for N deep copies.
+ * A supplied pre-composed transform remains caller-owned and must be cleaned up.
  */
 export function locate<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
-  placement: transforms.TransformOp | readonly transforms.TransformOp[]
+  placement:
+    transforms.TransformOp | readonly transforms.TransformOp[] | transforms.ComposedTransform
 ): T {
   return transforms.locate(resolve(shape), placement);
 }
