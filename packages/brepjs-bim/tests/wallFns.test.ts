@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { wallToSolid } from '../src/elementFns/wallFns.js';
 import { parseWallSpec } from '../src/specs/wallSpec.js';
 import { measureVolume } from 'brepjs';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 describe('wallToSolid', () => {

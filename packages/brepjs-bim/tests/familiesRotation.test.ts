@@ -19,7 +19,7 @@ import {
   type Element,
   type TransformOp,
 } from 'brepjs-families';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -32,7 +32,7 @@ import {
 import type { BimModel } from '../src/model/bimModel.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30_000);
 
 const PROJECT = { name: 'Rotation', projectId: 'rot' };

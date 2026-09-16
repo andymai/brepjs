@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { roofToSolid } from '../src/elementFns/roofFns.js';
 import { parseRoofSpec } from '../src/specs/roofSpec.js';
@@ -11,7 +11,7 @@ import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { newIfcGuid } from '../src/identity/ifcGuid.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const spec: RoofSpec = {

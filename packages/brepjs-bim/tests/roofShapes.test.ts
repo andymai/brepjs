@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, isValidSolid, unwrap, mesh } from 'brepjs';
 import { parseRoofSpec } from '../src/specs/roofSpec.js';
 import { roofToSolid } from '../src/elementFns/roofFns.js';
@@ -36,7 +36,7 @@ describe('roofSpec pitch param', () => {
 
 describe('roofToSolid shapes', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   it('flat (no pitch) stays a valid slab', () => {

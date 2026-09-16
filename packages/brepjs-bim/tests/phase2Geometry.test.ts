@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { box, scale, unwrap } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

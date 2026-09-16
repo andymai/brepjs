@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { polygon, extrude, isValidSolid } from 'brepjs';
 import type { ValidSolid } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../src/ifc-writer/tessellationWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

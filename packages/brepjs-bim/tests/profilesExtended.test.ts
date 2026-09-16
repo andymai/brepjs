@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { measureArea } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { extendedProfileToFace, extendedProfileArea } from '../src/specs/profilesExtended.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeExtendedProfileDef } from '../src/ifc-writer/profileDefWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 // One representative valid spec per extended profile kind. Dimensions in mm.

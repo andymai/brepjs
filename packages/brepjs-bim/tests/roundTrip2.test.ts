@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { unwrap } from 'brepjs';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -7,7 +7,7 @@ import { checkRoundTrip, compareCounts, KEY_ENTITY_NAMES } from '../src/validati
 import { hasErrors } from '../src/validation/severity.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function buildModel(): BimModel {

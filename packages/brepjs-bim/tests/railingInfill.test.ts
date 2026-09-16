@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { measureVolume, isValidSolid, unwrap } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { parseRailingSpec } from '../src/specs/railingSpec.js';
 import { railingToSolid } from '../src/elementFns/railingFns.js';
 
@@ -35,7 +35,7 @@ describe('railingSpec infill', () => {
 
 describe('railingToSolid infill geometry', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   it('PANEL (default) builds one valid solid', () => {

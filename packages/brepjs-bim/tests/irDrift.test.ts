@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, fuse, unwrap, isOk, csg } from 'brepjs';
 import type { AnyShape, Dimension, Shape3D } from 'brepjs';
 import { wallToSolid } from '../src/elementFns/wallFns.js';
@@ -20,7 +20,7 @@ import { columnToSolid } from '../src/elementFns/columnFns.js';
 import { beamToSolid } from '../src/elementFns/beamFns.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {

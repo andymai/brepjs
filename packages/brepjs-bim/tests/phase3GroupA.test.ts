@@ -1,6 +1,6 @@
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -8,7 +8,7 @@ import { parseProfile } from '../src/specs/profile.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

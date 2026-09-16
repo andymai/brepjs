@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { csg, isOk, measureVolume, unwrap } from 'brepjs';
 import {
   civilSemantics,
@@ -25,7 +25,7 @@ import { bodySolids } from '../src/types/productBody.js';
 import { setFamiliesProductBodyTestHooksForTesting } from '../src/familiesProductBody.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 afterEach(() => {

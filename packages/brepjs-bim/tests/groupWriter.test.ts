@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
@@ -12,7 +12,7 @@ import { parseZoneSpec, parseSystemSpec } from '../src/specs/groupSpec.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

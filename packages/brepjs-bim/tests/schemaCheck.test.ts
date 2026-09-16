@@ -1,13 +1,13 @@
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 import { checkSchema } from '../src/validation/schemaCheck.js';
 import { hasErrors } from '../src/validation/severity.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function buildModel(): BimModel {

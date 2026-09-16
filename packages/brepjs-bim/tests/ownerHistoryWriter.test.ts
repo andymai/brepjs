@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeOwnerHistory } from '../src/ifc-writer/ownerHistoryWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 /** Serializes a model containing only an owner-history chain and reads it back. */

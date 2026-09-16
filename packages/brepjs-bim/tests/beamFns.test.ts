@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { beamToSolid } from '../src/elementFns/beamFns.js';
 import { parseBeamSpec } from '../src/specs/beamSpec.js';
 import type { BeamSpec } from '../src/specs/beamSpec.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const BASE: BeamSpec = {

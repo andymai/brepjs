@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, unwrap } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import { parseCurtainWallSpec } from '../src/specs/curtainWallSpec.js';
@@ -10,7 +10,7 @@ import { writeHeader } from '../src/ifc-writer/headerWriter.js';
 import { writeCurtainWall } from '../src/ifc-writer/curtainWallWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 // A 2 × 2 grid: 4 panels, 3 vertical mullions + 3 horizontal mullions = 6.

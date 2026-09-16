@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { deriveCobieModel } from '../src/cobie/cobieExport.js';
 import { serializeCobieToCsv, serializeCobieToJson } from '../src/cobie/cobieExport.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; error: { message: string } }): T {
