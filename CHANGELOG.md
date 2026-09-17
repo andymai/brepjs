@@ -1,5 +1,12 @@
 # Changelog
 
+## [19.0.5](https://github.com/andymai/brepjs/compare/brepjs-v19.0.4...brepjs-v19.0.5) (2026-09-17)
+
+
+### Bug Fixes
+
+* **core:** release native results when casting or placement fails ([#2318](https://github.com/andymai/brepjs/issues/2318)) ([68b35bd](https://github.com/andymai/brepjs/commit/68b35bda3cdf54236c45836c803896026020be95))
+
 ## [19.0.4](https://github.com/andymai/brepjs/compare/brepjs-v19.0.3...brepjs-v19.0.4) (2026-09-14)
 
 
