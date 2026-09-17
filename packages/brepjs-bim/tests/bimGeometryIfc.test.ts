@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { unwrap } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 import { hasErrors } from '../src/validation/severity.js';
@@ -38,7 +38,7 @@ const roofBase = {
 
 describe('roof IFC representation', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   it('shaped roof serializes as a Tessellation, not a degenerate brep', async () => {
@@ -70,7 +70,7 @@ const railBase = {
 
 describe('railing IFC representation', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   it('POSTED railing serializes as a Tessellation', async () => {
@@ -90,7 +90,7 @@ describe('railing IFC representation', () => {
 
 describe('shaped model round-trips cleanly', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   it('shaped roof + posted railing + stair → no error-severity IFC issues', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, unwrap } from 'brepjs';
 import { beamToSolid } from '../src/elementFns/beamFns.js';
 import { columnToSolid } from '../src/elementFns/columnFns.js';
@@ -7,7 +7,7 @@ import { pileToSolid } from '../src/elementFns/foundationFns.js';
 import type { ExtendedProfile } from '../src/specs/profilesExtended.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 // An L-section is an extended profile: beams/columns/piles must build it via

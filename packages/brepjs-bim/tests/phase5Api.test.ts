@@ -1,6 +1,6 @@
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import {
   BimModel,
   toIfc,
@@ -12,7 +12,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META: BimModelMeta = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

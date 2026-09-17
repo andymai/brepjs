@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { isOk, unwrap } from 'brepjs';
 import { family, el, resolve, tTranslate, type Element } from 'brepjs-families';
 import { familiesToBim } from '../src/familiesAdapter.js';
@@ -24,7 +24,7 @@ import {
 } from '../examples/sampleBuildingFamilies.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 async function projectToIfc(): Promise<string> {

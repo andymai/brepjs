@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { measureVolumeProps, isValidSolid, unwrap, box } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { placementToMatrix } from '../src/import/placement.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
@@ -24,7 +24,7 @@ describe('placementToMatrix', () => {
 
 describe('placedSolids', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   // Coverings store a solid like any other plate element, and ramps mirror

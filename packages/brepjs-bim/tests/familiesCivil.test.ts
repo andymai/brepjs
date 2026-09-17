@@ -11,7 +11,7 @@ import {
   type SpatialComposition,
   type SpatialSubdivision,
 } from 'brepjs-families';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
@@ -20,7 +20,7 @@ import { checkSchema } from '../src/validation/schemaCheck.js';
 import { checkRoundTrip } from '../src/validation/roundTrip.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30_000);
 
 interface SpatialProps {

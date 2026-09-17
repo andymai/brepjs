@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { csg, isOk, unwrap } from 'brepjs';
 import { z } from 'zod';
 import { family, el, resolve, tRotate } from 'brepjs-families';
@@ -19,7 +19,7 @@ import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const PROJECT = { name: 'Registry', projectId: 'registry-project' };

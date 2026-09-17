@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { slabToSolid } from '../src/elementFns/slabFns.js';
 import { parseSlabSpec } from '../src/specs/slabSpec.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const SPEC = {

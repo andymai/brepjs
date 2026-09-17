@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { measureVolume, isSolid } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { stairFlightToSolid, stairFlightVolume } from '../src/elementFns/stairFns.js';
 import { parseStairSpec, parseStairFlightSpec } from '../src/specs/stairSpec.js';
 import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
@@ -20,7 +20,7 @@ import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { writeStairAssembly } from '../src/ifc-writer/stairWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

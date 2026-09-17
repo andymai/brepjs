@@ -1,6 +1,6 @@
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
@@ -8,7 +8,7 @@ import { hasErrors } from '../src/validation/severity.js';
 import { DEFAULT_MVD_VIEW_DEFINITION } from '../src/ifc-writer/ifcWriter.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };

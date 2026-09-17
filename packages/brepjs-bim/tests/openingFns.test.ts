@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { parseDoorSpec, parseWindowSpec } from '../src/specs/openingSpec.js';
 import { openingToSolid } from '../src/elementFns/openingFns.js';
@@ -73,7 +73,7 @@ describe('parseWindowSpec', () => {
 
 describe('openingToSolid', () => {
   beforeAll(async () => {
-    await initOCCT();
+    await initKernel();
   }, 30000);
 
   const WALL_THICKNESS = 200;

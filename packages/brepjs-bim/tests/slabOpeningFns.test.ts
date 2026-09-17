@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { slabOpeningToSolid } from '../src/elementFns/slabOpeningFns.js';
 import type { SlabOpeningSpec } from '../src/types/bimTypes.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const SLAB_THICKNESS = 200;

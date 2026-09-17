@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { columnToSolid } from '../src/elementFns/columnFns.js';
 import { parseColumnSpec } from '../src/specs/columnSpec.js';
 import type { ColumnSpec } from '../src/specs/columnSpec.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const BASE: ColumnSpec = {

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { csg, unwrap } from 'brepjs';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { disposeImportedModel, type ImportedSpatialNode } from '../src/import/importedModel.js';
@@ -9,7 +9,7 @@ import { toIfcValidated } from '../src/serialize/toIfc.js';
 import { Member, Sign, profileModel } from './fixtures/civilReferenceProfile.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30_000);
 
 function required<T>(value: T | undefined, label: string): T {

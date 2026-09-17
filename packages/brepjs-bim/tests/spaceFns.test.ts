@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { spaceToSolid } from '../src/elementFns/spaceFns.js';
 import { parseSpaceSpec } from '../src/specs/spaceSpec.js';
@@ -15,7 +15,7 @@ import { deriveIfcGuidSync, makeElementKey, makeRelKey } from '../src/identity/g
 import { newIfcGuid, isValidIfcGuid } from '../src/identity/ifcGuid.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const baseSpec = {

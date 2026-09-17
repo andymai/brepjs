@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import { footingToSolid, pileToSolid } from '../src/elementFns/foundationFns.js';
@@ -16,7 +16,7 @@ import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import type { FootingSpec, PileSpec } from '../src/specs/foundationSpec.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const footingSpec: FootingSpec = {
