@@ -15,14 +15,7 @@ import type {
   Vertex,
   Wire,
 } from '@/core/shapeTypes.js';
-import {
-  castShape,
-  castResultShape,
-  disposeDowncastSource,
-  disposeResultShape,
-  getShapeKind,
-  isShape3D,
-} from '@/core/shapeTypes.js';
+import { castResultShape, disposeResultShape, getShapeKind, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isErr, unwrap } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { Plane } from '@/core/planeTypes.js';
@@ -70,10 +63,9 @@ function castToShape3D(
   suggestion?: string,
   diagnostics?: BooleanDiagnostics
 ): Result<Shape3D> {
-  const wrapped = castShape(shape);
+  const wrapped = castResultShape(shape);
   if (!isShape3D(wrapped)) {
     const typeName = getShapeKind(wrapped).toUpperCase();
-    disposeDowncastSource(shape, wrapped);
     disposeResultShape(wrapped);
     return err(
       typeCastError(
@@ -85,7 +77,6 @@ function castToShape3D(
       )
     );
   }
-  disposeDowncastSource(shape, wrapped);
   return ok(wrapped);
 }
 

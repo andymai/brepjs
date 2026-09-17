@@ -7,10 +7,11 @@
  * transform functions don't duplicate the same ~20-line block.
  */
 
-import type { ShapeEvolution } from '@/kernel/types.js';
+import type { KernelShape, ShapeEvolution } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
+import { GeometryCleanupError } from '@/core/cleanupError.js';
 import {
   getFaceOrigins,
   propagateOriginsFromEvolution,
@@ -110,8 +111,36 @@ export function propagateMetadataThroughRelocation(
   moved: AnyShape<Dimension>
 ): void {
   const kernel = getKernel();
-  const srcFaces = [...kernel.iterShapes(source.wrapped, 'face')];
-  const movedFaces = [...kernel.iterShapes(moved.wrapped, 'face')];
+  const faces: KernelShape[] = [];
+  using _temporaries = {
+    [Symbol.dispose]() {
+      const failures: unknown[] = [];
+      for (const face of faces) {
+        try {
+          kernel.dispose(face);
+        } catch (cause) {
+          failures.push(
+            new GeometryCleanupError({
+              message: 'Relocation face cleanup failed',
+              resourceKind: 'SHAPE',
+              cause,
+            })
+          );
+        }
+      }
+      if (failures.length > 0) throw new AggregateError(failures, 'Relocation face cleanup failed');
+    },
+  };
+  const collect = (shape: KernelShape): KernelShape[] => {
+    const collected: KernelShape[] = [];
+    for (const face of kernel.iterShapes(shape, 'face')) {
+      faces.push(face);
+      collected.push(face);
+    }
+    return collected;
+  };
+  const srcFaces = collect(source.wrapped);
+  const movedFaces = collect(moved.wrapped);
   if (srcFaces.length !== movedFaces.length) return;
 
   const modified = new Map<number, number[]>();
@@ -121,8 +150,5 @@ export function propagateMetadataThroughRelocation(
     if (sf === undefined || mf === undefined) continue;
     modified.set(kernel.hashCode(sf, HASH_CODE_MAX), [kernel.hashCode(mf, HASH_CODE_MAX)]);
   }
-  // Only the hashes are needed; release the transient face handles.
-  for (const f of srcFaces) kernel.dispose(f);
-  for (const f of movedFaces) kernel.dispose(f);
   propagateAllMetadata({ modified, generated: new Map(), deleted: new Set() }, [source], moved);
 }

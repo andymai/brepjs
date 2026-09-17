@@ -8,6 +8,7 @@ import type { Vec3, MatrixInput } from '@/core/types.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { castResultShape } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX, DEG2RAD } from '@/core/constants.js';
+import { GeometryCleanupError } from '@/core/cleanupError.js';
 import type { Result } from '@/core/result.js';
 import { ok, err } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
@@ -352,21 +353,60 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
  * Accepts a single op or an ordered list (applied first-to-last, e.g. rotate
  * then translate). Non-rigid ops (`scale`) aren't a placement and don't belong
  * here — use `applyMatrix` for those.
+ * A pre-composed transform remains caller-owned; this function never cleans it up.
  */
 export function locate<T extends AnyShape<Dimension>>(
   shape: T,
-  placement: TransformOp | readonly TransformOp[]
+  placement: TransformOp | readonly TransformOp[] | ComposedTransform
 ): T {
-  const ops = 'type' in placement ? [placement] : placement;
-  const { trsf, cleanup } = composeTransforms(ops);
-  let moved: T;
+  const { trsf, cleanup } =
+    'trsf' in placement
+      ? placement
+      : composeTransforms('type' in placement ? [placement] : placement);
+  let moved: T | undefined;
   try {
-    moved = castResultShape(getKernel().locate(shape.wrapped, trsf)) as T;
-  } finally {
-    cleanup();
+    {
+      using _transform =
+        'trsf' in placement
+          ? null
+          : {
+              [Symbol.dispose]() {
+                try {
+                  cleanup();
+                } catch (cause) {
+                  throw new GeometryCleanupError({
+                    message: 'Placement transform cleanup failed',
+                    resourceKind: 'TRANSFORM',
+                    cause,
+                  });
+                }
+              },
+            };
+      moved = castResultShape(getKernel().locate(shape.wrapped, trsf)) as T;
+    }
+    if (hasAnyMetadata(shape)) propagateMetadataThroughRelocation(shape, moved);
+    return moved;
+  } catch (cause) {
+    if (moved !== undefined) {
+      try {
+        moved[Symbol.dispose]();
+      } catch (cleanupCause) {
+        throw new AggregateError(
+          [
+            cause,
+            new GeometryCleanupError({
+              message: 'Unreturned placement cleanup failed',
+              resourceKind: 'SHAPE',
+              cause: cleanupCause,
+            }),
+          ],
+          'Placement and output cleanup failed',
+          { cause: cleanupCause }
+        );
+      }
+    }
+    throw cause;
   }
-  if (hasAnyMetadata(shape)) propagateMetadataThroughRelocation(shape, moved);
-  return moved;
 }
 
 /**

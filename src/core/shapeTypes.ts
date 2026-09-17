@@ -22,6 +22,7 @@ import { is3D } from './dimensionTypes.js';
 import type { Dimension } from './dimensionTypes.js';
 import { getShapeKind as _getShapeKind } from './typeDiscriminants.js';
 import { getOrQueryType, setCachedType } from './shapeTypeCache.js';
+import { GeometryCleanupError } from './cleanupError.js';
 
 // ---------------------------------------------------------------------------
 // Re-exports — dimensionTypes.ts (ADR-0004), validityTypes.ts (ADR-0005),
@@ -327,14 +328,54 @@ export function disposeDowncastSource(source: KernelShape, cast: ShapeHandle): v
  * Cast a freshly-produced kernel result to its branded type and release the
  * orphaned pre-downcast handle. The result-owning counterpart to {@link castShape};
  * see {@link disposeDowncastSource} for the arena semantics.
+ * Consumes the raw result on success or failure; callers must not retry its release.
  */
 export function castResultShape<D extends Dimension = '3D'>(
   ocShape: KernelShape,
   dim?: D
 ): AnyShape<D> {
-  const cast = castShape<D>(ocShape, dim);
-  disposeDowncastSource(ocShape, cast);
-  return cast;
+  return castOwnedResult(ocShape, () => castShape<D>(ocShape, dim));
+}
+
+/** The raw result remains owned here until its public handle can be returned. */
+function castOwnedResult<D extends Dimension>(
+  source: KernelShape,
+  castResult: () => AnyShape<D>
+): AnyShape<D> {
+  let cast: AnyShape<D> | undefined;
+  try {
+    cast = castResult();
+    try {
+      disposeDowncastSource(source, cast);
+    } catch (cause) {
+      throw new GeometryCleanupError({
+        message: 'Pre-downcast result cleanup failed',
+        resourceKind: 'SHAPE',
+        cause,
+      });
+    }
+    return cast;
+  } catch (cause) {
+    try {
+      // Source cleanup was already attempted if casting completed; never retry it.
+      if (cast === undefined) getKernel().dispose(source);
+      else cast[Symbol.dispose]();
+    } catch (cleanupCause) {
+      throw new AggregateError(
+        [
+          cause,
+          new GeometryCleanupError({
+            message: 'Unreturned result cleanup failed',
+            resourceKind: 'SHAPE',
+            cause: cleanupCause,
+          }),
+        ],
+        'Result casting and cleanup failed',
+        { cause: cleanupCause }
+      );
+    }
+    throw cause;
+  }
 }
 
 /**
@@ -399,15 +440,14 @@ export function castShapeWithKnownType<D extends Dimension = '3D'>(
  * `iterShapes` — where only the branded downcast result is retained. Identity
  * downcast kernels (manifold/brepkit) skip the release via the guard in
  * {@link disposeDowncastSource}.
+ * Consumes the raw result even when casting throws.
  */
 export function castResultShapeWithKnownType<D extends Dimension = '3D'>(
   ocShape: KernelShape,
   knownType: ShapeType,
   dim?: D
 ): AnyShape<D> {
-  const cast = castShapeWithKnownType<D>(ocShape, knownType, dim);
-  disposeDowncastSource(ocShape, cast);
-  return cast;
+  return castOwnedResult(ocShape, () => castShapeWithKnownType<D>(ocShape, knownType, dim));
 }
 
 /**

@@ -93,6 +93,7 @@ export {
 } from './core/result.js';
 
 export { kernelCall, kernelCallRaw, kernelCallScoped } from './core/kernelCall.js';
+export { GeometryCleanupError } from './core/cleanupError.js';
 
 export {
   type BrepError,
