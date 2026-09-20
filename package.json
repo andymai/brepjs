@@ -269,7 +269,7 @@
     "@types/opentype.js": "1.3.9",
     "@types/react": "19.3.0",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "5.0.0",
     "brepjs-opencascade": "*",
     "brepkit-wasm": "3.4.0",
     "eslint": "10.10.0",
