@@ -1,0 +1,21 @@
+package.json
+  s_b3dbb6750fc196::t_2e65956300cd1b 272
+package-lock.json
+  s_b3dbb6750fc196::t_00a6761c5db99d 43,6693-6695,6700-6706,6712-6713,6721-6743,7254-7256,10835-10837,10841-10842,13108-13110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec0fb2e4173e1bf19198771dcaf574a4aaa6f88b",
+  "prompts": {},
+  "sessions": {
+    "s_b3dbb6750fc196": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e9000ff-fa5f-402c-8450-17cc621fc635",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
