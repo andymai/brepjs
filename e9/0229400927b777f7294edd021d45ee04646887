@@ -1,0 +1,31 @@
+.release-please-manifest.json
+  s_e1c8a62fa5ac57::t_472b196b721565 2,9
+packages/create-brepjs/templates/package.json.tpl
+  s_e1c8a62fa5ac57::t_472b196b721565 17
+package.json
+  s_e1c8a62fa5ac57::t_472b196b721565 3
+packages/create-brepjs/CHANGELOG.md
+  s_e1c8a62fa5ac57::t_472b196b721565 3-9
+packages/create-brepjs/package.json
+  s_e1c8a62fa5ac57::t_472b196b721565 3
+.claude/skills/release-publishing/SKILL.md
+  s_e1c8a62fa5ac57::t_8d9ff14715970c 91
+package-lock.json
+  s_e1c8a62fa5ac57::t_1337aa468d5a87 3,9,15352,16298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e90229400927b777f7294edd021d45ee04646887",
+  "prompts": {},
+  "sessions": {
+    "s_e1c8a62fa5ac57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43877067-ca04-495a-9554-b732ee329253",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
