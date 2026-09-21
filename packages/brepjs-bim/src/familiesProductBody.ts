@@ -15,7 +15,7 @@ import {
 import type { ResolvedElement } from 'brepjs-families';
 import { specError, type BimError } from './errors/bimError.js';
 import { bodySolids, type ProductBody } from './types/productBody.js';
-import { decomposeFrame, frameInverse, type Frame } from './placementFrame.js';
+import { frameInverse, type RigidFrame } from './placementFrame.js';
 import { locateShapeInFrame } from './rigidPlacement.js';
 
 const RELATIVE_VOLUME_TOLERANCE = 1e-6;
@@ -30,7 +30,7 @@ export interface CivilProductBodyInput {
   readonly element: ResolvedElement;
   readonly category: 'WALL' | 'RAILING';
   readonly evaluator: csg.Evaluator;
-  readonly productWorldFrame: Frame;
+  readonly productWorldFrame: RigidFrame;
   /** Borrowed model-owned comparison candidate after registered openings. */
   readonly parametricBody: ParametricProductBody;
 }
@@ -60,6 +60,8 @@ export function setFamiliesProductBodyTestHooksForTesting(
 export function selectCivilProductBody(
   input: CivilProductBodyInput
 ): Result<CivilProductBodySelection, BimError> {
+  const inverse = frameInverse(input.productWorldFrame);
+  if (!inverse.ok) return inverse;
   const evaluated = evaluateBody(input);
   if (!evaluated.ok) return evaluated;
   const sources = evaluated.value;
@@ -70,7 +72,6 @@ export function selectCivilProductBody(
   }
 
   const localized: ValidSolid[] = [];
-  const inverse = decomposeFrame(frameInverse(input.productWorldFrame));
   for (const [itemIndex, source] of sources.entries()) {
     const copied = clone(source);
     if (!copied.ok) {
@@ -133,7 +134,7 @@ export function selectCivilProductBody(
     let local: ValidSolid | null = null;
     try {
       testHooks?.beforeLocalize?.(itemIndex, valid.value);
-      local = locateShapeInFrame(valid.value, inverse);
+      local = locateShapeInFrame(valid.value, inverse.value);
       testHooks?.afterLocalized?.(itemIndex, local);
       localized.push(local);
     } catch (cause) {

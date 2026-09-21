@@ -161,9 +161,9 @@ type TransformOp =
 declare function tTranslate(v: readonly [number, number, number]): TransformOp;
 
 /** Rotation in degrees about `axis` (default Z) through `at` (default origin).
- *  Viewport-first: a parametric BIM projection folds only translations into
- *  IfcLocalPlacement and rejects rotated routed elements (walls orient via
- *  `axisX` instead). */
+ *  A parametric BIM projection folds the composed rotation into the
+ *  IfcLocalPlacement frame (origin + axisX + axisZ), so the IFC placement
+ *  matches the viewport transform. */
 declare function tRotate(
   angleDeg: number,
   options?: {

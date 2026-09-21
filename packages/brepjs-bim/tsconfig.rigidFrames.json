@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.nativeBaseline.json",
+  "include": [
+    "tests/setup.ts",
+    "tests/rigidFrame.test.ts",
+    "tests/placementFrame.test.ts",
+    "tests/rigidPlacementValidation.test.ts",
+    "tests/ifcFrameValidation.test.ts"
+  ]
+}

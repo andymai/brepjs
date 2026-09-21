@@ -1,13 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { measureVolumeProps, isValidSolid, unwrap, box } from 'brepjs';
+import { measureVolumeProps, isValidSolid, unwrap, box, DisposalScope } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
-import { placementToMatrix } from '../src/import/placement.js';
+import { frameFromPlacement, frameToMatrix } from '../src/placementFrame.js';
 import { placedSolids } from '../src/elementFns/placedGeometry.js';
 
-describe('placementToMatrix', () => {
+function required<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Expected ${label}`);
+  return value;
+}
+
+describe('frameToMatrix', () => {
   it('identity frame → identity linear + given origin', () => {
-    const m = placementToMatrix({ origin: [10, 20, 30], axisX: [1, 0, 0], axisZ: [0, 0, 1] });
+    const m = frameToMatrix(
+      unwrap(frameFromPlacement({ origin: [10, 20, 30], axisX: [1, 0, 0], axisZ: [0, 0, 1] }))
+    );
     expect(m.linear).toEqual([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     expect(m.translation).toEqual([10, 20, 30]);
   });
@@ -15,7 +22,9 @@ describe('placementToMatrix', () => {
   it('90° about Z (axisX=+Y) puts the X basis vector in column 0 (row-major)', () => {
     // linear is row-major [Xx,Yx,Zx, Xy,Yy,Zy, Xz,Yz,Zz]; with axisX=(0,1,0) the
     // X column is (0,1,0) → linear[0]=0, linear[3]=1, linear[6]=0.
-    const m = placementToMatrix({ origin: [0, 0, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] });
+    const m = frameToMatrix(
+      unwrap(frameFromPlacement({ origin: [0, 0, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] }))
+    );
     expect(m.linear[0]).toBeCloseTo(0);
     expect(m.linear[3]).toBeCloseTo(1);
     expect(m.linear[6]).toBeCloseTo(0);
@@ -32,7 +41,7 @@ describe('placedSolids', () => {
   // through to the empty-array default, so a finish schedule or an accessible
   // entrance had nothing to display.
   it('returns a placed solid for a covering', () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'T' });
     unwrap(
       m.addCovering({
@@ -46,17 +55,24 @@ describe('placedSolids', () => {
         materialName: 'Oak',
       })
     );
-    const covering = m.getCoverings()[0];
+    const covering = required(m.getCoverings()[0], 'covering');
+    using scope = new DisposalScope();
     const placed = unwrap(placedSolids(covering));
+    for (const solid of placed) scope.register(solid);
     expect(placed.length).toBe(1);
-    expect(isValidSolid(placed[0])).toBe(true);
+    expect(isValidSolid(required(placed[0], 'placed item 1'))).toBe(true);
     // 2000 x 1000 x 20 mm, lifted to z = 300.
-    expect(unwrap(measureVolumeProps(placed[0])).mass).toBeCloseTo(2000 * 1000 * 20, -3);
-    expect(unwrap(measureVolumeProps(placed[0])).centerOfMass[2]).toBeCloseTo(310, 1);
+    expect(unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).mass).toBeCloseTo(
+      2000 * 1000 * 20,
+      -3
+    );
+    expect(
+      unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).centerOfMass[2]
+    ).toBeCloseTo(310, 1);
   });
 
   it('returns one placed solid per ramp flight', () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'T' });
     unwrap(
       m.addRamp({
@@ -86,13 +102,15 @@ describe('placedSolids', () => {
         ],
       })
     );
-    const ramp = m.getRamps()[0];
+    const ramp = required(m.getRamps()[0], 'ramp');
+    using scope = new DisposalScope();
     const placed = unwrap(placedSolids(ramp));
+    for (const solid of placed) scope.register(solid);
     expect(placed.length).toBe(2);
     expect(placed.every((sol) => isValidSolid(sol))).toBe(true);
     // The second flight is placed 4000 along X and 200 up from the first.
-    const a = unwrap(measureVolumeProps(placed[0])).centerOfMass;
-    const b = unwrap(measureVolumeProps(placed[1])).centerOfMass;
+    const a = unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).centerOfMass;
+    const b = unwrap(measureVolumeProps(required(placed[1], 'placed item 2'))).centerOfMass;
     expect(b[0] - a[0]).toBeCloseTo(4000, 1);
     expect(b[2] - a[2]).toBeCloseTo(200, 1);
   });
@@ -100,28 +118,34 @@ describe('placedSolids', () => {
   // Proxies used to fall through to the empty-array default, so any equipment
   // modeled as IfcBuildingElementProxy rendered nothing and took off at 0 m3.
   it('returns a fresh caller-owned copy of a proxy solid', () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'T' });
     unwrap(m.addProxy({ name: 'Rack', solid: box(600, 1070, 2000) }));
-    const proxy = m.getProxies()[0];
+    const proxy = required(m.getProxies()[0], 'proxy');
     const placed = unwrap(placedSolids(proxy));
     expect(placed.length).toBe(1);
-    expect(isValidSolid(placed[0])).toBe(true);
+    expect(isValidSolid(required(placed[0], 'placed item 1'))).toBe(true);
     // World coordinates pass through unchanged (proxies carry no frame).
-    expect(unwrap(measureVolumeProps(placed[0])).mass).toBeCloseTo(600 * 1070 * 2000, -3);
-    const com = unwrap(measureVolumeProps(placed[0])).centerOfMass;
+    expect(unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).mass).toBeCloseTo(
+      600 * 1070 * 2000,
+      -3
+    );
+    const com = unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).centerOfMass;
     expect(com[0]).toBeCloseTo(300, 1);
     expect(com[1]).toBeCloseTo(535, 1);
     expect(com[2]).toBeCloseTo(1000, 1);
     // The copy is independent: disposing it must not touch the model's solid.
     for (const s of placed) s[Symbol.dispose]();
     const again = unwrap(placedSolids(proxy));
-    expect(unwrap(measureVolumeProps(again[0])).mass).toBeCloseTo(600 * 1070 * 2000, -3);
+    expect(unwrap(measureVolumeProps(required(again[0], 'again item 1'))).mass).toBeCloseTo(
+      600 * 1070 * 2000,
+      -3
+    );
     for (const s of again) s[Symbol.dispose]();
   });
 
   it('places a solid element at its world origin (centroid shifts by origin)', () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'T' });
     unwrap(
       m.addBeam({
@@ -133,12 +157,12 @@ describe('placedSolids', () => {
         materialName: 'Steel',
       })
     );
-    const beam = m.getBeams()[0];
+    const beam = required(m.getBeams()[0], 'beam');
     const local = beam.geometry;
     const placed = unwrap(placedSolids(beam));
     expect(placed.length).toBe(1);
     const localCoM = unwrap(measureVolumeProps(local)).centerOfMass;
-    const placedCoM = unwrap(measureVolumeProps(placed[0])).centerOfMass;
+    const placedCoM = unwrap(measureVolumeProps(required(placed[0], 'placed item 1'))).centerOfMass;
     // identity rotation + origin [500,0,0] → centroid shifts by exactly [500,0,0].
     expect(placedCoM[0] - localCoM[0]).toBeCloseTo(500, 1);
     expect(placedCoM[1] - localCoM[1]).toBeCloseTo(0, 1);
@@ -147,7 +171,7 @@ describe('placedSolids', () => {
   });
 
   it('returns N placed flight solids for a stair (whose .geometry is null)', () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'T' });
     const flight = {
       width: 1000,
@@ -165,7 +189,7 @@ describe('placedSolids', () => {
         materialName: 'Concrete',
       })
     );
-    const placed = unwrap(placedSolids(m.getStairs()[0]));
+    const placed = unwrap(placedSolids(required(m.getStairs()[0], 'stair')));
     expect(placed.length).toBe(2);
     for (const s of placed) expect(isValidSolid(s)).toBe(true);
     for (const s of placed) s[Symbol.dispose]();

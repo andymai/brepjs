@@ -1,3 +1,4 @@
+import { frameFromMatrix, decomposeFrame, IDENTITY_FRAME } from '../src/placementFrame.js';
 import { unwrap } from 'brepjs';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
@@ -9,9 +10,7 @@ import {
   readLengthScale,
   composeWorldPlacement,
   composeWorldMatrix,
-  decomposePlacement,
   readGeoref,
-  identityMatrix,
 } from '../src/import/placement.js';
 
 beforeAll(async () => {
@@ -160,11 +159,11 @@ describe('placement round-trip', () => {
       expect(matrix).not.toBeNull();
       if (matrix === null) return;
 
-      const decomposed = decomposePlacement(matrix);
+      const decomposed = decomposeFrame(unwrap(frameFromMatrix(matrix)));
       const direct = composeWorldPlacement(reader, placementId, scale);
       if (direct === null) throw new Error('direct placement null');
 
-      for (let i = 0; i < 3; i++) {
+      for (const i of [0, 1, 2] as const) {
         expect(decomposed.origin[i]).toBeCloseTo(direct.origin[i], 4);
         expect(decomposed.axisX[i]).toBeCloseTo(direct.axisX[i], 6);
         expect(decomposed.axisZ[i]).toBeCloseTo(direct.axisZ[i], 6);
@@ -207,7 +206,7 @@ describe('placement round-trip', () => {
       const scale = readLengthScale(reader);
       const matrix = composeWorldMatrix(reader, objectPlacementId(reader, wallId), scale);
       if (matrix === null) throw new Error('matrix null');
-      const id = identityMatrix();
+      const id = IDENTITY_FRAME.matrix;
       for (let i = 0; i < 16; i++) {
         expect(matrix[i]).toBeCloseTo(id[i] ?? 0, 6);
       }

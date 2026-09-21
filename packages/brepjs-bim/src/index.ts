@@ -8,7 +8,7 @@ export { placedSolids } from './elementFns/placedGeometry.js';
 export { bodySolids } from './types/productBody.js';
 export type { NonEmpty, ProductBody } from './types/productBody.js';
 export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
-export type { FrameInput } from './import/placement.js';
+export type { FrameInput } from './placementFrame.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { setIfcWasmLocateFile } from './ifcRuntime.js';

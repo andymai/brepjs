@@ -28,7 +28,12 @@ import { extendedProfileToFace } from '../specs/profilesExtended.js';
 import { profileToPolygon } from '../elementFns/profileFns.js';
 import { issue, type ValidationIssue } from '../validation/severity.js';
 import type { SpfReader } from './spfReader.js';
-import { readPlaneAngleScale } from './placement.js';
+import {
+  readPlaneAngleScale,
+  composeWorldMatrix,
+  readAxis2Placement3D as readIfcAxisPlacement,
+} from './placement.js';
+import { frameFromMatrix, frameMul, frameToMatrix, type RigidFrame } from '../placementFrame.js';
 
 /**
  * Outcome of reconstructing a single product's body geometry.
@@ -117,7 +122,13 @@ export function readBodyItems(
   const bodyItemIds = findBodyItems(reader, representations);
   if (bodyItemIds === null) return { hasBody: false, itemCount: 0, items: [] };
 
-  const worldTransform = readWorldTransform(reader, product, scale);
+  let worldTransform: MatrixTransform | null;
+  try {
+    worldTransform = readWorldTransform(reader, product, scale);
+  } catch (cause) {
+    diagnostics.push(issue('warning', 'PLACEMENT_READ_FAILED', errMsg(cause), productExpressId));
+    return { hasBody: true, itemCount: bodyItemIds.length, items: bodyItemIds.map(() => NONE) };
+  }
   const itemTypes = new Map(bodyItemIds.map((id) => [id, reader.getLineType(id)]));
   const streamedItemIds = new Set(
     bodyItemIds.filter((id) => isStreamedTessellatedType(itemTypes.get(id)))
@@ -160,7 +171,9 @@ export function readBodyItems(
       diagnostics.push(
         issue(
           'warning',
-          'GEOMETRY_RECONSTRUCTION_FAILED',
+          cause instanceof IfcPlacementError
+            ? 'PLACEMENT_READ_FAILED'
+            : 'GEOMETRY_RECONSTRUCTION_FAILED',
           `Body item ${bodyItemId} reconstruction threw: ${errMsg(cause)}`,
           bodyItemId,
           { productExpressId }
@@ -219,6 +232,9 @@ function reconstructExtrusion(
     return NONE;
   }
 
+  const localFrame = readAxis2Placement3D(reader, ext['Position'], scale);
+  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
+  const placement = composePlacements([worldTransform, localFrame, profileFrame]);
   const faceResult = profileToFace(profileResult.value);
   if (!faceResult.ok) {
     diagnostics.push(
@@ -229,7 +245,6 @@ function reconstructExtrusion(
 
   // The profile's Position places the face inside the swept solid's frame, so
   // sweep in the profile's own frame and fold that Position into the placement.
-  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
   const depthMm = depth * scale * 1000;
   const sweptDir = readDirection(reader, ext['ExtrudedDirection']) ?? [0, 0, 1];
   const extrudeDir =
@@ -251,8 +266,7 @@ function reconstructExtrusion(
     return NONE;
   }
 
-  const localFrame = readAxis2Placement3D(reader, ext['Position'], scale);
-  const placed = placeSolid(solidResult.value, [worldTransform, localFrame, profileFrame]);
+  const placed = placeSolid(solidResult.value, [placement]);
   if (!placed.ok) {
     diagnostics.push(issue('warning', placed.error.code, placed.error.message, extrusionId));
     return NONE;
@@ -297,6 +311,9 @@ function reconstructRevolution(
     );
     return NONE;
   }
+  const localFrame = readAxis2Placement3D(reader, rev['Position'], scale);
+  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
+  const placement = composePlacements([worldTransform, localFrame, profileFrame]);
   const faceResult = profileToFace(profileResult.value);
   if (!faceResult.ok) {
     diagnostics.push(
@@ -315,7 +332,6 @@ function reconstructRevolution(
   // Revolve in the profile's own frame (see reconstructExtrusion): the axis
   // moves by the inverse of the profile Position, which is then folded into
   // the placement chain.
-  const profileFrame = readProfilePosition(reader, sweptArea.value, scale);
   const center = profileFrame === null ? sweptCenter : inverseRigidPoint(profileFrame, sweptCenter);
   const direction =
     profileFrame === null ? sweptDirection : rotateByTranspose(profileFrame.linear, sweptDirection);
@@ -346,8 +362,7 @@ function reconstructRevolution(
     return NONE;
   }
 
-  const localFrame = readAxis2Placement3D(reader, rev['Position'], scale);
-  const placed = placeSolid(revolved.value, [worldTransform, localFrame, profileFrame]);
+  const placed = placeSolid(revolved.value, [placement]);
   if (!placed.ok) {
     diagnostics.push(issue('warning', placed.error.code, placed.error.message, revolutionId));
     return NONE;
@@ -920,16 +935,28 @@ function readProfilePosition(
   scale: number
 ): MatrixTransform | null {
   const def = reader.getLine<Record<string, unknown>>(profileExpressId);
-  const positionRef = def === null ? undefined : asRef(def['Position']);
-  if (positionRef === undefined) return null;
+  const positionInput = def?.['Position'];
+  if (positionInput === null || positionInput === undefined) return null;
+  const positionRef = asRef(positionInput);
+  if (positionRef === undefined) throw new IfcPlacementError('Invalid IFC profile placement');
   const position = reader.getLine<Record<string, unknown>>(positionRef.value);
-  if (position === null) return null;
-  const [x, y] = readPoint2D(reader, position['Location'], scale) ?? [0, 0];
-  const [dx, dy] = readDirection2D(reader, position['RefDirection']) ?? [1, 0];
+  if (position === null) throw new IfcPlacementError('Missing IFC profile placement');
+  const location = readPoint2D(reader, position['Location'], scale);
+  if (location === undefined) throw new IfcPlacementError('Invalid IFC profile location');
+  const directionInput = position['RefDirection'];
+  const direction: [number, number] | undefined =
+    directionInput === null || directionInput === undefined
+      ? [1, 0]
+      : readDirection2D(reader, directionInput);
+  if (direction === undefined) throw new IfcPlacementError('Invalid IFC profile direction');
+  const [x, y] = location;
+  const [dx, dy] = direction;
   const len = Math.hypot(dx, dy);
   const c = len < 1e-12 ? 1 : dx / len;
   const s = len < 1e-12 ? 0 : dy / len;
-  return { linear: [c, -s, 0, s, c, 0, 0, 0, 1], translation: [x, y, 0] };
+  return frameToMatrix(
+    checkedFrame({ linear: [c, -s, 0, s, c, 0, 0, 0, 1], translation: [x, y, 0] })
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -945,10 +972,12 @@ function placeSolid(
   solid: Solid,
   frames: readonly (MatrixTransform | null)[]
 ): Result<Solid, BimError> {
-  let composed: MatrixTransform | null = null;
-  for (const frame of frames) {
-    if (frame === null) continue;
-    composed = composed === null ? frame : composeRigid(composed, frame);
+  let composed: MatrixTransform | null;
+  try {
+    composed = composePlacements(frames);
+  } catch (cause) {
+    solid[Symbol.dispose]();
+    return err(importError('PLACEMENT_READ_FAILED', errMsg(cause)));
   }
   if (composed === null || isIdentity(composed)) return ok(solid);
   const applied = applyMatrix(solid, composed);
@@ -962,30 +991,29 @@ function placeSolid(
   return ok(applied.value);
 }
 
-/** `outer ∘ inner`: the motion that applies `inner` first, then `outer`. */
-function composeRigid(outer: MatrixTransform, inner: MatrixTransform): MatrixTransform {
-  const [a00, a01, a02, a10, a11, a12, a20, a21, a22] = outer.linear;
-  const [b00, b01, b02, b10, b11, b12, b20, b21, b22] = inner.linear;
-  const [tx, ty, tz] = inner.translation;
-  const [ux, uy, uz] = outer.translation;
-  return {
-    linear: [
-      a00 * b00 + a01 * b10 + a02 * b20,
-      a00 * b01 + a01 * b11 + a02 * b21,
-      a00 * b02 + a01 * b12 + a02 * b22,
-      a10 * b00 + a11 * b10 + a12 * b20,
-      a10 * b01 + a11 * b11 + a12 * b21,
-      a10 * b02 + a11 * b12 + a12 * b22,
-      a20 * b00 + a21 * b10 + a22 * b20,
-      a20 * b01 + a21 * b11 + a22 * b21,
-      a20 * b02 + a21 * b12 + a22 * b22,
-    ],
-    translation: [
-      a00 * tx + a01 * ty + a02 * tz + ux,
-      a10 * tx + a11 * ty + a12 * tz + uy,
-      a20 * tx + a21 * ty + a22 * tz + uz,
-    ],
-  };
+class IfcPlacementError extends Error {}
+
+function checkedFrame(transform: MatrixTransform): RigidFrame {
+  const [a, b, c, d, e, f, g, h, i] = transform.linear;
+  const [x, y, z] = transform.translation;
+  const frame = frameFromMatrix([a, d, g, 0, b, e, h, 0, c, f, i, 0, x, y, z, 1]);
+  if (!frame.ok) throw new IfcPlacementError(frame.error.message);
+  return frame.value;
+}
+
+function composePlacements(frames: readonly (MatrixTransform | null)[]): MatrixTransform | null {
+  let composed: RigidFrame | null = null;
+  for (const input of frames) {
+    if (input === null) continue;
+    const frame = checkedFrame(input);
+    if (composed === null) composed = frame;
+    else {
+      const next = frameMul(composed, frame);
+      if (!next.ok) throw new IfcPlacementError(next.error.message);
+      composed = next.value;
+    }
+  }
+  return composed === null ? null : frameToMatrix(composed);
 }
 
 /** Rᵀ·v for a rigid frame's rotation part. */
@@ -1032,86 +1060,37 @@ function finalizeSolid(
   return { kind: 'SOLID', solid: valid.value, lossy: false };
 }
 
-// Reads the product's world placement (IfcLocalPlacement chain) via web-ifc's
-// composer, scaling the translation to mm. Returns null on identity/absent.
+// Resolves the product's IFC placement chain in millimetres.
+// Only an omitted ObjectPlacement uses the unplaced default.
 function readWorldTransform(
   reader: SpfReader,
   product: Record<string, unknown>,
   scale: number
 ): MatrixTransform | null {
-  const placementRef = asRef(product['ObjectPlacement']);
-  if (placementRef === undefined) return null;
-  const m = reader.getWorldTransform(placementRef.value);
-  if (m.length < 16) return null;
-  return columnMajorToTransform(m, scale);
+  const placementInput = product['ObjectPlacement'];
+  if (placementInput === null || placementInput === undefined) return null;
+  const placementRef = asRef(placementInput);
+  if (placementRef === undefined) throw new IfcPlacementError('Invalid IFC world placement');
+  const matrix = composeWorldMatrix(reader, placementRef.value, scale);
+  if (matrix === null) throw new IfcPlacementError('Invalid IFC world placement');
+  const frame = frameFromMatrix(matrix);
+  if (!frame.ok) throw new IfcPlacementError(frame.error.message);
+  return frameToMatrix(frame.value);
 }
 
-// Reads an IfcAxis2Placement3D into a transform (local frame → parent frame).
 function readAxis2Placement3D(
   reader: SpfReader,
   ref: unknown,
   scale: number
 ): MatrixTransform | null {
+  if (ref === null || ref === undefined) return null;
   const placementRef = asRef(ref);
-  if (placementRef === undefined) return null;
-  const placement = reader.getLine<Record<string, unknown>>(placementRef.value);
-  if (placement === null) return null;
-
-  const origin = readPoint(reader, placement['Location'], scale) ?? [0, 0, 0];
-  const axisZ = readDirection(reader, placement['Axis']) ?? [0, 0, 1];
-  const refDir = readDirection(reader, placement['RefDirection']) ?? [1, 0, 0];
-
-  const zN = normalize(axisZ);
-  // Gram-Schmidt: project RefDirection off Z to get an orthonormal X, Y = Z × X.
-  const dotXZ = refDir[0] * zN[0] + refDir[1] * zN[1] + refDir[2] * zN[2];
-  const xRaw: Vec3 = [
-    refDir[0] - dotXZ * zN[0],
-    refDir[1] - dotXZ * zN[1],
-    refDir[2] - dotXZ * zN[2],
-  ];
-  // RefDirection parallel to Axis ⇒ projected X is ~0. normalize() falls back to
-  // +Z, which would leave X parallel to Z and Y = Z × X = 0, so pick any vector
-  // orthogonal to Z instead.
-  const xRawLenSq = xRaw[0] * xRaw[0] + xRaw[1] * xRaw[1] + xRaw[2] * xRaw[2];
-  const orthoZ: Vec3 = Math.abs(zN[0]) < 0.9 ? cross(zN, [1, 0, 0]) : cross(zN, [0, 1, 0]);
-  const xN = xRawLenSq < 1e-12 ? normalize(orthoZ) : normalize(xRaw);
-  const yN = cross(zN, xN);
-
-  // Column-major basis [X | Y | Z] → row-major linear part for MatrixTransform.
-  const linear: MatrixTransform['linear'] = [
-    xN[0],
-    yN[0],
-    zN[0],
-    xN[1],
-    yN[1],
-    zN[1],
-    xN[2],
-    yN[2],
-    zN[2],
-  ];
-  return { linear, translation: origin };
-}
-
-// web-ifc world matrices are column-major 16-floats: columns [X | Y | Z | T].
-function columnMajorToTransform(m: readonly number[], scale: number): MatrixTransform {
-  const lengthFactor = scale * 1000;
-  const linear: MatrixTransform['linear'] = [
-    m[0] ?? 1,
-    m[4] ?? 0,
-    m[8] ?? 0,
-    m[1] ?? 0,
-    m[5] ?? 1,
-    m[9] ?? 0,
-    m[2] ?? 0,
-    m[6] ?? 0,
-    m[10] ?? 1,
-  ];
-  const translation: Vec3 = [
-    (m[12] ?? 0) * lengthFactor,
-    (m[13] ?? 0) * lengthFactor,
-    (m[14] ?? 0) * lengthFactor,
-  ];
-  return { linear, translation };
+  if (placementRef === undefined) throw new IfcPlacementError('Invalid IFC item placement');
+  const matrix = readIfcAxisPlacement(reader, placementRef.value, scale);
+  if (matrix === null) throw new IfcPlacementError('Invalid IFC item placement');
+  const frame = frameFromMatrix(matrix);
+  if (!frame.ok) throw new IfcPlacementError(frame.error.message);
+  return frameToMatrix(frame.value);
 }
 
 function isIdentity(t: MatrixTransform): boolean {
@@ -1180,9 +1159,9 @@ function readPoint2D(reader: SpfReader, ref: unknown, scale: number): [number, n
   if (pointRef === undefined) return undefined;
   const pt = reader.getLine<Record<string, unknown>>(pointRef.value);
   if (pt === null) return undefined;
-  const coords = asMeasureArray(pt['Coordinates']);
-  if (coords.length < 2) return undefined;
-  return [(coords[0] ?? 0) * scale * 1000, (coords[1] ?? 0) * scale * 1000];
+  const coords = readFinitePair(pt['Coordinates']);
+  if (coords === undefined) return undefined;
+  return [coords[0] * scale * 1000, coords[1] * scale * 1000];
 }
 
 function readDirection2D(reader: SpfReader, ref: unknown): [number, number] | undefined {
@@ -1190,9 +1169,16 @@ function readDirection2D(reader: SpfReader, ref: unknown): [number, number] | un
   if (dirRef === undefined) return undefined;
   const dir = reader.getLine<Record<string, unknown>>(dirRef.value);
   if (dir === null) return undefined;
-  const ratios = asMeasureArray(dir['DirectionRatios']);
-  if (ratios.length < 2) return undefined;
-  return [ratios[0] ?? 0, ratios[1] ?? 0];
+  return readFinitePair(dir['DirectionRatios']);
+}
+
+function readFinitePair(value: unknown): [number, number] | undefined {
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const x = readMeasure(value[0]);
+  const y = readMeasure(value[1]);
+  if (x === undefined || y === undefined || !Number.isFinite(x) || !Number.isFinite(y))
+    return undefined;
+  return [x, y];
 }
 
 function readPoint(reader: SpfReader, ref: unknown, scale: number): Vec3 | undefined {
@@ -1268,16 +1254,6 @@ function readLabel(value: unknown): string | undefined {
 
 function isStreamedTessellatedType(type: number | undefined): boolean {
   return type === WebIFC.IFCPOLYGONALFACESET || type === WebIFC.IFCFACEBASEDSURFACEMODEL;
-}
-
-function normalize(v: Vec3): Vec3 {
-  const len = Math.hypot(v[0], v[1], v[2]);
-  if (len < 1e-12) return [0, 0, 1];
-  return [v[0] / len, v[1] / len, v[2] / len];
-}
-
-function cross(a: Vec3, b: Vec3): Vec3 {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
 function errMsg(e: unknown): string {

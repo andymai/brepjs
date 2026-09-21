@@ -277,7 +277,6 @@ type ProductBody =
 /** Returns borrowed Product-local solids. The model retains ownership. */
 declare function bodySolids(body: ProductBody): NonEmpty<ValidSolid>;
 
-/** An (origin, axisX, axisZ) frame in mm — the authoring/display side of a placement. */
 interface FrameInput {
   readonly origin: Vec3;
   readonly axisX: Vec3;
@@ -898,6 +897,11 @@ interface RoofSpec {
 
 declare function parseRoofSpec(input: unknown): Result<RoofSpec, BimError>;
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcCurtainWallTypeEnum` in
+ * the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 type CurtainWallPredefinedType = 'NOTDEFINED' | 'USERDEFINED';
 
 /**
@@ -1168,6 +1172,11 @@ type AssemblyPredefinedType =
   | 'USERDEFINED'
   | 'NOTDEFINED';
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcAssemblyPlaceEnum` in the
+ * buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 type AssemblyPlace = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /**
@@ -1271,6 +1280,16 @@ interface SlabOpeningInput {
 
 declare function parseSlabOpeningInput(input: unknown): Result<SlabOpeningInput, BimError>;
 
+/**
+ * IFC enumeration literals in this module are transcribed verbatim from the
+ * buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema, specifically
+ * `IfcBridgeTypeEnum`, `IfcBridgePartTypeEnum`, `IfcFacilityUsageEnum`, and
+ * `IfcEarthworksFillTypeEnum`:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ *
+ * The Families-facing civil vocabulary stays target-independent; projection
+ * into these IFC-owned keywords occurs in `familiesAdapter.ts`.
+ */
 type BridgePredefinedType =
   | 'ARCHED'
   | 'CABLE_STAYED'
@@ -1591,7 +1610,12 @@ declare function isIfcSchema(value: unknown): value is IfcSchema;
  */
 declare function schemaSupports(schema: IfcSchema, entityName: string): boolean;
 
-/** IfcAssemblyPlaceEnum values; SITE for in-place assemblies, FACTORY for prefabricated. */
+/**
+ * Enumeration literals transcribed verbatim from `IfcAssemblyPlaceEnum` in the
+ * buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ * SITE denotes in-place assemblies; FACTORY denotes prefabricated assemblies.
+ */
 type AssemblyPlaceIfc = 'SITE' | 'FACTORY' | 'NOTDEFINED';
 
 /** IfcElementAssemblyTypeEnum values (IFC4). */
@@ -1677,7 +1701,12 @@ declare function writePresentationLayer(
   itemIds: readonly number[]
 ): void;
 
-/** IfcConnectionTypeEnum values used by IfcRelConnectsPathElements path ends. */
+/**
+ * Enumeration literals transcribed verbatim from `IfcConnectionTypeEnum` in
+ * the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ * These values identify the path ends used by `IfcRelConnectsPathElements`.
+ */
 type PathConnectionTypeIfc = 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
 
 /**
@@ -1997,6 +2026,11 @@ interface ProjectCrs {
   readonly scale?: number | undefined;
 }
 
+/**
+ * Enumeration literals transcribed verbatim from `IfcElementCompositionEnum`
+ * in the buildingSMART IFC 4.3 ADD2 (`IFC4X3_ADD2`) EXPRESS schema:
+ * https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/IFC4X3_ADD2.exp
+ */
 type IfcElementCompositionType = 'COMPLEX' | 'ELEMENT' | 'PARTIAL';
 
 interface SpatialPlacementSpec {
