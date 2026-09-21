@@ -17,7 +17,8 @@
         "packages/brepjs-voxel",
         "packages/brepjs-voxel-wasm",
         "packages/brepjs-vscode",
-        "packages/create-brepjs"
+        "packages/create-brepjs",
+        "tests"
       ]
     },
     "packages/brepjs-opencascade": {
