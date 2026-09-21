@@ -21,6 +21,8 @@ async function readerFor({
   location = '#1',
   axis = '#2',
   refDirection = '#3',
+  axisRatios = '0.,0.,2.',
+  refDirectionRatios = '3.,0.,1.',
   profilePosition = '$',
   profileLocation = '#14',
   profileDirection = '$',
@@ -34,6 +36,8 @@ async function readerFor({
   readonly location?: string;
   readonly axis?: string;
   readonly refDirection?: string;
+  readonly axisRatios?: string;
+  readonly refDirectionRatios?: string;
   readonly profilePosition?: string;
   readonly profileLocation?: string;
   readonly profileDirection?: string;
@@ -50,8 +54,8 @@ FILE_SCHEMA(('IFC4'));
 ENDSEC;
 DATA;
 #1=IFCCARTESIANPOINT((${origin}));
-#2=IFCDIRECTION((0.,0.,2.));
-#3=IFCDIRECTION((3.,0.,1.));
+#2=IFCDIRECTION((${axisRatios}));
+#3=IFCDIRECTION((${refDirectionRatios}));
 #4=IFCAXIS2PLACEMENT3D(${location},${axis},${refDirection});
 #5=IFCLOCALPLACEMENT(${parent},#4);
 #6=IFCRECTANGLEPROFILEDEF(.AREA.,$,${profilePosition},1.,1.);
@@ -85,6 +89,87 @@ it('interprets IFC directions and units before neutral frame validation', async 
 });
 
 it.each([
+  { axisRatios: '0.,2.,0.', refDirectionRatios: '0.,1.,3.' },
+  { axisRatios: '0.,2.E-200,0.', refDirectionRatios: '0.,1.E-200,3.E-200' },
+  { axisRatios: '0.,2.E300,0.', refDirectionRatios: '0.,1.E300,3.E300' },
+])('preserves IFC direction orientation independently of magnitude %j', async (input) => {
+  using reader = await readerFor({ ...input, productPlacement: '$' });
+  const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+  const diagnostics: ValidationIssue[] = [];
+  const body = readBodyItems(reader, 10, 1, diagnostics);
+  try {
+    const placement = composeWorldPlacement(reader, 5, 1);
+    expect(placement?.axisX).toEqual([expect.closeTo(0), expect.closeTo(0), expect.closeTo(1)]);
+    expect(placement?.axisZ).toEqual([expect.closeTo(0), expect.closeTo(1), expect.closeTo(0)]);
+    expect(diagnostics).toEqual([]);
+    expect(body.items).toHaveLength(1);
+    const item = body.items[0];
+    if (item?.kind !== 'SOLID') throw new Error('Expected an owned reconstructed solid');
+    const bounds = getBounds(item.solid);
+    expect(bounds.xMin).toBeCloseTo(500, 6);
+    expect(bounds.xMax).toBeCloseTo(1500, 6);
+    expect(bounds.yMin).toBeCloseTo(2000, 6);
+    expect(bounds.yMax).toBeCloseTo(3000, 6);
+    expect(bounds.zMin).toBeCloseTo(2500, 6);
+    expect(bounds.zMax).toBeCloseTo(3500, 6);
+    expect(unwrap(measureVolume(item.solid))).toBeCloseTo(1_000_000_000, -3);
+  } finally {
+    for (const item of body.items) if (item.kind === 'SOLID') item.solid[Symbol.dispose]();
+    if (before !== null) expect(nativeShapeCount()).toBe(before);
+  }
+});
+
+it.each([
+  { axisRatios: '0.,0.,0.' },
+  { refDirectionRatios: '0.,0.,0.' },
+  { refDirectionRatios: '0.,0.,3.' },
+  { refDirectionRatios: '0.,0.,-3.' },
+  { axisRatios: '1.,2.,3.', refDirectionRatios: '2.,4.,6.' },
+  { axisRatios: '1.,2.,3.', refDirectionRatios: '-2.,-4.,-6.' },
+  { axisRatios: '1.,2.,3.', refDirectionRatios: '0.1,0.2,0.3' },
+  { axisRatios: '1.,2.,3.', refDirectionRatios: '-0.1,-0.2,-0.3' },
+  { axisRatios: '3.,7.,11.', refDirectionRatios: '0.3,0.7,1.1' },
+  { axisRatios: '3.,7.,11.', refDirectionRatios: '-0.3,-0.7,-1.1' },
+  { axisRatios: '0.1,0.2,0.3', refDirectionRatios: '0.3,0.6,0.9' },
+  { axisRatios: '0.1,0.2,0.3', refDirectionRatios: '-0.3,-0.6,-0.9' },
+  { axisRatios: '0.3,0.6,0.9', refDirectionRatios: '0.1,0.2,0.3' },
+  { axisRatios: '0.3,0.6,0.9', refDirectionRatios: '-0.1,-0.2,-0.3' },
+  { axisRatios: '0.,$,1.' },
+  { refDirectionRatios: '1.,0.,$' },
+  { axisRatios: '0.,1.' },
+  { refDirectionRatios: '1.,0.' },
+  { axis: '.INVALID.' },
+  { refDirection: '.INVALID.' },
+])(
+  'rejects degenerate or malformed supplied 3D IFC directions %j before allocation',
+  async (input) => {
+    for (const productPlacement of ['#5', '$']) {
+      using reader = await readerFor({ ...input, productPlacement });
+      const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+      const edge = vi.spyOn(getKernel(), 'makeLineEdge');
+      const extrusion = vi.spyOn(getKernel(), 'extrude');
+      const disposal = vi.spyOn(getKernel(), 'dispose');
+      const diagnostics: ValidationIssue[] = [];
+      const body = readBodyItems(reader, 10, 1, diagnostics);
+      try {
+        expect(readAxis2Placement3D(reader, 4, 1)).toBeNull();
+        expect(composeWorldPlacement(reader, 5, 1)).toBeNull();
+        expect(body.items.map((item) => item.kind)).toEqual(['NONE']);
+        expect(diagnostics).toEqual([expect.objectContaining({ code: 'PLACEMENT_READ_FAILED' })]);
+        expect(edge).not.toHaveBeenCalled();
+        expect(extrusion).not.toHaveBeenCalled();
+        expect(disposal).not.toHaveBeenCalled();
+        if (before !== null) expect(nativeShapeCount()).toBe(before);
+      } finally {
+        for (const item of body.items) if (item.kind === 'SOLID') item.solid[Symbol.dispose]();
+        vi.restoreAllMocks();
+        if (before !== null) expect(nativeShapeCount()).toBe(before);
+      }
+    }
+  }
+);
+
+it.each([
   { localPosition: '.INVALID.' },
   { productPlacement: '.INVALID.' },
   { parent: '.INVALID.' },
@@ -111,6 +196,25 @@ it.each([
 );
 
 it.each([
+  { input: { axis: '$', refDirection: '$' }, xMin: 1500, yMin: 3500, zMin: 6000 },
+  {
+    input: { refDirectionRatios: '1.E-8,0.,1.' },
+    xMin: 1500,
+    yMin: 3500,
+    zMin: 6000,
+  },
+  {
+    input: { axisRatios: '0.,0.,1.', refDirectionRatios: '1.E-200,0.,1.' },
+    xMin: 1500,
+    yMin: 3500,
+    zMin: 6000,
+  },
+  {
+    input: { axisRatios: '0.,0.,1.', refDirectionRatios: '1.E-300,0.,1.' },
+    xMin: 1500,
+    yMin: 3500,
+    zMin: 6000,
+  },
   { input: { localPosition: '$' }, xMin: 500, yMin: 1500, zMin: 3000 },
   { input: { productPlacement: '$' }, xMin: 500, yMin: 1500, zMin: 3000 },
   { input: { parent: '$' }, xMin: 1500, yMin: 3500, zMin: 6000 },
@@ -120,26 +224,29 @@ it.each([
     yMin: -500,
     zMin: 0,
   },
-])('preserves legal IFC placement omissions $input', async ({ input, xMin, yMin, zMin }) => {
-  using reader = await readerFor(input);
-  const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-  const diagnostics: ValidationIssue[] = [];
-  const body = readBodyItems(reader, 10, 1, diagnostics);
-  try {
-    expect(diagnostics).toEqual([]);
-    expect(body.items).toHaveLength(1);
-    const item = body.items[0];
-    if (item?.kind !== 'SOLID') throw new Error('Expected an owned reconstructed solid');
-    const bounds = getBounds(item.solid);
-    expect(bounds.xMin).toBeCloseTo(xMin, 6);
-    expect(bounds.yMin).toBeCloseTo(yMin, 6);
-    expect(bounds.zMin).toBeCloseTo(zMin, 6);
-    expect(unwrap(measureVolume(item.solid))).toBeCloseTo(1_000_000_000, -3);
-  } finally {
-    for (const item of body.items) if (item.kind === 'SOLID') item.solid[Symbol.dispose]();
-    if (before !== null) expect(nativeShapeCount()).toBe(before);
+])(
+  'preserves valid IFC placement directions and omissions $input',
+  async ({ input, xMin, yMin, zMin }) => {
+    using reader = await readerFor(input);
+    const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+    const diagnostics: ValidationIssue[] = [];
+    const body = readBodyItems(reader, 10, 1, diagnostics);
+    try {
+      expect(diagnostics).toEqual([]);
+      expect(body.items).toHaveLength(1);
+      const item = body.items[0];
+      if (item?.kind !== 'SOLID') throw new Error('Expected an owned reconstructed solid');
+      const bounds = getBounds(item.solid);
+      expect(bounds.xMin).toBeCloseTo(xMin, 6);
+      expect(bounds.yMin).toBeCloseTo(yMin, 6);
+      expect(bounds.zMin).toBeCloseTo(zMin, 6);
+      expect(unwrap(measureVolume(item.solid))).toBeCloseTo(1_000_000_000, -3);
+    } finally {
+      for (const item of body.items) if (item.kind === 'SOLID') item.solid[Symbol.dispose]();
+      if (before !== null) expect(nativeShapeCount()).toBe(before);
+    }
   }
-});
+);
 
 it.each([
   { profilePosition: '#999' },

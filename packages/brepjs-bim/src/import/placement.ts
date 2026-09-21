@@ -239,13 +239,15 @@ export function readAxis2Placement3D(
   if (axisZraw === null || refXraw === null) return null;
 
   const z = normalize(axisZraw);
-  // Project RefDirection onto the plane perpendicular to Z, per IFC axis rules.
-  const dot = z[0] * refXraw[0] + z[1] * refXraw[1] + z[2] * refXraw[2];
-  const projX: Vec3 = [refXraw[0] - dot * z[0], refXraw[1] - dot * z[1], refXraw[2] - dot * z[2]];
-  // Test the projected (un-normalized) vector: normalize() returns a safe unit
-  // fallback for near-zero input, so checking it post-normalize would never fire
-  // and would leave x parallel to z (making y = cross(z, x) the zero vector).
-  const x = lengthSq(projX) < 1e-12 ? normalize(orthogonal(z)) : normalize(projX);
+  const refX = normalize(refXraw);
+  if (z === null || refX === null) return null;
+
+  // The double cross projects RefDirection perpendicular to Z without
+  // subtracting nearly equal components. Only an omitted direction may default.
+  const y = crossDirection(z, refX);
+  if (y === null && refDirId !== null) return null;
+  const x = normalize(y === null ? orthogonal(z) : cross(y, z));
+  if (x === null) return null;
   const frame = frameFromPlacement({ origin: originMm, axisX: x, axisZ: z });
   return frame.ok ? frame.value.matrix : null;
 }
@@ -279,17 +281,30 @@ function cross(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
-function lengthSq(v: Vec3): number {
-  return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+function crossDirection(a: Vec3, b: Vec3): Vec3 | null {
+  const products: readonly (readonly [number, number])[] = [
+    [a[1] * b[2], a[2] * b[1]],
+    [a[2] * b[0], a[0] * b[2]],
+    [a[0] * b[1], a[1] * b[0]],
+  ];
+  // Independently normalized proportional ratios can differ by a few ulps.
+  // Bound cancellation relative to its terms so a tiny perpendicular
+  // component remains usable when it is not a subtraction residual.
+  const parallel = products.every(
+    ([left, right]) =>
+      Math.abs(left - right) <= 4 * Number.EPSILON * (Math.abs(left) + Math.abs(right))
+  );
+  return parallel ? null : normalize(cross(a, b));
 }
 
-function normalize(v: Vec3): Vec3 {
-  const len = Math.sqrt(lengthSq(v));
-  // Degenerate/near-zero direction: fall back to a canonical unit vector (+Z)
-  // rather than returning the non-unit near-zero vector, which would corrupt
-  // downstream placement axes.
-  if (len < 1e-12) return [0, 0, 1];
-  return [v[0] / len, v[1] / len, v[2] / len];
+function normalize(v: Vec3): Vec3 | null {
+  // IFC direction ratios have no magnitude requirement. Scale before taking
+  // the norm to avoid underflow or overflow for finite nonzero ratios.
+  const scale = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
+  if (scale === 0) return null;
+  const scaled: Vec3 = [v[0] / scale, v[1] / scale, v[2] / scale];
+  const len = Math.hypot(...scaled);
+  return [scaled[0] / len, scaled[1] / len, scaled[2] / len];
 }
 
 // Returns an arbitrary unit vector orthogonal to v (v assumed non-zero).
@@ -322,7 +337,8 @@ function readCoordinates(value: unknown): number[] | null {
 function readDirection(reader: SpfReader, expressId: number): Vec3 | null {
   const dir = reader.getLine<Record<string, unknown>>(expressId);
   const ratios = readCoordinates(dir?.['DirectionRatios']);
-  return ratios === null ? null : [ratios[0] ?? 0, ratios[1] ?? 0, ratios[2] ?? 0];
+  const [x, y, z] = ratios ?? [];
+  return x === undefined || y === undefined || z === undefined ? null : [x, y, z];
 }
 
 // web-ifc references appear as `{ type, value: expressId }`; extract the id.
