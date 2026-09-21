@@ -87,15 +87,7 @@ export async function initOCCT(): Promise<any> {
   if (_oc) return _oc;
 
   const { default: initOpenCascade } = await import('brepjs-opencascade/src/brepjs_single.js');
-  _oc = await initOpenCascade({
-    locateFile: (fileName: string) => {
-      if (fileName.endsWith('.wasm')) {
-        return new URL('../../packages/brepjs-opencascade/src/brepjs_single.wasm', import.meta.url)
-          .pathname;
-      }
-      return fileName;
-    },
-  });
+  _oc = await initOpenCascade();
 
   initFromOC(_oc);
   if (!_available.includes('occt')) _available.push('occt');
