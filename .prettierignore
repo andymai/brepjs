@@ -1,3 +1,11 @@
 **/idsSchema.generated.ts
 **/qtoDefinitions.generated.ts
-**/CHANGELOG.md
+# release-please writes these through the API, unformatted; brepjs-viewer's is hand-maintained and stays formatted
+CHANGELOG.md
+packages/brepjs-bim/CHANGELOG.md
+packages/brepjs-cad/CHANGELOG.md
+packages/brepjs-families/CHANGELOG.md
+packages/brepjs-opencascade/CHANGELOG.md
+packages/brepjs-sheetmetal/CHANGELOG.md
+packages/brepjs-voxel-wasm/CHANGELOG.md
+packages/create-brepjs/CHANGELOG.md

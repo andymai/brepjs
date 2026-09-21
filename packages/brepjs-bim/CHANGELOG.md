@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)). Placement inputs (`placedSolids` parent frames, element spec `axisX`/`axisZ`, Families authored axes, IFC placements) must be finite, orthonormal and right-handed; non-unit, skewed, reflected or degenerate axes now return `INVALID_RIGID_FRAME` or `PLACEMENT_READ_FAILED` instead of being normalized silently.
+* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)). `FrameInput` axes (`placedSolids` parent frames, element spec and Families `axisX`/`axisZ`) must be finite unit vectors that are orthogonal and right-handed; non-unit, skewed or reflected axes return `INVALID_RIGID_FRAME` instead of being normalized silently. `tRotate` axes and IFC direction ratios are still normalized, but zero or parallel directions and malformed supplied IFC placement references are rejected (`PLACEMENT_READ_FAILED` on import) instead of falling back to default axes.
 
 ### Bug Fixes
 
