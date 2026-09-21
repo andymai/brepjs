@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.1...brepjs-bim-v0.24.2) (2026-09-21)
+
+
+### Bug Fixes
+
+* **bim:** index GlobalIds for every IFC root ([#2329](https://github.com/andymai/brepjs/issues/2329)) ([90b4225](https://github.com/andymai/brepjs/commit/90b422586ee6d214540c9728a9b4c89b2f96b2c6))
+
 ## [0.24.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.0...brepjs-bim-v0.24.1) (2026-09-04)
 
 
