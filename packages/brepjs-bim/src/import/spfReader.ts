@@ -1,8 +1,9 @@
-import { IfcAPI } from 'web-ifc';
+import { IfcAPI, IFCROOT } from 'web-ifc';
 import type { FlatMesh, IfcGeometry } from 'web-ifc';
 import type { BimError } from '../errors/bimError.js';
 import { importError } from '../errors/bimError.js';
 import { initIfcApi } from '../ifcRuntime.js';
+import { isValidIfcGuid } from '../identity/ifcGuid.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 
@@ -37,6 +38,17 @@ function deleteVector(vec: unknown): void {
   (vec as { delete?: () => void }).delete?.();
 }
 
+/** Copies reader-owned native IDs and releases their vector even if iteration throws. */
+function readLineIds(vec: { size(): number; get(index: number): number }): number[] {
+  const ids: number[] = [];
+  try {
+    for (let i = 0; i < vec.size(); i++) ids.push(vec.get(i));
+  } finally {
+    deleteVector(vec);
+  }
+  return ids;
+}
+
 export class SpfReader {
   readonly schema: ImportedSchema;
   readonly modelId: number;
@@ -45,6 +57,10 @@ export class SpfReader {
   // Caches GetLineIDsWithType results per type code. The model is read-only
   // during import, so this is safe and removes the per-element WASM round-trip.
   readonly #linesByType = new Map<number, number[]>();
+  #guidIndex: {
+    readonly byGuid: ReadonlyMap<string, number>;
+    readonly byExpressId: ReadonlyMap<number, string>;
+  } | null = null;
 
   private constructor(api: IfcAPI, modelId: number, schema: ImportedSchema) {
     this.#api = api;
@@ -123,26 +139,15 @@ export class SpfReader {
     // per-call leak and removes the repeated O(n) WASM round-trip.
     const cached = this.#linesByType.get(type);
     if (cached !== undefined) return cached;
-    const vec = this.#api.GetLineIDsWithType(this.modelId, type);
-    const out: number[] = [];
-    for (let i = 0; i < vec.size(); i++) {
-      out.push(vec.get(i));
-    }
-    deleteVector(vec);
+    const out = readLineIds(this.#api.GetLineIDsWithType(this.modelId, type));
     this.#linesByType.set(type, out);
     return out;
   }
 
   /** Express ids of every line in the model. */
   getAllLines(): number[] {
-    const vec = this.#api.GetAllLines(this.modelId);
-    const out: number[] = [];
-    for (let i = 0; i < vec.size(); i++) {
-      out.push(vec.get(i));
-    }
     // Free the WASM-heap vector; CloseModel does not reclaim it.
-    deleteVector(vec);
-    return out;
+    return readLineIds(this.#api.GetAllLines(this.modelId));
   }
 
   /** IFC type code for an express id. */
@@ -156,21 +161,42 @@ export class SpfReader {
     return typeof t === 'number' ? t : Number((t as { value?: unknown } | undefined)?.value ?? t);
   }
 
-  /** Builds web-ifc's internal GUID→expressId index; call before guid lookups. */
+  /** Builds a JS-owned index without web-ifc's unreleased per-type native vectors. */
   buildGuidMap(): void {
-    this.#api.CreateIfcGuidToExpressIdMapping(this.modelId);
+    if (this.#guidIndex !== null) return;
+    const byGuid = new Map<string, number>();
+    const byExpressId = new Map<number, string>();
+    // All GlobalId-bearing roots, including relationships and type objects, with
+    // no decoding of unrelated geometry arrays. The native vector is retired here.
+    const rootIds = readLineIds(this.#api.GetLineIDsWithType(this.modelId, IFCROOT, true));
+    for (const expressId of rootIds) {
+      const line = this.getLine(expressId);
+      if (typeof line !== 'object' || line === null || !('GlobalId' in line)) continue;
+      const guid = line.GlobalId;
+      if (
+        typeof guid !== 'object' ||
+        guid === null ||
+        !('value' in guid) ||
+        typeof guid.value !== 'string' ||
+        !isValidIfcGuid(guid.value)
+      )
+        continue;
+      byGuid.set(guid.value, expressId);
+      byExpressId.set(expressId, guid.value);
+    }
+    this.#guidIndex = { byGuid, byExpressId };
   }
 
-  /** expressId for a GlobalId, or undefined. Requires {@link buildGuidMap} first. */
+  /** expressId for a GlobalId, or undefined. Builds the index on first lookup. */
   expressIdFromGuid(guid: string): number | undefined {
-    const id = this.#api.GetExpressIdFromGuid(this.modelId, guid);
-    return typeof id === 'number' ? id : undefined;
+    this.buildGuidMap();
+    return this.#guidIndex?.byGuid.get(guid);
   }
 
-  /** GlobalId for an express id, or undefined. Requires {@link buildGuidMap} first. */
+  /** GlobalId for an express id, or undefined. Builds the index on first lookup. */
   guidFromExpressId(expressId: number): string | undefined {
-    const guid = this.#api.GetGuidFromExpressId(this.modelId, expressId);
-    return typeof guid === 'string' ? guid : undefined;
+    this.buildGuidMap();
+    return this.#guidIndex?.byExpressId.get(expressId);
   }
 
   /**
