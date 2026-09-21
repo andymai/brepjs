@@ -1,0 +1,19 @@
+packages/create-brepjs/templates/package.json.tpl
+  s_e1c8a62fa5ac57::t_b4b7fc14b38fa6 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e06ed3ed3d62269bc3f423e3aea02c264d0830f6",
+  "prompts": {},
+  "sessions": {
+    "s_e1c8a62fa5ac57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43877067-ca04-495a-9554-b732ee329253",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
