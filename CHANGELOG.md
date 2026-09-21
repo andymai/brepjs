@@ -1,16 +1,5 @@
 # Changelog
 
-## [20.0.0](https://github.com/andymai/brepjs/compare/brepjs-v19.0.5...brepjs-v20.0.0) (2026-09-21)
-
-
-### ⚠ BREAKING CHANGES
-
-* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328))
-
-### Bug Fixes
-
-* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)) ([4835e24](https://github.com/andymai/brepjs/commit/4835e24cac152533ea4bb0128b8daf2d1e47b614))
-
 ## [19.0.5](https://github.com/andymai/brepjs/compare/brepjs-v19.0.4...brepjs-v19.0.5) (2026-09-17)
 
 

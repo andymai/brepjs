@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/andymai/brepjs/compare/create-brepjs-v0.4.3...create-brepjs-v0.4.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* **create-brepjs:** track brepjs 19 again after brepjs 20.0.0 was unpublished
+
 ## [0.4.3](https://github.com/andymai/brepjs/compare/create-brepjs-v0.4.2...create-brepjs-v0.4.3) (2026-09-21)
 
 
