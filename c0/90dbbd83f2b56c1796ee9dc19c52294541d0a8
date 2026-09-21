@@ -1,0 +1,21 @@
+.prettierignore
+  s_e1c8a62fa5ac57::t_0f8ced66048970 3-11
+packages/brepjs-bim/CHANGELOG.md
+  s_e1c8a62fa5ac57::t_0f8ced66048970 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c090dbbd83f2b56c1796ee9dc19c52294541d0a8",
+  "prompts": {},
+  "sessions": {
+    "s_e1c8a62fa5ac57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43877067-ca04-495a-9554-b732ee329253",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
