@@ -1,0 +1,23 @@
+.claude/skills/release-publishing/SKILL.md
+  s_e1c8a62fa5ac57::t_70081529ec70f3 33-41
+.claude/skills/companion-packages/references/publish-pipeline.md
+  s_e1c8a62fa5ac57::t_70081529ec70f3 27-29
+release-please-config.json
+  s_e1c8a62fa5ac57::t_70081529ec70f3 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bdbc7cde816a09f3c8ac9bc5fecff9b39dc57304",
+  "prompts": {},
+  "sessions": {
+    "s_e1c8a62fa5ac57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43877067-ca04-495a-9554-b732ee329253",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
