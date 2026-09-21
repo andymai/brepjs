@@ -3,9 +3,14 @@
 ## [0.24.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.1...brepjs-bim-v0.24.2) (2026-09-21)
 
 
+### ⚠ BREAKING CHANGES
+
+* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)). `FrameInput` axes (`placedSolids` parent frames, element spec and Families `axisX`/`axisZ`) must be finite unit vectors that are orthogonal and right-handed; non-unit, skewed or reflected axes return `INVALID_RIGID_FRAME` instead of being normalized silently. `tRotate` axes and IFC direction ratios are still normalized, but zero or parallel directions and malformed supplied IFC placement references are rejected (`PLACEMENT_READ_FAILED` on import) instead of falling back to default axes.
+
 ### Bug Fixes
 
 * **bim:** index GlobalIds for every IFC root ([#2329](https://github.com/andymai/brepjs/issues/2329)) ([90b4225](https://github.com/andymai/brepjs/commit/90b422586ee6d214540c9728a9b4c89b2f96b2c6))
+* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)) ([4835e24](https://github.com/andymai/brepjs/commit/4835e24cac152533ea4bb0128b8daf2d1e47b614))
 
 ## [0.24.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.0...brepjs-bim-v0.24.1) (2026-09-04)
 
