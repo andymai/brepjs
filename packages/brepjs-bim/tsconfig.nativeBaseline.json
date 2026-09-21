@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.test.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "paths": {
+      "@/*": ["../../src/*"],
+      "brepjs": ["../../src/index.ts"],
+      "brepjs-families": ["../brepjs-families/src/index.ts"]
+    }
+  },
+  "include": [
+    "tests/kernelSelection.test.ts",
+    "tests/nativeBodyBaseline.test.ts",
+    "tests/productBodyArena.test.ts",
+    "tests/setup.ts"
+  ]
+}

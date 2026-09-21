@@ -4,7 +4,7 @@ import type { ValidSolid } from 'brepjs';
 import type { IfcWriter } from './ifcWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 import { writeAxis2Placement3D } from './headerWriter.js';
-import type { FrameInput } from '../import/placement.js';
+import type { FrameInput } from '../placementFrame.js';
 import type { NonEmpty } from '../types/productBody.js';
 
 export interface TessellationResult {

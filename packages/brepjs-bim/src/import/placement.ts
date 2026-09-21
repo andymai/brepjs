@@ -1,33 +1,13 @@
 import * as WebIFC from 'web-ifc';
-import type { MatrixTransform } from 'brepjs';
+import {
+  frameFromMatrix,
+  frameFromPlacement,
+  frameMul,
+  decomposeFrame,
+  type Mat4x4,
+  type Vec3,
+} from '../placementFrame.js';
 import type { SpfReader } from './spfReader.js';
-
-/**
- * Column-major 4x4 transform, matching the layout web-ifc and OCCT use:
- * column c, row r lives at index c*4 + r. Columns 0-2 are the basis vectors
- * (axisX, axisY, axisZ); column 3 is the translation; the bottom row is
- * [0,0,0,1].
- */
-export type Mat4x4 = readonly [
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-];
-
-export type Vec3 = readonly [number, number, number];
 
 /** A placement decomposed into origin + the two stored IFC axes (Z, X). */
 export interface WorldPlacement {
@@ -194,12 +174,18 @@ function composeLocalPlacement(
   const relative = readAxis2Placement3D(reader, relativeId, scale);
   if (relative === null) return null;
 
-  const parentId = refValue(placement['PlacementRelTo']);
-  if (parentId === null) return relative;
+  const parentInput = placement['PlacementRelTo'];
+  if (parentInput === null || parentInput === undefined) return relative;
+  const parentId = refValue(parentInput);
+  if (parentId === null) return null;
 
   const parent = composeLocalPlacement(reader, parentId, scale, seen);
-  if (parent === null) return relative;
-  return multiply(parent, relative);
+  if (parent === null) return null;
+  const parentFrame = frameFromMatrix(parent);
+  const relativeFrame = frameFromMatrix(relative);
+  if (!parentFrame.ok || !relativeFrame.ok) return null;
+  const combined = frameMul(parentFrame.value, relativeFrame.value);
+  return combined.ok ? combined.value.matrix : null;
 }
 
 /**
@@ -213,7 +199,8 @@ export function composeWorldPlacement(
 ): WorldPlacement | null {
   const matrix = composeWorldMatrix(reader, placementExpressId, scale);
   if (matrix === null) return null;
-  return decomposePlacement(matrix);
+  const frame = frameFromMatrix(matrix);
+  return frame.ok ? decomposeFrame(frame.value) : null;
 }
 
 /**
@@ -231,7 +218,8 @@ export function readAxis2Placement3D(
   if (placement === null) return null;
 
   const locationId = refValue(placement['Location']);
-  const location = locationId !== null ? readCartesianPoint(reader, locationId) : [0, 0, 0];
+  const location = locationId !== null ? readCartesianPoint(reader, locationId) : null;
+  if (location === null) return null;
   const originMm: Vec3 = [
     (location[0] ?? 0) * scale * 1000,
     (location[1] ?? 0) * scale * 1000,
@@ -240,9 +228,15 @@ export function readAxis2Placement3D(
 
   const axisId = refValue(placement['Axis']);
   const refDirId = refValue(placement['RefDirection']);
-  const axisZraw: Vec3 = axisId !== null ? (readDirection(reader, axisId) ?? [0, 0, 1]) : [0, 0, 1];
-  const refXraw: Vec3 =
-    refDirId !== null ? (readDirection(reader, refDirId) ?? [1, 0, 0]) : [1, 0, 0];
+  const axisZraw =
+    axisId !== null
+      ? readDirection(reader, axisId)
+      : omittedDirection(placement['Axis'], [0, 0, 1]);
+  const refXraw =
+    refDirId !== null
+      ? readDirection(reader, refDirId)
+      : omittedDirection(placement['RefDirection'], [1, 0, 0]);
+  if (axisZraw === null || refXraw === null) return null;
 
   const z = normalize(axisZraw);
   // Project RefDirection onto the plane perpendicular to Z, per IFC axis rules.
@@ -252,68 +246,8 @@ export function readAxis2Placement3D(
   // fallback for near-zero input, so checking it post-normalize would never fire
   // and would leave x parallel to z (making y = cross(z, x) the zero vector).
   const x = lengthSq(projX) < 1e-12 ? normalize(orthogonal(z)) : normalize(projX);
-  const y = cross(z, x);
-
-  return [
-    x[0],
-    x[1],
-    x[2],
-    0,
-    y[0],
-    y[1],
-    y[2],
-    0,
-    z[0],
-    z[1],
-    z[2],
-    0,
-    originMm[0],
-    originMm[1],
-    originMm[2],
-    1,
-  ];
-}
-
-/** An (origin, axisX, axisZ) frame in mm — the authoring/display side of a placement. */
-export interface FrameInput {
-  readonly origin: Vec3;
-  readonly axisX: Vec3;
-  readonly axisZ: Vec3;
-}
-
-/**
- * Builds a row-major MatrixTransform (for brepjs `applyMatrix`) from an
- * (origin, axisX, axisZ) frame, using the SAME IFC orthonormalization as
- * {@link readAxis2Placement3D}: z = normalize(axisZ); x = normalize(axisX
- * projected onto the plane ⊥ z); y = z × x. The basis vectors are the matrix
- * columns, so the row-major linear array is [Xx,Yx,Zx, Xy,Yy,Zy, Xz,Yz,Zz];
- * translation = origin (mm). This is the display-side counterpart to the IFC
- * writer's Axis2Placement3D (Axis=Z, RefDirection=X) so on-screen placement and
- * the IFC export agree.
- */
-export function placementToMatrix(f: FrameInput): MatrixTransform {
-  const z = normalize(f.axisZ);
-  const dot = z[0] * f.axisX[0] + z[1] * f.axisX[1] + z[2] * f.axisX[2];
-  const projX: Vec3 = [f.axisX[0] - dot * z[0], f.axisX[1] - dot * z[1], f.axisX[2] - dot * z[2]];
-  const x = lengthSq(projX) < 1e-12 ? normalize(orthogonal(z)) : normalize(projX);
-  const y = cross(z, x);
-  return {
-    linear: [x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]],
-    translation: [f.origin[0], f.origin[1], f.origin[2]],
-  };
-}
-
-/** Decomposes a column-major matrix into origin (mm) + IFC axes (Z, X). */
-export function decomposePlacement(m: Mat4x4): WorldPlacement {
-  return {
-    axisX: normalize([m[0], m[1], m[2]]),
-    axisZ: normalize([m[8], m[9], m[10]]),
-    origin: [m[12], m[13], m[14]],
-  };
-}
-
-export function identityMatrix(): Mat4x4 {
-  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  const frame = frameFromPlacement({ origin: originMm, axisX: x, axisZ: z });
+  return frame.ok ? frame.value.matrix : null;
 }
 
 /**
@@ -341,38 +275,6 @@ export function readGeoref(reader: SpfReader, scale: number): Georef | null {
 
 // --- matrix / vector helpers ------------------------------------------------
 
-// Column-major 4x4 multiply: result = a * b (apply b first, then a).
-function multiply(a: Mat4x4, b: Mat4x4): Mat4x4 {
-  const out = new Array<number>(16).fill(0);
-  for (let col = 0; col < 4; col++) {
-    for (let row = 0; row < 4; row++) {
-      let sum = 0;
-      for (let k = 0; k < 4; k++) {
-        sum += (a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0);
-      }
-      out[col * 4 + row] = sum;
-    }
-  }
-  return [
-    out[0] ?? 0,
-    out[1] ?? 0,
-    out[2] ?? 0,
-    out[3] ?? 0,
-    out[4] ?? 0,
-    out[5] ?? 0,
-    out[6] ?? 0,
-    out[7] ?? 0,
-    out[8] ?? 0,
-    out[9] ?? 0,
-    out[10] ?? 0,
-    out[11] ?? 0,
-    out[12] ?? 0,
-    out[13] ?? 0,
-    out[14] ?? 0,
-    out[15] ?? 0,
-  ];
-}
-
 function cross(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
@@ -397,18 +299,30 @@ function orthogonal(v: Vec3): Vec3 {
 
 // --- line-value extraction helpers ------------------------------------------
 
-function readCartesianPoint(reader: SpfReader, expressId: number): number[] {
+function omittedDirection(value: unknown, fallback: Vec3): Vec3 | null {
+  return value === null || value === undefined ? fallback : null;
+}
+
+function readCartesianPoint(reader: SpfReader, expressId: number): number[] | null {
   const point = reader.getLine<Record<string, unknown>>(expressId);
-  const coords = point?.['Coordinates'];
-  if (!Array.isArray(coords)) return [0, 0, 0];
-  return coords.map((c) => numericValue(c) ?? 0);
+  return readCoordinates(point?.['Coordinates']);
+}
+
+function readCoordinates(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 3) return null;
+  const coordinates: number[] = [];
+  for (const component of value) {
+    const number = numericValue(component);
+    if (number === null || !Number.isFinite(number)) return null;
+    coordinates.push(number);
+  }
+  return coordinates;
 }
 
 function readDirection(reader: SpfReader, expressId: number): Vec3 | null {
   const dir = reader.getLine<Record<string, unknown>>(expressId);
-  const ratios = dir?.['DirectionRatios'];
-  if (!Array.isArray(ratios)) return null;
-  return [numericValue(ratios[0]) ?? 0, numericValue(ratios[1]) ?? 0, numericValue(ratios[2]) ?? 0];
+  const ratios = readCoordinates(dir?.['DirectionRatios']);
+  return ratios === null ? null : [ratios[0] ?? 0, ratios[1] ?? 0, ratios[2] ?? 0];
 }
 
 // web-ifc references appear as `{ type, value: expressId }`; extract the id.

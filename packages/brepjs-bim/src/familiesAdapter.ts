@@ -30,18 +30,19 @@ import {
   type csg,
 } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
-import { placementToMatrix, type Vec3 } from './import/placement.js';
+import { frameFromOps, requireFrame, FrameProjectionError } from './familiesFrame.js';
 import {
   IDENTITY_FRAME,
   decomposeFrame,
-  frameFromOps,
+  frameToMatrix,
+  type Vec3,
   frameFromPlacement,
   frameInverse,
   frameMul,
   frameOrigin,
   isPureTranslation,
   translationFrame,
-  type Frame,
+  type RigidFrame,
 } from './placementFrame.js';
 import { BimModel, type OpeningIdentityOptions } from './model/bimModel.js';
 import type { LocalId } from './identity/localId.js';
@@ -658,8 +659,10 @@ function addProxyElement(
   model: BimModel,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
-  spatialFrame: Frame
+  spatialFrame: RigidFrame
 ): Result<LocalId, BimError> {
+  const inverseCheck = frameInverse(spatialFrame);
+  if (!inverseCheck.ok) return inverseCheck;
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_PROXY_EVAL_FAILED',
     notSolidCode: 'FAMILIES_PROXY_NOT_SOLID',
@@ -902,11 +905,19 @@ function hasRotatedAxes(el: ResolvedElement): boolean {
   );
 }
 
+function authoredPlacement(el: ResolvedElement) {
+  return decomposeFrame(
+    requireFrame(
+      frameFromPlacement({
+        origin: el.props['origin'] === undefined ? ZERO_TRANSLATION : el.props['origin'],
+        axisX: el.props['axisX'] === undefined ? DEFAULT_AXIS_X : el.props['axisX'],
+        axisZ: el.props['axisZ'] === undefined ? DEFAULT_AXIS_Z : el.props['axisZ'],
+      })
+    )
+  );
+}
 function authoredSpecOrigin(el: ResolvedElement): Translation {
-  const origin = el.props['origin'];
-  return Array.isArray(origin) && origin.length === 3 && origin.every((c) => typeof c === 'number')
-    ? (origin as unknown as Translation)
-    : ZERO_TRANSLATION;
+  return authoredPlacement(el).origin;
 }
 
 function localizeOwnedSolid(
@@ -949,13 +960,10 @@ function authoredTranslation(el: ResolvedElement): Translation {
 }
 
 function authoredAxisX(el: ResolvedElement): Vec3 {
-  const v = el.props['axisX'];
-  return Array.isArray(v) && v.length === 3 ? (v as unknown as Vec3) : DEFAULT_AXIS_X;
+  return authoredPlacement(el).axisX;
 }
-
 function authoredAxisZ(el: ResolvedElement): Vec3 {
-  const v = el.props['axisZ'];
-  return Array.isArray(v) && v.length === 3 ? (v as unknown as Vec3) : DEFAULT_AXIS_Z;
+  return authoredPlacement(el).axisZ;
 }
 
 /** The placement shift that centres a synthesized beam/column cross-section on
@@ -966,11 +974,14 @@ function specLocalShift(el: ResolvedElement): Vec3 {
 
 /** Skip the resolver occurrence wrappers already owned by `cumulativeFrame`,
  *  then recover only the Body's outer literal Datum translations. An unexpected
- *  wrapper shape returns zero rather than risking an occurrence transform twice. */
+ *  wrapper shape fails instead of inventing a placement. */
 function bodyLocalTranslation(el: ResolvedElement, occurrenceTransformDepth: number): Translation {
   let body = el.geometry;
   for (let i = 0; i < occurrenceTransformDepth; i++) {
-    if (body.kind !== 'Translate' && body.kind !== 'Rotate') return ZERO_TRANSLATION;
+    if (body.kind !== 'Translate' && body.kind !== 'Rotate')
+      throw new FrameProjectionError(
+        specError('FAMILIES_INVALID_PLACEMENT', `Missing occurrence wrapper at '${el.keyPath}'`)
+      );
     body = body.target;
   }
   return peelTranslates(body).total;
@@ -983,30 +994,41 @@ function bodyLocalTranslation(el: ResolvedElement, occurrenceTransformDepth: num
  *  + shift. */
 function elementBodyFrame(
   el: ResolvedElement,
-  cumulativeFrame: Frame,
+  cumulativeFrame: RigidFrame,
   occurrenceTransformDepth: number
-): Frame {
-  const axes = frameFromPlacement({
-    origin: addTranslation(
-      authoredSpecOrigin(el),
-      bodyLocalTranslation(el, occurrenceTransformDepth)
-    ),
-    axisX: authoredAxisX(el),
-    axisZ: authoredAxisZ(el),
-  });
-  return frameMul(frameMul(cumulativeFrame, axes), translationFrame(specLocalShift(el)));
+): RigidFrame {
+  const axes = requireFrame(
+    frameFromPlacement({
+      origin: addTranslation(
+        authoredSpecOrigin(el),
+        bodyLocalTranslation(el, occurrenceTransformDepth)
+      ),
+      axisX: authoredAxisX(el),
+      axisZ: authoredAxisZ(el),
+    })
+  );
+  return requireFrame(
+    frameMul(
+      requireFrame(frameMul(cumulativeFrame, axes)),
+      requireFrame(translationFrame(specLocalShift(el)))
+    )
+  );
 }
 
 /** World frame of a civil spatial node: cumulative transforms composed with any
  *  authored `origin`/`axisX`/`axisZ` props (identity when default). */
-function civilNodeFrame(el: ResolvedElement, cumulativeFrame: Frame): Frame {
-  return frameMul(
-    cumulativeFrame,
-    frameFromPlacement({
-      origin: authoredSpecOrigin(el),
-      axisX: authoredAxisX(el),
-      axisZ: authoredAxisZ(el),
-    })
+function civilNodeFrame(el: ResolvedElement, cumulativeFrame: RigidFrame): RigidFrame {
+  return requireFrame(
+    frameMul(
+      cumulativeFrame,
+      requireFrame(
+        frameFromPlacement({
+          origin: authoredSpecOrigin(el),
+          axisX: authoredAxisX(el),
+          axisZ: authoredAxisZ(el),
+        })
+      )
+    )
   );
 }
 
@@ -1018,11 +1040,11 @@ function civilNodeFrame(el: ResolvedElement, cumulativeFrame: Frame): Frame {
 function rotatedRoutedInput(
   flatInput: Record<string, unknown>,
   el: ResolvedElement,
-  cumulativeFrame: Frame,
+  cumulativeFrame: RigidFrame,
   occurrenceTransformDepth: number,
-  spatialFrame: Frame
+  spatialFrame: RigidFrame
 ): Record<string, unknown> {
-  const toSpatial = frameInverse(spatialFrame);
+  const toSpatial = requireFrame(frameInverse(spatialFrame));
   if (Array.isArray(flatInput['flights'])) {
     // The spec has no top-level placement, so each flight's authored frame
     // composes under the element's full body frame — cumulative transforms plus
@@ -1038,21 +1060,27 @@ function rotatedRoutedInput(
       flights: flights.map((flight): unknown => {
         if (typeof flight !== 'object' || flight === null) return flight;
         const f = flight as Record<string, unknown>;
-        const world = frameMul(
-          elementFrame,
-          frameFromPlacement({
-            origin: (f['origin'] as Vec3 | undefined) ?? [0, 0, 0],
-            axisX: (f['axisX'] as Vec3 | undefined) ?? DEFAULT_AXIS_X,
-            axisZ: (f['axisZ'] as Vec3 | undefined) ?? DEFAULT_AXIS_Z,
-          })
+        const world = requireFrame(
+          frameMul(
+            elementFrame,
+            requireFrame(
+              frameFromPlacement({
+                origin: (f['origin'] as Vec3 | undefined) ?? [0, 0, 0],
+                axisX: (f['axisX'] as Vec3 | undefined) ?? DEFAULT_AXIS_X,
+                axisZ: (f['axisZ'] as Vec3 | undefined) ?? DEFAULT_AXIS_Z,
+              })
+            )
+          )
         );
-        const placed = decomposeFrame(frameMul(toSpatial, world));
+        const placed = decomposeFrame(requireFrame(frameMul(toSpatial, world)));
         return { ...f, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
       }),
     };
   }
   const placed = decomposeFrame(
-    frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth))
+    requireFrame(
+      frameMul(toSpatial, elementBodyFrame(el, cumulativeFrame, occurrenceTransformDepth))
+    )
   );
   return { ...flatInput, origin: placed.origin, axisX: placed.axisX, axisZ: placed.axisZ };
 }
@@ -1063,16 +1091,16 @@ function rotatedRoutedInput(
 function localizeBodyToFrame(
   el: ResolvedElement,
   body: ValidSolid,
-  spatialFrame: Frame,
+  spatialFrame: RigidFrame,
   errorCode: string,
   frameName: string
 ): Result<ValidSolid, BimError> {
   if (isPureTranslation(spatialFrame)) {
     return localizeOwnedSolid(el, body, frameOrigin(spatialFrame), errorCode, frameName);
   }
-  const inverse = decomposeFrame(frameInverse(spatialFrame));
   try {
-    const localized = applyMatrix(body, placementToMatrix(inverse));
+    const inverse = requireFrame(frameInverse(spatialFrame));
+    const localized = applyMatrix(body, frameToMatrix(inverse));
     if (!localized.ok) {
       body[Symbol.dispose]();
       return err(
@@ -1117,19 +1145,39 @@ function civilSpatialInput(
   };
 }
 
+/** Preserve the already resolved origin while using the same canonical axes as geometry. */
+function canonicalPlacementInput(input: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(input['flights'])) {
+    const flights: readonly unknown[] = input['flights'];
+    return {
+      ...input,
+      flights: flights.map((flight) => {
+        if (typeof flight !== 'object' || flight === null)
+          throw new FrameProjectionError(
+            specError('INVALID_RIGID_FRAME', 'Expected a flight placement')
+          );
+        return { ...flight, ...decomposeFrame(requireFrame(frameFromPlacement(flight))) };
+      }),
+    };
+  }
+  return { ...input, ...decomposeFrame(requireFrame(frameFromPlacement(input))) };
+}
+
 /** Relativizes a civil node's world frame against its parent civil frame into
  *  the origin/axisX/axisZ the spatial specs consume. */
 function civilSpatialFrameInput(
   el: ResolvedElement,
-  nodeFrame: Frame,
-  parentFrame: Frame
+  nodeFrame: RigidFrame,
+  parentFrame: RigidFrame
 ): Record<string, unknown> {
   const semantics = el.semantics;
   const composition =
     semantics !== undefined && 'composition' in semantics
       ? CIVIL_COMPOSITION[semantics.composition]
       : undefined;
-  const local = decomposeFrame(frameMul(frameInverse(parentFrame), nodeFrame));
+  const local = decomposeFrame(
+    requireFrame(frameMul(requireFrame(frameInverse(parentFrame)), nodeFrame))
+  );
   return {
     name: semanticName(el),
     origin: local.origin,
@@ -1204,7 +1252,7 @@ function addEarthworksFillElement(
   model: BimModel,
   el: ResolvedElement,
   evaluator: csg.Evaluator,
-  spatialFrame: Frame
+  spatialFrame: RigidFrame
 ): Result<LocalId, BimError> {
   if (el.semantics?.kind !== 'product') {
     return err(
@@ -1216,6 +1264,8 @@ function addEarthworksFillElement(
   }
   const predefinedType = lookup(EARTHWORKS_FILL_ROLE, el.semantics.role);
   if (predefinedType === undefined) return unsupportedCivilRole(el, 'Earthworks Fill');
+  const inverseCheck = frameInverse(spatialFrame);
+  if (!inverseCheck.ok) return inverseCheck;
   const body = materializeOwnedSolid(el, evaluator, {
     evalCode: 'FAMILIES_EARTHWORKS_EVAL_FAILED',
     notSolidCode: 'FAMILIES_EARTHWORKS_NOT_SOLID',
@@ -1258,7 +1308,7 @@ function installCivilProductBody(
   localId: LocalId,
   category: 'WALL' | 'RAILING',
   evaluator: csg.Evaluator,
-  productWorldFrame: Frame
+  productWorldFrame: RigidFrame
 ): Result<void, BimError> {
   const target = model.getElement(localId);
   if (target === null || target.category !== category || target.geometry.kind !== 'PARAMETRIC') {
@@ -1295,11 +1345,11 @@ interface ProjectionWalkState {
   /** World frame of the current element's parent: every authored transform
    *  (ancestors, composed) as a rigid motion. Drives the rotation-aware
    *  placement path; its translation column equals `cumulativeTranslation`. */
-  readonly cumulativeFrame: Frame;
+  readonly cumulativeFrame: RigidFrame;
   /** World frame of the nearest enclosing spatial container (Storey / Site /
    *  Bridge / Bridge Part). A routed element's IfcLocalPlacement is its world
    *  frame relative to this. Pure translation on the building path. */
-  readonly spatialFrame: Frame;
+  readonly spatialFrame: RigidFrame;
 }
 
 /**
@@ -1314,10 +1364,12 @@ export function familiesToBim(
   const model = new BimModel();
   let transferred = false;
   try {
+    preflightFamilyFrames(root, IDENTITY_FRAME, IDENTITY_FRAME, 0);
     const projected = projectFamiliesToBim(root, options, model);
     transferred = projected.ok;
     return projected;
   } catch (cause) {
+    if (cause instanceof FrameProjectionError) return err(cause.error);
     return err(
       specError(
         'FAMILIES_PROJECTION_FAILED',
@@ -1328,6 +1380,35 @@ export function familiesToBim(
   } finally {
     if (!transferred) model[Symbol.dispose]();
   }
+}
+
+/** Validate the existing Families placement tree before any eager recipe or evaluator work. */
+function preflightFamilyFrames(
+  el: ResolvedElement,
+  parent: RigidFrame,
+  spatial: RigidFrame,
+  depth: number
+): void {
+  authoredPlacement(el);
+  const cumulative = requireFrame(frameMul(parent, requireFrame(frameFromOps(el.localTransforms))));
+  const occurrenceDepth = depth + el.localTransforms.length;
+  const node = civilSpatialKind(el) === undefined ? cumulative : civilNodeFrame(el, cumulative);
+  const nextSpatial = civilSpatialKind(el) === undefined ? spatial : node;
+  requireFrame(frameInverse(node));
+  const archetype = el.semantics?.kind === 'product' ? civilProductArchetype(el) : archetypeFor(el);
+  const route = specRoute(archetype);
+  if (route !== undefined) {
+    const body = elementBodyFrame(el, cumulative, occurrenceDepth);
+    requireFrame(frameInverse(body));
+    const relative = requireFrame(frameMul(requireFrame(frameInverse(spatial)), body));
+    const flights = el.props['flights'];
+    if (Array.isArray(flights))
+      for (const flight of flights) {
+        const local = requireFrame(frameFromPlacement(flight));
+        requireFrame(frameMul(relative, local));
+      }
+  }
+  for (const child of el.children) preflightFamilyFrames(child, node, nextSpatial, occurrenceDepth);
 }
 
 function projectFamiliesToBim(
@@ -1371,13 +1452,16 @@ function projectFamiliesToBim(
   const walk = (el: ResolvedElement, state: ProjectionWalkState): Result<void, BimError> => {
     // A rotate op anywhere on the ancestor chain taints every routed
     // descendant: inherited transforms carry it into their geometry.
+    authoredPlacement(el); // Reject supplied invalid axes/origins before any recipe allocation.
     const rotatedHere = state.rotated || hasRotateOp(el);
     const cumulativeTranslationHere = addTranslation(
       state.cumulativeTranslation,
       authoredTranslation(el)
     );
     const occurrenceTransformDepthHere = state.occurrenceTransformDepth + el.localTransforms.length;
-    const cumulativeFrameHere = frameMul(state.cumulativeFrame, frameFromOps(el.localTransforms));
+    const cumulativeFrameHere = requireFrame(
+      frameMul(state.cumulativeFrame, requireFrame(frameFromOps(el.localTransforms)))
+    );
     let proxiedHere = false;
     let nextRotated = rotatedHere;
     let nextSpatialStructureId = state.spatialStructureId;
@@ -1427,7 +1511,10 @@ function projectFamiliesToBim(
             el,
             subtractTranslation(cumulativeTranslationHere, state.projectedSpatialTranslation)
           );
-      const added = addCivilSpatialOccurrence(model, el, civilKind, input);
+      const added = addCivilSpatialOccurrence(model, el, civilKind, {
+        ...input,
+        ...decomposeFrame(requireFrame(frameFromPlacement({ ...authoredPlacement(el), ...input }))),
+      });
       if (!added.ok) return added;
       model.aggregate(state.spatialStructureId, added.value);
       idByKeyPath.set(el.keyPath, added.value);
@@ -1556,7 +1643,9 @@ function projectFamiliesToBim(
         : usesAuthoredCivilHierarchy
           ? relativeSpecInput(routedInput, state.projectedSpatialTranslation)
           : routedInput;
-      const parsed = route.parse(placedInput);
+      const productFrame = elementBodyFrame(el, cumulativeFrameHere, occurrenceTransformDepthHere);
+      requireFrame(frameInverse(productFrame));
+      const parsed = route.parse(canonicalPlacementInput(placedInput));
       if (!parsed.ok) return parsed;
       const added = route.add(model, parsed.value, el.keyPath);
       if (!added.ok) return added;
@@ -1586,7 +1675,7 @@ function projectFamiliesToBim(
           added.value,
           productBodyCategory,
           productBodyEvaluator,
-          elementBodyFrame(el, cumulativeFrameHere, occurrenceTransformDepthHere)
+          productFrame
         );
         if (!installed.ok) return installed;
         testHooks?.afterCivilProductBody?.(model, added.value, el);

@@ -1,73 +1,141 @@
-/**
- * Rigid-body frame algebra for the families -> BIM placement fold. A `Frame` is
- * a column-major 4x4 (the same layout as {@link Mat4x4}): columns 0-2 are the
- * basis vectors (axisX, axisY, axisZ), column 3 is the translation, and the
- * bottom row is [0,0,0,1]. Every frame produced here is a proper rigid motion
- * (rotation + translation, no scale/shear), so it is fully described by its
- * origin + IFC axes and inverts by transpose.
- *
- * The adapter composes a families `TransformOp` chain into one frame, then reads
- * an element's IfcLocalPlacement off it: a local placement relative to a spatial
- * container is `decompose(inverse(containerFrame) . elementWorldFrame)`.
- */
+/** Numeric, column-major rigid frames. Translation is in millimetres. */
+import { err, ok, type Result, type MatrixTransform } from 'brepjs';
+import { specError, type BimError } from './errors/bimError.js';
 
-import type { TransformOp } from 'brepjs-families';
-import {
-  decomposePlacement,
-  type FrameInput,
-  type Mat4x4,
-  type Vec3,
-  type WorldPlacement,
-} from './import/placement.js';
+export type Vec3 = readonly [number, number, number];
+export type Mat4x4 = readonly [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
+export interface FrameInput {
+  readonly origin: Vec3;
+  readonly axisX: Vec3;
+  readonly axisZ: Vec3;
+}
 
-export type Frame = Mat4x4;
-
-export const IDENTITY_FRAME: Frame = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-
-const DEFAULT_AXIS: Vec3 = [0, 0, 1];
-const ORIGIN: Vec3 = [0, 0, 0];
-
-/** Column-major 4x4 multiply: `a . b` (apply b first, then a). */
-export function frameMul(a: Frame, b: Frame): Frame {
-  const out = new Array<number>(16).fill(0);
-  for (let col = 0; col < 4; col++) {
-    for (let row = 0; row < 4; row++) {
-      let sum = 0;
-      for (let k = 0; k < 4; k++) sum += (a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0);
-      out[col * 4 + row] = sum;
-    }
+/** Construction is private; every exposed matrix is an immutable snapshot. */
+class RigidFrame {
+  readonly #matrix: Mat4x4;
+  private constructor(matrix: Mat4x4) {
+    this.#matrix = matrix;
+    Object.freeze(this);
   }
-  return out as unknown as Frame;
+  get matrix(): Mat4x4 {
+    return this.#matrix;
+  }
+
+  static fromMatrix(input: unknown): Result<RigidFrame, BimError> {
+    if (!isFiniteNumbers(input) || input.length !== 16) {
+      return err(specError('INVALID_RIGID_FRAME', 'Expected sixteen finite matrix components'));
+    }
+    const values: number[] = input;
+    const [
+      a = 0,
+      b = 0,
+      c = 0,
+      d = 0,
+      e = 0,
+      f = 0,
+      g = 0,
+      h = 0,
+      i = 0,
+      j = 0,
+      k = 0,
+      l = 0,
+      m = 0,
+      n = 0,
+      o = 0,
+      p = 0,
+    ] = values;
+    const x: Vec3 = [a, b, c],
+      y: Vec3 = [e, f, g],
+      z: Vec3 = [i, j, k];
+    // Inclusive intervals on computed values: [target - tolerance, target + tolerance].
+    // No extra epsilon. Validate supplied values BEFORE canonicalization.
+    if (
+      [x, y, z].some((v) => !within(dot(v, v), 1, 1e-6)) ||
+      [dot(x, y), dot(x, z), dot(y, z)].some((v) => !within(v, 0, 1e-6)) ||
+      !within(dot(x, cross(y, z)), 1, 1e-6) ||
+      [d, h, l].some((v) => !within(v, 0, 1e-9)) ||
+      !within(p, 1, 1e-9)
+    ) {
+      return err(
+        specError(
+          'INVALID_RIGID_FRAME',
+          'Expected a right-handed orthonormal basis and homogeneous row'
+        )
+      );
+    }
+    // Z first, then project X; derive Y to make all consumers use one rigid basis.
+    const cz = normalize(z);
+    const projection = dot(x, cz);
+    const cx = normalize([
+      x[0] - projection * cz[0],
+      x[1] - projection * cz[1],
+      x[2] - projection * cz[2],
+    ]);
+    const cy = cross(cz, cx);
+    return ok(
+      new RigidFrame(
+        Object.freeze([
+          cx[0],
+          cx[1],
+          cx[2],
+          0,
+          cy[0],
+          cy[1],
+          cy[2],
+          0,
+          cz[0],
+          cz[1],
+          cz[2],
+          0,
+          m,
+          n,
+          o,
+          1,
+        ])
+      )
+    );
+  }
 }
 
-export function translationFrame(v: Vec3): Frame {
-  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, v[0], v[1], v[2], 1];
+export type { RigidFrame };
+
+export function frameFromMatrix(input: unknown): Result<RigidFrame, BimError> {
+  return RigidFrame.fromMatrix(input);
 }
 
-function normalizeAxis(axis: Vec3): Vec3 {
-  const len = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
-  if (len < 1e-12) return DEFAULT_AXIS;
-  return [axis[0] / len, axis[1] / len, axis[2] / len];
-}
-
-function cross(a: Vec3, b: Vec3): Vec3 {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-}
-
-/**
- * Builds a frame from an authored `(origin, axisX, axisZ)` placement, using the
- * same IFC orthonormalization as `placementToMatrix`/`readAxis2Placement3D`:
- * z = normalize(axisZ); x = normalize(axisX projected perpendicular to z);
- * y = z x. Lets a civil node authored with explicit axis props enter the same
- * frame pipeline as a `tRotate` chain.
- */
-export function frameFromPlacement(f: FrameInput): Frame {
-  const z = normalizeAxis(f.axisZ);
-  const dot = z[0] * f.axisX[0] + z[1] * f.axisX[1] + z[2] * f.axisX[2];
-  const projX: Vec3 = [f.axisX[0] - dot * z[0], f.axisX[1] - dot * z[1], f.axisX[2] - dot * z[2]];
-  const x = normalizeAxis(projX);
+export function frameFromPlacement(input: unknown): Result<RigidFrame, BimError> {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    !('origin' in input) ||
+    !isVec3(input.origin) ||
+    !('axisX' in input) ||
+    !isVec3(input.axisX) ||
+    !('axisZ' in input) ||
+    !isVec3(input.axisZ)
+  ) {
+    return err(specError('INVALID_RIGID_FRAME', 'Expected finite origin, axisX and axisZ triples'));
+  }
+  const { origin: o, axisX: x, axisZ: z } = input;
   const y = cross(z, x);
-  return [
+  return frameFromMatrix([
     x[0],
     x[1],
     x[2],
@@ -80,25 +148,52 @@ export function frameFromPlacement(f: FrameInput): Frame {
     z[1],
     z[2],
     0,
-    f.origin[0],
-    f.origin[1],
-    f.origin[2],
+    o[0],
+    o[1],
+    o[2],
     1,
-  ];
+  ]);
 }
 
-/**
- * Rotation by `angleDeg` about `axis` (default +Z) through pivot `at` (default
- * origin), matching `csg.rotate` (Rodrigues; right-handed about the axis). With
- * a pivot the motion is `T(at) . R . T(-at)`, i.e. `p -> at + R(p - at)`.
- */
+export function decomposeFrame(frame: RigidFrame): FrameInput {
+  const m = frame.matrix;
+  return Object.freeze({
+    origin: Object.freeze<Vec3>([m[12], m[13], m[14]]),
+    axisX: Object.freeze<Vec3>([m[0], m[1], m[2]]),
+    axisZ: Object.freeze<Vec3>([m[8], m[9], m[10]]),
+  });
+}
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function isVec3(value: unknown): value is Vec3 {
+  return isFiniteNumbers(value) && value.length === 3;
+}
+function dot(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function normalize(v: Vec3): Vec3 {
+  const length = Math.hypot(...v);
+  return [v[0] / length, v[1] / length, v[2] / length];
+}
 export function rotationFrame(
   angleDeg: number,
-  axis: Vec3 = DEFAULT_AXIS,
-  at: Vec3 = ORIGIN
-): Frame {
-  const [x, y, z] = normalizeAxis(axis);
-  const t = (angleDeg * Math.PI) / 180;
+  axis: unknown = [0, 0, 1],
+  at: unknown = [0, 0, 0]
+): Result<RigidFrame, BimError> {
+  if (!Number.isFinite(angleDeg) || !isVec3(axis) || !isVec3(at) || axis.every((v) => v === 0)) {
+    return err(
+      specError(
+        'INVALID_RIGID_FRAME',
+        'Rotation requires a finite angle, pivot and nonzero direction'
+      )
+    );
+  }
+  // Scale before normalization to avoid overflow and underflow in direction length.
+  const scale = Math.max(...axis.map(Math.abs));
+  const [x, y, z] = normalize([axis[0] / scale, axis[1] / scale, axis[2] / scale]);
+  const t = (angleDeg % 360) * (Math.PI / 180);
   const c = Math.cos(t);
   const s = Math.sin(t);
   const C = 1 - c;
@@ -117,7 +212,7 @@ export function rotationFrame(
   const rat1 = r10 * at[0] + r11 * at[1] + r12 * at[2];
   const rat2 = r20 * at[0] + r21 * at[1] + r22 * at[2];
   // Column-major: columns are R.e0, R.e1, R.e2; translation in column 3.
-  return [
+  return frameFromMatrix([
     r00,
     r10,
     r20,
@@ -134,60 +229,84 @@ export function rotationFrame(
     at[1] - rat1,
     at[2] - rat2,
     1,
-  ];
+  ]);
 }
 
-function opFrame(op: TransformOp): Frame {
-  if (op.op === 'translate') return translationFrame(op.v);
-  return rotationFrame(op.angleDeg, op.axis ?? DEFAULT_AXIS, op.at ?? ORIGIN);
+export const IDENTITY_FRAME = (() => {
+  const identity = frameFromMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  if (!identity.ok) throw new Error('Invalid identity constant');
+  return identity.value;
+})();
+
+export function translationFrame(v: unknown): Result<RigidFrame, BimError> {
+  if (!isVec3(v))
+    return err(specError('INVALID_RIGID_FRAME', 'Translation requires three finite coordinates'));
+  return frameFromPlacement({ origin: v, axisX: [1, 0, 0], axisZ: [0, 0, 1] });
 }
 
-/**
- * Composes an authored `TransformOp` chain into one frame, matching families'
- * `applyOps`: `ops[0]` is innermost (applied first). For `[A, B]` the composed
- * motion is `B . A`, so a point transforms as `B(A(p))`.
- */
-export function frameFromOps(ops: readonly TransformOp[]): Frame {
-  let m: Frame = IDENTITY_FRAME;
-  for (const op of ops) m = frameMul(opFrame(op), m);
-  return m;
+/** Right operand acts first. Revalidate the result, including translation overflow. */
+export function frameMul(a: RigidFrame, b: RigidFrame): Result<RigidFrame, BimError> {
+  if (!(a instanceof RigidFrame) || !(b instanceof RigidFrame))
+    return err(specError('INVALID_RIGID_FRAME', 'Composition requires validated frames'));
+  const out = new Array<number>(16).fill(0);
+  for (let col = 0; col < 4; col++)
+    for (let row = 0; row < 4; row++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++)
+        sum += (a.matrix[k * 4 + row] ?? 0) * (b.matrix[col * 4 + k] ?? 0);
+      out[col * 4 + row] = sum;
+    }
+  return frameFromMatrix(out);
 }
 
-/** Rigid inverse of `[R | t]`: `[R^T | -R^T t]`. */
-export function frameInverse(f: Frame): Frame {
-  // Column-major: R column c is [f[c], f[4+c], f[8+c]]; transpose swaps to rows.
-  const t0 = f[12] ?? 0;
-  const t1 = f[13] ?? 0;
-  const t2 = f[14] ?? 0;
-  // -R^T t: row i of R^T is column i of R = [f[i], f[4+i], f[8+i]].
-  const inv0 = -(f[0] * t0 + f[1] * t1 + f[2] * t2);
-  const inv1 = -(f[4] * t0 + f[5] * t1 + f[6] * t2);
-  const inv2 = -(f[8] * t0 + f[9] * t1 + f[10] * t2);
-  return [f[0], f[4], f[8], 0, f[1], f[5], f[9], 0, f[2], f[6], f[10], 0, inv0, inv1, inv2, 1];
+export function frameInverse(frame: RigidFrame): Result<RigidFrame, BimError> {
+  if (!(frame instanceof RigidFrame))
+    return err(specError('INVALID_RIGID_FRAME', 'Inversion requires a validated frame'));
+  const f = frame.matrix;
+  const t: Vec3 = [f[12], f[13], f[14]];
+  return frameFromMatrix([
+    f[0],
+    f[4],
+    f[8],
+    0,
+    f[1],
+    f[5],
+    f[9],
+    0,
+    f[2],
+    f[6],
+    f[10],
+    0,
+    -dot([f[0], f[1], f[2]], t),
+    -dot([f[4], f[5], f[6]], t),
+    -dot([f[8], f[9], f[10]], t),
+    1,
+  ]);
+}
+export function frameOrigin(frame: RigidFrame): Vec3 {
+  return decomposeFrame(frame).origin;
+}
+export function isPureTranslation(frame: RigidFrame): boolean {
+  return frame.matrix
+    .slice(0, 12)
+    .every((v, i) => Math.abs(v - (IDENTITY_FRAME.matrix[i] ?? 0)) <= 1e-12);
 }
 
-/** Decomposes a frame into origin (mm) + IFC axes (axisX, axisZ). */
-export function decomposeFrame(f: Frame): WorldPlacement {
-  return decomposePlacement(f);
+/** Row-major linear transform for native geometry consumers of a validated frame. */
+export function frameToMatrix(frame: RigidFrame): MatrixTransform {
+  const m = frame.matrix;
+  return {
+    linear: [m[0], m[4], m[8], m[1], m[5], m[9], m[2], m[6], m[10]],
+    translation: [m[12], m[13], m[14]],
+  };
 }
 
-/** Translation column of a frame. */
-export function frameOrigin(f: Frame): Vec3 {
-  return [f[12] ?? 0, f[13] ?? 0, f[14] ?? 0];
-}
-
-/** True when the rotation part is the identity (within tolerance): a pure
- *  translation, so the existing translation-only placement path suffices. */
-export function isPureTranslation(f: Frame, eps = 1e-9): boolean {
+function isFiniteNumbers(value: unknown): value is number[] {
   return (
-    Math.abs((f[0] ?? 1) - 1) < eps &&
-    Math.abs((f[5] ?? 1) - 1) < eps &&
-    Math.abs((f[10] ?? 1) - 1) < eps &&
-    Math.abs(f[1] ?? 0) < eps &&
-    Math.abs(f[2] ?? 0) < eps &&
-    Math.abs(f[4] ?? 0) < eps &&
-    Math.abs(f[6] ?? 0) < eps &&
-    Math.abs(f[8] ?? 0) < eps &&
-    Math.abs(f[9] ?? 0) < eps
+    Array.isArray(value) &&
+    Array.from(value).every((v: unknown) => typeof v === 'number' && Number.isFinite(v))
   );
+}
+function within(value: number, target: number, tolerance: number): boolean {
+  return value >= target - tolerance && value <= target + tolerance;
 }

@@ -1238,6 +1238,16 @@ declare function kernelCallRaw<T>(fn: () => T, code: string, message: string, ki
  */
 declare function kernelCallScoped(fn: (scope: DisposalScope) => KernelShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>;
 
+/** An observable failed release. Its native outcome is uncertain; never retry it blindly. */
+declare class GeometryCleanupError extends Error {
+    readonly resourceKind: 'SHAPE' | 'TRANSFORM';
+    constructor(options: {
+        readonly message: string;
+        readonly resourceKind: 'SHAPE' | 'TRANSFORM';
+        readonly cause: unknown;
+    });
+}
+
 /**
  * Bug / panic helper — these throw and should never be caught in normal code.
  * Lives in utils (Layer 0) so it can be used by all layers including kernel.
@@ -9817,8 +9827,9 @@ declare function transformCopy<T extends AnyShape<Dimension>>(shape: Shapeable<T
  * re-tag — O(1) on occt-wasm ≥3.6.0, falling back to a copy elsewhere. Same
  * face-metadata guarantee as `translate`, at location-swap cost. Ideal for
  * placing one cached cell at N positions without paying for N deep copies.
+ * A supplied pre-composed transform remains caller-owned and must be cleaned up.
  */
-declare function locate<T extends AnyShape<Dimension>>(shape: Shapeable<T>, placement: transforms.TransformOp | readonly transforms.TransformOp[]): T;
+declare function locate<T extends AnyShape<Dimension>>(shape: Shapeable<T>, placement: transforms.TransformOp | readonly transforms.TransformOp[] | transforms.ComposedTransform): T;
 
 /** Heal a shape using the appropriate fixer. */
 declare function heal<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T>;
