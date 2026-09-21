@@ -510,11 +510,11 @@ declare class SpfReader {
   /** Uppercased IFC entity name of the instance (e.g. `IFCWALL`). */
   typeNameOf(expressId: number): string;
   getLineType(expressId: number): number;
-  /** Builds web-ifc's internal GUID→expressId index; call before guid lookups. */
+  /** Builds a JS-owned index without web-ifc's unreleased per-type native vectors. */
   buildGuidMap(): void;
-  /** expressId for a GlobalId, or undefined. Requires {@link buildGuidMap} first. */
+  /** expressId for a GlobalId, or undefined. Builds the index on first lookup. */
   expressIdFromGuid(guid: string): number | undefined;
-  /** GlobalId for an express id, or undefined. Requires {@link buildGuidMap} first. */
+  /** GlobalId for an express id, or undefined. Builds the index on first lookup. */
   guidFromExpressId(expressId: number): string | undefined;
   /**
    * Composed world transform (column-major 16-float matrix) for a placement
