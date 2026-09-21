@@ -7,12 +7,13 @@ export interface InitManifoldOptions {
 
 let cached: ManifoldToplevel | undefined;
 
-export async function initManifold(
-  options?: InitManifoldOptions,
-): Promise<ManifoldToplevel> {
+export async function initManifold(options?: InitManifoldOptions): Promise<ManifoldToplevel> {
   if (cached) return cached;
+  const locateFile = options?.locateFile;
   const wasm = await Module(
-    options?.locateFile ? { locateFile: options.locateFile } : undefined,
+    locateFile
+      ? { locateFile: (path = 'manifold.wasm', prefix = '') => locateFile(path, prefix) }
+      : undefined
   );
   wasm.setup();
   cached = wasm;
