@@ -2,14 +2,7 @@
 
 ## [20.0.0](https://github.com/andymai/brepjs/compare/brepjs-v19.0.5...brepjs-v20.0.0) (2026-09-21)
 
-
-### ⚠ BREAKING CHANGES
-
-* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328))
-
-### Bug Fixes
-
-* **bim:** validate rigid frames before native placement ([#2328](https://github.com/andymai/brepjs/issues/2328)) ([4835e24](https://github.com/andymai/brepjs/commit/4835e24cac152533ea4bb0128b8daf2d1e47b614))
+This version contains no changes to `brepjs`. The major bump came from a release attribution error: [#2328](https://github.com/andymai/brepjs/issues/2328) changed only `brepjs-bim` (shipped as brepjs-bim 0.24.2) but its pull request still listed root test files from a stacked prerequisite, so release-please credited its breaking marker to the root package. [#2333](https://github.com/andymai/brepjs/issues/2333) excludes `tests/` from the root release train. Upgrading from 19.x needs no code changes.
 
 ## [19.0.5](https://github.com/andymai/brepjs/compare/brepjs-v19.0.4...brepjs-v19.0.5) (2026-09-17)
 
