@@ -192,3 +192,9 @@ npm run lint --workspace=brepjs-bim
 npm run build --workspace=brepjs-bim
 npm run test --workspace=brepjs-bim
 ```
+
+### Body material measurement
+
+Exact Wall quantities measure occupied material across all retained items. Overlapping solids count once. Bounds include every item. Measurement and temporary cleanup failures make these optional measurements unavailable and preserve the borrowed inputs. Cleanup never retries an uncertain native release.
+
+The BIM package requires `brepjs >=19.0.5` for native cleanup-error reporting.
