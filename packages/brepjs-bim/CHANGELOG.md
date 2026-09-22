@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.3](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.2...brepjs-bim-v0.24.3) (2026-09-22)
+
+
+### Bug Fixes
+
+* **bim:** measure borrowed Body items with owned temporary cleanup ([#2339](https://github.com/andymai/brepjs/issues/2339)) ([548d28b](https://github.com/andymai/brepjs/commit/548d28b8b96e5464eb2beabd3927a2f124f7a4d3))
+
 ## [0.24.2](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.1...brepjs-bim-v0.24.2) (2026-09-21)
 
 
