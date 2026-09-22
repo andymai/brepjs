@@ -47,7 +47,7 @@
     "lint": "eslint src tests"
   },
   "peerDependencies": {
-    "brepjs": ">=18.0.0",
+    "brepjs": ">=19.0.5",
     "web-ifc": ">=0.0.50"
   },
   "devDependencies": {

@@ -1,11 +1,12 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { box, fuseAll, measureVolume, translate } from 'brepjs';
+import { box, getKernel, translate } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { IfcWriter, type IfcWriterApiForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { preflightExactBody } from '../src/serialize/exactBodyPreflight.js';
 import { deriveExactWallQuantities } from '../src/serialize/exactWallQuantities.js';
+import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 
 beforeAll(async () => {
@@ -13,6 +14,7 @@ beforeAll(async () => {
 }, 30_000);
 
 afterEach(() => {
+  setProductBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -48,28 +50,24 @@ describe('exact Product Body IFC preparation', () => {
   });
 });
 
-describe('exact wall quantities', () => {
+describe('Wall Body quantities', () => {
   it('uses a temporary union so overlapping solids are not double-counted', () => {
     using first = box(100, 100, 100);
     using source = box(100, 100, 100);
     using second = translate(source, [50, 0, 0]);
-    let unionDisposals = 0;
-    const quantities = deriveExactWallQuantities({
-      spec: WALL_SPEC,
-      solids: [first, second],
-      dependencies: {
-        fuse: (solids, options) => {
-          const result = fuseAll(solids, options);
-          if (result.ok) result.value.onDispose(() => unionDisposals++);
-          return result;
-        },
+    const unionReleases: ReturnType<typeof vi.fn>[] = [];
+    setProductBodyTestHooksForTesting({
+      afterAllocate: ({ solid }) => {
+        unionReleases.push(vi.spyOn(solid, Symbol.dispose));
       },
     });
+    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
 
     expect(quantities.ok).toBe(true);
     if (!quantities.ok) return;
-    expect(quantities.value.netVolumeM3).toBeCloseTo(1_500_000 / 1_000_000_000, 12);
-    expect(unionDisposals).toBe(1);
+    expect(quantities.value.netVolumeM3).toBeCloseTo(0.0015, 12);
+    expect(unionReleases).toHaveLength(1);
+    unionReleases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
     expect(first.disposed).toBe(false);
     expect(second.disposed).toBe(false);
   });
@@ -77,63 +75,52 @@ describe('exact wall quantities', () => {
   it('disposes the temporary union when measurement throws', () => {
     using first = box(100, 100, 100);
     using second = box(100, 100, 100);
-    let unionDisposals = 0;
-    const quantities = deriveExactWallQuantities({
-      spec: WALL_SPEC,
-      solids: [first, second],
-      dependencies: {
-        fuse: (solids, options) => {
-          const result = fuseAll(solids, options);
-          if (result.ok) result.value.onDispose(() => unionDisposals++);
-          return result;
-        },
-        measure: () => {
-          throw new Error('injected measurement failure');
-        },
+    const unionReleases: ReturnType<typeof vi.fn>[] = [];
+    setProductBodyTestHooksForTesting({
+      afterAllocate: ({ solid }) => {
+        unionReleases.push(vi.spyOn(solid, Symbol.dispose));
+      },
+      measure: () => {
+        throw new Error('injected measurement failure');
       },
     });
+    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
 
     expect(quantities.ok).toBe(false);
     if (!quantities.ok) {
       expect(quantities.error.code).toBe('IFC_EXACT_WALL_QUANTITY_DERIVATION_FAILED');
     }
-    expect(unionDisposals).toBe(1);
+    expect(unionReleases).toHaveLength(1);
+    unionReleases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
     expect(first.disposed).toBe(false);
     expect(second.disposed).toBe(false);
   });
 
   it('measures a singleton directly without calling fuseAll', () => {
     using solid = box(100, 100, 100);
-    const quantities = deriveExactWallQuantities({
-      spec: WALL_SPEC,
-      solids: [solid],
-      dependencies: {
-        fuse: () => {
-          throw new Error('singleton must not fuse');
-        },
-        measure: measureVolume,
-      },
-    });
+    const union = vi.spyOn(getKernel(), 'fuseAll');
+    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [solid] });
     expect(quantities.ok).toBe(true);
+    if (!quantities.ok) return;
+    expect(quantities.value.netVolumeM3).toBeCloseTo(0.001, 12);
+    expect(union).not.toHaveBeenCalled();
   });
 
   it('maps a thrown singleton measurement to the omission error', () => {
     using solid = box(100, 100, 100);
-    const quantities = deriveExactWallQuantities({
-      spec: WALL_SPEC,
-      solids: [solid],
-      dependencies: {
-        measure: () => {
-          throw new Error('injected singleton measurement failure');
-        },
+    setProductBodyTestHooksForTesting({
+      measure: () => {
+        throw new Error('injected singleton measurement failure');
       },
     });
+    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [solid] });
 
     expect(quantities.ok).toBe(false);
     if (!quantities.ok) {
       expect(quantities.error.code).toBe('IFC_EXACT_WALL_QUANTITY_DERIVATION_FAILED');
     }
     expect(solid.disposed).toBe(false);
+    expect(getKernel().volume(solid.wrapped)).toBeCloseTo(1_000_000, 3);
   });
 });
 
