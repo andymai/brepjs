@@ -58,3 +58,5 @@ Use `takeExactProductBody()` to replace a parametric wall or railing Body. A suc
 ## Data layers
 
 Beyond geometry, elements carry: property sets from IFC pset templates with typed measures, quantity sets for takeoff, materials (simple, layer sets, profile sets), classification references (Uniclass, OmniClass, and friends), surface styles, and zone / system membership. Stable identity comes from deterministic GUIDs: `deriveIfcGuid` for content-derived ids, `newIfcGuid` for random ones.
+
+Wall NetVolume uses retained occupied material. When measurement or temporary cleanup fails, optional Wall quantities are omitted and `toIfcValidated` reports `WALL_QUANTITY_OMITTED` for the affected element. `toIfc` retains its bytes Result contract.

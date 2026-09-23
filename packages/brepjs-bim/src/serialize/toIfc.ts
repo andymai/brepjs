@@ -74,7 +74,7 @@ import {
   writeManufacturerPset,
   writeCustomPsets,
   writeWallBaseQuantities,
-  writeExactWallBaseQuantities,
+  writeWallBodyQuantities,
   writeSlabCommonPset,
   writeSlabBaseQuantities,
   writeBeamCommonPset,
@@ -134,7 +134,7 @@ import {
 import { bodySolids } from '../types/productBody.js';
 import type { NonEmpty } from '../types/productBody.js';
 import { preflightExactBody } from './exactBodyPreflight.js';
-import { deriveExactWallQuantities } from './exactWallQuantities.js';
+import { deriveWallQuantities } from './wallQuantities.js';
 import {
   writeExactBodyGeometry,
   type PreparedTessellation,
@@ -181,6 +181,20 @@ export async function toIfc(
   model: BimModel,
   meta: BimModelMeta
 ): Promise<Result<Uint8Array, BimError>> {
+  const serialized = await serializeIfc(model, meta);
+  return serialized.ok ? ok(serialized.value.bytes) : serialized;
+}
+
+interface SerializedIfc {
+  readonly bytes: Uint8Array;
+  readonly issues: readonly ValidationIssue[];
+}
+
+async function serializeIfc(
+  model: BimModel,
+  meta: BimModelMeta
+): Promise<Result<SerializedIfc, BimError>> {
+  const issues: ValidationIssue[] = [];
   const project = model.getProject();
   if (!project) {
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
@@ -379,10 +393,10 @@ export async function toIfc(
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    const exactQuantities =
-      preflighted.kind === 'EXACT'
-        ? deriveExactWallQuantities({ spec: wall.spec, solids: preflighted.solids })
-        : null;
+    const bodyQuantities = deriveWallQuantities({
+      spec: wall.spec,
+      solids: bodySolids(wall.geometry),
+    });
 
     const { localPlacementId, productDefinitionShapeId } =
       preflighted.kind === 'EXACT'
@@ -409,19 +423,28 @@ export async function toIfc(
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
-    if (preflighted.kind === 'EXACT') {
-      if (exactQuantities !== null && exactQuantities.ok) {
-        writeExactWallBaseQuantities(w, ownerHistoryId, wallExpressId, exactQuantities.value);
-      }
-    } else {
+    if (!bodyQuantities.ok) {
+      issues.push(
+        issue(
+          'warning',
+          'WALL_QUANTITY_OMITTED',
+          'Wall quantities omitted because occupied material volume could not be measured',
+          wall.localId,
+          { guid: wall.guid, cause: bodyQuantities.error }
+        )
+      );
+    } else if (wall.geometry.kind === 'PARAMETRIC') {
       writeWallBaseQuantities(
         w,
         ownerHistoryId,
         wallExpressId,
         wall.spec,
         openingsByWall.get(wall.localId) ?? [],
+        bodyQuantities.value.netVolumeM3,
         densityByElement.get(wall.localId)
       );
+    } else {
+      writeWallBodyQuantities(w, ownerHistoryId, wallExpressId, bodyQuantities.value);
     }
   }
 
@@ -1174,7 +1197,8 @@ export async function toIfc(
 
   writeTypeLayer(w, ownerHistoryId, model, idMap);
 
-  return w.save();
+  const saved = w.save();
+  return saved.ok ? ok({ bytes: saved.value, issues }) : saved;
 }
 
 interface TypeOccurrence {
@@ -1290,9 +1314,9 @@ export async function toIfcValidated(
     );
   }
 
-  const bytesResult = await toIfc(model, meta);
-  if (!bytesResult.ok) return bytesResult;
-  const bytes = bytesResult.value;
+  const serialized = await serializeIfc(model, meta);
+  if (!serialized.ok) return serialized;
+  const { bytes } = serialized.value;
 
   const geometry = collectGeometryIssues(model);
   const schema = await checkSchema(bytes);
@@ -1305,6 +1329,7 @@ export async function toIfcValidated(
   const report: ValidationReport = {
     issues: [
       ...integrity.issues,
+      ...serialized.value.issues,
       ...geometry.issues,
       ...schema.issues,
       ...roundTrip.issues,

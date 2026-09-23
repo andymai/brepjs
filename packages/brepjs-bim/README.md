@@ -198,3 +198,9 @@ npm run test --workspace=brepjs-bim
 Exact Wall quantities measure occupied material across all retained items. Overlapping solids count once. Bounds include every item. Measurement and temporary cleanup failures make these optional measurements unavailable and preserve the borrowed inputs. Cleanup never retries an uncertain native release.
 
 The BIM package requires `brepjs >=19.0.5` for native cleanup-error reporting.
+
+### Wall quantity failures
+
+Wall `NetVolume` measures retained occupied material for both `PARAMETRIC` and `EXACT` geometry. Recipe Walls retain supported area and weight quantities. Exact takeover has no recipe quantity eligibility.
+
+If measurement or temporary cleanup fails, serialization omits optional Wall quantities. `toIfcValidated` reports an element-specific `WALL_QUANTITY_OMITTED` warning from that same serialization. `toIfc` still returns a bytes `Result`.
