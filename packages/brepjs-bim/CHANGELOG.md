@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.4](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.3...brepjs-bim-v0.24.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* **bim:** report retained Wall quantity failures from serialization ([#2342](https://github.com/andymai/brepjs/issues/2342)) ([9757b5a](https://github.com/andymai/brepjs/commit/9757b5a4ba09a543339eceb01dddbd0b4e20878b))
+
 ## [0.24.3](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.2...brepjs-bim-v0.24.3) (2026-09-22)
 
 
