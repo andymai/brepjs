@@ -2,7 +2,7 @@ import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { box } from 'brepjs';
 import * as brepjs from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
-import { deriveExactWallQuantities } from '../src/serialize/exactWallQuantities.js';
+import { deriveWallQuantities } from '../src/serialize/wallQuantities.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -29,7 +29,7 @@ it('returns a quantity error when temporary union release fails after native rel
   });
   try {
     expect(
-      deriveExactWallQuantities({
+      deriveWallQuantities({
         spec: {
           length: 3,
           height: 1,

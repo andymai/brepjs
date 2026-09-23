@@ -5,7 +5,7 @@ import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { IfcWriter, type IfcWriterApiForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
 import { preflightExactBody } from '../src/serialize/exactBodyPreflight.js';
-import { deriveExactWallQuantities } from '../src/serialize/exactWallQuantities.js';
+import { deriveWallQuantities } from '../src/serialize/wallQuantities.js';
 import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
 
@@ -61,7 +61,7 @@ describe('Wall Body quantities', () => {
         unionReleases.push(vi.spyOn(solid, Symbol.dispose));
       },
     });
-    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
+    const quantities = deriveWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
 
     expect(quantities.ok).toBe(true);
     if (!quantities.ok) return;
@@ -84,11 +84,11 @@ describe('Wall Body quantities', () => {
         throw new Error('injected measurement failure');
       },
     });
-    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
+    const quantities = deriveWallQuantities({ spec: WALL_SPEC, solids: [first, second] });
 
     expect(quantities.ok).toBe(false);
     if (!quantities.ok) {
-      expect(quantities.error.code).toBe('IFC_EXACT_WALL_QUANTITY_DERIVATION_FAILED');
+      expect(quantities.error.code).toBe('IFC_WALL_QUANTITY_DERIVATION_FAILED');
     }
     expect(unionReleases).toHaveLength(1);
     unionReleases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
@@ -99,7 +99,7 @@ describe('Wall Body quantities', () => {
   it('measures a singleton directly without calling fuseAll', () => {
     using solid = box(100, 100, 100);
     const union = vi.spyOn(getKernel(), 'fuseAll');
-    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [solid] });
+    const quantities = deriveWallQuantities({ spec: WALL_SPEC, solids: [solid] });
     expect(quantities.ok).toBe(true);
     if (!quantities.ok) return;
     expect(quantities.value.netVolumeM3).toBeCloseTo(0.001, 12);
@@ -113,11 +113,11 @@ describe('Wall Body quantities', () => {
         throw new Error('injected singleton measurement failure');
       },
     });
-    const quantities = deriveExactWallQuantities({ spec: WALL_SPEC, solids: [solid] });
+    const quantities = deriveWallQuantities({ spec: WALL_SPEC, solids: [solid] });
 
     expect(quantities.ok).toBe(false);
     if (!quantities.ok) {
-      expect(quantities.error.code).toBe('IFC_EXACT_WALL_QUANTITY_DERIVATION_FAILED');
+      expect(quantities.error.code).toBe('IFC_WALL_QUANTITY_DERIVATION_FAILED');
     }
     expect(solid.disposed).toBe(false);
     expect(getKernel().volume(solid.wrapped)).toBeCloseTo(1_000_000, 3);

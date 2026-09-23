@@ -335,6 +335,7 @@ export function writeWallBaseQuantities(
   wallExpressId: number,
   spec: WallSpec,
   openings: readonly WallOpeningSpec[],
+  netVolumeM3: number,
   densityKgM3?: number
 ): void {
   const lengthM = toIfcLengthM(spec.length);
@@ -355,7 +356,6 @@ export function writeWallBaseQuantities(
     }
   }
   const netSideAreaM2 = grossSideAreaM2 - sumOpeningAreaM2;
-  const netVolumeM3 = grossVolumeM3 - sumOpeningAreaM2 * widthM;
   const netFootprintM2 = grossFootprintM2 - sumFloorTouchingFootprintM2;
 
   const qtyIds = [
@@ -375,7 +375,7 @@ export function writeWallBaseQuantities(
   writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, qtoId);
 }
 
-export function writeExactWallBaseQuantities(
+export function writeWallBodyQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   wallExpressId: number,
