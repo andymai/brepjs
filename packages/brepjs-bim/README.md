@@ -204,3 +204,9 @@ The BIM package requires `brepjs >=19.0.5` for native cleanup-error reporting.
 Wall `NetVolume` measures retained occupied material for both `PARAMETRIC` and `EXACT` geometry. Recipe Walls retain supported area and weight quantities. Exact takeover has no recipe quantity eligibility.
 
 If measurement or temporary cleanup fails, serialization omits optional Wall quantities. `toIfcValidated` reports an element-specific `WALL_QUANTITY_OMITTED` warning from that same serialization. `toIfc` still returns a bytes `Result`.
+
+### Imported Body survivors
+
+Opening reconstruction retains every surviving solid in source-item order, including split results. Complete removal produces no imported solids and null aggregate bounds and volume. The singleton `.solid` field remains a borrowed alias only for a complete one-solid result.
+
+Complete imported aggregates use shared occupied-material measurement and all-item bounds. Overlaps count once. Failed measurement leaves both aggregates unavailable with an import diagnostic. Later opening failures clean the current host list, including every earlier survivor, and never retry an uncertain release.

@@ -1,8 +1,13 @@
 import * as WebIFC from 'web-ifc';
 import type { Bounds3D, Result, ValidSolid } from 'brepjs';
-import { ok, err, cut, getBounds, measureVolume } from 'brepjs';
+import { ok, err } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { importError } from '../errors/bimError.js';
+import {
+  productBodyBounds,
+  measureProductBodyMaterial,
+  type NonEmpty,
+} from '../types/productBody.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import {
   issue,
@@ -15,6 +20,9 @@ import { SpfReader, type SpfReaderSettings } from './spfReader.js';
 import { readLengthScale } from './placement.js';
 import { buildSpatialTree, buildElementContainmentMap, type SpatialNode } from './spatialTree.js';
 import { readBodyGeometry, readBodyItems } from './geometryRead.js';
+import { cutImportedSolids } from './cutImportedSolids.js';
+import { cleanupOwnedResources, cleanupReport, type CleanupReport } from '../productBodyCleanup.js';
+import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
 import {
   readPsets,
   readMaterial,
@@ -96,7 +104,7 @@ const ELEMENT_TYPES: ReadonlyArray<readonly [number, ImportedElementCategory]> =
  * fatal failures — bad bytes, unsupported schema, WASM open failure — return
  * `err`. Inspect {@link ImportedModel.diagnostics} for per-element quality.
  *
- * The web-ifc model handle is always closed in a `finally` block.
+ * The web-ifc model handle is closed before handing reconstructed owners to the caller.
  */
 export async function fromIfc(
   bytes: Uint8Array,
@@ -109,6 +117,7 @@ export async function fromIfc(
   if (!readerResult.ok) return err(readerResult.error);
   const reader = readerResult.value;
   const elements: ImportedElement[] = [];
+  let result: Result<ImportedModel, BimError>;
 
   try {
     reader.buildGuidMap();
@@ -160,13 +169,21 @@ export async function fromIfc(
       diagnostics: report,
       ...(applicationName !== undefined ? { applicationName } : {}),
     };
-    return ok(model);
+    result = ok(model);
   } catch (e) {
-    disposeElements(elements);
-    return err(importError('IMPORT_FAILED', 'Unexpected failure during IFC import', e));
-  } finally {
-    reader.close();
+    result = err(importError('IMPORT_FAILED', 'Unexpected failure during IFC import', e));
   }
+  try {
+    reader.close();
+  } catch (cause) {
+    result = err(
+      result.ok
+        ? importError('IMPORT_CLOSE_FAILED', 'Failed to close IFC reader', cause)
+        : { ...result.error, metadata: { ...result.error.metadata, readerCloseCause: cause } }
+    );
+  }
+  if (!result.ok) return err(withCleanup(result.error, disposeElements(elements), 'fromIfc'));
+  return result;
 }
 
 /**
@@ -243,13 +260,21 @@ function readElement(
       ...(fills !== undefined ? { fills } : {}),
     };
   } catch (e) {
-    if (geometry !== null) disposeGeometry(geometry);
+    const failure =
+      geometry === null
+        ? e
+        : withCleanup(
+            importError('ELEMENT_READ_FAILED', 'Element read failed', e),
+            disposeGeometry(geometry),
+            'readElement'
+          );
     diagnostics.push(
       issue(
         'error',
         'ELEMENT_READ_FAILED',
         `Element ${expressId} reconstruction threw: ${errMsg(e)}`,
-        expressId
+        expressId,
+        { cause: failure }
       )
     );
     return null;
@@ -270,7 +295,7 @@ function findFills(reader: SpfReader, elementExpressId: number): number | undefi
 
 /**
  * Reconstructs a host element's body geometry and, per IFC `IfcRelVoidsElement`
- * semantics, subtracts the reconstructed solid of every opening that voids it —
+ * semantics, subtracts each opening's Body representation from a parametric host —
  * so a wall with a door hole comes back as the cut solid, matching the source
  * model. Falls back to the uncut solid (with a diagnostic) if a cut fails.
  */
@@ -288,39 +313,99 @@ function reconstructGeometry(
 
   const firstHost = base.solids[0];
   if (firstHost === undefined) return base;
-  const hosts: [ValidSolid, ...ValidSolid[]] = [firstHost, ...base.solids.slice(1)];
-
-  // cut<ValidSolid> preserves the base's solid type; the kernel may wrap the
-  // result in a single-solid compound, so we trust the typed Result rather than
-  // re-running isSolid (which rejects the compound wrapper) — mirroring how
-  // BimModel applies opening cuts on the write side.
-  for (const openingId of voidedBy) {
-    const opening = readBodyGeometry(reader, openingId, scale, diagnostics);
-    if (opening.kind !== 'SOLID') continue;
-    try {
-      for (let hostIndex = 0; hostIndex < hosts.length; hostIndex++) {
+  const hosts = [...base.solids];
+  try {
+    for (const openingId of voidedBy) {
+      const opening = readBodyGeometry(reader, openingId, scale, diagnostics);
+      // Reference geometry describes an existing aperture, never a cutting tool.
+      if (opening.kind !== 'SOLID') continue;
+      using openingOwner = ownOpening(opening.solid, openingId);
+      // Keep each source item's outputs together. This owner list always reflects
+      // the current live hosts, including if a later cut or opening read throws.
+      for (let hostIndex = 0; hostIndex < hosts.length;) {
         const host = hosts[hostIndex];
-        if (host === undefined) continue;
-        const cutResult = cut<ValidSolid>(host, opening.solid);
+        if (host === undefined) break;
+        const cutResult = cutImportedSolids(host, openingOwner.solid);
         if (!cutResult.ok) {
           diagnostics.push(
             issue(
               'warning',
               'VOID_SUBTRACTION_FAILED',
               `Opening ${openingId} could not be subtracted from element ${expressId}: ${cutResult.error.message}`,
-              expressId
+              expressId,
+              { cause: cutResult.error }
             )
           );
+          hostIndex++;
           continue;
         }
-        host[Symbol.dispose]();
-        hosts[hostIndex] = cutResult.value;
+        hosts.splice(hostIndex, 1, ...cutResult.value);
+        const cleanup = cleanupOwnedResources([{ resource: host, itemIndex: hostIndex }], {
+          operation: 'importOpening',
+        });
+        if (cleanup.kind === 'FAILED')
+          diagnostics.push(
+            issue(
+              'warning',
+              'VOID_HOST_CLEANUP_FAILED',
+              'Opening result retained, but previous host release failed',
+              expressId,
+              { cleanup }
+            )
+          );
+        hostIndex += cutResult.value.length;
       }
-    } finally {
-      opening.solid[Symbol.dispose]();
     }
+    return completeImportedGeometry('PARAMETRIC', hosts, expressId, diagnostics);
+  } catch (cause) {
+    const failure = importError(
+      'GEOMETRY_RECONSTRUCTION_FAILED',
+      'Opening reconstruction failed',
+      cause
+    );
+    const cleanup = cleanupOwnedResources(
+      hosts.map((resource, itemIndex) => ({ resource, itemIndex })),
+      { operation: 'reconstructGeometry' }
+    );
+    throw Object.assign(new Error(failure.message, { cause }), {
+      code: failure.code,
+      metadata: withCleanup(failure, cleanup, 'reconstructGeometry').metadata,
+    });
   }
-  return completeImportedGeometry('PARAMETRIC', hosts, expressId, diagnostics);
+}
+
+function ownOpening(
+  solid: ValidSolid,
+  openingId: number
+): Disposable & { readonly solid: ValidSolid } {
+  return {
+    solid,
+    [Symbol.dispose]() {
+      const cleanup = cleanupOwnedResources([{ resource: solid, itemIndex: 0 }], {
+        operation: 'importOpeningTool',
+      });
+      if (cleanup.kind === 'FAILED')
+        throw new Error(`Opening ${openingId} cleanup failed`, {
+          cause: {
+            ...importError('OPENING_CLEANUP_FAILED', 'Temporary opening release failed'),
+            metadata: { cleanup },
+          },
+        });
+    },
+  };
+}
+
+function withCleanup(error: BimError, cleanup: CleanupReport, operation: string): BimError {
+  return {
+    ...error,
+    metadata: {
+      ...error.metadata,
+      cleanup: cleanupReport([
+        ...reportedGeometryCleanup(error, operation),
+        ...(cleanup.kind === 'FAILED' ? cleanup.diagnostics : []),
+      ]),
+    },
+  };
 }
 
 function toImportedGeometry(
@@ -404,7 +489,7 @@ function toImportedGeometry(
 
 function completeImportedGeometry(
   fidelity: ImportedGeometry['fidelity'],
-  solids: readonly [ValidSolid, ...ValidSolid[]],
+  solids: readonly ValidSolid[],
   expressId: number,
   diagnostics: ValidationIssue[]
 ): ImportedGeometry {
@@ -412,7 +497,7 @@ function completeImportedGeometry(
     fidelity,
     completeness: 'COMPLETE',
     solids,
-    solid: solids.length === 1 ? solids[0] : null,
+    solid: solids.length === 1 ? (solids[0] ?? null) : null,
     ...measureCompleteBody(solids, expressId, diagnostics),
   };
 }
@@ -422,50 +507,47 @@ function measureCompleteBody(
   expressId: number,
   diagnostics: ValidationIssue[]
 ): { readonly bounds: Bounds3D | null; readonly volumeMm3: number | null } {
-  try {
-    const first = solids[0];
-    if (first === undefined) return { bounds: null, volumeMm3: null };
-    const initial = getBounds(first);
-    let xMin = initial.xMin;
-    let xMax = initial.xMax;
-    let yMin = initial.yMin;
-    let yMax = initial.yMax;
-    let zMin = initial.zMin;
-    let zMax = initial.zMax;
-    let volumeMm3 = 0;
-    for (const solid of solids) {
-      const measured = measureVolume(solid);
-      if (!measured.ok) throw new Error(measured.error.message);
-      volumeMm3 += measured.value;
-      const itemBounds = getBounds(solid);
-      xMin = Math.min(xMin, itemBounds.xMin);
-      xMax = Math.max(xMax, itemBounds.xMax);
-      yMin = Math.min(yMin, itemBounds.yMin);
-      yMax = Math.max(yMax, itemBounds.yMax);
-      zMin = Math.min(zMin, itemBounds.zMin);
-      zMax = Math.max(zMax, itemBounds.zMax);
-    }
-    const bounds: Bounds3D = { xMin, xMax, yMin, yMax, zMin, zMax };
-    return { bounds, volumeMm3 };
-  } catch (cause) {
+  const unavailable = (cause: unknown, message = errMsg(cause)) => {
     diagnostics.push(
       issue(
         'warning',
         'BODY_AGGREGATE_MEASUREMENT_FAILED',
-        `Complete Body aggregate measurement failed: ${errMsg(cause)}`,
-        expressId
+        `Complete Body aggregate measurement failed: ${message}`,
+        expressId,
+        { cause }
       )
     );
     return { bounds: null, volumeMm3: null };
+  };
+  try {
+    const [first, ...rest] = solids;
+    if (first === undefined) return { bounds: null, volumeMm3: null };
+    const items: NonEmpty<ValidSolid> = [first, ...rest];
+    // These borrowed inputs are already World-placed. No further Placement is applied.
+    const bounds = productBodyBounds(items);
+    if (!bounds.ok) return unavailable(bounds.error, bounds.error.message);
+    const volume = measureProductBodyMaterial(items);
+    if (!volume.ok) return unavailable(volume.error, volume.error.message);
+    return { bounds: bounds.value.bounds, volumeMm3: volume.value };
+  } catch (cause) {
+    return unavailable(cause);
   }
 }
 
-function disposeGeometry(geometry: ImportedGeometry): void {
-  for (const solid of geometry.solids) solid[Symbol.dispose]();
+function disposeGeometry(geometry: ImportedGeometry): CleanupReport {
+  return cleanupOwnedResources(
+    geometry.solids.map((resource, itemIndex) => ({ resource, itemIndex })),
+    { operation: 'disposeImportedGeometry' }
+  );
 }
 
-function disposeElements(elements: readonly ImportedElement[]): void {
-  for (const element of elements) disposeGeometry(element.geometry);
+function disposeElements(elements: readonly ImportedElement[]): CleanupReport {
+  return cleanupOwnedResources(
+    elements
+      .flatMap(({ geometry }) => geometry.solids)
+      .map((resource, itemIndex) => ({ resource, itemIndex })),
+    { operation: 'disposeImportedElements' }
+  );
 }
 
 function toImportedPset(pset: DataPset): ImportedPset {
