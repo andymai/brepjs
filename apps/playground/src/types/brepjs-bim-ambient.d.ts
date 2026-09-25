@@ -331,7 +331,7 @@ interface FromIfcOptions {
  * fatal failures — bad bytes, unsupported schema, WASM open failure — return
  * `err`. Inspect {@link ImportedModel.diagnostics} for per-element quality.
  *
- * The web-ifc model handle is always closed in a `finally` block.
+ * The web-ifc model handle is closed before handing reconstructed owners to the caller.
  */
 declare function fromIfc(
   bytes: Uint8Array,
@@ -358,13 +358,16 @@ interface ImportedGeometry {
   readonly fidelity: GeometryFidelity;
   /** Whether every IFC Body item reconstructed into an owned solid. */
   readonly completeness: ImportedBodyCompleteness;
-  /** Owned World-placed reconstructed handles. Dispose them through disposeImportedModel(). */
+  /**
+   * Owned World-placed handles, in source-item order. Opening cuts can leave zero
+   * or more independent solids per source item. Dispose through disposeImportedModel().
+   */
   readonly solids: readonly ValidSolid[];
   /** Borrowed alias for a COMPLETE one-solid Body. Otherwise null. */
   readonly solid: ValidSolid | null;
-  /** Component-wise union of all item bounds for a COMPLETE Body. Null if measurement fails. */
+  /** All surviving item bounds for a COMPLETE Body. Null for no survivors or measurement failure. */
   readonly bounds: Bounds3D | null;
-  /** Sum of item volumes in mm³ for a COMPLETE Body. Null if measurement fails. */
+  /** Occupied-union mm³ for a COMPLETE Body. Null for no survivors or measurement failure. */
   readonly volumeMm3: number | null;
   /** Combined raw triangle vertices (interleaved xyz), present for `TESSELLATED_LOSSY`. */
   readonly meshVertices?: Float32Array | undefined;
