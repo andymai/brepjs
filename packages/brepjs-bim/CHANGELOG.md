@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.5](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.4...brepjs-bim-v0.24.5) (2026-09-26)
+
+
+### Bug Fixes
+
+* **bim:** retain every imported opening-cut survivor ([#2344](https://github.com/andymai/brepjs/issues/2344)) ([d324142](https://github.com/andymai/brepjs/commit/d324142b4c4bf431377852e52ff89751b30be73e))
+
 ## [0.24.4](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.3...brepjs-bim-v0.24.4) (2026-09-23)
 
 
