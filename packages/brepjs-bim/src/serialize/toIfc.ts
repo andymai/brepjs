@@ -1,7 +1,11 @@
 import type { BimModel } from '../model/bimModel.js';
 import type { BimModelMeta } from '../ifc-writer/headerWriter.js';
 import { IfcWriter } from '../ifc-writer/ifcWriter.js';
-import { writeHeader, writeMapConversion } from '../ifc-writer/headerWriter.js';
+import {
+  writeHeader,
+  writeGeometricSubContext,
+  writeMapConversion,
+} from '../ifc-writer/headerWriter.js';
 import {
   writeProject,
   writeSite,
@@ -13,7 +17,6 @@ import {
   writeColumnEntity,
 } from '../ifc-writer/entityWriter.js';
 import {
-  writeWallGeometry,
   writeSlabGeometry,
   writeBeamGeometry,
   writeColumnGeometry,
@@ -34,11 +37,7 @@ import {
   writePileEntity,
 } from '../ifc-writer/foundationWriter.js';
 import { writeStairAssembly, writeRampAssembly } from '../ifc-writer/stairWriter.js';
-import {
-  writeRailingGeometry,
-  writeRailingEntity,
-  type RailingRepresentationIds,
-} from '../ifc-writer/railingWriter.js';
+import { writeRailingEntity } from '../ifc-writer/railingWriter.js';
 import {
   writeCoveringGeometry,
   writeCoveringEntity,
@@ -133,44 +132,32 @@ import {
 } from '../validation/severity.js';
 import { bodySolids } from '../types/productBody.js';
 import type { NonEmpty } from '../types/productBody.js';
-import { preflightExactBody } from './exactBodyPreflight.js';
+import { preflightProductBody } from './productBodyPreflight.js';
 import { deriveWallQuantities } from './wallQuantities.js';
 import {
-  writeExactBodyGeometry,
+  writeProductBodyGeometry,
   type PreparedTessellation,
 } from '../ifc-writer/tessellationWriter.js';
 
-type ExactBodyCapableElement = BimElement<'WALL'> | BimElement<'RAILING'>;
+type ProductBodyElement = BimElement<'WALL'> | BimElement<'RAILING'>;
 
-type PreflightedProductElement<E extends ExactBodyCapableElement> =
-  | {
-      readonly kind: 'PARAMETRIC';
-      readonly element: E;
-      readonly solid: ValidSolid;
-    }
-  | {
-      readonly kind: 'EXACT';
-      readonly element: E;
-      readonly solids: NonEmpty<ValidSolid>;
-      readonly items: NonEmpty<PreparedTessellation>;
-    };
+interface PreflightedProductElement<E extends ProductBodyElement> {
+  readonly element: E;
+  readonly items: NonEmpty<PreparedTessellation>;
+}
 
-function preflightProductBodies<E extends ExactBodyCapableElement>(
+function preflightProductBodies<E extends ProductBodyElement>(
   elements: readonly E[]
 ): Result<readonly PreflightedProductElement<E>[], BimError> {
   const preflighted: PreflightedProductElement<E>[] = [];
   for (const element of elements) {
-    const body = element.geometry;
-    if (body.kind === 'PARAMETRIC') {
-      preflighted.push({ kind: 'PARAMETRIC', element, solid: body.solid });
-      continue;
-    }
-    const prepared = preflightExactBody({ localId: element.localId, solids: body.solids });
+    const prepared = preflightProductBody({
+      localId: element.localId,
+      solids: bodySolids(element.geometry),
+    });
     if (!prepared.ok) return err(prepared.error);
     preflighted.push({
-      kind: 'EXACT',
       element,
-      solids: body.solids,
       items: prepared.value,
     });
   }
@@ -398,16 +385,13 @@ async function serializeIfc(
       solids: bodySolids(wall.geometry),
     });
 
-    const { localPlacementId, productDefinitionShapeId } =
-      preflighted.kind === 'EXACT'
-        ? writeExactBodyGeometry(
-            w,
-            wall.spec,
-            preflighted.items,
-            geomSubContextId,
-            storeyPlacementId
-          )
-        : writeWallGeometry(w, wall.spec, geomSubContextId, storeyPlacementId);
+    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
+      w,
+      wall.spec,
+      preflighted.items,
+      geomSubContextId,
+      storeyPlacementId
+    );
     const wallExpressId = writeWallEntity(
       w,
       wall.guid,
@@ -423,6 +407,7 @@ async function serializeIfc(
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
+    for (const itemId of bodyItemIds) applySurfaceStyle(w, model, wall.localId, itemId);
     if (!bodyQuantities.ok) {
       issues.push(
         issue(
@@ -818,31 +803,13 @@ async function serializeIfc(
     const containingId = findContainerOf(railing.localId, relationships);
     const storeyPlacementId =
       containingId !== null ? (placementMap.get(containingId) ?? null) : null;
-    let representation: RailingRepresentationIds;
-    let exactBodyItemIds: readonly number[] = [];
-    if (preflighted.kind === 'EXACT') {
-      const exact = writeExactBodyGeometry(
-        w,
-        railing.spec,
-        preflighted.items,
-        geomSubContextId,
-        storeyPlacementId
-      );
-      exactBodyItemIds = exact.bodyItemIds;
-      representation = { ...exact, bodyItemId: null, usedFallback: false };
-    } else {
-      representation = writeRailingGeometry(
-        w,
-        railing.spec,
-        preflighted.solid,
-        geomSubContextId,
-        storeyPlacementId
-      );
-    }
-    const { localPlacementId, productDefinitionShapeId, bodyItemId, usedFallback } = representation;
-    if (usedFallback) {
-      console.warn(`Railing ${i + 1} tessellation failed; IFC body is a degenerate fallback.`);
-    }
+    const { localPlacementId, productDefinitionShapeId, bodyItemIds } = writeProductBodyGeometry(
+      w,
+      railing.spec,
+      preflighted.items,
+      geomSubContextId,
+      storeyPlacementId
+    );
     const railingExpressId = writeRailingEntity(
       w,
       railing.guid,
@@ -859,14 +826,7 @@ async function serializeIfc(
     if (railing.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
     }
-    // POSTED railings tessellate and have no single styleable body item.
-    if (preflighted.kind === 'EXACT') {
-      for (const itemId of exactBodyItemIds) {
-        applySurfaceStyle(w, model, railing.localId, itemId);
-      }
-    } else if (bodyItemId !== null) {
-      applySurfaceStyle(w, model, railing.localId, bodyItemId);
-    }
+    for (const itemId of bodyItemIds) applySurfaceStyle(w, model, railing.localId, itemId);
   }
 
   for (const [i, covering] of coverings.entries()) {
@@ -900,6 +860,7 @@ async function serializeIfc(
 
   const openingPlacementMap = new Map<LocalId, number>();
   const openingEntityMap = new Map<LocalId, number>();
+  let referenceContextId: number | undefined;
 
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_WALL') continue;
@@ -915,14 +876,18 @@ async function serializeIfc(
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
     if (!isWallOpening(openingElement.spec)) continue;
 
+    // The retained Wall Body already contains its apertures. IFC Reference
+    // openings preserve the void/fill relationships without requesting a cut.
+    referenceContextId ??= writeGeometricSubContext(w, geomContextId, 'Reference');
     const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
       w,
       openingElement.guid,
       openingElement.spec,
       wallElement.spec,
       wallPlacementId,
-      geomSubContextId,
-      ownerHistoryId
+      referenceContextId,
+      ownerHistoryId,
+      'Reference'
     );
     idMap.set(rel.openingLocalId, openingEntityId);
     openingPlacementMap.set(rel.openingLocalId, openingPlacementId);

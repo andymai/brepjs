@@ -23,7 +23,7 @@ export interface RailingRepresentationIds {
 // IfcShapeRepresentation + IfcProductDefinitionShape for a straight railing run.
 // The rail cross-section (thickness × height) lies in the local XY plane and is
 // swept along the local +Z, which is oriented to the run direction (local frame
-// X = thickness, Y = height, Z = run length), mirroring writeWallGeometry.
+// X = thickness, Y = height, Z = run length).
 export function writeRailingGeometry(
   w: IfcWriter,
   spec: RailingSpec,

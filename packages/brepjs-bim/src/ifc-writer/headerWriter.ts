@@ -90,11 +90,21 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     TrueNorth: null,
   });
 
+  const geomSubContextId = writeGeometricSubContext(w, geomContextId, 'Body');
+  return { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId };
+}
+
+/** Separates display Body geometry from non-subtractive Reference geometry. */
+export function writeGeometricSubContext(
+  w: IfcWriter,
+  geomContextId: number,
+  identifier: 'Body' | 'Reference'
+): number {
   const geomSubContextId = w.nextId();
   w.writeLine({
     expressID: geomSubContextId,
     type: WebIFC.IFCGEOMETRICREPRESENTATIONSUBCONTEXT,
-    ContextIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    ContextIdentifier: w.mkType(WebIFC.IFCLABEL, identifier),
     ContextType: w.mkType(WebIFC.IFCLABEL, 'Model'),
     CoordinateSpaceDimension: null,
     Precision: null,
@@ -106,7 +116,7 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     UserDefinedTargetView: null,
   });
 
-  return { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId, lengthUnitId };
+  return geomSubContextId;
 }
 
 /**

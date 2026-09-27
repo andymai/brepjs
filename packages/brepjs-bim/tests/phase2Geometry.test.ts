@@ -1,7 +1,10 @@
+import { bodySolids } from '../src/types/productBody.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { box, scale, unwrap } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
+import { SpfReader } from '../src/import/spfReader.js';
+import { emittedBody } from './helpers/ifcBodyFixture.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc, toIfcValidated } from '../src/serialize/toIfc.js';
 
@@ -110,42 +113,31 @@ describe('Phase 2 door/window geometry', () => {
     api.CloseModel(mid);
   });
 
-  it('emits an Axis representation for walls alongside the SweptSolid Body', async () => {
-    const { model } = buildModelWithOpenings();
-    const result = await toIfc(model, META);
-    if (!result.ok) throw new Error(result.error.message);
-
-    const { api, mid } = await open(result.value);
-    const repIds = api.GetLineIDsWithType(mid, WebIFC.IFCSHAPEREPRESENTATION);
-    let foundAxis = false;
-    for (let i = 0; i < repIds.size(); i++) {
-      const rep = api.GetLine(mid, repIds.get(i)) as Record<string, unknown>;
-      const id = (rep['RepresentationIdentifier'] as { value?: string } | undefined)?.value;
-      if (id === 'Axis') foundAxis = true;
-    }
-    expect(foundAxis).toBe(true);
-    api.CloseModel(mid);
+  it('emits the retained Wall Body as tessellated items', async () => {
+    using model = buildModelWithOpenings().model;
+    const [wall] = model.getWalls();
+    if (!wall) throw new Error('Missing wall');
+    const bytes = unwrap(await toIfc(model, META));
+    using reader = unwrap(await SpfReader.create(bytes));
+    const body = emittedBody(reader, wall.guid);
+    expect(body.representationType).toBe('Tessellation');
+    expect(body.items).toHaveLength(bodySolids(wall.geometry).length);
+    body.items.forEach((item) => expect(item.type).toBe(WebIFC.IFCTRIANGULATEDFACESET));
   });
 });
 
 describe('Phase 2 proxy geometry', () => {
-  it('writes an IfcBuildingElementProxy with a tessellated body that round-trips', async () => {
-    const { model } = buildModelWithOpenings();
-    const proxy = model.addProxy({ name: 'Custom Block', solid: box(800, 600, 400) });
-    if (!proxy.ok) throw new Error(proxy.error.message);
-
-    const result = await toIfc(model, META);
-    if (!result.ok) throw new Error(result.error.message);
-
-    const { api, mid } = await open(result.value);
-    const proxyIds = api.GetLineIDsWithType(mid, WebIFC.IFCBUILDINGELEMENTPROXY);
-    expect(proxyIds.size()).toBe(1);
-    const proxyLine = api.GetLine(mid, proxyIds.get(0)) as Record<string, unknown>;
-    expect(proxyLine['Representation']).not.toBeNull();
-
-    const faceSetIds = api.GetLineIDsWithType(mid, WebIFC.IFCTRIANGULATEDFACESET);
-    expect(faceSetIds.size()).toBe(1);
-    api.CloseModel(mid);
+  it('writes an IfcBuildingElementProxy with its own tessellated body', async () => {
+    using model = buildModelWithOpenings().model;
+    const proxyId = unwrap(model.addProxy({ name: 'Custom Block', solid: box(800, 600, 400) }));
+    const proxy = model.getElement(proxyId);
+    if (proxy?.category !== 'PROXY') throw new Error('Missing proxy');
+    const bytes = unwrap(await toIfc(model, META));
+    using reader = unwrap(await SpfReader.create(bytes));
+    const body = emittedBody(reader, proxy.guid);
+    expect(reader.getLineType(body.expressId)).toBe(WebIFC.IFCBUILDINGELEMENTPROXY);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.type).toBe(WebIFC.IFCTRIANGULATEDFACESET);
   });
 });
 

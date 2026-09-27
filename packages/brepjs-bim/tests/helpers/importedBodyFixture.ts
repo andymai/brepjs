@@ -4,6 +4,7 @@ import { writeWallEntity } from '../../src/ifc-writer/entityWriter.js';
 import {
   writeAxis2Placement3D,
   writeDirection,
+  writeGeometricSubContext,
   writeHeader,
 } from '../../src/ifc-writer/headerWriter.js';
 import { IfcWriter } from '../../src/ifc-writer/ifcWriter.js';
@@ -24,11 +25,12 @@ interface BodyFixtureOptions {
   readonly unsupportedItems?: number | undefined;
   readonly withOpening?: boolean | OpeningDimensions;
   readonly secondOpening?: OpeningDimensions;
+  readonly openingRepresentation?: 'Body' | 'Reference';
 }
 
 export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Array> {
   using writer = requiredWriter(await IfcWriter.create());
-  const { ownerHistoryId, geomSubContextId } = writeHeader(writer, {
+  const { ownerHistoryId, geomContextId, geomSubContextId } = writeHeader(writer, {
     applicationName: 'imported-body-items-test',
     applicationVersion: '1',
   });
@@ -98,6 +100,11 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         : { width: 175, height: 50, offsetAlongWall: 50 }
     );
   if (options.secondOpening !== undefined) openings.push(options.secondOpening);
+  const openingRepresentation = options.openingRepresentation ?? 'Body';
+  const openingContextId =
+    openingRepresentation === 'Reference'
+      ? writeGeometricSubContext(writer, geomContextId, 'Reference')
+      : geomSubContextId;
   for (const [index, opening] of openings.entries()) {
     const { openingEntityId } = writeOpeningGeometry(
       writer,
@@ -119,8 +126,9 @@ export async function bodyFixture(options: BodyFixtureOptions): Promise<Uint8Arr
         materialName: 'Test',
       },
       localPlacementId,
-      geomSubContextId,
-      ownerHistoryId
+      openingContextId,
+      ownerHistoryId,
+      openingRepresentation
     );
     writeRelVoidsElement(
       writer,

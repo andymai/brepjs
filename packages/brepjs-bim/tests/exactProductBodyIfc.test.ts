@@ -4,7 +4,7 @@ import { initKernel } from '../../../tests/setup.js';
 import { makeLocalIdCounter } from '../src/identity/localId.js';
 import { IfcWriter, type IfcWriterApiForTesting } from '../src/ifc-writer/ifcWriter.js';
 import { prepareTessellation } from '../src/ifc-writer/tessellationWriter.js';
-import { preflightExactBody } from '../src/serialize/exactBodyPreflight.js';
+import { preflightProductBody } from '../src/serialize/productBodyPreflight.js';
 import { deriveWallQuantities } from '../src/serialize/wallQuantities.js';
 import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
 import type { WallSpec } from '../src/specs/wallSpec.js';
@@ -32,7 +32,7 @@ describe('exact Product Body IFC preparation', () => {
   it('reports the failed later item without disposing borrowed source solids', () => {
     using first = box(100, 100, 100);
     using second = box(50, 50, 50);
-    const result = preflightExactBody({
+    const result = preflightProductBody({
       localId: makeLocalIdCounter().next(),
       solids: [first, second],
       prepareItem: (solid) =>
@@ -43,7 +43,7 @@ describe('exact Product Body IFC preparation', () => {
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe('EXACT_BODY_TESSELLATION_FAILED');
+    expect(result.error.code).toBe('BODY_TESSELLATION_FAILED');
     expect(result.error.metadata?.['itemIndex']).toBe(1);
     expect(first.disposed).toBe(false);
     expect(second.disposed).toBe(false);

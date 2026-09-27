@@ -60,3 +60,18 @@ Use `takeExactProductBody()` to replace a parametric wall or railing Body. A suc
 Beyond geometry, elements carry: property sets from IFC pset templates with typed measures, quantity sets for takeoff, materials (simple, layer sets, profile sets), classification references (Uniclass, OmniClass, and friends), surface styles, and zone / system membership. Stable identity comes from deterministic GUIDs: `deriveIfcGuid` for content-derived ids, `newIfcGuid` for random ones.
 
 Wall NetVolume uses retained occupied material. When measurement or temporary cleanup fails, optional Wall quantities are omitted and `toIfcValidated` reports `WALL_QUANTITY_OMITTED` for the affected element. `toIfc` retains its bytes Result contract.
+
+### Retained Body IFC geometry
+
+Wall and Railing exports preflight and tessellate every retained item in order, preserving placement, styles, and metadata.
+
+Wall openings export as IFC `Reference` geometry because the retained Wall Body already
+contains its cuts. Void/fill relationships and opening placements remain intact. IFC4 defines
+Reference openings as non-subtractive; gross recipe exports such as Slab openings still use
+subtractive `Body` geometry. The importer keeps Reference opening records and relationships
+without treating their reference shape as a display Body or cutting tool.
+
+IfcOpenShell 0.8.5 still subtracts Reference openings in its default geometry engine, even with
+a separate Reference context. If a replacement Body adds material inside a retained opening's
+region, that engine can remove the added material. Schema validation and shape generation alone
+do not detect this difference; check the representation semantics and retained item geometry.
