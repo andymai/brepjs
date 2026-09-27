@@ -1,12 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  getBounds,
-  measureVolume,
-  unwrap,
-  type AnyShape,
-  type Bounds3D,
-  type Dimension,
-} from 'brepjs';
+import { getBounds, measureVolume, unwrap, type Shape3D, type Bounds3D } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import {
   BimModel,
@@ -38,7 +31,7 @@ interface Case {
 const CASES: readonly Case[] = [
   {
     name: 'wall',
-    fidelity: 'PARAMETRIC',
+    fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
         m.addWall({
@@ -54,7 +47,7 @@ const CASES: readonly Case[] = [
   },
   {
     name: 'wall running along +Y',
-    fidelity: 'PARAMETRIC',
+    fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
         m.addWall({
@@ -136,7 +129,7 @@ const CASES: readonly Case[] = [
   },
   {
     name: 'panel railing',
-    fidelity: 'PARAMETRIC',
+    fidelity: 'TESSELLATED_MANIFOLD',
     add: (m) =>
       unwrap(
         m.addRailing({
@@ -240,7 +233,7 @@ function boundsTuple(b: Bounds3D): readonly number[] {
   return [b.xMin, b.xMax, b.yMin, b.yMax, b.zMin, b.zMax];
 }
 
-function unionBounds(shapes: readonly AnyShape<Dimension>[]): readonly number[] {
+function unionBounds(shapes: readonly Shape3D[]): readonly number[] {
   const all = shapes.map((s) => boundsTuple(getBounds(s)));
   return [0, 2, 4].flatMap((i) => [
     Math.min(...all.map((b) => b[i] ?? Infinity)),
@@ -248,7 +241,7 @@ function unionBounds(shapes: readonly AnyShape<Dimension>[]): readonly number[] 
   ]);
 }
 
-function totalVolume(shapes: readonly AnyShape<Dimension>[]): number {
+function totalVolume(shapes: readonly Shape3D[]): number {
   return shapes.reduce((sum, s) => sum + unwrap(measureVolume(s)), 0);
 }
 
@@ -351,7 +344,7 @@ describe('element placement survives the IFC round trip', () => {
 
     const imported = await roundTrip(model);
     try {
-      expectImportedBody(imported, wall, 'PARAMETRIC', 'wall with door');
+      expectImportedBody(imported, wall, 'TESSELLATED_MANIFOLD', 'wall with door');
     } finally {
       disposeImportedModel(imported);
       model[Symbol.dispose]();

@@ -694,7 +694,7 @@ describe('archetype routing', () => {
     const text = await ifcText(model);
     expect(text).toContain('IFCWALL');
     expect(text).toContain('IFCEXTRUDEDAREASOLID');
-    expect(text).not.toContain('IFCTRIANGULATEDFACESET');
+    expect(text).toContain('IFCTRIANGULATEDFACESET');
     expect(text).toContain('IFCOPENINGELEMENT');
     expect(text).toContain('IFCDOOR');
   });

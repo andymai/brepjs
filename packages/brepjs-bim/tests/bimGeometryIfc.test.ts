@@ -12,7 +12,7 @@ function decode(bytes: Uint8Array): string {
 // Builds a minimal valid model (project→site→building→storey), runs the caller's
 // element setup, serializes to IFC, and returns the SPF text.
 async function ifcText(build: (m: BimModel) => void): Promise<string> {
-  const m = new BimModel();
+  using m = new BimModel();
   m.init({ name: 'T' });
   const site = unwrap(m.addSite({ name: 'S' }));
   const bld = unwrap(m.addBuilding({ name: 'B' }));
@@ -80,11 +80,11 @@ describe('railing IFC representation', () => {
     expect(txt).toContain('IFCTRIANGULATEDFACESET');
   });
 
-  it('PANEL railing keeps the parametric SweptSolid', async () => {
+  it('PANEL railing serializes its retained Body as a Tessellation', async () => {
     const txt = await ifcText((m) => {
       unwrap(m.addRailing({ ...railBase }));
     });
-    expect(txt).toContain('IFCEXTRUDEDAREASOLID');
+    expect(txt).toContain('IFCTRIANGULATEDFACESET');
   });
 });
 
@@ -94,7 +94,7 @@ describe('shaped model round-trips cleanly', () => {
   }, 30000);
 
   it('shaped roof + posted railing + stair → no error-severity IFC issues', async () => {
-    const m = new BimModel();
+    using m = new BimModel();
     m.init({ name: 'Validity' });
     const site = unwrap(m.addSite({ name: 'S' }));
     const bld = unwrap(m.addBuilding({ name: 'B' }));

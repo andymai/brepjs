@@ -8,44 +8,47 @@ import {
   type TessellationPreparation,
 } from '../ifc-writer/tessellationWriter.js';
 
-export type ExactBodyItemPreparer = (solid: ValidSolid) => TessellationPreparation;
+export type ProductBodyItemPreparer = (solid: ValidSolid) => TessellationPreparation;
 
-let testItemPreparer: ExactBodyItemPreparer | null = null;
+let testItemPreparer: ProductBodyItemPreparer | null = null;
 
 /** Package-internal deterministic failure seam for serialization cleanup tests. */
-export function setExactBodyItemPreparerForTesting(
-  prepareItem: ExactBodyItemPreparer | null
+export function setProductBodyItemPreparerForTesting(
+  prepareItem: ProductBodyItemPreparer | null
 ): void {
   testItemPreparer = prepareItem;
 }
 
-export interface ExactBodyPreflightInput {
+export interface ProductBodyPreflightInput {
   readonly localId: LocalId;
   readonly solids: NonEmpty<ValidSolid>;
-  readonly prepareItem?: ExactBodyItemPreparer | undefined;
+  readonly prepareItem?: ProductBodyItemPreparer | undefined;
 }
 
-/** Prepares every exact Body item without writing IFC lines. Source solids remain borrowed. */
-export function preflightExactBody(
-  input: ExactBodyPreflightInput
+/** Prepares every retained Body item without writing IFC lines. Source solids remain borrowed. */
+export function preflightProductBody(
+  input: ProductBodyPreflightInput
 ): Result<NonEmpty<PreparedTessellation>, BimError> {
   const prepareItem = input.prepareItem ?? testItemPreparer ?? prepareTessellation;
+  const failed = (itemIndex: number, reason: string, cause: unknown) =>
+    err(
+      ifcError(
+        'BODY_TESSELLATION_FAILED',
+        `Product Body item ${itemIndex} for ${input.localId} could not be tessellated: ${reason}`,
+        cause,
+        { localId: input.localId, itemIndex }
+      )
+    );
   const prepareAt = (
     solid: ValidSolid,
     itemIndex: number
   ): Result<PreparedTessellation, BimError> => {
-    const item = prepareItem(solid);
-    if (!item.ok) {
-      return err(
-        ifcError(
-          'EXACT_BODY_TESSELLATION_FAILED',
-          `Exact Product Body item ${itemIndex} for ${input.localId} could not be tessellated: ${item.reason}`,
-          item.cause,
-          { localId: input.localId, itemIndex }
-        )
-      );
+    try {
+      const item = prepareItem(solid);
+      return item.ok ? ok(item.value) : failed(itemIndex, item.reason, item.cause);
+    } catch (cause) {
+      return failed(itemIndex, cause instanceof Error ? cause.message : String(cause), cause);
     }
-    return ok(item.value);
   };
 
   const [firstSolid, ...remainingSolids] = input.solids;

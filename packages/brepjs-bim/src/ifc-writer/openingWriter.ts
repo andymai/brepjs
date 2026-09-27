@@ -46,7 +46,8 @@ export function writeOpeningGeometry(
   wallSpec: WallSpec,
   wallPlacementId: number,
   geomSubContextId: number,
-  ownerHistoryId: number
+  ownerHistoryId: number,
+  representationIdentifier: 'Body' | 'Reference'
 ): OpeningIds {
   const widthM = toIfcLengthM(openingSpec.width);
   const heightM = toIfcLengthM(openingSpec.height);
@@ -99,7 +100,7 @@ export function writeOpeningGeometry(
     expressID: shapeRepId,
     type: WebIFC.IFCSHAPEREPRESENTATION,
     ContextOfItems: w.ref(geomSubContextId),
-    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, representationIdentifier),
     RepresentationType: w.mkType(WebIFC.IFCLABEL, 'SweptSolid'),
     Items: [w.ref(extrusionId)],
   });

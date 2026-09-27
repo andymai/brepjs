@@ -210,3 +210,18 @@ If measurement or temporary cleanup fails, serialization omits optional Wall qua
 Opening reconstruction retains every surviving solid in source-item order, including split results. Complete removal produces no imported solids and null aggregate bounds and volume. The singleton `.solid` field remains a borrowed alias only for a complete one-solid result.
 
 Complete imported aggregates use shared occupied-material measurement and all-item bounds. Overlaps count once. Failed measurement leaves both aggregates unavailable with an import diagnostic. Later opening failures clean the current host list, including every earlier survivor, and never retry an uncertain release.
+
+### Retained Body IFC geometry
+
+Wall and Railing exports preflight and tessellate every retained item in order, preserving placement, styles, and metadata.
+
+Wall openings export as IFC `Reference` geometry because the retained Wall Body already
+contains its cuts. Void/fill relationships and opening placements remain intact. IFC4 defines
+Reference openings as non-subtractive; gross recipe exports such as Slab openings still use
+subtractive `Body` geometry. The importer keeps Reference opening records and relationships
+without treating their reference shape as a display Body or cutting tool.
+
+IfcOpenShell 0.8.5 still subtracts Reference openings in its default geometry engine, even with
+a separate Reference context. If a replacement Body adds material inside a retained opening's
+region, that engine can remove the added material. Schema validation and shape generation alone
+do not detect this difference; check the representation semantics and retained item geometry.

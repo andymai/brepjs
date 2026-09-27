@@ -1,8 +1,8 @@
 /**
  * IR drift gate — wall, slab, column, and beam geometry expressed as CSG IR
  * profile+extrude must match the parametric `*ToSolid` spec path within
- * tolerance. The spec path stays authoritative for parametric IFC; the IR
- * path serves the viewport and dedup, so divergence here is a contract break.
+ * tolerance. This compares the two geometry generators; retained Product
+ * Bodies remain authoritative for Wall/Railing placement, measurement and IFC.
  *
  * Drift metric: with V(fuse(a, b)) ~= V(a) ~= V(b), the two solids coincide
  * up to tolerance (the fuse adds no volume only when each contains the
@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { measureVolume, fuse, unwrap, isOk, csg } from 'brepjs';
+import { measureVolume, fuse, unwrap, isOk, isShape3D, csg } from 'brepjs';
 import type { AnyShape, Dimension, Shape3D } from 'brepjs';
 import { wallToSolid } from '../src/elementFns/wallFns.js';
 import { slabToSolid } from '../src/elementFns/slabFns.js';
@@ -24,15 +24,17 @@ beforeAll(async () => {
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('Expected a 3D shape for volume measurement');
   return unwrap(measureVolume(s));
 }
 
 /** Assert `ir` and `bim` describe the same solid within `relTol`. */
 function expectCoincident(ir: AnyShape<Dimension>, bim: Shape3D, relTol: number): void {
+  if (!isShape3D(ir)) throw new Error('Expected a 3D evaluated shape');
   const vIr = vol(ir);
   const vBim = vol(bim);
   expect(Math.abs(vIr - vBim) / vBim).toBeLessThan(relTol);
-  const fused = fuse(bim, ir as Shape3D);
+  const fused = fuse(bim, ir);
   expect(isOk(fused)).toBe(true);
   using union = unwrap(fused);
   expect(Math.abs(vol(union) - vBim) / vBim).toBeLessThan(relTol);
@@ -60,7 +62,15 @@ describe('IR drift gate: profile+extrude vs *ToSolid', () => {
 
   it('slab: footprint extruded by thickness coincides with slabToSolid', () => {
     using ev = new csg.Evaluator();
-    using slab = unwrap(slabToSolid({ length: 4000, width: 2500, thickness: 250, ...PLACEMENT }));
+    using slab = unwrap(
+      slabToSolid({
+        length: 4000,
+        width: 2500,
+        thickness: 250,
+        predefinedType: 'FLOOR',
+        ...PLACEMENT,
+      })
+    );
     const ir = unwrap(ev.evaluate(csg.extrude(csg.profile(cornerRect(4000, 2500)), [0, 0, 250])));
     expectCoincident(ir, slab, 1e-6);
   });
