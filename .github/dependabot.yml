@@ -27,8 +27,14 @@ updates:
       # stricter reporting is a deliberate triage of knip.config.ts, not a bump.
       # Re-allow once that config work is done.
       - dependency-name: knip
-        update-types:
-          ['version-update:semver-minor', 'version-update:semver-major']
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      # The docs site renders diagrams through vitepress-plugin-mermaid (latest 2.0.17),
+      # which declares a mermaid peer range of 10 || 11 and is the only importer of
+      # mermaid. A 12.x bump of apps/docs' devDependency installs nested under
+      # apps/docs/node_modules while the plugin keeps resolving the hoisted 11.x, so
+      # the site never uses it. Re-allow once the plugin's peer range accepts 12.x.
+      - dependency-name: mermaid
+        update-types: ['version-update:semver-major']
     groups:
       minor-and-patch:
         update-types:
