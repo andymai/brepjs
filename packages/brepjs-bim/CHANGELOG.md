@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.5...brepjs-bim-v0.25.0) (2026-09-27)
+
+
+### Features
+
+* **bim:** export retained Wall and Railing items with Reference openings ([#2350](https://github.com/andymai/brepjs/issues/2350)) ([cdbcd1d](https://github.com/andymai/brepjs/commit/cdbcd1ddb002ccf2ba119c5a2a67e7c09849b21c))
+
 ## [0.24.5](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.4...brepjs-bim-v0.24.5) (2026-09-26)
 
 
