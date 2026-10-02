@@ -15,4 +15,5 @@ export {
   measureCurvatureAtMid,
 } from '@/measurement/measureFns.js';
 
+export { orientedBoundingBox } from '@/measurement/orientedBoxFns.js';
 export { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';

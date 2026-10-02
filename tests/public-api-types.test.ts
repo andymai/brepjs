@@ -547,6 +547,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'or',
   'orElse',
   'organiseBlueprints',
+  'orientedBoundingBox',
   'orientedFace',
   'outerWire',
   'patterns',

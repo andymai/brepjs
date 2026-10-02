@@ -1276,6 +1276,10 @@ export class OcctWasmAdapter implements KernelAdapter {
     return measureOps.linearCenterOfMass(this.k, shape);
   }
 
+  inertia(shape: KernelShape): number[] {
+    return measureOps.inertia(this.k, shape);
+  }
+
   boundingBox(shape: KernelShape): {
     min: [number, number, number];
     max: [number, number, number];

@@ -48,6 +48,13 @@ export interface KernelMeasureOps {
     minDirection: [number, number, number];
   };
 
+  /**
+   * Volume matrix of inertia about the center of mass, as a row-major 3×3
+   * array (length 9), in world axes. Optional: kernels without mass
+   * properties beyond the centroid omit it.
+   */
+  inertia?(shape: KernelShape): number[];
+
   /** Surface-based center of mass (uses surface properties, not volume). */
   surfaceCenterOfMass(face: KernelShape): [number, number, number];
 

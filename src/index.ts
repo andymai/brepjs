@@ -976,6 +976,8 @@ export {
   type CurvatureResult,
 } from './measurement/measureFns.js';
 
+export { orientedBoundingBox, type OrientedBoundingBox } from './measurement/orientedBoxFns.js';
+
 export {
   checkInterference,
   checkAllInterferences,
