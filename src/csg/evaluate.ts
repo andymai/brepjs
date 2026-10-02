@@ -10,7 +10,7 @@
 import { getActiveKernelId, withKernel } from '@/kernel/index.js';
 import { qualityDeflection } from '@/kernel/quality.js';
 import { err, ok, type Result } from '@/core/result.js';
-import { BrepErrorCode, kernelError } from '@/core/errors.js';
+import { BrepErrorCode, kernelError, validationError } from '@/core/errors.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Vec3 } from '@/utils/vec3.js';
 import { quatFromAxisAngle, quatMultiply, quatRotate, type Quat } from '@/utils/quaternion.js';
@@ -27,6 +27,8 @@ import { evalScalar, evalVec3, projectEnv, type Env, type ExprValue } from './ex
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
 import type {
   IRNode,
+  IRNodeBase,
+  NodeKind,
   RotateNode,
   ExtrudeNode,
   RevolveNode,
@@ -76,6 +78,26 @@ import { evalShell } from './evaluators/shell.js';
 // Options
 // ---------------------------------------------------------------------------
 
+/**
+ * An IR node of a kind brepjs does not define. It carries its own
+ * `structuralHash` and `freeParams` (which key the cache, as for built-in
+ * nodes), and any further fields its evaluator reads.
+ */
+export interface CustomIRNode extends IRNodeBase {
+  readonly kind: string;
+}
+
+/**
+ * Materializes a {@link CustomIRNode}. `ctx.evalNode` evaluates a child IR node
+ * through the same Evaluator (and its cache). The Evaluator takes ownership of
+ * the returned shape, as it does for built-in kinds: return a fresh shape or
+ * one `ctx.evalNode` returned, never one the caller disposes elsewhere.
+ */
+export type CustomKindEvaluator = (
+  node: CustomIRNode,
+  ctx: EvalContext
+) => Result<AnyShape<Dimension>>;
+
 export interface EvaluatorOptions {
   /** Kernel id to materialize against. Defaults to the currently-active kernel. */
   readonly kernel?: string | undefined;
@@ -103,6 +125,12 @@ export interface EvaluatorOptions {
    * positive integer.
    */
   readonly maxMeshCacheEntries?: number | undefined;
+  /**
+   * Evaluators for IR kinds brepjs does not define, keyed by `kind`. A node of
+   * such a kind (cast to `IRNode`) can sit anywhere in a tree; it is cached like
+   * any other node. A key naming a built-in kind throws a RangeError.
+   */
+  readonly kinds?: Readonly<Record<string, CustomKindEvaluator>> | undefined;
 }
 
 export interface StepInfo {
@@ -119,8 +147,48 @@ export interface CacheStats {
   readonly evictions: number;
 }
 
+// Every built-in kind, checked against NodeKind at compile time; a custom kind
+// may not reuse one of these names.
+const BUILTIN_KINDS = {
+  Box: true,
+  Sphere: true,
+  Cylinder: true,
+  Cone: true,
+  Torus: true,
+  Polygon: true,
+  Circle: true,
+  Line: true,
+  Vertex: true,
+  Empty: true,
+  Fuse: true,
+  Cut: true,
+  Intersect: true,
+  FuseAll: true,
+  CutAll: true,
+  Translate: true,
+  Rotate: true,
+  Scale: true,
+  Mirror: true,
+  Compound: true,
+  Instance: true,
+  Extrude: true,
+  Revolve: true,
+  Loft: true,
+  Path: true,
+  Sweep: true,
+  Profile: true,
+  Color: true,
+  Fillet: true,
+  Chamfer: true,
+  Shell: true,
+} as const satisfies Record<NodeKind, true>;
+
+function isBuiltinKind(kind: string): kind is NodeKind {
+  return Object.hasOwn(BUILTIN_KINDS, kind);
+}
+
 // Exhaustive dispatch — TS catches any new NodeKind missing an evaluator at
-// compile time, so there's no runtime "unknown kind" fallback.
+// compile time. Kinds outside NodeKind go through EvaluatorOptions.kinds.
 function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
   switch (node.kind) {
     case 'Box':
@@ -435,6 +503,7 @@ export class Evaluator implements Disposable {
   private readonly defaultTolerance: number | undefined;
   private readonly maxCacheEntries: number | undefined;
   private readonly maxMeshCacheEntries: number | undefined;
+  private readonly kinds: ReadonlyMap<string, CustomKindEvaluator>;
   // Content-addressed mesh cache, keyed by the shape's cache key + mesh params.
   // A mesh is plain data (not a kernel handle), so this can outlive an evicted
   // shape — a re-evaluateMesh of evicted content is a pure hit, no kernel work.
@@ -466,6 +535,13 @@ export class Evaluator implements Disposable {
       );
     }
     this.maxMeshCacheEntries = meshMax;
+    const kinds = Object.entries(options.kinds ?? {});
+    for (const [kind] of kinds) {
+      if (isBuiltinKind(kind)) {
+        throw new RangeError(`Evaluator: kinds.${kind} would replace the built-in ${kind} kind`);
+      }
+    }
+    this.kinds = new Map(kinds);
   }
 
   /**
@@ -659,7 +735,7 @@ export class Evaluator implements Disposable {
       tolerance: this.defaultTolerance,
       evalNode: (child) => this.evaluateInner(child, env),
     };
-    const result = dispatch(node, ctx);
+    const result = this.dispatchKind(node, ctx);
     if (!result.ok) return result;
     const shape = result.value;
     this.refCounts.set(shape, (this.refCounts.get(shape) ?? 0) + 1);
@@ -667,6 +743,18 @@ export class Evaluator implements Disposable {
     if (this.maxCacheEntries !== undefined) this.pendingKeys.push(key);
     this.onStep?.({ node, cacheKey: key, cacheHit: false });
     return result;
+  }
+
+  private dispatchKind(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
+    // Read as a plain string: a custom node is cast to IRNode, so its kind is
+    // only known at runtime.
+    const kind: string = node.kind;
+    if (isBuiltinKind(kind)) return dispatch(node, ctx);
+    const custom = this.kinds.get(kind);
+    if (custom) return custom(node, ctx);
+    return err(
+      validationError('CSG_UNKNOWN_KIND', `Evaluator: no evaluator for IR kind "${kind}"`)
+    );
   }
 
   // Decrement a handle's reference count, disposing it once its last cache
