@@ -149,9 +149,12 @@ export {
   Evaluator,
   withEvaluator,
   type EvaluatorOptions,
+  type CustomIRNode,
+  type CustomKindEvaluator,
   type StepInfo,
   type CacheStats,
 } from './evaluate.js';
+export type { EvalContext } from './evaluators/context.js';
 
 // Serialization
 export { toJSON, fromJSON, CSG_VERSION, type CsgEnvelope } from './serialize.js';
