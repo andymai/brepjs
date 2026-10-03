@@ -1,0 +1,28 @@
+src/operations/patternFns.ts
+  s_ecfadab7dc0ed4::t_a41e0ba89b2221 43-44,46,88-89,91
+tests/patterns.test.ts
+  s_ecfadab7dc0ed4::t_a41e0ba89b2221 5-6,67-79
+  s_ecfadab7dc0ed4::t_8a9d89de5507c7 80-81
+src/kernel/manifold/transformOps.ts
+  s_ecfadab7dc0ed4::t_73471cf23d7bee 435-436,452-453
+src/kernel/types.ts
+  s_ecfadab7dc0ed4::t_a41e0ba89b2221 33-38
+src/kernel/occtWasm/transformOps.ts
+  s_ecfadab7dc0ed4::t_6cc8eec7cac496 319,328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4aef02417352e5930c0efcb1ce6c921a07621279",
+  "prompts": {},
+  "sessions": {
+    "s_ecfadab7dc0ed4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31e974b0-81fc-44e7-84c5-a753966b5aa7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
