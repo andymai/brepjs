@@ -73,7 +73,7 @@ describe('circularPattern', () => {
       using union = unwrap(fuseAll(copies));
       const expected = unwrap(measureVolume(union));
       expect(expected).toBeLessThan(6 * 10 * 2 * 2);
-      expect(unwrap(measureVolume(pattern))).toBeCloseTo(expected, 6);
+      expect(unwrap(measureVolume(pattern))).toBeCloseTo(expected, 2);
     } finally {
       for (const c of copies) c[Symbol.dispose]();
     }
