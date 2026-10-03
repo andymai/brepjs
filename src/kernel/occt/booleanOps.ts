@@ -11,6 +11,7 @@ import type {
   CheckBooleanResult,
   KernelInstance,
   KernelShape,
+  KernelType,
   BooleanOptions,
 } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
@@ -21,6 +22,39 @@ import { wasmIndex } from '@/utils/vec3.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
 const SIMPLIFY_TOLERANCE = 1e-3;
+
+/**
+ * Construct a two-operand boolean with its operands set but not yet built.
+ *
+ * The `BRepAlgoAPI_*_3(shape, tool, progress)` constructors run the boolean
+ * immediately, and `Build()` clears and recomputes it, so building one of those
+ * again computed every boolean twice. Apply glue/OBB/fuzzy, then build once.
+ */
+export function newTwoOperandBoolean(
+  oc: KernelInstance,
+  kind: 'Fuse' | 'Cut' | 'Common',
+  shape: KernelShape,
+  tool: KernelShape
+): KernelType {
+  const op =
+    kind === 'Fuse'
+      ? new oc.BRepAlgoAPI_Fuse_1()
+      : kind === 'Cut'
+        ? new oc.BRepAlgoAPI_Cut_1()
+        : new oc.BRepAlgoAPI_Common_1();
+  const args = new oc.TopTools_ListOfShape_1();
+  const tools = new oc.TopTools_ListOfShape_1();
+  try {
+    args.Append_1(shape);
+    tools.Append_1(tool);
+    op.SetArguments(args);
+    op.SetTools(tools);
+  } finally {
+    args.delete();
+    tools.delete();
+  }
+  return op;
+}
 
 /**
  * Applies glue optimization to a boolean operation builder.
@@ -124,7 +158,7 @@ export function fuse(
   try {
     const { optimisation, simplify = false, fuzzyValue } = options;
     const progress = new oc.Message_ProgressRange_1();
-    const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
+    const fuseOp = newTwoOperandBoolean(oc, 'Fuse', shape, tool);
     applyGlue(oc, fuseOp, optimisation);
     applyBooleanDefaults(fuseOp, fuzzyValue);
     fuseOp.Build(progress);
@@ -151,7 +185,7 @@ export function cut(
   try {
     const { optimisation, simplify = false, fuzzyValue } = options;
     const progress = new oc.Message_ProgressRange_1();
-    const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
+    const cutOp = newTwoOperandBoolean(oc, 'Cut', shape, tool);
     applyGlue(oc, cutOp, optimisation);
     applyBooleanDefaults(cutOp, fuzzyValue);
     cutOp.Build(progress);
@@ -178,7 +212,7 @@ export function intersect(
   try {
     const { optimisation, simplify = false, fuzzyValue } = options;
     const progress = new oc.Message_ProgressRange_1();
-    const commonOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
+    const commonOp = newTwoOperandBoolean(oc, 'Common', shape, tool);
     applyGlue(oc, commonOp, optimisation);
     applyBooleanDefaults(commonOp, fuzzyValue);
     commonOp.Build(progress);

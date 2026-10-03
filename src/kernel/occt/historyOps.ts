@@ -21,7 +21,7 @@ import {
   modifierWithEvolution,
   booleanWithEvolution,
 } from './evolutionOps.js';
-import { applyGlue, applyBooleanDefaults } from './booleanOps.js';
+import { applyGlue, applyBooleanDefaults, newTwoOperandBoolean } from './booleanOps.js';
 
 // ---------------------------------------------------------------------------
 // Transform with history
@@ -158,7 +158,7 @@ export function fuseWithHistory(
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
-  const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
+  const fuseOp = newTwoOperandBoolean(oc, 'Fuse', shape, tool);
   applyGlue(oc, fuseOp, options.optimisation);
   applyBooleanDefaults(fuseOp, options.fuzzyValue);
   fuseOp.Build(progress);
@@ -186,7 +186,7 @@ export function cutWithHistory(
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
-  const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
+  const cutOp = newTwoOperandBoolean(oc, 'Cut', shape, tool);
   applyGlue(oc, cutOp, options.optimisation);
   applyBooleanDefaults(cutOp, options.fuzzyValue);
   cutOp.Build(progress);
@@ -214,7 +214,7 @@ export function intersectWithHistory(
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
-  const intOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
+  const intOp = newTwoOperandBoolean(oc, 'Common', shape, tool);
   applyGlue(oc, intOp, options.optimisation);
   applyBooleanDefaults(intOp, options.fuzzyValue);
   intOp.Build(progress);
