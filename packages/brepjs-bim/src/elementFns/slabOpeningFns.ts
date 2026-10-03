@@ -1,9 +1,11 @@
-import { polygon, extrude, isValidSolid } from 'brepjs';
+import { polygon, extrude } from 'brepjs';
 import type { ValidSolid, Result } from 'brepjs';
-import { ok, err } from 'brepjs';
+import { err } from 'brepjs';
 import type { SlabOpeningSpec } from '../types/bimTypes.js';
 import type { BimError } from '../errors/bimError.js';
-import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
+import { specError, fromBrepError } from '../errors/bimError.js';
+import { generateGeometry } from '../geometryGeneration.js';
+import { validateGeneratedSolid } from './validateGeneratedSolid.js';
 
 // Overshoot the slab thickness so the boolean cut tool has no coplanar faces
 // with the slab body — OCCT booleans are flaky when tool faces touch base
@@ -21,59 +23,59 @@ export function slabOpeningToSolid(
   spec: SlabOpeningSpec,
   slabThickness: number
 ): Result<ValidSolid, BimError> {
-  if (spec.sizeX <= 0) {
-    return err(specError('SLAB_OPENING_ZERO_SIZE_X', 'Slab opening sizeX must be positive'));
-  }
-  if (spec.sizeY <= 0) {
-    return err(specError('SLAB_OPENING_ZERO_SIZE_Y', 'Slab opening sizeY must be positive'));
-  }
-  if (slabThickness <= 0) {
-    return err(specError('SLAB_OPENING_ZERO_SLAB_THICKNESS', 'Slab thickness must be positive'));
-  }
+  return generateGeometry(
+    { operation: 'slabOpeningToSolid', codePrefix: 'SLAB_OPENING' },
+    (own) => {
+      if (spec.sizeX <= 0) {
+        return err(specError('SLAB_OPENING_ZERO_SIZE_X', 'Slab opening sizeX must be positive'));
+      }
+      if (spec.sizeY <= 0) {
+        return err(specError('SLAB_OPENING_ZERO_SIZE_Y', 'Slab opening sizeY must be positive'));
+      }
+      if (slabThickness <= 0) {
+        return err(
+          specError('SLAB_OPENING_ZERO_SLAB_THICKNESS', 'Slab thickness must be positive')
+        );
+      }
 
-  const x0 = spec.offsetX;
-  const x1 = spec.offsetX + spec.sizeX;
-  const y0 = spec.offsetY;
-  const y1 = spec.offsetY + spec.sizeY;
-  const z0 = -EPSILON_MM;
+      const x0 = spec.offsetX;
+      const x1 = spec.offsetX + spec.sizeX;
+      const y0 = spec.offsetY;
+      const y1 = spec.offsetY + spec.sizeY;
+      const z0 = -EPSILON_MM;
 
-  const profileResult = polygon([
-    [x0, y0, z0],
-    [x1, y0, z0],
-    [x1, y1, z0],
-    [x0, y1, z0],
-  ]);
-  if (!profileResult.ok) {
-    return err(
-      fromBrepError(
-        profileResult.error,
-        'SLAB_OPENING_PROFILE_FAILED',
-        'Failed to create slab opening profile'
-      )
-    );
-  }
+      const profileResult = polygon([
+        [x0, y0, z0],
+        [x1, y0, z0],
+        [x1, y1, z0],
+        [x0, y1, z0],
+      ]);
+      if (!profileResult.ok) {
+        return err(
+          fromBrepError(
+            profileResult.error,
+            'SLAB_OPENING_PROFILE_FAILED',
+            'Failed to create slab opening profile'
+          )
+        );
+      }
 
-  using profile = profileResult.value;
-  const solidResult = extrude(profile, [0, 0, slabThickness + 2 * EPSILON_MM]);
-  if (!solidResult.ok) {
-    return err(
-      fromBrepError(
-        solidResult.error,
-        'SLAB_OPENING_EXTRUDE_FAILED',
-        'Failed to extrude slab opening profile'
-      )
-    );
-  }
+      const profile = own(profileResult.value);
+      const solidResult = extrude(profile, [0, 0, slabThickness + 2 * EPSILON_MM]);
+      if (!solidResult.ok) {
+        return err(
+          fromBrepError(
+            solidResult.error,
+            'SLAB_OPENING_EXTRUDE_FAILED',
+            'Failed to extrude slab opening profile'
+          )
+        );
+      }
 
-  const solid = solidResult.value;
-  if (!isValidSolid(solid)) {
-    solid[Symbol.dispose]();
-    return err(
-      geometryError(
-        'SLAB_OPENING_INVALID_SOLID',
-        'Extruded slab opening solid failed validity check'
-      )
-    );
-  }
-  return ok(solid);
+      return validateGeneratedSolid(own(solidResult.value), {
+        code: 'SLAB_OPENING_INVALID_SOLID',
+        message: 'Extruded slab opening solid failed validity check',
+      });
+    }
+  );
 }

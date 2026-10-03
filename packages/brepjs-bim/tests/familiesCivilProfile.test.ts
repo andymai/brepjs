@@ -12,8 +12,8 @@ beforeAll(async () => {
   await initKernel();
 }, 30_000);
 
-function required<T>(value: T | undefined, label: string): T {
-  if (value === undefined) throw new Error(`Expected ${label}`);
+function required<T>(value: T | null | undefined, label: string): T {
+  if (value === undefined || value === null) throw new Error(`Expected ${label}`);
   return value;
 }
 

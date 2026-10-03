@@ -2,11 +2,13 @@
 
 **Status**: Proposed PR sequence
 **Date**: 2026-09-10
-**Updated**: 2026-09-14
+**Updated**: 2026-09-16
 
 This note defines one PR per migration step against `andymai/brepjs`, as requested in [upstream discussion #2303](https://github.com/andymai/brepjs/discussions/2303#discussioncomment-18406826). The [BIM glossary](../CONTEXT.md) governs vocabulary. Each ADR's Context explains the limitation visible in pinned upstream source and the reason for its proposed change.
 
 ADR-0001 through ADR-0004 form the initial scope. ADR-0005 through ADR-0008 remain in the series as Deferred and need another review when their steps open. References to those records preserve the later integration requirements without making their new type, Families, or IFC models prerequisites for steps 1 through 3. Preserve existing metadata and relationships throughout those steps.
+
+Documentation step 0 landed in [PR #2313](https://github.com/andymai/brepjs/pull/2313). The maintainer [confirmed the staged acceptance split](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868). The [step-1 implementation spec](../../../.scratch/bim-step-1-body-placement/spec.md) proposes the concrete interfaces, ownership outcomes, consumer changes, and acceptance checks for the next PR. It records no runtime implementation or test results.
 
 ## Acceptance scenarios
 
@@ -18,7 +20,7 @@ Legitimate class-specific changes remain: classification and payload/role valida
 
 At the end of step 2, implement repository-owned IfcSign and direct IfcMember probes against the new interfaces. The earlier IfcSign external experiment motivates the case; its branch and diff are not implementation dependencies or acceptance evidence. For each classification, retain singleton and multi-item Bodies, exercise shared transforms and measurement, and verify cleanup. Inspect each extension diff. No class registration may be added to shared geometry ownership, `placedGeometry` or its replacement, disposal, or aggregate measurement. Class-specific semantic mappings, authoring validation, and focused tests remain legitimate changes.
 
-The step-2 check measures extension cost and Body behavior before the document cutover. Full document-owned parent-chain resolution follows in step 3; end-to-end IFC and semantic checks follow in step 4 after review of the Deferred ADRs. Preserve existing export/import regressions at every step. This division of acceptance is a proposed interpretation of the migration sequence and needs confirmation in the step-0 review.
+The step-2 check measures extension cost and Body behavior before the document cutover. Full document-owned parent-chain resolution follows in step 3; end-to-end IFC and semantic checks follow in step 4 after review of the Deferred ADRs. Preserve existing export/import regressions at every step. The maintainer [confirmed this division of acceptance in the step-0 review](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868).
 
 ### Integration scenarios
 
@@ -91,11 +93,11 @@ Geometry and cleanup checks run against supported native backends. For occt-wasm
 
 ## Review still outstanding
 
-ADR-0001 through ADR-0004 and this PR sequence remain Proposed pending review of the revision. Their package, Placement, glossary, and explicit authored-authority contracts define the initial scope. Preserve the existing root identity decision. ADR-0005 through ADR-0008 remain Deferred, with re-review at their migration steps.
+ADR-0001 through ADR-0004 retain their Proposed status labels. The maintainer approved documentation step 0 and its staged acceptance checks in PR #2313, with each implementation step to be reviewed as it lands. Their package, Placement, glossary, and explicit authored-authority contracts define the initial scope. Preserve the existing root identity decision. ADR-0005 through ADR-0008 remain Deferred, with re-review at their migration steps.
 
 The IFC preservation amendments remain deferred review drafts for step 4. They propose explicit type fallback policy, external classification retention, semantic import outcomes, and independent qualification. Existing gates continue meanwhile. Retaining these drafts does not mark their policies accepted or implemented.
 
-The split between the step-2 extension check and later document/exchange acceptance is explicit for step-0 review; it is not yet a separately confirmed maintainer decision. Exact peer-dependency packaging, nested-Site legality and root identity behavior, detailed role-to-schema tables, and imported-document normalization remain separately scoped decisions. They do not change the initial scope. Exact interface names and optimization choices may change while preserving the contracts.
+The split between the step-2 extension check and later document/exchange acceptance is confirmed by the maintainer's [PR #2313 comment](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868). Exact peer-dependency packaging, nested-Site legality and root identity behavior, detailed role-to-schema tables, and imported-document normalization remain separately scoped decisions. They do not change the initial scope. Exact interface names and optimization choices may change while preserving the contracts.
 
 The acceptance scenarios are future implementation gates. This documentation revision establishes no runtime results.
 

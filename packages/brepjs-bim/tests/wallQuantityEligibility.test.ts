@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { getKernel, unwrap } from 'brepjs';
+import { box, getKernel, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe('Wall quantity eligibility', () => {
-  it.each(['EXACT'] as const)(
+  it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
     'measures an overlapping %s replacement and omits unsupported recipe quantities',
     async (authority) => {
       const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
@@ -116,6 +116,50 @@ describe('Wall quantity eligibility', () => {
           guid: wall.guid,
           quantities,
           materialVolumeMm3: opening ? 94_000_000 : 100_000_000,
+        });
+      }
+      if (before !== null) expect(nativeShapeCount()).toBe(before);
+    }
+  );
+
+  it.each([1500, 2000])(
+    'does not restore recipe eligibility after a %s mm singleton replacement and opening',
+    async (length) => {
+      const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+      {
+        const fixture = recipeWallFixture();
+        using model = fixture.model;
+        const replacement = box(length, 100, 500);
+        unwrap(
+          model.replaceProductBody({
+            localId: fixture.localId,
+            body: { kind: 'PARAMETRIC', solids: [replacement] },
+          })
+        );
+        fixture.addDoor();
+        const wall = model.getElement(fixture.localId);
+        if (wall?.category !== 'WALL') throw new Error('Missing Wall');
+        const exported = unwrap(await toIfcValidated(model, IFC_BODY_META));
+        using reader = unwrap(await SpfReader.create(exported.bytes));
+        const body = emittedBody(reader, wall.guid);
+        const quantities = readPsets(reader, body.expressId).find(
+          ({ name }) => name === 'Qto_WallBaseQuantities'
+        );
+        expectWallQuantities(quantities, {
+          Length: 2,
+          Width: 0.1,
+          Height: 0.5,
+          NetVolume: length === 1500 ? 0.069 : 0.094,
+        });
+        expect(
+          exported.report.issues.filter(
+            ({ code, severity }) => code === 'WALL_QUANTITY_OMITTED' || severity === 'error'
+          )
+        ).toEqual([]);
+        recordIfcBodyFixture(`quantity-replacement-${length}-opening`, exported.bytes, {
+          guid: wall.guid,
+          quantities,
+          materialVolumeMm3: length === 1500 ? 69_000_000 : 94_000_000,
         });
       }
       if (before !== null) expect(nativeShapeCount()).toBe(before);

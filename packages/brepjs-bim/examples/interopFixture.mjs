@@ -13,15 +13,18 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { BimModel, toIfcValidated } from 'brepjs-bim';
 
-const outFile = resolve(dirname(fileURLToPath(import.meta.url)), 'interop-fixture.ifc');
+const outFile =
+  process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'interop-fixture.ifc');
 
+/**
+ * @template T
+ * @param {import('brepjs').Result<T, import('brepjs-bim').BimError>} result
+ * @param {string} label
+ * @returns {T}
+ */
 function expect(result, label) {
-  if (result && result.ok === false) {
-    throw new Error(
-      `${label} failed: ${result.error?.code ?? ''} ${result.error?.message ?? result.error}`
-    );
-  }
-  return result && 'value' in result ? result.value : result;
+  if (!result.ok) throw new Error(`${label} failed: ${result.error.code} ${result.error.message}`);
+  return result.value;
 }
 
 const model = new BimModel();
@@ -49,9 +52,11 @@ const L = 9000;
 const W = 6000;
 const H = 3000;
 const T = 200;
+/** @type {[number, number, number]} */
 const Z = [0, 0, 1];
 
 // Perimeter: three solid walls plus a curtain-wall south facade.
+/** @type {Array<Pick<import('brepjs-bim').WallSpec, 'origin' | 'axisX' | 'length'>>} */
 const walls = [
   { origin: [0, 0, 0], axisX: [0, 1, 0], length: W },
   { origin: [0, W, 0], axisX: [1, 0, 0], length: L },
@@ -76,9 +81,12 @@ const wallIds = walls.map((d, i) =>
 );
 wallIds.forEach((id) => model.placeIn(id, groundId));
 
+const rearWallId = wallIds[1];
+if (rearWallId === undefined) throw new Error('Expected rear perimeter wall');
+
 const door = expect(
   model.addDoor({
-    wallLocalId: wallIds[1],
+    wallLocalId: rearWallId,
     offsetAlongWall: 1200,
     offsetFromFloor: 0,
     width: 1000,
@@ -89,7 +97,7 @@ const door = expect(
 );
 const window = expect(
   model.addWindow({
-    wallLocalId: wallIds[1],
+    wallLocalId: rearWallId,
     offsetAlongWall: 5000,
     offsetFromFloor: 900,
     width: 1600,

@@ -2,10 +2,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { box, DisposalScope, fuseAll, getBounds, measureVolume, unwrap } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
-import {
-  placedSolids,
-  setPlacedGeometryTestHooksForTesting,
-} from '../src/elementFns/placedGeometry.js';
+import { placedSolids } from '../src/elementFns/placedGeometry.js';
+import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 
@@ -14,7 +12,7 @@ beforeAll(async () => {
 }, 30000);
 
 afterEach(() => {
-  setPlacedGeometryTestHooksForTesting(null);
+  setProductBodyTestHooksForTesting(null);
   vi.restoreAllMocks();
 });
 
@@ -68,7 +66,10 @@ describe('native Body baseline', () => {
       );
       const first = box(1, 1, 1);
       const second = box(1, 1, 1, { at: [0.5, 0, 0] });
-      const adopted = model.takeExactProductBody(id, { kind: 'EXACT', solids: [first, second] });
+      const adopted = model.replaceProductBody({
+        localId: id,
+        body: { kind: 'AUTHORITATIVE', solids: [first, second] },
+      });
       if (!adopted.ok) {
         first[Symbol.dispose]();
         second[Symbol.dispose]();
@@ -82,8 +83,8 @@ describe('native Body baseline', () => {
         expect(liveInputs).toBe(beforeFixture + 2);
       }
       const outputReleases: ReturnType<typeof vi.fn>[] = [];
-      setPlacedGeometryTestHooksForTesting({
-        afterPlaced: (solid) => {
+      setProductBodyTestHooksForTesting({
+        afterAllocate: ({ solid }) => {
           outputReleases.push(vi.spyOn(solid, Symbol.dispose));
           if (outputReleases.length === 2) throw new Error('injected later placement failure');
         },
@@ -91,7 +92,7 @@ describe('native Body baseline', () => {
       const result = placedSolids(element);
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error('Expected placement rejection');
-      expect(result.error.code).toBe('PLACED_GEOMETRY_FAILED');
+      expect(result.error.code).toBe('BODY_OPERATION_FAILED');
       expect(outputReleases).toHaveLength(2);
       for (const release of outputReleases) expect(release).toHaveBeenCalledTimes(1);
       for (const release of inputReleases) expect(release).not.toHaveBeenCalled();

@@ -5,7 +5,7 @@
  * distinct pset-backed spec fields; IFC output is byte-identical across runs.
  */
 
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { csg, isOk, measureVolume, unwrap } from 'brepjs';
 import {
@@ -22,14 +22,14 @@ import { toIfc } from '../src/serialize/toIfc.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
 import { checkReferentialIntegrity } from '../src/validation/referentialIntegrity.js';
 import { bodySolids } from '../src/types/productBody.js';
-import { setFamiliesProductBodyTestHooksForTesting } from '../src/familiesProductBody.js';
+import { BimModel } from '../src/model/bimModel.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 afterEach(() => {
-  setFamiliesProductBodyTestHooksForTesting(null);
+  vi.restoreAllMocks();
 });
 
 interface WallProps {
@@ -662,13 +662,19 @@ describe('archetype routing', () => {
     );
     using evaluator = new csg.Evaluator();
     let candidateVolumes: readonly [number, number] | null = null;
-    setFamiliesProductBodyTestHooksForTesting({
-      beforeCoincidence: (exact, parametric) => {
-        candidateVolumes = [
-          unwrap(measureVolume(bodySolids(exact)[0])),
-          unwrap(measureVolume(bodySolids(parametric)[0])),
-        ];
-      },
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
+    const replace = BimModel.prototype.replaceProductBody;
+    vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
+      this: BimModel,
+      input
+    ) {
+      const candidate = this.getElement(input.localId);
+      if (candidate?.category !== 'WALL') throw new Error('Expected post-opening candidate');
+      candidateVolumes = [
+        unwrap(measureVolume(input.body.solids[0])),
+        unwrap(measureVolume(candidate.geometry.solids[0])),
+      ];
+      return replace.call(this, input);
     });
     const result = unwrap(familiesToBim(tree, { project: PROJECT, bodyEvaluator: evaluator }));
     using model = result.model;
@@ -682,10 +688,10 @@ describe('archetype routing', () => {
     if (wall?.category !== 'WALL') throw new Error('Expected projected wall');
     const expectedVolume = 3_000 * 200 * 2_700 - 900 * 200 * 2_100;
     expect(candidateVolumes).not.toBeNull();
-    if (candidateVolumes === null) throw new Error('Expected coincidence volumes');
+    if (candidateVolumes === null) throw new Error('Expected authored and post-opening volumes');
     expect(candidateVolumes[0]).toBeCloseTo(expectedVolume, 3);
     expect(candidateVolumes[1]).toBeCloseTo(expectedVolume, 3);
-    expect(wall.geometry.kind).toBe('PARAMETRIC');
+    expect(wall.geometry.kind).toBe('AUTHORITATIVE');
     expect(unwrap(measureVolume(bodySolids(wall.geometry)[0]))).toBeCloseTo(expectedVolume, 3);
     expect(model.getAllRelationships().filter(({ kind }) => kind === 'VOIDS_WALL')).toHaveLength(1);
     expect(model.getAllRelationships().filter(({ kind }) => kind === 'FILLS_OPENING')).toHaveLength(

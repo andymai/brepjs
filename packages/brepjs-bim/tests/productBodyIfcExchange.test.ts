@@ -35,7 +35,7 @@ function expectBounds(actual: Bounds3D, expected: Bounds3D, divisor = 1): void {
 
 describe('retained Product Body IFC exchange', () => {
   for (const category of ['WALL', 'RAILING'] as const) {
-    for (const authority of ['EXACT'] as const) {
+    for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
       it.each(['singleton', 'disconnected', 'overlapping'] as const)(
         `${category} ${authority} preserves every %s item, placement and style`,
         async (layout) => {
@@ -164,7 +164,7 @@ describe('retained Product Body IFC exchange', () => {
     }
   }
 
-  it.each(['EXACT'] as const)(
+  it.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)(
     'preserves a retained %s host and opening/filler relationships without recutting',
     async (authority) => {
       const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;

@@ -43,35 +43,24 @@ On the brepjs side, `extendedProfileToFace` builds the section face for the soli
 
 ## Shaped roofs
 
-`pitch` opts a roof into shaped geometry for its `predefinedType`: a right-trapezoid prism (shed), a house-pentagon prism (gable), a convex-hull hip with the ridge along the longer side, or a faceted dome. Without `pitch` the roof is a flat slab whatever the type says. Shaped roofs and posted railings serialize as tessellated bodies; everything else stays parametric `IfcExtrudedAreaSolid`.
+`pitch` opts a roof into shaped geometry for its `predefinedType`: a right-trapezoid prism (shed), a house-pentagon prism (gable), a convex-hull hip with the ridge along the longer side, or a faceted dome. Without `pitch` the roof is a flat slab whatever the type says. Shaped roofs serialize as tessellated bodies; flat roofs retain `IfcExtrudedAreaSolid`. Every retained Wall/Railing Body item also serializes independently as a tessellated representation, regardless of authority or item count.
 
 ## Placement and display
 
-Element geometry is **unplaced template geometry**. A wall's Body starts at the local origin and runs along local +X regardless of where the wall stands; `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. Wall and railing `.geometry` is a `ProductBody`: narrow `geometry.kind` to distinguish one `PARAMETRIC` solid from a non-empty `EXACT` solid collection. `bodySolids()` borrows Product-local handles from either branch. Do not dispose them.
+Element geometry is **unplaced template geometry**. `origin` / `axisX` / `axisZ` live in the spec and become `IfcLocalPlacement`. Wall and railing `.geometry` is a `ProductBody` whose `kind` is `PARAMETRIC` or `AUTHORITATIVE`. Both authorities hold a nonempty, ordered `solids` collection. `bodySolids()` borrows Product-local handles; do not dispose them.
 
-Use `takeExactProductBody()` to replace a parametric wall or railing Body. A successful call transfers ownership of every supplied solid to the model; a failed call leaves the model and caller ownership unchanged. Register wall openings first. Once a wall has an exact Body, later `addDoor()` and `addWindow()` calls return `EXACT_WALL_BODY_IMMUTABLE`.
+Use `model.replaceProductBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` to install the complete Body atomically. An error transfers nothing and leaves model state unchanged. Success returns a `COMMITTED` receipt and transfers all supplied solids to the model. Inspect its `cleanup` report separately: a failed release of the old Body does not undo the commit or return ownership of the new Body. Do not retry uncertain releases. An authoritative Body cannot revert to parametric authority.
 
-`familiesToBim()` performs that sequence automatically for civil-semantic walls and railings when given `bodyEvaluator` (or `proxyEvaluator`). Those routes require an evaluator: missing it returns `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` instead of falling back to a parametric envelope. Conventional archetype walls and railings remain specification-authoritative. When the evaluator is present, the adapter compares the evaluated authored Body with the post-opening parametric Body in Product-local coordinates. Coincident bodies stay parametric; different bodies preserve every exact item without losing their typed category.
+Register wall openings before installing an authoritative Body. Later `addDoor()` and `addWindow()` calls return `AUTHORITATIVE_WALL_BODY_IMMUTABLE`. Existing opening relationships survive replacement, and the retained Body must already contain their geometry.
 
-`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates for display or clash checks. Exact Product Bodies return one placed copy per Body item. Stairs and ramps return one per flight, and curtain walls return their panels and mullions. Elements that are purely relational (doors, windows, groups, spatial containers) return an empty list rather than an error.
+`familiesToBim()` performs that sequence for civil-semantic walls and railings using `bodyEvaluator` (or `proxyEvaluator`). Those routes require an evaluator: missing it returns `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED`. The adapter copies every authored item into Product-local coordinates and always retains `AUTHORITATIVE` authority, even when the authored Body coincides with a recipe. Conventional archetype routes retain their existing recipe authoring behavior.
+
+`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates. Both Product Body authorities return one placed copy per item. Stairs and ramps return one per flight, and curtain walls return their panels and mullions. Elements without stored geometry return an empty list. Dispose every returned solid.
+
+Wall net volume measures the occupied union of all Body items. Recipe-derived quantities require current model recipe eligibility; replacing a Body clears that eligibility even if the replacement is tagged `PARAMETRIC`. Measurement failures omit the affected quantities and produce `WALL_QUANTITY_OMITTED` issues from `toIfcValidated()`.
+
+Other categories retain class-specific storage in step 1. Converging that storage and removing the transitional model ownership enumerator are step-2 work.
 
 ## Data layers
 
 Beyond geometry, elements carry: property sets from IFC pset templates with typed measures, quantity sets for takeoff, materials (simple, layer sets, profile sets), classification references (Uniclass, OmniClass, and friends), surface styles, and zone / system membership. Stable identity comes from deterministic GUIDs: `deriveIfcGuid` for content-derived ids, `newIfcGuid` for random ones.
-
-Wall NetVolume uses retained occupied material. When measurement or temporary cleanup fails, optional Wall quantities are omitted and `toIfcValidated` reports `WALL_QUANTITY_OMITTED` for the affected element. `toIfc` retains its bytes Result contract.
-
-### Retained Body IFC geometry
-
-Wall and Railing exports preflight and tessellate every retained item in order, preserving placement, styles, and metadata.
-
-Wall openings export as IFC `Reference` geometry because the retained Wall Body already
-contains its cuts. Void/fill relationships and opening placements remain intact. IFC4 defines
-Reference openings as non-subtractive; gross recipe exports such as Slab openings still use
-subtractive `Body` geometry. The importer keeps Reference opening records and relationships
-without treating their reference shape as a display Body or cutting tool.
-
-IfcOpenShell 0.8.5 still subtracts Reference openings in its default geometry engine, even with
-a separate Reference context. If a replacement Body adds material inside a retained opening's
-region, that engine can remove the added material. Schema validation and shape generation alone
-do not detect this difference; check the representation semantics and retained item geometry.

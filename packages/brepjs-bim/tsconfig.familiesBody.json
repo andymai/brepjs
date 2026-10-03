@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.nativeBaseline.json",
+  "include": [
+    "tests/setup.ts",
+    "tests/familiesAdapter.test.ts",
+    "tests/familiesProductBody.test.ts",
+    "tests/familiesBodyOwnership.test.ts",
+    "tests/familiesBodyPlacement.test.ts",
+    "tests/typedCivilExactBody.test.ts",
+    "tests/familiesCivil.test.ts",
+    "tests/familiesCivilProfile.test.ts",
+    "tests/familiesRotation.test.ts",
+    "tests/familiesRoundTrip.test.ts",
+    "tests/familiesUncachedBody.test.ts"
+  ]
+}

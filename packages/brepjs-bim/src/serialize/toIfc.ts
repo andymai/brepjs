@@ -418,7 +418,7 @@ async function serializeIfc(
           { guid: wall.guid, cause: bodyQuantities.error }
         )
       );
-    } else if (wall.geometry.kind === 'PARAMETRIC') {
+    } else if (model.isRecipeQuantityEligible(wall.localId)) {
       writeWallBaseQuantities(
         w,
         ownerHistoryId,

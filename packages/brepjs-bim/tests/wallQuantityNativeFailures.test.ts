@@ -1,10 +1,10 @@
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
-import { clone, getKernel, unwrap, type ValidSolid } from 'brepjs';
+import { getKernel, unwrap, type ValidSolid } from 'brepjs';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
-import { bodySolids } from '../src/types/productBody.js';
+import { copyProductBody } from '../src/types/productBody.js';
 import { toIfcValidated } from '../src/serialize/toIfc.js';
 import {
   bodyExchangeFixture,
@@ -33,7 +33,7 @@ function expectLive(solids: readonly ValidSolid[]): void {
   solids.forEach((solid) => expect(getKernel().volume(solid.wrapped)).toBeCloseTo(50_000_000, 2));
 }
 
-for (const authority of ['EXACT'] as const) {
+for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
   it.each(['fuseAll', 'volume'] as const)(
     `exports ${authority} retained items after native %s failure`,
     async (method) => {
@@ -116,7 +116,7 @@ for (const primaryFailure of [false, true]) {
       const temporaryReleases: ReturnType<typeof vi.fn>[] = [];
       try {
         {
-          const fixture = bodyExchangeFixture('WALL', 'EXACT', 'overlapping');
+          const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'overlapping');
           using model = fixture.model;
           const wall = model.getElement(fixture.localId);
           if (wall?.category !== 'WALL') throw new Error('Missing Wall');
@@ -128,12 +128,8 @@ for (const primaryFailure of [false, true]) {
           if (container?.kind !== 'CONTAINED_IN') throw new Error('Missing containment');
           const laterId = unwrap(model.addWall({ ...wall.spec, origin: [4000, 2000, 3000] }));
           model.placeIn(laterId, container.relatingStructure);
-          const [first, ...rest] = bodySolids(wall.geometry);
-          const copied = {
-            kind: 'EXACT' as const,
-            solids: [unwrap(clone(first)), ...rest.map((solid) => unwrap(clone(solid)))] as const,
-          };
-          unwrap(model.takeExactProductBody(laterId, copied));
+          const copied = unwrap(copyProductBody(wall.geometry));
+          unwrap(model.replaceProductBody({ localId: laterId, body: copied }));
           const laterWall = model.getElement(laterId);
           if (laterWall?.category !== 'WALL') throw new Error('Missing later Wall');
           const inputs = [...fixture.solids, ...copied.solids];

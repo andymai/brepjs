@@ -1,5 +1,4 @@
-import { bodySolids } from '../../src/types/productBody.js';
-import { getKernel, getSolids, isValidSolid, unwrap } from 'brepjs';
+import { unwrap } from 'brepjs';
 import type { BimModel } from '../../src/model/bimModel.js';
 import type { WallSpec } from '../../src/specs/wallSpec.js';
 import type { LocalId } from '../../src/identity/localId.js';
@@ -65,13 +64,20 @@ export function openingHost(model: BimModel, kind: OpeningCommand) {
 
 export function singletonWallSolid(model: BimModel, id: LocalId) {
   const wall = model.getElement(id);
-  if (wall?.category !== 'WALL' || bodySolids(wall.geometry).length !== 1) {
+  if (wall?.category !== 'WALL' || wall.geometry.solids.length !== 1) {
     throw new Error('Expected a singleton Wall Body');
   }
-  const retained = bodySolids(wall.geometry)[0];
-  if (getKernel().shapeType(retained.wrapped) !== 'compound') return retained;
-  const [child, ...others] = getSolids(retained);
-  if (!child || others.length !== 0 || !isValidSolid(child))
-    throw new Error('Expected one solid in recipe wrapper');
-  return child;
+  return wall.geometry.solids[0];
+}
+
+/** The caller owns the model and all geometry created by this fixture. */
+export function addWallWithDoor(model: BimModel) {
+  const wallId = unwrap(model.addWall(OPENING_WALL, { stableKey: 'wall' }));
+  const doorId = unwrap(
+    model.addDoor(
+      { ...DOOR, wallLocalId: wallId },
+      { stableKey: 'door', openingStableKey: 'door-opening' }
+    )
+  );
+  return { wallId, doorId };
 }

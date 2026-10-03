@@ -1,8 +1,8 @@
 /**
  * brepjs-families -> BimModel adapter. Consumes a resolved element tree and
  * feeds each element's PRE-DESUGARED props into parametric specs. Civil wall
- * and railing Products additionally compare the evaluated authored Body with
- * that spec Body and retain an exact Body when they diverge. GlobalIds derive
+ * and railing Products retain the evaluated authored Body as AUTHORITATIVE
+ * after generating the candidate and applying openings. GlobalIds derive
  * from families key paths (stable under reordering), not insertion order.
  *
  * Scope: building Storey containers; civil Site/Bridge/recursive Bridge Part
@@ -77,7 +77,9 @@ import {
 import { specError, type BimError } from './errors/bimError.js';
 import type { FillsOpeningRel } from './types/relationships.js';
 import { disposeProductBody } from './types/productBody.js';
-import { selectCivilProductBody } from './familiesProductBody.js';
+import { prepareCivilProductBody } from './familiesProductBody.js';
+import { reportedGeometryCleanup } from './geometryCleanupDiagnostics.js';
+import { cleanupReport } from './productBodyCleanup.js';
 
 export interface FamiliesToBimOptions {
   readonly project: ProjectSpec;
@@ -90,9 +92,9 @@ export interface FamiliesToBimOptions {
    * returns FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED with the element path and
    * mapped category, and does not fall back to a parametric envelope.
    * Conventional archetype walls and railings stay specification-authoritative
-   * and do not require an evaluator. When present, civil walls and railings
-   * compare the evaluated Body with their post-opening parametric Body and
-   * retain the authored Body when they differ. Supplying this option does not
+   * and do not require an evaluator. Civil walls and railings always retain
+   * independent authored items as AUTHORITATIVE, including when coincident
+   * with the post-opening candidate. Supplying this option does not
    * opt unsupported products into the proxy fallback.
    */
   readonly bodyEvaluator?: csg.Evaluator | undefined;
@@ -1319,19 +1321,30 @@ function installCivilProductBody(
       )
     );
   }
-  const selected = selectCivilProductBody({
+  const prepared = prepareCivilProductBody({
     element: el,
     category,
     evaluator,
     productWorldFrame,
-    parametricBody: target.geometry,
   });
-  if (!selected.ok) return selected;
-  if (selected.value.kind === 'PARAMETRIC') return ok(undefined);
-
-  const takeover = model.takeExactProductBody(localId, selected.value.body);
-  if (!takeover.ok) disposeProductBody(selected.value.body);
-  return takeover;
+  if (!prepared.ok) return prepared;
+  const adopted = model.replaceProductBody({ localId, body: prepared.value });
+  // COMMITTED transfers ownership even if retiring the old candidate failed.
+  // The model keeps that diagnostic and owns the new Body through later errors.
+  if (adopted.ok) return ok(undefined);
+  const cleanup = disposeProductBody(prepared.value);
+  return err({
+    ...adopted.error,
+    metadata: {
+      ...adopted.error.metadata,
+      keyPath: el.keyPath,
+      category,
+      cleanup: cleanupReport([
+        ...reportedGeometryCleanup(adopted.error, 'installCivilProductBody'),
+        ...(cleanup.kind === 'FAILED' ? cleanup.diagnostics : []),
+      ]),
+    },
+  });
 }
 
 interface ProjectionWalkState {
@@ -1362,24 +1375,40 @@ export function familiesToBim(
   options: FamiliesToBimOptions
 ): Result<FamiliesBimResult, BimError> {
   const model = new BimModel();
-  let transferred = false;
+  let projected: Result<FamiliesBimResult, BimError>;
   try {
     preflightFamilyFrames(root, IDENTITY_FRAME, IDENTITY_FRAME, 0);
-    const projected = projectFamiliesToBim(root, options, model);
-    transferred = projected.ok;
-    return projected;
+    projected = projectFamiliesToBim(root, options, model);
   } catch (cause) {
-    if (cause instanceof FrameProjectionError) return err(cause.error);
-    return err(
-      specError(
-        'FAMILIES_PROJECTION_FAILED',
-        `familiesToBim: unexpected projection failure at '${root.keyPath}'`,
-        cause
-      )
+    projected = err(
+      cause instanceof FrameProjectionError
+        ? cause.error
+        : specError(
+            'FAMILIES_PROJECTION_FAILED',
+            `familiesToBim: unexpected projection failure at '${root.keyPath}'`,
+            cause
+          )
     );
-  } finally {
-    if (!transferred) model[Symbol.dispose]();
   }
+  if (projected.ok) return projected;
+  try {
+    model[Symbol.dispose]();
+  } catch {
+    // The model records each failed attempt before throwing and never retries it.
+    // Preserve the projection error; attach cleanup diagnostics below.
+  }
+  const cleanup = reportedGeometryCleanup(
+    {
+      ...projected.error,
+      cause: projected.error,
+      metadata: { cleanup: cleanupReport(model.getGeometryCleanupDiagnostics()) },
+    },
+    'familiesToBim'
+  );
+  return err({
+    ...projected.error,
+    metadata: { ...projected.error.metadata, cleanup: cleanupReport(cleanup) },
+  });
 }
 
 /** Validate the existing Families placement tree before any eager recipe or evaluator work. */

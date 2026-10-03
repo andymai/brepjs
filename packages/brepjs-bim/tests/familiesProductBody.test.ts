@@ -1,324 +1,204 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { csg, getSolids, isSolid, measureVolume, unwrap, type Solid } from 'brepjs';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
-  civilSemantics,
-  el,
-  family,
-  resolve,
-  type Element,
-  type ResolvedElement,
-} from 'brepjs-families';
-import { initKernel } from '../../../tests/setup.js';
-import { familiesToBim, setFamiliesAdapterTestHooksForTesting } from '../src/familiesAdapter.js';
-import { setFamiliesProductBodyTestHooksForTesting } from '../src/familiesProductBody.js';
-import { bodySolids } from '../src/types/productBody.js';
-import type { BimModel } from '../src/model/bimModel.js';
-import type { LocalId } from '../src/identity/localId.js';
+  csg,
+  DisposalScope,
+  getBounds,
+  getKernel,
+  measureVolume,
+  unwrap,
+  type Bounds3D,
+} from 'brepjs';
+import { currentKernel, initKernel } from '../../../tests/setup.js';
+import { familiesToBim } from '../src/familiesAdapter.js';
+import { measureProductBodyMaterial } from '../src/types/productBody.js';
+import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
+import { nativeShapeCount } from './helpers/nativeArena.js';
+import {
+  BODY_PROJECT,
+  bodyTree,
+  borrowedSources,
+  civilBody,
+  disconnectedBody,
+} from './helpers/familiesBodyFixture.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30_000);
+afterEach(() => vi.restoreAllMocks());
 
-afterEach(() => {
-  setFamiliesAdapterTestHooksForTesting(null);
-  setFamiliesProductBodyTestHooksForTesting(null);
-});
-
-const PROJECT = { name: 'Product Body controls', projectId: 'product-body-controls' };
-
-const Storey = family<{ readonly items: readonly Element[] }>(
-  'ProductBodyStorey',
-  ({ items }) => el('Group', {}, items),
-  { archetype: 'storey' }
-);
-
-function wallSemantics() {
-  return civilSemantics({
-    kind: 'product',
-    category: 'wall',
-    role: 'wall',
-    material: 'Concrete',
-    dimensionsMm: { length: 1_000, width: 100, height: 500 },
-  });
-}
-
-function railingSemantics() {
-  return civilSemantics({
-    kind: 'product',
-    category: 'railing',
-    role: 'guardrail',
-    material: 'Steel',
-    dimensionsMm: { length: 1_000, width: 100, height: 500 },
-  });
-}
-
-const CoincidentRailing = family(
-  'CoincidentRailing',
-  () => el('Geometry', { node: csg.box(1_000, 100, 500) }),
-  { semantics: railingSemantics() }
-);
-
-const ShiftedWall = family(
-  'ShiftedWall',
-  () =>
-    el('Geometry', {
-      node: csg.compound([csg.translate(csg.box(1_000, 100, 500), [200, 0, 0])]),
-    }),
-  { semantics: wallSemantics() }
-);
-
-const TinyUnequalWall = family(
-  'TinyUnequalWall',
-  () => el('Geometry', { node: csg.box(0.008, 0.008, 0.008) }),
-  {
-    semantics: civilSemantics({
-      kind: 'product',
-      category: 'wall',
-      role: 'wall',
-      material: 'Concrete',
-      dimensionsMm: { length: 0.01, width: 0.01, height: 0.01 },
-    }),
+function expectBoundsClose(actual: Bounds3D, expected: Bounds3D): void {
+  // Bounds are in millimetres; compare each component to six decimal places.
+  for (const component of ['xMin', 'xMax', 'yMin', 'yMax', 'zMin', 'zMax'] as const) {
+    expect(actual[component]).toBeCloseTo(expected[component], 6);
   }
-);
-
-const MultiSolidRailing = family(
-  'MultiSolidRailing',
-  () =>
-    el('Geometry', {
-      node: csg.compound([
-        csg.box(1_000, 100, 50),
-        csg.translate(csg.box(1_000, 100, 50), [0, 0, 450]),
-      ]),
-    }),
-  { semantics: railingSemantics() }
-);
-
-const EvaluationFailureWall = family(
-  'EvaluationFailureWall',
-  () => el('Geometry', { node: csg.box(csg.param('missing'), 100, 500) }),
-  { semantics: wallSemantics() }
-);
-
-const EmptyBodyWall = family('EmptyBodyWall', () => el('Geometry', { node: csg.circle(100) }), {
-  semantics: wallSemantics(),
-});
+}
 
 describe('Families civil Product Body authority', () => {
-  it('keeps a coincident rectangular civil railing PARAMETRIC and releases adapter copies', () => {
-    const root = oneProduct(CoincidentRailing({ key: 'railing' }));
-    using evaluator = new csg.Evaluator();
-    const sourceDisposals = observeSources(evaluator, findElement(root, 'level/railing'));
-    let localizedDisposals = 0;
-    setFamiliesProductBodyTestHooksForTesting({
-      afterLocalized: (_itemIndex, solid) => solid.onDispose(() => localizedDisposals++),
-    });
-
-    const projected = unwrap(familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator }));
-    using model = projected.model;
-    const railing = requiredElement(model, projected.idByKeyPath.get('level/railing'), 'RAILING');
-    expect(railing.geometry.kind).toBe('PARAMETRIC');
-    expect(localizedDisposals).toBe(1);
-    expect(sourceDisposals).toEqual([0]);
+  it('B12 retains genuinely coincident authored items until model cleanup', () => {
+    const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+    {
+      using evaluator = new csg.Evaluator();
+      const root = bodyTree(civilBody(csg.box(2, 1, 1)));
+      const source = borrowedSources(evaluator, root);
+      const liveInputs = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+      const { model, idByKeyPath } = unwrap(
+        familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
+      );
+      const id = idByKeyPath.get('level/product');
+      if (id === undefined) throw new Error('Missing product');
+      const product = model.getElement(id);
+      if (product?.category !== 'RAILING') throw new Error('Missing railing');
+      const retained = product.geometry.solids;
+      const releases = retained.map((solid) => vi.spyOn(solid, Symbol.dispose));
+      try {
+        expect(product.geometry.kind).toBe('AUTHORITATIVE');
+        expect(retained).toHaveLength(1);
+        const sourceSolid = source.solids[0];
+        if (sourceSolid === undefined) throw new Error('Missing source');
+        expect(retained[0]).not.toBe(sourceSolid);
+        expectBoundsClose(getBounds(retained[0]), getBounds(sourceSolid));
+        expect(getKernel().volume(retained[0].wrapped)).toBeCloseTo(2, 8);
+        releases.forEach((release) => expect(release).not.toHaveBeenCalled());
+      } finally {
+        model[Symbol.dispose]();
+      }
+      releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
+      source.releases.forEach((release) => expect(release).not.toHaveBeenCalled());
+      source.solids.forEach((solid) => expect(getKernel().volume(solid.wrapped)).toBeCloseTo(2, 8));
+      if (liveInputs !== null) expect(nativeShapeCount()).toBe(liveInputs);
+    }
+    if (before !== null) expect(nativeShapeCount()).toBe(before);
   });
 
-  it('selects EXACT when equal-volume wall Bodies occupy different space', () => {
-    const root = oneProduct(ShiftedWall({ key: 'wall' }));
-    using evaluator = new csg.Evaluator();
-    const projected = unwrap(familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator }));
-    using model = projected.model;
-    const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
-    expect(wall.geometry.kind).toBe('EXACT');
-    expect(bodySolids(wall.geometry)).toHaveLength(1);
+  it('B11 preserves both overlapping items despite the old equal scalar values', () => {
+    const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+    {
+      using scope = new DisposalScope();
+      const { a, b, p } = createOverlapFixture(scope);
+      for (const [solid, xMin, xMax] of [
+        [a, 0, 1],
+        [b, 0.5, 1.5],
+        [p, 0, 2],
+      ] as const) {
+        const bounds = getBounds(solid);
+        expect(bounds.xMin).toBeCloseTo(xMin, 6);
+        expect(bounds.xMax).toBeCloseTo(xMax, 6);
+        expect(bounds.yMin).toBeCloseTo(0, 6);
+        expect(bounds.yMax).toBeCloseTo(1, 6);
+        expect(bounds.zMin).toBeCloseTo(0, 6);
+        expect(bounds.zMax).toBeCloseTo(1, 6);
+      }
+      expect(unwrap(measureVolume(a)) + unwrap(measureVolume(b))).toBeCloseTo(2, 8);
+      expect(unwrap(measureProductBodyMaterial([a, b]))).toBeCloseTo(1.5, 8);
+      expect(unwrap(measureProductBodyMaterial([a, b, p]))).toBeCloseTo(2, 8);
+      using evaluator = new csg.Evaluator();
+      const root = bodyTree(
+        civilBody(csg.compound([csg.box(1, 1, 1), csg.translate(csg.box(1, 1, 1), [0.5, 0, 0])]))
+      );
+      const source = borrowedSources(evaluator, root);
+      const liveInputs = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+      const { model, idByKeyPath } = unwrap(
+        familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
+      );
+      try {
+        const id = idByKeyPath.get('level/product');
+        if (id === undefined) throw new Error('Missing product');
+        const product = model.getElement(id);
+        if (product?.category !== 'RAILING') throw new Error('Missing railing');
+        expect(product.geometry.kind).toBe('AUTHORITATIVE');
+        expect(product.geometry.solids).toHaveLength(2);
+        product.geometry.solids.forEach((solid, index) => {
+          expectBoundsClose(getBounds(solid), getBounds(index === 0 ? a : b));
+          expect(solid).not.toBe(source.solids[index]);
+        });
+        expect(unwrap(measureProductBodyMaterial(product.geometry.solids))).toBeCloseTo(1.5, 8);
+      } finally {
+        model[Symbol.dispose]();
+      }
+      source.releases.forEach((release) => expect(release).not.toHaveBeenCalled());
+      source.solids.forEach((solid) => expect(getKernel().volume(solid.wrapped)).toBeCloseTo(1, 8));
+      if (liveInputs !== null) expect(nativeShapeCount()).toBe(liveInputs);
+    }
+    if (before !== null) expect(nativeShapeCount()).toBe(before);
   });
 
-  it('selects EXACT when two sub-1 mm³ volumes disagree relatively', () => {
-    const root = oneProduct(TinyUnequalWall({ key: 'wall' }));
+  it.each([
+    {
+      name: 'equal-volume shifted wall',
+      node: csg.compound([csg.translate(csg.box(2, 1, 1), [0.2, 0, 0])]),
+      count: 1,
+      volume: 2,
+    },
+    { name: 'tiny unequal wall', node: csg.box(0.008, 0.008, 0.008), count: 1, volume: 0.008 ** 3 },
+    { name: 'disconnected railing', node: disconnectedBody(), count: 2, volume: 0.8 },
+  ])('retains $name', ({ node, name, count, volume }) => {
     using evaluator = new csg.Evaluator();
-    let candidateVolumes: readonly [number, number] | null = null;
-    setFamiliesProductBodyTestHooksForTesting({
-      beforeCoincidence: (exact, parametric) => {
-        const exactSolid = bodySolids(exact)[0];
-        const parametricSolid = bodySolids(parametric)[0];
-        if (exactSolid === undefined || parametricSolid === undefined) {
-          throw new Error('Expected coincidence solids');
-        }
-        candidateVolumes = [
-          unwrap(measureVolume(exactSolid)),
-          unwrap(measureVolume(parametricSolid)),
-        ];
-      },
-    });
-    const projected = unwrap(familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator }));
-    using model = projected.model;
-    const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
-    expect(wall.geometry.kind).toBe('EXACT');
-    expect(candidateVolumes).not.toBeNull();
-    if (candidateVolumes === null) throw new Error('Expected coincidence volumes');
-    const [authoredVolume, parametricVolume] = candidateVolumes;
-    expect(authoredVolume).toBeLessThan(1);
-    expect(parametricVolume).toBeLessThan(1);
-    expect(Math.abs(authoredVolume - parametricVolume)).toBeLessThan(1e-6);
-    expect(Math.abs(authoredVolume - parametricVolume)).toBeGreaterThan(
-      1e-6 * Math.max(Math.abs(authoredVolume), Math.abs(parametricVolume))
+    const root = bodyTree(
+      civilBody(node, { category: name.includes('wall') ? 'wall' : 'railing' })
     );
+    const { model, idByKeyPath } = unwrap(
+      familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
+    );
+    using owned = model;
+    const id = idByKeyPath.get('level/product');
+    if (id === undefined) throw new Error('Missing product');
+    const product = owned.getElement(id);
+    if (product?.category !== 'WALL' && product?.category !== 'RAILING')
+      throw new Error('Missing product');
+    expect(product.geometry.kind).toBe('AUTHORITATIVE');
+    expect(product.geometry.solids).toHaveLength(count);
+    expect(unwrap(measureProductBodyMaterial(product.geometry.solids))).toBeCloseTo(volume, 10);
   });
 
-  it('requires an evaluator for every activated civil wall or railing', () => {
-    const result = familiesToBim(oneProduct(CoincidentRailing({ key: 'railing' })), {
-      project: PROJECT,
+  it('requires an evaluator for activated civil products', () => {
+    const result = familiesToBim(bodyTree(civilBody(csg.box(2, 1, 1))), { project: BODY_PROJECT });
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED',
+        metadata: { keyPath: 'level/product', category: 'RAILING' },
+      },
     });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED');
-    if (!result.ok) {
-      expect(result.error.metadata).toEqual({ keyPath: 'level/railing', category: 'RAILING' });
-    }
   });
 
-  it('fails closed when authored Body evaluation fails', () => {
+  it.each([1, 2])(
+    'keeps %i retained items live after the evaluator and topology cache close',
+    (count) => {
+      const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+      {
+        const projected = (() => {
+          using evaluator = new csg.Evaluator();
+          const root = bodyTree(civilBody(count === 1 ? csg.box(2, 1, 1) : disconnectedBody()));
+          return unwrap(familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator }));
+        })();
+        using model = projected.model;
+        const id = projected.idByKeyPath.get('level/product');
+        if (id === undefined) throw new Error('Missing retained product');
+        const product = model.getElement(id);
+        if (product?.category !== 'RAILING') throw new Error('Missing railing');
+        expect(product.geometry.kind).toBe('AUTHORITATIVE');
+        expect(product.geometry.solids).toHaveLength(count);
+        product.geometry.solids.forEach((solid) =>
+          expect(getKernel().volume(solid.wrapped)).toBeCloseTo(count === 1 ? 2 : 0.4, 8)
+        );
+        if (before !== null) expect(nativeShapeCount()).toBe(before + count);
+      }
+      if (before !== null) expect(nativeShapeCount()).toBe(before);
+    }
+  );
+
+  it.each([
+    { node: csg.box(csg.param('missing'), 1, 1), code: 'FAMILIES_PRODUCT_BODY_EVALUATION_FAILED' },
+    { node: csg.circle(1), code: 'FAMILIES_PRODUCT_BODY_EMPTY' },
+  ])('fails closed with $code', ({ node, code }) => {
     using evaluator = new csg.Evaluator();
-    const result = familiesToBim(oneProduct(EvaluationFailureWall({ key: 'wall' })), {
-      project: PROJECT,
+    const result = familiesToBim(bodyTree(civilBody(node)), {
+      project: BODY_PROJECT,
       bodyEvaluator: evaluator,
     });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_EVALUATION_FAILED');
-    if (!result.ok) expect(result.error.message).toContain("'level/wall' (WALL)");
-  });
-
-  it('rejects a successfully evaluated Body with no solids', () => {
-    using evaluator = new csg.Evaluator();
-    const result = familiesToBim(oneProduct(EmptyBodyWall({ key: 'wall' })), {
-      project: PROJECT,
-      bodyEvaluator: evaluator,
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code, metadata: { keyPath: 'level/product', category: 'RAILING' } },
     });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_EMPTY');
-  });
-
-  it('rejects invalid copied solids without disposing evaluator-owned sources', () => {
-    const root = oneProduct(CoincidentRailing({ key: 'railing' }));
-    using evaluator = new csg.Evaluator();
-    const sourceDisposals = observeSources(evaluator, findElement(root, 'level/railing'));
-    setFamiliesProductBodyTestHooksForTesting({
-      afterCopy: (_itemIndex, solid) => solid[Symbol.dispose](),
-    });
-
-    const result = familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_INVALID');
-    expect(sourceDisposals).toEqual([0]);
-  });
-
-  it('cleans partial adapter collections when a later exact localization fails', () => {
-    const root = oneProduct(MultiSolidRailing({ key: 'railing' }));
-    using evaluator = new csg.Evaluator();
-    const sourceDisposals = observeSources(evaluator, findElement(root, 'level/railing'));
-    const copyDisposals = [0, 0];
-    const localizedDisposals = [0, 0];
-    setFamiliesProductBodyTestHooksForTesting({
-      afterCopy: (itemIndex, solid) => solid.onDispose(() => copyDisposals[itemIndex]++),
-      beforeLocalize: (itemIndex) => {
-        if (itemIndex === 1) throw new Error('injected later localization failure');
-      },
-      afterLocalized: (itemIndex, solid) => solid.onDispose(() => localizedDisposals[itemIndex]++),
-    });
-
-    const result = familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_LOCALIZE_FAILED');
-    if (!result.ok) {
-      expect(result.error.metadata?.['itemIndex']).toBe(1);
-      expect(result.error.cause).toBeInstanceOf(Error);
-    }
-    expect(copyDisposals).toEqual([1, 1]);
-    expect(localizedDisposals).toEqual([1, 0]);
-    expect(sourceDisposals).toEqual([0, 0]);
-  });
-
-  it('disposes localized candidates when Body comparison throws', () => {
-    const root = oneProduct(CoincidentRailing({ key: 'railing' }));
-    using evaluator = new csg.Evaluator();
-    const sourceDisposals = observeSources(evaluator, findElement(root, 'level/railing'));
-    let exactDisposals = 0;
-    setFamiliesProductBodyTestHooksForTesting({
-      beforeCoincidence: (exact) => {
-        for (const solid of exact.solids) solid.onDispose(() => exactDisposals++);
-        throw new Error('injected comparison failure');
-      },
-    });
-
-    const result = familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator });
-    expect(errorCode(result)).toBe('FAMILIES_PRODUCT_BODY_COMPARISON_FAILED');
-    expect(exactDisposals).toBe(1);
-    expect(sourceDisposals).toEqual([0]);
-  });
-
-  it('disposes a transferred exact Body when a later projection step throws', () => {
-    const root = oneProduct(ShiftedWall({ key: 'wall' }));
-    using evaluator = new csg.Evaluator();
-    const sourceDisposals = observeSources(evaluator, findElement(root, 'level/wall'));
-    let exactDisposals = 0;
-    setFamiliesAdapterTestHooksForTesting({
-      afterCivilProductBody: (model, localId) => {
-        const wall = requiredElement(model, localId, 'WALL');
-        for (const solid of bodySolids(wall.geometry)) {
-          solid.onDispose(() => exactDisposals++);
-        }
-        throw new Error('injected post-takeover projection failure');
-      },
-    });
-
-    const result = familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator });
-    expect(errorCode(result)).toBe('FAMILIES_PROJECTION_FAILED');
-    expect(exactDisposals).toBe(1);
-    expect(sourceDisposals).toEqual([0]);
   });
 });
-
-function oneProduct(product: Element): ResolvedElement {
-  return resolve(Storey({ key: 'level', items: [product] }));
-}
-
-function findElement(root: ResolvedElement, keyPath: string): ResolvedElement {
-  if (root.keyPath === keyPath) return root;
-  for (const child of root.children) {
-    const found = findElementOrNull(child, keyPath);
-    if (found !== null) return found;
-  }
-  throw new Error(`Expected resolved element ${keyPath}`);
-}
-
-function findElementOrNull(root: ResolvedElement, keyPath: string): ResolvedElement | null {
-  if (root.keyPath === keyPath) return root;
-  for (const child of root.children) {
-    const found = findElementOrNull(child, keyPath);
-    if (found !== null) return found;
-  }
-  return null;
-}
-
-function observeSources(evaluator: csg.Evaluator, element: ResolvedElement): number[] {
-  const evaluated = unwrap(evaluator.evaluate(element.geometry));
-  const sources: readonly Solid[] = isSolid(evaluated) ? [evaluated] : getSolids(evaluated);
-  const disposals = sources.map(() => 0);
-  sources.forEach((solid, itemIndex) => {
-    solid.onDispose(() => disposals[itemIndex]++);
-  });
-  return disposals;
-}
-
-function requiredElement<C extends 'WALL' | 'RAILING'>(
-  model: BimModel,
-  localId: LocalId | undefined,
-  category: C
-): Extract<ReturnType<BimModel['getAllElements']>[number], { category: C }> {
-  if (localId === undefined) throw new Error(`Expected ${category} local id`);
-  const element = model.getElement(localId);
-  if (element === null || element.category !== category) {
-    throw new Error(`Expected ${category} element`);
-  }
-  return element;
-}
-
-function errorCode(result: {
-  readonly ok: boolean;
-  readonly error?: { readonly code: string };
-}): string {
-  if (result.ok || result.error === undefined) throw new Error('Expected an error Result');
-  return result.error.code;
-}

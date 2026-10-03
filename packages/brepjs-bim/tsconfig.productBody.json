@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.nativeBaseline.json",
+  "include": [
+    "tests/setup.ts",
+    "tests/productBody.test.ts",
+    "tests/productBodyFailures.test.ts",
+    "tests/productBodyNativeFailures.test.ts",
+    "tests/productBodyPlacement.test.ts"
+  ]
+}

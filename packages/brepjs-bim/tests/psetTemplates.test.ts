@@ -118,7 +118,8 @@ describe('psetTemplates — per-category templates', () => {
     for (const category of ALL_CATEGORIES) {
       const status = PSET_TEMPLATES[category].properties.find((p) => p.name === 'Status');
       expect(status, `${category} missing Status`).toBeDefined();
-      if (status === undefined) continue;
+      if (status?.kind !== 'enumerated')
+        throw new Error(`Expected enumerated Status for ${category}`);
       expect(status.kind).toBe('enumerated');
       expect(status.enumValues).toEqual([
         'NEW',
@@ -135,7 +136,7 @@ describe('psetTemplates — per-category templates', () => {
   it('marks non-enumerated properties as single values', () => {
     const isExternal = PSET_TEMPLATES.WALL.properties.find((p) => p.name === 'IsExternal');
     expect(isExternal?.kind).toBe('single');
-    expect(isExternal?.enumValues).toBeUndefined();
+    expect(isExternal).not.toHaveProperty('enumValues');
   });
 
   it('includes the expected core common properties per category', () => {

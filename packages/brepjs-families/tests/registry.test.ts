@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, isOk, measureVolume, unwrap } from 'brepjs';
+import { csg, isOk, isShape3D, measureVolume, unwrap } from 'brepjs';
 import { resolve, evaluateModel } from '../src/index.js';
 import { Room } from '../registry/families/room.js';
 import { Storey } from '../registry/families/storey.js';
@@ -236,8 +236,10 @@ describe('starter families', () => {
     const shape = model.byKeyPath.get('s/dome')?.shape;
     expect(shape !== undefined && isOk(shape)).toBe(true);
     if (shape && isOk(shape)) {
+      const solid = unwrap(shape);
+      if (!isShape3D(solid)) throw new Error('Expected a 3D roof shape');
       const r = Math.min(ROOF_DIMS.length, ROOF_DIMS.width) / 2;
-      expect(unwrap(measureVolume(unwrap(shape)))).toBeCloseTo((2 / 3) * Math.PI * r ** 3, -7);
+      expect(unwrap(measureVolume(solid))).toBeCloseTo((2 / 3) * Math.PI * r ** 3, -7);
     }
   });
 

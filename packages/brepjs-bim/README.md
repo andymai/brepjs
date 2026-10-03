@@ -25,22 +25,30 @@ the low-level path (and covers elements the declarative route doesn't yet). See 
 
 Parametric authoring of the common IFC4 building elements plus the data layers that make a model
 useful downstream (psets, classification, materials, quantities), with import, export, and
-validation. Geometry is produced by brepjs (OCCT). Walls and railings carry a `ProductBody`, either
-a parametric solid or a non-empty collection of authoritative exact solids. Use `bodySolids()` to
-borrow their Product-local model handles and narrow `geometry.kind` when a caller specifically
-needs the parametric branch. Other solid-bearing categories continue to expose their existing
-geometry types.
+validation. Geometry is produced by brepjs (OCCT). Walls and railings carry a `ProductBody`:
+`PARAMETRIC` or `AUTHORITATIVE`, both with a nonempty, ordered `solids` collection. Authority and
+item count are independent. `bodySolids()` borrows Product-local model handles; do not dispose
+those handles. Other solid-bearing categories retain their current geometry types.
 
-`takeExactProductBody(localId, { kind: 'EXACT', solids })` installs an authoritative wall or
-railing Body atomically. Success transfers every supplied handle to the model and disposes the
-superseded parametric Body; failure transfers nothing. Add wall openings before takeover, because
-an exact wall rejects later `addDoor()` and `addWindow()` mutations.
+`model.replaceProductBody({ localId, body: { kind: 'AUTHORITATIVE', solids } })` validates and
+installs the complete collection atomically. `Err` leaves the model and caller ownership
+unchanged. `Ok` returns a `COMMITTED` receipt and transfers every supplied handle, even when
+`receipt.cleanup.kind === 'FAILED'` reports a failed release of the superseded Body. Do not
+retry an uncertain release or dispose transferred handles. Parametric Bodies may be replaced by
+either authority; authoritative Bodies may only be replaced by authoritative Bodies. Add wall
+openings before installing an authoritative Body: later `addDoor()` and `addWindow()` return
+`AUTHORITATIVE_WALL_BODY_IMMUTABLE`.
+
+Civil-semantic Families Wall/Railing routes require an evaluator and retain the authored Body as
+`AUTHORITATIVE`, including when it coincides with the nominal recipe. The adapter copies borrowed
+evaluator items, localizes every item, and respects the replacement receipt's ownership outcome.
+Conventional archetype routes retain their existing recipe authoring behavior.
 
 Element geometry is **unplaced template geometry** in local coordinates. Placement (`origin` /
 `axisX` / `axisZ`) is applied by the IFC layer via `IfcLocalPlacement`, not baked into the brepjs
 solid. Use `placedSolids(element)` to read fresh, caller-owned solids transformed by the element's
 own placement. Stairs and ramps return one solid per flight, curtain walls return their panels and
-mullions, and an exact Product Body returns one placed copy per Body item. When an element is
+mullions, and either Product Body authority returns one placed copy per Body item. When an element is
 beneath a placed spatial structure, pass its cumulative frame as
 `placedSolids(element, { parentFrame })` to obtain world coordinates. This is especially important
 for parent-local Proxy and Earthworks Fill bodies.
@@ -57,8 +65,29 @@ through either property. Complete Bodies also expose aggregate `bounds` and `vol
 - Stable identity: deterministic IFC GUIDs (`deriveIfcGuid`) and local id counters.
 - Shaped geometry: roofs build real shed/gable/hip/dome solids when `pitch` is set (flat slab
   otherwise); railings build posts + top/bottom rails with `infill: 'POSTED'` (a single swept panel
-  otherwise). Shaped roofs and posted railings serialize to IFC as tessellated bodies; flat roofs
-  and panel railings keep their parametric `IfcExtrudedAreaSolid`.
+  otherwise). Every retained Wall/Railing Body item serializes independently as a tessellated
+  representation, with one conversion from mm to metres. Shaped roofs also use tessellation;
+  flat roofs keep their parametric `IfcExtrudedAreaSolid`.
+
+Wall net volume measures occupied material across all retained items, so overlaps count once.
+Nominal recipe quantities require current model recipe eligibility; public Body replacement
+clears that eligibility even if the new tag is `PARAMETRIC`. Failed measurements omit the affected
+quantity and appear in `toIfcValidated()` as `WALL_QUANTITY_OMITTED` issues.
+
+Wall openings export as IFC `Reference` geometry because the retained Wall Body already
+contains its cuts. Void/fill relationships and opening placements remain intact. IFC4 defines
+Reference openings as non-subtractive; gross recipe exports such as Slab openings still use
+subtractive `Body` geometry. The importer keeps Reference opening records and relationships
+without treating their reference shape as a display Body or cutting tool.
+
+IfcOpenShell 0.8.5 still subtracts Reference openings in its default geometry engine, even with
+a separate Reference context. If a replacement Body adds material inside a retained opening's
+region, that engine can remove the added material. Schema validation and shape generation alone
+do not detect this difference; check the representation semantics and retained item geometry.
+
+Step 1 retains class-specific geometry storage outside Wall/Railing and the transitional
+`model/modelGeometry.ts` ownership enumerator. Converging those records and renaming
+`ProductBody` to `Body` belong to [step 2](docs/architecture-migration.md#migration-order).
 
 ## Status
 
@@ -95,16 +124,16 @@ otherwise supplied. Existing non-semantic Families archetypes continue to use th
 registry beneath Bridge Parts. Bridge, Bridge Part, and Earthworks Fill require IFC4X3; `fromIfc`
 reconstructs their civil spatial hierarchy, direct containment, and typed Earthworks inventory.
 
-Civil-semantic wall and railing routes require `bodyEvaluator` (or the
-`proxyEvaluator` fallback) so the adapter can verify the authored Product Body. Missing the
-evaluator is `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` (element path and mapped category); the
-adapter does not silently keep a parametric envelope. Conventional archetype walls and railings
-stay specification-authoritative and do not need an evaluator. When the evaluator is present, the
-adapter applies registered wall openings to the parametric candidate, then compares that candidate
-with the evaluated source in Product-local coordinates. Coincident bodies retain editable
-parametric IFC; compound, voided, or otherwise different bodies retain their typed Wall or Railing
-classification and export every authoritative item as tessellation. The evaluator's source handles
-remain borrowed. Other typed civil routes continue to use their semantic envelope dimensions.
+Civil-semantic wall and railing routes require `bodyEvaluator` or the `proxyEvaluator` fallback
+to retain the authored Product Body. Missing the evaluator is
+`FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED`, with the element path and mapped category.
+Conventional archetype walls and railings retain their existing recipe authoring behavior and do
+not need an evaluator. The adapter registers wall openings before installing the authored Body,
+copies every borrowed evaluator item into Product-local coordinates, and retains `AUTHORITATIVE`
+authority even when the geometry coincides with the nominal recipe. These products keep their
+typed Wall or Railing classification and export every Body item as tessellation. The evaluator's
+source handles remain borrowed. Other typed civil routes continue to use their semantic envelope
+dimensions.
 
 This is deliberately not a claim of complete IFC infrastructure coverage or unchanged parity with
 the full scratch prototype. Member and Sign remain outside the profile: without `proxyEvaluator`
@@ -179,8 +208,8 @@ warnings travel inside the payload rather than throwing.
 Each `add*` call parses and validates its spec and stores a typed `BimElement` keyed by a `LocalId`.
 Parametric physical elements build an analytical brepjs solid; civil spatial elements are body-less,
 and arbitrary-body products such as Earthworks Fill take ownership of a validated authored solid.
-Families-projected civil walls and railings retain evaluated authored solids when their Bodies do
-not coincide with the post-opening parametric candidate.
+Families-projected civil walls and railings always retain copies of the evaluated authored items
+as an `AUTHORITATIVE` Product Body, even when the geometry coincides with the nominal recipe.
 The IFC writer walks the model, applies placement, and emits schema-correct IFC entities; the
 importer is the inverse. No kernel/WASM changes are required.
 
@@ -192,36 +221,3 @@ npm run lint --workspace=brepjs-bim
 npm run build --workspace=brepjs-bim
 npm run test --workspace=brepjs-bim
 ```
-
-### Body material measurement
-
-Exact Wall quantities measure occupied material across all retained items. Overlapping solids count once. Bounds include every item. Measurement and temporary cleanup failures make these optional measurements unavailable and preserve the borrowed inputs. Cleanup never retries an uncertain native release.
-
-The BIM package requires `brepjs >=19.0.5` for native cleanup-error reporting.
-
-### Wall quantity failures
-
-Wall `NetVolume` measures retained occupied material for both `PARAMETRIC` and `EXACT` geometry. Recipe Walls retain supported area and weight quantities. Exact takeover has no recipe quantity eligibility.
-
-If measurement or temporary cleanup fails, serialization omits optional Wall quantities. `toIfcValidated` reports an element-specific `WALL_QUANTITY_OMITTED` warning from that same serialization. `toIfc` still returns a bytes `Result`.
-
-### Imported Body survivors
-
-Opening reconstruction retains every surviving solid in source-item order, including split results. Complete removal produces no imported solids and null aggregate bounds and volume. The singleton `.solid` field remains a borrowed alias only for a complete one-solid result.
-
-Complete imported aggregates use shared occupied-material measurement and all-item bounds. Overlaps count once. Failed measurement leaves both aggregates unavailable with an import diagnostic. Later opening failures clean the current host list, including every earlier survivor, and never retry an uncertain release.
-
-### Retained Body IFC geometry
-
-Wall and Railing exports preflight and tessellate every retained item in order, preserving placement, styles, and metadata.
-
-Wall openings export as IFC `Reference` geometry because the retained Wall Body already
-contains its cuts. Void/fill relationships and opening placements remain intact. IFC4 defines
-Reference openings as non-subtractive; gross recipe exports such as Slab openings still use
-subtractive `Body` geometry. The importer keeps Reference opening records and relationships
-without treating their reference shape as a display Body or cutting tool.
-
-IfcOpenShell 0.8.5 still subtracts Reference openings in its default geometry engine, even with
-a separate Reference context. If a replacement Body adds material inside a retained opening's
-region, that engine can remove the added material. Schema validation and shape generation alone
-do not detect this difference; check the representation semantics and retained item geometry.

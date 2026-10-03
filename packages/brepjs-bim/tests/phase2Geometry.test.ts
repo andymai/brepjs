@@ -1,4 +1,3 @@
-import { bodySolids } from '../src/types/productBody.js';
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as WebIFC from 'web-ifc';
 import { box, scale, unwrap } from 'brepjs';
@@ -121,7 +120,7 @@ describe('Phase 2 door/window geometry', () => {
     using reader = unwrap(await SpfReader.create(bytes));
     const body = emittedBody(reader, wall.guid);
     expect(body.representationType).toBe('Tessellation');
-    expect(body.items).toHaveLength(bodySolids(wall.geometry).length);
+    expect(body.items).toHaveLength(wall.geometry.solids.length);
     body.items.forEach((item) => expect(item.type).toBe(WebIFC.IFCTRIANGULATEDFACESET));
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import { measureVolume } from 'brepjs';
 import { parseDoorSpec, parseWindowSpec } from '../src/specs/openingSpec.js';
+import type { WallOpeningSpec } from '../src/types/bimTypes.js';
 import { openingToSolid } from '../src/elementFns/openingFns.js';
 
 describe('parseDoorSpec', () => {
@@ -77,7 +78,8 @@ describe('openingToSolid', () => {
   }, 30000);
 
   const WALL_THICKNESS = 200;
-  const SPEC = {
+  const SPEC: WallOpeningSpec = {
+    kind: 'WALL_OPENING',
     width: 900,
     height: 2100,
     offsetAlongWall: 1000,
