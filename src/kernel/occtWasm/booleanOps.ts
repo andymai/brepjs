@@ -94,7 +94,7 @@ export function runBooleanOp(
 
 /**
  * Call `fn` with a tool's solids as separate ids, or with the tool alone when
- * it holds at most one solid, and report whether it was split. Solids are
+ * it holds at most one solid, and report whether it holds several. Solids are
  * handed to an n-way boolean as separate tools, which OCCT allows to overlap,
  * where one compound of overlapping solids is invalid input. A tool whose
  * solids have pairwise disjoint bounding boxes stays whole: its solids cannot
@@ -103,26 +103,29 @@ export function runBooleanOp(
 export function withToolIds<R>(
   k: OcctKernelWasm,
   tool: KernelShape,
-  fn: (ids: number[], split: boolean) => R
+  fn: (ids: number[], multiSolid: boolean) => R
 ): R {
   return withSolidIds(k, [tool], fn);
 }
 
 /**
  * {@link withToolIds} over several shapes: each multi-solid shape contributes
- * its solids, every other shape its own id, in order. `split` reports whether
- * any shape was expanded.
+ * its solids, every other shape its own id, in order. `multiSolid` reports
+ * whether any shape holds more than one solid, split or not.
  */
 export function withSolidIds<R>(
   k: OcctKernelWasm,
   shapes: readonly KernelShape[],
-  fn: (ids: number[], split: boolean) => R
+  fn: (ids: number[], multiSolid: boolean) => R
 ): R {
   const ids: number[] = [];
   const extracted: number[] = [];
   try {
-    for (const shape of shapes) pushSolidIds(k, unwrap(shape), ids, extracted);
-    return fn(ids, ids.length > shapes.length);
+    let multiSolid = false;
+    for (const shape of shapes) {
+      if (pushSolidIds(k, unwrap(shape), ids, extracted)) multiSolid = true;
+    }
+    return fn(ids, multiSolid);
   } finally {
     for (const id of extracted) k.release(id);
   }
@@ -130,10 +133,10 @@ export function withSolidIds<R>(
 
 /**
  * Append `id`'s solids to `ids`, or `id` itself when it holds at most one or
- * its solids cannot interfere. Every solid copy the query allocated goes on
- * `extracted` for release.
+ * its solids cannot interfere, and report whether it holds several. Every
+ * solid copy the query allocated goes on `extracted` for release.
  */
-function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): void {
+function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): boolean {
   const solids = k.getSubShapes(id, 'solid');
   try {
     const solidIds: number[] = [];
@@ -144,6 +147,7 @@ function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: n
     }
     if (solidIds.length > 1 && !boundsPairwiseDisjoint(k, solidIds)) ids.push(...solidIds);
     else ids.push(id);
+    return solidIds.length > 1;
   } finally {
     solids.delete();
   }
@@ -239,8 +243,8 @@ function subtractOrCommon(
   options?: BooleanOptions
 ): KernelShape {
   if (hasBooleanOp(k)) {
-    const id = withToolIds(k, tool, (toolIds, split) =>
-      split || needsBooleanOptions(options)
+    const id = withToolIds(k, tool, (toolIds, multiSolid) =>
+      multiSolid || needsBooleanOptions(options)
         ? runBooleanOp(k, Module, kind, [unwrap(shape)], toolIds, options).id
         : null
     );

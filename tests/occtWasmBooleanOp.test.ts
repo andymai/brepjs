@@ -71,7 +71,7 @@ describe.skipIf(currentKernel !== 'occt-wasm')('occt-wasm boolean options and hi
     expect(expected).toBeLessThan(8000);
   });
 
-  it('keeps a compound of disjoint solids as one tool and splits an overlapping one', () => {
+  it('passes a compound of disjoint solids as one tool and splits an overlapping one', () => {
     const raw = (
       getKernel() as unknown as {
         retainedKernelOwner?: { getRawKernel?: () => Record<string, unknown> };
@@ -101,8 +101,12 @@ describe.skipIf(currentKernel !== 'occt-wasm')('occt-wasm boolean options and hi
       using viaDisjoint = unwrap(cutAll(base, [disjoint]));
       using viaOverlapping = unwrap(cutAll(base, [overlapping]));
       using separate = unwrap(cutAll(base, [o1, o2]));
-      expect(toolCounts).toEqual([1, 2, 2]);
-      expect(unwrap(measureVolume(viaDisjoint))).toBeCloseTo(8000 - 2 * Math.PI * 9 * 10, 6);
+      using plain = box(40, 20, 10);
+      using viaCut = unwrap(cut(plain, disjoint));
+      expect(toolCounts).toEqual([1, 2, 2, 1]);
+      const twoHoles = 8000 - 2 * Math.PI * 9 * 10;
+      expect(unwrap(measureVolume(viaDisjoint))).toBeCloseTo(twoHoles, 6);
+      expect(unwrap(measureVolume(viaCut))).toBeCloseTo(twoHoles, 6);
       expect(unwrap(measureVolume(viaOverlapping))).toBeCloseTo(unwrap(measureVolume(separate)), 6);
       expect(findFacesByTag(viaDisjoint, 'kept').length).toBeGreaterThan(0);
     } finally {

@@ -242,8 +242,8 @@ function subtractOrCommonWithHistory(
   options?: BooleanOptions
 ): DiagnosticOperationResult {
   if (hasBooleanOp(k)) {
-    const result = withToolIds(k, tool, (toolIds, split) =>
-      split || needsBooleanOptions(options)
+    const result = withToolIds(k, tool, (toolIds, multiSolid) =>
+      multiSolid || needsBooleanOptions(options)
         ? viaBooleanOp(
             k,
             Module,
