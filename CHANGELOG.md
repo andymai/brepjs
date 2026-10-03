@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.2](https://github.com/andymai/brepjs/compare/brepjs-v20.1.1...brepjs-v20.1.2) (2026-10-03)
+
+
+### Performance Improvements
+
+* **occt-wasm:** keep a compound of disjoint solids as one boolean operand ([#2371](https://github.com/andymai/brepjs/issues/2371)) ([f2a6de4](https://github.com/andymai/brepjs/commit/f2a6de4bc8fee97c727fe47edfec8745f88632f0))
+
 ## [20.1.1](https://github.com/andymai/brepjs/compare/brepjs-v20.1.0...brepjs-v20.1.1) (2026-10-03)
 
 
