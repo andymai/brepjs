@@ -1,0 +1,23 @@
+src/kernel/occtWasm/booleanOps.ts
+  s_ecfadab7dc0ed4::t_dbc7acbbc60536 97,106,113-114,119,124-128,136-137,139,150,246-247
+src/kernel/occtWasm/evolutionOps.ts
+  s_ecfadab7dc0ed4::t_dbc7acbbc60536 245-246
+tests/occtWasmBooleanOp.test.ts
+  s_ecfadab7dc0ed4::t_901475bee47eb1 74,104-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6d5256bb22573f20db4dc6dc68d88dd2dcb9e48f",
+  "prompts": {},
+  "sessions": {
+    "s_ecfadab7dc0ed4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31e974b0-81fc-44e7-84c5-a753966b5aa7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
