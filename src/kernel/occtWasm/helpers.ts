@@ -9,8 +9,9 @@
  * @module
  */
 
-import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type { KernelShape, ShapeEvolution, ShapeType } from '@/kernel/types.js';
 import type {
+  EmEvolutionData,
   OcctWasmHandle,
   OcctWasmModule,
   OcctKernelWasm,
@@ -163,4 +164,40 @@ export function rotateZToDirection(
   if (axLen < 1e-10) return shapeId;
   const angle = Math.acos(Math.max(-1, Math.min(1, nz)));
   return k.rotate(shapeId, 0, 0, 0, ax / axLen, ay / axLen, 0, angle);
+}
+
+/** Read an evolution result into a shape id and maps, releasing the Embind object. */
+export function parseEvolution(evo: EmEvolutionData): { id: number; evolution: ShapeEvolution } {
+  try {
+    const modifiedRaw = readVecInt(evo.modified);
+    const generatedRaw = readVecInt(evo.generated);
+    const deletedRaw = readVecInt(evo.deleted);
+
+    const parseMap = (raw: number[]): Map<number, number[]> => {
+      const map = new Map<number, number[]>();
+      let i = 0;
+      while (i + 1 < raw.length) {
+        const inputHash = raw[i] ?? 0;
+        const count = raw[i + 1] ?? 0;
+        i += 2;
+        const outputs: number[] = [];
+        for (let j = 0; j < count && i < raw.length; j++, i++) {
+          outputs.push(raw[i] ?? 0);
+        }
+        map.set(inputHash, outputs);
+      }
+      return map;
+    };
+
+    return {
+      id: evo.resultId,
+      evolution: {
+        modified: parseMap(modifiedRaw),
+        generated: parseMap(generatedRaw),
+        deleted: new Set<number>(deletedRaw),
+      },
+    };
+  } finally {
+    evo.delete();
+  }
 }

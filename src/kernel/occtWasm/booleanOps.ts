@@ -13,9 +13,103 @@ import type {
   CheckBooleanResult,
   KernelMeshResult,
   KernelShape,
+  ShapeEvolution,
 } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
-import { makeVecU32, unwrap, wrapResult } from './helpers.js';
+import { makeVecInt, makeVecU32, parseEvolution, unwrap, wrapResult } from './helpers.js';
+
+const BOOLEAN_OP_CODE = { fuse: 0, cut: 1, common: 2 } as const;
+type BooleanKind = keyof typeof BOOLEAN_OP_CODE;
+
+/** Same angular tolerance the opencascade.js adapter hands SimplifyResult. */
+const SIMPLIFY_ANGULAR_TOLERANCE = 1e-3;
+
+/** Whether this occt-wasm build has the general `booleanOp`. */
+export function hasBooleanOp(k: OcctKernelWasm): boolean {
+  return typeof k.booleanOp === 'function';
+}
+
+/** Whether `options` asks for anything only `booleanOp` can honor. */
+export function needsBooleanOptions(options?: BooleanOptions): boolean {
+  if (!options) return false;
+  return (
+    (options.optimisation !== undefined && options.optimisation !== 'none') ||
+    (options.fuzzyValue ?? 0) > 0 ||
+    options.simplify === true
+  );
+}
+
+function glueCode(optimisation: BooleanOptions['optimisation']): number {
+  if (optimisation === 'commonFace') return 1;
+  if (optimisation === 'sameFace') return 2;
+  return 0;
+}
+
+/**
+ * Run `booleanOp` on raw shape ids, collecting face history when hashes are
+ * given. The caller owns the returned id.
+ */
+export function runBooleanOp(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  kind: BooleanKind,
+  argIds: number[],
+  toolIds: number[],
+  options: BooleanOptions = {},
+  inputFaceHashes: number[] = [],
+  hashUpperBound = 0
+): { id: number; evolution: ShapeEvolution } {
+  if (!k.booleanOp) throw new Error('occt-wasm: booleanOp is not available in this build');
+  const args = makeVecU32(Module, argIds);
+  const tools = makeVecU32(Module, toolIds);
+  const hashes = makeVecInt(Module, inputFaceHashes);
+  try {
+    return parseEvolution(
+      k.booleanOp(
+        BOOLEAN_OP_CODE[kind],
+        args,
+        tools,
+        glueCode(options.optimisation),
+        options.fuzzyValue ?? 0,
+        options.simplify === true ? SIMPLIFY_ANGULAR_TOLERANCE : 0,
+        hashes,
+        hashUpperBound
+      )
+    );
+  } finally {
+    args.delete();
+    tools.delete();
+    hashes.delete();
+  }
+}
+
+/**
+ * Call `fn` with a tool's solids as separate ids, or with the tool alone when
+ * it holds at most one solid, and report whether it was split. Solids are
+ * handed to an n-way boolean as separate tools, which OCCT allows to overlap,
+ * where one compound of overlapping solids is invalid input.
+ */
+export function withToolIds<R>(
+  k: OcctKernelWasm,
+  tool: KernelShape,
+  fn: (ids: number[], split: boolean) => R
+): R {
+  const toolId = unwrap(tool);
+  const solids = k.getSubShapes(toolId, 'solid');
+  try {
+    const n = solids.size();
+    if (n <= 1) return fn([toolId], false);
+    const ids: number[] = [];
+    for (let i = 0; i < n; i++) ids.push(solids.get(i));
+    return fn(ids, true);
+  } finally {
+    for (let i = 0, n = solids.size(); i < n; i++) {
+      const id = solids.get(i);
+      if (id !== toolId) k.release(id);
+    }
+    solids.delete();
+  }
+}
 
 /**
  * The resolved tool id plus a `dispose` that releases any temporary the
@@ -63,39 +157,64 @@ export function resolveBooleanTool(k: OcctKernelWasm, tool: KernelShape): Resolv
 
 export function fuse(
   k: OcctKernelWasm,
+  Module: OcctWasmModule,
   shape: KernelShape,
   tool: KernelShape,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): KernelShape {
+  if (hasBooleanOp(k) && needsBooleanOptions(options)) {
+    return wrapResult(
+      k,
+      runBooleanOp(k, Module, 'fuse', [unwrap(shape)], [unwrap(tool)], options).id
+    );
+  }
   return wrapResult(k, k.fuse(unwrap(shape), unwrap(tool)));
+}
+
+function subtractOrCommon(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  kind: 'cut' | 'common',
+  shape: KernelShape,
+  tool: KernelShape,
+  options?: BooleanOptions
+): KernelShape {
+  if (hasBooleanOp(k)) {
+    const id = withToolIds(k, tool, (toolIds, split) =>
+      split || needsBooleanOptions(options)
+        ? runBooleanOp(k, Module, kind, [unwrap(shape)], toolIds, options).id
+        : null
+    );
+    if (id !== null) return wrapResult(k, id);
+  }
+  const resolved = resolveBooleanTool(k, tool);
+  try {
+    const id =
+      kind === 'cut' ? k.cut(unwrap(shape), resolved.id) : k.intersect(unwrap(shape), resolved.id);
+    return wrapResult(k, id);
+  } finally {
+    resolved.dispose();
+  }
 }
 
 export function cut(
   k: OcctKernelWasm,
+  Module: OcctWasmModule,
   shape: KernelShape,
   tool: KernelShape,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): KernelShape {
-  const resolved = resolveBooleanTool(k, tool);
-  try {
-    return wrapResult(k, k.cut(unwrap(shape), resolved.id));
-  } finally {
-    resolved.dispose();
-  }
+  return subtractOrCommon(k, Module, 'cut', shape, tool, options);
 }
 
 export function intersect(
   k: OcctKernelWasm,
+  Module: OcctWasmModule,
   shape: KernelShape,
   tool: KernelShape,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): KernelShape {
-  const resolved = resolveBooleanTool(k, tool);
-  try {
-    return wrapResult(k, k.intersect(unwrap(shape), resolved.id));
-  } finally {
-    resolved.dispose();
-  }
+  return subtractOrCommon(k, Module, 'common', shape, tool, options);
 }
 
 export function section(
@@ -111,8 +230,12 @@ export function fuseAll(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shapes: KernelShape[],
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): KernelShape {
+  const [first, ...rest] = shapes.map(unwrap);
+  if (first !== undefined && rest.length > 0 && hasBooleanOp(k) && needsBooleanOptions(options)) {
+    return wrapResult(k, runBooleanOp(k, Module, 'fuse', [first], rest, options).id);
+  }
   const vec = makeVecU32(Module, shapes.map(unwrap));
   try {
     return wrapResult(k, k.fuseAll(vec));
@@ -126,8 +249,14 @@ export function cutAll(
   Module: OcctWasmModule,
   shape: KernelShape,
   tools: KernelShape[],
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): KernelShape {
+  if (tools.length > 0 && hasBooleanOp(k) && needsBooleanOptions(options)) {
+    return wrapResult(
+      k,
+      runBooleanOp(k, Module, 'cut', [unwrap(shape)], tools.map(unwrap), options).id
+    );
+  }
   const vec = makeVecU32(Module, tools.map(unwrap));
   try {
     return wrapResult(k, k.cutAll(unwrap(shape), vec));

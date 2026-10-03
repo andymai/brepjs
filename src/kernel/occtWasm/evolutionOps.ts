@@ -13,60 +13,29 @@ import type {
   KernelShape,
   KernelType,
   OperationResult,
-  ShapeEvolution,
 } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
-import type { EmEvolutionData } from './occtWasmTypes.js';
 import {
   makeVecInt,
   makeVecU32,
-  readVecInt,
+  parseEvolution,
   resolveUniformRadius,
   unwrap,
   wrapResult,
 } from './helpers.js';
-import { resolveBooleanTool } from './booleanOps.js';
+import {
+  hasBooleanOp,
+  needsBooleanOptions,
+  resolveBooleanTool,
+  runBooleanOp,
+  withToolIds,
+} from './booleanOps.js';
 import type { ResolvedTool } from './booleanOps.js';
 
 /**
  * Parse an EvolutionData result from the WASM kernel into a ShapeEvolution.
  * The C++ facade returns flat vectors of [inputHash, count, out1, out2, ..., inputHash, count, ...].
  */
-function parseEvolution(evo: EmEvolutionData): { id: number; evolution: ShapeEvolution } {
-  try {
-    const modifiedRaw = readVecInt(evo.modified);
-    const generatedRaw = readVecInt(evo.generated);
-    const deletedRaw = readVecInt(evo.deleted);
-
-    const parseMap = (raw: number[]): Map<number, number[]> => {
-      const map = new Map<number, number[]>();
-      let i = 0;
-      while (i + 1 < raw.length) {
-        const inputHash = raw[i] ?? 0;
-        const count = raw[i + 1] ?? 0;
-        i += 2;
-        const outputs: number[] = [];
-        for (let j = 0; j < count && i < raw.length; j++, i++) {
-          outputs.push(raw[i] ?? 0);
-        }
-        map.set(inputHash, outputs);
-      }
-      return map;
-    };
-
-    return {
-      id: evo.resultId,
-      evolution: {
-        modified: parseMap(modifiedRaw),
-        generated: parseMap(generatedRaw),
-        deleted: new Set<number>(deletedRaw),
-      },
-    };
-  } finally {
-    evo.delete();
-  }
-}
-
 // ─── Transform-with-history ─────────────────────────────────────────────────
 
 export function translateWithHistory(
@@ -203,6 +172,31 @@ export function generalTransformWithHistory(
 
 // ─── Boolean-with-history ───────────────────────────────────────────────────
 
+const NO_DIAGNOSTICS = { hasErrors: false, hasWarnings: false, messages: [] };
+
+function viaBooleanOp(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  kind: 'fuse' | 'cut' | 'common',
+  argIds: number[],
+  toolIds: number[],
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options?: BooleanOptions
+): DiagnosticOperationResult {
+  const { id, evolution } = runBooleanOp(
+    k,
+    Module,
+    kind,
+    argIds,
+    toolIds,
+    options,
+    inputFaceHashes,
+    hashUpperBound
+  );
+  return { shape: wrapResult(k, id), evolution, diagnostics: NO_DIAGNOSTICS };
+}
+
 export function fuseWithHistory(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
@@ -210,19 +204,71 @@ export function fuseWithHistory(
   tool: KernelShape,
   inputFaceHashes: number[],
   hashUpperBound: number,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): DiagnosticOperationResult {
+  if (hasBooleanOp(k) && needsBooleanOptions(options)) {
+    const ids = [unwrap(shape)];
+    return viaBooleanOp(
+      k,
+      Module,
+      'fuse',
+      ids,
+      [unwrap(tool)],
+      inputFaceHashes,
+      hashUpperBound,
+      options
+    );
+  }
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
     const evo = k.fuseWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
     const { id, evolution } = parseEvolution(evo);
-    return {
-      shape: wrapResult(k, id),
-      evolution,
-      diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-    };
+    return { shape: wrapResult(k, id), evolution, diagnostics: NO_DIAGNOSTICS };
   } finally {
     hashVec.delete();
+  }
+}
+
+function subtractOrCommonWithHistory(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  kind: 'cut' | 'common',
+  shape: KernelShape,
+  tool: KernelShape,
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options?: BooleanOptions
+): DiagnosticOperationResult {
+  if (hasBooleanOp(k)) {
+    const result = withToolIds(k, tool, (toolIds, split) =>
+      split || needsBooleanOptions(options)
+        ? viaBooleanOp(
+            k,
+            Module,
+            kind,
+            [unwrap(shape)],
+            toolIds,
+            inputFaceHashes,
+            hashUpperBound,
+            options
+          )
+        : null
+    );
+    if (result) return result;
+  }
+  const hashVec = makeVecInt(Module, inputFaceHashes);
+  let resolved: ResolvedTool | undefined;
+  try {
+    resolved = resolveBooleanTool(k, tool);
+    const evo =
+      kind === 'cut'
+        ? k.cutWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound)
+        : k.intersectWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound);
+    const { id, evolution } = parseEvolution(evo);
+    return { shape: wrapResult(k, id), evolution, diagnostics: NO_DIAGNOSTICS };
+  } finally {
+    hashVec.delete();
+    resolved?.dispose();
   }
 }
 
@@ -233,23 +279,18 @@ export function cutWithHistory(
   tool: KernelShape,
   inputFaceHashes: number[],
   hashUpperBound: number,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): DiagnosticOperationResult {
-  const hashVec = makeVecInt(Module, inputFaceHashes);
-  let resolved: ResolvedTool | undefined;
-  try {
-    resolved = resolveBooleanTool(k, tool);
-    const evo = k.cutWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound);
-    const { id, evolution } = parseEvolution(evo);
-    return {
-      shape: wrapResult(k, id),
-      evolution,
-      diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-    };
-  } finally {
-    hashVec.delete();
-    resolved?.dispose();
-  }
+  return subtractOrCommonWithHistory(
+    k,
+    Module,
+    'cut',
+    shape,
+    tool,
+    inputFaceHashes,
+    hashUpperBound,
+    options
+  );
 }
 
 export function intersectWithHistory(
@@ -259,23 +300,54 @@ export function intersectWithHistory(
   tool: KernelShape,
   inputFaceHashes: number[],
   hashUpperBound: number,
-  _options?: BooleanOptions
+  options?: BooleanOptions
 ): DiagnosticOperationResult {
-  const hashVec = makeVecInt(Module, inputFaceHashes);
-  let resolved: ResolvedTool | undefined;
-  try {
-    resolved = resolveBooleanTool(k, tool);
-    const evo = k.intersectWithHistory(unwrap(shape), resolved.id, hashVec, hashUpperBound);
-    const { id, evolution } = parseEvolution(evo);
-    return {
-      shape: wrapResult(k, id),
-      evolution,
-      diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-    };
-  } finally {
-    hashVec.delete();
-    resolved?.dispose();
-  }
+  return subtractOrCommonWithHistory(
+    k,
+    Module,
+    'common',
+    shape,
+    tool,
+    inputFaceHashes,
+    hashUpperBound,
+    options
+  );
+}
+
+/** N-way fuse with face history over every input. Needs `booleanOp`. */
+export function fuseAllWithHistory(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shapes: KernelShape[],
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options?: BooleanOptions
+): DiagnosticOperationResult {
+  const [first, ...rest] = shapes.map(unwrap);
+  const argIds = first === undefined ? [] : [first];
+  return viaBooleanOp(k, Module, 'fuse', argIds, rest, inputFaceHashes, hashUpperBound, options);
+}
+
+/** N-way cut with face history over the base and every tool. Needs `booleanOp`. */
+export function cutAllWithHistory(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shape: KernelShape,
+  tools: KernelShape[],
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options?: BooleanOptions
+): DiagnosticOperationResult {
+  return viaBooleanOp(
+    k,
+    Module,
+    'cut',
+    [unwrap(shape)],
+    tools.map(unwrap),
+    inputFaceHashes,
+    hashUpperBound,
+    options
+  );
 }
 
 // ─── Modifier-with-history ──────────────────────────────────────────────────
