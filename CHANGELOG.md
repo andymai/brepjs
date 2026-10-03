@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.0.1](https://github.com/andymai/brepjs/compare/brepjs-v20.0.0...brepjs-v20.0.1) (2026-10-03)
+
+
+### Performance Improvements
+
+* **occt:** build two-operand booleans once on opencascade.js ([#2358](https://github.com/andymai/brepjs/issues/2358)) ([fdabd7f](https://github.com/andymai/brepjs/commit/fdabd7fbb40ec71bb8dce8a7ee6cb548dce76e83))
+
 ## [20.0.0](https://github.com/andymai/brepjs/compare/brepjs-v19.0.5...brepjs-v20.0.0) (2026-09-21)
 
 This version contains no changes to `brepjs`. The major bump came from a release attribution error: [#2328](https://github.com/andymai/brepjs/issues/2328) changed only `brepjs-bim` (shipped as brepjs-bim 0.24.2) but its pull request still listed root test files from a stacked prerequisite, so release-please credited its breaking marker to the root package. [#2333](https://github.com/andymai/brepjs/issues/2333) excludes `tests/` from the root release train. Upgrading from 19.x needs no code changes.
