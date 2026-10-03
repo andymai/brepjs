@@ -151,11 +151,37 @@ export class OcctWasmAdapter implements KernelAdapter {
   // the borrowed raw kernel while this adapter is still live.
   private readonly owner: OcctKernelOwner | undefined;
 
+  /** Present when this occt-wasm build has `booleanOp`. */
+  readonly fuseAllWithHistory?: KernelAdapter['fuseAllWithHistory'];
+  /** Present when this occt-wasm build has `booleanOp`. */
+  readonly cutAllWithHistory?: KernelAdapter['cutAllWithHistory'];
+
   constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: OcctKernelOwner) {
     this.Module = module;
     this.k = wrapKernelExceptions(kernel, module);
     this.oc = buildOcShim(module, this.k);
     this.owner = owner;
+    if (boolOps.hasBooleanOp(this.k)) {
+      this.fuseAllWithHistory = (shapes, inputFaceHashes, hashUpperBound, options) =>
+        evolutionOps.fuseAllWithHistory(
+          this.k,
+          this.Module,
+          shapes,
+          inputFaceHashes,
+          hashUpperBound,
+          options
+        );
+      this.cutAllWithHistory = (shape, tools, inputFaceHashes, hashUpperBound, options) =>
+        evolutionOps.cutAllWithHistory(
+          this.k,
+          this.Module,
+          shape,
+          tools,
+          inputFaceHashes,
+          hashUpperBound,
+          options
+        );
+    }
   }
 
   /**
@@ -293,15 +319,15 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   fuse(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
-    return boolOps.fuse(this.k, shape, tool, options);
+    return boolOps.fuse(this.k, this.Module, shape, tool, options);
   }
 
   cut(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
-    return boolOps.cut(this.k, shape, tool, options);
+    return boolOps.cut(this.k, this.Module, shape, tool, options);
   }
 
   intersect(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
-    return boolOps.intersect(this.k, shape, tool, options);
+    return boolOps.intersect(this.k, this.Module, shape, tool, options);
   }
 
   section(shape: KernelShape, plane: KernelShape, approximation?: boolean): KernelShape {
