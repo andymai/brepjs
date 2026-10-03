@@ -10,6 +10,82 @@ beforeAll(async () => {
 }, 30_000);
 afterEach(() => vi.restoreAllMocks());
 
+it.each(['none', 'before', 'after'] as const)(
+  'releases split children after wrapping fails with %s raw cleanup failure',
+  (point) => {
+    using host = box(10, 2, 2);
+    using toolSource = box(2, 4, 4);
+    using tool = translate(toolSource, [4, -1, -1]);
+    const kernel = getKernel();
+    const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+    const iterate = kernel.iterShapes.bind(kernel);
+    const dispose = kernel.dispose.bind(kernel);
+    const create = brepjs.createSolid;
+    const raws: Parameters<typeof kernel.dispose>[0][] = [];
+    const children: brepjs.Solid[] = [];
+    const cause = new Error('Later imported child wrapping failed');
+    const cleanupCause = new Error('Unwrapped child cleanup failed');
+    let failedRaw: Parameters<typeof kernel.dispose>[0] | undefined;
+    vi.spyOn(kernel, 'iterShapes').mockImplementation((shape, type) => {
+      const result: unknown[] = iterate(shape, type);
+      if (type === 'solid') raws.push(...result.map(nativeResource));
+      return result;
+    });
+    const wrapping = vi
+      .spyOn(brepjs, 'createSolid')
+      .mockImplementation((raw: Parameters<typeof kernel.dispose>[0]) => {
+        if (children.length === 1) {
+          failedRaw = raw;
+          throw cause;
+        }
+        const child = create(raw);
+        children.push(child);
+        return child;
+      });
+    const releases = vi.spyOn(kernel, 'dispose').mockImplementation((raw) => {
+      if (raw === failedRaw && point !== 'none') {
+        if (point === 'after') dispose(raw);
+        throw cleanupCause;
+      }
+      dispose(raw);
+    });
+    try {
+      const result = cutImportedSolids(host, tool);
+      expect(result).toMatchObject({ ok: false, error: { code: 'VOID_CUT_FAILED', cause } });
+      expect(wrapping).toHaveBeenCalledTimes(2);
+      expect(raws).toHaveLength(2);
+      for (const raw of raws)
+        expect(releases.mock.calls.filter(([released]) => released === raw)).toHaveLength(1);
+      expect(result).toMatchObject({
+        error: {
+          metadata: {
+            cleanup:
+              point === 'none'
+                ? { kind: 'COMPLETE' }
+                : {
+                    kind: 'FAILED',
+                    diagnostics: [{ resourceKind: 'SHAPE', cause: cleanupCause }],
+                  },
+          },
+        },
+      });
+      expect(unwrap(measureVolume(host))).toBeCloseTo(40, 8);
+      expect(unwrap(measureVolume(tool))).toBeCloseTo(32, 8);
+      if (baseline !== null)
+        expect(nativeShapeCount()).toBe(baseline + (point === 'before' ? 1 : 0));
+    } finally {
+      const failedAttempted = releases.mock.calls.some(([released]) => released === failedRaw);
+      for (const child of children) if (!child.disposed) child[Symbol.dispose]();
+      for (const raw of raws)
+        if (!releases.mock.calls.some(([released]) => released === raw)) dispose(raw);
+      vi.restoreAllMocks();
+      // Test-owned repair of the observed pre-release fault, never a production retry.
+      if (point === 'before' && failedRaw !== undefined && failedAttempted) dispose(failedRaw);
+    }
+    if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
+  }
+);
+
 it.each(['before', 'after'] as const)(
   'cancels survivor transfer when extracted-child cleanup fails %s release',
   (point) => {

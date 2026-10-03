@@ -160,7 +160,10 @@ describe('covering IFC serialization', () => {
     return w.writeLine({
       expressID: w.nextId(),
       type: WebIFC.IFCSLAB,
-      GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, deriveIfcGuidSync(makeElementKey('SLAB', 99))),
+      GlobalId: w.mkType(
+        WebIFC.IFCGLOBALLYUNIQUEID,
+        deriveIfcGuidSync(makeElementKey('coveringFns-test', 'SLAB', 99))
+      ),
       OwnerHistory: w.ref(ownerHistoryId),
       Name: w.mkType(WebIFC.IFCLABEL, 'HostSlab'),
       Description: null,
@@ -176,7 +179,7 @@ describe('covering IFC serialization', () => {
     const w = await makeWriter();
     const ids = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
     const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, null);
-    const guid = deriveIfcGuidSync(makeElementKey('COVERING', 1));
+    const guid = deriveIfcGuidSync(makeElementKey('coveringFns-test', 'COVERING', 1));
     writeCoveringEntity(
       w,
       guid,
@@ -205,7 +208,7 @@ describe('covering IFC serialization', () => {
     const ids = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
     const hostId = writeHostSlab(w, ids.ownerHistoryId);
     const geom = writeCoveringGeometry(w, spec, ids.geomSubContextId, null);
-    const guid = deriveIfcGuidSync(makeElementKey('COVERING', 1));
+    const guid = deriveIfcGuidSync(makeElementKey('coveringFns-test', 'COVERING', 1));
     const coveringId = writeCoveringEntity(
       w,
       guid,
@@ -215,7 +218,7 @@ describe('covering IFC serialization', () => {
       geom.localPlacementId,
       geom.productDefinitionShapeId
     );
-    const relGuid = deriveIfcGuidSync(makeRelKey('COVERS', 1));
+    const relGuid = deriveIfcGuidSync(makeRelKey('coveringFns-test', 'COVERS', 1));
     writeRelCoversBldgElements(w, relGuid, ids.ownerHistoryId, hostId, [coveringId]);
 
     const { api, mid } = await openSaved(w);

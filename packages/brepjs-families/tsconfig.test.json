@@ -9,7 +9,9 @@
     "paths": {
       "brepjs-families/jsx-runtime": ["./src/jsxRuntime.ts"],
       "brepjs-families/jsx-dev-runtime": ["./src/jsxRuntime.ts"],
-      "brepjs-families": ["./src/index.ts"]
+      "brepjs-families": ["./src/index.ts"],
+      "@/*": ["../../src/*"],
+      "brepjs": ["../../src/index.ts"]
     }
   },
   "include": ["tests/**/*.ts", "tests/**/*.tsx", "registry/**/*.ts", "src/**/*.ts"],

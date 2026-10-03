@@ -3,6 +3,7 @@ import type { OrientedFace, PlanarFace, ClosedWire, PlanarWire, Result } from 'b
 import { ok, err } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
+import { generateGeometry } from '../geometryGeneration.js';
 
 // Extended cross-section profiles, additive to the core Profile union in
 // profile.ts (which only covers RECTANGULAR/CIRCULAR/I_BEAM). All dimensions in
@@ -509,58 +510,57 @@ function to3D(points: ReadonlyArray<Pt2>): Array<[number, number, number]> {
 export function extendedProfileToFace(
   profile: ExtendedProfile
 ): Result<OrientedFace & PlanarFace, BimError> {
-  const invalid = validateProfile(profile);
-  if (invalid !== null) {
-    return err(invalid);
-  }
+  return generateGeometry({ operation: 'extendedProfileToFace', codePrefix: 'PROFILE' }, (own) => {
+    const invalid = validateProfile(profile);
+    if (invalid !== null) {
+      return err(invalid);
+    }
 
-  const outerResult = polygon(to3D(outerLoop(profile)));
-  if (!outerResult.ok) {
-    return err(
-      fromBrepError(outerResult.error, 'PROFILE_FACE_FAILED', 'Failed to build profile outer face')
-    );
-  }
-
-  const holes = holeLoops(profile);
-  if (holes.length === 0) {
-    return ok(outerResult.value);
-  }
-
-  using outerFace = outerResult.value;
-  // Each hole polygon is built as a face only to extract its closed boundary wire.
-  // The faces (and thus the wires, which are sub-shapes of them) MUST stay alive
-  // until addHoles() has consumed the wires, then are disposed together — disposing
-  // each face inside the loop would invalidate the wire used later (use-after-free).
-  const holeFaces: Array<OrientedFace & PlanarFace> = [];
-  const holeWires: Array<ClosedWire & PlanarWire> = [];
-  const disposeHoleFaces = (): void => {
-    for (const f of holeFaces) f[Symbol.dispose]();
-  };
-  for (const loop of holes) {
-    const holeFaceResult = polygon(to3D(loop));
-    if (!holeFaceResult.ok) {
-      disposeHoleFaces();
+    const outerResult = polygon(to3D(outerLoop(profile)));
+    if (!outerResult.ok) {
       return err(
         fromBrepError(
-          holeFaceResult.error,
-          'PROFILE_HOLE_FAILED',
-          'Failed to build profile hole loop'
+          outerResult.error,
+          'PROFILE_FACE_FAILED',
+          'Failed to build profile outer face'
         )
       );
     }
-    const holeFace = holeFaceResult.value;
-    holeFaces.push(holeFace);
-    const wire = outerWire(holeFace);
-    if (!isClosedWire(wire) || !isPlanarWire(wire)) {
-      disposeHoleFaces();
-      return err(
-        geometryError('PROFILE_HOLE_WIRE_INVALID', 'Profile hole wire is not a closed planar wire')
-      );
-    }
-    holeWires.push(wire);
-  }
 
-  const faceWithHoles = addHoles(outerFace, holeWires);
-  disposeHoleFaces();
-  return ok(faceWithHoles);
+    const outerFace = own(outerResult.value);
+    const holes = holeLoops(profile);
+    if (holes.length === 0) {
+      return ok(outerFace);
+    }
+
+    // outerWire returns a fresh owned handle, unlike cached getWires results.
+    // Keep each face and wire until construction ends, then release in reverse order.
+    const holeWires: Array<ClosedWire & PlanarWire> = [];
+    for (const loop of holes) {
+      const holeFaceResult = polygon(to3D(loop));
+      if (!holeFaceResult.ok) {
+        return err(
+          fromBrepError(
+            holeFaceResult.error,
+            'PROFILE_HOLE_FAILED',
+            'Failed to build profile hole loop'
+          )
+        );
+      }
+      const holeFace = own(holeFaceResult.value);
+      const wire = own(outerWire(holeFace));
+      if (!isClosedWire(wire) || !isPlanarWire(wire)) {
+        return err(
+          geometryError(
+            'PROFILE_HOLE_WIRE_INVALID',
+            'Profile hole wire is not a closed planar wire'
+          )
+        );
+      }
+      holeWires.push(wire);
+    }
+
+    const faceWithHoles = own(addHoles(outerFace, holeWires));
+    return ok(faceWithHoles);
+  });
 }

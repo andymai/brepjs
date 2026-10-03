@@ -1,6 +1,8 @@
-import { polygon, extrude, box, fuse, isValidSolid } from 'brepjs';
-import type { ValidSolid, Result, Solid } from 'brepjs';
-import { ok, err } from 'brepjs';
+import { generateGeometry, type OwnGeneratedResource } from '../geometryGeneration.js';
+import { validateGeneratedSolid } from './validateGeneratedSolid.js';
+import { polygon, extrude, box, fuse, isValidSolid, getSolids, clone } from 'brepjs';
+import type { ValidSolid, Result } from 'brepjs';
+import { err } from 'brepjs';
 import type { RailingSpec } from '../specs/railingSpec.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
@@ -8,35 +10,40 @@ import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 // PANEL (default): a rectangular rail cross-section (thickness × height) in the
 // local YZ plane swept along +X by the run length — a single extrusion.
 function panelRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
-  const { length, height, thickness } = spec;
-  const profileResult = polygon([
-    [0, 0, 0],
-    [0, thickness, 0],
-    [0, thickness, height],
-    [0, 0, height],
-  ]);
-  if (!profileResult.ok) {
-    return err(
-      fromBrepError(
-        profileResult.error,
-        'RAILING_PROFILE_FAILED',
-        'Failed to create railing profile'
-      )
-    );
-  }
-  using profile = profileResult.value;
-  const solidResult = extrude(profile, [length, 0, 0]);
-  if (!solidResult.ok) {
-    return err(
-      fromBrepError(solidResult.error, 'RAILING_EXTRUDE_FAILED', 'Failed to sweep railing profile')
-    );
-  }
-  const solid = solidResult.value;
-  if (!isValidSolid(solid)) {
-    solid[Symbol.dispose]();
-    return err(geometryError('RAILING_INVALID_SOLID', 'Swept railing solid failed validity check'));
-  }
-  return ok(solid);
+  return generateGeometry({ operation: 'railingToSolid', codePrefix: 'RAILING' }, (own) => {
+    const { length, height, thickness } = spec;
+    const profileResult = polygon([
+      [0, 0, 0],
+      [0, thickness, 0],
+      [0, thickness, height],
+      [0, 0, height],
+    ]);
+    if (!profileResult.ok) {
+      return err(
+        fromBrepError(
+          profileResult.error,
+          'RAILING_PROFILE_FAILED',
+          'Failed to create railing profile'
+        )
+      );
+    }
+    const profile = own(profileResult.value);
+    const solidResult = extrude(profile, [length, 0, 0]);
+    if (!solidResult.ok) {
+      return err(
+        fromBrepError(
+          solidResult.error,
+          'RAILING_EXTRUDE_FAILED',
+          'Failed to sweep railing profile'
+        )
+      );
+    }
+    const solid = own(solidResult.value);
+    return validateGeneratedSolid(solid, {
+      code: 'RAILING_INVALID_SOLID',
+      message: 'Swept railing solid failed validity check',
+    });
+  });
 }
 
 // POSTED: vertical square posts (every ~1m) plus a top and bottom rail spanning
@@ -44,56 +51,61 @@ function panelRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
 // intermediate box is disposed on success and on failure (mirrors the
 // curtainWallFns disposal discipline). Envelope matches PANEL: x∈[0,length],
 // y∈[0,thickness], z∈[0,height].
-function postedRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
+function buildPostedRailing(
+  spec: RailingSpec,
+  own: OwnGeneratedResource
+): Result<ValidSolid, BimError> {
   const { length, height, thickness: t } = spec;
   const boxes: ValidSolid[] = [];
-
+  const retain = (solid: ValidSolid): void => {
+    boxes.push(own(solid));
+  };
   const postCount = Math.max(2, Math.round(length / 1000) + 1);
   for (let i = 0; i < postCount; i++) {
     const x = t / 2 + (length - t) * (i / (postCount - 1));
-    boxes.push(box(t, t, height, { at: [x, t / 2, height / 2], centered: true }));
+    retain(box(t, t, height, { at: [x, t / 2, height / 2], centered: true }));
   }
   for (const z of [height - t / 2, t / 2]) {
-    boxes.push(box(length, t, t, { at: [length / 2, t / 2, z], centered: true }));
+    retain(box(length, t, t, { at: [length / 2, t / 2, z], centered: true }));
   }
-
-  // Fuse the bars pairwise (fuseAll's bundled .d.ts type is ambiguous/never; the
-  // 2-arg `fuse` is clean). `scratch` tracks every box and intermediate union so
-  // all are disposed; only the final survivor is kept.
-  const scratch: ValidSolid[] = [...boxes];
-  let acc: ValidSolid | undefined;
-  let failure: BimError | undefined;
-  for (const b of boxes) {
-    if (acc === undefined) {
-      acc = b;
+  let accumulated: ValidSolid | undefined;
+  for (const part of boxes) {
+    if (accumulated === undefined) {
+      accumulated = part;
       continue;
     }
-    const fused = fuse(acc, b);
-    if (!fused.ok) {
-      failure = fromBrepError(fused.error, 'RAILING_FUSE_FAILED', 'Failed to fuse railing parts');
-      break;
-    }
-    acc = fused.value;
-    scratch.push(acc);
+    const fused = fuse(accumulated, part, { trackEvolution: false });
+    if (!fused.ok)
+      return err(fromBrepError(fused.error, 'RAILING_FUSE_FAILED', 'Failed to fuse railing parts'));
+    accumulated = own(fused.value);
   }
-
-  const survivor = failure ? undefined : acc;
-  for (const s of scratch) {
-    if (s !== survivor) s[Symbol.dispose]();
-  }
-  if (failure) return err(failure);
-  if (survivor === undefined) {
+  if (accumulated === undefined)
     return err(geometryError('RAILING_INVALID_SOLID', 'Posted railing produced no solid'));
-  }
-  // Widen to Solid so isValidSolid can narrow (survivor is statically ValidSolid).
-  const result: Solid = survivor;
-  if (!isValidSolid(result)) {
-    result[Symbol.dispose]();
+  // A Boolean may wrap the connected result in a compound. Its cached subsolid
+  // belongs to that compound; the returned recipe item must be an independent owner.
+  const solids = getSolids(accumulated);
+  const [solid] = solids;
+  if (solids.length !== 1 || solid === undefined || !isValidSolid(solid)) {
     return err(
-      geometryError('RAILING_INVALID_SOLID', 'Posted railing solid failed validity check')
+      geometryError(
+        'RAILING_INVALID_SOLID',
+        'Posted railing must contain one valid connected solid'
+      )
     );
   }
-  return ok(result);
+  const copied = clone(solid);
+  if (!copied.ok)
+    return err(
+      fromBrepError(copied.error, 'RAILING_COPY_FAILED', 'Failed to retain posted railing solid')
+    );
+  own(copied.value);
+  return copied;
+}
+
+function postedRailing(spec: RailingSpec): Result<ValidSolid, BimError> {
+  return generateGeometry({ operation: 'railingToSolid', codePrefix: 'RAILING' }, (own) =>
+    buildPostedRailing(spec, own)
+  );
 }
 
 // Returned solid is unplaced template geometry in the local frame; origin/axisX/

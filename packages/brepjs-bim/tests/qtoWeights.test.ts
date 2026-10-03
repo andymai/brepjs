@@ -59,7 +59,7 @@ describe('qtoWeights — quantity builder', () => {
     expect(id).toBe(100);
     expect(written).toHaveLength(1);
     const line = written[0];
-    expect(line?.type).toBe(WebIFC.IFCQUANTITYWEIGHT);
+    expect(line?.['type']).toBe(WebIFC.IFCQUANTITYWEIGHT);
     expect(line?.['Name']).toEqual({ type: WebIFC.IFCLABEL, value: 'GrossWeight' });
     expect(line?.['WeightValue']).toEqual({
       type: WebIFC.IFCMASSMEASURE,

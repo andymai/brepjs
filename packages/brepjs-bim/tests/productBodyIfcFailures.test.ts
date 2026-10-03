@@ -88,7 +88,7 @@ function trackIfcVectors(fail?: 'all-lines' | 'type-lines') {
 
 describe('retained Body export failures', () => {
   for (const category of ['WALL', 'RAILING'] as const) {
-    for (const authority of ['EXACT'] as const) {
+    for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
       it.each(['error', 'throw'] as const)(
         `${category} ${authority} reports a later preflight %s and closes the writer`,
         async (failure) => {
@@ -131,7 +131,7 @@ describe('retained Body export failures', () => {
     async (failure) => {
       const before = arena();
       {
-        const fixture = bodyExchangeFixture('WALL', 'EXACT', 'overlapping');
+        const fixture = bodyExchangeFixture('WALL', 'AUTHORITATIVE', 'overlapping');
         using model = fixture.model;
         const liveInputs = arena();
         const releases = fixture.solids.map((solid) => vi.spyOn(solid, Symbol.dispose));
@@ -175,7 +175,7 @@ describe('retained Body import failures', () => {
         const outstanding = point === 'before' ? 1 : 0;
         try {
           {
-            const fixture = bodyExchangeFixture('WALL', 'EXACT', 'overlapping');
+            const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'overlapping');
             using model = fixture.model;
             const bytes = unwrap(await toIfc(model, IFC_BODY_META));
             const liveInputs = arena();
@@ -253,7 +253,7 @@ describe('retained Body import failures', () => {
         let recoverForeign: (() => void) | undefined;
         try {
           {
-            const fixture = bodyExchangeFixture('RAILING', 'EXACT', 'overlapping');
+            const fixture = bodyExchangeFixture('RAILING', 'PARAMETRIC', 'overlapping');
             using model = fixture.model;
             const bytes = unwrap(await toIfc(model, IFC_BODY_META));
             const liveInputs = arena();
@@ -314,7 +314,7 @@ describe('retained Body import failures', () => {
     async (failure) => {
       const before = arena();
       {
-        const fixture = bodyExchangeFixture('RAILING', 'EXACT', 'overlapping');
+        const fixture = bodyExchangeFixture('RAILING', 'PARAMETRIC', 'overlapping');
         using model = fixture.model;
         const bytes = unwrap(await toIfc(model, IFC_BODY_META));
         const liveInputs = arena();
@@ -347,7 +347,7 @@ describe('retained Body import failures', () => {
     async (failRead) => {
       const before = arena();
       {
-        const fixture = bodyExchangeFixture('WALL', 'EXACT', 'singleton');
+        const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'singleton');
         using model = fixture.model;
         const product = model.getElement(fixture.localId);
         if (!product) throw new Error('Missing GUID lookup fixture');
@@ -385,7 +385,7 @@ describe('retained Body import failures', () => {
     async (failure) => {
       const before = arena();
       {
-        const fixture = bodyExchangeFixture('WALL', 'EXACT', 'overlapping');
+        const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'overlapping');
         using model = fixture.model;
         const bytes = unwrap(await toIfc(model, IFC_BODY_META));
         const liveInputs = arena();
@@ -458,7 +458,7 @@ describe('retained Body import failures', () => {
     async (failure) => {
       const before = arena();
       {
-        const fixture = bodyExchangeFixture('RAILING', 'EXACT', 'overlapping');
+        const fixture = bodyExchangeFixture('RAILING', 'AUTHORITATIVE', 'overlapping');
         using model = fixture.model;
         const bytes = unwrap(await toIfc(model, IFC_BODY_META));
         const liveInputs = arena();

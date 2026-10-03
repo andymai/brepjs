@@ -6,7 +6,7 @@ import { toIfcValidated } from '../src/serialize/toIfc.js';
 import { SpfReader } from '../src/import/spfReader.js';
 import { readPsets } from '../src/import/dataRead.js';
 import { setProductBodyTestHooksForTesting } from '../src/productBodyTestHooks.js';
-import { bodySolids, measureProductBodyMaterial } from '../src/types/productBody.js';
+import { measureProductBodyMaterial } from '../src/types/productBody.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import {
   bodyExchangeFixture,
@@ -29,7 +29,7 @@ describe('Wall quantity omission', () => {
   it('exports the retained Body and reports an omission from the same failed measurement', async () => {
     const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
     {
-      const fixture = bodyExchangeFixture('WALL', 'EXACT', 'singleton');
+      const fixture = bodyExchangeFixture('WALL', 'AUTHORITATIVE', 'singleton');
       using model = fixture.model;
       const wall = model.getElement(fixture.localId);
       if (wall?.category !== 'WALL') throw new Error('Missing Wall');
@@ -81,7 +81,7 @@ describe('Wall quantity omission', () => {
     if (before !== null) expect(nativeShapeCount()).toBe(before);
   });
 
-  for (const authority of ['recipe', 'EXACT'] as const) {
+  for (const authority of ['recipe', 'PARAMETRIC', 'AUTHORITATIVE'] as const) {
     it.each([
       { failure: 'Result error', code: 'BODY_MEASUREMENT_FAILED' },
       { failure: 'throw', code: 'BODY_OPERATION_FAILED' },
@@ -103,9 +103,7 @@ describe('Wall quantity omission', () => {
           const wall = model.getElement(fixture.localId);
           if (wall?.category !== 'WALL') throw new Error('Missing Wall');
           const live = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-          const releases = bodySolids(wall.geometry).map((solid) =>
-            vi.spyOn(solid, Symbol.dispose)
-          );
+          const releases = wall.geometry.solids.map((solid) => vi.spyOn(solid, Symbol.dispose));
           const cause = {
             kind: 'COMPUTATION',
             code: 'VOLUME_FAILED',
@@ -147,7 +145,7 @@ describe('Wall quantity omission', () => {
           ]);
           expect(measurements).toBe(1);
           expect(exported.report.issues.filter(({ severity }) => severity === 'error')).toEqual([]);
-          const required = measureProductBodyMaterial(bodySolids(wall.geometry));
+          const required = measureProductBodyMaterial(wall.geometry.solids);
           expect(required).toMatchObject({
             ok: false,
             error: { code: failure.code, cleanup: { kind: 'COMPLETE' } },
@@ -162,7 +160,7 @@ describe('Wall quantity omission', () => {
           expect(omissions[0]?.context?.['cause']).toMatchObject({ cause: required.error });
           expect(measurements).toBe(2);
           releases.forEach((release) => expect(release).not.toHaveBeenCalled());
-          bodySolids(wall.geometry).forEach((solid) =>
+          wall.geometry.solids.forEach((solid) =>
             expect(getKernel().volume(solid.wrapped)).toBeCloseTo(
               authority === 'recipe' ? 100_000_000 : 50_000_000,
               2

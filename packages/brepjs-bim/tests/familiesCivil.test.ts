@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { csg, getBounds, measureVolume, unwrap, type ValidSolid } from 'brepjs';
+import { csg, getBounds, isShape3D, measureVolume, unwrap, type ValidSolid } from 'brepjs';
 import {
   civilSemantics,
   el,
@@ -482,7 +482,9 @@ describe('civil Families Projection', () => {
     expect(fillOccurrence?.keyPath).toBe('civil-model/north-site/river-bridge/deck/embankment');
 
     using evaluator = new csg.Evaluator();
-    const source = unwrap(evaluator.evaluate(fillOccurrence?.geometry ?? csg.emptySolid()));
+    if (fillOccurrence === undefined) throw new Error('Expected Earthworks Fill occurrence');
+    const source = unwrap(evaluator.evaluate(fillOccurrence.geometry));
+    if (!isShape3D(source)) throw new Error('Expected a 3D Earthworks Fill body');
     let ownedBody: ValidSolid | undefined;
     {
       const projected = unwrap(
@@ -494,11 +496,11 @@ describe('civil Families Projection', () => {
       using model = projected.model;
 
       const fill = required(model.getEarthworksFills()[0], 'projected Earthworks Fill');
-      ownedBody = fill?.geometry;
-      expect(fill?.guid).toBe(
+      ownedBody = fill.geometry;
+      expect(fill.guid).toBe(
         deriveIfcGuidSync('elem:civil-gate:civil-model/north-site/river-bridge/deck/embankment')
       );
-      expect(fill?.spec).toMatchObject({
+      expect(fill.spec).toMatchObject({
         name: 'Approach embankment',
         materialName: 'Compacted soil',
         predefinedType: 'EMBANKMENT',
@@ -506,10 +508,10 @@ describe('civil Families Projection', () => {
       expect(projected.proxied).toEqual([]);
 
       const sourceVolume = unwrap(measureVolume(source));
-      const projectedVolume = unwrap(measureVolume(fill?.geometry ?? source));
+      const projectedVolume = unwrap(measureVolume(fill.geometry));
       expect(projectedVolume).toBeCloseTo(sourceVolume, 3);
       const sourceBounds = getBounds(source);
-      const bounds = getBounds(fill?.geometry ?? source);
+      const bounds = getBounds(fill.geometry);
       expect(bounds.xMin).toBeCloseTo(sourceBounds.xMin - 6_000, 5);
       expect(bounds.xMax).toBeCloseTo(sourceBounds.xMax - 6_000, 5);
       const boundsVolume =

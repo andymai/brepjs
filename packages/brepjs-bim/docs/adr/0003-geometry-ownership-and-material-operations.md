@@ -23,7 +23,7 @@ The Body module implements one cohesive interface for validation, adoption, borr
 The contract is:
 
 1. A retained item has one owner and one disposal path. Evaluator results, topology-cache handles, and read indexes are borrowed. Borrowers must not dispose these handles. Retention beyond an owner's lifetime requires an independent copy.
-2. Adoption validates the entire nonempty collection before transfer. Items must be live valid solids with distinct handle identities and a compatible representation. No item may already belong to another record in the target document. Exclusive caller ownership is required; `readonly` cannot prove external aliasing or cross-document ownership. Cross-document reuse requires independent copies or an explicit transfer protocol.
+2. Adoption validates the entire nonempty collection before transfer. Items must be live valid solids with distinct handle identities and a compatible representation. Distinct wrappers exposing the exact same `.wrapped` resource object also conflict. No item may already belong to another record or pending adoption in the target document. Capture resource identity while live and retain it through uncertain cleanup, without querying a disposed original. Independent copies and placements remain legal even when a kernel reports equal topology. Exclusive caller ownership is required; `readonly` cannot prove arbitrary external aliasing or cross-document ownership. Cross-document reuse requires independent copies or an explicit transfer protocol.
 3. Successful adoption copies and protects the collection while transferring handles. Failure leaves caller handles live and the document unchanged. One explicit commit point determines ownership; later cleanup faults must not make it ambiguous.
 4. Replacement preserves physical element identity, existing metadata, type reference, external classification associations, appearance, Placement, and valid relationships. The detailed model in Deferred [ADR-0008](0008-explicit-bim-type-identity.md) waits for step 4. Already-cut authoritative geometry is not cut again because a void relationship exists.
 5. Copy and transform operations borrow inputs and return fresh owned outputs. A later-item error or throw releases every new output and intermediate without disposing retained inputs. Document disposal is idempotent; tests count releases to detect duplicate owners hidden by idempotent handles.
@@ -49,7 +49,7 @@ For occt-wasm, read the native arena's `getShapeCount()` through the raw kernel,
 ### Costs and risks
 
 - Copies, realization, and temporary unions have costs that require measurement.
-- Runtime validation cannot prove arbitrary external ownership.
+- Runtime validation cannot prove arbitrary external ownership or native aliases represented by different resource objects. Rejecting a manufactured owning alias does not disable its disposer or finalizer; manufacturing such aliases still violates exclusive caller ownership. This check introduces no native identity protocol or global registry.
 - Cleanup failures require a clear post-commit outcome rather than ambiguous rollback.
 
 ## Alternatives considered

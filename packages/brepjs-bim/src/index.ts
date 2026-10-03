@@ -1,14 +1,41 @@
 export {
   BimModel,
+  type BodyCommitReceipt,
   type ElementIdentityOptions,
   type OpeningIdentityOptions,
 } from './model/bimModel.js';
 export type { BimTreeNode, BimTreeSummary } from './model/treeSummary.js';
 export { placedSolids } from './elementFns/placedGeometry.js';
-export { bodySolids } from './types/productBody.js';
-export type { NonEmpty, ProductBody } from './types/productBody.js';
+export {
+  bodySolids,
+  validateProductBody,
+  copyProductBody,
+  transformProductBody,
+  productBodyBounds,
+  measureProductBodyMaterial,
+  disposeProductBody,
+} from './types/productBody.js';
+export type {
+  NonEmpty,
+  ProductBody,
+  ProductBodyError,
+  ProductBodyOperation,
+  ProductBodyBounds,
+  ProductBodySpace,
+  CleanupReport,
+  GeometryCleanupDiagnostic,
+} from './types/productBody.js';
 export type { PlacedSolidsOptions } from './elementFns/placedGeometry.js';
-export type { FrameInput } from './placementFrame.js';
+export type { FrameInput, RigidFrame, Mat4x4 } from './placementFrame.js';
+export {
+  frameFromPlacement,
+  frameFromMatrix,
+  frameMul,
+  frameInverse,
+  translationFrame,
+  rotationFrame,
+  IDENTITY_FRAME,
+} from './placementFrame.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { setIfcWasmLocateFile } from './ifcRuntime.js';

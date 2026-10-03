@@ -23,7 +23,7 @@ beforeAll(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('IFC opening representation semantics', () => {
-  for (const authority of ['EXACT'] as const) {
+  for (const authority of ['PARAMETRIC', 'AUTHORITATIVE'] as const) {
     for (const fillerKind of ['DOOR', 'WINDOW'] as const) {
       it.each(['disconnected', 'aperture'] as const)(
         `${authority} ${fillerKind} preserves retained %s items with Reference openings`,

@@ -33,7 +33,7 @@ it.each(['fuseAll', 'volume'] as const)(
   async (method) => {
     const before = arena();
     {
-      const fixture = bodyExchangeFixture('RAILING', 'EXACT', 'overlapping');
+      const fixture = bodyExchangeFixture('RAILING', 'PARAMETRIC', 'overlapping');
       using model = fixture.model;
       const bytes = unwrap(await toIfc(model, IFC_BODY_META));
       const liveInputs = arena();
@@ -90,7 +90,7 @@ for (const primaryFailure of [false, true]) {
       const outstanding = releasePoint === 'before' ? 1 : 0;
       try {
         {
-          const fixture = bodyExchangeFixture('WALL', 'EXACT', 'overlapping');
+          const fixture = bodyExchangeFixture('WALL', 'PARAMETRIC', 'overlapping');
           using model = fixture.model;
           const bytes = unwrap(await toIfc(model, IFC_BODY_META));
           const liveInputs = arena();

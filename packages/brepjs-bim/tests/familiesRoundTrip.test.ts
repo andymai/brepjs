@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
-import { csg, isOk, unwrap, measureVolume } from 'brepjs';
+import { csg, isOk, isShape3D, unwrap, measureVolume } from 'brepjs';
 import { resolve, evaluateModel } from 'brepjs-families';
 import { familiesToBim } from '../src/familiesAdapter.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -112,12 +112,14 @@ describe('families IFC round trip', () => {
       const el = byGuid.get(guidOf(p));
       expect(node?.shape && isOk(node.shape), p).toBe(true);
       expect(el?.geometry.solid, `${p} imported solid`).not.toBeNull();
-      if (node?.shape && isOk(node.shape) && el?.geometry.solid) {
-        const sourceVol = unwrap(measureVolume(node.shape.value));
-        const importedVol = unwrap(measureVolume(el.geometry.solid));
-        // Within 0.5%: the IFC path re-extrudes parametrically.
-        expect(Math.abs(importedVol - sourceVol) / sourceVol, p).toBeLessThan(0.005);
+      if (!node?.shape || !isOk(node.shape) || !isShape3D(node.shape.value)) {
+        throw new Error(`Expected a 3D evaluated shape for ${p}`);
       }
+      if (!el?.geometry.solid) throw new Error(`Expected a complete imported singleton for ${p}`);
+      const sourceVol = unwrap(measureVolume(node.shape.value));
+      const importedVol = unwrap(measureVolume(el.geometry.solid));
+      // Preserve the fixture's 0.5% round-trip volume tolerance.
+      expect(Math.abs(importedVol - sourceVol) / sourceVol, p).toBeLessThan(0.005);
     }
   });
 });

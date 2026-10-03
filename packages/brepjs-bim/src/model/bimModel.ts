@@ -1,11 +1,11 @@
 import type { Result, ValidSolid } from 'brepjs';
-import { ok, err, cut, isValidSolid } from 'brepjs';
+import { ok, err } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync, makeElementKey, makeRelKey } from '../identity/guidDerivation.js';
 import type { LocalId } from '../identity/localId.js';
-import { makeLocalIdCounter } from '../identity/localId.js';
+import { makeLocalIdCounter, type LocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
-import { specError, fromBrepError } from '../errors/bimError.js';
+import { specError } from '../errors/bimError.js';
 import type {
   AnyBimElement,
   BimElement,
@@ -17,16 +17,7 @@ import type {
   BimRelationship,
   AggregatesRel,
   ContainedInRel,
-  AssociatesMaterialRel,
-  AssociatesClassificationRel,
-  VoidsWallRel,
-  VoidsSlabRel,
-  FillsOpeningRel,
-  SpaceBoundaryRel,
   NestsRel,
-  ConnectsElementsRel,
-  ConnectsPathElementsRel,
-  CoversElementRel,
   AssignsToGroupRel,
 } from '../types/relationships.js';
 import type { MaterialLayer } from '../types/materialTypes.js';
@@ -60,13 +51,74 @@ import { beamToSolid } from '../elementFns/beamFns.js';
 import { columnToSolid } from '../elementFns/columnFns.js';
 import { openingToSolid } from '../elementFns/openingFns.js';
 import { slabOpeningToSolid } from '../elementFns/slabOpeningFns.js';
+import { cutOpeningSolid } from '../elementFns/cutOpeningSolid.js';
 import { spaceToSolid } from '../elementFns/spaceFns.js';
 import { roofToSolid } from '../elementFns/roofFns.js';
 import { curtainWallToGrid } from '../elementFns/curtainWallFns.js';
 import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
 import { railingToSolid } from '../elementFns/railingFns.js';
 import { coveringToSolid } from '../elementFns/coveringFns.js';
-import { disposeProductBody, type ProductBody } from '../types/productBody.js';
+import {
+  snapshotProductBodyInput,
+  validateProductBody,
+  wrappedResourceObject,
+  type ProductBody,
+} from '../types/productBody.js';
+import {
+  cleanupReport,
+  type CleanupReport,
+  type GeometryCleanupDiagnostic,
+} from '../productBodyCleanup.js';
+import { protectElement, retainedSolids, type ElementFields } from './modelGeometry.js';
+import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
+import { uncertainGeneratedResources } from '../geometryGeneration.js';
+
+export interface BodyCommitReceipt {
+  readonly kind: 'COMMITTED';
+  readonly localId: LocalId;
+  readonly guid: IfcGuid;
+  readonly cleanup: CleanupReport;
+}
+
+interface OwnedGeometry {
+  readonly solid: Disposable;
+  readonly resource: object | undefined;
+  readonly localId?: LocalId;
+  readonly itemIndex: number;
+}
+
+type GeometryOwner = { readonly resource: object | undefined } & (
+  | { readonly state: 'RETIRING'; readonly localId?: LocalId; readonly itemIndex: number }
+  | { readonly state: 'RETAINED'; readonly localId: LocalId; readonly itemIndex: number }
+  | { readonly state: 'UNCERTAIN'; readonly localId?: LocalId; readonly itemIndex: number }
+);
+
+/** Prepared writes for one synchronous command, discarded on rejection. */
+interface ModelCommand {
+  readonly counter: LocalIdCounter;
+  modelScope: string;
+  projectId: LocalId | null;
+  readonly elements: AnyBimElement[];
+  readonly relationships: BimRelationship[];
+  readonly stableKeys: Set<string>;
+  readonly adoptions: Map<ValidSolid, Extract<GeometryOwner, { state: 'RETAINED' }>>;
+  readonly generated: Map<ValidSolid, object | undefined>;
+  readonly retired: OwnedGeometry[];
+  readonly recipeEligibility: Map<LocalId, boolean>;
+}
+
+type RelationshipFields = {
+  [K in BimRelationship['kind']]: Omit<
+    Extract<BimRelationship, { readonly kind: K }>,
+    'guid' | 'localId'
+  >;
+}[BimRelationship['kind']];
+
+class RejectedModelCommand extends Error {
+  constructor(readonly error: BimError) {
+    super(error.message, { cause: error });
+  }
+}
 
 /** Optional identity override for created elements: a stable key (e.g. a
  *  families key path) that replaces the positional GlobalId derivation. */
@@ -80,13 +132,24 @@ export interface OpeningIdentityOptions extends ElementIdentityOptions {
   readonly openingStableKey?: string | undefined;
 }
 
-function exactWallBodyImmutable(): Result<never, BimError> {
-  return err(
-    specError(
-      'EXACT_WALL_BODY_IMMUTABLE',
-      'Cannot add an opening after a wall has taken an exact Product Body'
-    )
-  );
+function wallOpeningSolid(body: ProductBody): Result<ValidSolid, BimError> {
+  if (body.kind === 'AUTHORITATIVE') {
+    return err(
+      specError(
+        'AUTHORITATIVE_WALL_BODY_IMMUTABLE',
+        'Cannot add an opening to an authoritative Wall Body'
+      )
+    );
+  }
+  if (body.solids.length !== 1) {
+    return err(
+      specError(
+        'MULTI_ITEM_WALL_OPENING_UNSUPPORTED',
+        'Wall openings require a singleton PARAMETRIC Body'
+      )
+    );
+  }
+  return ok(body.solids[0]);
 }
 
 export class BimModel {
@@ -100,64 +163,332 @@ export class BimModel {
   // created; empty until init() runs.
   #modelScope = '';
   readonly #usedStableKeys = new Set<string>();
+  readonly #owners = new Map<Disposable, GeometryOwner>();
+  readonly #cleanupDiagnostics: GeometryCleanupDiagnostic[] = [];
+  readonly #recipeQuantityEligible = new Set<LocalId>();
+  #phase: 'ACTIVE' | 'MUTATING' | 'DISPOSING' | 'DISPOSED' = 'ACTIVE';
+
+  #lifecycleError(): BimError | null {
+    if (this.#phase === 'DISPOSED')
+      return specError('MODEL_DISPOSED', 'The model has been disposed');
+    if (this.#phase !== 'ACTIVE')
+      return specError('MODEL_BUSY', 'A model geometry command is already running');
+    return null;
+  }
+
+  #assertMutable(): void {
+    const error = this.#lifecycleError();
+    if (error !== null) throw new RejectedModelCommand(error);
+  }
+
+  getGeometryCleanupDiagnostics(): readonly GeometryCleanupDiagnostic[] {
+    return Object.freeze([...this.#cleanupDiagnostics]);
+  }
+
+  #create(
+    operation: string,
+    action: (command: ModelCommand) => Result<LocalId, BimError>
+  ): Result<LocalId, BimError> {
+    const result = this.#mutate(operation, action);
+    return result.ok ? ok(result.value.value) : result;
+  }
+
+  #mutate<T>(
+    operation: string,
+    action: (command: ModelCommand) => Result<T, BimError>
+  ): Result<{ readonly value: T; readonly cleanup: CleanupReport }, BimError> {
+    const lifecycleError = this.#lifecycleError();
+    if (lifecycleError !== null) return err(lifecycleError);
+    const command: ModelCommand = {
+      counter: makeLocalIdCounter(this.#counter.current() + 1),
+      modelScope: this.#modelScope,
+      projectId: this.#projectId,
+      elements: [],
+      relationships: [],
+      stableKeys: new Set(),
+      adoptions: new Map(),
+      generated: new Map(),
+      retired: [],
+      recipeEligibility: new Map(),
+    };
+    this.#phase = 'MUTATING';
+    try {
+      let result: Result<T, BimError>;
+      try {
+        result = action(command);
+      } catch (cause) {
+        result = err(
+          cause instanceof RejectedModelCommand
+            ? cause.error
+            : specError('MODEL_COMMAND_FAILED', `${operation} failed before commit`, cause)
+        );
+      }
+      if (!result.ok) {
+        for (const { handle, resource, itemIndex } of uncertainGeneratedResources(result.error)) {
+          this.#owners.set(handle, { state: 'UNCERTAIN', resource, itemIndex });
+        }
+        const priorCleanup = reportedGeometryCleanup(result.error, operation);
+        this.#cleanupDiagnostics.push(...priorCleanup);
+        const ownedCleanup = this.#retire(
+          [...command.generated].map(([solid, resource], itemIndex) => ({
+            solid,
+            resource,
+            itemIndex,
+          })),
+          operation
+        );
+        const cleanup = cleanupReport([
+          ...priorCleanup,
+          ...(ownedCleanup.kind === 'FAILED' ? ownedCleanup.diagnostics : []),
+        ]);
+        return err({
+          ...result.error,
+          cleanup,
+          metadata: { ...result.error.metadata, operation, cleanup },
+        });
+      }
+      // Prepared data only: no native calls, accessors or callbacks may run during commit.
+      for (const element of command.elements) this.#elements.set(element.localId, element);
+      for (const { solid, resource, localId, itemIndex } of command.retired) {
+        this.#owners.set(solid, {
+          state: 'RETIRING',
+          resource,
+          itemIndex,
+          ...(localId === undefined ? {} : { localId }),
+        });
+      }
+      for (const [solid, owner] of command.adoptions) this.#owners.set(solid, owner);
+      for (const relationship of command.relationships)
+        this.#relationships.set(relationship.localId, relationship);
+      for (const key of command.stableKeys) this.#usedStableKeys.add(key);
+      for (const [id, eligible] of command.recipeEligibility) {
+        if (eligible) this.#recipeQuantityEligible.add(id);
+        else this.#recipeQuantityEligible.delete(id);
+      }
+      while (this.#counter.current() < command.counter.current()) this.#counter.next();
+      this.#modelScope = command.modelScope;
+      this.#projectId = command.projectId;
+      const unused = [...command.generated]
+        .filter(([solid]) => !command.adoptions.has(solid))
+        .map(([solid, resource], itemIndex) => ({ solid, resource, itemIndex }));
+      const cleanup = this.#retire([...command.retired, ...unused], operation);
+      return ok({ value: result.value, cleanup });
+    } finally {
+      this.#phase = 'ACTIVE';
+    }
+  }
+
+  #stageElement(command: ModelCommand, element: AnyBimElement): void {
+    for (const [itemIndex, solid] of retainedSolids(element).entries()) {
+      const resource = this.#requireUnowned(command, solid, itemIndex);
+      command.adoptions.set(solid, {
+        state: 'RETAINED',
+        resource,
+        localId: element.localId,
+        itemIndex,
+      });
+    }
+    command.elements.push(element);
+  }
+
+  #captureResource(solid: unknown, itemIndex: number): Result<object | undefined, BimError> {
+    try {
+      return ok(wrappedResourceObject(solid));
+    } catch (cause) {
+      return err({
+        ...specError('BODY_VALIDATION_FAILED', 'Item resource access threw', cause),
+        metadata: { itemIndex },
+      });
+    }
+  }
+
+  #ownGenerated(command: ModelCommand, solids: readonly ValidSolid[]): void {
+    const fresh: ValidSolid[] = [];
+    // Own the entire batch before any accessor can throw, including later siblings.
+    for (const solid of solids) {
+      if (command.generated.has(solid)) continue;
+      command.generated.set(solid, undefined);
+      fresh.push(solid);
+    }
+    let failure: BimError | undefined;
+    for (const [itemIndex, solid] of fresh.entries()) {
+      const captured = this.#captureResource(solid, itemIndex);
+      if (captured.ok) command.generated.set(solid, captured.value);
+      else failure ??= captured.error;
+    }
+    if (failure !== undefined) throw new RejectedModelCommand(failure);
+  }
+
+  #prepareRetirement(element: AnyBimElement): OwnedGeometry[] {
+    return retainedSolids(element).map((solid, itemIndex) => ({
+      solid,
+      resource: this.#owners.get(solid)?.resource,
+      localId: element.localId,
+      itemIndex,
+    }));
+  }
+
+  #requireUnowned(command: ModelCommand, solid: unknown, itemIndex: number): object | undefined {
+    const owners = [...this.#owners, ...command.adoptions];
+    let owner = owners.find(([owned]) => owned === solid)?.[1];
+    // Look up the public handle first: an UNCERTAIN owner may already be disposed.
+    const captured =
+      owner === undefined ? this.#captureResource(solid, itemIndex) : ok(owner.resource);
+    if (!captured.ok) throw new RejectedModelCommand(captured.error);
+    const resource = captured.value;
+    if (owner === undefined && resource !== undefined) {
+      owner = owners.find(([, candidate]) => candidate.resource === resource)?.[1];
+    }
+    if (owner !== undefined) {
+      throw new RejectedModelCommand({
+        ...specError(
+          'BODY_OWNERSHIP_CONFLICT',
+          'The model already owns this solid handle or its wrapped resource object'
+        ),
+        metadata: {
+          itemIndex,
+          ownerLocalId: owner.localId,
+          ownerItemIndex: owner.itemIndex,
+          ownerState: owner.state,
+        },
+      });
+    }
+    return resource;
+  }
+
+  #retire(items: readonly OwnedGeometry[], operation: string): CleanupReport {
+    const attempted = new Set<Disposable>();
+    const diagnostics: GeometryCleanupDiagnostic[] = [];
+    for (const { solid, resource, itemIndex, localId } of items) {
+      const owner = this.#owners.get(solid);
+      if (attempted.has(solid) || owner?.state === 'UNCERTAIN') continue;
+      attempted.add(solid);
+      // Keep responsibility before invoking user-observable cleanup; a throw has an unknown outcome.
+      this.#owners.set(solid, {
+        state: 'UNCERTAIN',
+        resource,
+        itemIndex,
+        ...(localId === undefined ? {} : { localId }),
+      });
+      try {
+        solid[Symbol.dispose]();
+        this.#owners.delete(solid);
+      } catch (cause) {
+        diagnostics.push(
+          Object.freeze({
+            operation,
+            itemIndex,
+            resourceKind: 'SHAPE',
+            cause,
+            ...(localId === undefined ? {} : { localId }),
+          })
+        );
+      }
+    }
+    this.#cleanupDiagnostics.push(...diagnostics);
+    return cleanupReport(diagnostics);
+  }
 
   init(spec: ProjectSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    if (this.#projectId !== null) {
-      return err(
-        specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model')
+    return this.#create('init', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      if (this.#projectId !== null) {
+        return err(
+          specError(
+            'DUPLICATE_PROJECT',
+            'BimModel.init() called twice — only one project per model'
+          )
+        );
+      }
+      // Prefer an explicit, globally-unique projectId; otherwise fall back to the
+      // project name+description (stable, but unique only per distinct name).
+      command.modelScope = snapshot.projectId ?? `${snapshot.name}::${snapshot.description ?? ''}`;
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const id = this.#makeElement(
+        command,
+        { category: 'PROJECT', spec: snapshot, geometry: null },
+        identity?.stableKey
       );
-    }
-    // Prefer an explicit, globally-unique projectId; otherwise fall back to the
-    // project name+description (stable, but unique only per distinct name).
-    this.#modelScope = spec.projectId ?? `${spec.name}::${spec.description ?? ''}`;
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const id = this.#makeElement('PROJECT', spec, null, options?.stableKey);
-    this.#projectId = id;
-    return ok(id);
+      command.projectId = id;
+      return ok(id);
+    });
   }
 
   [Symbol.dispose](): void {
-    for (const el of this.#elements.values()) {
-      if (
-        el.category === 'SLAB' ||
-        el.category === 'BEAM' ||
-        el.category === 'COLUMN' ||
-        el.category === 'PROXY' ||
-        el.category === 'EARTHWORKS_FILL' ||
-        el.category === 'SPACE' ||
-        el.category === 'ROOF' ||
-        el.category === 'FOOTING' ||
-        el.category === 'PILE' ||
-        el.category === 'COVERING'
-      ) {
-        el.geometry[Symbol.dispose]();
-      } else if (el.category === 'WALL' || el.category === 'RAILING') {
-        disposeProductBody(el.geometry);
-      } else if (el.category === 'CURTAIN_WALL') {
-        // Curtain wall geometry is a grid of component solids (panels + mullions).
-        for (const panel of el.geometry.panels) panel.solid[Symbol.dispose]();
-        for (const mullion of el.geometry.mullions) mullion.solid[Symbol.dispose]();
+    if (this.#phase === 'DISPOSED' || this.#phase === 'DISPOSING') return;
+    this.#assertMutable();
+    this.#phase = 'DISPOSING';
+    try {
+      const retained: OwnedGeometry[] = [];
+      for (const [solid, owner] of this.#owners) {
+        if (owner.state === 'RETAINED')
+          retained.push({
+            solid,
+            resource: owner.resource,
+            localId: owner.localId,
+            itemIndex: owner.itemIndex,
+          });
       }
+      const cleanup = this.#retire(retained, 'disposeModel');
+      if (cleanup.kind === 'FAILED') {
+        throw new AggregateError(
+          cleanup.diagnostics.map(({ cause }) => cause),
+          'Model geometry cleanup failed'
+        );
+      }
+    } finally {
+      this.#phase = 'DISPOSED';
     }
   }
 
   addSite(spec: SiteSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('SITE', spec, null, options?.stableKey));
+    return this.#create('addSite', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'SITE', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   addBridge(spec: BridgeSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('BRIDGE', spec, null, options?.stableKey));
+    return this.#create('addBridge', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'BRIDGE', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   addBridgePart(spec: BridgePartSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('BRIDGE_PART', spec, null, options?.stableKey));
+    return this.#create('addBridgePart', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'BRIDGE_PART', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   /** Adds a typed IfcEarthworksFill body. Ownership of `spec.solid` transfers
@@ -166,26 +497,56 @@ export class BimModel {
     spec: EarthworksFillSpec,
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    if (spec.solid === null || spec.solid === undefined) {
-      return err(specError('EARTHWORKS_FILL_NO_GEOMETRY', 'EarthworksFillSpec.solid is required'));
-    }
-    const id = this.#makeElement('EARTHWORKS_FILL', spec, spec.solid, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    return ok(id);
+    return this.#create('addEarthworksFill', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      if (snapshot.solid === null || snapshot.solid === undefined) {
+        return err(
+          specError('EARTHWORKS_FILL_NO_GEOMETRY', 'EarthworksFillSpec.solid is required')
+        );
+      }
+      const id = this.#makeElement(
+        command,
+        { category: 'EARTHWORKS_FILL', spec: snapshot, geometry: snapshot.solid },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addBuilding(spec: BuildingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('BUILDING', spec, null, options?.stableKey));
+    return this.#create('addBuilding', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'BUILDING', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   addStorey(spec: StoreySpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('STOREY', spec, null, options?.stableKey));
+    return this.#create('addStorey', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'STOREY', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   /** Reject a duplicate stableKey BEFORE any geometry is built, so the
@@ -215,110 +576,193 @@ export class BimModel {
   }
 
   addWall(spec: WallSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = wallToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement(
-      'WALL',
-      spec,
-      { kind: 'PARAMETRIC', solid: geomResult.value },
-      options?.stableKey
-    );
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addWall', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = wallToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        {
+          category: 'WALL',
+          spec: snapshot,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addSlab(spec: SlabSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = slabToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('SLAB', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addSlab', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = slabToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'SLAB', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addBeam(spec: BeamSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = beamToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('BEAM', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addBeam', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = beamToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'BEAM', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addColumn(spec: ColumnSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = columnToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('COLUMN', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addColumn', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = columnToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'COLUMN', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addSpace(spec: SpaceSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = spaceToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('SPACE', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addSpace', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = spaceToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'SPACE', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addRoof(spec: RoofSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = roofToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('ROOF', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addRoof', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = roofToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'ROOF', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addCurtainWall(
     spec: CurtainWallSpec,
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const gridResult = curtainWallToGrid(spec);
-    if (!gridResult.ok) return err(gridResult.error);
-    const id = this.#makeElement('CURTAIN_WALL', spec, gridResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addCurtainWall', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const gridResult = curtainWallToGrid(snapshot);
+      if (!gridResult.ok) return err(gridResult.error);
+      this.#ownGenerated(
+        command,
+        [...gridResult.value.panels, ...gridResult.value.mullions].map(({ solid }) => solid)
+      );
+      const id = this.#makeElement(
+        command,
+        { category: 'CURTAIN_WALL', spec: snapshot, geometry: gridResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addFooting(spec: FootingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = footingToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('FOOTING', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addFooting', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = footingToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'FOOTING', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addPile(spec: PileSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = pileToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('PILE', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addPile', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = pileToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'PILE', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   /**
@@ -327,12 +771,20 @@ export class BimModel {
    * (the assembly container's Representation is null, valid per IFC4).
    */
   addStair(spec: StairSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const id = this.#makeElement('STAIR', spec, null, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addStair', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const id = this.#makeElement(
+        command,
+        { category: 'STAIR', spec: snapshot, geometry: null },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   /**
@@ -340,119 +792,86 @@ export class BimModel {
    * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
    */
   addRamp(spec: RampSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const id = this.#makeElement('RAMP', spec, null, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addRamp', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const id = this.#makeElement(
+        command,
+        { category: 'RAMP', spec: snapshot, geometry: null },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
   addRailing(spec: RailingSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = railingToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement(
-      'RAILING',
-      spec,
-      { kind: 'PARAMETRIC', solid: geomResult.value },
-      options?.stableKey
-    );
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    return ok(id);
+    return this.#create('addRailing', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = railingToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        {
+          category: 'RAILING',
+          spec: snapshot,
+          geometry: { kind: 'PARAMETRIC', solids: [geomResult.value] },
+        },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      return ok(id);
+    });
   }
 
-  /**
-   * Atomically replaces a parametric wall or railing Body with authoritative,
-   * caller-owned exact solids. Success transfers every supplied handle to this
-   * model. Failure leaves both the model and all supplied handles unchanged.
-   */
-  takeExactProductBody(
-    localId: LocalId,
-    body: Extract<ProductBody, { readonly kind: 'EXACT' }>
-  ): Result<void, BimError> {
-    const target = this.#elements.get(localId);
-    if (target === undefined) {
-      return err(
-        specError('EXACT_BODY_TARGET_NOT_FOUND', `No element found for localId ${localId}`)
-      );
-    }
-    if (target.category !== 'WALL' && target.category !== 'RAILING') {
-      return err(
-        specError(
-          'EXACT_BODY_UNSUPPORTED_CATEGORY',
-          `Exact Product Bodies are supported only for walls and railings, not ${target.category}`
-        )
-      );
-    }
-    if (target.geometry.kind === 'EXACT') {
-      return err(
-        specError(
-          'EXACT_BODY_ALREADY_EXACT',
-          `Element ${localId} already has an exact Product Body`
-        )
-      );
-    }
-
-    const solids: readonly ValidSolid[] = body.solids;
-    if (solids.length === 0) {
-      return err(
-        specError('EXACT_BODY_EMPTY', 'An exact Product Body must contain at least one solid')
-      );
-    }
-    if (solids.includes(target.geometry.solid)) {
-      return err(
-        specError(
-          'EXACT_BODY_SOLID_OWNERSHIP_CONFLICT',
-          `Exact Product Body for ${localId} reuses the target parametric solid`
-        )
-      );
-    }
-    const identities = new Set<ValidSolid>();
-    for (const [itemIndex, solid] of solids.entries()) {
-      if (identities.has(solid)) {
+  /** Ownership transfers only on COMMITTED, including when retirement reports failure. */
+  replaceProductBody(input: {
+    readonly localId: LocalId;
+    readonly body: ProductBody;
+  }): Result<BodyCommitReceipt, BimError> {
+    const result = this.#mutate('replaceProductBody', (command) => {
+      const { localId } = input;
+      const target = this.#elements.get(localId);
+      if (target === undefined) {
+        return err(specError('BODY_TARGET_NOT_FOUND', `No element found for localId ${localId}`));
+      }
+      if (target.category !== 'WALL' && target.category !== 'RAILING') {
+        return err(
+          specError('BODY_UNSUPPORTED_CATEGORY', `Cannot replace a ${target.category} Product Body`)
+        );
+      }
+      const captured = snapshotProductBodyInput(input.body);
+      if (!captured.ok) return captured;
+      for (const [itemIndex, solid] of captured.value.solids.entries())
+        this.#requireUnowned(command, solid, itemIndex);
+      const prepared = validateProductBody(captured.value);
+      if (!prepared.ok) return prepared;
+      if (target.geometry.kind === 'AUTHORITATIVE' && prepared.value.kind === 'PARAMETRIC') {
         return err(
           specError(
-            'EXACT_BODY_DUPLICATE_SOLID',
-            `Exact Product Body item ${itemIndex} duplicates an earlier handle`
+            'BODY_AUTHORITY_TRANSITION',
+            'An authored Body cannot revert to recipe authority'
           )
         );
       }
-      identities.add(solid);
-      if (solid.disposed) {
-        return err(
-          specError(
-            'EXACT_BODY_SOLID_DISPOSED',
-            `Exact Product Body item ${itemIndex} is already disposed`
-          )
-        );
-      }
-      try {
-        if (!isValidSolid(solid)) {
-          return err(
-            specError(
-              'EXACT_BODY_SOLID_INVALID',
-              `Exact Product Body item ${itemIndex} is not a valid solid`
-            )
-          );
-        }
-      } catch (cause) {
-        return err(
-          specError(
-            'EXACT_BODY_SOLID_INVALID',
-            `Exact Product Body item ${itemIndex} could not be validated`,
-            cause
-          )
-        );
-      }
-    }
-
-    const replaced = { ...target, geometry: body } as BimElement<'WALL'> | BimElement<'RAILING'>;
-    this.#elements.set(localId, replaced);
-    disposeProductBody(target.geometry);
-    return ok(undefined);
+      this.#stageElement(command, Object.freeze({ ...target, geometry: prepared.value }));
+      command.retired.push(...this.#prepareRetirement(target));
+      command.recipeEligibility.set(localId, false);
+      return ok({ localId, guid: target.guid });
+    });
+    return result.ok
+      ? ok(
+          Object.freeze({ kind: 'COMMITTED', ...result.value.value, cleanup: result.value.cleanup })
+        )
+      : result;
   }
 
   /**
@@ -465,21 +884,33 @@ export class BimModel {
     hostLocalId?: LocalId,
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const geomResult = coveringToSolid(spec);
-    if (!geomResult.ok) return err(geomResult.error);
-    const id = this.#makeElement('COVERING', spec, geomResult.value, options?.stableKey);
-    this.#associateMaterial(id, spec);
-    this.#associateClassification(id, spec);
-    if (hostLocalId !== undefined) {
-      this.#makeRel<CoversElementRel>({
-        kind: 'COVERS_ELEMENT',
-        hostLocalId,
-        coveringLocalId: id,
-      });
-    }
-    return ok(id);
+    return this.#create('addCovering', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const geomResult = coveringToSolid(snapshot);
+      if (!geomResult.ok) return err(geomResult.error);
+      this.#ownGenerated(command, [geomResult.value]);
+      const id = this.#makeElement(
+        command,
+        { category: 'COVERING', spec: snapshot, geometry: geomResult.value },
+        identity?.stableKey
+      );
+      this.#associateMaterial(command, id, snapshot);
+      this.#associateClassification(command, id, snapshot);
+      if (hostLocalId !== undefined) {
+        this.#makeRel(
+          {
+            kind: 'COVERS_ELEMENT',
+            hostLocalId,
+            coveringLocalId: id,
+          },
+          command
+        );
+      }
+      return ok(id);
+    });
   }
 
   /**
@@ -491,9 +922,19 @@ export class BimModel {
     spec: ElementAssemblySpec,
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('ELEMENT_ASSEMBLY', spec, null, options?.stableKey));
+    return this.#create('addElementAssembly', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'ELEMENT_ASSEMBLY', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   /**
@@ -502,9 +943,19 @@ export class BimModel {
    * {@link assignToGroup}. Returns the zone's localId as a Result.
    */
   addZone(spec: ZoneSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('ZONE', spec, null, options?.stableKey));
+    return this.#create('addZone', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'ZONE', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   /**
@@ -513,9 +964,19 @@ export class BimModel {
    * Returns the system's localId as a Result.
    */
   addSystem(spec: SystemSpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    return ok(this.#makeElement('SYSTEM', spec, null, options?.stableKey));
+    return this.#create('addSystem', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      return ok(
+        this.#makeElement(
+          command,
+          { category: 'SYSTEM', spec: snapshot, geometry: null },
+          identity?.stableKey
+        )
+      );
+    });
   }
 
   /**
@@ -524,6 +985,7 @@ export class BimModel {
    * relationship's localId.
    */
   assignToGroup(groupId: LocalId, memberIds: readonly LocalId[]): LocalId {
+    this.#assertMutable();
     let existingRel: AssignsToGroupRel | undefined;
     for (const rel of this.#relationships.values()) {
       if (rel.kind === 'ASSIGNS_TO_GROUP' && rel.groupLocalId === groupId) {
@@ -539,7 +1001,7 @@ export class BimModel {
       this.#relationships.set(existingRel.localId, updated);
       return existingRel.localId;
     }
-    return this.#makeRel<AssignsToGroupRel>({
+    return this.#makeRel({
       kind: 'ASSIGNS_TO_GROUP',
       groupLocalId: groupId,
       memberLocalIds: [...memberIds],
@@ -552,6 +1014,7 @@ export class BimModel {
    * relationship in call order.
    */
   nest(parentId: LocalId, childId: LocalId): void {
+    this.#assertMutable();
     let existingRel: NestsRel | undefined;
     for (const rel of this.#relationships.values()) {
       if (rel.kind === 'NESTS' && rel.relatingObject === parentId) {
@@ -566,7 +1029,7 @@ export class BimModel {
       };
       this.#relationships.set(existingRel.localId, updated);
     } else {
-      this.#makeRel<NestsRel>({
+      this.#makeRel({
         kind: 'NESTS',
         relatingObject: parentId,
         relatedObjects: [childId],
@@ -583,7 +1046,8 @@ export class BimModel {
     relatedElementLocalId: LocalId,
     description?: string
   ): LocalId {
-    return this.#makeRel<ConnectsElementsRel>({
+    this.#assertMutable();
+    return this.#makeRel({
       kind: 'CONNECTS_ELEMENTS',
       relatingElementLocalId,
       relatedElementLocalId,
@@ -602,7 +1066,8 @@ export class BimModel {
     relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
     description?: string
   ): LocalId {
-    return this.#makeRel<ConnectsPathElementsRel>({
+    this.#assertMutable();
+    return this.#makeRel({
       kind: 'CONNECTS_PATH_ELEMENTS',
       relatingElementLocalId,
       relatedElementLocalId,
@@ -619,6 +1084,7 @@ export class BimModel {
    * representation item is surfaced by their geometry writers).
    */
   setSurfaceStyle(elementLocalId: LocalId, style: SurfaceStyleSpec): void {
+    this.#assertMutable();
     this.#surfaceStyles.set(elementLocalId, style);
   }
 
@@ -635,7 +1101,8 @@ export class BimModel {
     elementLocalId: LocalId,
     connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED' = 'PHYSICAL'
   ): LocalId {
-    return this.#makeRel<SpaceBoundaryRel>({
+    this.#assertMutable();
+    return this.#makeRel({
       kind: 'SPACE_BOUNDARY',
       spaceLocalId,
       elementLocalId,
@@ -648,7 +1115,8 @@ export class BimModel {
    * IfcRelAssociatesClassification on export. Returns the relationship's localId.
    */
   addClassification(ref: ClassificationRef, elementLocalIds: readonly LocalId[]): LocalId {
-    return this.#makeRel<AssociatesClassificationRel>({
+    this.#assertMutable();
+    return this.#makeRel({
       kind: 'ASSOCIATES_CLASSIFICATION',
       ref,
       relatedObjects: [...elementLocalIds],
@@ -656,6 +1124,7 @@ export class BimModel {
   }
 
   #associateMaterial(
+    command: ModelCommand,
     id: LocalId,
     spec: {
       readonly materialName: string;
@@ -664,29 +1133,36 @@ export class BimModel {
     }
   ): void {
     const hasLayers = spec.materialLayers !== undefined && spec.materialLayers.length > 0;
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [id],
-      ...(hasLayers
-        ? {
-            materialLayers: spec.materialLayers,
-            layerSetName: spec.layerSetName ?? spec.materialName,
-          }
-        : {}),
-    });
+    this.#makeRel(
+      {
+        kind: 'ASSOCIATES_MATERIAL',
+        materialName: spec.materialName,
+        relatedObjects: [id],
+        ...(hasLayers
+          ? {
+              materialLayers: spec.materialLayers,
+              layerSetName: spec.layerSetName ?? spec.materialName,
+            }
+          : {}),
+      },
+      command
+    );
   }
 
   #associateClassification(
+    command: ModelCommand,
     id: LocalId,
     spec: { readonly classification?: ClassificationRef | undefined }
   ): void {
     if (spec.classification === undefined) return;
-    this.#makeRel<AssociatesClassificationRel>({
-      kind: 'ASSOCIATES_CLASSIFICATION',
-      ref: spec.classification,
-      relatedObjects: [id],
-    });
+    this.#makeRel(
+      {
+        kind: 'ASSOCIATES_CLASSIFICATION',
+        ref: spec.classification,
+        relatedObjects: [id],
+      },
+      command
+    );
   }
 
   /**
@@ -695,254 +1171,319 @@ export class BimModel {
    * {@link ProxySpec.solid}).
    */
   addProxy(spec: ProxySpec, options?: ElementIdentityOptions): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    if (spec.solid === null || spec.solid === undefined) {
-      return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
-    }
-    const id = this.#makeElement('PROXY', spec, spec.solid, options?.stableKey);
-    if (spec.materialName !== undefined) {
-      this.#makeRel<AssociatesMaterialRel>({
-        kind: 'ASSOCIATES_MATERIAL',
-        materialName: spec.materialName,
-        relatedObjects: [id],
-      });
-    }
-    return ok(id);
+    return this.#create('addProxy', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      if (snapshot.solid === null || snapshot.solid === undefined) {
+        return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
+      }
+      const id = this.#makeElement(
+        command,
+        { category: 'PROXY', spec: snapshot, geometry: snapshot.solid },
+        identity?.stableKey
+      );
+      if (snapshot.materialName !== undefined) {
+        this.#makeRel(
+          {
+            kind: 'ASSOCIATES_MATERIAL',
+            materialName: snapshot.materialName,
+            relatedObjects: [id],
+          },
+          command
+        );
+      }
+      return ok(id);
+    });
   }
 
   addDoor(spec: DoorSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
-    const wall = this.#elements.get(spec.wallLocalId);
-    if (wall === undefined || wall.category !== 'WALL') {
-      return err(specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
-    }
-    if (wall.geometry.kind === 'EXACT') return exactWallBodyImmutable();
-    const keyCheck = this.#checkOpeningKeys(options);
-    if (!keyCheck.ok) return keyCheck;
-    if (spec.offsetAlongWall + spec.width > wall.spec.length) {
-      return err(
-        specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetAlongWall + width) exceeds wall length')
-      );
-    }
-    if (spec.offsetFromFloor + spec.height > wall.spec.height) {
-      return err(
-        specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetFromFloor + height) exceeds wall height')
-      );
-    }
-    const openingSpec: WallOpeningSpec = {
-      kind: 'WALL_OPENING',
-      width: spec.width,
-      height: spec.height,
-      offsetAlongWall: spec.offsetAlongWall,
-      offsetFromFloor: spec.offsetFromFloor,
-    };
+    return this.#create('addDoor', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const wall = this.#elements.get(snapshot.wallLocalId);
+      if (wall === undefined || wall.category !== 'WALL') {
+        return err(
+          specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${snapshot.wallLocalId}`)
+        );
+      }
+      const host = wallOpeningSolid(wall.geometry);
+      if (!host.ok) return host;
+      const keyCheck = this.#checkOpeningKeys(identity);
+      if (!keyCheck.ok) return keyCheck;
+      if (snapshot.offsetAlongWall + snapshot.width > wall.spec.length) {
+        return err(
+          specError(
+            'DOOR_EXCEEDS_WALL_BOUNDS',
+            'Door (offsetAlongWall + width) exceeds wall length'
+          )
+        );
+      }
+      if (snapshot.offsetFromFloor + snapshot.height > wall.spec.height) {
+        return err(
+          specError(
+            'DOOR_EXCEEDS_WALL_BOUNDS',
+            'Door (offsetFromFloor + height) exceeds wall height'
+          )
+        );
+      }
+      const openingSpec: WallOpeningSpec = {
+        kind: 'WALL_OPENING',
+        width: snapshot.width,
+        height: snapshot.height,
+        offsetAlongWall: snapshot.offsetAlongWall,
+        offsetFromFloor: snapshot.offsetFromFloor,
+      };
 
-    const cutResult = this.#cutWallGeometry(wall, openingSpec);
-    if (!cutResult.ok) return err(cutResult.error);
-    this.#replaceWallGeometry(wall, cutResult.value);
+      const cutResult = cutOpeningSolid({
+        host: host.value,
+        makeTool: () => openingToSolid(openingSpec, wall.spec.thickness),
+        hostKind: 'WALL',
+      });
+      if (!cutResult.ok) return err(cutResult.error);
+      this.#replaceWallGeometry(command, wall, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
-    this.#makeRel<VoidsWallRel>({
-      kind: 'VOIDS_WALL',
-      wallLocalId: spec.wallLocalId,
-      openingLocalId: openingId,
+      const openingId = this.#makeElement(
+        command,
+        { category: 'OPENING', spec: openingSpec, geometry: null },
+        identity?.openingStableKey
+      );
+      this.#makeRel(
+        {
+          kind: 'VOIDS_WALL',
+          wallLocalId: snapshot.wallLocalId,
+          openingLocalId: openingId,
+        },
+        command
+      );
+      const doorId = this.#makeElement(
+        command,
+        { category: 'DOOR', spec: snapshot, geometry: null },
+        identity?.stableKey
+      );
+      this.#makeRel(
+        {
+          kind: 'FILLS_OPENING',
+          openingLocalId: openingId,
+          fillerLocalId: doorId,
+        },
+        command
+      );
+      this.#makeRel(
+        {
+          kind: 'ASSOCIATES_MATERIAL',
+          materialName: snapshot.materialName,
+          relatedObjects: [doorId],
+        },
+        command
+      );
+      return ok(doorId);
     });
-    const doorId = this.#makeElement('DOOR', spec, null, options?.stableKey);
-    this.#makeRel<FillsOpeningRel>({
-      kind: 'FILLS_OPENING',
-      openingLocalId: openingId,
-      fillerLocalId: doorId,
-    });
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [doorId],
-    });
-    return ok(doorId);
   }
 
   addWindow(spec: WindowSpec, options?: OpeningIdentityOptions): Result<LocalId, BimError> {
-    const wall = this.#elements.get(spec.wallLocalId);
-    if (wall === undefined || wall.category !== 'WALL') {
-      return err(
-        specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`)
-      );
-    }
-    if (wall.geometry.kind === 'EXACT') return exactWallBodyImmutable();
-    const keyCheck = this.#checkOpeningKeys(options);
-    if (!keyCheck.ok) return keyCheck;
-    if (spec.offsetAlongWall + spec.width > wall.spec.length) {
-      return err(
-        specError(
-          'WINDOW_EXCEEDS_WALL_BOUNDS',
-          'Window (offsetAlongWall + width) exceeds wall length'
-        )
-      );
-    }
-    if (spec.offsetFromFloor + spec.height > wall.spec.height) {
-      return err(
-        specError(
-          'WINDOW_EXCEEDS_WALL_BOUNDS',
-          'Window (offsetFromFloor + height) exceeds wall height'
-        )
-      );
-    }
-    const openingSpec: WallOpeningSpec = {
-      kind: 'WALL_OPENING',
-      width: spec.width,
-      height: spec.height,
-      offsetAlongWall: spec.offsetAlongWall,
-      offsetFromFloor: spec.offsetFromFloor,
-    };
+    return this.#create('addWindow', (command) => {
+      const snapshot = Object.freeze({ ...spec });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const wall = this.#elements.get(snapshot.wallLocalId);
+      if (wall === undefined || wall.category !== 'WALL') {
+        return err(
+          specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${snapshot.wallLocalId}`)
+        );
+      }
+      const host = wallOpeningSolid(wall.geometry);
+      if (!host.ok) return host;
+      const keyCheck = this.#checkOpeningKeys(identity);
+      if (!keyCheck.ok) return keyCheck;
+      if (snapshot.offsetAlongWall + snapshot.width > wall.spec.length) {
+        return err(
+          specError(
+            'WINDOW_EXCEEDS_WALL_BOUNDS',
+            'Window (offsetAlongWall + width) exceeds wall length'
+          )
+        );
+      }
+      if (snapshot.offsetFromFloor + snapshot.height > wall.spec.height) {
+        return err(
+          specError(
+            'WINDOW_EXCEEDS_WALL_BOUNDS',
+            'Window (offsetFromFloor + height) exceeds wall height'
+          )
+        );
+      }
+      const openingSpec: WallOpeningSpec = {
+        kind: 'WALL_OPENING',
+        width: snapshot.width,
+        height: snapshot.height,
+        offsetAlongWall: snapshot.offsetAlongWall,
+        offsetFromFloor: snapshot.offsetFromFloor,
+      };
 
-    const cutResult = this.#cutWallGeometry(wall, openingSpec);
-    if (!cutResult.ok) return err(cutResult.error);
-    this.#replaceWallGeometry(wall, cutResult.value);
+      const cutResult = cutOpeningSolid({
+        host: host.value,
+        makeTool: () => openingToSolid(openingSpec, wall.spec.thickness),
+        hostKind: 'WALL',
+      });
+      if (!cutResult.ok) return err(cutResult.error);
+      this.#replaceWallGeometry(command, wall, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.openingStableKey);
-    this.#makeRel<VoidsWallRel>({
-      kind: 'VOIDS_WALL',
-      wallLocalId: spec.wallLocalId,
-      openingLocalId: openingId,
+      const openingId = this.#makeElement(
+        command,
+        { category: 'OPENING', spec: openingSpec, geometry: null },
+        identity?.openingStableKey
+      );
+      this.#makeRel(
+        {
+          kind: 'VOIDS_WALL',
+          wallLocalId: snapshot.wallLocalId,
+          openingLocalId: openingId,
+        },
+        command
+      );
+      const windowId = this.#makeElement(
+        command,
+        { category: 'WINDOW', spec: snapshot, geometry: null },
+        identity?.stableKey
+      );
+      this.#makeRel(
+        {
+          kind: 'FILLS_OPENING',
+          openingLocalId: openingId,
+          fillerLocalId: windowId,
+        },
+        command
+      );
+      this.#makeRel(
+        {
+          kind: 'ASSOCIATES_MATERIAL',
+          materialName: snapshot.materialName,
+          relatedObjects: [windowId],
+        },
+        command
+      );
+      return ok(windowId);
     });
-    const windowId = this.#makeElement('WINDOW', spec, null, options?.stableKey);
-    this.#makeRel<FillsOpeningRel>({
-      kind: 'FILLS_OPENING',
-      openingLocalId: openingId,
-      fillerLocalId: windowId,
-    });
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [windowId],
-    });
-    return ok(windowId);
   }
 
   addSlabOpening(
     input: SlabOpeningInput,
     options?: ElementIdentityOptions
   ): Result<LocalId, BimError> {
-    const keyCheck = this.#checkStableKey(options);
-    if (!keyCheck.ok) return keyCheck;
-    const slab = this.#elements.get(input.slabLocalId);
-    if (slab === undefined || slab.category !== 'SLAB') {
-      return err(
-        specError('SLAB_OPENING_SLAB_NOT_FOUND', `No slab found for localId ${input.slabLocalId}`)
-      );
-    }
-    if (input.offsetX + input.sizeX > slab.spec.length) {
-      return err(
-        specError(
-          'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
-          'Opening (offsetX + sizeX) exceeds slab length'
-        )
-      );
-    }
-    if (input.offsetY + input.sizeY > slab.spec.width) {
-      return err(
-        specError(
-          'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
-          'Opening (offsetY + sizeY) exceeds slab width'
-        )
-      );
-    }
-    // Reject overlap with existing slab openings — overlapping rectangles would
-    // double-subtract from NetArea/NetVolume in Qto_SlabBaseQuantities.
-    const ax0 = input.offsetX;
-    const ax1 = input.offsetX + input.sizeX;
-    const ay0 = input.offsetY;
-    const ay1 = input.offsetY + input.sizeY;
-    for (const rel of this.#relationships.values()) {
-      if (rel.kind !== 'VOIDS_SLAB' || rel.slabLocalId !== input.slabLocalId) continue;
-      const other = this.#elements.get(rel.openingLocalId);
-      if (other === undefined || other.category !== 'OPENING') continue;
-      if (other.spec.kind !== 'SLAB_OPENING') continue;
-      const bx0 = other.spec.offsetX;
-      const bx1 = other.spec.offsetX + other.spec.sizeX;
-      const by0 = other.spec.offsetY;
-      const by1 = other.spec.offsetY + other.spec.sizeY;
-      if (ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1) {
+    return this.#create('addSlabOpening', (command) => {
+      const snapshot = Object.freeze({ ...input });
+      const identity = options === undefined ? undefined : Object.freeze({ ...options });
+      const keyCheck = this.#checkStableKey(identity);
+      if (!keyCheck.ok) return keyCheck;
+      const slab = this.#elements.get(snapshot.slabLocalId);
+      if (slab === undefined || slab.category !== 'SLAB') {
         return err(
           specError(
-            'SLAB_OPENING_OVERLAP',
-            'Slab opening overlaps an existing opening on the same slab'
+            'SLAB_OPENING_SLAB_NOT_FOUND',
+            `No slab found for localId ${snapshot.slabLocalId}`
           )
         );
       }
-    }
+      if (snapshot.offsetX + snapshot.sizeX > slab.spec.length) {
+        return err(
+          specError(
+            'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
+            'Opening (offsetX + sizeX) exceeds slab length'
+          )
+        );
+      }
+      if (snapshot.offsetY + snapshot.sizeY > slab.spec.width) {
+        return err(
+          specError(
+            'SLAB_OPENING_EXCEEDS_SLAB_BOUNDS',
+            'Opening (offsetY + sizeY) exceeds slab width'
+          )
+        );
+      }
+      // Reject overlap with existing slab openings — overlapping rectangles would
+      // double-subtract from NetArea/NetVolume in Qto_SlabBaseQuantities.
+      const ax0 = snapshot.offsetX;
+      const ax1 = snapshot.offsetX + snapshot.sizeX;
+      const ay0 = snapshot.offsetY;
+      const ay1 = snapshot.offsetY + snapshot.sizeY;
+      for (const rel of this.#relationships.values()) {
+        if (rel.kind !== 'VOIDS_SLAB' || rel.slabLocalId !== snapshot.slabLocalId) continue;
+        const other = this.#elements.get(rel.openingLocalId);
+        if (other === undefined || other.category !== 'OPENING') continue;
+        if (other.spec.kind !== 'SLAB_OPENING') continue;
+        const bx0 = other.spec.offsetX;
+        const bx1 = other.spec.offsetX + other.spec.sizeX;
+        const by0 = other.spec.offsetY;
+        const by1 = other.spec.offsetY + other.spec.sizeY;
+        if (ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1) {
+          return err(
+            specError(
+              'SLAB_OPENING_OVERLAP',
+              'Slab opening overlaps an existing opening on the same slab'
+            )
+          );
+        }
+      }
 
-    const openingSpec: SlabOpeningSpec = {
-      kind: 'SLAB_OPENING',
-      sizeX: input.sizeX,
-      sizeY: input.sizeY,
-      offsetX: input.offsetX,
-      offsetY: input.offsetY,
-    };
+      const openingSpec: SlabOpeningSpec = {
+        kind: 'SLAB_OPENING',
+        sizeX: snapshot.sizeX,
+        sizeY: snapshot.sizeY,
+        offsetX: snapshot.offsetX,
+        offsetY: snapshot.offsetY,
+      };
 
-    const cutResult = this.#cutSlabGeometry(slab, openingSpec);
-    if (!cutResult.ok) return err(cutResult.error);
-    this.#replaceSlabGeometry(slab, cutResult.value);
+      const cutResult = cutOpeningSolid({
+        host: slab.geometry,
+        makeTool: () => slabOpeningToSolid(openingSpec, slab.spec.thickness),
+        hostKind: 'SLAB',
+      });
+      if (!cutResult.ok) return err(cutResult.error);
+      this.#replaceSlabGeometry(command, slab, cutResult.value);
 
-    const openingId = this.#makeElement('OPENING', openingSpec, null, options?.stableKey);
-    this.#makeRel<VoidsSlabRel>({
-      kind: 'VOIDS_SLAB',
-      slabLocalId: input.slabLocalId,
-      openingLocalId: openingId,
+      const openingId = this.#makeElement(
+        command,
+        { category: 'OPENING', spec: openingSpec, geometry: null },
+        identity?.stableKey
+      );
+      this.#makeRel(
+        {
+          kind: 'VOIDS_SLAB',
+          slabLocalId: snapshot.slabLocalId,
+          openingLocalId: openingId,
+        },
+        command
+      );
+      return ok(openingId);
     });
-    return ok(openingId);
   }
 
-  #cutWallGeometry(
+  #replaceWallGeometry(
+    command: ModelCommand,
     wall: BimElement<'WALL'>,
-    openingSpec: WallOpeningSpec
-  ): Result<ValidSolid, BimError> {
-    if (wall.geometry.kind === 'EXACT') {
-      return exactWallBodyImmutable();
-    }
-    const toolResult = openingToSolid(openingSpec, wall.spec.thickness);
-    if (!toolResult.ok) return err(toolResult.error);
-    using tool = toolResult.value;
-    const cutResult = cut(wall.geometry.solid, tool);
-    if (!cutResult.ok) {
-      return err(
-        fromBrepError(cutResult.error, 'WALL_CUT_FAILED', 'Boolean cut of wall with opening failed')
-      );
-    }
-    return ok(cutResult.value);
-  }
-
-  #replaceWallGeometry(wall: BimElement<'WALL'>, newGeometry: ValidSolid): void {
-    const oldGeometry = wall.geometry;
-    const replaced: BimElement<'WALL'> = {
+    newGeometry: ValidSolid
+  ): void {
+    this.#ownGenerated(command, [newGeometry]);
+    const prepared = protectElement({
       ...wall,
-      geometry: { kind: 'PARAMETRIC', solid: newGeometry },
-    };
-    this.#elements.set(wall.localId, replaced);
-    disposeProductBody(oldGeometry);
+      geometry: { kind: 'PARAMETRIC', solids: [newGeometry] },
+    });
+    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+    this.#stageElement(command, prepared.value);
+    command.retired.push(...this.#prepareRetirement(wall));
+    // Opening edits preserve the existing recipe eligibility, never restore it.
   }
 
-  #cutSlabGeometry(
+  #replaceSlabGeometry(
+    command: ModelCommand,
     slab: BimElement<'SLAB'>,
-    openingSpec: SlabOpeningSpec
-  ): Result<ValidSolid, BimError> {
-    const toolResult = slabOpeningToSolid(openingSpec, slab.spec.thickness);
-    if (!toolResult.ok) return err(toolResult.error);
-    using tool = toolResult.value;
-    const cutResult = cut(slab.geometry, tool);
-    if (!cutResult.ok) {
-      return err(
-        fromBrepError(cutResult.error, 'SLAB_CUT_FAILED', 'Boolean cut of slab with opening failed')
-      );
-    }
-    return ok(cutResult.value);
-  }
-
-  #replaceSlabGeometry(slab: BimElement<'SLAB'>, newGeometry: ValidSolid): void {
-    const oldGeometry = slab.geometry;
-    const replaced: BimElement<'SLAB'> = { ...slab, geometry: newGeometry };
-    this.#elements.set(slab.localId, replaced);
-    oldGeometry[Symbol.dispose]();
+    newGeometry: ValidSolid
+  ): void {
+    this.#ownGenerated(command, [newGeometry]);
+    const prepared = protectElement({ ...slab, geometry: newGeometry });
+    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+    this.#stageElement(command, prepared.value);
+    command.retired.push(...this.#prepareRetirement(slab));
   }
 
   getDoors(): BimElement<'DOOR'>[] {
@@ -962,6 +1503,7 @@ export class BimModel {
   }
 
   aggregate(parentId: LocalId, childId: LocalId): void {
+    this.#assertMutable();
     let existingRel: AggregatesRel | undefined;
     for (const rel of this.#relationships.values()) {
       if (rel.kind === 'AGGREGATES' && rel.relatingObject === parentId) {
@@ -976,7 +1518,7 @@ export class BimModel {
       };
       this.#relationships.set(existingRel.localId, updated);
     } else {
-      this.#makeRel<AggregatesRel>({
+      this.#makeRel({
         kind: 'AGGREGATES',
         relatingObject: parentId,
         relatedObjects: [childId],
@@ -985,6 +1527,7 @@ export class BimModel {
   }
 
   placeIn(elementId: LocalId, containerId: LocalId): void {
+    this.#assertMutable();
     let existingRel: ContainedInRel | undefined;
     for (const rel of this.#relationships.values()) {
       if (rel.kind === 'CONTAINED_IN' && rel.relatingStructure === containerId) {
@@ -999,7 +1542,7 @@ export class BimModel {
       };
       this.#relationships.set(existingRel.localId, updated);
     } else {
-      this.#makeRel<ContainedInRel>({
+      this.#makeRel({
         kind: 'CONTAINED_IN',
         relatingStructure: containerId,
         relatedElements: [elementId],
@@ -1015,6 +1558,11 @@ export class BimModel {
 
   getElement(id: LocalId): AnyBimElement | null {
     return this.#elements.get(id) ?? null;
+  }
+
+  /** Whether recipe commands still justify this element's recipe-derived quantities. */
+  isRecipeQuantityEligible(id: LocalId): boolean {
+    return this.#recipeQuantityEligible.has(id);
   }
 
   /**
@@ -1236,41 +1784,41 @@ export class BimModel {
     return [...this.#relationships.values()];
   }
 
-  #makeElement<C extends AnyBimElement['category']>(
-    category: C,
-    spec: Extract<AnyBimElement, { category: C }>['spec'],
-    geometry: Extract<AnyBimElement, { category: C }>['geometry'],
-    stableKey?: string
-  ): LocalId {
-    const localId = this.#counter.next();
-    // Deterministic GUID. Default key: (category, localId), so re-serializing
-    // an identical model is byte-for-byte stable. A caller-supplied stableKey
-    // (e.g. a families key path) replaces the positional key, making the
-    // GlobalId stable under element reordering as well. Duplicates would mint
-    // two elements sharing a GlobalId — an IFC validity break — so they throw.
-    if (stableKey !== undefined) {
-      if (this.#usedStableKeys.has(stableKey)) {
-        throw new Error(`BimModel: duplicate stableKey '${stableKey}'`);
-      }
-      this.#usedStableKeys.add(stableKey);
+  #makeElement(command: ModelCommand, fields: ElementFields, stableKey?: string): LocalId {
+    if (
+      stableKey !== undefined &&
+      (this.#usedStableKeys.has(stableKey) || command.stableKeys.has(stableKey))
+    ) {
+      throw new RejectedModelCommand(
+        specError('DUPLICATE_STABLE_KEY', `BimModel: duplicate stableKey '${stableKey}'`)
+      );
     }
-    const guid: IfcGuid = deriveIfcGuidSync(
+    if (fields.category === 'PROXY' || fields.category === 'EARTHWORKS_FILL') {
+      this.#requireUnowned(command, fields.geometry, 0);
+    }
+    const localId = command.counter.next();
+    const guid = deriveIfcGuidSync(
       stableKey !== undefined
-        ? `elem:${this.#modelScope}:${stableKey}`
-        : makeElementKey(this.#modelScope, category, localId)
+        ? `elem:${command.modelScope}:${stableKey}`
+        : makeElementKey(command.modelScope, fields.category, localId)
     );
-    const el = { guid, localId, category, spec, geometry } as AnyBimElement;
-    this.#elements.set(localId, el);
+    const prepared = protectElement({ ...fields, guid, localId });
+    if (!prepared.ok) throw new RejectedModelCommand(prepared.error);
+    this.#stageElement(command, prepared.value);
+    if (stableKey !== undefined) command.stableKeys.add(stableKey);
+    command.recipeEligibility.set(localId, true);
     return localId;
   }
 
-  #makeRel<R extends BimRelationship>(fields: Omit<R, 'guid' | 'localId'>): LocalId {
-    const localId = this.#counter.next();
-    // Deterministic GUID keyed on (kind, localId). localIds are assigned in a
-    // fixed sequence, so an identical model produces identical relationship GUIDs.
-    const guid: IfcGuid = deriveIfcGuidSync(makeRelKey(this.#modelScope, fields.kind, localId));
-    const rel = { ...fields, guid, localId } as unknown as BimRelationship;
-    this.#relationships.set(localId, rel);
+  #makeRel(fields: RelationshipFields, command?: ModelCommand): LocalId {
+    if (command === undefined) this.#assertMutable();
+    const localId = (command?.counter ?? this.#counter).next();
+    const guid = deriveIfcGuidSync(
+      makeRelKey(command?.modelScope ?? this.#modelScope, fields.kind, localId)
+    );
+    const rel = Object.freeze({ ...fields, guid, localId });
+    if (command === undefined) this.#relationships.set(localId, rel);
+    else command.relationships.push(rel);
     return localId;
   }
 }
