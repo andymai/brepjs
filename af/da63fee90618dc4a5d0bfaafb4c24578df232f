@@ -1,0 +1,23 @@
+packages/brepjs-bim/src/familiesProductBody.ts
+  s_ecfadab7dc0ed4::t_b4fad02f79c278 220-221
+packages/brepjs-bim/tests/familiesProductBody.test.ts
+  s_ecfadab7dc0ed4::t_b4fad02f79c278 74,143
+  s_ecfadab7dc0ed4::t_859304d268024d 70-73,75-78,144-149
+  s_ecfadab7dc0ed4::t_9356c4e8a269af 150-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "afda63fee90618dc4a5d0bfaafb4c24578df232f",
+  "prompts": {},
+  "sessions": {
+    "s_ecfadab7dc0ed4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31e974b0-81fc-44e7-84c5-a753966b5aa7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
