@@ -2,6 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   box,
+  fuseAll,
+  rotate,
   linearPattern,
   circularPattern,
   isOk,
@@ -60,6 +62,21 @@ describe('circularPattern', () => {
     expect(pattern).toBeDefined();
     const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 4, -1);
+  });
+
+  it('unions copies that overlap at the axis', () => {
+    using bar0 = box(10, 2, 2);
+    using bar = translate(bar0, [-1, -1, 0]);
+    using pattern = unwrap(circularPattern(bar, [0, 0, 1], 6));
+    const copies = [0, 1, 2, 3, 4, 5].map((i) => rotate(bar, i * 60, { axis: [0, 0, 1] }));
+    try {
+      using union = unwrap(fuseAll(copies));
+      const expected = unwrap(measureVolume(union));
+      expect(expected).toBeLessThan(6 * 10 * 2 * 2);
+      expect(unwrap(measureVolume(pattern))).toBeCloseTo(expected, 6);
+    } finally {
+      for (const c of copies) c[Symbol.dispose]();
+    }
   });
 
   it('creates a partial circular pattern', () => {

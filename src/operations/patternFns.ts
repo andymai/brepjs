@@ -40,14 +40,10 @@ export function linearPattern(
   const ocShapes = getKernel().linearPattern(shape.wrapped, [...dir], spacing, count);
   const copies = ocShapes.map((s) => castResultShape(s) as Shape3D);
 
-  // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
-  // expensive intersection calculations (default unless caller overrides)
+  // No glue by default: OCCT's glue modes skip face/face intersection, so
+  // copies that overlap rather than touch would come back unfused.
   try {
-    return fuseAll(copies, {
-      optimisation: 'sameFace',
-      ...options,
-      unsafe: true,
-    });
+    return fuseAll(copies, { ...options, unsafe: true });
   } finally {
     // fuseAll is immutable and does not consume its inputs — dispose the copies.
     for (const c of copies) c[Symbol.dispose]();
@@ -89,14 +85,10 @@ export function circularPattern(
   );
   const copies = ocShapes.map((s) => castResultShape(s) as Shape3D);
 
-  // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
-  // expensive intersection calculations (default unless caller overrides)
+  // No glue by default: OCCT's glue modes skip face/face intersection, so
+  // copies that overlap rather than touch would come back unfused.
   try {
-    return fuseAll(copies, {
-      optimisation: 'sameFace',
-      ...options,
-      unsafe: true,
-    });
+    return fuseAll(copies, { ...options, unsafe: true });
   } finally {
     // fuseAll is immutable and does not consume its inputs — dispose the copies.
     for (const c of copies) c[Symbol.dispose]();
