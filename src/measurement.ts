@@ -15,3 +15,4 @@ export {
   type PhysicalProps,
   type DistanceProps,
 } from './measurement/measureFns.js';
+export { orientedBoundingBox, type OrientedBoundingBox } from './measurement/orientedBoxFns.js';

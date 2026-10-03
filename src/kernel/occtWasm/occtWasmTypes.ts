@@ -474,6 +474,8 @@ export interface OcctKernelWasm {
   getSurfaceArea(id: number): number;
   getLength(id: number): number;
   getCenterOfMass(id: number): EmVectorDouble;
+  /** Row-major 3×3 matrix of inertia about the center of mass. */
+  getInertia(id: number): EmVectorDouble;
   getSurfaceCenterOfMass(faceId: number): EmVectorDouble;
   getLinearCenterOfMass(id: number): EmVectorDouble;
   surfaceCurvature(faceId: number, u: number, v: number): EmVectorDouble;

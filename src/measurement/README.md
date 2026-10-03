@@ -4,9 +4,10 @@
 
 ## Key Files
 
-| File            | Purpose                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `measureFns.ts` | Functional API: `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, property helpers |
+| File                | Purpose                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `measureFns.ts`     | Functional API: `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, property helpers |
+| `orientedBoxFns.ts` | `orientedBoundingBox`: a box on the principal axes of inertia (kernels with `inertia`)               |
 
 ## API (`measureFns.ts`)
 
@@ -22,6 +23,7 @@ All functions return plain numbers or objects; no memory management needed.
 | `measureVolumeProps(s)`   | `Shape3D`            | `{mass, centerOfMass: Vec3}` | Volume + center of mass   |
 | `measureSurfaceProps(s)`  | `Face \| Shape3D`    | `{mass, centerOfMass: Vec3}` | Area + center of mass     |
 | `measureLinearProps(s)`   | `AnyShape`           | `{mass, centerOfMass: Vec3}` | Length + center of mass   |
+| `orientedBoundingBox(s)`  | `Shape3D`            | `{center, axes, size}`       | Box in the shape's frame  |
 
 ## Physical Properties
 

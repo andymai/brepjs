@@ -36,6 +36,17 @@ export function centerOfMass(k: OcctKernelWasm, shape: KernelShape): [number, nu
   }
 }
 
+export function inertia(k: OcctKernelWasm, shape: KernelShape): number[] {
+  const vec = k.getInertia(unwrap(shape));
+  try {
+    const out: number[] = [];
+    for (let i = 0; i < vec.size(); i++) out.push(vec.get(i));
+    return out;
+  } finally {
+    vec.delete();
+  }
+}
+
 export function linearCenterOfMass(
   k: OcctKernelWasm,
   shape: KernelShape
