@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.1](https://github.com/andymai/brepjs/compare/brepjs-v20.1.0...brepjs-v20.1.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **patterns:** union overlapping pattern copies correctly ([#2368](https://github.com/andymai/brepjs/issues/2368)) ([38ee72b](https://github.com/andymai/brepjs/commit/38ee72b2137935f1f942f80faf3ca76837562a23))
+
 ## [20.1.0](https://github.com/andymai/brepjs/compare/brepjs-v20.0.1...brepjs-v20.1.0) (2026-10-03)
 
 
