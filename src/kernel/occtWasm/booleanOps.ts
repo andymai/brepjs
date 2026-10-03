@@ -16,6 +16,7 @@ import type {
   ShapeEvolution,
 } from '@/kernel/types.js';
 import type {
+  EmBBoxData,
   EmVectorInt,
   EmVectorUint32,
   OcctKernelWasm,
@@ -95,7 +96,9 @@ export function runBooleanOp(
  * Call `fn` with a tool's solids as separate ids, or with the tool alone when
  * it holds at most one solid, and report whether it was split. Solids are
  * handed to an n-way boolean as separate tools, which OCCT allows to overlap,
- * where one compound of overlapping solids is invalid input.
+ * where one compound of overlapping solids is invalid input. A tool whose
+ * solids have pairwise disjoint bounding boxes stays whole: its solids cannot
+ * interfere, and OCCT runs it faster as one operand than as several.
  */
 export function withToolIds<R>(
   k: OcctKernelWasm,
@@ -126,22 +129,45 @@ export function withSolidIds<R>(
 }
 
 /**
- * Append `id`'s solids to `ids`, or `id` itself when it holds at most one.
- * Every solid copy the query allocated goes on `extracted` for release.
+ * Append `id`'s solids to `ids`, or `id` itself when it holds at most one or
+ * its solids cannot interfere. Every solid copy the query allocated goes on
+ * `extracted` for release.
  */
 function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): void {
   const solids = k.getSubShapes(id, 'solid');
   try {
-    const n = solids.size();
-    for (let i = 0; i < n; i++) {
+    const solidIds: number[] = [];
+    for (let i = 0; i < solids.size(); i++) {
       const solidId = solids.get(i);
       if (solidId !== id) extracted.push(solidId);
-      if (n > 1) ids.push(solidId);
+      solidIds.push(solidId);
     }
-    if (n <= 1) ids.push(id);
+    if (solidIds.length > 1 && !boundsPairwiseDisjoint(k, solidIds)) ids.push(...solidIds);
+    else ids.push(id);
   } finally {
     solids.delete();
   }
+}
+
+function boundsPairwiseDisjoint(k: OcctKernelWasm, solidIds: readonly number[]): boolean {
+  const boxes = solidIds.map((s) => k.getBoundingBox(s, false));
+  for (let i = 0; i < boxes.length; i++) {
+    const a = boxes[i] as EmBBoxData;
+    for (let j = i + 1; j < boxes.length; j++) {
+      const b = boxes[j] as EmBBoxData;
+      if (
+        a.xmin <= b.xmax &&
+        b.xmin <= a.xmax &&
+        a.ymin <= b.ymax &&
+        b.ymin <= a.ymax &&
+        a.zmin <= b.zmax &&
+        b.zmin <= a.zmax
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
