@@ -13,6 +13,7 @@ import type {
   KernelShape,
   KernelType,
   OperationResult,
+  ShapeEvolution,
 } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
@@ -28,6 +29,7 @@ import {
   needsBooleanOptions,
   resolveBooleanTool,
   runBooleanOp,
+  withSolidIds,
   withToolIds,
 } from './booleanOps.js';
 import type { ResolvedTool } from './booleanOps.js';
@@ -314,6 +316,16 @@ export function intersectWithHistory(
   );
 }
 
+/**
+ * History for a result that is its input re-stored: `fuseAll` of one solid and
+ * `cutAll` with no tools keep the same TShape, so every face keeps its hash.
+ */
+function identityEvolution(inputFaceHashes: number[]): ShapeEvolution {
+  const modified = new Map<number, number[]>();
+  for (const h of inputFaceHashes) modified.set(h, [h]);
+  return { modified, generated: new Map(), deleted: new Set() };
+}
+
 /** N-way fuse with face history over every input. Needs `booleanOp`. */
 export function fuseAllWithHistory(
   k: OcctKernelWasm,
@@ -323,9 +335,31 @@ export function fuseAllWithHistory(
   hashUpperBound: number,
   options?: BooleanOptions
 ): DiagnosticOperationResult {
-  const [first, ...rest] = shapes.map(unwrap);
-  const argIds = first === undefined ? [] : [first];
-  return viaBooleanOp(k, Module, 'fuse', argIds, rest, inputFaceHashes, hashUpperBound, options);
+  return withSolidIds(k, shapes, (ids) => {
+    const [first, ...rest] = ids;
+    if (first !== undefined && rest.length > 0) {
+      return viaBooleanOp(
+        k,
+        Module,
+        'fuse',
+        [first],
+        rest,
+        inputFaceHashes,
+        hashUpperBound,
+        options
+      );
+    }
+    const vec = makeVecU32(Module, ids);
+    try {
+      return {
+        shape: wrapResult(k, k.fuseAll(vec)),
+        evolution: identityEvolution(inputFaceHashes),
+        diagnostics: NO_DIAGNOSTICS,
+      };
+    } finally {
+      vec.delete();
+    }
+  });
 }
 
 /** N-way cut with face history over the base and every tool. Needs `booleanOp`. */
@@ -338,15 +372,22 @@ export function cutAllWithHistory(
   hashUpperBound: number,
   options?: BooleanOptions
 ): DiagnosticOperationResult {
-  return viaBooleanOp(
-    k,
-    Module,
-    'cut',
-    [unwrap(shape)],
-    tools.map(unwrap),
-    inputFaceHashes,
-    hashUpperBound,
-    options
+  if (tools.length === 0) {
+    const vec = makeVecU32(Module, []);
+    try {
+      return {
+        shape: wrapResult(k, k.cutAll(unwrap(shape), vec)),
+        evolution: identityEvolution(inputFaceHashes),
+        diagnostics: NO_DIAGNOSTICS,
+      };
+    } finally {
+      vec.delete();
+    }
+  }
+  return withSolidIds(k, [shape], (argIds) =>
+    withSolidIds(k, tools, (toolIds) =>
+      viaBooleanOp(k, Module, 'cut', argIds, toolIds, inputFaceHashes, hashUpperBound, options)
+    )
   );
 }
 

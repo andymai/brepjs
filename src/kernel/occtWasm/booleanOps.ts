@@ -15,7 +15,12 @@ import type {
   KernelShape,
   ShapeEvolution,
 } from '@/kernel/types.js';
-import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
+import type {
+  EmVectorInt,
+  EmVectorUint32,
+  OcctKernelWasm,
+  OcctWasmModule,
+} from './occtWasmTypes.js';
 import { makeVecInt, makeVecU32, parseEvolution, unwrap, wrapResult } from './helpers.js';
 
 const BOOLEAN_OP_CODE = { fuse: 0, cut: 1, common: 2 } as const;
@@ -60,10 +65,13 @@ export function runBooleanOp(
   hashUpperBound = 0
 ): { id: number; evolution: ShapeEvolution } {
   if (!k.booleanOp) throw new Error('occt-wasm: booleanOp is not available in this build');
-  const args = makeVecU32(Module, argIds);
-  const tools = makeVecU32(Module, toolIds);
-  const hashes = makeVecInt(Module, inputFaceHashes);
+  let args: EmVectorUint32 | undefined;
+  let tools: EmVectorUint32 | undefined;
+  let hashes: EmVectorInt | undefined;
   try {
+    args = makeVecU32(Module, argIds);
+    tools = makeVecU32(Module, toolIds);
+    hashes = makeVecInt(Module, inputFaceHashes);
     return parseEvolution(
       k.booleanOp(
         BOOLEAN_OP_CODE[kind],
@@ -77,9 +85,9 @@ export function runBooleanOp(
       )
     );
   } finally {
-    args.delete();
-    tools.delete();
-    hashes.delete();
+    args?.delete();
+    tools?.delete();
+    hashes?.delete();
   }
 }
 
@@ -94,19 +102,44 @@ export function withToolIds<R>(
   tool: KernelShape,
   fn: (ids: number[], split: boolean) => R
 ): R {
-  const toolId = unwrap(tool);
-  const solids = k.getSubShapes(toolId, 'solid');
+  return withSolidIds(k, [tool], fn);
+}
+
+/**
+ * {@link withToolIds} over several shapes: each multi-solid shape contributes
+ * its solids, every other shape its own id, in order. `split` reports whether
+ * any shape was expanded.
+ */
+export function withSolidIds<R>(
+  k: OcctKernelWasm,
+  shapes: readonly KernelShape[],
+  fn: (ids: number[], split: boolean) => R
+): R {
+  const ids: number[] = [];
+  const extracted: number[] = [];
+  try {
+    for (const shape of shapes) pushSolidIds(k, unwrap(shape), ids, extracted);
+    return fn(ids, ids.length > shapes.length);
+  } finally {
+    for (const id of extracted) k.release(id);
+  }
+}
+
+/**
+ * Append `id`'s solids to `ids`, or `id` itself when it holds at most one.
+ * Every solid copy the query allocated goes on `extracted` for release.
+ */
+function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): void {
+  const solids = k.getSubShapes(id, 'solid');
   try {
     const n = solids.size();
-    if (n <= 1) return fn([toolId], false);
-    const ids: number[] = [];
-    for (let i = 0; i < n; i++) ids.push(solids.get(i));
-    return fn(ids, true);
-  } finally {
-    for (let i = 0, n = solids.size(); i < n; i++) {
-      const id = solids.get(i);
-      if (id !== toolId) k.release(id);
+    for (let i = 0; i < n; i++) {
+      const solidId = solids.get(i);
+      if (solidId !== id) extracted.push(solidId);
+      if (n > 1) ids.push(solidId);
     }
+    if (n <= 1) ids.push(id);
+  } finally {
     solids.delete();
   }
 }
@@ -232,9 +265,13 @@ export function fuseAll(
   shapes: KernelShape[],
   options?: BooleanOptions
 ): KernelShape {
-  const [first, ...rest] = shapes.map(unwrap);
-  if (first !== undefined && rest.length > 0 && hasBooleanOp(k) && needsBooleanOptions(options)) {
-    return wrapResult(k, runBooleanOp(k, Module, 'fuse', [first], rest, options).id);
+  if (shapes.length > 1 && hasBooleanOp(k) && needsBooleanOptions(options)) {
+    return withSolidIds(k, shapes, ([first, ...rest]) =>
+      wrapResult(
+        k,
+        runBooleanOp(k, Module, 'fuse', first === undefined ? [] : [first], rest, options).id
+      )
+    );
   }
   const vec = makeVecU32(Module, shapes.map(unwrap));
   try {
@@ -252,9 +289,10 @@ export function cutAll(
   options?: BooleanOptions
 ): KernelShape {
   if (tools.length > 0 && hasBooleanOp(k) && needsBooleanOptions(options)) {
-    return wrapResult(
-      k,
-      runBooleanOp(k, Module, 'cut', [unwrap(shape)], tools.map(unwrap), options).id
+    return withSolidIds(k, [shape], (argIds) =>
+      withSolidIds(k, tools, (toolIds) =>
+        wrapResult(k, runBooleanOp(k, Module, 'cut', argIds, toolIds, options).id)
+      )
     );
   }
   const vec = makeVecU32(Module, tools.map(unwrap));
