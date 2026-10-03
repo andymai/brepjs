@@ -9,6 +9,7 @@ import {
   unwrap,
   measureVolume,
   translate,
+  getBounds,
 } from '@/index.js';
 import { gridPattern } from '@/operations/patternFns.js';
 
@@ -70,6 +71,25 @@ describe('circularPattern', () => {
     expect(pattern).toBeDefined();
     const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
+  });
+
+  it('places each copy at fullAngle / count degrees', () => {
+    // Two copies over 180°: the original at 0° and one turned 90° about Z.
+    const b = translate(box(2, 2, 2), [10, 0, 0]);
+    const bounds = getBounds(unwrap(circularPattern(b, [0, 0, 1], 2, 180)));
+    expect(bounds.xMin).toBeCloseTo(-2, 3);
+    expect(bounds.xMax).toBeCloseTo(12, 3);
+    expect(bounds.yMin).toBeCloseTo(0, 3);
+    expect(bounds.yMax).toBeCloseTo(12, 3);
+  });
+
+  it('spreads a full circle evenly', () => {
+    const b = translate(box(2, 2, 2), [10, -1, 0]);
+    const bounds = getBounds(unwrap(circularPattern(b, [0, 0, 1], 4, 360)));
+    expect(bounds.xMin).toBeCloseTo(-12, 3);
+    expect(bounds.xMax).toBeCloseTo(12, 3);
+    expect(bounds.yMin).toBeCloseTo(-12, 3);
+    expect(bounds.yMax).toBeCloseTo(12, 3);
   });
 
   it('returns error for count < 1', () => {
