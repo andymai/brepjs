@@ -42,16 +42,21 @@ export function newTwoOperandBoolean(
       : kind === 'Cut'
         ? new oc.BRepAlgoAPI_Cut_1()
         : new oc.BRepAlgoAPI_Common_1();
-  const args = new oc.TopTools_ListOfShape_1();
-  const tools = new oc.TopTools_ListOfShape_1();
+  let args: KernelType | undefined;
+  let tools: KernelType | undefined;
   try {
+    args = new oc.TopTools_ListOfShape_1();
+    tools = new oc.TopTools_ListOfShape_1();
     args.Append_1(shape);
     tools.Append_1(tool);
     op.SetArguments(args);
     op.SetTools(tools);
+  } catch (e) {
+    op.delete();
+    throw e;
   } finally {
-    args.delete();
-    tools.delete();
+    args?.delete();
+    tools?.delete();
   }
   return op;
 }
