@@ -9,6 +9,7 @@
 import type {
   KernelInstance,
   KernelShape,
+  KernelType,
   BooleanOptions,
   OperationResult,
   BooleanDiagnostics,
@@ -149,6 +150,38 @@ function extractDiagnostics(op: OcctSimplifyBuilder): BooleanDiagnostics {
 // Boolean with history
 // ---------------------------------------------------------------------------
 
+function twoOperandBooleanWithHistory(
+  oc: KernelInstance,
+  kind: 'Fuse' | 'Cut' | 'Common',
+  shape: KernelShape,
+  tool: KernelShape,
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options: BooleanOptions
+): DiagnosticOperationResult {
+  const progress = new oc.Message_ProgressRange_1();
+  let op: KernelType | undefined;
+  try {
+    op = newTwoOperandBoolean(oc, kind, shape, tool);
+    applyGlue(oc, op, options.optimisation);
+    applyBooleanDefaults(op, options.fuzzyValue);
+    op.Build(progress);
+    const diagnostics = extractDiagnostics(op as OcctSimplifyBuilder);
+    return booleanWithEvolution(
+      oc,
+      op,
+      [shape, tool],
+      inputFaceHashes,
+      hashUpperBound,
+      options.simplify ?? false,
+      diagnostics
+    );
+  } finally {
+    op?.delete();
+    progress.delete();
+  }
+}
+
 export function fuseWithHistory(
   oc: KernelInstance,
   shape: KernelShape,
@@ -157,24 +190,15 @@ export function fuseWithHistory(
   hashUpperBound: number,
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
-  const progress = new oc.Message_ProgressRange_1();
-  const fuseOp = newTwoOperandBoolean(oc, 'Fuse', shape, tool);
-  applyGlue(oc, fuseOp, options.optimisation);
-  applyBooleanDefaults(fuseOp, options.fuzzyValue);
-  fuseOp.Build(progress);
-  const diagnostics = extractDiagnostics(fuseOp as OcctSimplifyBuilder);
-  const result = booleanWithEvolution(
+  return twoOperandBooleanWithHistory(
     oc,
-    fuseOp,
-    [shape, tool],
+    'Fuse',
+    shape,
+    tool,
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false,
-    diagnostics
+    options
   );
-  fuseOp.delete();
-  progress.delete();
-  return result;
 }
 
 export function cutWithHistory(
@@ -185,24 +209,15 @@ export function cutWithHistory(
   hashUpperBound: number,
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
-  const progress = new oc.Message_ProgressRange_1();
-  const cutOp = newTwoOperandBoolean(oc, 'Cut', shape, tool);
-  applyGlue(oc, cutOp, options.optimisation);
-  applyBooleanDefaults(cutOp, options.fuzzyValue);
-  cutOp.Build(progress);
-  const diagnostics = extractDiagnostics(cutOp as OcctSimplifyBuilder);
-  const result = booleanWithEvolution(
+  return twoOperandBooleanWithHistory(
     oc,
-    cutOp,
-    [shape, tool],
+    'Cut',
+    shape,
+    tool,
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false,
-    diagnostics
+    options
   );
-  cutOp.delete();
-  progress.delete();
-  return result;
 }
 
 export function intersectWithHistory(
@@ -213,24 +228,15 @@ export function intersectWithHistory(
   hashUpperBound: number,
   options: BooleanOptions = {}
 ): DiagnosticOperationResult {
-  const progress = new oc.Message_ProgressRange_1();
-  const intOp = newTwoOperandBoolean(oc, 'Common', shape, tool);
-  applyGlue(oc, intOp, options.optimisation);
-  applyBooleanDefaults(intOp, options.fuzzyValue);
-  intOp.Build(progress);
-  const diagnostics = extractDiagnostics(intOp as OcctSimplifyBuilder);
-  const result = booleanWithEvolution(
+  return twoOperandBooleanWithHistory(
     oc,
-    intOp,
-    [shape, tool],
+    'Common',
+    shape,
+    tool,
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false,
-    diagnostics
+    options
   );
-  intOp.delete();
-  progress.delete();
-  return result;
 }
 
 // ---------------------------------------------------------------------------

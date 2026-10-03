@@ -151,6 +151,35 @@ export function buildCompound(oc: KernelInstance, shapes: KernelShape[]): Kernel
 }
 
 /**
+ * Runs a two-operand boolean with the given options, releasing the op and its
+ * progress range on every path.
+ */
+function runTwoOperandBoolean(
+  oc: KernelInstance,
+  kind: 'Fuse' | 'Cut' | 'Common',
+  shape: KernelShape,
+  tool: KernelShape,
+  options: BooleanOptions
+): KernelShape {
+  const end = perfTimer('boolean');
+  const { optimisation, simplify = false, fuzzyValue } = options;
+  const progress = new oc.Message_ProgressRange_1();
+  let op: KernelType | undefined;
+  try {
+    op = newTwoOperandBoolean(oc, kind, shape, tool);
+    applyGlue(oc, op, optimisation);
+    applyBooleanDefaults(op, fuzzyValue);
+    op.Build(progress);
+    if (simplify) op.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+    return op.Shape();
+  } finally {
+    op?.delete();
+    progress.delete();
+    end();
+  }
+}
+
+/**
  * Fuses two shapes together.
  */
 export function fuse(
@@ -159,22 +188,7 @@ export function fuse(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const end = perfTimer('boolean');
-  try {
-    const { optimisation, simplify = false, fuzzyValue } = options;
-    const progress = new oc.Message_ProgressRange_1();
-    const fuseOp = newTwoOperandBoolean(oc, 'Fuse', shape, tool);
-    applyGlue(oc, fuseOp, optimisation);
-    applyBooleanDefaults(fuseOp, fuzzyValue);
-    fuseOp.Build(progress);
-    if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-    const result = fuseOp.Shape();
-    fuseOp.delete();
-    progress.delete();
-    return result;
-  } finally {
-    end();
-  }
+  return runTwoOperandBoolean(oc, 'Fuse', shape, tool, options);
 }
 
 /**
@@ -186,22 +200,7 @@ export function cut(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const end = perfTimer('boolean');
-  try {
-    const { optimisation, simplify = false, fuzzyValue } = options;
-    const progress = new oc.Message_ProgressRange_1();
-    const cutOp = newTwoOperandBoolean(oc, 'Cut', shape, tool);
-    applyGlue(oc, cutOp, optimisation);
-    applyBooleanDefaults(cutOp, fuzzyValue);
-    cutOp.Build(progress);
-    if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-    const result = cutOp.Shape();
-    cutOp.delete();
-    progress.delete();
-    return result;
-  } finally {
-    end();
-  }
+  return runTwoOperandBoolean(oc, 'Cut', shape, tool, options);
 }
 
 /**
@@ -213,22 +212,7 @@ export function intersect(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const end = perfTimer('boolean');
-  try {
-    const { optimisation, simplify = false, fuzzyValue } = options;
-    const progress = new oc.Message_ProgressRange_1();
-    const commonOp = newTwoOperandBoolean(oc, 'Common', shape, tool);
-    applyGlue(oc, commonOp, optimisation);
-    applyBooleanDefaults(commonOp, fuzzyValue);
-    commonOp.Build(progress);
-    if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-    const result = commonOp.Shape();
-    commonOp.delete();
-    progress.delete();
-    return result;
-  } finally {
-    end();
-  }
+  return runTwoOperandBoolean(oc, 'Common', shape, tool, options);
 }
 
 /**
