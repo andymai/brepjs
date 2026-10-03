@@ -16,6 +16,7 @@ import type {
   ShapeEvolution,
 } from '@/kernel/types.js';
 import type {
+  EmBBoxData,
   EmVectorInt,
   EmVectorUint32,
   OcctKernelWasm,
@@ -93,55 +94,84 @@ export function runBooleanOp(
 
 /**
  * Call `fn` with a tool's solids as separate ids, or with the tool alone when
- * it holds at most one solid, and report whether it was split. Solids are
+ * it holds at most one solid, and report whether it holds several. Solids are
  * handed to an n-way boolean as separate tools, which OCCT allows to overlap,
- * where one compound of overlapping solids is invalid input.
+ * where one compound of overlapping solids is invalid input. A tool whose
+ * solids have pairwise disjoint bounding boxes stays whole: its solids cannot
+ * interfere, and OCCT runs it faster as one operand than as several.
  */
 export function withToolIds<R>(
   k: OcctKernelWasm,
   tool: KernelShape,
-  fn: (ids: number[], split: boolean) => R
+  fn: (ids: number[], multiSolid: boolean) => R
 ): R {
   return withSolidIds(k, [tool], fn);
 }
 
 /**
  * {@link withToolIds} over several shapes: each multi-solid shape contributes
- * its solids, every other shape its own id, in order. `split` reports whether
- * any shape was expanded.
+ * its solids, every other shape its own id, in order. `multiSolid` reports
+ * whether any shape holds more than one solid, split or not.
  */
 export function withSolidIds<R>(
   k: OcctKernelWasm,
   shapes: readonly KernelShape[],
-  fn: (ids: number[], split: boolean) => R
+  fn: (ids: number[], multiSolid: boolean) => R
 ): R {
   const ids: number[] = [];
   const extracted: number[] = [];
   try {
-    for (const shape of shapes) pushSolidIds(k, unwrap(shape), ids, extracted);
-    return fn(ids, ids.length > shapes.length);
+    let multiSolid = false;
+    for (const shape of shapes) {
+      if (pushSolidIds(k, unwrap(shape), ids, extracted)) multiSolid = true;
+    }
+    return fn(ids, multiSolid);
   } finally {
     for (const id of extracted) k.release(id);
   }
 }
 
 /**
- * Append `id`'s solids to `ids`, or `id` itself when it holds at most one.
- * Every solid copy the query allocated goes on `extracted` for release.
+ * Append `id`'s solids to `ids`, or `id` itself when it holds at most one or
+ * its solids cannot interfere, and report whether it holds several. Every
+ * solid copy the query allocated goes on `extracted` for release.
  */
-function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): void {
+function pushSolidIds(k: OcctKernelWasm, id: number, ids: number[], extracted: number[]): boolean {
   const solids = k.getSubShapes(id, 'solid');
   try {
-    const n = solids.size();
-    for (let i = 0; i < n; i++) {
+    const solidIds: number[] = [];
+    for (let i = 0; i < solids.size(); i++) {
       const solidId = solids.get(i);
       if (solidId !== id) extracted.push(solidId);
-      if (n > 1) ids.push(solidId);
+      solidIds.push(solidId);
     }
-    if (n <= 1) ids.push(id);
+    if (solidIds.length > 1 && !boundsPairwiseDisjoint(k, solidIds)) ids.push(...solidIds);
+    else ids.push(id);
+    return solidIds.length > 1;
   } finally {
     solids.delete();
   }
+}
+
+function boundsPairwiseDisjoint(k: OcctKernelWasm, solidIds: readonly number[]): boolean {
+  const boxes = solidIds.map((s) => k.getBoundingBox(s, false));
+  for (let i = 0; i < boxes.length; i++) {
+    const a = boxes[i] as EmBBoxData;
+    for (let j = i + 1; j < boxes.length; j++) {
+      const b = boxes[j] as EmBBoxData;
+      if (
+        a.xmin <= b.xmax &&
+        b.xmin <= a.xmax &&
+        a.ymin <= b.ymax &&
+        b.ymin <= a.ymax &&
+        a.zmin <= b.zmax &&
+        b.zmin <= a.zmax
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
@@ -213,8 +243,8 @@ function subtractOrCommon(
   options?: BooleanOptions
 ): KernelShape {
   if (hasBooleanOp(k)) {
-    const id = withToolIds(k, tool, (toolIds, split) =>
-      split || needsBooleanOptions(options)
+    const id = withToolIds(k, tool, (toolIds, multiSolid) =>
+      multiSolid || needsBooleanOptions(options)
         ? runBooleanOp(k, Module, kind, [unwrap(shape)], toolIds, options).id
         : null
     );

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
 import {
   box,
@@ -69,6 +69,49 @@ describe.skipIf(currentKernel !== 'occt-wasm')('occt-wasm boolean options and hi
     expect(unwrap(measureVolume(viaCompound))).toBeCloseTo(expected, 6);
     expect(unwrap(measureVolume(viaListWithOptions))).toBeCloseTo(expected, 6);
     expect(expected).toBeLessThan(8000);
+  });
+
+  it('passes a compound of disjoint solids as one tool and splits an overlapping one', () => {
+    const raw = (
+      getKernel() as unknown as {
+        retainedKernelOwner?: { getRawKernel?: () => Record<string, unknown> };
+      }
+    ).retainedKernelOwner?.getRawKernel?.();
+    if (!raw || typeof raw['booleanOp'] !== 'function')
+      throw new Error('raw booleanOp unavailable');
+    const original = (raw['booleanOp'] as (...args: unknown[]) => unknown).bind(raw);
+    const toolCounts: number[] = [];
+    const spy = vi.spyOn(raw, 'booleanOp' as never).mockImplementation((...args: unknown[]) => {
+      toolCounts.push((args[2] as { size(): number }).size());
+      return original(...args);
+    });
+    try {
+      using base = box(40, 20, 10);
+      tagFaces(base, [getFaces(base)[0] ?? base], 'kept');
+      const cylinderAt = (x: number) => {
+        using c = cylinder(3, 20);
+        return translate(c, [x, 10, -5]);
+      };
+      using d1 = cylinderAt(8);
+      using d2 = cylinderAt(30);
+      using disjoint = compound([d1, d2]);
+      using o1 = cylinderAt(18);
+      using o2 = cylinderAt(22);
+      using overlapping = compound([o1, o2]);
+      using viaDisjoint = unwrap(cutAll(base, [disjoint]));
+      using viaOverlapping = unwrap(cutAll(base, [overlapping]));
+      using separate = unwrap(cutAll(base, [o1, o2]));
+      using plain = box(40, 20, 10);
+      using viaCut = unwrap(cut(plain, disjoint));
+      expect(toolCounts).toEqual([1, 2, 2, 1]);
+      const twoHoles = 8000 - 2 * Math.PI * 9 * 10;
+      expect(unwrap(measureVolume(viaDisjoint))).toBeCloseTo(twoHoles, 6);
+      expect(unwrap(measureVolume(viaCut))).toBeCloseTo(twoHoles, 6);
+      expect(unwrap(measureVolume(viaOverlapping))).toBeCloseTo(unwrap(measureVolume(separate)), 6);
+      expect(findFacesByTag(viaDisjoint, 'kept').length).toBeGreaterThan(0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('carries face tags through cutAll', () => {
