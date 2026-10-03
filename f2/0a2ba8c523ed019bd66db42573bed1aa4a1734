@@ -1,0 +1,19 @@
+src/kernel/occt/booleanOps.ts
+  s_ecfadab7dc0ed4::t_873f1b545bee8e 45-46,48-49,54-56,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f20a2ba8c523ed019bd66db42573bed1aa4a1734",
+  "prompts": {},
+  "sessions": {
+    "s_ecfadab7dc0ed4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31e974b0-81fc-44e7-84c5-a753966b5aa7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
