@@ -5,6 +5,7 @@
     "tests/productBody.test.ts",
     "tests/productBodyFailures.test.ts",
     "tests/productBodyNativeFailures.test.ts",
-    "tests/productBodyPlacement.test.ts"
+    "tests/productBodyPlacement.test.ts",
+    "tests/productBodySpace.test.ts"
   ]
 }

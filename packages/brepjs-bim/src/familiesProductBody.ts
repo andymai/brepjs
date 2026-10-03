@@ -1,16 +1,8 @@
-import {
-  createSolid,
-  err,
-  getKernel,
-  isSolid,
-  ok,
-  type Result,
-  type Solid,
-  type csg,
-} from 'brepjs';
+import { err, isSolid, ok, type Result, type Solid, type csg } from 'brepjs';
 import type { ResolvedElement } from 'brepjs-families';
 import { specError, type BimError } from './errors/bimError.js';
 import { reportedGeometryCleanup } from './geometryCleanupDiagnostics.js';
+import { ownSolidChildren } from './ownedSolidChildren.js';
 import {
   cleanupOwnedResources,
   cleanupReport,
@@ -159,10 +151,10 @@ function evaluateBody(
         )
       );
     if (isSolid(evaluated.value)) return ok([evaluated.value]);
-    // Borrow the evaluator parent. Own iterator children before copying so a
-    // later cast cannot strand an incompletely populated topology cache.
-    const children = getKernel().iterShapes(evaluated.value.wrapped, 'solid').map(createSolid);
-    extracted.push(...children.map((resource, itemIndex) => ({ resource, itemIndex })));
+    // The evaluator retains its parent. Every extracted child has a separate owner.
+    const children = ownSolidChildren(evaluated.value.wrapped, (resource, itemIndex) => {
+      extracted.push({ resource, itemIndex });
+    });
     return ok(children);
   } catch (cause) {
     return err(

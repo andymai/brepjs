@@ -93,6 +93,19 @@ function boxSolid(
       )
     );
   }
+  // Retire this component's profile before allocating the next component.
+  // Remove ownership before release so a failed attempt is never retried.
+  const profiles = scope.temporaries.splice(0);
+  const cleanup = cleanupOwnedResources(profiles, { operation: 'curtainWallToGrid' });
+  if (cleanup.kind === 'FAILED') {
+    return generationFailure(
+      {
+        ...geometryError('CURTAIN_WALL_CLEANUP_FAILED', 'Curtain wall temporary cleanup failed'),
+        metadata: { cleanup },
+      },
+      failedResources(cleanup, profiles)
+    );
+  }
   return ok(solid);
 }
 

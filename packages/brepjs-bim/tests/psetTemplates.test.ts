@@ -120,7 +120,6 @@ describe('psetTemplates — per-category templates', () => {
       expect(status, `${category} missing Status`).toBeDefined();
       if (status?.kind !== 'enumerated')
         throw new Error(`Expected enumerated Status for ${category}`);
-      expect(status.kind).toBe('enumerated');
       expect(status.enumValues).toEqual([
         'NEW',
         'EXISTING',

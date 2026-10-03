@@ -23,7 +23,6 @@ it('owns a protected recipe Body and releases it when its model closes', () => {
   const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
   {
     using model = new BimModel();
-    unwrap(model.init({ name: 'Ownership test' }));
     const id = unwrap(model.addWall(WALL));
     const wall = model.getElement(id);
     if (wall?.category !== 'WALL') throw new Error('Expected retained Wall');
@@ -40,7 +39,6 @@ it('owns a protected recipe Body and releases it when its model closes', () => {
 
 it('commits fresh multi-item Bodies, preserves identity, and rejects authority reversal', () => {
   using model = new BimModel();
-  unwrap(model.init({ name: 'Replacement' }));
   const id = unwrap(model.addWall(WALL));
   const before = model.getElement(id);
   if (before?.category !== 'WALL') throw new Error('Expected Wall');

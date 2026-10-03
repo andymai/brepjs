@@ -178,7 +178,10 @@ it.each(['before', 'after'] as const)(
     {
       using a = brepjs.box(1, 1, 1);
       using b = brepjs.box(1, 1, 1, { at: [2, 0, 0] });
-      const face = brepjs.getFaces(b)[0];
+      const fixtureFaces = brepjs.getFaces(b);
+      // Relocation enumerates one face per source face and one per copied face.
+      const expectedFaceReleases = fixtureFaces.length * 2;
+      const face = fixtureFaces[0];
       if (face === undefined) throw new Error('Expected fixture face');
       brepjs.tagFaces(b, [face], 'retained');
       const body = brepjs.unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [a, b] }));
@@ -198,7 +201,7 @@ it.each(['before', 'after'] as const)(
       try {
         const result = transformProductBody(body, IDENTITY_FRAME);
         if (result.ok) throw new Error('Expected native metadata cleanup failure');
-        expect(failed).toHaveLength(12);
+        expect(failed).toHaveLength(expectedFaceReleases);
         const firstReport = cleanupReport(reportedGeometryCleanup(result.error, 'forwardOne'));
         const repeated = {
           ...geometryError(
@@ -210,7 +213,7 @@ it.each(['before', 'after'] as const)(
           metadata: { cleanup: firstReport },
         };
         const diagnostics = reportedGeometryCleanup(repeated, 'forwardTwo');
-        expect(diagnostics).toHaveLength(12);
+        expect(diagnostics).toHaveLength(expectedFaceReleases);
         expect(
           diagnostics.every(
             (entry) =>
@@ -220,7 +223,7 @@ it.each(['before', 'after'] as const)(
           )
         ).toBe(true);
         expect(diagnostics.every(Object.isFrozen)).toBe(true);
-        expectArena(live, timing === 'before' ? 12 : 0);
+        expectArena(live, timing === 'before' ? expectedFaceReleases : 0);
         expect(a.disposed || b.disposed).toBe(false);
       } finally {
         disposal.mockRestore();

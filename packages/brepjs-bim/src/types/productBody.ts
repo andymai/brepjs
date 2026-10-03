@@ -62,6 +62,11 @@ const descriptorSchema = z.object({
     .refine((value) => value.length > 0),
 });
 
+const boundsSpaceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('LOCAL') }),
+  z.object({ kind: z.literal('RESOLVED'), tag: z.string() }),
+]);
+
 function bodyError(
   operation: ProductBodyOperation,
   code: string,
@@ -427,16 +432,15 @@ export function productBodyBounds(
   body: ProductBody | NonEmpty<ValidSolid>,
   space: ProductBodySpace = { kind: 'LOCAL' }
 ): Result<ProductBodyBounds, ProductBodyError> {
-  const frame = space.kind === 'RESOLVED' ? frameMul(IDENTITY_FRAME, space.frame) : ok(undefined);
-  if (!frame.ok)
-    return err(bodyError('productBodyBounds', frame.error.code, frame.error.message, frame.error));
+  const resolved = validateBoundsSpace(space);
+  if (!resolved.ok) return resolved;
   const checked = validateBoundsItems(body);
   if (!checked.ok) return checked;
   return ownedOperation('productBodyBounds', (scope) => {
     const items =
-      frame.value === undefined
+      resolved.value.kind === 'LOCAL'
         ? checked
-        : allocateItems(checked.value, scope, scope.temporaries, frame.value);
+        : allocateItems(checked.value, scope, scope.temporaries, resolved.value.frame);
     if (!items.ok) return items;
     let bounds: Bounds3D | undefined;
     for (const [itemIndex, solid] of items.value.entries()) {
@@ -473,11 +477,37 @@ export function productBodyBounds(
     }
     if (bounds === undefined) throw new Error('Validated Body produced no bounds');
     const coordinates =
-      space.kind === 'LOCAL'
+      resolved.value.kind === 'LOCAL'
         ? Object.freeze({ kind: 'LOCAL' as const })
-        : Object.freeze({ kind: 'RESOLVED' as const, tag: space.tag });
+        : Object.freeze({ kind: 'RESOLVED' as const, tag: resolved.value.tag });
     return ok(Object.freeze({ space: coordinates, bounds: Object.freeze(bounds) }));
   });
+}
+
+function validateBoundsSpace(space: ProductBodySpace): Result<ProductBodySpace, ProductBodyError> {
+  const invalid = (cause?: unknown) =>
+    err(
+      bodyError(
+        'productBodyBounds',
+        'BODY_INVALID_SPACE',
+        'Expected LOCAL or a named RESOLVED space',
+        cause
+      )
+    );
+  try {
+    const parsed = boundsSpaceSchema.safeParse(space);
+    if (!parsed.success) return invalid(parsed.error);
+    if (parsed.data.kind === 'LOCAL') return ok({ kind: 'LOCAL' });
+    if (space.kind !== 'RESOLVED') return invalid();
+    const frame = frameMul(IDENTITY_FRAME, space.frame);
+    if (!frame.ok)
+      return err(
+        bodyError('productBodyBounds', frame.error.code, frame.error.message, frame.error)
+      );
+    return ok({ kind: 'RESOLVED', tag: parsed.data.tag, frame: frame.value });
+  } catch (cause) {
+    return invalid(cause);
+  }
 }
 
 function validateBoundsItems(

@@ -17,7 +17,7 @@ beforeAll(async () => {
 }, 30000);
 afterEach(() => vi.restoreAllMocks());
 
-it('releases earlier native children when a later uncached authored item cast fails', () => {
+it('releases copied children when a later authored item copy cast fails', () => {
   using evaluator = new csg.Evaluator();
   const element = resolvedProduct(bodyTree(civilBody(disconnectedBody())));
   const source = unwrap(evaluator.evaluate(element.geometry));
@@ -45,7 +45,7 @@ it('releases earlier native children when a later uncached authored item cast fa
         evaluator,
         productWorldFrame: IDENTITY_FRAME,
       })
-    ).toMatchObject({ ok: false });
+    ).toMatchObject({ ok: false, error: { code: 'FAMILIES_PRODUCT_BODY_COPY_FAILED' } });
     expect(casts).toBe(2);
     expect(releases.mock.calls.filter(([raw]) => raw === first)).toHaveLength(1);
     expect(sourceRelease).not.toHaveBeenCalled();
@@ -56,6 +56,64 @@ it('releases earlier native children when a later uncached authored item cast fa
     if (first !== undefined && !releases.mock.calls.some(([raw]) => raw === first)) {
       dispose(nativeResource(first));
     }
+    vi.restoreAllMocks();
+  }
+});
+
+it('releases wrapped and unwrapped children when later authored item wrapping fails', () => {
+  using evaluator = new csg.Evaluator();
+  const node = csg.compound([
+    csg.box(1, 1, 1),
+    csg.translate(csg.box(1, 1, 1), [2, 0, 0]),
+    csg.translate(csg.box(1, 1, 1), [4, 0, 0]),
+  ]);
+  const element = resolvedProduct(bodyTree(civilBody(node)));
+  const source = unwrap(evaluator.evaluate(element.geometry));
+  const sourceRelease = vi.spyOn(source, Symbol.dispose);
+  const kernel = getKernel();
+  const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+  const iterate = kernel.iterShapes.bind(kernel);
+  const dispose = kernel.dispose.bind(kernel);
+  const create = brepjs.createSolid;
+  const raws: Parameters<typeof kernel.dispose>[0][] = [];
+  const children: brepjs.Solid[] = [];
+  const releases = vi.spyOn(kernel, 'dispose');
+  const cause = new Error('Later authored item wrapping failed');
+  vi.spyOn(kernel, 'iterShapes').mockImplementation((shape, type) => {
+    const result: unknown[] = iterate(shape, type);
+    if (shape === source.wrapped && type === 'solid') raws.push(...result.map(nativeResource));
+    return result;
+  });
+  const wrapping = vi.spyOn(brepjs, 'createSolid').mockImplementation((raw) => {
+    if (children.length === 1) throw cause;
+    const child = create(raw);
+    children.push(child);
+    return child;
+  });
+  try {
+    expect(
+      prepareCivilProductBody({
+        element,
+        category: 'RAILING',
+        evaluator,
+        productWorldFrame: IDENTITY_FRAME,
+      })
+    ).toMatchObject({
+      ok: false,
+      error: { code: 'FAMILIES_PRODUCT_BODY_EVALUATION_FAILED', cause },
+    });
+    expect(wrapping).toHaveBeenCalledTimes(2);
+    expect(raws).toHaveLength(3);
+    for (const raw of raws)
+      expect(releases.mock.calls.filter(([released]) => released === raw)).toHaveLength(1);
+    expect(sourceRelease).not.toHaveBeenCalled();
+    expect(kernel.volume(source.wrapped)).toBeCloseTo(3, 8);
+    if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
+  } finally {
+    // Repair only allocations with no release attempt in the failing candidate.
+    for (const child of children) if (!child.disposed) child[Symbol.dispose]();
+    for (const raw of raws)
+      if (!releases.mock.calls.some(([released]) => released === raw)) dispose(raw);
     vi.restoreAllMocks();
   }
 });

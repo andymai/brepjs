@@ -8,8 +8,14 @@ import {
   productBodyBounds,
   transformProductBody,
   validateProductBody,
+  type ProductBody,
 } from '../src/types/productBody.js';
-import { IDENTITY_FRAME, rotationFrame, translationFrame } from '../src/placementFrame.js';
+import {
+  IDENTITY_FRAME,
+  frameMul,
+  rotationFrame,
+  translationFrame,
+} from '../src/placementFrame.js';
 import { createOverlapFixture } from './helpers/nativeBodyFixture.js';
 import { nativeShapeCount } from './helpers/nativeArena.js';
 import { currentKernel, initKernel } from '../../../tests/setup.js';
@@ -56,11 +62,13 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
           arrangement === 'singleton' ? 1 : arrangement === 'overlapping' ? 1.5 : 4,
           6
         );
-        const copied = unwrap(copyProductBody(body));
-        const identity = unwrap(transformProductBody(body, IDENTITY_FRAME));
-        const placed = unwrap(transformProductBody(body, unwrap(translationFrame([10, 2, 3]))));
+        const outputs: ProductBody[] = [];
         try {
-          for (const output of [copied, identity, placed]) {
+          outputs.push(unwrap(copyProductBody(body)));
+          outputs.push(unwrap(transformProductBody(body, IDENTITY_FRAME)));
+          const placed = unwrap(transformProductBody(body, unwrap(translationFrame([10, 2, 3]))));
+          outputs.push(placed);
+          for (const output of outputs) {
             expect(output.kind).toBe(kind);
             expect(output.solids).toHaveLength(retained.length);
             output.solids.forEach((solid, i) => {
@@ -78,8 +86,8 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
             expect(getBounds(solid).xMin - getBounds(source).xMin).toBeCloseTo(10, 6);
           });
         } finally {
-          for (const output of [copied, identity, placed])
-            expect(disposeProductBody(output)).toEqual({ kind: 'COMPLETE' });
+          const reports = outputs.map(disposeProductBody);
+          for (const report of reports) expect(report).toEqual({ kind: 'COMPLETE' });
         }
         expect(body.solids).toEqual(retained);
         for (const solid of retained) expect(unwrap(measureVolume(solid))).toBeCloseTo(1, 8);
@@ -91,7 +99,7 @@ describe.each(['PARAMETRIC', 'AUTHORITATIVE'] as const)('%s ProductBody', (kind)
 });
 
 it('uses actual rotated geometry for tight bounds in a caller-named resolved space', () => {
-  using solid = cylinder(1, 2);
+  using solid = box(1, 1, 1);
   const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
   const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
   const result = unwrap(
@@ -102,10 +110,30 @@ it('uses actual rotated geometry for tight bounds in a caller-named resolved spa
     })
   );
   expect(result.space).toEqual({ kind: 'RESOLVED', tag: 'test-container' });
-  expect(result.bounds.xMin).toBeCloseTo(-1, 6);
-  expect(result.bounds.xMax).toBeCloseTo(1, 6);
-  expect(result.bounds.yMin).toBeCloseTo(-1, 6);
-  expect(result.bounds.yMax).toBeCloseTo(1, 6);
+  expect(result.bounds.xMin).toBeCloseTo(-Math.SQRT1_2, 6);
+  expect(result.bounds.xMax).toBeCloseTo(Math.SQRT1_2, 6);
+  expect(result.bounds.yMin).toBeCloseTo(0, 6);
+  expect(result.bounds.yMax).toBeCloseTo(Math.SQRT2, 6);
+  if (before !== null) expect(nativeShapeCount()).toBe(before);
+});
+
+it('measures moved curved geometry instead of transforming its old bounding box', () => {
+  using solid = cylinder(1, 2);
+  const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [solid] }));
+  const frame = unwrap(
+    frameMul(unwrap(translationFrame([10, 2, 3])), unwrap(rotationFrame(45, [0, 0, 1])))
+  );
+  const before = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
+  const result = unwrap(
+    productBodyBounds(body, { kind: 'RESOLVED', tag: 'moved-cylinder', frame })
+  );
+  // Rotating the old square bounds would widen these extents by sqrt(2).
+  expect(result.bounds.xMin).toBeCloseTo(9, 6);
+  expect(result.bounds.xMax).toBeCloseTo(11, 6);
+  expect(result.bounds.yMin).toBeCloseTo(1, 6);
+  expect(result.bounds.yMax).toBeCloseTo(3, 6);
+  expect(result.bounds.zMin).toBeCloseTo(3, 6);
+  expect(result.bounds.zMax).toBeCloseTo(5, 6);
   if (before !== null) expect(nativeShapeCount()).toBe(before);
 });
 

@@ -661,7 +661,10 @@ describe('archetype routing', () => {
       })
     );
     using evaluator = new csg.Evaluator();
-    let candidateVolumes: readonly [number, number] | null = null;
+    const volumesByWall = new Map<
+      Parameters<BimModel['replaceProductBody']>[0]['localId'],
+      readonly [number, number]
+    >();
     // eslint-disable-next-line @typescript-eslint/unbound-method -- Invoked below with the explicit model receiver via .call().
     const replace = BimModel.prototype.replaceProductBody;
     vi.spyOn(BimModel.prototype, 'replaceProductBody').mockImplementation(function (
@@ -669,11 +672,12 @@ describe('archetype routing', () => {
       input
     ) {
       const candidate = this.getElement(input.localId);
-      if (candidate?.category !== 'WALL') throw new Error('Expected post-opening candidate');
-      candidateVolumes = [
-        unwrap(measureVolume(input.body.solids[0])),
-        unwrap(measureVolume(candidate.geometry.solids[0])),
-      ];
+      if (candidate?.category === 'WALL') {
+        volumesByWall.set(input.localId, [
+          unwrap(measureVolume(input.body.solids[0])),
+          unwrap(measureVolume(candidate.geometry.solids[0])),
+        ]);
+      }
       return replace.call(this, input);
     });
     const result = unwrap(familiesToBim(tree, { project: PROJECT, bodyEvaluator: evaluator }));
@@ -687,8 +691,10 @@ describe('archetype routing', () => {
     expect(wall?.category).toBe('WALL');
     if (wall?.category !== 'WALL') throw new Error('Expected projected wall');
     const expectedVolume = 3_000 * 200 * 2_700 - 900 * 200 * 2_100;
-    expect(candidateVolumes).not.toBeNull();
-    if (candidateVolumes === null) throw new Error('Expected authored and post-opening volumes');
+    const candidateVolumes = volumesByWall.get(wallId);
+    expect(candidateVolumes).toBeDefined();
+    if (candidateVolumes === undefined)
+      throw new Error('Expected authored and post-opening volumes');
     expect(candidateVolumes[0]).toBeCloseTo(expectedVolume, 3);
     expect(candidateVolumes[1]).toBeCloseTo(expectedVolume, 3);
     expect(wall.geometry.kind).toBe('AUTHORITATIVE');

@@ -1,16 +1,7 @@
-import {
-  clone,
-  createSolid,
-  cut,
-  err,
-  getKernel,
-  ok,
-  validSolid,
-  type Result,
-  type ValidSolid,
-} from 'brepjs';
+import { clone, cut, err, ok, validSolid, type Result, type ValidSolid } from 'brepjs';
 import { fromBrepError, importError, type BimError } from '../errors/bimError.js';
 import { reportedGeometryCleanup } from '../geometryCleanupDiagnostics.js';
+import { ownSolidChildren } from '../ownedSolidChildren.js';
 import {
   cleanupOwnedResources,
   cleanupReport,
@@ -30,12 +21,9 @@ export function cutImportedSolids(
     if (!cutResult.ok)
       return err(fromBrepError(cutResult.error, 'VOID_CUT_FAILED', 'Opening cut failed'));
     temporaries.push({ resource: cutResult.value, itemIndex: 0 });
-    // Own all extracted native children before copying any survivor. Cached
-    // getSolids() extraction can strand earlier children if a later cast fails.
-    // The kernel's typed iterator supplies solids; createSolid adds ownership
-    // without another native downcast. Retained outputs still need a real copy.
-    const children = getKernel().iterShapes(cutResult.value.wrapped, 'solid').map(createSolid);
-    temporaries.push(...children.map((resource, itemIndex) => ({ resource, itemIndex })));
+    const children = ownSolidChildren(cutResult.value.wrapped, (resource, itemIndex) => {
+      temporaries.push({ resource, itemIndex });
+    });
     for (const solid of children) {
       const copied = clone(solid);
       if (!copied.ok)

@@ -35,6 +35,9 @@ const WALL: WallSpec = {
   materialName: 'Brick',
 };
 const PROFILE = { kind: 'RECTANGULAR', width: 1, height: 1 } as const;
+// The occt-wasm run requires the native slot oracle. OCCT has no equivalent
+// counter, so its run checks geometry, ownership rejection, and disposer counts.
+// A missing oracle on occt-wasm throws from nativeShapeCount().
 const arena = () => (currentKernel === 'occt-wasm' ? nativeShapeCount() : null);
 function expectArena(count: number | null) {
   if (count !== null) expect(nativeShapeCount()).toBe(count);
@@ -88,7 +91,7 @@ it.each(['Proxy', 'Fill'] as const)(
 
 it('creates bodyless records without native allocation or ownership', () => {
   const baseline = arena();
-  const model = new BimModel();
+  using model = new BimModel();
   unwrap(model.init({ name: 'Bodyless' }));
   unwrap(model.addSite({ name: 'Site' }));
   unwrap(model.addBridge({ name: 'Bridge' }));
@@ -135,7 +138,7 @@ it('rejects missing or unsupported targets before reading the incoming Body', ()
 });
 
 it('snapshots caller ownership descriptors without freezing the caller or cloning its native handle', () => {
-  const model = new BimModel();
+  using model = new BimModel();
   const first = box(1, 1, 1);
   using second = box(2, 2, 2);
   const spec = { name: 'Caller', solid: first };
@@ -207,7 +210,7 @@ it.each(creators)(
   'tracks every %s handle through public reads, rejection, and disposal',
   (_, create) => {
     const baseline = arena();
-    const model = new BimModel();
+    using model = new BimModel();
     const target = unwrap(model.addWall(WALL));
     const id = unwrap(create(model));
     const element = model.getElement(id);

@@ -145,6 +145,8 @@ describe('Wall quantity eligibility', () => {
         const quantities = readPsets(reader, body.expressId).find(
           ({ name }) => name === 'Qto_WallBaseQuantities'
         );
+        // Length/Width/Height remain nominal class facts. Only NetVolume follows
+        // the replacement Body; stale nominal dimensions cannot restore gross quantities.
         expectWallQuantities(quantities, {
           Length: 2,
           Width: 0.1,

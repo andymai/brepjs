@@ -34,19 +34,15 @@ it('returns an independently owned native solid with the analytical posted mater
 it('reclaims generated bars and intermediates when a later native Boolean throws', () => {
   const kernel = getKernel();
   const fuse = kernel.fuse.bind(kernel);
-  const history = kernel.fuseWithHistory.bind(kernel);
   const baseline = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
   let calls = 0;
   const cause = new Error('Later railing union');
-  vi.spyOn(kernel, 'fuse').mockImplementation((...args): unknown => {
+  const boolean = vi.spyOn(kernel, 'fuse').mockImplementation((...args): unknown => {
     if (++calls === 2) throw cause;
     return fuse(...args);
   });
-  vi.spyOn(kernel, 'fuseWithHistory').mockImplementation((...args) => {
-    if (++calls === 2) throw cause;
-    return history(...args);
-  });
   expect(railingToSolid(SPEC)).toMatchObject({ ok: false });
+  expect(boolean).toHaveBeenCalledTimes(2);
   if (baseline !== null) expect(nativeShapeCount()).toBe(baseline);
 });
 

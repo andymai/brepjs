@@ -1,11 +1,11 @@
 // Authors the external-interop validation fixture and writes it to
-// examples/interop-fixture.ifc. Where sample-building.ifc is the friendly
+// examples/interop-fixture.ifc by default. Where sample-building.ifc is the friendly
 // baseline, this file concentrates the geometry kinds most likely to break in
 // desktop tools: shaped roofs (gable / hip / dome, tessellated bodies), a
 // curtain-wall panel grid, a two-flight stair, a posted railing, and profiled
 // columns and beams (circular + I-shape). Validate with
 // `python scripts/validateIfc.py examples/interop-fixture.ifc` and the
-// checklist in VALIDATION.md. Run: `node examples/interopFixture.mjs`.
+// checklist in VALIDATION.md. Run: `node examples/interopFixture.mjs [output.ifc]`.
 import 'brepjs/quick';
 import { unwrap } from 'brepjs';
 import { writeFile } from 'node:fs/promises';

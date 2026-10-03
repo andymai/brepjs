@@ -8,7 +8,7 @@ This note defines one PR per migration step against `andymai/brepjs`, as request
 
 ADR-0001 through ADR-0004 form the initial scope. ADR-0005 through ADR-0008 remain in the series as Deferred and need another review when their steps open. References to those records preserve the later integration requirements without making their new type, Families, or IFC models prerequisites for steps 1 through 3. Preserve existing metadata and relationships throughout those steps.
 
-Documentation step 0 landed in [PR #2313](https://github.com/andymai/brepjs/pull/2313). The maintainer [confirmed the staged acceptance split](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868). The [step-1 implementation spec](../../../.scratch/bim-step-1-body-placement/spec.md) proposes the concrete interfaces, ownership outcomes, consumer changes, and acceptance checks for the next PR. It records no runtime implementation or test results.
+Documentation step 0 landed in [PR #2313](https://github.com/andymai/brepjs/pull/2313). The maintainer [confirmed the staged acceptance split](https://github.com/andymai/brepjs/pull/2313#issuecomment-5670327868). The step-1 implementation spec proposes the concrete interfaces, ownership outcomes, consumer changes, and acceptance checks for the next PR. It records no runtime implementation or test results.
 
 ## Acceptance scenarios
 

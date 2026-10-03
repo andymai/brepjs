@@ -101,7 +101,10 @@ describe.each([false, true])('metadata operation also fails: %s', (primaryFailur
       {
         using a = box(1, 1, 1);
         using b = box(1, 1, 1, { at: [2, 0, 0] });
-        const face = getFaces(b)[0];
+        const fixtureFaces = getFaces(b);
+        // Relocation enumerates one face per source face and one per copied face.
+        const expectedFaceReleases = fixtureFaces.length * 2;
+        const face = fixtureFaces[0];
         if (face === undefined) throw new Error('Expected fixture face');
         tagFaces(b, [face], 'retained');
         const body = unwrap(validateProductBody({ kind: 'AUTHORITATIVE', solids: [a, b] }));
@@ -131,9 +134,9 @@ describe.each([false, true])('metadata operation also fails: %s', (primaryFailur
           });
           if (result.ok || result.error.cleanup.kind !== 'FAILED')
             throw new Error('Expected observable cleanup failure');
-          expect(failed).toHaveLength(12);
-          expect(new Set(failed).size).toBe(12);
-          expect(result.error.cleanup.diagnostics).toHaveLength(12);
+          expect(failed).toHaveLength(expectedFaceReleases);
+          expect(new Set(failed).size).toBe(expectedFaceReleases);
+          expect(result.error.cleanup.diagnostics).toHaveLength(expectedFaceReleases);
           for (const diagnostic of result.error.cleanup.diagnostics) {
             expect(diagnostic).toMatchObject({
               operation: 'transformProductBody',
@@ -144,7 +147,7 @@ describe.each([false, true])('metadata operation also fails: %s', (primaryFailur
           }
           expect(containsCause(result.error, cleanupCause)).toBe(true);
           if (primaryFailure) expect(containsCause(result.error, primary)).toBe(true);
-          expectArena(live === null ? null : live + (when === 'before' ? 12 : 0));
+          expectArena(live === null ? null : live + (when === 'before' ? expectedFaceReleases : 0));
           expect(a.disposed).toBe(false);
           expect(b.disposed).toBe(false);
           expect(unwrap(measureVolume(b))).toBeCloseTo(1, 8);

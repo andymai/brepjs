@@ -125,17 +125,28 @@ describe('Families civil Product Body authority', () => {
   it.each([
     {
       name: 'equal-volume shifted wall',
+      category: 'wall' as const,
       node: csg.compound([csg.translate(csg.box(2, 1, 1), [0.2, 0, 0])]),
       count: 1,
       volume: 2,
     },
-    { name: 'tiny unequal wall', node: csg.box(0.008, 0.008, 0.008), count: 1, volume: 0.008 ** 3 },
-    { name: 'disconnected railing', node: disconnectedBody(), count: 2, volume: 0.8 },
-  ])('retains $name', ({ node, name, count, volume }) => {
+    {
+      name: 'tiny unequal wall',
+      category: 'wall' as const,
+      node: csg.box(0.008, 0.008, 0.008),
+      count: 1,
+      volume: 0.008 ** 3,
+    },
+    {
+      name: 'disconnected railing',
+      category: 'railing' as const,
+      node: disconnectedBody(),
+      count: 2,
+      volume: 0.8,
+    },
+  ])('retains $name', ({ node, category, count, volume }) => {
     using evaluator = new csg.Evaluator();
-    const root = bodyTree(
-      civilBody(node, { category: name.includes('wall') ? 'wall' : 'railing' })
-    );
+    const root = bodyTree(civilBody(node, { category }));
     const { model, idByKeyPath } = unwrap(
       familiesToBim(root, { project: BODY_PROJECT, bodyEvaluator: evaluator })
     );
@@ -145,6 +156,7 @@ describe('Families civil Product Body authority', () => {
     const product = owned.getElement(id);
     if (product?.category !== 'WALL' && product?.category !== 'RAILING')
       throw new Error('Missing product');
+    expect(product.category).toBe(category === 'wall' ? 'WALL' : 'RAILING');
     expect(product.geometry.kind).toBe('AUTHORITATIVE');
     expect(product.geometry.solids).toHaveLength(count);
     expect(unwrap(measureProductBodyMaterial(product.geometry.solids))).toBeCloseTo(volume, 10);
@@ -181,6 +193,8 @@ describe('Families civil Product Body authority', () => {
         product.geometry.solids.forEach((solid) =>
           expect(getKernel().volume(solid.wrapped)).toBeCloseTo(count === 1 ? 2 : 0.4, 8)
         );
+        // The evaluator and its topology cache are closed. Only the independently
+        // owned retained items may remain; any extra arena slot is a leak.
         if (before !== null) expect(nativeShapeCount()).toBe(before + count);
       }
       if (before !== null) expect(nativeShapeCount()).toBe(before);

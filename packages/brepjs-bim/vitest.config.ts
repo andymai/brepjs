@@ -5,6 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, '../../src'),
+      'brepjs/quick': resolve(import.meta.dirname, '../../src/quick.ts'),
+      'brepjs-bim': resolve(import.meta.dirname, './src/index.ts'),
       brepjs: resolve(import.meta.dirname, '../../src/index.ts'),
       'brepjs-families': resolve(import.meta.dirname, '../brepjs-families/src/index.ts'),
     },

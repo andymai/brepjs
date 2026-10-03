@@ -375,6 +375,7 @@ it('preserves the primary generation failure and every cleanup diagnostic when m
   const kernel = brepjs.getKernel();
   const isValid = kernel.isValid.bind(kernel);
   const extrude = brepjs.extrude;
+  const outputs: brepjs.Solid[] = [];
   const primary = new Error('Second panel validation');
   const cleanupCause = new Error('Partial solid cleanup');
   let validations = 0;
@@ -386,6 +387,7 @@ it('preserves the primary generation failure and every cleanup diagnostic when m
   vi.spyOn(brepjs, 'extrude').mockImplementation((...args) => {
     const result = extrude(...args);
     if (result.ok) {
+      outputs.push(result.value);
       const release = result.value[Symbol.dispose].bind(result.value);
       vi.spyOn(result.value, Symbol.dispose).mockImplementation(() => {
         attempts++;
@@ -395,23 +397,30 @@ it('preserves the primary generation failure and every cleanup diagnostic when m
     }
     return result;
   });
-  const result = model.addCurtainWall(CURTAIN);
-  expect(result).toMatchObject({
-    ok: false,
-    error: {
-      cause: primary,
-      cleanup: {
-        kind: 'FAILED',
-        diagnostics: [
-          { itemIndex: 0, cause: cleanupCause },
-          { itemIndex: 1, cause: cleanupCause },
-        ],
+  try {
+    const result = model.addCurtainWall(CURTAIN);
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        cause: primary,
+        cleanup: {
+          kind: 'FAILED',
+          diagnostics: [
+            { itemIndex: 0, cause: cleanupCause },
+            { itemIndex: 1, cause: cleanupCause },
+          ],
+        },
       },
-    },
-  });
-  expect(model.getGeometryCleanupDiagnostics()).toHaveLength(2);
-  model[Symbol.dispose]();
-  model[Symbol.dispose]();
-  expect(attempts).toBe(2);
-  expectArena(baseline);
+    });
+    expect(model.getGeometryCleanupDiagnostics()).toHaveLength(2);
+    model[Symbol.dispose]();
+    model[Symbol.dispose]();
+    expect(attempts).toBe(2);
+    expectArena(baseline);
+  } finally {
+    vi.restoreAllMocks();
+    model[Symbol.dispose]();
+    // Repair only outputs that an interrupted red-phase assertion left live.
+    for (const output of outputs) if (!output.disposed) output[Symbol.dispose]();
+  }
 });

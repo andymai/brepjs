@@ -53,11 +53,13 @@ Use `model.replaceProductBody({ localId, body: { kind: 'AUTHORITATIVE', solids }
 
 Register wall openings before installing an authoritative Body. Later `addDoor()` and `addWindow()` calls return `AUTHORITATIVE_WALL_BODY_IMMUTABLE`. Existing opening relationships survive replacement, and the retained Body must already contain their geometry.
 
+Retained Wall apertures export as IFC `Reference` geometry with void and fill relationships. IfcOpenShell 0.8.5 still subtracts Reference openings by default, even with a separate Reference context. If a replacement Body adds material inside a retained opening, readers using that engine can remove the added material.
+
 `familiesToBim()` performs that sequence for civil-semantic walls and railings using `bodyEvaluator` (or `proxyEvaluator`). Those routes require an evaluator: missing it returns `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED`. The adapter copies every authored item into Product-local coordinates and always retains `AUTHORITATIVE` authority, even when the authored Body coincides with a recipe. Conventional archetype routes retain their existing recipe authoring behavior.
 
-`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates. Both Product Body authorities return one placed copy per item. Stairs and ramps return one per flight, and curtain walls return their panels and mullions. Elements without stored geometry return an empty list. Dispose every returned solid.
+`placedSolids(element)` returns fresh, caller-owned solids transformed by the element's own placement. For an element beneath a placed spatial structure, pass its cumulative frame as `placedSolids(element, { parentFrame })` to obtain world coordinates. Both Product Body authorities return one placed copy per item. Stairs and ramps return one per flight, and curtain walls return their panels and mullions. Geometry-free elements return an empty list. Dispose every returned solid.
 
-Wall net volume measures the occupied union of all Body items. Recipe-derived quantities require current model recipe eligibility; replacing a Body clears that eligibility even if the replacement is tagged `PARAMETRIC`. Measurement failures omit the affected quantities and produce `WALL_QUANTITY_OMITTED` issues from `toIfcValidated()`.
+Wall net volume measures the occupied union of all Body items. Length, Width, and Height remain nominal dimensions from the Wall spec. After Body replacement, those dimensions do not establish gross volume, surface quantities, or weight. Recipe-derived quantities require current model recipe eligibility; replacing a Body clears that eligibility even if the replacement is tagged `PARAMETRIC`. Measurement failures omit the affected quantities and produce `WALL_QUANTITY_OMITTED` issues from `toIfcValidated()`.
 
 Other categories retain class-specific storage in step 1. Converging that storage and removing the transitional model ownership enumerator are step-2 work.
 

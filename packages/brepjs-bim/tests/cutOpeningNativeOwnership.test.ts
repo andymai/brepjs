@@ -9,38 +9,48 @@ beforeAll(async () => {
 }, 30000);
 afterEach(() => vi.restoreAllMocks());
 
-it('rejects split opening results before a later child cast can strand native resources', () => {
+it('releases every split child when later child wrapping fails', () => {
   using host = box(10, 2, 2);
   using source = box(2, 4, 4);
   const tool = translate(source, [4, -1, -1]);
   const kernel = getKernel();
   const live = currentKernel === 'occt-wasm' ? nativeShapeCount() : null;
-  const downcast = kernel.downcast.bind(kernel);
+  const iterate = kernel.iterShapes.bind(kernel);
   const release = kernel.dispose.bind(kernel);
+  const create = brepjs.createSolid;
+  const raws: Parameters<typeof kernel.dispose>[0][] = [];
+  const children: brepjs.Solid[] = [];
   const releases = vi.spyOn(kernel, 'dispose');
-  let firstCast: unknown;
-  let casts = 0;
-  vi.spyOn(kernel, 'downcast').mockImplementation((raw, type): unknown => {
-    if (type === 'solid') {
-      if (++casts === 2) throw new Error('later child cast');
-      firstCast = downcast(raw, type);
-      return firstCast;
-    }
-    return downcast(raw, type);
+  const cause = new Error('Later child wrapping failed');
+  vi.spyOn(kernel, 'iterShapes').mockImplementation((shape, type) => {
+    const result: unknown[] = iterate(shape, type);
+    if (type === 'solid') raws.push(...result.map(nativeResource));
+    return result;
+  });
+  const wrapping = vi.spyOn(brepjs, 'createSolid').mockImplementation((raw) => {
+    if (children.length === 1) throw cause;
+    const child = create(raw);
+    children.push(child);
+    return child;
   });
   try {
     expect(cutOpeningSolid({ host, makeTool: () => ok(tool), hostKind: 'WALL' })).toMatchObject({
       ok: false,
-      error: { code: 'WALL_OPENING_INVALID_SOLID' },
+      error: { code: 'WALL_OPENING_BUILD_FAILED', cause },
     });
-    expect(casts).toBe(0);
+    expect(wrapping).toHaveBeenCalledTimes(2);
+    expect(raws).toHaveLength(2);
+    for (const raw of raws)
+      expect(releases.mock.calls.filter(([released]) => released === raw)).toHaveLength(1);
     expect(tool.disposed).toBe(true);
     expect(host.disposed).toBe(false);
+    expect(kernel.volume(host.wrapped)).toBeCloseTo(40, 8);
     if (live !== null) expect(nativeShapeCount()).toBe(live - 1);
   } finally {
-    // Repair only the proven red-phase unowned child; never retry a release attempt.
-    if (isNativeResource(firstCast) && !releases.mock.calls.some(([raw]) => raw === firstCast))
-      release(firstCast);
+    // Repair only allocations with no release attempt in the failing candidate.
+    for (const child of children) if (!child.disposed) child[Symbol.dispose]();
+    for (const raw of raws)
+      if (!releases.mock.calls.some(([released]) => released === raw)) release(raw);
     vi.restoreAllMocks();
     if (!tool.disposed) tool[Symbol.dispose]();
   }
@@ -98,6 +108,10 @@ it.each(['before', 'after'] as const)(
   }
 );
 
+function nativeResource(value: unknown): { delete(): void } {
+  if (!isNativeResource(value)) throw new Error('Expected native resource');
+  return value;
+}
 function isNativeResource(value: unknown): value is { delete(): void } {
   return (
     typeof value === 'object' &&
