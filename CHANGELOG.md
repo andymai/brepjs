@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.0](https://github.com/andymai/brepjs/compare/brepjs-v20.0.1...brepjs-v20.1.0) (2026-10-03)
+
+
+### Features
+
+* **occt-wasm:** honour boolean options and track n-way history via booleanOp ([#2366](https://github.com/andymai/brepjs/issues/2366)) ([45ccabe](https://github.com/andymai/brepjs/commit/45ccabef16e47a49981d0d70713f186b5c4a2be1))
+
 ## [20.0.1](https://github.com/andymai/brepjs/compare/brepjs-v20.0.0...brepjs-v20.0.1) (2026-10-03)
 
 
