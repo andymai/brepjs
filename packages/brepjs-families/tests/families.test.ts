@@ -8,7 +8,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
 import { initOCCT } from '../../../tests/setup.js';
-import { csg, getBounds, isOk, unwrap, measureVolume } from 'brepjs';
+import { csg, getBounds, isOk, isShape3D, unwrap, measureVolume } from 'brepjs';
 import type { AnyShape, Dimension } from 'brepjs';
 import {
   family,
@@ -28,6 +28,7 @@ beforeAll(async () => {
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('Expected a 3D family shape');
   return unwrap(measureVolume(s));
 }
 
@@ -322,11 +323,12 @@ describe('mesh-primary evaluation (Phase 5 gate)', () => {
 });
 
 describe('props validation (Zod)', () => {
-  const Sized = family<{ readonly size: number; readonly label?: string }>(
-    'Sized',
-    (p) => el('Box', { size: [p.size, p.size, p.size] }),
-    { props: z.object({ size: z.number().positive(), label: z.string().default('unit') }) }
-  );
+  const Sized = family<
+    { readonly size: number; readonly label: string },
+    { readonly size: number; readonly label?: string | undefined }
+  >('Sized', (p) => el('Box', { size: [p.size, p.size, p.size] }), {
+    props: z.object({ size: z.number().positive(), label: z.string().default('unit') }),
+  });
 
   it('rejects invalid props at element construction', () => {
     expect(() => Sized({ key: 's', size: -1 })).toThrow(/invalid props for family 'Sized'/);
@@ -437,14 +439,12 @@ describe('intrinsic vocabulary', () => {
   });
 
   it('Geometry without an IR node throws with a clear message', () => {
-    const Bad = family<Record<string, never>>('Bad', () =>
-      el('Geometry', { node: { not: 'a node' } })
-    );
+    const Bad = family('Bad', () => el('Geometry', { node: { not: 'a node' } }));
     expect(() => resolve(Bad({ key: 'b' }))).toThrow(/requires a csg IR node/);
   });
 
   it('unknown intrinsics name the vocabulary in the error', () => {
-    const Bad = family<Record<string, never>>('Bad', () => el('Torus', {}));
+    const Bad = family('Bad', () => el('Torus', {}));
     expect(() => resolve(Bad({ key: 'b' }))).toThrow(/intrinsics: Box, Cylinder, Geometry/);
   });
 });
@@ -463,11 +463,12 @@ describe('composition (children, hierarchical transforms, rotation)', () => {
   });
 
   it('jsx invokes the component: schema validation and defaults apply', () => {
-    const Sized = family<{ readonly size: number; readonly label?: string }>(
-      'Sized',
-      (p) => el('Box', { size: [p.size, p.size, p.size] }),
-      { props: z.object({ size: z.number().positive(), label: z.string().default('unit') }) }
-    );
+    const Sized = family<
+      { readonly size: number; readonly label: string },
+      { readonly size: number; readonly label?: string | undefined }
+    >('Sized', (p) => el('Box', { size: [p.size, p.size, p.size] }), {
+      props: z.object({ size: z.number().positive(), label: z.string().default('unit') }),
+    });
     expect(() => jsx(Sized, { size: -1 }, 's')).toThrow(/invalid props for family 'Sized'/);
     const e = jsx(Sized, { size: 2 }, 's');
     expect(e.props['label']).toBe('unit');
@@ -517,7 +518,7 @@ describe('composition (children, hierarchical transforms, rotation)', () => {
   });
 
   it('tRotate rotates in degrees about the given axis', () => {
-    const Beam = family<Record<string, never>>('Beam', () =>
+    const Beam = family('Beam', () =>
       el('Box', { size: [400, 10, 10], transform: [tRotate(90, { axis: [0, 0, 1] })] })
     );
     const tree = resolve(Beam({ key: 'b' }));
