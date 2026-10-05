@@ -1,0 +1,21 @@
+package.json
+  s_1d5e36a6570c0d::t_075df546cf72e2 268
+package-lock.json
+  s_1d5e36a6570c0d::t_8043e79655defa 39,5295-5297,5301,5304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e00cc9f904bdb837e1a2077079240bd3fcb51089",
+  "prompts": {},
+  "sessions": {
+    "s_1d5e36a6570c0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15dead13-7148-4edb-9a37-9f8afd3fca6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
