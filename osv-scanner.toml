@@ -2,77 +2,31 @@
 # OSV Scan workflow (.github/workflows/osv-scan.yml). Each entry must carry a
 # reason and a review date so exceptions don't outlive their justification.
 
-# --- dompurify via monaco-editor (4 advisories) ---------------------------
-# monaco-editor 0.56.0 declares `dompurify: 3.4.8` as an exact pin, which is
-# what the scanner matches on. That copy is never executed, for two reasons.
+# --- dompurify via monaco-editor --------------------------------------------
+# monaco-editor 0.57.0 declares `dompurify: 3.4.15` as an exact pin, which is
+# what the scanner matches on. monaco never imports that package: it vendors
+# its own DOMPurify (also 3.4.15) at esm/vs/base/browser/dompurify/dompurify.js,
+# and domSanitize.js imports `./dompurify/dompurify.js`. There is no bare
+# `dompurify` import anywhere in monaco's esm/ or min/ output.
 #
-# 1. monaco never imports the package. It vendors its own DOMPurify at
-#    esm/vs/base/browser/dompurify/dompurify.js and domSanitize.js imports
-#    `./dompurify/dompurify.js`. There is no bare `dompurify` import anywhere
-#    in monaco's esm/ or min/ output.
-# 2. The playground never bundles monaco at all. It uses @monaco-editor/react,
-#    and with no loader.config() override the default applies: monaco is
-#    fetched at runtime from cdn.jsdelivr.net. No DOMPurify appears in any
-#    apps/playground/dist chunk.
+# The playground bundles monaco (apps/playground/src/lib/monacoLoader.ts), so
+# the vendored copy does execute. An npm override would raise the node_modules
+# copy that nothing imports and leave the vendored one untouched, turning this
+# table green without changing a byte of what executes. That is worse than an
+# explicit exception: it hides the exposure instead of recording it. Each
+# entry below is checked against monaco's vendored source instead.
 #
-# So node_modules/monaco-editor is a build-time, types-only dependency here.
-# An npm override would raise a copy that is neither imported nor shipped,
-# turning this table green without changing a byte of what executes. That is
-# worse than an explicit exception: it hides the exposure instead of recording
-# it. Bumping monaco is the only real fix and upstream has not shipped one.
-#
-# All three advisories also need a DOMPurify API monaco never calls. monaco
-# passes config per-call to purify.sanitize() and calls purify.removeAllHooks()
-# in a finally, so none of the cross-call config persistence these bugs rely on
-# happens. Verified against the vendored source, not just the package.json.
-#
-# SEPARATE, NOT FIXED HERE: because monaco is CDN-loaded, the editor actually
-# running in the playground is whatever version @monaco-editor/loader defaults
-# to (0.55.1 today), not the 0.56.0 pinned in apps/playground/package.json.
-# 0.55.1 vendors DOMPurify 3.2.7, i.e. older than the version flagged above.
-# That runtime dependency is invisible to this scanner, which only reads
-# package-lock.json. Tracking separately; it is a monaco-version and
-# supply-chain question, not something an override or ignore here can address.
-#
-# Re-evaluate when monaco-editor > 0.56.0 ships with a newer bundled DOMPurify.
+# Re-evaluate when a monaco-editor release pins dompurify >= 3.4.16.
 
 [[IgnoredVulns]]
-id = "GHSA-cmwh-pvxp-8882"
+id = "GHSA-p98j-92pf-mc4p"
 ignoreUntil = 2026-11-01
-# Needs setConfig() to pollute ALLOWED_ATTR across calls. The only setConfig
-# occurrences in monaco's esm/ are DOMPurify's own definition plus unrelated
-# same-named methods in the TypeScript language service and monaco's own
-# configuration layer. DOMPurify.setConfig is never invoked.
-reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; setConfig() never called"
-
-[[IgnoredVulns]]
-id = "GHSA-c2j3-45gr-mqc4"
-ignoreUntil = 2026-11-01
-# Needs CUSTOM_ELEMENT_HANDLING to be configured for the afterSanitizeElements
-# bypass. The identifier appears only inside the vendored dompurify.js; monaco
-# never sets it.
-reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; CUSTOM_ELEMENT_HANDLING never configured"
-
-[[IgnoredVulns]]
-id = "GHSA-vxr8-fq34-vvx9"
-ignoreUntil = 2026-11-01
-# Needs a Trusted Types policy to survive clearConfig() and poison a later
-# RETURN_TRUSTED_TYPE call. monaco does use RETURN_TRUSTED_TYPE, but the sole
-# clearConfig occurrence in esm/ is DOMPurify's own definition; monaco never
-# calls it, so no config survives between sanitize() calls.
-reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; clearConfig() never called"
-
-[[IgnoredVulns]]
-id = "GHSA-55q2-fjhq-7xh7"
-ignoreUntil = 2026-11-01
-# Needs IN_PLACE sanitization plus a hook that removes a containing element, so
-# that _sanitizeElements() returns after the hook detaches a node without
-# neutralizing its descendants. monaco has the hook half — domSanitize.js
-# registers replaceWithPlainTextHook on uponSanitizeElement — but never the
-# IN_PLACE half: both sanitize() call sites pass RETURN_DOM_FRAGMENT or
-# RETURN_TRUSTED_TYPE, and outside DOMPurify's own definition IN_PLACE appears
-# nowhere in monaco's esm/ or min/. The vendored copy also forces it off for
-# string input (`typeof dirty == "string" && (IN_PLACE = false)`), which is what
-# monaco passes. Without IN_PLACE, sanitize builds a fresh document rather than
-# mutating the input, so the detached-subtree path is unreachable.
-reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; IN_PLACE never set, so the detached-subtree path is unreachable"
+# Needs IN_PLACE sanitization plus an afterSanitizeElements or
+# afterSanitizeAttributes hook that removes a non-root element, leaving the
+# detached subtree's event handlers armed on the caller's live DOM. monaco has
+# the hook half: domSanitize.js's afterSanitizeAttributes hook can swap a node
+# out with replaceChild. It never has the IN_PLACE half: both sanitize() call
+# sites pass RETURN_DOM_FRAGMENT or RETURN_TRUSTED_TYPE, and outside the
+# vendored dompurify.js, IN_PLACE appears nowhere in monaco's esm/. Without
+# IN_PLACE, sanitize works on a fresh document, so no live subtree is involved.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; IN_PLACE never set, so no live subtree can be left armed"
