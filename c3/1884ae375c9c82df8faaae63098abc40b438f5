@@ -1,0 +1,23 @@
+packages/brepjs-families/tests/registry.test.ts
+  s_f356a2e5df7fd7::t_a3cf80d94e9cb2 15,240
+packages/brepjs-families/tsconfig.test.json
+  s_f356a2e5df7fd7::t_a3cf80d94e9cb2 12
+packages/brepjs-families/tests/families.test.ts
+  s_f356a2e5df7fd7::t_a3cf80d94e9cb2 11,325-329,440-442,447,466-470,520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c31884ae375c9c82df8faaae63098abc40b438f5",
+  "prompts": {},
+  "sessions": {
+    "s_f356a2e5df7fd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bff6408-971c-4f0d-a1cf-d46127df4194",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
