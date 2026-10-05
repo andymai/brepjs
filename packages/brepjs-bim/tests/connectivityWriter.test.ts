@@ -96,7 +96,7 @@ describe('connectivityWriter', () => {
     const oh = writeOwnerHistory(w);
     const a = writeWall(w, oh);
     const b = writeWall(w, oh);
-    const guid = deriveIfcGuidSync(makeRelKey('connects-elements', 1));
+    const guid = deriveIfcGuidSync(makeRelKey('connectivityWriter-test', 'connects-elements', 1));
 
     writeRelConnectsElements(w, guid, oh, a, b);
 
@@ -116,7 +116,9 @@ describe('connectivityWriter', () => {
     const oh = writeOwnerHistory(w);
     const a = writeWall(w, oh);
     const b = writeWall(w, oh);
-    const guid = deriveIfcGuidSync(makeRelKey('connects-path-elements', 1));
+    const guid = deriveIfcGuidSync(
+      makeRelKey('connectivityWriter-test', 'connects-path-elements', 1)
+    );
 
     writeRelConnectsPathElements(w, guid, oh, a, b, 'ATEND', 'ATSTART');
 
@@ -126,16 +128,16 @@ describe('connectivityWriter', () => {
     const rel = api.GetLine(mid, relIds.get(0)) as Record<string, unknown>;
     expect((rel['RelatingElement'] as { value?: number } | undefined)?.value).toBe(a);
     expect((rel['RelatedElement'] as { value?: number } | undefined)?.value).toBe(b);
-    expect((rel['RelatingPriorities'] ?? []).length ?? 0).toBe(0);
-    expect((rel['RelatedPriorities'] ?? []).length ?? 0).toBe(0);
+    expect(rel['RelatingPriorities'] ?? []).toEqual([]);
+    expect(rel['RelatedPriorities'] ?? []).toEqual([]);
     expect((rel['RelatedConnectionType'] as { value?: string } | undefined)?.value).toBe('ATSTART');
     expect((rel['RelatingConnectionType'] as { value?: string } | undefined)?.value).toBe('ATEND');
     api.CloseModel(mid);
   });
 
   it('derives deterministic GlobalIds for identical connectivity rel keys', () => {
-    const a = deriveIfcGuidSync(makeRelKey('connects-elements', 5));
-    const b = deriveIfcGuidSync(makeRelKey('connects-elements', 5));
+    const a = deriveIfcGuidSync(makeRelKey('connectivityWriter-test', 'connects-elements', 5));
+    const b = deriveIfcGuidSync(makeRelKey('connectivityWriter-test', 'connects-elements', 5));
     expect(a).toBe(b);
     expect(a.length).toBe(22);
   });

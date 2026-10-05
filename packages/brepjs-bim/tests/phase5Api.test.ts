@@ -75,6 +75,9 @@ function buildModel(): { model: BimModel; spaceAId: number } {
     width: 3000,
     height: 3000,
     origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Air',
     isExternal: false,
   });
   if (!spaceA.ok) throw new Error(spaceA.error.message);
@@ -87,6 +90,9 @@ function buildModel(): { model: BimModel; spaceAId: number } {
     width: 3000,
     height: 3000,
     origin: [4000, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Air',
     isExternal: false,
   });
   if (!spaceB.ok) throw new Error(spaceB.error.message);

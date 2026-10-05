@@ -230,6 +230,10 @@ if (invokedDirectly) {
   const ifc = await toIfcValidated(model, SAMPLE_META);
   if (!ifc.ok) throw new Error(`toIfcValidated failed: ${ifc.error.message}`);
   const out = join(dirname(fileURLToPath(import.meta.url)), 'sample-building-families.ifc');
-  await writeFile(out, ifc.value.bytes);
+  // web-ifc stamps FILE_NAME with the save time. Keep this checked-in fixture reproducible.
+  const text = new TextDecoder()
+    .decode(ifc.value.bytes)
+    .replace(/^(FILE_NAME\('[^']*',)'[^']*'/m, "$1'1970-01-01T00:00:00'");
+  await writeFile(out, text);
   console.warn(`Wrote ${out} (${ifc.value.bytes.byteLength} bytes)`);
 }

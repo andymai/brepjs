@@ -12,31 +12,16 @@ import {
 } from '../placementFrame.js';
 import { stairFlightToSolid } from './stairFns.js';
 import { rampFlightToSolid } from './rampFns.js';
-import { bodySolids } from '../types/productBody.js';
+import { bodySolids, transformProductBody } from '../types/productBody.js';
 import { locateShapeInFrame } from '../rigidPlacement.js';
-
-export interface PlacedGeometryTestHooks {
-  readonly afterPlaced?: ((solid: ValidSolid) => void) | undefined;
-}
-
-let testHooks: PlacedGeometryTestHooks | null = null;
-
-/** Package-internal deterministic failure seam for placement ownership tests. */
-export function setPlacedGeometryTestHooksForTesting(hooks: PlacedGeometryTestHooks | null): void {
-  testHooks = hooks;
-}
 
 // Applies an (origin, axisX, axisZ) frame to a local solid, returning a fresh
 // caller-owned solid. Orthonormal frames use the validity-preserving transform
 // path, so the result is a ValidSolid.
 function place(solid: ValidSolid, frame: RigidFrame): Result<ValidSolid, BimError> {
-  let placed: ValidSolid | null = null;
   try {
-    placed = locateShapeInFrame(solid, frame);
-    testHooks?.afterPlaced?.(placed);
-    return ok(placed);
+    return ok(locateShapeInFrame(solid, frame));
   } catch (cause) {
-    placed?.[Symbol.dispose]();
     return err(
       geometryError(
         'PLACED_GEOMETRY_FAILED',
@@ -97,16 +82,10 @@ export function placedSolids(
   switch (el.category) {
     case 'WALL':
     case 'RAILING': {
-      const out: ValidSolid[] = [];
-      for (const solid of bodySolids(el.geometry)) {
-        const placed = placeWithinParent(solid, el.spec, parentFrame);
-        if (!placed.ok) {
-          disposeAll(out);
-          return placed;
-        }
-        out.push(placed.value);
-      }
-      return ok(out);
+      const frame = resolvedPlacement(el.spec, parentFrame);
+      if (!frame.ok) return frame;
+      const placed = transformProductBody(el.geometry, frame.value);
+      return placed.ok ? ok(bodySolids(placed.value)) : placed;
     }
     case 'SLAB':
     case 'BEAM':

@@ -108,11 +108,9 @@ it('rejects an invalid parent or element frame before any native placement alloc
     placedSolids({ ...el, spec: { ...el.spec, ...extreme } }, { parentFrame: extreme })
   ).toMatchObject({ ok: false, error: { code: 'INVALID_RIGID_FRAME' } });
   expect(transform).not.toHaveBeenCalled();
-  expect(
-    unwrap(
-      measureVolume(el.geometry.kind === 'PARAMETRIC' ? el.geometry.solid : el.geometry.solids[0])
-    )
-  ).toBeGreaterThan(0);
+  for (const solid of el.geometry.solids) {
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
+  }
 });
 
 it('rejects invalid authored Families transforms before geometry generation', () => {

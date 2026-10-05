@@ -3,6 +3,7 @@ import { unwrap, measureVolume, box } from 'brepjs';
 import { initKernel } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 import { deriveIfcGuidSync } from '../src/identity/guidDerivation.js';
+import { measureProductBodyMaterial } from '../src/types/productBody.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -165,7 +166,7 @@ describe('BimModel', () => {
     expect(wall.geometry.kind).toBe('PARAMETRIC');
     if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
     model[Symbol.dispose]();
-    expect(wall.geometry.solid.disposed).toBe(true);
+    expect(wall.geometry.solids.every((solid) => solid.disposed)).toBe(true);
   });
 
   it('addEarthworksFill keeps a rejected duplicate body caller-owned', () => {
@@ -360,7 +361,7 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     const wall = model.getWalls()[0];
     if (!wall) throw new Error('Expected one wall');
     if (wall.geometry.kind !== 'PARAMETRIC') throw new Error('Expected parametric wall Body');
-    return unwrap(measureVolume(wall.geometry.solid));
+    return unwrap(measureProductBodyMaterial(wall.geometry.solids));
   }
 
   it('wall volume drops by door volume after addDoor', () => {

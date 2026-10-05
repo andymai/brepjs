@@ -100,13 +100,15 @@ describe('WRITE→READ→RE-WRITE round-trip self-check', () => {
   it('exposes per-type counts for the key entities after re-write', async () => {
     const bytes = await buildBytes();
     const report = await checkRoundTrip(bytes);
-    expect(report.firstPass.typeCounts.IfcProject).toBe(1);
-    expect(report.firstPass.typeCounts.IfcWall).toBe(1);
-    expect(report.firstPass.typeCounts.IfcSlab).toBe(1);
-    expect(report.firstPass.typeCounts.IfcBeam).toBe(1);
-    expect(report.firstPass.typeCounts.IfcColumn).toBe(1);
-    expect(report.firstPass.typeCounts.IfcRelContainedInSpatialStructure).toBeGreaterThanOrEqual(1);
-    expect(report.firstPass.typeCounts.IfcRelAggregates).toBeGreaterThanOrEqual(1);
+    expect(report.firstPass.typeCounts['IfcProject']).toBe(1);
+    expect(report.firstPass.typeCounts['IfcWall']).toBe(1);
+    expect(report.firstPass.typeCounts['IfcSlab']).toBe(1);
+    expect(report.firstPass.typeCounts['IfcBeam']).toBe(1);
+    expect(report.firstPass.typeCounts['IfcColumn']).toBe(1);
+    expect(report.firstPass.typeCounts['IfcRelContainedInSpatialStructure']).toBeGreaterThanOrEqual(
+      1
+    );
+    expect(report.firstPass.typeCounts['IfcRelAggregates']).toBeGreaterThanOrEqual(1);
     // counts are equal across the round-trip
     expect(report.secondPass.typeCounts).toEqual(report.firstPass.typeCounts);
     expect(report.secondPass.totalCount).toBe(report.firstPass.totalCount);

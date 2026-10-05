@@ -95,7 +95,7 @@ describe('assemblyWriter', () => {
   it('writes an IfcElementAssembly with predefined/assembly types and a null representation', async () => {
     const w = await makeWriter();
     const oh = writeOwnerHistory(w);
-    const guid = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 1));
+    const guid = deriveIfcGuidSync(makeElementKey('assemblyWriter-test', 'ELEMENT_ASSEMBLY', 1));
 
     const id = writeElementAssemblyEntity(w, guid, 'Truss A', 'TRUSS', oh, null, null);
 
@@ -114,7 +114,9 @@ describe('assemblyWriter', () => {
   it('aggregates child elements under an assembly via IfcRelAggregates referencing both ends', async () => {
     const w = await makeWriter();
     const oh = writeOwnerHistory(w);
-    const assemblyGuid = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 2));
+    const assemblyGuid = deriveIfcGuidSync(
+      makeElementKey('assemblyWriter-test', 'ELEMENT_ASSEMBLY', 2)
+    );
     const assembly = writeElementAssemblyEntity(
       w,
       assemblyGuid,
@@ -127,7 +129,7 @@ describe('assemblyWriter', () => {
     const memberA = writeBeam(w, oh);
     const memberB = writeBeam(w, oh);
 
-    const relGuid = deriveIfcGuidSync(makeRelKey('aggregates', 2));
+    const relGuid = deriveIfcGuidSync(makeRelKey('assemblyWriter-test', 'aggregates', 2));
     writeRelAggregatesElements(w, relGuid, oh, assembly, [memberA, memberB]);
 
     const { api, mid } = await openSaved(w);
@@ -144,12 +146,14 @@ describe('assemblyWriter', () => {
   it('nests ordered child elements under a parent via IfcRelNests referencing both ends', async () => {
     const w = await makeWriter();
     const oh = writeOwnerHistory(w);
-    const parentGuid = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 3));
+    const parentGuid = deriveIfcGuidSync(
+      makeElementKey('assemblyWriter-test', 'ELEMENT_ASSEMBLY', 3)
+    );
     const parent = writeElementAssemblyEntity(w, parentGuid, 'Nest', 'NOTDEFINED', oh, null, null);
     const childA = writeBeam(w, oh);
     const childB = writeBeam(w, oh);
 
-    const relGuid = deriveIfcGuidSync(makeRelKey('nests', 3));
+    const relGuid = deriveIfcGuidSync(makeRelKey('assemblyWriter-test', 'nests', 3));
     writeRelNests(w, relGuid, oh, parent, [childA, childB]);
 
     const { api, mid } = await openSaved(w);
@@ -165,8 +169,8 @@ describe('assemblyWriter', () => {
   });
 
   it('derives deterministic GlobalIds for identical assembly/rel keys', () => {
-    const a = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 7));
-    const b = deriveIfcGuidSync(makeElementKey('ELEMENT_ASSEMBLY', 7));
+    const a = deriveIfcGuidSync(makeElementKey('assemblyWriter-test', 'ELEMENT_ASSEMBLY', 7));
+    const b = deriveIfcGuidSync(makeElementKey('assemblyWriter-test', 'ELEMENT_ASSEMBLY', 7));
     expect(a).toBe(b);
     expect(a.length).toBe(22);
   });

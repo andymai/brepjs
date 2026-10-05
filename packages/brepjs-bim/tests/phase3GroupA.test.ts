@@ -84,7 +84,7 @@ function buildGroupAModel(): BimModel {
     axisX: XAXIS,
     axisZ: UP,
     materialName: 'Aluminium',
-    predefinedType: 'CURTAIN_WALL',
+    predefinedType: 'NOTDEFINED',
   });
   if (!curtainWall.ok) throw new Error(curtainWall.error.message);
   model.placeIn(curtainWall.value, storeyId);

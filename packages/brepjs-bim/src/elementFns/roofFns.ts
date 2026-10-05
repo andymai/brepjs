@@ -1,25 +1,24 @@
-import { polygon, extrude, convexHull, isValidSolid } from 'brepjs';
+import { generateGeometry, type OwnGeneratedResource } from '../geometryGeneration.js';
+import { validateGeneratedSolid } from './validateGeneratedSolid.js';
+import { polygon, extrude, convexHull } from 'brepjs';
 import type { ValidSolid, Result, Solid, Vec3 } from 'brepjs';
-import { ok, err } from 'brepjs';
+import { err } from 'brepjs';
 import type { RoofSpec } from '../specs/roofSpec.js';
 import type { BimError } from '../errors/bimError.js';
-import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
+import { specError, fromBrepError } from '../errors/bimError.js';
 
 const DEG2RAD = Math.PI / 180;
 
-// Validates a freshly-built solid, branding + owning it on success or disposing
-// + erroring on failure. Used for every roof shape because some upstream ops
-// (skeletonRoof's primary path, cut/revolve) return un-revalidated handles.
-function gate(solid: Solid, code: string): Result<ValidSolid, BimError> {
-  if (!isValidSolid(solid)) {
-    solid[Symbol.dispose]();
-    return err(geometryError(code, 'Roof solid failed validity check'));
-  }
-  return ok(solid);
+// Retain every roof output in the generation scope before checking validity.
+function gate(solid: Solid, code: string, own: OwnGeneratedResource): Result<ValidSolid, BimError> {
+  return validateGeneratedSolid(own(solid), {
+    code,
+    message: 'Roof solid failed validity check',
+  });
 }
 
 // Flat slab (current behavior): length × width footprint extruded +Z by thickness.
-function flatRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
+function flatRoof(spec: RoofSpec, own: OwnGeneratedResource): Result<ValidSolid, BimError> {
   const { length, width, thickness } = spec;
   const face = polygon([
     [0, 0, 0],
@@ -29,15 +28,19 @@ function flatRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
   ]);
   if (!face.ok)
     return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create roof profile'));
-  using profile = face.value;
+  const profile = own(face.value);
   const solid = extrude(profile, [0, 0, thickness]);
   if (!solid.ok)
     return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude roof profile'));
-  return gate(solid.value, 'ROOF_INVALID_SOLID');
+  return gate(solid.value, 'ROOF_INVALID_SOLID', own);
 }
 
 // Shed: a right-trapezoid in the local Y-Z plane swept +X by length.
-function shedRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
+function shedRoof(
+  spec: RoofSpec,
+  pitch: number,
+  own: OwnGeneratedResource
+): Result<ValidSolid, BimError> {
   const { length, width, thickness } = spec;
   const rise = width * Math.tan(pitch * DEG2RAD);
   const face = polygon([
@@ -48,15 +51,19 @@ function shedRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
   ]);
   if (!face.ok)
     return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create shed profile'));
-  using profile = face.value;
+  const profile = own(face.value);
   const solid = extrude(profile, [length, 0, 0]);
   if (!solid.ok)
     return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude shed roof'));
-  return gate(solid.value, 'ROOF_INVALID_SOLID');
+  return gate(solid.value, 'ROOF_INVALID_SOLID', own);
 }
 
 // Gable: a house-pentagon in the local Y-Z plane swept +X by length.
-function gableRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
+function gableRoof(
+  spec: RoofSpec,
+  pitch: number,
+  own: OwnGeneratedResource
+): Result<ValidSolid, BimError> {
   const { length, width, thickness } = spec;
   const ridge = (width / 2) * Math.tan(pitch * DEG2RAD);
   const face = polygon([
@@ -68,11 +75,11 @@ function gableRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> 
   ]);
   if (!face.ok)
     return err(fromBrepError(face.error, 'ROOF_PROFILE_FAILED', 'Failed to create gable profile'));
-  using profile = face.value;
+  const profile = own(face.value);
   const solid = extrude(profile, [length, 0, 0]);
   if (!solid.ok)
     return err(fromBrepError(solid.error, 'ROOF_EXTRUDE_FAILED', 'Failed to extrude gable roof'));
-  return gate(solid.value, 'ROOF_INVALID_SOLID');
+  return gate(solid.value, 'ROOF_INVALID_SOLID', own);
 }
 
 // Hip: a hip roof over a rectangle is a convex solid, so the convex hull of the
@@ -81,7 +88,11 @@ function gableRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> 
 // it is not usable for a measurable IfcRoof body.) The ridge runs along the
 // longer side, inset from each end by half the shorter side; a square footprint
 // collapses the ridge to a single apex (a pyramid), still a valid hull.
-function hipRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
+function hipRoof(
+  spec: RoofSpec,
+  pitch: number,
+  own: OwnGeneratedResource
+): Result<ValidSolid, BimError> {
   const { length: l, width: w } = spec;
   const tan = Math.tan(pitch * DEG2RAD);
   const base: Vec3[] = [
@@ -107,14 +118,14 @@ function hipRoof(spec: RoofSpec, pitch: number): Result<ValidSolid, BimError> {
   const solid = convexHull([...base, ...ridge]);
   if (!solid.ok)
     return err(fromBrepError(solid.error, 'ROOF_HIP_FAILED', 'Failed to build hip roof'));
-  return gate(solid.value, 'ROOF_INVALID_SOLID');
+  return gate(solid.value, 'ROOF_INVALID_SOLID', own);
 }
 
 // Dome: a faceted hemisphere — the convex hull of points sampled on a hemisphere
 // of radius min(L,W)/2 centred on the footprint. A boolean sphere∩box produces a
 // solid whose spherical surface HANGS the occt-wasm mesher, so the dome is built
 // from planar facets (like the hip) to mesh reliably.
-function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
+function domeRoof(spec: RoofSpec, own: OwnGeneratedResource): Result<ValidSolid, BimError> {
   const { length, width } = spec;
   const r = Math.min(length, width) / 2;
   const cx = length / 2;
@@ -134,7 +145,7 @@ function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
   const solid = convexHull(pts);
   if (!solid.ok)
     return err(fromBrepError(solid.error, 'ROOF_DOME_FAILED', 'Failed to build dome roof'));
-  return gate(solid.value, 'ROOF_INVALID_SOLID');
+  return gate(solid.value, 'ROOF_INVALID_SOLID', own);
 }
 
 // Returned solid is unplaced template geometry in the local frame; origin/axisX/
@@ -148,22 +159,24 @@ function domeRoof(spec: RoofSpec): Result<ValidSolid, BimError> {
 // depth, so they do not consume `thickness` (it is still validated as positive for
 // a consistent spec).
 export function roofToSolid(spec: RoofSpec): Result<ValidSolid, BimError> {
-  if (spec.length <= 0) return err(specError('ROOF_ZERO_LENGTH', 'Roof length must be positive'));
-  if (spec.width <= 0) return err(specError('ROOF_ZERO_WIDTH', 'Roof width must be positive'));
-  if (spec.thickness <= 0)
-    return err(specError('ROOF_ZERO_THICKNESS', 'Roof thickness must be positive'));
+  return generateGeometry({ operation: 'roofToSolid', codePrefix: 'ROOF' }, (own) => {
+    if (spec.length <= 0) return err(specError('ROOF_ZERO_LENGTH', 'Roof length must be positive'));
+    if (spec.width <= 0) return err(specError('ROOF_ZERO_WIDTH', 'Roof width must be positive'));
+    if (spec.thickness <= 0)
+      return err(specError('ROOF_ZERO_THICKNESS', 'Roof thickness must be positive'));
 
-  if (spec.pitch === undefined) return flatRoof(spec);
-  switch (spec.predefinedType) {
-    case 'SHED_ROOF':
-      return shedRoof(spec, spec.pitch);
-    case 'GABLE_ROOF':
-      return gableRoof(spec, spec.pitch);
-    case 'HIP_ROOF':
-      return hipRoof(spec, spec.pitch);
-    case 'DOME_ROOF':
-      return domeRoof(spec);
-    default:
-      return flatRoof(spec);
-  }
+    if (spec.pitch === undefined) return flatRoof(spec, own);
+    switch (spec.predefinedType) {
+      case 'SHED_ROOF':
+        return shedRoof(spec, spec.pitch, own);
+      case 'GABLE_ROOF':
+        return gableRoof(spec, spec.pitch, own);
+      case 'HIP_ROOF':
+        return hipRoof(spec, spec.pitch, own);
+      case 'DOME_ROOF':
+        return domeRoof(spec, own);
+      default:
+        return flatRoof(spec, own);
+    }
+  });
 }

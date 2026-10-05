@@ -12,15 +12,18 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { BimModel, toIfcValidated } from 'brepjs-bim';
 
-const outFile = resolve(dirname(fileURLToPath(import.meta.url)), 'sample-building.ifc');
+const outFile =
+  process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), 'sample-building.ifc');
 
+/**
+ * @template T
+ * @param {import('brepjs').Result<T, import('brepjs-bim').BimError>} result
+ * @param {string} label
+ * @returns {T}
+ */
 function expect(result, label) {
-  if (result && result.ok === false) {
-    throw new Error(
-      `${label} failed: ${result.error?.code ?? ''} ${result.error?.message ?? result.error}`
-    );
-  }
-  return result && 'value' in result ? result.value : result;
+  if (!result.ok) throw new Error(`${label} failed: ${result.error.code} ${result.error.message}`);
+  return result.value;
 }
 
 const model = new BimModel();
@@ -52,6 +55,7 @@ const L = 6000;
 const W = 4000;
 const H = 3000;
 const T = 200;
+/** @type {Array<Pick<import('brepjs-bim').WallSpec, 'origin' | 'axisX' | 'length'> & { external: boolean }>} */
 const wallDefs = [
   { origin: [0, 0, 0], axisX: [1, 0, 0], length: L, external: true },
   { origin: [L, 0, 0], axisX: [0, 1, 0], length: W, external: true },
@@ -77,6 +81,10 @@ const wallIds = wallDefs.map((d, i) =>
 );
 for (const id of wallIds) model.placeIn(id, groundId);
 
+const [frontWallId, sideWallId] = wallIds;
+if (frontWallId === undefined || sideWallId === undefined)
+  throw new Error('Expected perimeter walls');
+
 // A window in the front wall and a door in the side wall.
 const windowId = expect(
   model.addWindow({
@@ -84,7 +92,7 @@ const windowId = expect(
     height: 1200,
     offsetAlongWall: 2250,
     offsetFromFloor: 900,
-    wallLocalId: wallIds[0],
+    wallLocalId: frontWallId,
     materialName: 'Aluminium + Glazing',
     isExternal: true,
     thermalTransmittance: 1.4,
@@ -97,7 +105,7 @@ const doorId = expect(
     height: 2100,
     offsetAlongWall: 1500,
     offsetFromFloor: 0,
-    wallLocalId: wallIds[1],
+    wallLocalId: sideWallId,
     materialName: 'Timber',
     isExternal: true,
     fireRating: 'EI 60',
@@ -141,10 +149,12 @@ const slabFirst = expect(
 model.placeIn(slabFirst, firstId);
 
 // Two structural columns.
-for (const [cx, cy] of [
+/** @type {Array<[number, number]>} */
+const columnPositions = [
   [1000, 1000],
   [L - 1000, W - 1000],
-]) {
+];
+for (const [cx, cy] of columnPositions) {
   const col = expect(
     model.addColumn({
       height: H,
@@ -165,7 +175,7 @@ model.addClassification(
   {
     system: 'Uniclass 2015',
     code: 'EF_25_10',
-    name: 'Walls',
+    description: 'Walls',
   },
   wallIds
 );
@@ -195,3 +205,5 @@ console.log(`Wrote ${outFile} (${bytes.byteLength} bytes)`);
 console.log(`Internal self-validation: ${errors.length} errors, ${warnings.length} warnings`);
 for (const i of report.issues) console.log(`  [${i.severity}] ${i.code}: ${i.message}`);
 if (errors.length > 0) process.exitCode = 1;
+
+model[Symbol.dispose]();

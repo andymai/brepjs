@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.nativeBaseline.json",
+  "include": [
+    "tests/setup.ts",
+    "tests/modelOwnership.test.ts",
+    "tests/modelOpeningOwnership.test.ts",
+    "tests/modelOpeningFailures.test.ts",
+    "tests/nativeAliasOwnership.test.ts",
+    "tests/modelOwnershipCoverage.test.ts",
+    "tests/modelRetirement.test.ts",
+    "tests/railingOwnership.test.ts",
+    "tests/modelGenerationFailures.test.ts",
+    "tests/modelTemporaryCleanup.test.ts",
+    "tests/geometryCleanupDiagnostics.test.ts",
+    "tests/transactionalBodyReplacement.test.ts",
+    "tests/cutOpeningNativeOwnership.test.ts",
+    "tests/curtainWallProfileOwnership.test.ts"
+  ]
+}

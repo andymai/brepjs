@@ -1,7 +1,7 @@
 import type { BimError } from './errors/bimError.js';
 import type { Result, ValidSolid, measureVolume, getBounds } from 'brepjs';
 
-export type BodyNativeStep = 'validate' | 'union' | 'measure' | 'bounds';
+export type BodyNativeStep = 'validate' | 'copy' | 'transform' | 'union' | 'measure' | 'bounds';
 
 export interface BodyNativeEvent {
   readonly step: BodyNativeStep;

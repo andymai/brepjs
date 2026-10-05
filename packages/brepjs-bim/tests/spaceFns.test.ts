@@ -154,7 +154,7 @@ describe('spaceWriter serialization', () => {
     });
 
     const geom = writeSpaceGeometry(w, baseSpec, header.geomSubContextId, null);
-    const guid = deriveIfcGuidSync(makeElementKey('SPACE', 1));
+    const guid = deriveIfcGuidSync(makeElementKey('spaceFns-test', 'SPACE', 1));
     const spaceId = writeSpaceEntity(
       w,
       guid,
@@ -192,7 +192,7 @@ describe('spaceWriter serialization', () => {
 
     const wallId = writeBoundingWall(w, header.ownerHistoryId);
     const geom = writeSpaceGeometry(w, baseSpec, header.geomSubContextId, null);
-    const spaceGuid = deriveIfcGuidSync(makeElementKey('SPACE', 1));
+    const spaceGuid = deriveIfcGuidSync(makeElementKey('spaceFns-test', 'SPACE', 1));
     const spaceId = writeSpaceEntity(
       w,
       spaceGuid,
@@ -204,7 +204,7 @@ describe('spaceWriter serialization', () => {
       geom.productDefinitionShapeId
     );
 
-    const relGuid = deriveIfcGuidSync(makeRelKey('SPACE_BOUNDARY', 1));
+    const relGuid = deriveIfcGuidSync(makeRelKey('spaceFns-test', 'SPACE_BOUNDARY', 1));
     writeRelSpaceBoundary(w, relGuid, header.ownerHistoryId, spaceId, wallId, 'PHYSICAL');
 
     const { api, mid } = await openSaved(w);

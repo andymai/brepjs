@@ -8,7 +8,7 @@
  */
 
 import { beforeAll, describe, expect, it } from 'vitest';
-import { csg, getBounds, measureVolume, unwrap } from 'brepjs';
+import { csg, getBounds, isShape3D, measureVolume, unwrap } from 'brepjs';
 import {
   civilSemantics,
   el,
@@ -465,6 +465,7 @@ describe('familiesToBim rotation fold — civil spatial nodes', () => {
     using evaluator = new csg.Evaluator();
     // The resolved fill body is world-baked (carries the deck's 90deg yaw).
     using source = unwrap(evaluator.evaluate(fillOccurrence.geometry));
+    if (!isShape3D(source)) throw new Error('Expected a 3D Earthworks Fill body');
     const sourceVolume = unwrap(measureVolume(source));
     const sourceBounds = getBounds(source);
 
@@ -474,13 +475,14 @@ describe('familiesToBim rotation fold — civil spatial nodes', () => {
     using model = projected.model;
     const fill = model.getEarthworksFills()[0];
     expect(fill).toBeDefined();
+    if (fill === undefined) throw new Error('Expected a projected Earthworks Fill');
     // Rotation preserves volume; the stored (parent-local) body is intact.
-    expect(unwrap(measureVolume(fill?.geometry ?? source))).toBeCloseTo(sourceVolume, 3);
+    expect(unwrap(measureVolume(fill.geometry))).toBeCloseTo(sourceVolume, 3);
 
     // Reconstruct the world body through the rotated parent frame; bounds match
     // the world-baked source, proving the applyMatrix localization is exact.
     const placed = unwrap(
-      placedSolids(fill as never, {
+      placedSolids(fill, {
         parentFrame: { origin: [0, 0, 0], axisX: [0, 1, 0], axisZ: [0, 0, 1] },
       })
     );

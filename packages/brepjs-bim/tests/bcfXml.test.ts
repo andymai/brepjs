@@ -13,7 +13,7 @@ describe('parseXml', () => {
       '<?xml version="1.0"?>\n<!-- c --><Root a="1" ns:b="x.y-z"><Child>hi &amp; bye</Child><Empty/></Root>'
     );
     expect(node.tag).toBe('Root');
-    expect(node.attrs.a).toBe('1');
+    expect(node.attrs['a']).toBe('1');
     expect(node.attrs['ns:b']).toBe('x.y-z');
     expect(childText(node, 'Child')).toBe('hi & bye');
     expect(findChild(node, 'Empty')?.children).toEqual([]);

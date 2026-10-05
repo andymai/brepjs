@@ -7,7 +7,7 @@ import { IfcWriter } from '../src/ifc-writer/ifcWriter.js';
 import { writeRailingGeometry, writeRailingEntity } from '../src/ifc-writer/railingWriter.js';
 import { deriveIfcGuidSync, makeElementKey } from '../src/identity/guidDerivation.js';
 import { writeHeader } from '../src/ifc-writer/headerWriter.js';
-import { measureVolume } from 'brepjs';
+import { measureVolume, unwrap } from 'brepjs';
 
 beforeAll(async () => {
   await initKernel();
@@ -140,8 +140,9 @@ describe('railing IFC serialization', () => {
   it('emits exactly one IfcRailing with a non-null representation', async () => {
     const w = await makeWriter();
     const ids = writeHeader(w, { applicationName: 'test', applicationVersion: '0' });
-    const geom = writeRailingGeometry(w, spec, ids.geomSubContextId, null);
-    const guid = deriveIfcGuidSync(makeElementKey('RAILING', 1));
+    using solid = unwrap(railingToSolid(spec));
+    const geom = writeRailingGeometry(w, spec, solid, ids.geomSubContextId, null);
+    const guid = deriveIfcGuidSync(makeElementKey('railingFns-test', 'RAILING', 1));
     writeRailingEntity(
       w,
       guid,

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../../../tests/setup.js';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
+import type { LocalId } from '../src/identity/localId.js';
 import { toIfc } from '../src/serialize/toIfc.js';
 
 beforeAll(async () => {
@@ -11,7 +12,7 @@ beforeAll(async () => {
 
 const META = { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' };
 
-function spatialModel(): { model: BimModel; storeyId: number } {
+function spatialModel(): { model: BimModel; storeyId: LocalId } {
   const model = new BimModel();
   const initResult = model.init({ name: 'Phase2 Data' });
   if (!initResult.ok) throw new Error(initResult.error.message);

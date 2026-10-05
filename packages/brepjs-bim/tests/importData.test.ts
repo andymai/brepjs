@@ -128,7 +128,7 @@ describe('dataRead — round-trip data readback', () => {
     const reader = await readerFor(built);
     try {
       const wallId = wallExpressId(reader, built.wallGuid);
-      const material = readMaterial(reader, wallId);
+      const material = readMaterial(reader, wallId, 1);
       expect(material).not.toBeNull();
       expect(material?.name).toBe('Concrete');
     } finally {

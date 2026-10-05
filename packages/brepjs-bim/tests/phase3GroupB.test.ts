@@ -86,6 +86,7 @@ function buildGroupBModel(): GroupBModel {
   model.placeIn(ramp.value, storeyId);
 
   const slab = model.addSlab({
+    predefinedType: 'FLOOR',
     length: 5000,
     width: 4000,
     thickness: 200,

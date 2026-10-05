@@ -19,6 +19,9 @@ const failedCleanup = z.object({
 const errorMetadata = z.object({ cleanup: z.unknown().optional() });
 const cleanupAttempt = Symbol('geometryCleanupAttempt');
 const bodyOperation = z.enum([
+  'validateProductBody',
+  'copyProductBody',
+  'transformProductBody',
   'productBodyBounds',
   'measureProductBodyMaterial',
 ] satisfies readonly ProductBodyOperation[]);

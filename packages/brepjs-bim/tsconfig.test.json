@@ -1,13 +1,19 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "../..",
     "noEmit": true,
     "types": ["vitest/globals", "node"],
     "paths": {
-      "@/*": ["../../src/*"]
-    }
+      "@/*": ["../../src/*"],
+      "brepjs": ["../../src/index.ts"],
+      "brepjs-families": ["../brepjs-families/src/index.ts"],
+      "brepjs/quick": ["../../src/quick.ts"],
+      "brepjs-bim": ["./src/index.ts"]
+    },
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["tests/**/*.ts", "src/**/*.ts", "examples/**/*.ts"],
+  "include": ["tests/**/*.ts", "src/**/*.ts", "examples/**/*.ts", "examples/**/*.mjs"],
   "exclude": ["node_modules", "dist"]
 }
