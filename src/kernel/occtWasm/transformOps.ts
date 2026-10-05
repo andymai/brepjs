@@ -316,10 +316,7 @@ export function circularPattern(
   angleStep: number,
   count: number
 ): KernelShape[] {
-  // `angleStep` is the per-copy step in degrees (the adapter contract shared
-  // with occt/brepkit/manifold); occt-wasm's `circularPattern` instead takes
-  // the *total* spread in radians and divides it by `count` itself.
-  const totalAngleRad = (angleStep * count * Math.PI) / 180;
+  // The facade takes the total sweep in radians and divides it by `count`.
   const compoundId = k.circularPattern(
     unwrap(shape),
     center[0],
@@ -328,7 +325,7 @@ export function circularPattern(
     axis[0],
     axis[1],
     axis[2],
-    totalAngleRad,
+    (angleStep * count * Math.PI) / 180,
     count
   );
   const subVec = k.getSubShapes(compoundId, 'solid');

@@ -181,6 +181,17 @@ export interface OcctKernelWasm {
   section(a: number, b: number): number;
   fuseAll(shapeIds: EmVectorUint32): number;
   cutAll(shapeId: number, toolIds: EmVectorUint32): number;
+  /** General boolean with glue, fuzzy, simplify and n-way history (occt-wasm 5.6+). */
+  booleanOp?(
+    opCode: number,
+    argIds: EmVectorUint32,
+    toolIds: EmVectorUint32,
+    glue: number,
+    fuzzyValue: number,
+    simplifyAngularTolerance: number,
+    inputFaceHashes: EmVectorInt,
+    hashUpperBound: number
+  ): EmEvolutionData;
   split(shapeId: number, toolIds: EmVectorUint32): number;
 
   // --- Modeling operations ---

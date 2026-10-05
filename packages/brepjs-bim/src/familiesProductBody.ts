@@ -217,8 +217,9 @@ function bodiesCoincident(exact: ExactProductBody, parametric: ParametricProduct
 
   let union: ValidSolid | null = null;
   try {
+    // No glue: it skips face/face intersection, and bodies that are not
+    // coincident can cross, which glue may union to either body's volume.
     const fused = fuseAll([...bodySolids(exact), ...bodySolids(parametric)], {
-      optimisation: 'sameFace',
       simplify: true,
       strategy: 'pairwise',
       trackEvolution: false,

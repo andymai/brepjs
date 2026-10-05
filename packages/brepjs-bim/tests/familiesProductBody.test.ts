@@ -67,6 +67,15 @@ const ShiftedWall = family(
   { semantics: wallSemantics() }
 );
 
+const RotatedWall = family(
+  'RotatedWall',
+  () =>
+    el('Geometry', {
+      node: csg.rotate(csg.box(1_000, 100, 500), 90, { axis: [0, 0, 1], at: [500, 50, 250] }),
+    }),
+  { semantics: wallSemantics() }
+);
+
 const TinyUnequalWall = family(
   'TinyUnequalWall',
   () => el('Geometry', { node: csg.box(0.008, 0.008, 0.008) }),
@@ -129,6 +138,15 @@ describe('Families civil Product Body authority', () => {
     const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
     expect(wall.geometry.kind).toBe('EXACT');
     expect(bodySolids(wall.geometry)).toHaveLength(1);
+  });
+
+  it('selects EXACT when an equal-volume wall Body crosses the parametric one', () => {
+    const root = oneProduct(RotatedWall({ key: 'wall' }));
+    using evaluator = new csg.Evaluator();
+    const projected = unwrap(familiesToBim(root, { project: PROJECT, bodyEvaluator: evaluator }));
+    using model = projected.model;
+    const wall = requiredElement(model, projected.idByKeyPath.get('level/wall'), 'WALL');
+    expect(wall.geometry.kind).toBe('EXACT');
   });
 
   it('selects EXACT when two sub-1 mm³ volumes disagree relatively', () => {
