@@ -299,6 +299,7 @@ jobs:
       - run: npm run build
       - run: npm run build --workspace=brepjs-families
       - run: npm run typecheck --workspace=brepjs-bim
+      - run: npm run typecheck:consumers --workspace=brepjs-bim
       - run: npm run lint --workspace=brepjs-bim
       - run: npm run test:coverage --workspace=brepjs-bim
       # The IDS checker's primary gate: the complete official buildingSMART
