@@ -1,0 +1,59 @@
+.release-please-manifest.json
+  s_ecfadab7dc0ed4::t_45639d3f854b52 2
+CHANGELOG.md
+  s_ecfadab7dc0ed4::t_ecaf3b2fe4d0aa 3-30
+package-lock.json
+  s_ecfadab7dc0ed4::t_e99da725ba79fb 3,9,52,369,379,554,1307,1356,1424,1446,2107-2109,3046,3100,3266,3542,4446,6051,6074,6109,6198,7095,7152,7362-7364,7915,8026,8471,8691-8692,8695-8697,8854,8938,9167,9282-9284,9467,9757,9981-9983,10119,10291,10789,10884-10886,10901-10902,11251,11257-11265,11423-11425,12322,12689,13024-13025,13386,14734,14920,15295,15350,15487,15498,15666,15677,16268,16279
+package.json
+  s_ecfadab7dc0ed4::t_25668f933fa0ad 3,281,323
+packages/brepjs-bim/src/familiesProductBody.ts
+  s_ecfadab7dc0ed4::t_ae787eb98c61c7 220-221
+packages/brepjs-bim/tests/familiesProductBody.test.ts
+  s_ecfadab7dc0ed4::t_0d7f47fc87aa2a 70-78,143-151
+src/kernel/interfaces/evolutionOps.ts
+  s_ecfadab7dc0ed4::t_031631ebaa4bca 82-103
+src/kernel/manifold/transformOps.ts
+  s_ecfadab7dc0ed4::t_83f00feafea7ae 435-436,452-453
+src/kernel/occt/booleanOps.ts
+  s_ecfadab7dc0ed4::t_5f76260354d892 14,26-63,154-155,157,159,162,165-167,169-174,176-177,182-193,203,215
+src/kernel/occt/historyOps.ts
+  s_ecfadab7dc0ed4::t_e1a20190edf7d3 12,25,153-184,193,195-197,200,212,214-216,219,231,233-235,238
+src/kernel/occtWasm/booleanOps.ts
+  s_ecfadab7dc0ed4::t_7ddddc33a5ebfa 16,18-175,223,226,228-233,237,239-240,243,245-252,255-257,263-272,275,278,280,296,298-305,319,321-327
+src/kernel/occtWasm/evolutionOps.ts
+  s_ecfadab7dc0ed4::t_d5a6a239d3e7bf 22,27-34,177-201,209,211-223,228,234,237,242,244-260,265-268,270,277-297,305,307-385,387-391
+src/kernel/occtWasm/helpers.ts
+  s_ecfadab7dc0ed4::t_c7897961bd942b 12,14,168-203
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_ecfadab7dc0ed4::t_a3a06d20a23c8c 154-158,164-184,322,326,330
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_ecfadab7dc0ed4::t_b2330e1f76688b 184-194
+src/kernel/occtWasm/transformOps.ts
+  s_ecfadab7dc0ed4::t_19b4f6d716096e 319,328
+src/kernel/types.ts
+  s_ecfadab7dc0ed4::t_e68f158be826a0 33-38
+src/operations/patternFns.ts
+  s_ecfadab7dc0ed4::t_528b3b82363451 43-44,46,88-89,91
+src/topology/booleanFns.ts
+  s_ecfadab7dc0ed4::t_8667eea87fc714 495-515,525,592-613,620
+tests/occtWasmBooleanOp.test.ts
+  s_ecfadab7dc0ed4::t_33a419921b224e 1-159
+tests/patterns.test.ts
+  s_ecfadab7dc0ed4::t_3971aa311e9426 5-6,68-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "555fc407b824075af9c47c8f4b11d532341db1b1",
+  "prompts": {},
+  "sessions": {
+    "s_ecfadab7dc0ed4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31e974b0-81fc-44e7-84c5-a753966b5aa7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
