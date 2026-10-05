@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.25.1...brepjs-bim-v0.26.0) (2026-10-05)
+
+
+### Features
+
+* **bim:** complete multi-solid ProductBody ownership and public API ([#2357](https://github.com/andymai/brepjs/issues/2357)) ([955f041](https://github.com/andymai/brepjs/commit/955f041de9a59ff4bbdbbf48a0f9e1fcecfff0a4))
+
 ## [0.25.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.25.0...brepjs-bim-v0.25.1) (2026-10-05)
 
 
