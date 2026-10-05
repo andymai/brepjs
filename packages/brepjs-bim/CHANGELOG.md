@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.25.0...brepjs-bim-v0.25.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **bim:** compare product Bodies without glue ([#2369](https://github.com/andymai/brepjs/issues/2369)) ([e5a2488](https://github.com/andymai/brepjs/commit/e5a2488fad1edc00e9440f2c83e6bd32e179109a))
+
 ## [0.25.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.24.5...brepjs-bim-v0.25.0) (2026-09-27)
 
 
