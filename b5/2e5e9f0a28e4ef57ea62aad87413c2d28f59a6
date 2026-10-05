@@ -1,0 +1,21 @@
+package-lock.json
+  s_1d5e36a6570c0d::t_07b442142e43b8 2082-2084,9827-9829,9833,9836,10214-10216,10221,10228,10235,10253-10265,10267-10269,10273-10274,14978-14980,14987
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_1d5e36a6570c0d::t_b5a8443ef66065 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b52e5e9f0a28e4ef57ea62aad87413c2d28f59a6",
+  "prompts": {},
+  "sessions": {
+    "s_1d5e36a6570c0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15dead13-7148-4edb-9a37-9f8afd3fca6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
