@@ -30,7 +30,12 @@ export type KernelType = any;
 
 /** Options shared by all boolean and compound operations. */
 export interface BooleanOptions {
-  /** Glue algorithm hint for faces shared between operands. */
+  /**
+   * OCCT glue mode, for operands whose faces coincide but never cross:
+   * 'commonFace' for partly shared faces, 'sameFace' for fully shared ones.
+   * Glue skips face/face intersection, so operands whose faces do cross come
+   * back unfused or uncut.
+   */
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   /** Merge same-domain faces/edges after the boolean. */
   simplify?: boolean;

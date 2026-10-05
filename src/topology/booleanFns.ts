@@ -492,8 +492,27 @@ export function fuseAll(
   }
 
   if (strategy === 'native') {
-    // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
-    const result = getKernel().fuseAll(
+    const kernel = getKernel();
+    const inputFaceHashes =
+      trackEvolution && kernel.fuseAllWithHistory ? collectInputFaceHashes(shapes) : [];
+    if (inputFaceHashes.length > 0 && kernel.fuseAllWithHistory) {
+      const { shape, evolution, diagnostics } = kernel.fuseAllWithHistory(
+        shapes.map((s) => s.wrapped),
+        inputFaceHashes,
+        HASH_CODE_MAX,
+        { optimisation, simplify, fuzzyValue }
+      );
+      const tracked = castToShape3D(
+        shape,
+        'FUSE_ALL_NOT_3D',
+        'fuseAll did not produce a 3D shape',
+        undefined,
+        diagnostics
+      );
+      if (tracked.ok) propagateAllMetadata(evolution, shapes, tracked.value);
+      return tracked;
+    }
+    const result = kernel.fuseAll(
       shapes.map((s) => s.wrapped),
       { optimisation, simplify, strategy, fuzzyValue, ...(signal ? { signal } : {}) }
     );
@@ -503,7 +522,7 @@ export function fuseAll(
       'fuseAll did not produce a 3D shape'
     );
     if (fuseAllResult.ok && trackEvolution) {
-      // Native N-way fuse has no ShapeEvolution — only origins propagate (tags/colors lost)
+      // Without kernel history only origins propagate (tags/colors lost)
       propagateMetadataByHash(shapes, fuseAllResult.value);
     }
     return fuseAllResult;
@@ -570,14 +589,35 @@ export function cutAll(
   }
 
   const allInputs = [base, ...tools];
-  const result = getKernel().cutAll(
+  const kernel = getKernel();
+  const inputFaceHashes =
+    trackEvolution && kernel.cutAllWithHistory ? collectInputFaceHashes(allInputs) : [];
+  if (inputFaceHashes.length > 0 && kernel.cutAllWithHistory) {
+    const { shape, evolution, diagnostics } = kernel.cutAllWithHistory(
+      base.wrapped,
+      tools.map((s) => s.wrapped),
+      inputFaceHashes,
+      HASH_CODE_MAX,
+      { optimisation, simplify, fuzzyValue }
+    );
+    const tracked = castToShape3D(
+      shape,
+      'CUT_ALL_NOT_3D',
+      'cutAll did not produce a 3D shape',
+      undefined,
+      diagnostics
+    );
+    if (tracked.ok) propagateAllMetadata(evolution, allInputs, tracked.value);
+    return tracked;
+  }
+  const result = kernel.cutAll(
     base.wrapped,
     tools.map((s) => s.wrapped),
     { optimisation, simplify, fuzzyValue }
   );
   const cutAllResult = castToShape3D(result, 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
   if (cutAllResult.ok && trackEvolution) {
-    // Batch cut has no ShapeEvolution — only origins propagate (tags/colors lost)
+    // Without kernel history only origins propagate (tags/colors lost)
     propagateMetadataByHash(allInputs, cutAllResult.value);
   }
   return cutAllResult;

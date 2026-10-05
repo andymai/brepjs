@@ -79,6 +79,28 @@ export interface KernelEvolutionOps {
     hashUpperBound: number,
     options?: BooleanOptions
   ): DiagnosticOperationResult;
+  /**
+   * N-way fuse with face history across every input. Kernels without it get
+   * `fuseAll` plus hash-based origin propagation instead.
+   */
+  fuseAllWithHistory?:
+    | ((
+        shapes: KernelShape[],
+        inputFaceHashes: number[],
+        hashUpperBound: number,
+        options?: BooleanOptions
+      ) => DiagnosticOperationResult)
+    | undefined;
+  /** N-way cut with face history across the base and every tool. */
+  cutAllWithHistory?:
+    | ((
+        shape: KernelShape,
+        tools: KernelShape[],
+        inputFaceHashes: number[],
+        hashUpperBound: number,
+        options?: BooleanOptions
+      ) => DiagnosticOperationResult)
+    | undefined;
   filletWithHistory(
     shape: KernelShape,
     edges: KernelShape[],

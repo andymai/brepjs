@@ -1,5 +1,33 @@
 # Changelog
 
+## [20.1.2](https://github.com/andymai/brepjs/compare/brepjs-v20.1.1...brepjs-v20.1.2) (2026-10-03)
+
+
+### Performance Improvements
+
+* **occt-wasm:** keep a compound of disjoint solids as one boolean operand ([#2371](https://github.com/andymai/brepjs/issues/2371)) ([f2a6de4](https://github.com/andymai/brepjs/commit/f2a6de4bc8fee97c727fe47edfec8745f88632f0))
+
+## [20.1.1](https://github.com/andymai/brepjs/compare/brepjs-v20.1.0...brepjs-v20.1.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **patterns:** union overlapping pattern copies correctly ([#2368](https://github.com/andymai/brepjs/issues/2368)) ([38ee72b](https://github.com/andymai/brepjs/commit/38ee72b2137935f1f942f80faf3ca76837562a23))
+
+## [20.1.0](https://github.com/andymai/brepjs/compare/brepjs-v20.0.1...brepjs-v20.1.0) (2026-10-03)
+
+
+### Features
+
+* **occt-wasm:** honour boolean options and track n-way history via booleanOp ([#2366](https://github.com/andymai/brepjs/issues/2366)) ([45ccabe](https://github.com/andymai/brepjs/commit/45ccabef16e47a49981d0d70713f186b5c4a2be1))
+
+## [20.0.1](https://github.com/andymai/brepjs/compare/brepjs-v20.0.0...brepjs-v20.0.1) (2026-10-03)
+
+
+### Performance Improvements
+
+* **occt:** build two-operand booleans once on opencascade.js ([#2358](https://github.com/andymai/brepjs/issues/2358)) ([fdabd7f](https://github.com/andymai/brepjs/commit/fdabd7fbb40ec71bb8dce8a7ee6cb548dce76e83))
+
 ## [20.0.0](https://github.com/andymai/brepjs/compare/brepjs-v19.0.5...brepjs-v20.0.0) (2026-09-21)
 
 This version contains no changes to `brepjs`. The major bump came from a release attribution error: [#2328](https://github.com/andymai/brepjs/issues/2328) changed only `brepjs-bim` (shipped as brepjs-bim 0.24.2) but its pull request still listed root test files from a stacked prerequisite, so release-please credited its breaking marker to the root package. [#2333](https://github.com/andymai/brepjs/issues/2333) excludes `tests/` from the root release train. Upgrading from 19.x needs no code changes.

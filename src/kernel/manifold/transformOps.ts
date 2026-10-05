@@ -432,8 +432,8 @@ export function linearPattern(
   spacing: number,
   count: number
 ): KernelShape[] {
-  const results: KernelShape[] = [shape];
-  for (let i = 1; i < count; i++) {
+  const results: KernelShape[] = [];
+  for (let i = 0; i < count; i++) {
     const offset = spacing * i;
     results.push(
       translate(shape, direction[0] * offset, direction[1] * offset, direction[2] * offset)
@@ -449,8 +449,8 @@ export function circularPattern(
   angleStep: number,
   count: number
 ): KernelShape[] {
-  const results: KernelShape[] = [shape];
-  for (let i = 1; i < count; i++) {
+  const results: KernelShape[] = [];
+  for (let i = 0; i < count; i++) {
     // `circularPattern` receives degrees (matching the OCCT adapters); kernel
     // `rotate` expects radians.
     results.push(rotate(shape, (angleStep * i * Math.PI) / 180, axis, center));

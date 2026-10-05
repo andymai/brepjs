@@ -316,6 +316,7 @@ export function circularPattern(
   angleStep: number,
   count: number
 ): KernelShape[] {
+  // The facade takes the total sweep in radians and divides it by `count`.
   const compoundId = k.circularPattern(
     unwrap(shape),
     center[0],
@@ -324,7 +325,7 @@ export function circularPattern(
     axis[0],
     axis[1],
     axis[2],
-    angleStep,
+    (angleStep * count * Math.PI) / 180,
     count
   );
   const subVec = k.getSubShapes(compoundId, 'solid');

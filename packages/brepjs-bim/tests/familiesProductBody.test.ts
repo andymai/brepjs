@@ -131,6 +131,13 @@ describe('Families civil Product Body authority', () => {
       volume: 2,
     },
     {
+      name: 'equal-volume wall that crosses the recipe',
+      category: 'wall' as const,
+      node: csg.rotate(csg.box(2, 1, 1), 90, { axis: [0, 0, 1], at: [1, 0.5, 0.5] }),
+      count: 1,
+      volume: 2,
+    },
+    {
       name: 'tiny unequal wall',
       category: 'wall' as const,
       node: csg.box(0.008, 0.008, 0.008),
