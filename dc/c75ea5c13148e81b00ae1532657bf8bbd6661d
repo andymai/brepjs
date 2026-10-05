@@ -1,0 +1,19 @@
+packages/brepjs-bim/examples/sample-building-families.ifc
+  s_1d5e36a6570c0d::t_3972b693db67c9 4,6,15,17-24,26-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcc75ea5c13148e81b00ae1532657bf8bbd6661d",
+  "prompts": {},
+  "sessions": {
+    "s_1d5e36a6570c0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15dead13-7148-4edb-9a37-9f8afd3fca6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
