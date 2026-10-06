@@ -21,6 +21,7 @@ import {
   type BrepkitHandle,
   solidHandle,
   toArray,
+  compoundSolidIds,
   translationMatrix,
   rotationMatrix,
   multiplyMatrices,
@@ -525,7 +526,7 @@ function applyCompoundBooleanWithHistory(
   hashUpperBound: number,
   nativeFn: (a: number, b: number) => string
 ): { shape: KernelShape; accum: CompoundBooleanAccum } {
-  const childSolidIds: number[] = toArray(bk.getCompoundSolids(compoundToolId));
+  const childSolidIds: number[] = compoundSolidIds(bk, compoundToolId);
   let currentShape: KernelShape = shape;
   const accum: CompoundBooleanAccum = {
     combinedModified: new Map<number, number[]>(),

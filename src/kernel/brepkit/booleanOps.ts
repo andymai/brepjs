@@ -22,6 +22,7 @@ import {
   unwrapSolidOrThrow,
   isBrepkitHandle,
   toArray,
+  compoundSolidIds,
   warnOnce,
   hasIgnoredBooleanOptions,
   nextSyntheticId,
@@ -52,7 +53,7 @@ export function isEmptyBooleanError(e: unknown): boolean {
 
 function isEmptyCompound(bk: BrepkitKernel, h: BrepkitHandle): boolean {
   if (h.type !== 'compound') return false;
-  return toArray(bk.getCompoundSolids(h.id)).length === 0;
+  return compoundSolidIds(bk, h.id).length === 0;
 }
 
 function emptyCompound(bk: BrepkitKernel): KernelShape {
@@ -106,7 +107,7 @@ function warnCompoundBaseSimplify(options: BooleanOptions | undefined, op: strin
 function solidIdsOf(bk: BrepkitKernel, shape: KernelShape, methodName: string): number[] {
   const h = shape as BrepkitHandle;
   if (isBrepkitHandle(shape) && h.type === 'compound') {
-    return toArray(bk.getCompoundSolids(h.id));
+    return compoundSolidIds(bk, h.id);
   }
   return [unwrapSolidOrThrow(shape, methodName)];
 }
@@ -144,7 +145,7 @@ export function fuse(
   const baseId = unwrapSolidOrThrow(shape, 'fuse');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
-    const toolSolidIds: number[] = toArray(bk.getCompoundSolids(toolHandle.id));
+    const toolSolidIds: number[] = compoundSolidIds(bk, toolHandle.id);
     let currentId = baseId;
     for (const toolSolidId of toolSolidIds) {
       currentId = kernelBoolean(bk, 'fuse', currentId, toolSolidId, _options);
@@ -178,7 +179,7 @@ export function cut(
     warnCompoundBaseSimplify(_options, 'cut');
     const toolIds = solidIdsOf(bk, tool, 'cut');
     const survivors: number[] = [];
-    for (const childId of toArray(bk.getCompoundSolids(cutBase.id))) {
+    for (const childId of compoundSolidIds(bk, cutBase.id)) {
       try {
         survivors.push(bk.compoundCut(childId, new Uint32Array(toolIds)));
       } catch (e) {
@@ -192,7 +193,7 @@ export function cut(
   const baseId = unwrapSolidOrThrow(shape, 'cut');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
-    const toolSolidIds: number[] = toArray(bk.getCompoundSolids(toolHandle.id));
+    const toolSolidIds: number[] = compoundSolidIds(bk, toolHandle.id);
     let currentId = baseId;
     for (const toolSolidId of toolSolidIds) {
       try {
@@ -328,7 +329,7 @@ export function cutAll(
   for (const tool of tools) {
     const h = tool as BrepkitHandle;
     if (h.type === 'compound') {
-      toolIds.push(...toArray(bk.getCompoundSolids(h.id)));
+      toolIds.push(...compoundSolidIds(bk, h.id));
     } else {
       toolIds.push(unwrapSolidOrThrow(tool, 'cutAll'));
     }
@@ -341,7 +342,7 @@ export function cutAll(
   const baseHandle = shape as BrepkitHandle;
   if (isBrepkitHandle(shape) && baseHandle.type === 'compound') {
     const survivors: number[] = [];
-    for (const childId of toArray(bk.getCompoundSolids(baseHandle.id))) {
+    for (const childId of compoundSolidIds(bk, baseHandle.id)) {
       try {
         survivors.push(bk.compoundCut(childId, toolIds));
       } catch (e) {

@@ -107,6 +107,17 @@ export function toArray(ids: Uint32Array): number[] {
   return Array.from(ids);
 }
 
+/**
+ * Solid ids inside a compound. A synthetic compound exists JS-side only, so the
+ * kernel rejects its id as an invalid handle; its solid children are read from
+ * `syntheticCompounds` instead.
+ */
+export function compoundSolidIds(bk: BrepkitKernel, id: number): number[] {
+  const synthetic = syntheticCompounds.get(id);
+  if (synthetic) return synthetic.filter((h) => h.type === 'solid').map((h) => h.id);
+  return toArray(bk.getCompoundSolids(id));
+}
+
 /** Unwrap a shape that must be a solid, with a descriptive error naming the method. */
 export function unwrapSolidOrThrow(shape: KernelShape, methodName: string): number {
   if (!isBrepkitHandle(shape)) {
@@ -138,7 +149,7 @@ export function unwrapSolidsForExport(
     return [shape.id];
   }
   if (shape.type === 'compound') {
-    const ids = toArray(bk.getCompoundSolids(shape.id));
+    const ids = compoundSolidIds(bk, shape.id);
     if (ids.length > 0) return ids;
     throw new Error(`brepkit: ${methodName} received a compound with no solids.`);
   }
