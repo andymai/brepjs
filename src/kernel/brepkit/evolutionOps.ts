@@ -436,7 +436,7 @@ function buildEvolution(
  * Mutates `map` in-place and records each resolved prevOut in `intermediateOutputs`.
  * When `deleteOnEmpty` is provided, entries that reduce to no outputs are added to it.
  */
-function chainEvolutionMap(
+export function chainEvolutionMap(
   map: Map<number, number[]>,
   stepModified: ReadonlyMap<number, readonly number[]>,
   stepDeleted: ReadonlySet<number>,
@@ -444,18 +444,21 @@ function chainEvolutionMap(
   deleteOnEmpty?: Set<number>
 ): void {
   for (const [origKey, prevOutputs] of map) {
-    const chainedOutputs: number[] = [];
+    // A face merged from several split pieces is reported modified from each
+    // of them, so two previous outputs can resolve to the same next output.
+    // Kept as repeats, they multiply at every later step of the chain.
+    const chainedOutputs = new Set<number>();
     for (const prevOut of prevOutputs) {
       intermediateOutputs.add(prevOut);
       const nextOutputs = stepModified.get(prevOut);
       if (nextOutputs) {
-        chainedOutputs.push(...nextOutputs);
+        for (const next of nextOutputs) chainedOutputs.add(next);
       } else if (!stepDeleted.has(prevOut)) {
-        chainedOutputs.push(prevOut);
+        chainedOutputs.add(prevOut);
       }
     }
-    if (chainedOutputs.length > 0) {
-      map.set(origKey, chainedOutputs);
+    if (chainedOutputs.size > 0) {
+      map.set(origKey, [...chainedOutputs]);
     } else {
       map.delete(origKey);
       deleteOnEmpty?.add(origKey);
@@ -500,7 +503,7 @@ function mergeCompoundChildStep(result: OperationResult, accum: CompoundBooleanA
   for (const [k, v] of result.evolution.generated) {
     if (intermediateOutputs.has(k)) continue;
     const existing = accum.combinedGenerated.get(k) ?? [];
-    accum.combinedGenerated.set(k, [...existing, ...v]);
+    accum.combinedGenerated.set(k, [...new Set([...existing, ...v])]);
   }
 
   for (const d of result.evolution.deleted) {
