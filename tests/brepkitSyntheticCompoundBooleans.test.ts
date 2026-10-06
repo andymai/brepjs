@@ -96,8 +96,9 @@ descBk('brepkit booleans with a mixed compound tool', () => {
     using base = box(10, 10, 10);
     using post = at(2, 2, 20, [4, 4, -5]);
     using tool = withEdge(post);
-    using result = unwrap(cutAll(base, [tool]));
-    expect(unwrap(measureVolume(result))).toBeCloseTo(960, 6);
+    using pocket = at(2, 2, 2, [1, 1, 1]);
+    using result = unwrap(cutAll(base, [tool, pocket]));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(952, 6);
   });
 
   it('fuses all with a compound that also holds an edge', () => {
