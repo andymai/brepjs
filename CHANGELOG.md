@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.4](https://github.com/andymai/brepjs/compare/brepjs-v20.1.3...brepjs-v20.1.4) (2026-10-06)
+
+
+### Bug Fixes
+
+* **kernel:** read a JS-side compound's solids in brepkit booleans ([#2384](https://github.com/andymai/brepjs/issues/2384)) ([f98b4d5](https://github.com/andymai/brepjs/commit/f98b4d5ba682ce3431b22b5b5bd0d3a1b25c6c4d))
+
 ## [20.1.3](https://github.com/andymai/brepjs/compare/brepjs-v20.1.2...brepjs-v20.1.3) (2026-10-06)
 
 
