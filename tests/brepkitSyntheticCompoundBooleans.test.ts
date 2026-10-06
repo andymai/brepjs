@@ -6,7 +6,10 @@ import {
   cut,
   cutWithEvolution,
   exportSTEP,
+  cutAll,
+  findFacesByTag,
   fuse,
+  fuseAll,
   intersectWithEvolution,
   iterSolids,
   line,
@@ -76,6 +79,33 @@ descBk('brepkit booleans with a mixed compound tool', () => {
     using tool = withEdge(low, high);
     using result = unwrap(intersectWithEvolution(base, tool)).shape;
     expect(unwrap(measureVolume(result))).toBeCloseTo(16, 6);
+  });
+
+  it('keeps the tool faces history when the compound tool solids overlap', () => {
+    using base = tagged(box(10, 10, 10));
+    using left = at(4, 2, 2, [2, 2, 2]);
+    using right = at(4, 2, 2, [4, 2, 2]);
+    using tool = withEdge(left, right);
+    tagFaces(tool, () => true, 'tool');
+    using result = unwrap(intersectWithEvolution(base, tool)).shape;
+    expect(unwrap(measureVolume(result))).toBeCloseTo(24, 6);
+    expect(findFacesByTag(result, 'tool').length).toBeGreaterThan(0);
+  });
+
+  it('cuts all by a list holding a compound that also holds an edge', () => {
+    using base = box(10, 10, 10);
+    using post = at(2, 2, 20, [4, 4, -5]);
+    using tool = withEdge(post);
+    using result = unwrap(cutAll(base, [tool]));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(960, 6);
+  });
+
+  it('fuses all with a compound that also holds an edge', () => {
+    using base = box(10, 10, 10);
+    using post = at(2, 2, 20, [4, 4, -5]);
+    using tool = withEdge(post);
+    using result = unwrap(fuseAll([base, tool]));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1040, 6);
   });
 
   it('intersects to nothing when the compound tool holds no solid', () => {
