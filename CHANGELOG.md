@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.3](https://github.com/andymai/brepjs/compare/brepjs-v20.1.2...brepjs-v20.1.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* **kernel:** keep one copy of each output when chaining a compound boolean's evolution ([#2379](https://github.com/andymai/brepjs/issues/2379)) ([f1c172e](https://github.com/andymai/brepjs/commit/f1c172ebdcfd3f2bb902dcde31d9f345e5ae575b))
+
 ## [20.1.2](https://github.com/andymai/brepjs/compare/brepjs-v20.1.1...brepjs-v20.1.2) (2026-10-03)
 
 
