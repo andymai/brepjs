@@ -466,7 +466,7 @@ export function chainEvolutionMap(
   }
 }
 
-interface CompoundBooleanAccum {
+export interface CompoundBooleanAccum {
   combinedModified: Map<number, number[]>;
   combinedGenerated: Map<number, number[]>;
   combinedDeleted: Set<number>;
@@ -478,7 +478,7 @@ interface CompoundBooleanAccum {
  * Chains existing modified/generated outputs through this step's evolution,
  * then merges in any step entries not already covered by the chain.
  */
-function mergeCompoundChildStep(result: OperationResult, accum: CompoundBooleanAccum): void {
+export function mergeCompoundChildStep(result: OperationResult, accum: CompoundBooleanAccum): void {
   const intermediateOutputs = new Set<number>();
 
   chainEvolutionMap(

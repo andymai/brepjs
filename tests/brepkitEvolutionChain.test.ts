@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chainEvolutionMap } from '@/kernel/brepkit/evolutionOps.js';
+import { chainEvolutionMap, mergeCompoundChildStep } from '@/kernel/brepkit/evolutionOps.js';
+import type { KernelShape } from '@/kernel/types.js';
 
 describe('chainEvolutionMap', () => {
   it('keeps one copy of an output that two previous outputs lead to', () => {
@@ -33,7 +34,25 @@ describe('chainEvolutionMap', () => {
         new Set(),
         new Set()
       );
+      // Checked every step, so a repeat fails here instead of doubling on.
+      expect(map.get(1)).toEqual([next, next + 1]);
     }
-    expect(map.get(1)).toEqual([3100, 3101]);
+  });
+
+  it("merges a step's generated outputs into an entry without repeats", () => {
+    const accum = {
+      combinedModified: new Map<number, number[]>(),
+      combinedGenerated: new Map([[5, [7]]]),
+      combinedDeleted: new Set<number>(),
+      inputFaceHashSet: new Set<number>(),
+    };
+    mergeCompoundChildStep(
+      {
+        shape: {} as KernelShape,
+        evolution: { modified: new Map(), generated: new Map([[5, [7, 8]]]), deleted: new Set() },
+      },
+      accum
+    );
+    expect(accum.combinedGenerated.get(5)).toEqual([7, 8]);
   });
 });
