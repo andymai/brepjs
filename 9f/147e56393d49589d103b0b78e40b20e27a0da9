@@ -1,0 +1,25 @@
+tests/brepkitSyntheticCompoundBooleans.test.ts
+  s_a8677c67f85a06::t_28194d986c9da1 1-43
+src/kernel/brepkit/booleanOps.ts
+  s_a8677c67f85a06::t_cee95e52133725 25,56,110,148,182,196,332,345
+src/kernel/brepkit/evolutionOps.ts
+  s_a8677c67f85a06::t_a3fe600bfc3ee3 24,529
+src/kernel/brepkit/helpers.ts
+  s_a8677c67f85a06::t_29c1185b6e8146 110-120,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f147e56393d49589d103b0b78e40b20e27a0da9",
+  "prompts": {},
+  "sessions": {
+    "s_a8677c67f85a06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85b17417-28bf-4293-9803-4c3b96f3617d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
