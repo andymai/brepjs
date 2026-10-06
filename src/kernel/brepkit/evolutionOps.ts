@@ -514,19 +514,17 @@ export function mergeCompoundChildStep(result: OperationResult, accum: CompoundB
 }
 
 /**
- * Iteratively apply native evolution for each solid in a compound tool, chaining
- * evolution maps so the original input face hashes resolve to final output hashes
- * rather than intermediates.
+ * Iteratively apply native evolution for each tool solid, chaining evolution
+ * maps so the original input face hashes resolve to final output hashes rather
+ * than intermediates.
  */
 function applyCompoundBooleanWithHistory(
-  bk: BrepkitKernel,
   shape: KernelShape,
-  compoundToolId: number,
+  toolSolidIds: number[],
   inputFaceHashes: number[],
   hashUpperBound: number,
   nativeFn: (a: number, b: number) => string
 ): { shape: KernelShape; accum: CompoundBooleanAccum } {
-  const childSolidIds: number[] = compoundSolidIds(bk, compoundToolId);
   let currentShape: KernelShape = shape;
   const accum: CompoundBooleanAccum = {
     combinedModified: new Map<number, number[]>(),
@@ -534,7 +532,7 @@ function applyCompoundBooleanWithHistory(
     combinedDeleted: new Set<number>(),
     inputFaceHashSet: new Set(inputFaceHashes),
   };
-  for (const childId of childSolidIds) {
+  for (const childId of toolSolidIds) {
     const ch = currentShape as BrepkitHandle;
     if (ch.type !== 'solid') break;
     const json = nativeFn(ch.id, childId);
@@ -557,7 +555,7 @@ function booleanWithHistoryImpl(
   options: BooleanOptions | undefined,
   nativeFn: (a: number, b: number) => string,
   fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
-  _label: string
+  op: 'fuse' | 'cut' | 'intersect'
 ): DiagnosticOperationResult {
   const noDiagnostics = { hasErrors: false, hasWarnings: false, messages: [] } as const;
   const sh = shape as BrepkitHandle;
@@ -572,11 +570,19 @@ function booleanWithHistoryImpl(
         // Empty result — drop to fallback path which returns an empty compound.
       }
     }
-    if (th.type === 'compound') {
+    const toolSolidIds = th.type === 'compound' ? compoundSolidIds(bk, th.id) : [];
+    // A tool with no solid takes the plain path below, which returns the
+    // boolean's identity or its empty result. Intersecting one tool solid after
+    // another keeps only what lies in all of them, so an intersect takes the
+    // tool's solids as one union.
+    if (toolSolidIds.length > 0) {
+      const steps =
+        op === 'intersect' && toolSolidIds.length > 1
+          ? [bk.fuseAll(new Uint32Array(toolSolidIds))]
+          : toolSolidIds;
       const { shape: resultShape, accum } = applyCompoundBooleanWithHistory(
-        bk,
         shape,
-        th.id,
+        steps,
         inputFaceHashes,
         hashUpperBound,
         nativeFn
@@ -706,7 +712,7 @@ export function fuseWithHistory(
     options,
     (a, b) => bk.fuseWithEvolution(a, b),
     (s, t, o) => fuse(bk, s, t, o),
-    'fuseWithHistory'
+    'fuse'
   );
 }
 
@@ -727,7 +733,7 @@ export function cutWithHistory(
     options,
     (a, b) => bk.cutWithEvolution(a, b),
     (s, t, o) => cut(bk, s, t, o),
-    'cutWithHistory'
+    'cut'
   );
 }
 
@@ -748,7 +754,7 @@ export function intersectWithHistory(
     options,
     (a, b) => bk.intersectWithEvolution(a, b),
     (s, t, o) => intersect(bk, s, t, o),
-    'intersectWithHistory'
+    'intersect'
   );
 }
 
