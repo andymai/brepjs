@@ -1,0 +1,21 @@
+osv-scanner.toml
+  s_ae78557b952def::t_828bffd7ca3e8f 33-59
+package-lock.json
+  s_ae78557b952def::t_02bb66b5e23281 6673-6675,6680,6707-6709,6713-6714,6718-6720,6725-6728,6731,6743-6745,6749-6750,6790-6792,6796,6800-6802,6806-6807,6811-6813,6817-6819,6824-6826,6830-6832,6836-6838,11686-11688,11706,14741-14743,14748-14752
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8323a43ad50572f90150e57f0cae9e4863de614",
+  "prompts": {},
+  "sessions": {
+    "s_ae78557b952def": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "534b39c3-b00e-4909-9d12-af053ea0612c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
