@@ -50,7 +50,7 @@ descBk('brepkit lifts a sketched Bezier as its own curve', () => {
       [r, 0],
     ];
     const [start, c1, c2, end] = poles;
-    const ramp = draw(start)
+    using ramp = draw(start)
       .cubicBezierCurveTo(end, c1, c2)
       .lineTo([r, r])
       .close()
