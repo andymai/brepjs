@@ -64,7 +64,7 @@ import type {
   StepAssemblyPart,
   SurfaceType,
 } from '@/kernel/types.js';
-import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
+import type { BulkMeasurement, Matrix3 } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
@@ -1307,6 +1307,10 @@ export class OcctWasmAdapter implements KernelAdapter {
     max: [number, number, number];
   } {
     return measureOps.boundingBox(this.k, shape);
+  }
+
+  inertia(shape: KernelShape): Matrix3 {
+    return measureOps.inertia(this.k, shape);
   }
 
   distance(shape1: KernelShape, shape2: KernelShape): DistanceResult {

@@ -4,9 +4,10 @@
 
 ## Key Files
 
-| File            | Purpose                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `measureFns.ts` | Functional API: `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, property helpers |
+| File                 | Purpose                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| `measureFns.ts`      | Functional API: `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, property helpers |
+| `principalBoxFns.ts` | `principalBoundingBox`: bounding box on a solid's principal axes of inertia                          |
 
 ## API (`measureFns.ts`)
 
@@ -22,6 +23,26 @@ All functions return plain numbers or objects; no memory management needed.
 | `measureVolumeProps(s)`   | `Shape3D`            | `{mass, centerOfMass: Vec3}` | Volume + center of mass   |
 | `measureSurfaceProps(s)`  | `Face \| Shape3D`    | `{mass, centerOfMass: Vec3}` | Area + center of mass     |
 | `measureLinearProps(s)`   | `AnyShape`           | `{mass, centerOfMass: Vec3}` | Length + center of mass   |
+
+## Principal Bounding Box (`principalBoxFns.ts`)
+
+`principalBoundingBox(shape)` returns `Result<PrincipalBoundingBox>`: the box in the frame of the principal axes of inertia, so a rotated board reports its own length, width, and thickness instead of the inflated world-axis box from `getBounds`.
+
+| Field    | Meaning                                                      |
+| -------- | ------------------------------------------------------------ |
+| `center` | Box center in world coordinates                              |
+| `axes`   | Orthonormal, right-handed axes, ordered by decreasing extent |
+| `size`   | Full edge lengths along `axes`, largest first                |
+
+```typescript
+const { size, axes, center } = unwrap(principalBoundingBox(rotatedBoard));
+// size: [600, 400, 18.5]; axes[2] is the board's normal
+```
+
+- It is a box on the principal axes, not a minimum-volume oriented box. When principal moments coincide the in-plane axes are not unique: a 100 x 100 x 2 plate rotated 30 degrees about Z reports 136.6 x 136.6 x 2.
+- Input must enclose volume: faces, wires, and shells fail with `NOT_A_SOLID`; a compound without solids (or a degenerate solid) fails with `ZERO_VOLUME`.
+- Needs the optional kernel `inertia` query (occt-wasm). Other kernels return an `UNSUPPORTED` error.
+- For a shape already on the world axes, `axes` are exact world unit vectors (in extent order, the third flipped when needed to stay right-handed) and `center` is exact.
 
 ## Physical Properties
 

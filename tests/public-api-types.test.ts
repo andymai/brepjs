@@ -113,6 +113,7 @@ import type {
   InterferenceResult,
   CurvatureResult,
   DistanceProps,
+  PrincipalBoundingBox,
 
   // Projection
   Camera,
@@ -567,6 +568,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'positionOnCurve',
   'prewarm',
   'primitives',
+  'principalBoundingBox',
   'prismaticJoint',
   'projectEdges',
   'projectPointOnFace',
@@ -1182,6 +1184,23 @@ describe('Type structures — runtime field verification', () => {
       expect(r.minDistance).toBe(5.0);
       expect(r.pointOnShape1).toEqual([0, 0, 0]);
       expect(r.pointOnShape2).toEqual([5, 0, 0]);
+    });
+  });
+
+  describe('PrincipalBoundingBox', () => {
+    it('has center, axes, size', () => {
+      const b: PrincipalBoundingBox = {
+        center: [1, 2, 3],
+        axes: [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ],
+        size: [30, 20, 10],
+      };
+      expect(b.center).toEqual([1, 2, 3]);
+      expect(b.axes[2]).toEqual([0, 0, 1]);
+      expect(b.size).toEqual([30, 20, 10]);
     });
   });
 

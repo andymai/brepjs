@@ -16,3 +16,5 @@ export {
 } from '@/measurement/measureFns.js';
 
 export { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
+
+export { principalBoundingBox } from '@/measurement/principalBoxFns.js';

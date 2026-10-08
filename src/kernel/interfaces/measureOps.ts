@@ -1,12 +1,25 @@
 /**
  * KernelMeasureOps — measurement and analysis operations.
  *
- * Covers volume, area, length, center of mass, bounding box, distance,
+ * Covers volume, area, length, center of mass, inertia, bounding box, distance,
  * curvature, and persistent distance queries. Analogous to OCCT's
  * GProp_GProps and BRepBndLib packages.
  */
 
 import type { DistanceResult, KernelShape } from '@/kernel/types.js';
+
+/** A 3x3 matrix as nine row-major entries. */
+export type Matrix3 = readonly [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
 
 /** All scalar measurements for a shape, computed in bulk. */
 export interface BulkMeasurement {
@@ -30,6 +43,14 @@ export interface KernelMeasureOps {
     min: [number, number, number];
     max: [number, number, number];
   };
+
+  /**
+   * Volume matrix of inertia about the center of mass (unit density), in axes
+   * parallel to world X/Y/Z. Products of inertia carry the tensor's negative
+   * sign, so the matrix is symmetric with `[1]==[3]`, `[2]==[6]`, `[5]==[7]`.
+   * Optional: kernels without it cannot answer principal-axes queries.
+   */
+  inertia?(shape: KernelShape): Matrix3;
 
   /** Minimum distance between two shapes with witness points. */
   distance(shape1: KernelShape, shape2: KernelShape): DistanceResult;

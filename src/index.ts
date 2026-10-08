@@ -983,6 +983,8 @@ export {
   type InterferencePair,
 } from './measurement/interferenceFns.js';
 
+export { principalBoundingBox, type PrincipalBoundingBox } from './measurement/principalBoxFns.js';
+
 // ── Import (functional) ──
 
 export { importSTEP, importSTL, importIGES } from './io/importFns.js';
