@@ -19,6 +19,7 @@ import {
   type UnaryOp,
 } from './expressions.js';
 import * as B from './builders.js';
+import { canonicalJson } from './jsonData.js';
 import {
   lineTo,
   arcTo,
@@ -29,16 +30,16 @@ import {
   type Segment2D,
 } from './segments.js';
 import { childrenOf } from './edit.js';
-import type { IRNode } from './types.js';
+import { isOutputKind, type ExtensionNode, type IRNode } from './types.js';
 import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type { SurfaceType } from '@/topology/faceFns.js';
 
 // Version history: 1 = the original vocabulary; 2 adds the feature nodes
 // (Extrude, Revolve, Loft, Sweep, Path); 3 adds Profile; 4 adds Color;
 // 5 adds Fillet; 6 adds Chamfer; 7 adds Shell; 8 adds DAG sharing (the
-// `defs` table and `{ $ref }` use sites). Additive only, so fromJSON
-// accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
-export const CSG_VERSION = 8;
+// `defs` table and `{ $ref }` use sites); 9 adds Extension. Additive only,
+// so fromJSON accepts the full range [MIN_CSG_VERSION, CSG_VERSION].
+export const CSG_VERSION = 9;
 const MIN_CSG_VERSION = 1;
 
 export interface CsgEnvelope {
@@ -301,7 +302,19 @@ function featureToJson(n: IRNode, ctx: SerializeCtx): unknown {
   }
 }
 
+function extensionToJson(n: ExtensionNode, ctx: SerializeCtx): unknown {
+  return {
+    kind: 'Extension',
+    name: n.name,
+    output: n.output,
+    children: n.children.map((c) => emitNode(c, ctx)),
+    params: Object.fromEntries(Object.entries(n.params).map(([k, e]) => [k, exprToJson(e)])),
+    data: n.data,
+  };
+}
+
 function nodeToJson(n: IRNode, ctx: SerializeCtx): unknown {
+  if (n.kind === 'Extension') return extensionToJson(n, ctx);
   if (n.kind === 'Color') {
     return { kind: 'Color', target: emitNode(n.target, ctx), color: [...n.color] };
   }
@@ -491,17 +504,18 @@ function readOptTolerance(j: Record<string, unknown>): Result<number | undefined
 
 // Defs parse sequentially, so `defs` only holds indices below the def being
 // parsed — a forward or cyclic $ref lands out of range and is rejected.
+function readRef(ref: unknown, defs: readonly IRNode[]): Result<IRNode> {
+  if (!isNumber(ref) || !Number.isInteger(ref) || ref < 0) {
+    return bad('$ref: expected a non-negative integer def index');
+  }
+  const node = defs[ref];
+  if (node === undefined) return bad(`$ref: ${ref} is out of range (forward refs are rejected)`);
+  return ok(node);
+}
+
 function readNode(j: unknown, defs: readonly IRNode[]): Result<IRNode> {
   if (!isObj(j)) return bad('node: not an object');
-  const ref = j['$ref'];
-  if (ref !== undefined) {
-    if (!isNumber(ref) || !Number.isInteger(ref) || ref < 0) {
-      return bad('$ref: expected a non-negative integer def index');
-    }
-    const node = defs[ref];
-    if (node === undefined) return bad(`$ref: ${ref} is out of range (forward refs are rejected)`);
-    return ok(node);
-  }
+  if (j['$ref'] !== undefined) return readRef(j['$ref'], defs);
   const kind = j['kind'];
   switch (kind) {
     case 'Box':
@@ -551,6 +565,8 @@ function readNode(j: unknown, defs: readonly IRNode[]): Result<IRNode> {
       return readChamfer(j, defs);
     case 'Shell':
       return readShell(j, defs);
+    case 'Extension':
+      return readExtension(j, defs);
     default:
       return bad(`unknown node kind: ${String(kind)}`);
   }
@@ -1032,6 +1048,38 @@ function isMatrix4x4(v: unknown): v is Matrix4x4 {
     Array.isArray(v) &&
     v.length === 4 &&
     v.every((row) => Array.isArray(row) && row.length === 4 && row.every(isNumber))
+  );
+}
+
+function readExtensionParams(j: unknown): Result<Record<string, Expr>> {
+  if (j === undefined) return ok({});
+  if (!isObj(j)) return bad('Extension.params: not an object');
+  const entries: [string, Expr][] = [];
+  for (const [key, raw] of Object.entries(j)) {
+    const e = readExpr(raw);
+    if (!e.ok) return e;
+    entries.push([key, e.value]);
+  }
+  return ok(Object.fromEntries(entries));
+}
+
+// Every condition the builder throws on is checked here first, so a hostile
+// document surfaces as an Err instead of escaping the trust boundary.
+function readExtension(j: Record<string, unknown>, defs: readonly IRNode[]): Result<IRNode> {
+  const name = j['name'];
+  if (!isString(name) || name.length === 0)
+    return bad('Extension.name: expected a non-empty string');
+  const output = j['output'];
+  if (!isOutputKind(output)) return bad(`Extension.output: ${String(output)}`);
+  const children =
+    j['children'] === undefined ? ok([]) : readNodeArray(j['children'], 'Extension.children', defs);
+  if (!children.ok) return children;
+  const params = readExtensionParams(j['params']);
+  if (!params.ok) return params;
+  const data = canonicalJson(j['data'] ?? null, 'Extension.data');
+  if (!data.ok) return bad(data.error);
+  return ok(
+    B.extension(name, output, { children: children.value, params: params.value, data: data.value })
   );
 }
 

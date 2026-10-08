@@ -6,12 +6,27 @@ import type { Expr } from './expressions.js';
 import type { Contour, Segment2D } from './segments.js';
 import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
 import type { Matrix4x4 } from '@/core/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import type { Result } from '@/core/result.js';
 
 // ---------------------------------------------------------------------------
 // Output kinds
 // ---------------------------------------------------------------------------
 
 export type OutputKind = 'Solid' | 'Face' | 'Wire' | 'Edge' | 'Vertex' | 'Compound';
+
+const OUTPUT_KINDS: Readonly<Record<OutputKind, true>> = {
+  Solid: true,
+  Face: true,
+  Wire: true,
+  Edge: true,
+  Vertex: true,
+  Compound: true,
+};
+
+export function isOutputKind(v: unknown): v is OutputKind {
+  return typeof v === 'string' && Object.hasOwn(OUTPUT_KINDS, v);
+}
 
 /** Output kinds that have a corresponding empty-shape builder + serializer. */
 export type EmptyOutputKind = 'Solid' | 'Face' | 'Wire';
@@ -266,6 +281,59 @@ export interface InstanceNode extends IRNodeBase {
 }
 
 // ---------------------------------------------------------------------------
+// Extension (caller-defined operation)
+// ---------------------------------------------------------------------------
+
+/** A value `JSON.stringify` / `JSON.parse` round-trips exactly. */
+export type JsonValue =
+  null | boolean | number | string | readonly JsonValue[] | { readonly [key: string]: JsonValue };
+
+/** An operation the IR has no built-in kind for, materialized by the
+ *  {@link ExtensionEvaluator} registered under `name` in
+ *  `EvaluatorOptions.extensions`. `optimize` treats it as opaque: its
+ *  children and params are optimized, the node itself is never folded. */
+export interface ExtensionNode extends IRNodeBase {
+  readonly kind: 'Extension';
+  readonly name: string;
+  /** Declared at build time for `outputKindOf`; evaluation does not check the
+   *  materialized shape against it. */
+  readonly output: OutputKind;
+  readonly children: readonly IRNode[];
+  /** Scalar inputs, resolved to numbers against the env before the evaluator
+   *  runs, so they take part in param invalidation. */
+  readonly params: Readonly<Record<string, Expr>>;
+  /** Frozen canonical copy of the builder input; neither key order nor `-0`
+   *  changes the hash. */
+  readonly data: JsonValue;
+}
+
+export interface ExtensionInput {
+  readonly params: Readonly<Record<string, number>>;
+  readonly data: JsonValue;
+  /** The node's children, materialized in order. */
+  readonly children: readonly AnyShape<Dimension>[];
+}
+
+/**
+ * Materializes an {@link ExtensionNode}; registered by name through
+ * `EvaluatorOptions.extensions` and called under the Evaluator's kernel.
+ *
+ * The Evaluator caches the result by the node's content address, so it must
+ * depend only on `input`.
+ *
+ * Ownership: `children` are borrowed from the Evaluator's cache. Do not
+ * dispose them or keep them past the call (a bounded cache may evict them).
+ * Return either a fresh shape or one of `children` unchanged; the Evaluator
+ * owns and disposes the result, and reference-counts handles so a returned
+ * child is freed once. Never return a handle owned elsewhere, such as a
+ * borrowed sub-shape from `getFaces`.
+ *
+ * Return an `Err` for expected failures; a throw escapes `evaluate()` like a
+ * throw from any built-in evaluator.
+ */
+export type ExtensionEvaluator = (input: ExtensionInput) => Result<AnyShape<Dimension>>;
+
+// ---------------------------------------------------------------------------
 // Unions
 // ---------------------------------------------------------------------------
 
@@ -300,7 +368,8 @@ export type IRNode =
   | ChamferNode
   | ShellNode
   | CompoundNode
-  | InstanceNode;
+  | InstanceNode
+  | ExtensionNode;
 
 export type NodeKind = IRNode['kind'];
 
@@ -377,5 +446,7 @@ export function outputKindOf(node: IRNode): OutputKind {
     case 'Instance':
       // fuse produces one fused solid; otherwise a Compound of placed copies.
       return node.fuse ? 'Solid' : 'Compound';
+    case 'Extension':
+      return node.output;
   }
 }

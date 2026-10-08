@@ -57,6 +57,18 @@ export function fnvMixInt32(h: bigint, n: number): bigint {
   return r;
 }
 
+// Length-prefixed UTF-16 code units, so adjacent strings cannot shift bytes
+// between each other and lone surrogates stay distinct (fnvMixString's UTF-8
+// encoding maps them all to U+FFFD). Use it where strings are caller data.
+export function fnvMixText(h: bigint, s: string): bigint {
+  let r = fnvMixInt32(h, s.length);
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    r = fnvMixByte(fnvMixByte(r, c), c >>> 8);
+  }
+  return r;
+}
+
 export function fnvMixBool(h: bigint, b: boolean): bigint {
   return fnvMixByte(h, b ? 1 : 0);
 }
