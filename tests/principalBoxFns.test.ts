@@ -13,6 +13,7 @@ import {
   principalBoundingBox,
   vecCross,
   vecDot,
+  measureVolume,
   isOk,
   isErr,
   unwrap,
@@ -139,6 +140,13 @@ describe('principalBoundingBox', () => {
     expectVecClose(size, [diagonalSpan, diagonalSpan, 2], 6);
   });
 
+  it('returns the cached result for a repeated call on the same shape', (ctx) => {
+    skipIfDiverges(ctx, 'principalBoxFns.inertia');
+    using b = box(30, 20, 10);
+    const first = unwrap(principalBoundingBox(b));
+    expect(unwrap(principalBoundingBox(b))).toBe(first);
+  });
+
   it('rejects a face', (ctx) => {
     skipIfDiverges(ctx, 'principalBoxFns.inertia');
     using b = box(10, 10, 10);
@@ -186,4 +194,24 @@ describe('principalBoundingBox', () => {
     expect(error.code).toBe('PRINCIPAL_BOX_FAILED');
     expect(error.message).toContain('inertia exploded');
   });
+
+  it.each(['generalTransform', 'boundingBox'])(
+    'returns a kernel error and leaves the input intact when %s throws',
+    (method) => {
+      registerStubKernel(`throwing-${method}`, {
+        inertia: () => [3, 0, 0, 0, 2, 0, 0, 0, 1],
+        [method]: () => {
+          throw new Error(`${method} exploded`);
+        },
+      });
+      using b = box(10, 10, 10);
+      const result = withKernel(`throwing-${method}`, () => principalBoundingBox(b));
+      expect(isErr(result)).toBe(true);
+      const error = unwrapErr(result);
+      expect(error.kind).toBe('KERNEL_OPERATION');
+      expect(error.code).toBe('PRINCIPAL_BOX_FAILED');
+      expect(error.message).toContain(`${method} exploded`);
+      expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 6);
+    }
+  );
 });

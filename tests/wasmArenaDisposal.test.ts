@@ -99,7 +99,10 @@ import {
   sharedEdges,
   measureVolume,
   principalBoundingBox,
+  registerKernel,
+  withKernel,
   isOk,
+  isErr,
   unwrap,
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
@@ -222,10 +225,11 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     });
 
     it('principalBoundingBox frees its principal-frame copy', () => {
-      using b0 = box(600, 400, 18.5);
-      using b = rotate(b0, 30, { axis: [0, 0, 1] });
+      // Fresh shapes each iteration: a repeated call on one shape is a cache hit.
       expect(
         perIterationLeak(() => {
+          using b0 = box(600, 400, 18.5);
+          using b = rotate(b0, 30, { axis: [0, 0, 1] });
           expect(isOk(principalBoundingBox(b))).toBe(true);
         })
       ).toBe(0);
@@ -236,6 +240,32 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using c = translate(c0, [30, 0, 0]);
           using pair = compound([a, c]);
           expect(isOk(principalBoundingBox(pair))).toBe(true);
+        })
+      ).toBe(0);
+    });
+
+    it('principalBoundingBox frees its principal-frame copy when bounds fail', () => {
+      const base = getKernel();
+      registerKernel(
+        'arena-throwing-bounds',
+        new Proxy(base, {
+          get(target, prop) {
+            if (prop === 'boundingBox') {
+              return () => {
+                throw new Error('bounds exploded');
+              };
+            }
+            const value: unknown = Reflect.get(target, prop, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        })
+      );
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          expect(isErr(withKernel('arena-throwing-bounds', () => principalBoundingBox(b)))).toBe(
+            true
+          );
         })
       ).toBe(0);
     });

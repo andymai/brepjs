@@ -13,16 +13,10 @@ import { type BrepError, BrepErrorCode, unsupportedError, validationError } from
 import { vecCross } from '@/core/vecOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 import { subShapeCount } from '@/topology/topologyQueryFns.js';
+import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
+import type { PrincipalBoundingBox } from './measureTypes.js';
 
-/** A box aligned to a solid's principal axes of inertia. */
-export interface PrincipalBoundingBox {
-  /** Box center in world coordinates. */
-  readonly center: Vec3;
-  /** Box axes: orthonormal, right-handed, ordered by decreasing extent. */
-  readonly axes: readonly [Vec3, Vec3, Vec3];
-  /** Full edge lengths along `axes`, largest first. */
-  readonly size: Vec3;
-}
+export type { PrincipalBoundingBox };
 
 const ZERO_VOLUME_TOLERANCE = 1e-9;
 // Off-diagonal inertia entries this small relative to the matrix norm are
@@ -206,6 +200,8 @@ function assembleBox(
  * ```
  */
 export function principalBoundingBox(shape: AnyShape<Dimension>): Result<PrincipalBoundingBox> {
+  const cached = getCachedMeasurement(shape.wrapped, 'principal');
+  if (cached) return ok(cached);
   const invalid = validatePrincipalBoxInput(shape);
   if (invalid) return invalid;
 
@@ -237,5 +233,7 @@ export function principalBoundingBox(shape: AnyShape<Dimension>): Result<Princip
     'principalBoundingBox: failed to measure bounds in the principal frame'
   );
   if (!bounds.ok) return bounds;
-  return ok(assembleBox(axes, bounds.value));
+  const result = assembleBox(axes, bounds.value);
+  setCachedMeasurement(shape.wrapped, 'principal', result);
+  return ok(result);
 }
