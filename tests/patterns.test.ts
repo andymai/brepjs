@@ -11,7 +11,9 @@ import {
   unwrap,
   measureVolume,
   translate,
+  getBounds,
 } from '@/index.js';
+import type { Bounds3D, Vec3 } from '@/index.js';
 import { gridPattern } from '@/operations/patternFns.js';
 
 beforeAll(async () => {
@@ -87,6 +89,55 @@ describe('circularPattern', () => {
     expect(pattern).toBeDefined();
     const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
+  });
+
+  // Volume is blind to where non-overlapping copies land, so placement is
+  // checked against the bounds of the same copies rotated one by one.
+  it.each([
+    { count: 4, fullAngle: 360, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 3, fullAngle: 180, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 5, fullAngle: 90, axis: [0, 0, 1], center: [3, -2, 0] },
+    { count: 3, fullAngle: 240, axis: [1, 1, 0], center: [0, 0, 4] },
+  ] as { count: number; fullAngle: number; axis: Vec3; center: Vec3 }[])(
+    'steps $count copies by $fullAngle / count degrees about $axis at $center',
+    ({ count, fullAngle, axis, center }) => {
+      using seed0 = box(2, 1, 1);
+      using seed = translate(seed0, [10, 0.5, 0]);
+      using pattern = unwrap(circularPattern(seed, axis, count, fullAngle, center));
+
+      let expected: Bounds3D | undefined;
+      for (let i = 0; i < count; i++) {
+        using copy = rotate(seed, (i * fullAngle) / count, { axis, at: center });
+        const b = getBounds(copy);
+        expected = expected
+          ? {
+              xMin: Math.min(expected.xMin, b.xMin),
+              xMax: Math.max(expected.xMax, b.xMax),
+              yMin: Math.min(expected.yMin, b.yMin),
+              yMax: Math.max(expected.yMax, b.yMax),
+              zMin: Math.min(expected.zMin, b.zMin),
+              zMax: Math.max(expected.zMax, b.zMax),
+            }
+          : b;
+      }
+      if (!expected) throw new Error('no copies');
+
+      const actual = getBounds(pattern);
+      for (const k of ['xMin', 'xMax', 'yMin', 'yMax', 'zMin', 'zMax'] as const) {
+        expect(actual[k]).toBeCloseTo(expected[k], 3);
+      }
+    }
+  );
+
+  it('places two copies over a full turn opposite each other', () => {
+    using seed0 = box(2, 2, 2);
+    using seed = translate(seed0, [10, -1, 0]);
+    using pattern = unwrap(circularPattern(seed, [0, 0, 1], 2));
+    const b = getBounds(pattern);
+    expect(b.xMin).toBeCloseTo(-12, 3);
+    expect(b.xMax).toBeCloseTo(12, 3);
+    expect(b.yMin).toBeCloseTo(-1, 3);
+    expect(b.yMax).toBeCloseTo(1, 3);
   });
 
   it('returns error for count < 1', () => {
