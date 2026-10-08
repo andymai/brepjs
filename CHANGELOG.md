@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.1.5](https://github.com/andymai/brepjs/compare/brepjs-v20.1.4...brepjs-v20.1.5) (2026-10-08)
+
+
+### Bug Fixes
+
+* **brepkit:** lift a sketched Bezier from its own poles ([#2390](https://github.com/andymai/brepjs/issues/2390)) ([da54f7e](https://github.com/andymai/brepjs/commit/da54f7eb686ba38125f80d4edc3275f6d59614aa))
+
 ## [20.1.4](https://github.com/andymai/brepjs/compare/brepjs-v20.1.3...brepjs-v20.1.4) (2026-10-06)
 
 
