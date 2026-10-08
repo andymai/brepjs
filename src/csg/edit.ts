@@ -79,6 +79,12 @@ function rebuildChildren(
       return B.compound(n.children.map((c) => walk(c, pred, repl, memo)));
     case 'Instance':
       return B.instance(walk(n.source, pred, repl, memo), n.placements, n.fuse);
+    case 'Extension':
+      return B.extension(n.name, n.output, {
+        children: n.children.map((c) => walk(c, pred, repl, memo)),
+        params: n.params,
+        data: n.data,
+      });
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
@@ -176,6 +182,7 @@ export function childrenOf(n: IRNode): readonly IRNode[] {
     case 'Shell':
       return [n.target];
     case 'Compound':
+    case 'Extension':
       return n.children;
     case 'Instance':
       return [n.source];

@@ -155,9 +155,47 @@ If none of those apply, the topology API is leaner. The IR is a tool, not a repl
 
 The IR is purely a build-time abstraction layered on top of the kernel adapter: `csg.Evaluator` calls the same `getKernel().fuseSolids(...)` that the topology API does. Everything that works on a `Solid` works on the result of `ev.evaluate(tree)`: finders, fillets, measurement, export. The IR is the parametric _front_ of the pipeline; the topology API picks up where it leaves off.
 
+## Operations without a built-in node
+
+Some operations have no IR node: patterns, threads, drafts, imported parts. Wrap one in `csg.extension` and it still lives inside the tree. The node carries a `name`, a declared output kind, child nodes, scalar `params` (literals or expressions), and JSON-safe `data`. It hashes, caches, serializes, and reacts to param changes like a built-in node. The geometry comes from a function you register on the `Evaluator` under the same name:
+
+```typescript
+import { csg, fuseAll, isShape3D, ok, err, translate, unwrap, validationError } from 'brepjs/quick';
+
+const row = csg.extension('row', 'Solid', {
+  children: [csg.box(5, 5, 5)],
+  params: { count: csg.param('n'), spacing: 10 },
+});
+
+using ev = new csg.Evaluator({
+  extensions: {
+    row: ({ params, children }) => {
+      const [part] = children;
+      if (!part || !isShape3D(part)) {
+        return err(validationError('ROW_INPUT', 'row needs one 3D child'));
+      }
+      const count = params['count'] ?? 1;
+      if (count === 1) return ok(part);
+      const copies = Array.from({ length: count }, (_, i) =>
+        translate(part, [i * (params['spacing'] ?? 0), 0, 0])
+      );
+      try {
+        return fuseAll(copies);
+      } finally {
+        for (const c of copies) c[Symbol.dispose]();
+      }
+    },
+  },
+});
+
+const shape = unwrap(ev.evaluate(csg.fuse(row, csg.box(5, 40, 5)), { n: 3 }));
+```
+
+The function receives `params` already resolved to numbers and `children` already materialized (and cached like any other node). Children are borrowed: don't dispose them. The Evaluator owns whatever the function returns, including a child returned unchanged, so you never dispose the result either. An extension whose name has no registered function evaluates to an `Err` with code `CSG_EXTENSION_UNKNOWN`. Because the result is cached by content, the function must depend only on its `params`, `data`, and `children`.
+
 ## The rest of the surface
 
-The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `mirror`, `scale`, `rotate`, `compound`, and `instance` (transform-only replication — one source × N placements, materialized on export; see [Performance](/advanced/performance#instancing-repeated-geometry)), plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
+The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `mirror`, `scale`, `rotate`, `compound`, `instance` (transform-only replication — one source × N placements, materialized on export; see [Performance](/advanced/performance#instancing-repeated-geometry)), and `extension` (see above), plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
 
 ## Next steps
 

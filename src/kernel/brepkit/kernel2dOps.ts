@@ -969,14 +969,37 @@ export function liftCurve2dToPlane(
     // Other analytic basis: fall through to generic sampling below
   }
 
-  // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
-  if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
+  // For Bezier/BSpline: the lift is affine, so the lifted poles are the 3D
+  // curve's own control points. Interpolating through them instead bends the
+  // curve out of its control hull: a scoop ramp's quarter-ellipse Bezier,
+  // tangent to its wall, crossed 0.32 into the wall it should only touch.
+  const clamped =
+    c.__bk2d === 'bspline' &&
+    !c.isPeriodic &&
+    c.multiplicities[0] === c.degree + 1 &&
+    c.multiplicities[c.multiplicities.length - 1] === c.degree + 1;
+  if (c.__bk2d === 'bezier' || clamped) {
     const points3d = c.poles.map(([u, v]) => lift(u, v));
     if (points3d.length === 2)
       return makeLineEdge(bk, wasmIndex(points3d, 0), wasmIndex(points3d, 1));
-    const degree = Math.min(3, points3d.length - 1);
-    const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
-    const id = bk.interpolatePoints(coords, degree);
+    const degree = c.__bk2d === 'bspline' ? c.degree : points3d.length - 1;
+    const knots =
+      c.__bk2d === 'bspline'
+        ? c.knots.flatMap((k, i) => Array<number>(c.multiplicities[i] ?? 1).fill(k))
+        : [...Array<number>(degree + 1).fill(0), ...Array<number>(degree + 1).fill(1)];
+    const [start, end] = [wasmIndex(points3d, 0), wasmIndex(points3d, points3d.length - 1)];
+    const id = bk.makeNurbsEdge(
+      start[0],
+      start[1],
+      start[2],
+      end[0],
+      end[1],
+      end[2],
+      degree,
+      knots,
+      points3d.flatMap(([px, py, pz]) => [px, py, pz]),
+      Array<number>(points3d.length).fill(1)
+    );
     return edgeHandle(id);
   }
 

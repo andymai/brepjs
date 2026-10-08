@@ -24,7 +24,9 @@ import {
   fnvMixNumber,
   fnvMixBool,
   fnvMixInt32,
+  fnvMixText,
 } from './hash.js';
+import { canonicalJson, hashJson } from './jsonData.js';
 import type { Matrix4x4 } from '@/core/types.js';
 import { parseColor, type ColorInput } from '@/topology/metadata/colorFns.js';
 import type { EdgeRef, ShapeRef } from '@/topology/shapeRef/shapeRefTypes.js';
@@ -60,13 +62,17 @@ import type {
   ChamferNode,
   CompoundNode,
   InstanceNode,
+  ExtensionNode,
   IRNode,
   EmptyOutputKind,
+  JsonValue,
+  OutputKind,
   SolidNode,
   FaceNode,
   EdgeNode,
   VertexNode,
 } from './types.js';
+import { isOutputKind } from './types.js';
 
 const EMPTY_DEPS: ReadonlySet<string> = new Set();
 
@@ -678,6 +684,82 @@ export function instance(
     fuse,
     structuralHash: h,
     freeParams: depsOf(source),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Extension
+// ---------------------------------------------------------------------------
+
+export interface ExtensionOptions {
+  readonly children?: ReadonlyArray<IRNode> | undefined;
+  readonly params?: Readonly<Record<string, ScalarInput>> | undefined;
+  /** Must be JSON-safe; defaults to `null`. */
+  readonly data?: JsonValue | undefined;
+}
+
+function isExpr(v: unknown): v is Expr {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as { structuralHash?: unknown }).structuralHash === 'bigint'
+  );
+}
+
+// Sorted entries: the hash walks them in this order, independent of how the
+// caller (or JS integer-key enumeration) orders the record.
+function extensionParams(
+  name: string,
+  input: Readonly<Record<string, ScalarInput>>
+): [string, Expr][] {
+  const entries: [string, Expr][] = [];
+  for (const key of Object.keys(input).sort()) {
+    const v: unknown = input[key];
+    if (typeof v !== 'number' && !isExpr(v)) {
+      throw new TypeError(`csg.extension(${name}): params.${key} must be a number or an Expr`);
+    }
+    entries.push([key, asScalarExpr(v)]);
+  }
+  return entries;
+}
+
+/** A caller-defined operation, materialized at evaluation by the
+ *  `ExtensionEvaluator` registered under `name` in
+ *  `EvaluatorOptions.extensions`. Unlike the other builders this one validates
+ *  eagerly and throws a TypeError: a node whose data cannot be hashed
+ *  canonically has no content address. */
+export function extension(
+  name: string,
+  output: OutputKind,
+  options?: ExtensionOptions
+): ExtensionNode {
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new TypeError('csg.extension: name must be a non-empty string');
+  }
+  if (!isOutputKind(output)) {
+    throw new TypeError(`csg.extension(${name}): unknown output kind ${String(output)}`);
+  }
+  const data = canonicalJson(options?.data ?? null, 'data');
+  if (!data.ok) throw new TypeError(`csg.extension(${name}): ${data.error}`);
+  const children = [...(options?.children ?? [])];
+  const params = extensionParams(name, options?.params ?? {});
+  let h = fnvMixText(startHash('Extension'), name);
+  h = fnvMixText(h, output);
+  h = fnvMixInt32(h, children.length);
+  for (const c of children) h = mix(h, c);
+  h = fnvMixInt32(h, params.length);
+  for (const [key, e] of params) h = mix(fnvMixText(h, key), e);
+  h = hashJson(h, data.value);
+  return {
+    kind: 'Extension',
+    name,
+    output,
+    children,
+    // fromEntries defines own properties, so a `__proto__` key stays data.
+    params: Object.fromEntries(params),
+    data: data.value,
+    structuralHash: h,
+    freeParams: depsOf(...children, ...params.map(([, e]) => e)),
   };
 }
 
