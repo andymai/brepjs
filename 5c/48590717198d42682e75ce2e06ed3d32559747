@@ -1,0 +1,77 @@
+src/csg/serialize.ts
+  s_6189da0ae57152::t_228c2c5f09684d 507-515,518
+  s_6189da0ae57152::t_648577a28d6136 568-569
+  s_6189da0ae57152::t_eddeadea4e8309 1054-1085
+  s_6189da0ae57152::t_f605737bf2830d 40-42
+  s_6189da0ae57152::t_1cd16ef297ebf0 22
+  s_6189da0ae57152::t_0284c1f9a4d268 305-315,317
+  s_6189da0ae57152::t_713b64c6726bfd 33
+apps/docs/concepts/csg-ir.md
+  s_6189da0ae57152::t_a1b3acc4cbd275 158-190,192-195,198
+  s_6189da0ae57152::t_2c0891395dcd28 191
+src/csg/evaluators/extension.ts
+  s_6189da0ae57152::t_1bca6ce9deab2f 1-36
+src/csg/evaluate.ts
+  s_6189da0ae57152::t_d96a03a1385a11 108-115
+  s_6189da0ae57152::t_20c3a5529c93e5 75
+  s_6189da0ae57152::t_c2558c956dd539 683
+  s_6189da0ae57152::t_712c00418291d8 482-490
+  s_6189da0ae57152::t_75d9fadb18ad2e 41
+  s_6189da0ae57152::t_8e8826e74d2e16 178-179
+  s_6189da0ae57152::t_6f4bdffa06cc5d 455
+tests/csg/csgExtension.test.ts
+  s_6189da0ae57152::t_8cd0772ae32d77 62
+  s_6189da0ae57152::t_194debb5254ff6 1-34,36-61,63-104,106-262,264-267,269-274,276-282,284-368,370-377,379-483
+  s_6189da0ae57152::t_c65cc72dd469e5 268
+  s_6189da0ae57152::t_54ded8a448cc36 35,105,263,275,283,369,378
+src/csg/edit.ts
+  s_6189da0ae57152::t_df07a389ba14c8 82-87
+  s_6189da0ae57152::t_f05685b28bae0e 185
+src/csg/builders.ts
+  s_6189da0ae57152::t_c3097a89f5df8d 690-708,711-713,715-722,724-749,752-757,760-761,763-765
+  s_6189da0ae57152::t_3590ff24cc89f8 709-710,714,723
+  s_6189da0ae57152::t_874f78990d2c0d 27,29
+  s_6189da0ae57152::t_69f2818775ba95 750-751,758-759,762
+  s_6189da0ae57152::t_dc2fd3a69e1ed0 65,68-69,75
+src/csg/types.ts
+  s_6189da0ae57152::t_63e92c11bb0398 9-10,18-29,313,320
+  s_6189da0ae57152::t_5ffa86b476e46b 449-450
+  s_6189da0ae57152::t_d6d8a5e681cc8d 283-288
+  s_6189da0ae57152::t_c6ca51075b6ba2 371-372
+  s_6189da0ae57152::t_decbf645da79b0 30,289-312,314-319,321-335
+src/csg/jsonData.ts
+  s_6189da0ae57152::t_9343be569af442 1-45,49-93
+  s_6189da0ae57152::t_46e8bf021ef2bb 46-48
+src/csg/hash.ts
+  s_6189da0ae57152::t_abb34e2d6bf470 60-71
+src/csg/optimize.ts
+  s_6189da0ae57152::t_813effb9b62086 31
+  s_6189da0ae57152::t_58e540f349e223 244-254
+  s_6189da0ae57152::t_82cb19a546e8ce 182-183
+src/core/errors.ts
+  s_6189da0ae57152::t_ed2e96731b1b3c 78
+.size-limit.json
+  s_6189da0ae57152::t_7fcc19e7f1f18d 3
+apps/docs/advanced/csg-caching.md
+  s_6189da0ae57152::t_a7cdf736affd5a 132,139
+src/csg/evaluators/context.ts
+  s_6189da0ae57152::t_4d438fd5ed4954 4,10
+src/csg/index.ts
+  s_6189da0ae57152::t_664252bf65e7de 45-46,99-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c48590717198d42682e75ce2e06ed3d32559747",
+  "prompts": {},
+  "sessions": {
+    "s_6189da0ae57152": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8916f9e3-fe52-4cfa-a8f2-d03dcefe44af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
