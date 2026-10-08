@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.2.0](https://github.com/andymai/brepjs/compare/brepjs-v20.1.5...brepjs-v20.2.0) (2026-10-08)
+
+
+### Features
+
+* **csg:** add an Extension IR kind for caller-defined operations ([#2394](https://github.com/andymai/brepjs/issues/2394)) ([cba518a](https://github.com/andymai/brepjs/commit/cba518a7a01b45b2c747303e503de5e269f4b50a))
+
 ## [20.1.5](https://github.com/andymai/brepjs/compare/brepjs-v20.1.4...brepjs-v20.1.5) (2026-10-08)
 
 
