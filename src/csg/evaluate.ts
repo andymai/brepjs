@@ -38,6 +38,7 @@ import type {
   FilletNode,
   ChamferNode,
   ShellNode,
+  ExtensionEvaluator,
 } from './types.js';
 import type { EvalContext } from './evaluators/context.js';
 import {
@@ -71,6 +72,7 @@ import { evalColor } from './evaluators/color.js';
 import { evalFillet } from './evaluators/fillet.js';
 import { evalChamfer } from './evaluators/chamfer.js';
 import { evalShell } from './evaluators/shell.js';
+import { evalExtension } from './evaluators/extension.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -103,6 +105,14 @@ export interface EvaluatorOptions {
    * positive integer.
    */
   readonly maxMeshCacheEntries?: number | undefined;
+  /**
+   * Evaluators for `Extension` nodes, keyed by node name. The registry is
+   * copied at construction (the cache key does not include it, so it must not
+   * change under a live cache). An Extension whose name is not registered
+   * evaluates to an Err with code `CSG_EXTENSION_UNKNOWN`. See
+   * {@link ExtensionEvaluator} for the ownership contract.
+   */
+  readonly extensions?: Readonly<Record<string, ExtensionEvaluator>> | undefined;
 }
 
 export interface StepInfo {
@@ -165,6 +175,8 @@ function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
       return evalCompound(node, ctx);
     case 'Instance':
       return evalInstance(node, ctx);
+    case 'Extension':
+      return evalExtension(node, ctx);
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
@@ -440,6 +452,7 @@ export class Evaluator implements Disposable {
   // shape — a re-evaluateMesh of evicted content is a pure hit, no kernel work.
   private readonly meshCache = new Map<string, ShapeMesh>();
   private readonly onStep?: (info: StepInfo) => void;
+  private readonly extensions: ReadonlyMap<string, ExtensionEvaluator>;
   private hits = 0;
   private misses = 0;
   private evictions = 0;
@@ -466,6 +479,15 @@ export class Evaluator implements Disposable {
       );
     }
     this.maxMeshCacheEntries = meshMax;
+    // A Map, not the record: lookups by node name must not reach inherited
+    // keys such as `constructor`.
+    const extensions = new Map(Object.entries(options.extensions ?? {}));
+    for (const [name, fn] of extensions) {
+      if (typeof fn !== 'function') {
+        throw new TypeError(`Evaluator: extensions['${name}'] must be a function`);
+      }
+    }
+    this.extensions = extensions;
   }
 
   /**
@@ -658,6 +680,7 @@ export class Evaluator implements Disposable {
       env,
       tolerance: this.defaultTolerance,
       evalNode: (child) => this.evaluateInner(child, env),
+      extensions: this.extensions,
     };
     const result = dispatch(node, ctx);
     if (!result.ok) return result;

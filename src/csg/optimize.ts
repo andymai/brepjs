@@ -28,6 +28,7 @@ import type {
   FilletNode,
   ChamferNode,
   ShellNode,
+  ExtensionNode,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -178,6 +179,8 @@ function rewriteNode(n: IRNode): IRNode {
       return B.compound(n.children.map(optimizeNode).filter((c) => c.kind !== 'Empty'));
     case 'Instance':
       return B.instance(optimizeNode(n.source), n.placements, n.fuse);
+    case 'Extension':
+      return optimizeExtension(n);
     case 'Extrude':
     case 'Revolve':
     case 'Loft':
@@ -236,6 +239,17 @@ function optimizeFeature(n: FeatureNode): IRNode {
     case 'Shell':
       return B.shell(optimizeNode(n.target), n.refs, foldExpr(n.thickness));
   }
+}
+
+// Opaque: the extension's semantics are unknown here, so Empty children are
+// kept in place (positions are meaningful to its evaluator) and nothing folds
+// through the node itself.
+function optimizeExtension(n: ExtensionNode): IRNode {
+  return B.extension(n.name, n.output, {
+    children: n.children.map(optimizeNode),
+    params: Object.fromEntries(Object.entries(n.params).map(([k, e]) => [k, foldExpr(e)])),
+    data: n.data,
+  });
 }
 
 function optimizeTransform(n: RotateNode | ScaleNode | MirrorNode): IRNode {

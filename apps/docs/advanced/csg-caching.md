@@ -129,14 +129,14 @@ You don't have to call `optimize`; the evaluator works on any well-formed tree. 
 
 ## Serialization: `toJSON` / `fromJSON`
 
-The IR serializes to a JSON envelope versioned by `CSG_VERSION` (currently `1`):
+The IR serializes to a JSON envelope versioned by `CSG_VERSION` (currently `9`):
 
 ```typescript
 import { csg, isOk, unwrap } from 'brepjs/quick';
 
 const tree = csg.cut(csg.box(csg.param('w'), 10, 10), csg.sphere(3));
 const envelope = csg.toJSON(tree);
-// { csgVersion: 1, root: { kind: 'Cut', a: { kind: 'Box', ... }, ... } }
+// { csgVersion: 9, root: { kind: 'Cut', a: { kind: 'Box', ... }, ... } }
 
 const restored = csg.fromJSON(envelope);
 isOk(restored); // true
