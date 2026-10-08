@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.3.0](https://github.com/andymai/brepjs/compare/brepjs-v20.2.0...brepjs-v20.3.0) (2026-10-08)
+
+
+### Features
+
+* **measurement:** add principalBoundingBox on the principal axes of inertia ([#2393](https://github.com/andymai/brepjs/issues/2393)) ([fb86710](https://github.com/andymai/brepjs/commit/fb867101d136292f5c31ed456ef2fa36c8d4885a))
+
 ## [20.2.0](https://github.com/andymai/brepjs/compare/brepjs-v20.1.5...brepjs-v20.2.0) (2026-10-08)
 
 
