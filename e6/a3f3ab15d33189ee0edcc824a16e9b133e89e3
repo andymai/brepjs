@@ -1,0 +1,19 @@
+tests/brepkitBezierLift.test.ts
+  s_6189da0ae57152::t_afd0d2c63d0551 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6a3f3ab15d33189ee0edcc824a16e9b133e89e3",
+  "prompts": {},
+  "sessions": {
+    "s_6189da0ae57152": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8916f9e3-fe52-4cfa-a8f2-d03dcefe44af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
