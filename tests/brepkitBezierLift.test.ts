@@ -1,8 +1,11 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
 import { draw, measureVolume } from '@/index.js';
-import { isOk } from '@/core/result.js';
+import { isOk, unwrap } from '@/core/result.js';
 import { getKernel } from '@/kernel/index.js';
+import { bspline2d, evaluateCurve2d, liftCurve2dToPlane } from '@/2d/curve2dGeometryFns.js';
+import { makePlane } from '@/core/planeOps.js';
+import { curvePointAt } from '@/topology/curveFns.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -62,5 +65,27 @@ descBk('brepkit lifts a sketched Bezier as its own curve', () => {
     expect(isOk(volume)).toBe(true);
     if (!isOk(volume)) return;
     expect(volume.value).toBeCloseTo(4 * (r * r - areaUnder(poles)), 1);
+  });
+
+  it('lifts a clamped B-spline with interior knots onto its own curve', () => {
+    // Six poles make a cubic with two interior knots.
+    using curve = unwrap(
+      bspline2d([
+        [0, 0],
+        [2, 5],
+        [5, -3],
+        [8, 6],
+        [11, -2],
+        [14, 3],
+      ])
+    );
+    using edge = unwrap(liftCurve2dToPlane(curve, makePlane('XY')));
+    for (const t of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      const [u, v] = unwrap(evaluateCurve2d(curve, t));
+      const [x, y, z] = curvePointAt(edge, t);
+      expect(x).toBeCloseTo(u, 6);
+      expect(y).toBeCloseTo(v, 6);
+      expect(z).toBeCloseTo(0, 6);
+    }
   });
 });
