@@ -98,7 +98,11 @@ import {
   adjacentFaces,
   sharedEdges,
   measureVolume,
+  principalBoundingBox,
+  registerKernel,
+  withKernel,
   isOk,
+  isErr,
   unwrap,
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
@@ -162,20 +166,17 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('primitives leak nothing', () => {
       expect(
         perIterationLeak(() => {
-          using b = box(10, 10, 10);
-          void b;
+          using _b = box(10, 10, 10);
         })
       ).toBe(0);
       expect(
         perIterationLeak(() => {
-          using c = cylinder(5, 10);
-          void c;
+          using _c = cylinder(5, 10);
         })
       ).toBe(0);
       expect(
         perIterationLeak(() => {
-          using s = sphere(5);
-          void s;
+          using _s = sphere(5);
         })
       ).toBe(0);
     });
@@ -184,8 +185,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using m = translate(b, [1, 0, 0]);
-          void m;
+          using _m = translate(b, [1, 0, 0]);
         })
       ).toBe(0);
     });
@@ -220,6 +220,52 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           checkAllInterferences([a, b]);
+        })
+      ).toBe(0);
+    });
+
+    it('principalBoundingBox frees its principal-frame copy', () => {
+      // Fresh shapes each iteration: a repeated call on one shape is a cache hit.
+      expect(
+        perIterationLeak(() => {
+          using b0 = box(600, 400, 18.5);
+          using b = rotate(b0, 30, { axis: [0, 0, 1] });
+          expect(isOk(principalBoundingBox(b))).toBe(true);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using c0 = box(10, 10, 10);
+          using c = translate(c0, [30, 0, 0]);
+          using pair = compound([a, c]);
+          expect(isOk(principalBoundingBox(pair))).toBe(true);
+        })
+      ).toBe(0);
+    });
+
+    it('principalBoundingBox frees its principal-frame copy when bounds fail', () => {
+      const base = getKernel();
+      registerKernel(
+        'arena-throwing-bounds',
+        new Proxy(base, {
+          get(target, prop) {
+            if (prop === 'boundingBox') {
+              return () => {
+                throw new Error('bounds exploded');
+              };
+            }
+            const value: unknown = Reflect.get(target, prop, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        })
+      );
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          expect(isErr(withKernel('arena-throwing-bounds', () => principalBoundingBox(b)))).toBe(
+            true
+          );
         })
       ).toBe(0);
     });
@@ -519,8 +565,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = rotate(b, 30, { at: [0, 0, 0], axis: [0, 0, 1] });
-          void r;
+          using _r = rotate(b, 30, { at: [0, 0, 0], axis: [0, 0, 1] });
         })
       ).toBe(0);
     });
@@ -529,8 +574,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = mirror(b, { normal: [0, 1, 0], at: [0, 0, 0] });
-          void r;
+          using _r = mirror(b, { normal: [0, 1, 0], at: [0, 0, 0] });
         })
       ).toBe(0);
     });
@@ -539,8 +583,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = scale(b, 2, [0, 0, 0]);
-          void r;
+          using _r = scale(b, 2, [0, 0, 0]);
         })
       ).toBe(0);
     });
@@ -564,8 +607,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using r = locate(b, { type: 'translate', v: [5, 0, 0] });
-          void r;
+          using _r = locate(b, { type: 'translate', v: [5, 0, 0] });
         })
       ).toBe(0);
     });
@@ -578,7 +620,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('polygon leaks nothing', () => {
       expect(
         perIterationLeak(() => {
-          using f = unwrap(
+          using _f = unwrap(
             polygon([
               [0, 0, 0],
               [10, 0, 0],
@@ -586,7 +628,6 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
               [0, 10, 0],
             ])
           );
-          void f;
         })
       ).toBe(0);
     });
@@ -795,8 +836,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('cylinder with at/axis leaks nothing', () => {
       expect(
         perIterationLeak(() => {
-          using c = cylinder(1, 10, { at: [5, 5, 0], axis: [0, 1, 0] });
-          void c;
+          using _c = cylinder(1, 10, { at: [5, 5, 0], axis: [0, 1, 0] });
         })
       ).toBe(0);
     });
@@ -804,8 +844,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('centered cylinder leaks nothing', () => {
       expect(
         perIterationLeak(() => {
-          using c = cylinder(1, 10, { centered: true });
-          void c;
+          using _c = cylinder(1, 10, { centered: true });
         })
       ).toBe(0);
     });
@@ -813,20 +852,17 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('sphere / cone / ellipsoid with position leak nothing', () => {
       expect(
         perIterationLeak(() => {
-          using s = sphere(5, { at: [3, 0, 0] });
-          void s;
+          using _s = sphere(5, { at: [3, 0, 0] });
         })
       ).toBe(0);
       expect(
         perIterationLeak(() => {
-          using c = cone(5, 2, 10, { at: [1, 1, 0], axis: [0, 1, 0] });
-          void c;
+          using _c = cone(5, 2, 10, { at: [1, 1, 0], axis: [0, 1, 0] });
         })
       ).toBe(0);
       expect(
         perIterationLeak(() => {
-          using e = ellipsoid(5, 3, 2, { at: [1, 0, 0] });
-          void e;
+          using _e = ellipsoid(5, 3, 2, { at: [1, 0, 0] });
         })
       ).toBe(0);
     });
@@ -834,14 +870,12 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('box with at / centered leaks nothing', () => {
       expect(
         perIterationLeak(() => {
-          using b = box(10, 10, 10, { centered: true });
-          void b;
+          using _b = box(10, 10, 10, { centered: true });
         })
       ).toBe(0);
       expect(
         perIterationLeak(() => {
-          using b = box(10, 10, 10, { at: [5, 5, 5] });
-          void b;
+          using _b = box(10, 10, 10, { at: [5, 5, 5] });
         })
       ).toBe(0);
     });
@@ -849,8 +883,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('torus with position leaks nothing', () => {
       expect(
         perIterationLeak(() => {
-          using t = torus(10, 2, { at: [1, 0, 0], axis: [0, 1, 0] });
-          void t;
+          using _t = torus(10, 2, { at: [1, 0, 0], axis: [0, 1, 0] });
         })
       ).toBe(0);
     });
@@ -1338,8 +1371,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           const s = sketchText('O', { fontFamily: 'arena-test', fontSize: 16 });
-          using combined = s.wires();
-          void combined;
+          using _combined = s.wires();
           // dispose the sketch's own contour wires too; only wires()'s unreachable
           // intermediate (the old bug) could survive this — the new code has none.
           disposeContourWires(s);

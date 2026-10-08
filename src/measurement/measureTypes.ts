@@ -29,6 +29,16 @@ export interface LinearProps extends PhysicalProps {
   readonly length: number;
 }
 
+/** A box aligned to a solid's principal axes of inertia. */
+export interface PrincipalBoundingBox {
+  /** Box center in world coordinates. */
+  readonly center: Vec3;
+  /** Box axes: orthonormal, right-handed, ordered by decreasing extent. */
+  readonly axes: readonly [Vec3, Vec3, Vec3];
+  /** Full edge lengths along `axes`, largest first. */
+  readonly size: Vec3;
+}
+
 /** Distance measurement result including witness points. */
 export interface DistanceProps {
   /** The minimum distance between the two shapes. */

@@ -147,6 +147,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold does not implement length() for curved wires (e.g. a circle wire) — only straight edges measure.',
     },
+    'principalBoxFns.inertia': {
+      kind: 'not-implemented',
+      reason:
+        'manifold is a mesh kernel with no matrix-of-inertia query, so the adapter has no inertia() and principalBoundingBox returns UNSUPPORTED.',
+    },
     // -----------------------------------------------------------------------
     // kernelDivergenceCoverage.test.ts
     // -----------------------------------------------------------------------
@@ -422,6 +427,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Null-shape pre-validation tests use OCCT-specific raw API',
     },
+    'principalBoxFns.inertia': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit-wasm exposes no matrix-of-inertia query, so the adapter has no inertia() and principalBoundingBox returns UNSUPPORTED.',
+    },
   },
 
   occt: {
@@ -440,6 +450,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'occt (OpenCascade.js) StlAPI_Reader.Read returns no shape, so importSTL yields Err; occt-wasm 3.4.0 and brepkit import STL correctly',
+    },
+    'principalBoxFns.inertia': {
+      kind: 'not-implemented',
+      reason:
+        'gp_Mat is not bound in the brepjs-opencascade WASM build, so GProp_GProps.MatrixOfInertia() throws an UnboundTypeError; the adapter has no inertia() and principalBoundingBox returns UNSUPPORTED.',
     },
     // -----------------------------------------------------------------------
     // brepkit-only suites (descBk pattern)

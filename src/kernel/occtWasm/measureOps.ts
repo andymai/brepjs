@@ -11,7 +11,7 @@
  */
 
 import type { DistanceResult, KernelShape } from '@/kernel/types.js';
-import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
+import type { BulkMeasurement, Matrix3 } from '@/kernel/interfaces/measureOps.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { noop, unwrap } from './helpers.js';
 
@@ -43,6 +43,25 @@ export function linearCenterOfMass(
   const vec = k.getLinearCenterOfMass(unwrap(shape));
   try {
     return [vec.get(0), vec.get(1), vec.get(2)];
+  } finally {
+    vec.delete();
+  }
+}
+
+export function inertia(k: OcctKernelWasm, shape: KernelShape): Matrix3 {
+  const vec = k.getInertia(unwrap(shape));
+  try {
+    return [
+      vec.get(0),
+      vec.get(1),
+      vec.get(2),
+      vec.get(3),
+      vec.get(4),
+      vec.get(5),
+      vec.get(6),
+      vec.get(7),
+      vec.get(8),
+    ];
   } finally {
     vec.delete();
   }

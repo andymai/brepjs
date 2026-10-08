@@ -6,13 +6,19 @@
  * WeakMap keys auto-expire when shapes are GC'd.
  */
 
-import type { VolumeProps, SurfaceProps, LinearProps } from './measureTypes.js';
+import type {
+  VolumeProps,
+  SurfaceProps,
+  LinearProps,
+  PrincipalBoundingBox,
+} from './measureTypes.js';
 
 /** Maps measurement keys to their corresponding result types. */
 export interface MeasurementValueMap {
   volume: VolumeProps;
   surface: SurfaceProps;
   linear: LinearProps;
+  principal: PrincipalBoundingBox;
 }
 
 /** Valid measurement cache keys. */
