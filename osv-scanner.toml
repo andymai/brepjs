@@ -30,3 +30,30 @@ ignoreUntil = 2026-11-01
 # vendored dompurify.js, IN_PLACE appears nowhere in monaco's esm/. Without
 # IN_PLACE, sanitize works on a fresh document, so no live subtree is involved.
 reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; IN_PLACE never set, so no live subtree can be left armed"
+
+[[IgnoredVulns]]
+id = "GHSA-6688-9rhm-gjv2"
+ignoreUntil = 2026-11-01
+# Needs sanitize(node, { IN_PLACE: true }) on a Node input whose root is a
+# rawtext element. Same missing half as above: monaco 0.57.0's two call sites
+# in domSanitize.js pass an HTML string with RETURN_DOM_FRAGMENT or
+# RETURN_TRUSTED_TYPE, and IN_PLACE appears nowhere in esm/ outside the
+# vendored dompurify.js.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; sanitize gets strings and never IN_PLACE"
+
+# --- katex via mermaid (docs site) ------------------------------------------
+# Fixed only in katex 0.18.2, and mermaid (11.17.2 here, 12.1.0 latest) still
+# declares katex ^0.16.47, so the fix is outside the parent's range. An
+# override would force mermaid onto an unvetted katex line.
+#
+# Re-evaluate when a mermaid release accepts katex >= 0.18.2.
+
+[[IgnoredVulns]]
+id = "GHSA-238p-pmpm-9mq7"
+ignoreUntil = 2026-12-01
+# A read-side gadget: needs Object.prototype already polluted by some other
+# bug before KaTeX reads options. KaTeX is dev-only (apps/docs via
+# vitepress-plugin-mermaid), and mermaid dynamically imports it only for a
+# diagram label matching $$...$$. No docs page contains one, and every diagram
+# is authored in-repo.
+reason = "docs-only via mermaid; loaded only for $$ math labels, which no page has; needs a separate prototype-pollution bug"
