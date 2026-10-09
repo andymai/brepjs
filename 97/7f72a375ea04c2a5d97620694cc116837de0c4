@@ -1,0 +1,19 @@
+src/topology/README.md
+  s_e4490f8a99ba74::t_5ee04cb1aab519 21-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "977f72a375ea04c2a5d97620694cc116837de0c4",
+  "prompts": {},
+  "sessions": {
+    "s_e4490f8a99ba74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6aad3a9-b0da-4a4c-9bd2-e524f3d0b708",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
