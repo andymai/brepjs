@@ -84,7 +84,7 @@ Full recipe set and the OIDC-binding rationale: the `release-publishing` skill.
 
 ### `prepack` fails: "Too many files" or ".d.ts.map"
 
-`scripts/validate-pack.sh` (root `prepack` hook, `package.json:216`) caps the packed tarball at `MAX_FILES=500` and rejects any `.d.ts.map` sidecars (count must be 0). It fires during **pack/publish**, not PR CI. Fix "too many files" by trimming the published set; fix `.d.ts.map` by keeping `declarationMap` off in `vite.config.ts`.
+`scripts/validate-pack.sh` (root `prepack` hook, `package.json:216`) caps the packed tarball at `MAX_FILES=600` and rejects any `.d.ts.map` sidecars (count must be 0). It fires during **pack/publish**, not PR CI, so an overflow first shows up as a red `publish-brepjs` after the release PR merges: the version is tagged and GitHub-released but missing from npm. `rollupTypes: false` emits one `.d.ts` per source module, so every new `src/` file adds one packed file. Count with `npm run build && npm pack --dry-run --ignore-scripts`. If the growth is just new modules, raise `MAX_FILES` (`ci:` commit, no release) and then `gh workflow run release-please.yml -f republish=true`. Fix `.d.ts.map` by keeping `declarationMap` off in `vite.config.ts`.
 
 ### "Deploy API Docs" didn't run after a main merge
 
