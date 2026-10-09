@@ -1,0 +1,48 @@
+src/topology/shapeRef/extrudeRoles.ts
+  s_e4490f8a99ba74::t_d2f8d86c79c5dd 140
+  s_e4490f8a99ba74::t_98738c14523cdb 43-55
+  s_e4490f8a99ba74::t_229e8cefa45fd5 76-78
+  s_e4490f8a99ba74::t_7a40b4539fa8c1 1-34,36-38,41-42,56-62,64-75,79-139,141-153,155-156,159,161,163-165
+  s_e4490f8a99ba74::t_4e6aaa7ffbcb00 35,39-40,63,157-158,160,162
+  s_e4490f8a99ba74::t_21009a11a8c3e4 154
+tests/shapeRefExtrudeRoles.test.ts
+  s_e4490f8a99ba74::t_25ddfa03f69f99 18,36,220-221
+  s_e4490f8a99ba74::t_b5ee1fd6c42d20 1-17,19-35,37-143,145-164,166-219,222-226
+  s_e4490f8a99ba74::t_df91771d6f1b53 144,165
+apps/docs/concepts/stable-references.md
+  s_e4490f8a99ba74::t_39d5ce457319a5 16,57-68
+  s_e4490f8a99ba74::t_84a8f5cefea3a3 69
+src/operations/extrudeFns.ts
+  s_e4490f8a99ba74::t_21009a11a8c3e4 22,33-36,60
+src/topology/metadata/faceRoleFns.ts
+  s_e4490f8a99ba74::t_39d5ce457319a5 2
+  s_e4490f8a99ba74::t_7098f3b633a169 1,3-57
+src/topology/shapeRef/refResolveFns.ts
+  s_e4490f8a99ba74::t_39d5ce457319a5 114
+  s_e4490f8a99ba74::t_a6baf9594d1bee 115
+.size-limit.json
+  s_e4490f8a99ba74::t_15ebbb5f8a6431 2
+src/topology/metadata/metadataPropagation.ts
+  s_e4490f8a99ba74::t_48369bd35779e9 22,37,41-46,67,81
+src/topology/shapeRef/shapeRefFns.ts
+  s_e4490f8a99ba74::t_21009a11a8c3e4 14,99-103,115-116,125-138
+  s_e4490f8a99ba74::t_d2f8d86c79c5dd 108-110
+tests/helpers/kernelDivergences.ts
+  s_e4490f8a99ba74::t_e9832638c9c22b 56-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f56aa224e294ce0c12c8919a92e38ebb18cfcf7d",
+  "prompts": {},
+  "sessions": {
+    "s_e4490f8a99ba74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6aad3a9-b0da-4a4c-9bd2-e524f3d0b708",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
