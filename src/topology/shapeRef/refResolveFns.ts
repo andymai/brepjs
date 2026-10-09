@@ -111,7 +111,8 @@ function rolesFor(ref: LineageRef, shape: Shape3D, cache: Map<string, RoleTable>
  * Resolve a lineage ref against a freshly rebuilt `shape` with no maintained
  * role table, re-deriving roles via `assignRoles(shape, ref.origin)`. The ref's
  * `origin` must therefore be the role-assignment scheme (e.g. `'box'`), and
- * stability is bounded by that scheme — `'box'` names faces semantically
+ * stability is bounded by that scheme. The primitives (`'box'`, `'cylinder'`,
+ * `'cone'`, `'sphere'`) and `'extrude'` name faces semantically
  * (rebuild-stable); other schemes fall back to positional `face_N`.
  */
 export function resolveRefIn(ref: LineageRef, shape: Shape3D): LineageResolution {

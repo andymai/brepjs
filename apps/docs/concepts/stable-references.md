@@ -13,7 +13,7 @@ A [finder](/tasks/finders) answers "which face points up _right now_?" against t
 
 A hash is assigned by the kernel and changes when anything upstream changes. A name should instead be derived from things that _don't_ move:
 
-- A **face** is named by a semantic role within the operation that made it (`box:top`, `cylinder:side`) plus a geometric snapshot — its surface type, outward normal, centroid, and area.
+- A **face** is named by a semantic role within the operation that made it (`box:top`, `cylinder:lateral`, `extrude:end`) plus a geometric snapshot — its surface type, outward normal, centroid, and area.
 - An **edge** is named by the roles of the **two faces it bounds**. An edge _is_ the intersection of its two faces, so it's re-found as the edge shared by whatever faces now carry those roles — no edge hash involved.
 - A **vertex** is named by the roles of the **≥3 faces that meet at it** (two faces meet along an edge, not a point, so a corner needs three).
 - A **generated face** — a fillet round or chamfer bevel that didn't exist when you captured the reference — is named by the **two faces it bridges**, and re-found as the new face whose normal blends both.
@@ -53,6 +53,19 @@ A `ShapeRef` is a plain, serializable object (`{ origin, role, hint }`) — stor
 
 - **`exact`** — the reference matched through a **role table**, the robust path. `assignRoles(shape, 'box')` builds the `role → face-hash` map for a shape, and `updateRoles` propagates it across an edit's evolution records, so a rebuild can resolve the role to its exact successor face. This is what a replay engine maintains under the hood.
 - **`geometric-fallback`** — no role table was available (or it didn't cover this entity), so resolution matched on the captured hint: the face with the same surface type whose normal, centroid, and area are closest. This is the designed recovery path for when hash chains drift across many operations — pass an empty `new Map()` and you opt into it directly, as above.
+
+### Role schemes
+
+`assignRoles(shape, scheme)` names a shape's faces by the operation that made them:
+
+| Scheme             | Roles                                                                          |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `box`              | `box:top`, `box:bottom`, `box:front`, `box:back`, `box:left`, `box:right`      |
+| `cylinder`, `cone` | `<scheme>:top`, `<scheme>:bottom`, `<scheme>:lateral`                          |
+| `sphere`           | `sphere:surface`                                                               |
+| `extrude`          | `extrude:start`, `extrude:end`, `extrude:side:<i>`, `extrude:hole<j>:side:<i>` |
+
+`extrude()` records its roles on the solid while it still knows the profile. `start` is the cap on the profile, `end` is the cap at profile + vector, and `side:<i>` is the face swept from the profile's `i`-th outline edge, in the order you drew it. Each hole numbers its own edges. The names travel with the solid through moves and booleans, so a ref to `extrude:end` still finds the top cap after the profile gains a segment. A face a scheme can't name gets a positional `<scheme>:face_N`.
 
 ## When a reference can't resolve
 

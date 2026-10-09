@@ -19,6 +19,7 @@ import {
 } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
+import { recordExtrudeRoles } from '@/topology/shapeRef/extrudeRoles.js';
 
 export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 
@@ -28,6 +29,10 @@ export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 
 /**
  * Extrude a face along a vector to produce a solid.
+ *
+ * The result carries semantic face roles (`extrude:start`, `extrude:end`,
+ * `extrude:side:<i>`, `extrude:hole<j>:side:<i>`) that
+ * `assignRoles(solid, 'extrude')` returns in place of positional names.
  *
  * @param face - The planar face to extrude.
  * @param extrusionVec - Direction and magnitude of the extrusion as `[x, y, z]`.
@@ -52,6 +57,7 @@ export function extrude(
     const downcastShape = kernel.downcast(shape, 'solid');
     const solid = createSolid(downcastShape) as ValidSolid;
     disposeDowncastSource(shape, solid);
+    recordExtrudeRoles(solid, face, extrusionVec);
     return ok(solid);
   } catch (e) {
     return err(

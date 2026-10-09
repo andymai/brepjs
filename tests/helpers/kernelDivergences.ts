@@ -53,6 +53,14 @@ export const divergences: DivergenceMap = {
         'manifold is a mesh kernel with no B-rep wire/edge vocabulary; Path evaluation and edge curve queries are out of scope (same class as the feature-node skips).',
     },
     // -----------------------------------------------------------------------
+    // shapeRefExtrudeRoles.test.ts
+    // -----------------------------------------------------------------------
+    'shapeRefExtrudeRoles.recorded': {
+      kind: 'not-implemented',
+      reason:
+        'extrude records face roles only on exact B-rep kernels (capabilities.exact); on the mesh kernel assignRoles keeps positional extrude:face_N names.',
+    },
+    // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
     'modifierFns.defeatureFilletFace': {

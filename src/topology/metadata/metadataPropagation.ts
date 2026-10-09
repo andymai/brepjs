@@ -19,6 +19,7 @@ import {
 } from './originTrackingFns.js';
 import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
 import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
+import { propagateFaceRolesFromEvolution, hasFaceRoles } from './faceRoleFns.js';
 import { subShapeHashes } from '@/topology/topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
@@ -33,11 +34,16 @@ import { subShapeHashes } from '@/topology/topologyQueryFns.js';
  */
 /**
  * O(1) check: does a shape carry any propagatable metadata (face origins,
- * tags, or colors)? Lets callers skip both expensive face iteration and
+ * tags, colors, or recorded roles)? Lets callers skip both expensive face iteration and
  * metadata-preserving slow paths when there's nothing to preserve.
  */
 export function hasAnyMetadata(shape: AnyShape<Dimension>): boolean {
-  return getFaceOrigins(shape) !== undefined || hasFaceTags(shape) || hasColorMetadata(shape);
+  return (
+    getFaceOrigins(shape) !== undefined ||
+    hasFaceTags(shape) ||
+    hasColorMetadata(shape) ||
+    hasFaceRoles(shape)
+  );
 }
 
 export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): number[] {
@@ -58,7 +64,7 @@ export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): 
 // ---------------------------------------------------------------------------
 
 /**
- * Propagate all metadata (origins, tags, colors) from inputs to result
+ * Propagate all metadata (origins, tags, colors, recorded roles) from inputs to result
  * using a kernel-provided ShapeEvolution record.
  *
  * This is the standard pipeline for any operation that returns
@@ -72,6 +78,7 @@ export function propagateAllMetadata(
   propagateOriginsFromEvolution(evolution, inputs, result);
   propagateFaceTagsFromEvolution(evolution, inputs, result);
   propagateColorsFromEvolution(evolution, inputs, result);
+  propagateFaceRolesFromEvolution(evolution, inputs, result);
 }
 
 /**
