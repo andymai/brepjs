@@ -11,6 +11,7 @@ import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { normalAt, faceCenter, faceGeomType } from '@/topology/faceFns.js';
 import { measureArea } from '@/measurement/measureFns.js';
+import { getFaceRoles } from '@/topology/metadata/faceRoleFns.js';
 import type {
   GeometricHint,
   ShapeRef,
@@ -95,16 +96,24 @@ const ROLE_ASSIGNERS: Record<string, (face: Face) => string | undefined> = {
  * - `cylinder`/`cone` (Z-axis): 'top'/'bottom' caps + 'lateral' wall.
  * - `sphere`: 'sphere:surface'.
  *
+ * Faces whose roles an operation recorded on the shape take those names when
+ * the namespace matches `operationType`. `extrude` records 'extrude:start',
+ * 'extrude:end', 'extrude:side:<i>' and 'extrude:hole<j>:side:<i>', which
+ * survive later moves and booleans.
+ *
  * Faces a primitive namer doesn't recognize (a rotated box's non-cardinal faces),
  * and every face of any other operation type, fall back to positional names
  * ('opType:face_0', 'opType:face_1', ...) — so each face always gets a role.
  *
- * @returns Map from role name to its face hash codes (one at assignment time;
- *   a role accrues more hashes only later, when `updateRoles` tracks a split).
+ * @returns Map from role name to its face hash codes (one per role, except a
+ *   recorded role whose face a later operation split; `updateRoles` adds more
+ *   when it tracks a split).
  */
 export function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]> {
   const roles = new Map<string, number[]>();
   const assigner = ROLE_ASSIGNERS[operationType];
+  const recorded = getFaceRoles(shape);
+  const namespace = `${operationType}:`;
   const kernel = getKernel();
   let index = 0;
   // Iterate transient faces rather than the cached getFaces(): only the hash
@@ -113,12 +122,20 @@ export function assignRoles(shape: Shape3D, operationType: string): Map<string, 
   for (const raw of kernel.iterShapes(shape.wrapped, 'face')) {
     const face = castShapeWithKnownType(raw, 'face') as Face;
     try {
-      const semantic = assigner?.(face);
-      const role =
-        semantic !== undefined && !roles.has(semantic)
-          ? semantic
-          : `${operationType}:face_${index}`;
-      roles.set(role, [getHashCode(face)]);
+      const hash = getHashCode(face);
+      const stored = recorded?.get(hash);
+      if (stored?.startsWith(namespace) === true) {
+        const hashes = roles.get(stored);
+        if (hashes) hashes.push(hash);
+        else roles.set(stored, [hash]);
+      } else {
+        const semantic = assigner?.(face);
+        const role =
+          semantic !== undefined && !roles.has(semantic)
+            ? semantic
+            : `${operationType}:face_${index}`;
+        roles.set(role, [hash]);
+      }
       index++;
     } finally {
       disposeTransientSubShape(face, raw);
