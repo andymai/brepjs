@@ -1,0 +1,28 @@
+src/topology/README.md
+  s_e4490f8a99ba74::t_44dcc7e17f812b 38
+src/operations/extrudeFns.ts
+  s_e4490f8a99ba74::t_9663c50b772904 22
+.size-limit.json
+  s_e4490f8a99ba74::t_e99571a504cd64 2
+src/topology/shapeRef/extrudeRoleFns.ts
+  s_e4490f8a99ba74::t_9663c50b772904 1-187
+tests/shapeRefExtrudeRoles.test.ts
+  s_e4490f8a99ba74::t_44dcc7e17f812b 127-142
+  s_e4490f8a99ba74::t_9663c50b772904 187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b6ed28342194bc23a105a3eac651c8a523e0f7c",
+  "prompts": {},
+  "sessions": {
+    "s_e4490f8a99ba74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6aad3a9-b0da-4a4c-9bd2-e524f3d0b708",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
