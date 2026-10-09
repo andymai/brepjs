@@ -1,0 +1,21 @@
+scripts/validate-pack.sh
+  s_d842b4ceb84174::t_c0de69f277ff7a 3
+.claude/skills/ci-triage/SKILL.md
+  s_d842b4ceb84174::t_79f8c656da202e 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a16bbbf84da4ff3ca8a7841f180afe731965b07",
+  "prompts": {},
+  "sessions": {
+    "s_d842b4ceb84174": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d2e8df4-e793-4021-b0a3-b3297313e321",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
