@@ -99,21 +99,42 @@ function locateFaces(solid: KernelShape): LocatedFace[] {
   return located;
 }
 
-function lowerBound(sortedXs: readonly number[], x: number): number {
+function lowerBound(sortedKeys: readonly number[], key: number): number {
   let lo = 0;
-  let hi = sortedXs.length;
+  let hi = sortedKeys.length;
   while (lo < hi) {
     const mid = (lo + hi) >>> 1;
-    if ((sortedXs[mid] ?? Infinity) < x) lo = mid + 1;
+    if ((sortedKeys[mid] ?? Infinity) < key) lo = mid + 1;
     else hi = mid;
   }
   return lo;
 }
 
+/** The coordinate axis along which `points` spread furthest. */
+function widestAxis(points: readonly Vec3[]): 0 | 1 | 2 {
+  let axis: 0 | 1 | 2 = 0;
+  let widest = -Infinity;
+  for (const candidate of [0, 1, 2] as const) {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const p of points) {
+      min = Math.min(min, p[candidate]);
+      max = Math.max(max, p[candidate]);
+    }
+    if (max - min > widest) {
+      axis = candidate;
+      widest = max - min;
+    }
+  }
+  return axis;
+}
+
 /**
  * Pair each anchor with its nearest face within `tolerance`. Returns undefined
  * unless the pairing is one-to-one over every face, so an unexpected topology
- * records nothing rather than wrong names.
+ * records nothing rather than wrong names. Candidates are windowed along the
+ * axis the face centers spread furthest on: a profile in the YZ plane puts
+ * every side face at one X, which would make a fixed X window scan them all.
  */
 function matchAnchors(
   anchors: readonly Anchor[],
@@ -121,16 +142,17 @@ function matchAnchors(
   tolerance: number
 ): Map<number, string> | undefined {
   if (anchors.length !== faces.length) return undefined;
-  const sorted = [...faces].sort((a, b) => a.point[0] - b.point[0]);
-  const xs = sorted.map((f) => f.point[0]);
+  const axis = widestAxis(faces.map((f) => f.point));
+  const sorted = [...faces].sort((a, b) => a.point[axis] - b.point[axis]);
+  const keys = sorted.map((f) => f.point[axis]);
   const claimed = new Set<number>();
   const roles = new Map<number, string>();
   for (const { role, point } of anchors) {
     let best = -1;
     let bestDistance = tolerance;
-    for (let i = lowerBound(xs, point[0] - tolerance); i < sorted.length; i++) {
+    for (let i = lowerBound(keys, point[axis] - tolerance); i < sorted.length; i++) {
       const face = sorted[i];
-      if (face === undefined || face.point[0] > point[0] + tolerance) break;
+      if (face === undefined || face.point[axis] > point[axis] + tolerance) break;
       const d = vecDistance(face.point, point);
       if (d <= bestDistance) {
         best = i;

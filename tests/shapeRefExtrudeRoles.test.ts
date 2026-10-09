@@ -124,6 +124,22 @@ describe.skipIf(shouldSkipSuite('shapeRefExtrudeRoles.recorded'))('extrude face 
     expectPoint(centerOfRole(oblique, 'extrude:side:0'), [6, 1.5, 2.5]);
   });
 
+  it('names a profile in the YZ plane extruded along X', () => {
+    using solid = extrudePolygon(
+      [
+        [0, 0, 0],
+        [0, 10, 0],
+        [0, 10, 10],
+        [0, 0, 10],
+      ],
+      [5, 0, 0]
+    );
+    expectPoint(centerOfRole(solid, 'extrude:start'), [0, 5, 5]);
+    expectPoint(centerOfRole(solid, 'extrude:end'), [5, 5, 5]);
+    expectPoint(centerOfRole(solid, 'extrude:side:0'), [2.5, 5, 0]);
+    expectPoint(centerOfRole(solid, 'extrude:side:1'), [2.5, 10, 5]);
+  });
+
   it('keeps the cap names when the profile gains a segment', () => {
     using square = extrudePolygon(regularPolygon(4, 10), [0, 0, 8]);
     using pentagon = extrudePolygon(regularPolygon(5, 10), [0, 0, 8]);
@@ -168,7 +184,8 @@ describe.skipIf(shouldSkipSuite('shapeRefExtrudeRoles.recorded'))('extrude face 
 
   it('carries the roles through a boolean and names new faces positionally', () => {
     using solid = extrudePolygon(CCW_SQUARE, [0, 0, 5]);
-    using tool = translate(box(2, 2, 10), [4, 4, -2]);
+    using toolBox = box(2, 2, 10);
+    using tool = translate(toolBox, [4, 4, -2]);
     using drilled = unwrap(cut(solid, tool));
     const roles = assignRoles(drilled, 'extrude');
 

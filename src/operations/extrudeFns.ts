@@ -19,7 +19,7 @@ import {
 } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
-import { recordExtrudeRoles } from '@/topology/shapeRef/extrudeRoles.js';
+import { recordExtrudeRoles } from '@/topology/shapeRef/extrudeRoleFns.js';
 
 export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 

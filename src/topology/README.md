@@ -35,7 +35,7 @@ graph TD
 | Healing            | `healingFns.ts`                                                                                                  | `heal`, `simplify`, autoHeal diagnostics.                                                              |
 | Compound ops       | `compoundOpsFns.ts`                                                                                              | Operations on `Compound` / `CompSolid` aggregates.                                                     |
 | Metadata           | `metadata/` (`colorFns.ts`, `faceTagFns.ts`, `faceRoleFns.ts`, `originTrackingFns.ts`, `metadataPropagation.ts`) | Per-shape colors, face tags, recorded face roles, origin tracking + propagation across operations.     |
-| ShapeRef scoring   | `shapeRef/` (`shapeRefFns.ts`, `scoring.ts`, `extrudeRoles.ts`)                                                  | Persistent shape references that survive boolean / modifier rebuilds; `extrude:*` face roles.          |
+| ShapeRef scoring   | `shapeRef/` (`shapeRefFns.ts`, `scoring.ts`, `extrudeRoleFns.ts`)                                                | Persistent shape references that survive boolean / modifier rebuilds; `extrude:*` face roles.          |
 
 ## Validity types
 
