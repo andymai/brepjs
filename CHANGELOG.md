@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.4.0](https://github.com/andymai/brepjs/compare/brepjs-v20.3.0...brepjs-v20.4.0) (2026-10-09)
+
+
+### Features
+
+* **shaperef:** semantic face roles for extrusions ([#2398](https://github.com/andymai/brepjs/issues/2398)) ([56e0743](https://github.com/andymai/brepjs/commit/56e0743952a24b554dc1d635eb4955b0928813ce))
+
 ## [20.3.0](https://github.com/andymai/brepjs/compare/brepjs-v20.2.0...brepjs-v20.3.0) (2026-10-08)
 
 
