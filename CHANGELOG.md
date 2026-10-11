@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.5.0](https://github.com/andymai/brepjs/compare/brepjs-v20.4.0...brepjs-v20.5.0) (2026-10-11)
+
+
+### Features
+
+* **kernel:** bump brepkit-wasm to 4.0.62 ([#2402](https://github.com/andymai/brepjs/issues/2402)) ([937f4f6](https://github.com/andymai/brepjs/commit/937f4f659cc7f7a1fb035b5094a5a857e21298a8))
+
 ## [20.4.0](https://github.com/andymai/brepjs/compare/brepjs-v20.3.0...brepjs-v20.4.0) (2026-10-09)
 
 
