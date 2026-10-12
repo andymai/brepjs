@@ -166,6 +166,7 @@ See the [**Declarative Models**](https://brepjs.dev/families/overview) guide.
 ## Projects Using brepjs
 
 - [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool): Web-based layout generator for Gridfinity storage systems
+- [layerling](https://github.com/henmedia/layerling): Free browser-based 3D CAD for 3D printing
 
 ## Get in touch
 
