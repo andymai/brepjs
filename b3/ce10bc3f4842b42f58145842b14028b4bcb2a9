@@ -1,0 +1,19 @@
+README.md
+  s_cad2c6c4dde6af::t_1cc6e1e5f66206 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ce10bc3f4842b42f58145842b14028b4bcb2a9",
+  "prompts": {},
+  "sessions": {
+    "s_cad2c6c4dde6af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8af75949-5dd4-4ac3-92a3-f490c34c7003",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
