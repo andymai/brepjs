@@ -99,6 +99,12 @@ const ERROR_CODE_SUGGESTIONS: Readonly<Record<string, string>> = {
     'The shell thickness may be too large for the shape. Try reducing thickness or removing problematic faces.',
   OFFSET_NOT_3D:
     'The offset distance may be too large for the shape geometry. Try a smaller distance.',
+  SHELL_NO_EFFECT:
+    'The wall is too thick for this body. Use a wall thinner than half the narrowest part of the shape.',
+  SHELL_INVALID_RESULT:
+    'The wall is too thick for this body or one of its curved faces. Use a wall thinner than half the narrowest part and smaller than the tightest convex radius.',
+  OFFSET_INVALID_RESULT:
+    'The offset is too large for this body. An inward offset must stay below half the narrowest part and the tightest convex radius.',
   DRAFT_FAILED:
     'The draft angle may be too large or the selected faces incompatible. Try a smaller angle or different faces.',
 };

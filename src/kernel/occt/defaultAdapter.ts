@@ -15,7 +15,7 @@
  */
 
 import type { KernelCapabilities } from '@/kernel/capabilities.js';
-import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
+import { OCCT_CAPABILITIES } from '@/kernel/capabilities.js';
 import type { KernelAdapter, KernelMeshResult, KernelInstance } from '@/kernel/types.js';
 import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
@@ -160,7 +160,7 @@ export interface DefaultAdapter extends KernelAdapter, Kernel2DCapability {}
 export class DefaultAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt';
-  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
+  readonly capabilities: KernelCapabilities = OCCT_CAPABILITIES;
 
   constructor(oc: KernelInstance) {
     this.oc = oc;

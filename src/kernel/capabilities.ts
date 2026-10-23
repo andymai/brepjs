@@ -26,6 +26,12 @@ export interface KernelCapabilities {
   readonly exactMeasurement: boolean;
   /** How tessellation resolution is controlled — see module docs. */
   readonly tessellationModel: TessellationModel;
+  /**
+   * `*WithHistory` maps come from the kernel's own operation history, so a
+   * face listed as generated from a source face is that face's offset, sweep,
+   * or fillet. Kernels that rebuild the maps by geometric matching leave it unset.
+   */
+  readonly nativeHistory?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */
@@ -34,6 +40,12 @@ export const EXACT_BREP_CAPABILITIES: KernelCapabilities = {
   brepExport: true,
   exactMeasurement: true,
   tessellationModel: 'extract-time',
+};
+
+/** OCCT-family kernels: exact B-rep with OCCT's own shape history. */
+export const OCCT_CAPABILITIES: KernelCapabilities = {
+  ...EXACT_BREP_CAPABILITIES,
+  nativeHistory: true,
 };
 
 /**

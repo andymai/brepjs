@@ -25,12 +25,25 @@ import {
   variableFillet,
   getKernel,
   createSolid,
+  cylinder,
+  getBounds,
+  isValid,
 } from '@/index.js';
+import { shell as shellFn } from '@/topology/modifierFns.js';
 import type { Face, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function faceAtHeight(solid: Shape3D, z: number): Face {
+  const face = getFaces(solid).find((f) => {
+    const b = getBounds(f);
+    return Math.abs(b.zMin - z) < 1e-6 && Math.abs(b.zMax - z) < 1e-6;
+  });
+  if (!face) throw new Error(`no planar face at z=${z}`);
+  return face;
+}
 
 describe('thicken', () => {
   it('thickens a planar face into a solid', () => {
@@ -162,6 +175,49 @@ describe('shell', () => {
     const result = shell(b, [], 1);
     expect(isErr(result)).toBe(true);
   });
+
+  it('keeps a wall just under half the width', () => {
+    const b = box(10, 10, 10);
+    const vol = unwrap(measureVolume(unwrap(shell(b, [faceAtHeight(b, 10)], 4.9))));
+    expect(vol).toBeCloseTo(1000 - 0.2 * 0.2 * 5.1, 6);
+  });
+
+  it('rejects a wall the body cannot take instead of returning it unchanged', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.shellNoEffect');
+    const b = box(10, 10, 10);
+    const error = unwrapErr(shell(b, [faceAtHeight(b, 10)], 6));
+    expect(error.code).toBe('SHELL_NO_EFFECT');
+    expect(error.suggestion).toBeDefined();
+  });
+
+  it('rejects an unchanged result on the no-history path too', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.shellNoEffect');
+    const b = box(10, 10, 10);
+    const result = shellFn(b, [faceAtHeight(b, 10)], 6, 1e-3, {
+      trackEvolution: false,
+    });
+    expect(unwrapErr(result).code).toBe('SHELL_NO_EFFECT');
+  });
+
+  it('rejects a wall that leaves no valid body', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.shellOverThickWall');
+    const b = box(10, 10, 10);
+    expect(unwrapErr(shell(b, [faceAtHeight(b, 10)], 5)).code).toBe('SHELL_INVALID_RESULT');
+  });
+
+  it('rejects a wall past a curved face that comes back inverted', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.shellInvertedCurvedWall');
+    const c = cylinder(5, 10);
+    const opened = faceAtHeight(c, 10);
+    const thin = unwrap(shell(c, [opened], 1));
+    expect(isValid(thin)).toBe(true);
+
+    // The r=5 cylinder at wall 6 comes back from the kernel as a valid solid
+    // with an r=1 inverted cavity; only the wall distance exposes it.
+    const error = unwrapErr(shell(c, [opened], 6));
+    expect(error.code).toBe('SHELL_INVALID_RESULT');
+    expect(error.metadata?.['reason']).toBe('wall-distance');
+  });
 });
 
 describe('offset', () => {
@@ -187,6 +243,21 @@ describe('offset', () => {
     const s = sphere(5);
     const result = offset(s, 0);
     expect(isErr(result)).toBe(true);
+  });
+
+  it('offsets a box inward by just under half its width', () => {
+    const vol = unwrap(measureVolume(unwrap(offset(box(10, 10, 10), -4.9))));
+    expect(vol).toBeCloseTo(0.2 ** 3, 6);
+  });
+
+  it('rejects an inward offset that consumes the body', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.offsetConsumesBody');
+    for (const distance of [-5, -6]) {
+      // occt-wasm hands back a null shape; opencascade.js throws from the kernel.
+      expect(['OFFSET_INVALID_RESULT', 'OFFSET_FAILED']).toContain(
+        unwrapErr(offset(box(10, 10, 10), distance)).code
+      );
+    }
   });
 });
 

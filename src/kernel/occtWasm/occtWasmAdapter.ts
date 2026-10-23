@@ -41,7 +41,7 @@
  */
 
 import type { KernelCapabilities } from '@/kernel/capabilities.js';
-import { EXACT_BREP_CAPABILITIES } from '@/kernel/capabilities.js';
+import { OCCT_CAPABILITIES } from '@/kernel/capabilities.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { BrepBugError } from '@/utils/bug.js';
 import type {
@@ -143,7 +143,7 @@ export interface OcctKernelOwner {
 export class OcctWasmAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt-wasm';
-  readonly capabilities: KernelCapabilities = EXACT_BREP_CAPABILITIES;
+  readonly capabilities: KernelCapabilities = OCCT_CAPABILITIES;
 
   private readonly Module: OcctWasmModule;
   private readonly k: OcctKernelWasm;

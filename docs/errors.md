@@ -73,6 +73,9 @@ Errors from kernel geometry operations.
 | `CHAMFER_RESULT_NOT_3D` | Chamfer result is not a 3D shape   | Check input shape type                              |
 | `SHELL_FAILED`          | Shell operation failed             | Check thickness vs geometry                         |
 | `SHELL_RESULT_NOT_3D`   | Shell result is not a 3D shape     | Check input shape type                              |
+| `SHELL_NO_EFFECT`       | Wall too thick, input handed back  | Use a thinner wall                                  |
+| `SHELL_INVALID_RESULT`  | Shell gave no usable hollow body   | Use a thinner wall; check `metadata.reason`         |
+| `OFFSET_INVALID_RESULT` | Offset consumed or broke the body  | Use a smaller offset; check `metadata.reason`       |
 | `HEAL_SOLID_FAILED`     | Solid healing failed               | Shape may be too damaged                            |
 | `HEAL_FACE_FAILED`      | Face healing failed                | Shape may be too damaged                            |
 | `HEAL_WIRE_FAILED`      | Wire healing failed                | Shape may be too damaged                            |
