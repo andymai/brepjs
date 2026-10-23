@@ -1,0 +1,22 @@
+tests/occtWasmAdoptShape.test.ts
+  s_1d8adac4958d10::t_e9e89446b39674 1-51
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_1d8adac4958d10::t_a6e79801a205e7 206-227
+  s_1d8adac4958d10::t_75058ae8a3e732 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d483217a903e868913c0c75acd5996006d1cfc7",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
