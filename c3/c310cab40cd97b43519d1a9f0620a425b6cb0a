@@ -1,0 +1,52 @@
+docs/kernel-conformance.md
+  s_1d8adac4958d10::t_4979121359bfe2 89-92,102
+  s_1d8adac4958d10::t_0846b5131fa512 3
+src/kernel/occt/defaultAdapter.ts
+  s_1d8adac4958d10::t_99f1fb42bb98d7 18,163
+src/topology/thickResultCheck.ts
+  s_1d8adac4958d10::t_19dee77d2610cb 16,19-20,22
+  s_1d8adac4958d10::t_ea07b8d02577ce 18
+  s_1d8adac4958d10::t_a4cc23a818987e 57-69
+  s_1d8adac4958d10::t_96819c9ea45e89 88
+  s_1d8adac4958d10::t_d2842df52e97c2 2-15,17,21,23-56,70-87,89-127,130-146,148-153
+  s_1d8adac4958d10::t_66570a388e6ea8 1,128-129,147
+.size-limit.json
+  s_1d8adac4958d10::t_db7402f2aa2fcc 2
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_1d8adac4958d10::t_99f1fb42bb98d7 44,146
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_4b7e4d4a0fffe0 185-186,193-194,202-203,253-254,256-259
+  s_1d8adac4958d10::t_d2842df52e97c2 28-30,32,39-47,178-184,187-192,195,197-201,204-220,247-252,255,260-261
+  s_1d8adac4958d10::t_bbb6743464cd5c 196
+src/kernel/capabilities.ts
+  s_1d8adac4958d10::t_99f1fb42bb98d7 29-34,45-48
+  s_1d8adac4958d10::t_9f0c6d163afb2b 49-50
+src/core/errors.ts
+  s_1d8adac4958d10::t_d2842df52e97c2 98-99,101
+src/core/kernelErrorTranslation.ts
+  s_1d8adac4958d10::t_d2842df52e97c2 102-107
+src/topology/modifierFns.ts
+  s_1d8adac4958d10::t_d2842df52e97c2 17,19,401-429,457-463,466,472,475,479,483,520,524-528
+  s_1d8adac4958d10::t_42dffd22706a10 437-439,506-507
+docs/errors.md
+  s_1d8adac4958d10::t_0846b5131fa512 76-78
+tests/helpers/kernelDivergences.ts
+  s_1d8adac4958d10::t_73254fcc0c99c5 255
+  s_1d8adac4958d10::t_4b7e4d4a0fffe0 254,256-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3c310cab40cd97b43519d1a9f0620a425b6cb0a",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
