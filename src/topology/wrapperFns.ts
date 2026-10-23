@@ -66,6 +66,7 @@ import {
   fillet,
   chamfer,
   shell,
+  removeFaces,
   offset,
   draft as draftFn,
   describe,
@@ -284,6 +285,7 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
     thickness: number,
     options?: { tolerance?: number }
   ): Wrapped3D<T>;
+  removeFaces(faces: Face[] | FinderFn<Face> | ShapeFinder<Face>): Wrapped3D<T>;
   offset(distance: number, options?: { tolerance?: number }): Wrapped3D<T>;
   draft(faces: Face[] | FinderFn<Face> | ShapeFinder<Face>, options: DraftOptions): Wrapped3D<T>;
 
@@ -388,7 +390,7 @@ type Wrapped3DBooleans<T extends Shape3D> = Pick<
 >;
 type Wrapped3DModifiers<T extends Shape3D> = Pick<
   Wrapped3D<T>,
-  'fillet' | 'chamfer' | 'shell' | 'offset' | 'draft'
+  'fillet' | 'chamfer' | 'shell' | 'removeFaces' | 'offset' | 'draft'
 >;
 type Wrapped3DCompoundOps<T extends Shape3D> = Pick<
   Wrapped3D<T>,
@@ -447,6 +449,8 @@ function create3DModifiers<T extends Shape3D>(val: T): Wrapped3DModifiers<T> {
     },
     shell: (faces, thickness, opts) =>
       wrap3D(trustAsT<T>(unwrapOrThrow(shell(asValidSolid(val), faces, thickness, opts)))),
+    removeFaces: (faces) =>
+      wrap3D(trustAsT<T>(unwrapOrThrow(removeFaces(asValidSolid(val), faces)))),
     offset: (distance, opts) =>
       wrap3D(trustAsT<T>(unwrapOrThrow(offset(asValidSolid(val), distance, opts)))),
     draft: (faces, opts) =>

@@ -583,6 +583,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'registerVoxel',
   'rejectAll',
   'removeChild',
+  'removeFaces',
   'removeHolesFromFace',
   'repairMesh',
   'replayFrom',

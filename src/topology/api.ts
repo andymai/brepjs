@@ -409,6 +409,15 @@ export function shell<T extends ValidSolid>(
   return modifiers.shell(s, resolvedFaces, thickness, options?.tolerance) as Result<T>;
 }
 
+/** Remove faces (a hole, pocket, boss, or fillet) and close the gap with the faces around them. */
+export function removeFaces<T extends ValidSolid>(
+  shape: Shapeable<T>,
+  faces: Face[] | FinderFn<Face> | ShapeFinder<Face>
+): Result<T> {
+  const s = resolve(shape);
+  return modifiers.removeFaces(s, resolveFaces(faces, s)) as Result<T>;
+}
+
 /** Offset all faces of a valid solid by a given distance. */
 export function offset<T extends ValidSolid>(
   shape: Shapeable<T>,

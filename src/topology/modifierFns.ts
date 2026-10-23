@@ -6,16 +6,27 @@
  */
 
 import { getKernel, getKernelCapabilities } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
-import { castResultShape, disposeResultShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
+import {
+  castResultShape,
+  castResultShapeWithKnownType,
+  disposeResultShape,
+  isShape3D,
+  isSolid,
+} from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
-import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
+import { kernelError, unsupportedError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from './shapeFns.js';
-import { subShapeHashes } from './topologyQueryFns.js';
-import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
+import { getFaces, subShapeHashes } from './topologyQueryFns.js';
+import {
+  collectInputFaceHashes,
+  propagateAllMetadata,
+  propagateMetadataByHash,
+} from './metadata/metadataPropagation.js';
 import { checkThickResult, type ThickResultSpec } from './thickResultCheck.js';
 import type { Vec3 } from '@/core/types.js';
 import type { DraftAngle } from './apiTypes.js';
@@ -730,4 +741,160 @@ export function variableFillet(
       kernelError(BrepErrorCode.VARIABLE_FILLET_FAILED, 'Variable-radius fillet failed', e)
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Remove faces
+// ---------------------------------------------------------------------------
+
+interface FaceSignature {
+  readonly hash: number;
+  readonly type: string;
+  readonly area: number;
+  readonly center: readonly [number, number, number];
+}
+
+function faceSignature(face: KernelShape): FaceSignature {
+  const kernel = getKernel();
+  return {
+    hash: kernel.hashCode(face, HASH_CODE_MAX),
+    type: kernel.surfaceType(face),
+    area: kernel.area(face),
+    center: kernel.surfaceCenterOfMass(face),
+  };
+}
+
+function sameFace(a: FaceSignature, b: FaceSignature): boolean {
+  if (a.hash === b.hash) return true;
+  if (a.type !== b.type || Math.abs(a.area - b.area) > 1e-6 * Math.max(1, a.area)) return false;
+  const scale = 1e-6 * Math.max(1, Math.sqrt(a.area));
+  return Math.hypot(...a.center.map((c, i) => c - (b.center[i] ?? 0))) <= scale;
+}
+
+/**
+ * Indexes of the picked faces still in `result`, as themselves or rebuilt in
+ * place: where the faces around a pick cannot close its gap, defeaturing
+ * hands that face back instead of failing.
+ */
+function keptFaceIndexes(picked: ReadonlyArray<Face>, result: Solid): number[] {
+  const remaining = getFaces(result).map((f) => faceSignature(f.wrapped));
+  const kept: number[] = [];
+  picked.forEach((face, i) => {
+    const signature = faceSignature(face.wrapped);
+    if (remaining.some((other) => sameFace(signature, other))) kept.push(i);
+  });
+  return kept;
+}
+
+/**
+ * The one solid a result holds, taking ownership of `result`: occt-wasm's
+ * defeaturing returns the healed body wrapped in a compound. `undefined` (with
+ * everything released) when the result holds no solid or more than one.
+ */
+function soleSolid(result: AnyShape): Solid | undefined {
+  if (isSolid(result)) return result;
+  const kernel = getKernel();
+  const solids = [...kernel.iterShapes(result.wrapped, 'solid')];
+  disposeResultShape(result);
+  const [only, ...extra] = solids;
+  for (const s of extra) kernel.dispose(s);
+  if (only === undefined || extra.length > 0) {
+    if (only !== undefined) kernel.dispose(only);
+    return undefined;
+  }
+  return castResultShapeWithKnownType(only, 'solid') as Solid;
+}
+
+function removeFacesKernelError(e: unknown, faceCount: number): Err<BrepError> {
+  if (isUnsupportedKernelOperationError(e)) {
+    const kernelId = getKernel().kernelId;
+    return err(
+      unsupportedError(
+        BrepErrorCode.UNSUPPORTED_CAPABILITY,
+        `removeFaces: the ${kernelId} kernel has no defeaturing`,
+        e,
+        { kernel: kernelId },
+        'Use the occt-wasm kernel, which provides defeaturing'
+      )
+    );
+  }
+  const raw = e instanceof Error ? e.message : String(e);
+  return err(
+    kernelError(BrepErrorCode.REMOVE_FACES_FAILED, `removeFaces failed: ${raw}`, e, {
+      operation: 'removeFaces',
+      faceCount,
+    })
+  );
+}
+
+/**
+ * Remove faces from a solid and close the gap with the faces around them
+ * (OCCT defeaturing): a hole, pocket, boss, or fillet face disappears and its
+ * neighbours extend to meet.
+ *
+ * @param shape - The solid to edit.
+ * @param faces - Faces of `shape` to remove.
+ * @returns Err `REMOVE_FACES_INCOMPLETE` (with `metadata.keptFaceIndexes`)
+ *   when a picked face is still in the result because its neighbours could not
+ *   close the gap, `REMOVE_FACES_FAILED` when the kernel fails or the result is
+ *   not one valid solid, and `UNSUPPORTED_CAPABILITY` on a kernel without
+ *   defeaturing.
+ */
+export function removeFaces(shape: ValidSolid, faces: ReadonlyArray<Face>): Result<ValidSolid> {
+  const check = validateNotNull(shape, 'removeFaces: shape');
+  if (isErr(check)) return check;
+  if (faces.length === 0) {
+    return err(
+      validationError(
+        BrepErrorCode.NO_FACES,
+        'removeFaces: at least one face must be specified',
+        undefined,
+        undefined,
+        'Pick the faces of the feature to remove'
+      )
+    );
+  }
+
+  const kernel = getKernel();
+  let result: Solid | undefined;
+  try {
+    result = soleSolid(
+      castResultShape(
+        kernel.defeature(
+          shape.wrapped,
+          faces.map((f) => f.wrapped)
+        )
+      )
+    );
+  } catch (e) {
+    return removeFacesKernelError(e, faces.length);
+  }
+
+  if (result === undefined || !kernel.isValid(result.wrapped)) {
+    if (result) disposeResultShape(result);
+    return err(
+      kernelError(
+        BrepErrorCode.REMOVE_FACES_FAILED,
+        'removeFaces: the result is not one valid solid',
+        undefined,
+        { operation: 'removeFaces', faceCount: faces.length }
+      )
+    );
+  }
+
+  const kept = keptFaceIndexes(faces, result);
+  if (kept.length > 0) {
+    disposeResultShape(result);
+    return err(
+      kernelError(
+        BrepErrorCode.REMOVE_FACES_INCOMPLETE,
+        `removeFaces: ${kept.length} of ${faces.length} face(s) could not be removed; the faces around them cannot close the gap`,
+        undefined,
+        { operation: 'removeFaces', keptFaceIndexes: kept },
+        'Remove the whole feature, or leave out the faces listed in metadata.keptFaceIndexes'
+      )
+    );
+  }
+  propagateMetadataByHash([shape], result);
+  return ok(result as ValidSolid);
 }

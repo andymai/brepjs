@@ -1164,6 +1164,7 @@ export {
   fillet,
   chamfer,
   shell,
+  removeFaces,
   offset,
   thicken,
   draft,

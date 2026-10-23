@@ -16,6 +16,8 @@ import { readFile, access } from 'node:fs/promises';
 import { initKernel } from './setup.js';
 import {
   box,
+  getBounds,
+  removeFaces,
   measureDistance,
   cylinder,
   sphere,
@@ -558,6 +560,28 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
+    });
+
+    it('removeFaces leaks nothing on success or when a face is kept', () => {
+      // defeature returns a compound on occt-wasm; removeFaces takes the solid
+      // out of it and must release the wrapper, the result, and any rejection.
+      const probe = (pickBottom: boolean) =>
+        perIterationLeak(() => {
+          using b = box(20, 20, 10);
+          using tool0 = box(4, 4, 5);
+          using tool = translate(tool0, [8, 8, 5]);
+          const cutResult = cut(b, tool);
+          if (!isOk(cutResult)) throw new Error('cut failed');
+          using part = unwrap(cutResult);
+          const picked = getFaces(part).filter((f) => {
+            const bb = getBounds(f);
+            return pickBottom ? bb.zMax < 1e-6 : bb.xMin > 7.9 && bb.xMax < 12.1 && bb.zMin > 4.9;
+          });
+          const r = removeFaces(part, picked);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        });
+      expect(probe(false)).toBe(0);
+      expect(probe(true)).toBe(0);
     });
 
     it('thicken leaks nothing', () => {

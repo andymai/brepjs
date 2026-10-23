@@ -59,31 +59,33 @@ const value = unwrap(result);
 
 Errors from kernel geometry operations.
 
-| Code                    | Description                        | Recovery                                            |
-| ----------------------- | ---------------------------------- | --------------------------------------------------- |
-| `BSPLINE_FAILED`        | B-spline curve construction failed | Check control points are valid                      |
-| `FACE_BUILD_FAILED`     | Face construction from wire failed | Ensure wire is closed and planar                    |
-| `SWEEP_FAILED`          | Sweep operation failed             | See `error.suggestion`; simplify profile or path    |
-| `LOFT_FAILED`           | Loft operation failed              | See `error.suggestion`; ensure compatible profiles  |
-| `FUSE_FAILED`           | Boolean fuse operation failed      | See `error.suggestion`; try `autoHeal()` on inputs  |
-| `CUT_FAILED`            | Boolean cut operation failed       | See `error.suggestion`; ensure tool intersects base |
-| `FILLET_FAILED`         | Fillet operation failed            | Reduce radius or check edges                        |
-| `FILLET_RESULT_NOT_3D`  | Fillet result is not a 3D shape    | Check input shape type                              |
-| `CHAMFER_FAILED`        | Chamfer operation failed           | Reduce distance or check edges                      |
-| `CHAMFER_RESULT_NOT_3D` | Chamfer result is not a 3D shape   | Check input shape type                              |
-| `SHELL_FAILED`          | Shell operation failed             | Check thickness vs geometry                         |
-| `SHELL_RESULT_NOT_3D`   | Shell result is not a 3D shape     | Check input shape type                              |
-| `SHELL_NO_EFFECT`       | Wall too thick, input handed back  | Use a thinner wall                                  |
-| `SHELL_INVALID_RESULT`  | Shell gave no usable hollow body   | Use a thinner wall; check `metadata.reason`         |
-| `OFFSET_INVALID_RESULT` | Offset consumed or broke the body  | Use a smaller offset; check `metadata.reason`       |
-| `HEAL_SOLID_FAILED`     | Solid healing failed               | Shape may be too damaged                            |
-| `HEAL_FACE_FAILED`      | Face healing failed                | Shape may be too damaged                            |
-| `HEAL_WIRE_FAILED`      | Wire healing failed                | Shape may be too damaged                            |
-| `HEAL_RESULT_NOT_SOLID` | Healed result is not a solid       | Check input is a solid                              |
-| `HEAL_RESULT_NOT_FACE`  | Healed result is not a face        | Check input is a face                               |
-| `HEAL_RESULT_NOT_WIRE`  | Healed result is not a wire        | Check input is a wire                               |
-| `HEAL_SOLID_INCOMPLETE` | Healed result still invalid        | Shape may be too damaged to fix                     |
-| `HEAL_NO_EFFECT`        | Healing had no effect on shape     | Shape was invalid, healer failed                    |
+| Code                      | Description                        | Recovery                                                 |
+| ------------------------- | ---------------------------------- | -------------------------------------------------------- |
+| `BSPLINE_FAILED`          | B-spline curve construction failed | Check control points are valid                           |
+| `FACE_BUILD_FAILED`       | Face construction from wire failed | Ensure wire is closed and planar                         |
+| `SWEEP_FAILED`            | Sweep operation failed             | See `error.suggestion`; simplify profile or path         |
+| `LOFT_FAILED`             | Loft operation failed              | See `error.suggestion`; ensure compatible profiles       |
+| `FUSE_FAILED`             | Boolean fuse operation failed      | See `error.suggestion`; try `autoHeal()` on inputs       |
+| `CUT_FAILED`              | Boolean cut operation failed       | See `error.suggestion`; ensure tool intersects base      |
+| `FILLET_FAILED`           | Fillet operation failed            | Reduce radius or check edges                             |
+| `FILLET_RESULT_NOT_3D`    | Fillet result is not a 3D shape    | Check input shape type                                   |
+| `CHAMFER_FAILED`          | Chamfer operation failed           | Reduce distance or check edges                           |
+| `CHAMFER_RESULT_NOT_3D`   | Chamfer result is not a 3D shape   | Check input shape type                                   |
+| `SHELL_FAILED`            | Shell operation failed             | Check thickness vs geometry                              |
+| `SHELL_RESULT_NOT_3D`     | Shell result is not a 3D shape     | Check input shape type                                   |
+| `SHELL_NO_EFFECT`         | Wall too thick, input handed back  | Use a thinner wall                                       |
+| `SHELL_INVALID_RESULT`    | Shell gave no usable hollow body   | Use a thinner wall; check `metadata.reason`              |
+| `OFFSET_INVALID_RESULT`   | Offset consumed or broke the body  | Use a smaller offset; check `metadata.reason`            |
+| `REMOVE_FACES_FAILED`     | removeFaces gave no valid solid    | Check the picked faces belong to the shape               |
+| `REMOVE_FACES_INCOMPLETE` | A picked face could not be removed | See `metadata.keptFaceIndexes`; remove the whole feature |
+| `HEAL_SOLID_FAILED`       | Solid healing failed               | Shape may be too damaged                                 |
+| `HEAL_FACE_FAILED`        | Face healing failed                | Shape may be too damaged                                 |
+| `HEAL_WIRE_FAILED`        | Wire healing failed                | Shape may be too damaged                                 |
+| `HEAL_RESULT_NOT_SOLID`   | Healed result is not a solid       | Check input is a solid                                   |
+| `HEAL_RESULT_NOT_FACE`    | Healed result is not a face        | Check input is a face                                    |
+| `HEAL_RESULT_NOT_WIRE`    | Healed result is not a wire        | Check input is a wire                                    |
+| `HEAL_SOLID_INCOMPLETE`   | Healed result still invalid        | Shape may be too damaged to fix                          |
+| `HEAL_NO_EFFECT`          | Healing had no effect on shape     | Shape was invalid, healer failed                         |
 
 ### VALIDATION
 

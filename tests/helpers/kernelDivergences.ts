@@ -232,6 +232,16 @@ export const divergences: DivergenceMap = {
         'Same planar-only restriction as brepkitExtended.defeatureNonPlanarFace: removing a fillet surface raises "defeaturing currently only supports planar faces".',
       since: '2.128.20',
     },
+    'modifierFns.removeFacesCurved': {
+      kind: 'not-implemented',
+      reason:
+        'Same planar-only restriction as brepkitExtended.defeatureNonPlanarFace: a cylindrical hole face cannot be removed.',
+    },
+    'modifierFns.removeFacesKept': {
+      kind: 'skip',
+      reason:
+        'brepkit defeature does not refuse a face its neighbours cannot close: removing the bottom of a pocketed 20x20x10 box (3920 mm3) returns a valid-looking 4026.7 mm3 solid, larger than the uncut box, with no picked face left to detect.',
+    },
 
     // -----------------------------------------------------------------------
     // modifierFns.test.ts
@@ -470,6 +480,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'The occt (OpenCascade.js) adapter has no defeature binding and raises UnsupportedKernelOperationError.',
+    },
+    'modifierFns.removeFaces': {
+      kind: 'not-implemented',
+      reason:
+        'Same missing defeature binding as modifierFns.defeatureFilletFace: removeFaces returns UNSUPPORTED_CAPABILITY.',
     },
     // -----------------------------------------------------------------------
     // importFns.test.ts / kernel-ops.test.ts

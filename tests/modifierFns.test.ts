@@ -28,6 +28,10 @@ import {
   cylinder,
   getBounds,
   isValid,
+  cut,
+  translate,
+  removeFaces,
+  shape,
 } from '@/index.js';
 import { shell as shellFn } from '@/topology/modifierFns.js';
 import type { Face, Shape3D } from '@/core/shapeTypes.js';
@@ -272,6 +276,87 @@ describe('offset', () => {
         unwrapErr(offset(box(10, 10, 10), distance)).code
       );
     }
+  });
+});
+
+describe('removeFaces', () => {
+  const inside = (f: Face, [x0, x1]: [number, number], [z0, z1]: [number, number]) => {
+    const b = getBounds(f);
+    const eps = 1e-6;
+    return (
+      b.xMin >= x0 - eps &&
+      b.xMax <= x1 + eps &&
+      b.yMin >= x0 - eps &&
+      b.yMax <= x1 + eps &&
+      b.zMin >= z0 - eps &&
+      b.zMax <= z1 + eps
+    );
+  };
+
+  function pocketed() {
+    const part = unwrap(cut(box(20, 20, 10), translate(box(4, 4, 5), [8, 8, 5])));
+    const pocket = getFaces(part).filter((f) => inside(f, [8, 12], [5, 10]));
+    return { part, pocket };
+  }
+
+  function holed() {
+    const part = unwrap(cut(box(20, 20, 10), translate(cylinder(2, 20), [10, 10, -5])));
+    const hole = getFaces(part).find((f) => inside(f, [8, 12], [0, 10]));
+    if (!hole) throw new Error('hole face not found');
+    return { part, hole };
+  }
+
+  it('removes a pocket and closes the face it was cut into', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    const { part, pocket } = pocketed();
+    expect(pocket).toHaveLength(5);
+    const healed = unwrap(removeFaces(part, pocket));
+    expect(isSolid(healed)).toBe(true);
+    expect(isValid(healed)).toBe(true);
+    expect(unwrap(measureVolume(healed))).toBeCloseTo(4000, 6);
+    expect(getFaces(healed)).toHaveLength(6);
+  });
+
+  it('removes a cylindrical hole', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
+    const { part, hole } = holed();
+    expect(unwrap(measureVolume(unwrap(removeFaces(part, [hole]))))).toBeCloseTo(4000, 6);
+  });
+
+  it('reports a face whose neighbours cannot close its gap', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    skipIfDiverges(ctx, 'modifierFns.removeFacesKept');
+    const { part } = pocketed();
+    const bottom = getFaces(part).find((f) => getBounds(f).zMax < 1e-6);
+    if (!bottom) throw new Error('bottom face not found');
+    const error = unwrapErr(removeFaces(part, [bottom]));
+    expect(error.code).toBe('REMOVE_FACES_INCOMPLETE');
+    expect(error.metadata?.['keptFaceIndexes']).toEqual([0]);
+  });
+
+  it('names every pick when the kernel hands the body back unchanged', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
+    skipIfDiverges(ctx, 'modifierFns.removeFacesKept');
+    // OCCT removes nothing when one pick cannot close: the hole stays too.
+    const { part, hole } = holed();
+    const bottom = getFaces(part).find((f) => getBounds(f).zMax < 1e-6);
+    if (!bottom) throw new Error('bottom face not found');
+    const error = unwrapErr(removeFaces(part, [hole, bottom]));
+    expect(error.code).toBe('REMOVE_FACES_INCOMPLETE');
+    expect(error.metadata?.['keptFaceIndexes']).toEqual([0, 1]);
+  });
+
+  it('rejects an empty face list', () => {
+    expect(unwrapErr(removeFaces(box(10, 10, 10), [])).code).toBe('NO_FACES');
+  });
+
+  it('is chainable on the fluent wrapper', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    const { part, pocket } = pocketed();
+    const healed = shape(part).removeFaces(pocket).val;
+    expect(unwrap(measureVolume(healed))).toBeCloseTo(4000, 6);
   });
 });
 
