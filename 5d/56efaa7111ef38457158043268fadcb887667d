@@ -1,0 +1,24 @@
+src/topology/thickResultCheck.ts
+  s_1d8adac4958d10::t_d4dd5510f19c8b 56-57
+  s_1d8adac4958d10::t_020dcb0dfbf322 45-47,50-51,53-55,145-149
+src/topology/modifierFns.ts
+  s_1d8adac4958d10::t_020dcb0dfbf322 8,405-406,427,466-468,486
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_5d7a58e88830d6 193-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d56efaa7111ef38457158043268fadcb887667d",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
