@@ -5,7 +5,7 @@
  * and return Result values.
  */
 
-import { getKernel } from '@/kernel/index.js';
+import { getKernel, getKernelCapabilities } from '@/kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import { castResultShape, disposeResultShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
@@ -402,7 +402,8 @@ function acceptThickResult(
   input: ValidSolid,
   cast: AnyShape,
   evolution: ShapeEvolution | undefined,
-  spec: ThickResultSpec
+  spec: ThickResultSpec,
+  propagateMetadata = true
 ): Result<ValidSolid> {
   let checked: Result<undefined>;
   try {
@@ -423,7 +424,7 @@ function acceptThickResult(
     disposeResultShape(cast);
     return checked;
   }
-  if (evolution) propagateAllMetadata(evolution, [input], cast);
+  if (evolution && propagateMetadata) propagateAllMetadata(evolution, [input], cast);
   return ok(cast as ValidSolid);
 }
 
@@ -462,7 +463,9 @@ export function shell(
     openedFaceHashes: new Set(faces.map((f) => kernel.hashCode(f.wrapped, HASH_CODE_MAX))),
   };
   try {
-    if (!trackEvolution) {
+    // With native history the wall check needs the evolution even when the
+    // caller opted out of metadata tracking.
+    if (!trackEvolution && getKernelCapabilities().nativeHistory !== true) {
       const resultShape = kernel.shell(
         shape.wrapped,
         faces.map((f) => f.wrapped),
@@ -480,7 +483,7 @@ export function shell(
       HASH_CODE_MAX,
       tolerance
     );
-    return acceptThickResult(shape, castResultShape(resultShape), evolution, spec);
+    return acceptThickResult(shape, castResultShape(resultShape), evolution, spec, trackEvolution);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(

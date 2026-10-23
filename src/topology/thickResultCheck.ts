@@ -42,16 +42,19 @@ function facesByHash(shape: Shape3D): Map<number, Face> {
   return byHash;
 }
 
+// A real shell always adds faces (an inner wall per kept face, a rim per
+// opening), so an equal face count separates a handed-back input from a valid
+// shell whose cavity is only a sliver of the volume.
 function volumeFailure(
   distance: number,
-  inputVolume: number,
-  resultVolume: number
+  input: { volume: number; faceCount: number },
+  result: { volume: number; faceCount: number }
 ): ThickResultFailure | undefined {
-  if (Math.abs(resultVolume - inputVolume) <= UNCHANGED_VOLUME_REL_TOL * Math.abs(inputVolume)) {
-    return 'unchanged';
-  }
-  if (resultVolume <= 0) return 'volume';
-  return resultVolume > inputVolume === distance > 0 ? undefined : 'volume';
+  const sameVolume =
+    Math.abs(result.volume - input.volume) <= UNCHANGED_VOLUME_REL_TOL * Math.abs(input.volume);
+  if (sameVolume && result.faceCount === input.faceCount) return 'unchanged';
+  if (result.volume <= 0) return 'volume';
+  return result.volume > input.volume === distance > 0 ? undefined : 'volume';
 }
 
 /** Distance from the middle of a generated wall's surface to its source face. */
@@ -139,7 +142,11 @@ export function checkThickResult(
 
   const inputVolume = kernel.volume(input.wrapped);
   const resultVolume = kernel.volume(result.wrapped);
-  const byVolume = volumeFailure(spec.distance, inputVolume, resultVolume);
+  const byVolume = volumeFailure(
+    spec.distance,
+    { volume: inputVolume, faceCount: getFaces(input).length },
+    { volume: resultVolume, faceCount: getFaces(result).length }
+  );
   if (byVolume) return failure(spec, byVolume, { inputVolume, resultVolume });
 
   if (!kernel.isValid(result.wrapped)) return failure(spec, 'invalid', {});

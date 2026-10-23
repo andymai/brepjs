@@ -190,6 +190,20 @@ describe('shell', () => {
     expect(error.suggestion).toBeDefined();
   });
 
+  it('keeps a valid shell whose cavity is a sliver of the volume', () => {
+    const b = box(10, 10, 10);
+    const shelled = unwrap(shell(b, [faceAtHeight(b, 10)], 4.999, { tolerance: 1e-6 }));
+    expect(isValid(shelled)).toBe(true);
+    expect(unwrap(measureVolume(shelled))).toBeLessThan(1000);
+  });
+
+  it('rejects an inverted curved wall on the no-history path too', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.shellInvertedCurvedWall');
+    const c = cylinder(5, 10);
+    const result = shellFn(c, [faceAtHeight(c, 10)], 6, 1e-3, { trackEvolution: false });
+    expect(unwrapErr(result).metadata?.['reason']).toBe('wall-distance');
+  });
+
   it('rejects an unchanged result on the no-history path too', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.shellNoEffect');
     const b = box(10, 10, 10);
