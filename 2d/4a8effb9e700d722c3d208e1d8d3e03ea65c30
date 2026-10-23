@@ -1,0 +1,48 @@
+src/index.ts
+  s_1d8adac4958d10::t_674a8ff04a3003 1167
+docs/kernel-conformance.md
+  s_1d8adac4958d10::t_9c1ca435c7588d 3,90-92
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_402cee44d1a3ff 31-34,282-308,311-320,322-327,329-337,340-341,343-347,349-354,357-360
+  s_1d8adac4958d10::t_7031a112f9070b 309-310,321,328,338-339,342,348,355-356
+  s_1d8adac4958d10::t_686f5a54bc18e3 361-362
+tests/helpers/kernelDivergences.ts
+  s_1d8adac4958d10::t_ff7933f03cd92a 235-244,484-488
+src/core/errors.ts
+  s_1d8adac4958d10::t_46102eb989fb9c 102-103
+.size-limit.json
+  s_1d8adac4958d10::t_ebfce3b38aae69 2
+tests/wasmArenaDisposal.test.ts
+  s_1d8adac4958d10::t_cbbcf79ce40d46 565-586
+  s_1d8adac4958d10::t_3cdd832089b329 19-20
+tests/public-api-types.test.ts
+  s_1d8adac4958d10::t_ebfce3b38aae69 586
+src/topology/modifierFns.ts
+  s_1d8adac4958d10::t_46102eb989fb9c 9,22,24-29,745-786,806-858,860,867-872,875-900
+  s_1d8adac4958d10::t_7039057f2e6057 12-18,787-805,859,861-866,873-874
+src/ns/modifiers.ts
+  s_1d8adac4958d10::t_674a8ff04a3003 4-14
+src/topology/wrapperFns.ts
+  s_1d8adac4958d10::t_203ed5eb1776ee 69
+  s_1d8adac4958d10::t_674a8ff04a3003 288,393,452-453
+src/topology/api.ts
+  s_1d8adac4958d10::t_674a8ff04a3003 412-420
+docs/errors.md
+  s_1d8adac4958d10::t_9c1ca435c7588d 62-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d4a8effb9e700d722c3d208e1d8d3e03ea65c30",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
