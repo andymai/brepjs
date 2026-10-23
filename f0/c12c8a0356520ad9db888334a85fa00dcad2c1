@@ -1,0 +1,26 @@
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_ce5e4202ad03a6 32,352-374
+  s_1d8adac4958d10::t_e9dc5b414142fc 375
+src/core/errors.ts
+  s_1d8adac4958d10::t_7641c0ef93651e 75
+src/topology/modifierFns.ts
+  s_1d8adac4958d10::t_7641c0ef93651e 755,760,766,770-775,779-780,817-849,886-887
+docs/errors.md
+  s_1d8adac4958d10::t_c37b2fdfc6b3c7 94-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0c12c8a0356520ad9db888334a85fa00dcad2c1",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
