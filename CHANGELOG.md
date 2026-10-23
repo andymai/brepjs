@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.9.0](https://github.com/andymai/brepjs/compare/brepjs-v20.8.0...brepjs-v20.9.0) (2026-10-23)
+
+
+### Features
+
+* **modifiers:** add removeFaces to delete faces and close the gap ([#2426](https://github.com/andymai/brepjs/issues/2426)) ([a8aabda](https://github.com/andymai/brepjs/commit/a8aabda0d41297787c7497b3ba72285f429372e2))
+
 ## [20.8.0](https://github.com/andymai/brepjs/compare/brepjs-v20.7.0...brepjs-v20.8.0) (2026-10-23)
 
 
