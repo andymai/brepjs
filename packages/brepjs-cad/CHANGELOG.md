@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.180.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.179.0...brepjs-cad-v0.180.0) (2026-10-23)
+
+
+### Features
+
+* **deps:** bump zod from 4.6.5 to 4.6.7 ([#2418](https://github.com/andymai/brepjs/issues/2418)) ([c18893a](https://github.com/andymai/brepjs/commit/c18893a2b90035f7e5c9ba0c0ef83bd5dcf0ae1d))
+
 ## [0.179.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.178.2...brepjs-cad-v0.179.0) (2026-10-23)
 
 
