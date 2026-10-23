@@ -1,5 +1,22 @@
 # Changelog
 
+## [20.6.0](https://github.com/andymai/brepjs/compare/brepjs-v20.5.0...brepjs-v20.6.0) (2026-10-23)
+
+
+### Features
+
+* **deps-dev:** bump vite from 8.3.4 to 8.3.5 ([#2410](https://github.com/andymai/brepjs/issues/2410)) ([ce33b7b](https://github.com/andymai/brepjs/commit/ce33b7b39a4b82fdad5a70d93ecbd7e1de60db75))
+* **deps:** bump actions/setup-node from 7.0.0 to 7.1.0 in the actions-minor-patch group ([#2405](https://github.com/andymai/brepjs/issues/2405)) ([28b866b](https://github.com/andymai/brepjs/commit/28b866b4ca8aae4092e21de89fc166a23efa54d8))
+* **deps:** bump dompurify from 3.4.16 to 3.4.17 ([#2407](https://github.com/andymai/brepjs/issues/2407)) ([8cb2c0d](https://github.com/andymai/brepjs/commit/8cb2c0d3682d89af67422a0437764ac4584f5a78))
+* **deps:** bump ip-address from 10.7.3 to 10.7.4 ([#2411](https://github.com/andymai/brepjs/issues/2411)) ([1572e33](https://github.com/andymai/brepjs/commit/1572e33e29f05214b8453a7f534c3316ff52f490))
+* **deps:** bump markdown-it from 14.3.2 to 14.3.3 ([#2408](https://github.com/andymai/brepjs/issues/2408)) ([09dbb35](https://github.com/andymai/brepjs/commit/09dbb351c58b9dfceca321b35a5790c016586851))
+* **deps:** bump the minor-and-patch group with 17 updates ([#2406](https://github.com/andymai/brepjs/issues/2406)) ([20a73d6](https://github.com/andymai/brepjs/commit/20a73d64c84fc90f1fd42490fd356d614e91c7bc))
+
+
+### Bug Fixes
+
+* **occt-wasm:** release distance witness vertices ([#2413](https://github.com/andymai/brepjs/issues/2413)) ([e50d673](https://github.com/andymai/brepjs/commit/e50d67391fc47a025b7c00a9c28909ae960e25a6))
+
 ## [20.5.0](https://github.com/andymai/brepjs/compare/brepjs-v20.4.0...brepjs-v20.5.0) (2026-10-11)
 
 
