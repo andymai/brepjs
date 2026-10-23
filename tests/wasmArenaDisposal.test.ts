@@ -16,6 +16,7 @@ import { readFile, access } from 'node:fs/promises';
 import { initKernel } from './setup.js';
 import {
   box,
+  measureDistance,
   cylinder,
   sphere,
   translate,
@@ -205,10 +206,25 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
+    it('measureDistance releases the vertices it samples for witness points', () => {
+      // Each sampled vertex is a fresh slot from getSubShapes: 8 per box, so an
+      // unreleased sample grew the arena by 16 per box-box call.
+      using a = box(10, 10, 10);
+      using b0 = box(10, 10, 10);
+      using b = translate(b0, [15, 0, 0]);
+      using c = cylinder(2, 5);
+      expect(
+        perIterationLeak(() => {
+          measureDistance(a, b);
+          measureDistance(a, c);
+          const [fa] = getFaces(a);
+          const [fb] = getFaces(b);
+          if (fa && fb) measureDistance(fa, fb);
+        })
+      ).toBe(0);
+    });
+
     it('checkInterference / checkAllInterferences leave no arena residue (checkpoint bulk-free)', () => {
-      // distance() leaves kernel-internal scratch handles brepjs can't free
-      // individually; withArenaCheckpoint reclaims them. Without it this grew
-      // ~16 slots per pair, O(N^2) across the batch.
       using a = box(10, 10, 10);
       using b0 = box(10, 10, 10);
       using b = translate(b0, [5, 0, 0]);

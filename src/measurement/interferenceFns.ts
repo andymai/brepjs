@@ -86,11 +86,9 @@ export function checkInterference(
     );
   }
 
-  // The kernel's distance computation leaves internal scratch handles brepjs
-  // holds no reference to — a per-call arena residue that compounds to O(N^2)
-  // across checkAllInterferences. We return only plain data (distance + points),
-  // so bulk-freeing the whole call with a checkpoint is safe and keeps the arena
-  // flat even under heavy pairwise batches.
+  // Only plain data (distance + points) leaves this call, so a checkpoint can
+  // bulk-free anything the kernel allocates while measuring and keep the arena
+  // flat across O(N^2) checkAllInterferences batches.
   return withArenaCheckpoint(() => {
     const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
     return ok({

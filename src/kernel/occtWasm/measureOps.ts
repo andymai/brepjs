@@ -157,9 +157,15 @@ function collectDistanceSamples(
   try {
     const n = verts.size();
     for (let i = 0; i < n; i++) {
-      const p = k.vertexPosition(verts.get(i));
-      out.push([p.get(0), p.get(1), p.get(2)]);
-      p.delete();
+      const vertexId = verts.get(i);
+      try {
+        const p = k.vertexPosition(vertexId);
+        out.push([p.get(0), p.get(1), p.get(2)]);
+        p.delete();
+      } finally {
+        // getSubShapes hands out fresh arena slots, one per vertex.
+        k.release(vertexId);
+      }
     }
   } finally {
     verts.delete();
