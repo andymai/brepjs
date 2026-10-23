@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.8.0](https://github.com/andymai/brepjs/compare/brepjs-v20.7.0...brepjs-v20.8.0) (2026-10-23)
+
+
+### Features
+
+* **deps-dev:** bump undici from 8.11.2 to 8.12.3 ([#2420](https://github.com/andymai/brepjs/issues/2420)) ([d304cc3](https://github.com/andymai/brepjs/commit/d304cc39fca84a8737d124c62735627063961cff))
+
 ## [20.7.0](https://github.com/andymai/brepjs/compare/brepjs-v20.6.0...brepjs-v20.7.0) (2026-10-23)
 
 
