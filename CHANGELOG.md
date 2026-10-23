@@ -1,5 +1,17 @@
 # Changelog
 
+## [20.7.0](https://github.com/andymai/brepjs/compare/brepjs-v20.6.0...brepjs-v20.7.0) (2026-10-23)
+
+
+### Features
+
+* **deps:** bump fast-uri from 3.1.8 to 3.1.9 ([#2417](https://github.com/andymai/brepjs/issues/2417)) ([03e2ee6](https://github.com/andymai/brepjs/commit/03e2ee682b5a491ff1b0bb99e1fce9011604df7e))
+
+
+### Bug Fixes
+
+* **modifiers:** reject shell and offset results that are not usable solids ([#2412](https://github.com/andymai/brepjs/issues/2412)) ([7b65eb1](https://github.com/andymai/brepjs/commit/7b65eb182acbfed39f8820dd99bd76affff89bcc))
+
 ## [20.6.0](https://github.com/andymai/brepjs/compare/brepjs-v20.5.0...brepjs-v20.6.0) (2026-10-23)
 
 
