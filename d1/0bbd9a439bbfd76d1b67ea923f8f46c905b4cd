@@ -1,0 +1,19 @@
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_0e0330d72a1f04 296-302,305-308,312-315,320-321,323,333-335,341-342,352-355,365-375,380-383,391-392,397-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d10bbd9a439bbfd76d1b67ea923f8f46c905b4cd",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
