@@ -1,0 +1,23 @@
+src/measurement/interferenceFns.ts
+  s_1d8adac4958d10::t_b72935d7e8226f 89-91
+tests/wasmArenaDisposal.test.ts
+  s_1d8adac4958d10::t_b72935d7e8226f 19,209-226
+src/kernel/occtWasm/measureOps.ts
+  s_1d8adac4958d10::t_b9e309516d1401 160-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "795282062ea11fd9111f1fecf53ec454f3518a58",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
