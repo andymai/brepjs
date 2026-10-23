@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.3.1...brepjs-sheetmetal-v0.4.0) (2026-10-23)
+
+
+### Features
+
+* **deps:** bump the minor-and-patch group with 17 updates ([#2406](https://github.com/andymai/brepjs/issues/2406)) ([20a73d6](https://github.com/andymai/brepjs/commit/20a73d64c84fc90f1fd42490fd356d614e91c7bc))
+
 ## [0.3.1](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.3.0...brepjs-sheetmetal-v0.3.1) (2026-08-18)
 
 
