@@ -293,25 +293,34 @@ describe('removeFaces', () => {
       b.zMax <= z1 + eps
     );
   };
+  const facesInside = (part: Shape3D, xs: [number, number], zs: [number, number]) =>
+    getFaces(part).filter((f) => inside(f, xs, zs));
+  const bottomOf = (part: Shape3D) => {
+    const bottom = getFaces(part).find((f) => getBounds(f).zMax < 1e-6);
+    if (!bottom) throw new Error('bottom face not found');
+    return bottom;
+  };
 
   function pocketed() {
-    const part = unwrap(cut(box(20, 20, 10), translate(box(4, 4, 5), [8, 8, 5])));
-    const pocket = getFaces(part).filter((f) => inside(f, [8, 12], [5, 10]));
-    return { part, pocket };
+    using base = box(20, 20, 10);
+    using tool0 = box(4, 4, 5);
+    using tool = translate(tool0, [8, 8, 5]);
+    return unwrap(cut(base, tool));
   }
 
   function holed() {
-    const part = unwrap(cut(box(20, 20, 10), translate(cylinder(2, 20), [10, 10, -5])));
-    const hole = getFaces(part).find((f) => inside(f, [8, 12], [0, 10]));
-    if (!hole) throw new Error('hole face not found');
-    return { part, hole };
+    using base = box(20, 20, 10);
+    using tool0 = cylinder(2, 20);
+    using tool = translate(tool0, [10, 10, -5]);
+    return unwrap(cut(base, tool));
   }
 
   it('removes a pocket and closes the face it was cut into', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.removeFaces');
-    const { part, pocket } = pocketed();
+    using part = pocketed();
+    const pocket = facesInside(part, [8, 12], [5, 10]);
     expect(pocket).toHaveLength(5);
-    const healed = unwrap(removeFaces(part, pocket));
+    using healed = unwrap(removeFaces(part, pocket));
     expect(isSolid(healed)).toBe(true);
     expect(isValid(healed)).toBe(true);
     expect(unwrap(measureVolume(healed))).toBeCloseTo(4000, 6);
@@ -321,17 +330,16 @@ describe('removeFaces', () => {
   it('removes a cylindrical hole', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.removeFaces');
     skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
-    const { part, hole } = holed();
-    expect(unwrap(measureVolume(unwrap(removeFaces(part, [hole]))))).toBeCloseTo(4000, 6);
+    using part = holed();
+    using healed = unwrap(removeFaces(part, facesInside(part, [8, 12], [0, 10])));
+    expect(unwrap(measureVolume(healed))).toBeCloseTo(4000, 6);
   });
 
   it('reports a face whose neighbours cannot close its gap', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.removeFaces');
     skipIfDiverges(ctx, 'modifierFns.removeFacesKept');
-    const { part } = pocketed();
-    const bottom = getFaces(part).find((f) => getBounds(f).zMax < 1e-6);
-    if (!bottom) throw new Error('bottom face not found');
-    const error = unwrapErr(removeFaces(part, [bottom]));
+    using part = pocketed();
+    const error = unwrapErr(removeFaces(part, [bottomOf(part)]));
     expect(error.code).toBe('REMOVE_FACES_INCOMPLETE');
     expect(error.metadata?.['keptFaceIndexes']).toEqual([0]);
   });
@@ -341,10 +349,10 @@ describe('removeFaces', () => {
     skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
     skipIfDiverges(ctx, 'modifierFns.removeFacesKept');
     // OCCT removes nothing when one pick cannot close: the hole stays too.
-    const { part, hole } = holed();
-    const bottom = getFaces(part).find((f) => getBounds(f).zMax < 1e-6);
-    if (!bottom) throw new Error('bottom face not found');
-    const error = unwrapErr(removeFaces(part, [hole, bottom]));
+    using part = holed();
+    const [hole] = facesInside(part, [8, 12], [0, 10]);
+    if (!hole) throw new Error('hole face not found');
+    const error = unwrapErr(removeFaces(part, [hole, bottomOf(part)]));
     expect(error.code).toBe('REMOVE_FACES_INCOMPLETE');
     expect(error.metadata?.['keptFaceIndexes']).toEqual([0, 1]);
   });
@@ -354,19 +362,25 @@ describe('removeFaces', () => {
     skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
     // A spool: an r=4 x 5 collar between two plates, bored r=2 through all 10.
     // The bore and the collar are both cylinders of area 40 pi centred at z=5.
-    const plates = unwrap(fuse(box(20, 20, 2.5), translate(box(20, 20, 2.5), [0, 0, 7.5])));
-    const spool = unwrap(fuse(plates, translate(cylinder(4, 5), [10, 10, 2.5])));
-    const part = unwrap(cut(spool, translate(cylinder(2, 20), [10, 10, -5])));
-    const bore = getFaces(part).find((f) => inside(f, [8, 12], [0, 10]));
-    if (!bore) throw new Error('bore face not found');
-    const filled = unwrap(removeFaces(part, [bore]));
+    using lower = box(20, 20, 2.5);
+    using upper0 = box(20, 20, 2.5);
+    using upper = translate(upper0, [0, 0, 7.5]);
+    using collar0 = cylinder(4, 5);
+    using collar = translate(collar0, [10, 10, 2.5]);
+    using bore0 = cylinder(2, 20);
+    using boreTool = translate(bore0, [10, 10, -5]);
+    using plates = unwrap(fuse(lower, upper));
+    using spool = unwrap(fuse(plates, collar));
+    using part = unwrap(cut(spool, boreTool));
+    using filled = unwrap(removeFaces(part, facesInside(part, [8, 12], [0, 10])));
     expect(unwrap(measureVolume(filled))).toBeCloseTo(2 * 20 * 20 * 2.5 + Math.PI * 16 * 5, 6);
   });
 
   it('rejects a face of another shape', () => {
-    const { part } = pocketed();
-    const elsewhere = translate(box(5, 5, 5), [100, 0, 0]);
-    const [foreign] = getFaces(elsewhere);
+    using part = pocketed();
+    using other0 = box(5, 5, 5);
+    using other = translate(other0, [100, 0, 0]);
+    const [foreign] = getFaces(other);
     if (!foreign) throw new Error('no face');
     const error = unwrapErr(removeFaces(part, [foreign]));
     expect(error.code).toBe('FACE_NOT_IN_SHAPE');
@@ -374,13 +388,14 @@ describe('removeFaces', () => {
   });
 
   it('rejects an empty face list', () => {
-    expect(unwrapErr(removeFaces(box(10, 10, 10), [])).code).toBe('NO_FACES');
+    using b = box(10, 10, 10);
+    expect(unwrapErr(removeFaces(b, [])).code).toBe('NO_FACES');
   });
 
   it('is chainable on the fluent wrapper', (ctx) => {
     skipIfDiverges(ctx, 'modifierFns.removeFaces');
-    const { part, pocket } = pocketed();
-    const healed = shape(part).removeFaces(pocket).val;
+    using part = pocketed();
+    using healed = shape(part).removeFaces(facesInside(part, [8, 12], [5, 10])).val;
     expect(unwrap(measureVolume(healed))).toBeCloseTo(4000, 6);
   });
 });
