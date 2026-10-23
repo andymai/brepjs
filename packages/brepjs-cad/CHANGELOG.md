@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.179.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.178.2...brepjs-cad-v0.179.0) (2026-10-23)
+
+
+### Features
+
+* **deps:** bump the minor-and-patch group with 17 updates ([#2406](https://github.com/andymai/brepjs/issues/2406)) ([20a73d6](https://github.com/andymai/brepjs/commit/20a73d64c84fc90f1fd42490fd356d614e91c7bc))
+
 ## [0.178.2](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.178.1...brepjs-cad-v0.178.2) (2026-09-11)
 
 
