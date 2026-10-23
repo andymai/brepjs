@@ -68,7 +68,7 @@ import type { BulkMeasurement, Matrix3 } from '@/kernel/interfaces/measureOps.js
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
-import { isOcctWasmHandle } from './helpers.js';
+import { isOcctWasmHandle, unwrap, wrapResult } from './helpers.js';
 import { buildOcShim, wrapKernelExceptions } from './adapterShims.js';
 import * as boolOps from './booleanOps.js';
 import * as primOps from './primitiveOps.js';
@@ -201,6 +201,28 @@ export class OcctWasmAdapter implements KernelAdapter {
   /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
   get retainedKernelOwner(): OcctKernelOwner | undefined {
     return this.owner;
+  }
+
+  /**
+   * Bring a shape built through occt-wasm's own `OcctKernel` (the kernel this
+   * adapter wraps) into brepjs without a BREP round trip:
+   * `castShape(adapter.adoptShape(id))`.
+   *
+   * brepjs takes ownership of the arena slot and frees it when the shape is
+   * disposed or collected, so do not also `release(id)` it through `OcctKernel`.
+   */
+  adoptShape(id: number): KernelShape {
+    return wrapResult(this.k, id);
+  }
+
+  /**
+   * The occt-wasm arena id behind a brepjs shape (`adapter.shapeId(solid.wrapped)`),
+   * for passing it to `OcctKernel` calls. The id stays owned by brepjs: it is
+   * valid until the brepjs shape is disposed, and must not be released through
+   * `OcctKernel`.
+   */
+  shapeId(shape: KernelShape): number {
+    return unwrap(shape);
   }
 
   // =========================================================================
