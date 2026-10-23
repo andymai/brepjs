@@ -29,6 +29,7 @@ import {
   getBounds,
   isValid,
   cut,
+  fuse,
   translate,
   removeFaces,
   shape,
@@ -346,6 +347,30 @@ describe('removeFaces', () => {
     const error = unwrapErr(removeFaces(part, [hole, bottom]));
     expect(error.code).toBe('REMOVE_FACES_INCOMPLETE');
     expect(error.metadata?.['keptFaceIndexes']).toEqual([0, 1]);
+  });
+
+  it('keeps a filled hole apart from a collar of equal area and centroid', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.removeFaces');
+    skipIfDiverges(ctx, 'modifierFns.removeFacesCurved');
+    // A spool: an r=4 x 5 collar between two plates, bored r=2 through all 10.
+    // The bore and the collar are both cylinders of area 40 pi centred at z=5.
+    const plates = unwrap(fuse(box(20, 20, 2.5), translate(box(20, 20, 2.5), [0, 0, 7.5])));
+    const spool = unwrap(fuse(plates, translate(cylinder(4, 5), [10, 10, 2.5])));
+    const part = unwrap(cut(spool, translate(cylinder(2, 20), [10, 10, -5])));
+    const bore = getFaces(part).find((f) => inside(f, [8, 12], [0, 10]));
+    if (!bore) throw new Error('bore face not found');
+    const filled = unwrap(removeFaces(part, [bore]));
+    expect(unwrap(measureVolume(filled))).toBeCloseTo(2 * 20 * 20 * 2.5 + Math.PI * 16 * 5, 6);
+  });
+
+  it('rejects a face of another shape', () => {
+    const { part } = pocketed();
+    const elsewhere = translate(box(5, 5, 5), [100, 0, 0]);
+    const [foreign] = getFaces(elsewhere);
+    if (!foreign) throw new Error('no face');
+    const error = unwrapErr(removeFaces(part, [foreign]));
+    expect(error.code).toBe('FACE_NOT_IN_SHAPE');
+    expect(error.metadata?.['faceIndex']).toBe(0);
   });
 
   it('rejects an empty face list', () => {

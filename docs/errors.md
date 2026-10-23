@@ -91,32 +91,33 @@ Errors from kernel geometry operations.
 
 Input validation errors.
 
-| Code                       | Description                       | Recovery                                |
-| -------------------------- | --------------------------------- | --------------------------------------- |
-| `CHAMFER_NO_EDGES`         | Chamfer called with no edges      | Provide at least one edge               |
-| `ELLIPSE_RADII`            | Invalid ellipse radii             | Ensure major >= minor > 0               |
-| `FILLET_NO_EDGES`          | Fillet called with no edges       | Provide at least one edge               |
-| `FUSE_ALL_EMPTY`           | fuseAll called with empty array   | Provide at least one shape              |
-| `POLYGON_MIN_POINTS`       | Polygon requires 3+ points        | Provide at least 3 points               |
-| `UNKNOWN_PLANE`            | Unknown named plane               | Use valid plane name (XY, YZ, ZX, etc.) |
-| `UNSUPPORTED_PROFILE`      | Extrusion profile not supported   | Use supported profile type              |
-| `INVALID_FILLET_RADIUS`    | Fillet radius must be positive    | Use a positive radius value             |
-| `INVALID_CHAMFER_DISTANCE` | Chamfer distance must be positive | Use a positive distance value           |
-| `INVALID_THICKNESS`        | Shell thickness must be positive  | Use a positive thickness value          |
-| `NO_EDGES`                 | No edges found for fillet/chamfer | Ensure shape has edges                  |
-| `NO_FACES`                 | No faces specified for shell      | Provide at least one face               |
-| `ZERO_OFFSET`              | Offset distance cannot be zero    | Use a non-zero offset value             |
-| `ZERO_LENGTH_EXTRUSION`    | Extrusion vector has zero length  | Use a non-zero extrusion vector         |
-| `ZERO_TWIST_ANGLE`         | Twist angle cannot be zero        | Use a non-zero angle                    |
-| `LOFT_EMPTY`               | Loft requires at least one wire   | Provide wire profiles                   |
-| `NOT_A_SOLID`              | Input shape is not a solid        | Provide a solid shape                   |
-| `NOT_A_FACE`               | Input shape is not a face         | Provide a face shape                    |
-| `NOT_A_WIRE`               | Input shape is not a wire         | Provide a wire shape                    |
-| `PATTERN_INVALID_COUNT`    | Pattern count must be at least 1  | Use count >= 1                          |
-| `PATTERN_ZERO_DIRECTION`   | Pattern direction cannot be zero  | Provide non-zero direction vector       |
-| `PATTERN_ZERO_AXIS`        | Pattern axis cannot be zero       | Provide non-zero axis vector            |
-| `CAMERA_ZERO_DIRECTION`    | Camera direction is zero-length   | Provide non-zero direction vector       |
-| `WIRE_NOT_CLOSED`          | Wire does not form a closed loop  | Ensure start and end points coincide    |
+| Code                       | Description                            | Recovery                                |
+| -------------------------- | -------------------------------------- | --------------------------------------- |
+| `CHAMFER_NO_EDGES`         | Chamfer called with no edges           | Provide at least one edge               |
+| `ELLIPSE_RADII`            | Invalid ellipse radii                  | Ensure major >= minor > 0               |
+| `FILLET_NO_EDGES`          | Fillet called with no edges            | Provide at least one edge               |
+| `FUSE_ALL_EMPTY`           | fuseAll called with empty array        | Provide at least one shape              |
+| `POLYGON_MIN_POINTS`       | Polygon requires 3+ points             | Provide at least 3 points               |
+| `UNKNOWN_PLANE`            | Unknown named plane                    | Use valid plane name (XY, YZ, ZX, etc.) |
+| `UNSUPPORTED_PROFILE`      | Extrusion profile not supported        | Use supported profile type              |
+| `INVALID_FILLET_RADIUS`    | Fillet radius must be positive         | Use a positive radius value             |
+| `INVALID_CHAMFER_DISTANCE` | Chamfer distance must be positive      | Use a positive distance value           |
+| `INVALID_THICKNESS`        | Shell thickness must be positive       | Use a positive thickness value          |
+| `NO_EDGES`                 | No edges found for fillet/chamfer      | Ensure shape has edges                  |
+| `NO_FACES`                 | No faces specified for shell           | Provide at least one face               |
+| `FACE_NOT_IN_SHAPE`        | A picked face belongs to another shape | Pick faces from the shape being edited  |
+| `ZERO_OFFSET`              | Offset distance cannot be zero         | Use a non-zero offset value             |
+| `ZERO_LENGTH_EXTRUSION`    | Extrusion vector has zero length       | Use a non-zero extrusion vector         |
+| `ZERO_TWIST_ANGLE`         | Twist angle cannot be zero             | Use a non-zero angle                    |
+| `LOFT_EMPTY`               | Loft requires at least one wire        | Provide wire profiles                   |
+| `NOT_A_SOLID`              | Input shape is not a solid             | Provide a solid shape                   |
+| `NOT_A_FACE`               | Input shape is not a face              | Provide a face shape                    |
+| `NOT_A_WIRE`               | Input shape is not a wire              | Provide a wire shape                    |
+| `PATTERN_INVALID_COUNT`    | Pattern count must be at least 1       | Use count >= 1                          |
+| `PATTERN_ZERO_DIRECTION`   | Pattern direction cannot be zero       | Provide non-zero direction vector       |
+| `PATTERN_ZERO_AXIS`        | Pattern axis cannot be zero            | Provide non-zero axis vector            |
+| `CAMERA_ZERO_DIRECTION`    | Camera direction is zero-length        | Provide non-zero direction vector       |
+| `WIRE_NOT_CLOSED`          | Wire does not form a closed loop       | Ensure start and end points coincide    |
 
 ### TYPE_CAST
 

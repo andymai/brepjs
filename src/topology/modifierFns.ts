@@ -752,23 +752,32 @@ interface FaceSignature {
   readonly type: string;
   readonly area: number;
   readonly center: readonly [number, number, number];
+  readonly box: readonly number[];
 }
 
 function faceSignature(face: KernelShape): FaceSignature {
   const kernel = getKernel();
+  const { min, max } = kernel.boundingBox(face);
   return {
     hash: kernel.hashCode(face, HASH_CODE_MAX),
     type: kernel.surfaceType(face),
     area: kernel.area(face),
     center: kernel.surfaceCenterOfMass(face),
+    box: [...min, ...max],
   };
 }
 
+const near = (a: readonly number[], b: readonly number[], tol: number): boolean =>
+  a.every((v, i) => Math.abs(v - (b[i] ?? Number.NaN)) <= tol);
+
+// Type, area, and centroid alone match a different face of the same kind (an
+// r=2 x 10 hole and an r=4 x 5 collar on one axis); the bounding box tells
+// them apart, as it does for a face rebuilt in place.
 function sameFace(a: FaceSignature, b: FaceSignature): boolean {
   if (a.hash === b.hash) return true;
   if (a.type !== b.type || Math.abs(a.area - b.area) > 1e-6 * Math.max(1, a.area)) return false;
-  const scale = 1e-6 * Math.max(1, Math.sqrt(a.area));
-  return Math.hypot(...a.center.map((c, i) => c - (b.center[i] ?? 0))) <= scale;
+  const tol = 1e-6 * Math.max(1, Math.sqrt(a.area));
+  return near(a.center, b.center, tol) && near(a.box, b.box, tol);
 }
 
 /**
@@ -803,6 +812,39 @@ function soleSolid(result: AnyShape): Solid | undefined {
     return undefined;
   }
   return castResultShapeWithKnownType(only, 'solid') as Solid;
+}
+
+// A face of another shape matches nothing in the result, so without this
+// check it would pass as removed (brepkit's defeature skips unknown ids).
+function validateRemoveFacesInputs(
+  shape: ValidSolid,
+  faces: ReadonlyArray<Face>
+): Err<BrepError> | undefined {
+  const check = validateNotNull(shape, 'removeFaces: shape');
+  if (isErr(check)) return check;
+  if (faces.length === 0) {
+    return err(
+      validationError(
+        BrepErrorCode.NO_FACES,
+        'removeFaces: at least one face must be specified',
+        undefined,
+        undefined,
+        'Pick the faces of the feature to remove'
+      )
+    );
+  }
+  const own = new Set(subShapeHashes(shape, 'face'));
+  const foreign = faces.findIndex((f) => !own.has(getKernel().hashCode(f.wrapped, HASH_CODE_MAX)));
+  if (foreign === -1) return undefined;
+  return err(
+    validationError(
+      BrepErrorCode.FACE_NOT_IN_SHAPE,
+      `removeFaces: face ${foreign} is not a face of the shape`,
+      undefined,
+      { faceIndex: foreign },
+      'Pick the faces with getFaces() on the same shape passed to removeFaces'
+    )
+  );
 }
 
 function removeFacesKernelError(e: unknown, faceCount: number): Err<BrepError> {
@@ -841,19 +883,8 @@ function removeFacesKernelError(e: unknown, faceCount: number): Err<BrepError> {
  *   defeaturing.
  */
 export function removeFaces(shape: ValidSolid, faces: ReadonlyArray<Face>): Result<ValidSolid> {
-  const check = validateNotNull(shape, 'removeFaces: shape');
-  if (isErr(check)) return check;
-  if (faces.length === 0) {
-    return err(
-      validationError(
-        BrepErrorCode.NO_FACES,
-        'removeFaces: at least one face must be specified',
-        undefined,
-        undefined,
-        'Pick the faces of the feature to remove'
-      )
-    );
-  }
+  const invalid = validateRemoveFacesInputs(shape, faces);
+  if (invalid) return invalid;
 
   const kernel = getKernel();
   let result: Solid | undefined;
