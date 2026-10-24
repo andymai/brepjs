@@ -1,0 +1,21 @@
+package.json
+  s_1d8adac4958d10::t_669664667f176f 19-21
+tests/packageSideEffects.test.ts
+  s_1d8adac4958d10::t_07f037741e507b 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d942260656b01881411728bec26bad3ac26b933",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
