@@ -10,8 +10,10 @@
  * comment regresses the moment a consumer's Vite pre-bundles brepjs and reflows
  * the comment off the specifier (#1726); the `@vite-ignore` here only suppresses
  * Vite's "cannot be analyzed" dev warning and its placement no longer affects
- * correctness.
+ * correctness. `webpackIgnore` does the same for webpack, which otherwise
+ * reports a "Critical dependency" on every compile and replaces the import
+ * with an empty context that can never resolve.
  */
 export function importOptionalBackend(specifier: string): Promise<unknown> {
-  return import(/* @vite-ignore */ specifier);
+  return import(/* webpackIgnore: true */ /* @vite-ignore */ specifier);
 }

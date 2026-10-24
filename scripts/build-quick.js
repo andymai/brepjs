@@ -21,8 +21,9 @@ const quickJs = `import { initFromOC, registerKernel, OcctWasmAdapter } from './
 // The specifier is passed through a variable so the import() argument is never a
 // string literal: a computed dynamic import is unanalyzable to every bundler, so
 // an uninstalled optional peer is left as a runtime import instead of breaking a
-// consumer's Vite dep pre-bundling (#1726).
-const importBackend = (specifier) => import(/* @vite-ignore */ specifier);
+// consumer's Vite dep pre-bundling (#1726). webpackIgnore keeps webpack from
+// reporting a "Critical dependency" and stubbing the import out.
+const importBackend = (specifier) => import(/* webpackIgnore: true */ /* @vite-ignore */ specifier);
 try {
   const { OcctKernel } = await importBackend('occt-wasm');
   const kernel = await OcctKernel.init();

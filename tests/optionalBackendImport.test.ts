@@ -31,4 +31,13 @@ describe('importOptionalBackend', () => {
   ])('%s never imports an optional backend by string literal', (file) => {
     expect(read(file)).not.toMatch(LITERAL_BACKEND_IMPORT);
   });
+
+  // Without webpackIgnore, every webpack/Next.js consumer gets a "Critical
+  // dependency" warning on each compile and a stubbed-out import.
+  it.each(['src/kernel/optionalBackend.ts', 'scripts/build-quick.js'])(
+    '%s tells webpack to leave the backend import alone',
+    (file) => {
+      expect(read(file)).toMatch(/import\(\s*\/\*\s*webpackIgnore:\s*true\s*\*\/[^)]*specifier\)/);
+    }
+  );
 });
