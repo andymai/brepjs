@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.26.0...brepjs-bim-v0.27.0) (2026-10-24)
+
+
+### Features
+
+* **deps:** bump zod from 4.6.5 to 4.6.7 ([#2418](https://github.com/andymai/brepjs/issues/2418)) ([c18893a](https://github.com/andymai/brepjs/commit/c18893a2b90035f7e5c9ba0c0ef83bd5dcf0ae1d))
+
 ## [0.26.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.25.1...brepjs-bim-v0.26.0) (2026-10-05)
 
 
