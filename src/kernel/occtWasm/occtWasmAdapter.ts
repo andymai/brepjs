@@ -438,9 +438,9 @@ export class OcctWasmAdapter implements KernelAdapter {
     normal: [number, number, number],
     majorRadius: number,
     minorRadius: number,
-    _xDir?: [number, number, number]
+    xDir?: [number, number, number]
   ): KernelShape {
-    return constructionOps.makeEllipseEdge(this.k, center, normal, majorRadius, minorRadius);
+    return constructionOps.makeEllipseEdge(this.k, center, normal, majorRadius, minorRadius, xDir);
   }
 
   makeEllipseArc(
@@ -450,7 +450,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     minorRadius: number,
     startAngle: number,
     endAngle: number,
-    _xDir?: [number, number, number]
+    xDir?: [number, number, number]
   ): KernelShape {
     return constructionOps.makeEllipseArc(
       this.k,
@@ -459,7 +459,8 @@ export class OcctWasmAdapter implements KernelAdapter {
       majorRadius,
       minorRadius,
       startAngle,
-      endAngle
+      endAngle,
+      xDir
     );
   }
 

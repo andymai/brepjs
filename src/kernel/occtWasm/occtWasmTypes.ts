@@ -349,6 +349,22 @@ export interface OcctKernelWasm {
     startAngle: number,
     endAngle: number
   ): number;
+  /** occt-wasm 5.8+: like makeEllipseArc with the major axis along (xx, xy, xz). */
+  makeEllipseArcOriented?(
+    cx: number,
+    cy: number,
+    cz: number,
+    nx: number,
+    ny: number,
+    nz: number,
+    xx: number,
+    xy: number,
+    xz: number,
+    majorRadius: number,
+    minorRadius: number,
+    startAngle: number,
+    endAngle: number
+  ): number;
   makeBezierEdge(flatPoints: EmVectorDouble): number;
   makeTangentArc(
     x1: number,

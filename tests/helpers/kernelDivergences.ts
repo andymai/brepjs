@@ -176,12 +176,12 @@ export const divergences: DivergenceMap = {
   },
   brepkit: {
     // -----------------------------------------------------------------------
-    // csgPath.test.ts — direction probes need faithful curvePointAt/locate
+    // csgPath.test.ts — direction probes need a faithful curvePointAt
     // -----------------------------------------------------------------------
     'csgPath.orientationProbes': {
       kind: 'skip',
       reason:
-        'brepkit curvePointAt evaluates raw curve parameter space (not a normalized arc-length fraction) and locate cannot relocate lone edges (the optional copyEdge/transformEdge WASM exports are absent), so midpoint/endpoint direction oracles read wrong positions. Surfaced in the Path node work (#2032).',
+        'brepkit curvePointAt evaluates raw curve parameter space (not a normalized arc-length fraction), so midpoint/endpoint direction oracles read wrong positions. Surfaced in the Path node work (#2032).',
     },
     // -----------------------------------------------------------------------
     // booleanFns.test.ts — brepkit fuse ignores BooleanOptions (incl. simplify)

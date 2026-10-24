@@ -40,7 +40,7 @@ function len(s: AnyShape<Dimension>): number {
 // scope (same divergence class as the other feature-node tests).
 const itBrep = it.skipIf(currentKernel === 'manifold');
 
-// Direction probes need faithful curvePointAt/locate on edges; the divergence
+// Direction probes need a faithful curvePointAt on edges; the divergence
 // registry ('csgPath.orientationProbes') skips them per kernel.
 
 describe('Path node', () => {
@@ -131,6 +131,17 @@ describe('Path node', () => {
     expect(curvePointAt(wire, 0.5)[1]).toBeCloseTo(10, 1);
     expect(curveStartPoint(wire)[0]).toBeCloseTo(-10, 1);
     expect(curveEndPoint(wire)[0]).toBeCloseTo(10, 1);
+  });
+
+  itBrep('rotated ellipse-arc evaluates and starts on the rotated major axis', () => {
+    // Needs no curvePointAt, so it runs on every B-rep kernel (brepkit included).
+    using ev = new Evaluator();
+    const p: [number, number] = [30 * Math.cos(Math.PI / 6), 30 * Math.sin(Math.PI / 6)];
+    const r = ev.evaluate(path(p, [ellipseArcTo([-p[0], -p[1]], [30, 20], { rotation: 30 })]));
+    expect(isOk(r)).toBe(true);
+    const start = curveStartPoint(unwrap(r) as Edge | Wire);
+    expect(start[0]).toBeCloseTo(p[0], 6);
+    expect(start[1]).toBeCloseTo(p[1], 6);
   });
 
   it('rotated ellipse-arc lands endpoints on the rotated frame', (ctx) => {

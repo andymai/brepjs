@@ -132,52 +132,117 @@ export function makeArcEdge(
   );
 }
 
+type Vec3 = [number, number, number];
+
+function rawEllipse(k: OcctKernelWasm, center: Vec3, normal: Vec3, major: number, minor: number) {
+  return k.makeEllipseEdge(...center, ...normal, major, minor);
+}
+
+/** Where OCCT puts the major axis for `normal` alone: the direction to parameter 0. */
+function defaultMajorAxis(k: OcctKernelWasm, ellipseId: number, center: Vec3): Vec3 {
+  const vertices = k.getSubShapes(ellipseId, 'vertex');
+  try {
+    const vertexId = vertices.get(0);
+    const p = k.vertexPosition(vertexId);
+    const axis: Vec3 = [p.get(0) - center[0], p.get(1) - center[1], p.get(2) - center[2]];
+    p.delete();
+    for (let i = 0; i < vertices.size(); i++) k.release(vertices.get(i));
+    return axis;
+  } finally {
+    vertices.delete();
+  }
+}
+
+/** Angle about `normal` that turns `from` onto `xDir` projected into the ellipse plane. */
+function angleToXDir(from: Vec3, normal: Vec3, xDir: Vec3): number {
+  const nLen = Math.hypot(...normal);
+  const n = normal.map((v) => v / nLen) as Vec3;
+  const along = xDir[0] * n[0] + xDir[1] * n[1] + xDir[2] * n[2];
+  const xp = xDir.map((v, i) => v - along * (n[i] ?? 0)) as Vec3;
+  if (Math.hypot(...xp) < 1e-12 * Math.max(1, Math.hypot(...xDir))) {
+    throw new Error('occt-wasm: ellipse xDir is parallel to the normal');
+  }
+  const cross: Vec3 = [
+    from[1] * xp[2] - from[2] * xp[1],
+    from[2] * xp[0] - from[0] * xp[2],
+    from[0] * xp[1] - from[1] * xp[0],
+  ];
+  const sin = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2];
+  const cos = from[0] * xp[0] + from[1] * xp[1] + from[2] * xp[2];
+  return Math.atan2(sin, cos);
+}
+
+/** Rotate `id` about the ellipse axis, releasing it; returns the rotated id. */
+function turnAboutAxis(k: OcctKernelWasm, id: number, center: Vec3, normal: Vec3, angle: number) {
+  if (Math.abs(angle) < 1e-12) return id;
+  try {
+    return k.rotate(id, ...center, ...normal, angle);
+  } finally {
+    k.release(id);
+  }
+}
+
+/*
+ * The raw makeEllipseEdge/makeEllipseArc take no xDir; OCCT picks the major
+ * axis from the normal. occt-wasm 5.8 adds makeEllipseArcOriented; on older
+ * builds (and for a whole ellipse) the shape is built in OCCT's frame and
+ * turned about its axis, which keeps the analytic ellipse.
+ */
 export function makeEllipseEdge(
   k: OcctKernelWasm,
-  center: [number, number, number],
-  normal: [number, number, number],
+  center: Vec3,
+  normal: Vec3,
   majorRadius: number,
-  minorRadius: number
+  minorRadius: number,
+  xDir?: Vec3
 ): KernelShape {
-  return handle(
-    'edge',
-    k.makeEllipseEdge(
-      center[0],
-      center[1],
-      center[2],
-      normal[0],
-      normal[1],
-      normal[2],
-      majorRadius,
-      minorRadius
-    )
-  );
+  const id = rawEllipse(k, center, normal, majorRadius, minorRadius);
+  if (!xDir) return handle('edge', id);
+  let angle: number;
+  try {
+    angle = angleToXDir(defaultMajorAxis(k, id, center), normal, xDir);
+  } catch (e) {
+    k.release(id);
+    throw e;
+  }
+  return handle('edge', turnAboutAxis(k, id, center, normal, angle));
 }
 
 export function makeEllipseArc(
   k: OcctKernelWasm,
-  center: [number, number, number],
-  normal: [number, number, number],
+  center: Vec3,
+  normal: Vec3,
   majorRadius: number,
   minorRadius: number,
   startAngle: number,
-  endAngle: number
+  endAngle: number,
+  xDir?: Vec3
 ): KernelShape {
-  return handle(
-    'edge',
-    k.makeEllipseArc(
-      center[0],
-      center[1],
-      center[2],
-      normal[0],
-      normal[1],
-      normal[2],
-      majorRadius,
-      minorRadius,
-      startAngle,
-      endAngle
-    )
-  );
+  const arc = () =>
+    k.makeEllipseArc(...center, ...normal, majorRadius, minorRadius, startAngle, endAngle);
+  if (!xDir) return handle('edge', arc());
+  if (k.makeEllipseArcOriented) {
+    return handle(
+      'edge',
+      k.makeEllipseArcOriented(
+        ...center,
+        ...normal,
+        ...xDir,
+        majorRadius,
+        minorRadius,
+        startAngle,
+        endAngle
+      )
+    );
+  }
+  const probe = rawEllipse(k, center, normal, majorRadius, minorRadius);
+  let angle: number;
+  try {
+    angle = angleToXDir(defaultMajorAxis(k, probe, center), normal, xDir);
+  } finally {
+    k.release(probe);
+  }
+  return handle('edge', turnAboutAxis(k, arc(), center, normal, angle));
 }
 
 export function makeBezierEdge(
