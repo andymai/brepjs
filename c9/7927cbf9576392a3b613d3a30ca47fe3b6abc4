@@ -1,0 +1,19 @@
+scripts/check-dist-backend-imports.mjs
+  s_1d8adac4958d10::t_1809bce8b41e2c 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c97927cbf9576392a3b613d3a30ca47fe3b6abc4",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
