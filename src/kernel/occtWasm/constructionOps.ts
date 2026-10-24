@@ -142,13 +142,14 @@ function rawEllipse(k: OcctKernelWasm, center: Vec3, normal: Vec3, major: number
 function defaultMajorAxis(k: OcctKernelWasm, ellipseId: number, center: Vec3): Vec3 {
   const vertices = k.getSubShapes(ellipseId, 'vertex');
   try {
-    const vertexId = vertices.get(0);
-    const p = k.vertexPosition(vertexId);
-    const axis: Vec3 = [p.get(0) - center[0], p.get(1) - center[1], p.get(2) - center[2]];
-    p.delete();
-    for (let i = 0; i < vertices.size(); i++) k.release(vertices.get(i));
-    return axis;
+    const p = k.vertexPosition(vertices.get(0));
+    try {
+      return [p.get(0) - center[0], p.get(1) - center[1], p.get(2) - center[2]];
+    } finally {
+      p.delete();
+    }
   } finally {
+    for (let i = 0; i < vertices.size(); i++) k.release(vertices.get(i));
     vertices.delete();
   }
 }
