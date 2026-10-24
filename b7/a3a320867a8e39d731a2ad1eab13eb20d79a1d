@@ -1,0 +1,25 @@
+scripts/build-quick.js
+  s_1d8adac4958d10::t_b671a333843f60 26
+  s_1d8adac4958d10::t_d0f054dae63abf 24-25
+src/kernel/optionalBackend.ts
+  s_1d8adac4958d10::t_b67f59734f7162 13-15
+  s_1d8adac4958d10::t_587910265a065a 18
+tests/optionalBackendImport.test.ts
+  s_1d8adac4958d10::t_d658588117997d 34-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7a3a320867a8e39d731a2ad1eab13eb20d79a1d",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
