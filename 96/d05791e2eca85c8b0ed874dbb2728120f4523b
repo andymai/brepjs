@@ -1,0 +1,21 @@
+.github/workflows/ci.yml
+  s_1d8adac4958d10::t_fbfcf71921bdeb 125
+scripts/check-dist-backend-imports.mjs
+  s_1d8adac4958d10::t_67e17bc64e6756 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96d05791e2eca85c8b0ed874dbb2728120f4523b",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
