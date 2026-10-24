@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.10.2](https://github.com/andymai/brepjs/compare/brepjs-v20.10.1...brepjs-v20.10.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **kernel:** stop webpack stubbing out the optional backend import ([#2433](https://github.com/andymai/brepjs/issues/2433)) ([d93e868](https://github.com/andymai/brepjs/commit/d93e86822304f347c5b0cd99212a9393a40c2396))
+
 ## [20.10.1](https://github.com/andymai/brepjs/compare/brepjs-v20.10.0...brepjs-v20.10.1) (2026-10-24)
 
 
