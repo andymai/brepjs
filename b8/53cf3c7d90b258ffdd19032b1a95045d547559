@@ -1,0 +1,44 @@
+tests/occtWasmAdapter.test.ts
+  s_1d8adac4958d10::t_ffd997db0ab401 10-11,51-76
+  s_1d8adac4958d10::t_d5564741402817 77
+src/kernel/occtWasm/evolutionOps.ts
+  s_1d8adac4958d10::t_771892d34d1e9c 23,410-412,434-436
+tests/modifierFns.test.ts
+  s_1d8adac4958d10::t_09a2e788938bd5 38,283-319
+  s_1d8adac4958d10::t_047a4166867fd2 320-321
+docs/kernel-conformance.md
+  s_1d8adac4958d10::t_050a23c1c32cb1 3,87
+tests/helpers/kernelDivergences.ts
+  s_1d8adac4958d10::t_09a2e788938bd5 235-239,489-493
+src/kernel/occtWasm/modifierOps.ts
+  s_1d8adac4958d10::t_771892d34d1e9c 9-15,34-37,53-56
+src/kernel/faultyEdges.ts
+  s_1d8adac4958d10::t_6226464d9f87be 1-25
+src/kernel/occtWasm/helpers.ts
+  s_1d8adac4958d10::t_771892d34d1e9c 13,53-68
+  s_1d8adac4958d10::t_474a7ea132a94f 69-70
+src/topology/modifierFns.ts
+  s_1d8adac4958d10::t_c35a60d916b09b 10,319,328-352,381,419
+package.json
+  s_1d8adac4958d10::t_4e1839fadd95df 281
+.size-limit.json
+  s_1d8adac4958d10::t_f891fef2d80746 2
+package-lock.json
+  s_1d8adac4958d10::t_1af4b74f6ec568 52,11269-11271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b853cf3c7d90b258ffdd19032b1a95045d547559",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
