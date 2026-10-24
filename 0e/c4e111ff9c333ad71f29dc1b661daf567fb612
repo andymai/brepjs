@@ -1,0 +1,34 @@
+tests/ellipseXDir.test.ts
+  s_1d8adac4958d10::t_c35a21c0ac564a 1-7,9-22,26-35,37,39-41,43-50,54-85
+  s_1d8adac4958d10::t_053df048621899 8,23-25,36,38,42,51-53
+tests/csg/csgPath.test.ts
+  s_1d8adac4958d10::t_0af4cca77b95bc 43
+  s_1d8adac4958d10::t_0ce85ca3651af8 136-146
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_1d8adac4958d10::t_8d24ff9627ad01 441,443,453,462-463
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_1d8adac4958d10::t_8d24ff9627ad01 352-367
+src/kernel/occtWasm/constructionOps.ts
+  s_1d8adac4958d10::t_8d24ff9627ad01 135-190,193-194,196-197,199-208,213-214,218-219,221-245
+tests/helpers/kernelDivergences.ts
+  s_1d8adac4958d10::t_0af4cca77b95bc 179,184
+src/csg/evaluators/path.ts
+  s_1d8adac4958d10::t_cc8413469e791d 11-12
+  s_1d8adac4958d10::t_cd2cd39ed2df0e 128-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ec4e111ff9c333ad71f29dc1b661daf567fb612",
+  "prompts": {},
+  "sessions": {
+    "s_1d8adac4958d10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92aa0090-597a-4c37-ba0b-030b8f5e0deb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
