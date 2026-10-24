@@ -10,6 +10,7 @@
  */
 
 import type { KernelShape, ShapeEvolution, ShapeType } from '@/kernel/types.js';
+import { FaultyEdgesError } from '@/kernel/faultyEdges.js';
 import type {
   EmEvolutionData,
   OcctWasmHandle,
@@ -47,6 +48,24 @@ export function unwrap(shape: KernelShape): number {
   if (isOcctWasmHandle(shape)) return shape.id;
   if (typeof shape === 'number') return shape;
   throw new Error('occt-wasm: expected an OcctWasmHandle or number, got ' + typeof shape);
+}
+
+const FAULTY_EDGES_SUFFIX = /\[faulty edges: (\d+(?:,\d+)*)\]/;
+
+/**
+ * Run a raw fillet/chamfer call, turning the facade's ` [faulty edges: 3,7]`
+ * message suffix (arena ids, occt-wasm 5.8+) into indexes into `edges`.
+ */
+export function reportingFaultyEdges<T>(edges: readonly KernelShape[], run: () => T): T {
+  try {
+    return run();
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const ids = FAULTY_EDGES_SUFFIX.exec(message)?.[1]?.split(',').map(Number);
+    if (!ids) throw e;
+    const indexes = edges.flatMap((edge, i) => (ids.includes(unwrap(edge)) ? [i] : []));
+    throw new FaultyEdgesError(message, indexes, { cause: e });
+  }
 }
 
 /** Map a WASM shape type string to our ShapeType enum. */

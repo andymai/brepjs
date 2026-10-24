@@ -232,6 +232,11 @@ export const divergences: DivergenceMap = {
         'Same planar-only restriction as brepkitExtended.defeatureNonPlanarFace: removing a fillet surface raises "defeaturing currently only supports planar faces".',
       since: '2.128.20',
     },
+    'modifierFns.edgeTreatmentFailedEdges': {
+      kind: 'not-implemented',
+      reason:
+        'Only occt-wasm 5.8+ names the edges a fillet or chamfer failed on; this kernel reports FILLET_FAILED / CHAMFER_FAILED without metadata.failedEdges.',
+    },
     'modifierFns.removeFacesCurved': {
       kind: 'not-implemented',
       reason:
@@ -480,6 +485,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'The occt (OpenCascade.js) adapter has no defeature binding and raises UnsupportedKernelOperationError.',
+    },
+    'modifierFns.edgeTreatmentFailedEdges': {
+      kind: 'not-implemented',
+      reason:
+        'Only occt-wasm 5.8+ names the edges a fillet or chamfer failed on; this kernel reports FILLET_FAILED / CHAMFER_FAILED without metadata.failedEdges.',
     },
     'modifierFns.removeFaces': {
       kind: 'not-implemented',

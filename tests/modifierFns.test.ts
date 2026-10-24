@@ -35,7 +35,7 @@ import {
   shape,
 } from '@/index.js';
 import { shell as shellFn } from '@/topology/modifierFns.js';
-import type { Face, Shape3D } from '@/core/shapeTypes.js';
+import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -277,6 +277,45 @@ describe('offset', () => {
         unwrapErr(offset(box(10, 10, 10), distance)).code
       );
     }
+  });
+});
+
+describe('fillet and chamfer failures name their edges', () => {
+  // On a 20x20x2 plate a 3 mm round fits a vertical corner edge (its side faces
+  // are 20 wide) but not a top edge (its side face is only 2 tall).
+  function plateEdges(plate: Shape3D) {
+    const edges = getEdges(plate);
+    const span = (e: Edge) => getBounds(e);
+    const vertical = edges.find((e) => span(e).zMax - span(e).zMin > 1);
+    const top = edges.find((e) => span(e).zMax - span(e).zMin < 1e-6 && span(e).zMin > 1.9);
+    if (!vertical || !top) throw new Error('plate edges not found');
+    return { vertical, top };
+  }
+
+  it('fillet puts the edge it could not round in metadata.failedEdges', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.edgeTreatmentFailedEdges');
+    using plate = box(20, 20, 2);
+    const { vertical, top } = plateEdges(plate);
+    using rounded = unwrap(fillet(plate, [vertical], 3));
+    expect(isSolid(rounded)).toBe(true);
+
+    const error = unwrapErr(fillet(plate, [vertical, top], 3));
+    expect(error.code).toBe('FILLET_FAILED');
+    const failed = error.metadata?.['failedEdges'] as Edge[];
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toBe(top);
+    expect(error.suggestion).toContain('failedEdges');
+  });
+
+  it('chamfer puts the edge it could not bevel in metadata.failedEdges', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.edgeTreatmentFailedEdges');
+    using plate = box(20, 20, 2);
+    const { vertical, top } = plateEdges(plate);
+    const error = unwrapErr(chamfer(plate, [vertical, top], 3));
+    expect(error.code).toBe('CHAMFER_FAILED');
+    const failed = error.metadata?.['failedEdges'] as Edge[];
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toBe(top);
   });
 });
 

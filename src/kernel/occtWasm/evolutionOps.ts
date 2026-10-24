@@ -20,6 +20,7 @@ import {
   makeVecInt,
   makeVecU32,
   parseEvolution,
+  reportingFaultyEdges,
   resolveUniformRadius,
   unwrap,
   wrapResult,
@@ -406,7 +407,9 @@ export function filletWithHistory(
   const edgeVec = makeVecU32(Module, edges.map(unwrap));
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = k.filletWithHistory(unwrap(shape), edgeVec, r, hashVec, hashUpperBound);
+    const evo = reportingFaultyEdges(edges, () =>
+      k.filletWithHistory(unwrap(shape), edgeVec, r, hashVec, hashUpperBound)
+    );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
   } finally {
@@ -428,7 +431,9 @@ export function chamferWithHistory(
   const edgeVec = makeVecU32(Module, edges.map(unwrap));
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = k.chamferWithHistory(unwrap(shape), edgeVec, d, hashVec, hashUpperBound);
+    const evo = reportingFaultyEdges(edges, () =>
+      k.chamferWithHistory(unwrap(shape), edgeVec, d, hashVec, hashUpperBound)
+    );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
   } finally {

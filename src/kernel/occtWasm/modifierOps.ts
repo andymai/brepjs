@@ -6,7 +6,13 @@
 
 import type { KernelShape } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
-import { makeVecU32, resolveUniformRadius, unwrap, wrapResult } from './helpers.js';
+import {
+  makeVecU32,
+  reportingFaultyEdges,
+  resolveUniformRadius,
+  unwrap,
+  wrapResult,
+} from './helpers.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 
 // occt's hashCode upper bound (INT_MAX). Mirrors core's HASH_CODE_MAX but is kept
@@ -25,7 +31,10 @@ export function fillet(
   const r = resolveUniformRadius(edges, radius);
   const vec = makeVecU32(Module, edges.map(unwrap));
   try {
-    return wrapResult(k, k.fillet(unwrap(shape), vec, r));
+    return wrapResult(
+      k,
+      reportingFaultyEdges(edges, () => k.fillet(unwrap(shape), vec, r))
+    );
   } finally {
     vec.delete();
   }
@@ -41,7 +50,10 @@ export function chamfer(
   const d = resolveUniformRadius(edges, distance);
   const vec = makeVecU32(Module, edges.map(unwrap));
   try {
-    return wrapResult(k, k.chamfer(unwrap(shape), vec, d));
+    return wrapResult(
+      k,
+      reportingFaultyEdges(edges, () => k.chamfer(unwrap(shape), vec, d))
+    );
   } finally {
     vec.delete();
   }

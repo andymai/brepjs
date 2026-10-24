@@ -7,6 +7,8 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { OcctWasmAdapter } from '@/kernel/occtWasm/occtWasmAdapter.js';
+import { handle, reportingFaultyEdges } from '@/kernel/occtWasm/helpers.js';
+import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
 import type { OcctWasmModule, OcctKernelWasm } from '@/kernel/occtWasm/occtWasmTypes.js';
 
 const stubModule = (): OcctWasmModule => ({}) as unknown as OcctWasmModule;
@@ -44,5 +46,32 @@ describe('OcctWasmAdapter.fromKernel', () => {
     const adapter = new OcctWasmAdapter(stubModule(), stubKernel());
 
     expect(adapter.retainedKernelOwner).toBeUndefined();
+  });
+});
+
+describe('reportingFaultyEdges', () => {
+  it('turns the facade suffix into indexes of the edges passed in', () => {
+    const edges = [handle('edge', 3), handle('edge', 7), handle('edge', 9)];
+    let caught: unknown;
+    try {
+      reportingFaultyEdges(edges, () => {
+        throw new Error('fillet: operation failed [faulty edges: 9,3]');
+      });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect(faultyEdgeIndexesOf(caught)).toEqual([0, 2]);
+    expect((caught as Error).message).toBe('fillet: operation failed [faulty edges: 9,3]');
+  });
+
+  it('rethrows errors that name no edges unchanged', () => {
+    const original = new Error('fillet: operation failed');
+    expect(() =>
+      reportingFaultyEdges([handle('edge', 3)], () => {
+        throw original;
+      })
+    ).toThrow(original);
+    expect(faultyEdgeIndexesOf(original)).toBeUndefined();
   });
 });

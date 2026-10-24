@@ -7,6 +7,7 @@
 
 import { getKernel, getKernelCapabilities } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import {
@@ -314,13 +315,8 @@ export function fillet(
       'Fillet result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
-    const raw = e instanceof Error ? e.message : String(e);
     return err(
-      kernelError('FILLET_FAILED', `Fillet operation failed: ${raw}`, e, {
-        operation: 'fillet',
-        edgeCount: selectedCount,
-        radius,
-      })
+      edgeTreatmentError('fillet', e, filteredEdges, { edgeCount: selectedCount, radius })
     );
   }
 }
@@ -328,6 +324,31 @@ export function fillet(
 // ---------------------------------------------------------------------------
 // Chamfer
 // ---------------------------------------------------------------------------
+
+/**
+ * `FILLET_FAILED` / `CHAMFER_FAILED`, with `metadata.failedEdges` set to the
+ * edges the kernel named when it could not build them (occt-wasm 5.8+).
+ */
+function edgeTreatmentError(
+  operation: 'fillet' | 'chamfer',
+  e: unknown,
+  edges: ReadonlyArray<Edge>,
+  metadata: Record<string, unknown>
+): BrepError {
+  const raw = e instanceof Error ? e.message : String(e);
+  const indexes = faultyEdgeIndexesOf(e);
+  const failedEdges = indexes?.flatMap((i) => edges[i] ?? []);
+  const label = operation === 'fillet' ? 'Fillet' : 'Chamfer';
+  return kernelError(
+    operation === 'fillet' ? 'FILLET_FAILED' : 'CHAMFER_FAILED',
+    `${label} operation failed: ${raw}`,
+    e,
+    { operation, ...metadata, ...(failedEdges ? { failedEdges } : {}) },
+    failedEdges && failedEdges.length > 0
+      ? `The ${operation} could not be built on metadata.failedEdges: use a smaller size there, or leave those edges out`
+      : undefined
+  );
+}
 
 /**
  * Apply a chamfer (beveled edge) to selected edges of a 3D shape.
@@ -357,8 +378,8 @@ export function chamfer(
     return err(validationError(BrepErrorCode.CHAMFER_NO_EDGES, 'No edges found for chamfer'));
   }
 
+  let filteredEdges: Edge[] = [];
   try {
-    let filteredEdges: Edge[];
     let kernelDistance: number | [number, number] | KernelHashCallback<number | [number, number]>;
 
     if (typeof distance === 'function') {
@@ -394,10 +415,8 @@ export function chamfer(
       'Chamfer result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
-    const raw = e instanceof Error ? e.message : String(e);
     return err(
-      kernelError('CHAMFER_FAILED', `Chamfer operation failed: ${raw}`, e, {
-        operation: 'chamfer',
+      edgeTreatmentError('chamfer', e, filteredEdges, {
         edgeCount: selectedEdges.length,
         distance,
       })
