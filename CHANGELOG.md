@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.10.1](https://github.com/andymai/brepjs/compare/brepjs-v20.10.0...brepjs-v20.10.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **occt-wasm:** honour xDir on ellipses and elliptical arcs ([#2431](https://github.com/andymai/brepjs/issues/2431)) ([6bcf068](https://github.com/andymai/brepjs/commit/6bcf068e68f37285aca41f594c00a409463e6bb3))
+
 ## [20.10.0](https://github.com/andymai/brepjs/compare/brepjs-v20.9.0...brepjs-v20.10.0) (2026-10-24)
 
 

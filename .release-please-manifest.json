@@ -1,5 +1,5 @@
 {
-  ".": "20.10.0",
+  ".": "20.10.1",
   "packages/brepjs-opencascade": "0.16.0",
   "packages/brepjs-voxel-wasm": "0.7.1",
   "packages/brepjs-cad": "0.180.0",
