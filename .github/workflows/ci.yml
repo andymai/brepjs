@@ -122,6 +122,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
       - run: npm run build
+      - run: node scripts/check-dist-backend-imports.mjs
       - run: npm run docs:api
       # Fail if docs/function-lookup.md is stale (regenerate + commit to fix).
       # Prettier-normalize first: the generator emits compact tables, but the
