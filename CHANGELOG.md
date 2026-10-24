@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.10.3](https://github.com/andymai/brepjs/compare/brepjs-v20.10.2...brepjs-v20.10.3) (2026-10-24)
+
+
+### Bug Fixes
+
+* **quick:** keep the brepjs/quick auto-init in bundled builds ([#2435](https://github.com/andymai/brepjs/issues/2435)) ([520627f](https://github.com/andymai/brepjs/commit/520627f668d5a98081e42499454aac68d529ae06))
+
 ## [20.10.2](https://github.com/andymai/brepjs/compare/brepjs-v20.10.1...brepjs-v20.10.2) (2026-10-24)
 
 
