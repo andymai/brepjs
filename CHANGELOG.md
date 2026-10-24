@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.10.0](https://github.com/andymai/brepjs/compare/brepjs-v20.9.0...brepjs-v20.10.0) (2026-10-24)
+
+
+### Features
+
+* **modifiers:** name the edges a fillet or chamfer failed on ([#2429](https://github.com/andymai/brepjs/issues/2429)) ([6823489](https://github.com/andymai/brepjs/commit/68234893bac022ff170cfdcfbc55968ecbf473fc))
+
 ## [20.9.0](https://github.com/andymai/brepjs/compare/brepjs-v20.8.0...brepjs-v20.9.0) (2026-10-23)
 
 
