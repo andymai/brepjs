@@ -16,7 +16,9 @@
     "url": "https://github.com/andymai/brepjs"
   },
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/quick.js"
+  ],
   "engines": {
     "node": ">=24"
   },
