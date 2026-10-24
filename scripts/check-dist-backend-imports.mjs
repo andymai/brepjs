@@ -25,7 +25,9 @@ for (const file of readdirSync(dist)) {
 const problems = [];
 const has = (pred) => sites.some(({ file }) => pred(file));
 if (!has((f) => f === 'quick.js')) problems.push('no optional-backend import found in quick.js');
-if (!has((f) => f.endsWith('.cjs'))) problems.push('no optional-backend import found in a .cjs chunk');
+if (!has((f) => f.endsWith('.cjs'))) {
+  problems.push('no optional-backend import found in a .cjs chunk');
+}
 if (!has((f) => f.endsWith('.js') && f !== 'quick.js')) {
   problems.push('no optional-backend import found in an ES chunk');
 }
