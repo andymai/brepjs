@@ -16,7 +16,7 @@
 # explicit exception: it hides the exposure instead of recording it. Each
 # entry below is checked against monaco's vendored source instead.
 #
-# Re-evaluate when a monaco-editor release pins dompurify >= 3.4.16.
+# Re-evaluate when a monaco-editor release pins dompurify >= 3.4.17.
 
 [[IgnoredVulns]]
 id = "GHSA-p98j-92pf-mc4p"
@@ -40,6 +40,33 @@ ignoreUntil = 2026-11-01
 # RETURN_TRUSTED_TYPE, and IN_PLACE appears nowhere in esm/ outside the
 # vendored dompurify.js.
 reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; sanitize gets strings and never IN_PLACE"
+
+[[IgnoredVulns]]
+id = "GHSA-mrv2-3pqr-j5jr"
+ignoreUntil = 2026-11-01
+# The incomplete-fix follow-up to GHSA-p98j-92pf-mc4p: an IN_PLACE hook that
+# removes the current node's parent or a later sibling leaves that subtree's
+# handlers armed. Same missing half as GHSA-p98j-92pf-mc4p: no IN_PLACE.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; IN_PLACE never set, so no live subtree can be left armed"
+
+[[IgnoredVulns]]
+id = "GHSA-cg2g-xh64-v4q7"
+ignoreUntil = 2026-11-01
+# Needs SAFE_FOR_TEMPLATES with a DOM-returning mode, on input that carries an
+# attached shadow root, whose output then feeds a template engine. monaco has
+# the DOM-returning half (RETURN_DOM_FRAGMENT), but SAFE_FOR_TEMPLATES appears
+# nowhere in esm/ outside the vendored dompurify.js, and both call sites pass
+# a string, which DOMPurify parses without declarative shadow roots.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; SAFE_FOR_TEMPLATES never set"
+
+[[IgnoredVulns]]
+id = "GHSA-c6gr-qvv4-5v3f"
+ignoreUntil = 2026-11-01
+# Needs PARSER_MEDIA_TYPE 'application/xhtml+xml' plus an allowlist that keeps
+# animate/set and attributeName. PARSER_MEDIA_TYPE appears nowhere in esm/
+# outside the vendored dompurify.js, so monaco parses as text/html, where the
+# attributeName=href guard lowercases correctly.
+reason = "monaco vendors its own DOMPurify; flagged node_modules copy is never imported; PARSER_MEDIA_TYPE never set, so the guard runs in text/html mode"
 
 # --- katex via mermaid (docs site) ------------------------------------------
 # Fixed only in katex 0.18.2, and mermaid (11.17.2 here, 12.1.0 latest) still
