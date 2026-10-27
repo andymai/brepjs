@@ -76,6 +76,12 @@ describe('session query', () => {
     expect(ids({ id: 'ground/*/voids:*' })).toEqual(['ground/south/voids:entry']);
   });
 
+  it('folds case the same way on both sides', () => {
+    expect(globMatcher('ΟΣ', true)('ΟΣ')).toBe(true);
+    expect(globMatcher('İstanbul', true)('İstanbul')).toBe(true);
+    expect(globMatcher('i̇stanbul*', true)('İSTANBUL office')).toBe(true);
+  });
+
   it('matches backtracking-hostile globs in bounded time', () => {
     const started = Date.now();
     expect(globMatcher('*a'.repeat(30) + 'b')('a'.repeat(5000))).toBe(false);

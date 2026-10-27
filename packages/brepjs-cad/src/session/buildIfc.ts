@@ -33,6 +33,7 @@ interface ImportedElementLike {
   readonly spatialStructureExpressId?: number | undefined;
   readonly geometry: {
     readonly fidelity: string;
+    readonly completeness: string;
     readonly bounds: Bounds | null;
     readonly volumeMm3: number | null;
   };
@@ -53,7 +54,7 @@ interface ImportedSpatialNodeLike {
   readonly containedElements: readonly number[];
 }
 
-interface ImportedModelLike {
+export interface ImportedModelLike {
   readonly schema: string;
   readonly spatialTree: ImportedSpatialNodeLike | null;
   readonly elements: readonly ImportedElementLike[];
@@ -126,7 +127,7 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
     return failed('IFC_IMPORT_FAILED', errorMessage(e));
   }
   const diagnostics: BuildDiagnostic[] = [];
-  const { elements, root } = toRecords(model, diagnostics);
+  const { elements, root } = ifcRecords(model, diagnostics);
   return {
     outcome: {
       ok: true,
@@ -156,7 +157,12 @@ function splitPsets(psets: readonly ImportedPsetLike[]): {
   return out;
 }
 
-function toRecords(
+// fromIfc's per-element warnings for a Body that exists but did not (fully) reconstruct. An element
+// with no Body at all gets neither, so these are what separate failed geometry from absent geometry.
+const BODY_FAILURE_CODES = new Set(['BODY_RECONSTRUCTION_NONE', 'PARTIAL_BODY_RECONSTRUCTION']);
+
+/** Element records for an imported model; exported for tests. */
+export function ifcRecords(
   model: ImportedModelLike,
   diagnostics: BuildDiagnostic[]
 ): { elements: ElementRecord[]; root: string | undefined } {
@@ -215,6 +221,12 @@ function toRecords(
       filledBy.set(el.fills, [...(filledBy.get(el.fills) ?? []), el.expressId]);
   }
   const byExpressId = new Map(model.elements.map((e) => [e.expressId, e]));
+  const bodyFailures = new Map<number, string>();
+  for (const issue of model.diagnostics.issues) {
+    if (typeof issue.entity === 'number' && BODY_FAILURE_CODES.has(issue.code)) {
+      bodyFailures.set(issue.entity, issue.message);
+    }
+  }
 
   const out: ElementRecord[] = [];
   for (const n of nodes) {
@@ -273,6 +285,8 @@ function toRecords(
       relationships,
       hasGeometry: g.fidelity !== 'NONE',
       fidelity: g.fidelity,
+      completeness: g.completeness,
+      ...(bodyFailures.has(el.expressId) ? { geometryError: bodyFailures.get(el.expressId) } : {}),
       ...(g.bounds !== null ? { bounds: g.bounds } : {}),
       ...(g.volumeMm3 !== null ? { volume: g.volumeMm3 } : {}),
     });

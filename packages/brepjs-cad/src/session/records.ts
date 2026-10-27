@@ -57,6 +57,8 @@ export interface ElementRecord {
   readonly volume?: number | undefined;
   /** IFC: how faithfully the body was reconstructed. */
   readonly fidelity?: string | undefined;
+  /** IFC: whether every Body item reconstructed (COMPLETE, PARTIAL, NONE). */
+  readonly completeness?: string | undefined;
   readonly geometryError?: string | undefined;
 }
 

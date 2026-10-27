@@ -156,14 +156,17 @@ export function globMatcher(glob: string, ignoreCase = false): (text: string) =>
     throw new QueryError(`globs are limited to ${MAX_GLOB_LENGTH} characters`);
   }
   const fold = (x: string) => (ignoreCase ? x.toLowerCase() : x);
+  // Fold the whole pattern, as the text is folded whole: lowercasing is context-sensitive (final
+  // sigma) and can change length (İ), so folding one character at a time would not match.
+  const source = fold(glob);
   const tokens: GlobToken[] = [];
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i] as string;
-    if (c === '*' && glob[i + 1] === '*') {
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i] as string;
+    if (c === '*' && source[i + 1] === '*') {
       tokens.push({ kind: '**' });
       i++;
     } else if (c === '*' || c === '?') tokens.push({ kind: c });
-    else tokens.push({ kind: 'char', c: fold(c) });
+    else tokens.push({ kind: 'char', c });
   }
   return (raw) => {
     const text = fold(raw);
@@ -361,6 +364,7 @@ export function project(
     if (rec.bounds !== undefined) out['bounds'] = rec.bounds;
     if (rec.volume !== undefined) out['volume'] = rec.volume;
     if (rec.fidelity !== undefined) out['fidelity'] = rec.fidelity;
+    if (rec.completeness !== undefined) out['completeness'] = rec.completeness;
     if (rec.geometryError !== undefined) out['geometryError'] = rec.geometryError;
   }
   return out;
