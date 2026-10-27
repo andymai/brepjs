@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.190.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.189.0...brepjs-cad-v0.190.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** show BIM sessions in a live viewer the agent can drive ([#2467](https://github.com/andymai/brepjs/issues/2467)) ([1ace91e](https://github.com/andymai/brepjs/commit/1ace91e7b40ef51d4afa342d4f225824e77e7792))
+
 ## [0.189.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.188.0...brepjs-cad-v0.189.0) (2026-10-27)
 
 
