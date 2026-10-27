@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.188.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.187.0...brepjs-cad-v0.188.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** raise and read BCF issues on BIM sessions ([#2464](https://github.com/andymai/brepjs/issues/2464)) ([e838078](https://github.com/andymai/brepjs/commit/e83807854bfb44abe411879f691f07b5b2f7a07b))
+
 ## [0.187.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.186.0...brepjs-cad-v0.187.0) (2026-10-27)
 
 
