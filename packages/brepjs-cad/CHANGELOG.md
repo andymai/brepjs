@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.181.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.180.0...brepjs-cad-v0.181.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** add BIM session tools to brep-mcp ([#2443](https://github.com/andymai/brepjs/issues/2443)) ([f4865b0](https://github.com/andymai/brepjs/commit/f4865b059d61b7fc9147867477ff7a6c00cf1ac5))
+
 ## [0.180.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.179.0...brepjs-cad-v0.180.0) (2026-10-23)
 
 
