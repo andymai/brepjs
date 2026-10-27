@@ -1,4 +1,5 @@
 import type { BuildOutcome, SessionKind } from './records.js';
+import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { RenderRequest } from './render.js';
 
 /** Operations a session worker answers: each op's arguments and reply. */
@@ -13,7 +14,12 @@ export interface WorkerOps {
   };
   readonly render: {
     readonly args: RenderRequest;
-    readonly result: { readonly pngs: readonly Uint8Array[] };
+    /** `drawable` lists every id the payload carries a mesh for, so callers can count truly. */
+    readonly result: { readonly pngs: readonly Uint8Array[]; readonly drawable: readonly string[] };
+  };
+  readonly exportIfc: {
+    readonly args: ExportIfcArgs;
+    readonly result: ExportIfcOutcome;
   };
 }
 

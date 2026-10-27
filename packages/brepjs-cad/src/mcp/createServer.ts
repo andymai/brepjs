@@ -122,7 +122,24 @@ export function createBrepMcpServer(
       server.sendResourceListChanged().catch(() => {});
     },
   });
-  const tools = [...partTools(), ...sessionTools(sessions)];
+  const tools = [
+    ...partTools(),
+    ...sessionTools(sessions, {
+      version,
+      confirm: async (message) => {
+        if (!server.getClientCapabilities()?.elicitation) return 'unsupported';
+        const reply = await server.elicitInput({
+          message,
+          requestedSchema: {
+            type: 'object',
+            properties: { overwrite: { type: 'boolean', title: 'Overwrite', default: false } },
+            required: ['overwrite'],
+          },
+        });
+        return reply.action === 'accept' && reply.content?.['overwrite'] === true ? 'yes' : 'no';
+      },
+    }),
+  ];
   const byName = new Map(tools.map((t) => [t.name, t]));
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: listTools(tools) }));

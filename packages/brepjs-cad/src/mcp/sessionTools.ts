@@ -4,7 +4,9 @@
  * with counts, then fetch details), with the program on disk as the model's source of truth.
  */
 
-import { basename } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, join, parse as parsePath, resolve } from 'node:path';
 import type {
   CallToolResult,
   ReadResourceResult,
@@ -24,10 +26,12 @@ import type { BuildDiff } from '../session/diff.js';
 import type { BuildDiagnostic } from '../session/records.js';
 import type { RenderSection, RenderShot, RenderView } from '../session/render.js';
 import { COLOR_BY, planStyle, storeyPlan, type ColorBy } from '../session/style.js';
+import type { IfcProjectSpec } from '../session/bim.js';
 import { SessionError } from '../session/sessions.js';
 import type { Session, SessionManager } from '../session/sessions.js';
 import {
   ArgError,
+  errorResult,
   jsonResult,
   optionalBoolean,
   optionalCount,
@@ -43,6 +47,57 @@ const RENDER_TIMEOUT_MS = 120_000;
 const RENDER_VIEWS: readonly RenderView[] = ['iso', 'front', 'top', 'right'];
 const VIEW_MODES = ['solid', 'wireframe', 'xray'] as const;
 const MAX_SELECTION = 500;
+const MAX_NOT_DRAWN = 20;
+const EXPORT_TIMEOUT_MS = 300_000;
+const MAX_GLOBAL_IDS = 500;
+const MAX_EXPORT_ISSUES = 50;
+
+/** What the session tools need from the server they run in. */
+export interface SessionToolHost {
+  /** The package version, written into exported files. */
+  readonly version: string;
+  /** Ask the person at the client a yes/no question, when the client can show one. */
+  confirm(message: string): Promise<'yes' | 'no' | 'unsupported'>;
+}
+
+/** The project scoping an export's GlobalIds: the nearest package.json name, else the file's. */
+function defaultProject(modelPath: string): IfcProjectSpec {
+  let dir = dirname(modelPath);
+  const root = parsePath(dir).root;
+  for (;;) {
+    const pkg = join(dir, 'package.json');
+    if (existsSync(pkg)) {
+      try {
+        const name = (JSON.parse(readFileSync(pkg, 'utf8')) as { name?: unknown }).name;
+        if (typeof name === 'string' && name !== '') return { name, projectId: name };
+      } catch {
+        // an unreadable package.json names nothing; keep walking
+      }
+    }
+    if (dir === root) break;
+    dir = dirname(dir);
+  }
+  const name = basename(modelPath, extname(modelPath));
+  return { name, projectId: name };
+}
+
+function parseProject(raw: unknown, fallback: IfcProjectSpec): IfcProjectSpec {
+  if (raw === undefined) return fallback;
+  if (!isRecord(raw)) throw new ArgError('"project" must be an object');
+  const name = optionalString(raw, 'name') ?? fallback.name;
+  const projectId = optionalString(raw, 'projectId') ?? name;
+  const description = optionalString(raw, 'description');
+  return { name, projectId, ...(description !== undefined ? { description } : {}) };
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 const MAX_IDS = 200;
@@ -199,7 +254,7 @@ function imageResult(digest: unknown, pngs: readonly Uint8Array[]): CallToolResu
   };
 }
 
-export function sessionTools(sessions: SessionManager): ToolDef[] {
+export function sessionTools(sessions: SessionManager, host: SessionToolHost): ToolDef[] {
   return [
     {
       name: 'open_model',
@@ -461,7 +516,7 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
             ...(planInfo ? { plan: planInfo } : {}),
             ...(section ? { section } : {}),
           };
-          if (style.drawn === 0) return { meta: digest };
+          if (style.drawn === 0) return { meta: { digest, drawnIds: style.drawnIds } };
           const shots: RenderShot[] = shotViews.map((view) => ({
             view,
             ...(viewMode !== undefined ? { viewMode } : {}),
@@ -470,7 +525,7 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
           }));
           return {
             request: { shots, ...(style.style ? { style: style.style } : {}), dims },
-            meta: digest,
+            meta: { digest, drawnIds: style.drawnIds },
           };
         });
         if (result.pngs === undefined) {
@@ -478,12 +533,130 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
             {
               error: 'NOTHING_TO_DRAW',
               message: 'the selection leaves no element with drawable geometry',
-              ...result.meta,
+              ...result.meta.digest,
             },
             true
           );
         }
-        return imageResult(result.meta, result.pngs);
+        // Records can't see a mesh that fails only when the worker builds the picture; count
+        // against what was actually drawn.
+        const notDrawn = [...result.meta.drawnIds].filter((id) => !result.drawable?.has(id));
+        return imageResult(
+          {
+            ...result.meta.digest,
+            drawn: result.meta.drawnIds.size - notDrawn.length,
+            ...(notDrawn.length > 0 ? { notDrawn: notDrawn.slice(0, MAX_NOT_DRAWN) } : {}),
+          },
+          result.pngs
+        );
+      },
+    },
+    {
+      name: 'export_ifc',
+      title: 'Export IFC',
+      description:
+        "Write a families session's current build to an .ifc file through brepjs-bim's validated export (referential integrity, schema, and a write-read-write round trip). Returns the validation report with each issue mapped to a key path, the elements exported as IfcBuildingElementProxy because no IFC type matched, and the GlobalId of every exported key path. GlobalIds are scoped by the project id, which defaults to the nearest package.json name, so keep it the same across exports. If outPath exists you are asked before it is replaced; clients that cannot ask need overwrite: true. IFC sessions cannot be exported.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          sessionId: SESSION_ID,
+          expectBuild: EXPECT_BUILD,
+          outPath: {
+            type: 'string',
+            description:
+              'Where to write the file, ending in .ifc; relative paths resolve against the server cwd.',
+          },
+          project: {
+            type: 'object',
+            description: 'IfcProject name, id and description. projectId defaults to the name.',
+            properties: {
+              name: { type: 'string' },
+              projectId: { type: 'string' },
+              description: { type: 'string' },
+            },
+          },
+          proxies: {
+            type: 'boolean',
+            description:
+              'Export elements without an IFC route as IfcBuildingElementProxy (default true). false makes them fail the export.',
+          },
+          overwrite: { type: 'boolean', description: 'Replace an existing file without asking.' },
+          timeoutMs: {
+            type: 'number',
+            description: `Export budget in ms (default ${EXPORT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
+          },
+        },
+        required: ['sessionId', 'outPath'],
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      handler: async (a) => {
+        const sessionId = requireString(a, 'sessionId');
+        const expectBuild = optionalString(a, 'expectBuild');
+        const outArg = requireString(a, 'outPath');
+        if (extname(outArg).toLowerCase() !== '.ifc')
+          throw new ArgError('"outPath" must end in .ifc');
+        const out = resolve(sessions.cwd, outArg);
+        const s = sessions.get(sessionId);
+        const project = parseProject(a['project'], defaultProject(s.path));
+        const proxies = optionalBoolean(a, 'proxies') ?? true;
+        const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? EXPORT_TIMEOUT_MS;
+        if (optionalBoolean(a, 'overwrite') !== true && (await fileExists(out))) {
+          const answer = await host.confirm(
+            `${out} already exists. Replace it with an IFC export of ${basename(s.path)}?`
+          );
+          if (answer === 'unsupported') {
+            return errorResult(
+              'FILE_EXISTS',
+              `${out} already exists; pass overwrite: true to replace it`,
+              {
+                path: out,
+              }
+            );
+          }
+          if (answer === 'no') {
+            return jsonResult(
+              { ok: false, written: false, path: out, reason: 'overwrite declined' },
+              true
+            );
+          }
+        }
+        const { session, outcome } = await sessions.exportIfc(
+          sessionId,
+          { project, proxies, applicationVersion: host.version },
+          { timeoutMs, expectBuild }
+        );
+        if (!outcome.ok) {
+          return jsonResult(
+            { ok: false, sessionId, written: false, ...diagnostics(outcome.diagnostics) },
+            true
+          );
+        }
+        await mkdir(dirname(out), { recursive: true });
+        await writeFile(out, outcome.bytes);
+        const errors = outcome.issues.filter((i) => i.severity === 'error').length;
+        const warnings = outcome.issues.filter((i) => i.severity === 'warning').length;
+        const ids = Object.entries(outcome.globalIds);
+        return jsonResult(
+          {
+            ok: errors === 0,
+            sessionId,
+            buildHash: session.build.buildHash,
+            written: true,
+            path: out,
+            bytes: outcome.bytes.byteLength,
+            project,
+            ...(outcome.proxied.length > 0 ? { proxied: outcome.proxied } : {}),
+            validation: { errors, warnings, ...cap(outcome.issues, MAX_EXPORT_ISSUES, 'issues') },
+            globalIds: Object.fromEntries(ids.slice(0, MAX_GLOBAL_IDS)),
+            ...(ids.length > MAX_GLOBAL_IDS ? { globalIdsTotal: ids.length } : {}),
+          },
+          errors > 0
+        );
       },
     },
     {

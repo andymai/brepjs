@@ -1,10 +1,9 @@
 import type { AnyShape } from 'brepjs';
 import type { EvaluatedNodeLike, PreviewModelPayload } from 'brepjs-viewer';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { previewBuildOf, resolveProjectPackageEntry, tryMeshEdges } from '../preview/evaluate.js';
+import { previewBuildOf, tryMeshEdges } from '../preview/evaluate.js';
 import { initOcctWasm, loadBrep, type BrepNs } from '../verify/brepjsRuntime.js';
+import { importBim } from './bim.js';
 import type { WorkerBuild } from './buildFamilies.js';
 import {
   errorMessage,
@@ -18,8 +17,7 @@ import {
   type StoreyRef,
 } from './records.js';
 
-// Structural views of brepjs-bim: like brepjs-families, it is imported from the user's project at
-// runtime, so brepjs-cad carries no dependency on it.
+// Structural views of brepjs-bim's imported model (bim.ts says why they are structural).
 interface ImportedPsetLike {
   readonly name: string;
   readonly isQuantity: boolean;
@@ -74,32 +72,6 @@ export interface ImportedModelLike {
     }[];
   };
   readonly applicationName?: string | undefined;
-}
-
-interface BimNs {
-  fromIfc(
-    bytes: Uint8Array
-  ): Promise<{ ok: true; value: ImportedModelLike } | { ok: false; error: unknown }>;
-  disposeImportedModel(model: ImportedModelLike): void;
-}
-
-async function importBim(ifcPath: string): Promise<BimNs | undefined> {
-  try {
-    // Typed through BimNs so a brepjs-bim API change that breaks these structural views fails typecheck.
-    const bim: BimNs = await import('brepjs-bim');
-    return bim;
-  } catch {
-    for (const from of [ifcPath, join(process.cwd(), 'package.json')]) {
-      const abs = resolveProjectPackageEntry('brepjs-bim', from);
-      if (abs === undefined) continue;
-      try {
-        return (await import(pathToFileURL(abs).href)) as BimNs;
-      } catch {
-        // try the next anchor
-      }
-    }
-    return undefined;
-  }
 }
 
 function failed(code: string, message: string): WorkerBuild {

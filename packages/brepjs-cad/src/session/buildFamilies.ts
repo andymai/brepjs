@@ -12,6 +12,8 @@ import {
   type ResolvedElementLike,
 } from '../preview/evaluate.js';
 import { toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
+import { importBim } from './bim.js';
+import { exportFamiliesIfc, type ExportIfcArgs, type ExportIfcOutcome } from './exportIfc.js';
 import { typecheckPart } from '../verify/typecheck.js';
 import {
   boundsOfPositions,
@@ -34,6 +36,8 @@ export interface WorkerBuild {
   dispose(): void;
   /** The merged render payload, keyed by record id; built on first use. Successful builds only. */
   payload?(): PreviewModelPayload;
+  /** Families builds only: the model as IFC. */
+  exportIfc?(args: ExportIfcArgs): Promise<ExportIfcOutcome>;
 }
 
 const NOTHING_TO_DISPOSE = (): void => {};
@@ -107,6 +111,22 @@ export async function buildFamilies(
           familiesNodes(brep, model.byKeyPath),
           previewTree(resolved)
         ).payload),
+      exportIfc: async (args) => {
+        const bim = await importBim(entryPath);
+        if (bim === undefined) {
+          return {
+            ok: false,
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'BIM_MISSING',
+                message: "IFC export needs 'brepjs-bim' and 'web-ifc' installed in this project",
+              },
+            ],
+          };
+        }
+        return exportFamiliesIfc(bim, resolved, evaluator, args);
+      },
     };
   } catch (e) {
     evaluator[Symbol.dispose]();

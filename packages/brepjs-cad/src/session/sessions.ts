@@ -10,6 +10,8 @@ import {
   type ElementRecord,
   type SessionKind,
 } from './records.js';
+import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
+import type { WorkerOps } from './protocol.js';
 import type { RenderRequest } from './render.js';
 import { sourceSetOf, type SourceSet } from './sources.js';
 import { SessionWorker, WorkerError } from './workerClient.js';
@@ -137,6 +139,11 @@ export class SessionManager {
     this.#maxMemoryMb = opts.maxMemoryMb;
     this.#cwd = opts.cwd ?? process.cwd();
     this.#onChange = opts.onChange;
+  }
+
+  /** Where relative paths from tool arguments resolve. */
+  get cwd(): string {
+    return this.#cwd;
   }
 
   get maxSessions(): number {
@@ -324,37 +331,86 @@ export class SessionManager {
   ): Promise<{
     readonly session: Session;
     readonly pngs?: readonly Uint8Array[];
+    /** Ids the render payload carries a mesh for. */
+    readonly drawable?: ReadonlySet<string>;
     readonly meta: T;
   }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'render', async (session) => {
+      const { request, meta } = prepare(session);
+      if (request === undefined) return { session, meta };
+      const { pngs, drawable } = await this.#request(session, 'render', request, opts.timeoutMs);
+      return { session, pngs, drawable: new Set(drawable), meta };
+    });
+  }
+
+  /** Write a families session's current build as IFC bytes; IFC sessions cannot be re-exported. */
+  exportIfc(
+    id: string,
+    args: ExportIfcArgs,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
+  ): Promise<{ readonly session: Session; readonly outcome: ExportIfcOutcome }> {
     const session = this.get(id);
-    const run = session.queue.then(async () => {
+    if (session.kind === 'ifc') {
+      throw new SessionError(
+        'UNSUPPORTED',
+        `session ${id} is an imported IFC file; brepjs-bim has no path from an imported model back to one it can write, so open the families program instead`
+      );
+    }
+    return this.#onCurrentBuild(id, opts.expectBuild, 'export', async (s) => ({
+      session: s,
+      outcome: await this.#request(s, 'exportIfc', args, opts.timeoutMs),
+    }));
+  }
+
+  /**
+   * Run `fn` on the session's turn in its queue, after any rebuild ahead of it, so it sees the
+   * build it acts on; `expectBuild` is checked at that point.
+   */
+  #onCurrentBuild<R>(
+    id: string,
+    expectBuild: string | undefined,
+    what: string,
+    fn: (session: Session) => Promise<R>
+  ): Promise<R> {
+    const session = this.get(id);
+    const run = session.queue.then(() => {
       if (!this.#sessions.has(session.id)) {
         throw new SessionError(
           'NO_SUCH_SESSION',
-          `session '${session.id}' was closed before the render`
+          `session '${session.id}' was closed before the ${what}`
         );
       }
-      this.#checkBuild(session, opts.expectBuild);
-      const { request, meta } = prepare(session);
-      if (request === undefined) return { session, meta };
-      const worker = session.worker;
-      if (!worker?.alive) {
-        throw new SessionError(
-          'WORKER_STOPPED',
-          `session ${id} has no running worker; call rebuild to start one`
-        );
-      }
-      try {
-        const { pngs } = await worker.request('render', request, opts.timeoutMs);
-        return { session, pngs, meta };
-      } catch (e) {
-        const stopped =
-          e instanceof WorkerError ? '; the worker stopped, so rebuild before rendering again' : '';
-        throw new SessionError('RENDER_FAILED', `${errorMessage(e)}${stopped}`);
-      }
+      this.#checkBuild(session, expectBuild);
+      return fn(session);
     });
     session.queue = run.catch(() => undefined);
     return run;
+  }
+
+  /** A request to the session's live worker. A timeout stops the worker; rebuild starts a new one. */
+  async #request<K extends 'render' | 'exportIfc'>(
+    session: Session,
+    op: K,
+    args: WorkerOps[K]['args'],
+    timeoutMs: number
+  ): Promise<WorkerOps[K]['result']> {
+    const worker = session.worker;
+    if (!worker?.alive) {
+      throw new SessionError(
+        'WORKER_STOPPED',
+        `session ${session.id} has no running worker; call rebuild to start one`
+      );
+    }
+    try {
+      return await worker.request(op, args, timeoutMs);
+    } catch (e) {
+      const stopped =
+        e instanceof WorkerError ? '; the worker stopped, so rebuild before trying again' : '';
+      throw new SessionError(
+        op === 'render' ? 'RENDER_FAILED' : 'EXPORT_FAILED',
+        `${errorMessage(e)}${stopped}`
+      );
+    }
   }
 
   close(id: string): void {

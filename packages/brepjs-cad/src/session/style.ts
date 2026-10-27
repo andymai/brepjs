@@ -42,6 +42,7 @@ export interface StylePlan {
   readonly legend: readonly LegendEntry[];
   /** Requested ids or globs that matched nothing. */
   readonly unmatched: readonly string[];
+  readonly drawnIds: ReadonlySet<string>;
 }
 
 /**
@@ -149,7 +150,14 @@ export function planStyle(records: readonly ElementRecord[], req: StyleRequest):
     focus = new Set([...s.ids].filter((id) => drawn.has(id)));
   }
   if (!limited && focus === undefined && req.colorBy === undefined) {
-    return { style: undefined, drawn: drawn.size, highlighted: 0, legend: [], unmatched };
+    return {
+      style: undefined,
+      drawn: drawn.size,
+      drawnIds: drawn,
+      highlighted: 0,
+      legend: [],
+      unmatched,
+    };
   }
 
   const colored = geometry.filter((r) => (focus ?? drawn).has(r.id));
@@ -171,6 +179,7 @@ export function planStyle(records: readonly ElementRecord[], req: StyleRequest):
   return {
     style: { layers, others: limited ? 'hidden' : 'ghost' },
     drawn: drawn.size,
+    drawnIds: drawn,
     highlighted: focus?.size ?? 0,
     legend,
     unmatched,

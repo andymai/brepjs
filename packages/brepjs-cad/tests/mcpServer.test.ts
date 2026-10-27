@@ -46,6 +46,7 @@ describe('brep-mcp server', () => {
       'rebuild',
       'get_diff',
       'render_view',
+      'export_ifc',
       'query_elements',
       'get_elements',
     ]);

@@ -33,7 +33,14 @@ async function handle(req: WorkerRequest): Promise<void> {
         const payload = current?.payload?.();
         if (payload === undefined) throw new Error('this worker holds no build to render');
         const pngs = await renderPayload(payload, req.args);
-        send({ type: 'reply', id: req.id, result: { pngs } });
+        const drawable = payload.elements.map((e) => e.keyPath);
+        send({ type: 'reply', id: req.id, result: { pngs, drawable } });
+        return;
+      }
+      case 'exportIfc': {
+        if (current?.exportIfc === undefined)
+          throw new Error('this session cannot be exported to IFC');
+        send({ type: 'reply', id: req.id, result: await current.exportIfc(req.args) });
         return;
       }
     }
