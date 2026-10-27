@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.184.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.183.0...brepjs-cad-v0.184.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** search the bundled reference and add BIM prompts ([#2452](https://github.com/andymai/brepjs/issues/2452)) ([c53d99c](https://github.com/andymai/brepjs/commit/c53d99c89743916d0b298795d5403d7e32a84721))
+
 ## [0.183.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.182.0...brepjs-cad-v0.183.0) (2026-10-27)
 
 
