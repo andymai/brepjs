@@ -437,4 +437,49 @@ describe('importDXF entity types', () => {
       w[Symbol.dispose]();
     }
   });
+
+  const arc = (r: number, start: number, end: number) =>
+    [
+      '0',
+      'SECTION',
+      '2',
+      'ENTITIES',
+      '0',
+      'ARC',
+      '8',
+      '0',
+      '10',
+      '0',
+      '20',
+      '0',
+      '30',
+      '0',
+      '40',
+      String(r),
+      '50',
+      String(start),
+      '51',
+      String(end),
+      '0',
+      'ENDSEC',
+      '0',
+      'EOF',
+    ].join('\n');
+
+  it('keeps a shallow arc exact and an edge just over the kernel tolerance', async () => {
+    // Radius 1e6 through 1e-8 rad: three sampled points on it would round onto a line.
+    const [shallow] = unwrap(await importDXF(new Blob([arc(1e6, 0, 5.729577951308232e-7)])));
+    expect(shallow && curveLength(shallow)).toBeCloseTo(0.01, 9);
+    const short = exportDXF([{ type: 'LINE', start: [0, 0], end: [5e-7, 0] }]);
+    const [line] = unwrap(await importDXF(new Blob([short])));
+    expect(line && curveLength(line)).toBeCloseTo(5e-7, 12);
+    for (const w of [shallow, line]) w?.[Symbol.dispose]();
+  });
+
+  it('normalizes any arc angle in one step', async () => {
+    // A start angle this large once looped forever adding turns that no longer changed it.
+    const result = await importDXF(new Blob([arc(5, 1e20, 0)]));
+    expect(isOk(result)).toBe(true);
+    for (const w of unwrap(result)) w[Symbol.dispose]();
+  });
 });

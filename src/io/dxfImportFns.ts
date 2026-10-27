@@ -163,8 +163,18 @@ function polyVertices(entity: DXFEntity): PolylineVertex[] {
 // Entity -> edge pieces
 // ---------------------------------------------------------------------------
 
-// Endpoints closer than this, in drawing units, are one point when edges are chained.
-const JOIN_TOL = 1e-6;
+// Points closer than this, in drawing units, are one point: an edge shorter is dropped, and
+// endpoints this close are chained. It is OCCT's confusion tolerance, below which no kernel
+// builds an edge either.
+const JOIN_TOL = 1e-7;
+const TURN = 2 * Math.PI;
+
+interface Ocs {
+  readonly normal: Point3;
+  /** The default extrusion: OCS and world coordinates are the same. */
+  readonly identity: boolean;
+  toWorld(p: Point3): Point3;
+}
 
 function cross(a: Point3, b: Point3): Point3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -180,16 +190,17 @@ function unit(v: Point3): Point3 {
  * arbitrary axis algorithm. Planar entities (circles, arcs, 2D polylines) store their points in
  * it; the default extrusion +Z makes it the world frame.
  */
-function ocsOf(data: Map<number, string>): { normal: Point3; toWorld: (p: Point3) => Point3 } {
+function ocsOf(data: Map<number, string>): Ocs {
   const normal = unit([getNum(data, 210), getNum(data, 220), getNum(data, 230, 1)]);
   if (normal[0] === 0 && normal[1] === 0 && normal[2] > 0) {
-    return { normal: [0, 0, 1], toWorld: (p) => p };
+    return { normal: [0, 0, 1], identity: true, toWorld: (p) => p };
   }
   const nearZ = Math.abs(normal[0]) < 1 / 64 && Math.abs(normal[1]) < 1 / 64;
   const ax = unit(cross(nearZ ? [0, 1, 0] : [0, 0, 1], normal));
   const ay = unit(cross(normal, ax));
   return {
     normal,
+    identity: false,
     toWorld: ([x, y, z]) => [
       ax[0] * x + ay[0] * y + normal[0] * z,
       ax[1] * x + ay[1] * y + normal[1] * z,
@@ -206,23 +217,45 @@ function linePiece(a: Point3, b: Point3): Piece {
   return { start: a, end: b, build: () => getKernel().makeLineEdge(a, b) };
 }
 
-function arcPiece(a: Point3, mid: Point3, b: Point3): Piece {
-  return { start: a, end: b, build: () => getKernel().makeArcEdge(a, mid, b) };
+/**
+ * An arc about OCS center `c`, counterclockwise from angle `from` through `sweep` (0, 2π]. In the
+ * default OCS, which is most files, it's built from its center and angles, which stays exact for a
+ * shallow arc; in a rotated OCS, whose in-plane axes the kernel doesn't share, it goes through
+ * three points on it.
+ */
+function arcPiece(c: Point3, r: number, from: number, sweep: number, ocs: Ocs): Piece {
+  const on = (t: number): Point3 =>
+    ocs.toWorld([c[0] + r * Math.cos(t), c[1] + r * Math.sin(t), c[2]]);
+  const start = on(from);
+  const end = on(from + sweep);
+  if (ocs.identity) {
+    return {
+      start,
+      end,
+      build: () => getKernel().makeCircleArc(c, [0, 0, 1], r, from, from + sweep),
+    };
+  }
+  const mid = on(from + sweep / 2);
+  return { start, end, build: () => getKernel().makeArcEdge(start, mid, end) };
 }
 
 /**
- * A polyline segment in its OCS: straight, or the arc a bulge describes. The arc's midpoint lies
- * the sagitta (bulge × half the chord) off the chord's midpoint, to the right of the chord for a
- * positive (counterclockwise) bulge.
+ * A polyline segment in its OCS: straight, or the arc a bulge describes. A bulge is tan(θ/4) of
+ * the arc's included angle θ, counterclockwise when positive; the center sits off the chord's
+ * midpoint by half the chord times cot(θ/2), to the left of the chord for a positive bulge.
  */
-function segment(a: Point3, b: Point3, bulge: number, toWorld: (p: Point3) => Point3): Piece {
-  if (bulge === 0) return linePiece(toWorld(a), toWorld(b));
+function segment(a: Point3, b: Point3, bulge: number, ocs: Ocs): Piece {
+  if (bulge === 0) return linePiece(ocs.toWorld(a), ocs.toWorld(b));
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const d = Math.hypot(dx, dy);
-  const s = (bulge * d) / 2;
-  const mid: Point3 = [(a[0] + b[0]) / 2 + (dy / d) * s, (a[1] + b[1]) / 2 - (dx / d) * s, a[2]];
-  return arcPiece(toWorld(a), toWorld(mid), toWorld(b));
+  const theta = 4 * Math.atan(bulge);
+  const h = d / 2 / Math.tan(theta / 2);
+  const c: Point3 = [(a[0] + b[0]) / 2 - (dy / d) * h, (a[1] + b[1]) / 2 + (dx / d) * h, a[2]];
+  const r = d / 2 / Math.abs(Math.sin(theta / 2));
+  // A clockwise arc is the counterclockwise one from its far end.
+  const [p, sweep] = theta > 0 ? [a, theta] : [b, -theta];
+  return arcPiece(c, r, Math.atan2(p[1] - c[1], p[0] - c[0]), sweep, ocs);
 }
 
 // POLYLINE flag bits: 1 closed, 8 a 3D polyline, 16 a polygon mesh, 64 a polyface mesh.
@@ -235,7 +268,9 @@ function polylinePieces(entity: DXFEntity): Piece[] {
   // A mesh's vertices are grid or face records, not an outline to connect.
   if (entity.type === 'POLYLINE' && (flags & MESH_FORMS) !== 0) return [];
   const is3d = entity.type === 'POLYLINE' && (flags & POLYLINE_3D) !== 0;
-  const { toWorld } = is3d ? { toWorld: (p: Point3) => p } : ocsOf(entity.data);
+  const ocs: Ocs = is3d
+    ? { normal: [0, 0, 1], identity: true, toWorld: (p) => p }
+    : ocsOf(entity.data);
   // A 2D POLYLINE keeps its elevation on the header; its vertices are in the OCS plane.
   const elevation = entity.type === 'POLYLINE' && !is3d ? getNum(entity.data, 30) : undefined;
   const vertices = polyVertices(entity).map((v) =>
@@ -248,7 +283,7 @@ function polylinePieces(entity: DXFEntity): Piece[] {
     const a = vertices[k];
     const b = vertices[(k + 1) % vertices.length];
     if (!a || !b || !apart(a.point, b.point)) continue;
-    pieces.push(segment(a.point, b.point, is3d ? 0 : a.bulge, toWorld));
+    pieces.push(segment(a.point, b.point, is3d ? 0 : a.bulge, ocs));
   }
   return pieces;
 }
@@ -264,22 +299,24 @@ function entityToPieces(entity: DXFEntity): Piece[] {
   }
 
   if (type === 'CIRCLE' || type === 'ARC') {
-    const { normal, toWorld } = ocsOf(data);
+    const ocs = ocsOf(data);
     const c: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
     const r = getNum(data, 40);
-    if (r <= 0) return [];
-    const on = (t: number): Point3 =>
-      toWorld([c[0] + r * Math.cos(t), c[1] + r * Math.sin(t), c[2]]);
+    if (!(r > JOIN_TOL) || !Number.isFinite(r)) return [];
     if (type === 'CIRCLE') {
-      const center = toWorld(c);
-      const at = on(0);
-      return [{ start: at, end: at, build: () => getKernel().makeCircleEdge(center, normal, r) }];
+      const center = ocs.toWorld(c);
+      const at = ocs.toWorld([c[0] + r, c[1], c[2]]);
+      return [
+        { start: at, end: at, build: () => getKernel().makeCircleEdge(center, ocs.normal, r) },
+      ];
     }
     // An arc runs counterclockwise about the extrusion from its start angle to its end angle.
     const from = (getNum(data, 50) * Math.PI) / 180;
-    let sweep = (getNum(data, 51) * Math.PI) / 180 - from;
-    while (sweep <= 0) sweep += 2 * Math.PI;
-    return [arcPiece(on(from), on(from + sweep / 2), on(from + sweep))];
+    const to = (getNum(data, 51) * Math.PI) / 180;
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return [];
+    let sweep = (to - from) % TURN;
+    if (sweep <= 0) sweep += TURN;
+    return [arcPiece(c, r, from % TURN, sweep, ocs)];
   }
 
   if (type === 'LWPOLYLINE' || type === 'POLYLINE') return polylinePieces(entity);
