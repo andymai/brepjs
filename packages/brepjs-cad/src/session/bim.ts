@@ -34,6 +34,86 @@ export interface IfcProjectSpec {
   readonly description?: string;
 }
 
+export type BcfVectorLike = readonly [number, number, number];
+
+export type BcfCameraLike =
+  | {
+      readonly kind: 'ORTHOGONAL';
+      readonly viewPoint: BcfVectorLike;
+      readonly direction: BcfVectorLike;
+      readonly upVector: BcfVectorLike;
+      readonly viewToWorldScale: number;
+      readonly aspectRatio: number;
+    }
+  | {
+      readonly kind: 'PERSPECTIVE';
+      readonly viewPoint: BcfVectorLike;
+      readonly direction: BcfVectorLike;
+      readonly upVector: BcfVectorLike;
+      readonly fieldOfView: number;
+      readonly aspectRatio: number;
+    };
+
+export interface BcfComponentLike {
+  readonly ifcGuid?: string | undefined;
+  readonly originatingSystem?: string | undefined;
+  readonly authoringToolId?: string | undefined;
+}
+
+export interface BcfViewpointLike {
+  readonly guid: string;
+  readonly viewpointFile?: string | undefined;
+  readonly snapshotFile?: string | undefined;
+  readonly components?:
+    | {
+        readonly selection?: readonly BcfComponentLike[] | undefined;
+        readonly coloring?:
+          | readonly { readonly color: string; readonly components: readonly BcfComponentLike[] }[]
+          | undefined;
+        readonly visibility?:
+          | {
+              readonly defaultVisibility: boolean;
+              readonly exceptions?: readonly BcfComponentLike[] | undefined;
+            }
+          | undefined;
+      }
+    | undefined;
+  readonly camera?: BcfCameraLike | undefined;
+}
+
+export interface BcfCommentLike {
+  readonly guid: string;
+  readonly date: string;
+  readonly author: string;
+  readonly comment: string;
+  readonly viewpointRef?: string | undefined;
+}
+
+export interface BcfTopicLike {
+  readonly guid: string;
+  readonly title: string;
+  readonly topicType?: string | undefined;
+  readonly topicStatus?: string | undefined;
+  readonly priority?: string | undefined;
+  readonly labels?: readonly string[] | undefined;
+  readonly creationDate?: string | undefined;
+  readonly creationAuthor?: string | undefined;
+  readonly modifiedDate?: string | undefined;
+  readonly modifiedAuthor?: string | undefined;
+  readonly description?: string | undefined;
+  readonly assignedTo?: string | undefined;
+  readonly dueDate?: string | undefined;
+  readonly comments: readonly BcfCommentLike[];
+  readonly viewpoints: readonly BcfViewpointLike[];
+  readonly relatedTopics?: readonly string[] | undefined;
+}
+
+export interface BcfContainerLike {
+  readonly version: { readonly versionId: '3.0' };
+  readonly project: { readonly projectId: string; readonly name: string };
+  readonly topics: readonly BcfTopicLike[];
+}
+
 export interface BimNs {
   fromIfc(
     bytes: Uint8Array,
@@ -61,6 +141,8 @@ export interface BimNs {
     solids: unknown,
     entity?: string
   ): { readonly issues: readonly BimIssueLike[] };
+  serializeBcfFiles(data: BcfContainerLike): Map<string, string>;
+  parseBcfFiles(files: Map<string, string>): BimResult<BcfContainerLike>;
   toIfcValidated(
     model: BimModelLike,
     meta: { readonly applicationName: string; readonly applicationVersion: string }

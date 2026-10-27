@@ -42,8 +42,8 @@ import {
 } from './registry.js';
 
 export const MAX_TIMEOUT_MS = 600_000;
-const RENDER_TIMEOUT_MS = 120_000;
-const RENDER_VIEWS: readonly RenderView[] = ['iso', 'front', 'top', 'right'];
+export const RENDER_TIMEOUT_MS = 120_000;
+export const RENDER_VIEWS: readonly RenderView[] = ['iso', 'front', 'top', 'right'];
 const VIEW_MODES = ['solid', 'wireframe', 'xray'] as const;
 const MAX_SELECTION = 500;
 const MAX_NOT_DRAWN = 20;
@@ -212,7 +212,7 @@ function overview(s: Session): Record<string, unknown> {
 }
 
 /** A record by its id, or by the GlobalId the last export gave it. */
-function lookup(s: Session, id: string): ElementRecord | undefined {
+export function lookup(s: Session, id: string): ElementRecord | undefined {
   return s.build.index.get(id) ?? s.build.index.get(s.exported?.keyPathOf.get(id) ?? '');
 }
 
@@ -241,7 +241,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-function oneOf<T extends string>(
+export function oneOf<T extends string>(
   a: Record<string, unknown>,
   key: string,
   allowed: readonly T[]
@@ -289,7 +289,7 @@ function parsePlan(raw: unknown): { storey: string; cutHeight?: number } | undef
   return { storey: raw['storey'], ...(cutHeight !== undefined ? { cutHeight } : {}) };
 }
 
-function imageResult(digest: unknown, pngs: readonly Uint8Array[]): CallToolResult {
+export function imageResult(digest: unknown, pngs: readonly Uint8Array[]): CallToolResult {
   return {
     content: [
       { type: 'text', text: JSON.stringify(digest) },

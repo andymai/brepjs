@@ -21,6 +21,7 @@ import type { Confirm } from './output.js';
 import { listReferenceResources, readReferenceResource, referenceTools } from './referenceTools.js';
 import { scheduleTools } from './scheduleTools.js';
 import { checkTools } from './checkTools.js';
+import { issueTools } from './issueTools.js';
 import { ArgError, errorResult, listTools, type ToolArgs, type ToolDef } from './registry.js';
 import {
   listSessionResources,
@@ -150,6 +151,7 @@ export function createBrepMcpServer(
     ...sessionTools(sessions, { version, allowCode: features.allowCode === true, confirm }),
     ...scheduleTools(sessions, confirm),
     ...checkTools(sessions),
+    ...issueTools(sessions, confirm),
     ...referenceTools(reference),
   ];
   const byName = new Map(tools.map((t) => [t.name, t]));

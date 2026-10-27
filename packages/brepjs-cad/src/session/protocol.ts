@@ -3,7 +3,7 @@ import type { EvalOutcome } from './evalCode.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { QuantitiesOutcome } from './quantities.js';
 import type { CheckName, ValidateOutcome } from './validate.js';
-import type { RenderRequest } from './render.js';
+import type { RenderRequest, ShotCamera } from './render.js';
 
 /** Operations a session worker answers: each op's arguments and reply. */
 export interface WorkerOps {
@@ -18,7 +18,11 @@ export interface WorkerOps {
   readonly render: {
     readonly args: RenderRequest;
     /** `drawable` lists every id the payload carries a mesh for, so callers can count truly. */
-    readonly result: { readonly pngs: readonly Uint8Array[]; readonly drawable: readonly string[] };
+    readonly result: {
+      readonly pngs: readonly Uint8Array[];
+      readonly cameras: readonly (ShotCamera | null)[];
+      readonly drawable: readonly string[];
+    };
   };
   readonly exportIfc: {
     readonly args: ExportIfcArgs;

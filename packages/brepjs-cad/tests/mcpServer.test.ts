@@ -53,6 +53,8 @@ describe('brep-mcp server', () => {
       'schedule',
       'validate_model',
       'compare_models',
+      'create_issue',
+      'read_issues',
       'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({
@@ -66,9 +68,14 @@ describe('brep-mcp server', () => {
       'rebuild',
       'get_diff',
       'render_view',
+      'read_issues',
     ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
+    expect(byName.get('create_issue')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+    });
   });
 
   it('opens a model, queries it, and serves its tree and elements as resources', async () => {
@@ -219,6 +226,8 @@ describe('brep-mcp server', () => {
       'edit-and-verify',
       'quantity-takeoff',
       'compare-revisions',
+      'ifc-review',
+      'model-check',
     ]);
     const inspect = await client.getPrompt({
       name: 'inspect-building',
@@ -230,5 +239,13 @@ describe('brep-mcp server', () => {
     await expect(
       client.getPrompt({ name: 'edit-and-verify', arguments: { sessionId: 's1' } })
     ).rejects.toThrow(/needs change/);
+    const check = async (args: Record<string, string>) => {
+      const r = await client.getPrompt({ name: 'model-check', arguments: args });
+      return (r.messages[0]?.content as { text: string }).text;
+    };
+    expect(await check({ sessionId: 's1', issues: 'review.bcf' })).toContain(
+      'read_issues with path "review.bcf" and sessionId "s1"'
+    );
+    expect(await check({ sessionId: 's1' })).not.toContain('read_issues');
   });
 });

@@ -25,6 +25,34 @@ export interface RenderShot {
   readonly projection?: 'perspective' | 'orthographic' | undefined;
 }
 
+interface ShotFrame {
+  readonly position: readonly [number, number, number];
+  readonly direction: readonly [number, number, number];
+  /** The camera's own up axis, square to direction. */
+  readonly up: readonly [number, number, number];
+  /** Width over height. */
+  readonly aspect: number;
+}
+
+/** The camera a shot was framed with, in model millimetres; viewer/src/screenshotApi.ts reports it. */
+export type ShotCamera =
+  | (ShotFrame & {
+      readonly projection: 'perspective';
+      /** Vertical field of view in degrees. */
+      readonly fov: number;
+    })
+  | (ShotFrame & {
+      readonly projection: 'orthographic';
+      /** Visible height in millimetres. */
+      readonly height: number;
+    });
+
+export interface RenderedShots {
+  readonly pngs: Uint8Array[];
+  /** Per shot; null when the page reported none. */
+  readonly cameras: (ShotCamera | null)[];
+}
+
 export interface RenderRequest {
   readonly shots: readonly RenderShot[];
   readonly style?: ElementStyle | undefined;
@@ -58,11 +86,11 @@ async function loadPuppeteer(): Promise<PuppeteerNode> {
   }
 }
 
-/** Render a payload through the preview viewer page, one PNG per shot. */
+/** Render a payload through the preview viewer page, one PNG and its camera per shot. */
 export async function renderPayload(
   payload: PreviewModelPayload,
   req: RenderRequest
-): Promise<Uint8Array[]> {
+): Promise<RenderedShots> {
   const puppeteer = await loadPuppeteer();
   const server = await startPreviewServer(encodePreviewPayload(payload));
   try {
@@ -76,6 +104,7 @@ export async function renderPayload(
       });
       await page.waitForFunction('window.__ready === true', { timeout: READY_TIMEOUT_MS });
       const pngs: Uint8Array[] = [];
+      const cameras: (ShotCamera | null)[] = [];
       for (const shot of req.shots) {
         const scene = {
           view: shot.view,
@@ -89,8 +118,15 @@ export async function renderPayload(
         }, scene);
         await new Promise((done) => setTimeout(done, SETTLE_MS));
         pngs.push(await page.screenshot({ type: 'png' }));
+        cameras.push(
+          await page.evaluate(
+            () =>
+              (globalThis as unknown as { __viewCamera?: () => ShotCamera }).__viewCamera?.() ??
+              null
+          )
+        );
       }
-      return pngs;
+      return { pngs, cameras };
     } finally {
       await browser.close();
     }

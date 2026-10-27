@@ -15,7 +15,7 @@ import type { QuantitiesById } from './quantities.js';
 import type { CheckName, ValidateOutcome } from './validate.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { WorkerOps } from './protocol.js';
-import type { RenderRequest } from './render.js';
+import type { RenderRequest, ShotCamera } from './render.js';
 import { sourceSetOf, type SourceSet } from './sources.js';
 import { SessionWorker, WorkerError } from './workerClient.js';
 
@@ -358,6 +358,8 @@ export class SessionManager {
   ): Promise<{
     readonly session: Session;
     readonly pngs?: readonly Uint8Array[];
+    /** The camera each image was framed with, in model millimetres. */
+    readonly cameras?: readonly (ShotCamera | null)[];
     /** Ids the render payload carries a mesh for. */
     readonly drawable?: ReadonlySet<string>;
     readonly meta: T;
@@ -365,8 +367,13 @@ export class SessionManager {
     return this.#onCurrentBuild(id, opts.expectBuild, 'render', async (session) => {
       const { request, meta } = prepare(session);
       if (request === undefined) return { session, meta };
-      const { pngs, drawable } = await this.#request(session, 'render', request, opts.timeoutMs);
-      return { session, pngs, drawable: new Set(drawable), meta };
+      const { pngs, cameras, drawable } = await this.#request(
+        session,
+        'render',
+        request,
+        opts.timeoutMs
+      );
+      return { session, pngs, cameras, drawable: new Set(drawable), meta };
     });
   }
 

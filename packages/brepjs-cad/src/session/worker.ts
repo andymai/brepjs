@@ -38,9 +38,9 @@ async function handle(req: WorkerRequest): Promise<void> {
       case 'render': {
         const payload = current?.payload?.();
         if (payload === undefined) throw new Error('this worker holds no build to render');
-        const pngs = await renderPayload(payload, req.args);
+        const { pngs, cameras } = await renderPayload(payload, req.args);
         const drawable = payload.elements.map((e) => e.keyPath);
-        send({ type: 'reply', id: req.id, result: { pngs, drawable } });
+        send({ type: 'reply', id: req.id, result: { pngs, cameras, drawable } });
         return;
       }
       case 'eval': {

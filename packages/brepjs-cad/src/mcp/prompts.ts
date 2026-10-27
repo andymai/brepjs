@@ -85,10 +85,64 @@ const PROMPTS: readonly PromptDef[] = [
       [
         `Compare session ${from ?? ''} (earlier) with session ${to ?? ''} (later).`,
         '',
-        `1. Call compare_models with from "${from ?? ''}" and to "${to ?? ''}". Page through the rest with offset while nextOffset is set.`,
+        `1. Call compare_models with from "${from ?? ''}" and to "${to ?? ''}". While nextOffset is set, page through the rest with offset, passing fromBuild and toBuild from the first page's from.buildHash and to.buildHash.`,
         `2. Read the added and changed elements with get_elements on session ${to ?? ''}, and the removed ones on session ${from ?? ''}, with fields [] to get their names and categories.`,
         '3. Summarize by category: what was added, removed and changed, and for changes, which props, psets or quantities moved and by how much.',
         `4. Call render_view on session ${to ?? ''} with highlight set to the added and changed ids, and describe where in the building the changes are.`,
+      ].join('\n'),
+  },
+  {
+    name: 'ifc-review',
+    title: 'Review an IFC file',
+    description:
+      "Open an IFC file, check it, look at what fails, and raise each problem as a BCF issue the file's author can open in their own tool.",
+    arguments: [
+      { name: 'path', description: 'The .ifc file to review.', required: true },
+      { name: 'outPath', description: 'The .bcf file to write the issues to.', required: true },
+      {
+        name: 'author',
+        description: 'Who the issues are from, usually an email address (optional).',
+        required: false,
+      },
+    ],
+    render: ({ path, outPath, author }) =>
+      [
+        `Review the IFC file at ${path ?? ''} and raise its problems as BCF issues in ${outPath ?? ''}.`,
+        '',
+        `1. Call open_model with path "${path ?? ''}". If it fails, report its diagnostics and stop. Note the element counts and any build diagnostics.`,
+        '2. Call validate_model on the session. While nextOffset is set, page through the rest with offset.',
+        '3. Group the findings by code. For each group, read the elements it names with get_elements and render_view them with highlight, so you know what the problem is and where it is.',
+        `4. For each problem worth raising, call create_issue with outPath "${outPath ?? ''}", a title that names the problem, a description with the code, the message and what should change, elements set to the ids it concerns, priority "High" for errors and "Normal" for warnings, and labels set to the check${author ? `, and author "${author}"` : ''}. Raise one issue per problem, not one per finding: a code on several elements is one issue unless they need separate fixes. A model-wide finding with no element (missing georeferencing, say) is one issue with no elements.`,
+        '5. Report the issues raised, with their titles and element counts, the findings you chose not to raise and why, and the path of the BCF file.',
+      ].join('\n'),
+  },
+  {
+    name: 'model-check',
+    title: 'Check and fix a model',
+    description:
+      'Check a families model the way its IFC export will be checked, fix what the program can fix, and work through BCF issues raised on it.',
+    arguments: [
+      { name: 'sessionId', description: 'The families session from open_model.', required: true },
+      {
+        name: 'issues',
+        description: 'A .bcf file of issues raised on its last export (optional).',
+        required: false,
+      },
+    ],
+    render: ({ sessionId, issues }) =>
+      [
+        `Check the model in session ${sessionId ?? ''} and fix what you can in its program.`,
+        '',
+        `1. Call validate_model with sessionId "${sessionId ?? ''}" and minSeverity "warning". While nextOffset is set, page through the rest with offset.`,
+        ...(issues
+          ? [
+              `2. Call export_ifc so the session knows its GlobalIds, then read_issues with path "${issues}" and sessionId "${sessionId ?? ''}". Take the topics whose status is not closed or resolved; each viewpoint's selection gives the ids it concerns.`,
+            ]
+          : ['2. (No issues file was given.)']),
+        "3. For each finding or issue on an element, read it with get_elements: its source field is the file and line that author it. Decide the fix from the finding's code and message, or the issue's description and comments.",
+        `4. Make the fixes in the program, then call rebuild with sessionId "${sessionId ?? ''}". Check that the diff touches only the elements you meant to change, and render_view them with highlight.`,
+        '5. Call validate_model again and repeat until no error remains that the program can fix.',
+        '6. Report each finding and issue with what you changed (file and line, value before and after), and list the ones you left open and why.',
       ].join('\n'),
   },
 ];

@@ -22,8 +22,16 @@ import {
   type ViewName,
 } from 'brepjs-viewer';
 import { Html } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { useModel, type PreviewInfo } from './src/useModel.js';
-import { installScreenshotApi, onScene, markReady, type Mark } from './src/screenshotApi.js';
+import {
+  installCameraReader,
+  installScreenshotApi,
+  onScene,
+  markReady,
+  readCamera,
+  type Mark,
+} from './src/screenshotApi.js';
 
 // Kernel-anchored Set-of-Marks: numbered badges drawn at 3D feature points (drei <Html> projects them
 // per-view and renders DOM over the canvas, which the screenshot captures). Same id → same feature
@@ -51,6 +59,15 @@ function Marks({ marks }: { marks: readonly Mark[] }) {
       ))}
     </>
   );
+}
+
+// Reads the default camera at call time: drei swaps in an orthographic one for plans.
+function CameraProbe() {
+  const get = useThree((s) => s.get);
+  useEffect(() => {
+    installCameraReader(() => readCamera(get().camera));
+  }, [get]);
+  return null;
 }
 
 // The agent snapshot pipeline screenshots this same page, so it loads with ?ui=0 to
@@ -265,6 +282,7 @@ function App() {
           />
         )}
         {marks.length > 0 && <Marks marks={marks} />}
+        <CameraProbe />
       </ViewerCanvas>
       {showControls && (
         <ViewerSelectionPanel
