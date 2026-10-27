@@ -1,0 +1,22 @@
+tests/dxfImport.test.ts
+  s_4d771e7bb40c3c::t_e277857bf9f5f6 485-544
+src/io/dxfImportFns.ts
+  s_4d771e7bb40c3c::t_e277857bf9f5f6 221-224,238
+  s_4d771e7bb40c3c::t_c8cf377474b037 245-248,254-258,305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e941b88698cb2bb9ac6413ccc2d6ada288dc00d1",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
