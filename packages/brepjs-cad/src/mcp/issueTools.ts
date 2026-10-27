@@ -125,10 +125,11 @@ function projectOf(s: Session): { projectId: string; name: string } {
 /** A component as read_issues reports it: its GlobalId, and the session element it names. */
 function resolved(
   s: Session | undefined,
-  list: readonly BcfComponentLike[] | undefined
+  list: readonly BcfComponentLike[] | undefined,
+  cap: number
 ): Record<string, unknown> {
   const all = list ?? [];
-  const shown = all.slice(0, MAX_COMPONENTS).map((c) => {
+  const shown = all.slice(0, cap).map((c) => {
     const rec: ElementRecord | undefined =
       s !== undefined && c.ifcGuid !== undefined ? lookup(s, c.ifcGuid) : undefined;
     return {
@@ -138,32 +139,38 @@ function resolved(
   });
   return {
     components: shown,
-    ...(all.length > MAX_COMPONENTS ? { componentsTotal: all.length } : {}),
+    ...(all.length > cap ? { componentsTotal: all.length } : {}),
   };
 }
 
-function viewpointView(s: Session | undefined, vp: BcfViewpointLike): Record<string, unknown> {
+function viewpointView(
+  s: Session | undefined,
+  vp: BcfViewpointLike,
+  cap: number
+): Record<string, unknown> {
   const c = vp.components;
   return {
     guid: vp.guid,
     ...(vp.snapshotFile !== undefined ? { snapshot: vp.snapshotFile } : {}),
     ...(vp.camera ? { camera: vp.camera } : {}),
-    ...(c?.selection ? { selection: resolved(s, c.selection) } : {}),
+    ...(c?.selection ? { selection: resolved(s, c.selection, cap) } : {}),
     ...(c?.coloring && c.coloring.length > 0
-      ? { coloring: c.coloring.map((g) => ({ color: g.color, ...resolved(s, g.components) })) }
+      ? {
+          coloring: c.coloring.map((g) => ({ color: g.color, ...resolved(s, g.components, cap) })),
+        }
       : {}),
     ...(c?.visibility
       ? {
           visibility: {
             defaultVisibility: c.visibility.defaultVisibility,
-            exceptions: resolved(s, c.visibility.exceptions),
+            exceptions: resolved(s, c.visibility.exceptions, cap),
           },
         }
       : {}),
   };
 }
 
-function topicView(s: Session | undefined, t: BcfTopicLike): Record<string, unknown> {
+function topicView(s: Session | undefined, t: BcfTopicLike, cap: number): Record<string, unknown> {
   return {
     guid: t.guid,
     title: t.title,
@@ -181,8 +188,13 @@ function topicView(s: Session | undefined, t: BcfTopicLike): Record<string, unkn
       : {}),
     ...(t.description !== undefined ? { description: t.description } : {}),
     ...(t.relatedTopics ? { relatedTopics: t.relatedTopics } : {}),
-    comments: t.comments.map((c) => ({ date: c.date, author: c.author, comment: c.comment })),
-    viewpoints: t.viewpoints.map((vp) => viewpointView(s, vp)),
+    comments: t.comments.map((c) => ({
+      date: c.date,
+      author: c.author,
+      comment: c.comment,
+      ...(c.viewpointRef !== undefined ? { viewpoint: c.viewpointRef } : {}),
+    })),
+    viewpoints: t.viewpoints.map((vp) => viewpointView(s, vp, cap)),
   };
 }
 
@@ -374,13 +386,17 @@ export function issueTools(sessions: SessionManager, confirm: Confirm): ToolDef[
     {
       name: 'read_issues',
       title: 'Read BCF issues',
-      description: `Read the topics of a BCF 3.0 file (.bcf or .bcfzip): title, type, status, priority, labels, assignee, dates, description, comments, and each viewpoint's camera and components (selected, colored, and visibility exceptions) by IFC GlobalId. Pass a sessionId to resolve each GlobalId to the session's element id (a families session resolves the GlobalIds of its last export_ifc). snapshots: true also returns up to ${MAX_SNAPSHOTS} viewpoint snapshots from the page as images. Topics come ${TOPIC_PAGE} at a time; pass offset for the rest.`,
+      description: `Read the topics of a BCF 3.0 file (.bcf or .bcfzip): title, type, status, priority, labels, assignee, dates, description, comments, and each viewpoint's camera and components (selected, colored, and visibility exceptions) by IFC GlobalId. Pass a sessionId to resolve each GlobalId to the session's element id (a families session resolves the GlobalIds of its last export_ifc). A comment's viewpoint names the viewpoint it was made on. snapshots: true also returns up to ${MAX_SNAPSHOTS} viewpoint snapshots from the page as images. Topics come ${TOPIC_PAGE} at a time; pass offset for the rest. Component lists stop at ${MAX_COMPONENTS} with componentsTotal set; pass topic (a topic guid) to read that one topic with every component.`,
       inputSchema: {
         type: 'object',
         properties: {
           path: { type: 'string', description: 'The BCF file; relative to the server cwd.' },
           sessionId: { type: 'string', description: 'Session to resolve GlobalIds against.' },
           snapshots: { type: 'boolean', description: 'Return snapshots as images.' },
+          topic: {
+            type: 'string',
+            description: 'Read only this topic (by guid), with every component listed.',
+          },
           offset: { type: 'number', description: 'Page start (default 0).' },
           limit: {
             type: 'number',
@@ -396,7 +412,15 @@ export function issueTools(sessions: SessionManager, confirm: Confirm): ToolDef[
         const session = sessionId === undefined ? undefined : sessions.get(sessionId);
         if (!(await fileExists(path))) throw new ArgError(`${path} does not exist`);
         const opened = await readContainer(await bimFor(session?.path ?? path), path);
-        const { topics } = opened.container;
+        const only = optionalString(a, 'topic');
+        const topics =
+          only === undefined
+            ? opened.container.topics
+            : opened.container.topics.filter((t) => t.guid === only);
+        if (only !== undefined && topics.length === 0) {
+          throw new ArgError(`${path} has no topic ${only}`);
+        }
+        const cap = only === undefined ? MAX_COMPONENTS : Infinity;
         const offset = optionalCount(a, 'offset') ?? 0;
         const limit = Math.min(optionalCount(a, 'limit') ?? TOPIC_PAGE, MAX_TOPIC_PAGE);
         const page = topics.slice(offset, offset + limit);
@@ -413,7 +437,7 @@ export function issueTools(sessions: SessionManager, confirm: Confirm): ToolDef[
           }
         }
         let unresolved = 0;
-        const views = page.map((t) => topicView(session, t));
+        const views = page.map((t) => topicView(session, t, cap));
         if (session !== undefined) {
           for (const t of page) {
             for (const vp of t.viewpoints) {

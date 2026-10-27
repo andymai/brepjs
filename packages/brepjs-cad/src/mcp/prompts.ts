@@ -136,7 +136,7 @@ const PROMPTS: readonly PromptDef[] = [
         `1. Call validate_model with sessionId "${sessionId ?? ''}" and minSeverity "warning". While nextOffset is set, page through the rest with offset.`,
         ...(issues
           ? [
-              `2. Call export_ifc so the session knows its GlobalIds, then read_issues with path "${issues}" and sessionId "${sessionId ?? ''}". Take the topics whose status is not closed or resolved; each viewpoint's selection gives the ids it concerns.`,
+              `2. Call export_ifc so the session knows its GlobalIds, then read_issues with path "${issues}" and sessionId "${sessionId ?? ''}". While nextOffset is set, page through the rest with offset. Take the topics whose status is not closed or resolved; each viewpoint's selection gives the ids it concerns, and a list with componentsTotal is cut short, so read that topic again with topic set to its guid for all of them.`,
             ]
           : ['2. (No issues file was given.)']),
         "3. For each finding or issue on an element, read it with get_elements: its source field is the file and line that author it. Decide the fix from the finding's code and message, or the issue's description and comments.",

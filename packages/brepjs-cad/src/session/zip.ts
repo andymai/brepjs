@@ -13,6 +13,10 @@ const STORED = 0;
 const DEFLATED = 8;
 // Bit 11: names are UTF-8.
 const UTF8_FLAG = 0x0800;
+// An archive comes from someone else, so expansion is bounded: a BCF file is XML and a few
+// snapshots, far under these.
+export const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
+export const MAX_TOTAL_BYTES = 256 * 1024 * 1024;
 
 export class ZipError extends Error {
   constructor(message: string) {
@@ -21,8 +25,16 @@ export class ZipError extends Error {
   }
 }
 
-/** Every file entry in a ZIP archive, by name. Directory entries are skipped. */
-export function readZip(bytes: Uint8Array): Map<string, Uint8Array> {
+/**
+ * Every file entry in a ZIP archive, by name. Directory entries are skipped. An entry that expands
+ * past `entryBytes`, or an archive past `totalBytes`, is rejected while it inflates.
+ */
+export function readZip(
+  bytes: Uint8Array,
+  limits: { readonly entryBytes?: number; readonly totalBytes?: number } = {}
+): Map<string, Uint8Array> {
+  const entryCap = limits.entryBytes ?? MAX_ENTRY_BYTES;
+  const totalCap = limits.totalBytes ?? MAX_TOTAL_BYTES;
   const buf = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let end = -1;
   // The end record sits in the last 22 bytes plus up to 64 KiB of comment.
@@ -36,6 +48,7 @@ export function readZip(bytes: Uint8Array): Map<string, Uint8Array> {
   const count = buf.readUInt16LE(end + 10);
   let at = buf.readUInt32LE(end + 16);
   const files = new Map<string, Uint8Array>();
+  let total = 0;
   for (let n = 0; n < count; n++) {
     if (buf.readUInt32LE(at) !== CENTRAL) throw new ZipError('corrupt central directory');
     const method = buf.readUInt16LE(at + 10);
@@ -50,9 +63,25 @@ export function readZip(bytes: Uint8Array): Map<string, Uint8Array> {
     if (buf.readUInt32LE(localAt) !== LOCAL) throw new ZipError(`corrupt local header for ${name}`);
     const dataAt = localAt + 30 + buf.readUInt16LE(localAt + 26) + buf.readUInt16LE(localAt + 28);
     const data = buf.subarray(dataAt, dataAt + size);
-    if (method === STORED) files.set(name, new Uint8Array(data));
-    else if (method === DEFLATED) files.set(name, new Uint8Array(inflateRawSync(data)));
-    else throw new ZipError(`${name} uses compression method ${method}, which this reader lacks`);
+    const budget = Math.min(entryCap, totalCap - total);
+    let out: Uint8Array;
+    if (method === STORED) {
+      if (data.length > budget) throw new ZipError(`${name} is larger than this reader accepts`);
+      out = new Uint8Array(data);
+    } else if (method === DEFLATED) {
+      try {
+        out = new Uint8Array(inflateRawSync(data, { maxOutputLength: Math.max(1, budget) }));
+      } catch (e) {
+        if (e instanceof RangeError) {
+          throw new ZipError(`${name} expands past the size this reader accepts`);
+        }
+        throw new ZipError(`${name} is corrupt: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    } else {
+      throw new ZipError(`${name} uses compression method ${method}, which this reader lacks`);
+    }
+    total += out.length;
+    files.set(name, out);
   }
   return files;
 }

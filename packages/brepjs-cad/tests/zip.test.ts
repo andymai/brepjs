@@ -34,6 +34,19 @@ describe('zip', () => {
     expect(() => readZip(new Uint8Array(64))).toThrow(ZipError);
   });
 
+  it('stops an entry or an archive that expands past its limit', () => {
+    // 10 kB of zeros deflates to a few dozen bytes: the shape of a decompression bomb.
+    const bomb = writeZip(
+      new Map([
+        ['a.xml', new Uint8Array(10_000)],
+        ['b.xml', new Uint8Array(10_000)],
+      ])
+    );
+    expect(() => readZip(bomb, { entryBytes: 5_000 })).toThrow(/a\.xml expands past/);
+    expect(() => readZip(bomb, { totalBytes: 15_000 })).toThrow(/b\.xml expands past/);
+    expect(readZip(bomb, { entryBytes: 10_000, totalBytes: 20_000 }).size).toBe(2);
+  });
+
   it.skipIf(!hasZipTools)('round-trips with the zip and unzip command-line tools', () => {
     const dir = mkdtempSync(join(tmpdir(), 'brepjs-cad-zip-'));
     try {

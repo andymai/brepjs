@@ -1,5 +1,6 @@
-import { mkdir, stat, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { errorResult, jsonResult } from './registry.js';
 
@@ -25,9 +26,24 @@ export async function askToReplace(
 }
 
 /**
+ * Replace `out` with `data` all at once: written beside it, then renamed over it, so a failed write
+ * leaves the old file whole and a reader never sees half of the new one.
+ */
+async function replaceFile(out: string, data: Uint8Array | string): Promise<void> {
+  const temp = join(dirname(out), `.${basename(out)}.${randomBytes(6).toString('hex')}.tmp`);
+  try {
+    await writeFile(temp, data, { flag: 'wx' });
+    await rename(temp, out);
+  } catch (e) {
+    await rm(temp, { force: true });
+    throw e;
+  }
+}
+
+/**
  * Write `data` to `out`. Unapproved writes are exclusive: a file that is there by the time of the
- * write (another call to the same path, say) is asked about, not replaced. A result to stop with,
- * or undefined once written.
+ * write (another call to the same path, say) is asked about, not replaced. A replacement lands all
+ * at once. A result to stop with, or undefined once written.
  */
 export async function writeOutput(
   confirm: Confirm,
@@ -37,15 +53,19 @@ export async function writeOutput(
   what: string
 ): Promise<CallToolResult | undefined> {
   await mkdir(dirname(out), { recursive: true });
+  if (approved) {
+    await replaceFile(out, data);
+    return undefined;
+  }
   try {
-    await writeFile(out, data, { flag: approved ? 'w' : 'wx' });
+    await writeFile(out, data, { flag: 'wx' });
     return undefined;
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
   }
   const stop = await askToReplace(confirm, out, what);
   if (stop) return stop;
-  await writeFile(out, data);
+  await replaceFile(out, data);
   return undefined;
 }
 

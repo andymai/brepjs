@@ -211,6 +211,33 @@ describe('create_issue and read_issues', () => {
       { globalId: wallGuid, id: 'ground/annex' },
       { globalId: '0000000000000000000000' },
     ]);
+    const many = issueTopic(
+      spec({
+        comment: 'See the selection.',
+        components: Array.from({ length: 150 }, (_, i) => ({
+          ifcGuid: String(i).padStart(22, '0'),
+        })),
+      }),
+      new Date()
+    );
+    writeFileSync(join(project.dir, 'many.bcf'), packIssue(bim, many, PNG, PROJECT));
+    const capped = await call('read_issues', { path: 'many.bcf' });
+    const [first] = capped.body['topics'] as {
+      comments: { viewpoint?: string }[];
+      viewpoints: {
+        guid: string;
+        selection: { components: unknown[]; componentsTotal?: number };
+      }[];
+    }[];
+    expect(first?.viewpoints[0]?.selection.components).toHaveLength(100);
+    expect(first?.viewpoints[0]?.selection.componentsTotal).toBe(150);
+    expect(first?.comments[0]?.viewpoint).toBe(first?.viewpoints[0]?.guid);
+    const whole = await call('read_issues', { path: 'many.bcf', topic: many.guid });
+    const [all] = whole.body['topics'] as {
+      viewpoints: { selection: { components: unknown[]; componentsTotal?: number } }[];
+    }[];
+    expect(all?.viewpoints[0]?.selection.components).toHaveLength(150);
+    expect(all?.viewpoints[0]?.selection.componentsTotal).toBeUndefined();
     const bare = await call('read_issues', { path: 'given.bcf' });
     expect(bare.body['unresolvedSelections']).toBeUndefined();
     const wrong = await call('read_issues', { path: 'model.ifc' });
