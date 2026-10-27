@@ -134,7 +134,7 @@ Two families sessions compare their quantity sets as well, derived the way `expo
 
 ## Issues (BCF)
 
-BCF is how BIM tools pass issues around without passing the model: Revit, BIMcollab, Solibri and others open a `.bcf` file and show each issue on the elements it names, from the camera it was raised from. `create_issue` raises one on a session's elements and saves it:
+BCF is how BIM tools pass issues around without passing the model: BIMcollab, Solibri, Revit (through a BCF add-in) and others open a `.bcf` file and show each issue on the elements it names, from the camera it was raised from. `create_issue` raises one on a session's elements and saves it:
 
 ```jsonc
 // create_issue

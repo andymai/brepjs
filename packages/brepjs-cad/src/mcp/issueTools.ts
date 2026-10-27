@@ -200,7 +200,7 @@ export function issueTools(sessions: SessionManager, confirm: Confirm): ToolDef[
     {
       name: 'create_issue',
       title: 'Create BCF issue',
-      description: `Raise a BCF 3.0 issue on elements of a session and save it to a .bcf file that Revit, BIMcollab, Solibri and other BCF tools open. The issue gets one viewpoint: the elements as its selection (by IFC GlobalId), colored orange with the rest shown (focus "highlight") or alone (focus "isolate"), the camera of a render_view-style picture, and that picture as its snapshot, which is also returned. Elements take ids or globs; a container (a storey, a composed family) stands for the elements under it. A families session needs export_ifc first, since issues name the GlobalIds of the IFC file you share. If outPath is already a BCF file, the issue is added to it and its other topics are kept; overwrite: true starts a new file instead.`,
+      description: `Raise a BCF 3.0 issue on elements of a session and save it to a .bcf file that BCF tools open (BIMcollab, Solibri, Revit through a BCF add-in, and others). The issue gets one viewpoint: the elements as its selection (by IFC GlobalId), colored orange with the rest shown (focus "highlight") or alone (focus "isolate"), the camera of a render_view-style picture, and that picture as its snapshot, which is also returned. Elements take ids or globs; a container (a storey, a composed family) stands for the elements under it. A families session needs export_ifc first, since issues name the GlobalIds of the IFC file you share. If outPath is already a BCF file, the issue is added to it and its other topics are kept; overwrite: true starts a new file instead.`,
       inputSchema: {
         type: 'object',
         properties: {
