@@ -229,8 +229,8 @@ function soupNormals(v: Float32Array, idx: Uint32Array): Float32Array {
   return n;
 }
 
-/** One renderable node per imported element with geometry, keyed like its record. */
-function ifcNodes(
+/** One renderable node per imported element with geometry, keyed like its record; exported for tests. */
+export function ifcNodes(
   brep: BrepNs,
   model: ImportedModelLike,
   idOf: ReadonlyMap<number, string>
@@ -247,7 +247,9 @@ function ifcNodes(
       }
     }
     const { meshVertices, meshIndices } = el.geometry;
-    if (parts.length === 0 && meshVertices && meshIndices) {
+    // Raw triangles are Body items that never closed into solids, not a copy of them, so an element
+    // can carry both.
+    if (meshVertices && meshIndices) {
       parts.push({
         vertices: meshVertices,
         normals: soupNormals(meshVertices, meshIndices),
@@ -365,6 +367,7 @@ export function ifcRecords(
       ...(n.elevationMm !== undefined ? { props: { elevationMm: n.elevationMm } } : {}),
       relationships: rels('Contains', childIds),
       hasGeometry: false,
+      renderable: false,
     });
   }
 
@@ -399,6 +402,7 @@ export function ifcRecords(
       classification: jsonSafe(el.classification),
       relationships,
       hasGeometry: g.fidelity !== 'NONE',
+      renderable: (g.solids?.length ?? 0) > 0 || g.meshVertices !== undefined,
       fidelity: g.fidelity,
       completeness: g.completeness,
       ...(bodyFailures.has(el.expressId) ? { geometryError: bodyFailures.get(el.expressId) } : {}),

@@ -51,6 +51,9 @@ export interface ElementRecord {
   readonly classification?: unknown;
   readonly relationships: readonly RelationshipRecord[];
   readonly hasGeometry: boolean;
+  /** Whether the render payload carries a mesh for it: false for containers and for geometry
+   *  that failed to mesh or import. */
+  readonly renderable: boolean;
   /** Families: the CSG IR structural hash, so geometry change is a string compare. */
   readonly geometryHash?: string | undefined;
   readonly bounds?: Bounds | undefined;

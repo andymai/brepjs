@@ -219,14 +219,18 @@ export class SessionManager {
         open: [...this.#sessions.keys()],
       });
     }
+    this.#checkBuild(s, expectBuild);
+    return s;
+  }
+
+  #checkBuild(s: Session, expectBuild: string | undefined): void {
     if (expectBuild !== undefined && expectBuild !== s.build.buildHash) {
       throw new SessionError(
         'BUILD_MISMATCH',
-        `session ${id} is at build ${s.build.buildHash}, not ${expectBuild}; re-query before acting on old ids`,
+        `session ${s.id} is at build ${s.build.buildHash}, not ${expectBuild}; re-query before acting on old ids`,
         { buildHash: s.build.buildHash }
       );
     }
-    return s;
   }
 
   rebuild(id: string, opts: { readonly timeoutMs?: number } = {}): Promise<RebuildResult> {
@@ -305,17 +309,34 @@ export class SessionManager {
   }
 
   /**
-   * Render the session's current build. Queued behind any rebuild, so it always draws the build
-   * the caller sees. A render that times out stops the worker; the records stay queryable, and a
-   * rebuild starts a new worker.
+   * Render the session's current build. The render waits behind any rebuild, and `prepare` runs
+   * once it is the session's turn, so the request (and whatever the caller reports with it) is
+   * computed from the build that gets drawn; `expectBuild` is checked at that point too. A render
+   * that times out stops the worker: the records stay queryable, and a rebuild starts a new one.
    */
-  render(
+  render<T>(
     id: string,
-    req: RenderRequest,
-    timeoutMs: number
-  ): Promise<{ readonly session: Session; readonly pngs: readonly Uint8Array[] }> {
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined },
+    prepare: (session: Session) => {
+      readonly request?: RenderRequest | undefined;
+      readonly meta: T;
+    }
+  ): Promise<{
+    readonly session: Session;
+    readonly pngs?: readonly Uint8Array[];
+    readonly meta: T;
+  }> {
     const session = this.get(id);
     const run = session.queue.then(async () => {
+      if (!this.#sessions.has(session.id)) {
+        throw new SessionError(
+          'NO_SUCH_SESSION',
+          `session '${session.id}' was closed before the render`
+        );
+      }
+      this.#checkBuild(session, opts.expectBuild);
+      const { request, meta } = prepare(session);
+      if (request === undefined) return { session, meta };
       const worker = session.worker;
       if (!worker?.alive) {
         throw new SessionError(
@@ -324,8 +345,8 @@ export class SessionManager {
         );
       }
       try {
-        const { pngs } = await worker.request('render', req, timeoutMs);
-        return { session, pngs };
+        const { pngs } = await worker.request('render', request, opts.timeoutMs);
+        return { session, pngs, meta };
       } catch (e) {
         const stopped =
           e instanceof WorkerError ? '; the worker stopped, so rebuild before rendering again' : '';

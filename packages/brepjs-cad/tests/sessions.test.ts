@@ -92,6 +92,26 @@ describe('BIM sessions', () => {
     expect(families.lastFailure).toBeUndefined();
   });
 
+  it('prepares a render against the build it draws, after a rebuild queued ahead of it', async () => {
+    const before = families.build.buildHash;
+    project.edit('height={3000}', 'height={3100}');
+    const rebuilding = sessions.rebuild(families.id);
+    let prepared = false;
+    const stale = sessions.render(families.id, { timeoutMs: 60000, expectBuild: before }, () => {
+      prepared = true;
+      return { meta: null };
+    });
+    await expect(stale).rejects.toMatchObject({ code: 'BUILD_MISMATCH' });
+    expect(prepared).toBe(false);
+    expect((await rebuilding).ok).toBe(true);
+    const seen = await sessions.render(families.id, { timeoutMs: 60000 }, (s) => ({
+      meta: s.build.buildHash,
+    }));
+    expect(seen.meta).toBe(families.build.buildHash);
+    expect(seen.meta).not.toBe(before);
+    expect(seen.pngs).toBeUndefined();
+  });
+
   it('rejects a module that is not an element tree', async () => {
     writeFileSync(
       join(project.dir, 'part.ts'),

@@ -156,9 +156,11 @@ function toRecords(
     let bounds: ElementRecord['bounds'];
     let volume: number | undefined;
     let geometryError: string | undefined;
+    let renderable = false;
     if (hasGeometry) {
       const node = byKeyPath.get(n.keyPath);
       const mesh = node?.mesh.ok ? node.mesh.value : undefined;
+      renderable = mesh !== undefined;
       if (mesh) bounds = boundsOfPositions(mesh.vertices);
       else geometryError = errorMessage(node?.mesh.error ?? 'element has no evaluated mesh');
       const shape = node?.shape?.ok ? node.shape.value : undefined;
@@ -191,6 +193,7 @@ function toRecords(
       classification: jsonSafe(n.attributes['classification']),
       relationships: (n.relationships ?? []).map((r) => ({ kind: r.kind, target: r.target })),
       hasGeometry,
+      renderable,
       ...(n.geometry.structuralHash !== undefined
         ? { geometryHash: n.geometry.structuralHash.toString(16) }
         : {}),

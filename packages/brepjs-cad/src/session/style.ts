@@ -132,7 +132,7 @@ function colorGroups(
  * colors the highlighted elements, or everything drawn when nothing is highlighted.
  */
 export function planStyle(records: readonly ElementRecord[], req: StyleRequest): StylePlan {
-  const geometry = records.filter((r) => r.hasGeometry);
+  const geometry = records.filter((r) => r.renderable);
   const unmatched: string[] = [];
   let drawn = new Set(geometry.map((r) => r.id));
   if (req.scope) drawn = new Set([...drawn].filter((id) => req.scope?.has(id)));

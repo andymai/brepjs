@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ifcRecords, type ImportedModelLike } from '@/session/buildIfc.js';
+import { ifcNodes, ifcRecords, type ImportedModelLike } from '@/session/buildIfc.js';
+import type { BrepNs } from '@/verify/brepjsRuntime.js';
 import { newGeometryFailures } from '@/session/diff.js';
 import type { BuildDiagnostic } from '@/session/records.js';
 
@@ -88,5 +89,36 @@ describe('IFC session records', () => {
     const before = ifcRecords(model(false), []).elements;
     const after = ifcRecords(model(true), []).elements;
     expect(newGeometryFailures(before, after).map((r) => r.id)).toEqual(['broken']);
+  });
+});
+
+describe('IFC session meshes', () => {
+  it('draws raw Body triangles next to the solids of the same element', () => {
+    const tri = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const fakeBrep = {
+      mesh: () => ({
+        vertices: tri,
+        normals: new Float32Array(9),
+        triangles: new Uint32Array([0, 1, 2]),
+      }),
+      meshEdges: () => ({ lines: new Float32Array(0) }),
+    } as unknown as BrepNs;
+    const m = model(false);
+    const mixed = {
+      ...m,
+      elements: [
+        {
+          ...element(10, 'mixed', {
+            solids: [{}],
+            meshVertices: new Float32Array([5, 5, 5, 6, 5, 5, 5, 6, 5]),
+            meshIndices: new Uint32Array([0, 1, 2]),
+          }),
+        },
+      ],
+    };
+    const node = ifcNodes(fakeBrep, mixed, new Map([[10, 'mixed']])).get('mixed');
+    if (!node?.mesh.ok) throw new Error('no mesh for the mixed element');
+    expect(node.mesh.value.vertices).toHaveLength(18);
+    expect(Array.from(node.mesh.value.triangles)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 });

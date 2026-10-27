@@ -13,6 +13,7 @@ function rec(id: string, over: Partial<ElementRecord> = {}): ElementRecord {
     children: [],
     relationships: [],
     hasGeometry: true,
+    renderable: over.hasGeometry ?? true,
     ...over,
   };
 }

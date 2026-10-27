@@ -11,6 +11,7 @@ function rec(id: string, over: Partial<ElementRecord> = {}): ElementRecord {
     children: [],
     relationships: [],
     hasGeometry: true,
+    renderable: over.hasGeometry ?? true,
     ...over,
   };
 }
@@ -110,6 +111,15 @@ describe('render style planning', () => {
     expect(plan.drawn).toBe(3);
     expect(plan.highlighted).toBe(1);
     expect(plan.style?.others).toBe('hidden');
+  });
+
+  it('counts only elements the picture can draw', () => {
+    const broken = [
+      ...RECORDS,
+      rec('ground/broken', { storey, renderable: false, geometryError: 'makeBox' }),
+    ];
+    expect(planStyle(broken, { isolate: ['ground/broken'] }).drawn).toBe(0);
+    expect(planStyle(broken, {}).drawn).toBe(5);
   });
 
   it('colors by group with a legend, largest group first', () => {

@@ -177,6 +177,15 @@ function parseSection(raw: unknown): RenderSection | undefined {
   return { axis, at, keep: oneOf(raw, 'keep', ['below', 'above'] as const) ?? 'below' };
 }
 
+function parsePlan(raw: unknown): { storey: string; cutHeight?: number } | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw) || typeof raw['storey'] !== 'string') {
+    throw new ArgError('"plan" needs a storey id or name');
+  }
+  const cutHeight = optionalPositive(raw, 'cutHeight', Number.MAX_VALUE);
+  return { storey: raw['storey'], ...(cutHeight !== undefined ? { cutHeight } : {}) };
+}
+
 function imageResult(digest: unknown, pngs: readonly Uint8Array[]): CallToolResult {
   return {
     content: [
@@ -409,75 +418,72 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
       handler: async (a) => {
-        const s = sessions.get(requireString(a, 'sessionId'), optionalString(a, 'expectBuild'));
-        const records = s.build.summary.elements;
-        let views = parseViews(a['views']);
-        let section = parseSection(a['section']);
-        let scope: ReadonlySet<string> | undefined;
-        let planInfo: Record<string, unknown> | undefined;
-        if (a['plan'] !== undefined) {
-          const p = a['plan'];
-          if (!isRecord(p) || typeof p['storey'] !== 'string') {
-            throw new ArgError('"plan" needs a storey id or name');
-          }
-          const cutHeight = optionalPositive(p, 'cutHeight', Number.MAX_VALUE);
-          const plan = storeyPlan(records, p['storey'], cutHeight);
-          if (plan === undefined) {
-            const storeys = records.filter((r) => r.category.toLowerCase() === 'storey');
-            throw new ArgError(
-              `no storey '${p['storey']}' (storeys: ${storeys.map((r) => r.name ?? r.id).join(', ') || 'none'})`
-            );
-          }
-          views = ['top'];
-          section ??= plan.section;
-          scope = plan.members;
-          planInfo = { storey: plan.storey.id, cutAt: plan.section.at };
-        }
+        const sessionId = requireString(a, 'sessionId');
+        const expectBuild = optionalString(a, 'expectBuild');
+        const views = parseViews(a['views']);
+        const requestedSection = parseSection(a['section']);
+        const planArg = parsePlan(a['plan']);
         const highlight = stringArray(a, 'highlight', MAX_SELECTION);
         const isolate = stringArray(a, 'isolate', MAX_SELECTION);
         const colorBy = oneOf<ColorBy>(a, 'colorBy', COLOR_BY);
         const viewMode = oneOf(a, 'viewMode', VIEW_MODES);
-        const plan = planStyle(records, { highlight, isolate, colorBy, scope });
-        if (plan.drawn === 0) {
+        const dims = optionalBoolean(a, 'dims') ?? true;
+        const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? RENDER_TIMEOUT_MS;
+        // Everything that reads the build runs inside the session queue, against the build drawn.
+        const result = await sessions.render(sessionId, { timeoutMs, expectBuild }, (s) => {
+          const records = s.build.summary.elements;
+          let shotViews = views;
+          let section = requestedSection;
+          let scope: ReadonlySet<string> | undefined;
+          let planInfo: Record<string, unknown> | undefined;
+          if (planArg) {
+            const plan = storeyPlan(records, planArg.storey, planArg.cutHeight);
+            if (plan === undefined) {
+              const storeys = records.filter((r) => r.category.toLowerCase() === 'storey');
+              throw new ArgError(
+                `no storey '${planArg.storey}' (storeys: ${storeys.map((r) => r.name ?? r.id).join(', ') || 'none'})`
+              );
+            }
+            shotViews = ['top'];
+            section ??= plan.section;
+            scope = plan.members;
+            planInfo = { storey: plan.storey.id, cutAt: plan.section.at };
+          }
+          const style = planStyle(records, { highlight, isolate, colorBy, scope });
+          const digest = {
+            sessionId: s.id,
+            buildHash: s.build.buildHash,
+            views: shotViews,
+            drawn: style.drawn,
+            highlighted: style.highlighted,
+            ...(style.legend.length > 0 ? { legend: style.legend } : {}),
+            ...(style.unmatched.length > 0 ? { unmatched: style.unmatched } : {}),
+            ...(planInfo ? { plan: planInfo } : {}),
+            ...(section ? { section } : {}),
+          };
+          if (style.drawn === 0) return { meta: digest };
+          const shots: RenderShot[] = shotViews.map((view) => ({
+            view,
+            ...(viewMode !== undefined ? { viewMode } : {}),
+            ...(section !== undefined ? { section } : {}),
+            ...(planInfo ? { projection: 'orthographic' as const } : {}),
+          }));
+          return {
+            request: { shots, ...(style.style ? { style: style.style } : {}), dims },
+            meta: digest,
+          };
+        });
+        if (result.pngs === undefined) {
           return jsonResult(
             {
               error: 'NOTHING_TO_DRAW',
-              message: 'the selection leaves no element with geometry to draw',
-              ...(plan.unmatched.length > 0 ? { unmatched: plan.unmatched } : {}),
+              message: 'the selection leaves no element with drawable geometry',
+              ...result.meta,
             },
             true
           );
         }
-        const shots: RenderShot[] = views.map((view) => ({
-          view,
-          ...(viewMode !== undefined ? { viewMode } : {}),
-          ...(section !== undefined ? { section } : {}),
-          ...(planInfo ? { projection: 'orthographic' as const } : {}),
-        }));
-        const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? RENDER_TIMEOUT_MS;
-        const { pngs } = await sessions.render(
-          s.id,
-          {
-            shots,
-            ...(plan.style ? { style: plan.style } : {}),
-            dims: optionalBoolean(a, 'dims') ?? true,
-          },
-          timeoutMs
-        );
-        return imageResult(
-          {
-            sessionId: s.id,
-            buildHash: s.build.buildHash,
-            views,
-            drawn: plan.drawn,
-            highlighted: plan.highlighted,
-            ...(plan.legend.length > 0 ? { legend: plan.legend } : {}),
-            ...(plan.unmatched.length > 0 ? { unmatched: plan.unmatched } : {}),
-            ...(planInfo ? { plan: planInfo } : {}),
-            ...(section ? { section } : {}),
-          },
-          pngs
-        );
+        return imageResult(result.meta, result.pngs);
       },
     },
     {
