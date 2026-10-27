@@ -482,4 +482,64 @@ describe('importDXF entity types', () => {
     expect(isOk(result)).toBe(true);
     for (const w of unwrap(result)) w[Symbol.dispose]();
   });
+
+  it('keeps a shallow bulge on its vertices and a tiny circle', async () => {
+    // A 10000 x 10 rectangle whose long bottom edge bulges by 1e-7: the arc must still meet
+    // the sides at the vertices the file gives.
+    const dxf = [
+      '0',
+      'SECTION',
+      '2',
+      'ENTITIES',
+      '0',
+      'LWPOLYLINE',
+      '8',
+      '0',
+      '90',
+      '4',
+      '70',
+      '1',
+      '10',
+      '0',
+      '20',
+      '0',
+      '42',
+      '1e-7',
+      '10',
+      '10000',
+      '20',
+      '0',
+      '10',
+      '10000',
+      '20',
+      '10',
+      '10',
+      '0',
+      '20',
+      '10',
+      '0',
+      'CIRCLE',
+      '8',
+      'small',
+      '10',
+      '50',
+      '20',
+      '50',
+      '30',
+      '0',
+      '40',
+      '5e-8',
+      '0',
+      'ENDSEC',
+      '0',
+      'EOF',
+    ].join('\n');
+    const wires = unwrap(await importDXF(new Blob([dxf])));
+    expect(wires).toHaveLength(2);
+    const [rect] = wires.filter((w) => curveLength(w) > 1);
+    expect(rect && isClosedWire(rect)).toBe(true);
+    const circle = unwrap(await importDXF(new Blob([dxf]), { layer: 'small' }));
+    expect(circle[0] && curveLength(circle[0])).toBeCloseTo(2 * Math.PI * 5e-8, 12);
+    for (const w of [...wires, ...circle]) w[Symbol.dispose]();
+  });
 });

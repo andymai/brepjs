@@ -218,10 +218,10 @@ function linePiece(a: Point3, b: Point3): Piece {
 }
 
 /**
- * An arc about OCS center `c`, counterclockwise from angle `from` through `sweep` (0, 2π]. In the
- * default OCS, which is most files, it's built from its center and angles, which stays exact for a
- * shallow arc; in a rotated OCS, whose in-plane axes the kernel doesn't share, it goes through
- * three points on it.
+ * An ARC entity about OCS center `c`, counterclockwise from angle `from` through `sweep` (0, 2π].
+ * In the default OCS, which is most files, it's built from its center and angles, which stays
+ * exact for a shallow arc. In a rotated OCS, whose in-plane axes the kernel doesn't share, it goes
+ * through three points on it, or is a line when its sagitta is under the tolerance.
  */
 function arcPiece(c: Point3, r: number, from: number, sweep: number, ocs: Ocs): Piece {
   const on = (t: number): Point3 =>
@@ -235,27 +235,27 @@ function arcPiece(c: Point3, r: number, from: number, sweep: number, ocs: Ocs): 
       build: () => getKernel().makeCircleArc(c, [0, 0, 1], r, from, from + sweep),
     };
   }
+  if (r * (1 - Math.cos(sweep / 2)) <= JOIN_TOL) return linePiece(start, end);
   const mid = on(from + sweep / 2);
   return { start, end, build: () => getKernel().makeArcEdge(start, mid, end) };
 }
 
 /**
  * A polyline segment in its OCS: straight, or the arc a bulge describes. A bulge is tan(θ/4) of
- * the arc's included angle θ, counterclockwise when positive; the center sits off the chord's
- * midpoint by half the chord times cot(θ/2), to the left of the chord for a positive bulge.
+ * the arc's included angle, counterclockwise when positive, so the arc's midpoint lies the sagitta
+ * (bulge × half the chord) off the chord's midpoint, to its right for a positive bulge. The arc
+ * goes through the supplied vertices exactly, so it meets its neighbours; one whose sagitta is
+ * under the tolerance is a line to the kernel and is built as one.
  */
 function segment(a: Point3, b: Point3, bulge: number, ocs: Ocs): Piece {
-  if (bulge === 0) return linePiece(ocs.toWorld(a), ocs.toWorld(b));
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const d = Math.hypot(dx, dy);
-  const theta = 4 * Math.atan(bulge);
-  const h = d / 2 / Math.tan(theta / 2);
-  const c: Point3 = [(a[0] + b[0]) / 2 - (dy / d) * h, (a[1] + b[1]) / 2 + (dx / d) * h, a[2]];
-  const r = d / 2 / Math.abs(Math.sin(theta / 2));
-  // A clockwise arc is the counterclockwise one from its far end.
-  const [p, sweep] = theta > 0 ? [a, theta] : [b, -theta];
-  return arcPiece(c, r, Math.atan2(p[1] - c[1], p[0] - c[0]), sweep, ocs);
+  const s = (bulge * d) / 2;
+  if (Math.abs(s) <= JOIN_TOL) return linePiece(ocs.toWorld(a), ocs.toWorld(b));
+  const mid: Point3 = [(a[0] + b[0]) / 2 + (dy / d) * s, (a[1] + b[1]) / 2 - (dx / d) * s, a[2]];
+  const [wa, wm, wb] = [ocs.toWorld(a), ocs.toWorld(mid), ocs.toWorld(b)];
+  return { start: wa, end: wb, build: () => getKernel().makeArcEdge(wa, wm, wb) };
 }
 
 // POLYLINE flag bits: 1 closed, 8 a 3D polyline, 16 a polygon mesh, 64 a polyface mesh.
@@ -302,7 +302,7 @@ function entityToPieces(entity: DXFEntity): Piece[] {
     const ocs = ocsOf(data);
     const c: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
     const r = getNum(data, 40);
-    if (!(r > JOIN_TOL) || !Number.isFinite(r)) return [];
+    if (!(r > 0) || !Number.isFinite(r)) return [];
     if (type === 'CIRCLE') {
       const center = ocs.toWorld(c);
       const at = ocs.toWorld([c[0] + r, c[1], c[2]]);
