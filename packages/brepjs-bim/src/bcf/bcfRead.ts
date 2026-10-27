@@ -3,6 +3,7 @@ import { err, ok, isOk } from 'brepjs';
 import type { BimError } from '../errors/bimError.js';
 import { bcfError } from '../errors/bimError.js';
 import type {
+  BcfCamera,
   BcfColoring,
   BcfComment,
   BcfComponent,
@@ -11,6 +12,7 @@ import type {
   BcfFiles,
   BcfProject,
   BcfTopic,
+  BcfVector,
   BcfVersion,
   BcfViewpoint,
   BcfVisibility,
@@ -82,8 +84,19 @@ function parseMarkup(xml: string, files: BcfFiles, dir: string): BcfTopic {
   const topicEl = findChild(markup, 'Topic');
   if (topicEl === undefined) throw new Error('markup.bcf is missing a <Topic> element');
 
-  const comments = findChildren(markup, 'Comment').map(parseComment);
-  const viewpoints = findChildren(markup, 'Viewpoints').map((el) => parseViewpoint(el, files, dir));
+  // BCF 3.0 nests comments and viewpoints in the topic. Earlier brepjs-bim releases
+  // wrote them as siblings of the topic, one <Viewpoints> element per viewpoint, so
+  // that layout is still read.
+  const commentsEl = findChild(topicEl, 'Comments');
+  const viewpointsEl = findChild(topicEl, 'Viewpoints');
+  const comments = (
+    commentsEl !== undefined ? findChildren(commentsEl, 'Comment') : findChildren(markup, 'Comment')
+  ).map(parseComment);
+  const viewpoints = (
+    viewpointsEl !== undefined
+      ? findChildren(viewpointsEl, 'ViewPoint')
+      : findChildren(markup, 'Viewpoints')
+  ).map((el) => parseViewpoint(el, files, dir));
 
   const topic: Writable<BcfTopic> = {
     guid: topicEl.attrs['Guid'] ?? '',
@@ -104,10 +117,16 @@ function parseMarkup(xml: string, files: BcfFiles, dir: string): BcfTopic {
   assign(topic, 'assignedTo', childText(topicEl, 'AssignedTo'));
   assign(topic, 'description', childText(topicEl, 'Description'));
 
-  const labels = findChildren(topicEl, 'Labels').map((l) => l.text);
+  // <Labels><Label>…</Label></Labels> in BCF 3.0; one <Labels>text</Labels> per label before.
+  const labels = findChildren(topicEl, 'Labels').flatMap((l) => {
+    const nested = findChildren(l, 'Label');
+    if (nested.length > 0) return nested.map((n) => n.text);
+    return l.text !== '' ? [l.text] : [];
+  });
   if (labels.length > 0) topic.labels = labels;
 
-  const related = findChildren(topicEl, 'RelatedTopic')
+  const relatedEl = findChild(topicEl, 'RelatedTopics') ?? topicEl;
+  const related = findChildren(relatedEl, 'RelatedTopic')
     .map((r) => r.attrs['Guid'])
     .filter((g): g is string => g !== undefined);
   if (related.length > 0) topic.relatedTopics = related;
@@ -142,11 +161,45 @@ function parseViewpoint(el: XmlNode, files: BcfFiles, dir: string): BcfViewpoint
   } else if (viewpoint.viewpointFile !== undefined) {
     const bcfvXml = files.get(`${dir}${viewpoint.viewpointFile}`);
     if (bcfvXml !== undefined) {
-      const visEl = findChild(parseXml(bcfvXml), 'Components');
+      const visInfo = parseXml(bcfvXml);
+      const visEl = findChild(visInfo, 'Components');
       if (visEl !== undefined) viewpoint.components = parseComponents(visEl);
+      const camera = parseCamera(visInfo);
+      if (camera !== undefined) viewpoint.camera = camera;
     }
   }
   return viewpoint;
+}
+
+function parseCamera(visInfo: XmlNode): BcfCamera | undefined {
+  const ortho = findChild(visInfo, 'OrthogonalCamera');
+  const persp = findChild(visInfo, 'PerspectiveCamera');
+  const el = ortho ?? persp;
+  if (el === undefined) return undefined;
+  const frame = {
+    viewPoint: parseVector(el, 'CameraViewPoint'),
+    direction: parseVector(el, 'CameraDirection'),
+    upVector: parseVector(el, 'CameraUpVector'),
+    aspectRatio: requiredNumber(el, 'AspectRatio'),
+  };
+  return ortho !== undefined
+    ? { kind: 'ORTHOGONAL', ...frame, viewToWorldScale: requiredNumber(el, 'ViewToWorldScale') }
+    : { kind: 'PERSPECTIVE', ...frame, fieldOfView: requiredNumber(el, 'FieldOfView') };
+}
+
+function parseVector(camera: XmlNode, tag: string): BcfVector {
+  const el = findChild(camera, tag);
+  if (el === undefined) throw new Error(`<${camera.tag}> is missing <${tag}>`);
+  return [requiredNumber(el, 'X'), requiredNumber(el, 'Y'), requiredNumber(el, 'Z')];
+}
+
+function requiredNumber(el: XmlNode, tag: string): number {
+  const text = childText(el, tag);
+  const value = Number(text);
+  if (text === undefined || text === '' || !Number.isFinite(value)) {
+    throw new Error(`<${el.tag}> has no numeric <${tag}>`);
+  }
+  return value;
 }
 
 function parseComponents(el: XmlNode): BcfComponents {
@@ -171,9 +224,11 @@ function parseComponents(el: XmlNode): BcfComponents {
 }
 
 function parseColoring(el: XmlNode): BcfColoring {
+  // BCF 3.0 wraps a colour's components in <Components>; earlier releases did not.
+  const componentsEl = findChild(el, 'Components') ?? el;
   return {
     color: el.attrs['Color'] ?? '',
-    components: findChildren(el, 'Component').map(parseComponent),
+    components: findChildren(componentsEl, 'Component').map(parseComponent),
   };
 }
 

@@ -19,6 +19,7 @@ export interface BcfContainerData {
 
 export interface BcfVersion {
   readonly versionId: '3.0';
+  /** BCF 2.1's element, outside the 3.0 schema; written only when set. */
   readonly detailedVersion?: string | undefined;
 }
 
@@ -30,6 +31,7 @@ export interface BcfProject {
 export interface BcfTopic {
   readonly guid: string;
   readonly title: string;
+  /** Required by the BCF 3.0 schema, as are `topicStatus`, `creationDate` and `creationAuthor`. */
   readonly topicType?: string | undefined;
   readonly topicStatus?: string | undefined;
   readonly priority?: string | undefined;
@@ -65,7 +67,32 @@ export interface BcfViewpoint {
   readonly snapshotFile?: string | undefined;
   readonly index?: number | undefined;
   readonly components?: BcfComponents | undefined;
+  /** Required by the BCF 3.0 schema in every viewpoint file. */
+  readonly camera?: BcfCamera | undefined;
 }
+
+/** A point or direction in model coordinates, in metres. */
+export type BcfVector = readonly [number, number, number];
+
+interface BcfCameraFrame {
+  readonly viewPoint: BcfVector;
+  readonly direction: BcfVector;
+  readonly upVector: BcfVector;
+  /** Width over height of the view. */
+  readonly aspectRatio: number;
+}
+
+export type BcfCamera =
+  | (BcfCameraFrame & {
+      readonly kind: 'ORTHOGONAL';
+      /** The view's visible height, in metres. */
+      readonly viewToWorldScale: number;
+    })
+  | (BcfCameraFrame & {
+      readonly kind: 'PERSPECTIVE';
+      /** Vertical field of view, in degrees. */
+      readonly fieldOfView: number;
+    });
 
 export interface BcfComponents {
   readonly selection?: readonly BcfComponent[] | undefined;

@@ -41,15 +41,17 @@ The checker passes the complete official buildingSMART IDS conformance suite (33
 
 ## BCF 3.0 (issue exchange)
 
-The BIM Collaboration Format moves issues (topics, comments, viewpoints, component selections) between tools without moving the model. `parseBcfFiles` reads an unzipped BCF container into typed data; `serializeBcfFiles` writes one. Zip packaging is deliberately left to the caller, so the library stays dependency-free.
+The BIM Collaboration Format moves issues (topics, comments, viewpoints, component selections) between tools without moving the model. `parseBcfFiles` reads an unzipped BCF container into typed data; `serializeBcfFiles` writes one in the layout the BCF 3.0 schemas define. Zip packaging is deliberately left to the caller, so the library stays dependency-free.
 
 ```typescript
 import { parseBcfFiles, serializeBcfFiles } from 'brepjs-bim';
 
-const container = parseBcfFiles(files); // Record<path, bytes>
+const container = parseBcfFiles(files); // Map<path, XML text>
 if (container.ok) {
   const roundTripped = serializeBcfFiles(container.value);
 }
 ```
+
+A viewpoint carries the components it selects, colors or hides, and a camera (`ORTHOGONAL` or `PERSPECTIVE`, in metres) that puts the receiving tool's view where the issue was raised. BCF 3.0 requires a camera in every viewpoint file, and a topic type, status, creation date and author on every topic, so set them on anything you send to another tool.
 
 Topics reference model elements by GlobalId, which is where [stable identity](/families/identity) pays off again: a families-projected model keeps GlobalIds stable across rebuilds, so BCF issues filed against one export still point at the right elements in the next.

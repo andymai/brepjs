@@ -1,4 +1,5 @@
 export type {
+  BcfCamera,
   BcfColoring,
   BcfComment,
   BcfComponent,
@@ -7,6 +8,7 @@ export type {
   BcfFiles,
   BcfProject,
   BcfTopic,
+  BcfVector,
   BcfVersion,
   BcfViewpoint,
   BcfVisibility,
