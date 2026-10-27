@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.182.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.181.0...brepjs-cad-v0.182.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** render BIM sessions with render_view ([#2448](https://github.com/andymai/brepjs/issues/2448)) ([68872a4](https://github.com/andymai/brepjs/commit/68872a45df05b0c2ecda8fc9658fa5edcc5dab21))
+
 ## [0.181.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.180.0...brepjs-cad-v0.181.0) (2026-10-27)
 
 
