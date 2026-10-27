@@ -1,0 +1,28 @@
+packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts
+  s_15acc224bc0494::t_3e5c4c6ae6b578 3-13
+  s_15acc224bc0494::t_6cba0924e69b16 170-239
+  s_15acc224bc0494::t_5f45c5cc49dc78 80-86,96-98,101
+packages/brepjs-sheetmetal/src/foreignUnfoldFns.ts
+  s_15acc224bc0494::t_a9e6c5028e4119 552-555
+  s_15acc224bc0494::t_bcae715f3febcb 556-576
+  s_15acc224bc0494::t_41188f50806ca2 10
+  s_15acc224bc0494::t_fd95cf75648bd1 18
+  s_15acc224bc0494::t_3dab0d2ad2bb8f 501-502,505
+  s_15acc224bc0494::t_01bf3650235bf9 551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "666140b082166c2c305ad056e9343da7b320a578",
+  "prompts": {},
+  "sessions": {
+    "s_15acc224bc0494": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fd7345-3921-4300-b28f-136bcca972c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
