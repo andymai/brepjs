@@ -1,0 +1,54 @@
+packages/brepjs-cad/src/session/protocol.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 6,21-25
+packages/brepjs-cad/src/mcp/issueTools.ts
+  s_4d771e7bb40c3c::t_354aa03eb02298 306
+  s_4d771e7bb40c3c::t_f42b58974aab43 1-305,307-449
+packages/brepjs-cad/viewer/main.tsx
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 25,27-34,64-72,285
+packages/brepjs-cad/src/session/sessions.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 18,361-362,370-376
+packages/brepjs-cad/tests/mcpServer.test.ts
+  s_4d771e7bb40c3c::t_100dd18ca5dcef 56-57,71,75-78,229-230
+  s_4d771e7bb40c3c::t_ef7135da56e1f3 242-249
+packages/brepjs-cad/src/session/worker.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 41,43
+packages/brepjs-cad/src/mcp/sessionTools.ts
+  s_4d771e7bb40c3c::t_3bd73949394dc5 45-46,215,244,292
+packages/brepjs-cad/src/mcp/prompts.ts
+  s_4d771e7bb40c3c::t_5222a37af578af 88,94-147
+packages/brepjs-cad/README.md
+  s_4d771e7bb40c3c::t_550e33a6ce3305 108-109,115
+packages/brepjs-cad/tests/bcfIssues.test.ts
+  s_4d771e7bb40c3c::t_32793a34d97c55 117-122,124-125,130-132
+  s_4d771e7bb40c3c::t_5e53d273e623a9 1-71,76-116,123,126-129,133-277,285-320
+  s_4d771e7bb40c3c::t_8cfba2c11c329d 72-75,278-284
+packages/brepjs-cad/src/session/bim.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 37-116,144-145
+packages/brepjs-cad/src/session/bcf.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 1-184
+packages/brepjs-cad/viewer/src/screenshotApi.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 1,42-91
+  s_4d771e7bb40c3c::t_6225466e214151 92
+apps/docs/agent/bim-mcp.md
+  s_4d771e7bb40c3c::t_550e33a6ce3305 84,101-102,135-154,173
+packages/brepjs-cad/src/session/render.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 28-55,89,93,107,121-127,129
+packages/brepjs-cad/src/mcp/createServer.ts
+  s_4d771e7bb40c3c::t_354aa03eb02298 24,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1d186ebe7940f56906ec7aead2f5c7ac26bd692",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
