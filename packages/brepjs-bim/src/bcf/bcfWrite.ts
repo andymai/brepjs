@@ -20,7 +20,7 @@ import { escapeXmlAttr, escapeXmlText, xmlDocument } from './bcfXml.js';
  * - `bcf.version` — container version marker
  * - `project.bcfp` — project metadata
  * - `{topicGuid}/markup.bcf` — one markup file per topic (topic, comments, viewpoints)
- * - `{topicGuid}/{viewpoint}.bcfv` — one visualization file per viewpoint (components, camera)
+ * - `{topicGuid}/{viewpoint}.bcfv`: one visualization file per viewpoint (components, camera)
  *
  * `FLAG: BCF_ZIP_PACKAGING_ABSENT` — to produce an actual `.bcfzip`, ZIP these
  * entries with an external library; no ZIP dependency is declared in the

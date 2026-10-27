@@ -6,6 +6,8 @@ export type {
   BcfComponents,
   BcfContainerData,
   BcfFiles,
+  BcfOrthogonalCamera,
+  BcfPerspectiveCamera,
   BcfProject,
   BcfTopic,
   BcfVector,

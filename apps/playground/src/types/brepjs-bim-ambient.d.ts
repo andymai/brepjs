@@ -2767,6 +2767,7 @@ interface BcfContainerData {
 
 interface BcfVersion {
   readonly versionId: '3.0';
+  /** BCF 2.1's element, outside the 3.0 schema; written only when set. */
   readonly detailedVersion?: string | undefined;
 }
 
@@ -2778,6 +2779,7 @@ interface BcfProject {
 interface BcfTopic {
   readonly guid: string;
   readonly title: string;
+  /** Required by the BCF 3.0 schema, as are `topicStatus`, `creationDate` and `creationAuthor`. */
   readonly topicType?: string | undefined;
   readonly topicStatus?: string | undefined;
   readonly priority?: string | undefined;
@@ -2813,6 +2815,35 @@ interface BcfViewpoint {
   readonly snapshotFile?: string | undefined;
   readonly index?: number | undefined;
   readonly components?: BcfComponents | undefined;
+  /** Required by the BCF 3.0 schema in every viewpoint file. */
+  readonly camera?: BcfCamera | undefined;
+}
+
+/** A point or direction in model coordinates, in metres. */
+type BcfVector = readonly [number, number, number];
+
+type BcfCamera = BcfOrthogonalCamera | BcfPerspectiveCamera;
+
+interface BcfOrthogonalCamera {
+  readonly kind: 'ORTHOGONAL';
+  readonly viewPoint: BcfVector;
+  readonly direction: BcfVector;
+  readonly upVector: BcfVector;
+  /** The view's visible height, in metres. */
+  readonly viewToWorldScale: number;
+  /** Width over height of the view. */
+  readonly aspectRatio: number;
+}
+
+interface BcfPerspectiveCamera {
+  readonly kind: 'PERSPECTIVE';
+  readonly viewPoint: BcfVector;
+  readonly direction: BcfVector;
+  readonly upVector: BcfVector;
+  /** Vertical field of view, in degrees. */
+  readonly fieldOfView: number;
+  /** Width over height of the view. */
+  readonly aspectRatio: number;
 }
 
 interface BcfComponents {
@@ -2846,6 +2877,7 @@ interface BcfVisibility {
  * - `bcf.version` — container version marker
  * - `project.bcfp` — project metadata
  * - `{topicGuid}/markup.bcf` — one markup file per topic (topic, comments, viewpoints)
+ * - `{topicGuid}/{viewpoint}.bcfv`: one visualization file per viewpoint (components, camera)
  *
  * `FLAG: BCF_ZIP_PACKAGING_ABSENT` — to produce an actual `.bcfzip`, ZIP these
  * entries with an external library; no ZIP dependency is declared in the

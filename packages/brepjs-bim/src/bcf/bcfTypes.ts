@@ -74,25 +74,29 @@ export interface BcfViewpoint {
 /** A point or direction in model coordinates, in metres. */
 export type BcfVector = readonly [number, number, number];
 
-interface BcfCameraFrame {
+export type BcfCamera = BcfOrthogonalCamera | BcfPerspectiveCamera;
+
+export interface BcfOrthogonalCamera {
+  readonly kind: 'ORTHOGONAL';
   readonly viewPoint: BcfVector;
   readonly direction: BcfVector;
   readonly upVector: BcfVector;
+  /** The view's visible height, in metres. */
+  readonly viewToWorldScale: number;
   /** Width over height of the view. */
   readonly aspectRatio: number;
 }
 
-export type BcfCamera =
-  | (BcfCameraFrame & {
-      readonly kind: 'ORTHOGONAL';
-      /** The view's visible height, in metres. */
-      readonly viewToWorldScale: number;
-    })
-  | (BcfCameraFrame & {
-      readonly kind: 'PERSPECTIVE';
-      /** Vertical field of view, in degrees. */
-      readonly fieldOfView: number;
-    });
+export interface BcfPerspectiveCamera {
+  readonly kind: 'PERSPECTIVE';
+  readonly viewPoint: BcfVector;
+  readonly direction: BcfVector;
+  readonly upVector: BcfVector;
+  /** Vertical field of view, in degrees. */
+  readonly fieldOfView: number;
+  /** Width over height of the view. */
+  readonly aspectRatio: number;
+}
 
 export interface BcfComponents {
   readonly selection?: readonly BcfComponent[] | undefined;
