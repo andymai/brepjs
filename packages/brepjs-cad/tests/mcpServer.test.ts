@@ -59,6 +59,10 @@ describe('brep-mcp server', () => {
       'section_view',
       'get_spaces',
       'export_cobie',
+      'show_model',
+      'select_elements',
+      'show_elements',
+      'get_viewer_selection',
       'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({

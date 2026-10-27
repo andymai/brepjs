@@ -55,6 +55,11 @@ export interface WorkerOps {
     readonly args: CobieArgs;
     readonly result: CobieOutcome;
   };
+  readonly payload: {
+    readonly args: Record<string, never>;
+    /** encodePreviewPayload of the build. */
+    readonly result: Uint8Array;
+  };
 }
 
 export interface DrawingArgs {

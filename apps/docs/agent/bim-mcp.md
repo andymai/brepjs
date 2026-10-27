@@ -104,6 +104,10 @@ The `edit-and-verify` prompt walks an agent through this loop, `inspect-building
 | `section_view`            | Draws a vertical section along x or y, with what lies beyond it, as SVG, DXF or PNG.                                                                                 |
 | `get_spaces`              | Lists spaces with floor area, perimeter, volume and outline measured from each solid, beside the IFC base quantities.                                                |
 | `export_cobie`            | Writes a families session's COBie 2.4 sheets as CSV or JSON.                                                                                                         |
+| `show_model`              | Opens the build in an interactive viewer: inline where the client supports MCP Apps, a local URL otherwise.                                                          |
+| `select_elements`         | Selects elements in the open viewer.                                                                                                                                 |
+| `show_elements`           | Frames the viewer's camera on elements and selects them.                                                                                                             |
+| `get_viewer_selection`    | Returns what is selected in the viewer, including what the user clicked.                                                                                             |
 | `render_view`             | Renders to PNG: `highlight`, `isolate`, `colorBy` category, storey or family, a storey `plan`, or a `section`.                                                       |
 | `export_ifc`              | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
 | `search_reference`        | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
@@ -168,6 +172,12 @@ The issue gets one viewpoint with the elements as its selection, colored orange 
 Each call returns a PNG preview and saves the drawing when `outPath` is set: SVG to read, DXF to open 1:1 in a CAD tool (model millimetres, one layer per cut category), or PNG.
 
 `get_spaces` measures each space (an `IfcSpace`, or a families `Space`) from its solid: the floor outline cut just above its floor, its area and perimeter, and its volume. Next to those it reports the base quantities the IFC data records for the space, so a measured area that disagrees with a recorded one stands out. `export_cobie` writes a families model's COBie handover sheets, one CSV per sheet or a single JSON file, from the same BIM projection `export_ifc` writes.
+
+## The live viewer
+
+`show_model` opens the session's build in a 3D viewer the user can orbit and click. In a client that supports [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) the viewer appears inline in the conversation. Elsewhere, such as a terminal agent, the result carries a local URL to open in a browser. `highlight`, `isolate` and `colorBy` work as they do for `render_view`.
+
+The inline viewer and the agent share a selection. A click on an element selects it, and `get_viewer_selection` returns its id, so "this wall" can mean the one the user picked. `select_elements` selects elements in the viewer, and `show_elements` also frames the camera on them. The viewer checks in every couple of seconds, which is how both directions travel, and it reloads the model when the session rebuilds. The browser page shows the model but can't report clicks back.
 
 ## Running code against a session
 

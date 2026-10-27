@@ -9,5 +9,5 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["src", "main.tsx", "vite.config.ts"]
+  "include": ["src", "main.tsx", "app.tsx", "vite.config.ts", "app.vite.config.ts"]
 }

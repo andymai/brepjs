@@ -14,7 +14,15 @@ export interface ToolDef {
   readonly description: string;
   readonly inputSchema: Tool['inputSchema'];
   readonly annotations: ToolAnnotations;
+  /** Tool metadata, such as the MCP Apps `ui` link to a viewer resource. */
+  readonly _meta?: Record<string, unknown> | undefined;
   readonly handler: (args: ToolArgs) => CallToolResult | Promise<CallToolResult>;
+}
+
+/** A tool only an MCP App calls: its `ui.visibility` leaves out the model. */
+export function isAppOnly(t: ToolDef): boolean {
+  const ui = t._meta?.['ui'] as { visibility?: readonly string[] } | undefined;
+  return ui?.visibility !== undefined && !ui.visibility.includes('model');
 }
 
 /** A bad argument: reported to the agent as a tool error, not a protocol error. */
@@ -97,5 +105,6 @@ export function listTools(tools: readonly ToolDef[]): Tool[] {
     description: t.description,
     inputSchema: t.inputSchema,
     annotations: { title: t.title, ...t.annotations },
+    ...(t._meta ? { _meta: t._meta } : {}),
   }));
 }

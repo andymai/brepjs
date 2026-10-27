@@ -23,7 +23,21 @@ import { scheduleTools } from './scheduleTools.js';
 import { checkTools } from './checkTools.js';
 import { issueTools } from './issueTools.js';
 import { drawingTools } from './drawingTools.js';
-import { ArgError, errorResult, listTools, type ToolArgs, type ToolDef } from './registry.js';
+import {
+  APP_MIME,
+  UI_EXTENSION,
+  VIEWER_RESOURCE,
+  readViewerResource,
+  viewerTools,
+} from './viewerTools.js';
+import {
+  ArgError,
+  errorResult,
+  isAppOnly,
+  listTools,
+  type ToolArgs,
+  type ToolDef,
+} from './registry.js';
 import {
   listSessionResources,
   readSessionResource,
@@ -147,6 +161,12 @@ export function createBrepMcpServer(
     });
     return reply.action === 'accept' && reply.content?.['overwrite'] === true ? 'yes' : 'no';
   };
+  // MCP Apps hosts say so in their capabilities (SEP-1865); read at call time, after initialize.
+  const uiHost = (): boolean => {
+    const ext = server.getClientCapabilities()?.extensions?.[UI_EXTENSION] as
+      { mimeTypes?: unknown } | undefined;
+    return Array.isArray(ext?.mimeTypes) && ext.mimeTypes.includes(APP_MIME);
+  };
   const tools = [
     ...partTools(),
     ...sessionTools(sessions, { version, allowCode: features.allowCode === true, confirm }),
@@ -154,11 +174,15 @@ export function createBrepMcpServer(
     ...checkTools(sessions),
     ...issueTools(sessions, confirm),
     ...drawingTools(sessions, confirm),
+    ...viewerTools(sessions, uiHost),
     ...referenceTools(reference),
   ];
   const byName = new Map(tools.map((t) => [t.name, t]));
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: listTools(tools) }));
+  // App-only tools are for the viewer app, so a client that can't show one never lists them.
+  server.setRequestHandler(ListToolsRequestSchema, () => ({
+    tools: listTools(uiHost() ? tools : tools.filter((t) => !isAppOnly(t))),
+  }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const tool = byName.get(req.params.name);
     if (tool === undefined)
@@ -167,7 +191,11 @@ export function createBrepMcpServer(
   });
 
   server.setRequestHandler(ListResourcesRequestSchema, () => ({
-    resources: [...listSessionResources(sessions), ...listReferenceResources(reference)],
+    resources: [
+      ...listSessionResources(sessions),
+      ...listReferenceResources(reference),
+      VIEWER_RESOURCE,
+    ],
   }));
   server.setRequestHandler(ListResourceTemplatesRequestSchema, () => ({
     resourceTemplates: SESSION_RESOURCE_TEMPLATES,
@@ -177,7 +205,8 @@ export function createBrepMcpServer(
     try {
       result =
         readSessionResource(sessions, req.params.uri) ??
-        readReferenceResource(reference, req.params.uri);
+        readReferenceResource(reference, req.params.uri) ??
+        readViewerResource(req.params.uri);
     } catch (e) {
       throw new McpError(ErrorCode.InvalidParams, errorMessage(e));
     }

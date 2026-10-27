@@ -9,6 +9,7 @@ import { buildIfc } from './buildIfc.js';
 import type { WorkerMessage, WorkerRequest } from './protocol.js';
 import { evalInBuild } from './evalCode.js';
 import { errorMessage } from './records.js';
+import { encodePreviewPayload } from 'brepjs-viewer';
 import { rasterizeSvg, renderPayload } from './render.js';
 import { drawElements, type DrawnElement } from './drawing.js';
 import { drawingSvg, dxfEntities, svgSize } from './drawingFormats.js';
@@ -107,6 +108,12 @@ async function handle(req: WorkerRequest): Promise<void> {
           measureSpace(geometry.brep, id, geometry.shapes.get(id) ?? [])
         );
         send({ type: 'reply', id: req.id, result });
+        return;
+      }
+      case 'payload': {
+        const payload = current?.payload?.();
+        if (payload === undefined) throw new Error('this worker holds no build to show');
+        send({ type: 'reply', id: req.id, result: new Uint8Array(encodePreviewPayload(payload)) });
         return;
       }
       case 'cobie': {
