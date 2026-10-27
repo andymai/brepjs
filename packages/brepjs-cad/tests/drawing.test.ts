@@ -12,6 +12,12 @@ import { measureSpace } from '@/session/spaces.js';
 const brep = await loadBrep();
 await initOcctWasm(brep);
 
+/** A box moved by `by`; translate copies, so the box it starts from is freed. */
+function boxAt(size: [number, number, number], by: [number, number, number]) {
+  using raw = brep.box(...size);
+  return brep.translate(raw, by);
+}
+
 /** A tall wall at x 0..1000 and a low plinth at x 2000..3000, both 1000 deep in y. */
 function model() {
   return [
@@ -23,7 +29,7 @@ function model() {
     {
       id: 'plinth',
       category: 'slab',
-      shapes: [brep.translate(brep.box(1000, 1000, 500), [2000, 0, 0])],
+      shapes: [boxAt([1000, 1000, 500], [2000, 0, 0])],
     },
   ];
 }
@@ -139,7 +145,7 @@ describe('drawing formats', () => {
 describe('measureSpace', () => {
   it('fuses a space given as overlapping solids, so the overlap counts once', () => {
     const a = brep.box(2000, 2000, 2700);
-    const b = brep.translate(brep.box(2000, 2000, 2700), [1000, 0, 0]);
+    const b = boxAt([2000, 2000, 2700], [1000, 0, 0]);
     try {
       const m = measureSpace(brep, 'sp', [a, b]);
       expect(m.error).toBeUndefined();
