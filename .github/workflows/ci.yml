@@ -216,10 +216,21 @@ jobs:
       - run: npm run build --workspace=brepjs-viewer
       - run: npm run build --workspace=brepjs-families
       - run: npm run build --workspace=brepjs-bim
+      # The render, BCF snapshot and live-viewer tests drive the built viewer pages in puppeteer's
+      # Chrome. A dependency-cache hit skips npm ci, and with it puppeteer's own download, so the
+      # browser is cached and installed here.
+      - name: Cache puppeteer browser download
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chrome for Puppeteer
+        working-directory: packages/brepjs-cad
+        run: npx puppeteer browsers install chrome
       - run: npm run typecheck --workspace=brepjs-cad
       - run: npm run lint --workspace=brepjs-cad
-      - run: npm run test --workspace=brepjs-cad
       - run: npm run build --workspace=brepjs-cad
+      - run: npm run test --workspace=brepjs-cad
       # Deterministic eval: replay skills/implement/examples through runPart, gate on volume/area/validity.
       - run: npm run eval --workspace=brepjs-cad
       # Smoke: run the BUILT cli under plain node on a .ts part — catches the bin/TS-load

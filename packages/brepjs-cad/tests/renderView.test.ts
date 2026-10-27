@@ -6,8 +6,8 @@ import { VIEWER_DIST } from '@/snapshot/static.js';
 import { INTEROP_IFC, makeBimProject, type BimProject } from './bimFixture.js';
 import { decodePng, pixelShare } from './png.js';
 
-// Rendering needs the built viewer page and puppeteer's Chrome. CI builds the viewer after the
-// tests run, so there this file skips; locally, `npm run build` first.
+// Rendering needs the built viewer page and puppeteer's Chrome, so this file skips without them;
+// locally, `npm run build` first.
 async function renderAvailable(): Promise<boolean> {
   if (!existsSync(join(VIEWER_DIST, 'index.html'))) return false;
   try {

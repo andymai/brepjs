@@ -5,6 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createBrepMcpServer, type BrepMcpServer } from '@/mcp/createServer.js';
 import { APP_MIME, UI_EXTENSION, VIEWER_URI } from '@/mcp/viewerTools.js';
+import { CHROME_ARGS } from '@/snapshot/chrome.js';
 import { VIEWER_DIST } from '@/snapshot/static.js';
 import { makeBimProject, type BimProject } from './bimFixture.js';
 
@@ -195,7 +196,8 @@ describe('the live viewer', () => {
         arguments: { sessionId: 's1', isolate: ['ground/slab'] },
       });
       const puppeteer = (await import('puppeteer')).default;
-      const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+      // Software GL, as the render pipeline uses, so the test runs on machines without a GPU.
+      const browser = await puppeteer.launch({ headless: true, args: [...CHROME_ARGS] });
       try {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 600 });
