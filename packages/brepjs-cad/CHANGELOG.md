@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.183.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.182.0...brepjs-cad-v0.183.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** export BIM sessions to IFC with export_ifc ([#2450](https://github.com/andymai/brepjs/issues/2450)) ([0e60b39](https://github.com/andymai/brepjs/commit/0e60b39eae104fc7d774899ef8bd5283c4241891))
+
 ## [0.182.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.181.0...brepjs-cad-v0.182.0) (2026-10-27)
 
 
