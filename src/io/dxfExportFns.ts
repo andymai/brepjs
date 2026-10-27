@@ -1,7 +1,7 @@
 /**
  * DXF ASCII export — converts 2D blueprints to DXF R12 format.
  *
- * Supports LINE entities for straight segments and LWPOLYLINE
+ * Supports LINE entities for straight segments and POLYLINE
  * approximations for arcs, ellipses, splines, and other curves.
  */
 
@@ -18,7 +18,7 @@ import type Blueprints from '@/2d/blueprints/blueprints.js';
  * A single DXF entity (LINE or POLYLINE).
  *
  * LINE maps directly to a DXF LINE entity.
- * POLYLINE maps to an LWPOLYLINE with optional closure.
+ * POLYLINE maps to an R12 POLYLINE (its VERTEX entities and a SEQEND), optionally closed.
  */
 export type DXFEntity =
   | { type: 'LINE'; start: Point2D; end: Point2D; layer?: string }
@@ -35,6 +35,31 @@ export interface DXFExportOptions {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/** One entity's group-code lines in the ENTITIES section. */
+function entityLines(entity: DXFEntity, layer: string): string[] {
+  if (entity.type === 'LINE') {
+    const [x1, y1] = entity.start;
+    const [x2, y2] = entity.end;
+    return ['0', 'LINE', '8', layer, '10', String(x1), '20', String(y1), '30', '0'].concat([
+      '11',
+      String(x2),
+      '21',
+      String(y2),
+      '31',
+      '0',
+    ]);
+  }
+  // The header declares R12, which has no LWPOLYLINE: a polyline is a POLYLINE header (66 says
+  // vertices follow; its own point is a placeholder), one VERTEX per point, and a SEQEND.
+  const out = ['0', 'POLYLINE', '8', layer, '66', '1', '10', '0', '20', '0', '30', '0'];
+  out.push('70', entity.closed ? '1' : '0');
+  for (const [x, y] of entity.points) {
+    out.push('0', 'VERTEX', '8', layer, '10', String(x), '20', String(y), '30', '0');
+  }
+  out.push('0', 'SEQEND', '8', layer);
+  return out;
+}
 
 /**
  * Export DXF entities to a DXF R12 ASCII string.
@@ -81,41 +106,7 @@ export function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): st
   // ENTITIES section
   lines.push('0', 'SECTION', '2', 'ENTITIES');
   for (const entity of entities) {
-    const entLayer = entity.layer ?? layer;
-    if (entity.type === 'LINE') {
-      lines.push(
-        '0',
-        'LINE',
-        '8',
-        entLayer,
-        '10',
-        String(entity.start[0]),
-        '20',
-        String(entity.start[1]),
-        '30',
-        '0',
-        '11',
-        String(entity.end[0]),
-        '21',
-        String(entity.end[1]),
-        '31',
-        '0'
-      );
-    } else {
-      lines.push(
-        '0',
-        'LWPOLYLINE',
-        '8',
-        entLayer,
-        '90',
-        String(entity.points.length),
-        '70',
-        entity.closed ? '1' : '0'
-      );
-      for (const pt of entity.points) {
-        lines.push('10', String(pt[0]), '20', String(pt[1]));
-      }
-    }
+    lines.push(...entityLines(entity, entity.layer ?? layer));
   }
   lines.push('0', 'ENDSEC');
 
@@ -129,7 +120,7 @@ export function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): st
  * Convert a Blueprint (or CompoundBlueprint/Blueprints) to a DXF string.
  *
  * Each straight segment becomes a LINE entity; arcs, ellipses, splines,
- * and other curves are approximated as LWPOLYLINE entities.
+ * and other curves are approximated as POLYLINE entities.
  *
  * @param drawing - A Blueprint, CompoundBlueprint, or Blueprints collection.
  * @param options - Layer name and curve approximation settings.

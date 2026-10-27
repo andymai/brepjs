@@ -49,9 +49,13 @@ describe('exportDXF', () => {
     ];
     const dxf = exportDXF(entities);
 
-    expect(dxf).toContain('LWPOLYLINE');
-    expect(dxf).toContain('90\n3'); // 3 vertices
+    // R12, as the header declares: no LWPOLYLINE, a VERTEX per point, closed by a SEQEND.
+    expect(dxf).not.toContain('LWPOLYLINE');
+    expect(dxf).toContain('0\nPOLYLINE\n8\n0\n66\n1\n');
     expect(dxf).toContain('70\n1'); // closed
+    expect(dxf.match(/\nVERTEX\n/g)).toHaveLength(3);
+    expect(dxf).toContain('0\nVERTEX\n8\n0\n10\n5\n20\n5\n30\n0');
+    expect(dxf.indexOf('SEQEND')).toBeGreaterThan(dxf.lastIndexOf('VERTEX'));
   });
 
   it('uses custom layer name', () => {
@@ -98,9 +102,9 @@ describe('blueprintToDXF', () => {
     const dxf = blueprintToDXF(rounded);
 
     expect(dxf).toContain('ENTITIES');
-    // Should have both LINE and LWPOLYLINE entities (lines for straight, polylines for arcs)
-    expect(dxf).toContain('LINE');
-    expect(dxf).toContain('LWPOLYLINE');
+    // Lines for the straight sides, polylines for the corner arcs.
+    expect(dxf).toContain('\nLINE\n');
+    expect(dxf).toContain('\nPOLYLINE\n');
     expect(dxf).toContain('EOF');
   });
 

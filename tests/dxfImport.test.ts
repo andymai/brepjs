@@ -3,7 +3,15 @@ import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { initKernel } from './setup.js';
-import { importDXF, isOk, unwrap, curveLength } from '@/index.js';
+import {
+  exportDXF,
+  importDXF,
+  isOk,
+  unwrap,
+  curveLength,
+  isClosedWire,
+  type DXFEntity,
+} from '@/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -225,5 +233,105 @@ describe('importDXF entity types', () => {
     const r2 = await importDXF(blob, { layer: 'OtherLayer' });
     expect(isOk(r2)).toBe(true);
     expect(unwrap(r2).length).toBe(0);
+  });
+
+  it('reads back the POLYLINE entities exportDXF writes', async () => {
+    const dxf = exportDXF([
+      {
+        type: 'POLYLINE',
+        points: [
+          [0, 0],
+          [10, 0],
+          [10, 5],
+          [0, 5],
+        ],
+        closed: true,
+        layer: 'A',
+      },
+      {
+        type: 'POLYLINE',
+        points: [
+          [20, 0],
+          [30, 0],
+          [30, 8],
+        ],
+        layer: 'B',
+      },
+    ]);
+    const wires = unwrap(await importDXF(new Blob([dxf])));
+    expect(wires).toHaveLength(2);
+    const lengths = wires.map((w) => curveLength(w)).sort((x, y) => x - y);
+    expect(lengths[0]).toBeCloseTo(18, 6);
+    expect(lengths[1]).toBeCloseTo(30, 6);
+    const square = unwrap(await importDXF(new Blob([dxf]), { layer: 'A' }));
+    expect(square).toHaveLength(1);
+    expect(square[0] && isClosedWire(square[0])).toBe(true);
+    for (const w of [...wires, ...square]) w[Symbol.dispose]();
+  });
+
+  it('reads an LWPOLYLINE, bulges as arcs', async () => {
+    // A 10 x 10 square whose top edge is a half circle bulging up (bulge -1 runs clockwise).
+    const dxf = [
+      '0',
+      'SECTION',
+      '2',
+      'ENTITIES',
+      '0',
+      'LWPOLYLINE',
+      '8',
+      '0',
+      '90',
+      '4',
+      '70',
+      '1',
+      '10',
+      '0',
+      '20',
+      '0',
+      '10',
+      '10',
+      '20',
+      '0',
+      '10',
+      '10',
+      '20',
+      '10',
+      '42',
+      '-1',
+      '10',
+      '0',
+      '20',
+      '10',
+      '0',
+      'ENDSEC',
+      '0',
+      'EOF',
+    ].join('\n');
+    const [wire, ...rest] = unwrap(await importDXF(new Blob([dxf])));
+    expect(rest).toHaveLength(0);
+    if (!wire) throw new Error('no wire');
+    expect(isClosedWire(wire)).toBe(true);
+    expect(curveLength(wire)).toBeCloseTo(30 + 5 * Math.PI, 6);
+    wire[Symbol.dispose]();
+  });
+
+  it('returns each disconnected outline as its own wire', async () => {
+    const square = (x: number): DXFEntity[] => [
+      { type: 'LINE', start: [x, 0], end: [x + 1, 0] },
+      { type: 'LINE', start: [x + 1, 0], end: [x + 1, 1] },
+      { type: 'LINE', start: [x + 1, 1], end: [x, 1] },
+      { type: 'LINE', start: [x, 1], end: [x, 0] },
+    ];
+    // Two squares, their edges interleaved.
+    const a = square(0);
+    const b = square(5);
+    const mixed = a.flatMap((e, i) => [e, b[3 - i]].filter((x): x is DXFEntity => x !== undefined));
+    const wires = unwrap(await importDXF(new Blob([exportDXF(mixed)])));
+    expect(wires).toHaveLength(2);
+    for (const w of wires) {
+      expect(isClosedWire(w)).toBe(true);
+      expect(curveLength(w)).toBeCloseTo(4, 6);
+      w[Symbol.dispose]();
+    }
   });
 });
