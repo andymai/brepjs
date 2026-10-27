@@ -14,7 +14,6 @@ import type { Session, SessionManager } from '../session/sessions.js';
 import {
   ArgError,
   jsonResult,
-  optionalBoolean,
   optionalCount,
   optionalString,
   requireString,
@@ -242,7 +241,7 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
           v.rev++;
         }
         const rev = optionalCount(a, 'rev');
-        const behind = rev === undefined || rev !== v.rev || optionalBoolean(a, 'full') === true;
+        const behind = rev === undefined || rev !== v.rev;
         return {
           content: [{ type: 'text', text: JSON.stringify({ rev: v.rev }) }],
           structuredContent: {

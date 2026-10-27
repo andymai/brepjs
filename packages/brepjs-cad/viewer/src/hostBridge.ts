@@ -20,6 +20,8 @@ export class HostBridge {
 
   constructor(private readonly target: Window = window.parent) {
     window.addEventListener('message', (event: MessageEvent<unknown>) => {
+      // Only the host speaks to the view; anything else posting to this window is ignored.
+      if (event.source !== this.target) return;
       const msg = event.data as Json | null;
       if (msg === null || typeof msg !== 'object' || msg['jsonrpc'] !== '2.0') return;
       const id = msg['id'];

@@ -133,7 +133,16 @@ describe('the live viewer', () => {
       const url = new URL(String(shown['url']));
       const model = await fetch(new URL('/__preview/model', url));
       expect(model.ok).toBe(true);
-      expect((await model.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+      const before = Buffer.from(await model.arrayBuffer());
+      expect(before.byteLength).toBeGreaterThan(1000);
+      // A rebuild sends the open page the new model without another show_model.
+      project.edit('length={4000}', 'length={4500}');
+      await plain.callTool({ name: 'rebuild', arguments: { sessionId: 's1' } });
+      const after = Buffer.from(
+        await (await fetch(new URL('/__preview/model', url))).arrayBuffer()
+      );
+      expect(after.equals(before)).toBe(false);
+      project.edit('length={4500}', 'length={4000}');
     } finally {
       other.sessions.closeAll();
       await plain.close();

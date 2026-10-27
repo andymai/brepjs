@@ -26,6 +26,7 @@ import { SessionWorker, WorkerError } from './workerClient.js';
 
 export const DEFAULT_BUILD_TIMEOUT_MS = 120_000;
 export const DEFAULT_MAX_SESSIONS = 4;
+const PAYLOAD_TIMEOUT_MS = 120_000;
 
 const PROGRAM_EXT = new Set(['.ts', '.tsx', '.mts', '.js', '.mjs']);
 
@@ -362,6 +363,18 @@ export class SessionManager {
       session.validationCache = undefined;
       session.lastDiff = { previousBuildHash: previous.buildHash, diff };
       session.lastFailure = undefined;
+      // A browser page show_model linked reloads on its own once it has the new model.
+      const page = session.viewer.fallback;
+      if (page) {
+        try {
+          const bytes = await this.#request(session, 'payload', {}, PAYLOAD_TIMEOUT_MS);
+          page.update(
+            bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+          );
+        } catch {
+          // The page keeps the last model; show_model sends it the new one.
+        }
+      }
       return {
         ok: true,
         session,
