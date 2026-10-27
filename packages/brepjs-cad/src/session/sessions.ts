@@ -10,6 +10,7 @@ import {
   type ElementRecord,
   type SessionKind,
 } from './records.js';
+import type { EvalOutcome } from './evalCode.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { WorkerOps } from './protocol.js';
 import type { RenderRequest } from './render.js';
@@ -381,6 +382,26 @@ export class SessionManager {
     });
   }
 
+  /** Run agent code against the session's current build, in its worker. */
+  evalCode(
+    id: string,
+    code: string,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
+  ): Promise<{
+    readonly session: Session;
+    readonly outcome: EvalOutcome;
+    readonly buildHash: string;
+  }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'eval', async (s) => {
+      const buildHash = s.build.buildHash;
+      return {
+        session: s,
+        outcome: await this.#request(s, 'eval', { code }, opts.timeoutMs),
+        buildHash,
+      };
+    });
+  }
+
   /** Remember the GlobalIds an export wrote. Call it once the file is on disk. */
   recordExport(id: string, projectId: string, globalIds: Readonly<Record<string, string>>): void {
     const session = this.#sessions.get(id);
@@ -419,7 +440,7 @@ export class SessionManager {
   }
 
   /** A request to the session's live worker. A timeout stops the worker; rebuild starts a new one. */
-  async #request<K extends 'render' | 'exportIfc'>(
+  async #request<K extends 'render' | 'exportIfc' | 'eval'>(
     session: Session,
     op: K,
     args: WorkerOps[K]['args'],
@@ -437,10 +458,8 @@ export class SessionManager {
     } catch (e) {
       const stopped =
         e instanceof WorkerError ? '; the worker stopped, so rebuild before trying again' : '';
-      throw new SessionError(
-        op === 'render' ? 'RENDER_FAILED' : 'EXPORT_FAILED',
-        `${errorMessage(e)}${stopped}`
-      );
+      const code = { render: 'RENDER_FAILED', exportIfc: 'EXPORT_FAILED', eval: 'EVAL_FAILED' }[op];
+      throw new SessionError(code, `${errorMessage(e)}${stopped}`);
     }
   }
 

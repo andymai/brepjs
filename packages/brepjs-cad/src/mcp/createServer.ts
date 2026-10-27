@@ -115,7 +115,8 @@ export interface BrepMcpServer {
 export function createBrepMcpServer(
   version: string,
   sessionOptions: Omit<SessionManagerOptions, 'onChange'> = {},
-  reference: ReferenceIndex = new ReferenceIndex()
+  reference: ReferenceIndex = new ReferenceIndex(),
+  features: { readonly allowCode?: boolean } = {}
 ): BrepMcpServer {
   const server = new Server(
     { name: 'brepjs-cad', version },
@@ -132,6 +133,7 @@ export function createBrepMcpServer(
     ...partTools(),
     ...sessionTools(sessions, {
       version,
+      allowCode: features.allowCode === true,
       confirm: async (message) => {
         if (!server.getClientCapabilities()?.elicitation) return 'unsupported';
         const reply = await server.elicitInput({

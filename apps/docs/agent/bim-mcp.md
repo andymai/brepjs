@@ -98,6 +98,22 @@ The `edit-and-verify` prompt walks an agent through this loop, and `inspect-buil
 | `export_ifc`       | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
 | `search_reference` | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
 
+## Running code against a session
+
+Some questions don't fit a query, such as the clear distance between two elements. Start the server with `--allow-code` and it also lists `eval_in_session`, which runs a TypeScript function body against the session's live build:
+
+```bash
+claude mcp add brep -- npx -y --package brepjs-cad brep-mcp --allow-code
+```
+
+```ts
+// eval_in_session { "sessionId": "s1", "code": ... }
+const shape = ctx.model.byKeyPath.get('ground/annex').shape.value;
+return ctx.brep.measureVolume(shape).value;
+```
+
+The code receives `ctx` with `brep` (the brepjs namespace), the element `records`, `record(id)`, and `model`: the resolved tree and each element's mesh and shape for a families session, or the imported model for an IFC file. It returns JSON and its console output. The code runs with the server's own permissions, which is why the tool is off by default. A runaway loop is stopped at its time limit along with the session's worker; `rebuild` starts a new one.
+
 A key-path glob uses `*` within one path segment and `**` across segments, so `ground/*/voids:*` finds every opening one level under `ground`. In `highlight` and `isolate`, a container such as a storey or a composed family stands for everything under it.
 
 The server also serves each session's element tree (`brep://sessions/{id}/tree`), single elements (`brep://sessions/{id}/elements/{id}`), and the bundled reference files (`brep://reference/...`) as resources.

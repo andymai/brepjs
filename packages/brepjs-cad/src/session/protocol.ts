@@ -1,4 +1,5 @@
 import type { BuildOutcome, SessionKind } from './records.js';
+import type { EvalOutcome } from './evalCode.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { RenderRequest } from './render.js';
 
@@ -20,6 +21,10 @@ export interface WorkerOps {
   readonly exportIfc: {
     readonly args: ExportIfcArgs;
     readonly result: ExportIfcOutcome;
+  };
+  readonly eval: {
+    readonly args: { readonly code: string };
+    readonly result: EvalOutcome;
   };
 }
 

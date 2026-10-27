@@ -38,6 +38,18 @@ export interface WorkerBuild {
   payload?(): PreviewModelPayload;
   /** Families builds only: the model as IFC. */
   exportIfc?(args: ExportIfcArgs): Promise<ExportIfcOutcome>;
+  /** What eval_in_session code receives as `ctx`: live kernel objects, not copies. */
+  evalContext?(): object;
+}
+
+/** The parts of `ctx` both kinds of build share. */
+export function baseEvalContext(
+  brep: BrepNs,
+  kind: 'families' | 'ifc',
+  elements: readonly ElementRecord[]
+): Record<string, unknown> {
+  const byId = new Map(elements.map((r) => [r.id, r]));
+  return { kind, brep, records: elements, record: (id: string) => byId.get(id) };
 }
 
 const NOTHING_TO_DISPOSE = (): void => {};
@@ -111,6 +123,10 @@ export async function buildFamilies(
           familiesNodes(brep, model.byKeyPath),
           previewTree(resolved)
         ).payload),
+      evalContext: () => ({
+        ...baseEvalContext(brep, 'families', elements),
+        model: { root: resolved, byKeyPath: model.byKeyPath },
+      }),
       exportIfc: async (args) => {
         const bim = await importBim(entryPath);
         if (bim === undefined) {

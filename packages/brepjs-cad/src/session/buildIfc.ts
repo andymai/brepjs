@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { previewBuildOf, tryMeshEdges } from '../preview/evaluate.js';
 import { initOcctWasm, loadBrep, type BrepNs } from '../verify/brepjsRuntime.js';
 import { importBim } from './bim.js';
-import type { WorkerBuild } from './buildFamilies.js';
+import { baseEvalContext, type WorkerBuild } from './buildFamilies.js';
 import {
   errorMessage,
   jsonSafe,
@@ -125,6 +125,7 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
     },
     dispose: () => bim.disposeImportedModel(model),
     payload: () => (payload ??= previewBuildOf(ifcNodes(brep, model, idOf), null).payload),
+    evalContext: () => ({ ...baseEvalContext(brep, 'ifc', elements), model }),
   };
 }
 

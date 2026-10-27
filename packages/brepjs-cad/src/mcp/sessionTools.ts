@@ -58,6 +58,47 @@ export interface SessionToolHost {
   readonly version: string;
   /** Ask the person at the client a yes/no question, when the client can show one. */
   confirm(message: string): Promise<'yes' | 'no' | 'unsupported'>;
+  /** List eval_in_session, which runs agent code with the server's permissions. */
+  readonly allowCode?: boolean | undefined;
+}
+
+const EVAL_TIMEOUT_MS = 30_000;
+
+function evalTool(sessions: SessionManager): ToolDef {
+  return {
+    name: 'eval_in_session',
+    title: 'Run code in a session',
+    description:
+      "Run TypeScript against a session's live build, in its worker, and return the JSON result. The code is the body of an async function that receives ctx: { kind, brep (the brepjs namespace), records, record(id), model }. For a families session model is { root (the resolved tree), byKeyPath (each element's mesh and B-rep shape) }; for an IFC session it is the imported model. Return a JSON-serializable value; console output comes back as logs. There are no imports: use ctx.brep. Use it for questions the other tools can't answer, such as a measurement between two elements. The code runs with the server's own permissions, which is why the tool is listed only when brep-mcp starts with --allow-code. A timeout stops the session's worker, so rebuild before using the session again.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: SESSION_ID,
+        expectBuild: EXPECT_BUILD,
+        code: {
+          type: 'string',
+          description:
+            'Function body, e.g. "return ctx.records.filter((r) => r.category === \'wall\').length;"',
+        },
+        timeoutMs: {
+          type: 'number',
+          description: `Budget in ms (default ${EVAL_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
+        },
+      },
+      required: ['sessionId', 'code'],
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
+    handler: async (a) => {
+      const sessionId = requireString(a, 'sessionId');
+      const code = requireString(a, 'code');
+      const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? EVAL_TIMEOUT_MS;
+      const { outcome, buildHash } = await sessions.evalCode(sessionId, code, {
+        timeoutMs,
+        expectBuild: optionalString(a, 'expectBuild'),
+      });
+      return jsonResult({ sessionId, buildHash, ...outcome }, !outcome.ok);
+    },
+  };
 }
 
 /** The project scoping an export's GlobalIds: the nearest package.json name, else the file's. */
@@ -272,6 +313,7 @@ function imageResult(digest: unknown, pngs: readonly Uint8Array[]): CallToolResu
 
 export function sessionTools(sessions: SessionManager, host: SessionToolHost): ToolDef[] {
   return [
+    ...(host.allowCode === true ? [evalTool(sessions)] : []),
     {
       name: 'open_model',
       title: 'Open BIM model',

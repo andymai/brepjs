@@ -52,6 +52,8 @@ export class SessionWorker {
   readonly #ready: Promise<void>;
   #nextId = 1;
   #exited = false;
+  // Set by kill(): the worker is condemned before its exit event arrives.
+  #killed = false;
   #stderrTail = '';
 
   constructor(opts: { readonly maxMemoryMb?: number; readonly cwd?: string } = {}) {
@@ -104,7 +106,7 @@ export class SessionWorker {
   }
 
   get alive(): boolean {
-    return !this.#exited;
+    return !this.#exited && !this.#killed;
   }
 
   /** Send one request; rejects with a WorkerError on timeout (after killing the worker) or exit. */
@@ -113,8 +115,9 @@ export class SessionWorker {
     args: WorkerOps[K]['args'],
     timeoutMs: number
   ): Promise<WorkerOps[K]['result']> {
-    if (this.#exited)
+    if (!this.alive) {
       return Promise.reject(new WorkerError('exited', 'session worker is not running'));
+    }
     const id = this.#nextId++;
     return new Promise<WorkerOps[K]['result']>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -143,6 +146,7 @@ export class SessionWorker {
 
   kill(): void {
     const pid = this.#child.pid;
+    this.#killed = true;
     if (pid !== undefined && !this.#exited) releaseSandboxGroup(pid);
   }
 }

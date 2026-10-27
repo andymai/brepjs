@@ -7,6 +7,7 @@
 import { buildFamilies, type WorkerBuild } from './buildFamilies.js';
 import { buildIfc } from './buildIfc.js';
 import type { WorkerMessage, WorkerRequest } from './protocol.js';
+import { evalInBuild } from './evalCode.js';
 import { errorMessage } from './records.js';
 import { renderPayload } from './render.js';
 
@@ -35,6 +36,12 @@ async function handle(req: WorkerRequest): Promise<void> {
         const pngs = await renderPayload(payload, req.args);
         const drawable = payload.elements.map((e) => e.keyPath);
         send({ type: 'reply', id: req.id, result: { pngs, drawable } });
+        return;
+      }
+      case 'eval': {
+        const ctx = current?.evalContext?.();
+        if (ctx === undefined) throw new Error('this worker holds no build to run code against');
+        send({ type: 'reply', id: req.id, result: await evalInBuild(ctx, req.args.code) });
         return;
       }
       case 'exportIfc': {
