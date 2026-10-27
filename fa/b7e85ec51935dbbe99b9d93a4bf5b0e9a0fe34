@@ -1,0 +1,199 @@
+packages/brepjs-cad/src/mcp/sessionTools.ts
+  s_4d771e7bb40c3c::t_43a121c88b1c63 137-138,174
+  s_4d771e7bb40c3c::t_3bd73949394dc5 45-46,215,244,292
+  s_4d771e7bb40c3c::t_e18e17a97ebd82 104,124
+packages/brepjs-cad/README.md
+  s_4d771e7bb40c3c::t_6c09e46626d989 106-107
+  s_4d771e7bb40c3c::t_550e33a6ce3305 108-109,115
+packages/brepjs-cad/src/mcp/checkTools.ts
+  s_4d771e7bb40c3c::t_43a121c88b1c63 1-6,9-12,14-30,34-40,42-56,62-101,105-112,116-121,123-127,139-147,153-157,158,181-182,191-195
+  s_4d771e7bb40c3c::t_1244db394cfdc2 7-8,13,31-33,57-61,102-104,113-115
+  s_4d771e7bb40c3c::t_68cbd8c5d0edd4 41,122,128-138,148-152,159-160,162-175,177-180,185-186,188-190,196-224
+  s_4d771e7bb40c3c::t_efdbd9932baefb 161,176,183-184,187
+packages/brepjs-cad/src/session/protocol.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 5,38-40
+  s_4d771e7bb40c3c::t_dffe9780edf640 41
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 9,24-28
+  s_4d771e7bb40c3c::t_04c192ab806078 73-74
+  s_4d771e7bb40c3c::t_62149cd82919ff 6-8,46-72,75-80
+packages/brepjs-cad/src/session/worker.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 117-122
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 85,87
+  s_4d771e7bb40c3c::t_04c192ab806078 45-52,56
+  s_4d771e7bb40c3c::t_62149cd82919ff 12-16,25-44,53-55,57-64,96-116
+packages/brepjs-cad/src/session/bim.ts
+  s_4d771e7bb40c3c::t_af2d513849685e 157-163
+  s_4d771e7bb40c3c::t_0ba8d1fcd78782 155-156
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 37-116,164,172
+  s_4d771e7bb40c3c::t_eff934c9f6663a 117-136,165-171
+packages/brepjs-cad/src/session/buildIfc.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 7,131
+  s_4d771e7bb40c3c::t_68cbd8c5d0edd4 266-269
+  s_4d771e7bb40c3c::t_e73d2d1837cf25 114,132-142
+packages/brepjs-cad/src/session/buildFamilies.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 21,50-51,175-189
+  s_4d771e7bb40c3c::t_e73d2d1837cf25 18,52-61,141,157-161,163-174
+  s_4d771e7bb40c3c::t_0125bb344ef25a 162
+packages/brepjs-cad/src/session/sessions.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 15,439-449,458-460,609
+  s_4d771e7bb40c3c::t_54faa678e76b5d 331-333
+  s_4d771e7bb40c3c::t_7ec6d3d4d7be3f 71-74,239,438,450-457
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 18,364-365,373-379
+  s_4d771e7bb40c3c::t_bc9cbe13371039 19-21,461-526
+  s_4d771e7bb40c3c::t_5d221e023dbf69 604,610-614
+  s_4d771e7bb40c3c::t_efe10f5afa2005 586
+  s_4d771e7bb40c3c::t_020af6fe101548 527
+packages/brepjs-cad/tests/validate.test.ts
+  s_4d771e7bb40c3c::t_ec6f0ac265ac35 1-3,5-28,33-76
+  s_4d771e7bb40c3c::t_e4acc2e153e9de 29-32
+  s_4d771e7bb40c3c::t_65ce0870aab592 4,77-104
+  s_4d771e7bb40c3c::t_7b5cb4dddf267b 105-107
+packages/brepjs-cad/src/mcp/createServer.ts
+  s_4d771e7bb40c3c::t_43a121c88b1c63 23,154
+  s_4d771e7bb40c3c::t_354aa03eb02298 24,155
+  s_4d771e7bb40c3c::t_e18e17a97ebd82 25,156
+packages/brepjs-cad/tests/checkTools.test.ts
+  s_4d771e7bb40c3c::t_089266f65b0a69 36-38,68,70-71,76-81,109-112,116-119
+  s_4d771e7bb40c3c::t_febccca4034ea8 1-16,18-35,39-66,72-75,82-86,106-108,113-115,120-121,148-149
+  s_4d771e7bb40c3c::t_8267f0d4911697 17,67,69,88,128-130
+  s_4d771e7bb40c3c::t_65ce0870aab592 87,89-105,122-127,131-147
+apps/docs/agent/bim-mcp.md
+  s_4d771e7bb40c3c::t_b550e5ee40904d 99-100,120-121,123-127,129-132
+  s_4d771e7bb40c3c::t_0e49836121edbc 128
+  s_4d771e7bb40c3c::t_bce7fda4f1fa91 134
+  s_4d771e7bb40c3c::t_6c09e46626d989 122,133
+  s_4d771e7bb40c3c::t_550e33a6ce3305 84,101-102,135-136,138-154,173
+  s_4d771e7bb40c3c::t_91356193c63170 137
+packages/brepjs-cad/src/session/validate.ts
+  s_4d771e7bb40c3c::t_897ced8295d17c 25-26,52-53,78-82,95-100,148-154
+  s_4d771e7bb40c3c::t_e665dd340c58bd 1,3-24,27-51,54-77,83-94,101-133,137-147,155-158,162-173
+  s_4d771e7bb40c3c::t_7ec6d3d4d7be3f 2,134-136,159-161
+packages/brepjs-cad/tests/mcpServer.test.ts
+  s_4d771e7bb40c3c::t_b550e5ee40904d 54-55,233
+  s_4d771e7bb40c3c::t_100dd18ca5dcef 56-57,75,80-83,234-235
+  s_4d771e7bb40c3c::t_ef7135da56e1f3 248-255
+  s_4d771e7bb40c3c::t_5ebfc049af06a4 58-61,76,236
+packages/brepjs-cad/src/mcp/prompts.ts
+  s_4d771e7bb40c3c::t_43a121c88b1c63 75-87,89-93
+  s_4d771e7bb40c3c::t_5222a37af578af 88,94-138,140-147
+  s_4d771e7bb40c3c::t_faeb1b43c37b04 139
+  s_4d771e7bb40c3c::t_5ebfc049af06a4 148-168
+packages/brepjs-cad/src/session/zip.ts
+  s_4d771e7bb40c3c::t_6749f95d6a60b6 1-15,20-27,38-50,52-65,85-131
+  s_4d771e7bb40c3c::t_faeb1b43c37b04 16-19,28-29,31,51,67-84
+  s_4d771e7bb40c3c::t_ac31a1acc05419 30,32-37,66
+packages/brepjs-cad/tests/zip.test.ts
+  s_4d771e7bb40c3c::t_0bf822662c5c11 1-36,50-68
+  s_4d771e7bb40c3c::t_07c86716e35192 37-49
+packages/brepjs-cad/src/mcp/referenceTools.ts
+  s_4d771e7bb40c3c::t_e8dc6bc35f392a 1,9,51,57-94,97,102
+packages/brepjs-cad/src/session/reference.ts
+  s_4d771e7bb40c3c::t_e8dc6bc35f392a 59-105,199,202-205,207
+packages/brepjs-cad/scripts/copyReference.mjs
+  s_4d771e7bb40c3c::t_99fac135bbbd8f 44-55
+packages/brepjs-cad/tests/reference.test.ts
+  s_4d771e7bb40c3c::t_7c096b40a16220 3,59-80
+  s_4d771e7bb40c3c::t_4ea4c57e047e41 81-82
+packages/brepjs-bim/src/bcf/bcfRead.ts
+  s_4d771e7bb40c3c::t_bb802da6e7f391 6,15,87-92,94-99,120-125,128-129,164-165,167-168,174-204,227-228,231
+  s_4d771e7bb40c3c::t_4e7265c55f211f 93
+packages/brepjs-bim/src/bcf/index.ts
+  s_4d771e7bb40c3c::t_bb802da6e7f391 2,13
+  s_4d771e7bb40c3c::t_54caedfd5b7989 9-10
+apps/docs/bim/interop.md
+  s_4d771e7bb40c3c::t_4e7265c55f211f 44,49,55
+  s_4d771e7bb40c3c::t_130d7710b7cfc5 56
+packages/brepjs-bim/tests/bcf.test.ts
+  s_4d771e7bb40c3c::t_0ec7778490b034 206,211-212
+  s_4d771e7bb40c3c::t_f859a33feebd15 5,73-80,174-205,207-210,213-298,306-311
+packages/brepjs-bim/src/index.ts
+  s_4d771e7bb40c3c::t_bb802da6e7f391 304,315
+  s_4d771e7bb40c3c::t_54caedfd5b7989 311-312
+packages/brepjs-bim/src/bcf/bcfWrite.ts
+  s_4d771e7bb40c3c::t_bb802da6e7f391 2,10,38,47-51,85-89,97-106,122-123,130,132-134,140,144-151,157,163-165,170-189,229-232,260-266
+  s_4d771e7bb40c3c::t_d5df7e3cd2f6af 267
+  s_4d771e7bb40c3c::t_c4cad1b0f071a2 23
+packages/brepjs-bim/src/bcf/bcfTypes.ts
+  s_4d771e7bb40c3c::t_bb802da6e7f391 22,34,70-71,74-76,81-83,86-89
+  s_4d771e7bb40c3c::t_20f7f2cdd25fb7 100
+  s_4d771e7bb40c3c::t_54caedfd5b7989 77-80,84-85,90-99
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_4d771e7bb40c3c::t_54caedfd5b7989 2825-2846
+  s_4d771e7bb40c3c::t_2cda85634a4dfa 2770,2782,2818-2819
+  s_4d771e7bb40c3c::t_c4cad1b0f071a2 2880
+  s_4d771e7bb40c3c::t_0af296ae5ba925 2820-2824
+packages/brepjs-cad/src/mcp/issueTools.ts
+  s_4d771e7bb40c3c::t_354aa03eb02298 318
+  s_4d771e7bb40c3c::t_f42b58974aab43 1-127,130-131,133-141,143-145,151-155,157,161-165,167-172,174-190,198-214,216-317,319-358,366-394,396-401,406-420,430-445,447-479
+  s_4d771e7bb40c3c::t_8e77e3069fc80e 215
+  s_4d771e7bb40c3c::t_faeb1b43c37b04 128-129,132,142,146-150,156,158-160,166,173,191-197,395,402-405,421-429,446
+  s_4d771e7bb40c3c::t_c00d038de36ab8 359-365
+packages/brepjs-cad/viewer/main.tsx
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 25,27-34,64-72,285
+packages/brepjs-cad/tests/bcfIssues.test.ts
+  s_4d771e7bb40c3c::t_32793a34d97c55 117-122,124-125,130-132
+  s_4d771e7bb40c3c::t_5e53d273e623a9 1-71,76-116,123,126-129,133-134,145-223,251-314,322-357
+  s_4d771e7bb40c3c::t_8cfba2c11c329d 72-75,315-321
+  s_4d771e7bb40c3c::t_080e1618e57cf3 224-250
+  s_4d771e7bb40c3c::t_efe5526a717ec5 135-144
+packages/brepjs-cad/src/session/bcf.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 1-17,19-163,166-173,187-198
+  s_4d771e7bb40c3c::t_efe5526a717ec5 164-165,179-181,184
+  s_4d771e7bb40c3c::t_c00d038de36ab8 18,174-178,182-183,185-186
+packages/brepjs-cad/viewer/src/screenshotApi.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 1,42-91
+  s_4d771e7bb40c3c::t_6225466e214151 92
+packages/brepjs-cad/src/session/render.ts
+  s_4d771e7bb40c3c::t_0a570c1b4d1952 28-55,109,113,127,141-147,149
+  s_4d771e7bb40c3c::t_62149cd82919ff 81-100
+packages/brepjs-cad/src/mcp/output.ts
+  s_4d771e7bb40c3c::t_faeb1b43c37b04 1-3,28-42,45-46,56-59,61,68
+packages/brepjs-cad/tests/output.test.ts
+  s_4d771e7bb40c3c::t_07c86716e35192 1,3-22,24-25,27,33-50
+  s_4d771e7bb40c3c::t_080e1618e57cf3 2,23,26,28-32
+packages/brepjs-cad/tests/drawingTools.test.ts
+  s_4d771e7bb40c3c::t_6e0f25794960a5 61-65,90-95
+  s_4d771e7bb40c3c::t_839f203c43d58e 1-60,66-89,96-138
+packages/brepjs-cad/src/mcp/drawingTools.ts
+  s_4d771e7bb40c3c::t_dbe65dc6be6793 306,388
+  s_4d771e7bb40c3c::t_3ddb97fc926b2c 1-8,10-39,47-121,123-126,130-167,169-208,214-218,220,222-223,225-238,240-249,252-284,286-290,295-305,307-375,381-387,389-405,410-474,482-537
+  s_4d771e7bb40c3c::t_04c192ab806078 40-46,122,127-129,209-213,219,221,224,285,291-294
+  s_4d771e7bb40c3c::t_b40dfeeeb9ac9a 9
+  s_4d771e7bb40c3c::t_ed2c7dce2bb26d 168,239
+  s_4d771e7bb40c3c::t_e18e17a97ebd82 250-251,376-380,406-409,475-481
+packages/brepjs-cad/src/session/drawingFormats.ts
+  s_4d771e7bb40c3c::t_ea0e379a3619f6 1-63,68-70,86
+  s_4d771e7bb40c3c::t_965ad5a659106e 64-67,71-85
+packages/brepjs-cad/src/session/drawing.ts
+  s_4d771e7bb40c3c::t_0c0cc29d1363b9 157,165-174,223-226
+  s_4d771e7bb40c3c::t_a09d9dce5a2fc0 1-66,68,72-156,158-164,175-222,227-256
+  s_4d771e7bb40c3c::t_6a6937185b8605 67,69-71
+packages/brepjs-cad/src/session/cobie.ts
+  s_4d771e7bb40c3c::t_eff934c9f6663a 1-70
+packages/brepjs-cad/src/session/spaces.ts
+  s_4d771e7bb40c3c::t_94e5be53d65829 78-84,87-89
+  s_4d771e7bb40c3c::t_965ad5a659106e 13,31-34,37,39-42,44-59
+  s_4d771e7bb40c3c::t_00191a7f6a407a 77
+  s_4d771e7bb40c3c::t_1260e9fa761592 1-12,14-30,35-36,38,43,60-76,85-86,90-100
+packages/brepjs-cad/tests/drawing.test.ts
+  s_4d771e7bb40c3c::t_0125bb344ef25a 85
+  s_4d771e7bb40c3c::t_60b348330ae934 3-8
+  s_4d771e7bb40c3c::t_cfe3cac3f0d236 1-2,9-51,55-84,86-125,127-136
+  s_4d771e7bb40c3c::t_6a6937185b8605 52-54,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fab7e85ec51935dbbe99b9d93a4bf5b0e9a0fe34",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
