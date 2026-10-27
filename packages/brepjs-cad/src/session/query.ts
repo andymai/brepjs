@@ -1,4 +1,4 @@
-import { canonicalJson, type Bounds, type ElementRecord } from './records.js';
+import { canonicalJson, setProperty, type Bounds, type ElementRecord } from './records.js';
 
 export class QueryError extends Error {
   constructor(message: string) {
@@ -206,11 +206,12 @@ function lookupPath(root: unknown, path: readonly string[]): unknown {
 }
 
 function psetValue(rec: ElementRecord, path: string): unknown {
-  const dot = path.indexOf('.');
-  if (dot < 0) return rec.psets?.[path] ?? rec.quantities?.[path];
-  const set = path.slice(0, dot);
-  const prop = path.slice(dot + 1);
-  return rec.psets?.[set]?.[prop] ?? rec.quantities?.[set]?.[prop];
+  return (
+    rec.psets?.[path] ??
+    rec.quantities?.[path] ??
+    setProperty(rec.psets, path) ??
+    setProperty(rec.quantities, path)
+  );
 }
 
 function test(actual: unknown, p: Predicate): boolean {

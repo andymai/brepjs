@@ -1,4 +1,4 @@
-import { canonicalJson, type ElementRecord, type ScalarRecord } from './records.js';
+import { canonicalJson, setProperty, type ElementRecord } from './records.js';
 import type { QuantitiesById } from './quantities.js';
 
 /** Fields every record answers, before its props, psets and quantities. */
@@ -29,13 +29,6 @@ function dig(root: unknown, path: readonly string[]): unknown {
   return cur;
 }
 
-/** A set path is `SetName.Property`; set names may not contain dots, property names may. */
-function inSets(sets: Readonly<Record<string, ScalarRecord>> | undefined, rest: string): unknown {
-  const dot = rest.indexOf('.');
-  if (dot < 0 || sets === undefined) return undefined;
-  return sets[rest.slice(0, dot)]?.[rest.slice(dot + 1)];
-}
-
 /** One field of one element: a built-in, `props.<path>`, `psets.<Set>.<Prop>` or `quantities.<Set>.<Prop>`. */
 export function fieldValue(
   rec: ElementRecord,
@@ -59,9 +52,10 @@ export function fieldValue(
       return rec.volume;
   }
   if (field.startsWith('props.')) return dig(rec.props, field.slice(6).split('.'));
-  if (field.startsWith('psets.')) return inSets(rec.psets, field.slice(6));
-  if (field.startsWith('quantities.'))
-    return inSets(quantities?.[rec.id] ?? rec.quantities, field.slice(11));
+  if (field.startsWith('psets.')) return setProperty(rec.psets, field.slice(6));
+  if (field.startsWith('quantities.')) {
+    return setProperty(quantities?.[rec.id] ?? rec.quantities, field.slice(11));
+  }
   throw new ScheduleError(
     `unknown field '${field}': use ${BUILTIN_FIELDS.join(', ')}, or props.<path>, psets.<Set>.<Prop>, quantities.<Set>.<Prop>`
   );
@@ -78,14 +72,25 @@ export interface FieldInfo {
   readonly count: number;
 }
 
-function typeOf(values: readonly unknown[]): FieldInfo['type'] {
-  const kinds = new Set(values.map((v) => typeof v));
+interface FieldTally {
+  count: number;
+  readonly kinds: Set<string>;
+}
+
+function typeOf(kinds: ReadonlySet<string>): FieldInfo['type'] {
   if (kinds.size !== 1) return 'mixed';
   const [only] = kinds;
   return only === 'number' || only === 'string' || only === 'boolean' ? only : 'mixed';
 }
 
-function scalarLeaves(value: unknown, prefix: string, out: Map<string, unknown[]>): void {
+function tally(out: Map<string, FieldTally>, field: string, value: unknown): void {
+  const t = out.get(field) ?? { count: 0, kinds: new Set<string>() };
+  t.count++;
+  t.kinds.add(typeof value);
+  out.set(field, t);
+}
+
+function scalarLeaves(value: unknown, prefix: string, out: Map<string, FieldTally>): void {
   if (value === undefined || value === null) return;
   if (typeof value === 'object' && !Array.isArray(value)) {
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
@@ -94,7 +99,7 @@ function scalarLeaves(value: unknown, prefix: string, out: Map<string, unknown[]
     return;
   }
   if (Array.isArray(value) || typeof value === 'object') return;
-  out.set(prefix, [...(out.get(prefix) ?? []), value]);
+  tally(out, prefix, value);
 }
 
 /** Every field the records carry a value for, most widely held first. */
@@ -102,11 +107,11 @@ export function schedulableFields(
   records: readonly ElementRecord[],
   quantities?: QuantitiesById
 ): FieldInfo[] {
-  const values = new Map<string, unknown[]>();
+  const values = new Map<string, FieldTally>();
   for (const rec of records) {
     for (const f of BUILTIN_FIELDS) {
       const v = fieldValue(rec, f);
-      if (v !== undefined) values.set(f, [...(values.get(f) ?? []), v]);
+      if (v !== undefined) tally(values, f, v);
     }
     scalarLeaves(rec.props, 'props', values);
     for (const [set, props] of Object.entries(rec.psets ?? {}))
@@ -116,7 +121,7 @@ export function schedulableFields(
     }
   }
   return [...values]
-    .map(([field, vs]) => ({ field, type: typeOf(vs), count: vs.length }))
+    .map(([field, t]) => ({ field, type: typeOf(t.kinds), count: t.count }))
     .sort((a, b) => b.count - a.count || a.field.localeCompare(b.field));
 }
 
@@ -197,7 +202,13 @@ export function runSchedule(
     const i = columns.indexOf(s.field);
     if (i < 0)
       throw new ScheduleError(`sortBy field '${s.field}' is not a column (${columns.join(', ')})`);
-    rows.sort((a, b) => (s.descending ? -1 : 1) * compare(a[i], b[i]));
+    // Blanks stay last whichever way the column sorts.
+    rows.sort((a, b) => {
+      const am = a[i] === undefined || a[i] === null;
+      const bm = b[i] === undefined || b[i] === null;
+      if (am || bm) return am === bm ? 0 : am ? 1 : -1;
+      return (s.descending ? -1 : 1) * compare(a[i], b[i]);
+    });
   }
   return { columns, rows, totals };
 }

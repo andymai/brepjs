@@ -112,3 +112,38 @@ describe('schedule tables', () => {
     ).toBe('name,h\n"C, ""quoted""",2700\nB,\n');
   });
 });
+
+describe('schedule edge cases', () => {
+  const dotted = rec('d', { psets: { 'Vendor.Wall': { Rating: 'A' }, Vendor: { Code: 'V1' } } });
+
+  it('reads properties of sets whose names contain dots', () => {
+    expect(fieldValue(dotted, 'psets.Vendor.Wall.Rating')).toBe('A');
+    expect(fieldValue(dotted, 'psets.Vendor.Code')).toBe('V1');
+    const listed = schedulableFields([dotted]).map((f) => f.field);
+    for (const f of listed.filter((x) => x.startsWith('psets.'))) {
+      expect(fieldValue(dotted, f)).toBeDefined();
+    }
+  });
+
+  it('keeps blanks last when a column sorts descending', () => {
+    const t = runSchedule([rec('x', { volume: 1 }), rec('y'), rec('z', { volume: 3 })], {
+      fields: ['id', 'volume'],
+      sortBy: [{ field: 'volume', descending: true }],
+    });
+    expect(t.rows.map((r) => r[0])).toEqual(['z', 'x', 'y']);
+  });
+
+  it('discovers fields over many elements without slowing down', () => {
+    const many = Array.from({ length: 20000 }, (_, i) =>
+      rec(`w${i}`, { name: `W${i}`, props: { height: i, length: 3000 } })
+    );
+    const started = Date.now();
+    const fields = schedulableFields(many);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(fields.find((f) => f.field === 'props.height')).toEqual({
+      field: 'props.height',
+      type: 'number',
+      count: 20000,
+    });
+  });
+});

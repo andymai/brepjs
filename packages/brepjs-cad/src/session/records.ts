@@ -162,6 +162,23 @@ function project(value: unknown, ancestors: object[], refs: boolean): unknown {
   return out;
 }
 
+/**
+ * A `SetName.Property` path against property sets whose names may contain dots themselves (IFC
+ * files carry names like `Vendor.Wall`): the longest set name that prefixes the path wins.
+ */
+export function setProperty(
+  sets: Readonly<Record<string, ScalarRecord>> | undefined,
+  path: string
+): unknown {
+  if (sets === undefined) return undefined;
+  let best: string | undefined;
+  for (const name of Object.keys(sets)) {
+    if (path.startsWith(`${name}.`) && (best === undefined || name.length > best.length))
+      best = name;
+  }
+  return best === undefined ? undefined : sets[best]?.[path.slice(best.length + 1)];
+}
+
 /** JSON with sorted object keys, so two equal values always serialize the same. */
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_k, v: unknown) => {

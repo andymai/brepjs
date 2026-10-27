@@ -132,9 +132,14 @@ export function scheduleTools(sessions: SessionManager, confirm: Confirm): ToolD
           sortBy: {
             type: 'array',
             items: {
-              type: 'object',
-              properties: { field: { type: 'string' }, descending: { type: 'boolean' } },
-              required: ['field'],
+              anyOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  properties: { field: { type: 'string' }, descending: { type: 'boolean' } },
+                  required: ['field'],
+                },
+              ],
             },
             description: 'Sort keys, first one strongest. A field name alone sorts ascending.',
           },

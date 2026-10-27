@@ -119,6 +119,16 @@ describe('session query', () => {
     ]);
   });
 
+  it('matches pset predicates on sets whose names contain dots', () => {
+    const vendor = rec('v', { psets: { 'Vendor.Wall': { Rating: 'A' } } });
+    expect(
+      [vendor].filter(matcher(parseWhere({ psets: [{ path: 'Vendor.Wall.Rating', value: 'A' }] })))
+    ).toHaveLength(1);
+    expect([vendor].filter(matcher(parseWhere({ psets: [{ path: 'Vendor.Wall' }] })))).toHaveLength(
+      1
+    );
+  });
+
   it('filters by bounds, intersecting or within', () => {
     expect(ids({ bounds: { min: [2000, -1, -1], max: [3000, 250, 3000] } })).toEqual([
       'ground/south',
