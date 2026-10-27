@@ -106,7 +106,8 @@ export function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): st
   // ENTITIES section
   lines.push('0', 'SECTION', '2', 'ENTITIES');
   for (const entity of entities) {
-    lines.push(...entityLines(entity, entity.layer ?? layer));
+    // One push per line: a long polyline's lines would overflow a spread's argument limit.
+    for (const line of entityLines(entity, entity.layer ?? layer)) lines.push(line);
   }
   lines.push('0', 'ENDSEC');
 

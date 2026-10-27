@@ -163,75 +163,126 @@ function polyVertices(entity: DXFEntity): PolylineVertex[] {
 // Entity -> edge pieces
 // ---------------------------------------------------------------------------
 
-function same(a: Point3, b: Point3): boolean {
-  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+// Endpoints closer than this, in drawing units, are one point when edges are chained.
+const JOIN_TOL = 1e-6;
+
+function cross(a: Point3, b: Point3): Point3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function unit(v: Point3): Point3 {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
 }
 
 /**
- * A polyline segment: straight, or the arc a bulge describes. The arc's midpoint lies the sagitta
- * (bulge × half the chord) off the chord's midpoint, to the right of the chord for a positive
- * (counterclockwise) bulge.
+ * The entity's object coordinate system, from its extrusion direction (210/220/230), by DXF's
+ * arbitrary axis algorithm. Planar entities (circles, arcs, 2D polylines) store their points in
+ * it; the default extrusion +Z makes it the world frame.
  */
-function segment(a: Point3, b: Point3, bulge: number): Piece {
-  const kernel = getKernel();
-  if (bulge === 0) return { start: a, end: b, build: () => kernel.makeLineEdge(a, b) };
+function ocsOf(data: Map<number, string>): { normal: Point3; toWorld: (p: Point3) => Point3 } {
+  const normal = unit([getNum(data, 210), getNum(data, 220), getNum(data, 230, 1)]);
+  if (normal[0] === 0 && normal[1] === 0 && normal[2] > 0) {
+    return { normal: [0, 0, 1], toWorld: (p) => p };
+  }
+  const nearZ = Math.abs(normal[0]) < 1 / 64 && Math.abs(normal[1]) < 1 / 64;
+  const ax = unit(cross(nearZ ? [0, 1, 0] : [0, 0, 1], normal));
+  const ay = unit(cross(normal, ax));
+  return {
+    normal,
+    toWorld: ([x, y, z]) => [
+      ax[0] * x + ay[0] * y + normal[0] * z,
+      ax[1] * x + ay[1] * y + normal[1] * z,
+      ax[2] * x + ay[2] * y + normal[2] * z,
+    ],
+  };
+}
+
+function apart(a: Point3, b: Point3): boolean {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > JOIN_TOL;
+}
+
+function linePiece(a: Point3, b: Point3): Piece {
+  return { start: a, end: b, build: () => getKernel().makeLineEdge(a, b) };
+}
+
+function arcPiece(a: Point3, mid: Point3, b: Point3): Piece {
+  return { start: a, end: b, build: () => getKernel().makeArcEdge(a, mid, b) };
+}
+
+/**
+ * A polyline segment in its OCS: straight, or the arc a bulge describes. The arc's midpoint lies
+ * the sagitta (bulge × half the chord) off the chord's midpoint, to the right of the chord for a
+ * positive (counterclockwise) bulge.
+ */
+function segment(a: Point3, b: Point3, bulge: number, toWorld: (p: Point3) => Point3): Piece {
+  if (bulge === 0) return linePiece(toWorld(a), toWorld(b));
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
   const d = Math.hypot(dx, dy);
   const s = (bulge * d) / 2;
   const mid: Point3 = [(a[0] + b[0]) / 2 + (dy / d) * s, (a[1] + b[1]) / 2 - (dx / d) * s, a[2]];
-  return { start: a, end: b, build: () => kernel.makeArcEdge(a, mid, b) };
+  return arcPiece(toWorld(a), toWorld(mid), toWorld(b));
+}
+
+// POLYLINE flag bits: 1 closed, 8 a 3D polyline, 16 a polygon mesh, 64 a polyface mesh.
+const CLOSED = 1;
+const POLYLINE_3D = 8;
+const MESH_FORMS = 16 | 64;
+
+function polylinePieces(entity: DXFEntity): Piece[] {
+  const flags = getNum(entity.data, 70);
+  // A mesh's vertices are grid or face records, not an outline to connect.
+  if (entity.type === 'POLYLINE' && (flags & MESH_FORMS) !== 0) return [];
+  const is3d = entity.type === 'POLYLINE' && (flags & POLYLINE_3D) !== 0;
+  const { toWorld } = is3d ? { toWorld: (p: Point3) => p } : ocsOf(entity.data);
+  // A 2D POLYLINE keeps its elevation on the header; its vertices are in the OCS plane.
+  const elevation = entity.type === 'POLYLINE' && !is3d ? getNum(entity.data, 30) : undefined;
+  const vertices = polyVertices(entity).map((v) =>
+    elevation === undefined ? v : { ...v, point: [v.point[0], v.point[1], elevation] as Point3 }
+  );
+  const closed = (flags & CLOSED) === CLOSED;
+  const pieces: Piece[] = [];
+  const count = closed ? vertices.length : vertices.length - 1;
+  for (let k = 0; k < count; k++) {
+    const a = vertices[k];
+    const b = vertices[(k + 1) % vertices.length];
+    if (!a || !b || !apart(a.point, b.point)) continue;
+    pieces.push(segment(a.point, b.point, is3d ? 0 : a.bulge, toWorld));
+  }
+  return pieces;
 }
 
 function entityToPieces(entity: DXFEntity): Piece[] {
   const { type, data } = entity;
-  const kernel = getKernel();
 
   if (type === 'LINE') {
+    // LINE endpoints are world coordinates; its extrusion only orients a thickness.
     const start: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
     const end: Point3 = [getNum(data, 11), getNum(data, 21), getNum(data, 31)];
-    return [{ start, end, build: () => kernel.makeLineEdge(start, end) }];
+    return apart(start, end) ? [linePiece(start, end)] : [];
   }
 
-  if (type === 'CIRCLE') {
-    const center: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
+  if (type === 'CIRCLE' || type === 'ARC') {
+    const { normal, toWorld } = ocsOf(data);
+    const c: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
     const r = getNum(data, 40);
-    const at: Point3 = [center[0] + r, center[1], center[2]];
-    return [{ start: at, end: at, build: () => kernel.makeCircleEdge(center, [0, 0, 1], r) }];
-  }
-
-  if (type === 'ARC') {
-    const center: Point3 = [getNum(data, 10), getNum(data, 20), getNum(data, 30)];
-    const r = getNum(data, 40);
-    const startAngle = (getNum(data, 50) * Math.PI) / 180;
-    const endAngle = (getNum(data, 51) * Math.PI) / 180;
-    const on = (t: number): Point3 => [
-      center[0] + r * Math.cos(t),
-      center[1] + r * Math.sin(t),
-      center[2],
-    ];
-    return [
-      {
-        start: on(startAngle),
-        end: on(endAngle),
-        build: () => kernel.makeCircleArc(center, [0, 0, 1], r, startAngle, endAngle),
-      },
-    ];
-  }
-
-  if (type === 'LWPOLYLINE' || type === 'POLYLINE') {
-    const vertices = polyVertices(entity);
-    const closed = (getNum(data, 70) & 1) === 1;
-    const pieces: Piece[] = [];
-    const count = closed ? vertices.length : vertices.length - 1;
-    for (let k = 0; k < count; k++) {
-      const a = vertices[k];
-      const b = vertices[(k + 1) % vertices.length];
-      if (!a || !b || same(a.point, b.point)) continue;
-      pieces.push(segment(a.point, b.point, a.bulge));
+    if (r <= 0) return [];
+    const on = (t: number): Point3 =>
+      toWorld([c[0] + r * Math.cos(t), c[1] + r * Math.sin(t), c[2]]);
+    if (type === 'CIRCLE') {
+      const center = toWorld(c);
+      const at = on(0);
+      return [{ start: at, end: at, build: () => getKernel().makeCircleEdge(center, normal, r) }];
     }
-    return pieces;
+    // An arc runs counterclockwise about the extrusion from its start angle to its end angle.
+    const from = (getNum(data, 50) * Math.PI) / 180;
+    let sweep = (getNum(data, 51) * Math.PI) / 180 - from;
+    while (sweep <= 0) sweep += 2 * Math.PI;
+    return [arcPiece(on(from), on(from + sweep / 2), on(from + sweep))];
   }
+
+  if (type === 'LWPOLYLINE' || type === 'POLYLINE') return polylinePieces(entity);
 
   return [];
 }
@@ -240,50 +291,76 @@ function entityToPieces(entity: DXFEntity): Piece[] {
 // Wire assembly
 // ---------------------------------------------------------------------------
 
-// DXF coordinates are written as decimal text, so endpoints that meet share their digits;
-// rounding to this step absorbs float noise in a value read twice.
-const KEY_STEP = 1e-7;
-
-function keyOf(p: Point3): string {
-  return p.map((v) => Math.round(v / KEY_STEP)).join(',');
+/** Gives endpoints within JOIN_TOL of each other one id, by a grid of JOIN_TOL cells. */
+function pointIds(): (p: Point3) => number {
+  const cells = new Map<string, { p: Point3; id: number }[]>();
+  let next = 0;
+  return (p) => {
+    const c = p.map((v) => Math.floor(v / JOIN_TOL));
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const hit = cells
+            .get(`${(c[0] ?? 0) + dx},${(c[1] ?? 0) + dy},${(c[2] ?? 0) + dz}`)
+            ?.find((e) => !apart(e.p, p));
+          if (hit) return hit.id;
+        }
+      }
+    }
+    const key = c.join(',');
+    const id = next++;
+    const cell = cells.get(key);
+    if (cell) cell.push({ p, id });
+    else cells.set(key, [{ p, id }]);
+    return id;
+  };
 }
 
 /** The pieces in connected chains, each in walking order, so every chain makes one wire. */
 function chainPieces(pieces: readonly Piece[]): Piece[][] {
-  const at = new Map<string, Piece[]>();
-  for (const p of pieces) {
-    for (const k of new Set([keyOf(p.start), keyOf(p.end)])) {
-      at.set(k, [...(at.get(k) ?? []), p]);
+  const idOf = pointIds();
+  const ends = pieces.map((p) => [idOf(p.start), idOf(p.end)] as const);
+  const at = new Map<number, number[]>();
+  ends.forEach(([s, e], i) => {
+    for (const id of s === e ? [s] : [s, e]) {
+      const list = at.get(id);
+      if (list) list.push(i);
+      else at.set(id, [i]);
     }
-  }
-  const used = new Set<Piece>();
-  const next = (tip: string): { piece: Piece; tip: string } | undefined => {
-    for (const p of at.get(tip) ?? []) {
-      if (used.has(p)) continue;
-      used.add(p);
-      const s = keyOf(p.start);
-      return { piece: p, tip: s === tip ? keyOf(p.end) : s };
-    }
-    return undefined;
+  });
+  const used = new Set<number>();
+  // Each point's list is scanned once overall: used pieces stay behind its cursor.
+  const cursor = new Map<number, number>();
+  const step = (tip: number): { i: number; tip: number } | undefined => {
+    const list = at.get(tip) ?? [];
+    let c = cursor.get(tip) ?? 0;
+    while (c < list.length && used.has(list[c] ?? -1)) c++;
+    cursor.set(tip, c + 1);
+    const i = list[c];
+    if (i === undefined) return undefined;
+    used.add(i);
+    const [s, e] = ends[i] ?? [tip, tip];
+    return { i, tip: s === tip ? e : s };
   };
   const chains: Piece[][] = [];
-  for (const first of pieces) {
-    if (used.has(first)) continue;
-    used.add(first);
+  pieces.forEach((first, i) => {
+    if (used.has(i)) return;
+    used.add(i);
     const chain = [first];
+    const [s, e] = ends[i] ?? [0, 0];
     for (const [dir, from] of [
-      [1, keyOf(first.end)],
-      [-1, keyOf(first.start)],
+      [1, e],
+      [-1, s],
     ] as const) {
-      let tip = from;
-      for (let step = next(tip); step; step = next(tip)) {
-        if (dir === 1) chain.push(step.piece);
-        else chain.unshift(step.piece);
-        tip = step.tip;
+      for (let hop = step(from); hop; hop = step(hop.tip)) {
+        const piece = pieces[hop.i];
+        if (!piece) continue;
+        if (dir === 1) chain.push(piece);
+        else chain.unshift(piece);
       }
     }
     chains.push(chain);
-  }
+  });
   return chains;
 }
 
@@ -295,8 +372,9 @@ function chainPieces(pieces: readonly Piece[]): Piece[][] {
  * Import a DXF file from a Blob, returning kernel wires.
  *
  * Parses ASCII DXF LINE, CIRCLE, ARC, LWPOLYLINE and R12 POLYLINE entities, polyline bulges
- * included. Edges that meet end to end become one wire, so disconnected outlines come back as
- * separate wires.
+ * included, in world coordinates (planar entities are mapped out of their object coordinate
+ * system). Polygon and polyface meshes are skipped. Edges that meet end to end become one wire,
+ * so disconnected outlines come back as separate wires.
  *
  * @param blob - A Blob containing ASCII DXF data.
  * @param options - Optional import settings (layer filter).
@@ -326,8 +404,13 @@ export async function importDXF(blob: Blob, options?: DXFImportOptions): Promise
   const wires: Wire[] = [];
   try {
     for (const chain of chainPieces(pieces)) {
-      const chainEdges = chain.map((p) => p.build());
-      edges.push(...chainEdges);
+      const chainEdges: KernelShape[] = [];
+      for (const p of chain) {
+        // Kept for the finally before the next build can throw.
+        const edge = p.build();
+        edges.push(edge);
+        chainEdges.push(edge);
+      }
       wires.push(createWire(kernel.makeWire(chainEdges)));
     }
     return ok(wires);

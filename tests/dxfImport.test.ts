@@ -10,6 +10,7 @@ import {
   unwrap,
   curveLength,
   isClosedWire,
+  getBounds,
   type DXFEntity,
 } from '@/index.js';
 
@@ -269,9 +270,9 @@ describe('importDXF entity types', () => {
     for (const w of [...wires, ...square]) w[Symbol.dispose]();
   });
 
-  it('reads an LWPOLYLINE, bulges as arcs', async () => {
-    // A 10 x 10 square whose top edge is a half circle bulging up (bulge -1 runs clockwise).
-    const dxf = [
+  /** A closed 10 x 10 LWPOLYLINE whose top edge, run from (10,10) to (0,10), has `bulge`. */
+  const squareWithArcTop = (bulge: number, extra: string[] = []) =>
+    [
       '0',
       'SECTION',
       '2',
@@ -284,6 +285,7 @@ describe('importDXF entity types', () => {
       '4',
       '70',
       '1',
+      ...extra,
       '10',
       '0',
       '20',
@@ -297,7 +299,7 @@ describe('importDXF entity types', () => {
       '20',
       '10',
       '42',
-      '-1',
+      String(bulge),
       '10',
       '0',
       '20',
@@ -307,12 +309,113 @@ describe('importDXF entity types', () => {
       '0',
       'EOF',
     ].join('\n');
-    const [wire, ...rest] = unwrap(await importDXF(new Blob([dxf])));
-    expect(rest).toHaveLength(0);
+
+  it('reads an LWPOLYLINE, a bulge as an arc on the side its sign gives', async () => {
+    // Counterclockwise (+1) from (10,10) to (0,10) swings up to y = 15; clockwise (-1) dips to y = 5.
+    for (const [bulge, top] of [
+      [1, 15],
+      [-1, 10],
+    ] as const) {
+      const [wire, ...rest] = unwrap(await importDXF(new Blob([squareWithArcTop(bulge)])));
+      expect(rest).toHaveLength(0);
+      if (!wire) throw new Error('no wire');
+      expect(isClosedWire(wire)).toBe(true);
+      expect(curveLength(wire)).toBeCloseTo(30 + 5 * Math.PI, 6);
+      expect(getBounds(wire).yMax).toBeCloseTo(top, 6);
+      wire[Symbol.dispose]();
+    }
+  });
+
+  it('places a polyline drawn in a mirrored object coordinate system', async () => {
+    // Extrusion (0,0,-1): DXF's arbitrary axis algorithm makes the OCS x axis world -x.
+    const dxf = squareWithArcTop(0, ['210', '0', '220', '0', '230', '-1']);
+    const [wire] = unwrap(await importDXF(new Blob([dxf])));
     if (!wire) throw new Error('no wire');
-    expect(isClosedWire(wire)).toBe(true);
-    expect(curveLength(wire)).toBeCloseTo(30 + 5 * Math.PI, 6);
+    const b = getBounds(wire);
+    expect(b.xMin).toBeCloseTo(-10, 6);
+    expect(b.xMax).toBeCloseTo(0, 6);
     wire[Symbol.dispose]();
+  });
+
+  it("lifts a 2D POLYLINE to its header's elevation and skips mesh forms", async () => {
+    const polyline = (flags: number, elevation: number) =>
+      [
+        '0',
+        'SECTION',
+        '2',
+        'ENTITIES',
+        '0',
+        'POLYLINE',
+        '8',
+        '0',
+        '66',
+        '1',
+        '10',
+        '0',
+        '20',
+        '0',
+        '30',
+        String(elevation),
+        '70',
+        String(flags),
+        '0',
+        'VERTEX',
+        '8',
+        '0',
+        '10',
+        '0',
+        '20',
+        '0',
+        '30',
+        '0',
+        '0',
+        'VERTEX',
+        '8',
+        '0',
+        '10',
+        '4',
+        '20',
+        '0',
+        '30',
+        '0',
+        '0',
+        'VERTEX',
+        '8',
+        '0',
+        '10',
+        '4',
+        '20',
+        '3',
+        '30',
+        '0',
+        '0',
+        'SEQEND',
+        '8',
+        '0',
+        '0',
+        'ENDSEC',
+        '0',
+        'EOF',
+      ].join('\n');
+    const [wire] = unwrap(await importDXF(new Blob([polyline(0, 7)])));
+    if (!wire) throw new Error('no wire');
+    expect(getBounds(wire).zMin).toBeCloseTo(7, 6);
+    expect(curveLength(wire)).toBeCloseTo(7, 6);
+    wire[Symbol.dispose]();
+    // 16 is a polygon mesh: its vertices are a grid, not an outline.
+    expect(unwrap(await importDXF(new Blob([polyline(16, 0)])))).toHaveLength(0);
+  });
+
+  it('joins endpoints that differ by float noise and skips zero-length lines', async () => {
+    const dxf = exportDXF([
+      { type: 'LINE', start: [0, 0], end: [1.000000049, 0] },
+      { type: 'LINE', start: [1.000000051, 0], end: [2, 0] },
+      { type: 'LINE', start: [2, 0], end: [2, 0] },
+    ]);
+    const wires = unwrap(await importDXF(new Blob([dxf])));
+    expect(wires).toHaveLength(1);
+    expect(wires[0] && curveLength(wires[0])).toBeCloseTo(2, 6);
+    for (const w of wires) w[Symbol.dispose]();
   });
 
   it('returns each disconnected outline as its own wire', async () => {
