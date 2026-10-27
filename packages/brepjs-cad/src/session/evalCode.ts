@@ -1,6 +1,6 @@
 import { runInThisContext } from 'node:vm';
 import { format } from 'node:util';
-import { errorMessage, jsonSafe } from './records.js';
+import { errorMessage, plainJson } from './records.js';
 
 export type EvalOutcome =
   | { readonly ok: true; readonly value: unknown; readonly logs: readonly string[] }
@@ -55,7 +55,7 @@ export async function evalInBuild(ctx: object, code: string): Promise<EvalOutcom
       c: object,
       log: object
     ) => Promise<unknown>;
-    const value = jsonSafe(await fn(ctx, console));
+    const value = plainJson(await fn(ctx, console));
     const json = JSON.stringify(value ?? null);
     if (json.length > MAX_RESULT_CHARS) {
       return {

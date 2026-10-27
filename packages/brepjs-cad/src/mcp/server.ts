@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createBrepMcpServer } from './createServer.js';
-import { ReferenceIndex } from '../session/reference.js';
 import { installSandboxShutdownHandlers } from '../sandbox/runProgram.js';
 
 // Reap any in-flight sandbox process groups (part runs and session workers) if this server is
@@ -29,9 +28,7 @@ const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string };
 
 // --allow-code lists eval_in_session, which runs agent code with this server's permissions.
 const allowCode = process.argv.slice(2).includes('--allow-code');
-const { server, sessions } = createBrepMcpServer(pkg.version, {}, new ReferenceIndex(), {
-  allowCode,
-});
+const { server, sessions } = createBrepMcpServer(pkg.version, {}, undefined, { allowCode });
 
 async function main(): Promise<void> {
   // The client closing stdin is the end of the session: stop every model worker with it.

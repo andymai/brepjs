@@ -63,6 +63,18 @@ describe('eval_in_session', () => {
     expect(typeof r.body['buildHash']).toBe('string');
   });
 
+  it('returns plain objects whole, even ones shaped like build records', async () => {
+    const r = await run(
+      "return { kind: 'Box', structuralHash: 7n, size: [1, 2, 3], at: new Map([['x', 1]]) };"
+    );
+    expect(r.body['value']).toEqual({
+      kind: 'Box',
+      structuralHash: '7',
+      size: [1, 2, 3],
+      at: { map: [['x', 1]] },
+    });
+  });
+
   it('measures B-rep shapes the session holds', async () => {
     const r = await run(`
       const shape = ctx.model.byKeyPath.get('ground/annex').shape.value;

@@ -116,10 +116,15 @@ function elementRef(v: Record<string, unknown>): Record<string, unknown> | undef
  * functions are dropped.
  */
 export function jsonSafe(value: unknown): unknown {
-  return project(value, []);
+  return project(value, [], true);
 }
 
-function project(value: unknown, ancestors: object[]): unknown {
+/** The same lossless projection, minus the element and IR shortcuts, for values an agent returns. */
+export function plainJson(value: unknown): unknown {
+  return project(value, [], false);
+}
+
+function project(value: unknown, ancestors: object[], refs: boolean): unknown {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   if (typeof value === 'bigint') return value.toString();
@@ -127,7 +132,7 @@ function project(value: unknown, ancestors: object[]): unknown {
   if (ancestors.includes(value)) return '[circular]';
   if (ancestors.length >= MAX_DEPTH) return '[depth limit]';
   const inner = [...ancestors, value];
-  const each = (v: unknown) => project(v, inner) ?? null;
+  const each = (v: unknown) => project(v, inner, refs) ?? null;
   if (ArrayBuffer.isView(value)) {
     return value instanceof DataView
       ? { dataView: value.byteLength }
@@ -139,14 +144,16 @@ function project(value: unknown, ancestors: object[]): unknown {
   if (value instanceof Set) return { set: [...value].map(each) };
   if (value instanceof Date) return value.toISOString();
   const rec = value as Record<string, unknown>;
-  const ref = elementRef(rec);
-  if (ref) return ref;
-  if ('structuralHash' in rec && typeof rec['kind'] === 'string') return { ir: rec['kind'] };
+  if (refs) {
+    const ref = elementRef(rec);
+    if (ref) return ref;
+    if ('structuralHash' in rec && typeof rec['kind'] === 'string') return { ir: rec['kind'] };
+  }
   const out: Record<string, unknown> = isPlainRecord(value)
     ? {}
     : { object: value.constructor.name };
   for (const [k, v] of Object.entries(rec)) {
-    const safe = project(v, inner);
+    const safe = project(v, inner, refs);
     if (safe !== undefined) out[k] = safe;
   }
   return out;
