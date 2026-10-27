@@ -42,7 +42,7 @@ const PROMPTS: readonly PromptDef[] = [
         `Make this change to session ${sessionId ?? ''}: ${change ?? ''}`,
         '',
         '1. Find the elements the change is about with query_elements, narrowing where until the breakdown matches what you expect, and read them with get_elements. Note the buildHash.',
-        '2. Find where those elements are authored in the program source (search for their keys or the family props) and edit it with your file tools. Change nothing else.',
+        "2. Open the file and line in each element's source field from get_elements (without one, search the program for its key) and edit it with your file tools. Change nothing else.",
         `3. Call rebuild with sessionId "${sessionId ?? ''}". If ok is false, fix what it reports and rebuild again; the session keeps the last good build meanwhile.`,
         '4. Check the diff: every id in changed, added and removed should be one you meant to touch. Explain or undo anything else. If nextOffset is set, page through the rest with get_diff.',
         '5. Call render_view with highlight set to the changed ids and confirm the picture shows the change.',

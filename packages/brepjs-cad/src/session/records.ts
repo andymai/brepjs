@@ -34,6 +34,9 @@ export interface ElementRecord {
   readonly expressId?: number | undefined;
   /** Families: false when the key path came from the index fallback. */
   readonly keyed?: boolean | undefined;
+  /** Families: the file and line that authored the element (the family call, el() call or tag). */
+  readonly source?:
+    { readonly file: string; readonly line: number; readonly column: number } | undefined;
   /** Families type (family name or intrinsic), or the IFC category. */
   readonly type: string;
   readonly archetype?: string | undefined;

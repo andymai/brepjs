@@ -535,8 +535,9 @@ export class SessionManager {
         summary,
         index: new Map(summary.elements.map((r) => [r.id, r])),
         sources,
+        // Source locations stay out of the hash: a comment that moves lines is not a new build.
         buildHash: createHash('sha256')
-          .update(canonicalJson(summary.elements))
+          .update(canonicalJson(summary.elements.map(({ source: _source, ...r }) => r)))
           .digest('hex')
           .slice(0, 12),
         builtAt: new Date(),

@@ -85,6 +85,21 @@ Two fields deserve emphasis:
 - **`props` are the invocation props, pre-desugaring.** An adapter that needs parameters (IFC's extruded-solid path cannot recover `length` from baked geometry) reads them here, exactly as the author wrote them, after any [schema validation](/families/props-and-validation) applied defaults.
 - **`attributes` are captured, not rendered.** `psets`, `material`, and `classification` props are lifted off the element before render, so identity-side data structurally cannot reach the geometry hash.
 
+## Where an element was authored
+
+A tool that points from an element back to its source can ask for that to be recorded. Turn capture on before the model's elements are created, and `sourceOf()` names the file and line of the family call, `el()` call or JSX tag that made each one:
+
+```ts
+import { captureSourceLocations, resolve, sourceOf } from 'brepjs-families';
+
+captureSourceLocations(true);
+const { default: model } = await import('./model.js');
+const tree = resolve(model);
+sourceOf(tree); // { file, line, column } of the tag that made the root
+```
+
+Capture is off by default, because each element then costs a stack capture; [brep-mcp's session tools](../agent/bim-mcp) turn it on, which is how `get_elements` can tell an agent which line to edit. The location comes from a stack trace, so transpiled code needs source maps on to name its original lines. A synthesized opening answers with its fill's location.
+
 ## Synthesized openings
 
 When a **fill-role** family (a door, a window) appears in a host's `voids`, resolution synthesizes an `Opening` element between host and filler:

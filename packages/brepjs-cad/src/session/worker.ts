@@ -11,6 +11,11 @@ import { evalInBuild } from './evalCode.js';
 import { errorMessage } from './records.js';
 import { renderPayload } from './render.js';
 
+// Programs load through a transpiling hook that emits inline source maps; with them on, stack
+// traces (build errors, and the element source locations brepjs-families records) name the
+// author's own lines.
+process.setSourceMapsEnabled(true);
+
 let current: WorkerBuild | undefined;
 
 function send(msg: WorkerMessage): void {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { matcher, parseWhere } from '@/session/query.js';
 import { SessionManager, type Session } from '@/session/sessions.js';
@@ -50,6 +50,42 @@ describe('BIM sessions', () => {
     expect(annex?.volume).toBeCloseTo(4000 * 200 * 2700 - 1200 * 1200 * 200, -3);
     expect(annex?.bounds?.zMax).toBeCloseTo(2700, 6);
     expect(families.build.summary.diagnostics).toEqual([]);
+  });
+
+  it('records the file and line that author each element', () => {
+    const model = readFileSync(project.model, 'utf8').split('\n');
+    const annexTag = model.findIndex(
+      (l, i) => l.includes('<Wall') && model[i + 1]?.includes('key="annex"')
+    );
+    expect(families.build.index.get('ground/annex')?.source).toMatchObject({
+      file: project.model,
+      line: annexTag + 1,
+    });
+    const room = join(project.dir, 'families', 'room.ts');
+    const roomLines = readFileSync(room, 'utf8').split('\n');
+    const north = roomLines.findIndex((l) => l.includes("Wall({ key: 'north'"));
+    expect(families.build.index.get('ground/lobby/north')?.source).toMatchObject({
+      file: room,
+      line: north + 1,
+    });
+    // The synthesized opening points at its window, like the window itself.
+    expect(families.build.index.get('ground/annex/voids:w1')?.source).toEqual(
+      families.build.index.get('ground/annex/voids:w1/fill')?.source
+    );
+  });
+
+  it('treats a change that only moves lines as the same build', async () => {
+    const before = families.build.buildHash;
+    const annexLine = families.build.index.get('ground/annex')?.source?.line ?? 0;
+    writeFileSync(
+      project.model,
+      `// a comment that moves every line down\n${readFileSync(project.model, 'utf8')}`
+    );
+    const r = await sessions.rebuild(families.id);
+    if (!r.ok) throw new Error(JSON.stringify(r.diagnostics));
+    expect(r.diff.changed).toEqual([]);
+    expect(families.build.buildHash).toBe(before);
+    expect(families.build.index.get('ground/annex')?.source?.line).toBe(annexLine + 1);
   });
 
   it('marks the session stale after an edit and diffs exactly the edited key path', async () => {

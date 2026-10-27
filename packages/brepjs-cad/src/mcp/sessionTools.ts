@@ -830,7 +830,7 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
       name: 'get_elements',
       title: 'Get elements',
       description:
-        'Full data for elements by id (key path or GlobalId; for a families session, a GlobalId from the last export_ifc works too): identity (name, type, archetype, category, storey, parent, and the GlobalId an export assigned), props, psets, quantities, material, classification, relationships (Contains, Voids, Fills), children, and geometry (hasGeometry, geometryHash, bounds in mm, volume in mm³). Pass fields to return only some groups; identity is always included.',
+        'Full data for elements by id (key path or GlobalId; for a families session, a GlobalId from the last export_ifc works too): identity (name, type, archetype, category, storey, parent, the GlobalId an export assigned, and for families the source file and line that author the element), props, psets, quantities, material, classification, relationships (Contains, Voids, Fills), children, and geometry (hasGeometry, geometryHash, bounds in mm, volume in mm³). Pass fields to return only some groups; identity is always included.',
       inputSchema: {
         type: 'object',
         properties: {

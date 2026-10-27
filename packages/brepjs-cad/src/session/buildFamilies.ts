@@ -9,9 +9,11 @@ import {
   previewBuildOf,
   previewTree,
   type FamiliesEvaluatedNode,
+  type FamiliesNs,
+  type SourceLocationLike,
   type ResolvedElementLike,
 } from '../preview/evaluate.js';
-import { toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
+import { loadBrep, toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
 import { importBim } from './bim.js';
 import { exportFamiliesIfc, type ExportIfcArgs, type ExportIfcOutcome } from './exportIfc.js';
 import { typecheckPart } from '../verify/typecheck.js';
@@ -82,7 +84,13 @@ export async function buildFamilies(
   }
 
   let loaded: Awaited<ReturnType<typeof loadModelValue>>;
+  let fam: Awaited<ReturnType<typeof importFamilies>>;
   try {
+    // brepjs (and the resolve hook) first, so brepjs-families binds to the same kernel; then
+    // families, so element creation is recorded while the model module runs.
+    await loadBrep();
+    fam = await importFamilies(entryPath);
+    fam?.captureSourceLocations?.(true);
     loaded = await loadModelValue(entryPath);
   } catch (e) {
     return failed('BUILD_FAILED', errorMessage(e));
@@ -94,7 +102,6 @@ export async function buildFamilies(
       'the default export is not a brepjs-families element tree; use run_program for a single part'
     );
   }
-  const fam = await importFamilies(entryPath);
   if (fam === undefined) {
     return failed('FAMILIES_MISSING', "'brepjs-families' is not installed in this project");
   }
@@ -110,7 +117,8 @@ export async function buildFamilies(
   try {
     const model = fam.evaluateModel(resolved, evaluator, {}, { shapes: true });
     const diagnostics: BuildDiagnostic[] = [];
-    const elements = toRecords(brep, resolved, model.byKeyPath, diagnostics);
+    const sourceOf = fam.sourceOf?.bind(fam);
+    const elements = toRecords(brep, resolved, model.byKeyPath, diagnostics, sourceOf);
     let payload: PreviewModelPayload | undefined;
     return {
       outcome: {
@@ -160,6 +168,10 @@ function volumeOf(brep: BrepNs, shape: AnyShape): number | undefined {
   }
 }
 
+function sourceField(loc: SourceLocationLike | undefined): Pick<ElementRecord, 'source'> {
+  return loc ? { source: { file: loc.file, line: loc.line, column: loc.column } } : {};
+}
+
 function propsOf(props: Readonly<Record<string, unknown>> | undefined): ScalarRecord | undefined {
   if (props === undefined) return undefined;
   const out: Record<string, unknown> = {};
@@ -175,7 +187,8 @@ function toRecords(
   brep: BrepNs,
   root: ResolvedElementLike,
   byKeyPath: ReadonlyMap<string, FamiliesEvaluatedNode>,
-  diagnostics: BuildDiagnostic[]
+  diagnostics: BuildDiagnostic[],
+  sourceOf: FamiliesNs['sourceOf']
 ): ElementRecord[] {
   const out: ElementRecord[] = [];
   const unkeyed: string[] = [];
@@ -230,6 +243,7 @@ function toRecords(
       relationships: (n.relationships ?? []).map((r) => ({ kind: r.kind, target: r.target })),
       hasGeometry,
       renderable,
+      ...sourceField(sourceOf?.(n)),
       ...(n.geometry.structuralHash !== undefined
         ? { geometryHash: n.geometry.structuralHash.toString(16) }
         : {}),

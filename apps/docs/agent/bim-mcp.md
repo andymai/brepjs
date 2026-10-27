@@ -52,7 +52,7 @@ Say the request is "make the annex wall 3 m tall". Here's what the agent does, w
 { "total": 1, "ids": ["ground/annex"], "breakdown": { "category": { "wall": 1 } } }
 ```
 
-`get_elements` then shows its props (`height: 2700`), psets, relationships, bounds and volume.
+`get_elements` then shows its props (`height: 2700`), psets, relationships, bounds and volume, and the line that authors it (`model.tsx:14`, the `<Wall` tag), so the agent knows exactly where to edit.
 
 **Edit and rebuild.** The agent changes `height={2700}` to `height={3000}` in the source and calls `rebuild`:
 

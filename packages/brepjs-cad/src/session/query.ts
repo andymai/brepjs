@@ -349,6 +349,7 @@ export function project(
     ...(rec.name !== undefined ? { name: rec.name } : {}),
     ...(rec.parent !== undefined ? { parent: rec.parent } : {}),
     ...(rec.storey !== undefined ? { storey: rec.storey } : {}),
+    ...(rec.source !== undefined ? { source: rec.source } : {}),
   };
   if (fields.has('props') && rec.props !== undefined) out['props'] = rec.props;
   if (fields.has('psets') && rec.psets !== undefined) out['psets'] = rec.psets;

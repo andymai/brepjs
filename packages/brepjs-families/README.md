@@ -61,6 +61,7 @@ What the pieces buy you:
 - **Fill roles** make openings real: a `role: 'fill'` family inside a wall's `voids` synthesizes an `Opening` element with a `Fills` relationship, which a BIM export turns into `IfcOpeningElement` + `IfcRelFillsElement` rather than an anonymous boolean hole.
 - **Archetypes** decouple routing from naming: `family('Level', render, { archetype: 'storey' })` still exports as `IfcBuildingStorey`. The value is an opaque string here (this layer never interprets one), which is what lets the registry's copy-in files be renamed without losing their BIM mapping.
 - **JSX optional**: `jsxImportSource: "brepjs-families"` lets you write the same trees as JSX. The plain-function API is primary.
+- **Source locations, on request**: after `captureSourceLocations(true)`, `sourceOf(element)` names the file and line of the family call, `el()` call or JSX tag that made an element, so a tool can point from an element back to the line to edit. It is off by default, since each element then costs a stack capture.
 
 ## Starter registry
 

@@ -54,6 +54,15 @@ export interface FamiliesNs {
     env: Record<string, unknown>,
     options: { shapes?: boolean }
   ): { root: ResolvedElementLike; byKeyPath: ReadonlyMap<string, FamiliesEvaluatedNode> };
+  /** Absent on brepjs-families releases that predate source locations. */
+  captureSourceLocations?(on: boolean): void;
+  sourceOf?(element: unknown): SourceLocationLike | undefined;
+}
+
+export interface SourceLocationLike {
+  readonly file: string;
+  readonly line: number;
+  readonly column: number;
 }
 
 export interface PreviewBuild {
