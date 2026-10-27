@@ -752,19 +752,18 @@ export default present([...walls, ...slabs], {
     id: 'bim-interop',
     label: 'COBie, IDS and BCF',
     description:
-      'The three formats that carry the workflows around a model: COBie 2.4 handover sheets derived from the spatial structure, an IDS 1.0 requirement checked against the exported file, and a BCF 3.0 issue filed against a wall by its GlobalId. Results print to the console; the Files button saves the COBie sheets and the BCF markup.',
+      'The three formats that carry the workflows around a model: COBie 2.4 handover sheets derived from the spatial structure, an IDS 1.0 requirement checked against the exported file, and a BCF 3.0 issue filed against a wall by its GlobalId, with a camera on it. Results print to the console; the Files button saves the COBie sheets and the BCF markup and viewpoint.',
     code: `import {
   BimModel,
   checkIds,
   deriveCobieModel,
-  newIfcGuid,
   parseIdsXml,
   placedSolids,
   serializeBcfFiles,
   serializeCobieToCsv,
   toIfc,
 } from 'brepjs-bim';
-import { unwrap } from 'brepjs/quick';
+import { getBounds, unwrap } from 'brepjs/quick';
 import { color, present } from 'brepjs/playground';
 
 // IFC carries the model; three sibling formats carry the workflows around it.
@@ -878,13 +877,31 @@ for (const r of idsReport.value.results) {
 // BCF 3.0: an issue filed against a specific element by its GlobalId, which is
 // why stable ids matter. Zip packaging is the caller's job, so this is the
 // unzipped container as a name to contents map.
-const wallGuid = model.getWalls()[0].guid;
+const flagged = model.getWalls()[0];
+const wallGuid = flagged.guid;
+// The viewpoint's camera looks at the wall from the south-west and above. BCF
+// works in metres; the model is in millimetres. Topics and viewpoints take
+// UUIDs, unlike the 22-character IFC GlobalIds that name elements.
+const b = getBounds(unwrap(placedSolids(flagged))[0]);
+const target = [(b.xMin + b.xMax) / 2000, (b.yMin + b.yMax) / 2000, (b.zMin + b.zMax) / 2000];
+const eye = [target[0] - 8, target[1] - 8, target[2] + 6];
+const dir = target.map((t, i) => t - eye[i]);
+const len = Math.hypot(...dir);
+const direction = dir.map((d) => d / len);
+// Up is square to the view direction and leans toward +z.
+const side = [direction[1], -direction[0], 0];
+const up = [
+  side[1] * direction[2] - side[2] * direction[1],
+  side[2] * direction[0] - side[0] * direction[2],
+  side[0] * direction[1] - side[1] * direction[0],
+];
+const upLen = Math.hypot(...up);
 const bcf = serializeBcfFiles({
   version: { versionId: '3.0' },
   project: { projectId: 'interop-demo', name: 'Riverside Block' },
   topics: [
     {
-      guid: newIfcGuid(),
+      guid: crypto.randomUUID(),
       title: 'Confirm external wall U-value',
       topicType: 'Issue',
       topicStatus: 'Open',
@@ -894,8 +911,16 @@ const bcf = serializeBcfFiles({
       comments: [],
       viewpoints: [
         {
-          guid: newIfcGuid(),
+          guid: crypto.randomUUID(),
           components: { selection: [{ ifcGuid: wallGuid }] },
+          camera: {
+            kind: 'PERSPECTIVE',
+            viewPoint: [eye[0], eye[1], eye[2]],
+            direction: [direction[0], direction[1], direction[2]],
+            upVector: [up[0] / upLen, up[1] / upLen, up[2] / upLen],
+            fieldOfView: 60,
+            aspectRatio: 16 / 9,
+          },
         },
       ],
     },
@@ -906,6 +931,7 @@ console.log('BCF container: ' + [...bcf.keys()].join(', '));
 // Topic files are nested under the topic guid, so select by suffix rather than
 // by position: the container also holds bcf.version and project.bcfp.
 const markupKey = [...bcf.keys()].find((k) => k.endsWith('/markup.bcf')) ?? '';
+const viewpointKey = [...bcf.keys()].find((k) => k.endsWith('.bcfv')) ?? '';
 
 // Playground runtime owns the displayed geometry for this eval.
 const walls = model
@@ -926,6 +952,7 @@ export default present([...walls, ...spaces], {
     { name: 'cobie-Facility.csv', data: sheets.get('Facility') ?? '', mime: 'text/csv' },
     { name: 'cobie-Space.csv', data: sheets.get('Space') ?? '', mime: 'text/csv' },
     { name: 'markup.bcf', data: bcf.get(markupKey) ?? '', mime: 'application/xml' },
+    { name: 'viewpoint.bcfv', data: bcf.get(viewpointKey) ?? '', mime: 'application/xml' },
   ],
 });
 `,
