@@ -14,6 +14,7 @@ describe('validate_model and compare_models', () => {
   let mcp: BrepMcpServer;
   let client: Client;
   let revised = '';
+  let revisedSession = '';
   let wallGuid = '';
   const call = async (name: string, args: Payload) => {
     const res = await client.callTool({ name, arguments: args });
@@ -63,8 +64,9 @@ describe('validate_model and compare_models', () => {
 
   it('maps an IFC finding to the GlobalId of the element it names', async () => {
     const opened = await call('open_model', { path: revised });
+    revisedSession = opened.body['sessionId'] as string;
     const r = await call('validate_model', {
-      sessionId: opened.body['sessionId'],
+      sessionId: revisedSession,
       checks: ['gherkin', 'integrity'],
     });
     expect(r.body['ok']).toBe(false);
@@ -80,6 +82,25 @@ describe('validate_model and compare_models', () => {
     );
     const bad = await call('validate_model', { sessionId: 's1', checks: ['spelling'] });
     expect(bad.body['error']).toBe('INVALID_ARGUMENT');
+  });
+
+  it('pages findings from one run of the checks', async () => {
+    const sessionId = revisedSession;
+    const all = await call('validate_model', { sessionId, checks: ['gherkin'] });
+    const total = all.body['findingsTotal'] as number;
+    const every = all.body['findings'] as FindingLike[];
+    expect(total).toBe(every.length);
+    expect(total).toBeGreaterThan(0);
+    const first = await call('validate_model', { sessionId, checks: ['gherkin'], limit: 1 });
+    expect(first.body['findings']).toEqual(every.slice(0, 1));
+    expect(first.body['nextOffset']).toBe(total > 1 ? 1 : undefined);
+    const last = await call('validate_model', {
+      sessionId,
+      checks: ['gherkin'],
+      offset: total - 1,
+    });
+    expect(last.body['findings']).toEqual(every.slice(-1));
+    expect(last.body['nextOffset']).toBeUndefined();
   });
 
   it('diffs two revisions of an IFC file by GlobalId', async () => {
@@ -98,5 +119,31 @@ describe('validate_model and compare_models', () => {
     });
     const mixed = await call('compare_models', { from: 's1', to: after.body['sessionId'] });
     expect(mixed.body['error']).toBe('INVALID_ARGUMENT');
+    const moved = await call('compare_models', {
+      from: before.body['sessionId'],
+      to: after.body['sessionId'],
+      fromBuild: 'not-a-build',
+    });
+    expect(moved.body['error']).toBe('BUILD_MISMATCH');
+    // The session cap is 4; leave room for the next test's.
+    await call('close_model', { sessionId: before.body['sessionId'] });
+    await call('close_model', { sessionId: after.body['sessionId'] });
+  });
+
+  it('compares families quantity sets as an export would write them', async () => {
+    const longer = join(project.dir, 'longer.tsx');
+    writeFileSync(
+      longer,
+      readFileSync(project.model, 'utf8').replace('length={4000}', 'length={4500}')
+    );
+    const opened = await call('open_model', { path: longer, typecheck: false });
+    const r = await call('compare_models', { from: 's1', to: opened.body['sessionId'] });
+    const diff = r.body['diff'] as {
+      changed: { id: string; quantities?: Record<string, { before: unknown; after: unknown }> }[];
+    };
+    const wall = diff.changed.find((c) => c.id.endsWith('annex'));
+    const length = wall?.quantities?.['Qto_WallBaseQuantities.Length'];
+    expect(length?.before).toBeCloseTo(4, 6);
+    expect(length?.after).toBeCloseTo(4.5, 6);
   });
 });

@@ -65,6 +65,10 @@ export interface Session {
   exported: ExportedIds | undefined;
   /** Quantity sets derived for a build, kept until the next one. */
   quantityCache: { readonly buildHash: string; readonly byId: QuantitiesById } | undefined;
+  /** The last validation of a build, kept so its findings can be paged without re-running it. */
+  validationCache:
+    | { readonly buildHash: string; readonly checks: string; readonly outcome: ValidateOutcome }
+    | undefined;
   lastFailure: { readonly at: Date; readonly diagnostics: readonly BuildDiagnostic[] } | undefined;
   queue: Promise<unknown>;
 }
@@ -229,6 +233,7 @@ export class SessionManager {
       lastDiff: undefined,
       exported: undefined,
       quantityCache: undefined,
+      validationCache: undefined,
       lastFailure: undefined,
       queue: Promise.resolve(),
     };
@@ -320,6 +325,9 @@ export class SessionManager {
       session.worker?.kill();
       session.worker = attempt.worker;
       session.build = attempt.build;
+      // The records can match while the file differs (an IFC header, say), and the byte-level
+      // checks read the file, so a rebuild drops the last validation whatever its hash.
+      session.validationCache = undefined;
       session.lastDiff = { previousBuildHash: previous.buildHash, diff };
       session.lastFailure = undefined;
       return {
@@ -417,7 +425,7 @@ export class SessionManager {
     });
   }
 
-  /** Run brepjs-bim's checks against the session's current build. */
+  /** Run brepjs-bim's checks against the session's current build, or reuse the last run's. */
   validate(
     id: string,
     checks: readonly CheckName[],
@@ -429,11 +437,14 @@ export class SessionManager {
   }> {
     return this.#onCurrentBuild(id, opts.expectBuild, 'validation', async (s) => {
       const buildHash = s.build.buildHash;
-      return {
-        session: s,
-        buildHash,
-        outcome: await this.#request(s, 'validate', { checks }, opts.timeoutMs),
-      };
+      const key = [...checks].sort().join(',');
+      const cached = s.validationCache;
+      if (cached?.buildHash === buildHash && cached.checks === key) {
+        return { session: s, buildHash, outcome: cached.outcome };
+      }
+      const outcome = await this.#request(s, 'validate', { checks }, opts.timeoutMs);
+      if (outcome.ok) s.validationCache = { buildHash, checks: key, outcome };
+      return { session: s, buildHash, outcome };
     });
   }
 

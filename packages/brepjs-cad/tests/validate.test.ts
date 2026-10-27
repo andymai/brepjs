@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { BimNs } from '@/session/bim.js';
 import type { ImportedModelLike } from '@/session/buildIfc.js';
-import { validateFamilies } from '@/session/validate.js';
+import { validateFamilies, validateIfc } from '@/session/validate.js';
 
 const issue = (code: string, entity?: number | string) => ({
   code,
@@ -71,6 +71,37 @@ describe('families validation', () => {
       ['schema', 'MODEL_LEVEL', undefined],
       ['roundtrip', 'COUNTS', '#999'],
       ['geometry', 'ZERO_VOLUME', 'ground/b'],
+    ]);
+  });
+});
+
+describe('IFC validation', () => {
+  it('reports an element whose body the importer could not rebuild', async () => {
+    const model = {
+      elements: [
+        { expressId: 101, guid: 'G1', geometry: { solids: [] } },
+        { expressId: 102, guid: 'G2', geometry: { solids: [{}] } },
+      ],
+      diagnostics: {
+        issues: [
+          { ...issue('BODY_RECONSTRUCTION_NONE', 101), severity: 'warning' as const },
+          { ...issue('UNRELATED_IMPORT_NOTE', 102), severity: 'info' as const },
+        ],
+      },
+    } as unknown as ImportedModelLike;
+    const out = await validateIfc(
+      fakeBim(),
+      new Uint8Array([1]),
+      model,
+      new Map([
+        [101, 'G1'],
+        [102, 'G2'],
+      ]),
+      new Set(['geometry'])
+    );
+    if (!out.ok) throw new Error(out.error);
+    expect(out.findings.map((f) => [f.check, f.code, f.severity, f.id])).toEqual([
+      ['geometry', 'BODY_RECONSTRUCTION_NONE', 'warning', 'G1'],
     ]);
   });
 });

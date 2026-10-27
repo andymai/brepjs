@@ -1,5 +1,5 @@
 import type { BimIssueLike, BimNs } from './bim.js';
-import type { ImportedModelLike } from './buildIfc.js';
+import { BODY_FAILURE_CODES, type ImportedModelLike } from './buildIfc.js';
 import { errorMessage, type BuildDiagnostic } from './records.js';
 
 /** brepjs-bim's checks, by the name validate_model takes. */
@@ -131,7 +131,9 @@ export async function validateFamilies(
 
 /**
  * Validate an imported IFC file: the byte-level checks on the file itself, and each element's
- * reconstructed solids. Referential integrity needs a BimModel, which an import does not produce.
+ * reconstructed solids. An element whose body the importer could not fully rebuild is reported
+ * with the importer's finding, since the solid check sees only what was rebuilt. Referential
+ * integrity needs a BimModel, which an import does not produce.
  */
 export async function validateIfc(
   bim: BimNs,
@@ -154,6 +156,9 @@ export async function validateIfc(
   const resolve: Resolve = (e) => (typeof e === 'number' ? idOf.get(e) : undefined);
   await checkBytes(bim, bytes, checks, resolve, findings, ran);
   if (checks.has('geometry')) {
+    for (const issue of model.diagnostics.issues) {
+      if (BODY_FAILURE_CODES.has(issue.code)) findings.push(finding('geometry', issue, resolve));
+    }
     for (const el of model.elements) {
       const solids = el.geometry.solids ?? [];
       if (solids.length === 0) continue;

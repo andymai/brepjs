@@ -117,7 +117,7 @@ A families model has no quantities of its own, so the session reads them back fr
 
 ## Checking a model
 
-`validate_model` runs brepjs-bim's checks: referential integrity, the EXPRESS schema, a write-read-write round trip, the buildingSMART gherkin rules, and each element's solid. A families model is checked as the IFC file `export_ifc` would write, and each finding comes back with the key path of the element it names; an opened IFC file is checked as it is, with GlobalIds.
+`validate_model` runs brepjs-bim's checks: referential integrity, the EXPRESS schema, a write-read-write round trip, the buildingSMART gherkin rules, and each element's solid. A families model is checked as the IFC file `export_ifc` would write, and each finding comes back with the key path of the element it names; an opened IFC file is checked as it is, with GlobalIds, and an element whose body the importer could not fully rebuild is reported too. Findings come errors first, 200 at a time. The run is kept until the session rebuilds, so paging with `offset` doesn't re-run the checks.
 
 `compare_models` diffs two open sessions by element identity. Open two revisions of an IFC file and it lists what was added, removed and changed, down to the pset value:
 
@@ -128,7 +128,7 @@ A families model has no quantities of its own, so the session reads them back fr
       "psets": { "Pset_WallCommon.FireRating": { "before": "REI 120", "after": "REI 90" } } }] } }
 ```
 
-The `compare-revisions` prompt summarizes such a diff by category and renders the changes.
+Two families sessions compare their quantity sets as well, derived the way `export_ifc` writes them. When a diff runs past one page, pass the `buildHash` of each side from the first page as `fromBuild` and `toBuild`: a rebuild between pages then fails the call instead of shifting the entries. The `compare-revisions` prompt summarizes such a diff by category and renders the changes.
 
 ## Running code against a session
 

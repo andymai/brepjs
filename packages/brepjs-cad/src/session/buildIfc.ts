@@ -251,7 +251,10 @@ function splitPsets(psets: readonly ImportedPsetLike[]): {
 
 // fromIfc's per-element warnings for a Body that exists but did not (fully) reconstruct. An element
 // with no Body at all gets neither, so these are what separate failed geometry from absent geometry.
-const BODY_FAILURE_CODES = new Set(['BODY_RECONSTRUCTION_NONE', 'PARTIAL_BODY_RECONSTRUCTION']);
+export const BODY_FAILURE_CODES: ReadonlySet<string> = new Set([
+  'BODY_RECONSTRUCTION_NONE',
+  'PARTIAL_BODY_RECONSTRUCTION',
+]);
 
 /** Element records for an imported model; exported for tests. */
 export function ifcRecords(
