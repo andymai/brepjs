@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.1...brepjs-sheetmetal-v0.4.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **sheetmetal:** unfold bent parts from real CAD exports ([#2444](https://github.com/andymai/brepjs/issues/2444)) ([6e36139](https://github.com/andymai/brepjs/commit/6e36139bc273d892bc4fcb912fe414b80779c21b))
+
 ## [0.4.1](https://github.com/andymai/brepjs/compare/brepjs-sheetmetal-v0.4.0...brepjs-sheetmetal-v0.4.1) (2026-10-27)
 
 
