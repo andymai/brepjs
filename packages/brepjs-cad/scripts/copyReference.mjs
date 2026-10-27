@@ -41,6 +41,18 @@ if (existsSync(familiesDocs)) {
 } else {
   console.warn(`copyReference: ${familiesDocs} not found; skipping the families docs`);
 }
+// The starter registry, so brep-mcp can list what `npx brepjs add` offers without the network.
+const registrySrc = resolve(repoRoot, 'packages', 'brepjs-families', 'registry');
+if (existsSync(resolve(registrySrc, 'manifest.json'))) {
+  const registryOut = resolve(outDir, 'registry');
+  mkdirSync(resolve(registryOut, 'families'), { recursive: true });
+  copyFileSync(resolve(registrySrc, 'manifest.json'), resolve(registryOut, 'manifest.json'));
+  for (const name of readdirSync(resolve(registrySrc, 'families')).filter((n) => n.endsWith('.ts'))) {
+    copyFileSync(resolve(registrySrc, 'families', name), resolve(registryOut, 'families', name));
+  }
+} else {
+  console.warn(`copyReference: ${registrySrc} has no manifest.json; skipping the starter registry`);
+}
 const bimGuide = resolve(pkgDir, 'skills', 'implement', 'references', 'families-bim.md');
 if (existsSync(bimGuide)) {
   copyFileSync(bimGuide, resolve(outDir, 'families-bim.md'));

@@ -56,6 +56,53 @@ export function referenceDocs(dir: string = toolDir()): ReferenceDoc[] {
   return [...docs].map(([name, path]) => ({ name, path }));
 }
 
+export interface RegistryFamily {
+  readonly name: string;
+  readonly version?: number | undefined;
+  readonly description?: string | undefined;
+  readonly familyDeps?: readonly string[] | undefined;
+  readonly npmDeps?: readonly string[] | undefined;
+  /** The family's source file on disk. */
+  readonly path: string;
+}
+
+/**
+ * The brepjs-families starter registry `npx brepjs add` copies from: the bundled copy, or the
+ * repo's in an unbuilt checkout.
+ */
+export function registryFamilies(dir: string = toolDir()): RegistryFamily[] {
+  const roots = [
+    resolve(dir, 'reference', 'registry'),
+    resolve(dir, '..', 'brepjs-families', 'registry'),
+  ];
+  const root = roots.find((r) => existsSync(join(r, 'manifest.json')));
+  if (root === undefined) return [];
+  const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8')) as {
+    families?: readonly {
+      name: string;
+      version?: number;
+      description?: string;
+      files?: readonly string[];
+      familyDeps?: readonly string[];
+      npmDeps?: readonly string[];
+    }[];
+  };
+  return (manifest.families ?? []).flatMap((f) => {
+    const file = f.files?.[0];
+    if (file === undefined || !existsSync(join(root, file))) return [];
+    return [
+      {
+        name: f.name,
+        version: f.version,
+        description: f.description,
+        familyDeps: f.familyDeps,
+        npmDeps: f.npmDeps,
+        path: join(root, file),
+      },
+    ];
+  });
+}
+
 /** Split markdown into sections at headings, ignoring `#` lines inside code fences. */
 export function sectionsOf(doc: string, text: string): ReferenceSection[] {
   const out: ReferenceSection[] = [];
@@ -149,10 +196,15 @@ export function searchSections(
  */
 export class ReferenceIndex {
   readonly docs: readonly ReferenceDoc[];
+  readonly registry: readonly RegistryFamily[];
   #sections: ReferenceSection[] | undefined;
 
-  constructor(docs: readonly ReferenceDoc[] = referenceDocs()) {
+  constructor(
+    docs: readonly ReferenceDoc[] = referenceDocs(),
+    registry: readonly RegistryFamily[] = registryFamilies()
+  ) {
     this.docs = docs;
+    this.registry = registry;
   }
 
   read(name: string): string | undefined {

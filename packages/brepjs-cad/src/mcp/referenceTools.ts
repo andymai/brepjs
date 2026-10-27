@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { ReadResourceResult, Resource } from '@modelcontextprotocol/sdk/types.js';
 import { queryTerms, type ReferenceIndex } from '../session/reference.js';
 import { ArgError, jsonResult, optionalCount, requireString, type ToolDef } from './registry.js';
@@ -5,6 +6,7 @@ import { ArgError, jsonResult, optionalCount, requireString, type ToolDef } from
 const DEFAULT_HITS = 5;
 const MAX_HITS = 10;
 const REFERENCE_URI = 'brep://reference/';
+const REGISTRY_URI = 'brep://families/registry';
 
 const uriOf = (name: string) => `${REFERENCE_URI}${name}`;
 const mimeOf = (name: string) => (name.endsWith('.md') ? 'text/markdown' : 'text/plain');
@@ -46,19 +48,58 @@ export function referenceTools(index: ReferenceIndex): ToolDef[] {
 }
 
 export function listReferenceResources(index: ReferenceIndex): Resource[] {
-  return index.docs.map((d) => ({
+  const docs: Resource[] = index.docs.map((d) => ({
     uri: uriOf(d.name),
     name: `reference-${d.name}`,
     title: `brepjs reference: ${d.name}`,
     mimeType: mimeOf(d.name),
   }));
+  if (index.registry.length === 0) return docs;
+  return [
+    ...docs,
+    {
+      uri: REGISTRY_URI,
+      name: 'families-registry',
+      title: 'brepjs-families starter registry',
+      description:
+        'The families `npx brepjs add <name>` copies into a project: name, version, description and dependencies. Each family source is at brep://families/registry/{name}.',
+      mimeType: 'application/json',
+    },
+    ...index.registry.map((f) => ({
+      uri: `${REGISTRY_URI}/${f.name}`,
+      name: `families-registry-${f.name}`,
+      title: `Starter family: ${f.name}`,
+      ...(f.description !== undefined ? { description: f.description } : {}),
+      mimeType: 'text/x-typescript',
+    })),
+  ];
 }
 
-/** Read a brep://reference resource, or undefined when the URI is not one. */
+function readRegistryResource(index: ReferenceIndex, uri: string): ReadResourceResult | undefined {
+  if (uri === REGISTRY_URI) {
+    const families = index.registry.map(({ path: _path, ...f }) => ({
+      ...f,
+      add: `npx brepjs add ${f.name}`,
+      source: `${REGISTRY_URI}/${f.name}`,
+    }));
+    return {
+      contents: [{ uri, mimeType: 'application/json', text: JSON.stringify({ families }) }],
+    };
+  }
+  if (!uri.startsWith(`${REGISTRY_URI}/`)) return undefined;
+  const family = index.registry.find((f) => f.name === uri.slice(REGISTRY_URI.length + 1));
+  if (family === undefined) return undefined;
+  return {
+    contents: [{ uri, mimeType: 'text/x-typescript', text: readFileSync(family.path, 'utf8') }],
+  };
+}
+
+/** Read a brep://reference or brep://families/registry resource, or undefined when the URI is neither. */
 export function readReferenceResource(
   index: ReferenceIndex,
   uri: string
 ): ReadResourceResult | undefined {
+  if (uri.startsWith(REGISTRY_URI)) return readRegistryResource(index, uri);
   if (!uri.startsWith(REFERENCE_URI)) return undefined;
   const name = decodeURIComponent(uri.slice(REFERENCE_URI.length));
   const text = index.read(name);

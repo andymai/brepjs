@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { queryTerms, ReferenceIndex, searchSections, sectionsOf } from '@/session/reference.js';
+import { listReferenceResources, readReferenceResource } from '@/mcp/referenceTools.js';
 
 const DOC = [
   '# Guide',
@@ -53,5 +54,29 @@ describe('reference index', () => {
     expect(index.search('fillet chamfer', 5).some((h) => h.doc === 'llms.txt')).toBe(false);
     expect(index.read('families/openings.md')).toContain('Opening');
     expect(index.read('../../package.json')).toBeUndefined();
+  });
+});
+
+describe('starter registry resources', () => {
+  it('lists the starter families and serves each one as source', () => {
+    const index = new ReferenceIndex();
+    expect(index.registry.map((f) => f.name)).toEqual(
+      expect.arrayContaining(['wall', 'door', 'room'])
+    );
+    const listing = readReferenceResource(index, 'brep://families/registry');
+    const body = JSON.parse((listing?.contents[0] as { text: string }).text) as {
+      families: { name: string; add: string; familyDeps?: string[] }[];
+    };
+    expect(body.families.find((f) => f.name === 'room')).toMatchObject({
+      add: 'npx brepjs add room',
+      familyDeps: ['wall', 'door'],
+    });
+    const wall = readReferenceResource(index, 'brep://families/registry/wall');
+    expect((wall?.contents[0] as { text: string }).text).toContain("family(\n  'Wall'");
+    expect(readReferenceResource(index, 'brep://families/registry/nope')).toBeUndefined();
+    const uris = listReferenceResources(index).map((r) => r.uri);
+    expect(uris).toEqual(
+      expect.arrayContaining(['brep://families/registry', 'brep://families/registry/wall'])
+    );
   });
 });
