@@ -94,11 +94,14 @@ function usePreviewScene(): PreviewScene | null {
     };
     void load();
     const events = new EventSource('/__preview/events');
+    // Every ping but a model-only one refreshes the scene: the bare {seq} a reconnect sends may
+    // follow changes missed while the stream was down.
     events.onmessage = (e: MessageEvent<string>) => {
       try {
-        if ((JSON.parse(e.data) as { scene?: boolean }).scene) void load();
+        const msg = JSON.parse(e.data) as { scene?: boolean; model?: boolean };
+        if (msg.model !== true || msg.scene === true) void load();
       } catch {
-        // not a scene ping
+        void load();
       }
     };
     return () => {
