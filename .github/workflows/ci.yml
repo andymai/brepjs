@@ -432,35 +432,42 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Clear stale Vite transform cache
         run: rm -rf node_modules/.vite
-      - name: Run benchmark on PR branch
-        run: NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-pr.txt
-      - name: Extract PR benchmark results
-        run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-pr.txt | sed '1d;$d' > /tmp/pr-results.json
-      - name: Checkout main branch
-        run: git fetch origin main && git checkout origin/main
+      # main gets its own worktree so the two sides can take turns on this runner. One run of
+      # each side minutes apart let a slow stretch on a shared runner read as a regression;
+      # alternating rounds puts each PR run next to a main run.
+      - name: Check out main beside the PR
+        run: git fetch origin main && git worktree add /tmp/main-tree origin/main
       # continue-on-error so a broken main baseline (e.g. a dependency/lockfile
-      # sync issue) can't deadlock every PR through the required ci-pass gate —
+      # sync issue) can't deadlock every PR through the required ci-pass gate:
       # including the very PR that fixes main. If the baseline won't install we
       # skip the comparison rather than failing; the PR's own benchmark still runs.
       - name: Install main branch dependencies
         id: main-install
         continue-on-error: true
+        working-directory: /tmp/main-tree
         run: npm ci --ignore-scripts && bash scripts/ensure-wasm.sh
-      - name: Run benchmark on main branch
-        if: steps.main-install.outcome == 'success'
-        run: |
-          if [ -f benchmarks/regression.bench.test.ts ]; then
-            NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-main.txt
-            sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-main.txt | sed '1d;$d' > /tmp/main-results.json
-          else
-            echo "[]" > /tmp/main-results.json
-            echo "Benchmark file not found on main — skipping baseline"
-          fi
       - name: Skip baseline if main install failed
         if: steps.main-install.outcome != 'success'
+        run: echo "::warning::main branch dependency install failed; skipping benchmark baseline (no comparison this run)"
+      - name: Run benchmarks, alternating PR and main
+        env:
+          MAIN_READY: ${{ steps.main-install.outcome == 'success' }}
         run: |
-          echo "[]" > /tmp/main-results.json
-          echo "::warning::main branch dependency install failed — skipping benchmark baseline (no comparison this run)"
+          extract() { sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' "$1" | sed '1d;$d'; }
+          run_bench() { NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose > "$1" 2>&1; }
+          for round in 1 2 3 4 5; do
+            run_bench "/tmp/bench-pr-$round.txt" || { cat "/tmp/bench-pr-$round.txt"; exit 1; }
+            extract "/tmp/bench-pr-$round.txt" > "/tmp/pr-$round.json"
+            echo "[]" > "/tmp/main-$round.json"
+            if [ "$MAIN_READY" = true ] && [ -f /tmp/main-tree/benchmarks/regression.bench.test.ts ]; then
+              if (cd /tmp/main-tree && run_bench "/tmp/bench-main-$round.txt"); then
+                extract "/tmp/bench-main-$round.txt" > "/tmp/main-$round.json"
+              else
+                echo "::warning::main benchmark failed in round $round"
+              fi
+            fi
+          done
+          cat /tmp/bench-pr-1.txt
       # Fork PRs run with a read-only GITHUB_TOKEN (the job's pull-requests: write
       # is ignored for public-fork pull_request runs), so posting the comment 403s
       # and fails the required ci-pass gate. The benchmark still runs on both sides;
@@ -472,33 +479,52 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { readFileSync } = await import('fs');
-            const prRaw = readFileSync('/tmp/pr-results.json', 'utf8').trim();
-            const mainRaw = readFileSync('/tmp/main-results.json', 'utf8').trim();
-            const prResults = prRaw ? JSON.parse(prRaw) : [];
-            const mainResults = mainRaw ? JSON.parse(mainRaw) : [];
+            const read = (file) => {
+              try {
+                const raw = readFileSync(file, 'utf8').trim();
+                return raw ? JSON.parse(raw) : [];
+              } catch {
+                return [];
+              }
+            };
+            const rounds = [1, 2, 3, 4, 5].map((r) => ({
+              pr: read(`/tmp/pr-${r}.json`),
+              main: read(`/tmp/main-${r}.json`),
+            }));
+            const median = (xs) => {
+              const s = [...xs].sort((a, b) => a - b);
+              const m = Math.floor(s.length / 2);
+              return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+            };
 
-            const mainByName = {};
-            for (const b of mainResults) {
-              mainByName[b.name] = b;
-            }
-
-            // 25% threshold: shared CI runners (different machines for main
-            // vs PR sides) show ~9-15% run-to-run variance even on
-            // semantically identical code. Tightening below 25% produces
-            // more false positives than real regressions caught.
+            // Each round's PR run sits next to a main run, so the change is the median of the
+            // per-round PR/main ratios: a slow stretch on the runner slows both sides of a round.
+            // The 25% threshold predates the pairing.
             const REGRESSION_THRESHOLD_PCT = 25;
 
             let hasRegression = false;
             const rows = [];
+            const names = [...new Set(rounds.flatMap((r) => r.pr.map((b) => b.name)))];
 
-            for (const pr of prResults) {
-              const main = mainByName[pr.name];
-              if (!main) {
+            for (const name of names) {
+              const prMs = [];
+              const mainMs = [];
+              const ratios = [];
+              for (const r of rounds) {
+                const pr = r.pr.find((b) => b.name === name);
+                const main = r.main.find((b) => b.name === name);
+                if (pr) prMs.push(pr.median);
+                if (main) mainMs.push(main.median);
+                if (pr && main) ratios.push(pr.median / main.median);
+              }
+              const pr = { name, median: median(prMs) };
+              if (ratios.length === 0) {
                 rows.push(`| ${pr.name} | — | ${pr.median.toFixed(2)} ms | *new* | ⚪ |`);
                 continue;
               }
+              const main = { median: median(mainMs) };
 
-              const pctChange = ((pr.median - main.median) / main.median) * 100;
+              const pctChange = (median(ratios) - 1) * 100;
               let icon;
               if (pctChange > REGRESSION_THRESHOLD_PCT) {
                 icon = '🔴';
@@ -520,6 +546,8 @@ jobs:
               '| Benchmark | main | PR | Change | |',
               '|-----------|------|----|---------|-|',
               ...rows,
+              '',
+              '_Medians over 5 rounds that alternate PR and main runs; Change is the median of the per-round ratios._',
               '',
               hasRegression ? `**🔴 Regression detected:** one or more benchmarks regressed >${REGRESSION_THRESHOLD_PCT}%` : 'All benchmarks within tolerance.',
             ].join('\n');
