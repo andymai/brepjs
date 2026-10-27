@@ -128,12 +128,24 @@ describe('the live viewer', () => {
         arguments: { path: 'model.tsx', typecheck: false },
       });
       const shown = body(
-        await plain.callTool({ name: 'show_model', arguments: { sessionId: 's1' } })
+        await plain.callTool({
+          name: 'show_model',
+          arguments: { sessionId: 's1', highlight: ['ground/annex'] },
+        })
       );
       const url = new URL(String(shown['url']));
       const model = await fetch(new URL('/__preview/model', url));
       expect(model.ok).toBe(true);
       const before = Buffer.from(await model.arrayBuffer());
+      // The page follows the agent's styling and selection through its scene.
+      const scene = async () =>
+        (await (await fetch(new URL('/__preview/scene', url))).json()) as Payload;
+      expect((await scene())['style']).toBeDefined();
+      await plain.callTool({
+        name: 'select_elements',
+        arguments: { sessionId: 's1', ids: ['ground/slab'] },
+      });
+      expect((await scene())['selection']).toEqual(['ground/slab']);
       expect(before.byteLength).toBeGreaterThan(1000);
       // A rebuild sends the open page the new model without another show_model.
       project.edit('length={4000}', 'length={4500}');
@@ -146,6 +158,31 @@ describe('the live viewer', () => {
     } finally {
       other.sessions.closeAll();
       await plain.close();
+    }
+  });
+
+  it('drops what a rebuild removed from the selection, frame and style', async () => {
+    await client.callTool({
+      name: 'show_model',
+      arguments: { sessionId: 's1', isolate: ['ground/annex'] },
+    });
+    await client.callTool({
+      name: 'show_elements',
+      arguments: { sessionId: 's1', ids: ['ground/annex'] },
+    });
+    const before = await sync({});
+    project.edit('key="annex"', 'key="annex2"');
+    try {
+      await client.callTool({ name: 'rebuild', arguments: { sessionId: 's1' } });
+      const after = await sync({ rev: before['rev'] });
+      expect(after['rev']).toBeGreaterThan(before['rev'] as number);
+      expect(after['selection']).toEqual([]);
+      expect(after).not.toHaveProperty('frame');
+      // An isolate of nothing would draw nothing, so the style goes.
+      expect(after).not.toHaveProperty('style');
+    } finally {
+      project.edit('key="annex2"', 'key="annex"');
+      await client.callTool({ name: 'rebuild', arguments: { sessionId: 's1' } });
     }
   });
 

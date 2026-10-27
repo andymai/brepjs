@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import type { ReadResourceResult, Resource } from '@modelcontextprotocol/sdk/types.js';
 import { startPreviewServer } from '../preview/server.js';
 import { COLOR_BY, planStyle, selectIds, type ColorBy } from '../session/style.js';
-import type { Session, SessionManager } from '../session/sessions.js';
+import { viewerScene, type Session, type SessionManager } from '../session/sessions.js';
 import {
   ArgError,
   jsonResult,
@@ -60,6 +60,11 @@ function ids(s: Session, a: Readonly<Record<string, unknown>>): string[] {
   return [...picked.ids];
 }
 
+/** Send the viewer state to the browser page, when show_model linked one. */
+function pushScene(s: Session): void {
+  s.viewer.fallback?.setScene(viewerScene(s.viewer));
+}
+
 function viewerView(s: Session): Record<string, unknown> {
   const v = s.viewer;
   return {
@@ -76,7 +81,7 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
       name: 'show_model',
       title: 'Show model',
       description:
-        "Open a session's current build in an interactive 3D viewer the user can orbit and click. Clients that support MCP Apps show it inline; others get a local URL to open in a browser. highlight and isolate take ids or globs (a container stands for what's under it), colorBy colors by category, storey or family. Clicking an element selects it; get_viewer_selection returns what the user picked, and select_elements and show_elements change what the viewer shows. The browser page shows the model but can't report clicks back.",
+        "Open a session's current build in an interactive 3D viewer the user can orbit and click. Clients that support MCP Apps show it inline; others get a local URL to open in a browser. highlight and isolate take ids or globs (a container stands for what's under it), colorBy colors by category, storey or family. Clicking an element in the inline viewer selects it, and get_viewer_selection returns what the user picked; select_elements and show_elements change what either viewer shows, and a rebuild updates both. The browser page follows the agent but can't report clicks back.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -109,6 +114,7 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
           if (v.fallback) v.fallback.update(buffer as ArrayBuffer);
           else v.fallback = await startPreviewServer(buffer as ArrayBuffer);
         }
+        pushScene(session);
         const digest = {
           ...viewerView(session),
           buildHash,
@@ -146,6 +152,7 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
         s.viewer.selection = picked;
         s.viewer.selectedAt = new Date();
         s.viewer.rev++;
+        pushScene(s);
         return jsonResult({ ...viewerView(s), selected: picked.length });
       },
     },
@@ -166,7 +173,9 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
         s.viewer.selection = picked;
         s.viewer.selectedAt = new Date();
         s.viewer.frame = picked;
+        s.viewer.frameSeq++;
         s.viewer.rev++;
+        pushScene(s);
         return jsonResult({ ...viewerView(s), shown: picked.length });
       },
     },
@@ -237,8 +246,8 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
           const known = selection.filter((id) => s.build.index.has(id));
           v.selection = known;
           v.selectedAt = new Date();
-          v.frame = undefined;
           v.rev++;
+          pushScene(s);
         }
         const rev = optionalCount(a, 'rev');
         const behind = rev === undefined || rev !== v.rev;
@@ -250,6 +259,7 @@ export function viewerTools(sessions: SessionManager, uiHost: () => boolean): To
             ...(behind
               ? {
                   selection: v.selection,
+                  frameSeq: v.frameSeq,
                   ...(v.frame ? { frame: v.frame } : {}),
                   ...(v.style ? { style: v.style } : {}),
                 }

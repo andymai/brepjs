@@ -60,11 +60,40 @@ export interface ViewerState {
   selectedAt: Date | undefined;
   /** Elements to frame the camera on. */
   frame: readonly string[] | undefined;
+  /** Bumped by each show_elements, so asking for the same frame again refits the camera. */
+  frameSeq: number;
   style: ElementStyle | undefined;
   /** When an open viewer last checked in. */
   seenAt: Date | undefined;
   /** The local page show_model links when the client can't show the viewer inline. */
   fallback: PreviewServer | undefined;
+}
+
+/** What a browser preview page needs to match the inline viewer: style, selection, framing. */
+export function viewerScene(v: ViewerState): Record<string, unknown> {
+  return {
+    ...(v.style ? { style: v.style } : {}),
+    selection: v.selection,
+    ...(v.frame ? { frame: v.frame } : {}),
+  };
+}
+
+/** Drop ids a rebuild removed, so the viewer never selects, frames or isolates nothing. */
+function reconcileViewer(v: ViewerState, index: ReadonlyMap<string, unknown>): void {
+  const known = (ids: readonly string[]): string[] => ids.filter((id) => index.has(id));
+  v.selection = known(v.selection);
+  if (v.frame) {
+    const frame = known(v.frame);
+    v.frame = frame.length > 0 ? frame : undefined;
+  }
+  if (v.style) {
+    const layers = v.style.layers
+      .map((l) => ({ ...l, keyPaths: known(l.keyPaths) }))
+      .filter((l) => l.keyPaths.length > 0);
+    v.style =
+      layers.length === 0 && v.style.others === 'hidden' ? undefined : { ...v.style, layers };
+  }
+  v.rev++;
 }
 
 export interface Session {
@@ -264,6 +293,7 @@ export class SessionManager {
         selection: [],
         selectedAt: undefined,
         frame: undefined,
+        frameSeq: 0,
         style: undefined,
         seenAt: undefined,
         fallback: undefined,
@@ -363,9 +393,11 @@ export class SessionManager {
       session.validationCache = undefined;
       session.lastDiff = { previousBuildHash: previous.buildHash, diff };
       session.lastFailure = undefined;
+      reconcileViewer(session.viewer, attempt.build.index);
       // A browser page show_model linked reloads on its own once it has the new model.
       const page = session.viewer.fallback;
       if (page) {
+        page.setScene(viewerScene(session.viewer));
         try {
           const bytes = await this.#request(session, 'payload', {}, PAYLOAD_TIMEOUT_MS);
           page.update(

@@ -32,6 +32,7 @@ interface Loaded {
 
 interface SyncState {
   readonly rev: number;
+  readonly frameSeq: number;
   readonly selection: readonly string[];
   readonly frame?: readonly string[] | undefined;
   readonly style?: ElementStyle | undefined;
@@ -96,7 +97,7 @@ async function loadModel(sessionId: string): Promise<Loaded> {
 function App() {
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useState<Loaded | null>(null);
-  const [sync, setSync] = useState<SyncState>({ rev: 0, selection: [] });
+  const [sync, setSync] = useState<SyncState>({ rev: 0, frameSeq: 0, selection: [] });
   const [fitSignal, setFitSignal] = useState(0);
 
   useEffect(() => {
@@ -126,13 +127,15 @@ function App() {
         setModel(await loadModel(model.sessionId));
       }
       if (next && typeof next.rev === 'number' && next.rev !== sync.rev) {
+        const frameSeq = next.frameSeq ?? sync.frameSeq;
         setSync({
           rev: next.rev,
+          frameSeq,
           selection: next.selection ?? sync.selection,
           frame: next.frame,
           style: next.style,
         });
-        if (next.frame) setFitSignal((n) => n + 1);
+        if (frameSeq !== sync.frameSeq) setFitSignal((n) => n + 1);
       } else if (selection) {
         setSync((s) => ({ ...s, selection }));
       }
@@ -165,13 +168,20 @@ function App() {
     [model, style]
   );
   const ranges = useMemo(() => (model ? packedRanges(model.elements, style) : []), [model, style]);
+  // Framing follows the model, the agent's style and show_elements, not the selection, so a click
+  // doesn't snap the camera back. A key keeps a re-sent but equal style from refitting too.
+  const frameKey = JSON.stringify([sync.style ?? null, sync.frame ?? null]);
   const framed = useMemo(() => {
-    if (!model || !sync.frame || sync.frame.length === 0) return styled?.visible;
-    return styleElements(model.data, model.elements, {
-      layers: [{ keyPaths: sync.frame }],
-      others: 'hidden',
-    }).visible;
-  }, [model, sync.frame, styled]);
+    if (!model) return undefined;
+    const [base, frame] = JSON.parse(frameKey) as [ElementStyle | null, string[] | null];
+    if (frame && frame.length > 0) {
+      return styleElements(model.data, model.elements, {
+        layers: [{ keyPaths: frame }],
+        others: 'hidden',
+      }).visible;
+    }
+    return base ? styleElements(model.data, model.elements, base).visible : model.data;
+  }, [model, frameKey]);
 
   if (error)
     return <div style={{ color: '#e88', padding: 12, font: '12px monospace' }}>{error}</div>;

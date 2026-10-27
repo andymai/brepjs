@@ -70,6 +70,61 @@ function CameraProbe() {
   return null;
 }
 
+/** What brep-mcp's show_model, select_elements and show_elements send a preview page. */
+interface PreviewScene {
+  readonly style?: ElementStyle;
+  readonly selection?: readonly string[];
+  readonly frame?: readonly string[];
+}
+
+const SELECTED = '#ffd400';
+
+function usePreviewScene(): PreviewScene | null {
+  const [scene, setScene] = useState<PreviewScene | null>(null);
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('preview')) return;
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const r = await fetch('/__preview/scene');
+        if (r.ok && !cancelled) setScene((await r.json()) as PreviewScene);
+      } catch {
+        // No scene route (an older server) leaves the page unstyled.
+      }
+    };
+    void load();
+    const events = new EventSource('/__preview/events');
+    events.onmessage = (e: MessageEvent<string>) => {
+      try {
+        if ((JSON.parse(e.data) as { scene?: boolean }).scene) void load();
+      } catch {
+        // not a scene ping
+      }
+    };
+    return () => {
+      cancelled = true;
+      events.close();
+    };
+  }, []);
+  return scene;
+}
+
+/** The scene's style with its selection drawn first, or null when it asks for nothing. */
+function sceneStyle(scene: PreviewScene | null): ElementStyle | null {
+  if (scene === null) return null;
+  const selection = scene.selection ?? [];
+  if (!scene.style && selection.length === 0) return null;
+  return {
+    layers: [
+      ...(selection.length > 0
+        ? [{ keyPaths: selection, color: SELECTED, mode: 'solid' as const }]
+        : []),
+      ...(scene.style?.layers ?? []),
+    ],
+    others: scene.style?.others ?? 'solid',
+  };
+}
+
 // The agent snapshot pipeline screenshots this same page, so it loads with ?ui=0 to
 // suppress the toolbar and keep PNGs free of chrome. Human `--serve` links omit it.
 const params = new URLSearchParams(window.location.search);
@@ -142,6 +197,7 @@ function App() {
   const [sectionFlip, setSectionFlip] = useState(false);
   const [marks, setMarks] = useState<readonly Mark[]>([]);
   const [elementStyle, setElementStyle] = useState<ElementStyle | null>(null);
+  const scene = usePreviewScene();
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const preview: PreviewInfo | undefined = state.status === 'ready' ? state.preview : undefined;
   const handleTrianglePick = useCallback(
@@ -207,13 +263,33 @@ function App() {
     },
     [midOfAxis]
   );
+  // A snapshot's own scene wins over what an agent sent the page.
+  const activeStyle = useMemo(() => elementStyle ?? sceneStyle(scene), [elementStyle, scene]);
   const styled = useMemo(
     () =>
-      state.status === 'ready' && preview && elementStyle
-        ? styleElements(state.data, preview.elements, elementStyle, viewMode)
+      state.status === 'ready' && preview && activeStyle
+        ? styleElements(state.data, preview.elements, activeStyle, viewMode)
         : null,
-    [state, preview, elementStyle, viewMode]
+    [state, preview, activeStyle, viewMode]
   );
+  // Framing follows the model, the style and show_elements, not the selection, so picking an
+  // element doesn't snap the camera back.
+  const frameKey = JSON.stringify([
+    elementStyle ? null : (scene?.style ?? null),
+    scene?.frame ?? null,
+  ]);
+  const framing = useMemo(() => {
+    if (state.status !== 'ready' || !preview) return state.status === 'ready' ? state.data : null;
+    const [style, frame] = JSON.parse(frameKey) as [ElementStyle | null, string[] | null];
+    if (frame && frame.length > 0) {
+      return styleElements(state.data, preview.elements, {
+        layers: [{ keyPaths: frame }],
+        others: 'hidden',
+      }).visible;
+    }
+    const base = elementStyle ?? style;
+    return base ? styleElements(state.data, preview.elements, base).visible : state.data;
+  }, [state, preview, elementStyle, frameKey]);
   const clippingPlanes = useMemo(
     () => (sectionOn && bounds ? [sectionPlane(sectionAxis, sectionPos, sectionFlip)] : undefined),
     [sectionOn, bounds, sectionAxis, sectionPos, sectionFlip]
@@ -231,7 +307,7 @@ function App() {
   return (
     <>
       <ViewerCanvas
-        data={styled ? styled.visible : state.data}
+        data={framing ?? state.data}
         view={view}
         fitSignal={fitSignal}
         autoRotate={autoRotate}

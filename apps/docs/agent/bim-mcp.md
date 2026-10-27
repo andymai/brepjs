@@ -177,7 +177,7 @@ Each call returns a PNG preview and saves the drawing when `outPath` is set: SVG
 
 `show_model` opens the session's build in a 3D viewer the user can orbit and click. In a client that supports [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) the viewer appears inline in the conversation. Elsewhere, such as a terminal agent, the result carries a local URL to open in a browser. `highlight`, `isolate` and `colorBy` work as they do for `render_view`.
 
-The inline viewer and the agent share a selection. A click on an element selects it, and `get_viewer_selection` returns its id, so "this wall" can mean the one the user picked. `select_elements` selects elements in the viewer, and `show_elements` also frames the camera on them. The viewer checks in every couple of seconds, which is how both directions travel, and it reloads the model when the session rebuilds. The browser page shows the model but can't report clicks back.
+The inline viewer and the agent share a selection. A click on an element selects it, and `get_viewer_selection` returns its id, so "this wall" can mean the one the user picked. `select_elements` selects elements in the viewer, and `show_elements` also frames the camera on them. The viewer checks in every couple of seconds, which is how both directions travel, and it reloads the model when the session rebuilds. The browser page follows the agent's styling, selection and framing, and picks up rebuilds too, but it can't report clicks back.
 
 ## Running code against a session
 

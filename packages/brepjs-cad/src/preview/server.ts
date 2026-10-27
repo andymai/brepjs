@@ -7,6 +7,8 @@ export interface PreviewServer {
   readonly port: number;
   /** Swap the served payload and notify subscribed viewer tabs via SSE. */
   update(payload: ArrayBuffer): void;
+  /** Swap the styling and selection served at /__preview/scene and notify viewer tabs. */
+  setScene(scene: unknown): void;
   close(): Promise<void>;
 }
 
@@ -22,6 +24,7 @@ export function startPreviewServer(
   opts: { port?: number } = {}
 ): Promise<PreviewServer> {
   let current = Buffer.from(initial);
+  let scene = '{}';
   let seq = 1;
   const clients = new Set<ServerResponse>();
 
@@ -33,6 +36,11 @@ export function startPreviewServer(
         'cache-control': 'no-store',
       });
       res.end(current);
+      return;
+    }
+    if (pathname === '/__preview/scene') {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(scene);
       return;
     }
     if (pathname === '/__preview/events') {
@@ -75,7 +83,7 @@ export function startPreviewServer(
       // report and keep the process (and the watch loop) alive.
       server.removeListener('error', reject);
       server.on('error', (e) => {
-        process.stderr.write(`preview server error: ${(e).message}\n`);
+        process.stderr.write(`preview server error: ${e.message}\n`);
       });
       const port = (server.address() as { port: number }).port;
       resolvePromise({
@@ -84,7 +92,12 @@ export function startPreviewServer(
         update(payload) {
           current = Buffer.from(payload);
           seq += 1;
-          for (const res of clients) res.write(`data: {"seq":${seq}}\n\n`);
+          for (const res of clients) res.write(`data: {"seq":${seq},"model":true}\n\n`);
+        },
+        setScene(next) {
+          scene = JSON.stringify(next);
+          seq += 1;
+          for (const res of clients) res.write(`data: {"seq":${seq},"scene":true}\n\n`);
         },
         close: () =>
           new Promise<void>((done, fail) => {
