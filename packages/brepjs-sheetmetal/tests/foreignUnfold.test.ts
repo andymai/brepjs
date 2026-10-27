@@ -4,12 +4,19 @@ import {
   cylinder,
   sphere,
   box,
+  cut,
   fuse,
   translate,
   simplify,
+  fillet,
   unwrap,
+  isValidSolid,
+  getBounds,
+  getEdges,
   getFaces,
   getSurfaceType,
+  curveStartPoint,
+  curveEndPoint,
 } from 'brepjs';
 import type { Solid, Face } from 'brepjs';
 import { authorPart } from '../src/authorFns.js';
@@ -241,6 +248,60 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
   });
 });
 
+describe('unfoldForeignSolid — rounded corners on parallel walls', () => {
+  it('keeps same-axis corner rounds on opposite walls from pairing into a bend', () => {
+    const thickness = 1.6;
+    const cornerRadius = 3;
+    const part = authorPart({
+      thickness,
+      base: { length: 60, width: 30 },
+      flanges: [
+        { id: 'left', length: 18, angleDeg: 90, rule, side: 'xmin' },
+        { id: 'right', length: 18, angleDeg: 90, rule, side: 'xmax' },
+      ],
+    });
+    expect(part.ok).toBe(true);
+    if (!part.ok) return;
+    const authored = unwrap(unfold(part.value));
+    const solid = part.value.solid;
+    if (solid === undefined || !isValidSolid(solid)) throw new Error('authored solid is not valid');
+
+    // The short edges through the sheet at each wall's two top corners. Rounding
+    // them leaves two corner cylinders on one axis line, one on each wall.
+    const top = getBounds(solid).zMax;
+    const corners = getEdges(solid).filter((e) => {
+      const p = curveStartPoint(e);
+      const q = curveEndPoint(e);
+      return (
+        Math.abs(Math.abs(p[0] - q[0]) - thickness) < 1e-6 &&
+        Math.abs(p[1] - q[1]) < 1e-6 &&
+        Math.abs(p[2] - top) < 1e-6 &&
+        Math.abs(q[2] - top) < 1e-6
+      );
+    });
+    expect(corners).toHaveLength(4);
+    using rounded = unwrap(fillet(solid, corners, cornerRadius));
+
+    const result = unfoldForeignSolid(rounded, { kFactor: 0.5 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.report.bends).toHaveLength(2);
+    for (const b of result.value.report.bends) {
+      expect(b.angleDeg).toBeCloseTo(90, 1);
+      expect(b.radius).toBeCloseTo(2, 3);
+    }
+    const [aLong, aShort] = [...authored.report.totalFlatSize].sort((p, q) => q - p);
+    const [fLong, fShort] = [...result.value.report.totalFlatSize].sort((p, q) => q - p);
+    expect(fLong).toBeCloseTo(aLong ?? 0, 2);
+    expect(fShort).toBeCloseTo(aShort ?? 0, 2);
+    const cornerLoss = cornerRadius ** 2 * (1 - Math.PI / 4);
+    expect(result.value.pattern.developedArea).toBeCloseTo(
+      authored.pattern.developedArea - 4 * cornerLoss,
+      2
+    );
+  });
+});
+
 describe('unfoldForeignSolid — thickness detection', () => {
   it('detects the sheet thickness and reproduces a thicker part', () => {
     const part = authorPart({
@@ -299,6 +360,29 @@ describe('unfoldForeignSolid — honest scope (no silently-wrong answer)', () =>
     if (!result.ok) return;
     expect(result.value.report.bends).toHaveLength(0);
     expect(result.value.pattern.bendLines).toHaveLength(0);
+  });
+
+  it('warns instead of throwing when a bend axis crosses its flats (a flanged cup)', () => {
+    // The wall is a coaxial cylinder pair a thickness apart joining the cup's base
+    // to its flange, but its axis runs along both flats' normals, so there is no
+    // straight bend line to lay out.
+    using wallOuter = cylinder(10, 9);
+    using wallInner = cylinder(9, 9, { at: [0, 0, 1] });
+    using cup = unwrap(cut(wallOuter, wallInner));
+    using flangeDisc = cylinder(15, 1, { at: [0, 0, 9] });
+    using flangeHole = cylinder(9, 1, { at: [0, 0, 9] });
+    using flange = unwrap(cut(flangeDisc, flangeHole));
+    using hat = unwrap(fuse(cup, flange));
+
+    const result = unfoldForeignSolid(hat, { kFactor: 0.5 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.report.bends).toHaveLength(0);
+    expect(
+      result.value.warnings.some(
+        (w) => w.code === 'DETECTION_INCOMPLETE' && w.message.includes('left out of the layout')
+      )
+    ).toBe(true);
   });
 
   it('errors clearly on a bare sphere (no planar panels)', () => {

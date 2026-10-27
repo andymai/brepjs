@@ -309,7 +309,10 @@ authored path. It reads only the B-rep:
   ⟂ the axis), recovered as the sign-aligned average of cross products of non-parallel normal pairs; the
   axis line and radius come from a least-squares circle fit of the points projected onto the plane ⟂ axis;
   the radius is the mean point-to-axis distance. A fit whose residual exceeds tolerance is rejected (warned).
-  Recovery is high-precision: radius and axis of a known `cylinder()` primitive are recovered to ~1e-6.
+  Recovery is high-precision: radius and axis of a known `cylinder()` primitive are recovered to ~1e-6. A
+  bend's inner and outer faces pair only when they share an axis line, differ in radius by the sheet
+  thickness, and overlap along the axis, so matching corner rounds or holes on two parallel walls stay
+  apart.
 - **Build the bend graph** (flats = nodes; a bend connects the two flats it shares edges with), take a
   spanning tree from a root flat, and turn non-tree bends into seam cuts (`SEAM_CUT`, warned).
 - **Unfold** by walking the tree, replacing each cylindrical region with a developed strip of length
