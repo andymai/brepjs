@@ -23,7 +23,7 @@ import {
   type FieldGroup,
 } from '../session/query.js';
 import type { BuildDiff } from '../session/diff.js';
-import type { BuildDiagnostic } from '../session/records.js';
+import type { BuildDiagnostic, ElementRecord } from '../session/records.js';
 import type { RenderSection, RenderShot, RenderView } from '../session/render.js';
 import { COLOR_BY, planStyle, storeyPlan, type ColorBy } from '../session/style.js';
 import type { IfcProjectSpec } from '../session/bim.js';
@@ -177,6 +177,22 @@ function overview(s: Session): Record<string, unknown> {
     byStorey: counts.storey,
     byFamily: counts.family,
   };
+}
+
+/** A record by its id, or by the GlobalId the last export gave it. */
+function lookup(s: Session, id: string): ElementRecord | undefined {
+  return s.build.index.get(id) ?? s.build.index.get(s.exported?.keyPathOf.get(id) ?? '');
+}
+
+/** The get_elements shape, with the element's exported GlobalId when an export assigned one. */
+function elementView(
+  s: Session,
+  rec: ElementRecord,
+  fields: ReadonlySet<FieldGroup>
+): Record<string, unknown> {
+  const view = project(rec, fields);
+  const exported = rec.guid === undefined ? s.exported?.byKeyPath.get(rec.id) : undefined;
+  return exported !== undefined ? { ...view, guid: exported } : view;
 }
 
 function parseFields(raw: string[] | undefined): ReadonlySet<FieldGroup> {
@@ -555,7 +571,7 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
       name: 'export_ifc',
       title: 'Export IFC',
       description:
-        "Write a families session's current build to an .ifc file through brepjs-bim's validated export (referential integrity, schema, and a write-read-write round trip). Returns the validation report with each issue mapped to a key path, the elements exported as IfcBuildingElementProxy because no IFC type matched, and the GlobalId of every exported key path. GlobalIds are scoped by the project id, which defaults to the nearest package.json name, so keep it the same across exports. If outPath exists you are asked before it is replaced; clients that cannot ask need overwrite: true. IFC sessions cannot be exported.",
+        "Write a families session's current build to an .ifc file through brepjs-bim's validated export (referential integrity, schema, and a write-read-write round trip). Returns the validation report with each issue mapped to a key path, the elements exported as IfcBuildingElementProxy because no IFC type matched, and the GlobalId of every exported key path (the first 500 here; after an export, get_elements reports each element's GlobalId and accepts GlobalIds as ids). GlobalIds are scoped by the project id, which defaults to the nearest package.json name, so keep it the same across exports. If outPath exists you are asked before it is replaced; clients that cannot ask need overwrite: true. IFC sessions cannot be exported.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -605,7 +621,8 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
         const project = parseProject(a['project'], defaultProject(s.path));
         const proxies = optionalBoolean(a, 'proxies') ?? true;
         const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? EXPORT_TIMEOUT_MS;
-        if (optionalBoolean(a, 'overwrite') !== true && (await fileExists(out))) {
+        let approved = optionalBoolean(a, 'overwrite') === true;
+        const askToReplace = async (): Promise<CallToolResult | undefined> => {
           const answer = await host.confirm(
             `${out} already exists. Replace it with an IFC export of ${basename(s.path)}?`
           );
@@ -624,8 +641,15 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
               true
             );
           }
+          approved = true;
+          return undefined;
+        };
+        // Ask before exporting, so a declined overwrite costs no export.
+        if (!approved && (await fileExists(out))) {
+          const stop = await askToReplace();
+          if (stop) return stop;
         }
-        const { session, outcome } = await sessions.exportIfc(
+        const { outcome, buildHash } = await sessions.exportIfc(
           sessionId,
           { project, proxies, applicationVersion: host.version },
           { timeoutMs, expectBuild }
@@ -637,7 +661,16 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
           );
         }
         await mkdir(dirname(out), { recursive: true });
-        await writeFile(out, outcome.bytes);
+        // Unapproved writes are exclusive: a file that appeared while the export ran (another
+        // export to the same path, say) is asked about, not replaced.
+        try {
+          await writeFile(out, outcome.bytes, { flag: approved ? 'w' : 'wx' });
+        } catch (e) {
+          if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+          const stop = await askToReplace();
+          if (stop) return stop;
+          await writeFile(out, outcome.bytes);
+        }
         const errors = outcome.issues.filter((i) => i.severity === 'error').length;
         const warnings = outcome.issues.filter((i) => i.severity === 'warning').length;
         const ids = Object.entries(outcome.globalIds);
@@ -645,7 +678,7 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
           {
             ok: errors === 0,
             sessionId,
-            buildHash: session.build.buildHash,
+            buildHash,
             written: true,
             path: out,
             bytes: outcome.bytes.byteLength,
@@ -653,7 +686,13 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
             ...(outcome.proxied.length > 0 ? { proxied: outcome.proxied } : {}),
             validation: { errors, warnings, ...cap(outcome.issues, MAX_EXPORT_ISSUES, 'issues') },
             globalIds: Object.fromEntries(ids.slice(0, MAX_GLOBAL_IDS)),
-            ...(ids.length > MAX_GLOBAL_IDS ? { globalIdsTotal: ids.length } : {}),
+            ...(ids.length > MAX_GLOBAL_IDS
+              ? {
+                  globalIdsTotal: ids.length,
+                  globalIdsNote:
+                    'get_elements returns every exported GlobalId and accepts GlobalIds as ids',
+                }
+              : {}),
           },
           errors > 0
         );
@@ -748,7 +787,7 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
       name: 'get_elements',
       title: 'Get elements',
       description:
-        'Full data for elements by id (key path or GlobalId): identity (name, type, archetype, category, storey, parent), props, psets, quantities, material, classification, relationships (Contains, Voids, Fills), children, and geometry (hasGeometry, geometryHash, bounds in mm, volume in mm³). Pass fields to return only some groups; identity is always included.',
+        'Full data for elements by id (key path or GlobalId; for a families session, a GlobalId from the last export_ifc works too): identity (name, type, archetype, category, storey, parent, and the GlobalId an export assigned), props, psets, quantities, material, classification, relationships (Contains, Voids, Fills), children, and geometry (hasGeometry, geometryHash, bounds in mm, volume in mm³). Pass fields to return only some groups; identity is always included.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -773,8 +812,8 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
         const elements: Record<string, unknown>[] = [];
         const missing: string[] = [];
         for (const id of ids) {
-          const rec = s.build.index.get(id);
-          if (rec) elements.push(project(rec, fields));
+          const rec = lookup(s, id);
+          if (rec) elements.push(elementView(s, rec, fields));
           else missing.push(id);
         }
         return jsonResult({
@@ -840,12 +879,12 @@ export function readSessionResource(
   if (elementMatch) {
     const s = sessions.get(decodeURIComponent(elementMatch[1] ?? ''));
     const id = decodeURIComponent(elementMatch[2] ?? '');
-    const rec = s.build.index.get(id);
+    const rec = lookup(s, id);
     if (rec === undefined) return undefined;
     const body = {
       sessionId: s.id,
       buildHash: s.build.buildHash,
-      element: project(rec, new Set(FIELD_GROUPS)),
+      element: elementView(s, rec, new Set(FIELD_GROUPS)),
     };
     return { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(body) }] };
   }

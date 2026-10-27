@@ -62,6 +62,21 @@ describe('export_ifc', () => {
     const guids = out.body['globalIds'] as Record<string, string>;
     expect(Object.keys(guids)).toEqual(expect.arrayContaining(['ground/annex', 'ground/slab']));
 
+    const byKeyPath = await call('get_elements', {
+      sessionId: 's1',
+      ids: ['ground/annex'],
+      fields: [],
+    });
+    expect((byKeyPath.body['elements'] as Payload[])[0]).toMatchObject({
+      guid: guids['ground/annex'],
+    });
+    const byGuid = await call('get_elements', {
+      sessionId: 's1',
+      ids: [guids['ground/annex']],
+      fields: [],
+    });
+    expect((byGuid.body['elements'] as Payload[])[0]).toMatchObject({ id: 'ground/annex' });
+
     const reopened = await call('open_model', { path });
     expect(reopened.body['byCategory']).toMatchObject({ WALL: 5, DOOR: 1, WINDOW: 1, SLAB: 1 });
     const annex = await call('get_elements', {
@@ -97,6 +112,17 @@ describe('export_ifc', () => {
     });
     expect(forced.body['written']).toBe(true);
     expect(asked).toHaveLength(asksBefore);
+  });
+
+  it('asks instead of replacing when a concurrent export wrote the file first', async () => {
+    answer = 'decline';
+    const [a, b] = await Promise.all([
+      call('export_ifc', { sessionId: 's1', outPath: 'dist/race.ifc' }),
+      call('export_ifc', { sessionId: 's1', outPath: 'dist/race.ifc' }),
+    ]);
+    const results = [a.body, b.body];
+    expect(results.filter((r) => r['written'] === true)).toHaveLength(1);
+    expect(results.filter((r) => r['reason'] === 'overwrite declined')).toHaveLength(1);
   });
 
   it('only writes .ifc files, and refuses to re-export an imported IFC session', async () => {

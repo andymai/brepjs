@@ -54,6 +54,12 @@ export interface Session {
   build: Build;
   /** How the current build differs from the one before it, kept so large diffs can be paged. */
   lastDiff: { readonly previousBuildHash: string; readonly diff: BuildDiff } | undefined;
+  /**
+   * GlobalIds as the last export_ifc wrote them, by key path and back. A key path's GlobalId
+   * derives from it and the project id alone, so the mapping holds across rebuilds until the
+   * next export.
+   */
+  exported: ExportedIds | undefined;
   lastFailure: { readonly at: Date; readonly diagnostics: readonly BuildDiagnostic[] } | undefined;
   queue: Promise<unknown>;
 }
@@ -81,6 +87,12 @@ export type RebuildResult =
       readonly diagnostics: readonly BuildDiagnostic[];
       readonly durationMs: number;
     };
+
+export interface ExportedIds {
+  readonly projectId: string;
+  readonly byKeyPath: ReadonlyMap<string, string>;
+  readonly keyPathOf: ReadonlyMap<string, string>;
+}
 
 export interface SessionStatus {
   readonly session: Session;
@@ -210,6 +222,7 @@ export class SessionManager {
       build: attempt.build,
       building: undefined,
       lastDiff: undefined,
+      exported: undefined,
       lastFailure: undefined,
       queue: Promise.resolve(),
     };
@@ -348,7 +361,12 @@ export class SessionManager {
     id: string,
     args: ExportIfcArgs,
     opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
-  ): Promise<{ readonly session: Session; readonly outcome: ExportIfcOutcome }> {
+  ): Promise<{
+    readonly session: Session;
+    readonly outcome: ExportIfcOutcome;
+    /** The build exported, captured on its turn in the queue. */
+    readonly buildHash: string;
+  }> {
     const session = this.get(id);
     if (session.kind === 'ifc') {
       throw new SessionError(
@@ -356,10 +374,19 @@ export class SessionManager {
         `session ${id} is an imported IFC file; brepjs-bim has no path from an imported model back to one it can write, so open the families program instead`
       );
     }
-    return this.#onCurrentBuild(id, opts.expectBuild, 'export', async (s) => ({
-      session: s,
-      outcome: await this.#request(s, 'exportIfc', args, opts.timeoutMs),
-    }));
+    return this.#onCurrentBuild(id, opts.expectBuild, 'export', async (s) => {
+      const buildHash = s.build.buildHash;
+      const outcome = await this.#request(s, 'exportIfc', args, opts.timeoutMs);
+      if (outcome.ok) {
+        const pairs = Object.entries(outcome.globalIds);
+        s.exported = {
+          projectId: args.project.projectId ?? args.project.name,
+          byKeyPath: new Map(pairs),
+          keyPathOf: new Map(pairs.map(([keyPath, guid]) => [guid, keyPath])),
+        };
+      }
+      return { session: s, outcome, buildHash };
+    });
   }
 
   /**
