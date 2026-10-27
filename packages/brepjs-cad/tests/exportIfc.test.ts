@@ -15,6 +15,7 @@ describe('export_ifc', () => {
   let client: Client;
   let answer: 'accept' | 'decline' = 'decline';
   const asked: string[] = [];
+  let annexGuid = '';
 
   const call = async (name: string, args: Payload) => {
     const res = await client.callTool({ name, arguments: args });
@@ -60,6 +61,7 @@ describe('export_ifc', () => {
     const path = out.body['path'] as string;
     expect(readFileSync(path, 'utf8').startsWith('ISO-10303-21;')).toBe(true);
     const guids = out.body['globalIds'] as Record<string, string>;
+    annexGuid = guids['ground/annex'] ?? '';
     expect(Object.keys(guids)).toEqual(expect.arrayContaining(['ground/annex', 'ground/slab']));
 
     const byKeyPath = await call('get_elements', {
@@ -88,6 +90,21 @@ describe('export_ifc', () => {
       category: 'WALL',
       psets: { Pset_WallCommon: { FireRating: 'REI60' } },
     });
+  });
+
+  it('keeps the last written GlobalIds when a later export writes nothing', async () => {
+    const failed = await call('export_ifc', {
+      sessionId: 's1',
+      outPath: 'model.tsx/elsewhere.ifc',
+      project: { name: 'another-project' },
+    });
+    expect(failed.isError).toBe(true);
+    const annex = await call('get_elements', {
+      sessionId: 's1',
+      ids: ['ground/annex'],
+      fields: [],
+    });
+    expect((annex.body['elements'] as Payload[])[0]).toMatchObject({ guid: annexGuid });
   });
 
   it('asks before replacing a file, and keeps it when the answer is no', async () => {

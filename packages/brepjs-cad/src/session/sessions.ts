@@ -377,16 +377,20 @@ export class SessionManager {
     return this.#onCurrentBuild(id, opts.expectBuild, 'export', async (s) => {
       const buildHash = s.build.buildHash;
       const outcome = await this.#request(s, 'exportIfc', args, opts.timeoutMs);
-      if (outcome.ok) {
-        const pairs = Object.entries(outcome.globalIds);
-        s.exported = {
-          projectId: args.project.projectId ?? args.project.name,
-          byKeyPath: new Map(pairs),
-          keyPathOf: new Map(pairs.map(([keyPath, guid]) => [guid, keyPath])),
-        };
-      }
       return { session: s, outcome, buildHash };
     });
+  }
+
+  /** Remember the GlobalIds an export wrote. Call it once the file is on disk. */
+  recordExport(id: string, projectId: string, globalIds: Readonly<Record<string, string>>): void {
+    const session = this.#sessions.get(id);
+    if (session === undefined) return;
+    const pairs = Object.entries(globalIds);
+    session.exported = {
+      projectId,
+      byKeyPath: new Map(pairs),
+      keyPathOf: new Map(pairs.map(([keyPath, guid]) => [guid, keyPath])),
+    };
   }
 
   /**

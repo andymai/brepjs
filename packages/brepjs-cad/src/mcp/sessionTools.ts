@@ -671,6 +671,7 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
           if (stop) return stop;
           await writeFile(out, outcome.bytes);
         }
+        sessions.recordExport(sessionId, project.projectId ?? project.name, outcome.globalIds);
         const errors = outcome.issues.filter((i) => i.severity === 'error').length;
         const warnings = outcome.issues.filter((i) => i.severity === 'warning').length;
         const ids = Object.entries(outcome.globalIds);
