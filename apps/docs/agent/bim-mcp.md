@@ -81,7 +81,7 @@ One element changed, by the prop that was meant to change, and it grew 300 mm up
 
 **Export.** `export_ifc` with `outPath: "dist/model.ifc"` writes the file through the [validated IFC export](../families/ifc-export) and returns the validation report, with each issue mapped to a key path, and the GlobalId of every exported element.
 
-The `edit-and-verify` prompt walks an agent through this loop, `inspect-building` opens a model, summarizes it and renders a plan per storey, `quantity-takeoff` schedules a category's quantities, `compare-revisions` summarizes two revisions, `ifc-review` checks an IFC file and raises its problems as BCF issues, and `model-check` validates a families model and fixes what it can, along with any BCF issues raised on its export.
+The `edit-and-verify` prompt walks an agent through this loop, `inspect-building` opens a model, summarizes it and renders a plan per storey, `quantity-takeoff` schedules a category's quantities, `compare-revisions` summarizes two revisions, `ifc-review` checks an IFC file and raises its problems as BCF issues, `model-check` validates a families model and fixes what it can, along with any BCF issues raised on its export, and `export-deliverables` writes a checked model's IFC, COBie, plans and schedules to one directory.
 
 ## Tools
 
@@ -100,6 +100,10 @@ The `edit-and-verify` prompt walks an agent through this loop, `inspect-building
 | `compare_models`          | Diffs two sessions, such as two revisions of an IFC file, by element identity.                                                                                       |
 | `create_issue`            | Raises a BCF 3.0 issue on elements, with a camera and a snapshot, in a new or existing `.bcf` file.                                                                  |
 | `read_issues`             | Reads a `.bcf` file's topics, comments and viewpoints, and resolves their GlobalIds to a session's elements.                                                         |
+| `plan_view`               | Draws a storey plan: cut elements heavy by category, what lies below thin, as SVG, DXF or PNG.                                                                       |
+| `section_view`            | Draws a vertical section along x or y, with what lies beyond it, as SVG, DXF or PNG.                                                                                 |
+| `get_spaces`              | Lists spaces with floor area, perimeter, volume and outline measured from each solid, beside the IFC base quantities.                                                |
+| `export_cobie`            | Writes a families session's COBie 2.4 sheets as CSV or JSON.                                                                                                         |
 | `render_view`             | Renders to PNG: `highlight`, `isolate`, `colorBy` category, storey or family, a storey `plan`, or a `section`.                                                       |
 | `export_ifc`              | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
 | `search_reference`        | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
@@ -151,6 +155,19 @@ BCF is how BIM tools pass issues around without passing the model: BIMcollab, So
 The issue gets one viewpoint with the elements as its selection, colored orange (or alone, with `focus: "isolate"`), the camera of a `render_view` picture, and that picture as its snapshot, which the call also returns. If `review.bcf` exists, the issue is added to it and its other topics are kept. Issues name elements by IFC GlobalId, so a families session needs an `export_ifc` first, and the issue belongs with that file.
 
 `read_issues` goes the other way. Give it a `.bcf` file and a session, and each topic comes back with its comments and viewpoints, every GlobalId resolved to the session's element id. For a families session that means issues raised on its last export land on key paths, and `get_elements` gives the source line to fix.
+
+## Drawings and spaces
+
+`plan_view` draws one storey from above. A horizontal plane 1200 mm over the storey's floor (or `cutHeight`) cuts every element of the storey it crosses, drawn heavy on a `CUT-<category>` layer (`CUT-WALL`, `CUT-DOOR`), and what lies below the cut is projected thin on `BEYOND`, with hidden lines removed so nearer elements hide farther ones. `section_view` does the same with a vertical plane square to x or y, looking along `look`. Openings and spaces aren't drawn.
+
+```jsonc
+// plan_view
+{ "sessionId": "s1", "storey": "Ground floor", "outPath": "plans/ground.dxf" }
+```
+
+Each call returns a PNG preview and saves the drawing when `outPath` is set: SVG to read, DXF to open 1:1 in a CAD tool (model millimetres, one layer per cut category), or PNG.
+
+`get_spaces` measures each space (an `IfcSpace`, or a families `Space`) from its solid: the floor outline cut just above its floor, its area and perimeter, and its volume. Next to those it reports the base quantities the IFC data records for the space, so a measured area that disagrees with a recorded one stands out. `export_cobie` writes a families model's COBie handover sheets, one CSV per sheet or a single JSON file, from the same BIM projection `export_ifc` writes.
 
 ## Running code against a session
 
