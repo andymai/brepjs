@@ -1,0 +1,34 @@
+packages/brepjs-sheetmetal/src/foreignUnfoldFns.ts
+  s_15acc224bc0494::t_e6b02a45190862 112-114,116-122,126-127,129-130
+packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts
+  s_15acc224bc0494::t_bf1f315662404a 91-92
+  s_15acc224bc0494::t_17121498572521 78-90,93-94
+  s_15acc224bc0494::t_ca98ba00572589 104-119,125,136,139
+  s_e3e5f7e5da72b1::t_d3216de294ec93 208,219,236,253,272
+packages/brepjs-sheetmetal/README.md
+  s_15acc224bc0494::t_cf6d25ffce5491 310-312,331-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c2689d7d20a12b169baca6e126af521b5d9757f",
+  "prompts": {},
+  "sessions": {
+    "s_15acc224bc0494": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16fd7345-3921-4300-b28f-136bcca972c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_e3e5f7e5da72b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3f201efda44fba80",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
