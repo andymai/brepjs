@@ -1,0 +1,21 @@
+apps/docs/agent/bim-mcp.md
+  s_4d771e7bb40c3c::t_91356193c63170 137
+packages/brepjs-cad/src/mcp/issueTools.ts
+  s_4d771e7bb40c3c::t_8e77e3069fc80e 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a104b15c1a2a1ec77f19d0bf61e91891ecebbcc0",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
