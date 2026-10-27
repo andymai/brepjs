@@ -14,8 +14,9 @@ let capturing = false;
 const origins = new WeakMap<object, Error>();
 
 const located = new WeakMap<Error, SourceLocation | null>();
-// Frames past the author's are never read; capturing fewer keeps element creation cheap.
-const CAPTURED_FRAMES = 16;
+// Frames past the author's are never read, and capturing fewer keeps element creation cheap. A JSX
+// intrinsic is the deepest case, seven frames in (noteOrigin, el, intrinsic, Box, jsx, jsxDEV).
+const CAPTURED_FRAMES = 10;
 
 /**
  * Record, from now on, where each element is created, so `sourceOf()` can name the family call,
