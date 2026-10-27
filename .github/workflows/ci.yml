@@ -463,6 +463,7 @@ jobs:
               if (cd /tmp/main-tree && run_bench "/tmp/bench-main-$round.txt"); then
                 extract "/tmp/bench-main-$round.txt" > "/tmp/main-$round.json"
               else
+                cat "/tmp/bench-main-$round.txt"
                 echo "::warning::main benchmark failed in round $round"
               fi
             fi
