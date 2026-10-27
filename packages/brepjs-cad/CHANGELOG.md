@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.185.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.184.0...brepjs-cad-v0.185.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** run agent code in a session with eval_in_session ([#2454](https://github.com/andymai/brepjs/issues/2454)) ([882011a](https://github.com/andymai/brepjs/commit/882011acc9b2c4017217fd5e1fbb1a3cfec8a3e3))
+
 ## [0.184.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.183.0...brepjs-cad-v0.184.0) (2026-10-27)
 
 
