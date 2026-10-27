@@ -8,13 +8,14 @@ export default tseslint.config(
   // viewer/dist after a build; type-checked rules choke on those un-projected .js chunks.
   // tests/fixtures/tsxProject is runtime-loaded test data for the TS/TSX loader hook —
   // deliberately outside every tsconfig project (it carries its own), so type-aware rules
-  // can't run on it.
+  // can't run on it. tests/fixtures/bimProject is the same kind of data for the session worker.
   {
     ignores: [
       'dist/**',
       'viewer/dist/**',
       'tests/fixtures/tsxProject/**',
       'tests/fixtures/tsxPreserve/**',
+      'tests/fixtures/bimProject/**',
     ],
   },
   eslint.configs.recommended,

@@ -1,0 +1,147 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { ResourceListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { createBrepMcpServer, type BrepMcpServer } from '@/mcp/createServer.js';
+import { makeBimProject, type BimProject } from './bimFixture.js';
+
+function payload(res: Awaited<ReturnType<Client['callTool']>>): Record<string, unknown> {
+  const first = (res.content as { type: string; text?: string }[])[0];
+  return JSON.parse(first?.text ?? 'null') as Record<string, unknown>;
+}
+
+describe('brep-mcp server', () => {
+  let project: BimProject;
+  let mcp: BrepMcpServer;
+  let client: Client;
+  let listChanged = 0;
+
+  beforeAll(async () => {
+    project = makeBimProject('brepjs-cad-mcp-');
+    mcp = createBrepMcpServer('0.0.0-test', { cwd: project.dir });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await mcp.server.connect(serverSide);
+    client = new Client({ name: 'test', version: '0.0.0' });
+    client.setNotificationHandler(ResourceListChangedNotificationSchema, () => {
+      listChanged++;
+    });
+    await client.connect(clientSide);
+  });
+
+  afterAll(async () => {
+    mcp.sessions.closeAll();
+    await client.close();
+    project.cleanup();
+  });
+
+  it('lists every tool with annotations', async () => {
+    const { tools } = await client.listTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    expect([...byName.keys()]).toEqual([
+      'run_program',
+      'export_part',
+      'open_model',
+      'list_sessions',
+      'close_model',
+      'rebuild',
+      'query_elements',
+      'get_elements',
+    ]);
+    expect(byName.get('export_part')?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+    });
+    for (const name of ['open_model', 'query_elements', 'get_elements', 'rebuild']) {
+      expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
+    }
+  });
+
+  it('opens a model, queries it, and serves its tree and elements as resources', async () => {
+    const opened = payload(
+      await client.callTool({ name: 'open_model', arguments: { path: 'model.tsx' } })
+    );
+    expect(opened['ok']).toBe(true);
+    const sessionId = opened['sessionId'] as string;
+    const buildHash = opened['buildHash'] as string;
+    expect(opened['byCategory']).toMatchObject({ wall: 5, door: 1, window: 1, storey: 1 });
+    expect(listChanged).toBeGreaterThan(0);
+
+    const q = payload(
+      await client.callTool({
+        name: 'query_elements',
+        arguments: {
+          sessionId,
+          expectBuild: buildHash,
+          where: {
+            category: 'wall',
+            psets: [{ path: 'Pset_WallCommon.FireRating', value: 'REI60' }],
+          },
+        },
+      })
+    );
+    expect(q).toMatchObject({
+      total: 1,
+      ids: ['ground/annex'],
+      breakdown: { category: { wall: 1 } },
+    });
+
+    const got = payload(
+      await client.callTool({
+        name: 'get_elements',
+        arguments: { sessionId, ids: ['ground/annex', 'ground/nope'], fields: ['props'] },
+      })
+    );
+    expect(got['missing']).toEqual(['ground/nope']);
+    expect((got['elements'] as Record<string, unknown>[])[0]).toMatchObject({
+      id: 'ground/annex',
+      props: { height: 2700 },
+    });
+
+    const { resources } = await client.listResources();
+    expect(resources.map((r) => r.uri)).toEqual([`brep://sessions/${sessionId}/tree`]);
+    const treeRes = await client.readResource({ uri: `brep://sessions/${sessionId}/tree` });
+    const treeBody = JSON.parse((treeRes.contents[0] as { text: string }).text) as {
+      root: { id: string; children: { id: string }[] };
+    };
+    expect(treeBody.root.id).toBe('ground');
+    expect(treeBody.root.children.map((c) => c.id)).toEqual([
+      'ground/slab',
+      'ground/lobby',
+      'ground/annex',
+    ]);
+    const elementRes = await client.readResource({
+      uri: `brep://sessions/${sessionId}/elements/${encodeURIComponent('ground/annex/voids:w1')}`,
+    });
+    expect((elementRes.contents[0] as { text: string }).text).toContain('"category":"opening"');
+  });
+
+  it('reports bad arguments and stale build hashes as tool errors', async () => {
+    const stale = await client.callTool({
+      name: 'query_elements',
+      arguments: { sessionId: 's1', expectBuild: 'not-a-build' },
+    });
+    expect(stale.isError).toBe(true);
+    expect(payload(stale)['error']).toBe('BUILD_MISMATCH');
+
+    const badWhere = await client.callTool({
+      name: 'query_elements',
+      arguments: { sessionId: 's1', where: { colour: 'red' } },
+    });
+    expect(badWhere.isError).toBe(true);
+    expect(payload(badWhere)['error']).toBe('INVALID_ARGUMENT');
+
+    const missing = await client.callTool({ name: 'rebuild', arguments: { sessionId: 's9' } });
+    expect(payload(missing)).toMatchObject({ error: 'NO_SUCH_SESSION', open: ['s1'] });
+  });
+
+  it('closes a session and drops it from the listing', async () => {
+    expect(
+      payload(await client.callTool({ name: 'close_model', arguments: { sessionId: 's1' } }))[
+        'closed'
+      ]
+    ).toBe(true);
+    const listed = payload(await client.callTool({ name: 'list_sessions', arguments: {} }));
+    expect(listed['sessions']).toEqual([]);
+    expect((await client.listResources()).resources).toEqual([]);
+  });
+});

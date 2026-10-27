@@ -40,6 +40,8 @@ export default defineConfig({
         'preview/preview': resolve(import.meta.dirname, 'src/preview/preview.ts'),
         'export3dm/export3dm': resolve(import.meta.dirname, 'src/export3dm/export3dm.ts'),
         'mcp/server': resolve(import.meta.dirname, 'src/mcp/server.ts'),
+        // Forked by the MCP server at this fixed path (see session/workerClient.ts).
+        'session/worker': resolve(import.meta.dirname, 'src/session/worker.ts'),
       },
       formats: ['es', 'cjs'],
     },
@@ -48,6 +50,8 @@ export default defineConfig({
         'brepjs',
         // Resolved at runtime from the USER's project (preview element trees); never bundled.
         'brepjs-families',
+        // Same for IFC sessions: resolved from the user's project, never bundled.
+        'brepjs-bim',
         'occt-wasm',
         'commander',
         'puppeteer',

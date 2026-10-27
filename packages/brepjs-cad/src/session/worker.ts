@@ -1,0 +1,45 @@
+/**
+ * Session worker: a forked child that builds one model and holds it (kernel shapes, meshes, the
+ * imported IFC) for the MCP server. Requests and replies cross the IPC channel; stdout is unused,
+ * so user code that logs can't corrupt anything.
+ */
+
+import { buildFamilies, type WorkerBuild } from './buildFamilies.js';
+import { buildIfc } from './buildIfc.js';
+import type { WorkerMessage, WorkerRequest } from './protocol.js';
+import { errorMessage } from './records.js';
+
+let current: WorkerBuild | undefined;
+
+function send(msg: WorkerMessage): void {
+  process.send?.(msg);
+}
+
+async function handle(req: WorkerRequest): Promise<void> {
+  try {
+    switch (req.op) {
+      case 'build': {
+        if (current !== undefined) throw new Error('this worker already holds a build');
+        const { kind, path, typecheck } = req.args;
+        const build =
+          kind === 'ifc' ? await buildIfc(path) : await buildFamilies(path, { typecheck });
+        if (build.outcome.ok) current = build;
+        else build.dispose();
+        send({ type: 'reply', id: req.id, result: build.outcome });
+        return;
+      }
+    }
+  } catch (e) {
+    send({ type: 'reply', id: req.id, error: errorMessage(e) });
+  }
+}
+
+if (process.send === undefined) {
+  console.error('the session worker must be started by brep-mcp over an IPC channel');
+  process.exit(1);
+}
+
+process.on('message', (msg: WorkerRequest) => void handle(msg));
+// The server owns this process; when it goes away, so does the model.
+process.on('disconnect', () => process.exit(0));
+send({ type: 'ready' });

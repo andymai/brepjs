@@ -86,11 +86,12 @@ Each declared field appears in `report.assertions` as `{ name, expected, actual,
 
 ## MCP server
 
-The package ships a second bin, `brep-mcp`: a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client) directly, without spawning the CLI. It provides one tool:
+The package ships a second bin, `brep-mcp`: a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client) directly, without spawning the CLI. For single parts it provides:
 
-| Tool          | Input                                  | Returns                                                                                                                                                                                                                    |
-| ------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_program` | `{ code: string, timeoutMs?: number }` | Runs the `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
+| Tool          | Input                                    | Returns                                                                                                                                                                                                                    |
+| ------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `{ code: string, timeoutMs?: number }`   | Runs the `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
+| `export_part` | `{ code, outDir, formats?, timeoutMs? }` | Builds the part in the sandbox and writes STEP, GLB and STL files to `outDir`.                                                                                                                                             |
 
 It's the _build → verify_ step of [the loop](./the-loop.md) as a single call: the agent sends part source and gets back the deterministic report, in a separate process so a runaway part can't hang the agent. Register it with Claude Code:
 
@@ -99,6 +100,12 @@ claude mcp add brep -- npx -y --package brepjs-cad brep-mcp
 ```
 
 Geometry never leaves your machine; the server runs locally as a child process over stdio.
+
+### BIM sessions
+
+For buildings, the server can also hold a model open. `open_model` builds a [families](../families/overview) program, or imports an `.ifc` file, and returns a `sessionId`. Your agent then finds elements with `query_elements` (by category, storey, family, key path, props and psets) and reads them with `get_elements`. After it edits the program, `rebuild` reports exactly what changed: which elements were added or removed, and for each changed element its prop and pset values before and after, plus how its geometry, volume and bounds moved. That last part is the check that an edit touched only what it meant to. If the edit breaks the build, the session keeps serving the last good one.
+
+`list_sessions` shows what's open and flags a session as stale once its files change on disk; `close_model` stops it. Opening an `.ifc` file needs `brepjs-bim` and `web-ifc` installed in your project.
 
 ## Troubleshooting
 

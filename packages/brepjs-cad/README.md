@@ -77,13 +77,31 @@ Every command writes a single machine-readable JSON document to stdout; diagnost
 
 ## MCP server
 
-`brep-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client). It currently provides one tool:
+`brep-mcp` is a stdio [MCP](https://modelcontextprotocol.io) server that exposes the verify substrate to MCP-capable agents (Claude Code, Claude Desktop, any MCP client).
 
-| Tool          | Input                                  | Returns                                                                                                                                                                                                                               |
-| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run_program` | `{ code: string, timeoutMs?: number }` | Executes the brepjs `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
+### Parts
+
+| Tool          | Input                                                        | Returns                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `run_program` | `{ code: string, timeoutMs?: number }`                       | Executes the brepjs `.brep.ts` source in an isolated, timeout/OOM-bounded sandbox and returns the verification report (validity, measurements, topology) as JSON. `isError` is set when the part fails checks, times out, or crashes. |
+| `export_part` | `{ code, outDir, formats?: { step, glb, stl }, timeoutMs? }` | Builds the part in the sandbox and writes STEP, GLB and STL files to `outDir`, returning the written paths.                                                                                                                           |
 
 This is the closed _build → verify_ loop as a single call: the agent sends part source, gets back the deterministic report. The program runs in a separate process with a wall-clock timeout and a memory cap, so a runaway part can't hang the agent.
+
+### BIM sessions
+
+The session tools open a building model and keep it built, so an agent can find elements, edit the program, and see exactly what its edit changed. A model is a `brepjs-families` program (a `.tsx` or `.ts` module whose default export is an element tree) or an `.ifc` file. Families elements are addressed by key path (`ground/south/voids:entry`), IFC elements by GlobalId.
+
+| Tool             | Does                                                                                                                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open_model`     | Builds a program (type-checked first) or imports an IFC file in a sandboxed worker. Returns a `sessionId`, a `buildHash`, and element counts by category, storey and family.                             |
+| `list_sessions`  | Open sessions. A session is `stale` when its source files changed since the last build.                                                                                                                  |
+| `close_model`    | Stops the session's worker.                                                                                                                                                                              |
+| `rebuild`        | Rebuilds after an edit and diffs against the last good build: added and removed ids, prop and pset before/after values, geometry, volume and bounds changes. A failed rebuild keeps the last good build. |
+| `query_elements` | Finds elements by category, family, storey, name or id glob, prop and pset predicates, and bounds. Returns ids plus counts by category, storey and family.                                               |
+| `get_elements`   | Identity, props, psets, quantities, material, classification, relationships, children and geometry for the given ids.                                                                                    |
+
+Each session also serves `brep://sessions/{sessionId}/tree` (the element tree) and `brep://sessions/{sessionId}/elements/{elementId}` (one element) as resources. Query tools take an optional `expectBuild`: pass the `buildHash` you queried against and the call fails if the model was rebuilt since. Up to four sessions can be open at once. Opening an `.ifc` file needs `brepjs-bim` and `web-ifc` installed in the project.
 
 ### Connect (local build)
 

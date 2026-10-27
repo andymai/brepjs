@@ -218,6 +218,17 @@ function spawnCliOutcome(
   });
 }
 
+/** Hand a detached process group to the shutdown reaper, for children spawned outside this module. */
+export function trackSandboxGroup(pid: number): void {
+  activeGroups.add(pid);
+}
+
+/** Kill a tracked group and stop tracking it. */
+export function releaseSandboxGroup(pid: number, signal: NodeJS.Signals = 'SIGKILL'): void {
+  killGroup(pid, signal);
+  activeGroups.delete(pid);
+}
+
 /** SIGKILL every in-flight sandbox process group now. Exported so a host can reap explicitly. */
 export function killActiveSandboxes(signal: NodeJS.Signals = 'SIGKILL'): void {
   for (const pid of activeGroups) killGroup(pid, signal);
