@@ -1,0 +1,30 @@
+packages/brepjs-bim/src/bcf/bcfWrite.ts
+  s_4d771e7bb40c3c::t_c4cad1b0f071a2 23
+packages/brepjs-bim/src/index.ts
+  s_4d771e7bb40c3c::t_54caedfd5b7989 311-312
+packages/brepjs-bim/src/bcf/index.ts
+  s_4d771e7bb40c3c::t_54caedfd5b7989 9-10
+apps/playground/src/types/brepjs-bim-ambient.d.ts
+  s_4d771e7bb40c3c::t_54caedfd5b7989 2825-2846
+  s_4d771e7bb40c3c::t_2cda85634a4dfa 2770,2782,2818-2819
+  s_4d771e7bb40c3c::t_c4cad1b0f071a2 2880
+  s_4d771e7bb40c3c::t_0af296ae5ba925 2820-2824
+packages/brepjs-bim/src/bcf/bcfTypes.ts
+  s_4d771e7bb40c3c::t_54caedfd5b7989 77-80,84-85,90-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65c7757f7332fef33e992f0b8da427200eefeba3",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
