@@ -479,6 +479,14 @@ export const divergences: DivergenceMap = {
 
   occt: {
     // -----------------------------------------------------------------------
+    // dxfImport.test.ts
+    // -----------------------------------------------------------------------
+    'dxfImport.shallowBulgeArc': {
+      kind: 'skip',
+      reason:
+        'The occt (OpenCascade.js) three-point arc builder throws on an arc of radius about 2.5e10 (a 1e-7 bulge over a 10000 chord), which occt-wasm builds.',
+    },
+    // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
     'modifierFns.defeatureFilletFace': {

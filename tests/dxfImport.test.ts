@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   exportDXF,
   importDXF,
@@ -483,7 +484,8 @@ describe('importDXF entity types', () => {
     for (const w of unwrap(result)) w[Symbol.dispose]();
   });
 
-  it('keeps a shallow bulge on its vertices and a tiny circle', async () => {
+  it('keeps a shallow bulge on its vertices', async (ctx) => {
+    skipIfDiverges(ctx, 'dxfImport.shallowBulgeArc');
     // A 10000 x 10 rectangle whose long bottom edge bulges by 1e-7: the arc must still meet
     // the sides at the vertices the file gives.
     const dxf = [
@@ -518,9 +520,26 @@ describe('importDXF entity types', () => {
       '20',
       '10',
       '0',
+      'ENDSEC',
+      '0',
+      'EOF',
+    ].join('\n');
+    const wires = unwrap(await importDXF(new Blob([dxf])));
+    expect(wires).toHaveLength(1);
+    expect(wires[0] && isClosedWire(wires[0])).toBe(true);
+    for (const w of wires) w[Symbol.dispose]();
+  });
+
+  it('keeps a circle far smaller than the joining tolerance', async () => {
+    const dxf = [
+      '0',
+      'SECTION',
+      '2',
+      'ENTITIES',
+      '0',
       'CIRCLE',
       '8',
-      'small',
+      '0',
       '10',
       '50',
       '20',
@@ -534,12 +553,8 @@ describe('importDXF entity types', () => {
       '0',
       'EOF',
     ].join('\n');
-    const wires = unwrap(await importDXF(new Blob([dxf])));
-    expect(wires).toHaveLength(2);
-    const [rect] = wires.filter((w) => curveLength(w) > 1);
-    expect(rect && isClosedWire(rect)).toBe(true);
-    const circle = unwrap(await importDXF(new Blob([dxf]), { layer: 'small' }));
-    expect(circle[0] && curveLength(circle[0])).toBeCloseTo(2 * Math.PI * 5e-8, 12);
-    for (const w of [...wires, ...circle]) w[Symbol.dispose]();
+    const [circle] = unwrap(await importDXF(new Blob([dxf])));
+    expect(circle && curveLength(circle)).toBeCloseTo(2 * Math.PI * 5e-8, 12);
+    circle?.[Symbol.dispose]();
   });
 });
