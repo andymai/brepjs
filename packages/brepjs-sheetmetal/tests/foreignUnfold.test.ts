@@ -82,6 +82,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
     const foreign = unfoldForeignSolid(solid, { kFactor: 0.5 });
     expect(foreign.ok, `${name}: foreign unfold`).toBe(true);
     if (!foreign.ok) return;
+    expect(foreign.value.warnings, `${name}: foreign warnings`).toEqual([]);
 
     // Developed area matches (both at K=0.5 mid-surface).
     expect(foreign.value.pattern.developedArea).toBeCloseTo(authored.value.pattern.developedArea, 2);
@@ -144,6 +145,58 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
       2,
       3
     );
+  });
+
+  describe.each([1, 1.5, 2, 3])('at thickness %s (inner radius 2)', (thickness) => {
+    it('L-bracket', () => {
+      oracle(
+        `L@${thickness}`,
+        {
+          thickness,
+          base: { length: 40, width: 40 },
+          flanges: [
+            { id: 'fx', length: 18, angleDeg: 90, rule, side: 'xmax' },
+            { id: 'fy', length: 18, angleDeg: 90, rule, side: 'ymax' },
+          ],
+        },
+        2,
+        3
+      );
+    });
+
+    it('U-channel', () => {
+      oracle(
+        `U@${thickness}`,
+        {
+          thickness,
+          base: { length: 60, width: 30 },
+          flanges: [
+            { id: 'left', length: 18, angleDeg: 90, rule, side: 'xmin' },
+            { id: 'right', length: 18, angleDeg: 90, rule, side: 'xmax' },
+          ],
+        },
+        2,
+        3
+      );
+    });
+
+    it('4-sided tray', () => {
+      oracle(
+        `tray@${thickness}`,
+        {
+          thickness,
+          base: { length: 50, width: 40 },
+          flanges: [
+            { id: 'xn', length: 12, angleDeg: 90, rule, side: 'xmin' },
+            { id: 'xp', length: 12, angleDeg: 90, rule, side: 'xmax' },
+            { id: 'yn', length: 12, angleDeg: 90, rule, side: 'ymin' },
+            { id: 'yp', length: 12, angleDeg: 90, rule, side: 'ymax' },
+          ],
+        },
+        4,
+        5
+      );
+    });
   });
 });
 

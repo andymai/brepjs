@@ -13,6 +13,8 @@ import {
   faceCenter,
   sharedEdges,
   measureArea,
+  measureDistance,
+  vertex,
   getBounds,
   isValid,
   vecAdd,
@@ -353,11 +355,12 @@ export function unfoldForeignSolid(
     }
   }
 
-  const thicknessResult = detectThickness(planarFaces);
+  const planar = planarFaces.map(describePlanar);
+  const thicknessResult = detectThickness(planar);
   if (!thicknessResult.ok) return thicknessResult;
   const thickness = thicknessResult.value;
 
-  const flats = pairFlats(planarFaces, thickness, warnings);
+  const flats = pairFlats(planar, thickness, warnings);
   if (flats.length === 0) {
     return err(
       validationError('NO_FLATS', 'no planar panel pairs detected; not a recognizable sheet-metal solid')
@@ -373,64 +376,121 @@ export function unfoldForeignSolid(
   return ok({ pattern: layout.value.pattern, report: layout.value.report, warnings });
 }
 
-/**
- * Detect the sheet thickness as the smallest gap between an antiparallel pair of
- * planar faces (the two faces of one flat panel). For a roughly-uniform-thickness
- * part this gap is the same across panels; a spread beyond tolerance warns.
- */
-function detectThickness(planar: Face[]): Result<number> {
-  const gaps: number[] = [];
-  for (let i = 0; i < planar.length; i += 1) {
-    for (let j = i + 1; j < planar.length; j += 1) {
-      const fa = planar[i];
-      const fb = planar[j];
-      if (fa === undefined || fb === undefined) continue;
-      const na = faceNormal(fa);
-      const nb = faceNormal(fb);
-      if (vecDot(na, nb) > -0.99) continue; // need antiparallel (opposite faces of a panel)
-      const ca = faceCenter(fa);
-      const cb = faceCenter(fb);
-      const gap = Math.abs(vecDot(vecSub(cb, ca), na));
-      if (gap > GEOM_TOL) gaps.push(gap);
+interface PlanarFace {
+  face: Face;
+  normal: Vec3;
+  center: Vec3;
+  /** Sample points within the face's trimmed boundary. */
+  interior: Vec3[];
+}
+
+function describePlanar(face: Face): PlanarFace {
+  const center = faceCenter(face);
+  const n = 4;
+  const candidates: Vec3[] = [center];
+  for (let i = 0; i < n; i += 1) {
+    for (let j = 0; j < n; j += 1) {
+      candidates.push(pointOnSurface(face, (i + 0.5) / n, (j + 0.5) / n));
     }
   }
-  if (gaps.length === 0) {
-    return err(validationError('NO_THICKNESS', 'could not detect a sheet thickness (no opposed planar pair)'));
-  }
-  gaps.sort((a, b) => a - b);
-  return ok(gaps[0] as number);
+  const interior = candidates.filter((p) => liesOnFace(face, p));
+  return { face, normal: faceNormal(face), center, interior };
+}
+
+/** True if `point` (already on the face's surface) lies within the face's trimmed boundary. */
+function liesOnFace(face: Face, point: Vec3): boolean {
+  using probe = vertex(point);
+  const d = measureDistance(probe, face);
+  return d.ok && d.value < GEOM_TOL;
+}
+
+/** Normal-direction gap between two planar faces, or `null` unless they are antiparallel. */
+function antiparallelGap(a: PlanarFace, b: PlanarFace): number | null {
+  if (vecDot(a.normal, b.normal) > -0.99) return null;
+  return Math.abs(vecDot(vecSub(b.center, a.center), a.normal));
 }
 
 /**
- * Pair planar faces into flat panels: each panel is two parallel faces a
- * `thickness` apart with overlapping footprints. Greedy nearest-match by gap.
+ * Antiparallel faces are the two sides of one panel only if they face each other:
+ * an interior point of one projects inside the other. The normal-direction gap
+ * alone also matches faces that merely sit on parallel planes, e.g. a flange's end
+ * cap and the adjacent flange's inner face across a corner. Their gap is the bend's
+ * inner radius, which passes for the sheet thickness as T approaches or exceeds R.
  */
-function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarning[]): DetectedFlat[] {
+function facesOppose(a: PlanarFace, b: PlanarFace): boolean {
+  return (
+    b.interior.some((p) => liesOnFace(a.face, projectToPlane(p, a.normal, a.center))) ||
+    a.interior.some((p) => liesOnFace(b.face, projectToPlane(p, b.normal, b.center)))
+  );
+}
+
+/**
+ * Detect the sheet thickness as the smallest gap between two antiparallel planar
+ * faces that oppose each other (the two faces of one flat panel).
+ */
+function detectThickness(planar: PlanarFace[]): Result<number> {
+  const pairs: { gap: number; a: PlanarFace; b: PlanarFace }[] = [];
+  for (let i = 0; i < planar.length; i += 1) {
+    for (let j = i + 1; j < planar.length; j += 1) {
+      const a = planar[i];
+      const b = planar[j];
+      if (a === undefined || b === undefined) continue;
+      const gap = antiparallelGap(a, b);
+      if (gap !== null && gap > GEOM_TOL) pairs.push({ gap, a, b });
+    }
+  }
+  pairs.sort((p, q) => p.gap - q.gap);
+  const thinnest = pairs.find((p) => facesOppose(p.a, p.b));
+  if (thinnest === undefined) {
+    return err(validationError('NO_THICKNESS', 'could not detect a sheet thickness (no opposed planar pair)'));
+  }
+  return ok(thinnest.gap);
+}
+
+/** Unused face opposing `a` whose gap is nearest the sheet thickness, within tolerance. */
+function bestOpposedPartner(
+  planar: PlanarFace[],
+  i: number,
+  thickness: number,
+  used: Set<number>
+): number | null {
+  const a = planar[i];
+  if (a === undefined) return null;
+  const candidates: { j: number; e: number }[] = [];
+  for (let j = 0; j < planar.length; j += 1) {
+    const b = planar[j];
+    if (j === i || used.has(j) || b === undefined) continue;
+    const gap = antiparallelGap(a, b);
+    if (gap === null) continue;
+    const e = Math.abs(gap - thickness);
+    if (e <= thickness * 0.5 + GEOM_TOL) candidates.push({ j, e });
+  }
+  candidates.sort((p, q) => p.e - q.e);
+  const match = candidates.find((c) => {
+    const b = planar[c.j];
+    return b !== undefined && facesOppose(a, b);
+  });
+  return match === undefined ? null : match.j;
+}
+
+/**
+ * Pair planar faces into flat panels: each panel is two antiparallel faces a
+ * `thickness` apart that oppose each other. Greedy nearest-match by gap.
+ */
+function pairFlats(
+  planar: PlanarFace[],
+  thickness: number,
+  warnings: SheetMetalWarning[]
+): DetectedFlat[] {
   const used = new Set<number>();
   const flats: DetectedFlat[] = [];
   for (let i = 0; i < planar.length; i += 1) {
     if (used.has(i)) continue;
-    const fa = planar[i];
-    if (fa === undefined) continue;
-    const na = faceNormal(fa);
-    const ca = faceCenter(fa);
-    let best = -1;
-    let bestErr = Infinity;
-    for (let j = 0; j < planar.length; j += 1) {
-      if (j === i || used.has(j)) continue;
-      const fb = planar[j];
-      if (fb === undefined) continue;
-      const nb = faceNormal(fb);
-      if (vecDot(na, nb) > -0.99) continue;
-      const cb = faceCenter(fb);
-      const gap = Math.abs(vecDot(vecSub(cb, ca), na));
-      const e = Math.abs(gap - thickness);
-      if (e < bestErr) {
-        bestErr = e;
-        best = j;
-      }
-    }
-    if (best < 0 || bestErr > thickness * 0.5 + GEOM_TOL) {
+    const pa = planar[i];
+    if (pa === undefined) continue;
+    const fa = pa.face;
+    const best = bestOpposedPartner(planar, i, thickness, used);
+    if (best === null) {
       // No usable antiparallel partner at the sheet thickness. A bend-edge cap or
       // rim band is plate-thin in one in-plane direction (≈ thickness) — expected,
       // skip quietly. A face that is wide in BOTH in-plane directions is a real
@@ -447,7 +507,9 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
       }
       continue;
     }
-    const fb = planar[best] as Face;
+    const pb = planar[best];
+    if (pb === undefined) continue;
+    const fb = pb.face;
     used.add(i);
     used.add(best);
     const areaA = measureArea(fa);
@@ -472,8 +534,8 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
     flats.push({
       id: `flat-${flats.length}`,
       faces: [fa, fb],
-      normal: na,
-      center: vecScale(vecAdd(ca, faceCenter(fb)), 0.5),
+      normal: pa.normal,
+      center: vecScale(vecAdd(pa.center, pb.center), 0.5),
       area,
     });
   }

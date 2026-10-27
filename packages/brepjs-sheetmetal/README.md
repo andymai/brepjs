@@ -300,7 +300,10 @@ authored path. It reads only the B-rep:
   other surface type (cone, sphere, spline, …) is reported `UNSUPPORTED_FACE` and skipped (the unfold never
   silently invents a flat for an unrecognised face).
 - **Pair flats**: the two large parallel planar faces of a panel, a sheet thickness apart, are the
-  mid-surface flat. Thickness is detected as the smallest opposed-planar-pair gap.
+  mid-surface flat. Two antiparallel faces count as opposed only when they face each other (an interior
+  point of one projects inside the other), so a flange's end cap and the adjacent flange's inner face, a
+  bend radius apart across a corner, never pair. Thickness is detected as the smallest opposed-planar-pair
+  gap.
 - **Fit bends**: `fitCylinder(face)` recovers a bend's axis + radius + swept angle from sampled points and
   normals. The axis direction is the common perpendicular of the sampled normals (every cylinder normal is
   ⟂ the axis), recovered as the sign-aligned average of cross products of non-parallel normal pairs; the
@@ -320,8 +323,9 @@ non-uniform thickness, conical/spline bend faces, non-manifold / non-sheet topol
 fit a cylinder within tolerance all surface as warnings inside the `Ok` payload (or a clear `Err` when no
 sheet-metal structure is detected at all, e.g. a bare sphere). The detection is validated by an oracle:
 author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
-authored unfold's developed area, bend count, flat count, and total flat bbox (single bend, L-bracket,
-U-channel), reading only the solid, never the feature tree.
+authored unfold's developed area, bend count, flat count, and total flat bbox with no warnings (single bend,
+plus the L-bracket, U-channel, and four-sided tray at thicknesses 1, 1.5, 2, and 3 against a 2 mm inner
+radius), reading only the solid, never the feature tree.
 
 ## Bend tables
 
