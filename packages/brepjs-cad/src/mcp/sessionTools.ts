@@ -5,7 +5,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { askToReplace, fileExists, writeOutput, type Confirm } from './output.js';
 import { basename, dirname, extname, join, parse as parsePath, resolve } from 'node:path';
 import type {
   CallToolResult,
@@ -31,7 +31,6 @@ import { SessionError } from '../session/sessions.js';
 import type { Session, SessionManager } from '../session/sessions.js';
 import {
   ArgError,
-  errorResult,
   jsonResult,
   optionalBoolean,
   optionalCount,
@@ -42,7 +41,7 @@ import {
   type ToolDef,
 } from './registry.js';
 
-const MAX_TIMEOUT_MS = 600_000;
+export const MAX_TIMEOUT_MS = 600_000;
 const RENDER_TIMEOUT_MS = 120_000;
 const RENDER_VIEWS: readonly RenderView[] = ['iso', 'front', 'top', 'right'];
 const VIEW_MODES = ['solid', 'wireframe', 'xray'] as const;
@@ -57,7 +56,7 @@ export interface SessionToolHost {
   /** The package version, written into exported files. */
   readonly version: string;
   /** Ask the person at the client a yes/no question, when the client can show one. */
-  confirm(message: string): Promise<'yes' | 'no' | 'unsupported'>;
+  readonly confirm: Confirm;
   /** List eval_in_session, which runs agent code with the server's permissions. */
   readonly allowCode?: boolean | undefined;
 }
@@ -131,14 +130,6 @@ function parseProject(raw: unknown, fallback: IfcProjectSpec): IfcProjectSpec {
   return { name, projectId, ...(description !== undefined ? { description } : {}) };
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await stat(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 const MAX_IDS = 200;
@@ -146,8 +137,8 @@ const MAX_DIAGNOSTICS = 50;
 const DIFF_PAGE = 100;
 const MAX_DIFF_PAGE = 500;
 
-const SESSION_ID = { type: 'string', description: 'Session id from open_model.' };
-const EXPECT_BUILD = {
+export const SESSION_ID = { type: 'string', description: 'Session id from open_model.' };
+export const EXPECT_BUILD = {
   type: 'string',
   description:
     'Optional buildHash from an earlier result. The call fails with BUILD_MISMATCH if the session has been rebuilt since, so ids from an old build are never used by mistake.',
@@ -664,32 +655,12 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
         const proxies = optionalBoolean(a, 'proxies') ?? true;
         const timeoutMs = optionalPositive(a, 'timeoutMs', MAX_TIMEOUT_MS) ?? EXPORT_TIMEOUT_MS;
         let approved = optionalBoolean(a, 'overwrite') === true;
-        const askToReplace = async (): Promise<CallToolResult | undefined> => {
-          const answer = await host.confirm(
-            `${out} already exists. Replace it with an IFC export of ${basename(s.path)}?`
-          );
-          if (answer === 'unsupported') {
-            return errorResult(
-              'FILE_EXISTS',
-              `${out} already exists; pass overwrite: true to replace it`,
-              {
-                path: out,
-              }
-            );
-          }
-          if (answer === 'no') {
-            return jsonResult(
-              { ok: false, written: false, path: out, reason: 'overwrite declined' },
-              true
-            );
-          }
-          approved = true;
-          return undefined;
-        };
+        const what = `an IFC export of ${basename(s.path)}`;
         // Ask before exporting, so a declined overwrite costs no export.
         if (!approved && (await fileExists(out))) {
-          const stop = await askToReplace();
+          const stop = await askToReplace(host.confirm, out, what);
           if (stop) return stop;
+          approved = true;
         }
         const { outcome, buildHash } = await sessions.exportIfc(
           sessionId,
@@ -702,17 +673,8 @@ export function sessionTools(sessions: SessionManager, host: SessionToolHost): T
             true
           );
         }
-        await mkdir(dirname(out), { recursive: true });
-        // Unapproved writes are exclusive: a file that appeared while the export ran (another
-        // export to the same path, say) is asked about, not replaced.
-        try {
-          await writeFile(out, outcome.bytes, { flag: approved ? 'w' : 'wx' });
-        } catch (e) {
-          if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-          const stop = await askToReplace();
-          if (stop) return stop;
-          await writeFile(out, outcome.bytes);
-        }
+        const stop = await writeOutput(host.confirm, out, outcome.bytes, approved, what);
+        if (stop) return stop;
         sessions.recordExport(sessionId, project.projectId ?? project.name, outcome.globalIds);
         const errors = outcome.issues.filter((i) => i.severity === 'error').length;
         const warnings = outcome.issues.filter((i) => i.severity === 'warning').length;

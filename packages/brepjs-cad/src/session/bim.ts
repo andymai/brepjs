@@ -35,7 +35,14 @@ export interface IfcProjectSpec {
 }
 
 export interface BimNs {
-  fromIfc(bytes: Uint8Array): Promise<BimResult<ImportedModelLike>>;
+  fromIfc(
+    bytes: Uint8Array,
+    options?: { readonly skipGeometry?: boolean }
+  ): Promise<BimResult<ImportedModelLike>>;
+  toIfc(
+    model: BimModelLike,
+    meta: { readonly applicationName: string; readonly applicationVersion: string }
+  ): Promise<BimResult<Uint8Array>>;
   disposeImportedModel(model: ImportedModelLike): void;
   familiesToBim(
     root: unknown,

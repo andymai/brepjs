@@ -1,6 +1,7 @@
 import type { BuildOutcome, SessionKind } from './records.js';
 import type { EvalOutcome } from './evalCode.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
+import type { QuantitiesOutcome } from './quantities.js';
 import type { RenderRequest } from './render.js';
 
 /** Operations a session worker answers: each op's arguments and reply. */
@@ -21,6 +22,10 @@ export interface WorkerOps {
   readonly exportIfc: {
     readonly args: ExportIfcArgs;
     readonly result: ExportIfcOutcome;
+  };
+  readonly quantities: {
+    readonly args: Record<string, never>;
+    readonly result: QuantitiesOutcome;
   };
   readonly eval: {
     readonly args: { readonly code: string };

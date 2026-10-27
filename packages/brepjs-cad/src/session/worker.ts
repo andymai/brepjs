@@ -49,6 +49,12 @@ async function handle(req: WorkerRequest): Promise<void> {
         send({ type: 'reply', id: req.id, result: await evalInBuild(ctx, req.args.code) });
         return;
       }
+      case 'quantities': {
+        if (current?.quantities === undefined)
+          throw new Error('this build has no quantities to derive');
+        send({ type: 'reply', id: req.id, result: await current.quantities() });
+        return;
+      }
       case 'exportIfc': {
         if (current?.exportIfc === undefined)
           throw new Error('this session cannot be exported to IFC');

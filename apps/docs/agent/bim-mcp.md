@@ -81,22 +81,37 @@ One element changed, by the prop that was meant to change, and it grew 300 mm up
 
 **Export.** `export_ifc` with `outPath: "dist/model.ifc"` writes the file through the [validated IFC export](../families/ifc-export) and returns the validation report, with each issue mapped to a key path, and the GlobalId of every exported element.
 
-The `edit-and-verify` prompt walks an agent through this loop, and `inspect-building` opens a model, summarizes it and renders a plan per storey.
+The `edit-and-verify` prompt walks an agent through this loop, `inspect-building` opens a model, summarizes it and renders a plan per storey, and `quantity-takeoff` schedules a category's quantities.
 
 ## Tools
 
-| Tool               | What it does                                                                                                                                                         |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `open_model`       | Builds a families program (type-checked first) or imports an `.ifc` file, and returns a `sessionId`, a `buildHash`, and counts by category, storey and family.       |
-| `list_sessions`    | Lists open sessions. A session is `stale` once its source files change on disk.                                                                                      |
-| `close_model`      | Stops a session.                                                                                                                                                     |
-| `rebuild`          | Rebuilds after an edit and diffs against the last good build: added and removed ids, prop and pset values before and after, and geometry, volume and bounds changes. |
-| `get_diff`         | Pages through the last rebuild's diff when it's longer than the 100 entries per list `rebuild` returns.                                                              |
-| `query_elements`   | Finds elements by category, family, storey, name or key-path glob, prop and pset predicates, and bounds.                                                             |
-| `get_elements`     | Returns identity, props, psets, quantities, material, classification, relationships, children and geometry for given ids.                                            |
-| `render_view`      | Renders to PNG: `highlight`, `isolate`, `colorBy` category, storey or family, a storey `plan`, or a `section`.                                                       |
-| `export_ifc`       | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
-| `search_reference` | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
+| Tool                      | What it does                                                                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open_model`              | Builds a families program (type-checked first) or imports an `.ifc` file, and returns a `sessionId`, a `buildHash`, and counts by category, storey and family.       |
+| `list_sessions`           | Lists open sessions. A session is `stale` once its source files change on disk.                                                                                      |
+| `close_model`             | Stops a session.                                                                                                                                                     |
+| `rebuild`                 | Rebuilds after an edit and diffs against the last good build: added and removed ids, prop and pset values before and after, and geometry, volume and bounds changes. |
+| `get_diff`                | Pages through the last rebuild's diff when it's longer than the 100 entries per list `rebuild` returns.                                                              |
+| `query_elements`          | Finds elements by category, family, storey, name or key-path glob, prop and pset predicates, and bounds.                                                             |
+| `get_elements`            | Returns identity, props, psets, quantities, material, classification, relationships, children and geometry for given ids.                                            |
+| `list_schedulable_fields` | Lists the fields a selection carries for a schedule, with types and counts.                                                                                          |
+| `schedule`                | Tabulates the selected elements, grouped, sorted and totalled, optionally as CSV.                                                                                    |
+| `render_view`             | Renders to PNG: `highlight`, `isolate`, `colorBy` category, storey or family, a storey `plan`, or a `section`.                                                       |
+| `export_ifc`              | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
+| `search_reference`        | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
+
+## Schedules
+
+`schedule` turns a selection into a table. Pick columns from `list_schedulable_fields`: built-ins like `name` and `storey`, `props.height`, `psets.Pset_WallCommon.FireRating`, and base quantities like `quantities.Qto_WallBaseQuantities.Length`. Group by storey to get a count and sums per storey, and pass `outPath` to write a CSV.
+
+```jsonc
+// schedule { "sessionId": "s1", "where": { "category": "wall" },
+//   "fields": ["storey", "quantities.Qto_WallBaseQuantities.Length"], "groupBy": ["storey"] }
+{ "columns": ["storey", "count", "sum(quantities.Qto_WallBaseQuantities.Length)"],
+  "rows": [["Ground floor", 5, ...]] }
+```
+
+A families model has no quantities of its own, so the session reads them back from an in-memory IFC export: the schedule shows the numbers `export_ifc` would write, in metres, square metres and cubic metres. An opened IFC file uses the quantity sets it carries, in its own units. The `quantity-takeoff` prompt runs this for one category.
 
 ## Running code against a session
 

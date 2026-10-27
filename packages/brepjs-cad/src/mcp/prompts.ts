@@ -49,6 +49,29 @@ const PROMPTS: readonly PromptDef[] = [
         '6. Report what changed, with the prop before and after values and the volume and bounds deltas from the diff.',
       ].join('\n'),
   },
+  {
+    name: 'quantity-takeoff',
+    title: 'Quantity takeoff',
+    description:
+      'Schedule the quantities of one category of elements, totalled per storey, optionally written to CSV.',
+    arguments: [
+      { name: 'sessionId', description: 'The session from open_model.', required: true },
+      {
+        name: 'category',
+        description: 'The category to take off, e.g. wall or SLAB.',
+        required: true,
+      },
+      { name: 'outPath', description: 'Where to write the CSV (optional).', required: false },
+    ],
+    render: ({ sessionId, category, outPath }) =>
+      [
+        `Take off the ${category ?? ''} quantities in session ${sessionId ?? ''}.`,
+        '',
+        `1. Call list_schedulable_fields with where: { category: "${category ?? ''}" }. Pick the quantity fields that matter (lengths, areas, volumes), plus name and storey.`,
+        `2. Call schedule with those fields, groupBy ["storey"] and sortBy ["storey"]${outPath ? `, and outPath "${outPath}"` : ''}.`,
+        '3. Report the totals per storey and overall with their units (the units field), and name the fields whose count is below matched: those elements have no value for them.',
+      ].join('\n'),
+  },
 ];
 
 export function listPrompts(): Prompt[] {

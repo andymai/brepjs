@@ -11,6 +11,7 @@ import {
   type SessionKind,
 } from './records.js';
 import type { EvalOutcome } from './evalCode.js';
+import type { QuantitiesById } from './quantities.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { WorkerOps } from './protocol.js';
 import type { RenderRequest } from './render.js';
@@ -61,6 +62,8 @@ export interface Session {
    * next export.
    */
   exported: ExportedIds | undefined;
+  /** Quantity sets derived for a build, kept until the next one. */
+  quantityCache: { readonly buildHash: string; readonly byId: QuantitiesById } | undefined;
   lastFailure: { readonly at: Date; readonly diagnostics: readonly BuildDiagnostic[] } | undefined;
   queue: Promise<unknown>;
 }
@@ -224,6 +227,7 @@ export class SessionManager {
       building: undefined,
       lastDiff: undefined,
       exported: undefined,
+      quantityCache: undefined,
       lastFailure: undefined,
       queue: Promise.resolve(),
     };
@@ -382,6 +386,36 @@ export class SessionManager {
     });
   }
 
+  /**
+   * Quantity sets per element id for the current build. An IFC session has them in its records;
+   * a families session derives them once per build through an in-memory IFC export.
+   */
+  quantities(
+    id: string,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
+  ): Promise<{
+    readonly session: Session;
+    readonly buildHash: string;
+    readonly byId: QuantitiesById;
+  }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'quantity takeoff', async (s) => {
+      const buildHash = s.build.buildHash;
+      if (s.kind === 'ifc') {
+        const byId = Object.fromEntries(
+          s.build.summary.elements.flatMap((r) => (r.quantities ? [[r.id, r.quantities]] : []))
+        );
+        return { session: s, buildHash, byId };
+      }
+      if (s.quantityCache?.buildHash === buildHash) {
+        return { session: s, buildHash, byId: s.quantityCache.byId };
+      }
+      const outcome = await this.#request(s, 'quantities', {}, opts.timeoutMs);
+      if (!outcome.ok) throw new SessionError('QUANTITIES_FAILED', outcome.error);
+      s.quantityCache = { buildHash, byId: outcome.quantities };
+      return { session: s, buildHash, byId: outcome.quantities };
+    });
+  }
+
   /** Run agent code against the session's current build, in its worker. */
   evalCode(
     id: string,
@@ -440,7 +474,7 @@ export class SessionManager {
   }
 
   /** A request to the session's live worker. A timeout stops the worker; rebuild starts a new one. */
-  async #request<K extends 'render' | 'exportIfc' | 'eval'>(
+  async #request<K extends 'render' | 'exportIfc' | 'eval' | 'quantities'>(
     session: Session,
     op: K,
     args: WorkerOps[K]['args'],
@@ -458,7 +492,12 @@ export class SessionManager {
     } catch (e) {
       const stopped =
         e instanceof WorkerError ? '; the worker stopped, so rebuild before trying again' : '';
-      const code = { render: 'RENDER_FAILED', exportIfc: 'EXPORT_FAILED', eval: 'EVAL_FAILED' }[op];
+      const code = {
+        render: 'RENDER_FAILED',
+        exportIfc: 'EXPORT_FAILED',
+        eval: 'EVAL_FAILED',
+        quantities: 'QUANTITIES_FAILED',
+      }[op];
       throw new SessionError(code, `${errorMessage(e)}${stopped}`);
     }
   }

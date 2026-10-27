@@ -16,6 +16,7 @@ import {
 import { loadBrep, toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
 import { importBim } from './bim.js';
 import { exportFamiliesIfc, type ExportIfcArgs, type ExportIfcOutcome } from './exportIfc.js';
+import { familiesQuantities, type QuantitiesOutcome } from './quantities.js';
 import { typecheckPart } from '../verify/typecheck.js';
 import {
   boundsOfPositions,
@@ -42,6 +43,8 @@ export interface WorkerBuild {
   exportIfc?(args: ExportIfcArgs): Promise<ExportIfcOutcome>;
   /** What eval_in_session code receives as `ctx`: live kernel objects, not copies. */
   evalContext?(): object;
+  /** Families builds only: quantity sets per key path, from an in-memory IFC export. */
+  quantities?(): Promise<QuantitiesOutcome>;
 }
 
 /** The parts of `ctx` both kinds of build share. */
@@ -120,6 +123,7 @@ export async function buildFamilies(
     const sourceOf = fam.sourceOf?.bind(fam);
     const elements = toRecords(brep, resolved, model.byKeyPath, diagnostics, sourceOf);
     let payload: PreviewModelPayload | undefined;
+    let quantitiesOutcome: Promise<QuantitiesOutcome> | undefined;
     return {
       outcome: {
         ok: true,
@@ -135,6 +139,17 @@ export async function buildFamilies(
         ...baseEvalContext(brep, 'families', elements),
         model: { root: resolved, byKeyPath: model.byKeyPath },
       }),
+      quantities: async () => {
+        const bim = await importBim(entryPath);
+        if (bim === undefined) {
+          return {
+            ok: false,
+            error: "quantities need 'brepjs-bim' and 'web-ifc' installed in this project",
+          };
+        }
+        quantitiesOutcome ??= familiesQuantities(bim, resolved, evaluator);
+        return quantitiesOutcome;
+      },
       exportIfc: async (args) => {
         const bim = await importBim(entryPath);
         if (bim === undefined) {

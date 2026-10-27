@@ -49,6 +49,8 @@ describe('brep-mcp server', () => {
       'export_ifc',
       'query_elements',
       'get_elements',
+      'list_schedulable_fields',
+      'schedule',
       'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({
@@ -210,7 +212,11 @@ describe('brep-mcp server', () => {
 
   it('offers the inspect and edit prompts with their arguments filled in', async () => {
     const { prompts } = await client.listPrompts();
-    expect(prompts.map((p) => p.name)).toEqual(['inspect-building', 'edit-and-verify']);
+    expect(prompts.map((p) => p.name)).toEqual([
+      'inspect-building',
+      'edit-and-verify',
+      'quantity-takeoff',
+    ]);
     const inspect = await client.getPrompt({
       name: 'inspect-building',
       arguments: { path: 'model.tsx' },

@@ -12,11 +12,14 @@ import {
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { QueryError } from '../session/query.js';
+import { ScheduleError } from '../session/schedule.js';
 import { ReferenceIndex } from '../session/reference.js';
 import { errorMessage } from '../session/records.js';
 import { SessionError, SessionManager, type SessionManagerOptions } from '../session/sessions.js';
 import { getPrompt, listPrompts } from './prompts.js';
+import type { Confirm } from './output.js';
 import { listReferenceResources, readReferenceResource, referenceTools } from './referenceTools.js';
+import { scheduleTools } from './scheduleTools.js';
 import { ArgError, errorResult, listTools, type ToolArgs, type ToolDef } from './registry.js';
 import {
   listSessionResources,
@@ -100,7 +103,7 @@ async function callTool(tool: ToolDef, args: ToolArgs): Promise<CallToolResult> 
     return await tool.handler(args);
   } catch (e) {
     if (e instanceof SessionError) return errorResult(e.code, e.message, e.detail);
-    if (e instanceof ArgError || e instanceof QueryError)
+    if (e instanceof ArgError || e instanceof QueryError || e instanceof ScheduleError)
       return errorResult('INVALID_ARGUMENT', e.message);
     return errorResult('INTERNAL_ERROR', errorMessage(e));
   }
@@ -129,24 +132,22 @@ export function createBrepMcpServer(
       server.sendResourceListChanged().catch(() => {});
     },
   });
+  const confirm: Confirm = async (message) => {
+    if (!server.getClientCapabilities()?.elicitation) return 'unsupported';
+    const reply = await server.elicitInput({
+      message,
+      requestedSchema: {
+        type: 'object',
+        properties: { overwrite: { type: 'boolean', title: 'Overwrite', default: false } },
+        required: ['overwrite'],
+      },
+    });
+    return reply.action === 'accept' && reply.content?.['overwrite'] === true ? 'yes' : 'no';
+  };
   const tools = [
     ...partTools(),
-    ...sessionTools(sessions, {
-      version,
-      allowCode: features.allowCode === true,
-      confirm: async (message) => {
-        if (!server.getClientCapabilities()?.elicitation) return 'unsupported';
-        const reply = await server.elicitInput({
-          message,
-          requestedSchema: {
-            type: 'object',
-            properties: { overwrite: { type: 'boolean', title: 'Overwrite', default: false } },
-            required: ['overwrite'],
-          },
-        });
-        return reply.action === 'accept' && reply.content?.['overwrite'] === true ? 'yes' : 'no';
-      },
-    }),
+    ...sessionTools(sessions, { version, allowCode: features.allowCode === true, confirm }),
+    ...scheduleTools(sessions, confirm),
     ...referenceTools(reference),
   ];
   const byName = new Map(tools.map((t) => [t.name, t]));
