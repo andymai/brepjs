@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.187.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.186.0...brepjs-cad-v0.187.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** schedule BIM session elements ([#2459](https://github.com/andymai/brepjs/issues/2459)) ([7fc3e97](https://github.com/andymai/brepjs/commit/7fc3e97f0c9efa54b22684ab15331ac2d31bab6d))
+* **brepjs-cad:** validate BIM sessions and compare revisions ([#2460](https://github.com/andymai/brepjs/issues/2460)) ([0907174](https://github.com/andymai/brepjs/commit/09071741a703a88884fe8a1239bfe0de80c6eba2))
+
 ## [0.186.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.185.0...brepjs-cad-v0.186.0) (2026-10-27)
 
 
