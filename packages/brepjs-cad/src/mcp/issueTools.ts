@@ -356,7 +356,13 @@ export function issueTools(sessions: SessionManager, confirm: Confirm): ToolDef[
               approved = true;
             }
           }
-          const bytes = packIssue(bim, topic, png, meta.project, existing);
+          let bytes: Uint8Array;
+          try {
+            bytes = packIssue(bim, topic, png, meta.project, existing);
+          } catch (e) {
+            if (e instanceof BcfError) throw new ArgError(`${out}: ${e.message}`);
+            throw e;
+          }
           // Adding to a file is approved by its being a BCF file the call just read.
           const stop = await writeOutput(
             confirm,

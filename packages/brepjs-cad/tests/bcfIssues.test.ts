@@ -132,6 +132,16 @@ describe('BCF containers', () => {
     expect(container.topics.map((t) => t.title).sort()).toEqual(['Second', 'Wall fire rating']);
   });
 
+  it('will not write a file too large to read back', () => {
+    const first = packIssue(bim, issueTopic(spec(), new Date()), PNG, PROJECT);
+    const opened = openContainer(bim, first);
+    const size = [...readZip(first).values()].reduce((n, b) => n + b.length, 0);
+    const next = issueTopic(spec({ title: 'One too many' }), new Date());
+    expect(() => packIssue(bim, next, PNG, PROJECT, opened, { totalBytes: size + 10 })).toThrow(
+      /larger than it can be read back/
+    );
+  });
+
   it('rejects a file that is not a BCF archive', () => {
     expect(() => openContainer(bim, new Uint8Array([1, 2, 3]))).toThrow(BcfError);
   });

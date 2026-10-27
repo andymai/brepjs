@@ -15,7 +15,7 @@ import type {
 } from './bim.js';
 import { errorMessage } from './records.js';
 import type { ShotCamera } from './render.js';
-import { readZip, writeZip } from './zip.js';
+import { MAX_ENTRY_BYTES, MAX_TOTAL_BYTES, readZip, writeZip } from './zip.js';
 
 export const SNAPSHOT_FILE = 'snapshot.png';
 const TEXT_ENTRY = /\.(version|bcfp|bcf|bcfv|xml)$/i;
@@ -161,7 +161,8 @@ export function packIssue(
   topic: BcfTopicLike,
   snapshot: Uint8Array,
   project: BcfContainerLike['project'],
-  existing?: OpenedContainer
+  existing?: OpenedContainer,
+  limits: { readonly entryBytes?: number; readonly totalBytes?: number } = {}
 ): Uint8Array {
   const files = bim.serializeBcfFiles({ version: { versionId: '3.0' }, project, topics: [topic] });
   const entries = new Map<string, Uint8Array | string>(existing?.entries ?? []);
@@ -170,6 +171,19 @@ export function packIssue(
     if (existing === undefined || path.startsWith(folder)) entries.set(path, xml);
   }
   entries.set(`${folder}${SNAPSHOT_FILE}`, snapshot);
+  // An archive readZip would refuse can't be opened again, so it is never written.
+  let total = 0;
+  const encoder = new TextEncoder();
+  for (const [path, content] of entries) {
+    const size = typeof content === 'string' ? encoder.encode(content).length : content.length;
+    if (size > (limits.entryBytes ?? MAX_ENTRY_BYTES)) {
+      throw new BcfError(`${path} would be larger than BCF files may be`);
+    }
+    total += size;
+  }
+  if (total > (limits.totalBytes ?? MAX_TOTAL_BYTES)) {
+    throw new BcfError('adding this issue would make the BCF file larger than it can be read back');
+  }
   return writeZip(entries);
 }
 
