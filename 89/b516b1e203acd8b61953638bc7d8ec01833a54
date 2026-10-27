@@ -1,0 +1,86 @@
+packages/brepjs-cad/src/preview/evaluate.ts
+  s_4d771e7bb40c3c::t_f0daeb0269a455 112-119,229,266-273,275,285,304,312,350
+packages/brepjs-cad/src/snapshot/shoot.ts
+  s_4d771e7bb40c3c::t_a43f1336a4e872 6,77,81
+packages/brepjs-cad/src/mcp/sessionTools.ts
+  s_4d771e7bb40c3c::t_9aeb0f4b0dc3e5 455
+  s_4d771e7bb40c3c::t_f2aa8e10e99c68 9,25-26,42-45,137-192,354-454,456-481
+  s_4d771e7bb40c3c::t_3e439e6eeb2a2c 482
+packages/brepjs-viewer/src/model.ts
+  s_4d771e7bb40c3c::t_5875a36d207a46 40-43,87,98-104
+  s_4d771e7bb40c3c::t_b5f4e203225340 166-167,200-221,260-261
+  s_4d771e7bb40c3c::t_b3100e2f463eaa 12,141-165,168-199,222-259
+packages/brepjs-viewer/src/ViewerCanvas.tsx
+  s_4d771e7bb40c3c::t_d67db4035b73d1 59-62,93-98,105
+  s_4d771e7bb40c3c::t_e8b9478fb23f88 38-40
+packages/brepjs-cad/src/session/render.ts
+  s_4d771e7bb40c3c::t_8020cc02b75d81 1,53
+  s_4d771e7bb40c3c::t_9aeb0f4b0dc3e5 25,85
+  s_4d771e7bb40c3c::t_762624dac974bc 2-24,26-52,54-84,86-100
+packages/brepjs-cad/tests/renderView.test.ts
+  s_4d771e7bb40c3c::t_dd00c6bf6b724b 15,43-45,83-85
+  s_4d771e7bb40c3c::t_4a39b3c6ed5a16 1-14,16-42,46-82,86-97
+packages/brepjs-cad/src/session/worker.ts
+  s_4d771e7bb40c3c::t_c3ee5fd66a94c8 11,32-34,36
+  s_4d771e7bb40c3c::t_3c43b61a481548 35
+  s_4d771e7bb40c3c::t_25be28a118a95b 37-38
+packages/brepjs-cad/src/session/buildFamilies.ts
+  s_4d771e7bb40c3c::t_a2dda2e643c285 2,4,9-10,35-36,98,105-109
+packages/brepjs-cad/src/session/buildIfc.ts
+  s_4d771e7bb40c3c::t_a2dda2e643c285 1-2,6-7,41-45,122,125-126,139-140,155,159-262,283,420
+packages/brepjs-cad/tests/png.ts
+  s_4d771e7bb40c3c::t_a3f221381815ab 1-69
+  s_4d771e7bb40c3c::t_a8c362da107893 70-80
+packages/brepjs-cad/src/session/sessions.ts
+  s_4d771e7bb40c3c::t_33909601ea4775 13,307-333
+  s_4d771e7bb40c3c::t_33b42ea0e50e75 334-338
+packages/brepjs-cad/tests/sessionStyle.test.ts
+  s_4d771e7bb40c3c::t_69da887bbf4bd1 7-15,21-27,29-46,48-61,106-109
+  s_4d771e7bb40c3c::t_56bf64148aca16 1-6,16-20,28,47,62-105,110-143
+packages/brepjs-cad/src/session/style.ts
+  s_4d771e7bb40c3c::t_339fb35a9e3b5c 49-50,58,60-64,67,80
+  s_4d771e7bb40c3c::t_b197b3100cd277 22
+  s_4d771e7bb40c3c::t_ac5e7b8afa54f9 48
+  s_4d771e7bb40c3c::t_f2aa8e10e99c68 106-108,120-124
+  s_4d771e7bb40c3c::t_97d4c0f4ebad84 1-21,23-47,51-57,59,65-66,68-79,81-105,109-119,125-209
+packages/brepjs-viewer/src/index.ts
+  s_4d771e7bb40c3c::t_b3100e2f463eaa 28-29,32-34
+packages/brepjs-cad/src/snapshot/chrome.ts
+  s_4d771e7bb40c3c::t_a43f1336a4e872 1-11
+packages/brepjs-cad/viewer/src/screenshotApi.ts
+  s_4d771e7bb40c3c::t_9aeb0f4b0dc3e5 1,31-32
+  s_4d771e7bb40c3c::t_0cefbd960a66fd 10-11,29-30
+packages/brepjs-cad/viewer/main.tsx
+  s_4d771e7bb40c3c::t_ac5e7b8afa54f9 305
+  s_4d771e7bb40c3c::t_9aeb0f4b0dc3e5 165
+  s_4d771e7bb40c3c::t_0cefbd960a66fd 16-17,127,158,164,193-199,217,225-258,302-303
+  s_4d771e7bb40c3c::t_371fd66c925325 304
+packages/brepjs-cad/src/session/protocol.ts
+  s_4d771e7bb40c3c::t_3c43b61a481548 17,22-29
+  s_4d771e7bb40c3c::t_c3ee5fd66a94c8 2,14-16
+packages/brepjs-cad/README.md
+  s_4d771e7bb40c3c::t_b197b3100cd277 95-104
+packages/brepjs-cad/tests/mcpServer.test.ts
+  s_4d771e7bb40c3c::t_ad43abfaaa1528 48,56-63
+packages/brepjs-viewer/tests/model.test.ts
+  s_4d771e7bb40c3c::t_b688d77369bed1 60,62-66
+  s_4d771e7bb40c3c::t_b5f4e203225340 139-143
+  s_4d771e7bb40c3c::t_228571106c38c4 2,95-138,144-158
+  s_4d771e7bb40c3c::t_4ec7f30b3afd61 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89b516b1e203acd8b61953638bc7d8ec01833a54",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
