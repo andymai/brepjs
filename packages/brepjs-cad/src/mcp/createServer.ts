@@ -2,6 +2,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
@@ -10,8 +12,11 @@ import {
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { QueryError } from '../session/query.js';
+import { ReferenceIndex } from '../session/reference.js';
 import { errorMessage } from '../session/records.js';
 import { SessionError, SessionManager, type SessionManagerOptions } from '../session/sessions.js';
+import { getPrompt, listPrompts } from './prompts.js';
+import { listReferenceResources, readReferenceResource, referenceTools } from './referenceTools.js';
 import { ArgError, errorResult, listTools, type ToolArgs, type ToolDef } from './registry.js';
 import {
   listSessionResources,
@@ -109,11 +114,12 @@ export interface BrepMcpServer {
 
 export function createBrepMcpServer(
   version: string,
-  sessionOptions: Omit<SessionManagerOptions, 'onChange'> = {}
+  sessionOptions: Omit<SessionManagerOptions, 'onChange'> = {},
+  reference: ReferenceIndex = new ReferenceIndex()
 ): BrepMcpServer {
   const server = new Server(
     { name: 'brepjs-cad', version },
-    { capabilities: { tools: {}, resources: { listChanged: true } } }
+    { capabilities: { tools: {}, resources: { listChanged: true }, prompts: {} } }
   );
   const sessions = new SessionManager({
     ...sessionOptions,
@@ -139,6 +145,7 @@ export function createBrepMcpServer(
         return reply.action === 'accept' && reply.content?.['overwrite'] === true ? 'yes' : 'no';
       },
     }),
+    ...referenceTools(reference),
   ];
   const byName = new Map(tools.map((t) => [t.name, t]));
 
@@ -151,7 +158,7 @@ export function createBrepMcpServer(
   });
 
   server.setRequestHandler(ListResourcesRequestSchema, () => ({
-    resources: listSessionResources(sessions),
+    resources: [...listSessionResources(sessions), ...listReferenceResources(reference)],
   }));
   server.setRequestHandler(ListResourceTemplatesRequestSchema, () => ({
     resourceTemplates: SESSION_RESOURCE_TEMPLATES,
@@ -159,12 +166,27 @@ export function createBrepMcpServer(
   server.setRequestHandler(ReadResourceRequestSchema, (req) => {
     let result;
     try {
-      result = readSessionResource(sessions, req.params.uri);
+      result =
+        readSessionResource(sessions, req.params.uri) ??
+        readReferenceResource(reference, req.params.uri);
     } catch (e) {
       throw new McpError(ErrorCode.InvalidParams, errorMessage(e));
     }
     if (result === undefined)
       throw new McpError(ErrorCode.InvalidParams, `Unknown resource: ${req.params.uri}`);
+    return result;
+  });
+
+  server.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: listPrompts() }));
+  server.setRequestHandler(GetPromptRequestSchema, (req) => {
+    let result;
+    try {
+      result = getPrompt(req.params.name, req.params.arguments);
+    } catch (e) {
+      throw new McpError(ErrorCode.InvalidParams, errorMessage(e));
+    }
+    if (result === undefined)
+      throw new McpError(ErrorCode.InvalidParams, `Unknown prompt: ${req.params.name}`);
     return result;
   });
 

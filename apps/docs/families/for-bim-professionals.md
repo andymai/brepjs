@@ -53,4 +53,6 @@ This is also not a Revit or ArchiCAD replacement. There is no drawing sheet, no 
 
 The rest of this section is written for the people who will build with this. If you hand it to a developer, the ask that captures what this page promises is short: _components from our standards registry, every element keyed, exported with `toIfcValidated`, IfcOpenShell in CI._ Start them at [Why a Family Layer](/families/overview); the identity rules they must not weaken are in [Elements, Key Paths & Identity](/families/identity), and the export contract is in [IFC Export](/families/ifc-export).
 
+If your team works with an AI agent, [BIM over MCP](/agent/bim-mcp) is how it opens a model, checks each edit, and exports IFC from inside a session.
+
 For your side of the collaboration, [Copy-In Distribution](/families/copy-in) shows how a firm-standards registry is hosted and consumed: the closest analogy is a shared template library, except updates arrive as reviewable diffs instead of file replacements.

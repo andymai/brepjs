@@ -103,9 +103,7 @@ Geometry never leaves your machine; the server runs locally as a child process o
 
 ### BIM sessions
 
-For buildings, the server can also hold a model open. `open_model` builds a [families](../families/overview) program, or imports an `.ifc` file, and returns a `sessionId`. Your agent then finds elements with `query_elements` (by category, storey, family, key path, props and psets) and reads them with `get_elements`. After it edits the program, `rebuild` reports exactly what changed: which elements were added or removed, and for each changed element its prop and pset values before and after, plus how its geometry, volume and bounds moved. That last part is the check that an edit touched only what it meant to. If the edit breaks the build, or makes an element's geometry fail that built before, the session keeps serving the last good one. A big diff comes back 100 entries per list at a time, and `get_diff` pages through the rest.
-
-`list_sessions` shows what's open and flags a session as stale once its files change on disk; `close_model` stops it. Opening an `.ifc` file needs `brepjs-bim` and `web-ifc` installed in your project.
+For buildings, the server can also hold a model open. `open_model` builds a [families](../families/overview) program or imports an `.ifc` file into a session; the agent then queries elements by key path or GlobalId, edits the program, and `rebuild` reports exactly what each edit changed. Sessions can also render pictures and export validated IFC. [BIM over MCP](./bim-mcp) walks through an edit and lists every session tool.
 
 ## Troubleshooting
 

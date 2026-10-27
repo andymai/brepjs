@@ -49,6 +49,7 @@ describe('brep-mcp server', () => {
       'export_ifc',
       'query_elements',
       'get_elements',
+      'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({
       readOnlyHint: false,
@@ -108,7 +109,9 @@ describe('brep-mcp server', () => {
     });
 
     const { resources } = await client.listResources();
-    expect(resources.map((r) => r.uri)).toEqual([`brep://sessions/${sessionId}/tree`]);
+    expect(resources.map((r) => r.uri).filter((u) => u.startsWith('brep://sessions/'))).toEqual([
+      `brep://sessions/${sessionId}/tree`,
+    ]);
     const treeRes = await client.readResource({ uri: `brep://sessions/${sessionId}/tree` });
     const treeBody = JSON.parse((treeRes.contents[0] as { text: string }).text) as {
       root: { id: string; children: { id: string }[] };
@@ -182,6 +185,41 @@ describe('brep-mcp server', () => {
     ).toBe(true);
     const listed = payload(await client.callTool({ name: 'list_sessions', arguments: {} }));
     expect(listed['sessions']).toEqual([]);
-    expect((await client.listResources()).resources).toEqual([]);
+    const left = (await client.listResources()).resources.map((r) => r.uri);
+    expect(left.filter((u) => u.startsWith('brep://sessions/'))).toEqual([]);
+  });
+
+  it('searches the bundled reference and serves its files as resources', async () => {
+    const found = payload(
+      await client.callTool({ name: 'search_reference', arguments: { query: 'fill role opening' } })
+    );
+    const hits = found['hits'] as { doc: string; uri: string }[];
+    expect(hits[0]).toMatchObject({
+      doc: 'families/openings.md',
+      uri: 'brep://reference/families/openings.md',
+    });
+    const res = await client.readResource({ uri: 'brep://reference/families/openings.md' });
+    expect(res.contents[0]?.mimeType).toBe('text/markdown');
+    const uris = (await client.listResources()).resources.map((r) => r.uri);
+    expect(uris).toEqual(
+      expect.arrayContaining(['brep://reference/llms-full.txt', 'brep://reference/families-bim.md'])
+    );
+    const empty = await client.callTool({ name: 'search_reference', arguments: { query: '!' } });
+    expect(payload(empty)['error']).toBe('INVALID_ARGUMENT');
+  });
+
+  it('offers the inspect and edit prompts with their arguments filled in', async () => {
+    const { prompts } = await client.listPrompts();
+    expect(prompts.map((p) => p.name)).toEqual(['inspect-building', 'edit-and-verify']);
+    const inspect = await client.getPrompt({
+      name: 'inspect-building',
+      arguments: { path: 'model.tsx' },
+    });
+    const text = (inspect.messages[0]?.content as { text: string }).text;
+    expect(text).toContain('open_model with path "model.tsx"');
+    expect(text).toContain('plan: { storey }');
+    await expect(
+      client.getPrompt({ name: 'edit-and-verify', arguments: { sessionId: 's1' } })
+    ).rejects.toThrow(/needs change/);
   });
 });
