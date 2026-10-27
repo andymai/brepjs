@@ -15,6 +15,7 @@ import {
 } from '../preview/evaluate.js';
 import { loadBrep, toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
 import { importBim } from './bim.js';
+import { familiesCobie, type CobieArgs, type CobieOutcome } from './cobie.js';
 import { exportFamiliesIfc, type ExportIfcArgs, type ExportIfcOutcome } from './exportIfc.js';
 import { familiesQuantities, type QuantitiesOutcome } from './quantities.js';
 import { validateFamilies, type CheckName, type ValidateOutcome } from './validate.js';
@@ -48,6 +49,16 @@ export interface WorkerBuild {
   quantities?(): Promise<QuantitiesOutcome>;
   /** brepjs-bim's checks against the build. */
   validate?(checks: readonly CheckName[]): Promise<ValidateOutcome>;
+  /** The world-placed shapes behind each record id, and the brepjs that owns them. */
+  geometry?(): BuildGeometry;
+  /** Families builds only: COBie sheets from the model's BIM projection. */
+  cobie?(args: CobieArgs): Promise<CobieOutcome>;
+}
+
+export interface BuildGeometry {
+  readonly brep: BrepNs;
+  /** Borrowed from the build: do not dispose. */
+  readonly shapes: ReadonlyMap<string, readonly AnyShape[]>;
 }
 
 /** The parts of `ctx` both kinds of build share. */
@@ -127,6 +138,7 @@ export async function buildFamilies(
     const elements = toRecords(brep, resolved, model.byKeyPath, diagnostics, sourceOf);
     let payload: PreviewModelPayload | undefined;
     let quantitiesOutcome: Promise<QuantitiesOutcome> | undefined;
+    let shapes: Map<string, AnyShape[]> | undefined;
     return {
       outcome: {
         ok: true,
@@ -142,6 +154,24 @@ export async function buildFamilies(
         ...baseEvalContext(brep, 'families', elements),
         model: { root: resolved, byKeyPath: model.byKeyPath },
       }),
+      geometry: () => {
+        if (shapes === undefined) {
+          shapes = new Map();
+          for (const [keyPath, node] of model.byKeyPath) {
+            if (node.shape?.ok && node.shape.value !== undefined) {
+              shapes.set(keyPath, [node.shape.value]);
+            }
+          }
+        }
+        return { brep, shapes };
+      },
+      cobie: async (args) => {
+        const bim = await importBim(entryPath);
+        if (bim === undefined) {
+          return { ok: false, error: "COBie needs 'brepjs-bim' installed in this project" };
+        }
+        return familiesCobie(bim, resolved, evaluator, args);
+      },
       validate: async (checks) => {
         const bim = await importBim(entryPath);
         if (bim === undefined) {

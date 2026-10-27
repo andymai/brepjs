@@ -78,6 +78,26 @@ export function sectionFraction(
   return { axis: section.axis, frac, flip: section.keep === 'below' };
 }
 
+/** An SVG as a PNG at the given pixel size, through the same headless Chrome. */
+export async function rasterizeSvg(
+  svg: string,
+  width: number,
+  height: number
+): Promise<Uint8Array> {
+  const puppeteer = await loadPuppeteer();
+  const browser = await puppeteer.launch({ headless: true, args: [...CHROME_ARGS] });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width, height });
+    await page.setContent(`<!doctype html><body style="margin:0;background:#fff">${svg}</body>`, {
+      waitUntil: 'load',
+    });
+    return await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width, height } });
+  } finally {
+    await browser.close();
+  }
+}
+
 async function loadPuppeteer(): Promise<PuppeteerNode> {
   try {
     return (await import('puppeteer')).default;

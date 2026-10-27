@@ -114,6 +114,26 @@ export interface BcfContainerLike {
   readonly topics: readonly BcfTopicLike[];
 }
 
+export interface CobieContactLike {
+  readonly email?: string | undefined;
+  readonly givenName?: string | undefined;
+  readonly familyName?: string | undefined;
+  readonly company?: string | undefined;
+  readonly phone?: string | undefined;
+}
+
+export interface CobieModelLike {
+  readonly contact: readonly unknown[];
+  readonly facility: readonly unknown[];
+  readonly floor: readonly unknown[];
+  readonly space: readonly unknown[];
+  readonly zone: readonly unknown[];
+  readonly type: readonly unknown[];
+  readonly component: readonly unknown[];
+  readonly system: readonly unknown[];
+  readonly attribute: readonly unknown[];
+}
+
 export interface BimNs {
   fromIfc(
     bytes: Uint8Array,
@@ -142,6 +162,13 @@ export interface BimNs {
     entity?: string
   ): { readonly issues: readonly BimIssueLike[] };
   serializeBcfFiles(data: BcfContainerLike): Map<string, string>;
+  /** Takes the BimModel from familiesToBim. */
+  deriveCobieModel(
+    model: BimModelLike,
+    meta?: { readonly contact?: CobieContactLike | undefined }
+  ): CobieModelLike;
+  serializeCobieToCsv(model: CobieModelLike): Map<string, string>;
+  serializeCobieToJson(model: CobieModelLike): unknown;
   parseBcfFiles(files: Map<string, string>): BimResult<BcfContainerLike>;
   toIfcValidated(
     model: BimModelLike,

@@ -101,7 +101,7 @@ function evalTool(sessions: SessionManager): ToolDef {
 }
 
 /** The project scoping an export's GlobalIds: the nearest package.json name, else the file's. */
-function defaultProject(modelPath: string): IfcProjectSpec {
+export function defaultProject(modelPath: string): IfcProjectSpec {
   let dir = dirname(modelPath);
   const root = parsePath(dir).root;
   for (;;) {
@@ -121,7 +121,7 @@ function defaultProject(modelPath: string): IfcProjectSpec {
   return { name, projectId: name };
 }
 
-function parseProject(raw: unknown, fallback: IfcProjectSpec): IfcProjectSpec {
+export function parseProject(raw: unknown, fallback: IfcProjectSpec): IfcProjectSpec {
   if (raw === undefined) return fallback;
   if (!isRecord(raw)) throw new ArgError('"project" must be an object');
   const name = optionalString(raw, 'name') ?? fallback.name;

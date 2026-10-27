@@ -55,6 +55,10 @@ describe('brep-mcp server', () => {
       'compare_models',
       'create_issue',
       'read_issues',
+      'plan_view',
+      'section_view',
+      'get_spaces',
+      'export_cobie',
       'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({
@@ -69,6 +73,7 @@ describe('brep-mcp server', () => {
       'get_diff',
       'render_view',
       'read_issues',
+      'get_spaces',
     ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
@@ -228,6 +233,7 @@ describe('brep-mcp server', () => {
       'compare-revisions',
       'ifc-review',
       'model-check',
+      'export-deliverables',
     ]);
     const inspect = await client.getPrompt({
       name: 'inspect-building',

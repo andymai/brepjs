@@ -145,6 +145,27 @@ const PROMPTS: readonly PromptDef[] = [
         '6. Report each finding and issue with what you changed (file and line, value before and after), and list the ones you left open and why.',
       ].join('\n'),
   },
+  {
+    name: 'export-deliverables',
+    title: 'Export deliverables',
+    description:
+      'Check a families model and write its handover set: a validated IFC file, COBie sheets, a DXF and SVG plan per storey, and schedule CSVs.',
+    arguments: [
+      { name: 'sessionId', description: 'The families session from open_model.', required: true },
+      { name: 'outDir', description: 'The directory to write everything to.', required: true },
+    ],
+    render: ({ sessionId, outDir }) =>
+      [
+        `Write the deliverables for session ${sessionId ?? ''} to ${outDir ?? ''}.`,
+        '',
+        `1. Call validate_model with sessionId "${sessionId ?? ''}" and minSeverity "error", paging with offset while nextOffset is set. If any error remains, report the errors and stop: a deliverable set should not ship a model that fails its checks.`,
+        `2. Call export_ifc with outPath "${outDir ?? ''}/model.ifc". Note the project it used and pass the same project to export_cobie.`,
+        `3. Call export_cobie with outDir "${outDir ?? ''}/cobie".`,
+        `4. Call query_elements with where: { category: "storey" }. For each storey, call plan_view with outPath "${outDir ?? ''}/plans/<storey>.dxf", then again with "${outDir ?? ''}/plans/<storey>.svg", using the storey's name with spaces replaced by dashes.`,
+        `5. Call list_schedulable_fields, then schedule each main category (walls, slabs, doors, windows, spaces: whichever the model has) with its name, storey and quantity fields, grouped by storey, to "${outDir ?? ''}/schedules/<category>.csv".`,
+        '6. Report every file written with its path, the warnings validate_model and export_ifc returned, and anything that was skipped.',
+      ].join('\n'),
+  },
 ];
 
 export function listPrompts(): Prompt[] {

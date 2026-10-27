@@ -9,7 +9,11 @@ import { buildIfc } from './buildIfc.js';
 import type { WorkerMessage, WorkerRequest } from './protocol.js';
 import { evalInBuild } from './evalCode.js';
 import { errorMessage } from './records.js';
-import { renderPayload } from './render.js';
+import { rasterizeSvg, renderPayload } from './render.js';
+import { drawElements, type DrawnElement } from './drawing.js';
+import { drawingSvg, dxfEntities, svgSize } from './drawingFormats.js';
+import { measureSpace } from './spaces.js';
+import type { DrawingArgs, DrawingOutcome } from './protocol.js';
 
 // Programs load through a transpiling hook that emits inline source maps; with them on, stack
 // traces (build errors, and the element source locations brepjs-families records) name the
@@ -17,6 +21,46 @@ import { renderPayload } from './render.js';
 process.setSourceMapsEnabled(true);
 
 let current: WorkerBuild | undefined;
+
+function categoriesOf(build: WorkerBuild): Map<string, string> {
+  return new Map(
+    build.outcome.ok ? build.outcome.summary.elements.map((r) => [r.id, r.category]) : []
+  );
+}
+
+async function drawing(build: WorkerBuild, args: DrawingArgs): Promise<DrawingOutcome> {
+  const geometry = build.geometry?.();
+  if (geometry === undefined) throw new Error('this worker holds no build to draw');
+  const categories = categoriesOf(build);
+  const elements: DrawnElement[] = [];
+  for (const id of args.ids) {
+    const shapes = geometry.shapes.get(id);
+    if (shapes) elements.push({ id, category: categories.get(id) ?? 'other', shapes });
+  }
+  const drawn = drawElements(geometry.brep, elements, args.spec);
+  const svg = drawingSvg(drawn, args.title);
+  const layers: Record<string, number> = {};
+  for (const p of drawn.polylines) layers[p.layer] = (layers[p.layer] ?? 0) + 1;
+  const { width, height } = svgSize(drawn.bounds);
+  let png: { png: Uint8Array } | { pngError: string } | Record<string, never> = {};
+  if (args.png) {
+    try {
+      png = { png: await rasterizeSvg(svg, width, height) };
+    } catch (e) {
+      png = { pngError: errorMessage(e) };
+    }
+  }
+  return {
+    svg,
+    ...(args.dxf ? { dxf: geometry.brep.exportDXF(dxfEntities(drawn)) } : {}),
+    ...png,
+    ...(drawn.bounds ? { bounds: drawn.bounds } : {}),
+    layers,
+    cut: drawn.cut,
+    beyond: drawn.beyond,
+    skipped: drawn.skipped,
+  };
+}
 
 function send(msg: WorkerMessage): void {
   process.send?.(msg);
@@ -47,6 +91,27 @@ async function handle(req: WorkerRequest): Promise<void> {
         const ctx = current?.evalContext?.();
         if (ctx === undefined) throw new Error('this worker holds no build to run code against');
         send({ type: 'reply', id: req.id, result: await evalInBuild(ctx, req.args.code) });
+        return;
+      }
+      case 'drawing': {
+        if (current === undefined) throw new Error('this worker holds no build to draw');
+        send({ type: 'reply', id: req.id, result: await drawing(current, req.args) });
+        return;
+      }
+      case 'spaces': {
+        const geometry = current?.geometry?.();
+        if (geometry === undefined) throw new Error('this worker holds no build to measure');
+        const result = req.args.ids.map((id) =>
+          measureSpace(geometry.brep, id, geometry.shapes.get(id) ?? [])
+        );
+        send({ type: 'reply', id: req.id, result });
+        return;
+      }
+      case 'cobie': {
+        if (current?.cobie === undefined) {
+          throw new Error('COBie needs a families build; an imported IFC file has no BIM model');
+        }
+        send({ type: 'reply', id: req.id, result: await current.cobie(req.args) });
         return;
       }
       case 'validate': {

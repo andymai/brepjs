@@ -111,6 +111,7 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
   const diagnostics: BuildDiagnostic[] = [];
   const { elements, root, idOf } = ifcRecords(model, diagnostics);
   let payload: PreviewModelPayload | undefined;
+  let shapes: Map<string, AnyShape[]> | undefined;
   return {
     outcome: {
       ok: true,
@@ -128,6 +129,17 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
     payload: () => (payload ??= previewBuildOf(ifcNodes(brep, model, idOf), null).payload),
     evalContext: () => ({ ...baseEvalContext(brep, 'ifc', elements), model }),
     validate: (checks) => validateIfc(bim, bytes, model, idOf, new Set(checks)),
+    geometry: () => {
+      if (shapes === undefined) {
+        shapes = new Map();
+        for (const el of model.elements) {
+          const id = idOf.get(el.expressId);
+          const solids = el.geometry.solids ?? [];
+          if (id !== undefined && solids.length > 0) shapes.set(id, solids as AnyShape[]);
+        }
+      }
+      return { brep, shapes };
+    },
   };
 }
 

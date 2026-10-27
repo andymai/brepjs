@@ -16,6 +16,9 @@ import type { CheckName, ValidateOutcome } from './validate.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { WorkerOps } from './protocol.js';
 import type { RenderRequest, ShotCamera } from './render.js';
+import type { DrawingArgs, DrawingOutcome } from './protocol.js';
+import type { SpaceGeometry } from './spaces.js';
+import type { CobieArgs, CobieOutcome } from './cobie.js';
 import { sourceSetOf, type SourceSet } from './sources.js';
 import { SessionWorker, WorkerError } from './workerClient.js';
 
@@ -455,6 +458,73 @@ export class SessionManager {
     });
   }
 
+  /**
+   * Draw a plan or section of the session's current build. `prepare` runs on the session's turn
+   * and picks what to draw from the build it sees; undefined args draw nothing.
+   */
+  drawing<T>(
+    id: string,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined },
+    prepare: (session: Session) => { readonly args?: DrawingArgs | undefined; readonly meta: T }
+  ): Promise<{ readonly session: Session; readonly outcome?: DrawingOutcome; readonly meta: T }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'drawing', async (session) => {
+      const { args, meta } = prepare(session);
+      if (args === undefined) return { session, meta };
+      return {
+        session,
+        outcome: await this.#request(session, 'drawing', args, opts.timeoutMs),
+        meta,
+      };
+    });
+  }
+
+  /** Measure the floor outline, area and volume of each space `pick` names in the current build. */
+  spaces<T>(
+    id: string,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined },
+    pick: (session: Session) => { readonly ids: readonly string[]; readonly meta: T }
+  ): Promise<{
+    readonly session: Session;
+    readonly buildHash: string;
+    readonly geometry: readonly SpaceGeometry[];
+    readonly meta: T;
+  }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'space takeoff', async (session) => {
+      const buildHash = session.build.buildHash;
+      const { ids, meta } = pick(session);
+      const geometry =
+        ids.length === 0 ? [] : await this.#request(session, 'spaces', { ids }, opts.timeoutMs);
+      return { session, buildHash, geometry, meta };
+    });
+  }
+
+  /** COBie sheets for a families session's current build. */
+  cobie(
+    id: string,
+    args: CobieArgs,
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
+  ): Promise<{
+    readonly session: Session;
+    readonly buildHash: string;
+    readonly outcome: CobieOutcome;
+  }> {
+    const session = this.get(id);
+    if (session.kind === 'ifc') {
+      throw new SessionError(
+        'NOT_SUPPORTED',
+        `session ${id} is an imported IFC file; brepjs-bim derives COBie from a model it builds, so open the families program instead`
+      );
+    }
+    return this.#onCurrentBuild(id, opts.expectBuild, 'COBie export', async (s) => {
+      const buildHash = s.build.buildHash;
+      return {
+        session: s,
+        buildHash,
+        outcome: await this.#request(s, 'cobie', args, opts.timeoutMs),
+      };
+    });
+  }
+
   /** Run agent code against the session's current build, in its worker. */
   evalCode(
     id: string,
@@ -513,7 +583,7 @@ export class SessionManager {
   }
 
   /** A request to the session's live worker. A timeout stops the worker; rebuild starts a new one. */
-  async #request<K extends 'render' | 'exportIfc' | 'eval' | 'quantities' | 'validate'>(
+  async #request<K extends Exclude<keyof WorkerOps, 'build'>>(
     session: Session,
     op: K,
     args: WorkerOps[K]['args'],
@@ -531,13 +601,17 @@ export class SessionManager {
     } catch (e) {
       const stopped =
         e instanceof WorkerError ? '; the worker stopped, so rebuild before trying again' : '';
-      const code = {
+      const codes: Record<Exclude<keyof WorkerOps, 'build'>, string> = {
         render: 'RENDER_FAILED',
         exportIfc: 'EXPORT_FAILED',
         eval: 'EVAL_FAILED',
         quantities: 'QUANTITIES_FAILED',
         validate: 'VALIDATE_FAILED',
-      }[op];
+        drawing: 'DRAWING_FAILED',
+        spaces: 'SPACES_FAILED',
+        cobie: 'COBIE_FAILED',
+      };
+      const code = codes[op];
       throw new SessionError(code, `${errorMessage(e)}${stopped}`);
     }
   }

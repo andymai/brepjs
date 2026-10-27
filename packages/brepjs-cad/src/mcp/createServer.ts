@@ -22,6 +22,7 @@ import { listReferenceResources, readReferenceResource, referenceTools } from '.
 import { scheduleTools } from './scheduleTools.js';
 import { checkTools } from './checkTools.js';
 import { issueTools } from './issueTools.js';
+import { drawingTools } from './drawingTools.js';
 import { ArgError, errorResult, listTools, type ToolArgs, type ToolDef } from './registry.js';
 import {
   listSessionResources,
@@ -152,6 +153,7 @@ export function createBrepMcpServer(
     ...scheduleTools(sessions, confirm),
     ...checkTools(sessions),
     ...issueTools(sessions, confirm),
+    ...drawingTools(sessions, confirm),
     ...referenceTools(reference),
   ];
   const byName = new Map(tools.map((t) => [t.name, t]));
