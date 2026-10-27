@@ -324,8 +324,9 @@ fit a cylinder within tolerance all surface as warnings inside the `Ok` payload 
 sheet-metal structure is detected at all, e.g. a bare sphere). The detection is validated by an oracle:
 author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
 authored unfold's developed area, bend count, flat count, and total flat bbox with no warnings (single bend,
-plus the L-bracket, U-channel, and four-sided tray at thicknesses 1, 1.5, 2, and 3 against a 2 mm inner
-radius), reading only the solid, never the feature tree.
+L-bracket, U-channel, and four-sided tray at thicknesses 1, 1.5, 2, and 3 against a 2 mm inner radius, both
+as authored and with each side of the bent profile merged into one face, as most CAD exports carry it),
+reading only the solid, never the feature tree.
 
 ## Bend tables
 

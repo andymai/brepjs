@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
-import { cylinder, sphere, box, fuse, translate, getFaces, getSurfaceType } from 'brepjs';
+import {
+  cylinder,
+  sphere,
+  box,
+  fuse,
+  translate,
+  simplify,
+  unwrap,
+  getFaces,
+  getSurfaceType,
+} from 'brepjs';
 import type { Solid, Face } from 'brepjs';
 import { authorPart } from '../src/authorFns.js';
 import { unfold } from '../src/unfoldFns.js';
@@ -67,7 +77,13 @@ describe('fitCylinder — accuracy vs a known primitive', () => {
 });
 
 describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid)', () => {
-  function oracle(name: string, spec: AuthorSpec, expectedBends: number, expectedFlats: number): void {
+  function oracle(
+    name: string,
+    spec: AuthorSpec,
+    expectedBends: number,
+    expectedFlats: number,
+    mergeFaces = false
+  ): void {
     const part = authorPart(spec);
     expect(part.ok, `${name}: author`).toBe(true);
     if (!part.ok) return;
@@ -77,9 +93,12 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
     const solid = part.value.solid;
     expect(solid).toBeDefined();
     if (solid === undefined) return;
+    // Fusion and Onshape exports carry one side face per side of the whole bent
+    // profile; simplify() merges the authored per-panel side faces the same way.
+    using merged = mergeFaces ? unwrap(simplify(solid)) : null;
 
     // The foreign path receives ONLY the solid — never part.bends / part.flanges.
-    const foreign = unfoldForeignSolid(solid, { kFactor: 0.5 });
+    const foreign = unfoldForeignSolid(merged ?? solid, { kFactor: 0.5 });
     expect(foreign.ok, `${name}: foreign unfold`).toBe(true);
     if (!foreign.ok) return;
     expect(foreign.value.warnings, `${name}: foreign warnings`).toEqual([]);
@@ -148,54 +167,76 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
   });
 
   describe.each([1, 1.5, 2, 3])('at thickness %s (inner radius 2)', (thickness) => {
-    it('L-bracket', () => {
-      oracle(
-        `L@${thickness}`,
-        {
-          thickness,
-          base: { length: 40, width: 40 },
-          flanges: [
-            { id: 'fx', length: 18, angleDeg: 90, rule, side: 'xmax' },
-            { id: 'fy', length: 18, angleDeg: 90, rule, side: 'ymax' },
-          ],
-        },
-        2,
-        3
-      );
-    });
+    describe.each([
+      ['as authored', false],
+      ['with merged side faces', true],
+    ])('%s', (_label, mergeFaces) => {
+      it('single bend', () => {
+        oracle(
+          `single@${thickness}`,
+          {
+            thickness,
+            base: { length: 40, width: 40 },
+            flanges: [{ id: 'f', length: 18, angleDeg: 90, rule, side: 'xmax' }],
+          },
+          1,
+          2,
+          mergeFaces
+        );
+      });
 
-    it('U-channel', () => {
-      oracle(
-        `U@${thickness}`,
-        {
-          thickness,
-          base: { length: 60, width: 30 },
-          flanges: [
-            { id: 'left', length: 18, angleDeg: 90, rule, side: 'xmin' },
-            { id: 'right', length: 18, angleDeg: 90, rule, side: 'xmax' },
-          ],
-        },
-        2,
-        3
-      );
-    });
+      it('L-bracket', () => {
+        oracle(
+          `L@${thickness}`,
+          {
+            thickness,
+            base: { length: 40, width: 40 },
+            flanges: [
+              { id: 'fx', length: 18, angleDeg: 90, rule, side: 'xmax' },
+              { id: 'fy', length: 18, angleDeg: 90, rule, side: 'ymax' },
+            ],
+          },
+          2,
+          3,
+          mergeFaces
+        );
+      });
 
-    it('4-sided tray', () => {
-      oracle(
-        `tray@${thickness}`,
-        {
-          thickness,
-          base: { length: 50, width: 40 },
-          flanges: [
-            { id: 'xn', length: 12, angleDeg: 90, rule, side: 'xmin' },
-            { id: 'xp', length: 12, angleDeg: 90, rule, side: 'xmax' },
-            { id: 'yn', length: 12, angleDeg: 90, rule, side: 'ymin' },
-            { id: 'yp', length: 12, angleDeg: 90, rule, side: 'ymax' },
-          ],
-        },
-        4,
-        5
-      );
+      it('U-channel', () => {
+        oracle(
+          `U@${thickness}`,
+          {
+            thickness,
+            base: { length: 60, width: 30 },
+            flanges: [
+              { id: 'left', length: 18, angleDeg: 90, rule, side: 'xmin' },
+              { id: 'right', length: 18, angleDeg: 90, rule, side: 'xmax' },
+            ],
+          },
+          2,
+          3,
+          mergeFaces
+        );
+      });
+
+      it('4-sided tray', () => {
+        oracle(
+          `tray@${thickness}`,
+          {
+            thickness,
+            base: { length: 50, width: 40 },
+            flanges: [
+              { id: 'xn', length: 12, angleDeg: 90, rule, side: 'xmin' },
+              { id: 'xp', length: 12, angleDeg: 90, rule, side: 'xmax' },
+              { id: 'yn', length: 12, angleDeg: 90, rule, side: 'ymin' },
+              { id: 'yp', length: 12, angleDeg: 90, rule, side: 'ymax' },
+            ],
+          },
+          4,
+          5,
+          mergeFaces
+        );
+      });
     });
   });
 });

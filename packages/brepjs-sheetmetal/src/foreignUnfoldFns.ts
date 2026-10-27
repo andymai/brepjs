@@ -7,6 +7,7 @@ import {
   err,
   validationError,
   getFaces,
+  getEdges,
   getSurfaceType,
   pointOnSurface,
   normalAt,
@@ -14,6 +15,7 @@ import {
   sharedEdges,
   measureArea,
   measureDistance,
+  measureLength,
   vertex,
   getBounds,
   isValid,
@@ -496,13 +498,11 @@ function pairFlats(
       // skip quietly. A face that is wide in BOTH in-plane directions is a real
       // panel; dropping it means non-uniform thickness or unrecognised topology, so
       // flag it. (Area alone can't tell them apart — a long rim is large by area.)
-      const db = getBounds(fa);
-      const ext = [db.xMax - db.xMin, db.yMax - db.yMin, db.zMax - db.zMin].sort((p, q) => q - p);
-      const inPlaneMin = ext[1] ?? 0;
-      if (inPlaneMin > thickness * 4) {
+      const size = inPlaneSize(fa);
+      if (size.short > thickness * 4) {
         warnings.push({
           code: 'DETECTION_INCOMPLETE',
-          message: `a panel-sized planar face (${(ext[0] ?? 0).toFixed(1)}×${inPlaneMin.toFixed(1)}) has no opposite face at the sheet thickness ${thickness.toFixed(3)}; omitted (possible non-uniform thickness)`,
+          message: `a panel-sized planar face (${size.long.toFixed(1)}×${size.short.toFixed(1)}) has no opposite face at the sheet thickness ${thickness.toFixed(3)}; omitted (possible non-uniform thickness)`,
         });
       }
       continue;
@@ -546,6 +546,32 @@ function pairFlats(
     });
   }
   return flats;
+}
+
+/**
+ * In-plane size of a planar face: the sides of the rectangle with the same area
+ * and perimeter. Unlike a world-axis bounding box it ignores orientation, and a
+ * strip of width w along any path (a merged side face tracing the whole bent
+ * profile) measures w wide.
+ */
+function inPlaneSize(face: Face): { long: number; short: number } {
+  const area = measureArea(face);
+  let perimeter = 0;
+  let measured = area.ok;
+  for (const edge of getEdges(face)) {
+    const len = measureLength(edge);
+    if (len.ok) perimeter += len.value;
+    else measured = false;
+  }
+  if (!measured || !area.ok) {
+    const b = getBounds(face);
+    const ext = [b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin].sort((p, q) => q - p);
+    return { long: ext[0] ?? 0, short: ext[1] ?? 0 };
+  }
+  const half = perimeter / 2;
+  const disc = half * half - 4 * area.value;
+  const short = disc > 0 ? (half - Math.sqrt(disc)) / 2 : half / 2;
+  return { long: half - short, short };
 }
 
 /**
