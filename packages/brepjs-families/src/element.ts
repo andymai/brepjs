@@ -4,11 +4,9 @@
  * and must stay pure: they return Elements, never touch kernel handles.
  */
 
+import { noteOrigin } from './sourceLocation.js';
 import type { ZodType } from 'zod';
-import {
-  validateCivilSemantics,
-  type EngineeringSemantics,
-} from './engineeringSemantics.js';
+import { validateCivilSemantics, type EngineeringSemantics } from './engineeringSemantics.js';
 
 export interface Element {
   readonly type: string | FamilyComponent<never>;
@@ -86,8 +84,7 @@ export interface FamilyComponent<P, I = P> {
   readonly archetype: string | undefined;
   /** Target-independent meaning owned by the Family definition. */
   readonly resolveSemanticsErased?:
-    | ((props: object) => EngineeringSemantics | undefined)
-    | undefined;
+    ((props: object) => EngineeringSemantics | undefined) | undefined;
   readonly renderErased: (props: object) => Element;
 }
 
@@ -103,10 +100,7 @@ export interface FamilyOptions<P = unknown, I = P> {
    */
   readonly archetype?: string | undefined;
   /** Target-independent meaning shared by, or derived for, Family Occurrences. */
-  readonly semantics?:
-    | EngineeringSemantics
-    | ((props: P) => EngineeringSemantics)
-    | undefined;
+  readonly semantics?: EngineeringSemantics | ((props: P) => EngineeringSemantics) | undefined;
   /** Optional Zod schema validated at element construction (the earliest
    *  point with a useful stack). Schema output replaces the props, so
    *  defaults and transforms apply before render — the output type must be
@@ -146,7 +140,12 @@ export function family<P extends object, I extends object = P>(
     }
     // Children are structure, not schema surface: they bypass validation and
     // reach the render function as `props.children` during resolution.
-    return { type: component, key, props: validated, children: normalizeChildren(children) };
+    return noteOrigin({
+      type: component,
+      key,
+      props: validated,
+      children: normalizeChildren(children),
+    });
   };
   const component: FamilyComponent<P, I> = Object.assign(make, {
     familyName: name,
@@ -174,7 +173,12 @@ export function el(
   const key = props['key'];
   const rest = { ...props };
   delete rest['key'];
-  return { type, key: typeof key === 'string' ? key : undefined, props: rest, children };
+  return noteOrigin({
+    type,
+    key: typeof key === 'string' ? key : undefined,
+    props: rest,
+    children,
+  });
 }
 
 export function isFamily(t: Element['type']): t is FamilyComponent<never> {

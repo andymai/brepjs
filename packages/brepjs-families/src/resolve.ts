@@ -12,6 +12,7 @@
 import { csg } from 'brepjs';
 import { archetypeOf, IDENTITY_PROPS, isFamily, typeNameOf, type Element } from './element.js';
 import type { EngineeringSemantics } from './engineeringSemantics.js';
+import { linkOrigin } from './sourceLocation.js';
 
 export type TransformOp =
   | { readonly op: 'translate'; readonly v: readonly [number, number, number] }
@@ -183,11 +184,13 @@ function applyOps(geometry: csg.IRNode, ops: readonly TransformOp[]): csg.IRNode
  *  geometry (identity fields untouched): synthesized openings and fills are
  *  cut in the host's LOCAL frame, so a transformed host must carry them. */
 function transformResolved(node: ResolvedElement, ops: readonly TransformOp[]): ResolvedElement {
-  return {
+  const moved = {
     ...node,
     geometry: applyOps(node.geometry, ops),
     children: node.children.map((c) => transformResolved(c, ops)),
   };
+  linkOrigin(moved, node);
+  return moved;
 }
 
 function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
@@ -213,7 +216,7 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
       // Fills resolve in the host's LOCAL frame; the host's own and inherited
       // transforms are applied afterwards via transformResolved.
       const fill = resolveAt(v, `${openingPath}/fill`, v.key !== undefined, []);
-      openings.push({
+      const opening: ResolvedElement = {
         type: 'Opening',
         archetype: 'opening',
         semantics: undefined,
@@ -225,7 +228,9 @@ function desugar(intrinsic: Element, hostPath: string | null): DesugarOut {
         attributes: {},
         relationships: [{ kind: 'Fills', target: fill.keyPath }],
         children: [fill],
-      });
+      };
+      linkOrigin(opening, fill);
+      openings.push(opening);
       hostRelationships.push({ kind: 'Voids', target: openingPath });
       tools.push(fill.geometry);
     } else {
@@ -295,7 +300,7 @@ function resolveAt(
     relationships.push({ kind: 'Contains', target: rc.keyPath });
   });
   children.push(...openings);
-  return {
+  const resolved: ResolvedElement = {
     type: typeName,
     archetype,
     semantics,
@@ -308,6 +313,8 @@ function resolveAt(
     relationships,
     children,
   };
+  linkOrigin(resolved, elem);
+  return resolved;
 }
 
 export function resolve(root: Element): ResolvedElement {

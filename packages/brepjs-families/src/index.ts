@@ -18,6 +18,7 @@ export {
 } from './element.js';
 export { jsx, jsxs, jsxDEV, Fragment } from './jsxRuntime.js';
 export { Box, Cylinder, Geometry, Group, type IntrinsicProps } from './intrinsics.js';
+export { captureSourceLocations, sourceOf, type SourceLocation } from './sourceLocation.js';
 export {
   resolve,
   tTranslate,

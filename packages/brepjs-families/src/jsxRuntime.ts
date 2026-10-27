@@ -13,6 +13,7 @@ import {
   type Element as ElementModel,
   type FamilyComponent,
 } from './element.js';
+import { noteOrigin } from './sourceLocation.js';
 
 type Element = ElementModel;
 
@@ -43,7 +44,7 @@ export function jsx(
   if (isFamily(type)) {
     return (type as FamilyComponent<object>)({ ...rest, key, children });
   }
-  return { type, key, props: rest, children };
+  return noteOrigin({ type, key, props: rest, children });
 }
 
 export const jsxs = jsx;
