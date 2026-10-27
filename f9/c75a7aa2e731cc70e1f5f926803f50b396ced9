@@ -1,0 +1,38 @@
+apps/docs/agent/bim-mcp.md
+  s_4d771e7bb40c3c::t_c214f23f786f0f 180
+packages/brepjs-cad/viewer/app.tsx
+  s_4d771e7bb40c3c::t_984d92201fb470 171-173,175-184
+  s_4d771e7bb40c3c::t_d85aecdb95d028 35,100,130,133,138
+packages/brepjs-cad/viewer/main.tsx
+  s_4d771e7bb40c3c::t_9239111c966263 73-127,200,266-267,270-271,273,275-292,310
+packages/brepjs-cad/src/mcp/viewerTools.ts
+  s_4d771e7bb40c3c::t_3cc77b5f2d6f91 13,63-67,84,117,155,178,250
+  s_4d771e7bb40c3c::t_d85aecdb95d028 176,262
+packages/brepjs-cad/tests/viewerTools.test.ts
+  s_4d771e7bb40c3c::t_9360b6b6df3d5f 131-134,140-148,164-185
+  s_4d771e7bb40c3c::t_cfb253bae04b26 186-188
+packages/brepjs-cad/src/preview/server.ts
+  s_4d771e7bb40c3c::t_9239111c966263 86
+  s_4d771e7bb40c3c::t_8d9f3600a739fc 10-11,27,41-45,95-100
+packages/brepjs-cad/viewer/src/useModel.ts
+  s_4d771e7bb40c3c::t_8d9f3600a739fc 16-24,78-81
+packages/brepjs-cad/src/session/sessions.ts
+  s_4d771e7bb40c3c::t_3cc77b5f2d6f91 72-98,396,400
+  s_4d771e7bb40c3c::t_d85aecdb95d028 63-64,296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9c75a7aa2e731cc70e1f5f926803f50b396ced9",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
