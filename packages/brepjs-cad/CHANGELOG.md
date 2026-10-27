@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.189.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.188.0...brepjs-cad-v0.189.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** draw plans and sections, measure spaces, export COBie ([#2466](https://github.com/andymai/brepjs/issues/2466)) ([65e6305](https://github.com/andymai/brepjs/commit/65e63055c34ce8f36ef4dbe6511d09edb4187e27))
+
 ## [0.188.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.187.0...brepjs-cad-v0.188.0) (2026-10-27)
 
 
