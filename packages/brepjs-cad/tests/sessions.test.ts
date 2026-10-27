@@ -142,4 +142,20 @@ describe('BIM sessions', () => {
     );
     sessions.close(s.id);
   });
+
+  it('stops a rebuild in progress, and the one queued behind it, when the session closes', async () => {
+    const r = await sessions.open('model.tsx', { typecheck: false });
+    if (!r.ok) throw new Error(JSON.stringify(r.diagnostics));
+    const s = r.session;
+    const first = sessions.rebuild(s.id);
+    const queued = sessions.rebuild(s.id);
+    while (s.building === undefined) await new Promise((done) => setTimeout(done, 10));
+    const candidate = s.building;
+    sessions.close(s.id);
+    await expect(first).rejects.toMatchObject({ code: 'NO_SUCH_SESSION' });
+    await expect(queued).rejects.toThrow(/closed before the rebuild started/);
+    expect(candidate.alive).toBe(false);
+    for (let i = 0; i < 100 && s.worker?.alive; i++) await new Promise((d) => setTimeout(d, 50));
+    expect(s.worker?.alive).toBe(false);
+  });
 });

@@ -44,6 +44,7 @@ describe('brep-mcp server', () => {
       'list_sessions',
       'close_model',
       'rebuild',
+      'get_diff',
       'query_elements',
       'get_elements',
     ]);
@@ -51,7 +52,7 @@ describe('brep-mcp server', () => {
       readOnlyHint: false,
       destructiveHint: true,
     });
-    for (const name of ['open_model', 'query_elements', 'get_elements', 'rebuild']) {
+    for (const name of ['open_model', 'query_elements', 'get_elements', 'rebuild', 'get_diff']) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
   });
@@ -132,6 +133,36 @@ describe('brep-mcp server', () => {
 
     const missing = await client.callTool({ name: 'rebuild', arguments: { sessionId: 's9' } });
     expect(payload(missing)).toMatchObject({ error: 'NO_SUCH_SESSION', open: ['s1'] });
+  });
+
+  it('pages through the last rebuild diff', async () => {
+    const none = await client.callTool({ name: 'get_diff', arguments: { sessionId: 's1' } });
+    expect(payload(none)['error']).toBe('NO_DIFF');
+
+    project.edit('doorAlong={2000}', 'doorAlong={1500}');
+    const rebuilt = payload(
+      await client.callTool({ name: 'rebuild', arguments: { sessionId: 's1' } })
+    );
+    expect(rebuilt['diff']).toMatchObject({
+      counts: { added: 0, removed: 0, changed: 4, unchanged: 8 },
+    });
+
+    const first = payload(
+      await client.callTool({ name: 'get_diff', arguments: { sessionId: 's1', limit: 3 } })
+    );
+    expect(first['previousBuildHash']).toBe(rebuilt['previousBuildHash']);
+    const page1 = first['diff'] as { changed: { id: string }[]; nextOffset?: number };
+    expect(page1.changed).toHaveLength(3);
+    expect(page1.nextOffset).toBe(3);
+    const second = payload(
+      await client.callTool({
+        name: 'get_diff',
+        arguments: { sessionId: 's1', offset: 3, limit: 3 },
+      })
+    );
+    const page2 = second['diff'] as { changed: { id: string }[]; nextOffset?: number };
+    expect(page2.changed.map((c) => c.id)).toEqual(['ground/lobby/south/voids:door/fill']);
+    expect(page2.nextOffset).toBeUndefined();
   });
 
   it('closes a session and drops it from the listing', async () => {

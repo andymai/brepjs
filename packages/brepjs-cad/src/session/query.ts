@@ -141,19 +141,54 @@ export function parseWhere(raw: unknown): Where {
   };
 }
 
-/** `*` and `?` stay inside one key-path segment; `**` crosses segments. */
-export function globToRegExp(glob: string, flags = ''): RegExp {
-  let re = '';
+const MAX_GLOB_LENGTH = 512;
+
+type GlobToken =
+  { readonly kind: 'char'; readonly c: string } | { readonly kind: '?' | '*' | '**' };
+
+/**
+ * Glob test where `*` and `?` stay inside one key-path segment and `**` crosses segments. It
+ * tracks the set of reachable text positions token by token, so the work is bounded by pattern
+ * length times text length: no backtracking, whatever the pattern.
+ */
+export function globMatcher(glob: string, ignoreCase = false): (text: string) => boolean {
+  if (glob.length > MAX_GLOB_LENGTH) {
+    throw new QueryError(`globs are limited to ${MAX_GLOB_LENGTH} characters`);
+  }
+  const fold = (x: string) => (ignoreCase ? x.toLowerCase() : x);
+  const tokens: GlobToken[] = [];
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i] as string;
     if (c === '*' && glob[i + 1] === '*') {
-      re += '.*';
+      tokens.push({ kind: '**' });
       i++;
-    } else if (c === '*') re += '[^/]*';
-    else if (c === '?') re += '[^/]';
-    else re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    } else if (c === '*' || c === '?') tokens.push({ kind: c });
+    else tokens.push({ kind: 'char', c: fold(c) });
   }
-  return new RegExp(`^${re}$`, flags);
+  return (raw) => {
+    const text = fold(raw);
+    const n = text.length;
+    let cur: boolean[] = Array.from({ length: n + 1 }, (_, i) => i === 0);
+    for (const t of tokens) {
+      const next: boolean[] = new Array<boolean>(n + 1).fill(false);
+      if (t.kind === 'char' || t.kind === '?') {
+        for (let i = 0; i < n; i++) {
+          if (!cur[i]) continue;
+          const ch = text[i];
+          if (t.kind === 'char' ? ch === t.c : ch !== '/') next[i + 1] = true;
+        }
+      } else {
+        let open = false;
+        for (let i = 0; i <= n; i++) {
+          if (cur[i]) open = true;
+          next[i] = open;
+          if (t.kind === '*' && text[i] === '/') open = false;
+        }
+      }
+      cur = next;
+    }
+    return cur[n] === true;
+  };
 }
 
 function lookupPath(root: unknown, path: readonly string[]): unknown {
@@ -234,17 +269,17 @@ export function matcher(where: Where): (rec: ElementRecord) => boolean {
     xs ? new Set(xs.map((x) => x.toLowerCase())) : undefined;
   const categories = lower(where.category);
   const families = lower(where.family);
-  const idRe = where.id !== undefined ? globToRegExp(where.id) : undefined;
-  const nameRe = where.name !== undefined ? globToRegExp(where.name, 'i') : undefined;
-  const storeyRe = where.storey !== undefined ? globToRegExp(where.storey, 'i') : undefined;
+  const idGlob = where.id !== undefined ? globMatcher(where.id) : undefined;
+  const nameGlob = where.name !== undefined ? globMatcher(where.name, true) : undefined;
+  const storeyGlob = where.storey !== undefined ? globMatcher(where.storey, true) : undefined;
   return (rec) => {
     if (categories && !categories.has(rec.category.toLowerCase())) return false;
     if (families && !families.has(rec.type.toLowerCase())) return false;
-    if (idRe && !idRe.test(rec.id)) return false;
-    if (nameRe && !(rec.name !== undefined && nameRe.test(rec.name))) return false;
-    if (storeyRe) {
+    if (idGlob && !idGlob(rec.id)) return false;
+    if (nameGlob && !(rec.name !== undefined && nameGlob(rec.name))) return false;
+    if (storeyGlob) {
       const s = rec.storey;
-      if (!s || !(s.id === where.storey || (s.name !== undefined && storeyRe.test(s.name))))
+      if (!s || !(s.id === where.storey || (s.name !== undefined && storeyGlob(s.name))))
         return false;
     }
     if (where.hasGeometry !== undefined && rec.hasGeometry !== where.hasGeometry) return false;

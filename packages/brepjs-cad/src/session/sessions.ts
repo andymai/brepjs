@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
-import { diffBuilds, type BuildDiff } from './diff.js';
+import { diffBuilds, newGeometryFailures, type BuildDiff } from './diff.js';
 import {
   canonicalJson,
   errorMessage,
@@ -46,7 +46,11 @@ export interface Session {
   readonly timeoutMs: number;
   readonly openedAt: Date;
   worker: SessionWorker | undefined;
+  /** The candidate worker of a rebuild in progress, killed if the session closes under it. */
+  building: SessionWorker | undefined;
   build: Build;
+  /** How the current build differs from the one before it, kept so large diffs can be paged. */
+  lastDiff: { readonly previousBuildHash: string; readonly diff: BuildDiff } | undefined;
   lastFailure: { readonly at: Date; readonly diagnostics: readonly BuildDiagnostic[] } | undefined;
   queue: Promise<unknown>;
 }
@@ -123,6 +127,7 @@ export class SessionManager {
   #nextId = 1;
   /** Opens still building, counted against the limit so concurrent opens can't overshoot it. */
   #opening = 0;
+  readonly #inflight = new Set<SessionWorker>();
 
   constructor(opts: SessionManagerOptions = {}) {
     this.#maxSessions = opts.maxSessions ?? DEFAULT_MAX_SESSIONS;
@@ -190,6 +195,8 @@ export class SessionManager {
       openedAt: new Date(),
       worker: attempt.worker,
       build: attempt.build,
+      building: undefined,
+      lastDiff: undefined,
       lastFailure: undefined,
       queue: Promise.resolve(),
     };
@@ -219,20 +226,47 @@ export class SessionManager {
   rebuild(id: string, opts: { readonly timeoutMs?: number } = {}): Promise<RebuildResult> {
     const session = this.get(id);
     // One build at a time per session; a second rebuild waits for the first and builds after it.
+    const closed = (when: string) =>
+      new SessionError('NO_SUCH_SESSION', `session '${session.id}' was closed ${when}`);
     const run = session.queue.then(async (): Promise<RebuildResult> => {
+      if (!this.#sessions.has(session.id)) throw closed('before the rebuild started');
       const started = Date.now();
-      const attempt = await this.#attempt(
-        session.kind,
-        session.path,
-        session.typecheck,
-        opts.timeoutMs ?? session.timeoutMs
-      );
+      let attempt: Attempt;
+      try {
+        attempt = await this.#attempt(
+          session.kind,
+          session.path,
+          session.typecheck,
+          opts.timeoutMs ?? session.timeoutMs,
+          (w) => (session.building = w)
+        );
+      } finally {
+        session.building = undefined;
+      }
       if (!this.#sessions.has(session.id)) {
         if (attempt.ok) attempt.worker.kill();
-        throw new SessionError(
-          'NO_SUCH_SESSION',
-          `session '${session.id}' was closed during the rebuild`
+        throw closed('during the rebuild');
+      }
+      const previous = session.build;
+      if (attempt.ok) {
+        // Geometry that fails now but built before is a broken edit, not a new good build. Failures
+        // the last good build already had don't block, or a model with one could never rebuild.
+        const broken = newGeometryFailures(
+          previous.summary.elements,
+          attempt.build.summary.elements
         );
+        if (broken.length > 0) {
+          attempt.worker.kill();
+          attempt = {
+            ok: false,
+            diagnostics: broken.map((r) => ({
+              severity: 'error',
+              code: 'ELEMENT_GEOMETRY_FAILED',
+              message: r.geometryError ?? 'geometry failed',
+              id: r.id,
+            })),
+          };
+        }
       }
       if (!attempt.ok) {
         session.lastFailure = { at: new Date(), diagnostics: attempt.diagnostics };
@@ -243,16 +277,17 @@ export class SessionManager {
           durationMs: Date.now() - started,
         };
       }
-      const previous = session.build;
+      const diff = diffBuilds(previous.summary.elements, attempt.build.summary.elements);
       session.worker?.kill();
       session.worker = attempt.worker;
       session.build = attempt.build;
+      session.lastDiff = { previousBuildHash: previous.buildHash, diff };
       session.lastFailure = undefined;
       return {
         ok: true,
         session,
         previousBuildHash: previous.buildHash,
-        diff: diffBuilds(previous.summary.elements, attempt.build.summary.elements),
+        diff,
         durationMs: Date.now() - started,
       };
     });
@@ -263,12 +298,14 @@ export class SessionManager {
   close(id: string): void {
     const s = this.get(id);
     s.worker?.kill();
+    s.building?.kill();
     this.#sessions.delete(id);
     this.#onChange?.();
   }
 
   closeAll(): void {
     for (const s of this.#sessions.values()) s.worker?.kill();
+    for (const w of this.#inflight) w.kill();
     this.#sessions.clear();
   }
 
@@ -286,19 +323,24 @@ export class SessionManager {
     kind: SessionKind,
     path: string,
     typecheck: boolean,
-    timeoutMs: number
+    timeoutMs: number,
+    onSpawn?: (worker: SessionWorker) => void
   ): Promise<Attempt> {
     const sources = await sourceSetOf(path, kind);
     const worker = new SessionWorker({
       cwd: this.#cwd,
       ...(this.#maxMemoryMb !== undefined ? { maxMemoryMb: this.#maxMemoryMb } : {}),
     });
+    this.#inflight.add(worker);
+    onSpawn?.(worker);
     let outcome;
     try {
       outcome = await worker.request('build', { kind, path, typecheck }, timeoutMs);
     } catch (e) {
       worker.kill();
       return { ok: false, diagnostics: [workerDiagnostic(e)] };
+    } finally {
+      this.#inflight.delete(worker);
     }
     if (!outcome.ok) {
       worker.kill();

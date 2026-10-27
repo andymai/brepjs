@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { diffBuilds } from '@/session/diff.js';
-import { breakdown, globToRegExp, matcher, parseWhere, project, tree } from '@/session/query.js';
+import { diffBuilds, newGeometryFailures } from '@/session/diff.js';
+import { breakdown, globMatcher, matcher, parseWhere, project, tree } from '@/session/query.js';
 import { canonicalJson, jsonSafe, type ElementRecord } from '@/session/records.js';
 
 function rec(id: string, over: Partial<ElementRecord> = {}): ElementRecord {
@@ -65,11 +65,23 @@ describe('session query', () => {
   });
 
   it('globs ids within a segment with * and across segments with **', () => {
-    expect(globToRegExp('ground/*/voids:*').test('ground/south/voids:entry')).toBe(true);
-    expect(globToRegExp('ground/*').test('ground/south/voids:entry')).toBe(false);
-    expect(globToRegExp('ground/**').test('ground/south/voids:entry')).toBe(true);
-    expect(globToRegExp('a.b').test('aXb')).toBe(false);
+    expect(globMatcher('ground/*/voids:*')('ground/south/voids:entry')).toBe(true);
+    expect(globMatcher('ground/*')('ground/south/voids:entry')).toBe(false);
+    expect(globMatcher('ground/**')('ground/south/voids:entry')).toBe(true);
+    expect(globMatcher('**/voids:?1')('ground/annex/voids:w1')).toBe(true);
+    expect(globMatcher('ground/?')('ground//')).toBe(false);
+    expect(globMatcher('a.b')('aXb')).toBe(false);
+    expect(globMatcher('SOUTH*', true)('south wall')).toBe(true);
+    expect(globMatcher('SOUTH*')('south wall')).toBe(false);
     expect(ids({ id: 'ground/*/voids:*' })).toEqual(['ground/south/voids:entry']);
+  });
+
+  it('matches backtracking-hostile globs in bounded time', () => {
+    const started = Date.now();
+    expect(globMatcher('*a'.repeat(30) + 'b')('a'.repeat(5000))).toBe(false);
+    expect(globMatcher('**a'.repeat(30) + 'b')('a/'.repeat(2500))).toBe(false);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(() => globMatcher('*'.repeat(600))).toThrow(/limited to 512/);
   });
 
   it('filters by storey name, element name, and geometry', () => {
@@ -209,6 +221,19 @@ describe('build diff', () => {
   });
 });
 
+describe('geometry regressions', () => {
+  it('flags only elements whose geometry newly fails', () => {
+    const before = [rec('a'), rec('b', { geometryError: 'already broken' })];
+    const after = [
+      rec('a', { geometryError: 'makeBox failed' }),
+      rec('b', { geometryError: 'still broken' }),
+      rec('c', { geometryError: 'new and broken' }),
+    ];
+    expect(newGeometryFailures(before, after).map((r) => r.id)).toEqual(['a', 'c']);
+    expect(newGeometryFailures(after, after)).toEqual([]);
+  });
+});
+
 describe('record projection', () => {
   it('turns nested elements into refs and drops functions', () => {
     const door = {
@@ -226,7 +251,22 @@ describe('record projection', () => {
     expect(jsonSafe({ node: { kind: 'Box', structuralHash: 1n } })).toEqual({
       node: { ir: 'Box' },
     });
-    expect(jsonSafe(new Float32Array(3))).toEqual({ typedArray: 'Float32Array', length: 12 });
+    expect(jsonSafe(new Float32Array([1, 2, 3]))).toEqual([1, 2, 3]);
+  });
+
+  it('keeps every entry, so an edit deep in a long array still changes the record', () => {
+    const long = Array.from({ length: 300 }, (_, i) => i);
+    const edited = [...long];
+    edited[250] = -1;
+    expect(jsonSafe(long)).toHaveLength(300);
+    expect(canonicalJson(jsonSafe({ xs: long }))).not.toBe(canonicalJson(jsonSafe({ xs: edited })));
+    const loop: Record<string, unknown> = { a: 1 };
+    loop['self'] = loop;
+    expect(jsonSafe(loop)).toEqual({ a: 1, self: '[circular]' });
+    expect(jsonSafe({ m: new Map([['k', 1]]), s: new Set([2]) })).toEqual({
+      m: { map: [['k', 1]] },
+      s: { set: [2] },
+    });
   });
 
   it('serializes equal objects identically regardless of key order', () => {

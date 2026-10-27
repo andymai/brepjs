@@ -83,8 +83,8 @@ export type BuildOutcome =
   | { readonly ok: true; readonly summary: BuildSummary }
   | { readonly ok: false; readonly diagnostics: readonly BuildDiagnostic[] };
 
-const MAX_DEPTH = 6;
-const MAX_ARRAY = 200;
+// A recursion backstop: the stack-of-ancestors check below is what stops cycles.
+const MAX_DEPTH = 64;
 
 function isPlainRecord(v: object): v is Record<string, unknown> {
   const proto: unknown = Object.getPrototypeOf(v);
@@ -105,32 +105,43 @@ function elementRef(v: Record<string, unknown>): Record<string, unknown> | undef
 }
 
 /**
- * Project an authored prop value onto JSON. Nested elements become `{ element, key }` refs, so an
- * edit to a child shows up on the child's record rather than on every ancestor holding it. CSG IR
- * nodes become `{ ir: kind }`; functions are dropped.
+ * Project an authored prop value onto JSON, losslessly for data, since records feed the build hash
+ * and the diff. Nested elements become `{ element, key }` refs, so an edit to a child shows up on
+ * the child's record rather than on every ancestor holding it. CSG IR nodes become `{ ir: kind }`;
+ * functions are dropped.
  */
-export function jsonSafe(value: unknown, depth = 0): unknown {
+export function jsonSafe(value: unknown): unknown {
+  return project(value, []);
+}
+
+function project(value: unknown, ancestors: object[]): unknown {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   if (typeof value === 'bigint') return value.toString();
   if (typeof value !== 'object') return undefined;
-  if (depth >= MAX_DEPTH) return '[depth limit]';
+  if (ancestors.includes(value)) return '[circular]';
+  if (ancestors.length >= MAX_DEPTH) return '[depth limit]';
+  const inner = [...ancestors, value];
+  const each = (v: unknown) => project(v, inner) ?? null;
   if (ArrayBuffer.isView(value)) {
-    return { typedArray: value.constructor.name, length: value.byteLength };
+    return value instanceof DataView
+      ? { dataView: value.byteLength }
+      : Array.from(value as unknown as ArrayLike<number | bigint>, each);
   }
-  if (Array.isArray(value)) {
-    const out = value.slice(0, MAX_ARRAY).map((v) => jsonSafe(v, depth + 1) ?? null);
-    if (value.length > MAX_ARRAY) out.push(`[${value.length - MAX_ARRAY} more]`);
-    return out;
-  }
+  if (Array.isArray(value)) return value.map(each);
+  if (value instanceof Map)
+    return { map: [...value.entries()].map(([k, v]) => [each(k), each(v)]) };
+  if (value instanceof Set) return { set: [...value].map(each) };
+  if (value instanceof Date) return value.toISOString();
   const rec = value as Record<string, unknown>;
   const ref = elementRef(rec);
   if (ref) return ref;
   if ('structuralHash' in rec && typeof rec['kind'] === 'string') return { ir: rec['kind'] };
-  if (!isPlainRecord(value)) return { object: value.constructor.name };
-  const out: Record<string, unknown> = {};
+  const out: Record<string, unknown> = isPlainRecord(value)
+    ? {}
+    : { object: value.constructor.name };
   for (const [k, v] of Object.entries(rec)) {
-    const safe = jsonSafe(v, depth + 1);
+    const safe = project(v, inner);
     if (safe !== undefined) out[k] = safe;
   }
   return out;

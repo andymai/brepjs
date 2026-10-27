@@ -19,7 +19,9 @@ import {
   tree,
   type FieldGroup,
 } from '../session/query.js';
+import type { BuildDiff } from '../session/diff.js';
 import type { BuildDiagnostic } from '../session/records.js';
+import { SessionError } from '../session/sessions.js';
 import type { Session, SessionManager } from '../session/sessions.js';
 import {
   ArgError,
@@ -38,8 +40,8 @@ const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 const MAX_IDS = 200;
 const MAX_DIAGNOSTICS = 50;
-const MAX_DIFF_IDS = 200;
-const MAX_DIFF_CHANGES = 100;
+const DIFF_PAGE = 100;
+const MAX_DIFF_PAGE = 500;
 
 const SESSION_ID = { type: 'string', description: 'Session id from open_model.' };
 const EXPECT_BUILD = {
@@ -71,6 +73,25 @@ function cap<T>(list: readonly T[], max: number, key: string): Record<string, un
   return {
     [key]: list.slice(0, max),
     ...(list.length > max ? { [`${key}Total`]: list.length } : {}),
+  };
+}
+
+/** One page of a diff: the same slice of the added, removed and changed lists, plus totals. */
+function diffPage(d: BuildDiff, offset: number, limit: number): Record<string, unknown> {
+  const page = <T>(xs: readonly T[]) => xs.slice(offset, offset + limit);
+  const longest = Math.max(d.added.length, d.removed.length, d.changed.length);
+  return {
+    counts: {
+      added: d.added.length,
+      removed: d.removed.length,
+      changed: d.changed.length,
+      unchanged: d.unchanged,
+    },
+    offset,
+    added: page(d.added),
+    removed: page(d.removed),
+    changed: page(d.changed),
+    ...(offset + limit < longest ? { nextOffset: offset + limit } : {}),
   };
 }
 
@@ -197,7 +218,7 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
       name: 'rebuild',
       title: 'Rebuild session',
       description:
-        "Re-read a session's source after you edit it and diff the new build against the last good one: added and removed ids, and for each changed element its prop, pset and identity before/after values, whether its geometry changed, and its volume (mm³) and bounds (mm) deltas. Check that the diff touches only the elements you meant to change. A failed rebuild keeps serving the last good build (servingLastGood: true) and returns the errors.",
+        "Re-read a session's source after you edit it and diff the new build against the last good one: added and removed ids, and for each changed element its prop, pset and identity before/after values, whether its geometry changed, and its volume (mm³) and bounds (mm) deltas. Check that the diff touches only the elements you meant to change. Each list holds the first 100 entries; when there are more, nextOffset is set and get_diff returns the rest. A rebuild fails when the program fails to build or when an element's geometry fails that built before; a failed rebuild keeps serving the last good build (servingLastGood: true) and returns the errors.",
       inputSchema: {
         type: 'object',
         properties: { sessionId: SESSION_ID, timeoutMs: TIMEOUT },
@@ -228,14 +249,42 @@ export function sessionTools(sessions: SessionManager): ToolDef[] {
           buildHash: r.session.build.buildHash,
           previousBuildHash: r.previousBuildHash,
           elementCount: r.session.build.summary.elements.length,
-          diff: {
-            ...cap(diff.added, MAX_DIFF_IDS, 'added'),
-            ...cap(diff.removed, MAX_DIFF_IDS, 'removed'),
-            ...cap(diff.changed, MAX_DIFF_CHANGES, 'changed'),
-            unchanged: diff.unchanged,
-          },
+          diff: diffPage(diff, 0, DIFF_PAGE),
           ...diagnostics(r.session.build.summary.diagnostics),
           durationMs: r.durationMs,
+        });
+      },
+    },
+    {
+      name: 'get_diff',
+      title: 'Get rebuild diff',
+      description:
+        "Page through the diff from the session's last successful rebuild, the one that produced its current build. Use it when a rebuild result sets nextOffset: each page holds the same slice of the added, removed and changed lists.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          sessionId: SESSION_ID,
+          expectBuild: EXPECT_BUILD,
+          offset: { type: 'number', description: 'Page start (default 0).' },
+          limit: {
+            type: 'number',
+            description: `Page size (default ${DIFF_PAGE}, max ${MAX_DIFF_PAGE}).`,
+          },
+        },
+        required: ['sessionId'],
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+      handler: (a) => {
+        const s = sessions.get(requireString(a, 'sessionId'), optionalString(a, 'expectBuild'));
+        if (s.lastDiff === undefined) {
+          throw new SessionError('NO_DIFF', `session ${s.id} has not been rebuilt since it opened`);
+        }
+        const limit = Math.min(optionalCount(a, 'limit') ?? DIFF_PAGE, MAX_DIFF_PAGE);
+        return jsonResult({
+          sessionId: s.id,
+          buildHash: s.build.buildHash,
+          previousBuildHash: s.lastDiff.previousBuildHash,
+          diff: diffPage(s.lastDiff.diff, optionalCount(a, 'offset') ?? 0, limit),
         });
       },
     },

@@ -171,3 +171,14 @@ export function diffBuilds(
   const removed = before.filter((r) => !next.has(r.id)).map((r) => r.id);
   return { added, removed, changed, unchanged };
 }
+
+/** Elements whose geometry fails in `next` but did not fail (or did not exist) in `previous`. */
+export function newGeometryFailures(
+  previous: readonly ElementRecord[],
+  next: readonly ElementRecord[]
+): ElementRecord[] {
+  const failedBefore = new Set(
+    previous.filter((r) => r.geometryError !== undefined).map((r) => r.id)
+  );
+  return next.filter((r) => r.geometryError !== undefined && !failedBefore.has(r.id));
+}
