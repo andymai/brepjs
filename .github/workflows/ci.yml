@@ -202,8 +202,9 @@ jobs:
     # brepjs-viewer dist first so the package typecheck/viewer build resolve their
     # types (brepjs-viewer is a runtime dep, not externalized). brepjs-families dist
     # is needed too: the TSX loader tests resolve brepjs-families/jsx-runtime through
-    # the workspace symlink. The setup composite restores the OCCT WASM the viewer
-    # build copies.
+    # the workspace symlink. brepjs-bim dist is needed for the MCP session worker's IFC
+    # import and its typed view of the package. The setup composite restores the OCCT WASM
+    # the viewer build copies.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -214,6 +215,7 @@ jobs:
       - run: npm run build
       - run: npm run build --workspace=brepjs-viewer
       - run: npm run build --workspace=brepjs-families
+      - run: npm run build --workspace=brepjs-bim
       - run: npm run typecheck --workspace=brepjs-cad
       - run: npm run lint --workspace=brepjs-cad
       - run: npm run test --workspace=brepjs-cad
