@@ -109,20 +109,25 @@ export function fitCylinder(face: Face): FittedCylinder | null {
   if (axisDir === null) return null;
 
   // Project points onto the plane ⟂ axis (in a local 2D basis) and fit a circle.
+  // Coordinates are taken relative to the sample centroid: the least-squares
+  // system in world coordinates loses the radius to cancellation once the part
+  // sits far from the origin, as parts in an assembly export usually do.
   const basis = perpBasis(axisDir);
-  const pts2: [number, number][] = samples.map((s) => [
-    vecDot(s.point, basis.e1),
-    vecDot(s.point, basis.e2),
-  ]);
+  let centroid: Vec3 = [0, 0, 0];
+  for (const s of samples) centroid = vecAdd(centroid, s.point);
+  centroid = vecScale(centroid, 1 / samples.length);
+  const pts2: [number, number][] = samples.map((s) => {
+    const d = vecSub(s.point, centroid);
+    return [vecDot(d, basis.e1), vecDot(d, basis.e2)];
+  });
   const circle = fitCircle2(pts2);
   if (circle === null) return null;
 
-  // Lift the 2D centre back to a 3D point on the axis: use the axial component of
-  // an arbitrary sample so the origin sits at a real location on the face.
-  const axial = vecDot(samples[0]?.point ?? [0, 0, 0], axisDir);
+  // Lift the 2D centre back to a 3D point on the axis, level with the centroid so
+  // the origin sits at a real location along the face.
   const axisOrigin = vecAdd(
-    vecAdd(vecScale(basis.e1, circle.cx), vecScale(basis.e2, circle.cy)),
-    vecScale(axisDir, axial)
+    centroid,
+    vecAdd(vecScale(basis.e1, circle.cx), vecScale(basis.e2, circle.cy))
   );
 
   // Radius = mean distance from the axis line to the sampled points; residual is

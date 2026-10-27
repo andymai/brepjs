@@ -75,6 +75,23 @@ describe('fitCylinder — accuracy vs a known primitive', () => {
     expect(aligned).toBeCloseTo(1, 5);
   });
 
+  it.each([1.5, 4])('recovers a radius-%s cylinder placed far from the origin', (radius) => {
+    using cyl = cylinder(radius, 6, { at: [620, 637, 1022], axis: [0, 1, 0] });
+    const face = cylindricalFace(cyl);
+    expect(face).toBeDefined();
+    if (face === undefined) return;
+
+    const fit = fitCylinder(face);
+    expect(fit).not.toBeNull();
+    if (fit === null) return;
+
+    expect(fit.radius).toBeCloseTo(radius, 6);
+    expect(Math.abs(fit.axisDir[1])).toBeCloseTo(1, 6);
+    expect(fit.residual).toBeLessThan(1e-6);
+    expect(fit.axisOrigin[0]).toBeCloseTo(620, 6);
+    expect(fit.axisOrigin[2]).toBeCloseTo(1022, 6);
+  });
+
   it('returns null for a non-cylindrical (spherical) face', () => {
     const sph = sphere(4, { at: [0, 0, 0] });
     for (const f of getFaces<'3D'>(sph)) {
@@ -84,12 +101,28 @@ describe('fitCylinder — accuracy vs a known primitive', () => {
 });
 
 describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads only the solid)', () => {
+  type Variant = 'as authored' | 'with merged side faces' | 'placed far from the origin';
+
+  function prepare(solid: Solid, variant: Variant): Solid | null {
+    switch (variant) {
+      case 'as authored':
+        return null;
+      // Fusion and Onshape exports carry one side face per side of the whole bent
+      // profile; simplify() merges the authored per-panel side faces the same way.
+      case 'with merged side faces':
+        return unwrap(simplify(solid));
+      // Parts in an assembly export keep their assembly placement, often a metre out.
+      case 'placed far from the origin':
+        return translate(solid, [600, 600, 1000]);
+    }
+  }
+
   function oracle(
     name: string,
     spec: AuthorSpec,
     expectedBends: number,
     expectedFlats: number,
-    mergeFaces = false
+    variant: Variant = 'as authored'
   ): void {
     const part = authorPart(spec);
     expect(part.ok, `${name}: author`).toBe(true);
@@ -100,12 +133,10 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
     const solid = part.value.solid;
     expect(solid).toBeDefined();
     if (solid === undefined) return;
-    // Fusion and Onshape exports carry one side face per side of the whole bent
-    // profile; simplify() merges the authored per-panel side faces the same way.
-    using merged = mergeFaces ? unwrap(simplify(solid)) : null;
+    using prepared = prepare(solid, variant);
 
     // The foreign path receives ONLY the solid — never part.bends / part.flanges.
-    const foreign = unfoldForeignSolid(merged ?? solid, { kFactor: 0.5 });
+    const foreign = unfoldForeignSolid(prepared ?? solid, { kFactor: 0.5 });
     expect(foreign.ok, `${name}: foreign unfold`).toBe(true);
     if (!foreign.ok) return;
     expect(foreign.value.warnings, `${name}: foreign warnings`).toEqual([]);
@@ -174,10 +205,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
   });
 
   describe.each([1, 1.5, 2, 3])('at thickness %s (inner radius 2)', (thickness) => {
-    describe.each([
-      ['as authored', false],
-      ['with merged side faces', true],
-    ])('%s', (_label, mergeFaces) => {
+    describe.each<Variant>(['as authored', 'with merged side faces', 'placed far from the origin'])('%s', (variant) => {
       it('single bend', () => {
         oracle(
           `single@${thickness}`,
@@ -188,7 +216,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
           },
           1,
           2,
-          mergeFaces
+          variant
         );
       });
 
@@ -205,7 +233,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
           },
           2,
           3,
-          mergeFaces
+          variant
         );
       });
 
@@ -222,7 +250,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
           },
           2,
           3,
-          mergeFaces
+          variant
         );
       });
 
@@ -241,7 +269,7 @@ describe('unfoldForeignSolid — author→solid→foreign-unfold oracle (reads o
           },
           4,
           5,
-          mergeFaces
+          variant
         );
       });
     });
