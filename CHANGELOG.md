@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.11.1](https://github.com/andymai/brepjs/compare/brepjs-v20.11.0...brepjs-v20.11.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **io:** write R12 polylines and read polylines back from DXF ([#2470](https://github.com/andymai/brepjs/issues/2470)) ([a743c4f](https://github.com/andymai/brepjs/commit/a743c4f3aa65ba58073c43a3840f411be2ac1863))
+
 ## [20.11.0](https://github.com/andymai/brepjs/compare/brepjs-v20.10.3...brepjs-v20.11.0) (2026-10-25)
 
 
