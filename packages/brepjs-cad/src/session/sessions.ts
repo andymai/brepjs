@@ -128,6 +128,8 @@ export class SessionManager {
   /** Opens still building, counted against the limit so concurrent opens can't overshoot it. */
   #opening = 0;
   readonly #inflight = new Set<SessionWorker>();
+  /** Bumped by closeAll, so an open that started before it doesn't spawn a worker after it. */
+  #epoch = 0;
 
   constructor(opts: SessionManagerOptions = {}) {
     this.#maxSessions = opts.maxSessions ?? DEFAULT_MAX_SESSIONS;
@@ -172,9 +174,12 @@ export class SessionManager {
     const typecheck = opts.typecheck ?? true;
     const timeoutMs = opts.timeoutMs ?? DEFAULT_BUILD_TIMEOUT_MS;
     this.#opening++;
+    const epoch = this.#epoch;
     let attempt: Attempt;
     try {
-      attempt = await this.#attempt(kind, abs, typecheck, timeoutMs);
+      attempt = await this.#attempt(kind, abs, typecheck, timeoutMs, {
+        wanted: () => epoch === this.#epoch,
+      });
     } finally {
       this.#opening--;
     }
@@ -238,7 +243,10 @@ export class SessionManager {
           session.path,
           session.typecheck,
           opts.timeoutMs ?? session.timeoutMs,
-          (w) => (session.building = w)
+          {
+            wanted: () => this.#sessions.has(session.id),
+            onSpawn: (w) => (session.building = w),
+          }
         );
       } finally {
         session.building = undefined;
@@ -306,6 +314,7 @@ export class SessionManager {
   closeAll(): void {
     for (const s of this.#sessions.values()) s.worker?.kill();
     for (const w of this.#inflight) w.kill();
+    this.#epoch++;
     this.#sessions.clear();
   }
 
@@ -324,15 +333,27 @@ export class SessionManager {
     path: string,
     typecheck: boolean,
     timeoutMs: number,
-    onSpawn?: (worker: SessionWorker) => void
+    hooks: {
+      /** Re-checked after the source scan: a close during it must not lead to a spawn. */
+      readonly wanted?: () => boolean;
+      readonly onSpawn?: (worker: SessionWorker) => void;
+    } = {}
   ): Promise<Attempt> {
     const sources = await sourceSetOf(path, kind);
+    if (hooks.wanted?.() === false) {
+      return {
+        ok: false,
+        diagnostics: [
+          { severity: 'error', code: 'CANCELLED', message: 'closed before the build started' },
+        ],
+      };
+    }
     const worker = new SessionWorker({
       cwd: this.#cwd,
       ...(this.#maxMemoryMb !== undefined ? { maxMemoryMb: this.#maxMemoryMb } : {}),
     });
     this.#inflight.add(worker);
-    onSpawn?.(worker);
+    hooks.onSpawn?.(worker);
     let outcome;
     try {
       outcome = await worker.request('build', { kind, path, typecheck }, timeoutMs);

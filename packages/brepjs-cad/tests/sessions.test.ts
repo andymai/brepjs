@@ -158,4 +158,31 @@ describe('BIM sessions', () => {
     for (let i = 0; i < 100 && s.worker?.alive; i++) await new Promise((d) => setTimeout(d, 50));
     expect(s.worker?.alive).toBe(false);
   });
+
+  it('cancels a slow rebuild promptly when the session closes as it starts', async () => {
+    writeFileSync(
+      join(project.dir, 'slow.ts'),
+      [
+        "import { existsSync } from 'node:fs';",
+        "import { el } from 'brepjs-families';",
+        'export default () => {',
+        "  if (existsSync(new URL('./slow.flag', import.meta.url))) {",
+        '    const end = Date.now() + 15000;',
+        '    while (Date.now() < end) {}',
+        '  }',
+        "  return el('Box', { key: 'b', size: [1, 1, 1] });",
+        '};',
+        '',
+      ].join('\n')
+    );
+    const r = await sessions.open('slow.ts', { typecheck: false });
+    if (!r.ok) throw new Error(JSON.stringify(r.diagnostics));
+    writeFileSync(join(project.dir, 'slow.flag'), '');
+    const rebuilding = sessions.rebuild(r.session.id, { timeoutMs: 60000 });
+    await new Promise((done) => setImmediate(done));
+    const closedAt = Date.now();
+    sessions.close(r.session.id);
+    await expect(rebuilding).rejects.toMatchObject({ code: 'NO_SUCH_SESSION' });
+    expect(Date.now() - closedAt).toBeLessThan(5000);
+  });
 });
