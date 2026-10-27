@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.11.0](https://github.com/andymai/brepjs/compare/brepjs-v20.10.3...brepjs-v20.11.0) (2026-10-25)
+
+
+### Features
+
+* **deps:** bump the actions-minor-patch group with 3 updates ([#2438](https://github.com/andymai/brepjs/issues/2438)) ([9223438](https://github.com/andymai/brepjs/commit/9223438c5a74bcf3df7f35ad1ca709b579ef3ee9))
+
 ## [20.10.3](https://github.com/andymai/brepjs/compare/brepjs-v20.10.2...brepjs-v20.10.3) (2026-10-24)
 
 

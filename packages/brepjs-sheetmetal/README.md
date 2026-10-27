@@ -300,13 +300,20 @@ authored path. It reads only the B-rep:
   other surface type (cone, sphere, spline, …) is reported `UNSUPPORTED_FACE` and skipped (the unfold never
   silently invents a flat for an unrecognised face).
 - **Pair flats**: the two large parallel planar faces of a panel, a sheet thickness apart, are the
-  mid-surface flat. Thickness is detected as the smallest opposed-planar-pair gap.
+  mid-surface flat. Two antiparallel faces count as opposed only when they face each other (an interior
+  point of one projects inside the other), so a flange's end cap and the adjacent flange's inner face, a
+  bend radius apart across a corner, never pair. Thickness is detected as the smallest opposed-planar-pair
+  gap.
 - **Fit bends**: `fitCylinder(face)` recovers a bend's axis + radius + swept angle from sampled points and
   normals. The axis direction is the common perpendicular of the sampled normals (every cylinder normal is
   ⟂ the axis), recovered as the sign-aligned average of cross products of non-parallel normal pairs; the
-  axis line and radius come from a least-squares circle fit of the points projected onto the plane ⟂ axis;
-  the radius is the mean point-to-axis distance. A fit whose residual exceeds tolerance is rejected (warned).
-  Recovery is high-precision: radius and axis of a known `cylinder()` primitive are recovered to ~1e-6.
+  axis line and radius come from a least-squares circle fit of the points projected onto the plane ⟂ axis,
+  taken relative to their centroid so a part a metre from the origin fits as precisely as one at it; the
+  radius is the mean point-to-axis distance. A fit whose residual exceeds tolerance is rejected (warned).
+  Recovery is high-precision: radius and axis of a known `cylinder()` primitive are recovered to ~1e-6. A
+  bend's inner and outer faces pair only when they share an axis line, differ in radius by the sheet
+  thickness, and overlap along the axis, so matching corner rounds or holes on two parallel walls stay
+  apart.
 - **Build the bend graph** (flats = nodes; a bend connects the two flats it shares edges with), take a
   spanning tree from a root flat, and turn non-tree bends into seam cuts (`SEAM_CUT`, warned).
 - **Unfold** by walking the tree, replacing each cylindrical region with a developed strip of length
@@ -320,8 +327,10 @@ non-uniform thickness, conical/spline bend faces, non-manifold / non-sheet topol
 fit a cylinder within tolerance all surface as warnings inside the `Ok` payload (or a clear `Err` when no
 sheet-metal structure is detected at all, e.g. a bare sphere). The detection is validated by an oracle:
 author a part, take only its `.solid`, run `unfoldSolid`, and confirm the detected unfold reproduces the
-authored unfold's developed area, bend count, flat count, and total flat bbox (single bend, L-bracket,
-U-channel), reading only the solid, never the feature tree.
+authored unfold's developed area, bend count, flat count, and total flat bbox with no warnings (single bend,
+L-bracket, U-channel, and four-sided tray at thicknesses 1, 1.5, 2, and 3 against a 2 mm inner radius: as
+authored, with each side of the bent profile merged into one face as most CAD exports carry it, and placed a
+metre from the origin as parts in an assembly export are), reading only the solid, never the feature tree.
 
 ## Bend tables
 

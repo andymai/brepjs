@@ -7,12 +7,16 @@ import {
   err,
   validationError,
   getFaces,
+  getEdges,
   getSurfaceType,
   pointOnSurface,
   normalAt,
   faceCenter,
   sharedEdges,
   measureArea,
+  measureDistance,
+  measureLength,
+  vertex,
   getBounds,
   isValid,
   vecAdd,
@@ -105,20 +109,25 @@ export function fitCylinder(face: Face): FittedCylinder | null {
   if (axisDir === null) return null;
 
   // Project points onto the plane ⟂ axis (in a local 2D basis) and fit a circle.
+  // Coordinates are taken relative to the sample centroid: the least-squares
+  // system in world coordinates loses the radius to cancellation once the part
+  // sits far from the origin, as parts in an assembly export usually do.
   const basis = perpBasis(axisDir);
-  const pts2: [number, number][] = samples.map((s) => [
-    vecDot(s.point, basis.e1),
-    vecDot(s.point, basis.e2),
-  ]);
+  let centroid: Vec3 = [0, 0, 0];
+  for (const s of samples) centroid = vecAdd(centroid, s.point);
+  centroid = vecScale(centroid, 1 / samples.length);
+  const pts2: [number, number][] = samples.map((s) => {
+    const d = vecSub(s.point, centroid);
+    return [vecDot(d, basis.e1), vecDot(d, basis.e2)];
+  });
   const circle = fitCircle2(pts2);
   if (circle === null) return null;
 
-  // Lift the 2D centre back to a 3D point on the axis: use the axial component of
-  // an arbitrary sample so the origin sits at a real location on the face.
-  const axial = vecDot(samples[0]?.point ?? [0, 0, 0], axisDir);
+  // Lift the 2D centre back to a 3D point on the axis, level with the centroid so
+  // the origin sits at a real location along the face.
   const axisOrigin = vecAdd(
-    vecAdd(vecScale(basis.e1, circle.cx), vecScale(basis.e2, circle.cy)),
-    vecScale(axisDir, axial)
+    centroid,
+    vecAdd(vecScale(basis.e1, circle.cx), vecScale(basis.e2, circle.cy))
   );
 
   // Radius = mean distance from the axis line to the sampled points; residual is
@@ -353,18 +362,19 @@ export function unfoldForeignSolid(
     }
   }
 
-  const thicknessResult = detectThickness(planarFaces);
+  const planar = planarFaces.map(describePlanar);
+  const thicknessResult = detectThickness(planar);
   if (!thicknessResult.ok) return thicknessResult;
   const thickness = thicknessResult.value;
 
-  const flats = pairFlats(planarFaces, thickness, warnings);
+  const flats = pairFlats(planar, thickness, warnings);
   if (flats.length === 0) {
     return err(
       validationError('NO_FLATS', 'no planar panel pairs detected; not a recognizable sheet-metal solid')
     );
   }
 
-  const bends = pairBends(cylFaces, warnings);
+  const bends = pairBends(cylFaces, thickness, warnings);
 
   const graph = buildBendGraph(flats, bends, warnings);
   const layout = layoutForeign(flats, graph, thickness, kFactor, warnings);
@@ -373,81 +383,138 @@ export function unfoldForeignSolid(
   return ok({ pattern: layout.value.pattern, report: layout.value.report, warnings });
 }
 
-/**
- * Detect the sheet thickness as the smallest gap between an antiparallel pair of
- * planar faces (the two faces of one flat panel). For a roughly-uniform-thickness
- * part this gap is the same across panels; a spread beyond tolerance warns.
- */
-function detectThickness(planar: Face[]): Result<number> {
-  const gaps: number[] = [];
-  for (let i = 0; i < planar.length; i += 1) {
-    for (let j = i + 1; j < planar.length; j += 1) {
-      const fa = planar[i];
-      const fb = planar[j];
-      if (fa === undefined || fb === undefined) continue;
-      const na = faceNormal(fa);
-      const nb = faceNormal(fb);
-      if (vecDot(na, nb) > -0.99) continue; // need antiparallel (opposite faces of a panel)
-      const ca = faceCenter(fa);
-      const cb = faceCenter(fb);
-      const gap = Math.abs(vecDot(vecSub(cb, ca), na));
-      if (gap > GEOM_TOL) gaps.push(gap);
+interface PlanarFace {
+  face: Face;
+  normal: Vec3;
+  center: Vec3;
+  /** Sample points within the face's trimmed boundary. */
+  interior: Vec3[];
+}
+
+function describePlanar(face: Face): PlanarFace {
+  const center = faceCenter(face);
+  const n = 4;
+  const candidates: Vec3[] = [center];
+  for (let i = 0; i < n; i += 1) {
+    for (let j = 0; j < n; j += 1) {
+      candidates.push(pointOnSurface(face, (i + 0.5) / n, (j + 0.5) / n));
     }
   }
-  if (gaps.length === 0) {
-    return err(validationError('NO_THICKNESS', 'could not detect a sheet thickness (no opposed planar pair)'));
-  }
-  gaps.sort((a, b) => a - b);
-  return ok(gaps[0] as number);
+  const interior = candidates.filter((p) => liesOnFace(face, p));
+  return { face, normal: faceNormal(face), center, interior };
+}
+
+/** True if `point` (already on the face's surface) lies within the face's trimmed boundary. */
+function liesOnFace(face: Face, point: Vec3): boolean {
+  using probe = vertex(point);
+  const d = measureDistance(probe, face);
+  return d.ok && d.value < GEOM_TOL;
+}
+
+/** Normal-direction gap between two planar faces, or `null` unless they are antiparallel. */
+function antiparallelGap(a: PlanarFace, b: PlanarFace): number | null {
+  if (vecDot(a.normal, b.normal) > -0.99) return null;
+  return Math.abs(vecDot(vecSub(b.center, a.center), a.normal));
 }
 
 /**
- * Pair planar faces into flat panels: each panel is two parallel faces a
- * `thickness` apart with overlapping footprints. Greedy nearest-match by gap.
+ * Antiparallel faces are the two sides of one panel only if they face each other:
+ * an interior point of one projects inside the other. The normal-direction gap
+ * alone also matches faces that merely sit on parallel planes, e.g. a flange's end
+ * cap and the adjacent flange's inner face across a corner. Their gap is the bend's
+ * inner radius, which passes for the sheet thickness as T approaches or exceeds R.
  */
-function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarning[]): DetectedFlat[] {
+function facesOppose(a: PlanarFace, b: PlanarFace): boolean {
+  return (
+    b.interior.some((p) => liesOnFace(a.face, projectToPlane(p, a.normal, a.center))) ||
+    a.interior.some((p) => liesOnFace(b.face, projectToPlane(p, b.normal, b.center)))
+  );
+}
+
+/**
+ * Detect the sheet thickness as the smallest gap between two antiparallel planar
+ * faces that oppose each other (the two faces of one flat panel).
+ */
+function detectThickness(planar: PlanarFace[]): Result<number> {
+  const pairs: { gap: number; a: PlanarFace; b: PlanarFace }[] = [];
+  for (let i = 0; i < planar.length; i += 1) {
+    for (let j = i + 1; j < planar.length; j += 1) {
+      const a = planar[i];
+      const b = planar[j];
+      if (a === undefined || b === undefined) continue;
+      const gap = antiparallelGap(a, b);
+      if (gap !== null && gap > GEOM_TOL) pairs.push({ gap, a, b });
+    }
+  }
+  pairs.sort((p, q) => p.gap - q.gap);
+  const thinnest = pairs.find((p) => facesOppose(p.a, p.b));
+  if (thinnest === undefined) {
+    return err(validationError('NO_THICKNESS', 'could not detect a sheet thickness (no opposed planar pair)'));
+  }
+  return ok(thinnest.gap);
+}
+
+/** Unused face opposing `a` whose gap is nearest the sheet thickness, within tolerance. */
+function bestOpposedPartner(
+  planar: PlanarFace[],
+  i: number,
+  thickness: number,
+  used: Set<number>
+): number | null {
+  const a = planar[i];
+  if (a === undefined) return null;
+  const candidates: { j: number; e: number }[] = [];
+  for (let j = 0; j < planar.length; j += 1) {
+    const b = planar[j];
+    if (j === i || used.has(j) || b === undefined) continue;
+    const gap = antiparallelGap(a, b);
+    if (gap === null) continue;
+    const e = Math.abs(gap - thickness);
+    if (e <= thickness * 0.5 + GEOM_TOL) candidates.push({ j, e });
+  }
+  candidates.sort((p, q) => p.e - q.e);
+  const match = candidates.find((c) => {
+    const b = planar[c.j];
+    return b !== undefined && facesOppose(a, b);
+  });
+  return match === undefined ? null : match.j;
+}
+
+/**
+ * Pair planar faces into flat panels: each panel is two antiparallel faces a
+ * `thickness` apart that oppose each other. Greedy nearest-match by gap.
+ */
+function pairFlats(
+  planar: PlanarFace[],
+  thickness: number,
+  warnings: SheetMetalWarning[]
+): DetectedFlat[] {
   const used = new Set<number>();
   const flats: DetectedFlat[] = [];
   for (let i = 0; i < planar.length; i += 1) {
     if (used.has(i)) continue;
-    const fa = planar[i];
-    if (fa === undefined) continue;
-    const na = faceNormal(fa);
-    const ca = faceCenter(fa);
-    let best = -1;
-    let bestErr = Infinity;
-    for (let j = 0; j < planar.length; j += 1) {
-      if (j === i || used.has(j)) continue;
-      const fb = planar[j];
-      if (fb === undefined) continue;
-      const nb = faceNormal(fb);
-      if (vecDot(na, nb) > -0.99) continue;
-      const cb = faceCenter(fb);
-      const gap = Math.abs(vecDot(vecSub(cb, ca), na));
-      const e = Math.abs(gap - thickness);
-      if (e < bestErr) {
-        bestErr = e;
-        best = j;
-      }
-    }
-    if (best < 0 || bestErr > thickness * 0.5 + GEOM_TOL) {
+    const pa = planar[i];
+    if (pa === undefined) continue;
+    const fa = pa.face;
+    const best = bestOpposedPartner(planar, i, thickness, used);
+    if (best === null) {
       // No usable antiparallel partner at the sheet thickness. A bend-edge cap or
       // rim band is plate-thin in one in-plane direction (≈ thickness) — expected,
       // skip quietly. A face that is wide in BOTH in-plane directions is a real
       // panel; dropping it means non-uniform thickness or unrecognised topology, so
       // flag it. (Area alone can't tell them apart — a long rim is large by area.)
-      const db = getBounds(fa);
-      const ext = [db.xMax - db.xMin, db.yMax - db.yMin, db.zMax - db.zMin].sort((p, q) => q - p);
-      const inPlaneMin = ext[1] ?? 0;
-      if (inPlaneMin > thickness * 4) {
+      const size = inPlaneSize(fa);
+      if (size.short > thickness * 4) {
         warnings.push({
           code: 'DETECTION_INCOMPLETE',
-          message: `a panel-sized planar face (${(ext[0] ?? 0).toFixed(1)}×${inPlaneMin.toFixed(1)}) has no opposite face at the sheet thickness ${thickness.toFixed(3)}; omitted (possible non-uniform thickness)`,
+          message: `a panel-sized planar face (${size.long.toFixed(1)}×${size.short.toFixed(1)}) has no opposite face at the sheet thickness ${thickness.toFixed(3)}; omitted (possible non-uniform thickness)`,
         });
       }
       continue;
     }
-    const fb = planar[best] as Face;
+    const pb = planar[best];
+    if (pb === undefined) continue;
+    const fb = pb.face;
     used.add(i);
     used.add(best);
     const areaA = measureArea(fa);
@@ -472,8 +539,8 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
     flats.push({
       id: `flat-${flats.length}`,
       faces: [fa, fb],
-      normal: na,
-      center: vecScale(vecAdd(ca, faceCenter(fb)), 0.5),
+      normal: pa.normal,
+      center: vecScale(vecAdd(pa.center, pb.center), 0.5),
       area,
     });
   }
@@ -487,15 +554,59 @@ function pairFlats(planar: Face[], thickness: number, warnings: SheetMetalWarnin
 }
 
 /**
+ * In-plane size of a planar face: the sides of the rectangle with the same area
+ * and perimeter. Unlike a world-axis bounding box it ignores orientation, and a
+ * strip of width w along any path (a merged side face tracing the whole bent
+ * profile) measures w wide.
+ */
+function inPlaneSize(face: Face): { long: number; short: number } {
+  const area = measureArea(face);
+  let perimeter = 0;
+  let measured = area.ok;
+  for (const edge of getEdges(face)) {
+    const len = measureLength(edge);
+    if (len.ok) perimeter += len.value;
+    else measured = false;
+  }
+  if (!measured || !area.ok) {
+    const b = getBounds(face);
+    const ext = [b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin].sort((p, q) => q - p);
+    return { long: ext[0] ?? 0, short: ext[1] ?? 0 };
+  }
+  const half = perimeter / 2;
+  const disc = half * half - 4 * area.value;
+  const short = disc > 0 ? (half - Math.sqrt(disc)) / 2 : half / 2;
+  return { long: half - short, short };
+}
+
+interface FittedFace {
+  face: Face;
+  fit: FittedCylinder;
+}
+
+/**
+ * The inner and outer faces of one bend share an axis line, differ in radius by
+ * the sheet thickness, and cover the same stretch of the axis. A shared axis line
+ * alone also matches separate features that happen to line up, such as matching
+ * corner rounds or holes on two parallel walls.
+ */
+function isBendMate(a: FittedFace, b: FittedFace, thickness: number): boolean {
+  const axis = a.fit.axisDir;
+  if (Math.abs(vecDot(axis, b.fit.axisDir)) < 0.99) return false;
+  if (distanceToAxis(b.fit.axisOrigin, a.fit.axisOrigin, axis) > GEOM_TOL * 10) return false;
+  const radiusGap = Math.abs(a.fit.radius - b.fit.radius);
+  if (Math.abs(radiusGap - thickness) > thickness * 0.5 + GEOM_TOL) return false;
+  const ra = axialRange(a.face, axis);
+  const rb = axialRange(b.face, axis);
+  return Math.min(ra.max, rb.max) - Math.max(ra.min, rb.min) > GEOM_TOL;
+}
+
+/**
  * Pair cylindrical faces into bends: each bend has an inner + outer coaxial face
  * (same axis, radii a thickness apart) or, failing a pair, a single fitted face.
  */
-function pairBends(cyl: Face[], warnings: SheetMetalWarning[]): DetectedBend[] {
-  interface Fitted {
-    face: Face;
-    fit: FittedCylinder;
-  }
-  const fitted: Fitted[] = [];
+function pairBends(cyl: Face[], thickness: number, warnings: SheetMetalWarning[]): DetectedBend[] {
+  const fitted: FittedFace[] = [];
   for (const face of cyl) {
     const fit = fitCylinder(face);
     if (fit === null) {
@@ -518,9 +629,7 @@ function pairBends(cyl: Face[], warnings: SheetMetalWarning[]): DetectedBend[] {
     for (let j = i + 1; j < fitted.length; j += 1) {
       if (used.has(j)) continue;
       const b = fitted[j];
-      if (b === undefined) continue;
-      if (Math.abs(vecDot(a.fit.axisDir, b.fit.axisDir)) < 0.99) continue;
-      if (distanceToAxis(b.fit.axisOrigin, a.fit.axisOrigin, a.fit.axisDir) > GEOM_TOL * 10) continue;
+      if (b === undefined || !isBendMate(a, b, thickness)) continue;
       mate = j;
       break;
     }
@@ -528,7 +637,7 @@ function pairBends(cyl: Face[], warnings: SheetMetalWarning[]): DetectedBend[] {
     let innerRadius = a.fit.radius;
     let fit = a.fit;
     if (mate >= 0) {
-      const b = fitted[mate] as Fitted;
+      const b = fitted[mate] as FittedFace;
       faces.push(b.face);
       innerRadius = Math.min(a.fit.radius, b.fit.radius);
       fit = a.fit.radius <= b.fit.radius ? a.fit : b.fit;
@@ -706,13 +815,22 @@ function layoutForeign(
     const span = bendSpan.get(bend) ?? bendAxialExtent(bend);
 
     const placement = placeChildFlat(parentPlace, child, bend, axis, span, dev.value);
+    const bendLine = segment2(placement.bendA, placement.bendB);
+    if (bendLine === null) {
+      warnings.push({
+        code: 'DETECTION_INCOMPLETE',
+        message: `bend '${bend.id}' has no length along ${parent.id} (zero span, or an axis that crosses the flat instead of lying in it); ${child.id} and the flats beyond it are left out of the layout`,
+        featureId: bend.id,
+      });
+      continue;
+    }
     placed.set(tb.child, placement.child);
 
     rects.push(placement.strip);
     rects.push(flatRect2(placement.child));
     bendLines.push({
       id: bend.id,
-      line: line([placement.bendA[0], placement.bendA[1], 0], [placement.bendB[0], placement.bendB[1], 0]),
+      line: bendLine,
       angleDeg: bend.angleDeg,
       direction,
       inward: [-placement.outDir2[0], -placement.outDir2[1]],
@@ -731,7 +849,8 @@ function layoutForeign(
 
   const bbox = aabb2(rects);
   const outline = buildRectOutline2(bbox);
-  const outlineWire = wireLoop(outline);
+  if (!outline.ok) return outline;
+  const outlineWire = wireLoop(outline.value);
   if (!outlineWire.ok) return outlineWire;
 
   const pattern: FlatPattern = {
@@ -971,28 +1090,44 @@ function aabb2(rects: Rect2[]): Rect2 {
   return { x0, y0, x1, y1 };
 }
 
-function buildRectOutline2(b: Rect2): ReturnType<typeof line>[] {
-  return [
+/** A 2D segment as an edge, or `null` when it is too short or not finite to build one. */
+function segment2(a: [number, number], b: [number, number]): ReturnType<typeof line> | null {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (!Number.isFinite(len) || len < GEOM_TOL) return null;
+  return line([a[0], a[1], 0], [b[0], b[1], 0]);
+}
+
+function buildRectOutline2(b: Rect2): Result<ReturnType<typeof line>[]> {
+  const w = b.x1 - b.x0;
+  const h = b.y1 - b.y0;
+  if (![b.x0, b.y0, b.x1, b.y1].every(Number.isFinite) || w < GEOM_TOL || h < GEOM_TOL) {
+    return err(validationError('DEGENERATE_LAYOUT', `the developed outline is degenerate (${w}×${h})`));
+  }
+  return ok([
     line([b.x0, b.y0, 0], [b.x1, b.y0, 0]),
     line([b.x1, b.y0, 0], [b.x1, b.y1, 0]),
     line([b.x1, b.y1, 0], [b.x0, b.y1, 0]),
     line([b.x0, b.y1, 0], [b.x0, b.y0, 0]),
-  ];
+  ]);
+}
+
+/** Range of a face's sampled points along `axis`. */
+function axialRange(face: Face, axis: Vec3): { min: number; max: number } {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of sampleFace(face, 6)) {
+    const a = vecDot(s.point, axis);
+    min = Math.min(min, a);
+    max = Math.max(max, a);
+  }
+  return { min, max };
 }
 
 /** Axial extent of a bend (its cylindrical face span along the fitted axis). */
 function bendAxialExtent(bend: DetectedBend): number {
   const face = bend.faces[0];
   if (face === undefined) return 0;
-  const axis = bend.fit.axisDir;
-  const samples = sampleFace(face, 6);
-  let min = Infinity;
-  let max = -Infinity;
-  for (const s of samples) {
-    const a = vecDot(s.point, axis);
-    min = Math.min(min, a);
-    max = Math.max(max, a);
-  }
+  const { min, max } = axialRange(face, bend.fit.axisDir);
   return Number.isFinite(max - min) ? max - min : 0;
 }
 
