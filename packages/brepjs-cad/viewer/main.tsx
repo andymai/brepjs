@@ -13,6 +13,8 @@ import {
   meshBounds,
   sectionPlane,
   findElementAt,
+  styleElements,
+  type ElementStyle,
   type FaceInfo,
   type Projection,
   type SectionAxis,
@@ -122,6 +124,7 @@ function App() {
   const [sectionPos, setSectionPos] = useState(0);
   const [sectionFlip, setSectionFlip] = useState(false);
   const [marks, setMarks] = useState<readonly Mark[]>([]);
+  const [elementStyle, setElementStyle] = useState<ElementStyle | null>(null);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const preview: PreviewInfo | undefined = state.status === 'ready' ? state.preview : undefined;
   const handleTrianglePick = useCallback(
@@ -152,11 +155,14 @@ function App() {
           const i = c.section.axis === 'x' ? 0 : c.section.axis === 'y' ? 1 : 2;
           setSectionAxis(c.section.axis);
           setSectionPos(bounds.min[i] + c.section.frac * (bounds.max[i] - bounds.min[i]));
+          setSectionFlip(c.section.flip ?? false);
           setSectionOn(true);
         } else {
           setSectionOn(false);
         }
         setMarks(c.marks ?? []);
+        setElementStyle(c.elements ?? null);
+        setProjection(c.projection ?? 'perspective');
       }),
     [bounds]
   );
@@ -184,6 +190,13 @@ function App() {
     },
     [midOfAxis]
   );
+  const styled = useMemo(
+    () =>
+      state.status === 'ready' && preview && elementStyle
+        ? styleElements(state.data, preview.elements, elementStyle, viewMode)
+        : null,
+    [state, preview, elementStyle, viewMode]
+  );
   const clippingPlanes = useMemo(
     () => (sectionOn && bounds ? [sectionPlane(sectionAxis, sectionPos, sectionFlip)] : undefined),
     [sectionOn, bounds, sectionAxis, sectionPos, sectionFlip]
@@ -201,7 +214,7 @@ function App() {
   return (
     <>
       <ViewerCanvas
-        data={state.data}
+        data={styled ? styled.visible : state.data}
         view={view}
         fitSignal={fitSignal}
         autoRotate={autoRotate}
@@ -209,15 +222,40 @@ function App() {
         projection={projection}
         onFirstFrame={markReady}
       >
-        <Renderer
-          data={state.data}
-          viewMode={viewMode}
-          {...(clippingPlanes ? { clippingPlanes } : {})}
-          {...(showControls ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover } : {})}
-          {...(preview ? { onTrianglePick: handleTrianglePick } : {})}
-        />
-        {showEdges && viewMode !== 'wireframe' && state.data.edges.length > 0 && (
-          <EdgeRenderer edges={state.data.edges} {...(clippingPlanes ? { clippingPlanes } : {})} />
+        {styled ? (
+          styled.meshes.map((m) => (
+            <group key={m.key}>
+              <Renderer
+                data={m.data}
+                viewMode={m.viewMode}
+                {...(clippingPlanes ? { clippingPlanes } : {})}
+              />
+              {showEdges && m.viewMode !== 'wireframe' && m.data.edges.length > 0 && (
+                <EdgeRenderer
+                  edges={m.data.edges}
+                  {...(clippingPlanes ? { clippingPlanes } : {})}
+                />
+              )}
+            </group>
+          ))
+        ) : (
+          <>
+            <Renderer
+              data={state.data}
+              viewMode={viewMode}
+              {...(clippingPlanes ? { clippingPlanes } : {})}
+              {...(showControls
+                ? { onFacePick: handleFacePick, onFaceHover: handleFaceHover }
+                : {})}
+              {...(preview ? { onTrianglePick: handleTrianglePick } : {})}
+            />
+            {showEdges && viewMode !== 'wireframe' && state.data.edges.length > 0 && (
+              <EdgeRenderer
+                edges={state.data.edges}
+                {...(clippingPlanes ? { clippingPlanes } : {})}
+              />
+            )}
+          </>
         )}
         {showControls && (
           <SelectionHighlight
@@ -261,8 +299,10 @@ function App() {
           valid={state.measurements.valid}
         />
       )}
-      {!showControls && showDims && <ViewerInfoPanel dims={meshSize(state.data)} />}
-      {preview && <PreviewPanel preview={preview} selected={selectedElement} />}
+      {!showControls && showDims && (
+        <ViewerInfoPanel dims={meshSize(styled ? styled.visible : state.data)} />
+      )}
+      {showControls && preview && <PreviewPanel preview={preview} selected={selectedElement} />}
       {showControls && (
         <ViewerControls
           viewMode={viewMode}

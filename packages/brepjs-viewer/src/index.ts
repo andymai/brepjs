@@ -25,8 +25,13 @@ export {
 export {
   modelToMeshData,
   findElementAt,
+  styleElements,
+  type ElementLayer,
   type ElementMesh,
   type ElementRange,
+  type ElementStyle,
+  type StyledMesh,
+  type StyledModel,
   type EvaluatedModelLike,
   type EvaluatedNodeLike,
   type ModelMeshResult,

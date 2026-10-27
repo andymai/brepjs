@@ -1,4 +1,4 @@
-import type { SectionAxis, ViewMode } from 'brepjs-viewer';
+import type { ElementStyle, Projection, SectionAxis, ViewMode } from 'brepjs-viewer';
 
 export const VIEWS = ['iso', 'front', 'top', 'right'] as const;
 export type ViewName = (typeof VIEWS)[number];
@@ -7,6 +7,8 @@ export type ViewName = (typeof VIEWS)[number];
 export interface SectionSpec {
   axis: SectionAxis;
   frac: number;
+  /** Keep the side below the cut instead of above it (a plan looks down at what is below). */
+  flip?: boolean;
 }
 
 /** A numbered label anchored at a 3D feature (Set-of-Marks), projected per-view by the renderer. */
@@ -24,6 +26,10 @@ export interface SceneControl {
   section?: SectionSpec | null;
   /** Kernel-anchored feature labels to overlay. Absent/empty = no marks. */
   marks?: readonly Mark[];
+  /** Per-element styling for a preview payload (highlight, isolate, color groups). */
+  elements?: ElementStyle | null;
+  /** Default perspective. A plan reads true to scale in orthographic. */
+  projection?: Projection;
 }
 
 type SceneListener = (c: SceneControl) => void;

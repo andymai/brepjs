@@ -9,7 +9,7 @@
  * triangle back to its element key path (`findElementAt`).
  */
 
-import type { FaceGroup, MeshData } from './types.js';
+import type { FaceGroup, MeshData, ViewMode } from './types.js';
 
 export interface ElementMesh {
   readonly triangles: Uint32Array;
@@ -37,6 +37,10 @@ export interface ElementRange {
   readonly keyPath: string;
   readonly start: number;
   readonly count: number;
+  /** The element's slice of `MeshData.edges`, in float units (6 per segment). Present only for
+   *  elements that carry edges, so a consumer can draw one element's edges on its own. */
+  readonly edgeStart?: number | undefined;
+  readonly edgeCount?: number | undefined;
 }
 
 export interface ModelMeshResult {
@@ -80,6 +84,7 @@ export function modelToMeshData(model: EvaluatedModelLike): ModelMeshResult {
   let indexOffset = 0;
   let edgeOffset = 0;
   for (const { keyPath, mesh } of parts) {
+    const edgeStart = edgeOffset;
     if (mesh.edges) {
       edges.set(mesh.edges, edgeOffset);
       edgeOffset += mesh.edges.length;
@@ -90,7 +95,13 @@ export function modelToMeshData(model: EvaluatedModelLike): ModelMeshResult {
     for (let i = 0; i < mesh.triangles.length; i++) {
       index[indexOffset + i] = (mesh.triangles[i] ?? 0) + vertexBase;
     }
-    elements.push({ keyPath, start: indexOffset, count: mesh.triangles.length });
+    const edgeCount = edgeOffset - edgeStart;
+    elements.push({
+      keyPath,
+      start: indexOffset,
+      count: mesh.triangles.length,
+      ...(edgeCount > 0 ? { edgeStart, edgeCount } : {}),
+    });
     for (const g of mesh.faceGroups ?? []) {
       faceGroups.push({ start: g.start + indexOffset, count: g.count, faceId: g.faceId });
     }
@@ -126,4 +137,125 @@ export function findElementAt(
     else return e;
   }
   return null;
+}
+
+/** One group of elements drawn alike: in `color`, opaque (`solid`) or see-through (`ghost`). */
+export interface ElementLayer {
+  readonly keyPaths: readonly string[];
+  readonly color?: string | undefined;
+  readonly mode?: 'solid' | 'ghost' | undefined;
+}
+
+/**
+ * Per-element styling for a merged model. An element takes the first layer that lists it; every
+ * element no layer lists is drawn per `others` (default `solid`), and `hidden` leaves it out.
+ */
+export interface ElementStyle {
+  readonly layers: readonly ElementLayer[];
+  readonly others?: 'solid' | 'ghost' | 'hidden' | undefined;
+}
+
+export interface StyledMesh {
+  readonly key: string;
+  readonly data: MeshData;
+  readonly viewMode: ViewMode;
+}
+
+export interface StyledModel {
+  readonly meshes: readonly StyledMesh[];
+  /** Every drawn element in one compact mesh (only the vertices it uses), for framing the camera
+   *  and measuring what is shown. */
+  readonly visible: MeshData;
+}
+
+function subsetMesh(data: MeshData, ranges: readonly ElementRange[], color?: string): MeshData {
+  let indexCount = 0;
+  let edgeCount = 0;
+  for (const r of ranges) {
+    indexCount += r.count;
+    edgeCount += r.edgeCount ?? 0;
+  }
+  const index = new Uint32Array(indexCount);
+  const edges = new Float32Array(edgeCount);
+  let i = 0;
+  let e = 0;
+  for (const r of ranges) {
+    index.set(data.index.subarray(r.start, r.start + r.count), i);
+    i += r.count;
+    if (r.edgeStart !== undefined && r.edgeCount !== undefined) {
+      edges.set(data.edges.subarray(r.edgeStart, r.edgeStart + r.edgeCount), e);
+      e += r.edgeCount;
+    }
+  }
+  // Vertex buffers are shared: only the index (and edge) selection changes per layer.
+  return {
+    position: data.position,
+    normal: data.normal,
+    index,
+    edges,
+    ...(color !== undefined ? { color } : {}),
+  };
+}
+
+/** A standalone copy of `ranges`, holding only the vertices they index. */
+function compactMesh(data: MeshData, ranges: readonly ElementRange[]): MeshData {
+  const shared = subsetMesh(data, ranges);
+  const remap = new Map<number, number>();
+  const index = new Uint32Array(shared.index.length);
+  shared.index.forEach((v, i) => {
+    let to = remap.get(v);
+    if (to === undefined) {
+      to = remap.size;
+      remap.set(v, to);
+    }
+    index[i] = to;
+  });
+  const position = new Float32Array(remap.size * 3);
+  const normal = new Float32Array(remap.size * 3);
+  for (const [from, to] of remap) {
+    position.set(data.position.subarray(from * 3, from * 3 + 3), to * 3);
+    normal.set(data.normal.subarray(from * 3, from * 3 + 3), to * 3);
+  }
+  return { position, normal, index, edges: shared.edges };
+}
+
+/** Split a merged model into one mesh per style layer. Solid layers use `viewMode`; ghosts use xray. */
+export function styleElements(
+  data: MeshData,
+  elements: readonly ElementRange[],
+  style: ElementStyle,
+  viewMode: ViewMode = 'solid'
+): StyledModel {
+  const byKey = new Map(elements.map((r) => [r.keyPath, r]));
+  const taken = new Set<string>();
+  const meshes: StyledMesh[] = [];
+  const drawn: ElementRange[] = [];
+  const modeOf = (m: 'solid' | 'ghost' | undefined): ViewMode =>
+    m === 'ghost' ? 'xray' : viewMode;
+  style.layers.forEach((layer, n) => {
+    const ranges: ElementRange[] = [];
+    for (const k of layer.keyPaths) {
+      const r = byKey.get(k);
+      if (r === undefined || taken.has(k)) continue;
+      taken.add(k);
+      ranges.push(r);
+    }
+    if (ranges.length === 0) return;
+    meshes.push({
+      key: `layer-${n}`,
+      data: subsetMesh(data, ranges, layer.color),
+      viewMode: modeOf(layer.mode),
+    });
+    drawn.push(...ranges);
+  });
+  const others = style.others ?? 'solid';
+  if (others !== 'hidden') {
+    const rest = elements.filter((r) => !taken.has(r.keyPath));
+    if (rest.length > 0) {
+      meshes.push({ key: 'others', data: subsetMesh(data, rest), viewMode: modeOf(others) });
+      drawn.push(...rest);
+    }
+  }
+  drawn.sort((a, b) => a.start - b.start);
+  return { meshes, visible: compactMesh(data, drawn) };
 }

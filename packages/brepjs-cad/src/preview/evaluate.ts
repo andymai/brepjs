@@ -109,6 +109,14 @@ export async function evaluatePreview(
   opts: { fresh?: boolean } = {}
 ): Promise<PreviewBuild> {
   const { nodes, tree } = await evaluateElements(entryPath, opts);
+  return previewBuildOf(nodes, tree);
+}
+
+/** Merge per-element meshes into the preview payload (and its whole-model ShapeMesh). */
+export function previewBuildOf(
+  nodes: ReadonlyMap<string, EvaluatedNodeLike>,
+  tree: PreviewTreeNode | null
+): PreviewBuild {
   const { data, elements, failed } = modelToMeshData({ byKeyPath: nodes });
   return finish(data, elements, failed, tree);
 }
@@ -218,7 +226,7 @@ export async function evaluateElements(
 }
 
 // Edges are cosmetic, so a meshEdges failure must not fail the element.
-function tryMeshEdges(brep: BrepNs, shape: AnyShape): Float32Array | undefined {
+export function tryMeshEdges(brep: BrepNs, shape: AnyShape): Float32Array | undefined {
   try {
     return brep.meshEdges(shape).lines;
   } catch {
@@ -255,8 +263,16 @@ async function treeElements(
   const resolved = isResolvedElementLike(value) ? value : fam.resolve(value);
   using evaluator = new brep.csg.Evaluator();
   const model = fam.evaluateModel(resolved, evaluator, {}, { shapes: true });
+  return { nodes: familiesNodes(brep, model.byKeyPath), tree: previewTree(model.root) };
+}
+
+/** Renderable nodes for evaluated families elements, with edges meshed from their shapes. */
+export function familiesNodes(
+  brep: BrepNs,
+  byKeyPath: ReadonlyMap<string, FamiliesEvaluatedNode>
+): Map<string, EvaluatedNodeLike> {
   const nodes = new Map<string, EvaluatedNodeLike>();
-  for (const [keyPath, node] of model.byKeyPath) {
+  for (const [keyPath, node] of byKeyPath) {
     const m = node.mesh.ok ? node.mesh.value : undefined;
     if (!m) {
       nodes.set(keyPath, { mesh: { ok: false } });
@@ -266,7 +282,7 @@ async function treeElements(
     const shape = node.shape?.ok ? node.shape.value : undefined;
     nodes.set(keyPath, toEvaluatedNode(m, shape ? tryMeshEdges(brep, shape) : undefined));
   }
-  return { nodes, tree: toTree(model.root) };
+  return nodes;
 }
 
 function shapeElements(brep: BrepNs, shape: AnyShape): EvaluatedElements {
@@ -285,7 +301,7 @@ function shapeElements(brep: BrepNs, shape: AnyShape): EvaluatedElements {
   }
 }
 
-function toTree(el: ResolvedElementLike): PreviewTreeNode {
+export function previewTree(el: ResolvedElementLike): PreviewTreeNode {
   const name = el.attributes['name'];
   return {
     keyPath: el.keyPath,
@@ -293,7 +309,7 @@ function toTree(el: ResolvedElementLike): PreviewTreeNode {
     ...(el.archetype !== undefined ? { archetype: el.archetype } : {}),
     ...(typeof name === 'string' ? { name } : {}),
     hasGeometry: el.geometry.kind !== 'Empty',
-    children: el.children.map(toTree),
+    children: el.children.map(previewTree),
   };
 }
 
@@ -331,7 +347,7 @@ function finish(
   data: MeshData,
   elements: readonly ElementRange[],
   failed: readonly string[],
-  tree: PreviewTreeNode
+  tree: PreviewTreeNode | null
 ): PreviewBuild {
   const payload: PreviewModelPayload = {
     data,

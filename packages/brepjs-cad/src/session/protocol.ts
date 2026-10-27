@@ -1,4 +1,5 @@
 import type { BuildOutcome, SessionKind } from './records.js';
+import type { RenderRequest } from './render.js';
 
 /** Operations a session worker answers: each op's arguments and reply. */
 export interface WorkerOps {
@@ -10,15 +11,22 @@ export interface WorkerOps {
     };
     readonly result: BuildOutcome;
   };
+  readonly render: {
+    readonly args: RenderRequest;
+    readonly result: { readonly pngs: readonly Uint8Array[] };
+  };
 }
 
 export type WorkerOp = keyof WorkerOps;
 
-export interface WorkerRequest<K extends WorkerOp = WorkerOp> {
-  readonly id: number;
-  readonly op: K;
-  readonly args: WorkerOps[K]['args'];
-}
+/** One request per op, discriminated on `op` so a handler's `args` narrow with it. */
+export type WorkerRequest = {
+  readonly [K in WorkerOp]: {
+    readonly id: number;
+    readonly op: K;
+    readonly args: WorkerOps[K]['args'];
+  };
+}[WorkerOp];
 
 export type WorkerMessage =
   | { readonly type: 'ready' }

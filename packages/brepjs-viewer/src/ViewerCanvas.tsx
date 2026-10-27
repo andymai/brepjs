@@ -35,7 +35,9 @@ export interface ViewerCanvasProps {
 const VIEW_DIR: Record<ViewName, THREE.Vector3> = {
   iso: new THREE.Vector3(0.6, -0.6, 0.5),
   front: new THREE.Vector3(0, -1, 0.3),
-  top: new THREE.Vector3(0, 0.01, 1),
+  // A hair south of straight down, so the Z-up camera keeps north (+Y) up and +X to the right,
+  // as a plan is drawn; straight down leaves the roll undefined.
+  top: new THREE.Vector3(0, -0.01, 1),
   right: new THREE.Vector3(1, 0, 0.3),
 };
 
@@ -54,6 +56,10 @@ function Framing({
 }) {
   const camera = useThree((s) => s.camera);
   const invalidate = useThree((s) => s.invalidate);
+  const controls = useThree((s) => s.controls) as {
+    target?: THREE.Vector3;
+    update?: () => void;
+  } | null;
   const fired = useRef(false);
   // Hold the latest onFirstFrame in a ref so it stays out of the framing effect's deps:
   // an inline callback from a consumer would otherwise re-run the effect on every parent
@@ -84,13 +90,19 @@ function Framing({
       if (viewSize > 0 && radius > 0) ortho.zoom = viewSize / (radius * 2.4);
     }
     camera.lookAt(center);
+    // OrbitControls re-aims the camera at its own target on every update, so a model away from
+    // the origin would drift off-centre unless the target moves with the framing.
+    if (controls?.target) {
+      controls.target.copy(center);
+      controls.update?.();
+    }
     camera.updateProjectionMatrix();
     invalidate();
     if (!fired.current) {
       fired.current = true;
       onFirstFrameRef.current?.();
     }
-  }, [camera, invalidate, center, radius, view, fitSignal, projection]);
+  }, [camera, controls, invalidate, center, radius, view, fitSignal, projection]);
   return null;
 }
 

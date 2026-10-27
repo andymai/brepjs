@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { modelToMeshData, findElementAt, type EvaluatedNodeLike } from '@/model.js';
+import { modelToMeshData, findElementAt, styleElements, type EvaluatedNodeLike } from '@/model.js';
 
 function tri(offset: number): EvaluatedNodeLike {
   return {
@@ -57,8 +57,13 @@ describe('modelToMeshData', () => {
         ['c', tri(20)],
       ]),
     };
-    const { data } = modelToMeshData(model);
+    const { data, elements } = modelToMeshData(model);
     expect(Array.from(data.edges)).toEqual([0, 0, 0, 1, 0, 0, 10, 0, 0, 11, 0, 0]);
+    expect(elements.map((e) => [e.keyPath, e.edgeStart, e.edgeCount])).toEqual([
+      ['a', 0, 6],
+      ['b', 6, 6],
+      ['c', undefined, undefined],
+    ]);
   });
 
   it('collects failed elements instead of dropping them silently', () => {
@@ -85,5 +90,70 @@ describe('modelToMeshData', () => {
     expect(findElementAt(elements, 0)?.keyPath).toBe('a');
     expect(findElementAt(elements, 1)?.keyPath).toBe('b');
     expect(findElementAt(elements, 2)).toBeNull();
+  });
+});
+
+describe('styleElements', () => {
+  function edged(offset: number): EvaluatedNodeLike {
+    const base = tri(offset);
+    if (!base.mesh.ok) throw new Error('unreachable');
+    return {
+      mesh: {
+        ok: true,
+        value: { ...base.mesh.value, edges: new Float32Array([offset, 0, 0, offset, 1, 0]) },
+      },
+    };
+  }
+  const merged = modelToMeshData({
+    byKeyPath: new Map([
+      ['a', edged(0)],
+      ['b', edged(10)],
+      ['c', edged(20)],
+    ]),
+  });
+
+  it('draws each layer from its own index and edge slices over the shared vertices', () => {
+    const styled = styleElements(merged.data, merged.elements, {
+      layers: [{ keyPaths: ['b'], color: '#ff6b00' }],
+      others: 'ghost',
+    });
+    expect(styled.meshes.map((m) => [m.key, m.viewMode, m.data.color])).toEqual([
+      ['layer-0', 'solid', '#ff6b00'],
+      ['others', 'xray', undefined],
+    ]);
+    expect(Array.from(styled.meshes[0]?.data.index ?? [])).toEqual([3, 4, 5]);
+    expect(Array.from(styled.meshes[0]?.data.edges ?? [])).toEqual([10, 0, 0, 10, 1, 0]);
+    expect(Array.from(styled.meshes[1]?.data.index ?? [])).toEqual([0, 1, 2, 6, 7, 8]);
+    expect(styled.meshes[0]?.data.position).toBe(merged.data.position);
+    expect(styled.visible.index.length).toBe(9);
+  });
+
+  it('leaves hidden elements out of the drawing and the framing mesh', () => {
+    const styled = styleElements(
+      merged.data,
+      merged.elements,
+      { layers: [{ keyPaths: ['c', 'a', 'missing'] }], others: 'hidden' },
+      'wireframe'
+    );
+    expect(styled.meshes.map((m) => [m.key, m.viewMode])).toEqual([['layer-0', 'wireframe']]);
+    expect(Array.from(styled.visible.index)).toEqual([0, 1, 2, 3, 4, 5]);
+    // Only a's and c's vertices, so bounds and framing cover what is drawn, not b at x=10.
+    expect(Array.from(styled.visible.position).filter((_, i) => i % 3 === 0)).toEqual([
+      0, 1, 0, 20, 21, 20,
+    ]);
+  });
+
+  it('gives an element to the first layer that lists it', () => {
+    const styled = styleElements(merged.data, merged.elements, {
+      layers: [
+        { keyPaths: ['a'], color: 'red' },
+        { keyPaths: ['a', 'b'], color: 'blue', mode: 'ghost' },
+      ],
+      others: 'hidden',
+    });
+    expect(styled.meshes.map((m) => [m.data.color, m.viewMode, m.data.index.length])).toEqual([
+      ['red', 'solid', 3],
+      ['blue', 'xray', 3],
+    ]);
   });
 });

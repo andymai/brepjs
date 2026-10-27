@@ -1,10 +1,9 @@
-// Puppeteer launch flags mirror apps/playground/scripts/shootExamples.ts (canonical swiftshader recipe);
-// keep in sync if that script's GL flags change.
 import puppeteer from 'puppeteer';
 import { mkdir } from 'node:fs/promises';
 import { resolve, basename, dirname } from 'node:path';
 import { acquireServer, type AcquireOptions } from './registry.js';
 import type { Mark, SectionSpec } from './aiming.js';
+import { CHROME_ARGS, VIEWPORT } from './chrome.js';
 
 export type ViewName = 'iso' | 'front' | 'top' | 'right';
 type ViewMode = 'solid' | 'wireframe' | 'xray';
@@ -75,19 +74,11 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
   await mkdir(opts.outDir, { recursive: true });
   const server = await acquireServer(opts);
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
-  });
+  const browser = await puppeteer.launch({ headless: true, args: [...CHROME_ARGS] });
   const pngs: string[] = [];
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 900 });
+    await page.setViewport(VIEWPORT);
     // ui=0 hides the interactive toolbar so captured PNGs contain only the model; dims=1
     // overlays the bbox size so the agent can read scale from the image.
     const dimsParam = opts.dimensions === false ? '' : '&dims=1';

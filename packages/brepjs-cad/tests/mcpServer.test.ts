@@ -45,6 +45,7 @@ describe('brep-mcp server', () => {
       'close_model',
       'rebuild',
       'get_diff',
+      'render_view',
       'query_elements',
       'get_elements',
     ]);
@@ -52,7 +53,14 @@ describe('brep-mcp server', () => {
       readOnlyHint: false,
       destructiveHint: true,
     });
-    for (const name of ['open_model', 'query_elements', 'get_elements', 'rebuild', 'get_diff']) {
+    for (const name of [
+      'open_model',
+      'query_elements',
+      'get_elements',
+      'rebuild',
+      'get_diff',
+      'render_view',
+    ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
   });

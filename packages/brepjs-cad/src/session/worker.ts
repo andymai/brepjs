@@ -8,6 +8,7 @@ import { buildFamilies, type WorkerBuild } from './buildFamilies.js';
 import { buildIfc } from './buildIfc.js';
 import type { WorkerMessage, WorkerRequest } from './protocol.js';
 import { errorMessage } from './records.js';
+import { renderPayload } from './render.js';
 
 let current: WorkerBuild | undefined;
 
@@ -26,6 +27,13 @@ async function handle(req: WorkerRequest): Promise<void> {
         if (build.outcome.ok) current = build;
         else build.dispose();
         send({ type: 'reply', id: req.id, result: build.outcome });
+        return;
+      }
+      case 'render': {
+        const payload = current?.payload?.();
+        if (payload === undefined) throw new Error('this worker holds no build to render');
+        const pngs = await renderPayload(payload, req.args);
+        send({ type: 'reply', id: req.id, result: { pngs } });
         return;
       }
     }

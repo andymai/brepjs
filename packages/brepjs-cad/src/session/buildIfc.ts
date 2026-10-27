@@ -1,8 +1,10 @@
+import type { AnyShape } from 'brepjs';
+import type { EvaluatedNodeLike, PreviewModelPayload } from 'brepjs-viewer';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveProjectPackageEntry } from '../preview/evaluate.js';
-import { initOcctWasm, loadBrep } from '../verify/brepjsRuntime.js';
+import { previewBuildOf, resolveProjectPackageEntry, tryMeshEdges } from '../preview/evaluate.js';
+import { initOcctWasm, loadBrep, type BrepNs } from '../verify/brepjsRuntime.js';
 import type { WorkerBuild } from './buildFamilies.js';
 import {
   errorMessage,
@@ -36,6 +38,11 @@ interface ImportedElementLike {
     readonly completeness: string;
     readonly bounds: Bounds | null;
     readonly volumeMm3: number | null;
+    /** Owned kernel solids, World-placed. */
+    readonly solids?: readonly unknown[] | undefined;
+    /** Raw triangles for a Body that never closed into a solid. */
+    readonly meshVertices?: Float32Array | undefined;
+    readonly meshIndices?: Uint32Array | undefined;
   };
   readonly psets: readonly ImportedPsetLike[];
   readonly material: unknown;
@@ -112,9 +119,11 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
     );
   }
   let bytes: Uint8Array;
+  let brep: BrepNs;
   try {
     bytes = new Uint8Array(await readFile(ifcPath));
-    await initOcctWasm(await loadBrep());
+    brep = await loadBrep();
+    await initOcctWasm(brep);
   } catch (e) {
     return failed('BUILD_FAILED', errorMessage(e));
   }
@@ -127,7 +136,8 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
     return failed('IFC_IMPORT_FAILED', errorMessage(e));
   }
   const diagnostics: BuildDiagnostic[] = [];
-  const { elements, root } = ifcRecords(model, diagnostics);
+  const { elements, root, idOf } = ifcRecords(model, diagnostics);
+  let payload: PreviewModelPayload | undefined;
   return {
     outcome: {
       ok: true,
@@ -142,7 +152,112 @@ export async function buildIfc(ifcPath: string): Promise<WorkerBuild> {
       },
     },
     dispose: () => bim.disposeImportedModel(model),
+    payload: () => (payload ??= previewBuildOf(ifcNodes(brep, model, idOf), null).payload),
   };
+}
+
+interface MeshPart {
+  readonly vertices: Float32Array;
+  readonly normals: Float32Array;
+  readonly triangles: Uint32Array;
+  readonly edges?: Float32Array | undefined;
+}
+
+function concat<T extends Float32Array | Uint32Array>(
+  make: (n: number) => T,
+  parts: readonly T[]
+): T {
+  const out = make(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
+function mergeParts(parts: readonly MeshPart[]): MeshPart {
+  let base = 0;
+  const triangles = parts.map((p) => {
+    const shifted = p.triangles.map((i) => i + base);
+    base += p.vertices.length / 3;
+    return shifted;
+  });
+  return {
+    vertices: concat(
+      (n) => new Float32Array(n),
+      parts.map((p) => p.vertices)
+    ),
+    normals: concat(
+      (n) => new Float32Array(n),
+      parts.map((p) => p.normals)
+    ),
+    triangles: concat((n) => new Uint32Array(n), triangles),
+    edges: concat(
+      (n) => new Float32Array(n),
+      parts.flatMap((p) => (p.edges ? [p.edges] : []))
+    ),
+  };
+}
+
+/** Per-vertex normals for a raw triangle soup, accumulated from its face normals. */
+function soupNormals(v: Float32Array, idx: Uint32Array): Float32Array {
+  const n = new Float32Array(v.length);
+  for (let t = 0; t + 2 < idx.length; t += 3) {
+    const [a, b, c] = [(idx[t] ?? 0) * 3, (idx[t + 1] ?? 0) * 3, (idx[t + 2] ?? 0) * 3];
+    const ux = (v[b] ?? 0) - (v[a] ?? 0);
+    const uy = (v[b + 1] ?? 0) - (v[a + 1] ?? 0);
+    const uz = (v[b + 2] ?? 0) - (v[a + 2] ?? 0);
+    const wx = (v[c] ?? 0) - (v[a] ?? 0);
+    const wy = (v[c + 1] ?? 0) - (v[a + 1] ?? 0);
+    const wz = (v[c + 2] ?? 0) - (v[a + 2] ?? 0);
+    const nx = uy * wz - uz * wy;
+    const ny = uz * wx - ux * wz;
+    const nz = ux * wy - uy * wx;
+    for (const k of [a, b, c]) {
+      n[k] = (n[k] ?? 0) + nx;
+      n[k + 1] = (n[k + 1] ?? 0) + ny;
+      n[k + 2] = (n[k + 2] ?? 0) + nz;
+    }
+  }
+  for (let i = 0; i + 2 < n.length; i += 3) {
+    const len = Math.hypot(n[i] ?? 0, n[i + 1] ?? 0, n[i + 2] ?? 0) || 1;
+    n[i] = (n[i] ?? 0) / len;
+    n[i + 1] = (n[i + 1] ?? 0) / len;
+    n[i + 2] = (n[i + 2] ?? 0) / len;
+  }
+  return n;
+}
+
+/** One renderable node per imported element with geometry, keyed like its record. */
+function ifcNodes(
+  brep: BrepNs,
+  model: ImportedModelLike,
+  idOf: ReadonlyMap<number, string>
+): Map<string, EvaluatedNodeLike> {
+  const nodes = new Map<string, EvaluatedNodeLike>();
+  for (const el of model.elements) {
+    const parts: MeshPart[] = [];
+    for (const solid of el.geometry.solids ?? []) {
+      try {
+        const m = brep.mesh(solid as AnyShape);
+        parts.push({ ...m, edges: tryMeshEdges(brep, solid as AnyShape) });
+      } catch {
+        // A solid that won't mesh is left out of the picture; its record still carries the data.
+      }
+    }
+    const { meshVertices, meshIndices } = el.geometry;
+    if (parts.length === 0 && meshVertices && meshIndices) {
+      parts.push({
+        vertices: meshVertices,
+        normals: soupNormals(meshVertices, meshIndices),
+        triangles: meshIndices,
+      });
+    }
+    if (parts.length === 0) continue;
+    nodes.set(idOf.get(el.expressId) ?? el.guid, { mesh: { ok: true, value: mergeParts(parts) } });
+  }
+  return nodes;
 }
 
 function splitPsets(psets: readonly ImportedPsetLike[]): {
@@ -165,7 +280,7 @@ const BODY_FAILURE_CODES = new Set(['BODY_RECONSTRUCTION_NONE', 'PARTIAL_BODY_RE
 export function ifcRecords(
   model: ImportedModelLike,
   diagnostics: BuildDiagnostic[]
-): { elements: ElementRecord[]; root: string | undefined } {
+): { elements: ElementRecord[]; root: string | undefined; idOf: ReadonlyMap<number, string> } {
   // GlobalIds are the identity, but files in the wild repeat them; suffix the express id so every
   // record stays addressable, and say so.
   const idOf = new Map<number, string>();
@@ -302,5 +417,5 @@ export function ifcRecords(
     });
   }
   const root = model.spatialTree ? id(model.spatialTree.expressId) : undefined;
-  return { elements: out, root };
+  return { elements: out, root, idOf };
 }

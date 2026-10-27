@@ -10,6 +10,7 @@ import {
   type ElementRecord,
   type SessionKind,
 } from './records.js';
+import type { RenderRequest } from './render.js';
 import { sourceSetOf, type SourceSet } from './sources.js';
 import { SessionWorker, WorkerError } from './workerClient.js';
 
@@ -298,6 +299,38 @@ export class SessionManager {
         diff,
         durationMs: Date.now() - started,
       };
+    });
+    session.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * Render the session's current build. Queued behind any rebuild, so it always draws the build
+   * the caller sees. A render that times out stops the worker; the records stay queryable, and a
+   * rebuild starts a new worker.
+   */
+  render(
+    id: string,
+    req: RenderRequest,
+    timeoutMs: number
+  ): Promise<{ readonly session: Session; readonly pngs: readonly Uint8Array[] }> {
+    const session = this.get(id);
+    const run = session.queue.then(async () => {
+      const worker = session.worker;
+      if (!worker?.alive) {
+        throw new SessionError(
+          'WORKER_STOPPED',
+          `session ${id} has no running worker; call rebuild to start one`
+        );
+      }
+      try {
+        const { pngs } = await worker.request('render', req, timeoutMs);
+        return { session, pngs };
+      } catch (e) {
+        const stopped =
+          e instanceof WorkerError ? '; the worker stopped, so rebuild before rendering again' : '';
+        throw new SessionError('RENDER_FAILED', `${errorMessage(e)}${stopped}`);
+      }
     });
     session.queue = run.catch(() => undefined);
     return run;
