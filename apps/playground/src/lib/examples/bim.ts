@@ -877,12 +877,15 @@ for (const r of idsReport.value.results) {
 // BCF 3.0: an issue filed against a specific element by its GlobalId, which is
 // why stable ids matter. Zip packaging is the caller's job, so this is the
 // unzipped container as a name to contents map.
+// The walls' placed solids are built once: the camera reads the flagged wall's bounds, and the
+// view shows them all.
+const wallSolids = model.getWalls().map((e) => unwrap(placedSolids(e)));
 const flagged = model.getWalls()[0];
 const wallGuid = flagged.guid;
 // The viewpoint's camera looks at the wall from the south-west and above. BCF
 // works in metres; the model is in millimetres. Topics and viewpoints take
 // UUIDs, unlike the 22-character IFC GlobalIds that name elements.
-const b = getBounds(unwrap(placedSolids(flagged))[0]);
+const b = getBounds(wallSolids[0][0]);
 const target = [(b.xMin + b.xMax) / 2000, (b.yMin + b.yMax) / 2000, (b.zMin + b.zMax) / 2000];
 const eye = [target[0] - 8, target[1] - 8, target[2] + 6];
 const dir = target.map((t, i) => t - eye[i]);
@@ -912,6 +915,8 @@ const bcf = serializeBcfFiles({
       viewpoints: [
         {
           guid: crypto.randomUUID(),
+          // The markup names this file, so the saved copy below keeps the name.
+          viewpointFile: 'viewpoint.bcfv',
           components: { selection: [{ ifcGuid: wallGuid }] },
           camera: {
             kind: 'PERSPECTIVE',
@@ -934,10 +939,7 @@ const markupKey = [...bcf.keys()].find((k) => k.endsWith('/markup.bcf')) ?? '';
 const viewpointKey = [...bcf.keys()].find((k) => k.endsWith('.bcfv')) ?? '';
 
 // Playground runtime owns the displayed geometry for this eval.
-const walls = model
-  .getWalls()
-  .flatMap((e) => unwrap(placedSolids(e)))
-  .map((s) => color(s, '#d9d3c7'));
+const walls = wallSolids.flat().map((s) => color(s, '#d9d3c7'));
 const spaces = model
   .getSpaces()
   .flatMap((e) => unwrap(placedSolids(e)))
