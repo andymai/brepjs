@@ -12,6 +12,7 @@ import {
 } from './records.js';
 import type { EvalOutcome } from './evalCode.js';
 import type { QuantitiesById } from './quantities.js';
+import type { CheckName, ValidateOutcome } from './validate.js';
 import type { ExportIfcArgs, ExportIfcOutcome } from './exportIfc.js';
 import type { WorkerOps } from './protocol.js';
 import type { RenderRequest } from './render.js';
@@ -416,6 +417,26 @@ export class SessionManager {
     });
   }
 
+  /** Run brepjs-bim's checks against the session's current build. */
+  validate(
+    id: string,
+    checks: readonly CheckName[],
+    opts: { readonly timeoutMs: number; readonly expectBuild?: string | undefined }
+  ): Promise<{
+    readonly session: Session;
+    readonly buildHash: string;
+    readonly outcome: ValidateOutcome;
+  }> {
+    return this.#onCurrentBuild(id, opts.expectBuild, 'validation', async (s) => {
+      const buildHash = s.build.buildHash;
+      return {
+        session: s,
+        buildHash,
+        outcome: await this.#request(s, 'validate', { checks }, opts.timeoutMs),
+      };
+    });
+  }
+
   /** Run agent code against the session's current build, in its worker. */
   evalCode(
     id: string,
@@ -474,7 +495,7 @@ export class SessionManager {
   }
 
   /** A request to the session's live worker. A timeout stops the worker; rebuild starts a new one. */
-  async #request<K extends 'render' | 'exportIfc' | 'eval' | 'quantities'>(
+  async #request<K extends 'render' | 'exportIfc' | 'eval' | 'quantities' | 'validate'>(
     session: Session,
     op: K,
     args: WorkerOps[K]['args'],
@@ -497,6 +518,7 @@ export class SessionManager {
         exportIfc: 'EXPORT_FAILED',
         eval: 'EVAL_FAILED',
         quantities: 'QUANTITIES_FAILED',
+        validate: 'VALIDATE_FAILED',
       }[op];
       throw new SessionError(code, `${errorMessage(e)}${stopped}`);
     }

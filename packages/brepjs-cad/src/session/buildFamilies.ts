@@ -17,6 +17,7 @@ import { loadBrep, toolDir, type BrepNs } from '../verify/brepjsRuntime.js';
 import { importBim } from './bim.js';
 import { exportFamiliesIfc, type ExportIfcArgs, type ExportIfcOutcome } from './exportIfc.js';
 import { familiesQuantities, type QuantitiesOutcome } from './quantities.js';
+import { validateFamilies, type CheckName, type ValidateOutcome } from './validate.js';
 import { typecheckPart } from '../verify/typecheck.js';
 import {
   boundsOfPositions,
@@ -45,6 +46,8 @@ export interface WorkerBuild {
   evalContext?(): object;
   /** Families builds only: quantity sets per key path, from an in-memory IFC export. */
   quantities?(): Promise<QuantitiesOutcome>;
+  /** brepjs-bim's checks against the build. */
+  validate?(checks: readonly CheckName[]): Promise<ValidateOutcome>;
 }
 
 /** The parts of `ctx` both kinds of build share. */
@@ -139,6 +142,21 @@ export async function buildFamilies(
         ...baseEvalContext(brep, 'families', elements),
         model: { root: resolved, byKeyPath: model.byKeyPath },
       }),
+      validate: async (checks) => {
+        const bim = await importBim(entryPath);
+        if (bim === undefined) {
+          return {
+            ok: false,
+            error: "validation needs 'brepjs-bim' and 'web-ifc' installed in this project",
+          };
+        }
+        const shapes = new Map<string, unknown>();
+        for (const [keyPath, node] of model.byKeyPath) {
+          if (node.shape?.ok && node.shape.value !== undefined)
+            shapes.set(keyPath, node.shape.value);
+        }
+        return validateFamilies(bim, resolved, evaluator, shapes, new Set(checks));
+      },
       quantities: async () => {
         const bim = await importBim(entryPath);
         if (bim === undefined) {

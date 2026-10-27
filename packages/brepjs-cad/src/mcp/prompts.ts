@@ -72,6 +72,25 @@ const PROMPTS: readonly PromptDef[] = [
         '3. Report the totals per storey and overall with their units (the units field), and name the fields whose count is below matched: those elements have no value for them.',
       ].join('\n'),
   },
+  {
+    name: 'compare-revisions',
+    title: 'Compare revisions',
+    description:
+      'Compare two open models, such as two revisions of an IFC file, summarize what changed, and show it.',
+    arguments: [
+      { name: 'from', description: 'The earlier session.', required: true },
+      { name: 'to', description: 'The later session.', required: true },
+    ],
+    render: ({ from, to }) =>
+      [
+        `Compare session ${from ?? ''} (earlier) with session ${to ?? ''} (later).`,
+        '',
+        `1. Call compare_models with from "${from ?? ''}" and to "${to ?? ''}". Page through the rest with offset while nextOffset is set.`,
+        `2. Read the added and changed elements with get_elements on session ${to ?? ''}, and the removed ones on session ${from ?? ''}, with fields [] to get their names and categories.`,
+        '3. Summarize by category: what was added, removed and changed, and for changes, which props, psets or quantities moved and by how much.',
+        `4. Call render_view on session ${to ?? ''} with highlight set to the added and changed ids, and describe where in the building the changes are.`,
+      ].join('\n'),
+  },
 ];
 
 export function listPrompts(): Prompt[] {

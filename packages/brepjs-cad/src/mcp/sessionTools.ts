@@ -134,8 +134,8 @@ const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
 const MAX_IDS = 200;
 const MAX_DIAGNOSTICS = 50;
-const DIFF_PAGE = 100;
-const MAX_DIFF_PAGE = 500;
+export const DIFF_PAGE = 100;
+export const MAX_DIFF_PAGE = 500;
 
 export const SESSION_ID = { type: 'string', description: 'Session id from open_model.' };
 export const EXPECT_BUILD = {
@@ -171,7 +171,7 @@ function cap<T>(list: readonly T[], max: number, key: string): Record<string, un
 }
 
 /** One page of a diff: the same slice of the added, removed and changed lists, plus totals. */
-function diffPage(d: BuildDiff, offset: number, limit: number): Record<string, unknown> {
+export function diffPage(d: BuildDiff, offset: number, limit: number): Record<string, unknown> {
   const page = <T>(xs: readonly T[]) => xs.slice(offset, offset + limit);
   const longest = Math.max(d.added.length, d.removed.length, d.changed.length);
   return {

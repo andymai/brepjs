@@ -49,6 +49,12 @@ async function handle(req: WorkerRequest): Promise<void> {
         send({ type: 'reply', id: req.id, result: await evalInBuild(ctx, req.args.code) });
         return;
       }
+      case 'validate': {
+        if (current?.validate === undefined)
+          throw new Error('this worker holds no build to validate');
+        send({ type: 'reply', id: req.id, result: await current.validate(req.args.checks) });
+        return;
+      }
       case 'quantities': {
         if (current?.quantities === undefined)
           throw new Error('this build has no quantities to derive');

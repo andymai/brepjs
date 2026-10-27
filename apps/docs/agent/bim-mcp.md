@@ -81,7 +81,7 @@ One element changed, by the prop that was meant to change, and it grew 300 mm up
 
 **Export.** `export_ifc` with `outPath: "dist/model.ifc"` writes the file through the [validated IFC export](../families/ifc-export) and returns the validation report, with each issue mapped to a key path, and the GlobalId of every exported element.
 
-The `edit-and-verify` prompt walks an agent through this loop, `inspect-building` opens a model, summarizes it and renders a plan per storey, and `quantity-takeoff` schedules a category's quantities.
+The `edit-and-verify` prompt walks an agent through this loop, `inspect-building` opens a model, summarizes it and renders a plan per storey, `quantity-takeoff` schedules a category's quantities, and `compare-revisions` summarizes two revisions.
 
 ## Tools
 
@@ -96,6 +96,8 @@ The `edit-and-verify` prompt walks an agent through this loop, `inspect-building
 | `get_elements`            | Returns identity, props, psets, quantities, material, classification, relationships, children and geometry for given ids.                                            |
 | `list_schedulable_fields` | Lists the fields a selection carries for a schedule, with types and counts.                                                                                          |
 | `schedule`                | Tabulates the selected elements, grouped, sorted and totalled, optionally as CSV.                                                                                    |
+| `validate_model`          | Runs brepjs-bim's checks and maps each finding to an element.                                                                                                        |
+| `compare_models`          | Diffs two sessions, such as two revisions of an IFC file, by element identity.                                                                                       |
 | `render_view`             | Renders to PNG: `highlight`, `isolate`, `colorBy` category, storey or family, a storey `plan`, or a `section`.                                                       |
 | `export_ifc`              | Writes a families session to `.ifc` with the validation report, proxied elements and GlobalIds. Asks before replacing a file.                                        |
 | `search_reference`        | Searches the bundled brepjs API reference and these families docs, no session needed.                                                                                |
@@ -112,6 +114,21 @@ The `edit-and-verify` prompt walks an agent through this loop, `inspect-building
 ```
 
 A families model has no quantities of its own, so the session reads them back from an in-memory IFC export: the schedule shows the numbers `export_ifc` would write, in metres, square metres and cubic metres. An opened IFC file uses the quantity sets it carries, in its own units. The `quantity-takeoff` prompt runs this for one category.
+
+## Checking a model
+
+`validate_model` runs brepjs-bim's checks: referential integrity, the EXPRESS schema, a write-read-write round trip, the buildingSMART gherkin rules, and each element's solid. A families model is checked as the IFC file `export_ifc` would write, and each finding comes back with the key path of the element it names; an opened IFC file is checked as it is, with GlobalIds.
+
+`compare_models` diffs two open sessions by element identity. Open two revisions of an IFC file and it lists what was added, removed and changed, down to the pset value:
+
+```jsonc
+// compare_models { "from": "s2", "to": "s3" }
+{ "diff": { "counts": { ... },
+    "changed": [{ "id": "2XAz8MTt9Q9ubMaPpMza8b",
+      "psets": { "Pset_WallCommon.FireRating": { "before": "REI 120", "after": "REI 90" } } }] } }
+```
+
+The `compare-revisions` prompt summarizes such a diff by category and renders the changes.
 
 ## Running code against a session
 

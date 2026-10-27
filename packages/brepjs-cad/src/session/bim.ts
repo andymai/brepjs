@@ -52,6 +52,15 @@ export interface BimNs {
       readonly proxyEvaluator?: unknown;
     }
   ): BimResult<FamiliesBimLike>;
+  /** Takes the BimModel from familiesToBim. */
+  checkReferentialIntegrity(model: unknown): { readonly issues: readonly BimIssueLike[] };
+  checkSchema(bytes: Uint8Array): Promise<{ readonly issues: readonly BimIssueLike[] }>;
+  checkRoundTrip(bytes: Uint8Array): Promise<{ readonly issues: readonly BimIssueLike[] }>;
+  checkGherkinRules(bytes: Uint8Array): Promise<readonly BimIssueLike[]>;
+  checkGeometryValidity(
+    solids: unknown,
+    entity?: string
+  ): { readonly issues: readonly BimIssueLike[] };
   toIfcValidated(
     model: BimModelLike,
     meta: { readonly applicationName: string; readonly applicationVersion: string }

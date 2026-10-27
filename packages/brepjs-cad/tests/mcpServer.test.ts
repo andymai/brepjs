@@ -51,6 +51,8 @@ describe('brep-mcp server', () => {
       'get_elements',
       'list_schedulable_fields',
       'schedule',
+      'validate_model',
+      'compare_models',
       'search_reference',
     ]);
     expect(byName.get('export_part')?.annotations).toMatchObject({
@@ -216,6 +218,7 @@ describe('brep-mcp server', () => {
       'inspect-building',
       'edit-and-verify',
       'quantity-takeoff',
+      'compare-revisions',
     ]);
     const inspect = await client.getPrompt({
       name: 'inspect-building',
