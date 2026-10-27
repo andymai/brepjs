@@ -78,6 +78,9 @@ describe('session query', () => {
 
   it('folds case the same way on both sides', () => {
     expect(globMatcher('ΟΣ', true)('ΟΣ')).toBe(true);
+    expect(globMatcher('ΟΣ*', true)('ΟΣΑ')).toBe(true);
+    expect(globMatcher('οσ', true)('ΟΣ')).toBe(true);
+    expect(globMatcher('*ος', true)('ΚΟΣΜΟΣ')).toBe(true);
     expect(globMatcher('İstanbul', true)('İstanbul')).toBe(true);
     expect(globMatcher('i̇stanbul*', true)('İSTANBUL office')).toBe(true);
   });

@@ -155,9 +155,10 @@ export function globMatcher(glob: string, ignoreCase = false): (text: string) =>
   if (glob.length > MAX_GLOB_LENGTH) {
     throw new QueryError(`globs are limited to ${MAX_GLOB_LENGTH} characters`);
   }
-  const fold = (x: string) => (ignoreCase ? x.toLowerCase() : x);
-  // Fold the whole pattern, as the text is folded whole: lowercasing is context-sensitive (final
-  // sigma) and can change length (İ), so folding one character at a time would not match.
+  // Lowercasing can change length (İ becomes two characters), so the pattern is folded whole, like
+  // the text. Final sigma is the one context-dependent lowercase mapping; folding ς to σ makes the
+  // result depend on the character alone, so ΟΣ* and ΟΣΑ fold to the same prefix.
+  const fold = (x: string) => (ignoreCase ? x.toLowerCase().replaceAll('ς', 'σ') : x);
   const source = fold(glob);
   const tokens: GlobToken[] = [];
   for (let i = 0; i < source.length; i++) {
