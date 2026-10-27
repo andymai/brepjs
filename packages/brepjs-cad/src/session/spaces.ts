@@ -56,13 +56,32 @@ function loopPoints(brep: BrepNs, wire: AnyShape): [number, number][] {
   const head = loop[0];
   const tail = loop[loop.length - 1];
   if (head && tail && loop.length > 1 && near(head, tail)) loop.pop();
-  return loop;
+  return withoutStraightPoints(loop);
 }
 
-export function measureSpace(brep: BrepNs, id: string, shapes: readonly AnyShape[]): SpaceGeometry {
-  const shape = shapes[0];
-  if (shape === undefined) return { id, error: 'no geometry' };
-  if (shapes.length > 1) return { id, error: `${shapes.length} solids; measured the first` };
+/** Drop points that sit on a straight run, such as the seams left where fused solids met. */
+function withoutStraightPoints(loop: [number, number][]): [number, number][] {
+  if (loop.length < 4) return loop;
+  const out: [number, number][] = [];
+  for (let i = 0; i < loop.length; i++) {
+    const prev = loop[(i + loop.length - 1) % loop.length];
+    const here = loop[i];
+    const next = loop[(i + 1) % loop.length];
+    if (!prev || !here || !next) continue;
+    const ax = here[0] - prev[0];
+    const ay = here[1] - prev[1];
+    const bx = next[0] - here[0];
+    const by = next[1] - here[1];
+    const cross = ax * by - ay * bx;
+    const straight =
+      Math.abs(cross) <= 1e-9 * Math.hypot(ax, ay) * Math.hypot(bx, by) && ax * bx + ay * by > 0;
+    if (!straight) out.push(here);
+  }
+  return out.length >= 3 ? out : loop;
+}
+
+/** The floor outline, area, perimeter and volume of one solid. */
+function measureSolid(brep: BrepNs, id: string, shape: AnyShape): SpaceGeometry {
   const b = brep.getBounds(shape);
   const height = b.zMax - b.zMin;
   const z = b.zMin + Math.min(FLOOR_OFFSET_MM, height / 2);
@@ -97,4 +116,41 @@ export function measureSpace(brep: BrepNs, id: string, shapes: readonly AnyShape
   } finally {
     face.value[Symbol.dispose]();
   }
+}
+
+/**
+ * A space's measurements. A space an IFC file gives as several solids is fused first, so parts
+ * that overlap count once; if the fuse fails, each part is measured and the totals summed.
+ */
+export function measureSpace(brep: BrepNs, id: string, shapes: readonly AnyShape[]): SpaceGeometry {
+  const [first] = shapes;
+  if (first === undefined) return { id, error: 'no geometry' };
+  if (shapes.length === 1) return measureSolid(brep, id, first);
+  const solids = shapes.filter((s) => brep.isShape3D(s));
+  const fused = solids.length === shapes.length ? brep.fuseAll(solids) : undefined;
+  if (fused?.ok) {
+    try {
+      return measureSolid(brep, id, fused.value);
+    } finally {
+      fused.value[Symbol.dispose]();
+    }
+  }
+  const parts = shapes.map((s) => measureSolid(brep, id, s));
+  const sum = (key: 'area' | 'perimeter' | 'volume') =>
+    parts.every((p) => p[key] !== undefined)
+      ? parts.reduce((n, p) => n + (p[key] ?? 0), 0)
+      : undefined;
+  const area = sum('area');
+  const perimeter = sum('perimeter');
+  const volume = sum('volume');
+  const floor = Math.min(...parts.map((p) => p.floor ?? Infinity));
+  return {
+    id,
+    ...(area !== undefined ? { area } : {}),
+    ...(perimeter !== undefined ? { perimeter } : {}),
+    ...(volume !== undefined ? { volume } : {}),
+    ...(Number.isFinite(floor) ? { floor } : {}),
+    loops: parts.flatMap((p) => p.loops ?? []),
+    error: `${shapes.length} solids that would not fuse, measured apart: overlaps count twice`,
+  };
 }

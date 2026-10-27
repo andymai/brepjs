@@ -192,11 +192,13 @@ export function drawElements(
     clipLo[i] = Math.max(range[0], clipLo[i] ?? range[0]);
     clipHi[i] = Math.min(range[1], clipHi[i] ?? range[1]);
     const size: Vec3 = [clipHi[0] - clipLo[0], clipHi[1] - clipLo[1], clipHi[2] - clipLo[2]];
-    const clip =
-      spec.depth !== 0 && size.every((d) => d > 0)
-        ? brep.translate(brep.box(size[0], size[1], size[2]), clipLo)
-        : undefined;
-    if (clip) owned.push(clip);
+    let clip: ReturnType<BrepNs['box']> | undefined;
+    if (spec.depth !== 0 && size.every((d) => d > 0)) {
+      // translate copies, so the box it was given is freed here.
+      using raw = brep.box(size[0], size[1], size[2]);
+      clip = brep.translate(raw, clipLo);
+      owned.push(clip);
+    }
 
     elements.forEach((el, n) => {
       let crossed = false;

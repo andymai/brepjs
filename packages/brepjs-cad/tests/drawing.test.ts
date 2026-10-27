@@ -7,6 +7,7 @@ import {
   type DrawingGeometry,
 } from '@/session/drawing.js';
 import { drawingSvg, dxfEntities } from '@/session/drawingFormats.js';
+import { measureSpace } from '@/session/spaces.js';
 
 const brep = await loadBrep();
 await initOcctWasm(brep);
@@ -132,5 +133,23 @@ describe('drawing formats', () => {
     expect(lines).toHaveLength(3);
     expect(lines[0]).toEqual({ type: 'LINE', start: [0, 0], end: [1000, 0], layer: 'CUT-WALL' });
     expect(brep.exportDXF(lines)).toContain('CUT-WALL');
+  });
+});
+
+describe('measureSpace', () => {
+  it('fuses a space given as overlapping solids, so the overlap counts once', () => {
+    const a = brep.box(2000, 2000, 2700);
+    const b = brep.translate(brep.box(2000, 2000, 2700), [1000, 0, 0]);
+    try {
+      const m = measureSpace(brep, 'sp', [a, b]);
+      expect(m.error).toBeUndefined();
+      expect(m.area).toBeCloseTo(6, 6);
+      expect(m.perimeter).toBeCloseTo(10, 6);
+      expect(m.volume).toBeCloseTo(16.2, 6);
+      expect(m.loops?.[0]).toHaveLength(4);
+    } finally {
+      a[Symbol.dispose]();
+      b[Symbol.dispose]();
+    }
   });
 });

@@ -33,9 +33,11 @@ async function drawing(build: WorkerBuild, args: DrawingArgs): Promise<DrawingOu
   if (geometry === undefined) throw new Error('this worker holds no build to draw');
   const categories = categoriesOf(build);
   const elements: DrawnElement[] = [];
+  const missing: { id: string; reason: string }[] = [];
   for (const id of args.ids) {
     const shapes = geometry.shapes.get(id);
     if (shapes) elements.push({ id, category: categories.get(id) ?? 'other', shapes });
+    else missing.push({ id, reason: 'no solid to cut: its geometry is only a mesh' });
   }
   const drawn = drawElements(geometry.brep, elements, args.spec);
   const svg = drawingSvg(drawn, args.title);
@@ -58,7 +60,7 @@ async function drawing(build: WorkerBuild, args: DrawingArgs): Promise<DrawingOu
     layers,
     cut: drawn.cut,
     beyond: drawn.beyond,
-    skipped: drawn.skipped,
+    skipped: [...missing, ...drawn.skipped],
   };
 }
 
