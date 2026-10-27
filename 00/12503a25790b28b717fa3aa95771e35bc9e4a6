@@ -1,0 +1,29 @@
+packages/brepjs-cad/src/session/drawing.ts
+  s_4d771e7bb40c3c::t_cbacb1ebe135fc 195
+  s_4d771e7bb40c3c::t_68b976fbad9348 196-201
+packages/brepjs-cad/src/session/spaces.ts
+  s_4d771e7bb40c3c::t_1cfb0732974790 59,62-80
+  s_4d771e7bb40c3c::t_68b976fbad9348 83-84,120-155
+  s_4d771e7bb40c3c::t_9360f3ddc81094 81-82,156
+packages/brepjs-cad/tests/drawing.test.ts
+  s_4d771e7bb40c3c::t_c99997abbec597 10,138-153
+  s_4d771e7bb40c3c::t_fdba298e8948c2 154-155
+packages/brepjs-cad/src/session/worker.ts
+  s_4d771e7bb40c3c::t_68b976fbad9348 36,40,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0012503a25790b28b717fa3aa95771e35bc9e4a6",
+  "prompts": {},
+  "sessions": {
+    "s_4d771e7bb40c3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7af67bff-973d-45c7-8aaf-2a8f075a4f24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
