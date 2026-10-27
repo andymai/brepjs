@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.186.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.185.0...brepjs-cad-v0.186.0) (2026-10-27)
+
+
+### Features
+
+* **brepjs-cad:** tell agents which line authors each element ([#2456](https://github.com/andymai/brepjs/issues/2456)) ([5a655b6](https://github.com/andymai/brepjs/commit/5a655b68912c887a694e4bea20d6a6dff246fb7e))
+
 ## [0.185.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.184.0...brepjs-cad-v0.185.0) (2026-10-27)
 
 
