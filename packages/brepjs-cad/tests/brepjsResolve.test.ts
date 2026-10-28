@@ -44,6 +44,15 @@ describe('brepjsResolve hook', () => {
     expect(tool.url).toContain(`${PROJECT}/node_modules/brepjs`);
   });
 
+  it('binds a part outside the project (an MCP sandbox under /tmp) to the project copy too', async () => {
+    const next = fakeResolver([TOOL, PROJECT]);
+    const sandboxPart = pathToFileURL('/tmp/brep-sandbox-1/part.brep.ts').href;
+    const tool = await run('brepjs', { parentURL: toolFile }, next);
+    const part = await run('brepjs', { parentURL: sandboxPart }, next);
+    expect(part.url).toBe(tool.url);
+    expect(part.url).toContain(`${PROJECT}/node_modules/brepjs`);
+  });
+
   it('falls back to the bundled copy for both when the project has none', async () => {
     const next = fakeResolver([TOOL]);
     const tool = await run('brepjs', { parentURL: toolFile }, next);

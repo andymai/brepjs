@@ -110,6 +110,15 @@ export async function resolve(specifier, context, nextResolve) {
       // Default resolution: finds a LOCAL brepjs/occt-wasm in the consumer's project.
       return await nextResolve(specifier, context);
     } catch (err) {
+      // A part with no copy of its own (an MCP sandbox part written under /tmp) takes the
+      // project's, the same copy the tool's imports took above.
+      if (projectBaseUrl) {
+        try {
+          return await nextResolve(specifier, { ...context, parentURL: projectBaseUrl });
+        } catch {
+          // No project copy either: fall back to the bundled one.
+        }
+      }
       if (!toolBaseUrl) throw err;
       // Re-run the DEFAULT resolver, but as if the import came from inside the tool's package
       // (parentURL = the tool's package.json) so it walks the tool's node_modules and honors
