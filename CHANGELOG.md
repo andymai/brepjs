@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.11.2](https://github.com/andymai/brepjs/compare/brepjs-v20.11.1...brepjs-v20.11.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **occtwasm:** draw meshEdges lines from the face mesh ([#2475](https://github.com/andymai/brepjs/issues/2475)) ([f731fe0](https://github.com/andymai/brepjs/commit/f731fe0f5968e3a82b8c713f76de76de3ab8461a))
+
 ## [20.11.1](https://github.com/andymai/brepjs/compare/brepjs-v20.11.0...brepjs-v20.11.1) (2026-10-27)
 
 
