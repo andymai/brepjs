@@ -1,0 +1,27 @@
+src/kernel/occtWasm/meshOps.ts
+  s_88b7b133f12d86::t_8f0883c8804d0a 118-125
+  s_88b7b133f12d86::t_cf1022a1ec1e6c 107-108,114,116-117,130
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_88b7b133f12d86::t_cd6e67f3a7ee66 484-485
+tests/meshFns.test.ts
+  s_88b7b133f12d86::t_6371924888de3a 6,186-187,189,192
+  s_88b7b133f12d86::t_f12aaf0dd9066c 164-185,188,190-191,193-196
+tests/helpers/kernelDivergences.ts
+  s_88b7b133f12d86::t_28e3f4c97cd659 421-425
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5843690e3edc88720b5cfacbc5e1b3a4b69ed5cd",
+  "prompts": {},
+  "sessions": {
+    "s_88b7b133f12d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "654c2ad6-8a1f-4d05-94f2-368da8f11ebd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
