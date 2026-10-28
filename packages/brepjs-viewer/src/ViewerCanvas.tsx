@@ -79,7 +79,7 @@ function Framing({
   useEffect(() => {
     const dir = VIEW_DIR[view].clone().normalize();
     camera.up.set(0, 0, 1);
-    camera.position.copy(center).addScaledVector(dir, radius * 3);
+    camera.position.copy(center).addScaledVector(dir, framingDistance(camera, radius));
     camera.near = radius / 100;
     camera.far = radius * 100;
     const ortho = camera as THREE.OrthographicCamera;
@@ -104,6 +104,19 @@ function Framing({
     }
   }, [camera, controls, invalidate, center, radius, view, fitSignal, projection]);
   return null;
+}
+
+// Perspective framing has to account for the FOV: at R3F's default 75° a fixed 3x radius left
+// the model under half the frame. Fit the bounding sphere to the narrower half-angle (the
+// horizontal one in a portrait pane), with headroom so it fills roughly 75-80% of it. Ortho
+// framing comes from zoom, so its distance only needs to clear the model.
+const FIT_MARGIN = 1.2;
+function framingDistance(camera: THREE.Camera, radius: number): number {
+  const persp = camera as THREE.PerspectiveCamera;
+  if (!persp.isPerspectiveCamera) return radius * 3;
+  const halfV = THREE.MathUtils.degToRad(persp.fov) / 2;
+  const halfH = Math.atan(Math.tan(halfV) * persp.aspect);
+  return (radius * FIT_MARGIN) / Math.sin(Math.min(halfV, halfH));
 }
 
 // Mounts an OrthographicCamera with makeDefault while ortho is active. `initial` only seeds

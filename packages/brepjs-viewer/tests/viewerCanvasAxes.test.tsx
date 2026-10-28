@@ -89,7 +89,27 @@ describe('ViewerCanvas axes', () => {
   });
 });
 
+describe('ViewerCanvas framing', () => {
+  // R3F's default camera is a 75° vertical FOV; a fixed 3x-radius distance fills under half of it.
+  it.each([
+    ['landscape', 1.6],
+    ['square', 1],
+    ['portrait', 0.5],
+  ])('fills most of the narrower half-FOV with the bounding sphere (%s)', (_label, aspect) => {
+    mockState.camera = new THREE.PerspectiveCamera(75, aspect);
+    renderView('iso');
+
+    const camera = requireCamera() as THREE.PerspectiveCamera;
+    const sphereAngle = Math.asin(MESH_RADIUS / camera.position.distanceTo(MESH_CENTER));
+    const halfV = THREE.MathUtils.degToRad(camera.fov) / 2;
+    const halfNarrow = Math.min(halfV, Math.atan(Math.tan(halfV) * camera.aspect));
+    expect(sphereAngle).toBeLessThan(halfNarrow);
+    expect(Math.tan(sphereAngle) / Math.tan(halfNarrow)).toBeGreaterThan(0.7);
+  });
+});
+
 const MESH_CENTER = new THREE.Vector3(12, 2, 2);
+const MESH_RADIUS = Math.sqrt(3 * 4 * 4) / 2;
 
 function renderView(view: ViewName): void {
   act(() => {
