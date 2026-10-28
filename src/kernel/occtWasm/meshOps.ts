@@ -104,19 +104,30 @@ function pushPolylineSegments(
   }
 }
 
+const WIREFRAME_FROM_TRIANGULATION = 1;
+
 export function meshEdges(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shape: KernelShape,
   tolerance: number,
-  _angularTolerance: number
+  angularTolerance: number
 ): KernelEdgeMeshResult {
-  const edgeData = k.wireframe(unwrap(shape), tolerance);
+  // Sampling the curve honors only the chord deflection, so a small arc gets
+  // far fewer segments than mesh() puts on its faces and the chords dip in and
+  // out of the shaded surface. Read the polygon BRepMesh stored on each edge
+  // instead, so every line vertex is a face-mesh vertex. A shape that was
+  // already meshed keeps that mesh (the faces it draws with); re-running the
+  // mesher would only copy out a mesh nobody reads. Edges without a stored
+  // polygon fall back to curve sampling.
+  const id = unwrap(shape);
+  if (!k.hasTriangulation(id)) meshShape(k, shape, tolerance, angularTolerance);
+  const edgeData = k.wireframe(id, tolerance, WIREFRAME_FROM_TRIANGULATION);
   try {
     const heap = Module.HEAPF32;
     const ptr = edgeData.getPointsPtr() >> 2;
 
-    // wireframe() samples each edge into a polyline (N points along the curve),
+    // wireframe() returns each edge as a polyline (N points along the curve),
     // concatenated per edge with edgeGroups giving each edge's {start, count} as
     // float offsets into the points buffer. KernelEdgeMeshResult.lines is a flat
     // *line list* (consecutive point pairs, one per segment) for THREE.LineSegments

@@ -481,7 +481,8 @@ export interface OcctKernelWasm {
 
   // --- Tessellation / Mesh ---
   tessellate(id: number, linearDeflection: number, angularDeflection: number): EmMeshData;
-  wireframe(id: number, deflection: number): EmEdgeData;
+  /** `source`: 0 samples each edge's curve, 1 reads the polygon the last mesh stored on it. */
+  wireframe(id: number, deflection: number, source: number): EmEdgeData;
   hasTriangulation(id: number): boolean;
   meshShape(id: number, linearDeflection: number, angularDeflection: number): EmMeshData;
 

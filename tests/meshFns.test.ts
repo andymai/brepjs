@@ -3,6 +3,7 @@ import { initKernel, currentKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
+  cylinder,
   sphere,
   mesh,
   meshEdges,
@@ -160,6 +161,39 @@ describe('meshFns', () => {
       // Not cached — different object
       expect(mesh2).not.toBe(mesh1);
     });
+
+    it.skipIf(currentKernel === 'manifold' || shouldSkipSuite('meshFns.edgeAngularTolerance'))(
+      'edge density follows angularTolerance, not just the chord deflection',
+      () => {
+        // A 1-unit chord deflection alone puts ~5 segments on an r=5 circle.
+        using a = cylinder(5, 10);
+        using b = cylinder(5, 10);
+        const coarse = meshEdges(a, { tolerance: 1, angularTolerance: 1, cache: false });
+        const fine = meshEdges(b, { tolerance: 1, angularTolerance: 0.1, cache: false });
+        expect(fine.lines.length).toBeGreaterThan(coarse.lines.length * 3);
+      }
+    );
+
+    it.skipIf(currentKernel === 'manifold' || shouldSkipSuite('meshFns.edgesOnFaceMesh'))(
+      'edge polylines lie on face mesh vertices at the same tolerances',
+      () => {
+        // Separately sampled edges draw chords that cut through the shaded
+        // surface on small arcs, which reads as faceting.
+        using c = cylinder(2.4, 1.8);
+        const opts = { tolerance: 0.1, angularTolerance: 0.2, cache: false };
+        const faces = mesh(c, opts);
+        const edges = meshEdges(c, opts);
+        const key = (a: Float32Array, i: number) =>
+          [a[i], a[i + 1], a[i + 2]].map((v) => (v ?? NaN).toFixed(4)).join(',');
+        const faceVerts = new Set<string>();
+        for (let i = 0; i < faces.vertices.length; i += 3) faceVerts.add(key(faces.vertices, i));
+        expect(edges.lines.length).toBeGreaterThan(0);
+        for (let i = 0; i < edges.lines.length; i += 3) {
+          const p = key(edges.lines, i);
+          expect(faceVerts.has(p), p).toBe(true);
+        }
+      }
+    );
   });
 
   describe('exportSTEP', () => {
