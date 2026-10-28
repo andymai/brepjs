@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.27.0...brepjs-bim-v0.27.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **brepjs-bim:** write and read BCF 3.0 in the layout its schemas define ([#2461](https://github.com/andymai/brepjs/issues/2461)) ([d10cf23](https://github.com/andymai/brepjs/commit/d10cf23beb1bbd9ec05c547f69e3aaa79c859fd9))
+
 ## [0.27.0](https://github.com/andymai/brepjs/compare/brepjs-bim-v0.26.0...brepjs-bim-v0.27.0) (2026-10-24)
 
 
