@@ -10,6 +10,7 @@ const mockState = vi.hoisted(() => ({
   canvasCamera: undefined as
     { readonly position?: readonly number[]; readonly up?: readonly number[] } | undefined,
   invalidate: vi.fn(),
+  size: { width: 1000, height: 1000 },
 }));
 
 vi.mock('@react-three/fiber', () => ({
@@ -28,6 +29,7 @@ vi.mock('@react-three/fiber', () => ({
       readonly camera: THREE.Camera;
       readonly gl: { localClippingEnabled: boolean };
       readonly invalidate: () => void;
+      readonly size: { width: number; height: number };
     }) => Value
   ): Value => {
     if (mockState.camera === undefined) throw new Error('mock camera is not ready');
@@ -35,6 +37,7 @@ vi.mock('@react-three/fiber', () => ({
       camera: mockState.camera,
       gl: { localClippingEnabled: false },
       invalidate: mockState.invalidate,
+      size: mockState.size,
     });
   },
 }));
@@ -58,6 +61,7 @@ beforeEach(() => {
   mockState.camera = new THREE.PerspectiveCamera();
   mockState.canvasCamera = undefined;
   mockState.invalidate.mockClear();
+  mockState.size = { width: 1000, height: 1000 };
 });
 
 afterEach(() => {
@@ -96,24 +100,63 @@ describe('ViewerCanvas framing', () => {
     ['square', 1],
     ['portrait', 0.5],
   ])('fills most of the narrower half-FOV with the bounding sphere (%s)', (_label, aspect) => {
-    mockState.camera = new THREE.PerspectiveCamera(75, aspect);
+    setAspect(aspect);
     renderView('iso');
+    expectFitted(aspect);
+  });
 
-    const camera = requireCamera() as THREE.PerspectiveCamera;
-    const sphereAngle = Math.asin(MESH_RADIUS / camera.position.distanceTo(MESH_CENTER));
-    const halfV = THREE.MathUtils.degToRad(camera.fov) / 2;
-    const halfNarrow = Math.min(halfV, Math.atan(Math.tan(halfV) * camera.aspect));
-    expect(sphereAngle).toBeLessThan(halfNarrow);
-    expect(Math.tan(sphereAngle) / Math.tan(halfNarrow)).toBeGreaterThan(0.7);
+  it('re-fits on resize without changing the view direction', () => {
+    setAspect(1);
+    renderView('iso');
+    const before = requireCamera().position.clone().sub(MESH_CENTER).normalize();
+
+    setAspect(0.6);
+    renderView('iso');
+    expectFitted(0.6);
+    const after = requireCamera().position.clone().sub(MESH_CENTER).normalize();
+    expect(after.angleTo(before)).toBeLessThan(1e-6);
+  });
+
+  it('keeps a user zoom across a resize', () => {
+    setAspect(1);
+    renderView('iso');
+    const camera = requireCamera();
+    camera.position.sub(MESH_CENTER).multiplyScalar(0.5).add(MESH_CENTER);
+    const zoomed = camera.position.distanceTo(MESH_CENTER);
+
+    setAspect(0.6);
+    renderView('iso');
+    expect(camera.position.distanceTo(MESH_CENTER)).toBeCloseTo(zoomed, 9);
   });
 });
 
+function setAspect(aspect: number): void {
+  mockState.size = { width: aspect * 1000, height: 1000 };
+  if (mockState.camera === undefined || !(mockState.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+    mockState.camera = new THREE.PerspectiveCamera(75, aspect);
+  } else {
+    (mockState.camera as THREE.PerspectiveCamera).aspect = aspect;
+  }
+}
+
+function expectFitted(aspect: number): void {
+  const camera = requireCamera() as THREE.PerspectiveCamera;
+  const sphereAngle = Math.asin(MESH_RADIUS / camera.position.distanceTo(MESH_CENTER));
+  const halfV = THREE.MathUtils.degToRad(camera.fov) / 2;
+  const halfNarrow = Math.min(halfV, Math.atan(Math.tan(halfV) * aspect));
+  expect(sphereAngle).toBeLessThan(halfNarrow);
+  expect(Math.tan(sphereAngle) / Math.tan(halfNarrow)).toBeGreaterThan(0.7);
+}
+
 const MESH_CENTER = new THREE.Vector3(12, 2, 2);
 const MESH_RADIUS = Math.sqrt(3 * 4 * 4) / 2;
+// One object for every render: a new mesh would re-run the preset framing on each render,
+// which is not what a resize does.
+const MESH = meshAt(10);
 
 function renderView(view: ViewName): void {
   act(() => {
-    root.render(<ViewerCanvas data={meshAt(10)} view={view} />);
+    root.render(<ViewerCanvas data={MESH} view={view} />);
   });
 }
 

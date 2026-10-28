@@ -60,6 +60,13 @@ function Framing({
     target?: THREE.Vector3;
     update?: () => void;
   } | null;
+  // R3F keeps the default camera's aspect in sync with the canvas size; read the size so a
+  // resize can re-fit, and keep the latest aspect in a ref for the preset effect below.
+  const size = useThree((s) => s.size);
+  const aspect = size.height > 0 ? size.width / size.height : 1;
+  const aspectRef = useRef(aspect);
+  aspectRef.current = aspect;
+  const fittedDistance = useRef<number | undefined>(undefined);
   const fired = useRef(false);
   // Hold the latest onFirstFrame in a ref so it stays out of the framing effect's deps:
   // an inline callback from a consumer would otherwise re-run the effect on every parent
@@ -79,7 +86,9 @@ function Framing({
   useEffect(() => {
     const dir = VIEW_DIR[view].clone().normalize();
     camera.up.set(0, 0, 1);
-    camera.position.copy(center).addScaledVector(dir, framingDistance(camera, radius));
+    const distance = framingDistance(camera, radius, aspectRef.current);
+    camera.position.copy(center).addScaledVector(dir, distance);
+    fittedDistance.current = distance;
     camera.near = radius / 100;
     camera.far = radius * 100;
     const ortho = camera as THREE.OrthographicCamera;
@@ -103,6 +112,22 @@ function Framing({
       onFirstFrameRef.current?.();
     }
   }, [camera, controls, invalidate, center, radius, view, fitSignal, projection]);
+  // A perspective fit depends on aspect, so a narrowed pane would crop a model fitted wider.
+  // Follow the resize only while the camera still sits at the fitted distance, keeping the
+  // user's orbit direction; a user who zoomed keeps their zoom.
+  useEffect(() => {
+    const fitted = fittedDistance.current;
+    if (fitted === undefined) return;
+    const target = controls?.target ?? center;
+    const offset = camera.position.clone().sub(target);
+    if (Math.abs(offset.length() - fitted) > fitted * 1e-3) return;
+    const next = framingDistance(camera, radius, aspect);
+    if (Math.abs(next - fitted) <= fitted * 1e-3) return;
+    camera.position.copy(target).addScaledVector(offset.normalize(), next);
+    fittedDistance.current = next;
+    controls?.update?.();
+    invalidate();
+  }, [camera, controls, invalidate, center, radius, aspect]);
   return null;
 }
 
@@ -111,11 +136,11 @@ function Framing({
 // horizontal one in a portrait pane), with headroom so it fills roughly 75-80% of it. Ortho
 // framing comes from zoom, so its distance only needs to clear the model.
 const FIT_MARGIN = 1.2;
-function framingDistance(camera: THREE.Camera, radius: number): number {
+function framingDistance(camera: THREE.Camera, radius: number, aspect: number): number {
   const persp = camera as THREE.PerspectiveCamera;
   if (!persp.isPerspectiveCamera) return radius * 3;
   const halfV = THREE.MathUtils.degToRad(persp.fov) / 2;
-  const halfH = Math.atan(Math.tan(halfV) * persp.aspect);
+  const halfH = Math.atan(Math.tan(halfV) * aspect);
   return (radius * FIT_MARGIN) / Math.sin(Math.min(halfV, halfH));
 }
 
