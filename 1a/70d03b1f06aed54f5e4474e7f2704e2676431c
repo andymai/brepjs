@@ -1,0 +1,119 @@
+packages/brepjs-sheetmetal/tests/author.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+packages/brepjs-sheetmetal/tests/nest.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,10
+apps/docs/extending/custom-ops.md
+  s_88b7b133f12d86::t_66bf2bb282fdc6 107,118
+packages/brepjs-families/tests/registry.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 14,28
+tests/dimensionGuards.test.ts
+  s_88b7b133f12d86::t_3594465e662583 8,13
+tests/sketchChainable.test.ts
+  s_88b7b133f12d86::t_3594465e662583 10,13
+tests/voxelField.test.ts
+  s_88b7b133f12d86::t_068e6049778a27 162
+  s_88b7b133f12d86::t_3594465e662583 19,170
+  s_88b7b133f12d86::t_9ff36d57ca348c 80
+tests/implicitCore.test.ts
+  s_88b7b133f12d86::t_3594465e662583 25,31
+benchmarks/profile-blueprint-booleans.ts
+  s_88b7b133f12d86::t_3594465e662583 23,209
+  s_88b7b133f12d86::t_fae12835b75a9a 208
+tests/parity/voxel/helpers.ts
+  s_88b7b133f12d86::t_3594465e662583 24,83
+packages/brepjs-families/tests/families.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 10,27
+packages/brepjs-sheetmetal/tests/formfeatures.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,14
+packages/brepjs-sheetmetal/tests/hemjog.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,13
+packages/brepjs-sheetmetal/tests/nfpNest.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,19
+packages/brepjs-sheetmetal/tests/report.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+packages/brepjs-sheetmetal/tests/reference.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+tests/apiCastResolve.test.ts
+  s_88b7b133f12d86::t_3594465e662583 7,11
+tests/validateCandidate.test.ts
+  s_88b7b133f12d86::t_3594465e662583 14,20
+apps/docs/extending/conformance.md
+  s_88b7b133f12d86::t_66bf2bb282fdc6 57,61
+scripts/extract-doc-tests.ts
+  s_88b7b133f12d86::t_66bf2bb282fdc6 3,140,159
+packages/brepjs-sheetmetal/tests/allowance.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+CLAUDE.md
+  s_88b7b133f12d86::t_66bf2bb282fdc6 106
+packages/brepjs-sheetmetal/tests/unfold2d.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,9
+llms-full.txt
+  s_88b7b133f12d86::t_66bf2bb282fdc6 1896,1900
+src/gear/gearFns.ts
+  s_88b7b133f12d86::t_66bf2bb282fdc6 6
+packages/brepjs-sheetmetal/tests/dxf.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+tests/setup.ts
+  s_88b7b133f12d86::t_d49209ea59b438 4-6,9
+.claude/skills/debugging-geometry/SKILL.md
+  s_88b7b133f12d86::t_628bb0e1183a57 106
+packages/brepjs-sheetmetal/tests/flatPatternPolylines.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,9
+tests/shapeTypeCache.test.ts
+  s_88b7b133f12d86::t_3594465e662583 2,15
+packages/brepjs-sheetmetal/tests/integration.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,9
+tests/playgroundExamples.test.ts
+  s_88b7b133f12d86::t_3594465e662583 11,16
+packages/brepjs-sheetmetal/tests/cutout.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,13
+packages/brepjs-sheetmetal/tests/foreignUnfold.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,29
+scripts/hillTetrahedronStudy.ts
+  s_88b7b133f12d86::t_3594465e662583 13,403
+tests/kernelCapabilityGuards.test.ts
+  s_88b7b133f12d86::t_0dfa2ae61b157f 8,21
+packages/brepjs-sheetmetal/tests/bendTable.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,14
+packages/brepjs-sheetmetal/tests/fold.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,10
+.claude/skills/writing-tests/SKILL.md
+  s_88b7b133f12d86::t_628bb0e1183a57 26,130
+packages/brepjs-sheetmetal/tests/multibend.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+packages/brepjs-sheetmetal/tests/validate.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,8
+tests/disposalStats.test.ts
+  s_88b7b133f12d86::t_3594465e662583 9,21,40
+.claude/skills/wasm-interop/SKILL.md
+  s_88b7b133f12d86::t_628bb0e1183a57 93
+packages/brepjs-sheetmetal/tests/invariants.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,9
+packages/brepjs-sheetmetal/tests/contourloft.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,12
+tests/voxelInterop.test.ts
+  s_88b7b133f12d86::t_3594465e662583 18,99
+packages/brepjs-sheetmetal/tests/relief.test.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 2,10
+tests/batchExtractors.test.ts
+  s_88b7b133f12d86::t_0dfa2ae61b157f 16,29
+  s_88b7b133f12d86::t_d49209ea59b438 27
+packages/brepjs-sheetmetal/tests/setup.ts
+  s_88b7b133f12d86::t_aaf14297887f2f 1,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a70d03b1f06aed54f5e4474e7f2704e2676431c",
+  "prompts": {},
+  "sessions": {
+    "s_88b7b133f12d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "654c2ad6-8a1f-4d05-94f2-368da8f11ebd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
