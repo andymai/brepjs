@@ -91,7 +91,17 @@ export function initOcctWasm(brep: BrepNs): Promise<void> {
       const kernel = await occt.OcctKernel.init(); // auto-locates its .wasm via import.meta.url
       type KernelArg = Parameters<typeof brep.OcctWasmAdapter.fromKernel>[0];
       brep.registerKernel('occt-wasm', brep.OcctWasmAdapter.fromKernel(kernel as KernelArg));
+      installFallbackFont(brep);
     })();
   }
   return kernelReady;
+}
+
+// Lets a part engrave text without shipping its own font file. A project-local brepjs older
+// than setFallbackFont lacks the export; parts on it still need loadFont().
+function installFallbackFont(brep: BrepNs): void {
+  const setFallback = (brep as Partial<BrepNs>).setFallbackFont;
+  if (typeof setFallback !== 'function') return;
+  const bytes = readFileSync(resolvePath(toolDir(), 'assets', 'fonts', 'Inter-Bold.ttf'));
+  setFallback(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }

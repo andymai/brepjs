@@ -54,9 +54,18 @@ export async function loadFont(
     fontData = fontPath;
   }
 
-  let font;
+  const parsed = parseFont(fontData);
+  if (!parsed.ok) return parsed;
+  FONT_REGISTER[fontFamily] = parsed.value;
+  if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = parsed.value;
+
+  return parsed;
+}
+
+function parseFont(fontData: ArrayBuffer): Result<OpenTypeFont> {
   try {
-    font = opentype.parse(fontData);
+    // Assert at library boundary — opentype.js Font is structurally compatible
+    return ok(opentype.parse(fontData) as OpenTypeFont);
   } catch (e) {
     return err(
       ioError(
@@ -66,20 +75,34 @@ export async function loadFont(
       )
     );
   }
-  // Assert at library boundary — opentype.js Font is structurally compatible
-  const typedFont = font as OpenTypeFont;
-  FONT_REGISTER[fontFamily] = typedFont;
-  if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = typedFont;
+}
 
-  return ok(typedFont);
+// Kept outside FONT_REGISTER so a fallback never satisfies loadFont's "already loaded"
+// check: the first real loadFont() still becomes 'default'.
+let fallbackFont: OpenTypeFont | undefined;
+
+/**
+ * Register a font that text functions use when no font has been loaded.
+ *
+ * Unlike {@link loadFont}, this does not occupy the `'default'` family: once any font is
+ * loaded, it takes precedence over the fallback.
+ *
+ * @param fontData - Raw OpenType/TrueType font bytes.
+ * @returns The parsed opentype.js Font object.
+ */
+export function setFallbackFont(fontData: ArrayBuffer): Result<OpenTypeFont> {
+  const parsed = parseFont(fontData);
+  if (parsed.ok) fallbackFont = parsed.value;
+  return parsed;
 }
 
 /**
  * Retrieve a previously loaded font by family name.
  *
  * @param fontFamily - Registry key (defaults to `'default'`).
- * @returns The opentype.js Font object, or `undefined` if not loaded.
+ * @returns The opentype.js Font object, or `undefined` if not loaded. `'default'` resolves
+ * to the fallback font when no font has been loaded.
  */
 export const getFont = (fontFamily = 'default'): OpenTypeFont | undefined => {
-  return FONT_REGISTER[fontFamily];
+  return FONT_REGISTER[fontFamily] ?? (fontFamily === 'default' ? fallbackFont : undefined);
 };
