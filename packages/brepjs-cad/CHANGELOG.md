@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.191.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.0...brepjs-cad-v0.191.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **viewer:** fit the perspective camera to the FOV, not a fixed 3x radius ([#2482](https://github.com/andymai/brepjs/issues/2482)) ([2672585](https://github.com/andymai/brepjs/commit/2672585e6a028529c5e43a46470991b71816deef))
+
 ## [0.191.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.190.0...brepjs-cad-v0.191.0) (2026-10-28)
 
 
