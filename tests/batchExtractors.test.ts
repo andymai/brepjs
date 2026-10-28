@@ -13,7 +13,7 @@ import {
   isSolid,
 } from '@/index.js';
 import type { Wire } from '@/index.js';
-import { initOC } from './setup.js';
+import { initOCCT } from './setup.js';
 import { unwrap } from '@/core/result.js';
 
 /** Helper: create a wire rectangle at a given offset. */
@@ -24,8 +24,9 @@ function wireRectAt(w: number, h: number, r: number, dx: number, dy: number, dz:
 }
 
 describe('Batch extractors', () => {
+  // The perf-stat assertions read timers only the opencascade.js adapter records.
   beforeAll(async () => {
-    await initOC();
+    await initOCCT();
   }, 30000);
 
   beforeEach(() => {

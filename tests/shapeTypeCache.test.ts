@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 import {
@@ -12,7 +12,7 @@ import { castShape, castShapeWithKnownType } from '@/core/shapeTypes.js';
 import { getShapeKind } from '@/core/typeDiscriminants.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('shapeTypeCache', () => {

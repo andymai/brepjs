@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { authorPart as author } from '../src/authorFns.js';
 import { unfold } from '../src/unfoldFns.js';
 import { nest, nestToDXF, patternBbox } from '../src/nestFns.js';
@@ -7,7 +7,7 @@ import type { AuthorSpec } from '../src/authorFns.js';
 import type { BendRule, FlatPattern } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const rule: BendRule = { innerRadius: 1, kFactor: 0.44 };

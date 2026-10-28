@@ -16,7 +16,7 @@ import type { VoxelMeshInput } from '@/voxel/index.js';
 import { makeBaseBox } from '@/index.js';
 import { unwrap, isErr, isOk, andThen } from '@/core/result.js';
 import { getDisposalStats, resetDisposalStats } from '@/core/disposal.js';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 
 // Axis-aligned box [min,max] as flat triangle soup (outward CCW). Reused to make
 // two overlapping operands and to reason about bbox growth under offset.
@@ -77,7 +77,7 @@ const B = box([0.6, 0, 0], [1.6, 1, 1]);
 // hollow shell needs a closed manifold input with curvature.
 function sphere(radius: number): VoxelMeshInput {
   const t = (1 + Math.sqrt(5)) / 2;
-  let pts: number[][] = [
+  const pts: number[][] = [
     [-1, t, 0],
     [1, t, 0],
     [-1, -t, 0],
@@ -159,7 +159,7 @@ const SPHERE_A = sphere(1);
 const SPHERE_B: VoxelMeshInput = (() => {
   const s = sphere(1);
   const v = Float32Array.from(s.vertices);
-  for (let i = 0; i < v.length; i += 3) v[i] += 0.8;
+  for (let i = 0; i < v.length; i += 3) v[i] = (v[i] ?? 0) + 0.8;
   return { vertices: v, triangles: s.triangles };
 })();
 
@@ -167,7 +167,7 @@ beforeAll(async () => {
   const wasmPath = resolve(__dirname, '../packages/brepjs-voxel-wasm/pkg/index_bg.wasm');
   await initWasm({ module_or_path: readFileSync(wasmPath) });
   initVoxel(voxelWasm);
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('voxel field op-chains (persistent grid + Fast Sweeping reinit)', () => {

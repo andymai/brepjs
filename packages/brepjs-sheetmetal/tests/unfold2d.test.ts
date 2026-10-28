@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import type { Wire } from 'brepjs';
 import { getEdges, curveStartPoint, curveEndPoint, isErr } from 'brepjs';
 import { author, miterCorner, unfold } from '../src/api.js';
 import type { BendRule } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const T = 1;

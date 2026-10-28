@@ -7,10 +7,10 @@ import {
   measureVolume,
   unwrap,
 } from '@/index.js';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 // Regression guard for the chainable surface of `Drawing.sketchOnPlane(...)`,

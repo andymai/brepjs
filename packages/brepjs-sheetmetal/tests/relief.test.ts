@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { isValid, measureVolume, getEdges, isErr, unwrap } from 'brepjs';
 import { author, unfold, validate } from '../src/api.js';
 import { addBendRelief, autoBendReliefs, cornerRelief } from '../src/reliefFns.js';
@@ -7,7 +7,7 @@ import { fold, partToFlatInput } from '../src/foldFns.js';
 import type { BendRule, FlatInput } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const T = 1;

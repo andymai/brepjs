@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { polygon, outerWire, unwrap } from 'brepjs';
 import { authorPart as author } from '../src/authorFns.js';
 import { unfold } from '../src/unfoldFns.js';
@@ -16,7 +16,7 @@ import type { AuthorSpec } from '../src/authorFns.js';
 import type { FlatPattern } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 /**

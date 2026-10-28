@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, isValid, isSolid, getSolids, getBounds } from 'brepjs';
 import { authorPart } from '../src/authorFns.js';
 import { hem } from '../src/hemFns.js';
@@ -10,7 +10,7 @@ import { registerBendTable } from '../src/bendTableFns.js';
 import type { BendRule, SheetMetalPart } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const T = 1;

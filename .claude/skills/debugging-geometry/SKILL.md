@@ -103,7 +103,7 @@ Note: the default **occt-wasm kernel exposes no raw `oc` handle** (`kernelDiverg
 
 ## Step 7 — Writing the repro test
 
-1. `import { initKernel } from './setup.js'` (`initOC` is a legacy alias) and `beforeAll(async () => { await initKernel(); }, 30000)`.
+1. `import { initKernel } from './setup.js'` and `beforeAll(async () => { await initKernel(); }, 30000)`.
 2. Use `unwrap(result)` in tests; assert geometry with `toBeCloseTo(expected, precision)` — never exact float equality.
 3. To force the **invalid-shape** healing path deterministically, spy `kernel.isValid` to return `false` on the first call then delegate — the `mockKernelIsValid` pattern in `tests/autoHeal.test.ts`. See the sibling skill `writing-tests`.
 

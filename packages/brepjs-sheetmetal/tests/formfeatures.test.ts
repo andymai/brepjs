@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { isOk, isErr, unwrap, measureVolume, isValid, getSolids, getEdges, curveStartPoint } from 'brepjs';
 import type { Wire } from 'brepjs';
 import { author } from '../src/api.js';
@@ -11,7 +11,7 @@ import { flatPatternToDXF } from '../src/dxfFns.js';
 import type { BendRule, FlatInput, SheetMetalPart } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const rule: BendRule = { innerRadius: 2, kFactor: 0.44 };

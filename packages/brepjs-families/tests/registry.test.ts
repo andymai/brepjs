@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { csg, isOk, isShape3D, measureVolume, unwrap } from 'brepjs';
 import { resolve, evaluateModel } from '../src/index.js';
 import { Room } from '../registry/families/room.js';
@@ -25,7 +25,7 @@ import { Window } from '../registry/families/window.js';
 import { Wall } from '../registry/families/wall.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const REGISTRY_DIR = join(dirname(fileURLToPath(import.meta.url)), '../registry');

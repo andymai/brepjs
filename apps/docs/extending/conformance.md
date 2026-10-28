@@ -54,11 +54,11 @@ A typical conformance test looks like:
 
 ```typescript
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, measureVolume, measureArea, unwrap } from '@/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('box primitive', () => {

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { authorPart } from '../src/authorFns.js';
 import { validatePart } from '../src/validateFns.js';
 import type { SheetMetalPart, SheetMetalWarning } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function codes(warnings: SheetMetalWarning[]): string[] {

@@ -21,7 +21,7 @@ import { mesh as meshShape } from '@/topology/meshFns.js';
 import { unwrap } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { KernelMeshResult } from '@/kernel/types.js';
-import { currentKernel, initOC } from '../../setup.js';
+import { currentKernel, initKernel } from '../../setup.js';
 
 type Vec3 = [number, number, number];
 
@@ -80,7 +80,7 @@ export async function setupVoxelParity(): Promise<void> {
     initVoxel(voxelWasm);
     wasmReady = true;
   }
-  await initOC();
+  await initKernel();
 }
 
 /** Tessellate a B-rep primitive into the voxel ops' triangle-soup input. */

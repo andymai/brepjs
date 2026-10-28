@@ -3,7 +3,7 @@
  *
  * @example Single external gear
  * ```typescript
- * await initOC();
+ * await init();
  * const result = makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, bore: 6 });
  * if (isOk(result)) writeSTEP(result.value.solid, 'gear.step');
  * ```

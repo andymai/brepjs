@@ -15,7 +15,7 @@ import { latticeInfillShape } from '@/lattice/index.js';
 import { makeBaseBox } from '@/index.js';
 import type { KernelMeshResult } from '@/kernel/types.js';
 import { unwrap, isErr } from '@/core/result.js';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 
 // Watertight unit cube [0,1]^3, outward-facing triangles (CCW from outside).
 const VERTS = new Float32Array([
@@ -96,7 +96,7 @@ beforeAll(async () => {
   const wasmPath = resolve(__dirname, '../packages/brepjs-voxel-wasm/pkg/index_bg.wasm');
   await initWasm({ module_or_path: readFileSync(wasmPath) });
   initVoxel(voxelWasm);
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('offsetMesh (true-SDF iso-level shift)', () => {

@@ -4,11 +4,11 @@
  * existing suites beyond the export-name check in public-api-types.test.ts.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, resolve3D, castShape3D, isSolid } from '@/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('resolve3D', () => {

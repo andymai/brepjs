@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { isErr } from 'brepjs';
 import { author, unfold } from '../src/api.js';
 import { flatPatternToPolylines } from '../src/polygonFns.js';
 import type { BendRule } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const rule: BendRule = { innerRadius: 2, kFactor: 0.44 };

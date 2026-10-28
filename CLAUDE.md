@@ -103,7 +103,7 @@ Conventional Commits enforced: `type(scope): subject`
 
 1. File: extend existing `tests/<moduleName>.test.ts` or create new `tests/<name>.test.ts`
 2. Import from `@/index.js` (use `@/` alias for cross-directory imports, always `.js` extension)
-3. Add `beforeAll(async () => { await initOC(); }, 30000)` and import `initOC` from `./setup.js`
+3. Add `beforeAll(async () => { await initKernel(); }, 30000)` and import `initKernel` from `./setup.js` (it initialises the kernel `TEST_KERNEL` selects; `initOCCT` pins opencascade.js and is only for tests that need that adapter)
 4. Use `toBeCloseTo(expected, precision)` for geometry; never exact equality for floating point
 5. Use `unwrap(result)` in tests; use `isOk()`/`match()` in production code
 6. Assert shape types with `isSolid()`, `isFace()`, `isWire()`, etc.

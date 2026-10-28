@@ -6,7 +6,7 @@
  * public shape API and plain Result callbacks instead.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   getDisposalStats,
   resetDisposalStats,
@@ -18,7 +18,7 @@ import { box } from '@/index.js';
 import { ok, err, unwrap, unwrapErr } from '@/core/result.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('disposal stats', () => {
@@ -37,7 +37,7 @@ describe('disposal stats', () => {
     expect(stats.scopeEnters).toBe(0);
     expect(stats.scopeExits).toBe(0);
     expect(stats.gcCollected).toBe(0);
-    // liveHandles is intentionally not asserted: setup (initOC) leaves WASM
+    // liveHandles is intentionally not asserted: setup (initKernel) leaves WASM
     // handles alive, so the FinalizationRegistry can adjust this counter
     // asynchronously after the synchronous reset — an absolute assertion would
     // be fragile and could even go negative for later readers.

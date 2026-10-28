@@ -10,7 +10,7 @@
  * Usage:  npx tsx scripts/hillTetrahedronStudy.ts [--N 50] [--trials 25] [--seed 1]
  */
 
-import { initOC } from '../tests/setup.js';
+import { initKernel } from '../tests/setup.js';
 import { convexHull, measureVolume, polyhedron, unwrap } from '../src/index.js';
 import type { Vec3 } from '../src/index.js';
 
@@ -400,7 +400,7 @@ async function main() {
   const seed = Number(args.get('seed') ?? 1);
   const L = 1;
 
-  await initOC();
+  await initKernel();
 
   console.log('# Hill tetrahedron random assembly study');
   console.log(`# L=${L}, V* per tet = L^3/6 = ${(1 / 6).toFixed(6)}`);

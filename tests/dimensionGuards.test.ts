@@ -5,12 +5,12 @@
  * and that the assertion functions throw on mismatches.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { is3D, is2D, as3D, as2D, box, createVertex, createEdge, getShapeKind } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('is3D / is2D runtime guards', () => {

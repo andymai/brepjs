@@ -7,7 +7,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { z } from 'zod';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { csg, getBounds, isOk, isShape3D, unwrap, measureVolume } from 'brepjs';
 import type { AnyShape, Dimension } from 'brepjs';
 import {
@@ -24,7 +24,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {

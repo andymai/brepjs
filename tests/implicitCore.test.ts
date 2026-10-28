@@ -22,13 +22,13 @@ import {
 } from '@/index.js';
 import type { SdfHandle } from '@/index.js';
 import { unwrap, isErr } from '@/core/result.js';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 
 beforeAll(async () => {
   const wasmPath = resolve(__dirname, '../packages/brepjs-voxel-wasm/pkg/index_bg.wasm');
   await initWasm({ module_or_path: readFileSync(wasmPath) });
   initVoxel(voxelWasm);
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function bboxOf(vertices: Float32Array): { min: number[]; max: number[] } {

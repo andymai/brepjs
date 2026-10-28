@@ -1,6 +1,6 @@
 /**
  * Extracts ```typescript / ```ts code blocks from apps/docs/**\/*.md and emits
- * tests/docs/extracted.test.ts. The generated test file initializes the OCCT
+ * tests/docs/extracted.test.ts. The generated test file initializes the test
  * kernel once, injects all brepjs exports onto globalThis, then evaluates each
  * snippet inside an AsyncFunction so `await` works. Satellite imports
  * (brepjs-families, brepjs-bim, brepjs-sheetmetal, zod) are rewritten into
@@ -137,7 +137,7 @@ function generateTestFile(snippets: Snippet[]): string {
 // Regenerate with: npm run docs:extract-tests
 /* eslint-disable */
 import { beforeAll, describe, it } from 'vitest';
-import { initOC } from '../setup.js';
+import { initKernel } from '../setup.js';
 import * as brepjsExports from '@/index.js';
 import * as familiesExports from 'brepjs-families';
 import * as bimExports from 'brepjs-bim';
@@ -156,7 +156,7 @@ const SATELLITE_NS: Record<string, unknown> = {
 };
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
   const g = globalThis as Record<string, unknown>;
   for (const [key, value] of Object.entries(brepjsExports)) {
     if (key !== 'default') g[key] = value;

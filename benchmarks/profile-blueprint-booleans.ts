@@ -20,7 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Session } from 'node:inspector/promises';
 import { fileURLToPath } from 'node:url';
-import { initOC } from '../tests/setup.js';
+import { initKernel } from '../tests/setup.js';
 import {
   drawRectangle,
   drawCircle,
@@ -205,8 +205,8 @@ function analyzeProfile(profile: CpuProfile): {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  console.log('Initializing OCCT kernel...');
-  await initOC();
+  console.log('Initializing kernel...');
+  await initKernel();
 
   console.log('\n=== Blueprint Boolean V8 CPU Profile ===');
   console.log('ADR-0006: Identifying hot-path vectorOperations functions\n');

@@ -5,7 +5,7 @@
  * asserts they are exported, never invokes them.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initOCCT } from './setup.js';
 import { getKernel } from '@/kernel/index.js';
 import { supportsProjection, supportsConstraintSketch } from '@/kernel/index.js';
 import {
@@ -18,7 +18,7 @@ import { getFaces } from '@/topology/topologyQueryFns.js';
 import { isErr } from '@/core/result.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initOCCT();
 }, 30000);
 
 describe('kernel capability guards', () => {

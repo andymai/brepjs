@@ -1,7 +1,9 @@
 /**
  * Vitest setup — re-exports from setup-kernel.ts.
  *
- * Backward-compatible: `initOC` is an alias for `initOCCT`.
+ * `initKernel()` initialises the kernel `TEST_KERNEL` selects (occt-wasm by
+ * default). `initOCCT()` always initialises opencascade.js and makes it the
+ * default, so only tests that need that adapter should call it.
  */
 
-export { currentKernel, initKernel, initOCCT, initOCCT as initOC } from './setup-kernel.js';
+export { currentKernel, initKernel, initOCCT } from './setup-kernel.js';

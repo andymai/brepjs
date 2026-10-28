@@ -104,7 +104,7 @@ This makes `octahedron` available at both `brepjs/topology` and the main `brepjs
 
 ```typescript
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   octahedron,
   measureVolume,
@@ -115,7 +115,7 @@ import {
 } from '@/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('octahedron', () => {

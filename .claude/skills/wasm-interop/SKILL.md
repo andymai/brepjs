@@ -90,7 +90,7 @@ Handle `.delete()` on occt-wasm and brepkit handles is a **no-op** — those ada
 
 **Missing WASM artifacts.** `packages/brepjs-opencascade/src/*.js` and `*.wasm` are **gitignored** (`.gitignore:31-36`); only `.d.ts` files are tracked. A `brepjs_single.js is missing` error means restore them from the published tarball with `bash scripts/ensure-wasm.sh` (version-stamped via `src/.wasm-version`; CI runs it) — **not** a Docker build.
 
-**Tests.** `tests/setup.ts` re-exports `initOC` (alias of `initOCCT`) from `tests/setup-kernel.ts`; `TEST_KERNEL` selects `occt` | `brepkit` | `occt-wasm` | `manifold`, defaulting to `occt-wasm`. Under vitest, `brepkit-wasm` is aliased to its Node CJS entry because the ESM entry uses the unsupported WASM-ESM-integration proposal (`vitest.config.ts`). See the `writing-tests` skill for the multi-kernel test setup.
+**Tests.** `tests/setup.ts` re-exports `initKernel` and `initOCCT` from `tests/setup-kernel.ts`; `TEST_KERNEL` selects `occt` | `brepkit` | `occt-wasm` | `manifold`, defaulting to `occt-wasm`. Under vitest, `brepkit-wasm` is aliased to its Node CJS entry because the ESM entry uses the unsupported WASM-ESM-integration proposal (`vitest.config.ts`). See the `writing-tests` skill for the multi-kernel test setup.
 
 ## Threading reality
 

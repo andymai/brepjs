@@ -8,12 +8,12 @@
  * runs. Without this, an example can silently rot into a blank viewer.
  */
 import { describe, it, beforeAll, expect } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
 import { evalAndMeshExample, bodySolidCounts } from './helpers/playgroundExampleEval.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 60000);
 
 describe('playground examples', () => {

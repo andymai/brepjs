@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { measureVolume, isValid, getBounds } from 'brepjs';
 import { authorPart } from '../src/authorFns.js';
 import { autoMiterCorner, miterCut } from '../src/miterFns.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const T = 1;

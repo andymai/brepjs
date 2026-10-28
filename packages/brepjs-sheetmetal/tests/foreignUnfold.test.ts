@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import {
   cylinder,
   sphere,
@@ -26,7 +26,7 @@ import { fromSolid } from '../src/facade.js';
 import type { AuthorSpec } from '../src/authorFns.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const rule = { innerRadius: 2, kFactor: 0.5 };

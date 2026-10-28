@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from '../../../tests/setup.js';
+import { initKernel } from '../../../tests/setup.js';
 import { buildReport, reportFromUnfold, reportToJSON } from '../src/reportFns.js';
 import { unfold } from '../src/unfoldFns.js';
 import type { BendRule, SheetMetalPart } from '../src/types.js';
 
 beforeAll(async () => {
-  await initOCCT();
+  await initKernel();
 }, 30000);
 
 const HALF_PI = Math.PI / 2;

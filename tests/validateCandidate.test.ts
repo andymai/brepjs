@@ -11,13 +11,13 @@
  */
 import { describe, it, beforeAll, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { evalAndMeshExample } from './helpers/playgroundExampleEval.js';
 
 const candidateFile = process.env.CANDIDATE_FILE;
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 60000);
 
 describe.skipIf(!candidateFile)('candidate playground example', () => {
