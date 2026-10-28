@@ -407,6 +407,14 @@ describe('fillet()', () => {
       expect(result.error.message).toContain('fillet(shape, edges, radius)');
     }
   });
+
+  it('returns INVALID_EDGE_SELECTION for a swapped variable-radius tuple', () => {
+    using b = box(10, 10, 10);
+    // @ts-expect-error -- deliberately swapped arguments, as an author might write them
+    const result = fillet(b, [1, 2], edgeFinder().inDirection('Z'));
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) expect(result.error.code).toBe('INVALID_EDGE_SELECTION');
+  });
 });
 
 describe('chamfer()', () => {
@@ -427,6 +435,14 @@ describe('chamfer()', () => {
     using b = box(20, 20, 20);
     // @ts-expect-error -- deliberately swapped arguments, as an author might write them
     const result = chamfer(b, { distance: 2, angle: 45 }, edgeFinder().inDirection('Z'));
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) expect(result.error.code).toBe('INVALID_EDGE_SELECTION');
+  });
+
+  it('returns INVALID_EDGE_SELECTION for a swapped asymmetric-distance tuple', () => {
+    using b = box(20, 20, 20);
+    // @ts-expect-error -- deliberately swapped arguments, as an author might write them
+    const result = chamfer(b, [1, 2], edgeFinder().inDirection('Z'));
     expect(isErr(result)).toBe(true);
     if (isErr(result)) expect(result.error.code).toBe('INVALID_EDGE_SELECTION');
   });
