@@ -1,7 +1,7 @@
 import type { AnyShape, BrepError, GltfMaterial, MaterialFn, Result, ShapeMesh } from 'brepjs';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadBrep, initOcctWasm, toolDir } from './brepjsRuntime.js';
+import { loadBrep, initOcctWasm, toolDir, type BrepNs } from './brepjsRuntime.js';
 import { runChecks } from './checks.js';
 import {
   evaluateExpected,
@@ -166,6 +166,16 @@ function finalize(result: RunPartResult): RunPartResult {
   return result;
 }
 
+function solidsCoverShape(
+  brep: Pick<BrepNs, 'getFaces' | 'getEdges' | 'getVertices'>,
+  shape: AnyShape,
+  solids: readonly AnyShape[]
+): boolean {
+  const count = (get: (s: AnyShape) => readonly unknown[]) =>
+    solids.reduce((n, s) => n + get(s).length, 0) === get(shape).length;
+  return count(brep.getFaces) && count(brep.getEdges) && count(brep.getVertices);
+}
+
 function partName(modulePath: string): string {
   return basename(modulePath).replace(/(\.brep)?\.(m?ts|tsx|m?js)$/, '');
 }
@@ -269,8 +279,10 @@ export async function runPart(
     if (typeof exportSTEPConfigured === 'function') {
       const name = partName(modulePath);
       const solids = getSolids(shape);
+      // Split only when the solids are the whole part: a free face, shell or wire alongside
+      // them would be dropped, so such a part exports whole under one name.
       const parts =
-        solids.length > 1
+        solids.length > 1 && solidsCoverShape(brep, shape, solids)
           ? solids.map((solid, i) => ({ shape: solid, name: `${name}-${i + 1}` }))
           : [{ shape, name }];
       const r = exportSTEPConfigured(parts);

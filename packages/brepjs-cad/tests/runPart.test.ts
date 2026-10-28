@@ -55,6 +55,14 @@ describe('runPart', () => {
     expect(text).toContain("PRODUCT('twoBoxes-2'");
   }, 30000);
 
+  it('keeps non-solid geometry in the STEP when a part mixes solids and a face', async () => {
+    const { step } = await runPart(fix('boxesAndFace.brep.ts'), { step: true });
+    const text = new TextDecoder().decode(step);
+    expect(text).toContain("PRODUCT('boxesAndFace'");
+    // 6 faces per box plus the free triangle.
+    expect(text.match(/ADVANCED_FACE\(/g)?.length ?? 0).toBeGreaterThanOrEqual(13);
+  }, 30000);
+
   it('emits a GLB buffer (derived preview) for a valid shape', async () => {
     const { glb } = await runPart(fix('validBox.brep.ts'), { glb: true });
     expect(glb).toBeInstanceOf(ArrayBuffer);
