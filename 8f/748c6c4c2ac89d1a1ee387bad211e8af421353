@@ -1,0 +1,21 @@
+packages/brepjs-cad/tests/bcfIssues.test.ts
+  s_d4ab5fb2066c9b::t_1e48e8f759a688 287-298,347-361
+  s_d4ab5fb2066c9b::t_fe61205b94712b 299
+  s_d4ab5fb2066c9b::t_e98b9474648d1e 362-366,373,376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f748c6c4c2ac89d1a1ee387bad211e8af421353",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
