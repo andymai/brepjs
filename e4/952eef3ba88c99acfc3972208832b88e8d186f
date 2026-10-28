@@ -1,0 +1,22 @@
+packages/brepjs-viewer/tests/viewerCanvasAxes.test.tsx
+  s_d4ab5fb2066c9b::t_4d38e2099b5a61 92-110,112
+packages/brepjs-viewer/src/ViewerCanvas.tsx
+  s_d4ab5fb2066c9b::t_a62af17fbe932d 109-121
+  s_d4ab5fb2066c9b::t_0c5093b4850dc4 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4952eef3ba88c99acfc3972208832b88e8d186f",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
