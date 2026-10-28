@@ -27,9 +27,14 @@ import { aimedSection, featureMarks } from '../snapshot/aiming.js';
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
 // (Emscripten's default stdout sink). The CLI owns stdout for machine-readable JSON,
 // so divert that kernel chatter to stderr to keep stdout a single clean JSON document.
+// The banner itself (rows starting with "******" and their blank spacers) carries no
+// information, and agents that read stderr with 2>&1 see it on every export, so drop it.
+const OCCT_BANNER_LINE = /^(\s*|\*{6}.*)$/;
 // eslint-disable-next-line no-console -- reroute kernel stdout chatter off the JSON channel
 console.log = (...args: unknown[]) => {
-  process.stderr.write(args.map(String).join(' ') + '\n');
+  const line = args.map(String).join(' ');
+  if (OCCT_BANNER_LINE.test(line)) return;
+  process.stderr.write(line + '\n');
 };
 
 export async function loadSnapshotShoot(): Promise<typeof ShootFn | undefined> {

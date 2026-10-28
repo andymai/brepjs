@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { existsSync, rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,6 +25,17 @@ describe('verify CLI', () => {
     expect(json.measurements.volume).toBeCloseTo(1000, 1);
     expect(existsSync(step)).toBe(true);
     expect(existsSync(glb)).toBe(true);
+  }, 60000);
+
+  it('keeps the OCCT STEP transfer banner out of stderr', () => {
+    const step = join(mkdtempSync(join(tmpdir(), 'brep-banner-')), 'part.step');
+    const run = spawnSync('npx', ['tsx', cli, fix('validBox.brep.ts'), '--step', step], {
+      encoding: 'utf8', cwd: pkgRoot,
+    });
+    expect(run.status).toBe(0);
+    expect(existsSync(step)).toBe(true);
+    expect(run.stderr).not.toContain('Statistics on Transfer');
+    expect(run.stderr).not.toMatch(/^\*{6}/m);
   }, 60000);
 });
 
