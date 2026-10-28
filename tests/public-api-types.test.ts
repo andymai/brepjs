@@ -632,6 +632,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'section',
   'sectionToFace',
   'serializeHistory',
+  'setFallbackFont',
   'setJointValue',
   'setJointValues',
   'setShapeOrigin',

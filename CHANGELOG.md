@@ -1,5 +1,19 @@
 # Changelog
 
+## [20.12.0](https://github.com/andymai/brepjs/compare/brepjs-v20.11.3...brepjs-v20.12.0) (2026-10-28)
+
+
+### Features
+
+* **text:** add setFallbackFont; brep engraves text without a font file ([#2480](https://github.com/andymai/brepjs/issues/2480)) ([cf05f21](https://github.com/andymai/brepjs/commit/cf05f2190741aac5bf7b737ee7f62a675b4b63af))
+
+## [20.11.3](https://github.com/andymai/brepjs/compare/brepjs-v20.11.2...brepjs-v20.11.3) (2026-10-28)
+
+
+### Bug Fixes
+
+* **api:** return INVALID_EDGE_SELECTION when fillet/chamfer args are swapped ([#2479](https://github.com/andymai/brepjs/issues/2479)) ([5547be6](https://github.com/andymai/brepjs/commit/5547be6c80e4e28a2029256d483996b45ea415fc))
+
 ## [20.11.2](https://github.com/andymai/brepjs/compare/brepjs-v20.11.1...brepjs-v20.11.2) (2026-10-28)
 
 
