@@ -1,0 +1,19 @@
+packages/brepjs-cad/tests/fixtures/engravedText.brep.ts
+  s_d4ab5fb2066c9b::t_fd547b6f172a71 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "061cbef8035fac6eb41a58c1a9c13f20ee4ce092",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
