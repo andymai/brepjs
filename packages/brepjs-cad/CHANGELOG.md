@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.191.3](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.2...brepjs-cad-v0.191.3) (2026-10-28)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** don't report an empty preview as valid ([#2491](https://github.com/andymai/brepjs/issues/2491)) ([4d2885a](https://github.com/andymai/brepjs/commit/4d2885a5658dd733a3817587919c6b209af4d2fb))
+
 ## [0.191.2](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.1...brepjs-cad-v0.191.2) (2026-10-28)
 
 
