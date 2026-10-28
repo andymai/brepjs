@@ -22,6 +22,15 @@ function isSceneOnly(data: string): boolean {
   }
 }
 
+// A build that threw is served as an empty payload with nothing listed in `failed`, so an
+// empty preview must not read as valid.
+export function previewValid(payload: {
+  elements: readonly unknown[];
+  failed: readonly unknown[];
+}): boolean {
+  return payload.elements.length > 0 && payload.failed.length === 0;
+}
+
 export function extOf(file: string): string {
   const d = file.lastIndexOf('.');
   return d === -1 ? '' : file.slice(d).toLowerCase();
@@ -61,7 +70,7 @@ export function useModel({ inspect = false }: UseModelOptions = {}): ModelState 
           setState({
             status: 'ready',
             data: payload.data,
-            measurements: { valid: payload.failed.length === 0 },
+            measurements: { valid: previewValid(payload) },
             preview: {
               elements: payload.elements,
               failed: payload.failed,
