@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.191.2](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.1...brepjs-cad-v0.191.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** share the project's brepjs with parts when run via npx ([#2486](https://github.com/andymai/brepjs/issues/2486)) ([29f137a](https://github.com/andymai/brepjs/commit/29f137a96ef879450c0f1f30989de94d0f5f5d25))
+
 ## [0.191.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.0...brepjs-cad-v0.191.1) (2026-10-28)
 
 
