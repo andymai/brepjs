@@ -23,16 +23,22 @@ import { dirname } from 'node:path';
 // single-realm property above.
 
 let toolBaseUrl;
+let toolDirUrl;
+let projectBaseUrl;
+
+const fileIn = (dir, name) => pathToFileURL(dir.endsWith('/') ? dir + name : `${dir}/${name}`).href;
 
 export async function initialize(data) {
   // `data.toolDir` is the brepjs-cad package root; resolve bundled deps relative to a
   // file inside it so Node's resolver walks the tool's node_modules.
   const dir = data && typeof data.toolDir === 'string' ? data.toolDir : undefined;
   if (dir) {
-    toolBaseUrl = pathToFileURL(
-      dir.endsWith('/') ? dir + 'package.json' : dir + '/package.json'
-    ).href;
+    toolBaseUrl = fileIn(dir, 'package.json');
+    toolDirUrl = fileIn(dir, '');
   }
+  // `data.projectDir` is where the part's own `import 'brepjs'` will look (the CLI's cwd).
+  const project = data && typeof data.projectDir === 'string' ? data.projectDir : undefined;
+  if (project) projectBaseUrl = fileIn(project, 'package.json');
 }
 
 function isManagedSpecifier(specifier) {
@@ -89,6 +95,17 @@ async function resolveWithTsFallback(specifier, context, nextResolve) {
 
 export async function resolve(specifier, context, nextResolve) {
   if (isManagedSpecifier(specifier)) {
+    // The tool's own imports must land on the copy the part's `import 'brepjs'` finds, which
+    // resolves from the project. Resolved from the tool's location instead, an npx or global
+    // install finds its bundled copy, and a project with its own brepjs then runs the part
+    // against a second brepjs whose kernel was never initialized.
+    if (projectBaseUrl && toolDirUrl && context.parentURL?.startsWith(toolDirUrl)) {
+      try {
+        return await nextResolve(specifier, { ...context, parentURL: projectBaseUrl });
+      } catch {
+        // No project copy: fall through to the importer's own resolution.
+      }
+    }
     try {
       // Default resolution: finds a LOCAL brepjs/occt-wasm in the consumer's project.
       return await nextResolve(specifier, context);

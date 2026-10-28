@@ -60,7 +60,9 @@ function registerHook(): void {
   const dir = toolDir();
   register(loaderUrl(dir), {
     parentURL: import.meta.url,
-    data: { toolDir: dir },
+    // The part resolves `brepjs` from where it lives; agents run `brep` from the project
+    // root, so the cwd is the project the tool's own imports should share.
+    data: { toolDir: dir, projectDir: process.cwd() },
   });
   hookRegistered = true;
 }
