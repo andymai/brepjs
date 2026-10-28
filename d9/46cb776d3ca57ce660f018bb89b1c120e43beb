@@ -1,0 +1,27 @@
+apps/playground/src/lib/wasmConfig.ts
+  s_88b7b133f12d86::t_e3701f803b773a 5-11,14-30
+apps/playground/src/lib/wasmPreloader.ts
+  s_88b7b133f12d86::t_e3701f803b773a 1,14,18
+apps/playground/src/vite-env.d.ts
+  s_88b7b133f12d86::t_e3701f803b773a 16-19
+apps/playground/src/workers/cad.worker.ts
+  s_88b7b133f12d86::t_e3701f803b773a 3,120-121,281
+apps/playground/vite.config.ts
+  s_88b7b133f12d86::t_e3701f803b773a 8,37-54,66,130,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d946cb776d3ca57ce660f018bb89b1c120e43beb",
+  "prompts": {},
+  "sessions": {
+    "s_88b7b133f12d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "654c2ad6-8a1f-4d05-94f2-368da8f11ebd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
