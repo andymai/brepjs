@@ -27,8 +27,14 @@ describe('verify CLI', () => {
     expect(existsSync(glb)).toBe(true);
   }, 60000);
 
+  let bannerDir = '';
+  afterEach(() => {
+    if (bannerDir) rmSync(bannerDir, { recursive: true, force: true });
+  });
+
   it('keeps the OCCT STEP transfer banner out of stderr', () => {
-    const step = join(mkdtempSync(join(tmpdir(), 'brep-banner-')), 'part.step');
+    bannerDir = mkdtempSync(join(tmpdir(), 'brep-banner-'));
+    const step = join(bannerDir, 'part.step');
     const run = spawnSync('npx', ['tsx', cli, fix('validBox.brep.ts'), '--step', step], {
       encoding: 'utf8', cwd: pkgRoot,
     });
