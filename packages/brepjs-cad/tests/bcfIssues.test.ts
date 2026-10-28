@@ -284,11 +284,19 @@ describe('create_issue and read_issues', () => {
       const png = topic && vp ? snapshotOf(opened, topic, vp) : undefined;
       const camera = vp?.camera;
       if (!png || camera?.kind !== 'PERSPECTIVE') throw new Error('no snapshot or camera');
-      // The wall's centre, through the BCF camera, lands on the orange wall in the snapshot.
-      const centre = [7, 0.1, 1.35]; // ground/annex spans x 5000..9000, y 0..200, z 0..2700 mm
-      const pixel = project3(camera, centre, 1200, 900);
-      const orange = orangeCentroid(decodePng(png));
-      expect(Math.hypot(pixel[0] - orange[0], pixel[1] - orange[1])).toBeLessThan(25);
+      // The wall's corners, through the BCF camera, bound the orange wall in the snapshot. A
+      // box's silhouette bounds are its projected corners' bounds, so this checks the camera
+      // itself; a centre-vs-centroid check drifts with framing (nearer faces weigh more).
+      // ground/annex spans x 5000..9000, y 0..200, z 0..2700 mm
+      const corners = [5, 9].flatMap((x) =>
+        [0, 0.2].flatMap((y) => [0, 2.7].map((z) => project3(camera, [x, y, z], 1200, 900)))
+      );
+      const projected = boundsOf(corners);
+      const seen = orangeBounds(decodePng(png));
+      const size = Math.hypot(projected.maxX - projected.minX, projected.maxY - projected.minY);
+      for (const edge of ['minX', 'minY', 'maxX', 'maxY'] as const) {
+        expect(Math.abs(projected[edge] - seen[edge])).toBeLessThan(0.03 * size);
+      }
     }
   );
 
@@ -336,22 +344,34 @@ function project3(
   return [((x + 1) / 2) * width, ((1 - y) / 2) * height];
 }
 
-function orangeCentroid(png: ReturnType<typeof decodePng>): [number, number] {
-  let sx = 0;
-  let sy = 0;
-  let n = 0;
+interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function boundsOf(points: readonly (readonly [number, number])[]): Bounds {
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]);
+  return {
+    minX: Math.min(...xs),
+    minY: Math.min(...ys),
+    maxX: Math.max(...xs),
+    maxY: Math.max(...ys),
+  };
+}
+
+function orangeBounds(png: ReturnType<typeof decodePng>): Bounds {
+  const hits: [number, number][] = [];
   for (let y = 0; y < png.height; y++) {
     for (let x = 0; x < png.width; x++) {
       const i = (y * png.width + x) * png.channels;
       const r = png.pixels[i] ?? 0;
       const g = png.pixels[i + 1] ?? 0;
       const b = png.pixels[i + 2] ?? 0;
-      if (r > 110 && g < r * 0.7 && b < r * 0.35) {
-        sx += x;
-        sy += y;
-        n++;
-      }
+      if (r > 110 && g < r * 0.7 && b < r * 0.35) hits.push([x, y]);
     }
   }
-  return [sx / n, sy / n];
+  return boundsOf(hits);
 }
