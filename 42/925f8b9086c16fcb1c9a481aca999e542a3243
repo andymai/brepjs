@@ -1,0 +1,19 @@
+tests/playgroundWasmConfig.test.ts
+  s_88b7b133f12d86::t_2cf52775a87516 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42925f8b9086c16fcb1c9a481aca999e542a3243",
+  "prompts": {},
+  "sessions": {
+    "s_88b7b133f12d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "654c2ad6-8a1f-4d05-94f2-368da8f11ebd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
