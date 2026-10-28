@@ -1,0 +1,19 @@
+packages/brepjs-cad/tests/cli.test.ts
+  s_d4ab5fb2066c9b::t_c385d98bd56ea6 30-34,36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25313d1b69f305861f5a17dedb39bc6a1fed4739",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
