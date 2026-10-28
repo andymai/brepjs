@@ -6,7 +6,8 @@
  */
 
 import type { Vec3, MatrixInput } from '@/core/types.js';
-import type { Result } from '@/core/result.js';
+import { type Result, err } from '@/core/result.js';
+import { BrepErrorCode, validationError } from '@/core/errors.js';
 import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import type {
@@ -273,6 +274,27 @@ function resolveEdges(
   return finder.findAll(shape);
 }
 
+// The 3-arg overloads are positional, so `fillet(shape, 2, edges)` would otherwise call the
+// radius as a FinderFn and throw "edgesOrFn is not a function". A callback is ambiguous
+// (FinderFn vs per-edge radius) and stays accepted.
+function isEdgeSelection(value: unknown): boolean {
+  if (value === undefined || typeof value === 'function') return true;
+  if (Array.isArray(value)) return value.every((e) => typeof e === 'object' && e !== null);
+  return typeof value === 'object' && value !== null && 'findAll' in value;
+}
+
+function edgeSelectionError(op: 'fillet' | 'chamfer', amount: 'radius' | 'distance') {
+  return err(
+    validationError(
+      BrepErrorCode.INVALID_EDGE_SELECTION,
+      `${op}(shape, edges, ${amount}): the 2nd argument must be the edges (an Edge[], an edge finder, or a finder callback), got a ${amount} value. The arguments look swapped.`,
+      undefined,
+      undefined,
+      `Call ${op}(shape, edges, ${amount}), or ${op}(shape, ${amount}) to apply it to every edge.`
+    )
+  );
+}
+
 function resolveFaces(
   facesOrFn: Face[] | FinderFn<Face> | ShapeFinder<Face>,
   shape: Shape3D
@@ -343,6 +365,7 @@ export function fillet<T extends ValidSolid>(
 
   if (maybeRadius !== undefined) {
     // 3-arg form: shape, edges, radius
+    if (!isEdgeSelection(edgesOrRadius)) return edgeSelectionError('fillet', 'radius');
     edges = resolveEdges(edgesOrRadius as Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, s);
     radius = maybeRadius;
   } else {
@@ -375,6 +398,7 @@ export function chamfer<T extends ValidSolid>(
   let distance: ChamferDistance;
 
   if (maybeDistance !== undefined) {
+    if (!isEdgeSelection(edgesOrDistance)) return edgeSelectionError('chamfer', 'distance');
     edges = resolveEdges(edgesOrDistance as Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, s);
     distance = maybeDistance;
   } else {

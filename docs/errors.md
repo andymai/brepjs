@@ -104,6 +104,7 @@ Input validation errors.
 | `INVALID_CHAMFER_DISTANCE` | Chamfer distance must be positive      | Use a positive distance value           |
 | `INVALID_THICKNESS`        | Shell thickness must be positive       | Use a positive thickness value          |
 | `NO_EDGES`                 | No edges found for fillet/chamfer      | Ensure shape has edges                  |
+| `INVALID_EDGE_SELECTION`   | Fillet/chamfer 2nd arg is not edges    | Call `fillet(shape, edges, radius)`     |
 | `NO_FACES`                 | No faces specified for shell           | Provide at least one face               |
 | `FACE_NOT_IN_SHAPE`        | A picked face belongs to another shape | Pick faces from the shape being edited  |
 | `ZERO_OFFSET`              | Offset distance cannot be zero         | Use a non-zero offset value             |

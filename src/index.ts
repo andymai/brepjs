@@ -389,7 +389,7 @@ export {
 
 // ── Layer 3: text ──
 
-export { loadFont, getFont } from './text/fontRegistry.js';
+export { loadFont, getFont, setFallbackFont } from './text/fontRegistry.js';
 export { textBlueprints } from './text/textBlueprints.js';
 export { sketchText } from './text/sketchText.js';
 export {

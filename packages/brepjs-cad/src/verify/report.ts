@@ -184,6 +184,10 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
     nextStep:
       'Enumerate the solid’s edges, choose the target edges, then call chamfer(solid, edges, distance).',
   },
+  INVALID_EDGE_SELECTION: {
+    fix: 'The fillet/chamfer arguments are in the wrong order: the edges come second and the radius/distance third.',
+    nextStep: 'Rewrite the call as fillet(solid, edges, radius) or chamfer(solid, edges, distance) and re-verify.',
+  },
   INVALID_FILLET_RADIUS: {
     fix: 'Use a fillet radius that is > 0 and small enough to fit the adjacent faces (well under half the thinnest wall).',
     nextStep:

@@ -148,9 +148,12 @@ length `14` → `xMin=-29`). Compute these from the SAME const that places the g
   the half you want). Fusing a whole sphere bulges past a cap face. See the `dome-cap` example.
 - **Pattern angles are DEGREES** (`circularPattern`/`rectangularPattern` `fullAngle`), _unlike_
   `revolve` (radians). Check the unit per op.
-- **Parts may be `async`**: `export default async () => {…}` is awaited — `await loadFont(...)`
-  (required before any `sketchText`/`drawText`) or `await importSTEP(...)`. `--check` type-checks
-  Node built-ins, so a part may `import { readFile } from 'node:fs/promises'`.
+- **Text needs no font file under `brep`**: `sketchText`/`drawText` fall back to a bundled Inter
+  Bold. Call `await loadFont(bytes, family)` only for a specific typeface, passing the file's bytes
+  as an `ArrayBuffer`: a string argument is fetched as a URL, so a filesystem path fails in Node.
+- **Parts may be `async`**: `export default async () => {…}` is awaited — `await loadFont(...)` or
+  `await importSTEP(...)`. `--check` type-checks Node built-ins, so a part may
+  `import { readFile } from 'node:fs/promises'`.
 - Author in ESM (the tool's default) so the kernel loads.
 
 ## Reference index (load only what the task needs)

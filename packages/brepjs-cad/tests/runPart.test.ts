@@ -26,6 +26,14 @@ describe('runPart', () => {
     expect(report.measurements.volume).toBeCloseTo(1000, 1);
   }, 30000);
 
+  it('engraves text with the bundled fallback font when the part loads none', async () => {
+    const { report } = await runPart(fix('engravedText.brep.ts'));
+    expect(report.errors).toEqual([]);
+    // 40 x 20 x 3 plate minus the 1 mm-deep "Pi 5" cut.
+    expect(report.measurements.volume).toBeLessThan(2400);
+    expect(report.measurements.volume).toBeGreaterThan(2300);
+  }, 30000);
+
   it('flags a degenerate part deterministically', async () => {
     const { report } = await runPart(fix('degenerate.brep.ts'));
     const failed = report.errors.length + report.checks.filter((c) => !c.passed).length;
