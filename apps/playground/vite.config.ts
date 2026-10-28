@@ -5,6 +5,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { createReadStream, existsSync, mkdirSync, copyFileSync, readFileSync } from 'fs';
+import { createHash } from 'crypto';
 
 const reactRequire = createRequire(import.meta.url);
 
@@ -33,8 +34,24 @@ function wasmFileMap(): Record<string, string> {
   };
 }
 
-function wasmAssets(): Plugin {
-  const files = wasmFileMap();
+// Vercel serves /playground/wasm/* as immutable for a year under fixed names, so
+// the app requests each file as `?v=<content hash>`: a new kernel build gets a
+// new URL instead of the browser reusing its old copy, or pairing an old
+// occt-wasm.js with a new occt-wasm.wasm.
+function wasmAssetHashes(files: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(files)
+      .filter(([, src]) => existsSync(src))
+      .map(([file, src]) => [
+        file,
+        createHash('sha256').update(readFileSync(src)).digest('hex').slice(0, 12),
+      ])
+  );
+}
+
+const WASM_FILE_MAP = wasmFileMap();
+
+function wasmAssets(files: Record<string, string>): Plugin {
   let base = BASE;
 
   return {
@@ -46,7 +63,7 @@ function wasmAssets(): Plugin {
       // Listen under the configured base so dev URLs match production (`/playground/wasm/...`)
       const wasmPath = `${base.replace(/\/$/, '')}/wasm`;
       server.middlewares.use(wasmPath, (req, res, next) => {
-        const file = req.url?.slice(1) ?? '';
+        const file = (req.url ?? '').replace(/\?.*$/, '').slice(1);
         const filePath = files[file];
         if (filePath === undefined || !existsSync(filePath)) return next();
 
@@ -110,8 +127,9 @@ export default defineConfig({
     // Surfaced in the playground status bar so users can include the running
     // brepjs version in bug reports without needing devtools.
     __BREPJS_VERSION__: JSON.stringify(BREPJS_VERSION),
+    __WASM_ASSET_HASHES__: JSON.stringify(wasmAssetHashes(WASM_FILE_MAP)),
   },
-  plugins: [react(), tailwindcss(), wasmAssets(), devRootIcons()],
+  plugins: [react(), tailwindcss(), wasmAssets(WASM_FILE_MAP), devRootIcons()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

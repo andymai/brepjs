@@ -1,6 +1,6 @@
 import { transform } from 'sucrase';
 import type { ToWorker, FromWorker, MeshTransfer, FaceGroup, EdgeGroup } from './workerProtocol';
-import { WASM_CACHE_NAME } from '../lib/wasmConfig';
+import { WASM_CACHE_NAME, wasmUrl } from '../lib/wasmConfig';
 
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
 declare function postMessage(message: unknown, options?: StructuredSerializeOptions): void;
@@ -117,9 +117,8 @@ function unwrapPresent(exported: unknown): { shape: unknown; artifacts: PresentA
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten module
 async function loadOcctWasmModule(): Promise<any> {
-  const base = import.meta.env.BASE_URL;
-  const jsFile = `${base}wasm/occt-wasm.js`;
-  const wasmFile = `${base}wasm/occt-wasm.wasm`;
+  const jsFile = wasmUrl('occt-wasm.js');
+  const wasmFile = wasmUrl('occt-wasm.wasm');
 
   let resp: Response | undefined;
   try {
@@ -279,7 +278,7 @@ function ensureBimLoaded(): Promise<void> {
     // Point web-ifc (used by toIfc) at the wasm the playground serves: its
     // default "fetch relative to my module" can't find the file in the bundled
     // worker. Mirrors loadOcctWasmModule's locateFile.
-    const webIfcWasm = `${import.meta.env.BASE_URL}wasm/web-ifc.wasm`;
+    const webIfcWasm = wasmUrl('web-ifc.wasm');
     bim.setIfcWasmLocateFile((path: string) => (path.endsWith('.wasm') ? webIfcWasm : path));
     bimBlobUrl = buildWrapperUrl(bim, '__brepjs_bim', false);
   })().catch((e: unknown) => {

@@ -1,4 +1,4 @@
-import { WASM_CACHE_NAME, WASM_FILES } from './wasmConfig.js';
+import { WASM_CACHE_NAME, WASM_FILES, deleteStaleWasmCaches, wasmUrl } from './wasmConfig.js';
 
 /**
  * Preloads WASM files in the background to speed up playground initialization.
@@ -11,11 +11,11 @@ export async function preloadWASM(): Promise<void> {
   }
 
   try {
+    await deleteStaleWasmCaches();
     const cache = await caches.open(WASM_CACHE_NAME);
 
     // List of WASM files to preload
-    const base = import.meta.env.BASE_URL;
-    const urls = WASM_FILES.map((file) => `${base}wasm/${file}`);
+    const urls = WASM_FILES.map(wasmUrl);
 
     // Fetch and cache each file if not already cached
     await Promise.all(
