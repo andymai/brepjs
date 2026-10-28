@@ -1,0 +1,27 @@
+packages/brepjs-cad/tests/runPart.test.ts
+  s_d4ab5fb2066c9b::t_806c9595f5fb67 47-48
+  s_d4ab5fb2066c9b::t_1d4799b4984e93 51,53
+  s_d4ab5fb2066c9b::t_eef0379bb4b9fa 52,54-55
+  s_d4ab5fb2066c9b::t_98b2622908aefa 49-50
+packages/brepjs-cad/tests/fixtures/twoBoxes.brep.ts
+  s_d4ab5fb2066c9b::t_eef0379bb4b9fa 1-8
+packages/brepjs-cad/src/verify/runPart.ts
+  s_d4ab5fb2066c9b::t_b8125334e8620c 2,169-172,269,277-283
+  s_d4ab5fb2066c9b::t_1d4799b4984e93 198,264-268,270-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb7ad2aa2fcbfdbc7b2eb536b3e2321e8881590b",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
