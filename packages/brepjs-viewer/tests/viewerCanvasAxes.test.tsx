@@ -130,12 +130,17 @@ describe('ViewerCanvas framing', () => {
   });
 });
 
+// R3F's default camera: 75° vertical FOV. beforeEach's PerspectiveCamera() defaults to 50°, where
+// the old fixed 3x-radius distance still fits, so pin the FOV the bug was about.
 function setAspect(aspect: number): void {
   mockState.size = { width: aspect * 1000, height: 1000 };
-  if (mockState.camera === undefined || !(mockState.camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
-    mockState.camera = new THREE.PerspectiveCamera(75, aspect);
+  const persp = mockState.camera as THREE.PerspectiveCamera | undefined;
+  if (persp?.isPerspectiveCamera) {
+    persp.fov = 75;
+    persp.aspect = aspect;
+    persp.updateProjectionMatrix();
   } else {
-    (mockState.camera as THREE.PerspectiveCamera).aspect = aspect;
+    mockState.camera = new THREE.PerspectiveCamera(75, aspect);
   }
 }
 
