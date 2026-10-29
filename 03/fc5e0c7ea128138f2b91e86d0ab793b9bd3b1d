@@ -1,0 +1,21 @@
+tests/svgImport.test.ts
+  s_d4ab5fb2066c9b::t_636cc18b58f7dc 123-152
+src/io/svgImportFns.ts
+  s_d4ab5fb2066c9b::t_60a3425536daf1 515,521,523-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03fc5e0c7ea128138f2b91e86d0ab793b9bd3b1d",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
