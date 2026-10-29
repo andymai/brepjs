@@ -1,7 +1,7 @@
 {
   "name": "brepjs",
   "version": "20.12.0",
-  "description": "Web CAD library with pluggable geometry kernel",
+  "description": "Exact B-Rep CAD in TypeScript on OpenCascade WebAssembly, with a pluggable geometry kernel",
   "keywords": [
     "cad",
     "geometry-kernel",

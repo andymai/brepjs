@@ -2,7 +2,7 @@
 
 # brepjs
 
-CAD modeling for JavaScript.
+Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them.
 
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
@@ -10,13 +10,22 @@ CAD modeling for JavaScript.
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-**[▶ Try the live playground](https://brepjs.dev/playground)**: write code, watch the solid render, and export STEP, all in your browser.
-
-**[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
-
-[![brepjs playground: write TypeScript on the left, see the exact solid render on the right](https://raw.githubusercontent.com/andymai/brepjs/main/media/demo.webp)](https://brepjs.dev/playground)
+https://github.com/user-attachments/assets/7f01ba2c-eee1-4fc2-8972-36369454c11d
 
 </div>
+
+In this real Claude Code session, Claude reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets three type errors back from `brep verify`, fixes them, and adds a fan mount on request. The exported STEP opens in FreeCAD.
+
+```text
+/plugin marketplace add andymai/brepjs
+/plugin install brepjs@brepjs
+```
+
+We had Claude rebuild the 46 parts in our example gallery from their descriptions: all 46 verified valid, and a blind AI judge rated 37 at least as good as our hand-written versions. [How we measured it](https://brepjs.dev/agent/eval).
+
+## Or write it yourself
+
+**[▶ Try the live playground](https://brepjs.dev/playground)** · **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
 
 Shapes are exact mathematical boundaries (not triangle meshes), so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
@@ -39,20 +48,6 @@ const step = unwrap(exportSTEP(part));
 brepjs grew out of the love and care I put into [gridfinitylayouttool.com](https://gridfinitylayouttool.com). I needed parametric CAD in the browser and I'm not a 3D modeler, but I know TypeScript. [OpenSCAD](https://openscad.org/) nailed code-first CAD but lives outside the JS ecosystem. [replicad](https://replicad.xyz/) proved OpenCascade works in JS but I kept hitting performance walls and fighting the API.
 
 Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom types that prove invariants at compile time. If it compiles, the geometry is valid. It's strongest at exact, manufacturable geometry — precise booleans, fillets, chamfers and shells; real volumes, areas and clearances; watertight solids that round-trip through STEP — from a single part to a full assembly (enclosures, brackets, fixtures, gridfinity bins, machined and molded parts). It isn't built for organic sculpting or dense lattices; that's what field-based (implicit/voxel) modeling is for.
-
-## Scope
-
-To set expectations, this project deliberately does not:
-
-- **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
-- **Support organic or sculpting workflows**: brepjs models exact mechanical solids — parts and assemblies; freeform/organic sculpting and dense lattices are out of scope (that's field-based implicit/voxel territory).
-- **Output SVG or 2D files**: 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
-- **Run server-side (SSR)**: WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
-- **Provide a GUI**: brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
-
-## Status
-
-[occt-wasm](https://github.com/andymai/occt-wasm) (OpenCascade compiled to WebAssembly) is the default kernel. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet ready for production use. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
 
 ## Install
 
@@ -105,6 +100,20 @@ Layer 0  kernel/, utils/                  WASM bindings
 ```
 
 Imports flow downward only. Boundaries are enforced in CI.
+
+## Scope
+
+To set expectations, this project deliberately does not:
+
+- **Render or display geometry**: brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
+- **Support organic or sculpting workflows**: brepjs models exact mechanical solids — parts and assemblies; freeform/organic sculpting and dense lattices are out of scope (that's field-based implicit/voxel territory).
+- **Output SVG or 2D files**: 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
+- **Run server-side (SSR)**: WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
+- **Provide a GUI**: brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
+
+## Status
+
+[occt-wasm](https://github.com/andymai/occt-wasm) (OpenCascade compiled to WebAssembly) is the default kernel. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet ready for production use. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
 
 ## Authoring CAD with AI (brepjs-cad)
 
