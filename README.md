@@ -10,11 +10,11 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/736b55fe-f1f4-4b4c-abdd-8429f247d49b
+https://github.com/user-attachments/assets/4b95af1c-4846-4364-9d98-1525d54bf60b
 
 </div>
 
-In this real Claude Code session, Claude reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets three type errors back from `brep verify`, fixes them, and adds a fan mount on request. The exported STEP opens in FreeCAD.
+In this real Claude Code session, Claude reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD.
 
 ```text
 /plugin marketplace add andymai/brepjs
