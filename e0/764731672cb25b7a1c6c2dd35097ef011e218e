@@ -1,0 +1,95 @@
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 98-100,212-284
+  s_d4ab5fb2066c9b::t_29b13e80256c7a 285-286
+src/2d/blueprints/booleanHelpers.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 13
+src/2d/blueprints/boolean2D.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 77-79,292-293
+package.json
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3
+packages/brepjs-cad/package.json
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 10,265-267,269,272,276-278,280
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 8,11-13,52-53,57-61,64-65,67-71,81-82,85-89,101-103,126-129
+src/io/README.md
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 14-16
+packages/brepjs-vscode/src/commands.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 94-95,97
+tests/2d.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 32,583-584,586,592,596-605
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 2,7-8,12-14,18,21-23,25,28-49,157-355
+src/io/meshNesting.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 1-180
+CHANGELOG.md
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3-16
+src/2d/blueprints/segmentAssembly.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3,313-328,330-337,341-342
+packages/brepjs-cad/CHANGELOG.md
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3-9
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 573-576
+src/2d/blueprints/intersectionSegments.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 7-12,55,195-197,199-207,209-210,283-288,309
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3,5-15,21-37,70-132
+  s_d4ab5fb2066c9b::t_1248e0a7720282 133
+.release-please-manifest.json
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 2,5
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 15,24-26,273-278
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 1014,1028-1050,1052,1148-1149,1204-1218,1220-1226,1228-1255,1258-1268,1271,1280,1284-1300
+src/io/objImportFns.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 18,26-37,63-65,67-68,90,97-99
+tests/svgImport.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 123-152
+tests/boolean2dRegression.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 7,10,20,24-26,33-52,158-161,463-612
+packages/brepjs-cad/tests/diff.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 30-42
+src/io/svgImportFns.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 515,521,523-528
+src/io/threemfImportFns.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 2,12,70-74,76,79-119,158-175,181,192-193,195-215,299-304,306,308-309,317,323-325,342-483,543-560,568-570,573-575,600-601,603,609-610,612,614,617
+packages/brepjs-cad/src/verify/diff.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 81-82,86-92,97-101
+  s_d4ab5fb2066c9b::t_7a13e21a879267 102
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 4-5,10-11,14-17,20-108,111,138-141
+src/io/igesSupport.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 1-22
+packages/brepjs-cad/tests/fixtures/lineEdge.brep.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 1-2
+.size-limit.json
+  s_d4ab5fb2066c9b::t_3c074912924a15 2
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 3
+packages/brepjs-vscode/src/cli.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 17-18,20
+src/topology/meshFns.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 21,340-342,349-352
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_aaf722fd40dbc4 6,8,10-11,16,35-197,217-357,359
+package-lock.json
+  s_d4ab5fb2066c9b::t_c2dea58b700fa1 3,9
+packages/brepjs-cad/src/verify/report.ts
+  s_d4ab5fb2066c9b::t_43d6883c0d7651 139-140,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0764731672cb25b7a1c6c2dd35097ef011e218e",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
