@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "20.12.3",
+  "version": "20.12.4",
   "description": "Exact B-Rep CAD in TypeScript on OpenCascade WebAssembly, with a pluggable geometry kernel",
   "keywords": [
     "cad",
@@ -223,7 +223,6 @@
     "prepublishOnly": "npm run build",
     "prepack": "bash scripts/validate-pack.sh",
     "typecheck": "tsgo --noEmit",
-    "typecheck:tests": "tsgo --noEmit -p tsconfig.typecheck-tests.json",
     "typecheck:tsc": "tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
