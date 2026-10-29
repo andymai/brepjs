@@ -164,9 +164,15 @@ async function author(part: Part): Promise<void> {
   // Authors may only run `npx brep`, ls and cat: no arbitrary npx packages or node scripts. They
   // still execute their own part code through brep on this machine, so run untrusted prompts in a
   // VM or container.
-  const deny = [REPO, REFS, JUDGE].flatMap((root) =>
-    ['Read', 'Grep', 'Glob', 'Edit', 'Write'].map((t) => `${t}(/${root}/**)`)
-  );
+  // The skill ships few-shot examples; one with this part's name would be its answer, so the
+  // author can't see it. Other examples stay readable, as they are for any user of the skill.
+  const sameExample = join(PLUGIN, 'skills', 'implement', 'examples', part.id);
+  const deny = [
+    ...[REPO, REFS, JUDGE].flatMap((root) =>
+      ['Read', 'Grep', 'Glob', 'Edit', 'Write'].map((t) => `${t}(/${root}/**)`)
+    ),
+    ...['Read', 'Grep', 'Glob'].map((t) => `${t}(/${sameExample}*)`),
+  ];
   const t0 = Date.now();
   const r = await run(
     'claude',
@@ -200,6 +206,9 @@ async function author(part: Part): Promise<void> {
       ...deny,
       `Bash(*${REPO}*)`,
       'Bash(*refs/*)',
+      // Authors work in parts/<id>/; a relative path could reach a sibling author's part.
+      'Bash(*../*)',
+      `Bash(*examples/${part.id}*)`,
       '--',
       prompt,
     ],
@@ -212,11 +221,18 @@ async function author(part: Part): Promise<void> {
 }
 
 // First-try = the first real `brep verify` report the author received; a permission denial of a
-// compound command is not a report.
+// compound command is not a report. A peek is any tool call that ran (wasn't denied) and named
+// another part's file or folder, by absolute or relative path, or this part's own skill example.
 function authorStats(id: string): { reports: number; firstTry: boolean; peeked: string[] } {
+  const others = readdirSync(PARTS).filter((p) => p !== id);
+  const names = (input: string, part: string): boolean =>
+    new RegExp(`(^|[^a-z0-9-])${part}(\\.brep|\\.ref|\\.expected|/|\\\\/)`).test(input);
   const calls = new Set<string>();
   const results: boolean[] = [];
   const peeked = new Set<string>();
+  const attempts = new Map<string, string[]>();
+  const denied =
+    /has been denied|blocked by a deny rule|requires approval|denied by your permission/;
   for (const line of readFileSync(join(PARTS, id, 'author.jsonl'), 'utf8').split('\n')) {
     let ev: { message?: { content?: unknown } };
     try {
@@ -228,9 +244,15 @@ function authorStats(id: string): { reports: number; firstTry: boolean; peeked: 
     for (const c of content) {
       if (c.type === 'tool_use') {
         const input = JSON.stringify(c.input ?? {});
-        for (const m of input.matchAll(/\/parts\/([a-z0-9-]+)\//g))
-          if (m[1] !== id) peeked.add(m[1] as string);
-        if (/\.ref\.brep|\brefs\//.test(input)) peeked.add('refs');
+        const hits = others.filter((other) => names(input, other));
+        if (/\.ref\.brep|\brefs\//.test(input)) hits.push('refs');
+        if (input.includes(`examples/${id}.`)) hits.push('its skill example');
+        if (hits.length > 0) attempts.set(String(c.id), hits);
+      }
+      if (c.type === 'tool_result' && attempts.has(String(c.tool_use_id))) {
+        const text = typeof c.content === 'string' ? c.content : JSON.stringify(c.content);
+        if (!denied.test(text))
+          for (const hit of attempts.get(String(c.tool_use_id)) ?? []) peeked.add(hit);
       }
       if (
         c.type === 'tool_use' &&
@@ -417,15 +439,6 @@ function prepareJudge(part: Part): JudgeMap | null {
 async function judge(part: Part): Promise<void> {
   const map = prepareJudge(part);
   if (!map) return;
-  const existing = readdirSync(join(JUDGE, part.id)).filter((f) => f.startsWith('verdict-')).length;
-  const first = existing > 0 ? null : await judgeOnce(part, map, 0);
-  const v0 =
-    first ??
-    (
-      JSON.parse(readFileSync(join(JUDGE, part.id, 'verdict-0.json'), 'utf8')) as {
-        verdict: Verdict | null;
-      }
-    ).verdict;
   const usable = (k: number): boolean =>
     existsSync(join(JUDGE, part.id, `verdict-${k}.json`)) &&
     (
@@ -433,6 +446,16 @@ async function judge(part: Part): Promise<void> {
         verdict: Verdict | null;
       }
     ).verdict !== null;
+  // A malformed reply is saved with verdict: null; retry it, the first vote included, so rerunning
+  // the judge phase recovers without deleting files by hand.
+  for (let attempt = 0; attempt < 2 && !usable(0); attempt++) await judgeOnce(part, map, 0);
+  const v0 = usable(0)
+    ? (
+        JSON.parse(readFileSync(join(JUDGE, part.id, 'verdict-0.json'), 'utf8')) as {
+          verdict: Verdict | null;
+        }
+      ).verdict
+    : null;
   if (v0 && (v0.pairwise === 'tie-good' || v0.confidence === 'low')) {
     for (let k = 1; k < 3; k++) {
       for (let attempt = 0; attempt < 2 && !usable(k); attempt++) await judgeOnce(part, map, k);
