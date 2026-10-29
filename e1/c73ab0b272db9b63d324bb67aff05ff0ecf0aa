@@ -1,0 +1,28 @@
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_e247533793d4f8 485,487-495
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_e247533793d4f8 391-406
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_c679a2b88e90ce 475-488
+tests/extrudeFns.test.ts
+  s_d4ab5fb2066c9b::t_c679a2b88e90ce 24,26,167-180
+  s_d4ab5fb2066c9b::t_a50267ee8ef9df 181-182
+src/kernel/occtWasm/constructionOps.ts
+  s_d4ab5fb2066c9b::t_e247533793d4f8 282-283,291-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1c73ab0b272db9b63d324bb67aff05ff0ecf0aa",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
