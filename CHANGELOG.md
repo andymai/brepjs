@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.10](https://github.com/andymai/brepjs/compare/brepjs-v20.12.9...brepjs-v20.12.10) (2026-10-29)
+
+
+### Bug Fixes
+
+* **topology:** apply per-edge distance-angle chamfers from a callback ([4d1fa54](https://github.com/andymai/brepjs/commit/4d1fa54b0e242cd6338818f962dedd34223539c2))
+
 ## [20.12.9](https://github.com/andymai/brepjs/compare/brepjs-v20.12.8...brepjs-v20.12.9) (2026-10-29)
 
 

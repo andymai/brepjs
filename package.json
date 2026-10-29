@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "20.12.9",
+  "version": "20.12.10",
   "description": "Exact B-Rep CAD in TypeScript on OpenCascade WebAssembly, with a pluggable geometry kernel",
   "keywords": [
     "cad",
