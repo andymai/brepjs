@@ -27,4 +27,11 @@ describe('runDiff', () => {
     expect(bboxDelta.zMax).toBeCloseTo(10, 3);
     expect(symmetricDifferenceVolume).toBeCloseTo(1000, 1);
   }, 30000);
+
+  it('reports that a non-3D side has no volume instead of a zero volume delta', async () => {
+    const { errors } = await runDiff(fix('validBox.brep.ts'), fix('lineEdge.brep.ts'));
+    expect(errors).toEqual([
+      'volume: b is an edge, which has no volume, so volumeDelta and symmetricDifferenceVolume were not measured',
+    ]);
+  }, 30000);
 });
