@@ -104,6 +104,8 @@ import {
   adjacentFaces,
   sharedEdges,
   measureVolume,
+  measureLength,
+  measureSurfaceProps,
   principalBoundingBox,
   registerKernel,
   withKernel,
@@ -241,6 +243,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           checkAllInterferences([a, b]);
+        })
+      ).toBe(0);
+    });
+
+    it('measuring solids and mixed compounds leaks nothing', () => {
+      // Fresh shapes each iteration: a repeated call on one shape is a cache hit.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          measureLength(b);
+          measureSurfaceProps(b);
+          using s0 = sphere(2);
+          using s = translate(s0, [0, 0, 20]);
+          const loose = getFaces(s0)[0];
+          if (!loose) throw new Error('sphere has no faces');
+          using mixed = compound([b, s, loose]);
+          measureVolume(mixed);
         })
       ).toBe(0);
     });

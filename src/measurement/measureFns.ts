@@ -4,6 +4,8 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
+import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type { Vec3 } from '@/core/types.js';
 import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { kernelCallRaw } from '@/core/kernelCall.js';
@@ -34,6 +36,66 @@ function nullShapeErr(fn: string) {
   return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${fn}: shape is a null shape`));
 }
 
+/**
+ * Run `fn` on fresh handles to the distinct sub-shapes of `type`, releasing them
+ * afterwards. Unlike getFaces and friends this leaves the shape's topology cache
+ * alone, so a measurement allocates nothing that outlives it.
+ */
+function withSubShapes<R>(
+  shape: AnyShape<Dimension>,
+  type: ShapeType,
+  fn: (items: KernelShape[]) => R
+): R {
+  const kernel = getKernel();
+  const items = kernel.iterShapes(shape.wrapped, type);
+  try {
+    return fn(items);
+  } finally {
+    for (const item of items) kernel.dispose(item);
+  }
+}
+
+/** Run `fn` on a throwaway compound of `parts`, releasing the compound afterwards. */
+function withCompoundOf<R>(parts: KernelShape[], fn: (c: KernelShape) => R): R {
+  const kernel = getKernel();
+  const c = kernel.makeCompound(parts);
+  try {
+    return fn(c);
+  } finally {
+    kernel.dispose(c);
+  }
+}
+
+function volumeOf(target: KernelShape): Result<VolumeProps> {
+  const kernel = getKernel();
+  const m = kernel.volume(target);
+  const comResult = kernelCallRaw(
+    () => kernel.centerOfMass(target),
+    BrepErrorCode.CENTER_OF_MASS_FAILED,
+    'Failed to compute center of mass'
+  );
+  if (!comResult.ok) return comResult;
+  return ok({ mass: m, volume: m, centerOfMass: comResult.value });
+}
+
+/** Area-weighted centroid of `faces`, from each face's own surface center of mass. */
+function surfaceCentroid(faces: KernelShape[]): Vec3 {
+  const kernel = getKernel();
+  let total = 0;
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  for (const f of faces) {
+    const a = kernel.area(f);
+    const [cx, cy, cz] = kernel.surfaceCenterOfMass(f);
+    total += a;
+    x += a * cx;
+    y += a * cy;
+    z += a * cz;
+  }
+  return total > 0 ? [x / total, y / total, z / total] : [0, 0, 0];
+}
+
 // ---------------------------------------------------------------------------
 // Volume, area, length
 // ---------------------------------------------------------------------------
@@ -57,27 +119,23 @@ export function measureVolumeProps(shape: Shape3D): Result<VolumeProps> {
   // Kernels otherwise diverge here (#1361): occt uses VolumeProperties with
   // OnlyClosed=true and reports 0 for an open shell, while occt-wasm's GProp
   // returns a meaningless divergence-theorem value. Normalize to 0/origin.
+  // A compound can also hold loose faces, shells, or wires, which would feed the
+  // same meaningless value into the total, so only its solids are measured.
   const type = kernel.shapeType(shape.wrapped);
-  if (type !== 'solid' && type !== 'compsolid' && type !== 'compound') {
-    const zero: VolumeProps = { mass: 0, volume: 0, centerOfMass: [0, 0, 0] };
-    setCachedMeasurement(shape.wrapped, 'volume', zero);
-    return ok(zero);
+  const zero: VolumeProps = { mass: 0, volume: 0, centerOfMass: [0, 0, 0] };
+  let result: Result<VolumeProps>;
+  if (type === 'solid' || type === 'compsolid') {
+    result = volumeOf(shape.wrapped);
+  } else if (type === 'compound') {
+    result = withSubShapes(shape, 'solid', (solids) =>
+      solids.length === 0 ? ok(zero) : withCompoundOf(solids, volumeOf)
+    );
+  } else {
+    result = ok(zero);
   }
-
-  const m = kernel.volume(shape.wrapped);
-  const comResult = kernelCallRaw(
-    () => kernel.centerOfMass(shape.wrapped),
-    BrepErrorCode.CENTER_OF_MASS_FAILED,
-    'Failed to compute center of mass'
-  );
-  if (!comResult.ok) return comResult;
-  const result: VolumeProps = {
-    mass: m,
-    volume: m,
-    centerOfMass: comResult.value,
-  };
-  setCachedMeasurement(shape.wrapped, 'volume', result);
-  return ok(result);
+  if (!result.ok) return result;
+  setCachedMeasurement(shape.wrapped, 'volume', result.value);
+  return result;
 }
 
 /**
@@ -95,7 +153,10 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<Su
   const kernel = getKernel();
   const m = kernel.area(shape.wrapped);
   const comResult = kernelCallRaw(
-    () => kernel.centerOfMass(shape.wrapped),
+    () =>
+      kernel.shapeType(shape.wrapped) === 'face'
+        ? kernel.surfaceCenterOfMass(shape.wrapped)
+        : withSubShapes(shape, 'face', surfaceCentroid),
     BrepErrorCode.CENTER_OF_MASS_FAILED,
     'Failed to compute center of mass'
   );
@@ -112,8 +173,9 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<Su
 /**
  * Measure linear properties of any shape.
  *
- * For edges this is the arc length; for wires/compounds it is the total
- * length of all edges.
+ * For edges this is the arc length; for wires and faces it is the total length
+ * of their edges; for shells, solids, and compounds it is the total length of
+ * their distinct edges, each counted once.
  *
  * @param shape - Any shape whose linear extent is to be measured.
  * @returns `Result` containing length, center of mass, and raw mass property.
@@ -125,13 +187,23 @@ export function measureLinearProps(shape: AnyShape<Dimension>): Result<LinearPro
   if (shapeIsNull(shape)) return nullShapeErr('measureLinearProps');
 
   const kernel = getKernel();
-  const m = kernel.length(shape.wrapped);
-  const com = kernel.linearCenterOfMass(shape.wrapped);
-  const result: LinearProps = {
-    mass: m,
-    length: m,
-    centerOfMass: com,
+  const type = kernel.shapeType(shape.wrapped);
+  const linearOf = (target: KernelShape): LinearProps => {
+    const m = kernel.length(target);
+    return { mass: m, length: m, centerOfMass: kernel.linearCenterOfMass(target) };
   };
+  let result: LinearProps;
+  if (type === 'vertex' || type === 'edge' || type === 'wire' || type === 'face') {
+    result = linearOf(shape.wrapped);
+  } else {
+    // LinearProperties walks every edge occurrence, so on a closed body each edge
+    // shared by two faces would count twice. Measure the distinct edges instead.
+    result = withSubShapes(shape, 'edge', (edges) =>
+      edges.length === 0
+        ? { mass: 0, length: 0, centerOfMass: [0, 0, 0] }
+        : withCompoundOf(edges, linearOf)
+    );
+  }
   setCachedMeasurement(shape.wrapped, 'linear', result);
   return ok(result);
 }
