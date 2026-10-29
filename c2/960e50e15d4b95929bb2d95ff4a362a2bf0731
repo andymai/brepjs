@@ -1,0 +1,24 @@
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_b1c0c8010bdcec 317-326
+tests/sketchFns.test.ts
+  s_d4ab5fb2066c9b::t_b1c0c8010bdcec 3,74-75
+  s_d4ab5fb2066c9b::t_d3ee0c61136a67 6-7,48-62,73,76-80
+src/sketching/sketchFns.ts
+  s_d4ab5fb2066c9b::t_10a23a97912127 108-110,114,116,118-119,133-135,140,142,149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2960e50e15d4b95929bb2d95ff4a362a2bf0731",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
