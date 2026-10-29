@@ -4,7 +4,7 @@
  * when intersecting shapes that produce common (overlapping) segments.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   CompoundSketch,
@@ -22,6 +22,8 @@ import {
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
 import { intersectCurves } from '@/2d/lib/index.js';
+import { Curve2D } from '@/2d/lib/curve2D.js';
+import { makeCircle2d } from '@/kernel/geometry2d.js';
 import type { Drawing } from '@/sketching/drawing.js';
 
 beforeAll(async () => {
@@ -567,6 +569,26 @@ describe('arcs that coincide along part of their length', () => {
       }
     }
   });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'keeps the gap of a nearly full arc out of its overlap with a circle',
+    () => {
+      const radius = 1_000_000;
+      const gap = 5e-11;
+      const circle = new Curve2D(makeCircle2d(0, 0, radius, true));
+      const arc = new Curve2D({
+        __bk2d: 'trimmed',
+        basis: makeCircle2d(0, 0, radius, true),
+        tStart: 0,
+        tEnd: 2 * Math.PI - gap,
+      });
+      const { commonSegments } = unwrap(intersectCurves(circle, arc, 1e-9));
+      expect(commonSegments).toHaveLength(1);
+      const [x0, y0] = (commonSegments[0] as Curve2D).firstPoint;
+      const [x1, y1] = (commonSegments[0] as Curve2D).lastPoint;
+      expect(Math.hypot(x1 - x0, y1 - y0)).toBeCloseTo(radius * gap, 7);
+    }
+  );
 });
 
 describe('outlines that touch without crossing', () => {

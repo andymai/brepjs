@@ -1239,7 +1239,10 @@ function intersectCoincidentArcs(
   const turn = 2 * Math.PI;
   const a = arcSpan(c1, circ1);
   const b = arcSpan(c2, circ2);
-  const isFull = (sweep: number) => sweep > turn - 1e-10;
+  const angleTol = tol / circ1.radius;
+  // An arc is a full circle when its gap is within the distance tolerance; the floor
+  // only absorbs rounding in the angles, so a real gap on a large circle stays open.
+  const isFull = (sweep: number) => turn - sweep <= Math.max(angleTol, 1e-12);
   // Relative to a.start, b covers [d, d + b.sweep] and, one turn earlier, the same
   // range shifted by -2pi; each copy can overlap a separately.
   const d = (((b.start - a.start) % turn) + turn) % turn;
@@ -1253,7 +1256,6 @@ function intersectCoincidentArcs(
     ];
   }
 
-  const angleTol = tol / circ1.radius;
   const points: [number, number][] = [];
   const segments: Curve2dObj[] = [];
   for (const [u, v] of windows) {
