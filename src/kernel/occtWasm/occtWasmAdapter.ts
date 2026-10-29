@@ -120,7 +120,6 @@ function notImplemented(method: string): never {
 // ---------------------------------------------------------------------------
 
 // Module-scope helpers extracted:
-// - resolveUniformRadius → ./helpers.ts
 // - collectDistanceSamples, computePrincipalDirections, surfaceDerivatives,
 //   eigenvector2x2, liftAndNormalize, degenerateOrthoFrame, pointAt → ./measureOps.ts
 
@@ -784,7 +783,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     neutralPlane: [number, number, number],
     angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape {
-    return modifierOps.draft(this.k, shape, faces, pullDirection, neutralPlane, angleDeg);
+    return modifierOps.draft(
+      this.k,
+      this.Module,
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      angleDeg
+    );
   }
 
   defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {
@@ -1159,12 +1166,22 @@ export class OcctWasmAdapter implements KernelAdapter {
     shape: KernelShape,
     faces: KernelShape[],
     pullDirection: [number, number, number],
-    _neutralPlane: [number, number, number],
+    neutralPlane: [number, number, number],
     angleDeg: number | ((face: KernelShape) => number),
-    _inputFaceHashes: number[],
-    _hashUpperBound: number
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
-    return evolutionOps.draftWithHistory(this.k, shape, faces, pullDirection, angleDeg);
+    return evolutionOps.draftWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      angleDeg,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   applyComposedTransformWithHistory(
@@ -1238,7 +1255,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   exportSTEPAssembly(parts: StepAssemblyPart[], options?: { unit?: string }): string {
-    return ioOps.exportSTEPAssembly(this.k, this.Module, parts, options);
+    return ioOps.exportSTEPAssembly(this.k, parts, options);
   }
 
   export3MF(_shape: KernelShape, _tolerance: number): ArrayBuffer {
@@ -1284,7 +1301,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       color?: [number, number, number, number] | undefined;
     }>
   ): KernelType {
-    return ioOps.createXCAFDocument(this.k, this.Module, shapes);
+    return ioOps.createXCAFDocument(this.k, shapes);
   }
 
   writeXCAFToSTEP(
@@ -1306,7 +1323,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       schema?: number | undefined;
     }
   ): string {
-    return ioOps.exportSTEPConfigured(this.k, this.Module, shapes, options);
+    return ioOps.exportSTEPConfigured(this.k, this.makeCompound.bind(this), shapes, options);
   }
 
   // =========================================================================

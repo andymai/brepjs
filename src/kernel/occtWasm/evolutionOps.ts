@@ -17,14 +17,18 @@ import type {
 } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
+  draftAnglesRad,
+  makeVecDouble,
   makeVecInt,
   makeVecU32,
+  needsOcctWasm59,
   parseEvolution,
-  reportingFaultyEdges,
-  resolveUniformRadius,
+  runEdgeTreatment,
   unwrap,
   wrapResult,
 } from './helpers.js';
+import type { EdgeValueSpec } from './helpers.js';
+import { draft } from './modifierOps.js';
 import {
   hasBooleanOp,
   needsBooleanOptions,
@@ -399,21 +403,33 @@ export function filletWithHistory(
   Module: OcctWasmModule,
   shape: KernelShape,
   edges: KernelShape[],
-  radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
+  radius: EdgeValueSpec,
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
-  const r = resolveUniformRadius(edges, radius);
-  const edgeVec = makeVecU32(Module, edges.map(unwrap));
+  const shapeId = unwrap(shape);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = reportingFaultyEdges(edges, () =>
-      k.filletWithHistory(unwrap(shape), edgeVec, r, hashVec, hashUpperBound)
+    const evo = runEdgeTreatment(
+      Module,
+      edges,
+      radius,
+      (edgeVec, r) => k.filletWithHistory(shapeId, edgeVec, r, hashVec, hashUpperBound),
+      (edgeVec, startRadii, endRadii) => {
+        if (!k.filletRadiiWithHistory) throw needsOcctWasm59('per-edge or tapered fillet radii');
+        return k.filletRadiiWithHistory(
+          shapeId,
+          edgeVec,
+          startRadii,
+          endRadii,
+          hashVec,
+          hashUpperBound
+        );
+      }
     );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
   } finally {
-    edgeVec.delete();
     hashVec.delete();
   }
 }
@@ -423,21 +439,39 @@ export function chamferWithHistory(
   Module: OcctWasmModule,
   shape: KernelShape,
   edges: KernelShape[],
-  distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
+  distance: EdgeValueSpec,
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
-  const d = resolveUniformRadius(edges, distance);
-  const edgeVec = makeVecU32(Module, edges.map(unwrap));
+  const shapeId = unwrap(shape);
+  // No reference faces: each edge sets distance1 back on its first adjacent face.
+  const faceVec = makeVecU32(Module, []);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = reportingFaultyEdges(edges, () =>
-      k.chamferWithHistory(unwrap(shape), edgeVec, d, hashVec, hashUpperBound)
+    const evo = runEdgeTreatment(
+      Module,
+      edges,
+      distance,
+      (edgeVec, d) => k.chamferWithHistory(shapeId, edgeVec, d, hashVec, hashUpperBound),
+      (edgeVec, distances1, distances2) => {
+        if (!k.chamferDistancesWithHistory) {
+          throw needsOcctWasm59('per-edge or asymmetric chamfer distances');
+        }
+        return k.chamferDistancesWithHistory(
+          shapeId,
+          edgeVec,
+          distances1,
+          distances2,
+          faceVec,
+          hashVec,
+          hashUpperBound
+        );
+      }
     );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
   } finally {
-    edgeVec.delete();
+    faceVec.delete();
     hashVec.delete();
   }
 }
@@ -516,23 +550,42 @@ export function offsetWithHistory(
 
 export function draftWithHistory(
   k: OcctKernelWasm,
+  Module: OcctWasmModule,
   shape: KernelShape,
   faces: KernelShape[],
   pullDirection: [number, number, number],
-  angleDeg: number | ((face: KernelShape) => number)
+  neutralPlane: [number, number, number],
+  angleDeg: number | ((face: KernelShape) => number),
+  inputFaceHashes: number[],
+  hashUpperBound: number
 ): OperationResult {
-  // Apply draft to each face sequentially (no evolution tracking on this path).
-  const [dx, dy, dz] = pullDirection;
-  let currentId = unwrap(shape);
-  for (const face of faces) {
-    const angle = typeof angleDeg === 'number' ? angleDeg : angleDeg(face);
-    const angleRad = (angle * Math.PI) / 180;
-    currentId = k.draft(currentId, unwrap(face), angleRad, dx, dy, dz);
+  if (!k.draftFacesWithHistory) {
+    return {
+      shape: draft(k, Module, shape, faces, pullDirection, neutralPlane, angleDeg),
+      evolution: { modified: new Map(), generated: new Map(), deleted: new Set() },
+    };
   }
-  return {
-    shape: wrapResult(k, currentId),
-    evolution: { modified: new Map(), generated: new Map(), deleted: new Set() },
-  };
+  const faceVec = makeVecU32(Module, faces.map(unwrap));
+  const angleVec = makeVecDouble(Module, draftAnglesRad(faces, angleDeg));
+  const hashVec = makeVecInt(Module, inputFaceHashes);
+  try {
+    const evo = k.draftFacesWithHistory(
+      unwrap(shape),
+      faceVec,
+      angleVec,
+      ...pullDirection,
+      ...neutralPlane,
+      ...pullDirection,
+      hashVec,
+      hashUpperBound
+    );
+    const { id, evolution } = parseEvolution(evo);
+    return { shape: wrapResult(k, id), evolution };
+  } finally {
+    faceVec.delete();
+    angleVec.delete();
+    hashVec.delete();
+  }
 }
 
 // ─── Composed-transform-with-history ────────────────────────────────────────

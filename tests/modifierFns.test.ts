@@ -33,8 +33,10 @@ import {
   translate,
   removeFaces,
   shape,
+  curveStartPoint,
 } from '@/index.js';
-import { shell as shellFn } from '@/topology/modifierFns.js';
+import { fillet as filletFn, shell as shellFn } from '@/topology/modifierFns.js';
+import { castResultShape } from '@/core/shapeTypes.js';
 import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
@@ -554,6 +556,84 @@ describe('chamfer with callback returning null or array', () => {
     expect(isOk(result)).toBe(true);
     const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
+  });
+});
+
+// The four vertical edges of a 10 mm cube share no vertex, so each one removes
+// its own prism: (1 - π/4)·r²·10 for a fillet of radius r, d1·d2/2·10 for a
+// chamfer set back d1 and d2.
+describe('per-edge fillet radii and chamfer distances', () => {
+  const FILLET_LOSS = 1 - Math.PI / 4;
+
+  function verticalEdges(solid: Shape3D): Edge[] {
+    return getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+  }
+
+  /** The value for a vertical edge on the x = 0 side, or on the x = 10 side. */
+  function bySide<V>(nearSide: V, farSide: V): (edge: Edge) => V {
+    return (edge) => (getBounds(edge).xMin < 5 ? nearSide : farSide);
+  }
+
+  it('fillets each edge at its own radius', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    using rounded = unwrap(fillet(b, verticalEdges(b), bySide(1, 3)));
+    expect(unwrap(measureVolume(rounded))).toBeCloseTo(1000 - FILLET_LOSS * 10 * 20, 6);
+  });
+
+  it('fillets each edge at its own radius without tracking evolution', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    using rounded = unwrap(filletFn(b, verticalEdges(b), bySide(1, 3), { trackEvolution: false }));
+    expect(unwrap(measureVolume(rounded))).toBeCloseTo(1000 - FILLET_LOSS * 10 * 20, 6);
+  });
+
+  it('tapers a fillet from the start radius at the edge start to the end radius', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    const edge = verticalEdges(b)[0]!;
+    using tapered = unwrap(fillet(b, [edge], [1, 3]));
+    const vol = unwrap(measureVolume(tapered));
+    expect(vol).toBeLessThan(1000 - FILLET_LOSS * 10 * 1);
+    expect(vol).toBeGreaterThan(1000 - FILLET_LOSS * 10 * 9);
+    // Each cap keeps its square less the corner its end radius rounds off.
+    const startZ = curveStartPoint(edge)[2];
+    const startCap = unwrap(measureArea(faceAtHeight(tapered, startZ)));
+    const endCap = unwrap(measureArea(faceAtHeight(tapered, 10 - startZ)));
+    expect(startCap).toBeCloseTo(100 - FILLET_LOSS * 1, 6);
+    expect(endCap).toBeCloseTo(100 - FILLET_LOSS * 9, 6);
+  });
+
+  it('sets an asymmetric chamfer back by both distances', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    using chamfered = unwrap(chamfer(b, [verticalEdges(b)[0]!], [1, 2]));
+    expect(unwrap(measureVolume(chamfered))).toBeCloseTo(1000 - 10, 6);
+  });
+
+  it('chamfers each edge at its own distances', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    using symmetric = unwrap(chamfer(b, verticalEdges(b), bySide(1, 2)));
+    expect(unwrap(measureVolume(symmetric))).toBeCloseTo(1000 - 10 * (0.5 + 0.5 + 2 + 2), 6);
+    const mixed = bySide<number | [number, number]>([1, 2], 1);
+    using both = unwrap(chamfer(b, verticalEdges(b), mixed));
+    expect(unwrap(measureVolume(both))).toBeCloseTo(1000 - 10 * (1 + 1 + 0.5 + 0.5), 6);
+  });
+
+  it("chamfers each edge at its own distances through the kernel's chamfer", (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    using b = box(10, 10, 10);
+    const edges = verticalEdges(b);
+    const near = new Set(edges.filter((e) => getBounds(e).xMin < 5).map((e) => e.wrapped));
+    using chamfered = castResultShape(
+      getKernel().chamfer(
+        b.wrapped,
+        edges.map((e) => e.wrapped),
+        (edge) => (near.has(edge) ? 1 : 2)
+      )
+    );
+    expect(unwrap(measureVolume(chamfered as Shape3D))).toBeCloseTo(1000 - 10 * 5, 6);
   });
 });
 

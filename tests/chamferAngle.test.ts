@@ -1,15 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   chamferDistAngleShape,
   isOk,
   isErr,
   unwrap,
+  unwrapErr,
   measureVolume,
   isShape3D,
   getEdges,
+  getBounds,
 } from '@/index.js';
+import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
+import type { Edge } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -104,6 +109,30 @@ describe('chamferDistAngleShape', () => {
     const edges = getEdges(b);
     const result = chamferDistAngleShape(b, [edges[0]!], 0, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(isErr(result)).toBe(true);
+  });
+
+  it('sets every edge back by the distance and the angle', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.exactVolume');
+    using b = box(10, 10, 10);
+    const vertical = getEdges(b).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+    using chamfered = unwrap(chamferDistAngleShape(b, vertical, 1, 30));
+    // Each edge loses a right triangle with legs 1 and tan 30°, along its 10 mm.
+    const loss = 4 * 10 * (Math.tan(Math.PI / 6) / 2);
+    expect(unwrap(measureVolume(chamfered))).toBeCloseTo(1000 - loss, 6);
+  });
+
+  it('names the edge it could not chamfer in the error cause', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.edgeTreatmentFailedEdges');
+    // On a 20 x 20 x 2 plate a 3 mm setback fits a vertical edge, not a top one.
+    using plate = box(20, 20, 2);
+    const span = (e: Edge) => getBounds(e).zMax - getBounds(e).zMin;
+    const edges = getEdges(plate);
+    const vertical = edges.find((e) => span(e) > 1);
+    const top = edges.find((e) => span(e) < 1e-6 && getBounds(e).zMin > 1.9);
+    if (!vertical || !top) throw new Error('plate edges not found');
+    const error = unwrapErr(chamferDistAngleShape(plate, [vertical, top], 3, 45));
+    expect(error.code).toBe('CHAMFER_ANGLE_FAILED');
+    expect(faultyEdgeIndexesOf(error.cause)).toEqual([1]);
   });
 
   it('returns Err for angle out of range', () => {

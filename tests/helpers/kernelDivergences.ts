@@ -173,6 +173,32 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold is a mesh kernel: the revolved (and torus-primitive) surface is faceted, so the volume undershoots the analytic 2π²Rr² reference beyond the asserted tolerance.',
     },
+    // -----------------------------------------------------------------------
+    // modifierFns / draftFns / chamferAngle exact edge treatments
+    // -----------------------------------------------------------------------
+    'modifierFns.perEdgeValues': {
+      kind: 'not-implemented',
+      reason:
+        'manifold rejects a per-edge radius callback ("fillet (per-edge radius callback) is not implemented") and treats an [r1, r2] pair as r1.',
+    },
+    'modifierFns.edgeTreatmentFailedEdges': {
+      kind: 'not-implemented',
+      reason:
+        'Only occt-wasm 5.8+ names the edges a fillet or chamfer failed on; the mesh chamfer on a 20x20x2 plate succeeds where the exact one fails.',
+    },
+    'chamferAngle.exactVolume': {
+      kind: 'skip',
+      reason:
+        'manifold approximates a distance-angle chamfer on its mesh: four box edges at 1 mm / 30 degrees read 973.31 mm3 against the exact 988.45.',
+    },
+    'draftFns.neutralPlane': {
+      kind: 'not-implemented',
+      reason: 'manifold leaves a drafted box at its full 1000 mm3.',
+    },
+    'draftFns.perFaceAngles': {
+      kind: 'not-implemented',
+      reason: 'manifold rejects a per-face draft angle callback.',
+    },
   },
   brepkit: {
     // -----------------------------------------------------------------------
@@ -260,6 +286,28 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'brepkit variable fillet produces vol > 1000 (physically impossible -- fillet removes material)',
+    },
+    'modifierFns.perEdgeValues': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit misplaces per-edge fillet and chamfer values: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08, and a [1, 2] chamfer 988.75 against 990.',
+    },
+    'chamferAngle.exactVolume': {
+      kind: 'skip',
+      reason:
+        'brepkit sets a distance-angle chamfer back slightly short: four box edges at 1 mm / 30 degrees read 987.56 mm3 against the exact 988.45.',
+    },
+    'draftFns.perFaceAngles': {
+      kind: 'not-implemented',
+      reason: 'brepkit rejects several distinct draft angles in one call.',
+    },
+    'stepConfigFns.units': {
+      kind: 'not-implemented',
+      reason: 'brepkit writes STEP in millimeters whatever unit or modelUnit asks for.',
+    },
+    'exporterFns.assemblyUnits': {
+      kind: 'not-implemented',
+      reason: 'brepkit writes STEP in millimeters whatever unit or modelUnit asks for.',
     },
     'modifierFns.nullShapeValidation': {
       kind: 'not-implemented',
@@ -518,6 +566,11 @@ export const divergences: DivergenceMap = {
       reason:
         'Only occt-wasm 5.8+ names the edges a fillet or chamfer failed on; this kernel reports FILLET_FAILED / CHAMFER_FAILED without metadata.failedEdges.',
     },
+    'stepConfigFns.units': {
+      kind: 'not-implemented',
+      reason:
+        'In this opencascade.js build exportSTEPConfigured fails ("null function or function signature mismatch") and exportSTEPAssembly calls a missing STEPCAFControl_Writer.Write_1.',
+    },
     'modifierFns.removeFaces': {
       kind: 'not-implemented',
       reason:
@@ -666,17 +719,10 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Sketch arc entity and constraints are brepkit-only features',
     },
-    'draftFns.brepkitCallback': {
-      kind: 'not-implemented',
-      reason: 'brepkit draft callback API not available in OCCT',
-    },
     'draftFns.brepkitMultiAngle': {
       kind: 'not-implemented',
-      reason: 'brepkit multi-angle callback draft rejection not available in OCCT',
-    },
-    'draftFns.brepkitFinderFn': {
-      kind: 'not-implemented',
-      reason: 'brepkit FinderFn draft not available in OCCT',
+      reason:
+        'Asserts brepkit rejects several draft angles in one call; occt-wasm drafts each face at its own angle',
     },
   },
 };

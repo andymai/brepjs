@@ -115,7 +115,12 @@ import {
   faceFinder,
   edgeFinder,
   sketchHelix,
+  draft,
+  chamferDistAngleShape,
+  exportSTEPConfigured,
+  exportAssemblySTEP,
 } from '@/index.js';
+import { fillet as filletFn } from '@/topology/modifierFns.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
@@ -526,14 +531,64 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     // Modifiers return a fresh solid whose orphaned pre-downcast slot is released
     // by castResultShape/finalizeShape3D; the caller disposes the final result and
     // the source box. Any survivor is a leak inside the modifier itself.
-    // draft is excluded: it doesn't run on occt-wasm (brepkit-only / divergent),
-    // so its success path can't be exercised by this oracle.
     it('fillet leaks nothing', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
           const r = fillet(b, 1);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    const verticalEdges = (solid: AnyShape<Dimension>) =>
+      getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+    const bySide =
+      <V>(near: V, far: V) =>
+      (edge: AnyShape<Dimension>) =>
+        getBounds(edge).xMin < 5 ? near : far;
+
+    it('per-edge and tapered fillets leak nothing, with and without history', () => {
+      for (const trackEvolution of [true, false]) {
+        expect(
+          perIterationLeak(() => {
+            using b = box(10, 10, 10);
+            const edges = verticalEdges(b);
+            unwrap(filletFn(b, edges, bySide(1, 3), { trackEvolution }))[Symbol.dispose]();
+            unwrap(filletFn(b, edges.slice(0, 1), [1, 3], { trackEvolution }))[Symbol.dispose]();
+          })
+        ).toBe(0);
+      }
+    });
+
+    it('per-edge and asymmetric chamfers leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const edges = verticalEdges(b);
+          unwrap(chamfer(b, edges, bySide(1, 2)))[Symbol.dispose]();
+          unwrap(chamfer(b, edges, bySide<number | [number, number]>([1, 2], 1)))[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('chamferDistAngle leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          unwrap(chamferDistAngleShape(b, verticalEdges(b), 1, 30))[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('draft leaks nothing, for one face or several', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const sides = getFaces(b).filter((f) => getBounds(f).zMax - getBounds(f).zMin > 5);
+          const options = { pullDirection: [0, 0, 1], neutralPlane: [0, 0, 5], angle: 5 } as const;
+          unwrap(draft(b, sides.slice(0, 1), options))[Symbol.dispose]();
+          unwrap(draft(b, sides, options))[Symbol.dispose]();
         })
       ).toBe(0);
     });
@@ -1172,6 +1227,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         perIterationLeak(() => {
           using b = box(10, 10, 10, { centered: true });
           drawProjection(b, 'front');
+        })
+      ).toBe(0);
+    });
+
+    it('STEP export in another unit releases its scaled copies', () => {
+      // A model unit other than millimeters exports a scaled copy of every
+      // shape (and a compound for several), all released after writing.
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using b = box(10, 10, 10, { at: [25, 5, 5] });
+          const units = { unit: 'inch', modelUnit: 'cm' } as const;
+          unwrap(exportSTEPConfigured([{ shape: a }], units));
+          unwrap(exportSTEPConfigured([{ shape: a }, { shape: b }], units));
+          unwrap(exportSTEPConfigured([{ shape: a, name: 'a' }, { shape: b }], units));
+          unwrap(exportAssemblySTEP([{ shape: a, name: 'a' }], { unit: 'INCH' }));
+          unwrap(exportAssemblySTEP([{ shape: a, name: 'a' }], { unit: 'MM' }));
         })
       ).toBe(0);
     });

@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   isSolid,
   getFaces,
+  getBounds,
   measureVolume,
   isOk,
   isErr,
@@ -177,6 +178,60 @@ describe('draft', () => {
         expect(isOk(result)).toBe(true);
       }
     );
+  });
+
+  // ------------------------------------------------------------------
+  // Neutral plane and several faces in one draft. A face pivots about the
+  // line where it meets the neutral plane, so a 10 mm cube whose sides draft
+  // by α keeps a (10 - 2·z·tan α) square section at height z above it.
+  // ------------------------------------------------------------------
+
+  describe('neutral plane and several faces', () => {
+    const tan = (deg: number) => Math.tan((deg * Math.PI) / 180);
+
+    it('pivots about a neutral plane off z = 0', (ctx) => {
+      skipIfDiverges(ctx, 'draftFns.neutralPlane');
+      using raised = box(10, 10, 10, { at: [5, 5, 105] });
+      const side = faceFinder()
+        .parallelTo([1, 0, 0])
+        .when((f) => getBounds(f).xMin > 5)
+        .findAll(raised);
+      using drafted = unwrap(
+        draft(raised, side, { pullDirection: [0, 0, 1], neutralPlane: [0, 0, 100], angle: 5 })
+      );
+      expect(unwrap(measureVolume(drafted))).toBeCloseTo(1000 - 500 * tan(5), 6);
+    });
+
+    it('drafts every side of a box in one operation', (ctx) => {
+      skipIfDiverges(ctx, 'draftFns.neutralPlane');
+      using b = box(10, 10, 10);
+      const sides = [...findFacesByNormal(b, 'X'), ...findFacesByNormal(b, 'Y')];
+      using drafted = unwrap(
+        draft(b, sides, { pullDirection: [0, 0, 1], neutralPlane: [0, 0, 0], angle: 5 })
+      );
+      const t = tan(5);
+      expect(unwrap(measureVolume(drafted))).toBeCloseTo(1000 - 2000 * t + (4000 / 3) * t * t, 6);
+    });
+
+    it('drafts each face at its own angle', (ctx) => {
+      skipIfDiverges(ctx, 'draftFns.perFaceAngles');
+      using b = box(10, 10, 10);
+      const xFaces = findFacesByNormal(b, 'X');
+      const yFaces = findFacesByNormal(b, 'Y');
+      using drafted = unwrap(
+        draft(b, [...xFaces, ...yFaces], {
+          pullDirection: [0, 0, 1],
+          neutralPlane: [0, 0, 0],
+          angle: (face) => (xFaces.includes(face) ? 5 : 3),
+        })
+      );
+      // ∫ (10 - 2z·tan 5°)(10 - 2z·tan 3°) dz over 0..10
+      const [a, c] = [tan(5), tan(3)];
+      expect(unwrap(measureVolume(drafted))).toBeCloseTo(
+        1000 - 1000 * (a + c) + (4000 / 3) * a * c,
+        6
+      );
+    });
   });
 
   // ------------------------------------------------------------------

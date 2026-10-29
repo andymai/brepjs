@@ -11,6 +11,7 @@
 
 import type { KernelShape, ShapeEvolution, ShapeType } from '@/kernel/types.js';
 import { FaultyEdgesError } from '@/kernel/faultyEdges.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type {
   EmEvolutionData,
   OcctWasmHandle,
@@ -145,19 +146,79 @@ export function multiplyMatrices4x4(a: number[], b: number[]): number[] {
   return result;
 }
 
+/** A fillet's start and end radius, or a chamfer's two setbacks. A number is both. */
+type EdgeValue = number | [number, number];
+
+export type EdgeValueSpec = EdgeValue | ((edge: KernelShape) => EdgeValue);
+
+/** Per-edge values as parallel arrays, one entry per edge. */
+interface EdgeValues {
+  readonly first: number[];
+  readonly second: number[];
+}
+
+function resolveEdgeValues(edges: readonly KernelShape[], value: EdgeValueSpec): EdgeValues {
+  const first: number[] = [];
+  const second: number[] = [];
+  for (const edge of edges) {
+    const v = typeof value === 'function' ? value(edge) : value;
+    first.push(typeof v === 'number' ? v : v[0]);
+    second.push(typeof v === 'number' ? v : v[1]);
+  }
+  return { first, second };
+}
+
+/** The value every edge takes on both sides, or `undefined` when they differ. */
+function uniformEdgeValue({ first, second }: EdgeValues): number | undefined {
+  const [value] = first;
+  if (value === undefined) return undefined;
+  return first.every((v) => v === value) && second.every((v) => v === value) ? value : undefined;
+}
+
 /**
- * Resolve a callback-style radius/distance to a uniform number.
- * occt-wasm's fillet/chamfer take a single radius — uniform per call.
+ * Run a fillet or chamfer over `edges`, naming the edges it fails on. Edges
+ * that all take one value go to `uniform`, the single-value entry point every
+ * occt-wasm build has; otherwise `perEdge` gets each edge's pair as `first`
+ * and `second`.
  */
-export function resolveUniformRadius(
+export function runEdgeTreatment<T>(
+  Module: OcctWasmModule,
   edges: KernelShape[],
-  radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])
-): number {
-  if (typeof radius === 'number') return radius;
-  if (Array.isArray(radius)) return radius[0];
-  if (edges.length === 0) throw new Error('occt-wasm: no edges provided');
-  const val = radius(edges[0]);
-  return typeof val === 'number' ? val : val[0];
+  value: EdgeValueSpec,
+  uniform: (edgeVec: EmVectorUint32, value: number) => T,
+  perEdge: (edgeVec: EmVectorUint32, first: EmVectorDouble, second: EmVectorDouble) => T
+): T {
+  const values = resolveEdgeValues(edges, value);
+  const shared = uniformEdgeValue(values);
+  const edgeVec = makeVecU32(Module, edges.map(unwrap));
+  try {
+    if (shared !== undefined) return reportingFaultyEdges(edges, () => uniform(edgeVec, shared));
+    const first = makeVecDouble(Module, values.first);
+    const second = makeVecDouble(Module, values.second);
+    try {
+      return reportingFaultyEdges(edges, () => perEdge(edgeVec, first, second));
+    } finally {
+      first.delete();
+      second.delete();
+    }
+  } finally {
+    edgeVec.delete();
+  }
+}
+
+/** Each face's draft angle, in radians. */
+export function draftAnglesRad(
+  faces: readonly KernelShape[],
+  angleDeg: number | ((face: KernelShape) => number)
+): number[] {
+  return faces.map(
+    (face) => ((typeof angleDeg === 'function' ? angleDeg(face) : angleDeg) * Math.PI) / 180
+  );
+}
+
+/** The peer range still admits older builds, which lack the per-edge and unit entry points. */
+export function needsOcctWasm59(what: string): UnsupportedKernelOperationError {
+  return new UnsupportedKernelOperationError(`occt-wasm: ${what} requires occt-wasm >= 5.9.0`);
 }
 
 /**
