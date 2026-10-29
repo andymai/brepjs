@@ -5,7 +5,7 @@ description: 'Versioning policy, release cadence, and what production-ready mean
 
 # Status, Stability & Versioning
 
-brepjs is at major version 18. The OpenCascade kernel is production-ready and powers [gridfinitylayouttool.com](https://gridfinitylayouttool.com). The brepkit (Rust) kernel is in active development as a faster replacement and is not yet recommended for production.
+brepjs is at major version 20. The OpenCascade kernel is production-ready and powers [gridfinitylayouttool.com](https://gridfinitylayouttool.com). The brepkit (Rust) kernel is in active development as a faster replacement and is not yet recommended for production.
 
 ## Versioning policy
 

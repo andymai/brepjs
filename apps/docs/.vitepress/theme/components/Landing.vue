@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import CodeCadHero from './CodeCadHero.vue';
 import { highlightCode, highlightLine } from './codeHighlight';
+import { MAJOR } from '../../version';
 
 // "Native to your stack" — the real Three.js mesh-adapter integration.
 const stackSnippetHtml = highlightCode(
@@ -48,11 +49,18 @@ const typeCardHtml = [
 const root = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
 
+// The agent demo loops muted unless the visitor prefers reduced motion; then it waits on its poster
+// with controls.
+const demo = ref<HTMLVideoElement | null>(null);
+const reduceMotion = ref(false);
+
 onMounted(() => {
   const reduce =
     typeof window !== 'undefined' &&
     window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  reduceMotion.value = reduce;
+  if (!reduce) demo.value?.play().catch(() => {});
   const els = root.value?.querySelectorAll<HTMLElement>('[data-reveal]') ?? [];
   if (reduce || !('IntersectionObserver' in window)) {
     els.forEach((el) => el.classList.add('is-in'));
@@ -125,8 +133,8 @@ onBeforeUnmount(() => observer?.disconnect());
           </h1>
           <p class="subhead">
             A real B-Rep kernel in your browser via WASM. A type system that makes invalid geometry
-            uncompilable. And a verification loop so AI agents author parts that are provably
-            correct — not just plausible.
+            uncompilable. And a verify loop that builds the parts an AI agent writes on that kernel
+            and checks them, so you get a valid solid, not just a plausible one.
           </p>
           <div class="cta-row center">
             <a class="btn-primary" href="/playground" target="_blank" rel="noopener"
@@ -142,7 +150,9 @@ onBeforeUnmount(() => observer?.disconnect());
             <CodeCadHero />
           </ClientOnly>
           <ul class="specstrip" aria-label="At a glance">
-            <li><b>v18</b> · Apache-2.0</li>
+            <li>
+              <b>v{{ MAJOR }}</b> · Apache-2.0
+            </li>
             <li><b>OpenCascade</b> kernel</li>
             <li>STEP-accurate</li>
             <li>runs in the browser</li>
@@ -209,20 +219,44 @@ onBeforeUnmount(() => observer?.disconnect());
         </div>
       </section>
 
-      <!-- ──────────────────── CAD AN AGENT CAN PROVE (prominent) ──────────────────── -->
+      <!-- ──────────────────── CAD AN AGENT CAN CHECK (prominent) ──────────────────── -->
       <section class="band feature ai" data-reveal>
         <div class="wrap">
           <div class="sec-head">
             <p class="eyebrow">The verify loop</p>
-            <h2>CAD an agent can prove.</h2>
+            <h2>CAD an agent can check.</h2>
             <p class="lead">
-              The hard part of AI plus CAD isn't drawing a shape — it's knowing it's correct. brepjs
-              answers twice: the type system rejects invalid geometry before it runs, and
+              The hard part of AI plus CAD isn't drawing a shape. It's knowing the shape is right.
+              brepjs answers twice: the type system rejects invalid geometry before it runs, and
               <code>brepjs-cad</code> runs the part on a real kernel and returns a deterministic
-              report — validity, measured dimensions, multi-view snapshots, a STEP export. Ships as
-              a Claude Code skill and a CLI.
+              report with validity, measured dimensions, multi-view snapshots, and a STEP export.
+              Parts are plain TypeScript and the checker is a CLI, so it isn't tied to one agent;
+              there's also an MCP server and a Claude Code skill.
             </p>
           </div>
+
+          <figure class="panel demo">
+            <div class="code-bar">
+              <span class="dot3"><i></i><i></i><i></i></span> real run · Claude Code · sped up
+            </div>
+            <video
+              ref="demo"
+              src="/media/agent-demo.mp4"
+              poster="/media/agent-demo-poster.webp"
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              :controls="reduceMotion"
+              aria-label="A coding agent turns the official Raspberry Pi 5 drawing into a case, brep verify catches a failed build, and the STEP opens in FreeCAD"
+            ></video>
+            <figcaption>
+              An agent turns the official Raspberry Pi 5 drawing into a checked case.
+              <a href="https://youtu.be/n8Cbg345NRI" target="_blank" rel="noopener"
+                >Watch the narrated version →</a
+              >
+            </figcaption>
+          </figure>
 
           <div class="ai-grid">
             <div class="panel">
@@ -231,11 +265,9 @@ onBeforeUnmount(() => observer?.disconnect());
               </div>
               <pre
                 class="term"
-              ><code><span class="p">$</span> <span class="c">/plugin install</span> brepjs@brepjs   <span class="cm"># the skill</span>
-<span class="p">$</span> <span class="c">npm i -D</span> brepjs-cad             <span class="cm"># the runtime</span>
+              ><code><span class="p">$</span> <span class="c">npm i -D</span> brepjs brepjs-cad occt-wasm   <span class="cm"># the runtime</span>
+<span class="p">$</span> <span class="c">npx brep verify</span> bin.brep.ts --step bin.step
 
-<span class="p">&gt;</span> <span class="c">/brepjs:cad</span> a 1×1 gridfinity bin
-<span class="p">›</span> brainstorm → design → implement → verify
 <span class="ok">✓ valid Solid</span> · vol 14 043.4 mm³ · 91 faces
 <span class="ok">✓ assertions 3/3</span> · wrote bin.step</code></pre>
             </div>
@@ -451,7 +483,7 @@ onBeforeUnmount(() => observer?.disconnect());
             >.
           </p>
           <ul class="specrow" aria-label="Project facts">
-            <li>v18</li>
+            <li>v{{ MAJOR }}</li>
             <li>Apache-2.0</li>
             <li>OpenCascade kernel</li>
             <li>STEP-accurate</li>
@@ -1086,6 +1118,26 @@ pre.term {
   font-size: 9px;
   color: var(--ink-2);
   letter-spacing: 0.05em;
+}
+.demo {
+  margin: 36px 0 0;
+}
+.demo video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-0);
+}
+.demo figcaption {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.demo figcaption a {
+  color: var(--teal-200);
+  margin-left: 6px;
 }
 .caption {
   margin-top: 26px;

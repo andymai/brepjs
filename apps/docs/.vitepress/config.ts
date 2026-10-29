@@ -4,11 +4,9 @@ import { withMermaid } from 'vitepress-plugin-mermaid';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MAJOR } from './version';
 
-// Update on major bumps — this docs site is deployed independently from the
-// brepjs package, so reading the version from package.json at build time would
-// require shipping the parent package.json into the deploy artifact.
-const major = 'v18';
+const major = `v${MAJOR}`;
 const year = new Date().getFullYear();
 const siteUrl = 'https://brepjs.dev';
 const defaultOgImage = `${siteUrl}/og.png`;

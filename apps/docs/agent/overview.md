@@ -16,6 +16,11 @@ Ask for a part in plain English. The agent writes it, runs it on a CAD kernel, a
    ✓ snapshots rendered    →  bracket.step ready to hand off
 ```
 
+<figure>
+  <video src="/media/agent-demo.mp4" poster="/media/agent-demo-poster.webp" controls muted playsinline preload="metadata" style="width: 100%; border-radius: 12px"></video>
+  <figcaption>A real run: an agent turns the official Raspberry Pi 5 drawing into a case, <code>brep verify</code> catches a failed build, and the STEP opens in FreeCAD. <a href="https://youtu.be/n8Cbg345NRI">Watch the narrated version</a>.</figcaption>
+</figure>
+
 An LLM can't see geometry. Code that reads correctly can still produce a solid that is broken, empty, or the wrong size, and the model has no way to notice. [`brepjs-cad`](https://www.npmjs.com/package/brepjs-cad) closes that gap: the agent writes the part, runs it against the kernel, and reads back what the kernel measured instead of judging the code by eye.
 
 ## What it checks
@@ -30,30 +35,10 @@ STEP is the validated deliverable; GLB, STL, and snapshots are derived previews.
 
 ## What you install
 
-`brepjs-cad` is two parts that work together:
+`brepjs-cad` has a runtime any agent can use and an optional skill for Claude Code:
 
-- **The skill** teaches the agent the workflow (brief → author → verify → repair) and carries the API references and examples it draws on.
-- **The runtime** is the CLI the skill drives. It loads your part on a kernel, checks validity, measures volume / area / bounds, renders snapshots, and exports STEP.
-
-They install separately because Claude Code loads skills from plugins (a git marketplace), while the runtime has to live wherever your project's `brepjs` resolves. You install both once.
-
-### Install the skill (Claude Code plugin)
-
-The skill ships through the brepjs plugin marketplace, which is this git repo. Add the marketplace once, then install the plugin. In a Claude Code session, use the slash commands:
-
-```
-/plugin marketplace add andymai/brepjs
-/plugin install brepjs@brepjs
-```
-
-Or do the same non-interactively from a terminal — handy for scripts and dotfiles:
-
-```bash
-claude plugin marketplace add andymai/brepjs
-claude plugin install brepjs@brepjs
-```
-
-Claude Code now knows the workflow and will run the CLI for you. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
+- **The runtime** is the `brep` CLI. It loads your part on a kernel, checks validity, measures volume / area / bounds, renders snapshots, and exports STEP. Parts are plain TypeScript files, so any agent that can run a command can use it, and MCP clients can call the same checks through the bundled `brep-mcp` server.
+- **The skill** (Claude Code) teaches the agent the workflow (brief → author → verify → repair) and carries the API references and examples it draws on.
 
 ### Install the runtime (npm)
 
@@ -73,9 +58,39 @@ Prefer not to install anything? Run it straight from npm:
 npx -y -p brepjs-cad brep part.brep.ts
 ```
 
+### Connect an MCP client
+
+`brep-mcp` exposes the same build-and-verify step to any MCP client as a stdio server:
+
+```bash
+npx -y --package brepjs-cad brep-mcp
+```
+
+In Claude Code, for example: `claude mcp add brep -- npx -y --package brepjs-cad brep-mcp`. See [brep-mcp](./cli#mcp-server) for its tools.
+
+### Add the skill (Claude Code plugin)
+
+The skill ships through the brepjs plugin marketplace, which is this git repo. Add the marketplace once, then install the plugin. In a Claude Code session, use the slash commands:
+
+```
+/plugin marketplace add andymai/brepjs
+/plugin install brepjs@brepjs
+```
+
+Or do the same non-interactively from a terminal, handy for scripts and dotfiles:
+
+```bash
+claude plugin marketplace add andymai/brepjs
+claude plugin install brepjs@brepjs
+```
+
+The skill and the runtime install separately because Claude Code loads skills from plugins (a git marketplace), while the runtime has to live wherever your project's `brepjs` resolves. There is no npm step for the skill; plugins aren't loaded from `node_modules`.
+
 ## Ask for a part
 
-With the skill installed, just ask for a part in plain English — Claude reaches for the brepjs pipeline on its own:
+With any agent, ask for the part and have it run `npx brep verify part.brep.ts` after each edit until the report is `ok`. Point it at `node_modules/brepjs-cad/reference/llms-full.txt`, the full API reference the package bundles.
+
+With the Claude Code skill installed, just ask in plain English and Claude reaches for the brepjs pipeline on its own:
 
 > a 40×20×10 mm bracket with two M4 holes 30 mm apart
 
