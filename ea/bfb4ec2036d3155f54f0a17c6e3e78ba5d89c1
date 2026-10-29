@@ -1,0 +1,27 @@
+packages/brepjs-cad/tests/diff.test.ts
+  s_d4ab5fb2066c9b::t_8c9cf2c9e0f6ab 31-38,40
+packages/brepjs-vscode/src/commands.ts
+  s_d4ab5fb2066c9b::t_e9364a1b1478b1 94-95,97
+packages/brepjs-vscode/src/cli.ts
+  s_d4ab5fb2066c9b::t_e9364a1b1478b1 17-18,20
+packages/brepjs-cad/src/verify/diff.ts
+  s_d4ab5fb2066c9b::t_8c9cf2c9e0f6ab 81-82,101
+packages/brepjs-cad/src/verify/report.ts
+  s_d4ab5fb2066c9b::t_2bb39f1e2a1cd8 139-140,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eabfb4ec2036d3155f54f0a17c6e3e78ba5d89c1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
