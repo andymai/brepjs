@@ -1,0 +1,31 @@
+src/2d/blueprints/boolean2D.ts
+  s_d4ab5fb2066c9b::t_3a790f8cee9fd9 77-79,292-293
+src/2d/blueprints/booleanHelpers.ts
+  s_d4ab5fb2066c9b::t_e7608adb2b19f2 13
+src/2d/blueprints/intersectionSegments.ts
+  s_d4ab5fb2066c9b::t_5c8d137be8b1e4 7-12,55,195-197,199-207,209-210,283-288,309
+src/2d/blueprints/segmentAssembly.ts
+  s_d4ab5fb2066c9b::t_5396f142993bd3 3,313-328,330-337,341-342
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_1797b5c9389856 1014,1028-1050,1052,1148-1149,1204-1218,1220-1226,1228-1255,1258-1268,1271,1280,1284-1300
+tests/2d.test.ts
+  s_d4ab5fb2066c9b::t_705920a51f2301 32,583-584,586,592,596-605
+tests/boolean2dRegression.test.ts
+  s_d4ab5fb2066c9b::t_43bbfc209aac7a 7,10,20,24-26,33-52,158-161,463-612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf482fc0cfae135edfb29ff916646faa9dc7f1a1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
