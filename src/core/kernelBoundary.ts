@@ -33,19 +33,26 @@ export function toKernelDir(v: Vec3): KernelType {
 // Extraction from kernel objects
 // ---------------------------------------------------------------------------
 
+// opencascade.js hands back gp_* objects with X()/Y()/Z() accessors; occt-wasm
+// and brepkit use plain { x, y, z } objects.
+function xyzOf(v: KernelType): Vec3 {
+  if (typeof v.X === 'function') return [v.X(), v.Y(), v.Z()];
+  return [v.x, v.y, v.z];
+}
+
 /** Extract Vec3 from a kernel 3D vector */
 export function fromKernelVec(ocVec: KernelType): Vec3 {
-  return [ocVec.X(), ocVec.Y(), ocVec.Z()];
+  return xyzOf(ocVec);
 }
 
 /** Extract Vec3 from a kernel 3D point */
 export function fromKernelPnt(ocPnt: KernelType): Vec3 {
-  return [ocPnt.X(), ocPnt.Y(), ocPnt.Z()];
+  return xyzOf(ocPnt);
 }
 
 /** Extract Vec3 from a kernel 3D direction */
 export function fromKernelDir(ocDir: KernelType): Vec3 {
-  return [ocDir.X(), ocDir.Y(), ocDir.Z()];
+  return xyzOf(ocDir);
 }
 
 // ---------------------------------------------------------------------------

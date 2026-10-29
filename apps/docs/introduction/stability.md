@@ -49,7 +49,7 @@ The `using` keyword (TypeScript 5.2+, browsers/Node since 2024) is the recommend
 
 | brepjs version | OpenCascade kernel                                          | brepkit kernel            |
 | -------------- | ----------------------------------------------------------- | ------------------------- |
-| 20.x           | `occt-wasm` 3.8+, 4.x, or 5.x, or `brepjs-opencascade` 0.16 | `brepkit-wasm` 3.x or 4.x |
+| 20.x           | `occt-wasm` 3.8+, 4.x, or 5.x                               | `brepkit-wasm` 3.x or 4.x |
 | 19.x           | `occt-wasm` 3.8+, 4.x, or 5.x, or `brepjs-opencascade` 0.16 | `brepkit-wasm` 2.x or 3.x |
 | 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16                | `brepkit-wasm` 2.x        |
 | 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16                | `brepkit-wasm` 2.x        |

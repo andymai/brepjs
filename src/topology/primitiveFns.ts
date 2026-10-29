@@ -25,6 +25,7 @@ import type {
 } from '@/core/shapeTypes.js';
 import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
 import { DEG2RAD } from '@/core/constants.js';
+import { vecNormalize, vecScale } from '@/core/vecOps.js';
 import {
   makeLine as _makeLine,
   makeCircle as _makeCircle,
@@ -113,11 +114,7 @@ export function cylinder(radius: number, height: number, options?: CylinderOptio
   const axis = options?.axis ?? [0, 0, 1];
   const solid = _makeCylinder(radius, height, at, axis);
   if (options?.centered) {
-    const halfShift: Vec3 = [
-      -axis[0] * height * 0.5,
-      -axis[1] * height * 0.5,
-      -axis[2] * height * 0.5,
-    ];
+    const halfShift = vecScale(vecNormalize(axis), -height * 0.5);
     using base = solid; // dispose the pre-translate solid; translate returns a fresh one
     return translate(base, halfShift);
   }
@@ -169,11 +166,7 @@ export function cone(
   const axis = options?.axis ?? [0, 0, 1];
   const solid = _makeCone(bottomRadius, topRadius, height, at, axis);
   if (options?.centered) {
-    const halfShift: Vec3 = [
-      -axis[0] * height * 0.5,
-      -axis[1] * height * 0.5,
-      -axis[2] * height * 0.5,
-    ];
+    const halfShift = vecScale(vecNormalize(axis), -height * 0.5);
     using base = solid; // dispose the pre-translate cone; translate returns a fresh one
     return translate(base, halfShift);
   }

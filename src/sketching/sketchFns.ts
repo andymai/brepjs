@@ -216,10 +216,14 @@ export function sketchSweep(
   if (sketch.baseFace) {
     config.support = sketch.baseFace.wrapped;
   }
-  const shape = unwrap(sweep(profile.wire, sketch.wire, config)) as Shape3D;
-  sketch.delete();
-
-  return shape;
+  try {
+    const shape = unwrap(sweep(profile.wire, sketch.wire, config)) as Shape3D;
+    sketch.delete();
+    return shape;
+  } finally {
+    // The profile is consumed too (see remarks), and sweep leaves it alive.
+    profile.delete();
+  }
 }
 
 /**

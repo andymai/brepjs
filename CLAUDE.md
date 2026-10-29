@@ -18,7 +18,7 @@ Boundaries enforced by `npm run check:boundaries` (runs in pre-commit and CI).
 Monorepo packages:
 
 - `brepjs` (root): Core library (published)
-- `packages/brepjs-opencascade`: OpenCascade WASM build (published)
+- `packages/brepjs-opencascade`: legacy opencascade.js WASM build (deprecated; occt-wasm is the only kernel going forward, so don't publish or extend it)
 - `packages/brepjs-bim`: IFC/BIM parametric building elements + IFC import/export (experimental, published)
 - `packages/brepjs-families`: Declarative family layer (element trees, key paths, projection onto the CSG IR); BIM export via brepjs-bim's `familiesToBim` (experimental, published)
 - `packages/brepjs-sheetmetal`: Sheet-metal authoring + unfold/flat-pattern + DXF (experimental, published)
@@ -52,13 +52,13 @@ Monorepo packages:
 
 ## Key patterns
 
-- `getKernel()` from `src/kernel/index.ts` for all kernel operations; `initFromOC(oc)` must be called first
+- `getKernel()` from `src/kernel/index.ts` for all kernel operations; a kernel must be registered first (`init()`, or `registerKernel()` with `OcctWasmAdapter.fromKernel(await OcctKernel.init())`)
 - `registerKernel(id, adapter)` / `withKernel(id, fn)` for custom or dual kernel usage
 - `withKernel(id, fn)` is **sync-only**: async callbacks silently use the wrong kernel after the first `await`. Use `getKernel(id)` directly for async code.
 - **Layer 2+ code must never call methods on `.wrapped`**: always use `getKernel().method(shape.wrapped)`. ESLint enforces this.
 - Branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) in `src/core/shapeTypes.ts`: lightweight handles, no class hierarchy. Types carry a phantom `D extends Dimension` parameter for 2D/3D safety.
 - Validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) in `src/core/shapeTypes.ts`: phantom types encoding topological invariants. Smart constructors (`closedWire()`, `orientedFace()`) prove validity at runtime; type guards (`isClosedWire()`, etc.) narrow in-place.
-- **Default kernel: occt-wasm** (`OcctKernel.init()` + `OcctWasmAdapter.fromKernel`, external `occt-wasm` npm package). `init()` and `brepjs/quick` resolve it first, falling back to OpenCascade WASM (`initFromOC`, shipped via `brepjs-opencascade`) then brepkit WASM (`BrepkitAdapter`, external `brepkit-wasm`). The default test gate runs occt-wasm; run the others via `TEST_KERNEL` / `npm run test:occt` / `npm run test:brepkit`.
+- **Default kernel: occt-wasm** (`OcctKernel.init()` + `OcctWasmAdapter.fromKernel`, external `occt-wasm` npm package). `init()` and `brepjs/quick` resolve it first, falling back to the deprecated opencascade.js build (`initFromOC`, `brepjs-opencascade`) then brepkit WASM (`BrepkitAdapter`, external `brepkit-wasm`). The default test gate runs occt-wasm; run the others via `TEST_KERNEL` / `npm run test:occt` / `npm run test:brepkit`.
 - **Memory & disposal (occt-wasm is an arena kernel):** shapes are arena slots; a handle's own `.delete()` is a no-op, so a slot is reclaimed only via `getKernel().dispose()`. `createHandle()` (`src/core/disposal.ts`) routes `Symbol.dispose`/finalizer through the kernel, so `using` frees the slot on every kernel. Contract:
   - `using` (or `.delete()`) **every** shape you own. The functional `*Fns` API is immutable and does **not** consume its inputs — the caller disposes them. A missed `using` on an intermediate (e.g. the inner `box` in `translate(box(...), ...)`) leaks a slot.
   - Cast a **fresh** kernel result with `castResultShape()` (not `castShape()`) so its orphaned pre-downcast slot is released; use `disposeResultShape()` on reject/discard branches. `castResultShapeWithKnownType()` for iterated sub-shapes. These are safe on in-place kernels (the guard skips identity downcasts; brepkit's dispose is a no-op).

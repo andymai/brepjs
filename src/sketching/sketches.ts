@@ -44,6 +44,11 @@ export default class Sketches implements SketchInterface {
     return only;
   }
 
+  /** Release the kernel resources of every contained sketch. */
+  delete(): void {
+    for (const s of this.sketches) s.delete();
+  }
+
   /** Build a face from the sole contained profile (see {@link Sketches.faces}). */
   face(): Face {
     if (this.sketches.length !== 1)

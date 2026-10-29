@@ -138,6 +138,7 @@ export {
   outerWire,
   innerWires,
   projectPointOnFace,
+  type SurfaceType,
   type UVBounds,
   type PointProjectionResult,
 } from './topology/faceFns.js';
