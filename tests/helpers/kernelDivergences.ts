@@ -307,11 +307,15 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // docs-examples.test.ts
+    // boolean2dRegression.test.ts
     // -----------------------------------------------------------------------
-    'docsExamples.2dTo3dWorkflow': {
+    'boolean2dRegression.arcCrossings': {
       kind: 'skip',
-      reason: 'brepkit: drawingCut + drawingToSketchOnPlane 2D-to-3D workflow not yet supported',
+      reason:
+        "brepkit's 2D curve ops keep the wrong arc when a circle is split at its crossings: " +
+        'a rectangle fused with a half-outside circle traces 1466.3 instead of 1600.5, and ' +
+        'one radius-5 circle cut from another 69.8 instead of 56.2. Cuts of a circle from a ' +
+        'rectangle match the analytic area within 2e-3.',
     },
 
     // -----------------------------------------------------------------------
@@ -572,12 +576,6 @@ export const divergences: DivergenceMap = {
       reason: 'brepkit negative angle draft not available in OCCT',
     },
     // geometry2d migration: sampled B-spline bridge loses analytic precision
-    'docsExamples.2dTo3dWorkflow': {
-      kind: 'skip',
-      reason:
-        'Sampled B-spline bridge for circle cut holes loses analytic precision — ' +
-        'OCCT face builder needs exact circle geometry for hole subtraction during extrusion',
-    },
     'sketcher3d.halfEllipseTo': {
       kind: 'skip',
       reason:
@@ -653,12 +651,6 @@ export const divergences: DivergenceMap = {
       kind: 'skip',
       reason:
         'Sampled B-spline approximation of ellipse arcs is lower-precision than native Geom2d',
-    },
-    'docsExamples.2dTo3dWorkflow': {
-      kind: 'skip',
-      reason:
-        'Sampled B-spline bridge for circle cut holes loses analytic precision — ' +
-        'face builder needs exact circle geometry for hole subtraction during extrusion',
     },
     brepkitSketchArc: {
       kind: 'not-implemented',

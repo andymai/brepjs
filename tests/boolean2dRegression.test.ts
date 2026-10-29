@@ -5,13 +5,17 @@
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   draw,
+  drawCircle,
   drawRectangle,
   drawRoundedRectangle,
   fuseBlueprints,
   cutBlueprints,
   intersectBlueprints,
+  measureArea,
+  unwrap,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
 import type { Drawing } from '@/sketching/drawing.js';
@@ -370,3 +374,58 @@ describe('geometric correctness', () => {
     expect(result).not.toBeNull();
   });
 });
+
+describe.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
+  'arcs crossing lines and arcs',
+  () => {
+    function areaOf(d: Drawing): number {
+      using face = d.sketchOnPlane('XY').face();
+      return unwrap(measureArea(face));
+    }
+
+    // Area of the part of a radius-r circle beyond a chord at distance d from its center.
+    function circularSegment(r: number, d: number): number {
+      return r * r * Math.acos(d / r) - d * Math.sqrt(r * r - d * d);
+    }
+
+    const rectArea = 50 * 30;
+    const circleArea = Math.PI * 8 * 8;
+
+    it('cuts a circle centered on the outline', () => {
+      const result = drawRectangle(50, 30).cut(drawCircle(8).translate(25, 0));
+      expect(areaOf(result)).toBeCloseTo(rectArea - circleArea / 2, 3);
+    });
+
+    it('fuses a circle centered on the outline', () => {
+      const result = drawRectangle(50, 30).fuse(drawCircle(8).translate(25, 0));
+      expect(areaOf(result)).toBeCloseTo(rectArea + circleArea / 2, 3);
+    });
+
+    it('cuts and fuses a circle centered inside that crosses one edge', () => {
+      const outside = circularSegment(8, 5);
+      const tool = drawCircle(8).translate(20, 0);
+      expect(areaOf(drawRectangle(50, 30).cut(tool))).toBeCloseTo(
+        rectArea - (circleArea - outside),
+        3
+      );
+      expect(areaOf(drawRectangle(50, 30).fuse(tool))).toBeCloseTo(rectArea + outside, 3);
+      expect(areaOf(drawRectangle(50, 30).intersect(tool))).toBeCloseTo(circleArea - outside, 3);
+    });
+
+    it('cuts a circle crossing an edge off-center', () => {
+      const result = drawRectangle(50, 30).cut(drawCircle(8).translate(3, 15));
+      expect(areaOf(result)).toBeCloseTo(rectArea - circleArea / 2, 3);
+    });
+
+    it('combines two crossing circles', () => {
+      const r = 5;
+      const lens = 2 * circularSegment(r, 3);
+      const a = drawCircle(r);
+      const b = drawCircle(r).translate(6, 0);
+      const disk = Math.PI * r * r;
+      expect(areaOf(a.fuse(b))).toBeCloseTo(2 * disk - lens, 3);
+      expect(areaOf(a.cut(b))).toBeCloseTo(disk - lens, 3);
+      expect(areaOf(a.intersect(b))).toBeCloseTo(lens, 3);
+    });
+  }
+);

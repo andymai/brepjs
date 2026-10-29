@@ -552,7 +552,7 @@ export function projectPointOnCurve2d(
       const [px, py] = ow2d.evaluateCurve2d(basis, t);
       return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
     }
-    // For circles and general curves: dense sampling.
+    // For circles and general curves: dense sampling, then refine onto the curve.
     const N = 200;
     let bestT = bFirst;
     let bestDist = Infinity;
@@ -565,7 +565,9 @@ export function projectPointOnCurve2d(
         bestT = t;
       }
     }
-    return { param: bestT, distance: Math.sqrt(bestDist) };
+    const t = ow2d.refineFootPoint(basis, x, y, bestT, bFirst, bLast);
+    const [px, py] = ow2d.evaluateCurve2d(basis, t);
+    return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
   };
 
   if (c.__bk2d === 'trimmed') {

@@ -602,7 +602,44 @@ function refineParam(c: Curve2dObj, px: number, py: number): number | null {
     1e-6
   );
   const maxDist = geomExtent * 0.1;
-  return bestD < maxDist * maxDist ? bestT : null;
+  return bestD < maxDist * maxDist
+    ? refineFootPoint(c, px, py, bestT, bounds.first, bounds.last)
+    : null;
+}
+
+/**
+ * Gauss-Newton the foot point of (px, py) on c from a sampled start parameter, staying
+ * within [from, to] (either order). A sampling grid alone leaves the point up to
+ * ~r*pi/N off an arc, while intersection and split callers treat a point as on the
+ * curve only within ~1e-8, so an unrefined sample rejects nearly every real crossing.
+ */
+export function refineFootPoint(
+  c: Curve2dObj,
+  px: number,
+  py: number,
+  start: number,
+  from: number,
+  to: number
+): number {
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  let t = start;
+  let [x, y] = evaluateCurve2d(c, t);
+  let distSq = (x - px) ** 2 + (y - py) ** 2;
+  for (let iter = 0; iter < 30 && distSq > 0; iter++) {
+    const [tx, ty] = tangentCurve2d(c, t);
+    const speedSq = tx * tx + ty * ty;
+    if (speedSq < 1e-300) break;
+    const next = Math.min(hi, Math.max(lo, t + ((px - x) * tx + (py - y) * ty) / speedSq));
+    const [nx, ny] = evaluateCurve2d(c, next);
+    const nextDistSq = (nx - px) ** 2 + (ny - py) ** 2;
+    if (nextDistSq >= distSq) break;
+    t = next;
+    x = nx;
+    y = ny;
+    distSq = nextDistSq;
+  }
+  return t;
 }
 
 function intersectLineLine(
