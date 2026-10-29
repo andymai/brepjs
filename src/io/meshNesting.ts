@@ -2,16 +2,17 @@
  * Cavities in sewn mesh bodies.
  *
  * A hollow mesh is an outer shell plus inward-facing inner shells, and sewing makes
- * each of them a closed body of its own. Nesting depth tells them apart: a body
- * inside an odd number of others is a void in its innermost container, while one
- * inside an even number (an island in a void) stays a body of its own. Depth comes
- * from ray casts against each body's tessellation, because no kernel here can
- * classify a point against a solid.
+ * each of them a closed body of its own. A cavity is a shell whose triangles face
+ * inward (negative signed volume, read before solidifying reorients it) that lies
+ * inside another body; it is cut from the innermost body around it. An outward-facing
+ * shell inside another is a separate part and stays one. Containment comes from ray
+ * casts against each body's tessellation, because no kernel here can classify a
+ * point against a solid.
  */
 
 import { getKernel } from '@/kernel/index.js';
 import type { KernelMeshResult } from '@/kernel/types.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import type { AnyShape, Dimension, Shell } from '@/core/shapeTypes.js';
 import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 
 type Body = AnyShape<Dimension>;
@@ -26,51 +27,46 @@ const RAY_LENGTH = Math.hypot(0.5389, 0.6213, 0.5689);
 const RAY: Vec3 = [0.5389 / RAY_LENGTH, 0.6213 / RAY_LENGTH, 0.5689 / RAY_LENGTH];
 
 /**
- * Cut every void out of the body that holds it. The voids leave the list, and
- * the bodies they are cut from are replaced; both are disposed. A body whose cut
- * fails keeps its voids as separate bodies.
+ * The parts to keep: `bodies` (each built from the same-index shell of `shells`)
+ * with every cavity cut from the body around it and left out. Cut results are
+ * pushed to `owned` for the caller to dispose; no input is disposed here. When
+ * meshing fails or a cut throws, the bodies involved stay as they are.
  */
-export function carveCavities(bodies: Body[]): Body[] {
-  const solids = bodies.filter((body) => isSolid(body));
-  if (solids.length < 2) return bodies;
-  const voids = findVoids(solids);
-  if (voids.size === 0) return bodies;
+export function carveCavities(bodies: Body[], shells: Shell[], owned: Body[]): Body[] {
+  const solids = bodies.flatMap((body, i) => (isSolid(body) ? [{ body, shell: shells[i] }] : []));
+  if (solids.length < 2) return [...bodies];
+  let voids: Map<Body, Body[]>;
+  try {
+    voids = findVoids(solids);
+  } catch {
+    return [...bodies];
+  }
 
   const carved = new Map<Body, Body>();
   for (const [body, inner] of voids) {
     const result = cutVoids(body, inner);
-    if (result !== null) carved.set(body, result);
+    if (result === null) continue;
+    owned.push(result);
+    carved.set(body, result);
   }
   const consumed = new Set([...carved.keys()].flatMap((body) => voids.get(body) ?? []));
-  const kept: Body[] = [];
-  for (const body of bodies) {
-    const result = carved.get(body);
-    if (result !== undefined) {
-      kept.push(result);
-      body[Symbol.dispose]();
-    } else if (consumed.has(body)) {
-      body[Symbol.dispose]();
-    } else {
-      kept.push(body);
-    }
-  }
-  return kept;
+  return bodies.filter((body) => !consumed.has(body)).map((body) => carved.get(body) ?? body);
 }
 
-/** The voids of each body that has any, keyed by that body. */
-function findVoids(solids: Body[]): Map<Body, Body[]> {
+/** The cavities of each body that has any, keyed by that body. */
+function findVoids(solids: Array<{ body: Body; shell: Shell | undefined }>): Map<Body, Body[]> {
   const kernel = getKernel();
-  const boxes = solids.map((solid) => kernel.boundingBox(solid.wrapped));
+  const boxes = solids.map(({ body }) => kernel.boundingBox(body.wrapped));
   const meshes = new Map<number, KernelMeshResult>();
   const meshOf = (i: number): KernelMeshResult => {
     let mesh = meshes.get(i);
     if (mesh === undefined) {
-      mesh = meshSolid(solids[i] as Body, boxes[i] as Box);
+      mesh = meshShape((solids[i] as { body: Body }).body, boxes[i] as Box);
       meshes.set(i, mesh);
     }
     return mesh;
   };
-  const containers = solids.map((_, j) =>
+  const containers = solids.map((_inner, j) =>
     solids
       .map((_outer, i) => i)
       .filter(
@@ -81,17 +77,35 @@ function findVoids(solids: Body[]): Map<Body, Body[]> {
       )
   );
 
+  const isVoid = containers.map((around, j) => {
+    const shell = solids[j]?.shell;
+    return around.length > 0 && shell !== undefined && facesInward(shell, boxes[j] as Box);
+  });
   const voids = new Map<Body, Body[]>();
   containers.forEach((around, j) => {
-    if (around.length % 2 === 0) return;
-    // The innermost container is the one nested deepest itself.
-    const parent = around.reduce((a, b) =>
+    if (!isVoid[j]) return;
+    // The innermost body around the cavity is the one nested deepest itself.
+    const bodiesAround = around.filter((i) => !isVoid[i]);
+    if (bodiesAround.length === 0) return;
+    const parent = bodiesAround.reduce((a, b) =>
       (containers[b]?.length ?? 0) > (containers[a]?.length ?? 0) ? b : a
     );
-    const body = solids[parent] as Body;
-    voids.set(body, [...(voids.get(body) ?? []), solids[j] as Body]);
+    const body = (solids[parent] as { body: Body }).body;
+    voids.set(body, [...(voids.get(body) ?? []), (solids[j] as { body: Body }).body]);
   });
   return voids;
+}
+
+/** Whether a closed shell's triangles face inward, by the sign of its enclosed volume. */
+function facesInward(shell: Shell, box: Box): boolean {
+  const mesh = meshShape(shell, box);
+  const t = mesh.triangles;
+  let volume = 0;
+  for (let i = 0; i + 2 < t.length; i += 3) {
+    const a = vertexAt(mesh, t[i]);
+    volume += dot(a, cross(vertexAt(mesh, t[i + 1]), vertexAt(mesh, t[i + 2])));
+  }
+  return volume < 0;
 }
 
 function cutVoids(body: Body, voids: Body[]): Body | null {
@@ -111,9 +125,9 @@ function cutVoids(body: Body, voids: Body[]): Body | null {
   return current;
 }
 
-function meshSolid(solid: Body, box: Box): KernelMeshResult {
+function meshShape(shape: Body, box: Box): KernelMeshResult {
   const diagonal = Math.hypot(...box.max.map((v, i) => v - (box.min[i] ?? 0)));
-  return getKernel().mesh(solid.wrapped, {
+  return getKernel().mesh(shape.wrapped, {
     tolerance: Math.max(diagonal * 1e-3, 1e-6),
     angularTolerance: 0.5,
     skipNormals: true,

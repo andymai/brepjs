@@ -21,9 +21,9 @@ import { carveCavities } from './meshNesting.js';
  *
  * A single body comes back on its own: a `Solid` when closed, a `Shell` when
  * open. Several bodies come back as a `Compound` holding a `Solid` per closed
- * body, a `Shell` per open one, and any face that joined no shell. A closed
- * shell inside another is a cavity, cut from the body that holds it. The caller
- * keeps ownership of `faces`.
+ * body, a `Shell` per open one, and any face that joined no shell. An
+ * inward-facing closed shell inside another body is a cavity, cut from that
+ * body. The caller keeps ownership of `faces`.
  *
  * @throws When the kernel cannot sew the faces at all.
  */
@@ -37,15 +37,26 @@ export function sewFacesIntoSolids(faces: KernelShape[], tolerance: number): Unk
   const hasLooseFaces = shellFaces !== subShapeCount(sewn, 'face');
   if (shells.length === 0 || (shells.length === 1 && !hasLooseFaces)) return sewn;
   using _sewn = sewn;
-  const bodies = carveCavities(shells.map((shell) => solidifyShell(shell.wrapped, tolerance)));
-  if (hasLooseFaces) {
-    for (const face of facesOutsideShells(sewn, shells)) {
-      bodies.push(castResultShape(kernel.copyShape(face.wrapped)));
+  // Every shape built here is released on the way out, even when a step throws.
+  const owned: AnyShape<Dimension>[] = [];
+  try {
+    const bodies = shells.map((shell) => {
+      const body = solidifyShell(shell.wrapped, tolerance);
+      owned.push(body);
+      return body;
+    });
+    const parts = carveCavities(bodies, shells, owned);
+    if (hasLooseFaces) {
+      for (const face of facesOutsideShells(sewn, shells)) {
+        const copy = castResultShape(kernel.copyShape(face.wrapped));
+        owned.push(copy);
+        parts.push(copy);
+      }
     }
+    return makeCompound(parts);
+  } finally {
+    for (const shape of owned) shape[Symbol.dispose]();
   }
-  const result = makeCompound(bodies);
-  for (const body of bodies) body[Symbol.dispose]();
-  return result;
 }
 
 function facesOutsideShells(sewn: AnyShape<Dimension>, shells: Shell[]): Face<Dimension>[] {

@@ -293,6 +293,23 @@ describe('importSTL', () => {
     expect(getShells(imported)).toHaveLength(2);
   });
 
+  it('keeps an outward-facing part inside another as its own body', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using outer = box(20, 20, 20);
+    using innerBox = box(10, 10, 10);
+    using inner = translate(innerBox, [5, 5, 5]);
+    const stl =
+      'solid parts\n' + (await stlFacets(outer)) + (await stlFacets(inner)) + 'endsolid parts\n';
+
+    using imported = unwrap(await importSTL(new Blob([stl])));
+    const volumes = getSolids(imported)
+      .map((solid) => unwrap(measureVolume(solid as Shape3D)))
+      .sort((a, b) => a - b);
+    expect(volumes).toHaveLength(2);
+    expect(volumes[0]).toBeCloseTo(1000, 3);
+    expect(volumes[1]).toBeCloseTo(8000, 3);
+  });
+
   it('keeps an island inside a cavity as a body of its own', async (ctx) => {
     skipIfDiverges(ctx, 'importFns.stlImport');
     using outer = box(30, 30, 30);
