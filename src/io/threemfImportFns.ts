@@ -106,12 +106,15 @@ const MM_PER_UNIT: Readonly<Record<string, number>> = {
 const MAX_PLACED_OBJECTS = 100_000;
 /** At roughly 2.5 s per 10,000 sewn triangles, more than this would take hours to build. */
 const MAX_PLACED_TRIANGLES = 2_000_000;
+/** Each placement copies its object's vertices; three per triangle fits any mesh under the triangle limit. */
+const MAX_PLACED_VERTICES = 3 * MAX_PLACED_TRIANGLES;
 
 /** The placed meshes so far, with running totals checked against the limits above. */
 interface Expansion {
   meshes: ParsedMesh[];
   objects: number;
   triangles: number;
+  vertices: number;
 }
 
 /** Check if a char code is a valid XML attribute name character [a-zA-Z0-9_]. */
@@ -398,10 +401,14 @@ function instantiate(
     return `the build places more than ${MAX_PLACED_OBJECTS.toLocaleString('en-US')} objects`;
   }
   const transform = composeTransforms(ref.transform, outer);
-  if (object.mesh !== null) {
+  if (object.mesh !== null && object.mesh.triangles.length > 0) {
     out.triangles += object.mesh.triangles.length;
     if (out.triangles > MAX_PLACED_TRIANGLES) {
       return `the build places more than ${MAX_PLACED_TRIANGLES.toLocaleString('en-US')} triangles`;
+    }
+    out.vertices += object.mesh.vertices.length;
+    if (out.vertices > MAX_PLACED_VERTICES) {
+      return `the build places more than ${MAX_PLACED_VERTICES.toLocaleString('en-US')} vertices`;
     }
     out.meshes.push(transformMesh(object.mesh, transform));
   }
@@ -419,7 +426,8 @@ function instantiate(
  * Each object keeps its own vertex list (triangle indices are per object), build
  * items and components contribute their transforms, and the model `unit` scales
  * coordinates to millimeters. Fails once the build expands past
- * {@link MAX_PLACED_OBJECTS} placements or {@link MAX_PLACED_TRIANGLES} triangles.
+ * {@link MAX_PLACED_OBJECTS} placements, {@link MAX_PLACED_TRIANGLES} triangles,
+ * or {@link MAX_PLACED_VERTICES} vertices.
  */
 function parseModelXml(xml: string): Result<ParsedMesh[]> {
   const resourceColors = parseResourceColors(xml);
@@ -450,7 +458,7 @@ function parseModelXml(xml: string): Result<ParsedMesh[]> {
       .map(([objectId]) => ({ objectId, transform: null }));
   }
 
-  const expansion: Expansion = { meshes: [], objects: 0, triangles: 0 };
+  const expansion: Expansion = { meshes: [], objects: 0, triangles: 0, vertices: 0 };
   for (const item of items) {
     const stopped = instantiate(objects, item, toMillimeters, new Set(), expansion);
     if (stopped !== null) {

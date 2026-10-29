@@ -312,6 +312,20 @@ describe('importThreeMF', () => {
     expect(result.error.message).toContain('more than 2,000,000 triangles');
   });
 
+  it('refuses a build that places more vertices than the limit', async () => {
+    // One triangle over 1,000 vertices placed 8,192 times: few triangles, 8.2M vertex copies.
+    const sparse =
+      '<object id="1" type="model"><mesh><vertices>' +
+      Array.from({ length: 1000 }, (_, i) => `<vertex x="${i}" y="${i % 2}" z="0" />`).join('') +
+      '</vertices><triangles><triangle v1="0" v2="1" v3="2" /></triangles></mesh></object>';
+    const xml = model([sparse, ...doublingChain(2, 13)], ['<item objectid="14" />']);
+    const result = await importThreeMF(modelZip(xml));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('THREEMF_IMPORT_FAILED');
+    expect(result.error.message).toContain('more than 6,000,000 vertices');
+  });
+
   it('fails on empty geometry', async () => {
     const blob = modelZip('<?xml version="1.0"?><model><resources></resources></model>');
     const result = await importThreeMF(blob);
