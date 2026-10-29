@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.11](https://github.com/andymai/brepjs/compare/brepjs-v20.12.10...brepjs-v20.12.11) (2026-10-29)
+
+
+### Bug Fixes
+
+* **occt-wasm:** write the STEP schema exportSTEPConfigured asks for ([#2529](https://github.com/andymai/brepjs/issues/2529)) ([1923250](https://github.com/andymai/brepjs/commit/1923250f79a4ef41366d0fb50df0d1b93dc8ad41))
+
 ## [20.12.10](https://github.com/andymai/brepjs/compare/brepjs-v20.12.9...brepjs-v20.12.10) (2026-10-29)
 
 
