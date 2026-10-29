@@ -9,7 +9,7 @@
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
-import { draw, measureArea, reverseCurve, unwrap } from '@/index.js';
+import { draw, drawEllipse, drawRectangle, measureArea, reverseCurve, unwrap } from '@/index.js';
 import type { Drawing } from '@/index.js';
 import { Curve2D } from '@/2d/lib/curve2D.js';
 import {
@@ -19,8 +19,11 @@ import {
   make2dThreePointArc,
 } from '@/2d/lib/makeCurves.js';
 import {
+  addCurveToBBox,
+  createBBox2d,
   evaluateCurve2d,
   makeCircle2d,
+  makeEllipse2d,
   reverseCurve2d,
   type Curve2dObj,
 } from '@/kernel/geometry2d.js';
@@ -127,5 +130,58 @@ describeOcctWasm('reversal', () => {
     expect(rev.tEnd).toBeGreaterThan(rev.tStart);
     expect(basis.sense).toBe(true);
     for (const s of SAMPLES) expectClose(evaluateCurve2d(rev, s), evaluateCurve2d(arc, 1 - s));
+  });
+});
+
+describeOcctWasm('bounding boxes', () => {
+  it('includes the bottom of an arc through (0, -10)', () => {
+    const r = 10 / Math.SQRT2;
+    const bounds = make2dThreePointArc([-r, -r], [0, -10], [r, -r]).boundingBox.bounds;
+    expectClose(bounds[0], [-r, -10]);
+    expectClose(bounds[1], [r, -r]);
+  });
+
+  it('bounds a rotated filleted square', () => {
+    const extent = 5 * Math.SQRT2 + 5;
+    const [[xMin, yMin], [xMax, yMax]] = drawRectangle(20, 20).rotate(45).fillet(5)
+      .boundingBox.bounds;
+    expect(xMin).toBeCloseTo(-extent, 9);
+    expect(yMin).toBeCloseTo(-extent, 9);
+    expect(xMax).toBeCloseTo(extent, 9);
+    expect(yMax).toBeCloseTo(extent, 9);
+  });
+
+  it('bounds a rotated ellipse analytically', () => {
+    const [[xMin, yMin], [xMax, yMax]] = drawEllipse(20, 10).rotate(30).boundingBox.bounds;
+    expect(xMax).toBeCloseTo(Math.sqrt(400 * 0.75 + 100 * 0.25), 9);
+    expect(xMin).toBeCloseTo(-Math.sqrt(400 * 0.75 + 100 * 0.25), 9);
+    expect(yMax).toBeCloseTo(Math.sqrt(400 * 0.25 + 100 * 0.75), 9);
+    expect(yMin).toBeCloseTo(-Math.sqrt(400 * 0.25 + 100 * 0.75), 9);
+  });
+
+  it.each([
+    ['ccw arc past 2pi', trimmed(makeCircle2d(0, 0, 3, true), 5, 5 + Math.PI)],
+    ['cw arc', trimmed(makeCircle2d(1, 1, 2, false), -1, 3)],
+    ['negative range', trimmed(makeCircle2d(0, 0, 1, true), -7, -5)],
+    ['reversed range', trimmed(makeCircle2d(0, 0, 1, true), 2, -2)],
+    ['ellipse arc', trimmed(makeEllipse2d(0, 0, 6, 2, 1, 2, false), -4, 1)],
+    ['nested trim', trimmed(trimmed(makeCircle2d(0, 0, 4, true), 1, 5), 0.2, 0.9)],
+  ] as [string, Curve2dObj][])('matches dense sampling for a %s', (_name, c) => {
+    const box = createBBox2d();
+    addCurveToBBox(box, c, 0);
+    let [xMin, yMin, xMax, yMax] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let i = 0; i <= 20000; i++) {
+      const [x, y] = evaluateCurve2d(c, i / 20000);
+      [xMin, yMin, xMax, yMax] = [
+        Math.min(xMin, x),
+        Math.min(yMin, y),
+        Math.max(xMax, x),
+        Math.max(yMax, y),
+      ];
+    }
+    expect(box.xMin).toBeCloseTo(xMin, 6);
+    expect(box.yMin).toBeCloseTo(yMin, 6);
+    expect(box.xMax).toBeCloseTo(xMax, 6);
+    expect(box.yMax).toBeCloseTo(yMax, 6);
   });
 });

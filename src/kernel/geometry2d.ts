@@ -1023,72 +1023,117 @@ export function createBBox2d(): BBox2d {
   return { __bk2d_bbox: true, xMin: Infinity, yMin: Infinity, xMax: -Infinity, yMax: -Infinity };
 }
 
-export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
-  const basis = c.__bk2d === 'trimmed' ? c.basis : c;
+/** The first parameter congruent to `t` (mod 2*pi) inside [lo, hi], if any. */
+function periodicParamInRange(t: number, lo: number, hi: number): number | null {
+  const period = 2 * Math.PI;
+  const tt = t + period * Math.ceil((lo - t) / period - 1e-12);
+  return tt <= hi + 1e-12 ? tt : null;
+}
 
-  // Analytic: lines need only 2 endpoints (no sampling)
-  if (basis.__bk2d === 'line') {
-    const bounds = curveBounds(c);
-    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-    const [x0, y0] = evaluateCurve2d(c, bounds.first);
-    const [x1, y1] = evaluateCurve2d(c, bounds.last);
-    bbox.xMin = Math.min(bbox.xMin, x0, x1);
-    bbox.yMin = Math.min(bbox.yMin, y0, y1);
-    bbox.xMax = Math.max(bbox.xMax, x0, x1);
-    bbox.yMax = Math.max(bbox.yMax, y0, y1);
-    return;
-  }
+/**
+ * Basis parameters where a conic reaches its axis-aligned extremes. For
+ * C + a*cos(psi)*U + b*sin(psi)*V (U at angle phi), dx/dpsi = 0 at
+ * tan(psi) = -b*sin(phi) / (a*cos(phi)) and dy/dpsi = 0 at
+ * tan(psi) = b*cos(phi) / (a*sin(phi)), each plus pi.
+ */
+function conicExtremeParams(c: Circle2d | Ellipse2d): number[] {
+  const [a, b, phi] =
+    c.__bk2d === 'circle' ? [c.radius, c.radius, 0] : [c.majorRadius, c.minorRadius, c.xDirAngle];
+  const psiX = Math.atan2(-b * Math.sin(phi), a * Math.cos(phi));
+  const psiY = Math.atan2(b * Math.cos(phi), a * Math.sin(phi));
+  return [psiX, psiX + Math.PI, psiY, psiY + Math.PI].map((psi) => (c.sense ? psi : -psi));
+}
 
-  // Analytic: circles/arcs — endpoints + axis extremes
-  if (basis.__bk2d === 'circle') {
-    const bounds = curveBounds(c);
-    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-    const { cx, cy, radius, sense } = basis;
-    const [x0, y0] = evaluateCurve2d(c, bounds.first);
-    const [x1, y1] = evaluateCurve2d(c, bounds.last);
-    let xMin = Math.min(x0, x1),
-      xMax = Math.max(x0, x1);
-    let yMin = Math.min(y0, y1),
-      yMax = Math.max(y0, y1);
-    // Check axis-aligned extreme angles within the arc's parameter range
-    const tStart = c.__bk2d === 'trimmed' ? c.tStart : bounds.first;
-    const tEnd = c.__bk2d === 'trimmed' ? c.tEnd : bounds.last;
-    for (let k = 0; k < 4; k++) {
-      const angle = (k * Math.PI) / 2;
-      const t = sense ? angle : -angle;
-      // Check if t (or t + 2π) falls within [tStart, tEnd]
-      for (let wrap = 0; wrap <= 1; wrap++) {
-        const tt = t + wrap * 2 * Math.PI;
-        if (tt >= tStart - 1e-10 && tt <= tEnd + 1e-10) {
-          const ex = cx + radius * Math.cos(angle);
-          const ey = cy + radius * Math.sin(angle);
-          xMin = Math.min(xMin, ex);
-          xMax = Math.max(xMax, ex);
-          yMin = Math.min(yMin, ey);
-          yMax = Math.max(yMax, ey);
-          break;
-        }
-      }
+/** Golden-section search for the extremum of `f` on [lo, hi] (sign = 1 min, -1 max). */
+function refineExtremum(f: (t: number) => number, lo: number, hi: number, sign: number): number {
+  const g = (Math.sqrt(5) - 1) / 2;
+  let a = lo;
+  let b = hi;
+  let c = b - g * (b - a);
+  let d = a + g * (b - a);
+  let fc = sign * f(c);
+  let fd = sign * f(d);
+  for (let i = 0; i < 60 && b - a > 1e-14 * Math.max(1, Math.abs(a)); i++) {
+    if (fc < fd) {
+      b = d;
+      d = c;
+      fd = fc;
+      c = b - g * (b - a);
+      fc = sign * f(c);
+    } else {
+      a = c;
+      c = d;
+      fc = fd;
+      d = a + g * (b - a);
+      fd = sign * f(d);
     }
-    bbox.xMin = Math.min(bbox.xMin, xMin);
-    bbox.yMin = Math.min(bbox.yMin, yMin);
-    bbox.xMax = Math.max(bbox.xMax, xMax);
-    bbox.yMax = Math.max(bbox.yMax, yMax);
-    return;
   }
+  return (a + b) / 2;
+}
 
-  // General: sample (bezier, bspline, ellipse)
+/** Add the sampled extremes of a pole-based curve over [lo, hi], refined between samples. */
+function addSampledExtremes(add: (t: number) => void, c: Curve2dObj, lo: number, hi: number): void {
+  const poles = c.__bk2d === 'bezier' || c.__bk2d === 'bspline' ? c.poles.length : 8;
+  const n = Math.min(1024, Math.max(32, 4 * poles));
+  const ts: number[] = [];
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = lo + ((hi - lo) * i) / n;
+    ts.push(t);
+    pts.push(evaluateCurve2d(c, t));
+  }
+  for (let axis = 0; axis < 2; axis++) {
+    const coord = (t: number) => evaluateCurve2d(c, t)[axis] ?? 0;
+    for (let i = 1; i < n; i++) {
+      /* eslint-disable @typescript-eslint/no-non-null-assertion -- i - 1..i + 1 within 0..n */
+      const prev = pts[i - 1]![axis]!;
+      const cur = pts[i]![axis]!;
+      const next = pts[i + 1]![axis]!;
+      const sign = cur <= prev && cur <= next ? 1 : cur >= prev && cur >= next ? -1 : 0;
+      if (sign !== 0) {
+        add(ts[i]!);
+        add(refineExtremum(coord, ts[i - 1]!, ts[i + 1]!, sign));
+      }
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    }
+  }
+}
+
+export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
   const bounds = curveBounds(c);
   if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-  const nSamples = 20;
-  const dt = (bounds.last - bounds.first) / nSamples;
-  for (let i = 0; i <= nSamples; i++) {
-    const t = bounds.first + i * dt;
-    const [x, y] = evaluateCurve2d(c, t);
-    if (x < bbox.xMin) bbox.xMin = x;
-    if (y < bbox.yMin) bbox.yMin = y;
-    if (x > bbox.xMax) bbox.xMax = x;
-    if (y > bbox.yMax) bbox.yMax = y;
+  const addPoint = ([x, y]: [number, number]) => {
+    bbox.xMin = Math.min(bbox.xMin, x);
+    bbox.yMin = Math.min(bbox.yMin, y);
+    bbox.xMax = Math.max(bbox.xMax, x);
+    bbox.yMax = Math.max(bbox.yMax, y);
+  };
+  addPoint(evaluateCurve2d(c, bounds.first));
+  addPoint(evaluateCurve2d(c, bounds.last));
+
+  const flat = flattenTrimmed(c);
+  const basis = flat.__bk2d === 'trimmed' ? flat.basis : flat;
+  const basisBounds = curveBounds(basis);
+  const [from, to] =
+    flat.__bk2d === 'trimmed' ? [flat.tStart, flat.tEnd] : [basisBounds.first, basisBounds.last];
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  const add = (t: number) => {
+    addPoint(evaluateCurve2d(basis, t));
+  };
+
+  switch (basis.__bk2d) {
+    case 'line':
+      return;
+    case 'circle':
+    case 'ellipse':
+      for (const t of conicExtremeParams(basis)) {
+        const tt = periodicParamInRange(t, lo, hi);
+        if (tt !== null) add(tt);
+      }
+      return;
+    default:
+      addSampledExtremes(add, basis, lo, hi);
   }
 }
 
