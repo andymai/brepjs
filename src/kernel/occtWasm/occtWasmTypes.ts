@@ -366,6 +366,15 @@ export interface OcctKernelWasm {
     endAngle: number
   ): number;
   makeBezierEdge(flatPoints: EmVectorDouble): number;
+  /** occt-wasm 5.8+: non-rational when `weights` is empty; poles are flat xyz triples. */
+  makeBSplineEdge?(
+    poles: EmVectorDouble,
+    weights: EmVectorDouble,
+    knots: EmVectorDouble,
+    multiplicities: EmVectorInt,
+    degree: number,
+    periodic: boolean
+  ): number;
   makeTangentArc(
     x1: number,
     y1: number,

@@ -189,22 +189,7 @@ export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
 }
 
 export function offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
-  const c = c2d(curve);
-  const bounds = g2d.curveBounds(c);
-  const N = 30;
-  const poles: [number, number][] = [];
-  for (let i = 0; i <= N; i++) {
-    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
-    const [px, py] = g2d.evaluateCurve2d(c, t);
-    const [tvx, tvy] = g2d.tangentCurve2d(c, t);
-    const tLen = Math.sqrt(tvx * tvx + tvy * tvy);
-    if (tLen > 1e-12) {
-      poles.push([px - (tvy / tLen) * offset, py + (tvx / tLen) * offset]);
-    } else {
-      poles.push([px, py]);
-    }
-  }
-  return makeBSpline2d(poles);
+  return g2d.offsetCurve2d(c2d(curve), offset);
 }
 
 export function translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {

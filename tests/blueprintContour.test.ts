@@ -101,10 +101,10 @@ describe('blueprintToContour', () => {
   });
 
   itBrep('bspline curves approximate per curve and bridge faithfully', () => {
-    // Closed bspline with control POLES on a circle of radius 20: the curve
-    // lies inside the poles' convex hull, so its area sits strictly between a
-    // loose inner bound and the circle area. All kernels agree on the bridged
-    // area to 4 decimals, pinning the approximation chain rather than an
+    // Closed bspline through 16 points of a circle of radius 20. occt-wasm
+    // interpolates them, bulging out of the circle by the interpolation error
+    // between points; kernels that use the points as poles stay inside it. The
+    // bounds hold for both, pinning the approximation chain rather than an
     // unavailable closed form.
     const r = 20;
     const n = 16;
@@ -118,7 +118,7 @@ describe('blueprintToContour', () => {
       expect(isOk(c)).toBe(true);
       const a = evalArea(c);
       expect(a).toBeGreaterThan(1100);
-      expect(a).toBeLessThan(Math.PI * r * r);
+      expect(a).toBeLessThan(Math.PI * r * r * 1.0001);
     });
   });
 

@@ -13,6 +13,7 @@ import {
   draw,
   drawCircle,
   drawEllipse,
+  drawPointsInterpolation,
   drawRectangle,
   drawRoundedRectangle,
   drawSingleCircle,
@@ -21,6 +22,15 @@ import {
   unwrap,
 } from '@/index.js';
 import type { Drawing } from '@/index.js';
+import {
+  bspline2d,
+  circle2d,
+  distanceBetweenCurves2d,
+  evaluateCurve2d as evaluateHandle,
+  offsetCurve2d as offsetHandle,
+  projectPointOnCurve2d,
+  typeCurve2d,
+} from '@/2d.js';
 import { Curve2D } from '@/2d/lib/curve2D.js';
 import { make2dOffset } from '@/2d/lib/offset.js';
 import {
@@ -31,11 +41,16 @@ import {
 } from '@/2d/lib/makeCurves.js';
 import {
   addCurveToBBox,
+  affineCurve2d,
   createBBox2d,
   evaluateCurve2d,
   makeCircle2d,
   makeEllipse2d,
+  makeLine2d,
+  offsetCurve2d,
   reverseCurve2d,
+  scaleCurve2d,
+  type Affine2d,
   type Curve2dObj,
 } from '@/kernel/geometry2d.js';
 
@@ -62,6 +77,17 @@ const SAMPLES = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
 function expectClose(actual: Pt, expected: Pt, digits = 9): void {
   expect(actual[0]).toBeCloseTo(expected[0], digits);
   expect(actual[1]).toBeCloseTo(expected[1], digits);
+}
+
+/** Perimeter of an ellipse by the trapezoid rule (spectrally accurate for a periodic integrand). */
+function ellipsePerimeter(a: number, b: number): number {
+  const n = 4096;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const t = (2 * Math.PI * i) / n;
+    sum += Math.hypot(a * Math.sin(t), b * Math.cos(t));
+  }
+  return (sum * 2 * Math.PI) / n;
 }
 
 /** Area between a 90 degree corner of a line and an arc (radius R) and a fillet of radius r. */
@@ -119,7 +145,7 @@ describeOcctWasm('circle offsets', () => {
     const semicircle = draw().hLine(20).sagittaArc(-20, 0, 10).close();
     expect(faceArea(semicircle.fillet(1))).toBeCloseTo(
       50 * Math.PI - 2 * lineArcFilletLoss(10, 1),
-      4
+      6
     );
   });
 
@@ -259,5 +285,162 @@ describeOcctWasm('bounding boxes', () => {
     expect(box.yMin).toBeCloseTo(yMin, 6);
     expect(box.xMax).toBeCloseTo(xMax, 6);
     expect(box.yMax).toBeCloseTo(yMax, 6);
+  });
+});
+
+describeOcctWasm('offsetCurve2d', () => {
+  it('offsets a counter-clockwise circle outward, exactly', () => {
+    const offset = unwrap(offsetHandle(unwrap(circle2d([1, 2], 10)), 2));
+    expect(unwrap(typeCurve2d(offset))).toBe('CIRCLE');
+    for (const t of [0, 1, 2, 4, 6]) {
+      const [x, y] = unwrap(evaluateHandle(offset, t));
+      expect(Math.hypot(x - 1, y - 2)).toBeCloseTo(12, 12);
+    }
+  });
+
+  it('offsets a line to the right of its direction', () => {
+    const line = offsetCurve2d(makeLine2d(0, 0, 10, 0), 1);
+    expectClose(evaluateCurve2d(line, 0), [0, -1]);
+    expectClose(evaluateCurve2d(line, 10), [10, -1]);
+  });
+
+  it('offsets an ellipse onto its parallel curve', () => {
+    const ellipse = makeEllipse2d(3, -1, 20, 10, 1, 1, true);
+    const out = offsetCurve2d(ellipse, 2);
+    const cos = Math.SQRT1_2;
+    for (let i = 0; i <= 64; i++) {
+      // Points of the parallel curve: P + 2 * outward unit normal.
+      const t = (2 * Math.PI * i) / 64;
+      const [ex, ey] = [20 * Math.cos(t), 10 * Math.sin(t)];
+      const [nx, ny] = [10 * Math.cos(t), 20 * Math.sin(t)];
+      const len = Math.hypot(nx, ny);
+      const lx = ex + (2 * nx) / len;
+      const ly = ey + (2 * ny) / len;
+      const target: Pt = [3 + lx * cos - ly * cos, -1 + lx * cos + ly * cos];
+      expectClose(evaluateCurve2d(out, i / 64), target, 7);
+    }
+  });
+
+  it('offsets an ellipse drawing by the Steiner formula', () => {
+    const expected = 200 * Math.PI + 2 * ellipsePerimeter(20, 10) + 4 * Math.PI;
+    expect(faceArea(drawEllipse(20, 10).offset(2))).toBeCloseTo(expected, 5);
+  });
+
+  it('fillets a half ellipse where the fillets touch the ellipse', () => {
+    const half = draw().movePointerTo([-20, 0]).halfEllipse(40, 0, 10).close();
+    const filleted = half.fillet(1).blueprint.curves;
+    const onEllipse = (p: Pt) => (p[0] / 20) ** 2 + (p[1] / 10) ** 2;
+    const arcs = filleted.filter((c) => c.geomType === 'CIRCLE');
+    expect(arcs).toHaveLength(2);
+    for (const arc of arcs) {
+      const ends = [arc.firstPoint, arc.lastPoint];
+      expect(ends.some((p) => Math.abs(p[1]) < 1e-9)).toBe(true);
+      expect(ends.some((p) => Math.abs(onEllipse(p) - 1) < 1e-9)).toBe(true);
+    }
+    expect(faceArea(half.fillet(1))).toBeLessThan(100 * Math.PI - 2 * (1 - Math.PI / 4));
+  });
+});
+
+describeOcctWasm('scaling', () => {
+  it('moves arcs with a negative scale', () => {
+    const semicircle = draw().hLine(20).sagittaArc(-20, 0, 10).close();
+    const [[xMin, yMin], [xMax, yMax]] = semicircle.scale(-1, [0, 0]).boundingBox.bounds;
+    expect([xMin, yMin, xMax, yMax].map((v) => Math.round(v * 1e9) / 1e9)).toEqual([-20, 0, 0, 10]);
+  });
+
+  it('keeps a holed rounded rectangle under a negative scale', () => {
+    const holed = drawRoundedRectangle(40, 20, 5).cut(drawCircle(4)).scale(-1);
+    expect(faceArea(holed)).toBeCloseTo(800 - 25 * (4 - Math.PI) - 16 * Math.PI, 6);
+  });
+
+  it('scales trimmed lines with their trim range', () => {
+    const scaled = drawRectangle(20, 10).fillet(2).scale(2);
+    expect(faceArea(scaled)).toBeCloseTo(4 * (200 - 4 * (4 - Math.PI)), 6);
+  });
+
+  it.each([
+    ['trimmed circle', trimmed(makeCircle2d(1, 2, 3, true), 0.3, 2)],
+    ['cw trimmed circle', trimmed(makeCircle2d(1, 2, 3, false), -1, 1)],
+    ['trimmed line', trimmed(makeLine2d(1, 1, 5, 4), 1, 4)],
+    ['ellipse', makeEllipse2d(0, 1, 4, 2, 1, 1, true)],
+  ] as [string, Curve2dObj][])('commutes with evaluation for a %s', (_name, c) => {
+    for (const factor of [-2, -1, 0.5, 3]) {
+      const scaled = scaleCurve2d(c, factor, 1, -1);
+      for (const s of SAMPLES) {
+        const t = c.__bk2d === 'trimmed' ? s : s * 2 * Math.PI;
+        const [x, y] = evaluateCurve2d(c, t);
+        expectClose(evaluateCurve2d(scaled, t), [1 + (x - 1) * factor, -1 + (y + 1) * factor]);
+      }
+    }
+  });
+});
+
+describeOcctWasm('affinities, interpolation, distance and lifting', () => {
+  it('stretches a circle into an exact ellipse', () => {
+    expect(faceArea(drawCircle(10).stretch(2, [1, 0], [0, 0]))).toBeCloseTo(200 * Math.PI, 6);
+  });
+
+  const maps: [string, Affine2d][] = [
+    ['shear', { a: 1, b: 0.7, c: 0, d: 1, tx: 2, ty: -1 }],
+    ['reflection', { a: -1, b: 0, c: 0, d: 1, tx: 0, ty: 3 }],
+    ['rotation', { a: Math.cos(1), b: -Math.sin(1), c: Math.sin(1), d: Math.cos(1), tx: 0, ty: 0 }],
+    ['stretch', { a: 2, b: 0, c: 0, d: 0.5, tx: 1, ty: 1 }],
+  ];
+  const conics: [string, Curve2dObj][] = [
+    ['circle arc', trimmed(makeCircle2d(1, 2, 3, true), 0.3, 2.5)],
+    ['cw circle arc', trimmed(makeCircle2d(0, 0, 2, false), -1, 2)],
+    ['ellipse arc', trimmed(makeEllipse2d(1, 0, 5, 2, 1, 2, true), -0.5, 3)],
+    ['line piece', trimmed(makeLine2d(0, 0, 6, 8), 2, 7)],
+  ];
+  for (const [mapName, m] of maps) {
+    it.each(conics)(`maps a %s exactly under a ${mapName}`, (_name, c) => {
+      const image = affineCurve2d(c, m);
+      for (const s of SAMPLES) {
+        const [x, y] = evaluateCurve2d(c, s);
+        expectClose(evaluateCurve2d(image, s), [
+          m.a * x + m.b * y + m.tx,
+          m.c * x + m.d * y + m.ty,
+        ]);
+      }
+    });
+  }
+
+  it('interpolates every point of a B-spline', () => {
+    const pts: Pt[] = [
+      [0, 0],
+      [10, 5],
+      [20, -3],
+      [30, 4],
+      [35, 10],
+    ];
+    const curve = unwrap(bspline2d(pts));
+    for (const p of pts) {
+      expect(unwrap(projectPointOnCurve2d(curve, p))?.distance).toBeLessThan(1e-9);
+    }
+    const drawn = drawPointsInterpolation(pts).blueprint.curves[0] as Curve2D;
+    for (const p of pts) expect(drawn.distanceFrom(p)).toBeLessThan(1e-9);
+  });
+
+  it('measures the gap between two circles', () => {
+    const a = unwrap(circle2d([0, 0], 10));
+    const b = unwrap(circle2d([20.3, 0.7], 10));
+    expect(unwrap(distanceBetweenCurves2d(a, b))).toBeCloseTo(Math.hypot(20.3, 0.7) - 20, 9);
+  });
+
+  it('measures the gap between offset parallel segments', () => {
+    const a = make2dSegmentCurve([0, 0], [10, 0]);
+    const b = make2dSegmentCurve([3.3, 2], [17.1, 2]);
+    expect(a.distanceFrom(b)).toBeCloseTo(2, 12);
+  });
+
+  it('lifts a thin ellipse exactly', () => {
+    expect(faceArea(drawEllipse(50, 2))).toBeCloseTo(100 * Math.PI, 6);
+  });
+
+  it('lifts a Bezier profile exactly', () => {
+    // A cubic from (0,0) to (10,0) with controls (0,10) and (10,10) encloses
+    // 3/10 * 10 * (10 + 10) = 60 with its chord.
+    const d = draw().cubicBezierCurveTo([10, 0], [0, 10], [10, 10]).close();
+    expect(faceArea(d)).toBeCloseTo(60, 9);
   });
 });
