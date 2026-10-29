@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.6](https://github.com/andymai/brepjs/compare/brepjs-v20.12.5...brepjs-v20.12.6) (2026-10-29)
+
+
+### Bug Fixes
+
+* **2d:** make offsets, reversal, bounds, and fits exact on occt-wasm ([4200b9e](https://github.com/andymai/brepjs/commit/4200b9e2f953a09623419453a4e77cb59fad27ae))
+
 ## [20.12.5](https://github.com/andymai/brepjs/compare/brepjs-v20.12.4...brepjs-v20.12.5) (2026-10-29)
 
 
