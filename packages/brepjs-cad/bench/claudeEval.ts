@@ -244,7 +244,10 @@ function authorStats(id: string): { reports: number; firstTry: boolean; peeked: 
     for (const c of content) {
       if (c.type === 'tool_use') {
         const input = JSON.stringify(c.input ?? {});
-        const hits = others.filter((other) => names(input, other));
+        // The skill's own examples/ are fair reading for any author, even one named like another
+        // part; only paths outside it (a part's folder, a relative hop) name another author's work.
+        const outsideExamples = input.replace(/examples\/[a-z0-9-]+\.[a-z.]+/g, '');
+        const hits = others.filter((other) => names(outsideExamples, other));
         if (/\.ref\.brep|\brefs\//.test(input)) hits.push('refs');
         if (input.includes(`examples/${id}.`)) hits.push('its skill example');
         if (hits.length > 0) attempts.set(String(c.id), hits);
