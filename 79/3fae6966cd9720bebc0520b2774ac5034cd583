@@ -1,0 +1,47 @@
+apps/docs/introduction/stability.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 52
+docs/kernel-swap.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 3,15,50
+docs/compatibility.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 107,109-111
+apps/docs/getting-started/install.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 21,37,46,52,74,79-84
+apps/docs/advanced/csg-caching.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 21
+CLAUDE.md
+  s_d4ab5fb2066c9b::t_cc38dba7968b2c 21,55,61
+apps/docs/reference/glossary.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 14,98,132
+apps/docs/advanced/workers.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 190,204,210-215
+apps/docs/extending/architecture.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 38
+apps/docs/extending/custom-kernel.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 8,43
+docs/getting-started.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 18,39
+apps/docs/concepts/kernels.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 12-15,23-27,56
+apps/docs/integration/compatibility.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 110,125,127
+apps/docs/integration/frameworks.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 37,42-47,50
+docs/architecture.md
+  s_d4ab5fb2066c9b::t_b831f52c1d0618 85-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "793fae6966cd9720bebc0520b2774ac5034cd583",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
