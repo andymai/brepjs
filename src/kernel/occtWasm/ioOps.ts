@@ -442,9 +442,15 @@ interface XcafPart {
   readonly color?: [number, number, number, number] | undefined;
 }
 
-/** A document handle that keeps its parts, to rebuild them scaled for a model unit. */
+/**
+ * A document handle that can rebuild its parts scaled for a model unit. The
+ * document's geometry can't be read back, so `retainedId` holds a compound of
+ * the parts (sharing their geometry, so it outlives the caller's handles) and
+ * `labels` their names and colors, in the same order.
+ */
 interface XcafDocHandle extends OcctWasmHandle {
-  readonly xcafParts: readonly XcafPart[];
+  readonly retainedId: number;
+  readonly labels: ReadonlyArray<Omit<XcafPart, 'shape'>>;
 }
 
 function addXcafParts(k: OcctKernelWasm, parts: readonly XcafPart[]): number {
@@ -497,6 +503,7 @@ function writeXcafParts(k: OcctKernelWasm, parts: readonly XcafPart[], units: St
 
 export function createXCAFDocument(
   k: OcctKernelWasm,
+  makeCompound: CompoundFn,
   shapes: Array<{
     shape: KernelShape;
     name: string;
@@ -504,12 +511,19 @@ export function createXCAFDocument(
   }>
 ): KernelType {
   // The doc id is carried in a handle; delete() is a noop for occt-wasm, so
-  // writeXCAFToSTEP closes the document after exporting.
-  const doc: XcafDocHandle = {
-    ...handle('compound', addXcafParts(k, shapes)),
-    xcafParts: [...shapes],
-  };
-  return doc;
+  // writeXCAFToSTEP closes the document and releases the retained compound.
+  const retainedId = unwrap(makeCompound(shapes.map((s) => s.shape)));
+  try {
+    const doc: XcafDocHandle = {
+      ...handle('compound', addXcafParts(k, shapes)),
+      retainedId,
+      labels: shapes.map(({ name, color }) => ({ name, color })),
+    };
+    return doc;
+  } catch (e) {
+    k.release(retainedId);
+    throw e;
+  }
 }
 
 export function writeXCAFToSTEP(
@@ -518,16 +532,43 @@ export function writeXCAFToSTEP(
   options?: StepUnitOptions
 ): string {
   const docId = unwrap(doc);
+  const { retainedId, labels } = doc as Partial<XcafDocHandle>;
   try {
     const units = resolveStepUnits(options);
     if (units.modelScale === 1) return writeXcafDoc(k, docId, units);
-    // The document already holds the shapes at model scale; rebuild it from
-    // its parts, scaled into millimeters.
-    const parts = (doc as Partial<XcafDocHandle>).xcafParts;
-    if (!parts) throw new Error('occt-wasm: this XCAF document does not record its parts');
-    return writeXcafParts(k, parts, units);
+    // The document holds the shapes at model scale; rebuild it from the retained
+    // parts, scaled into millimeters.
+    if (retainedId === undefined || labels === undefined) {
+      throw new Error('occt-wasm: this XCAF document does not record its parts');
+    }
+    return writeScaledXcafParts(k, retainedId, labels, units);
   } finally {
     k.xcafClose(docId);
+    if (retainedId !== undefined) k.release(retainedId);
+  }
+}
+
+/** Scale the retained compound once and write its children as the labeled parts. */
+function writeScaledXcafParts(
+  k: OcctKernelWasm,
+  retainedId: number,
+  labels: ReadonlyArray<Omit<XcafPart, 'shape'>>,
+  units: StepUnits
+): string {
+  const scaledId = k.scale(retainedId, 0, 0, 0, units.modelScale);
+  const children = k.iterShapes(scaledId);
+  const childIds: number[] = [];
+  try {
+    for (let i = 0; i < children.size(); i++) childIds.push(children.get(i));
+    const parts = labels.map((label, i) => ({
+      ...label,
+      shape: handle('compound', childIds[i] ?? 0),
+    }));
+    return writeXcafParts(k, parts, { ...units, modelScale: 1 });
+  } finally {
+    children.delete();
+    for (const id of childIds) k.release(id);
+    k.release(scaledId);
   }
 }
 

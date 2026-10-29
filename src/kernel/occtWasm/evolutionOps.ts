@@ -565,8 +565,10 @@ export function draftWithHistory(
       evolution: { modified: new Map(), generated: new Map(), deleted: new Set() },
     };
   }
+  // The angle callback runs before any vector exists, so a throw leaks nothing.
+  const anglesRad = draftAnglesRad(faces, angleDeg);
   const faceVec = makeVecU32(Module, faces.map(unwrap));
-  const angleVec = makeVecDouble(Module, draftAnglesRad(faces, angleDeg));
+  const angleVec = makeVecDouble(Module, anglesRad);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
     const evo = k.draftFacesWithHistory(

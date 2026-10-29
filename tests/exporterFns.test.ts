@@ -59,6 +59,20 @@ describe('exportAssemblySTEP', () => {
       expect(largestStepCoordinate(fromCm)).toBeCloseTo(100, 9);
     });
 
+    it('converts a document whose source shapes were released before writing', (ctx) => {
+      skipIfDiverges(ctx, 'exporterFns.assemblyUnits');
+      const kernel = getKernel();
+      const doc = (() => {
+        using b = box(10, 10, 10);
+        return kernel.createXCAFDocument([{ shape: b.wrapped, name: 'box' }]);
+      })();
+      // A model unit other than millimeters rebuilds the parts scaled, after the
+      // caller has released its own handles to them.
+      const step = kernel.writeXCAFToSTEP(doc, { unit: 'MM', modelUnit: 'CM' });
+      expect(step).toContain(MILLIMETER_UNIT);
+      expect(largestStepCoordinate(step)).toBeCloseTo(100, 9);
+    });
+
     it('writes the unit option through the kernel assembly export', (ctx) => {
       skipIfDiverges(ctx, 'stepConfigFns.units');
       using b = box(10, 10, 10);

@@ -1301,7 +1301,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       color?: [number, number, number, number] | undefined;
     }>
   ): KernelType {
-    return ioOps.createXCAFDocument(this.k, shapes);
+    return ioOps.createXCAFDocument(this.k, this.makeCompound.bind(this), shapes);
   }
 
   writeXCAFToSTEP(
