@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.9](https://github.com/andymai/brepjs/compare/brepjs-v20.12.8...brepjs-v20.12.9) (2026-10-29)
+
+
+### Bug Fixes
+
+* **occt-wasm:** apply per-edge fillets, draft planes, and STEP units ([c6d9a61](https://github.com/andymai/brepjs/commit/c6d9a61cfafb3fb81d5c89783eae8d062b3a5a15))
+
 ## [20.12.8](https://github.com/andymai/brepjs/compare/brepjs-v20.12.7...brepjs-v20.12.8) (2026-10-29)
 
 
