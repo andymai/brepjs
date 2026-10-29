@@ -1,7 +1,7 @@
 {
   "name": "brepjs-cad",
   "version": "0.191.3",
-  "description": "Claude Code plugin and brep CLI that let agents write brepjs CAD parts and verify them on a real kernel",
+  "description": "brep CLI, MCP server, and agent skills that let coding agents write brepjs CAD parts and verify them on a real kernel",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,

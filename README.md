@@ -10,18 +10,22 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/4b95af1c-4846-4364-9d98-1525d54bf60b
+https://github.com/user-attachments/assets/c4717814-3600-4dd3-b180-9aabb7b35e0a
 
 </div>
 
-In this real Claude Code session, Claude reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD.
+In this real session, a coding agent (Claude Code) reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD.
 
-```text
-/plugin marketplace add andymai/brepjs
-/plugin install brepjs@brepjs
+Parts are plain TypeScript files and the checker is a CLI, so it isn't tied to one agent:
+
+```sh
+npm i -D brepjs brepjs-cad occt-wasm
+npx brep verify part.brep.ts
 ```
 
-We had Claude rebuild the 46 parts in our example gallery from their descriptions: all 46 verified valid, and a blind AI judge rated 35 at least as good as our hand-written versions. [How we measured it](https://brepjs.dev/agent/eval).
+MCP clients can use the `brep-mcp` server instead, and Claude Code users can install the authoring skills as a plugin (`/plugin marketplace add andymai/brepjs`).
+
+An agent rebuilt the 46 parts in our example gallery from their descriptions, and all 46 passed verify. [How we measured it](https://brepjs.dev/agent/eval).
 
 ## Or write it yourself
 
