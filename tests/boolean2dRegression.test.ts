@@ -15,6 +15,7 @@ import {
   cutBlueprints,
   intersectBlueprints,
   measureArea,
+  Sketch,
   unwrap,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
@@ -379,8 +380,14 @@ describe.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
   'arcs crossing lines and arcs',
   () => {
     function areaOf(d: Drawing): number {
-      using face = d.sketchOnPlane('XY').face();
-      return unwrap(measureArea(face));
+      const sketch = d.sketchOnPlane('XY');
+      if (!(sketch instanceof Sketch)) throw new Error('expected a single outline');
+      try {
+        using face = sketch.face();
+        return unwrap(measureArea(face));
+      } finally {
+        sketch.delete();
+      }
     }
 
     // Area of the part of a radius-r circle beyond a chord at distance d from its center.
