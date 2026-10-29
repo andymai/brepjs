@@ -9,9 +9,20 @@
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
-import { draw, drawEllipse, drawRectangle, measureArea, reverseCurve, unwrap } from '@/index.js';
+import {
+  draw,
+  drawCircle,
+  drawEllipse,
+  drawRectangle,
+  drawRoundedRectangle,
+  drawSingleCircle,
+  measureArea,
+  reverseCurve,
+  unwrap,
+} from '@/index.js';
 import type { Drawing } from '@/index.js';
 import { Curve2D } from '@/2d/lib/curve2D.js';
+import { make2dOffset } from '@/2d/lib/offset.js';
 import {
   make2dBezierCurve,
   make2dEllipseArc,
@@ -52,6 +63,71 @@ function expectClose(actual: Pt, expected: Pt, digits = 9): void {
   expect(actual[0]).toBeCloseTo(expected[0], digits);
   expect(actual[1]).toBeCloseTo(expected[1], digits);
 }
+
+/** Area between a 90 degree corner of a line and an arc (radius R) and a fillet of radius r. */
+function lineArcFilletLoss(R: number, r: number): number {
+  const alpha = Math.asin(r / (R - r));
+  const fx = Math.sqrt((R - r) ** 2 - r * r);
+  const t1: Pt = [fx, 0];
+  const f: Pt = [fx, -r];
+  const t2: Pt = [R * Math.cos(alpha), -R * Math.sin(alpha)];
+  const corner: Pt = [R, 0];
+  const poly = [corner, t1, f, t2];
+  let twice = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x1, y1] = poly[i] as Pt;
+    const [x2, y2] = poly[(i + 1) % poly.length] as Pt;
+    twice += x1 * y2 - x2 * y1;
+  }
+  const filletSector = (r * r * (Math.PI / 2 + alpha)) / 2;
+  const arcSegment = (R * R * (alpha - Math.sin(alpha))) / 2;
+  return Math.abs(twice) / 2 - filletSector + arcSegment;
+}
+
+describeOcctWasm('circle offsets', () => {
+  it('offsets a full circle drawn as two arcs', () => {
+    expect(faceArea(drawCircle(10).offset(2))).toBeCloseTo(144 * Math.PI, 6);
+  });
+
+  it('offsets a rounded rectangle (Steiner formula)', () => {
+    const area = 800 - 25 * (4 - Math.PI);
+    const perimeter = 2 * (40 + 20) - 8 * 5 + 2 * Math.PI * 5;
+    expect(faceArea(drawRoundedRectangle(40, 20, 5).offset(1))).toBeCloseTo(
+      area + perimeter + Math.PI,
+      6
+    );
+  });
+
+  it('offsets an arc radially, keeping its sweep', () => {
+    const arc = make2dThreePointArc([10, 0], [0, 10], [-10, 0]);
+    const out = make2dOffset(arc, 2);
+    expect(out).toBeInstanceOf(Curve2D);
+    const c = out as Curve2D;
+    expectClose(c.firstPoint, [12, 0]);
+    expectClose(c.lastPoint, [-12, 0]);
+    expectClose(c.value((c.firstParameter + c.lastParameter) / 2), [0, 12]);
+  });
+
+  it('offsets a clockwise arc to the right of travel (towards its center)', () => {
+    const arc = make2dThreePointArc([-10, 0], [0, 10], [10, 0]);
+    const c = make2dOffset(arc, 2) as Curve2D;
+    expectClose(c.firstPoint, [-8, 0]);
+    expectClose(c.value((c.firstParameter + c.lastParameter) / 2), [0, 8]);
+  });
+
+  it('fillets both corners of a semicircle', () => {
+    const semicircle = draw().hLine(20).sagittaArc(-20, 0, 10).close();
+    expect(faceArea(semicircle.fillet(1))).toBeCloseTo(
+      50 * Math.PI - 2 * lineArcFilletLoss(10, 1),
+      4
+    );
+  });
+
+  it('offsets a single closed circle curve', () => {
+    expect(faceArea(drawSingleCircle(10).offset(2))).toBeCloseTo(144 * Math.PI, 6);
+    expect(faceArea(drawSingleCircle(10).offset(-2))).toBeCloseTo(64 * Math.PI, 6);
+  });
+});
 
 describeOcctWasm('reversal', () => {
   const curves: Record<string, () => Curve2D> = {
