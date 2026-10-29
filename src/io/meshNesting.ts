@@ -29,23 +29,18 @@ const RAY: Vec3 = [0.5389 / RAY_LENGTH, 0.6213 / RAY_LENGTH, 0.5689 / RAY_LENGTH
 /**
  * The parts to keep: `bodies` (each built from the same-index shell of `shells`)
  * with every cavity cut from the body around it and left out. Cut results are
- * pushed to `owned` for the caller to dispose; no input is disposed here. When
- * meshing fails or a cut throws, the bodies involved stay as they are.
+ * pushed to `owned` for the caller to dispose; no input is disposed here.
+ *
+ * @throws When meshing or a cut fails, rather than leave a cavity filled.
  */
 export function carveCavities(bodies: Body[], shells: Shell[], owned: Body[]): Body[] {
   const solids = bodies.flatMap((body, i) => (isSolid(body) ? [{ body, shell: shells[i] }] : []));
   if (solids.length < 2) return [...bodies];
-  let voids: Map<Body, Body[]>;
-  try {
-    voids = findVoids(solids);
-  } catch {
-    return [...bodies];
-  }
+  const voids = findVoids(solids);
 
   const carved = new Map<Body, Body>();
   for (const [body, inner] of voids) {
     const result = cutVoids(body, inner);
-    if (result === null) continue;
     owned.push(result);
     carved.set(body, result);
   }
@@ -108,19 +103,18 @@ function facesInward(shell: Shell, box: Box): boolean {
   return volume < 0;
 }
 
-function cutVoids(body: Body, voids: Body[]): Body | null {
+function cutVoids(body: Body, voids: Body[]): Body {
   const kernel = getKernel();
   let current = body;
   for (const inner of voids) {
-    let next: Body;
     try {
-      next = castResultShape(kernel.cut(current.wrapped, inner.wrapped));
-    } catch {
+      const next = castResultShape(kernel.cut(current.wrapped, inner.wrapped));
       if (current !== body) current[Symbol.dispose]();
-      return null;
+      current = next;
+    } catch (e) {
+      if (current !== body) current[Symbol.dispose]();
+      throw e;
     }
-    if (current !== body) current[Symbol.dispose]();
-    current = next;
   }
   return current;
 }
