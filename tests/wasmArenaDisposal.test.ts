@@ -112,6 +112,9 @@ import {
   isOk,
   isErr,
   unwrap,
+  faceFinder,
+  edgeFinder,
+  sketchHelix,
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
@@ -569,6 +572,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const f0 = getFaces(b)[0];
           if (!f0) throw new Error('box must have faces');
           const r = shell(b, [f0], 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('atDistance finders release their reference vertex', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          faceFinder().atDistance(10, [5, 5, 0]).findAll(b);
+          edgeFinder().atDistance(0, [0, 0, 0]).findAll(b);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = shell(b, (f) => f.inDirection('Z').atDistance(10, [5, 5, 0]), 1);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
@@ -1049,6 +1069,21 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const profile = drawRectangle(6, 6).cut(drawCircle(1));
           const r = pocket(b, { profile, depth: 3, face: (f) => f.inDirection('X') });
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('sketchHelix and its sweepSketch leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          sketchHelix(10, 20, 5).delete();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using _swept = sketchHelix(10, 20, 5).sweepSketch((plane, origin) =>
+            sketchCircle(1, { plane, origin })
+          );
         })
       ).toBe(0);
     });

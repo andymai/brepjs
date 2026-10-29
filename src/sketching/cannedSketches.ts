@@ -316,10 +316,8 @@ export const sketchHelix = (
   const centerVec3 = toVec3(center);
   const dirVec3 = toVec3(dir);
 
+  // assembleWire builds a new wire, so the helix it was built from is released.
+  using helix = makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand);
   // Helix is open (not closed) but Sketch.wire requires the closed-planar brand.
-  return new Sketch(
-    unwrap(
-      assembleWire([makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand)])
-    ) as ClosedWire & PlanarWire
-  );
+  return new Sketch(unwrap(assembleWire([helix])) as ClosedWire & PlanarWire);
 };
