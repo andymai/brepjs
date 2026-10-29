@@ -15,6 +15,7 @@ import type {
   Shell,
   Solid,
   CompSolid,
+  Shape3D,
   ShapeKind,
 } from '@/core/shapeTypes.js';
 import { castResultShapeWithKnownType } from '@/core/shapeTypes.js';
@@ -168,6 +169,8 @@ export function invalidateShapeCache(shape: AnyShape<Dimension>): void {
 // ---------------------------------------------------------------------------
 
 /** Get all edges of a shape as branded Edge handles. Results are cached per shape. */
+export function getEdges(shape: Shape3D): Edge[];
+export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[];
 export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.edges) return cache.edges as Edge<D>[];
@@ -182,6 +185,8 @@ export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
  * Returns `Face[]` — use `isOrientedFace()` or `orientedFace()` to narrow
  * individual faces to `OrientedFace` when the orientation guarantee is needed.
  */
+export function getFaces(shape: Shape3D): Face[];
+export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[];
 export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.faces) return cache.faces as Face<D>[];
@@ -191,6 +196,8 @@ export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
 }
 
 /** Get all wires of a shape as branded Wire handles. Results are cached per shape. */
+export function getWires(shape: Shape3D): Wire[];
+export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[];
 export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.wires) return cache.wires as Wire<D>[];
@@ -200,6 +207,8 @@ export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[] {
 }
 
 /** Get all vertices of a shape as branded Vertex handles. Results are cached per shape. */
+export function getVertices(shape: Shape3D): Vertex[];
+export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[];
 export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.vertices) return cache.vertices as Vertex<D>[];
@@ -246,6 +255,8 @@ export function getCompSolids(shape: AnyShape<Dimension>): CompSolid[] {
 // ---------------------------------------------------------------------------
 
 /** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
+export function iterEdges(shape: Shape3D): Generator<Edge>;
+export function iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>>;
 export function* iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>> {
   for (const e of getKernel().iterShapes(shape.wrapped, 'edge')) {
     yield castResultShapeWithKnownType(e, 'edge') as Edge<D>;
@@ -253,6 +264,8 @@ export function* iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<E
 }
 
 /** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
+export function iterFaces(shape: Shape3D): Generator<Face>;
+export function iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>>;
 export function* iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>> {
   for (const f of getKernel().iterShapes(shape.wrapped, 'face')) {
     yield castResultShapeWithKnownType(f, 'face') as Face<D>;
@@ -260,6 +273,8 @@ export function* iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<F
 }
 
 /** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
+export function iterWires(shape: Shape3D): Generator<Wire>;
+export function iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>>;
 export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>> {
   for (const w of getKernel().iterShapes(shape.wrapped, 'wire')) {
     yield castResultShapeWithKnownType(w, 'wire') as Wire<D>;
@@ -267,6 +282,8 @@ export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<W
 }
 
 /** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
+export function iterVertices(shape: Shape3D): Generator<Vertex>;
+export function iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>>;
 export function* iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>> {
   for (const v of getKernel().iterShapes(shape.wrapped, 'vertex')) {
     yield castResultShapeWithKnownType(v, 'vertex') as Vertex<D>;

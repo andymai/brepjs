@@ -24,6 +24,17 @@ import type {
   UnknownDimShape,
 } from '@/index.js';
 import type { DimensionError, RequireDimension, SameDimension } from '@/core/dimensionTypes.js';
+import {
+  getEdges,
+  getFaces,
+  getVertices,
+  getWires,
+  iterEdges,
+  iterFaces,
+  iterVertices,
+  iterWires,
+} from '@/index.js';
+import type { ValidSolid } from '@/index.js';
 
 // ---------------------------------------------------------------------------
 // Default type parameters — 3D by default, zero noise for existing code
@@ -185,6 +196,28 @@ describe('phantom dimension types', () => {
 
     it('Solid is not assignable to Shell', () => {
       expectTypeOf<Solid>().not.toEqualTypeOf<Shell>();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Topology queries keep the input's dimension, including 3D-only shapes
+  // ---------------------------------------------------------------------------
+
+  describe('topology queries', () => {
+    it('return 3D handles for a solid or shell and 2D handles for a 2D shape', () => {
+      // Never called: the assertions are compile-time only.
+      const check = (solid: ValidSolid, shell: Shell, face2d: Face<'2D'>): void => {
+        expectTypeOf(getFaces(solid)).toEqualTypeOf<Face[]>();
+        expectTypeOf(getEdges(solid)).toEqualTypeOf<Edge[]>();
+        expectTypeOf(getWires(shell)).toEqualTypeOf<Wire[]>();
+        expectTypeOf(getVertices(shell)).toEqualTypeOf<Vertex[]>();
+        expectTypeOf(iterFaces(solid)).toEqualTypeOf<Generator<Face>>();
+        expectTypeOf(iterEdges(solid)).toEqualTypeOf<Generator<Edge>>();
+        expectTypeOf(iterWires(solid)).toEqualTypeOf<Generator<Wire>>();
+        expectTypeOf(iterVertices(solid)).toEqualTypeOf<Generator<Vertex>>();
+        expectTypeOf(getEdges(face2d)).toEqualTypeOf<Edge<'2D'>[]>();
+      };
+      expectTypeOf(check).toBeFunction();
     });
   });
 });
