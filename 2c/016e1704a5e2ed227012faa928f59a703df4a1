@@ -1,0 +1,29 @@
+src/topology.ts
+  s_d4ab5fb2066c9b::t_f3a4bcc5bbe971 141
+docs/function-lookup.md
+  s_d4ab5fb2066c9b::t_e18d092ecf197d 3,591
+  s_d4ab5fb2066c9b::t_678698415d9611 490
+tests/apiTypes.test.ts
+  s_d4ab5fb2066c9b::t_b59c668d7a68d5 19,24-63,79-87
+  s_d4ab5fb2066c9b::t_7597d8c6676790 7-18,20-23
+src/query/finderCore.ts
+  s_d4ab5fb2066c9b::t_4facdbd34ab047 32-33,36,38,40,42,51,53,55
+src/index.ts
+  s_d4ab5fb2066c9b::t_f04d40bd6a71c3 33,655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c016e1704a5e2ed227012faa928f59a703df4a1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
