@@ -99,6 +99,21 @@ const MM_PER_UNIT: Readonly<Record<string, number>> = {
   meter: 1000,
 };
 
+/**
+ * Components nest and repeat, so a few KB of XML can describe billions of
+ * placements; stop expanding long before that exhausts memory.
+ */
+const MAX_PLACED_OBJECTS = 100_000;
+/** At roughly 2.5 s per 10,000 sewn triangles, more than this would take hours to build. */
+const MAX_PLACED_TRIANGLES = 2_000_000;
+
+/** The placed meshes so far, with running totals checked against the limits above. */
+interface Expansion {
+  meshes: ParsedMesh[];
+  objects: number;
+  triangles: number;
+}
+
 /** Check if a char code is a valid XML attribute name character [a-zA-Z0-9_]. */
 function isAttrChar(code: number): boolean {
   return (
@@ -368,22 +383,34 @@ function transformMesh(mesh: ParsedMesh, m: Transform | null): ParsedMesh {
   return { vertices, triangles, triangleColors: mesh.triangleColors };
 }
 
+/** Place `ref` and its components into `out`; returns why it stopped early, or `null`. */
 function instantiate(
   objects: Map<string, ModelObject>,
   ref: ObjectRef,
   outer: Transform | null,
   ancestors: ReadonlySet<string>,
-  out: ParsedMesh[]
-): void {
+  out: Expansion
+): string | null {
   const object = objects.get(ref.objectId);
   // A component that refers back to an enclosing object (malformed file) would recurse forever.
-  if (object === undefined || ancestors.has(ref.objectId)) return;
+  if (object === undefined || ancestors.has(ref.objectId)) return null;
+  if (++out.objects > MAX_PLACED_OBJECTS) {
+    return `the build places more than ${MAX_PLACED_OBJECTS.toLocaleString('en-US')} objects`;
+  }
   const transform = composeTransforms(ref.transform, outer);
-  if (object.mesh !== null) out.push(transformMesh(object.mesh, transform));
+  if (object.mesh !== null) {
+    out.triangles += object.mesh.triangles.length;
+    if (out.triangles > MAX_PLACED_TRIANGLES) {
+      return `the build places more than ${MAX_PLACED_TRIANGLES.toLocaleString('en-US')} triangles`;
+    }
+    out.meshes.push(transformMesh(object.mesh, transform));
+  }
   const path = new Set(ancestors).add(ref.objectId);
   for (const component of object.components) {
-    instantiate(objects, component, transform, path, out);
+    const stopped = instantiate(objects, component, transform, path, out);
+    if (stopped !== null) return stopped;
   }
+  return null;
 }
 
 /**
@@ -391,9 +418,10 @@ function instantiate(
  *
  * Each object keeps its own vertex list (triangle indices are per object), build
  * items and components contribute their transforms, and the model `unit` scales
- * coordinates to millimeters.
+ * coordinates to millimeters. Fails once the build expands past
+ * {@link MAX_PLACED_OBJECTS} placements or {@link MAX_PLACED_TRIANGLES} triangles.
  */
-function parseModelXml(xml: string): ParsedMesh[] {
+function parseModelXml(xml: string): Result<ParsedMesh[]> {
   const resourceColors = parseResourceColors(xml);
 
   const modelTag = findTags(xml, 'model')[0];
@@ -422,9 +450,16 @@ function parseModelXml(xml: string): ParsedMesh[] {
       .map(([objectId]) => ({ objectId, transform: null }));
   }
 
-  const meshes: ParsedMesh[] = [];
-  for (const item of items) instantiate(objects, item, toMillimeters, new Set(), meshes);
-  return meshes.filter((m) => m.vertices.length > 0 && m.triangles.length > 0);
+  const expansion: Expansion = { meshes: [], objects: 0, triangles: 0 };
+  for (const item of items) {
+    const stopped = instantiate(objects, item, toMillimeters, new Set(), expansion);
+    if (stopped !== null) {
+      return err(
+        ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, `3MF model is too large to import: ${stopped}`)
+      );
+    }
+  }
+  return ok(expansion.meshes.filter((m) => m.vertices.length > 0 && m.triangles.length > 0));
 }
 
 /** Find the most common non-null color across all triangle colors. */
@@ -517,7 +552,8 @@ function buildShapeFromMeshes(meshes: ParsedMesh[]): Result<UnknownDimShape> {
  *
  * @param blob - A Blob or File containing 3MF data (.3mf).
  * @returns A `Result` wrapping the imported solid (a `Compound` of solids when the
- *   build places several objects), or an error if parsing fails.
+ *   build places several objects), or an error if parsing fails or the build
+ *   expands to more than 100,000 placed objects or 2,000,000 triangles.
  *
  * @example
  * ```ts
@@ -541,7 +577,9 @@ export async function importThreeMF(blob: Blob): Promise<Result<UnknownDimShape>
     }
 
     const xml = new TextDecoder().decode(modelData);
-    const meshes = parseModelXml(xml);
+    const parsed = parseModelXml(xml);
+    if (!parsed.ok) return parsed;
+    const meshes = parsed.value;
 
     if (meshes.length === 0) {
       return err(

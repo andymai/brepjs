@@ -173,6 +173,19 @@ function cubeObject(id: number, size: number, height = size): string {
   );
 }
 
+/** Objects `firstId`..`firstId + levels - 1`, each placing the object just below it twice. */
+function doublingChain(firstId: number, levels: number): string[] {
+  return Array.from({ length: levels }, (_, i) => {
+    const id = firstId + i;
+    return (
+      `<object id="${id}" type="model"><components>` +
+      `<component objectid="${id - 1}" />` +
+      `<component objectid="${id - 1}" transform="1 0 0 0 1 0 0 0 1 0 0 1" />` +
+      '</components></object>'
+    );
+  });
+}
+
 function model(objects: string[], items: string[], unit = 'millimeter'): string {
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -268,6 +281,35 @@ describe('importThreeMF', () => {
     using imported = unwrap(await importThreeMF(modelZip(xml)));
     expect(isSolid(imported)).toBe(true);
     expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000, 3);
+  });
+
+  it('refuses a component chain that doubles past the placement limit', async () => {
+    // 30 levels, each placing the level below twice: 2^30 cubes from a few KB of XML.
+    const xml = model([cubeObject(1, 10), ...doublingChain(2, 30)], ['<item objectid="31" />']);
+    const result = await importThreeMF(modelZip(xml));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('THREEMF_IMPORT_FAILED');
+    expect(result.error.message).toContain('more than 100,000 objects');
+  });
+
+  it('refuses a build that places more triangles than the limit', async () => {
+    // A 1,000-triangle strip placed 4,096 times through a 12-level doubling chain.
+    const strip =
+      '<object id="1" type="model"><mesh><vertices>' +
+      Array.from({ length: 1002 }, (_, i) => `<vertex x="${i}" y="${i % 2}" z="0" />`).join('') +
+      '</vertices><triangles>' +
+      Array.from(
+        { length: 1000 },
+        (_, i) => `<triangle v1="${i}" v2="${i + 1}" v3="${i + 2}" />`
+      ).join('') +
+      '</triangles></mesh></object>';
+    const xml = model([strip, ...doublingChain(2, 12)], ['<item objectid="13" />']);
+    const result = await importThreeMF(modelZip(xml));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('THREEMF_IMPORT_FAILED');
+    expect(result.error.message).toContain('more than 2,000,000 triangles');
   });
 
   it('fails on empty geometry', async () => {
