@@ -8,8 +8,9 @@ import type { Vec3 } from '@/core/types.js';
 import type { Result } from '@/core/result.js';
 import { ok, err, isErr } from '@/core/result.js';
 import type { ClosedWire, Face, PlanarWire, Shape3D, Wire } from '@/core/shapeTypes.js';
+import type { OrientedFace, PlanarFace } from '@/core/validityTypes.js';
 import { validationError, queryError, BrepErrorCode } from '@/core/errors.js';
-import { vecScale, vecNormalize, vecIsZero } from '@/core/vecOps.js';
+import { vecScale, vecNormalize, vecIsZero, vecCross } from '@/core/vecOps.js';
 import type {
   Shapeable,
   FinderFn,
@@ -21,7 +22,8 @@ import type {
   RectangularPatternOptions,
 } from '@/topology/apiTypes.js';
 import { resolve } from '@/topology/apiTypes.js';
-import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
+import { clone, getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
+import { applyMatrix } from '@/topology/transformFns.js';
 import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { extrude } from './extrudeFns.js';
@@ -76,19 +78,70 @@ function resolveTargetFace(
   return ok(faceSpec);
 }
 
+type ProfileFace = OrientedFace & PlanarFace;
+
 /**
- * Convert a DrawingLike or Wire to a ClosedWire & PlanarWire (profiles are always
- * closed and planar). `owned` is true when we materialised a fresh sketch wire
- * (the caller must dispose it); false when the caller's own Wire is passed through.
+ * Build the profile's face in the XY plane. A Drawing's sketch is released once
+ * its face exists; a caller's Wire is expected to be closed and planar.
  */
-function toWire(profile: DrawingLike | Wire): { wire: ClosedWire & PlanarWire; owned: boolean } {
+function profileFace(profile: DrawingLike | Wire): Result<ProfileFace> {
   if ('sketchOnPlane' in profile && typeof profile.sketchOnPlane === 'function') {
-    // planar by construction: sketch operates on XY plane
-    return { wire: profile.sketchOnPlane('XY').wire as ClosedWire & PlanarWire, owned: true };
+    const sketch = profile.sketchOnPlane('XY');
+    try {
+      // A sketched drawing is a closed planar face by construction.
+      return ok(sketch.face() as ProfileFace);
+    } catch (e) {
+      return err(
+        validationError(
+          'COMPOUND_PROFILE_INVALID',
+          `compoundOps: the profile does not make a single face: ${e instanceof Error ? e.message : String(e)}`
+        )
+      );
+    } finally {
+      sketch.delete?.();
+    }
   }
-  // planar by construction: remaining cases are either DrawingLike 2D profiles
-  // or Wire inputs — callers are expected to pass closed, planar profiles here.
-  return { wire: profile as ClosedWire & PlanarWire, owned: false };
+  return _makeFace(profile as ClosedWire & PlanarWire);
+}
+
+/**
+ * Move a face drawn in XY onto a target face: its origin to `center`, its Z axis
+ * to `normal`. Faces parallel to XY keep the world X and Y axes; on any other
+ * face local Y runs up the face (world +Z projected onto it) and local X is
+ * Y x normal, which points right when the face is seen from outside.
+ */
+function placeOnFace(face: ProfileFace, normal: Vec3, center: Vec3): Result<ProfileFace> {
+  const [nx, ny, nz] = normal;
+  if (Math.abs(nz) > 1 - 1e-9) return ok(translate(face, center));
+  const yDir = vecNormalize([-nx * nz, -ny * nz, 1 - nz * nz]);
+  const xDir = vecCross(yDir, normal);
+  return applyMatrix(face, {
+    linear: [xDir[0], yDir[0], nx, xDir[1], yDir[1], ny, xDir[2], yDir[2], nz],
+    translation: center,
+  });
+}
+
+/** Extrude the profile, placed on the target face, by `distance` along the face normal. */
+function profileTool(
+  shape: Shape3D,
+  faceSpec: Face | FinderFn<Face> | undefined,
+  profile: DrawingLike | Wire,
+  distance: number
+): Result<Shape3D> {
+  const targetResult = resolveTargetFace(shape, faceSpec);
+  if (isErr(targetResult)) return targetResult;
+  const normal = vecNormalize(normalAt(targetResult.value));
+  const center = faceCenter(targetResult.value);
+
+  // The flat face and its placed copy are intermediates of the extrusion.
+  using scope = new DisposalScope();
+  const flat = profileFace(profile);
+  if (isErr(flat)) return flat;
+  scope.register(flat.value);
+  const placed = placeOnFace(flat.value, normal, center);
+  if (isErr(placed)) return placed;
+  scope.register(placed.value);
+  return extrude(placed.value, vecScale(normal, distance));
 }
 
 // ---------------------------------------------------------------------------
@@ -180,30 +233,11 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
     return err(validationError('POCKET_INVALID_DEPTH', 'Pocket depth must be positive'));
   }
 
-  const targetResult = resolveTargetFace(s, options.face);
-  if (isErr(targetResult)) return targetResult;
-  const targetFace = targetResult.value;
-  const normal = normalAt(targetFace);
-  const center = faceCenter(targetFace);
-
-  // The profile wire (if materialised here), its face, the positioned face, and
-  // the extruded tool are all intermediates consumed by cut — dispose them.
-  using scope = new DisposalScope();
-  const { wire: w, owned } = toWire(profile);
-  if (owned) scope.register(w);
-
-  const faceResult = _makeFace(w);
-  if (isErr(faceResult)) return faceResult;
-  scope.register(faceResult.value);
-
-  // Position the profile on the target face before extruding
-  const positioned = scope.register(translate(faceResult.value, center));
-  const extDir = vecScale(vecNormalize(normal), -depth);
-  const toolResult = extrude(positioned, extDir);
+  const toolResult = profileTool(s, options.face, profile, -depth);
   if (isErr(toolResult)) return toolResult;
-  scope.register(toolResult.value);
-
-  return cut(s, toolResult.value, { unsafe: true }) as Result<T>;
+  // cut is immutable and does not consume the tool.
+  using tool = toolResult.value;
+  return cut(s, tool, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -224,30 +258,11 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
     return err(validationError('BOSS_INVALID_HEIGHT', 'Boss height must be positive'));
   }
 
-  const targetResult = resolveTargetFace(s, options.face);
-  if (isErr(targetResult)) return targetResult;
-  const targetFace = targetResult.value;
-  const normal = normalAt(targetFace);
-  const center = faceCenter(targetFace);
-
-  // The profile wire (if materialised here), its face, the positioned face, and
-  // the extruded tool are all intermediates consumed by fuse — dispose them.
-  using scope = new DisposalScope();
-  const { wire: w, owned } = toWire(profile);
-  if (owned) scope.register(w);
-
-  const faceResult = _makeFace(w);
-  if (isErr(faceResult)) return faceResult;
-  scope.register(faceResult.value);
-
-  // Position the profile on the target face before extruding
-  const positioned = scope.register(translate(faceResult.value, center));
-  const extDir = vecScale(vecNormalize(normal), height);
-  const toolResult = extrude(positioned, extDir);
+  const toolResult = profileTool(s, options.face, profile, height);
   if (isErr(toolResult)) return toolResult;
-  scope.register(toolResult.value);
-
-  return fuse(s, toolResult.value, { unsafe: true }) as Result<T>;
+  // fuse is immutable and does not consume the tool.
+  using tool = toolResult.value;
+  return fuse(s, tool, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +317,7 @@ export function rectangularPattern<T extends Shape3D>(
     return err(validationError('PATTERN_ZERO_DIRECTION', 'Y direction cannot be zero'));
   }
 
-  if (xCount === 1 && yCount === 1) return ok(s);
+  if (xCount === 1 && yCount === 1) return clone(s);
 
   const xNorm = vecNormalize(xDir);
   const yNorm = vecNormalize(yDir);

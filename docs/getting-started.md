@@ -15,7 +15,7 @@ npm install brepjs occt-wasm
 
 `brepjs` is the API layer. `occt-wasm` (OpenCascade compiled to WebAssembly) is the default WASM geometry kernel.
 
-Two alternative kernels are also supported: `brepjs-opencascade` and `brepkit-wasm`. See [Custom Kernel Guide](./kernel-swap.md) for details.
+An alternative kernel, `brepkit-wasm`, is also supported. See [Custom Kernel Guide](./kernel-swap.md) for details.
 
 ## Step 2: Initialize
 
@@ -36,7 +36,7 @@ Best for: scripts, quick prototypes, any ESM environment that supports top-level
 ```typescript
 import { init, box, cylinder, shape } from 'brepjs';
 
-await init(); // auto-detects occt-wasm, brepjs-opencascade, or brepkit-wasm
+await init(); // auto-detects occt-wasm or brepkit-wasm
 const b = box(30, 20, 10);
 ```
 

@@ -472,6 +472,20 @@ describe('shapeHelpers', () => {
   it('makeHelix left', () => {
     expect(isWire(helix(2, 10, 5, { at: [0, 0, 0], axis: [0, 0, 1], lefthand: true }))).toBe(true);
   });
+  it('makeHelix lefthand winds the other way round the axis', () => {
+    // Both start at (10, 0, 0); a quarter turn up, the right-hand helix is at +Y
+    // and the left-hand one at -Y.
+    using right = helix(10, 10, 10);
+    using left = helix(10, 10, 10, { lefthand: true });
+    const r = curvePointAt(right, 0.25);
+    const l = curvePointAt(left, 0.25);
+    expect(r[0]).toBeCloseTo(0, 5);
+    expect(r[1]).toBeCloseTo(10, 5);
+    expect(r[2]).toBeCloseTo(2.5, 5);
+    expect(l[0]).toBeCloseTo(0, 5);
+    expect(l[1]).toBeCloseTo(-10, 5);
+    expect(l[2]).toBeCloseTo(2.5, 5);
+  });
   it('makeThreePointArc', () => {
     expect(isEdge(threePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0]))).toBe(true);
   });

@@ -11,7 +11,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **`autoHeal`**: operation that runs OpenCascade's `ShapeFix_Shape` to repair gaps, sew faces, fix orientations, and propagate tolerances. Always call on imported shapes before further operations. See [Healing & Sewing](../advanced/healing).
 
-**Adapter** (kernel adapter): a class implementing `KernelAdapter` that bridges brepjs to a specific geometry kernel. Three ship: occt-wasm (the default), OpenCascade via `brepjs-opencascade`, and brepkit. See [Writing a Custom Kernel](../extending/custom-kernel).
+**Adapter** (kernel adapter): a class implementing `KernelAdapter` that bridges brepjs to a specific geometry kernel. Two ship: occt-wasm (the default) and brepkit. See [Writing a Custom Kernel](../extending/custom-kernel).
 
 **Archetype**: `archetype: 'wall'` on a family. The domain-neutral kind a BIM export routes on, so a copied registry family keeps its IFC mapping after being renamed. Undeclared families fall back to matching their display name. See [IFC Export](../families/ifc-export).
 
@@ -95,7 +95,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **`init()`**: auto-detect kernel initializer. Resolves with the kernel ID picked.
 
-**`initFromOC(oc)`**: manual initializer using a pre-loaded OpenCascade module.
+**`initFromOC(oc)`**: legacy initializer for a pre-loaded opencascade.js module. New code uses `init()` or `OcctKernel.init()` with `registerKernel`.
 
 **Intersect**: boolean returning the volume common to two shapes.
 
@@ -129,7 +129,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 ## O
 
-**OCCT** (OpenCascade Technology): the C++ geometry kernel underlying `occt-wasm` and `brepjs-opencascade`.
+**OCCT** (OpenCascade Technology): the C++ geometry kernel underlying `occt-wasm`.
 
 **`OrientedFace`**: validity-branded face with a determined normal direction. Required by `extrude`, `revolve`.
 

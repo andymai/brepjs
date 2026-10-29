@@ -28,6 +28,13 @@ import {
   createFace,
   unwrap,
   isErr,
+  cone,
+  circle,
+  wire,
+  closedWire,
+  face,
+  compound,
+  faceCenter,
 } from '@/index.js';
 import type { Shape3D, Face } from '@/index.js';
 
@@ -135,6 +142,56 @@ describe('measureFns', () => {
       const l = line([0, 0, 0], [10, 0, 0]);
       const props = unwrap(measureLinearProps(castShape(l.wrapped)));
       expect(props.mass).toBeCloseTo(10, 2);
+    });
+
+    it("surface center of mass of a face is the face's centroid", () => {
+      using b = box(10, 20, 30);
+      const top = getFaces(b).find((f) => faceCenter(f)[2] > 29);
+      if (!top) throw new Error('box has no top face');
+      const com = unwrap(measureSurfaceProps(top)).centerOfMass;
+      expect(com[0]).toBeCloseTo(5, 6);
+      expect(com[1]).toBeCloseTo(10, 6);
+      expect(com[2]).toBeCloseTo(30, 6);
+    });
+
+    it('surface center of mass of a solid weights its faces by area', () => {
+      // Cone r=3, h=4 (slant 5): base disc 9pi at z=0, lateral 15pi with its
+      // centroid at h/3, so the surface centroid is at z = 15pi*(4/3)/24pi = 5/6.
+      // The volume centroid would be h/4 = 1.
+      using c = cone(3, 0, 4);
+      const com = unwrap(measureSurfaceProps(c)).centerOfMass;
+      expect(com[0]).toBeCloseTo(0, 6);
+      expect(com[1]).toBeCloseTo(0, 6);
+      expect(com[2]).toBeCloseTo(5 / 6, 6);
+    });
+
+    it('length of a solid counts each edge once', () => {
+      using b = box(10, 10, 10);
+      const props = unwrap(measureLinearProps(b));
+      expect(props.length).toBeCloseTo(120, 6);
+      expect(props.centerOfMass[0]).toBeCloseTo(5, 6);
+      expect(props.centerOfMass[1]).toBeCloseTo(5, 6);
+      expect(props.centerOfMass[2]).toBeCloseTo(5, 6);
+      const f = getFaces(b)[0];
+      if (!f) throw new Error('box has no faces');
+      expect(unwrap(measureLength(f))).toBeCloseTo(40, 6);
+    });
+
+    it('volume of a compound counts only its solids', () => {
+      using b = box(10, 10, 10);
+      using disc = unwrap(face(unwrap(closedWire(unwrap(wire([circle(5, { at: [0, 0, 50] })]))))));
+      using mixed = compound([b, disc]);
+      const props = unwrap(measureVolumeProps(mixed));
+      expect(props.volume).toBeCloseTo(1000, 6);
+      expect(props.centerOfMass[0]).toBeCloseTo(5, 6);
+      expect(props.centerOfMass[1]).toBeCloseTo(5, 6);
+      expect(props.centerOfMass[2]).toBeCloseTo(5, 6);
+    });
+
+    it('volume of a compound without solids is zero', () => {
+      using disc = unwrap(face(unwrap(closedWire(unwrap(wire([circle(5)]))))));
+      using onlyFace = compound([disc]);
+      expect(unwrap(measureVolume(onlyFace))).toBe(0);
     });
   });
 

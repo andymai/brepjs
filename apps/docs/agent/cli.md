@@ -67,7 +67,8 @@ Declare intended dimensions in the part and the CLI turns them into assertions. 
 ```ts
 import { box } from 'brepjs';
 
-// All fields optional; tolerancePct (default 0.5) sets the match window.
+// All fields optional. tolerancePct (default 0.5) is a percent of the expected value for
+// volume and area, and of the part's largest extent for each bounds field.
 // Values below match a centered 40×20×10 box: 8000 mm³, 2800 mm², bounds ±20/±10/±5.
 export const expected = {
   volume: 8000,

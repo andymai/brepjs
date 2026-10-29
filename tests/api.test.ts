@@ -123,6 +123,13 @@ describe('cylinder()', () => {
     const c = cylinder(5, 10, { centered: true });
     expect(unwrap(measureVolume(c))).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
+
+  it('centres on a non-unit axis by half the height', () => {
+    using c = cylinder(5, 20, { axis: [0, 0, 2], centered: true });
+    const b = getBounds(c);
+    expect(b.zMin).toBeCloseTo(-10, 6);
+    expect(b.zMax).toBeCloseTo(10, 6);
+  });
 });
 
 describe('sphere()', () => {
@@ -154,6 +161,13 @@ describe('cone()', () => {
   it('creates a centered cone', () => {
     const c = cone(5, 0, 10, { centered: true });
     expect(unwrap(measureVolume(c))).toBeCloseTo((1 / 3) * Math.PI * 25 * 10, 0);
+  });
+
+  it('centres on a non-unit axis by half the height', () => {
+    using c = cone(5, 2, 20, { axis: [0, 3, 0], centered: true });
+    const b = getBounds(c);
+    expect(b.yMin).toBeCloseTo(-10, 6);
+    expect(b.yMax).toBeCloseTo(10, 6);
   });
 });
 

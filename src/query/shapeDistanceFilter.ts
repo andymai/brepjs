@@ -19,12 +19,16 @@ export function distanceFromPointFilter<T extends AnyShape<Dimension>>(
   point: Vec3,
   tolerance: number
 ): Predicate<T> {
-  // Create a vertex at the reference point for distance calculations.
-  const kernel = getKernel();
-  const vtx = kernel.makeVertex(point[0], point[1], point[2]);
-
+  // A finder has no disposal hook, so a vertex built up front would outlive it.
+  // Build one per check and release it straight away.
   return (element: T): boolean => {
-    const d = kernel.distance(vtx, element.wrapped).value;
-    return Math.abs(d - distance) < tolerance;
+    const kernel = getKernel();
+    const vtx = kernel.makeVertex(point[0], point[1], point[2]);
+    try {
+      const d = kernel.distance(vtx, element.wrapped).value;
+      return Math.abs(d - distance) < tolerance;
+    } finally {
+      kernel.dispose(vtx);
+    }
   };
 }

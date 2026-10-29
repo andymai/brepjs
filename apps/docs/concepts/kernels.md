@@ -9,10 +9,10 @@ brepjs is not married to OpenCascade. The library sits behind a small abstractio
 
 ## The two kernels
 
-| Kernel          | Status             | Backend               | Install                                                       | Strengths                                                          |
-| --------------- | ------------------ | --------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **OpenCascade** | Production         | C++ via Emscripten    | `occt-wasm` (default; or `brepjs-opencascade` as alternative) | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
-| **brepkit**     | Active development | Rust via wasm-bindgen | `brepkit-wasm`                                                | Smaller, faster, simpler API surface, no JS heritage               |
+| Kernel          | Status             | Backend               | Install        | Strengths                                                          |
+| --------------- | ------------------ | --------------------- | -------------- | ------------------------------------------------------------------ |
+| **OpenCascade** | Production         | C++ via Emscripten    | `occt-wasm`    | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
+| **brepkit**     | Active development | Rust via wasm-bindgen | `brepkit-wasm` | Smaller, faster, simpler API surface, no JS heritage               |
 
 occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel. brepkit is a drop-in alternative for environments where binary size or performance matters more than the long tail of operations OpenCascade supports.
 
@@ -20,11 +20,11 @@ occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel. brepkit i
 
 There are three init paths from [Install & Initialize](../getting-started/install). Each picks a kernel:
 
-| Init style                                                | Kernel chosen                                                             |
-| --------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `import 'brepjs/quick'`                                   | Whatever's installed; prefers `occt-wasm`                                 |
-| `await init()`                                            | Auto-detect: `occt-wasm` first, then `brepjs-opencascade`, then `brepkit` |
-| `OcctKernel.init(); registerKernel('occt-wasm', adapter)` | OpenCascade (occt-wasm) explicitly                                        |
+| Init style                                                | Kernel chosen                                  |
+| --------------------------------------------------------- | ---------------------------------------------- |
+| `import 'brepjs/quick'`                                   | Whatever's installed; prefers `occt-wasm`      |
+| `await init()`                                            | Auto-detect: `occt-wasm` first, then `brepkit` |
+| `OcctKernel.init(); registerKernel('occt-wasm', adapter)` | OpenCascade (occt-wasm) explicitly             |
 
 For brepkit explicitly:
 
@@ -53,7 +53,7 @@ If you've registered multiple kernels (the typical use case is testing or A/B co
 ```typescript
 import { withKernel, box, measureVolume } from 'brepjs';
 
-const occtVolume = withKernel('occt', () => measureVolume(box(10, 10, 10)));
+const occtVolume = withKernel('occt-wasm', () => measureVolume(box(10, 10, 10)));
 const brepkitVolume = withKernel('brepkit', () => measureVolume(box(10, 10, 10)));
 console.log({ occtVolume, brepkitVolume });
 ```

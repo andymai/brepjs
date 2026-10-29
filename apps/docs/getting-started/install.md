@@ -18,7 +18,7 @@ Pick an init style, run `npm install`, and you are modelling. The first call to 
 npm install brepjs occt-wasm
 ```
 
-`brepjs` is the API. `occt-wasm` (OpenCascade compiled to WebAssembly) is the default kernel. You install it as a peer because alternative kernels (`brepjs-opencascade`, `brepkit-wasm`) exist and are interchangeable. See [Custom Kernels](../extending/custom-kernel) for swapping.
+`brepjs` is the API. `occt-wasm` (OpenCascade compiled to WebAssembly) is the default kernel. You install it as a peer because the kernel is swappable: `brepkit-wasm` is the experimental alternative. See [Custom Kernels](../extending/custom-kernel) for swapping.
 
 ## Three init styles
 
@@ -34,7 +34,7 @@ const cyl = cylinder(5, 20);
 const part = shape(b).cut(cyl).val;
 ```
 
-Best for scripts, prototypes, and any ESM environment with top-level await. The `brepjs/quick` entry resolves the default `occt-wasm` kernel (falling back to `brepjs-opencascade`) at module-load time, then re-exports the full API.
+Best for scripts, prototypes, and any ESM environment with top-level await. The `brepjs/quick` entry resolves the default `occt-wasm` kernel at module-load time, then re-exports the full API.
 
 ### `init()`: auto-detect
 
@@ -43,13 +43,13 @@ Best for scripts, prototypes, and any ESM environment with top-level await. The 
 ```typescript
 import { init, box, cylinder, shape } from 'brepjs';
 
-await init(); // resolves with 'occt-wasm', 'occt', or 'brepkit'
+await init(); // resolves with the kernel id it picked, e.g. 'occt-wasm'
 
 const b = box(30, 20, 10);
 const cyl = cylinder(5, 20);
 ```
 
-Best for apps where you control startup. `init()` is idempotent and returns the kernel ID it picked (`'occt-wasm'` if `occt-wasm` is installed, `'occt'` if `brepjs-opencascade` is installed, `'brepkit'` if `brepkit-wasm` is installed, or whichever is available).
+Best for apps where you control startup. `init()` is idempotent and returns the kernel ID it picked (`'occt-wasm'` if `occt-wasm` is installed, otherwise `'brepkit'` if `brepkit-wasm` is).
 
 ### Manual registration
 
@@ -71,12 +71,20 @@ Best for apps that need a loading indicator, explicit error handling, or environ
 
 ### Vite
 
-Vite bundles WASM correctly out of the box. The only quirk: if you load WASM from a Worker, you may want to import the file URL explicitly so Vite emits it as an asset; gridfinitylayouttool.com does this:
+Vite bundles WASM correctly out of the box. If you load the kernel from a Worker and want Vite to emit the WASM as an asset, import its URL and pass it to `OcctKernel.init`:
 
 <!-- @no-test -->
 
 ```typescript
-import singleWasm from 'brepjs-opencascade/src/brepjs_single.wasm?url';
+import occtWasmUrl from 'occt-wasm/dist/occt-wasm.wasm?url';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
+
+// No top-level await: Vite builds workers as iife by default, which doesn't allow it.
+const ready = OcctKernel.init({ wasm: occtWasmUrl }).then((kernel) => {
+  registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+});
+// await ready before building shapes
 ```
 
 See [Vite, Next.js, Astro](../integration/frameworks) for full bundler patterns.

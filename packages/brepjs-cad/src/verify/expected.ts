@@ -14,7 +14,10 @@ export interface ExpectedDims {
   volume?: number;
   area?: number;
   bounds?: ExpectedBounds;
-  /** Allowed percent deviation for each numeric comparison; defaults to 0.5%. */
+  /**
+   * Allowed deviation in percent, defaulting to 0.5%: of the expected value for `volume` and
+   * `area`, and of the part's largest bounding-box extent for each `bounds` field.
+   */
   tolerancePct?: number;
 }
 
@@ -62,12 +65,33 @@ export function unknownExpectedKeys(expected: object): string[] {
 }
 
 export function isExpectedDims(v: unknown): v is ExpectedDims {
-  if (typeof v !== 'object' || v === null) return false;
+  return invalidExpectedValues(v).length === 0;
+}
+
+const isFiniteNumber = (v: unknown): boolean => typeof v === 'number' && Number.isFinite(v);
+
+/**
+ * Fields of an `expected` export that aren't finite numbers, such as `volume: v.toFixed(1)` (a
+ * string). Such a block can't be evaluated, so these are surfaced as an error: skipping the block
+ * would also skip its valid assertions and let the part pass with nothing checked.
+ */
+export function invalidExpectedValues(v: unknown): string[] {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return ['expected'];
   const r = v as Record<string, unknown>;
-  const numOk = (k: string): boolean => r[k] === undefined || typeof r[k] === 'number';
-  const boundsOk =
-    r['bounds'] === undefined || (typeof r['bounds'] === 'object' && r['bounds'] !== null);
-  return numOk('volume') && numOk('area') && numOk('tolerancePct') && boundsOk;
+  const bad: string[] = [];
+  for (const k of ['volume', 'area', 'tolerancePct']) {
+    if (r[k] !== undefined && !isFiniteNumber(r[k])) bad.push(k);
+  }
+  const bounds = r['bounds'];
+  if (bounds !== undefined) {
+    if (typeof bounds !== 'object' || bounds === null || Array.isArray(bounds)) bad.push('bounds');
+    else {
+      for (const [k, val] of Object.entries(bounds)) {
+        if (BOUND_KEYS.has(k) && val !== undefined && !isFiniteNumber(val)) bad.push(`bounds.${k}`);
+      }
+    }
+  }
+  return bad;
 }
 
 function pushAssertion(
@@ -103,10 +127,24 @@ export function evaluateExpected(
   }
   if (expected.bounds) {
     const b = measurements.bounds;
+    // Bounds are positions, so a percent of the coordinate would scale with the distance from
+    // the origin: 0.5% of y = 2000 lets a 20 mm part's edge be 10 mm off. Measure the slack
+    // against the part's size instead.
+    const slack = b ? (tol / 100) * Math.max(b.xMax - b.xMin, b.yMax - b.yMin, b.zMax - b.zMin) : 0;
     for (const key of ['xMin', 'xMax', 'yMin', 'yMax', 'zMin', 'zMax'] as const) {
       const want = expected.bounds[key];
       if (want === undefined) continue;
-      pushAssertion(assertions, `bounds.${key}`, want, b?.[key], tol);
+      const actual = b?.[key];
+      assertions.push(
+        actual === undefined
+          ? { name: `bounds.${key}`, expected: want, actual: null, passed: false }
+          : {
+              name: `bounds.${key}`,
+              expected: want,
+              actual,
+              passed: Math.abs(actual - want) <= Math.max(slack, ABS_EPSILON),
+            }
+      );
     }
   }
   return assertions;

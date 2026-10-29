@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '@/verify/runPart.js';
 import { reportOk } from '@/verify/report.js';
-import { evaluateExpected, isExpectedDims, unknownExpectedKeys } from '@/verify/expected.js';
+import {
+  evaluateExpected,
+  invalidExpectedValues,
+  isExpectedDims,
+  unknownExpectedKeys,
+} from '@/verify/expected.js';
 
 const fix = (n: string) => fileURLToPath(new URL(`./fixtures/${n}`, import.meta.url));
 
@@ -31,6 +36,13 @@ describe('asserted dims (export const expected)', () => {
     expect(reportOk(report)).toBe(false);
     expect(report.errorInfos.some((e) => e.code === 'EXPECTED_UNKNOWN_KEY')).toBe(true);
     expect(report.hints.some((h) => h.code === 'EXPECTED_UNKNOWN_KEY')).toBe(true);
+  }, 30000);
+
+  it('fails loud (EXPECTED_INVALID_VALUE) when an expected value is not a number', async () => {
+    const { report } = await runPart(fix('expectedNotNumber.brep.ts'));
+    expect(reportOk(report)).toBe(false);
+    expect(report.errorInfos.some((e) => e.code === 'EXPECTED_INVALID_VALUE')).toBe(true);
+    expect(report.hints.some((h) => h.code === 'EXPECTED_INVALID_VALUE')).toBe(true);
   }, 30000);
 
   it('adds no assertions when the part declares no expected', async () => {
@@ -85,10 +97,29 @@ describe('evaluateExpected / isExpectedDims (unit)', () => {
     expect(unknownExpectedKeys({ vol: 1 })).toEqual(['vol']);
   });
 
+  it('measures bounds slack against the part size, not the coordinate', () => {
+    // A 20 mm cube sitting at y = 2000: 0.5% of 20 mm is 0.1 mm, not 0.5% of 2000.
+    const measured = { bounds: { xMin: 0, xMax: 20, yMin: 2000, yMax: 2020, zMin: 0, zMax: 20 } };
+    expect(evaluateExpected({ bounds: { yMax: 2012 } }, measured)[0]?.passed).toBe(false);
+    expect(evaluateExpected({ bounds: { yMax: 2020.05 } }, measured)[0]?.passed).toBe(true);
+    expect(evaluateExpected({ bounds: { yMax: 2020.2 } }, measured)[0]?.passed).toBe(false);
+  });
+
+  it('lists every expected field that is not a finite number', () => {
+    expect(invalidExpectedValues({ volume: 1, bounds: { zMax: 2 } })).toEqual([]);
+    expect(invalidExpectedValues({ volume: '785.4', bounds: { zMax: 'x' } })).toEqual([
+      'volume',
+      'bounds.zMax',
+    ]);
+    expect(invalidExpectedValues({ area: Number.NaN, bounds: [1] })).toEqual(['area', 'bounds']);
+    expect(invalidExpectedValues(5)).toEqual(['expected']);
+  });
+
   it('isExpectedDims rejects non-objects and bad field types', () => {
     expect(isExpectedDims({ volume: 1 })).toBe(true);
     expect(isExpectedDims({ volume: 'x' })).toBe(false);
     expect(isExpectedDims(null)).toBe(false);
     expect(isExpectedDims({ bounds: { xMin: 0 } })).toBe(true);
+    expect(isExpectedDims({ bounds: { xMin: '0' } })).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { loadBrep, initOcctWasm, toolDir, type BrepNs } from './brepjsRuntime.js
 import { runChecks } from './checks.js';
 import {
   evaluateExpected,
+  invalidExpectedValues,
   isExpectedDims,
   unknownExpectedKeys,
   type ExpectedDims,
@@ -90,6 +91,26 @@ export async function loadPart(
 
 function isResult(v: unknown): v is Result<AnyShape> {
   return typeof v === 'object' && v !== null && 'ok' in v && typeof v.ok === 'boolean';
+}
+
+// A fluent `shape(...)` chain returns its wrapper; the built shape is its `.val`.
+function unwrapFluent(v: unknown): unknown {
+  return typeof v === 'object' && v !== null && '__wrapped' in v ? (v as { val?: unknown }).val : v;
+}
+
+// Every brepjs shape is a handle carrying its kernel shape on `.wrapped`.
+function isShapeHandle(v: unknown): v is AnyShape {
+  return typeof v === 'object' && v !== null && 'wrapped' in v;
+}
+
+function describeValue(v: unknown): string {
+  if (Array.isArray(v)) return 'an array';
+  if (typeof v === 'object' && v !== null) {
+    // Object.create(null) and { constructor: null } have no usable constructor name.
+    const name: unknown = (v as { constructor?: { name?: unknown } | null }).constructor?.name;
+    return `a ${typeof name === 'string' && name !== '' ? name : 'plain object'}`;
+  }
+  return `a ${typeof v}`;
 }
 
 function isBrepError(v: unknown): v is BrepError {
@@ -224,25 +245,39 @@ export async function runPart(
     pushError(report, toErrorInfo('part threw', e));
     return finalize({ shape: null, report });
   }
-  let shape: AnyShape | null;
+  let value: unknown = out;
   if (isResult(out)) {
     if (!isOk(out)) {
       pushError(report, toErrorInfo('part returned Err', out.error));
       return finalize({ shape: null, report });
     }
-    shape = out.value;
-  } else {
-    shape = out as AnyShape;
+    value = out.value;
   }
-  if (!shape) {
+  value = unwrapFluent(value);
+  if (!value) {
     pushError(report, { message: 'part produced no shape' });
     return finalize({ shape: null, report });
   }
+  if (!isShapeHandle(value)) {
+    pushError(report, {
+      message: `part returned ${describeValue(value)}, not a shape`,
+      code: 'PART_NOT_A_SHAPE',
+    });
+    return finalize({ shape: null, report });
+  }
+  const shape = value;
   // Push export errors into the report we actually return (runChecks's), so a failed export
   // surfaces as ok:false rather than being dropped.
   const result = runChecks(brep, shape, { metrics: Boolean(opts.metrics) });
   // Asserted dims: compare measured volume/area/bounds against the part's `export const expected`.
   // When present, every assertion must pass for `ok` (enforced by reportOk).
+  const invalidExpected = mod.expected === undefined ? [] : invalidExpectedValues(mod.expected);
+  if (invalidExpected.length > 0) {
+    pushError(result, {
+      message: `expected has values that aren't numbers, so none of its assertions ran: ${invalidExpected.join(', ')}.`,
+      code: 'EXPECTED_INVALID_VALUE',
+    });
+  }
   if (isExpectedDims(mod.expected)) {
     const expected: ExpectedDims = mod.expected;
     result.assertions = evaluateExpected(expected, result.measurements);

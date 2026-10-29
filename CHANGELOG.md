@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.5](https://github.com/andymai/brepjs/compare/brepjs-v20.12.4...brepjs-v20.12.5) (2026-10-29)
+
+
+### Bug Fixes
+
+* **operations:** correct 3D modeling, measurement, and type bugs ([54bc0d7](https://github.com/andymai/brepjs/commit/54bc0d707dc825684a694dd05da9a45381cc1af0))
+
 ## [20.12.4](https://github.com/andymai/brepjs/compare/brepjs-v20.12.3...brepjs-v20.12.4) (2026-10-29)
 
 

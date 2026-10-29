@@ -169,7 +169,7 @@ describe('rectangularPattern()', () => {
     expect(vol).toBeCloseTo(6 * 125, 0);
   });
 
-  it('1x1 pattern returns the original', () => {
+  it('1x1 pattern returns a copy of the original', () => {
     const b = box(5, 5, 5);
     const result = rectangularPattern(b, {
       xDir: [1, 0, 0],

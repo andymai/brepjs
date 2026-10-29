@@ -482,9 +482,17 @@ export class OcctWasmAdapter implements KernelAdapter {
     radius: number,
     center?: [number, number, number],
     direction?: [number, number, number],
-    _leftHanded?: boolean
+    leftHanded?: boolean
   ): KernelShape {
-    return constructionOps.makeHelixWire(this.k, pitch, height, radius, center, direction);
+    return constructionOps.makeHelixWire(
+      this.k,
+      pitch,
+      height,
+      radius,
+      center,
+      direction,
+      leftHanded
+    );
   }
 
   makeWireFromMixed(items: KernelShape[]): KernelShape {

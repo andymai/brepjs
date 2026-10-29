@@ -104,12 +104,17 @@ import {
   adjacentFaces,
   sharedEdges,
   measureVolume,
+  measureLength,
+  measureSurfaceProps,
   principalBoundingBox,
   registerKernel,
   withKernel,
   isOk,
   isErr,
   unwrap,
+  faceFinder,
+  edgeFinder,
+  sketchHelix,
 } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
@@ -241,6 +246,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           checkAllInterferences([a, b]);
+        })
+      ).toBe(0);
+    });
+
+    it('measuring solids and mixed compounds leaks nothing', () => {
+      // Fresh shapes each iteration: a repeated call on one shape is a cache hit.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          measureLength(b);
+          measureSurfaceProps(b);
+          using s0 = sphere(2);
+          using s = translate(s0, [0, 0, 20]);
+          const loose = getFaces(s0)[0];
+          if (!loose) throw new Error('sphere has no faces');
+          using mixed = compound([b, s, loose]);
+          measureVolume(mixed);
         })
       ).toBe(0);
     });
@@ -550,6 +572,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const f0 = getFaces(b)[0];
           if (!f0) throw new Error('box must have faces');
           const r = shell(b, [f0], 1);
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('atDistance finders release their reference vertex', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          faceFinder().atDistance(10, [5, 5, 0]).findAll(b);
+          edgeFinder().atDistance(0, [0, 0, 0]).findAll(b);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const r = shell(b, (f) => f.inDirection('Z').atDistance(10, [5, 5, 0]), 1);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
@@ -1020,6 +1059,31 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using b = box(20, 20, 10, { centered: true });
           const r = boss(b, { profile: drawCircle(3), height: 3 });
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+      // A side face takes the rotated placement; a holed drawing takes the
+      // compound-sketch face. Both release their sketch, face, and tool.
+      expect(
+        perIterationLeak(() => {
+          using b = box(20, 20, 10, { centered: true });
+          const profile = drawRectangle(6, 6).cut(drawCircle(1));
+          const r = pocket(b, { profile, depth: 3, face: (f) => f.inDirection('X') });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('sketchHelix and its sweepSketch leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          sketchHelix(10, 20, 5).delete();
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using _swept = sketchHelix(10, 20, 5).sweepSketch((plane, origin) =>
+            sketchCircle(1, { plane, origin })
+          );
         })
       ).toBe(0);
     });

@@ -55,6 +55,14 @@ export function runChecks(
   const r = emptyReport();
   r.shapeType = shapeTypeOf(brep, shape);
 
+  // A Face, Wire, Edge, or Vertex gets no volume or validity check, so without this a part that
+  // forgot its extrude would pass with nothing checked.
+  if (!isShape3D(shape)) {
+    const detail = `part is a ${r.shapeType}, not a 3D shape`;
+    r.checks.push({ name: 'is3D', passed: false, detail });
+    r.errorInfos.push({ message: `is3D: ${detail}`, code: 'PART_NOT_3D' });
+  }
+
   // The constituent solids, shared by the validity check and the optional metrics pass. A single
   // Solid is its own one-body list; a Compound/CompSolid yields its contained solids.
   const solids: Solid[] = isSolid(shape) ? [shape] : getSolids(shape);

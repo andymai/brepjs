@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { runPart } from '@/verify/runPart.js';
+import { reportOk } from '@/verify/report.js';
 
 const fix = (n: string) => fileURLToPath(new URL(`./fixtures/${n}`, import.meta.url));
 
@@ -104,6 +105,32 @@ describe('runPart', () => {
     expect(report.errorInfos.some((e) => e.code === 'FILLET_FAILED')).toBe(true);
     // ...so the matching hint fires instead of the table going dark.
     expect(report.hints.some((h) => h.code === 'FILLET_FAILED')).toBe(true);
+  }, 30000);
+
+  it('verifies the shape inside a fluent shape(...) chain', async () => {
+    const { report } = await runPart(fix('fluentChain.brep.ts'));
+    expect(report.errors).toEqual([]);
+    expect(report.shapeType).toBe('Solid');
+    expect(report.measurements.bounds?.xMin).toBeCloseTo(5, 6);
+  }, 30000);
+
+  it.each(['returnsSketch.brep.ts', 'returnsArray.brep.ts', 'returnsNullProtoObject.brep.ts'])(
+    'reports PART_NOT_A_SHAPE instead of crashing when %s returns a non-shape',
+    async (file) => {
+      const { report, shape } = await runPart(fix(file));
+      expect(shape).toBeNull();
+      expect(reportOk(report)).toBe(false);
+      expect(report.hints.some((h) => h.code === 'PART_NOT_A_SHAPE')).toBe(true);
+    },
+    30000
+  );
+
+  it('fails a part that returns a face instead of a solid', async () => {
+    const { report } = await runPart(fix('returnsFace.brep.ts'));
+    expect(report.shapeType).toBe('Face');
+    expect(report.checks).toContainEqual(expect.objectContaining({ name: 'is3D', passed: false }));
+    expect(reportOk(report)).toBe(false);
+    expect(report.hints.some((h) => h.code === 'PART_NOT_3D')).toBe(true);
   }, 30000);
 
   it('surfaces an INVALID_FILLET_RADIUS hint for a negative radius', async () => {

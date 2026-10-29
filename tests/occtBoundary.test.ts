@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { initKernel, currentKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   toKernelVec,
@@ -21,6 +21,29 @@ import type { Vec3 } from '@/core/types.js';
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+// occt-wasm and brepkit vectors are plain { x, y, z } objects; opencascade.js
+// ones are gp_* instances with X()/Y()/Z(). Manifold builds neither.
+describe.skipIf(currentKernel === 'manifold')('fromKernel* read every kernel vector form', () => {
+  it("round-trips the default kernel's vector, point, and direction", () => {
+    expect(fromKernelVec(toKernelVec([1, 2, 3]))).toEqual([1, 2, 3]);
+    expect(fromKernelPnt(toKernelPnt([-4, 5, 6]))).toEqual([-4, 5, 6]);
+    expect(fromKernelDir(toKernelDir([0, 0, 1]))).toEqual([0, 0, 1]);
+  });
+
+  it('reads plain { x, y, z } objects', () => {
+    expect(fromKernelVec({ x: 1, y: 2, z: 3 })).toEqual([1, 2, 3]);
+    expect(fromKernelPnt({ x: 7, y: 8, z: 9 })).toEqual([7, 8, 9]);
+    expect(fromKernelDir({ x: 0, y: 1, z: 0 })).toEqual([0, 1, 0]);
+  });
+
+  it('reads X()/Y()/Z() accessor objects', () => {
+    const gp = { X: () => 1, Y: () => -2, Z: () => 3 };
+    expect(fromKernelVec(gp)).toEqual([1, -2, 3]);
+    expect(fromKernelPnt(gp)).toEqual([1, -2, 3]);
+    expect(fromKernelDir(gp)).toEqual([1, -2, 3]);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Direct conversions

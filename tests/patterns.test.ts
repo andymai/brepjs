@@ -12,8 +12,9 @@ import {
   measureVolume,
   translate,
   getBounds,
+  rectangularPattern,
 } from '@/index.js';
-import type { Bounds3D, Vec3 } from '@/index.js';
+import type { Bounds3D, Result, Shape3D, Vec3 } from '@/index.js';
 import { gridPattern } from '@/operations/patternFns.js';
 
 beforeAll(async () => {
@@ -32,7 +33,7 @@ describe('linearPattern', () => {
     expect(vol).toBeCloseTo(5 * 5 * 5 * 3, -1);
   });
 
-  it('returns original shape when count is 1', () => {
+  it('returns a copy of the shape when count is 1', () => {
     const b = box(5, 5, 5);
     const result = linearPattern(b, [1, 0, 0], 1, 10);
     expect(isOk(result)).toBe(true);
@@ -92,22 +93,25 @@ describe('circularPattern', () => {
   });
 
   // Volume is blind to where non-overlapping copies land, so placement is
-  // checked against the bounds of the same copies rotated one by one.
+  // checked against the bounds of the same copies rotated one by one. A full
+  // turn steps by fullAngle / count; an open arc ends on fullAngle, so it steps
+  // by fullAngle / (count - 1).
   it.each([
-    { count: 4, fullAngle: 360, axis: [0, 0, 1], center: [0, 0, 0] },
-    { count: 3, fullAngle: 180, axis: [0, 0, 1], center: [0, 0, 0] },
-    { count: 5, fullAngle: 90, axis: [0, 0, 1], center: [3, -2, 0] },
-    { count: 3, fullAngle: 240, axis: [1, 1, 0], center: [0, 0, 4] },
-  ] as { count: number; fullAngle: number; axis: Vec3; center: Vec3 }[])(
-    'steps $count copies by $fullAngle / count degrees about $axis at $center',
-    ({ count, fullAngle, axis, center }) => {
+    { count: 4, fullAngle: 360, step: 90, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 3, fullAngle: -360, step: -120, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 3, fullAngle: 180, step: 90, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 5, fullAngle: 90, step: 22.5, axis: [0, 0, 1], center: [3, -2, 0] },
+    { count: 3, fullAngle: 240, step: 120, axis: [1, 1, 0], center: [0, 0, 4] },
+  ] as { count: number; fullAngle: number; step: number; axis: Vec3; center: Vec3 }[])(
+    'steps $count copies over $fullAngle degrees by $step about $axis at $center',
+    ({ count, fullAngle, step, axis, center }) => {
       using seed0 = box(2, 1, 1);
       using seed = translate(seed0, [10, 0.5, 0]);
       using pattern = unwrap(circularPattern(seed, axis, count, fullAngle, center));
 
       let expected: Bounds3D | undefined;
       for (let i = 0; i < count; i++) {
-        using copy = rotate(seed, (i * fullAngle) / count, { axis, at: center });
+        using copy = rotate(seed, i * step, { axis, at: center });
         const b = getBounds(copy);
         expected = expected
           ? {
@@ -128,6 +132,16 @@ describe('circularPattern', () => {
       }
     }
   );
+
+  it('puts the last copy at the end of an open arc', () => {
+    // 4 copies over 90 degrees land at 0, 30, 60 and 90 degrees.
+    using seed0 = box(2, 2, 2);
+    using seed = translate(seed0, [10, -1, 0]);
+    using pattern = unwrap(circularPattern(seed, [0, 0, 1], 4, 90));
+    const b = getBounds(pattern);
+    expect(b.yMax).toBeCloseTo(12, 3);
+    expect(b.xMin).toBeCloseTo(-1, 3);
+  });
 
   it('places two copies over a full turn opposite each other', () => {
     using seed0 = box(2, 2, 2);
@@ -152,7 +166,7 @@ describe('circularPattern', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('returns original shape when count is 1', () => {
+  it('returns a copy of the shape when count is 1', () => {
     const b = box(5, 5, 5);
     const result = circularPattern(b, [0, 0, 1], 1);
     expect(isOk(result)).toBe(true);
@@ -173,7 +187,7 @@ describe('gridPattern', () => {
     expect(vol).toBeCloseTo(2 * 2 * 2 * 6, -1);
   });
 
-  it('returns original shape when both counts are 1', () => {
+  it('returns a copy of the shape when both counts are 1', () => {
     const b = box(5, 5, 5);
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 10, 10);
     expect(isOk(result)).toBe(true);
@@ -220,4 +234,39 @@ describe('gridPattern', () => {
     const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
+});
+
+describe('single-copy patterns', () => {
+  // Disposing the result must leave the caller's shape alive: a count of 1 used
+  // to hand back the input handle itself.
+  it.each([
+    ['linearPattern', (b: Shape3D) => linearPattern(b, [1, 0, 0], 1, 5)],
+    ['circularPattern over 360', (b: Shape3D) => circularPattern(b, [0, 0, 1], 1, 360)],
+    ['circularPattern over 90', (b: Shape3D) => circularPattern(b, [0, 0, 1], 1, 90)],
+    ['gridPattern 1x1', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 5, 5)],
+    ['gridPattern 1x3', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 3, 5, 5)],
+    ['gridPattern 3x1', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 3, 1, 5, 5)],
+    [
+      'rectangularPattern 1x1',
+      (b: Shape3D) =>
+        rectangularPattern(b, {
+          xDir: [1, 0, 0],
+          xCount: 1,
+          xSpacing: 5,
+          yDir: [0, 1, 0],
+          yCount: 1,
+          ySpacing: 5,
+        }),
+    ],
+  ] as [string, (b: Shape3D) => Result<Shape3D>][])(
+    '%s returns a shape the caller can dispose without losing the input',
+    (_name, run) => {
+      using b = box(2, 2, 2);
+      const result = unwrap(run(b));
+      expect(result).not.toBe(b);
+      expect(result.wrapped).not.toBe(b.wrapped);
+      result[Symbol.dispose]();
+      expect(unwrap(measureVolume(b))).toBeCloseTo(8, 6);
+    }
+  );
 });

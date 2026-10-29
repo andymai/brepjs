@@ -5,7 +5,7 @@ description: 'Implement KernelAdapter to back brepjs with another geometry libra
 
 # Writing a Custom Kernel
 
-brepjs is built so the kernel is replaceable. The shipped kernels (occt-wasm, the default; OpenCascade via `brepjs-opencascade`; brepkit; Manifold) implement the same interface; you can write another for any geometry library that exposes a workable API. This chapter walks through what `KernelAdapter` requires, how to register your adapter, and how the conformance suite verifies your implementation.
+brepjs is built so the kernel is replaceable. The shipped kernels (occt-wasm, the default; brepkit; Manifold) implement the same interface; you can write another for any geometry library that exposes a workable API. This chapter walks through what `KernelAdapter` requires, how to register your adapter, and how the conformance suite verifies your implementation.
 
 ## Why you might write a custom kernel
 
@@ -40,7 +40,7 @@ export interface KernelMeasureOps {
 }
 
 export interface KernelCore {
-  readonly kernelId: string; // 'occt-wasm' | 'occt' | 'brepkit' | 'manifold' | your-id
+  readonly kernelId: string; // 'occt-wasm' | 'brepkit' | 'manifold' | your-id
   dispose(handle: { delete(): void }): void;
   // …capabilities, checkpoints, …
 }

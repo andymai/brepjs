@@ -12,6 +12,7 @@ import { fuseAll, type BooleanOptions } from '@/topology/booleanFns.js';
 import { validationError } from '@/core/errors.js';
 import { getKernel } from '@/kernel/index.js';
 import { castResultShape } from '@/core/shapeTypes.js';
+import { clone } from '@/topology/shapeFns.js';
 
 /**
  * Create a linear pattern of a shape along a direction.
@@ -32,7 +33,7 @@ export function linearPattern(
 ): Result<Shape3D> {
   if (count < 1)
     return err(validationError('PATTERN_INVALID_COUNT', 'Pattern count must be at least 1'));
-  if (count === 1) return ok(shape);
+  if (count === 1) return clone(shape);
   if (vecIsZero(direction))
     return err(validationError('PATTERN_ZERO_DIRECTION', 'Pattern direction cannot be zero'));
 
@@ -53,10 +54,15 @@ export function linearPattern(
 /**
  * Create a circular pattern of a shape around an axis.
  *
+ * A full turn (`fullAngle` of ±360) spaces the copies `fullAngle / count`
+ * apart, so the last copy does not land on the first. Any other angle is an
+ * open arc: the first copy stays in place, the last lands at `fullAngle`, and
+ * they are spaced `fullAngle / (count - 1)` apart.
+ *
  * @param shape - The shape to replicate
  * @param axis - Rotation axis direction
  * @param count - Total number of copies (including the original)
- * @param fullAngle - Total angle to spread copies over in degrees (default: 360)
+ * @param fullAngle - Angle in degrees the copies span (default: 360)
  * @param center - Center point of rotation (default: [0,0,0])
  * @param options - Boolean options for the fuse operation
  * @returns Fused shape of all copies
@@ -71,11 +77,13 @@ export function circularPattern(
 ): Result<Shape3D> {
   if (count < 1)
     return err(validationError('PATTERN_INVALID_COUNT', 'Pattern count must be at least 1'));
-  if (count === 1) return ok(shape);
+  if (count === 1) return clone(shape);
   if (vecIsZero(axis))
     return err(validationError('PATTERN_ZERO_AXIS', 'Pattern axis cannot be zero'));
 
-  const angleStep = fullAngle / count;
+  // count >= 2 here, so an open arc's count - 1 gaps is never zero.
+  const fullTurn = Math.abs(Math.abs(fullAngle) - 360) < 1e-9;
+  const angleStep = fullAngle / (fullTurn ? count : count - 1);
   const ocShapes = getKernel().circularPattern(
     shape.wrapped,
     [...center],
@@ -120,7 +128,7 @@ export function gridPattern(
 ): Result<Shape3D> {
   if (countX < 1 || countY < 1)
     return err(validationError('PATTERN_INVALID_COUNT', 'Grid pattern counts must be at least 1'));
-  if (countX === 1 && countY === 1) return ok(shape);
+  if (countX === 1 && countY === 1) return clone(shape);
   if (vecIsZero(directionX))
     return err(validationError('PATTERN_ZERO_DIRECTION', 'Grid directionX cannot be zero'));
   if (vecIsZero(directionY))
@@ -144,15 +152,10 @@ export function gridPattern(
     return ok(castResultShape(compound) as Shape3D);
   }
 
-  // Fallback: nested linearPattern
+  // Fallback: nested linearPattern. Each call returns a fresh shape, so the
+  // intermediate row is always ours to release.
   const rowResult = linearPattern(shape, directionX, countX, spacingX, options);
   if (!rowResult.ok) return rowResult;
-  const row = rowResult.value;
-  const out = linearPattern(row, directionY, countY, spacingY, options);
-  // Dispose the intermediate row unless linearPattern short-circuited: countX===1
-  // hands back the caller's own shape, and countY===1 passes `row` straight
-  // through as the result — disposing either would be a use-after-free.
-  const passthrough = out.ok && out.value === row;
-  if (row !== shape && !passthrough) row[Symbol.dispose]();
-  return out;
+  using row = rowResult.value;
+  return linearPattern(row, directionY, countY, spacingY, options);
 }

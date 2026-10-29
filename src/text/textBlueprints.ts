@@ -68,7 +68,9 @@ export function textBlueprints(
   if (!font) {
     bug('text', 'No fonts loaded. Call loadFont() before using text functions.');
   }
-  const writtenText = font.getPath(text, -startX, -startY, fontSize);
+  // Glyph x is negated while tracing and the final point mirror negates both
+  // axes, so x passes through unchanged and only y needs flipping here.
+  const writtenText = font.getPath(text, startX, -startY, fontSize);
   const blueprints = Array.from(sketchFontCommands(writtenText.commands));
   return organiseBlueprints(blueprints).mirror([0, 0]);
 }

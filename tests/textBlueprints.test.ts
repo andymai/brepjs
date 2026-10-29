@@ -6,6 +6,7 @@ import { sketchText } from '@/text/sketchText.js';
 import { textMetrics, fontMetrics } from '@/text/textMetrics.js';
 import { drawText } from '@/sketching/drawingFactories.js';
 import { unwrap, isOk, isErr } from '@/core/result.js';
+import { getBounds } from '@/topology/shapeFns.js';
 import { readFile, access } from 'node:fs/promises';
 
 /** Try several common system font paths and return the first that exists. */
@@ -140,6 +141,26 @@ describe('sketchText', () => {
       { plane: 'XY', origin: 5 }
     );
     expect(sketch).toBeDefined();
+  });
+
+  it('moves the text by +startX and +startY', ({ skip }) => {
+    if (!fontPath) skip();
+    using home = sketchText('Hi', { fontFamily: 'test', fontSize: 10 }).wires();
+    using moved = sketchText('Hi', {
+      fontFamily: 'test',
+      fontSize: 10,
+      startX: 10,
+      startY: 5,
+    }).wires();
+    const a = getBounds(home);
+    const b = getBounds(moved);
+    // Unmoved text starts at the origin and reads toward +X.
+    expect(a.xMin).toBeGreaterThanOrEqual(0);
+    expect(a.xMin).toBeLessThan(2);
+    expect(b.xMin - a.xMin).toBeCloseTo(10, 6);
+    expect(b.xMax - a.xMax).toBeCloseTo(10, 6);
+    expect(b.yMin - a.yMin).toBeCloseTo(5, 6);
+    expect(b.yMax - a.yMax).toBeCloseTo(5, 6);
   });
 });
 

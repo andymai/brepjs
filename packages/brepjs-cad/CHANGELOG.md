@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.0...brepjs-cad-v0.192.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **brepjs-cad:** make verify fail loud on parts it can't check ([cbb98b7](https://github.com/andymai/brepjs/commit/cbb98b77f03e039cc15c94a2e3fc9667ab1f799c))
+
 ## [0.192.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.3...brepjs-cad-v0.192.0) (2026-10-29)
 
 
