@@ -4,13 +4,17 @@ import { unwrap } from '@/core/result.js';
 import zip from '@/utils/zip.js';
 import { wasmIndex } from '@/utils/vec3.js';
 import type { Point2D, Curve2D } from '@/2d/lib/index.js';
-import { intersectCurves, removeDuplicatePoints, PRECISION_INTERSECTION } from '@/2d/lib/index.js';
+import {
+  intersectCurves,
+  removeDuplicatePoints,
+  PRECISION_INTERSECTION,
+  PRECISION_POINT,
+} from '@/2d/lib/index.js';
 
 import type Blueprint from './blueprint.js';
 import {
   samePoint,
   hashPoint,
-  hashSegment,
   startOfSegment,
   endOfSegment,
   reverseSegments,
@@ -29,25 +33,12 @@ function* createSegmentOnPoints(
   allIntersections: Point2D[],
   allCommonSegments: Curve2D[]
 ): Generator<Segment> {
-  // Pre-compute hash sets for fast O(1) lookup (first pass)
   const intersectionSet = new Set(allIntersections.map(hashPoint));
-  const commonSegmentSet = new Set(
-    allCommonSegments.map((seg) => hashSegment(seg.firstPoint, seg.lastPoint))
-  );
 
   // Hash-then-tolerance lookup: handles toFixed(9) rounding boundary mismatches
   const matchesIntersection = (point: Point2D): boolean => {
     if (intersectionSet.has(hashPoint(point))) return true;
     return allIntersections.some((p) => samePoint(p, point));
-  };
-
-  const matchesCommonSegment = (first: Point2D, last: Point2D): boolean => {
-    if (commonSegmentSet.has(hashSegment(first, last))) return true;
-    return allCommonSegments.some(
-      (seg) =>
-        (samePoint(seg.firstPoint, first) && samePoint(seg.lastPoint, last)) ||
-        (samePoint(seg.firstPoint, last) && samePoint(seg.lastPoint, first))
-    );
   };
 
   let currentCurves: Curve2D[] = [];
@@ -61,7 +52,7 @@ function* createSegmentOnPoints(
     }
 
     const endsAtIntersection = matchesIntersection(curve.lastPoint);
-    const isCommon = matchesCommonSegment(curve.firstPoint, curve.lastPoint);
+    const isCommon = isCommonSegmentMatch(allCommonSegments, [curve]);
 
     if (endsAtIntersection) {
       currentCurves.push(curve);
@@ -201,19 +192,22 @@ function splitCurvesAtIntersections(curves: Curve2D[], curvePoints: Point2D[][])
 // ---------------------------------------------------------------------------
 
 /**
- * Check whether a segment's start/end points match one of the common segment
- * point pairs.
+ * Check whether a segment runs along one of the common segments, in either
+ * direction. Matching endpoints are not enough: two outlines that share an
+ * edge also join its endpoints with the rest of their boundaries.
  */
-export function isCommonSegmentMatch(
-  commonSegmentsPoints: Point2D[][],
-  segmentStart: Point2D,
-  segmentEnd: Point2D
-): boolean {
-  return commonSegmentsPoints.some(([startPoint, endPoint]) => {
-    if (startPoint === undefined || endPoint === undefined) return false;
+export function isCommonSegmentMatch(commonSegments: Curve2D[], segment: Segment): boolean {
+  if (segment.length === 0) return false;
+  const segmentStart = startOfSegment(segment);
+  const segmentEnd = endOfSegment(segment);
+
+  return commonSegments.some((common) => {
+    const sameEnds =
+      (samePoint(common.firstPoint, segmentStart) && samePoint(common.lastPoint, segmentEnd)) ||
+      (samePoint(common.firstPoint, segmentEnd) && samePoint(common.lastPoint, segmentStart));
     return (
-      (samePoint(startPoint, segmentStart) && samePoint(endPoint, segmentEnd)) ||
-      (samePoint(startPoint, segmentEnd) && samePoint(endPoint, segmentStart))
+      sameEnds &&
+      segment.every((curve) => common.distanceFrom(curveMidPoint(curve)) < PRECISION_POINT)
     );
   });
 }
@@ -248,8 +242,6 @@ export function blueprintsIntersectionSegments(
   // Split curves at intersection points
   let firstCurveSegments = splitCurvesAtIntersections(first.curves, firstCurvePoints);
   let secondCurveSegments = splitCurvesAtIntersections(second.curves, secondCurvePoints);
-
-  const commonSegmentsPoints = allCommonSegments.map((c) => [c.firstPoint, c.lastPoint]);
 
   // Remove intersection points that only touch but don't cross
   const filteredByFirst = removeNonCrossingPoints(rawIntersections, firstCurveSegments, second);
@@ -288,6 +280,12 @@ export function blueprintsIntersectionSegments(
 
     if (endpointsMismatch || commonSegmentLengthMismatch) {
       secondIntersectedSegments = reverseSegments(secondIntersectedSegments);
+      // Reversing a loop that began on the common segment leaves that segment
+      // last; it must lead again to stay paired with the first blueprint's.
+      const last = secondIntersectedSegments[secondIntersectedSegments.length - 1];
+      if (last !== undefined && isCommonSegmentMatch(allCommonSegments, last)) {
+        secondIntersectedSegments = [last, ...secondIntersectedSegments.slice(0, -1)];
+      }
     }
   }
 
@@ -308,10 +306,7 @@ export function blueprintsIntersectionSegments(
       continue;
     }
 
-    const currentStart = startOfSegment(firstSeg2);
-    const currentEnd = endOfSegment(firstSeg2);
-
-    if (isCommonSegmentMatch(commonSegmentsPoints, currentStart, currentEnd)) {
+    if (isCommonSegmentMatch(allCommonSegments, firstSeg2)) {
       result.push([firstSeg2, 'same']);
     } else {
       result.push([firstSeg2, secondSeg2]);

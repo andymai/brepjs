@@ -152,11 +152,10 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     // → arc corners at x=0 produce intersection points near y=±4
     const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
 
-    const result = profile.intersect(clip);
-    expect(result).toBeDefined();
-    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
-    expect(xMax - xMin).toBeGreaterThan(0);
-    expect(yMax - yMin).toBeGreaterThan(0);
+    // The outlines lie on either side of x=0 and only touch along it.
+    expect(totalArea(profile.intersect(clip))).toBe(0);
+    expect(totalArea(profile.fuse(clip))).toBeCloseTo(96 + 96 + Math.PI, 3);
+    expect(totalArea(profile.cut(clip))).toBeCloseTo(96, 3);
   });
 
   it('intersects gridfinity lip profile with clip rectangle — includeLip=true', () => {
@@ -481,5 +480,17 @@ describe('chained booleans across already-split edges', () => {
       .cut(drawRectangle(4, 4).translate(-10, -15))
       .fuse(drawCircle(3).translate(10, -15));
     expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
+  });
+});
+
+describe('outlines sharing an exact edge', () => {
+  it('fuses two squares that share a whole edge', () => {
+    const result = drawRectangle(10, 10).fuse(drawRectangle(10, 10).translate(10, 0));
+    expect(totalArea(result)).toBeCloseTo(200, 3);
+  });
+
+  it('cuts a notch that shares part of an edge', () => {
+    const result = drawRectangle(10, 10).cut(drawRectangle(4, 2).translate(0, 4));
+    expect(totalArea(result)).toBeCloseTo(92, 3);
   });
 });
