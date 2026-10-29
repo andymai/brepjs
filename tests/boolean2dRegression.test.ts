@@ -537,3 +537,21 @@ describe('arcs that coincide along part of their length', () => {
     expect(totalArea(result)).toBeCloseTo(100, 3);
   });
 });
+
+describe('outlines that touch without crossing', () => {
+  const square = () => drawRectangle(10, 10);
+  const inscribed = () => drawCircle(5);
+  const disk = 25 * Math.PI;
+
+  it('combines a square with its inscribed circle', () => {
+    expect(totalArea(square().cut(inscribed()))).toBeCloseTo(100 - disk, 3);
+    expect(totalArea(square().fuse(inscribed()))).toBeCloseTo(100, 3);
+    expect(totalArea(square().intersect(inscribed()))).toBeCloseTo(disk, 3);
+    expect(totalArea(inscribed().cut(square()))).toBe(0);
+  });
+
+  it('keeps outlines that touch at a single point apart', () => {
+    const result = square().fuse(drawCircle(5).translate(10, 0));
+    expect(totalArea(result)).toBeCloseTo(100 + disk, 3);
+  });
+});
