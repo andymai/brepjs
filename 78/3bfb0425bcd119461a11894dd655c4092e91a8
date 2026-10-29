@@ -1,0 +1,155 @@
+docs/kernel-swap.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3,15,50
+package.json
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3
+apps/docs/extending/custom-kernel.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 8,43
+apps/docs/introduction/stability.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 52
+packages/brepjs-cad/CHANGELOG.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3-9
+packages/brepjs-cad/package.json
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3
+packages/brepjs-cad/skills/implement/references/measurement-validation.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 33
+apps/docs/advanced/csg-caching.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 21
+apps/docs/extending/architecture.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 38
+packages/brepjs-cad/skills/implement/SKILL.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 64,77
+llms.txt
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 521,527
+.size-limit.json
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 2
+docs/architecture.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 85-88
+apps/docs/getting-started/install.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 21,37,46,52,74,79-87
+docs/function-lookup.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3,490,591
+CLAUDE.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 21,55,61
+apps/docs/integration/compatibility.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 110,125,127
+apps/docs/integration/frameworks.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 37,42-50,53
+docs/getting-started.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 18,39
+llms-full.txt
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 521,527
+docs/compatibility.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 107,109-111
+apps/docs/reference/glossary.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 14,98,132
+apps/docs/concepts/kernels.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 12-15,23-27,56
+.release-please-manifest.json
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 2,5
+apps/docs/agent/cli.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 70-71
+apps/docs/advanced/workers.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 190,204,210-218
+CHANGELOG.md
+  s_d4ab5fb2066c9b::t_149f51b7d735e9 3-9
+package-lock.json
+  s_d4ab5fb2066c9b::t_3bd814626c42d4 3,9
+packages/brepjs-cad/src/verify/checks.ts
+  s_d4ab5fb2066c9b::t_00a3cc8218917a 58-65
+packages/brepjs-cad/src/verify/expected.ts
+  s_d4ab5fb2066c9b::t_2aec7083e073de 17-20,68-79,81-94,130-133,137-147
+packages/brepjs-cad/src/verify/report.ts
+  s_d4ab5fb2066c9b::t_923b3ef6e3a9b0 189-190,337-348
+packages/brepjs-cad/src/verify/runPart.ts
+  s_d4ab5fb2066c9b::t_94009ca26e04a0 8,96-115,248,254,256-257,261-268,274-280
+packages/brepjs-cad/tests/expected.test.ts
+  s_d4ab5fb2066c9b::t_7c5c9740c83b27 5-10,41-47,100-117,123
+packages/brepjs-cad/tests/fixtures/expectedNotNumber.brep.ts
+  s_d4ab5fb2066c9b::t_4b2839096a661d 1-5
+packages/brepjs-cad/tests/fixtures/fluentChain.brep.ts
+  s_d4ab5fb2066c9b::t_6697abb8b377cd 1-2
+packages/brepjs-cad/tests/fixtures/returnsArray.brep.ts
+  s_d4ab5fb2066c9b::t_565621457a6760 1-2
+packages/brepjs-cad/tests/fixtures/returnsFace.brep.ts
+  s_d4ab5fb2066c9b::t_da6d83e9e803a7 1-2
+packages/brepjs-cad/tests/fixtures/returnsNullProtoObject.brep.ts
+  s_d4ab5fb2066c9b::t_70adb52c3e150d 1
+packages/brepjs-cad/tests/fixtures/returnsSketch.brep.ts
+  s_d4ab5fb2066c9b::t_6b5109047023d1 1-2
+packages/brepjs-cad/tests/runPart.test.ts
+  s_d4ab5fb2066c9b::t_4d58329121fda3 4,110-135
+src/core/kernelBoundary.ts
+  s_d4ab5fb2066c9b::t_917c0655d743e0 36-42,45,50,55
+src/index.ts
+  s_d4ab5fb2066c9b::t_fd7fcec60e8d0d 33,655
+src/kernel/occtWasm/constructionOps.ts
+  s_d4ab5fb2066c9b::t_9dbdb2ac4e025f 282-283,291-298
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_34ecb2569e4f04 485,487-495
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_b5394c7c3d779c 400-415
+src/measurement/measureFns.ts
+  s_d4ab5fb2066c9b::t_4a33bc8d8cd1fd 7-8,39-98,122-123,125-134,136-138,156-159,176-178,190-193,195-206
+src/operations/compoundOpsFns.ts
+  s_d4ab5fb2066c9b::t_97898c4595166e 11,13,25-26,81-82,84-85,87,89-102,104-144,236,238-240,261,263-265,320
+src/operations/patternFns.ts
+  s_d4ab5fb2066c9b::t_97e49837999bb6 15,36,57-61,65,80,84-86,131,155-156,159-160
+src/operations/sweepFns.ts
+  s_d4ab5fb2066c9b::t_e6ced82c1df2ef 75-83,153-161
+src/query/finderCore.ts
+  s_d4ab5fb2066c9b::t_99e9a4303a2e7c 32-33,36,38,40,42,51,53,55
+src/query/shapeDistanceFilter.ts
+  s_d4ab5fb2066c9b::t_5278eb26e15697 22-23,25-32
+src/sketching/cannedSketches.ts
+  s_d4ab5fb2066c9b::t_7e655e7c4d2416 319-320,322
+src/sketching/sketchFns.ts
+  s_d4ab5fb2066c9b::t_c212af03e1d171 219-226
+src/sketching/sketches.ts
+  s_d4ab5fb2066c9b::t_55542374e3582b 47-51
+src/text/textBlueprints.ts
+  s_d4ab5fb2066c9b::t_fcad8b2878b73b 71-73
+src/topology.ts
+  s_d4ab5fb2066c9b::t_528eb854ddb835 141
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_93dc0395be82e6 13-15,18,110-115,125
+src/topology/primitiveFns.ts
+  s_d4ab5fb2066c9b::t_1306a19c44e52b 28,117,169
+tests/api.test.ts
+  s_d4ab5fb2066c9b::t_4ed078c71453c4 126-132,165-171
+tests/apiTypes.test.ts
+  s_d4ab5fb2066c9b::t_2df10aa60cf588 1-87
+tests/compoundOps.test.ts
+  s_d4ab5fb2066c9b::t_58290ba4696d46 172
+tests/compoundOpsFns.test.ts
+  s_d4ab5fb2066c9b::t_c0d68123daf1da 23,26-29,95-124,180-208
+tests/extrudeFns.test.ts
+  s_d4ab5fb2066c9b::t_5eda01d5c3643e 24,26,126-135,177-192
+tests/measureFns.test.ts
+  s_d4ab5fb2066c9b::t_5e1996130c929b 31-37,146-195
+tests/occtBoundary.test.ts
+  s_d4ab5fb2066c9b::t_cc03949d97f2cb 2,25-47
+tests/patterns.test.ts
+  s_d4ab5fb2066c9b::t_4e7f6c48bdf740 15,17,36,96-98,100-107,114,136-145,169,190,238-272
+tests/textBlueprints.test.ts
+  s_d4ab5fb2066c9b::t_d7d611e636fdae 9,145-164
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_71770f44f858ae 475-488
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_0bae452b7e6afa 107-108,115-117,253-269,580-596,1064-1088
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "783bfb0425bcd119461a11894dd655c4092e91a8",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
