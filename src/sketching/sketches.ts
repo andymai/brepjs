@@ -111,8 +111,7 @@ export default class Sketches implements SketchInterface {
     } = {}
   ): Compound {
     const extruded = this.sketches.map((s) => s.extrude(extrusionDistance, extrusionConfig));
-
-    return makeCompound(extruded);
+    return this.consumeInto(extruded);
   }
 
   /**
@@ -120,6 +119,18 @@ export default class Sketches implements SketchInterface {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): Compound {
-    return makeCompound(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
+    return this.consumeInto(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
+  }
+
+  /**
+   * Combine per-profile results into one compound (which holds its own references) and
+   * release what the profiles leave behind: a `Sketch` deletes itself when extruded or
+   * revolved, but a `CompoundSketch` leaves its wires to the caller.
+   */
+  private consumeInto(parts: Shape3D[]): Compound {
+    const compound = makeCompound(parts);
+    for (const part of parts) part[Symbol.dispose]();
+    for (const s of this.sketches) if (!(s instanceof Sketch)) s.delete();
+    return compound;
   }
 }

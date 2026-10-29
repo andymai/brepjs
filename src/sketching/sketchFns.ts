@@ -115,7 +115,12 @@ export function sketchRevolve(
   revolutionAxis?: PointInput,
   config: { origin?: PointInput } = {}
 ): Shape3D {
-  if (!(sketch instanceof Sketch)) return sketch.revolve(revolutionAxis, config);
+  if (!(sketch instanceof Sketch)) {
+    const solid = sketch.revolve(revolutionAxis, config);
+    // CompoundSketch leaves its wires to the caller; Sketches consumes its own profiles.
+    if (sketch instanceof CompoundSketch) sketch.delete();
+    return solid;
+  }
   const { origin } = config;
   const face = unwrap(makeFace(sketch.wire));
   const center: Vec3 = origin ? toVec3(origin) : sketch.defaultOrigin;
@@ -146,7 +151,12 @@ export function sketchExtrude(
     origin?: PointInput;
   } = {}
 ): Shape3D {
-  if (!(sketch instanceof Sketch)) return sketch.extrude(extrusionDistance, config);
+  if (!(sketch instanceof Sketch)) {
+    const solid = sketch.extrude(extrusionDistance, config);
+    // CompoundSketch leaves its wires to the caller; Sketches consumes its own profiles.
+    if (sketch instanceof CompoundSketch) sketch.delete();
+    return solid;
+  }
   const { extrusionDirection, extrusionProfile, twistAngle, origin } = config;
   const direction: Vec3 = extrusionDirection ? toVec3(extrusionDirection) : sketch.defaultDirection;
   const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);

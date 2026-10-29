@@ -61,6 +61,9 @@ import {
   sketchRectangle,
   Sketcher,
   CompoundSketch,
+  drawRectangle,
+  sketchExtrude,
+  sketchRevolve,
   isShape3D,
   cone,
   torus,
@@ -1329,6 +1332,35 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const ok = isShape3D(s);
           s[Symbol.dispose]();
           for (const sub of cs.sketches) sub.wire[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+    });
+
+    it('sketchExtrude, sketchRevolve, and the fluent extrude consume a holed sketch', () => {
+      const holed = () =>
+        drawRectangle(10, 20).translate(20, 0).cut(drawCircle(3).translate(20, 0));
+      expect(
+        perIterationLeak(() => {
+          const s = sketchExtrude(holed().sketchOnPlane('XY'), 5);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          const s = sketchRevolve(holed().sketchOnPlane('XZ'), [0, 0, 1]);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
+          if (!ok) throw new Error('not 3d');
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          const s = holed().sketchOnPlane('XY').extrude(5);
+          const ok = isShape3D(s);
+          s[Symbol.dispose]();
           if (!ok) throw new Error('not 3d');
         })
       ).toBe(0);
