@@ -1,0 +1,23 @@
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_53c817e8418d61 44-79
+  s_d4ab5fb2066c9b::t_4b1e4a8a5a3753 5-6
+  s_d4ab5fb2066c9b::t_10a43d258125c9 80
+src/io/objImportFns.ts
+  s_d4ab5fb2066c9b::t_9b96de7def96ca 18,26-37,63-65,67-68,90,97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81e3952d5371cf8b465b25f84e433ab40fd9427f",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
