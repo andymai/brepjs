@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { importOBJ, measureVolume, unwrap } from '@/index.js';
+import { getBounds, importOBJ, isSolid, measureVolume, unwrap } from '@/index.js';
+import type { Shape3D } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -38,6 +39,43 @@ describe('importOBJ', () => {
     const blob = new Blob([obj]);
     const result = await importOBJ(blob);
     expect(result.ok).toBe(true);
+  });
+
+  it('resolves relative face indices against the vertices defined so far', async () => {
+    // Two 10 mm right tetrahedra, each written as 4 vertices then 4 faces with
+    // relative indices; -4 names the first vertex of the tetrahedron just written.
+    const tetra = (x: number) => [
+      `v ${x} 0 0`,
+      `v ${x + 10} 0 0`,
+      `v ${x} 10 0`,
+      `v ${x} 0 10`,
+      'f -4 -2 -3',
+      'f -4 -3 -1',
+      'f -4 -1 -2',
+      'f -3 -2 -1',
+    ];
+    const obj = [...tetra(0), ...tetra(50)].join('\n');
+    using imported = unwrap(await importOBJ(new Blob([obj])));
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000 / 6, 6);
+    const bounds = getBounds(imported);
+    expect(bounds.xMin).toBeCloseTo(0, 6);
+    expect(bounds.xMax).toBeCloseTo(60, 6);
+  });
+
+  it('reads tab-separated vertex and face lines', async () => {
+    const obj = [
+      'v\t0\t0\t0',
+      'v\t10\t0\t0',
+      'v\t0\t10\t0',
+      'v\t0\t0\t10',
+      'f\t1\t3\t2',
+      'f\t1\t2\t4',
+      'f\t1\t4\t3',
+      'f\t2\t3\t4',
+    ].join('\n');
+    using imported = unwrap(await importOBJ(new Blob([obj])));
+    expect(isSolid(imported)).toBe(true);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000 / 6, 6);
   });
 
   it('returns error when face indices reference out-of-range vertices', async () => {
