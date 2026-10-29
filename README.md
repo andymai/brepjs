@@ -10,7 +10,7 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/7f01ba2c-eee1-4fc2-8972-36369454c11d
+https://github.com/user-attachments/assets/736b55fe-f1f4-4b4c-abdd-8429f247d49b
 
 </div>
 
@@ -21,7 +21,7 @@ In this real Claude Code session, Claude reads the official Raspberry Pi 5 drawi
 /plugin install brepjs@brepjs
 ```
 
-We had Claude rebuild the 46 parts in our example gallery from their descriptions: all 46 verified valid, and a blind AI judge rated 37 at least as good as our hand-written versions. [How we measured it](https://brepjs.dev/agent/eval).
+We had Claude rebuild the 46 parts in our example gallery from their descriptions: all 46 verified valid, and a blind AI judge rated 35 at least as good as our hand-written versions. [How we measured it](https://brepjs.dev/agent/eval).
 
 ## Or write it yourself
 
