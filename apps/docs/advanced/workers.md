@@ -25,7 +25,7 @@ For apps that build a part on the worker and just need the resulting mesh:
 import { createWorkerClient } from 'brepjs/worker';
 
 const client = createWorkerClient({
-  worker: new Worker(new URL('./brepjsWorker.js', import.meta.url), { type: 'module' }),
+  worker: new Worker(new URL('./brepjsWorker.ts', import.meta.url), { type: 'module' }),
 });
 
 await client.init();
@@ -41,7 +41,7 @@ The worker side imports the same protocol:
 <!-- @no-test -->
 
 ```typescript
-// brepjsWorker.js
+// brepjsWorker.ts
 import { createOperationRegistry, registerHandler, createWorkerHandler } from 'brepjs/worker';
 import { box, shape, toBufferGeometryData } from 'brepjs/quick';
 
@@ -115,7 +115,7 @@ import { createWorkerPool } from 'brepjs/worker';
 const pool = createWorkerPool({
   workers: Array.from(
     { length: navigator.hardwareConcurrency ?? 4 },
-    () => new Worker(new URL('./brepjsWorker.js', import.meta.url))
+    () => new Worker(new URL('./brepjsWorker.ts', import.meta.url))
   ),
 });
 
