@@ -1,0 +1,31 @@
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_5eb8c31f2b6b9c 633
+  s_d4ab5fb2066c9b::t_36a9272ca4f710 605-607
+  s_d4ab5fb2066c9b::t_ee22d44a3a2e13 608-610,615,617-620,623,626-632,634-642
+  s_d4ab5fb2066c9b::t_e11b68fdddb547 611-614,616,621-622,624-625
+src/kernel/occtWasm/kernel2dOps.ts
+  s_d4ab5fb2066c9b::t_6ee89792c49fd4 555,568-570
+tests/boolean2dRegression.test.ts
+  s_d4ab5fb2066c9b::t_50b2b79431df0c 11,17-18,377,385,390
+  s_d4ab5fb2066c9b::t_1172fb213a104a 8,378-384,386-389,391-431
+tests/docs-examples.test.ts
+  s_d4ab5fb2066c9b::t_3edc51cd8ff659 192-193
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_1172fb213a104a 310,312,314-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3dc37d876cc1aeca22fdcf181ca49dc8aa26b88",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
