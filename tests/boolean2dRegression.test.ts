@@ -7,6 +7,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
+  CompoundSketch,
   draw,
   drawCircle,
   drawRectangle,
@@ -16,6 +17,7 @@ import {
   intersectBlueprints,
   measureArea,
   Sketch,
+  Sketches,
   unwrap,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
@@ -24,6 +26,26 @@ import type { Drawing } from '@/sketching/drawing.js';
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+/** Summed face area of every outline in a drawing (holes subtracted); 0 when empty. */
+function totalArea(d: Drawing): number {
+  if (d.repr === '=== empty shape') return 0;
+  const sketch = d.sketchOnPlane('XY');
+  const parts = sketch instanceof Sketches ? sketch.sketches : [sketch];
+  let total = 0;
+  for (const part of parts) {
+    if (!(part instanceof Sketch || part instanceof CompoundSketch)) {
+      throw new Error('unexpected sketch type');
+    }
+    try {
+      using face = part.face();
+      total += unwrap(measureArea(face));
+    } finally {
+      part.delete();
+    }
+  }
+  return total;
+}
 
 /** Assert that a Drawing's bounding box matches expected width/height. */
 function expectBounds(d: Drawing, width: number, height: number, precision = 0.1) {
@@ -436,3 +458,28 @@ describe.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
     });
   }
 );
+
+describe('chained booleans across already-split edges', () => {
+  const rectArea = 50 * 30;
+
+  it('cuts a second half disc from an edge split by the first', () => {
+    const result = drawRectangle(50, 30)
+      .cut(drawCircle(2).translate(25, 6))
+      .cut(drawCircle(2).translate(25, -6));
+    expect(totalArea(result)).toBeCloseTo(rectArea - 4 * Math.PI, 3);
+  });
+
+  it('cuts two notches from the same edge', () => {
+    const result = drawRectangle(50, 30)
+      .cut(drawRectangle(4, 4).translate(-10, -15))
+      .cut(drawRectangle(4, 4).translate(10, -15));
+    expect(totalArea(result)).toBeCloseTo(rectArea - 16, 3);
+  });
+
+  it('fuses a circle onto an edge split by an earlier notch', () => {
+    const result = drawRectangle(50, 30)
+      .cut(drawRectangle(4, 4).translate(-10, -15))
+      .fuse(drawCircle(3).translate(10, -15));
+    expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
+  });
+});

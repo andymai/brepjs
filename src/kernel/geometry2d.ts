@@ -568,9 +568,31 @@ function unwrapCurve(c: Curve2dObj): Curve2dObj {
   return cur;
 }
 
-/** Check if parameter t is within the curve's domain. */
+/**
+ * The interval a curve covers on its innermost basis's parameter. A trimmed wrapper's own
+ * parameter runs 0..1, but the analytic solvers work on the unwrapped basis, so their
+ * parameters must be bounded by this interval rather than by `curveBounds(c)`.
+ */
+function basisInterval(c: Curve2dObj): { first: number; last: number } {
+  if (c.__bk2d !== 'trimmed') return curveBounds(c);
+  const a = basisParam(c.basis, c.tStart);
+  const b = basisParam(c.basis, c.tEnd);
+  return { first: Math.min(a, b), last: Math.max(a, b) };
+}
+
+function basisParam(c: Curve2dObj, t: number): number {
+  let cur = c;
+  let s = t;
+  while (cur.__bk2d === 'trimmed') {
+    s = cur.tStart + s * (cur.tEnd - cur.tStart);
+    cur = cur.basis;
+  }
+  return s;
+}
+
+/** Check if basis parameter t lies within the part of the basis that c covers. */
 function inDomain(c: Curve2dObj, t: number, tol: number): boolean {
-  const b = curveBounds(c);
+  const b = basisInterval(c);
   return t >= b.first - tol && t <= b.last + tol;
 }
 
@@ -666,8 +688,8 @@ function intersectLineLine(
   const cross = ex * l1.dy - ey * l1.dx;
   if (Math.abs(cross) > tol) return { points: [], segments: [] }; // parallel but not collinear
 
-  // Project c2 endpoints onto c1's parameter space
-  const b1 = curveBounds(c1);
+  // Project c2 endpoints onto l1's parameter space
+  const b1 = basisInterval(c1);
   const b2 = curveBounds(c2);
   const p2s = evaluateCurve2d(c2, b2.first);
   const p2e = evaluateCurve2d(c2, b2.last);
