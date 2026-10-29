@@ -91,11 +91,10 @@ export function registerCommands(
           try {
             const result = await runDiff(a.fsPath, b.fsPath);
             output.appendLine(`[brepjs] diff ${a.label} → ${b.label}`);
-            output.appendLine(`  volumeDelta: ${result.volumeDelta.toFixed(3)} mm³`);
+            const volume = (v: number | null) => (v === null ? 'n/a' : `${v.toFixed(3)} mm³`);
+            output.appendLine(`  volumeDelta: ${volume(result.volumeDelta)}`);
             output.appendLine(`  areaDelta: ${result.areaDelta.toFixed(3)} mm²`);
-            output.appendLine(
-              `  symmetricDiff: ${result.symmetricDifferenceVolume.toFixed(3)} mm³`,
-            );
+            output.appendLine(`  symmetricDiff: ${volume(result.symmetricDifferenceVolume)}`);
             if (!result.ok)
               output.appendLine(`  errors: ${result.errors.join(', ')}`);
             output.show(true);

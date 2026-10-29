@@ -136,10 +136,12 @@ export interface BoundsDelta {
 }
 
 export interface DiffReport {
-  volumeDelta: number;
+  /** `null` when either side is not a 3D shape (an edge, wire, or face has no volume). */
+  volumeDelta: number | null;
   areaDelta: number;
   bboxDelta: BoundsDelta;
-  symmetricDifferenceVolume: number;
+  /** `null` when either side is not a 3D shape, for the same reason as `volumeDelta`. */
+  symmetricDifferenceVolume: number | null;
   errors: string[];
 }
 
