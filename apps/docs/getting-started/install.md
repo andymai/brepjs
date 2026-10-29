@@ -80,8 +80,11 @@ import occtWasmUrl from 'occt-wasm/dist/occt-wasm.wasm?url';
 import { OcctKernel } from 'occt-wasm';
 import { registerKernel, OcctWasmAdapter } from 'brepjs';
 
-const kernel = await OcctKernel.init({ wasm: occtWasmUrl });
-registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+// No top-level await: Vite builds workers as iife by default, which doesn't allow it.
+const ready = OcctKernel.init({ wasm: occtWasmUrl }).then((kernel) => {
+  registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+});
+// await ready before building shapes
 ```
 
 See [Vite, Next.js, Astro](../integration/frameworks) for full bundler patterns.

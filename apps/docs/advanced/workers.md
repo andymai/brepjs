@@ -211,8 +211,11 @@ import occtWasmUrl from 'occt-wasm/dist/occt-wasm.wasm?url';
 import { OcctKernel } from 'occt-wasm';
 import { registerKernel, OcctWasmAdapter } from 'brepjs';
 
-const kernel = await OcctKernel.init({ wasm: occtWasmUrl });
-registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+// No top-level await: Vite builds workers as iife by default, which doesn't allow it.
+const ready = OcctKernel.init({ wasm: occtWasmUrl }).then((kernel) => {
+  registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+});
+// await ready before building shapes
 ```
 
 The `?url` suffix tells Vite "emit this WASM as an asset and give me a URL to it", so your worker can fetch it without bundling the binary into the worker JS.
