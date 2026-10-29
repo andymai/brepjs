@@ -49,17 +49,15 @@ const typeCardHtml = [
 const root = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
 
-// The agent demo loops muted unless the visitor prefers reduced motion; then it waits on its poster
-// with controls.
+// The agent demo autoplays muted unless the visitor prefers reduced motion. Its native controls
+// stay on either way, so anyone can pause it, or start it if the browser blocked autoplay.
 const demo = ref<HTMLVideoElement | null>(null);
-const reduceMotion = ref(false);
 
 onMounted(() => {
   const reduce =
     typeof window !== 'undefined' &&
     window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  reduceMotion.value = reduce;
   if (!reduce) demo.value?.play().catch(() => {});
   const els = root.value?.querySelectorAll<HTMLElement>('[data-reveal]') ?? [];
   if (reduce || !('IntersectionObserver' in window)) {
@@ -247,7 +245,7 @@ onBeforeUnmount(() => observer?.disconnect());
               loop
               playsinline
               preload="metadata"
-              :controls="reduceMotion"
+              controls
               aria-label="A coding agent turns the official Raspberry Pi 5 drawing into a case, brep verify catches a failed build, and the STEP opens in FreeCAD"
             ></video>
             <figcaption>
