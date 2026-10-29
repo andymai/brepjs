@@ -485,6 +485,20 @@ describe('chained booleans across already-split edges', () => {
       expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
     }
   );
+
+  it.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
+    'cuts a circle across a full-width slot',
+    () => {
+      const result = drawRectangle(50, 30).cut(drawRectangle(60, 4)).cut(drawCircle(8));
+      // The circle only removes what lies outside the slot (|y| > 2).
+      const inSlot = 2 * (2 * Math.sqrt(60) + 64 * Math.asin(0.25));
+      expect(totalArea(result)).toBeCloseTo(rectArea - 50 * 4 - (64 * Math.PI - inSlot), 3);
+    }
+  );
+
+  it('offsets a rectangle inward', () => {
+    expect(totalArea(drawRectangle(40, 20).offset(-2))).toBeCloseTo(36 * 16, 6);
+  });
 });
 
 describe('outlines sharing an exact edge', () => {
