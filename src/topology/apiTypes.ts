@@ -7,7 +7,7 @@
 
 import type { Vec2, Vec3 } from '@/core/types.js';
 import type { AnyShape, Dimension, Edge, Face, Wire, Shape3D } from '@/core/shapeTypes.js';
-import type { ShapeFinder } from '@/query/finderFns.js';
+import type { EdgeFinderFn, FaceFinderFn, ShapeFinder } from '@/query/finderFns.js';
 
 /**
  * Structural type matching a Drawing's wire-producing interface.
@@ -22,8 +22,16 @@ export interface DrawingLike {
 // FinderFn — callback that configures a finder
 // ---------------------------------------------------------------------------
 
+// Edge callbacks are handed edgeFinder() and face callbacks faceFinder() at runtime, so the
+// parameter carries their filters (inDirection, ofLength, parallelTo, ...), not just the base set.
+type FinderFor<T extends AnyShape<Dimension>> = T extends Edge
+  ? EdgeFinderFn
+  : T extends Face
+    ? FaceFinderFn
+    : ShapeFinder<T>;
+
 /** Callback that configures a shape finder for inline use in modifiers. */
-export type FinderFn<T extends AnyShape<Dimension>> = (finder: ShapeFinder<T>) => ShapeFinder<T>;
+export type FinderFn<T extends AnyShape<Dimension>> = (finder: FinderFor<T>) => ShapeFinder<T>;
 
 // ---------------------------------------------------------------------------
 // FilletRadius — all radius modes for fillet()
