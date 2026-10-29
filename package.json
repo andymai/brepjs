@@ -281,7 +281,7 @@
     "knip": "6.27.0",
     "lint-staged": "17.6.0",
     "lz-string": "1.5.0",
-    "occt-wasm": "5.9.0",
+    "occt-wasm": "5.10.0",
     "prettier": "3.9.10",
     "puppeteer": "25.14.0",
     "size-limit": "14.2.0",
