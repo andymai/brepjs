@@ -12,7 +12,7 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 | Format                  | Read | Write | Use case                                |
 | ----------------------- | ---- | ----- | --------------------------------------- |
 | **STEP** (.step, .stp)  | ✓    | ✓     | Industry-standard B-Rep round-trip      |
-| **IGES** (.igs, .iges)  | ✓    | ✓     | Older B-Rep round-trip; STEP preferred  |
+| **IGES** (.igs, .iges)  | ✓\*  | ✓\*   | Older B-Rep round-trip; STEP preferred  |
 | **BREP** (.brep)        | ✓    | ✓     | OpenCascade-native; smallest, fastest   |
 | **STL** (.stl)          | ✓    | ✓     | 3D printing, mesh-only                  |
 | **OBJ** (.obj)          | ✓    | ✓     | Mesh export for renderers               |
@@ -21,7 +21,9 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 | **DXF** (.dxf)          | ✓    | ✓     | 2D laser cutting                        |
 | **SVG** (.svg)          | ✓    | ✓     | 2D for the web / signage                |
 
-STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work.
+\* IGES needs a kernel built with an IGES translator. The default occt-wasm kernel has none, so there `importIGES` and `exportIGES` return an `UNSUPPORTED_CAPABILITY` error; exchange the model as STEP instead.
+
+STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`, and a file with several bodies imports as a `Compound` of them. Because every triangle becomes a face, large meshes take seconds to tens of seconds: roughly 2.5 seconds per 10,000 triangles on the default occt-wasm kernel (about 15 seconds for 50,000), and up to about twice that for a file with several bodies.
 
 ## Export
 
@@ -268,11 +270,12 @@ The result is a STEP file with one face per input triangle. Acceptable for low-r
 
 ## What can go wrong
 
-| Failure                                                           | Cause                                                                   |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `STEP_IMPORT_FAILED` / `IGES_IMPORT_FAILED` / `STL_IMPORT_FAILED` | The file is malformed, has no geometry, or is in an unsupported dialect |
-| `STEP_EXPORT_FAILED` / `STL_EXPORT_FAILED` / `IGES_EXPORT_FAILED` | The kernel's writer rejected the shape                                  |
-| `STEP_EXPORT_CRASHED` / `STL_EXPORT_CRASHED`                      | The shape contains geometry the writer cannot serialize                 |
+| Failure                                                           | Cause                                                                             |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `STEP_IMPORT_FAILED` / `IGES_IMPORT_FAILED` / `STL_IMPORT_FAILED` | The file is malformed, has no geometry, or is in an unsupported dialect           |
+| `STEP_EXPORT_FAILED` / `STL_EXPORT_FAILED` / `IGES_EXPORT_FAILED` | The kernel's writer rejected the shape                                            |
+| `STEP_EXPORT_CRASHED` / `STL_EXPORT_CRASHED`                      | The shape contains geometry the writer cannot serialize                           |
+| `UNSUPPORTED_CAPABILITY` from `importIGES` / `exportIGES`         | The active kernel has no IGES translator (the default occt-wasm kernel); use STEP |
 
 ## Next steps
 

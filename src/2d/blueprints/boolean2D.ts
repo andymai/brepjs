@@ -1,12 +1,9 @@
 import { bug, safeIndex } from '@/core/errors.js';
-import { unwrap } from '@/core/result.js';
 import Blueprint from './blueprint.js';
 import Blueprints from './blueprints.js';
 import CompoundBlueprint from './compoundBlueprint.js';
 import { organiseBlueprints } from './lib.js';
 import { fuseBlueprints, cutBlueprints, intersectBlueprints } from './booleanOperations.js';
-import type { Point2D } from '@/2d/lib/index.js';
-import { intersectCurves, removeDuplicatePoints } from '@/2d/lib/index.js';
 
 /**
  * Union type for all 2D shape representations, including `null` for empty results.
@@ -14,36 +11,6 @@ import { intersectCurves, removeDuplicatePoints } from '@/2d/lib/index.js';
  * Used throughout the 2D boolean API as both input and output of operations.
  */
 export type Shape2D = Blueprint | Blueprints | CompoundBlueprint | null;
-
-const genericIntersects = (
-  first: Blueprint | CompoundBlueprint | Blueprints,
-  second: Blueprint | CompoundBlueprint | Blueprints
-): boolean => {
-  if (first instanceof Blueprint && second instanceof Blueprint) {
-    let allIntersections: Point2D[] = [];
-
-    first.curves.forEach((thisCurve) => {
-      second.curves.forEach((otherCurve) => {
-        const { intersections, commonSegmentsPoints } = unwrap(
-          intersectCurves(thisCurve, otherCurve)
-        );
-        allIntersections.push(...intersections);
-        allIntersections.push(...commonSegmentsPoints);
-      });
-    });
-
-    allIntersections = removeDuplicatePoints(allIntersections);
-    return allIntersections.length > 1;
-  }
-  if (first instanceof CompoundBlueprint || first instanceof Blueprints) {
-    return first.blueprints.some((bp) => genericIntersects(bp, second));
-  }
-  if (second instanceof CompoundBlueprint || second instanceof Blueprints) {
-    return second.blueprints.some((bp) => genericIntersects(first, bp));
-  }
-
-  bug('genericIntersects', 'Unhandled shape combination in genericIntersects');
-};
 
 const genericFuse = (
   first: Blueprint | CompoundBlueprint,
@@ -107,8 +74,10 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
         otherIsFused = true;
       }
 
+      // No crossing-point pre-check: an outline nested inside the other (or
+      // inside one of its holes) crosses nothing yet still has to merge, and
+      // the fuse itself sorts out containment and disjoint pairs.
       if (blueprint.boundingBox.isOut(otherBlueprint.boundingBox)) return;
-      if (!genericIntersects(blueprint, otherBlueprint)) return;
 
       let newFused;
       if (blueprint instanceof Blueprints || otherBlueprint instanceof Blueprints) {
@@ -320,7 +289,8 @@ export const cut2D = (
   if (first instanceof CompoundBlueprint) {
     const wrapper = safeIndex(first.blueprints, 0, 'cut2D');
     if (second instanceof Blueprint && !second.intersects(wrapper)) {
-      // Tool is entirely outside the compound shape — nothing to cut
+      // The boundaries never meet, so one point of each decides the nesting.
+      if (second.isInside(wrapper.firstPoint)) return null;
       if (!wrapper.isInside(second.firstPoint)) return first.clone();
       const cuts = fuse2D(second, new Blueprints(first.blueprints.slice(1)));
       return organiseBlueprints([wrapper, ...allBlueprints(cuts)]);

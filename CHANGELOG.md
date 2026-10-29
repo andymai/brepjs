@@ -1,5 +1,19 @@
 # Changelog
 
+## [20.12.8](https://github.com/andymai/brepjs/compare/brepjs-v20.12.7...brepjs-v20.12.8) (2026-10-29)
+
+
+### Bug Fixes
+
+* **io:** import STL, OBJ, 3MF, and SVG as the shapes they describe ([5a4724a](https://github.com/andymai/brepjs/commit/5a4724a6618648d83cc41bf12d910894042bbf2e))
+
+## [20.12.7](https://github.com/andymai/brepjs/compare/brepjs-v20.12.6...brepjs-v20.12.7) (2026-10-29)
+
+
+### Bug Fixes
+
+* **2d:** handle split edges, shared edges, and nesting in 2D booleans ([6c475ec](https://github.com/andymai/brepjs/commit/6c475ec322f90d7506199bf21ce6c2c7a3f1db66))
+
 ## [20.12.6](https://github.com/andymai/brepjs/compare/brepjs-v20.12.5...brepjs-v20.12.6) (2026-10-29)
 
 

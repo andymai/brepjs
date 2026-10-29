@@ -10,7 +10,7 @@ export const samePoint = (x: Point2D, y: Point2D): boolean =>
   defaultSamePoint(x, y, PRECISION_INTERSECTION);
 
 // ---------------------------------------------------------------------------
-// Hashing utilities for O(1) lookup of points and segments
+// Hashing utilities for O(1) point lookup
 // ---------------------------------------------------------------------------
 
 /**
@@ -20,16 +20,6 @@ export const samePoint = (x: Point2D, y: Point2D): boolean =>
  */
 export function hashPoint(p: Point2D): string {
   return `${p[0].toFixed(9)},${p[1].toFixed(9)}`;
-}
-
-/**
- * Hash a segment by both orientations for bidirectional lookup.
- * The smaller hash comes first so that (A,B) and (B,A) produce the same key.
- */
-export function hashSegment(first: Point2D, last: Point2D): string {
-  const h1 = hashPoint(first);
-  const h2 = hashPoint(last);
-  return h1 < h2 ? `${h1}|${h2}` : `${h2}|${h1}`;
 }
 
 // ---------------------------------------------------------------------------

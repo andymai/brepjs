@@ -120,6 +120,36 @@ describe('importSVG', () => {
     expect(result.value).toHaveLength(2);
   });
 
+  it('finds paths whose tag name is followed by a newline or tab (Inkscape layout)', () => {
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg">',
+      '  <path',
+      '     id="path1"',
+      '     d="M 0 0 L 10 0 L 10 10 Z" />',
+      '  <path\td="M 0 0 L 5 0 L 5 5 L 0 5 Z"\tstyle="fill:none" />',
+      '</svg>',
+    ].join('\n');
+    const result = importSVG(svg);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.map((bp) => bp.curves.length)).toEqual([3, 4]);
+  });
+
+  it('ignores attributes whose name merely ends in d', () => {
+    const svg = '<svg><path data-d="M 0 0 L 1 0 Z" d="M 0 0 L 10 0 L 10 10 L 0 10 Z" /></svg>';
+    const result = importSVG(svg);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0]?.curves).toHaveLength(4);
+  });
+
+  it('does not treat other elements starting with "path" as paths', () => {
+    const svg = '<svg><pathology d="M 0 0 L 10 0 L 10 10 Z" /></svg>';
+    const result = importSVG(svg);
+    expect(result.ok).toBe(false);
+  });
+
   it('handles single-quoted d attributes', () => {
     const svg = `<svg><path d='M 0 0 L 10 0 L 10 10 Z' /></svg>`;
     const result = importSVG(svg);

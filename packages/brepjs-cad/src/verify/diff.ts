@@ -78,12 +78,25 @@ export async function runDiff(aPath: string, bPath: string): Promise<DiffReport>
 
   const areaDelta = areaOf(brep, sb, errors) - areaOf(brep, sa, errors);
 
-  let volumeDelta = 0;
-  let symmetricDifferenceVolume = 0;
+  let volumeDelta: number | null = null;
+  let symmetricDifferenceVolume: number | null = null;
   if (isShape3D(sa) && isShape3D(sb)) {
     volumeDelta = volumeOf(brep, sb, errors) - volumeOf(brep, sa, errors);
     symmetricDifferenceVolume = cutVolume(brep, sa, sb, errors) + cutVolume(brep, sb, sa, errors);
+  } else {
+    for (const [side, shape] of [
+      ['a', sa],
+      ['b', sb],
+    ] as const) {
+      if (!isShape3D(shape)) errors.push(noVolumeError(brep, side, shape));
+    }
   }
 
   return { volumeDelta, areaDelta, bboxDelta, symmetricDifferenceVolume, errors };
+}
+
+function noVolumeError(brep: BrepNs, side: 'a' | 'b', shape: AnyShape): string {
+  const kind = brep.getShapeKind(shape);
+  const article = /^[aeiou]/.test(kind) ? 'an' : 'a';
+  return `volume: ${side} is ${article} ${kind}, which has no volume, so volumeDelta and symmetricDifferenceVolume are null`;
 }

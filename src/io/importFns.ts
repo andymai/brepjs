@@ -5,9 +5,12 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castResultShape } from '@/core/shapeTypes.js';
+import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
+import { getFaces } from '@/topology/topologyQueryFns.js';
+import { igesUnsupportedError } from './igesSupport.js';
+import { sewFacesIntoSolids } from './ioUtils.js';
 
 /**
  * Import a STEP file from a Blob.
@@ -46,16 +49,26 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
   }
 }
 
+const STL_SEW_TOLERANCE = 1e-6;
+
 /**
  * Import an STL file from a Blob.
  *
- * Reads the mesh, unifies same-domain faces with `ShapeUpgrade_UnifySameDomain`,
- * and wraps the result as a solid.
+ * Reads the triangle mesh and sews its facets together. A closed mesh becomes a
+ * `Solid` (one planar face per facet), so booleans and volume measurement work on
+ * it directly. An open mesh has no interior, so it comes back as a sewn `Shell`.
+ * A file with several bodies comes back as a `Compound` holding a `Solid` per
+ * closed body and a `Shell` per open one.
  *
  * @param blob - A Blob or File containing STL data (binary or ASCII).
- * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported solid (a shell for an open mesh, a
+ *   compound for several bodies), or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks Every triangle becomes its own B-Rep face, so import time grows with
+ * the triangle count: on the default occt-wasm kernel, roughly 2.5 seconds per
+ * 10,000 triangles (about 15 seconds for 50,000), and up to about twice that
+ * when the file holds several bodies. The temporary file on the WASM FS is
+ * cleaned up automatically.
  *
  * @example
  * ```ts
@@ -65,11 +78,15 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
 export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
-    const shape = getKernel().importSTL(data);
-    if (shape.IsNull()) {
+    const raw = getKernel().importSTL(data);
+    if (raw.IsNull()) {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
-    return ok(castResultShape(shape));
+    const shape = castResultShape(raw);
+    if (isSolid(shape)) return ok(shape);
+    using facets = shape;
+    const faces = getFaces(facets).map((f) => f.wrapped);
+    return ok(sewFacesIntoSolids(faces, STL_SEW_TOLERANCE));
   } catch (e) {
     return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file', e));
   }
@@ -81,7 +98,9 @@ export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
  * @param blob - A Blob or File containing IGES data (.iges / .igs).
  * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks The temporary file on the WASM FS is cleaned up automatically. The
+ * default occt-wasm kernel is built without an IGES translator, so there this
+ * returns an `UNSUPPORTED_CAPABILITY` error; import STEP instead.
  *
  * @example
  * ```ts
@@ -104,6 +123,9 @@ export async function importIGES(blob: Blob): Promise<Result<UnknownDimShape>> {
     }
     return ok(castResultShape(shapes[0]));
   } catch (e) {
-    return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e));
+    return err(
+      igesUnsupportedError('importIGES', e) ??
+        ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e)
+    );
   }
 }

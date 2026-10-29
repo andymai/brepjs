@@ -29,6 +29,7 @@ import {
   blueprintsIntersectionSegments,
   isCommonSegmentMatch,
 } from '@/2d/blueprints/intersectionSegments.js';
+import { make2dSegmentCurve } from '@/2d/lib/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -579,21 +580,29 @@ describe('intersect2D extended', () => {
 });
 
 describe('isCommonSegmentMatch (reverse-oriented common segments)', () => {
+  const common = () => [make2dSegmentCurve([0, 0], [10, 0])];
+
   it('matches forward-oriented common segment', () => {
-    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
-    expect(isCommonSegmentMatch(commonSegmentsPoints, [0, 0], [10, 0])).toBe(true);
+    expect(isCommonSegmentMatch(common(), [make2dSegmentCurve([0, 0], [10, 0])])).toBe(true);
   });
 
   it('matches reverse-oriented common segment', () => {
     // The segment runs (10,0)→(0,0) but the common segment was detected as (0,0)→(10,0).
     // This exercises the reverse-orientation branch fixed by the copy-paste bug.
-    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
-    expect(isCommonSegmentMatch(commonSegmentsPoints, [10, 0], [0, 0])).toBe(true);
+    expect(isCommonSegmentMatch(common(), [make2dSegmentCurve([10, 0], [0, 0])])).toBe(true);
   });
 
   it('rejects non-matching segment', () => {
-    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
-    expect(isCommonSegmentMatch(commonSegmentsPoints, [0, 0], [5, 5])).toBe(false);
+    expect(isCommonSegmentMatch(common(), [make2dSegmentCurve([0, 0], [5, 5])])).toBe(false);
+  });
+
+  it('rejects a path that only shares the common segment endpoints', () => {
+    const detour = [
+      make2dSegmentCurve([10, 0], [10, 5]),
+      make2dSegmentCurve([10, 5], [0, 5]),
+      make2dSegmentCurve([0, 5], [0, 0]),
+    ];
+    expect(isCommonSegmentMatch(common(), detour)).toBe(false);
   });
 
   it('edge-adjacent rectangles detect common segments', () => {

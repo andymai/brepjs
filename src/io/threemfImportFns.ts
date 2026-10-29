@@ -1,5 +1,5 @@
 /**
- * 3MF import — parses a 3MF ZIP archive and builds a solid via sewing.
+ * 3MF import: parses a 3MF ZIP archive and builds one solid per placed object via sewing.
  */
 
 import { getKernel } from '@/kernel/index.js';
@@ -9,6 +9,7 @@ import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
 import { sewMeshToSolid } from './ioUtils.js';
 import { colorShape } from '@/topology/metadata/colorFns.js';
+import { makeCompound } from '@/topology/solidBuilders.js';
 
 // ---------------------------------------------------------------------------
 // ZIP extraction (store-only, no compression)
@@ -66,11 +67,56 @@ function extractFromZip(data: Uint8Array, target: string): Uint8Array | null {
 // XML parsing (indexOf-based, no regex — CodeQL safe)
 // ---------------------------------------------------------------------------
 
+type Vec3 = [number, number, number];
+type Rgba = [number, number, number, number];
+/** A 3MF `transform`: a 4x3 matrix in row-major order that multiplies row vectors. */
+type Transform = readonly number[];
+
 interface ParsedMesh {
-  vertices: Array<[number, number, number]>;
+  vertices: Vec3[];
   triangles: Array<[number, number, number]>;
   /** Per-triangle color from colorgroup/basematerials. Index matches triangles array. */
-  triangleColors: Array<[number, number, number, number] | null>;
+  triangleColors: Array<Rgba | null>;
+}
+
+interface ObjectRef {
+  objectId: string;
+  transform: Transform | null;
+}
+
+interface ModelObject {
+  mesh: ParsedMesh | null;
+  components: ObjectRef[];
+}
+
+/** Millimeters per model unit, keyed by the values the 3MF `unit` attribute allows. */
+const MM_PER_UNIT: Readonly<Record<string, number>> = {
+  micron: 0.001,
+  millimeter: 1,
+  centimeter: 10,
+  inch: 25.4,
+  foot: 304.8,
+  meter: 1000,
+};
+
+/**
+ * Components nest and repeat, so a few KB of XML can describe billions of
+ * placements; stop expanding long before that exhausts memory.
+ */
+const MAX_PLACED_OBJECTS = 100_000;
+/** At roughly 2.5 s per 10,000 sewn triangles, more than this would take hours to build. */
+const MAX_PLACED_TRIANGLES = 2_000_000;
+/** Each placement copies its object's vertices; three per triangle fits any mesh under the triangle limit. */
+const MAX_PLACED_VERTICES = 3 * MAX_PLACED_TRIANGLES;
+/** Assemblies nest a few levels deep; a far deeper chain only serves to exhaust the stack. */
+const MAX_COMPONENT_DEPTH = 64;
+
+/** The placed meshes so far, with running totals checked against the limits above. */
+interface Expansion {
+  meshes: ParsedMesh[];
+  objects: number;
+  triangles: number;
+  vertices: number;
 }
 
 /** Check if a char code is a valid XML attribute name character [a-zA-Z0-9_]. */
@@ -109,13 +155,30 @@ function parseTagAttrs(tag: string): Record<string, string> {
   return attrs;
 }
 
+/** True when `<tagName` at `start` names that exact element (not a longer one like `<vertices`). */
+function isTagStart(xml: string, start: number, tagName: string): boolean {
+  const next = xml.charCodeAt(start + tagName.length + 1);
+  // whitespace, '/' or '>'
+  return next === 32 || next === 9 || next === 10 || next === 13 || next === 47 || next === 62;
+}
+
+/** Index of the next `<tagName` start tag at or after `from`, or -1. */
+function indexOfTag(xml: string, tagName: string, from: number): number {
+  const needle = `<${tagName}`;
+  let pos = from;
+  for (;;) {
+    const start = xml.indexOf(needle, pos);
+    if (start < 0 || isTagStart(xml, start, tagName)) return start;
+    pos = start + needle.length;
+  }
+}
+
 /** Collect all tags matching `<tagName ...>` using indexOf (O(n), no regex). */
 function findTags(xml: string, tagName: string): string[] {
   const tags: string[] = [];
-  const needle = `<${tagName} `;
   let pos = 0;
   while (pos < xml.length) {
-    const start = xml.indexOf(needle, pos);
+    const start = indexOfTag(xml, tagName, pos);
     if (start < 0) break;
     const end = xml.indexOf('>', start);
     if (end < 0) break;
@@ -126,15 +189,30 @@ function findTags(xml: string, tagName: string): string[] {
 }
 
 /**
- * Extract a block `<tagName ...>...</tagName>` from xml.
- * Returns the full block string including open/close tags, or null if not found.
+ * Collect every `<tagName ...>...</tagName>` element as its start tag plus inner
+ * content. A self-closing `<tagName ... />` yields an empty body.
  */
-function findTagBlock(xml: string, tagName: string): string | null {
-  const open = xml.indexOf(`<${tagName}`);
-  if (open < 0) return null;
-  const close = xml.indexOf(`</${tagName}>`, open);
-  if (close < 0) return null;
-  return xml.slice(open, close + tagName.length + 3);
+function findElements(xml: string, tagName: string): Array<{ tag: string; body: string }> {
+  const elements: Array<{ tag: string; body: string }> = [];
+  const close = `</${tagName}>`;
+  let pos = 0;
+  while (pos < xml.length) {
+    const start = indexOfTag(xml, tagName, pos);
+    if (start < 0) break;
+    const tagEnd = xml.indexOf('>', start);
+    if (tagEnd < 0) break;
+    const tag = xml.slice(start, tagEnd + 1);
+    if (xml.charCodeAt(tagEnd - 1) === 47) {
+      elements.push({ tag, body: '' });
+      pos = tagEnd + 1;
+      continue;
+    }
+    const closeAt = xml.indexOf(close, tagEnd);
+    if (closeAt < 0) break;
+    elements.push({ tag, body: xml.slice(tagEnd + 1, closeAt) });
+    pos = closeAt + close.length;
+  }
+  return elements;
 }
 
 /** Parse a hex color string like #RRGGBB or #RRGGBBAA into [r,g,b,a] floats. */
@@ -218,51 +296,33 @@ function parseResourceColors(xml: string): Map<number, Array<[number, number, nu
   return resources;
 }
 
-function parseModelXml(xml: string): ParsedMesh {
-  const vertices: Array<[number, number, number]> = [];
+function parseMesh(
+  body: string,
+  objectAttrs: Record<string, string>,
+  resourceColors: Map<number, Rgba[]>
+): ParsedMesh {
+  const vertices: Vec3[] = [];
   const triangles: Array<[number, number, number]> = [];
-  const triangleColors: Array<[number, number, number, number] | null> = [];
+  const triangleColors: Array<Rgba | null> = [];
 
-  // Build resource color map (colorgroup + basematerials)
-  const resourceColors = parseResourceColors(xml);
-
-  // Attribute-order-independent vertex extraction (no regex — CodeQL safe)
-  for (const tag of findTags(xml, 'vertex')) {
+  // Attribute-order-independent vertex extraction (no regex, CodeQL safe)
+  for (const tag of findTags(body, 'vertex')) {
     const a = parseTagAttrs(tag);
     if (a['x'] !== undefined && a['y'] !== undefined && a['z'] !== undefined) {
       vertices.push([parseFloat(a['x']), parseFloat(a['y']), parseFloat(a['z'])]);
     }
   }
 
-  // Parse object-level default pid/pindex
-  let objectDefaultPid: number | null = null;
-  let objectDefaultPindex: number | null = null;
-  const objectBlock = findTagBlock(xml, 'object');
-  if (objectBlock !== null) {
-    const objTagEnd = objectBlock.indexOf('>');
-    if (objTagEnd >= 0) {
-      const objTag = objectBlock.slice(0, objTagEnd + 1);
-      const objAttrs = parseTagAttrs(objTag);
-      if (objAttrs['pid'] !== undefined) {
-        objectDefaultPid = parseInt(objAttrs['pid'], 10);
-      }
-      if (objAttrs['pindex'] !== undefined) {
-        objectDefaultPindex = parseInt(objAttrs['pindex'], 10);
-      }
-    }
-  }
-
   // Attribute-order-independent triangle extraction
-  for (const tag of findTags(xml, 'triangle')) {
+  for (const tag of findTags(body, 'triangle')) {
     const a = parseTagAttrs(tag);
     if (a['v1'] !== undefined && a['v2'] !== undefined && a['v3'] !== undefined) {
       triangles.push([parseInt(a['v1'], 10), parseInt(a['v2'], 10), parseInt(a['v3'], 10)]);
 
       // Resolve per-triangle color via pid/p1, falling back to object defaults
-      let color: [number, number, number, number] | null = null;
-      const pidStr = a['pid'] ?? (objectDefaultPid !== null ? String(objectDefaultPid) : undefined);
-      const p1Str =
-        a['p1'] ?? (objectDefaultPindex !== null ? String(objectDefaultPindex) : undefined);
+      let color: Rgba | null = null;
+      const pidStr = a['pid'] ?? objectAttrs['pid'];
+      const p1Str = a['p1'] ?? objectAttrs['pindex'];
 
       if (pidStr !== undefined && p1Str !== undefined) {
         const pid = parseInt(pidStr, 10);
@@ -277,6 +337,148 @@ function parseModelXml(xml: string): ParsedMesh {
   }
 
   return { vertices, triangles, triangleColors };
+}
+
+function parseTransform(value: string | undefined): Transform | null {
+  if (value === undefined) return null;
+  const m = value.trim().split(/\s+/).map(Number);
+  return m.length === 12 && m.every(Number.isFinite) ? m : null;
+}
+
+function parseObjectRefs(tags: string[]): ObjectRef[] {
+  const refs: ObjectRef[] = [];
+  for (const tag of tags) {
+    const a = parseTagAttrs(tag);
+    const objectId = a['objectid'];
+    if (objectId !== undefined) refs.push({ objectId, transform: parseTransform(a['transform']) });
+  }
+  return refs;
+}
+
+/** `inner` then `outer`: with row vectors that is the matrix product inner × outer. */
+function composeTransforms(inner: Transform | null, outer: Transform | null): Transform | null {
+  if (inner === null) return outer;
+  if (outer === null) return inner;
+  const out: number[] = [];
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 3; col++) {
+      let sum = row === 3 ? (outer[9 + col] ?? 0) : 0;
+      for (let k = 0; k < 3; k++) sum += (inner[row * 3 + k] ?? 0) * (outer[k * 3 + col] ?? 0);
+      out.push(sum);
+    }
+  }
+  return out;
+}
+
+function transformMesh(mesh: ParsedMesh, m: Transform | null): ParsedMesh {
+  if (m === null) return mesh;
+  const [m0 = 0, m1 = 0, m2 = 0, m3 = 0, m4 = 0, m5 = 0, m6 = 0, m7 = 0, m8 = 0] = m;
+  const [m9 = 0, m10 = 0, m11 = 0] = m.slice(9);
+  const vertices = mesh.vertices.map(([x, y, z]): Vec3 => [
+    x * m0 + y * m3 + z * m6 + m9,
+    x * m1 + y * m4 + z * m7 + m10,
+    x * m2 + y * m5 + z * m8 + m11,
+  ]);
+  // A mirroring transform turns the winding inside out; swap two corners to keep normals outward.
+  const det = m0 * (m4 * m8 - m5 * m7) - m1 * (m3 * m8 - m5 * m6) + m2 * (m3 * m7 - m4 * m6);
+  const triangles =
+    det < 0
+      ? mesh.triangles.map(([a, b, c]): [number, number, number] => [a, c, b])
+      : mesh.triangles;
+  return { vertices, triangles, triangleColors: mesh.triangleColors };
+}
+
+/** Place `ref` and its components into `out`; returns why it stopped early, or `null`. */
+function instantiate(
+  objects: Map<string, ModelObject>,
+  ref: ObjectRef,
+  outer: Transform | null,
+  ancestors: Set<string>,
+  out: Expansion
+): string | null {
+  const object = objects.get(ref.objectId);
+  // A component that refers back to an enclosing object (malformed file) would recurse forever.
+  if (object === undefined || ancestors.has(ref.objectId)) return null;
+  if (ancestors.size > MAX_COMPONENT_DEPTH) {
+    return `components nest more than ${MAX_COMPONENT_DEPTH} levels deep`;
+  }
+  if (++out.objects > MAX_PLACED_OBJECTS) {
+    return `the build places more than ${MAX_PLACED_OBJECTS.toLocaleString('en-US')} objects`;
+  }
+  const transform = composeTransforms(ref.transform, outer);
+  if (object.mesh !== null && object.mesh.triangles.length > 0) {
+    out.triangles += object.mesh.triangles.length;
+    if (out.triangles > MAX_PLACED_TRIANGLES) {
+      return `the build places more than ${MAX_PLACED_TRIANGLES.toLocaleString('en-US')} triangles`;
+    }
+    out.vertices += object.mesh.vertices.length;
+    if (out.vertices > MAX_PLACED_VERTICES) {
+      return `the build places more than ${MAX_PLACED_VERTICES.toLocaleString('en-US')} vertices`;
+    }
+    out.meshes.push(transformMesh(object.mesh, transform));
+  }
+  // One set shared down the chain, so memory grows with depth rather than depth squared.
+  ancestors.add(ref.objectId);
+  try {
+    for (const component of object.components) {
+      const stopped = instantiate(objects, component, transform, ancestors, out);
+      if (stopped !== null) return stopped;
+    }
+  } finally {
+    ancestors.delete(ref.objectId);
+  }
+  return null;
+}
+
+/**
+ * Parse the model XML into one mesh per placed object, in millimeters.
+ *
+ * Each object keeps its own vertex list (triangle indices are per object), build
+ * items and components contribute their transforms, and the model `unit` scales
+ * coordinates to millimeters. Fails once the build expands past
+ * {@link MAX_PLACED_OBJECTS} placements, {@link MAX_PLACED_TRIANGLES} triangles,
+ * or {@link MAX_PLACED_VERTICES} vertices, or nests deeper than
+ * {@link MAX_COMPONENT_DEPTH} levels.
+ */
+function parseModelXml(xml: string): Result<ParsedMesh[]> {
+  const resourceColors = parseResourceColors(xml);
+
+  const modelTag = findTags(xml, 'model')[0];
+  const unit = modelTag !== undefined ? parseTagAttrs(modelTag)['unit'] : undefined;
+  const mm = MM_PER_UNIT[unit ?? 'millimeter'] ?? 1;
+  const toMillimeters: Transform | null = mm === 1 ? null : [mm, 0, 0, 0, mm, 0, 0, 0, mm, 0, 0, 0];
+
+  const objects = new Map<string, ModelObject>();
+  for (const { tag, body } of findElements(xml, 'object')) {
+    const attrs = parseTagAttrs(tag);
+    const id = attrs['id'];
+    if (id === undefined) continue;
+    const meshElement = findElements(body, 'mesh')[0];
+    objects.set(id, {
+      mesh: meshElement ? parseMesh(meshElement.body, attrs, resourceColors) : null,
+      components: parseObjectRefs(findTags(body, 'component')),
+    });
+  }
+
+  const build = findElements(xml, 'build')[0];
+  let items = build ? parseObjectRefs(findTags(build.body, 'item')) : [];
+  if (items.length === 0) {
+    // No build items: place every mesh object as authored.
+    items = [...objects]
+      .filter(([, object]) => object.mesh !== null)
+      .map(([objectId]) => ({ objectId, transform: null }));
+  }
+
+  const expansion: Expansion = { meshes: [], objects: 0, triangles: 0, vertices: 0 };
+  for (const item of items) {
+    const stopped = instantiate(objects, item, toMillimeters, new Set(), expansion);
+    if (stopped !== null) {
+      return err(
+        ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, `3MF model is too large to import: ${stopped}`)
+      );
+    }
+  }
+  return ok(expansion.meshes.filter((m) => m.vertices.length > 0 && m.triangles.length > 0));
 }
 
 /** Find the most common non-null color across all triangle colors. */
@@ -338,6 +540,24 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
   }
 }
 
+/** One solid per mesh; several are grouped into a compound that takes ownership of them. */
+function buildShapeFromMeshes(meshes: ParsedMesh[]): Result<UnknownDimShape> {
+  const solids: UnknownDimShape[] = [];
+  for (const mesh of meshes) {
+    const solid = buildSolidFromMesh(mesh);
+    if (!solid.ok) {
+      for (const built of solids) built[Symbol.dispose]();
+      return solid;
+    }
+    solids.push(solid.value);
+  }
+  const [first] = solids;
+  if (solids.length === 1 && first !== undefined) return ok(first);
+  const compound = makeCompound(solids);
+  for (const built of solids) built[Symbol.dispose]();
+  return ok(compound);
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -345,11 +565,14 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
 /**
  * Import a 3MF file from a Blob.
  *
- * Extracts the model XML from the ZIP archive, parses vertices and triangles,
- * and builds a solid by sewing the resulting triangular faces.
+ * Extracts the model XML from the ZIP archive and builds one solid per placed
+ * object by sewing its triangles. Build-item and component transforms are
+ * applied, and coordinates are scaled from the model `unit` to millimeters.
  *
  * @param blob - A Blob or File containing 3MF data (.3mf).
- * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported solid (a `Compound` of solids when the
+ *   build places several objects), or an error if parsing fails or the build
+ *   expands to more than 100,000 placed objects or 2,000,000 triangles.
  *
  * @example
  * ```ts
@@ -374,22 +597,24 @@ export async function importThreeMF(blob: Blob): Promise<Result<UnknownDimShape>
 
     const xml = new TextDecoder().decode(modelData);
     const parsed = parseModelXml(xml);
+    if (!parsed.ok) return parsed;
+    const meshes = parsed.value;
 
-    if (parsed.vertices.length === 0 || parsed.triangles.length === 0) {
+    if (meshes.length === 0) {
       return err(
         ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, '3MF model contains no valid geometry')
       );
     }
 
-    const solid = buildSolidFromMesh(parsed);
-    if (solid.ok) {
+    const shape = buildShapeFromMeshes(meshes);
+    if (shape.ok) {
       // Apply dominant color if any triangle colors were parsed
-      const dominantColor = findDominantColor(parsed.triangleColors);
+      const dominantColor = findDominantColor(meshes.flatMap((m) => m.triangleColors));
       if (dominantColor !== null) {
-        colorShape(solid.value, dominantColor);
+        colorShape(shape.value, dominantColor);
       }
     }
-    return solid;
+    return shape;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return err(ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, `3MF import failed: ${msg}`, e));

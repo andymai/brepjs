@@ -18,6 +18,7 @@ import {
 } from './meshCache.js';
 import { getFaceOrigins } from './shapeFns.js';
 import { getBounds, getSolids } from './topologyQueryFns.js';
+import { igesUnsupportedError } from '@/io/igesSupport.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
@@ -336,13 +337,19 @@ export function exportSTL(
  * Export a shape as an IGES file Blob.
  *
  * @returns Ok with a Blob (MIME type `application/iges`), or Err on failure.
+ *
+ * @remarks The default occt-wasm kernel is built without an IGES translator, so
+ * there this returns an `UNSUPPORTED_CAPABILITY` error; export STEP instead.
  */
 export function exportIGES(shape: AnyShape<Dimension>): Result<Blob> {
   try {
     const igesString = getKernel().exportIGES([shape.wrapped]);
     return ok(new Blob([igesString], { type: 'application/iges' }));
   } catch (e) {
-    return err(ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file', e));
+    return err(
+      igesUnsupportedError('exportIGES', e) ??
+        ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file', e)
+    );
   }
 }
 

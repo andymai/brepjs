@@ -4,9 +4,10 @@
  * when intersecting shapes that produce common (overlapping) segments.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
+  CompoundSketch,
   draw,
   drawCircle,
   drawRectangle,
@@ -16,14 +17,38 @@ import {
   intersectBlueprints,
   measureArea,
   Sketch,
+  Sketches,
   unwrap,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
+import { intersectCurves } from '@/2d/lib/index.js';
+import { Curve2D } from '@/2d/lib/curve2D.js';
+import { makeCircle2d } from '@/kernel/geometry2d.js';
 import type { Drawing } from '@/sketching/drawing.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+/** Summed face area of every outline in a drawing (holes subtracted); 0 when empty. */
+function totalArea(d: Drawing): number {
+  if (d.repr === '=== empty shape') return 0;
+  const sketch = d.sketchOnPlane('XY');
+  const parts = sketch instanceof Sketches ? sketch.sketches : [sketch];
+  let total = 0;
+  for (const part of parts) {
+    if (!(part instanceof Sketch || part instanceof CompoundSketch)) {
+      throw new Error('unexpected sketch type');
+    }
+    try {
+      using face = part.face();
+      total += unwrap(measureArea(face));
+    } finally {
+      part.delete();
+    }
+  }
+  return total;
+}
 
 /** Assert that a Drawing's bounding box matches expected width/height. */
 function expectBounds(d: Drawing, width: number, height: number, precision = 0.1) {
@@ -130,11 +155,10 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     // → arc corners at x=0 produce intersection points near y=±4
     const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
 
-    const result = profile.intersect(clip);
-    expect(result).toBeDefined();
-    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
-    expect(xMax - xMin).toBeGreaterThan(0);
-    expect(yMax - yMin).toBeGreaterThan(0);
+    // The outlines lie on either side of x=0 and only touch along it.
+    expect(totalArea(profile.intersect(clip))).toBe(0);
+    expect(totalArea(profile.fuse(clip))).toBeCloseTo(96 + 96 + Math.PI, 3);
+    expect(totalArea(profile.cut(clip))).toBeCloseTo(96, 3);
   });
 
   it('intersects gridfinity lip profile with clip rectangle — includeLip=true', () => {
@@ -436,3 +460,153 @@ describe.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
     });
   }
 );
+
+describe('chained booleans across already-split edges', () => {
+  const rectArea = 50 * 30;
+
+  it('cuts a second half disc from an edge split by the first', () => {
+    const result = drawRectangle(50, 30)
+      .cut(drawCircle(2).translate(25, 6))
+      .cut(drawCircle(2).translate(25, -6));
+    expect(totalArea(result)).toBeCloseTo(rectArea - 4 * Math.PI, 3);
+  });
+
+  it('cuts two notches from the same edge', () => {
+    const result = drawRectangle(50, 30)
+      .cut(drawRectangle(4, 4).translate(-10, -15))
+      .cut(drawRectangle(4, 4).translate(10, -15));
+    expect(totalArea(result)).toBeCloseTo(rectArea - 16, 3);
+  });
+
+  it.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
+    'fuses a circle onto an edge split by an earlier notch',
+    () => {
+      const result = drawRectangle(50, 30)
+        .cut(drawRectangle(4, 4).translate(-10, -15))
+        .fuse(drawCircle(3).translate(10, -15));
+      expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
+    }
+  );
+
+  it.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
+    'cuts a circle across a full-width slot',
+    () => {
+      const result = drawRectangle(50, 30).cut(drawRectangle(60, 4)).cut(drawCircle(8));
+      // The circle only removes what lies outside the slot (|y| > 2).
+      const inSlot = 2 * (2 * Math.sqrt(60) + 64 * Math.asin(0.25));
+      expect(totalArea(result)).toBeCloseTo(rectArea - 50 * 4 - (64 * Math.PI - inSlot), 3);
+    }
+  );
+
+  it('offsets a rectangle inward', () => {
+    expect(totalArea(drawRectangle(40, 20).offset(-2))).toBeCloseTo(36 * 16, 6);
+  });
+});
+
+describe('outlines sharing an exact edge', () => {
+  it('fuses two squares that share a whole edge', () => {
+    const result = drawRectangle(10, 10).fuse(drawRectangle(10, 10).translate(10, 0));
+    expect(totalArea(result)).toBeCloseTo(200, 3);
+  });
+
+  it('cuts a notch that shares part of an edge', () => {
+    const result = drawRectangle(10, 10).cut(drawRectangle(4, 2).translate(0, 4));
+    expect(totalArea(result)).toBeCloseTo(92, 3);
+  });
+});
+
+describe('outlines nested without crossing', () => {
+  const rectArea = 50 * 30;
+  const holed = () => drawRectangle(50, 30).cut(drawCircle(8));
+
+  it('fuses separate outlines into one that contains them all', () => {
+    const result = drawCircle(2).fuse(drawCircle(2).translate(10, 0)).fuse(drawRectangle(50, 50));
+    expect(totalArea(result)).toBeCloseTo(2500, 3);
+  });
+
+  it('fills a hole with an outline that covers it', () => {
+    expect(totalArea(holed().fuse(drawCircle(9)))).toBeCloseTo(rectArea, 3);
+  });
+
+  it('cuts an outline that sits inside an existing hole', () => {
+    expect(totalArea(holed().cut(drawCircle(3)))).toBeCloseTo(rectArea - 64 * Math.PI, 3);
+  });
+
+  it('cuts away a holed outline with a tool that covers it', () => {
+    expect(totalArea(holed().cut(drawRectangle(100, 100)))).toBe(0);
+  });
+});
+
+describe('arcs that coincide along part of their length', () => {
+  const disk = 25 * Math.PI;
+
+  it('combines a circle with an identical copy', () => {
+    expect(totalArea(drawCircle(5).fuse(drawCircle(5)))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).intersect(drawCircle(5)))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).cut(drawCircle(5)))).toBe(0);
+  });
+
+  it('combines a circle with a copy split at different points', () => {
+    // drawCircle splits at (+-5, 0); this copy splits at (0, +-5).
+    const resplit = draw([0, -5]).sagittaArc(0, 10, 5).sagittaArc(0, -10, 5).close();
+    expect(totalArea(drawCircle(5).fuse(resplit))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).cut(resplit))).toBe(0);
+  });
+
+  it('cuts a circle that coincides with a rounded end', () => {
+    const result = drawRoundedRectangle(20, 10, 5).cut(drawCircle(5).translate(-5, 0));
+    expect(totalArea(result)).toBeCloseTo(100, 3);
+  });
+
+  it.each([0.0005, 1e-7])(
+    'keeps large concentric circles apart when their radii differ by %s',
+    (delta) => {
+      const inner = drawCircle(1_000_000).blueprint;
+      const outer = drawCircle(1_000_000 + delta).blueprint;
+      for (const a of inner.curves) {
+        for (const b of outer.curves) {
+          const { intersections, commonSegments } = unwrap(intersectCurves(a, b, 1e-9));
+          expect(commonSegments).toHaveLength(0);
+          expect(intersections).toHaveLength(0);
+        }
+      }
+    }
+  );
+
+  it.skipIf(currentKernel !== 'occt-wasm').each([5e-11, 5e-13])(
+    'keeps a %s radian gap of a nearly full arc out of its overlap with a circle',
+    (gap) => {
+      const radius = 1_000_000;
+      const circle = new Curve2D(makeCircle2d(0, 0, radius, true));
+      const arc = new Curve2D({
+        __bk2d: 'trimmed',
+        basis: makeCircle2d(0, 0, radius, true),
+        tStart: 0,
+        tEnd: 2 * Math.PI - gap,
+      });
+      const { commonSegments } = unwrap(intersectCurves(circle, arc, 1e-9));
+      expect(commonSegments).toHaveLength(1);
+      const [x0, y0] = (commonSegments[0] as Curve2D).firstPoint;
+      const [x1, y1] = (commonSegments[0] as Curve2D).lastPoint;
+      expect(Math.hypot(x1 - x0, y1 - y0)).toBeCloseTo(radius * gap, 7);
+    }
+  );
+});
+
+describe('outlines that touch without crossing', () => {
+  const square = () => drawRectangle(10, 10);
+  const inscribed = () => drawCircle(5);
+  const disk = 25 * Math.PI;
+
+  it('combines a square with its inscribed circle', () => {
+    expect(totalArea(square().cut(inscribed()))).toBeCloseTo(100 - disk, 3);
+    expect(totalArea(square().fuse(inscribed()))).toBeCloseTo(100, 3);
+    expect(totalArea(square().intersect(inscribed()))).toBeCloseTo(disk, 3);
+    expect(totalArea(inscribed().cut(square()))).toBe(0);
+  });
+
+  it('keeps outlines that touch at a single point apart', () => {
+    const result = square().fuse(drawCircle(5).translate(10, 0));
+    expect(totalArea(result)).toBeCloseTo(100 + disk, 3);
+  });
+});

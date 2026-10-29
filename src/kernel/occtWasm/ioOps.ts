@@ -7,6 +7,7 @@
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmHandle, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, needsOcctWasm59, unwrap, wrapResult } from './helpers.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   buildAsciiSTL,
   buildBinarySTL,
@@ -261,16 +262,22 @@ export function exportIGES(
   makeCompound: CompoundFn,
   shapes: KernelShape[]
 ): string {
+  const exportIges = k.exportIges?.bind(k);
+  if (!exportIges)
+    throw new UnsupportedKernelOperationError('occt-wasm: exportIGES is unsupported');
   if (shapes.length === 1) {
-    return k.exportIges(unwrap(shapes[0]));
+    return exportIges(unwrap(shapes[0]));
   }
   const compound = makeCompound(shapes);
-  return k.exportIges(unwrap(compound));
+  return exportIges(unwrap(compound));
 }
 
 export function importIGES(k: OcctKernelWasm, data: string | ArrayBuffer): KernelShape[] {
+  const importIges = k.importIges?.bind(k);
+  if (!importIges)
+    throw new UnsupportedKernelOperationError('occt-wasm: importIGES is unsupported');
   const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
-  const id = k.importIges(str);
+  const id = importIges(str);
   return [wrapResult(k, id)];
 }
 

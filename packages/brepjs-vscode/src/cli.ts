@@ -14,9 +14,10 @@ export interface VerifyResult {
 
 export interface DiffResult {
   ok: boolean;
-  volumeDelta: number;
+  /** `null` when either part is not a 3D shape. */
+  volumeDelta: number | null;
   areaDelta: number;
-  symmetricDifferenceVolume: number;
+  symmetricDifferenceVolume: number | null;
   errors: string[];
 }
 

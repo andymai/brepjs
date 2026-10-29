@@ -1011,7 +1011,7 @@ export function intersectCurves2dFn(
   }
   // Analytic: circle-circle
   if (b1.__bk2d === 'circle' && b2.__bk2d === 'circle') {
-    return { points: intersectCircleCircle(c1, b1, c2, b2, tolerance), segments: [] };
+    return intersectCircleCircle(c1, b1, c2, b2, tolerance);
   }
   // General: numerical (with self-intersection handling)
   const isSelf = c1 === c2;
@@ -1025,9 +1025,31 @@ function unwrapCurve(c: Curve2dObj): Curve2dObj {
   return cur;
 }
 
-/** Check if parameter t is within the curve's domain. */
+/**
+ * The interval a curve covers on its innermost basis's parameter. A trimmed wrapper's own
+ * parameter runs 0..1, but the analytic solvers work on the unwrapped basis, so their
+ * parameters must be bounded by this interval rather than by `curveBounds(c)`.
+ */
+function basisInterval(c: Curve2dObj): { first: number; last: number } {
+  if (c.__bk2d !== 'trimmed') return curveBounds(c);
+  const a = basisParam(c.basis, c.tStart);
+  const b = basisParam(c.basis, c.tEnd);
+  return { first: Math.min(a, b), last: Math.max(a, b) };
+}
+
+function basisParam(c: Curve2dObj, t: number): number {
+  let cur = c;
+  let s = t;
+  while (cur.__bk2d === 'trimmed') {
+    s = cur.tStart + s * (cur.tEnd - cur.tStart);
+    cur = cur.basis;
+  }
+  return s;
+}
+
+/** Check if basis parameter t lies within the part of the basis that c covers. */
 function inDomain(c: Curve2dObj, t: number, tol: number): boolean {
-  const b = curveBounds(c);
+  const b = basisInterval(c);
   return t >= b.first - tol && t <= b.last + tol;
 }
 
@@ -1123,8 +1145,8 @@ function intersectLineLine(
   const cross = ex * l1.dy - ey * l1.dx;
   if (Math.abs(cross) > tol) return { points: [], segments: [] }; // parallel but not collinear
 
-  // Project c2 endpoints onto c1's parameter space
-  const b1 = curveBounds(c1);
+  // Project c2 endpoints onto l1's parameter space
+  const b1 = basisInterval(c1);
   const b2 = curveBounds(c2);
   const p2s = evaluateCurve2d(c2, b2.first);
   const p2e = evaluateCurve2d(c2, b2.last);
@@ -1179,44 +1201,74 @@ function intersectLineCircle(
   return results;
 }
 
-function intersectConcentricArcs(c1: Curve2dObj, c2: Curve2dObj, tol: number): [number, number][] {
-  const b1 = curveBounds(c1);
-  const b2 = curveBounds(c2);
+/**
+ * The counter-clockwise angular range [start, start + sweep] a circular curve covers,
+ * and whether the curve itself runs counter-clockwise through it.
+ */
+function arcSpan(c: Curve2dObj, circ: Circle2d): { start: number; sweep: number; ccw: boolean } {
+  const range = basisInterval(c);
+  const own = curveBounds(c);
+  const forward = basisParam(c, own.last) >= basisParam(c, own.first);
+  return {
+    // A clockwise circle evaluates angle -t, so its parameter range maps to [-last, -first].
+    start: circ.sense ? range.first : -range.last,
+    sweep: Math.min(range.last - range.first, 2 * Math.PI),
+    ccw: circ.sense === forward,
+  };
+}
 
-  const isFullCircle1 = Math.abs(b1.last - b1.first - 2 * Math.PI) < 1e-10;
-  const isFullCircle2 = Math.abs(b2.last - b2.first - 2 * Math.PI) < 1e-10;
+/** The arc of `circ` from angle `from` counter-clockwise to `to`, traversed as `ccw` says. */
+function arcBetween(circ: Circle2d, from: number, to: number, ccw: boolean): Curve2dObj {
+  const basis = makeCircle2d(circ.cx, circ.cy, circ.radius, ccw);
+  return ccw
+    ? { __bk2d: 'trimmed', basis, tStart: from, tEnd: to }
+    : { __bk2d: 'trimmed', basis, tStart: -to, tEnd: -from };
+}
 
-  if (isFullCircle1 && isFullCircle2) return [];
-  if (isFullCircle1) {
-    return [evaluateCurve2d(c2, b2.first), evaluateCurve2d(c2, b2.last)];
+/**
+ * Overlap of two arcs on the same circle: the shared stretches as segments oriented
+ * along c1, and the places where the arcs only touch end to end as points.
+ */
+function intersectCoincidentArcs(
+  c1: Curve2dObj,
+  circ1: Circle2d,
+  c2: Curve2dObj,
+  circ2: Circle2d,
+  tol: number
+): { points: [number, number][]; segments: Curve2dObj[] } {
+  const turn = 2 * Math.PI;
+  const a = arcSpan(c1, circ1);
+  const b = arcSpan(c2, circ2);
+  const angleTol = tol / circ1.radius;
+  // An arc is a full circle when its gap is within the distance tolerance.
+  const isFull = (sweep: number) => turn - sweep <= angleTol;
+  // Relative to a.start, b covers [d, d + b.sweep] and, one turn earlier, the same
+  // range shifted by -2pi; each copy can overlap a separately.
+  const d = (((b.start - a.start) % turn) + turn) % turn;
+  let windows: [number, number][];
+  if (isFull(b.sweep)) windows = [[0, a.sweep]];
+  else if (isFull(a.sweep)) windows = [[d, d + b.sweep]];
+  else {
+    windows = [
+      [Math.max(0, d), Math.min(a.sweep, d + b.sweep)],
+      [Math.max(0, d - turn), Math.min(a.sweep, d - turn + b.sweep)],
+    ];
   }
-  if (isFullCircle2) {
-    return [evaluateCurve2d(c1, b1.first), evaluateCurve2d(c1, b1.last)];
-  }
 
-  const pts: [number, number][] = [];
-  const checks: [Curve2dObj, [number, number]][] = [
-    [c2, evaluateCurve2d(c1, b1.first)],
-    [c2, evaluateCurve2d(c1, b1.last)],
-    [c1, evaluateCurve2d(c2, b2.first)],
-    [c1, evaluateCurve2d(c2, b2.last)],
-  ];
-
-  for (const [target, pt] of checks) {
-    const t = refineParam(target, pt[0], pt[1]);
-    if (t !== null) {
-      const [ex, ey] = evaluateCurve2d(target, t);
-      if ((ex - pt[0]) ** 2 + (ey - pt[1]) ** 2 < tol * tol * 100) pts.push(pt);
+  const points: [number, number][] = [];
+  const segments: Curve2dObj[] = [];
+  for (const [u, v] of windows) {
+    if (v - u > angleTol) {
+      segments.push(arcBetween(circ1, a.start + u, a.start + v, a.ccw));
+    } else if (v - u > -angleTol) {
+      const angle = a.start + (u + v) / 2;
+      points.push([
+        circ1.cx + circ1.radius * Math.cos(angle),
+        circ1.cy + circ1.radius * Math.sin(angle),
+      ]);
     }
   }
-
-  const deduped: [number, number][] = [];
-  for (const p of pts) {
-    if (!deduped.some(([ddx, ddy]) => (ddx - p[0]) ** 2 + (ddy - p[1]) ** 2 < tol * tol * 100)) {
-      deduped.push(p);
-    }
-  }
-  return deduped;
+  return { points, segments };
 }
 
 function intersectCircleCircle(
@@ -1225,16 +1277,29 @@ function intersectCircleCircle(
   c2: Curve2dObj,
   circ2: Circle2d,
   tol: number
-): [number, number][] {
+): { points: [number, number][]; segments: Curve2dObj[] } {
   const dx = circ2.cx - circ1.cx;
   const dy = circ2.cy - circ1.cy;
   const d = Math.sqrt(dx * dx + dy * dy);
+  if (d <= tol) {
+    if (Math.abs(circ1.radius - circ2.radius) > tol) return { points: [], segments: [] };
+    return intersectCoincidentArcs(c1, circ1, c2, circ2, tol);
+  }
+  return { points: intersectCrossingCircles(c1, circ1, c2, circ2, tol, d), segments: [] };
+}
+
+function intersectCrossingCircles(
+  c1: Curve2dObj,
+  circ1: Circle2d,
+  c2: Curve2dObj,
+  circ2: Circle2d,
+  tol: number,
+  d: number
+): [number, number][] {
+  const dx = circ2.cx - circ1.cx;
+  const dy = circ2.cy - circ1.cy;
   if (d > circ1.radius + circ2.radius + tol) return [];
   if (d < Math.abs(circ1.radius - circ2.radius) - tol) return [];
-  if (d < 1e-14) {
-    if (Math.abs(circ1.radius - circ2.radius) > tol) return [];
-    return intersectConcentricArcs(c1, c2, tol);
-  }
 
   const a = (circ1.radius * circ1.radius - circ2.radius * circ2.radius + d * d) / (2 * d);
   const h2 = circ1.radius * circ1.radius - a * a;

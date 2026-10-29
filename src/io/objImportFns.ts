@@ -15,8 +15,7 @@ import { sewMeshToSolid } from './ioUtils.js';
 // Parsing helpers
 // ---------------------------------------------------------------------------
 
-function parseVertexLine(line: string): [number, number, number] | null {
-  const parts = line.split(/\s+/);
+function parseVertex(parts: string[]): [number, number, number] | null {
   const x = parseFloat(parts[1] ?? '');
   const y = parseFloat(parts[2] ?? '');
   const z = parseFloat(parts[3] ?? '');
@@ -24,12 +23,18 @@ function parseVertexLine(line: string): [number, number, number] | null {
   return [x, y, z];
 }
 
-function parseFaceIndices(line: string): number[] {
-  return line
-    .split(/\s+/)
-    .slice(1)
-    .map((p) => parseInt(p.split('/')[0] ?? '', 10))
-    .filter((idx) => !isNaN(idx));
+/**
+ * Face corners as 0-based vertex indices. A negative OBJ index counts back from
+ * the vertices defined so far, so it resolves against `vertexCount` at this line.
+ */
+function parseFaceIndices(parts: string[], vertexCount: number): number[] {
+  const indices: number[] = [];
+  for (const part of parts.slice(1)) {
+    const raw = parseInt(part.split('/')[0] ?? '', 10);
+    if (isNaN(raw)) continue;
+    indices.push(raw > 0 ? raw - 1 : raw < 0 ? vertexCount + raw : -1);
+  }
+  return indices;
 }
 
 /**
@@ -55,12 +60,12 @@ export async function importOBJ(blob: Blob): Promise<Result<UnknownDimShape>> {
   const faces: Array<number[]> = [];
 
   for (const raw of lines) {
-    const line = raw.trim();
-    if (line.startsWith('v ')) {
-      const vertex = parseVertexLine(line);
+    const parts = raw.trim().split(/\s+/);
+    if (parts[0] === 'v') {
+      const vertex = parseVertex(parts);
       if (vertex) vertices.push(vertex);
-    } else if (line.startsWith('f ')) {
-      const indices = parseFaceIndices(line);
+    } else if (parts[0] === 'f') {
+      const indices = parseFaceIndices(parts, vertices.length);
       if (indices.length >= 3) faces.push(indices);
     }
   }
@@ -82,23 +87,16 @@ function buildSolidFromMesh(
   vertices: Array<[number, number, number]>,
   faces: Array<number[]>
 ): Result<UnknownDimShape> {
-  // Fan-triangulate n-gon faces and resolve OBJ 1-based / negative indices
+  // Fan-triangulate n-gon faces (indices are already resolved to 0-based)
   const triangles: Array<
     [[number, number, number], [number, number, number], [number, number, number]]
   > = [];
 
   for (const face of faces) {
     for (let i = 1; i < face.length - 1; i++) {
-      const rawA = face[0] ?? 0;
-      const rawB = face[i] ?? 0;
-      const rawC = face[i + 1] ?? 0;
-      const ai = rawA > 0 ? rawA - 1 : vertices.length + rawA;
-      const bi = rawB > 0 ? rawB - 1 : vertices.length + rawB;
-      const ci = rawC > 0 ? rawC - 1 : vertices.length + rawC;
-
-      const va = vertices[ai];
-      const vb = vertices[bi];
-      const vc = vertices[ci];
+      const va = vertices[face[0] ?? -1];
+      const vb = vertices[face[i] ?? -1];
+      const vc = vertices[face[i + 1] ?? -1];
       if (!va || !vb || !vc) continue;
 
       triangles.push([va, vb, vc]);
