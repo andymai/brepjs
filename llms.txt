@@ -764,7 +764,7 @@ measureCurvatureAtMid(face): Result<CurvatureResult>
 // CurvatureResult: { mean, gaussian, maxCurvature, minCurvature, maxDirection, minDirection }
 ```
 
-All measurement functions return `Err` (code `NULL_SHAPE_INPUT`) on null shape input instead of throwing, e.g. `"measureVolumeProps: shape is a null shape"`. `measureVolume` of a non-solid (open shell, face, wire) is `Ok(0)`.
+All measurement functions return `Err` (code `NULL_SHAPE_INPUT`) on null shape input instead of throwing, e.g. `"measureVolumeProps: shape is a null shape"`. `measureVolume` takes a `Shape3D` (shell, solid, compsolid, or 3D compound); an open shell is `Ok(0)`.
 
 ### Interference Detection
 
@@ -1510,17 +1510,18 @@ isValidSolid(s): s is ValidSolid
 Low-level helpers for interop with raw kernel objects. The objects are kernel-specific (`KernelType`): on occt-wasm a vector is a plain `{ x, y, z }` record.
 
 ```typescript
-import { toKernelVec, withKernelVec, withKernelPnt, withKernelDir } from 'brepjs';
+import { toKernelVec, fromKernelVec, fromKernelPnt, fromKernelDir, withKernelVec, withKernelPnt, withKernelDir } from 'brepjs';
 
 toKernelVec(v): KernelType                  // Caller must delete()
+fromKernelVec(v): Vec3                      // reads { x, y, z } or .X()/.Y()/.Z()
+fromKernelPnt(v): Vec3
+fromKernelDir(v): Vec3
 
 // Scoped (auto-cleanup)
 withKernelVec(v, fn): T                     // fn receives the kernel vector, deleted after
 withKernelPnt(v, fn): T
 withKernelDir(v, fn): T
 ```
-
-`fromKernelVec`/`fromKernelPnt`/`fromKernelDir` call `.X()`/`.Y()`/`.Z()`, which occt-wasm kernel objects lack, so they throw on the default kernel.
 
 ## Constants
 
