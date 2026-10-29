@@ -1,0 +1,19 @@
+apps/docs/advanced/workers.md
+  s_b643c88cf32b29::t_e3098e58d4f460 28,44,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8462232fb6f61a548ebbf8603b665a3cc559446b",
+  "prompts": {},
+  "sessions": {
+    "s_b643c88cf32b29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4bb05cff-da30-45b2-a3b6-85e1ddcdee98",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
