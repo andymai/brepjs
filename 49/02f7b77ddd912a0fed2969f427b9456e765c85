@@ -1,0 +1,37 @@
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_a07afe72d12926 12,106-108,131-134
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_76b490d0c83ac4 493-496
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_e6ec8e2146082d 15,24-25,273-278
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_5a517c15fc2876 175-193
+  s_d4ab5fb2066c9b::t_24c71412b122d5 2
+  s_d4ab5fb2066c9b::t_1078bb892efa12 194-195
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_a2d2be6916afd2 10
+  s_d4ab5fb2066c9b::t_818bf9b95fab4d 168-169,179-180
+  s_d4ab5fb2066c9b::t_05d8e3ef961011 167,171,174,178,182
+src/topology/meshFns.ts
+  s_d4ab5fb2066c9b::t_a07afe72d12926 21,340-342,349-352
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_959d90111a7054 13-33
+src/io/README.md
+  s_d4ab5fb2066c9b::t_94eb662b76c72b 14-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4902f7b77ddd912a0fed2969f427b9456e765c85",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
