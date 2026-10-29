@@ -11,5 +11,6 @@
 ## Gotchas
 
 1. **Async operations**: Import functions are async; they read blobs via ArrayBuffer, write to the kernel's virtual filesystem, then parse
-2. **STL auto-upgrade**: STL imports are automatically upgraded to solids via `ShapeUpgrade_UnifySameDomain`
-3. **Import-only module**: For STEP/STL _export_, see `topology/meshFns.ts` or `operations/exporterFns.ts`; this module handles import only
+2. **STL sewing**: occt-wasm returns STL facets as a loose compound of faces, so `importSTL` sews them with `sewAndSolidify` (a closed mesh becomes a `Solid`) and falls back to `sew` when the downcast to solid fails (an open mesh becomes a `Shell`). Kernels that already return a solid skip the sewing
+3. **IGES capability gap**: the published occt-wasm build has no IGES translator. Its adapter throws `UnsupportedKernelOperationError`, which `importIGES`/`exportIGES` map to an `UNSUPPORTED_CAPABILITY` error via `igesUnsupportedError` in `ioUtils.ts`
+4. **Import-only module**: For STEP/STL _export_, see `topology/meshFns.ts` or `operations/exporterFns.ts`; this module handles import only

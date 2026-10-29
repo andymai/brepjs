@@ -9,6 +9,7 @@ import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
 import { getFaces } from '@/topology/topologyQueryFns.js';
+import { igesUnsupportedError } from './ioUtils.js';
 
 /**
  * Import a STEP file from a Blob.
@@ -102,7 +103,9 @@ function sewFacets(facets: AnyShape<Dimension>): UnknownDimShape {
  * @param blob - A Blob or File containing IGES data (.iges / .igs).
  * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks The temporary file on the WASM FS is cleaned up automatically. The
+ * default occt-wasm kernel is built without an IGES translator, so there this
+ * returns an `UNSUPPORTED_CAPABILITY` error; import STEP instead.
  *
  * @example
  * ```ts
@@ -125,6 +128,9 @@ export async function importIGES(blob: Blob): Promise<Result<UnknownDimShape>> {
     }
     return ok(castResultShape(shapes[0]));
   } catch (e) {
-    return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e));
+    return err(
+      igesUnsupportedError('importIGES', e) ??
+        ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file', e)
+    );
   }
 }

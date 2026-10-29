@@ -10,7 +10,27 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { UnknownDimShape } from '@/core/shapeTypes.js';
 import { castShape, castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
-import { ioError } from '@/core/errors.js';
+import { type BrepError, BrepErrorCode, ioError, unsupportedError } from '@/core/errors.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+
+/**
+ * The capability error for an IGES call on a kernel built without an IGES
+ * translator (occt-wasm), or `null` when `cause` is any other failure.
+ */
+export function igesUnsupportedError(
+  operation: 'importIGES' | 'exportIGES',
+  cause: unknown
+): BrepError | null {
+  if (!isUnsupportedKernelOperationError(cause)) return null;
+  const kernel = getKernel().kernelId;
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `${operation}: the ${kernel} kernel has no IGES support`,
+    cause,
+    { kernel },
+    'Exchange the model as STEP (importSTEP / exportSTEP) instead'
+  );
+}
 
 /**
  * Build triangular B-Rep faces from vertex data and sew them into a solid.

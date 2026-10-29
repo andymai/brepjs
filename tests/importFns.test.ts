@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
@@ -169,6 +169,27 @@ describe('importSTL', () => {
     if (!isShell(imported)) return;
     expect(getFaces(imported)).toHaveLength(2);
     expect(unwrap(measureArea(imported))).toBeCloseTo(1, 6);
+  });
+});
+
+describe.skipIf(currentKernel !== 'occt-wasm')('IGES on occt-wasm', () => {
+  it('exportIGES returns an unsupported-capability error', () => {
+    using b = box(10, 10, 10);
+    const result = exportIGES(b);
+    expect(isErr(result)).toBe(true);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('UNSUPPORTED');
+    expect(result.error.code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(result.error.message).toContain('occt-wasm');
+  });
+
+  it('importIGES returns an unsupported-capability error', async () => {
+    const result = await importIGES(new Blob(['not read']));
+    expect(isErr(result)).toBe(true);
+    if (result.ok) return;
+    expect(result.error.kind).toBe('UNSUPPORTED');
+    expect(result.error.code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(result.error.message).toContain('occt-wasm');
   });
 });
 

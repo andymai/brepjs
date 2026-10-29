@@ -490,8 +490,10 @@ export interface OcctKernelWasm {
   importStep(data: string): number;
   exportStep(id: number): string;
   importStl(data: string): number;
-  importIges(data: string): number;
-  exportIges(id: number): string;
+  /** Absent from published occt-wasm builds (no IGES translator), so callers feature-detect. */
+  importIges?(data: string): number;
+  /** Absent from published occt-wasm builds (no IGES translator), so callers feature-detect. */
+  exportIges?(id: number): string;
   exportStl(id: number, linearDeflection: number, ascii: boolean): string;
   toBREP(id: number): string;
   fromBREP(data: string): number;
