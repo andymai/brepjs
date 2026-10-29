@@ -1,0 +1,24 @@
+packages/brepjs-cad/tests/diff.test.ts
+  s_d4ab5fb2066c9b::t_66e0f7a7d489cd 30-36
+packages/brepjs-cad/src/verify/diff.ts
+  s_d4ab5fb2066c9b::t_98e9300286cb19 86-92,97-103
+  s_d4ab5fb2066c9b::t_bb879c9489560d 104
+packages/brepjs-cad/tests/fixtures/lineEdge.brep.ts
+  s_d4ab5fb2066c9b::t_f998c3c243ca6b 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86e3773ba3170389556499437805a1cd2c1a07d3",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
