@@ -1,0 +1,22 @@
+tests/occtBoundary.test.ts
+  s_d4ab5fb2066c9b::t_e76e8b8e7a2376 2,25-46
+  s_d4ab5fb2066c9b::t_f6d0716ade9baf 47
+src/core/kernelBoundary.ts
+  s_d4ab5fb2066c9b::t_375ce2729cc3ac 36-42,45,50,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c689bcc9c4aca6df44e48532e5686b6bba24f40",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
