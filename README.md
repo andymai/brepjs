@@ -14,7 +14,7 @@ https://github.com/user-attachments/assets/c4717814-3600-4dd3-b180-9aabb7b35e0a
 
 </div>
 
-In this real session, a coding agent (Claude Code) reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD.
+In this real session, a coding agent (Claude Code) reads the official Raspberry Pi 5 drawing, writes the case as a brepjs part, gets an error back from `brep verify`, fixes it, and adds a fan mount on request. The exported STEP opens in FreeCAD. [Watch the narrated version](https://youtu.be/n8Cbg345NRI).
 
 Parts are plain TypeScript files and the checker is a CLI, so it isn't tied to one agent:
 
