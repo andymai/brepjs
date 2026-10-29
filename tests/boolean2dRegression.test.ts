@@ -516,3 +516,24 @@ describe('outlines nested without crossing', () => {
     expect(totalArea(holed().cut(drawRectangle(100, 100)))).toBe(0);
   });
 });
+
+describe('arcs that coincide along part of their length', () => {
+  const disk = 25 * Math.PI;
+
+  it('combines a circle with an identical copy', () => {
+    expect(totalArea(drawCircle(5).fuse(drawCircle(5)))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).intersect(drawCircle(5)))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).cut(drawCircle(5)))).toBe(0);
+  });
+
+  it('combines a circle with a copy split at different points', () => {
+    const turned = drawCircle(5).rotate(45);
+    expect(totalArea(drawCircle(5).fuse(turned))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).cut(turned))).toBe(0);
+  });
+
+  it('cuts a circle that coincides with a rounded end', () => {
+    const result = drawRoundedRectangle(20, 10, 5).cut(drawCircle(5).translate(-5, 0));
+    expect(totalArea(result)).toBeCloseTo(100, 3);
+  });
+});
