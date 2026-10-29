@@ -494,3 +494,25 @@ describe('outlines sharing an exact edge', () => {
     expect(totalArea(result)).toBeCloseTo(92, 3);
   });
 });
+
+describe('outlines nested without crossing', () => {
+  const rectArea = 50 * 30;
+  const holed = () => drawRectangle(50, 30).cut(drawCircle(8));
+
+  it('fuses separate outlines into one that contains them all', () => {
+    const result = drawCircle(2).fuse(drawCircle(2).translate(10, 0)).fuse(drawRectangle(50, 50));
+    expect(totalArea(result)).toBeCloseTo(2500, 3);
+  });
+
+  it('fills a hole with an outline that covers it', () => {
+    expect(totalArea(holed().fuse(drawCircle(9)))).toBeCloseTo(rectArea, 3);
+  });
+
+  it('cuts an outline that sits inside an existing hole', () => {
+    expect(totalArea(holed().cut(drawCircle(3)))).toBeCloseTo(rectArea - 64 * Math.PI, 3);
+  });
+
+  it('cuts away a holed outline with a tool that covers it', () => {
+    expect(totalArea(holed().cut(drawRectangle(100, 100)))).toBe(0);
+  });
+});
