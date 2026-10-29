@@ -1,0 +1,22 @@
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_94315bf0c70d04 1026-1069,1071-1072,1074-1095,1097,1100,1102,1105-1136
+tests/curve2dOps.test.ts
+  s_d4ab5fb2066c9b::t_1f957a8cff7468 12,22-23,26,135-186
+  s_d4ab5fb2066c9b::t_84988821da7eb0 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33d62264c197194605ca0ea18931f48f6ebc4b88",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
