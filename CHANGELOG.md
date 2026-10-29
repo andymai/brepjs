@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.1](https://github.com/andymai/brepjs/compare/brepjs-v20.12.0...brepjs-v20.12.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **types:** give finder callbacks the edge and face finder types ([8df3f3b](https://github.com/andymai/brepjs/commit/8df3f3b52ced9afe3669750ddd905d23a2168f8c))
+
 ## [20.12.0](https://github.com/andymai/brepjs/compare/brepjs-v20.11.3...brepjs-v20.12.0) (2026-10-28)
 
 
