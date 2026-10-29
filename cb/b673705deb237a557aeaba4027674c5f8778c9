@@ -1,0 +1,294 @@
+apps/docs/reference/decisions.md
+  s_d4ab5fb2066c9b::t_ce1f4463e54c0f 21
+  s_d4ab5fb2066c9b::t_9b991c80954dd9 26
+  s_d4ab5fb2066c9b::t_ee6853b8a9ed1b 42,44-46,50,54,56,58,60-72,74
+apps/docs/integration/compatibility.md
+  s_d4ab5fb2066c9b::t_64c30769a87e82 124
+  s_d4ab5fb2066c9b::t_e1100b5709bc3b 128
+  s_d4ab5fb2066c9b::t_96f56e9e9c74e4 100
+apps/docs/agent/examples.md
+  s_d4ab5fb2066c9b::t_9398b3b9b0d6ce 50
+apps/docs/agent/the-loop.md
+  s_d4ab5fb2066c9b::t_add01b289b4ab9 86
+  s_d4ab5fb2066c9b::t_6c16622cabb47e 55-57
+apps/docs/getting-started/cheat-sheet.md
+  s_d4ab5fb2066c9b::t_bf107031a4571b 199
+  s_d4ab5fb2066c9b::t_fe4c6d1a83ff10 131,136
+  s_d4ab5fb2066c9b::t_9be69d8de8de7a 51,57
+  s_d4ab5fb2066c9b::t_bb77b3a268b16e 109
+apps/docs/tasks/measurement.md
+  s_d4ab5fb2066c9b::t_595a17e2bf8b66 71,74
+  s_d4ab5fb2066c9b::t_00a45c67e1db54 108,111,113
+  s_d4ab5fb2066c9b::t_052201738be303 90,95-98,101,103
+  s_d4ab5fb2066c9b::t_49b557b1e9515d 55,57-61,66
+  s_d4ab5fb2066c9b::t_fafae9ae97cee9 124,127,129
+  s_d4ab5fb2066c9b::t_e974b3ddb48edf 137
+  s_d4ab5fb2066c9b::t_2543eeab800e6a 188,191-192
+apps/docs/migration/replicad.md
+  s_d4ab5fb2066c9b::t_aa77344302860b 175,179
+docs/getting-started.md
+  s_d4ab5fb2066c9b::t_7e4c411517424b 379
+  s_d4ab5fb2066c9b::t_0d9007e95218cc 326,336,338
+  s_d4ab5fb2066c9b::t_00d670de1c935b 172
+  s_d4ab5fb2066c9b::t_b5137ab94cd77f 389
+  s_d4ab5fb2066c9b::t_986f07fe7f9cfe 7
+  s_d4ab5fb2066c9b::t_c8cfc2c3de8c81 253-254
+apps/docs/migration/openscad.md
+  s_d4ab5fb2066c9b::t_02ff9db4664a4f 36
+  s_d4ab5fb2066c9b::t_483a9c8c9f53a0 8
+  s_d4ab5fb2066c9b::t_b0190c8eb7339c 44-45
+  s_d4ab5fb2066c9b::t_14ee9ddaa2cb96 72
+  s_d4ab5fb2066c9b::t_deffbf0bfc7705 93-94
+  s_d4ab5fb2066c9b::t_d54e93e964c534 104-105,107
+  s_d4ab5fb2066c9b::t_dc63d5c20aee8c 29-35,40-43,69-71,73,91-92,102-103
+apps/docs/migration/threejs.md
+  s_d4ab5fb2066c9b::t_8dd48946825bed 35
+apps/docs/integration/frameworks.md
+  s_d4ab5fb2066c9b::t_885f79ef5eadc5 222-223
+apps/docs/agent/cli.md
+  s_d4ab5fb2066c9b::t_f5e56694b72451 31
+  s_d4ab5fb2066c9b::t_91fdaf24497887 18
+  s_d4ab5fb2066c9b::t_a16b20ef08490c 85
+  s_d4ab5fb2066c9b::t_b694b3ddc3f2ab 3
+  s_d4ab5fb2066c9b::t_81f387b6c89dde 8
+  s_d4ab5fb2066c9b::t_31cbb0a951c525 23
+  s_d4ab5fb2066c9b::t_573bab05c70315 10
+  s_d4ab5fb2066c9b::t_cfce42049e3c9d 35-38
+  s_d4ab5fb2066c9b::t_70fc94d958701a 27-30,32-34
+apps/docs/getting-started/install.md
+  s_d4ab5fb2066c9b::t_66858d1c31f911 161
+  s_d4ab5fb2066c9b::t_dfba5ec39cfea0 152-153
+apps/docs/reference/glossary.md
+  s_d4ab5fb2066c9b::t_6e3727541158af 58
+  s_d4ab5fb2066c9b::t_1ec8ae45feef9a 48
+  s_d4ab5fb2066c9b::t_6f451b28a6fd86 128
+  s_d4ab5fb2066c9b::t_2b1c195f7b46be 68
+  s_d4ab5fb2066c9b::t_ce0f7480417738 60
+  s_d4ab5fb2066c9b::t_6432fb98b2a3fb 14
+  s_d4ab5fb2066c9b::t_34c18299f5c671 54
+  s_d4ab5fb2066c9b::t_bcb034abc79656 92
+  s_d4ab5fb2066c9b::t_1c1fba03c1a82f 70
+  s_d4ab5fb2066c9b::t_823e2aa304d47e 108
+  s_d4ab5fb2066c9b::t_677862ba8755d7 132
+apps/docs/getting-started/first-solid.md
+  s_d4ab5fb2066c9b::t_0da4f261246cb9 52
+  s_d4ab5fb2066c9b::t_3d464b1cbb933b 148
+  s_d4ab5fb2066c9b::t_9e62a4f1f278ae 205
+  s_d4ab5fb2066c9b::t_1d9756029bc045 198-203
+  s_d4ab5fb2066c9b::t_c4f47a0555b67c 63
+apps/docs/bim/ifc.md
+  s_d4ab5fb2066c9b::t_df880cc2545d7c 41
+apps/docs/tasks/lofts-sweeps.md
+  s_d4ab5fb2066c9b::t_579e5571e65e53 24
+  s_d4ab5fb2066c9b::t_b980aff50e4704 298-304,306
+  s_d4ab5fb2066c9b::t_5a941810f93ab3 8
+  s_d4ab5fb2066c9b::t_69f5b42faba652 105,109
+  s_d4ab5fb2066c9b::t_7049194e36a10f 88
+  s_d4ab5fb2066c9b::t_393e85e6c43ce6 166,168-170,172
+  s_d4ab5fb2066c9b::t_8f7a37db787458 50,53,55-57,61
+  s_d4ab5fb2066c9b::t_52409260c6a70a 211,215
+  s_d4ab5fb2066c9b::t_de2533ca6f5d22 39,42
+  s_d4ab5fb2066c9b::t_fe8c965ebadc90 124
+apps/docs/tasks/booleans.md
+  s_d4ab5fb2066c9b::t_ed765a14357aa9 84,86
+  s_d4ab5fb2066c9b::t_67ce5ed70543e1 142
+  s_d4ab5fb2066c9b::t_09fc9ddc101ee7 149
+  s_d4ab5fb2066c9b::t_3f1a1c3c22c2d5 246
+  s_d4ab5fb2066c9b::t_667ea2772cf59f 145
+  s_d4ab5fb2066c9b::t_17ac926e186978 99
+  s_d4ab5fb2066c9b::t_0452f58e70e15a 118,123,129-131,137
+apps/docs/tasks/fillets.md
+  s_d4ab5fb2066c9b::t_bde57472d668f2 78
+  s_d4ab5fb2066c9b::t_5c16794194b417 157
+  s_d4ab5fb2066c9b::t_57b031d3706c8d 34,42,48-51
+  s_d4ab5fb2066c9b::t_9884ad30723034 102
+  s_d4ab5fb2066c9b::t_010f65ba9cf2d4 114
+  s_d4ab5fb2066c9b::t_61d11fdf469126 220,224-225,230
+  s_d4ab5fb2066c9b::t_5896e603923cad 118-120,129,136
+  s_d4ab5fb2066c9b::t_ad2adc5958a4b2 146
+apps/docs/tasks/sketching.md
+  s_d4ab5fb2066c9b::t_30e7197ee6de77 211,214-216,219-224,226
+  s_d4ab5fb2066c9b::t_7823b9df3590f1 190-191,196
+  s_d4ab5fb2066c9b::t_8664954a45f666 147,150-151,153
+  s_d4ab5fb2066c9b::t_2ef188fdc8c750 202
+  s_d4ab5fb2066c9b::t_ef07c88f3d7f91 93
+  s_d4ab5fb2066c9b::t_dff5a563306a9c 45
+  s_d4ab5fb2066c9b::t_eafef2e655464e 140
+  s_d4ab5fb2066c9b::t_108dc82c431d2a 165,167-168,170
+  s_d4ab5fb2066c9b::t_f8f2bf6676252c 234
+  s_d4ab5fb2066c9b::t_6bb86795de3eac 240
+apps/docs/tasks/finders.md
+  s_d4ab5fb2066c9b::t_ff457d9b377b83 98,100,104,106
+  s_d4ab5fb2066c9b::t_48440bc83f6255 196,199-202
+  s_d4ab5fb2066c9b::t_e2b6deeb728500 39,46-48,51,53
+  s_d4ab5fb2066c9b::t_3f2307fffd8523 81-82,88
+  s_d4ab5fb2066c9b::t_1ab1cbe59c7f33 144-145
+  s_d4ab5fb2066c9b::t_61191672d6994e 240
+  s_d4ab5fb2066c9b::t_3bf8a4c4df645b 165
+  s_d4ab5fb2066c9b::t_d32d1e8483f02a 129-130
+  s_d4ab5fb2066c9b::t_b79b02d5a42b97 58,62-67,70,72
+  s_d4ab5fb2066c9b::t_014e2e8d2b8ed6 30
+  s_d4ab5fb2066c9b::t_f9c937aaf9a635 138
+  s_d4ab5fb2066c9b::t_c849016de38d7e 174,178-179,182
+  s_d4ab5fb2066c9b::t_30dce2bd5f36c1 111,118
+  s_d4ab5fb2066c9b::t_0960f26846873a 216,219,223
+  s_d4ab5fb2066c9b::t_c230f1db4d21c1 160
+apps/docs/families/for-bim-professionals.md
+  s_d4ab5fb2066c9b::t_483933dd6b9d1a 48
+apps/docs/families/ifc-export.md
+  s_d4ab5fb2066c9b::t_47769c1f764209 103
+  s_d4ab5fb2066c9b::t_20501d5be91bb2 37
+  s_d4ab5fb2066c9b::t_e65941d2b0c6a3 30
+  s_d4ab5fb2066c9b::t_0d45a851e9c890 65
+apps/docs/tasks/parametric-csg.md
+  s_d4ab5fb2066c9b::t_881c86ea6beab9 122,125
+apps/docs/introduction/non-goals.md
+  s_d4ab5fb2066c9b::t_c576248596e389 34,36-37,39
+  s_d4ab5fb2066c9b::t_fefc90ca291f92 18
+apps/docs/extending/architecture.md
+  s_d4ab5fb2066c9b::t_5e5de5fbcbadff 132
+  s_082fa54ba43002::t_2ceeadcd589cae 13-14,16-17,35-40,51-53,69,122,126,134,136,144-152,156
+apps/docs/integration/threejs.md
+  s_d4ab5fb2066c9b::t_fa32524e9aa718 267,270
+  s_d4ab5fb2066c9b::t_3bd2f6d97dfc16 299
+  s_d4ab5fb2066c9b::t_be5c760ddf3949 15
+apps/docs/introduction/why-brepjs.md
+  s_d4ab5fb2066c9b::t_771a497f1243e4 10
+apps/docs/tasks/primitives.md
+  s_d4ab5fb2066c9b::t_7c133e125673fb 98,100
+  s_d4ab5fb2066c9b::t_9cac02a5b8793e 151,155,157,161,163,165,171
+  s_d4ab5fb2066c9b::t_e727e9e2ea0358 35
+  s_d4ab5fb2066c9b::t_c2eea49076fa9c 133,139,144
+apps/docs/integration/r3f.md
+  s_d4ab5fb2066c9b::t_9517c8d12789e7 149
+  s_d4ab5fb2066c9b::t_8741a80a9a6b61 180,183
+  s_d4ab5fb2066c9b::t_ebd6872a8eb401 123-124,131-134
+  s_d4ab5fb2066c9b::t_3d96dd91b89916 110
+apps/docs/introduction/stability.md
+  s_d4ab5fb2066c9b::t_15e2d997ddd32b 52-53
+  s_d4ab5fb2066c9b::t_39fa07d63423cd 76
+  s_d4ab5fb2066c9b::t_9137076ce93bf5 50-51,54-57
+apps/docs/reference/function-lookup.md
+  s_d4ab5fb2066c9b::t_e55e747267a507 27
+  s_d4ab5fb2066c9b::t_c73e39a1e2044c 56-58
+  s_d4ab5fb2066c9b::t_06bf5bc7b9e023 65
+  s_d4ab5fb2066c9b::t_c4a5e79b8bea6e 17
+  s_d4ab5fb2066c9b::t_f62f40e34be892 52-53
+  s_d4ab5fb2066c9b::t_8a48c418395e72 8
+  s_d4ab5fb2066c9b::t_6f78bb8ff3b125 35
+apps/docs/advanced/healing.md
+  s_d4ab5fb2066c9b::t_2b6b3c8e3f78ed 20,29-30,35,44-45,48,53
+  s_d4ab5fb2066c9b::t_3bbab6553b8920 66-67,70,72,74,79,83-88,91,95,102,104,106-107,111,113,120,122,124,128,137-145,150-151
+  s_d4ab5fb2066c9b::t_1963b0fd65cc71 152-156,159,173,179,185-186
+apps/docs/families/copy-in.md
+  s_d4ab5fb2066c9b::t_b7485186fe99d2 19
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_f12b5750d08192 8
+  s_d4ab5fb2066c9b::t_98fff95bbb9c3a 245
+  s_d4ab5fb2066c9b::t_8438d11efc31a1 271-275
+  s_d4ab5fb2066c9b::t_18f66ac65eb45c 166,171
+  s_d4ab5fb2066c9b::t_3fe7fe79d9327d 202
+  s_d4ab5fb2066c9b::t_55fda6f13db05d 207
+  s_d4ab5fb2066c9b::t_a4b45e51dc5426 225
+  s_d4ab5fb2066c9b::t_60c0ef47a21eac 89,92
+  s_d4ab5fb2066c9b::t_4a09f1d5e8ed41 136,140,145
+  s_d4ab5fb2066c9b::t_63e77cac17a70b 262
+  s_d4ab5fb2066c9b::t_b982a787a86b87 18,20,22
+  s_d4ab5fb2066c9b::t_7858084baff21b 105,108
+  s_d4ab5fb2066c9b::t_1a735fbade3661 28,31,37,41
+  s_d4ab5fb2066c9b::t_082e621bad0787 119,123-124,129
+apps/docs/advanced/csg-caching.md
+  s_d4ab5fb2066c9b::t_344b0fc1c5f1b3 152,240,263
+apps/docs/advanced/memory.md
+  s_d4ab5fb2066c9b::t_8f0185c1a68c8e 27,34-36,40,83,87,106,109,113,133-135,138,143-144,156,160-162,184,193-194,201,206,209-214,218,223,226
+apps/docs/advanced/performance.md
+  s_d4ab5fb2066c9b::t_401351270b896b 32,56,86,93,97,101,103-108,114,179,192-193,248,267
+apps/docs/advanced/workers.md
+  s_d4ab5fb2066c9b::t_3d6612b72851a8 25,27-29,33-34,37,45,48-52,54-56,59,150,155,165-166,183,190,245
+apps/docs/concepts/brep-vs-mesh.md
+  s_d4ab5fb2066c9b::t_bf301ddec7462f 50,83
+apps/docs/concepts/composing-complex-parts.md
+  s_d4ab5fb2066c9b::t_2f87ce324e71bb 84
+apps/docs/concepts/csg-ir.md
+  s_d4ab5fb2066c9b::t_5ed534c848fe79 116,156,198
+apps/docs/concepts/kernels.md
+  s_d4ab5fb2066c9b::t_836d4261bf9fe6 8,61,65,92-93,117
+apps/docs/concepts/result.md
+  s_d4ab5fb2066c9b::t_d7360a700b58b5 86-87,91,97,115,126,132,134-135,166
+apps/docs/concepts/stable-references.md
+  s_d4ab5fb2066c9b::t_67e03ba5657970 98
+apps/docs/concepts/tolerance.md
+  s_d4ab5fb2066c9b::t_fcc1a37a6b5c70 27,43,47,63,78,88,99,102,108,121-122
+apps/docs/concepts/topology.md
+  s_d4ab5fb2066c9b::t_94b243e0e7882c 49-53,88-91,101,111,114,142,148
+apps/docs/concepts/types.md
+  s_d4ab5fb2066c9b::t_b39afc5f4434eb 53,58,79-80,95-97,99,104,124,136-140,144,182,187-188,192-193
+apps/docs/extending/conformance.md
+  s_d4ab5fb2066c9b::t_a1efe834ebbddd 8,13-16,19,21,84,95,102,108,113,126,134
+apps/docs/extending/custom-kernel.md
+  s_d4ab5fb2066c9b::t_04f58141c6a2bf 3,8,19,21,28-32,35-39,42-45,47-55,58,67,70-71,85,88,91,94-98,107,117,121,123-129,131,133,141,157,161,168,178,188,190,195
+apps/docs/extending/custom-ops.md
+  s_d4ab5fb2066c9b::t_015b18c92d1643 19-21,33,43-53,59,61,65-69,72-73,75-89,93,95-96,100,102,104,110,155,157,159,178-179,209,214,220-232
+apps/docs/extending/pattern-checker.md
+  s_d4ab5fb2066c9b::t_2c21a05c0795fb 24,28,51,53,55,70,73,75,77,86,88,90,92,96-98,108-110,114,116,118,124,126,135-137,149,151,157,159,163,184-185,191,193-194,202,204
+apps/docs/reference/errors.md
+  s_d4ab5fb2066c9b::t_accafc4aae0fe1 3,8,18-19,21-22,36,38-40,44,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180,182,184,186,188,190,192,194,196,198,200,202,204,206,208-211,215,221,223,225
+docs/api-reference-intro.md
+  s_d4ab5fb2066c9b::t_46bdae012bb9c6 17-18,33-34
+docs/architecture.md
+  s_d4ab5fb2066c9b::t_946d3e15122ff0 104,188-189
+docs/cheat-sheet.md
+  s_d4ab5fb2066c9b::t_4a0afefe41948e 64,73,82,95-96,109-113,161,172,174,178
+docs/codebase-map.md
+  s_d4ab5fb2066c9b::t_8e8a91bcc3191f 11-12,17,19,27-35,53-61,65-69
+docs/compatibility.md
+  s_d4ab5fb2066c9b::t_240547bb33694c 54,171-172
+docs/concepts.md
+  s_d4ab5fb2066c9b::t_090d7a9bba6bc9 37,48,60,70,72,78-79,147-148,155-156,165-167,173,208,220
+docs/cookbook.md
+  s_d4ab5fb2066c9b::t_f6e73c202f5986 3,52-60,79,83-85,95,98-99,103,105,138,170,175,178,221-224,239,262,291,293,295,307,312-323,333,335-336,338,353,355
+docs/errors.md
+  s_d4ab5fb2066c9b::t_3eae29057f63d1 25-26,72,74,167,186,193-195,216
+docs/function-lookup.md
+  s_d4ab5fb2066c9b::t_2fc5bc253883c9 8-9
+docs/kernel-swap.md
+  s_d4ab5fb2066c9b::t_832668728e5f0a 24,34,42,61,113,128,133-135,211,216,236,245,248,252
+docs/memory-management.md
+  s_d4ab5fb2066c9b::t_d772384cc74c67 147
+docs/performance.md
+  s_d4ab5fb2066c9b::t_2d6840521949cf 86,89,99-100,137
+docs/threejs-integration.md
+  s_d4ab5fb2066c9b::t_a95589787babdb 176,205
+docs/which-api.md
+  s_d4ab5fb2066c9b::t_4acc93b6af01a9 21,34-41,144,147-148,153,168,171-172,190,201-202
+packages/brepjs-cad/README.md
+  s_d4ab5fb2066c9b::t_dcdc9f76475877 74
+scripts/generate-function-lookup.ts
+  s_d4ab5fb2066c9b::t_f554938a5297cb 171-172
+src/topology.ts
+  s_d4ab5fb2066c9b::t_c119b93eb59ebb 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbb673705deb237a557aeaba4027674c5f8778c9",
+  "prompts": {},
+  "sessions": {
+    "s_082fa54ba43002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9f1166d6472a4bc8",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
