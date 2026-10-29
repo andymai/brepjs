@@ -21,8 +21,9 @@ import {
   unwrap,
   isSolid,
   isShape3D,
+  getBounds,
 } from '@/index.js';
-import type { Wire } from '@/core/shapeTypes.js';
+import type { Shape3D, Wire } from '@/core/shapeTypes.js';
 import { createFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 
@@ -161,6 +162,22 @@ describe('extrudeFns', () => {
       const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 20]);
       expect(isOk(result)).toBe(true);
       expect(isShape3D(unwrap(result))).toBe(true);
+    });
+
+    it('twists the other way for a negative angle', () => {
+      // Triangle with its tip at (4, 0); a +30 degree twist carries the tip to
+      // (3.46, 2) at the top and -30 to (3.46, -2).
+      using tri = unwrap(
+        wire([line([4, 0, 0], [0, 1, 0]), line([0, 1, 0], [0, -1, 0]), line([0, -1, 0], [4, 0, 0])])
+      );
+      using ccw = unwrap(twistExtrude(tri, 30, [0, 0, 0], [0, 0, 10])) as Shape3D;
+      using cw = unwrap(twistExtrude(tri, -30, [0, 0, 0], [0, 0, 10])) as Shape3D;
+      const a = getBounds(ccw);
+      const b = getBounds(cw);
+      expect(a.yMax).toBeCloseTo(2, 4);
+      expect(a.yMin).toBeCloseTo(-1, 4);
+      expect(b.yMax).toBeCloseTo(1, 4);
+      expect(b.yMin).toBeCloseTo(-2, 4);
     });
 
     it('returns error for zero twist angle', () => {
