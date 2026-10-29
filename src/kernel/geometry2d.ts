@@ -192,6 +192,80 @@ export function curveTypeName(c: Curve2dObj): string {
   }
 }
 
+/**
+ * Collapse nested trimmed wrappers into a single trimmed curve over a
+ * non-trimmed basis (or return the curve itself when it is not trimmed).
+ * Evaluation is unchanged: both forms map t in [0, 1] to the same basis point.
+ */
+export function flattenTrimmed(c: Curve2dObj): Curve2dObj {
+  if (c.__bk2d !== 'trimmed') return c;
+  const inner = flattenTrimmed(c.basis);
+  if (inner.__bk2d !== 'trimmed') return c;
+  const span = inner.tEnd - inner.tStart;
+  return {
+    __bk2d: 'trimmed',
+    basis: inner.basis,
+    tStart: inner.tStart + c.tStart * span,
+    tEnd: inner.tStart + c.tEnd * span,
+  };
+}
+
+/** Basis parameter of the reversed basis that lands on the point at `u` of the original. */
+function reversedBasisParam(c: Curve2dObj, u: number): number {
+  switch (c.__bk2d) {
+    case 'circle':
+    case 'ellipse':
+      return -u;
+    default: {
+      const { first, last } = curveBounds(c);
+      return first + last - u;
+    }
+  }
+}
+
+/**
+ * The same geometry traversed in the opposite direction (OCCT `Geom2d_Curve::Reversed`).
+ * Trimmed curves keep an increasing trim range: the basis is reversed and the
+ * range is remapped onto it.
+ */
+export function reverseCurve2d(c: Curve2dObj): Curve2dObj {
+  switch (c.__bk2d) {
+    case 'line':
+      return {
+        ...c,
+        ox: c.ox + c.dx * c.len,
+        oy: c.oy + c.dy * c.len,
+        dx: -c.dx,
+        dy: -c.dy,
+      };
+    case 'circle':
+    case 'ellipse':
+      return { ...c, sense: !c.sense };
+    case 'bezier':
+      return { ...c, poles: [...c.poles].reverse() };
+    case 'bspline': {
+      const lo = c.knots[0] ?? 0;
+      const hi = c.knots[c.knots.length - 1] ?? 1;
+      return {
+        ...c,
+        poles: [...c.poles].reverse(),
+        knots: c.knots.map((k) => lo + hi - k).reverse(),
+        multiplicities: [...c.multiplicities].reverse(),
+      };
+    }
+    case 'trimmed': {
+      const flat = flattenTrimmed(c);
+      if (flat.__bk2d !== 'trimmed') return reverseCurve2d(flat);
+      return {
+        __bk2d: 'trimmed',
+        basis: reverseCurve2d(flat.basis),
+        tStart: reversedBasisParam(flat.basis, flat.tEnd),
+        tEnd: reversedBasisParam(flat.basis, flat.tStart),
+      };
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Construction helpers
 // ---------------------------------------------------------------------------

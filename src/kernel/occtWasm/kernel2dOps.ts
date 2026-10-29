@@ -282,8 +282,11 @@ export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): C
   return c2dWrap({ __bk2d: 'trimmed' as const, basis: c2d(curve), tStart: start, tEnd: end });
 }
 
-export function reverseCurve2d(_curve: Curve2dHandle): void {
-  // Curves are immutable in our pure-TS 2D system — reverse is a no-op.
+export function reverseCurve2d(curve: Curve2dHandle): void {
+  // Reverse is in place (Geom2d_Curve::Reverse), so the handle object takes the
+  // reversed fields. Trimmed curves get a fresh basis, never a mutated shared one.
+  const c = c2d(curve);
+  Object.assign(c, ow2d.reverseCurve2d(c));
 }
 
 export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
