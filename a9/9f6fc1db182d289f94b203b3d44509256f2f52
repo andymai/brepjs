@@ -1,0 +1,21 @@
+src/io/threemfImportFns.ts
+  s_d4ab5fb2066c9b::t_b46cc5fc82822b 109-110,117,404,409-412,429-430,461
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_b46cc5fc82822b 315-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a99f6fc1db182d289f94b203b3d44509256f2f52",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
