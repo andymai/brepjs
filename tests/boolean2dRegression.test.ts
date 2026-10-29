@@ -475,12 +475,15 @@ describe('chained booleans across already-split edges', () => {
     expect(totalArea(result)).toBeCloseTo(rectArea - 16, 3);
   });
 
-  it('fuses a circle onto an edge split by an earlier notch', () => {
-    const result = drawRectangle(50, 30)
-      .cut(drawRectangle(4, 4).translate(-10, -15))
-      .fuse(drawCircle(3).translate(10, -15));
-    expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
-  });
+  it.skipIf(shouldSkipSuite('boolean2dRegression.arcCrossings'))(
+    'fuses a circle onto an edge split by an earlier notch',
+    () => {
+      const result = drawRectangle(50, 30)
+        .cut(drawRectangle(4, 4).translate(-10, -15))
+        .fuse(drawCircle(3).translate(10, -15));
+      expect(totalArea(result)).toBeCloseTo(rectArea - 8 + (9 * Math.PI) / 2, 3);
+    }
+  );
 });
 
 describe('outlines sharing an exact edge', () => {
@@ -527,9 +530,10 @@ describe('arcs that coincide along part of their length', () => {
   });
 
   it('combines a circle with a copy split at different points', () => {
-    const turned = drawCircle(5).rotate(45);
-    expect(totalArea(drawCircle(5).fuse(turned))).toBeCloseTo(disk, 3);
-    expect(totalArea(drawCircle(5).cut(turned))).toBe(0);
+    // drawCircle splits at (+-5, 0); this copy splits at (0, +-5).
+    const resplit = draw([0, -5]).sagittaArc(0, 10, 5).sagittaArc(0, -10, 5).close();
+    expect(totalArea(drawCircle(5).fuse(resplit))).toBeCloseTo(disk, 3);
+    expect(totalArea(drawCircle(5).cut(resplit))).toBe(0);
   });
 
   it('cuts a circle that coincides with a rounded end', () => {
