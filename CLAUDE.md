@@ -31,6 +31,7 @@ Monorepo packages:
 
 - `npm run build`: Vite library build (ES + CJS)
 - `npm run typecheck`: TypeScript strict check
+- `npm run typecheck:tests`: Type-check `tests/` (files listed in `exclude` of `tsconfig.typecheck-tests.json` still have errors; the list only shrinks)
 - `npm run lint` / `npm run lint:fix`: ESLint
 - `npm run format` / `npm run format:check`: Prettier
 - `npm run test`: Vitest (changed files only, no coverage)
@@ -45,7 +46,7 @@ Monorepo packages:
 
 ## Git hooks
 
-- **Pre-commit**: lint-staged (ESLint + Prettier + pattern checker) + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
+- **Pre-commit**: lint-staged (ESLint + Prettier + pattern checker) + typecheck (src and tests) + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
 - **Pre-push**: `knip` (unused-code detection) only. The full test suite is **not** run on push — CI's sharded `test` job (`test:ci`) is the full gate, and pre-commit already runs changed-file tests
 - Bypass: `--no-verify` (not recommended)
 

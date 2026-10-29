@@ -11,11 +11,14 @@ npm run typecheck &
 PID2=$!
 npm run check:boundaries:staged &
 PID3=$!
+npm run typecheck:tests &
+PID4=$!
 
 # Wait for all to complete, fail if any failed
 wait $PID1 || exit 1
 wait $PID2 || exit 1
 wait $PID3 || exit 1
+wait $PID4 || exit 1
 
 # Tier 2: Tests (only if Tier 1 passes)
 # Default: run only tests affected by changed files (fast, no coverage thresholds).

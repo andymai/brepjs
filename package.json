@@ -223,6 +223,7 @@
     "prepublishOnly": "npm run build",
     "prepack": "bash scripts/validate-pack.sh",
     "typecheck": "tsgo --noEmit",
+    "typecheck:tests": "tsgo --noEmit -p tsconfig.typecheck-tests.json",
     "typecheck:tsc": "tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

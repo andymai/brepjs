@@ -30,6 +30,7 @@ import {
   closedWire,
   isClosedWire,
   isOrientedFace,
+  isPlanarWire,
   isValidSolid,
   isSolid,
   isShape3D,
@@ -111,6 +112,7 @@ describe('getting-started.md examples', () => {
     const cw = unwrap(squareWireLoop());
     expect(isClosedWire(cw)).toBe(true);
 
+    if (!isPlanarWire(cw)) throw new Error('profile is not planar');
     const f = unwrap(face(cw));
     expect(isOrientedFace(f)).toBe(true);
 
@@ -206,6 +208,7 @@ describe('validity types (concepts.md + getting-started.md)', () => {
     const cw = unwrap(squareWireLoop());
     expect(isClosedWire(cw)).toBe(true);
 
+    if (!isPlanarWire(cw)) throw new Error('profile is not planar');
     const f = unwrap(face(cw));
     expect(isOrientedFace(f)).toBe(true);
 

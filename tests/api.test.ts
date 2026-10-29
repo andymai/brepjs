@@ -24,6 +24,9 @@ import {
   bezier,
   tangentArc,
   wire,
+  wireLoop,
+  getBounds,
+  isPlanarWire,
   face,
   polygon,
   vertex,
@@ -87,13 +90,15 @@ describe('box()', () => {
   });
 
   it('centers a box at origin', () => {
-    const b = box(10, 10, 10, { center: true });
-    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
+    const b = box(10, 10, 10, { centered: true });
+    expect(getBounds(b).xMin).toBeCloseTo(-5, 6);
+    expect(getBounds(b).zMax).toBeCloseTo(5, 6);
   });
 
   it('centers a box at a specific point', () => {
-    const b = box(10, 10, 10, { center: [5, 5, 5] });
-    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
+    const b = box(10, 10, 10, { centered: true, at: [5, 5, 5] });
+    expect(getBounds(b).xMin).toBeCloseTo(0, 6);
+    expect(getBounds(b).zMax).toBeCloseTo(10, 6);
   });
 
   it('positions a box via at (center semantics)', () => {
@@ -230,7 +235,8 @@ describe('topology constructors', () => {
     const e2 = line([10, 0, 0], [10, 10, 0]);
     const e3 = line([10, 10, 0], [0, 10, 0]);
     const e4 = line([0, 10, 0], [0, 0, 0]);
-    const w = unwrap(wire([e1, e2, e3, e4]));
+    const w = unwrap(wireLoop([e1, e2, e3, e4]));
+    if (!isPlanarWire(w)) throw new Error('profile is not planar');
     const f = unwrap(face(w));
     expect(unwrap(measureArea(f))).toBeCloseTo(100, 0);
   });
