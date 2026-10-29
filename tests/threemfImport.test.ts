@@ -293,6 +293,35 @@ describe('importThreeMF', () => {
     expect(result.error.message).toContain('more than 100,000 objects');
   });
 
+  it('refuses components nested deeper than the limit', async () => {
+    // A 100-level chain, each object placing the one below once.
+    const chain = Array.from(
+      { length: 100 },
+      (_, i) =>
+        `<object id="${i + 2}" type="model"><components>` +
+        `<component objectid="${i + 1}" /></components></object>`
+    );
+    const xml = model([cubeObject(1, 10), ...chain], ['<item objectid="101" />']);
+    const result = await importThreeMF(modelZip(xml));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('THREEMF_IMPORT_FAILED');
+    expect(result.error.message).toContain('nest more than 64 levels');
+  });
+
+  it('places a cube through a component chain within the depth limit', async () => {
+    const chain = Array.from(
+      { length: 10 },
+      (_, i) =>
+        `<object id="${i + 2}" type="model"><components>` +
+        `<component objectid="${i + 1}" transform="1 0 0 0 1 0 0 0 1 1 0 0" /></components></object>`
+    );
+    const xml = model([cubeObject(1, 10), ...chain], ['<item objectid="11" />']);
+    using shape = unwrap(await importThreeMF(modelZip(xml)));
+    expect(unwrap(measureVolume(shape as Shape3D))).toBeCloseTo(1000, 3);
+    expect(getBounds(shape).xMin).toBeCloseTo(10, 6);
+  });
+
   it('refuses a build that places more triangles than the limit', async () => {
     // A 1,000-triangle strip placed 4,096 times through a 12-level doubling chain.
     const strip =

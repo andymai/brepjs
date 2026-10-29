@@ -108,6 +108,8 @@ const MAX_PLACED_OBJECTS = 100_000;
 const MAX_PLACED_TRIANGLES = 2_000_000;
 /** Each placement copies its object's vertices; three per triangle fits any mesh under the triangle limit. */
 const MAX_PLACED_VERTICES = 3 * MAX_PLACED_TRIANGLES;
+/** Assemblies nest a few levels deep; a far deeper chain only serves to exhaust the stack. */
+const MAX_COMPONENT_DEPTH = 64;
 
 /** The placed meshes so far, with running totals checked against the limits above. */
 interface Expansion {
@@ -391,12 +393,15 @@ function instantiate(
   objects: Map<string, ModelObject>,
   ref: ObjectRef,
   outer: Transform | null,
-  ancestors: ReadonlySet<string>,
+  ancestors: Set<string>,
   out: Expansion
 ): string | null {
   const object = objects.get(ref.objectId);
   // A component that refers back to an enclosing object (malformed file) would recurse forever.
   if (object === undefined || ancestors.has(ref.objectId)) return null;
+  if (ancestors.size > MAX_COMPONENT_DEPTH) {
+    return `components nest more than ${MAX_COMPONENT_DEPTH} levels deep`;
+  }
   if (++out.objects > MAX_PLACED_OBJECTS) {
     return `the build places more than ${MAX_PLACED_OBJECTS.toLocaleString('en-US')} objects`;
   }
@@ -412,10 +417,15 @@ function instantiate(
     }
     out.meshes.push(transformMesh(object.mesh, transform));
   }
-  const path = new Set(ancestors).add(ref.objectId);
-  for (const component of object.components) {
-    const stopped = instantiate(objects, component, transform, path, out);
-    if (stopped !== null) return stopped;
+  // One set shared down the chain, so memory grows with depth rather than depth squared.
+  ancestors.add(ref.objectId);
+  try {
+    for (const component of object.components) {
+      const stopped = instantiate(objects, component, transform, ancestors, out);
+      if (stopped !== null) return stopped;
+    }
+  } finally {
+    ancestors.delete(ref.objectId);
   }
   return null;
 }
@@ -427,7 +437,8 @@ function instantiate(
  * items and components contribute their transforms, and the model `unit` scales
  * coordinates to millimeters. Fails once the build expands past
  * {@link MAX_PLACED_OBJECTS} placements, {@link MAX_PLACED_TRIANGLES} triangles,
- * or {@link MAX_PLACED_VERTICES} vertices.
+ * or {@link MAX_PLACED_VERTICES} vertices, or nests deeper than
+ * {@link MAX_COMPONENT_DEPTH} levels.
  */
 function parseModelXml(xml: string): Result<ParsedMesh[]> {
   const resourceColors = parseResourceColors(xml);
