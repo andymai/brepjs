@@ -123,6 +123,16 @@ describe('extrudeFns', () => {
       expect(isOk(result)).toBe(true);
       expect(isShape3D(unwrap(result))).toBe(true);
     });
+
+    it('caps a closed profile into a solid', () => {
+      const c = sketchCircle(2);
+      const profile = castShape(c.wire.wrapped) as Wire;
+      using spineWire = unwrap(wire([line([0, 0, 0], [0, 0, 20])]));
+      using result = unwrap(sweep(profile, spineWire, { mode: 'simple' })) as Shape3D;
+      expect(isSolid(result)).toBe(true);
+      expect(unwrap(measureVolume(result))).toBeCloseTo(Math.PI * 2 * 2 * 20, 3);
+      c.delete();
+    });
   });
 
   describe('complexExtrude', () => {

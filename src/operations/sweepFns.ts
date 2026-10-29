@@ -72,6 +72,15 @@ function makeSpineWire(start: Vec3, end: Vec3): Wire {
   return castResultShape(wire) as Wire;
 }
 
+/** A planar face bounded by `wire`, or `null` when the wire does not span one. */
+function planarFaceOf(wire: Wire<Dimension>): KernelShape {
+  try {
+    return getKernel().makeFace(wire.wrapped, true);
+  } catch {
+    return null;
+  }
+}
+
 /** Build a helix wire for twist extrusion. */
 function makeHelixWire(
   pitch: number,
@@ -141,7 +150,15 @@ export function sweep(
   // Fast path: simple pipe mode (BRepOffsetAPI_MakePipe)
   if (config.mode === 'simple' && !shellMode) {
     const kernel = getKernel();
-    const resultOc = kernel.simplePipe(wire.wrapped, spine.wrapped);
+    // MakePipe turns a wire profile into an open tube; piping the profile's face
+    // gives the capped solid. A non-planar profile has no face and stays a tube.
+    const profileFace = planarFaceOf(wire);
+    let resultOc: KernelShape;
+    try {
+      resultOc = kernel.simplePipe(profileFace ?? wire.wrapped, spine.wrapped);
+    } finally {
+      if (profileFace) kernel.dispose(profileFace);
+    }
     const shape = castResultShape(resultOc);
     if (!isShape3D(shape)) {
       disposeResultShape(shape);
