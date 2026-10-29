@@ -1,0 +1,78 @@
+src/kernel/occtWasm/helpers.ts
+  s_d4ab5fb2066c9b::t_80f298738c2711 14,149-177,179-182,184-185,187-221
+src/kernel/occtWasm/modifierOps.ts
+  s_d4ab5fb2066c9b::t_4a78f68bbd3ff7 280,286
+  s_d4ab5fb2066c9b::t_a5ab753519703d 93-94
+  s_d4ab5fb2066c9b::t_80f298738c2711 10-11,13,15,19,33,35-46,54,56-58,60-68,70,72,84-85,87-92,95-105,107,246-266,269,272,276,279,281-285,287-293,295-297
+  s_d4ab5fb2066c9b::t_bc6f4a041154ae 267-268
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_b861b4c7aa4838 587
+  s_d4ab5fb2066c9b::t_a8c0752c7c82d7 610-611
+  s_d4ab5fb2066c9b::t_a8926d2dcd50eb 562-586,588-609,612-639
+  s_d4ab5fb2066c9b::t_2d0612205db89d 36,38-39
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_80f298738c2711 217-246,249,258-276,567-571,659-660,750-782
+  s_d4ab5fb2066c9b::t_e00975e6ce2876 783-785
+tests/helpers/stepText.ts
+  s_d4ab5fb2066c9b::t_9fd4c79b32eede 1-15
+tests/exporterFns.test.ts
+  s_d4ab5fb2066c9b::t_b861b4c7aa4838 5,55-57
+  s_d4ab5fb2066c9b::t_59189dda51c295 38-40,43-54,58-70
+  s_d4ab5fb2066c9b::t_72b76d7df3fdcc 41-42
+  s_d4ab5fb2066c9b::t_2499c55373ea2d 3-4
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_80f298738c2711 786-794,1169,1171-1172,1174-1184,1258,1304,1326
+.size-limit.json
+  s_d4ab5fb2066c9b::t_559425f917d173 2
+tests/stepConfigFns.test.ts
+  s_d4ab5fb2066c9b::t_796e7ec11fa48a 46-98
+  s_d4ab5fb2066c9b::t_32adb260ea651a 3-4
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_80f298738c2711 8-9,105-206,212,280,283,432-443,448,457-498,501-505,511,515-521,529-531,534-542,544
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_976b0d7f7d8704 196
+  s_d4ab5fb2066c9b::t_49c4528e90fa55 569-573
+  s_d4ab5fb2066c9b::t_629587d33469ee 724-725
+  s_d4ab5fb2066c9b::t_ad9fe147d61639 290-295,297-311
+  s_d4ab5fb2066c9b::t_792e3449b08025 176-195,197-201
+  s_d4ab5fb2066c9b::t_d2e0aa7eb0e26b 296
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_c1056f6574f50b 33,49,56-57,61,63-65,86,92,96,115,118
+  s_d4ab5fb2066c9b::t_05bf4ad98cccf9 3
+tests/occtWasmLegacyBuilds.test.ts
+  s_d4ab5fb2066c9b::t_f4969c653d3e5f 1-174
+tests/draftFns.test.ts
+  s_d4ab5fb2066c9b::t_050a90fafdd680 217
+  s_d4ab5fb2066c9b::t_10f5f2c5b027b9 183-193,195-216,218-236
+  s_d4ab5fb2066c9b::t_f033fc9e471a34 4,9
+  s_d4ab5fb2066c9b::t_fa2e2353a30aa2 194
+src/kernel/occtWasm/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_46dc676f506cce 567
+  s_d4ab5fb2066c9b::t_80f298738c2711 20-21,24,26,30-31,406,410,413-428,442,446-448,451-469,474,553,557-560,562-566,568-587
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_65bf45b537643a 114-115
+  s_d4ab5fb2066c9b::t_ee0154f220d35b 116-137
+  s_d4ab5fb2066c9b::t_53e5a888e587c3 3,10,14,16-17
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_1446086a2b8f5b 544-569,571-591
+  s_d4ab5fb2066c9b::t_86e04b05598dd3 118-121,123
+  s_d4ab5fb2066c9b::t_b861b4c7aa4838 570
+  s_d4ab5fb2066c9b::t_119d2003577fb8 592-594,1234-1250
+  s_d4ab5fb2066c9b::t_0fd37687ae50a6 595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48e3c7551141141bcc3def4d86d74ceb0047acf0",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
