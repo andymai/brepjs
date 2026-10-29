@@ -1,0 +1,23 @@
+tests/cast.test.ts
+  s_d4ab5fb2066c9b::t_9aab30faa45fb7 15,72
+  s_d4ab5fb2066c9b::t_ec8a44e3205aa5 14,67-71
+  s_d4ab5fb2066c9b::t_2e3a12fec70200 73-75
+src/topology/cast.ts
+  s_d4ab5fb2066c9b::t_ec8a44e3205aa5 4,60-67,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea1badccd03d89a1962f59b158a561dcebab2ffd",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
