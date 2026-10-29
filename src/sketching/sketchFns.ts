@@ -105,13 +105,18 @@ export function sketchWires(sketch: Sketch): Wire {
 /**
  * Revolve a sketch around an axis to produce a solid of revolution.
  *
+ * Accepts anything `Drawing.sketchOnPlane` returns: a profile with holes or
+ * several profiles revolves each one and returns them as a compound.
+ *
  * @remarks Consumes the sketch — calling twice throws on the second call.
  */
 export function sketchRevolve(
-  sketch: Sketch,
+  sketch: SketchInterface,
   revolutionAxis?: PointInput,
-  { origin }: { origin?: PointInput } = {}
+  config: { origin?: PointInput } = {}
 ): Shape3D {
+  if (!(sketch instanceof Sketch)) return sketch.revolve(revolutionAxis, config);
+  const { origin } = config;
   const face = unwrap(makeFace(sketch.wire));
   const center: Vec3 = origin ? toVec3(origin) : sketch.defaultOrigin;
   const dir: Vec3 = revolutionAxis ? toVec3(revolutionAxis) : [0, 0, 1];
@@ -125,25 +130,24 @@ export function sketchRevolve(
  * Extrude a sketch to a given distance.
  *
  * Supports profile (taper) extrusion via `extrusionProfile`, twist extrusion
- * via `twistAngle`, and direction/origin overrides.
+ * via `twistAngle`, and direction/origin overrides. Accepts anything
+ * `Drawing.sketchOnPlane` returns: a profile with holes or several profiles
+ * extrudes each one and returns them as a compound.
  *
  * @remarks Consumes the sketch — calling twice throws on the second call.
  */
 export function sketchExtrude(
-  sketch: Sketch,
+  sketch: SketchInterface,
   extrusionDistance: number,
-  {
-    extrusionDirection,
-    extrusionProfile,
-    twistAngle,
-    origin,
-  }: {
+  config: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
     origin?: PointInput;
   } = {}
 ): Shape3D {
+  if (!(sketch instanceof Sketch)) return sketch.extrude(extrusionDistance, config);
+  const { extrusionDirection, extrusionProfile, twistAngle, origin } = config;
   const direction: Vec3 = extrusionDirection ? toVec3(extrusionDirection) : sketch.defaultDirection;
   const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);
   const originVec: Vec3 = origin ? toVec3(origin) : sketch.defaultOrigin;
