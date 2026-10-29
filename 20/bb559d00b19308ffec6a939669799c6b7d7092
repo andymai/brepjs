@@ -1,0 +1,47 @@
+packages/brepjs-cad/tests/fixtures/returnsFace.brep.ts
+  s_d4ab5fb2066c9b::t_32803435316892 1-2
+packages/brepjs-cad/tests/fixtures/returnsSketch.brep.ts
+  s_d4ab5fb2066c9b::t_32803435316892 1-2
+packages/brepjs-cad/src/verify/expected.ts
+  s_d4ab5fb2066c9b::t_b9006289c21704 17-20,68-79,81-94,130-133,137-147
+packages/brepjs-cad/src/verify/checks.ts
+  s_d4ab5fb2066c9b::t_b9006289c21704 58-65
+packages/brepjs-cad/tests/expected.test.ts
+  s_d4ab5fb2066c9b::t_32803435316892 5-10,41-47,100-117,123
+packages/brepjs-cad/tests/fixtures/returnsArray.brep.ts
+  s_d4ab5fb2066c9b::t_32803435316892 1-2
+apps/docs/agent/cli.md
+  s_d4ab5fb2066c9b::t_187ed9e9844009 70-71
+packages/brepjs-cad/skills/implement/SKILL.md
+  s_d4ab5fb2066c9b::t_187ed9e9844009 64,77
+packages/brepjs-cad/tests/fixtures/expectedNotNumber.brep.ts
+  s_d4ab5fb2066c9b::t_32803435316892 1-5
+packages/brepjs-cad/tests/fixtures/fluentChain.brep.ts
+  s_d4ab5fb2066c9b::t_32803435316892 1-2
+packages/brepjs-cad/src/verify/runPart.ts
+  s_d4ab5fb2066c9b::t_b9006289c21704 8,96-97,99-111,244,250,252-253,257-264,270-276
+  s_d4ab5fb2066c9b::t_132db3414a5e7a 98
+packages/brepjs-cad/skills/implement/references/measurement-validation.md
+  s_d4ab5fb2066c9b::t_187ed9e9844009 33
+packages/brepjs-cad/tests/runPart.test.ts
+  s_d4ab5fb2066c9b::t_32803435316892 4,110-134
+  s_d4ab5fb2066c9b::t_e7f46420455b17 135
+packages/brepjs-cad/src/verify/report.ts
+  s_d4ab5fb2066c9b::t_418ac00a2f0084 189-190,337-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20bb559d00b19308ffec6a939669799c6b7d7092",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
