@@ -96,4 +96,44 @@ describe('exportSTEPConfigured', () => {
       expect(largestStepCoordinate(converted)).toBeCloseTo(10 / 25.4, 9);
     });
   });
+
+  describe('application protocol', () => {
+    const fileSchema = (step: string): string =>
+      /FILE_SCHEMA\(\(([\s\S]*?)\)\);/.exec(step)?.[1] ?? '';
+
+    it('writes AP214 by default', (ctx) => {
+      skipIfDiverges(ctx, 'stepConfigFns.schema');
+      using b = box(10, 10, 10);
+      expect(fileSchema(unwrap(exportSTEPConfigured([{ shape: b }])))).toContain(
+        'AUTOMOTIVE_DESIGN'
+      );
+    });
+
+    it.for([
+      [203, 'CONFIG_CONTROL_DESIGN'],
+      [214, 'AUTOMOTIVE_DESIGN'],
+      [242, 'AP242_MANAGED_MODEL_BASED_3D_ENGINEERING'],
+    ] as const)('writes schema %i as %s, alongside the unit', ([schema, name], ctx) => {
+      skipIfDiverges(ctx, 'stepConfigFns.schema');
+      using b = box(10, 10, 10);
+      const step = unwrap(exportSTEPConfigured([{ shape: b }], { schema, unit: 'inch' }));
+      expect(fileSchema(step)).toContain(name);
+      expect(step).toContain(INCH_UNIT);
+    });
+
+    it('writes the schema for named and colored parts', (ctx) => {
+      skipIfDiverges(ctx, 'stepConfigFns.schema');
+      using b = box(10, 10, 10);
+      const part = { shape: b, name: 'RedBox', color: [255, 0, 0, 255] as const };
+      const step = unwrap(exportSTEPConfigured([part], { schema: 242 }));
+      expect(fileSchema(step)).toContain('AP242_MANAGED_MODEL_BASED_3D_ENGINEERING');
+      expect(step).toContain('RedBox');
+    });
+
+    it('rejects a schema it does not know', (ctx) => {
+      skipIfDiverges(ctx, 'stepConfigFns.schema');
+      using b = box(10, 10, 10);
+      expect(isOk(exportSTEPConfigured([{ shape: b }], { schema: 999 }))).toBe(false);
+    });
+  });
 });

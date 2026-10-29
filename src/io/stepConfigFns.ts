@@ -13,7 +13,7 @@ export interface StepExportOptions {
   readonly unit?: string | undefined;
   /** Model unit override. */
   readonly modelUnit?: string | undefined;
-  /** STEP schema version (e.g., 203, 214, 242). */
+  /** STEP application protocol: 203, 214 (the default), or 242. */
   readonly schema?: number | undefined;
 }
 

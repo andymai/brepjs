@@ -6,7 +6,7 @@
 
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmHandle, OcctWasmModule } from './occtWasmTypes.js';
-import { handle, needsOcctWasm59, unwrap, wrapResult } from './helpers.js';
+import { handle, needsOcctWasm59, needsOcctWasm510, unwrap, wrapResult } from './helpers.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   buildAsciiSTL,
@@ -144,6 +144,20 @@ interface StepUnits {
   readonly write: string;
   /** Factor taking the shapes' numbers to millimeters. */
   readonly modelScale: number;
+  /** occt-wasm's name for the application protocol, or '' for its default (AP214). */
+  readonly schema: string;
+}
+
+// brepjs names a STEP application protocol by its AP number.
+const STEP_SCHEMAS: Readonly<Record<number, string>> = { 203: 'AP203', 214: 'AP214', 242: 'AP242' };
+
+function stepSchemaName(schema: number | undefined): string {
+  if (schema === undefined) return '';
+  const name = STEP_SCHEMAS[schema];
+  if (name === undefined) {
+    throw new Error(`occt-wasm: unknown STEP schema ${schema} (expected 203, 214, or 242)`);
+  }
+  return name;
 }
 
 function mmPerUnit(unit: string): number {
@@ -158,20 +172,32 @@ function mmPerUnit(unit: string): number {
  * reads shapes as millimeters and scales them into the unit written, so a
  * model in another unit is scaled to millimeters first.
  */
-function resolveStepUnits(options: StepUnitOptions | undefined): StepUnits {
+function resolveStepUnits(
+  options: (StepUnitOptions & { schema?: number | undefined }) | undefined
+): StepUnits {
   const write = options?.unit ?? options?.modelUnit ?? 'mm';
-  return { write, modelScale: mmPerUnit(options?.modelUnit ?? write) };
+  return {
+    write,
+    modelScale: mmPerUnit(options?.modelUnit ?? write),
+    schema: stepSchemaName(options?.schema),
+  };
 }
 
-/**
- * The writer for `units`: the 5.9 unit-aware one, else the millimeter-only
- * one when the file is in millimeters anyway.
- */
-function stepWriter(
-  withUnit: ((id: number, unit: string) => string) | undefined,
-  inMillimeters: (id: number) => string,
-  units: StepUnits
-): (id: number) => string {
+interface StepWriters {
+  /** occt-wasm >= 5.10: unit and application protocol. */
+  readonly withOptions: ((id: number, unit: string, schema: string) => string) | undefined;
+  /** occt-wasm >= 5.9: unit only. */
+  readonly withUnit: ((id: number, unit: string) => string) | undefined;
+  readonly inMillimeters: (id: number) => string;
+}
+
+/** The newest writer `units` needs, else an error naming the occt-wasm release that has it. */
+function stepWriter(writers: StepWriters, units: StepUnits): (id: number) => string {
+  const { withOptions, withUnit, inMillimeters } = writers;
+  if (units.schema) {
+    if (!withOptions) throw needsOcctWasm510(`STEP export as ${units.schema}`);
+    return (id) => withOptions(id, units.write, units.schema);
+  }
   if (withUnit) return (id) => withUnit(id, units.write);
   if (mmPerUnit(units.write) === 1) return inMillimeters;
   throw needsOcctWasm59(`STEP export in '${units.write}'`);
@@ -195,7 +221,14 @@ function writeStepShapes(
   shapes: KernelShape[],
   units: StepUnits
 ): string {
-  const write = stepWriter(k.exportStepWithUnit?.bind(k), (id) => k.exportStep(id), units);
+  const write = stepWriter(
+    {
+      withOptions: k.exportStepWithOptions?.bind(k),
+      withUnit: k.exportStepWithUnit?.bind(k),
+      inMillimeters: (id) => k.exportStep(id),
+    },
+    units
+  );
   if (shapes.length === 1) return withScaled(k, unwrap(shapes[0]), units.modelScale, write);
   const compoundId = unwrap(makeCompound(shapes));
   try {
@@ -477,7 +510,14 @@ function writeXcafDoc(k: OcctKernelWasm, docId: number, units: StepUnits): strin
   } finally {
     roots.delete();
   }
-  return stepWriter(k.xcafExportSTEPWithUnit?.bind(k), (id) => k.xcafExportSTEP(id), units)(docId);
+  return stepWriter(
+    {
+      withOptions: k.xcafExportSTEPWithOptions?.bind(k),
+      withUnit: k.xcafExportSTEPWithUnit?.bind(k),
+      inMillimeters: (id) => k.xcafExportSTEP(id),
+    },
+    units
+  )(docId);
 }
 
 /** Write `parts` as one XCAF STEP file, scaling each into millimeters first if needed. */

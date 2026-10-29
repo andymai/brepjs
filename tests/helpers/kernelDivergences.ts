@@ -315,6 +315,10 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'brepkit writes STEP in millimeters whatever unit or modelUnit asks for.',
     },
+    'stepConfigFns.schema': {
+      kind: 'not-implemented',
+      reason: 'brepkit writes one STEP schema whatever schema asks for.',
+    },
     'exporterFns.assemblyUnits': {
       kind: 'not-implemented',
       reason: 'brepkit writes STEP in millimeters whatever unit or modelUnit asks for.',
@@ -585,6 +589,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'In this opencascade.js build exportSTEPConfigured fails ("null function or function signature mismatch") and exportSTEPAssembly calls a missing STEPCAFControl_Writer.Write_1.',
+    },
+    'stepConfigFns.schema': {
+      kind: 'not-implemented',
+      reason:
+        'In this opencascade.js build exportSTEPConfigured fails ("null function or function signature mismatch"), and the adapter passes schema to write.step.schema unmapped.',
     },
     'modifierFns.removeFaces': {
       kind: 'not-implemented',

@@ -28,6 +28,9 @@ const ADDED_IN_5_9 = new Set<PropertyKey>([
   'draftFacesWithHistory',
   'exportStepWithUnit',
   'xcafExportSTEPWithUnit',
+  // Added in 5.10, so older than 5.9 lacks them too.
+  'exportStepWithOptions',
+  'xcafExportSTEPWithOptions',
 ]);
 
 beforeAll(async () => {
@@ -65,7 +68,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.9', () => {
       .map((e) => e.wrapped);
   const sideFaces = (solid: Shape3D): Face[] =>
     getFaces(solid).filter((f) => getBounds(f).zMax - getBounds(f).zMin > 5);
-  const expectUnsupported = (run: () => unknown): void => {
+  const expectUnsupported = (run: () => unknown, version = '5.9.0'): void => {
     let caught: unknown;
     try {
       run();
@@ -73,7 +76,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.9', () => {
       caught = e;
     }
     expect(isUnsupportedKernelOperationError(caught)).toBe(true);
-    expect((caught as Error).message).toContain('occt-wasm >= 5.9.0');
+    expect((caught as Error).message).toContain(`occt-wasm >= ${version}`);
   };
   const FILLET_LOSS = 1 - Math.PI / 4;
 
@@ -165,6 +168,10 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.9', () => {
     expectUnsupported(() => adapter.exportSTEPConfigured([{ shape: b.wrapped }], { unit: 'inch' }));
     const doc = adapter.createXCAFDocument([{ shape: b.wrapped, name: 'box' }]);
     expectUnsupported(() => adapter.writeXCAFToSTEP(doc, { unit: 'inch', modelUnit: 'mm' }));
+    expectUnsupported(
+      () => adapter.exportSTEPConfigured([{ shape: b.wrapped }], { schema: 242 }),
+      '5.10.0'
+    );
   });
 
   it('leaves no arena slots behind, on success or rejection', () => {

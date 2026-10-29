@@ -221,6 +221,10 @@ export function needsOcctWasm59(what: string): UnsupportedKernelOperationError {
   return new UnsupportedKernelOperationError(`occt-wasm: ${what} requires occt-wasm >= 5.9.0`);
 }
 
+export function needsOcctWasm510(what: string): UnsupportedKernelOperationError {
+  return new UnsupportedKernelOperationError(`occt-wasm: ${what} requires occt-wasm >= 5.10.0`);
+}
+
 /**
  * Rotate a shape from the kernel's default Z-axis to an arbitrary direction.
  * Used by primitives whose creation API only takes a Z-aligned form.

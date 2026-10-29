@@ -569,6 +569,8 @@ export interface OcctKernelWasm {
    * inch, ft, mi, mil, um, uin). Geometry is read as millimeters.
    */
   exportStepWithUnit?(id: number, unit: string): string;
+  /** occt-wasm >= 5.10.0: `schema` is 'AP203', 'AP214', or 'AP242'; '' keeps AP214. */
+  exportStepWithOptions?(id: number, unit: string, schema: string): string;
   importStl(data: string): number;
   /** Absent from published occt-wasm builds (no IGES translator), so callers feature-detect. */
   importIges?(data: string): number;
@@ -660,6 +662,8 @@ export interface OcctKernelWasm {
   xcafExportSTEP(docId: number): string;
   /** occt-wasm >= 5.9.0: units as in {@link exportStepWithUnit}. */
   xcafExportSTEPWithUnit?(docId: number, unit: string): string;
+  /** occt-wasm >= 5.10.0: unit and schema as in {@link exportStepWithOptions}. */
+  xcafExportSTEPWithOptions?(docId: number, unit: string, schema: string): string;
 
   // --- Surface construction ---
   bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
