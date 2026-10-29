@@ -512,14 +512,20 @@ export function importSVGPathD(pathD: string): Result<Blueprint> {
 export function importSVG(svgString: string): Result<Blueprint[]> {
   try {
     // indexOf-based tag extraction — O(n) guaranteed, no regex backtracking risk.
-    const dAttrRe = /\bd\s*=\s*(?:"([^"]*)"|'([^']*)')/;
+    const dAttrRe = /\sd\s*=\s*(?:"([^"]*)"|'([^']*)')/;
     const blueprints: Blueprint[] = [];
     const lower = svgString.toLowerCase();
     let pos = 0;
 
     while (pos < lower.length) {
-      const tagStart = lower.indexOf('<path ', pos);
+      const tagStart = lower.indexOf('<path', pos);
       if (tagStart === -1) break;
+      // XML allows any whitespace after the element name (Inkscape writes a
+      // newline); any other character means a different element.
+      if (!/\s/.test(lower.charAt(tagStart + 5))) {
+        pos = tagStart + 5;
+        continue;
+      }
       const tagEnd = svgString.indexOf('>', tagStart);
       if (tagEnd === -1) break;
 
