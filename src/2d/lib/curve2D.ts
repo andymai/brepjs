@@ -157,9 +157,10 @@ export class Curve2D {
     const tmpPt = this._firstPoint;
     this._firstPoint = this._lastPoint;
     this._lastPoint = tmpPt;
-    const tmpParam = this._firstParameter;
-    this._firstParameter = this._lastParameter;
-    this._lastParameter = tmpParam;
+    // Reversal reparameterises the curve (Geom2d ReversedParameter), so the old
+    // bounds do not carry over swapped; read them again from the kernel.
+    this._firstParameter = null;
+    this._lastParameter = null;
   }
 
   private distanceFromPoint(point: Point2D): number {

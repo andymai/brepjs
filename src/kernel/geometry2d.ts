@@ -15,6 +15,8 @@
  * @module
  */
 
+import { asBSpline2d, bezierSegments2d, fitBSpline2d, subBSpline2d } from './bspline2dFit.js';
+
 // ---------------------------------------------------------------------------
 // 2D Curve types
 // ---------------------------------------------------------------------------
@@ -189,6 +191,80 @@ export function curveTypeName(c: Curve2dObj): string {
       return 'BSPLINE_CURVE';
     case 'trimmed':
       return 'TRIMMED_' + curveTypeName(c.basis);
+  }
+}
+
+/**
+ * Collapse nested trimmed wrappers into a single trimmed curve over a
+ * non-trimmed basis (or return the curve itself when it is not trimmed).
+ * Evaluation is unchanged: both forms map t in [0, 1] to the same basis point.
+ */
+export function flattenTrimmed(c: Curve2dObj): Curve2dObj {
+  if (c.__bk2d !== 'trimmed') return c;
+  const inner = flattenTrimmed(c.basis);
+  if (inner.__bk2d !== 'trimmed') return c;
+  const span = inner.tEnd - inner.tStart;
+  return {
+    __bk2d: 'trimmed',
+    basis: inner.basis,
+    tStart: inner.tStart + c.tStart * span,
+    tEnd: inner.tStart + c.tEnd * span,
+  };
+}
+
+/** Basis parameter of the reversed basis that lands on the point at `u` of the original. */
+function reversedBasisParam(c: Curve2dObj, u: number): number {
+  switch (c.__bk2d) {
+    case 'circle':
+    case 'ellipse':
+      return -u;
+    default: {
+      const { first, last } = curveBounds(c);
+      return first + last - u;
+    }
+  }
+}
+
+/**
+ * The same geometry traversed in the opposite direction (OCCT `Geom2d_Curve::Reversed`).
+ * Trimmed curves keep an increasing trim range: the basis is reversed and the
+ * range is remapped onto it.
+ */
+export function reverseCurve2d(c: Curve2dObj): Curve2dObj {
+  switch (c.__bk2d) {
+    case 'line':
+      return {
+        ...c,
+        ox: c.ox + c.dx * c.len,
+        oy: c.oy + c.dy * c.len,
+        dx: -c.dx,
+        dy: -c.dy,
+      };
+    case 'circle':
+    case 'ellipse':
+      return { ...c, sense: !c.sense };
+    case 'bezier':
+      return { ...c, poles: [...c.poles].reverse() };
+    case 'bspline': {
+      const lo = c.knots[0] ?? 0;
+      const hi = c.knots[c.knots.length - 1] ?? 1;
+      return {
+        ...c,
+        poles: [...c.poles].reverse(),
+        knots: c.knots.map((k) => lo + hi - k).reverse(),
+        multiplicities: [...c.multiplicities].reverse(),
+      };
+    }
+    case 'trimmed': {
+      const flat = flattenTrimmed(c);
+      if (flat.__bk2d !== 'trimmed') return reverseCurve2d(flat);
+      return {
+        __bk2d: 'trimmed',
+        basis: reverseCurve2d(flat.basis),
+        tStart: reversedBasisParam(flat.basis, flat.tEnd),
+        tEnd: reversedBasisParam(flat.basis, flat.tStart),
+      };
+    }
   }
 }
 
@@ -444,14 +520,29 @@ export function scaleCurve2d(c: Curve2dObj, factor: number, cx: number, cy: numb
         cy: ncy,
         majorRadius: c.majorRadius * Math.abs(factor),
         minorRadius: c.minorRadius * Math.abs(factor),
+        // A negative factor is a half-turn on top of |factor|; the frame carries it.
+        xDirAngle: factor < 0 ? c.xDirAngle + Math.PI : c.xDirAngle,
       };
     }
     case 'bezier':
       return { ...c, poles: c.poles.map(([x, y]) => scalePoint(x, y)) };
     case 'bspline':
       return { ...c, poles: c.poles.map(([x, y]) => scalePoint(x, y)) };
-    case 'trimmed':
-      return { ...c, basis: scaleCurve2d(c.basis, factor, cx, cy) };
+    case 'trimmed': {
+      const basis = scaleCurve2d(c.basis, factor, cx, cy);
+      // Lines are parameterised by arc length, so the trim range scales too.
+      if (basis.__bk2d === 'line') {
+        const s = Math.abs(factor);
+        return { ...c, basis, tStart: c.tStart * s, tEnd: c.tEnd * s };
+      }
+      // A frameless circle cannot carry the half-turn of a negative factor, so
+      // it lands in the trim range (as in rotateCurve2d).
+      if (basis.__bk2d === 'circle' && factor < 0) {
+        const shift = basis.sense ? Math.PI : -Math.PI;
+        return { ...c, basis, tStart: c.tStart + shift, tEnd: c.tEnd + shift };
+      }
+      return { ...c, basis };
+    }
   }
 }
 
@@ -522,6 +613,372 @@ export function mirrorAcrossAxis(
       return { ...c, basis };
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Affine maps, offsets, curve-curve distance
+// ---------------------------------------------------------------------------
+
+/** The affine map x' = a*x + b*y + tx, y' = c*x + d*y + ty. */
+export interface Affine2d {
+  readonly a: number;
+  readonly b: number;
+  readonly c: number;
+  readonly d: number;
+  readonly tx: number;
+  readonly ty: number;
+}
+
+function applyAffine(m: Affine2d, x: number, y: number): [number, number] {
+  return [m.a * x + m.b * y + m.tx, m.c * x + m.d * y + m.ty];
+}
+
+interface MappedCurve {
+  curve: Curve2dObj;
+  /** Parameter on the image that lands on the image of the point at `u`. */
+  mapParam: (u: number) => number;
+}
+
+/**
+ * Image of the conic C + M0 * (cos psi, sin psi), psi = sense ? t : -t.
+ * The closed-form 2x2 SVD M = R(phi) * diag(sx, sy) * R(theta) gives the new
+ * frame (phi), radii (sx, |sy|) and the angular shift (theta); sy < 0 means the
+ * map reflects, which flips the sense.
+ */
+function affineConic(
+  cx: number,
+  cy: number,
+  m0: [number, number, number, number],
+  sense: boolean,
+  m: Affine2d
+): MappedCurve {
+  const [ncx, ncy] = applyAffine(m, cx, cy);
+  const m00 = m.a * m0[0] + m.b * m0[2];
+  const m01 = m.a * m0[1] + m.b * m0[3];
+  const m10 = m.c * m0[0] + m.d * m0[2];
+  const m11 = m.c * m0[1] + m.d * m0[3];
+  const e = (m00 + m11) / 2;
+  const f = (m00 - m11) / 2;
+  const g = (m10 + m01) / 2;
+  const h = (m10 - m01) / 2;
+  const q = Math.hypot(e, h);
+  const r = Math.hypot(f, g);
+  const sx = q + r;
+  const sy = q - r;
+  const a1 = Math.atan2(g, f);
+  const a2 = Math.atan2(h, e);
+  const theta = (a2 - a1) / 2;
+  const phi = (a2 + a1) / 2;
+  const newSense = sy < 0 ? !sense : sense;
+  const shift = sense ? theta : -theta;
+  if (Math.min(q, r) <= 1e-12 * Math.max(q, r)) {
+    const circleShift = shift + (newSense ? phi : -phi);
+    return {
+      curve: { __bk2d: 'circle', cx: ncx, cy: ncy, radius: sx, sense: newSense },
+      mapParam: (u) => u + circleShift,
+    };
+  }
+  return {
+    curve: {
+      __bk2d: 'ellipse',
+      cx: ncx,
+      cy: ncy,
+      majorRadius: sx,
+      minorRadius: Math.abs(sy),
+      xDirAngle: phi,
+      sense: newSense,
+    },
+    mapParam: (u) => u + shift,
+  };
+}
+
+function affineBasis(c: Curve2dObj, m: Affine2d): MappedCurve {
+  switch (c.__bk2d) {
+    case 'line': {
+      const ldx = m.a * c.dx + m.b * c.dy;
+      const ldy = m.c * c.dx + m.d * c.dy;
+      const speed = Math.hypot(ldx, ldy);
+      const [ox, oy] = applyAffine(m, c.ox, c.oy);
+      if (speed < 1e-300) return { curve: { ...c, ox, oy, len: 0 }, mapParam: () => 0 };
+      return {
+        curve: { __bk2d: 'line', ox, oy, dx: ldx / speed, dy: ldy / speed, len: c.len * speed },
+        mapParam: (u) => u * speed,
+      };
+    }
+    case 'circle':
+      return affineConic(c.cx, c.cy, [c.radius, 0, 0, c.radius], c.sense, m);
+    case 'ellipse': {
+      const cos = Math.cos(c.xDirAngle);
+      const sin = Math.sin(c.xDirAngle);
+      const m0: [number, number, number, number] = [
+        c.majorRadius * cos,
+        -c.minorRadius * sin,
+        c.majorRadius * sin,
+        c.minorRadius * cos,
+      ];
+      return affineConic(c.cx, c.cy, m0, c.sense, m);
+    }
+    case 'bezier':
+    case 'bspline':
+      return {
+        curve: { ...c, poles: c.poles.map(([x, y]) => applyAffine(m, x, y)) },
+        mapParam: (u) => u,
+      };
+    case 'trimmed':
+      return { curve: affineCurve2d(c, m), mapParam: (u) => u };
+  }
+}
+
+/**
+ * Exact image of a curve under an affine map (OCCT `Geom2d_Curve::Transformed`
+ * with a `gp_GTrsf2d`): lines stay lines, circles and ellipses become ellipses
+ * (or circles), and pole-based curves map their poles.
+ */
+export function affineCurve2d(c: Curve2dObj, m: Affine2d): Curve2dObj {
+  const flat = flattenTrimmed(c);
+  if (flat.__bk2d !== 'trimmed') return affineBasis(flat, m).curve;
+  const { curve, mapParam } = affineBasis(flat.basis, m);
+  return {
+    __bk2d: 'trimmed',
+    basis: curve,
+    tStart: mapParam(flat.tStart),
+    tEnd: mapParam(flat.tEnd),
+  };
+}
+
+function unitTangent(c: Curve2dObj, t: number, first: number, last: number): [number, number] {
+  let [tx, ty] = tangentCurve2d(c, t);
+  let len = Math.hypot(tx, ty);
+  // A degenerate derivative (coincident end poles, cusp): borrow the direction
+  // from just inside the domain.
+  for (let k = 1; len < 1e-12 && k <= 6; k++) {
+    const h = (last - first) * 10 ** (-9 + k);
+    [tx, ty] = tangentCurve2d(c, t + h <= Math.max(first, last) ? t + h : t - h);
+    len = Math.hypot(tx, ty);
+  }
+  return len < 1e-300 ? [1, 0] : [tx / len, ty / len];
+}
+
+function curveExtent(c: Curve2dObj): number {
+  const box = createBBox2d();
+  addCurveToBBox(box, c, 0);
+  return Math.hypot(box.xMax - box.xMin, box.yMax - box.yMin);
+}
+
+/**
+ * Parameters of `c`, in its own parameter range, at the interior knots of its
+ * B-spline basis: where a fit of the curve (or of its offset) must sample.
+ */
+export function curveKnotParams(c: Curve2dObj): number[] {
+  const flat = flattenTrimmed(c);
+  const basis = flat.__bk2d === 'trimmed' ? flat.basis : flat;
+  if (basis.__bk2d !== 'bspline') return [];
+  const inner = basis.knots.slice(1, -1);
+  if (flat.__bk2d !== 'trimmed') return inner;
+  const { tStart, tEnd } = flat;
+  return inner
+    .filter((k) => k > Math.min(tStart, tEnd) && k < Math.max(tStart, tEnd))
+    .map((k) => (k - tStart) / (tEnd - tStart));
+}
+
+/**
+ * Offset `distance` to the right of the direction of travel (OCCT
+ * `Geom2d_OffsetCurve`: a counter-clockwise circle grows). Lines and circles
+ * are offset exactly; other curves are fitted within `tolerance` (by default
+ * relative to the curve's size).
+ */
+export function offsetCurve2d(c: Curve2dObj, distance: number, tolerance?: number): Curve2dObj {
+  const flat = flattenTrimmed(c);
+  const trimmed = flat.__bk2d === 'trimmed' ? flat : null;
+  const basis = trimmed ? trimmed.basis : flat;
+  // A decreasing trim range runs against its basis, which swaps the right side.
+  const d = trimmed && trimmed.tEnd < trimmed.tStart ? -distance : distance;
+
+  if (basis.__bk2d === 'line') {
+    const shifted: Line2d = { ...basis, ox: basis.ox + basis.dy * d, oy: basis.oy - basis.dx * d };
+    return trimmed ? { ...trimmed, basis: shifted } : shifted;
+  }
+  if (basis.__bk2d === 'circle') {
+    const radius = basis.radius + (basis.sense ? d : -d);
+    if (Math.abs(radius) <= 1e-12 * Math.max(1, basis.radius)) {
+      throw new Error('offsetCurve2d: the offset collapses the circle to its center');
+    }
+    const circle: Circle2d = { ...basis, radius: Math.abs(radius) };
+    if (!trimmed) return circle;
+    if (radius > 0) return { ...trimmed, basis: circle };
+    // Past the center, each point lands on the far side of the offset circle.
+    const shift = basis.sense ? Math.PI : -Math.PI;
+    return {
+      ...trimmed,
+      basis: circle,
+      tStart: trimmed.tStart + shift,
+      tEnd: trimmed.tEnd + shift,
+    };
+  }
+
+  const { first, last } = curveBounds(flat);
+  const tol = tolerance ?? 1e-9 * Math.max(1, curveExtent(flat) + Math.abs(distance));
+  return fitBSpline2d(
+    (t) => {
+      const [px, py] = evaluateCurve2d(flat, t);
+      const [ux, uy] = unitTangent(flat, t, first, last);
+      return [px + uy * distance, py - ux * distance];
+    },
+    first,
+    last,
+    tol,
+    { breaks: curveKnotParams(flat) }
+  );
+}
+
+function sampleCurve(c: Curve2dObj, from: number, to: number, n: number): [number, number][] {
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= n; i++) pts.push(evaluateCurve2d(c, from + ((to - from) * i) / n));
+  return pts;
+}
+
+/** Second derivative by central differences, kept inside [lo, hi] for clamped curves. */
+function secondDerivative(c: Curve2dObj, t: number, lo: number, hi: number): [number, number] {
+  const h = 1e-4 * Math.max(hi - lo, 1e-9);
+  const mid = Math.min(hi - h, Math.max(lo + h, t));
+  const [ax, ay] = evaluateCurve2d(c, mid - h);
+  const [bx, by] = evaluateCurve2d(c, mid);
+  const [cx, cy] = evaluateCurve2d(c, mid + h);
+  return [(ax - 2 * bx + cx) / (h * h), (ay - 2 * by + cy) / (h * h)];
+}
+
+/**
+ * Newton step for f(s, t) = |c1(s) - c2(t)|^2 / 2. The closest pair of two
+ * disjoint curves has parallel tangents, so the curvature terms of the Hessian
+ * are what make it converge; where the Hessian is not positive definite the
+ * step falls back to Gauss-Newton, then to projecting c1(s) onto c2.
+ */
+function closestPairStep(
+  c1: Curve2dObj,
+  c2: Curve2dObj,
+  s: number,
+  t: number,
+  box1: [number, number],
+  box2: [number, number]
+): [number, number] {
+  const [px, py] = evaluateCurve2d(c1, s);
+  const [qx, qy] = evaluateCurve2d(c2, t);
+  const dx = px - qx;
+  const dy = py - qy;
+  const t1 = tangentCurve2d(c1, s);
+  const t2 = tangentCurve2d(c2, t);
+  const g1 = t1[0] * dx + t1[1] * dy;
+  const g2 = -(t2[0] * dx + t2[1] * dy);
+  const a11 = t1[0] * t1[0] + t1[1] * t1[1];
+  const a22 = t2[0] * t2[0] + t2[1] * t2[1];
+  const a12 = -(t1[0] * t2[0] + t1[1] * t2[1]);
+  const k1 = secondDerivative(c1, s, box1[0], box1[1]);
+  const k2 = secondDerivative(c2, t, box2[0], box2[1]);
+  const h11 = a11 + k1[0] * dx + k1[1] * dy;
+  const h22 = a22 - (k2[0] * dx + k2[1] * dy);
+  const detH = h11 * h22 - a12 * a12;
+  if (h11 > 0 && detH > 1e-12 * Math.abs(h11 * h22)) {
+    return [(-g1 * h22 + g2 * a12) / detH, (-g2 * h11 + g1 * a12) / detH];
+  }
+  const detGN = a11 * a22 - a12 * a12;
+  if (detGN > 1e-12 * a11 * a22) {
+    return [(-g1 * a22 + g2 * a12) / detGN, (-g2 * a11 + g1 * a12) / detGN];
+  }
+  if (a22 > 0) return [0, -g2 / a22];
+  return a11 > 0 ? [-g1 / a11, 0] : [0, 0];
+}
+
+/** Refine a seed pair, halving each step until it lowers the distance; returns the squared distance. */
+function refineClosestPair(
+  c1: Curve2dObj,
+  c2: Curve2dObj,
+  seed: [number, number],
+  box1: [number, number],
+  box2: [number, number]
+): number {
+  const clamp = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, v));
+  const distSq = (a: number, b: number) => {
+    const [px, py] = evaluateCurve2d(c1, a);
+    const [qx, qy] = evaluateCurve2d(c2, b);
+    return (px - qx) ** 2 + (py - qy) ** 2;
+  };
+  let [s, t] = seed;
+  let f = distSq(s, t);
+  for (let iter = 0; iter < 60 && f > 0; iter++) {
+    const [ds, dt] = closestPairStep(c1, c2, s, t, box1, box2);
+    let lambda = 1;
+    let ns = s;
+    let nt = t;
+    let nf = f;
+    for (; lambda > 1e-6 && nf >= f; lambda /= 2) {
+      ns = clamp(s + lambda * ds, box1);
+      nt = clamp(t + lambda * dt, box2);
+      nf = distSq(ns, nt);
+    }
+    if (nf >= f || (ns === s && nt === t)) break;
+    [s, t, f] = [ns, nt, nf];
+  }
+  return f;
+}
+
+/** Whether grid cell (i, j) is no larger than any of its eight neighbours. */
+function isGridMinimum(at: (i: number, j: number) => number, i: number, j: number, n: number) {
+  const d = at(i, j);
+  for (let ni = Math.max(0, i - 1); ni <= Math.min(n, i + 1); ni++) {
+    for (let nj = Math.max(0, j - 1); nj <= Math.min(n, j + 1); nj++) {
+      if (at(ni, nj) < d) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Minimum distance between c1 over [from1, to1] and c2 over [from2, to2]
+ * (OCCT `Geom2dAPI_ExtremaCurveCurve`): every local minimum of a sampled
+ * distance grid seeds a Gauss-Newton refinement.
+ */
+export function distanceBetweenCurves2d(
+  c1: Curve2dObj,
+  c2: Curve2dObj,
+  from1: number,
+  to1: number,
+  from2: number,
+  to2: number
+): number {
+  const n = 32;
+  const p1 = sampleCurve(c1, from1, to1, n);
+  const p2 = sampleCurve(c2, from2, to2, n);
+  const grid = new Float64Array((n + 1) * (n + 1));
+  for (let i = 0; i <= n; i++) {
+    for (let j = 0; j <= n; j++) {
+      /* eslint-disable @typescript-eslint/no-non-null-assertion -- i, j within 0..n */
+      const a = p1[i]!;
+      const b = p2[j]!;
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
+      grid[i * (n + 1) + j] = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+    }
+  }
+  const at = (i: number, j: number) => grid[i * (n + 1) + j] ?? Infinity;
+  const seeds: { i: number; j: number; d: number }[] = [];
+  let best = Infinity;
+  for (let i = 0; i <= n; i++) {
+    for (let j = 0; j <= n; j++) {
+      const d = at(i, j);
+      best = Math.min(best, d);
+      if (isGridMinimum(at, i, j, n)) seeds.push({ i, j, d });
+    }
+  }
+  seeds.sort((x, y) => x.d - y.d);
+  const box1: [number, number] = [Math.min(from1, to1), Math.max(from1, to1)];
+  const box2: [number, number] = [Math.min(from2, to2), Math.max(from2, to2)];
+  for (const { i, j } of seeds.slice(0, 8)) {
+    const seed: [number, number] = [
+      from1 + ((to1 - from1) * i) / n,
+      from2 + ((to2 - from2) * j) / n,
+    ];
+    best = Math.min(best, refineClosestPair(c1, c2, seed, box1, box2));
+  }
+  return Math.sqrt(best);
 }
 
 // ---------------------------------------------------------------------------
@@ -949,72 +1406,135 @@ export function createBBox2d(): BBox2d {
   return { __bk2d_bbox: true, xMin: Infinity, yMin: Infinity, xMax: -Infinity, yMax: -Infinity };
 }
 
-export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
-  const basis = c.__bk2d === 'trimmed' ? c.basis : c;
+/** The first parameter congruent to `t` (mod 2*pi) inside [lo, hi], if any. */
+function periodicParamInRange(t: number, lo: number, hi: number): number | null {
+  const period = 2 * Math.PI;
+  const tt = t + period * Math.ceil((lo - t) / period - 1e-12);
+  return tt <= hi + 1e-12 ? tt : null;
+}
 
-  // Analytic: lines need only 2 endpoints (no sampling)
-  if (basis.__bk2d === 'line') {
-    const bounds = curveBounds(c);
-    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-    const [x0, y0] = evaluateCurve2d(c, bounds.first);
-    const [x1, y1] = evaluateCurve2d(c, bounds.last);
-    bbox.xMin = Math.min(bbox.xMin, x0, x1);
-    bbox.yMin = Math.min(bbox.yMin, y0, y1);
-    bbox.xMax = Math.max(bbox.xMax, x0, x1);
-    bbox.yMax = Math.max(bbox.yMax, y0, y1);
+/**
+ * Basis parameters where a conic reaches its axis-aligned extremes. For
+ * C + a*cos(psi)*U + b*sin(psi)*V (U at angle phi), dx/dpsi = 0 at
+ * tan(psi) = -b*sin(phi) / (a*cos(phi)) and dy/dpsi = 0 at
+ * tan(psi) = b*cos(phi) / (a*sin(phi)), each plus pi.
+ */
+function conicExtremeParams(c: Circle2d | Ellipse2d): number[] {
+  const [a, b, phi] =
+    c.__bk2d === 'circle' ? [c.radius, c.radius, 0] : [c.majorRadius, c.minorRadius, c.xDirAngle];
+  const psiX = Math.atan2(-b * Math.sin(phi), a * Math.cos(phi));
+  const psiY = Math.atan2(b * Math.cos(phi), a * Math.sin(phi));
+  return [psiX, psiX + Math.PI, psiY, psiY + Math.PI].map((psi) => (c.sense ? psi : -psi));
+}
+
+function splitBezier1d(vals: readonly number[]): [number[], number[]] {
+  const work = [...vals];
+  const n = work.length;
+  const left: number[] = [];
+  const right: number[] = [];
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- indices bounded by n */
+  left.push(work[0]!);
+  right.push(work[n - 1]!);
+  for (let r = 1; r < n; r++) {
+    for (let i = 0; i < n - r; i++) work[i] = (work[i]! + work[i + 1]!) / 2;
+    left.push(work[0]!);
+    right.push(work[n - 1 - r]!);
+  }
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  return [left, right.reverse()];
+}
+
+/**
+ * Widen `range` to the values a 1D Bezier takes. Its coefficients bound it
+ * (convex hull), so a piece whose coefficients stay inside the range is done;
+ * otherwise the piece is halved, adding the curve value at the split.
+ */
+function widenToBezier(vals: readonly number[], range: { min: number; max: number }, depth = 0) {
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const tol = 1e-12 * (1 + Math.abs(range.min) + Math.abs(range.max));
+  if (lo >= range.min - tol && hi <= range.max + tol) return;
+  if (depth >= 60) {
+    range.min = Math.min(range.min, lo);
+    range.max = Math.max(range.max, hi);
     return;
   }
+  const [left, right] = splitBezier1d(vals);
+  const mid = right[0] ?? lo;
+  range.min = Math.min(range.min, mid);
+  range.max = Math.max(range.max, mid);
+  widenToBezier(left, range, depth + 1);
+  widenToBezier(right, range, depth + 1);
+}
 
-  // Analytic: circles/arcs — endpoints + axis extremes
-  if (basis.__bk2d === 'circle') {
-    const bounds = curveBounds(c);
-    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-    const { cx, cy, radius, sense } = basis;
-    const [x0, y0] = evaluateCurve2d(c, bounds.first);
-    const [x1, y1] = evaluateCurve2d(c, bounds.last);
-    let xMin = Math.min(x0, x1),
-      xMax = Math.max(x0, x1);
-    let yMin = Math.min(y0, y1),
-      yMax = Math.max(y0, y1);
-    // Check axis-aligned extreme angles within the arc's parameter range
-    const tStart = c.__bk2d === 'trimmed' ? c.tStart : bounds.first;
-    const tEnd = c.__bk2d === 'trimmed' ? c.tEnd : bounds.last;
-    for (let k = 0; k < 4; k++) {
-      const angle = (k * Math.PI) / 2;
-      const t = sense ? angle : -angle;
-      // Check if t (or t + 2π) falls within [tStart, tEnd]
-      for (let wrap = 0; wrap <= 1; wrap++) {
-        const tt = t + wrap * 2 * Math.PI;
-        if (tt >= tStart - 1e-10 && tt <= tEnd + 1e-10) {
-          const ex = cx + radius * Math.cos(angle);
-          const ey = cy + radius * Math.sin(angle);
-          xMin = Math.min(xMin, ex);
-          xMax = Math.max(xMax, ex);
-          yMin = Math.min(yMin, ey);
-          yMax = Math.max(yMax, ey);
-          break;
-        }
-      }
+/** Add the exact extent of a Bezier or B-spline over [lo, hi], span by span. */
+function addPoleCurveExtent(bbox: BBox2d, c: Bezier2d | BSpline2d, lo: number, hi: number): void {
+  const bs = asBSpline2d(c);
+  const first = bs.knots[0] ?? 0;
+  const last = bs.knots[bs.knots.length - 1] ?? 1;
+  const a = Math.max(first, lo);
+  const b = Math.min(last, hi);
+  if (b <= a) return;
+  const piece = a > first || b < last ? subBSpline2d(bs, a, b) : bs;
+  const x = { min: bbox.xMin, max: bbox.xMax };
+  const y = { min: bbox.yMin, max: bbox.yMax };
+  for (const seg of bezierSegments2d(piece)) {
+    for (const [range, axis] of [
+      [x, 0],
+      [y, 1],
+    ] as const) {
+      const vals = seg.map((pt) => pt[axis]);
+      const ends = [vals[0] ?? range.min, vals[vals.length - 1] ?? range.min];
+      range.min = Math.min(range.min, ...ends);
+      range.max = Math.max(range.max, ...ends);
+      widenToBezier(vals, range);
     }
-    bbox.xMin = Math.min(bbox.xMin, xMin);
-    bbox.yMin = Math.min(bbox.yMin, yMin);
-    bbox.xMax = Math.max(bbox.xMax, xMax);
-    bbox.yMax = Math.max(bbox.yMax, yMax);
-    return;
   }
+  bbox.xMin = x.min;
+  bbox.xMax = x.max;
+  bbox.yMin = y.min;
+  bbox.yMax = y.max;
+}
 
-  // General: sample (bezier, bspline, ellipse)
+export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
   const bounds = curveBounds(c);
   if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
-  const nSamples = 20;
-  const dt = (bounds.last - bounds.first) / nSamples;
-  for (let i = 0; i <= nSamples; i++) {
-    const t = bounds.first + i * dt;
-    const [x, y] = evaluateCurve2d(c, t);
-    if (x < bbox.xMin) bbox.xMin = x;
-    if (y < bbox.yMin) bbox.yMin = y;
-    if (x > bbox.xMax) bbox.xMax = x;
-    if (y > bbox.yMax) bbox.yMax = y;
+  const addPoint = ([x, y]: [number, number]) => {
+    bbox.xMin = Math.min(bbox.xMin, x);
+    bbox.yMin = Math.min(bbox.yMin, y);
+    bbox.xMax = Math.max(bbox.xMax, x);
+    bbox.yMax = Math.max(bbox.yMax, y);
+  };
+  addPoint(evaluateCurve2d(c, bounds.first));
+  addPoint(evaluateCurve2d(c, bounds.last));
+
+  const flat = flattenTrimmed(c);
+  const basis = flat.__bk2d === 'trimmed' ? flat.basis : flat;
+  const basisBounds = curveBounds(basis);
+  const [from, to] =
+    flat.__bk2d === 'trimmed' ? [flat.tStart, flat.tEnd] : [basisBounds.first, basisBounds.last];
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  const add = (t: number) => {
+    addPoint(evaluateCurve2d(basis, t));
+  };
+
+  switch (basis.__bk2d) {
+    case 'line':
+      return;
+    case 'circle':
+    case 'ellipse':
+      for (const t of conicExtremeParams(basis)) {
+        const tt = periodicParamInRange(t, lo, hi);
+        if (tt !== null) add(tt);
+      }
+      return;
+    case 'bezier':
+    case 'bspline':
+      addPoleCurveExtent(bbox, basis, lo, hi);
+      return;
+    case 'trimmed':
+      return;
   }
 }
 

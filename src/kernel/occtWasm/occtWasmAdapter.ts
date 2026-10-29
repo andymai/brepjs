@@ -1793,7 +1793,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
   makeBSpline2d(
     points: [number, number][],
-    _options?: {
+    options?: {
       degMin?: number;
       degMax?: number;
       continuity?: 'C0' | 'C1' | 'C2' | 'C3';
@@ -1801,7 +1801,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       smoothing?: [number, number, number] | null;
     }
   ): Curve2dHandle {
-    return kernel2dOps.makeBSpline2d(points);
+    return kernel2dOps.makeBSpline2d(points, options);
   }
   evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number] {
     return kernel2dOps.evaluateCurve2d(curve, param);
@@ -1936,11 +1936,11 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
   approximateCurve2dAsBSpline(
     curve: Curve2dHandle,
-    _tolerance: number,
+    tolerance: number,
     _continuity: 'C0' | 'C1' | 'C2' | 'C3',
     maxSegments: number
   ): Curve2dHandle {
-    return kernel2dOps.approximateCurve2dAsBSpline(curve, maxSegments);
+    return kernel2dOps.approximateCurve2dAsBSpline(curve, tolerance, maxSegments);
   }
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
     return kernel2dOps.decomposeBSpline2dToBeziers(curve);
