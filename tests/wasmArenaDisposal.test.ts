@@ -1041,6 +1041,16 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
+      // A side face takes the rotated placement; a holed drawing takes the
+      // compound-sketch face. Both release their sketch, face, and tool.
+      expect(
+        perIterationLeak(() => {
+          using b = box(20, 20, 10, { centered: true });
+          const profile = drawRectangle(6, 6).cut(drawCircle(1));
+          const r = pocket(b, { profile, depth: 3, face: (f) => f.inDirection('X') });
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
     });
 
     it('complexExtrude / twistExtrude leak nothing', () => {
