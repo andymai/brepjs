@@ -315,16 +315,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // sketchFns.test.ts
-    // -----------------------------------------------------------------------
-    'sketchFns.revolveHoled': {
-      kind: 'skip',
-      reason:
-        'brepkit measures a revolved ring with a hole at 21580.40 where Pappus gives 21579.68 ' +
-        '(3.3e-5 relative); occt and occt-wasm match it within 0.005.',
-    },
-
-    // -----------------------------------------------------------------------
     // gridfinity-smoke.test.ts
     // -----------------------------------------------------------------------
     'gridfinity.rectLipSweep': {
@@ -334,6 +324,16 @@ export const divergences: DivergenceMap = {
         'cross-section frame, so the lip blows out to xMax ~105 vs the expected ~24 (the square ' +
         '84x84 lip case passes). Square spines are symmetric in the frame xDir; rectangular ' +
         'spines expose the orientation bug on the long vs short edges.',
+    },
+
+    // -----------------------------------------------------------------------
+    // sketchFns.test.ts
+    // -----------------------------------------------------------------------
+    'sketchFns.revolveHoled': {
+      kind: 'skip',
+      reason:
+        'brepkit measures a revolved ring with a hole at 21580.40 where Pappus gives 21579.68 ' +
+        '(3.3e-5 relative); occt and occt-wasm match it within 0.005.',
     },
 
     // -----------------------------------------------------------------------
