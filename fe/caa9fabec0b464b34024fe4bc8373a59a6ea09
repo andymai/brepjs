@@ -1,0 +1,19 @@
+packages/brepjs-cad/bench/claudeEval.ts
+  s_d4ab5fb2066c9b::t_64e70a92b5c3f4 247-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fecaa9fabec0b464b34024fe4bc8373a59a6ea09",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
