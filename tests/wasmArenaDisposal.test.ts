@@ -238,8 +238,34 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           '\n'
         ),
       ]);
+      const hollow = await (async () => {
+        using outer = box(20, 20, 20);
+        using unplaced = box(10, 10, 10);
+        using inner = translate(unplaced, [5, 5, 5]);
+        const facets = async (shape: typeof outer, inward: boolean) => {
+          const lines = (await unwrap(exportSTL(shape, { binary: false })).text()).split('\n');
+          const body = lines.slice(
+            1,
+            lines.findIndex((l) => l.trim().startsWith('endsolid'))
+          );
+          if (!inward) return body;
+          return body.map((line, i) => {
+            // Swap the first and last vertex of each loop to turn the shell inward.
+            if (body[i - 1]?.trim() === 'outer loop') return body[i + 2] ?? line;
+            if (body[i - 3]?.trim() === 'outer loop') return body[i - 2] ?? line;
+            return line;
+          });
+        };
+        const text = [
+          'solid hollow',
+          ...(await facets(outer, false)),
+          ...(await facets(inner, true)),
+          'endsolid hollow',
+        ];
+        return new Blob([text.join('\n')]);
+      })();
       const imports = [
-        ...[closed, open, twoBodies].map((blob) => () => importSTL(blob)),
+        ...[closed, open, twoBodies, hollow].map((blob) => () => importSTL(blob)),
         ...[objClosed, objOpen, objTwoBodies].map((blob) => () => importOBJ(blob)),
       ];
       for (const load of imports) {

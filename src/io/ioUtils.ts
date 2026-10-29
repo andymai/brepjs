@@ -14,13 +14,15 @@ import { ioError } from '@/core/errors.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { getFaces, getShells, subShapeCount } from '@/topology/topologyQueryFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
+import { carveCavities } from './meshNesting.js';
 
 /**
  * Sew faces into one solid per closed body.
  *
  * A single body comes back on its own: a `Solid` when closed, a `Shell` when
  * open. Several bodies come back as a `Compound` holding a `Solid` per closed
- * body, a `Shell` per open one, and any face that joined no shell. The caller
+ * body, a `Shell` per open one, and any face that joined no shell. A closed
+ * shell inside another is a cavity, cut from the body that holds it. The caller
  * keeps ownership of `faces`.
  *
  * @throws When the kernel cannot sew the faces at all.
@@ -35,7 +37,7 @@ export function sewFacesIntoSolids(faces: KernelShape[], tolerance: number): Unk
   const hasLooseFaces = shellFaces !== subShapeCount(sewn, 'face');
   if (shells.length === 0 || (shells.length === 1 && !hasLooseFaces)) return sewn;
   using _sewn = sewn;
-  const bodies = shells.map((shell) => solidifyShell(shell.wrapped, tolerance));
+  const bodies = carveCavities(shells.map((shell) => solidifyShell(shell.wrapped, tolerance)));
   if (hasLooseFaces) {
     for (const face of facesOutsideShells(sewn, shells)) {
       bodies.push(castResultShape(kernel.copyShape(face.wrapped)));

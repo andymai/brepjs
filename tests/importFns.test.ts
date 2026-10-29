@@ -27,6 +27,27 @@ import {
 } from '@/index.js';
 import type { Shape3D } from '@/index.js';
 
+/** The facets of a shape's ASCII STL; `inward` reverses each triangle so the shell faces in. */
+async function stlFacets(shape: Shape3D, inward = false): Promise<string> {
+  const text = await unwrap(exportSTL(shape, { binary: false })).text();
+  const lines = text.split('\n');
+  const facets = lines.slice(
+    1,
+    lines.findIndex((line) => line.trim().startsWith('endsolid'))
+  );
+  if (!inward) return facets.join('\n') + '\n';
+  const out: string[] = [];
+  for (let i = 0; i < facets.length; i++) {
+    const line = facets[i] ?? '';
+    out.push(line);
+    if (line.trim() === 'outer loop') {
+      out.push(...facets.slice(i + 1, i + 4).reverse());
+      i += 3;
+    }
+  }
+  return out.join('\n') + '\n';
+}
+
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -252,6 +273,47 @@ describe('importSTL', () => {
     expect(solids).toHaveLength(1);
     expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(1000, 3);
     expect(getFaces(imported)).toHaveLength(13);
+  });
+
+  it('keeps a sealed cavity hollow', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using outer = box(20, 20, 20);
+    using cavityBox = box(10, 10, 10);
+    using cavity = translate(cavityBox, [5, 5, 5]);
+    const stl =
+      'solid hollow\n' +
+      (await stlFacets(outer)) +
+      (await stlFacets(cavity, true)) +
+      'endsolid hollow\n';
+
+    using imported = unwrap(await importSTL(new Blob([stl])));
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(8000 - 1000, 3);
+    expect(getShells(imported)).toHaveLength(2);
+  });
+
+  it('keeps an island inside a cavity as a body of its own', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using outer = box(30, 30, 30);
+    using cavityBox = box(20, 20, 20);
+    using cavity = translate(cavityBox, [5, 5, 5]);
+    using islandBox = box(10, 10, 10);
+    using island = translate(islandBox, [10, 10, 10]);
+    const stl =
+      'solid nested\n' +
+      (await stlFacets(outer)) +
+      (await stlFacets(cavity, true)) +
+      (await stlFacets(island)) +
+      'endsolid nested\n';
+
+    using imported = unwrap(await importSTL(new Blob([stl])));
+    const volumes = getSolids(imported)
+      .map((solid) => unwrap(measureVolume(solid as Shape3D)))
+      .sort((a, b) => a - b);
+    expect(volumes).toHaveLength(2);
+    expect(volumes[0]).toBeCloseTo(1000, 3);
+    expect(volumes[1]).toBeCloseTo(27000 - 8000, 3);
   });
 });
 
