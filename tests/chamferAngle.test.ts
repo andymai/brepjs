@@ -233,6 +233,17 @@ describe('chamfer() with { distance, angle } per edge', () => {
     expect(unwrap(measureVolume(chamfered))).toBeCloseTo(1000 - 2 * loss(near), 6);
   });
 
+  it('returns a failed Result when the callback throws', () => {
+    using b = box(10, 10, 10);
+    const error = unwrapErr(
+      chamfer(b, verticalEdges(b), () => {
+        throw new Error('could not measure the edge');
+      })
+    );
+    expect(error.code).toBe('CHAMFER_FAILED');
+    expect(error.message).toContain('could not measure the edge');
+  });
+
   it('rejects an angle outside (0, 90) from the callback', () => {
     using b = box(10, 10, 10);
     const error = unwrapErr(chamfer(b, verticalEdges(b), bySide(near, { distance: 1, angle: 90 })));

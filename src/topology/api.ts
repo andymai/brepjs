@@ -7,7 +7,7 @@
 
 import type { Vec3, MatrixInput } from '@/core/types.js';
 import { type Result, err } from '@/core/result.js';
-import { BrepErrorCode, validationError } from '@/core/errors.js';
+import { BrepErrorCode, kernelError, validationError } from '@/core/errors.js';
 import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import type {
@@ -335,11 +335,22 @@ function chamferEachEdge(
 ): Result<Shape3D> {
   const distances = new Map<Edge, number | [number, number]>();
   const distAngles: angles.EdgeDistAngle[] = [];
-  for (const edge of edges) {
-    const value = distanceOf(edge);
-    if (value === null) continue;
-    if (!isDistAngle(value)) distances.set(edge, value);
-    else if (value.distance > 0) distAngles.push({ edge, ...value });
+  try {
+    for (const edge of edges) {
+      const value = distanceOf(edge);
+      if (value === null) continue;
+      if (!isDistAngle(value)) distances.set(edge, value);
+      else if (value.distance > 0) distAngles.push({ edge, ...value });
+    }
+  } catch (e) {
+    // A throwing callback fails the chamfer as a Result, as it does inside modifierFns.chamfer.
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      kernelError('CHAMFER_FAILED', `Chamfer operation failed: ${raw}`, e, {
+        operation: 'chamfer',
+        edgeCount: edges.length,
+      })
+    );
   }
 
   if (distAngles.length === 0) {
