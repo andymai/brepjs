@@ -1,0 +1,33 @@
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_a410821d2f532e 231-255
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_df3b7b781d3474 23-24
+  s_d4ab5fb2066c9b::t_74b84be80f474d 35-36,39-43,50-63
+  s_d4ab5fb2066c9b::t_478ba26103eb1d 49
+  s_d4ab5fb2066c9b::t_cd7d2975cb6046 10,14-15
+  s_ddf50d3700ef87::t_bb993de6381492 64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3da2158b0538dcad2e6afb1d50aa8a7b93a185f1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    },
+    "s_ddf50d3700ef87": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a956845-573e-4040-bf05-8a9647067fef",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
