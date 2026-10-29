@@ -17,6 +17,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -65,7 +66,7 @@ const ONLY = args.includes('--only') ? new Set(flag('--only', '').split(',')) : 
 const WS = join(OUT, 'ws');
 const PLUGIN = join(OUT, 'plugin');
 const PARTS = join(WS, 'parts');
-const REFS = join(WS, 'refs');
+const REFS = join(OUT, 'refs');
 const JUDGE = join(OUT, 'judge');
 const BREP = join(WS, 'node_modules', '.bin', 'brep');
 const env = { ...process.env, NPM_CONFIG_LOGLEVEL: 'warn' };
@@ -114,9 +115,11 @@ async function pool<T>(
 
 // --- setup ---------------------------------------------------------------------------------
 
-async function setup(parts: readonly Part[]): Promise<void> {
+async function setup(): Promise<void> {
   mkdirSync(join(OUT, 'pkgs'), { recursive: true });
-  mkdirSync(REFS, { recursive: true });
+  // The root prepack only checks package contents, so build first or the tarball ships stale code.
+  const build = await run('npm', ['run', 'build'], REPO, 1200000, npmEnv);
+  if (build.code !== 0) throw new Error(`brepjs build failed:\n${build.err.slice(-2000)}`);
   // npm pack keeps npm's default loglevel: the root prepack script parses its notice output.
   for (const dir of [REPO, PKG]) {
     await run('npm', ['pack', '--pack-destination', join(OUT, 'pkgs')], dir, 600000, npmEnv);
@@ -131,10 +134,20 @@ async function setup(parts: readonly Part[]): Promise<void> {
   }
   for (const d of ['.claude-plugin', 'skills', 'agents', 'commands'])
     cpSync(join(PKG, d), join(PLUGIN, d), { recursive: true });
+}
+
+// The references are the answer key, so they are written only at render time, outside the author
+// workspace, for whatever parts the current run selects.
+async function ensureRefs(parts: readonly Part[]): Promise<void> {
+  mkdirSync(REFS, { recursive: true });
+  writeFileSync(join(REFS, 'package.json'), '{"type":"module"}\n');
+  if (!existsSync(join(REFS, 'node_modules')))
+    symlinkSync(join(WS, 'node_modules'), join(REFS, 'node_modules'));
   const examples = new Map((await playgroundPrompts()).map((p) => [p.id, p.referenceCode]));
   for (const p of parts) {
+    const file = join(REFS, `${p.id}.ref.brep.ts`);
     const code = examples.get(p.id);
-    if (code) writeFileSync(join(REFS, `${p.id}.ref.brep.ts`), adaptReferenceCode(code));
+    if (code && !existsSync(file)) writeFileSync(file, adaptReferenceCode(code));
   }
 }
 
@@ -151,7 +164,9 @@ async function author(part: Part): Promise<void> {
   // Authors may only run `npx brep`, ls and cat: no arbitrary npx packages or node scripts. They
   // still execute their own part code through brep on this machine, so run untrusted prompts in a
   // VM or container.
-  const deny = ['Read', 'Grep', 'Glob', 'Edit', 'Write'].map((t) => `${t}(/${REPO}/**)`);
+  const deny = [REPO, REFS, JUDGE].flatMap((root) =>
+    ['Read', 'Grep', 'Glob', 'Edit', 'Write'].map((t) => `${t}(/${root}/**)`)
+  );
   const t0 = Date.now();
   const r = await run(
     'claude',
@@ -184,6 +199,7 @@ async function author(part: Part): Promise<void> {
       '--disallowedTools',
       ...deny,
       `Bash(*${REPO}*)`,
+      'Bash(*refs/*)',
       '--',
       prompt,
     ],
@@ -197,9 +213,10 @@ async function author(part: Part): Promise<void> {
 
 // First-try = the first real `brep verify` report the author received; a permission denial of a
 // compound command is not a report.
-function authorStats(id: string): { reports: number; firstTry: boolean } {
+function authorStats(id: string): { reports: number; firstTry: boolean; peeked: string[] } {
   const calls = new Set<string>();
   const results: boolean[] = [];
+  const peeked = new Set<string>();
   for (const line of readFileSync(join(PARTS, id, 'author.jsonl'), 'utf8').split('\n')) {
     let ev: { message?: { content?: unknown } };
     try {
@@ -209,6 +226,12 @@ function authorStats(id: string): { reports: number; firstTry: boolean } {
     }
     const content = Array.isArray(ev.message?.content) ? (ev.message.content as Block[]) : [];
     for (const c of content) {
+      if (c.type === 'tool_use') {
+        const input = JSON.stringify(c.input ?? {});
+        for (const m of input.matchAll(/\/parts\/([a-z0-9-]+)\//g))
+          if (m[1] !== id) peeked.add(m[1] as string);
+        if (/\.ref\.brep|\brefs\//.test(input)) peeked.add('refs');
+      }
       if (
         c.type === 'tool_use' &&
         c.name === 'Bash' &&
@@ -221,7 +244,7 @@ function authorStats(id: string): { reports: number; firstTry: boolean } {
       }
     }
   }
-  return { reports: results.length, firstTry: results[0] ?? false };
+  return { reports: results.length, firstTry: results[0] ?? false, peeked: [...peeked] };
 }
 
 // --- render --------------------------------------------------------------------------------
@@ -230,7 +253,9 @@ async function render(part: Part): Promise<void> {
   const dir = join(PARTS, part.id);
   const file = join(dir, `${part.id}.brep.ts`);
   const report = join(dir, 'final.report.json');
-  if (existsSync(file) && !existsSync(report)) {
+  const shotsDone = (d: string): boolean =>
+    existsSync(join(d, 'iso.png')) && existsSync(join(d, 'iso-xray.png'));
+  if (existsSync(file) && !(existsSync(report) && shotsDone(join(dir, 'shots')))) {
     await run(
       BREP,
       ['verify', file, '--check', '--metrics', '--json', report, '--snapshot', join(dir, 'shots')],
@@ -240,7 +265,7 @@ async function render(part: Part): Promise<void> {
   }
   const ref = join(REFS, `${part.id}.ref.brep.ts`);
   const refReport = join(REFS, `${part.id}.report.json`);
-  if (existsSync(ref) && !existsSync(refReport)) {
+  if (existsSync(ref) && !(existsSync(refReport) && shotsDone(join(REFS, `${part.id}-shots`)))) {
     await run(
       BREP,
       [
@@ -288,6 +313,26 @@ interface JudgeMap {
   factsB: string;
 }
 
+const CLASSES = ['designed', 'partial', 'blob'];
+const PAIRWISE = ['A-better', 'B-better', 'tie-good', 'tie-blob'];
+function wellFormed(v: Verdict): boolean {
+  return (
+    CLASSES.includes(v.A?.class ?? '') &&
+    CLASSES.includes(v.B?.class ?? '') &&
+    PAIRWISE.includes(v.pairwise ?? '')
+  );
+}
+
+function parseVerdict(json: string | undefined): Verdict | null {
+  if (!json) return null;
+  try {
+    const v = JSON.parse(json) as Verdict;
+    return wellFormed(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 async function judgeOnce(part: Part, map: JudgeMap, k: number): Promise<Verdict | null> {
   const prompt =
     `You are judging two CAD renders, A and B, of the same requested part.\n\nDESCRIPTION: ${part.description}\n\n` +
@@ -326,8 +371,7 @@ async function judgeOnce(part: Part, map: JudgeMap, k: number): Promise<Verdict 
   } catch {
     // keep the raw output
   }
-  const m = /\{[\s\S]*\}/.exec(text);
-  const verdict = m ? (JSON.parse(m[0]) as Verdict) : null;
+  const verdict = parseVerdict(/\{[\s\S]*\}/.exec(text)?.[0]);
   writeFileSync(
     join(JUDGE, part.id, `verdict-${k}.json`),
     JSON.stringify({ verdict, raw: text }, null, 1)
@@ -382,8 +426,17 @@ async function judge(part: Part): Promise<void> {
         verdict: Verdict | null;
       }
     ).verdict;
+  const usable = (k: number): boolean =>
+    existsSync(join(JUDGE, part.id, `verdict-${k}.json`)) &&
+    (
+      JSON.parse(readFileSync(join(JUDGE, part.id, `verdict-${k}.json`), 'utf8')) as {
+        verdict: Verdict | null;
+      }
+    ).verdict !== null;
   if (v0 && (v0.pairwise === 'tie-good' || v0.confidence === 'low')) {
-    for (let k = Math.max(existing, 1); k < 3; k++) await judgeOnce(part, map, k);
+    for (let k = 1; k < 3; k++) {
+      for (let attempt = 0; attempt < 2 && !usable(k); attempt++) await judgeOnce(part, map, k);
+    }
   }
 }
 
@@ -400,19 +453,25 @@ function verdictFor(id: string): { mark: string; reason: string } {
         (JSON.parse(readFileSync(join(JUDGE, id, f), 'utf8')) as { verdict: Verdict | null })
           .verdict
     )
-    .filter((v): v is Verdict => v !== null)
+    .filter((v): v is Verdict => v !== null && wellFormed(v))
     .map((v) => {
       const mine = authorIsA ? v.A : v.B;
       const p = v.pairwise ?? '';
-      const ok = p === 'tie-good' || (p === 'A-better') === authorIsA;
+      const authorWins = (authorIsA && p === 'A-better') || (!authorIsA && p === 'B-better');
       return {
         designed: mine?.class === 'designed',
-        ok: p !== 'tie-blob' && ok,
+        ok: p === 'tie-good' || authorWins,
+        blob: p === 'tie-blob',
+        escalate: p === 'tie-good' || v.confidence === 'low',
         reason: mine?.reason ?? '',
       };
     });
   if (votes.length === 0) return { mark: '—', reason: 'judge failed' };
+  // A tie-good or low-confidence first vote calls a three-judge panel; score it only when complete.
+  if (votes[0]?.escalate && votes.length < 3) return { mark: '—', reason: 'panel incomplete' };
   const majority = (xs: boolean[]): boolean => xs.filter(Boolean).length * 2 > xs.length;
+  // Both renders read as blobs: usually the camera, not the part (bench/blind-judge.md).
+  if (majority(votes.map((v) => v.blob))) return { mark: '⚠', reason: 'tie-blob: inconclusive' };
   const pass = majority(votes.map((v) => v.designed)) && majority(votes.map((v) => v.ok));
   return { mark: pass ? '✓' : '✗', reason: votes[0]?.reason ?? '' };
 }
@@ -425,13 +484,12 @@ function score(parts: readonly Part[]): void {
       (JSON.parse(readFileSync(final, 'utf8')) as { ok?: boolean }).ok === true;
     const stats = existsSync(join(PARTS, p.id, 'author.jsonl'))
       ? authorStats(p.id)
-      : { reports: 0, firstTry: false };
-    return {
-      ...p,
-      valid,
-      ...stats,
-      judge: valid ? verdictFor(p.id) : { mark: '—', reason: 'invalid' },
-    };
+      : { reports: 0, firstTry: false, peeked: [] };
+    const judged = valid ? verdictFor(p.id) : { mark: '—', reason: 'invalid' };
+    const judge = stats.peeked.length
+      ? { mark: '⚠', reason: `author read ${stats.peeked.join(', ')}: re-run this part alone` }
+      : judged;
+    return { ...p, valid, ...stats, judge };
   });
   const pct = (n: number, d: number): string => (d ? `${Math.round((100 * n) / d)}%` : '-');
   const lines = [
@@ -461,9 +519,11 @@ const parts: Part[] = (await playgroundPrompts())
   .filter((p) => !ONLY || ONLY.has(p.id))
   .map((p) => ({ id: p.id, category: p.category, description: p.prompt }));
 mkdirSync(WS, { recursive: true });
-if (PHASE === 'setup' || (PHASE === 'all' && !existsSync(join(WS, 'node_modules'))))
-  await setup(parts);
+if (PHASE === 'setup' || (PHASE === 'all' && !existsSync(join(WS, 'node_modules')))) await setup();
 if (PHASE === 'author' || PHASE === 'all') await pool(parts, CONCURRENCY, author);
-if (PHASE === 'render' || PHASE === 'all') for (const p of parts) await render(p);
+if (PHASE === 'render' || PHASE === 'all') {
+  await ensureRefs(parts);
+  for (const p of parts) await render(p);
+}
 if (PHASE === 'judge' || PHASE === 'all') await pool(parts, CONCURRENCY, judge);
 if (PHASE === 'score' || PHASE === 'all') score(parts);

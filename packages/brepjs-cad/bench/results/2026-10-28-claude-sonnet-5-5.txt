@@ -1,4 +1,4 @@
-model=claude-sonnet-5-5 (author) / claude-opus-5-5 (judge) brepjs=20.12.0 brepjs-cad=0.191.0 2026-10-28 units=mm
+model=claude-sonnet-5-5 (author) / claude-opus-5-5 (judge) brepjs=20.12.0 brepjs-cad=0.191.0 2026-10-29 units=mm
 
 stud-brick                         valid   judge:✓ first-try:ok verifies:1  designed/designed/designed tie-good/tie-good/tie-good - A 2x4 brick with 8 studs in a correct grid. The x-ray shows a hollow shell with 3 underside tubes placed between the stud rows. Overall size
 drilled-bracket                    valid   judge:✓ first-try:ok verifies:1  designed/designed/designed tie-good/tie-good/tie-good - There is one body, which matches the facts. It is a rectangular box with all four vertical edges filleted. The x-ray shows a single round ho
@@ -43,12 +43,12 @@ universal-joint                    valid   judge:✓ first-try:ok verifies:4  de
 geneva-drive                       valid   judge:✓ first-try:no verifies:3  designed author - B has the 2 bodies the description asks for, and the facts line agrees. The driver has a hub, a crank arm carrying a drive pin, and a convex
 bench-vise                         valid   judge:✓ first-try:ok verifies:1  designed author - All six expected bodies can be accounted for: a long cast body with side guide ways and mounting lugs, a fixed jaw, a sliding jaw part-way o
 scotch-yoke                        valid   judge:✗ first-try:ok verifies:1  designed/partial/partial author/reference/reference - All described parts are present. A frame plate with guide rails holds a yoke plate with a clear vertical slot, visible in the x-ray. A crank
-worm-gear-drive                    valid   judge:✓ first-try:ok verifies:2  designed/designed/designed author/author/author - I can see all three bodies: a base with two uprights carrying the worm shaft, a helical-looking threaded worm with trapezoidal flanks, and a
+worm-gear-drive                    valid   judge:✗ first-try:ok verifies:1  partial/designed/designed reference/reference/reference - I can see the three bodies: a toothed wheel, a threaded worm and a base frame with two uprights holding the worm. The worm reads as a helica
 rack-and-pinion                    valid   judge:✓ first-try:ok verifies:1  designed author - A clean pinion with about 18 teeth and a centre bore meshes with a straight rack whose teeth have straight flanks. The pinion axis sits abov
-three-jaw-chuck                    valid   judge:✓ first-try:no verifies:2  designed author - The body has three jaws at 120° and a tall Ø30 bar clamped in the center. A side housing holds a toothed pinion that clearly meshes with a g
+three-jaw-chuck                    valid   judge:✗ first-try:no verifies:3  partial/designed/partial author/author/author - I can see all the main parts. The body has three slots 120° apart, and a Ø30 bar sits in the center. The rim pinion shows on the face, and t
 
 basics       valid 100%  both 60%  (n=5)
-mechanical   valid 100%  both 83%  (n=41)
-TOTAL        valid 100%  both 80%  (n=46)
+mechanical   valid 100%  both 78%  (n=41)
+TOTAL        valid 100%  both 76%  (n=46)
 first-try valid 67% -> eventual valid 100%
-equivalent cost (authors): $7.51
+equivalent cost (authors): $7.26

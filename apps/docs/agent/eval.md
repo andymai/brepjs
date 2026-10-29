@@ -55,9 +55,9 @@ Authors on Sonnet 5.5, judge on Opus 5.5, brepjs 20.12.0, brepjs-cad 0.191.0:
 | --------------------------------------------------- | -------- |
 | Valid on the first `brep verify`                    | 31 of 46 |
 | Valid after the author's verify loop                | 46 of 46 |
-| Judged at least as good as the hand-written example | 37 of 46 |
+| Judged at least as good as the hand-written example | 35 of 46 |
 
-Of the 15 parts that failed their first verify, 12 failed on a TypeScript error from `--check`. The 9 judge misses are mostly intricate features, such as Gridfinity sockets and a D-sub shroud, that the judge rated partial next to the example. The corpus is the example gallery the implement skill is tuned against, so these numbers describe parts like those, not arbitrary requests. Per-part results with the judge's reasons are in [`bench/results/2026-10-28-claude-sonnet-5-5.txt`](https://github.com/andymai/brepjs/blob/main/packages/brepjs-cad/bench/results/2026-10-28-claude-sonnet-5-5.txt).
+Of the 15 parts that failed their first verify, 12 failed on a TypeScript error from `--check`. The 11 judge misses are mostly intricate features, such as Gridfinity sockets and a D-sub shroud, that the judge rated partial next to the example. An audit of the author transcripts found that two first-pass authors had read another author's finished part. We re-ran those two parts alone, and the table reports the re-run: both judge passes became misses. No author read a hand-written example, and the harness now flags any author that reads outside its own folder. The corpus is the example gallery the implement skill is tuned against, so these numbers describe parts like those, not arbitrary requests. Per-part results with the judge's reasons are in [`bench/results/2026-10-28-claude-sonnet-5-5.txt`](https://github.com/andymai/brepjs/blob/main/packages/brepjs-cad/bench/results/2026-10-28-claude-sonnet-5-5.txt).
 
 ## Next steps
 
