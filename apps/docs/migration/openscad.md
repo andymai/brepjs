@@ -5,7 +5,7 @@ description: 'Switching from OpenSCAD to brepjs: TypeScript instead of a DSL, ex
 
 # Coming from OpenSCAD
 
-[OpenSCAD](https://openscad.org/) is many people's first code-CAD tool: small, focused, two decades of history. brepjs is a different beast: TypeScript instead of OpenSCAD's custom DSL, B-Rep instead of CSG-tree-of-meshes, exact mathematical surfaces instead of polygon approximations, browser-native instead of desktop-only. If you've outgrown OpenSCAD or want to ship a parametric configurator on the web, this chapter is the bridge.
+[OpenSCAD](https://openscad.org/) is many people's first code-CAD tool: small, focused, over fifteen years of history. brepjs is a different beast: TypeScript instead of OpenSCAD's custom DSL, B-Rep instead of CSG-tree-of-meshes, exact mathematical surfaces instead of polygon approximations, browser-native instead of desktop-only. If you've outgrown OpenSCAD or want to ship a parametric configurator on the web, this chapter is the bridge.
 
 ## What's the same
 
@@ -26,23 +26,23 @@ description: 'Switching from OpenSCAD to brepjs: TypeScript instead of a DSL, ex
 
 ### Primitives
 
-| OpenSCAD                       | brepjs                                           |
-| ------------------------------ | ------------------------------------------------ |
-| `cube([w, d, h])`              | `box(w, d, h)`                                   |
-| `cube([w, d, h], center=true)` | `box(w, d, h, { centered: true })`               |
-| `cylinder(h=h, r=r)`           | `cylinder(r, h)`                                 |
-| `cylinder(h=h, r1=r1, r2=r2)`  | `cone(r1, r2, h)`                                |
-| `sphere(r=r)`                  | `sphere(r)`                                      |
-| `polyhedron(...)`              | Build via `Sketcher` / `wireLoop` / custom faces |
+| OpenSCAD                       | brepjs                              |
+| ------------------------------ | ----------------------------------- |
+| `cube([w, d, h])`              | `box(w, d, h)`                      |
+| `cube([w, d, h], center=true)` | `box(w, d, h, { centered: true })`  |
+| `cylinder(h=h, r=r)`           | `cylinder(r, h)`                    |
+| `cylinder(h=h, r1=r1, r2=r2)`  | `cone(r1, r2, h)`                   |
+| `sphere(r=r)`                  | `sphere(r)`                         |
+| `polyhedron(points, faces)`    | `unwrap(polyhedron(points, faces))` |
 
 ### Transforms
 
-| OpenSCAD                      | brepjs                                                                                  |
-| ----------------------------- | --------------------------------------------------------------------------------------- |
-| `translate([x, y, z]) child;` | `translate(child, [x, y, z])` _or_ `shape(child).translate([x, y, z]).val`              |
-| `rotate([a, b, c]) child;`    | Compose via `rotateX(a)`, `rotateY(b)`, `rotateZ(c)` _or_ `rotate(s, a, { axis: ... })` |
-| `scale([sx, sy, sz]) child;`  | `scale(child, [sx, sy, sz])`                                                            |
-| `mirror([1, 0, 0]) child;`    | `mirror(child, 'YZ')`                                                                   |
+| OpenSCAD                      | brepjs                                                                                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `translate([x, y, z]) child;` | `translate(child, [x, y, z])` _or_ `shape(child).translate([x, y, z]).val`                                                               |
+| `rotate([a, b, c]) child;`    | Compose via `rotateX(a)`, `rotateY(b)`, `rotateZ(c)` _or_ `rotate(s, a, { axis: ... })`                                                  |
+| `scale([sx, sy, sz]) child;`  | `scale(child, s)` for uniform; `unwrap(applyMatrix(child, { linear: [sx, 0, 0, 0, sy, 0, 0, 0, sz], translation: [0, 0, 0] }))` per axis |
+| `mirror([1, 0, 0]) child;`    | `mirror(child, { normal: [1, 0, 0] })`                                                                                                   |
 
 OpenSCAD nests transforms via the syntactic block. brepjs makes them function calls (or fluent chain steps).
 
@@ -66,11 +66,11 @@ For multi-shape unions, prefer `fuseAll([a, b, c])` over chained `fuse`.
 
 ### 2D-to-3D
 
-| OpenSCAD                                   | brepjs                                                    |
-| ------------------------------------------ | --------------------------------------------------------- |
-| `linear_extrude(height=h) child;`          | `sketch.extrude(h)` _or_ `unwrap(extrude(face, h))`       |
-| `linear_extrude(height=h, twist=t) child;` | `unwrap(extrude(face, h, { twist: t }))` (when supported) |
-| `rotate_extrude() child;`                  | `sketch.revolve()` _or_ `unwrap(revolve(face))`           |
+| OpenSCAD                                   | brepjs                                              |
+| ------------------------------------------ | --------------------------------------------------- |
+| `linear_extrude(height=h) child;`          | `sketch.extrude(h)` _or_ `unwrap(extrude(face, h))` |
+| `linear_extrude(height=h, twist=t) child;` | `sketch.extrude(h, { twistAngle: t })`              |
+| `rotate_extrude() child;`                  | `sketch.revolve()` _or_ `unwrap(revolve(face))`     |
 
 ### Refinement (no OpenSCAD equivalents)
 
@@ -88,10 +88,10 @@ These have no native OpenSCAD analogue; `minkowski` is the closest people use:
 
 OpenSCAD uses `for` loops; brepjs has dedicated pattern operations:
 
-| OpenSCAD                                            | brepjs                                                           |
-| --------------------------------------------------- | ---------------------------------------------------------------- |
-| `for (i = [0:9]) translate([i*5, 0, 0]) cube(...)`  | `linearPattern(cube, { count: [10, 1, 1], spacing: [5, 0, 0] })` |
-| `for (a = [0:45:359]) rotate([0, 0, a]) child(...)` | `circularPattern(child, { count: 8, axis: [0, 0, 1] })`          |
+| OpenSCAD                                            | brepjs                                          |
+| --------------------------------------------------- | ----------------------------------------------- |
+| `for (i = [0:9]) translate([i*5, 0, 0]) cube(...)`  | `unwrap(linearPattern(cube, [1, 0, 0], 10, 5))` |
+| `for (a = [0:45:359]) rotate([0, 0, a]) child(...)` | `unwrap(circularPattern(child, [0, 0, 1], 8))`  |
 
 The pattern operations are faster (one kernel call instead of N) and clearer (the parameters describe the pattern, not the iteration).
 
@@ -99,12 +99,12 @@ The pattern operations are faster (one kernel call instead of N) and clearer (th
 
 These are special:
 
-| OpenSCAD                | brepjs                                                                                   |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| `hull() { a; b; }`      | Not directly supported; the closest is `loft([a, b])` for two parallel profiles          |
-| `minkowski() { a; b; }` | Use `fillet`, `chamfer`, or `shell` for the common cases (rounding, beveling, hollowing) |
+| OpenSCAD                | brepjs                                                                                                   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `hull() { a; b; }`      | `unwrap(hull([a, b]))`                                                                                   |
+| `minkowski() { a; b; }` | `unwrap(minkowski(a, b))`; for rounding, beveling, and hollowing, prefer `fillet`, `chamfer`, or `shell` |
 
-If you need true Minkowski (e.g. the swept-difference for clearance computations), brepjs doesn't ship it. Replicad has a `genericSweep` that approximates it.
+`minkowski` takes a fast offset path when the tool is a sphere; otherwise it returns the convex hull of pairwise vertex sums, an approximation that is exact only for convex polyhedra.
 
 ## A side-by-side: parametric bracket
 

@@ -32,7 +32,7 @@ Two libraries, one role each.
 | `three-csg-ts` for booleans                            | `fuse`, `cut`, `intersect`                                                  |
 | Custom shaders to fake fillets                         | `fillet(s, edges, r)`                                                       |
 | `BufferGeometryUtils.mergeBufferGeometries` for unions | `fuseAll([a, b, c])`                                                        |
-| Hand-tuned ray traversal for measurement               | `measureVolume`, `measureArea`, `distanceTo`                                |
+| Hand-tuned ray traversal for measurement               | `measureVolume`, `measureArea`, `measureDistance`                           |
 | Approximate STL export from `BufferGeometry`           | `exportSTEP`, `exportSTL` directly from B-Rep                               |
 
 Three.js stays in the picture, for rendering, controls, materials, lights, post-processing. The modelling moves to brepjs.

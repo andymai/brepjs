@@ -14,8 +14,8 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 | [`brepjs/operations`](./modules/operations.html)   | Extrude, loft, sweep, patterns, assemblies, history              |
 | [`brepjs/2d`](./modules/2d.html)                   | Blueprints, 2D curves, 2D booleans                               |
 | [`brepjs/sketching`](./modules/sketching.html)     | Sketcher, Drawing, sketch-to-shape operations                    |
-| [`brepjs/query`](./modules/query.html)             | Edge, face, wire, vertex finders                                 |
-| [`brepjs/measurement`](./modules/measurement.html) | Volume, area, length, distance, curvature                        |
+| [`brepjs/query`](./modules/query.html)             | Edge, face, and corner finders                                   |
+| [`brepjs/measurement`](./modules/measurement.html) | Volume, area, length, distance                                   |
 | [`brepjs/io`](./modules/io.html)                   | STEP, STL, IGES, OBJ, glTF, DXF, 3MF, SVG                        |
 | [`brepjs/worker`](./modules/worker.html)           | Web Worker protocol and client                                   |
 
@@ -30,8 +30,8 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 ## Quick Example
 
 ```typescript
-import { box, fuse, fillet, unwrap, edgeFinder } from 'brepjs/topology';
-import { cylinder } from 'brepjs/topology';
+import { fuse, fillet, unwrap, edgeFinder } from 'brepjs';
+import { box, cylinder } from 'brepjs/topology';
 
 const myBox = box(30, 20, 10);
 const cyl = cylinder(5, 15, { at: [15, 10, -2] });

@@ -61,7 +61,7 @@ const positioned = shape(myShape).moveX(10).rotateZ(45).val;
 ## Fillets and Chamfers
 
 ```typescript
-import { shape } from 'brepjs';
+import { shape, curveLength } from 'brepjs';
 
 const rounded = shape(solid).fillet(2).val; // all edges, 2mm radius
 const selective = shape(solid).fillet((e) => e.inDirection('Z'), 2).val; // vertical edges only
@@ -70,7 +70,7 @@ const beveled = shape(solid).chamfer((e) => e.inDirection('Z'), 1).val; // verti
 // Variable radius filleting
 const variable = shape(solid).fillet(
   (e) => e.inDirection('Z'),
-  (edge) => (edge.length() > 50 ? 5 : 2)
+  (edge) => (curveLength(edge) > 50 ? 5 : 2)
 ).val;
 ```
 
@@ -79,7 +79,7 @@ const variable = shape(solid).fillet(
 ```typescript
 import { shape } from 'brepjs';
 
-const hollowed = shape(solid).shell((f) => f.parallelTo('Z'), 1).val; // remove top faces, 1mm wall thickness
+const hollowed = shape(solid).shell((f) => f.parallelTo('Z'), 1).val; // remove top and bottom faces, 1mm wall thickness
 ```
 
 ## Measurement
@@ -92,8 +92,8 @@ const area = shape(face).area(); // mm²
 const len = shape(edge).length(); // mm
 
 // For distance between shapes, use the functional API
-import { measureDistance } from 'brepjs';
-const dist = measureDistance(shape1, shape2); // mm
+import { measureDistance, unwrap } from 'brepjs';
+const dist = unwrap(measureDistance(shape1, shape2)); // mm
 ```
 
 ## 2D to 3D
@@ -106,7 +106,11 @@ const sketch = drawingToSketchOnPlane(profile, 'XY');
 const solid = shape(sketch.face()).extrude(20).val;
 
 // Or revolve around an axis
-const revolved = shape(sketch.face()).revolve({ axis: [0, 1, 0], angle: 270 }).val;
+const revolved = shape(sketch.face()).revolve({
+  axis: [0, 1, 0],
+  at: [30, 0, 0],
+  angle: (3 * Math.PI) / 2,
+}).val; // radians; keep the axis off the profile
 ```
 
 ## Export and Import
@@ -154,7 +158,7 @@ const result = withScope((scope) => {
 ## Type Safety: Validity Types
 
 ```typescript
-import { line, wireLoop, face, extrude, isClosedWire, unwrap } from 'brepjs';
+import { line, wireLoop, face, extrude, isClosedWire, isPlanarWire, unwrap } from 'brepjs';
 
 // wireLoop: assemble edges + verify closure → ClosedWire
 const cw = unwrap(
@@ -165,12 +169,13 @@ const cw = unwrap(
     line([0, 10, 0], [0, 0, 0]),
   ])
 );
+if (!isPlanarWire(cw)) throw new Error('profile is not planar'); // narrows to ClosedWire & PlanarWire
 
-const f = unwrap(face(cw)); // face() requires ClosedWire → OrientedFace
+const f = unwrap(face(cw)); // face() requires ClosedWire & PlanarWire → OrientedFace
 const solid = unwrap(extrude(f, 10)); // extrude() requires OrientedFace → Solid
 
 // Runtime validation
-if (isClosedWire(someWire)) {
+if (isClosedWire(someWire) && isPlanarWire(someWire)) {
   const f = unwrap(face(someWire));
 }
 ```

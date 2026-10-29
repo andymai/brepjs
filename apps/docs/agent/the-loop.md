@@ -52,9 +52,9 @@ Trust the JSON over the render. The render shows shape; the JSON shows dimension
 
 - Change the **smallest responsible section**, re-verify, repeat. Don't rewrite the whole part on one failure.
 - Let the `code`/`hints` localize the cause:
-  - `INVALID_FILLET_RADIUS` → reduce the radius relative to the local edge length.
-  - `*_NOT_3D` → you passed a 2D shape to a 3D operation.
-  - `BOOLEAN_HAS_ERRORS` → the inputs are overlap-degenerate.
+  - `FILLET_FAILED` → reduce the radius relative to the local edge length.
+  - `*_NOT_3D` → the operation didn't produce a solid: check the inputs are closed solids, or shrink a fillet or shell size the geometry can't fit.
+  - `FILLET_NO_EDGES` → the edge selection matched nothing; fix the finder.
 - A part that _runs_ but reports `ok: false` is wrong, not done. Treat it like a crash.
 
 ## What's reliable, what needs care
@@ -83,7 +83,7 @@ const { shape, report, step } = await runPart('part.brep.ts', { step: true, chec
 console.log(serializeReport(report)); // { ok, shapeType, checks, measurements, assertions, hints, errorInfos, errors }
 ```
 
-`report.shape` is a live WASM-backed handle. Release it (`using` / a `DisposalScope`) in long-running callers.
+The returned `shape` is a live WASM-backed handle. Release it (`using` / a `DisposalScope`) in long-running callers.
 
 ## Next steps
 

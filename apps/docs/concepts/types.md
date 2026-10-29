@@ -50,12 +50,12 @@ The default is `'3D'`, so existing code works unchanged. The dimension is enforc
 ```typescript
 import { drawRectangle, type Face } from 'brepjs/quick';
 
-const profile = drawRectangle(40, 20); // Drawing<'2D'>
+const profile = drawRectangle(40, 20); // Drawing (2D)
 // Trying to extrude this directly fails: extrude expects a 3D OrientedFace,
 // not a 2D drawing. You must project to a plane first:
 //
 //   const sketch = drawingToSketchOnPlane(profile, 'XY');
-//   const solid = unwrap(sketchExtrude(sketch, 10));
+//   const solid = sketch.extrude(10);
 ```
 
 The dimension parameter has zero runtime cost. `Edge<'2D'>` and `Edge<'3D'>` are the same byte-for-byte at runtime; only the compiler distinguishes them.
@@ -76,8 +76,8 @@ type ValidSolid = Solid & { readonly [__valid]: true };
 Functions declare exactly the validity they need:
 
 ```typescript
-function face(wire: ClosedWire): Result<OrientedFace, BrepError>;
-function extrude(face: OrientedFace, height: number): Result<ValidSolid, BrepError>;
+function face(wire: ClosedWire & PlanarWire): Result<OrientedFace & PlanarFace, BrepError>;
+function extrude(face: OrientedFace & PlanarFace, height: number | Vec3): Result<Solid, BrepError>;
 ```
 
 The compiler enforces the chain: you cannot `extrude(someFace, 10)` unless that face is `OrientedFace`. You cannot `face(someWire)` unless that wire is `ClosedWire`.
@@ -92,16 +92,16 @@ There are three ways to obtain a validity-branded type:
 import { closedWire } from 'brepjs/quick';
 declare const myWire: import('brepjs').Wire;
 
-const result = closedWire(myWire); // ValidityResult<ClosedWire>
-if (result.valid) {
-  // result.shape is now ClosedWire: the runtime check passed
+const result = closedWire(myWire); // Result<ClosedWire, string>
+if (result.ok) {
+  // result.value is now ClosedWire: the runtime check passed
   // and the type system has been updated.
-  const cw = result.shape;
+  const cw = result.value;
   void cw;
 }
 ```
 
-`closedWire(w)` performs a runtime check (does this wire form a loop?) and returns a `ValidityResult`: either `{ valid: true, shape: ClosedWire }` or `{ valid: false, reason: ... }`. Use this when you've built a wire from primitives or imported it.
+`closedWire(w)` performs a runtime check (does this wire form a loop?) and returns a `Result`: either `{ ok: true, value: ClosedWire }` or `{ ok: false, error: string }`. Use this when you've built a wire from primitives or imported it.
 
 ### 2. Type guard (narrow in place)
 
@@ -121,7 +121,7 @@ The type guard combines the runtime check with TypeScript narrowing. Equivalent 
 ### 3. Convenience builder (returns branded type directly)
 
 ```typescript
-import { line, wireLoop, face, extrude, unwrap } from 'brepjs/quick';
+import { line, wireLoop, isPlanarWire, face, extrude, unwrap } from 'brepjs/quick';
 
 // wireLoop returns Result<ClosedWire> - it builds a closed wire by construction
 const cw = unwrap(
@@ -133,12 +133,15 @@ const cw = unwrap(
   ])
 );
 
-const f = unwrap(face(cw)); // ClosedWire → OrientedFace
-const s = unwrap(extrude(f, 10)); // OrientedFace → ValidSolid
+// face() also needs a PlanarWire; isPlanarWire narrows cw in place
+if (!isPlanarWire(cw)) throw new Error('profile is not planar');
+
+const f = unwrap(face(cw)); // ClosedWire & PlanarWire → OrientedFace & PlanarFace
+const s = unwrap(extrude(f, 10)); // OrientedFace & PlanarFace → Solid
 console.log('Built a valid solid by construction');
 ```
 
-`wireLoop`, `face`, `extrude`, and the primitive constructors (`box`, `cylinder`, `sphere`) all return validity-branded types. The chain compiles only because each step's input type is satisfied.
+`wireLoop`, `face`, and the primitive constructors (`box`, `cylinder`, `sphere`) all return validity-branded types. The chain compiles only because each step's input type is satisfied.
 
 ## What the validity brands prevent
 
@@ -176,18 +179,18 @@ All four facts are checked by the compiler.
 Branded types work great until you import a shape from elsewhere: STEP files, deserialized data, or third-party libraries. In those cases, you have a `Wire` and need a `ClosedWire`. Two options:
 
 ```typescript
-import { closedWire, isClosedWire, autoHeal, unwrap } from 'brepjs/quick';
+import { closedWire, isClosedWire, isWire, autoHeal, unwrap } from 'brepjs/quick';
 declare const importedWire: import('brepjs').Wire;
 
 // Option 1: smart constructor with explicit failure handling
 const result = closedWire(importedWire);
-if (!result.valid) {
-  console.error('Wire is not closed:', result.reason);
+if (!result.ok) {
+  console.error('Wire is not closed:', result.error);
 }
 
 // Option 2: heal first, then check
-const healed = unwrap(autoHeal(importedWire));
-if (isClosedWire(healed)) {
+const healed = unwrap(autoHeal(importedWire)).shape;
+if (isWire(healed) && isClosedWire(healed)) {
   // proceed
 }
 ```

@@ -4,7 +4,7 @@ Build your first 3D part, from `npm install` to exported STEP file.
 
 ## Prerequisites
 
-- Node.js 20+ (or a modern browser with WASM support)
+- Node.js 24+ (or a modern browser with WASM support)
 - TypeScript 5.9+ (recommended, for `using` syntax and strict branded types)
 
 ## Step 1: Install
@@ -169,7 +169,7 @@ const stepBlob = unwrap(exportSTEP(moved));
 // stepBlob is a Blob you can save to disk or send to a viewer
 ```
 
-Other export formats: `exportSTL`, `exportGltf`, `exportOBJ`, `exportThreeMF`.
+Other export formats: `exportSTL` (also `Result<Blob>`), plus `exportGltf`, `exportOBJ`, and `exportThreeMF`, which take a `mesh()` result rather than a shape.
 
 The wrapper also provides `toBREP()` for serialization:
 
@@ -250,20 +250,12 @@ For more complex profiles, sketch in 2D first, then extrude to 3D:
 ```typescript
 import { drawRectangle, drawCircle, drawingCut, drawingToSketchOnPlane, shape } from 'brepjs';
 
-// Draw a rectangle with a circular hole
-const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
+// Draw a rectangle (centered on the origin) with a circular hole through its middle
+const profile = drawingCut(drawRectangle(50, 30), drawCircle(8));
 
 // Project onto XY plane and extrude upward using the wrapper
 const sketch = drawingToSketchOnPlane(profile, 'XY');
 const solid = shape(sketch.face()).extrude(20).val;
-```
-
-**Functional API alternative:**
-
-```typescript
-import { sketchExtrude, unwrap } from 'brepjs';
-
-const solid = sketchExtrude(sketch, 20);
 ```
 
 ## Edge refinement: fillets and chamfers
@@ -331,7 +323,7 @@ The wrapper is more concise for most use cases. Use the functional API when you 
 brepjs uses phantom types to catch modeling errors at compile time. The key chain: `wireLoop → face → extrude`.
 
 ```typescript
-import { line, wireLoop, face, extrude, unwrap } from 'brepjs/quick';
+import { line, wireLoop, isPlanarWire, face, extrude, unwrap } from 'brepjs/quick';
 
 const cw = unwrap(
   wireLoop([
@@ -341,8 +333,9 @@ const cw = unwrap(
     line([0, 10, 0], [0, 0, 0]),
   ])
 ); // ClosedWire
+if (!isPlanarWire(cw)) throw new Error('profile is not planar'); // narrows to ClosedWire & PlanarWire
 
-const f = unwrap(face(cw)); // face() requires ClosedWire → OrientedFace
+const f = unwrap(face(cw)); // face() requires ClosedWire & PlanarWire → OrientedFace
 const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace → Solid
 ```
 
@@ -383,7 +376,7 @@ The kernel only needs to be registered once per application lifetime.
 
 ## Troubleshooting
 
-### "Cannot read properties of undefined" on first API call
+### "brepjs kernel not initialized" on first API call
 
 If using manual init (not `brepjs/quick`), make sure you've called `init()` or `registerKernel()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
 
@@ -393,7 +386,7 @@ Boolean operations (`fuse`, `cut`, `intersect`) can fail when shapes don't overl
 
 1. **Read the suggestion** - `result.error.suggestion` provides actionable recovery advice specific to the failure
 2. **Check shapes overlap** - `cut(a, b)` requires `b` to intersect `a`
-3. **Heal inputs first** - `unwrap(autoHeal(shape))` fixes minor geometry issues
+3. **Heal inputs first** - `unwrap(autoHeal(shape)).shape` fixes minor geometry issues
 4. **Check the error code** - `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
 
 ### Memory keeps growing

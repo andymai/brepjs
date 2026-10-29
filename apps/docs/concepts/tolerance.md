@@ -24,7 +24,7 @@ import { shape, box } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 const m = shape(b).mesh({ tolerance: 0.01 }); // smaller = more triangles
-console.log('Triangles:', m.indices.length / 3);
+console.log('Triangles:', m.triangles.length / 3);
 ```
 
 This is the **mesh** tolerance, not the geometric tolerance: how close the triangulation has to be to the exact surface. Smaller tolerance produces denser meshes. The default is reasonable for screen-size rendering; reduce it for closeup zoom or 3D printing.
@@ -40,11 +40,11 @@ import { autoHeal, unwrap, importSTEP } from 'brepjs/quick';
 
 declare const stepBlob: Blob;
 const imported = unwrap(await importSTEP(stepBlob));
-const healed = unwrap(autoHeal(imported, { tolerance: 0.01 }));
+const healed = unwrap(autoHeal(imported, { sewTolerance: 0.01 })).shape;
 void healed;
 ```
 
-`autoHeal` runs OpenCascade's `ShapeFix_Shape` to close gaps, stitch faces, and fix orientation. The `tolerance` option controls how aggressive the gap-closing is. Default is sane for most CAD imports; increase it for STL or low-precision formats.
+`autoHeal` runs OpenCascade's `ShapeFix` solid, face, and wire fixers to close gaps and fix orientation. The `sewTolerance` option adds a sewing step that stitches faces within that distance. Leave it unset for most CAD imports; set it for STL or low-precision formats.
 
 ## What `BRepCheck` validates
 
@@ -60,7 +60,7 @@ When a primitive returns `ValidSolid`, that means the shape passed `BRepCheck`, 
 | Self-intersection       | No surface crosses itself                                                |
 | Tolerance compatibility | Sub-shape tolerances are propagated correctly to parents                 |
 
-Most of these are invariants brepjs's [validity types](./types) encode at compile time: `ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`. The runtime check is performed when you build via a smart constructor (`closedWire(w)`, `closedShell(s)`); it asserts that the type-level claim is also true at runtime.
+Most of these are invariants brepjs's [validity types](./types) encode at compile time: `ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`. The runtime check is performed when you build via a smart constructor (`closedWire(w)`, `manifoldShell(s)`); it asserts that the type-level claim is also true at runtime.
 
 ## When shapes go invalid
 
@@ -75,7 +75,7 @@ import { importSTEP, autoHeal, unwrap } from 'brepjs/quick';
 
 declare const stepBlob: Blob;
 const raw = unwrap(await importSTEP(stepBlob));
-const ready = unwrap(autoHeal(raw));
+const ready = unwrap(autoHeal(raw)).shape;
 void ready;
 ```
 
@@ -85,20 +85,7 @@ When two faces are _almost_ coplanar but not quite, the boolean kernel can produ
 
 ### 3. Bad parameter choices
 
-A fillet larger than the local edge geometry can support produces an invalid surface. The fillet operation itself fails with `FILLET_TOO_LARGE`; if you persist (e.g. by trying via a different operation path), the result may pass `BRepCheck` while being subtly wrong. Always heed the `Result.error.code`.
-
-## Reading a shape's tolerance
-
-Each shape carries a current tolerance value at the kernel level. brepjs surfaces it through `getShapeTolerance`:
-
-```typescript
-import { box, getShapeTolerance } from 'brepjs/quick';
-
-const b = box(10, 10, 10);
-console.log('Tolerance:', getShapeTolerance(b)); // ~1e-7
-```
-
-For sub-shapes, the tolerance can vary across an edge or face; `getShapeTolerance` returns the maximum.
+A fillet larger than the local edge geometry can support produces an invalid surface. The fillet operation itself fails with `FILLET_FAILED`; if you persist (e.g. by trying via a different operation path), the result may pass `BRepCheck` while being subtly wrong. Always heed the `Result.error.code`.
 
 ## `autoHeal` short-circuits valid shapes
 
@@ -109,17 +96,16 @@ To force a full re-validation:
 <!-- @no-test -->
 
 ```typescript
-import { brepCheck, autoHeal, unwrap } from 'brepjs/quick';
+import { isValid, autoHeal, unwrap } from 'brepjs/quick';
 
 declare const someShape: import('brepjs').Shape3D;
-const report = brepCheck(someShape);
-if (!report.valid) {
+if (!isValid(someShape)) {
   const healed = unwrap(autoHeal(someShape));
   void healed;
 }
 ```
 
-`brepCheck` runs `BRepCheck` and returns a structured report regardless of validity.
+`isValid` runs `BRepCheck` and returns a boolean (cached per shape, since shapes are immutable).
 
 ## When tolerance bites
 
@@ -132,6 +118,6 @@ When in doubt: keep your geometry within ~10⁰ to 10⁴ in your chosen units, a
 
 ## Next steps
 
-- [Healing & Sewing](../advanced/healing): `autoHeal`, `sew`, manual repair workflows
-- [Error Codes](../reference/errors): what `INVALID_SHAPE` and tolerance-related codes mean
+- [Healing & Sewing](../advanced/healing): `autoHeal`, `sewShells`, manual repair workflows
+- [Error Codes](../reference/errors): what the healing and validation codes mean
 - [Boolean Operations](../tasks/booleans): the operation most sensitive to tolerance

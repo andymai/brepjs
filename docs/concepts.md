@@ -34,7 +34,7 @@ A point in 3D space. Vertices mark where edges start and end.
 ```typescript
 import { vertexFinder, vertexPosition } from 'brepjs';
 
-const vertices = vertexFinder().find(box); // all 8 corners of a box
+const vertices = vertexFinder().findAll(box); // all 8 corners of a box
 const pos = vertexPosition(vertices[0]); // [x, y, z]
 ```
 
@@ -45,7 +45,7 @@ A curve segment connecting two vertices. Edges can be lines, arcs, splines, or a
 ```typescript
 import { edgeFinder, curveLength, getCurveType } from 'brepjs';
 
-const edges = edgeFinder().find(box); // all 12 edges of a box
+const edges = edgeFinder().findAll(box); // all 12 edges of a box
 const len = curveLength(edges[0]); // length in mm
 const type = getCurveType(edges[0]); // 'LINE', 'CIRCLE', etc.
 ```
@@ -57,7 +57,7 @@ A connected chain of edges forming a loop. Wires define the boundaries of faces 
 ```typescript
 import { wireFinder } from 'brepjs';
 
-const wires = wireFinder().isClosed().find(face); // closed boundary loops
+const wires = wireFinder().isClosed().findAll(face); // closed boundary loops
 ```
 
 ### Face
@@ -67,16 +67,16 @@ A bounded region of a mathematical surface. A box face is a trimmed plane. A cyl
 ```typescript
 import { faceFinder, measureArea, getSurfaceType, unwrap } from 'brepjs';
 
-const faces = faceFinder().find(box); // all 6 faces of a box
+const faces = faceFinder().findAll(box); // all 6 faces of a box
 const area = unwrap(measureArea(faces[0])); // area in mm²
-const surfType = getSurfaceType(faces[0]); // 'PLANE', 'CYLINDER', etc.
+const surfType = unwrap(getSurfaceType(faces[0])); // 'PLANE', 'CYLINDRE', etc.
 ```
 
 Finders let you select specific faces by direction, surface type, or area:
 
 ```typescript
-const topFace = faceFinder().inDirection('Z').find(box); // faces pointing up
-const flatFaces = faceFinder().ofSurfaceType('PLANE').find(shape);
+const topFace = faceFinder().inDirection('Z').findAll(box); // faces normal to Z (top and bottom)
+const flatFaces = faceFinder().ofSurfaceType('PLANE').findAll(shape);
 ```
 
 ### Shell
@@ -144,16 +144,16 @@ type ValidSolid = Solid & { readonly [__valid]: true }; // Solid passing BRepChe
 Functions declare exactly what they need:
 
 ```typescript
-face(wire: ClosedWire): Result<OrientedFace>    // Requires a closed wire
-extrude(face: OrientedFace, height: number): Result<Solid>  // Requires an oriented face
+face(wire: ClosedWire & PlanarWire): Result<OrientedFace & PlanarFace>    // Requires a closed, planar wire
+extrude(face: OrientedFace & PlanarFace, height: number | Vec3): Result<Solid>  // Requires an oriented, planar face
 ```
 
 **Creating branded shapes:**
 
 ```typescript
 // Option 1: Smart constructors (runtime validation)
-const result = closedWire(myWire); // ValidityResult<ClosedWire>
-if (result.valid) use(result.shape); // Proven ClosedWire
+const result = closedWire(myWire); // Result<ClosedWire, string>
+if (result.ok) use(result.value); // Proven ClosedWire
 
 // Option 2: Type guards (narrow in-place)
 if (isClosedWire(myWire)) {
@@ -162,13 +162,15 @@ if (isClosedWire(myWire)) {
 
 // Option 3: Convenience builders that return branded types directly
 const cw = unwrap(wireLoop([e1, e2, e3, e4])); // ClosedWire
-const f = unwrap(face(cw)); // OrientedFace
+if (isPlanarWire(cw)) {
+  const f = unwrap(face(cw)); // OrientedFace (face() also needs PlanarWire)
+}
 ```
 
 Related types group shapes by dimensionality:
 
 ```typescript
-type Shape3D = Face | Shell | Solid | CompSolid | Compound;
+type Shape3D = Shell | Solid | CompSolid | Compound;
 type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
 ```
 
@@ -203,7 +205,7 @@ const profile = drawRectangle(40, 20);
 
 // Project to 3D plane and extrude
 const sketch = drawingToSketchOnPlane(profile, 'XY');
-const part = sketchExtrude(sketch, 15);
+const part = sketch.extrude(15);
 ```
 
 ### Query → Modify
@@ -215,7 +217,7 @@ Find specific features on a shape and modify them:
 const vertEdges = edgeFinder().inDirection('Z').findAll(part);
 const rounded = unwrap(fillet(part, vertEdges, 3));
 
-// Find the top face and shell the part (hollow it out)
+// Find the top and bottom faces and shell the part (hollow it out)
 const topFaces = faceFinder().inDirection('Z').findAll(part);
 const shelled = unwrap(shell(part, topFaces, 2));
 ```

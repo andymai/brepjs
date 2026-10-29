@@ -5,7 +5,7 @@ description: 'Extrude, revolve, sweep, and loft turn 2D profiles into 3D solids.
 
 # Lofts, Sweeps, Revolves
 
-Three operations turn a 2D profile (or several) into a 3D solid by motion: extrude moves the profile linearly, revolve rotates it around an axis, sweep drags it along a path, loft interpolates between profiles. Combined with sketching, they cover everything that isn't a primitive boolean.
+Four operations turn a 2D profile (or several) into a 3D solid by motion: extrude moves the profile linearly, revolve rotates it around an axis, sweep drags it along a path, loft interpolates between profiles. Combined with sketching, they cover everything that isn't a primitive boolean.
 
 ## Extrude: linear motion
 
@@ -21,7 +21,7 @@ console.log('Block:', unwrap(measureVolume(block)).toFixed(2));
 console.log('Cylinder:', unwrap(measureVolume(cyl)).toFixed(2));
 ```
 
-The functional equivalent, `extrude(face, height)`, takes an `OrientedFace` and a distance:
+The functional equivalent, `extrude(face, height)`, takes an `OrientedFace` and a distance (a number extrudes along +Z):
 
 ```typescript
 import { sketchCircle, extrude, unwrap } from 'brepjs/quick';
@@ -36,10 +36,10 @@ export default cyl;
 Pass a 3D vector to extrude in an arbitrary direction (not perpendicular to the sketch plane):
 
 ```typescript
-import { sketchRectangle, extrudeAlong, unwrap } from 'brepjs/quick';
+import { sketchRectangle, extrude, unwrap } from 'brepjs/quick';
 
 const profile = sketchRectangle(20, 10).face();
-const slanted = unwrap(extrudeAlong(profile, [0, 5, 20])); // extrude along (0,5,20)
+const slanted = unwrap(extrude(profile, [0, 5, 20])); // extrude along (0,5,20)
 export default slanted;
 ```
 
@@ -47,17 +47,18 @@ The vector replaces the height: its length determines extrusion distance, its di
 
 ### Tapered extrude
 
-`extrude(face, height, { taper })` adds a draft angle. Common in moulded parts:
+A sketch's `.extrude(height, { extrusionProfile })` scales the profile along the extrusion. Common in moulded parts:
 
 ```typescript
-import { sketchRectangle, extrude, unwrap } from 'brepjs/quick';
+import { sketchRectangle } from 'brepjs/quick';
 
-const profile = sketchRectangle(30, 20).face();
-const tapered = unwrap(extrude(profile, 20, { taper: 5 })); // 5° draft
+const tapered = sketchRectangle(30, 20).extrude(20, {
+  extrusionProfile: { profile: 'linear', endFactor: 0.8 }, // top is 80% of the base
+});
 export default tapered;
 ```
 
-Negative taper widens upward; positive narrows.
+An `endFactor` below 1 narrows upward; above 1 widens. To tilt existing faces by a draft angle instead, use `draft()`.
 
 ## Revolve: rotational motion
 
@@ -84,7 +85,7 @@ const goblet = new Sketcher('XZ')
 export default goblet;
 ```
 
-The axis defaults to the sketch plane's vertical axis. The profile must lie entirely on one side of the axis; the kernel rejects profiles that cross.
+The axis defaults to the global Z axis through the sketch origin. The profile must lie entirely on one side of the axis; the kernel rejects profiles that cross.
 
 ### Partial revolves
 
@@ -101,11 +102,11 @@ const profile = new Sketcher('XZ')
   .close()
   .face();
 
-const halfRing = unwrap(revolve(profile, { angle: 180 })); // half-torus segment
+const halfRing = unwrap(revolve(profile, { angle: Math.PI })); // half-torus segment
 export default halfRing;
 ```
 
-`{ angle: degrees }` controls the sweep. Use this for hemisphere caps, pie slices, partial bushings.
+`{ angle: radians }` controls the sweep. Use this for hemisphere caps, pie slices, partial bushings.
 
 ### Revolves around an arbitrary axis
 
@@ -120,7 +121,7 @@ const profile = new Sketcher('XY')
   .close()
   .face();
 
-const ring = unwrap(revolve(profile, { axis: { origin: [0, 0, 0], direction: [0, 0, 1] } }));
+const ring = unwrap(revolve(profile, { at: [0, 0, 0], axis: [0, 1, 0] })); // pivot point + axis direction
 export default ring;
 ```
 
@@ -162,12 +163,13 @@ export default thread;
 
 ### Frenet vs auxiliary frame
 
-When the path bends, the kernel has to decide how the profile orients itself. Two modes:
+When the path bends, the kernel has to decide how the profile orients itself. The third argument to `sweep` picks the mode:
 
-- **`'frenet'` (default)**: the profile rotates with the path's tangent and normal
-- **`'auxiliary'`**: the profile's normal stays aligned with a fixed reference axis
+- **Default (`frenet: false`)**: a corrected Frenet frame that keeps the profile from flipping along the path
+- **`{ frenet: true }`**: the profile rotates with the path's tangent and normal
+- **`{ auxiliarySpine }`**: a second wire controls how the profile twists along the path
 
-Most parts work with the default. Specify `{ frame: 'auxiliary' }` when you need the profile to keep a constant up-direction (think extruded handrails).
+Most parts work with the default. Pass `auxiliarySpine` when you need explicit control over the profile's orientation.
 
 ## Loft: interpolation between profiles
 
@@ -206,11 +208,11 @@ const vase = unwrap(loft(sections));
 export default vase;
 ```
 
-Three or more sections produces a smooth blend through every one. Useful for vases, ducts, ergonomic handles.
+Three or more sections pass through every one. With the default ruled loft each span is straight; pass `{ ruled: false }` for a smooth blend. Useful for vases, ducts, ergonomic handles.
 
 ### Ruled vs smooth
 
-`loft([a, b], { ruled: true })` builds a ruled surface (straight lines between corresponding points on the profiles). The default produces a smooth (B-spline) blend. Ruled is faster but visually angular, common in sheet-metal modelling.
+By default (`ruled: true`), `loft` builds a ruled surface (straight lines between corresponding points on the profiles). `loft([a, b], { ruled: false })` produces a smooth (B-spline) blend. Ruled is faster but visually angular, common in sheet-metal modelling.
 
 ## Hollowing: shell
 
@@ -293,15 +295,15 @@ A profile, two `lineTo`s, a revolve. Simpler than building two cones and fusing.
 
 ## When operations fail
 
-| Failure                        | Cause                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `EXTRUDE_INVALID_FACE`         | The face isn't `OrientedFace`: usually means the wire isn't closed       |
-| `REVOLVE_AXIS_CROSSES_PROFILE` | The axis passes through the profile (would self-intersect)               |
-| `SWEEP_PATH_INVALID`           | Path has self-intersections, sharp corners, or non-tangent meeting edges |
-| `LOFT_PROFILE_MISMATCH`        | Profiles have very different topologies (e.g. one closed, one open)      |
-| `SHELL_TOO_THICK`              | Wall thickness larger than the local geometry can support                |
+| Failure                                    | Cause                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `EXTRUDE_ZERO_VECTOR`                      | The extrusion height or vector has zero length                                              |
+| `EXTRUDE_FAILED` / `REVOLVE_FAILED`        | The kernel couldn't build the solid from the face                                           |
+| `SWEEP_NOT_3D`                             | No solid came out: path has self-intersections, sharp corners, or non-tangent meeting edges |
+| `LOFT_FAILED`                              | Profiles have very different topologies (e.g. one closed, one open)                         |
+| `SHELL_NO_EFFECT` / `SHELL_INVALID_RESULT` | Wall thickness larger than the local geometry can support                                   |
 
-[Error Codes](../reference/errors) covers each in detail.
+See [Error Codes](../reference/errors) for reading and handling errors.
 
 ## Next steps
 

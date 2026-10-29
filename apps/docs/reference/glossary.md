@@ -11,7 +11,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **`autoHeal`**: operation that runs OpenCascade's `ShapeFix_Shape` to repair gaps, sew faces, fix orientations, and propagate tolerances. Always call on imported shapes before further operations. See [Healing & Sewing](../advanced/healing).
 
-**Adapter** (kernel adapter): a class implementing `KernelInterface` that bridges brepjs to a specific geometry kernel. Two ship: OCCT and brepkit. See [Writing a Custom Kernel](../extending/custom-kernel).
+**Adapter** (kernel adapter): a class implementing `KernelAdapter` that bridges brepjs to a specific geometry kernel. Three ship: occt-wasm (the default), OpenCascade via `brepjs-opencascade`, and brepkit. See [Writing a Custom Kernel](../extending/custom-kernel).
 
 **Archetype**: `archetype: 'wall'` on a family. The domain-neutral kind a BIM export routes on, so a copied registry family keeps its IFC mapping after being renamed. Undeclared families fall back to matching their display name. See [IFC Export](../families/ifc-export).
 
@@ -45,19 +45,19 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **Conformance suite**: the test suite that runs against every supported kernel to verify behaviour parity. See [Kernel Conformance Suite](../extending/conformance).
 
-**Curvature**: a number describing how sharply a curve or surface bends. For a circle of radius r, curvature is 1/r. Returned by `curveCurvatureAt` and `faceCurvatureAt`.
+**Curvature**: a number describing how sharply a curve or surface bends. For a circle of radius r, curvature is 1/r. For faces, returned by `measureCurvatureAt` and `measureCurvatureAtMid`.
 
 ## D
 
 **Drawing** (`Drawing<'2D'>`): a 2D shape used in the Drawing API. Built with `drawCircle`, `drawRectangle`, etc. Operates on with `drawingFuse`, `drawingCut`, `drawingFillet`. Projected to a `Sketch` via `drawingToSketchOnPlane`.
 
-**`DisposalScope`**: manual scope for tracking and disposing handles. `scope.track(shape)` registers; `scope.dispose()` releases in LIFO order. See [Memory Management](../advanced/memory).
+**`DisposalScope`**: manual scope for tracking and disposing handles. `scope.track(shape)` registers; disposing the scope (`using scope = new DisposalScope()`, or `scope[Symbol.dispose]()`) releases in LIFO order. See [Memory Management](../advanced/memory).
 
 ## E
 
-**Edge**: a curve segment between two vertices. Curve types: `LINE`, `CIRCLE`, `ELLIPSE`, `BEZIER`, `BSPLINE`, `OFFSET`. See [The Topology Hierarchy](../concepts/topology).
+**Edge**: a curve segment between two vertices. Curve types: `LINE`, `CIRCLE`, `ELLIPSE`, `HYPERBOLA`, `PARABOLA`, `BEZIER_CURVE`, `BSPLINE_CURVE`, `OFFSET_CURVE`. See [The Topology Hierarchy](../concepts/topology).
 
-**`edgeFinder`**: query builder for selecting edges. Filters chain (`inDirection`, `withLength`, `ofCurveType`, etc.). See [Finders & Queries](../tasks/finders).
+**`edgeFinder`**: query builder for selecting edges. Filters chain (`inDirection`, `ofLength`, `ofCurveType`, etc.). See [Finders & Queries](../tasks/finders).
 
 **Element** (families): a node in a `brepjs-families` description tree, carrying an optional key, props, and children. Built by calling a family or `el()`; projected onto the CSG IR by `resolve()`. See [Why a Family Layer](../families/overview).
 
@@ -65,9 +65,9 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 ## F
 
-**Face**: a bounded region of a mathematical surface. The most common surface types: `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS`, `BSPLINE_SURFACE`. See [Topology](../concepts/topology).
+**Face**: a bounded region of a mathematical surface. The most common surface types: `PLANE`, `CYLINDRE` (OpenCascade's spelling), `CONE`, `SPHERE`, `TORUS`, `BSPLINE_SURFACE`. See [Topology](../concepts/topology).
 
-**`faceFinder`**: query builder for selecting faces. Filters chain (`inDirection`, `withArea`, `ofSurfaceType`, etc.).
+**`faceFinder`**: query builder for selecting faces. Filters chain (`inDirection`, `ofArea`, `ofSurfaceType`, etc.).
 
 **Family**: a plain function from props to an element tree, created with `family(name, render, options)`. The component reference is the identity; optional Zod schema validates props at construction. See [Why a Family Layer](../families/overview).
 
@@ -89,7 +89,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **Healing**: repairing minor invalidities in shapes (gaps, mis-orientations, tolerance issues). The primary operation is `autoHeal`. See [Healing & Sewing](../advanced/healing).
 
-**Helix**: a 3D curve resembling a spring. Built with `helix({ pitch, height, radius })`. Use as a sweep path for threads.
+**Helix**: a 3D curve resembling a spring. Built with `helix(pitch, height, radius)`. Use as a sweep path for threads.
 
 ## I
 
@@ -105,7 +105,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **Kernel**: the WASM-based geometry library underlying brepjs. Two ship: OpenCascade (production) and brepkit (development). See [Kernels](../concepts/kernels).
 
-**`KernelInterface`**: the abstract interface every kernel adapter implements. Located at `src/kernel/types.ts`.
+**`KernelAdapter`**: the abstract interface every kernel adapter implements. Defined under `src/kernel/interfaces/` and re-exported from `src/kernel/types.ts`.
 
 **Key path** (families): an element's ancestor chain of keys joined with `/` (`ground/w1`). The identity axis of a families model: stable under sibling reordering, the seed of IFC GlobalIds. See [Elements, Key Paths & Identity](../families/identity).
 
@@ -125,11 +125,11 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **Mesh**: triangle representation. Produced from B-Rep via `shape(s).mesh({ tolerance })`. The integration point with Three.js. See [Three.js Integration](../integration/threejs).
 
-**Minkowski sum**: operation in OpenSCAD often used as a workaround for fillets. brepjs does not ship a generic Minkowski; use `fillet`, `chamfer`, `shell` for the common cases.
+**Minkowski sum**: operation in OpenSCAD often used as a workaround for fillets. brepjs ships `minkowski(shape, tool)`: an offset when the tool is a sphere, otherwise the convex hull of pairwise vertex sums (an approximation, exact only for convex polyhedra). For rounding and hollowing, `fillet`, `chamfer`, and `shell` are usually the better fit.
 
 ## O
 
-**OCCT** (OpenCascade Technology): the C++ geometry kernel underlying `brepjs-opencascade`.
+**OCCT** (OpenCascade Technology): the C++ geometry kernel underlying `occt-wasm` and `brepjs-opencascade`.
 
 **`OrientedFace`**: validity-branded face with a determined normal direction. Required by `extrude`, `revolve`.
 

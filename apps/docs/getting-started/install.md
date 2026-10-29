@@ -149,8 +149,8 @@ To reduce import noise, import from focused sub-paths:
 <!-- @no-test -->
 
 ```typescript
-import { box, fuse, fillet } from 'brepjs/topology';
-import { extrude, linearPattern } from 'brepjs/operations';
+import { box, cylinder, fuseAll } from 'brepjs/topology';
+import { twistExtrude, linearPattern } from 'brepjs/operations';
 import { drawRectangle } from 'brepjs/sketching';
 import { edgeFinder, faceFinder } from 'brepjs/query';
 import { exportSTEP } from 'brepjs/io';
@@ -158,7 +158,7 @@ import { measureVolume } from 'brepjs/measurement';
 import { ok, isOk, unwrap, type Result } from 'brepjs/core';
 ```
 
-All sub-paths re-export a subset of the main `brepjs` entry. You can mix and match.
+All sub-paths re-export a subset of the main `brepjs` entry. You can mix and match. Most short-named operations (`fuse`, `cut`, `fillet`, `shell`, `extrude`, `translate`, `mesh`, …) are exported from the main entry only.
 
 ## Scaffold a project
 

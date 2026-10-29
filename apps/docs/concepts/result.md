@@ -83,16 +83,18 @@ The `shape()` wrapper automatically unwraps every operation in the chain. Failur
 
 ```typescript
 type BrepError = {
-  code: string; // stable identifier, e.g. 'BOOLEAN_NO_OVERLAP'
+  kind: BrepErrorKind; // category, e.g. 'KERNEL_OPERATION', 'VALIDATION'
+  code: string; // stable identifier, e.g. 'CUT_NOT_3D'
   message: string; // human-readable description
   suggestion?: string; // actionable recovery advice when available
   cause?: unknown; // underlying kernel error if applicable
+  metadata?: Record<string, unknown>; // structured details, e.g. failed edges
 };
 ```
 
 The most useful fields:
 
-- **`code`**: stable across releases. Switch on this for programmatic recovery (`if (e.code === 'FILLET_TOO_LARGE')`).
+- **`code`**: stable across releases. Switch on this for programmatic recovery (`if (e.code === 'FILLET_FAILED')`).
 - **`suggestion`**: when the kernel returns a known failure mode, brepjs adds a one-line suggestion. Surface this to users when you can.
 
 See [Error Codes](../reference/errors) for the full list.
@@ -110,7 +112,7 @@ const edges = edgeFinder().inDirection('Z').findAll(part);
 const tryFillet = (radius: number) => fillet(part, edges, radius);
 let result = tryFillet(3);
 if (!isOk(result)) {
-  // FILLET_TOO_LARGE? Try a smaller radius.
+  // FILLET_FAILED? Try a smaller radius.
   result = tryFillet(1);
 }
 if (isOk(result)) {
@@ -121,16 +123,16 @@ if (isOk(result)) {
 ### Heal first, then operate
 
 ```typescript
-import { box, cylinder, cut, autoHeal, isOk, unwrap } from 'brepjs/quick';
+import { box, cylinder, cut, heal, isOk, unwrap } from 'brepjs/quick';
 
 const a = box(20, 20, 20);
 const b = cylinder(5, 25);
 
 let result = cut(a, b);
-if (!isOk(result) && result.error.code === 'INVALID_SHAPE') {
+if (!isOk(result) && result.error.code === 'CUT_NOT_3D') {
   // Inputs may have minor invalidity. Heal them.
-  const healedA = unwrap(autoHeal(a));
-  const healedB = unwrap(autoHeal(b));
+  const healedA = unwrap(heal(a));
+  const healedB = unwrap(heal(b));
   result = cut(healedA, healedB);
 }
 if (isOk(result)) {
@@ -161,7 +163,7 @@ Three reasons:
 2. **No silent catches.** `try/catch` around a thrown error catches _every_ error, including programmer mistakes. `Result` requires you to handle the named failure mode and lets unexpected errors propagate.
 3. **Composition.** Sequencing fallible operations is direct with `Result` (chain `match` calls or use `unwrap` in a script). With exceptions, every step needs a `try/catch` if you want to recover at granularity.
 
-When brepjs _does_ throw, it is for unrecoverable programmer errors: calling a function before `init()` resolved (`KERNEL_NOT_INITIALIZED`), passing a non-shape to a shape parameter, etc. These never appear in `Result`.
+When brepjs _does_ throw, it is for unrecoverable programmer errors: calling a function before `init()` resolved (`brepjs kernel not initialized`), passing a non-shape to a shape parameter, etc. These never appear in `Result`.
 
 ## When to mix
 

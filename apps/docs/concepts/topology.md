@@ -46,9 +46,11 @@ A curve segment connecting two vertices. The curve is one of:
 - `LINE`: straight segment
 - `CIRCLE`: circular arc (or full circle)
 - `ELLIPSE`: elliptical arc
-- `BEZIER`: Bézier curve
-- `BSPLINE`: B-spline (the catch-all for non-analytic curves)
-- `OFFSET`: an offset of another curve
+- `HYPERBOLA`, `PARABOLA`: conic arcs
+- `BEZIER_CURVE`: Bézier curve
+- `BSPLINE_CURVE`: B-spline (the catch-all for non-analytic curves)
+- `OFFSET_CURVE`: an offset of another curve
+- `OTHER_CURVE`: anything else
 
 ```typescript
 import { box, edgeFinder, curveLength, getCurveType } from 'brepjs/quick';
@@ -83,9 +85,10 @@ A bounded region of a mathematical surface: a plane trimmed to a polygon, a cyli
 
 Face surface kinds:
 
-- `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS`: analytic
-- `BSPLINE_SURFACE`: the catch-all
-- `OFFSET_SURFACE`, `EXTRUSION`, `REVOLUTION`: derived
+- `PLANE`, `CYLINDRE` (spelled this way in the API), `CONE`, `SPHERE`, `TORUS`: analytic
+- `BEZIER_SURFACE`, `BSPLINE_SURFACE`: freeform; B-spline is the catch-all
+- `OFFSET_SURFACE`, `EXTRUSION_SURFACE`, `REVOLUTION_SURFACE`: derived
+- `OTHER_SURFACE`: anything else
 
 ```typescript
 import { box, faceFinder, measureArea, getSurfaceType, unwrap } from 'brepjs/quick';
@@ -95,7 +98,7 @@ const faces = faceFinder().findAll(b); // 6
 const top = faceFinder().inDirection('Z').findAll(b)[0];
 if (top) {
   console.log('Top area:', unwrap(measureArea(top))); // 600
-  console.log('Surface:', getSurfaceType(top)); // 'PLANE'
+  console.log('Surface:', unwrap(getSurfaceType(top))); // 'PLANE'
 }
 console.log('All faces:', faces.length);
 ```
@@ -105,10 +108,10 @@ console.log('All faces:', faces.length);
 A connected set of faces. A **closed shell** has every edge shared by exactly two faces; it bounds a solid. Open shells exist (think a tea-cup before the bottom is sewn on); they are useful as intermediate results during construction.
 
 ```typescript
-import { box, shellFinder } from 'brepjs/quick';
+import { box, getShells } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
-const shells = shellFinder().findAll(b);
+const shells = getShells(b);
 console.log('Shells:', shells.length); // 1: the outer shell of the box
 ```
 
@@ -136,13 +139,13 @@ const assembly = compound([box(10, 10, 10), sphere(5)]);
 console.log('Compound volume:', unwrap(measureVolume(assembly)).toFixed(2)); // 1523.60
 ```
 
-A compound containing only solids is a `CompSolid`. Compound is the fallback type when an operation can return multiple disconnected pieces (e.g. a boolean that splits a shape in two).
+A `CompSolid` is a set of solids that share faces; a compound of separate solids is still a `Compound`. Compound is the fallback type when an operation can return multiple disconnected pieces (e.g. a boolean that splits a shape in two).
 
 ## Types that group across levels
 
 Some brepjs functions accept any shape regardless of level. Two convenience unions:
 
-- `Shape3D`: `Face | Shell | Solid | CompSolid | Compound<'3D'>`. The argument type for "anything 3D".
+- `Shape3D`: `Shell | Solid | CompSolid | Compound<'3D'>`. The argument type for "anything 3D".
 - `AnyShape`: `Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound`. Truly anything.
 
 A phantom dimension parameter (`'2D' | '3D'`) prevents mixing 2D drafts with 3D parts at compile time. See [Types That Prove Geometry Is Valid](./types) for the full story.

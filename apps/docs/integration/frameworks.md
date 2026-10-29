@@ -219,8 +219,8 @@ For routes that should never SSR-render the brepjs component at all, factor the 
 brepjs is just WASM + JS: these runtimes work for batch jobs (build a STEP file, return it as a response). The constraints:
 
 - **No DOM**: anything assuming `window`, `document`, or browser globals fails. brepjs's core doesn't use these, but the playground site does.
-- **Memory limits**: workers have caps (Cloudflare: 128 MB by default). Heavy operations may need bumping.
-- **Bundle size**: WASM is ~3 MB compressed. Cloudflare's bundle budget allows this; some embedded runtimes don't.
+- **Memory limits**: workers have caps (Cloudflare: 128 MB per isolate on every plan). Heavy operations may not fit.
+- **Bundle size**: WASM is ~6.7 MB compressed (the default `occt-wasm` kernel). Cloudflare's bundle budget allows this; some embedded runtimes don't.
 
 For server-side STEP generation in Cloudflare:
 

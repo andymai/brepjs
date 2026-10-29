@@ -144,7 +144,7 @@ for (let i = 0; i < 1000; i++) {
 
 ```typescript
 // ❌ Array prevents cleanup
-const shapes: Shape[] = [];
+const shapes: AnyShape[] = [];
 for (let i = 0; i < 100; i++) {
   shapes.push(box(1, 1, 1));
 }

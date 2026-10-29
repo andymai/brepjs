@@ -52,27 +52,26 @@ These are the workhorses. The fluent wrapper exposes them as methods: `shape(s).
 The axis-aligned bounding box of a shape:
 
 ```typescript
-import { box, getBoundingBox } from 'brepjs/quick';
+import { box, getBounds } from 'brepjs/quick';
 
-const b = box(30, 20, 10, { at: [5, 5, 5] });
-const bbox = getBoundingBox(b);
-console.log('Min:', bbox.min); // [5, 5, 5]
-console.log('Max:', bbox.max); // [35, 25, 15]
-console.log('Centre:', bbox.center); // [20, 15, 10]
-console.log('Size:', bbox.size); // [30, 20, 10]
+const b = box(30, 20, 10, { at: [5, 5, 5] }); // `at` is the box centre
+const bbox = getBounds(b);
+console.log('Min:', [bbox.xMin, bbox.yMin, bbox.zMin]); // [-10, -5, 0]
+console.log('Max:', [bbox.xMax, bbox.yMax, bbox.zMax]); // [20, 15, 10]
+console.log('Size:', [bbox.xMax - bbox.xMin, bbox.yMax - bbox.yMin, bbox.zMax - bbox.zMin]); // [30, 20, 10]
 
 export default b;
 ```
 
-The bounding box is in world coordinates and updates after every transform. Useful for layout and packing.
+`getBounds` returns `{ xMin, xMax, yMin, yMax, zMin, zMax }`. The bounding box is in world coordinates and updates after every transform. Useful for layout and packing.
 
 ## Centre of mass
 
 ```typescript
-import { box, cylinder, fuse, getCenterOfMass, unwrap } from 'brepjs/quick';
+import { box, cylinder, fuse, measureVolumeProps, unwrap } from 'brepjs/quick';
 
 const compound = unwrap(fuse(box(20, 20, 20), cylinder(5, 30, { at: [10, 10, 0] })));
-const com = getCenterOfMass(compound);
+const com = unwrap(measureVolumeProps(compound)).centerOfMass;
 console.log(
   'Centre of mass:',
   com.map((c) => c.toFixed(3))
@@ -88,30 +87,30 @@ Returns `[x, y, z]`. Computed via the kernel's mass-property analysis assuming u
 The closest point between two shapes:
 
 ```typescript
-import { box, sphere, distanceTo } from 'brepjs/quick';
+import { box, sphere, measureDistanceProps, unwrap } from 'brepjs/quick';
 
 const a = box(10, 10, 10);
 const b = sphere(3, { at: [50, 0, 0] });
 
-const result = distanceTo(a, b);
-console.log('Distance:', result.distance.toFixed(3)); // ~36
-console.log('Closest on A:', result.pointOnA);
-console.log('Closest on B:', result.pointOnB);
+const result = unwrap(measureDistanceProps(a, b));
+console.log('Distance:', result.distance.toFixed(3)); // 37
+console.log('Closest on A:', result.point1);
+console.log('Closest on B:', result.point2);
 ```
 
-Returns `{ distance, pointOnA, pointOnB }`. The points are the closest pair; the distance is `|pointOnA - pointOnB|`.
+Returns `{ distance, point1, point2 }`. The points are the closest pair. On the default occt-wasm kernel they are sampled from a tessellation, so they are approximate while `distance` stays exact. `measureDistance(a, b)` returns just the number.
 
-A negative distance (or zero) means the shapes overlap. For exact overlap detection use `distanceTo(a, b).distance <= 0`.
+The distance is never negative: touching or overlapping shapes report `0`. For overlap detection use `checkInterference(a, b)`, whose `hasInterference` is true when the distance is within a tolerance.
 
 ## Projecting a point onto a surface
 
 ```typescript
-import { sketchCircle, faceFinder, projectPointToFace } from 'brepjs/quick';
+import { sketchCircle, faceFinder, projectPointOnFace, unwrap } from 'brepjs/quick';
 
 const cyl = sketchCircle(10).extrude(20);
-const sideFace = faceFinder().ofSurfaceType('CYLINDER').findAll(cyl)[0];
+const sideFace = faceFinder().ofSurfaceType('CYLINDRE').findAll(cyl)[0];
 if (sideFace) {
-  const proj = projectPointToFace(sideFace, [15, 0, 5]);
+  const proj = unwrap(projectPointOnFace(sideFace, [15, 0, 5]));
   console.log('Projected to:', proj.point); // [10, 0, 5]
   console.log('Distance:', proj.distance); // 5
 }
@@ -119,30 +118,15 @@ if (sideFace) {
 
 Useful for placing features (logos, fasteners) at a specific position on a curved surface.
 
-## Curvature
-
-```typescript
-import { sketchCircle, edgeFinder, curveCurvatureAt } from 'brepjs/quick';
-
-const cyl = sketchCircle(10).extrude(20);
-const circ = edgeFinder().ofCurveType('CIRCLE').findAll(cyl)[0];
-if (circ) {
-  const k = curveCurvatureAt(circ, 0.5); // mid-point of the edge
-  console.log('Curvature:', k.value); // 0.1 = 1/radius
-}
-```
-
-For circles, curvature is `1/r`. For straight edges, `0`. For B-splines, varies along the edge.
-
 ## Surface curvature
 
 ```typescript
-import { sketchCircle, faceFinder, faceCurvatureAt } from 'brepjs/quick';
+import { sketchCircle, faceFinder, measureCurvatureAtMid, unwrap } from 'brepjs/quick';
 
 const cyl = sketchCircle(10).extrude(20);
-const side = faceFinder().ofSurfaceType('CYLINDER').findAll(cyl)[0];
+const side = faceFinder().ofSurfaceType('CYLINDRE').findAll(cyl)[0];
 if (side) {
-  const c = faceCurvatureAt(side, 0.5, 0.5); // u, v parameters in [0,1]
+  const c = unwrap(measureCurvatureAtMid(side)); // centre of the face's UV range
   console.log('Min curvature:', c.minCurvature); // 0 (along axis)
   console.log('Max curvature:', c.maxCurvature); // 0.1 = 1/r (around)
   console.log('Gaussian:', c.gaussian); // 0
@@ -150,7 +134,7 @@ if (side) {
 }
 ```
 
-Returns principal curvatures, Gaussian, and mean. Useful for detecting flat regions (curvature ~0) or sharp regions (high max).
+Returns principal curvatures (with their directions), Gaussian, and mean. `measureCurvatureAt(face, u, v)` evaluates at explicit parameters in the face's own UV domain. Useful for detecting flat regions (curvature ~0) or sharp regions (high max).
 
 ## Counts
 
@@ -201,11 +185,11 @@ Sanity-check that booleans actually changed the volume by the expected amount.
 For a layout tool, you need bounding boxes:
 
 ```typescript
-import { box, getBoundingBox } from 'brepjs/quick';
+import { box, getBounds } from 'brepjs/quick';
 
 const parts = [box(10, 20, 5), box(15, 10, 5), box(25, 15, 5)];
-const bboxes = parts.map(getBoundingBox);
-const totalWidth = bboxes.reduce((sum, bb) => sum + bb.size[0], 0);
+const bboxes = parts.map((p) => getBounds(p));
+const totalWidth = bboxes.reduce((sum, bb) => sum + (bb.xMax - bb.xMin), 0);
 console.log('Total width if linear-packed:', totalWidth);
 ```
 

@@ -81,7 +81,7 @@ The win is structural: an `8×8` baseplate is 64 studs and 49 tube pairs — ove
 
 By default a boolean propagates provenance from its inputs to the result so [finders and stable references](/concepts/stable-references) can follow a face across it — bookkeeping you only need when a _later_ step selects geometry by a reference carried from _before_ the boolean. `studBrick` re-selects the rims geometrically (`ofCurveType('CIRCLE')`), so it turns tracking off everywhere.
 
-Keep it on only when a downstream tag or stable reference must survive the boolean. (Note: the batched `fuseAll`/`cutAll` carry origin provenance only — tags and colors are lost across them regardless; use pairwise `fuse`/`cut` if you need them.)
+Keep it on only when a downstream tag or stable reference must survive the boolean. (Note: on occt-wasm the batched `fuseAll`/`cutAll` carry tags and colors like the pairwise booleans. On the other kernels they carry origin provenance only and tags and colors are lost, so use pairwise `fuse`/`cut` there if you need them.)
 
 ## Builders: one function per feature
 

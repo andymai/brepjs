@@ -49,7 +49,7 @@ const block = box(30, 20, 10);
 const hole = cylinder(5, 15, { at: [15, 10, -2] });
 ```
 
-`box(width, depth, height)` returns a `ValidSolid`: a 30×20×10 mm rectangular solid centred at the origin's lower corner. `cylinder(radius, height, { at })` returns a `ValidSolid` 5 mm radius, 15 mm tall, with its base centre at `[15, 10, -2]` so it pokes through the block.
+`box(width, depth, height)` returns a `ValidSolid`: a 30×20×10 mm rectangular solid with its lower corner at the origin. `cylinder(radius, height, { at })` returns a `ValidSolid` 5 mm radius, 15 mm tall, with its base centre at `[15, 10, -2]` so it pokes through the block.
 
 The `at` option translates the primitive at construction time. You can also `translate(cylinder(5, 15), [15, 10, -2])` after the fact; the result is identical.
 
@@ -60,7 +60,7 @@ import { box, cylinder, cut, unwrap } from 'brepjs/quick';
 const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));
 ```
 
-`cut(a, b)` removes `b` from `a`. It returns `Result<Shape3D, BrepError>`. The operation can fail, for instance if `b` doesn't intersect `a`. `unwrap()` extracts the value or throws on error; in production code you'd use `isOk()` or `match()` instead. See [Result and Errors](../concepts/result).
+`cut(a, b)` removes `b` from `a`. It returns `Result<Shape3D, BrepError>`. The operation can fail, for instance on non-manifold or zero-thickness input. (If `b` doesn't touch `a`, the cut succeeds and returns `a` unchanged.) `unwrap()` extracts the value or throws on error; in production code you'd use `isOk()` or `match()` instead. See [Result and Errors](../concepts/result).
 
 ### Step 3: query
 
@@ -145,7 +145,7 @@ const part = unwrap(cut(block, holes));
 export default part;
 ```
 
-Boolean-fuse the holes first, then cut once. Three booleans become two: faster and avoids a class of failure modes when the cuts overlap.
+Boolean-fuse the holes first, then cut once. Four cuts become two booleans: faster and avoids a class of failure modes when the cuts overlap.
 
 ### Sketch-then-extrude profiles
 
@@ -195,14 +195,14 @@ The two ways failure surfaces:
 
 The most common failures and their typical causes:
 
-| Failure                  | Likely cause                                                                                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------- |
-| `BOOLEAN_NO_OVERLAP`     | The two operands don't share volume. `cut(a, b)` requires `b` ⊆ `a` (at least partially).           |
-| `FILLET_TOO_LARGE`       | The radius is bigger than the local edge geometry can support. Try a smaller radius or fewer edges. |
-| `INVALID_SHAPE`          | One of your inputs failed `BRepCheck`. Run `autoHeal(shape)` first.                                 |
-| `KERNEL_NOT_INITIALIZED` | You called a brepjs function before `init()` / `registerKernel` resolved.                           |
+| Failure                                          | Likely cause                                                                                                                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CUT_NOT_3D` (`FUSE_NOT_3D`, `INTERSECT_NOT_3D`) | The boolean didn't produce a solid: an operand is a shell or open surface, or the input is degenerate. For `intersect`, the operands may not overlap. Run `autoHeal(shape)` on the inputs first. |
+| `FILLET_FAILED`                                  | The kernel couldn't build the fillet, usually because the radius is bigger than the local edge geometry can support. Try a smaller radius or fewer edges.                                        |
+| `INVALID_FILLET_RADIUS`                          | The radius is zero or negative.                                                                                                                                                                  |
+| Thrown `brepjs kernel not initialized`           | You called a brepjs function before `init()` / `registerKernel` resolved. This one throws instead of returning a `Result`.                                                                       |
 
-[Error Codes](../reference/errors) lists every code with recovery patterns.
+[Error Codes](../reference/errors) lists the common codes with recovery patterns.
 
 ## Next steps
 

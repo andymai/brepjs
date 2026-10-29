@@ -168,8 +168,8 @@ lines.push('');
 lines.push('Use this table to find which sub-path exports a given symbol. Import from the sub-path for focused autocomplete:');
 lines.push('');
 lines.push('```typescript');
-lines.push("// Instead of: import { fillet } from 'brepjs';");
-lines.push("import { fillet } from 'brepjs/topology';");
+lines.push("// Instead of: import { fuseAll } from 'brepjs';");
+lines.push("import { fuseAll } from 'brepjs/topology';");
 lines.push('```');
 lines.push('');
 

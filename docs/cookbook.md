@@ -1,6 +1,6 @@
 # Cookbook
 
-20 recipes for common CAD workflows. All examples use `shape()` and `brepjs/quick`.
+21 recipes for common CAD workflows. All examples use `shape()` and `brepjs/quick`.
 
 ```typescript
 import { box, cylinder, sphere, shape /* ... */ } from 'brepjs/quick';
@@ -49,19 +49,15 @@ A configurable bracket with mounting holes at each corner.
 import { box, cylinder, shape } from 'brepjs/quick';
 
 function bracket(width: number, height: number, thickness: number, holeRadius: number) {
-  const base = shape(box(width, thickness, height));
+  const base = shape(box(width, thickness, height)).fillet((e) => e.inDirection('Z'), 2);
 
-  const hole1 = cylinder(holeRadius, thickness + 1, { at: [5, 0, 5] });
-  const hole2 = cylinder(holeRadius, thickness + 1, { at: [width - 5, 0, 5] });
-  const hole3 = cylinder(holeRadius, thickness + 1, { at: [5, 0, height - 5] });
-  const hole4 = cylinder(holeRadius, thickness + 1, { at: [width - 5, 0, height - 5] });
+  const axis: [number, number, number] = [0, 1, 0]; // through the plate thickness
+  const hole1 = cylinder(holeRadius, thickness + 1, { at: [5, -0.5, 5], axis });
+  const hole2 = cylinder(holeRadius, thickness + 1, { at: [width - 5, -0.5, 5], axis });
+  const hole3 = cylinder(holeRadius, thickness + 1, { at: [5, -0.5, height - 5], axis });
+  const hole4 = cylinder(holeRadius, thickness + 1, { at: [width - 5, -0.5, height - 5], axis });
 
-  return base
-    .cut(hole1)
-    .cut(hole2)
-    .cut(hole3)
-    .cut(hole4)
-    .fillet((e) => e.inDirection('Z'), 2).val;
+  return base.cut(hole1).cut(hole2).cut(hole3).cut(hole4).val;
 }
 
 const myBracket = bracket(50, 40, 5, 2);
@@ -80,13 +76,13 @@ const part = shape(box(20, 20, 20)).fillet(2).val;
 
 const stepBlob = unwrap(exportSTEP(part));
 const stlBlob = unwrap(exportSTL(part));
-const gltfBlob = unwrap(exportGltf(part));
+const gltfJson = exportGltf(shape(part).mesh()); // glTF takes a mesh and returns a JSON string
 
 // Save to files (Node.js)
 import { writeFileSync } from 'fs';
-writeFileSync('part.step', await stepBlob.arrayBuffer());
-writeFileSync('part.stl', await stlBlob.arrayBuffer());
-writeFileSync('part.gltf', await gltfBlob.text());
+writeFileSync('part.step', new Uint8Array(await stepBlob.arrayBuffer()));
+writeFileSync('part.stl', new Uint8Array(await stlBlob.arrayBuffer()));
+writeFileSync('part.gltf', gltfJson);
 ```
 
 ---
@@ -96,16 +92,17 @@ writeFileSync('part.gltf', await gltfBlob.text());
 A 3×3 pin grid and a disc with 6 evenly-spaced holes.
 
 ```typescript
-import { cylinder, box, shape, linearPattern, circularPattern } from 'brepjs/quick';
+import { cylinder, box, shape, linearPattern, circularPattern, unwrap } from 'brepjs/quick';
 
 const pin = cylinder(2, 10);
-const pins = linearPattern(pin, { count: [3, 3, 1], spacing: [10, 10, 0] });
+const row = unwrap(linearPattern(pin, [1, 0, 0], 3, 10)); // direction, count, spacing
+const pins = unwrap(linearPattern(row, [0, 1, 0], 3, 10));
 
 const baseDisc = cylinder(30, 5);
 const hole = cylinder(3, 6, { at: [20, 0, 0] });
-const holes = circularPattern(hole, 6, { axis: [0, 0, 1], at: [0, 0, 0] });
+const holes = unwrap(circularPattern(hole, [0, 0, 1], 6)); // axis, count (360° by default)
 
-const plate = shape(baseDisc).cutAll(holes).val;
+const plate = shape(baseDisc).cut(holes).val;
 ```
 
 ---
@@ -138,7 +135,7 @@ const fillet = sphere(5, { at: [5, 5, 5] });
 const part = shape(body)
   .cut(cutout)
   .fuse(fillet)
-  .fillet((e) => e.parallel([0, 0, 1]), 2).val;
+  .fillet((e) => e.parallelTo([0, 0, 1]), 2).val;
 ```
 
 ---
@@ -170,15 +167,15 @@ const assembly = shape(base).fuseAll(posts).val;
 Two boxes - how far apart are they? Do they clash?
 
 ```typescript
-import { box, sphere, measureDistance, checkInterference } from 'brepjs/quick';
+import { box, shape, measureDistance, checkInterference, unwrap } from 'brepjs/quick';
 
 const box1 = box(20, 20, 20);
 const box2 = shape(box(20, 20, 20)).translate([25, 0, 0]).val;
 
-const distance = measureDistance(box1, box2);
+const distance = unwrap(measureDistance(box1, box2));
 console.log('Distance:', distance, 'mm');
 
-const interference = checkInterference(box1, box2);
+const interference = unwrap(checkInterference(box1, box2));
 if (interference.hasInterference) {
   console.log('Shapes overlap!');
 }
@@ -221,7 +218,10 @@ Remove the top face and hollow out a box.
 ```typescript
 import { box, shape, faceFinder } from 'brepjs/quick';
 
-const hollow = shape(box(30, 30, 30)).shell((f) => f.inDirection('Z').max(), 2).val;
+const hollow = shape(box(30, 30, 30)).shell(
+  (f) => f.inDirection('Z').atDistance(30, [0, 0, 0]),
+  2
+).val;
 
 console.log('Volume (hollow):', shape(hollow).volume());
 ```
@@ -236,7 +236,7 @@ Smooth transition from a circle to a square.
 import { sketchCircle, sketchRectangle, loft, unwrap } from 'brepjs/quick';
 
 const bottom = sketchCircle(10).wires();
-const top = sketchRectangle(15, 15, { at: [0, 0, 50] }).wires();
+const top = sketchRectangle(15, 15, { origin: [0, 0, 50] }).wires();
 
 const lofted = unwrap(loft([bottom, top]));
 ```
@@ -259,7 +259,7 @@ const profile = new Sketcher('XZ')
   .lineTo([0, 0])
   .close();
 
-const vase = shape(profile.face()).revolve(360, { axis: [0, 0, 1] }).val;
+const vase = shape(profile.face()).revolve({ axis: [0, 0, 1] }).val; // full turn by default
 ```
 
 ---
@@ -288,11 +288,11 @@ const bufferData = toBufferGeometryData(mesh);
 Engrave text into a box face by extruding and cutting.
 
 ```typescript
-import { box, shape, text2D, unwrap } from 'brepjs/quick';
+import { box, shape, loadFont, sketchText, unwrap } from 'brepjs/quick';
 
+unwrap(await loadFont('/fonts/MyFont.ttf')); // text needs a loaded font (URL or ArrayBuffer)
 const base = box(100, 50, 10);
-const textWire = unwrap(text2D('BREPJS', { fontSize: 12, font: 'Arial' }));
-const textSolid = shape(textWire).extrude(3).translate([25, 20, 7]).val;
+const textSolid = sketchText('BREPJS', { fontSize: 12 }, { origin: [25, 20, 7] }).extrude(3);
 
 const engraved = shape(base).cut(textSolid).val;
 ```
@@ -304,19 +304,23 @@ const engraved = shape(base).cut(textSolid).val;
 Perforate a plate with a 5×4 grid of holes.
 
 ```typescript
-import { box, cylinder, shape, rectangularPattern } from 'brepjs/quick';
+import { box, cylinder, shape, rectangularPattern, unwrap } from 'brepjs/quick';
 
 const plate = box(100, 80, 5);
 const hole = cylinder(3, 10, { at: [10, 10, 0] });
 
-const pattern = rectangularPattern(hole, {
-  xCount: 5,
-  yCount: 4,
-  xSpacing: 20,
-  ySpacing: 20,
-});
+const pattern = unwrap(
+  rectangularPattern(hole, {
+    xDir: [1, 0, 0],
+    xCount: 5,
+    xSpacing: 20,
+    yDir: [0, 1, 0],
+    yCount: 4,
+    ySpacing: 20,
+  })
+);
 
-const perforatedPlate = shape(plate).cutAll(pattern).val;
+const perforatedPlate = shape(plate).cut(pattern).val;
 ```
 
 ---
@@ -326,12 +330,12 @@ const perforatedPlate = shape(plate).cutAll(pattern).val;
 A pipe: sweep a circle along a curved path.
 
 ```typescript
-import { circle, arc, shape, unwrap } from 'brepjs/quick';
+import { circle, threePointArc, wire, shape, unwrap } from 'brepjs/quick';
 
-const profile = unwrap(circle(5));
-const path = unwrap(arc([0, 0, 0], [50, 0, 50], [50, 50, 50]));
+const profile = unwrap(wire([circle(5)])); // sweep needs a closed wire profile
+const path = unwrap(wire([threePointArc([0, 0, 0], [50, 0, 50], [50, 50, 50])]));
 
-const pipe = unwrap(shape(profile).sweep(path));
+const pipe = shape(profile).sweep(path).val;
 console.log('Pipe volume:', shape(pipe).volume());
 ```
 
@@ -346,9 +350,9 @@ import { box, cylinder, shape } from 'brepjs/quick';
 
 const half = shape(box(20, 30, 10))
   .cut(cylinder(5, 15, { at: [10, 10, 5] }))
-  .fillet((e) => e.inDirection('X').max(), 3).val;
+  .fillet((e) => e.inDirection('X'), 3).val;
 
-const full = shape(half).mirrorJoin({ normal: [1, 0, 0], origin: [20, 0, 0] }).val;
+const full = shape(half).mirrorJoin({ normal: [1, 0, 0], at: [20, 0, 0] }).val;
 console.log('Full volume:', shape(full).volume());
 ```
 

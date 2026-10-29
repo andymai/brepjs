@@ -149,7 +149,7 @@ The round-trip preserves structural hashes, so a deserialized tree shares cache 
 - **Undo/redo**: `JSON.stringify` snapshots are tiny next to materialized B-Rep data.
 - **Sharing builds**: paste a JSON envelope between users without shipping STEP files.
 
-A note on shape: `toJSON` _expands_ the DAG to a tree. If your IR has shared subtrees (the same `Box` node referenced under two `Translate` parents), the JSON contains the box twice. Sharing is rebuilt on `fromJSON`; the rebuilt nodes hash identically, so the evaluator's cache still dedupes them. The JSON is just bigger than it strictly needs to be.
+A note on shape: `toJSON` _preserves_ the DAG. If your IR has shared subtrees (the same `Box` node referenced under two `Translate` parents), the box is emitted once into the envelope's `defs` table and referenced by `{ $ref }` at each use site. `fromJSON` resolves each `$ref` to the same rebuilt node, so sharing survives the round trip.
 
 `fromJSON` is the trust boundary: every field is validated, every expression is reconstructed via builders so `structuralHash` and `freeParams` are correct. Invalid envelopes return `Result.err`, not throw.
 
@@ -237,7 +237,7 @@ csg.withEvaluator({}, (ev) => {
 });
 ```
 
-After disposal, every shape returned by `evaluate` is invalid; they were _borrowed_ from the evaluator's `DisposalScope`, not transferred out. Copy out any persistent data (volumes, mesh arrays, exported STEP strings) before the evaluator's lifetime ends.
+After disposal, every shape returned by `evaluate` is invalid; they were _borrowed_ from the evaluator's cache, not transferred out. Copy out any persistent data (volumes, mesh arrays, exported STEP strings) before the evaluator's lifetime ends.
 
 ## Bounding the cache
 
@@ -260,4 +260,4 @@ Setting the bound changes one lifetime guarantee: a shape returned by `evaluate(
 
 - **[The walkthrough](/tasks/parametric-csg)**: if you skipped here from the index, the gridfinity-bin walkthrough is where the surface API gets exercised end-to-end.
 - **[Migrating from a hand-rolled cache](/migration/manual-csg-cache)**: for projects that already built a `Map<key, Solid>` cache around the eager API.
-- **[Memory Management](/advanced/memory)**: for the `DisposalScope`/`using` pattern that `Evaluator` itself is built on.
+- **[Memory Management](/advanced/memory)**: for the `using` pattern that `Evaluator` itself follows.

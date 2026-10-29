@@ -51,7 +51,7 @@
 
 | Bundler   | Tested     | Notes                     |
 | --------- | ---------- | ------------------------- |
-| Vite 7    | ✅ Primary | Used in development       |
+| Vite 8    | ✅ Primary | Used in development       |
 | Vite 5-6  | ✅         | Works                     |
 | esbuild   | ✅         | Direct usage              |
 | Webpack 5 | ⚠️         | Requires externals config |
@@ -168,8 +168,8 @@ The following configurations are tested in CI:
 
 ```yaml
 - Node.js 24 on Ubuntu
-- Build: Vite 7, TypeScript 5.9
-- Tests: Vitest 4
+- Build: Vite 8, TypeScript 6.0
+- Tests: Vitest 5
 - Coverage: V8 provider
 ```
 

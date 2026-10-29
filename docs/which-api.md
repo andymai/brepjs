@@ -18,7 +18,7 @@ const bracket = shape(box(30, 20, 10))
 ### For 2D: Use the Sketcher
 
 ```typescript
-import { Sketcher, sketchCircle } from 'brepjs';
+import { sketchCircle, sketchRoundedRectangle } from 'brepjs';
 
 // Build 2D profiles and extrude them
 const cylinder = sketchCircle(10).extrude(20);
@@ -31,14 +31,14 @@ const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
 
 ## Quick Reference
 
-| If you want to...                 | Use                                           |
-| --------------------------------- | --------------------------------------------- |
-| Create 3D primitives              | `box()`, `cylinder()`, `sphere()`             |
-| Combine/modify shapes             | **Fluent wrapper** (`shape().cut().fillet()`) |
-| Create 2D profiles                | **Sketcher** (`sketchCircle`, `sketchRect`)   |
-| Build parametric/composable parts | **Fluent wrapper**                            |
-| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)  |
-| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`) |
+| If you want to...                 | Use                                              |
+| --------------------------------- | ------------------------------------------------ |
+| Create 3D primitives              | `box()`, `cylinder()`, `sphere()`                |
+| Combine/modify shapes             | **Fluent wrapper** (`shape().cut().fillet()`)    |
+| Create 2D profiles                | **Sketcher** (`sketchCircle`, `sketchRectangle`) |
+| Build parametric/composable parts | **Fluent wrapper**                               |
+| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)     |
+| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`)    |
 
 ## Fluent Wrapper Details
 
@@ -141,16 +141,16 @@ import {
   drawingCut,
   drawingFillet,
   drawingToSketchOnPlane,
-  sketchExtrude,
+  shape,
 } from 'brepjs';
 
-const plate = drawRectangle(50, 30);
-const hole = drawCircle(8).translate([25, 15]);
+const plate = drawRectangle(50, 30); // centered on the origin
+const hole = drawCircle(8);
 const profile = drawingCut(plate, hole);
 const rounded = drawingFillet(profile, 3);
 
 const sketch = drawingToSketchOnPlane(rounded, 'XY');
-const part = sketchExtrude(sketch, 10);
+const part = shape(sketch.face()).extrude(10).val;
 ```
 
 **Use this when:** You need 2D boolean operations or advanced 2D features before converting to 3D.
@@ -165,11 +165,11 @@ To reduce autocomplete noise, import from specific modules:
 
 ```typescript
 // Instead of importing everything from 'brepjs':
-import { box, fuse, fillet } from 'brepjs';
+import { box, fuseAll, getEdges } from 'brepjs';
 
 // Import from focused sub-paths:
-import { box, fuse, fillet } from 'brepjs/topology';
-import { extrude, linearPattern } from 'brepjs/operations';
+import { box, fuseAll, getEdges } from 'brepjs/topology';
+import { sweep, linearPattern } from 'brepjs/operations';
 import { drawRectangle, sketchExtrude } from 'brepjs/sketching';
 import { edgeFinder, faceFinder } from 'brepjs/query';
 import { importSTEP, exportSTEP } from 'brepjs/io';
@@ -187,7 +187,7 @@ Not sure which sub-path exports a specific function?
 - **[Function Lookup Table](function-lookup.md)** - Alphabetical index of all 400+ symbols with their sub-path
 - **[Hosted API Reference](https://andymai.github.io/brepjs/)** - Searchable TypeDoc documentation
 
-Example: Looking for `fillet`? Check the lookup table → `brepjs/topology`.
+Example: Looking for `fuseAll`? Check the lookup table → `brepjs/topology`.
 
 ## Available sub-paths
 
@@ -198,7 +198,7 @@ Example: Looking for `fillet`? Check the lookup table → `brepjs/topology`.
 | `brepjs/operations`  | Extrude, loft, sweep, patterns, assembly, history   |
 | `brepjs/2d`          | Blueprints, 2D curves, 2D booleans                  |
 | `brepjs/sketching`   | Sketcher, Drawing, sketch-to-shape operations       |
-| `brepjs/query`       | Edge, face, wire, vertex, and corner finders        |
-| `brepjs/measurement` | Volume, area, length, distance, curvature           |
+| `brepjs/query`       | Edge, face, and corner finders                      |
+| `brepjs/measurement` | Volume, area, length, distance                      |
 | `brepjs/io`          | STEP, STL, IGES, OBJ, glTF, DXF, 3MF, SVG           |
 | `brepjs/worker`      | Web Worker protocol and client                      |

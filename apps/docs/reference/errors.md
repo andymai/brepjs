@@ -1,11 +1,11 @@
 ---
 title: Error Codes
-description: 'Catalog of every BrepError code: what it means, common causes, and how to recover. Switch on .code, never on .message.'
+description: 'The common BrepError codes: what each means, common causes, and how to recover. Switch on .code, never on .message.'
 ---
 
 # Error Codes
 
-Every fallible brepjs operation returns `Result<T, BrepError>`. The error's `code` is a stable identifier you can switch on; the `message` is human-readable; the `suggestion` (optional) is actionable advice. This chapter is the catalog: what each code means and how to recover.
+Every fallible brepjs operation returns `Result<T, BrepError>`. The error's `code` is a stable identifier you can switch on; the `message` is human-readable; the `suggestion` (optional) is actionable advice. This chapter covers the codes you're most likely to hit and how to recover; most codes are listed in the `BrepErrorCode` constant exported from `brepjs`.
 
 ## How to read this chapter
 
@@ -15,11 +15,11 @@ import { box, cylinder, cut, isOk } from 'brepjs/quick';
 const result = cut(box(20, 20, 20), cylinder(5, 25));
 if (!isOk(result)) {
   switch (result.error.code) {
-    case 'BOOLEAN_NO_OVERLAP':
-      // see "BOOLEAN_NO_OVERLAP" below
+    case 'CUT_NOT_3D':
+      // see "CUT_NOT_3D" below
       break;
-    case 'INVALID_SHAPE':
-      // see "INVALID_SHAPE" below
+    case 'NULL_SHAPE_INPUT':
+      // see "NULL_SHAPE_INPUT" below
       break;
     default:
       console.error('Unexpected:', result.error.code, result.error.message);
@@ -33,13 +33,15 @@ The codes below are grouped by domain. Use Ctrl+F.
 
 ## Initialization
 
-### `KERNEL_NOT_INITIALIZED`
+Kernel setup problems throw an `Error` instead of returning a `Result`, so they carry no code.
 
-You called a brepjs function before any kernel was registered. Either you forgot `await init()` / `await registerKernel(...)`, or you're using `brepjs/quick` in an environment without top-level await support.
+### `brepjs kernel not initialized`
+
+You called a brepjs function before any kernel was registered. Either you forgot `await init()` / `registerKernel(...)`, or you're using `brepjs/quick` in an environment without top-level await support.
 
 **Fix**: Use one of the three init paths in [Install & Initialize](../getting-started/install). For environments without top-level await, prefer `init()` and explicitly `await` it before any shape call.
 
-### `KERNEL_NOT_REGISTERED`
+### `brepjs: kernel '<id>' is not registered`
 
 You called `withKernel('name', ...)` for a kernel that hasn't been registered. Either the import is missing or `registerKernel('name', adapter)` wasn't called.
 
@@ -47,71 +49,71 @@ You called `withKernel('name', ...)` for a kernel that hasn't been registered. E
 
 ## Boolean operations
 
-### `BOOLEAN_NO_OVERLAP`
+### `CUT_NOT_3D`
 
-The two operands don't share volume. For `cut`, this is occasionally not an error (the input is returned unchanged); other operations may report this.
+The boolean ran but its result isn't a 3D shape; the message names what came back. `FUSE_NOT_3D`, `INTERSECT_NOT_3D`, `FUSE_ALL_NOT_3D`, and `CUT_ALL_NOT_3D` are the same failure for the other booleans. Common causes: an operand is a shell or open surface rather than a solid, overlapping coplanar faces, or zero-thickness geometry. For `intersect`, the operands may not overlap at all. A `cut` whose tool misses the base is not an error: it returns the base unchanged.
 
-**Fix**: Verify the shapes overlap as expected (visualize bounding boxes, check positions). For `cut` to actually remove material, the cutting tool must intersect the base shape.
+**Fix**: Run `autoHeal(input)` on each operand before the boolean. For imported shapes, this should be the default. Add overshoot to cutting tools (`cylinder(5, 12, { at: [..., -1] })` for a 10mm-thick block) so faces aren't coincident. See [Healing & Sewing](../advanced/healing).
 
-### `BOOLEAN_INVALID_INPUT`
+### `NULL_SHAPE_INPUT`
 
-One of the inputs failed `BRepCheck`. The kernel refuses to operate on invalid shapes.
+An operand is a null shape. Booleans and measurements check for this before they call the kernel.
 
-**Fix**: Run `autoHeal(input)` on each operand before the boolean. For imported shapes, this should be the default. See [Healing & Sewing](../advanced/healing).
+**Fix**: Check that the step that produced the operand returned `Ok` and a real shape.
 
-### `BOOLEAN_NEAR_COINCIDENT`
+### `FUSE_ALL_EMPTY`
 
-The operands have geometry that is nearly but not exactly coincident. The kernel can't decide whether to merge or separate them.
+`fuseAll` was called with an empty list.
 
-**Fix**: Add overshoot to cutting tools (`cylinder(5, 12, { at: [..., -1] })` for a 10mm-thick block). Or heal both operands with a slightly enlarged tolerance: `autoHeal(s, { tolerance: 0.01 })`.
-
-### `BOOLEAN_AMBIGUOUS_RESULT`
-
-The operation has multiple geometrically valid outcomes. Rare.
-
-**Fix**: Restate the problem so the result is unambiguous. Move the cutting tool slightly so it definitely overlaps rather than tangentially touches.
-
-### `BOOLEAN_PRODUCED_INVALID`
-
-The boolean succeeded but the result didn't pass `BRepCheck`. Usually means the kernel's tolerance handling produced slivers.
-
-**Fix**: Run `removeSlivers(result, { minArea: 0.001 })` and re-check. If that doesn't help, retry the boolean with healed inputs.
+**Fix**: Pass at least one shape.
 
 ## Refinement
 
-### `FILLET_TOO_LARGE`
+### `FILLET_FAILED`
 
-The radius is bigger than the local edge geometry can support. A 6 mm fillet on a 10 mm-thick part doesn't fit. The fillet would consume both faces.
+The kernel couldn't build the fillet. Usually the radius is bigger than the local edge geometry can support: a 6 mm fillet on a 10 mm-thick part doesn't fit. When the kernel names the edges it couldn't build, they are in `error.metadata.failedEdges`. `CHAMFER_FAILED` is the same failure for `chamfer`.
 
-**Fix**: Smaller radius. Or: fewer edges (radius and edge selection interact; a fillet that would propagate to a too-tight neighbour fails).
+**Fix**: Smaller radius, or leave the failing edges out of the selection.
 
-### `FILLET_INVALID_EDGE`
+### `INVALID_FILLET_RADIUS`
 
-The selected edge has geometry the fillet algorithm can't handle. Common with imported shapes: sharp creases, edges shorter than the radius, non-tangent meeting edges.
+The radius is zero or negative (for a `[r1, r2]` pair, either value). `INVALID_CHAMFER_DISTANCE` is the chamfer equivalent.
 
-**Fix**: Heal first (`autoHeal`). Or skip the problematic edge by refining the finder. Or use `chamfer`. It has fewer requirements.
+**Fix**: Pass a positive radius or distance.
 
-### `FILLET_AMBIGUOUS_PROPAGATION`
+### `FILLET_NO_EDGES`
 
-You filleted an edge that meets multiple others at a vertex; the kernel can't decide whether to propagate.
+The edge selection is empty: the edge list or finder matched nothing. `CHAMFER_NO_EDGES` is the chamfer equivalent.
 
-**Fix**: Select all the edges that should propagate explicitly, in the same `fillet()` call.
+**Fix**: Check the finder against the current shape, or pass the edges explicitly.
 
-### `CHAMFER_TOO_LARGE`
+### `INVALID_EDGE_SELECTION`
 
-Same as `FILLET_TOO_LARGE` but for chamfer.
+`fillet(shape, edges, radius)` or `chamfer(shape, edges, distance)` got a number where the edges belong; the arguments look swapped.
 
-**Fix**: Smaller distance.
+**Fix**: Call `fillet(shape, edges, radius)`, or `fillet(shape, radius)` to round every edge.
 
-### `SHELL_TOO_THICK`
+### `FILLET_NOT_3D`
 
-The wall thickness in `shell(solid, faces, t)` is larger than the local geometry can support. The offset surfaces would self-intersect.
+The fillet produced something other than a 3D shape. `CHAMFER_NOT_3D` is the chamfer equivalent. The radius or distance is usually too large for the selected edges.
 
-**Fix**: Thinner wall. Or remove faces that allow more offset clearance.
+**Fix**: Smaller radius or distance.
 
-### `SHELL_FACE_NOT_ON_SHAPE`
+### `SHELL_NO_EFFECT`
 
-You passed a face to `shell` that isn't part of the input solid. This usually means the face handle is stale (from a previous shape).
+`shell(solid, faces, t)` left the solid unchanged: the wall is too thick for the body. `SHELL_INVALID_RESULT` means the shell produced no usable solid for the same reason, or because the wall is larger than the tightest convex radius.
+
+**Fix**: Use a wall thinner than half the narrowest part of the shape.
+
+### `INVALID_THICKNESS`
+
+The shell thickness is zero or negative. `NO_FACES` means no faces to remove were passed.
+
+**Fix**: Pass a positive thickness and at least one face.
+
+### `FACE_NOT_IN_SHAPE`
+
+You passed a face to `removeFaces` that isn't part of the input shape. This usually means the face handle came from a different or earlier shape.
 
 **Fix**: Find faces on the _current_ shape, not on a predecessor.
 
@@ -119,121 +121,108 @@ You passed a face to `shell` that isn't part of the input solid. This usually me
 
 ### `WIRE_NOT_CLOSED`
 
-You tried to build a face from a wire that isn't a closed loop. Usually means you forgot `.close()` on a `Sketcher`.
+`wireLoop` assembled a wire whose start and end points don't coincide.
 
-**Fix**: Call `.close()`. The compiler should normally catch this. You've probably done a runtime cast that bypassed the type system.
+**Fix**: Close the loop: add the missing edge, or check the endpoints match.
 
-### `WIRE_SELF_INTERSECTS`
+### `POLYGON_MIN_POINTS`
 
-The wire crosses itself. The kernel rejects self-intersecting wires.
+A polygon needs at least 3 points.
 
-**Fix**: Plot your sketch on paper. Eliminate the crossing.
+**Fix**: Pass 3 or more points.
 
-### `EXTRUDE_INVALID_FACE`
+### `EXTRUDE_ZERO_VECTOR`
 
-The face passed to `extrude` isn't `OrientedFace`. Usually a face built from an unclosed or self-intersecting wire.
+`extrude` got a zero-length extrusion vector. `ZERO_LENGTH_EXTRUSION` is the same mistake in the sweep-based extrusions (`twistExtrude`, `complexExtrude`).
 
-**Fix**: Use the smart constructor `orientedFace(face)` to verify; if it fails, fix the source wire.
+**Fix**: Pass a non-zero height or vector.
 
-### `REVOLVE_AXIS_CROSSES_PROFILE`
+### `FACE_BUILD_FAILED`
 
-The revolution axis passes through the profile. The result would self-intersect.
+The kernel couldn't build a face from the given wire; the wire may not be planar. `FACE_NOT_PLANAR` means a face was built but isn't planar.
 
-**Fix**: Move the axis. Or trim the profile so it stays on one side.
+**Fix**: Check the wire with `isClosedWire(w)` and `isPlanarWire(w)`; if either fails, fix the source edges.
 
-### `LOFT_PROFILE_MISMATCH`
+### `LOFT_EMPTY`
 
-The profiles passed to `loft` have very different topologies, e.g. one is closed, another is open.
+`loft` got no wires and no start or end point.
 
-**Fix**: Make all profiles consistent, all closed, all the same general topology.
+**Fix**: Pass at least one profile.
 
-### `SWEEP_PATH_INVALID`
+### `LOFT_FAILED`
 
-The path has self-intersections, sharp corners, or non-tangent meeting edges. The kernel can't sweep along it.
+The kernel couldn't loft the profiles. Profiles may be incompatible or have different orientations.
 
-**Fix**: Smooth the path (use tangent arcs at corners). Or split the sweep into segments along piecewise-tangent sub-paths.
+**Fix**: Give every profile the same number of edges and a consistent orientation. Try reordering profiles.
+
+### `SWEEP_NOT_3D`
+
+The sweep didn't produce a 3D shape. `REVOLUTION_NOT_3D` and `LOFT_NOT_3D` are the same failure for `revolve` and `loft`.
+
+**Fix**: Make sure the profile is a closed wire or face and the spine has no sharp corners or self-intersections. Smooth the path with tangent arcs at corners, or split the sweep into segments along piecewise-tangent sub-paths.
 
 ## Healing
 
-### `HEAL_FAILED`
+### `HEAL_NO_EFFECT`
 
-`autoHeal` ran every repair pass it knows but the result still fails `BRepCheck`. Either the shape is more broken than `autoHeal` can fix, or the tolerance is wrong.
+`healSolid` ran but the solid is still invalid.
 
-**Fix**: Try a larger tolerance: `autoHeal(s, { tolerance: 0.05 })`. Run `brepCheck(s)` to see exactly what's wrong.
+**Fix**: Try `autoHeal(s, { sewTolerance: 0.05 })`, which adds a sewing pass. Run `isValid(s)` to confirm the result.
 
-### `SEW_FAILED`
+### `FIX_SHAPE_FAILED`
 
-`sew` couldn't connect the input faces. The gaps are larger than tolerance, or the topology is incompatible.
+The kernel's shape fixer threw while repairing the shape.
 
-**Fix**: Increase tolerance. Or pre-process the faces (e.g. heal each individually first).
+**Fix**: Heal the pieces individually first, or rebuild the shape from cleaner input.
+
+### `SOLID_FROM_SHELL_FAILED`
+
+`solidFromShell` couldn't turn the shell into a solid. The shell is usually open.
+
+**Fix**: Sew the faces first (`sewShells`, or `autoHeal` with a `sewTolerance`), then retry.
 
 ## IO
 
-### `IO_PARSE_ERROR`
+### `STEP_IMPORT_FAILED`
 
-The file is malformed or in an unsupported dialect. Common with very old STEP / IGES files.
+The STEP file couldn't be loaded, or it contains no valid geometry. `IGES_IMPORT_FAILED`, `STL_IMPORT_FAILED`, `OBJ_IMPORT_FAILED`, `THREEMF_IMPORT_FAILED`, `GLB_IMPORT_FAILED`, and `DXF_IMPORT_FAILED` cover the other formats.
 
-**Fix**: Re-export the file from the source CAD tool with up-to-date settings. For STEP, prefer AP214 or AP242.
+**Fix**: Re-export the file from the source CAD tool with up-to-date settings. For STEP, prefer AP214 or AP242. If the file was downloaded or uploaded, check it isn't truncated.
 
-### `IO_UNSUPPORTED_VERSION`
+### `STEP_EXPORT_FAILED`
 
-The file uses a STEP / IGES schema version brepjs doesn't support.
+The kernel couldn't write the STEP file. `STL_EXPORT_FAILED` and `IGES_EXPORT_FAILED` cover the other formats.
 
-**Fix**: Re-export with a supported version. STEP AP214 is the safest target.
+**Fix**: Heal the input first and check it is valid (`isValid(shape)`).
 
-### `IO_FILE_TRUNCATED`
+### `MESH_FAILED`
 
-The file ends unexpectedly. Likely a download or upload problem.
-
-**Fix**: Re-fetch the file. Verify the byte count.
-
-### `MESH_TRIANGULATION_FAILED`
-
-An exporter (STL, glTF, 3MF) couldn't triangulate the input. Usually a tolerance issue with very small or very large shapes.
+A CSG evaluator couldn't mesh a node.
 
 **Fix**: Heal the input first. Adjust tolerance. Too small (1e-9) can fail; too large (1.0) can also fail for fine geometry.
 
 ## Validity / type checks
 
-### `INVALID_SHAPE`
+The smart constructors (`closedWire`, `orientedFace`, `manifoldShell`, `validSolid`) return `Result<T, string>`: their error is a plain message, not a `BrepError` with a code.
 
-A shape failed `BRepCheck`. The umbrella code; specific issues come through the `report.issues` field on the `BrepError.cause`.
-
-**Fix**: Run `brepCheck(shape)` to see the issues, then `autoHeal` or specific repair operations as needed.
-
-### `NOT_CLOSED_WIRE`
-
-You passed a wire to a function that requires `ClosedWire` and the runtime check failed.
-
-**Fix**: Verify the wire is actually closed. For `Sketcher` chains, this means calling `.close()`. For built wires, use the smart constructor `closedWire(w)` to check.
-
-### `NOT_ORIENTED_FACE`
-
-You passed a face to a function requiring `OrientedFace` and the runtime check failed.
-
-**Fix**: Use `orientedFace(f)` to compute the orientation. For raw imported faces, run `autoHeal` first.
-
-### `NOT_VALID_SOLID`
-
-The runtime `BRepCheck` of a smart constructor failed.
-
-**Fix**: Heal the input. If it's deliberately invalid (e.g. an in-progress construction), don't call the smart constructor yet.
+- `closedWire(w)`: "Wire is not closed: start and end points do not coincide". For `Sketcher` chains, call `.close()`.
+- `orientedFace(f)`: "Face orientation is inconsistent or face is invalid". For raw imported faces, run `autoHeal` first.
+- `manifoldShell(s)`: "Shell is not manifold: has free edges or is invalid".
+- `validSolid(s)`: "Solid failed BRepCheck validation". Heal the input; if it's deliberately invalid (e.g. an in-progress construction), don't call the smart constructor yet.
 
 ## Memory / disposal
 
-### `DISPOSED_HANDLE_USED`
-
-You called a function on a shape after it was disposed. Common after `using` blocks or `scope.dispose()`.
+Using a shape after it was disposed throws `Error('Shape handle has been disposed')`. This is common after `using` blocks or disposing a `DisposalScope`.
 
 **Fix**: Move the operation inside the scope. Or copy the data you need (numbers from measurements) before disposal.
 
 ## Custom-kernel-related
 
-### `KERNEL_NOT_SUPPORTED`
+### `UNSUPPORTED_CAPABILITY`
 
-The active kernel does not implement this operation. Custom kernels can implement only a subset of `KernelInterface`.
+The active kernel does not implement this operation, for example `removeFaces` (defeaturing) on a kernel without it. Custom kernels can implement only a subset of `KernelAdapter`. Operations that don't return a `Result` throw instead (`occt-wasm: <method> is not yet implemented`).
 
-**Fix**: Switch to a kernel that supports the operation (`withKernel('occt', ...)`). Or implement the missing method in your custom adapter.
+**Fix**: Switch to a kernel that supports the operation (`withKernel('occt-wasm', ...)`). Or implement the missing method in your custom adapter.
 
 ## A pattern for unknown errors
 

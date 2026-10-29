@@ -27,7 +27,7 @@ console.log({
 });
 ```
 
-`findAll` returns an array. `find` returns the first match (or `undefined`). Filters chain; every call narrows the result.
+`findAll` returns an array. `findUnique` returns a `Result` holding the single match, or an error when zero or several elements match. Filters chain; every call narrows the result.
 
 ## Filter vocabulary
 
@@ -36,35 +36,40 @@ The full filter set, abbreviated. See the [API Reference](https://andymai.github
 ### Direction filters
 
 ```typescript
-import { box, edgeFinder, faceFinder } from 'brepjs/quick';
+import { box, edgeFinder, faceFinder, normalAt } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
 edgeFinder().inDirection('Z').findAll(b); // edges parallel to Z
 edgeFinder().inDirection([1, 1, 0]).findAll(b); // edges along (1,1,0), none in a box
 faceFinder().inDirection('Z').findAll(b); // top + bottom faces
-faceFinder().inDirection([0, 0, -1]).findAll(b); // bottom face only (negative Z normal)
+faceFinder()
+  .when((f) => normalAt(f)[2] < 0)
+  .findAll(b); // bottom face only (negative Z normal)
 ```
 
-For edges, "direction" means the edge's tangent at any point (lines have a constant tangent; curves don't). For faces, it's the normal at the face's centre.
+For edges, "direction" means the edge's tangent at its midpoint (lines have a constant tangent; curves don't). For faces, it's the normal at the face's centre.
 
-`'Z'` matches both `[0, 0, 1]` and `[0, 0, -1]` (axis ignoring sign). For a specific orientation, pass the explicit vector.
+`inDirection` ignores sign: `'Z'` and `[0, 0, -1]` both match `[0, 0, 1]` and `[0, 0, -1]`. For a specific orientation, test the normal in a `.when()` predicate as above.
 
 ### Position filters
 
 ```typescript
-import { box, edgeFinder, faceFinder } from 'brepjs/quick';
+import { box, edgeFinder, faceFinder, faceCenter, getBounds } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
-faceFinder().withZ({ min: 9.9 }).findAll(b); // top face
-faceFinder().withZ({ min: 9.9, max: 10.1 }).findAll(b); // top face only
-edgeFinder().withCenterX({ min: 14, max: 16 }).findAll(b); // edges crossing x=15
+faceFinder()
+  .when((f) => faceCenter(f)[2] > 9.9)
+  .findAll(b); // top face
+edgeFinder()
+  .when((e) => getBounds(e).xMin < 15 && getBounds(e).xMax > 15)
+  .findAll(b); // edges crossing x=15
 ```
 
-Position filters apply to the centre of an edge or face. `withX` / `withY` / `withZ` take `{ min, max }` ranges (either bound is optional).
+There are no dedicated position filters for edges and faces: pass a predicate to `.when()` that reads `faceCenter(face)` or `getBounds(edge)`.
 
-For more precise queries, `withCenterAt({ x, y, z, tolerance })` matches a specific point.
+`atDistance(distance, point)` keeps elements at an exact distance from a point.
 
 ### Length / area filters
 
@@ -73,14 +78,14 @@ import { box, sketchCircle, edgeFinder, faceFinder } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
-edgeFinder().withLength({ min: 25 }).findAll(b); // edges >= 25mm
-faceFinder().withArea({ min: 100, max: 700 }).findAll(b); // mid-sized faces
+edgeFinder().ofLength(30).findAll(b); // the four 30mm edges
+faceFinder().ofArea(600).findAll(b); // the two 30x20 faces
 
 const cyl = sketchCircle(10).extrude(20);
 edgeFinder().ofCurveType('CIRCLE').findAll(cyl); // the circular edges
 ```
 
-`withLength` and `withArea` each take `{ min, max }`.
+`ofLength(length, tolerance?)` and `ofArea(area, tolerance?)` match a value within a tolerance (default `1e-3`). For a range, use `.when()` with `curveLength` or `measureArea`.
 
 ### Type filters
 
@@ -90,27 +95,27 @@ import { sketchCircle, faceFinder, edgeFinder } from 'brepjs/quick';
 const cyl = sketchCircle(10).extrude(20);
 
 faceFinder().ofSurfaceType('PLANE').findAll(cyl); // 2 (top, bottom)
-faceFinder().ofSurfaceType('CYLINDER').findAll(cyl); // 1 (side)
+faceFinder().ofSurfaceType('CYLINDRE').findAll(cyl); // 1 (side)
 
-edgeFinder().ofCurveType('LINE').findAll(cyl); // 0, sketchCircle has no straight edges
+edgeFinder().ofCurveType('LINE').findAll(cyl); // 1, the seam edge on the side
 edgeFinder().ofCurveType('CIRCLE').findAll(cyl); // 2
 ```
 
-Surface types: `PLANE`, `CYLINDER`, `CONE`, `SPHERE`, `TORUS`, `BSPLINE_SURFACE`, `OFFSET_SURFACE`, `EXTRUSION`, `REVOLUTION`.
+Surface types: `PLANE`, `CYLINDRE` (OCCT's spelling), `CONE`, `SPHERE`, `TORUS`, `BEZIER_SURFACE`, `BSPLINE_SURFACE`, `REVOLUTION_SURFACE`, `EXTRUSION_SURFACE`, `OFFSET_SURFACE`, `OTHER_SURFACE`.
 
-Curve types: `LINE`, `CIRCLE`, `ELLIPSE`, `BEZIER`, `BSPLINE`, `OFFSET`.
+Curve types: `LINE`, `CIRCLE`, `ELLIPSE`, `HYPERBOLA`, `PARABOLA`, `BEZIER_CURVE`, `BSPLINE_CURVE`, `OFFSET_CURVE`, `OTHER_CURVE`.
 
 ### Wire filters
 
 ```typescript
-import { box, faceFinder, wireFinder } from 'brepjs/quick';
+import { box, faceFinder, wireFinder, outerWire } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 const oneFace = faceFinder().findAll(b)[0];
 
 if (oneFace) {
   wireFinder().isClosed().findAll(oneFace); // outer + inner closed loops
-  wireFinder().isOuter().findAll(oneFace); // just the outer boundary
+  outerWire(oneFace); // just the outer boundary
 }
 ```
 
@@ -121,8 +126,8 @@ import { box, vertexFinder } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
-vertexFinder().withZ({ min: 9.9 }).findAll(b); // top 4 corners
-vertexFinder().withCenterAt({ x: 30, y: 20, z: 10 }).findAll(b); // one corner
+vertexFinder().withinBox([0, 0, 9.9], [30, 20, 10.1]).findAll(b); // top 4 corners
+vertexFinder().atPosition([30, 20, 10]).findAll(b); // one corner
 ```
 
 ## Composing filters
@@ -130,14 +135,14 @@ vertexFinder().withCenterAt({ x: 30, y: 20, z: 10 }).findAll(b); // one corner
 Every filter call narrows. Chain freely:
 
 ```typescript
-import { box, edgeFinder } from 'brepjs/quick';
+import { box, edgeFinder, getBounds } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
 const topVerticals = edgeFinder()
   .inDirection('Z')
-  .withZ({ min: 5 }) // edges whose centre is in the upper half
-  .withLength({ min: 9 })
+  .ofLength(10)
+  .when((e) => getBounds(e).zMax > 5) // edges that reach the upper half
   .findAll(b);
 
 console.log('Found', topVerticals.length, 'edges'); // 4 vertical edges
@@ -152,15 +157,12 @@ The wrapper takes a finder callback, so you don't have to materialize the array 
 ```typescript
 import { shape, box } from 'brepjs/quick';
 
-const filleted = shape(box(30, 20, 10)).fillet(
-  (e) => e.inDirection('Z').withLength({ min: 9 }),
-  1.5
-).val;
+const filleted = shape(box(30, 20, 10)).fillet((e) => e.inDirection('Z').ofLength(10), 1.5).val;
 
 export default filleted;
 ```
 
-The callback receives an `EdgeFinder` (for `.fillet`, `.chamfer`) or `FaceFinder` (for `.shell`). You chain filters; the wrapper calls `findAll` internally.
+The callback receives an `EdgeFinderFn` (for `.fillet`, `.chamfer`) or `FaceFinderFn` (for `.shell`). You chain filters; the wrapper calls `findAll` internally.
 
 ## Common patterns
 
@@ -169,14 +171,15 @@ The callback receives an `EdgeFinder` (for `.fillet`, `.chamfer`) or `FaceFinder
 When you want everything _but_ the holes you just cut:
 
 ```typescript
-import { box, cylinder, cut, edgeFinder, fillet, unwrap } from 'brepjs/quick';
+import { box, cylinder, cut, edgeFinder, fillet, getBounds, unwrap } from 'brepjs/quick';
 
 const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 12, { at: [15, 10, -1] })));
 
-// Vertical edges include the hole's edges. Filter by length to exclude them.
+// Vertical edges include the hole's 10mm seam edge, the same length as the box edges.
+// Filter by position to exclude it: the box's vertical edges sit at x=0 and x=30.
 const externalVerticals = edgeFinder()
   .inDirection('Z')
-  .withLength({ min: 9.5 }) // hole edges are 12mm but the box edges are 10mm, adjust filter
+  .when((e) => getBounds(e).xMin < 1 || getBounds(e).xMin > 29)
   .findAll(drilled);
 const filleted = unwrap(fillet(drilled, externalVerticals, 1));
 
@@ -190,10 +193,13 @@ In practice, hole edges and exterior edges have different positions, lengths, or
 The top _circular_ edge of a cylindrical shell:
 
 ```typescript
-import { sketchCircle, edgeFinder, fillet, unwrap } from 'brepjs/quick';
+import { sketchCircle, edgeFinder, fillet, getBounds, unwrap } from 'brepjs/quick';
 
 const cup = sketchCircle(20).extrude(40);
-const rim = edgeFinder().ofCurveType('CIRCLE').withZ({ min: 39 }).findAll(cup);
+const rim = edgeFinder()
+  .ofCurveType('CIRCLE')
+  .when((e) => getBounds(e).zMin > 39)
+  .findAll(cup);
 
 const rounded = unwrap(fillet(cup, rim, 2));
 
@@ -207,14 +213,14 @@ Two filters: circular curves only, in the upper millimetre. One match.
 When you've fused parts together, finding "the face I just added" is harder. Heuristics:
 
 ```typescript
-import { box, sketchCircle, fuse, faceFinder, unwrap } from 'brepjs/quick';
+import { box, sketchCircle, fuse, faceFinder, translate, unwrap } from 'brepjs/quick';
 
 const base = box(40, 40, 5);
-const boss = sketchCircle(8).extrude(10).translate([20, 20, 5]);
+const boss = translate(sketchCircle(8).extrude(10), [20, 20, 5]);
 const part = unwrap(fuse(base, boss));
 
 // "The cylindrical face": easy
-const bossSide = faceFinder().ofSurfaceType('CYLINDER').findAll(part)[0];
+const bossSide = faceFinder().ofSurfaceType('CYLINDRE').findAll(part)[0];
 console.log('Found boss cylindrical face');
 void bossSide;
 
@@ -231,7 +237,7 @@ Surface type, area range, and direction together usually pin down a specific fac
 
 ## Edges have direction; finders sometimes don't care
 
-`inDirection('Z')` matches edges parallel to Z, in either direction. If you need edges going specifically `[0, 0, +1]` (e.g. for face-orientation logic), pass the explicit vector.
+`inDirection('Z')` matches edges parallel to Z, in either direction, and so does an explicit vector. If you need edges going specifically `[0, 0, +1]` (e.g. for face-orientation logic), check the tangent yourself in a `.when()` predicate.
 
 ## Next steps
 

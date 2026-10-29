@@ -8,15 +8,15 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 | -------------------- | ---------------------------------------- | ---------------------------------------------------- |
 | `src/index.ts`       | Main public API (re-exports all modules) | `import { box, fuse } from 'brepjs'`                 |
 | `src/quick.ts`       | Auto-init convenience (ESM only)         | `import { box } from 'brepjs/quick'`                 |
-| `src/operations.ts`  | Operations sub-path                      | `import { extrude } from 'brepjs/operations'`        |
-| `src/2d.ts`          | 2D operations sub-path                   | `import { makeCircle2D } from 'brepjs/2d'`           |
+| `src/operations.ts`  | Operations sub-path                      | `import { sweep } from 'brepjs/operations'`          |
+| `src/2d.ts`          | 2D operations sub-path                   | `import { circle2d } from 'brepjs/2d'`               |
 | `src/io.ts`          | Import/export sub-path                   | `import { importSTEP } from 'brepjs/io'`             |
 | `src/result.ts`      | Result type sub-path                     | `import { ok, err, unwrap } from 'brepjs/result'`    |
 | `src/vectors.ts`     | Vector math sub-path                     | `import { vecAdd } from 'brepjs/vectors'`            |
 | `src/core.ts`        | Core types sub-path                      | `import type { Solid } from 'brepjs/core'`           |
-| `src/topology.ts`    | Topology sub-path                        | `import { fuse } from 'brepjs/topology'`             |
+| `src/topology.ts`    | Topology sub-path                        | `import { fuseAll } from 'brepjs/topology'`          |
 | `src/sketching.ts`   | Sketching sub-path                       | `import { Sketcher } from 'brepjs/sketching'`        |
-| `src/query.ts`       | Query sub-path                           | `import { findFaces } from 'brepjs/query'`           |
+| `src/query.ts`       | Query sub-path                           | `import { faceFinder } from 'brepjs/query'`          |
 | `src/measurement.ts` | Measurement sub-path                     | `import { measureVolume } from 'brepjs/measurement'` |
 | `src/worker.ts`      | Worker sub-path                          | `import { createWorkerClient } from 'brepjs/worker'` |
 
@@ -24,14 +24,15 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 
 ### Layer 0: Foundation
 
-| Module     | Key Files                                | Purpose                                           |
-| ---------- | ---------------------------------------- | ------------------------------------------------- |
-| **kernel** | `types.ts`                               | `KernelAdapter` interface (~164 methods)          |
-|            | `DefaultAdapter.ts`                      | OpenCascade kernel adapter                        |
-|            | `brepkitAdapter.ts`                      | brepkit kernel adapter                            |
-|            | `index.ts`                               | `getKernel()`, `initFromOC()`, `registerKernel()` |
-|            | `*Ops.ts` (19 files)                     | Raw kernel API calls grouped by domain            |
-| **utils**  | `bug.ts`, `precisionRound.ts`, `uuid.ts` | Shared utilities                                  |
+| Module     | Key Files                                  | Purpose                                           |
+| ---------- | ------------------------------------------ | ------------------------------------------------- |
+| **kernel** | `types.ts`, `interfaces/`                  | `KernelAdapter` interface (~280 members)          |
+|            | `occtWasm/occtWasmAdapter.ts`              | occt-wasm kernel adapter (default)                |
+|            | `occt/defaultAdapter.ts`                   | OpenCascade kernel adapter                        |
+|            | `brepkit/brepkitAdapter.ts`                | brepkit kernel adapter                            |
+|            | `index.ts`                                 | `getKernel()`, `initFromOC()`, `registerKernel()` |
+|            | `occt/`, `occtWasm/`, `brepkit/` `*Ops.ts` | Raw kernel API calls grouped by domain            |
+| **utils**  | `bug.ts`, `precisionRound.ts`, `uuid.ts`   | Shared utilities                                  |
 
 ### Layer 1: Core
 
@@ -49,23 +50,23 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 
 ### Layer 2: Domain
 
-| Module          | Functional API (`*Fns.ts`)                                                                                                                                                                                                                    | Tests                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| **topology**    | `booleanFns` `primitiveFns` `modifierFns` `shapeFns` `faceFns` `curveFns` `surfaceFns` `healingFns` `meshFns` `colorFns` `faceTagFns` `adjacencyFns` `chamferAngleFns` `compoundOpsFns` `hullFns` `minkowskiFns` `polyhedronFns` `wrapperFns` | `fn-booleanFns` `fn-shapeFns` `fn-modifierFns` etc. |
-| **operations**  | `extrudeFns` `loftFns` `guidedSweepFns` `multiSweepFns` `patternFns` `roofFns` `assemblyFns` `mateFns` `historyFns` `exporterFns`                                                                                                             | `fn-extrudeFns` `fn-loftFns` etc.                   |
-| **2d**          | `curve2dFns` `blueprintFns`                                                                                                                                                                                                                   | `fn-curve2dFns` `fn-svgPath` etc.                   |
-| **query**       | `finderFns`                                                                                                                                                                                                                                   | `fn-finderFns` `faceFinder` etc.                    |
-| **measurement** | `measureFns` `interferenceFns`                                                                                                                                                                                                                | `fn-measureFns` `fn-interferenceFns`                |
-| **io**          | `importFns` `dxfExportFns` `dxfImportFns` `gltfExportFns` `objExportFns` `objImportFns` `svgImportFns` `threemfExportFns` `threemfImportFns`                                                                                                  | `fn-importFns` `fn-dxfExport` etc.                  |
-| **worker**      | (infrastructure, no Fns)                                                                                                                                                                                                                      | `fn-workerProtocol` etc.                            |
+| Module          | Functional API (`*Fns.ts`)                                                                                                                                                                                                                    | Tests                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **topology**    | `booleanFns` `primitiveFns` `modifierFns` `shapeFns` `faceFns` `curveFns` `surfaceFns` `healingFns` `meshFns` `colorFns` `faceTagFns` `adjacencyFns` `chamferAngleFns` `compoundOpsFns` `hullFns` `minkowskiFns` `polyhedronFns` `wrapperFns` | `booleanFns` `shapeFns` `modifierFns` etc. |
+| **operations**  | `extrudeFns` `loftFns` `guidedSweepFns` `multiSweepFns` `patternFns` `roofFns` `assemblyFns` `mateFns` `historyFns` `exporterFns`                                                                                                             | `extrudeFns` `loftFns` etc.                |
+| **2d**          | `curve2dFns` `blueprintFns`                                                                                                                                                                                                                   | `curve2dFns` `svgPath` etc.                |
+| **query**       | `finderFns`                                                                                                                                                                                                                                   | `finderFns` `faceFinder` etc.              |
+| **measurement** | `measureFns` `interferenceFns`                                                                                                                                                                                                                | `measureFns` `interferenceFns`             |
+| **io**          | `importFns` `dxfExportFns` `dxfImportFns` `gltfExportFns` `objExportFns` `objImportFns` `svgImportFns` `threemfExportFns` `threemfImportFns`                                                                                                  | `importFns` `dxfExport` etc.               |
+| **worker**      | (infrastructure, no Fns)                                                                                                                                                                                                                      | `workerProtocol` etc.                      |
 
 ### Layer 3: High-Level API
 
-| Module         | Functional API (`*Fns.ts`) | Tests                                |
-| -------------- | -------------------------- | ------------------------------------ |
-| **sketching**  | `sketchFns` `drawFns`      | `fn-sketchFns` `fn-drawFns` `sketch` |
-| **text**       | (uses `textBlueprints.ts`) | `fn-textBlueprints` `fn-textMetrics` |
-| **projection** | `cameraFns`                | `fn-cameraFns` `projection`          |
+| Module         | Functional API (`*Fns.ts`) | Tests                          |
+| -------------- | -------------------------- | ------------------------------ |
+| **sketching**  | `sketchFns` `drawFns`      | `sketchFns` `drawFns` `sketch` |
+| **text**       | (uses `textBlueprints.ts`) | `textBlueprints` `textMetrics` |
+| **projection** | `cameraFns`                | `cameraFns` `projection`       |
 
 ## Documentation Index
 

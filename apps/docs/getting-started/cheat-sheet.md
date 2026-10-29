@@ -48,13 +48,13 @@ unwrap(fuseAll([a, b, sphere(5)])); // fuse a list (faster than chaining)
 ## Transforms
 
 ```typescript
-import { translate, rotate, scale, box } from 'brepjs/quick';
+import { translate, rotate, scale, applyMatrix, box, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 translate(b, [10, 0, 0]);
 rotate(b, 45, { axis: [0, 0, 1], at: [0, 0, 0] }); // degrees
 scale(b, 2); // uniform
-scale(b, [2, 1, 1]); // per-axis
+unwrap(applyMatrix(b, { linear: [2, 0, 0, 0, 1, 0, 0, 0, 1], translation: [0, 0, 0] })); // per-axis
 ```
 
 The fluent wrapper has `.translate`, `.rotate`, `.scale`, plus axis shortcuts: `.moveX(10)`, `.moveY(5)`, `.moveZ(-2)`, `.rotateX(45)`, `.rotateY(90)`, `.rotateZ(180)`.
@@ -106,7 +106,7 @@ edgeFinder().inDirection('Z').findAll(b);
 edgeFinder().ofCurveType('CIRCLE').findAll(b);
 faceFinder().inDirection('Z').findAll(b); // top + bottom
 faceFinder().ofSurfaceType('PLANE').findAll(b);
-faceFinder().withArea({ min: 100, max: 500 }).findAll(b);
+faceFinder().ofArea(400).findAll(b); // faces with area 400 (± tolerance)
 vertexFinder().findAll(b);
 wireFinder().isClosed().findAll(b);
 ```
@@ -128,12 +128,12 @@ The fluent equivalents: `shape(b).volume()`, `shape(b).area()`.
 ## Import / export
 
 ```typescript
-import { exportSTEP, exportSTL, exportGltf, box, unwrap } from 'brepjs/quick';
+import { exportSTEP, exportSTL, exportGltf, mesh, box, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 unwrap(exportSTEP(b)); // STEP - round-trips with SolidWorks/Fusion/FreeCAD
 unwrap(exportSTL(b)); // STL - meshing, 3D printing
-unwrap(exportGltf(b)); // glTF - web rendering
+exportGltf(mesh(b)); // glTF JSON string from a mesh - web rendering
 ```
 
 <!-- @no-test -->
@@ -196,7 +196,7 @@ import { DisposalScope, box } from 'brepjs/quick';
 const scope = new DisposalScope();
 const b = scope.track(box(10, 10, 10));
 void b;
-scope.dispose();
+scope[Symbol.dispose](); // or declare it with `using scope = new DisposalScope()`
 ```
 
 ## Three.js mesh

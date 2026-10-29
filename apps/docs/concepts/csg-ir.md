@@ -113,7 +113,7 @@ csg.outputKindOf(
 ); // 'Face'
 ```
 
-Booleans inherit the kind of their `a` argument; transforms inherit from `target`; primitives are fixed. There's no cross-kind boolean: `fuse(box, circle)` is rejected at the kernel boundary, not by the TypeScript types at v1.
+Booleans inherit the kind of their `a` argument; transforms inherit from `target`; primitives are fixed. There's no cross-kind boolean: `fuse(box, circle)` is rejected at evaluation time (`CSG_NOT_3D`), not by the TypeScript types at v1.
 
 ## Two equivalent ways to compute the same geometry
 
@@ -153,7 +153,7 @@ If none of those apply, the topology API is leaner. The IR is a tool, not a repl
 
 ## Where this fits in brepjs
 
-The IR is purely a build-time abstraction layered on top of the kernel adapter: `csg.Evaluator` calls the same `getKernel().fuseSolids(...)` that the topology API does. Everything that works on a `Solid` works on the result of `ev.evaluate(tree)`: finders, fillets, measurement, export. The IR is the parametric _front_ of the pipeline; the topology API picks up where it leaves off.
+The IR is purely a build-time abstraction layered on top of the kernel adapter: `csg.Evaluator` calls the same `fuse`/`cut` functions (and through them `getKernel().fuse(...)`) that the topology API does. Everything that works on a `Solid` works on the result of `ev.evaluate(tree)`: finders, fillets, measurement, export. The IR is the parametric _front_ of the pipeline; the topology API picks up where it leaves off.
 
 ## Operations without a built-in node
 
@@ -195,7 +195,7 @@ The function receives `params` already resolved to numbers and `children` alread
 
 ## The rest of the surface
 
-The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `mirror`, `scale`, `rotate`, `compound`, `instance` (transform-only replication — one source × N placements, materialized on export; see [Performance](/advanced/performance#instancing-repeated-geometry)), and `extension` (see above), plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
+The examples above touch `box`, `sphere`, `cylinder`, `cut`, `fuse`, and `translate`. The full builder set adds `cone`, `torus`, `polygon`, `circle`, `line`, `vertex`, `intersect`, `extrude`, `revolve`, `loft`, `sweep`, `profile`, `path`, `fillet`, `chamfer`, `shell`, `color`, `mirror`, `scale`, `rotate`, `compound`, `instance` (transform-only replication: one source × N placements, materialized on export; see [Performance](/advanced/performance#instancing-repeated-geometry)), and `extension` (see above), plus the N-ary booleans `fuseAll` and `cutAll`. Expression helpers include `add`/`mul` shortcuts, `unaryOp` (sin, cos, sqrt, abs, neg), `component` for indexing vectors, and `buildVec` for constructing them from scalars. All exported from `'brepjs'` under the `csg.*` namespace; see the [API reference](https://andymai.github.io/brepjs/) for type signatures.
 
 ## Next steps
 

@@ -15,7 +15,7 @@ The [Three.js Integration](../integration/threejs) chapter covers the meshing â†
 
 ## Not a mesh library
 
-If you have triangle data and want to do operations on triangle data, use [Three.js](https://threejs.org/), [Babylon.js](https://babylonjs.com), or [Manifold](https://github.com/elalish/manifold). brepjs only ingests meshes via `importSTL`, which converts triangles into a B-Rep approximation: useful for measurement and STEP conversion, not for further triangle work.
+If you have triangle data and want to do operations on triangle data, use [Three.js](https://threejs.org/), [Babylon.js](https://babylonjs.com), or [Manifold](https://github.com/elalish/manifold). brepjs only ingests meshes via `importSTL`, `importOBJ`, and `importThreeMF`, which convert triangles into a B-Rep approximation: useful for measurement and STEP conversion, not for further triangle work.
 
 ## Not an organic modeller
 
@@ -31,12 +31,12 @@ brepjs ships a Sketcher for building 2D profiles fluently (`movePointerTo`, `lin
 
 ## Not an assembly solver
 
-brepjs ships an `assembly` module for grouping parts and applying mate constraints (concentric, distance, plane-on-plane), but the solver is intentionally limited:
+brepjs ships an `assembly` module for grouping parts and applying mate constraints (`fixed`, `coincident`, `concentric`, `distance`, `angle`), plus joints with forward and inverse kinematics, but the mate solver is intentionally limited:
 
-- It uses the original face coordinates of each part, so distance constraints **do not compose** across multiple mates in the same chain
-- There is no degree-of-freedom analysis, no kinematic motion, no collision detection
+- It solves mates analytically, one at a time down a chain anchored by a `fixed` part, each reading the solved pose of the part it references. It is not a simultaneous solver, and unsupported entity pairs (such as axis-to-plane) report `ASSEMBLY_NOT_CONVERGED`
+- `checkInterference` reports overlapping parts, but nothing resolves a collision for you
 
-For multi-body kinematic assemblies, use a dedicated mechanical CAD tool. brepjs assemblies are appropriate for static parametric placement (e.g. "snap this insert into that bin").
+For closed-loop mechanisms or simultaneous constraint systems, use a dedicated mechanical CAD tool. brepjs assemblies are appropriate for parametric placement (e.g. "snap this insert into that bin") and for driving open joint chains.
 
 ## Not server-side renderable
 

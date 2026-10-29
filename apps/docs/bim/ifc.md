@@ -38,7 +38,7 @@ import { fromIfc, disposeImportedModel } from 'brepjs-bim';
 const imported = await fromIfc(bytes);
 if (imported.ok) {
   const model = imported.value;
-  // model.elements, model.spatialTree, model.psets, ...
+  // model.elements (each with geometry and psets), model.spatialTree, ...
   disposeImportedModel(model);
 }
 ```

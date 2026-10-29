@@ -24,20 +24,20 @@ Eventually you OOM. The garbage collector cannot reach into the WASM heap. You h
 
 ## The four patterns, ranked by simplicity
 
-### 1. The fluent wrapper: auto-cleanup on chains
+### 1. The fluent wrapper: no cleanup on chains
 
 ```typescript
 import { shape, box, cylinder, measureVolume, unwrap } from 'brepjs/quick';
 
 const part = shape(box(20, 20, 20)).cut(cylinder(5, 25)).val;
 
-// `part` is the only handle that survives. Intermediate
-// handles (the original box, the cylinder, the result of cut)
-// were tracked by the wrapper and released at .val.
+// `part` is the final shape. The intermediate handles (the
+// original box, the cylinder) are NOT tracked by the wrapper;
+// they stay live until disposed or reclaimed by the GC finalizer.
 console.log(unwrap(measureVolume(part)));
 ```
 
-The `shape().chain()` form tracks every intermediate result and disposes them when you call `.val`. The only object that escapes the chain is the final shape. **Use this for any chain of operations**; it's the simplest way to avoid leaks in code that builds a part once.
+The `shape()` wrapper is a fluent facade over the functional API: `.val` returns the final shape, and it does not dispose intermediates. That is fine in code that builds a part once. In a loop or a long-running app, own each input with `using` (pattern 2).
 
 ### 2. `using`: automatic block-scoped cleanup
 
@@ -80,11 +80,11 @@ try {
   // ... work with fused ...
   void fused;
 } finally {
-  scope.dispose(); // releases a, b, fused - in LIFO order
+  scope[Symbol.dispose](); // releases a, b, fused - in LIFO order
 }
 ```
 
-`scope.track(shape)` registers the shape for cleanup; `scope.dispose()` releases everything in reverse order of registration. The reverse order matters because shape A may depend on shape B (e.g. an edge handle from a face).
+`scope.track(shape)` registers the shape for cleanup; `scope[Symbol.dispose]()` releases everything in reverse order of registration. The reverse order matters because shape A may depend on shape B (e.g. an edge handle from a face).
 
 The shorthand `withScope`:
 
@@ -103,14 +103,14 @@ console.log(result.toFixed(2));
 
 `withScope` constructs the scope, runs the callback, and disposes, even on exception.
 
-### 4. Manual `dispose()`: escape hatch
+### 4. Manual `delete()`: escape hatch
 
 ```typescript
-import { box, dispose } from 'brepjs/quick';
+import { box } from 'brepjs/quick';
 
 const temp = box(10, 10, 10);
 // ... use temp ...
-dispose(temp); // explicit cleanup
+temp.delete(); // explicit cleanup, same as temp[Symbol.dispose]()
 ```
 
 Necessary when none of the above patterns fit, for instance when you build a shape on one tick and dispose on a later tick, or when the lifetime crosses an async boundary `using` cannot capture.
@@ -130,18 +130,18 @@ void a;
 void b;
 
 const stats = getDisposalStats();
-console.log('Allocated:', stats.allocated); // 2
-console.log('Disposed:', stats.disposed); // 0
-console.log('Live:', stats.live); // 2 - should be 0 at the end of a run
+console.log('Live:', stats.liveHandles); // 2 - should be 0 at the end of a run
+console.log('Peak:', stats.peakHandles); // 2
+console.log('GC-collected:', stats.gcCollected); // 0
 ```
 
-`getDisposalStats` reports the count of allocated, disposed, and currently-live handles. In a long-running app, periodically log `live` and watch for growth; that's a leak. (gridfinity-layout-tool's regression tests use this.)
+`getDisposalStats` reports the count of currently-live handles, the peak live count, and how many handles the GC finalizer reclaimed. In a long-running app, periodically log `liveHandles` and watch for growth; that's a leak. (gridfinity-layout-tool's regression tests use this.)
 
 ## What does _not_ need disposal
 
 - **Primitive numbers, strings, arrays returned from measurements**: `measureVolume(s)` returns a `Result<number>`; once unwrapped to the underlying number, no disposal is needed.
-- **Buffer geometry data from `mesh()`**: `toBufferGeometryData` returns plain TypedArrays. The mesh handle (the brepjs side) does need disposal; the TypedArrays don't.
-- **Imported plain JS objects**: `getBoundingBox`, `getCenterOfMass` return plain objects.
+- **Buffer geometry data from `mesh()`**: `mesh()` and `toBufferGeometryData` return plain TypedArrays. Neither needs disposal.
+- **Imported plain JS objects**: `getBounds`, `measureVolumeProps` return plain objects.
 - **Result wrappers**: `Result<T,E>` is a plain JS object; only the `.value` shape inside needs disposal if it's a shape.
 
 ## Common gotchas
@@ -153,13 +153,13 @@ Edge / face handles point into the parent shape. Dispose the parent and the chil
 <!-- @no-test -->
 
 ```typescript
-import { box, edgeFinder, dispose, measureLength, unwrap } from 'brepjs/quick';
+import { box, edgeFinder, measureLength, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 const edges = edgeFinder().findAll(b);
-dispose(b);
-// edges[0] now points to freed memory - undefined behaviour
-console.log(unwrap(measureLength(edges[0]!))); // crash or garbage
+b.delete();
+// edges[0] was released with its parent
+console.log(unwrap(measureLength(edges[0]!))); // throws: Shape handle has been disposed
 ```
 
 If you need both, dispose the parent only after you're done with the children, or copy the data you need (lengths, positions, types) before disposing.
@@ -181,7 +181,7 @@ withScope((scope) => {
 
 ### Disposal in the wrong order
 
-`DisposalScope` disposes in LIFO order automatically, which handles dependencies correctly _if you register dependees after their dependees_. If you register out of order:
+`DisposalScope` disposes in LIFO order automatically, which handles dependencies correctly _if you register dependencies after their dependees_. If you register out of order:
 
 <!-- @no-test -->
 
@@ -190,37 +190,40 @@ import { DisposalScope, box, edgeFinder } from 'brepjs/quick';
 
 const scope = new DisposalScope();
 const edges = edgeFinder().findAll(box(10, 10, 10)); // edges + parent leaked
-scope.track(edges); // tracks edges only
-// scope.dispose() will free edges' memory but the parent leaks
+edges.forEach((e) => scope.track(e)); // tracks edges only
+// scope[Symbol.dispose]() will free edges' memory but the parent leaks
 ```
 
 Always register parents before queries on them. Practically, this means: track every shape allocation in the order you make them.
 
 ### Async + scopes
 
-Async breaks `using` (it captures the scope at function entry, not across await):
+Async breaks `withScope`: it disposes as soon as the callback returns, and an async callback returns its promise at the first `await`:
 
 <!-- @no-test -->
 
 ```typescript
-import { box } from 'brepjs/quick';
+import { withScope, box } from 'brepjs/quick';
 
 async function buggy() {
-  using temp = box(10, 10, 10);
-  await fetch('/api');
-  // temp may have been disposed during the await
+  await withScope(async (scope) => {
+    const temp = scope.track(box(10, 10, 10));
+    await fetch('/api');
+    // temp was disposed before the await resumed
+    void temp;
+  });
 }
 ```
 
-For async workflows, prefer `DisposalScope` and dispose explicitly after the async work completes, or pass shape handles through promises by reference rather than relying on lexical scoping.
+For async workflows, use `using` inside the async function (it disposes at block exit, after the awaits), or `withScopeResultAsync`, which disposes after the returned promise settles.
 
 ## The bottom line
 
 - **One-off scripts**: don't worry about it.
-- **Building a part as a chain**: use the fluent `shape()` wrapper.
+- **Building a part once as a chain**: use the fluent `shape()` wrapper.
 - **Functions that construct temporary shapes**: use `using`.
 - **Long-running apps with many shapes**: use `DisposalScope` / `withScope`.
-- **Tests**: `getDisposalStats` to assert `live === 0` at the end.
+- **Tests**: `getDisposalStats` to assert `liveHandles === 0` at the end.
 
 ## Next steps
 

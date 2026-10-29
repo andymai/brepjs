@@ -81,9 +81,9 @@ Each `.cut`, `.fuse`, `.intersect` chains; failures throw `BrepWrapperError`.
 
 ## Failure modes
 
-Five categories cover most boolean failures:
+A boolean that doesn't produce a 3D shape returns `FUSE_NOT_3D`, `CUT_NOT_3D`, or `INTERSECT_NOT_3D` (`FUSE_ALL_NOT_3D` / `CUT_ALL_NOT_3D` for the `*All` variants); a null operand returns `NULL_SHAPE_INPUT`. Five situations cover most boolean failures:
 
-### `BOOLEAN_NO_OVERLAP`
+### No overlap
 
 The two operands don't share volume.
 
@@ -96,7 +96,7 @@ const result = cut(a, b);
 console.log('Overlap?', isOk(result)); // true - cut returns a unchanged
 ```
 
-`cut` with no overlap actually succeeds and returns `a` untouched in OpenCascade's semantics. `intersect` with no overlap returns an empty compound. `fuse` with no overlap returns a compound containing both shapes (a CompSolid). What "no overlap" means for your specific code depends on which operation you used.
+`cut` with no overlap actually succeeds and returns `a` untouched in OpenCascade's semantics. `intersect` with no overlap returns an empty compound. `fuse` with no overlap returns a compound containing both shapes. What "no overlap" means for your specific code depends on which operation you used.
 
 When you want to _require_ overlap, check the result:
 
@@ -115,38 +115,38 @@ if (
 }
 ```
 
-### `BOOLEAN_INVALID_INPUT`
+### Invalid input
 
 One of the inputs failed `BRepCheck`. The kernel refuses to operate on invalid shapes. Heal first:
 
 ```typescript
-import { autoHeal, fuse, isOk, unwrap, box, cylinder } from 'brepjs/quick';
+import { healSolid, fuse, isOk, unwrap, box, cylinder } from 'brepjs/quick';
 
 const a = box(10, 10, 10);
 const b = cylinder(5, 15);
 
 let result = fuse(a, b);
-if (!isOk(result) && result.error.code === 'BOOLEAN_INVALID_INPUT') {
-  const aFixed = unwrap(autoHeal(a));
-  const bFixed = unwrap(autoHeal(b));
+if (!isOk(result) && result.error.code === 'FUSE_NOT_3D') {
+  const aFixed = unwrap(healSolid(a));
+  const bFixed = unwrap(healSolid(b));
   result = fuse(aFixed, bFixed);
 }
 void result;
 ```
 
-### `BOOLEAN_NEAR_COINCIDENT`
+### Near-coincident geometry
 
 The two operands have geometry that is _almost_ but not exactly coincident. The boolean produces slivers: tiny degenerate faces. Workarounds:
 
 - **Add overshoot**: extend the cutting tool slightly past the boundary so coincidence becomes unambiguous overlap (the `cylinder(5, 12, { at: [..., -1] })` pattern).
-- **Heal both** with a slightly enlarged tolerance: `autoHeal(s, { tolerance: 0.01 })`.
+- **Heal both** with a slightly enlarged sewing tolerance: `autoHeal(s, { sewTolerance: 0.01 })`.
 - **Restate the problem**: instead of `cut(a, b)` where `b` is exactly flush, use a pattern that makes the cut definitely interior.
 
-### `BOOLEAN_AMBIGUOUS_RESULT`
+### Ambiguous result
 
 The operation has multiple geometrically valid outcomes. Rare. Usually a sign that two operands touch each other tangentially (a sphere kissing a face). Restate by changing tolerances or adding overshoot.
 
-### `KERNEL_INTERNAL_ERROR`
+### Kernel failure
 
 OpenCascade's `BRepAlgoAPI` died with an unrecoverable error. Treat as a programmer error in the inputs. Usually the inputs were degenerate (zero volume, self-intersecting, etc.). File a bug if the inputs are clearly valid.
 
@@ -243,7 +243,7 @@ export default [rail, stile];
 import { box, sketchCircle, cut, unwrap } from 'brepjs/quick';
 
 const plate = box(40, 30, 5);
-const labelSlot = sketchCircle(8).extrude(0.5).val; // 0.5mm deep
+const labelSlot = sketchCircle(8).extrude(0.5); // 0.5mm deep
 // position it:
 // const positioned = translate(labelSlot, [20, 15, 4.5]);
 // const engraved = unwrap(cut(plate, positioned));

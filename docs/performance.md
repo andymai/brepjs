@@ -83,10 +83,10 @@ Finders iterate over topology once per filter application. Chain filters to mini
 const faces = faceFinder()
   .parallelTo('Z')
   .ofSurfaceType('PLANE')
-  .find(shape);
+  .findAll(shape);
 
 // ❌ Less efficient - multiple separate queries
-const zFaces = faceFinder().parallelTo('Z').find(shape);
+const zFaces = faceFinder().parallelTo('Z').findAll(shape);
 const planeFaces = zFaces.filter(f => /* manual check */);
 ```
 
@@ -96,8 +96,8 @@ When applying different filters from a common base, create new finder instances:
 
 ```typescript
 // Each finder call creates a new immutable chain
-const topFaces = faceFinder().ofSurfaceType('PLANE').inDirection('Z').find(shape);
-const sideFaces = faceFinder().ofSurfaceType('PLANE').inDirection('X').find(shape);
+const topFaces = faceFinder().ofSurfaceType('PLANE').inDirection('Z').findAll(shape);
+const sideFaces = faceFinder().ofSurfaceType('PLANE').inDirection('X').findAll(shape);
 ```
 
 ## Benchmarking
@@ -134,7 +134,7 @@ printResults(results);
 
 ```typescript
 // ❌ Unnecessary clone
-const cloned = clone(shape);
+const cloned = unwrap(clone(shape)); // clone() returns a Result
 const result = translate(cloned, [10, 0, 0]);
 
 // ✅ Transform functions return new shapes

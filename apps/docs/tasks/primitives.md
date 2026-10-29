@@ -32,7 +32,7 @@ import { box } from 'brepjs/quick';
 
 box(30, 20, 10); // (0,0,0) to (30,20,10)
 box(30, 20, 10, { centered: true }); // centred at origin
-box(30, 20, 10, { at: [100, 0, 0] }); // lower corner at (100,0,0)
+box(30, 20, 10, { at: [100, 0, 0] }); // centred at (100,0,0)
 ```
 
 ### `cylinder(r, h, options?)`
@@ -91,15 +91,13 @@ const b = box(10, 10, 10);
 const moved = translate(b, [10, 0, 0]); // [dx, dy, dz]
 const rotated = rotate(b, 45, { axis: [0, 0, 1], at: [0, 0, 0] }); // degrees
 const scaled = scale(b, 2); // uniform 2x
-const stretched = scale(b, [2, 1, 1]); // per-axis
 
 console.log(unwrap(measureVolume(scaled))); // 8000 (2³ × 1000)
-console.log(unwrap(measureVolume(stretched))); // 2000
 ```
 
-`rotate(shape, angleDegrees, { axis, origin })`. The axis defaults to `[0, 0, 1]`, origin to `[0, 0, 0]`.
+`rotate(shape, angleDegrees, { axis, at })`. The axis defaults to `[0, 0, 1]`, the pivot `at` to `[0, 0, 0]`.
 
-`scale(shape, factor)`: uniform if `factor` is a number, per-axis if it's a `[sx, sy, sz]` tuple.
+`scale(shape, factor, { center })`: uniform scaling by a number, about `center` (default `[0, 0, 0]`).
 
 ## Fluent transforms
 
@@ -132,55 +130,45 @@ The `at` option is faster (it avoids one transform) but they produce identical g
 
 ## Mirroring
 
-`mirror(shape, plane)` reflects across a plane:
+`mirror(shape, { normal, at })` reflects across a plane:
 
 ```typescript
 import { box, mirror } from 'brepjs/quick';
 
 const right = box(10, 10, 10, { at: [5, 0, 0] });
-const left = mirror(right, 'YZ'); // reflect across the YZ plane
+const left = mirror(right, { normal: [1, 0, 0] }); // reflect across the YZ plane
 
 export default left;
 ```
 
-Plane names: `'XY'`, `'YZ'`, `'XZ'`. For arbitrary planes pass a `Plane` value (origin + normal).
+The plane is given by its `normal` (default `[1, 0, 0]`, the YZ plane) and a point `at` on it (default `[0, 0, 0]`).
 
 ## Patterns: linear, circular
 
 When you need many copies, the pattern operations are faster than fusing primitives manually:
 
 ```typescript
-import { box, cylinder, fuseAll, cut, linearPattern, circularPattern, unwrap } from 'brepjs/quick';
+import { box, cylinder, fuseAll, cut, gridPattern, circularPattern, unwrap } from 'brepjs/quick';
 
 const block = box(60, 60, 5);
 
-// 4-by-4 grid of holes
+// 4-by-4 grid of holes: directions, counts, spacings
 const holes = unwrap(
-  linearPattern(cylinder(2, 6), {
-    count: [4, 4, 1],
-    spacing: [12, 12, 0],
-    origin: [12, 12, -1],
-  })
+  gridPattern(cylinder(2, 6, { at: [12, 12, -1] }), [1, 0, 0], [0, 1, 0], 4, 4, 12, 12)
 );
 
 const drilled = unwrap(cut(block, holes));
-console.log('Drilled with linear pattern');
+console.log('Drilled with grid pattern');
 
-// 8 evenly-spaced features around an axis
+// 8 evenly-spaced features around an axis: axis, count (360° by default, about the origin)
 const tab = box(2, 2, 8);
-const ring = unwrap(
-  circularPattern(tab, {
-    count: 8,
-    axis: [0, 0, 1],
-    origin: [0, 0, 0],
-  })
-);
+const ring = unwrap(circularPattern(tab, [0, 0, 1], 8));
 void ring;
 
 export default drilled;
 ```
 
-`linearPattern` distributes copies on a 3D grid; `circularPattern` distributes them around an axis.
+`gridPattern` distributes copies on a 2D grid (`linearPattern(shape, direction, count, spacing)` along one direction); `circularPattern` distributes them around an axis.
 
 ## Tips
 

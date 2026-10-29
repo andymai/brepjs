@@ -27,14 +27,14 @@ const ifc = await toIfcValidated(model, {
 
 The adapter returns a `Result`; the model it produces owns kernel geometry, so hold it in a `using` scope. `idByKeyPath` on the result maps each families key path to its element in the model.
 
-Civil-semantic walls and railings require `bodyEvaluator` so the adapter can verify their authored Product Bodies. Without it they return `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` (path and mapped category); the adapter does not keep a silent parametric envelope. Conventional archetype walls and railings stay specification-authoritative. Registered wall openings are applied before comparison. Bodies that coincide with the typed spec remain editable parametric IFC; compound, voided, or otherwise different bodies keep their Wall or Railing classification and export each exact item as tessellation. `proxyEvaluator` remains a compatibility fallback for this evaluation but also enables the separate proxy route described below.
+Civil-semantic walls and railings require `bodyEvaluator` so the adapter can verify their authored Product Bodies. Without it they return `FAMILIES_PRODUCT_BODY_EVALUATOR_REQUIRED` (path and mapped category); the adapter does not keep a silent parametric envelope. Conventional archetype walls and railings stay specification-authoritative. Registered wall openings are applied before the authored Body is installed. The adapter retains every authored item as an `AUTHORITATIVE` Body, even when it coincides with the typed spec; these products keep their Wall or Railing classification and export each exact item as tessellation. `proxyEvaluator` remains a compatibility fallback for this evaluation but also enables the separate proxy route described below.
 
 ## What maps to what
 
 | Families element                   | IFC                                                                                                   |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `Storey`                           | `IfcBuildingStorey`, aggregated under site and building                                               |
-| `Wall`                             | `IfcWall` with an extruded-solid body                                                                 |
+| `Wall`                             | `IfcWall` with a tessellated body                                                                     |
 | `Slab`                             | `IfcSlab` (`FLOOR`, `ROOF`, `LANDING`, `BASESLAB`)                                                    |
 | `Column`                           | `IfcColumn`, rectangular / circular / I-shape profile extruded along `axisZ`                          |
 | `Beam`                             | `IfcBeam`, the same profile vocabulary extruded along `axisX`                                         |
@@ -62,7 +62,7 @@ family('Level', render, { archetype: 'storey' }); // still IfcBuildingStorey
 family('Partition', render, { archetype: 'wall' }); // still IfcWall
 ```
 
-Fillers route the same way: `archetype: 'door'` or `'window'` on a `role: 'fill'` family picks the IFC entity, so a `Glazing` family still becomes an `IfcWindow`. The mapped archetypes are `storey`, `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `door`, and `window`.
+Fillers route the same way: `archetype: 'door'` or `'window'` on a `role: 'fill'` family picks the IFC entity, so a `Glazing` family still becomes an `IfcWindow`. The mapped archetypes are `storey`, `wall`, `slab`, `column`, `beam`, `roof`, `stair`, `ramp`, `railing`, `curtainWall`, `space`, `footing`, `pile`, `covering`, `door`, and `window`.
 
 `archetype` is a plain string that brepjs-families never interprets: the vocabulary belongs to the adapter, which is what keeps the family layer free of IFC.
 
@@ -100,7 +100,7 @@ The repository carries this pipeline end to end: `packages/brepjs-bim/examples/s
 [1] Parsed OK — schema IFC4
 [2] Schema validation: PASS (no EXPRESS / where-rule violations)
 [3] Spatial structure: 1 project, 1 site, 1 building, 2 storey(s)
-[4] GlobalIds: 62 unique, 0 malformed
+[4] GlobalIds: 63 unique, 0 malformed
 [5] Geometry: 10/10 products generated a shape
 ```
 

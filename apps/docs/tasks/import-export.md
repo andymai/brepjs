@@ -5,7 +5,7 @@ description: 'Read and write STEP, IGES, STL, glTF, OBJ, 3MF, BREP, DXF, SVG. Th
 
 # Import & Export
 
-brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES preserve B-Rep structure for round-tripping with desktop CAD. STL, glTF, OBJ, and 3MF carry meshes for 3D printing and rendering. DXF and SVG carry 2D for laser cutting and signage. BREP is OpenCascade's native format. Every import returns `Result<Shape, BrepError>`; every export returns `Result<Blob, BrepError>`.
+brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES preserve B-Rep structure for round-tripping with desktop CAD. STL, glTF, OBJ, and 3MF carry meshes for 3D printing and rendering. DXF and SVG carry 2D for laser cutting and signage. BREP is OpenCascade's native format. The 3D imports return `Result<Shape, BrepError>`; STEP, IGES, and STL exports return `Result<Blob, BrepError>`, while the mesh exporters (glTF, OBJ, 3MF) take a `mesh()` result and return the file contents directly.
 
 ## Format support
 
@@ -15,30 +15,30 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 | **IGES** (.igs, .iges)  | ✓    | ✓     | Older B-Rep round-trip; STEP preferred  |
 | **BREP** (.brep)        | ✓    | ✓     | OpenCascade-native; smallest, fastest   |
 | **STL** (.stl)          | ✓    | ✓     | 3D printing, mesh-only                  |
-| **OBJ** (.obj)          | -    | ✓     | Mesh export for renderers               |
+| **OBJ** (.obj)          | ✓    | ✓     | Mesh export for renderers               |
 | **glTF** (.glb / .gltf) | -    | ✓     | Web-friendly mesh                       |
-| **3MF** (.3mf)          | -    | ✓     | Modern 3D printing format with metadata |
+| **3MF** (.3mf)          | ✓    | ✓     | Modern 3D printing format with metadata |
 | **DXF** (.dxf)          | ✓    | ✓     | 2D laser cutting                        |
-| **SVG** (.svg)          | -    | ✓     | 2D for the web / signage                |
+| **SVG** (.svg)          | ✓    | ✓     | 2D for the web / signage                |
 
 STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work.
 
 ## Export
 
-All exporters take a shape and return `Result<Blob, BrepError>`:
+The STEP, STL, and IGES exporters take a shape and return `Result<Blob, BrepError>`. The mesh exporters take a `mesh()` result:
 
 ```typescript
-import { box, exportSTEP, exportSTL, exportGltf, unwrap } from 'brepjs/quick';
+import { box, mesh, exportSTEP, exportSTL, exportGltf, unwrap } from 'brepjs/quick';
 
 const part = box(30, 20, 10);
 
 const step = unwrap(exportSTEP(part)); // Blob: STEP file
 const stl = unwrap(exportSTL(part, { tolerance: 0.1 }));
-const gltf = unwrap(exportGltf(part, { tolerance: 0.1 }));
+const gltf = exportGltf(mesh(part, { tolerance: 0.1 })); // string: glTF JSON
 
 console.log('STEP:', step.size, 'bytes');
 console.log('STL:', stl.size, 'bytes');
-console.log('glTF:', gltf.size, 'bytes');
+console.log('glTF:', gltf.length, 'chars');
 
 export default part;
 ```
@@ -86,10 +86,10 @@ The defaults are tuned for screen-size rendering. For 3D printing, set `toleranc
 glTF (.glb is binary glTF) carries triangles plus optional materials and normals, designed for the web, smaller than STL, viewable in browsers natively:
 
 ```typescript
-import { box, exportGltf, unwrap } from 'brepjs/quick';
+import { box, mesh, exportGlb } from 'brepjs/quick';
 
 const part = box(30, 20, 10);
-const glb = unwrap(exportGltf(part, { tolerance: 0.1 }));
+const glb = exportGlb(mesh(part, { tolerance: 0.1 })); // ArrayBuffer: binary .glb
 void glb;
 
 export default part;
@@ -102,10 +102,10 @@ Use this for "ship the model to the user's browser": they can open it directly i
 3MF carries the same triangles as STL but adds metadata (units, slicer hints, multiple parts, colour). Modern slicers prefer it:
 
 ```typescript
-import { box, exportThreeMF, unwrap } from 'brepjs/quick';
+import { box, mesh, exportThreeMF } from 'brepjs/quick';
 
 const part = box(30, 20, 10);
-const threeMF = unwrap(exportThreeMF(part, { tolerance: 0.05 }));
+const threeMF = exportThreeMF(mesh(part, { tolerance: 0.05 })); // ArrayBuffer
 void threeMF;
 
 export default part;
@@ -116,33 +116,33 @@ export default part;
 For laser cutting and signage, project a 3D part to a 2D drawing:
 
 ```typescript
-import { box, exportSVG, exportDXF, unwrap } from 'brepjs/quick';
+import { blueprintToDXF } from 'brepjs/quick';
 
 declare const part: import('brepjs').Drawing;
 
-const svg = unwrap(exportSVG(part, { width: 200, height: 100 })); // for the web
-const dxf = unwrap(exportDXF(part)); // for laser
+const svg = part.toSVG(); // string, for the web
+const dxf = blueprintToDXF(part.blueprint); // string, for laser
 void svg;
 void dxf;
 ```
 
-These accept `Drawing<'2D'>` values, typically the output of a `drawing*` chain or a `face` flattened to 2D via `projectToPlane`.
+Both work on `Drawing` values, typically the output of a `draw()` chain or a 3D part projected to 2D with `drawProjection`.
 
 ## Import
 
 Most imports are async because they parse the file contents:
 
 ```typescript
-import { importSTEP, importIGES, importBREP, importSTL, unwrap } from 'brepjs/quick';
+import { importSTEP, importIGES, fromBREP, importSTL, unwrap } from 'brepjs/quick';
 
 declare const stepBlob: Blob;
 declare const igesBlob: Blob;
-declare const brepBlob: Blob;
+declare const brepText: string;
 declare const stlBlob: Blob;
 
 const fromStep = unwrap(await importSTEP(stepBlob));
 const fromIges = unwrap(await importIGES(igesBlob));
-const fromBrep = unwrap(await importBREP(brepBlob));
+const fromBrep = unwrap(fromBREP(brepText)); // sync; takes the BREP text (toBREP writes it)
 const fromStl = unwrap(await importSTL(stlBlob)); // converts triangles → B-Rep approximation
 
 void fromStep;
@@ -163,12 +163,12 @@ import { importSTEP, autoHeal, unwrap } from 'brepjs/quick';
 declare const stepBlob: Blob;
 
 const raw = unwrap(await importSTEP(stepBlob));
-const ready = unwrap(autoHeal(raw));
+const ready = unwrap(autoHeal(raw)).shape; // autoHeal returns { shape, report }
 // Now ready is a healed shape suitable for booleans, fillets, etc.
 void ready;
 ```
 
-Without healing, the first boolean against an imported shape is likely to fail with `INVALID_SHAPE`. See [Healing & Sewing](../advanced/healing).
+Without healing, the first boolean against an imported shape is likely to fail. See [Healing & Sewing](../advanced/healing).
 
 ## Saving and loading
 
@@ -199,12 +199,12 @@ declare const fileInput: HTMLInputElement;
 const file = fileInput.files?.[0];
 if (file) {
   const shape = unwrap(await importSTEP(file));
-  const healed = unwrap(autoHeal(shape));
+  const healed = unwrap(autoHeal(shape)).shape;
   void healed;
 }
 ```
 
-`File` is a `Blob` subtype; every `import*` accepts both.
+`File` is a `Blob` subtype; every `import*` that takes a `Blob` accepts both (`importSVG` takes the SVG text instead).
 
 ### Node: read/write disk
 
@@ -222,7 +222,7 @@ writeFileSync('part.step', new Uint8Array(await blob.arrayBuffer()));
 const data = readFileSync('input.step');
 const inputBlob = new Blob([data]);
 const shape = unwrap(await importSTEP(inputBlob));
-const ready = unwrap(autoHeal(shape));
+const ready = unwrap(autoHeal(shape)).shape;
 void ready;
 ```
 
@@ -242,7 +242,7 @@ import { importSTEP, exportSTL, autoHeal, unwrap } from 'brepjs/quick';
 declare const stepBlob: Blob;
 
 const imported = unwrap(await importSTEP(stepBlob));
-const healed = unwrap(autoHeal(imported));
+const healed = unwrap(autoHeal(imported)).shape;
 const stl = unwrap(exportSTL(healed, { tolerance: 0.05 }));
 void stl;
 ```
@@ -259,7 +259,7 @@ import { importSTL, exportSTEP, autoHeal, unwrap } from 'brepjs/quick';
 declare const stlBlob: Blob;
 
 const triangles = unwrap(await importSTL(stlBlob));
-const healed = unwrap(autoHeal(triangles));
+const healed = unwrap(autoHeal(triangles)).shape;
 const step = unwrap(exportSTEP(healed));
 void step;
 ```
@@ -268,12 +268,11 @@ The result is a STEP file with one face per input triangle. Acceptable for low-r
 
 ## What can go wrong
 
-| Failure                     | Cause                                                                                  |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| `IO_PARSE_ERROR`            | The file is malformed or in an unsupported dialect                                     |
-| `IO_UNSUPPORTED_VERSION`    | The file uses a STEP/IGES schema we don't support                                      |
-| `INVALID_SHAPE`             | Imported shape doesn't pass `BRepCheck`: heal it                                       |
-| `MESH_TRIANGULATION_FAILED` | An exporter (STL, glTF, 3MF) couldn't triangulate the input, usually a tolerance issue |
+| Failure                                                           | Cause                                                                   |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `STEP_IMPORT_FAILED` / `IGES_IMPORT_FAILED` / `STL_IMPORT_FAILED` | The file is malformed, has no geometry, or is in an unsupported dialect |
+| `STEP_EXPORT_FAILED` / `STL_EXPORT_FAILED` / `IGES_EXPORT_FAILED` | The kernel's writer rejected the shape                                  |
+| `STEP_EXPORT_CRASHED` / `STL_EXPORT_CRASHED`                      | The shape contains geometry the writer cannot serialize                 |
 
 ## Next steps
 

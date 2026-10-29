@@ -16,9 +16,9 @@ brepjs ships hundreds of operations, and you might still want one more. This cha
 | 2D drawing op              | `src/2d/<name>Fns.ts`          | 2     |
 | New finder filter          | `src/query/<finder>.ts`        | 2     |
 | New measurement            | `src/measurement/<name>Fns.ts` | 2     |
-| New importer/exporter      | `src/io/<format>.ts`           | 2     |
-| Sketcher method            | `src/sketching/Sketcher.ts`    | 3     |
-| Fluent wrapper helper      | `src/topology/wrapper.ts`      | 3     |
+| New importer/exporter      | `src/io/<format>ExportFns.ts`  | 2     |
+| Sketcher method            | `src/sketching/sketcher.ts`    | 3     |
+| Fluent wrapper helper      | `src/topology/wrapperFns.ts`   | 2     |
 
 The convention: one operation per `*Fns.ts` file or one closely-related family per file.
 
@@ -30,7 +30,7 @@ A new primitive. Goal: add `octahedron(radius)` returning a `ValidSolid` whose 6
 
 The kernel doesn't have a direct `octahedron` primitive. We compose it from existing kernel calls: make 8 triangular faces, sew them, close into a solid. So Layer 0 doesn't need new methods.
 
-If we _did_ need a new kernel primitive, we'd extend `src/kernel/types.ts` (`KernelTopology` interface) and implement in both adapters (`src/kernel/occt/...`, `src/kernel/brepkit/...`).
+If we _did_ need a new kernel primitive, we'd extend the matching fragment in `src/kernel/interfaces/` (`KernelPrimitiveOps`) and implement it in every adapter (`src/kernel/occtWasm/...`, `src/kernel/occt/...`, `src/kernel/brepkit/...`, `src/kernel/manifold/...`).
 
 ### Step 2: the `*Fns` file (Layer 2)
 
@@ -40,58 +40,74 @@ If we _did_ need a new kernel primitive, we'd extend `src/kernel/types.ts` (`Ker
 
 ```typescript
 import { getKernel } from '@/kernel/index.js';
-import { type ValidSolid, validSolid } from '@/core/shapeTypes.js';
-import { type Result, ok, err } from '@/core/result.js';
+import {
+  type ValidSolid,
+  castResultShape,
+  disposeResultShape,
+  isSolid,
+  isValidSolid,
+} from '@/core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { validationError, kernelError } from '@/core/errors.js';
+
+type P = [number, number, number];
 
 /**
  * Build a regular octahedron centered at the origin.
  * Vertices lie at distance `radius` along ±X, ±Y, ±Z.
  */
-export function octahedron(radius: number): ValidSolid {
+export function octahedronR(radius: number): Result<ValidSolid> {
   if (radius <= 0) {
-    throw new Error('octahedron: radius must be positive');
+    return err(validationError('INVALID_PARAM', 'octahedron: radius must be positive'));
   }
   const k = getKernel();
   // 6 vertices
-  const vertices = [
-    k.makeVertex([radius, 0, 0]),
-    k.makeVertex([-radius, 0, 0]),
-    k.makeVertex([0, radius, 0]),
-    k.makeVertex([0, -radius, 0]),
-    k.makeVertex([0, 0, radius]),
-    k.makeVertex([0, 0, -radius]),
-  ];
+  const px: P = [radius, 0, 0];
+  const nx: P = [-radius, 0, 0];
+  const py: P = [0, radius, 0];
+  const pz: P = [0, 0, radius];
+  // ... ny, nz
   // 8 triangular faces
   const faces = [
-    k.makeTriangleFace(vertices[0], vertices[2], vertices[4]),
-    k.makeTriangleFace(vertices[2], vertices[1], vertices[4]),
+    k.buildTriFace(px, py, pz),
+    k.buildTriFace(py, nx, pz),
     // ... etc
-  ];
-  const shell = k.sewFaces(faces);
-  const solid = k.makeSolidFromShell(shell);
-  return validSolid(solid).shape; // smart constructor wraps in ValidSolid brand
+  ].filter((f) => f !== null);
+  let shape;
+  try {
+    // Sew into a shell and close it into a solid; cast the fresh result.
+    shape = castResultShape(k.sewAndSolidify(faces, 1e-6));
+  } catch (e) {
+    return err(kernelError('OCTAHEDRON_FAILED', 'octahedron: sewing failed', e));
+  } finally {
+    for (const f of faces) k.dispose(f); // the solid holds its own copy
+  }
+  if (!isSolid(shape) || !isValidSolid(shape)) {
+    disposeResultShape(shape);
+    return err(kernelError('OCTAHEDRON_FAILED', 'octahedron: result is not a valid solid'));
+  }
+  return ok(shape);
 }
 
 /**
- * Result-returning variant for callers who prefer it.
+ * Throwing variant for callers who prefer it.
  */
-export function octahedronR(radius: number): Result<ValidSolid> {
-  if (radius <= 0) return err({ code: 'INVALID_PARAM', message: 'radius must be positive' });
-  return ok(octahedron(radius));
+export function octahedron(radius: number): ValidSolid {
+  return unwrap(octahedronR(radius));
 }
 ```
 
-The throwing variant (`octahedron`) is fine because the only failure mode is a programmer error (negative radius). The Result variant (`octahedronR`) is for callers who want explicit error handling.
+The throwing variant (`octahedron`) is fine when a bad radius is a programmer error. The Result variant (`octahedronR`) is for callers who want explicit error handling.
 
-### Step 3: export from the module index
+### Step 3: export from the entry points
 
-`src/topology/index.ts`:
+`src/index.ts` (the root `brepjs` entry) and `src/topology.ts` (the `brepjs/topology` sub-path):
 
 <!-- @no-test -->
 
 ```typescript
 // ... existing exports ...
-export { octahedron, octahedronR } from './octahedronFns.js';
+export { octahedron, octahedronR } from './topology/octahedronFns.js';
 ```
 
 This makes `octahedron` available at both `brepjs/topology` and the main `brepjs` entry.
@@ -136,11 +152,11 @@ describe('octahedron', () => {
 });
 ```
 
-For a brepjs upstream contribution, the conformance suite picks this up automatically; the same test runs against OCCT and brepkit.
+For a brepjs upstream contribution, the conformance suite picks this up automatically; the same test runs against every kernel project (occt-wasm in CI, the others on demand).
 
-### Step 5: fluent wrapper exposure (Layer 3)
+### Step 5: fluent wrapper exposure (Layer 2)
 
-If you want `shape(otherShape).addOctahedron(radius, position)` syntax, add a method to `src/topology/wrapper.ts`. For most operations, the functional API is enough; wrappers are for operations that compose with other shapes.
+If you want `shape(otherShape).addOctahedron(radius, position)` syntax, add a method to `src/topology/wrapperFns.ts`. For most operations, the functional API is enough; wrappers are for operations that compose with other shapes.
 
 ### Step 6: update the function lookup
 
@@ -159,8 +175,8 @@ This regenerates `docs/function-lookup.md` to include the new symbol. The pre-co
 For an operation to be a good citizen:
 
 1. **Type signature is precise.** Use validity brands. If your op only works on closed wires, take `ClosedWire`. If it produces a valid solid, return `ValidSolid`.
-2. **Failure modes use named codes.** No `throw new Error('something went wrong')`; use `err({ code: 'OP_DESCRIPTIVE_CODE', message: '...', suggestion: '...' })`.
-3. **Memory is tracked.** Use `getKernel()` to acquire shapes; the kernel adapter tracks them. If you build many intermediate handles, dispose them inside the function.
+2. **Failure modes use named codes.** No `throw new Error('something went wrong')`; return `err(validationError('OP_DESCRIPTIVE_CODE', '...'))` (or `kernelError(code, message, cause)`), which builds a `BrepError` with an optional `suggestion`.
+3. **Memory is owned explicitly.** Raw kernel results aren't tracked: cast a fresh one with `castResultShape()`, release raw intermediates with `getKernel().dispose()`, and `using` every branded intermediate. The functional API doesn't consume its inputs, so dispose them inside the function.
 4. **Result is the unique answer.** No randomness, no environment-dependent behaviour. Same input → same output.
 5. **Tests cover counts and measurements.** Vertex / edge / face counts are integer-exact; volumes / areas use `toBeCloseTo`.
 
@@ -190,22 +206,30 @@ If your operation builds shapes from scratch (like the octahedron above), inheri
 
 Adding a method to the fluent wrapper:
 
-`src/topology/wrapper.ts`:
+`src/topology/wrapperFns.ts` (two edits: the `Wrapped3D` interface and the factory that builds it):
 
 <!-- @no-test -->
 
 ```typescript
-class Wrapped3D<T extends Shape3D> {
+export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   // ... existing methods ...
 
   /**
    * Add an octahedron at the given position to this shape.
    */
-  addOctahedron(radius: number, at: [number, number, number]): Wrapped3D<Shape3D> {
-    const o = translate(octahedron(radius), at);
-    const fused = unwrap(fuse(this.val, o));
-    return new Wrapped3D(fused);
-  }
+  addOctahedron(radius: number, at: Vec3): Wrapped3D<Shape3D>;
+}
+
+// Add 'addOctahedron' to the Wrapped3DCompoundOps Pick, then:
+function create3DCompoundOps<T extends Shape3D>(val: T): Wrapped3DCompoundOps<T> {
+  return {
+    // ... existing methods ...
+    addOctahedron: (radius, at) => {
+      using o = octahedron(radius);
+      using moved = translate(o, at);
+      return wrap3D(unwrapOrThrow(fuse(val, moved, { unsafe: true })));
+    },
+  };
 }
 ```
 

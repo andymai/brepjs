@@ -16,7 +16,7 @@ npm install
 npm start
 ```
 
-The scaffold is a working model, not an empty shell: `src/main.ts` builds a wall with a doorway and prints per-element mesh statistics through `evaluateModel`. From there:
+The scaffold is a working model, not an empty shell: `src/main.tsx` builds a wall with a doorway, and `npm start` prints per-element mesh statistics through `evaluateModel`. From there:
 
 ```sh
 npx brepjs add room storey slab

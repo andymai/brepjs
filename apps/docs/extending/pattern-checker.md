@@ -21,11 +21,11 @@ To regenerate the baseline (after fixing existing violations or accepting them):
 npm run check:patterns:baseline
 ```
 
-The baseline is `scripts/.patterns-baseline.json`. New violations beyond the baseline fail the build; baselined violations are recorded as known.
+The baseline is `.pattern-baseline.json` at the repo root. New violations beyond the baseline fail the build; baselined violations are recorded as known.
 
 ## The rules
 
-### `async-with-kernel`
+### `no-async-withkernel`
 
 **What it catches**: `withKernel(id, async () => { ... })`.
 
@@ -48,11 +48,11 @@ const k = getKernel('brepkit');
 await someAsyncOpWith(k);
 ```
 
-**Inline disable**: `// brepjs-patterns-disable: async-with-kernel`. Required only when the async callback is genuinely synchronous in effect (rare).
+**Inline disable**: `// brepjs-patterns-disable: no-async-withkernel`. Required only when the async callback is genuinely synchronous in effect (rare).
 
-### `wrapped-method-call`
+### `.wrapped` method calls (ESLint)
 
-**What it catches**: `shape.wrapped.someMethod(...)` in Layer 2+ code.
+**What it catches**: `shape.wrapped.someMethod(...)` in Layer 2+ code. ESLint enforces this one via `no-restricted-syntax`, not the pattern checker.
 
 ```typescript
 // ❌ (in Layer 2 file)
@@ -67,14 +67,14 @@ const v = solid.wrapped.Volume();
 // ✓
 import { getKernel } from '@/kernel/index.js';
 
-const v = getKernel().measureVolume(solid.wrapped);
+const v = getKernel().volume(solid.wrapped);
 ```
 
-**Layer 0 exception**: kernel adapters are allowed to call `.wrapped` methods because that's what they do. The checker scopes this rule to layers 1+.
+**Layer 0 exception**: kernel adapters are allowed to call `.wrapped` methods because that's what they do. The ESLint config scopes this rule to the Layer 2+ directories.
 
-### `double-cast`
+### `no-double-cast`
 
-**What it catches**: `x as unknown as T`.
+**What it catches**: `x as unknown as T` (or `as any as T`).
 
 ```typescript
 // ❌
@@ -83,19 +83,19 @@ const wireHandle = rawHandle as unknown as Wire;
 
 **Why**: Double-casting bypasses TypeScript's type system entirely. Almost always a sign that the type chain has a real gap that should be fixed at the source.
 
-**Fix**: Add the missing type; use `assertWire(handle)` runtime check; or use `@ts-expect-error -- reason` for the genuinely intractable cases.
+**Fix**: Add the missing type; use an `isWire(handle)` type guard; or use `@ts-expect-error -- reason` for the genuinely intractable cases.
 
-**Inline disable**: `// brepjs-patterns-disable: double-cast` with a comment explaining why.
+**Inline disable**: `// brepjs-patterns-disable: no-double-cast` with a comment explaining why.
 
-### `missing-using-on-handle`
+### `require-using-for-handles`
 
-**What it catches**: Allocations of disposable handles without `using` or `withScope` tracking, in functions that are likely to leak.
+**What it catches**: `createHandle(...)` or `createKernelHandle(...)` calls whose result is not bound with `using`.
 
 ```typescript
 // ❌
-function leaky() {
-  const temp = box(10, 10, 10);
-  return measureVolume(temp); // temp not disposed
+function leaky(raw: KernelShape) {
+  const temp = createHandle(raw);
+  return getKernel().volume(temp.wrapped); // temp not disposed
 }
 ```
 
@@ -105,25 +105,25 @@ function leaky() {
 
 ```typescript
 // ✓
-function clean() {
-  using temp = box(10, 10, 10);
-  return measureVolume(temp);
+function clean(raw: KernelShape) {
+  using temp = createHandle(raw);
+  return getKernel().volume(temp.wrapped);
 }
 ```
 
-The rule is heuristic; it can produce false positives when the handle is intentionally returned (in which case the _caller_ is responsible). Use `// brepjs-patterns-disable: missing-using-on-handle` when the lifetime escapes the function.
+The rule is heuristic. It already excuses a handle that is returned (the _caller_ is responsible), passed directly as a call argument (`scope.register(createHandle(...))`), or placed in an object or array literal. Use `// brepjs-patterns-disable: require-using-for-handles` when the lifetime escapes the function some other way.
 
-### `function-too-long`
+### `max-function-lines`
 
-**What it catches**: Function bodies over 60 lines (configurable threshold).
+**What it catches**: Function bodies over 60 effective lines, not counting blanks and comments (configurable threshold).
 
 **Why**: Long functions are harder to test, harder to review, harder to refactor. The threshold is a discussion-starter, not a hard rule.
 
 **Fix**: Extract sub-functions. The 60-line threshold is empirically the line above which function comprehension drops sharply.
 
-### `nesting-too-deep`
+### `max-nesting-depth`
 
-**What it catches**: Code with more than 4 levels of indentation (configurable).
+**What it catches**: Control-flow statements (`if`, loops, `switch`, `try`) nested more than 4 deep within one function (configurable).
 
 ```typescript
 // ❌
@@ -132,7 +132,9 @@ function deep() {
     if (y) {
       for (const item of items) {
         if (item.condition) {
-          // 5 levels deep
+          if (item.ready) {
+            // 5 levels deep
+          }
         }
       }
     }
@@ -144,21 +146,21 @@ function deep() {
 
 **Fix**: Early returns, guard clauses, extract loops to functions.
 
-### `export-let`
+### `export let` (ESLint)
 
-**What it catches**: `export let foo = ...` (ESLint also bans this; the pattern checker is a backup).
+**What it catches**: `export let foo = ...`. ESLint bans this via `no-restricted-syntax`; the pattern checker does not check it.
 
 **Why**: Mutable module-level exports break tree-shaking and create hidden global state.
 
 **Fix**: Use `export const` with an internal mutable variable, exposed via a setter function if needed.
 
-### `oc-access`
+### `.oc` access (ESLint)
 
-**What it catches**: Direct access to `.oc` (the raw OpenCascade module).
+**What it catches**: Direct access to `.oc` (the raw OpenCascade module) in Layer 2+ code. ESLint enforces this via `no-restricted-syntax`.
 
 **Why**: Bypasses the kernel abstraction. `.oc` is private to the OpenCascade adapter.
 
-**Fix**: Add the operation you need to `KernelInterface` and call it via `getKernel().method(...)`.
+**Fix**: Add the operation you need to `KernelAdapter` (`src/kernel/interfaces/`) and call it via `getKernel().method(...)`.
 
 ## Inline disables
 
@@ -179,18 +181,17 @@ Use these sparingly. Each disable should have a comment explaining _why_ the rul
 
 Sometimes a rule is over-eager:
 
-- **`missing-using-on-handle` on test setup**: tests often allocate without scoping because the test process exits after.
-- **`function-too-long` on switch statements**: a long `switch` with many cases is sometimes the right shape.
-- **`double-cast` in WASM bindings**: occasional unavoidable casts when wrapping untyped C APIs.
+- **`max-function-lines` on switch statements**: a long `switch` with many cases is sometimes the right shape.
+- **`no-double-cast` in WASM bindings**: occasional unavoidable casts when wrapping untyped C APIs.
 
 For these, inline-disable with a clear reason. If the same disable appears in many places, consider whether the rule needs adjustment. Open an issue.
 
 ## Adding a rule
 
-The checker is in `scripts/check-patterns.ts`. Each rule is a function that walks the TypeScript AST and reports findings. To add a new rule:
+The checker is in `scripts/check-patterns.ts`. Each rule is a `Rule` object whose `check` function walks the TypeScript AST and reports findings. To add a new rule:
 
-1. Implement the visitor function.
-2. Add it to the rule registry at the top of the file.
+1. Implement the rule and its visitor function.
+2. Add it to the `ALL_RULES` registry.
 3. Run `npm run check:patterns:baseline` to capture the current state.
 4. Document the rule here.
 
@@ -198,9 +199,9 @@ Most useful new rules detect class-of-bug, not single instances. If a recent bug
 
 ## Why these and not ESLint?
 
-ESLint runs at parse-tree level: fast, but limited. The pattern checker runs at the type-checked AST level using the TypeScript compiler API, so it knows the actual types and can make decisions ESLint can't. The trade-off: it's slower (typecheck-then-walk vs. parse-then-walk).
+The pattern checker parses each file with the TypeScript compiler API (`ts.createSourceFile`, syntax only, no type checker) and walks the AST in plain code. It carries its own fingerprinted baseline, so existing violations stand while new ones fail.
 
-In brepjs, ESLint covers the syntax-level rules (`no-explicit-any`, `prefer-const`, `import-extensions`) and the pattern checker covers the semantic-level rules (`wrapped-method-call`, `async-with-kernel`).
+In brepjs, ESLint covers `no-explicit-any`, `prefer-const`, and the `.oc` / `.wrapped.method()` / `export let` bans (`no-restricted-syntax`); the pattern checker covers `no-async-withkernel`, `no-double-cast`, `require-using-for-handles`, `max-function-lines`, and `max-nesting-depth`.
 
 ## Next steps
 

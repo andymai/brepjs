@@ -5,7 +5,7 @@ description: 'How brepjs swaps geometry kernels behind a single API. Pick OpenCa
 
 # Kernels and withKernel
 
-brepjs is not married to OpenCascade. The library sits behind a small abstraction (the `KernelInterface`) that lets multiple WASM-based geometry kernels back the same API. Today there are two: OpenCascade (production) and brepkit (experimental Rust). This chapter explains how to pick one, how to swap, and what `withKernel(...)` does for advanced use cases.
+brepjs is not married to OpenCascade. The library sits behind a small abstraction (the `KernelAdapter` interface) that lets multiple WASM-based geometry kernels back the same API. Today there are two: OpenCascade (production) and brepkit (experimental Rust). This chapter explains how to pick one, how to swap, and what `withKernel(...)` does for advanced use cases.
 
 ## The two kernels
 
@@ -58,11 +58,11 @@ const brepkitVolume = withKernel('brepkit', () => measureVolume(box(10, 10, 10))
 console.log({ occtVolume, brepkitVolume });
 ```
 
-The active kernel reverts when `fn` returns. Outside `withKernel`, the default kernel (whichever was init'd last) is used.
+The active kernel reverts when `fn` returns. Outside `withKernel`, the default kernel (the first one registered) is used.
 
 ### Sync only: the trap
 
-`withKernel` is **synchronous**. Async callbacks silently use the wrong kernel after the first `await`:
+`withKernel` is **synchronous**. An async callback runs against the requested kernel only until its first `await`; `withKernel` then throws because the callback returned a Promise, and the rest of the callback runs against the default kernel:
 
 <!-- @no-test -->
 
@@ -89,8 +89,8 @@ This is a real footgun. The pattern checker (`npm run check:patterns`) flags `as
 Three reasons:
 
 1. **Future-proofing.** brepkit may eventually replace the OpenCascade-based default. The abstraction means user code doesn't change when that happens.
-2. **Testing.** Every operation in brepjs runs against multiple kernels in CI. The default gate runs `occt-wasm` (`npm test`); the other kernels run via `npm run test:occt` and `npm run test:brepkit`. Bugs that show in one kernel and not the other surface immediately.
-3. **Custom kernels.** If you have your own geometry library, you can implement `KernelInterface` and plug it in. See [Writing a Custom Kernel](../extending/custom-kernel).
+2. **Testing.** The same test suite runs against every kernel. The default gate (CI and `npm test`) runs `occt-wasm`; the other kernels run via `npm run test:occt` and `npm run test:brepkit`. Bugs that show in one kernel and not the other surface when you compare the runs.
+3. **Custom kernels.** If you have your own geometry library, you can implement `KernelAdapter` and plug it in. See [Writing a Custom Kernel](../extending/custom-kernel).
 
 The kernel interface is intentionally minimal: only the methods brepjs actually calls. New methods are added when new operations are added; the interface is segregated by concern (booleans, mesh, IO, etc.) so partial-conformance kernels are possible.
 
@@ -114,5 +114,5 @@ If you install `occt-wasm`, run `import 'brepjs/quick'`, and never think about k
 ## Next steps
 
 - [Tolerance and Validity](./tolerance): what `BRepCheck` validates and how tolerance interacts with kernels
-- [Writing a Custom Kernel](../extending/custom-kernel): implementing `KernelInterface` for your own backend
+- [Writing a Custom Kernel](../extending/custom-kernel): implementing `KernelAdapter` for your own backend
 - [Kernel Conformance Suite](../extending/conformance): verifying a custom kernel against the brepjs test suite

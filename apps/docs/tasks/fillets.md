@@ -31,7 +31,7 @@ export default filleted;
 You almost never want to fillet _every_ edge. Use a finder to pick the ones you mean:
 
 ```typescript
-import { box, edgeFinder, fillet, unwrap } from 'brepjs/quick';
+import { box, edgeFinder, fillet, curveLength, unwrap } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 
@@ -39,13 +39,16 @@ const b = box(30, 20, 10);
 const verticals = edgeFinder().inDirection('Z').findAll(b);
 
 // All edges of a specific length
-const longEdges = edgeFinder().withLength({ min: 25 }).findAll(b);
+const longEdges = edgeFinder().ofLength(30).findAll(b);
 
 // Specific curve type
 const arcEdges = edgeFinder().ofCurveType('CIRCLE').findAll(b);
 
 // Combine filters
-const verticalsLongerThan10 = edgeFinder().inDirection('Z').withLength({ min: 10 }).findAll(b);
+const verticalsLongerThan10 = edgeFinder()
+  .inDirection('Z')
+  .when((e) => curveLength(e) >= 10)
+  .findAll(b);
 
 const filleted = unwrap(fillet(b, verticals, 2));
 console.log('Filleted', verticals.length, 'edges');
@@ -72,7 +75,7 @@ const filleted = shape(box(30, 20, 10))
 export default filleted;
 ```
 
-The callback receives an `EdgeFinder` you chain filters on. The wrapper internally calls `findAll` and passes the result to the kernel.
+The callback receives an `EdgeFinderFn` you chain filters on. The wrapper internally calls `findAll` and passes the result to the kernel.
 
 ## Fillet all edges
 
@@ -96,7 +99,7 @@ When you want different radii on different edges:
 ```typescript
 import { box, edgeFinder, fillet, unwrap } from 'brepjs/quick';
 
-let b: import('brepjs').Shape3D = box(30, 20, 10);
+let b: import('brepjs').ValidSolid = box(30, 20, 10);
 const verticals = edgeFinder().inDirection('Z').findAll(b);
 const horizontals = edgeFinder().inDirection('X').findAll(b);
 
@@ -108,11 +111,13 @@ b = unwrap(fillet(b, newHorizontals, 1));
 console.log('Verticals at r=3, horizontals at r=1');
 ```
 
-Edge handles are bound to the shape they were found on. Filleting consumes the input shape and returns a new one, so old handles no longer apply. Always re-find after each operation.
+Edge handles are bound to the shape they were found on. Filleting returns a new shape (the input is left as it was), so old handles don't apply to the result. Always re-find after each operation.
 
 ## Failure modes
 
-### `FILLET_TOO_LARGE`
+A kernel failure comes back as `FILLET_FAILED` (`CHAMFER_FAILED` for chamfer). When the kernel reports which edges failed, they are in `error.metadata.failedEdges`. The usual causes:
+
+### Radius too large
 
 The radius is bigger than the geometry around the edge can support. A box 10mm thick cannot have a 6mm fillet on its corner: the fillet would leave no flat region. The kernel detects this:
 
@@ -121,14 +126,14 @@ import { box, edgeFinder, fillet, isOk } from 'brepjs/quick';
 
 const thin = box(10, 10, 1); // 1mm thick
 const result = fillet(thin, edgeFinder().findAll(thin), 0.6); // ~larger than safe
-if (!isOk(result) && result.error.code === 'FILLET_TOO_LARGE') {
+if (!isOk(result) && result.error.code === 'FILLET_FAILED') {
   console.warn(result.error.suggestion);
 }
 ```
 
 Fix: smaller radius, or fewer edges.
 
-### `FILLET_INVALID_EDGE`
+### Edge the algorithm can't handle
 
 The selected edge has a curvature or geometry the fillet algorithm can't handle. Common with imported geometry: sharp creases, non-tangent meeting edges, edges shorter than the fillet radius.
 
@@ -138,7 +143,7 @@ Workarounds:
 - Skip that edge (refine the finder)
 - Use `chamfer` instead; it has fewer requirements
 
-### `FILLET_AMBIGUOUS_PROPAGATION`
+### Ambiguous propagation
 
 When you fillet an edge that meets multiple other edges at a vertex, the fillet has to decide whether to propagate to those edges. Sometimes the answer is ambiguous and OpenCascade refuses. Workaround: select all the edges that should propagate explicitly, in the same `fillet()` call.
 
@@ -149,7 +154,7 @@ Two ways to fillet several groups of edges, only one works reliably:
 ```typescript
 // WRONG: fillet operations interact in unobvious ways
 import { box, edgeFinder, fillet, unwrap } from 'brepjs/quick';
-let b: import('brepjs').Shape3D = box(20, 20, 20);
+let b: import('brepjs').ValidSolid = box(20, 20, 20);
 b = unwrap(fillet(b, edgeFinder().inDirection('Z').findAll(b), 3));
 // The edges in 'X' have moved/transformed, so re-find:
 b = unwrap(fillet(b, edgeFinder().inDirection('X').findAll(b), 3));
@@ -212,17 +217,17 @@ A small uniform fillet (1–2 mm on a 30 mm part) reads as "manufactured to spec
 ### Round only the rim of a bowl
 
 ```typescript
-import { shape, sketchCircle, edgeFinder } from 'brepjs/quick';
+import { shape, sketchCircle, faceCenter, getBounds } from 'brepjs/quick';
 
 const bowl = sketchCircle(30).extrude(40);
 const rounded = shape(bowl)
-  .shell((f) => f.inDirection('Z'), 2) // hollow it
-  .fillet((e) => e.inDirection('Z').withLength({ max: 200 }), 2).val;
+  .shell((f) => f.inDirection('Z').when((face) => faceCenter(face)[2] > 39), 2) // hollow it, open at the top
+  .fillet((e) => e.ofCurveType('CIRCLE').when((edge) => getBounds(edge).zMin > 39), 0.5).val;
 
 export default rounded;
 ```
 
-Find the top circular edge with a length filter; fillet only that.
+Find the top circular edges (outer and inner lip) with a curve-type and position filter; fillet only those.
 
 ### Add manufacturing draft
 

@@ -47,12 +47,14 @@ The `using` keyword (TypeScript 5.2+, browsers/Node since 2024) is the recommend
 
 ## Kernel compatibility
 
-| brepjs version | OpenCascade kernel                                | brepkit kernel            |
-| -------------- | ------------------------------------------------- | ------------------------- |
-| 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16      | `brepkit-wasm` 2.x        |
-| 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16      | `brepkit-wasm` 2.x        |
-| 16.x           | `occt-wasm` 2.x or `brepjs-opencascade` 0.13–0.16 | `brepkit-wasm` 2.x        |
-| 15.x           | `brepjs-opencascade` 0.12–0.15                    | `brepkit-wasm` 1.x or 2.x |
+| brepjs version | OpenCascade kernel                                          | brepkit kernel            |
+| -------------- | ----------------------------------------------------------- | ------------------------- |
+| 20.x           | `occt-wasm` 3.8+, 4.x, or 5.x, or `brepjs-opencascade` 0.16 | `brepkit-wasm` 3.x or 4.x |
+| 19.x           | `occt-wasm` 3.8+, 4.x, or 5.x, or `brepjs-opencascade` 0.16 | `brepkit-wasm` 2.x or 3.x |
+| 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16                | `brepkit-wasm` 2.x        |
+| 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16                | `brepkit-wasm` 2.x        |
+| 16.x           | `occt-wasm` 2.x or `brepjs-opencascade` 0.13 to 0.16        | `brepkit-wasm` 2.x        |
+| 15.x           | `brepjs-opencascade` 0.12 to 0.15                           | `brepkit-wasm` 1.x or 2.x |
 
 A kernel version bump is treated as a breaking change for brepjs even if the brepjs API is unchanged; geometric output can shift between kernel versions.
 
@@ -71,7 +73,7 @@ The class-based API that earlier versions deprecated (the old `Shape`/`Solid`/`E
 
 These surfaces may change without a major bump:
 
-- Internal-only modules under `src/kernel/occt/` and `src/kernel/brepkit/`; only the `KernelInterface` from `src/kernel/types.ts` is public-stable
+- Internal-only modules under `src/kernel/occt/` and `src/kernel/brepkit/`; only the `KernelAdapter` interface re-exported from `src/kernel/types.ts` is public-stable
 - Pattern checker baseline and rule set
 - The exact wording of error messages (codes are stable; messages may improve)
 - The structure of internal `.wrapped` handles; Layer 2+ code must never touch them

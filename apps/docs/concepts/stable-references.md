@@ -95,7 +95,7 @@ const live = resolveRefParams(filletParams, rebuiltShape);
 
 `resolveRefParams` walks a params object and replaces any face/edge/vertex/generated-face ref with its live entity; `resolveRefIn(ref, shape)` resolves a single ref against a freshly rebuilt shape, re-deriving roles from `ref.origin` (so the origin must name the role-assignment scheme, e.g. `'box'`). `resolveLineageRef(ref, roles, shape)` is the lower-level form when you maintain the role table yourself. Type guards (`isFaceRef`, `isEdgeRef`, `isVertexRef`, `isDerivedFaceRef`, `isLineageRef`) discriminate the four kinds.
 
-The [history replay](/tasks/parametric-csg) path uses exactly this to keep selections valid as you edit earlier steps.
+The history replay path (`replayHistory`, `replayFrom`, `modifyStep`) uses exactly this to keep selections valid as you edit earlier steps.
 
 ## Kernel support
 

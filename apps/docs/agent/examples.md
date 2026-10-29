@@ -47,7 +47,7 @@ Parametric primitives for the [Gridfinity](https://gridfinity.xyz/) ecosystem.
 
 ## Anatomy of an example
 
-Every example follows the [`.brep.ts` contract](./overview): a default-exported zero-arg function plus an `expected` block that pins its measured dimensions. The sibling `<name>.expected.json` records the baseline volume, area, validity, and shape-type that the eval replays within tolerance. An intentional geometry change means re-recording that baseline; an unintentional one shows up as a failed eval.
+Every example follows the [`.brep.ts` contract](./overview): a default-exported zero-arg function (a few, such as `spur-gear` and `threaded-rod`, also export an `expected` block). The sibling `<name>.expected.json` records the baseline volume, area, validity, and shape-type that the eval replays within tolerance. An intentional geometry change means re-recording that baseline; an unintentional one shows up as a failed eval.
 
 ## Next steps
 

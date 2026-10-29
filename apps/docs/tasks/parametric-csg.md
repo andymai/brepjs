@@ -119,10 +119,10 @@ ev.evaluate(tree, { L: 42, W: 42, H: 30, wall: 1.2, sliderTouched: 'L' });
 ev.resetStats();
 ev.evaluate(tree, { L: 42, W: 42, H: 30, wall: 1.2, sliderTouched: 'wall' });
 ev.cacheStats();
-// { hits: 4, misses: 0, entries: 11 }
+// { hits: 1, misses: 0, entries: 11 }
 ```
 
-No node has `sliderTouched` in its `freeParams`, so no cache key changes; everything hits. Wire the env directly to your application state; no filtering required.
+No node has `sliderTouched` in its `freeParams`, so no cache key changes; the root `Cut` hits and its subtree is never revisited. Wire the env directly to your application state; no filtering required.
 
 ## When you don't need the cache across calls
 

@@ -18,12 +18,12 @@ The brepjs ADRs are intentionally short, typically a page or two each. Longer th
 | ID   | Title                                                                                                                           | Summary                                                                                 |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | 0001 | [Layered architecture](https://github.com/andymai/brepjs/blob/main/docs/decisions/0001-layered-architecture.md)                 | Why imports flow downward only, what each layer contains                                |
-| 0002 | [Kernel abstraction](https://github.com/andymai/brepjs/blob/main/docs/decisions/0002-kernel-abstraction.md)                     | Why brepjs has a `KernelInterface` rather than coupling to OpenCascade directly         |
+| 0002 | [Kernel abstraction](https://github.com/andymai/brepjs/blob/main/docs/decisions/0002-kernel-abstraction.md)                     | Why brepjs has a `KernelAdapter` rather than coupling to OpenCascade directly           |
 | 0003 | [Branded types](https://github.com/andymai/brepjs/blob/main/docs/decisions/0003-branded-types.md)                               | Why `Edge`, `Wire`, `Face` are nominal not structural types                             |
 | 0004 | [Phantom dimension types](https://github.com/andymai/brepjs/blob/main/docs/decisions/0004-phantom-dimension-types.md)           | Why shapes carry a `D extends '2D' \| '3D'` parameter                                   |
 | 0005 | [Topological validity types](https://github.com/andymai/brepjs/blob/main/docs/decisions/0005-topological-validity-types.md)     | Why `ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid` exist as separate types |
 | 0006 | [Domain boundaries](https://github.com/andymai/brepjs/blob/main/docs/decisions/0006-domain-boundaries.md)                       | How Layer 2 modules relate to each other (peer imports allowed)                         |
-| 0007 | [Kernel interface segregation](https://github.com/andymai/brepjs/blob/main/docs/decisions/0007-kernel-interface-segregation.md) | Why `KernelInterface` is decomposed into smaller fragments                              |
+| 0007 | [Kernel interface segregation](https://github.com/andymai/brepjs/blob/main/docs/decisions/0007-kernel-interface-segregation.md) | Why `KernelAdapter` is decomposed into smaller fragments                                |
 | 0008 | [Layer 1 core audit](https://github.com/andymai/brepjs/blob/main/docs/decisions/0008-layer1-core-audit.md)                      | Audit of what belongs in `core/` vs higher layers                                       |
 | 0009 | [Tolerance as type parameter](https://github.com/andymai/brepjs/blob/main/docs/decisions/0009-tolerance-as-type-parameter.md)   | Whether tolerance should be encoded in the type system                                  |
 | 0010 | [Layer 2 domain audit](https://github.com/andymai/brepjs/blob/main/docs/decisions/0010-layer2-domain-audit.md)                  | Audit of what belongs in each Layer 2 module                                            |
@@ -39,27 +39,39 @@ The list grows as decisions accumulate. The full directory is the source of trut
 When proposing a new architectural decision, copy `docs/decisions/template.md` and fill it in:
 
 ```markdown
-# ADR NNNN: Title
+# ADR-NNNN: Title
 
-## Status
-
-Proposed | Accepted | Superseded by NNNN | Deprecated
+**Status**: Proposed | Accepted | Superseded by ADR-NNNN
+**Date**: YYYY-MM-DD
+**Authors**: (names)
 
 ## Context
 
-What's the situation that requires a decision? What are the constraints?
+What problem are we solving? What forces are at play?
 
 ## Decision
 
-What did we decide to do?
-
-## Alternatives considered
-
-What other options were on the table? Why weren't they chosen?
+What did we decide, and why?
 
 ## Consequences
 
-What does this enable? What does it constrain? What follow-up work does it imply?
+### Positive
+
+- ...
+
+### Negative / Trade-offs
+
+- ...
+
+## Alternatives Considered
+
+### Alternative A
+
+Why it was rejected.
+
+## Related
+
+- Links to other ADRs, issues, or documentation.
 ```
 
 Status starts at `Proposed`, transitions to `Accepted` when merged. Deprecation or supersession adds new ADRs that point back at the original.

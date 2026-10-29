@@ -42,7 +42,7 @@ console.log('Soft block volume:', unwrap(measureVolume(softBlock)).toFixed(2));
 export default softBlock;
 ```
 
-All canned sketches default to the XY plane. Pass a plane name as second argument: `sketchCircle(10, 'YZ').extrude(20)`.
+All canned sketches default to the XY plane. Pass a plane config as the last argument: `sketchCircle(10, { plane: 'YZ' }).extrude(20)`.
 
 ## The Sketcher builder
 
@@ -90,7 +90,7 @@ A C-shaped profile, eight straight segments, closed back to the start, extruded 
 | `close()`                                            | Close back to start                         |
 | `closeWithMirror()`                                  | Close with mirrored copy of segments so far |
 
-After `close()`, the sketch is a `ClosedWire<'2D'>` ready to extrude / revolve / loft / sweep.
+After `close()`, you have a `Sketch` (a closed wire on its plane) ready to extrude / revolve / loft / sweep.
 
 ### Tangent arcs are the workhorse
 
@@ -137,20 +137,20 @@ const wineGlass = new Sketcher('XZ')
 export default wineGlass;
 ```
 
-The default axis is the plane's vertical axis (Z for XZ, Z for YZ, Y for XY). Override with `revolve({ axis: [0, 0, 1] })` if needed.
+The default axis is world Z (`[0, 0, 1]`) through the sketch origin, whatever the plane. Pass another direction to override it: `revolve([0, 1, 0])`.
 
 ## Lofts
 
 A solid that smoothly interpolates between two or more sketches. The sketches must be in different planes (parallel or angled):
 
 ```typescript
-import { sketchCircle, loft } from 'brepjs/quick';
+import { sketchCircle, loft, unwrap } from 'brepjs/quick';
 
 const profile1 = sketchCircle(10);
-const profile2 = sketchCircle(20).translate([0, 0, 30]);
-const profile3 = sketchCircle(5).translate([0, 0, 60]);
+const profile2 = sketchCircle(20, { origin: 30 }); // XY plane at z=30
+const profile3 = sketchCircle(5, { origin: 60 });
 
-const tapered = loft([profile1, profile2, profile3]);
+const tapered = unwrap(loft([profile1.wire, profile2.wire, profile3.wire]));
 
 export default tapered;
 ```
@@ -162,12 +162,12 @@ The loft passes through every input sketch in order. Useful for ducts, transitio
 A profile dragged along a path:
 
 ```typescript
-import { sketchCircle, line, sweep } from 'brepjs/quick';
+import { sketchCircle, line, wire, sweep, unwrap } from 'brepjs/quick';
 
-const cross = sketchCircle(2); // 2mm radius
-const path = line([0, 0, 0], [50, 0, 0]); // 50mm straight
+const cross = sketchCircle(2); // 2mm radius, on XY
+const path = unwrap(wire([line([0, 0, 0], [0, 0, 50])])); // 50mm straight, along Z
 
-const rod = sweep(cross, path);
+const rod = unwrap(sweep(cross.wire, path));
 
 export default rod;
 ```
@@ -185,23 +185,21 @@ import {
   drawingCut,
   drawingFillet,
   drawingToSketchOnPlane,
-  sketchExtrude,
-  unwrap,
 } from 'brepjs/quick';
 
-const plate = drawRectangle(50, 30);
-const hole = drawCircle(8).translate([25, 15]);
+const plate = drawRectangle(50, 30); // centred on the origin
+const hole = drawCircle(8); // also centred, so it lands mid-plate
 const profile = drawingCut(plate, hole);
 const rounded = drawingFillet(profile, 3);
 
 const sketch = drawingToSketchOnPlane(rounded, 'XY');
-const part = unwrap(sketchExtrude(sketch, 10));
+const part = sketch.extrude(10);
 console.log('Built drawing → sketch → solid');
 
 export default part;
 ```
 
-`drawing*` operations work on `Drawing<'2D'>` values; `drawingToSketchOnPlane` converts to a `Sketch` projected onto the named plane.
+`drawing*` operations work on `Drawing` values; `drawingToSketchOnPlane` converts to a `Sketch` projected onto the named plane.
 
 For most profiles the Sketcher is simpler. Use the Drawing API when you need 2D booleans (the canonical case: a plate with multiple holes that share complex geometry).
 
@@ -210,19 +208,22 @@ For most profiles the Sketcher is simpler. Use the Drawing API when you need 2D 
 You don't have to sketch on the world planes; you can sketch on any face of an existing shape:
 
 ```typescript
-import { box, faceFinder, Sketcher, fuse, unwrap } from 'brepjs/quick';
+import { box, faceFinder, faceCenter, FaceSketcher, fuse, unwrap } from 'brepjs/quick';
 
 const base = box(40, 40, 10);
-const topFace = faceFinder().inDirection('Z').findAll(base)[0];
+const topFace = faceFinder()
+  .when((f) => faceCenter(f)[2] > 5)
+  .findAll(base)[0];
 if (!topFace) throw new Error('No top face');
 
-const boss = new Sketcher(topFace)
-  .movePointerTo([10, 10])
-  .lineTo([30, 10])
-  .lineTo([30, 30])
-  .lineTo([10, 30])
+// FaceSketcher coordinates run from 0 to 1 across the face
+const boss = new FaceSketcher(topFace)
+  .movePointerTo([0.25, 0.25])
+  .lineTo([0.75, 0.25])
+  .lineTo([0.75, 0.75])
+  .lineTo([0.25, 0.75])
   .close()
-  .extrude(5);
+  .extrude(5, { extrusionDirection: [0, 0, 1] });
 
 const part = unwrap(fuse(base, boss));
 console.log('Built feature on top face');
@@ -230,13 +231,13 @@ console.log('Built feature on top face');
 export default part;
 ```
 
-The Sketcher constructor accepts either a plane name (`'XY'`) or a face. When given a face, the sketch coordinates are local to that face's surface.
+The `Sketcher` constructor accepts a plane name (`'XY'`) or a `Plane`; to sketch on a face, use `FaceSketcher`. Its coordinates are normalised across that face's surface (0 to 1 in each direction).
 
 ## Tips
 
 ### Close every sketch before extruding
 
-`extrude` requires a closed wire (it has type `OrientedFace`, which requires `ClosedWire`). Forgetting `.close()` is the most common Sketcher mistake. The compiler catches it; `OrientedFace` is not assignable from an unclosed sketch.
+`extrude` requires a closed wire (it has type `OrientedFace`, which requires `ClosedWire`). Forgetting `.close()` is the most common Sketcher mistake. The compiler does not catch it: `.done()` also returns a `Sketch` with `.extrude`.
 
 ### Don't intersect with yourself
 

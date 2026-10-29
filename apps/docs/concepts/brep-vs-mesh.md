@@ -47,7 +47,7 @@ STEP, IGES, and BREP files describe B-Rep shapes. They round-trip with SolidWork
 
 ### Memory ownership
 
-WASM objects are not garbage-collected. brepjs gives you tools to manage this (the `using` keyword, `DisposalScope`, the fluent `shape()` wrapper that disposes intermediate results), but you must think about it for long-running apps. See [Memory Management](../advanced/memory).
+WASM objects are not garbage-collected. brepjs gives you tools to manage this (the `using` keyword, `DisposalScope`), but you must think about it for long-running apps. See [Memory Management](../advanced/memory).
 
 ### Speed for trivial operations
 
@@ -80,7 +80,7 @@ import { shape, box } from 'brepjs/quick';
 
 const part = box(20, 20, 20);
 const m = shape(part).mesh({ tolerance: 0.1 }); // B-Rep → triangles
-console.log('Triangles:', m.indices.length / 3);
+console.log('Triangles:', m.triangles.length / 3);
 ```
 
 `mesh()` triangulates the B-Rep surfaces with a configurable tolerance. Smaller tolerance → more triangles → better visual fidelity → more memory. The output goes straight to a Three.js `BufferGeometry` (see [Three.js Integration](../integration/threejs)).

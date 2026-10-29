@@ -5,8 +5,8 @@
 Use this table to find which sub-path exports a given symbol. Import from the sub-path for focused autocomplete:
 
 ```typescript
-// Instead of: import { fillet } from 'brepjs';
-import { fillet } from 'brepjs/topology';
+// Instead of: import { fuseAll } from 'brepjs';
+import { fuseAll } from 'brepjs/topology';
 ```
 
 ## Alphabetical Index

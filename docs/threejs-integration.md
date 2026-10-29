@@ -173,7 +173,7 @@ import { getFaceColor } from 'brepjs/quick';
 
 const materials = data.groups.map((g) => {
   // Find the face in the shape to read its color
-  const faces = faceFinder().find(part);
+  const faces = faceFinder().findAll(part);
   const face = faces.find((f) => {
     const faceM = mesh(f, { tolerance: 0.1 });
     return faceM.faceGroups.length > 0 && faceM.faceGroups[0].faceId === g.faceId;
@@ -202,7 +202,7 @@ If you don't need boolean-propagated colors, you can color faces by their normal
 import { faceFinder, colorFaces } from 'brepjs/quick';
 
 const topFaces = faceFinder().inDirection('Z').findAll(part);
-const sideFaces = faceFinder().perpendicular('Z').findAll(part);
+const sideFaces = faceFinder().inDirection('Z', 90).findAll(part); // normal at 90° to Z
 
 colorFaces(part, topFaces, '#4a90d9');
 colorFaces(part, sideFaces, '#6ab04c');

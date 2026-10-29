@@ -29,7 +29,7 @@ For most parametric parts these never matter.
 | Loft / sweep on a long path                       | 10–500 ms                |
 | Healing / sewing imported STEP                    | 100 ms – several seconds |
 | Meshing a high-face-count shape at fine tolerance | seconds                  |
-| `distanceTo` between two complex shapes           | 10–100 ms                |
+| `measureDistance` between two complex shapes      | 10 to 100 ms             |
 
 These are the costs to optimize around.
 
@@ -53,7 +53,7 @@ function meshOnce(s: Shape3D, tolerance = 0.1) {
 const part = box(20, 20, 20);
 const m1 = meshOnce(part);
 const m2 = meshOnce(part); // cache hit
-console.log('Same triangle count:', m1.indices.length === m2.indices.length);
+console.log('Same triangle count:', m1.triangles.length === m2.triangles.length);
 ```
 
 `WeakMap` keyed by the shape handle works because every brepjs shape is a JS object. The cache evicts when the handle is GC'd.
@@ -83,35 +83,35 @@ const drilled2 = unwrap(cutAll(block, tools));
 void drilled2;
 ```
 
-Same applies to `fuseAll` vs. chained `fuse` and `intersectAll` vs. chained `intersect`.
+Same applies to `fuseAll` vs. chained `fuse`.
 
 ## Avoiding the kernel altogether
 
 For specific queries you don't always need the kernel. Bounding boxes are cheap and conservative; use them as filters before expensive operations:
 
 ```typescript
-import { box, getBoundingBox, distanceTo, type Shape3D } from 'brepjs/quick';
+import { box, getBounds, measureDistance, type Shape3D } from 'brepjs/quick';
 
 declare const candidates: Shape3D[];
 declare const target: Shape3D;
-const targetBbox = getBoundingBox(target);
+const targetBbox = getBounds(target);
 
 // Quick reject: candidates whose bounding boxes don't even overlap.
 const close = candidates.filter((c) => {
-  const b = getBoundingBox(c);
+  const b = getBounds(c);
   return !(
-    b.max[0] < targetBbox.min[0] ||
-    b.min[0] > targetBbox.max[0] ||
-    b.max[1] < targetBbox.min[1] ||
-    b.min[1] > targetBbox.max[1] ||
-    b.max[2] < targetBbox.min[2] ||
-    b.min[2] > targetBbox.max[2]
+    b.xMax < targetBbox.xMin ||
+    b.xMin > targetBbox.xMax ||
+    b.yMax < targetBbox.yMin ||
+    b.yMin > targetBbox.yMax ||
+    b.zMax < targetBbox.zMin ||
+    b.zMin > targetBbox.zMax
   );
 });
 
 // Then expensive distance check only on survivors
 for (const c of close) {
-  const d = distanceTo(c, target);
+  const d = measureDistance(c, target);
   void d;
 }
 void box(1, 1, 1); // dummy keep import
@@ -176,7 +176,7 @@ This is how gridfinity-layout-tool runs hundreds of generation operations withou
 
 ## Mesh tolerance is a knob
 
-The `tolerance` argument to `mesh()`, `exportSTL`, and `exportGltf` is a direct cost knob:
+The `tolerance` argument to `mesh()` and `exportSTL` (and so to the mesh you pass `exportGltf`) is a direct cost knob:
 
 ```typescript
 import { shape, box } from 'brepjs/quick';
@@ -189,8 +189,8 @@ const coarse = shape(b).mesh({ tolerance: 1 });
 // Slow, high-detail
 const fine = shape(b).mesh({ tolerance: 0.01 });
 
-console.log('Coarse triangles:', coarse.indices.length / 3);
-console.log('Fine triangles:', fine.indices.length / 3);
+console.log('Coarse triangles:', coarse.triangles.length / 3);
+console.log('Fine triangles:', fine.triangles.length / 3);
 ```
 
 Halving the tolerance roughly quadruples the triangle count. For screen rendering at typical sizes, `tolerance: 0.1` is fine. For 3D printing, set to ~0.05–0.1 mm. For close-up zoom, set lower. Profile the actual render cost before going below 0.01.
@@ -245,7 +245,7 @@ These are optimizations from real-time mesh engines that B-Rep meshing doesn't d
 
 ## Profiling
 
-In Chrome / Edge, the Performance tab + brepjs's `console.time` markers identifies hot operations. For finer-grained:
+In Chrome / Edge, the Performance tab + `console.time` markers around brepjs calls identifies hot operations. For finer-grained:
 
 ```typescript
 import { box, cylinder, cut, fillet, edgeFinder, unwrap } from 'brepjs/quick';
@@ -264,7 +264,7 @@ For sub-operation cost (which face is the slow one in a multi-face fillet, say) 
 
 ## Bench results
 
-The brepjs repo runs benchmarks against both kernels (OpenCascade and brepkit) on every release. Latest results: `benchmarks/results/latest.md` in the repo. Use this for "is brepkit ready for my workload yet?". Generally brepkit wins on simple operations, OpenCascade wins on complex healing and STEP IO.
+The brepjs repo has a kernel-comparison benchmark (`npm run bench:compare`) across OpenCascade, occt-wasm, and brepkit. Latest results: `benchmarks/results/latest.md` in the repo. Use this for "is brepkit ready for my workload yet?". In the latest run brepkit is faster on every benchmarked operation, from primitives to STEP export.
 
 ## Next steps
 

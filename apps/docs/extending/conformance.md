@@ -5,19 +5,20 @@ description: 'The kernel conformance test suite. Run the same tests against ever
 
 # Kernel Conformance Suite
 
-The conformance suite is the test suite brepjs runs against every supported kernel. Same tests, two backends: anywhere a test passes on one kernel and fails on the other, you've found either a kernel bug or a divergence in semantics. If you're [writing a custom kernel](./custom-kernel), the conformance suite is how you verify your adapter.
+The conformance suite is the test suite brepjs runs against every supported kernel. Same tests, every backend (occt-wasm, OpenCascade, brepkit, Manifold): anywhere a test passes on one kernel and fails on another, you've found either a kernel bug or a divergence in semantics. If you're [writing a custom kernel](./custom-kernel), the conformance suite is how you verify your adapter.
 
 ## Running the suite
 
 ```bash
-TEST_KERNEL=occt npm test       # OpenCascade
-TEST_KERNEL=brepkit npm test    # brepkit
-TEST_KERNEL=mykernel npm test   # your custom adapter
+npm run test:ci                      # occt-wasm (the default kernel)
+npm run test:occt                    # OpenCascade
+npm run test:brepkit                 # brepkit
+npx vitest run --project mykernel    # your custom adapter
 ```
 
-The `TEST_KERNEL` environment variable selects which kernel the test setup initialises. Vitest's setup file (`tests/setup-kernel.ts`) reads it and invokes the right `init` path.
+Each kernel is a Vitest project defined in `tests/helpers/kernelRegistry.ts`. The project sets the `TEST_KERNEL` environment variable, and `initKernel()` (`tests/helpers/kernelInit.ts`) reads it and invokes the right `init` path. A custom kernel needs an entry in both files.
 
-For dual-kernel runs, brepjs's CI runs both passes in parallel. The matrix runs every test against every supported kernel.
+brepjs's CI gate runs the suite against the default kernel (occt-wasm), sharded four ways; the other kernels run on demand with the commands above. `npm run conformance:generate` turns the registry's capability flags and recorded divergences into the matrix at `docs/kernel-conformance.md`.
 
 ## What the suite tests
 
@@ -80,7 +81,7 @@ Key conventions:
 
 - `toBeCloseTo(expected, precision)` for floating-point; never `toBe` for geometry
 - `unwrap(result)` is fine in tests; failures throw, the test name pinpoints the issue
-- 30-second timeout on the kernel init; 5 seconds on individual operations
+- 30-second timeout on the kernel init; the per-test timeout is 90 seconds (`vitest.config.ts`)
 - Each test is independent; no shared state across tests
 
 For the full conventions see the brepjs `CONTRIBUTING.md`.
@@ -91,25 +92,25 @@ A custom kernel should produce:
 
 - **Identical** integer counts (face counts, edge counts, vertex counts).
 - **Tolerance-equal** measurements (volumes, areas, distances within `toBeCloseTo(expected, 4)` for normalized inputs).
-- **Identical** error codes for failure modes: `BOOLEAN_NO_OVERLAP`, `FILLET_TOO_LARGE`, etc.
+- **Identical** error codes for failure modes: `FILLET_NO_EDGES`, `INVALID_FILLET_RADIUS`, etc.
 - **Round-trip identity** for serialization: a STEP file written by your kernel and re-read produces the same shape (with kernel-tolerance epsilon).
 
 A kernel that produces a slightly different volume (1000.0001 vs 1000.0000) and otherwise matches is conformant. A kernel that produces 1000 sometimes and 1001 sometimes is not.
 
 ## Documenting divergences
 
-If your kernel deliberately diverges from the OCCT reference (e.g. rejects an operation OpenCascade allows, returns a different validity classification), document it via a per-test override:
+If your kernel deliberately diverges from the OCCT reference (e.g. rejects an operation OpenCascade allows, returns a different validity classification), record it in the divergence registry (`tests/helpers/kernelDivergences.ts`) and call `skipIfDiverges(ctx, key)` from the test, or branch on the kernel inside the test:
 
 <!-- @no-test -->
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { currentKernel } from './setup-kernel.js';
+import { currentKernel } from './setup.js';
 
 describe('boolean on near-coincident geometry', () => {
   it('OCCT produces slivers; brepkit produces clean result', () => {
     // ...
-    if (currentKernel() === 'brepkit') {
+    if (currentKernel === 'brepkit') {
       expect(faceCount).toBe(6); // clean
     } else {
       expect(faceCount).toBe(8); // OCCT adds 2 sliver faces
@@ -122,7 +123,7 @@ The override is honest: the test still runs on both kernels and records the dive
 
 ## Performance: don't run conformance on every commit
 
-The full conformance suite takes minutes. brepjs's CI runs it on `main` and on PRs that touch `src/`, `tests/`, `packages/`, or `kernel/`. The pre-commit hook runs only the changed-file tests. The pre-push hook runs the full suite once.
+The full conformance suite takes minutes. brepjs's CI runs it (against occt-wasm) on `main` and on PRs that touch `src/`, `tests/`, `packages/`, `scripts/`, or build config. The pre-commit hook runs only the changed-file tests; the pre-push hook runs only `knip`.
 
 For a custom kernel, the trade-off depends on your workflow. The author of `MyGeomAdapter` running the suite locally on every kernel change is the typical baseline.
 
@@ -130,7 +131,7 @@ For a custom kernel, the trade-off depends on your workflow. The author of `MyGe
 
 When brepjs adds a new operation, it adds conformance tests in the same PR. The tests double as:
 
-- Verification the operation produces correct output on OCCT and brepkit
+- Verification the operation produces correct output on every kernel
 - Living documentation of what the operation should do
 - Reference for custom-kernel implementers
 

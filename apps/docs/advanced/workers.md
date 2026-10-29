@@ -22,22 +22,19 @@ For apps that build a part on the worker and just need the resulting mesh:
 <!-- @no-test -->
 
 ```typescript
-import { createWorkerClient, type WorkerCommand } from 'brepjs/worker';
+import { createWorkerClient } from 'brepjs/worker';
 
-const client = createWorkerClient(new Worker(new URL('./brepjsWorker.js', import.meta.url)));
+const client = createWorkerClient({
+  worker: new Worker(new URL('./brepjsWorker.js', import.meta.url), { type: 'module' }),
+});
 
 await client.init();
 
-const command: WorkerCommand = {
-  op: 'buildPart',
-  args: { width: 30, depth: 20, height: 10 },
-};
-
-const { mesh } = await client.run(command);
-// mesh is { position, normal, index } typed arrays, ready for Three.js
+const { resultData } = await client.execute('buildPart', [], { width: 30, depth: 20, height: 10 });
+// resultData is what the handler returned: { position, normal, index } typed arrays, ready for Three.js
 ```
 
-`createWorkerClient` returns a typed object with `init()` and `run()` methods. Behind the scenes it serializes commands as messages, posts them, and resolves promises when the worker replies.
+`createWorkerClient` returns a typed object with `init()`, `execute()`, `executeBatch()`, and `dispose()` methods. Behind the scenes it serializes commands as messages, posts them, and resolves promises when the worker replies. Input shapes travel as BREP strings (the second `execute` argument).
 
 The worker side imports the same protocol:
 
@@ -45,19 +42,21 @@ The worker side imports the same protocol:
 
 ```typescript
 // brepjsWorker.js
-import { createWorkerServer } from 'brepjs/worker';
+import { createOperationRegistry, registerHandler, createWorkerHandler } from 'brepjs/worker';
 import { box, shape, toBufferGeometryData } from 'brepjs/quick';
 
-createWorkerServer({
-  buildPart: ({ width, depth, height }) => {
-    const part = box(width, depth, height);
-    const m = shape(part).mesh({ tolerance: 0.1 });
-    return { mesh: toBufferGeometryData(m) };
-  },
+const registry = registerHandler(createOperationRegistry(), 'buildPart', (_shapesBrep, params) => {
+  const { width, depth, height } = params as { width: number; depth: number; height: number };
+  const part = box(width, depth, height);
+  const m = shape(part).mesh({ tolerance: 0.1 });
+  return { resultData: toBufferGeometryData(m) };
 });
+
+// brepjs/quick already initialized the kernel, so the init hook has nothing to do.
+createWorkerHandler(registry, async () => {});
 ```
 
-`createWorkerServer` registers the command handlers, sets up the message protocol, and you write the actual operation as a normal function.
+`registerHandler` adds a named operation to the registry; `createWorkerHandler` sets up the message protocol and runs your init function on `client.init()`. You write the actual operation as a normal function.
 
 ### Option 2: roll-your-own with raw `postMessage`
 
@@ -148,12 +147,12 @@ The worker has to init brepjs just like the main thread. `brepjs/quick` works in
 
 ```typescript
 // worker.js
-import { box } from 'brepjs/quick';
+import { box, measureVolume, unwrap } from 'brepjs/quick';
 
 // brepjs/quick auto-initializes via top-level await; works in workers too.
 self.onmessage = (e) => {
   if (e.data.kind === 'build') {
-    self.postMessage({ kind: 'volume', value: box(10, 10, 10) });
+    self.postMessage({ kind: 'volume', value: unwrap(measureVolume(box(10, 10, 10))) });
   }
 };
 ```
@@ -163,8 +162,8 @@ For environments without top-level await:
 <!-- @no-test -->
 
 ```typescript
-import { OcctKernel } from 'occt-wasm/worker';
-import { registerKernel, OcctWasmAdapter, box } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box, measureVolume, unwrap } from 'brepjs';
 
 let ready: Promise<void> | null = null;
 
@@ -181,14 +180,14 @@ async function ensureReady() {
 self.onmessage = async (e) => {
   await ensureReady();
   if (e.data.kind === 'build') {
-    self.postMessage({ kind: 'volume', value: box(10, 10, 10) });
+    self.postMessage({ kind: 'volume', value: unwrap(measureVolume(box(10, 10, 10))) });
   }
 };
 ```
 
 The `ensureReady` pattern handles concurrent first-message races: every message awaits the same singleton promise.
 
-occt-wasm ships a dedicated `./worker` export (imported above) that loads its WASM in a worker-friendly way, so you don't have to wire up an explicit asset URL. If you instead use the `brepjs-opencascade` build, see the `?url` pattern below for handing the worker an explicit WASM URL.
+`OcctKernel.init()` locates its WASM next to the occt-wasm JS module via `import.meta.url`, so you don't have to wire up an explicit asset URL. (occt-wasm's separate `occt-wasm/worker` export is `OcctWorker`, a main-thread proxy to raw OCCT; brepjs doesn't use it.) If you instead use the `brepjs-opencascade` build, see the `?url` pattern below for handing the worker an explicit WASM URL.
 
 ## Vite + workers
 
@@ -243,7 +242,7 @@ self.onmessage = (e) => {
       const a = scope.track(box(10, 10, 10));
       const b = scope.track(sphere(5));
       const fused = scope.track(unwrap(fuse(a, b)));
-      const m = scope.track(shape(fused).mesh({ tolerance: 0.1 }));
+      const m = shape(fused).mesh({ tolerance: 0.1 }); // plain typed arrays, no disposal
       return toBufferGeometryData(m); // primitives, safe to return
     });
     self.postMessage(result, [result.position.buffer, result.normal.buffer, result.index.buffer]);

@@ -172,11 +172,11 @@ For shapes from outside (STEP imports, deserialized data), use the type guards:
 <!-- @no-test -->
 
 ```typescript
-import { isClosedWire, face, unwrap } from 'brepjs/quick';
+import { isClosedWire, isPlanarWire, face, unwrap } from 'brepjs/quick';
 
 declare const someWire: import('brepjs').Wire;
 
-if (isClosedWire(someWire)) {
+if (isClosedWire(someWire) && isPlanarWire(someWire)) {
   const f = unwrap(face(someWire)); // Now type-safe.
   void f;
 }

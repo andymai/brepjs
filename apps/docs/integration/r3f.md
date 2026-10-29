@@ -107,7 +107,7 @@ The brepjs handles never cross the React tree; only typed arrays do. This is wha
 
 ## Picking and selection
 
-To make faces or edges clickable, project Three.js raycasts back to brepjs entities. The trick: store a mapping from triangle index to face ID at mesh time:
+To make faces or edges clickable, project Three.js raycasts back to brepjs entities. The trick: every mesh carries `faceGroups`, the index range each B-Rep face occupies:
 
 <!-- @no-test -->
 
@@ -120,17 +120,18 @@ interface Picked { faceId: number; }
 function SelectableBrepMesh({ part }: { part: Shape3D }) {
   const [selected, setSelected] = useState<Picked | null>(null);
   const data = useMemo(() => {
-    const m = shape(part).mesh({ tolerance: 0.1, includeFaceMap: true });
-    return { ...toBufferGeometryData(m), faceMap: m.faceMap }; // map[triangleIndex] = faceId
+    const m = shape(part).mesh({ tolerance: 0.1 });
+    return { ...toBufferGeometryData(m), faceGroups: m.faceGroups }; // { start, count, faceId } per face
   }, [part]);
 
   return (
     <mesh
       onClick={(e) => {
         e.stopPropagation();
-        if (e.face && data.faceMap) {
-          const triIdx = e.face.a / 3 | 0;
-          setSelected({ faceId: data.faceMap[triIdx] ?? -1 });
+        if (e.faceIndex != null) {
+          const i = e.faceIndex * 3; // triangle -> index-buffer offset
+          const group = data.faceGroups.find((g) => i >= g.start && i < g.start + g.count);
+          setSelected({ faceId: group?.faceId ?? -1 });
         }
       }}
     >
@@ -145,7 +146,7 @@ function SelectableBrepMesh({ part }: { part: Shape3D }) {
 }
 ```
 
-`includeFaceMap: true` returns a per-triangle face index. R3F's pointer events give you the triangle that was hit; look it up in the map to find the brepjs face.
+Each `faceGroups` entry gives the `start` and `count` of one B-Rep face's entries in the index buffer. R3F's pointer events give you the triangle that was hit (`faceIndex`); find the group that contains it to get the brepjs face.
 
 ## Hover highlighting
 
@@ -176,19 +177,15 @@ For face-level highlighting (not whole-mesh), combine the technique above with a
 ```typescript
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { edgeFinder, meshEdges, type Shape3D } from 'brepjs/quick';
+import { meshEdges, toLineGeometryData, type Shape3D } from 'brepjs/quick';
 
 function BrepEdges({ part, tolerance = 0.05 }: { part: Shape3D; tolerance?: number }) {
-  const data = useMemo(() => {
-    const edges = edgeFinder().findAll(part);
-    return meshEdges(edges, { tolerance });
-  }, [part, tolerance]);
+  const data = useMemo(() => toLineGeometryData(meshEdges(part, { tolerance })), [part, tolerance]);
 
   return (
     <lineSegments>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" array={data.position} itemSize={3} count={data.position.length / 3} />
-        <bufferAttribute attach="index" array={data.index} itemSize={1} count={data.index.length} />
       </bufferGeometry>
       <lineBasicMaterial color="#111111" />
     </lineSegments>

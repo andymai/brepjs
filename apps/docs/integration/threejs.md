@@ -12,7 +12,7 @@ brepjs is the kernel; Three.js is the renderer. The combination is the standard 
 ```
 brepjs Shape3D
    ↓ shape(s).mesh({ tolerance })
-Mesh handle
+ShapeMesh (plain typed arrays)
    ↓ toBufferGeometryData(m)
 { position, normal, index } typed arrays
    ↓ feed into Three.js BufferGeometry
@@ -264,15 +264,13 @@ For exact B-Rep edges including small fillets:
 
 ```typescript
 import * as THREE from 'three';
-import { edgeFinder, meshEdges, type Shape3D } from 'brepjs/quick';
+import { meshEdges, toLineGeometryData, type Shape3D } from 'brepjs/quick';
 
 declare const part: Shape3D;
-const allEdges = edgeFinder().findAll(part);
-const edgeData = meshEdges(allEdges, { tolerance: 0.05 }); // returns positions, indices
+const edgeData = toLineGeometryData(meshEdges(part, { tolerance: 0.05 })); // { position }, 2 vertices per segment
 
 const lineGeo = new THREE.BufferGeometry();
 lineGeo.setAttribute('position', new THREE.BufferAttribute(edgeData.position, 3));
-lineGeo.setIndex(new THREE.BufferAttribute(edgeData.index, 1));
 
 const lineMat = new THREE.LineBasicMaterial({ color: 0x111111 });
 const lines = new THREE.LineSegments(lineGeo, lineMat);
@@ -298,7 +296,7 @@ Combine with a good environment map (e.g. `RGBELoader` HDRi) for realistic refle
 - **Re-meshing every frame**: cache the mesh on the brepjs side; only re-mesh when the shape changes.
 - **High-tolerance meshes for distant parts**: mesh at 1 mm tolerance for previews, only refine for the active selection.
 - **Disposing the wrong thing**: dispose Three.js `BufferGeometry`, `Material`, `Mesh` separately when removing; Three.js does not auto-clean.
-- **Forgetting brepjs disposal**: meshing allocates a brepjs-side handle. Use `using` or `withScope` to release it.
+- **Forgetting brepjs disposal**: the mesh is plain typed arrays, but the shape you meshed is a brepjs-side handle. Use `using` or `withScope` to release it.
 
 ## Next steps
 
