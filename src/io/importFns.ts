@@ -4,10 +4,11 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
-import type { UnknownDimShape } from '@/core/shapeTypes.js';
-import { castResultShape } from '@/core/shapeTypes.js';
+import type { AnyShape, Dimension, UnknownDimShape } from '@/core/shapeTypes.js';
+import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
+import { getFaces } from '@/topology/topologyQueryFns.js';
 
 /**
  * Import a STEP file from a Blob.
@@ -46,14 +47,18 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
   }
 }
 
+const STL_SEW_TOLERANCE = 1e-6;
+
 /**
  * Import an STL file from a Blob.
  *
- * Reads the mesh, unifies same-domain faces with `ShapeUpgrade_UnifySameDomain`,
- * and wraps the result as a solid.
+ * Reads the triangle mesh and sews its facets together. A closed mesh becomes a
+ * `Solid` (one planar face per facet), so booleans and volume measurement work on
+ * it directly. An open mesh has no interior, so it comes back as a sewn `Shell`.
  *
  * @param blob - A Blob or File containing STL data (binary or ASCII).
- * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported solid (or shell for an open mesh), or
+ *   an error if parsing fails.
  *
  * @remarks The temporary file on the WASM FS is cleaned up automatically.
  *
@@ -65,13 +70,29 @@ export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
 export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
-    const shape = getKernel().importSTL(data);
-    if (shape.IsNull()) {
+    const raw = getKernel().importSTL(data);
+    if (raw.IsNull()) {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
-    return ok(castResultShape(shape));
+    const shape = castResultShape(raw);
+    if (isSolid(shape)) return ok(shape);
+    using facets = shape;
+    return ok(sewFacets(facets));
   } catch (e) {
     return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file', e));
+  }
+}
+
+/** Sew a bag of facet faces into a solid, or into a shell when the mesh is open. */
+function sewFacets(facets: AnyShape<Dimension>): UnknownDimShape {
+  const kernel = getKernel();
+  const faces = getFaces(facets).map((f) => f.wrapped);
+  try {
+    return castResultShape(kernel.sewAndSolidify(faces, STL_SEW_TOLERANCE));
+  } catch {
+    // An open sewn shell is left un-solidified by the orientation fix, so the
+    // solid downcast throws (castResultShape releases the rejected slot).
+    return castResultShape(kernel.sew(faces, STL_SEW_TOLERANCE));
   }
 }
 

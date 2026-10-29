@@ -4,14 +4,19 @@ import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   castShape,
+  cut,
   exportIGES,
   exportSTEP,
   exportSTL,
+  getFaces,
   importIGES,
   importSTEP,
   importSTL,
   isErr,
   isOk,
+  isShell,
+  isSolid,
+  measureArea,
   measureVolume,
   unwrap,
 } from '@/index.js';
@@ -121,6 +126,49 @@ describe('importSTL', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
+  });
+
+  it('imports a closed mesh as a solid that booleans measure correctly', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using source = box(20, 20, 20);
+    const stlBlob = unwrap(exportSTL(source));
+
+    using imported = unwrap(await importSTL(stlBlob));
+    expect(isSolid(imported)).toBe(true);
+    if (!isSolid(imported)) return;
+    expect(unwrap(measureVolume(imported))).toBeCloseTo(8000, 3);
+
+    using tool = box(10, 10, 10);
+    using result = unwrap(cut(imported, tool));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(7000, 3);
+  });
+
+  it('imports an open mesh as a sewn shell', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    const asciiStl = [
+      'solid square',
+      'facet normal 0 0 1',
+      'outer loop',
+      'vertex 0 0 0',
+      'vertex 1 0 0',
+      'vertex 1 1 0',
+      'endloop',
+      'endfacet',
+      'facet normal 0 0 1',
+      'outer loop',
+      'vertex 0 0 0',
+      'vertex 1 1 0',
+      'vertex 0 1 0',
+      'endloop',
+      'endfacet',
+      'endsolid square',
+    ].join('\n');
+
+    using imported = unwrap(await importSTL(new Blob([asciiStl])));
+    expect(isShell(imported)).toBe(true);
+    if (!isShell(imported)) return;
+    expect(getFaces(imported)).toHaveLength(2);
+    expect(unwrap(measureArea(imported))).toBeCloseTo(1, 6);
   });
 });
 

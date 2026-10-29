@@ -95,6 +95,8 @@ import {
   variableFillet,
   getVertices,
   getShells,
+  exportSTL,
+  importSTL,
   fixShape,
   solidFromShell,
   autoHeal,
@@ -194,6 +196,35 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using _m = translate(b, [1, 0, 0]);
         })
       ).toBe(0);
+    });
+
+    it('STL import sewing leaks nothing for closed and open meshes', async () => {
+      const closed = (() => {
+        using b = box(10, 10, 10);
+        return unwrap(exportSTL(b));
+      })();
+      const open = new Blob([
+        [
+          'solid square',
+          'facet normal 0 0 1',
+          'outer loop',
+          'vertex 0 0 0',
+          'vertex 1 0 0',
+          'vertex 1 1 0',
+          'endloop',
+          'endfacet',
+          'endsolid square',
+        ].join('\n'),
+      ]);
+      for (const blob of [closed, open]) {
+        const importOnce = async () => {
+          using _s = unwrap(await importSTL(blob));
+        };
+        await importOnce();
+        const before = arenaCount();
+        for (let i = 0; i < 5; i++) await importOnce();
+        expect(arenaCount() - before).toBe(0);
+      }
     });
 
     it('sub-shape extraction (getFaces/getEdges) leaks nothing when disposed', () => {

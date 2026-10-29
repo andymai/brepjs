@@ -21,7 +21,7 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 | **DXF** (.dxf)          | ✓    | ✓     | 2D laser cutting                        |
 | **SVG** (.svg)          | ✓    | ✓     | 2D for the web / signage                |
 
-STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work.
+STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`.
 
 ## Export
 
