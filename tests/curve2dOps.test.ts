@@ -240,6 +240,17 @@ describeOcctWasm('reversal', () => {
     expect(basis.sense).toBe(true);
     for (const s of SAMPLES) expectClose(evaluateCurve2d(rev, s), evaluateCurve2d(arc, 1 - s));
   });
+
+  it('leaves an earlier trim in place when its source curve is reversed', () => {
+    const circle = makeCircle2d(0, 0, 10, true);
+    const arc = unwrap(trimCurve2d(createCurve2DHandle(circle), 0, Math.PI / 2));
+    const before = SAMPLES.map((s) => unwrap(evaluateHandle(arc, s)));
+    new Curve2D(circle).reverse();
+    expect(circle.sense).toBe(false);
+    SAMPLES.forEach((s, i) => {
+      expectClose(unwrap(evaluateHandle(arc, s)), before[i] as Pt);
+    });
+  });
 });
 
 describeOcctWasm('bounding boxes', () => {

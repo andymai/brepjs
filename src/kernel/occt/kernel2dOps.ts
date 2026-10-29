@@ -175,7 +175,13 @@ export function getCurve2dType(curve: Curve2dHandle): string {
 // ═══════════════════════════════════════════════════════════════════════
 
 export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-  return { __bk2d: 'trimmed', basis: c2d(curve), tStart: start, tEnd: end } as Curve2dObj;
+  // A copied basis, as in Geom2d_TrimmedCurve, so an in-place reverse can't move this trim.
+  return {
+    __bk2d: 'trimmed',
+    basis: structuredClone(c2d(curve)),
+    tStart: start,
+    tEnd: end,
+  } as Curve2dObj;
 }
 
 export function reverseCurve2d(curve: Curve2dHandle): void {

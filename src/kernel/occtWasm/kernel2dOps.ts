@@ -273,7 +273,14 @@ export function getCurve2dType(curve: Curve2dHandle): string {
 // ─── Curve transforms ───────────────────────────────────────────────────────
 
 export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-  return c2dWrap({ __bk2d: 'trimmed' as const, basis: c2d(curve), tStart: start, tEnd: end });
+  // The basis is a copy (as Geom2d_TrimmedCurve copies it): the handle object is the
+  // curve itself, so sharing it would let an in-place reverse move this trim.
+  return c2dWrap({
+    __bk2d: 'trimmed' as const,
+    basis: structuredClone(c2d(curve)),
+    tStart: start,
+    tEnd: end,
+  });
 }
 
 export function reverseCurve2d(curve: Curve2dHandle): void {
