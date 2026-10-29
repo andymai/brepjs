@@ -1,0 +1,59 @@
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_26afee8a4a5372 194-198
+  s_d4ab5fb2066c9b::t_68cf2f508a3b93 305-309
+  s_d4ab5fb2066c9b::t_4e91ef455ff0eb 579-583
+src/topology/api.ts
+  s_d4ab5fb2066c9b::t_9f21f660b16f32 425-428,433-434,438
+  s_d4ab5fb2066c9b::t_4a855997da82b4 313-324,326-329,331-342,344-358,360
+llms-full.txt
+  s_d4ab5fb2066c9b::t_a299c207c44f69 446-448
+src/topology/chamferAngleFns.ts
+  s_d4ab5fb2066c9b::t_2309c9916c59fb 4-6,10-12,21-100,134-135,143-193,195-199,203-206,208-210,213-225,227-228
+  s_d4ab5fb2066c9b::t_a54484f863233b 229,231
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_6bb3a08187d130 3
+  s_d4ab5fb2066c9b::t_230035e92fcaf7 50
+llms.txt
+  s_d4ab5fb2066c9b::t_e94990fd245a20 446-448
+tests/occtWasmLegacyBuilds.test.ts
+  s_d4ab5fb2066c9b::t_816b6c1c4fb318 113-125
+.size-limit.json
+  s_d4ab5fb2066c9b::t_ccd03a02f82755 2-3
+src/kernel/occtWasm/modifierOps.ts
+  s_d4ab5fb2066c9b::t_ab0f8091e1b9c7 77-80,98-99,106
+  s_d4ab5fb2066c9b::t_693d2d5dc3632d 76,81-85,89-92,104-105,123-162
+  s_d4ab5fb2066c9b::t_f395e030400f73 163
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_a7535586a152e5 662-676
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_db8ba4aaefc317 59-64
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_3e5a8b381d6ca1 287-288
+  s_d4ab5fb2066c9b::t_8acb65a7c4d9a5 152-165,167-281,283-286
+  s_d4ab5fb2066c9b::t_a42376f3a39de2 166
+  s_d4ab5fb2066c9b::t_5d6c6e0d28ed21 6,8-12
+  s_d4ab5fb2066c9b::t_1e0e5ab5b336a4 282
+  s_d4ab5fb2066c9b::t_b0d3fe0cfd7513 23
+src/kernel/interfaces/modifierOps.ts
+  s_d4ab5fb2066c9b::t_d103ab0be4e13a 29-40
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_37f02301ed1b5d 758-764
+apps/docs/reference/errors.md
+  s_d4ab5fb2066c9b::t_05919ec2582cba 80,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2687ab73315ef74a73ead9ea322a2682d9af5ffd",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
