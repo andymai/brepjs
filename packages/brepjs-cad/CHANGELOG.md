@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.0](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.3...brepjs-cad-v0.192.0) (2026-10-29)
+
+
+### Features
+
+* **brepjs-cad:** add a Claude Code CLI eval and publish its first results ([#2494](https://github.com/andymai/brepjs/issues/2494)) ([f30e88e](https://github.com/andymai/brepjs/commit/f30e88ebcec3ecdffa6a37ba34bdf3a0a824b9fe))
+
 ## [0.191.3](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.191.2...brepjs-cad-v0.191.3) (2026-10-28)
 
 
