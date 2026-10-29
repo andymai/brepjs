@@ -11,6 +11,11 @@
   "exclude": [
     "node_modules",
     "dist",
+    // These import brepjs-bim, -sheetmetal, and -families, whose types come from builds
+    // that the CI typecheck job doesn't run (vitest aliases them to src instead).
+    "tests/helpers/playgroundExampleEval.ts",
+    "tests/playgroundExamples.test.ts",
+    "tests/validateCandidate.test.ts",
     "tests/2d.test.ts",
     "tests/blueprintContour.test.ts",
     "tests/blueprintFns.test.ts",
@@ -100,7 +105,6 @@
     "tests/sweepSketchOrientation.test.ts",
     "tests/threemfImport.test.ts",
     "tests/topology.test.ts",
-    "tests/validateCandidate.test.ts",
     "tests/validityTypes.test.ts",
     "tests/variableFillet.test.ts",
     "tests/wasmArenaDisposal.test.ts",
