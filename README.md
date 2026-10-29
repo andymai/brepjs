@@ -10,7 +10,7 @@ Exact B-Rep CAD in TypeScript, built so AI agents can write parts and check them
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-https://github.com/user-attachments/assets/c4717814-3600-4dd3-b180-9aabb7b35e0a
+https://github.com/user-attachments/assets/a8dce262-2a86-4db2-8956-9d8ca8adcae4
 
 </div>
 
@@ -23,7 +23,7 @@ npm i -D brepjs brepjs-cad occt-wasm
 npx brep verify part.brep.ts
 ```
 
-MCP clients can use the `brep-mcp` server instead, and Claude Code users can install the authoring skills as a plugin (`/plugin marketplace add andymai/brepjs`).
+MCP clients can use the `brep-mcp` server instead, and Claude Code users can install the authoring skills as a plugin: `/plugin marketplace add andymai/brepjs`, then `/plugin install brepjs@brepjs`.
 
 An agent rebuilt the 46 parts in our example gallery from their descriptions, and all 46 passed verify. [How we measured it](https://brepjs.dev/agent/eval).
 
