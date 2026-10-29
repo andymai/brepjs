@@ -307,6 +307,11 @@ export function rawOffsets(
   }
 
   const iterateOffsetCurves = function* (): Generator<OffsetCurvePair> {
+    // A single closed curve is its own neighbour: one pass joins its end to its start.
+    if (offsetCurves.length === 1) {
+      yield safeIndex(offsetCurves, 0, 'rawOffsets');
+      return;
+    }
     for (const curve of offsetCurves.slice(0, -1)) {
       yield curve;
     }
@@ -394,7 +399,13 @@ export function offsetBlueprint(
 ): Shape2D {
   const offsettedArray = rawOffsets(blueprint, offset, offsetConfig);
 
-  if (offsettedArray.length < 2) return null;
+  const [onlyCurve] = offsettedArray;
+  if (
+    !onlyCurve ||
+    (offsettedArray.length === 1 && !samePoint(onlyCurve.firstPoint, onlyCurve.lastPoint))
+  ) {
+    return null;
+  }
 
   // We remove the self intersections with the use the the algorithm as described in https://github.com/jbuckmccready/CavalierContours#offset-algorithm-and-stepwise-example
 

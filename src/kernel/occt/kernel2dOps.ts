@@ -175,11 +175,19 @@ export function getCurve2dType(curve: Curve2dHandle): string {
 // ═══════════════════════════════════════════════════════════════════════
 
 export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-  return { __bk2d: 'trimmed', basis: c2d(curve), tStart: start, tEnd: end } as Curve2dObj;
+  // A copied basis, as in Geom2d_TrimmedCurve, so an in-place reverse can't move this trim.
+  return {
+    __bk2d: 'trimmed',
+    basis: structuredClone(c2d(curve)),
+    tStart: start,
+    tEnd: end,
+  } as Curve2dObj;
 }
 
-export function reverseCurve2d(_curve: Curve2dHandle): void {
-  /* Mutates in-place — no-op for immutable objects */
+export function reverseCurve2d(curve: Curve2dHandle): void {
+  // In place (Geom2d_Curve::Reverse): the handle object takes the reversed fields.
+  const c = c2d(curve);
+  Object.assign(c, g2d.reverseCurve2d(c));
 }
 
 export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
@@ -187,22 +195,7 @@ export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
 }
 
 export function offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
-  const c = c2d(curve);
-  const bounds = g2d.curveBounds(c);
-  const N = 30;
-  const poles: [number, number][] = [];
-  for (let i = 0; i <= N; i++) {
-    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
-    const [px, py] = g2d.evaluateCurve2d(c, t);
-    const [tvx, tvy] = g2d.tangentCurve2d(c, t);
-    const tLen = Math.sqrt(tvx * tvx + tvy * tvy);
-    if (tLen > 1e-12) {
-      poles.push([px - (tvy / tLen) * offset, py + (tvx / tLen) * offset]);
-    } else {
-      poles.push([px, py]);
-    }
-  }
-  return makeBSpline2d(poles);
+  return g2d.offsetCurve2d(c2d(curve), offset);
 }
 
 export function translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {

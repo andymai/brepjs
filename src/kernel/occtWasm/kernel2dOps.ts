@@ -11,9 +11,17 @@
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import * as ow2d from '@/kernel/geometry2d.js';
-import type { Curve2dObj } from '@/kernel/geometry2d.js';
+import type { Bezier2d, BSpline2d, Curve2dObj, Ellipse2d } from '@/kernel/geometry2d.js';
+import {
+  asBSpline2d,
+  bezierSegments2d,
+  fitBSpline2d,
+  interpolateBSpline2d,
+  subBSpline2d,
+} from '@/kernel/bspline2dFit.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, unwrap } from './helpers.js';
+import { makeEllipseArc, makeEllipseEdge } from './constructionOps.js';
 import { curveParameters, curvePointAtParam } from './curveOps.js';
 import { uvFromPoint } from './surfaceOps.js';
 
@@ -222,30 +230,16 @@ export function makeBSpline2d(
     smoothing?: [number, number, number] | null;
   }
 ): Curve2dHandle {
-  // Build a genuine B-spline (poles = input points, clamped knot vector) so
-  // getCurve2dType reports BSPLINE_CURVE and decomposeBSpline2dToBeziers works.
-  // The pure-TS 2D system has no fitting solver, so this approximates (passes
-  // through the endpoints) rather than interpolating every point.
-  const poles = points;
-  const n = poles.length;
-  const degree = Math.max(1, Math.min(options?.degMax ?? 3, n - 1));
-  const knots: number[] = [0];
-  const mults: number[] = [degree + 1];
-  const nInternalKnots = n - degree - 1;
-  for (let i = 1; i <= nInternalKnots; i++) {
-    knots.push(i / (nInternalKnots + 1));
-    mults.push(1);
+  // Interpolates every point (chord-length parameters), which meets any
+  // Geom2dAPI_PointsToBSpline tolerance. Repeated points would make the
+  // collocation system singular, so consecutive duplicates are dropped.
+  const pts: [number, number][] = [];
+  for (const p of points) {
+    const prev = pts[pts.length - 1];
+    if (!prev || Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 1e-12) pts.push([p[0], p[1]]);
   }
-  knots.push(1);
-  mults.push(degree + 1);
-  return c2dWrap({
-    __bk2d: 'bspline' as const,
-    poles,
-    knots,
-    multiplicities: mults,
-    degree,
-    isPeriodic: false,
-  });
+  if (pts.length < 2) throw new Error('occt-wasm: makeBSpline2d needs at least 2 distinct points');
+  return c2dWrap(interpolateBSpline2d(pts, options?.degMax ?? 3));
 }
 
 // ─── Curve evaluation / metadata ────────────────────────────────────────────
@@ -279,11 +273,21 @@ export function getCurve2dType(curve: Curve2dHandle): string {
 // ─── Curve transforms ───────────────────────────────────────────────────────
 
 export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-  return c2dWrap({ __bk2d: 'trimmed' as const, basis: c2d(curve), tStart: start, tEnd: end });
+  // The basis is a copy (as Geom2d_TrimmedCurve copies it): the handle object is the
+  // curve itself, so sharing it would let an in-place reverse move this trim.
+  return c2dWrap({
+    __bk2d: 'trimmed' as const,
+    basis: structuredClone(c2d(curve)),
+    tStart: start,
+    tEnd: end,
+  });
 }
 
-export function reverseCurve2d(_curve: Curve2dHandle): void {
-  // Curves are immutable in our pure-TS 2D system — reverse is a no-op.
+export function reverseCurve2d(curve: Curve2dHandle): void {
+  // Reverse is in place (Geom2d_Curve::Reverse), so the handle object takes the
+  // reversed fields. Trimmed curves get a fresh basis, never a mutated shared one.
+  const c = c2d(curve);
+  Object.assign(c, ow2d.reverseCurve2d(c));
 }
 
 export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
@@ -291,22 +295,7 @@ export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
 }
 
 export function offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
-  // Approximate offset by sampling + shifting normals.
-  const c = c2d(curve);
-  const bounds = ow2d.curveBounds(c);
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= 20; i++) {
-    const t = bounds.first + ((bounds.last - bounds.first) * i) / 20;
-    const [px, py] = ow2d.evaluateCurve2d(c, t);
-    const [tx, ty] = ow2d.tangentCurve2d(c, t);
-    const len = Math.sqrt(tx * tx + ty * ty) || 1;
-    pts.push([px - (ty / len) * offset, py + (tx / len) * offset]);
-  }
-  return c2dWrap(
-    ow2d.makeBezier2d(
-      pts.length <= 25 ? pts : pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1)
-    )
-  );
+  return c2dWrap(ow2d.offsetCurve2d(c2d(curve), offset));
 }
 
 export function translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {
@@ -350,8 +339,7 @@ export function mirrorCurve2dAcrossAxis(
 /**
  * Directional affinity matching OCCT `gp_GTrsf2d::SetAffinity`: scales the
  * component perpendicular to the axis `(dx, dy)` through `(ox, oy)` by `ratio`,
- * leaving the parallel component fixed. Applied by sampling and refitting as a
- * Bezier, since occt-wasm has no native Geom2d transform.
+ * leaving the parallel component fixed.
  */
 export function affinityCurve2d(
   curve: Curve2dHandle,
@@ -372,16 +360,7 @@ export function affinityCurve2d(
     e = 1 + k * py * py;
   const tx = ox - a * ox - b * oy;
   const ty = oy - d * ox - e * oy;
-  const c = c2d(curve);
-  const bounds = ow2d.curveBounds(c);
-  const N = 20;
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= N; i++) {
-    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
-    const [qx, qy] = ow2d.evaluateCurve2d(c, t);
-    pts.push([a * qx + b * qy + tx, d * qx + e * qy + ty]);
-  }
-  return c2dWrap(ow2d.makeBezier2d(pts));
+  return c2dWrap(ow2d.affineCurve2d(c2d(curve), { a, b, c: d, d: e, tx, ty }));
 }
 
 export function affinityTransform2d(
@@ -591,126 +570,61 @@ export function distanceBetweenCurves2d(
   p2Start: number,
   p2End: number
 ): number {
-  const n = 20;
-  let minDist = Infinity;
-  for (let i = 0; i <= n; i++) {
-    const t1 = p1Start + (p1End - p1Start) * (i / n);
-    const [x1, y1] = ow2d.evaluateCurve2d(c2d(c1), t1);
-    for (let j = 0; j <= n; j++) {
-      const t2 = p2Start + (p2End - p2Start) * (j / n);
-      const [x2, y2] = ow2d.evaluateCurve2d(c2d(c2), t2);
-      const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-      if (d < minDist) minDist = d;
-    }
-  }
-  return minDist;
+  return ow2d.distanceBetweenCurves2d(c2d(c1), c2d(c2), p1Start, p1End, p2Start, p2End);
 }
 
+/**
+ * The exact B-spline of a Bezier or B-spline basis over its trim range, traversed
+ * from `from` to `to`; null for an empty range.
+ */
+function trimmedPoleCurve(basis: Bezier2d | BSpline2d, from: number, to: number): BSpline2d | null {
+  if (from === to) return null;
+  const sub = subBSpline2d(asBSpline2d(basis), Math.min(from, to), Math.max(from, to));
+  if (from < to) return sub;
+  const reversed = ow2d.reverseCurve2d(sub);
+  return reversed.__bk2d === 'bspline' ? reversed : null;
+}
+
+/**
+ * Degree <= 3 B-spline within `tolerance` of the curve (Geom2dConvert_ApproxCurve
+ * with MaxDegree 3, as brepjs calls it); exact where the curve already is one.
+ */
 export function approximateCurve2dAsBSpline(
   curve: Curve2dHandle,
+  tolerance: number,
   maxSegments: number
 ): Curve2dHandle {
-  const cu = c2d(curve);
+  const cu = ow2d.flattenTrimmed(c2d(curve));
+  const basis = cu.__bk2d === 'trimmed' ? cu.basis : cu;
+  const poleCurve = basis.__bk2d === 'bspline' || basis.__bk2d === 'bezier' ? basis : null;
+  if (poleCurve && asBSpline2d(poleCurve).degree <= 3) {
+    if (cu.__bk2d !== 'trimmed') return copyCurve2d(asBSpline2d(poleCurve));
+    const exact = trimmedPoleCurve(poleCurve, cu.tStart, cu.tEnd);
+    if (exact) return c2dWrap(exact);
+  }
+  if (cu.__bk2d === 'line') {
+    return c2dWrap(
+      asBSpline2d(
+        ow2d.makeBezier2d([ow2d.evaluateCurve2d(cu, 0), ow2d.evaluateCurve2d(cu, cu.len)])
+      )
+    );
+  }
   const bounds = ow2d.curveBounds(cu);
-  const nPts = Math.min(Math.max(maxSegments + 1, 10), 100);
-  const poles: [number, number][] = [];
-  for (let i = 0; i < nPts; i++) {
-    const t = bounds.first + ((bounds.last - bounds.first) * i) / (nPts - 1);
-    poles.push(ow2d.evaluateCurve2d(cu, t));
-  }
-  const degree = Math.min(3, nPts - 1);
-  const n = poles.length;
-  const knots: number[] = [];
-  const mults: number[] = [];
-  const nInternalKnots = n - degree - 1;
-  knots.push(0);
-  mults.push(degree + 1);
-  for (let i = 1; i <= nInternalKnots; i++) {
-    knots.push(i / (nInternalKnots + 1));
-    mults.push(1);
-  }
-  knots.push(1);
-  mults.push(degree + 1);
-
-  return c2dWrap({
-    __bk2d: 'bspline' as const,
-    poles,
-    knots,
-    multiplicities: mults,
-    degree,
-    isPeriodic: false,
-  });
+  return c2dWrap(
+    fitBSpline2d((t) => ow2d.evaluateCurve2d(cu, t), bounds.first, bounds.last, tolerance, {
+      maxSegments: Math.max(8, maxSegments),
+      breaks: ow2d.curveKnotParams(cu),
+    })
+  );
 }
 
 export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-  let cu = c2d(curve);
-  while (cu.__bk2d === 'trimmed') cu = cu.basis;
-  if (cu.__bk2d !== 'bspline') return [curve];
-
-  const poles: [number, number][] = cu.poles;
-  const p: number = cu.degree;
-  // Expand knots+multiplicities into the full knot vector U.
-  const U: number[] = [];
-  for (let i = 0; i < cu.knots.length; i++) {
-    const knot = cu.knots[i] ?? 0;
-    const mult = cu.multiplicities[i] ?? 0;
-    for (let j = 0; j < mult; j++) U.push(knot);
-  }
-  const n = poles.length - 1;
-  const m = n + p + 1;
-  // A clamped, non-rational B-spline has |U| = n + p + 2. Bail to a single
-  // Bezier on the control polygon if the curve is malformed.
-  if (p < 1 || U.length !== m + 1) {
-    return [c2dWrap(ow2d.makeBezier2d(poles))];
-  }
-
-  // NURBS Book Algorithm A5.6 (DecomposeCurve): knot-insert every interior knot
-  // up to multiplicity p, yielding one Bezier segment (p+1 poles) per span.
-  const clone = (pt: [number, number]): [number, number] => [pt[0], pt[1]];
-  const segments: [number, number][][] = [];
-  let a = p;
-  let b = p + 1;
-  let segPoles: [number, number][] = [];
-  for (let i = 0; i <= p; i++) segPoles[i] = clone(poles[i] as [number, number]);
-  let nextPoles: [number, number][] = [];
-  while (b < m) {
-    const i0 = b;
-    while (b < m && U[b + 1] === U[b]) b++;
-    const mult = b - i0 + 1;
-    if (mult < p) {
-      const numer = (U[b] as number) - (U[a] as number);
-      const alphas: number[] = [];
-      for (let j = p; j > mult; j--) {
-        alphas[j - mult - 1] = numer / ((U[a + j] as number) - (U[a] as number));
-      }
-      const r = p - mult;
-      for (let j = 1; j <= r; j++) {
-        const save = r - j;
-        const s = mult + j;
-        for (let k = p; k >= s; k--) {
-          const alpha = alphas[k - s] as number;
-          const cur = segPoles[k] as [number, number];
-          const prev = segPoles[k - 1] as [number, number];
-          segPoles[k] = [
-            alpha * cur[0] + (1 - alpha) * prev[0],
-            alpha * cur[1] + (1 - alpha) * prev[1],
-          ];
-        }
-        if (b < m) nextPoles[save] = clone(segPoles[p] as [number, number]);
-      }
-    }
-    segments.push(segPoles);
-    if (b < m) {
-      for (let i = p - mult; i <= p; i++) {
-        nextPoles[i] = clone(poles[b - p + i] as [number, number]);
-      }
-      segPoles = nextPoles;
-      nextPoles = [];
-      a = b;
-      b++;
-    }
-  }
-  return segments.map((sp) => c2dWrap(ow2d.makeBezier2d(sp)));
+  const cu = ow2d.flattenTrimmed(c2d(curve));
+  const basis = cu.__bk2d === 'trimmed' ? cu.basis : cu;
+  if (basis.__bk2d !== 'bspline') return [curve];
+  const piece = cu.__bk2d === 'trimmed' ? trimmedPoleCurve(basis, cu.tStart, cu.tEnd) : basis;
+  if (!piece) return [curve];
+  return bezierSegments2d(piece).map((poles) => c2dWrap(ow2d.makeBezier2d(poles)));
 }
 
 // ─── 2D bounding boxes ──────────────────────────────────────────────────────
@@ -816,7 +730,186 @@ export function splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHan
 
 // ─── Lifting 2D curves to 3D edges ──────────────────────────────────────────
 
-// brepjs-patterns-disable: max-function-lines
+type Vec3 = [number, number, number];
+
+interface PlaneFrame {
+  readonly point: (u: number, v: number) => Vec3;
+  readonly dir: (u: number, v: number) => Vec3;
+  readonly normal: Vec3;
+}
+
+function planeFrame(origin: Vec3, z: Vec3, x: Vec3): PlaneFrame {
+  const [ox, oy, oz] = origin;
+  const [zx, zy, zz] = z;
+  const [xx, xy, xz] = x;
+  const yx = zy * xz - zz * xy,
+    yy = zz * xx - zx * xz,
+    yz = zx * xy - zy * xx;
+  return {
+    point: (u, v) => [ox + u * xx + v * yx, oy + u * xy + v * yy, oz + u * xz + v * yz],
+    dir: (u, v) => [u * xx + v * yx, u * xy + v * yy, u * xz + v * yz],
+    normal: z,
+  };
+}
+
+/** Lift an ellipse (or an arc of it over `range`) as an exact OCCT ellipse edge. */
+function liftEllipse(
+  k: OcctKernelWasm,
+  frame: PlaneFrame,
+  basis: Ellipse2d,
+  range: [number, number] | null
+): KernelShape {
+  // OCCT arcs run counter-clockwise about their normal from start to end, so a
+  // decreasing range becomes the opposite-sense ellipse over the negated range.
+  let e = basis;
+  let r = range;
+  if (r && r[1] < r[0]) {
+    e = { ...e, sense: !e.sense };
+    r = [-r[0], -r[1]];
+  }
+  let major = e.majorRadius;
+  let minor = e.minorRadius;
+  let angle = e.xDirAngle;
+  let shift = 0;
+  if (major < minor) {
+    // gp_Elips needs major >= minor: swap the axes and turn the frame a quarter.
+    [major, minor] = [minor, major];
+    angle += Math.PI / 2;
+    shift = e.sense ? -Math.PI / 2 : Math.PI / 2;
+  }
+  const n = frame.normal;
+  const normal: Vec3 = e.sense ? n : [-n[0], -n[1], -n[2]];
+  const center = frame.point(e.cx, e.cy);
+  const xDir = frame.dir(Math.cos(angle), Math.sin(angle));
+  if (!r || r[1] - r[0] >= 2 * Math.PI - 1e-12) {
+    return makeEllipseEdge(k, center, normal, major, minor, xDir);
+  }
+  return makeEllipseArc(k, center, normal, major, minor, r[0] + shift, r[1] + shift, xDir);
+}
+
+function splitBezier(
+  poles: [number, number][],
+  t: number
+): [[number, number][], [number, number][]] {
+  const work = poles.map(([x, y]) => [x, y] as [number, number]);
+  const n = work.length;
+  const left: [number, number][] = [];
+  const right: [number, number][] = [];
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- indices bounded by the pole count */
+  left.push([...work[0]!]);
+  right.push([...work[n - 1]!]);
+  for (let r = 1; r < n; r++) {
+    for (let i = 0; i < n - r; i++) {
+      const a = work[i]!;
+      const b = work[i + 1]!;
+      work[i] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    }
+    left.push([...work[0]!]);
+    right.push([...work[n - 1 - r]!]);
+  }
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  return [left, right.reverse()];
+}
+
+/** Poles of the Bezier restricted to [from, to] (either order), traversed from -> to. */
+function bezierSegmentPoles(
+  poles: [number, number][],
+  from: number,
+  to: number
+): [number, number][] {
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  let seg = poles;
+  if (hi < 1) seg = splitBezier(seg, hi)[0];
+  if (lo > 0) seg = splitBezier(seg, hi > 0 ? lo / hi : 0)[1];
+  return from <= to ? seg : [...seg].reverse();
+}
+
+function liftBezier(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  frame: PlaneFrame,
+  poles: [number, number][]
+): KernelShape {
+  const vec = new Module.VectorDouble();
+  try {
+    for (const [u, v] of poles) for (const x of frame.point(u, v)) vec.push_back(x);
+    return handle('edge', k.makeBezierEdge(vec));
+  } finally {
+    vec.delete();
+  }
+}
+
+/** Lift a non-periodic B-spline exactly (an affine lift maps poles to poles). */
+function liftBSpline(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  frame: PlaneFrame,
+  c: BSpline2d
+): KernelShape | null {
+  if (!k.makeBSplineEdge || c.isPeriodic) return null;
+  const poles = new Module.VectorDouble();
+  const weights = new Module.VectorDouble();
+  const knots = new Module.VectorDouble();
+  const mults = new Module.VectorInt();
+  try {
+    for (const [u, v] of c.poles) for (const x of frame.point(u, v)) poles.push_back(x);
+    for (const knot of c.knots) knots.push_back(knot);
+    for (const m of c.multiplicities) mults.push_back(m);
+    return handle('edge', k.makeBSplineEdge(poles, weights, knots, mults, c.degree, false));
+  } finally {
+    poles.delete();
+    weights.delete();
+    knots.delete();
+    mults.delete();
+  }
+}
+
+function liftFitted(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  frame: PlaneFrame,
+  cu: Curve2dObj
+): KernelShape {
+  const bounds = ow2d.curveBounds(cu);
+  const bbox = ow2d.createBBox2d();
+  ow2d.addCurveToBBox(bbox, cu, 0);
+  const extent = Math.hypot(bbox.xMax - bbox.xMin, bbox.yMax - bbox.yMin);
+  const knots = ow2d.curveKnotParams(cu);
+  const fit = fitBSpline2d(
+    (t) => ow2d.evaluateCurve2d(cu, t),
+    bounds.first,
+    bounds.last,
+    1e-9 * Math.max(1, extent),
+    { breaks: knots }
+  );
+  const exact = liftBSpline(k, Module, frame, fit);
+  if (exact) return exact;
+  const nSamples = Math.max(24, fit.poles.length);
+  const span = bounds.last - bounds.first;
+  const params: number[] = [];
+  for (let i = 0; i <= nSamples; i++) params.push(bounds.first + (span * i) / nSamples);
+  // A knot on (or within rounding of) a sample would repeat a point, which
+  // makes GeomAPI_Interpolate's system singular.
+  for (const t of knots) {
+    const nearest =
+      bounds.first + (span * Math.round(((t - bounds.first) / span) * nSamples)) / nSamples;
+    if (Math.abs(t - nearest) > 1e-9 * span) params.push(t);
+  }
+  params.sort((a, b) => a - b);
+  const distinct = params.filter((t, i) => i === 0 || t - (params[i - 1] ?? t) > 1e-9 * span);
+  const vec = new Module.VectorDouble();
+  try {
+    for (const t of distinct) {
+      const [u, v] = ow2d.evaluateCurve2d(cu, t);
+      for (const x of frame.point(u, v)) vec.push_back(x);
+    }
+    return handle('edge', k.interpolatePoints(vec, false));
+  } finally {
+    vec.delete();
+  }
+}
+
 export function liftCurve2dToPlane(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
@@ -825,90 +918,51 @@ export function liftCurve2dToPlane(
   planeZ: [number, number, number],
   planeX: [number, number, number]
 ): KernelShape {
-  const cu = c2d(curve);
-  const [ox, oy, oz] = planeOrigin;
-  const [zx, zy, zz] = planeZ;
-  const [xx, xy, xz] = planeX;
-  const yx = zy * xz - zz * xy,
-    yy = zz * xx - zx * xz,
-    yz = zx * xy - zy * xx;
-  const lift = (u: number, v: number): [number, number, number] => [
-    ox + u * xx + v * yx,
-    oy + u * xy + v * yy,
-    oz + u * xz + v * yz,
-  ];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-  const bk2dType = (cu as any).__bk2d as string;
-  if (bk2dType === 'line') {
-    const bounds = ow2d.curveBounds(cu);
-    const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-    const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-    const p1 = lift(u1, v1);
-    const p2 = lift(u2, v2);
-    return handle('edge', k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
-  }
-  if (bk2dType === 'trimmed') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
-    const trimmed = cu as any;
-    if (trimmed.basis && trimmed.basis.__bk2d === 'line') {
-      const [u1, v1] = ow2d.evaluateCurve2d(cu, 0);
-      const [u2, v2] = ow2d.evaluateCurve2d(cu, 1);
-      const p1 = lift(u1, v1);
-      const p2 = lift(u2, v2);
+  const cu = ow2d.flattenTrimmed(c2d(curve));
+  const frame = planeFrame(planeOrigin, planeZ, planeX);
+  const trimmed = cu.__bk2d === 'trimmed' ? cu : null;
+  const basis = trimmed ? trimmed.basis : cu;
+  const range: [number, number] | null = trimmed ? [trimmed.tStart, trimmed.tEnd] : null;
+  const bounds = ow2d.curveBounds(cu);
+
+  switch (basis.__bk2d) {
+    case 'line': {
+      const p1 = frame.point(...ow2d.evaluateCurve2d(cu, bounds.first));
+      const p2 = frame.point(...ow2d.evaluateCurve2d(cu, bounds.last));
       return handle('edge', k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
     }
-    if (trimmed.basis && trimmed.basis.__bk2d === 'circle') {
+    case 'circle': {
+      if (!range || Math.abs(range[1] - range[0]) >= 2 * Math.PI - 1e-12) {
+        const [pcx, pcy, pcz] = frame.point(basis.cx, basis.cy);
+        const [zx, zy, zz] = planeZ;
+        return handle('edge', k.makeCircleEdge(pcx, pcy, pcz, zx, zy, zz, basis.radius));
+      }
       // 3-point arc through three lifted points to ensure endpoint coordinates
       // are bit-identical with the line branches' lifts (so MakeWire merges
       // with default tolerance).
-      const bounds = ow2d.curveBounds(cu);
-      const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-      const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
-      const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-      const p1 = lift(u1, v1);
-      const pm = lift(um, vm);
-      const p2 = lift(u2, v2);
+      const p1 = frame.point(...ow2d.evaluateCurve2d(cu, bounds.first));
+      const pm = frame.point(...ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2));
+      const p2 = frame.point(...ow2d.evaluateCurve2d(cu, bounds.last));
       return handle(
         'edge',
         k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
       );
     }
-  }
-  if (bk2dType === 'circle') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect circle data
-    const circleData = cu as any;
-    if (circleData.cx !== undefined && circleData.radius !== undefined) {
-      const [pcx, pcy, pcz] = lift(circleData.cx, circleData.cy);
-      return handle('edge', k.makeCircleEdge(pcx, pcy, pcz, zx, zy, zz, circleData.radius));
+    case 'ellipse':
+      return liftEllipse(k, frame, basis, range);
+    case 'bezier':
+      return liftBezier(
+        k,
+        Module,
+        frame,
+        range ? bezierSegmentPoles(basis.poles, range[0], range[1]) : basis.poles
+      );
+    case 'bspline': {
+      const piece = range ? trimmedPoleCurve(basis, range[0], range[1]) : basis;
+      return (piece && liftBSpline(k, Module, frame, piece)) || liftFitted(k, Module, frame, cu);
     }
-    const bounds = ow2d.curveBounds(cu);
-    const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-    const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
-    const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-    const p1 = lift(u1, v1);
-    const pm = lift(um, vm);
-    const p2 = lift(u2, v2);
-    return handle(
-      'edge',
-      k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
-    );
-  }
-  // Fallback: sample + interpolate.
-  const bounds = ow2d.curveBounds(cu);
-  const nSamples = 24;
-  const dt = (bounds.last - bounds.first) / nSamples;
-  const pts: number[] = [];
-  for (let i = 0; i <= nSamples; i++) {
-    const [u, v] = ow2d.evaluateCurve2d(cu, bounds.first + i * dt);
-    const [px, py, pz] = lift(u, v);
-    pts.push(px, py, pz);
-  }
-  const vec = new Module.VectorDouble();
-  for (const p of pts) vec.push_back(p);
-  try {
-    return handle('edge', k.interpolatePoints(vec, false));
-  } finally {
-    vec.delete();
+    case 'trimmed':
+      return liftFitted(k, Module, frame, cu);
   }
 }
 
@@ -957,11 +1011,9 @@ export function extractCurve2dFromEdge(
   // occt-wasm exposes no native pcurve adaptor (BRepAdaptor_Curve2d), so
   // reconstruct the edge's 2D curve on the face: sample the 3D edge, project each
   // point onto the face surface via uvFromPoint (GeomAPI_ProjectPointOnSurf), and
-  // fit a 2D B-spline through the samples — the same projection approach brepkit
-  // uses. Accuracy: makeBSpline2d has no fitting solver and treats the samples as
-  // control poles, so a straight (LINE) edge is exact, while a curved pcurve (an
-  // arc/circle on a planar face, or any curved edge) is a smooth approximation
-  // that bows slightly inside the samples — the deviation shrinks as N rises.
+  // interpolate a 2D B-spline through the samples, the same projection approach
+  // brepkit uses. A curved pcurve is exact at the samples and within the cubic
+  // interpolation error between them.
   // Point projection also snaps to the nearest UV branch, so a seam-crossing edge
   // on a periodic surface (cylinder/cone) can jump branches.
   const [first, last] = curveParameters(k, edge);

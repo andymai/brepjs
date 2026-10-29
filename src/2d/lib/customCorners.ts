@@ -10,7 +10,26 @@ import {
   make2dThreePointArc,
 } from './makeCurves.js';
 import { make2dOffset } from './offset.js';
-import { add2d, crossProduct2d, normalize2d, scalarMultiply2d } from './vectorOperations.js';
+import {
+  add2d,
+  crossProduct2d,
+  normalize2d,
+  scalarMultiply2d,
+  squareDistance2d,
+} from './vectorOperations.js';
+
+/**
+ * The offset curves of a corner can cross more than once (a line and an arc
+ * meeting at both ends of a semicircle); the fillet center is the crossing
+ * nearest the corner, whatever order the intersector reports them in.
+ */
+function nearestTo(points: Point2D[], corner: Point2D): Point2D | undefined {
+  let best: Point2D | undefined;
+  for (const p of points) {
+    if (!best || squareDistance2d(p, corner) < squareDistance2d(best, corner)) best = p;
+  }
+  return best;
+}
 
 /** Unwrap an intersection, discarding the common-segment curves the caller does not use. */
 function intersectionPoints(first: Curve2D, second: Curve2D): Point2D[] {
@@ -98,7 +117,7 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
       c.delete();
     });
 
-    const potentialCenter = intersectionResult.value.intersections.at(-1);
+    const potentialCenter = nearestTo(intersectionResult.value.intersections, firstCurve.lastPoint);
     if (!isPoint2D(potentialCenter)) {
       return null;
     }
@@ -222,7 +241,10 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
     intersectionResult2.value.commonSegments.forEach((c) => {
       c.delete();
     });
-    const potentialCenter = intersectionResult2.value.intersections.at(-1);
+    const potentialCenter = nearestTo(
+      intersectionResult2.value.intersections,
+      firstCurve.lastPoint
+    );
     if (!isPoint2D(potentialCenter)) {
       return [firstCurve, secondCurve];
     }
