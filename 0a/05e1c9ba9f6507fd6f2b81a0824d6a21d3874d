@@ -1,0 +1,23 @@
+tests/dimensionTypes.test.ts
+  s_d4ab5fb2066c9b::t_13d521e4c4ac8f 27-37,201-220
+  s_d4ab5fb2066c9b::t_5881de9a6302a5 221-222
+src/topology/topologyQueryFns.ts
+  s_d4ab5fb2066c9b::t_b219498ee8acf5 18
+  s_d4ab5fb2066c9b::t_05aac937c188e4 172-173,188-189,199-200,210-211,258-259,267-268,276-277,285-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a05e1c9ba9f6507fd6f2b81a0824d6a21d3874d",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
