@@ -1,0 +1,29 @@
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_d07bc6dcfcde5b 7,11,17-19
+  s_d4ab5fb2066c9b::t_437e925400ee17 130-172
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_64accf82a4d3d5 7-8,11
+  s_d4ab5fb2066c9b::t_efbbda8e37ce5c 50-51,55-57,60-61,73-74,77-80,86-95
+  s_d4ab5fb2066c9b::t_b7ecd96e725d67 96-98
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_8ecf46e1889b8d 201-229
+  s_d4ab5fb2066c9b::t_6c1b55c2e1be07 98-99
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_833005d8c14157 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0024077ab980d06f064b69b12e6a0a5c40b0751b",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
