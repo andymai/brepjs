@@ -1,0 +1,24 @@
+src/kernel/occtWasm/kernel2dOps.ts
+  s_d4ab5fb2066c9b::t_b32aebb4827a15 888-889
+  s_d4ab5fb2066c9b::t_e7f8acd1fd22e1 882-887,890
+  s_d4ab5fb2066c9b::t_57a74849873f14 893,896
+tests/curve2dOps.test.ts
+  s_d4ab5fb2066c9b::t_eb7a1b970dab6a 21,526-553
+  s_d4ab5fb2066c9b::t_c7566c246a0c92 554-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cd1eeec20c9879a7452307989676ff0d21f08e4",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
