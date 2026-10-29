@@ -186,7 +186,8 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
   },
   INVALID_EDGE_SELECTION: {
     fix: 'The fillet/chamfer arguments are in the wrong order: the edges come second and the radius/distance third.',
-    nextStep: 'Rewrite the call as fillet(solid, edges, radius) or chamfer(solid, edges, distance) and re-verify.',
+    nextStep:
+      'Rewrite the call as fillet(solid, edges, radius) or chamfer(solid, edges, distance) and re-verify.',
   },
   INVALID_FILLET_RADIUS: {
     fix: 'Use a fillet radius that is > 0 and small enough to fit the adjacent faces (well under half the thinnest wall).',
@@ -332,6 +333,18 @@ const HINT_TABLE: Record<string, { fix: string; nextStep: string }> = {
   TYPECHECK: {
     fix: 'Fix the TypeScript type error before running the part — the API call or value does not match brepjs’s types.',
     nextStep: 'Correct the flagged type (e.g. argument/return type or import), then re-verify.',
+  },
+  PART_NOT_A_SHAPE: {
+    fix: 'The default export must return a shape (or a Result of one). A Sketch or Drawing needs `.extrude(h)`, and several shapes go through `compound([...])` or `fuseAll([...])`.',
+    nextStep: 'Return the finished shape from the part function, then re-verify.',
+  },
+  PART_NOT_3D: {
+    fix: 'The part is a 2D or 1D shape (a face, wire, edge, or vertex), so it has no volume to check. A profile usually still needs `extrude`, `revolve`, or `thicken`.',
+    nextStep: 'Turn the profile into a solid, then re-verify.',
+  },
+  EXPECTED_INVALID_VALUE: {
+    fix: 'Every value in `expected` must be a plain number. `x.toFixed(1)` returns a string; write the arithmetic itself, such as `volume: Math.PI * r * r * h`.',
+    nextStep: 'Make each flagged field a number, then re-verify.',
   },
   EXPECTED_UNKNOWN_KEY: {
     fix: 'Your `expected` block has keys the CLI does not assert (so the intended check never ran). Bounds must be `{ xMin, xMax, yMin, yMax, zMin, zMax }` — not `{ min, max }` or `{ x, y, z }`.',
