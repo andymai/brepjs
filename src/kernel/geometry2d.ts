@@ -823,9 +823,11 @@ function intersectCircleCircle(
   const dx = circ2.cx - circ1.cx;
   const dy = circ2.cy - circ1.cy;
   const d = Math.sqrt(dx * dx + dy * dy);
-  // Centers rebuilt from arc endpoints drift by rounding; within this the two circles
-  // are the same, and the general solution below degenerates into spurious crossings.
-  const sameTol = Math.max(tol, 1e-9 * Math.max(circ1.radius, circ2.radius));
+  // Centers and radii rebuilt from arc endpoints drift by rounding (about 2e-16 of the
+  // radius), which outgrows the caller's tolerance on large circles; within this the two
+  // circles are the same, and the general solution below degenerates into spurious
+  // crossings. The relative term stays far below any real gap (1e-6 at radius 1e6).
+  const sameTol = Math.max(tol, 1e-12 * Math.max(circ1.radius, circ2.radius));
   if (d <= sameTol) {
     if (Math.abs(circ1.radius - circ2.radius) > sameTol) return { points: [], segments: [] };
     return intersectCoincidentArcs(c1, circ1, c2, circ2, tol);

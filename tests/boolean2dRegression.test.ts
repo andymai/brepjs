@@ -21,6 +21,7 @@ import {
   unwrap,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
+import { intersectCurves } from '@/2d/lib/index.js';
 import type { Drawing } from '@/sketching/drawing.js';
 
 beforeAll(async () => {
@@ -539,6 +540,18 @@ describe('arcs that coincide along part of their length', () => {
   it('cuts a circle that coincides with a rounded end', () => {
     const result = drawRoundedRectangle(20, 10, 5).cut(drawCircle(5).translate(-5, 0));
     expect(totalArea(result)).toBeCloseTo(100, 3);
+  });
+
+  it('keeps large concentric circles apart when their radii differ beyond the tolerance', () => {
+    const inner = drawCircle(1_000_000).blueprint;
+    const outer = drawCircle(1_000_000.0005).blueprint;
+    for (const a of inner.curves) {
+      for (const b of outer.curves) {
+        const { intersections, commonSegments } = unwrap(intersectCurves(a, b, 1e-9));
+        expect(commonSegments).toHaveLength(0);
+        expect(intersections).toHaveLength(0);
+      }
+    }
   });
 });
 
