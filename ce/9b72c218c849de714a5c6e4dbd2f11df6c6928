@@ -1,0 +1,21 @@
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_b5541824db3761 1242-1245
+tests/boolean2dRegression.test.ts
+  s_d4ab5fb2066c9b::t_1cbc3ee8be9ae1 7,25-26,572-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce9b72c218c849de714a5c6e4dbd2f11df6c6928",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
