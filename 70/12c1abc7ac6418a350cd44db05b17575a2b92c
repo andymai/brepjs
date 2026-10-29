@@ -1,0 +1,26 @@
+src/operations/compoundOpsFns.ts
+  s_d4ab5fb2066c9b::t_3c8b0ae1b9e32d 25,320
+src/operations/patternFns.ts
+  s_d4ab5fb2066c9b::t_3c8b0ae1b9e32d 15,36,80,84,131,155-156,159-160
+tests/patterns.test.ts
+  s_d4ab5fb2066c9b::t_6afef56246d360 15,17,36,169,190,238-271
+  s_d4ab5fb2066c9b::t_9cd23e0e7f952a 272
+tests/compoundOps.test.ts
+  s_d4ab5fb2066c9b::t_6afef56246d360 172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7012c1abc7ac6418a350cd44db05b17575a2b92c",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
