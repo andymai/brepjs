@@ -53,10 +53,15 @@ export function linearPattern(
 /**
  * Create a circular pattern of a shape around an axis.
  *
+ * A full turn (`fullAngle` of ±360) spaces the copies `fullAngle / count`
+ * apart, so the last copy does not land on the first. Any other angle is an
+ * open arc: the first copy stays in place, the last lands at `fullAngle`, and
+ * they are spaced `fullAngle / (count - 1)` apart.
+ *
  * @param shape - The shape to replicate
  * @param axis - Rotation axis direction
  * @param count - Total number of copies (including the original)
- * @param fullAngle - Total angle to spread copies over in degrees (default: 360)
+ * @param fullAngle - Angle in degrees the copies span (default: 360)
  * @param center - Center point of rotation (default: [0,0,0])
  * @param options - Boolean options for the fuse operation
  * @returns Fused shape of all copies
@@ -75,7 +80,8 @@ export function circularPattern(
   if (vecIsZero(axis))
     return err(validationError('PATTERN_ZERO_AXIS', 'Pattern axis cannot be zero'));
 
-  const angleStep = fullAngle / count;
+  const fullTurn = Math.abs(Math.abs(fullAngle) - 360) < 1e-9;
+  const angleStep = fullAngle / (fullTurn ? count : count - 1);
   const ocShapes = getKernel().circularPattern(
     shape.wrapped,
     [...center],

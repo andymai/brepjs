@@ -92,22 +92,25 @@ describe('circularPattern', () => {
   });
 
   // Volume is blind to where non-overlapping copies land, so placement is
-  // checked against the bounds of the same copies rotated one by one.
+  // checked against the bounds of the same copies rotated one by one. A full
+  // turn steps by fullAngle / count; an open arc ends on fullAngle, so it steps
+  // by fullAngle / (count - 1).
   it.each([
-    { count: 4, fullAngle: 360, axis: [0, 0, 1], center: [0, 0, 0] },
-    { count: 3, fullAngle: 180, axis: [0, 0, 1], center: [0, 0, 0] },
-    { count: 5, fullAngle: 90, axis: [0, 0, 1], center: [3, -2, 0] },
-    { count: 3, fullAngle: 240, axis: [1, 1, 0], center: [0, 0, 4] },
-  ] as { count: number; fullAngle: number; axis: Vec3; center: Vec3 }[])(
-    'steps $count copies by $fullAngle / count degrees about $axis at $center',
-    ({ count, fullAngle, axis, center }) => {
+    { count: 4, fullAngle: 360, step: 90, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 3, fullAngle: -360, step: -120, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 3, fullAngle: 180, step: 90, axis: [0, 0, 1], center: [0, 0, 0] },
+    { count: 5, fullAngle: 90, step: 22.5, axis: [0, 0, 1], center: [3, -2, 0] },
+    { count: 3, fullAngle: 240, step: 120, axis: [1, 1, 0], center: [0, 0, 4] },
+  ] as { count: number; fullAngle: number; step: number; axis: Vec3; center: Vec3 }[])(
+    'steps $count copies over $fullAngle degrees by $step about $axis at $center',
+    ({ count, fullAngle, step, axis, center }) => {
       using seed0 = box(2, 1, 1);
       using seed = translate(seed0, [10, 0.5, 0]);
       using pattern = unwrap(circularPattern(seed, axis, count, fullAngle, center));
 
       let expected: Bounds3D | undefined;
       for (let i = 0; i < count; i++) {
-        using copy = rotate(seed, (i * fullAngle) / count, { axis, at: center });
+        using copy = rotate(seed, i * step, { axis, at: center });
         const b = getBounds(copy);
         expected = expected
           ? {
@@ -128,6 +131,16 @@ describe('circularPattern', () => {
       }
     }
   );
+
+  it('puts the last copy at the end of an open arc', () => {
+    // 4 copies over 90 degrees land at 0, 30, 60 and 90 degrees.
+    using seed0 = box(2, 2, 2);
+    using seed = translate(seed0, [10, -1, 0]);
+    using pattern = unwrap(circularPattern(seed, [0, 0, 1], 4, 90));
+    const b = getBounds(pattern);
+    expect(b.yMax).toBeCloseTo(12, 3);
+    expect(b.xMin).toBeCloseTo(-1, 3);
+  });
 
   it('places two copies over a full turn opposite each other', () => {
     using seed0 = box(2, 2, 2);

@@ -518,13 +518,13 @@ const row = linearPattern(shape, [1, 0, 0], 5, 10);
 // 8 copies in a full circle around Z axis (fused together)
 const ring = circularPattern(shape, [0, 0, 1], 8);
 
-// 6 copies in 180-degree arc around Z, centered at [10, 0, 0]
+// 6 copies over a 180-degree arc around Z (0, 36, ..., 180), centered at [10, 0, 0]
 const arc = circularPattern(shape, [0, 0, 1], 6, 180, [10, 0, 0]);
 ```
 
 `linearPattern(shape, direction, count, spacing, options?)`: `count` includes the original. Returns `Result<Shape3D>` (all copies fused).
 
-`circularPattern(shape, axis, count, fullAngle?, center?, options?)`: `fullAngle` default 360 degrees. `center` default `[0,0,0]`. Returns `Result<Shape3D>`.
+`circularPattern(shape, axis, count, fullAngle?, center?, options?)`: `fullAngle` default 360 degrees. A full 360 spaces copies `360 / count` apart; any other angle is an open arc whose first copy stays put and last lands at `fullAngle` (spacing `fullAngle / (count - 1)`). `center` default `[0,0,0]`. Returns `Result<Shape3D>`.
 
 `rectangularPattern(shape, { xDir, xCount, xSpacing, yDir, yCount, ySpacing })`: 2D grid pattern. Returns `Result<Shape3D>`.
 
