@@ -1,0 +1,37 @@
+src/kernel/occtWasm/kernel2dOps.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 14-15,18,227-236,285,329,350,560,563-578,581,584-591,593-597,774-942,951-961,964-969,973-975,981-993,1042-1044
+tests/curve2dOps.test.ts
+  s_d4ab5fb2066c9b::t_e3d58ca6ae9f75 418
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 16,25-33,44,49-50,52-53,82-92,148,290-417,419-446
+src/kernel/geometry2d.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 18-19,523-524,531-545,618-975
+  s_d4ab5fb2066c9b::t_57ed67fe759a39 976
+tests/blueprintContour.test.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 104-107,121
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 369-377
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 1788,1796,1931,1935
+src/kernel/occt/kernel2dOps.ts
+  s_d4ab5fb2066c9b::t_3ad6e4d0aa1c4d 192
+src/kernel/bspline2dFit.ts
+  s_d4ab5fb2066c9b::t_c9ad6a79b572a5 72,176-179
+  s_d4ab5fb2066c9b::t_d5a8fb0f5ed4e2 187
+  s_d4ab5fb2066c9b::t_7f64b9f2cb28bb 1-71,73-175,180-186,188-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81c54a86acd134c99e3683b6d05a54349a1a1633",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
