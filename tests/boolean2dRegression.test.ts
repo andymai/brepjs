@@ -558,23 +558,25 @@ describe('arcs that coincide along part of their length', () => {
     expect(totalArea(result)).toBeCloseTo(100, 3);
   });
 
-  it('keeps large concentric circles apart when their radii differ beyond the tolerance', () => {
-    const inner = drawCircle(1_000_000).blueprint;
-    const outer = drawCircle(1_000_000.0005).blueprint;
-    for (const a of inner.curves) {
-      for (const b of outer.curves) {
-        const { intersections, commonSegments } = unwrap(intersectCurves(a, b, 1e-9));
-        expect(commonSegments).toHaveLength(0);
-        expect(intersections).toHaveLength(0);
+  it.each([0.0005, 1e-7])(
+    'keeps large concentric circles apart when their radii differ by %s',
+    (delta) => {
+      const inner = drawCircle(1_000_000).blueprint;
+      const outer = drawCircle(1_000_000 + delta).blueprint;
+      for (const a of inner.curves) {
+        for (const b of outer.curves) {
+          const { intersections, commonSegments } = unwrap(intersectCurves(a, b, 1e-9));
+          expect(commonSegments).toHaveLength(0);
+          expect(intersections).toHaveLength(0);
+        }
       }
     }
-  });
+  );
 
-  it.skipIf(currentKernel !== 'occt-wasm')(
-    'keeps the gap of a nearly full arc out of its overlap with a circle',
-    () => {
+  it.skipIf(currentKernel !== 'occt-wasm').each([5e-11, 5e-13])(
+    'keeps a %s radian gap of a nearly full arc out of its overlap with a circle',
+    (gap) => {
       const radius = 1_000_000;
-      const gap = 5e-11;
       const circle = new Curve2D(makeCircle2d(0, 0, radius, true));
       const arc = new Curve2D({
         __bk2d: 'trimmed',

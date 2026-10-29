@@ -1240,9 +1240,8 @@ function intersectCoincidentArcs(
   const a = arcSpan(c1, circ1);
   const b = arcSpan(c2, circ2);
   const angleTol = tol / circ1.radius;
-  // An arc is a full circle when its gap is within the distance tolerance; the floor
-  // only absorbs rounding in the angles, so a real gap on a large circle stays open.
-  const isFull = (sweep: number) => turn - sweep <= Math.max(angleTol, 1e-12);
+  // An arc is a full circle when its gap is within the distance tolerance.
+  const isFull = (sweep: number) => turn - sweep <= angleTol;
   // Relative to a.start, b covers [d, d + b.sweep] and, one turn earlier, the same
   // range shifted by -2pi; each copy can overlap a separately.
   const d = (((b.start - a.start) % turn) + turn) % turn;
@@ -1282,13 +1281,8 @@ function intersectCircleCircle(
   const dx = circ2.cx - circ1.cx;
   const dy = circ2.cy - circ1.cy;
   const d = Math.sqrt(dx * dx + dy * dy);
-  // Centers and radii rebuilt from arc endpoints drift by rounding (about 2e-16 of the
-  // radius), which outgrows the caller's tolerance on large circles; within this the two
-  // circles are the same, and the general solution below degenerates into spurious
-  // crossings. The relative term stays far below any real gap (1e-6 at radius 1e6).
-  const sameTol = Math.max(tol, 1e-12 * Math.max(circ1.radius, circ2.radius));
-  if (d <= sameTol) {
-    if (Math.abs(circ1.radius - circ2.radius) > sameTol) return { points: [], segments: [] };
+  if (d <= tol) {
+    if (Math.abs(circ1.radius - circ2.radius) > tol) return { points: [], segments: [] };
     return intersectCoincidentArcs(c1, circ1, c2, circ2, tol);
   }
   return { points: intersectCrossingCircles(c1, circ1, c2, circ2, tol, d), segments: [] };
