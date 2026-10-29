@@ -1,0 +1,47 @@
+.release-please-manifest.json
+  s_d4ab5fb2066c9b::t_eca1fe86f9d016 5
+apps/docs/agent/eval.md
+  s_d4ab5fb2066c9b::t_a15cd2cd4f4089 41-61
+apps/docs/public/favicon.svg
+  s_d4ab5fb2066c9b::t_c17ce7a6841e86 1
+apps/docs/public/icon-source.svg
+  s_d4ab5fb2066c9b::t_cc54333b1499c9 1
+apps/docs/public/logo.svg
+  s_d4ab5fb2066c9b::t_40e1c649a1cbfe 1
+apps/playground/index.html
+  s_d4ab5fb2066c9b::t_52141d85e23c0b 10,28-31,52-70
+apps/playground/public/favicon.svg
+  s_d4ab5fb2066c9b::t_026ecfb22bbfb9 1
+apps/playground/public/icon-source.svg
+  s_d4ab5fb2066c9b::t_cf1ad766e36c39 1
+apps/playground/public/logo.svg
+  s_d4ab5fb2066c9b::t_093243f5ad12ac 1
+apps/playground/public/og.svg
+  s_d4ab5fb2066c9b::t_b07d6dd1b7b176 14
+apps/playground/src/components/shared/Logo.tsx
+  s_d4ab5fb2066c9b::t_a5c7aa0479db96 4-19
+packages/brepjs-cad/CHANGELOG.md
+  s_d4ab5fb2066c9b::t_710ac1610020df 3-9
+packages/brepjs-cad/bench/claudeEval.ts
+  s_d4ab5fb2066c9b::t_eb1835ed333a49 1-555
+packages/brepjs-cad/bench/results/2026-10-28-claude-sonnet-5-5.txt
+  s_d4ab5fb2066c9b::t_2bc48536c2b223 1-54
+packages/brepjs-cad/package.json
+  s_d4ab5fb2066c9b::t_41ebdcd07679b7 3,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "075f4ebb5142af4d1876de7b2c84b66f4421c998",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "unknown"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
