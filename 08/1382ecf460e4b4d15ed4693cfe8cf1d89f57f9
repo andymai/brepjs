@@ -1,0 +1,121 @@
+apps/docs/integration/frameworks.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 37,42-50,53
+apps/docs/integration/compatibility.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 110,125,127
+docs/function-lookup.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 3,490,591
+package.json
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 3
+docs/architecture.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 85-88
+apps/docs/extending/custom-kernel.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 8,43
+apps/docs/reference/glossary.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 14,98,132
+apps/docs/extending/architecture.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 38
+docs/compatibility.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 107,109-111
+CLAUDE.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 21,55,61
+.size-limit.json
+  s_d4ab5fb2066c9b::t_3a5f9d64f3e31b 2-3
+apps/docs/advanced/csg-caching.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 21
+apps/docs/advanced/workers.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 190,204,210-218
+apps/docs/concepts/kernels.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 12-15,23-27,56
+apps/docs/getting-started/install.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 21,37,46,52,74,79-87
+docs/getting-started.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 18,39
+llms.txt
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 521,527
+llms-full.txt
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 521,527
+apps/docs/introduction/stability.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 52
+docs/kernel-swap.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 3,15,50
+.release-please-manifest.json
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 2
+CHANGELOG.md
+  s_d4ab5fb2066c9b::t_3d6e373dcc9008 3-9
+package-lock.json
+  s_d4ab5fb2066c9b::t_4b460224eacb93 3,9
+src/core/kernelBoundary.ts
+  s_d4ab5fb2066c9b::t_0a1c59e19ca5d4 36-42,45,50,55
+src/index.ts
+  s_d4ab5fb2066c9b::t_a8d0c68c81d28d 33,655
+src/kernel/occtWasm/constructionOps.ts
+  s_d4ab5fb2066c9b::t_c2071520168c8d 282-283,291-298
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_24bb7931abea52 485,487-495
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_63fbcfde3e281c 391-406
+src/measurement/measureFns.ts
+  s_d4ab5fb2066c9b::t_bda18e5d2ca861 7-8,39-98,122-123,125-134,136-138,156-159,176-178,190-193,195-206
+src/operations/compoundOpsFns.ts
+  s_d4ab5fb2066c9b::t_70ec24b5fdcc7b 11,13,25-26,81-82,84-85,87,89-102,104-144,236,238-240,261,263-265,320
+src/operations/patternFns.ts
+  s_d4ab5fb2066c9b::t_14761377624364 15,36,57-61,65,80,84-86,131,155-156,159-160
+src/operations/sweepFns.ts
+  s_d4ab5fb2066c9b::t_d097efefba455c 75-83,153-161
+src/query/finderCore.ts
+  s_d4ab5fb2066c9b::t_5f7b0150660d46 32-33,36,38,40,42,51,53,55
+src/query/shapeDistanceFilter.ts
+  s_d4ab5fb2066c9b::t_3c61d0bbc41922 22-23,25-32
+src/sketching/cannedSketches.ts
+  s_d4ab5fb2066c9b::t_6c2ffc8fd16e63 319-320,322
+src/sketching/sketchFns.ts
+  s_d4ab5fb2066c9b::t_ce25aa151f2106 219-226
+src/sketching/sketches.ts
+  s_d4ab5fb2066c9b::t_6164f7b092b114 47-51
+src/text/textBlueprints.ts
+  s_d4ab5fb2066c9b::t_092a082a8bae98 71-73
+src/topology.ts
+  s_d4ab5fb2066c9b::t_1a8b0eae3089d5 141
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_e915e3c09a9e55 13-15,18,110-115,125
+src/topology/primitiveFns.ts
+  s_d4ab5fb2066c9b::t_0197b3575ddc2f 28,117,169
+tests/api.test.ts
+  s_d4ab5fb2066c9b::t_67952462351a41 126-132,165-171
+tests/apiTypes.test.ts
+  s_d4ab5fb2066c9b::t_2417b5d0b2eb4f 1-87
+tests/compoundOps.test.ts
+  s_d4ab5fb2066c9b::t_962db2036e7769 172
+tests/compoundOpsFns.test.ts
+  s_d4ab5fb2066c9b::t_ab8fdd6a9ac38f 23,26-29,95-124,180-208
+tests/extrudeFns.test.ts
+  s_d4ab5fb2066c9b::t_fa024dc4e1cf07 24,26,126-135,177-192
+tests/measureFns.test.ts
+  s_d4ab5fb2066c9b::t_ddf918a193b5ae 31-37,146-195
+tests/occtBoundary.test.ts
+  s_d4ab5fb2066c9b::t_a50b1be397293a 2,25-47
+tests/patterns.test.ts
+  s_d4ab5fb2066c9b::t_82ed1631b84dbf 15,17,36,96-98,100-107,114,136-145,169,190,238-272
+tests/textBlueprints.test.ts
+  s_d4ab5fb2066c9b::t_ab56c1f3edfe37 9,145-164
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_58324bc586f8a8 475-488
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_f7afb0125e6651 110-111,118-120,305-321,632-648,1116-1140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "081382ecf460e4b4d15ed4693cfe8cf1d89f57f9",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
