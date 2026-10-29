@@ -4,22 +4,28 @@ import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   castShape,
+  compound,
   cut,
   exportIGES,
   exportSTEP,
   exportSTL,
   getFaces,
+  getShells,
+  getSolids,
   importIGES,
   importSTEP,
   importSTL,
+  isCompound,
   isErr,
   isOk,
   isShell,
   isSolid,
   measureArea,
   measureVolume,
+  translate,
   unwrap,
 } from '@/index.js';
+import type { Shape3D } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -169,6 +175,58 @@ describe('importSTL', () => {
     if (!isShell(imported)) return;
     expect(getFaces(imported)).toHaveLength(2);
     expect(unwrap(measureArea(imported))).toBeCloseTo(1, 6);
+  });
+
+  it('imports disjoint closed bodies as a compound of solids', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using first = box(10, 10, 10);
+    using unplaced = box(10, 10, 10);
+    using second = translate(unplaced, [20, 0, 0]);
+    using both = compound([first, second]);
+    const stlBlob = unwrap(exportSTL(both));
+
+    using imported = unwrap(await importSTL(stlBlob));
+    expect(isCompound(imported)).toBe(true);
+    expect(getSolids(imported)).toHaveLength(2);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000, 3);
+
+    using tool = box(5, 5, 5);
+    using result = unwrap(cut(imported as Shape3D, tool));
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1875, 3);
+  });
+
+  it('keeps an open body as a shell beside the closed ones', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using closed = box(10, 10, 10);
+    const ascii = await unwrap(exportSTL(closed, { binary: false })).text();
+    const sheet = [
+      'facet normal 0 0 1',
+      'outer loop',
+      'vertex 0 0 50',
+      'vertex 1 0 50',
+      'vertex 1 1 50',
+      'endloop',
+      'endfacet',
+      'facet normal 0 0 1',
+      'outer loop',
+      'vertex 0 0 50',
+      'vertex 1 1 50',
+      'vertex 0 1 50',
+      'endloop',
+      'endfacet',
+      '',
+    ].join('\n');
+    const endsolid = ascii.lastIndexOf('endsolid');
+    expect(endsolid).toBeGreaterThan(0);
+    const combined = ascii.slice(0, endsolid) + sheet + ascii.slice(endsolid);
+
+    using imported = unwrap(await importSTL(new Blob([combined])));
+    expect(isCompound(imported)).toBe(true);
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(1000, 3);
+    expect(getShells(imported)).toHaveLength(2);
+    expect(getFaces(imported)).toHaveLength(14);
   });
 });
 

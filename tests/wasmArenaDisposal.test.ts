@@ -97,6 +97,7 @@ import {
   getShells,
   exportSTL,
   importSTL,
+  importOBJ,
   fixShape,
   solidFromShell,
   autoHeal,
@@ -198,10 +199,17 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    it('STL import sewing leaks nothing for closed and open meshes', async () => {
+    it('mesh import sewing leaks nothing for closed, open, and multi-body meshes', async () => {
       const closed = (() => {
         using b = box(10, 10, 10);
         return unwrap(exportSTL(b));
+      })();
+      const twoBodies = (() => {
+        using a = box(10, 10, 10);
+        using unplaced = box(10, 10, 10);
+        using b = translate(unplaced, [20, 0, 0]);
+        using both = compound([a, b]);
+        return unwrap(exportSTL(both));
       })();
       const open = new Blob([
         [
@@ -216,9 +224,22 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           'endsolid square',
         ].join('\n'),
       ]);
-      for (const blob of [closed, open]) {
+      const tetra = ['v 0 0 0', 'v 1 0 0', 'v 0 1 0', 'v 0 0 1'];
+      const tetraFaces = ['f -4 -2 -3', 'f -4 -3 -1', 'f -4 -1 -2', 'f -3 -2 -1'];
+      const objClosed = new Blob([[...tetra, ...tetraFaces].join('\n')]);
+      const objOpen = new Blob([[...tetra, 'f 1 2 3', 'f 1 3 4'].join('\n')]);
+      const objTwoBodies = new Blob([
+        [...tetra, ...tetraFaces, 'v 5 0 0', 'v 6 0 0', 'v 5 1 0', 'v 5 0 1', ...tetraFaces].join(
+          '\n'
+        ),
+      ]);
+      const imports = [
+        ...[closed, open, twoBodies].map((blob) => () => importSTL(blob)),
+        ...[objClosed, objOpen, objTwoBodies].map((blob) => () => importOBJ(blob)),
+      ];
+      for (const load of imports) {
         const importOnce = async () => {
-          using _s = unwrap(await importSTL(blob));
+          using _s = unwrap(await load());
         };
         await importOnce();
         const before = arenaCount();

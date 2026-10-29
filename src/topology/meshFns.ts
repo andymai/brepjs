@@ -18,7 +18,7 @@ import {
 } from './meshCache.js';
 import { getFaceOrigins } from './shapeFns.js';
 import { getBounds, getSolids } from './topologyQueryFns.js';
-import { igesUnsupportedError } from '@/io/ioUtils.js';
+import { igesUnsupportedError } from '@/io/igesSupport.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types

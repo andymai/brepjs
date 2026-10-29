@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { getBounds, importOBJ, isSolid, measureVolume, unwrap } from '@/index.js';
+import {
+  getBounds,
+  getSolids,
+  importOBJ,
+  isCompound,
+  isSolid,
+  measureVolume,
+  unwrap,
+} from '@/index.js';
 import type { Shape3D } from '@/index.js';
 
 beforeAll(async () => {
@@ -60,6 +68,27 @@ describe('importOBJ', () => {
     const bounds = getBounds(imported);
     expect(bounds.xMin).toBeCloseTo(0, 6);
     expect(bounds.xMax).toBeCloseTo(60, 6);
+  });
+
+  it('imports disjoint closed bodies as a compound of solids', async () => {
+    const tetra = (x: number, first: number) => {
+      const [a, b, c, d] = [first, first + 1, first + 2, first + 3];
+      return [
+        `v ${x} 0 0`,
+        `v ${x + 10} 0 0`,
+        `v ${x} 10 0`,
+        `v ${x} 0 10`,
+        `f ${a} ${c} ${b}`,
+        `f ${a} ${b} ${d}`,
+        `f ${a} ${d} ${c}`,
+        `f ${b} ${c} ${d}`,
+      ];
+    };
+    const obj = [...tetra(0, 1), ...tetra(50, 5)].join('\n');
+    using imported = unwrap(await importOBJ(new Blob([obj])));
+    expect(isCompound(imported)).toBe(true);
+    expect(getSolids(imported)).toHaveLength(2);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000 / 6, 6);
   });
 
   it('reads tab-separated vertex and face lines', async () => {
