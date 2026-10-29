@@ -105,7 +105,11 @@ function isShapeHandle(v: unknown): v is AnyShape {
 
 function describeValue(v: unknown): string {
   if (Array.isArray(v)) return 'an array';
-  if (typeof v === 'object' && v !== null) return `a ${v.constructor.name || 'plain object'}`;
+  if (typeof v === 'object' && v !== null) {
+    // Object.create(null) and { constructor: null } have no usable constructor name.
+    const name: unknown = (v as { constructor?: { name?: unknown } | null }).constructor?.name;
+    return `a ${typeof name === 'string' && name !== '' ? name : 'plain object'}`;
+  }
   return `a ${typeof v}`;
 }
 

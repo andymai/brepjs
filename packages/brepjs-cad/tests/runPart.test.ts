@@ -114,7 +114,7 @@ describe('runPart', () => {
     expect(report.measurements.bounds?.xMin).toBeCloseTo(5, 6);
   }, 30000);
 
-  it.each(['returnsSketch.brep.ts', 'returnsArray.brep.ts'])(
+  it.each(['returnsSketch.brep.ts', 'returnsArray.brep.ts', 'returnsNullProtoObject.brep.ts'])(
     'reports PART_NOT_A_SHAPE instead of crashing when %s returns a non-shape',
     async (file) => {
       const { report, shape } = await runPart(fix(file));
