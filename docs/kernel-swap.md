@@ -1,9 +1,8 @@
 # Custom Kernel Guide
 
-brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Three adapters are provided:
+brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Two adapters are provided:
 
 - **occt-wasm** (via `occt-wasm`), the default kernel: arena-based OCCT V8 compiled to WASM with a handle-based memory model
-- **OpenCascade WASM** (via `brepjs-opencascade`), the legacy OpenCascade build; mature, still supported as an alternative
 - **brepkit WASM** (via `brepkit-wasm`), alternative kernel with growing coverage
 
 You can also register your own kernel at runtime.
@@ -13,7 +12,7 @@ You can also register your own kernel at runtime.
 ```typescript
 // Easiest: auto-detect and initialize the best available kernel
 import { init, box } from 'brepjs';
-await init(); // tries occt-wasm (default), then brepjs-opencascade, then brepkit-wasm
+await init(); // tries occt-wasm (default), then brepkit-wasm
 const myBox = box(10, 10, 10);
 ```
 
@@ -30,12 +29,6 @@ registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 // Register the brepkit kernel as an alternative (external brepkit-wasm package)
 import { BrepKernel } from 'brepkit-wasm';
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
-
-// Register the legacy brepjs-opencascade kernel (initFromOC also makes 'occt' the default)
-import opencascade from 'brepjs-opencascade';
-import { initFromOC } from 'brepjs';
-const oc = await opencascade();
-initFromOC(oc);
 
 // Run a specific kernel temporarily
 const result = withKernel('brepkit', () => {
@@ -54,11 +47,7 @@ Register a `KernelAdapter` under a unique string ID. The first kernel registered
 
 ### `init()`
 
-Auto-detect and initialize the best available kernel. Tries `occt-wasm` (the default kernel) first, then falls back to `brepjs-opencascade`, then `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt-wasm'`, `'occt'`, or `'brepkit'`). Idempotent: calling it again after a kernel is registered returns the current kernel ID immediately.
-
-### `initFromOC(oc)`
-
-Manual initialization: creates the OpenCascade adapter from a loaded `brepjs-opencascade` WASM instance, registers it as `'occt'`, and makes it the default kernel (`init()` falls back to it only when `occt-wasm` cannot be loaded).
+Auto-detect and initialize the best available kernel. Tries `occt-wasm` (the default kernel) first, then `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt-wasm'` or `'brepkit'`). Idempotent: calling it again after a kernel is registered returns the current kernel ID immediately.
 
 ### `BrepkitAdapter`
 

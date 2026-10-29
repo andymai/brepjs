@@ -35,7 +35,7 @@ The foundation. Nothing internal-imported here.
   - `types.ts`: shared kernel types (`KernelShape`, `BooleanOptions`, mesh results, etc.)
   - `interfaces/`: segregated interface fragments (`KernelBooleanOps`, `KernelMeshOps`, etc.), composed into `KernelAdapter` in `interfaces/index.ts` (the public stable API for kernel implementers)
   - `occtWasm/`: occt-wasm adapter, the default kernel (registered id `'occt-wasm'`)
-  - `occt/`: OpenCascade (`brepjs-opencascade`) adapter (registered id `'occt'`)
+  - `occt/`: legacy opencascade.js adapter (registered id `'occt'`), deprecated
   - `brepkit/`: brepkit adapter (registered id `'brepkit'`)
   - `manifold/`: Manifold mesh/CSG preview adapter (registered id `'manifold'`)
 - `utils/`: math helpers, type predicates, generic JS utilities

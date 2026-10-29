@@ -34,15 +34,20 @@ console.log('Triangles:', geo.index.length / 3);
 
 ### The `?url` import for workers
 
-When you instantiate a worker that loads brepjs, you typically want to give the worker an explicit URL to the WASM rather than relying on relative paths. This is what gridfinity-layout-tool does:
+When you instantiate a worker that loads brepjs, you can give it an explicit URL to the WASM rather than relying on relative paths:
 
 <!-- @no-test -->
 
 ```typescript
-import singleWasm from 'brepjs-opencascade/src/brepjs_single.wasm?url';
+import occtWasmUrl from 'occt-wasm/dist/occt-wasm.wasm?url';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
+
+const kernel = await OcctKernel.init({ wasm: occtWasmUrl });
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 ```
 
-Vite emits the file as a static asset, returns its URL, and you pass that URL to the OpenCascade init. This makes worker-side initialisation explicit and bundler-portable.
+Vite emits the file as a static asset, returns its URL, and you pass that URL to `OcctKernel.init`. This makes worker-side initialisation explicit and bundler-portable.
 
 ## Next.js
 

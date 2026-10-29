@@ -96,7 +96,6 @@ The supported pattern is **client-only rendering**: wrap brepjs-using components
 | --------------------------------- | ---------- |
 | `brepjs` (JS, gzipped)            | ~80 KB     |
 | `occt-wasm` WASM (default kernel) | ~6.7 MB    |
-| `brepjs-opencascade` WASM (alt)   | ~7.6 MB    |
 | `brepkit-wasm` WASM (alt)         | ~2.7 MB    |
 
 The WASM is the dominant cost. brepjs is treeshakeable per sub-path: importing only `brepjs/measurement` skips the topology bundle.
@@ -108,7 +107,7 @@ These are intentional non-goals:
 - **Headless rendering on a server** for image generation. Pre-render via puppeteer at build time instead.
 - **WebGPU compute** for kernel operations. The kernel is C++ / Rust to WASM; WebGPU isn't on the roadmap.
 - **Multiple concurrent kernels in the same context.** Use `withKernel` to switch the active kernel; do not run two kernels in parallel inside one tab.
-- **Pre-Emscripten WASM runtimes.** brepjs-opencascade is built with Emscripten; runtimes that don't support Emscripten's `Module` interface (rare) won't work.
+- **Pre-Emscripten WASM runtimes.** occt-wasm is built with Emscripten; runtimes that don't support Emscripten's `Module` interface (rare) won't work.
 
 ## Specific known issues
 
@@ -123,9 +122,9 @@ iOS Safari sometimes delays paint while the WASM module compiles in the backgrou
 
 The 128 MB per-isolate cap is fine for simple CAD operations but tight for STEP imports. Paid Workers have the same cap, so run routine third-party STEP imports in a runtime with more memory.
 
-### Threaded WASM
+### Cross-origin isolation
 
-A threaded OpenCascade build (`brepjs_threaded.wasm`, which the published `brepjs-opencascade` package does not include) requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. The standard single-threaded `brepjs_single.wasm` build doesn't need these headers, and neither does the default `occt-wasm` kernel.
+The default `occt-wasm` kernel doesn't need `Cross-Origin-Opener-Policy` or `Cross-Origin-Embedder-Policy` headers.
 
 ## Reporting compatibility issues
 

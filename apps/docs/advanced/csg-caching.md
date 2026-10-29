@@ -18,7 +18,7 @@ This page documents the parts of the `csg` namespace that the [walkthrough](/tas
 Four parts. Each one is a reason two evaluations might _not_ share a cache entry:
 
 - **`structuralHash`**: the Merkle hash of the node and everything beneath it. Different tree shape, different literal values, even different optional flags → different hash. Computed once at build time, stored on the node.
-- **`kernelId`**: the kernel id resolved at evaluator construction (e.g. `'occt'`, `'brepkit'`). Cache entries are not portable across kernels; an OCCT-evaluated `Solid` cannot be returned to a brepkit caller. The id is resolved once at `new Evaluator()` so cache keys stay stable even if the active kernel changes mid-run.
+- **`kernelId`**: the kernel id resolved at evaluator construction (e.g. `'occt-wasm'`, `'brepkit'`). Cache entries are not portable across kernels; an OCCT-evaluated `Solid` cannot be returned to a brepkit caller. The id is resolved once at `new Evaluator()` so cache keys stay stable even if the active kernel changes mid-run.
 - **`projectedEnvHash`**: the FNV hash of _only the env keys this node depends on_, in canonical (sorted) order. This is the mechanism behind incremental re-evaluation: a node whose `freeParams` doesn't contain `K` cannot see its key change when `K` does.
 - **`toleranceHash`**: the default tolerance configured on the evaluator, or a sentinel if undefined. Two evaluators with different tolerances cache independently.
 

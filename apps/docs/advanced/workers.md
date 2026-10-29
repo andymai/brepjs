@@ -187,7 +187,7 @@ self.onmessage = async (e) => {
 
 The `ensureReady` pattern handles concurrent first-message races: every message awaits the same singleton promise.
 
-`OcctKernel.init()` locates its WASM next to the occt-wasm JS module via `import.meta.url`, so you don't have to wire up an explicit asset URL. (occt-wasm's separate `occt-wasm/worker` export is `OcctWorker`, a main-thread proxy to raw OCCT; brepjs doesn't use it.) If you instead use the `brepjs-opencascade` build, see the `?url` pattern below for handing the worker an explicit WASM URL.
+`OcctKernel.init()` locates its WASM next to the occt-wasm JS module via `import.meta.url`, so you don't have to wire up an explicit asset URL. (occt-wasm's separate `occt-wasm/worker` export is `OcctWorker`, a main-thread proxy to raw OCCT; brepjs doesn't use it.) To hand the worker an explicit WASM URL instead, use the `?url` pattern below.
 
 ## Vite + workers
 
@@ -201,14 +201,18 @@ import BrepWorker from './brepWorker.ts?worker';
 const worker = new BrepWorker();
 ```
 
-For the WASM file inside the worker, gridfinitylayouttool.com uses:
+To give the worker an explicit WASM URL:
 
 <!-- @no-test -->
 
 ```typescript
 // brepWorker.ts
-import singleWasm from 'brepjs-opencascade/src/brepjs_single.wasm?url';
-// ...use singleWasm to load via the OpenCascade JS init
+import occtWasmUrl from 'occt-wasm/dist/occt-wasm.wasm?url';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
+
+const kernel = await OcctKernel.init({ wasm: occtWasmUrl });
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 ```
 
 The `?url` suffix tells Vite "emit this WASM as an asset and give me a URL to it", so your worker can fetch it without bundling the binary into the worker JS.
