@@ -1,5 +1,13 @@
 # Changelog
 
+## [20.12.4](https://github.com/andymai/brepjs/compare/brepjs-v20.12.3...brepjs-v20.12.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **2d:** find crossings between arcs and other curves in 2D booleans ([69faf4f](https://github.com/andymai/brepjs/commit/69faf4f39d44624d7e11503588422fa52168285d))
+* **sketching:** extrude and revolve holed sketches functionally ([f786525](https://github.com/andymai/brepjs/commit/f786525739fa20227ba3769b946fb597775ae637))
+
 ## [20.12.3](https://github.com/andymai/brepjs/compare/brepjs-v20.12.2...brepjs-v20.12.3) (2026-10-29)
 
 
