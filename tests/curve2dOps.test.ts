@@ -18,6 +18,7 @@ import {
   drawRectangle,
   drawRoundedRectangle,
   drawSingleCircle,
+  getKernel,
   measureArea,
   measureLength,
   reverseCurve,
@@ -520,5 +521,35 @@ describeOcctWasm('narrow features between samples', () => {
     // The offset runs right of travel, so 0.01 below the cap of the bump.
     expect(top(offsetCurve2d(bump, 0.01))).toBeCloseTo(top(bump) - 0.01, 6);
     expect(top(bump)).toBeGreaterThan(0.5);
+  });
+});
+
+describeOcctWasm('lifting without makeBSplineEdge', () => {
+  // occt-wasm builds before 5.8 have no makeBSplineEdge, so the lift falls back
+  // to interpolating samples merged with the curve's knots.
+  it('lifts a spline whose knot lands on a uniform sample', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reach the adapter's raw occt-wasm kernel
+    const raw = (getKernel() as any).k as Record<string, unknown>;
+    raw['makeBSplineEdge'] = undefined;
+    try {
+      const line: BSpline2d = {
+        __bk2d: 'bspline',
+        poles: [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+        ],
+        knots: [0, 0.5, 1],
+        multiplicities: [2, 1, 2],
+        degree: 1,
+        isPeriodic: false,
+      };
+      const edge = unwrap(
+        liftCurve2dToPlane(createCurve2DHandle(line), unwrap(createNamedPlane('XY')))
+      );
+      expect(unwrap(measureLength(edge))).toBeCloseTo(2, 9);
+    } finally {
+      delete raw['makeBSplineEdge'];
+    }
   });
 });

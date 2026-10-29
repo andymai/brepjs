@@ -879,14 +879,21 @@ function liftFitted(
   const exact = liftBSpline(k, Module, frame, fit);
   if (exact) return exact;
   const nSamples = Math.max(24, fit.poles.length);
-  const params = [...knots];
-  for (let i = 0; i <= nSamples; i++) {
-    params.push(bounds.first + ((bounds.last - bounds.first) * i) / nSamples);
+  const span = bounds.last - bounds.first;
+  const params: number[] = [];
+  for (let i = 0; i <= nSamples; i++) params.push(bounds.first + (span * i) / nSamples);
+  // A knot on (or within rounding of) a sample would repeat a point, which
+  // makes GeomAPI_Interpolate's system singular.
+  for (const t of knots) {
+    const nearest =
+      bounds.first + (span * Math.round(((t - bounds.first) / span) * nSamples)) / nSamples;
+    if (Math.abs(t - nearest) > 1e-9 * span) params.push(t);
   }
   params.sort((a, b) => a - b);
+  const distinct = params.filter((t, i) => i === 0 || t - (params[i - 1] ?? t) > 1e-9 * span);
   const vec = new Module.VectorDouble();
   try {
-    for (const t of params) {
+    for (const t of distinct) {
       const [u, v] = ow2d.evaluateCurve2d(cu, t);
       for (const x of frame.point(u, v)) vec.push_back(x);
     }
