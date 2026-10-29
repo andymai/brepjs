@@ -15,7 +15,7 @@
  * @module
  */
 
-import { fitBSpline2d } from './bspline2dFit.js';
+import { asBSpline2d, bezierSegments2d, fitBSpline2d, subBSpline2d } from './bspline2dFit.js';
 
 // ---------------------------------------------------------------------------
 // 2D Curve types
@@ -760,19 +760,25 @@ function unitTangent(c: Curve2dObj, t: number, first: number, last: number): [nu
 }
 
 function curveExtent(c: Curve2dObj): number {
-  const { first, last } = curveBounds(c);
-  let xMin = Infinity;
-  let yMin = Infinity;
-  let xMax = -Infinity;
-  let yMax = -Infinity;
-  for (let i = 0; i <= 16; i++) {
-    const [x, y] = evaluateCurve2d(c, first + ((last - first) * i) / 16);
-    xMin = Math.min(xMin, x);
-    yMin = Math.min(yMin, y);
-    xMax = Math.max(xMax, x);
-    yMax = Math.max(yMax, y);
-  }
-  return Math.hypot(xMax - xMin, yMax - yMin);
+  const box = createBBox2d();
+  addCurveToBBox(box, c, 0);
+  return Math.hypot(box.xMax - box.xMin, box.yMax - box.yMin);
+}
+
+/**
+ * Parameters of `c`, in its own parameter range, at the interior knots of its
+ * B-spline basis: where a fit of the curve (or of its offset) must sample.
+ */
+export function curveKnotParams(c: Curve2dObj): number[] {
+  const flat = flattenTrimmed(c);
+  const basis = flat.__bk2d === 'trimmed' ? flat.basis : flat;
+  if (basis.__bk2d !== 'bspline') return [];
+  const inner = basis.knots.slice(1, -1);
+  if (flat.__bk2d !== 'trimmed') return inner;
+  const { tStart, tEnd } = flat;
+  return inner
+    .filter((k) => k > Math.min(tStart, tEnd) && k < Math.max(tStart, tEnd))
+    .map((k) => (k - tStart) / (tEnd - tStart));
 }
 
 /**
@@ -820,7 +826,8 @@ export function offsetCurve2d(c: Curve2dObj, distance: number, tolerance?: numbe
     },
     first,
     last,
-    tol
+    tol,
+    { breaks: curveKnotParams(flat) }
   );
 }
 
@@ -1420,59 +1427,73 @@ function conicExtremeParams(c: Circle2d | Ellipse2d): number[] {
   return [psiX, psiX + Math.PI, psiY, psiY + Math.PI].map((psi) => (c.sense ? psi : -psi));
 }
 
-/** Golden-section search for the extremum of `f` on [lo, hi] (sign = 1 min, -1 max). */
-function refineExtremum(f: (t: number) => number, lo: number, hi: number, sign: number): number {
-  const g = (Math.sqrt(5) - 1) / 2;
-  let a = lo;
-  let b = hi;
-  let c = b - g * (b - a);
-  let d = a + g * (b - a);
-  let fc = sign * f(c);
-  let fd = sign * f(d);
-  for (let i = 0; i < 60 && b - a > 1e-14 * Math.max(1, Math.abs(a)); i++) {
-    if (fc < fd) {
-      b = d;
-      d = c;
-      fd = fc;
-      c = b - g * (b - a);
-      fc = sign * f(c);
-    } else {
-      a = c;
-      c = d;
-      fc = fd;
-      d = a + g * (b - a);
-      fd = sign * f(d);
-    }
+function splitBezier1d(vals: readonly number[]): [number[], number[]] {
+  const work = [...vals];
+  const n = work.length;
+  const left: number[] = [];
+  const right: number[] = [];
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- indices bounded by n */
+  left.push(work[0]!);
+  right.push(work[n - 1]!);
+  for (let r = 1; r < n; r++) {
+    for (let i = 0; i < n - r; i++) work[i] = (work[i]! + work[i + 1]!) / 2;
+    left.push(work[0]!);
+    right.push(work[n - 1 - r]!);
   }
-  return (a + b) / 2;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  return [left, right.reverse()];
 }
 
-/** Add the sampled extremes of a pole-based curve over [lo, hi], refined between samples. */
-function addSampledExtremes(add: (t: number) => void, c: Curve2dObj, lo: number, hi: number): void {
-  const poles = c.__bk2d === 'bezier' || c.__bk2d === 'bspline' ? c.poles.length : 8;
-  const n = Math.min(1024, Math.max(32, 4 * poles));
-  const ts: number[] = [];
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = lo + ((hi - lo) * i) / n;
-    ts.push(t);
-    pts.push(evaluateCurve2d(c, t));
+/**
+ * Widen `range` to the values a 1D Bezier takes. Its coefficients bound it
+ * (convex hull), so a piece whose coefficients stay inside the range is done;
+ * otherwise the piece is halved, adding the curve value at the split.
+ */
+function widenToBezier(vals: readonly number[], range: { min: number; max: number }, depth = 0) {
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const tol = 1e-12 * (1 + Math.abs(range.min) + Math.abs(range.max));
+  if (lo >= range.min - tol && hi <= range.max + tol) return;
+  if (depth >= 60) {
+    range.min = Math.min(range.min, lo);
+    range.max = Math.max(range.max, hi);
+    return;
   }
-  for (let axis = 0; axis < 2; axis++) {
-    const coord = (t: number) => evaluateCurve2d(c, t)[axis] ?? 0;
-    for (let i = 1; i < n; i++) {
-      /* eslint-disable @typescript-eslint/no-non-null-assertion -- i - 1..i + 1 within 0..n */
-      const prev = pts[i - 1]![axis]!;
-      const cur = pts[i]![axis]!;
-      const next = pts[i + 1]![axis]!;
-      const sign = cur <= prev && cur <= next ? 1 : cur >= prev && cur >= next ? -1 : 0;
-      if (sign !== 0) {
-        add(ts[i]!);
-        add(refineExtremum(coord, ts[i - 1]!, ts[i + 1]!, sign));
-      }
-      /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  const [left, right] = splitBezier1d(vals);
+  const mid = right[0] ?? lo;
+  range.min = Math.min(range.min, mid);
+  range.max = Math.max(range.max, mid);
+  widenToBezier(left, range, depth + 1);
+  widenToBezier(right, range, depth + 1);
+}
+
+/** Add the exact extent of a Bezier or B-spline over [lo, hi], span by span. */
+function addPoleCurveExtent(bbox: BBox2d, c: Bezier2d | BSpline2d, lo: number, hi: number): void {
+  const bs = asBSpline2d(c);
+  const first = bs.knots[0] ?? 0;
+  const last = bs.knots[bs.knots.length - 1] ?? 1;
+  const a = Math.max(first, lo);
+  const b = Math.min(last, hi);
+  if (b <= a) return;
+  const piece = a > first || b < last ? subBSpline2d(bs, a, b) : bs;
+  const x = { min: bbox.xMin, max: bbox.xMax };
+  const y = { min: bbox.yMin, max: bbox.yMax };
+  for (const seg of bezierSegments2d(piece)) {
+    for (const [range, axis] of [
+      [x, 0],
+      [y, 1],
+    ] as const) {
+      const vals = seg.map((pt) => pt[axis]);
+      const ends = [vals[0] ?? range.min, vals[vals.length - 1] ?? range.min];
+      range.min = Math.min(range.min, ...ends);
+      range.max = Math.max(range.max, ...ends);
+      widenToBezier(vals, range);
     }
   }
+  bbox.xMin = x.min;
+  bbox.xMax = x.max;
+  bbox.yMin = y.min;
+  bbox.yMax = y.max;
 }
 
 export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
@@ -1508,8 +1529,12 @@ export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void 
         if (tt !== null) add(tt);
       }
       return;
-    default:
-      addSampledExtremes(add, basis, lo, hi);
+    case 'bezier':
+    case 'bspline':
+      addPoleCurveExtent(bbox, basis, lo, hi);
+      return;
+    case 'trimmed':
+      return;
   }
 }
 

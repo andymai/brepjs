@@ -11,8 +11,14 @@
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import * as ow2d from '@/kernel/geometry2d.js';
-import type { BSpline2d, Curve2dObj, Ellipse2d } from '@/kernel/geometry2d.js';
-import { fitBSpline2d, interpolateBSpline2d } from '@/kernel/bspline2dFit.js';
+import type { Bezier2d, BSpline2d, Curve2dObj, Ellipse2d } from '@/kernel/geometry2d.js';
+import {
+  asBSpline2d,
+  bezierSegments2d,
+  fitBSpline2d,
+  interpolateBSpline2d,
+  subBSpline2d,
+} from '@/kernel/bspline2dFit.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, unwrap } from './helpers.js';
 import { makeEllipseArc, makeEllipseEdge } from './constructionOps.js';
@@ -560,16 +566,16 @@ export function distanceBetweenCurves2d(
   return ow2d.distanceBetweenCurves2d(c2d(c1), c2d(c2), p1Start, p1End, p2Start, p2End);
 }
 
-function bezierAsBSpline(poles: [number, number][]): BSpline2d {
-  const degree = poles.length - 1;
-  return {
-    __bk2d: 'bspline',
-    poles: poles.map(([x, y]) => [x, y] as [number, number]),
-    knots: [0, 1],
-    multiplicities: [degree + 1, degree + 1],
-    degree,
-    isPeriodic: false,
-  };
+/**
+ * The exact B-spline of a Bezier or B-spline basis over its trim range, traversed
+ * from `from` to `to`; null for an empty range.
+ */
+function trimmedPoleCurve(basis: Bezier2d | BSpline2d, from: number, to: number): BSpline2d | null {
+  if (from === to) return null;
+  const sub = subBSpline2d(asBSpline2d(basis), Math.min(from, to), Math.max(from, to));
+  if (from < to) return sub;
+  const reversed = ow2d.reverseCurve2d(sub);
+  return reversed.__bk2d === 'bspline' ? reversed : null;
 }
 
 /**
@@ -582,90 +588,36 @@ export function approximateCurve2dAsBSpline(
   maxSegments: number
 ): Curve2dHandle {
   const cu = ow2d.flattenTrimmed(c2d(curve));
-  if (cu.__bk2d === 'bspline' && cu.degree <= 3) return copyCurve2d(cu);
-  if (cu.__bk2d === 'bezier' && cu.poles.length <= 4) return c2dWrap(bezierAsBSpline(cu.poles));
+  const basis = cu.__bk2d === 'trimmed' ? cu.basis : cu;
+  const poleCurve = basis.__bk2d === 'bspline' || basis.__bk2d === 'bezier' ? basis : null;
+  if (poleCurve && asBSpline2d(poleCurve).degree <= 3) {
+    if (cu.__bk2d !== 'trimmed') return copyCurve2d(asBSpline2d(poleCurve));
+    const exact = trimmedPoleCurve(poleCurve, cu.tStart, cu.tEnd);
+    if (exact) return c2dWrap(exact);
+  }
   if (cu.__bk2d === 'line') {
     return c2dWrap(
-      bezierAsBSpline([ow2d.evaluateCurve2d(cu, 0), ow2d.evaluateCurve2d(cu, cu.len)])
+      asBSpline2d(
+        ow2d.makeBezier2d([ow2d.evaluateCurve2d(cu, 0), ow2d.evaluateCurve2d(cu, cu.len)])
+      )
     );
   }
   const bounds = ow2d.curveBounds(cu);
   return c2dWrap(
     fitBSpline2d((t) => ow2d.evaluateCurve2d(cu, t), bounds.first, bounds.last, tolerance, {
       maxSegments: Math.max(8, maxSegments),
+      breaks: ow2d.curveKnotParams(cu),
     })
   );
 }
 
 export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-  let cu = c2d(curve);
-  while (cu.__bk2d === 'trimmed') cu = cu.basis;
-  if (cu.__bk2d !== 'bspline') return [curve];
-
-  const poles: [number, number][] = cu.poles;
-  const p: number = cu.degree;
-  // Expand knots+multiplicities into the full knot vector U.
-  const U: number[] = [];
-  for (let i = 0; i < cu.knots.length; i++) {
-    const knot = cu.knots[i] ?? 0;
-    const mult = cu.multiplicities[i] ?? 0;
-    for (let j = 0; j < mult; j++) U.push(knot);
-  }
-  const n = poles.length - 1;
-  const m = n + p + 1;
-  // A clamped, non-rational B-spline has |U| = n + p + 2. Bail to a single
-  // Bezier on the control polygon if the curve is malformed.
-  if (p < 1 || U.length !== m + 1) {
-    return [c2dWrap(ow2d.makeBezier2d(poles))];
-  }
-
-  // NURBS Book Algorithm A5.6 (DecomposeCurve): knot-insert every interior knot
-  // up to multiplicity p, yielding one Bezier segment (p+1 poles) per span.
-  const clone = (pt: [number, number]): [number, number] => [pt[0], pt[1]];
-  const segments: [number, number][][] = [];
-  let a = p;
-  let b = p + 1;
-  let segPoles: [number, number][] = [];
-  for (let i = 0; i <= p; i++) segPoles[i] = clone(poles[i] as [number, number]);
-  let nextPoles: [number, number][] = [];
-  while (b < m) {
-    const i0 = b;
-    while (b < m && U[b + 1] === U[b]) b++;
-    const mult = b - i0 + 1;
-    if (mult < p) {
-      const numer = (U[b] as number) - (U[a] as number);
-      const alphas: number[] = [];
-      for (let j = p; j > mult; j--) {
-        alphas[j - mult - 1] = numer / ((U[a + j] as number) - (U[a] as number));
-      }
-      const r = p - mult;
-      for (let j = 1; j <= r; j++) {
-        const save = r - j;
-        const s = mult + j;
-        for (let k = p; k >= s; k--) {
-          const alpha = alphas[k - s] as number;
-          const cur = segPoles[k] as [number, number];
-          const prev = segPoles[k - 1] as [number, number];
-          segPoles[k] = [
-            alpha * cur[0] + (1 - alpha) * prev[0],
-            alpha * cur[1] + (1 - alpha) * prev[1],
-          ];
-        }
-        if (b < m) nextPoles[save] = clone(segPoles[p] as [number, number]);
-      }
-    }
-    segments.push(segPoles);
-    if (b < m) {
-      for (let i = p - mult; i <= p; i++) {
-        nextPoles[i] = clone(poles[b - p + i] as [number, number]);
-      }
-      segPoles = nextPoles;
-      nextPoles = [];
-      a = b;
-      b++;
-    }
-  }
-  return segments.map((sp) => c2dWrap(ow2d.makeBezier2d(sp)));
+  const cu = ow2d.flattenTrimmed(c2d(curve));
+  const basis = cu.__bk2d === 'trimmed' ? cu.basis : cu;
+  if (basis.__bk2d !== 'bspline') return [curve];
+  const piece = cu.__bk2d === 'trimmed' ? trimmedPoleCurve(basis, cu.tStart, cu.tEnd) : basis;
+  if (!piece) return [curve];
+  return bezierSegments2d(piece).map((poles) => c2dWrap(ow2d.makeBezier2d(poles)));
 }
 
 // ─── 2D bounding boxes ──────────────────────────────────────────────────────
@@ -916,22 +868,26 @@ function liftFitted(
   const bbox = ow2d.createBBox2d();
   ow2d.addCurveToBBox(bbox, cu, 0);
   const extent = Math.hypot(bbox.xMax - bbox.xMin, bbox.yMax - bbox.yMin);
+  const knots = ow2d.curveKnotParams(cu);
   const fit = fitBSpline2d(
     (t) => ow2d.evaluateCurve2d(cu, t),
     bounds.first,
     bounds.last,
-    1e-9 * Math.max(1, extent)
+    1e-9 * Math.max(1, extent),
+    { breaks: knots }
   );
   const exact = liftBSpline(k, Module, frame, fit);
   if (exact) return exact;
   const nSamples = Math.max(24, fit.poles.length);
+  const params = [...knots];
+  for (let i = 0; i <= nSamples; i++) {
+    params.push(bounds.first + ((bounds.last - bounds.first) * i) / nSamples);
+  }
+  params.sort((a, b) => a - b);
   const vec = new Module.VectorDouble();
   try {
-    for (let i = 0; i <= nSamples; i++) {
-      const [u, v] = ow2d.evaluateCurve2d(
-        cu,
-        bounds.first + ((bounds.last - bounds.first) * i) / nSamples
-      );
+    for (const t of params) {
+      const [u, v] = ow2d.evaluateCurve2d(cu, t);
       for (const x of frame.point(u, v)) vec.push_back(x);
     }
     return handle('edge', k.interpolatePoints(vec, false));
@@ -987,8 +943,10 @@ export function liftCurve2dToPlane(
         frame,
         range ? bezierSegmentPoles(basis.poles, range[0], range[1]) : basis.poles
       );
-    case 'bspline':
-      return (!range && liftBSpline(k, Module, frame, basis)) || liftFitted(k, Module, frame, cu);
+    case 'bspline': {
+      const piece = range ? trimmedPoleCurve(basis, range[0], range[1]) : basis;
+      return (piece && liftBSpline(k, Module, frame, piece)) || liftFitted(k, Module, frame, cu);
+    }
     case 'trimmed':
       return liftFitted(k, Module, frame, cu);
   }

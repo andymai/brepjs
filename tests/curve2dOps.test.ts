@@ -10,6 +10,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
 import {
+  createNamedPlane,
   draw,
   drawCircle,
   drawEllipse,
@@ -18,6 +19,7 @@ import {
   drawRoundedRectangle,
   drawSingleCircle,
   measureArea,
+  measureLength,
   reverseCurve,
   unwrap,
 } from '@/index.js';
@@ -25,10 +27,13 @@ import type { Drawing } from '@/index.js';
 import {
   bspline2d,
   circle2d,
+  createCurve2DHandle,
   distanceBetweenCurves2d,
   evaluateCurve2d as evaluateHandle,
+  liftCurve2dToPlane,
   offsetCurve2d as offsetHandle,
   projectPointOnCurve2d,
+  trimCurve2d,
   typeCurve2d,
 } from '@/2d.js';
 import { Curve2D } from '@/2d/lib/curve2D.js';
@@ -51,6 +56,7 @@ import {
   reverseCurve2d,
   scaleCurve2d,
   type Affine2d,
+  type BSpline2d,
   type Curve2dObj,
 } from '@/kernel/geometry2d.js';
 
@@ -442,5 +448,77 @@ describeOcctWasm('affinities, interpolation, distance and lifting', () => {
     // 3/10 * 10 * (10 + 10) = 60 with its chord.
     const d = draw().cubicBezierCurveTo([10, 0], [0, 10], [10, 10]).close();
     expect(faceArea(d)).toBeCloseTo(60, 9);
+  });
+});
+
+describeOcctWasm('narrow features between samples', () => {
+  // A degree-1 spline whose peak sits at parameter 0.05, between knots 0.049
+  // and 0.051; uniform samples of the parameter all land on y = 0.
+  it('bounds a narrow peak of a degree-1 spline', () => {
+    const peak = drawPointsInterpolation(
+      [
+        [0, 0],
+        [49, 0],
+        [49, 1],
+        [49, 0],
+        [998, 0],
+      ],
+      { degMax: 1 }
+    );
+    const [[, yMin], [, yMax]] = peak.boundingBox.bounds;
+    expect(yMin).toBeCloseTo(0, 12);
+    expect(yMax).toBeCloseTo(1, 12);
+  });
+
+  it('lifts a trimmed spline without dropping a narrow peak', () => {
+    const peak: BSpline2d = {
+      __bk2d: 'bspline',
+      poles: [
+        [0, 0],
+        [0.04, 0],
+        [1 / 24, 1],
+        [0.043, 0],
+        [1, 0],
+      ],
+      knots: [0, 0.04, 1 / 24, 0.043, 1],
+      multiplicities: [2, 1, 1, 1, 2],
+      degree: 1,
+      isPeriodic: false,
+    };
+    const curve = unwrap(trimCurve2d(createCurve2DHandle(peak), 0, 1));
+    const edge = unwrap(liftCurve2dToPlane(curve, unwrap(createNamedPlane('XY'))));
+    const length =
+      0.04 + Math.hypot(1 / 24 - 0.04, 1) + Math.hypot(0.043 - 1 / 24, 1) + (1 - 0.043);
+    expect(unwrap(measureLength(edge))).toBeCloseTo(length, 9);
+  });
+
+  // A C2 cubic whose bump lives on four clustered knot spans in [0.5, 0.504].
+  it('offsets a narrow bump of a cubic spline', () => {
+    const bump: BSpline2d = {
+      __bk2d: 'bspline',
+      poles: [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0],
+        [4, 5],
+        [5, 0],
+        [6, 0],
+        [7, 0],
+        [8, 0],
+      ],
+      knots: [0, 0.5, 0.501, 0.502, 0.503, 0.504, 1],
+      multiplicities: [4, 1, 1, 1, 1, 1, 4],
+      degree: 3,
+      isPeriodic: false,
+    };
+    const top = (c: Curve2dObj) => {
+      const box = createBBox2d();
+      addCurveToBBox(box, c, 0);
+      return box.yMax;
+    };
+    // The offset runs right of travel, so 0.01 below the cap of the bump.
+    expect(top(offsetCurve2d(bump, 0.01))).toBeCloseTo(top(bump) - 0.01, 6);
+    expect(top(bump)).toBeGreaterThan(0.5);
   });
 });
