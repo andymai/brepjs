@@ -1,0 +1,26 @@
+apps/docs/agent/eval.md
+  s_d4ab5fb2066c9b::t_fb03371b661aba 58,60
+packages/brepjs-cad/bench/claudeEval.ts
+  s_d4ab5fb2066c9b::t_ba34845c7881b7 69,120-122,137-143,148,150
+  s_d4ab5fb2066c9b::t_f38f63cb4171c8 20,144-145,167-169,202,216,219,229-234,247,256-258,268,316-324,429-435,437-439,456,460,463-465,470-471,473-474,487-492,524-527
+  s_d4ab5fb2066c9b::t_4d617feceb2f9f 118,326-335,374,522
+  s_d4ab5fb2066c9b::t_304f380e9615d7 325
+packages/brepjs-cad/bench/results/2026-10-28-claude-sonnet-5-5.txt
+  s_d4ab5fb2066c9b::t_fb03371b661aba 1,46,48,51-52,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50b04b3e98d21ea482ecd7717e2a30b51d04f555",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
