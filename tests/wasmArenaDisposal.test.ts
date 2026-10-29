@@ -659,6 +659,21 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
+    it('per-edge distance-angle chamfers leak nothing, on success or failure', () => {
+      const near = { distance: 1, angle: 30 };
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          const edges = verticalEdges(b);
+          unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })))[Symbol.dispose]();
+          unwrap(chamfer(b, edges, () => near))[Symbol.dispose]();
+          expect(isErr(chamfer(b, edges, bySide<number | typeof near>(1, near)))).toBe(true);
+          // 6 mm and 6·tan 45° setbacks on both sides of an edge of a 10 mm cube overlap.
+          expect(isErr(chamfer(b, edges, bySide(near, { distance: 6, angle: 45 })))).toBe(true);
+        })
+      ).toBe(0);
+    });
+
     it('draft leaks nothing, for one face or several', () => {
       expect(
         perIterationLeak(() => {

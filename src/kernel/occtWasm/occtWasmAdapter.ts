@@ -755,6 +755,13 @@ export class OcctWasmAdapter implements KernelAdapter {
     return modifierOps.chamferDistAngle(this.k, this.Module, shape, edges, distance, angleDeg);
   }
 
+  chamferDistAngles(
+    shape: KernelShape,
+    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>
+  ): KernelShape {
+    return modifierOps.chamferDistAngles(this.k, this.Module, shape, edges);
+  }
+
   shell(
     shape: KernelShape,
     faces: KernelShape[],

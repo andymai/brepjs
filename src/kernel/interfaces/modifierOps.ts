@@ -26,6 +26,18 @@ export interface KernelModifierOps {
     distance: number,
     angleDeg: number
   ): KernelShape;
+
+  /**
+   * Distance-angle chamfer with its own values on each edge, in one operation:
+   * `distance` is set back on the edge's reference face (as {@link chamferDistAngle}
+   * picks it) and `angleDeg` is measured from that face.
+   * Optional: kernels without it can chamfer by distance and angle only with
+   * one value for every edge.
+   */
+  chamferDistAngles?(
+    shape: KernelShape,
+    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>
+  ): KernelShape;
   shell(
     shape: KernelShape,
     faces: KernelShape[],

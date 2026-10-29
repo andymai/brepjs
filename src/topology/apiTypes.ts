@@ -56,8 +56,12 @@ export type FilletRadius =
  *
  * - `number` — equal distance
  * - `[number, number]` — asymmetric distances (dist1, dist2)
- * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape)
- * - callback — per-edge distance; return `null` to skip an edge
+ * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees
+ * - callback — per-edge value of any of the above; return `null` (or a non-positive
+ *   distance) to skip an edge. The edges it keeps must all get plain distances or all
+ *   get `{ distance, angle }`: mixing the two is an `INVALID_CHAMFER_DISTANCE` error.
+ *   Different `{ distance, angle }` values per edge need a kernel that chamfers each
+ *   edge by its own (occt-wasm 5.9.0+); elsewhere they are an `UNSUPPORTED_CAPABILITY` error.
  */
 export type ChamferDistance =
   | number

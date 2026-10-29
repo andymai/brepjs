@@ -310,38 +310,54 @@ function resolveFaces(
   return finder.findAll(shape);
 }
 
-/**
- * Normalize a ChamferDistance, handling the {distance, angle} case.
- * Returns either a kernel-compatible distance or signals distance-angle mode.
- */
-type NormalizedChamfer =
-  | {
-      mode: 'standard';
-      distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null);
-    }
-  | { mode: 'distAngle'; distance: number; angle: number };
+type ChamferDistAngle = { distance: number; angle: number };
+type ChamferEdgeDistance = number | [number, number] | ChamferDistAngle | null;
 
-function normalizeChamferDistance(distance: ChamferDistance): NormalizedChamfer {
-  if (typeof distance === 'object' && !Array.isArray(distance) && typeof distance !== 'function') {
-    // { distance, angle } mode
-    return { mode: 'distAngle', distance: distance.distance, angle: distance.angle };
+function isDistAngle(value: ChamferDistance | ChamferEdgeDistance): value is ChamferDistAngle {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// The rule modifierFns.chamfer applies to callback values: a non-positive distance skips the edge.
+function skipsEdge(value: number | [number, number]): boolean {
+  return typeof value === 'number' ? value <= 0 : value[0] <= 0 || value[1] <= 0;
+}
+
+/**
+ * Chamfer with a per-edge callback, run once per edge. One kernel operation
+ * takes either distances or distance-angle pairs, so a callback that keeps
+ * edges of both kinds is rejected: two chamfers in sequence would not meet the
+ * way one does where those edges share a vertex.
+ */
+function chamferEachEdge(
+  shape: ValidSolid,
+  edges: ReadonlyArray<Edge>,
+  distanceOf: (edge: Edge) => ChamferEdgeDistance
+): Result<Shape3D> {
+  const distances = new Map<Edge, number | [number, number]>();
+  const distAngles: angles.EdgeDistAngle[] = [];
+  for (const edge of edges) {
+    const value = distanceOf(edge);
+    if (value === null) continue;
+    if (!isDistAngle(value)) distances.set(edge, value);
+    else if (value.distance > 0) distAngles.push({ edge, ...value });
   }
-  if (typeof distance === 'function') {
-    // Per-edge callback — check if any returns { distance, angle }
-    // Wrap callback to extract standard values
-    const wrappedFn = (edge: Edge) => {
-      const val = distance(edge);
-      if (val === null) return null;
-      if (typeof val === 'object' && !Array.isArray(val)) {
-        // { distance, angle } — not supported in per-edge callback for standard chamfer
-        // Fall back to distance-only
-        return val.distance;
-      }
-      return val;
-    };
-    return { mode: 'standard', distance: wrappedFn };
+
+  if (distAngles.length === 0) {
+    return modifiers.chamfer(shape, edges, (edge) => distances.get(edge) ?? null);
   }
-  return { mode: 'standard', distance };
+  const plainCount = [...distances.values()].filter((v) => !skipsEdge(v)).length;
+  if (plainCount > 0) {
+    return err(
+      validationError(
+        BrepErrorCode.INVALID_CHAMFER_DISTANCE,
+        `chamfer: the distance callback returned a plain distance for ${plainCount} edge(s) and { distance, angle } for ${distAngles.length}; one chamfer cannot mix the two`,
+        undefined,
+        { plainEdgeCount: plainCount, distAngleEdgeCount: distAngles.length },
+        'Return { distance, angle } for every edge, or chamfer the two groups of edges in separate calls'
+      )
+    );
+  }
+  return angles.chamferDistAngles(shape, distAngles);
 }
 
 // Overloads: 2-arg (all edges) vs 3-arg (selected edges)
@@ -406,19 +422,20 @@ export function chamfer<T extends ValidSolid>(
     distance = edgesOrDistance as ChamferDistance;
   }
 
-  const normalized = normalizeChamferDistance(distance);
-  if (normalized.mode === 'distAngle') {
-    // Use chamferDistAngle for distance-angle mode
+  if (typeof distance === 'function') {
+    return chamferEachEdge(s, edges ?? transforms.getEdges(s), distance) as Result<T>;
+  }
+  if (isDistAngle(distance)) {
     const selectedEdges = edges ?? transforms.getEdges(s);
     return angles.chamferDistAngle(
       s,
       [...selectedEdges],
-      normalized.distance,
-      normalized.angle
+      distance.distance,
+      distance.angle
     ) as Result<T>;
   }
 
-  return modifiers.chamfer(s, edges, normalized.distance) as Result<T>;
+  return modifiers.chamfer(s, edges, distance) as Result<T>;
 }
 
 /** Create a hollow shell by removing faces and offsetting remaining walls. */

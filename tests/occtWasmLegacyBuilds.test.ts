@@ -110,6 +110,19 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.9', () => {
     expect(volume(result)).toBeCloseTo(1000 - 40 * (Math.tan(Math.PI / 6) / 2), 6);
   });
 
+  it('chamfers edges that share one distance and angle, and rejects per-edge values', () => {
+    using b = box(10, 10, 10);
+    const edges = verticalEdges(b);
+    const adapter = legacy();
+    const shared = edges.map((edge) => ({ edge, distance: 1, angleDeg: 30 }));
+    expect(volume(adapter.chamferDistAngles(b.wrapped, shared))).toBeCloseTo(
+      1000 - 40 * (Math.tan(Math.PI / 6) / 2),
+      6
+    );
+    const varying = edges.map((edge, i) => ({ edge, distance: 1, angleDeg: i === 0 ? 30 : 60 }));
+    expectUnsupported(() => adapter.chamferDistAngles(b.wrapped, varying));
+  });
+
   it('drafts one face about z = 0 and rejects other neutral planes or several faces', () => {
     using b = box(10, 10, 10);
     const [face] = sideFaces(b);

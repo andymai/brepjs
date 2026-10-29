@@ -191,6 +191,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold approximates a distance-angle chamfer on its mesh: four box edges at 1 mm / 30 degrees read 973.31 mm3 against the exact 988.45.',
     },
+    'chamferAngle.perEdge': {
+      kind: 'not-implemented',
+      reason:
+        'manifold has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
+    },
     'draftFns.neutralPlane': {
       kind: 'not-implemented',
       reason: 'manifold leaves a drafted box at its full 1000 mm3.',
@@ -296,6 +301,11 @@ export const divergences: DivergenceMap = {
       kind: 'skip',
       reason:
         'brepkit sets a distance-angle chamfer back slightly short: four box edges at 1 mm / 30 degrees read 987.56 mm3 against the exact 988.45.',
+    },
+    'chamferAngle.perEdge': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
     },
     'draftFns.perFaceAngles': {
       kind: 'not-implemented',
@@ -565,6 +575,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'Only occt-wasm 5.8+ names the edges a fillet or chamfer failed on; this kernel reports FILLET_FAILED / CHAMFER_FAILED without metadata.failedEdges.',
+    },
+    'chamferAngle.perEdge': {
+      kind: 'not-implemented',
+      reason:
+        'The deprecated opencascade.js adapter has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
     },
     'stepConfigFns.units': {
       kind: 'not-implemented',

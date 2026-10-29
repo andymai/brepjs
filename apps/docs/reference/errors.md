@@ -77,9 +77,9 @@ The kernel couldn't build the fillet. Usually the radius is bigger than the loca
 
 ### `INVALID_FILLET_RADIUS`
 
-The radius is zero or negative (for a `[r1, r2]` pair, either value). `INVALID_CHAMFER_DISTANCE` is the chamfer equivalent.
+The radius is zero or negative (for a `[r1, r2]` pair, either value). `INVALID_CHAMFER_DISTANCE` is the chamfer equivalent. It also comes back when a chamfer callback returns plain distances for some edges and `{ distance, angle }` for others, since one chamfer can't mix the two.
 
-**Fix**: Pass a positive radius or distance.
+**Fix**: Pass a positive radius or distance. For a mixed callback, chamfer the two groups of edges in separate calls.
 
 ### `FILLET_NO_EDGES`
 

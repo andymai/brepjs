@@ -73,25 +73,37 @@ export function chamfer(
   }
 }
 
-export function chamferDistAngle(
+interface DistAngle {
+  readonly distance: number;
+  readonly angleDeg: number;
+}
+
+/**
+ * Chamfer edge i by `distances[i]` and `anglesDeg[i]`. Builds without the
+ * per-edge entry point take only `shared`, the one value every edge has.
+ */
+function runChamferDistAngles(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shape: KernelShape,
-  edges: KernelShape[],
-  distance: number,
-  angleDeg: number
+  edges: readonly KernelShape[],
+  distances: number[],
+  anglesDeg: number[],
+  shared: DistAngle | undefined
 ): KernelShape {
   const id = unwrap(shape);
   const edgeVec = makeVecU32(Module, edges.map(unwrap));
   try {
     if (!k.chamferDistAngles) {
-      return wrapResult(k, k.chamferDistAngle(id, edgeVec, distance, angleDeg));
+      if (!shared) throw needsOcctWasm59('per-edge distance-angle chamfers');
+      return wrapResult(k, k.chamferDistAngle(id, edgeVec, shared.distance, shared.angleDeg));
     }
     // chamferDistAngles names the edges a failed chamfer could not build;
     // the single-value chamferDistAngle does not.
     const chamferDistAngles = k.chamferDistAngles.bind(k);
-    const distanceVec = makeVecDouble(Module, Array<number>(edges.length).fill(distance));
-    const angleVec = makeVecDouble(Module, Array<number>(edges.length).fill(angleDeg));
+    const distanceVec = makeVecDouble(Module, distances);
+    const angleVec = makeVecDouble(Module, anglesDeg);
+    // No reference faces: each edge's distance is set back on its first adjacent face.
     const faceVec = makeVecU32(Module, []);
     try {
       const resultId = reportingFaultyEdges(edges, () =>
@@ -106,6 +118,47 @@ export function chamferDistAngle(
   } finally {
     edgeVec.delete();
   }
+}
+
+export function chamferDistAngle(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shape: KernelShape,
+  edges: KernelShape[],
+  distance: number,
+  angleDeg: number
+): KernelShape {
+  const distances = Array<number>(edges.length).fill(distance);
+  const anglesDeg = Array<number>(edges.length).fill(angleDeg);
+  return runChamferDistAngles(k, Module, shape, edges, distances, anglesDeg, {
+    distance,
+    angleDeg,
+  });
+}
+
+/** The distance and angle every edge takes, or `undefined` when they differ. */
+function sharedDistAngle(entries: readonly DistAngle[]): DistAngle | undefined {
+  const [first] = entries;
+  if (first === undefined) return undefined;
+  const same = entries.every((e) => e.distance === first.distance && e.angleDeg === first.angleDeg);
+  return same ? first : undefined;
+}
+
+export function chamferDistAngles(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shape: KernelShape,
+  entries: ReadonlyArray<{ edge: KernelShape } & DistAngle>
+): KernelShape {
+  return runChamferDistAngles(
+    k,
+    Module,
+    shape,
+    entries.map((e) => e.edge),
+    entries.map((e) => e.distance),
+    entries.map((e) => e.angleDeg),
+    sharedDistAngle(entries)
+  );
 }
 
 export function shell(

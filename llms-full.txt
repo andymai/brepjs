@@ -443,7 +443,9 @@ fillet(shape, edges, radius): Result<Shape3D>      // Selected edges
 
 chamfer(shape, distance): Result<Shape3D>          // All edges
 chamfer(shape, edges, distance): Result<Shape3D>   // Selected edges
-// distance: number | [d1, d2] | (edge => number | [d1, d2] | null)
+// distance: number | [d1, d2] | { distance, angle } | (edge => number | [d1, d2] | { distance, angle } | null)
+// A callback's kept edges all get distances or all get { distance, angle } (mixing is INVALID_CHAMFER_DISTANCE).
+// Different { distance, angle } per edge need occt-wasm 5.9.0+; other kernels return UNSUPPORTED_CAPABILITY.
 
 chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>
 ```
