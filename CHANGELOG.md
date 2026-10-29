@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.2](https://github.com/andymai/brepjs/compare/brepjs-v20.12.1...brepjs-v20.12.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **topology:** make shapeType work on every kernel and accept branded shapes ([c1a305b](https://github.com/andymai/brepjs/commit/c1a305b63b803bef6ea2708ddb5a9e8500039629))
+
 ## [20.12.1](https://github.com/andymai/brepjs/compare/brepjs-v20.12.0...brepjs-v20.12.1) (2026-10-29)
 
 
