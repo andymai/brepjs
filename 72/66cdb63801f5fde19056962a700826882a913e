@@ -1,0 +1,22 @@
+tests/boolean2dRegression.test.ts
+  s_d4ab5fb2066c9b::t_cb3b0ba4444a1c 497-518
+src/2d/blueprints/boolean2D.ts
+  s_d4ab5fb2066c9b::t_e183b85b582584 77-79
+  s_d4ab5fb2066c9b::t_24960e46cf4279 292-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7266cdb63801f5fde19056962a700826882a913e",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
