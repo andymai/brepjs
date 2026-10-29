@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   getBounds,
+  getKernel,
   getSolids,
   importOBJ,
   isCompound,
@@ -16,6 +17,23 @@ import type { Shape3D } from '@/index.js';
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+/** A 10 mm right tetrahedron at `x`, its faces using absolute indices from `first`. */
+function tetrahedron(x: number, first: number): string[] {
+  const [a, b, c, d] = [first, first + 1, first + 2, first + 3];
+  return [
+    `v ${x} 0 0`,
+    `v ${x + 10} 0 0`,
+    `v ${x} 10 0`,
+    `v ${x} 0 10`,
+    `f ${a} ${c} ${b}`,
+    `f ${a} ${b} ${d}`,
+    `f ${a} ${d} ${c}`,
+    `f ${b} ${c} ${d}`,
+  ];
+}
+
+const twoTetrahedra = [...tetrahedron(0, 1), ...tetrahedron(50, 5)].join('\n');
 
 describe('importOBJ', () => {
   it('imports a cube from OBJ', async () => {
@@ -71,24 +89,30 @@ describe('importOBJ', () => {
   });
 
   it('imports disjoint closed bodies as a compound of solids', async () => {
-    const tetra = (x: number, first: number) => {
-      const [a, b, c, d] = [first, first + 1, first + 2, first + 3];
-      return [
-        `v ${x} 0 0`,
-        `v ${x + 10} 0 0`,
-        `v ${x} 10 0`,
-        `v ${x} 0 10`,
-        `f ${a} ${c} ${b}`,
-        `f ${a} ${b} ${d}`,
-        `f ${a} ${d} ${c}`,
-        `f ${b} ${c} ${d}`,
-      ];
-    };
-    const obj = [...tetra(0, 1), ...tetra(50, 5)].join('\n');
-    using imported = unwrap(await importOBJ(new Blob([obj])));
+    using imported = unwrap(await importOBJ(new Blob([twoTetrahedra])));
     expect(isCompound(imported)).toBe(true);
     expect(getSolids(imported)).toHaveLength(2);
     expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000 / 6, 6);
+  });
+
+  it('splits bodies when the kernel returns the sewn compound instead of throwing', async () => {
+    // opencascade.js's sewAndSolidify hands back the sewn shape when it is not a
+    // single shell; mimic that contract on whichever kernel runs the test.
+    const kernel = getKernel();
+    const original = kernel.sewAndSolidify.bind(kernel);
+    const spy = vi.spyOn(kernel, 'sewAndSolidify').mockImplementation((faces, tolerance) => {
+      const sewn = kernel.sew(faces, tolerance);
+      if (kernel.shapeType(sewn) === 'compound') return sewn;
+      kernel.dispose(sewn);
+      return original(faces, tolerance);
+    });
+    try {
+      using imported = unwrap(await importOBJ(new Blob([twoTetrahedra])));
+      expect(getSolids(imported)).toHaveLength(2);
+      expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000 / 6, 6);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('reads tab-separated vertex and face lines', async () => {

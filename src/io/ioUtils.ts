@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { AnyShape, Dimension, UnknownDimShape } from '@/core/shapeTypes.js';
-import { castResultShape } from '@/core/shapeTypes.js';
+import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
 import { getShells, subShapeCount } from '@/topology/topologyQueryFns.js';
@@ -25,13 +25,8 @@ import { makeCompound } from '@/topology/solidBuilders.js';
  */
 export function sewFacesIntoSolids(faces: KernelShape[], tolerance: number): UnknownDimShape {
   const kernel = getKernel();
-  try {
-    return castResultShape(kernel.sewAndSolidify(faces, tolerance));
-  } catch {
-    // Not one closed body: the orientation fix leaves an open shell or a
-    // multi-body compound un-solidified, so the solid downcast throws (and
-    // castResultShape releases the rejected slot). Split the bodies apart.
-  }
+  const solid = solidify(faces, tolerance);
+  if (solid !== null) return solid;
   const sewn = castResultShape(kernel.sew(faces, tolerance));
   const shells = getShells(sewn);
   const shellFaces = shells.reduce((n, shell) => n + subShapeCount(shell, 'face'), 0);
@@ -44,13 +39,29 @@ export function sewFacesIntoSolids(faces: KernelShape[], tolerance: number): Unk
   return result;
 }
 
+/**
+ * `sewAndSolidify` when it yields a single solid, else `null`. Kernels signal
+ * "not one closed body" differently: occt-wasm's solid downcast throws (and
+ * castResultShape releases the slot), while opencascade.js returns the sewn
+ * shell or compound, so the result's type decides.
+ */
+function solidify(faces: KernelShape[], tolerance: number): AnyShape<Dimension> | null {
+  let shape: AnyShape<Dimension>;
+  try {
+    shape = castResultShape(getKernel().sewAndSolidify(faces, tolerance));
+  } catch {
+    return null;
+  }
+  if (isSolid(shape)) return shape;
+  shape[Symbol.dispose]();
+  return null;
+}
+
 function solidifyShell(shell: KernelShape, tolerance: number): AnyShape<Dimension> {
   const kernel = getKernel();
   const faces = kernel.iterShapes(shell, 'face');
   try {
-    return castResultShape(kernel.sewAndSolidify(faces, tolerance));
-  } catch {
-    return castResultShape(kernel.copyShape(shell));
+    return solidify(faces, tolerance) ?? castResultShape(kernel.copyShape(shell));
   } finally {
     for (const face of faces) kernel.dispose(face);
   }
