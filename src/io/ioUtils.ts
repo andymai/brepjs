@@ -7,11 +7,12 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
-import type { AnyShape, Dimension, UnknownDimShape } from '@/core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Shell, UnknownDimShape } from '@/core/shapeTypes.js';
 import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError } from '@/core/errors.js';
-import { getShells, subShapeCount } from '@/topology/topologyQueryFns.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
+import { getFaces, getShells, subShapeCount } from '@/topology/topologyQueryFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 
 /**
@@ -19,7 +20,8 @@ import { makeCompound } from '@/topology/solidBuilders.js';
  *
  * A single body comes back on its own: a `Solid` when closed, a `Shell` when
  * open. Several bodies come back as a `Compound` holding a `Solid` per closed
- * body and a `Shell` per open one. The caller keeps ownership of `faces`.
+ * body, a `Shell` per open one, and any face that joined no shell. The caller
+ * keeps ownership of `faces`.
  *
  * @throws When the kernel cannot sew the faces at all.
  */
@@ -30,13 +32,35 @@ export function sewFacesIntoSolids(faces: KernelShape[], tolerance: number): Unk
   const sewn = castResultShape(kernel.sew(faces, tolerance));
   const shells = getShells(sewn);
   const shellFaces = shells.reduce((n, shell) => n + subShapeCount(shell, 'face'), 0);
-  // Faces the sewing left outside every shell would be dropped by a per-shell rebuild.
-  if (shells.length < 2 || shellFaces !== subShapeCount(sewn, 'face')) return sewn;
+  const hasLooseFaces = shellFaces !== subShapeCount(sewn, 'face');
+  if (shells.length === 0 || (shells.length === 1 && !hasLooseFaces)) return sewn;
   using _sewn = sewn;
   const bodies = shells.map((shell) => solidifyShell(shell.wrapped, tolerance));
+  if (hasLooseFaces) {
+    for (const face of facesOutsideShells(sewn, shells)) {
+      bodies.push(castResultShape(kernel.copyShape(face.wrapped)));
+    }
+  }
   const result = makeCompound(bodies);
   for (const body of bodies) body[Symbol.dispose]();
   return result;
+}
+
+function facesOutsideShells(sewn: AnyShape<Dimension>, shells: Shell[]): Face<Dimension>[] {
+  const kernel = getKernel();
+  const inShells = new Map<number, KernelShape[]>();
+  for (const shell of shells) {
+    for (const face of getFaces(shell)) {
+      const hash = kernel.hashCode(face.wrapped, HASH_CODE_MAX);
+      const bucket = inShells.get(hash);
+      if (bucket) bucket.push(face.wrapped);
+      else inShells.set(hash, [face.wrapped]);
+    }
+  }
+  return getFaces(sewn).filter((face) => {
+    const bucket = inShells.get(kernel.hashCode(face.wrapped, HASH_CODE_MAX));
+    return !bucket?.some((other) => kernel.isSame(face.wrapped, other));
+  });
 }
 
 /**

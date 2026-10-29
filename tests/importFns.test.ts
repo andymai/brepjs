@@ -228,6 +228,31 @@ describe('importSTL', () => {
     expect(getShells(imported)).toHaveLength(2);
     expect(getFaces(imported)).toHaveLength(14);
   });
+
+  it('closes a body that sits beside a loose triangle', async (ctx) => {
+    skipIfDiverges(ctx, 'importFns.stlImport');
+    using closed = box(10, 10, 10);
+    const ascii = await unwrap(exportSTL(closed, { binary: false })).text();
+    const triangle = [
+      'facet normal 0 0 1',
+      'outer loop',
+      'vertex 0 0 50',
+      'vertex 1 0 50',
+      'vertex 1 1 50',
+      'endloop',
+      'endfacet',
+      '',
+    ].join('\n');
+    const endsolid = ascii.lastIndexOf('endsolid');
+    expect(endsolid).toBeGreaterThan(0);
+    const combined = ascii.slice(0, endsolid) + triangle + ascii.slice(endsolid);
+
+    using imported = unwrap(await importSTL(new Blob([combined])));
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(1000, 3);
+    expect(getFaces(imported)).toHaveLength(13);
+  });
 });
 
 describe.skipIf(currentKernel !== 'occt-wasm')('IGES on occt-wasm', () => {
