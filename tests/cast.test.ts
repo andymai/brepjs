@@ -11,6 +11,8 @@ import {
   toBREP,
   isCompSolid,
   isShape3D,
+  shapeType,
+  getFaces,
   isWire,
   castShape,
   getKernel,
@@ -59,6 +61,15 @@ describe('cast', () => {
       const result = downcast(nullShape);
       expect(isErr(result)).toBe(true);
       expect(unwrapErr(result).code).toBe('NULL_SHAPE');
+    });
+  });
+
+  describe('shapeType()', () => {
+    it('reports the type of a branded shape and of its kernel handle', () => {
+      using b = box(10, 10, 10);
+      expect(unwrap(shapeType(b))).toBe('solid');
+      expect(unwrap(shapeType(b.wrapped))).toBe('solid');
+      expect(getFaces(b).map((f) => unwrap(shapeType(f)))).toEqual(Array(6).fill('face'));
     });
   });
 

@@ -1,6 +1,7 @@
 import type { KernelShape, KernelType, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, CompSolid, Dimension } from '@/core/shapeTypes.js';
 import { castShape } from '@/core/shapeTypes.js';
+import { getOrQueryType } from '@/core/shapeTypeCache.js';
 import { getKernel } from '@/kernel/index.js';
 import { typeCastError } from '@/core/errors.js';
 import { type Result, ok, err } from '@/core/result.js';
@@ -56,11 +57,16 @@ export const iterTopo = function* iterTopo(
   for (const s of shapes) yield s;
 };
 
-/** Get the TopAbs_ShapeEnum type of an kernel shape, returning Err for null shapes. */
-export const shapeType = (shape: KernelShape): Result<KernelType> => {
-  if (getKernel().isNull(shape))
+/**
+ * Get the topological type of a shape (`'solid'`, `'face'`, ...), returning Err for null
+ * shapes. Accepts a branded shape or its raw kernel handle (`shape.wrapped`).
+ */
+export const shapeType = (shape: KernelShape): Result<ShapeType> => {
+  const raw: KernelShape =
+    shape !== null && typeof shape === 'object' && 'wrapped' in shape ? shape.wrapped : shape;
+  if (getKernel().isNull(raw))
     return err(typeCastError('NULL_SHAPE', 'This shape has no type, it is null'));
-  return ok(shape.ShapeType());
+  return ok(getOrQueryType(getKernel(), raw));
 };
 
 /**
