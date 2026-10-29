@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.2](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.1...brepjs-cad-v0.192.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **io:** import STL, OBJ, 3MF, and SVG as the shapes they describe ([5a4724a](https://github.com/andymai/brepjs/commit/5a4724a6618648d83cc41bf12d910894042bbf2e))
+
 ## [0.192.1](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.0...brepjs-cad-v0.192.1) (2026-10-29)
 
 
