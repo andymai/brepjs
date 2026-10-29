@@ -534,16 +534,16 @@ const arc = circularPattern(shape, [0, 0, 1], 6, 180, [10, 0, 0]);
 High-level operations that combine primitives with booleans:
 
 ```typescript
-import { drill, pocket, boss, mirrorJoin, sketchRectangle, sketchCircle, unwrap } from 'brepjs';
+import { drill, pocket, boss, mirrorJoin, drawRectangle, drawCircle, unwrap } from 'brepjs';
 
 // Drill a hole into a shape
 const drilled = unwrap(drill(myBox, { at: [10, 10], radius: 3, depth: 15 }));
 
 // Cut a pocket (shaped recess)
-const pocketed = unwrap(pocket(myBox, { profile: sketchRectangle(20, 10).wire, depth: 5 }));
+const pocketed = unwrap(pocket(myBox, { profile: drawRectangle(20, 10), depth: 5 }));
 
 // Add a boss (raised feature)
-const bossed = unwrap(boss(myBox, { profile: sketchCircle(8).wire, height: 10 }));
+const bossed = unwrap(boss(myBox, { profile: drawCircle(8), height: 10 }));
 
 // Mirror and fuse with the original
 const symmetric = unwrap(mirrorJoin(halfShape, { normal: [1, 0, 0] }));
@@ -650,10 +650,9 @@ const cornerVerts = vertexFinder()
 // findUnique — returns Result<T>, errors if 0 or >1 matches
 const uniqueEdge = edgeFinder().ofLength(10).findUnique(shape);
 
-// Combinators (available on all finders). The not/either callback arg is typed as a base
-// ShapeFinder without ofLength/ofCurveType, so build typed filters from a fresh finder
-edgeFinder().not(() => edgeFinder().ofCurveType('LINE')).findAll(shape);
-edgeFinder().either([() => edgeFinder().ofLength(10), () => edgeFinder().ofLength(20)]).findAll(shape);
+// Combinators (available on all finders)
+edgeFinder().not((f) => f.ofCurveType('LINE')).findAll(shape);
+edgeFinder().either([(f) => f.ofLength(10), (f) => f.ofLength(20)]).findAll(shape);
 edgeFinder().ofLength(10).or(edgeFinder().ofLength(20)).findAll(shape);  // also .and(other), .negate()
 edgeFinder().when(edge => customPredicate(edge)).findAll(shape);
 edgeFinder().inList(knownEdges).findAll(shape);
