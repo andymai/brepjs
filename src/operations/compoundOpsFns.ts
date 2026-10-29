@@ -22,7 +22,7 @@ import type {
   RectangularPatternOptions,
 } from '@/topology/apiTypes.js';
 import { resolve } from '@/topology/apiTypes.js';
-import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
+import { clone, getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
 import { applyMatrix } from '@/topology/transformFns.js';
 import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
 import { DisposalScope } from '@/core/disposal.js';
@@ -317,7 +317,7 @@ export function rectangularPattern<T extends Shape3D>(
     return err(validationError('PATTERN_ZERO_DIRECTION', 'Y direction cannot be zero'));
   }
 
-  if (xCount === 1 && yCount === 1) return ok(s);
+  if (xCount === 1 && yCount === 1) return clone(s);
 
   const xNorm = vecNormalize(xDir);
   const yNorm = vecNormalize(yDir);

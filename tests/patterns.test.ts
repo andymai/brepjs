@@ -12,8 +12,9 @@ import {
   measureVolume,
   translate,
   getBounds,
+  rectangularPattern,
 } from '@/index.js';
-import type { Bounds3D, Vec3 } from '@/index.js';
+import type { Bounds3D, Result, Shape3D, Vec3 } from '@/index.js';
 import { gridPattern } from '@/operations/patternFns.js';
 
 beforeAll(async () => {
@@ -32,7 +33,7 @@ describe('linearPattern', () => {
     expect(vol).toBeCloseTo(5 * 5 * 5 * 3, -1);
   });
 
-  it('returns original shape when count is 1', () => {
+  it('returns a copy of the shape when count is 1', () => {
     const b = box(5, 5, 5);
     const result = linearPattern(b, [1, 0, 0], 1, 10);
     expect(isOk(result)).toBe(true);
@@ -165,7 +166,7 @@ describe('circularPattern', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('returns original shape when count is 1', () => {
+  it('returns a copy of the shape when count is 1', () => {
     const b = box(5, 5, 5);
     const result = circularPattern(b, [0, 0, 1], 1);
     expect(isOk(result)).toBe(true);
@@ -186,7 +187,7 @@ describe('gridPattern', () => {
     expect(vol).toBeCloseTo(2 * 2 * 2 * 6, -1);
   });
 
-  it('returns original shape when both counts are 1', () => {
+  it('returns a copy of the shape when both counts are 1', () => {
     const b = box(5, 5, 5);
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 10, 10);
     expect(isOk(result)).toBe(true);
@@ -233,4 +234,39 @@ describe('gridPattern', () => {
     const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
+});
+
+describe('single-copy patterns', () => {
+  // Disposing the result must leave the caller's shape alive: a count of 1 used
+  // to hand back the input handle itself.
+  it.each([
+    ['linearPattern', (b: Shape3D) => linearPattern(b, [1, 0, 0], 1, 5)],
+    ['circularPattern over 360', (b: Shape3D) => circularPattern(b, [0, 0, 1], 1, 360)],
+    ['circularPattern over 90', (b: Shape3D) => circularPattern(b, [0, 0, 1], 1, 90)],
+    ['gridPattern 1x1', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 5, 5)],
+    ['gridPattern 1x3', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 3, 5, 5)],
+    ['gridPattern 3x1', (b: Shape3D) => gridPattern(b, [1, 0, 0], [0, 1, 0], 3, 1, 5, 5)],
+    [
+      'rectangularPattern 1x1',
+      (b: Shape3D) =>
+        rectangularPattern(b, {
+          xDir: [1, 0, 0],
+          xCount: 1,
+          xSpacing: 5,
+          yDir: [0, 1, 0],
+          yCount: 1,
+          ySpacing: 5,
+        }),
+    ],
+  ] as [string, (b: Shape3D) => Result<Shape3D>][])(
+    '%s returns a shape the caller can dispose without losing the input',
+    (_name, run) => {
+      using b = box(2, 2, 2);
+      const result = unwrap(run(b));
+      expect(result).not.toBe(b);
+      expect(result.wrapped).not.toBe(b.wrapped);
+      result[Symbol.dispose]();
+      expect(unwrap(measureVolume(b))).toBeCloseTo(8, 6);
+    }
+  );
 });
