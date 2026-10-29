@@ -1,0 +1,26 @@
+src/operations/patternFns.ts
+  s_d4ab5fb2066c9b::t_4db50bfe69a0ed 56-60,64,83-84
+llms.txt
+  s_d4ab5fb2066c9b::t_49bce2e4788c06 521,527
+llms-full.txt
+  s_d4ab5fb2066c9b::t_49bce2e4788c06 521,527
+tests/patterns.test.ts
+  s_d4ab5fb2066c9b::t_4db50bfe69a0ed 95-97,99-106,113,135-143
+  s_d4ab5fb2066c9b::t_6350e6296ff1de 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "323f9b5675caff2e7dff06e772904007488a19a1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
