@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.3](https://github.com/andymai/brepjs/compare/brepjs-v20.12.2...brepjs-v20.12.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **types:** keep the 3D dimension when querying a solid's faces ([0e72017](https://github.com/andymai/brepjs/commit/0e720170357212d787ae6e6fed833ec0b48289dd))
+
 ## [20.12.2](https://github.com/andymai/brepjs/compare/brepjs-v20.12.1...brepjs-v20.12.2) (2026-10-29)
 
 
