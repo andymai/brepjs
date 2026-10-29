@@ -20,8 +20,13 @@ import {
   isOk,
   isErr,
   drawRectangle,
+  drawCircle,
   createEdge,
   getKernel,
+  getBounds,
+  cut,
+  wire,
+  circle,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -87,6 +92,36 @@ describe('pocket()', () => {
     expect(vol).toBeCloseTo(expected, -1);
   });
 
+  it('cuts inward from a side face', () => {
+    using b = box(20, 20, 10);
+    using profile = drawRectangle(4, 4);
+    using pocketed = unwrap(
+      pocket(b, { profile, depth: 3, face: (f) => f.inDirection('X').atDistance(20, [0, 10, 5]) })
+    );
+    expect(unwrap(measureVolume(pocketed))).toBeCloseTo(4000 - 4 * 4 * 3, 3);
+    const bb = getBounds(pocketed);
+    expect(bb.xMin).toBeCloseTo(0, 5);
+    expect(bb.xMax).toBeCloseTo(20, 5);
+  });
+
+  it('cuts a wire profile into the -Y face', () => {
+    using b = box(20, 20, 10);
+    using profile = unwrap(wire([circle(2)]));
+    using pocketed = unwrap(
+      pocket(b, { profile, depth: 5, face: (f) => f.inDirection('Y').atDistance(0, [10, 0, 5]) })
+    );
+    expect(unwrap(measureVolume(pocketed))).toBeCloseTo(4000 - Math.PI * 4 * 5, 3);
+  });
+
+  it('keeps the holes of a Drawing profile', () => {
+    using b = box(50, 50, 20);
+    using outer = drawRectangle(8, 8);
+    using hole = drawCircle(2);
+    using profile = outer.cut(hole);
+    using pocketed = unwrap(pocket(b, { profile, depth: 2 }));
+    expect(unwrap(measureVolume(pocketed))).toBeCloseTo(50 * 50 * 20 - (64 - Math.PI * 4) * 2, 3);
+  });
+
   it('returns Err with POCKET_INVALID_DEPTH for depth <= 0', () => {
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
@@ -140,6 +175,35 @@ describe('boss()', () => {
     const vol = unwrap(measureVolume(unwrap(result)));
     const expected = 50 * 50 * 20 + 20 * 10 * 5;
     expect(vol).toBeCloseTo(expected, -1);
+  });
+
+  it('extrudes outward from a side face', () => {
+    using b = box(20, 20, 10);
+    using profile = drawCircle(3);
+    using bossed = unwrap(
+      boss(b, { profile, height: 5, face: (f) => f.inDirection('X').atDistance(20, [0, 10, 5]) })
+    );
+    expect(unwrap(measureVolume(bossed))).toBeCloseTo(4000 + Math.PI * 9 * 5, 3);
+    const bb = getBounds(bossed);
+    expect(bb.xMin).toBeCloseTo(0, 5);
+    expect(bb.xMax).toBeCloseTo(25, 5);
+  });
+
+  it('orients the profile on a side face: local Y up, local X to the right', () => {
+    // On the +X face, seen from outside, right is +Y and up is +Z.
+    using b = box(20, 20, 10);
+    using profile = drawRectangle(8, 2);
+    using bossed = unwrap(
+      boss(b, { profile, height: 1, face: (f) => f.inDirection('X').atDistance(20, [0, 10, 5]) })
+    );
+    using added = unwrap(cut(bossed, b));
+    const bb = getBounds(added);
+    expect(bb.xMin).toBeCloseTo(20, 5);
+    expect(bb.xMax).toBeCloseTo(21, 5);
+    expect(bb.yMin).toBeCloseTo(6, 5);
+    expect(bb.yMax).toBeCloseTo(14, 5);
+    expect(bb.zMin).toBeCloseTo(4, 5);
+    expect(bb.zMax).toBeCloseTo(6, 5);
   });
 
   it('returns Err with BOSS_INVALID_HEIGHT for height <= 0', () => {

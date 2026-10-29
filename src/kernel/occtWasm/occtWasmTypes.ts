@@ -388,6 +388,22 @@ export interface OcctKernelWasm {
     height: number,
     radius: number
   ): number;
+  /**
+   * {@link makeHelixWire} with an explicit winding. Optional: absent on WASM
+   * builds older than occt-wasm 4.3.0, so callers must feature-detect it.
+   */
+  makeHelixWireHanded?(
+    px: number,
+    py: number,
+    pz: number,
+    dx: number,
+    dy: number,
+    dz: number,
+    pitch: number,
+    height: number,
+    radius: number,
+    leftHanded: boolean
+  ): number;
   makeWire(edgeIds: EmVectorUint32): number;
   makeFace(wireId: number): number;
   makeNonPlanarFace(wireId: number): number;

@@ -30,7 +30,7 @@ export type {
   OcctWasmHandle,
   OcctWasmModule,
   OcctKernelWasm,
-  SurfaceType,
+  SurfaceType as KernelSurfaceType,
   ShapeOrientation,
   ShapeType,
   // Kernel sub-interfaces (ADR-0007)
@@ -652,6 +652,7 @@ export {
   innerWires,
   removeHolesFromFace,
   projectPointOnFace,
+  type SurfaceType,
   type UVBounds,
   type PointProjectionResult,
 } from './topology/faceFns.js';

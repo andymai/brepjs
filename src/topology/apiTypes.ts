@@ -10,12 +10,12 @@ import type { AnyShape, Dimension, Edge, Face, Wire, Shape3D } from '@/core/shap
 import type { EdgeFinderFn, FaceFinderFn, ShapeFinder } from '@/query/finderFns.js';
 
 /**
- * Structural type matching a Drawing's wire-producing interface.
- * Used in place of importing the actual Drawing class to avoid
- * Layer 2 → Layer 3 boundary violations.
+ * Structural type matching a Drawing: it sketches onto a plane as something
+ * that builds a face (holes included). Used in place of importing the actual
+ * Drawing class to avoid Layer 2 → Layer 3 boundary violations.
  */
 export interface DrawingLike {
-  sketchOnPlane(plane: string): { wire: Wire };
+  sketchOnPlane(plane: 'XY'): { face(): Face; delete?(): void };
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,12 @@ export interface DrillOptions {
 
 /** Options for the pocket() compound operation. */
 export interface PocketOptions {
-  /** 2D profile shape to cut into the face. */
+  /**
+   * 2D profile to cut into the face, drawn in XY with its origin at the face
+   * centre. On faces parallel to XY it keeps the world X and Y axes; on any
+   * other face its Y axis runs up the face and its X axis points right as seen
+   * from outside.
+   */
   profile: DrawingLike | Wire;
   /** Which face to pocket. Default: top face. */
   face?: Face | FinderFn<Face>;
@@ -117,7 +122,7 @@ export interface PocketOptions {
 
 /** Options for the boss() compound operation. */
 export interface BossOptions {
-  /** 2D profile shape to extrude onto the face. */
+  /** 2D profile to extrude from the face, placed as for {@link PocketOptions.profile}. */
   profile: DrawingLike | Wire;
   /** Which face to add onto. Default: top face. */
   face?: Face | FinderFn<Face>;

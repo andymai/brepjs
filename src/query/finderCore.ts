@@ -29,15 +29,17 @@ export type TopoKind = 'edge' | 'face' | 'wire' | 'vertex';
 // Base ShapeFinder interface
 // ---------------------------------------------------------------------------
 
+// `this` is the concrete finder (edgeFinder() gives EdgeFinderFn, ...): the
+// builders rebuild that finder, and not/either hand their callbacks a fresh one.
 export interface ShapeFinder<T extends AnyShape<Dimension>> {
   /** Add a custom predicate filter. Returns new finder. */
-  readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
+  readonly when: (predicate: Predicate<T>) => this;
   /** Filter to elements in a list. Returns new finder. */
-  readonly inList: (elements: T[]) => ShapeFinder<T>;
+  readonly inList: (elements: T[]) => this;
   /** Invert a filter. Returns new finder. */
-  readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
+  readonly not: (builderFn: (f: this) => ShapeFinder<T>) => this;
   /** Combine filters with OR. Returns new finder. */
-  readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
+  readonly either: (fns: ((f: this) => ShapeFinder<T>)[]) => this;
   /** Find all matching elements from a shape. */
   readonly findAll: (shape: AnyShape<Dimension>) => T[];
   /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
@@ -46,11 +48,11 @@ export interface ShapeFinder<T extends AnyShape<Dimension>> {
   readonly shouldKeep: (element: T) => boolean;
 
   /** Intersect: element must match both this finder AND other. */
-  readonly and: (other: ShapeFinder<T>) => ShapeFinder<T>;
+  readonly and: (other: ShapeFinder<T>) => this;
   /** Union: element must match this finder OR other. */
-  readonly or: (other: ShapeFinder<T>) => ShapeFinder<T>;
+  readonly or: (other: ShapeFinder<T>) => this;
   /** Negate: invert all filters on this finder. */
-  readonly negate: () => ShapeFinder<T>;
+  readonly negate: () => this;
 
   // -- Internal (for composition) --
   readonly _filters: ReadonlyArray<Predicate<T>>;
