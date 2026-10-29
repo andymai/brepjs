@@ -1,6 +1,6 @@
 import zip from '@/utils/zip.js';
 import { wasmIndex } from '@/utils/vec3.js';
-import type { Curve2D } from '@/2d/lib/index.js';
+import type { Curve2D, Point2D } from '@/2d/lib/index.js';
 import { make2dSegmentCurve, crossProduct2d, subtract2d } from '@/2d/lib/index.js';
 
 import Blueprint from './blueprint.js';
@@ -310,17 +310,35 @@ export function booleanOperation(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildNoIntersectionResult(first: Blueprint, second: Blueprint): NoIntersectionResult {
-  const firstCurve = first.curves[0];
-  const secondCurve = second.curves[0];
+/**
+ * A point of `outline` that is not on `other`'s boundary. Outlines that only touch
+ * can meet at a curve's midpoint, where an inside test cannot tell which side is
+ * which, so several points along each curve are tried.
+ */
+function pointOffBoundary(outline: Blueprint, other: Blueprint): Point2D | null {
+  for (const curve of outline.curves) {
+    for (const fraction of [0.5, 0.25, 0.75]) {
+      const point = curve.value(
+        curve.firstParameter + fraction * (curve.lastParameter - curve.firstParameter)
+      );
+      if (!other.curves.some((c) => c.isOnCurve(point))) return point;
+    }
+  }
+  return null;
+}
 
-  const firstCurveInSecond = firstCurve !== undefined && second.isInside(curveMidPoint(firstCurve));
-  const secondCurveInFirst =
-    secondCurve !== undefined && first.isInside(curveMidPoint(secondCurve));
+function buildNoIntersectionResult(
+  first: Blueprint,
+  second: Blueprint
+): NoIntersectionResult | IdenticalResult {
+  const firstPoint = pointOffBoundary(first, second);
+  const secondPoint = pointOffBoundary(second, first);
+  // Every probe of one outline lies on the other: they trace the same boundary.
+  if (firstPoint === null || secondPoint === null) return { identical: true };
 
   return {
     identical: false,
-    firstCurveInSecond,
-    secondCurveInFirst,
+    firstCurveInSecond: second.isInside(firstPoint),
+    secondCurveInFirst: first.isInside(secondPoint),
   };
 }
