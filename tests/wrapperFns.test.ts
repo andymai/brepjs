@@ -30,9 +30,6 @@ import {
   getFaces,
   getEdges,
   getVertices,
-  type Edge,
-  type WrappedCurve,
-  type WrappedFace,
 } from '@/index.js';
 import { BrepWrapperError } from '@/topology/wrapperFns.js';
 
@@ -489,12 +486,12 @@ describe('Wrapped applyMatrix', () => {
 
 describe('wrapAny dispatch branches', () => {
   it('apply() returning a Face dispatches to WrappedFace', () => {
-    const wrapped = shape(box(10, 10, 10)).apply((s) => first(getFaces(s))) as WrappedFace;
+    const wrapped = shape(box(10, 10, 10)).apply((s) => first(getFaces(s)));
     expect(typeof wrapped.area).toBe('function');
   });
 
   it('apply() returning an Edge dispatches to WrappedCurve', () => {
-    const wrapped = shape(box(10, 10, 10)).apply((s) => first(getEdges(s))) as WrappedCurve<Edge>;
+    const wrapped = shape(box(10, 10, 10)).apply((s) => first(getEdges(s)));
     expect(typeof wrapped.length).toBe('function');
   });
 });

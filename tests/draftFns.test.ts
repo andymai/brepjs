@@ -141,8 +141,8 @@ describe('draft', () => {
           pullDirection: [0, 0, 1],
           neutralPlane: [0, 0, 0],
           angle: (face) => {
-            if (xFaces.some((f) => f === face)) return 5;
-            if (yFaces.some((f) => f === face)) return 3;
+            if (xFaces.includes(face)) return 5;
+            if (yFaces.includes(face)) return 3;
             return null;
           },
         });
@@ -222,7 +222,7 @@ describe('draft', () => {
         draft(b, [...xFaces, ...yFaces], {
           pullDirection: [0, 0, 1],
           neutralPlane: [0, 0, 0],
-          angle: (face) => (xFaces.some((f) => f === face) ? 5 : 3),
+          angle: (face) => (xFaces.includes(face) ? 5 : 3),
         })
       );
       // ∫ (10 - 2z·tan 5°)(10 - 2z·tan 3°) dz over 0..10

@@ -45,7 +45,7 @@ export function rotate(
   axis?: readonly [number, number, number],
   center?: readonly [number, number, number]
 ): KernelShape {
-  return applyMatrix(bk, shape, rotationMatrix(angle, axis, center));
+  return applyMatrix(bk, shape, rotationMatrix((angle * 180) / Math.PI, axis, center));
 }
 
 export function mirror(
@@ -107,11 +107,10 @@ export function positionOnCurve(
   const dot = nz;
   let result = shape;
   if (Math.abs(dot + 1) < 1e-10) {
-    result = rotate(bk, result, 180, [1, 0, 0]);
+    result = rotate(bk, result, Math.PI, [1, 0, 0]);
   } else if (Math.abs(dot - 1) > 1e-10) {
     const axis: [number, number, number] = [-ny, nx, 0];
-    const angleDeg = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
-    result = rotate(bk, result, angleDeg, axis);
+    result = rotate(bk, result, Math.acos(Math.max(-1, Math.min(1, dot))), axis);
   }
   return translate(bk, result, point[0], point[1], point[2]);
 }
@@ -143,7 +142,8 @@ export function circularPattern(
 ): KernelShape[] {
   const results: KernelShape[] = [shape];
   for (let i = 1; i < count; i++) {
-    results.push(rotate(bk, shape, angleStep * i, axis, center));
+    // circularPattern takes degrees, as on every kernel; rotate takes radians.
+    results.push(rotate(bk, shape, (angleStep * i * Math.PI) / 180, axis, center));
   }
   return results;
 }
@@ -181,7 +181,8 @@ export function transformBatch(bk: BrepkitKernel, entries: TransformEntry[]): Ke
       case 'translate':
         return translate(bk, e.shape, e.x, e.y, e.z);
       case 'rotate':
-        return rotate(bk, e.shape, e.angle, e.axis, e.center);
+        // Batch entries carry degrees here, as on the opencascade and manifold adapters.
+        return rotate(bk, e.shape, (e.angle * Math.PI) / 180, e.axis, e.center);
       case 'scale':
         return scale(bk, e.shape, e.center, e.factor);
       case 'mirror':

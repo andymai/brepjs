@@ -1,5 +1,26 @@
 # Changelog
 
+## [20.13.0](https://github.com/andymai/brepjs/compare/brepjs-v20.12.15...brepjs-v20.13.0) (2026-10-30)
+
+
+### Features
+
+* **topology:** measure chamfers from a given face and keep their face history ([#2558](https://github.com/andymai/brepjs/issues/2558)) ([b084da9](https://github.com/andymai/brepjs/commit/b084da9be990573575f8f64a58941370be59c057))
+
+## [20.12.15](https://github.com/andymai/brepjs/compare/brepjs-v20.12.14...brepjs-v20.12.15) (2026-10-30)
+
+
+### Bug Fixes
+
+* **types:** match public types to runtime and align kernel rotation units ([#2556](https://github.com/andymai/brepjs/issues/2556)) ([92e929c](https://github.com/andymai/brepjs/commit/92e929c52e59df887abde917f7cee74339dddd85))
+
+## [20.12.14](https://github.com/andymai/brepjs/compare/brepjs-v20.12.13...brepjs-v20.12.14) (2026-10-30)
+
+
+### Performance Improvements
+
+* **io:** skip orientation repair for consistently wound meshes ([#2553](https://github.com/andymai/brepjs/issues/2553)) ([d59727f](https://github.com/andymai/brepjs/commit/d59727fe70d983b00545771bc357e5fbdf74f3ee))
+
 ## [20.12.13](https://github.com/andymai/brepjs/compare/brepjs-v20.12.12...brepjs-v20.12.13) (2026-10-30)
 
 

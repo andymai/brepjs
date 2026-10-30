@@ -3,7 +3,8 @@ import { makeCompound } from '@/topology/shapeHelpers.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
 import type { Plane } from '@/core/planeTypes.js';
-import type { Compound, Face, Shape3D } from '@/core/shapeTypes.js';
+import type { Compound, OrientedFace, Shape3D } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import { bug } from '@/core/errors.js';
 import { firstOrThrow } from '@/utils/arrayAccess.js';
 
@@ -50,7 +51,7 @@ export default class Sketches implements SketchInterface {
   }
 
   /** Build a face from the sole contained profile (see {@link Sketches.faces}). */
-  face(): Face {
+  face(): OrientedFace & PlanarFace {
     if (this.sketches.length !== 1)
       bug('Sketches.face', 'Multiple profiles — use faces() to combine them.');
     return firstOrThrow(this.sketches).face();

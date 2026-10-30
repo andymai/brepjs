@@ -206,6 +206,15 @@ export function runEdgeTreatment<T>(
   }
 }
 
+/**
+ * A per-edge chamfer's `referenceFaceIds`: empty when no edge names its
+ * reference face, else one id per edge, 0 where the facade picks the face.
+ */
+export function referenceFaceIds(faces: ReadonlyArray<KernelShape | undefined>): number[] {
+  if (faces.every((face) => face === undefined)) return [];
+  return faces.map((face) => (face === undefined ? 0 : unwrap(face)));
+}
+
 /** Each face's draft angle, in radians. */
 export function draftAnglesRad(
   faces: readonly KernelShape[],
@@ -223,6 +232,10 @@ export function needsOcctWasm59(what: string): UnsupportedKernelOperationError {
 
 export function needsOcctWasm510(what: string): UnsupportedKernelOperationError {
   return new UnsupportedKernelOperationError(`occt-wasm: ${what} requires occt-wasm >= 5.10.0`);
+}
+
+export function needsOcctWasm511(what: string): UnsupportedKernelOperationError {
+  return new UnsupportedKernelOperationError(`occt-wasm: ${what} requires occt-wasm >= 5.11.0`);
 }
 
 /**

@@ -4,14 +4,22 @@ import { copyShape } from '@/topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
-import type { ClosedWire, Face, PlanarWire, Shape3D, Wire } from '@/core/shapeTypes.js';
+import type {
+  ClosedWire,
+  Face,
+  OrientedFace,
+  PlanarWire,
+  Shape3D,
+  Wire,
+} from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import { createFace, createWire } from '@/core/shapeTypes.js';
 import * as fns from './sketchFns.js';
 
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 export interface SketchInterface {
   /** Transforms the lines into a face. The lines should be closed. */
-  face(): Face;
+  face(): OrientedFace & PlanarFace;
   /**
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
@@ -164,7 +172,7 @@ export default class Sketch implements SketchInterface {
   }
 
   /** Transforms the lines into a face. The lines should be closed. */
-  face(): Face {
+  face(): OrientedFace & PlanarFace {
     return fns.sketchFace(this);
   }
 
@@ -174,7 +182,7 @@ export default class Sketch implements SketchInterface {
   }
 
   /** Alias for {@link Sketch.face}. */
-  faces(): Face {
+  faces(): OrientedFace & PlanarFace {
     return this.face();
   }
 

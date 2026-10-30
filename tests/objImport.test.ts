@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll, vi } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   getBounds,
   getKernel,
@@ -116,6 +116,27 @@ describe('importOBJ', () => {
       spy.mockRestore();
     }
   });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'sews clean closed meshes from shared-edge faces without the orientation repair',
+    async () => {
+      const kernel = getKernel();
+      const repairs = vi.spyOn(kernel, 'sewAndSolidify');
+      const triFaces = vi.spyOn(kernel, 'buildTriFace');
+      try {
+        using single = unwrap(await importOBJ(new Blob([tetrahedron(0, 1).join('\n')])));
+        expect(isSolid(single)).toBe(true);
+        expect(unwrap(measureVolume(single as Shape3D))).toBeCloseTo(1000 / 6, 6);
+        using pair = unwrap(await importOBJ(new Blob([twoTetrahedra])));
+        expect(getSolids(pair)).toHaveLength(2);
+        expect(repairs).not.toHaveBeenCalled();
+        expect(triFaces).not.toHaveBeenCalled();
+      } finally {
+        repairs.mockRestore();
+        triFaces.mockRestore();
+      }
+    }
+  );
 
   it('reads tab-separated vertex and face lines', async () => {
     const obj = [

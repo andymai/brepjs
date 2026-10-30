@@ -6,18 +6,21 @@
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
+  chamfer,
   cut,
   drawCircle,
   drawRectangle,
   extrude,
+  getBounds,
+  getEdges,
   getFaces,
   getHashCode,
   isEdge,
-  isOrientedFace,
-  isPlanarFace,
+  isSolid,
+  isValidSolid,
   polygon,
   rotate,
   translate,
@@ -160,8 +163,6 @@ describe.skipIf(shouldSkipSuite('shapeRefExtrudeRoles.recorded'))('extrude face 
       .cut(drawCircle(4).translate(-6, 0))
       .cut(drawCircle(3).translate(8, 0));
     using face = drawing.sketchOnPlane('XY').face();
-    if (!isOrientedFace(face) || !isPlanarFace(face))
-      throw new Error('profile is not a planar face');
     using solid = unwrap(extrude(face, [0, 0, 5]));
     const roles = assignRoles(solid, 'extrude');
 
@@ -199,6 +200,37 @@ describe.skipIf(shouldSkipSuite('shapeRefExtrudeRoles.recorded'))('extrude face 
     expect(faceCenter(end)[2]).toBeCloseTo(5, 5);
     expect(normalAt(end)[2]).toBeCloseTo(1, 5);
     expect([...roles.keys()].filter((r) => r.includes(':face_'))).toHaveLength(4);
+  });
+
+  it('carries the roles through distance-angle chamfers and names the bevels positionally', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.perEdge');
+    skipIfDiverges(ctx, 'chamferAngle.faceHistory');
+    using solid = extrudePolygon(CCW_SQUARE, [0, 0, 5]);
+    if (!isSolid(solid) || !isValidSolid(solid)) throw new Error('extrusion is not a valid solid');
+    const ref = createRef(
+      'extrude',
+      'extrude:end',
+      faceFor(solid, assignRoles(solid, 'extrude'), 'extrude:end')
+    );
+    const vertical = getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 1);
+    using uniform = unwrap(chamfer(solid, vertical, { distance: 1, angle: 30 }));
+    using perEdge = unwrap(
+      chamfer(solid, vertical, (e) =>
+        getBounds(e).xMin < 5 ? { distance: 1, angle: 30 } : { distance: 2, angle: 60 }
+      )
+    );
+    for (const chamfered of [uniform, perEdge]) {
+      const roles = assignRoles(chamfered, 'extrude');
+      for (const role of ['start', 'end', 'side:0', 'side:1', 'side:2', 'side:3']) {
+        expect(roles.has(`extrude:${role}`)).toBe(true);
+      }
+      expect([...roles.keys()].filter((r) => r.includes(':face_'))).toHaveLength(4);
+
+      const resolved = resolveRefIn(ref, chamfered);
+      if (!resolved.ok) throw new Error(`end face ref did not resolve: ${resolved.reason}`);
+      expect(getHashCode(resolved.entity)).toBe(roles.get('extrude:end')?.[0]);
+      expect(normalAt(resolved.entity as Face)[2]).toBeCloseTo(1, 5);
+    }
   });
 
   it('records the same roles for a csg Extrude node', () => {

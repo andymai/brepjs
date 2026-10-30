@@ -6,6 +6,8 @@ import {
   fuse,
   cut,
   fillet,
+  chamfer,
+  chamferDistAngleShape,
   unwrap,
   isOk,
   setShapeOrigin,
@@ -18,7 +20,11 @@ import {
   getFaceColor,
   getFaces,
   getEdges,
+  getBounds,
 } from '@/index.js';
+import type { Dimension, Face, Shape3D } from '@/core/shapeTypes.js';
+import type { ValidSolid } from '@/core/validityTypes.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -181,6 +187,52 @@ describe('metadata propagation pipeline', () => {
       const color = getShapeColor(filleted);
       expect(color).toBeDefined();
       expect(color?.[2]).toBeCloseTo(1, 1); // blue channel
+    });
+  });
+
+  describe('full metadata propagation through distance-angle chamfers', () => {
+    const verticalEdges = (solid: Shape3D) =>
+      getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+    const isTop = (f: Face<Dimension>) => getBounds(f).zMin > 10 - 1e-6;
+    const isLeft = (f: Face<Dimension>) => getBounds(f).xMax < 1e-6;
+    const isGreen = (solid: Shape3D, f: Face<Dimension>) => getFaceColor(solid, f)?.[1] === 1;
+
+    /** A 10 mm cube with its top face tagged 'top' and its x = 0 face green. */
+    function markedCube(): ValidSolid {
+      const b = box(10, 10, 10);
+      tagFaces(b, getFaces(b).filter(isTop), 'top');
+      colorFaces(b, getFaces(b).filter(isLeft), '#00ff00');
+      return b;
+    }
+
+    function expectMarksKept(solid: Shape3D): void {
+      const tagged = findFacesByTag(solid, 'top');
+      expect(tagged).toHaveLength(1);
+      expect(tagged.every(isTop)).toBe(true);
+      const green = getFaces(solid).filter((f) => isGreen(solid, f));
+      expect(green).toHaveLength(1);
+      expect(green.every(isLeft)).toBe(true);
+    }
+
+    it('keeps face tags and colors through one { distance, angle }', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.faceHistory');
+      using b = markedCube();
+      using uniform = unwrap(chamfer(b, verticalEdges(b), { distance: 1, angle: 30 }));
+      expectMarksKept(uniform);
+      using direct = unwrap(chamferDistAngleShape(b, verticalEdges(b), 1, 30));
+      expectMarksKept(direct);
+    });
+
+    it('keeps face tags and colors through per-edge { distance, angle }', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.perEdge');
+      skipIfDiverges(ctx, 'chamferAngle.faceHistory');
+      using b = markedCube();
+      using chamfered = unwrap(
+        chamfer(b, verticalEdges(b), (e) =>
+          getBounds(e).xMin < 5 ? { distance: 1, angle: 30 } : { distance: 2, angle: 60 }
+        )
+      );
+      expectMarksKept(chamfered);
     });
   });
 });

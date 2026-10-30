@@ -75,7 +75,8 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
         case 'translate':
           return translate(oc, e.shape, e.x, e.y, e.z);
         case 'rotate':
-          return rotate(oc, e.shape, e.angle, [...e.axis], [...e.center]);
+          // Batch entries carry degrees, as in the native TransformBatch path above.
+          return rotate(oc, e.shape, (e.angle * Math.PI) / 180, [...e.axis], [...e.center]);
         case 'scale':
           return scale(oc, e.shape, [...e.center], e.factor);
         case 'mirror':
@@ -132,7 +133,7 @@ export function translate(
 }
 
 /**
- * Rotates a shape around an axis.
+ * Rotates a shape by `angle` radians around an axis.
  */
 export function rotate(
   oc: KernelInstance,
@@ -145,7 +146,7 @@ export function rotate(
   const origin = new oc.gp_Pnt_3(...center);
   const dir = new oc.gp_Dir_5(...axis);
   const ax1 = new oc.gp_Ax1_2(origin, dir);
-  trsf.SetRotation_1(ax1, (angle * Math.PI) / 180);
+  trsf.SetRotation_1(ax1, angle);
   const result = transform(oc, shape, trsf);
   trsf.delete();
   ax1.delete();

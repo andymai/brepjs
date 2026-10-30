@@ -772,6 +772,16 @@ export interface OcctKernelWasm {
     inputFaceHashes: EmVectorInt,
     hashUpperBound: number
   ): EmEvolutionData;
+  /** occt-wasm >= 5.11.0: {@link chamferDistAngles} with face evolution. */
+  chamferDistAnglesWithHistory?(
+    solidId: number,
+    edgeIds: EmVectorUint32,
+    distances: EmVectorDouble,
+    anglesDeg: EmVectorDouble,
+    referenceFaceIds: EmVectorUint32,
+    inputFaceHashes: EmVectorInt,
+    hashUpperBound: number
+  ): EmEvolutionData;
   /** occt-wasm >= 5.9.0 (npm build): {@link draftFaces} with face evolution. */
   draftFacesWithHistory?(
     shapeId: number,
