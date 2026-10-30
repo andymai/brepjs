@@ -264,6 +264,12 @@ export function sewableTopology(positions: ArrayLike<number> | null): MeshTopolo
   return analyzeMesh(positions);
 }
 
+/** {@link sewableTopology} of `triangles`, without copying them on a kernel that can't use it. */
+function sewableTriangles(triangles: Array<[Vec3, Vec3, Vec3]>): MeshTopology | null {
+  if (getKernel().capabilities.sewKeepsOrientation !== true) return null;
+  return sewableTopology(trianglePositions(triangles));
+}
+
 function trianglePositions(triangles: Array<[Vec3, Vec3, Vec3]>): Float64Array {
   const positions = new Float64Array(triangles.length * 9);
   triangles.forEach((triangle, t) => {
@@ -292,7 +298,7 @@ export function sewMeshToSolid(
   triangles: Array<[Vec3, Vec3, Vec3]>,
   errorCode: string,
   tolerance: number = 1e-6,
-  mesh: MeshTopology | null = sewableTopology(trianglePositions(triangles))
+  mesh: MeshTopology | null = sewableTriangles(triangles)
 ): Result<UnknownDimShape> {
   const facets = mesh ? readerFacets(triangles) : null;
   if (facets !== null) {
