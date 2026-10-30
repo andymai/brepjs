@@ -115,6 +115,18 @@ export interface KernelEvolutionOps {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;
+  /**
+   * {@link KernelModifierOps.chamferDistAngles} with face history. Optional, and
+   * may throw `UnsupportedKernelOperationError` on a build without it: there a
+   * distance-angle chamfer carries over face origins only, matched by hash and
+   * geometry.
+   */
+  chamferDistAnglesWithHistory?(
+    shape: KernelShape,
+    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>,
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult;
   shellWithHistory(
     shape: KernelShape,
     faces: KernelShape[],

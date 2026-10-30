@@ -1115,6 +1115,22 @@ export class OcctWasmAdapter implements KernelAdapter {
     );
   }
 
+  chamferDistAnglesWithHistory(
+    shape: KernelShape,
+    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>,
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult {
+    return evolutionOps.chamferDistAnglesWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      edges,
+      inputFaceHashes,
+      hashUpperBound
+    );
+  }
+
   shellWithHistory(
     shape: KernelShape,
     faces: KernelShape[],

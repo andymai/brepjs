@@ -120,6 +120,10 @@ import {
   sketchHelix,
   draft,
   chamferDistAngleShape,
+  tagFaces,
+  findFacesByTag,
+  colorFaces,
+  getFaceColor,
   exportSTEPConfigured,
   exportAssemblySTEP,
   instance,
@@ -809,6 +813,27 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using perEdge = unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })));
           expect(getFaceOrigins(uniform)?.size).toBeGreaterThan(0);
           expect(getFaceOrigins(perEdge)?.size).toBeGreaterThan(0);
+        })
+      ).toBe(0);
+    });
+
+    it('distance-angle chamfers with face history leak nothing, on success or failure', () => {
+      const near = { distance: 1, angle: 30 };
+      const isTop = (f: AnyShape<Dimension>) => getBounds(f).zMin > 10 - 1e-6;
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          tagFaces(b, getFaces(b).filter(isTop), 'top');
+          colorFaces(b, getFaces(b).filter(isTop), '#00ff00');
+          const edges = verticalEdges(b);
+          using uniform = unwrap(chamferDistAngleShape(b, edges, 1, 30));
+          using perEdge = unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })));
+          for (const chamfered of [uniform, perEdge]) {
+            const [top] = findFacesByTag(chamfered, 'top');
+            expect(top && getFaceColor(chamfered, top)).toEqual([0, 1, 0, 1]);
+          }
+          // 6 mm and 6·tan 45° setbacks on both sides of an edge of a 10 mm cube overlap.
+          expect(isErr(chamfer(b, edges, bySide(near, { distance: 6, angle: 45 })))).toBe(true);
         })
       ).toBe(0);
     });

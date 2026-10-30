@@ -22,7 +22,9 @@ import {
   makeVecInt,
   makeVecU32,
   needsOcctWasm59,
+  needsOcctWasm511,
   parseEvolution,
+  reportingFaultyEdges,
   runEdgeTreatment,
   unwrap,
   wrapResult,
@@ -471,6 +473,44 @@ export function chamferWithHistory(
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
   } finally {
+    faceVec.delete();
+    hashVec.delete();
+  }
+}
+
+export function chamferDistAnglesWithHistory(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  shape: KernelShape,
+  entries: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>,
+  inputFaceHashes: number[],
+  hashUpperBound: number
+): OperationResult {
+  if (!k.chamferDistAnglesWithHistory) {
+    throw needsOcctWasm511('a distance-angle chamfer with face history');
+  }
+  const withHistory = k.chamferDistAnglesWithHistory.bind(k);
+  const shapeId = unwrap(shape);
+  const edges = entries.map((e) => e.edge);
+  const edgeIds = edges.map(unwrap);
+  const distances = entries.map((e) => e.distance);
+  const anglesDeg = entries.map((e) => e.angleDeg);
+  const edgeVec = makeVecU32(Module, edgeIds);
+  const distanceVec = makeVecDouble(Module, distances);
+  const angleVec = makeVecDouble(Module, anglesDeg);
+  // No reference faces: each edge's distance is set back on its first adjacent face.
+  const faceVec = makeVecU32(Module, []);
+  const hashVec = makeVecInt(Module, inputFaceHashes);
+  try {
+    const evo = reportingFaultyEdges(edges, () =>
+      withHistory(shapeId, edgeVec, distanceVec, angleVec, faceVec, hashVec, hashUpperBound)
+    );
+    const { id, evolution } = parseEvolution(evo);
+    return { shape: wrapResult(k, id), evolution };
+  } finally {
+    edgeVec.delete();
+    distanceVec.delete();
+    angleVec.delete();
     faceVec.delete();
     hashVec.delete();
   }

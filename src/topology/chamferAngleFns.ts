@@ -4,12 +4,16 @@
  * Provides chamferDistAngle(), which chamfers edges using one distance
  * measured along one face and one angle that determines the chamfer on the
  * other, and chamferDistAngles(), which gives each edge its own pair.
+ *
+ * Face origins, tags and colors carry over to the faces a chamfer keeps where
+ * the kernel reports face history for it (occt-wasm 5.11.0 or later);
+ * elsewhere only face origins do.
  */
 
 import { getKernel } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
-import type { KernelShape } from '@/kernel/types.js';
+import type { KernelShape, ShapeEvolution } from '@/kernel/types.js';
 import type { Edge, Shape3D } from '@/core/shapeTypes.js';
 import {
   castResultShape,
@@ -17,8 +21,13 @@ import {
   disposeResultShape,
   isShape3D,
 } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import { downcast } from './cast.js';
-import { propagateMetadataByHash } from './metadata/metadataPropagation.js';
+import {
+  collectInputFaceHashes,
+  propagateAllMetadata,
+  propagateMetadataByHash,
+} from './metadata/metadataPropagation.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
 import {
@@ -79,11 +88,51 @@ function chamferAngleFailed(
   );
 }
 
+/** One edge of a distance-angle chamfer, as the kernel takes it. */
+interface KernelDistAngle {
+  readonly edge: KernelShape;
+  readonly distance: number;
+  readonly angleDeg: number;
+}
+
+/** A kernel's distance-angle chamfer, with the face history it reported, if any. */
+interface BuiltChamfer {
+  readonly raw: KernelShape;
+  readonly evolution: ShapeEvolution | undefined;
+}
+
+/**
+ * Chamfer `entries` with the kernel's distance-angle chamfer that reports face
+ * history. A kernel without one, or a build that rejects it as unsupported
+ * (occt-wasm before 5.11), runs `withoutHistory` instead.
+ */
+function buildChamfer(
+  shape: Shape3D,
+  entries: ReadonlyArray<KernelDistAngle>,
+  withoutHistory: () => KernelShape
+): BuiltChamfer {
+  const kernel = getKernel();
+  if (kernel.chamferDistAnglesWithHistory) {
+    try {
+      const { shape: raw, evolution } = kernel.chamferDistAnglesWithHistory(
+        shape.wrapped,
+        entries,
+        collectInputFaceHashes([shape]),
+        HASH_CODE_MAX
+      );
+      return { raw, evolution };
+    } catch (e) {
+      if (!isUnsupportedKernelOperationError(e)) throw e;
+    }
+  }
+  return { raw: withoutHistory(), evolution: undefined };
+}
+
 /**
  * Cast a fresh kernel result to a 3D shape, releasing every intermediate slot,
- * and carry the face origins of `input` over to it.
+ * and carry the face metadata of `input` over to it.
  */
-function castChamferResult(input: Shape3D, raw: KernelShape): Result<Shape3D> {
+function castChamferResult(input: Shape3D, { raw, evolution }: BuiltChamfer): Result<Shape3D> {
   const downcastResult = downcast(raw);
   if (isErr(downcastResult)) {
     getKernel().dispose(raw);
@@ -100,9 +149,13 @@ function castChamferResult(input: Shape3D, raw: KernelShape): Result<Shape3D> {
       typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngle did not produce a 3D shape')
     );
   }
-  // No kernel reports face history for a distance-angle chamfer, so only face
-  // origins carry over (tags and colors are lost), matched by hash and geometry.
-  propagateMetadataByHash([input], wrapped);
+  if (evolution) {
+    propagateAllMetadata(evolution, [input], wrapped);
+  } else {
+    // Without face history only face origins carry over (tags and colors are
+    // lost), matched by hash and geometry.
+    propagateMetadataByHash([input], wrapped);
+  }
   return ok(wrapped);
 }
 
@@ -144,10 +197,14 @@ export function chamferDistAngle(
   if (invalid) return invalid;
 
   const kernel = getKernel();
-  let raw;
+  let built: BuiltChamfer;
   try {
     const rawEdges = edges.map((e) => e.wrapped);
-    raw = kernel.chamferDistAngle(shape.wrapped, rawEdges, distance, angleDeg);
+    built = buildChamfer(
+      shape,
+      rawEdges.map((edge) => ({ edge, distance, angleDeg })),
+      () => kernel.chamferDistAngle(shape.wrapped, rawEdges, distance, angleDeg)
+    );
   } catch (e) {
     if (isUnsupportedKernelOperationError(e)) {
       return err(
@@ -166,7 +223,7 @@ export function chamferDistAngle(
       edgeCount: edges.length,
     });
   }
-  return castChamferResult(shape, raw);
+  return castChamferResult(shape, built);
 }
 
 /** An edge and the distance-angle chamfer to put on it. */
@@ -234,19 +291,17 @@ export function chamferDistAngles(
   const perEdge = kernel.chamferDistAngles?.bind(kernel);
   if (!perEdge) return perEdgeUnsupported(kernel.kernelId, undefined);
 
-  let raw: KernelShape;
+  const kernelEntries = entries.map(({ edge, distance, angle }) => ({
+    edge: edge.wrapped,
+    distance,
+    angleDeg: angle,
+  }));
+  let built: BuiltChamfer;
   try {
-    raw = perEdge(
-      shape.wrapped,
-      entries.map(({ edge, distance, angle }) => ({
-        edge: edge.wrapped,
-        distance,
-        angleDeg: angle,
-      }))
-    );
+    built = buildChamfer(shape, kernelEntries, () => perEdge(shape.wrapped, kernelEntries));
   } catch (e) {
     if (isUnsupportedKernelOperationError(e)) return perEdgeUnsupported(kernel.kernelId, e);
     return chamferAngleFailed('chamferDistAngles', e, edges, { edgeCount: entries.length });
   }
-  return castChamferResult(shape, raw);
+  return castChamferResult(shape, built);
 }

@@ -272,7 +272,10 @@ describe('chamfer() with { distance, angle } per edge', () => {
 
   it('returns UNSUPPORTED on a kernel without per-edge distance-angle chamfers', (ctx) => {
     skipIfDiverges(ctx, 'chamferAngle.distAngle');
-    registerStubKernel('no-per-edge-dist-angle', { chamferDistAngles: undefined });
+    registerStubKernel('no-per-edge-dist-angle', {
+      chamferDistAngles: undefined,
+      chamferDistAnglesWithHistory: undefined,
+    });
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);
     const error = unwrapErr(
@@ -292,6 +295,7 @@ describe('chamfer() with { distance, angle } per edge', () => {
         throw new UnsupportedKernelOperationError('stub: no distance-angle chamfer');
       },
       chamferDistAngles: undefined,
+      chamferDistAnglesWithHistory: undefined,
     });
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);
