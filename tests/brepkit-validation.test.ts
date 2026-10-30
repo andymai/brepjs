@@ -34,13 +34,12 @@ beforeAll(async () => {
   await initOCCT();
 
   try {
-    const brepkitWasm = await import('brepkit-wasm');
-    if (typeof brepkitWasm.default === 'function') {
-      await brepkitWasm.default();
-    }
     // nodejs WASM target exports BrepKernel directly; bundler target exports it via .default.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM module shape differs between build targets
-    const bkWasm = brepkitWasm as any;
+    const bkWasm = (await import('brepkit-wasm')) as any;
+    if (typeof bkWasm.default === 'function') {
+      await bkWasm.default();
+    }
 
     const BrepKernel = bkWasm.BrepKernel ?? bkWasm.default?.BrepKernel;
 
