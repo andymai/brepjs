@@ -39,7 +39,10 @@ describe('exportGltf', () => {
 
   describe('up-axis', () => {
     const meshNodeOf = (doc: { scene: number; scenes: { nodes: number[] }[]; nodes: unknown[] }) =>
-      doc.nodes.find((n) => (n as { mesh?: number }).mesh !== undefined) as { mesh: number };
+      doc.nodes.find((n) => (n as { mesh?: number }).mesh !== undefined) as {
+        mesh: number;
+        rotation?: number[];
+      };
 
     it('defaults to Y-up via a −90°-X root node so glTF viewers show it upright', () => {
       const doc = JSON.parse(exportGltf(getBoxMesh()));

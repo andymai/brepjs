@@ -24,12 +24,14 @@ import { resolvePlane } from '@/core/planeOps.js';
 import { vecAdd, vecScale, vecSub, vecDot } from '@/core/vecOps.js';
 import type { Vec3 } from '@/core/types.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
-import { getWires, getEdges, getVertices } from './shapeFns.js';
+import { clone, getWires, getEdges, getVertices } from './shapeFns.js';
 import { getAtOrThrow, firstOrThrow } from '@/utils/arrayAccess.js';
 import {
   collectInputFaceHashes,
+  hasAnyMetadata,
   propagateAllMetadata,
   propagateMetadataByHash,
+  propagateMetadataThroughRelocation,
 } from './metadata/metadataPropagation.js';
 import { makeFace } from './surfaceBuilders.js';
 
@@ -78,6 +80,24 @@ function castToShape3D(
     );
   }
   return ok(wrapped);
+}
+
+/**
+ * A copy of `shape` the caller owns, for a boolean that has nothing to combine.
+ * With `trackEvolution` on, its face metadata is re-keyed onto the copy, as a
+ * real boolean would propagate it.
+ *
+ * @internal
+ */
+export function copyAsBooleanResult<T extends AnyShape<Dimension>>(
+  shape: T,
+  trackEvolution: boolean
+): Result<T> {
+  const copy = clone(shape);
+  if (copy.ok && trackEvolution && hasAnyMetadata(shape)) {
+    propagateMetadataThroughRelocation(shape, copy.value);
+  }
+  return copy;
 }
 
 // ---------------------------------------------------------------------------
@@ -409,36 +429,40 @@ function fuseAllPairwise(
     fuzzyValue
   );
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAllPairwise(
-    shapes,
-    mid,
-    end,
-    optimisation,
-    simplify,
-    false,
-    trackEvolution,
-    signal,
-    fuzzyValue
-  );
-  if (isErr(rightResult)) {
-    if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
-    return rightResult;
-  }
-
-  const combined = fuse(leftResult.value.shape, rightResult.value.shape, {
-    optimisation,
-    simplify,
-    trackEvolution,
-    fuzzyValue,
-    unsafe: true,
-    ...(signal ? { signal } : {}),
-  });
+  const left = leftResult.value;
+  let right: PairwiseNode | undefined;
   // The two operands are consumed by the combine; release the ones this
-  // recursion owns (never the caller-owned leaf passthroughs).
-  if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
-  if (rightResult.value.owned) disposeResultShape(rightResult.value.shape);
-  if (isErr(combined)) return combined;
-  return ok({ shape: combined.value, owned: true });
+  // recursion owns (never the caller-owned leaf passthroughs), also when the
+  // right half or the combine fails or throws on an abort.
+  try {
+    const rightResult = fuseAllPairwise(
+      shapes,
+      mid,
+      end,
+      optimisation,
+      simplify,
+      false,
+      trackEvolution,
+      signal,
+      fuzzyValue
+    );
+    if (isErr(rightResult)) return rightResult;
+    right = rightResult.value;
+
+    const combined = fuse(left.shape, right.shape, {
+      optimisation,
+      simplify,
+      trackEvolution,
+      fuzzyValue,
+      unsafe: true,
+      ...(signal ? { signal } : {}),
+    });
+    if (isErr(combined)) return combined;
+    return ok({ shape: combined.value, owned: true });
+  } finally {
+    if (left.owned) disposeResultShape(left.shape);
+    if (right?.owned) disposeResultShape(right.shape);
+  }
 }
 
 /**
@@ -458,6 +482,7 @@ function fuseAllPairwise(
  * @param shapes - Array of 3D shapes to fuse (at least one required).
  * @param options - Boolean operation options.
  * @returns Ok with the fused shape, or Err if the array is empty or the result is not 3D.
+ *   A single shape comes back as a copy, so the result is always the caller's to dispose.
  *
  * @example
  * ```ts
@@ -484,12 +509,13 @@ export function fuseAll(
   if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
-  if (shapes.length === 1) return ok(firstOrThrow(shapes));
 
   for (let i = 0; i < shapes.length; i++) {
     const check = validateShape3D(getAtOrThrow(shapes, i), `fuseAll: shape at index ${i}`);
     if (isErr(check)) return check;
   }
+
+  if (shapes.length === 1) return copyAsBooleanResult(firstOrThrow(shapes), trackEvolution);
 
   if (strategy === 'native') {
     const kernel = getKernel();
@@ -554,7 +580,8 @@ export function fuseAll(
  * @param base - The shape to cut from.
  * @param tools - Array of tool shapes to subtract.
  * @param options - Boolean operation options.
- * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
+ * @returns Ok with the cut shape, or a copy of the base if tools is empty, so the
+ *   result is always the caller's to dispose.
  */
 export function cutAll(
   base: ValidSolid,
@@ -579,10 +606,10 @@ export function cutAll(
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
-  if (tools.length === 0) return ok(base);
 
   const checkBase = validateShape3D(base, 'cutAll: base');
   if (isErr(checkBase)) return checkBase;
+  if (tools.length === 0) return copyAsBooleanResult(base, trackEvolution);
   for (let i = 0; i < tools.length; i++) {
     const check = validateShape3D(getAtOrThrow(tools, i), `cutAll: tool at index ${i}`);
     if (isErr(check)) return check;
@@ -941,17 +968,17 @@ export function sectionToFace(
 
 /**
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
- * Returns all pieces from the split as a compound.
+ * Returns all pieces from the split as a compound, or a copy of the shape when
+ * `tools` is empty, so the result is always the caller's to dispose.
  */
 export function split(
   shape: AnyShape<Dimension>,
   tools: AnyShape<Dimension>[]
 ): Result<AnyShape<Dimension>> {
-  if (tools.length === 0) return ok(shape);
-
   if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
+  if (tools.length === 0) return copyAsBooleanResult(shape, true);
   for (let i = 0; i < tools.length; i++) {
     if (getKernel().isNull(getAtOrThrow(tools, i).wrapped)) {
       return err(
@@ -1024,7 +1051,8 @@ export interface BooleanPipelineStep {
  * simplifies the final shape.
  *
  * Falls back to sequential operations when the C++ pipeline class is not
- * available in the WASM build.
+ * available in the WASM build. An empty pipeline returns a copy of `base`, so
+ * the result is always the caller's to dispose.
  */
 export function booleanPipeline(
   base: Shape3D,
@@ -1033,7 +1061,7 @@ export function booleanPipeline(
     readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
   }
 ): Result<Shape3D> {
-  if (steps.length === 0) return ok(base);
+  if (steps.length === 0) return copyAsBooleanResult(base, true);
 
   const glueMode =
     options?.optimisation === 'commonFace' ? 1 : options?.optimisation === 'sameFace' ? 2 : 0;
@@ -1078,14 +1106,21 @@ function booleanPipelineFallback(
     unsafe: true,
   };
   for (const step of steps) {
-    const r =
-      step.op === 'fuse'
-        ? fuse(current, step.tool, boolOpts)
-        : step.op === 'cut'
-          ? cut(current, step.tool, boolOpts)
-          : intersect(current, step.tool, boolOpts);
+    // Each step replaces the running shape; release the previous intermediate
+    // once it is consumed (never the caller's base), also when the step fails.
+    let r: Result<Shape3D>;
+    try {
+      r =
+        step.op === 'fuse'
+          ? fuse(current, step.tool, boolOpts)
+          : step.op === 'cut'
+            ? cut(current, step.tool, boolOpts)
+            : intersect(current, step.tool, boolOpts);
+    } finally {
+      if (current !== base) disposeResultShape(current);
+    }
     if (isErr(r)) return r;
-    current = unwrap(r);
+    current = r.value;
   }
   return ok(current);
 }

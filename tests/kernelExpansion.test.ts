@@ -58,7 +58,7 @@ describe('kernelExpansion', () => {
   });
 
   describe('split', () => {
-    it('returns the original shape when no tools provided', () => {
+    it('returns a copy of the shape when no tools provided', () => {
       const b = box(10, 10, 10);
       const result = split(b, []);
       expect(isOk(result)).toBe(true);

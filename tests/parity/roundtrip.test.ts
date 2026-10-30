@@ -35,6 +35,7 @@ import {
   importSTEP,
   toBREP,
   fromBREP,
+  isShape3D,
   measureVolume,
   unwrap,
 } from '@/index.js';
@@ -51,6 +52,7 @@ beforeAll(async () => {
 }, 30000);
 
 function volOf(shape: AnyShape<Dimension>): number {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
   return unwrap(measureVolume(shape));
 }
 

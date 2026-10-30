@@ -26,7 +26,7 @@ import {
   fuseAllBisectWith,
   type BisectKernelOps,
 } from '@/topology/booleanBatchFns.js';
-import type { ValidSolid } from '@/index.js';
+import type { BooleanOptions, Result, Shape3D, ValidSolid } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -77,9 +77,14 @@ describe('cutAllBisect — happy path', () => {
     });
   });
 
-  it('empty tools returns base unchanged with empty telemetry', () => {
-    const result = unwrap(cutAllBisect(boxAt(0, 0, 0, 10, 10, 10), []));
+  it('empty tools returns a copy of the base with empty telemetry', () => {
+    using base = boxAt(0, 0, 0, 10, 10, 10);
+    const result = unwrap(cutAllBisect(base, []));
+    expect(result.shape).not.toBe(base);
+    expect(result.shape.wrapped).not.toBe(base.wrapped);
     expect(unwrap(measureVolume(result.shape))).toBeCloseTo(1000, 1);
+    result.shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(base))).toBeCloseTo(1000, 1);
     expect(result.telemetry.totalInputs).toBe(0);
     expect(result.telemetry.batchAttempts).toBe(0);
   });
@@ -138,10 +143,13 @@ describe('fuseAllBisect — happy path', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('single shape returns it unchanged with no kernel calls counted', () => {
-    const only = boxAt(0, 0, 0, 10, 10, 10);
+  it('single shape returns a copy of it with no kernel calls counted', () => {
+    using only = boxAt(0, 0, 0, 10, 10, 10);
     const result = unwrap(fuseAllBisect([only]));
-    expect(unwrap(measureVolume(result.shape))).toBeCloseTo(1000, 1);
+    expect(result.shape).not.toBe(only);
+    expect(result.shape.wrapped).not.toBe(only.wrapped);
+    result.shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(only))).toBeCloseTo(1000, 1);
     // Identity case: no batch, no pairwise. singletonFallbacks counts
     // actual pairwise kernel calls; the trivial passthrough is neither.
     expect(result.telemetry).toEqual({
@@ -172,18 +180,40 @@ describe('fuseAllBisect — happy path', () => {
 // recovery walk down to a working batch size.
 
 function wrapWithBatchFailure(threshold: number): BisectKernelOps {
+  // Overloaded declarations so the wrappers match the overloaded cutAll/fuseAll
+  // types; `unsafe` only selects the Shape3D overload and has no runtime effect.
+  function failingCutAll(
+    base: ValidSolid,
+    tools: ValidSolid[],
+    options?: BooleanOptions
+  ): Result<ValidSolid>;
+  function failingCutAll(
+    base: Shape3D,
+    tools: Shape3D[],
+    options: BooleanOptions & { unsafe: true }
+  ): Result<Shape3D>;
+  function failingCutAll(
+    base: Shape3D,
+    tools: Shape3D[],
+    options?: BooleanOptions
+  ): Result<Shape3D> {
+    if (tools.length > threshold) throw new Error(`simulated batch failure (n=${tools.length})`);
+    return cutAll(base, tools, { ...options, unsafe: true });
+  }
+  function failingFuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
+  function failingFuseAll(
+    shapes: Shape3D[],
+    options: BooleanOptions & { unsafe: true }
+  ): Result<Shape3D>;
+  function failingFuseAll(shapes: Shape3D[], options?: BooleanOptions): Result<Shape3D> {
+    if (shapes.length > threshold) throw new Error(`simulated batch failure (n=${shapes.length})`);
+    return fuseAll(shapes, { ...options, unsafe: true });
+  }
   return {
     cut, // real pairwise — always works on the synthetic geometry we feed it
     fuse,
-    cutAll: (base, tools, options) => {
-      if (tools.length > threshold) throw new Error(`simulated batch failure (n=${tools.length})`);
-      return cutAll(base, tools, options);
-    },
-    fuseAll: (shapes, options) => {
-      if (shapes.length > threshold)
-        throw new Error(`simulated batch failure (n=${shapes.length})`);
-      return fuseAll(shapes, options);
-    },
+    cutAll: failingCutAll,
+    fuseAll: failingFuseAll,
   };
 }
 
@@ -241,6 +271,41 @@ describe('cutAllBisect — bisect recovery via injected ops', () => {
     const { telemetry } = unwrap(result);
     expect(telemetry.failedInputs).toEqual([0, 1]);
   });
+
+  it('returns a copy of the base, not the base itself, when every tool fails', () => {
+    const failingOps: BisectKernelOps = {
+      cut: () => {
+        throw new Error('pairwise always fails');
+      },
+      fuse,
+      cutAll: () => {
+        throw new Error('batch always fails');
+      },
+      fuseAll,
+    };
+    using base = boxAt(0, 0, 0, 30, 10, 10);
+    using t0 = boxAt(10, 0, 0, 15, 10, 10);
+    using t1 = boxAt(20, 0, 0, 25, 10, 10);
+    const { shape } = unwrap(cutAllBisectWith(failingOps, base, [t0, t1]));
+    expect(shape).not.toBe(base);
+    expect(shape.wrapped).not.toBe(base.wrapped);
+    shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(base))).toBeCloseTo(3000, 6);
+  });
+
+  it('cuts every tool when bisection chains the halves', () => {
+    const ops = wrapWithBatchFailure(0);
+    using base = boxAt(0, 0, 0, 50, 10, 10);
+    using t0 = boxAt(10, 0, 0, 15, 10, 10);
+    using t1 = boxAt(20, 0, 0, 25, 10, 10);
+    using t2 = boxAt(30, 0, 0, 35, 10, 10);
+    using t3 = boxAt(40, 0, 0, 45, 10, 10);
+    const { shape, telemetry } = unwrap(cutAllBisectWith(ops, base, [t0, t1, t2, t3]));
+    using _shape = shape;
+    expect(unwrap(measureVolume(shape))).toBeCloseTo(3000, 1);
+    expect(telemetry.singletonFallbacks).toBe(4);
+    expect(telemetry.failedInputs).toEqual([]);
+  });
 });
 
 describe('fuseAllBisect — bisect recovery via injected ops', () => {
@@ -273,6 +338,53 @@ describe('fuseAllBisect — bisect recovery via injected ops', () => {
     const sorted = [...telemetry.failedInputs];
     expect(sorted).toEqual([...new Set(sorted)]);
     expect(sorted).toEqual([...sorted].sort((a, b) => a - b));
+  });
+
+  it('returns a copy of the kept input when the final pairwise fuse fails', () => {
+    // Both batches and the pairwise fuse fail, so the left input is all that is
+    // kept. It must come back as a copy, not as the caller's own handle.
+    const ops: BisectKernelOps = {
+      cut,
+      fuse: () => {
+        throw new Error('pairwise fuse always fails');
+      },
+      cutAll,
+      fuseAll: () => {
+        throw new Error('batch always fails');
+      },
+    };
+    using a = boxAt(0, 0, 0, 10, 10, 10);
+    using b = boxAt(15, 0, 0, 25, 10, 10);
+    const { shape, telemetry } = unwrap(fuseAllBisectWith(ops, [a, b]));
+    expect(telemetry.failedInputs).toEqual([1]);
+    expect(shape).not.toBe(a);
+    expect(shape.wrapped).not.toBe(a.wrapped);
+    shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(a))).toBeCloseTo(1000, 6);
+  });
+
+  it('throws when the run is aborted during the final pairwise fuse', () => {
+    // The abort lands inside the merge: it must surface, not read as a failed
+    // merge that silently drops the right half.
+    const controller = new AbortController();
+    const ops: BisectKernelOps = {
+      cut,
+      fuse: () => {
+        controller.abort(new Error('user cancelled'));
+        throw new Error('aborted mid-fuse');
+      },
+      cutAll,
+      fuseAll: () => {
+        throw new Error('batch always fails');
+      },
+    };
+    using a = boxAt(0, 0, 0, 10, 10, 10);
+    using b = boxAt(15, 0, 0, 25, 10, 10);
+    expect(() => fuseAllBisectWith(ops, [a, b], { signal: controller.signal })).toThrow(
+      /cancelled/
+    );
+    expect(unwrap(measureVolume(a))).toBeCloseTo(1000, 6);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 6);
   });
 
   it('bisects and combines halves on failure', () => {

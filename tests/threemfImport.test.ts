@@ -12,6 +12,7 @@ import {
   getSolids,
   importThreeMF,
   isCompound,
+  isShape3D,
   isSolid,
   isValid,
   measureVolume,
@@ -252,6 +253,7 @@ describe('importThreeMF', () => {
     const result = await importThreeMF(blob);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    if (!isShape3D(result.value)) throw new Error('expected a 3D shape');
     const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeCloseTo(1000, -1);
   });
@@ -560,6 +562,7 @@ describe('exportThreeMF with colors', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
+    if (!isShape3D(result.value)) throw new Error('expected a 3D shape');
     const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeCloseTo(1000, -1);
   });

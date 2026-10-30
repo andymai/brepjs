@@ -35,6 +35,12 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
+function first<T>(items: readonly T[]): T {
+  const item = items[0];
+  if (item === undefined) throw new Error('expected at least one item');
+  return item;
+}
+
 describe('isValid', () => {
   it('returns true for a valid box', () => {
     const b = box(10, 10, 10);
@@ -49,7 +55,7 @@ describe('isValid', () => {
   it('returns true for a valid face', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    expect(isValid(faces[0])).toBe(true);
+    expect(isValid(first(faces))).toBe(true);
   });
 });
 
@@ -81,7 +87,7 @@ describe('healFace', () => {
   it('heals a valid face (no-op)', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const result = healFace(faces[0]);
+    const result = healFace(first(faces));
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
     expect(isFace(healed)).toBe(true);
@@ -90,8 +96,8 @@ describe('healFace', () => {
   it('preserves face area', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const originalArea = unwrap(measureArea(faces[0]));
-    const healed = unwrap(healFace(faces[0]));
+    const originalArea = unwrap(measureArea(first(faces)));
+    const healed = unwrap(healFace(first(faces)));
     const healedArea = unwrap(measureArea(healed));
     expect(healedArea).toBeCloseTo(originalArea, 2);
   });
@@ -101,7 +107,7 @@ describe('healWire', () => {
   it('heals a valid wire (no-op)', () => {
     const b = box(10, 10, 10);
     const wires = getWires(b);
-    const result = healWire(wires[0]);
+    const result = healWire(first(wires));
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -109,8 +115,8 @@ describe('healWire', () => {
   it('heals a wire with face context', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const wires = getWires(faces[0]);
-    const result = healWire(wires[0], faces[0]);
+    const wires = getWires(first(faces));
+    const result = healWire(first(wires), first(faces));
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -156,7 +162,7 @@ describe('heal', () => {
   it('dispatches to healFace for faces', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const result = heal(faces[0]);
+    const result = heal(first(faces));
     expect(isOk(result)).toBe(true);
     expect(isFace(unwrap(result))).toBe(true);
   });
@@ -164,7 +170,7 @@ describe('heal', () => {
   it('dispatches to healWire for wires', () => {
     const b = box(10, 10, 10);
     const wires = getWires(b);
-    const result = heal(wires[0]);
+    const result = heal(first(wires));
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -173,7 +179,7 @@ describe('heal', () => {
     const b = box(10, 10, 10);
     // An edge is neither solid, face, nor wire — should passthrough
     const edges = getEdges(b);
-    const result = heal(edges[0]);
+    const result = heal(first(edges));
     expect(isOk(result)).toBe(true);
   });
 });
@@ -240,7 +246,7 @@ describe('autoHeal', () => {
     it('works for an already-valid face', () => {
       const b = box(10, 10, 10);
       const faces = getFaces(b);
-      const result = autoHeal(faces[0]);
+      const result = autoHeal(first(faces));
       expect(isOk(result)).toBe(true);
       const { report } = unwrap(result);
       expect(report.alreadyValid).toBe(true);
@@ -249,7 +255,7 @@ describe('autoHeal', () => {
     it('works for an already-valid wire', () => {
       const b = box(10, 10, 10);
       const wires = getWires(b);
-      const result = autoHeal(wires[0]);
+      const result = autoHeal(first(wires));
       expect(isOk(result)).toBe(true);
       const { report } = unwrap(result);
       expect(report.alreadyValid).toBe(true);
@@ -405,7 +411,7 @@ describe('autoHeal', () => {
 
     it('autoHeal on a face returns a shape', () => {
       const b = box(10, 10, 10);
-      const face = getFaces(b)[0];
+      const face = first(getFaces(b));
       const result = autoHeal(face);
       expect(isOk(result)).toBe(true);
       const { shape } = unwrap(result);
@@ -414,7 +420,7 @@ describe('autoHeal', () => {
 
     it('autoHeal on a wire returns a shape', () => {
       const b = box(10, 10, 10);
-      const wire = getWires(b)[0];
+      const wire = first(getWires(b));
       const result = autoHeal(wire);
       expect(isOk(result)).toBe(true);
       const { shape } = unwrap(result);
@@ -423,7 +429,7 @@ describe('autoHeal', () => {
 
     it('autoHeal on an edge (unsupported type) short-circuits or passes through', () => {
       const b = box(10, 10, 10);
-      const edge = getEdges(b)[0];
+      const edge = first(getEdges(b));
       // Edges may or may not be "valid" in kernel — autoHeal either short-circuits
       // (already valid) or applies the unsupported-type passthrough. Either way ok.
       const result = autoHeal(edge);
@@ -559,7 +565,7 @@ describe('solidFromShell', () => {
 describe('fixSelfIntersection', () => {
   it('returns a Result for a simple wire', () => {
     const spine = line([0, 0, 0], [10, 0, 0]);
-    const w = wire([spine]);
+    const w = unwrap(wire([spine]));
     const result = fixSelfIntersection(w);
     // fixSelfIntersection may succeed or fail depending on kernel support;
     // verify it returns a properly structured Result either way

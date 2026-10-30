@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { drawRectangle, drawCircle } from '@/index.js';
+import { drawRectangle } from '@/index.js';
 import { Drawing } from '@/sketching/drawing.js';
 import {
   drawingToSketchOnPlane,
@@ -21,10 +21,6 @@ beforeAll(async () => {
 
 function rect(w = 10, h = 20): Drawing {
   return drawRectangle(w, h);
-}
-
-function _circ(r = 5): Drawing {
-  return drawCircle(r);
 }
 
 describe('drawingToSketchOnPlane', () => {

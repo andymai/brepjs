@@ -122,14 +122,31 @@ import {
   chamferDistAngleShape,
   exportSTEPConfigured,
   exportAssemblySTEP,
+  instance,
+  materialize,
+  split,
+  booleanPipeline,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import {
+  cutAllBisectWith,
+  fuseAllBisectWith,
+  type BisectKernelOps,
+} from '@/topology/booleanBatchFns.js';
+import type {
+  AnyShape,
+  ClosedWire,
+  Dimension,
+  Face,
+  PlanarWire,
+  Shape3D,
+} from '@/core/shapeTypes.js';
+import type { BooleanOptions, Result, ValidSolid } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
 import { collectInputFaceHashes } from '@/topology/metadata/metadataPropagation.js';
-import { setShapeOrigin } from '@/topology/metadata/originTrackingFns.js';
+import { getFaceOrigins, setShapeOrigin } from '@/topology/metadata/originTrackingFns.js';
 import { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
@@ -435,6 +452,8 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using b = box(10, 10, 10);
           measureLength(b);
           measureSurfaceProps(b);
+          using cyl = cylinder(2, 5);
+          for (const f of getFaces(cyl)) measureLength(f);
           using s0 = sphere(2);
           using s = translate(s0, [0, 0, 20]);
           const loose = getFaces(s0)[0];
@@ -461,6 +480,16 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using c = translate(c0, [30, 0, 0]);
           using pair = compound([a, c]);
           expect(isOk(principalBoundingBox(pair))).toBe(true);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using s0 = sphere(2);
+          const loose = getFaces(s0)[0];
+          if (!loose) throw new Error('sphere has no faces');
+          using mixed = compound([a, loose]);
+          expect(isOk(principalBoundingBox(mixed))).toBe(true);
         })
       ).toBe(0);
     });
@@ -714,7 +743,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    const verticalEdges = (solid: AnyShape<Dimension>) =>
+    const verticalEdges = (solid: Shape3D) =>
       getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
     const bySide =
       <V>(near: V, far: V) =>
@@ -765,6 +794,21 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           expect(isErr(chamfer(b, edges, bySide<number | typeof near>(1, near)))).toBe(true);
           // 6 mm and 6·tan 45° setbacks on both sides of an edge of a 10 mm cube overlap.
           expect(isErr(chamfer(b, edges, bySide(near, { distance: 6, angle: 45 })))).toBe(true);
+        })
+      ).toBe(0);
+    });
+
+    it('distance-angle chamfers that carry face origins over leak nothing', () => {
+      const near = { distance: 1, angle: 30 };
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          setShapeOrigin(b, 1);
+          const edges = verticalEdges(b);
+          using uniform = unwrap(chamferDistAngleShape(b, edges, 1, 30));
+          using perEdge = unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })));
+          expect(getFaceOrigins(uniform)?.size).toBeGreaterThan(0);
+          expect(getFaceOrigins(perEdge)?.size).toBeGreaterThan(0);
         })
       ).toBe(0);
     });
@@ -908,7 +952,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using _r = scale(b, 2, [0, 0, 0]);
+          using _r = scale(b, 2, { center: [0, 0, 0] });
         })
       ).toBe(0);
     });
@@ -1267,7 +1311,9 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           );
           const w = getWires(f)[0];
           if (!w) throw new Error('polygon face must have a wire');
-          const r = roof(unwrap(closedWire(w)));
+          // A cast rather than isPlanarWire, which builds a face: that would add arena work
+          // to the measured iteration.
+          const r = roof(unwrap(closedWire(w)) as ClosedWire & PlanarWire);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
@@ -1439,7 +1485,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('solveAssembly leaks nothing', () => {
       using b1 = box(10, 10, 10);
       using b2 = box(6, 6, 6);
-      const topByZ = (fs: ReturnType<typeof getFaces>, top: boolean) =>
+      const topByZ = (fs: Face[], top: boolean) =>
         fs.reduce((best, f) =>
           (top ? faceCenter(f)[2] > faceCenter(best)[2] : faceCenter(f)[2] < faceCenter(best)[2])
             ? f
@@ -1520,6 +1566,321 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
+    });
+
+    it('fuseAll of one shape and a single-placement fused materialize leak nothing', () => {
+      // fuseAll of one shape returns its own copy, so the input and the result are
+      // each disposed once; materialize releases the placed copy it fused.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(fuseAll([b]));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          setShapeOrigin(b, 1); // metadata makes the copy re-key it onto its faces
+          using _r = unwrap(fuseAll([b]));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using inst = instance(box(10, 10, 10), [[5, 0, 0]]);
+          using _r = unwrap(materialize(inst, { fuse: true }));
+        })
+      ).toBe(0);
+    });
+
+    it('cutAll with no tools leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(cutAll(b, []));
+        })
+      ).toBe(0);
+    });
+
+    it('split with no tools and booleanPipeline leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(split(b, []));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(booleanPipeline(b, []));
+        })
+      ).toBe(0);
+      // occt-wasm has no native pipeline, so these steps run one boolean at a
+      // time, each replacing the previous intermediate.
+      expect(
+        perIterationLeak(() => {
+          using base = box(20, 20, 20);
+          using a0 = box(10, 10, 10);
+          using add = translate(a0, [15, 0, 0]);
+          using hole = cylinder(3, 40);
+          using c0 = box(5, 5, 5);
+          using corner = translate(c0, [-2, -2, -2]);
+          using _r = unwrap(
+            booleanPipeline(base, [
+              { op: 'fuse', tool: add },
+              { op: 'cut', tool: hole },
+              { op: 'cut', tool: corner },
+            ])
+          );
+        })
+      ).toBe(0);
+    });
+
+    describe('bisect and pairwise batch booleans release what they make', () => {
+      interface AbortPlan {
+        /** The op call (batch or pairwise, counted together) that aborts the run. */
+        at: number;
+        controller: AbortController;
+      }
+
+      // Batches above `limit` inputs throw, forcing bisection. With `abort`, the
+      // `at`-th op call aborts the signal and throws, as a cancelled run would.
+      function bisectOps(limit: number, pairFails = false, abort?: AbortPlan): BisectKernelOps {
+        let calls = 0;
+        function step<T>(run: () => T): T {
+          calls++;
+          if (abort && calls === abort.at) {
+            abort.controller.abort(new Error('stop'));
+            throw new Error('aborted mid-run');
+          }
+          return run();
+        }
+        function pair<T>(run: () => T): T {
+          return step(() => {
+            if (pairFails) throw new Error('pairwise fails');
+            return run();
+          });
+        }
+        // Overloads match the overloaded ops; `unsafe` only selects the Shape3D
+        // overload and has no runtime effect.
+        function stubCut(
+          a: ValidSolid,
+          b: ValidSolid,
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubCut(
+          a: Shape3D,
+          b: Shape3D,
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubCut(a: Shape3D, b: Shape3D, options?: BooleanOptions): Result<Shape3D> {
+          return pair(() => cut(a, b, { ...options, unsafe: true }));
+        }
+        function stubFuse(
+          a: ValidSolid,
+          b: ValidSolid,
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubFuse(
+          a: Shape3D,
+          b: Shape3D,
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubFuse(a: Shape3D, b: Shape3D, options?: BooleanOptions): Result<Shape3D> {
+          return pair(() => fuse(a, b, { ...options, unsafe: true }));
+        }
+        function stubCutAll(
+          base: ValidSolid,
+          tools: ValidSolid[],
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubCutAll(
+          base: Shape3D,
+          tools: Shape3D[],
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubCutAll(
+          base: Shape3D,
+          tools: Shape3D[],
+          options?: BooleanOptions
+        ): Result<Shape3D> {
+          return step(() => {
+            if (tools.length > limit) throw new Error('batch fails');
+            return cutAll(base, tools, { ...options, unsafe: true });
+          });
+        }
+        function stubFuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
+        function stubFuseAll(
+          shapes: Shape3D[],
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubFuseAll(shapes: Shape3D[], options?: BooleanOptions): Result<Shape3D> {
+          return step(() => {
+            if (shapes.length > limit) throw new Error('batch fails');
+            return fuseAll(shapes, { ...options, unsafe: true });
+          });
+        }
+        return { cut: stubCut, fuse: stubFuse, cutAll: stubCutAll, fuseAll: stubFuseAll };
+      }
+
+      /** `count` boxes in a row, each touching the next. */
+      function row(count: number): Shape3D[] {
+        const out: Shape3D[] = [];
+        for (let i = 0; i < count; i++) {
+          using cell = box(10, 10, 10);
+          out.push(translate(cell, [10 * i, 0, 0]));
+        }
+        return out;
+      }
+
+      /** `count` slabs that each cut through a 100-long bar. */
+      function slabs(count: number): Shape3D[] {
+        const out: Shape3D[] = [];
+        for (let i = 0; i < count; i++) {
+          using slab = box(2, 20, 20);
+          out.push(translate(slab, [10 * i + 5, -5, -5]));
+        }
+        return out;
+      }
+
+      function fuseLeak(ops: () => BisectKernelOps, count: number): number {
+        return perIterationLeak(() => {
+          const shapes = row(count);
+          try {
+            const r = fuseAllBisectWith(ops(), shapes);
+            if (isOk(r)) unwrap(r).shape[Symbol.dispose]();
+          } finally {
+            disposeAll(shapes);
+          }
+        });
+      }
+
+      function cutLeak(ops: () => BisectKernelOps, count: number): number {
+        return perIterationLeak(() => {
+          using bar = box(100, 10, 10);
+          const tools = slabs(count);
+          try {
+            const r = cutAllBisectWith(ops(), bar, tools);
+            if (isOk(r)) unwrap(r).shape[Symbol.dispose]();
+          } finally {
+            disposeAll(tools);
+          }
+        });
+      }
+
+      it.each([
+        ['two batched halves merged pairwise', () => bisectOps(2), 4],
+        ['single leaves merged up two levels', () => bisectOps(0), 4],
+        ['a batched right half dropped when the merge fails', () => bisectOps(2, true), 4],
+        ['the kept left input copied when the merge fails', () => bisectOps(0, true), 2],
+        ['one shape copied', () => bisectOps(0), 1],
+      ] as [string, () => BisectKernelOps, number][])('fuseAllBisect: %s', (_name, ops, count) => {
+        expect(fuseLeak(ops, count)).toBe(0);
+      });
+
+      it.each([
+        ['two batched halves cut in turn', () => bisectOps(2), 4],
+        ['four single tools cut in turn', () => bisectOps(0), 4],
+        ['every tool failing, so the base is copied', () => bisectOps(0, true), 2],
+        ['no tools, so the base is copied', () => bisectOps(0), 0],
+      ] as [string, () => BisectKernelOps, number][])('cutAllBisect: %s', (_name, ops, count) => {
+        expect(cutLeak(ops, count)).toBe(0);
+      });
+
+      // An abort after one half is made must release that half on the way out.
+      function abortedFuseLeak(limit: number, at: number, count: number): number {
+        return perIterationLeak(() => {
+          const shapes = row(count);
+          try {
+            const controller = new AbortController();
+            const ops = bisectOps(limit, false, { at, controller });
+            expect(() => fuseAllBisectWith(ops, shapes, { signal: controller.signal })).toThrow(
+              'stop'
+            );
+          } finally {
+            disposeAll(shapes);
+          }
+        });
+      }
+
+      function abortedCutLeak(limit: number, at: number, count: number): number {
+        return perIterationLeak(() => {
+          using bar = box(100, 10, 10);
+          const tools = slabs(count);
+          try {
+            const controller = new AbortController();
+            const ops = bisectOps(limit, false, { at, controller });
+            expect(() => cutAllBisectWith(ops, bar, tools, { signal: controller.signal })).toThrow(
+              'stop'
+            );
+          } finally {
+            disposeAll(tools);
+          }
+        });
+      }
+
+      it('fuseAllBisect releases a made half when aborted while fusing the other', () => {
+        // Calls: the 4-shape batch fails, the left pair's batch succeeds, the
+        // right pair's batch aborts.
+        expect(abortedFuseLeak(2, 3, 4)).toBe(0);
+      });
+
+      it('fuseAllBisect throws and releases both halves when aborted during the merge', () => {
+        // Calls: the 4-shape batch fails, both pair batches succeed, the merge aborts.
+        expect(abortedFuseLeak(2, 4, 4)).toBe(0);
+      });
+
+      it('cutAllBisect releases its running result when aborted', () => {
+        // Batch path: the 4-tool batch fails, the first 2-tool batch cuts, the
+        // second aborts.
+        expect(abortedCutLeak(2, 3, 4)).toBe(0);
+        // Singleton path: the 2-tool batch fails, the first single cut succeeds,
+        // the second aborts.
+        expect(abortedCutLeak(0, 3, 2)).toBe(0);
+      });
+
+      it('fuseAll pairwise releases made halves when aborted mid-run', () => {
+        // A kernel that aborts the run after its `abortAfter`-th fuse call.
+        const state = { calls: 0, abortAfter: 0, controller: new AbortController() };
+        const base = getKernel();
+        registerKernel(
+          'arena-abort-after-fuse',
+          new Proxy(base, {
+            get(target, prop) {
+              const value: unknown = Reflect.get(target, prop, target);
+              if (typeof value !== 'function') return value;
+              if (prop !== 'fuse' && prop !== 'fuseWithHistory') return value.bind(target);
+              return (...args: unknown[]): unknown => {
+                const out: unknown = value.apply(target, args);
+                state.calls++;
+                if (state.calls === state.abortAfter) state.controller.abort(new Error('stop'));
+                return out;
+              };
+            },
+          })
+        );
+        // 4 inputs: abortAfter 1 stops after the left pair is fused, abortAfter 2
+        // after both pairs, before the combine.
+        for (const abortAfter of [1, 2]) {
+          expect(
+            perIterationLeak(() => {
+              const shapes = row(4);
+              try {
+                state.calls = 0;
+                state.abortAfter = abortAfter;
+                state.controller = new AbortController();
+                const { signal } = state.controller;
+                expect(() =>
+                  withKernel('arena-abort-after-fuse', () =>
+                    fuseAll(shapes, { strategy: 'pairwise', signal, unsafe: true })
+                  )
+                ).toThrow('stop');
+              } finally {
+                disposeAll(shapes);
+              }
+            })
+          ).toBe(0);
+        }
+      });
     });
   });
 

@@ -22,7 +22,7 @@ describe('is3D / is2D runtime guards', () => {
 
   it('classifies a vertex as 3D by default', () => {
     const kernel = getKernel();
-    const pnt = kernel.makeVertex([0, 0, 0]);
+    const pnt = kernel.makeVertex(0, 0, 0);
     const v = createVertex(pnt);
     expect(is3D(v)).toBe(true);
     expect(is2D(v)).toBe(false);
@@ -30,7 +30,7 @@ describe('is3D / is2D runtime guards', () => {
 
   it('classifies a shape with __is2D marker as 2D', () => {
     const kernel = getKernel();
-    const pnt = kernel.makeVertex([1, 2, 0]);
+    const pnt = kernel.makeVertex(1, 2, 0);
     const v = createEdge(pnt);
     // Simulate what a 2D API path would do — set the runtime marker
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime marker
@@ -49,7 +49,7 @@ describe('as3D / as2D assertion functions', () => {
 
   it('as3D throws when shape is 2D', () => {
     const kernel = getKernel();
-    const pnt = kernel.makeVertex([0, 0, 0]);
+    const pnt = kernel.makeVertex(0, 0, 0);
     const v = createVertex(pnt);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime marker
     (v as any).__is2D = true;
@@ -58,7 +58,7 @@ describe('as3D / as2D assertion functions', () => {
 
   it('as2D returns the shape when it is 2D', () => {
     const kernel = getKernel();
-    const pnt = kernel.makeVertex([0, 0, 0]);
+    const pnt = kernel.makeVertex(0, 0, 0);
     const v = createVertex(pnt);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing runtime marker
     (v as any).__is2D = true;

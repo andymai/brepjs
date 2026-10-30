@@ -295,17 +295,27 @@ export const divergences: DivergenceMap = {
     'modifierFns.perEdgeValues': {
       kind: 'not-implemented',
       reason:
-        'brepkit misplaces per-edge fillet and chamfer values: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08, and a [1, 2] chamfer 988.75 against 990.',
+        'brepkit misplaces per-edge fillet radii: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08. Asymmetric chamfers return UNSUPPORTED_CAPABILITY (see modifierFns.asymmetricChamfer).',
+    },
+    'modifierFns.asymmetricChamfer': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no asymmetric chamfer (brepkit-wasm lacks chamferAsymmetric): a [d1, d2] chamfer, or a callback that returns one for an edge, throws UnsupportedKernelOperationError and chamfer returns UNSUPPORTED_CAPABILITY rather than a symmetric chamfer at the average of d1 and d2.',
+    },
+    'chamferAngle.distAngle': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no distance-angle chamfer (brepkit-wasm lacks chamferAsymmetric): chamferDistAngle throws UnsupportedKernelOperationError, so chamferDistAngleShape and chamfer with { distance, angle } return UNSUPPORTED_CAPABILITY rather than a symmetric chamfer at the average of the two setbacks.',
     },
     'chamferAngle.exactVolume': {
-      kind: 'skip',
+      kind: 'not-implemented',
       reason:
-        'brepkit sets a distance-angle chamfer back slightly short: four box edges at 1 mm / 30 degrees read 987.56 mm3 against the exact 988.45.',
+        'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer.',
     },
     'chamferAngle.perEdge': {
       kind: 'not-implemented',
       reason:
-        'brepkit has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
+        'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer, one value for every edge or one per edge.',
     },
     'draftFns.perFaceAngles': {
       kind: 'not-implemented',

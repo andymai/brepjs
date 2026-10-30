@@ -31,6 +31,7 @@ beforeAll(async () => {
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
   return unwrap(measureVolume(s));
 }
 

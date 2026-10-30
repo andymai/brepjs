@@ -1,12 +1,26 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
-import { box, getEdges, measureVolume, castShape, unwrap } from '@/index.js';
+import {
+  box,
+  getEdges,
+  measureVolume,
+  castShape,
+  isShape3D,
+  unwrap,
+  type AnyShape,
+  type Dimension,
+} from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function volumeOf(shape: AnyShape<Dimension>): number {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(shape));
+}
 
 describe.skipIf(shouldSkipSuite('variableFillet'))(
   'OCCT-specific: variable fillet via kernel',
@@ -14,12 +28,13 @@ describe.skipIf(shouldSkipSuite('variableFillet'))(
     describe('variable fillet via kernel', () => {
       it('applies constant fillet via kernel adapter', () => {
         const b = box(10, 10, 10);
-        const edges = getEdges(b);
+        const [edge] = getEdges(b);
+        if (!edge) throw new Error('box has no edges');
         const kernel = getKernel();
 
-        const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1);
+        const filleted = kernel.fillet(b.wrapped, [edge.wrapped], 1);
         const result = castShape(filleted);
-        const vol = unwrap(measureVolume(result));
+        const vol = volumeOf(result);
         // Filleted volume should be less than original box volume (1000)
         expect(vol).toBeLessThan(1000);
         expect(vol).toBeGreaterThan(900);
@@ -27,27 +42,29 @@ describe.skipIf(shouldSkipSuite('variableFillet'))(
 
       it('applies variable fillet with [r1, r2] via kernel adapter', () => {
         const b = box(10, 10, 10);
-        const edges = getEdges(b);
+        const [edge] = getEdges(b);
+        if (!edge) throw new Error('box has no edges');
         const kernel = getKernel();
 
         // Variable radius: starts at 0.5, ends at 2
-        const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2]);
+        const filleted = kernel.fillet(b.wrapped, [edge.wrapped], [0.5, 2]);
         const result = castShape(filleted);
-        const vol = unwrap(measureVolume(result));
+        const vol = volumeOf(result);
         expect(vol).toBeLessThan(1000);
         expect(vol).toBeGreaterThan(900);
       });
 
       it('variable fillet produces different result than constant fillet', () => {
         const b = box(10, 10, 10);
-        const edges = getEdges(b);
+        const [edge] = getEdges(b);
+        if (!edge) throw new Error('box has no edges');
         const kernel = getKernel();
 
-        const constFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1.5);
-        const varFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2.5]);
+        const constFilleted = kernel.fillet(b.wrapped, [edge.wrapped], 1.5);
+        const varFilleted = kernel.fillet(b.wrapped, [edge.wrapped], [0.5, 2.5]);
 
-        const constVol = unwrap(measureVolume(castShape(constFilleted)));
-        const varVol = unwrap(measureVolume(castShape(varFilleted)));
+        const constVol = volumeOf(castShape(constFilleted));
+        const varVol = volumeOf(castShape(varFilleted));
 
         // Both should reduce volume but by different amounts
         expect(constVol).toBeLessThan(1000);
@@ -75,7 +92,7 @@ describe.skipIf(shouldSkipSuite('variableFillet'))(
         );
 
         const result = castShape(filleted);
-        const vol = unwrap(measureVolume(result));
+        const vol = volumeOf(result);
         expect(vol).toBeLessThan(1000);
         expect(callCount).toBe(2);
       });

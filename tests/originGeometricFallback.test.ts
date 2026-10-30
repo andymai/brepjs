@@ -13,6 +13,7 @@ import {
   cutAllBisect,
   unwrap,
   faceCenter,
+  type Shape3D,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -39,7 +40,7 @@ function sideBySide(): [ReturnType<typeof box>, ReturnType<typeof box>] {
   return [a, b];
 }
 
-function assertNoUndefinedTopFace(result: ReturnType<typeof unwrap>): void {
+function assertNoUndefinedTopFace(result: Shape3D): void {
   const origins = getFaceOrigins(result);
   expect(origins).toBeDefined();
   if (!origins) return;

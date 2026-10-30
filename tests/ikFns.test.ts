@@ -123,7 +123,7 @@ describe('inverseKinematics — planar 2R', () => {
     // A target straight up requires angles far beyond 20° — unreachable under limits.
     const result = inverseKinematics(asm, 'link2', { position: [0, 16, 0] }, { tip: TIP });
     const v = result.values;
-    for (const angle of [...(v.link1 ?? []), ...(v.link2 ?? [])]) {
+    for (const angle of [...(v['link1'] ?? []), ...(v['link2'] ?? [])]) {
       expect(angle).toBeGreaterThanOrEqual(-1e-9);
       expect(angle).toBeLessThanOrEqual(20 + 1e-9);
     }
@@ -148,7 +148,7 @@ describe('inverseKinematics — planar 2R', () => {
     const target = tipAt30();
     const result = inverseKinematics(asm, 'arm', { position: target }, { tip, seed: { arm: 180 } });
     expect(result.converged).toBe(true);
-    expect(result.values.arm?.[0]).toBeCloseTo(30, 2);
+    expect(result.values['arm']?.[0]).toBeCloseTo(30, 2);
   });
 });
 
@@ -169,7 +169,7 @@ describe('inverseKinematics — prismatic and multi-DOF', () => {
     );
     const result = inverseKinematics(asm, 'slide', { position: [0, 0, 25] });
     expect(result.converged).toBe(true);
-    expect(result.values.slide?.[0]).toBeCloseTo(25, 3);
+    expect(result.values['slide']?.[0]).toBeCloseTo(25, 3);
   });
 
   it('drives a cylindrical joint (2 DOF) to a target position', () => {
@@ -207,16 +207,16 @@ describe('jointTrajectory', () => {
     expect(samples).toHaveLength(5);
     expect(samples[0]?.t).toBe(0);
     expect(samples[4]?.t).toBe(1);
-    expect(samples[0]?.values.link1).toEqual([0]);
-    expect(samples[4]?.values.link1).toEqual([90]);
-    expect(samples[4]?.values.link2).toEqual([45]);
+    expect(samples[0]?.values['link1']).toEqual([0]);
+    expect(samples[4]?.values['link1']).toEqual([90]);
+    expect(samples[4]?.values['link2']).toEqual([45]);
   });
 
   it('interpolates linearly in joint space', () => {
     const samples = jointTrajectory(arm2R(), { link1: 0, link2: 0 }, { link1: 100, link2: 40 }, 10);
     const mid = samples[5];
-    expect(mid?.values.link1?.[0]).toBeCloseTo(50, 9);
-    expect(mid?.values.link2?.[0]).toBeCloseTo(20, 9);
+    expect(mid?.values['link1']?.[0]).toBeCloseTo(50, 9);
+    expect(mid?.values['link2']?.[0]).toBeCloseTo(20, 9);
   });
 
   it('each sample carries forward-kinematics poses matching its joint values', () => {
@@ -226,7 +226,7 @@ describe('jointTrajectory', () => {
         s.poses.get('link2') ?? { position: [0, 0, 0], rotation: [1, 0, 0, 0] },
         TIP
       );
-      const expected = tipAt(s.values.link1?.[0] ?? 0, s.values.link2?.[0] ?? 0);
+      const expected = tipAt(s.values['link1']?.[0] ?? 0, s.values['link2']?.[0] ?? 0);
       for (let i = 0; i < 3; i++) expect(tip[i]).toBeCloseTo(expected[i] ?? 0, 6);
     }
   });

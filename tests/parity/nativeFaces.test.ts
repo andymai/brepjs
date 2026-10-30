@@ -16,6 +16,7 @@ import { extrude } from '@/operations/api.js';
 import { faceFinder } from '@/query/shapeFinders.js';
 import { normalAt } from '@/topology/faceFns.js';
 import { unwrap } from '@/result.js';
+import type { Solid } from '@/core/shapeTypes.js';
 
 let ok = false;
 beforeAll(async () => {
@@ -28,7 +29,7 @@ beforeAll(async () => {
   }
 }, 60_000);
 
-function box(w: number, d: number, h: number): ReturnType<typeof unwrap> {
+function box(w: number, d: number, h: number): Solid {
   const poly = unwrap(
     makePolygon([
       [0, 0, 0],
@@ -56,7 +57,9 @@ describe('manifold native faces (OCCT-free)', () => {
       const bottom = faceFinder().parallelTo('Z').atDistance(0, [0, 0, 0]).findAll(solid);
       expect(top.length).toBe(1);
       expect(bottom.length).toBe(1);
-      const n = normalAt(top[0]!);
+      const [topFace] = top;
+      if (!topFace) throw new Error('no top face found');
+      const n = normalAt(topFace);
       expect(Math.abs(Math.abs(n[2]) - 1)).toBeLessThan(1e-6);
     });
   });

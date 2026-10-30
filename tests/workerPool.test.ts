@@ -54,7 +54,7 @@ function postCount(worker: Worker): number {
 function reply(
   mock: MockWorker,
   msg: SentMessage,
-  response: { success: boolean; resultBrep?: string; error?: string }
+  response: { success: boolean; resultBrep?: string | undefined; error?: string | undefined }
 ): void {
   mock.getHandler()?.({ data: { id: msg.id, ...response } } as MessageEvent);
 }

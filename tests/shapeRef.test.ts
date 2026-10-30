@@ -277,7 +277,7 @@ describe('full pipeline', () => {
       // Step 4: Build role table and update through evolution
       const roleTable: RoleTable = new Map([['step_0', roles]]);
       // Verify updateRoles doesn't throw
-      const _updatedTable = updateRoles(roleTable, 'step_0', evolution);
+      updateRoles(roleTable, 'step_0', evolution);
 
       // Step 5: Resolve each ref via geometric fallback (bypass stale role table)
       // After fillet, kernel hashes change — exact matching is unreliable.

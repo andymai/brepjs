@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   chamfer,
@@ -20,6 +20,7 @@ import {
   getBounds,
 } from '@/index.js';
 import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { Dimension, Edge, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
@@ -27,7 +28,8 @@ beforeAll(async () => {
 }, 30000);
 
 describe('chamferDistAngleShape', () => {
-  it('chamfers a single edge of a box with distance + angle', () => {
+  it('chamfers a single edge of a box with distance + angle', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
@@ -44,7 +46,8 @@ describe('chamferDistAngleShape', () => {
     expect(chamfVol).toBeGreaterThan(0);
   });
 
-  it('chamfers multiple edges', () => {
+  it('chamfers multiple edges', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const selected = edges.slice(0, 4);
@@ -59,7 +62,8 @@ describe('chamferDistAngleShape', () => {
     expect(chamfVol).toBeLessThan(origVol);
   });
 
-  it('uses different angles', () => {
+  it('uses different angles', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     const b = box(20, 20, 20);
     const edges = getEdges(b);
 
@@ -79,7 +83,8 @@ describe('chamferDistAngleShape', () => {
     expect(vol30).not.toBeCloseTo(vol60, 0);
   });
 
-  it('chamfers all 12 edges of a box', () => {
+  it('chamfers all 12 edges of a box', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     const b = box(20, 20, 20);
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
@@ -148,6 +153,21 @@ describe('chamferDistAngleShape', () => {
     expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, 90))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, -10))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
+
+  // Runs only where chamferAngle.distAngle is a registered divergence (brepkit).
+  it.skipIf(!shouldSkipSuite('chamferAngle.distAngle'))(
+    'returns UNSUPPORTED_CAPABILITY on a kernel without a distance-angle chamfer',
+    () => {
+      using b = box(10, 10, 10);
+      const vertical = getEdges(b).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+      const error = unwrapErr(chamferDistAngleShape(b, vertical, 1, 30));
+      expect(error.kind).toBe('UNSUPPORTED');
+      expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(unwrapErr(chamfer(b, vertical, { distance: 1, angle: 30 })).code).toBe(
+        'UNSUPPORTED_CAPABILITY'
+      );
+    }
+  );
 });
 
 // The four vertical edges of a 10 mm cube share no vertex, so a distance-angle
@@ -250,7 +270,8 @@ describe('chamfer() with { distance, angle } per edge', () => {
     expect(error.code).toBe('CHAMFER_ANGLE_BAD_ANGLE');
   });
 
-  it('returns UNSUPPORTED on a kernel without per-edge distance-angle chamfers', () => {
+  it('returns UNSUPPORTED on a kernel without per-edge distance-angle chamfers', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     registerStubKernel('no-per-edge-dist-angle', { chamferDistAngles: undefined });
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);
@@ -263,6 +284,35 @@ describe('chamfer() with { distance, angle } per edge', () => {
     const uniform = withKernel('no-per-edge-dist-angle', () => chamfer(b, edges, () => near));
     expect(isOk(uniform)).toBe(true);
     if (isOk(uniform)) uniform.value[Symbol.dispose]();
+  });
+
+  it('returns UNSUPPORTED on a kernel without a distance-angle chamfer', () => {
+    registerStubKernel('no-dist-angle', {
+      chamferDistAngle: () => {
+        throw new UnsupportedKernelOperationError('stub: no distance-angle chamfer');
+      },
+      chamferDistAngles: undefined,
+    });
+    using b = box(10, 10, 10);
+    const edges = verticalEdges(b);
+    const results = withKernel('no-dist-angle', () => [
+      chamferDistAngleShape(b, edges, 1, 30),
+      chamfer(b, edges, near),
+      chamfer(b, edges, () => near),
+      chamfer(b, edges, bySide(near, far)),
+    ]);
+    for (const result of results) {
+      const error = unwrapErr(result);
+      expect(error.kind).toBe('UNSUPPORTED');
+      expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+    }
+    // This kernel has no distance-angle chamfer at all, so the per-edge hint
+    // may offer one shared { distance, angle } only on a kernel that has one.
+    const perEdge = results.at(-1);
+    if (!perEdge) throw new Error('no per-edge result');
+    expect(unwrapErr(perEdge).suggestion).toContain(
+      'on a kernel that has a distance-angle chamfer'
+    );
   });
 
   it('names the edge it could not chamfer', (ctx) => {

@@ -62,7 +62,7 @@ describe('createWorkerHandler', () => {
 
       expect(initFn).toHaveBeenCalledWith('/test.wasm');
       expect(postMessage).toHaveBeenCalledTimes(1);
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({ id: 'init-1', success: true });
     });
 
@@ -75,7 +75,7 @@ describe('createWorkerHandler', () => {
       await fireMessage(msg);
 
       expect(postMessage).toHaveBeenCalledTimes(1);
-      const response = postMessage.mock.calls[0][0] as ErrorResponse;
+      const response = postMessage.mock.calls[0]?.[0] as ErrorResponse;
       expect(response).toEqual({
         id: 'init-2',
         success: false,
@@ -91,7 +91,7 @@ describe('createWorkerHandler', () => {
       const msg: InitRequest = { id: 'init-3', type: 'init' };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as ErrorResponse;
+      const response = postMessage.mock.calls[0]?.[0] as ErrorResponse;
       expect(response.error).toBe('string error');
       expect(response.success).toBe(false);
     });
@@ -116,7 +116,7 @@ describe('createWorkerHandler', () => {
       await fireMessage(msg);
 
       expect(postMessage).toHaveBeenCalledTimes(1);
-      const response = postMessage.mock.calls[0][0] as ErrorResponse;
+      const response = postMessage.mock.calls[0]?.[0] as ErrorResponse;
       expect(response).toEqual({
         id: 'op-1',
         success: false,
@@ -141,7 +141,7 @@ describe('createWorkerHandler', () => {
       await fireMessage(msg);
 
       expect(postMessage).toHaveBeenCalledTimes(1);
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({
         id: 'op-2',
         success: true,
@@ -165,7 +165,7 @@ describe('createWorkerHandler', () => {
       };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({
         id: 'op-3',
         success: true,
@@ -190,7 +190,7 @@ describe('createWorkerHandler', () => {
       };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({
         id: 'op-4',
         success: true,
@@ -213,7 +213,7 @@ describe('createWorkerHandler', () => {
       };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({ id: 'op-5', success: true });
       expect(response).not.toHaveProperty('resultBrep');
       expect(response).not.toHaveProperty('resultData');
@@ -235,7 +235,7 @@ describe('createWorkerHandler', () => {
       };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as ErrorResponse;
+      const response = postMessage.mock.calls[0]?.[0] as ErrorResponse;
       expect(response).toEqual({
         id: 'op-6',
         success: false,
@@ -260,7 +260,7 @@ describe('createWorkerHandler', () => {
       };
       await fireMessage(msg);
 
-      const response = postMessage.mock.calls[0][0] as ErrorResponse;
+      const response = postMessage.mock.calls[0]?.[0] as ErrorResponse;
       expect(response.error).toBe('42');
       expect(response.success).toBe(false);
     });
@@ -279,7 +279,7 @@ describe('createWorkerHandler', () => {
       await fireMessage(msg);
 
       expect(postMessage).toHaveBeenCalledTimes(1);
-      const response = postMessage.mock.calls[0][0] as SuccessResponse;
+      const response = postMessage.mock.calls[0]?.[0] as SuccessResponse;
       expect(response).toEqual({ id: 'dispose-1', success: true });
       expect(close).toHaveBeenCalledTimes(1);
     });

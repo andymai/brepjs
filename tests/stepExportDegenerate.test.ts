@@ -67,6 +67,7 @@ function buildTreadAndRail(): [Shape3D, Shape3D] {
   ]);
   const railProfile = sketchCircle(RAIL_DIA / 2, { plane: railPlane }).wire;
   const rail = unwrap(sweep(railProfile, railPath, { frenet: true }));
+  if (Array.isArray(rail)) throw new Error('expected a solid sweep, not a shell tuple');
 
   return [tread0, rail];
 }

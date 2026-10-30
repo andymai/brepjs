@@ -351,11 +351,29 @@ function edgeTreatmentError(
 }
 
 /**
+ * `UNSUPPORTED_CAPABILITY` for a chamfer the kernel cannot build as asked
+ * (asymmetric or per-edge distances), from its `UnsupportedKernelOperationError`.
+ */
+export function chamferUnsupportedError(e: unknown): BrepError {
+  const kernelId = getKernel().kernelId;
+  const raw = e instanceof Error ? e.message : String(e);
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `chamfer: the ${kernelId} kernel cannot build this chamfer (${raw})`,
+    e,
+    { kernel: kernelId, operation: 'chamfer' },
+    'Use one symmetric distance for every edge, or use the occt-wasm kernel (5.9.0 or later)'
+  );
+}
+
+/**
  * Apply a chamfer (beveled edge) to selected edges of a 3D shape.
  *
  * @param shape - The shape to modify.
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
+ * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
+ *   distances asked for (brepkit has no asymmetric chamfer).
  */
 export function chamfer(
   shape: ValidSolid,
@@ -415,6 +433,7 @@ export function chamfer(
       'Chamfer result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(chamferUnsupportedError(e));
     return err(
       edgeTreatmentError('chamfer', e, filteredEdges, {
         edgeCount: selectedEdges.length,

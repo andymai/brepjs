@@ -15,6 +15,7 @@ function fakeMesh(id: number): ShapeMesh {
     vertices: new Float32Array([id]),
     normals: new Float32Array([id]),
     triangles: new Uint32Array([id]),
+    uvs: new Float32Array(0),
     faceGroups: [],
   };
 }

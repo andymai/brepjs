@@ -109,9 +109,12 @@ export function propagateMetadataByHash(
  * hash) and runs the standard propagation pipeline, so origins, tags, and
  * colors all survive a move at `locate` cost (O(faces)), not a full copy.
  *
+ * A `copyShape` copy keeps the same 1:1 face order with new hashes, so this
+ * re-keys metadata onto a copy too.
+ *
  * Callers should gate on {@link hasAnyMetadata} first: with no metadata this
  * does pointless face iteration. The face counts always match for a rigid
- * relocation; the length guard is purely defensive.
+ * relocation or a copy; the length guard is purely defensive.
  */
 export function propagateMetadataThroughRelocation(
   source: AnyShape<Dimension>,

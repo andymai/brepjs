@@ -19,12 +19,21 @@ import {
   createDistanceQuery,
   castShape,
   getFaces,
+  isShape3D,
   unwrap,
+  type AnyShape,
+  type Dimension,
+  type Shape3D,
 } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function shape3D(shape: AnyShape<Dimension>): Shape3D {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
+  return shape;
+}
 
 describe('measureArea', () => {
   it('box surface area', () => {
@@ -90,13 +99,13 @@ describe('measureDistance (functional)', () => {
 
 describe('measureSurfaceProps (functional)', () => {
   it('returns area (mass)', () => {
-    const b = castShape(box(10, 10, 10).wrapped);
+    const b = shape3D(castShape(box(10, 10, 10).wrapped));
     const props = unwrap(measureSurfaceProps(b));
     expect(props.mass).toBeCloseTo(600, 0);
   });
 
   it('returns centerOfMass', () => {
-    const b = castShape(box(10, 10, 10).wrapped);
+    const b = shape3D(castShape(box(10, 10, 10).wrapped));
     const props = unwrap(measureSurfaceProps(b));
     const com = props.centerOfMass;
     expect(com).toHaveLength(3);
@@ -134,13 +143,13 @@ describe('measureLinearProps (functional)', () => {
 
 describe('measureVolumeProps (functional)', () => {
   it('returns mass (volume)', () => {
-    const b = castShape(box(10, 10, 10).wrapped);
+    const b = shape3D(castShape(box(10, 10, 10).wrapped));
     const props = unwrap(measureVolumeProps(b));
     expect(props.mass).toBeCloseTo(1000, 0);
   });
 
   it('returns centerOfMass', () => {
-    const b = castShape(box(10, 10, 10).wrapped);
+    const b = shape3D(castShape(box(10, 10, 10).wrapped));
     const props = unwrap(measureVolumeProps(b));
     const com = props.centerOfMass;
     expect(com).toHaveLength(3);
@@ -150,7 +159,7 @@ describe('measureVolumeProps (functional)', () => {
   });
 
   it('sphere volume properties', () => {
-    const s = castShape(sphere(5).wrapped);
+    const s = shape3D(castShape(sphere(5).wrapped));
     const props = unwrap(measureVolumeProps(s));
     expect(props.mass).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
     const com = props.centerOfMass;

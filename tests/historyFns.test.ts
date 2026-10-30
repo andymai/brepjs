@@ -21,12 +21,18 @@ import {
   isOk,
   unwrap,
   fuse,
+  isShape3D,
 } from '@/index.js';
-import type { Shape3D, ModelHistory } from '@/index.js';
+import type { AnyShape, Dimension, Shape3D, ModelHistory } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function volumeOf(shape: AnyShape<Dimension> | undefined): number {
+  if (!shape || !isShape3D(shape)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(shape));
+}
 
 function makeBoxShape(): Shape3D {
   return castShape(box(10, 10, 10).wrapped) as Shape3D;
@@ -311,8 +317,7 @@ describe('serializeHistory / deserializeHistory', () => {
     // Volume should match the original shape
     const restoredShape = restored.shapes.get('box-1');
     expect(restoredShape).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above guarantees defined
-    expect(unwrap(measureVolume(restoredShape!))).toBeCloseTo(unwrap(measureVolume(shape)), 0);
+    expect(volumeOf(restoredShape)).toBeCloseTo(unwrap(measureVolume(shape)), 0);
   });
 
   it('round-trips a 3-step history and replay produces identical geometry', () => {
@@ -321,7 +326,7 @@ describe('serializeHistory / deserializeHistory', () => {
     // Step 2: create a cylinder
     const cylShape = castShape(cylinder(3, 10).wrapped) as Shape3D;
     // Step 3: fuse them
-    const fusedShape = unwrap(fuse(boxShape, cylShape)) as Shape3D;
+    const fusedShape = unwrap(fuse(boxShape, cylShape));
 
     let h: ModelHistory = createHistory();
     h = registerShape(h, 'base-box', boxShape);
@@ -359,20 +364,20 @@ describe('serializeHistory / deserializeHistory', () => {
     // Verify fused shape volume matches
     const restoredFused = restored.shapes.get('fused');
     expect(restoredFused).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
-    expect(unwrap(measureVolume(restoredFused!))).toBeCloseTo(originalVolume, 0);
+    expect(volumeOf(restoredFused)).toBeCloseTo(originalVolume, 0);
 
     // Verify replay with registry also produces matching geometry
     let registry = createRegistry();
     registry = registerOperation(registry, 'box', (_inputs, params) =>
-      castShape(box(params.w as number, params.h as number, params.d as number).wrapped)
+      castShape(box(params['w'] as number, params['h'] as number, params['d'] as number).wrapped)
     );
     registry = registerOperation(registry, 'cylinder', (_inputs, params) =>
-      castShape(cylinder(params.r as number, params.h as number).wrapped)
+      castShape(cylinder(params['r'] as number, params['h'] as number).wrapped)
     );
     registry = registerOperation(registry, 'fuse', (inputs) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test array indexing
-      return unwrap(fuse(inputs[0]!, inputs[1]!));
+      const [a, b] = inputs;
+      if (!a || !b || !isShape3D(a) || !isShape3D(b)) throw new Error('fuse expects two 3D inputs');
+      return unwrap(fuse(a, b));
     });
 
     const replayResult = replayHistory(restored, registry);
@@ -380,8 +385,7 @@ describe('serializeHistory / deserializeHistory', () => {
     const replayed = unwrap(replayResult);
     const replayedFused = replayed.shapes.get('fused');
     expect(replayedFused).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
-    expect(unwrap(measureVolume(replayedFused!))).toBeCloseTo(originalVolume, 0);
+    expect(volumeOf(replayedFused)).toBeCloseTo(originalVolume, 0);
   });
 
   it('returns error for corrupted BREP data', () => {

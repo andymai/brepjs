@@ -13,10 +13,11 @@ import {
   replayFrom,
   modifyStep,
   isOk,
+  isShape3D,
   unwrap,
   measureVolume,
 } from '@/index.js';
-import type { AnyShape, ModelHistory, HistoryOperationRegistry } from '@/index.js';
+import type { AnyShape, Dimension, ModelHistory, HistoryOperationRegistry } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -28,6 +29,11 @@ function makeBox(w: number, h: number, d: number): AnyShape {
 
 function makeCyl(r: number, h: number): AnyShape {
   return castShape(cylinder(r, h).wrapped);
+}
+
+function volumeOf(shape: AnyShape<Dimension> | undefined): number {
+  if (!shape || !isShape3D(shape)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(shape));
 }
 
 describe('createRegistry', () => {
@@ -93,7 +99,7 @@ describe('replayHistory', () => {
     expect(replayed.steps).toHaveLength(1);
     expect(replayed.shapes.has('out-1')).toBe(true);
     // The replayed shape should have the same volume
-    const vol = unwrap(measureVolume(replayed.shapes.get('out-1')!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const vol = volumeOf(replayed.shapes.get('out-1'));
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -250,7 +256,7 @@ describe('replayFrom', () => {
     // Step 'b' output should be a new shape
     const newB = replayed.shapes.get('o-b');
     expect(newB).toBeDefined();
-    expect(unwrap(measureVolume(newB!))).toBeCloseTo(8000, 0); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    expect(volumeOf(newB)).toBeCloseTo(8000, 0);
   });
 
   it('returns error for missing step ID', () => {
@@ -297,7 +303,7 @@ describe('modifyStep', () => {
     const modified = unwrap(result);
     expect(modified.steps).toHaveLength(1);
     expect(modified.steps[0]?.parameters).toEqual({ w: 5, h: 5, d: 5 });
-    const vol = unwrap(measureVolume(modified.shapes.get('out-1')!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const vol = volumeOf(modified.shapes.get('out-1'));
     expect(vol).toBeCloseTo(125, 0);
   });
 

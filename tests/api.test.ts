@@ -74,6 +74,7 @@ import {
   getKernel,
 } from '@/index.js';
 import { faceGeomType } from '@/topology/faceFns.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -445,7 +446,8 @@ describe('chamfer()', () => {
     expect(isValid(unwrap(result))).toBe(true);
   });
 
-  it('chamfers with distance-angle mode', () => {
+  it('chamfers with distance-angle mode', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.distAngle');
     const b = box(20, 20, 20);
     const result = chamfer(b, (e) => e.inDirection('Z'), { distance: 2, angle: 45 });
     expect(isOk(result)).toBe(true);

@@ -19,6 +19,7 @@ import {
   isCompound,
   isErr,
   isOk,
+  isShape3D,
   isShell,
   isSolid,
   isValid,
@@ -63,6 +64,7 @@ describe('importSTEP', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
+    if (!isShape3D(imported)) throw new Error('expected a 3D shape');
     expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 
@@ -87,6 +89,7 @@ describe('importSTEP', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     // Volume should be 5 * 10 * 20 = 1000
+    if (!isShape3D(imported)) throw new Error('expected a 3D shape');
     expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 });
@@ -528,6 +531,7 @@ describe('importIGES', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
+    if (!isShape3D(imported)) throw new Error('expected a 3D shape');
     expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 
@@ -551,6 +555,7 @@ describe('importIGES', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     // Volume: 3 * 6 * 9 = 162
+    if (!isShape3D(imported)) throw new Error('expected a 3D shape');
     expect(unwrap(measureVolume(imported))).toBeCloseTo(162, -1);
   });
 });
