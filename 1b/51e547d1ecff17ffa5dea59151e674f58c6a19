@@ -1,0 +1,23 @@
+tests/batchOps.test.ts
+  s_d4ab5fb2066c9b::t_e64fdde54bbf45 81-93
+src/kernel/occtWasm/transformOps.ts
+  s_d4ab5fb2066c9b::t_1411f446709579 364-365
+src/kernel/interfaces/transformOps.ts
+  s_d4ab5fb2066c9b::t_1411f446709579 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b51e547d1ecff17ffa5dea59151e674f58c6a19",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
