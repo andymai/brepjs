@@ -29,7 +29,10 @@ import {
   createSolid,
   measureVolume,
   measureArea,
+  tagFaces,
+  findFacesByTag,
 } from '@/index.js';
+import type { BooleanOptions } from '@/index.js';
 import type { Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
@@ -85,6 +88,35 @@ describe('fuseAll', () => {
     const result = fuseAll([boxAt(0, 0, 0, 10, 10, 10)]);
     expect(isOk(result)).toBe(true);
     expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
+  });
+
+  // Disposing the result must leave the caller's shape alive: a single shape
+  // used to come back as the input handle itself.
+  it.each([
+    ['native', {}],
+    ['pairwise', { strategy: 'pairwise' }],
+    ['untracked', { trackEvolution: false }],
+  ] as [string, BooleanOptions][])(
+    'fuses one shape (%s) into a copy the caller can dispose without losing the input',
+    (_name, options) => {
+      using b = box(2, 2, 2);
+      const result = unwrap(fuseAll([b], options));
+      expect(result).not.toBe(b);
+      expect(result.wrapped).not.toBe(b.wrapped);
+      result[Symbol.dispose]();
+      expect(unwrap(measureVolume(b))).toBeCloseTo(8, 6);
+    }
+  );
+
+  it('keeps face tags on the copy of a single shape', () => {
+    using b = box(10, 10, 10);
+    const first = getFaces(b)[0];
+    if (!first) throw new Error('box has no faces');
+    tagFaces(b, [first], 'kept');
+    using result = unwrap(fuseAll([b]));
+    const kept = findFacesByTag(result, 'kept');
+    expect(kept).toHaveLength(1);
+    expect(unwrap(measureArea(kept[0] ?? result))).toBeCloseTo(100, 6);
   });
 
   it('returns error for empty array', () => {
@@ -506,6 +538,14 @@ describe('null-shape pre-validation', () => {
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
     expect(unwrapErr(result).message).toContain('index 1');
+  });
+
+  it('fuseAll rejects a lone null shape', (ctx) => {
+    skipIfDiverges(ctx, 'booleanFns.nullShapeValidation');
+    const result = fuseAll([makeNullShape()]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('index 0');
   });
 
   it('cutAll rejects null base', (ctx) => {

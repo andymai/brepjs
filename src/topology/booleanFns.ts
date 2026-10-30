@@ -24,12 +24,14 @@ import { resolvePlane } from '@/core/planeOps.js';
 import { vecAdd, vecScale, vecSub, vecDot } from '@/core/vecOps.js';
 import type { Vec3 } from '@/core/types.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
-import { getWires, getEdges, getVertices } from './shapeFns.js';
+import { clone, getWires, getEdges, getVertices } from './shapeFns.js';
 import { getAtOrThrow, firstOrThrow } from '@/utils/arrayAccess.js';
 import {
   collectInputFaceHashes,
+  hasAnyMetadata,
   propagateAllMetadata,
   propagateMetadataByHash,
+  propagateMetadataThroughRelocation,
 } from './metadata/metadataPropagation.js';
 import { makeFace } from './surfaceBuilders.js';
 
@@ -458,6 +460,7 @@ function fuseAllPairwise(
  * @param shapes - Array of 3D shapes to fuse (at least one required).
  * @param options - Boolean operation options.
  * @returns Ok with the fused shape, or Err if the array is empty or the result is not 3D.
+ *   A single shape comes back as a copy, so the result is always the caller's to dispose.
  *
  * @example
  * ```ts
@@ -484,11 +487,19 @@ export function fuseAll(
   if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
-  if (shapes.length === 1) return ok(firstOrThrow(shapes));
 
   for (let i = 0; i < shapes.length; i++) {
     const check = validateShape3D(getAtOrThrow(shapes, i), `fuseAll: shape at index ${i}`);
     if (isErr(check)) return check;
+  }
+
+  if (shapes.length === 1) {
+    const only = firstOrThrow(shapes);
+    const copy = clone(only);
+    if (copy.ok && trackEvolution && hasAnyMetadata(only)) {
+      propagateMetadataThroughRelocation(only, copy.value);
+    }
+    return copy;
   }
 
   if (strategy === 'native') {

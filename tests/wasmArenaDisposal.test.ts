@@ -122,6 +122,8 @@ import {
   chamferDistAngleShape,
   exportSTEPConfigured,
   exportAssemblySTEP,
+  instance,
+  materialize,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
@@ -340,6 +342,8 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using b = box(10, 10, 10);
           measureLength(b);
           measureSurfaceProps(b);
+          using cyl = cylinder(2, 5);
+          for (const f of getFaces(cyl)) measureLength(f);
           using s0 = sphere(2);
           using s = translate(s0, [0, 0, 20]);
           const loose = getFaces(s0)[0];
@@ -366,6 +370,16 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using c = translate(c0, [30, 0, 0]);
           using pair = compound([a, c]);
           expect(isOk(principalBoundingBox(pair))).toBe(true);
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using s0 = sphere(2);
+          const loose = getFaces(s0)[0];
+          if (!loose) throw new Error('sphere has no faces');
+          using mixed = compound([a, loose]);
+          expect(isOk(principalBoundingBox(mixed))).toBe(true);
         })
       ).toBe(0);
     });
@@ -1423,6 +1437,30 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using b3 = translate(s3, [30, 0, 0]);
           const r = fuseAll([b0, b1, b2, b3], { strategy: 'pairwise' });
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('fuseAll of one shape and a single-placement fused materialize leak nothing', () => {
+      // fuseAll of one shape returns its own copy, so the input and the result are
+      // each disposed once; materialize releases the placed copy it fused.
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(fuseAll([b]));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          setShapeOrigin(b, 1); // metadata makes the copy re-key it onto its faces
+          using _r = unwrap(fuseAll([b]));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using inst = instance(box(10, 10, 10), [[5, 0, 0]]);
+          using _r = unwrap(materialize(inst, { fuse: true }));
         })
       ).toBe(0);
     });

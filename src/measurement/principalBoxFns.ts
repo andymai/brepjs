@@ -5,6 +5,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Matrix3 } from '@/kernel/interfaces/measureOps.js';
+import type { KernelShape } from '@/kernel/types.js';
 import type { Vec3 } from '@/core/types.js';
 import { castResultShape, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 import { type Result, type Err, ok, err } from '@/core/result.js';
@@ -12,8 +13,8 @@ import { kernelCallRaw } from '@/core/kernelCall.js';
 import { type BrepError, BrepErrorCode, unsupportedError, validationError } from '@/core/errors.js';
 import { vecCross } from '@/core/vecOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
-import { subShapeCount } from '@/topology/topologyQueryFns.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
+import { withCompoundOf, withSubShapes } from './measureFns.js';
 import type { PrincipalBoundingBox } from './measureTypes.js';
 
 export type { PrincipalBoundingBox };
@@ -50,25 +51,19 @@ function validatePrincipalBoxInput(shape: AnyShape<Dimension>): Err<BrepError> |
       )
     );
   }
-  const volume = kernelCallRaw(
-    () =>
-      type === 'solid' || subShapeCount(shape, 'solid') > 0 ? kernel.volume(shape.wrapped) : 0,
-    BrepErrorCode.PRINCIPAL_BOX_FAILED,
-    'principalBoundingBox: failed to measure volume'
-  );
-  if (!volume.ok) return volume;
-  if (volume.value <= ZERO_VOLUME_TOLERANCE) {
-    return err(
-      validationError(
-        BrepErrorCode.ZERO_VOLUME,
-        'principalBoundingBox: shape encloses no volume',
-        undefined,
-        { volume: volume.value },
-        'Use getBounds() for shapes without volume, or build a solid first'
-      )
-    );
-  }
   return undefined;
+}
+
+function zeroVolumeErr(volume: number): Err<BrepError> {
+  return err(
+    validationError(
+      BrepErrorCode.ZERO_VOLUME,
+      'principalBoundingBox: shape encloses no volume',
+      undefined,
+      { volume },
+      'Use getBounds() for shapes without volume, or build a solid first'
+    )
+  );
 }
 
 /** One cyclic-Jacobi rotation that zeroes `a[p][q]`, accumulated into the eigenvector matrix `v`. */
@@ -135,13 +130,13 @@ function withoutNegativeZero(v: Vec3): Vec3 {
 }
 
 function boundsInFrame(
-  shape: AnyShape<Dimension>,
+  target: KernelShape,
   axes: readonly [Vec3, Vec3, Vec3]
 ): { min: Vec3; max: Vec3 } {
   const kernel = getKernel();
   const [a0, a1, a2] = axes;
   using framed = castResultShape(
-    kernel.generalTransform(shape.wrapped, [...a0, ...a1, ...a2], ORIGIN, true)
+    kernel.generalTransform(target, [...a0, ...a1, ...a2], ORIGIN, true)
   );
   return kernel.boundingBox(framed.wrapped);
 }
@@ -171,6 +166,47 @@ function assembleBox(
   };
 }
 
+/** The principal box of `target`, a solid, a compsolid, or a compound of solids. */
+function principalBoxOf(target: KernelShape): Result<PrincipalBoundingBox> {
+  const kernel = getKernel();
+  const volume = kernelCallRaw(
+    () => kernel.volume(target),
+    BrepErrorCode.PRINCIPAL_BOX_FAILED,
+    'principalBoundingBox: failed to measure volume'
+  );
+  if (!volume.ok) return volume;
+  if (volume.value <= ZERO_VOLUME_TOLERANCE) return zeroVolumeErr(volume.value);
+
+  const inertiaOf = kernel.inertia?.bind(kernel);
+  if (!inertiaOf) {
+    return err(
+      unsupportedError(
+        BrepErrorCode.UNSUPPORTED_CAPABILITY,
+        `principalBoundingBox: the ${kernel.kernelId} kernel has no inertia query`,
+        undefined,
+        { kernel: kernel.kernelId },
+        'Use the occt-wasm kernel, which provides the inertia query'
+      )
+    );
+  }
+
+  const inertia = kernelCallRaw(
+    () => inertiaOf(target),
+    BrepErrorCode.PRINCIPAL_BOX_FAILED,
+    'principalBoundingBox: failed to compute the matrix of inertia'
+  );
+  if (!inertia.ok) return inertia;
+
+  const axes = principalAxes(inertia.value);
+  const bounds = kernelCallRaw(
+    () => boundsInFrame(target, axes),
+    BrepErrorCode.PRINCIPAL_BOX_FAILED,
+    'principalBoundingBox: failed to measure bounds in the principal frame'
+  );
+  if (!bounds.ok) return bounds;
+  return ok(assembleBox(axes, bounds.value));
+}
+
 /**
  * Measure a solid's bounding box on its principal axes of inertia.
  *
@@ -185,7 +221,8 @@ function assembleBox(
  * Z reports 136.6 x 136.6 x 2, because any in-plane pair of axes is principal
  * for a square plate.
  *
- * @param shape - A solid, compsolid, or compound containing solids.
+ * @param shape - A solid, compsolid, or compound containing solids. A compound
+ *   is measured by its solids alone: loose faces, shells, or wires in it are ignored.
  * @returns `Result` with the box center in world coordinates, orthonormal
  *   right-handed axes ordered by decreasing extent, and the full edge lengths
  *   along those axes. Fails with `NOT_A_SOLID` for any other shape type
@@ -205,35 +242,16 @@ export function principalBoundingBox(shape: AnyShape<Dimension>): Result<Princip
   const invalid = validatePrincipalBoxInput(shape);
   if (invalid) return invalid;
 
-  const kernel = getKernel();
-  const inertiaOf = kernel.inertia?.bind(kernel);
-  if (!inertiaOf) {
-    return err(
-      unsupportedError(
-        BrepErrorCode.UNSUPPORTED_CAPABILITY,
-        `principalBoundingBox: the ${kernel.kernelId} kernel has no inertia query`,
-        undefined,
-        { kernel: kernel.kernelId },
-        'Use the occt-wasm kernel, which provides the inertia query'
-      )
-    );
-  }
-
-  const inertia = kernelCallRaw(
-    () => inertiaOf(shape.wrapped),
-    BrepErrorCode.PRINCIPAL_BOX_FAILED,
-    'principalBoundingBox: failed to compute the matrix of inertia'
-  );
-  if (!inertia.ok) return inertia;
-
-  const axes = principalAxes(inertia.value);
-  const bounds = kernelCallRaw(
-    () => boundsInFrame(shape, axes),
-    BrepErrorCode.PRINCIPAL_BOX_FAILED,
-    'principalBoundingBox: failed to measure bounds in the principal frame'
-  );
-  if (!bounds.ok) return bounds;
-  const result = assembleBox(axes, bounds.value);
-  setCachedMeasurement(shape.wrapped, 'principal', result);
-  return ok(result);
+  // A compound can also hold loose faces, shells, or wires, whose meaningless
+  // volume terms would skew both the volume and the inertia, so only its solids
+  // are measured.
+  const result =
+    getKernel().shapeType(shape.wrapped) === 'compound'
+      ? withSubShapes(shape, 'solid', (solids) =>
+          solids.length === 0 ? zeroVolumeErr(0) : withCompoundOf(solids, principalBoxOf)
+        )
+      : principalBoxOf(shape.wrapped);
+  if (!result.ok) return result;
+  setCachedMeasurement(shape.wrapped, 'principal', result.value);
+  return result;
 }

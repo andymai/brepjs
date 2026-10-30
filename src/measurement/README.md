@@ -41,6 +41,7 @@ const { size, axes, center } = unwrap(principalBoundingBox(rotatedBoard));
 
 - It is a box on the principal axes, not a minimum-volume oriented box. When principal moments coincide the in-plane axes are not unique: a 100 x 100 x 2 plate rotated 30 degrees about Z reports 136.6 x 136.6 x 2.
 - Input must enclose volume: faces, wires, and shells fail with `NOT_A_SOLID`; a compound without solids (or a degenerate solid) fails with `ZERO_VOLUME`.
+- A compound is measured by its solids alone, as in `measureVolume`: loose faces, shells, or wires in it don't move the axes or the box.
 - Needs the optional kernel `inertia` query (occt-wasm). Other kernels return an `UNSUPPORTED` error.
 - For a shape already on the world axes, `axes` are exact world unit vectors (in extent order, the third flipped when needed to stay right-handed) and `center` is exact.
 
@@ -72,4 +73,4 @@ query.dispose(); // Clean up
 3. **"Mass" is not mass**: The `mass` field represents geometric properties (volume/area/length), not actual mass. Multiply by density if needed.
 4. **Center of mass from geometry**: Computed from shape geometry, not physical distribution
 5. **Face vs Shape3D for area**: `measureArea()` accepts both faces (single surface) and 3D shapes (total surface area)
-6. **AnyShape for length**: `measureLength()` works on edges, wires, and any shape (computes total edge length)
+6. **AnyShape for length**: `measureLength()` works on edges, wires, and any shape (computes total edge length). Faces, shells, solids, and compounds count each distinct edge once, so an edge shared by two faces or a face's seam edge is not counted twice.
