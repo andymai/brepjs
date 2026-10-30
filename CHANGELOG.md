@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.5](https://github.com/andymai/brepjs/compare/brepjs-v20.13.4...brepjs-v20.13.5) (2026-10-30)
+
+
+### Bug Fixes
+
+* **brepkit:** split a solid's pieces and project compounds on brepkit-wasm 4.6.7 ([#2571](https://github.com/andymai/brepjs/issues/2571)) ([61d4a7b](https://github.com/andymai/brepjs/commit/61d4a7be0059e17e172942a1425a1fc02447c411))
+
 ## [20.13.4](https://github.com/andymai/brepjs/compare/brepjs-v20.13.3...brepjs-v20.13.4) (2026-10-30)
 
 
