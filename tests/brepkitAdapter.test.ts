@@ -14,6 +14,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BrepkitAdapter, type BrepkitHandle } from '@/kernel/brepkit/brepkitAdapter.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 
 // ---------------------------------------------------------------------------
 // Mock BrepKernel
@@ -803,6 +804,37 @@ describe('BrepkitAdapter', () => {
         (box as BrepkitHandle).id,
         edges.map((e) => (e as BrepkitHandle).id),
         0.3
+      );
+    });
+
+    it('chamferDistAngle is unsupported without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+
+      let caught: unknown;
+      try {
+        adapter.chamferDistAngle(box, edges, 0.3, 30);
+      } catch (e) {
+        caught = e;
+      }
+      expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      expect(mock.chamfer).not.toHaveBeenCalled();
+    });
+
+    it('chamferDistAngle sets the second distance back by distance x tan(angle)', () => {
+      const mock = { ...createMockBrepKernel(), chamferAsymmetric: vi.fn(() => 99) };
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      adapter.chamferDistAngle(box, edges, 0.3, 45);
+
+      expect(mock.chamferAsymmetric).toHaveBeenCalledWith(
+        (box as BrepkitHandle).id,
+        edges.map((e) => (e as BrepkitHandle).id),
+        0.3,
+        expect.closeTo(0.3, 12)
       );
     });
 

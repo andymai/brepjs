@@ -109,7 +109,9 @@ function castChamferResult(raw: KernelShape): Result<Shape3D> {
  * @param edges   - Edges to chamfer (must not be empty).
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
- * @returns Ok with the chamfered shape, or Err on invalid input or kernel failure.
+ * @returns Ok with the chamfered shape, or Err on invalid input or kernel
+ *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
@@ -134,12 +136,23 @@ export function chamferDistAngle(
   const invalid = validateDistAngle(distance, angleDeg);
   if (invalid) return invalid;
 
+  const kernel = getKernel();
   let raw;
   try {
-    const kernel = getKernel();
     const rawEdges = edges.map((e) => e.wrapped);
     raw = kernel.chamferDistAngle(shape.wrapped, rawEdges, distance, angleDeg);
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) {
+      return err(
+        unsupportedError(
+          BrepErrorCode.UNSUPPORTED_CAPABILITY,
+          `chamferDistAngle: the ${kernel.kernelId} kernel has no distance-angle chamfer`,
+          e,
+          { kernel: kernel.kernelId },
+          'Chamfer by distances instead, or use the occt-wasm kernel'
+        )
+      );
+    }
     return chamferAngleFailed('chamferDistAngle', e, edges, {
       distance,
       angleDeg,
@@ -174,9 +187,9 @@ function perEdgeUnsupported(kernelId: string, cause: unknown): Err<BrepError> {
  * Chamfer each edge by its own distance and angle, in one operation.
  *
  * Edges that all share one distance and angle go through
- * {@link chamferDistAngle}, which every kernel provides. Different values need
- * a kernel with a per-edge distance-angle chamfer (occt-wasm 5.9.0 or later);
- * on any other kernel the result is an `UNSUPPORTED_CAPABILITY` error. On
+ * {@link chamferDistAngle}, which every kernel but brepkit provides. Different
+ * values need a kernel with a per-edge distance-angle chamfer (occt-wasm 5.9.0
+ * or later); on any other kernel the result is an `UNSUPPORTED_CAPABILITY` error. On
  * occt-wasm the edges of one tangent-continuous contour must share their
  * distance and angle, or the result is `CHAMFER_ANGLE_FAILED`.
  *

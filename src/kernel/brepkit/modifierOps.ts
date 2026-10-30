@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   handle,
@@ -111,17 +112,15 @@ export function chamferDistAngle(
   distance: number,
   angleDeg: number
 ): KernelShape {
+  if (typeof bk.chamferAsymmetric !== 'function') {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: chamferDistAngle requires chamferAsymmetric, which this brepkit-wasm build lacks'
+    );
+  }
   const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
   const solidId = unwrapSolidOrThrow(shape, 'chamferDistAngle');
   const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-
-  if (typeof bk.chamferAsymmetric === 'function') {
-    return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, distance, d2));
-  }
-
-  // Fallback: averaged symmetric chamfer
-  warnOnce('chamfer-dist-angle', 'chamferAsymmetric not available; using averaged distance.');
-  return solidHandle(bk.chamfer(solidId, edgeIds, (distance + d2) / 2));
+  return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, distance, d2));
 }
 
 function faceCentroid(
