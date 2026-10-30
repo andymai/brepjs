@@ -66,10 +66,6 @@
     "tests/healingFns.test.ts",
     "tests/historyFns.test.ts",
     "tests/kernel-agreement.test.ts",
-    "tests/loftFns.test.ts",
-    "tests/modifierFns.test.ts",
-    "tests/offsetWire2D.test.ts",
-    "tests/operations-extrude.test.ts",
     "tests/parity/composedTransformParity.test.ts",
     "tests/parity/manifold.test.ts",
     "tests/parity/nativeEdges.test.ts",
@@ -77,16 +73,6 @@
     "tests/parity/planeExtrudeOrientation.test.ts",
     "tests/parity/profileExtrude.test.ts",
     "tests/parity/roundtrip.test.ts",
-    "tests/parity/transforms.test.ts",
-    "tests/primitiveFns.test.ts",
-    "tests/sketchFns.test.ts",
-    "tests/stepExportDegenerate.test.ts",
-    "tests/sweepFns.test.ts",
-    "tests/sweepRepro.test.ts",
-    "tests/sweepSketchOrientation.test.ts",
-    "tests/topology.test.ts",
-    "tests/validityTypes.test.ts",
-    "tests/variableFillet.test.ts",
-    "tests/wrapperFns.test.ts"
+    "tests/parity/transforms.test.ts"
   ]
 }

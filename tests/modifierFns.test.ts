@@ -7,6 +7,7 @@ import {
   box,
   sphere,
   castShape,
+  isShape3D,
   isSolid,
   getEdges,
   getFaces,
@@ -37,7 +38,7 @@ import {
 } from '@/index.js';
 import { fillet as filletFn, shell as shellFn } from '@/topology/modifierFns.js';
 import { castResultShape } from '@/core/shapeTypes.js';
-import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
+import type { Dimension, Edge, Face, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -450,9 +451,11 @@ describe('defeature', () => {
     expect(unwrap(measureVolume(filleted))).toBeLessThan(8000);
 
     const kernel = getKernel();
-    const volumes = getFaces(filleted).map((f) =>
-      unwrap(measureVolume(castShape(kernel.defeature(filleted.wrapped, [f.wrapped]))))
-    );
+    const volumes = getFaces(filleted).map((f) => {
+      const defeatured = castShape(kernel.defeature(filleted.wrapped, [f.wrapped]));
+      if (!isShape3D(defeatured)) throw new Error('expected a 3D shape');
+      return unwrap(measureVolume(defeatured));
+    });
 
     // Only the fillet surface is a removable feature; every other face is left
     // untouched, so exactly one removal restores the original box.
@@ -570,7 +573,7 @@ describe('per-edge fillet radii and chamfer distances', () => {
   }
 
   /** The value for a vertical edge on the x = 0 side, or on the x = 10 side. */
-  function bySide<V>(nearSide: V, farSide: V): (edge: Edge) => V {
+  function bySide<V>(nearSide: V, farSide: V): (edge: Edge<Dimension>) => V {
     return (edge) => (getBounds(edge).xMin < 5 ? nearSide : farSide);
   }
 
@@ -644,7 +647,7 @@ describe('per-edge fillet radii and chamfer distances', () => {
 describe('draft validation errors', () => {
   it('rejects empty faces list', () => {
     const b = box(10, 10, 10);
-    const result = draft(b, [], [0, 0, 1], [0, 0, 0], 5);
+    const result = draft(b, [], { pullDirection: [0, 0, 1], neutralPlane: [0, 0, 0], angle: 5 });
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('DRAFT_NO_FACES');
   });
@@ -730,9 +733,9 @@ describe.skipIf(currentKernel !== 'occt-wasm')('variableFillet on occt-wasm', ()
 // ---------------------------------------------------------------------------
 
 describe('null-shape pre-validation', () => {
-  function makeNullShape(): Shape3D {
+  function makeNullShape(): ValidSolid {
     const oc = getKernel().oc;
-    return createSolid(new oc.TopoDS_Solid());
+    return createSolid(new oc.TopoDS_Solid()) as ValidSolid;
   }
 
   it('fillet rejects null shape', (ctx) => {
