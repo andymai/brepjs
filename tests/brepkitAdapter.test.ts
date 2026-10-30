@@ -623,6 +623,18 @@ describe('BrepkitAdapter', () => {
       expect(result.faceGroups[0]?.faceHash).toBe(100);
     });
 
+    it('a bare face carries its own id as faceHash, the same as hashCode', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+      const face = adapter.iterShapes(box, 'face')[1];
+
+      const result = adapter.mesh(face, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      expect(result.faceGroups.map((g) => g.faceHash)).toEqual([101]);
+      expect(result.faceGroups[0]?.faceHash).toBe(adapter.hashCode(face, 2 ** 31 - 1));
+    });
+
     it('meshEdges returns tessellated edge polylines', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);
