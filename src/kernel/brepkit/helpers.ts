@@ -190,14 +190,13 @@ interface ConicFrame {
 /**
  * The frame of an analytic circle or ellipse edge, evaluated at t as
  * center + U·cos t + V·sin t, recovered from its points at 0, π/2 and π.
- * brepkit reports such an edge's domain as exactly [0, 2π]; a NURBS edge that
- * happens to be a circle reports its knot domain and gets no frame.
+ * A NURBS edge that happens to be a circle reports CIRCLE too but runs over
+ * its knots, so it gets no frame; only an analytic edge has no NURBS data.
  */
-function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
-  const params = bk.getEdgeCurveParameters(edgeId);
-  if (wasmIndex(params, 0) !== 0 || wasmIndex(params, 1) !== TAU) return undefined;
+export function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
   const curveType = bk.getEdgeCurveType(edgeId);
   if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return undefined;
+  if (bk.getEdgeNurbsData(edgeId) !== null) return undefined;
   const at = (t: number): Point => {
     const p = bk.evaluateEdgeCurve(edgeId, t);
     return [wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2)];
@@ -213,7 +212,7 @@ function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
   };
 }
 
-function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
+export function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
   const verts = bk.getEdgeVertices(edgeId);
   return [
     [wasmIndex(verts, 0), wasmIndex(verts, 1), wasmIndex(verts, 2)],
@@ -222,10 +221,11 @@ function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
 }
 
 /**
- * The curve parameters an edge spans. brepkit reports a circle or ellipse edge's
- * domain as the whole [0, 2π] even for an arc; the arc runs counterclockwise
- * about the curve's axis from the angle of its start vertex to that of its end
- * vertex (brepkit's own `circle_param_range`), angles read off the curve's frame.
+ * The curve parameters an edge spans. brepkit before 4.5.10 reports a circle or
+ * ellipse edge's domain as the whole [0, 2π] even for an arc, so an arc's span
+ * is read off the curve's frame on every kernel: it runs counterclockwise about
+ * the curve's axis from the angle of its start vertex to that of its end vertex
+ * (brepkit's own `circle_param_range`).
  */
 export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, number] {
   const params = bk.getEdgeCurveParameters(edgeId);
@@ -470,6 +470,46 @@ export function nextSyntheticId(): number {
 
 /** JS-side storage for compound children (wires, faces, edges). */
 export const syntheticCompounds = new Map<number, BrepkitHandle[]>();
+
+// ---------------------------------------------------------------------------
+// Solid pieces
+// ---------------------------------------------------------------------------
+
+/**
+ * Each solid's piece ids, per kernel. getSolidPieces builds new solids and
+ * shells for a solid in several pieces on every call, and the arena frees
+ * nothing one handle at a time, so a solid is split once and its pieces keep
+ * one identity until the solid changes in place or the arena rolls back.
+ */
+const solidPiecesByKernel = new WeakMap<BrepkitKernel, Map<number, readonly number[]>>();
+
+/** A solid's piece ids, from `split` the first time they are asked for. */
+export function cachedSolidPieces(
+  bk: BrepkitKernel,
+  solidId: number,
+  split: () => readonly number[]
+): readonly number[] {
+  let known = solidPiecesByKernel.get(bk);
+  if (!known) {
+    known = new Map();
+    solidPiecesByKernel.set(bk, known);
+  }
+  const cached = known.get(solidId);
+  if (cached) return cached;
+  const pieces = split();
+  known.set(solidId, pieces);
+  for (const piece of pieces) if (!known.has(piece)) known.set(piece, [piece]);
+  return pieces;
+}
+
+/**
+ * Forget one solid's pieces after the kernel changes it in place, or every
+ * solid's after the arena rolls back and its ids can name new entities.
+ */
+export function forgetSolidPieces(bk: BrepkitKernel, solidId?: number): void {
+  if (solidId === undefined) solidPiecesByKernel.delete(bk);
+  else solidPiecesByKernel.get(bk)?.delete(solidId);
+}
 
 // ---------------------------------------------------------------------------
 // One-time degradation warnings (ADR-0006 Phase 4)

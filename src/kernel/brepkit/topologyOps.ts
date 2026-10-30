@@ -19,18 +19,36 @@ import {
   unwrapSolidOrThrow,
   toArray,
   syntheticCompounds,
+  cachedSolidPieces,
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
+
+/**
+ * One solid per separate piece of material in a solid: a boolean can leave
+ * several pieces in one kernel solid, all in one shell. A solid in one piece
+ * keeps its own handle, since the kernel answers a solid whose cavity shares
+ * its shell with a rebuilt one.
+ */
+function solidPieces(bk: BrepkitKernel, solid: KernelShape): KernelShape[] {
+  if (typeof bk.getSolidPieces !== 'function') return [solid];
+  const id = unwrap(solid, 'solid');
+  const pieces = cachedSolidPieces(bk, id, () => {
+    const found = toArray(bk.getSolidPieces(id));
+    return found.length > 1 ? found : [id];
+  });
+  return pieces.length > 1 ? pieces.map(solidHandle) : [solid];
+}
 
 function iterCompound(bk: BrepkitKernel, h: number, type: ShapeType): KernelShape[] {
   const children = syntheticCompounds.get(h);
   if (children) {
-    return children.flatMap((child) =>
-      child.type === type ? [child] : iterShapes(bk, child, type)
-    );
+    return children.flatMap((child) => {
+      if (child.type === 'solid' && type === 'solid') return solidPieces(bk, child);
+      return child.type === type ? [child] : iterShapes(bk, child, type);
+    });
   }
   if (type === 'solid') {
-    return toArray(bk.getCompoundSolids(h)).map(solidHandle);
+    return toArray(bk.getCompoundSolids(h)).flatMap((id) => solidPieces(bk, solidHandle(id)));
   }
   if (type === 'face' || type === 'edge' || type === 'vertex' || type === 'wire') {
     const solids = toArray(bk.getCompoundSolids(h)).map(solidHandle);
@@ -47,9 +65,11 @@ function iterSolid(
 ): KernelShape[] {
   switch (type) {
     case 'solid':
-      return [shape];
+      return solidPieces(bk, shape);
     case 'shell':
-      return toArray(bk.getSolidShells(h)).map(shellHandle);
+      return solidPieces(bk, shape).flatMap((piece) =>
+        toArray(bk.getSolidShells(unwrap(piece, 'solid'))).map(shellHandle)
+      );
     case 'face':
       return toArray(bk.getSolidFaces(h)).map(faceHandle);
     case 'edge':
@@ -253,14 +273,24 @@ function faceIdsForSew(bk: BrepkitKernel, shape: KernelShape): number[] {
 export function sew(bk: BrepkitKernel, shapes: KernelShape[], tolerance?: number): KernelShape {
   const faceIds = shapes.flatMap((s) => faceIdsForSew(bk, s));
   const tol = tolerance ?? 1e-7;
+  let solidId: number;
   try {
-    const id = bk.weldShellsAndFaces(faceIds, tol);
-    return shellHandle(id);
+    solidId = bk.weldShellsAndFaces(faceIds, tol);
   } catch (e: unknown) {
     console.warn('brepkit: weldShellsAndFaces failed, falling back to sewFaces:', e);
+    solidId = bk.sewFaces(faceIds, tol);
   }
-  const id = bk.sewFaces(faceIds, tol);
-  return shellHandle(id);
+  return sewnShell(bk, solidId);
+}
+
+/**
+ * Both sewing bindings wrap the one shell they sew in a solid and return the
+ * solid's handle; the shell has its own, which shell queries need.
+ */
+function sewnShell(bk: BrepkitKernel, solidId: number): KernelShape {
+  const [shellId] = toArray(bk.getSolidShells(solidId));
+  if (shellId === undefined) throw new Error('brepkit: sewing returned a solid with no shell');
+  return shellHandle(shellId);
 }
 
 /** Co-located factory: returns the topology-iteration slice of {@link KernelAdapter} bound to `bk`. */

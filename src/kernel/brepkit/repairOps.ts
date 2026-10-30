@@ -6,7 +6,13 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { type BrepkitHandle, isBrepkitHandle, unwrap, unwrapSolidOrThrow } from './helpers.js';
+import {
+  type BrepkitHandle,
+  isBrepkitHandle,
+  unwrap,
+  unwrapSolidOrThrow,
+  forgetSolidPieces,
+} from './helpers.js';
 
 export function isValid(bk: BrepkitKernel, shape: KernelShape): boolean {
   if (!isBrepkitHandle(shape)) return false;
@@ -40,6 +46,8 @@ export function healSolid(bk: BrepkitKernel, shape: KernelShape): KernelShape | 
         'Consider using makeCompound() to combine shapes first.'
     );
   }
+  // Both healers change the solid in place, under its own handle.
+  forgetSolidPieces(bk, h.id);
   try {
     // repairSolid is the comprehensive healer (0.4.3+), healSolid is the legacy in-place version
     const remaining = bk.repairSolid(unwrap(shape));
@@ -79,6 +87,7 @@ export function mergeCoincidentVertices(
   tolerance: number
 ): number {
   const solidId = unwrapSolidOrThrow(shape, 'mergeCoincidentVertices');
+  forgetSolidPieces(bk, solidId);
   return bk.mergeCoincidentVertices(solidId, tolerance);
 }
 
@@ -88,17 +97,20 @@ export function removeDegenerateEdges(
   tolerance: number
 ): number {
   const solidId = unwrapSolidOrThrow(shape, 'removeDegenerateEdges');
+  forgetSolidPieces(bk, solidId);
   return bk.removeDegenerateEdges(solidId, tolerance);
 }
 
 export function fixFaceOrientations(bk: BrepkitKernel, shape: KernelShape): number {
   const solidId = unwrapSolidOrThrow(shape, 'fixFaceOrientations');
+  forgetSolidPieces(bk, solidId);
   return bk.fixFaceOrientations(solidId);
 }
 
 export function fixShape(bk: BrepkitKernel, shape: KernelShape): KernelShape {
   const h = shape as BrepkitHandle;
   if (h.type === 'solid') {
+    forgetSolidPieces(bk, h.id);
     bk.healSolid(h.id);
   }
   return shape;

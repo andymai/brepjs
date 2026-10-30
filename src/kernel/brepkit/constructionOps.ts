@@ -22,6 +22,9 @@ import {
   nextSyntheticId,
   DEFAULT_SEGMENTS,
   warnOnce,
+  conicFrame,
+  dist3,
+  edgeEnds,
 } from './helpers.js';
 import { needsTransform, transformToPlacement } from './internalOps.js';
 import { translate, generalTransform } from './transformOps.js';
@@ -70,7 +73,7 @@ export function makeWire(bk: BrepkitKernel, edges: KernelShape[]): KernelShape {
       edgeIds.push(unwrap(e, 'edge'));
     }
   }
-  const id = bk.makeWire(edgeIds, true);
+  const id = bk.makeWire(chainEdges(bk, edgeIds), true);
   return wireHandle(id);
 }
 
@@ -486,15 +489,123 @@ export function makeWireFromMixed(bk: BrepkitKernel, items: KernelShape[]): Kern
   }
   if (edgeIds.length === 0)
     throw new Error('brepkit: makeWireFromMixed requires at least one edge');
+  const chain = chainEdges(bk, edgeIds);
   // A chain whose last edge ends where the first starts is built closed:
   // brepkit welds the closing pair onto one vertex only for a closed wire, and
   // an unshared closing vertex leaves a prism no fillet or draft can work on.
-  const id = bk.makeWire(edgeIds, chainCloses(bk, edgeIds));
+  const id = bk.makeWire(chain, chainCloses(bk, chain));
   return wireHandle(id);
 }
 
 /** Matches the 1e-7 linear tolerance brepkit's makeWire welds vertices within. */
 const WIRE_CLOSE_TOLERANCE = 1e-7;
+
+type Point = [number, number, number];
+
+/**
+ * The edges in an order where each starts where the one before ends, any edge
+ * running the other way rebuilt to run on. brepkit's makeWire takes each edge
+ * as it runs and a face refuses a wire whose edges do not run end to end, so a
+ * profile closed by its mirror image, whose edges leave from the first half's
+ * start, needs that half turned round. Edges that make no single chain, or
+ * that cannot be rebuilt, come back as given.
+ */
+function chainEdges(bk: BrepkitKernel, edgeIds: number[]): number[] {
+  const [first, ...left] = edgeIds;
+  if (first === undefined || left.length === 0) return edgeIds;
+  const ends = new Map(left.map((id) => [id, edgeEnds(bk, id)] as const));
+  let [head, tail] = edgeEnds(bk, first);
+  const chain = [first];
+  while (left.length > 0) {
+    const after = takeLink(bk, left, ends, tail, 'start');
+    if (after) {
+      chain.push(after.id);
+      tail = after.free;
+      continue;
+    }
+    const before = takeLink(bk, left, ends, head, 'end');
+    if (!before) return edgeIds;
+    chain.unshift(before.id);
+    head = before.free;
+  }
+  return chain;
+}
+
+/**
+ * Take from `left` the first edge with an end at `at`, to join the chain there
+ * by its `side` end; an edge that meets `at` with its other end is rebuilt to
+ * run the other way. Returns the joining edge and the end it leaves free.
+ */
+function takeLink(
+  bk: BrepkitKernel,
+  left: number[],
+  ends: ReadonlyMap<number, [Point, Point]>,
+  at: Point,
+  side: 'start' | 'end'
+): { id: number; free: Point } | undefined {
+  const touches = (p: Point): boolean => dist3(...p, ...at) < WIRE_CLOSE_TOLERANCE;
+  for (const [i, id] of left.entries()) {
+    const edge = ends.get(id);
+    if (!edge) continue;
+    const [start, end] = edge;
+    const [joins, free] = side === 'start' ? [start, end] : [end, start];
+    if (touches(joins)) {
+      left.splice(i, 1);
+      return { id, free };
+    }
+    if (touches(free)) {
+      const turned = reversedEdge(bk, id, start, end);
+      if (turned === undefined) return undefined;
+      left.splice(i, 1);
+      return { id: turned, free: joins };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A new edge on the same curve, running from `end` to `start`, or `undefined`
+ * for a curve the adapter cannot rebuild.
+ */
+function reversedEdge(bk: BrepkitKernel, id: number, start: Point, end: Point): number | undefined {
+  const nurbs = bk.getEdgeNurbsData(id);
+  if (nurbs !== null) return reversedNurbsEdge(bk, nurbs, start, end);
+  const curveType = bk.getEdgeCurveType(id);
+  if (curveType === 'LINE') return bk.makeLineEdge(...end, ...start);
+  const frame = conicFrame(bk, id);
+  if (!frame) return undefined;
+  const { center, u, v } = frame;
+  // An arc runs counterclockwise about its axis, so the turned arc takes the
+  // opposite axis, v × u.
+  const n: Point = [
+    v[1] * u[2] - v[2] * u[1],
+    v[2] * u[0] - v[0] * u[2],
+    v[0] * u[1] - v[1] * u[0],
+  ];
+  const nLen = Math.hypot(...n);
+  const axis: Point = [n[0] / nLen, n[1] / nLen, n[2] / nLen];
+  if (curveType === 'CIRCLE') return bk.makeCircleArc3d(...end, ...start, ...center, ...axis);
+  const major = Math.hypot(...u);
+  const ref: Point = [u[0] / major, u[1] / major, u[2] / major];
+  return bk.makeEllipseArc3d(...end, ...start, ...center, ...axis, ...ref, major, Math.hypot(...v));
+}
+
+function reversedNurbsEdge(bk: BrepkitKernel, json: string, start: Point, end: Point): number {
+  const data = JSON.parse(json) as {
+    degree: number;
+    knots: number[];
+    controlPoints: number[];
+    weights: number[];
+  };
+  const lo = wasmIndex(data.knots, 0);
+  const hi = wasmIndex(data.knots, data.knots.length - 1);
+  const knots = data.knots.map((k) => lo + hi - k).reverse();
+  const poles: number[] = [];
+  for (let i = data.controlPoints.length - 3; i >= 0; i -= 3) {
+    poles.push(...data.controlPoints.slice(i, i + 3));
+  }
+  return bk.makeNurbsEdge(...end, ...start, data.degree, knots, poles, [...data.weights].reverse());
+}
 
 function chainCloses(bk: BrepkitKernel, edgeIds: number[]): boolean {
   const first = bk.getEdgeVertices(wasmIndex(edgeIds, 0));
@@ -555,20 +666,8 @@ export function makeBoxFromCorners(
 }
 
 export function solidFromShell(bk: BrepkitKernel, shell: KernelShape): KernelShape {
-  const h = shell as BrepkitHandle;
-  if (h.type === 'solid') return shell;
-  if (h.type === 'shell') {
-    try {
-      bk.getSolidFaces(h.id);
-      return solidHandle(h.id);
-    } catch {
-      // Genuine shell handle
-    }
-    const id = bk.solidFromShell(h.id);
-    return solidHandle(id);
-  }
-  const id = bk.solidFromShell(unwrap(shell, 'shell'));
-  return solidHandle(id);
+  if ((shell as BrepkitHandle).type === 'solid') return shell;
+  return solidHandle(bk.solidFromShell(unwrap(shell, 'shell')));
 }
 
 export function makeNonPlanarFace(bk: BrepkitKernel, wire: KernelShape): KernelShape {

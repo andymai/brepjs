@@ -17,12 +17,25 @@ import {
   fuse,
   castShape,
   compound,
+  createCamera,
+  type Edge,
+  getBounds,
   getEdges,
   getFaces,
+  getSolids,
+  getShells,
   isSolid,
+  iterSolids,
+  measureArea,
+  measureLength,
   measureVolume,
+  mesh,
   polygon,
+  projectEdges,
   rotate,
+  sewShells,
+  solid,
+  threePointArc,
   vertex,
   translate,
   unwrap,
@@ -805,5 +818,140 @@ descBk('Transforming compounds (brepkit)', () => {
     const c = compound([box(4, 1, 1), translate(box(4, 1, 1), [0, 3, 0])]);
     const bb = getKernel().boundingBox(rotate(c, 90, { axis: [0, 0, 1] }).wrapped);
     expect(bb.max[1] - bb.min[1]).toBeCloseTo(4, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Arc bounds
+// ---------------------------------------------------------------------------
+
+// brepkit 4.5.10 on reports an arc's own span as its curve parameters, not
+// [0, 2π]; an arc's box still takes its circle's peaks inside that span, not
+// samples along it.
+descBk('Arc bounds (brepkit)', () => {
+  it("reaches the circle's top inside the arc", () => {
+    const at = (deg: number): [number, number, number] => [
+      10 * Math.cos((deg * Math.PI) / 180),
+      10 * Math.sin((deg * Math.PI) / 180),
+      0,
+    ];
+    const bounds = getBounds(threePointArc(at(20), at(65), at(110)));
+    expect(bounds.yMax).toBeCloseTo(10, 9);
+    expect(bounds.xMin).toBeCloseTo(at(110)[0], 9);
+    expect(bounds.xMax).toBeCloseTo(at(20)[0], 9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Separate pieces left by a cut
+// ---------------------------------------------------------------------------
+
+// The kernel leaves every piece of a cut in one solid, so getSolids and
+// getShells must ask it for the pieces (brepkit#2167, brepkit#2184).
+descBk('Pieces left by a cut (brepkit)', () => {
+  const volumes = (shape: Parameters<typeof getSolids>[0]) =>
+    getSolids(shape)
+      .map((s) => unwrap(measureVolume(s)))
+      .sort((a, b) => a - b);
+
+  it('a slot cut through a bar leaves two solids', () => {
+    const bar = box(80, 5, 2.5);
+    const slot = translate(box(10, 20, 20), [35, -5, -5]);
+    const cutBar = unwrap(cut(bar, slot));
+    const [left, right, ...rest] = volumes(cutBar);
+    expect(getShells(cutBar)).toHaveLength(2);
+    expect(rest).toHaveLength(0);
+    expect(left).toBeCloseTo(437.5, 6);
+    expect(right).toBeCloseTo(437.5, 6);
+  });
+
+  it('cutting a hollow box out of a larger one leaves the space around it and its cavity', () => {
+    const hollow = unwrap(
+      cut(box(20, 20, 20, { at: [0, 0, 10] }), box(10, 10, 10, { at: [0, 0, 10] }))
+    );
+    expect(getSolids(hollow)).toHaveLength(1);
+    expect(getShells(hollow)).toHaveLength(2);
+    const left = unwrap(cut(box(22, 22, 22, { at: [0, 0, 10] }), hollow));
+    const [cavity, around, ...rest] = volumes(left);
+    // The space around the hollow box has its outside and the hollow box's
+    // own outside as a cavity; the cube where its cavity was has one.
+    expect(getShells(left)).toHaveLength(3);
+    expect(rest).toHaveLength(0);
+    expect(cavity).toBeCloseTo(1000, 6);
+    expect(around).toBeCloseTo(2648, 6);
+  });
+
+  it('names the same pieces on every traversal', () => {
+    const cutBar = unwrap(cut(box(80, 5, 2.5), translate(box(10, 20, 20), [35, -5, -5])));
+    const ids = () => [...iterSolids(cutBar)].map((s) => getKernel().hashCode(s.wrapped, 2 ** 31));
+    const first = ids();
+    expect(first).toHaveLength(2);
+    expect(ids()).toEqual(first);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hidden-line projection of a compound
+// ---------------------------------------------------------------------------
+
+// Seen from the front, a 40 x 30 block's front rectangle is visible (140) and
+// its back one hidden behind it (140); a 10 cube wholly behind the block adds
+// its front and back squares (80) to the hidden set (brepkit#2185).
+descBk('Projecting a compound (brepkit)', () => {
+  const lengths = (edges: Edge[]) => edges.reduce((sum, e) => sum + unwrap(measureLength(e)), 0);
+  const cam = () => unwrap(createCamera([0, -100, 15], [0, 1, 0], [1, 0, 0]));
+  const block = () => box(40, 10, 30, { at: [0, 0, 15] });
+  const cube = () => box(10, 10, 10, { at: [0, 30, 15] });
+
+  it('hides a solid behind another solid of the compound', () => {
+    const { visible, hidden } = projectEdges(compound([block(), cube()]), cam(), true);
+    expect(lengths(visible)).toBeCloseTo(140, 6);
+    expect(lengths(hidden)).toBeCloseTo(220, 6);
+  });
+
+  it('draws a compound the way it draws the same solids fused', () => {
+    const apart = projectEdges(compound([block(), cube()]), cam(), true);
+    const fused = projectEdges(unwrap(fuse(block(), cube())), cam(), true);
+    expect(lengths(apart.visible)).toBeCloseTo(lengths(fused.visible), 6);
+    expect(lengths(apart.hidden)).toBeCloseTo(lengths(fused.hidden), 6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sewn shells
+// ---------------------------------------------------------------------------
+
+// The kernel's sewing returns the solid it wraps the sewn shell in; a shell
+// handle must hold the shell's own id (brepkit#2196).
+descBk('Sewn shells (brepkit)', () => {
+  const boxFaces = () => getFaces(box(10, 20, 30));
+
+  it('measures an open and a closed shell by their faces', () => {
+    expect(unwrap(measureArea(unwrap(sewShells(boxFaces().slice(0, 3)))))).toBeCloseTo(700, 6);
+    expect(unwrap(measureArea(unwrap(sewShells(boxFaces()))))).toBeCloseTo(2200, 6);
+  });
+
+  it("meshes an open shell's faces", () => {
+    const m = mesh(unwrap(sewShells(boxFaces().slice(0, 3))));
+    const point = (corner: number): [number, number, number] => {
+      const i = m.triangles[corner] ?? -1;
+      return [m.vertices[3 * i] ?? NaN, m.vertices[3 * i + 1] ?? NaN, m.vertices[3 * i + 2] ?? NaN];
+    };
+    let area = 0;
+    for (let t = 0; t + 2 < m.triangles.length; t += 3) {
+      const [ax, ay, az] = point(t);
+      const [bx, by, bz] = point(t + 1);
+      const [cx, cy, cz] = point(t + 2);
+      const [ux, uy, uz] = [bx - ax, by - ay, bz - az];
+      const [vx, vy, vz] = [cx - ax, cy - ay, cz - az];
+      area += Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+    }
+    expect(m.faceGroups).toHaveLength(3);
+    expect(area).toBeCloseTo(700, 2);
+  });
+
+  it('builds a solid on a closed shell', () => {
+    const closed = unwrap(sewShells(boxFaces()));
+    expect(unwrap(measureVolume(unwrap(solid([closed]))))).toBeCloseTo(6000, 6);
   });
 });

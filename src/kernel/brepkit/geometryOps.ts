@@ -504,6 +504,73 @@ export function recognizeFeatures(
 // Projection
 // ═══════════════════════════════════════════════════════════════════════
 
+interface ProjectedPolylines {
+  visible: number[][];
+  hidden: number[][];
+}
+
+type ViewArgs = [number, number, number, number, number, number, number, number, number];
+
+/** The solids whose edges a projection draws: a solid itself, or every solid of a compound. */
+function projectedSolidIds(bk: BrepkitKernel, shape: KernelShape): number[] {
+  const h = shape as BrepkitHandle;
+  if (h.type === 'solid') return [h.id];
+  const ids = h.type === 'compound' ? iterShapes(bk, shape, 'solid').map((s) => unwrap(s)) : [];
+  if (ids.length === 0) {
+    throw new Error(`brepkit: projectEdges needs a solid or a compound of solids, got ${h.type}`);
+  }
+  return ids;
+}
+
+/**
+ * brepkit returns polyline approximations of the projection, so tie the
+ * tessellation deflection to model scale (1/1000 of the bbox diagonal) to
+ * stay resolution-independent across part sizes.
+ */
+function projectionDeflection(bk: BrepkitKernel, solidIds: number[]): number {
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+  try {
+    for (const id of solidIds) {
+      const bb = bk.boundingBox(id);
+      for (let k = 0; k < 3; k++) {
+        min[k] = Math.min(wasmIndex(min, k), wasmIndex(bb, k));
+        max[k] = Math.max(wasmIndex(max, k), wasmIndex(bb, k + 3));
+      }
+    }
+  } catch {
+    return 0.1;
+  }
+  const diag = dist3(...min, ...max);
+  return diag > 0 ? Math.max(diag * 1e-3, 1e-6) : 0.1;
+}
+
+function parseProjection(json: string): ProjectedPolylines {
+  try {
+    return JSON.parse(json) as ProjectedPolylines;
+  } catch {
+    return { visible: [], hidden: [] };
+  }
+}
+
+/** Each solid's edges, hidden wherever any of the solids lies in front of them. */
+function projectSolids(bk: BrepkitKernel, solidIds: number[], view: ViewArgs): ProjectedPolylines {
+  const deflection = projectionDeflection(bk, solidIds);
+  const [only, ...others] = solidIds;
+  if (only !== undefined && others.length === 0) {
+    return parseProjection(bk.projectEdges(only, ...view, true, deflection));
+  }
+  if (typeof bk.projectSolidsEdges === 'function') {
+    return parseProjection(bk.projectSolidsEdges(solidIds, ...view, true, deflection));
+  }
+  // Before brepkit-wasm 4.6.7 the kernel projects one solid at a time, so no
+  // solid can hide another's edges.
+  const parts = solidIds.map((id) =>
+    parseProjection(bk.projectEdges(id, ...view, true, deflection))
+  );
+  return { visible: parts.flatMap((p) => p.visible), hidden: parts.flatMap((p) => p.hidden) };
+}
+
 export function projectEdges(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -514,32 +581,11 @@ export function projectEdges(
   visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
   hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
 } {
-  const solidId = unwrap(shape);
-  const [ox, oy, oz] = cameraOrigin;
-  const [dx, dy, dz] = cameraDirection;
-  const [xx, xy, xz] = cameraXAxis ?? [1, 0, 0];
-
-  // brepkit returns polyline approximations of the projection, so tie the
-  // tessellation deflection to model scale (1/1000 of the bbox diagonal) to
-  // stay resolution-independent across part sizes.
-  let deflection = 0.1;
-  try {
-    const bb = bk.boundingBox(solidId);
-    const [minX, minY, minZ] = vec3At(bb, 0);
-    const [maxX, maxY, maxZ] = vec3At(bb, 3);
-    const diag = dist3(minX, minY, minZ, maxX, maxY, maxZ);
-    if (diag > 0) deflection = Math.max(diag * 1e-3, 1e-6);
-  } catch {
-    // non-solid input or bbox failure: keep the default deflection
-  }
-
-  const json = bk.projectEdges(solidId, ox, oy, oz, dx, dy, dz, xx, xy, xz, true, deflection);
-  let parsed: { visible: number[][]; hidden: number[][] };
-  try {
-    parsed = JSON.parse(json) as { visible: number[][]; hidden: number[][] };
-  } catch {
-    parsed = { visible: [], hidden: [] };
-  }
+  const parsed = projectSolids(bk, projectedSolidIds(bk, shape), [
+    ...cameraOrigin,
+    ...cameraDirection,
+    ...(cameraXAxis ?? [1, 0, 0]),
+  ]);
 
   // brepkit emits flat [x,y,x,y,…] polylines in view coordinates and, unlike
   // OCCT's HLR, does not split silhouette/smooth/sharp — rebuild line edges in
