@@ -251,6 +251,13 @@ interface KernelEvolutionOps {
     cutAllWithHistory?: ((shape: KernelShape, tools: KernelShape[], inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions) => DiagnosticOperationResult) | undefined;
     filletWithHistory(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     chamferWithHistory(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
+    /**
+     * {@link KernelModifierOps.chamferDistAngles} with face history. Optional, and
+     * may throw `UnsupportedKernelOperationError` on a build without it: there a
+     * distance-angle chamfer carries over face origins only, matched by hash and
+     * geometry.
+     */
+    chamferDistAnglesWithHistory?(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
     thickenWithHistory(shape: KernelShape, thickness: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
@@ -383,16 +390,12 @@ interface KernelModifierOps {
     chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
     /**
      * Distance-angle chamfer with its own values on each edge, in one operation:
-     * `distance` is set back on the edge's reference face (as {@link chamferDistAngle}
-     * picks it) and `angleDeg` is measured from that face.
+     * `distance` is set back on the edge's reference face (its `face`, or as
+     * {@link chamferDistAngle} picks it) and `angleDeg` is measured from that face.
      * Optional: kernels without it can chamfer by distance and angle only with
-     * one value for every edge.
+     * one value for every edge and no reference faces.
      */
-    chamferDistAngles?(shape: KernelShape, edges: ReadonlyArray<{
-        edge: KernelShape;
-        distance: number;
-        angleDeg: number;
-    }>): KernelShape;
+    chamferDistAngles?(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>): KernelShape;
     shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
     thicken(shape: KernelShape, thickness: number): KernelShape;
     offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
@@ -975,6 +978,8 @@ interface OcctKernelWasm {
     filletRadiiWithHistory?(solidId: number, edgeIds: EmVectorUint32, startRadii: EmVectorDouble, endRadii: EmVectorDouble, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     /** occt-wasm >= 5.9.0: {@link chamferDistances} with face evolution. */
     chamferDistancesWithHistory?(solidId: number, edgeIds: EmVectorUint32, distances1: EmVectorDouble, distances2: EmVectorDouble, referenceFaceIds: EmVectorUint32, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    /** occt-wasm >= 5.11.0: {@link chamferDistAngles} with face evolution. */
+    chamferDistAnglesWithHistory?(solidId: number, edgeIds: EmVectorUint32, distances: EmVectorDouble, anglesDeg: EmVectorDouble, referenceFaceIds: EmVectorUint32, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     /** occt-wasm >= 5.9.0 (npm build): {@link draftFaces} with face evolution. */
     draftFacesWithHistory?(shapeId: number, faceIds: EmVectorUint32, anglesRad: EmVectorDouble, dx: number, dy: number, dz: number, px: number, py: number, pz: number, nx: number, ny: number, nz: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     shellWithHistory(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
@@ -4618,7 +4623,7 @@ declare function getFaceColor(shape: AnyShape<Dimension>, face: Face<Dimension>)
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
  * @returns Ok with the chamfered shape, or Err on invalid input or kernel
- *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   failure. A kernel without a distance-angle chamfer returns
  *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
@@ -5351,7 +5356,7 @@ declare function filletWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edg
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
- *   distances asked for (brepkit has no asymmetric chamfer).
+ *   distances asked for.
  */
 declare function chamferWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<EvolutionResult<ValidSolid>>;
 
@@ -5829,9 +5834,10 @@ interface VariableFilletRadius {
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
  *
- * **Cross-kernel note:** brepkit supports arbitrary multi-point radius profiles.
- * occt-wasm supports a linear (start/end, <=2-point) profile and returns
- * UNSUPPORTED for multi-point; the opencascade.js kernel does not implement it.
+ * **Cross-kernel note:** occt-wasm supports a linear (start/end, <=2-point)
+ * profile; brepkit supports only a constant radius. Either returns
+ * `UNSUPPORTED_CAPABILITY` for a profile it cannot build. The opencascade.js
+ * kernel does not implement it.
  */
 declare function variableFillet(shape: ValidSolid, edge: Edge, radii: ReadonlyArray<VariableFilletRadius>): Result<ValidSolid>;
 
@@ -5957,7 +5963,9 @@ interface ExtrusionProfile {
  * @param spine - The path wire to sweep along.
  * @param config - Sweep configuration (frenet, transition mode, scaling law, etc.).
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing the swept shape, or a `[Shape3D, Wire, Wire]` tuple in shell mode.
+ * @returns `Result` containing the swept shape, or a `[Shape3D, Wire, Wire]` tuple in shell mode;
+ *   Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the auxiliary spine or law
+ *   (brepkit builds neither).
  */
 declare function sweep(wire: ClosedWire<Dimension>, spine: Wire<Dimension>, config?: SweepOptions, shellMode?: false): Result<Shape3D>;
 /** Sweep in shell mode, returning `[shell, startWire, endWire]`. */
@@ -5991,7 +5999,8 @@ declare function supportExtrude(wire: ClosedWire<Dimension>, center: Vec3, norma
  * @param normal - Direction and length of the extrusion. Must be non-zero.
  * @param profileShape - Optional scaling profile applied along the extrusion.
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing the extruded shape, or a shell tuple in shell mode.
+ * @returns `Result` containing the extruded shape, or a shell tuple in shell mode; Err
+ *   `UNSUPPORTED_CAPABILITY` for a profile on a kernel without a scaling-law sweep (brepkit).
  */
 declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
 /** Complex extrusion in shell mode, returning `[shell, startWire, endWire]`. */
@@ -6012,7 +6021,8 @@ declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, norma
  * @param normal - Direction and length of the extrusion. Must be non-zero.
  * @param profileShape - Optional scaling profile applied along the extrusion.
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing the twisted extruded shape, or a shell tuple in shell mode.
+ * @returns `Result` containing the twisted extruded shape, or a shell tuple in shell mode;
+ *   Err `UNSUPPORTED_CAPABILITY` on a kernel without a twisted sweep (brepkit).
  */
 declare function twistExtrude(wire: ClosedWire<Dimension>, angleDegrees: number, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
 /** Twisted extrusion in shell mode, returning `[shell, startWire, endWire]`. */
@@ -6843,11 +6853,18 @@ declare function measureLength(shape: AnyShape<Dimension>): Result<number>;
 
 /**
  * Measure the minimum distance between two shapes.
+ *
+ * @returns Err `UNSUPPORTED_CAPABILITY` for a pair of shapes the kernel cannot
+ *   measure exactly (on brepkit, anything but a vertex against a shape or a
+ *   solid against a solid).
  */
 declare function measureDistance(shape1: AnyShape<Dimension>, shape2: AnyShape<Dimension>): Result<number>;
 
 /**
  * Measure the minimum distance between two shapes, including witness points.
+ *
+ * @returns Err `UNSUPPORTED_CAPABILITY` for a pair of shapes the kernel cannot
+ *   measure exactly, as {@link measureDistance} does.
  */
 declare function measureDistanceProps(shape1: AnyShape<Dimension>, shape2: AnyShape<Dimension>): Result<DistanceProps>;
 
@@ -6987,13 +7004,16 @@ declare function principalBoundingBox(shape: AnyShape<Dimension>): Result<Princi
 /**
  * Import a STEP file from a Blob.
  *
- * Writes the blob to the WASM virtual filesystem, reads it with
- * `STEPControl_Reader`, and returns the resulting shape.
+ * Reads every part in the file. A file holding one solid comes back as that
+ * solid; an assembly or a file with several parts comes back as a `Compound`
+ * of every part, each at the placement the file gives it.
  *
  * @param blob - A Blob or File containing STEP data (.step / .stp).
- * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported shape (a `Compound` when the file
+ *   holds several parts), or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks Part names and colors in the file are not read. The temporary file
+ * on the WASM FS is cleaned up automatically.
  *
  * @example
  * ```ts
@@ -7034,8 +7054,12 @@ declare function importSTL(blob: Blob): Promise<Result<UnknownDimShape>>;
 /**
  * Import an IGES file from a Blob.
  *
+ * Reads every part in the file: one solid comes back as that solid, several as
+ * a `Compound` of every part.
+ *
  * @param blob - A Blob or File containing IGES data (.iges / .igs).
- * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported shape (a `Compound` when the file
+ *   holds several parts), or an error if parsing fails.
  *
  * @remarks The temporary file on the WASM FS is cleaned up automatically. The
  * default occt-wasm kernel is built without an IGES translator, so there this
@@ -7418,6 +7442,9 @@ interface DrawingLike {
  * - `number` — constant radius on all selected edges
  * - `[number, number]` — variable radius (start, end)
  * - callback — per-edge radius; return `null` to skip an edge
+ *
+ * brepkit builds one constant radius per call: a radius that varies, or different
+ * radii on different edges, is an `UNSUPPORTED_CAPABILITY` error there.
  */
 type FilletRadius = number | [number, number] | ((edge: Edge) => number | [number, number] | null);
 
@@ -7425,15 +7452,24 @@ type FilletRadius = number | [number, number] | ((edge: Edge) => number | [numbe
  * Chamfer distance specification.
  *
  * - `number` — equal distance
- * - `[number, number]` — asymmetric distances (dist1, dist2). brepkit has no asymmetric
- *   chamfer and returns an `UNSUPPORTED_CAPABILITY` error for two different distances.
+ * - `[number, number]` — asymmetric distances (dist1, dist2). The kernel picks which of the
+ *   edge's two faces takes dist1, and kernels can pick differently: occt-wasm and brepkit
+ *   set a box edge's dist1 back on opposite faces.
  * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees.
- *   brepkit has no distance-angle chamfer and returns an `UNSUPPORTED_CAPABILITY` error.
+ *   The kernel picks the face the distance runs along, as for dist1.
  * - callback — per-edge value of any of the above; return `null` (or a non-positive
  *   distance) to skip an edge. The edges it keeps must all get plain distances or all
  *   get `{ distance, angle }`: mixing the two is an `INVALID_CHAMFER_DISTANCE` error.
  *   Different `{ distance, angle }` values per edge need a kernel that chamfers each
  *   edge by its own (occt-wasm 5.9.0+); elsewhere they are an `UNSUPPORTED_CAPABILITY` error.
+ *   A callback's `{ distance, angle, face }` measures that edge's chamfer from `face`,
+ *   which must be one of the two faces the edge joins (else `CHAMFER_ANGLE_FACE_NOT_ADJACENT`):
+ *   the distance is set back on it and the angle taken from it. Without `face` the
+ *   kernel picks it (the edge's first adjacent face on occt-wasm). A `face` needs the
+ *   same per-edge kernel support. Edges of one tangent-continuous chain are chamfered
+ *   as one, so they must state the same chamfer; occt-wasm 5.11.0+ also matches one
+ *   stated from the face on the other side (e.g. `{ distance: d, angle: 45 }` from
+ *   either face of a square edge).
  */
 type ChamferDistance = number | [number, number] | {
     distance: number;
@@ -7441,6 +7477,7 @@ type ChamferDistance = number | [number, number] | {
 } | ((edge: Edge) => number | [number, number] | {
     distance: number;
     angle: number;
+    face?: Face | undefined;
 } | null);
 
 /**
@@ -8364,11 +8401,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
-    chamferDistAngles(shape: KernelShape, edges: ReadonlyArray<{
-        edge: KernelShape;
-        distance: number;
-        angleDeg: number;
-    }>): KernelShape;
+    chamferDistAngles(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>): KernelShape;
     shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
     thicken(shape: KernelShape, thickness: number): KernelShape;
     offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
@@ -8414,6 +8447,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     intersectWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
     filletWithHistory(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     chamferWithHistory(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
+    chamferDistAnglesWithHistory(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
     thickenWithHistory(shape: KernelShape, thickness: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
