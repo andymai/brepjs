@@ -13,6 +13,7 @@ import { makePolygon } from '@/topology/surfaceBuilders.js';
 import { extrude } from '@/operations/api.js';
 import { edgeFinder } from '@/query/shapeFinders.js';
 import { unwrap } from '@/result.js';
+import type { Solid } from '@/core/shapeTypes.js';
 
 let ok = false;
 beforeAll(async () => {
@@ -25,7 +26,7 @@ beforeAll(async () => {
   }
 }, 60_000);
 
-function box(w: number, d: number, h: number): ReturnType<typeof unwrap> {
+function box(w: number, d: number, h: number): Solid {
   const poly = unwrap(
     makePolygon([
       [0, 0, 0],

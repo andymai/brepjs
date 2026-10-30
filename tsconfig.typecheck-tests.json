@@ -65,14 +65,6 @@
     "tests/gridfinity-smoke.test.ts",
     "tests/healingFns.test.ts",
     "tests/historyFns.test.ts",
-    "tests/kernel-agreement.test.ts",
-    "tests/parity/composedTransformParity.test.ts",
-    "tests/parity/manifold.test.ts",
-    "tests/parity/nativeEdges.test.ts",
-    "tests/parity/nativeFaces.test.ts",
-    "tests/parity/planeExtrudeOrientation.test.ts",
-    "tests/parity/profileExtrude.test.ts",
-    "tests/parity/roundtrip.test.ts",
-    "tests/parity/transforms.test.ts"
+    "tests/kernel-agreement.test.ts"
   ]
 }
