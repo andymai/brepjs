@@ -1,0 +1,25 @@
+CLAUDE.md
+  s_b1a48d7e30b741::t_b1fca4cb72c8ec 9
+src/kernel/.greptile/config.json
+  s_b1a48d7e30b741::t_b1fca4cb72c8ec 6
+.greptile/config.json
+  s_b1a48d7e30b741::t_b1fca4cb72c8ec 13
+scripts/check-layer-boundaries.sh
+  s_b1a48d7e30b741::t_b1fca4cb72c8ec 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d13e578100b523ecd167f35042a1636881bd6e6",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
