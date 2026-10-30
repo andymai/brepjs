@@ -67,7 +67,7 @@ Checklist when adding an operation:
 | Imports flow downward/same-layer only                                                                           | `check:boundaries` (pre-commit, CI, `npm run validate`)                    |
 | Cross-directory imports use `@/` alias (`@/kernel/index.js`); same-directory imports stay relative (`./foo.js`) | convention only                                                            |
 | All `.ts` imports use `.js` extensions (ESM; Vite transforms at build time)                                     | convention only — typecheck passes without it, so review for it explicitly |
-| camelCase filenames (no PascalCase, no kebab-case)                                                              | convention only                                                            |
+| camelCase filenames (no kebab-case); Vue and React component files are PascalCase                               | convention only                                                            |
 | `import type` for type-only imports                                                                             | ESLint `consistent-type-imports`                                           |
 
 The `@/` alias maps to `./src/*` via `tsconfig.json` `paths` and `vite.config.ts` `resolve.alias`.

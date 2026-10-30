@@ -70,7 +70,7 @@ Monorepo packages:
 - `Result<T,E>` in `src/core/result.ts`: prefer over throwing in layers 2-3
 - All `.ts` imports must use `.js` extensions for ESM compatibility
 - Cross-directory imports use `@/` alias (e.g. `@/kernel/index.js`); same-directory imports stay relative (`./foo.js`)
-- File naming: camelCase everywhere (no PascalCase, no kebab-case)
+- File naming: camelCase everywhere (no kebab-case), except a file whose main export is a Vue or React component, which is PascalCase (`ContactForm.vue`, `CommandPalette.tsx`)
 - kernel/ structure: shared abstractions at root (`types.ts`, `interfaces/`), OCCT code in `occt/`, brepkit code in `brepkit/`
 - Unused variables must be prefixed with `_`
 
