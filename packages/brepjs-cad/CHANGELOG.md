@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.192.3](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.2...brepjs-cad-v0.192.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* **io:** keep every part of a model through STEP, IGES, and STL ([#2560](https://github.com/andymai/brepjs/issues/2560)) ([b0beb86](https://github.com/andymai/brepjs/commit/b0beb86e1015198f79e1bf042b5d9df46cc07811))
+
 ## [0.192.2](https://github.com/andymai/brepjs/compare/brepjs-cad-v0.192.1...brepjs-cad-v0.192.2) (2026-10-29)
 
 
