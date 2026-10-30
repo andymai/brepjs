@@ -58,7 +58,9 @@ describe('Canonical parameter names', () => {
           [0, 1, 0],
         ])
       );
-      const result = revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 360 });
+      // About the Y axis, in the square's plane: an axis normal to the plane
+      // would sweep no volume.
+      const result = revolve(face, { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
       expect(isErr(result)).toBe(false);
     });
   });

@@ -217,7 +217,7 @@ export const divergences: DivergenceMap = {
   },
   brepkit: {
     // -----------------------------------------------------------------------
-    // csgPath.test.ts — a clockwise ellipse arc keeps its curve's direction
+    // csgPath.test.ts: a clockwise ellipse arc keeps its curve's direction
     // -----------------------------------------------------------------------
     'csgPath.clockwiseEllipseArc': {
       kind: 'skip',

@@ -99,17 +99,23 @@ descBk('Extended I/O formats (brepkit)', () => {
 // ---------------------------------------------------------------------------
 
 descBk('Advanced modeling (brepkit)', () => {
-  it('filletVariable applies variable radius fillet', () => {
+  it('filletVariable fillets a constant profile and refuses one that varies', () => {
     const kernel = getKernel();
     const b = box(20, 20, 20);
     const edges = getEdges(castShape(b.wrapped));
     expect(edges.length).toBeGreaterThan(0);
 
-    // Build a JSON spec for variable fillet (first edge, start radius 1, end radius 3)
-    const edgeHash = kernel.hashCode(edges[0]!.wrapped, 1_000_000); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const spec = JSON.stringify([{ edge: edgeHash, startRadius: 1, endRadius: 3 }]);
-    const result = kernel.filletVariable(b.wrapped, spec);
-    expect(isSolid(castShape(result))).toBe(true);
+    const edgeHash = kernel.hashCode(edges[0]!.wrapped, 2147483647); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const spec = (start: number, end: number) =>
+      JSON.stringify({
+        edge: edgeHash,
+        radii: [
+          { param: 0, radius: start },
+          { param: 1, radius: end },
+        ],
+      });
+    expect(isSolid(castShape(kernel.filletVariable(b.wrapped, spec(2, 2))))).toBe(true);
+    expect(() => kernel.filletVariable(b.wrapped, spec(1, 3))).toThrow(/varies along an edge/);
   });
 
   it('sweepWithOptions creates a solid', () => {
