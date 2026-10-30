@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.14](https://github.com/andymai/brepjs/compare/brepjs-v20.12.13...brepjs-v20.12.14) (2026-10-30)
+
+
+### Performance Improvements
+
+* **io:** skip orientation repair for consistently wound meshes ([#2553](https://github.com/andymai/brepjs/issues/2553)) ([d59727f](https://github.com/andymai/brepjs/commit/d59727fe70d983b00545771bc357e5fbdf74f3ee))
+
 ## [20.12.13](https://github.com/andymai/brepjs/compare/brepjs-v20.12.12...brepjs-v20.12.13) (2026-10-30)
 
 
