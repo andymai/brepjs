@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
@@ -517,6 +517,62 @@ describe('meshFns', () => {
   });
 
   describe('exportIGES', () => {
+    /** An IGES file's lines by the section letter in column 73. */
+    const igesSections = (text: string): Record<string, string[]> => {
+      const out: Record<string, string[]> = { S: [], G: [], D: [], P: [], T: [] };
+      for (const line of text.split('\n')) {
+        if (line.length >= 73) out[line.charAt(72)]?.push(line);
+      }
+      return out;
+    };
+
+    /** Where the numbering and links of an IGES file's sections disagree. */
+    const igesProblems = (s: Record<string, string[]>): string[] => {
+      const problems: string[] = [];
+      const num = (line: string | undefined, from: number, to: number): number =>
+        Number(line?.slice(from, to).trim() ?? NaN);
+      const [D, P, T] = [s['D'] ?? [], s['P'] ?? [], s['T'] ?? []];
+      for (const [letter, lines] of [['D', D] as const, ['P', P] as const]) {
+        lines.forEach((line, i) => {
+          if (num(line, 73, 80) !== i + 1) problems.push(`${letter} line ${i + 1} numbered wrong`);
+        });
+      }
+      for (let i = 0; i + 1 < D.length; i += 2) {
+        const first = num(D[i], 8, 16);
+        const count = num(D[i + 1], 24, 32);
+        for (let k = 0; k < count; k++) {
+          if (num(P[first - 1 + k], 64, 72) !== i + 1) problems.push(`entry ${i + 1} not linked`);
+        }
+      }
+      const counts = ['S', 'G', 'D', 'P'].map((l) => l + String(s[l]?.length).padStart(7));
+      if (T.length !== 1 || !T[0]?.startsWith(counts.join(''))) problems.push('terminate counts');
+      return problems;
+    };
+
+    it('writes a compound as one IGES document holding every solid', async (ctx) => {
+      skipIfDiverges(ctx, 'meshFns.igesExport');
+      using first = box(10, 10, 10);
+      using unplaced = box(10, 10, 10);
+      using second = translate(unplaced, [30, 0, 0]);
+      using both = compound([first, second]);
+      const one = igesSections(await unwrap(exportIGES(first)).text());
+      const iges = igesSections(await unwrap(exportIGES(both)).text());
+
+      expect(iges['S']).toHaveLength(one['S']?.length ?? 0);
+      expect(iges['D']).toHaveLength(2 * (one['D']?.length ?? 0));
+      expect(iges['P']).toHaveLength(2 * (one['P']?.length ?? 0));
+      expect(igesProblems(iges)).toEqual([]);
+      // Line entities (type 110) run from x = 0 on the first box to x = 40 on the second.
+      const xs = (iges['P'] ?? [])
+        .filter((line) => line.startsWith('110,'))
+        .flatMap((line) => {
+          const v = line.slice(0, 64).split(/[,;]/).map(Number);
+          return [v[1] ?? NaN, v[4] ?? NaN];
+        });
+      expect(Math.min(...xs)).toBeCloseTo(0, 3);
+      expect(Math.max(...xs)).toBeCloseTo(40, 3);
+    });
+
     it('exports a shape to IGES blob when IGES is available in the WASM build', () => {
       const oc = getKernel().oc;
       if (typeof oc.IGESControl_Writer_1 !== 'function') {

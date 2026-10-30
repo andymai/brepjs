@@ -101,6 +101,10 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold sphere is a fixed-segment primitive — tolerance/angularTolerance do not change its facet count, so coarse and fine STL exports are identical.',
     },
+    'meshFns.igesExport': {
+      kind: 'not-implemented',
+      reason: 'manifold has no IGES writer: exportIGES returns UNSUPPORTED_CAPABILITY.',
+    },
     'extrudeFns.shellModeWires': {
       kind: 'not-implemented',
       reason:
@@ -623,6 +627,11 @@ export const divergences: DivergenceMap = {
       reason:
         'occt (OpenCascade.js) StlAPI_Reader.Read returns no shape, so importSTL yields Err; occt-wasm 3.4.0 and brepkit import STL correctly',
     },
+    'meshFns.igesExport': {
+      kind: 'not-implemented',
+      reason:
+        'This opencascade.js build has no IGESControl_Writer, so exportIGES returns IGES_EXPORT_FAILED.',
+    },
     'principalBoxFns.inertia': {
       kind: 'not-implemented',
       reason:
@@ -723,6 +732,11 @@ export const divergences: DivergenceMap = {
     'meshFns.stepReadError': {
       kind: 'not-implemented',
       reason: 'Patches oc.FS.readFile — OCCT Emscripten FS API not exposed by occt-wasm',
+    },
+    'meshFns.igesExport': {
+      kind: 'not-implemented',
+      reason:
+        'occt-wasm is built without an IGES translator: exportIGES returns UNSUPPORTED_CAPABILITY.',
     },
     'meshFns.meshDeflection': {
       kind: 'not-implemented',

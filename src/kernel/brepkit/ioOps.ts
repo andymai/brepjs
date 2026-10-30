@@ -25,6 +25,7 @@ import {
   DEFAULT_STL_TOLERANCE,
 } from '@/kernel/stlBuilder.js';
 import { mesh } from './meshOps.js';
+import { mergeIgesDocuments } from './igesMerge.js';
 import { mergeStepDocuments } from './stepMerge.js';
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
@@ -69,15 +70,10 @@ export function importSTL(bk: BrepkitKernel, data: string | ArrayBuffer): Kernel
 
 export function exportIGES(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
-  const parts: string[] = [];
-  for (const shape of shapes) {
-    const solidIds = unwrapSolidsForExport(bk, shape, 'exportIGES');
-    for (const sid of solidIds) {
-      const bytes: Uint8Array = bk.exportIges(sid);
-      parts.push(new TextDecoder().decode(bytes));
-    }
-  }
-  return parts.join('\n');
+  const docs = shapes
+    .flatMap((shape) => unwrapSolidsForExport(bk, shape, 'exportIGES'))
+    .map((sid) => new TextDecoder().decode(bk.exportIges(sid)));
+  return mergeIgesDocuments(docs);
 }
 
 export function importIGES(bk: BrepkitKernel, data: string | ArrayBuffer): KernelShape[] {
