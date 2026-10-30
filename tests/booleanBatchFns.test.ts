@@ -138,10 +138,13 @@ describe('fuseAllBisect — happy path', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('single shape returns it unchanged with no kernel calls counted', () => {
-    const only = boxAt(0, 0, 0, 10, 10, 10);
+  it('single shape returns a copy of it with no kernel calls counted', () => {
+    using only = boxAt(0, 0, 0, 10, 10, 10);
     const result = unwrap(fuseAllBisect([only]));
-    expect(unwrap(measureVolume(result.shape))).toBeCloseTo(1000, 1);
+    expect(result.shape).not.toBe(only);
+    expect(result.shape.wrapped).not.toBe(only.wrapped);
+    result.shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(only))).toBeCloseTo(1000, 1);
     // Identity case: no batch, no pairwise. singletonFallbacks counts
     // actual pairwise kernel calls; the trivial passthrough is neither.
     expect(result.telemetry).toEqual({
@@ -273,6 +276,29 @@ describe('fuseAllBisect — bisect recovery via injected ops', () => {
     const sorted = [...telemetry.failedInputs];
     expect(sorted).toEqual([...new Set(sorted)]);
     expect(sorted).toEqual([...sorted].sort((a, b) => a - b));
+  });
+
+  it('returns a copy of the kept input when the final pairwise fuse fails', () => {
+    // Both batches and the pairwise fuse fail, so the left input is all that is
+    // kept. It must come back as a copy, not as the caller's own handle.
+    const ops: BisectKernelOps = {
+      cut,
+      fuse: () => {
+        throw new Error('pairwise fuse always fails');
+      },
+      cutAll,
+      fuseAll: () => {
+        throw new Error('batch always fails');
+      },
+    };
+    using a = boxAt(0, 0, 0, 10, 10, 10);
+    using b = boxAt(15, 0, 0, 25, 10, 10);
+    const { shape, telemetry } = unwrap(fuseAllBisectWith(ops, [a, b]));
+    expect(telemetry.failedInputs).toEqual([1]);
+    expect(shape).not.toBe(a);
+    expect(shape.wrapped).not.toBe(a.wrapped);
+    shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(a))).toBeCloseTo(1000, 6);
   });
 
   it('bisects and combines halves on failure', () => {

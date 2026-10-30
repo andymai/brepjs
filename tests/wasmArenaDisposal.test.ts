@@ -126,7 +126,8 @@ import {
   materialize,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { fuseAllBisectWith, type BisectKernelOps } from '@/topology/booleanBatchFns.js';
+import type { AnyShape, Dimension, Shape3D } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
@@ -1463,6 +1464,59 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using _r = unwrap(materialize(inst, { fuse: true }));
         })
       ).toBe(0);
+    });
+
+    it('cutAll with no tools leaks nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(cutAll(b, []));
+        })
+      ).toBe(0);
+    });
+
+    describe('fuseAllBisect releases the halves it merges or drops', () => {
+      // A row of touching boxes; batches above `limit` shapes throw, forcing bisection.
+      function bisectOps(limit: number, pairwise = true): BisectKernelOps {
+        return {
+          cut,
+          cutAll,
+          fuse: pairwise
+            ? fuse
+            : () => {
+                throw new Error('pairwise fuse fails');
+              },
+          fuseAll: (shapes, options) => {
+            if (shapes.length > limit) throw new Error('batch fails');
+            return fuseAll(shapes, options);
+          },
+        };
+      }
+      function bisectLeak(ops: BisectKernelOps, count: number): number {
+        return perIterationLeak(() => {
+          const shapes: Shape3D[] = [];
+          try {
+            for (let i = 0; i < count; i++) {
+              using cell = box(10, 10, 10);
+              shapes.push(translate(cell, [10 * i, 0, 0]));
+            }
+            const r = fuseAllBisectWith(ops, shapes);
+            if (isOk(r)) unwrap(r).shape[Symbol.dispose]();
+          } finally {
+            disposeAll(shapes);
+          }
+        });
+      }
+
+      it.each([
+        ['two batched halves merged pairwise', bisectOps(2), 4],
+        ['single leaves merged up two levels', bisectOps(0), 4],
+        ['a batched right half dropped when the merge fails', bisectOps(2, false), 4],
+        ['the kept left input copied when the merge fails', bisectOps(0, false), 2],
+        ['one shape copied', bisectOps(0), 1],
+      ] as [string, BisectKernelOps, number][])('%s', (_name, ops, count) => {
+        expect(bisectLeak(ops, count)).toBe(0);
+      });
     });
   });
 

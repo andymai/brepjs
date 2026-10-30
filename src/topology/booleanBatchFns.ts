@@ -13,10 +13,10 @@
 
 import { isErr, ok, err, type Result } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
-import type { Shape3D } from '@/core/shapeTypes.js';
+import { disposeResultShape, type Shape3D } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import type { BooleanOptions } from '@/kernel/types.js';
-import { fuse, cut, fuseAll, cutAll } from './booleanFns.js';
+import { fuse, cut, fuseAll, cutAll, copyAsBooleanResult } from './booleanFns.js';
 import { firstOrThrow } from '@/utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
@@ -219,7 +219,23 @@ export function fuseAllBisectWith(
   };
   const result = bisectFuse(ops, shapes, 0, options, telemetry);
   if (isErr(result)) return result;
-  return ok({ shape: result.value, telemetry: freezeTelemetry(telemetry) });
+  // A caller's own input can survive to the top (one shape, or every merge
+  // failed); hand back a copy so the result is always the caller's to dispose.
+  const shape = result.value.owned
+    ? ok(result.value.shape)
+    : copyAsBooleanResult(result.value.shape, options.trackEvolution ?? true);
+  if (isErr(shape)) return shape;
+  return ok({ shape: shape.value, telemetry: freezeTelemetry(telemetry) });
+}
+
+/** A bisect result; `owned` is false for a caller's input passed through untouched. */
+interface FuseNode {
+  shape: Shape3D;
+  owned: boolean;
+}
+
+function releaseOwned(node: FuseNode): void {
+  if (node.owned) disposeResultShape(node.shape);
 }
 
 function bisectFuse(
@@ -228,21 +244,21 @@ function bisectFuse(
   startIdx: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<Shape3D> {
+): Result<FuseNode> {
   if (shapes.length === 1) {
     // No kernel call: a one-shape "fuse" is the identity. Don't count this
     // as a fallback — the pairwise fuse that actually combines two halves
     // is counted in combineFuseHalves, keeping the telemetry symmetric
     // with cutAllBisect (where singletonFallbacks counts actual pairwise
     // kernel calls).
-    return ok(firstOrThrow(shapes));
+    return ok({ shape: firstOrThrow(shapes), owned: false });
   }
 
   telemetry.batchAttempts++;
   const batchResult = tryBatch(() => ops.fuseAll(shapes as ValidSolid[], options));
   if (batchResult && batchResult.ok) {
     telemetry.batchSucceeded++;
-    return batchResult;
+    return ok({ shape: batchResult.value, owned: true });
   }
   if (options.signal?.aborted) throw options.signal.reason;
 
@@ -254,25 +270,30 @@ function bisectFuse(
 
 function combineFuseHalves(
   ops: BisectKernelOps,
-  left: Result<Shape3D>,
-  right: Result<Shape3D>,
+  left: Result<FuseNode>,
+  right: Result<FuseNode>,
   shapes: readonly Shape3D[],
   startIdx: number,
   mid: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<Shape3D> {
+): Result<FuseNode> {
   if (left.ok && right.ok) {
     // Pairwise fuse(a, b) — the 2-input kernel call, NOT a batch op.
     telemetry.singletonFallbacks++;
     const merged = tryBatch(() =>
-      ops.fuse(left.value as ValidSolid, right.value as ValidSolid, options)
+      ops.fuse(left.value.shape as ValidSolid, right.value.shape as ValidSolid, options)
     );
     if (merged && merged.ok) {
-      return merged;
+      // fuse doesn't consume its operands: release the halves this recursion
+      // made, never a caller's input passed through.
+      releaseOwned(left.value);
+      releaseOwned(right.value);
+      return ok({ shape: merged.value, owned: true });
     }
     // Final pairwise fuse failed: drop the right side's indices and return left.
     for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.add(startIdx + i);
+    releaseOwned(right.value);
     return left;
   }
   if (left.ok) {

@@ -82,6 +82,21 @@ function castToShape3D(
   return ok(wrapped);
 }
 
+/**
+ * A copy of `shape` the caller owns, for a boolean that has nothing to combine.
+ * With `trackEvolution` on, its face metadata is re-keyed onto the copy, as a
+ * real boolean would propagate it.
+ *
+ * @internal
+ */
+export function copyAsBooleanResult(shape: Shape3D, trackEvolution: boolean): Result<Shape3D> {
+  const copy = clone(shape);
+  if (copy.ok && trackEvolution && hasAnyMetadata(shape)) {
+    propagateMetadataThroughRelocation(shape, copy.value);
+  }
+  return copy;
+}
+
 // ---------------------------------------------------------------------------
 // Boolean operations
 // ---------------------------------------------------------------------------
@@ -493,14 +508,7 @@ export function fuseAll(
     if (isErr(check)) return check;
   }
 
-  if (shapes.length === 1) {
-    const only = firstOrThrow(shapes);
-    const copy = clone(only);
-    if (copy.ok && trackEvolution && hasAnyMetadata(only)) {
-      propagateMetadataThroughRelocation(only, copy.value);
-    }
-    return copy;
-  }
+  if (shapes.length === 1) return copyAsBooleanResult(firstOrThrow(shapes), trackEvolution);
 
   if (strategy === 'native') {
     const kernel = getKernel();
@@ -565,7 +573,8 @@ export function fuseAll(
  * @param base - The shape to cut from.
  * @param tools - Array of tool shapes to subtract.
  * @param options - Boolean operation options.
- * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
+ * @returns Ok with the cut shape, or a copy of the base if tools is empty, so the
+ *   result is always the caller's to dispose.
  */
 export function cutAll(
   base: ValidSolid,
@@ -590,10 +599,10 @@ export function cutAll(
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
-  if (tools.length === 0) return ok(base);
 
   const checkBase = validateShape3D(base, 'cutAll: base');
   if (isErr(checkBase)) return checkBase;
+  if (tools.length === 0) return copyAsBooleanResult(base, trackEvolution);
   for (let i = 0; i < tools.length; i++) {
     const check = validateShape3D(getAtOrThrow(tools, i), `cutAll: tool at index ${i}`);
     if (isErr(check)) return check;
