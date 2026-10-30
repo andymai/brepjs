@@ -1,0 +1,21 @@
+tests/kernel-agreement.test.ts
+  s_d4ab5fb2066c9b::t_d93fc005483d9e 4-6,8-12,16,30-34,41,416-417,427-428,471,474,598,606,634-636,659-660,706-707,732-733,754-755,776-777,779-780,782-783,803-804,827-828,831,835
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_d93fc005483d9e 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c78693ee3ee2b725ac09a9d0f80fed576c013e7",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
