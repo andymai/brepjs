@@ -276,9 +276,13 @@ describe('Sketches collection', () => {
   });
 
   it('revolve revolves all sketches', () => {
+    // About the Y axis, which lies in the sketches' plane: each square sweeps
+    // a ring of rectangular section, π·(R² - r²)·h.
     const s1 = new Sketcher().movePointerTo([5, 0]).hLine(5).vLine(5).hLine(-5).close();
     const s2 = new Sketcher().movePointerTo([15, 0]).hLine(3).vLine(3).hLine(-3).close();
-    expect(new Sketches([s1, s2]).revolve()).toBeDefined();
+    using rings = new Sketches([s1, s2]).revolve([0, 1, 0]);
+    const expected = Math.PI * ((10 ** 2 - 5 ** 2) * 5 + (18 ** 2 - 15 ** 2) * 3);
+    expect(unwrap(measureVolume(rings))).toBeCloseTo(expected, 2);
   });
 });
 
