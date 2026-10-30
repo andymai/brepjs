@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.3](https://github.com/andymai/brepjs/compare/brepjs-v20.13.2...brepjs-v20.13.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* **types:** export ChamferDistAngleEdge and regenerate the playground types ([#2565](https://github.com/andymai/brepjs/issues/2565)) ([544cc7f](https://github.com/andymai/brepjs/commit/544cc7f04f9524bb1f05cbf189b19da60bbf3f22))
+
 ## [20.13.2](https://github.com/andymai/brepjs/compare/brepjs-v20.13.1...brepjs-v20.13.2) (2026-10-30)
 
 
