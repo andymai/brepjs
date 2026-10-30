@@ -264,7 +264,7 @@ export function sewableTopology(positions: ArrayLike<number> | null): MeshTopolo
   return analyzeMesh(positions);
 }
 
-export function trianglePositions(triangles: Array<[Vec3, Vec3, Vec3]>): Float64Array {
+function trianglePositions(triangles: Array<[Vec3, Vec3, Vec3]>): Float64Array {
   const positions = new Float64Array(triangles.length * 9);
   triangles.forEach((triangle, t) => {
     triangle.forEach((vertex, k) => {

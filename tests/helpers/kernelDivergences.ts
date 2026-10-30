@@ -556,6 +556,14 @@ export const divergences: DivergenceMap = {
       reason:
         'brepkit-wasm exposes no matrix-of-inertia query, so the adapter has no inertia() and principalBoundingBox returns UNSUPPORTED.',
     },
+    // -----------------------------------------------------------------------
+    // threemfImport.test.ts
+    // -----------------------------------------------------------------------
+    'threemfImport.bodiesWithinObject': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no sewKeepsOrientation capability, so a 3MF object goes through its native indexed buildSolidFromFaces, which returns one solid for all the bodies in the object (two cubes become one solid; a cube beside a sheet, one 1016.7 mm3 solid) rather than a solid per closed body.',
+    },
   },
 
   occt: {

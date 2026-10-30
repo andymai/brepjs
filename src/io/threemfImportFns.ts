@@ -1,5 +1,5 @@
 /**
- * 3MF import: parses a 3MF ZIP archive and builds one solid per placed object via sewing.
+ * 3MF import: parses a 3MF ZIP archive and builds one shape per placed object via sewing.
  */
 
 import { getKernel } from '@/kernel/index.js';
@@ -7,7 +7,7 @@ import type { UnknownDimShape } from '@/core/shapeTypes.js';
 import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
-import { sewMeshToSolid, sewableTopology, trianglePositions } from './ioUtils.js';
+import { sewMeshToSolid } from './ioUtils.js';
 import { colorShape } from '@/topology/metadata/colorFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 
@@ -520,17 +520,16 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
     triangles.push([va, vb, vc]);
   }
 
-  // A single closed body with consistent winding sews straight into a solid,
-  // skipping the orientation repair that buildSolidFromFaces runs.
-  const topology = sewableTopology(trianglePositions(triangles));
-  const [body, ...others] = topology?.bodies ?? [];
-  if (body?.closed === true && others.length === 0) {
-    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED, 1e-6, topology);
+  // Where sewing keeps orientation, an object's triangles become what the same
+  // triangles do through STL and OBJ: a solid per closed body, a shell per open
+  // one, and each sealed cavity cut from the body around it.
+  if (kernel.capabilities.sewKeepsOrientation === true) {
+    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
   }
 
-  // Use buildSolidFromFaces (indexed mesh) for native import when available.
-  // This avoids building individual face objects and sewing them, which can
-  // introduce volume errors in some backends.
+  // Elsewhere buildSolidFromFaces (indexed mesh) avoids building individual
+  // face objects and sewing them, which can introduce volume errors in some
+  // backends.
   const points = mesh.vertices.map(([x, y, z]) => ({ x, y, z }));
   const faces = mesh.triangles as Array<readonly [number, number, number]>;
 
@@ -539,11 +538,11 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
     return ok(castResultShape(solid));
   } catch {
     // Fallback: sew the triangles as vertex triples
-    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED, 1e-6, topology);
+    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
   }
 }
 
-/** One solid per mesh; several are grouped into a compound that takes ownership of them. */
+/** One shape per mesh; several are grouped into a compound that takes ownership of them. */
 function buildShapeFromMeshes(meshes: ParsedMesh[]): Result<UnknownDimShape> {
   const solids: UnknownDimShape[] = [];
   for (const mesh of meshes) {
@@ -568,14 +567,17 @@ function buildShapeFromMeshes(meshes: ParsedMesh[]): Result<UnknownDimShape> {
 /**
  * Import a 3MF file from a Blob.
  *
- * Extracts the model XML from the ZIP archive and builds one solid per placed
- * object by sewing its triangles. Build-item and component transforms are
- * applied, and coordinates are scaled from the model `unit` to millimeters.
+ * Extracts the model XML from the ZIP archive and builds a shape per placed
+ * object by sewing its triangles as `importSTL` sews a file: a `Solid` per
+ * closed body, a `Shell` per open one, and each sealed cavity cut from the body
+ * around it. Build-item and component transforms are applied, and coordinates
+ * are scaled from the model `unit` to millimeters.
  *
  * @param blob - A Blob or File containing 3MF data (.3mf).
- * @returns A `Result` wrapping the imported solid (a `Compound` of solids when the
- *   build places several objects), or an error if parsing fails or the build
- *   expands to more than 100,000 placed objects or 2,000,000 triangles.
+ * @returns A `Result` wrapping the imported shape (a `Compound` when the build
+ *   places several objects or an object holds several bodies), or an error if
+ *   parsing fails or the build expands to more than 100,000 placed objects or
+ *   2,000,000 triangles.
  *
  * @example
  * ```ts
