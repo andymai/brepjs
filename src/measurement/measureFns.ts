@@ -4,12 +4,13 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
-import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type { DistanceResult, KernelShape, ShapeType } from '@/kernel/types.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { Vec3 } from '@/core/types.js';
 import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '@/core/shapeTypes.js';
-import { type Result, ok, err } from '@/core/result.js';
+import { type Err, type Result, ok, err } from '@/core/result.js';
 import { kernelCallRaw } from '@/core/kernelCall.js';
-import { validationError, BrepErrorCode } from '@/core/errors.js';
+import { type BrepError, validationError, unsupportedError, BrepErrorCode } from '@/core/errors.js';
 import { uvBounds } from '@/topology/faceFns.js';
 import type { CurvatureResult } from '@/kernel/occt/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
@@ -253,7 +254,41 @@ export function measureLength(shape: AnyShape<Dimension>): Result<number> {
 // ---------------------------------------------------------------------------
 
 /**
+ * The kernel's distance between two shapes, or `UNSUPPORTED_CAPABILITY` for a
+ * pair of shape types the kernel has no exact measure for (brepkit measures
+ * only from a point, or between solids).
+ *
+ * @internal
+ */
+export function kernelDistance(fn: string, a: KernelShape, b: KernelShape): Result<DistanceResult> {
+  try {
+    return ok(getKernel().distance(a, b));
+  } catch (e) {
+    if (!isUnsupportedKernelOperationError(e)) throw e;
+    return distanceUnsupported(fn, e);
+  }
+}
+
+function distanceUnsupported(fn: string, e: unknown): Err<BrepError> {
+  const kernelId = getKernel().kernelId;
+  const raw = e instanceof Error ? e.message : String(e);
+  return err(
+    unsupportedError(
+      BrepErrorCode.UNSUPPORTED_CAPABILITY,
+      `${fn}: the ${kernelId} kernel cannot measure this distance (${raw})`,
+      e,
+      { kernel: kernelId, operation: fn },
+      'Measure from a vertex or between two solids, or use the occt-wasm kernel'
+    )
+  );
+}
+
+/**
  * Measure the minimum distance between two shapes.
+ *
+ * @returns Err `UNSUPPORTED_CAPABILITY` for a pair of shapes the kernel cannot
+ *   measure exactly (on brepkit, anything but a vertex against a shape or a
+ *   solid against a solid).
  */
 export function measureDistance(
   shape1: AnyShape<Dimension>,
@@ -261,11 +296,15 @@ export function measureDistance(
 ): Result<number> {
   if (shapeIsNull(shape1)) return nullShapeErr('measureDistance');
   if (shapeIsNull(shape2)) return nullShapeErr('measureDistance');
-  return ok(getKernel().distance(shape1.wrapped, shape2.wrapped).value);
+  const d = kernelDistance('measureDistance', shape1.wrapped, shape2.wrapped);
+  return d.ok ? ok(d.value.value) : d;
 }
 
 /**
  * Measure the minimum distance between two shapes, including witness points.
+ *
+ * @returns Err `UNSUPPORTED_CAPABILITY` for a pair of shapes the kernel cannot
+ *   measure exactly, as {@link measureDistance} does.
  */
 export function measureDistanceProps(
   shape1: AnyShape<Dimension>,
@@ -273,11 +312,12 @@ export function measureDistanceProps(
 ): Result<DistanceProps> {
   if (shapeIsNull(shape1)) return nullShapeErr('measureDistanceProps');
   if (shapeIsNull(shape2)) return nullShapeErr('measureDistanceProps');
-  const d = getKernel().distance(shape1.wrapped, shape2.wrapped);
+  const d = kernelDistance('measureDistanceProps', shape1.wrapped, shape2.wrapped);
+  if (!d.ok) return d;
   return ok({
-    distance: d.value,
-    point1: d.point1,
-    point2: d.point2,
+    distance: d.value.value,
+    point1: d.value.point1,
+    point2: d.value.point2,
   });
 }
 
@@ -299,7 +339,12 @@ export function createDistanceQuery(referenceShape: AnyShape<Dimension>): Result
   return ok({
     distanceTo(other: AnyShape<Dimension>): Result<number> {
       if (shapeIsNull(other)) return nullShapeErr('createDistanceQuery.distanceTo');
-      return ok(query.distanceTo(other.wrapped).value);
+      try {
+        return ok(query.distanceTo(other.wrapped).value);
+      } catch (e) {
+        if (!isUnsupportedKernelOperationError(e)) throw e;
+        return distanceUnsupported('createDistanceQuery.distanceTo', e);
+      }
     },
     dispose(): void {
       query.dispose();

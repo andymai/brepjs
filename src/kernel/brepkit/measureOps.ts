@@ -7,7 +7,18 @@ import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, DistanceResult, ShapeType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
-import { type BrepkitHandle, unwrap, DEFAULT_DEFLECTION } from './helpers.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+import {
+  type BrepkitHandle,
+  unwrap,
+  toArray,
+  edgeHandle,
+  faceHandle,
+  solidHandle,
+  compoundSolidIds,
+  syntheticCompounds,
+  DEFAULT_DEFLECTION,
+} from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { vertexPosition, uvBounds, pointOnSurface } from './geometryOps.js';
 import { vec3At, wasmIndex } from '@/utils/vec3.js';
@@ -160,62 +171,78 @@ export function boundingBox(
   return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
 }
 
+/**
+ * Minimum distance between two shapes. brepkit-wasm measures from a point to a
+ * solid, face or edge, and between two solids; a wire, shell or compound is
+ * measured through its edges, faces or children, taking the closest pair. Any
+ * other pairing (face to face, edge to edge, face to solid, ...) has no exact
+ * brepkit measure and throws {@link UnsupportedKernelOperationError}.
+ */
 export function distance(
   bk: BrepkitKernel,
   shape1: KernelShape,
   shape2: KernelShape
 ): DistanceResult {
-  const h1 = shape1 as BrepkitHandle;
-  const h2 = shape2 as BrepkitHandle;
-
-  if (h1.type === 'solid' && h2.type === 'solid') {
-    const buf = bk.solidToSolidDistance(h1.id, h2.id);
-    return {
-      value: wasmIndex(buf, 0),
-      point1: vec3At(buf, 1),
-      point2: vec3At(buf, 4),
-    };
-  }
-
-  // Point-to-{solid,face,edge}: same shape — fetch the vertex position then
-  // call the appropriate native distance function on it.
-  if (h1.type === 'vertex' && (h2.type === 'solid' || h2.type === 'face' || h2.type === 'edge')) {
-    const point1 = vec3At(bk.getVertexPosition(h1.id));
-    const result =
-      h2.type === 'solid'
-        ? bk.pointToSolidDistance(point1[0], point1[1], point1[2], h2.id)
-        : h2.type === 'face'
-          ? bk.pointToFaceDistance(point1[0], point1[1], point1[2], h2.id)
-          : bk.pointToEdgeDistance(point1[0], point1[1], point1[2], h2.id);
-    return {
-      value: wasmIndex(result, 0),
-      point1,
-      point2: vec3At(result, 1),
-    };
-  }
-
-  // Fallback: use vertex positions for unsupported pairs
-  const getPos = (s: BrepkitHandle): [number, number, number] => {
-    if (s.type === 'vertex') {
-      return vec3At(bk.getVertexPosition(s.id));
+  const parts1 = distanceParts(bk, shape1 as BrepkitHandle);
+  const parts2 = distanceParts(bk, shape2 as BrepkitHandle);
+  let best: DistanceResult | undefined;
+  for (const a of parts1) {
+    for (const b of parts2) {
+      const d = partDistance(bk, a, b);
+      if (best === undefined || d.value < best.value) best = d;
     }
-    // Use bounding box center as approximation
-    if (s.type === 'solid') {
-      const bb = bk.boundingBox(s.id);
-      return [
-        (wasmIndex(bb, 0) + wasmIndex(bb, 3)) / 2,
-        (wasmIndex(bb, 1) + wasmIndex(bb, 4)) / 2,
-        (wasmIndex(bb, 2) + wasmIndex(bb, 5)) / 2,
-      ];
+  }
+  if (best === undefined) throw new Error('brepkit: distance needs two non-empty shapes');
+  return best;
+}
+
+/** The solids, faces, edges and vertices a shape is measured through. */
+function distanceParts(bk: BrepkitKernel, h: BrepkitHandle): BrepkitHandle[] {
+  switch (h.type) {
+    case 'wire':
+      return toArray(bk.getWireEdges(h.id)).map(edgeHandle);
+    case 'shell':
+      return toArray(bk.getShellFaces(h.id)).map(faceHandle);
+    case 'compound': {
+      const children = syntheticCompounds.get(h.id) ?? compoundSolidIds(bk, h.id).map(solidHandle);
+      return children.flatMap((child) => distanceParts(bk, child));
     }
-    return [0, 0, 0];
-  };
-  const p1 = getPos(h1);
-  const p2 = getPos(h2);
-  const dx = p2[0] - p1[0];
-  const dy = p2[1] - p1[1];
-  const dz = p2[2] - p1[2];
-  return { value: Math.sqrt(dx * dx + dy * dy + dz * dz), point1: p1, point2: p2 };
+    default:
+      return [h];
+  }
+}
+
+function partDistance(bk: BrepkitKernel, a: BrepkitHandle, b: BrepkitHandle): DistanceResult {
+  if (a.type === 'solid' && b.type === 'solid') {
+    const buf = bk.solidToSolidDistance(a.id, b.id);
+    return { value: wasmIndex(buf, 0), point1: vec3At(buf, 1), point2: vec3At(buf, 4) };
+  }
+  if (a.type === 'vertex') return pointDistance(bk, a, b);
+  if (b.type === 'vertex') {
+    const d = pointDistance(bk, b, a);
+    return { value: d.value, point1: d.point2, point2: d.point1 };
+  }
+  throw new UnsupportedKernelOperationError(
+    `brepkit: no distance between a ${a.type} and a ${b.type}; brepkit-wasm measures from a point to a solid, face or edge, and between two solids`
+  );
+}
+
+function pointDistance(bk: BrepkitKernel, v: BrepkitHandle, to: BrepkitHandle): DistanceResult {
+  const point1 = vec3At(bk.getVertexPosition(v.id));
+  if (to.type === 'vertex') {
+    const point2 = vec3At(bk.getVertexPosition(to.id));
+    const value = Math.hypot(point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2]);
+    return { value, point1, point2 };
+  }
+  const [x, y, z] = point1;
+  let result: Float64Array;
+  if (to.type === 'solid') result = bk.pointToSolidDistance(x, y, z, to.id);
+  else if (to.type === 'face') result = bk.pointToFaceDistance(x, y, z, to.id);
+  else if (to.type === 'edge') result = bk.pointToEdgeDistance(x, y, z, to.id);
+  else {
+    throw new UnsupportedKernelOperationError(`brepkit: no distance from a vertex to a ${to.type}`);
+  }
+  return { value: wasmIndex(result, 0), point1, point2: vec3At(result, 1) };
 }
 
 export function surfaceCurvature(

@@ -13,6 +13,7 @@ import { validationError, BrepErrorCode } from '@/core/errors.js';
 import { getBounds, type Bounds3D } from '@/topology/shapeFns.js';
 import { withArenaCheckpoint } from '@/core/disposal.js';
 import { wasmIndex } from '@/utils/vec3.js';
+import { kernelDistance } from './measureFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -90,7 +91,9 @@ export function checkInterference(
   // bulk-free anything the kernel allocates while measuring and keep the arena
   // flat across O(N^2) checkAllInterferences batches.
   return withArenaCheckpoint(() => {
-    const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
+    const measured = kernelDistance('checkInterference', shape1.wrapped, shape2.wrapped);
+    if (!measured.ok) return measured;
+    const dist = measured.value;
     return ok({
       hasInterference: dist.value <= tolerance,
       minDistance: dist.value,

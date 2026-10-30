@@ -561,6 +561,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Null-shape pre-validation tests use OCCT-specific raw API',
     },
+    'measureFns.faceDistance': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit-wasm measures distance from a point to a solid, face or edge, and between two solids, and nothing else: a face, edge or solid against a face or edge returns UNSUPPORTED_CAPABILITY.',
+    },
     'principalBoxFns.inertia': {
       kind: 'not-implemented',
       reason:

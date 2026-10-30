@@ -760,6 +760,8 @@ measureSurfaceProps(shape): Result<{ area, mass, centerOfMass }>
 measureLinearProps(shape): Result<{ length, mass, centerOfMass }>
 measureDistance(shape1, shape2): Result<number>
 createDistanceQuery(ref): Result<{ distanceTo(other): Result<number>, dispose(): void }>
+// brepkit measures only from a vertex, or between solids: any other pair (face to face, edge to
+// face, face to solid) returns UNSUPPORTED_CAPABILITY there, as checkInterference does.
 
 // Surface curvature (u, v are raw surface parameters, see uvBounds; not 0-1)
 measureCurvatureAt(face: OrientedFace, u, v): Result<CurvatureResult>  // plain Face: unwrap(orientedFace(f))

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit, shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { isBrepkit, shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -38,8 +38,14 @@ import {
   getSurfaceType,
   isPlanarWire,
   isShape3D,
+  getBounds,
+  checkInterference,
+  unwrapErr,
+  registerKernel,
+  withKernel,
 } from '@/index.js';
-import type { AnyShape, Dimension, Shape3D, Face, OrientedFace } from '@/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
+import type { AnyShape, Dimension, Shape3D, Face, OrientedFace, Result } from '@/index.js';
 
 function shape3D(shape: AnyShape<Dimension>): Shape3D {
   if (!isShape3D(shape)) throw new Error('expected a 3D shape');
@@ -115,6 +121,99 @@ describe('measureFns', () => {
       const b2 = castShape(translate(box(5, 5, 5), [10, 0, 0]).wrapped);
       expect(unwrap(measureDistance(b1, b2))).toBeCloseTo(5, 2);
     });
+
+    it('measures a vertex against a face, an edge or a solid in either order', () => {
+      using b = box(40, 30, 20);
+      using v = vertex([0, 0, 10]);
+      const side = getFaces(b).find((f) => getBounds(f).xMin > 39.9);
+      if (!side) throw new Error('box has no x = 40 face');
+      for (const [p, q] of [
+        [v, side],
+        [side, v],
+      ] as const) {
+        const d = unwrap(measureDistanceProps(p, q));
+        expect(d.distance).toBeCloseTo(40, 6);
+        const onFace = p === side ? d.point1 : d.point2;
+        expect(onFace[0]).toBeCloseTo(40, 6);
+      }
+      using far = vertex([0, 0, 60]);
+      expect(unwrap(measureDistance(b, far))).toBeCloseTo(40, 6);
+    });
+
+    it('measures a compound of solids by its closest solid', () => {
+      using near = translate(box(10, 10, 10), [0, 0, 30]);
+      using farther = translate(box(10, 10, 10), [0, 0, 60]);
+      using pair = compound([near, farther]);
+      using b = box(40, 30, 20);
+      expect(unwrap(measureDistance(pair, b))).toBeCloseTo(10, 6);
+    });
+
+    it('measures between faces', (ctx) => {
+      skipIfDiverges(ctx, 'measureFns.faceDistance');
+      using b = box(40, 30, 20);
+      const top = getFaces(b).find((f) => getBounds(f).zMin > 19.9);
+      const bottom = getFaces(b).find((f) => getBounds(f).zMax < 0.1);
+      if (!top || !bottom) throw new Error('box faces not found');
+      expect(unwrap(measureDistance(top, bottom))).toBeCloseTo(20, 6);
+      using above = translate(box(10, 10, 10), [0, 0, 50]);
+      expect(unwrap(measureDistance(top, above))).toBeCloseTo(30, 6);
+    });
+
+    it('returns UNSUPPORTED_CAPABILITY when the kernel cannot measure the pair', () => {
+      const unsupported = () => {
+        throw new UnsupportedKernelOperationError('stub: no distance for this pair');
+      };
+      const base = getKernel();
+      registerKernel(
+        'no-distance',
+        new Proxy(base, {
+          get(target, prop) {
+            if (prop === 'distance') return unsupported;
+            if (prop === 'createDistanceQuery') {
+              return () => ({ distanceTo: unsupported, dispose: () => {} });
+            }
+            const value: unknown = Reflect.get(target, prop, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        })
+      );
+      using a = box(10, 10, 10);
+      using b = translate(box(10, 10, 10), [20, 0, 0]);
+      const results: Array<Result<unknown>> = withKernel('no-distance', () => [
+        measureDistance(a, b),
+        measureDistanceProps(a, b),
+        checkInterference(a, b),
+        unwrap(createDistanceQuery(a)).distanceTo(b),
+      ]);
+      for (const result of results) {
+        const error = unwrapErr(result);
+        expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+        expect(error.message).toContain('stub: no distance for this pair');
+      }
+    });
+
+    // Runs only where measureFns.faceDistance is a registered divergence (brepkit).
+    it.skipIf(!shouldSkipSuite('measureFns.faceDistance'))(
+      'returns UNSUPPORTED_CAPABILITY for a pair it cannot measure, not a stand-in value',
+      () => {
+        using b = box(40, 30, 20);
+        const top = getFaces(b).find((f) => getBounds(f).zMin > 19.9);
+        const bottom = getFaces(b).find((f) => getBounds(f).zMax < 0.1);
+        if (!top || !bottom) throw new Error('box faces not found');
+        using above = translate(box(10, 10, 10), [0, 0, 50]);
+        const results: Array<Result<unknown>> = [
+          measureDistance(top, bottom),
+          measureDistanceProps(top, above),
+          checkInterference(top, bottom),
+          unwrap(createDistanceQuery(top)).distanceTo(bottom),
+        ];
+        for (const result of results) {
+          const error = unwrapErr(result);
+          expect(error.kind).toBe('UNSUPPORTED');
+          expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+        }
+      }
+    );
   });
 
   describe('createDistanceQuery', () => {
