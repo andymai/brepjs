@@ -1,0 +1,77 @@
+tests/sketcher3d.test.ts
+  s_b1a48d7e30b741::t_ba130da9404138 236
+tests/brepkitExtended.test.ts
+  s_b1a48d7e30b741::t_c9e13c3ed3b28d 115,122,125,128-131
+src/operations/sweepFns.ts
+  s_b1a48d7e30b741::t_c8b80b015913b8 134,142,157-158,363
+tests/extrudeFns.test.ts
+  s_b1a48d7e30b741::t_ba130da9404138 185,193
+src/kernel/brepkit/sweepOps.ts
+  s_b1a48d7e30b741::t_2d7567518ddfe5 428-431
+  s_b1a48d7e30b741::t_90d4f78defac75 15
+  s_b1a48d7e30b741::t_23ac6f494af8d2 346-358,387-392,394,397-410
+  s_b1a48d7e30b741::t_be10dafb374fda 359-364,367-368,372-375,377-386,393,395-396
+  s_b1a48d7e30b741::t_9fafc26e58d9c3 365-366
+  s_b1a48d7e30b741::t_910c080031ff98 369-371,376
+  s_b1a48d7e30b741::t_839422a6d05d0d 417-419
+llms-full.txt
+  s_b1a48d7e30b741::t_c8b80b015913b8 339,444
+llms.txt
+  s_b1a48d7e30b741::t_c8b80b015913b8 339,444
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_b1a48d7e30b741::t_674e61c856d153 5,943,946,949
+package.json
+  s_b1a48d7e30b741::t_d2321075b5f3c1 277
+docs/kernel-conformance.md
+  s_b1a48d7e30b741::t_4dbe7d5ebd80a1 3,70,77,95,106
+src/kernel/brepkit/constructionOps.ts
+  s_b1a48d7e30b741::t_f7631c2dfc6a7f 450,452-460,467,473-482,489-496
+  s_b1a48d7e30b741::t_9691145933d76d 451
+src/topology/modifierFns.ts
+  s_b1a48d7e30b741::t_c8b80b015913b8 327,337,742-744
+tests/operations-extrude.test.ts
+  s_b1a48d7e30b741::t_55c027e479bd27 24-26
+  s_b1a48d7e30b741::t_ba130da9404138 3-8,170,176-199,226-228,231-234,244,256,270,283
+src/kernel/occtWasm/modifierOps.ts
+  s_b1a48d7e30b741::t_c8b80b015913b8 264
+tests/topology.test.ts
+  s_b1a48d7e30b741::t_34b09030f77ecd 375
+tests/sketchFns.test.ts
+  s_b1a48d7e30b741::t_ba130da9404138 210
+tests/brepkitAdapter.test.ts
+  s_b1a48d7e30b741::t_4b6f3cdd927d9d 1868,1874-1877,1879-1889,1892,1898,1904,1906,1908-1914,1917,1921,1924-1927,1930-1935,1938,1943
+src/kernel/brepkit/modifierOps.ts
+  s_b1a48d7e30b741::t_9cddd8e034b8d4 124-132
+  s_b1a48d7e30b741::t_c3d12f31198750 37,40-45,47-53,57-58,60-71
+  s_b1a48d7e30b741::t_f473f18f2c6be5 75-77
+  s_b1a48d7e30b741::t_dfef000786b8af 98-100
+  s_b1a48d7e30b741::t_a3893a87610d0a 79,81
+tests/kernel-ops.test.ts
+  s_b1a48d7e30b741::t_34b09030f77ecd 445
+tests/helpers/kernelDivergences.ts
+  s_b1a48d7e30b741::t_069131057720c3 462,467
+  s_b1a48d7e30b741::t_a458b5dfed002e 463-465
+tests/modifierFns.test.ts
+  s_b1a48d7e30b741::t_cf97f789f8e2fc 786-804
+  s_b1a48d7e30b741::t_51006ce0f48e14 4
+  s_b1a48d7e30b741::t_c072479716d16c 646,648,652
+  s_b1a48d7e30b741::t_f6fad8e045bf57 472,510,754-755,759
+package-lock.json
+  s_b1a48d7e30b741::t_c45d6e5862ff10 45,7445-7447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e507a83f9198425d33d5c215abdc1c9acf167da0",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
