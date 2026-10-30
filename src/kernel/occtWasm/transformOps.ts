@@ -361,7 +361,8 @@ export function transformBatch(k: OcctKernelWasm, entries: TransformEntry[]): Ke
       case 'translate':
         return translate(k, entry.shape, entry.x, entry.y, entry.z);
       case 'rotate':
-        return rotate(k, entry.shape, entry.angle, entry.axis, entry.center);
+        // Batch entries carry degrees; rotate takes radians.
+        return rotate(k, entry.shape, (entry.angle * Math.PI) / 180, entry.axis, entry.center);
       case 'scale':
         return scale(k, entry.shape, entry.center, entry.factor);
       case 'mirror':

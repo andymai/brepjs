@@ -22,6 +22,7 @@ export type TransformEntry =
   | {
       readonly type: 'rotate';
       readonly shape: KernelShape;
+      /** Degrees, unlike {@link KernelTransformOps.rotate}, which takes radians. */
       readonly angle: number;
       readonly axis: readonly [number, number, number];
       readonly center: readonly [number, number, number];
