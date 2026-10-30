@@ -13,12 +13,20 @@ import {
   measureVolume,
   unwrap,
   getDisposalStats,
+  isShape3D,
+  type AnyShape,
+  type Dimension,
   type Matrix4x4,
 } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function volumeOf(shape: AnyShape<Dimension>): number {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(shape));
+}
 
 describe('instance / accessors', () => {
   it('wraps one source + N translate placements (Vec3 sugar)', () => {
@@ -52,13 +60,13 @@ describe('materialize', () => {
       [40, 0, 0],
     ]);
     const solid = unwrap(materialize(inst));
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(3000, 3);
+    expect(volumeOf(solid)).toBeCloseTo(3000, 3);
   });
 
   it('fuse:true on a touching grid yields one solid of the total volume', () => {
     const inst = instanceGrid(box(42, 42, 7), { cols: 2, rows: 2, pitchX: 42, pitchY: 42 });
     const solid = unwrap(materialize(inst, { fuse: true }));
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(4 * 42 * 42 * 7, 1);
+    expect(volumeOf(solid)).toBeCloseTo(4 * 42 * 42 * 7, 1);
   });
 
   it('fuse:true on non-grid touching placements fuses the copies', () => {
@@ -67,13 +75,13 @@ describe('materialize', () => {
       [10, 0, 0],
     ]);
     const solid = unwrap(materialize(inst, { fuse: true }));
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(2000, 1);
+    expect(volumeOf(solid)).toBeCloseTo(2000, 1);
   });
 
   it('fuse:true with a single placement returns a valid (non-disposed) solid', () => {
     const inst = instance(box(10, 10, 10), [[5, 0, 0]]);
     const solid = unwrap(materialize(inst, { fuse: true }));
-    expect(unwrap(measureVolume(solid))).toBeCloseTo(1000, 1);
+    expect(volumeOf(solid)).toBeCloseTo(1000, 1);
   });
 });
 

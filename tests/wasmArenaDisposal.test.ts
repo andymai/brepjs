@@ -133,7 +133,15 @@ import {
   fuseAllBisectWith,
   type BisectKernelOps,
 } from '@/topology/booleanBatchFns.js';
-import type { AnyShape, Dimension, Shape3D } from '@/core/shapeTypes.js';
+import type {
+  AnyShape,
+  ClosedWire,
+  Dimension,
+  Face,
+  PlanarWire,
+  Shape3D,
+} from '@/core/shapeTypes.js';
+import type { BooleanOptions, Result, ValidSolid } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
@@ -640,7 +648,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    const verticalEdges = (solid: AnyShape<Dimension>) =>
+    const verticalEdges = (solid: Shape3D) =>
       getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
     const bySide =
       <V>(near: V, far: V) =>
@@ -834,7 +842,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using _r = scale(b, 2, [0, 0, 0]);
+          using _r = scale(b, 2, { center: [0, 0, 0] });
         })
       ).toBe(0);
     });
@@ -1193,7 +1201,9 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           );
           const w = getWires(f)[0];
           if (!w) throw new Error('polygon face must have a wire');
-          const r = roof(unwrap(closedWire(w)));
+          // A cast rather than isPlanarWire, which builds a face: that would add arena work
+          // to the measured iteration.
+          const r = roof(unwrap(closedWire(w)) as ClosedWire & PlanarWire);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
@@ -1365,7 +1375,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('solveAssembly leaks nothing', () => {
       using b1 = box(10, 10, 10);
       using b2 = box(6, 6, 6);
-      const topByZ = (fs: ReturnType<typeof getFaces>, top: boolean) =>
+      const topByZ = (fs: Face[], top: boolean) =>
         fs.reduce((best, f) =>
           (top ? faceCenter(f)[2] > faceCenter(best)[2] : faceCenter(f)[2] < faceCenter(best)[2])
             ? f
@@ -1540,20 +1550,66 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
             return run();
           });
         }
-        return {
-          cut: (base, tool, options) => pair(() => cut(base, tool, options)),
-          fuse: (a, b, options) => pair(() => fuse(a, b, options)),
-          cutAll: (base, tools, options) =>
-            step(() => {
-              if (tools.length > limit) throw new Error('batch fails');
-              return cutAll(base, tools, options);
-            }),
-          fuseAll: (shapes, options) =>
-            step(() => {
-              if (shapes.length > limit) throw new Error('batch fails');
-              return fuseAll(shapes, options);
-            }),
-        };
+        // Overloads match the overloaded ops; `unsafe` only selects the Shape3D
+        // overload and has no runtime effect.
+        function stubCut(
+          a: ValidSolid,
+          b: ValidSolid,
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubCut(
+          a: Shape3D,
+          b: Shape3D,
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubCut(a: Shape3D, b: Shape3D, options?: BooleanOptions): Result<Shape3D> {
+          return pair(() => cut(a, b, { ...options, unsafe: true }));
+        }
+        function stubFuse(
+          a: ValidSolid,
+          b: ValidSolid,
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubFuse(
+          a: Shape3D,
+          b: Shape3D,
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubFuse(a: Shape3D, b: Shape3D, options?: BooleanOptions): Result<Shape3D> {
+          return pair(() => fuse(a, b, { ...options, unsafe: true }));
+        }
+        function stubCutAll(
+          base: ValidSolid,
+          tools: ValidSolid[],
+          options?: BooleanOptions
+        ): Result<ValidSolid>;
+        function stubCutAll(
+          base: Shape3D,
+          tools: Shape3D[],
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubCutAll(
+          base: Shape3D,
+          tools: Shape3D[],
+          options?: BooleanOptions
+        ): Result<Shape3D> {
+          return step(() => {
+            if (tools.length > limit) throw new Error('batch fails');
+            return cutAll(base, tools, { ...options, unsafe: true });
+          });
+        }
+        function stubFuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
+        function stubFuseAll(
+          shapes: Shape3D[],
+          options: BooleanOptions & { unsafe: true }
+        ): Result<Shape3D>;
+        function stubFuseAll(shapes: Shape3D[], options?: BooleanOptions): Result<Shape3D> {
+          return step(() => {
+            if (shapes.length > limit) throw new Error('batch fails');
+            return fuseAll(shapes, { ...options, unsafe: true });
+          });
+        }
+        return { cut: stubCut, fuse: stubFuse, cutAll: stubCutAll, fuseAll: stubFuseAll };
       }
 
       /** `count` boxes in a row, each touching the next. */

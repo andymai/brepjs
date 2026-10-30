@@ -28,6 +28,7 @@ import {
   isNumber,
   isChamferRadius,
   isFilletRadius,
+  isClosedWire,
   isShape3D,
   sketchCircle,
   sketchRectangle,
@@ -458,7 +459,7 @@ describe('shapeHelpers', () => {
     expect(curveIsClosed(circle(10))).toBe(true);
   });
   it('makeCircle custom', () => {
-    expect(isEdge(circle(5, { at: [1, 2, 3], normal: [0, 1, 0] }))).toBe(true);
+    expect(isEdge(circle(5, { at: [1, 2, 3], axis: [0, 1, 0] }))).toBe(true);
   });
   it('makeEllipse', () => {
     expect(isEdge(unwrap(ellipse(10, 5)))).toBe(true);
@@ -563,6 +564,7 @@ describe('shapeHelpers', () => {
         line([0, 10, 0], [0, 0, 0]),
       ])
     );
+    if (!isClosedWire(w)) throw new Error('wire is not closed');
     expect(isFace(unwrap(filledFace(w)))).toBe(true);
   });
   it('makeEllipsoid', () => {

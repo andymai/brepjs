@@ -441,11 +441,19 @@ function matVec(m: M3, v: V3): V3 {
 }
 
 function matMul(a: M3, b: M3): M3 {
-  const out = [0, 0, 0, 0, 0, 0, 0, 0, 0] as unknown as M3;
-  for (let r = 0; r < 3; r++)
-    for (let col = 0; col < 3; col++)
-      out[r * 3 + col] = a[r * 3] * b[col] + a[r * 3 + 1] * b[3 + col] + a[r * 3 + 2] * b[6 + col];
-  return out;
+  const [a0, a1, a2, a3, a4, a5, a6, a7, a8] = a;
+  const [b0, b1, b2, b3, b4, b5, b6, b7, b8] = b;
+  return [
+    a0 * b0 + a1 * b3 + a2 * b6,
+    a0 * b1 + a1 * b4 + a2 * b7,
+    a0 * b2 + a1 * b5 + a2 * b8,
+    a3 * b0 + a4 * b3 + a5 * b6,
+    a3 * b1 + a4 * b4 + a5 * b7,
+    a3 * b2 + a4 * b5 + a5 * b8,
+    a6 * b0 + a7 * b3 + a8 * b6,
+    a6 * b1 + a7 * b4 + a8 * b7,
+    a6 * b2 + a7 * b5 + a8 * b8,
+  ];
 }
 
 interface Link {

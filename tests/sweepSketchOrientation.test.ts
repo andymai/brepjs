@@ -10,7 +10,6 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { drawRoundedRectangle, draw, getBounds } from '@/index.js';
-import type { AnyShape } from '@/core/shapeTypes.js';
 import type Sketch from '@/sketching/sketch.js';
 import { initKernel } from './setup.js';
 
@@ -22,20 +21,15 @@ describe('sweepSketch orientation', () => {
   it('positive-X profile sweeps outward from spine', () => {
     // Profile entirely in positive X should sweep outward (away from center).
     const spine = drawRoundedRectangle(80, 80, 3.75).sketchOnPlane('XY') as Sketch;
-    const spineBounds = getBounds(spine.wire as AnyShape);
+    const spineBounds = getBounds(spine.wire);
 
     const swept = spine.sweepSketch(
-      (plane, origin) =>
-        draw([0, 0])
-          .lineTo([2, 0])
-          .lineTo([2, 2])
-          .lineTo([0, 2])
-          .close()
-          .sketchOnPlane(plane, origin) as Sketch,
+      (plane) =>
+        draw([0, 0]).lineTo([2, 0]).lineTo([2, 2]).lineTo([0, 2]).close().sketchOnPlane(plane),
       { withContact: true }
     );
 
-    const sweptBounds = getBounds(swept as AnyShape);
+    const sweptBounds = getBounds(swept);
 
     // Positive-X = outward, so swept bounds should EXCEED spine bounds
     expect(sweptBounds.xMax).toBeGreaterThan(spineBounds.xMax);
@@ -47,13 +41,13 @@ describe('sweepSketch orientation', () => {
     const d = 125.5;
 
     const spine = drawRoundedRectangle(w, d, 3.75).sketchOnPlane('XY') as Sketch;
-    const spineBounds = getBounds(spine.wire as AnyShape);
+    const spineBounds = getBounds(spine.wire);
 
     // Gridfinity lip profile — starts at x=-0.7 (inward), extends via
     // positive-X line() calls (outward). The max positive-X extent from
     // the line() calls is ~1.9mm.
     const swept = spine.sweepSketch(
-      (plane, origin) => {
+      (plane) => {
         const shape = draw([-0.7, 0])
           .line(0.7, 0.7)
           .vLine(1.8)
@@ -61,12 +55,12 @@ describe('sweepSketch orientation', () => {
           .vLineTo(-1.9)
           .lineTo([-0.7, -1.2])
           .close();
-        return shape.sketchOnPlane(plane, origin) as Sketch;
+        return shape.sketchOnPlane(plane);
       },
       { withContact: true }
     );
 
-    const sweptBounds = getBounds(swept as AnyShape);
+    const sweptBounds = getBounds(swept);
 
     // The profile's positive-X extent maps outward (~1.9mm).
     const overhangX = Math.max(

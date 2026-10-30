@@ -38,14 +38,13 @@ beforeAll(async () => {
   }
 }, 60_000);
 
-function bounds(v: Float32Array) {
+function bounds(v: Float32Array): number[] {
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
-  for (let i = 0; i < v.length; i += 3) {
-    for (let a = 0; a < 3; a++) {
-      lo[a] = Math.min(lo[a], v[i + a]);
-      hi[a] = Math.max(hi[a], v[i + a]);
-    }
+  for (const [i, value] of v.entries()) {
+    const a = i % 3;
+    lo[a] = Math.min(lo[a] ?? Infinity, value);
+    hi[a] = Math.max(hi[a] ?? -Infinity, value);
   }
   return [...lo, ...hi];
 }
@@ -75,8 +74,8 @@ describe('composed-transform parity (manifold vs occt)', () => {
       );
     const occt = withKernel('occt', build);
     const manifold = withKernel('manifold', build);
-    for (let i = 0; i < 6; i++) {
-      expect(manifold[i]).toBeCloseTo(occt[i], 1);
+    for (const [i, expected] of occt.entries()) {
+      expect(manifold[i]).toBeCloseTo(expected, 1);
     }
   });
 
@@ -96,8 +95,8 @@ describe('composed-transform parity (manifold vs occt)', () => {
       );
     const occt = withKernel('occt', build);
     const manifold = withKernel('manifold', build);
-    for (let i = 0; i < 6; i++) {
-      expect(manifold[i]).toBeCloseTo(occt[i], 1);
+    for (const [i, expected] of occt.entries()) {
+      expect(manifold[i]).toBeCloseTo(expected, 1);
     }
   });
 
@@ -141,14 +140,17 @@ describe('composed-transform parity (manifold vs occt)', () => {
     if (!haveManifold) return ctx.skip();
     const build = () =>
       bounds(
-        mesh(unwrap(circularPattern(translate(makeBaseBox(2, 2, 2), 8, 0, 0), [0, 0, 1], 4, 270)), {
-          cache: false,
-        }).vertices
+        mesh(
+          unwrap(circularPattern(translate(makeBaseBox(2, 2, 2), [8, 0, 0]), [0, 0, 1], 4, 270)),
+          {
+            cache: false,
+          }
+        ).vertices
       );
     const occt = withKernel('occt', build);
     const manifold = withKernel('manifold', build);
-    for (let i = 0; i < 6; i++) {
-      expect(manifold[i]).toBeCloseTo(occt[i], 1);
+    for (const [i, expected] of occt.entries()) {
+      expect(manifold[i]).toBeCloseTo(expected, 1);
     }
   });
 });
