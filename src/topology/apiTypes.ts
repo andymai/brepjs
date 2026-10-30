@@ -55,7 +55,8 @@ export type FilletRadius =
  * Chamfer distance specification.
  *
  * - `number` — equal distance
- * - `[number, number]` — asymmetric distances (dist1, dist2)
+ * - `[number, number]` — asymmetric distances (dist1, dist2). brepkit has no asymmetric
+ *   chamfer and returns an `UNSUPPORTED_CAPABILITY` error for two different distances.
  * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees.
  *   brepkit has no distance-angle chamfer and returns an `UNSUPPORTED_CAPABILITY` error.
  * - callback — per-edge value of any of the above; return `null` (or a non-positive

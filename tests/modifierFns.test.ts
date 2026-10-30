@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   box,
@@ -34,8 +34,12 @@ import {
   removeFaces,
   shape,
   curveStartPoint,
+  chamferWithEvolution,
+  registerKernel,
+  withKernel,
 } from '@/index.js';
 import { fillet as filletFn, shell as shellFn } from '@/topology/modifierFns.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { castResultShape } from '@/core/shapeTypes.js';
 import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 
@@ -512,7 +516,8 @@ describe('fillet with callback returning null or array', () => {
 });
 
 describe('chamfer with array distance', () => {
-  it('chamfers a specific edge with asymmetric distances [d1, d2]', () => {
+  it('chamfers a specific edge with asymmetric distances [d1, d2]', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.asymmetricChamfer');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = chamfer(b, [edges[0]!], [1, 2]);
@@ -549,7 +554,8 @@ describe('chamfer with callback returning null or array', () => {
     expect(unwrapErr(result).code).toBe('CHAMFER_NO_EDGES');
   });
 
-  it('callback returning [d1, d2] applies asymmetric chamfer', () => {
+  it('callback returning [d1, d2] applies asymmetric chamfer', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.asymmetricChamfer');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = chamfer(b, edges.slice(0, 2), () => [1, 2]);
@@ -635,6 +641,66 @@ describe('per-edge fillet radii and chamfer distances', () => {
     );
     expect(unwrap(measureVolume(chamfered as Shape3D))).toBeCloseTo(1000 - 10 * 5, 6);
   });
+});
+
+describe('chamfer distances the kernel cannot build', () => {
+  function verticalEdges(solid: Shape3D): Edge[] {
+    return getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+  }
+
+  /** A kernel that forwards to the active one except for `overrides`. */
+  function registerStubKernel(id: string, overrides: Record<string, unknown>): void {
+    const base = getKernel();
+    registerKernel(
+      id,
+      new Proxy(base, {
+        get(target, prop) {
+          if (Object.hasOwn(overrides, prop)) return overrides[prop as string];
+          const value: unknown = Reflect.get(target, prop, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      })
+    );
+  }
+
+  it('returns UNSUPPORTED when the kernel rejects the distances', () => {
+    registerStubKernel('no-asymmetric-chamfer', {
+      chamferWithHistory: () => {
+        throw new UnsupportedKernelOperationError('stub: no asymmetric chamfer');
+      },
+    });
+    using b = box(10, 10, 10);
+    const edges = verticalEdges(b);
+    const results = withKernel('no-asymmetric-chamfer', () => [
+      chamfer(b, edges, [1, 2]),
+      chamfer(b, edges, () => [1, 2]),
+      chamferWithEvolution(b, edges, [1, 2]),
+    ]);
+    for (const result of results) {
+      const error = unwrapErr(result);
+      expect(error.kind).toBe('UNSUPPORTED');
+      expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(error.message).toContain('stub: no asymmetric chamfer');
+    }
+  });
+
+  // Runs only where modifierFns.asymmetricChamfer is a registered divergence (brepkit).
+  it.skipIf(!shouldSkipSuite('modifierFns.asymmetricChamfer'))(
+    'returns UNSUPPORTED_CAPABILITY on a kernel without an asymmetric chamfer',
+    () => {
+      using b = box(10, 10, 10);
+      const [edge] = verticalEdges(b);
+      if (!edge) throw new Error('box has no vertical edge');
+      expect(unwrapErr(chamfer(b, [edge], [1, 2])).code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(unwrapErr(chamfer(b, [edge], () => [1, 2])).code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(unwrapErr(chamferWithEvolution(b, [edge], [1, 2])).code).toBe(
+        'UNSUPPORTED_CAPABILITY'
+      );
+      // Two equal distances are a symmetric chamfer, which needs no asymmetric one.
+      using equal = unwrap(chamfer(b, [edge], [1, 1]));
+      expect(unwrap(measureVolume(equal))).toBeCloseTo(1000 - 5, 6);
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------

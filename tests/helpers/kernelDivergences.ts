@@ -295,7 +295,12 @@ export const divergences: DivergenceMap = {
     'modifierFns.perEdgeValues': {
       kind: 'not-implemented',
       reason:
-        'brepkit misplaces per-edge fillet and chamfer values: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08, and a [1, 2] chamfer 988.75 against 990.',
+        'brepkit misplaces per-edge fillet radii: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08. Asymmetric chamfers return UNSUPPORTED_CAPABILITY (see modifierFns.asymmetricChamfer).',
+    },
+    'modifierFns.asymmetricChamfer': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no asymmetric chamfer (brepkit-wasm lacks chamferAsymmetric): a [d1, d2] chamfer, or a callback that returns one for an edge, throws UnsupportedKernelOperationError and chamfer returns UNSUPPORTED_CAPABILITY rather than a symmetric chamfer at the average of d1 and d2.',
     },
     'chamferAngle.distAngle': {
       kind: 'not-implemented',

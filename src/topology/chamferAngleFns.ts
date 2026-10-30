@@ -156,7 +156,7 @@ export function chamferDistAngle(
           `chamferDistAngle: the ${kernel.kernelId} kernel has no distance-angle chamfer`,
           e,
           { kernel: kernel.kernelId },
-          'Chamfer by distances instead, or use the occt-wasm kernel'
+          'Chamfer by one symmetric distance instead, or use the occt-wasm kernel'
         )
       );
     }
@@ -185,7 +185,7 @@ function perEdgeUnsupported(kernelId: string, cause: unknown): Err<BrepError> {
       `chamferDistAngles: the ${kernelId} kernel cannot give each edge its own distance and angle`,
       cause,
       { kernel: kernelId },
-      'Give every edge the same { distance, angle }, or use the occt-wasm kernel (5.9.0 or later)'
+      'Use the occt-wasm kernel (5.9.0 or later), or give every edge the same { distance, angle } on a kernel that has a distance-angle chamfer'
     )
   );
 }

@@ -7,6 +7,7 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import {
@@ -23,6 +24,7 @@ import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/co
 import type { BooleanOptions, KernelShape, ShapeEvolution, KernelType } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
+import { chamferUnsupportedError } from './modifierFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -378,6 +380,8 @@ export function filletWithEvolution(
  * @param shape - The shape to modify.
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
+ * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
+ *   distances asked for (brepkit has no asymmetric chamfer).
  */
 // brepjs-patterns-disable: max-function-lines
 export function chamferWithEvolution(
@@ -452,6 +456,7 @@ export function chamferWithEvolution(
     propagateAllMetadata(evolution, [shape], cast);
     return ok({ shape: cast as ValidSolid, evolution });
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(chamferUnsupportedError(e));
     const raw = e instanceof Error ? e.message : String(e);
     return err(
       kernelError('CHAMFER_FAILED', `Chamfer operation failed: ${raw}`, e, {

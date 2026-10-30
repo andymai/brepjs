@@ -306,6 +306,13 @@ describe('chamfer() with { distance, angle } per edge', () => {
       expect(error.kind).toBe('UNSUPPORTED');
       expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
     }
+    // This kernel has no distance-angle chamfer at all, so the per-edge hint
+    // may offer one shared { distance, angle } only on a kernel that has one.
+    const perEdge = results.at(-1);
+    if (!perEdge) throw new Error('no per-edge result');
+    expect(unwrapErr(perEdge).suggestion).toContain(
+      'on a kernel that has a distance-angle chamfer'
+    );
   });
 
   it('names the edge it could not chamfer', (ctx) => {

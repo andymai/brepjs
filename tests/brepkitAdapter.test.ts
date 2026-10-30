@@ -807,6 +807,61 @@ describe('BrepkitAdapter', () => {
       );
     });
 
+    it('an asymmetric chamfer is unsupported without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      const near = edges[0];
+
+      for (const distance of [
+        [0.2, 0.4] as [number, number],
+        (edge: unknown): number | [number, number] => (edge === near ? [0.2, 0.4] : 0.3),
+      ]) {
+        let caught: unknown;
+        try {
+          adapter.chamfer(box, edges, distance);
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      // The callback is checked before any group is chamfered.
+      expect(mock.chamfer).not.toHaveBeenCalled();
+    });
+
+    it('chamfers two equal distances symmetrically without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      adapter.chamfer(box, edges, [0.3, 0.3]);
+      adapter.chamfer(box, edges, () => [0.3, 0.3]);
+
+      expect(mock.chamfer).toHaveBeenCalledTimes(2);
+      for (const call of mock.chamfer.mock.calls) expect(call[2]).toBe(0.3);
+    });
+
+    it('delegates asymmetric distances to chamferAsymmetric', () => {
+      const mock = { ...createMockBrepKernel(), chamferAsymmetric: vi.fn(() => 99) };
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      const near = edges[0];
+      adapter.chamfer(box, edges, [0.2, 0.4]);
+      adapter.chamfer(box, edges, (edge) => (edge === near ? [0.2, 0.4] : 0.3));
+
+      expect(mock.chamferAsymmetric).toHaveBeenNthCalledWith(
+        1,
+        (box as BrepkitHandle).id,
+        edges.map((e) => (e as BrepkitHandle).id),
+        0.2,
+        0.4
+      );
+      expect(mock.chamferAsymmetric).toHaveBeenCalledTimes(2);
+      expect(mock.chamfer).toHaveBeenCalledOnce();
+    });
+
     it('chamferDistAngle is unsupported without chamferAsymmetric', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);
