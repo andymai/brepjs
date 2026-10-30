@@ -521,10 +521,7 @@ function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
 
     sweep(spine: Shapeable<Wire>, opts?: SweepOptions): Wrapped3D<Shape3D> {
       if (!isWire(val)) throw new Error('sweep requires a Wire');
-      const result = unwrapOrThrow(_sweep(asClosedWire(val), resolve(spine), opts));
-      // _sweep may return [Shape3D, Wire, Wire] in shell mode; extract the shape
-      const shape3D: Shape3D = Array.isArray(result) ? result[0] : result;
-      return wrap3D(shape3D);
+      return wrap3D(unwrapOrThrow(_sweep(asClosedWire(val), resolve(spine), opts)));
     },
   };
 }

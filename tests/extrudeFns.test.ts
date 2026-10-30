@@ -32,7 +32,7 @@ import {
   type OrientedFace,
   type PlanarFace,
 } from '@/index.js';
-import type { Shape3D, Wire } from '@/core/shapeTypes.js';
+import type { Wire } from '@/core/shapeTypes.js';
 import { createFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
@@ -134,8 +134,7 @@ describe('extrudeFns', () => {
       const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
       const result = sweep(profile, spine);
       expect(isOk(result)).toBe(true);
-      const swept = unwrap(result);
-      expect(!Array.isArray(swept) && isShape3D(swept)).toBe(true);
+      expect(isShape3D(unwrap(result))).toBe(true);
     });
   });
 
@@ -147,15 +146,14 @@ describe('extrudeFns', () => {
       const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
       const result = sweep(profile, spine, { mode: 'simple' });
       expect(isOk(result)).toBe(true);
-      const swept = unwrap(result);
-      expect(!Array.isArray(swept) && isShape3D(swept)).toBe(true);
+      expect(isShape3D(unwrap(result))).toBe(true);
     });
 
     it('caps a closed profile into a solid', () => {
       const c = sketchCircle(2);
       const profile = castClosedWire(c.wire.wrapped);
       using spineWire = unwrap(wire([line([0, 0, 0], [0, 0, 20])]));
-      using result = unwrap(sweep(profile, spineWire, { mode: 'simple' })) as Shape3D;
+      using result = unwrap(sweep(profile, spineWire, { mode: 'simple' }));
       expect(isSolid(result)).toBe(true);
       expect(unwrap(measureVolume(result))).toBeCloseTo(Math.PI * 2 * 2 * 20, 3);
       c.delete();
@@ -171,8 +169,7 @@ describe('extrudeFns', () => {
         endFactor: 0.5,
       });
       expect(isOk(result)).toBe(true);
-      const extruded = unwrap(result);
-      expect(!Array.isArray(extruded) && isShape3D(extruded)).toBe(true);
+      expect(isShape3D(unwrap(result))).toBe(true);
     });
 
     it('extrudes with s-curve profile', () => {
@@ -199,8 +196,7 @@ describe('extrudeFns', () => {
       const w = castClosedWire(rect.wire.wrapped);
       const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 20]);
       expect(isOk(result)).toBe(true);
-      const twisted = unwrap(result);
-      expect(!Array.isArray(twisted) && isShape3D(twisted)).toBe(true);
+      expect(isShape3D(unwrap(result))).toBe(true);
     });
 
     it('twists the other way for a negative angle', () => {
@@ -217,8 +213,8 @@ describe('extrudeFns', () => {
           )
         )
       );
-      using ccw = unwrap(twistExtrude(tri, 30, [0, 0, 0], [0, 0, 10])) as Shape3D;
-      using cw = unwrap(twistExtrude(tri, -30, [0, 0, 0], [0, 0, 10])) as Shape3D;
+      using ccw = unwrap(twistExtrude(tri, 30, [0, 0, 0], [0, 0, 10]));
+      using cw = unwrap(twistExtrude(tri, -30, [0, 0, 0], [0, 0, 10]));
       const a = getBounds(ccw);
       const b = getBounds(cw);
       expect(a.yMax).toBeCloseTo(2, 4);
