@@ -18,6 +18,7 @@ import {
   isShape3D,
 } from '@/core/shapeTypes.js';
 import { downcast } from './cast.js';
+import { propagateMetadataByHash } from './metadata/metadataPropagation.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
 import {
@@ -78,8 +79,11 @@ function chamferAngleFailed(
   );
 }
 
-/** Cast a fresh kernel result to a 3D shape, releasing every intermediate slot. */
-function castChamferResult(raw: KernelShape): Result<Shape3D> {
+/**
+ * Cast a fresh kernel result to a 3D shape, releasing every intermediate slot,
+ * and carry the face origins of `input` over to it.
+ */
+function castChamferResult(input: Shape3D, raw: KernelShape): Result<Shape3D> {
   const downcastResult = downcast(raw);
   if (isErr(downcastResult)) {
     getKernel().dispose(raw);
@@ -96,6 +100,9 @@ function castChamferResult(raw: KernelShape): Result<Shape3D> {
       typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngle did not produce a 3D shape')
     );
   }
+  // No kernel reports face history for a distance-angle chamfer, so only face
+  // origins carry over (tags and colors are lost), matched by hash and geometry.
+  propagateMetadataByHash([input], wrapped);
   return ok(wrapped);
 }
 
@@ -159,7 +166,7 @@ export function chamferDistAngle(
       edgeCount: edges.length,
     });
   }
-  return castChamferResult(raw);
+  return castChamferResult(shape, raw);
 }
 
 /** An edge and the distance-angle chamfer to put on it. */
@@ -241,5 +248,5 @@ export function chamferDistAngles(
     if (isUnsupportedKernelOperationError(e)) return perEdgeUnsupported(kernel.kernelId, e);
     return chamferAngleFailed('chamferDistAngles', e, edges, { edgeCount: entries.length });
   }
-  return castChamferResult(raw);
+  return castChamferResult(shape, raw);
 }

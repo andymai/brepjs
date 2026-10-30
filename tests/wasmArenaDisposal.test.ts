@@ -129,7 +129,7 @@ import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
 import { collectInputFaceHashes } from '@/topology/metadata/metadataPropagation.js';
-import { setShapeOrigin } from '@/topology/metadata/originTrackingFns.js';
+import { getFaceOrigins, setShapeOrigin } from '@/topology/metadata/originTrackingFns.js';
 import { checkInterference, checkAllInterferences } from '@/measurement/interferenceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { makeExternalGear } from '@/gear/index.js';
@@ -670,6 +670,21 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           expect(isErr(chamfer(b, edges, bySide<number | typeof near>(1, near)))).toBe(true);
           // 6 mm and 6·tan 45° setbacks on both sides of an edge of a 10 mm cube overlap.
           expect(isErr(chamfer(b, edges, bySide(near, { distance: 6, angle: 45 })))).toBe(true);
+        })
+      ).toBe(0);
+    });
+
+    it('distance-angle chamfers that carry face origins over leak nothing', () => {
+      const near = { distance: 1, angle: 30 };
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          setShapeOrigin(b, 1);
+          const edges = verticalEdges(b);
+          using uniform = unwrap(chamferDistAngleShape(b, edges, 1, 30));
+          using perEdge = unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })));
+          expect(getFaceOrigins(uniform)?.size).toBeGreaterThan(0);
+          expect(getFaceOrigins(perEdge)?.size).toBeGreaterThan(0);
         })
       ).toBe(0);
     });
