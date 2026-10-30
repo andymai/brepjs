@@ -11,12 +11,26 @@ import {
   exportSTL,
   exportIGES,
   compound,
+  cut,
+  face,
+  getBounds,
+  getEdges,
+  getFaces,
+  getHashCode,
+  isPlanarWire,
+  line,
+  sewShells,
+  translate,
+  vertexPosition,
+  verticesOfEdge,
+  wireLoop,
   isOk,
   isErr,
   unwrap,
   unwrapErr,
   clearMeshCache,
   getKernel,
+  type Face,
 } from '@/index.js';
 
 describe('meshFns', () => {
@@ -32,6 +46,27 @@ describe('meshFns', () => {
       expect(m.triangles.length).toBeGreaterThan(0);
       expect(m.normals.length).toBeGreaterThan(0);
       expect(m.faceGroups.length).toBe(6); // 6 faces
+    });
+
+    it("labels a bare face's triangles with the face's hash code", () => {
+      using b = box(10, 10, 10);
+      for (const f of getFaces(b)) {
+        expect(mesh(f, { cache: false }).faceGroups.map((g) => g.faceId)).toEqual([getHashCode(f)]);
+      }
+    });
+
+    it('meshes a compound of loose faces and a sewn shell', () => {
+      using a = squareSheet();
+      using b = translate(a, [20, 0, 0]);
+      using sheets = compound([a, b]);
+      const loose = mesh(sheets, { cache: false });
+      // Two 10 x 10 squares, two triangles each.
+      expect(loose.triangles.length).toBe(4 * 3);
+      expect(loose.faceGroups.map((g) => g.faceId).sort((x, y) => x - y)).toEqual(
+        [getHashCode(a), getHashCode(b)].sort((x, y) => x - y)
+      );
+      using shell = unwrap(sewShells([a, b], true));
+      expect(mesh(shell, { cache: false }).triangles.length).toBe(4 * 3);
     });
 
     it('respects tolerance option', () => {
@@ -142,6 +177,61 @@ describe('meshFns', () => {
       const edgeMesh = meshEdges(b);
       expect(edgeMesh.lines.length).toBeGreaterThan(0);
       expect(edgeMesh.edgeGroups.length).toBe(12); // 12 edges on a box
+    });
+
+    it("labels each edge polyline with its edge's hash code", () => {
+      using b = box(40, 30, 20);
+      const { lines, edgeGroups } = meshEdges(b, { cache: false });
+      const edges = getEdges(b);
+      expect(edgeGroups.map((g) => g.edgeId).sort((x, y) => x - y)).toEqual(
+        edges.map(getHashCode).sort((x, y) => x - y)
+      );
+      // Each polyline runs between the end points of the edge it names.
+      for (const g of edgeGroups) {
+        const edge = edges.find((e) => getHashCode(e) === g.edgeId);
+        if (!edge) throw new Error(`no edge has hash ${g.edgeId}`);
+        const ends = verticesOfEdge(edge).map((v) => vertexPosition(v));
+        const first = pointAt(lines, g.start);
+        const last = pointAt(lines, g.start + g.count - 1);
+        expect(ends.some((p) => near(p, first))).toBe(true);
+        expect(ends.some((p) => near(p, last))).toBe(true);
+      }
+
+      using drilled = unwrap(cut(box(40, 30, 20), cylinder(5, 30, { at: [20, 15, -5] })));
+      const drilledIds = meshEdges(drilled, { cache: false }).edgeGroups.map((g) => g.edgeId);
+      expect(drilledIds.sort((x, y) => x - y)).toEqual(
+        getEdges(drilled)
+          .map(getHashCode)
+          .sort((x, y) => x - y)
+      );
+    });
+
+    it('meshes the edges of a loose face and of a compound of faces', () => {
+      using a = squareSheet();
+      using b = translate(a, [20, 0, 0]);
+      const one = meshEdges(a, { cache: false });
+      expect(one.edgeGroups.map((g) => g.edgeId).sort((x, y) => x - y)).toEqual(
+        getEdges(a)
+          .map(getHashCode)
+          .sort((x, y) => x - y)
+      );
+      expect(one.lines.length).toBe(4 * 2 * 3);
+      using sheets = compound([a, b]);
+      expect(meshEdges(sheets, { cache: false }).edgeGroups).toHaveLength(8);
+    });
+
+    it('samples the circular edge of a loose disc onto the circle', () => {
+      using c = cylinder(5, 10);
+      const cap = getFaces(c).find((f) => getBounds(f).zMin > 9.9);
+      if (!cap) throw new Error('cylinder has no top cap');
+      const { lines, edgeGroups } = meshEdges(cap, { tolerance: 0.01, cache: false });
+      expect(edgeGroups).toHaveLength(1);
+      expect(lines.length / 6).toBeGreaterThan(16);
+      for (let i = 0; i < lines.length / 3; i++) {
+        const [x, y, z] = pointAt(lines, i);
+        expect(Math.hypot(x, y)).toBeCloseTo(5, 4);
+        expect(z).toBeCloseTo(10, 4);
+      }
     });
 
     it('returns cached result on second call with same parameters', () => {
@@ -514,3 +604,24 @@ describe('meshFns', () => {
     });
   });
 });
+
+/** A loose 10 x 10 square face in the XZ plane. */
+function squareSheet(): Face {
+  using e1 = line([0, 0, 0], [10, 0, 0]);
+  using e2 = line([10, 0, 0], [10, 0, 10]);
+  using e3 = line([10, 0, 10], [0, 0, 10]);
+  using e4 = line([0, 0, 10], [0, 0, 0]);
+  using loop = unwrap(wireLoop([e1, e2, e3, e4]));
+  if (!isPlanarWire(loop)) throw new Error('square is not planar');
+  return unwrap(face(loop));
+}
+
+function pointAt(lines: Float32Array, vertex: number): [number, number, number] {
+  return [lines[vertex * 3] ?? NaN, lines[vertex * 3 + 1] ?? NaN, lines[vertex * 3 + 2] ?? NaN];
+}
+
+function near(a: readonly number[], b: readonly number[]): boolean {
+  const [ax = 0, ay = 0, az = 0] = a;
+  const [bx = 0, by = 0, bz = 0] = b;
+  return Math.hypot(ax - bx, ay - by, az - bz) < 1e-4;
+}

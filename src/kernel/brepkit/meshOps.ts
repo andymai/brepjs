@@ -15,9 +15,12 @@ import {
   type BrepkitHandle,
   unwrap,
   toArray,
+  solidHandle,
+  edgeParamRange,
   DEFAULT_DEFLECTION,
   syntheticCompounds,
 } from './helpers.js';
+import { iterShapes } from './topologyOps.js';
 import { wasmIndex, vec3At } from '@/utils/vec3.js';
 
 export function mesh(
@@ -34,9 +37,9 @@ export function mesh(
   if (bkHandle.type === 'solid') {
     result = meshSolid(bk, h, deflection, !!options.includeUVs, angularTol);
   } else if (bkHandle.type === 'face') {
-    result = meshSingleFace(bk, h, deflection, 0, angularTol);
-  } else if (bkHandle.type === 'compound') {
-    result = meshCompound(bk, h, deflection, !!options.includeUVs, angularTol);
+    result = meshSingleFace(bk, h, deflection, angularTol);
+  } else if (bkHandle.type === 'compound' || bkHandle.type === 'shell') {
+    result = concatMeshes(meshParts(bk, bkHandle, deflection, !!options.includeUVs, angularTol));
   } else {
     throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
   }
@@ -51,38 +54,56 @@ export function mesh(
 }
 
 /**
- * Mesh every solid in a compound and concatenate the results.
+ * Mesh each solid and face inside a compound or shell, one part apiece.
  *
- * Text solids are compounds — one solid per glyph — so without this the whole
- * text path throws before any geometry runs, which reads as a geometry failure
- * when it is really a missing adapter capability.
+ * Text solids are compounds (one solid per glyph), and a sheet of loose faces
+ * is a compound of faces or a sewn shell, so each child is meshed by what it
+ * is: a solid as a solid, a shell as its faces, a face as itself.
+ *
+ * Compounds come in two flavours and only one is arena-backed. A synthetic
+ * compound (non-solid children, id from `nextSyntheticId`) exists JS-side only,
+ * so asking the kernel to resolve it raises an invalid-handle error; its
+ * children are read from `syntheticCompounds` instead. Wires, edges and
+ * vertices contribute no triangles and are skipped rather than throwing.
+ */
+function meshParts(
+  bk: BrepkitKernel,
+  h: BrepkitHandle,
+  deflection: number,
+  includeUVs: boolean,
+  angularTolerance?: number
+): KernelMeshResult[] {
+  switch (h.type) {
+    case 'solid':
+      return [meshSolid(bk, h.id, deflection, includeUVs, angularTolerance)];
+    case 'face':
+      return [meshSingleFace(bk, h.id, deflection, angularTolerance)];
+    case 'shell':
+      return toArray(bk.getShellFaces(h.id)).map((faceId) =>
+        meshSingleFace(bk, faceId, deflection, angularTolerance)
+      );
+    case 'compound': {
+      const synthetic = syntheticCompounds.get(h.id);
+      const children = synthetic ?? toArray(bk.getCompoundSolids(h.id)).map(solidHandle);
+      return children.flatMap((child) =>
+        meshParts(bk, child, deflection, includeUVs, angularTolerance)
+      );
+    }
+    default:
+      return [];
+  }
+}
+
+/**
+ * Concatenate meshes into one.
  *
  * Triangle indices are vertex-relative, so each part's are rebased by the
  * running vertex count; `faceGroups` index into the triangle list, so their
  * `start` is rebased by the running triangle count. `uvs` are only carried
  * when every part supplied them, since a partial UV array would misalign
  * against the concatenated vertices.
- *
- * Compounds come in two flavours and only one is arena-backed. A synthetic
- * compound (non-solid children, id from `nextSyntheticId`) exists JS-side only,
- * so asking the kernel to resolve it raises an invalid-handle error; its
- * children are read from `syntheticCompounds` instead. Non-solid children
- * contribute no triangles and are skipped rather than throwing, matching how a
- * wire or edge meshes to nothing elsewhere in this adapter.
  */
-function meshCompound(
-  bk: BrepkitKernel,
-  compoundId: number,
-  deflection: number,
-  includeUVs: boolean,
-  angularTolerance?: number
-): KernelMeshResult {
-  const synthetic = syntheticCompounds.get(compoundId);
-  const solidIds: number[] = synthetic
-    ? synthetic.filter((c) => c.type === 'solid').map((c) => c.id)
-    : toArray(bk.getCompoundSolids(compoundId));
-  const parts = solidIds.map((id) => meshSolid(bk, id, deflection, includeUVs, angularTolerance));
-
+function concatMeshes(parts: KernelMeshResult[]): KernelMeshResult {
   if (parts.length === 1) return wasmIndex(parts, 0);
   if (parts.length === 0) {
     return {
@@ -139,16 +160,29 @@ export function meshEdges(
 ): KernelEdgeMeshResult {
   const bkHandle = shape as BrepkitHandle;
 
-  if (bkHandle.type !== 'solid') {
-    return { lines: new Float32Array(0), edgeGroups: [] };
-  }
-
   // Forward the angular tolerance like the face/solid tessellation paths do; a
   // non-positive value means "unspecified" → the kernel's default angular cap.
   const angularTol = angularTolerance > 0 ? angularTolerance : undefined;
 
-  // Use meshEdgesAll (unfiltered) for OCCT parity
+  if (bkHandle.type !== 'solid') {
+    const seen = new Set<number>();
+    const edgeIds: number[] = [];
+    for (const edge of iterShapes(bk, shape, 'edge')) {
+      const id = unwrap(edge);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      edgeIds.push(id);
+    }
+    return sampleEdges(bk, edgeIds, tolerance, angularTol ?? DEFAULT_ANGULAR_TOLERANCE);
+  }
+
+  // meshEdgesAll (unfiltered, for OCCT parity) samples the solid's edges in
+  // getSolidEdges order, one polyline per edge, so polyline i is edge edgeIds[i].
+  const edgeIds = toArray(bk.getSolidEdges(bkHandle.id));
   const edgeLines = bk.meshEdgesAll(bkHandle.id, tolerance, angularTol);
+  if (edgeLines.edgeCount !== edgeIds.length) {
+    return sampleEdges(bk, edgeIds, tolerance, angularTol ?? DEFAULT_ANGULAR_TOLERANCE);
+  }
   const positions = edgeLines.positions;
   const offsets = edgeLines.offsets;
   const edgeCount = edgeLines.edgeCount;
@@ -177,7 +211,7 @@ export function meshEdges(
     edgeGroups.push({
       start: segStart,
       count: segments.length / 3 - segStart,
-      edgeHash: i,
+      edgeHash: wasmIndex(edgeIds, i),
     });
   }
 
@@ -185,6 +219,99 @@ export function meshEdges(
     lines: new Float32Array(segments),
     edgeGroups,
   };
+}
+
+/** brepkit's own default angular deflection (`DEFAULT_ANGULAR_TOL`, ~20°). */
+const DEFAULT_ANGULAR_TOLERANCE = 0.35;
+const EDGE_SAMPLE_START_SEGMENTS = 4;
+const EDGE_SAMPLE_MAX_DEPTH = 8;
+
+/**
+ * Sample edges one at a time into line-segment pairs labelled with each edge's
+ * id. Edges outside a solid have no batch sampler, so each curve is split until
+ * a segment's midpoint sits within `tolerance` of its chord and its end
+ * tangents turn by no more than `angularTolerance`.
+ */
+function sampleEdges(
+  bk: BrepkitKernel,
+  edgeIds: number[],
+  tolerance: number,
+  angularTolerance: number
+): KernelEdgeMeshResult {
+  const segments: number[] = [];
+  const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
+  for (const edgeId of edgeIds) {
+    const points = sampleEdgePoints(bk, edgeId, tolerance, angularTolerance);
+    const segStart = segments.length / 3;
+    for (let i = 0; i + 1 < points.length; i++) {
+      segments.push(...wasmIndex(points, i), ...wasmIndex(points, i + 1));
+    }
+    edgeGroups.push({ start: segStart, count: segments.length / 3 - segStart, edgeHash: edgeId });
+  }
+  return { lines: new Float32Array(segments), edgeGroups };
+}
+
+type Vec3Tuple = [number, number, number];
+
+function sampleEdgePoints(
+  bk: BrepkitKernel,
+  edgeId: number,
+  tolerance: number,
+  angularTolerance: number
+): Vec3Tuple[] {
+  if (bk.getEdgeCurveType(edgeId) === 'LINE') {
+    const v = bk.getEdgeVertices(edgeId);
+    return [vec3At(v, 0), vec3At(v, 3)];
+  }
+  const [t0, t1] = edgeParamRange(bk, edgeId);
+  const at = (t: number): { p: Vec3Tuple; d: Vec3Tuple } => {
+    const r = bk.evaluateEdgeCurveD1(edgeId, t);
+    return { p: vec3At(r, 0), d: vec3At(r, 3) };
+  };
+  const points: Vec3Tuple[] = [];
+  const refine = (
+    a: number,
+    pa: ReturnType<typeof at>,
+    b: number,
+    pb: ReturnType<typeof at>,
+    depth: number
+  ): void => {
+    const m = (a + b) / 2;
+    const pm = at(m);
+    const sag = Math.hypot(
+      pm.p[0] - (pa.p[0] + pb.p[0]) / 2,
+      pm.p[1] - (pa.p[1] + pb.p[1]) / 2,
+      pm.p[2] - (pa.p[2] + pb.p[2]) / 2
+    );
+    if (
+      depth < EDGE_SAMPLE_MAX_DEPTH &&
+      (sag > tolerance || turnAngle(pa.d, pb.d) > angularTolerance)
+    ) {
+      refine(a, pa, m, pm, depth + 1);
+      refine(m, pm, b, pb, depth + 1);
+      return;
+    }
+    points.push(pb.p);
+  };
+  let prevT = t0;
+  let prev = at(t0);
+  points.push(prev.p);
+  for (let i = 1; i <= EDGE_SAMPLE_START_SEGMENTS; i++) {
+    const t = t0 + ((t1 - t0) * i) / EDGE_SAMPLE_START_SEGMENTS;
+    const next = at(t);
+    refine(prevT, prev, t, next, 0);
+    prevT = t;
+    prev = next;
+  }
+  return points;
+}
+
+function turnAngle(a: Vec3Tuple, b: Vec3Tuple): number {
+  const la = Math.hypot(a[0], a[1], a[2]);
+  const lb = Math.hypot(b[0], b[1], b[2]);
+  if (la === 0 || lb === 0) return 0;
+  const cos = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb);
+  return Math.acos(Math.min(1, Math.max(-1, cos)));
 }
 
 export function hasTriangulation(_bk: BrepkitKernel, _shape: KernelShape): boolean {
@@ -430,12 +557,11 @@ function meshSolidPerFace(
   };
 }
 
-/** Tessellate a single face and return brepjs mesh format. */
+/** Tessellate a single face, its triangles grouped under the face's own hash. */
 function meshSingleFace(
   bk: BrepkitKernel,
   faceId: number,
   deflection: number,
-  faceHash: number,
   angularTolerance?: number
 ): KernelMeshResult {
   const faceMesh = bk.tessellateFace(faceId, deflection, angularTolerance);
@@ -454,7 +580,7 @@ function meshSingleFace(
     normals: new Float32Array(normals),
     triangles: new Uint32Array(indices),
     uvs: new Float32Array(uvs),
-    faceGroups: [{ start: 0, count: indices.length, faceHash }],
+    faceGroups: [{ start: 0, count: indices.length, faceHash: faceId }],
   };
 }
 

@@ -10,6 +10,7 @@ import { vec3At } from '@/utils/vec3.js';
  */
 function stubKernel(): BrepkitKernel {
   const partial: Partial<BrepkitKernel> = {
+    getSolidEdges: () => new Uint32Array([7, 9]),
     meshEdgesAll: () => ({
       positions: new Float64Array([
         0,
@@ -57,6 +58,7 @@ describe('brepkit meshEdges', () => {
 
   it('drops degenerate pairs, matching the occtWasm adapter', () => {
     const partial: Partial<BrepkitKernel> = {
+      getSolidEdges: () => new Uint32Array([7]),
       meshEdgesAll: () => ({
         // A repeated point mid-polyline yields a zero-length segment.
         positions: new Float64Array([0, 0, 0, 1, 0, 0, 1, 0, 0, 2, 0, 0]),
@@ -68,13 +70,27 @@ describe('brepkit meshEdges', () => {
     expect(Array.from(lines)).toEqual([0, 0, 0, 1, 0, 0, 1, 0, 0, 2, 0, 0]);
   });
 
-  it('reports edgeGroups indexing the expanded buffer', () => {
+  it('reports edgeGroups indexing the expanded buffer, labelled with edge ids', () => {
     const { lines, edgeGroups } = meshEdges(stubKernel(), shape, 0.1, 0.35);
+    // Polyline i is the solid's i-th edge, so each group carries that edge's id.
     expect(edgeGroups).toEqual([
-      { start: 0, count: 2, edgeHash: 0 },
-      { start: 2, count: 4, edgeHash: 1 },
+      { start: 0, count: 2, edgeHash: 7 },
+      { start: 2, count: 4, edgeHash: 9 },
     ]);
     const last = edgeGroups[edgeGroups.length - 1];
     expect((last?.start ?? 0) + (last?.count ?? 0)).toBe(lines.length / 3);
+  });
+
+  it('samples each edge itself when the polylines do not line up with the edges', () => {
+    const partial: Partial<BrepkitKernel> = {
+      getSolidEdges: () => new Uint32Array([3, 4, 5]),
+      meshEdgesAll: (solid, deflection, angularTolerance) =>
+        stubKernel().meshEdgesAll(solid, deflection, angularTolerance),
+      getEdgeCurveType: () => 'LINE',
+      getEdgeVertices: (edge: number) => new Float64Array([edge, 0, 0, edge, 1, 0]),
+    };
+    const { lines, edgeGroups } = meshEdges(partial as BrepkitKernel, shape, 0.1, 0.35);
+    expect(edgeGroups.map((g) => g.edgeHash)).toEqual([3, 4, 5]);
+    expect(Array.from(lines)).toEqual([3, 0, 0, 3, 1, 0, 4, 0, 0, 4, 1, 0, 5, 0, 0, 5, 1, 0]);
   });
 });
