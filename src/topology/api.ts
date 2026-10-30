@@ -311,7 +311,8 @@ function resolveFaces(
 }
 
 type ChamferDistAngle = { distance: number; angle: number };
-type ChamferEdgeDistance = number | [number, number] | ChamferDistAngle | null;
+type ChamferEdgeDistAngle = ChamferDistAngle & { face?: Face | undefined };
+type ChamferEdgeDistance = number | [number, number] | ChamferEdgeDistAngle | null;
 
 function isDistAngle(value: ChamferDistance | ChamferEdgeDistance): value is ChamferDistAngle {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

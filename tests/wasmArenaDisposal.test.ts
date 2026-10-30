@@ -829,12 +829,18 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const edges = verticalEdges(b);
           using uniform = unwrap(chamferDistAngleShape(b, edges, 1, 30));
           using perEdge = unwrap(chamfer(b, edges, bySide(near, { distance: 2, angle: 60 })));
-          for (const chamfered of [uniform, perEdge]) {
+          using fromFace = unwrap(
+            chamfer(b, edges, (e) => ({ ...near, face: facesOfEdge(b, e)[0] }))
+          );
+          for (const chamfered of [uniform, perEdge, fromFace]) {
             const [top] = findFacesByTag(chamfered, 'top');
             expect(top && getFaceColor(chamfered, top)).toEqual([0, 1, 0, 1]);
           }
           // 6 mm and 6·tan 45° setbacks on both sides of an edge of a 10 mm cube overlap.
           expect(isErr(chamfer(b, edges, bySide(near, { distance: 6, angle: 45 })))).toBe(true);
+          // The top face does not meet a vertical edge.
+          const top = getFaces(b).find(isTop);
+          expect(isErr(chamfer(b, edges, () => ({ ...near, face: top })))).toBe(true);
         })
       ).toBe(0);
     });

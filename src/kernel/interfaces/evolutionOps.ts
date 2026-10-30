@@ -18,6 +18,7 @@ import type {
   KernelType,
   OperationResult,
 } from '@/kernel/types.js';
+import type { ChamferDistAngleEdge } from './modifierOps.js';
 
 export interface KernelEvolutionOps {
   translateWithHistory(
@@ -124,7 +125,7 @@ export interface KernelEvolutionOps {
    */
   chamferDistAnglesWithHistory?(
     shape: KernelShape,
-    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>,
+    edges: ReadonlyArray<ChamferDistAngleEdge>,
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;

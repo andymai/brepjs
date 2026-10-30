@@ -15,6 +15,7 @@ import type {
   OperationResult,
   ShapeEvolution,
 } from '@/kernel/types.js';
+import type { ChamferDistAngleEdge } from '@/kernel/interfaces/modifierOps.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
   draftAnglesRad,
@@ -24,6 +25,7 @@ import {
   needsOcctWasm59,
   needsOcctWasm511,
   parseEvolution,
+  referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
   unwrap,
@@ -482,7 +484,7 @@ export function chamferDistAnglesWithHistory(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shape: KernelShape,
-  entries: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>,
+  entries: ReadonlyArray<ChamferDistAngleEdge>,
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
@@ -495,11 +497,12 @@ export function chamferDistAnglesWithHistory(
   const edgeIds = edges.map(unwrap);
   const distances = entries.map((e) => e.distance);
   const anglesDeg = entries.map((e) => e.angleDeg);
+  const faceIds = referenceFaceIds(entries.map((e) => e.face));
   const edgeVec = makeVecU32(Module, edgeIds);
   const distanceVec = makeVecDouble(Module, distances);
   const angleVec = makeVecDouble(Module, anglesDeg);
-  // No reference faces: each edge's distance is set back on its first adjacent face.
-  const faceVec = makeVecU32(Module, []);
+  // With no ids, each edge's distance is set back on its first adjacent face.
+  const faceVec = makeVecU32(Module, faceIds);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
     const evo = reportingFaultyEdges(edges, () =>

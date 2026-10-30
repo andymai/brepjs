@@ -17,11 +17,14 @@ import {
   measureVolume,
   isShape3D,
   getEdges,
+  getFaces,
   getBounds,
+  facesOfEdge,
+  isSameShape,
 } from '@/index.js';
 import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
-import type { Edge, Shape3D } from '@/core/shapeTypes.js';
+import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -349,5 +352,112 @@ describe('chamfer() with { distance, angle } per edge', () => {
     const error = unwrapErr(result);
     expect(error.code).toBe('CHAMFER_ANGLE_FAILED');
     expect(error.message).toContain('tangent-continuous');
+  });
+
+  describe('measured from a given face', () => {
+    const corner = (solid: Shape3D) =>
+      verticalEdges(solid).find((e) => getBounds(e).xMax < 5 && getBounds(e).yMax < 5);
+    /** The face of a chamfered box that slopes across a vertical edge: the bevel. */
+    const bevelBounds = (solid: Shape3D) => {
+      const sloped = getFaces(solid).filter((f) => {
+        const { xMin, xMax, yMin, yMax, zMin, zMax } = getBounds(f);
+        return Math.min(xMax - xMin, yMax - yMin, zMax - zMin) > 1e-6;
+      });
+      expect(sloped).toHaveLength(1);
+      return getBounds(sloped[0] as Face);
+    };
+
+    it("sets the distance back on the edge's given face", (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.perEdge');
+      using b = box(10, 10, 10);
+      const edge = corner(b);
+      if (!edge) throw new Error('no corner edge');
+      const atX0 = facesOfEdge(b, edge).find((f) => getBounds(f).xMax < 1e-6);
+      const atY0 = facesOfEdge(b, edge).find((f) => getBounds(f).yMax < 1e-6);
+      if (!atX0 || !atY0) throw new Error('corner faces not found');
+
+      // 1 mm along the reference face, tan 30 along the other.
+      using fromX0 = unwrap(chamfer(b, [edge], () => ({ ...near, face: atX0 })));
+      expect(bevelBounds(fromX0).yMax).toBeCloseTo(1, 6);
+      expect(bevelBounds(fromX0).xMax).toBeCloseTo(Math.tan(Math.PI / 6), 6);
+      using fromY0 = unwrap(chamfer(b, [edge], () => ({ ...near, face: atY0 })));
+      expect(bevelBounds(fromY0).xMax).toBeCloseTo(1, 6);
+      expect(bevelBounds(fromY0).yMax).toBeCloseTo(Math.tan(Math.PI / 6), 6);
+      expect(unwrap(measureVolume(fromY0))).toBeCloseTo(1000 - loss(near), 6);
+    });
+
+    /** The 20 x 20 x 10 box with rounded vertical edges: its top edges form one tangent chain. */
+    function roundedTopChain(solid: Shape3D) {
+      const edges = getEdges(solid).filter((e) => getBounds(e).zMin > 9.9);
+      const topFace = getFaces(solid).find((f) => getBounds(f).zMin > 10 - 1e-6);
+      if (!topFace) throw new Error('no top face');
+      const straight = (e: Edge) => {
+        const { xMin, xMax, yMin, yMax } = getBounds(e);
+        return xMax - xMin < 1e-6 || yMax - yMin < 1e-6;
+      };
+      const wall = (e: Edge) => facesOfEdge(solid, e).find((f) => !isSameShape(f, topFace));
+      return { edges, topFace, straight, wall };
+    }
+
+    it('matches a chamfer stated from the other face along a tangent chain', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.perEdge');
+      using b = box(20, 20, 10);
+      using rounded = unwrap(fillet(b, verticalEdges(b), 3));
+      const { edges, topFace, straight, wall } = roundedTopChain(rounded);
+      expect(edges.filter(straight)).toHaveLength(4);
+      expect(edges.filter((e) => !straight(e))).toHaveLength(4);
+
+      using oneSided = unwrap(chamfer(rounded, edges, () => ({ ...near, face: topFace })));
+      // 1 mm at 30 degrees from the top sets back tan 30 on the wall, at 60 degrees from it.
+      const fromWall = { distance: Math.tan(Math.PI / 6), angle: 60 };
+      using restated = unwrap(
+        chamfer(rounded, edges, (e) =>
+          straight(e) ? { ...near, face: topFace } : { ...fromWall, face: wall(e) }
+        )
+      );
+      const oneSidedVolume = unwrap(measureVolume(oneSided));
+      expect(oneSidedVolume).toBeLessThan(unwrap(measureVolume(rounded)));
+      expect(unwrap(measureVolume(restated))).toBeCloseTo(oneSidedVolume, 6);
+    });
+
+    it('rejects a chain whose edges state different chamfers from opposite faces', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.perEdge');
+      using b = box(20, 20, 10);
+      using rounded = unwrap(fillet(b, verticalEdges(b), 3));
+      const { edges, topFace, straight, wall } = roundedTopChain(rounded);
+      const error = unwrapErr(
+        chamfer(rounded, edges, (e) => ({ ...near, face: straight(e) ? topFace : wall(e) }))
+      );
+      expect(error.code).toBe('CHAMFER_ANGLE_FAILED');
+      expect(error.message).toContain('differ where the faces meet at 90 degrees');
+    });
+
+    it('rejects a face that is not one of the two faces its edge joins', () => {
+      using b = box(10, 10, 10);
+      const edge = corner(b);
+      const topFace = getFaces(b).find((f) => getBounds(f).zMin > 10 - 1e-6);
+      if (!edge || !topFace) throw new Error('box edge or face not found');
+      const error = unwrapErr(chamfer(b, [edge], () => ({ ...near, face: topFace })));
+      expect(error.code).toBe('CHAMFER_ANGLE_FACE_NOT_ADJACENT');
+      expect(error.metadata?.['edge']).toBe(edge);
+      expect(error.metadata?.['face']).toBe(topFace);
+    });
+
+    it('returns UNSUPPORTED for a given face on a kernel without per-edge chamfers', () => {
+      registerStubKernel('no-per-edge-dist-angle-face', {
+        chamferDistAngles: undefined,
+        chamferDistAnglesWithHistory: undefined,
+      });
+      using b = box(10, 10, 10);
+      const edges = verticalEdges(b);
+      // Every edge takes the same values, so only the faces need the per-edge call.
+      const error = unwrapErr(
+        withKernel('no-per-edge-dist-angle-face', () =>
+          chamfer(b, edges, (e) => ({ ...near, face: facesOfEdge(b, e)[0] }))
+        )
+      );
+      expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
+      expect(error.message).toContain('from a given face');
+    });
   });
 });

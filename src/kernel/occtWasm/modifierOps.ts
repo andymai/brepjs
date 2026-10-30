@@ -5,12 +5,14 @@
  */
 
 import type { KernelShape } from '@/kernel/types.js';
+import type { ChamferDistAngleEdge } from '@/kernel/interfaces/modifierOps.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import {
   draftAnglesRad,
   makeVecDouble,
   makeVecU32,
   needsOcctWasm59,
+  referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
   unwrap,
@@ -79,8 +81,9 @@ interface DistAngle {
 }
 
 /**
- * Chamfer edge i by `distances[i]` and `anglesDeg[i]`. Builds without the
- * per-edge entry point take only `shared`, the one value every edge has.
+ * Chamfer edge i by `distances[i]` and `anglesDeg[i]` from reference face
+ * `faceIds[i]` (see {@link referenceFaceIds}). Builds without the per-edge
+ * entry point take only `shared`, the one value every edge has, and no faces.
  */
 function runChamferDistAngles(
   k: OcctKernelWasm,
@@ -89,12 +92,16 @@ function runChamferDistAngles(
   edges: readonly KernelShape[],
   distances: number[],
   anglesDeg: number[],
+  faceIds: number[],
   shared: DistAngle | undefined
 ): KernelShape {
   const id = unwrap(shape);
   const edgeVec = makeVecU32(Module, edges.map(unwrap));
   try {
     if (!k.chamferDistAngles) {
+      if (faceIds.length > 0) {
+        throw needsOcctWasm59('distance-angle chamfers measured from a given face');
+      }
       if (!shared) throw needsOcctWasm59('per-edge distance-angle chamfers');
       return wrapResult(k, k.chamferDistAngle(id, edgeVec, shared.distance, shared.angleDeg));
     }
@@ -103,8 +110,8 @@ function runChamferDistAngles(
     const chamferDistAngles = k.chamferDistAngles.bind(k);
     const distanceVec = makeVecDouble(Module, distances);
     const angleVec = makeVecDouble(Module, anglesDeg);
-    // No reference faces: each edge's distance is set back on its first adjacent face.
-    const faceVec = makeVecU32(Module, []);
+    // With no ids, each edge's distance is set back on its first adjacent face.
+    const faceVec = makeVecU32(Module, faceIds);
     try {
       const resultId = reportingFaultyEdges(edges, () =>
         chamferDistAngles(id, edgeVec, distanceVec, angleVec, faceVec)
@@ -130,7 +137,7 @@ export function chamferDistAngle(
 ): KernelShape {
   const distances = Array<number>(edges.length).fill(distance);
   const anglesDeg = Array<number>(edges.length).fill(angleDeg);
-  return runChamferDistAngles(k, Module, shape, edges, distances, anglesDeg, {
+  return runChamferDistAngles(k, Module, shape, edges, distances, anglesDeg, [], {
     distance,
     angleDeg,
   });
@@ -148,7 +155,7 @@ export function chamferDistAngles(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
   shape: KernelShape,
-  entries: ReadonlyArray<{ edge: KernelShape } & DistAngle>
+  entries: ReadonlyArray<ChamferDistAngleEdge>
 ): KernelShape {
   return runChamferDistAngles(
     k,
@@ -157,6 +164,7 @@ export function chamferDistAngles(
     entries.map((e) => e.edge),
     entries.map((e) => e.distance),
     entries.map((e) => e.angleDeg),
+    referenceFaceIds(entries.map((e) => e.face)),
     sharedDistAngle(entries)
   );
 }

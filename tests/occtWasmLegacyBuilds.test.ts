@@ -13,6 +13,7 @@ import {
   box,
   chamfer,
   chamferDistAngleShape,
+  facesOfEdge,
   findFacesByTag,
   getBounds,
   getEdges,
@@ -145,6 +146,13 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.9', () => {
     );
     const varying = edges.map((edge, i) => ({ edge, distance: 1, angleDeg: i === 0 ? 30 : 60 }));
     expectUnsupported(() => adapter.chamferDistAngles(b.wrapped, varying));
+    const fromFace = verticalEdgesOf(b).map((edge) => ({
+      edge: edge.wrapped,
+      distance: 1,
+      angleDeg: 30,
+      face: facesOfEdge(b, edge)[0]?.wrapped,
+    }));
+    expectUnsupported(() => adapter.chamferDistAngles(b.wrapped, fromFace));
   });
 
   it('drafts one face about z = 0 and rejects other neutral planes or several faces', () => {
@@ -256,6 +264,24 @@ describe.skipIf(!isOcctWasm)('occt-wasm builds older than 5.11', () => {
       expect(boxFaceOrigins(chamfered)).toEqual(Array<number>(6).fill(8));
       expect(findFacesByTag(chamfered, 'top')).toHaveLength(0);
     }
+  });
+
+  it('measures a distance-angle chamfer from a given face', () => {
+    using b = box(10, 10, 10);
+    const edge = verticalEdgesOf(b).find((e) => getBounds(e).xMax < 5 && getBounds(e).yMax < 5);
+    const atX0 = edge && facesOfEdge(b, edge).find((f) => getBounds(f).xMax < 1e-6);
+    if (!edge || !atX0) throw new Error('corner edge or face not found');
+    using chamfered = withKernel(LEGACY_ID, () =>
+      unwrap(chamfer(b, [edge], () => ({ ...near, face: atX0 })))
+    );
+    const bevel = getFaces(chamfered).find((f) => {
+      const { xMin, xMax, yMin, yMax, zMin, zMax } = getBounds(f);
+      return Math.min(xMax - xMin, yMax - yMin, zMax - zMin) > 1e-6;
+    });
+    if (!bevel) throw new Error('no bevel face');
+    // 1 mm along the x = 0 face, tan 30 along the other.
+    expect(getBounds(bevel).yMax).toBeCloseTo(1, 6);
+    expect(getBounds(bevel).xMax).toBeCloseTo(Math.tan(Math.PI / 6), 6);
   });
 
   it('leaves no arena slots behind', () => {
