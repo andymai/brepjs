@@ -1,0 +1,21 @@
+src/kernel/brepkit/modifierOps.ts
+  s_b1a48d7e30b741::t_9987b671ea5903 63,79
+tests/brepkitAdapter.test.ts
+  s_b1a48d7e30b741::t_9987b671ea5903 1876,1980
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3a8843d1fb3aa02c5ae3e31817475ab17389d67",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
