@@ -23,7 +23,7 @@ import {
   castShape,
 } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
-import type { Face, Shape3D } from '@/core/shapeTypes.js';
+import type { Face } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -202,9 +202,9 @@ describe('pipeline', () => {
     const edges = getEdges(b);
     const faces = getFaces(b);
 
-    const result = pipeline(b as Shape3D)
+    const result = pipeline(b)
       .then((s) => fillet(s, edges.slice(0, 4), 1))
-      .then((s) => shell(s, [faces[0]], 0.5)).result;
+      .then((s) => shell(s, faces.slice(0, 1), 0.5)).result;
 
     expect(isOk(result)).toBe(true);
     const vol = unwrap(measureVolume(unwrap(result)));
@@ -213,7 +213,7 @@ describe('pipeline', () => {
   });
 
   it('short-circuits on first error', () => {
-    const b = box(10, 10, 10) as Shape3D;
+    const b = box(10, 10, 10);
 
     const result = pipeline(b)
       .then((s) => fillet(s, -1)) // invalid radius → Err
@@ -224,7 +224,7 @@ describe('pipeline', () => {
   });
 
   it('accepts a Result as input', () => {
-    const b = box(10, 10, 10) as Shape3D;
+    const b = box(10, 10, 10);
     const filletResult = fillet(b, getEdges(b).slice(0, 2), 1);
     expect(isOk(filletResult)).toBe(true);
 
@@ -240,7 +240,7 @@ describe('pipeline', () => {
   });
 
   it('propagates Err input immediately', () => {
-    const b = box(10, 10, 10) as Shape3D;
+    const b = box(10, 10, 10);
     const errResult = fillet(b, -1); // Err
 
     const result = pipeline(errResult).then((s) => shell(s, [], 1)).result;

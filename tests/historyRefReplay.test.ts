@@ -23,6 +23,7 @@ import {
   assignRoles,
   createEdgeRef,
   isEdgeRef,
+  type AnyShape,
   type RoleTable,
   type Face,
 } from '@/index.js';
@@ -68,7 +69,7 @@ describe.skipIf(!isOcctFamily)('lineage refs in history replay', () => {
       box(p['x'] as number, p['y'] as number, p['z'] as number)
     );
     reg = registerOperation(reg, 'probe', (inputs, p) => {
-      const e = p['edge'];
+      const e = p['edge'] as AnyShape;
       if (isEdge(e)) capturedTopZ = Math.max(...verticesOfEdge(e).map((v) => vertexPosition(v)[2]));
       const [first] = inputs;
       if (first === undefined) throw new Error('probe: no input');

@@ -19,7 +19,7 @@ import {
   faceCenter,
   faceAxis,
 } from '@/index.js';
-import type { MateConstraint } from '@/index.js';
+import type { Face, MateConstraint, Shape3D } from '@/index.js';
 import { solveConstraints, type SolverEntity } from '@/kernel/solverAdapter.js';
 
 beforeAll(async () => {
@@ -27,14 +27,15 @@ beforeAll(async () => {
 }, 30000);
 
 /** Find the face whose center has the highest Z. */
-function topFace(shape: Parameters<typeof getFaces>[0]) {
-  const faces = getFaces(shape);
-  let best = faces[0];
+function topFace(shape: Shape3D): Face {
+  const [first, ...rest] = getFaces(shape);
+  if (!first) throw new Error('shape has no faces');
+  let best = first;
   let bestZ = faceCenter(best)[2];
-  for (let i = 1; i < faces.length; i++) {
-    const z = faceCenter(faces[i])[2];
+  for (const face of rest) {
+    const z = faceCenter(face)[2];
     if (z > bestZ) {
-      best = faces[i];
+      best = face;
       bestZ = z;
     }
   }
@@ -42,14 +43,15 @@ function topFace(shape: Parameters<typeof getFaces>[0]) {
 }
 
 /** Find the face whose center has the lowest Z. */
-function bottomFace(shape: Parameters<typeof getFaces>[0]) {
-  const faces = getFaces(shape);
-  let best = faces[0];
+function bottomFace(shape: Shape3D): Face {
+  const [first, ...rest] = getFaces(shape);
+  if (!first) throw new Error('shape has no faces');
+  let best = first;
   let bestZ = faceCenter(best)[2];
-  for (let i = 1; i < faces.length; i++) {
-    const z = faceCenter(faces[i])[2];
+  for (const face of rest) {
+    const z = faceCenter(face)[2];
     if (z < bestZ) {
-      best = faces[i];
+      best = face;
       bestZ = z;
     }
   }
@@ -71,7 +73,7 @@ function qRotate(q: readonly number[], v: readonly number[]): [number, number, n
 }
 
 /** Find the lateral cylindrical face — the one that has a well-defined axis. */
-function cylindricalFace(shape: Parameters<typeof getFaces>[0]) {
+function cylindricalFace(shape: Shape3D): Face {
   const faces = getFaces(shape);
   const face = faces.find((f) => faceAxis(f) !== null);
   if (!face) throw new Error('no cylindrical face found');
@@ -357,7 +359,7 @@ describe('solveAssembly — concentric mate', () => {
       // Two coaxial cones along +Z; concentric on their conical faces converges.
       const cone1 = cone(5, 2, 20);
       const cone2 = cone(4, 1.5, 15);
-      const coneFace = (shape: Parameters<typeof getFaces>[0]) => {
+      const coneFace = (shape: Shape3D) => {
         const f = getFaces(shape).find((face) => faceAxis(face) !== null);
         if (!f) throw new Error('no conical face with an axis found');
         return f;
