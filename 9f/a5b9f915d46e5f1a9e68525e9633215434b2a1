@@ -1,0 +1,39 @@
+src/kernel/brepkit/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_e7eecef0726eb4 660
+src/kernel/interfaces/transformOps.ts
+  s_d4ab5fb2066c9b::t_86da03aca6b277 43-46,72,109
+src/kernel/brepkit/transformOps.ts
+  s_d4ab5fb2066c9b::t_e7eecef0726eb4 48,110,113,145-146,184-185
+src/kernel/brepkit/internalOps.ts
+  s_d4ab5fb2066c9b::t_e7eecef0726eb4 139,142
+src/kernel/occt/transformOps.ts
+  s_d4ab5fb2066c9b::t_86da03aca6b277 136
+  s_d4ab5fb2066c9b::t_e7eecef0726eb4 78-79,149
+tests/brepkitAdapter.test.ts
+  s_d4ab5fb2066c9b::t_28bd381a29f90c 490,493
+src/kernel/interfaces/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_86da03aca6b277 31
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_a5ba7c4c2c032c 1300
+  s_d4ab5fb2066c9b::t_8ad0d64336fb6d 77,1277-1299
+  s_d4ab5fb2066c9b::t_9b54ef895b650d 1301-1304
+src/operations/sweepFns.ts
+  s_d4ab5fb2066c9b::t_2c396dc69aaa99 260
+  s_d4ab5fb2066c9b::t_94c9a8491143e6 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fa5b9f915d46e5f1a9e68525e9633215434b2a1",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
