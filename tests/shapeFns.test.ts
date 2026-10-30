@@ -39,6 +39,12 @@ import {
   isCompound,
   isWire,
   unwrap,
+  sphere,
+  torus,
+  cylinder,
+  ellipsoid,
+  mesh,
+  type Shape3D,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -226,6 +232,55 @@ describe('getBounds', () => {
     expect(b.xMax).toBeCloseTo(10, 1);
     expect(b.yMax).toBeCloseTo(20, 1);
     expect(b.zMax).toBeCloseTo(30, 1);
+  });
+
+  // A curved face can peak between its edges: a sphere or ellipsoid face's
+  // pole, a torus's outer rim, the top of a sphere fused onto a post. Each
+  // face's box must hold its mesh, and together they must make the shape's box.
+  it('bounds a curved face by its surface, not only its edges', () => {
+    using ball = sphere(6);
+    using ring = torus(10, 3);
+    using tilted = rotate(ring, 30, { axis: [1, 0, 0] });
+    using moved = translate(tilted, [5, 6, 7]);
+    using post = cylinder(5, 10);
+    using top = translate(ball, [0, 0, 10]);
+    using capped = unwrap(fuse(post, top));
+    using egg = ellipsoid(6, 4, 3);
+    // A torus with axis a reaches R·sqrt(1 - (d·a)²) + r along each direction d.
+    const across = (along: number): number => 10 * Math.sqrt(1 - along * along) + 3;
+    const cases: Array<[Shape3D, number[]]> = [
+      [ball, [-6, 6, -6, 6, -6, 6]],
+      [moved, [5 - 13, 5 + 13, 6 - across(0.5), 6 + across(0.5), 7 - 8, 7 + 8]],
+      [capped, [-6, 6, -6, 6, 0, 16]],
+      [egg, [-6, 6, -4, 4, -3, 3]],
+    ];
+    for (const [shape, expected] of cases) {
+      const boxes = getFaces(shape).map((f) => getBounds(f));
+      const union = [
+        Math.min(...boxes.map((b) => b.xMin)),
+        Math.max(...boxes.map((b) => b.xMax)),
+        Math.min(...boxes.map((b) => b.yMin)),
+        Math.max(...boxes.map((b) => b.yMax)),
+        Math.min(...boxes.map((b) => b.zMin)),
+        Math.max(...boxes.map((b) => b.zMax)),
+      ];
+      union.forEach((value, i) => {
+        expect(value).toBeCloseTo(expected[i] ?? NaN, 2);
+      });
+      for (const f of getFaces(shape)) {
+        const b = getBounds(f);
+        const { vertices } = mesh(f, { cache: false });
+        for (let i = 0; i + 2 < vertices.length; i += 3) {
+          const [x, y, z] = [vertices[i] ?? 0, vertices[i + 1] ?? 0, vertices[i + 2] ?? 0];
+          expect(x).toBeGreaterThanOrEqual(b.xMin - 1e-3);
+          expect(x).toBeLessThanOrEqual(b.xMax + 1e-3);
+          expect(y).toBeGreaterThanOrEqual(b.yMin - 1e-3);
+          expect(y).toBeLessThanOrEqual(b.yMax + 1e-3);
+          expect(z).toBeGreaterThanOrEqual(b.zMin - 1e-3);
+          expect(z).toBeLessThanOrEqual(b.zMax + 1e-3);
+        }
+      }
+    }
   });
 });
 

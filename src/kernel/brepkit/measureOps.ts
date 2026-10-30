@@ -153,12 +153,15 @@ export function boundingBox(
   return { min, max };
 }
 
+type Point = [number, number, number];
+
 /**
- * Points whose bounding box is the shape's: a solid's own box corners, and for
- * anything else the box points of its edges (see `edgeBoxPoints`), so an arc's
- * bulge counts and not just its end vertices.
+ * Points whose bounding box is the shape's: a solid's own box corners, a
+ * face's or shell's face box points (see `faceBoxPoints`), and for anything
+ * else the box points of its edges (see `edgeBoxPoints`), so an arc's bulge
+ * counts and not just its end vertices.
  */
-function boxPoints(bk: BrepkitKernel, h: BrepkitHandle): [number, number, number][] {
+function boxPoints(bk: BrepkitKernel, h: BrepkitHandle): Point[] {
   switch (h.type) {
     case 'solid': {
       const bb = bk.boundingBox(h.id);
@@ -168,16 +171,157 @@ function boxPoints(bk: BrepkitKernel, h: BrepkitHandle): [number, number, number
       return [vec3At(bk.getVertexPosition(h.id))];
     case 'edge':
       return edgeBoxPoints(bk, h.id);
+    case 'face':
+      return faceBoxPoints(bk, h);
+    case 'shell':
+      return iterShapes(bk, h, 'face').flatMap((f) => faceBoxPoints(bk, f as BrepkitHandle));
     case 'compound': {
       const children = syntheticCompounds.get(h.id) ?? compoundSolidIds(bk, h.id).map(solidHandle);
       return children.flatMap((child) => boxPoints(bk, child));
     }
-    default: {
-      const edges = iterShapes(bk, h, 'edge');
-      if (edges.length > 0) return edges.flatMap((e) => edgeBoxPoints(bk, unwrap(e)));
-      return iterShapes(bk, h, 'vertex').map((v) => vertexPosition(bk, v));
+    default:
+      return boundaryBoxPoints(bk, h);
+  }
+}
+
+function boundaryBoxPoints(bk: BrepkitKernel, h: BrepkitHandle): Point[] {
+  const edges = iterShapes(bk, h, 'edge');
+  if (edges.length > 0) return edges.flatMap((e) => edgeBoxPoints(bk, unwrap(e)));
+  return iterShapes(bk, h, 'vertex').map((v) => vertexPosition(bk, v));
+}
+
+/**
+ * A face's extreme along an axis lies on its boundary or at a point inside it
+ * where that coordinate peaks on the surface. Planes, cylinders, and cones have
+ * no such interior peak (a straight line through any inner point runs to the
+ * boundary), so their edges bound them. A sphere or torus adds the surface's
+ * peak points that lie on the face, which bounds it exactly; any other surface
+ * adds the vertices of its tessellation, which bound it to within the
+ * deflection.
+ */
+function faceBoxPoints(bk: BrepkitKernel, face: BrepkitHandle): Point[] {
+  const points = boundaryBoxPoints(bk, face);
+  const surfaceType = bk.getSurfaceType(face.id);
+  if (surfaceType === 'plane' || surfaceType === 'cylinder' || surfaceType === 'cone') {
+    return points;
+  }
+  const peaks = surfacePeaks(bk, face.id);
+  if (peaks) {
+    const tolerance = ON_FACE_TOLERANCE * Math.max(1, peaks.size);
+    const onFace = (p: Point): boolean =>
+      wasmIndex(bk.pointToFaceDistance(p[0], p[1], p[2], face.id), 0) <= tolerance;
+    return [...points, ...peaks.points.filter(onFace)];
+  }
+  const { positions } = bk.tessellateFace(face.id, MESH_BOX_DEFLECTION * (diagonal(points) || 1));
+  const vertices: Point[] = [];
+  for (let i = 0; i + 2 < positions.length; i += 3) vertices.push(vec3At(positions, i));
+  return [...points, ...vertices];
+}
+
+const ON_FACE_TOLERANCE = 1e-7;
+const MESH_BOX_DEFLECTION = 1e-3;
+const TORUS_CIRCLE_SAMPLES = 64;
+const AXES: readonly Point[] = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+
+function diagonal(points: readonly Point[]): number {
+  if (points.length === 0) return 0;
+  const span = [0, 1, 2].map((k) => {
+    const values = points.map((p) => wasmIndex(p, k));
+    return Math.max(...values) - Math.min(...values);
+  });
+  return Math.hypot(...span);
+}
+
+const add = (a: Point, b: Point, s = 1): Point => [
+  a[0] + s * b[0],
+  a[1] + s * b[1],
+  a[2] + s * b[2],
+];
+const dot = (a: Point, b: Point): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/**
+ * The points where a coordinate peaks on a sphere or torus surface, with the
+ * surface's size for the on-face tolerance; undefined for any other surface or
+ * a torus whose frame does not read back as orthonormal.
+ */
+function surfacePeaks(
+  bk: BrepkitKernel,
+  faceId: number
+): { points: Point[]; size: number } | undefined {
+  let params: {
+    type?: string;
+    center?: Point;
+    radius?: number;
+    majorRadius?: number;
+    minorRadius?: number;
+  };
+  try {
+    params = JSON.parse(bk.getAnalyticSurfaceParams(faceId)) as typeof params;
+  } catch {
+    return undefined;
+  }
+  const c = params.center;
+  if (c?.length !== 3) return undefined;
+  if (params.type === 'sphere' && typeof params.radius === 'number') {
+    const r = params.radius;
+    return { points: AXES.flatMap((e) => [add(c, e, r), add(c, e, -r)]), size: r };
+  }
+  if (
+    params.type === 'torus' &&
+    typeof params.majorRadius === 'number' &&
+    typeof params.minorRadius === 'number'
+  ) {
+    return torusPeaks(bk, faceId, c, params.majorRadius, params.minorRadius);
+  }
+  return undefined;
+}
+
+/**
+ * brepkit's torus params carry no axis, so the frame is read off the surface,
+ * which brepkit parametrizes as c + (R + r cos v)(cos u X + sin u Y) + r sin v Z.
+ * Along a direction d with a component w across the axis, the coordinate peaks
+ * at c ± (R w/|w| + r d). Along the axis it peaks on the whole circle at c ± r Z,
+ * which is sampled.
+ */
+function torusPeaks(
+  bk: BrepkitKernel,
+  faceId: number,
+  c: Point,
+  majorR: number,
+  minorR: number
+): { points: Point[]; size: number } | undefined {
+  const at = (u: number, v: number): Point => vec3At(bk.evaluateSurface(faceId, u, v));
+  const x = add(at(0, 0), c, -1).map((n) => n / (majorR + minorR)) as Point;
+  const z = add(add(at(0, Math.PI / 2), c, -1), x, -majorR).map((n) => n / minorR) as Point;
+  const unit = (p: Point): boolean => Math.abs(Math.hypot(...p) - 1) < 1e-6;
+  if (!unit(x) || !unit(z) || Math.abs(dot(x, z)) > 1e-6) return undefined;
+  const y: Point = [
+    z[1] * x[2] - z[2] * x[1],
+    z[2] * x[0] - z[0] * x[2],
+    z[0] * x[1] - z[1] * x[0],
+  ];
+  const points: Point[] = [];
+  for (const d of AXES) {
+    const across = add(d, z, -dot(d, z));
+    const len = Math.hypot(...across);
+    if (len > 1e-9) {
+      const peak = add(across.map((n) => (n * majorR) / len) as Point, d, minorR);
+      points.push(add(c, peak), add(c, peak, -1));
+      continue;
+    }
+    for (const side of [1, -1]) {
+      const rim = add(c, z, side * minorR);
+      for (let i = 0; i < TORUS_CIRCLE_SAMPLES; i++) {
+        const t = (2 * Math.PI * i) / TORUS_CIRCLE_SAMPLES;
+        points.push(add(add(rim, x, majorR * Math.cos(t)), y, majorR * Math.sin(t)));
+      }
     }
   }
+  return { points, size: majorR + minorR };
 }
 
 /**
