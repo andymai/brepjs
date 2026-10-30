@@ -1,0 +1,38 @@
+tests/booleanFns.test.ts
+  s_d4ab5fb2066c9b::t_0d102ec2bbeab9 167,586-592
+  s_d4ab5fb2066c9b::t_0ef2dcb8546bf2 135,140-166
+src/topology/booleanBatchFns.ts
+  s_d4ab5fb2066c9b::t_a8b0640b79ea8b 16,19,222-238,247,254,261,273-274,280,285,288-292,296
+src/topology/booleanFns.ts
+  s_d4ab5fb2066c9b::t_1b172bda70c82f 511
+  s_d4ab5fb2066c9b::t_fae94b55648a2c 85-99
+  s_d4ab5fb2066c9b::t_72a2d5c5b2ae9a 576-577
+  s_d4ab5fb2066c9b::t_ea6c5aba23da2e 605
+tests/booleanBatchFns.test.ts
+  s_d4ab5fb2066c9b::t_77282356efee09 141-142,144-147
+  s_d4ab5fb2066c9b::t_54990d8e686205 281-303
+tests/operations-batch.test.ts
+  s_d4ab5fb2066c9b::t_eb9c8fb1d8432b 54
+  s_d4ab5fb2066c9b::t_cf32bc0d5192e2 34
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_aec091aa9e98d0 129-130
+  s_d4ab5fb2066c9b::t_a0f6e684b9a206 1468-1478,1480-1496,1498-1502,1504-1520
+  s_d4ab5fb2066c9b::t_70de8daab9a3de 1479
+  s_d4ab5fb2066c9b::t_96a09113927d41 1497,1503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4711ba4aea1e57286e9fcf5719de60bf81515e65",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
