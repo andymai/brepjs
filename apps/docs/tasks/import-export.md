@@ -50,11 +50,13 @@ export default part;
 STEP (ISO 10303) preserves B-Rep structure: faces, edges, surfaces, curves, even sharp/smooth qualifiers. A part written with `exportSTEP` and re-imported with `importSTEP` is geometrically identical (within tolerance):
 
 ```typescript
-import { box, exportSTEP, importSTEP, measureVolume, unwrap } from 'brepjs/quick';
+import { box, exportSTEP, importSTEP, isShape3D, measureVolume, unwrap } from 'brepjs/quick';
 
 const original = box(30, 20, 10);
 const step = unwrap(exportSTEP(original));
 const reimported = unwrap(await importSTEP(step));
+// importSTEP can return any shape kind; measureVolume needs a 3D one
+if (!isShape3D(reimported)) throw new Error('STEP file holds no solid');
 
 console.log('Original volume:', unwrap(measureVolume(original))); // 6000
 console.log('Reimported volume:', unwrap(measureVolume(reimported))); // 6000 ± epsilon
