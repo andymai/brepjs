@@ -1,0 +1,47 @@
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_06d0929983f517 76
+tests/loftFns.test.ts
+  s_d4ab5fb2066c9b::t_a8be731b2b04d8 11,15-17,25-29,37,47,54,62,75,83,91
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_08dbf48d54dda6 10,41,454-458,576,650,736,738
+tests/offsetWire2D.test.ts
+  s_d4ab5fb2066c9b::t_a469029a043692 14-18
+tests/operations-extrude.test.ts
+  s_d4ab5fb2066c9b::t_6eda8e5a70caed 15,21-30,39,52,67,81,96,110,131,142,154,168,182,195,205
+tests/primitiveFns.test.ts
+  s_d4ab5fb2066c9b::t_c06a550b530ee1 23,52,67,94
+tests/sketchFns.test.ts
+  s_d4ab5fb2066c9b::t_8c83c9ade09568 112-113
+tests/stepExportDegenerate.test.ts
+  s_d4ab5fb2066c9b::t_ad699b775a68f0 70
+tests/sweepFns.test.ts
+  s_d4ab5fb2066c9b::t_ccbeb420527a62 21-26,35,40,45,48,50,56,59,61,66,69,71,76,79,81,93,96,102,105,113,116
+tests/sweepRepro.test.ts
+  s_d4ab5fb2066c9b::t_13339bb4f1f8d3 30,38,44,51,60,67,74-75,81
+tests/sweepSketchOrientation.test.ts
+  s_d4ab5fb2066c9b::t_428b9fc9c86cf6 24,27-28,32,44,50,58,63
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_524ac15c19d346 31,462,567
+tests/validityTypes.test.ts
+  s_d4ab5fb2066c9b::t_62a03bab3eeb42 77-79,105-107,295,318,341,535,545-547,563,584-587
+tests/variableFillet.test.ts
+  s_d4ab5fb2066c9b::t_595e2b1eddcbb9 4-13,20-24,31-32,35,37,45-46,50,52,59-60,63-64,66-67,95
+tests/wrapperFns.test.ts
+  s_d4ab5fb2066c9b::t_e1f49aaf340631 33-35,43-48,492,497,509,734,756
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b2ba11ff2c376c3e57b77f8fdb62f4a0be5ebc5",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
