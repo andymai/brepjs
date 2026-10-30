@@ -20,6 +20,7 @@ import {
   isErr,
   unwrap,
   castShape,
+  isFace,
 } from '@/index.js';
 import {
   curvesAsEdgesOnFace,
@@ -121,12 +122,14 @@ describe('curvesAsEdgesOnFace', () => {
 
       const edges = unwrap(result);
       expect(edges.length).toBeGreaterThan(0);
-      const m = meshEdges(edges[0]);
+      const first = edges[0];
+      if (!first) throw new Error('expected at least one edge');
+      const m = meshEdges(first);
       expect(m.lines.length).toBeGreaterThan(0);
       let maxAbsXY = 0;
       for (let i = 0; i < m.lines.length; i += 3) {
         expect(Number.isFinite(m.lines[i])).toBe(true);
-        maxAbsXY = Math.max(maxAbsXY, Math.hypot(m.lines[i], m.lines[i + 1]));
+        maxAbsXY = Math.max(maxAbsXY, Math.hypot(m.lines[i] ?? NaN, m.lines[i + 1] ?? NaN));
       }
       // Points lie on the radius-5 cylinder, not scattered/NaN.
       expect(maxAbsXY).toBeCloseTo(5, 1);
@@ -166,6 +169,7 @@ describe('curvesAsEdgesOnFace', () => {
     const torusFaces = kernel.iterShapes(torus, 'face');
     expect(torusFaces.length).toBeGreaterThan(0);
     const face = castShape(torusFaces[0]);
+    if (!isFace(face)) throw new Error('expected a face');
 
     const curve = new Curve2D(kernel.makeLine2d(0, 0, 1, 1));
     const result = curvesAsEdgesOnFace([curve], face, 'original');

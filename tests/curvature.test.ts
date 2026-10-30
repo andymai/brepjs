@@ -6,6 +6,7 @@ import {
   getFaces,
   measureCurvatureAt,
   measureCurvatureAtMid,
+  orientedFace,
   unwrap,
 } from '@/index.js';
 
@@ -21,7 +22,7 @@ describe('measureCurvatureAt', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- 6 faces
     const f = faces[0]!;
-    const result = unwrap(measureCurvatureAt(f, 0.5, 0.5));
+    const result = unwrap(measureCurvatureAt(unwrap(orientedFace(f)), 0.5, 0.5));
 
     expect(result.mean).toBeCloseTo(0, 5);
     expect(result.gaussian).toBeCloseTo(0, 5);
