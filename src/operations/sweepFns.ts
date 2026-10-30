@@ -131,7 +131,7 @@ function castSweepShellTuple(result: {
   return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
 }
 
-/** `UNSUPPORTED_CAPABILITY` for a sweep option the kernel cannot build (a twist or a scaling law on brepkit). */
+/** `UNSUPPORTED_CAPABILITY` for a sweep option the kernel cannot build (a scaling law on brepkit). */
 function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
   const raw = e instanceof Error ? e.message : String(e);
   return unsupportedError(
@@ -139,7 +139,7 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
     `sweep: the ${kernelId} kernel cannot build this sweep (${raw})`,
     e,
     { kernel: kernelId, operation: 'sweep' },
-    'Drop the twist or scaling law, or use the occt-wasm kernel'
+    'Drop the scaling law, or use the occt-wasm kernel'
   );
 }
 
@@ -154,8 +154,8 @@ function sweepUnsupportedError(kernelId: string, e: unknown): BrepError {
  * @param config - Sweep configuration (frenet, transition mode, scaling law, etc.).
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
  * @returns `Result` containing the swept shape, or a `[Shape3D, Wire, Wire]` tuple in shell mode;
- *   Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the auxiliary spine or law
- *   (brepkit builds neither).
+ *   Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the law (brepkit), or an
+ *   auxiliary spine along a spine of more than one edge (brepkit).
  */
 export function sweep(
   wire: ClosedWire<Dimension>,
@@ -360,7 +360,7 @@ export function complexExtrude(
  * @param profileShape - Optional scaling profile applied along the extrusion.
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
  * @returns `Result` containing the twisted extruded shape, or a shell tuple in shell mode;
- *   Err `UNSUPPORTED_CAPABILITY` on a kernel without a twisted sweep (brepkit).
+ *   Err `UNSUPPORTED_CAPABILITY` for a profile on a kernel without a scaling-law sweep (brepkit).
  */
 export function twistExtrude(
   wire: ClosedWire<Dimension>,

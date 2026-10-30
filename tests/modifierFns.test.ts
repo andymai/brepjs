@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
-import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   box,
@@ -469,8 +469,7 @@ describe('defeature', () => {
 });
 
 describe('fillet with array radius', () => {
-  it('fillets a specific edge with variable radius [r1, r2]', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
+  it('fillets a specific edge with variable radius [r1, r2]', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = fillet(b, [edges[0]!], [1, 2]);
@@ -508,8 +507,7 @@ describe('fillet with callback returning null or array', () => {
     expect(unwrapErr(result).code).toBe('FILLET_NO_EDGES');
   });
 
-  it('callback returning [r1, r2] applies variable fillet', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.variableFilletCallback');
+  it('callback returning [r1, r2] applies variable fillet', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = fillet(b, edges.slice(0, 2), () => [1, 2]);
@@ -645,18 +643,13 @@ describe('per-edge fillet radii and chamfer distances', () => {
     expect(unwrap(measureVolume(chamfered as Shape3D))).toBeCloseTo(1000 - 10 * 5, 6);
   });
 
-  // brepkit takes one fillet radius or chamfer setback per call.
+  // brepkit takes one chamfer setback per call.
   it.skipIf(currentKernel !== 'brepkit')(
-    'returns UNSUPPORTED_CAPABILITY for different values on different edges, leaving the input intact',
+    'returns UNSUPPORTED_CAPABILITY for different chamfers on different edges, leaving the input intact',
     () => {
       using b = box(10, 10, 10);
       const edges = verticalEdges(b);
-      for (const result of [
-        fillet(b, edges, bySide(1, 3)),
-        chamfer(b, edges, bySide(1, 2)),
-      ] as Array<Result<unknown>>) {
-        expect(unwrapErr(result).code).toBe('UNSUPPORTED_CAPABILITY');
-      }
+      expect(unwrapErr(chamfer(b, edges, bySide(1, 2))).code).toBe('UNSUPPORTED_CAPABILITY');
       using rounded = unwrap(fillet(b, edges, 2));
       expect(unwrap(measureVolume(rounded))).toBeCloseTo(1000 - FILLET_LOSS * 4 * 10 * 4, 6);
     }
@@ -758,14 +751,12 @@ describe('variableFillet validation', () => {
   });
 });
 
-// occt-wasm's variable fillet takes a linear (<=2-point) profile and brepkit
-// only a constant one; neither takes a multi-point profile. The opencascade.js
-// kernel does not implement it.
+// occt-wasm and brepkit build a constant or linear (<=2-point) profile; neither
+// takes a multi-point profile. The opencascade.js kernel does not implement it.
 describe.skipIf(currentKernel !== 'occt-wasm' && currentKernel !== 'brepkit')(
   'variableFillet',
   () => {
-    it('applies a linear (2-point) taper, yielding a valid smaller solid', (ctx) => {
-      skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
+    it('applies a linear (2-point) taper, yielding a valid smaller solid', () => {
       const b = box(10, 10, 10);
       const result = variableFillet(b, getEdges(b)[0]!, [
         { param: 0, radius: 1 },
@@ -790,6 +781,25 @@ describe.skipIf(currentKernel !== 'occt-wasm' && currentKernel !== 'brepkit')(
         unwrap(measureVolume(unwrap(uniform))),
         3
       );
+    });
+
+    // A round loses (1 - pi/4) * integral of r^2 along the edge, 111.593 here; a flat
+    // bevel of the same widths loses integral of r^2 / 2, 260.
+    it('rounds an edge whose radius runs from 2 to 5', () => {
+      using b = box(40, 30, 20);
+      const edge = getEdges(b).find((e) => {
+        const { yMax, zMin } = getBounds(e);
+        return yMax < 1e-9 && zMin > 20 - 1e-9;
+      });
+      if (!edge) throw new Error('box has no top edge at y = 0');
+      const round = 24000 - ((1 - Math.PI / 4) * 40 * (4 + 10 + 25)) / 3;
+      using rounded = unwrap(
+        variableFillet(b, edge, [
+          { param: 0, radius: 2 },
+          { param: 1, radius: 5 },
+        ])
+      );
+      expect(unwrap(measureVolume(rounded))).toBeCloseTo(round, -1);
     });
 
     it('rounds an edge at the exact constant radius from a one- or two-point profile', () => {
@@ -821,29 +831,6 @@ describe.skipIf(currentKernel !== 'occt-wasm' && currentKernel !== 'brepkit')(
       ]);
       expect(unwrapErr(result).code).toBe('UNSUPPORTED_CAPABILITY');
     });
-
-    // Runs only where modifierFns.variableFilletRadius is a registered divergence (brepkit).
-    it.skipIf(!shouldSkipSuite('modifierFns.variableFilletRadius'))(
-      'returns UNSUPPORTED_CAPABILITY for a radius that varies along the edge',
-      () => {
-        using b = box(10, 10, 10);
-        const edge = getEdges(b)[0]!;
-        const results: Array<Result<unknown>> = [
-          variableFillet(b, edge, [
-            { param: 0, radius: 1 },
-            { param: 1, radius: 3 },
-          ]),
-          fillet(b, [edge], [1, 3]),
-          fillet(b, [edge], () => [1, 3]),
-          filletFn(b, [edge], [1, 3], { trackEvolution: false }),
-        ];
-        for (const result of results) {
-          const error = unwrapErr(result);
-          expect(error.kind).toBe('UNSUPPORTED');
-          expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
-        }
-      }
-    );
   }
 );
 

@@ -112,23 +112,23 @@ descBk('Extended I/O formats (brepkit)', () => {
 // ---------------------------------------------------------------------------
 
 descBk('Advanced modeling (brepkit)', () => {
-  it('filletVariable fillets a constant profile and refuses one that varies', () => {
+  it('filletVariable rounds a constant or linear profile and refuses more points', () => {
     const kernel = getKernel();
     const b = box(20, 20, 20);
     const edges = getEdges(castShape(b.wrapped));
     expect(edges.length).toBeGreaterThan(0);
 
     const edgeHash = kernel.hashCode(edges[0]!.wrapped, 2147483647); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const spec = (start: number, end: number) =>
+    const spec = (...radii: number[]) =>
       JSON.stringify({
         edge: edgeHash,
-        radii: [
-          { param: 0, radius: start },
-          { param: 1, radius: end },
-        ],
+        radii: radii.map((radius, i) => ({ param: i / (radii.length - 1), radius })),
       });
     expect(isSolid(castShape(kernel.filletVariable(b.wrapped, spec(2, 2))))).toBe(true);
-    expect(() => kernel.filletVariable(b.wrapped, spec(1, 3))).toThrow(/varies along an edge/);
+    // A round loses (1 - pi/4) * integral of r^2 along the edge: 20 * (1 + 3 + 9) / 3 for 1 to 3.
+    const tapered = kernel.filletVariable(b.wrapped, spec(1, 3));
+    expect(kernel.volume(tapered)).toBeCloseTo(8000 - ((1 - Math.PI / 4) * 20 * 13) / 3, 3);
+    expect(() => kernel.filletVariable(b.wrapped, spec(1, 2, 3))).toThrow(/linear/);
   });
 
   it('sweepWithOptions creates a solid', () => {

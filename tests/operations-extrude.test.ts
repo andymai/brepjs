@@ -1,6 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
+import {
+  expectClose,
+  getToleranceFor,
+  shouldSkipSuite,
+  skipIfDiverges,
+} from './helpers/kernelDivergences.js';
 import Sketcher from '@/sketching/sketcher.js';
 import {
   sketchCircle,
@@ -16,6 +21,9 @@ import {
   getKernel,
   registerKernel,
   withKernel,
+  closedWire,
+  wire,
+  line,
 } from '@/index.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import type { ClosedWire } from '@/index.js';
@@ -159,14 +167,36 @@ describe('complexExtrude', () => {
 describe('twistExtrude', () => {
   // A 10 mm square turned an eighth of a turn over 40 mm: the top square's
   // corners reach 5·√2 along x and y, and every section keeps its 100 mm².
-  it('turns the section by the twist angle', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+  it('turns the section by the twist angle', () => {
     using sq = sketchRectangle(10, 10).wire;
     using twisted = unwrap(twistExtrude(sq, 45, [0, 0, 0], [0, 0, 40]));
     const b = getBounds(twisted);
     expect(b.xMax).toBeCloseTo(5 * Math.SQRT2, 4);
     expect(b.yMin).toBeCloseTo(-5 * Math.SQRT2, 4);
-    expect(unwrap(measureVolume(twisted))).toBeCloseTo(4000, 1);
+    const volume = unwrap(measureVolume(twisted));
+    const tol = getToleranceFor('extrudeFns.twistExtrudeVolume');
+    if (tol) expectClose(volume, 4000, tol.relativeTol);
+    else expect(volume).toBeCloseTo(4000, 1);
+  });
+
+  it('twists about an axis other than z', () => {
+    using sq = unwrap(
+      closedWire(
+        unwrap(
+          wire([
+            line([0, -5, -5], [0, 5, -5]),
+            line([0, 5, -5], [0, 5, 5]),
+            line([0, 5, 5], [0, -5, 5]),
+            line([0, -5, 5], [0, -5, -5]),
+          ])
+        )
+      )
+    );
+    using twisted = unwrap(twistExtrude(sq, 45, [0, 0, 0], [40, 0, 0]));
+    const b = getBounds(twisted);
+    expect(b.xMax).toBeCloseTo(40, 4);
+    expect(b.yMax).toBeCloseTo(5 * Math.SQRT2, 4);
+    expect(b.zMin).toBeCloseTo(-5 * Math.SQRT2, 4);
   });
 
   it('returns UNSUPPORTED_CAPABILITY when the kernel cannot build the sweep', () => {
@@ -193,12 +223,15 @@ describe('twistExtrude', () => {
     expect(error.message).toContain('stub: no auxiliary spine');
   });
 
-  // Runs only where extrudeFns.twistExtrude is a registered divergence (brepkit).
-  it.skipIf(!shouldSkipSuite('extrudeFns.twistExtrude'))(
-    'returns UNSUPPORTED_CAPABILITY rather than an untwisted or unscaled prism',
+  // Runs only where extrudeFns.complexExtrudeLaw is a registered divergence (brepkit).
+  it.skipIf(!shouldSkipSuite('extrudeFns.complexExtrudeLaw'))(
+    'returns UNSUPPORTED_CAPABILITY rather than an unscaled prism',
     () => {
       using sq = sketchRectangle(10, 10).wire;
-      const twisted = twistExtrude(sq, 45, [0, 0, 0], [0, 0, 40]);
+      const twisted = twistExtrude(sq, 45, [0, 0, 0], [0, 0, 40], {
+        profile: 'linear',
+        endFactor: 0.5,
+      });
       expect(unwrapErr(twisted).code).toBe('UNSUPPORTED_CAPABILITY');
       const scaled = complexExtrude(sq, [0, 0, 0], [0, 0, 40], {
         profile: 'linear',
@@ -208,8 +241,7 @@ describe('twistExtrude', () => {
     }
   );
 
-  it('twist-extrudes a rectangle 90 degrees', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+  it('twist-extrudes a rectangle 90 degrees', () => {
     const profile = sketchRectangle(6, 6);
     const wire = profile.wire;
 
@@ -221,7 +253,7 @@ describe('twistExtrude', () => {
   });
 
   it('twist-extrudes a circle with s-curve profile', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+    skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
     const profile = sketchCircle(4);
     const wire = profile.wire;
 
@@ -235,7 +267,7 @@ describe('twistExtrude', () => {
   });
 
   it('twist-extrudes with linear profile', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+    skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
     const profile = sketchCircle(3);
     const wire = profile.wire;
 
@@ -248,8 +280,7 @@ describe('twistExtrude', () => {
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
-  it('twist-extrudes without profile (no law)', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+  it('twist-extrudes without profile (no law)', () => {
     const profile = sketchRectangle(4, 4);
     const wire = profile.wire;
 

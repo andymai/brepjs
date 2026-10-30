@@ -293,20 +293,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
-    'modifierFns.variableFilletRadius': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit has no variable-radius fillet: brepkit-wasm filletVariable builds no rolling-ball blend (a radius running 2 to 5 along a 40 mm box edge removes 260 mm3 where the blend removes about 113, and a constant law of 3 removes the 180 of a flat chamfer), so a radius that varies along an edge returns UNSUPPORTED_CAPABILITY. brepkit also rejects a radius that runs to 0 ("fillet radius must be positive at all points").',
-    },
-    'modifierFns.variableFilletCallback': {
-      kind: 'not-implemented',
-      reason: 'Same as modifierFns.variableFilletRadius, for a callback that returns [r1, r2].',
-    },
-    'modifierFns.perEdgeValues': {
-      kind: 'not-implemented',
-      reason:
-        "brepkit takes one fillet radius per call, so different radii on different edges return UNSUPPORTED_CAPABILITY (a second call on the first one's result leaves the input solid corrupt), and a radius that varies along an edge is unsupported (see modifierFns.variableFilletRadius).",
-    },
     'chamferAngle.perEdge': {
       kind: 'not-implemented',
       reason:
@@ -473,10 +459,12 @@ export const divergences: DivergenceMap = {
       reason:
         'brepkit has no scaling-law sweep: the adapter throws UnsupportedKernelOperationError for a law, so complexExtrude and a profiled sketch extrude return UNSUPPORTED_CAPABILITY. brepkit-wasm sweepWithOptions takes a scale law, but a circle of radius 10 scaled to 0.5 over 40 sweeps 94 flat faces measuring 7239.547 mm3 where the frustum is 7330.383.',
     },
-    'extrudeFns.twistExtrude': {
-      kind: 'not-implemented',
+    'extrudeFns.twistExtrudeVolume': {
+      kind: 'tolerance',
+      relativeTol: 1e-3,
+      metric: 'volume',
       reason:
-        'brepkit has no twisted sweep: brepkit-wasm sweepWithOptions takes no auxiliary spine (the Rust SweepOptions has aux_spine, the binding does not pass one), so the adapter throws UnsupportedKernelOperationError and twistExtrude returns UNSUPPORTED_CAPABILITY instead of an untwisted prism.',
+        "brepkit's guided sweep rules flat between sections, so a twist is exact at each section and short of the true twisted volume between them: a 10 mm square turned 45 degrees over 40 mm measures 3999.150 mm3 where it holds 4000.",
     },
     'extrudeFns.circleExtrude': {
       kind: 'not-implemented',

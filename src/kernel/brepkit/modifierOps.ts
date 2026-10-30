@@ -34,42 +34,51 @@ export function fillet(
     return solidHandle(bk.fillet(solidId, edgeIds, radius));
   }
 
-  const radii = new Set<number>();
-  for (const edge of edges) {
+  const laws = edges.map((edge, i): FilletLaw => {
     const r = typeof radius === 'function' ? radius(edge) : radius;
     const [start, end] = Array.isArray(r) ? r : [r, r];
-    if (start !== end) throw varyingFilletUnsupported();
-    radii.add(start);
+    return { edge: wasmIndex(edgeIds, i), start, end };
+  });
+  const [first] = laws;
+  if (!first) throw new Error('brepkit: fillet needs at least one edge');
+  if (laws.every((l) => l.start === first.start && l.end === first.start)) {
+    return solidHandle(bk.fillet(solidId, edgeIds, first.start));
   }
-  if (radii.size > 1) throw perEdgeUnsupported('fillet radii');
-  const [only] = radii;
-  if (only === undefined) throw new Error('brepkit: fillet needs at least one edge');
-  return solidHandle(bk.fillet(solidId, edgeIds, only));
+  return filletAlongLaws(bk, solidId, laws);
+}
+
+interface FilletLaw {
+  readonly edge: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 /**
- * brepkit takes one value for every edge of a fillet or chamfer call, and a
- * second call on the first one's result cannot name the input's other edges:
- * a chamfer fails on them ("no manifold edges to chamfer"), and a fillet builds
- * the right body but leaves the input solid corrupt, so that filleting the
- * input's four vertical cube edges at 2 mm afterwards cuts a flat chamfer.
+ * One filletVariable call for every edge, each along its own constant or
+ * linear law, running from the edge's start vertex to its end.
+ */
+function filletAlongLaws(
+  bk: BrepkitKernel,
+  solidId: number,
+  laws: readonly FilletLaw[]
+): KernelShape {
+  const spec = laws.map(({ edge, start, end }) => ({
+    edge,
+    law: start === end ? 'constant' : 'linear',
+    start,
+    end,
+  }));
+  return solidHandle(bk.filletVariable(solidId, JSON.stringify(spec)));
+}
+
+/**
+ * brepkit takes one distance for every edge of a chamfer call, and a second
+ * call on the first one's result cannot name the input's other edges: it fails
+ * on them ("no manifold edges to chamfer").
  */
 function perEdgeUnsupported(what: string): UnsupportedKernelOperationError {
   return new UnsupportedKernelOperationError(
     `brepkit: different ${what} on different edges in one call is not supported`
-  );
-}
-
-/**
- * brepkit-wasm's filletVariable does not build a rolling-ball blend: on the
- * 40 mm top edge of a 40 x 30 x 20 box, a radius running 2 to 5 removes 260 mm3
- * where the blend removes about 113, and even a constant law of 3 removes 180
- * (the flat chamfer) where fillet removes 77.26. A radius that varies along an
- * edge is refused rather than built that way.
- */
-function varyingFilletUnsupported(): UnsupportedKernelOperationError {
-  return new UnsupportedKernelOperationError(
-    'brepkit: a fillet radius that varies along an edge is not supported'
   );
 }
 
@@ -86,9 +95,9 @@ interface VariableFilletSpec {
 
 /**
  * A variable fillet spec on one edge: `{ edge: hashCode, radii: [{ param, radius }] }`
- * from variableFillet, or `{ edgeId, startRadius, endRadius }`. A constant radius is
- * an ordinary fillet; a radius that varies is unsupported (see
- * {@link varyingFilletUnsupported}).
+ * from variableFillet, or `{ edgeId, startRadius, endRadius }`. Like occt-wasm, a
+ * profile runs linearly from its first radius to its last, so one of more than two
+ * points is unsupported rather than flattened to a line.
  */
 export function filletVariable(bk: BrepkitKernel, shape: KernelShape, spec: string): KernelShape {
   const solidId = unwrapSolidOrThrow(shape, 'filletVariable');
@@ -112,9 +121,15 @@ export function filletVariable(bk: BrepkitKernel, shape: KernelShape, spec: stri
   if (edgeId === undefined) {
     throw new Error('brepkit: filletVariable: the edge is not an edge of the shape');
   }
-  const [first = 0] = radii;
-  if (radii.some((r) => r !== first)) throw varyingFilletUnsupported();
-  return solidHandle(bk.fillet(solidId, [edgeId], first));
+  if (radii.length > 2) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: filletVariable supports only a linear (<=2-point) radius profile'
+    );
+  }
+  const start = wasmIndex(radii, 0);
+  const end = wasmIndex(radii, radii.length - 1);
+  if (start === end) return solidHandle(bk.fillet(solidId, [edgeId], start));
+  return filletAlongLaws(bk, solidId, [{ edge: edgeId, start, end }]);
 }
 
 /**

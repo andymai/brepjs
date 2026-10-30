@@ -324,8 +324,7 @@ export function fillet(
 
 /**
  * `UNSUPPORTED_CAPABILITY` for a fillet the kernel cannot build as asked (a
- * radius that varies along an edge on brepkit), from its
- * `UnsupportedKernelOperationError`.
+ * multi-point variable radius), from its `UnsupportedKernelOperationError`.
  */
 export function filletUnsupportedError(e: unknown): BrepError {
   const kernelId = getKernel().kernelId;
@@ -335,7 +334,7 @@ export function filletUnsupportedError(e: unknown): BrepError {
     `fillet: the ${kernelId} kernel cannot build this fillet (${raw})`,
     e,
     { kernel: kernelId, operation: 'fillet' },
-    'Use one constant radius per edge, or use the occt-wasm kernel'
+    'Use a constant or linear (start, end) radius per edge'
   );
 }
 
@@ -740,10 +739,9 @@ export interface VariableFilletRadius {
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
  *
- * **Cross-kernel note:** occt-wasm supports a linear (start/end, <=2-point)
- * profile; brepkit supports only a constant radius. Either returns
- * `UNSUPPORTED_CAPABILITY` for a profile it cannot build. The opencascade.js
- * kernel does not implement it.
+ * **Cross-kernel note:** occt-wasm and brepkit build a constant or linear
+ * (start/end, <=2-point) profile and return `UNSUPPORTED_CAPABILITY` for one of
+ * more points. The opencascade.js kernel does not implement it.
  */
 export function variableFillet(
   shape: ValidSolid,
