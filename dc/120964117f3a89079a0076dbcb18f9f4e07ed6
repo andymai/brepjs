@@ -1,0 +1,29 @@
+tests/2d.test.ts
+  s_d4ab5fb2066c9b::t_23b6a4b3dad273 4,460,471,502,692,699,705
+tests/blueprintFns.test.ts
+  s_d4ab5fb2066c9b::t_b99e40502a818b 146
+tests/castResultShapeMigration.test.ts
+  s_d4ab5fb2066c9b::t_70f6e7334cc669 41,120-122
+tests/booleanDiagnostics.test.ts
+  s_d4ab5fb2066c9b::t_df776a37b58c1b 57
+tests/booleanBatchFns.test.ts
+  s_d4ab5fb2066c9b::t_ae7428f021e167 29,175-203,207-208
+tests/blueprintContour.test.ts
+  s_d4ab5fb2066c9b::t_274f8f284e4a72 23,30,34-38,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc120964117f3a89079a0076dbcb18f9f4e07ed6",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
