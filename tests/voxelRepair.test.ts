@@ -109,8 +109,8 @@ describe('voxel repair (FWN-signed SDF → Surface Nets)', () => {
     expect(out.triangles.length % 3).toBe(0);
 
     // The surface still hugs the unit cube on all six sides (sparse == dense here).
-    let lo = [Infinity, Infinity, Infinity];
-    let hi = [-Infinity, -Infinity, -Infinity];
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
     for (let i = 0; i < out.vertices.length; i += 3) {
       for (let d = 0; d < 3; d++) {
         const v = out.vertices[i + d] as number;

@@ -146,7 +146,7 @@ describe.skipIf(shouldSkipSuite('interferenceFns'))('OCCT-specific: interference
   describe('null-shape pre-validation', () => {
     function makeNullShape(): Shape3D {
       const oc = getKernel().oc;
-      return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+      return createSolid(new oc.TopoDS_Solid());
     }
 
     it('checkInterference returns err for null first shape', () => {
