@@ -43,6 +43,7 @@ export type {
   KernelMeasureOps,
   KernelMeshOps,
   KernelModifierOps,
+  ChamferDistAngleEdge,
   KernelPrimitiveOps,
   KernelRepairOps,
   KernelSurfaceOps,

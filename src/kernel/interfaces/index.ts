@@ -52,7 +52,7 @@ export type { KernelEvolutionOps } from './evolutionOps.js';
 export type { KernelIOOps } from './ioOps.js';
 export type { BulkMeasurement, KernelMeasureOps } from './measureOps.js';
 export type { KernelMeshOps } from './meshOps.js';
-export type { KernelModifierOps } from './modifierOps.js';
+export type { ChamferDistAngleEdge, KernelModifierOps } from './modifierOps.js';
 export type { KernelPrimitiveOps } from './primitiveOps.js';
 export type { KernelRepairOps } from './repairOps.js';
 export type { KernelSurfaceOps } from './surfaceOps.js';

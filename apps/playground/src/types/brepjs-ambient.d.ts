@@ -384,6 +384,20 @@ interface KernelMeshOps {
     meshShape(shape: KernelShape, tolerance: number, angularTolerance: number): void;
 }
 
+/** One edge of a distance-angle chamfer that gives each edge its own values. */
+interface ChamferDistAngleEdge {
+    readonly edge: KernelShape;
+    /** Setback on the reference face. */
+    readonly distance: number;
+    /** Angle from the reference face, in degrees. */
+    readonly angleDeg: number;
+    /**
+     * The reference face, one of the two faces the edge joins. Omitted, the
+     * kernel picks it as {@link KernelModifierOps.chamferDistAngle} does.
+     */
+    readonly face?: KernelShape | undefined;
+}
+
 interface KernelModifierOps {
     fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;

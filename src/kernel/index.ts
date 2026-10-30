@@ -325,6 +325,7 @@ export { supportsProjection, supportsConstraintSketch } from './types.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './types.js';
 
 export type {
+  ChamferDistAngleEdge,
   KernelBooleanOps,
   KernelBuilderOps,
   KernelCore,
