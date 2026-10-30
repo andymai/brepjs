@@ -343,20 +343,32 @@ function trySmoothPipeShell(
   }
 }
 
-function singleCurveEdge(bk: BrepkitKernel, shape: KernelShape, role: string): KernelShape {
-  const handle = shape as BrepkitHandle;
-  if (handle.type === 'edge') return shape;
-  const edges = iterShapes(bk, shape, 'edge');
-  const first = edges[0];
-  if (edges.length !== 1 || !first) {
+type NurbsCurveData = NonNullable<ReturnType<typeof extractNurbsFromEdge>>;
+
+/**
+ * The curve a guided sweep runs along: one line, or one edge brepkit stores
+ * as NURBS. brepkit gives no NURBS for a circle or an ellipse, and reading one
+ * by its end points would sweep along the chord.
+ */
+function guideCurve(bk: BrepkitKernel, shape: KernelShape, role: string): NurbsCurveData {
+  const edges = (shape as BrepkitHandle).type === 'edge' ? [shape] : iterShapes(bk, shape, 'edge');
+  const [edge] = edges;
+  if (edges.length !== 1 || !edge) {
     throw new UnsupportedKernelOperationError(
       `brepkit: a guided sweep takes a single-edge ${role}, got ${edges.length} edges`
     );
   }
-  return first;
+  const edgeId = unwrap(edge, 'edge');
+  const curveType = bk.getEdgeCurveType(edgeId);
+  if (curveType !== 'LINE' && bk.getEdgeNurbsData(edgeId) === null) {
+    throw new UnsupportedKernelOperationError(
+      `brepkit: a guided sweep takes a line or NURBS ${role}, got ${curveType}`
+    );
+  }
+  const data = extractNurbsFromEdge(bk, edge);
+  if (!data) throw new Error(`brepkit: guided sweep could not read the ${role}`);
+  return data;
 }
-
-type NurbsCurveData = NonNullable<ReturnType<typeof extractNurbsFromEdge>>;
 
 /**
  * brepkit places a guided sweep's sections at twice the spine's control points
@@ -390,10 +402,11 @@ function guidedPipeShell(
   spine: KernelShape,
   auxiliary: KernelShape
 ): KernelShape {
-  const rawPath = extractNurbsFromEdge(bk, singleCurveEdge(bk, spine, 'spine'));
-  const aux = extractNurbsFromEdge(bk, singleCurveEdge(bk, auxiliary, 'auxiliary spine'));
-  if (!rawPath || !aux) throw new Error('brepkit: guided sweep could not read the spine curves');
-  const path = densifyStraightSpine(rawPath, 2 * (aux.controlPoints.length / 3));
+  const aux = guideCurve(bk, auxiliary, 'auxiliary spine');
+  const path = densifyStraightSpine(
+    guideCurve(bk, spine, 'spine'),
+    2 * (aux.controlPoints.length / 3)
+  );
   const id = bk.guidedSweep(
     faceId,
     path.degree,

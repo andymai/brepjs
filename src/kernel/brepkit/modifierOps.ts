@@ -17,6 +17,7 @@ import {
   toArray,
   warnOnce,
   forgetSolidPieces,
+  DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
@@ -53,6 +54,33 @@ interface FilletLaw {
   readonly end: number;
 }
 
+const lawProbes = new WeakMap<BrepkitKernel, boolean>();
+
+/**
+ * brepkit-wasm before 4.6.9 cuts a flat bevel along a radius law, and the peer
+ * range still admits those builds. Rounding a 10 mm cube edge from 1 to 2 tells
+ * them apart: a round removes 5.0 mm3 and a bevel 11.7. The probe runs once per
+ * kernel, between a checkpoint and its restore, so it leaves nothing behind.
+ */
+function roundsAlongLaws(bk: BrepkitKernel): boolean {
+  const known = lawProbes.get(bk);
+  if (known !== undefined) return known;
+  let rounds: boolean;
+  const mark = bk.checkpoint();
+  try {
+    const cube = bk.makeBox(10, 10, 10);
+    const edge = wasmIndex(bk.getSolidEdges(cube), 0);
+    const spec = JSON.stringify([{ edge, law: 'linear', start: 1, end: 2 }]);
+    rounds = 1000 - bk.volume(bk.filletVariable(cube, spec), DEFAULT_DEFLECTION) < 8;
+  } catch {
+    rounds = false;
+  } finally {
+    bk.restore(mark);
+  }
+  lawProbes.set(bk, rounds);
+  return rounds;
+}
+
 /**
  * One filletVariable call for every edge, each along its own constant or
  * linear law, running from the edge's start vertex to its end.
@@ -62,6 +90,11 @@ function filletAlongLaws(
   solidId: number,
   laws: readonly FilletLaw[]
 ): KernelShape {
+  if (!roundsAlongLaws(bk)) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: a fillet along a radius law needs brepkit-wasm 4.6.9 or newer'
+    );
+  }
   const spec = laws.map(({ edge, start, end }) => ({
     edge,
     law: start === end ? 'constant' : 'linear',
