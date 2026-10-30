@@ -1,0 +1,23 @@
+tests/helpers/kernelRegistry.ts
+  s_b1a48d7e30b741::t_f1297e14bf16cc 53,70
+docs/kernel-conformance.md
+  s_b1a48d7e30b741::t_f1297e14bf16cc 3,24
+tests/helpers/kernelRegistry.test.ts
+  s_b1a48d7e30b741::t_f1297e14bf16cc 36,41,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86b86f92ea3f5364fa0846f2a99e18199e0f5385",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
