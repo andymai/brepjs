@@ -80,7 +80,7 @@ graph TB
 
 ### Layer 0: Foundation
 
-No internal imports allowed.
+Imports nothing above Layer 0. `kernel/` may import `utils/`; `utils/` imports nothing internal.
 
 | Module    | Purpose                                                                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
