@@ -7,7 +7,7 @@ import type { UnknownDimShape } from '@/core/shapeTypes.js';
 import { castResultShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
-import { sewMeshToSolid } from './ioUtils.js';
+import { sewMeshToSolid, sewableTopology, trianglePositions } from './ioUtils.js';
 import { colorShape } from '@/topology/metadata/colorFns.js';
 import { makeCompound } from '@/topology/solidBuilders.js';
 
@@ -511,6 +511,22 @@ function findDominantColor(
 
 function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
   const kernel = getKernel();
+  const triangles: Array<[Vec3, Vec3, Vec3]> = [];
+  for (const [v1, v2, v3] of mesh.triangles) {
+    const va = mesh.vertices[v1];
+    const vb = mesh.vertices[v2];
+    const vc = mesh.vertices[v3];
+    if (!va || !vb || !vc) continue;
+    triangles.push([va, vb, vc]);
+  }
+
+  // A single closed body with consistent winding sews straight into a solid,
+  // skipping the orientation repair that buildSolidFromFaces runs.
+  const topology = sewableTopology(trianglePositions(triangles));
+  const [body, ...others] = topology?.bodies ?? [];
+  if (body?.closed === true && others.length === 0) {
+    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED, 1e-6, topology);
+  }
 
   // Use buildSolidFromFaces (indexed mesh) for native import when available.
   // This avoids building individual face objects and sewing them, which can
@@ -522,21 +538,8 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
     const solid = kernel.buildSolidFromFaces(points, faces, 1e-6);
     return ok(castResultShape(solid));
   } catch {
-    // Fallback: resolve indexed triangles to vertex triples and sew
-    const triangles: Array<
-      [[number, number, number], [number, number, number], [number, number, number]]
-    > = [];
-
-    for (const [v1, v2, v3] of mesh.triangles) {
-      const va = mesh.vertices[v1];
-      const vb = mesh.vertices[v2];
-      const vc = mesh.vertices[v3];
-      if (!va || !vb || !vc) continue;
-
-      triangles.push([va, vb, vc]);
-    }
-
-    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
+    // Fallback: sew the triangles as vertex triples
+    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED, 1e-6, topology);
   }
 }
 

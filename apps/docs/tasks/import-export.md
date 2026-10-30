@@ -23,7 +23,7 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 
 \* IGES needs a kernel built with an IGES translator. The default occt-wasm kernel has none, so there `importIGES` and `exportIGES` return an `UNSUPPORTED_CAPABILITY` error; exchange the model as STEP instead.
 
-STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`, and a file with several bodies imports as a `Compound` of them. Because every triangle becomes a face, large meshes take seconds to tens of seconds: roughly 2.5 seconds per 10,000 triangles on the default occt-wasm kernel (about 15 seconds for 50,000), and up to about twice that for a file with several bodies.
+STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`, and a file with several bodies imports as a `Compound` of them. Because every triangle becomes a face, large meshes take seconds. On the default occt-wasm kernel, a watertight mesh whose triangles wind consistently takes roughly 0.3 seconds per 10,000 triangles (about 1.7 seconds for 50,000). A mesh whose winding needs repair takes roughly 2 seconds per 10,000 (about 13 seconds for 50,000), and up to about twice that for a file with several bodies.
 
 ## Export
 

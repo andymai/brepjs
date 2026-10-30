@@ -6,20 +6,46 @@
  * inward (negative signed volume, read before solidifying reorients it) that lies
  * inside another body; it is cut from the innermost body around it. An outward-facing
  * shell inside another is a separate part and stays one. Containment comes from ray
- * casts against each body's tessellation, because no kernel here can classify a
- * point against a solid.
+ * casts against each body's triangles, because no kernel here can classify a point
+ * against a solid.
  */
 
 import { getKernel } from '@/kernel/index.js';
-import type { KernelMeshResult } from '@/kernel/types.js';
 import type { AnyShape, Dimension, Shell } from '@/core/shapeTypes.js';
 import { castResultShape, isSolid } from '@/core/shapeTypes.js';
 
 type Body = AnyShape<Dimension>;
 type Vec3 = [number, number, number];
-interface Box {
+export interface Box {
   min: Vec3;
   max: Vec3;
+}
+
+/** Triangles as vertex coordinates (three per vertex) and vertex indices (three per triangle). */
+interface Triangles {
+  vertices: ArrayLike<number>;
+  triangles: ArrayLike<number>;
+}
+
+/** What nesting needs to know about a closed body. */
+export interface BodyOutline {
+  box(): Box;
+  /** The body's boundary as triangles. */
+  mesh(): Triangles;
+  /** Whether the body's triangles faced inward before it was solidified. */
+  facesInward(): boolean;
+}
+
+/** The outline of `body`, read from the kernel; `shell` is the sewn shell it was built from. */
+export function shellOutline(body: Body, shell: Shell): BodyOutline {
+  let box: Box | undefined;
+  let mesh: Triangles | undefined;
+  const boxOf = (): Box => (box ??= getKernel().boundingBox(body.wrapped));
+  return {
+    box: boxOf,
+    mesh: () => (mesh ??= meshShape(body, boxOf())),
+    facesInward: () => facesInward(shell, boxOf()),
+  };
 }
 
 // Off every axis and diagonal, so a ray from a mesh vertex rarely grazes an edge.
@@ -27,14 +53,22 @@ const RAY_LENGTH = Math.hypot(0.5389, 0.6213, 0.5689);
 const RAY: Vec3 = [0.5389 / RAY_LENGTH, 0.6213 / RAY_LENGTH, 0.5689 / RAY_LENGTH];
 
 /**
- * The parts to keep: `bodies` (each built from the same-index shell of `shells`)
- * with every cavity cut from the body around it and left out. Cut results are
- * pushed to `owned` for the caller to dispose; no input is disposed here.
+ * The parts to keep: `bodies` (each described by the same-index entry of
+ * `outlines`) with every cavity cut from the body around it and left out. Cut
+ * results are pushed to `owned` for the caller to dispose; no input is disposed
+ * here.
  *
  * @throws When meshing or a cut fails, rather than leave a cavity filled.
  */
-export function carveCavities(bodies: Body[], shells: Shell[], owned: Body[]): Body[] {
-  const solids = bodies.flatMap((body, i) => (isSolid(body) ? [{ body, shell: shells[i] }] : []));
+export function carveCavities(
+  bodies: Body[],
+  outlines: Array<BodyOutline | undefined>,
+  owned: Body[]
+): Body[] {
+  const solids = bodies.flatMap((body, i) => {
+    const outline = outlines[i];
+    return isSolid(body) && outline !== undefined ? [{ body, outline }] : [];
+  });
   if (solids.length < 2) return [...bodies];
   const voids = findVoids(solids);
 
@@ -49,18 +83,9 @@ export function carveCavities(bodies: Body[], shells: Shell[], owned: Body[]): B
 }
 
 /** The cavities of each body that has any, keyed by that body. */
-function findVoids(solids: Array<{ body: Body; shell: Shell | undefined }>): Map<Body, Body[]> {
-  const kernel = getKernel();
-  const boxes = solids.map(({ body }) => kernel.boundingBox(body.wrapped));
-  const meshes = new Map<number, KernelMeshResult>();
-  const meshOf = (i: number): KernelMeshResult => {
-    let mesh = meshes.get(i);
-    if (mesh === undefined) {
-      mesh = meshShape((solids[i] as { body: Body }).body, boxes[i] as Box);
-      meshes.set(i, mesh);
-    }
-    return mesh;
-  };
+function findVoids(solids: Array<{ body: Body; outline: BodyOutline }>): Map<Body, Body[]> {
+  const boxes = solids.map(({ outline }) => outline.box());
+  const meshOf = (i: number): Triangles => (solids[i] as { outline: BodyOutline }).outline.mesh();
   const containers = solids.map((_inner, j) =>
     solids
       .map((_outer, i) => i)
@@ -72,10 +97,9 @@ function findVoids(solids: Array<{ body: Body; shell: Shell | undefined }>): Map
       )
   );
 
-  const isVoid = containers.map((around, j) => {
-    const shell = solids[j]?.shell;
-    return around.length > 0 && shell !== undefined && facesInward(shell, boxes[j] as Box);
-  });
+  const isVoid = containers.map(
+    (around, j) => around.length > 0 && solids[j]?.outline.facesInward() === true
+  );
   const voids = new Map<Body, Body[]>();
   containers.forEach((around, j) => {
     if (!isVoid[j]) return;
@@ -119,7 +143,7 @@ function cutVoids(body: Body, voids: Body[]): Body {
   return current;
 }
 
-function meshShape(shape: Body, box: Box): KernelMeshResult {
+function meshShape(shape: Body, box: Box): Triangles {
   const diagonal = Math.hypot(...box.max.map((v, i) => v - (box.min[i] ?? 0)));
   return getKernel().mesh(shape.wrapped, {
     tolerance: Math.max(diagonal * 1e-3, 1e-6),
@@ -134,17 +158,17 @@ function boxInside(inner: Box, outer: Box): boolean {
   );
 }
 
-function firstVertex(mesh: KernelMeshResult): Vec3 {
-  return [mesh.vertices[0] ?? 0, mesh.vertices[1] ?? 0, mesh.vertices[2] ?? 0];
+function firstVertex(mesh: Triangles): Vec3 {
+  return vertexAt(mesh, mesh.triangles[0]);
 }
 
-function vertexAt(mesh: KernelMeshResult, index: number | undefined): Vec3 {
+function vertexAt(mesh: Triangles, index: number | undefined): Vec3 {
   const i = (index ?? 0) * 3;
   return [mesh.vertices[i] ?? 0, mesh.vertices[i + 1] ?? 0, mesh.vertices[i + 2] ?? 0];
 }
 
 /** Whether `p` is inside the closed mesh, by the parity of a ray's crossings. */
-function insideMesh(p: Vec3, mesh: KernelMeshResult): boolean {
+function insideMesh(p: Vec3, mesh: Triangles): boolean {
   const t = mesh.triangles;
   let crossings = 0;
   for (let i = 0; i + 2 < t.length; i += 3) {

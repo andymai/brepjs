@@ -32,6 +32,14 @@ export interface KernelCapabilities {
    * or fillet. Kernels that rebuild the maps by geometric matching leave it unset.
    */
   readonly nativeHistory?: boolean | undefined;
+  /**
+   * `sew` keeps every face's orientation, so faces wound consistently sew into a
+   * consistently oriented shell, and `solidFromShell` bounds the solid by that
+   * shell as it is (after `reverseShape`, by its inside-out twin). Mesh import
+   * relies on it to build solids without an orientation repair pass. Kernels
+   * that reorient while sewing leave it unset.
+   */
+  readonly sewKeepsOrientation?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */
@@ -42,10 +50,11 @@ export const EXACT_BREP_CAPABILITIES: KernelCapabilities = {
   tessellationModel: 'extract-time',
 };
 
-/** OCCT-family kernels: exact B-rep with OCCT's own shape history. */
+/** OCCT-family kernels: exact B-rep with OCCT's own shape history and sewing. */
 export const OCCT_CAPABILITIES: KernelCapabilities = {
   ...EXACT_BREP_CAPABILITIES,
   nativeHistory: true,
+  sewKeepsOrientation: true,
 };
 
 /**
