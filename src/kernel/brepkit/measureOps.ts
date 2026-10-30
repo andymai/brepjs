@@ -17,6 +17,7 @@ import {
   solidHandle,
   compoundSolidIds,
   syntheticCompounds,
+  edgeBoxPoints,
   DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
@@ -138,37 +139,45 @@ export function boundingBox(
   min: [number, number, number];
   max: [number, number, number];
 } {
-  const h = shape as BrepkitHandle;
-  if (h.type === 'solid') {
-    const bb = bk.boundingBox(unwrap(shape));
-    return { min: vec3At(bb, 0), max: vec3At(bb, 3) };
+  const points = boxPoints(bk, shape as BrepkitHandle);
+  const [first] = points;
+  if (!first) return { min: [0, 0, 0], max: [0, 0, 0] };
+  const min: [number, number, number] = [...first];
+  const max: [number, number, number] = [...first];
+  for (const p of points) {
+    for (let k = 0; k < 3; k++) {
+      min[k] = Math.min(wasmIndex(min, k), wasmIndex(p, k));
+      max[k] = Math.max(wasmIndex(max, k), wasmIndex(p, k));
+    }
   }
-  if (h.type === 'vertex') {
-    const pos = vertexPosition(bk, shape);
-    return { min: [...pos], max: [...pos] };
+  return { min, max };
+}
+
+/**
+ * Points whose bounding box is the shape's: a solid's own box corners, and for
+ * anything else the box points of its edges (see `edgeBoxPoints`), so an arc's
+ * bulge counts and not just its end vertices.
+ */
+function boxPoints(bk: BrepkitKernel, h: BrepkitHandle): [number, number, number][] {
+  switch (h.type) {
+    case 'solid': {
+      const bb = bk.boundingBox(h.id);
+      return [vec3At(bb, 0), vec3At(bb, 3)];
+    }
+    case 'vertex':
+      return [vec3At(bk.getVertexPosition(h.id))];
+    case 'edge':
+      return edgeBoxPoints(bk, h.id);
+    case 'compound': {
+      const children = syntheticCompounds.get(h.id) ?? compoundSolidIds(bk, h.id).map(solidHandle);
+      return children.flatMap((child) => boxPoints(bk, child));
+    }
+    default: {
+      const edges = iterShapes(bk, h, 'edge');
+      if (edges.length > 0) return edges.flatMap((e) => edgeBoxPoints(bk, unwrap(e)));
+      return iterShapes(bk, h, 'vertex').map((v) => vertexPosition(bk, v));
+    }
   }
-  // For faces, edges, wires, compounds, shells: compute from vertex positions
-  const vertices = iterShapes(bk, shape, 'vertex');
-  if (vertices.length === 0) {
-    return { min: [0, 0, 0], max: [0, 0, 0] };
-  }
-  const first = vertexPosition(bk, vertices[0]);
-  let minX = first[0],
-    minY = first[1],
-    minZ = first[2];
-  let maxX = first[0],
-    maxY = first[1],
-    maxZ = first[2];
-  for (let i = 1; i < vertices.length; i++) {
-    const p = vertexPosition(bk, vertices[i]);
-    if (p[0] < minX) minX = p[0];
-    if (p[0] > maxX) maxX = p[0];
-    if (p[1] < minY) minY = p[1];
-    if (p[1] > maxY) maxY = p[1];
-    if (p[2] < minZ) minZ = p[2];
-    if (p[2] > maxZ) maxZ = p[2];
-  }
-  return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
 }
 
 /**

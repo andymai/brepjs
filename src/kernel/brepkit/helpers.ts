@@ -179,47 +179,66 @@ export function dist3(
 
 const TAU = 2 * Math.PI;
 
-/**
- * The curve parameters an edge spans. brepkit reports a circle or ellipse edge's
- * domain as the whole [0, 2π] even for an arc; the arc runs counterclockwise
- * about the curve's axis from the angle of its start vertex to that of its end
- * vertex (brepkit's own `circle_param_range`). Those angles come from the
- * curve's frame, recovered from its points at 0, π/2 and π: evaluated at t the
- * curve is center + U·cos t + V·sin t.
- */
-export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, number] {
-  const params = bk.getEdgeCurveParameters(edgeId);
-  const t0 = wasmIndex(params, 0);
-  const t1 = wasmIndex(params, 1);
-  if (t0 !== 0 || t1 !== TAU) return [t0, t1];
-  const curveType = bk.getEdgeCurveType(edgeId);
-  if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return [t0, t1];
-  const verts = bk.getEdgeVertices(edgeId);
-  const start: [number, number, number] = [
-    wasmIndex(verts, 0),
-    wasmIndex(verts, 1),
-    wasmIndex(verts, 2),
-  ];
-  const end: [number, number, number] = [
-    wasmIndex(verts, 3),
-    wasmIndex(verts, 4),
-    wasmIndex(verts, 5),
-  ];
-  if (dist3(...start, ...end) < 1e-7) return [t0, t1];
+type Point = [number, number, number];
 
-  const at = (t: number): [number, number, number] => {
+interface ConicFrame {
+  readonly center: Point;
+  readonly u: Point;
+  readonly v: Point;
+}
+
+/**
+ * The frame of an analytic circle or ellipse edge, evaluated at t as
+ * center + U·cos t + V·sin t, recovered from its points at 0, π/2 and π.
+ * brepkit reports such an edge's domain as exactly [0, 2π]; a NURBS edge that
+ * happens to be a circle reports its knot domain and gets no frame.
+ */
+function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
+  const params = bk.getEdgeCurveParameters(edgeId);
+  if (wasmIndex(params, 0) !== 0 || wasmIndex(params, 1) !== TAU) return undefined;
+  const curveType = bk.getEdgeCurveType(edgeId);
+  if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return undefined;
+  const at = (t: number): Point => {
     const p = bk.evaluateEdgeCurve(edgeId, t);
     return [wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2)];
   };
   const p0 = at(0);
   const pHalf = at(Math.PI / 2);
   const pPi = at(Math.PI);
-  const center = [(p0[0] + pPi[0]) / 2, (p0[1] + pPi[1]) / 2, (p0[2] + pPi[2]) / 2] as const;
-  const u = [p0[0] - center[0], p0[1] - center[1], p0[2] - center[2]] as const;
-  const v = [pHalf[0] - center[0], pHalf[1] - center[1], pHalf[2] - center[2]] as const;
+  const center: Point = [(p0[0] + pPi[0]) / 2, (p0[1] + pPi[1]) / 2, (p0[2] + pPi[2]) / 2];
+  return {
+    center,
+    u: [p0[0] - center[0], p0[1] - center[1], p0[2] - center[2]],
+    v: [pHalf[0] - center[0], pHalf[1] - center[1], pHalf[2] - center[2]],
+  };
+}
+
+function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
+  const verts = bk.getEdgeVertices(edgeId);
+  return [
+    [wasmIndex(verts, 0), wasmIndex(verts, 1), wasmIndex(verts, 2)],
+    [wasmIndex(verts, 3), wasmIndex(verts, 4), wasmIndex(verts, 5)],
+  ];
+}
+
+/**
+ * The curve parameters an edge spans. brepkit reports a circle or ellipse edge's
+ * domain as the whole [0, 2π] even for an arc; the arc runs counterclockwise
+ * about the curve's axis from the angle of its start vertex to that of its end
+ * vertex (brepkit's own `circle_param_range`), angles read off the curve's frame.
+ */
+export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, number] {
+  const params = bk.getEdgeCurveParameters(edgeId);
+  const t0 = wasmIndex(params, 0);
+  const t1 = wasmIndex(params, 1);
+  const frame = conicFrame(bk, edgeId);
+  if (!frame) return [t0, t1];
+  const [start, end] = edgeEnds(bk, edgeId);
+  if (dist3(...start, ...end) < 1e-7) return [t0, t1];
+  const { center, u, v } = frame;
   const uu = u[0] * u[0] + u[1] * u[1] + u[2] * u[2];
   const vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-  const angleOf = (p: [number, number, number]): number => {
+  const angleOf = (p: Point): number => {
     const d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]] as const;
     const cos = (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / uu;
     const sin = (d[0] * v[0] + d[1] * v[1] + d[2] * v[2]) / vv;
@@ -229,6 +248,39 @@ export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, numb
   let te = angleOf(end);
   if (te <= ts) te += TAU;
   return [ts, te];
+}
+
+const CURVE_BOX_SAMPLES = 32;
+
+/**
+ * Points whose bounding box is the edge's: its ends, plus for a circle or
+ * ellipse the points where each coordinate peaks within the arc (exact), and
+ * for any other curve samples along its parameter range.
+ */
+export function edgeBoxPoints(bk: BrepkitKernel, edgeId: number): Point[] {
+  const points: Point[] = [...edgeEnds(bk, edgeId)];
+  const curveType = bk.getEdgeCurveType(edgeId);
+  if (curveType === 'LINE') return points;
+  const [t0, t1] = edgeParamRange(bk, edgeId);
+  const at = (t: number): Point => {
+    const p = bk.evaluateEdgeCurve(edgeId, t);
+    return [wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2)];
+  };
+  const frame = conicFrame(bk, edgeId);
+  if (frame) {
+    for (let k = 0; k < 3; k++) {
+      const peak = Math.atan2(wasmIndex(frame.v, k), wasmIndex(frame.u, k));
+      for (const base of [peak, peak + Math.PI]) {
+        const t = base + TAU * Math.ceil((t0 - base) / TAU);
+        if (t <= t1) points.push(at(t));
+      }
+    }
+    return points;
+  }
+  for (let i = 1; i < CURVE_BOX_SAMPLES; i++) {
+    points.push(at(t0 + ((t1 - t0) * i) / CURVE_BOX_SAMPLES));
+  }
+  return points;
 }
 
 /** Copy a WASM-backed Uint8Array into an independent ArrayBuffer. */

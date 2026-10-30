@@ -6,6 +6,7 @@ import {
   line,
   circle,
   threePointArc,
+  getBounds,
   wire,
   sketchRectangle,
   unwrap,
@@ -106,6 +107,9 @@ describe('curveStartPoint / curveEndPoint', () => {
     expectPoint(curvePointAt(arc, 0.5), [0, 8, 0]);
     expectPoint(curvePointAt(arc, 0.25), [8 * Math.SQRT1_2, 8 * Math.SQRT1_2, 0]);
     expect(curveLength(arc)).toBeCloseTo(8 * Math.PI, 6);
+    // The arc's box reaches its bulge, not just its end points.
+    const { xMin, xMax, yMin, yMax } = getBounds(arc);
+    expect([xMin, xMax, yMin, yMax].map((v) => +v.toFixed(6))).toEqual([-8, 8, 0, 8]);
   });
 
   it('evaluates an arc that runs clockwise in the XY plane', () => {
