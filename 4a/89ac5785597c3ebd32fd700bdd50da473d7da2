@@ -1,0 +1,28 @@
+tests/brepkitAdapter.test.ts
+  s_a2dc21dbec3f2b::t_a181678cafeaa6 745-746,750-752,760
+  s_a2dc21dbec3f2b::t_3259c0871f448b 744,747-749,753-759,761-762
+src/kernel/brepkit/helpers.ts
+  s_a2dc21dbec3f2b::t_fd5c4f588d0140 224-228
+  s_a2dc21dbec3f2b::t_310201af1993cc 193-194,199
+tests/brepkitExtended.test.ts
+  s_a2dc21dbec3f2b::t_dabdd9ede8d95d 27
+  s_a2dc21dbec3f2b::t_8f0c417a6f40d4 817-819
+  s_a2dc21dbec3f2b::t_bc81085a1926ee 20
+  s_a2dc21dbec3f2b::t_940951dbd7840b 812-816,820-832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a89ac5785597c3ebd32fd700bdd50da473d7da2",
+  "prompts": {},
+  "sessions": {
+    "s_a2dc21dbec3f2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3041864d-11cb-40e5-b12f-602f4f774ad4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}

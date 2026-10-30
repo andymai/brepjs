@@ -1,0 +1,38 @@
+src/kernel/brepkit/helpers.ts
+  s_a2dc21dbec3f2b::t_9bbc1f319509a5 196
+  s_a2dc21dbec3f2b::t_db67df7f8d7956 215
+tests/brepkitAdapter.test.ts
+  s_a2dc21dbec3f2b::t_1f004938977026 1116
+  s_a2dc21dbec3f2b::t_2a71c32c4f75a4 16
+  s_a2dc21dbec3f2b::t_2ac8b5a2d36660 1025-1027,1032,1039-1041,1046-1064,1066-1083,1093-1115,1117-1126,1128-1143,1147
+  s_a2dc21dbec3f2b::t_63127c3ef263eb 1034,1036
+  s_a2dc21dbec3f2b::t_826364da53a0e8 1127
+  s_a2dc21dbec3f2b::t_f1b89fcb0d6c26 1065
+  s_a2dc21dbec3f2b::t_7e8f42b777dccf 1028-1031,1033,1035,1037-1038,1042-1045
+  s_a2dc21dbec3f2b::t_47e2b9ad4cbc21 1084-1092
+  s_a2dc21dbec3f2b::t_17f6b1d8dc8bd4 1144-1146,1148-1150
+tests/sketcher3d.test.ts
+  s_a2dc21dbec3f2b::t_815fd5354d6d97 334-343
+src/kernel/brepkit/constructionOps.ts
+  s_a2dc21dbec3f2b::t_40d87783646e26 516
+  s_a2dc21dbec3f2b::t_231e08c06238a0 492,496,503-515,517-604
+  s_a2dc21dbec3f2b::t_578c8cb37c5d0e 76
+  s_a2dc21dbec3f2b::t_9ad27297603276 25-27
+  s_a2dc21dbec3f2b::t_506bc712a4a0e6 605-609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "584bb81e75218d79003463be4a0e5c1a6d842bb6",
+  "prompts": {},
+  "sessions": {
+    "s_a2dc21dbec3f2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3041864d-11cb-40e5-b12f-602f4f774ad4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
