@@ -1,0 +1,26 @@
+tests/brepkitExtended.test.ts
+  s_d4ab5fb2066c9b::t_951abc6587c715 102,108-118
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_3c8e8a5c7d3aee 220
+tests/api-canonical-params.test.ts
+  s_d4ab5fb2066c9b::t_951abc6587c715 61-63
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_951abc6587c715 376-377
+  s_d4ab5fb2066c9b::t_2b2ab3ac5b8cdf 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb5c8fba23b08210c4f38577fde52f10ade3a6fb",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
