@@ -22,13 +22,14 @@ import {
 } from '@/csg/index.js';
 import { isOk, unwrap, measureVolume } from '@/index.js';
 import { getShapeColor, hasColorMetadata } from '@/topology/metadata/colorFns.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { isShape3D, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
   return unwrap(measureVolume(s));
 }
 

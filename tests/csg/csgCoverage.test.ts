@@ -47,14 +47,20 @@ import { toJSON, fromJSON } from '@/csg/serialize.js';
 import { replaceNode, forEachNode, nodeCount } from '@/csg/edit.js';
 import { evalScalar, evalVec3, evalExpr, projectEnv } from '@/csg/expressions.js';
 import { isOk, isErr, unwrap, measureVolume, measureArea } from '@/index.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { isFace, isShape3D, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
   return unwrap(measureVolume(s));
+}
+
+function area(s: AnyShape<Dimension>): number {
+  if (!isFace(s) && !isShape3D(s)) throw new Error('expected a face or 3D shape');
+  return unwrap(measureArea(s));
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +90,7 @@ describe('primitives — evaluator coverage', () => {
       ])
     );
     expect(isOk(r)).toBe(true);
-    expect(unwrap(measureArea(unwrap(r)))).toBeGreaterThan(0);
+    expect(area(unwrap(r))).toBeGreaterThan(0);
   });
 
   it('evaluates Circle', () => {
