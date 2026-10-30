@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.12](https://github.com/andymai/brepjs/compare/brepjs-v20.12.11...brepjs-v20.12.12) (2026-10-30)
+
+
+### Bug Fixes
+
+* **topology:** copy pass-through boolean results and fix two measurements ([#2534](https://github.com/andymai/brepjs/issues/2534)) ([a82b545](https://github.com/andymai/brepjs/commit/a82b5458ba83e8ffb198a0bb4751e5c0febbd7af))
+
 ## [20.12.11](https://github.com/andymai/brepjs/compare/brepjs-v20.12.10...brepjs-v20.12.11) (2026-10-29)
 
 

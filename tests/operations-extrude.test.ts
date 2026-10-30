@@ -12,11 +12,21 @@ import {
   unwrap,
   isOk,
 } from '@/index.js';
-import type { ClosedWire } from '@/index.js';
+import type { ClosedWire, Shape3D, Wire } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function shapeOf(swept: Shape3D | [Shape3D, Wire, Wire]): Shape3D {
+  if (Array.isArray(swept)) throw new Error('expected a solid, not a shell tuple');
+  return swept;
+}
+
+function shellTupleOf(swept: Shape3D | [Shape3D, Wire, Wire]): [Shape3D, Wire, Wire] {
+  if (!Array.isArray(swept)) throw new Error('expected a shell tuple');
+  return swept;
+}
 
 describe('sweep', () => {
   it('sweeps a circle along a straight spine', () => {
@@ -26,7 +36,7 @@ describe('sweep', () => {
 
     const result = sweep(wire, spine, { frenet: true });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(solid).toBeDefined();
     const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(Math.PI * 4 * 20, -1);
@@ -39,7 +49,7 @@ describe('sweep', () => {
 
     const result = sweep(wire, spine, { frenet: true });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(160, -1);
   });
@@ -54,7 +64,7 @@ describe('sweep', () => {
       transitionMode: 'transformed',
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
@@ -68,7 +78,7 @@ describe('sweep', () => {
       transitionMode: 'round',
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
@@ -83,7 +93,7 @@ describe('complexExtrude', () => {
       endFactor: 0.5,
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
@@ -97,7 +107,7 @@ describe('complexExtrude', () => {
       endFactor: 0.5,
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
@@ -118,7 +128,7 @@ describe('complexExtrude', () => {
       using w = sketchCircle(5).wire;
       const result = complexExtrude(w, [0, 0, 0], [0, 0, 10], { profile: 'linear', endFactor });
       expect(isOk(result)).toBe(true);
-      using solid = unwrap(result);
+      using solid = shapeOf(unwrap(result));
       expect(unwrap(measureVolume(solid))).toBeCloseTo(frustum(endFactor), 1);
     }
   });
@@ -129,7 +139,7 @@ describe('complexExtrude', () => {
 
     const result = complexExtrude(wire, [0, 0, 0], [0, 0, 15]);
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(720, -1);
   });
@@ -141,7 +151,7 @@ describe('complexExtrude', () => {
 
     const result = complexExtrude(wire, [0, 0, 0], [0, 0, 10], undefined, true);
     expect(isOk(result)).toBe(true);
-    const [shape, startWire, endWire] = unwrap(result);
+    const [shape, startWire, endWire] = shellTupleOf(unwrap(result));
     expect(shape).toBeDefined();
     expect(startWire).toBeDefined();
     expect(endWire).toBeDefined();
@@ -155,7 +165,7 @@ describe('twistExtrude', () => {
 
     const result = twistExtrude(wire, 90, [0, 0, 0], [0, 0, 20]);
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
@@ -169,7 +179,7 @@ describe('twistExtrude', () => {
       endFactor: 0.5,
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
@@ -182,7 +192,7 @@ describe('twistExtrude', () => {
       endFactor: 1,
     });
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
@@ -192,7 +202,7 @@ describe('twistExtrude', () => {
 
     const result = twistExtrude(wire, 60, [0, 0, 0], [0, 0, 12]);
     expect(isOk(result)).toBe(true);
-    const solid = unwrap(result);
+    const solid = shapeOf(unwrap(result));
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });

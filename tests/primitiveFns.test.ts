@@ -20,7 +20,7 @@ import {
   unwrap,
   getFaces,
 } from '@/index.js';
-import type { Wire, Face } from '@/core/shapeTypes.js';
+import type { ClosedWire, Face } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -49,7 +49,7 @@ describe('ellipsoid', () => {
 describe('filledFace', () => {
   it('creates a face from a closed wire', () => {
     const c = circle(10);
-    const w = castShape(c.wrapped) as Wire;
+    const w = castShape(c.wrapped) as ClosedWire;
     const result = filledFace(w);
     expect(isOk(result)).toBe(true);
     const face = unwrap(result);
@@ -64,7 +64,7 @@ describe('subFace', () => {
     const outerFace = castShape(rect.face().wrapped) as Face;
     // Create a smaller wire on the same plane
     const innerRect = sketchRectangle(5, 5);
-    const innerWire = castShape(innerRect.wire.wrapped) as Wire;
+    const innerWire = castShape(innerRect.wire.wrapped) as ClosedWire;
 
     const result = subFace(outerFace, innerWire);
     expect(isFace(result)).toBe(true);
@@ -91,7 +91,7 @@ describe('addHoles', () => {
 
     // Create a circular hole
     const holeCircle = sketchCircle(3);
-    const holeWire = castShape(holeCircle.wire.wrapped) as Wire;
+    const holeWire = castShape(holeCircle.wire.wrapped) as ClosedWire;
 
     const faceWithHole = addHoles(outerFace, [holeWire]);
     expect(isFace(faceWithHole)).toBe(true);

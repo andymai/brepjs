@@ -42,6 +42,7 @@ import {
   unwrap,
 } from '@/index.js';
 import type { Vec3 } from '@/core/types.js';
+import type { Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -60,7 +61,7 @@ function comOf(shape: Parameters<typeof measureVolumeProps>[0]): Vec3 {
 // ---------------------------------------------------------------------------
 
 describe('SPEC: translate preserves volume', () => {
-  it.each<[string, () => Parameters<typeof translate>[0], Vec3]>([
+  it.each<[string, () => Shape3D, Vec3]>([
     ['box', () => box(2, 3, 4), [10, 0, 0]],
     ['box big offset', () => box(5, 5, 5), [100, -50, 25]],
     ['cylinder', () => cylinder(3, 7), [1, 2, 3]],
@@ -149,7 +150,7 @@ describe('SPEC: rotate by 360° returns to original (volume + com)', () => {
 // ---------------------------------------------------------------------------
 
 describe('SPEC: uniform scale cubes the volume', () => {
-  it.each<[string, () => Parameters<typeof scale>[0], number, number]>([
+  it.each<[string, () => Shape3D, number, number]>([
     ['box(2,3,4) ×2', () => box(2, 3, 4), 2, 24 * 8],
     ['box(2,3,4) ×0.5', () => box(2, 3, 4), 0.5, 24 * 0.125],
     ['cylinder(3,7) ×3', () => cylinder(3, 7), 3, Math.PI * 9 * 7 * 27],

@@ -175,9 +175,9 @@ export function materialize<D extends Dimension>(
 
 // Place the source at each matrix, then combine into a Compound or fused solid.
 // Transient copies are disposed once the result is built (and on a failed
-// placement) — except one the result aliases, since fuseAll of a single shape
-// returns that shape itself. makeCompound/fuseAll keep their own refcounted
-// references, so disposing the inputs can't corrupt the result.
+// placement). makeCompound/fuseAll keep their own refcounted references, and
+// fuseAll of a single shape returns a copy, so disposing the inputs can't
+// corrupt the result.
 function combine<D extends Dimension>(
   source: AnyShape<D>,
   placements: ReadonlyArray<Matrix4x4>,
@@ -194,9 +194,7 @@ function combine<D extends Dimension>(
   }
   // Arbitrary placements needn't share faces, so no sameFace glue here.
   const result = fuse ? fuseAll(copies as Shape3D[], { unsafe: true }) : ok(makeCompound(copies));
-  for (const c of copies) {
-    if (!result.ok || c !== result.value) c[Symbol.dispose]();
-  }
+  for (const c of copies) c[Symbol.dispose]();
   return result;
 }
 

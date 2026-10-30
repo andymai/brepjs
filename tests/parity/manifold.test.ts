@@ -210,7 +210,7 @@ describe('TIER B (loose): modifiers', () => {
     const occtVol = previewVolume(
       () => {
         const baseO = k.o.makeBox(10, 10, 10);
-        return k.o.fillet(baseO, k.o.iterShapes(baseO, 'edge').slice(0, 1), [1]);
+        return k.o.fillet(baseO, k.o.iterShapes(baseO, 'edge').slice(0, 1), 1);
       },
       { m: k.o, o: k.o }
     );
@@ -367,7 +367,7 @@ describe('TIER D (degradation): raw-mesh origin exports faceted + warns', () => 
     // OBJ preserves shared vertex indices, so the rebuilt mesh is watertight
     // (unlike STL, whose per-facet vertex soup manifold rejects).
     const box = k.m.makeBox(4, 4, 4);
-    const obj = k.m.exportOBJ(box);
+    const obj = k.m.exportOBJ(box, 0.1);
     const imported = k.m.importOBJ(obj);
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

@@ -31,7 +31,7 @@ describe('fuseAll (high-level)', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('returns the single shape when given one element', () => {
+  it('returns a copy of the shape when given one element', () => {
     const b = box(10, 10, 10);
     const result = fuseAll([b]);
     expect(isOk(result)).toBe(true);
@@ -51,7 +51,7 @@ describe('cutAll (high-level)', () => {
     expect(unwrap(measureVolume(c))).toBeGreaterThan(0);
   });
 
-  it('returns base shape when tools array is empty', () => {
+  it('returns a copy of the base when tools array is empty', () => {
     const b = box(10, 10, 10);
     const result = cutAll(b, []);
     expect(isOk(result)).toBe(true);

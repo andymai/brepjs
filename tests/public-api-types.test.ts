@@ -1115,7 +1115,7 @@ describe('Type structures — runtime field verification', () => {
         vertices: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
         normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
         uvs: new Float32Array([0, 0, 1, 0, 0, 1]),
-        faceGroups: [{ start: 0, count: 3, faceId: 1 }],
+        faceGroups: [{ start: 0, count: 3, faceId: 1, origin: 0 }],
       };
       expect(mesh.triangles).toBeInstanceOf(Uint32Array);
       expect(mesh.vertices).toBeInstanceOf(Float32Array);
@@ -1146,6 +1146,7 @@ describe('Type structures — runtime field verification', () => {
     it('has isValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics', () => {
       const report: HealingReport = {
         isValid: true,
+        alreadyValid: true,
         wiresHealed: 0,
         facesHealed: 0,
         solidHealed: false,

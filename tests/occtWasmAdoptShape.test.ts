@@ -27,6 +27,7 @@ describe.skipIf(!isOcctWasm)('OcctWasmAdapter shape exchange', () => {
   it('adopts a shape built through OcctKernel into brepjs', () => {
     using adopted = castShape(adapter().adoptShape(raw().makeBox(1, 2, 3)));
     expect(isSolid(adopted)).toBe(true);
+    if (!isSolid(adopted)) throw new Error('expected a solid');
     expect(unwrap(measureVolume(adopted))).toBeCloseTo(6, 9);
 
     using other = box(1, 1, 1);

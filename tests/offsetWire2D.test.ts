@@ -11,8 +11,11 @@ describe('offsetWire2D join types', () => {
   function getRectWire() {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const wires = getWires(faces[0]);
-    return wires[0];
+    const face = faces[0];
+    if (!face) throw new Error('box has no faces');
+    const wire = getWires(face)[0];
+    if (!wire) throw new Error('face has no wires');
+    return wire;
   }
 
   it('offsets with chamfer join type', () => {

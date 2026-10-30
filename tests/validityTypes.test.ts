@@ -74,7 +74,9 @@ function makeOpenWire(): Wire {
 
 /** Create a face from a closed wire. */
 function makeFace(): Face {
-  return unwrap(face(makeClosedWire()));
+  const cw = makeClosedWire();
+  if (!isPlanarWire(cw)) throw new Error('profile is not planar');
+  return unwrap(face(cw));
 }
 
 /** Create a solid (box). */
@@ -100,7 +102,9 @@ function makeOpenShell(): Shell {
       line([0, 0, 10], [0, 0, 0]),
     ])
   );
-  const f2 = unwrap(face(w2 as ClosedWire));
+  if (!isClosedWire(w2) || !isPlanarWire(w2))
+    throw new Error('profile is not a closed planar loop');
+  const f2 = unwrap(face(w2));
   return unwrap(sewShells([f1, f2]));
 }
 
@@ -288,6 +292,7 @@ describe('isPlanarFace', () => {
         line([0, 10, 0], [0, 0, 0]),
       ])
     );
+    if (!isPlanarWire(w)) throw new Error('profile is not planar');
     const f = unwrap(face(w));
     expect(isPlanarFace(f)).toBe(true);
   });
@@ -310,6 +315,7 @@ describe('isPlanarFace', () => {
         line([0, 10, 0], [0, 0, 0]),
       ])
     );
+    if (!isPlanarWire(w)) throw new Error('profile is not planar');
     const f: Face = unwrap(face(w));
     if (isPlanarFace(f)) {
       const _planar: PlanarFace = f;
@@ -332,6 +338,7 @@ describe('planarFace', () => {
         line([0, 10, 0], [0, 0, 0]),
       ])
     );
+    if (!isPlanarWire(w)) throw new Error('profile is not planar');
     const f = unwrap(face(w));
     const result = planarFace(f);
     expect(isOk(result)).toBe(true);
@@ -525,6 +532,7 @@ describe('subtype relationships', () => {
 describe('consumer type enforcement', () => {
   it('face() accepts ClosedWire and produces OrientedFace', () => {
     const cw = makeClosedWire();
+    if (!isPlanarWire(cw)) throw new Error('profile is not planar');
     const result = face(cw);
     expect(isOk(result)).toBe(true);
     const f = unwrap(result);
@@ -534,7 +542,9 @@ describe('consumer type enforcement', () => {
   });
 
   it('extrude() accepts OrientedFace and produces ValidSolid', () => {
-    const f = unwrap(face(makeClosedWire()));
+    const cw = makeClosedWire();
+    if (!isPlanarWire(cw)) throw new Error('profile is not planar');
+    const f = unwrap(face(cw));
     const result = extrude(f, [0, 0, 10]);
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
@@ -550,6 +560,7 @@ describe('consumer type enforcement', () => {
     expect(isOk(cwResult)).toBe(true);
     if (!isOk(cwResult)) return;
 
+    if (!isPlanarWire(cwResult.value)) throw new Error('profile is not planar');
     const faceResult = face(cwResult.value);
     expect(isOk(faceResult)).toBe(true);
 
@@ -570,8 +581,10 @@ describe('wireLoop', () => {
     const e4 = line([0, 10, 0], [0, 0, 0]);
     const result = wireLoop([e1, e2, e3, e4]);
     expect(isOk(result)).toBe(true);
-    // The result is ClosedWire — can pass directly to face()
-    const faceResult = face(unwrap(result));
+    // The result is ClosedWire; face() also needs it proven planar
+    const cw = unwrap(result);
+    if (!isPlanarWire(cw)) throw new Error('profile is not planar');
+    const faceResult = face(cw);
     expect(isOk(faceResult)).toBe(true);
   });
 

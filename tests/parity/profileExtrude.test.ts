@@ -12,7 +12,8 @@ import { makePolygon, makeFace } from '@/topology/surfaceBuilders.js';
 import { makeLine, assembleWire } from '@/topology/curveBuilders.js';
 import { extrude } from '@/operations/api.js';
 import { measureVolume } from '@/measurement/measureFns.js';
-import { isOk, unwrap } from '@/result.js';
+import { isOk, unwrap, type Result } from '@/result.js';
+import type { ClosedWire, PlanarWire } from '@/core/shapeTypes.js';
 
 let haveManifold = false;
 
@@ -31,9 +32,9 @@ function extrudeVolume(points: [number, number, number][], height: number): numb
   const faceR = makePolygon(points);
   if (!isOk(faceR)) throw new Error(`makePolygon failed: ${JSON.stringify(faceR.error)}`);
   const solidR = extrude(unwrap(faceR), height);
-  if (!isOk(solidR)) throw new Error(`extrude failed: ${String(solidR.error)}`);
+  if (!isOk(solidR)) throw new Error(`extrude failed: ${JSON.stringify(solidR.error)}`);
   const volR = measureVolume(unwrap(solidR));
-  if (!isOk(volR)) throw new Error(`measureVolume failed: ${String(volR.error)}`);
+  if (!isOk(volR)) throw new Error(`measureVolume failed: ${JSON.stringify(volR.error)}`);
   return unwrap(volR);
 }
 
@@ -65,13 +66,14 @@ describe('manifold-native profile extrude (parity vs OCCT)', () => {
 
   it('square 20×20 with 8×8 hole × h5 → volume 1680 (faces-with-holes)', () => {
     if (!haveManifold) return;
-    const squareWire = (x0: number, y0: number, s: number): ReturnType<typeof assembleWire> =>
+    // Closed and planar by construction; a guard would add kernel calls to both measured runs.
+    const squareWire = (x0: number, y0: number, s: number) =>
       assembleWire([
         makeLine([x0, y0, 0], [x0 + s, y0, 0]),
         makeLine([x0 + s, y0, 0], [x0 + s, y0 + s, 0]),
         makeLine([x0 + s, y0 + s, 0], [x0, y0 + s, 0]),
         makeLine([x0, y0 + s, 0], [x0, y0, 0]),
-      ]);
+      ]) as Result<ClosedWire & PlanarWire>;
     const holedVolume = (): number => {
       const outer = squareWire(0, 0, 20);
       const hole = squareWire(6, 6, 8);

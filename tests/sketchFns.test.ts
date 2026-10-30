@@ -109,13 +109,8 @@ describe('sketchWires', () => {
 describe('sketchSweep', () => {
   it('sweeps a profile along a path', () => {
     const path = new Sketcher('XZ').movePointerTo([0, 0]).lineTo([0, 20]).done();
-    const solid = sketchSweep(path, (plane, origin) => {
-      return new Sketcher(plane, origin)
-        .movePointerTo([-2, -2])
-        .hLine(4)
-        .vLine(4)
-        .hLine(-4)
-        .close();
+    const solid = sketchSweep(path, (plane) => {
+      return new Sketcher(plane).movePointerTo([-2, -2]).hLine(4).vLine(4).hLine(-4).close();
     });
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);

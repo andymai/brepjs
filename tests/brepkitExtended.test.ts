@@ -167,7 +167,7 @@ descBk('Advanced modeling (brepkit)', () => {
     // Create a box with a fillet, then try to remove the fillet face
     const b = box(20, 20, 20);
     const edges = getEdges(castShape(b.wrapped));
-    const filleted = unwrap(fillet(castShape(b.wrapped), [edges[0]!], 2)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const filleted = unwrap(fillet(b, [edges[0]!], 2)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const faces = getFaces(filleted);
     // Defeature the last face (fillet surface)
     const filletFace = faces[faces.length - 1]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
@@ -185,7 +185,7 @@ descBk('Feature detection (brepkit)', () => {
     const kernel = getKernel();
     const b = box(20, 20, 20);
     const edges = getEdges(castShape(b.wrapped));
-    const filleted = unwrap(fillet(castShape(b.wrapped), [edges[0]!], 0.5)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const filleted = unwrap(fillet(b, [edges[0]!], 0.5)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     // Fillet face area ≈ π*0.5*20/2 ≈ 15.7; use a threshold above that
     const smallFaces = kernel.detectSmallFeatures(filleted.wrapped, 20.0, 0.01);
     expect(Array.isArray(smallFaces)).toBe(true);

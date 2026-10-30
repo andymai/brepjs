@@ -15,8 +15,7 @@ import { isOk } from '@/core/result.js';
 import { transformCurve2dGeneral } from '@/kernel/brepkit/kernel2dOps.js';
 import { makeCircle2d } from '@/kernel/geometry2d.js';
 
-const curveTypes = (d: Drawing): string[] =>
-  (d.innerShape as { curves?: { geomType: string }[] }).curves?.map((c) => c.geomType) ?? [];
+const curveTypes = (d: Drawing): string[] => d.blueprint.curves.map((c) => c.geomType);
 
 beforeAll(async () => {
   await initKernel();

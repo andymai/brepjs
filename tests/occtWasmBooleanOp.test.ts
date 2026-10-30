@@ -74,20 +74,21 @@ describe.skipIf(currentKernel !== 'occt-wasm')('occt-wasm boolean options and hi
   it('passes a compound of disjoint solids as one tool and splits an overlapping one', () => {
     const raw = (
       getKernel() as unknown as {
-        retainedKernelOwner?: { getRawKernel?: () => Record<string, unknown> };
+        retainedKernelOwner?: {
+          getRawKernel?: () => { booleanOp?: (...args: unknown[]) => unknown };
+        };
       }
     ).retainedKernelOwner?.getRawKernel?.();
-    if (!raw || typeof raw['booleanOp'] !== 'function')
-      throw new Error('raw booleanOp unavailable');
-    const original = (raw['booleanOp'] as (...args: unknown[]) => unknown).bind(raw);
+    if (!raw || typeof raw.booleanOp !== 'function') throw new Error('raw booleanOp unavailable');
+    const original = raw.booleanOp.bind(raw);
     const toolCounts: number[] = [];
-    const spy = vi.spyOn(raw, 'booleanOp' as never).mockImplementation((...args: unknown[]) => {
+    const spy = vi.spyOn(raw, 'booleanOp').mockImplementation((...args: unknown[]) => {
       toolCounts.push((args[2] as { size(): number }).size());
       return original(...args);
     });
     try {
       using base = box(40, 20, 10);
-      tagFaces(base, [getFaces(base)[0] ?? base], 'kept');
+      tagFaces(base, getFaces(base).slice(0, 1), 'kept');
       const cylinderAt = (x: number) => {
         using c = cylinder(3, 20);
         return translate(c, [x, 10, -5]);
@@ -116,7 +117,7 @@ describe.skipIf(currentKernel !== 'occt-wasm')('occt-wasm boolean options and hi
 
   it('carries face tags through cutAll', () => {
     using base = box(30, 10, 10);
-    tagFaces(base, [getFaces(base)[0] ?? base], 'kept');
+    tagFaces(base, getFaces(base).slice(0, 1), 'kept');
     using t10 = box(4, 20, 20);
     using t1 = translate(t10, [4, -5, -5]);
     using t20 = box(4, 20, 20);

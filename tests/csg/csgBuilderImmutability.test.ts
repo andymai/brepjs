@@ -18,7 +18,7 @@ function rect() {
 
 describe('n-ary builders copy their input arrays', () => {
   it('fuseAll', () => {
-    const shapes = [box(1, 1, 1), box(2, 2, 2)];
+    const shapes: IRNode[] = [box(1, 1, 1), box(2, 2, 2)];
     const node = fuseAll(shapes);
     shapes.push(sphere(3));
     shapes[0] = sphere(9);
@@ -27,7 +27,7 @@ describe('n-ary builders copy their input arrays', () => {
   });
 
   it('cutAll', () => {
-    const tools = [box(1, 1, 1)];
+    const tools: IRNode[] = [box(1, 1, 1)];
     const node = cutAll(box(5, 5, 5), tools);
     tools.push(sphere(2));
     expect(node.tools).toHaveLength(1);

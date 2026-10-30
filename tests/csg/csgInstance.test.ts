@@ -13,11 +13,23 @@ import {
   optimize,
   outputKindOf,
 } from '@/csg/index.js';
-import { unwrap, measureVolume, type Matrix4x4 } from '@/index.js';
+import {
+  unwrap,
+  measureVolume,
+  isShape3D,
+  type AnyShape,
+  type Dimension,
+  type Matrix4x4,
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(s));
+}
 
 const at = (x: number): Matrix4x4 => [
   [1, 0, 0, x],
@@ -37,13 +49,13 @@ describe('CSG Instance node', () => {
   it('evaluates to a Compound (volume = N * source)', () => {
     using ev = new Evaluator();
     const r = unwrap(ev.evaluate(instance(box(10, 10, 10), [at(0), at(20), at(40)])));
-    expect(unwrap(measureVolume(r))).toBeCloseTo(3000, 3);
+    expect(vol(r)).toBeCloseTo(3000, 3);
   });
 
   it('fuse: evaluates to a single fused solid', () => {
     using ev = new Evaluator();
     const r = unwrap(ev.evaluate(instance(box(10, 10, 10), [at(0), at(10)], true)));
-    expect(unwrap(measureVolume(r))).toBeCloseTo(2000, 1); // touching boxes fuse
+    expect(vol(r)).toBeCloseTo(2000, 1); // touching boxes fuse
   });
 
   it('materializes the source once across placements (DAG sharing)', () => {

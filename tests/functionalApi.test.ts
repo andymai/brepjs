@@ -15,11 +15,20 @@ import {
   unwrap,
   castShape,
   createPlane,
+  isShape3D,
+  type Shape3D,
 } from '@/index.js';
+import type { KernelShape } from '@/kernel/types.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+function toShape3D(shape: KernelShape): Shape3D {
+  const s = castShape(shape);
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
+  return s;
+}
 
 describe('sliceShape', () => {
   it('slices a box with multiple XY planes at different Z heights', () => {
@@ -46,14 +55,14 @@ describe('sliceShape', () => {
 describe('VolumeProps / SurfaceProps / LinearProps aliases', () => {
   it('measureVolumeProps returns volume alias', () => {
     const b = box(10, 10, 10);
-    const props = unwrap(measureVolumeProps(castShape(b.wrapped)));
+    const props = unwrap(measureVolumeProps(toShape3D(b.wrapped)));
     expect(props.volume).toBeCloseTo(1000, 0);
     expect(props.volume).toBe(props.mass);
   });
 
   it('measureSurfaceProps returns area alias', () => {
     const b = box(10, 10, 10);
-    const props = unwrap(measureSurfaceProps(castShape(b.wrapped)));
+    const props = unwrap(measureSurfaceProps(toShape3D(b.wrapped)));
     expect(props.area).toBeCloseTo(600, 0);
     expect(props.area).toBe(props.mass);
   });
@@ -101,8 +110,8 @@ describe('topo caching', () => {
 
 describe('AbortSignal pre-check', () => {
   it('fuse throws on pre-aborted signal', () => {
-    const b1 = castShape(box(10, 10, 10).wrapped);
-    const b2 = castShape(box(10, 10, 10).wrapped);
+    const b1 = toShape3D(box(10, 10, 10).wrapped);
+    const b2 = toShape3D(box(10, 10, 10).wrapped);
     const controller = new AbortController();
     controller.abort();
     expect(() => fuse(b1, b2, { signal: controller.signal })).toThrow();
