@@ -1,0 +1,47 @@
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_f75be3246ba900 59-60
+tests/api.test.ts
+  s_d4ab5fb2066c9b::t_4df0dd29d9bff4 77,449-450
+src/kernel/brepkit/modifierOps.ts
+  s_d4ab5fb2066c9b::t_9cbca65a30455a 9,115-119,123
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_31e55e1d95e1ca 31-32
+  s_d4ab5fb2066c9b::t_66708083f2699b 49-50
+  s_d4ab5fb2066c9b::t_e86d6871374fdd 65-66
+  s_d4ab5fb2066c9b::t_3f5c5ea9e0b04e 273-274
+  s_d4ab5fb2066c9b::t_9807e1d258d8ea 3
+  s_d4ab5fb2066c9b::t_18252480254228 289-310
+  s_d4ab5fb2066c9b::t_5d23f887fa5ae1 86-87
+  s_d4ab5fb2066c9b::t_41938f7eac78a5 156-170
+  s_d4ab5fb2066c9b::t_95517f39c512dc 23
+tests/brepkitAdapter.test.ts
+  s_d4ab5fb2066c9b::t_423f9696a60a7a 17
+  s_d4ab5fb2066c9b::t_86a058ffd6436f 810-840
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_9bd2aa5fc20c2d 49-50,120
+  s_d4ab5fb2066c9b::t_a88b8aff920986 3
+llms.txt
+  s_d4ab5fb2066c9b::t_fb538f5aa09caa 449
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_19c681016bf099 300-304,306,308,313
+llms-full.txt
+  s_d4ab5fb2066c9b::t_fb538f5aa09caa 449
+src/topology/chamferAngleFns.ts
+  s_d4ab5fb2066c9b::t_9cbca65a30455a 112-114,139,145-155,190-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c16779f60e4704dfb4dce99f15e0ec4d2600f8e5",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
