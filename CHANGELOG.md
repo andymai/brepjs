@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.2](https://github.com/andymai/brepjs/compare/brepjs-v20.13.1...brepjs-v20.13.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **brepkit:** build the right shape or return unsupported where brepkit was silently wrong ([#2563](https://github.com/andymai/brepjs/issues/2563)) ([d4069b4](https://github.com/andymai/brepjs/commit/d4069b456391431fcd991556781961a98067febb))
+
 ## [20.13.1](https://github.com/andymai/brepjs/compare/brepjs-v20.13.0...brepjs-v20.13.1) (2026-10-30)
 
 
