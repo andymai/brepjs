@@ -1,0 +1,28 @@
+tests/booleanBatchFns.test.ts
+  s_d4ab5fb2066c9b::t_14544084171e3e 80-84,86-87
+  s_d4ab5fb2066c9b::t_381270421ddb9d 252-286
+src/topology/booleanFns.ts
+  s_d4ab5fb2066c9b::t_1231ea3484dd36 429-430,432-462
+src/topology/booleanBatchFns.ts
+  s_d4ab5fb2066c9b::t_2f2116aabefb61 94-120,158,160-162,165-168,171,176,182,186-187,189,199,204,207-212,259,270,286,290-297,303-304,310
+.size-limit.json
+  s_d4ab5fb2066c9b::t_1829748566b8c9 2
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_6e039ce62d222a 129-133,1482-1506,1508-1519,1522-1543,1545,1547,1555-1577,1579-1675
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0106a3868ccd2758d38bce8fc4a0d659f08d0b9b",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
