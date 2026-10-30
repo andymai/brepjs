@@ -18,6 +18,7 @@ import {
   isShape3D,
 } from '@/core/shapeTypes.js';
 import { downcast } from './cast.js';
+import { propagateMetadataByHash } from './metadata/metadataPropagation.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
 import {
@@ -78,8 +79,11 @@ function chamferAngleFailed(
   );
 }
 
-/** Cast a fresh kernel result to a 3D shape, releasing every intermediate slot. */
-function castChamferResult(raw: KernelShape): Result<Shape3D> {
+/**
+ * Cast a fresh kernel result to a 3D shape, releasing every intermediate slot,
+ * and carry the face origins of `input` over to it.
+ */
+function castChamferResult(input: Shape3D, raw: KernelShape): Result<Shape3D> {
   const downcastResult = downcast(raw);
   if (isErr(downcastResult)) {
     getKernel().dispose(raw);
@@ -96,6 +100,9 @@ function castChamferResult(raw: KernelShape): Result<Shape3D> {
       typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngle did not produce a 3D shape')
     );
   }
+  // No kernel reports face history for a distance-angle chamfer, so only face
+  // origins carry over (tags and colors are lost), matched by hash and geometry.
+  propagateMetadataByHash([input], wrapped);
   return ok(wrapped);
 }
 
@@ -109,7 +116,9 @@ function castChamferResult(raw: KernelShape): Result<Shape3D> {
  * @param edges   - Edges to chamfer (must not be empty).
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
- * @returns Ok with the chamfered shape, or Err on invalid input or kernel failure.
+ * @returns Ok with the chamfered shape, or Err on invalid input or kernel
+ *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
@@ -134,19 +143,30 @@ export function chamferDistAngle(
   const invalid = validateDistAngle(distance, angleDeg);
   if (invalid) return invalid;
 
+  const kernel = getKernel();
   let raw;
   try {
-    const kernel = getKernel();
     const rawEdges = edges.map((e) => e.wrapped);
     raw = kernel.chamferDistAngle(shape.wrapped, rawEdges, distance, angleDeg);
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) {
+      return err(
+        unsupportedError(
+          BrepErrorCode.UNSUPPORTED_CAPABILITY,
+          `chamferDistAngle: the ${kernel.kernelId} kernel has no distance-angle chamfer`,
+          e,
+          { kernel: kernel.kernelId },
+          'Chamfer by one symmetric distance instead, or use the occt-wasm kernel'
+        )
+      );
+    }
     return chamferAngleFailed('chamferDistAngle', e, edges, {
       distance,
       angleDeg,
       edgeCount: edges.length,
     });
   }
-  return castChamferResult(raw);
+  return castChamferResult(shape, raw);
 }
 
 /** An edge and the distance-angle chamfer to put on it. */
@@ -165,7 +185,7 @@ function perEdgeUnsupported(kernelId: string, cause: unknown): Err<BrepError> {
       `chamferDistAngles: the ${kernelId} kernel cannot give each edge its own distance and angle`,
       cause,
       { kernel: kernelId },
-      'Give every edge the same { distance, angle }, or use the occt-wasm kernel (5.9.0 or later)'
+      'Use the occt-wasm kernel (5.9.0 or later), or give every edge the same { distance, angle } on a kernel that has a distance-angle chamfer'
     )
   );
 }
@@ -174,9 +194,9 @@ function perEdgeUnsupported(kernelId: string, cause: unknown): Err<BrepError> {
  * Chamfer each edge by its own distance and angle, in one operation.
  *
  * Edges that all share one distance and angle go through
- * {@link chamferDistAngle}, which every kernel provides. Different values need
- * a kernel with a per-edge distance-angle chamfer (occt-wasm 5.9.0 or later);
- * on any other kernel the result is an `UNSUPPORTED_CAPABILITY` error. On
+ * {@link chamferDistAngle}, which every kernel but brepkit provides. Different
+ * values need a kernel with a per-edge distance-angle chamfer (occt-wasm 5.9.0
+ * or later); on any other kernel the result is an `UNSUPPORTED_CAPABILITY` error. On
  * occt-wasm the edges of one tangent-continuous contour must share their
  * distance and angle, or the result is `CHAMFER_ANGLE_FAILED`.
  *
@@ -228,5 +248,5 @@ export function chamferDistAngles(
     if (isUnsupportedKernelOperationError(e)) return perEdgeUnsupported(kernel.kernelId, e);
     return chamferAngleFailed('chamferDistAngles', e, edges, { edgeCount: entries.length });
   }
-  return castChamferResult(raw);
+  return castChamferResult(shape, raw);
 }

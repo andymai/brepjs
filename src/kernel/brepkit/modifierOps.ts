@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   handle,
@@ -47,6 +48,16 @@ export function fillet(
   return solidHandle(bk.filletVariable(solidId, JSON.stringify(spec)));
 }
 
+/** brepkit's two-distance chamfer, bound to `bk`; throws on builds without it. */
+function requireChamferAsymmetric(bk: BrepkitKernel, what: string) {
+  if (typeof bk.chamferAsymmetric !== 'function') {
+    throw new UnsupportedKernelOperationError(
+      `brepkit: ${what} requires chamferAsymmetric, which this brepkit-wasm build lacks`
+    );
+  }
+  return bk.chamferAsymmetric.bind(bk);
+}
+
 export function chamfer(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -62,12 +73,9 @@ export function chamfer(
 
   if (Array.isArray(distance)) {
     const [d1, d2] = distance;
-    if (typeof bk.chamferAsymmetric === 'function') {
-      return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, d1, d2));
-    }
-    // Fallback: average the two distances
-    warnOnce('chamfer-asymmetric', 'chamferAsymmetric not available; using averaged distance.');
-    return solidHandle(bk.chamfer(solidId, edgeIds, (d1 + d2) / 2));
+    if (d1 === d2) return solidHandle(bk.chamfer(solidId, edgeIds, d1));
+    const asymmetric = requireChamferAsymmetric(bk, 'an asymmetric chamfer');
+    return solidHandle(asymmetric(solidId, edgeIds, d1, d2));
   }
 
   // Callback mode: group edges by distance to batch atomically
@@ -87,19 +95,16 @@ export function chamfer(
     }
   }
 
+  // Checked before any group is chamfered, so an unsupported group builds nothing.
+  const asymmetric = [...groups.values()].some((g) => g.d1 !== g.d2)
+    ? requireChamferAsymmetric(bk, 'an asymmetric chamfer')
+    : undefined;
   let result = solidId;
   for (const group of groups.values()) {
-    if (group.d1 === group.d2) {
-      result = bk.chamfer(result, group.ids, group.d1);
-    } else if (typeof bk.chamferAsymmetric === 'function') {
-      result = bk.chamferAsymmetric(result, group.ids, group.d1, group.d2);
-    } else {
-      warnOnce(
-        'chamfer-callback',
-        'chamferAsymmetric not available; asymmetric edges use averaged distance.'
-      );
-      result = bk.chamfer(result, group.ids, (group.d1 + group.d2) / 2);
-    }
+    result =
+      asymmetric && group.d1 !== group.d2
+        ? asymmetric(result, group.ids, group.d1, group.d2)
+        : bk.chamfer(result, group.ids, group.d1);
   }
   return solidHandle(result);
 }
@@ -111,17 +116,11 @@ export function chamferDistAngle(
   distance: number,
   angleDeg: number
 ): KernelShape {
+  const asymmetric = requireChamferAsymmetric(bk, 'chamferDistAngle');
   const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
   const solidId = unwrapSolidOrThrow(shape, 'chamferDistAngle');
   const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-
-  if (typeof bk.chamferAsymmetric === 'function') {
-    return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, distance, d2));
-  }
-
-  // Fallback: averaged symmetric chamfer
-  warnOnce('chamfer-dist-angle', 'chamferAsymmetric not available; using averaged distance.');
-  return solidHandle(bk.chamfer(solidId, edgeIds, (distance + d2) / 2));
+  return solidHandle(asymmetric(solidId, edgeIds, distance, d2));
 }
 
 function faceCentroid(

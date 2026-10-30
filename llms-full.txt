@@ -446,6 +446,7 @@ chamfer(shape, edges, distance): Result<Shape3D>   // Selected edges
 // distance: number | [d1, d2] | { distance, angle } | (edge => number | [d1, d2] | { distance, angle } | null)
 // A callback's kept edges all get distances or all get { distance, angle } (mixing is INVALID_CHAMFER_DISTANCE).
 // Different { distance, angle } per edge need occt-wasm 5.9.0+; other kernels return UNSUPPORTED_CAPABILITY.
+// brepkit has no asymmetric or distance-angle chamfer: [d1, d2] with d1 != d2 and any { distance, angle } return UNSUPPORTED_CAPABILITY there.
 
 chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>
 ```

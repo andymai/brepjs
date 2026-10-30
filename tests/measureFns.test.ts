@@ -35,6 +35,7 @@ import {
   face,
   compound,
   faceCenter,
+  getSurfaceType,
   isPlanarWire,
   isShape3D,
 } from '@/index.js';
@@ -185,6 +186,25 @@ describe('measureFns', () => {
       const f = getFaces(b)[0];
       if (!f) throw new Error('box has no faces');
       expect(unwrap(measureLength(f))).toBeCloseTo(40, 6);
+    });
+
+    it('length of a face counts its seam edge once', () => {
+      // Cylinder r=5, h=10: the lateral face is bounded by two circles (10pi each)
+      // and one seam line (10) that its wire runs along twice, once each way.
+      using c = cylinder(5, 10);
+      const lateral = getFaces(c).find((f) => unwrap(getSurfaceType(f)) === 'CYLINDRE');
+      if (!lateral) throw new Error('cylinder has no lateral face');
+      const props = unwrap(measureLinearProps(lateral));
+      expect(props.length).toBeCloseTo(20 * Math.PI + 10, 6);
+      expect(props.centerOfMass[2]).toBeCloseTo(5, 6);
+      expect(unwrap(measureLength(c))).toBeCloseTo(20 * Math.PI + 10, 6);
+
+      // Sphere r=5: the half-meridian seam (5pi) is the face's only edge with
+      // length; the poles are degenerate edges.
+      using s = sphere(5);
+      const skin = getFaces(s)[0];
+      if (!skin) throw new Error('sphere has no faces');
+      expect(unwrap(measureLength(skin))).toBeCloseTo(5 * Math.PI, 6);
     });
 
     it('volume of a compound counts only its solids', () => {

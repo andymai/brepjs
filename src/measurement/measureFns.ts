@@ -40,8 +40,10 @@ function nullShapeErr(fn: string) {
  * Run `fn` on fresh handles to the distinct sub-shapes of `type`, releasing them
  * afterwards. Unlike getFaces and friends this leaves the shape's topology cache
  * alone, so a measurement allocates nothing that outlives it.
+ *
+ * @internal
  */
-function withSubShapes<R>(
+export function withSubShapes<R>(
   shape: AnyShape<Dimension>,
   type: ShapeType,
   fn: (items: KernelShape[]) => R
@@ -55,8 +57,12 @@ function withSubShapes<R>(
   }
 }
 
-/** Run `fn` on a throwaway compound of `parts`, releasing the compound afterwards. */
-function withCompoundOf<R>(parts: KernelShape[], fn: (c: KernelShape) => R): R {
+/**
+ * Run `fn` on a throwaway compound of `parts`, releasing the compound afterwards.
+ *
+ * @internal
+ */
+export function withCompoundOf<R>(parts: KernelShape[], fn: (c: KernelShape) => R): R {
   const kernel = getKernel();
   const c = kernel.makeCompound(parts);
   try {
@@ -173,9 +179,9 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<Su
 /**
  * Measure linear properties of any shape.
  *
- * For edges this is the arc length; for wires and faces it is the total length
- * of their edges; for shells, solids, and compounds it is the total length of
- * their distinct edges, each counted once.
+ * For edges this is the arc length; for wires it is the total length of their
+ * edges; for faces, shells, solids, and compounds it is the total length of
+ * their distinct edges, each counted once (a face's seam edge included).
  *
  * @param shape - Any shape whose linear extent is to be measured.
  * @returns `Result` containing length, center of mass, and raw mass property.
@@ -193,11 +199,12 @@ export function measureLinearProps(shape: AnyShape<Dimension>): Result<LinearPro
     return { mass: m, length: m, centerOfMass: kernel.linearCenterOfMass(target) };
   };
   let result: LinearProps;
-  if (type === 'vertex' || type === 'edge' || type === 'wire' || type === 'face') {
+  if (type === 'vertex' || type === 'edge' || type === 'wire') {
     result = linearOf(shape.wrapped);
   } else {
     // LinearProperties walks every edge occurrence, so on a closed body each edge
-    // shared by two faces would count twice. Measure the distinct edges instead.
+    // shared by two faces would count twice, and so would a face's own seam edge,
+    // which its wire runs along once each way. Measure the distinct edges instead.
     result = withSubShapes(shape, 'edge', (edges) =>
       edges.length === 0
         ? { mass: 0, length: 0, centerOfMass: [0, 0, 0] }

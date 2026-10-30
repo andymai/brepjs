@@ -16,6 +16,7 @@ import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 import type { BrepkitHandle } from '@/kernel/brepkit/helpers.js';
 import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
+import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 
 // ---------------------------------------------------------------------------
 // Mock BrepKernel
@@ -813,6 +814,94 @@ describe('BrepkitAdapter', () => {
         (box as BrepkitHandle).id,
         edges.map((e) => (e as BrepkitHandle).id),
         0.3
+      );
+    });
+
+    it('an asymmetric chamfer is unsupported without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      const near = edges[0];
+
+      for (const distance of [
+        [0.2, 0.4] as [number, number],
+        // A symmetric edge first: the check must reject before chamfering any group.
+        (edge: unknown): number | [number, number] => (edge === near ? 0.3 : [0.2, 0.4]),
+      ]) {
+        let caught: unknown;
+        try {
+          adapter.chamfer(box, edges, distance);
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      // The callback is checked before any group is chamfered.
+      expect(mock.chamfer).not.toHaveBeenCalled();
+    });
+
+    it('chamfers two equal distances symmetrically without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      adapter.chamfer(box, edges, [0.3, 0.3]);
+      adapter.chamfer(box, edges, () => [0.3, 0.3]);
+
+      expect(mock.chamfer).toHaveBeenCalledTimes(2);
+      const calls: unknown[][] = mock.chamfer.mock.calls;
+      for (const call of calls) expect(call[2]).toBe(0.3);
+    });
+
+    it('delegates asymmetric distances to chamferAsymmetric', () => {
+      const mock = { ...createMockBrepKernel(), chamferAsymmetric: vi.fn(() => 99) };
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      const near = edges[0];
+      adapter.chamfer(box, edges, [0.2, 0.4]);
+      adapter.chamfer(box, edges, (edge) => (edge === near ? [0.2, 0.4] : 0.3));
+
+      expect(mock.chamferAsymmetric).toHaveBeenNthCalledWith(
+        1,
+        (box as BrepkitHandle).id,
+        edges.map((e) => (e as BrepkitHandle).id),
+        0.2,
+        0.4
+      );
+      expect(mock.chamferAsymmetric).toHaveBeenCalledTimes(2);
+      expect(mock.chamfer).toHaveBeenCalledOnce();
+    });
+
+    it('chamferDistAngle is unsupported without chamferAsymmetric', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+
+      let caught: unknown;
+      try {
+        adapter.chamferDistAngle(box, edges, 0.3, 30);
+      } catch (e) {
+        caught = e;
+      }
+      expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      expect(mock.chamfer).not.toHaveBeenCalled();
+    });
+
+    it('chamferDistAngle sets the second distance back by distance x tan(angle)', () => {
+      const mock = { ...createMockBrepKernel(), chamferAsymmetric: vi.fn(() => 99) };
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(2, 2, 2);
+      const edges = adapter.iterShapes(box, 'edge');
+      adapter.chamferDistAngle(box, edges, 0.3, 45);
+
+      expect(mock.chamferAsymmetric).toHaveBeenCalledWith(
+        (box as BrepkitHandle).id,
+        edges.map((e) => (e as BrepkitHandle).id),
+        0.3,
+        expect.closeTo(0.3, 12)
       );
     });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
@@ -10,6 +10,7 @@ import {
   exportSTEP,
   exportSTL,
   getFaces,
+  getKernel,
   getShells,
   getSolids,
   importIGES,
@@ -21,6 +22,7 @@ import {
   isShape3D,
   isShell,
   isSolid,
+  isValid,
   measureArea,
   measureVolume,
   translate,
@@ -334,6 +336,163 @@ describe('importSTL', () => {
     expect(volumes).toHaveLength(2);
     expect(volumes[0]).toBeCloseTo(1000, 3);
     expect(volumes[1]).toBeCloseTo(27000 - 8000, 3);
+  });
+});
+
+type V3 = [number, number, number];
+
+/** The outward-wound triangles of a `size` cube at the origin. */
+function cubeTriangles(size: number): Array<[V3, V3, V3]> {
+  const s = size;
+  const corners: V3[] = [
+    [0, 0, 0],
+    [s, 0, 0],
+    [s, s, 0],
+    [0, s, 0],
+    [0, 0, s],
+    [s, 0, s],
+    [s, s, s],
+    [0, s, s],
+  ];
+  const faces: V3[] = [
+    [0, 2, 1],
+    [0, 3, 2],
+    [4, 5, 6],
+    [4, 6, 7],
+    [0, 1, 5],
+    [0, 5, 4],
+    [3, 7, 6],
+    [3, 6, 2],
+    [0, 4, 7],
+    [0, 7, 3],
+    [1, 2, 6],
+    [1, 6, 5],
+  ];
+  return faces.map(([a, b, c]) => [corners[a], corners[b], corners[c]] as [V3, V3, V3]);
+}
+
+function asciiStl(triangles: Array<[V3, V3, V3]>): Blob {
+  const lines = ['solid mesh'];
+  for (const triangle of triangles) {
+    lines.push('facet normal 0 0 0', 'outer loop');
+    for (const [x, y, z] of triangle) lines.push(`vertex ${x} ${y} ${z}`);
+    lines.push('endloop', 'endfacet');
+  }
+  lines.push('endsolid mesh', '');
+  return new Blob([lines.join('\n')]);
+}
+
+/** Import `blob` as STL, counting the orientation-repairing `sewAndSolidify` calls it makes. */
+async function importCountingRepairs(blob: Blob) {
+  const spy = vi.spyOn(getKernel(), 'sewAndSolidify');
+  try {
+    const shape = unwrap(await importSTL(blob));
+    return { shape, repairs: spy.mock.calls.length };
+  } finally {
+    spy.mockRestore();
+  }
+}
+
+describe.skipIf(currentKernel !== 'occt-wasm')('importSTL sewing paths on occt-wasm', () => {
+  it('sews a clean closed mesh into a solid without the orientation repair', async () => {
+    using source = box(20, 20, 20);
+    const { shape, repairs } = await importCountingRepairs(unwrap(exportSTL(source)));
+    using imported = shape;
+    expect(repairs).toBe(0);
+    expect(isSolid(imported)).toBe(true);
+    expect(isValid(imported)).toBe(true);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(8000, 6);
+  });
+
+  it('turns an inward-wound closed mesh into a valid solid with positive volume', async () => {
+    using source = box(20, 20, 20);
+    const stl = 'solid inward\n' + (await stlFacets(source, true)) + 'endsolid inward\n';
+    const { shape, repairs } = await importCountingRepairs(new Blob([stl]));
+    using imported = shape;
+    expect(repairs).toBe(0);
+    expect(isSolid(imported)).toBe(true);
+    expect(isValid(imported)).toBe(true);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(8000, 6);
+  });
+
+  it('reads a text and a binary file of the same mesh into the same solid', async () => {
+    using source = box(20, 10, 5);
+    const binary = await importCountingRepairs(unwrap(exportSTL(source)));
+    using fromBinary = binary.shape;
+    const text = await importCountingRepairs(unwrap(exportSTL(source, { binary: false })));
+    using fromText = text.shape;
+    expect([binary.repairs, text.repairs]).toEqual([0, 0]);
+    expect(unwrap(measureVolume(fromText as Shape3D))).toBeCloseTo(
+      unwrap(measureVolume(fromBinary as Shape3D)),
+      9
+    );
+    expect(getFaces(fromText)).toHaveLength(getFaces(fromBinary).length);
+  });
+
+  it('sews several bodies, a cavity among them, without the orientation repair', async () => {
+    using outer = box(20, 20, 20);
+    using cavityBox = box(10, 10, 10);
+    using cavity = translate(cavityBox, [5, 5, 5]);
+    const triangle =
+      'facet normal 0 0 1\nouter loop\nvertex 0 0 50\nvertex 1 0 50\nvertex 1 1 50\n';
+    const stl =
+      'solid hollow\n' +
+      (await stlFacets(outer)) +
+      (await stlFacets(cavity, true)) +
+      triangle +
+      'endloop\nendfacet\nendsolid hollow\n';
+    const { shape, repairs } = await importCountingRepairs(new Blob([stl]));
+    using imported = shape;
+    expect(repairs).toBe(0);
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(7000, 6);
+    expect(getFaces(imported)).toHaveLength(25);
+  });
+
+  it('falls back to the repair when sewing merges vertices the triangles keep apart', async () => {
+    // One triangle names the far corner 5e-7 off: distinct to the analysis, one
+    // vertex to the sewing tolerance (1e-6), so the counts disagree.
+    const triangles = cubeTriangles(10).map(
+      (triangle, t) =>
+        triangle.map((v) =>
+          t === 2 && v[0] === 10 && v[1] === 10 && v[2] === 10 ? [10, 10, 10 + 5e-7] : v
+        ) as [V3, V3, V3]
+    );
+    const { shape, repairs } = await importCountingRepairs(asciiStl(triangles));
+    using imported = shape;
+    expect(repairs).toBeGreaterThan(0);
+    expect(isSolid(imported)).toBe(true);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000, 3);
+  });
+
+  it('repairs a mesh whose triangles run a shared edge the same way', async () => {
+    const triangles = cubeTriangles(10);
+    const [a, b, c] = triangles[0] ?? [];
+    if (a && b && c) triangles[0] = [a, c, b];
+    const { shape, repairs } = await importCountingRepairs(asciiStl(triangles));
+    using imported = shape;
+    expect(repairs).toBeGreaterThan(0);
+    expect(isSolid(imported)).toBe(true);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000, 3);
+  });
+
+  it('keeps the repairing path on a kernel whose sewing may reorient faces', async () => {
+    const kernel = getKernel();
+    const { capabilities } = kernel;
+    Object.defineProperty(kernel, 'capabilities', {
+      value: { ...capabilities, sewKeepsOrientation: false },
+    });
+    try {
+      using source = box(20, 20, 20);
+      const { shape, repairs } = await importCountingRepairs(unwrap(exportSTL(source)));
+      using imported = shape;
+      expect(repairs).toBeGreaterThan(0);
+      expect(isSolid(imported)).toBe(true);
+      expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(8000, 6);
+    } finally {
+      Object.defineProperty(kernel, 'capabilities', { value: capabilities });
+    }
   });
 });
 

@@ -14,8 +14,14 @@ import {
   cutAll,
   unwrap,
   fillet,
+  chamfer,
+  chamferDistAngleShape,
+  getEdges,
+  getBounds,
   mesh,
 } from '@/index.js';
+import type { Shape3D } from '@/core/shapeTypes.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -260,6 +266,44 @@ describe('origin propagation through modifiers', () => {
       if (o !== undefined) originValues.add(o);
     }
     expect(originValues.has(8)).toBe(true);
+  });
+
+  describe('distance-angle chamfers', () => {
+    const verticalEdges = (solid: Shape3D) =>
+      getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
+
+    /** Origins of the faces that lie flat along an axis: the box faces, not the bevels. */
+    function boxFaceOrigins(solid: Shape3D): (number | undefined)[] {
+      const origins = getFaceOrigins(solid);
+      return getFaces(solid)
+        .filter((f) => {
+          const { xMin, xMax, yMin, yMax, zMin, zMax } = getBounds(f);
+          return Math.min(xMax - xMin, yMax - yMin, zMax - zMin) < 1e-6;
+        })
+        .map((f) => origins?.get(getHashCode(f)));
+    }
+
+    it('keeps the origin of every box face through one { distance, angle }', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.distAngle');
+      using b = box(10, 10, 10);
+      setShapeOrigin(b, 8);
+      using uniform = unwrap(chamfer(b, verticalEdges(b), { distance: 1, angle: 30 }));
+      expect(boxFaceOrigins(uniform)).toEqual(Array<number>(6).fill(8));
+      using direct = unwrap(chamferDistAngleShape(b, verticalEdges(b), 1, 30));
+      expect(boxFaceOrigins(direct)).toEqual(Array<number>(6).fill(8));
+    });
+
+    it('keeps the origin of every box face through per-edge { distance, angle }', (ctx) => {
+      skipIfDiverges(ctx, 'chamferAngle.perEdge');
+      using b = box(10, 10, 10);
+      setShapeOrigin(b, 8);
+      using chamfered = unwrap(
+        chamfer(b, verticalEdges(b), (e) =>
+          getBounds(e).xMin < 5 ? { distance: 1, angle: 30 } : { distance: 2, angle: 60 }
+        )
+      );
+      expect(boxFaceOrigins(chamfered)).toEqual(Array<number>(6).fill(8));
+    });
   });
 });
 

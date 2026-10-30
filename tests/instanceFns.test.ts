@@ -110,6 +110,18 @@ describe('disposal', () => {
     inst[Symbol.dispose]();
     expect(getDisposalStats().liveHandles).toBe(base);
   });
+
+  it('a fused single placement is its own shape and leaves no stray copy handle', () => {
+    const base = getDisposalStats().liveHandles;
+    const source = box(10, 10, 10);
+    const inst = instance(source, [[5, 0, 0]]);
+    const solid = unwrap(materialize(inst, { fuse: true }));
+    expect(getDisposalStats().liveHandles).toBe(base + 2); // the source and the result
+    solid[Symbol.dispose]();
+    expect(unwrap(measureVolume(source))).toBeCloseTo(1000, 6);
+    inst[Symbol.dispose]();
+    expect(getDisposalStats().liveHandles).toBe(base);
+  });
 });
 
 describe('validation & immutability', () => {

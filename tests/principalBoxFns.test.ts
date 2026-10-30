@@ -6,6 +6,11 @@ import {
   rotate,
   translate,
   compound,
+  circle,
+  wire,
+  closedWire,
+  isPlanarWire,
+  face,
   getFaces,
   getKernel,
   registerKernel,
@@ -19,7 +24,7 @@ import {
   unwrap,
   unwrapErr,
 } from '@/index.js';
-import type { Vec3 } from '@/index.js';
+import type { Face, Vec3 } from '@/index.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
@@ -40,6 +45,14 @@ function rotX(v: Vec3, deg: number): Vec3 {
 
 function expectVecClose(actual: Vec3, expected: Vec3, precision: number): void {
   for (let i = 0; i < 3; i++) expect(actual[i]).toBeCloseTo(expected[i] ?? NaN, precision);
+}
+
+/** A loose disc face of `radius` in the plane z = `z`. */
+function disc(radius: number, z: number): Face {
+  using edge = circle(radius, { at: [0, 0, z] });
+  using loop = unwrap(closedWire(unwrap(wire([edge]))));
+  if (!isPlanarWire(loop)) throw new Error('a circle must be planar');
+  return unwrap(face(loop));
 }
 
 /** Register a kernel that forwards to the active one except for `overrides`. */
@@ -129,6 +142,33 @@ describe('principalBoundingBox', () => {
     const { center, size } = unwrap(principalBoundingBox(pair));
     expectVecClose(size, [40, 10, 10], 6);
     expectVecClose(center, [20, 5, 5], 6);
+  });
+
+  it('measures only the solids of a compound that also holds a loose face', (ctx) => {
+    skipIfDiverges(ctx, 'principalBoxFns.inertia');
+    using board = box(30, 20, 10);
+    using loose = disc(5, 50);
+    using mixed = compound([board, loose]);
+    const { center, axes, size } = unwrap(principalBoundingBox(mixed));
+    expectVecClose(size, [30, 20, 10], 6);
+    expect(axes).toEqual([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ]);
+    expectVecClose(center, [15, 10, 5], 6);
+  });
+
+  it('does not reject a solid as zero-volume because of a loose face beside it', (ctx) => {
+    skipIfDiverges(ctx, 'principalBoxFns.inertia');
+    // A loose face adds a meaningless signed volume term; for this disc below the
+    // box it outweighs the box's 1000, so the whole compound read as no volume.
+    using cube = box(10, 10, 10);
+    using loose = disc(10, -50);
+    using mixed = compound([cube, loose]);
+    const { center, size } = unwrap(principalBoundingBox(mixed));
+    expectVecClose(size, [10, 10, 10], 6);
+    expectVecClose(center, [5, 5, 5], 6);
   });
 
   it('reports the world-axis extent of a rotated square plate (principal axes are not unique)', (ctx) => {
