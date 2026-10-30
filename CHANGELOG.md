@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.0](https://github.com/andymai/brepjs/compare/brepjs-v20.12.15...brepjs-v20.13.0) (2026-10-30)
+
+
+### Features
+
+* **topology:** measure chamfers from a given face and keep their face history ([#2558](https://github.com/andymai/brepjs/issues/2558)) ([b084da9](https://github.com/andymai/brepjs/commit/b084da9be990573575f8f64a58941370be59c057))
+
 ## [20.12.15](https://github.com/andymai/brepjs/compare/brepjs-v20.12.14...brepjs-v20.12.15) (2026-10-30)
 
 
