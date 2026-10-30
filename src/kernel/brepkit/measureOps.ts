@@ -48,8 +48,7 @@ export function area(bk: BrepkitKernel, shape: KernelShape): number {
   if (h.type === 'solid') {
     return bk.surfaceArea(unwrap(shape), DEFAULT_DEFLECTION);
   }
-  if (h.type === 'compound') {
-    // Sum areas of all faces in the compound
+  if (h.type === 'compound' || h.type === 'shell') {
     const faces = iterShapes(bk, shape, 'face');
     let total = 0;
     for (const face of faces) {

@@ -1043,6 +1043,57 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  // A shell from sew held the id of the solid the kernel wraps it in, so it
+  // measured no area and meshed some other shell (brepkit#2196).
+  describe('sewn shells', () => {
+    const sewingMock = () =>
+      Object.assign(createMockBrepKernel(), {
+        weldShellsAndFaces: vi.fn((_faces: Uint32Array | number[], _tolerance: number) => 50),
+        getSolidShells: vi.fn((_solid: number) => new Uint32Array([60])),
+        getShellFaces: vi.fn((_shell: number) => [100, 101, 102]),
+      });
+    const sewBox = (adapter: BrepkitAdapter) =>
+      adapter.sew(adapter.iterShapes(adapter.makeBox(1, 1, 1), 'face'));
+
+    it('sew returns the sewn shell, not the solid the kernel wraps it in', () => {
+      const mock = sewingMock();
+      const adapter = new BrepkitAdapter(mock);
+
+      const shell = sewBox(adapter) as BrepkitHandle;
+
+      expect(mock.getSolidShells).toHaveBeenCalledWith(50);
+      expect([shell.type, shell.id]).toEqual(['shell', 60]);
+    });
+
+    it('measures a shell as the sum of its faces', () => {
+      const mock = sewingMock();
+      const adapter = new BrepkitAdapter(mock);
+
+      expect(adapter.area(sewBox(adapter))).toBe(12);
+      expect(mock.getShellFaces).toHaveBeenCalledWith(60);
+    });
+
+    it("meshes a shell's own faces", () => {
+      const mock = sewingMock();
+      const adapter = new BrepkitAdapter(mock);
+
+      const result = adapter.mesh(sewBox(adapter), { tolerance: 0.1, angularTolerance: 0.5 });
+
+      expect(mock.getShellFaces).toHaveBeenCalledWith(60);
+      expect(result.faceGroups.map((g) => g.faceHash)).toEqual([100, 101, 102]);
+    });
+
+    it('solidFromShell builds the solid on the shell it is given', () => {
+      const mock = sewingMock();
+      const adapter = new BrepkitAdapter(mock);
+
+      const solid = adapter.solidFromShell(sewBox(adapter)) as BrepkitHandle;
+
+      expect(mock.solidFromShell).toHaveBeenCalledWith(60);
+      expect(solid.type).toBe('solid');
+    });
+  });
+
   describe('history tracking', () => {
     it('translateWithHistory returns 1:1 face mapping for transforms', () => {
       const mock = createMockBrepKernel();

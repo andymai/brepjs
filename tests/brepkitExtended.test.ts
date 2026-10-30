@@ -24,11 +24,15 @@ import {
   getFaces,
   getSolids,
   isSolid,
+  measureArea,
   measureLength,
   measureVolume,
+  mesh,
   polygon,
   projectEdges,
   rotate,
+  sewShells,
+  solid,
   threePointArc,
   vertex,
   translate,
@@ -895,5 +899,44 @@ descBk('Projecting a compound (brepkit)', () => {
     const fused = projectEdges(unwrap(fuse(block(), cube())), cam(), true);
     expect(lengths(apart.visible)).toBeCloseTo(lengths(fused.visible), 6);
     expect(lengths(apart.hidden)).toBeCloseTo(lengths(fused.hidden), 6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sewn shells
+// ---------------------------------------------------------------------------
+
+// The kernel's sewing returns the solid it wraps the sewn shell in; a shell
+// handle must hold the shell's own id (brepkit#2196).
+descBk('Sewn shells (brepkit)', () => {
+  const boxFaces = () => getFaces(box(10, 20, 30));
+
+  it('measures an open and a closed shell by their faces', () => {
+    expect(unwrap(measureArea(unwrap(sewShells(boxFaces().slice(0, 3)))))).toBeCloseTo(700, 6);
+    expect(unwrap(measureArea(unwrap(sewShells(boxFaces()))))).toBeCloseTo(2200, 6);
+  });
+
+  it("meshes an open shell's faces", () => {
+    const m = mesh(unwrap(sewShells(boxFaces().slice(0, 3))));
+    const point = (corner: number): [number, number, number] => {
+      const i = m.triangles[corner] ?? -1;
+      return [m.vertices[3 * i] ?? NaN, m.vertices[3 * i + 1] ?? NaN, m.vertices[3 * i + 2] ?? NaN];
+    };
+    let area = 0;
+    for (let t = 0; t + 2 < m.triangles.length; t += 3) {
+      const [ax, ay, az] = point(t);
+      const [bx, by, bz] = point(t + 1);
+      const [cx, cy, cz] = point(t + 2);
+      const [ux, uy, uz] = [bx - ax, by - ay, bz - az];
+      const [vx, vy, vz] = [cx - ax, cy - ay, cz - az];
+      area += Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+    }
+    expect(m.faceGroups).toHaveLength(3);
+    expect(area).toBeCloseTo(700, 2);
+  });
+
+  it('builds a solid on a closed shell', () => {
+    const closed = unwrap(sewShells(boxFaces()));
+    expect(unwrap(measureVolume(unwrap(solid([closed]))))).toBeCloseTo(6000, 6);
   });
 });

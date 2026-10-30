@@ -666,20 +666,8 @@ export function makeBoxFromCorners(
 }
 
 export function solidFromShell(bk: BrepkitKernel, shell: KernelShape): KernelShape {
-  const h = shell as BrepkitHandle;
-  if (h.type === 'solid') return shell;
-  if (h.type === 'shell') {
-    try {
-      bk.getSolidFaces(h.id);
-      return solidHandle(h.id);
-    } catch {
-      // Genuine shell handle
-    }
-    const id = bk.solidFromShell(h.id);
-    return solidHandle(id);
-  }
-  const id = bk.solidFromShell(unwrap(shell, 'shell'));
-  return solidHandle(id);
+  if ((shell as BrepkitHandle).type === 'solid') return shell;
+  return solidHandle(bk.solidFromShell(unwrap(shell, 'shell')));
 }
 
 export function makeNonPlanarFace(bk: BrepkitKernel, wire: KernelShape): KernelShape {

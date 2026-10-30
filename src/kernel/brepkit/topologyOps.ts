@@ -265,14 +265,24 @@ function faceIdsForSew(bk: BrepkitKernel, shape: KernelShape): number[] {
 export function sew(bk: BrepkitKernel, shapes: KernelShape[], tolerance?: number): KernelShape {
   const faceIds = shapes.flatMap((s) => faceIdsForSew(bk, s));
   const tol = tolerance ?? 1e-7;
+  let solidId: number;
   try {
-    const id = bk.weldShellsAndFaces(faceIds, tol);
-    return shellHandle(id);
+    solidId = bk.weldShellsAndFaces(faceIds, tol);
   } catch (e: unknown) {
     console.warn('brepkit: weldShellsAndFaces failed, falling back to sewFaces:', e);
+    solidId = bk.sewFaces(faceIds, tol);
   }
-  const id = bk.sewFaces(faceIds, tol);
-  return shellHandle(id);
+  return sewnShell(bk, solidId);
+}
+
+/**
+ * Both sewing bindings wrap the one shell they sew in a solid and return the
+ * solid's handle; the shell has its own, which shell queries need.
+ */
+function sewnShell(bk: BrepkitKernel, solidId: number): KernelShape {
+  const [shellId] = toArray(bk.getSolidShells(solidId));
+  if (shellId === undefined) throw new Error('brepkit: sewing returned a solid with no shell');
+  return shellHandle(shellId);
 }
 
 /** Co-located factory: returns the topology-iteration slice of {@link KernelAdapter} bound to `bk`. */
