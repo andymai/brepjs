@@ -530,11 +530,6 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Multi-sweep (pipe with multiple profiles) not implemented in brepkit kernel',
     },
-    guidedSweepFns: {
-      kind: 'not-implemented',
-      reason:
-        'brepkit-wasm sweeps take no auxiliary spine, so a guided sweep throws UnsupportedKernelOperationError and guidedSweep returns GUIDED_SWEEP_FAILED.',
-    },
     interferenceFns: {
       kind: 'not-implemented',
       reason: 'Interference detection not implemented in brepkit kernel',
