@@ -1,0 +1,36 @@
+tests/meshTopology.test.ts
+  s_d4ab5fb2066c9b::t_a67108ee18d564 1-184
+tests/stlTriangles.test.ts
+  s_d4ab5fb2066c9b::t_71ab73d4018ed7 1-36,38-67,69-83,85-86
+  s_d4ab5fb2066c9b::t_e533d296fcf81f 37,68,84
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_7f0265661a66a8 339-432,435-495
+  s_d4ab5fb2066c9b::t_aa14eb3d307443 1,13,24
+  s_d4ab5fb2066c9b::t_b54457a09e1b6e 433-434
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_fe473e4787e959 4,118-137
+  s_d4ab5fb2066c9b::t_88dc3b3410f322 138
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_79e9a583b43a21 1-2,7,13,234-253
+  s_d4ab5fb2066c9b::t_ce235e41b94e27 254
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_17c736eb324544 14,175-213,326-357,359-378
+  s_d4ab5fb2066c9b::t_b54457a09e1b6e 358
+  s_d4ab5fb2066c9b::t_156d8ed22d8757 379-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b97f56171678d68d29c15ed5a37b125e6f5ed43a",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
