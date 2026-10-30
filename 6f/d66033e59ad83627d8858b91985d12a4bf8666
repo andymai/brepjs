@@ -1,0 +1,36 @@
+src/io/threemfImportFns.ts
+  s_d4ab5fb2066c9b::t_2b927fe1a1c05c 545
+  s_d4ab5fb2066c9b::t_b82da76959513d 571
+  s_d4ab5fb2066c9b::t_838c54e56482bc 2,10,570,572-574,577-580
+  s_d4ab5fb2066c9b::t_a0260a000ba70c 523-527,530-532,541
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_de55db8a6bf797 559-564,566
+  s_d4ab5fb2066c9b::t_dadffd38403d20 565
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_183528e0ae6c7b 8,11,211-213,282-291,294-304,307-315,318-325
+  s_d4ab5fb2066c9b::t_ea58be231d141d 146-157,160-169,171,185-210,214
+  s_d4ab5fb2066c9b::t_f429cb9bae16b0 3,280-281,292-293,305-306,316-317
+  s_d4ab5fb2066c9b::t_97f410beecc71a 326
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_838c54e56482bc 267
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_d30733eda330ce 3,119,121
+src/io/README.md
+  s_d4ab5fb2066c9b::t_185a4e1d8f94d0 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fd66033e59ad83627d8858b91985d12a4bf8666",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
