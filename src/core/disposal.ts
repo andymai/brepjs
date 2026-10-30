@@ -272,7 +272,10 @@ export function createBorrowedHandle(ocShape: KernelShape): ShapeHandle {
  * frees *every* slot allocated after the checkpoint, so a live shape handle in
  * the return value would dangle. Use for data-returning batch analysis over many
  * bodies; never to wrap a shape builder. Inputs allocated before the call are
- * untouched (restore only frees from the mark forward).
+ * untouched (restore only frees from the mark forward), but `fn` must not query
+ * their cached topology (`getFaces`, `getSolids`, adjacency): the cache keeps the
+ * sub-shape handles it allocates, and the restore would leave it holding freed
+ * slots.
  *
  * No-op wrapper on kernels without arena checkpoints (occt/manifold): `fn` runs
  * directly and those kernels' own disposal applies.
