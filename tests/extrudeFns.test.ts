@@ -21,10 +21,7 @@ import {
   unwrap,
   isSolid,
   isShape3D,
-  isFace,
   isWire,
-  isOrientedFace,
-  isPlanarFace,
   isClosedWire,
   closedWire,
   getBounds,
@@ -36,14 +33,6 @@ import type { Wire } from '@/core/shapeTypes.js';
 import { createFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
-
-function castProfileFace(shape: KernelShape): OrientedFace & PlanarFace {
-  const f = castShape(shape);
-  if (!isFace(f) || !isOrientedFace(f) || !isPlanarFace(f)) {
-    throw new Error('expected an oriented planar face');
-  }
-  return f;
-}
 
 function castClosedWire(shape: KernelShape): ClosedWire {
   const w = castShape(shape);
@@ -65,7 +54,7 @@ describe('extrudeFns', () => {
   describe('extrude', () => {
     it('extrudes a rectangle into a box', () => {
       const rect = sketchRectangle(10, 20);
-      const f = castProfileFace(rect.face().wrapped);
+      const f = rect.face();
       const result = extrude(f, [0, 0, 30]);
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
@@ -77,7 +66,7 @@ describe('extrudeFns', () => {
       'extrudes a circle into a cylinder',
       () => {
         const c = sketchCircle(5);
-        const f = castProfileFace(c.face().wrapped);
+        const f = c.face();
         const result = extrude(f, [0, 0, 10]);
         expect(isOk(result)).toBe(true);
         expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(Math.PI * 25 * 10, 0);
@@ -92,7 +81,7 @@ describe('extrudeFns', () => {
     });
 
     it('returns error for zero-length extrusion vector', () => {
-      const f = castProfileFace(sketchRectangle(10, 10).face().wrapped);
+      const f = sketchRectangle(10, 10).face();
       const result = extrude(f, [0, 0, 0]);
       expect(isErr(result)).toBe(true);
     });
@@ -101,7 +90,7 @@ describe('extrudeFns', () => {
   describe('revolve', () => {
     it('revolves a rectangle a full turn (2π) into a cylinder', () => {
       const rect = sketchRectangle(2, 5, { origin: [6, 0] });
-      const f = castProfileFace(rect.face().wrapped);
+      const f = rect.face();
       const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 2 * Math.PI });
       expect(isOk(result)).toBe(true);
       expect(isShape3D(unwrap(result))).toBe(true);
@@ -109,7 +98,7 @@ describe('extrudeFns', () => {
 
     it('revolves a rectangle a quarter turn (π/2)', () => {
       const rect = sketchRectangle(2, 5, { origin: [6, 0] });
-      const f = castProfileFace(rect.face().wrapped);
+      const f = rect.face();
       const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: Math.PI / 2 });
       expect(isOk(result)).toBe(true);
     });

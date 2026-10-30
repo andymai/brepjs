@@ -296,7 +296,7 @@ export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & Plana
   // addHolesInFace returns a fresh face sharing baseFace's TShape — release the
   // orphaned base (its slot would otherwise leak on arena kernels).
   baseFace[Symbol.dispose]();
-  return newFace as OrientedFace & PlanarFace;
+  return newFace;
 }
 
 /** Return all wires (outer + holes) combined into a compound shape. */

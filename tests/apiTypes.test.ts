@@ -15,7 +15,11 @@ import {
   boss,
   drawRectangle,
   drawCircle,
+  drawingToSketchOnPlane,
   box,
+  extrude,
+  revolve,
+  sketchRectangle,
 } from '@/index.js';
 import type {
   Drawing,
@@ -29,6 +33,13 @@ import type {
   SurfaceType,
   Result,
   Shape3D,
+  Solid,
+  OrientedFace,
+  PlanarFace,
+  Sketch,
+  CompoundSketch,
+  Sketches,
+  SketchInterface,
 } from '@/index.js';
 
 describe('finder callbacks get the concrete finder', () => {
@@ -83,5 +94,23 @@ describe('SurfaceType matches getSurfaceType', () => {
     expectTypeOf(getSurfaceType).returns.toEqualTypeOf<Result<SurfaceType>>();
     expectTypeOf<'CYLINDRE'>().toExtend<SurfaceType>();
     expectTypeOf<'cylinder'>().not.toExtend<SurfaceType>();
+  });
+});
+
+describe('sketch faces feed extrude and revolve', () => {
+  it('types every sketch face accessor as an oriented planar face', () => {
+    expectTypeOf<ReturnType<SketchInterface['face']>>().toEqualTypeOf<OrientedFace & PlanarFace>();
+    expectTypeOf<ReturnType<Sketch['face']>>().toEqualTypeOf<OrientedFace & PlanarFace>();
+    expectTypeOf<ReturnType<Sketch['faces']>>().toEqualTypeOf<OrientedFace & PlanarFace>();
+    expectTypeOf<ReturnType<CompoundSketch['face']>>().toEqualTypeOf<OrientedFace & PlanarFace>();
+    expectTypeOf<ReturnType<Sketches['face']>>().toEqualTypeOf<OrientedFace & PlanarFace>();
+  });
+
+  it('extrudes and revolves a sketch face without a cast', () => {
+    const fromDrawing = () =>
+      extrude(drawingToSketchOnPlane(drawRectangle(10, 10), 'XY').face(), 5);
+    const fromCanned = () => revolve(sketchRectangle(2, 5, { origin: [6, 0] }).face());
+    expectTypeOf(fromDrawing).returns.toEqualTypeOf<Result<Solid>>();
+    expectTypeOf(fromCanned).returns.toEqualTypeOf<Result<Shape3D>>();
   });
 });
