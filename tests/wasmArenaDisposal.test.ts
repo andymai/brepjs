@@ -124,6 +124,8 @@ import {
   exportAssemblySTEP,
   instance,
   materialize,
+  split,
+  booleanPipeline,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
 import {
@@ -1479,6 +1481,40 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
+    it('split with no tools and booleanPipeline leak nothing', () => {
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(split(b, []));
+        })
+      ).toBe(0);
+      expect(
+        perIterationLeak(() => {
+          using b = box(10, 10, 10);
+          using _r = unwrap(booleanPipeline(b, []));
+        })
+      ).toBe(0);
+      // occt-wasm has no native pipeline, so these steps run one boolean at a
+      // time, each replacing the previous intermediate.
+      expect(
+        perIterationLeak(() => {
+          using base = box(20, 20, 20);
+          using a0 = box(10, 10, 10);
+          using add = translate(a0, [15, 0, 0]);
+          using hole = cylinder(3, 40);
+          using c0 = box(5, 5, 5);
+          using corner = translate(c0, [-2, -2, -2]);
+          using _r = unwrap(
+            booleanPipeline(base, [
+              { op: 'fuse', tool: add },
+              { op: 'cut', tool: hole },
+              { op: 'cut', tool: corner },
+            ])
+          );
+        })
+      ).toBe(0);
+    });
+
     describe('bisect and pairwise batch booleans release what they make', () => {
       interface AbortPlan {
         /** The op call (batch or pairwise, counted together) that aborts the run. */
@@ -1620,6 +1656,11 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         // Calls: the 4-shape batch fails, the left pair's batch succeeds, the
         // right pair's batch aborts.
         expect(abortedFuseLeak(2, 3, 4)).toBe(0);
+      });
+
+      it('fuseAllBisect throws and releases both halves when aborted during the merge', () => {
+        // Calls: the 4-shape batch fails, both pair batches succeed, the merge aborts.
+        expect(abortedFuseLeak(2, 4, 4)).toBe(0);
       });
 
       it('cutAllBisect releases its running result when aborted', () => {

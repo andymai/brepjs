@@ -597,6 +597,13 @@ describe('null-shape pre-validation', () => {
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
+  it('split rejects a null shape with no tools', (ctx) => {
+    skipIfDiverges(ctx, 'booleanFns.nullShapeValidation');
+    const result = split(makeNullShape(), []);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
   it('section rejects null shape', (ctx) => {
     skipIfDiverges(ctx, 'booleanFns.nullShapeValidation');
     const result = section(makeNullShape(), 'XY');
@@ -652,11 +659,22 @@ describe('slice', () => {
 });
 
 describe('split', () => {
-  it('returns base shape when tools array is empty', () => {
-    const b = box(10, 10, 10);
-    const result = split(b, []);
-    expect(isOk(result)).toBe(true);
-    expect(unwrap(result)).toBe(b);
+  it('returns a copy the caller can dispose without losing the shape when tools is empty', () => {
+    using b = box(10, 10, 10);
+    const result = unwrap(split(b, []));
+    expect(result).not.toBe(b);
+    expect(result.wrapped).not.toBe(b.wrapped);
+    result[Symbol.dispose]();
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 6);
+  });
+
+  it('keeps face tags on the copy when tools is empty', () => {
+    using b = box(10, 10, 10);
+    const first = getFaces(b)[0];
+    if (!first) throw new Error('box has no faces');
+    tagFaces(b, [first], 'kept');
+    using result = unwrap(split(b, []));
+    expect(findFacesByTag(result, 'kept')).toHaveLength(1);
   });
 });
 

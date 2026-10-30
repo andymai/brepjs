@@ -341,6 +341,30 @@ describe('fuseAllBisect — bisect recovery via injected ops', () => {
     expect(unwrap(measureVolume(a))).toBeCloseTo(1000, 6);
   });
 
+  it('throws when the run is aborted during the final pairwise fuse', () => {
+    // The abort lands inside the merge: it must surface, not read as a failed
+    // merge that silently drops the right half.
+    const controller = new AbortController();
+    const ops: BisectKernelOps = {
+      cut,
+      fuse: () => {
+        controller.abort(new Error('user cancelled'));
+        throw new Error('aborted mid-fuse');
+      },
+      cutAll,
+      fuseAll: () => {
+        throw new Error('batch always fails');
+      },
+    };
+    using a = boxAt(0, 0, 0, 10, 10, 10);
+    using b = boxAt(15, 0, 0, 25, 10, 10);
+    expect(() => fuseAllBisectWith(ops, [a, b], { signal: controller.signal })).toThrow(
+      /cancelled/
+    );
+    expect(unwrap(measureVolume(a))).toBeCloseTo(1000, 6);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 6);
+  });
+
   it('bisects and combines halves on failure', () => {
     const ops = wrapWithBatchFailure(2);
     const shapes = [

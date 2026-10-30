@@ -89,7 +89,10 @@ function castToShape3D(
  *
  * @internal
  */
-export function copyAsBooleanResult(shape: Shape3D, trackEvolution: boolean): Result<Shape3D> {
+export function copyAsBooleanResult<T extends AnyShape<Dimension>>(
+  shape: T,
+  trackEvolution: boolean
+): Result<T> {
   const copy = clone(shape);
   if (copy.ok && trackEvolution && hasAnyMetadata(shape)) {
     propagateMetadataThroughRelocation(shape, copy.value);
@@ -965,17 +968,17 @@ export function sectionToFace(
 
 /**
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
- * Returns all pieces from the split as a compound.
+ * Returns all pieces from the split as a compound, or a copy of the shape when
+ * `tools` is empty, so the result is always the caller's to dispose.
  */
 export function split(
   shape: AnyShape<Dimension>,
   tools: AnyShape<Dimension>[]
 ): Result<AnyShape<Dimension>> {
-  if (tools.length === 0) return ok(shape);
-
   if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
+  if (tools.length === 0) return copyAsBooleanResult(shape, true);
   for (let i = 0; i < tools.length; i++) {
     if (getKernel().isNull(getAtOrThrow(tools, i).wrapped)) {
       return err(
@@ -1048,7 +1051,8 @@ export interface BooleanPipelineStep {
  * simplifies the final shape.
  *
  * Falls back to sequential operations when the C++ pipeline class is not
- * available in the WASM build.
+ * available in the WASM build. An empty pipeline returns a copy of `base`, so
+ * the result is always the caller's to dispose.
  */
 export function booleanPipeline(
   base: Shape3D,
@@ -1057,7 +1061,7 @@ export function booleanPipeline(
     readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
   }
 ): Result<Shape3D> {
-  if (steps.length === 0) return ok(base);
+  if (steps.length === 0) return copyAsBooleanResult(base, true);
 
   const glueMode =
     options?.optimisation === 'commonFace' ? 1 : options?.optimisation === 'sameFace' ? 2 : 0;
@@ -1102,14 +1106,21 @@ function booleanPipelineFallback(
     unsafe: true,
   };
   for (const step of steps) {
-    const r =
-      step.op === 'fuse'
-        ? fuse(current, step.tool, boolOpts)
-        : step.op === 'cut'
-          ? cut(current, step.tool, boolOpts)
-          : intersect(current, step.tool, boolOpts);
+    // Each step replaces the running shape; release the previous intermediate
+    // once it is consumed (never the caller's base), also when the step fails.
+    let r: Result<Shape3D>;
+    try {
+      r =
+        step.op === 'fuse'
+          ? fuse(current, step.tool, boolOpts)
+          : step.op === 'cut'
+            ? cut(current, step.tool, boolOpts)
+            : intersect(current, step.tool, boolOpts);
+    } finally {
+      if (current !== base) disposeResultShape(current);
+    }
     if (isErr(r)) return r;
-    current = unwrap(r);
+    current = r.value;
   }
   return ok(current);
 }

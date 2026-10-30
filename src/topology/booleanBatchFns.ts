@@ -321,6 +321,8 @@ function combineFuseHalves(
       releaseOwned(right.value);
       return ok({ shape: merged.value, owned: true });
     }
+    // An abort inside the merge surfaces here as a failed fuse: rethrow it.
+    throwIfAborted(options, left.value, right.value);
     // Final pairwise fuse failed: drop the right side's indices and return left.
     for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.add(startIdx + i);
     releaseOwned(right.value);

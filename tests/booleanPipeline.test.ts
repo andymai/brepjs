@@ -9,6 +9,9 @@ import {
   isOk,
   unwrap,
   measureVolume,
+  getFaces,
+  tagFaces,
+  findFacesByTag,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -33,12 +36,23 @@ describe('booleanPipeline', () => {
     expect(vol).toBeGreaterThan(0);
   });
 
-  it('returns base shape unchanged for empty pipeline', () => {
-    const base = box(10, 10, 10);
-    const result = booleanPipeline(base, []);
-    expect(isOk(result)).toBe(true);
-    const vol = unwrap(measureVolume(unwrap(result)));
-    expect(vol).toBeCloseTo(1000, 0);
+  it('returns a copy of the base for an empty pipeline', () => {
+    using base = box(10, 10, 10);
+    const result = unwrap(booleanPipeline(base, []));
+    expect(result).not.toBe(base);
+    expect(result.wrapped).not.toBe(base.wrapped);
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
+    result[Symbol.dispose]();
+    expect(unwrap(measureVolume(base))).toBeCloseTo(1000, 6);
+  });
+
+  it('keeps face tags on the copy of the base for an empty pipeline', () => {
+    using base = box(10, 10, 10);
+    const first = getFaces(base)[0];
+    if (!first) throw new Error('box has no faces');
+    tagFaces(base, [first], 'kept');
+    using result = unwrap(booleanPipeline(base, []));
+    expect(findFacesByTag(result, 'kept')).toHaveLength(1);
   });
 
   it('handles 8-step fuse pipeline', () => {
