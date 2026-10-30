@@ -5,6 +5,7 @@ import { getKernel } from '@/kernel/index.js';
 import {
   line,
   circle,
+  threePointArc,
   wire,
   sketchRectangle,
   unwrap,
@@ -96,7 +97,31 @@ describe('curveStartPoint / curveEndPoint', () => {
     expect(start[0]).toBeCloseTo(0);
     expect(end[0]).toBeCloseTo(10);
   });
+
+  // An arc's queries answer for the arc, not the circle it lies on.
+  it('evaluates a semicircular arc over the arc', () => {
+    using arc = threePointArc([8, 0, 0], [0, 8, 0], [-8, 0, 0]);
+    expectPoint(curveStartPoint(arc), [8, 0, 0]);
+    expectPoint(curveEndPoint(arc), [-8, 0, 0]);
+    expectPoint(curvePointAt(arc, 0.5), [0, 8, 0]);
+    expectPoint(curvePointAt(arc, 0.25), [8 * Math.SQRT1_2, 8 * Math.SQRT1_2, 0]);
+    expect(curveLength(arc)).toBeCloseTo(8 * Math.PI, 6);
+  });
+
+  it('evaluates an arc that runs clockwise in the XY plane', () => {
+    using arc = threePointArc([0, 5, 0], [5, 0, 0], [0, -5, 0]);
+    expectPoint(curveStartPoint(arc), [0, 5, 0]);
+    expectPoint(curveEndPoint(arc), [0, -5, 0]);
+    expectPoint(curvePointAt(arc, 0.5), [5, 0, 0]);
+    const tangent = curveTangentAt(arc, 0.5);
+    expect(tangent[0]).toBeCloseTo(0, 6);
+    expect(tangent[1]).toBeLessThan(0);
+  });
 });
+
+function expectPoint(actual: readonly number[], expected: readonly number[]): void {
+  for (const [i, value] of expected.entries()) expect(actual[i]).toBeCloseTo(value, 6);
+}
 
 describe('curvePointAt', () => {
   it('returns midpoint at t=0.5', () => {

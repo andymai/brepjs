@@ -23,6 +23,7 @@ import {
   unwrapSolidOrThrow,
   toArray,
   dist3,
+  edgeParamRange,
   warnOnce,
   nextSyntheticId,
   syntheticCompounds,
@@ -125,7 +126,7 @@ export function curveTangent(
     edgeId = wasmIndex(edgeIds, edgeIds.length - 1); // fallback to last edge
     let cumulative = 0;
     for (const eid of edgeIds) {
-      const p = bk.getEdgeCurveParameters(eid);
+      const p = edgeParamRange(bk, eid);
       const span = wasmIndex(p, 1) - wasmIndex(p, 0);
       if (param <= cumulative + span || eid === edgeId) {
         edgeId = eid;
@@ -153,13 +154,12 @@ export function curveParameters(bk: BrepkitKernel, shape: KernelShape): [number,
     if (edgeIds.length === 0) return [0, 0];
     let total = 0;
     for (const eid of edgeIds) {
-      const p = bk.getEdgeCurveParameters(eid);
+      const p = edgeParamRange(bk, eid);
       total += wasmIndex(p, 1) - wasmIndex(p, 0);
     }
     return [0, total];
   }
-  const params = bk.getEdgeCurveParameters(unwrap(shape, 'edge'));
-  return [wasmIndex(params, 0), wasmIndex(params, 1)];
+  return edgeParamRange(bk, unwrap(shape, 'edge'));
 }
 
 export function curvePointAtParam(
@@ -173,7 +173,7 @@ export function curvePointAtParam(
     const edgeIds: number[] = toArray(bk.getWireEdges(h.id));
     let cumulative = 0;
     for (const eid of edgeIds) {
-      const p = bk.getEdgeCurveParameters(eid);
+      const p = edgeParamRange(bk, eid);
       const span = wasmIndex(p, 1) - wasmIndex(p, 0);
       if (param <= cumulative + span || eid === edgeIds[edgeIds.length - 1]) {
         const localParam = wasmIndex(p, 0) + (param - cumulative);

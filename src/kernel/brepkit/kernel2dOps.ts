@@ -25,6 +25,7 @@ import {
   c2d,
   c2dBasis,
   bb2d,
+  edgeParamRange,
 } from './helpers.js';
 import { makeLineEdge, interpolatePoints, makeNonPlanarFace } from './constructionOps.js';
 import { iterShapes } from './topologyOps.js';
@@ -1093,9 +1094,7 @@ export function extractCurve2dFromEdge(
   const eid = unwrap(edge, 'edge');
   const fid = unwrap(face, 'face');
 
-  const params = bk.getEdgeCurveParameters(eid);
-  const tMin = params[0] ?? 0;
-  const tMax = params[1] ?? 1;
+  const [tMin, tMax] = edgeParamRange(bk, eid);
 
   // Sample the 3D edge curve and project onto the face's UV space.
   // Uses uvFromPoint for proper projection on any surface type (not just planar).
@@ -1178,9 +1177,7 @@ export function fillSurface(
       const curveLengths: number[] = [];
       for (const edge of wireEdges) {
         const edgeId = unwrap(edge, 'edge');
-        const params = bk.getEdgeCurveParameters(edgeId);
-        const tMin = wasmIndex(params, 0);
-        const tMax = wasmIndex(params, 1);
+        const [tMin, tMax] = edgeParamRange(bk, edgeId);
         const N = 10;
         const pts: number[] = [];
         for (let i = 0; i <= N; i++) {

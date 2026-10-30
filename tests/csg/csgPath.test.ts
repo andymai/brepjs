@@ -95,6 +95,7 @@ describe('Path node', () => {
 
   it('ellipse-arc direction: side selection and parametric order per flags', (ctx) => {
     skipIfDiverges(ctx, 'csgPath.orientationProbes');
+    skipIfDiverges(ctx, 'csgPath.clockwiseEllipseArc');
     using ev = new Evaluator();
     const cases = [
       // [radii, clockwise, expected midpoint y sign]

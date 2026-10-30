@@ -207,12 +207,12 @@ export const divergences: DivergenceMap = {
   },
   brepkit: {
     // -----------------------------------------------------------------------
-    // csgPath.test.ts — direction probes need a faithful curvePointAt
+    // csgPath.test.ts — a clockwise ellipse arc keeps its curve's direction
     // -----------------------------------------------------------------------
-    'csgPath.orientationProbes': {
+    'csgPath.clockwiseEllipseArc': {
       kind: 'skip',
       reason:
-        'brepkit curvePointAt evaluates raw curve parameter space (not a normalized arc-length fraction), so midpoint/endpoint direction oracles read wrong positions. Surfaced in the Path node work (#2032).',
+        'A clockwise ellipseArcTo path segment is a B-spline edge that runs from the end of the segment to its start: curveStartPoint of the [30, 0] -> [-30, 0] clockwise arc is [-30, 0, 0]. Counterclockwise ellipse arcs and circular arcs either way read in path order.',
     },
     // -----------------------------------------------------------------------
     // booleanFns.test.ts — brepkit fuse ignores BooleanOptions (incl. simplify)

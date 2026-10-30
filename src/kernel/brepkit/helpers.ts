@@ -177,6 +177,60 @@ export function dist3(
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+const TAU = 2 * Math.PI;
+
+/**
+ * The curve parameters an edge spans. brepkit reports a circle or ellipse edge's
+ * domain as the whole [0, 2π] even for an arc; the arc runs counterclockwise
+ * about the curve's axis from the angle of its start vertex to that of its end
+ * vertex (brepkit's own `circle_param_range`). Those angles come from the
+ * curve's frame, recovered from its points at 0, π/2 and π: evaluated at t the
+ * curve is center + U·cos t + V·sin t.
+ */
+export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, number] {
+  const params = bk.getEdgeCurveParameters(edgeId);
+  const t0 = wasmIndex(params, 0);
+  const t1 = wasmIndex(params, 1);
+  if (t0 !== 0 || t1 !== TAU) return [t0, t1];
+  const curveType = bk.getEdgeCurveType(edgeId);
+  if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return [t0, t1];
+  const verts = bk.getEdgeVertices(edgeId);
+  const start: [number, number, number] = [
+    wasmIndex(verts, 0),
+    wasmIndex(verts, 1),
+    wasmIndex(verts, 2),
+  ];
+  const end: [number, number, number] = [
+    wasmIndex(verts, 3),
+    wasmIndex(verts, 4),
+    wasmIndex(verts, 5),
+  ];
+  if (dist3(...start, ...end) < 1e-7) return [t0, t1];
+
+  const at = (t: number): [number, number, number] => {
+    const p = bk.evaluateEdgeCurve(edgeId, t);
+    return [wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2)];
+  };
+  const p0 = at(0);
+  const pHalf = at(Math.PI / 2);
+  const pPi = at(Math.PI);
+  const center = [(p0[0] + pPi[0]) / 2, (p0[1] + pPi[1]) / 2, (p0[2] + pPi[2]) / 2] as const;
+  const u = [p0[0] - center[0], p0[1] - center[1], p0[2] - center[2]] as const;
+  const v = [pHalf[0] - center[0], pHalf[1] - center[1], pHalf[2] - center[2]] as const;
+  const uu = u[0] * u[0] + u[1] * u[1] + u[2] * u[2];
+  const vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  const angleOf = (p: [number, number, number]): number => {
+    const d = [p[0] - center[0], p[1] - center[1], p[2] - center[2]] as const;
+    const cos = (d[0] * u[0] + d[1] * u[1] + d[2] * u[2]) / uu;
+    const sin = (d[0] * v[0] + d[1] * v[1] + d[2] * v[2]) / vv;
+    return Math.atan2(sin, cos);
+  };
+  const ts = angleOf(start);
+  let te = angleOf(end);
+  if (te <= ts) te += TAU;
+  return [ts, te];
+}
+
 /** Copy a WASM-backed Uint8Array into an independent ArrayBuffer. */
 export function copyWasmBytes(bytes: Uint8Array): ArrayBuffer {
   return (bytes.buffer as ArrayBuffer).slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
