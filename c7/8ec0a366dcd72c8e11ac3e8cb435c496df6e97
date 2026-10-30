@@ -1,0 +1,38 @@
+src/kernel/brepkit/ioOps.ts
+  s_d4ab5fb2066c9b::t_0bdbd7d4e24397 11,18,28,32-35,45-47,51,151,153,155-156
+src/kernel/brepkit/stepMerge.ts
+  s_d4ab5fb2066c9b::t_6019293f121fe5 1-7,10-13,19-21,23,25-26,29,34,38-48,50-51,53,55-61,65-69,71-72,76-78,92,96-97,99,102,105-106,108-112,115-117,124,135
+  s_d4ab5fb2066c9b::t_11f00639f27c90 107,130-131
+  s_d4ab5fb2066c9b::t_e6b5b179489fd6 8-9,14-18,22,24,27-28,33,49,52,54,62-64,70,73-75,79-91,93-95,100-101,103-104,118-120,123,125-126,132
+  s_d4ab5fb2066c9b::t_973b2d675dc4fc 30-32,35-37
+  s_d4ab5fb2066c9b::t_120e3f8343a8b2 98
+  s_d4ab5fb2066c9b::t_3b20ee78b02d84 113-114,121-122,127-129,133-134
+.size-limit.json
+  s_d4ab5fb2066c9b::t_4956abe3bac19b 2
+tests/exporterFns.test.ts
+  s_d4ab5fb2066c9b::t_087a9c3423a6dc 5-19
+  s_d4ab5fb2066c9b::t_c0feb5f0b9bd8b 47-73
+tests/meshFns.test.ts
+  s_d4ab5fb2066c9b::t_e1facb42179240 14-18,26
+  s_d4ab5fb2066c9b::t_5e66adbf084b54 214-230
+  s_d4ab5fb2066c9b::t_eb29712e7017a0 339-366
+tests/api.test.ts
+  s_d4ab5fb2066c9b::t_e9fea2d15b254a 638-647
+  s_d4ab5fb2066c9b::t_e7d926de7ff3e2 75,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c78ec0a366dcd72c8e11ac3e8cb435c496df6e97",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
