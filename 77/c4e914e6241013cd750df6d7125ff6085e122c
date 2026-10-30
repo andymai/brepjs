@@ -1,0 +1,62 @@
+tests/occtWasmLegacyBuilds.test.ts
+  s_d4ab5fb2066c9b::t_78b9aeecdac3c1 253-254
+  s_d4ab5fb2066c9b::t_0e74859e5c99c3 216-223,225-252,255-264,266-269,271-276
+  s_d4ab5fb2066c9b::t_51e8674786e4d3 5-7,12-27,47,50,53-54,59-64,66-99
+  s_d4ab5fb2066c9b::t_0e616c93083044 29
+  s_d4ab5fb2066c9b::t_ad7e0a6b2675e6 224
+  s_d4ab5fb2066c9b::t_a047461ee17869 265,270
+src/kernel/occtWasm/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_ebb2f76bcc358d 481-495,498,501-518
+  s_d4ab5fb2066c9b::t_2d46f4a5763f2b 25,27
+  s_d4ab5fb2066c9b::t_a292031f41062e 496-497,499-500
+src/topology/chamferAngleFns.ts
+  s_d4ab5fb2066c9b::t_8cadd9df85e97a 129-130
+  s_d4ab5fb2066c9b::t_eff9a252a3d761 7-10,16,24,26-30,91-128,133,135,152-158,200,203-207,226,294-299,301,306
+tests/metadataPropagation.test.ts
+  s_d4ab5fb2066c9b::t_f02ed3b1c9e6a8 192-200,202-238
+  s_d4ab5fb2066c9b::t_8c0e9edbbc72bc 201
+  s_d4ab5fb2066c9b::t_c7991898807365 9-10,23,25,27
+  s_d4ab5fb2066c9b::t_d2c5dac34c8fb0 26
+src/kernel/interfaces/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_473cdf5b7e8ae2 118-120,123-129
+  s_d4ab5fb2066c9b::t_544782b95b911d 121-122
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_f4edc08a085d37 298
+  s_d4ab5fb2066c9b::t_171daefe93fdf9 275-278
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_cd78d0bfe03f82 775-784
+src/kernel/occtWasm/helpers.ts
+  s_d4ab5fb2066c9b::t_18f78eb0d1a66d 228-231
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_e863e93b4ddd03 1118-1133
+tests/shapeRefExtrudeRoles.test.ts
+  s_d4ab5fb2066c9b::t_c65c9e937d6c94 9,12,17-18
+  s_d4ab5fb2066c9b::t_d214b21c118c66 209-212,214-239
+  s_d4ab5fb2066c9b::t_dd749a4118d19f 213
+  s_d4ab5fb2066c9b::t_3e6a90132bd878 24-25
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_2f6ac9207903bb 820-840
+  s_d4ab5fb2066c9b::t_29166ccb53fc56 123-126
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_f56321236e3c4a 199-203
+  s_d4ab5fb2066c9b::t_74d2767a59b55c 325-329
+  s_d4ab5fb2066c9b::t_9b9a35ec10ff6b 616-620
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_3969c700413d7a 3,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77c4e914e6241013cd750df6d7125ff6085e122c",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
