@@ -1,0 +1,52 @@
+src/kernel/capabilities.ts
+  s_d4ab5fb2066c9b::t_319998677f0f15 35-42,53,57
+.size-limit.json
+  s_d4ab5fb2066c9b::t_b46b2876e7ce90 2
+src/io/meshTopology.ts
+  s_d4ab5fb2066c9b::t_fd6d819edbc03e 91-93,121-124
+  s_d4ab5fb2066c9b::t_d594b6b9e3fe56 1-90,94-120,125-160,162,167-171,174-205,212-220,224-225,228,234-235,237-242,244,246-259
+  s_d4ab5fb2066c9b::t_bf67ff73956df4 172-173
+  s_d4ab5fb2066c9b::t_87bfbe37abca61 206-211
+  s_d4ab5fb2066c9b::t_7882b5253da769 161,163-166
+  s_d4ab5fb2066c9b::t_8adef42c944b08 221-223,226-227,229-233,236,243,245
+src/io/threemfImportFns.ts
+  s_d4ab5fb2066c9b::t_319998677f0f15 10,514-529,541-542
+benchmarks/mesh-import.bench.test.ts
+  s_d4ab5fb2066c9b::t_57d8707c7e30da 164,173
+  s_d4ab5fb2066c9b::t_2eb20161581e4b 1,6,9-12,25-28,37-78,80,84-86,88,90-91,116-121,123-124,140,149,152-157,177,181,194-196
+  s_d4ab5fb2066c9b::t_db2dd1785a7739 158
+  s_d4ab5fb2066c9b::t_097f97b6c2734c 174-175
+  s_d4ab5fb2066c9b::t_c0d9a982939cd4 2-5,7-8,13-24,29,79,81-83,87,89,92-115,122,125-139,141-148,150-151,159-163,165-172,176,178-180,182-193
+  s_d4ab5fb2066c9b::t_fd6d819edbc03e 30-36
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_319998677f0f15 13-14,69-70,73-74,92-93
+  s_d4ab5fb2066c9b::t_7a187823f751c2 71-72
+src/io/README.md
+  s_d4ab5fb2066c9b::t_ff6b9bee7a4415 14
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_e5e44789c93bbd 265-266
+  s_d4ab5fb2066c9b::t_319998677f0f15 11,17-20,31-36,39-47,60-62,65-68,82-179,226-250,252-264,267-279,281-283,288,292,294-295,297-312,328
+  s_d4ab5fb2066c9b::t_6662ccdec4df38 251
+src/io/meshNesting.ts
+  s_d4ab5fb2066c9b::t_319998677f0f15 9-10,19,24-50,56-59,63-71,86-88,100-102,146,161-162,165,171
+src/io/stlTriangles.ts
+  s_d4ab5fb2066c9b::t_87493e7c928e46 1-51
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_40f8209848a281 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ab0f248425f55a13eafc2702c74c6f7f05bcd06",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
