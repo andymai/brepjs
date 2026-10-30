@@ -25,7 +25,7 @@ import {
 import { needsTransform, transformToPlacement } from './internalOps.js';
 import { translate, generalTransform } from './transformOps.js';
 import { sew } from './topologyOps.js';
-import { type Vec3, wasmIndex } from '@/utils/vec3.js';
+import { type Vec3, vec3At, wasmIndex } from '@/utils/vec3.js';
 
 export function makeVertex(bk: BrepkitKernel, x: number, y: number, z: number): KernelShape {
   const id = bk.makeVertex(x, y, z);
@@ -485,8 +485,22 @@ export function makeWireFromMixed(bk: BrepkitKernel, items: KernelShape[]): Kern
   }
   if (edgeIds.length === 0)
     throw new Error('brepkit: makeWireFromMixed requires at least one edge');
-  const id = bk.makeWire(edgeIds, false);
+  // A chain whose last edge ends where the first starts is built closed:
+  // brepkit welds the closing pair onto one vertex only for a closed wire, and
+  // an unshared closing vertex leaves a prism no fillet or draft can work on.
+  const id = bk.makeWire(edgeIds, chainCloses(bk, edgeIds));
   return wireHandle(id);
+}
+
+/** Matches the 1e-7 linear tolerance brepkit's makeWire welds vertices within. */
+const WIRE_CLOSE_TOLERANCE = 1e-7;
+
+function chainCloses(bk: BrepkitKernel, edgeIds: number[]): boolean {
+  const first = bk.getEdgeVertices(wasmIndex(edgeIds, 0));
+  const last = bk.getEdgeVertices(wasmIndex(edgeIds, edgeIds.length - 1));
+  const [sx, sy, sz] = vec3At(first, 0);
+  const [ex, ey, ez] = vec3At(last, 3);
+  return Math.hypot(ex - sx, ey - sy, ez - sz) < WIRE_CLOSE_TOLERANCE;
 }
 
 export function makeCompound(bk: BrepkitKernel, shapes: KernelShape[]): KernelShape {

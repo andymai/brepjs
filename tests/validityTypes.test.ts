@@ -4,6 +4,10 @@ import {
   box,
   cylinder,
   extrude,
+  fillet,
+  getEdges,
+  getVertices,
+  measureVolume,
   isErr,
   isOk,
   line,
@@ -593,6 +597,26 @@ describe('wireLoop', () => {
     const e2 = line([10, 0, 0], [10, 10, 0]);
     const result = wireLoop([e1, e2]);
     expect(isErr(result)).toBe(true);
+  });
+
+  it('shares the closing vertex, so the extruded prism has 8 vertices and fillets', () => {
+    using e1 = line([0, 0, 0], [40, 0, 0]);
+    using e2 = line([40, 0, 0], [40, 30, 0]);
+    using e3 = line([40, 30, 0], [0, 30, 0]);
+    using e4 = line([0, 30, 0], [0, 0, 0]);
+    using loop = unwrap(wireLoop([e1, e2, e3, e4]));
+    if (!isPlanarWire(loop)) throw new Error('profile is not planar');
+    using profile = unwrap(face(loop));
+    using prism = unwrap(extrude(profile, 20));
+    expect(getVertices(prism)).toHaveLength(8);
+    if (!isValidSolid(prism)) throw new Error('prism is not a valid solid');
+    using rounded = unwrap(fillet(prism, getEdges(prism), 3));
+    // Each edge loses (1 - π/4)·r² along its straight run; each corner cube
+    // of side r becomes a sphere octant.
+    const r = 3;
+    const edgeLoss = (1 - Math.PI / 4) * r * r * 4 * (40 + 30 + 20 - 6 * r);
+    const cornerLoss = 8 * (r ** 3 - (Math.PI / 6) * r ** 3);
+    expect(unwrap(measureVolume(rounded))).toBeCloseTo(24000 - edgeLoss - cornerLoss, 3);
   });
 });
 
