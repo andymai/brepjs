@@ -35,8 +35,15 @@ import {
   face,
   compound,
   faceCenter,
+  isPlanarWire,
+  isShape3D,
 } from '@/index.js';
-import type { Shape3D, Face } from '@/index.js';
+import type { AnyShape, Dimension, Shape3D, Face, OrientedFace } from '@/index.js';
+
+function shape3D(shape: AnyShape<Dimension>): Shape3D {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
+  return shape;
+}
 
 describe('measureFns', () => {
   beforeAll(async () => {
@@ -46,12 +53,15 @@ describe('measureFns', () => {
   describe('measureVolume', () => {
     it('box volume', () => {
       const b = box(10, 20, 30);
-      expect(unwrap(measureVolume(castShape(b.wrapped)))).toBeCloseTo(6000, 0);
+      expect(unwrap(measureVolume(shape3D(castShape(b.wrapped))))).toBeCloseTo(6000, 0);
     });
 
     it('sphere volume', () => {
       const s = sphere(5);
-      expect(unwrap(measureVolume(castShape(s.wrapped)))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+      expect(unwrap(measureVolume(shape3D(castShape(s.wrapped))))).toBeCloseTo(
+        (4 / 3) * Math.PI * 125,
+        0
+      );
     });
 
     it('returns 0 for a non-solid shape, e.g. a shell (#1361)', () => {
@@ -69,7 +79,7 @@ describe('measureFns', () => {
   describe('measureArea', () => {
     it('box surface area', () => {
       const b = box(10, 20, 30);
-      expect(unwrap(measureArea(castShape(b.wrapped)))).toBeCloseTo(2200, 0);
+      expect(unwrap(measureArea(shape3D(castShape(b.wrapped))))).toBeCloseTo(2200, 0);
     });
 
     it.skipIf(shouldSkipSuite('measureFns.analyticFaceMeasurement'))('face area', () => {
@@ -124,7 +134,7 @@ describe('measureFns', () => {
   describe('measureVolumeProps / measureSurfaceProps / measureLinearProps', () => {
     it('volume props include mass and centerOfMass', () => {
       const b = box(10, 10, 10);
-      const props = unwrap(measureVolumeProps(castShape(b.wrapped)));
+      const props = unwrap(measureVolumeProps(shape3D(castShape(b.wrapped))));
       expect(props.mass).toBeCloseTo(1000, 0);
       expect(props.centerOfMass[0]).toBeCloseTo(5, 0);
       expect(props.centerOfMass[1]).toBeCloseTo(5, 0);
@@ -133,7 +143,7 @@ describe('measureFns', () => {
 
     it('surface props include mass and centerOfMass', () => {
       const b = box(10, 10, 10);
-      const props = unwrap(measureSurfaceProps(castShape(b.wrapped)));
+      const props = unwrap(measureSurfaceProps(shape3D(castShape(b.wrapped))));
       expect(props.mass).toBeCloseTo(600, 0);
       expect(props.centerOfMass[0]).toBeCloseTo(5, 0);
     });
@@ -179,7 +189,9 @@ describe('measureFns', () => {
 
     it('volume of a compound counts only its solids', () => {
       using b = box(10, 10, 10);
-      using disc = unwrap(face(unwrap(closedWire(unwrap(wire([circle(5, { at: [0, 0, 50] })]))))));
+      const discWire = unwrap(closedWire(unwrap(wire([circle(5, { at: [0, 0, 50] })]))));
+      if (!isPlanarWire(discWire)) throw new Error('profile is not planar');
+      using disc = unwrap(face(discWire));
       using mixed = compound([b, disc]);
       const props = unwrap(measureVolumeProps(mixed));
       expect(props.volume).toBeCloseTo(1000, 6);
@@ -189,7 +201,9 @@ describe('measureFns', () => {
     });
 
     it('volume of a compound without solids is zero', () => {
-      using disc = unwrap(face(unwrap(closedWire(unwrap(wire([circle(5)]))))));
+      const discWire = unwrap(closedWire(unwrap(wire([circle(5)]))));
+      if (!isPlanarWire(discWire)) throw new Error('profile is not planar');
+      using disc = unwrap(face(discWire));
       using onlyFace = compound([disc]);
       expect(unwrap(measureVolume(onlyFace))).toBe(0);
     });
@@ -261,7 +275,7 @@ describe('measureFns', () => {
       });
 
       it('measureCurvatureAt returns Err on null face', () => {
-        expect(isErr(measureCurvatureAt(makeNullFace(), 0, 0))).toBe(true);
+        expect(isErr(measureCurvatureAt(makeNullFace() as OrientedFace, 0, 0))).toBe(true);
       });
 
       it('measureCurvatureAtMid returns Err on null face', () => {

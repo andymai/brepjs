@@ -124,7 +124,14 @@ import {
   exportAssemblySTEP,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import type {
+  AnyShape,
+  ClosedWire,
+  Dimension,
+  Face,
+  PlanarWire,
+  Shape3D,
+} from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { adjacentFaceHashes } from '@/topology/adjacencyFns.js';
@@ -619,7 +626,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    const verticalEdges = (solid: AnyShape<Dimension>) =>
+    const verticalEdges = (solid: Shape3D) =>
       getEdges(solid).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
     const bySide =
       <V>(near: V, far: V) =>
@@ -813,7 +820,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       expect(
         perIterationLeak(() => {
           using b = box(10, 10, 10);
-          using _r = scale(b, 2, [0, 0, 0]);
+          using _r = scale(b, 2, { center: [0, 0, 0] });
         })
       ).toBe(0);
     });
@@ -1172,7 +1179,9 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           );
           const w = getWires(f)[0];
           if (!w) throw new Error('polygon face must have a wire');
-          const r = roof(unwrap(closedWire(w)));
+          // A cast rather than isPlanarWire, which builds a face: that would add arena work
+          // to the measured iteration.
+          const r = roof(unwrap(closedWire(w)) as ClosedWire & PlanarWire);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
@@ -1344,7 +1353,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
     it('solveAssembly leaks nothing', () => {
       using b1 = box(10, 10, 10);
       using b2 = box(6, 6, 6);
-      const topByZ = (fs: ReturnType<typeof getFaces>, top: boolean) =>
+      const topByZ = (fs: Face[], top: boolean) =>
         fs.reduce((best, f) =>
           (top ? faceCenter(f)[2] > faceCenter(best)[2] : faceCenter(f)[2] < faceCenter(best)[2])
             ? f

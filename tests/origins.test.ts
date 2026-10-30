@@ -247,7 +247,7 @@ describe('origin propagation through modifiers', () => {
     const b = box(20, 20, 20);
     setShapeOrigin(b, 8);
 
-    const result = unwrap(fillet(b, undefined, 2));
+    const result = unwrap(fillet(b, 2));
     const origins = getFaceOrigins(result);
     expect(origins).toBeDefined();
     if (!origins) return;

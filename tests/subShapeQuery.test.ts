@@ -12,12 +12,13 @@ import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
 import { getKernel } from '@/kernel/index.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { unwrap, isOk } from '@/core/result.js';
+import type { Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-function handleHashes(shape: Parameters<typeof getFaces>[0], type: 'face' | 'edge' | 'vertex') {
+function handleHashes(shape: Shape3D, type: 'face' | 'edge' | 'vertex') {
   const kernel = getKernel();
   const get = type === 'face' ? getFaces : type === 'edge' ? getEdges : getVertices;
   return new Set(get(shape).map((s) => kernel.hashCode(s.wrapped, HASH_CODE_MAX)));

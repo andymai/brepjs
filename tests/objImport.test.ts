@@ -8,6 +8,7 @@ import {
   getSolids,
   importOBJ,
   isCompound,
+  isShape3D,
   isSolid,
   measureVolume,
   unwrap,
@@ -42,6 +43,7 @@ describe('importOBJ', () => {
     const result = await importOBJ(blob);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    if (!isShape3D(result.value)) throw new Error('expected a 3D shape');
     const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeCloseTo(1, 1);
   });

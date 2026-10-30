@@ -107,7 +107,7 @@ describe('simplify', () => {
     const fused = fuse(a, translate(box(10, 10, 10), [10, 0, 0]), {
       simplify: false,
     });
-    const simplified = unwrap(simplify(fused.value));
+    const simplified = unwrap(simplify(unwrap(fused)));
     expect(simplified).toBeDefined();
   });
 });
