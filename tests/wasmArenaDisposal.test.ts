@@ -126,7 +126,11 @@ import {
   materialize,
 } from '@/index.js';
 import { fillet as filletFn } from '@/topology/modifierFns.js';
-import { fuseAllBisectWith, type BisectKernelOps } from '@/topology/booleanBatchFns.js';
+import {
+  cutAllBisectWith,
+  fuseAllBisectWith,
+  type BisectKernelOps,
+} from '@/topology/booleanBatchFns.js';
 import type { AnyShape, Dimension, Shape3D } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 import { subShapeCount, subShapeHashes } from '@/topology/topologyQueryFns.js';
@@ -1475,32 +1479,72 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
-    describe('fuseAllBisect releases the halves it merges or drops', () => {
-      // A row of touching boxes; batches above `limit` shapes throw, forcing bisection.
-      function bisectOps(limit: number, pairwise = true): BisectKernelOps {
+    describe('bisect and pairwise batch booleans release what they make', () => {
+      interface AbortPlan {
+        /** The op call (batch or pairwise, counted together) that aborts the run. */
+        at: number;
+        controller: AbortController;
+      }
+
+      // Batches above `limit` inputs throw, forcing bisection. With `abort`, the
+      // `at`-th op call aborts the signal and throws, as a cancelled run would.
+      function bisectOps(limit: number, pairFails = false, abort?: AbortPlan): BisectKernelOps {
+        let calls = 0;
+        function step<T>(run: () => T): T {
+          calls++;
+          if (abort && calls === abort.at) {
+            abort.controller.abort(new Error('stop'));
+            throw new Error('aborted mid-run');
+          }
+          return run();
+        }
+        function pair<T>(run: () => T): T {
+          return step(() => {
+            if (pairFails) throw new Error('pairwise fails');
+            return run();
+          });
+        }
         return {
-          cut,
-          cutAll,
-          fuse: pairwise
-            ? fuse
-            : () => {
-                throw new Error('pairwise fuse fails');
-              },
-          fuseAll: (shapes, options) => {
-            if (shapes.length > limit) throw new Error('batch fails');
-            return fuseAll(shapes, options);
-          },
+          cut: (base, tool, options) => pair(() => cut(base, tool, options)),
+          fuse: (a, b, options) => pair(() => fuse(a, b, options)),
+          cutAll: (base, tools, options) =>
+            step(() => {
+              if (tools.length > limit) throw new Error('batch fails');
+              return cutAll(base, tools, options);
+            }),
+          fuseAll: (shapes, options) =>
+            step(() => {
+              if (shapes.length > limit) throw new Error('batch fails');
+              return fuseAll(shapes, options);
+            }),
         };
       }
-      function bisectLeak(ops: BisectKernelOps, count: number): number {
+
+      /** `count` boxes in a row, each touching the next. */
+      function row(count: number): Shape3D[] {
+        const out: Shape3D[] = [];
+        for (let i = 0; i < count; i++) {
+          using cell = box(10, 10, 10);
+          out.push(translate(cell, [10 * i, 0, 0]));
+        }
+        return out;
+      }
+
+      /** `count` slabs that each cut through a 100-long bar. */
+      function slabs(count: number): Shape3D[] {
+        const out: Shape3D[] = [];
+        for (let i = 0; i < count; i++) {
+          using slab = box(2, 20, 20);
+          out.push(translate(slab, [10 * i + 5, -5, -5]));
+        }
+        return out;
+      }
+
+      function fuseLeak(ops: () => BisectKernelOps, count: number): number {
         return perIterationLeak(() => {
-          const shapes: Shape3D[] = [];
+          const shapes = row(count);
           try {
-            for (let i = 0; i < count; i++) {
-              using cell = box(10, 10, 10);
-              shapes.push(translate(cell, [10 * i, 0, 0]));
-            }
-            const r = fuseAllBisectWith(ops, shapes);
+            const r = fuseAllBisectWith(ops(), shapes);
             if (isOk(r)) unwrap(r).shape[Symbol.dispose]();
           } finally {
             disposeAll(shapes);
@@ -1508,14 +1552,127 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         });
       }
 
+      function cutLeak(ops: () => BisectKernelOps, count: number): number {
+        return perIterationLeak(() => {
+          using bar = box(100, 10, 10);
+          const tools = slabs(count);
+          try {
+            const r = cutAllBisectWith(ops(), bar, tools);
+            if (isOk(r)) unwrap(r).shape[Symbol.dispose]();
+          } finally {
+            disposeAll(tools);
+          }
+        });
+      }
+
       it.each([
-        ['two batched halves merged pairwise', bisectOps(2), 4],
-        ['single leaves merged up two levels', bisectOps(0), 4],
-        ['a batched right half dropped when the merge fails', bisectOps(2, false), 4],
-        ['the kept left input copied when the merge fails', bisectOps(0, false), 2],
-        ['one shape copied', bisectOps(0), 1],
-      ] as [string, BisectKernelOps, number][])('%s', (_name, ops, count) => {
-        expect(bisectLeak(ops, count)).toBe(0);
+        ['two batched halves merged pairwise', () => bisectOps(2), 4],
+        ['single leaves merged up two levels', () => bisectOps(0), 4],
+        ['a batched right half dropped when the merge fails', () => bisectOps(2, true), 4],
+        ['the kept left input copied when the merge fails', () => bisectOps(0, true), 2],
+        ['one shape copied', () => bisectOps(0), 1],
+      ] as [string, () => BisectKernelOps, number][])('fuseAllBisect: %s', (_name, ops, count) => {
+        expect(fuseLeak(ops, count)).toBe(0);
+      });
+
+      it.each([
+        ['two batched halves cut in turn', () => bisectOps(2), 4],
+        ['four single tools cut in turn', () => bisectOps(0), 4],
+        ['every tool failing, so the base is copied', () => bisectOps(0, true), 2],
+        ['no tools, so the base is copied', () => bisectOps(0), 0],
+      ] as [string, () => BisectKernelOps, number][])('cutAllBisect: %s', (_name, ops, count) => {
+        expect(cutLeak(ops, count)).toBe(0);
+      });
+
+      // An abort after one half is made must release that half on the way out.
+      function abortedFuseLeak(limit: number, at: number, count: number): number {
+        return perIterationLeak(() => {
+          const shapes = row(count);
+          try {
+            const controller = new AbortController();
+            const ops = bisectOps(limit, false, { at, controller });
+            expect(() => fuseAllBisectWith(ops, shapes, { signal: controller.signal })).toThrow(
+              'stop'
+            );
+          } finally {
+            disposeAll(shapes);
+          }
+        });
+      }
+
+      function abortedCutLeak(limit: number, at: number, count: number): number {
+        return perIterationLeak(() => {
+          using bar = box(100, 10, 10);
+          const tools = slabs(count);
+          try {
+            const controller = new AbortController();
+            const ops = bisectOps(limit, false, { at, controller });
+            expect(() => cutAllBisectWith(ops, bar, tools, { signal: controller.signal })).toThrow(
+              'stop'
+            );
+          } finally {
+            disposeAll(tools);
+          }
+        });
+      }
+
+      it('fuseAllBisect releases a made half when aborted while fusing the other', () => {
+        // Calls: the 4-shape batch fails, the left pair's batch succeeds, the
+        // right pair's batch aborts.
+        expect(abortedFuseLeak(2, 3, 4)).toBe(0);
+      });
+
+      it('cutAllBisect releases its running result when aborted', () => {
+        // Batch path: the 4-tool batch fails, the first 2-tool batch cuts, the
+        // second aborts.
+        expect(abortedCutLeak(2, 3, 4)).toBe(0);
+        // Singleton path: the 2-tool batch fails, the first single cut succeeds,
+        // the second aborts.
+        expect(abortedCutLeak(0, 3, 2)).toBe(0);
+      });
+
+      it('fuseAll pairwise releases made halves when aborted mid-run', () => {
+        // A kernel that aborts the run after its `abortAfter`-th fuse call.
+        const state = { calls: 0, abortAfter: 0, controller: new AbortController() };
+        const base = getKernel();
+        registerKernel(
+          'arena-abort-after-fuse',
+          new Proxy(base, {
+            get(target, prop) {
+              const value: unknown = Reflect.get(target, prop, target);
+              if (typeof value !== 'function') return value;
+              if (prop !== 'fuse' && prop !== 'fuseWithHistory') return value.bind(target);
+              return (...args: unknown[]): unknown => {
+                const out: unknown = value.apply(target, args);
+                state.calls++;
+                if (state.calls === state.abortAfter) state.controller.abort(new Error('stop'));
+                return out;
+              };
+            },
+          })
+        );
+        // 4 inputs: abortAfter 1 stops after the left pair is fused, abortAfter 2
+        // after both pairs, before the combine.
+        for (const abortAfter of [1, 2]) {
+          expect(
+            perIterationLeak(() => {
+              const shapes = row(4);
+              try {
+                state.calls = 0;
+                state.abortAfter = abortAfter;
+                state.controller = new AbortController();
+                const { signal } = state.controller;
+                expect(() =>
+                  withKernel('arena-abort-after-fuse', () =>
+                    fuseAll(shapes, { strategy: 'pairwise', signal, unsafe: true })
+                  )
+                ).toThrow('stop');
+              } finally {
+                disposeAll(shapes);
+              }
+            })
+          ).toBe(0);
+        }
       });
     });
   });

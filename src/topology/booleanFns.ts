@@ -426,36 +426,40 @@ function fuseAllPairwise(
     fuzzyValue
   );
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAllPairwise(
-    shapes,
-    mid,
-    end,
-    optimisation,
-    simplify,
-    false,
-    trackEvolution,
-    signal,
-    fuzzyValue
-  );
-  if (isErr(rightResult)) {
-    if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
-    return rightResult;
-  }
-
-  const combined = fuse(leftResult.value.shape, rightResult.value.shape, {
-    optimisation,
-    simplify,
-    trackEvolution,
-    fuzzyValue,
-    unsafe: true,
-    ...(signal ? { signal } : {}),
-  });
+  const left = leftResult.value;
+  let right: PairwiseNode | undefined;
   // The two operands are consumed by the combine; release the ones this
-  // recursion owns (never the caller-owned leaf passthroughs).
-  if (leftResult.value.owned) disposeResultShape(leftResult.value.shape);
-  if (rightResult.value.owned) disposeResultShape(rightResult.value.shape);
-  if (isErr(combined)) return combined;
-  return ok({ shape: combined.value, owned: true });
+  // recursion owns (never the caller-owned leaf passthroughs), also when the
+  // right half or the combine fails or throws on an abort.
+  try {
+    const rightResult = fuseAllPairwise(
+      shapes,
+      mid,
+      end,
+      optimisation,
+      simplify,
+      false,
+      trackEvolution,
+      signal,
+      fuzzyValue
+    );
+    if (isErr(rightResult)) return rightResult;
+    right = rightResult.value;
+
+    const combined = fuse(left.shape, right.shape, {
+      optimisation,
+      simplify,
+      trackEvolution,
+      fuzzyValue,
+      unsafe: true,
+      ...(signal ? { signal } : {}),
+    });
+    if (isErr(combined)) return combined;
+    return ok({ shape: combined.value, owned: true });
+  } finally {
+    if (left.owned) disposeResultShape(left.shape);
+    if (right?.owned) disposeResultShape(right.shape);
+  }
 }
 
 /**

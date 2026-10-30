@@ -91,6 +91,33 @@ function freezeTelemetry(t: MutableTelemetry): BatchBisectTelemetry {
   };
 }
 
+/** A bisect result; `owned` is false for a caller's input passed through untouched. */
+interface BisectNode {
+  shape: Shape3D;
+  owned: boolean;
+}
+
+function releaseOwned(node: BisectNode): void {
+  if (node.owned) disposeResultShape(node.shape);
+}
+
+/** If the run was cancelled, release the `held` nodes this frame owns and throw. */
+function throwIfAborted(options: BooleanOptions, ...held: BisectNode[]): void {
+  if (!options.signal?.aborted) return;
+  for (const node of held) releaseOwned(node);
+  throw options.signal.reason;
+}
+
+/**
+ * The caller's copy of the final node. A caller's own input can survive to the
+ * top (nothing combined, or every step failed), so it comes back as a copy.
+ */
+function ownedResult(node: BisectNode, options: BooleanOptions): Result<Shape3D> {
+  return node.owned
+    ? ok(node.shape)
+    : copyAsBooleanResult(node.shape, options.trackEvolution ?? true);
+}
+
 // ---------------------------------------------------------------------------
 // cutAllBisect
 // ---------------------------------------------------------------------------
@@ -128,31 +155,38 @@ export function cutAllBisectWith(
     singletonFallbacks: 0,
     failedInputs: new Set(),
   };
-  const result = bisectCut(ops, base, tools, 0, options, telemetry);
+  const result = bisectCut(ops, { shape: base, owned: false }, tools, 0, options, telemetry);
   if (isErr(result)) return result;
-  return ok({ shape: result.value, telemetry: freezeTelemetry(telemetry) });
+  const shape = ownedResult(result.value, options);
+  if (isErr(shape)) return shape;
+  return ok({ shape: shape.value, telemetry: freezeTelemetry(telemetry) });
 }
 
+/**
+ * Cut `tools` from `base`. An owned base is consumed: it comes back as the
+ * result when nothing was cut, and is released otherwise, on a throw included.
+ */
 function bisectCut(
   ops: BisectKernelOps,
-  base: Shape3D,
+  base: BisectNode,
   tools: readonly Shape3D[],
   startIdx: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<Shape3D> {
+): Result<BisectNode> {
   if (tools.length === 0) return ok(base);
   if (tools.length === 1) return applySingletonCut(ops, base, tools, startIdx, options, telemetry);
 
   telemetry.batchAttempts++;
   const batchResult = tryBatch(() =>
-    ops.cutAll(base as ValidSolid, tools as ValidSolid[], options)
+    ops.cutAll(base.shape as ValidSolid, tools as ValidSolid[], options)
   );
   if (batchResult && batchResult.ok) {
     telemetry.batchSucceeded++;
-    return batchResult;
+    releaseOwned(base);
+    return ok({ shape: batchResult.value, owned: true });
   }
-  if (options.signal?.aborted) throw options.signal.reason;
+  throwIfAborted(options, base);
 
   const mid = Math.floor(tools.length / 2);
   const left = bisectCut(ops, base, tools.slice(0, mid), startIdx, options, telemetry);
@@ -162,17 +196,20 @@ function bisectCut(
 
 function applySingletonCut(
   ops: BisectKernelOps,
-  base: Shape3D,
+  base: BisectNode,
   tools: readonly Shape3D[],
   startIdx: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<Shape3D> {
+): Result<BisectNode> {
   telemetry.singletonFallbacks++;
   const tool = firstOrThrow(tools);
-  const pairResult = tryBatch(() => ops.cut(base as ValidSolid, tool as ValidSolid, options));
-  if (pairResult && pairResult.ok) return pairResult;
-  if (options.signal?.aborted) throw options.signal.reason;
+  const pairResult = tryBatch(() => ops.cut(base.shape as ValidSolid, tool as ValidSolid, options));
+  if (pairResult && pairResult.ok) {
+    releaseOwned(base);
+    return ok({ shape: pairResult.value, owned: true });
+  }
+  throwIfAborted(options, base);
   // Pairwise also failed: skip this tool, return base unchanged so the
   // surrounding bisect can continue with the next slice.
   telemetry.failedInputs.add(startIdx);
@@ -219,23 +256,9 @@ export function fuseAllBisectWith(
   };
   const result = bisectFuse(ops, shapes, 0, options, telemetry);
   if (isErr(result)) return result;
-  // A caller's own input can survive to the top (one shape, or every merge
-  // failed); hand back a copy so the result is always the caller's to dispose.
-  const shape = result.value.owned
-    ? ok(result.value.shape)
-    : copyAsBooleanResult(result.value.shape, options.trackEvolution ?? true);
+  const shape = ownedResult(result.value, options);
   if (isErr(shape)) return shape;
   return ok({ shape: shape.value, telemetry: freezeTelemetry(telemetry) });
-}
-
-/** A bisect result; `owned` is false for a caller's input passed through untouched. */
-interface FuseNode {
-  shape: Shape3D;
-  owned: boolean;
-}
-
-function releaseOwned(node: FuseNode): void {
-  if (node.owned) disposeResultShape(node.shape);
 }
 
 function bisectFuse(
@@ -244,7 +267,7 @@ function bisectFuse(
   startIdx: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<FuseNode> {
+): Result<BisectNode> {
   if (shapes.length === 1) {
     // No kernel call: a one-shape "fuse" is the identity. Don't count this
     // as a fallback — the pairwise fuse that actually combines two halves
@@ -260,24 +283,31 @@ function bisectFuse(
     telemetry.batchSucceeded++;
     return ok({ shape: batchResult.value, owned: true });
   }
-  if (options.signal?.aborted) throw options.signal.reason;
+  throwIfAborted(options);
 
   const mid = Math.floor(shapes.length / 2);
   const left = bisectFuse(ops, shapes.slice(0, mid), startIdx, options, telemetry);
-  const right = bisectFuse(ops, shapes.slice(mid), startIdx + mid, options, telemetry);
+  let right: Result<BisectNode>;
+  try {
+    right = bisectFuse(ops, shapes.slice(mid), startIdx + mid, options, telemetry);
+  } catch (cause) {
+    // An abort while fusing the right half must not strand the left one.
+    if (left.ok) releaseOwned(left.value);
+    throw cause;
+  }
   return combineFuseHalves(ops, left, right, shapes, startIdx, mid, options, telemetry);
 }
 
 function combineFuseHalves(
   ops: BisectKernelOps,
-  left: Result<FuseNode>,
-  right: Result<FuseNode>,
+  left: Result<BisectNode>,
+  right: Result<BisectNode>,
   shapes: readonly Shape3D[],
   startIdx: number,
   mid: number,
   options: BooleanOptions,
   telemetry: MutableTelemetry
-): Result<FuseNode> {
+): Result<BisectNode> {
   if (left.ok && right.ok) {
     // Pairwise fuse(a, b) — the 2-input kernel call, NOT a batch op.
     telemetry.singletonFallbacks++;

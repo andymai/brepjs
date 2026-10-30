@@ -77,9 +77,14 @@ describe('cutAllBisect — happy path', () => {
     });
   });
 
-  it('empty tools returns base unchanged with empty telemetry', () => {
-    const result = unwrap(cutAllBisect(boxAt(0, 0, 0, 10, 10, 10), []));
+  it('empty tools returns a copy of the base with empty telemetry', () => {
+    using base = boxAt(0, 0, 0, 10, 10, 10);
+    const result = unwrap(cutAllBisect(base, []));
+    expect(result.shape).not.toBe(base);
+    expect(result.shape.wrapped).not.toBe(base.wrapped);
     expect(unwrap(measureVolume(result.shape))).toBeCloseTo(1000, 1);
+    result.shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(base))).toBeCloseTo(1000, 1);
     expect(result.telemetry.totalInputs).toBe(0);
     expect(result.telemetry.batchAttempts).toBe(0);
   });
@@ -243,6 +248,41 @@ describe('cutAllBisect — bisect recovery via injected ops', () => {
     expect(isOk(result)).toBe(true);
     const { telemetry } = unwrap(result);
     expect(telemetry.failedInputs).toEqual([0, 1]);
+  });
+
+  it('returns a copy of the base, not the base itself, when every tool fails', () => {
+    const failingOps: BisectKernelOps = {
+      cut: () => {
+        throw new Error('pairwise always fails');
+      },
+      fuse,
+      cutAll: () => {
+        throw new Error('batch always fails');
+      },
+      fuseAll,
+    };
+    using base = boxAt(0, 0, 0, 30, 10, 10);
+    using t0 = boxAt(10, 0, 0, 15, 10, 10);
+    using t1 = boxAt(20, 0, 0, 25, 10, 10);
+    const { shape } = unwrap(cutAllBisectWith(failingOps, base, [t0, t1]));
+    expect(shape).not.toBe(base);
+    expect(shape.wrapped).not.toBe(base.wrapped);
+    shape[Symbol.dispose]();
+    expect(unwrap(measureVolume(base))).toBeCloseTo(3000, 6);
+  });
+
+  it('cuts every tool when bisection chains the halves', () => {
+    const ops = wrapWithBatchFailure(0);
+    using base = boxAt(0, 0, 0, 50, 10, 10);
+    using t0 = boxAt(10, 0, 0, 15, 10, 10);
+    using t1 = boxAt(20, 0, 0, 25, 10, 10);
+    using t2 = boxAt(30, 0, 0, 35, 10, 10);
+    using t3 = boxAt(40, 0, 0, 45, 10, 10);
+    const { shape, telemetry } = unwrap(cutAllBisectWith(ops, base, [t0, t1, t2, t3]));
+    using _shape = shape;
+    expect(unwrap(measureVolume(shape))).toBeCloseTo(3000, 1);
+    expect(telemetry.singletonFallbacks).toBe(4);
+    expect(telemetry.failedInputs).toEqual([]);
   });
 });
 
