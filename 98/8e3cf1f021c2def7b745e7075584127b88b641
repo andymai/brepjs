@@ -1,0 +1,43 @@
+tests/mateFns.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 22,30-33,35-36,38,46-49,51-52,54,76,362
+tests/meshCache.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 18
+tests/workerHandler.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 65,78,94,119,144,168,193,216,238,263,282
+tests/shapeRef.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 280
+tests/public-api-types.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 1118,1149
+tests/instanceFns.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 16-18,26-30,63,69,78,84
+tests/kernelCall.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 26,205,207,216,227,243
+tests/workerPool.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 57
+tests/ikFns.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 126,151,172,210-212,218-219,229
+tests/jointFns.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 444-456
+tests/shapeRefExtrudeRoles.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 19-20,162-164
+tests/historyReplay.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 16,20,34-38,102,259,306
+tests/historyRefReplay.test.ts
+  s_d4ab5fb2066c9b::t_11d6d6bb49c24d 26,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "988e3cf1f021c2def7b745e7075584127b88b641",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
