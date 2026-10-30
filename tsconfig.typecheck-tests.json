@@ -11,10 +11,10 @@
   "exclude": [
     "node_modules",
     "dist",
-    // Generated from the docs by docs:extract-tests and gitignored; CI's docs job runs it.,
+    // Generated from the docs by docs:extract-tests and gitignored; CI's docs job runs it.
     "tests/docs/extracted.test.ts",
-    // These import brepjs-bim, -sheetmetal, and -families, whose types come from builds,
-    // that the CI typecheck job doesn't run (vitest aliases them to src instead).,
+    // These import brepjs-bim, -sheetmetal, and -families, whose types come from builds
+    // that the CI typecheck job doesn't run (vitest aliases them to src instead).
     "tests/helpers/playgroundExampleEval.ts",
     "tests/playgroundExamples.test.ts",
     "tests/validateCandidate.test.ts",
