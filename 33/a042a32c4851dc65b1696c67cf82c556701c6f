@@ -1,0 +1,52 @@
+tests/csg/csgExtrude.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 26,33
+tests/csg/csgChamfer.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 34
+tests/csg/csgFillet.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 33
+tests/csg/csgEvaluator.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 32
+tests/csg/csgShell.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 33
+tests/csg/cacheEviction.test.ts
+  s_d4ab5fb2066c9b::t_16a176c983aa15 10-17,23-27,79,86,102,105,140,174
+tests/csg/csgCoverage.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 50,57,61-65,93
+tests/csg/csgRevolve.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 24,31
+tests/csg/csgSweep.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 28,35
+tests/csg/csgBuilderImmutability.test.ts
+  s_d4ab5fb2066c9b::t_74a5b17e0a41f5 21,30
+tests/csg/csgProfile.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 35,42,47
+tests/csg/csgProfilesCanned.test.ts
+  s_d4ab5fb2066c9b::t_1428321db743ec 32
+  s_d4ab5fb2066c9b::t_db9bf008366947 39,43-47,225
+tests/csg/csgColor.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 25,32
+tests/csg/csgLocate.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 20
+  s_d4ab5fb2066c9b::t_1428321db743ec 11
+tests/csg/csgInstance.test.ts
+  s_d4ab5fb2066c9b::t_db9bf008366947 16-23,29-33,52,58
+tests/csg/csgLoft.test.ts
+  s_d4ab5fb2066c9b::t_738a6696a04cbf 20,39
+  s_d4ab5fb2066c9b::t_db9bf008366947 23,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33a042a32c4851dc65b1696c67cf82c556701c6f",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
