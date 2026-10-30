@@ -136,11 +136,10 @@ export function transformToPlacement(
 
     const dot = nz;
     if (Math.abs(dot + 1) < 1e-10) {
-      result = rotate(bk, result, 180, [1, 0, 0]);
+      result = rotate(bk, result, Math.PI, [1, 0, 0]);
     } else if (Math.abs(dot - 1) > 1e-10) {
       const axis: [number, number, number] = [-ny, nx, 0];
-      const angleDeg = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
-      result = rotate(bk, result, angleDeg, axis);
+      result = rotate(bk, result, Math.acos(Math.max(-1, Math.min(1, dot))), axis);
     }
   }
 

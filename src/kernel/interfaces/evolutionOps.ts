@@ -28,6 +28,7 @@ export interface KernelEvolutionOps {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;
+  /** {@link KernelTransformOps.rotate} with face history: `angle` is in radians. */
   rotateWithHistory(
     shape: KernelShape,
     angle: number,
