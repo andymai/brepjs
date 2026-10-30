@@ -456,7 +456,12 @@ export const divergences: DivergenceMap = {
     'extrudeFns.complexExtrudeLaw': {
       kind: 'not-implemented',
       reason:
-        'brepkit has no scaling-law sweep: complexExtrude returns the unscaled prism (785.40 for a radius-5 circle over 10) whatever endFactor asks for, where the B-rep kernels sweep the frustum.',
+        'brepkit has no scaling-law sweep: the adapter throws UnsupportedKernelOperationError for a law, so complexExtrude and a profiled sketch extrude return UNSUPPORTED_CAPABILITY. brepkit-wasm sweepWithOptions takes a scale law, but a circle of radius 10 scaled to 0.5 over 40 sweeps 94 flat faces measuring 7239.547 mm3 where the frustum is 7330.383.',
+    },
+    'extrudeFns.twistExtrude': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no twisted sweep: brepkit-wasm sweepWithOptions takes no auxiliary spine (the Rust SweepOptions has aux_spine, the binding does not pass one), so the adapter throws UnsupportedKernelOperationError and twistExtrude returns UNSUPPORTED_CAPABILITY instead of an untwisted prism.',
     },
     'extrudeFns.circleExtrude': {
       kind: 'not-implemented',
@@ -523,7 +528,8 @@ export const divergences: DivergenceMap = {
     },
     guidedSweepFns: {
       kind: 'not-implemented',
-      reason: 'Guided sweep (auxiliary spine) not implemented in brepkit kernel',
+      reason:
+        'brepkit-wasm sweeps take no auxiliary spine, so a guided sweep throws UnsupportedKernelOperationError and guidedSweep returns GUIDED_SWEEP_FAILED.',
     },
     interferenceFns: {
       kind: 'not-implemented',

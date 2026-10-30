@@ -10,6 +10,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchCircle,
   line,
@@ -101,7 +102,8 @@ describe('multiSectionSweep (public-API fixtures)', () => {
 });
 
 describe('guidedSweep (public-API fixtures)', () => {
-  it('sweeps a profile along a spine with a guide wire', () => {
+  it('sweeps a profile along a spine with a guide wire', (ctx) => {
+    skipIfDiverges(ctx, 'guidedSweepFns');
     using profile = circleWire(3);
     using spine = lineSpine([0, 0, 0], [0, 0, 30]);
     using guide = lineSpine([5, 0, 0], [5, 0, 30]);

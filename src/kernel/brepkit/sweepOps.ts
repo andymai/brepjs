@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { type BrepkitHandle, solidHandle, unwrap, noop, warnOnce } from './helpers.js';
 import { extractNurbsFromEdge } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';
@@ -347,6 +348,17 @@ export function sweepPipeShell(
   spine: KernelShape,
   options?: Record<string, unknown>
 ): PipeShellResult {
+  // brepkit-wasm's sweepWithOptions takes no auxiliary spine, and its scale
+  // law sweeps a faceted body short of the frustum, so neither a twist nor a
+  // scaling law can be built; sweeping without them would return a plain prism.
+  if (options?.['auxiliary'] !== undefined) {
+    throw new UnsupportedKernelOperationError(
+      'brepkit: sweepPipeShell has no auxiliary spine (twist or guided sweep)'
+    );
+  }
+  if (options?.['law'] !== undefined) {
+    throw new UnsupportedKernelOperationError('brepkit: sweepPipeShell has no scaling law');
+  }
   const profileHandle = profile as BrepkitHandle;
   const faceId =
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');

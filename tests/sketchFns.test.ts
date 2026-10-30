@@ -207,7 +207,8 @@ describe('CompoundSketch extrude options', () => {
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
-  it('extrudes with twistAngle', () => {
+  it('extrudes with twistAngle', (ctx) => {
+    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
     const outer = sketchRectangle(10, 10);
     const inner = sketchCircle(2);
     const compound = new CompoundSketch([outer, inner]);
@@ -221,7 +222,8 @@ describe('CompoundSketch extrude options', () => {
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
-  it('extrudes with extrusionProfile', () => {
+  it('extrudes with extrusionProfile', (ctx) => {
+    skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
     const outer = sketchRectangle(10, 10);
     const inner = sketchCircle(2);
     const compound = new CompoundSketch([outer, inner]);

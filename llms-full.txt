@@ -336,6 +336,7 @@ Functional API:
 - `sweep(wire, spine, config?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>` — Sweep profile along spine
 - `complexExtrude(wire, center, normal, profileShape?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>`: extrude with scaling profile (the tuple is returned when `shellMode` is true)
 - `twistExtrude(wire, angleDeg, center, normal, profileShape?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>`: twist extrude, `angleDeg` in degrees
+- brepkit has no twisted or scaled sweep: `twistExtrude`, `complexExtrude` with a profile, and `sweep` with an `auxiliarySpine` or `law` return `UNSUPPORTED_CAPABILITY` there
 - `supportExtrude(wire, center, normal, support): Result<Shape3D>` — Extrude constrained to a support surface
 
 `ExtrusionProfile`: `{ profile?: 's-curve' | 'linear', endFactor?: number }` — Controls scaling along extrusion path. `endFactor` 1 = same size, 0.5 = half size at end.

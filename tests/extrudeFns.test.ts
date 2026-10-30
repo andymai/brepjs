@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   sketchCircle,
@@ -163,7 +163,8 @@ describe('extrudeFns', () => {
   });
 
   describe('complexExtrude', () => {
-    it('extrudes with linear profile', () => {
+    it('extrudes with linear profile', (ctx) => {
+      skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
       const c = sketchCircle(5);
       const w = castClosedWire(c.wire.wrapped);
       const result = complexExtrude(w, [0, 0, 0], [0, 0, 10], {
@@ -175,7 +176,8 @@ describe('extrudeFns', () => {
       expect(!Array.isArray(extruded) && isShape3D(extruded)).toBe(true);
     });
 
-    it('extrudes with s-curve profile', () => {
+    it('extrudes with s-curve profile', (ctx) => {
+      skipIfDiverges(ctx, 'extrudeFns.complexExtrudeLaw');
       const c = sketchCircle(5);
       const w = castClosedWire(c.wire.wrapped);
       const result = complexExtrude(w, [0, 0, 0], [0, 0, 10], {
@@ -194,7 +196,8 @@ describe('extrudeFns', () => {
   });
 
   describe('twistExtrude', () => {
-    it('extrudes with twist', () => {
+    it('extrudes with twist', (ctx) => {
+      skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
       const rect = sketchRectangle(6, 6);
       const w = castClosedWire(rect.wire.wrapped);
       const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 20]);
@@ -203,7 +206,8 @@ describe('extrudeFns', () => {
       expect(!Array.isArray(twisted) && isShape3D(twisted)).toBe(true);
     });
 
-    it('twists the other way for a negative angle', () => {
+    it('twists the other way for a negative angle', (ctx) => {
+      skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
       // Triangle with its tip at (4, 0); a +30 degree twist carries the tip to
       // (3.46, 2) at the top and -30 to (3.46, -2).
       using tri = unwrap(
