@@ -1,0 +1,19 @@
+docs/architecture.md
+  s_b1a48d7e30b741::t_977b4681bd458a 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f923ccfa3808610ca4ff224f660ffbd31aab0ff",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
