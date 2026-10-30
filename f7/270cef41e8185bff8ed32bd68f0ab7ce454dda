@@ -1,0 +1,49 @@
+llms.txt
+  s_d4ab5fb2066c9b::t_41cfd556112830 446,449-451
+apps/docs/reference/errors.md
+  s_d4ab5fb2066c9b::t_b7d325fa1dc4d8 120-125
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_23f1a4cc16b4ed 20,22-23,27
+  s_d4ab5fb2066c9b::t_4fd0903f036516 356-462
+tests/occtWasmLegacyBuilds.test.ts
+  s_d4ab5fb2066c9b::t_c68b68569becd8 16,149-155,269-284
+  s_d4ab5fb2066c9b::t_3e75bdc52227aa 285-286
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_c68b68569becd8 832-835,841-843
+llms-full.txt
+  s_d4ab5fb2066c9b::t_41cfd556112830 446,449-451
+src/kernel/interfaces/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_177402bf6a515e 21,128
+src/kernel/interfaces/modifierOps.ts
+  s_d4ab5fb2066c9b::t_5d0d7d2fa841e0 12-25,46-47,49,51
+src/kernel/occtWasm/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_c4a737371db31b 18,28,487,500,504-505
+src/kernel/occtWasm/helpers.ts
+  s_d4ab5fb2066c9b::t_b6058e4418b56b 209-217
+src/kernel/occtWasm/modifierOps.ts
+  s_d4ab5fb2066c9b::t_5746765c402427 8,15,84-86,95,102-104,113-114,140,158,167
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_faa6e552bd709f 69,759,1118
+src/topology/api.ts
+  s_d4ab5fb2066c9b::t_ff20798b930b12 314-315
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_f284c3696747ad 67-74,80-86
+src/topology/chamferAngleFns.ts
+  s_d4ab5fb2066c9b::t_3fde2adaa477ea 17-18,27-28,107,232-236,239,243-245,248-250,255-265,269-276,279-282,304-315,318-320,326,328,332,338-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7270cef41e8185bff8ed32bd68f0ab7ce454dda",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
