@@ -1,0 +1,187 @@
+tests/brepkitAdapter.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 491,494
+src/sketching/sketches.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 6-7,54
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_48aac5bc169143 20
+src/io/meshTopology.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-259
+src/csg/evaluators/sweep.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 5,45
+tests/helpers/playgroundExampleEval.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 97
+tests/shapeRefExtrudeRoles.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 9,12,17-18,22-23,205-233
+  s_d4ab5fb2066c9b::t_5e04ad48995f52 234-235
+src/io/stlTriangles.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-51
+src/kernel/interfaces/modifierOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 12-25,46-47,49,51
+tests/batchOps.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 81-98
+src/io/README.md
+  s_d4ab5fb2066c9b::t_48aac5bc169143 14
+src/kernel/brepkit/transformOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 48,110,113,145-146,184-185
+tests/draftFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 144-145,225
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1,13,25,342-496
+  s_d4ab5fb2066c9b::t_78fe0660814cc6 497-498
+tests/perfStats.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 14
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 46,582
+tests/instanceFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 55,61,70,76
+tests/minkowskiFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 28
+src/io/ioUtils.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 11,17-20,31-36,39-47,60-62,65-68,82-179,226-285,287-289,294,298,300-301,303-318,334
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 4,120-139
+  s_d4ab5fb2066c9b::t_632ce5a786766e 140
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 13-14,69-74,92-93
+src/io/threemfImportFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 2,514-528,530-532,540,545,570-574,577-580
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 20,22-23,27,193,281-284,304,350,359-464
+  s_d4ab5fb2066c9b::t_0b36080e2c6f05 465
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_48aac5bc169143 26,53,58-59
+tests/occtWasmLegacyBuilds.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 5-7,12-28,30,48,51,54-55,60-65,67-100,149-155,224-295,297,301
+  s_d4ab5fb2066c9b::t_4b21e704892413 296,298-300,302
+apps/playground/src/types/brepjs-families-ambient.d.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 149-172
+tests/apiTypes.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 18,20-24,38-46,103-146
+tests/drawingDisposal.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 71,146,162
+tests/stlTriangles.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-86
+src/kernel/occtWasm/occtWasmAdapter.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 69,759,1116-1126
+  s_d4ab5fb2066c9b::t_0198be931749ec 1127-1131
+src/operations/sweepFns.ts
+  s_d4ab5fb2066c9b::t_858e6af87e5ddb 156-157,298-299,362-363
+  s_d4ab5fb2066c9b::t_48aac5bc169143 160-179,281-283,301-323,365-390
+apps/playground/src/types/brepjs-ambient.d.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 237,245-251,329-335,384-395,661-664,691,702,781-782,789-801,804,806-811,832-833,835-836,839-843,887-888,893-899,901-904,913-914,952-955,974-979,1161-1174,1388,1409,1411,1416-1418,1433-1434,1436-1438,1717-1721,2236-2237,2383,2431,2543,3358,3823-3825,3828,3836-3838,3842,4022-4032,4037-4038,4426-4431,4620-4622,4949-4951,5189-5194,5238-5239,5353-5354,5558-5562,5567-5569,5701-5702,5960,5962-5965,5994,5996-5999,6015,6017-6020,6202-6206,6210,6813-6815,6946-6986,7009-7013,7016-7017,7019-7025,7040-7042,7058-7061,7089-7093,7096-7099,7404-7406,7409-7411,7422,7428-7436,7441,7452,7478-7483,7493,8227-8230,8241-8256,8293-8294,8297,8367-8371,8420,8471,8596,8641,9237,9241,9323,9375-9376,9378,9416-9421,9598-9599,9616,9625,9629,9633,9637,9641,9645,9649,9800,9802,9827-9829,10037,10039,10041,10043,10051,10053,10055,10061,10219-10221,10223-10225,10253,10286-10290,10307,10437-10450,10594-10643,10650,10818-10825,10853,10906
+apps/docs/reference/errors.md
+  s_d4ab5fb2066c9b::t_48aac5bc169143 120-125
+tests/operations.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 41,49,64,80,250
+src/kernel/interfaces/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 21,32,120-128
+  s_d4ab5fb2066c9b::t_fbafa4247b475c 129-131
+src/kernel/occtWasm/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 18,26,28-29,483-516,519
+  s_d4ab5fb2066c9b::t_e64ac62563d62f 517-518,520-521
+tests/kernel-agreement.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 4-6,8-12,16,30-34,41,416-417,427-428,471,474,598,606,634-636,659-660,706-707,732-733,754-755,776-777,779-780,782-783,803-804,827-828,831,835
+tests/operations-extrude.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 21,35,48,63,77,93,108,129,140,152,218,233,247,258
+  s_d4ab5fb2066c9b::t_0312dc4431cae5 165
+tests/voxelRepair.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 112-113
+src/topology/chamferAngleFns.ts
+  s_d4ab5fb2066c9b::t_e5d26dcdf98b23 270
+  s_d4ab5fb2066c9b::t_48aac5bc169143 7-10,16-18,25,27-33,94-126,129,131,148-154,196,199-203,222,232-236,239,243-245,248-250,255-265,269,271-276,279-282,304-315,318-320,326,328-334,336,338-340,343
+src/io/meshNesting.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 9-10,19,24-50,56-59,63-71,86-88,100-102,146,161-162,165,171
+src/sketching/compoundSketch.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 8-9,66
+src/kernel/capabilities.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 35-42,53,57
+src/operations/instanceFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 140,145,186
+tests/extrudeFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 32,57,69,84,93,101,126,138,145,162,191,209-210
+llms.txt
+  s_d4ab5fb2066c9b::t_6a1622a0b140a3 455
+  s_d4ab5fb2066c9b::t_48aac5bc169143 449,452-454
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-3,8-9,11,17,147-158,161-170,172,186-215,282-348
+  s_d4ab5fb2066c9b::t_016bcea052258e 349
+package.json
+  s_d4ab5fb2066c9b::t_48aac5bc169143 3,284
+src/topology/api.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 314-315
+src/kernel/occtWasm/helpers.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 209-217,237-239
+  s_d4ab5fb2066c9b::t_ecdba32c0cff77 240
+src/kernel/occtWasm/occtWasmTypes.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 775-784
+src/kernel/occt/transformOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 78-79,136,149
+src/sketching/sketchFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 170,178,220,299,336-342,346-353
+.release-please-manifest.json
+  s_d4ab5fb2066c9b::t_48aac5bc169143 2
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 51,71-78,85-90,102
+tests/meshTopology.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-184
+src/kernel/interfaces/transformOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 25,44-47,73,110
+llms-full.txt
+  s_d4ab5fb2066c9b::t_48aac5bc169143 449,452-454
+  s_d4ab5fb2066c9b::t_6a1622a0b140a3 455
+tests/sweepFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 21,35,45,56,66,76,91,100,111
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_69a2330f35942b 3
+  s_d4ab5fb2066c9b::t_48aac5bc169143 50,128
+CHANGELOG.md
+  s_d4ab5fb2066c9b::t_48aac5bc169143 3-23
+src/sketching/sketch.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 7-15,22,175,185
+src/kernel/occtWasm/transformOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 364-365
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 14,77,124-127,197-235,348-403,821-847,1133,1418,1435-1463
+tests/wrapperFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 489,494
+src/kernel/occtWasm/modifierOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 8,15,84-86,95,102-104,113-114,140,158,167
+src/topology/wrapperFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 245-248,250-252,334-338,387-391,536,541,565
+tests/interferenceFns.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 149
+src/core/shapeTypes.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 276-277,295-300
+src/kernel/brepkit/evolutionOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 770
+tests/metadataPropagation.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 9-10,23,25-27,192-236
+  s_d4ab5fb2066c9b::t_a31fa30fbefc27 237
+benchmarks/mesh-import.bench.test.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 1-196
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 209-213,321-323,325,587-594,624-628
+  s_d4ab5fb2066c9b::t_fa3e36f9545a6f 324
+src/2d/blueprints/blueprintFns.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 87-91
+src/kernel/brepkit/internalOps.ts
+  s_d4ab5fb2066c9b::t_48aac5bc169143 139,142
+package-lock.json
+  s_d4ab5fb2066c9b::t_4177a61449fdf0 3,9,52,11311-11313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c97684642217cad2cae6dae0cf0884e376192676",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
