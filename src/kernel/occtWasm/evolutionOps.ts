@@ -28,6 +28,7 @@ import {
   referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
+  refuseVanishingFilletRadius,
   unwrap,
   wrapResult,
 } from './helpers.js';
@@ -411,6 +412,7 @@ export function filletWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
+  refuseVanishingFilletRadius(edges, radius);
   const shapeId = unwrap(shape);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {

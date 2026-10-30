@@ -24,7 +24,13 @@ import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/co
 import type { BooleanOptions, KernelShape, ShapeEvolution, KernelType } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
-import { chamferUnsupportedError, filletUnsupportedError } from './modifierFns.js';
+import {
+  chamferUnsupportedError,
+  filletUnsupportedError,
+  isFilletRadiusPair,
+  FILLET_PAIR_HINT,
+  FILLET_PAIR_MESSAGE,
+} from './modifierFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,7 +97,8 @@ type KernelHashCallback<V> = (ocShape: KernelShape) => V;
 
 function resolveEdgeCallback(
   selectedEdges: ReadonlyArray<Edge>,
-  callbackFn: (edge: Edge) => number | [number, number] | null
+  callbackFn: (edge: Edge) => number | [number, number] | null,
+  isValidPair: (pair: readonly [number, number]) => boolean = ([a, b]) => a > 0 && b > 0
 ): { edges: Edge[]; kernelParam: KernelHashCallback<number | [number, number]> } | null {
   const filteredEdges: Edge[] = [];
   const hashToValue = new Map<number, number | [number, number]>();
@@ -99,7 +106,7 @@ function resolveEdgeCallback(
   for (const edge of selectedEdges) {
     const val = callbackFn(edge) ?? 0;
     if (typeof val === 'number' && val <= 0) continue;
-    if (Array.isArray(val) && (val[0] <= 0 || val[1] <= 0)) continue;
+    if (Array.isArray(val) && !isValidPair(val)) continue;
     filteredEdges.push(edge);
     hashToValue.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), val);
   }
@@ -297,14 +304,14 @@ export function filletWithEvolution(
       )
     );
   }
-  if (Array.isArray(radius) && (radius[0] <= 0 || radius[1] <= 0)) {
+  if (Array.isArray(radius) && !isFilletRadiusPair(radius)) {
     return err(
       validationError(
         'INVALID_FILLET_RADIUS',
-        'Fillet radii must both be positive',
+        FILLET_PAIR_MESSAGE,
         undefined,
         undefined,
-        'Both radius values must be greater than 0'
+        FILLET_PAIR_HINT
       )
     );
   }
@@ -327,7 +334,7 @@ export function filletWithEvolution(
     let kernelRadius: number | [number, number] | KernelHashCallback<number | [number, number]>;
 
     if (typeof radius === 'function') {
-      const resolved = resolveEdgeCallback(selectedEdges, radius);
+      const resolved = resolveEdgeCallback(selectedEdges, radius, isFilletRadiusPair);
       if (!resolved) {
         return err(
           validationError(

@@ -185,6 +185,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold rejects a per-edge radius callback ("fillet (per-edge radius callback) is not implemented") and treats an [r1, r2] pair as r1.',
     },
+    'modifierFns.filletRadiusToZero': {
+      kind: 'not-implemented',
+      reason:
+        'manifold treats an [r1, r2] pair as r1 and rejects a per-edge radius callback (see modifierFns.perEdgeValues).',
+    },
     'modifierFns.perEdgeChamfers': {
       kind: 'not-implemented',
       reason:
@@ -722,6 +727,14 @@ export const divergences: DivergenceMap = {
   // excludeTests in kernelRegistry.ts. Add entries here when specific
   // tests need per-test skipping rather than whole-file exclusion.
   'occt-wasm': {
+    // ---------------------------------------------------------------------
+    // modifierFns.test.ts
+    // ---------------------------------------------------------------------
+    'modifierFns.filletRadiusToZero': {
+      kind: 'not-implemented',
+      reason:
+        "occt-wasm's fillet entry points (filletRadii, filletRadiiWithHistory) refuse a radius of 0, so fillet with a radius that runs to 0 returns UNSUPPORTED_CAPABILITY. Its single-edge filletVariable builds one: variableFillet rounding a 40 mm box edge from 4 to 0 measures 23951.389.",
+    },
     // ---------------------------------------------------------------------
     // booleanFns.test.ts — occt-wasm fuse ignores the simplify option
     // ---------------------------------------------------------------------

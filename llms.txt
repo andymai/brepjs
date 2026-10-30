@@ -441,6 +441,7 @@ fillet(shape, radius): Result<Shape3D>             // All edges
 fillet(shape, edges, radius): Result<Shape3D>      // Selected edges
 // edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>
 // radius: number | [r1, r2] | (edge => number | [r1, r2] | null)
+// [r1, r2] may be 0 at one end, so the fillet runs out there; occt-wasm builds that only through variableFillet.
 // brepkit takes one chamfer distance per call: different distances from a callback return UNSUPPORTED_CAPABILITY there.
 
 chamfer(shape, distance): Result<Shape3D>          // All edges

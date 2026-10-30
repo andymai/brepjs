@@ -168,6 +168,22 @@ function resolveEdgeValues(edges: readonly KernelShape[], value: EdgeValueSpec):
   return { first, second };
 }
 
+/**
+ * occt-wasm's fillet entry points take only positive radii, though its
+ * single-edge filletVariable builds a fillet that runs out to a radius of 0.
+ */
+export function refuseVanishingFilletRadius(
+  edges: readonly KernelShape[],
+  radius: EdgeValueSpec
+): void {
+  const { first, second } = resolveEdgeValues(edges, radius);
+  if (first.includes(0) || second.includes(0)) {
+    throw new UnsupportedKernelOperationError(
+      'occt-wasm: a fillet radius that runs to 0 is built only by variableFillet'
+    );
+  }
+}
+
 /** The value every edge takes on both sides, or `undefined` when they differ. */
 function uniformEdgeValue({ first, second }: EdgeValues): number | undefined {
   const [value] = first;

@@ -38,12 +38,12 @@ describe('Error suggestions', () => {
     });
 
     it('provides suggestion for variable fillet with invalid radii', () => {
-      const result = fillet(box(10, 10, 10), [0, 2]);
+      const result = fillet(box(10, 10, 10), [-1, 2]);
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
         expect(result.error.code).toBe('INVALID_FILLET_RADIUS');
         expect(result.error.suggestion).toBeDefined();
-        expect(result.error.suggestion).toContain('Both radius values');
+        expect(result.error.suggestion).toContain('greater than 0');
       }
     });
 

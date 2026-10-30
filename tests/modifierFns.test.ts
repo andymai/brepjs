@@ -479,10 +479,40 @@ describe('fillet with array radius', () => {
     expect(vol).toBeGreaterThan(900);
   });
 
-  it('returns error when one radius in array is zero', () => {
+  // A round loses (1 - pi/4) * integral of r^2 along the edge: 40 * 16 / 3 for 4 to 0.
+  it('fillets a radius that runs to zero at one end', (ctx) => {
+    skipIfDiverges(ctx, 'modifierFns.filletRadiusToZero');
+    using b = box(40, 30, 20);
+    const edge = getEdges(b).find((e) => {
+      const { yMax, zMin } = getBounds(e);
+      return yMax < 1e-9 && zMin > 20 - 1e-9;
+    });
+    if (!edge) throw new Error('box has no top edge at y = 0');
+    const round = 24000 - ((1 - Math.PI / 4) * 40 * 16) / 3;
+    for (const radius of [[4, 0] as [number, number], () => [0, 4] as [number, number]]) {
+      using rounded = unwrap(fillet(b, [edge], radius));
+      expect(unwrap(measureVolume(rounded))).toBeCloseTo(round, -1);
+    }
+  });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'returns UNSUPPORTED_CAPABILITY for a radius that runs to zero on occt-wasm',
+    () => {
+      using b = box(10, 10, 10);
+      const edge = getEdges(b)[0]!;
+      for (const result of [
+        fillet(b, [edge], [1, 0]),
+        filletFn(b, [edge], [1, 0], { trackEvolution: false }),
+      ]) {
+        expect(unwrapErr(result).code).toBe('UNSUPPORTED_CAPABILITY');
+      }
+    }
+  );
+
+  it('returns error when both radii are zero', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    const result = fillet(b, [edges[0]!], [1, 0]);
+    const result = fillet(b, [edges[0]!], [0, 0]);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('INVALID_FILLET_RADIUS');
   });
@@ -797,6 +827,23 @@ describe.skipIf(currentKernel !== 'occt-wasm' && currentKernel !== 'brepkit')(
         variableFillet(b, edge, [
           { param: 0, radius: 2 },
           { param: 1, radius: 5 },
+        ])
+      );
+      expect(unwrap(measureVolume(rounded))).toBeCloseTo(round, -1);
+    });
+
+    it('rounds an edge whose radius runs to zero', () => {
+      using b = box(40, 30, 20);
+      const edge = getEdges(b).find((e) => {
+        const { yMax, zMin } = getBounds(e);
+        return yMax < 1e-9 && zMin > 20 - 1e-9;
+      });
+      if (!edge) throw new Error('box has no top edge at y = 0');
+      const round = 24000 - ((1 - Math.PI / 4) * 40 * 16) / 3;
+      using rounded = unwrap(
+        variableFillet(b, edge, [
+          { param: 0, radius: 4 },
+          { param: 1, radius: 0 },
         ])
       );
       expect(unwrap(measureVolume(rounded))).toBeCloseTo(round, -1);

@@ -15,6 +15,7 @@ import {
   referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
+  refuseVanishingFilletRadius,
   unwrap,
   wrapResult,
 } from './helpers.js';
@@ -34,6 +35,7 @@ export function fillet(
   edges: KernelShape[],
   radius: EdgeValueSpec
 ): KernelShape {
+  refuseVanishingFilletRadius(edges, radius);
   const id = unwrap(shape);
   const resultId = runEdgeTreatment(
     Module,
