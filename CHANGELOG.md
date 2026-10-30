@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.6](https://github.com/andymai/brepjs/compare/brepjs-v20.13.5...brepjs-v20.13.6) (2026-10-30)
+
+
+### Bug Fixes
+
+* **brepkit:** fillet along a radius law and twist a sweep on brepkit-wasm 4.6.9 ([#2573](https://github.com/andymai/brepjs/issues/2573)) ([ec163de](https://github.com/andymai/brepjs/commit/ec163deb127d5e9a48953679f3298c761b7246f0))
+
 ## [20.13.5](https://github.com/andymai/brepjs/compare/brepjs-v20.13.4...brepjs-v20.13.5) (2026-10-30)
 
 
