@@ -11,7 +11,7 @@
  * Gated to occt-wasm: no other kernel exposes the arena counter (brepkit is a
  * no-free arena; occt/manifold have different memory models).
  */
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { readFile, access } from 'node:fs/promises';
 import { initKernel } from './setup.js';
 import {
@@ -172,6 +172,45 @@ function disposeAll(arr: AnyShape<Dimension>[]): void {
   for (const h of arr) h[Symbol.dispose]();
 }
 
+type V3 = [number, number, number];
+
+/** The triangles of a `size` cube at `at`, wound outward unless `inward`. */
+function cubeTriangles(size: number, at: V3 = [0, 0, 0], inward = false): Array<[V3, V3, V3]> {
+  const corner = (i: number): V3 => [
+    at[0] + (i & 1 ? size : 0),
+    at[1] + (i & 2 ? size : 0),
+    at[2] + (i & 4 ? size : 0),
+  ];
+  const faces: V3[] = [
+    [0, 2, 3],
+    [0, 3, 1],
+    [4, 5, 7],
+    [4, 7, 6],
+    [0, 1, 5],
+    [0, 5, 4],
+    [2, 6, 7],
+    [2, 7, 3],
+    [0, 4, 6],
+    [0, 6, 2],
+    [1, 3, 7],
+    [1, 7, 5],
+  ];
+  return faces.map(([a, b, c]) =>
+    inward ? [corner(a), corner(c), corner(b)] : [corner(a), corner(b), corner(c)]
+  );
+}
+
+function textStl(triangles: Array<[V3, V3, V3]>): Blob {
+  const lines = ['solid mesh'];
+  for (const triangle of triangles) {
+    lines.push('facet normal 0 0 0', 'outer loop');
+    for (const [x, y, z] of triangle) lines.push(`vertex ${x} ${y} ${z}`);
+    lines.push('endloop', 'endfacet');
+  }
+  lines.push('endsolid mesh', '');
+  return new Blob([lines.join('\n')]);
+}
+
 /** Run `op` once to warm caches, then N times; return net arena growth per iteration. */
 function perIterationLeak(op: () => void, iterations = 20): number {
   op();
@@ -281,6 +320,62 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
         const before = arenaCount();
         for (let i = 0; i < 5; i++) await importOnce();
         expect(arenaCount() - before).toBe(0);
+      }
+    });
+
+    it('mesh import fast path leaks nothing through its reversal, nesting, and fallback', async () => {
+      const cube = cubeTriangles(10);
+      const corners = [...new Set(cube.flat().map((v) => v.join(' ')))];
+      const objCube = [
+        ...corners.map((key) => `v ${key}`),
+        ...cube.map((t) => `f ${t.map((v) => corners.indexOf(v.join(' ')) + 1).join(' ')}`),
+      ].join('\n');
+      const sheet: [V3, V3, V3] = [
+        [0, 0, 50],
+        [1, 0, 50],
+        [1, 1, 50],
+      ];
+      // 5e-7 off the far corner: distinct to the analysis, merged by the sewing.
+      const nudged = cube.map(
+        (t, i) =>
+          t.map((v) => (i === 2 && v.every((c) => c === 10) ? [10, 10, 10 + 5e-7] : v)) as [
+            V3,
+            V3,
+            V3,
+          ]
+      );
+      const cases = [
+        { name: 'closed', repairs: false, blob: textStl(cube), load: importSTL },
+        {
+          name: 'inward',
+          repairs: false,
+          blob: textStl(cubeTriangles(10, [0, 0, 0], true)),
+          load: importSTL,
+        },
+        {
+          name: 'cavity and loose triangle',
+          repairs: false,
+          blob: textStl([...cubeTriangles(20), ...cubeTriangles(10, [5, 5, 5], true), sheet]),
+          load: importSTL,
+        },
+        { name: 'open', repairs: false, blob: textStl(cube.slice(1)), load: importSTL },
+        { name: 'OBJ closed', repairs: false, blob: new Blob([objCube]), load: importOBJ },
+        { name: 'merged vertex', repairs: true, blob: textStl(nudged), load: importSTL },
+      ];
+      for (const { name, repairs, blob, load } of cases) {
+        const spy = vi.spyOn(getKernel(), 'sewAndSolidify');
+        try {
+          const importOnce = async () => {
+            using _s = unwrap(await load(blob));
+          };
+          await importOnce();
+          expect(spy.mock.calls.length > 0, name).toBe(repairs);
+          const before = arenaCount();
+          for (let i = 0; i < 5; i++) await importOnce();
+          expect(arenaCount() - before, name).toBe(0);
+        } finally {
+          spy.mockRestore();
+        }
       }
     });
 

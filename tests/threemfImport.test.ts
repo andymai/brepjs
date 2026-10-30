@@ -1,14 +1,16 @@
-import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   exportThreeMF,
   getBounds,
+  getKernel,
   getShapeColor,
   getSolids,
   importThreeMF,
   isCompound,
   isSolid,
+  isValid,
   measureVolume,
   mesh,
   unwrap,
@@ -228,6 +230,27 @@ describe('importThreeMF', () => {
     expect(bounds.xMax).toBeCloseTo(30, 6);
     expect(bounds.zMax).toBeCloseTo(10, 6);
   });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'sews a clean closed object without the orientation repair',
+    async () => {
+      const kernel = getKernel();
+      const repairs = vi.spyOn(kernel, 'sewAndSolidify');
+      const indexed = vi.spyOn(kernel, 'buildSolidFromFaces');
+      try {
+        const xml = model([cubeObject(1, 10)], ['<item objectid="1" />']);
+        using imported = unwrap(await importThreeMF(modelZip(xml)));
+        expect(isSolid(imported)).toBe(true);
+        expect(isValid(imported)).toBe(true);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000, 6);
+        expect(repairs).not.toHaveBeenCalled();
+        expect(indexed).not.toHaveBeenCalled();
+      } finally {
+        repairs.mockRestore();
+        indexed.mockRestore();
+      }
+    }
+  );
 
   it('applies the build item transform', async () => {
     // Rotate 90 degrees about Z (row-vector convention: x' = -y, y' = x), then translate.
