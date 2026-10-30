@@ -711,6 +711,23 @@ describe('BrepkitAdapter', () => {
       ]);
     });
 
+    it('iterShapes solid→shell returns the shells of each piece the kernel finds', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getSolidPieces: vi.fn((_solid: number) => new Uint32Array([7, 8])),
+        getSolidShells: vi.fn((solid: number) => (solid === 7 ? [70] : [80, 81])),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const cut = adapter.makeBox(1, 1, 1);
+
+      const shells = adapter.iterShapes(cut, 'shell') as BrepkitHandle[];
+
+      expect(shells.map((s) => [s.type, s.id])).toEqual([
+        ['shell', 70],
+        ['shell', 80],
+        ['shell', 81],
+      ]);
+    });
+
     it('iterShapes solid→solid keeps the handle of a solid in one piece', () => {
       const mock = Object.assign(createMockBrepKernel(), {
         getSolidPieces: vi.fn((_solid: number) => new Uint32Array([42])),

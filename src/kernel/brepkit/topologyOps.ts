@@ -24,8 +24,8 @@ import { wasmIndex } from '@/utils/vec3.js';
 
 /**
  * One solid per separate piece of material in a solid: a boolean can leave
- * several pieces in one kernel solid. A solid in one piece keeps its own
- * handle, since the kernel rebuilds a hollow one as a new solid.
+ * several pieces in one kernel solid, all in one shell. A solid in one piece
+ * keeps its own handle, since the kernel rebuilds a hollow one as a new solid.
  */
 function solidPieces(bk: BrepkitKernel, solid: KernelShape): KernelShape[] {
   if (typeof bk.getSolidPieces !== 'function') return [solid];
@@ -61,7 +61,9 @@ function iterSolid(
     case 'solid':
       return solidPieces(bk, shape);
     case 'shell':
-      return toArray(bk.getSolidShells(h)).map(shellHandle);
+      return solidPieces(bk, shape).flatMap((piece) =>
+        toArray(bk.getSolidShells(unwrap(piece, 'solid'))).map(shellHandle)
+      );
     case 'face':
       return toArray(bk.getSolidFaces(h)).map(faceHandle);
     case 'edge':

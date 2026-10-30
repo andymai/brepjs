@@ -23,6 +23,7 @@ import {
   getEdges,
   getFaces,
   getSolids,
+  getShells,
   isSolid,
   measureArea,
   measureLength,
@@ -844,8 +845,8 @@ descBk('Arc bounds (brepkit)', () => {
 // Separate pieces left by a cut
 // ---------------------------------------------------------------------------
 
-// The kernel leaves every piece of a cut in one solid, so getSolids must ask it
-// for the pieces (brepkit#2167, brepkit#2184).
+// The kernel leaves every piece of a cut in one solid, so getSolids and
+// getShells must ask it for the pieces (brepkit#2167, brepkit#2184).
 descBk('Pieces left by a cut (brepkit)', () => {
   const volumes = (shape: Parameters<typeof getSolids>[0]) =>
     getSolids(shape)
@@ -855,7 +856,9 @@ descBk('Pieces left by a cut (brepkit)', () => {
   it('a slot cut through a bar leaves two solids', () => {
     const bar = box(80, 5, 2.5);
     const slot = translate(box(10, 20, 20), [35, -5, -5]);
-    const [left, right, ...rest] = volumes(unwrap(cut(bar, slot)));
+    const cutBar = unwrap(cut(bar, slot));
+    const [left, right, ...rest] = volumes(cutBar);
+    expect(getShells(cutBar)).toHaveLength(2);
     expect(rest).toHaveLength(0);
     expect(left).toBeCloseTo(437.5, 6);
     expect(right).toBeCloseTo(437.5, 6);
@@ -866,9 +869,12 @@ descBk('Pieces left by a cut (brepkit)', () => {
       cut(box(20, 20, 20, { at: [0, 0, 10] }), box(10, 10, 10, { at: [0, 0, 10] }))
     );
     expect(getSolids(hollow)).toHaveLength(1);
-    const [cavity, around, ...rest] = volumes(
-      unwrap(cut(box(22, 22, 22, { at: [0, 0, 10] }), hollow))
-    );
+    expect(getShells(hollow)).toHaveLength(2);
+    const left = unwrap(cut(box(22, 22, 22, { at: [0, 0, 10] }), hollow));
+    const [cavity, around, ...rest] = volumes(left);
+    // The space around the hollow box has its outside and the hollow box's
+    // own outside as a cavity; the cube where its cavity was has one.
+    expect(getShells(left)).toHaveLength(3);
     expect(rest).toHaveLength(0);
     expect(cavity).toBeCloseTo(1000, 6);
     expect(around).toBeCloseTo(2648, 6);
