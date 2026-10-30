@@ -1,0 +1,113 @@
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_e609eec550fc19 14,16-17
+package-lock.json
+  s_d4ab5fb2066c9b::t_84cdb5a1bc3c3d 15431
+packages/brepjs-opencascade/package.json
+  s_d4ab5fb2066c9b::t_33e487a10128b5 19
+tests/2d.test.ts
+  s_d4ab5fb2066c9b::t_411a98391ebf4e 4,460,471,502,692,699,705
+tests/blueprintContour.test.ts
+  s_d4ab5fb2066c9b::t_5055c2e9951c61 23,30,34-38,167
+tests/blueprintFns.test.ts
+  s_d4ab5fb2066c9b::t_b49e93fa427399 146
+tests/booleanBatchFns.test.ts
+  s_d4ab5fb2066c9b::t_6c09c87950d11e 29,175-203,207-208
+tests/booleanDiagnostics.test.ts
+  s_d4ab5fb2066c9b::t_141ded27161c7d 57
+tests/brepkit-validation.test.ts
+  s_d4ab5fb2066c9b::t_323479429577da 39-42
+tests/brepkitAdapter.test.ts
+  s_d4ab5fb2066c9b::t_3399b22fd0ac64 15-17,61,67,139,181,204-211,480,492,506,1091,1143,1153
+tests/brepkitDrawingSimilarity.test.ts
+  s_d4ab5fb2066c9b::t_d1cc7bbc11d93b 18
+tests/brepkitExtended.test.ts
+  s_d4ab5fb2066c9b::t_3c108ca6a67daf 170,188
+tests/castResultShapeMigration.test.ts
+  s_d4ab5fb2066c9b::t_83049718287eb2 41,120-122
+tests/csg/cacheEviction.test.ts
+  s_d4ab5fb2066c9b::t_c55514eca56257 10-17,23-27,79,86,102,105,140,174
+tests/csg/csgBuilderImmutability.test.ts
+  s_d4ab5fb2066c9b::t_e0487780298341 21,30
+tests/csg/csgChamfer.test.ts
+  s_d4ab5fb2066c9b::t_3c814d850bb999 34
+tests/csg/csgColor.test.ts
+  s_d4ab5fb2066c9b::t_69cb283c81f592 25,32
+tests/csg/csgCoverage.test.ts
+  s_d4ab5fb2066c9b::t_93580f819feb40 50,57,61-65,93
+tests/csg/csgEvaluator.test.ts
+  s_d4ab5fb2066c9b::t_e59a882af6c247 32
+tests/csg/csgExtrude.test.ts
+  s_d4ab5fb2066c9b::t_e4dd165f5b3da8 26,33
+tests/csg/csgFillet.test.ts
+  s_d4ab5fb2066c9b::t_45a1282d099b3c 33
+tests/csg/csgInstance.test.ts
+  s_d4ab5fb2066c9b::t_e1d09de9317bef 16-23,29-33,52,58
+tests/csg/csgLocate.test.ts
+  s_d4ab5fb2066c9b::t_db4ec419bdc59a 11,20
+tests/csg/csgLoft.test.ts
+  s_d4ab5fb2066c9b::t_572b2c9e4a8d44 20,23,30,39
+tests/csg/csgProfile.test.ts
+  s_d4ab5fb2066c9b::t_dfc6bd5f885c6f 35,42,47
+tests/csg/csgProfilesCanned.test.ts
+  s_d4ab5fb2066c9b::t_72cac5dee09544 32,39,43-47,225
+tests/csg/csgRevolve.test.ts
+  s_d4ab5fb2066c9b::t_bfa23ee3271990 24,31
+tests/csg/csgShell.test.ts
+  s_d4ab5fb2066c9b::t_1a52d9eca1dc1e 33
+tests/csg/csgSweep.test.ts
+  s_d4ab5fb2066c9b::t_71b07d2730f014 28,35
+tests/curvature.test.ts
+  s_d4ab5fb2066c9b::t_111bb00979578f 9,25
+tests/curveFns.test.ts
+  s_d4ab5fb2066c9b::t_7c43124b7a2db4 26-29,31,37-42,46,51,58,71,80,93,104,114,124,131,138,143,153,159,167-169
+tests/curves.test.ts
+  s_d4ab5fb2066c9b::t_7ba1d4717f495a 23,125-127,132,172
+tests/dhFns.test.ts
+  s_d4ab5fb2066c9b::t_dfdbf4420ec9c5 35-37,42-43,153
+tests/dimensionGuards.test.ts
+  s_d4ab5fb2066c9b::t_01c36e93c971ce 25,33,52,61
+tests/draftFns.test.ts
+  s_d4ab5fb2066c9b::t_4c1f5509754270 144-145,225
+tests/drawFns.test.ts
+  s_d4ab5fb2066c9b::t_4b03ceb773f46f 3
+tests/dxfImport.test.ts
+  s_d4ab5fb2066c9b::t_cdbd0723eed299 32,82,119,200
+tests/errors.test.ts
+  s_d4ab5fb2066c9b::t_f64ed8c7af1118 86-87
+tests/evolutionHandleLeaks.test.ts
+  s_d4ab5fb2066c9b::t_5b09927c3cbff3 170
+tests/extrudeFns.test.ts
+  s_d4ab5fb2066c9b::t_41f377328c21ae 24-29,31-33,38-52,59,61-62,68,80,95,104,112,132,137-138,145,150-151,156,168,174-175,180,190,199,202-203,210-218,232,239,248,257
+tests/faceFns.test.ts
+  s_d4ab5fb2066c9b::t_5071257466c8a0 32,34,40-45,47,91,101,111,121,132,139,202,216,230,238,250,263,276,287,305
+tests/fill.test.ts
+  s_d4ab5fb2066c9b::t_2433b28eb9f9d9 3,24,36
+tests/functionalApi.test.ts
+  s_d4ab5fb2066c9b::t_169028e4b04e8e 18-19,21,27-32,58,65,113-114
+tests/gltfExport.test.ts
+  s_d4ab5fb2066c9b::t_07852a1684a2a9 42-45
+tests/gltfRoundTrip.test.ts
+  s_d4ab5fb2066c9b::t_0306d47a779899 55
+tests/gridfinity-smoke.test.ts
+  s_d4ab5fb2066c9b::t_09f0e53ca511b2 45,48,87,95,103,110,123,153,157,171,175-176,180,182,209,213,238-239,252,258,261,265,273,277,281,304-305,317,323,326,330-331,338,345,349,352,364,368,371-372,375,388-389,403,410-411,416,426,432-434,449,461,469,485,492,505,512,531,542
+tests/healingFns.test.ts
+  s_d4ab5fb2066c9b::t_dcfad49c935776 38-43,58,90,99-100,110,118-119,165,173,182,249,258,414,423,432,568
+tests/historyFns.test.ts
+  s_d4ab5fb2066c9b::t_bc9119b27c1b27 24,26,32-36,320,329,367,372,375,378-380,388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9630d7e8058880d996c84edf7e735db61e51a19b",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
