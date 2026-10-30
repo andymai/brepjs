@@ -16,7 +16,7 @@
     "directory": "packages/brepjs-opencascade"
   },
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24"
   },
   "sideEffects": false,
   "main": "src/brepjs_single.js",
