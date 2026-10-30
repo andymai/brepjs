@@ -10,7 +10,7 @@
   "rules": [
     {
       "id": "layer-boundary",
-      "rule": "Imports must flow downward only: Layer 3 -> Layer 2 -> Layer 1 -> Layer 0. Layer 0 (kernel/, utils/) has no internal imports. Layer 1 (core/) imports only kernel/utils. Layer 2 modules import layers 0-1 and each other. Layer 3 (sketching/, text/, projection/) imports all lower layers. Flag any upward import.",
+      "rule": "Imports must flow downward only: Layer 3 -> Layer 2 -> Layer 1 -> Layer 0. Layer 0 (kernel/, utils/) imports nothing above Layer 0; kernel/ may import utils/. Layer 1 (core/) imports only kernel/utils. Layer 2 modules import layers 0-1 and each other. Layer 3 (sketching/, text/, projection/) imports all lower layers. Flag any upward import.",
       "severity": "high"
     },
     {
