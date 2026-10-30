@@ -1,0 +1,46 @@
+src/kernel/occtWasm/helpers.ts
+  s_b1a48d7e30b741::t_d331b7f9f02050 171-186
+llms.txt
+  s_b1a48d7e30b741::t_ad58846d835d14 444
+tests/errorSuggestions.test.ts
+  s_b1a48d7e30b741::t_1ff3fd5d33924c 41,46
+docs/kernel-conformance.md
+  s_b1a48d7e30b741::t_74ed913ddaa091 3
+  s_b1a48d7e30b741::t_907db67dd9bcf8 103
+llms-full.txt
+  s_b1a48d7e30b741::t_ad58846d835d14 444
+src/topology/modifierFns.ts
+  s_b1a48d7e30b741::t_bf391e41929608 64-67,244-254,271
+  s_b1a48d7e30b741::t_7210f74a4d9cf9 786-792
+  s_b1a48d7e30b741::t_c8a2cd0dc776eb 50-63,69-70,84-85,90,109-110,118
+  s_b1a48d7e30b741::t_44a1fc0f64cc2f 766-767
+src/kernel/occtWasm/modifierOps.ts
+  s_b1a48d7e30b741::t_d331b7f9f02050 18,38
+tests/modifierFns.test.ts
+  s_b1a48d7e30b741::t_1ff3fd5d33924c 482-512,515,835-846,849-850
+  s_b1a48d7e30b741::t_f950fa16512d5a 847-848,851
+src/kernel/occtWasm/evolutionOps.ts
+  s_b1a48d7e30b741::t_d331b7f9f02050 31,415
+tests/helpers/kernelDivergences.ts
+  s_b1a48d7e30b741::t_1ff3fd5d33924c 188-192,730-737
+src/topology/evolutionFns.ts
+  s_b1a48d7e30b741::t_d56f6ca08c4eb8 27-33,100-101,109,307,311,314,337
+src/topology/apiTypes.ts
+  s_b1a48d7e30b741::t_44a1fc0f64cc2f 44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1c42e36aa5229b22eaba036ef4bd98d780e3c04",
+  "prompts": {},
+  "sessions": {
+    "s_b1a48d7e30b741": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f45af829-0d12-4e9f-a75b-344234f567fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
