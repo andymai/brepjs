@@ -1,0 +1,25 @@
+src/kernel/brepkit/measureOps.ts
+  s_d4ab5fb2066c9b::t_28b501323ffdaf 20,142-151,153-179
+src/kernel/brepkit/helpers.ts
+  s_d4ab5fb2066c9b::t_19970cf384d3cc 182-189,191-194,196,198,200-201,208-238,241,253-284
+  s_d4ab5fb2066c9b::t_bd4ad0b0637546 285
+tests/curveFns.test.ts
+  s_d4ab5fb2066c9b::t_c1819c8b4ce0f5 110-112
+  s_d4ab5fb2066c9b::t_b1d4dee6e3124f 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29b2a87f22cbb57a57afbd9949f78340f974e607",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
