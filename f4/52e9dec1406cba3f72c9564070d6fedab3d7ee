@@ -1,0 +1,33 @@
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_84f075b087c8de 489-498,500-529,537-557
+tests/exporterFns.test.ts
+  s_d4ab5fb2066c9b::t_f64f773afb872b 80-153
+  s_d4ab5fb2066c9b::t_eb4068ad0601eb 5-9,20,25
+  s_d4ab5fb2066c9b::t_47bc73f9230443 4
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_023ddad50a7a21 339
+  s_d4ab5fb2066c9b::t_da4b3abfe2f71d 336-338,340
+tests/helpers/stepText.ts
+  s_d4ab5fb2066c9b::t_5a51e153c16d73 1,4-9
+tests/stepConfigFns.test.ts
+  s_d4ab5fb2066c9b::t_3074329a664fdd 4-20
+  s_d4ab5fb2066c9b::t_2b4f135b360a2e 62-89
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_15fd5599583b13 1390-1406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f452e9dec1406cba3f72c9564070d6fedab3d7ee",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
