@@ -193,7 +193,7 @@ interface ConicFrame {
  * A NURBS edge that happens to be a circle reports CIRCLE too but runs over
  * its knots, so it gets no frame; only an analytic edge has no NURBS data.
  */
-function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
+export function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
   const curveType = bk.getEdgeCurveType(edgeId);
   if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return undefined;
   if (bk.getEdgeNurbsData(edgeId) !== null) return undefined;
@@ -212,7 +212,7 @@ function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
   };
 }
 
-function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
+export function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
   const verts = bk.getEdgeVertices(edgeId);
   return [
     [wasmIndex(verts, 0), wasmIndex(verts, 1), wasmIndex(verts, 2)],

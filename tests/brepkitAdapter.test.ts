@@ -13,7 +13,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
-import type { BrepkitHandle } from '@/kernel/brepkit/helpers.js';
+import { type BrepkitHandle, edgeHandle } from '@/kernel/brepkit/helpers.js';
 import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
@@ -1019,6 +1019,132 @@ describe('BrepkitAdapter', () => {
 
       expect((compound as BrepkitHandle).type).toBe('compound');
       expect(mock.makeCompound).toHaveBeenCalled();
+    });
+  });
+
+  // brepkit-wasm 4.6.4 on refuses a face on a wire whose edges do not run end to
+  // end, and its makeWire takes every edge as it runs.
+  describe('wires whose edges run against the chain', () => {
+    function chainMock(
+      ends: Record<number, number[]>,
+      {
+        types = {},
+        nurbs = {},
+      }: { types?: Record<number, string>; nurbs?: Record<number, string> } = {}
+    ) {
+      let next = 500;
+      // A rebuilt edge runs between the first six of its arguments.
+      const rebuilt = (...args: unknown[]) => {
+        const id = next++;
+        ends[id] = args.slice(0, 6) as number[];
+        return id;
+      };
+      return Object.assign(createMockBrepKernel(), {
+        getEdgeVertices: vi.fn((edge: number) => ends[edge] ?? []),
+        getEdgeCurveType: vi.fn((edge: number) => types[edge] ?? 'LINE'),
+        getEdgeNurbsData: vi.fn((edge: number): string | null => nurbs[edge] ?? null),
+        makeLineEdge: vi.fn(rebuilt),
+        makeEllipseArc3d: vi.fn(rebuilt),
+        makeNurbsEdge: vi.fn(rebuilt),
+        makeWire: vi.fn((_edges: Uint32Array | number[], _closed: boolean) => 900),
+      });
+    }
+    const edges = (...ids: number[]) => ids.map((id) => edgeHandle(id));
+
+    it('turns a line that runs the other way and closes the chain', () => {
+      const mock = chainMock({
+        1: [0, 0, 0, 1, 0, 0],
+        2: [1, 1, 0, 1, 0, 0],
+        3: [1, 1, 0, 0, 0, 0],
+      });
+      const adapter = new BrepkitAdapter(mock);
+
+      adapter.makeWireFromMixed(edges(1, 2, 3));
+
+      expect(mock.makeLineEdge).toHaveBeenCalledWith(1, 0, 0, 1, 1, 0);
+      expect(mock.makeWire).toHaveBeenCalledWith([1, 500, 3], true);
+    });
+
+    it("chains a mirrored half that leaves from the first half's start", () => {
+      const mock = chainMock({
+        1: [0, 0, 0, 1, 1, 0],
+        2: [1, 1, 0, 2, 0, 0],
+        3: [0, 0, 0, 1, -1, 0],
+        4: [1, -1, 0, 2, 0, 0],
+      });
+      const adapter = new BrepkitAdapter(mock);
+
+      adapter.makeWireFromMixed(edges(1, 2, 3, 4));
+
+      expect(mock.makeWire).toHaveBeenCalledWith([1, 2, 500, 501], true);
+      expect(mock.makeLineEdge.mock.calls).toEqual([
+        [2, 0, 0, 1, -1, 0],
+        [1, -1, 0, 0, 0, 0],
+      ]);
+    });
+
+    it('turns a NURBS edge by reversing its poles, weights and knots', () => {
+      const curve = {
+        degree: 2,
+        knots: [0, 0, 0, 0.25, 1, 1, 1],
+        controlPoints: [0, 0, 0, 0.5, 1, 0, 1.5, 1, 0, 2, 0, 0],
+        weights: [1, 0.5, 2, 1],
+      };
+      const mock = chainMock(
+        { 1: [0, 0, 0, 2, 0, 0], 2: [0, 0, 0, 2, 0, 0] },
+        { nurbs: { 2: JSON.stringify(curve) } }
+      );
+      const adapter = new BrepkitAdapter(mock);
+
+      adapter.makeWireFromMixed(edges(1, 2));
+
+      expect(mock.makeNurbsEdge).toHaveBeenCalledWith(
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        [0, 0, 0, 0.75, 1, 1, 1],
+        [2, 0, 0, 1.5, 1, 0, 0.5, 1, 0, 0, 0, 0],
+        [1, 2, 0.5, 1]
+      );
+    });
+
+    it('turns an elliptic arc about the opposite axis', () => {
+      const mock = Object.assign(
+        chainMock(
+          { 1: [0, 0, 0, 0, 2, 0], 2: [3, 0, 0, 0, 2, 0], 3: [3, 0, 0, 0, 0, 0] },
+          { types: { 2: 'ELLIPSE' } }
+        ),
+        {
+          evaluateEdgeCurve: vi.fn((_edge: number, t: number) => [
+            3 * Math.cos(t),
+            2 * Math.sin(t),
+            0,
+          ]),
+        }
+      );
+      const adapter = new BrepkitAdapter(mock);
+
+      adapter.makeWireFromMixed(edges(1, 2, 3));
+
+      const [args] = mock.makeEllipseArc3d.mock.calls;
+      expect(args?.map((x) => Math.round(Number(x) * 1e9) / 1e9 + 0)).toEqual([
+        0, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, -1, 1, 0, 0, 3, 2,
+      ]);
+      expect(mock.makeWire).toHaveBeenCalledWith([1, 500, 3], true);
+    });
+
+    it('leaves edges that make no single chain as given', () => {
+      const mock = chainMock({ 1: [0, 0, 0, 1, 0, 0], 2: [5, 5, 0, 6, 5, 0] });
+      const adapter = new BrepkitAdapter(mock);
+
+      adapter.makeWireFromMixed(edges(1, 2));
+
+      expect(mock.makeWire).toHaveBeenCalledWith([1, 2], false);
+      expect(mock.makeLineEdge).not.toHaveBeenCalled();
     });
   });
 
