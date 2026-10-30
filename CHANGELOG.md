@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.14.0](https://github.com/andymai/brepjs/compare/brepjs-v20.13.6...brepjs-v20.14.0) (2026-10-30)
+
+
+### Features
+
+* **fillet:** let a fillet radius run to zero at one end of an edge ([#2575](https://github.com/andymai/brepjs/issues/2575)) ([8400cc5](https://github.com/andymai/brepjs/commit/8400cc566e3bef1271713405368ab75123d58cdc))
+
 ## [20.13.6](https://github.com/andymai/brepjs/compare/brepjs-v20.13.5...brepjs-v20.13.6) (2026-10-30)
 
 
