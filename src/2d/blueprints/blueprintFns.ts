@@ -84,8 +84,11 @@ export function toSVGPathD(bp: Blueprint): string {
 // ── Transform Functions (Clean 2D API) ──
 
 /** Translate a 2D blueprint by the given x and y distances. */
-export function translate2D(bp: Blueprint, dx: number, dy: number): Blueprint {
-  return bp.translate(dx, dy);
+export function translate2D(bp: Blueprint, dx: number, dy: number): Blueprint;
+/** Translate a 2D blueprint by a vector. */
+export function translate2D(bp: Blueprint, vector: Point2D): Blueprint;
+export function translate2D(bp: Blueprint, dxOrVector: number | Point2D, dy = 0): Blueprint {
+  return typeof dxOrVector === 'number' ? bp.translate(dxOrVector, dy) : bp.translate(dxOrVector);
 }
 
 /** Rotate a 2D blueprint by the given angle in degrees. */

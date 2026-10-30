@@ -21,7 +21,7 @@ import {
 } from '@/index.js';
 import { faultyEdgeIndexesOf } from '@/kernel/faultyEdges.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
-import type { Dimension, Edge, Shape3D } from '@/core/shapeTypes.js';
+import type { Edge, Shape3D } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -183,7 +183,7 @@ describe('chamfer() with { distance, angle } per edge', () => {
   }
 
   /** The value for a vertical edge on the x = 0 side, or on the x = 10 side. */
-  function bySide<V>(nearSide: V, farSide: V): (edge: Edge<Dimension>) => V {
+  function bySide<V>(nearSide: V, farSide: V): (edge: Edge) => V {
     return (edge) => (getBounds(edge).xMin < 5 ? nearSide : farSide);
   }
 
@@ -341,7 +341,7 @@ describe('chamfer() with { distance, angle } per edge', () => {
     using b = box(20, 20, 10);
     using rounded = unwrap(fillet(b, verticalEdges(b), 3));
     const top = getEdges(rounded).filter((e) => getBounds(e).zMin > 9.9);
-    const straight = (e: Edge<Dimension>) => {
+    const straight = (e: Edge) => {
       const { xMin, xMax, yMin, yMax } = getBounds(e);
       return xMax - xMin < 1e-6 || yMax - yMin < 1e-6;
     };

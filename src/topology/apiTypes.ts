@@ -45,7 +45,7 @@ export type FinderFn<T extends AnyShape<Dimension>> = (finder: FinderFor<T>) => 
  * - callback — per-edge radius; return `null` to skip an edge
  */
 export type FilletRadius =
-  number | [number, number] | ((edge: Edge<Dimension>) => number | [number, number] | null);
+  number | [number, number] | ((edge: Edge) => number | [number, number] | null);
 
 // ---------------------------------------------------------------------------
 // ChamferDistance — all distance modes for chamfer()
@@ -69,9 +69,7 @@ export type ChamferDistance =
   | number
   | [number, number]
   | { distance: number; angle: number }
-  | ((
-      edge: Edge<Dimension>
-    ) => number | [number, number] | { distance: number; angle: number } | null);
+  | ((edge: Edge) => number | [number, number] | { distance: number; angle: number } | null);
 
 // ---------------------------------------------------------------------------
 // DraftAngle — angle specification for draft()
@@ -83,7 +81,7 @@ export type ChamferDistance =
  * - `number` — constant angle in degrees for all selected faces
  * - callback — per-face angle; return `null` to skip a face
  */
-export type DraftAngle = number | ((face: Face<Dimension>) => number | null);
+export type DraftAngle = number | ((face: Face) => number | null);
 
 /** Options for the draft() modifier. */
 export interface DraftOptions {

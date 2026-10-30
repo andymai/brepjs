@@ -146,6 +146,30 @@ declare function Geometry(
 
 declare function Group(props?: IntrinsicProps): Element;
 
+/**
+ * Optional record of where each element was created, for tools that point from an element back to
+ * the line that authored it. Off by default: capturing costs one stack trace per element.
+ */
+interface SourceLocation {
+  /** A filesystem path for file modules, else the module URL. */
+  readonly file: string;
+  readonly line: number;
+  readonly column: number;
+}
+
+/**
+ * Record, from now on, where each element is created, so `sourceOf()` can name the family call,
+ * `el()` call or JSX tag that made a resolved element. Stack traces only name original lines when
+ * source maps are on for transpiled code.
+ */
+declare function captureSourceLocations(on: boolean): void;
+
+/**
+ * Where an element was authored, if capture was on when it was created. Takes an authored or a
+ * resolved element; a synthesized Opening answers with its fill's location.
+ */
+declare function sourceOf(element: object): SourceLocation | undefined;
+
 type TransformOp =
   | {
       readonly op: 'translate';

@@ -94,7 +94,7 @@ function transpileExample(code: string): string {
 function unwrapResultShape(shape: unknown): unknown {
   const inner = isColoredShape(shape) ? shape.shape : shape;
   if (inner && typeof inner === 'object' && '__wrapped' in inner) {
-    return (inner as { val: unknown }).val;
+    return (inner as { val?: unknown }).val;
   }
   if (inner && typeof inner === 'object' && 'wrapped' in inner) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel cast over WASM handle

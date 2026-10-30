@@ -488,10 +488,10 @@ describe('BrepkitAdapter', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);
       const box = adapter.makeBox(1, 1, 1);
-      adapter.rotate(box, 90, [0, 0, 1]);
+      adapter.rotate(box, Math.PI / 2, [0, 0, 1]);
 
       const matrix = firstTransformMatrix(mock);
-      // 90° rotation around Z: cos(90)=0, sin(90)=1
+      // π/2 rotation around Z: cos=0, sin=1
       expect(matrix[0]).toBeCloseTo(0); // cos
       expect(matrix[1]).toBeCloseTo(-1); // -sin
       expect(matrix[4]).toBeCloseTo(1); // sin

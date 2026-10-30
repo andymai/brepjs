@@ -234,6 +234,7 @@ interface KernelCurveOps {
 
 interface KernelEvolutionOps {
     translateWithHistory(shape: KernelShape, x: number, y: number, z: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
+    /** {@link KernelTransformOps.rotate} with face history: `angle` is in radians. */
     rotateWithHistory(shape: KernelShape, angle: number, inputFaceHashes: number[], hashUpperBound: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): OperationResult;
     mirrorWithHistory(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number], inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     scaleWithHistory(shape: KernelShape, center: readonly [number, number, number], factor: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
@@ -241,6 +242,13 @@ interface KernelEvolutionOps {
     fuseWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
     cutWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
     intersectWithHistory(shape: KernelShape, tool: KernelShape, inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions): DiagnosticOperationResult;
+    /**
+     * N-way fuse with face history across every input. Kernels without it get
+     * `fuseAll` plus hash-based origin propagation instead.
+     */
+    fuseAllWithHistory?: ((shapes: KernelShape[], inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions) => DiagnosticOperationResult) | undefined;
+    /** N-way cut with face history across the base and every tool. */
+    cutAllWithHistory?: ((shape: KernelShape, tools: KernelShape[], inputFaceHashes: number[], hashUpperBound: number, options?: BooleanOptions) => DiagnosticOperationResult) | undefined;
     filletWithHistory(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     chamferWithHistory(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
@@ -318,6 +326,13 @@ interface KernelMeasureOps {
         min: [number, number, number];
         max: [number, number, number];
     };
+    /**
+     * Volume matrix of inertia about the center of mass (unit density), in axes
+     * parallel to world X/Y/Z. Products of inertia carry the tensor's negative
+     * sign, so the matrix is symmetric with `[1]==[3]`, `[2]==[6]`, `[5]==[7]`.
+     * Optional: kernels without it cannot answer principal-axes queries.
+     */
+    inertia?(shape: KernelShape): Matrix3;
     /** Minimum distance between two shapes with witness points. */
     distance(shape1: KernelShape, shape2: KernelShape): DistanceResult;
     /** Compute surface curvature at a UV point on a face. */
@@ -366,6 +381,18 @@ interface KernelModifierOps {
     fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
+    /**
+     * Distance-angle chamfer with its own values on each edge, in one operation:
+     * `distance` is set back on the edge's reference face (as {@link chamferDistAngle}
+     * picks it) and `angleDeg` is measured from that face.
+     * Optional: kernels without it can chamfer by distance and angle only with
+     * one value for every edge.
+     */
+    chamferDistAngles?(shape: KernelShape, edges: ReadonlyArray<{
+        edge: KernelShape;
+        distance: number;
+        angleDeg: number;
+    }>): KernelShape;
     shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
     thicken(shape: KernelShape, thickness: number): KernelShape;
     offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
@@ -631,7 +658,10 @@ interface KernelTopologyOps {
 }
 
 interface KernelTransformOps {
-    /** Create a composed transform from a sequence of translate/rotate operations. Returns an opaque handle. */
+    /**
+     * Create a composed transform from a sequence of translate/rotate operations. Returns an
+     * opaque handle. Rotate angles here are in degrees.
+     */
     composeTransform(ops: Array<{
         type: 'translate';
         x: number;
@@ -658,6 +688,7 @@ interface KernelTransformOps {
      */
     locate(shape: KernelShape, trsf: KernelType): KernelShape;
     translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
+    /** Rotate by `angle` radians about `axis` (default +Z) through `center` (default origin). */
     rotate(shape: KernelShape, angle: number, axis?: readonly [number, number, number], center?: readonly [number, number, number]): KernelShape;
     mirror(shape: KernelShape, origin: readonly [number, number, number], normal: readonly [number, number, number]): KernelShape;
     scale(shape: KernelShape, center: readonly [number, number, number], factor: number): KernelShape;
@@ -668,7 +699,7 @@ interface KernelTransformOps {
     positionOnCurve(shape: KernelShape, spine: KernelShape, param: number): KernelShape;
     /** Generate a linear pattern of shapes with pooled transforms for performance. */
     linearPattern(shape: KernelShape, direction: [number, number, number], spacing: number, count: number): KernelShape[];
-    /** Generate a circular pattern of shapes. */
+    /** Generate a circular pattern of shapes, `angleStep` degrees apart. */
     circularPattern(shape: KernelShape, center: [number, number, number], axis: [number, number, number], angleStep: number, count: number): KernelShape[];
     /** Generate a 2D grid pattern (brepkit-native). Returns a compound. */
     gridPattern?(shape: KernelShape, directionX: [number, number, number], directionY: [number, number, number], spacingX: number, spacingY: number, countX: number, countY: number): KernelShape;
@@ -747,15 +778,37 @@ interface OcctKernelWasm {
     section(a: number, b: number): number;
     fuseAll(shapeIds: EmVectorUint32): number;
     cutAll(shapeId: number, toolIds: EmVectorUint32): number;
+    /** General boolean with glue, fuzzy, simplify and n-way history (occt-wasm 5.6+). */
+    booleanOp?(opCode: number, argIds: EmVectorUint32, toolIds: EmVectorUint32, glue: number, fuzzyValue: number, simplifyAngularTolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     split(shapeId: number, toolIds: EmVectorUint32): number;
     extrude(shapeId: number, dx: number, dy: number, dz: number): number;
     revolve(shapeId: number, px: number, py: number, pz: number, dx: number, dy: number, dz: number, angleRad: number): number;
     fillet(solidId: number, edgeIds: EmVectorUint32, radius: number): number;
     chamfer(solidId: number, edgeIds: EmVectorUint32, distance: number): number;
     chamferDistAngle(solidId: number, edgeIds: EmVectorUint32, distance: number, angleDeg: number): number;
+    /**
+     * occt-wasm >= 5.9.0: one radius pair per edge, constant where start equals
+     * end, else a linear taper from the edge's first vertex to its last.
+     */
+    filletRadii?(solidId: number, edgeIds: EmVectorUint32, startRadii: EmVectorDouble, endRadii: EmVectorDouble): number;
+    /**
+     * occt-wasm >= 5.9.0: one distance pair per edge, `distances1` set back on the
+     * reference face. `referenceFaceIds` is empty or one per edge; 0 (or empty)
+     * picks the edge's first adjacent face.
+     */
+    chamferDistances?(solidId: number, edgeIds: EmVectorUint32, distances1: EmVectorDouble, distances2: EmVectorDouble, referenceFaceIds: EmVectorUint32): number;
+    /** occt-wasm >= 5.9.0: per-edge distance-angle chamfer; reference faces as in `chamferDistances`. */
+    chamferDistAngles?(solidId: number, edgeIds: EmVectorUint32, distances: EmVectorDouble, anglesDeg: EmVectorDouble, referenceFaceIds: EmVectorUint32): number;
     shell(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number): number;
     offset(solidId: number, distance: number, tolerance: number): number;
+    /** Drafts about the XY plane through the origin, whatever the caller's neutral plane. */
     draft(shapeId: number, faceId: number, angleRad: number, dx: number, dy: number, dz: number): number;
+    /**
+     * occt-wasm >= 5.9.0: draft every face in one operation, face i by
+     * `anglesRad[i]`, pulling along (dx, dy, dz) about the plane through
+     * (px, py, pz) with normal (nx, ny, nz).
+     */
+    draftFaces?(shapeId: number, faceIds: EmVectorUint32, anglesRad: EmVectorDouble, dx: number, dy: number, dz: number, px: number, py: number, pz: number, nx: number, ny: number, nz: number): number;
     pipe(profileId: number, spineId: number): number;
     simplePipe(profileId: number, spineId: number): number;
     loft(wireIds: EmVectorUint32, isSolid: boolean, ruled: boolean): number;
@@ -776,9 +829,18 @@ interface OcctKernelWasm {
     makeArcEdge(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number, x3: number, y3: number, z3: number): number;
     makeEllipseEdge(cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, majorRadius: number, minorRadius: number): number;
     makeEllipseArc(cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, majorRadius: number, minorRadius: number, startAngle: number, endAngle: number): number;
+    /** occt-wasm 5.8+: like makeEllipseArc with the major axis along (xx, xy, xz). */
+    makeEllipseArcOriented?(cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, xx: number, xy: number, xz: number, majorRadius: number, minorRadius: number, startAngle: number, endAngle: number): number;
     makeBezierEdge(flatPoints: EmVectorDouble): number;
+    /** occt-wasm 5.8+: non-rational when `weights` is empty; poles are flat xyz triples. */
+    makeBSplineEdge?(poles: EmVectorDouble, weights: EmVectorDouble, knots: EmVectorDouble, multiplicities: EmVectorInt, degree: number, periodic: boolean): number;
     makeTangentArc(x1: number, y1: number, z1: number, tx: number, ty: number, tz: number, x2: number, y2: number, z2: number): number;
     makeHelixWire(px: number, py: number, pz: number, dx: number, dy: number, dz: number, pitch: number, height: number, radius: number): number;
+    /**
+     * {@link makeHelixWire} with an explicit winding. Optional: absent on WASM
+     * builds older than occt-wasm 4.3.0, so callers must feature-detect it.
+     */
+    makeHelixWireHanded?(px: number, py: number, pz: number, dx: number, dy: number, dz: number, pitch: number, height: number, radius: number, leftHanded: boolean): number;
     makeWire(edgeIds: EmVectorUint32): number;
     makeFace(wireId: number): number;
     makeNonPlanarFace(wireId: number): number;
@@ -822,14 +884,24 @@ interface OcctKernelWasm {
     iterShapes(id: number): EmVectorUint32;
     edgeToFaceMap(id: number, hashUpperBound: number): EmVectorInt;
     tessellate(id: number, linearDeflection: number, angularDeflection: number): EmMeshData;
-    wireframe(id: number, deflection: number): EmEdgeData;
+    /** `source`: 0 samples each edge's curve, 1 reads the polygon the last mesh stored on it. */
+    wireframe(id: number, deflection: number, source: number): EmEdgeData;
     hasTriangulation(id: number): boolean;
     meshShape(id: number, linearDeflection: number, angularDeflection: number): EmMeshData;
     importStep(data: string): number;
     exportStep(id: number): string;
+    /**
+     * occt-wasm >= 5.9.0: STEP with lengths written in `unit` (mm, cm, m, km,
+     * inch, ft, mi, mil, um, uin). Geometry is read as millimeters.
+     */
+    exportStepWithUnit?(id: number, unit: string): string;
+    /** occt-wasm >= 5.10.0: `schema` is 'AP203', 'AP214', or 'AP242'; '' keeps AP214. */
+    exportStepWithOptions?(id: number, unit: string, schema: string): string;
     importStl(data: string): number;
-    importIges(data: string): number;
-    exportIges(id: number): string;
+    /** Absent from published occt-wasm builds (no IGES translator), so callers feature-detect. */
+    importIges?(data: string): number;
+    /** Absent from published occt-wasm builds (no IGES translator), so callers feature-detect. */
+    exportIges?(id: number): string;
     exportStl(id: number, linearDeflection: number, ascii: boolean): string;
     toBREP(id: number): string;
     fromBREP(data: string): number;
@@ -838,6 +910,8 @@ interface OcctKernelWasm {
     getSurfaceArea(id: number): number;
     getLength(id: number): number;
     getCenterOfMass(id: number): EmVectorDouble;
+    /** Row-major 3x3 volume matrix of inertia about the center of mass (occt-wasm >= 3.3.0). */
+    getInertia(id: number): EmVectorDouble;
     getSurfaceCenterOfMass(faceId: number): EmVectorDouble;
     getLinearCenterOfMass(id: number): EmVectorDouble;
     surfaceCurvature(faceId: number, u: number, v: number): EmVectorDouble;
@@ -875,6 +949,10 @@ interface OcctKernelWasm {
     xcafSetName(docId: number, labelId: number, name: string): void;
     xcafGetRootLabels(docId: number): EmVectorInt;
     xcafExportSTEP(docId: number): string;
+    /** occt-wasm >= 5.9.0: units as in {@link exportStepWithUnit}. */
+    xcafExportSTEPWithUnit?(docId: number, unit: string): string;
+    /** occt-wasm >= 5.10.0: unit and schema as in {@link exportStepWithOptions}. */
+    xcafExportSTEPWithOptions?(docId: number, unit: string, schema: string): string;
     bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
     makeFaceOnSurface(faceId: number, wireId: number): number;
     makeNullShape(): number;
@@ -893,6 +971,12 @@ interface OcctKernelWasm {
     scaleWithHistory(id: number, cx: number, cy: number, cz: number, factor: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     intersectWithHistory(a: number, b: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     chamferWithHistory(solidId: number, edgeIds: EmVectorUint32, distance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    /** occt-wasm >= 5.9.0: {@link filletRadii} with face evolution. */
+    filletRadiiWithHistory?(solidId: number, edgeIds: EmVectorUint32, startRadii: EmVectorDouble, endRadii: EmVectorDouble, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    /** occt-wasm >= 5.9.0: {@link chamferDistances} with face evolution. */
+    chamferDistancesWithHistory?(solidId: number, edgeIds: EmVectorUint32, distances1: EmVectorDouble, distances2: EmVectorDouble, referenceFaceIds: EmVectorUint32, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
+    /** occt-wasm >= 5.9.0 (npm build): {@link draftFaces} with face evolution. */
+    draftFacesWithHistory?(shapeId: number, faceIds: EmVectorUint32, anglesRad: EmVectorDouble, dx: number, dy: number, dz: number, px: number, py: number, pz: number, nx: number, ny: number, nz: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     shellWithHistory(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     offsetWithHistory(solidId: number, distance: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
     thickenWithHistory(shapeId: number, thickness: number, tolerance: number, inputFaceHashes: EmVectorInt, hashUpperBound: number): EmEvolutionData;
@@ -1074,6 +1158,20 @@ interface KernelCapabilities {
     readonly exactMeasurement: boolean;
     /** How tessellation resolution is controlled — see module docs. */
     readonly tessellationModel: TessellationModel;
+    /**
+     * `*WithHistory` maps come from the kernel's own operation history, so a
+     * face listed as generated from a source face is that face's offset, sweep,
+     * or fillet. Kernels that rebuild the maps by geometric matching leave it unset.
+     */
+    readonly nativeHistory?: boolean | undefined;
+    /**
+     * `sew` keeps every face's orientation, so faces wound consistently sew into a
+     * consistently oriented shell, and `solidFromShell` bounds the solid by that
+     * shell as it is (after `reverseShape`, by its inside-out twin). Mesh import
+     * relies on it to build solids without an orientation repair pass. Kernels
+     * that reorient while sewing leave it unset.
+     */
+    readonly sewKeepsOrientation?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */
@@ -1287,6 +1385,7 @@ declare const BrepErrorCode: {
     readonly SOLID_FROM_SHELL_FAILED: "SOLID_FROM_SHELL_FAILED";
     readonly FIX_SELF_INTERSECTION_FAILED: "FIX_SELF_INTERSECTION_FAILED";
     readonly MESH_FAILED: "MESH_FAILED";
+    readonly PRINCIPAL_BOX_FAILED: "PRINCIPAL_BOX_FAILED";
     readonly ELLIPSE_RADII: "ELLIPSE_RADII";
     readonly FUSE_ALL_EMPTY: "FUSE_ALL_EMPTY";
     readonly FILLET_NO_EDGES: "FILLET_NO_EDGES";
@@ -1307,11 +1406,16 @@ declare const BrepErrorCode: {
     readonly INVALID_THICKNESS: "INVALID_THICKNESS";
     readonly ZERO_OFFSET: "ZERO_OFFSET";
     readonly NO_EDGES: "NO_EDGES";
+    readonly INVALID_EDGE_SELECTION: "INVALID_EDGE_SELECTION";
     readonly NO_FACES: "NO_FACES";
+    readonly FACE_NOT_IN_SHAPE: "FACE_NOT_IN_SHAPE";
     readonly DRAFT_NO_FACES: "DRAFT_NO_FACES";
     readonly DRAFT_INVALID_ANGLE: "DRAFT_INVALID_ANGLE";
     readonly DRAFT_NOT_3D: "DRAFT_NOT_3D";
     readonly DRAFT_FAILED: "DRAFT_FAILED";
+    readonly CSG_EXTENSION_UNKNOWN: "CSG_EXTENSION_UNKNOWN";
+    readonly NOT_A_SOLID: "NOT_A_SOLID";
+    readonly ZERO_VOLUME: "ZERO_VOLUME";
     readonly FUSE_NOT_3D: "FUSE_NOT_3D";
     readonly CUT_NOT_3D: "CUT_NOT_3D";
     readonly INTERSECT_NOT_3D: "INTERSECT_NOT_3D";
@@ -1326,7 +1430,12 @@ declare const BrepErrorCode: {
     readonly CHAMFER_ANGLE_FAILED: "CHAMFER_ANGLE_FAILED";
     readonly CSG_NOT_3D: "CSG_NOT_3D";
     readonly SHELL_NOT_3D: "SHELL_NOT_3D";
+    readonly SHELL_NO_EFFECT: "SHELL_NO_EFFECT";
+    readonly SHELL_INVALID_RESULT: "SHELL_INVALID_RESULT";
     readonly OFFSET_NOT_3D: "OFFSET_NOT_3D";
+    readonly OFFSET_INVALID_RESULT: "OFFSET_INVALID_RESULT";
+    readonly REMOVE_FACES_FAILED: "REMOVE_FACES_FAILED";
+    readonly REMOVE_FACES_INCOMPLETE: "REMOVE_FACES_INCOMPLETE";
     readonly NULL_SHAPE: "NULL_SHAPE";
     readonly NO_WRAPPER: "NO_WRAPPER";
     readonly WELD_NOT_SHELL: "WELD_NOT_SHELL";
@@ -1605,8 +1714,11 @@ declare const asTopo: (entity: TopoEntity) => KernelType;
 
 declare const iterTopo: (shape: KernelShape, topo: TopoEntity) => IterableIterator<KernelShape>;
 
-/** Get the TopAbs_ShapeEnum type of an kernel shape, returning Err for null shapes. */
-declare const shapeType: (shape: KernelShape) => Result<KernelType>;
+/**
+ * Get the topological type of a shape (`'solid'`, `'face'`, ...), returning Err for null
+ * shapes. Accepts a branded shape or its raw kernel handle (`shape.wrapped`).
+ */
+declare const shapeType: (shape: KernelShape) => Result<ShapeType>;
 
 /**
  * Downcast a generic KernelShape to its concrete kernel type (e.g., kernel topology_Face).
@@ -2121,6 +2233,8 @@ declare function toSVGPathD(bp: Blueprint): string;
 
 /** Translate a 2D blueprint by the given x and y distances. */
 declare function translate2D(bp: Blueprint, dx: number, dy: number): Blueprint;
+/** Translate a 2D blueprint by a vector. */
+declare function translate2D(bp: Blueprint, vector: Point2D): Blueprint;
 
 /** Rotate a 2D blueprint by the given angle in degrees. */
 declare function rotate2D(bp: Blueprint, angle: number, center?: Point2D): Blueprint;
@@ -2266,7 +2380,7 @@ declare function exportGlb(mesh: ShapeMesh, options?: GltfExportOptions): ArrayB
  * A single DXF entity (LINE or POLYLINE).
  *
  * LINE maps directly to a DXF LINE entity.
- * POLYLINE maps to an LWPOLYLINE with optional closure.
+ * POLYLINE maps to an R12 POLYLINE (its VERTEX entities and a SEQEND), optionally closed.
  */
 type DXFEntity = {
     type: 'LINE';
@@ -2314,7 +2428,7 @@ declare function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): s
  * Convert a Blueprint (or CompoundBlueprint/Blueprints) to a DXF string.
  *
  * Each straight segment becomes a LINE entity; arcs, ellipses, splines,
- * and other curves are approximated as LWPOLYLINE entities.
+ * and other curves are approximated as POLYLINE entities.
  *
  * @param drawing - A Blueprint, CompoundBlueprint, or Blueprints collection.
  * @param options - Layer name and curve approximation settings.
@@ -2426,7 +2540,7 @@ interface StepExportOptions {
     readonly unit?: string | undefined;
     /** Model unit override. */
     readonly modelUnit?: string | undefined;
-    /** STEP schema version (e.g., 203, 214, 242). */
+    /** STEP application protocol: 203, 214 (the default), or 242. */
     readonly schema?: number | undefined;
 }
 
@@ -3241,7 +3355,7 @@ interface GenericSketcher<ReturnType> {
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 interface SketchInterface {
     /** Transforms the lines into a face. The lines should be closed. */
-    face(): Face;
+    face(): OrientedFace & PlanarFace;
     /**
      * Revolves the drawing on an axis (defined by its direction and an origin
      * (defaults to the sketch origin)
@@ -3706,9 +3820,12 @@ declare function sketchWires(sketch: Sketch): Wire;
 /**
  * Revolve a sketch around an axis to produce a solid of revolution.
  *
+ * Accepts anything `Drawing.sketchOnPlane` returns: a profile with holes or
+ * several profiles revolves each one and returns them as a compound.
+ *
  * @remarks Consumes the sketch — calling twice throws on the second call.
  */
-declare function sketchRevolve(sketch: Sketch, revolutionAxis?: PointInput, { origin }?: {
+declare function sketchRevolve(sketch: SketchInterface, revolutionAxis?: PointInput, config?: {
     origin?: PointInput;
 }): Shape3D;
 
@@ -3716,11 +3833,13 @@ declare function sketchRevolve(sketch: Sketch, revolutionAxis?: PointInput, { or
  * Extrude a sketch to a given distance.
  *
  * Supports profile (taper) extrusion via `extrusionProfile`, twist extrusion
- * via `twistAngle`, and direction/origin overrides.
+ * via `twistAngle`, and direction/origin overrides. Accepts anything
+ * `Drawing.sketchOnPlane` returns: a profile with holes or several profiles
+ * extrudes each one and returns them as a compound.
  *
  * @remarks Consumes the sketch — calling twice throws on the second call.
  */
-declare function sketchExtrude(sketch: Sketch, extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+declare function sketchExtrude(sketch: SketchInterface, extrusionDistance: number, config?: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
@@ -3901,10 +4020,22 @@ declare function mirrorDrawing(drawing: Drawing, centerOrDirection: Point2D, ori
 declare function loadFont(fontPath: string | ArrayBuffer, fontFamily?: string, force?: boolean): Promise<Result<OpenTypeFont>>;
 
 /**
+ * Register a font that text functions use when no font has been loaded.
+ *
+ * Unlike {@link loadFont}, this does not occupy the `'default'` family: once any font is
+ * loaded, it takes precedence over the fallback.
+ *
+ * @param fontData - Raw OpenType/TrueType font bytes.
+ * @returns The parsed opentype.js Font object.
+ */
+declare function setFallbackFont(fontData: ArrayBuffer): Result<OpenTypeFont>;
+
+/**
  * Retrieve a previously loaded font by family name.
  *
  * @param fontFamily - Registry key (defaults to `'default'`).
- * @returns The opentype.js Font object, or `undefined` if not loaded.
+ * @returns The opentype.js Font object, or `undefined` if not loaded. `'default'` resolves
+ * to the fallback font when no font has been loaded.
  */
 declare const getFont: (fontFamily?: string) => OpenTypeFont | undefined;
 
@@ -4292,7 +4423,12 @@ declare function isSolid(s: AnyShape<Dimension>): s is Solid;
 /** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or 3D compound). */
 declare function isShape3D(s: AnyShape<Dimension>): s is Shape3D;
 
-/** Type-safe cast for shapes known to be 3D. */
+/**
+ * Cast a raw kernel shape with the `'3D'` dimension brand, the same as
+ * `castShape(ocShape)`. The 3D is the space the shape lives in, not its
+ * topology: the result can be any kind from vertex to compound. Narrow it with
+ * {@link isShape3D} to get a {@link Shape3D} (shell, solid, compsolid, or compound).
+ */
 declare function castShape3D(ocShape: KernelShape): AnyShape;
 
 /**
@@ -4481,7 +4617,9 @@ declare function getFaceColor(shape: AnyShape<Dimension>, face: Face<Dimension>)
  * @param edges   - Edges to chamfer (must not be empty).
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
- * @returns Ok with the chamfered shape, or Err on invalid input or kernel failure.
+ * @returns Ok with the chamfered shape, or Err on invalid input or kernel
+ *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
@@ -4808,6 +4946,9 @@ declare function exportSTL(shape: AnyShape<Dimension>, opts?: MeshOptions & {
  * Export a shape as an IGES file Blob.
  *
  * @returns Ok with a Blob (MIME type `application/iges`), or Err on failure.
+ *
+ * @remarks The default occt-wasm kernel is built without an IGES translator, so
+ * there this returns an `UNSUPPORTED_CAPABILITY` error; export STEP instead.
  */
 declare function exportIGES(shape: AnyShape<Dimension>): Result<Blob>;
 
@@ -5045,7 +5186,12 @@ declare function toLODGeometryLevels(lods: ReadonlyArray<LODMesh>, options?: {
 
 /** Options shared by all boolean and compound operations. */
 interface BooleanOptions {
-    /** Glue algorithm hint for faces shared between operands. */
+    /**
+     * OCCT glue mode, for operands whose faces coincide but never cross:
+     * 'commonFace' for partly shared faces, 'sameFace' for fully shared ones.
+     * Glue skips face/face intersection, so operands whose faces do cross come
+     * back unfused or uncut.
+     */
     optimisation?: 'none' | 'commonFace' | 'sameFace';
     /** Merge same-domain faces/edges after the boolean. */
     simplify?: boolean;
@@ -5089,7 +5235,8 @@ interface BooleanPipelineStep {
  * simplifies the final shape.
  *
  * Falls back to sequential operations when the C++ pipeline class is not
- * available in the WASM build.
+ * available in the WASM build. An empty pipeline returns a copy of `base`, so
+ * the result is always the caller's to dispose.
  */
 declare function booleanPipeline(base: Shape3D, steps: readonly BooleanPipelineStep[], options?: {
     readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
@@ -5203,6 +5350,8 @@ declare function filletWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edg
  * @param shape - The shape to modify.
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
+ * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
+ *   distances asked for (brepkit has no asymmetric chamfer).
  */
 declare function chamferWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<EvolutionResult<ValidSolid>>;
 
@@ -5406,12 +5555,18 @@ declare function captureHint(face: Face): GeometricHint;
  * - `cylinder`/`cone` (Z-axis): 'top'/'bottom' caps + 'lateral' wall.
  * - `sphere`: 'sphere:surface'.
  *
+ * Faces whose roles an operation recorded on the shape take those names when
+ * the namespace matches `operationType`. `extrude` records 'extrude:start',
+ * 'extrude:end', 'extrude:side:<i>' and 'extrude:hole<j>:side:<i>', which
+ * survive later moves and booleans.
+ *
  * Faces a primitive namer doesn't recognize (a rotated box's non-cardinal faces),
  * and every face of any other operation type, fall back to positional names
  * ('opType:face_0', 'opType:face_1', ...) — so each face always gets a role.
  *
- * @returns Map from role name to its face hash codes (one at assignment time;
- *   a role accrues more hashes only later, when `updateRoles` tracks a split).
+ * @returns Map from role name to its face hash codes (one per role, except a
+ *   recorded role whose face a later operation split; `updateRoles` adds more
+ *   when it tracks a split).
  */
 declare function assignRoles(shape: Shape3D, operationType: string): Map<string, number[]>;
 
@@ -5543,7 +5698,8 @@ declare function resolveLineageRef(ref: LineageRef, roles: RoleTable, shape: Sha
  * Resolve a lineage ref against a freshly rebuilt `shape` with no maintained
  * role table, re-deriving roles via `assignRoles(shape, ref.origin)`. The ref's
  * `origin` must therefore be the role-assignment scheme (e.g. `'box'`), and
- * stability is bounded by that scheme — `'box'` names faces semantically
+ * stability is bounded by that scheme. The primitives (`'box'`, `'cylinder'`,
+ * `'cone'`, `'sphere'`) and `'extrude'` name faces semantically
  * (rebuild-stable); other schemes fall back to positional `face_N`.
  */
 declare function resolveRefIn(ref: LineageRef, shape: Shape3D): LineageResolution;
@@ -5801,8 +5957,12 @@ interface ExtrusionProfile {
  * @param spine - The path wire to sweep along.
  * @param config - Sweep configuration (frenet, transition mode, scaling law, etc.).
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing either a solid or a `[Shape3D, Wire, Wire]` tuple in shell mode.
+ * @returns `Result` containing the swept shape, or a `[Shape3D, Wire, Wire]` tuple in shell mode.
  */
+declare function sweep(wire: ClosedWire<Dimension>, spine: Wire<Dimension>, config?: SweepOptions, shellMode?: false): Result<Shape3D>;
+/** Sweep in shell mode, returning `[shell, startWire, endWire]`. */
+declare function sweep(wire: ClosedWire<Dimension>, spine: Wire<Dimension>, config: SweepOptions | undefined, shellMode: true): Result<[Shape3D, Wire, Wire]>;
+/** Sweep with a shell mode known only at runtime. */
 declare function sweep(wire: ClosedWire<Dimension>, spine: Wire<Dimension>, config?: SweepOptions, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /**
@@ -5831,8 +5991,12 @@ declare function supportExtrude(wire: ClosedWire<Dimension>, center: Vec3, norma
  * @param normal - Direction and length of the extrusion. Must be non-zero.
  * @param profileShape - Optional scaling profile applied along the extrusion.
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing the extruded shape or a shell tuple.
+ * @returns `Result` containing the extruded shape, or a shell tuple in shell mode.
  */
+declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
+/** Complex extrusion in shell mode, returning `[shell, startWire, endWire]`. */
+declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, normal: Vec3, profileShape: ExtrusionProfile | undefined, shellMode: true): Result<[Shape3D, Wire, Wire]>;
+/** Complex extrusion with a shell mode known only at runtime. */
 declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /**
@@ -5848,8 +6012,12 @@ declare function complexExtrude(wire: ClosedWire<Dimension>, center: Vec3, norma
  * @param normal - Direction and length of the extrusion. Must be non-zero.
  * @param profileShape - Optional scaling profile applied along the extrusion.
  * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
- * @returns `Result` containing the twisted extruded shape or a shell tuple.
+ * @returns `Result` containing the twisted extruded shape, or a shell tuple in shell mode.
  */
+declare function twistExtrude(wire: ClosedWire<Dimension>, angleDegrees: number, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
+/** Twisted extrusion in shell mode, returning `[shell, startWire, endWire]`. */
+declare function twistExtrude(wire: ClosedWire<Dimension>, angleDegrees: number, center: Vec3, normal: Vec3, profileShape: ExtrusionProfile | undefined, shellMode: true): Result<[Shape3D, Wire, Wire]>;
+/** Twisted extrusion with a shell mode known only at runtime. */
 declare function twistExtrude(wire: ClosedWire<Dimension>, angleDegrees: number, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /** Configuration for a single entry in a batch extrude operation. */
@@ -6031,10 +6199,15 @@ declare function linearPattern(shape: Shape3D, direction: Vec3, count: number, s
 /**
  * Create a circular pattern of a shape around an axis.
  *
+ * A full turn (`fullAngle` of ±360) spaces the copies `fullAngle / count`
+ * apart, so the last copy does not land on the first. Any other angle is an
+ * open arc: the first copy stays in place, the last lands at `fullAngle`, and
+ * they are spaced `fullAngle / (count - 1)` apart.
+ *
  * @param shape - The shape to replicate
  * @param axis - Rotation axis direction
  * @param count - Total number of copies (including the original)
- * @param fullAngle - Total angle to spread copies over in degrees (default: 360)
+ * @param fullAngle - Angle in degrees the copies span (default: 360)
  * @param center - Center point of rotation (default: [0,0,0])
  * @param options - Boolean options for the fuse operation
  * @returns Fused shape of all copies
@@ -6637,8 +6810,9 @@ declare function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<S
 /**
  * Measure linear properties of any shape.
  *
- * For edges this is the arc length; for wires/compounds it is the total
- * length of all edges.
+ * For edges this is the arc length; for wires it is the total length of their
+ * edges; for faces, shells, solids, and compounds it is the total length of
+ * their distinct edges, each counted once (a face's seam edge included).
  *
  * @param shape - Any shape whose linear extent is to be measured.
  * @returns `Result` containing length, center of mass, and raw mass property.
@@ -6769,6 +6943,47 @@ declare function checkInterference(shape1: AnyShape<Dimension>, shape2: AnyShape
  */
 declare function checkAllInterferences(shapes: ReadonlyArray<AnyShape<Dimension>>, tolerance?: number): InterferencePair[];
 
+/** A box aligned to a solid's principal axes of inertia. */
+interface PrincipalBoundingBox {
+    /** Box center in world coordinates. */
+    readonly center: Vec3;
+    /** Box axes: orthonormal, right-handed, ordered by decreasing extent. */
+    readonly axes: readonly [Vec3, Vec3, Vec3];
+    /** Full edge lengths along `axes`, largest first. */
+    readonly size: Vec3;
+}
+
+/**
+ * Measure a solid's bounding box on its principal axes of inertia.
+ *
+ * `getBounds` answers in world axes, so a board turned 30 degrees reports an
+ * inflated box with no frame. This box follows the part's own frame instead:
+ * it is the axis-aligned box in the frame of the principal axes of the volume
+ * inertia tensor about the center of mass.
+ *
+ * This is NOT a minimum-volume oriented bounding box. When principal moments
+ * coincide, the principal axes in that plane are not unique and the box can be
+ * larger than the tightest one: a 100 x 100 x 2 plate rotated 30 degrees about
+ * Z reports 136.6 x 136.6 x 2, because any in-plane pair of axes is principal
+ * for a square plate.
+ *
+ * @param shape - A solid, compsolid, or compound containing solids. A compound
+ *   is measured by its solids alone: loose faces, shells, or wires in it are ignored.
+ * @returns `Result` with the box center in world coordinates, orthonormal
+ *   right-handed axes ordered by decreasing extent, and the full edge lengths
+ *   along those axes. Fails with `NOT_A_SOLID` for any other shape type
+ *   (face, wire, shell, ...), `ZERO_VOLUME` when the shape encloses no volume
+ *   (e.g. a compound of faces), and an `UNSUPPORTED` error on kernels without
+ *   an inertia query.
+ *
+ * @example
+ * ```ts
+ * const { size, axes, center } = unwrap(principalBoundingBox(board));
+ * // size: [length, width, thickness]; axes[2] is the board's normal
+ * ```
+ */
+declare function principalBoundingBox(shape: AnyShape<Dimension>): Result<PrincipalBoundingBox>;
+
 /**
  * Import a STEP file from a Blob.
  *
@@ -6791,13 +7006,23 @@ declare function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>>;
 /**
  * Import an STL file from a Blob.
  *
- * Reads the mesh, unifies same-domain faces with `ShapeUpgrade_UnifySameDomain`,
- * and wraps the result as a solid.
+ * Reads the triangle mesh and sews its facets together. A closed mesh becomes a
+ * `Solid` (one planar face per facet), so booleans and volume measurement work on
+ * it directly. An open mesh has no interior, so it comes back as a sewn `Shell`.
+ * A file with several bodies comes back as a `Compound` holding a `Solid` per
+ * closed body and a `Shell` per open one.
  *
  * @param blob - A Blob or File containing STL data (binary or ASCII).
- * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported solid (a shell for an open mesh, a
+ *   compound for several bodies), or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks Every triangle becomes its own B-Rep face, so import time grows with
+ * the triangle count. On the default occt-wasm kernel a mesh whose shared edges
+ * each join two consistently wound triangles takes about 0.3 seconds per 10,000
+ * triangles (about 1.7 seconds for 50,000). One that needs its winding repaired
+ * takes about 2 seconds per 10,000 (about 13 seconds for 50,000), and up to
+ * about twice that when the file holds several bodies. The temporary file on
+ * the WASM FS is cleaned up automatically.
  *
  * @example
  * ```ts
@@ -6812,7 +7037,9 @@ declare function importSTL(blob: Blob): Promise<Result<UnknownDimShape>>;
  * @param blob - A Blob or File containing IGES data (.iges / .igs).
  * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
  *
- * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ * @remarks The temporary file on the WASM FS is cleaned up automatically. The
+ * default occt-wasm kernel is built without an IGES translator, so there this
+ * returns an `UNSUPPORTED_CAPABILITY` error; import STEP instead.
  *
  * @example
  * ```ts
@@ -6828,8 +7055,10 @@ interface DXFImportOptions {
 /**
  * Import a DXF file from a Blob, returning kernel wires.
  *
- * Parses ASCII DXF LINE, CIRCLE, and ARC entities.
- * Edges are assembled into wires using `BRepBuilderAPI_MakeWire`.
+ * Parses ASCII DXF LINE, CIRCLE, ARC, LWPOLYLINE and R12 POLYLINE entities, polyline bulges
+ * included, in world coordinates (planar entities are mapped out of their object coordinate
+ * system). Polygon and polyface meshes are skipped. Edges that meet end to end become one wire,
+ * so disconnected outlines come back as separate wires.
  *
  * @param blob - A Blob containing ASCII DXF data.
  * @param options - Optional import settings (layer filter).
@@ -6857,11 +7086,17 @@ declare function importOBJ(blob: Blob): Promise<Result<UnknownDimShape>>;
 /**
  * Import a 3MF file from a Blob.
  *
- * Extracts the model XML from the ZIP archive, parses vertices and triangles,
- * and builds a solid by sewing the resulting triangular faces.
+ * Extracts the model XML from the ZIP archive and builds a shape per placed
+ * object by sewing its triangles as `importSTL` sews a file: a `Solid` per
+ * closed body, a `Shell` per open one, and each sealed cavity cut from the body
+ * around it. Build-item and component transforms are applied, and coordinates
+ * are scaled from the model `unit` to millimeters.
  *
  * @param blob - A Blob or File containing 3MF data (.3mf).
- * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ * @returns A `Result` wrapping the imported shape (a `Compound` when the build
+ *   places several objects or an object holds several bodies), or an error if
+ *   parsing fails or the build expands to more than 100,000 placed objects or
+ *   2,000,000 triangles.
  *
  * @example
  * ```ts
@@ -7166,13 +7401,14 @@ interface WorkerPool {
 declare function createWorkerPool(options: WorkerPoolOptions): WorkerPool;
 
 /**
- * Structural type matching a Drawing's wire-producing interface.
- * Used in place of importing the actual Drawing class to avoid
- * Layer 2 → Layer 3 boundary violations.
+ * Structural type matching a Drawing: it sketches onto a plane as something
+ * that builds a face (holes included). Used in place of importing the actual
+ * Drawing class to avoid Layer 2 → Layer 3 boundary violations.
  */
 interface DrawingLike {
-    sketchOnPlane(plane: string): {
-        wire: Wire;
+    sketchOnPlane(plane: 'XY'): {
+        face(): Face;
+        delete?(): void;
     };
 }
 
@@ -7183,20 +7419,26 @@ interface DrawingLike {
  * - `[number, number]` — variable radius (start, end)
  * - callback — per-edge radius; return `null` to skip an edge
  */
-type FilletRadius = number | [number, number] | ((edge: Edge<Dimension>) => number | [number, number] | null);
+type FilletRadius = number | [number, number] | ((edge: Edge) => number | [number, number] | null);
 
 /**
  * Chamfer distance specification.
  *
  * - `number` — equal distance
- * - `[number, number]` — asymmetric distances (dist1, dist2)
- * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape)
- * - callback — per-edge distance; return `null` to skip an edge
+ * - `[number, number]` — asymmetric distances (dist1, dist2). brepkit has no asymmetric
+ *   chamfer and returns an `UNSUPPORTED_CAPABILITY` error for two different distances.
+ * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees.
+ *   brepkit has no distance-angle chamfer and returns an `UNSUPPORTED_CAPABILITY` error.
+ * - callback — per-edge value of any of the above; return `null` (or a non-positive
+ *   distance) to skip an edge. The edges it keeps must all get plain distances or all
+ *   get `{ distance, angle }`: mixing the two is an `INVALID_CHAMFER_DISTANCE` error.
+ *   Different `{ distance, angle }` values per edge need a kernel that chamfers each
+ *   edge by its own (occt-wasm 5.9.0+); elsewhere they are an `UNSUPPORTED_CAPABILITY` error.
  */
 type ChamferDistance = number | [number, number] | {
     distance: number;
     angle: number;
-} | ((edge: Edge<Dimension>) => number | [number, number] | {
+} | ((edge: Edge) => number | [number, number] | {
     distance: number;
     angle: number;
 } | null);
@@ -7207,7 +7449,7 @@ type ChamferDistance = number | [number, number] | {
  * - `number` — constant angle in degrees for all selected faces
  * - callback — per-face angle; return `null` to skip a face
  */
-type DraftAngle = number | ((face: Face<Dimension>) => number | null);
+type DraftAngle = number | ((face: Face) => number | null);
 
 /** Options for the draft() modifier. */
 interface DraftOptions {
@@ -7233,7 +7475,12 @@ interface DrillOptions {
 
 /** Options for the pocket() compound operation. */
 interface PocketOptions {
-    /** 2D profile shape to cut into the face. */
+    /**
+     * 2D profile to cut into the face, drawn in XY with its origin at the face
+     * centre. On faces parallel to XY it keeps the world X and Y axes; on any
+     * other face its Y axis runs up the face and its X axis points right as seen
+     * from outside.
+     */
     profile: DrawingLike | Wire;
     /** Which face to pocket. Default: top face. */
     face?: Face | FinderFn<Face>;
@@ -7243,7 +7490,7 @@ interface PocketOptions {
 
 /** Options for the boss() compound operation. */
 interface BossOptions {
-    /** 2D profile shape to extrude onto the face. */
+    /** 2D profile to extrude from the face, placed as for {@link PocketOptions.profile}. */
     profile: DrawingLike | Wire;
     /** Which face to add onto. Default: top face. */
     face?: Face | FinderFn<Face>;
@@ -7977,6 +8224,10 @@ declare class OcctWasmAdapter implements KernelAdapter {
     private readonly Module;
     private readonly k;
     private readonly owner;
+    /** Present when this occt-wasm build has `booleanOp`. */
+    readonly fuseAllWithHistory?: KernelAdapter['fuseAllWithHistory'];
+    /** Present when this occt-wasm build has `booleanOp`. */
+    readonly cutAllWithHistory?: KernelAdapter['cutAllWithHistory'];
     constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: OcctKernelOwner);
     /**
      * Build an adapter from occt-wasm's `OcctKernel` wrapper, retaining it for the
@@ -7987,6 +8238,22 @@ declare class OcctWasmAdapter implements KernelAdapter {
     static fromKernel(kernel: OcctKernelOwner): OcctWasmAdapter;
     /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
     get retainedKernelOwner(): OcctKernelOwner | undefined;
+    /**
+     * Bring a shape built through occt-wasm's own `OcctKernel` (the kernel this
+     * adapter wraps) into brepjs without a BREP round trip:
+     * `castShape(adapter.adoptShape(id))`.
+     *
+     * brepjs takes ownership of the arena slot and frees it when the shape is
+     * disposed or collected, so do not also `release(id)` it through `OcctKernel`.
+     */
+    adoptShape(id: number): KernelShape;
+    /**
+     * The occt-wasm arena id behind a brepjs shape (`adapter.shapeId(solid.wrapped)`),
+     * for passing it to `OcctKernel` calls. The id stays owned by brepjs: it is
+     * valid until the brepjs shape is disposed, and must not be released through
+     * `OcctKernel`.
+     */
+    shapeId(shape: KernelShape): number;
     dispose(h: {
         delete(): void;
     }): void;
@@ -8023,11 +8290,11 @@ declare class OcctWasmAdapter implements KernelAdapter {
     makeCircleEdge(center: [number, number, number], normal: [number, number, number], radius: number): KernelShape;
     makeCircleArc(center: [number, number, number], normal: [number, number, number], radius: number, startAngle: number, endAngle: number): KernelShape;
     makeArcEdge(p1: [number, number, number], p2: [number, number, number], p3: [number, number, number]): KernelShape;
-    makeEllipseEdge(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, _xDir?: [number, number, number]): KernelShape;
-    makeEllipseArc(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, _xDir?: [number, number, number]): KernelShape;
+    makeEllipseEdge(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, xDir?: [number, number, number]): KernelShape;
+    makeEllipseArc(center: [number, number, number], normal: [number, number, number], majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, xDir?: [number, number, number]): KernelShape;
     makeBezierEdge(points: [number, number, number][]): KernelShape;
     makeTangentArc(startPoint: [number, number, number], startTangent: [number, number, number], endPoint: [number, number, number]): KernelShape;
-    makeHelixWire(pitch: number, height: number, radius: number, center?: [number, number, number], direction?: [number, number, number], _leftHanded?: boolean): KernelShape;
+    makeHelixWire(pitch: number, height: number, radius: number, center?: [number, number, number], direction?: [number, number, number], leftHanded?: boolean): KernelShape;
     makeWireFromMixed(items: KernelShape[]): KernelShape;
     makeCompound(shapes: KernelShape[]): KernelShape;
     solidFromShell(shell: KernelShape): KernelShape;
@@ -8097,6 +8364,11 @@ declare class OcctWasmAdapter implements KernelAdapter {
     fillet(shape: KernelShape, edges: KernelShape[], radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamfer(shape: KernelShape, edges: KernelShape[], distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])): KernelShape;
     chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
+    chamferDistAngles(shape: KernelShape, edges: ReadonlyArray<{
+        edge: KernelShape;
+        distance: number;
+        angleDeg: number;
+    }>): KernelShape;
     shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
     thicken(shape: KernelShape, thickness: number): KernelShape;
     offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
@@ -8145,7 +8417,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     shellWithHistory(shape: KernelShape, faces: KernelShape[], thickness: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
     thickenWithHistory(shape: KernelShape, thickness: number, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     offsetWithHistory(shape: KernelShape, distance: number, inputFaceHashes: number[], hashUpperBound: number, tolerance?: number): OperationResult;
-    draftWithHistory(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], _neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number), _inputFaceHashes: number[], _hashUpperBound: number): OperationResult;
+    draftWithHistory(shape: KernelShape, faces: KernelShape[], pullDirection: [number, number, number], neutralPlane: [number, number, number], angleDeg: number | ((face: KernelShape) => number), inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     applyComposedTransformWithHistory(shape: KernelShape, transformHandle: KernelType, inputFaceHashes: number[], hashUpperBound: number): OperationResult;
     mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
     meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
@@ -8196,6 +8468,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
         min: [number, number, number];
         max: [number, number, number];
     };
+    inertia(shape: KernelShape): Matrix3;
     distance(shape1: KernelShape, shape2: KernelShape): DistanceResult;
     surfaceCurvature(face: KernelShape, u: number, v: number): {
         gaussian: number;
@@ -8320,7 +8593,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
     makeEllipse2d(cx: number, cy: number, majorRadius: number, minorRadius: number, xDirX?: number, xDirY?: number, sense?: boolean): Curve2dHandle;
     makeEllipseArc2d(cx: number, cy: number, majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, xDirX?: number, xDirY?: number, sense?: boolean): Curve2dHandle;
     makeBezier2d(points: [number, number][]): Curve2dHandle;
-    makeBSpline2d(points: [number, number][], _options?: {
+    makeBSpline2d(points: [number, number][], options?: {
         degMin?: number;
         degMax?: number;
         continuity?: 'C0' | 'C1' | 'C2' | 'C3';
@@ -8365,7 +8638,7 @@ declare class OcctWasmAdapter implements KernelAdapter {
         distance: number;
     } | null;
     distanceBetweenCurves2d(c1: Curve2dHandle, c2: Curve2dHandle, p1Start: number, p1End: number, p2Start: number, p2End: number): number;
-    approximateCurve2dAsBSpline(curve: Curve2dHandle, _tolerance: number, _continuity: 'C0' | 'C1' | 'C2' | 'C3', maxSegments: number): Curve2dHandle;
+    approximateCurve2dAsBSpline(curve: Curve2dHandle, tolerance: number, _continuity: 'C0' | 'C1' | 'C2' | 'C3', maxSegments: number): Curve2dHandle;
     decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[];
     createBoundingBox2d(): BBox2dHandle;
     addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tolerance: number): void;
@@ -8961,11 +9234,11 @@ declare class Sketch implements SketchInterface {
     /** Set the default extrusion/normal direction. */
     set defaultDirection(newDirection: PointInput);
     /** Transforms the lines into a face. The lines should be closed. */
-    face(): Face;
+    face(): OrientedFace & PlanarFace;
     /** Return a clone of the underlying wire. */
     wires(): Wire;
     /** Alias for {@link Sketch.face}. */
-    faces(): Face;
+    faces(): OrientedFace & PlanarFace;
     /**
      * Revolves the drawing on an axis (defined by its direction and an origin
      * (defaults to the sketch origin)
@@ -9047,7 +9320,7 @@ declare class CompoundSketch implements SketchInterface {
      */
     get wires(): import('../core/shapeTypes.js').Compound;
     /** Build a face from the outer boundary with inner wires subtracted as holes. */
-    face(): Face;
+    face(): OrientedFace & PlanarFace;
     /**
      * Extrude the compound face (with holes) along the default or given direction.
      *
@@ -9099,8 +9372,10 @@ declare class Sketches implements SketchInterface {
      * the single profile is a compound (face-with-holes) sketch.
      */
     private soleSketch;
+    /** Release the kernel resources of every contained sketch. */
+    delete(): void;
     /** Build a face from the sole contained profile (see {@link Sketches.faces}). */
-    face(): Face;
+    face(): OrientedFace & PlanarFace;
     /** Loft from the sole contained profile to one or more other sketches. */
     loftWith(otherSketches: SketchInterface | SketchInterface[], loftConfig?: LoftOptions, returnShell?: boolean): Shape3D;
     /** Sweep a profile along the sole contained sketch's wire. */
@@ -9138,6 +9413,12 @@ declare class Sketches implements SketchInterface {
     revolve(revolutionAxis?: PointInput, config?: {
         origin?: PointInput;
     }): Compound;
+    /**
+     * Combine per-profile results into one compound (which holds its own references) and
+     * release what the profiles leave behind: a `Sketch` deletes itself when extruded or
+     * revolved, but a `CompoundSketch` leaves its wires to the caller.
+     */
+    private consumeInto;
 }
 
 /** A shape with optional name and color for STEP assembly export. */
@@ -9314,9 +9595,8 @@ declare function isShape1D<D extends Dimension>(s: AnyShape<D>): s is Shape1D<D>
  *
  * **Note**: When `D` is `'2D'`, Shell/Solid/CompSolid are not valid members
  * of `AnyShape<'2D'>`. If the kernel shape happens to be one of these types,
- * they will be cast unsoundly. Prefer {@link castShape3D} for shapes known
- * to be 3D, and use the default `castShape()` (which defaults to `'3D'`)
- * for normal usage.
+ * they will be cast unsoundly. For normal usage, call `castShape()` without a
+ * dimension (it defaults to `'3D'`) or {@link castShape3D}, which does the same.
  */
 declare function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?: D): AnyShape<D>;
 
@@ -9333,6 +9613,7 @@ type RequireDimension<D extends Dimension, Expected extends Dimension, T, Op ext
 type SameDimension<A extends Dimension, B extends Dimension, Op extends string = 'operation'> = A extends B ? A : DimensionError<Op, A, B>;
 
 /** Get all edges of a shape as branded Edge handles. Results are cached per shape. */
+declare function getEdges(shape: Shape3D): Edge[];
 declare function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[];
 
 /**
@@ -9341,24 +9622,31 @@ declare function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[];
  * Returns `Face[]` — use `isOrientedFace()` or `orientedFace()` to narrow
  * individual faces to `OrientedFace` when the orientation guarantee is needed.
  */
+declare function getFaces(shape: Shape3D): Face[];
 declare function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[];
 
 /** Get all wires of a shape as branded Wire handles. Results are cached per shape. */
+declare function getWires(shape: Shape3D): Wire[];
 declare function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[];
 
 /** Get all vertices of a shape as branded Vertex handles. Results are cached per shape. */
+declare function getVertices(shape: Shape3D): Vertex[];
 declare function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[];
 
 /** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
+declare function iterEdges(shape: Shape3D): Generator<Edge>;
 declare function iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>>;
 
 /** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
+declare function iterFaces(shape: Shape3D): Generator<Face>;
 declare function iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>>;
 
 /** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
+declare function iterWires(shape: Shape3D): Generator<Wire>;
 declare function iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>>;
 
 /** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
+declare function iterVertices(shape: Shape3D): Generator<Vertex>;
 declare function iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>>;
 
 /**
@@ -9509,8 +9797,9 @@ declare function instanceGrid<D extends Dimension>(source: AnyShape<D>, opts: In
  * Produce real geometry: a Compound of N placed copies (default), or a single
  * fused solid (`fuse: true`, 3D only). This is where the N kernel transforms
  * happen. A grid-built instance fuses via the faster kernel `gridPattern`.
+ * Either result is a {@link Shape3D}.
  */
-declare function materialize<D extends Dimension>(inst: InstancedShape<D>, opts?: MaterializeOptions): Result<AnyShape<Dimension>>;
+declare function materialize<D extends Dimension>(inst: InstancedShape<D>, opts?: MaterializeOptions): Result<Shape3D>;
 
 /**
  * Remove holes from a face by rebuilding it from only the outer wire.
@@ -9534,6 +9823,9 @@ declare function chamfer<T extends ValidSolid>(shape: Shapeable<T>, edges: Edge[
 declare function shell<T extends ValidSolid>(shape: Shapeable<T>, faces: Face[] | FinderFn<Face> | ShapeFinder<Face>, thickness: number, options?: {
     tolerance?: number;
 }): Result<T>;
+
+/** Remove faces (a hole, pocket, boss, or fillet) and close the gap with the faces around them. */
+declare function removeFaces<T extends ValidSolid>(shape: Shapeable<T>, faces: Face[] | FinderFn<Face> | ShapeFinder<Face>): Result<T>;
 
 /** Offset all faces of a valid solid by a given distance. */
 declare function offset<T extends ValidSolid>(shape: Shapeable<T>, distance: number, options?: {
@@ -9742,13 +10034,13 @@ declare function colorFaces<T extends AnyShape<Dimension>>(shape: T, faces: Face
 
 interface ShapeFinder<T extends AnyShape<Dimension>> {
     /** Add a custom predicate filter. Returns new finder. */
-    readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
+    readonly when: (predicate: Predicate<T>) => this;
     /** Filter to elements in a list. Returns new finder. */
-    readonly inList: (elements: T[]) => ShapeFinder<T>;
+    readonly inList: (elements: T[]) => this;
     /** Invert a filter. Returns new finder. */
-    readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
+    readonly not: (builderFn: (f: this) => ShapeFinder<T>) => this;
     /** Combine filters with OR. Returns new finder. */
-    readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
+    readonly either: (fns: ((f: this) => ShapeFinder<T>)[]) => this;
     /** Find all matching elements from a shape. */
     readonly findAll: (shape: AnyShape<Dimension>) => T[];
     /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
@@ -9756,17 +10048,17 @@ interface ShapeFinder<T extends AnyShape<Dimension>> {
     /** Check if an element passes all filters. */
     readonly shouldKeep: (element: T) => boolean;
     /** Intersect: element must match both this finder AND other. */
-    readonly and: (other: ShapeFinder<T>) => ShapeFinder<T>;
+    readonly and: (other: ShapeFinder<T>) => this;
     /** Union: element must match this finder OR other. */
-    readonly or: (other: ShapeFinder<T>) => ShapeFinder<T>;
+    readonly or: (other: ShapeFinder<T>) => this;
     /** Negate: invert all filters on this finder. */
-    readonly negate: () => ShapeFinder<T>;
+    readonly negate: () => this;
     readonly _filters: ReadonlyArray<Predicate<T>>;
     readonly _topoKind: TopoKind;
 }
 
 /** Callback that configures a shape finder for inline use in modifiers. */
-type FinderFn<T extends AnyShape<Dimension>> = (finder: ShapeFinder<T>) => ShapeFinder<T>;
+type FinderFn<T extends AnyShape<Dimension>> = (finder: FinderFor<T>) => ShapeFinder<T>;
 
 /**
  * Marker interface for the shape() wrapper.
@@ -9924,7 +10216,13 @@ interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
     heal(): Wrapped<T>;
     simplify(): Wrapped<T>;
     toBREP(): string;
+    apply<U extends Face>(fn: (shape: T) => U): WrappedFace<U>;
+    apply<U extends Shape3D>(fn: (shape: T) => U): Wrapped3D<U>;
+    apply<U extends Edge | Wire>(fn: (shape: T) => U): WrappedCurve<U>;
     apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
+    applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace<U>;
+    applyResult<U extends Shape3D>(fn: (shape: T) => Result<U>): Wrapped3D<U>;
+    applyResult<U extends Edge | Wire>(fn: (shape: T) => Result<U>): WrappedCurve<U>;
     applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
     done(): T;
 }
@@ -9952,6 +10250,7 @@ interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
     shell(faces: Face[] | FinderFn<Face> | ShapeFinder<Face>, thickness: number, options?: {
         tolerance?: number;
     }): Wrapped3D<T>;
+    removeFaces(faces: Face[] | FinderFn<Face> | ShapeFinder<Face>): Wrapped3D<T>;
     offset(distance: number, options?: {
         tolerance?: number;
     }): Wrapped3D<T>;
@@ -9984,8 +10283,11 @@ interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
     sweep(spine: Shapeable<Wire>, options?: SweepOptions): Wrapped3D<Shape3D>;
 }
 
-/** Face wrapper — face introspection + 2D→3D transitions. */
-interface WrappedFace extends Wrapped<Face> {
+/**
+ * Face wrapper: face introspection + 2D→3D transitions. `F` keeps the wrapped face's
+ * own type (an `OrientedFace & PlanarFace` from `apply()`, say) for `val` and `done()`.
+ */
+interface WrappedFace<F extends Face = Face> extends Wrapped<F> {
     area(): number;
     normalAt(point?: Vec3): Vec3;
     center(): Vec3;
@@ -10002,6 +10304,7 @@ interface WrappedFace extends Wrapped<Face> {
 
 // ── Aliases ──
 
+type KernelSurfaceType = SurfaceType;
 declare const zipResults: typeof zip;
 type DirectionInput = Direction;
 declare const chamferDistAngleShape: typeof chamferDistAngle;
@@ -10130,6 +10433,20 @@ declare namespace csg {
   export function compound(children: ReadonlyArray<IRNode>): CompoundNode;
 
   export function instance(source: IRNode, placements: ReadonlyArray<Matrix4x4>, fuse?: boolean): InstanceNode;
+
+  export interface ExtensionOptions {
+      readonly children?: ReadonlyArray<IRNode> | undefined;
+      readonly params?: Readonly<Record<string, ScalarInput>> | undefined;
+      /** Must be JSON-safe; defaults to `null`. */
+      readonly data?: JsonValue | undefined;
+  }
+
+  /** A caller-defined operation, materialized at evaluation by the
+   *  `ExtensionEvaluator` registered under `name` in
+   *  `EvaluatorOptions.extensions`. Unlike the other builders this one validates
+   *  eagerly and throws a TypeError: a node whose data cannot be hashed
+   *  canonically has no content address. */
+  export function extension(name: string, output: OutputKind, options?: ExtensionOptions): ExtensionNode;
 
   export type BinaryOp = '+' | '-' | '*' | '/';
 
@@ -10274,13 +10591,63 @@ declare namespace csg {
       readonly fuse: boolean;
   }
 
+  /** A value `JSON.stringify` / `JSON.parse` round-trips exactly. */
+  export type JsonValue = null | boolean | number | string | readonly JsonValue[] | {
+      readonly [key: string]: JsonValue;
+  };
+
+  /** An operation the IR has no built-in kind for, materialized by the
+   *  {@link ExtensionEvaluator} registered under `name` in
+   *  `EvaluatorOptions.extensions`. `optimize` treats it as opaque: its
+   *  children and params are optimized, the node itself is never folded. */
+  export interface ExtensionNode extends IRNodeBase {
+      readonly kind: 'Extension';
+      readonly name: string;
+      /** Declared at build time for `outputKindOf`; evaluation does not check the
+       *  materialized shape against it. */
+      readonly output: OutputKind;
+      readonly children: readonly IRNode[];
+      /** Scalar inputs, resolved to numbers against the env before the evaluator
+       *  runs, so they take part in param invalidation. */
+      readonly params: Readonly<Record<string, Expr>>;
+      /** Frozen canonical copy of the builder input; neither key order nor `-0`
+       *  changes the hash. */
+      readonly data: JsonValue;
+  }
+
+  export interface ExtensionInput {
+      readonly params: Readonly<Record<string, number>>;
+      readonly data: JsonValue;
+      /** The node's children, materialized in order. */
+      readonly children: readonly AnyShape<Dimension>[];
+  }
+
+  /**
+   * Materializes an {@link ExtensionNode}; registered by name through
+   * `EvaluatorOptions.extensions` and called under the Evaluator's kernel.
+   *
+   * The Evaluator caches the result by the node's content address, so it must
+   * depend only on `input`.
+   *
+   * Ownership: `children` are borrowed from the Evaluator's cache. Do not
+   * dispose them or keep them past the call (a bounded cache may evict them).
+   * Return either a fresh shape or one of `children` unchanged; the Evaluator
+   * owns and disposes the result, and reference-counts handles so a returned
+   * child is freed once. Never return a handle owned elsewhere, such as a
+   * borrowed sub-shape from `getFaces`.
+   *
+   * Return an `Err` for expected failures; a throw escapes `evaluate()` like a
+   * throw from any built-in evaluator.
+   */
+  export type ExtensionEvaluator = (input: ExtensionInput) => Result<AnyShape<Dimension>>;
+
   export type PrimitiveNode = BoxNode | SphereNode | CylinderNode | ConeNode | TorusNode | PolygonNode | CircleNode | LineNode | VertexLitNode | EmptyNode;
 
   export type BooleanNode = FuseNode | CutNode | IntersectNode | FuseAllNode | CutAllNode;
 
   export type TransformIRNode = TranslateNode | RotateNode | ScaleNode | MirrorNode;
 
-  export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode | ColorNode | FilletNode | ChamferNode | ShellNode | CompoundNode | InstanceNode;
+  export type IRNode = PrimitiveNode | BooleanNode | TransformIRNode | ExtrudeNode | RevolveNode | LoftNode | SweepNode | ProfileNode | PathNode | ColorNode | FilletNode | ChamferNode | ShellNode | CompoundNode | InstanceNode | ExtensionNode;
 
   export type NodeKind = IRNode['kind'];
 
@@ -10448,6 +10815,14 @@ declare namespace csg {
        * positive integer.
        */
       readonly maxMeshCacheEntries?: number | undefined;
+      /**
+       * Evaluators for `Extension` nodes, keyed by node name. The registry is
+       * copied at construction (the cache key does not include it, so it must not
+       * change under a live cache). An Extension whose name is not registered
+       * evaluates to an Err with code `CSG_EXTENSION_UNKNOWN`. See
+       * {@link ExtensionEvaluator} for the ownership contract.
+       */
+      readonly extensions?: Readonly<Record<string, ExtensionEvaluator>> | undefined;
   }
 
   export interface StepInfo {
@@ -10475,6 +10850,7 @@ declare namespace csg {
       private readonly maxMeshCacheEntries;
       private readonly meshCache;
       private readonly onStep?;
+      private readonly extensions;
       private hits;
       private misses;
       private evictions;
@@ -10527,7 +10903,7 @@ declare namespace csg {
    */
   export function withEvaluator<T extends Exclude<unknown, Promise<unknown>>>(options: EvaluatorOptions, fn: (evaluator: Evaluator) => T): T;
 
-  export const CSG_VERSION = 8;
+  export const CSG_VERSION = 9;
 
   export interface CsgEnvelope {
       readonly csgVersion: number;

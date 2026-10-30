@@ -74,6 +74,7 @@ import {
   mirrorJoin,
   complexExtrude,
   twistExtrude,
+  supportExtrude,
   sketchRoundedRectangle,
   drawCircle,
   section,
@@ -1123,16 +1124,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           using e = line([0, 0, 0], [0, 0, 20]);
           using spine = unwrap(wire([e]));
           const r = sweep(profile, spine);
-          if (isOk(r)) {
-            const v = unwrap(r);
-            if (Array.isArray(v)) {
-              v.forEach((s) => {
-                s[Symbol.dispose]();
-              });
-            } else {
-              v[Symbol.dispose]();
-            }
-          }
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
     });
@@ -1417,10 +1409,7 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (!w) throw new Error('polygon face must have a wire');
           const cw = unwrap(closedWire(w));
           const r = complexExtrude(cw, [0, 0, 0], [0, 0, 10]);
-          if (isOk(r)) {
-            const v = unwrap(r);
-            if (!Array.isArray(v)) v[Symbol.dispose]();
-          }
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
         })
       ).toBe(0);
       expect(
@@ -1437,10 +1426,35 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           if (!w) throw new Error('polygon face must have a wire');
           const cw = unwrap(closedWire(w));
           const r = twistExtrude(cw, 90, [0, 0, 0], [0, 0, 10]);
-          if (isOk(r)) {
-            const v = unwrap(r);
-            if (!Array.isArray(v)) v[Symbol.dispose]();
-          }
+          if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('supportExtrude leaks nothing', () => {
+      // A plane through the spine, so the support is honoured rather than dropped.
+      using support = unwrap(
+        polygon([
+          [-20, 0, -20],
+          [20, 0, -20],
+          [20, 0, 20],
+          [-20, 0, 20],
+        ])
+      );
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [-2, -2, 0],
+              [2, -2, 0],
+              [2, 2, 0],
+              [-2, 2, 0],
+            ])
+          );
+          const w = getWires(f)[0];
+          if (!w) throw new Error('polygon face must have a wire');
+          const cw = unwrap(closedWire(w));
+          unwrap(supportExtrude(cw, [0, 0, 0], [0, 0, 10], support.wrapped))[Symbol.dispose]();
         })
       ).toBe(0);
     });

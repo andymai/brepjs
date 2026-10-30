@@ -19,8 +19,6 @@ import {
   getFaces,
   getHashCode,
   isEdge,
-  isOrientedFace,
-  isPlanarFace,
   isSolid,
   isValidSolid,
   polygon,
@@ -165,8 +163,6 @@ describe.skipIf(shouldSkipSuite('shapeRefExtrudeRoles.recorded'))('extrude face 
       .cut(drawCircle(4).translate(-6, 0))
       .cut(drawCircle(3).translate(8, 0));
     using face = drawing.sketchOnPlane('XY').face();
-    if (!isOrientedFace(face) || !isPlanarFace(face))
-      throw new Error('profile is not a planar face');
     using solid = unwrap(extrude(face, [0, 0, 5]));
     const roles = assignRoles(solid, 'extrude');
 

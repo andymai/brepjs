@@ -11,7 +11,7 @@ describe('PerfStats', () => {
     // Simulate work
     let sum = 0;
     for (let i = 0; i < 1_000_000; i++) sum += i;
-    void sum;
+    expect(sum).toBeGreaterThan(0);
     end();
 
     const stats = getPerformanceStats();

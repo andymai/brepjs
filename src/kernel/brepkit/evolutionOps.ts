@@ -655,12 +655,9 @@ export function rotateWithHistory(
   axis?: readonly [number, number, number],
   center?: readonly [number, number, number]
 ): OperationResult {
-  // shapeFns.rotate() passes angle in radians; convert back to degrees
-  // since rotate() expects degrees (it calls rotationMatrix which converts internally)
-  const angleDeg = (angle * 180) / Math.PI;
   return buildEvolution(
     bk,
-    rotate(bk, shape, angleDeg, axis, center),
+    rotate(bk, shape, angle, axis, center),
     inputFaceHashes,
     hashUpperBound,
     true

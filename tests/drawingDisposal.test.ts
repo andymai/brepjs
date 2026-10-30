@@ -68,7 +68,7 @@ describe('Drawing disposal', () => {
 
   it('is idempotent', () => {
     const drawing = drawRectangle(10, 10);
-    void drawing.boundingBox;
+    expect(drawing.boundingBox).toBeDefined();
     drawing.delete();
 
     expect(() => {
@@ -143,7 +143,7 @@ describe.skipIf(!getKernelCapabilities(currentKernel).kernel2D)('container box l
     async () => {
       const leak = await leakPerCall(() => {
         const drawing = drawRectangle(20, 2);
-        void drawing.boundingBox;
+        expect(drawing.boundingBox).toBeDefined();
         drawing.delete();
       });
       expect(leak).toBeLessThan(0.5);
@@ -159,7 +159,7 @@ describe.skipIf(!getKernelCapabilities(currentKernel).kernel2D)('container box l
       });
       const withRead = await leakPerCall(() => {
         const drawing = drawRectangle(20, 2).cut(drawRectangle(2, 10));
-        void drawing.boundingBox;
+        expect(drawing.boundingBox).toBeDefined();
         drawing.delete();
       });
 

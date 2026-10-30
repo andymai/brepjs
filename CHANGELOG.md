@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.12.15](https://github.com/andymai/brepjs/compare/brepjs-v20.12.14...brepjs-v20.12.15) (2026-10-30)
+
+
+### Bug Fixes
+
+* **types:** match public types to runtime and align kernel rotation units ([#2556](https://github.com/andymai/brepjs/issues/2556)) ([92e929c](https://github.com/andymai/brepjs/commit/92e929c52e59df887abde917f7cee74339dddd85))
+
 ## [20.12.14](https://github.com/andymai/brepjs/compare/brepjs-v20.12.13...brepjs-v20.12.14) (2026-10-30)
 
 

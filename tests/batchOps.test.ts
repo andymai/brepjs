@@ -78,6 +78,24 @@ describe('transformBatch', () => {
     expect(kernel.volume(rotated)).toBeCloseTo(1000, 0);
   });
 
+  it('reads rotate angles in degrees', () => {
+    // A 10 x 20 x 30 box turned 90 degrees about +Z maps (x, y) to (-y, x).
+    using b = box(10, 20, 30);
+    const shapes = kernel.transformBatch([
+      { type: 'rotate', shape: b.wrapped, angle: 90, axis: [0, 0, 1], center: [0, 0, 0] },
+    ]);
+    try {
+      expect(shapes).toHaveLength(1);
+      const bb = kernel.boundingBox(shapes[0]);
+      expect(bb.min[0]).toBeCloseTo(-20, 3);
+      expect(bb.max[0]).toBeCloseTo(0, 3);
+      expect(bb.min[1]).toBeCloseTo(0, 3);
+      expect(bb.max[1]).toBeCloseTo(10, 3);
+    } finally {
+      for (const s of shapes) kernel.dispose(s);
+    }
+  });
+
   it('applies mirror transform', () => {
     const b = oc(box(10, 10, 10));
     const shapes = kernel.transformBatch([
