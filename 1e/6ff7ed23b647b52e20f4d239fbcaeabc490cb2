@@ -1,0 +1,51 @@
+src/measurement/principalBoxFns.ts
+  s_d4ab5fb2066c9b::t_3f776fb3cea350 8,17,57-68,133,139,169-207,224-225,245-256
+  s_d4ab5fb2066c9b::t_cb6de260bea811 208-209
+tests/booleanFns.test.ts
+  s_d4ab5fb2066c9b::t_eb02792d3bcd69 93-121
+  s_d4ab5fb2066c9b::t_598ff17f05f1e0 32-33,35
+  s_d4ab5fb2066c9b::t_a0eef5012edd57 543-550
+src/topology/booleanFns.ts
+  s_d4ab5fb2066c9b::t_3f776fb3cea350 27,31,34,463,496-502
+  s_d4ab5fb2066c9b::t_8a1fd6480122f5 503-504
+src/measurement/README.md
+  s_d4ab5fb2066c9b::t_8b3dcc5c7e57e4 44
+  s_d4ab5fb2066c9b::t_35bec56722c6e1 76
+tests/principalBoxFns.test.ts
+  s_d4ab5fb2066c9b::t_430aaaa5c6fbe9 147-149,152-166,169-173
+  s_d4ab5fb2066c9b::t_08cd94e6ee7ad7 9-11,13
+  s_d4ab5fb2066c9b::t_7f6fb7a943343e 12,27,50-57,150-151,167-168
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_1baa3fc314dcdb 345-346
+  s_d4ab5fb2066c9b::t_6f4a9a4688f1ac 125-126
+  s_d4ab5fb2066c9b::t_7c45a322c648c5 1443-1466
+  s_d4ab5fb2066c9b::t_7e01f839167842 375-384
+tests/measureFns.test.ts
+  s_d4ab5fb2066c9b::t_4812d28c8f8d92 181-199
+  s_d4ab5fb2066c9b::t_d7683bfa069672 38
+src/topology/metadata/metadataPropagation.ts
+  s_d4ab5fb2066c9b::t_3f776fb3cea350 112-114,117
+src/operations/instanceFns.ts
+  s_d4ab5fb2066c9b::t_3f776fb3cea350 178-180,197
+src/measurement/measureFns.ts
+  s_d4ab5fb2066c9b::t_3f776fb3cea350 43-44,46,60-65,182-184,202,206-207
+tests/instanceFns.test.ts
+  s_d4ab5fb2066c9b::t_ef25bcad9bb420 113-115,118-120,122-124
+  s_d4ab5fb2066c9b::t_063bcdcd81f279 116-117,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e6ff7ed23b647b52e20f4d239fbcaeabc490cb2",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
