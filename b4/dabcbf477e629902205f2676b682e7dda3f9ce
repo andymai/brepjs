@@ -1,0 +1,27 @@
+tests/voxelRepair.test.ts
+  s_d4ab5fb2066c9b::t_cd3c2256d37784 112-113
+tests/minkowskiFns.test.ts
+  s_d4ab5fb2066c9b::t_cd3c2256d37784 28
+tests/interferenceFns.test.ts
+  s_d4ab5fb2066c9b::t_cd3c2256d37784 149
+tests/drawingDisposal.test.ts
+  s_d4ab5fb2066c9b::t_cd3c2256d37784 71,146,162
+tests/perfStats.test.ts
+  s_d4ab5fb2066c9b::t_cd3c2256d37784 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4dabcbf477e629902205f2676b682e7dda3f9ce",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
