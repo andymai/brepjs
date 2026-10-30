@@ -1,0 +1,35 @@
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_3da49c978c1879 68
+tests/parity/composedTransformParity.test.ts
+  s_d4ab5fb2066c9b::t_f1cdbae92cf5e8 41,44-47,77-78,98-99,143-148,152-153
+tests/parity/manifold.test.ts
+  s_d4ab5fb2066c9b::t_34adbef937e659 213,370
+tests/parity/nativeEdges.test.ts
+  s_d4ab5fb2066c9b::t_ea2adff7bc669e 16,29
+tests/parity/nativeFaces.test.ts
+  s_d4ab5fb2066c9b::t_9dcb99bfce9c37 19,32,60-62
+tests/parity/planeExtrudeOrientation.test.ts
+  s_d4ab5fb2066c9b::t_cd0cf7c9289a9c 26,29-32,56-57
+tests/parity/profileExtrude.test.ts
+  s_d4ab5fb2066c9b::t_20b253575cf994 15-16,35,37,69-70,76
+tests/parity/roundtrip.test.ts
+  s_d4ab5fb2066c9b::t_684bc62f5a8dbc 38,55
+tests/parity/transforms.test.ts
+  s_d4ab5fb2066c9b::t_249d44ff08abcb 45,64,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de416e37390bfbfd6bd3e02da1f5c9df55442116",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
