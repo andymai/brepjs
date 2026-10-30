@@ -243,14 +243,11 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
   toBREP(): string;
 
   // Escape hatches: the result is wrapped by its kind, as shape() wraps its argument.
-  // The Face overloads stay generic: a non-generic first overload makes TypeScript infer
-  // AnyShape for U in the catch-all when the caller's own shape type is a type parameter.
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- see above
-  apply<U extends Face>(fn: (shape: T) => U): WrappedFace;
+  apply<U extends Face>(fn: (shape: T) => U): WrappedFace<U>;
   apply<U extends Shape3D>(fn: (shape: T) => U): Wrapped3D<U>;
   apply<U extends Edge | Wire>(fn: (shape: T) => U): WrappedCurve<U>;
   apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
-  applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace;
+  applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace<U>;
   applyResult<U extends Shape3D>(fn: (shape: T) => Result<U>): Wrapped3D<U>;
   applyResult<U extends Edge | Wire>(fn: (shape: T) => Result<U>): WrappedCurve<U>;
   applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
@@ -334,8 +331,11 @@ export interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
   sweep(spine: Shapeable<Wire>, options?: SweepOptions): Wrapped3D<Shape3D>;
 }
 
-/** Face wrapper — face introspection + 2D→3D transitions. */
-export interface WrappedFace extends Wrapped<Face> {
+/**
+ * Face wrapper: face introspection + 2D→3D transitions. `F` keeps the wrapped face's
+ * own type (an `OrientedFace & PlanarFace` from `apply()`, say) for `val` and `done()`.
+ */
+export interface WrappedFace<F extends Face = Face> extends Wrapped<F> {
   area(): number;
   normalAt(point?: Vec3): Vec3;
   center(): Vec3;
@@ -538,7 +538,7 @@ function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
   };
 }
 
-function createWrappedFace(val: Face): WrappedFace {
+function createWrappedFace<F extends Face>(val: F): WrappedFace<F> {
   const base = createWrappedBase(val);
 
   return {
@@ -562,12 +562,7 @@ function createWrappedFace(val: Face): WrappedFace {
 
 function wrapAny<T extends AnyShape>(val: T): Wrapped<T> {
   if (isShape3D(val)) return createWrapped3D(val);
-  if (isFace(val)) {
-    // isFace(val) narrows val to Face at runtime, so T is Face here. TS can't
-    // propagate that into the generic, so the cast is safe by construction.
-    // brepjs-patterns-disable: no-double-cast
-    return createWrappedFace(val) as unknown as Wrapped<T>;
-  }
+  if (isFace(val)) return createWrappedFace(val);
   if (isEdge(val) || isWire(val)) return createWrappedCurve(val);
   return createWrappedBase(val);
 }

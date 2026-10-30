@@ -20,6 +20,8 @@ import {
   extrude,
   revolve,
   sketchRectangle,
+  shape,
+  ok,
 } from '@/index.js';
 import type {
   Drawing,
@@ -40,6 +42,8 @@ import type {
   CompoundSketch,
   Sketches,
   SketchInterface,
+  Face,
+  WrappedFace,
 } from '@/index.js';
 
 describe('finder callbacks get the concrete finder', () => {
@@ -112,5 +116,31 @@ describe('sketch faces feed extrude and revolve', () => {
     const fromCanned = () => revolve(sketchRectangle(2, 5, { origin: [6, 0] }).face());
     expectTypeOf(fromDrawing).returns.toEqualTypeOf<Result<Solid>>();
     expectTypeOf(fromCanned).returns.toEqualTypeOf<Result<Shape3D>>();
+  });
+});
+
+describe('apply() keeps the face type its callback returns', () => {
+  it('passes an oriented planar face from apply() and applyResult() to extrude', () => {
+    const viaApply = () =>
+      extrude(
+        shape(box(10, 10, 10))
+          .apply(() => sketchRectangle(2, 2).face())
+          .done(),
+        5
+      );
+    const viaApplyResult = () =>
+      extrude(
+        shape(box(10, 10, 10))
+          .applyResult(() => ok(sketchRectangle(2, 2).face()))
+          .done(),
+        5
+      );
+    expectTypeOf(viaApply).returns.toEqualTypeOf<Result<Solid>>();
+    expectTypeOf(viaApplyResult).returns.toEqualTypeOf<Result<Solid>>();
+  });
+
+  it('defaults the wrapped face to Face', () => {
+    expectTypeOf<ReturnType<WrappedFace['done']>>().toEqualTypeOf<Face>();
+    expectTypeOf<WrappedFace<OrientedFace & PlanarFace>>().toExtend<WrappedFace>();
   });
 });

@@ -1164,6 +1164,14 @@ interface KernelCapabilities {
      * or fillet. Kernels that rebuild the maps by geometric matching leave it unset.
      */
     readonly nativeHistory?: boolean | undefined;
+    /**
+     * `sew` keeps every face's orientation, so faces wound consistently sew into a
+     * consistently oriented shell, and `solidFromShell` bounds the solid by that
+     * shell as it is (after `reverseShape`, by its inside-out twin). Mesh import
+     * relies on it to build solids without an orientation repair pass. Kernels
+     * that reorient while sewing leave it unset.
+     */
+    readonly sewKeepsOrientation?: boolean | undefined;
 }
 
 /** Default for an exact B-rep kernel (OCCT family, brepkit). */
@@ -4609,7 +4617,9 @@ declare function getFaceColor(shape: AnyShape<Dimension>, face: Face<Dimension>)
  * @param edges   - Edges to chamfer (must not be empty).
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
- * @returns Ok with the chamfered shape, or Err on invalid input or kernel failure.
+ * @returns Ok with the chamfered shape, or Err on invalid input or kernel
+ *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
@@ -5225,7 +5235,8 @@ interface BooleanPipelineStep {
  * simplifies the final shape.
  *
  * Falls back to sequential operations when the C++ pipeline class is not
- * available in the WASM build.
+ * available in the WASM build. An empty pipeline returns a copy of `base`, so
+ * the result is always the caller's to dispose.
  */
 declare function booleanPipeline(base: Shape3D, steps: readonly BooleanPipelineStep[], options?: {
     readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
@@ -5339,6 +5350,8 @@ declare function filletWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edg
  * @param shape - The shape to modify.
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
+ * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
+ *   distances asked for (brepkit has no asymmetric chamfer).
  */
 declare function chamferWithEvolution(shape: ValidSolid, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<EvolutionResult<ValidSolid>>;
 
@@ -6797,9 +6810,9 @@ declare function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<S
 /**
  * Measure linear properties of any shape.
  *
- * For edges this is the arc length; for wires and faces it is the total length
- * of their edges; for shells, solids, and compounds it is the total length of
- * their distinct edges, each counted once.
+ * For edges this is the arc length; for wires it is the total length of their
+ * edges; for faces, shells, solids, and compounds it is the total length of
+ * their distinct edges, each counted once (a face's seam edge included).
  *
  * @param shape - Any shape whose linear extent is to be measured.
  * @returns `Result` containing length, center of mass, and raw mass property.
@@ -6954,7 +6967,8 @@ interface PrincipalBoundingBox {
  * Z reports 136.6 x 136.6 x 2, because any in-plane pair of axes is principal
  * for a square plate.
  *
- * @param shape - A solid, compsolid, or compound containing solids.
+ * @param shape - A solid, compsolid, or compound containing solids. A compound
+ *   is measured by its solids alone: loose faces, shells, or wires in it are ignored.
  * @returns `Result` with the box center in world coordinates, orthonormal
  *   right-handed axes ordered by decreasing extent, and the full edge lengths
  *   along those axes. Fails with `NOT_A_SOLID` for any other shape type
@@ -7003,10 +7017,12 @@ declare function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>>;
  *   compound for several bodies), or an error if parsing fails.
  *
  * @remarks Every triangle becomes its own B-Rep face, so import time grows with
- * the triangle count: on the default occt-wasm kernel, roughly 2.5 seconds per
- * 10,000 triangles (about 15 seconds for 50,000), and up to about twice that
- * when the file holds several bodies. The temporary file on the WASM FS is
- * cleaned up automatically.
+ * the triangle count. On the default occt-wasm kernel a mesh whose shared edges
+ * each join two consistently wound triangles takes about 0.3 seconds per 10,000
+ * triangles (about 1.7 seconds for 50,000). One that needs its winding repaired
+ * takes about 2 seconds per 10,000 (about 13 seconds for 50,000), and up to
+ * about twice that when the file holds several bodies. The temporary file on
+ * the WASM FS is cleaned up automatically.
  *
  * @example
  * ```ts
@@ -7070,14 +7086,17 @@ declare function importOBJ(blob: Blob): Promise<Result<UnknownDimShape>>;
 /**
  * Import a 3MF file from a Blob.
  *
- * Extracts the model XML from the ZIP archive and builds one solid per placed
- * object by sewing its triangles. Build-item and component transforms are
- * applied, and coordinates are scaled from the model `unit` to millimeters.
+ * Extracts the model XML from the ZIP archive and builds a shape per placed
+ * object by sewing its triangles as `importSTL` sews a file: a `Solid` per
+ * closed body, a `Shell` per open one, and each sealed cavity cut from the body
+ * around it. Build-item and component transforms are applied, and coordinates
+ * are scaled from the model `unit` to millimeters.
  *
  * @param blob - A Blob or File containing 3MF data (.3mf).
- * @returns A `Result` wrapping the imported solid (a `Compound` of solids when the
- *   build places several objects), or an error if parsing fails or the build
- *   expands to more than 100,000 placed objects or 2,000,000 triangles.
+ * @returns A `Result` wrapping the imported shape (a `Compound` when the build
+ *   places several objects or an object holds several bodies), or an error if
+ *   parsing fails or the build expands to more than 100,000 placed objects or
+ *   2,000,000 triangles.
  *
  * @example
  * ```ts
@@ -7406,8 +7425,10 @@ type FilletRadius = number | [number, number] | ((edge: Edge) => number | [numbe
  * Chamfer distance specification.
  *
  * - `number` — equal distance
- * - `[number, number]` — asymmetric distances (dist1, dist2)
- * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees
+ * - `[number, number]` — asymmetric distances (dist1, dist2). brepkit has no asymmetric
+ *   chamfer and returns an `UNSUPPORTED_CAPABILITY` error for two different distances.
+ * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees.
+ *   brepkit has no distance-angle chamfer and returns an `UNSUPPORTED_CAPABILITY` error.
  * - callback — per-edge value of any of the above; return `null` (or a non-positive
  *   distance) to skip an edge. The edges it keeps must all get plain distances or all
  *   get `{ distance, angle }`: mixing the two is an `INVALID_CHAMFER_DISTANCE` error.
@@ -10195,11 +10216,11 @@ interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
     heal(): Wrapped<T>;
     simplify(): Wrapped<T>;
     toBREP(): string;
-    apply<U extends Face>(fn: (shape: T) => U): WrappedFace;
+    apply<U extends Face>(fn: (shape: T) => U): WrappedFace<U>;
     apply<U extends Shape3D>(fn: (shape: T) => U): Wrapped3D<U>;
     apply<U extends Edge | Wire>(fn: (shape: T) => U): WrappedCurve<U>;
     apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
-    applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace;
+    applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace<U>;
     applyResult<U extends Shape3D>(fn: (shape: T) => Result<U>): Wrapped3D<U>;
     applyResult<U extends Edge | Wire>(fn: (shape: T) => Result<U>): WrappedCurve<U>;
     applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
@@ -10262,8 +10283,11 @@ interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
     sweep(spine: Shapeable<Wire>, options?: SweepOptions): Wrapped3D<Shape3D>;
 }
 
-/** Face wrapper — face introspection + 2D→3D transitions. */
-interface WrappedFace extends Wrapped<Face> {
+/**
+ * Face wrapper: face introspection + 2D→3D transitions. `F` keeps the wrapped face's
+ * own type (an `OrientedFace & PlanarFace` from `apply()`, say) for `val` and `done()`.
+ */
+interface WrappedFace<F extends Face = Face> extends Wrapped<F> {
     area(): number;
     normalAt(point?: Vec3): Vec3;
     center(): Vec3;
