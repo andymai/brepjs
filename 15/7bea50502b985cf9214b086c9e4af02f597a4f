@@ -1,0 +1,27 @@
+src/kernel/brepkit/kernel2dOps.ts
+  s_d4ab5fb2066c9b::t_2f6f7e23629a9a 890-893,895-896
+  s_d4ab5fb2066c9b::t_bce6b0eb6d2e56 897
+tests/sketcher2d.test.ts
+  s_d4ab5fb2066c9b::t_99a9b33b638f30 432-461,463-469,471-472,474,476,478-479,487
+  s_d4ab5fb2066c9b::t_ffcbac43886524 480-486
+  s_d4ab5fb2066c9b::t_95a738d85d6e56 462,470
+  s_d4ab5fb2066c9b::t_99cdca9c87c5b2 473,475,477
+  s_d4ab5fb2066c9b::t_76faaab4b707e9 21-22,25-26
+  s_d4ab5fb2066c9b::t_1acae97f75b9e0 488-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "157bea50502b985cf9214b086c9e4af02f597a4f",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
