@@ -31,6 +31,7 @@ import {
   measureArea,
   tagFaces,
   findFacesByTag,
+  getBounds,
 } from '@/index.js';
 import type { BooleanOptions } from '@/index.js';
 import type { Shape3D } from '@/core/shapeTypes.js';
@@ -52,6 +53,27 @@ describe('fuse', () => {
     const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
     expect(unwrap(measureVolume(shape))).toBeCloseTo(2000, 0);
+  });
+
+  // Two face-adjacent 30 x 40 x 10 boxes fuse into a 60 x 40 x 10 solid whose
+  // four side faces stay split at x = 0 until simplify merges them (10 faces to
+  // 6). The tags on both operands' faces follow them onto the merged faces.
+  it('simplifies a tracked fuse and keeps both operands face tags', () => {
+    using a = box(30, 40, 10);
+    using b = translate(box(30, 40, 10), [-30, 0, 0]);
+    tagFaces(a, (f) => getBounds(f).zMin > 9.9, 'top');
+    tagFaces(b, (f) => getBounds(f).xMax < -29.9, 'far');
+    using merged = unwrap(fuse(a, b, { simplify: true }));
+    expect(getFaces(merged)).toHaveLength(6);
+    expect(unwrap(measureVolume(merged))).toBeCloseTo(24000, 6);
+    const [top] = findFacesByTag(merged, 'top');
+    if (!top) throw new Error('no face kept the top tag');
+    expect(unwrap(measureArea(top))).toBeCloseTo(60 * 40, 6);
+    const far = findFacesByTag(merged, 'far');
+    expect(far).toHaveLength(1);
+    expect(getBounds(far[0] ?? top).xMax).toBeCloseTo(-30, 6);
+    using untracked = unwrap(fuse(a, b, { simplify: true, trackEvolution: false }));
+    expect(getFaces(untracked)).toHaveLength(6);
   });
 
   it('fuses overlapping boxes', () => {
@@ -276,8 +298,8 @@ describe('boolean edge cases', () => {
       // them, dropping the face count from 10 to 6. The pairwise leaf previously
       // hard-coded simplify:false for the two-input case, silently dropping the
       // caller's request — with 3+ inputs the top-level combine reapplies it, but a
-      // two-input fuse is a lone leaf with no combine downstream. Only the occt
-      // (opencascade.js) kernel applies the option on fuse; the others ignore it.
+      // two-input fuse is a lone leaf with no combine downstream. Kernels that
+      // ignore the option on fuse skip this (see the divergence registry).
       skipIfDiverges(ctx, 'booleanFns.pairwiseSimplifyFaceMerge');
       const boxes = (): [Shape3D, Shape3D] => [
         boxAt(0, 0, 0, 10, 10, 10),

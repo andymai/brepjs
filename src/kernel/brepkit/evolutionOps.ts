@@ -28,7 +28,7 @@ import {
 } from './helpers.js';
 import { applyMatrix } from './internalOps.js';
 import { translate, rotate, mirror, scale, generalTransform } from './transformOps.js';
-import { wasmIndex } from '@/utils/vec3.js';
+import { vec3At, wasmIndex } from '@/utils/vec3.js';
 import { fuse, cut, intersect, isEmptyBooleanError } from './booleanOps.js';
 import { fillet, chamfer, shell, thicken, offset, draft } from './modifierOps.js';
 
@@ -560,8 +560,85 @@ function fuseToolWithHistory(
   return union;
 }
 
+/** Whether this kernel can merge co-surface faces after `op` (brepkit-wasm >= 3.2). */
+function canSimplify(bk: BrepkitKernel, op: 'fuse' | 'cut' | 'intersect'): boolean {
+  if (op === 'fuse') return typeof bk.fuseWithOptions === 'function';
+  if (op === 'cut') return typeof bk.cutWithOptions === 'function';
+  return typeof bk.intersectWithOptions === 'function';
+}
+
+/** A point inside a face: the centroid of its largest tessellation triangle. */
+function interiorPoint(bk: BrepkitKernel, faceId: number): [number, number, number] | undefined {
+  const mesh = bk.tessellateFace(faceId, 0.1);
+  const at = (t: number): [number, number, number] =>
+    vec3At(mesh.positions, wasmIndex(mesh.indices, t) * 3);
+  let best: [number, number, number] | undefined;
+  let bestArea = -1;
+  for (let t = 0; t + 2 < mesh.indices.length; t += 3) {
+    const [ax, ay, az] = at(t);
+    const [bx, by, bz] = at(t + 1);
+    const [cx, cy, cz] = at(t + 2);
+    const [ux, uy, uz] = [bx - ax, by - ay, bz - az];
+    const [vx, vy, vz] = [cx - ax, cy - ay, cz - az];
+    const area = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+    if (area > bestArea) {
+      bestArea = area;
+      best = [(ax + bx + cx) / 3, (ay + by + cy) / 3, (az + bz + cz) / 3];
+    }
+  }
+  return best;
+}
+
+/**
+ * Carry a boolean's face evolution over to the simplified result of the same
+ * boolean. brepkit tracks face provenance only through its unsimplified
+ * boolean, and merging co-surface faces makes new faces, so the boolean runs
+ * twice: once with evolution, once simplified. Each face of the first result
+ * lies inside one face of the second; a point inside it names that face.
+ */
+function simplifiedWithHistory(
+  bk: BrepkitKernel,
+  tracked: OperationResult,
+  simplified: KernelShape,
+  hashUpperBound: number
+): OperationResult {
+  const from = tracked.shape as BrepkitHandle;
+  const to = simplified as BrepkitHandle;
+  if (from.type !== 'solid' || to.type !== 'solid') {
+    return { shape: simplified, evolution: tracked.evolution };
+  }
+  const targets = toArray(bk.getSolidFaces(to.id));
+  const into = new Map<number, number>();
+  for (const faceId of toArray(bk.getSolidFaces(from.id))) {
+    const p = interiorPoint(bk, faceId);
+    if (!p) continue;
+    let nearest: number | undefined;
+    let nearestDistance = Infinity;
+    for (const target of targets) {
+      const d = wasmIndex(bk.pointToFaceDistance(p[0], p[1], p[2], target), 0);
+      if (d < nearestDistance) {
+        nearestDistance = d;
+        nearest = target;
+      }
+    }
+    if (nearest !== undefined) into.set(faceId % hashUpperBound, nearest % hashUpperBound);
+  }
+  const remap = (m: ReadonlyMap<number, readonly number[]>): Map<number, number[]> =>
+    new Map([...m].map(([k, outs]) => [k, [...new Set(outs.map((o) => into.get(o) ?? o))]]));
+  return {
+    shape: simplified,
+    evolution: {
+      modified: remap(tracked.evolution.modified),
+      generated: remap(tracked.evolution.generated),
+      deleted: tracked.evolution.deleted,
+    },
+  };
+}
+
 /**
  * Shared implementation for boolean-with-history operations (fuse, cut, intersect).
+ * With `simplify`, the evolution comes from the unsimplified boolean and is
+ * carried over to the simplified one (see {@link simplifiedWithHistory}).
  */
 function booleanWithHistoryImpl(
   bk: BrepkitKernel,
@@ -574,14 +651,50 @@ function booleanWithHistoryImpl(
   fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
   op: 'fuse' | 'cut' | 'intersect'
 ): DiagnosticOperationResult {
+  const tracked = trackedBoolean(
+    bk,
+    shape,
+    tool,
+    inputFaceHashes,
+    hashUpperBound,
+    options,
+    nativeFn,
+    fallbackFn,
+    op
+  );
   const noDiagnostics = { hasErrors: false, hasWarnings: false, messages: [] } as const;
+  if (!tracked.native || !options?.simplify || !canSimplify(bk, op)) {
+    return { ...tracked.result, diagnostics: noDiagnostics };
+  }
+  return {
+    ...simplifiedWithHistory(bk, tracked.result, fallbackFn(shape, tool, options), hashUpperBound),
+    diagnostics: noDiagnostics,
+  };
+}
+
+/**
+ * The boolean with its face evolution: brepkit's native evolution for a solid
+ * base (`native: true`), geometric matching otherwise. The native path ignores
+ * `simplify`; the fallback applies it.
+ */
+function trackedBoolean(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  tool: KernelShape,
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  options: BooleanOptions | undefined,
+  nativeFn: (a: number, b: number) => string,
+  fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
+  op: 'fuse' | 'cut' | 'intersect'
+): { result: OperationResult; native: boolean } {
   const sh = shape as BrepkitHandle;
   const th = tool as BrepkitHandle;
   if (inputFaceHashes.length > 0 && sh.type === 'solid') {
     if (th.type === 'solid') {
       try {
         const json = nativeFn(sh.id, th.id);
-        return { ...parseNativeEvolution(json, hashUpperBound), diagnostics: noDiagnostics };
+        return { result: parseNativeEvolution(json, hashUpperBound), native: true };
       } catch (e) {
         if (!isEmptyBooleanError(e)) throw e;
         // Empty result — drop to fallback path which returns an empty compound.
@@ -611,22 +724,19 @@ function booleanWithHistoryImpl(
         hashUpperBound,
         nativeFn
       );
-      return {
-        shape: resultShape,
-        evolution: {
-          modified: accum.combinedModified,
-          generated: accum.combinedGenerated,
-          deleted: accum.combinedDeleted,
-        },
-        diagnostics: noDiagnostics,
+      const evolution = {
+        modified: accum.combinedModified,
+        generated: accum.combinedGenerated,
+        deleted: accum.combinedDeleted,
       };
+      return { result: { shape: resultShape, evolution }, native: true };
     }
   }
   // Fallback: non-solid shapes or no face hashes
   const fallbackResult = fallbackFn(shape, tool, options);
   return {
-    ...buildEvolution(bk, fallbackResult, inputFaceHashes, hashUpperBound, false, shape),
-    diagnostics: noDiagnostics,
+    result: buildEvolution(bk, fallbackResult, inputFaceHashes, hashUpperBound, false, shape),
+    native: false,
   };
 }
 
