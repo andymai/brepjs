@@ -1,0 +1,21 @@
+src/operations/instanceFns.ts
+  s_d4ab5fb2066c9b::t_035fa6535ac29f 140,145,186
+tests/instanceFns.test.ts
+  s_d4ab5fb2066c9b::t_5205460e176fc1 55,61,70,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92022f42d825f5446b90eae039c3822640eb26fd",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
