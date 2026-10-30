@@ -242,8 +242,17 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
   simplify(): Wrapped<T>;
   toBREP(): string;
 
-  // Escape hatches
+  // Escape hatches: the result is wrapped by its kind, as shape() wraps its argument.
+  // The Face overloads stay generic: a non-generic first overload makes TypeScript infer
+  // AnyShape for U in the catch-all when the caller's own shape type is a type parameter.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- see above
+  apply<U extends Face>(fn: (shape: T) => U): WrappedFace;
+  apply<U extends Shape3D>(fn: (shape: T) => U): Wrapped3D<U>;
+  apply<U extends Edge | Wire>(fn: (shape: T) => U): WrappedCurve<U>;
   apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
+  applyResult<U extends Face>(fn: (shape: T) => Result<U>): WrappedFace;
+  applyResult<U extends Shape3D>(fn: (shape: T) => Result<U>): Wrapped3D<U>;
+  applyResult<U extends Edge | Wire>(fn: (shape: T) => Result<U>): WrappedCurve<U>;
   applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
 
   // Extraction
@@ -375,8 +384,11 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
     simplify: () => wrapAny(unwrapOrThrow(simplifyFn(val))),
     toBREP: () => unwrapOrThrow(toBREPFn(val)),
 
-    apply: (fn) => wrapAny(fn(val)),
-    applyResult: (fn) => wrapAny(unwrapOrThrow(fn(val))),
+    // wrapAny picks the wrapper from the result's runtime kind, which is the
+    // dispatch the apply/applyResult overloads describe.
+    apply: ((fn: (shape: T) => AnyShape) => wrapAny(fn(val))) as Wrapped<T>['apply'],
+    applyResult: ((fn: (shape: T) => Result<AnyShape>) =>
+      wrapAny(unwrapOrThrow(fn(val)))) as Wrapped<T>['applyResult'],
 
     // Extraction
     done: () => val,
