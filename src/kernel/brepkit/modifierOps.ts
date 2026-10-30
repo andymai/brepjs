@@ -60,7 +60,7 @@ const lawProbes = new WeakMap<BrepkitKernel, boolean>();
  * brepkit-wasm before 4.6.9 cuts a flat bevel along a radius law, and the peer
  * range still admits those builds. Rounding a 10 mm cube edge from 1 to 2 tells
  * them apart: a round removes 5.0 mm3 and a bevel 11.7. The probe runs once per
- * kernel, between a checkpoint and its restore, so it leaves nothing behind.
+ * kernel, inside a checkpoint it restores and discards, so it leaves nothing behind.
  */
 function roundsAlongLaws(bk: BrepkitKernel): boolean {
   const known = lawProbes.get(bk);
@@ -76,6 +76,7 @@ function roundsAlongLaws(bk: BrepkitKernel): boolean {
     rounds = false;
   } finally {
     bk.restore(mark);
+    bk.discardCheckpoint(mark);
   }
   lawProbes.set(bk, rounds);
   return rounds;

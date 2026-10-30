@@ -1873,6 +1873,7 @@ describe('BrepkitAdapter', () => {
       const mock = Object.assign(createMockBrepKernel(), {
         checkpoint: vi.fn(() => 7),
         restore: vi.fn((_checkpoint: number) => {}),
+        discardCheckpoint: vi.fn((_checkpoint: number) => {}),
       });
       mock.volume.mockReturnValue(probeVolume);
       return mock;
@@ -1976,6 +1977,7 @@ describe('BrepkitAdapter', () => {
       }
       expect(mock.filletVariable).toHaveBeenCalledOnce();
       expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
     });
 
     it('uses fast path for constant radius', () => {
