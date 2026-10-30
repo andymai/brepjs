@@ -1,0 +1,23 @@
+package-lock.json
+  s_a2dc21dbec3f2b::t_ff3ead6b7e233f 45,7445-7447,8692,10733,10745-10746,12094,12370-12371,12911
+package.json
+  s_a2dc21dbec3f2b::t_f6d092d4eba4d4 277
+src/kernel/brepkit/brepkitWasmTypes.ts
+  s_a2dc21dbec3f2b::t_718d2cbad836b3 5,158,161,164,275,771-772,784-785,788-789,793-794,811-814,821-824,827,834,857,865-868,871,879,884-886,918-933,947,950,953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87005ec1e4da655042f2201382b5c47408569480",
+  "prompts": {},
+  "sessions": {
+    "s_a2dc21dbec3f2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3041864d-11cb-40e5-b12f-602f4f774ad4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
