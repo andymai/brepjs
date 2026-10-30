@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress';
-import type { DefaultTheme } from 'vitepress';
-import { withMermaid } from 'vitepress-plugin-mermaid';
+import type { DefaultTheme, MarkdownRenderer } from 'vitepress';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,353 +75,365 @@ function breadcrumbTrail(
   return null;
 }
 
-export default withMermaid(
-  defineConfig({
-    title: 'brepjs',
-    description: defaultDescription,
-    lang: 'en-US',
-    base: process.env.DOCS_BASE ?? '/',
-    cleanUrls: true,
-    lastUpdated: true,
-    // /playground is staged into the VitePress dist after this build runs
-    // (see vercel.json buildCommand), so the link checker can't see it.
-    ignoreDeadLinks: [/^\/playground(\/|$)/],
-    head: [
-      ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
-      ['link', { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' }],
-      ['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
-      ['link', { rel: 'manifest', href: '/site.webmanifest' }],
-      ['meta', { name: 'theme-color', content: '#4ACECC' }],
-      ['meta', { property: 'og:type', content: 'website' }],
-      ['meta', { property: 'og:site_name', content: 'brepjs' }],
-      // og:image / twitter:image are set per-page in transformPageData so each
-      // page points at its own card; the dimensions are constant for all cards.
-      ['meta', { property: 'og:image:width', content: '1200' }],
-      ['meta', { property: 'og:image:height', content: '630' }],
-      ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-      // DM Mono is the code face across the whole site (docs + landing); load
-      // it globally. Signifier (the display face) is self-hosted via @font-face
-      // in theme/custom.css and lazy-loaded on docs headings (swap, no preload);
-      // the landing additionally preloads it below for a no-flash hero.
-      ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-      ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-      // Load non-render-blocking: a code face tolerates a brief fallback, so
-      // fetch as print media then promote to all once it arrives (no CSP on
-      // docs pages — the playground's strict CSP is a separate route).
-      [
-        'link',
-        {
-          rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap',
-          media: 'print',
-          onload: "this.media='all'",
-        },
-      ],
+/**
+ * Turns a ```mermaid fence into a <MermaidDiagram> (theme/components), which
+ * draws the diagram in the browser. The source is URI-encoded so quotes,
+ * newlines, and `{{` survive as a plain attribute in the compiled Vue template.
+ */
+function renderMermaidFences(md: MarkdownRenderer): void {
+  const fence = md.renderer.rules.fence;
+  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    if (token?.info.trim() === 'mermaid') {
+      return `<MermaidDiagram code="${encodeURIComponent(token.content)}" />`;
+    }
+    return fence ? fence(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
+  };
+}
+
+export default defineConfig({
+  title: 'brepjs',
+  description: defaultDescription,
+  lang: 'en-US',
+  base: process.env.DOCS_BASE ?? '/',
+  cleanUrls: true,
+  lastUpdated: true,
+  // /playground is staged into the VitePress dist after this build runs
+  // (see vercel.json buildCommand), so the link checker can't see it.
+  ignoreDeadLinks: [/^\/playground(\/|$)/],
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+    ['link', { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' }],
+    ['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
+    ['link', { rel: 'manifest', href: '/site.webmanifest' }],
+    ['meta', { name: 'theme-color', content: '#4ACECC' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'brepjs' }],
+    // og:image / twitter:image are set per-page in transformPageData so each
+    // page points at its own card; the dimensions are constant for all cards.
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    // DM Mono is the code face across the whole site (docs + landing); load
+    // it globally. Signifier (the display face) is self-hosted via @font-face
+    // in theme/custom.css and lazy-loaded on docs headings (swap, no preload);
+    // the landing additionally preloads it below for a no-flash hero.
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    // Load non-render-blocking: a code face tolerates a brief fallback, so
+    // fetch as print media then promote to all once it arrives (no CSP on
+    // docs pages — the playground's strict CSP is a separate route).
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap',
+        media: 'print',
+        onload: "this.media='all'",
+      },
     ],
-    transformPageData(pageData, ctx) {
-      // Per-page meta. `frontmatter.description` wins over the global default
-      // so each page can give Slack/X/Google a tailored preview.
-      const description =
-        (pageData.frontmatter.description as string | undefined) ??
-        pageData.description ??
-        defaultDescription;
-      const title = pageData.frontmatter.title ?? pageData.title ?? 'brepjs';
-      const fullTitle = title === 'brepjs' ? 'brepjs' : `${title} | brepjs`;
-      const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '');
-      const url = `${siteUrl}/${path}`;
+  ],
+  transformPageData(pageData, ctx) {
+    // Per-page meta. `frontmatter.description` wins over the global default
+    // so each page can give Slack/X/Google a tailored preview.
+    const description =
+      (pageData.frontmatter.description as string | undefined) ??
+      pageData.description ??
+      defaultDescription;
+    const title = pageData.frontmatter.title ?? pageData.title ?? 'brepjs';
+    const fullTitle = title === 'brepjs' ? 'brepjs' : `${title} | brepjs`;
+    const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '');
+    const url = `${siteUrl}/${path}`;
 
-      // Each page points at its own generated card, falling back to og.png.
-      const ogRelPath = path ? `og/${path}.png` : 'og.png';
-      const ogImage = existsSync(resolve(publicDir, ogRelPath))
-        ? `${siteUrl}/${ogRelPath}`
-        : defaultOgImage;
-      const ogAlt =
-        title === 'brepjs'
-          ? 'brepjs — Exact CAD geometry, written in TypeScript'
-          : `${title} — brepjs`;
+    // Each page points at its own generated card, falling back to og.png.
+    const ogRelPath = path ? `og/${path}.png` : 'og.png';
+    const ogImage = existsSync(resolve(publicDir, ogRelPath))
+      ? `${siteUrl}/${ogRelPath}`
+      : defaultOgImage;
+    const ogAlt =
+      title === 'brepjs'
+        ? 'brepjs — Exact CAD geometry, written in TypeScript'
+        : `${title} — brepjs`;
 
-      // VitePress emits `<meta name="description">` natively from
-      // `frontmatter.description`, so we don't push one here — that would
-      // duplicate the tag and let scrapers pick the wrong copy.
-      pageData.frontmatter.head ??= [];
+    // VitePress emits `<meta name="description">` natively from
+    // `frontmatter.description`, so we don't push one here — that would
+    // duplicate the tag and let scrapers pick the wrong copy.
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(
+      ['link', { rel: 'canonical', href: url }],
+      ['meta', { property: 'og:url', content: url }],
+      ['meta', { property: 'og:title', content: fullTitle }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:image', content: ogImage }],
+      ['meta', { property: 'og:image:alt', content: ogAlt }],
+      ['meta', { name: 'twitter:title', content: fullTitle }],
+      ['meta', { name: 'twitter:description', content: description }],
+      ['meta', { name: 'twitter:image', content: ogImage }]
+    );
+
+    // BreadcrumbList for every docs page (not the home page), derived from
+    // the sidebar hierarchy so search results show a Home → Section → Page
+    // trail instead of the bare URL.
+    if (pageData.relativePath !== 'index.md') {
+      const sb = ctx.siteConfig.site.themeConfig.sidebar;
+      const sidebar = Array.isArray(sb) ? sb : [];
+      const trail = breadcrumbTrail(path, sidebar) ?? [{ name: String(title), url }];
+      const crumbs = [{ name: 'Home', url: `${siteUrl}/` }, ...trail];
+      pageData.frontmatter.head.push([
+        'script',
+        { type: 'application/ld+json' },
+        JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: crumbs.map((c, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            name: c.name,
+            item: c.url,
+          })),
+        }),
+      ]);
+    }
+
+    // The bespoke landing page additionally loads Inter (its body face) and
+    // preloads Signifier so the hero never flashes the fallback serif. DM Mono
+    // (code) is loaded site-wide in the global head above.
+    if (pageData.relativePath === 'index.md') {
+      pageData.frontmatter.head.push([
+        'script',
+        { type: 'application/ld+json' },
+        JSON.stringify(structuredData),
+      ]);
       pageData.frontmatter.head.push(
-        ['link', { rel: 'canonical', href: url }],
-        ['meta', { property: 'og:url', content: url }],
-        ['meta', { property: 'og:title', content: fullTitle }],
-        ['meta', { property: 'og:description', content: description }],
-        ['meta', { property: 'og:image', content: ogImage }],
-        ['meta', { property: 'og:image:alt', content: ogAlt }],
-        ['meta', { name: 'twitter:title', content: fullTitle }],
-        ['meta', { name: 'twitter:description', content: description }],
-        ['meta', { name: 'twitter:image', content: ogImage }]
+        // Signifier is self-hosted (Klim, licensed) — preload the three styles
+        // the landing uses so the hero doesn't flash the fallback serif.
+        [
+          'link',
+          {
+            rel: 'preload',
+            href: '/fonts/signifier-regular.woff2',
+            as: 'font',
+            type: 'font/woff2',
+            crossorigin: '',
+          },
+        ],
+        [
+          'link',
+          {
+            rel: 'preload',
+            href: '/fonts/signifier-medium.woff2',
+            as: 'font',
+            type: 'font/woff2',
+            crossorigin: '',
+          },
+        ],
+        [
+          'link',
+          {
+            rel: 'preload',
+            href: '/fonts/signifier-italic.woff2',
+            as: 'font',
+            type: 'font/woff2',
+            crossorigin: '',
+          },
+        ],
+        [
+          'link',
+          {
+            rel: 'stylesheet',
+            href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+          },
+        ],
+        // Scroll-reveal on the landing page starts sections at opacity:0 and
+        // fades them in via IntersectionObserver. Without JS that would trap
+        // content hidden, so force it visible when scripting is unavailable.
+        [
+          'noscript',
+          {},
+          '<style>[data-reveal]{opacity:1 !important;transform:none !important}</style>',
+        ]
       );
-
-      // BreadcrumbList for every docs page (not the home page), derived from
-      // the sidebar hierarchy so search results show a Home → Section → Page
-      // trail instead of the bare URL.
-      if (pageData.relativePath !== 'index.md') {
-        const sb = ctx.siteConfig.site.themeConfig.sidebar;
-        const sidebar = Array.isArray(sb) ? sb : [];
-        const trail = breadcrumbTrail(path, sidebar) ?? [{ name: String(title), url }];
-        const crumbs = [{ name: 'Home', url: `${siteUrl}/` }, ...trail];
-        pageData.frontmatter.head.push([
-          'script',
-          { type: 'application/ld+json' },
-          JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'BreadcrumbList',
-            itemListElement: crumbs.map((c, i) => ({
-              '@type': 'ListItem',
-              position: i + 1,
-              name: c.name,
-              item: c.url,
-            })),
-          }),
-        ]);
-      }
-
-      // The bespoke landing page additionally loads Inter (its body face) and
-      // preloads Signifier so the hero never flashes the fallback serif. DM Mono
-      // (code) is loaded site-wide in the global head above.
-      if (pageData.relativePath === 'index.md') {
-        pageData.frontmatter.head.push([
-          'script',
-          { type: 'application/ld+json' },
-          JSON.stringify(structuredData),
-        ]);
-        pageData.frontmatter.head.push(
-          // Signifier is self-hosted (Klim, licensed) — preload the three styles
-          // the landing uses so the hero doesn't flash the fallback serif.
-          [
-            'link',
-            {
-              rel: 'preload',
-              href: '/fonts/signifier-regular.woff2',
-              as: 'font',
-              type: 'font/woff2',
-              crossorigin: '',
-            },
-          ],
-          [
-            'link',
-            {
-              rel: 'preload',
-              href: '/fonts/signifier-medium.woff2',
-              as: 'font',
-              type: 'font/woff2',
-              crossorigin: '',
-            },
-          ],
-          [
-            'link',
-            {
-              rel: 'preload',
-              href: '/fonts/signifier-italic.woff2',
-              as: 'font',
-              type: 'font/woff2',
-              crossorigin: '',
-            },
-          ],
-          [
-            'link',
-            {
-              rel: 'stylesheet',
-              href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-            },
-          ],
-          // Scroll-reveal on the landing page starts sections at opacity:0 and
-          // fades them in via IntersectionObserver. Without JS that would trap
-          // content hidden, so force it visible when scripting is unavailable.
-          [
-            'noscript',
-            {},
-            '<style>[data-reveal]{opacity:1 !important;transform:none !important}</style>',
-          ]
-        );
-      }
-    },
-    themeConfig: {
-      logo: { src: '/logo.svg', alt: 'brepjs' },
-      siteTitle: 'brepjs',
-      nav: [
-        { text: 'Guide', link: '/introduction/why-brepjs' },
-        { text: 'Authoring with AI', link: '/agent/overview' },
-        { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
-        { text: 'Playground', link: '/playground', target: '_blank', rel: 'noopener noreferrer' },
-        { text: 'Get in touch', link: '/support' },
-        {
-          text: major,
-          items: [
-            { text: 'Changelog', link: 'https://github.com/andymai/brepjs/blob/main/CHANGELOG.md' },
-            { text: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
-          ],
-        },
-      ],
-      sidebar: [
-        {
-          text: 'Introduction',
-          items: [
-            { text: 'Why brepjs', link: '/introduction/why-brepjs' },
-            { text: 'Status, Stability & Versioning', link: '/introduction/stability' },
-            { text: 'What brepjs is NOT', link: '/introduction/non-goals' },
-          ],
-        },
-        {
-          text: 'Getting Started',
-          items: [
-            { text: 'Install & Initialize', link: '/getting-started/install' },
-            { text: 'Your First Solid', link: '/getting-started/first-solid' },
-            { text: 'Cheat Sheet', link: '/getting-started/cheat-sheet' },
-          ],
-        },
-        {
-          text: 'Core Concepts',
-          items: [
-            { text: 'B-Rep vs Mesh', link: '/concepts/brep-vs-mesh' },
-            { text: 'The Topology Hierarchy', link: '/concepts/topology' },
-            { text: 'Types That Prove Geometry Is Valid', link: '/concepts/types' },
-            { text: 'Result<T,E> and Errors', link: '/concepts/result' },
-            { text: 'Kernels & withKernel', link: '/concepts/kernels' },
-            { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
-            { text: 'CSG as an IR', link: '/concepts/csg-ir' },
-            { text: 'Composing Complex Parts', link: '/concepts/composing-complex-parts' },
-            { text: 'Stable References', link: '/concepts/stable-references' },
-          ],
-        },
-        {
-          text: 'Common Tasks',
-          items: [
-            { text: 'Primitives & Transforms', link: '/tasks/primitives' },
-            { text: 'Boolean Operations', link: '/tasks/booleans' },
-            { text: 'Fillets & Chamfers', link: '/tasks/fillets' },
-            { text: '2D Sketching', link: '/tasks/sketching' },
-            { text: 'Lofts, Sweeps, Revolves', link: '/tasks/lofts-sweeps' },
-            { text: 'Finders & Queries', link: '/tasks/finders' },
-            { text: 'Measurement', link: '/tasks/measurement' },
-            { text: 'Import & Export', link: '/tasks/import-export' },
-            { text: 'Parametric CSG', link: '/tasks/parametric-csg' },
-          ],
-        },
-        {
-          text: 'Declarative Models',
-          items: [
-            { text: 'Why a Family Layer', link: '/families/overview' },
-            { text: 'For BIM Professionals', link: '/families/for-bim-professionals' },
-            { text: 'Your First Building', link: '/families/first-building' },
-            { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
-            { text: 'Openings & Voids', link: '/families/openings' },
-            { text: 'Props & Validation', link: '/families/props-and-validation' },
-            { text: 'JSX Authoring', link: '/families/jsx' },
-            { text: 'IFC Export', link: '/families/ifc-export' },
-            { text: 'Copy-In Distribution', link: '/families/copy-in' },
-          ],
-        },
-        {
-          text: 'BIM (IFC4)',
-          items: [
-            { text: 'The BIM Layer', link: '/bim/overview' },
-            { text: 'Element Catalog', link: '/bim/elements' },
-            { text: 'IFC Export & Import', link: '/bim/ifc' },
-            { text: 'Validation', link: '/bim/validation' },
-            { text: 'Interop: COBie, IDS, BCF', link: '/bim/interop' },
-          ],
-        },
-        {
-          text: 'Advanced',
-          items: [
-            { text: 'Memory Management', link: '/advanced/memory' },
-            { text: 'Performance', link: '/advanced/performance' },
-            { text: 'Web Workers', link: '/advanced/workers' },
-            { text: 'Healing & Sewing', link: '/advanced/healing' },
-            { text: 'CSG Caching & Optimization', link: '/advanced/csg-caching' },
-          ],
-        },
-        {
-          text: 'Authoring with AI',
-          items: [
-            { text: 'Overview', link: '/agent/overview' },
-            { text: 'The Verify Loop', link: '/agent/the-loop' },
-            { text: 'CLI Reference', link: '/agent/cli' },
-            { text: 'BIM over MCP', link: '/agent/bim-mcp' },
-            { text: 'Examples', link: '/agent/examples' },
-            { text: 'Eval & Scorecard', link: '/agent/eval' },
-          ],
-        },
-        {
-          text: 'Integration',
-          items: [
-            { text: 'Three.js', link: '/integration/threejs' },
-            { text: 'React Three Fiber', link: '/integration/r3f' },
-            { text: 'Vite, Next.js, Astro', link: '/integration/frameworks' },
-            { text: 'Compatibility Matrix', link: '/integration/compatibility' },
-          ],
-        },
-        {
-          text: 'Migration',
-          items: [
-            { text: 'Coming from Replicad', link: '/migration/replicad' },
-            { text: 'Coming from OpenSCAD', link: '/migration/openscad' },
-            { text: 'Coming from Three.js', link: '/migration/threejs' },
-            { text: 'From a Hand-Rolled Cache', link: '/migration/manual-csg-cache' },
-          ],
-        },
-        {
-          text: 'Compare',
-          items: [
-            { text: 'brepjs vs Replicad', link: '/compare/brepjs-vs-replicad' },
-            { text: 'brepjs vs OpenSCAD', link: '/compare/brepjs-vs-openscad' },
-          ],
-        },
-        {
-          text: 'Extending brepjs',
-          items: [
-            { text: 'Architecture & Layers', link: '/extending/architecture' },
-            { text: 'Writing a Custom Kernel', link: '/extending/custom-kernel' },
-            { text: 'Kernel Conformance Suite', link: '/extending/conformance' },
-            { text: 'Writing Custom Operations', link: '/extending/custom-ops' },
-            { text: 'Pattern Checker Rules', link: '/extending/pattern-checker' },
-          ],
-        },
-        {
-          text: 'Reference',
-          items: [
-            { text: 'Glossary', link: '/reference/glossary' },
-            { text: 'Function Lookup', link: '/reference/function-lookup' },
-            { text: 'Error Codes', link: '/reference/errors' },
-            { text: 'Design Decisions', link: '/reference/decisions' },
-            { text: 'API Reference (TypeDoc)', link: 'https://andymai.github.io/brepjs/' },
-          ],
-        },
-      ],
-      socialLinks: [
-        { icon: 'github', link: 'https://github.com/andymai/brepjs' },
-        { icon: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
-      ],
-      editLink: {
-        pattern: 'https://github.com/andymai/brepjs/edit/main/apps/docs/:path',
-        text: 'Edit this page on GitHub',
+    }
+  },
+  themeConfig: {
+    logo: { src: '/logo.svg', alt: 'brepjs' },
+    siteTitle: 'brepjs',
+    nav: [
+      { text: 'Guide', link: '/introduction/why-brepjs' },
+      { text: 'Authoring with AI', link: '/agent/overview' },
+      { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
+      { text: 'Playground', link: '/playground', target: '_blank', rel: 'noopener noreferrer' },
+      { text: 'Get in touch', link: '/support' },
+      {
+        text: major,
+        items: [
+          { text: 'Changelog', link: 'https://github.com/andymai/brepjs/blob/main/CHANGELOG.md' },
+          { text: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
+        ],
       },
-      footer: {
-        message: 'Released under the Apache 2.0 License.',
-        copyright: `Copyright © 2024–${year} Andy Aragon`,
+    ],
+    sidebar: [
+      {
+        text: 'Introduction',
+        items: [
+          { text: 'Why brepjs', link: '/introduction/why-brepjs' },
+          { text: 'Status, Stability & Versioning', link: '/introduction/stability' },
+          { text: 'What brepjs is NOT', link: '/introduction/non-goals' },
+        ],
       },
-      search: {
-        provider: 'local',
-        options: {
-          detailedView: true,
-        },
+      {
+        text: 'Getting Started',
+        items: [
+          { text: 'Install & Initialize', link: '/getting-started/install' },
+          { text: 'Your First Solid', link: '/getting-started/first-solid' },
+          { text: 'Cheat Sheet', link: '/getting-started/cheat-sheet' },
+        ],
       },
-      outline: { level: [2, 3] },
+      {
+        text: 'Core Concepts',
+        items: [
+          { text: 'B-Rep vs Mesh', link: '/concepts/brep-vs-mesh' },
+          { text: 'The Topology Hierarchy', link: '/concepts/topology' },
+          { text: 'Types That Prove Geometry Is Valid', link: '/concepts/types' },
+          { text: 'Result<T,E> and Errors', link: '/concepts/result' },
+          { text: 'Kernels & withKernel', link: '/concepts/kernels' },
+          { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
+          { text: 'CSG as an IR', link: '/concepts/csg-ir' },
+          { text: 'Composing Complex Parts', link: '/concepts/composing-complex-parts' },
+          { text: 'Stable References', link: '/concepts/stable-references' },
+        ],
+      },
+      {
+        text: 'Common Tasks',
+        items: [
+          { text: 'Primitives & Transforms', link: '/tasks/primitives' },
+          { text: 'Boolean Operations', link: '/tasks/booleans' },
+          { text: 'Fillets & Chamfers', link: '/tasks/fillets' },
+          { text: '2D Sketching', link: '/tasks/sketching' },
+          { text: 'Lofts, Sweeps, Revolves', link: '/tasks/lofts-sweeps' },
+          { text: 'Finders & Queries', link: '/tasks/finders' },
+          { text: 'Measurement', link: '/tasks/measurement' },
+          { text: 'Import & Export', link: '/tasks/import-export' },
+          { text: 'Parametric CSG', link: '/tasks/parametric-csg' },
+        ],
+      },
+      {
+        text: 'Declarative Models',
+        items: [
+          { text: 'Why a Family Layer', link: '/families/overview' },
+          { text: 'For BIM Professionals', link: '/families/for-bim-professionals' },
+          { text: 'Your First Building', link: '/families/first-building' },
+          { text: 'Elements, Key Paths & Identity', link: '/families/identity' },
+          { text: 'Openings & Voids', link: '/families/openings' },
+          { text: 'Props & Validation', link: '/families/props-and-validation' },
+          { text: 'JSX Authoring', link: '/families/jsx' },
+          { text: 'IFC Export', link: '/families/ifc-export' },
+          { text: 'Copy-In Distribution', link: '/families/copy-in' },
+        ],
+      },
+      {
+        text: 'BIM (IFC4)',
+        items: [
+          { text: 'The BIM Layer', link: '/bim/overview' },
+          { text: 'Element Catalog', link: '/bim/elements' },
+          { text: 'IFC Export & Import', link: '/bim/ifc' },
+          { text: 'Validation', link: '/bim/validation' },
+          { text: 'Interop: COBie, IDS, BCF', link: '/bim/interop' },
+        ],
+      },
+      {
+        text: 'Advanced',
+        items: [
+          { text: 'Memory Management', link: '/advanced/memory' },
+          { text: 'Performance', link: '/advanced/performance' },
+          { text: 'Web Workers', link: '/advanced/workers' },
+          { text: 'Healing & Sewing', link: '/advanced/healing' },
+          { text: 'CSG Caching & Optimization', link: '/advanced/csg-caching' },
+        ],
+      },
+      {
+        text: 'Authoring with AI',
+        items: [
+          { text: 'Overview', link: '/agent/overview' },
+          { text: 'The Verify Loop', link: '/agent/the-loop' },
+          { text: 'CLI Reference', link: '/agent/cli' },
+          { text: 'BIM over MCP', link: '/agent/bim-mcp' },
+          { text: 'Examples', link: '/agent/examples' },
+          { text: 'Eval & Scorecard', link: '/agent/eval' },
+        ],
+      },
+      {
+        text: 'Integration',
+        items: [
+          { text: 'Three.js', link: '/integration/threejs' },
+          { text: 'React Three Fiber', link: '/integration/r3f' },
+          { text: 'Vite, Next.js, Astro', link: '/integration/frameworks' },
+          { text: 'Compatibility Matrix', link: '/integration/compatibility' },
+        ],
+      },
+      {
+        text: 'Migration',
+        items: [
+          { text: 'Coming from Replicad', link: '/migration/replicad' },
+          { text: 'Coming from OpenSCAD', link: '/migration/openscad' },
+          { text: 'Coming from Three.js', link: '/migration/threejs' },
+          { text: 'From a Hand-Rolled Cache', link: '/migration/manual-csg-cache' },
+        ],
+      },
+      {
+        text: 'Compare',
+        items: [
+          { text: 'brepjs vs Replicad', link: '/compare/brepjs-vs-replicad' },
+          { text: 'brepjs vs OpenSCAD', link: '/compare/brepjs-vs-openscad' },
+        ],
+      },
+      {
+        text: 'Extending brepjs',
+        items: [
+          { text: 'Architecture & Layers', link: '/extending/architecture' },
+          { text: 'Writing a Custom Kernel', link: '/extending/custom-kernel' },
+          { text: 'Kernel Conformance Suite', link: '/extending/conformance' },
+          { text: 'Writing Custom Operations', link: '/extending/custom-ops' },
+          { text: 'Pattern Checker Rules', link: '/extending/pattern-checker' },
+        ],
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'Glossary', link: '/reference/glossary' },
+          { text: 'Function Lookup', link: '/reference/function-lookup' },
+          { text: 'Error Codes', link: '/reference/errors' },
+          { text: 'Design Decisions', link: '/reference/decisions' },
+          { text: 'API Reference (TypeDoc)', link: 'https://andymai.github.io/brepjs/' },
+        ],
+      },
+    ],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/andymai/brepjs' },
+      { icon: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
+    ],
+    editLink: {
+      pattern: 'https://github.com/andymai/brepjs/edit/main/apps/docs/:path',
+      text: 'Edit this page on GitHub',
     },
-    markdown: {
-      lineNumbers: false,
-      theme: { light: 'github-light', dark: 'github-dark' },
+    footer: {
+      message: 'Released under the Apache 2.0 License.',
+      copyright: `Copyright © 2024–${year} Andy Aragon`,
     },
-    mermaid: {
-      theme: 'default',
+    search: {
+      provider: 'local',
+      options: {
+        detailedView: true,
+      },
     },
-    sitemap: {
-      hostname: 'https://brepjs.dev',
-    },
-  })
-);
+    outline: { level: [2, 3] },
+  },
+  markdown: {
+    lineNumbers: false,
+    theme: { light: 'github-light', dark: 'github-dark' },
+    config: renderMermaidFences,
+  },
+  sitemap: {
+    hostname: 'https://brepjs.dev',
+  },
+});
