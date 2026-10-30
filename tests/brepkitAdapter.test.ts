@@ -826,6 +826,74 @@ describe('BrepkitAdapter', () => {
     });
   });
 
+  // A compound's own handle reached projectEdges as if it were a solid
+  // (brepkit#2185); projectSolidsEdges (brepkit-wasm 4.6.7) takes its solids.
+  describe('projectEdges', () => {
+    const drawing = JSON.stringify({ visible: [[0, 0, 1, 0]], hidden: [[0, 1, 1, 1]] });
+    const projectSolid = (_solid: number, ..._view: unknown[]) => drawing;
+    const projectSolids = (_solids: Uint32Array | number[], ..._view: unknown[]) => drawing;
+    const view = [
+      [0, -100, 0],
+      [0, 1, 0],
+      [1, 0, 0],
+    ] as const;
+
+    it('projects every solid of a compound together, so each can hide the others', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getCompoundSolids: vi.fn((_compound: number) => [11, 12]),
+        projectEdges: vi.fn(projectSolid),
+        projectSolidsEdges: vi.fn(projectSolids),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const both = adapter.makeCompound([adapter.makeBox(1, 1, 1), adapter.makeBox(1, 1, 1)]);
+
+      const result = adapter.projectEdges(both, [...view[0]], [...view[1]], [...view[2]]);
+
+      expect(mock.projectEdges).not.toHaveBeenCalled();
+      expect(Array.from(mock.projectSolidsEdges.mock.calls[0]?.[0] ?? [])).toEqual([11, 12]);
+      expect(adapter.iterShapes(result.hidden.outline, 'edge')).toHaveLength(1);
+    });
+
+    it('projects a lone solid through projectEdges', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        projectEdges: vi.fn(projectSolid),
+        projectSolidsEdges: vi.fn(projectSolids),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      adapter.projectEdges(box, [...view[0]], [...view[1]], [...view[2]]);
+
+      expect(mock.projectEdges.mock.calls[0]?.[0]).toBe((box as BrepkitHandle).id);
+      expect(mock.projectSolidsEdges).not.toHaveBeenCalled();
+    });
+
+    it('projects each solid of a compound in turn on a kernel without projectSolidsEdges', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getCompoundSolids: vi.fn((_compound: number) => [11, 12]),
+        projectEdges: vi.fn(projectSolid),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const both = adapter.makeCompound([adapter.makeBox(1, 1, 1), adapter.makeBox(1, 1, 1)]);
+
+      const result = adapter.projectEdges(both, [...view[0]], [...view[1]], [...view[2]]);
+
+      expect(mock.projectEdges.mock.calls.map((c) => c[0])).toEqual([11, 12]);
+      expect(adapter.iterShapes(result.visible.outline, 'edge')).toHaveLength(2);
+    });
+
+    it('refuses a shape that holds no solid', () => {
+      const mock = Object.assign(createMockBrepKernel(), { projectEdges: vi.fn(projectSolid) });
+      const adapter = new BrepkitAdapter(mock);
+      const face = adapter.iterShapes(adapter.makeBox(1, 1, 1), 'face')[0];
+
+      expect(() => adapter.projectEdges(face, [...view[0]], [...view[1]], [...view[2]])).toThrow(
+        'needs a solid or a compound of solids'
+      );
+      expect(mock.projectEdges).not.toHaveBeenCalled();
+    });
+  });
+
   describe('I/O', () => {
     it('exportSTEP returns string', () => {
       const mock = createMockBrepKernel();

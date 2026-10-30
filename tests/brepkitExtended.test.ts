@@ -17,13 +17,17 @@ import {
   fuse,
   castShape,
   compound,
+  createCamera,
+  type Edge,
   getBounds,
   getEdges,
   getFaces,
   getSolids,
   isSolid,
+  measureLength,
   measureVolume,
   polygon,
+  projectEdges,
   rotate,
   threePointArc,
   vertex,
@@ -864,5 +868,32 @@ descBk('Pieces left by a cut (brepkit)', () => {
     expect(rest).toHaveLength(0);
     expect(cavity).toBeCloseTo(1000, 6);
     expect(around).toBeCloseTo(2648, 6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hidden-line projection of a compound
+// ---------------------------------------------------------------------------
+
+// Seen from the front, a 40 x 30 block's front rectangle is visible (140) and
+// its back one hidden behind it (140); a 10 cube wholly behind the block adds
+// its front and back squares (80) to the hidden set (brepkit#2185).
+descBk('Projecting a compound (brepkit)', () => {
+  const lengths = (edges: Edge[]) => edges.reduce((sum, e) => sum + unwrap(measureLength(e)), 0);
+  const cam = () => unwrap(createCamera([0, -100, 15], [0, 1, 0], [1, 0, 0]));
+  const block = () => box(40, 10, 30, { at: [0, 0, 15] });
+  const cube = () => box(10, 10, 10, { at: [0, 30, 15] });
+
+  it('hides a solid behind another solid of the compound', () => {
+    const { visible, hidden } = projectEdges(compound([block(), cube()]), cam(), true);
+    expect(lengths(visible)).toBeCloseTo(140, 6);
+    expect(lengths(hidden)).toBeCloseTo(220, 6);
+  });
+
+  it('draws a compound the way it draws the same solids fused', () => {
+    const apart = projectEdges(compound([block(), cube()]), cam(), true);
+    const fused = projectEdges(unwrap(fuse(block(), cube())), cam(), true);
+    expect(lengths(apart.visible)).toBeCloseTo(lengths(fused.visible), 6);
+    expect(lengths(apart.hidden)).toBeCloseTo(lengths(fused.hidden), 6);
   });
 });
