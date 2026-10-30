@@ -568,8 +568,10 @@ function canSimplify(bk: BrepkitKernel, op: 'fuse' | 'cut' | 'intersect'): boole
 }
 
 /** A point inside a face: the centroid of its largest tessellation triangle. */
+const FACE_POINT_DEFLECTION = 0.1;
+
 function interiorPoint(bk: BrepkitKernel, faceId: number): [number, number, number] | undefined {
-  const mesh = bk.tessellateFace(faceId, 0.1);
+  const mesh = bk.tessellateFace(faceId, FACE_POINT_DEFLECTION);
   const at = (t: number): [number, number, number] =>
     vec3At(mesh.positions, wasmIndex(mesh.indices, t) * 3);
   let best: [number, number, number] | undefined;
@@ -587,6 +589,40 @@ function interiorPoint(bk: BrepkitKernel, faceId: number): [number, number, numb
     }
   }
   return best;
+}
+
+interface FaceBox {
+  readonly min: [number, number, number];
+  readonly max: [number, number, number];
+}
+
+/**
+ * The box of a face's tessellation, grown by twice the deflection: the face
+ * lies within one deflection of its mesh, and an `interiorPoint` within one
+ * deflection of the face, so the box holds every interior point of the face.
+ */
+function faceMeshBox(bk: BrepkitKernel, faceId: number): FaceBox | undefined {
+  const { positions } = bk.tessellateFace(faceId, FACE_POINT_DEFLECTION);
+  if (positions.length < 3) return undefined;
+  const min = vec3At(positions, 0);
+  const max: [number, number, number] = [...min];
+  for (let i = 3; i + 2 < positions.length; i += 3) {
+    for (let k = 0; k < 3; k++) {
+      const v = wasmIndex(positions, i + k);
+      min[k] = Math.min(wasmIndex(min, k), v);
+      max[k] = Math.max(wasmIndex(max, k), v);
+    }
+  }
+  const pad = 2 * FACE_POINT_DEFLECTION;
+  for (let k = 0; k < 3; k++) {
+    min[k] = wasmIndex(min, k) - pad;
+    max[k] = wasmIndex(max, k) + pad;
+  }
+  return { min, max };
+}
+
+function boxHolds(box: FaceBox, p: readonly [number, number, number]): boolean {
+  return p.every((v, k) => v >= wasmIndex(box.min, k) && v <= wasmIndex(box.max, k));
 }
 
 /**
@@ -607,18 +643,22 @@ function simplifiedWithHistory(
   if (from.type !== 'solid' || to.type !== 'solid') {
     return { shape: simplified, evolution: tracked.evolution };
   }
-  const targets = toArray(bk.getSolidFaces(to.id));
+  const targets = toArray(bk.getSolidFaces(to.id)).map((id) => ({
+    id,
+    box: faceMeshBox(bk, id),
+  }));
   const into = new Map<number, number>();
   for (const faceId of toArray(bk.getSolidFaces(from.id))) {
     const p = interiorPoint(bk, faceId);
     if (!p) continue;
+    const near = targets.filter(({ box }) => !box || boxHolds(box, p));
     let nearest: number | undefined;
     let nearestDistance = Infinity;
-    for (const target of targets) {
-      const d = wasmIndex(bk.pointToFaceDistance(p[0], p[1], p[2], target), 0);
+    for (const { id } of near.length > 0 ? near : targets) {
+      const d = wasmIndex(bk.pointToFaceDistance(p[0], p[1], p[2], id), 0);
       if (d < nearestDistance) {
         nearestDistance = d;
-        nearest = target;
+        nearest = id;
       }
     }
     if (nearest !== undefined) into.set(faceId % hashUpperBound, nearest % hashUpperBound);
