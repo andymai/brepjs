@@ -9,6 +9,20 @@
 
 import type { KernelShape } from '@/kernel/types.js';
 
+/** One edge of a distance-angle chamfer that gives each edge its own values. */
+export interface ChamferDistAngleEdge {
+  readonly edge: KernelShape;
+  /** Setback on the reference face. */
+  readonly distance: number;
+  /** Angle from the reference face, in degrees. */
+  readonly angleDeg: number;
+  /**
+   * The reference face, one of the two faces the edge joins. Omitted, the
+   * kernel picks it as {@link KernelModifierOps.chamferDistAngle} does.
+   */
+  readonly face?: KernelShape | undefined;
+}
+
 export interface KernelModifierOps {
   fillet(
     shape: KernelShape,
@@ -29,15 +43,12 @@ export interface KernelModifierOps {
 
   /**
    * Distance-angle chamfer with its own values on each edge, in one operation:
-   * `distance` is set back on the edge's reference face (as {@link chamferDistAngle}
-   * picks it) and `angleDeg` is measured from that face.
+   * `distance` is set back on the edge's reference face (its `face`, or as
+   * {@link chamferDistAngle} picks it) and `angleDeg` is measured from that face.
    * Optional: kernels without it can chamfer by distance and angle only with
-   * one value for every edge.
+   * one value for every edge and no reference faces.
    */
-  chamferDistAngles?(
-    shape: KernelShape,
-    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>
-  ): KernelShape;
+  chamferDistAngles?(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>): KernelShape;
   shell(
     shape: KernelShape,
     faces: KernelShape[],

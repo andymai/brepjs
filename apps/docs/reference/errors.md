@@ -117,6 +117,12 @@ You passed a face to `removeFaces` that isn't part of the input shape. This usua
 
 **Fix**: Find faces on the _current_ shape, not on a predecessor.
 
+### `CHAMFER_ANGLE_FACE_NOT_ADJACENT`
+
+A `chamfer` callback returned `{ distance, angle, face }` with a face the edge doesn't join. The distance is set back on that face and the angle measured from it, so it has to be one of the edge's two faces. `metadata.edge` and `metadata.face` hold the pair.
+
+**Fix**: Pick the face from `facesOfEdge(shape, edge)` on the shape you're chamfering.
+
 ## Sketching / construction
 
 ### `WIRE_NOT_CLOSED`

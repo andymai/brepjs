@@ -2,7 +2,7 @@ import { sweep as sweepFn } from '@/operations/sweepFns.js';
 import { assembleWire } from '@/topology/curveBuilders.js';
 import { outerWire } from '@/topology/faceFns.js';
 import { DisposalScope } from '@/core/disposal.js';
-import { ok, err, type Result } from '@/core/result.js';
+import { err, type Result } from '@/core/result.js';
 import { typeCastError } from '@/core/errors.js';
 import {
   isEdge,
@@ -42,12 +42,5 @@ export function evalSweep(node: SweepNode, ctx: EvalContext): Result<AnyShape<Di
   const profileWire = outerWire(face.value);
   scope.register(profileWire);
 
-  const r = sweepFn(profileWire, spine, { frenet: node.frenet });
-  if (!r.ok) return r;
-  if (Array.isArray(r.value)) {
-    // Shell mode is never requested here; guard the union anyway.
-    for (const s of r.value) s[Symbol.dispose]();
-    return err(typeCastError('CSG_SWEEP_SPINE', 'Sweep: unexpected shell-mode result'));
-  }
-  return ok(r.value);
+  return sweepFn(profileWire, spine, { frenet: node.frenet });
 }

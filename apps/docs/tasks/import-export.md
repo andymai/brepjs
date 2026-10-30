@@ -23,7 +23,7 @@ brepjs reads and writes the formats every CAD pipeline expects. STEP and IGES pr
 
 \* IGES needs a kernel built with an IGES translator. The default occt-wasm kernel has none, so there `importIGES` and `exportIGES` return an `UNSUPPORTED_CAPABILITY` error; exchange the model as STEP instead.
 
-STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`, and a file with several bodies imports as a `Compound` of them. Because every triangle becomes a face, large meshes take seconds to tens of seconds: roughly 2.5 seconds per 10,000 triangles on the default occt-wasm kernel (about 15 seconds for 50,000), and up to about twice that for a file with several bodies.
+STL import lossily converts triangles into a B-Rep approximation, useful for STEP conversion and measurement, not for further B-Rep work. A closed mesh imports as a `Solid` with one planar face per triangle; an open mesh imports as a sewn `Shell`, and a file with several bodies imports as a `Compound` of them. Because every triangle becomes a face, large meshes take seconds. On the default occt-wasm kernel, a watertight mesh whose triangles wind consistently takes roughly 0.3 seconds per 10,000 triangles (about 1.7 seconds for 50,000). A mesh whose winding needs repair takes roughly 2 seconds per 10,000 (about 13 seconds for 50,000), and up to about twice that for a file with several bodies.
 
 ## Export
 
@@ -50,11 +50,13 @@ export default part;
 STEP (ISO 10303) preserves B-Rep structure: faces, edges, surfaces, curves, even sharp/smooth qualifiers. A part written with `exportSTEP` and re-imported with `importSTEP` is geometrically identical (within tolerance):
 
 ```typescript
-import { box, exportSTEP, importSTEP, measureVolume, unwrap } from 'brepjs/quick';
+import { box, exportSTEP, importSTEP, isShape3D, measureVolume, unwrap } from 'brepjs/quick';
 
 const original = box(30, 20, 10);
 const step = unwrap(exportSTEP(original));
 const reimported = unwrap(await importSTEP(step));
+// importSTEP can return any shape kind; measureVolume needs a 3D one
+if (!isShape3D(reimported)) throw new Error('STEP file holds no solid');
 
 console.log('Original volume:', unwrap(measureVolume(original))); // 6000
 console.log('Reimported volume:', unwrap(measureVolume(reimported))); // 6000 ± epsilon

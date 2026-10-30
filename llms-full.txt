@@ -443,9 +443,12 @@ fillet(shape, edges, radius): Result<Shape3D>      // Selected edges
 
 chamfer(shape, distance): Result<Shape3D>          // All edges
 chamfer(shape, edges, distance): Result<Shape3D>   // Selected edges
-// distance: number | [d1, d2] | { distance, angle } | (edge => number | [d1, d2] | { distance, angle } | null)
+// distance: number | [d1, d2] | { distance, angle } | (edge => number | [d1, d2] | { distance, angle, face? } | null)
 // A callback's kept edges all get distances or all get { distance, angle } (mixing is INVALID_CHAMFER_DISTANCE).
 // Different { distance, angle } per edge need occt-wasm 5.9.0+; other kernels return UNSUPPORTED_CAPABILITY.
+// face (one of the two faces the edge joins, e.g. facesOfEdge(shape, edge)[0]) is where distance is set back and angle measured from;
+// it needs the same per-edge support, and a face the edge does not join is CHAMFER_ANGLE_FACE_NOT_ADJACENT.
+// Edges of one tangent-continuous chain must state the same chamfer; occt-wasm 5.11.0+ also accepts it stated from the other face.
 // brepkit has no asymmetric or distance-angle chamfer: [d1, d2] with d1 != d2 and any { distance, angle } return UNSUPPORTED_CAPABILITY there.
 
 chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>

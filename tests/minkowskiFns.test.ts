@@ -25,7 +25,7 @@ describe.skipIf(shouldSkipSuite('minkowskiFns'))('OCCT-specific: minkowskiFns', 
 
   function makeNullShape(): Shape3D {
     const oc = getKernel().oc;
-    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+    return createSolid(new oc.TopoDS_Solid());
   }
 
   describe('minkowski', () => {

@@ -22,6 +22,7 @@ export type TransformEntry =
   | {
       readonly type: 'rotate';
       readonly shape: KernelShape;
+      /** Degrees, unlike {@link KernelTransformOps.rotate}, which takes radians. */
       readonly angle: number;
       readonly axis: readonly [number, number, number];
       readonly center: readonly [number, number, number];
@@ -40,7 +41,10 @@ export type TransformEntry =
     };
 
 export interface KernelTransformOps {
-  /** Create a composed transform from a sequence of translate/rotate operations. Returns an opaque handle. */
+  /**
+   * Create a composed transform from a sequence of translate/rotate operations. Returns an
+   * opaque handle. Rotate angles here are in degrees.
+   */
   composeTransform(
     ops: Array<
       | { type: 'translate'; x: number; y: number; z: number }
@@ -66,6 +70,7 @@ export interface KernelTransformOps {
    */
   locate(shape: KernelShape, trsf: KernelType): KernelShape;
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
+  /** Rotate by `angle` radians about `axis` (default +Z) through `center` (default origin). */
   rotate(
     shape: KernelShape,
     angle: number,
@@ -102,7 +107,7 @@ export interface KernelTransformOps {
     spacing: number,
     count: number
   ): KernelShape[];
-  /** Generate a circular pattern of shapes. */
+  /** Generate a circular pattern of shapes, `angleStep` degrees apart. */
   circularPattern(
     shape: KernelShape,
     center: [number, number, number],

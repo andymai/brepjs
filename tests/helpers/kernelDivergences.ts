@@ -200,6 +200,11 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
     },
+    'chamferAngle.faceHistory': {
+      kind: 'not-implemented',
+      reason:
+        'manifold reports no face history for a distance-angle chamfer (no chamferDistAnglesWithHistory), so only face origins carry over, matched by hash and geometry; face tags and colors are lost.',
+    },
     'draftFns.neutralPlane': {
       kind: 'not-implemented',
       reason: 'manifold leaves a drafted box at its full 1000 mm3.',
@@ -320,6 +325,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer, one value for every edge or one per edge.',
+    },
+    'chamferAngle.faceHistory': {
+      kind: 'not-implemented',
+      reason:
+        'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer, so there is no result to carry face metadata to.',
     },
     'draftFns.perFaceAngles': {
       kind: 'not-implemented',
@@ -575,6 +585,14 @@ export const divergences: DivergenceMap = {
       reason:
         'brepkit-wasm exposes no matrix-of-inertia query, so the adapter has no inertia() and principalBoundingBox returns UNSUPPORTED.',
     },
+    // -----------------------------------------------------------------------
+    // threemfImport.test.ts
+    // -----------------------------------------------------------------------
+    'threemfImport.bodiesWithinObject': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit has no sewKeepsOrientation capability, so a 3MF object goes through its native indexed buildSolidFromFaces, which returns one solid for all the bodies in the object (two cubes become one solid; a cube beside a sheet, one 1016.7 mm3 solid) rather than a solid per closed body.',
+    },
   },
 
   occt: {
@@ -603,6 +621,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason:
         'The deprecated opencascade.js adapter has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
+    },
+    'chamferAngle.faceHistory': {
+      kind: 'not-implemented',
+      reason:
+        'The deprecated opencascade.js adapter reports no face history for a distance-angle chamfer (no chamferDistAnglesWithHistory), so only face origins carry over, matched by hash and geometry; face tags and colors are lost.',
     },
     'stepConfigFns.units': {
       kind: 'not-implemented',

@@ -18,6 +18,7 @@ import type {
   KernelType,
   OperationResult,
 } from '@/kernel/types.js';
+import type { ChamferDistAngleEdge } from './modifierOps.js';
 
 export interface KernelEvolutionOps {
   translateWithHistory(
@@ -28,6 +29,7 @@ export interface KernelEvolutionOps {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;
+  /** {@link KernelTransformOps.rotate} with face history: `angle` is in radians. */
   rotateWithHistory(
     shape: KernelShape,
     angle: number,
@@ -112,6 +114,18 @@ export interface KernelEvolutionOps {
     shape: KernelShape,
     edges: KernelShape[],
     distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult;
+  /**
+   * {@link KernelModifierOps.chamferDistAngles} with face history. Optional, and
+   * may throw `UnsupportedKernelOperationError` on a build without it: there a
+   * distance-angle chamfer carries over face origins only, matched by hash and
+   * geometry.
+   */
+  chamferDistAnglesWithHistory?(
+    shape: KernelShape,
+    edges: ReadonlyArray<ChamferDistAngleEdge>,
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;

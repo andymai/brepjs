@@ -167,7 +167,7 @@ export function sketchExtrude(
       complexExtrude(sketch.wire, [...originVec], [...extrusionVec], extrusionProfile)
     );
     sketch.delete();
-    return solid as Shape3D;
+    return solid;
   }
 
   if (twistAngle) {
@@ -175,7 +175,7 @@ export function sketchExtrude(
       twistExtrude(sketch.wire, twistAngle, [...originVec], [...extrusionVec], extrusionProfile)
     );
     sketch.delete();
-    return solid as Shape3D;
+    return solid;
   }
 
   const face = unwrap(makeFace(sketch.wire));
@@ -217,7 +217,7 @@ export function sketchSweep(
     config.support = sketch.baseFace.wrapped;
   }
   try {
-    const shape = unwrap(sweep(profile.wire, sketch.wire, config)) as Shape3D;
+    const shape = unwrap(sweep(profile.wire, sketch.wire, config));
     sketch.delete();
     return shape;
   } finally {
@@ -296,7 +296,7 @@ export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & Plana
   // addHolesInFace returns a fresh face sharing baseFace's TShape — release the
   // orphaned base (its slot would otherwise leak on arena kernels).
   baseFace[Symbol.dispose]();
-  return newFace as OrientedFace & PlanarFace;
+  return newFace;
 }
 
 /** Return all wires (outer + holes) combined into a compound shape. */
@@ -333,28 +333,24 @@ export function compoundSketchExtrude(
   const extrusionVec = vecScale(normVec, extrusionDistance);
 
   if (extrusionProfile && !twistAngle) {
-    return holedSweptSolid(
-      sketch.sketches,
-      (s: Sketch) =>
-        complexExtrude(
-          s.wire,
-          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile
-        ) as Result<Shape3D> // solid mode (shellMode omitted)
+    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
+      complexExtrude(
+        s.wire,
+        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+        extrusionVec,
+        extrusionProfile
+      )
     );
   }
   if (twistAngle) {
-    return holedSweptSolid(
-      sketch.sketches,
-      (s: Sketch) =>
-        twistExtrude(
-          s.wire,
-          twistAngle,
-          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile
-        ) as Result<Shape3D> // solid mode (shellMode omitted)
+    return holedSweptSolid(sketch.sketches, (s: Sketch) =>
+      twistExtrude(
+        s.wire,
+        twistAngle,
+        origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+        extrusionVec,
+        extrusionProfile
+      )
     );
   }
   const face = compoundSketchFace(sketch);

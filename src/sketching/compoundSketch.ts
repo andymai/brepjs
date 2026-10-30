@@ -5,7 +5,8 @@ import type { ExtrusionProfile } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
 import type { SketchInterface } from './sketch.js';
 import { bug } from '@/core/errors.js';
-import type { Face, Shape3D } from '@/core/shapeTypes.js';
+import type { OrientedFace, Shape3D } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import * as fns from './sketchFns.js';
 
 /**
@@ -62,7 +63,7 @@ export default class CompoundSketch implements SketchInterface {
   }
 
   /** Build a face from the outer boundary with inner wires subtracted as holes. */
-  face(): Face {
+  face(): OrientedFace & PlanarFace {
     return fns.compoundSketchFace(this);
   }
 

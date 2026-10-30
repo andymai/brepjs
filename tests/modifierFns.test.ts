@@ -43,7 +43,7 @@ import { fillet as filletFn, shell as shellFn } from '@/topology/modifierFns.js'
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { castResultShape } from '@/core/shapeTypes.js';
 import type { Result } from '@/index.js';
-import type { Dimension, Edge, Face, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
+import type { Edge, Face, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -580,7 +580,7 @@ describe('per-edge fillet radii and chamfer distances', () => {
   }
 
   /** The value for a vertical edge on the x = 0 side, or on the x = 10 side. */
-  function bySide<V>(nearSide: V, farSide: V): (edge: Edge<Dimension>) => V {
+  function bySide<V>(nearSide: V, farSide: V): (edge: Edge) => V {
     return (edge) => (getBounds(edge).xMin < 5 ? nearSide : farSide);
   }
 

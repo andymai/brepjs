@@ -66,6 +66,7 @@ import type {
 } from '@/kernel/types.js';
 import type { BulkMeasurement, Matrix3 } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
+import type { ChamferDistAngleEdge } from '@/kernel/interfaces/modifierOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
 import { isOcctWasmHandle, unwrap, wrapResult } from './helpers.js';
@@ -755,10 +756,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     return modifierOps.chamferDistAngle(this.k, this.Module, shape, edges, distance, angleDeg);
   }
 
-  chamferDistAngles(
-    shape: KernelShape,
-    edges: ReadonlyArray<{ edge: KernelShape; distance: number; angleDeg: number }>
-  ): KernelShape {
+  chamferDistAngles(shape: KernelShape, edges: ReadonlyArray<ChamferDistAngleEdge>): KernelShape {
     return modifierOps.chamferDistAngles(this.k, this.Module, shape, edges);
   }
 
@@ -1110,6 +1108,22 @@ export class OcctWasmAdapter implements KernelAdapter {
       shape,
       edges,
       distance,
+      inputFaceHashes,
+      hashUpperBound
+    );
+  }
+
+  chamferDistAnglesWithHistory(
+    shape: KernelShape,
+    edges: ReadonlyArray<ChamferDistAngleEdge>,
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult {
+    return evolutionOps.chamferDistAnglesWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      edges,
       inputFaceHashes,
       hashUpperBound
     );

@@ -273,9 +273,8 @@ export function isShape1D<D extends Dimension>(s: AnyShape<D>): s is Shape1D<D> 
  *
  * **Note**: When `D` is `'2D'`, Shell/Solid/CompSolid are not valid members
  * of `AnyShape<'2D'>`. If the kernel shape happens to be one of these types,
- * they will be cast unsoundly. Prefer {@link castShape3D} for shapes known
- * to be 3D, and use the default `castShape()` (which defaults to `'3D'`)
- * for normal usage.
+ * they will be cast unsoundly. For normal usage, call `castShape()` without a
+ * dimension (it defaults to `'3D'`) or {@link castShape3D}, which does the same.
  */
 export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?: D): AnyShape<D> {
   const kernel = getKernel();
@@ -293,7 +292,12 @@ export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?
   return createCompound<D>(dc, dim);
 }
 
-/** Type-safe cast for shapes known to be 3D. */
+/**
+ * Cast a raw kernel shape with the `'3D'` dimension brand, the same as
+ * `castShape(ocShape)`. The 3D is the space the shape lives in, not its
+ * topology: the result can be any kind from vertex to compound. Narrow it with
+ * {@link isShape3D} to get a {@link Shape3D} (shell, solid, compsolid, or compound).
+ */
 export function castShape3D(ocShape: KernelShape): AnyShape {
   return castShape(ocShape);
 }

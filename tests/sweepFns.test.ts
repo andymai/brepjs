@@ -18,12 +18,7 @@ import {
   getFaces,
   getKernel,
 } from '@/index.js';
-import type { ClosedWire, Shape3D, Wire } from '@/core/shapeTypes.js';
-
-function shapeOf(swept: Shape3D | [Shape3D, Wire, Wire]): Shape3D {
-  if (Array.isArray(swept)) throw new Error('expected a solid, not a shell tuple');
-  return swept;
-}
+import type { ClosedWire, Wire } from '@/core/shapeTypes.js';
 
 describe('sweepFns', () => {
   beforeAll(async () => {
@@ -37,7 +32,7 @@ describe('sweepFns', () => {
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine);
     expect(isOk(result)).toBe(true);
-    expect(isShape3D(shapeOf(unwrap(result)))).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
   });
 
   it('sweeps a circle along a line with transition mode 0 (Transformed)', () => {
@@ -47,7 +42,7 @@ describe('sweepFns', () => {
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine, { transitionMode: 'transformed' });
     expect(isOk(result)).toBe(true);
-    const shape = shapeOf(unwrap(result));
+    const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
   });
 
@@ -58,7 +53,7 @@ describe('sweepFns', () => {
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine, { transitionMode: 'right' });
     expect(isOk(result)).toBe(true);
-    expect(isShape3D(shapeOf(unwrap(result)))).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
   });
 
   it('sweeps a circle along a line with transition mode 2 (RoundCorner)', () => {
@@ -68,7 +63,7 @@ describe('sweepFns', () => {
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine, { transitionMode: 'round' });
     expect(isOk(result)).toBe(true);
-    expect(isShape3D(shapeOf(unwrap(result)))).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
   });
 
   it('sweep with transition mode produces a solid with expected volume', () => {
@@ -78,7 +73,7 @@ describe('sweepFns', () => {
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine, { transitionMode: 'transformed' });
     expect(isOk(result)).toBe(true);
-    const shape = shapeOf(unwrap(result));
+    const shape = unwrap(result);
     expect(isSolid(shape)).toBe(true);
     const expected = Math.PI * 4 * 20;
     const actual = unwrap(measureVolume(shape));
@@ -93,7 +88,7 @@ describe('sweepFns', () => {
     const profile = castShape(sketchCircle(2).wire.wrapped) as ClosedWire;
     const result = sweep(profile, helix(40, 40, 10));
     expect(isOk(result)).toBe(true);
-    const shape = shapeOf(unwrap(result));
+    const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
     expect(unwrap(measureVolume(shape))).toBeGreaterThan(0);
   });
@@ -102,7 +97,7 @@ describe('sweepFns', () => {
     const profile = castShape(sketchCircle(2).wire.wrapped) as ClosedWire;
     const result = sweep(profile, helix(40, 40, 10), { frenet: true });
     expect(isOk(result)).toBe(true);
-    expect(unwrap(measureVolume(shapeOf(unwrap(result))))).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(0);
   });
 
   it('simple-mode helix sweep produces a valid (non-degenerate) shape', () => {
@@ -113,7 +108,7 @@ describe('sweepFns', () => {
     const profile = castShape(sketchCircle(2).wire.wrapped) as ClosedWire;
     const result = sweep(profile, helix(40, 40, 10), { mode: 'simple' });
     expect(isOk(result)).toBe(true);
-    const shape = shapeOf(unwrap(result));
+    const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
     expect(isValid(shape)).toBe(true);
     expect(unwrap(measureArea(shape))).toBeGreaterThan(0);

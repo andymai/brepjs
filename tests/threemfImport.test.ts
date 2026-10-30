@@ -1,15 +1,20 @@
-import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
+import { currentKernel, initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   exportThreeMF,
   getBounds,
+  getFaces,
+  getKernel,
   getShapeColor,
+  getShells,
   getSolids,
   importThreeMF,
   isCompound,
   isShape3D,
   isSolid,
+  isValid,
   measureVolume,
   mesh,
   unwrap,
@@ -139,19 +144,32 @@ function modelZip(xml: string): Blob {
 
 /** A `size` x `size` x `height` box mesh object with its own vertex list and outward winding. */
 function cubeObject(id: number, size: number, height = size): string {
+  return meshObject(id, [boxMesh(size, height)]);
+}
+
+type Vec3 = [number, number, number];
+
+interface Mesh {
+  vertices: Vec3[];
+  triangles: Vec3[];
+}
+
+/** A `size` x `size` x `height` box at `at`, wound outward unless `inward`. */
+function boxMesh(size: number, height = size, at: Vec3 = [0, 0, 0], inward = false): Mesh {
   const s = size;
   const h = height;
-  const vertices = [
-    [0, 0, 0],
-    [s, 0, 0],
-    [s, s, 0],
-    [0, s, 0],
-    [0, 0, h],
-    [s, 0, h],
-    [s, s, h],
-    [0, s, h],
+  const [x, y, z] = at;
+  const vertices: Vec3[] = [
+    [x, y, z],
+    [x + s, y, z],
+    [x + s, y + s, z],
+    [x, y + s, z],
+    [x, y, z + h],
+    [x + s, y, z + h],
+    [x + s, y + s, z + h],
+    [x, y + s, z + h],
   ];
-  const triangles = [
+  const triangles: Vec3[] = [
     [0, 2, 1],
     [0, 3, 2],
     [4, 5, 6],
@@ -165,6 +183,36 @@ function cubeObject(id: number, size: number, height = size): string {
     [1, 2, 6],
     [1, 6, 5],
   ];
+  return { vertices, triangles: inward ? triangles.map(([a, b, c]) => [a, c, b]) : triangles };
+}
+
+/** A unit square at height `z`: an open body of two triangles. */
+function sheetMesh(z: number): Mesh {
+  return {
+    vertices: [
+      [0, 0, z],
+      [1, 0, z],
+      [1, 1, z],
+      [0, 1, z],
+    ],
+    triangles: [
+      [0, 1, 2],
+      [0, 2, 3],
+    ],
+  };
+}
+
+/** One mesh object holding every mesh of `meshes`, their vertex lists concatenated. */
+function meshObject(id: number, meshes: Mesh[]): string {
+  const vertices: Vec3[] = [];
+  const triangles: Vec3[] = [];
+  for (const mesh of meshes) {
+    const offset = vertices.length;
+    vertices.push(...mesh.vertices);
+    triangles.push(
+      ...mesh.triangles.map(([a, b, c]): Vec3 => [a + offset, b + offset, c + offset])
+    );
+  }
   return (
     `<object id="${id}" type="model"><mesh><vertices>` +
     vertices.map(([x, y, z]) => `<vertex x="${x}" y="${y}" z="${z}" />`).join('') +
@@ -230,6 +278,74 @@ describe('importThreeMF', () => {
     expect(bounds.xMax).toBeCloseTo(30, 6);
     expect(bounds.zMax).toBeCloseTo(10, 6);
   });
+
+  it('imports an object holding several closed bodies as a solid per body', async (ctx) => {
+    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+    const xml = model(
+      [meshObject(1, [boxMesh(10), boxMesh(10, 10, [20, 0, 0])])],
+      ['<item objectid="1" />']
+    );
+    using imported = unwrap(await importThreeMF(modelZip(xml)));
+    expect(isCompound(imported)).toBe(true);
+    expect(getSolids(imported)).toHaveLength(2);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000, 3);
+  });
+
+  it('keeps a sealed cavity inside an object hollow', async (ctx) => {
+    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+    const xml = model(
+      [meshObject(1, [boxMesh(20), boxMesh(10, 10, [5, 5, 5], true)])],
+      ['<item objectid="1" />']
+    );
+    using imported = unwrap(await importThreeMF(modelZip(xml)));
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(7000, 3);
+    expect(getShells(imported)).toHaveLength(2);
+  });
+
+  it('keeps an open body beside a closed one in the same object as a shell', async (ctx) => {
+    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+    const xml = model([meshObject(1, [boxMesh(10), sheetMesh(50)])], ['<item objectid="1" />']);
+    using imported = unwrap(await importThreeMF(modelZip(xml)));
+    const solids = getSolids(imported);
+    expect(solids).toHaveLength(1);
+    expect(unwrap(measureVolume(solids[0] as Shape3D))).toBeCloseTo(1000, 3);
+    expect(getShells(imported)).toHaveLength(2);
+    expect(getFaces(imported)).toHaveLength(14);
+  });
+
+  it('repairs the winding of bodies that share an object', async (ctx) => {
+    skipIfDiverges(ctx, 'threemfImport.bodiesWithinObject');
+    const flipped = boxMesh(10, 10, [20, 0, 0]);
+    const [a, b, c] = flipped.triangles[0] ?? [0, 0, 0];
+    flipped.triangles[0] = [a, c, b];
+    const xml = model([meshObject(1, [boxMesh(10), flipped])], ['<item objectid="1" />']);
+    using imported = unwrap(await importThreeMF(modelZip(xml)));
+    expect(getSolids(imported)).toHaveLength(2);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000, 3);
+  });
+
+  it.skipIf(currentKernel !== 'occt-wasm')(
+    'sews a clean closed object without the orientation repair',
+    async () => {
+      const kernel = getKernel();
+      const repairs = vi.spyOn(kernel, 'sewAndSolidify');
+      const indexed = vi.spyOn(kernel, 'buildSolidFromFaces');
+      try {
+        const xml = model([cubeObject(1, 10)], ['<item objectid="1" />']);
+        using imported = unwrap(await importThreeMF(modelZip(xml)));
+        expect(isSolid(imported)).toBe(true);
+        expect(isValid(imported)).toBe(true);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1000, 6);
+        expect(repairs).not.toHaveBeenCalled();
+        expect(indexed).not.toHaveBeenCalled();
+      } finally {
+        repairs.mockRestore();
+        indexed.mockRestore();
+      }
+    }
+  );
 
   it('applies the build item transform', async () => {
     // Rotate 90 degrees about Z (row-vector convention: x' = -y, y' = x), then translate.
