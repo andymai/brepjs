@@ -17,7 +17,7 @@ The GLB sidecar is **Y-up** (glTF's required convention) via a root-node rotatio
 
 ## Importing + modifying
 
-`importSTEP(blob)` is **async** and takes a **`Blob`** (not a path or `ArrayBuffer`): `importSTEP(blob): Promise<Result<AnyShape>>`. Read the file bytes yourself, wrap them, and `await`, so the part's default export must be `async`. The result is an `AnyShape`; narrow it before a 3D op like `fillet` (which needs a `ValidSolid`).
+`importSTEP(blob)` is **async** and takes a **`Blob`** (not a path or `ArrayBuffer`): `importSTEP(blob): Promise<Result<AnyShape>>`. Read the file bytes yourself, wrap them, and `await`, so the part's default export must be `async`. The result is an `AnyShape`; narrow it before a 3D op like `fillet` (which needs a `ValidSolid`). A one-solid file comes back as that `Solid`; an assembly or a file with several parts comes back as a `Compound` of every part at its placement (`getSolids` lists them), so `isSolid` is false for it.
 
 ```ts
 import { readFile } from 'node:fs/promises';

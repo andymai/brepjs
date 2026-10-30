@@ -840,7 +840,7 @@ Functional API:
 ```typescript
 import { importSTEP, exportSTEP, exportAssemblySTEP } from 'brepjs';
 
-importSTEP(blob): Promise<Result<AnyShape>>
+importSTEP(blob): Promise<Result<AnyShape>>  // one-solid file: that Solid; assembly or several parts: a Compound of every part at its placement (names/colors not read)
 exportSTEP(shape): Result<Blob>
 exportAssemblySTEP(shapes, { unit?, modelUnit? }?): Result<Blob>
 // ShapeOptions: { shape, color?: hex string (default red), alpha?: 0-1, name? }
@@ -861,7 +861,7 @@ exportSTL(shape, { tolerance?, angularTolerance?, binary? }?): Result<Blob>
 ```typescript
 import { importIGES, exportIGES } from 'brepjs';
 
-importIGES(blob): Promise<Result<AnyShape>>
+importIGES(blob): Promise<Result<AnyShape>>  // several parts: a Compound of every part, like importSTEP
 exportIGES(shape): Result<Blob>
 ```
 
