@@ -1,0 +1,34 @@
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_02cbf6b8a533e9 1-2,14
+  s_d4ab5fb2066c9b::t_a0151eb8a13323 49-51
+  s_d4ab5fb2066c9b::t_c5b79c13c80b49 117-138
+  s_d4ab5fb2066c9b::t_abb2ecf7aa0a46 32-48,52-53
+tests/fixtures/test-assembly.step
+  s_d4ab5fb2066c9b::t_37e330a211f519 1-880
+src/io/importFns.ts
+  s_d4ab5fb2066c9b::t_70c98f4a0718b4 7,13,17-32,36-38,41-42,44-45,60,112-114,116-117,135
+packages/brepjs-cad/skills/polish/references/export.md
+  s_d4ab5fb2066c9b::t_3e8ee8a5543bea 20
+apps/docs/tasks/import-export.md
+  s_d4ab5fb2066c9b::t_18dfc849d402d4 158-159
+llms.txt
+  s_d4ab5fb2066c9b::t_4e76f496dc9e45 843,864
+llms-full.txt
+  s_d4ab5fb2066c9b::t_4e76f496dc9e45 843,864
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e65ab5d4919afbd5094e9b7175f869a54a02943",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
