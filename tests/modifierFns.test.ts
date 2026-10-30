@@ -42,6 +42,7 @@ import {
 import { fillet as filletFn, shell as shellFn } from '@/topology/modifierFns.js';
 import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import { castResultShape } from '@/core/shapeTypes.js';
+import type { Result } from '@/index.js';
 import type { Dimension, Edge, Face, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
@@ -674,7 +675,7 @@ describe('chamfer distances the kernel cannot build', () => {
     });
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);
-    const results = withKernel('no-asymmetric-chamfer', () => [
+    const results: Array<Result<unknown>> = withKernel('no-asymmetric-chamfer', () => [
       chamfer(b, edges, [1, 2]),
       chamfer(b, edges, () => [1, 2]),
       chamferWithEvolution(b, edges, [1, 2]),

@@ -826,7 +826,8 @@ describe('BrepkitAdapter', () => {
 
       for (const distance of [
         [0.2, 0.4] as [number, number],
-        (edge: unknown): number | [number, number] => (edge === near ? [0.2, 0.4] : 0.3),
+        // A symmetric edge first: the check must reject before chamfering any group.
+        (edge: unknown): number | [number, number] => (edge === near ? 0.3 : [0.2, 0.4]),
       ]) {
         let caught: unknown;
         try {
@@ -849,7 +850,8 @@ describe('BrepkitAdapter', () => {
       adapter.chamfer(box, edges, () => [0.3, 0.3]);
 
       expect(mock.chamfer).toHaveBeenCalledTimes(2);
-      for (const call of mock.chamfer.mock.calls) expect(call[2]).toBe(0.3);
+      const calls: unknown[][] = mock.chamfer.mock.calls;
+      for (const call of calls) expect(call[2]).toBe(0.3);
     });
 
     it('delegates asymmetric distances to chamferAsymmetric', () => {
