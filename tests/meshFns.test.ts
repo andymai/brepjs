@@ -201,7 +201,9 @@ describe('meshFns', () => {
         expect(ends.some((p) => near(p, last))).toBe(true);
       }
 
-      using drilled = unwrap(cut(box(40, 30, 20), cylinder(5, 30, { at: [20, 15, -5] })));
+      using block = box(40, 30, 20);
+      using bore = cylinder(5, 30, { at: [20, 15, -5] });
+      using drilled = unwrap(cut(block, bore));
       const drilledIds = meshEdges(drilled, { cache: false }).edgeGroups.map((g) => g.edgeId);
       expect(drilledIds.sort((x, y) => x - y)).toEqual(
         getEdges(drilled)

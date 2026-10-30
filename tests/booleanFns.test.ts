@@ -60,7 +60,8 @@ describe('fuse', () => {
   // 6). The tags on both operands' faces follow them onto the merged faces.
   it('simplifies a tracked fuse and keeps both operands face tags', () => {
     using a = box(30, 40, 10);
-    using b = translate(box(30, 40, 10), [-30, 0, 0]);
+    using twin = box(30, 40, 10);
+    using b = translate(twin, [-30, 0, 0]);
     tagFaces(a, (f) => getBounds(f).zMin > 9.9, 'top');
     tagFaces(b, (f) => getBounds(f).xMax < -29.9, 'far');
     using merged = unwrap(fuse(a, b, { simplify: true }));

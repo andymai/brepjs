@@ -141,8 +141,9 @@ describe('measureFns', () => {
     });
 
     it('measures a compound of solids by its closest solid', () => {
-      using near = translate(box(10, 10, 10), [0, 0, 30]);
-      using farther = translate(box(10, 10, 10), [0, 0, 60]);
+      using cube = box(10, 10, 10);
+      using near = translate(cube, [0, 0, 30]);
+      using farther = translate(cube, [0, 0, 60]);
       using pair = compound([near, farther]);
       using b = box(40, 30, 20);
       expect(unwrap(measureDistance(pair, b))).toBeCloseTo(10, 6);
@@ -155,7 +156,8 @@ describe('measureFns', () => {
       const bottom = getFaces(b).find((f) => getBounds(f).zMax < 0.1);
       if (!top || !bottom) throw new Error('box faces not found');
       expect(unwrap(measureDistance(top, bottom))).toBeCloseTo(20, 6);
-      using above = translate(box(10, 10, 10), [0, 0, 50]);
+      using cube = box(10, 10, 10);
+      using above = translate(cube, [0, 0, 50]);
       expect(unwrap(measureDistance(top, above))).toBeCloseTo(30, 6);
     });
 
@@ -178,13 +180,18 @@ describe('measureFns', () => {
         })
       );
       using a = box(10, 10, 10);
-      using b = translate(box(10, 10, 10), [20, 0, 0]);
-      const results: Array<Result<unknown>> = withKernel('no-distance', () => [
-        measureDistance(a, b),
-        measureDistanceProps(a, b),
-        checkInterference(a, b),
-        unwrap(createDistanceQuery(a)).distanceTo(b),
-      ]);
+      using b = translate(a, [20, 0, 0]);
+      const results: Array<Result<unknown>> = withKernel('no-distance', () => {
+        const query = unwrap(createDistanceQuery(a));
+        const viaQuery = query.distanceTo(b);
+        query.dispose();
+        return [
+          measureDistance(a, b),
+          measureDistanceProps(a, b),
+          checkInterference(a, b),
+          viaQuery,
+        ];
+      });
       for (const result of results) {
         const error = unwrapErr(result);
         expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
@@ -200,12 +207,16 @@ describe('measureFns', () => {
         const top = getFaces(b).find((f) => getBounds(f).zMin > 19.9);
         const bottom = getFaces(b).find((f) => getBounds(f).zMax < 0.1);
         if (!top || !bottom) throw new Error('box faces not found');
-        using above = translate(box(10, 10, 10), [0, 0, 50]);
+        using cube = box(10, 10, 10);
+        using above = translate(cube, [0, 0, 50]);
+        const query = unwrap(createDistanceQuery(top));
+        const viaQuery = query.distanceTo(bottom);
+        query.dispose();
         const results: Array<Result<unknown>> = [
           measureDistance(top, bottom),
           measureDistanceProps(top, above),
           checkInterference(top, bottom),
-          unwrap(createDistanceQuery(top)).distanceTo(bottom),
+          viaQuery,
         ];
         for (const result of results) {
           const error = unwrapErr(result);
