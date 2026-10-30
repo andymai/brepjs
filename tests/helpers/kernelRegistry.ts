@@ -50,7 +50,7 @@ export const kernelConfigs: readonly KernelConfig[] = [
       projection: true,
       // constraintSketch (sketchNew/sketchDof) is brepkit/manifold-only — the OCCT
       // adapter does not implement it. variableFillet (filletVariable) is a throwing
-      // brepkit-only stub on this adapter; only occt-wasm implements it.
+      // stub on this adapter; occt-wasm and brepkit implement it.
       constraintSketch: false,
       kernel2D: true,
       variableFillet: false,
@@ -67,7 +67,7 @@ export const kernelConfigs: readonly KernelConfig[] = [
       projection: false,
       constraintSketch: true,
       kernel2D: true,
-      variableFillet: false,
+      variableFillet: true,
       offsetSolidV2: true,
       gridPattern: true,
     },

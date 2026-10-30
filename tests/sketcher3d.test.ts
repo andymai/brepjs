@@ -233,8 +233,7 @@ describe('Sketch class', () => {
     expect(solid).toBeDefined();
   });
 
-  it('extrude with twist', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+  it('extrude with twist', () => {
     const solid = sketchRectangle(10, 10).extrude(10, { twistAngle: 45 });
     expect(solid).toBeDefined();
   });

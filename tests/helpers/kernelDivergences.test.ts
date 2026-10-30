@@ -174,7 +174,6 @@ describe('kernelDivergences', () => {
     const occtOnlySuites = [
       'variableFillet',
       'multiSweepFns',
-      'guidedSweepFns',
       'interferenceFns',
       'hullFns',
       'disposal',

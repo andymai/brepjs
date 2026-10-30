@@ -12,6 +12,7 @@ import { extractNurbsFromEdge } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';
 import { surfaceNormal } from './geometryOps.js';
 import { fuse } from './booleanOps.js';
+import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
 export function extrude(
   bk: BrepkitKernel,
@@ -342,20 +343,93 @@ function trySmoothPipeShell(
   }
 }
 
+type NurbsCurveData = NonNullable<ReturnType<typeof extractNurbsFromEdge>>;
+
+/**
+ * The curve a guided sweep runs along: one line, or one edge brepkit stores
+ * as NURBS. brepkit gives no NURBS for a circle or an ellipse, and reading one
+ * by its end points would sweep along the chord.
+ */
+function guideCurve(bk: BrepkitKernel, shape: KernelShape, role: string): NurbsCurveData {
+  const edges = (shape as BrepkitHandle).type === 'edge' ? [shape] : iterShapes(bk, shape, 'edge');
+  const [edge] = edges;
+  if (edges.length !== 1 || !edge) {
+    throw new UnsupportedKernelOperationError(
+      `brepkit: a guided sweep takes a single-edge ${role}, got ${edges.length} edges`
+    );
+  }
+  const edgeId = unwrap(edge, 'edge');
+  const curveType = bk.getEdgeCurveType(edgeId);
+  if (curveType !== 'LINE' && bk.getEdgeNurbsData(edgeId) === null) {
+    throw new UnsupportedKernelOperationError(
+      `brepkit: a guided sweep takes a line or NURBS ${role}, got ${curveType}`
+    );
+  }
+  const data = extractNurbsFromEdge(bk, edge);
+  if (!data) throw new Error(`brepkit: guided sweep could not read the ${role}`);
+  return data;
+}
+
+/**
+ * brepkit places a guided sweep's sections at twice the spine's control points
+ * (at least 4) and rules flat between them, so a straight spine twists through
+ * 4 segments whatever the guide does: a square turned 90° comes out 2.5% light.
+ * Splitting a straight spine into twice as many collinear spans as the guide
+ * has control points samples the twist more finely than the guide is drawn.
+ */
+function densifyStraightSpine(path: NurbsCurveData, spans: number): NurbsCurveData {
+  if (path.degree !== 1 || path.controlPoints.length !== 6 || spans <= 1) return path;
+  const start = vec3At(path.controlPoints, 0);
+  const end = vec3At(path.controlPoints, 3);
+  const controlPoints: number[] = [];
+  const interior: number[] = [];
+  for (let i = 0; i <= spans; i++) {
+    const t = i / spans;
+    controlPoints.push(...start.map((s, k) => s + (wasmIndex(end, k) - s) * t));
+    if (i > 0 && i < spans) interior.push(t);
+  }
+  return {
+    degree: 1,
+    knots: [0, 0, ...interior, 1, 1],
+    controlPoints,
+    weights: new Array<number>(spans + 1).fill(1),
+  };
+}
+
+function guidedPipeShell(
+  bk: BrepkitKernel,
+  faceId: number,
+  spine: KernelShape,
+  auxiliary: KernelShape
+): KernelShape {
+  const aux = guideCurve(bk, auxiliary, 'auxiliary spine');
+  const path = densifyStraightSpine(
+    guideCurve(bk, spine, 'spine'),
+    2 * (aux.controlPoints.length / 3)
+  );
+  const id = bk.guidedSweep(
+    faceId,
+    path.degree,
+    path.knots,
+    path.controlPoints,
+    path.weights,
+    aux.degree,
+    aux.knots,
+    aux.controlPoints,
+    aux.weights
+  );
+  return solidHandle(id);
+}
+
 export function sweepPipeShell(
   bk: BrepkitKernel,
   profile: KernelShape,
   spine: KernelShape,
   options?: Record<string, unknown>
 ): PipeShellResult {
-  // brepkit-wasm's sweepWithOptions takes no auxiliary spine, and its scale
-  // law sweeps a faceted body short of the frustum, so neither a twist nor a
-  // scaling law can be built; sweeping without them would return a plain prism.
-  if (options?.['auxiliary'] !== undefined) {
-    throw new UnsupportedKernelOperationError(
-      'brepkit: sweepPipeShell has no auxiliary spine (twist or guided sweep)'
-    );
-  }
+  // brepkit-wasm's scale law sweeps a faceted body short of the frustum (a
+  // circle of radius 10 scaled to 0.5 over 40 measures 7239.547 where the
+  // frustum holds 7330.383), and sweeping without it would return a plain prism.
   if (options?.['law'] !== undefined) {
     throw new UnsupportedKernelOperationError('brepkit: sweepPipeShell has no scaling law');
   }
@@ -364,6 +438,10 @@ export function sweepPipeShell(
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');
 
   const shellMode = !!(options && options['shellMode']);
+  const auxiliary = options?.['auxiliary'] as KernelShape | undefined;
+  if (auxiliary !== undefined) {
+    return wrapPipeShellResult(guidedPipeShell(bk, faceId, spine, auxiliary), profile, shellMode);
+  }
   const transitionMode = options?.['transitionMode'] as string | undefined;
   const contactMode = transitionMode ? mapStringTransitionMode(transitionMode) : undefined;
 

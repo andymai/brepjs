@@ -447,28 +447,53 @@ export function makeTangentArc(
   return edgeHandle(id);
 }
 
+/** The X axis occt's `gp_Ax3(P, V)` picks when given only a direction, so a helix starts where occt-wasm's does. */
+function occtDefaultXDir(a: number, b: number, c: number): [number, number, number] {
+  const [aa, ba, ca] = [Math.abs(a), Math.abs(b), Math.abs(c)];
+  let x: [number, number, number];
+  if (ba <= aa && ba <= ca) x = aa > ca ? [-c, 0, a] : [c, 0, -a];
+  else if (aa <= ba && aa <= ca) x = ba > ca ? [0, -c, b] : [0, c, -b];
+  else x = aa > ba ? [-b, a, 0] : [b, -a, 0];
+  const len = Math.hypot(x[0], x[1], x[2]);
+  return [x[0] / len, x[1] / len, x[2] / len];
+}
+
 export function makeHelixWire(
   bk: BrepkitKernel,
   pitch: number,
   height: number,
   radius: number,
   center?: [number, number, number],
-  _direction?: [number, number, number],
+  direction?: [number, number, number],
   leftHanded?: boolean
 ): KernelShape {
   const turns = height / pitch;
   const nSamplesPerTurn = 16;
   const nSamples = Math.max(4, Math.ceil(turns * nSamplesPerTurn));
-  const cx = center?.[0] ?? 0;
-  const cy = center?.[1] ?? 0;
-  const cz = center?.[2] ?? 0;
+  const [cx, cy, cz] = center ?? [0, 0, 0];
+  const [dx, dy, dz] = direction ?? [0, 0, 1];
+  const dLen = Math.hypot(dx, dy, dz);
+  const z: [number, number, number] = [dx / dLen, dy / dLen, dz / dLen];
+  const x = occtDefaultXDir(z[0], z[1], z[2]);
+  const y: [number, number, number] = [
+    z[1] * x[2] - z[2] * x[1],
+    z[2] * x[0] - z[0] * x[2],
+    z[0] * x[1] - z[1] * x[0],
+  ];
   const sign = leftHanded ? -1 : 1;
 
   const points: [number, number, number][] = [];
   for (let i = 0; i <= nSamples; i++) {
     const t = i / nSamples;
     const angle = sign * 2 * Math.PI * turns * t;
-    points.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle), cz + height * t]);
+    const u = radius * Math.cos(angle);
+    const v = radius * Math.sin(angle);
+    const h = height * t;
+    points.push([
+      cx + u * x[0] + v * y[0] + h * z[0],
+      cy + u * x[1] + v * y[1] + h * z[1],
+      cz + u * x[2] + v * y[2] + h * z[2],
+    ]);
   }
 
   const edge = interpolatePoints(bk, points);

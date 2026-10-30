@@ -43,9 +43,6 @@ export type FinderFn<T extends AnyShape<Dimension>> = (finder: FinderFor<T>) => 
  * - `number` — constant radius on all selected edges
  * - `[number, number]` — variable radius (start, end)
  * - callback — per-edge radius; return `null` to skip an edge
- *
- * brepkit builds one constant radius per call: a radius that varies, or different
- * radii on different edges, is an `UNSUPPORTED_CAPABILITY` error there.
  */
 export type FilletRadius =
   number | [number, number] | ((edge: Edge) => number | [number, number] | null);

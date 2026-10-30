@@ -1865,88 +1865,119 @@ describe('BrepkitAdapter', () => {
   });
 
   describe('fillet (variable radius)', () => {
-    it('refuses a radius that varies along an edge before filleting anything', () => {
-      const mock = createMockBrepKernel();
+    /**
+     * A mock kernel whose probe fillet, a 10 mm cube edge rounded from 1 to 2,
+     * leaves `probeVolume`: 995 reads as a round, 988.3 as a flat bevel.
+     */
+    function lawKernel(probeVolume = 995) {
+      const mock = Object.assign(createMockBrepKernel(), {
+        checkpoint: vi.fn(() => 7),
+        restore: vi.fn((_checkpoint: number) => {}),
+        discardCheckpoint: vi.fn((_checkpoint: number) => {}),
+      });
+      mock.volume.mockReturnValue(probeVolume);
+      return mock;
+    }
+
+    /** The specs filletVariable got after the adapter's probe. */
+    function lawSpecs(mock: ReturnType<typeof lawKernel>): unknown[] {
+      return mock.filletVariable.mock.calls.slice(1).map(([, json]) => JSON.parse(json));
+    }
+
+    it('fillets a radius that varies along an edge along a linear law', () => {
+      const mock = lawKernel();
       const adapter = new BrepkitAdapter(mock);
 
       const solid = adapter.makeBox(10, 10, 10);
       const edges = (adapter.iterShapes(solid, 'edge') as BrepkitHandle[]).slice(0, 2);
-      const near = edges[0];
-      for (const radius of [
-        [1, 3] as [number, number],
-        // A constant edge first: the check must reject before filleting any group.
-        (edge: unknown): number | [number, number] => (edge === near ? 2 : [2, 4]),
-      ]) {
-        let caught: unknown;
-        try {
-          adapter.fillet(solid, edges, radius);
-        } catch (e) {
-          caught = e;
-        }
-        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
-      }
+      const [near, far] = edges.map((edge) => edge.id);
+      adapter.fillet(solid, edges, [1, 3]);
+      adapter.fillet(solid, edges, (edge) => ((edge as BrepkitHandle).id === near ? 2 : [2, 4]));
+
       expect(mock.fillet).not.toHaveBeenCalled();
-      expect(mock.filletVariable).not.toHaveBeenCalled();
+      expect(lawSpecs(mock)).toEqual([
+        [
+          { edge: near, law: 'linear', start: 1, end: 3 },
+          { edge: far, law: 'linear', start: 1, end: 3 },
+        ],
+        [
+          { edge: near, law: 'constant', start: 2, end: 2 },
+          { edge: far, law: 'linear', start: 2, end: 4 },
+        ],
+      ]);
     });
 
-    it('fillets one constant radius for every edge with fillet', () => {
-      const mock = createMockBrepKernel();
+    it('fillets one constant radius with fillet and different radii with filletVariable', () => {
+      const mock = lawKernel();
       const adapter = new BrepkitAdapter(mock);
 
       const solid = adapter.makeBox(10, 10, 10);
       const edges = (adapter.iterShapes(solid, 'edge') as BrepkitHandle[]).slice(0, 2);
-      const near = edges[0];
+      const [near, far] = edges.map((edge) => edge.id);
       adapter.fillet(solid, edges, [3, 3]);
       adapter.fillet(solid, edges, () => [2, 2]);
 
       const calls: unknown[][] = mock.fillet.mock.calls;
       expect(calls.map((call) => call[2])).toEqual([3, 2]);
-
-      let caught: unknown;
-      try {
-        adapter.fillet(solid, edges, (edge) => (edge === near ? 1 : 2));
-      } catch (e) {
-        caught = e;
-      }
-      expect(isUnsupportedKernelOperationError(caught)).toBe(true);
-      expect(mock.fillet).toHaveBeenCalledTimes(2);
       expect(mock.filletVariable).not.toHaveBeenCalled();
+
+      adapter.fillet(solid, edges, (edge) => ((edge as BrepkitHandle).id === near ? 1 : 2));
+      expect(mock.fillet).toHaveBeenCalledTimes(2);
+      expect(lawSpecs(mock)).toEqual([
+        [
+          { edge: near, law: 'constant', start: 1, end: 1 },
+          { edge: far, law: 'constant', start: 2, end: 2 },
+        ],
+      ]);
     });
 
-    it('filletVariable fillets a constant profile on the edge its hash names', () => {
-      const mock = createMockBrepKernel();
+    it('filletVariable fillets a profile on the edge its hash names, two points at most', () => {
+      const mock = lawKernel();
       const adapter = new BrepkitAdapter(mock);
       const solid = adapter.makeBox(10, 10, 10);
-
-      adapter.filletVariable(
-        solid,
+      const spec = (...radii: number[]) =>
         JSON.stringify({
           edge: 201,
-          radii: [
-            { param: 0, radius: 2 },
-            { param: 1, radius: 2 },
-          ],
-        })
-      );
+          radii: radii.map((radius, i) => ({ param: i / (radii.length - 1 || 1), radius })),
+        });
+
+      adapter.filletVariable(solid, spec(2, 2));
       expect(mock.fillet).toHaveBeenCalledWith((solid as BrepkitHandle).id, [201], 2);
+
+      adapter.filletVariable(solid, spec(2, 5));
+      expect(mock.filletVariable).toHaveBeenLastCalledWith(
+        (solid as BrepkitHandle).id,
+        JSON.stringify([{ edge: 201, law: 'linear', start: 2, end: 5 }])
+      );
 
       let caught: unknown;
       try {
-        adapter.filletVariable(
-          solid,
-          JSON.stringify({
-            edge: 201,
-            radii: [
-              { param: 0, radius: 2 },
-              { param: 1, radius: 5 },
-            ],
-          })
-        );
+        adapter.filletVariable(solid, spec(2, 4, 5));
       } catch (e) {
         caught = e;
       }
       expect(isUnsupportedKernelOperationError(caught)).toBe(true);
-      expect(mock.filletVariable).not.toHaveBeenCalled();
+      expect(mock.filletVariable).toHaveBeenCalledTimes(2);
+    });
+
+    it('refuses a law on a brepkit-wasm that cuts a bevel along it, probing once', () => {
+      const mock = lawKernel(1000 - 70 / 6);
+      const adapter = new BrepkitAdapter(mock);
+      const solid = adapter.makeBox(10, 10, 10);
+      const edges = (adapter.iterShapes(solid, 'edge') as BrepkitHandle[]).slice(0, 1);
+
+      for (let i = 0; i < 2; i++) {
+        let caught: unknown;
+        try {
+          adapter.fillet(solid, edges, [1, 3]);
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      expect(mock.filletVariable).toHaveBeenCalledOnce();
+      expect(mock.restore).toHaveBeenCalledExactlyOnceWith(7);
+      expect(mock.discardCheckpoint).toHaveBeenCalledExactlyOnceWith(7);
     });
 
     it('uses fast path for constant radius', () => {
@@ -1959,6 +1990,38 @@ describe('BrepkitAdapter', () => {
 
       expect(mock.fillet).toHaveBeenCalledOnce();
       expect(mock.filletVariable).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sweepPipeShell (auxiliary spine)', () => {
+    it('refuses an arc spine or guide rather than sweeping along its chord', () => {
+      let arcId = -1;
+      const mock = Object.assign(createMockBrepKernel(), {
+        guidedSweep: vi.fn((_face: number, ..._curves: unknown[]) => 99),
+        getEdgeCurveType: vi.fn((edge: number) => (edge === arcId ? 'CIRCLE' : 'LINE')),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const face = adapter.makeFace(adapter.makeWire([adapter.makeLineEdge([0, 0, 0], [1, 0, 0])]));
+      const line = adapter.makeLineEdge([0, 0, 0], [0, 0, 10]);
+      const arc = adapter.makeLineEdge([1, 0, 0], [0, 1, 10]);
+      arcId = (arc as BrepkitHandle).id;
+
+      for (const [spine, auxiliary] of [
+        [line, arc],
+        [arc, line],
+      ]) {
+        let caught: unknown;
+        try {
+          adapter.sweepPipeShell(face, spine, { auxiliary });
+        } catch (e) {
+          caught = e;
+        }
+        expect(isUnsupportedKernelOperationError(caught)).toBe(true);
+      }
+      expect(mock.guidedSweep).not.toHaveBeenCalled();
+
+      adapter.sweepPipeShell(face, line, { auxiliary: line });
+      expect(mock.guidedSweep).toHaveBeenCalledOnce();
     });
   });
 

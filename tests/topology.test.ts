@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
@@ -373,8 +372,7 @@ describe('fillet', () => {
     const zEdges = edgeFinder().inDirection('Z').findAll(b);
     expect(unwrap(fillet(b, zEdges, 1))).toBeDefined();
   });
-  it('[r1,r2]', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
+  it('[r1,r2]', () => {
     const b = box(10, 10, 10);
     const zEdges = edgeFinder().inDirection('Z').findAll(b);
     expect(unwrap(fillet(b, zEdges, [1, 2]))).toBeDefined();

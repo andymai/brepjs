@@ -336,7 +336,7 @@ Functional API:
 - `sweep(wire, spine, config?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>` — Sweep profile along spine
 - `complexExtrude(wire, center, normal, profileShape?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>`: extrude with scaling profile (the tuple is returned when `shellMode` is true)
 - `twistExtrude(wire, angleDeg, center, normal, profileShape?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>`: twist extrude, `angleDeg` in degrees
-- brepkit has no twisted or scaled sweep: `twistExtrude`, `complexExtrude` with a profile, and `sweep` with an `auxiliarySpine` or `law` return `UNSUPPORTED_CAPABILITY` there
+- brepkit has no scaled sweep: `complexExtrude` and `twistExtrude` with a profile, and `sweep` with a `law`, return `UNSUPPORTED_CAPABILITY` there
 - `supportExtrude(wire, center, normal, support): Result<Shape3D>` — Extrude constrained to a support surface
 
 `ExtrusionProfile`: `{ profile?: 's-curve' | 'linear', endFactor?: number }` — Controls scaling along extrusion path. `endFactor` 1 = same size, 0.5 = half size at end.
@@ -441,8 +441,7 @@ fillet(shape, radius): Result<Shape3D>             // All edges
 fillet(shape, edges, radius): Result<Shape3D>      // Selected edges
 // edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>
 // radius: number | [r1, r2] | (edge => number | [r1, r2] | null)
-// brepkit takes one constant radius per call: [r1, r2] with r1 != r2, or different radii from a callback,
-// return UNSUPPORTED_CAPABILITY there (as do different chamfer distances from a callback).
+// brepkit takes one chamfer distance per call: different distances from a callback return UNSUPPORTED_CAPABILITY there.
 
 chamfer(shape, distance): Result<Shape3D>          // All edges
 chamfer(shape, edges, distance): Result<Shape3D>   // Selected edges

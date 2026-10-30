@@ -207,8 +207,7 @@ describe('CompoundSketch extrude options', () => {
     expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
-  it('extrudes with twistAngle', (ctx) => {
-    skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+  it('extrudes with twistAngle', () => {
     const outer = sketchRectangle(10, 10);
     const inner = sketchCircle(2);
     const compound = new CompoundSketch([outer, inner]);

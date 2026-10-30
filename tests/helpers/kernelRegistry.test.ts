@@ -33,13 +33,14 @@ describe('kernelRegistry', () => {
 
   it('getKernelCapabilities returns capabilities', () => {
     const caps = getKernelCapabilities('occt');
-    // occt's filletVariable is a throwing brepkit-only stub — not a real capability.
+    // occt's filletVariable is a throwing stub — not a real capability.
     expect(caps.variableFillet).toBe(false);
     expect(caps.offsetSolidV2).toBe(false);
   });
 
-  it('occt-wasm implements variableFillet; occt does not', () => {
+  it('occt-wasm and brepkit implement variableFillet; occt does not', () => {
     expect(getKernelCapabilities('occt-wasm').variableFillet).toBe(true);
+    expect(getKernelCapabilities('brepkit').variableFillet).toBe(true);
     expect(getKernelCapabilities('occt').variableFillet).toBe(false);
   });
 

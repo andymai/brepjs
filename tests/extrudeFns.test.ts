@@ -182,8 +182,7 @@ describe('extrudeFns', () => {
   });
 
   describe('twistExtrude', () => {
-    it('extrudes with twist', (ctx) => {
-      skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+    it('extrudes with twist', () => {
       const rect = sketchRectangle(6, 6);
       const w = castClosedWire(rect.wire.wrapped);
       const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 20]);
@@ -191,8 +190,7 @@ describe('extrudeFns', () => {
       expect(isShape3D(unwrap(result))).toBe(true);
     });
 
-    it('twists the other way for a negative angle', (ctx) => {
-      skipIfDiverges(ctx, 'extrudeFns.twistExtrude');
+    it('twists the other way for a negative angle', () => {
       // Triangle with its tip at (4, 0); a +30 degree twist carries the tip to
       // (3.46, 2) at the top and -30 to (3.46, -2).
       using tri = unwrap(
