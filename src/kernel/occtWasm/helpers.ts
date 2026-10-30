@@ -172,11 +172,7 @@ function resolveEdgeValues(edges: readonly KernelShape[], value: EdgeValueSpec):
  * occt-wasm's fillet entry points take only positive radii, though its
  * single-edge filletVariable builds a fillet that runs out to a radius of 0.
  */
-export function refuseVanishingFilletRadius(
-  edges: readonly KernelShape[],
-  radius: EdgeValueSpec
-): void {
-  const { first, second } = resolveEdgeValues(edges, radius);
+export function refuseVanishingFilletRadius({ first, second }: EdgeValues): void {
   if (first.includes(0) || second.includes(0)) {
     throw new UnsupportedKernelOperationError(
       'occt-wasm: a fillet radius that runs to 0 is built only by variableFillet'
@@ -195,16 +191,18 @@ function uniformEdgeValue({ first, second }: EdgeValues): number | undefined {
  * Run a fillet or chamfer over `edges`, naming the edges it fails on. Edges
  * that all take one value go to `uniform`, the single-value entry point every
  * occt-wasm build has; otherwise `perEdge` gets each edge's pair as `first`
- * and `second`.
+ * and `second`. `check` sees the resolved values first and throws to refuse them.
  */
 export function runEdgeTreatment<T>(
   Module: OcctWasmModule,
   edges: KernelShape[],
   value: EdgeValueSpec,
   uniform: (edgeVec: EmVectorUint32, value: number) => T,
-  perEdge: (edgeVec: EmVectorUint32, first: EmVectorDouble, second: EmVectorDouble) => T
+  perEdge: (edgeVec: EmVectorUint32, first: EmVectorDouble, second: EmVectorDouble) => T,
+  check?: (values: EdgeValues) => void
 ): T {
   const values = resolveEdgeValues(edges, value);
+  check?.(values);
   const shared = uniformEdgeValue(values);
   const edgeVec = makeVecU32(Module, edges.map(unwrap));
   try {

@@ -412,7 +412,6 @@ export function filletWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
-  refuseVanishingFilletRadius(edges, radius);
   const shapeId = unwrap(shape);
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
@@ -431,7 +430,8 @@ export function filletWithHistory(
           hashVec,
           hashUpperBound
         );
-      }
+      },
+      refuseVanishingFilletRadius
     );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };
