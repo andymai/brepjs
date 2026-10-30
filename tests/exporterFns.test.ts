@@ -2,7 +2,21 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import { INCH_UNIT, MILLIMETER_UNIT, largestStepCoordinate } from './helpers/stepText.js';
-import { box, sphere, castShape, exportAssemblySTEP, getKernel, isOk, unwrap } from '@/index.js';
+import {
+  box,
+  sphere,
+  castShape,
+  exportAssemblySTEP,
+  getBounds,
+  getKernel,
+  getSolids,
+  importSTEP,
+  isOk,
+  measureVolume,
+  translate,
+  unwrap,
+} from '@/index.js';
+import type { Shape3D } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -28,6 +42,33 @@ describe('exportAssemblySTEP', () => {
       expect(isOk(result)).toBe(true);
       const blob = unwrap(result);
       expect(blob.size).toBeGreaterThan(0);
+    });
+
+    it('writes every part into one file that imports back at its placement', async () => {
+      using plate = box(20, 10, 2);
+      using postShape = box(2, 2, 8);
+      using post = translate(postShape, [18, 8, 2]);
+      using lidShape = box(20, 10, 2);
+      using lid = translate(lidShape, [0, 0, 10]);
+      const step = await unwrap(
+        exportAssemblySTEP([
+          { shape: plate, name: 'plate', color: '#3366cc' },
+          { shape: post, name: 'post', color: '#999999' },
+          { shape: lid, name: 'lid', color: '#cc6633' },
+        ])
+      ).text();
+      expect(step.match(/END-ISO-10303-21;/g)).toHaveLength(1);
+
+      using imported = unwrap(await importSTEP(new Blob([step])));
+      expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(400 + 32 + 400, 3);
+      const placed = getSolids(imported)
+        .map((solid) => getBounds(solid))
+        .sort((a, b) => a.zMin - b.zMin);
+      expect(placed.map((b) => [b.xMin, b.yMin, b.zMin])).toEqual([
+        [expect.closeTo(0, 3), expect.closeTo(0, 3), expect.closeTo(0, 3)],
+        [expect.closeTo(18, 3), expect.closeTo(8, 3), expect.closeTo(2, 3)],
+        [expect.closeTo(0, 3), expect.closeTo(0, 3), expect.closeTo(10, 3)],
+      ]);
     });
 
     it('exports with unit option', () => {

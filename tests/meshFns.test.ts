@@ -11,6 +11,11 @@ import {
   exportSTL,
   exportIGES,
   compound,
+  getBounds,
+  getSolids,
+  importSTEP,
+  measureVolume,
+  translate,
   isOk,
   isErr,
   unwrap,
@@ -18,6 +23,7 @@ import {
   clearMeshCache,
   getKernel,
 } from '@/index.js';
+import type { Shape3D } from '@/index.js';
 
 describe('meshFns', () => {
   beforeAll(async () => {
@@ -205,6 +211,23 @@ describe('meshFns', () => {
       expect(blob.size).toBeGreaterThan(0);
     });
 
+    it('writes a compound as one STEP document holding every solid', async () => {
+      using first = box(10, 10, 10);
+      using unplaced = box(5, 5, 5);
+      using second = translate(unplaced, [30, 0, 0]);
+      using both = compound([first, second]);
+      const step = await unwrap(exportSTEP(both)).text();
+      expect(step.match(/^ISO-10303-21;/gm)).toHaveLength(1);
+      expect(step.match(/END-ISO-10303-21;/g)).toHaveLength(1);
+
+      using imported = unwrap(await importSTEP(new Blob([step])));
+      expect(getSolids(imported)).toHaveLength(2);
+      expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(1125, 3);
+      const bounds = getBounds(imported);
+      expect(bounds.xMin).toBeCloseTo(0, 3);
+      expect(bounds.xMax).toBeCloseTo(35, 3);
+    });
+
     it.skipIf(shouldSkipSuite('meshFns.stepReadError'))(
       'returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write (FS path only)',
       () => {
@@ -312,6 +335,34 @@ describe('meshFns', () => {
     // Triangle count from a binary STL header (uint32 at byte offset 80).
     const stlTriCount = async (blob: Blob): Promise<number> =>
       new DataView(await blob.arrayBuffer()).getUint32(80, true);
+
+    /** The [min, max] x of a binary STL's vertices (50-byte records after the 84-byte header). */
+    const stlXRange = async (blob: Blob): Promise<[number, number]> => {
+      const view = new DataView(await blob.arrayBuffer());
+      let min = Infinity;
+      let max = -Infinity;
+      for (let t = 0; t < view.getUint32(80, true); t++) {
+        for (let v = 0; v < 3; v++) {
+          const x = view.getFloat32(84 + t * 50 + 12 + v * 12, true);
+          min = Math.min(min, x);
+          max = Math.max(max, x);
+        }
+      }
+      return [min, max];
+    };
+
+    it('writes every solid of a compound', async () => {
+      using first = box(10, 10, 10);
+      using unplaced = box(10, 10, 10);
+      using second = translate(unplaced, [30, 0, 0]);
+      using both = compound([first, second]);
+      const one = await stlTriCount(unwrap(exportSTL(first, { binary: true })));
+      const stl = unwrap(exportSTL(both, { binary: true }));
+      expect(await stlTriCount(stl)).toBe(2 * one);
+      const [xMin, xMax] = await stlXRange(stl);
+      expect(xMin).toBeCloseTo(0, 3);
+      expect(xMax).toBeCloseTo(40, 3);
+    });
 
     it.skipIf(shouldSkipSuite('meshFns.exportStlTolerance'))(
       'threads linear tolerance through to tessellation (coarse vs fine differ)',
