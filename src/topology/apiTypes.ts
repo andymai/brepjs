@@ -55,10 +55,11 @@ export type FilletRadius =
  * Chamfer distance specification.
  *
  * - `number` — equal distance
- * - `[number, number]` — asymmetric distances (dist1, dist2). brepkit has no asymmetric
- *   chamfer and returns an `UNSUPPORTED_CAPABILITY` error for two different distances.
+ * - `[number, number]` — asymmetric distances (dist1, dist2). The kernel picks which of the
+ *   edge's two faces takes dist1, and kernels can pick differently: occt-wasm and brepkit
+ *   set a box edge's dist1 back on opposite faces.
  * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape); angle in degrees.
- *   brepkit has no distance-angle chamfer and returns an `UNSUPPORTED_CAPABILITY` error.
+ *   The kernel picks the face the distance runs along, as for dist1.
  * - callback — per-edge value of any of the above; return `null` (or a non-positive
  *   distance) to skip an edge. The edges it keeps must all get plain distances or all
  *   get `{ distance, angle }`: mixing the two is an `INVALID_CHAMFER_DISTANCE` error.

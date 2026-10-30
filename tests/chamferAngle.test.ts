@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   chamfer,
@@ -28,8 +28,7 @@ beforeAll(async () => {
 }, 30000);
 
 describe('chamferDistAngleShape', () => {
-  it('chamfers a single edge of a box with distance + angle', (ctx) => {
-    skipIfDiverges(ctx, 'chamferAngle.distAngle');
+  it('chamfers a single edge of a box with distance + angle', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
@@ -47,7 +46,7 @@ describe('chamferDistAngleShape', () => {
   });
 
   it('chamfers multiple edges', (ctx) => {
-    skipIfDiverges(ctx, 'chamferAngle.distAngle');
+    skipIfDiverges(ctx, 'chamferAngle.meetingEdges');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const selected = edges.slice(0, 4);
@@ -62,8 +61,7 @@ describe('chamferDistAngleShape', () => {
     expect(chamfVol).toBeLessThan(origVol);
   });
 
-  it('uses different angles', (ctx) => {
-    skipIfDiverges(ctx, 'chamferAngle.distAngle');
+  it('uses different angles', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
 
@@ -84,7 +82,7 @@ describe('chamferDistAngleShape', () => {
   });
 
   it('chamfers all 12 edges of a box', (ctx) => {
-    skipIfDiverges(ctx, 'chamferAngle.distAngle');
+    skipIfDiverges(ctx, 'chamferAngle.meetingEdges');
     const b = box(20, 20, 20);
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
@@ -154,20 +152,26 @@ describe('chamferDistAngleShape', () => {
     expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, -10))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 
-  // Runs only where chamferAngle.distAngle is a registered divergence (brepkit).
-  it.skipIf(!shouldSkipSuite('chamferAngle.distAngle'))(
-    'returns UNSUPPORTED_CAPABILITY on a kernel without a distance-angle chamfer',
-    () => {
-      using b = box(10, 10, 10);
-      const vertical = getEdges(b).filter((e) => getBounds(e).zMax - getBounds(e).zMin > 5);
-      const error = unwrapErr(chamferDistAngleShape(b, vertical, 1, 30));
-      expect(error.kind).toBe('UNSUPPORTED');
-      expect(error.code).toBe('UNSUPPORTED_CAPABILITY');
-      expect(unwrapErr(chamfer(b, vertical, { distance: 1, angle: 30 })).code).toBe(
-        'UNSUPPORTED_CAPABILITY'
-      );
+  // The 40 mm top edge at y = 0 of a 40 x 30 x 20 box loses a prism whose
+  // section is a right triangle with legs d and d·tan(angle), or d1 and d2.
+  it('cuts the exact prism off one edge for two distances or a distance and angle', (ctx) => {
+    skipIfDiverges(ctx, 'chamferAngle.exactVolume');
+    using b = box(40, 30, 20);
+    const edge = getEdges(b).find((e) => {
+      const { yMax, zMin } = getBounds(e);
+      return yMax < 1e-9 && zMin > 20 - 1e-9;
+    });
+    if (!edge) throw new Error('box has no top edge at y = 0');
+    using two = unwrap(chamfer(b, [edge], [2, 4]));
+    expect(unwrap(measureVolume(two))).toBeCloseTo(24000 - 40 * ((2 * 4) / 2), 6);
+    for (const angle of [30, 45, 60]) {
+      const loss = 40 * ((2 * 2 * Math.tan((angle * Math.PI) / 180)) / 2);
+      using cut = unwrap(chamfer(b, [edge], { distance: 2, angle }));
+      expect(unwrap(measureVolume(cut))).toBeCloseTo(24000 - loss, 6);
+      using direct = unwrap(chamferDistAngleShape(b, [edge], 2, angle));
+      expect(unwrap(measureVolume(direct))).toBeCloseTo(24000 - loss, 6);
     }
-  );
+  });
 });
 
 // The four vertical edges of a 10 mm cube share no vertex, so a distance-angle
@@ -270,8 +274,7 @@ describe('chamfer() with { distance, angle } per edge', () => {
     expect(error.code).toBe('CHAMFER_ANGLE_BAD_ANGLE');
   });
 
-  it('returns UNSUPPORTED on a kernel without per-edge distance-angle chamfers', (ctx) => {
-    skipIfDiverges(ctx, 'chamferAngle.distAngle');
+  it('returns UNSUPPORTED on a kernel without per-edge distance-angle chamfers', () => {
     registerStubKernel('no-per-edge-dist-angle', { chamferDistAngles: undefined });
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);

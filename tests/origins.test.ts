@@ -283,8 +283,7 @@ describe('origin propagation through modifiers', () => {
         .map((f) => origins?.get(getHashCode(f)));
     }
 
-    it('keeps the origin of every box face through one { distance, angle }', (ctx) => {
-      skipIfDiverges(ctx, 'chamferAngle.distAngle');
+    it('keeps the origin of every box face through one { distance, angle }', () => {
       using b = box(10, 10, 10);
       setShapeOrigin(b, 8);
       using uniform = unwrap(chamfer(b, verticalEdges(b), { distance: 1, angle: 30 }));

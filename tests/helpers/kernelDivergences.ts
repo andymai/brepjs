@@ -181,6 +181,16 @@ export const divergences: DivergenceMap = {
       reason:
         'manifold rejects a per-edge radius callback ("fillet (per-edge radius callback) is not implemented") and treats an [r1, r2] pair as r1.',
     },
+    'modifierFns.perEdgeChamfers': {
+      kind: 'not-implemented',
+      reason:
+        'manifold rejects a per-edge distance callback ("fillet (per-edge radius callback) is not implemented").',
+    },
+    'modifierFns.asymmetricChamferVolume': {
+      kind: 'skip',
+      reason:
+        'manifold approximates a [1, 2] chamfer on a 10 mm cube edge at 973.31 mm3 against the exact 990.',
+    },
     'modifierFns.edgeTreatmentFailedEdges': {
       kind: 'not-implemented',
       reason:
@@ -295,27 +305,22 @@ export const divergences: DivergenceMap = {
     'modifierFns.perEdgeValues': {
       kind: 'not-implemented',
       reason:
-        'brepkit misplaces per-edge fillet radii: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08. Asymmetric chamfers return UNSUPPORTED_CAPABILITY (see modifierFns.asymmetricChamfer).',
-    },
-    'modifierFns.asymmetricChamfer': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit has no asymmetric chamfer (brepkit-wasm lacks chamferAsymmetric): a [d1, d2] chamfer, or a callback that returns one for an edge, throws UnsupportedKernelOperationError and chamfer returns UNSUPPORTED_CAPABILITY rather than a symmetric chamfer at the average of d1 and d2.',
-    },
-    'chamferAngle.distAngle': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit has no distance-angle chamfer (brepkit-wasm lacks chamferAsymmetric): chamferDistAngle throws UnsupportedKernelOperationError, so chamferDistAngleShape and chamfer with { distance, angle } return UNSUPPORTED_CAPABILITY rather than a symmetric chamfer at the average of the two setbacks.',
-    },
-    'chamferAngle.exactVolume': {
-      kind: 'not-implemented',
-      reason:
-        'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer.',
+        'brepkit misplaces per-edge fillet radii: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08.',
     },
     'chamferAngle.perEdge': {
       kind: 'not-implemented',
       reason:
-        'Same as chamferAngle.distAngle: brepkit returns UNSUPPORTED_CAPABILITY for any distance-angle chamfer, one value for every edge or one per edge.',
+        'brepkit has no per-edge distance-angle chamfer (no chamferDistAngles): chamfer returns UNSUPPORTED_CAPABILITY unless every edge takes the same { distance, angle }.',
+    },
+    'modifierFns.perEdgeChamfers': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit chamfers one distance group after another, each on edge ids taken from the input solid, and a chamfer replaces the edges of the solid it returns: the second group fails with "no manifold edges to chamfer (all edges are boundary or missing)".',
+    },
+    'chamferAngle.meetingEdges': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit two-distance and distance-angle chamfers fail where chamfered edges meet at a vertex ("blend: trimming failure on face"): four bottom edges of a 10 mm cube at 1 mm / 30 degrees, or two adjacent edges at [1, 2]. The same edges take a symmetric chamfer, and edges that share no vertex are cut exactly.',
     },
     'draftFns.perFaceAngles': {
       kind: 'not-implemented',

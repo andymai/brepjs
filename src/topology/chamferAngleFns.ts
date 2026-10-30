@@ -117,7 +117,7 @@ function castChamferResult(input: Shape3D, raw: KernelShape): Result<Shape3D> {
  * @param distance - Chamfer distance along the face (must be positive).
  * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
  * @returns Ok with the chamfered shape, or Err on invalid input or kernel
- *   failure. A kernel without a distance-angle chamfer (brepkit) returns
+ *   failure. A kernel without a distance-angle chamfer returns
  *   `UNSUPPORTED_CAPABILITY`.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
@@ -194,7 +194,7 @@ function perEdgeUnsupported(kernelId: string, cause: unknown): Err<BrepError> {
  * Chamfer each edge by its own distance and angle, in one operation.
  *
  * Edges that all share one distance and angle go through
- * {@link chamferDistAngle}, which every kernel but brepkit provides. Different
+ * {@link chamferDistAngle}, which every kernel provides. Different
  * values need a kernel with a per-edge distance-angle chamfer (occt-wasm 5.9.0
  * or later); on any other kernel the result is an `UNSUPPORTED_CAPABILITY` error. On
  * occt-wasm the edges of one tangent-continuous contour must share their

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel, currentKernel } from './setup.js';
-import { shouldSkipSuite, skipIfDiverges } from './helpers/kernelDivergences.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   box,
@@ -520,8 +520,7 @@ describe('fillet with callback returning null or array', () => {
 });
 
 describe('chamfer with array distance', () => {
-  it('chamfers a specific edge with asymmetric distances [d1, d2]', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.asymmetricChamfer');
+  it('chamfers a specific edge with asymmetric distances [d1, d2]', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = chamfer(b, [edges[0]!], [1, 2]);
@@ -559,7 +558,7 @@ describe('chamfer with callback returning null or array', () => {
   });
 
   it('callback returning [d1, d2] applies asymmetric chamfer', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.asymmetricChamfer');
+    skipIfDiverges(ctx, 'chamferAngle.meetingEdges');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = chamfer(b, edges.slice(0, 2), () => [1, 2]);
@@ -615,14 +614,14 @@ describe('per-edge fillet radii and chamfer distances', () => {
   });
 
   it('sets an asymmetric chamfer back by both distances', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    skipIfDiverges(ctx, 'modifierFns.asymmetricChamferVolume');
     using b = box(10, 10, 10);
     using chamfered = unwrap(chamfer(b, [verticalEdges(b)[0]!], [1, 2]));
     expect(unwrap(measureVolume(chamfered))).toBeCloseTo(1000 - 10, 6);
   });
 
   it('chamfers each edge at its own distances', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    skipIfDiverges(ctx, 'modifierFns.perEdgeChamfers');
     using b = box(10, 10, 10);
     using symmetric = unwrap(chamfer(b, verticalEdges(b), bySide(1, 2)));
     expect(unwrap(measureVolume(symmetric))).toBeCloseTo(1000 - 10 * (0.5 + 0.5 + 2 + 2), 6);
@@ -632,7 +631,7 @@ describe('per-edge fillet radii and chamfer distances', () => {
   });
 
   it("chamfers each edge at its own distances through the kernel's chamfer", (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.perEdgeValues');
+    skipIfDiverges(ctx, 'modifierFns.perEdgeChamfers');
     using b = box(10, 10, 10);
     const edges = verticalEdges(b);
     const near = new Set(edges.filter((e) => getBounds(e).xMin < 5).map((e) => e.wrapped));
@@ -688,23 +687,15 @@ describe('chamfer distances the kernel cannot build', () => {
     }
   });
 
-  // Runs only where modifierFns.asymmetricChamfer is a registered divergence (brepkit).
-  it.skipIf(!shouldSkipSuite('modifierFns.asymmetricChamfer'))(
-    'returns UNSUPPORTED_CAPABILITY on a kernel without an asymmetric chamfer',
-    () => {
-      using b = box(10, 10, 10);
-      const [edge] = verticalEdges(b);
-      if (!edge) throw new Error('box has no vertical edge');
-      expect(unwrapErr(chamfer(b, [edge], [1, 2])).code).toBe('UNSUPPORTED_CAPABILITY');
-      expect(unwrapErr(chamfer(b, [edge], () => [1, 2])).code).toBe('UNSUPPORTED_CAPABILITY');
-      expect(unwrapErr(chamferWithEvolution(b, [edge], [1, 2])).code).toBe(
-        'UNSUPPORTED_CAPABILITY'
-      );
-      // Two equal distances are a symmetric chamfer, which needs no asymmetric one.
-      using equal = unwrap(chamfer(b, [edge], [1, 1]));
-      expect(unwrap(measureVolume(equal))).toBeCloseTo(1000 - 5, 6);
-    }
-  );
+  it('chamfers two different distances through the evolution-tracking path too', () => {
+    using b = box(10, 10, 10);
+    const [edge] = verticalEdges(b);
+    if (!edge) throw new Error('box has no vertical edge');
+    using tracked = unwrap(chamferWithEvolution(b, [edge], [1, 2])).shape;
+    expect(unwrap(measureVolume(tracked))).toBeCloseTo(1000 - 10, 6);
+    using equal = unwrap(chamfer(b, [edge], [1, 1]));
+    expect(unwrap(measureVolume(equal))).toBeCloseTo(1000 - 5, 6);
+  });
 });
 
 // ---------------------------------------------------------------------------

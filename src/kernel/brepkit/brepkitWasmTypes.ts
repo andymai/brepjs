@@ -287,10 +287,8 @@ export interface BrepkitKernel {
 
   chamfer(solid: number, edgeHandles: Uint32Array | number[], distance: number): number;
 
-  /** @unwired */
   chamferV2(solid: number, edgeHandles: Uint32Array | number[], d1: number, d2: number): number;
 
-  /** @unwired */
   chamferDistanceAngle(
     solid: number,
     edgeHandles: Uint32Array | number[],
@@ -928,14 +926,6 @@ export interface BrepkitKernel {
   transformFace(face: number, matrix: Float64Array | number[]): void;
 
   // ── Feature-guarded stubs (not in current WASM) ─────────────────
-
-  /** @future Not in brepkit-wasm 3.0.0. Referenced with feature detection in adapter. */
-  chamferAsymmetric?(
-    solid: number,
-    edgeHandles: Uint32Array | number[],
-    d1: number,
-    d2: number
-  ): number;
 
   /** @future Not in brepkit-wasm 3.0.0. Referenced with feature detection in adapter. */
   copyEdge?(edge: number): number;

@@ -373,7 +373,7 @@ export function chamferUnsupportedError(e: unknown): BrepError {
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  * @returns Err `UNSUPPORTED_CAPABILITY` when the kernel cannot build the
- *   distances asked for (brepkit has no asymmetric chamfer).
+ *   distances asked for.
  */
 export function chamfer(
   shape: ValidSolid,

@@ -6,7 +6,6 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
-import { UnsupportedKernelOperationError } from '@/kernel/unsupported.js';
 import {
   type BrepkitHandle,
   handle,
@@ -48,14 +47,19 @@ export function fillet(
   return solidHandle(bk.filletVariable(solidId, JSON.stringify(spec)));
 }
 
-/** brepkit's two-distance chamfer, bound to `bk`; throws on builds without it. */
-function requireChamferAsymmetric(bk: BrepkitKernel, what: string) {
-  if (typeof bk.chamferAsymmetric !== 'function') {
-    throw new UnsupportedKernelOperationError(
-      `brepkit: ${what} requires chamferAsymmetric, which this brepkit-wasm build lacks`
-    );
-  }
-  return bk.chamferAsymmetric.bind(bk);
+/**
+ * A symmetric chamfer for two equal distances, brepkit's two-distance chamfer
+ * otherwise. brepkit sets `d1` back on the edge's first face in its own face
+ * order, which need not be the face occt-wasm picks for the same edge.
+ */
+function chamferTwoDistances(
+  bk: BrepkitKernel,
+  solidId: number,
+  edgeIds: number[],
+  d1: number,
+  d2: number
+): number {
+  return d1 === d2 ? bk.chamfer(solidId, edgeIds, d1) : bk.chamferV2(solidId, edgeIds, d1, d2);
 }
 
 export function chamfer(
@@ -72,10 +76,7 @@ export function chamfer(
   }
 
   if (Array.isArray(distance)) {
-    const [d1, d2] = distance;
-    if (d1 === d2) return solidHandle(bk.chamfer(solidId, edgeIds, d1));
-    const asymmetric = requireChamferAsymmetric(bk, 'an asymmetric chamfer');
-    return solidHandle(asymmetric(solidId, edgeIds, d1, d2));
+    return solidHandle(chamferTwoDistances(bk, solidId, edgeIds, distance[0], distance[1]));
   }
 
   // Callback mode: group edges by distance to batch atomically
@@ -95,20 +96,17 @@ export function chamfer(
     }
   }
 
-  // Checked before any group is chamfered, so an unsupported group builds nothing.
-  const asymmetric = [...groups.values()].some((g) => g.d1 !== g.d2)
-    ? requireChamferAsymmetric(bk, 'an asymmetric chamfer')
-    : undefined;
   let result = solidId;
   for (const group of groups.values()) {
-    result =
-      asymmetric && group.d1 !== group.d2
-        ? asymmetric(result, group.ids, group.d1, group.d2)
-        : bk.chamfer(result, group.ids, group.d1);
+    result = chamferTwoDistances(bk, result, group.ids, group.d1, group.d2);
   }
   return solidHandle(result);
 }
 
+/**
+ * brepkit sets `distance` back on the edge's first face in its own face order
+ * and the other face back by distance·tan(angle).
+ */
 export function chamferDistAngle(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -116,11 +114,11 @@ export function chamferDistAngle(
   distance: number,
   angleDeg: number
 ): KernelShape {
-  const asymmetric = requireChamferAsymmetric(bk, 'chamferDistAngle');
-  const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
   const solidId = unwrapSolidOrThrow(shape, 'chamferDistAngle');
   const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-  return solidHandle(asymmetric(solidId, edgeIds, distance, d2));
+  return solidHandle(
+    bk.chamferDistanceAngle(solidId, edgeIds, distance, (angleDeg * Math.PI) / 180)
+  );
 }
 
 function faceCentroid(
