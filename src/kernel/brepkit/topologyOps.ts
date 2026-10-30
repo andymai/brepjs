@@ -22,15 +22,27 @@ import {
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
+/**
+ * One solid per separate piece of material in a solid: a boolean can leave
+ * several pieces in one kernel solid. A solid in one piece keeps its own
+ * handle, since the kernel rebuilds a hollow one as a new solid.
+ */
+function solidPieces(bk: BrepkitKernel, solid: KernelShape): KernelShape[] {
+  if (typeof bk.getSolidPieces !== 'function') return [solid];
+  const pieces = toArray(bk.getSolidPieces(unwrap(solid, 'solid')));
+  return pieces.length > 1 ? pieces.map(solidHandle) : [solid];
+}
+
 function iterCompound(bk: BrepkitKernel, h: number, type: ShapeType): KernelShape[] {
   const children = syntheticCompounds.get(h);
   if (children) {
-    return children.flatMap((child) =>
-      child.type === type ? [child] : iterShapes(bk, child, type)
-    );
+    return children.flatMap((child) => {
+      if (child.type === 'solid' && type === 'solid') return solidPieces(bk, child);
+      return child.type === type ? [child] : iterShapes(bk, child, type);
+    });
   }
   if (type === 'solid') {
-    return toArray(bk.getCompoundSolids(h)).map(solidHandle);
+    return toArray(bk.getCompoundSolids(h)).flatMap((id) => solidPieces(bk, solidHandle(id)));
   }
   if (type === 'face' || type === 'edge' || type === 'vertex' || type === 'wire') {
     const solids = toArray(bk.getCompoundSolids(h)).map(solidHandle);
@@ -47,7 +59,7 @@ function iterSolid(
 ): KernelShape[] {
   switch (type) {
     case 'solid':
-      return [shape];
+      return solidPieces(bk, shape);
     case 'shell':
       return toArray(bk.getSolidShells(h)).map(shellHandle);
     case 'face':

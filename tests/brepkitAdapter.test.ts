@@ -692,6 +692,63 @@ describe('BrepkitAdapter', () => {
       const pos = adapter.vertexPosition(verts[0]);
       expect(pos).toEqual([300 * 0.1, 300 * 0.2, 300 * 0.3]);
     });
+
+    // A boolean can leave separate pieces in one kernel solid (brepkit#2167,
+    // brepkit#2184); getSolidPieces (brepkit-wasm 4.6.0) splits them.
+    it('iterShapes solid→solid returns one solid per piece the kernel finds', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getSolidPieces: vi.fn((_solid: number) => new Uint32Array([7, 8])),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const cut = adapter.makeBox(1, 1, 1);
+
+      const solids = adapter.iterShapes(cut, 'solid') as BrepkitHandle[];
+
+      expect(mock.getSolidPieces).toHaveBeenCalledWith((cut as BrepkitHandle).id);
+      expect(solids.map((s) => [s.type, s.id])).toEqual([
+        ['solid', 7],
+        ['solid', 8],
+      ]);
+    });
+
+    it('iterShapes solid→solid keeps the handle of a solid in one piece', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getSolidPieces: vi.fn((_solid: number) => new Uint32Array([42])),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const hollow = adapter.makeBox(1, 1, 1);
+
+      const solids = adapter.iterShapes(hollow, 'solid');
+
+      expect(solids).toHaveLength(1);
+      expect(solids[0]).toBe(hollow);
+    });
+
+    it('iterShapes compound→solid splits each child solid into its pieces', () => {
+      const mock = Object.assign(createMockBrepKernel(), {
+        getSolidPieces: vi.fn((solid: number) =>
+          solid === 11 ? new Uint32Array([21, 22]) : new Uint32Array([solid])
+        ),
+        getCompoundSolids: vi.fn((_compound: number) => [11, 12]),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const both = adapter.makeCompound([adapter.makeBox(1, 1, 1), adapter.makeBox(1, 1, 1)]);
+
+      const ids = (adapter.iterShapes(both, 'solid') as BrepkitHandle[]).map((s) => s.id);
+
+      expect(ids).toEqual([21, 22, 12]);
+    });
+
+    it('iterShapes solid→solid returns the solid whole on a kernel without getSolidPieces', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      const solids = adapter.iterShapes(box, 'solid');
+
+      expect(solids).toHaveLength(1);
+      expect(solids[0]).toBe(box);
+    });
   });
 
   describe('measurement', () => {

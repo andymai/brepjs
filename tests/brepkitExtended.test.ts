@@ -20,6 +20,7 @@ import {
   getBounds,
   getEdges,
   getFaces,
+  getSolids,
   isSolid,
   measureVolume,
   polygon,
@@ -828,5 +829,40 @@ descBk('Arc bounds (brepkit)', () => {
     expect(bounds.yMax).toBeCloseTo(10, 9);
     expect(bounds.xMin).toBeCloseTo(at(110)[0], 9);
     expect(bounds.xMax).toBeCloseTo(at(20)[0], 9);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Separate pieces left by a cut
+// ---------------------------------------------------------------------------
+
+// The kernel leaves every piece of a cut in one solid, so getSolids must ask it
+// for the pieces (brepkit#2167, brepkit#2184).
+descBk('Pieces left by a cut (brepkit)', () => {
+  const volumes = (shape: Parameters<typeof getSolids>[0]) =>
+    getSolids(shape)
+      .map((s) => unwrap(measureVolume(s)))
+      .sort((a, b) => a - b);
+
+  it('a slot cut through a bar leaves two solids', () => {
+    const bar = box(80, 5, 2.5);
+    const slot = translate(box(10, 20, 20), [35, -5, -5]);
+    const [left, right, ...rest] = volumes(unwrap(cut(bar, slot)));
+    expect(rest).toHaveLength(0);
+    expect(left).toBeCloseTo(437.5, 6);
+    expect(right).toBeCloseTo(437.5, 6);
+  });
+
+  it('cutting a hollow box out of a larger one leaves the space around it and its cavity', () => {
+    const hollow = unwrap(
+      cut(box(20, 20, 20, { at: [0, 0, 10] }), box(10, 10, 10, { at: [0, 0, 10] }))
+    );
+    expect(getSolids(hollow)).toHaveLength(1);
+    const [cavity, around, ...rest] = volumes(
+      unwrap(cut(box(22, 22, 22, { at: [0, 0, 10] }), hollow))
+    );
+    expect(rest).toHaveLength(0);
+    expect(cavity).toBeCloseTo(1000, 6);
+    expect(around).toBeCloseTo(2648, 6);
   });
 });
