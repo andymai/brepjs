@@ -19,17 +19,23 @@ import {
   unwrapSolidOrThrow,
   toArray,
   syntheticCompounds,
+  cachedSolidPieces,
 } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 /**
  * One solid per separate piece of material in a solid: a boolean can leave
  * several pieces in one kernel solid, all in one shell. A solid in one piece
- * keeps its own handle, since the kernel rebuilds a hollow one as a new solid.
+ * keeps its own handle, since the kernel answers a solid whose cavity shares
+ * its shell with a rebuilt one.
  */
 function solidPieces(bk: BrepkitKernel, solid: KernelShape): KernelShape[] {
   if (typeof bk.getSolidPieces !== 'function') return [solid];
-  const pieces = toArray(bk.getSolidPieces(unwrap(solid, 'solid')));
+  const id = unwrap(solid, 'solid');
+  const pieces = cachedSolidPieces(bk, id, () => {
+    const found = toArray(bk.getSolidPieces(id));
+    return found.length > 1 ? found : [id];
+  });
   return pieces.length > 1 ? pieces.map(solidHandle) : [solid];
 }
 

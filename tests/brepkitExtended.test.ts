@@ -25,6 +25,7 @@ import {
   getSolids,
   getShells,
   isSolid,
+  iterSolids,
   measureArea,
   measureLength,
   measureVolume,
@@ -878,6 +879,14 @@ descBk('Pieces left by a cut (brepkit)', () => {
     expect(rest).toHaveLength(0);
     expect(cavity).toBeCloseTo(1000, 6);
     expect(around).toBeCloseTo(2648, 6);
+  });
+
+  it('names the same pieces on every traversal', () => {
+    const cutBar = unwrap(cut(box(80, 5, 2.5), translate(box(10, 20, 20), [35, -5, -5])));
+    const ids = () => [...iterSolids(cutBar)].map((s) => getKernel().hashCode(s.wrapped, 2 ** 31));
+    const first = ids();
+    expect(first).toHaveLength(2);
+    expect(ids()).toEqual(first);
   });
 });
 

@@ -472,6 +472,46 @@ export function nextSyntheticId(): number {
 export const syntheticCompounds = new Map<number, BrepkitHandle[]>();
 
 // ---------------------------------------------------------------------------
+// Solid pieces
+// ---------------------------------------------------------------------------
+
+/**
+ * Each solid's piece ids, per kernel. getSolidPieces builds new solids and
+ * shells for a solid in several pieces on every call, and the arena frees
+ * nothing one handle at a time, so a solid is split once and its pieces keep
+ * one identity until the solid changes in place or the arena rolls back.
+ */
+const solidPiecesByKernel = new WeakMap<BrepkitKernel, Map<number, readonly number[]>>();
+
+/** A solid's piece ids, from `split` the first time they are asked for. */
+export function cachedSolidPieces(
+  bk: BrepkitKernel,
+  solidId: number,
+  split: () => readonly number[]
+): readonly number[] {
+  let known = solidPiecesByKernel.get(bk);
+  if (!known) {
+    known = new Map();
+    solidPiecesByKernel.set(bk, known);
+  }
+  const cached = known.get(solidId);
+  if (cached) return cached;
+  const pieces = split();
+  known.set(solidId, pieces);
+  for (const piece of pieces) if (!known.has(piece)) known.set(piece, [piece]);
+  return pieces;
+}
+
+/**
+ * Forget one solid's pieces after the kernel changes it in place, or every
+ * solid's after the arena rolls back and its ids can name new entities.
+ */
+export function forgetSolidPieces(bk: BrepkitKernel, solidId?: number): void {
+  if (solidId === undefined) solidPiecesByKernel.delete(bk);
+  else solidPiecesByKernel.get(bk)?.delete(solidId);
+}
+
+// ---------------------------------------------------------------------------
 // One-time degradation warnings (ADR-0006 Phase 4)
 // ---------------------------------------------------------------------------
 

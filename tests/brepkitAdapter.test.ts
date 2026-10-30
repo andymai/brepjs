@@ -13,7 +13,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
-import { type BrepkitHandle, edgeHandle } from '@/kernel/brepkit/helpers.js';
+import { type BrepkitHandle, edgeHandle, solidHandle } from '@/kernel/brepkit/helpers.js';
 import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 import { isUnsupportedKernelOperationError } from '@/kernel/unsupported.js';
@@ -765,6 +765,89 @@ describe('BrepkitAdapter', () => {
 
       expect(solids).toHaveLength(1);
       expect(solids[0]).toBe(box);
+    });
+  });
+
+  // getSolidPieces builds new solids and shells for a solid in several pieces on
+  // every call, and the arena frees nothing one handle at a time.
+  describe('solid pieces are split once', () => {
+    const drawing = JSON.stringify({ visible: [], hidden: [] });
+    const splittingMock = () => {
+      let next = 70;
+      return Object.assign(createMockBrepKernel(), {
+        getSolidPieces: vi.fn((solid: number) =>
+          solid === 11 ? new Uint32Array([next++, next++]) : new Uint32Array([solid])
+        ),
+        getCompoundSolids: vi.fn((_compound: number) => [11, 12]),
+        getSolidShells: vi.fn((solid: number) => [solid + 100]),
+        projectSolidsEdges: vi.fn(
+          (_solids: Uint32Array | number[], ..._view: unknown[]) => drawing
+        ),
+        restore: vi.fn((_checkpoint: number) => {}),
+        executeBatch: vi.fn((_json: string) => '[]'),
+      });
+    };
+    const pieceIds = (adapter: BrepkitAdapter, shape: unknown) =>
+      (adapter.iterShapes(shape, 'solid') as BrepkitHandle[]).map((s) => s.id);
+
+    it('gives a solid the same pieces on every traversal', () => {
+      const adapter = new BrepkitAdapter(splittingMock());
+      const solid = solidHandle(11);
+
+      const first = pieceIds(adapter, solid);
+
+      expect(first).toEqual([70, 71]);
+      expect(pieceIds(adapter, solid)).toEqual(first);
+    });
+
+    it('asks the kernel once per solid across solid, shell, volume and projection traversals', () => {
+      const mock = splittingMock();
+      const adapter = new BrepkitAdapter(mock);
+      const both = adapter.makeCompound([adapter.makeBox(1, 1, 1), adapter.makeBox(1, 1, 1)]);
+
+      const pieces = adapter.iterShapes(both, 'solid');
+      adapter.iterShapes(both, 'solid');
+      adapter.volume(both);
+      adapter.projectEdges(both, [0, -100, 0], [0, 1, 0], [1, 0, 0]);
+      adapter.iterShapes(solidHandle(11), 'shell');
+      for (const piece of pieces) adapter.iterShapes(piece, 'shell');
+
+      expect(mock.getSolidPieces.mock.calls.map((c) => c[0])).toEqual([11, 12]);
+    });
+
+    it("keeps each kernel's pieces apart", () => {
+      const mocks = [splittingMock(), splittingMock()];
+      const adapters = mocks.map((m) => new BrepkitAdapter(m));
+
+      for (const adapter of adapters) {
+        pieceIds(adapter, solidHandle(11));
+        pieceIds(adapter, solidHandle(11));
+      }
+
+      for (const mock of mocks) expect(mock.getSolidPieces).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      [
+        'a checkpoint restore',
+        (adapter: BrepkitAdapter) => {
+          adapter.restoreCheckpoint(0);
+        },
+      ],
+      ['a batch', (adapter: BrepkitAdapter) => void adapter.executeBatch('[]')],
+      ['healing it in place', (adapter: BrepkitAdapter) => void adapter.healSolid(solidHandle(11))],
+      ['fixing it in place', (adapter: BrepkitAdapter) => void adapter.fixShape(solidHandle(11))],
+    ])('splits a solid again after %s', (_change, change) => {
+      const mock = splittingMock();
+      const adapter = new BrepkitAdapter(mock);
+      pieceIds(adapter, solidHandle(11));
+      pieceIds(adapter, solidHandle(11));
+      expect(mock.getSolidPieces).toHaveBeenCalledTimes(1);
+
+      change(adapter);
+
+      expect(pieceIds(adapter, solidHandle(11))).toEqual([72, 73]);
+      expect(mock.getSolidPieces).toHaveBeenCalledTimes(2);
     });
   });
 

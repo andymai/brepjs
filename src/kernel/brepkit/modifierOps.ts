@@ -16,6 +16,7 @@ import {
   unwrapSolidOrThrow,
   toArray,
   warnOnce,
+  forgetSolidPieces,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
@@ -420,6 +421,7 @@ export function offsetWire2D(
 
 export function simplify(bk: BrepkitKernel, shape: KernelShape): KernelShape {
   if ((shape as BrepkitHandle).type === 'solid') {
+    forgetSolidPieces(bk, unwrap(shape));
     try {
       bk.healSolid(unwrap(shape));
     } catch (e: unknown) {

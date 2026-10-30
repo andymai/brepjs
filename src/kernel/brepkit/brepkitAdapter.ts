@@ -43,6 +43,7 @@ import type {
   KernelShape,
 } from '@/kernel/types.js';
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import { forgetSolidPieces } from './helpers.js';
 
 import { makeBooleanOps } from './booleanOps.js';
 import { makeConstructionOps } from './constructionOps.js';
@@ -80,11 +81,20 @@ function makeCoreOps(
     // Arena-based: individual handles are not freed.
     // Call brepkitKernel.free() to release the entire arena.
     dispose: () => {},
-    executeBatch: (json) => bk.executeBatch(json),
+    executeBatch: (json) => {
+      // A batch can transform a solid in place, even one that then fails, so
+      // no split is known to hold after it.
+      try {
+        return bk.executeBatch(json);
+      } finally {
+        forgetSolidPieces(bk);
+      }
+    },
     checkpoint: () => bk.checkpoint(),
     checkpointCount: () => bk.checkpointCount(),
     restoreCheckpoint: (cp) => {
       bk.restore(cp);
+      forgetSolidPieces(bk);
     },
     discardCheckpoint: (cp) => {
       bk.discardCheckpoint(cp);
