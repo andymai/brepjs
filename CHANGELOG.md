@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.4](https://github.com/andymai/brepjs/compare/brepjs-v20.13.3...brepjs-v20.13.4) (2026-10-30)
+
+
+### Bug Fixes
+
+* **brepkit:** bound curved faces by their surface, not only their edges ([#2568](https://github.com/andymai/brepjs/issues/2568)) ([31fea5c](https://github.com/andymai/brepjs/commit/31fea5ccd4473acda346de08df0003ef0d751f9e))
+
 ## [20.13.3](https://github.com/andymai/brepjs/compare/brepjs-v20.13.2...brepjs-v20.13.3) (2026-10-30)
 
 
