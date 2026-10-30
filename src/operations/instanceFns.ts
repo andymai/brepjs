@@ -137,11 +137,12 @@ export interface MaterializeOptions {
  * Produce real geometry: a Compound of N placed copies (default), or a single
  * fused solid (`fuse: true`, 3D only). This is where the N kernel transforms
  * happen. A grid-built instance fuses via the faster kernel `gridPattern`.
+ * Either result is a {@link Shape3D}.
  */
 export function materialize<D extends Dimension>(
   inst: InstancedShape<D>,
   opts: MaterializeOptions = {}
-): Result<AnyShape<Dimension>> {
+): Result<Shape3D> {
   const { source, placements, grid } = inst;
 
   if (placements.length === 0) {
@@ -182,7 +183,7 @@ function combine<D extends Dimension>(
   source: AnyShape<D>,
   placements: ReadonlyArray<Matrix4x4>,
   fuse: boolean
-): Result<AnyShape<Dimension>> {
+): Result<Shape3D> {
   const copies: AnyShape<D>[] = [];
   for (const m of placements) {
     const placed = applyMatrix(source, m);
