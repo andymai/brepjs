@@ -190,14 +190,13 @@ interface ConicFrame {
 /**
  * The frame of an analytic circle or ellipse edge, evaluated at t as
  * center + U·cos t + V·sin t, recovered from its points at 0, π/2 and π.
- * brepkit reports such an edge's domain as exactly [0, 2π]; a NURBS edge that
- * happens to be a circle reports its knot domain and gets no frame.
+ * A NURBS edge that happens to be a circle reports CIRCLE too but runs over
+ * its knots, so it gets no frame; only an analytic edge has no NURBS data.
  */
 function conicFrame(bk: BrepkitKernel, edgeId: number): ConicFrame | undefined {
-  const params = bk.getEdgeCurveParameters(edgeId);
-  if (wasmIndex(params, 0) !== 0 || wasmIndex(params, 1) !== TAU) return undefined;
   const curveType = bk.getEdgeCurveType(edgeId);
   if (curveType !== 'CIRCLE' && curveType !== 'ELLIPSE') return undefined;
+  if (bk.getEdgeNurbsData(edgeId) !== null) return undefined;
   const at = (t: number): Point => {
     const p = bk.evaluateEdgeCurve(edgeId, t);
     return [wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2)];
@@ -222,10 +221,11 @@ function edgeEnds(bk: BrepkitKernel, edgeId: number): [Point, Point] {
 }
 
 /**
- * The curve parameters an edge spans. brepkit reports a circle or ellipse edge's
- * domain as the whole [0, 2π] even for an arc; the arc runs counterclockwise
- * about the curve's axis from the angle of its start vertex to that of its end
- * vertex (brepkit's own `circle_param_range`), angles read off the curve's frame.
+ * The curve parameters an edge spans. brepkit before 4.5.10 reports a circle or
+ * ellipse edge's domain as the whole [0, 2π] even for an arc, so an arc's span
+ * is read off the curve's frame on every kernel: it runs counterclockwise about
+ * the curve's axis from the angle of its start vertex to that of its end vertex
+ * (brepkit's own `circle_param_range`).
  */
 export function edgeParamRange(bk: BrepkitKernel, edgeId: number): [number, number] {
   const params = bk.getEdgeCurveParameters(edgeId);

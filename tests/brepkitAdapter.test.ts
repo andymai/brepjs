@@ -741,6 +741,25 @@ describe('BrepkitAdapter', () => {
       expect(bb.max).toEqual([1, 1, 1]);
     });
 
+    it("boundingBox of an analytic arc reaches the circle's top inside its span", () => {
+      const rad = (deg: number) => (deg * Math.PI) / 180;
+      const at = (t: number): [number, number, number] => [10 * Math.cos(t), 10 * Math.sin(t), 0];
+      // brepkit 4.5.10 on reports an arc's own span, not [0, 2π], as its parameters.
+      const mock = Object.assign(createMockBrepKernel(), {
+        getEdgeCurveType: vi.fn((_edge: number) => 'CIRCLE'),
+        getEdgeCurveParameters: vi.fn((_edge: number) => [rad(20), rad(110)]),
+        evaluateEdgeCurve: vi.fn((_edge: number, t: number) => at(t)),
+        getEdgeVertices: vi.fn((_edge: number) => [...at(rad(20)), ...at(rad(110))]),
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const arc = adapter.iterShapes(adapter.makeBox(1, 1, 1), 'edge')[0];
+
+      const bb = adapter.boundingBox(arc);
+
+      expect(bb.max[1]).toBeCloseTo(10, 12);
+      expect(bb.min[0]).toBeCloseTo(at(rad(110))[0], 12);
+    });
+
     it('centerOfMass returns coordinates', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);

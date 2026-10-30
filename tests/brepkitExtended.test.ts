@@ -17,12 +17,14 @@ import {
   fuse,
   castShape,
   compound,
+  getBounds,
   getEdges,
   getFaces,
   isSolid,
   measureVolume,
   polygon,
   rotate,
+  threePointArc,
   vertex,
   translate,
   unwrap,
@@ -805,5 +807,26 @@ descBk('Transforming compounds (brepkit)', () => {
     const c = compound([box(4, 1, 1), translate(box(4, 1, 1), [0, 3, 0])]);
     const bb = getKernel().boundingBox(rotate(c, 90, { axis: [0, 0, 1] }).wrapped);
     expect(bb.max[1] - bb.min[1]).toBeCloseTo(4, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Arc bounds
+// ---------------------------------------------------------------------------
+
+// brepkit 4.5.10 on reports an arc's own span as its curve parameters, not
+// [0, 2π]; an arc's box still takes its circle's peaks inside that span, not
+// samples along it.
+descBk('Arc bounds (brepkit)', () => {
+  it("reaches the circle's top inside the arc", () => {
+    const at = (deg: number): [number, number, number] => [
+      10 * Math.cos((deg * Math.PI) / 180),
+      10 * Math.sin((deg * Math.PI) / 180),
+      0,
+    ];
+    const bounds = getBounds(threePointArc(at(20), at(65), at(110)));
+    expect(bounds.yMax).toBeCloseTo(10, 9);
+    expect(bounds.xMin).toBeCloseTo(at(110)[0], 9);
+    expect(bounds.xMax).toBeCloseTo(at(20)[0], 9);
   });
 });
