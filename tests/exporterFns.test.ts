@@ -170,6 +170,21 @@ describe('exportAssemblySTEP', () => {
       });
     });
 
+    it('writes 200 separate parts as 200 solids', async () => {
+      using cube = box(1, 1, 1);
+      const cubes = Array.from({ length: 200 }, (_, n) => translate(cube, [2 * n, 0, 0]));
+      try {
+        const step = unwrap(
+          exportAssemblySTEP(cubes.map((shape, n) => ({ shape, name: `cube${n}` })))
+        );
+        using imported = unwrap(await importSTEP(step));
+        expect(getSolids(imported)).toHaveLength(200);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(200, 3);
+      } finally {
+        for (const c of cubes) c[Symbol.dispose]();
+      }
+    });
+
     it('exports with unit option', () => {
       const b = castShape(box(10, 10, 10).wrapped);
       const result = exportAssemblySTEP([{ shape: b, name: 'box' }], { unit: 'MM' });
