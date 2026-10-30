@@ -1,6 +1,6 @@
 {
   "name": "brepjs-cad",
-  "version": "0.192.2",
+  "version": "0.192.3",
   "description": "brep CLI, MCP server, and agent skills that let coding agents write brepjs CAD parts and verify them on a real kernel",
   "license": "Apache-2.0",
   "type": "module",

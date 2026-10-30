@@ -1527,6 +1527,23 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
       ).toBe(0);
     });
 
+    it('STEP export of parts sharing geometry releases the copies it writes', () => {
+      expect(
+        perIterationLeak(() => {
+          using a = box(10, 10, 10);
+          using moved = locate(a, { type: 'translate', v: [20, 0, 0] });
+          const parts = [
+            { shape: a, name: 'a' },
+            { shape: moved, name: 'moved' },
+            { shape: a, name: 'again' },
+          ];
+          unwrap(exportAssemblySTEP(parts));
+          unwrap(exportAssemblySTEP(parts, { unit: 'MM', modelUnit: 'CM' }));
+          unwrap(exportSTEPConfigured(parts));
+        })
+      ).toBe(0);
+    });
+
     it('solveAssembly leaks nothing', () => {
       using b1 = box(10, 10, 10);
       using b2 = box(6, 6, 6);

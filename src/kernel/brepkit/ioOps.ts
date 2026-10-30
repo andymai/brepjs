@@ -8,15 +8,16 @@ import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.j
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
+  compoundHandle,
   solidHandle,
   unwrapSolidOrThrow,
   unwrapSolidsForExport,
   toArray,
   copyWasmBytes,
   noop,
+  unwrap,
   warnOnce,
 } from './helpers.js';
-import { wasmIndex } from '@/utils/vec3.js';
 import {
   buildAsciiSTL,
   buildBinarySTL,
@@ -24,19 +25,15 @@ import {
   DEFAULT_STL_TOLERANCE,
 } from '@/kernel/stlBuilder.js';
 import { mesh } from './meshOps.js';
+import { mergeIgesDocuments } from './igesMerge.js';
+import { mergeStepDocuments } from './stepMerge.js';
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
-  // brepkit exports one solid at a time -- concatenate for multi-shape
-  const parts: string[] = [];
-  for (const shape of shapes) {
-    const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTEP');
-    for (const sid of solidIds) {
-      const bytes: Uint8Array = bk.exportStep(sid);
-      parts.push(new TextDecoder().decode(bytes));
-    }
-  }
-  return parts.join('\n');
+  const docs = shapes
+    .flatMap((shape) => unwrapSolidsForExport(bk, shape, 'exportSTEP'))
+    .map((sid) => new TextDecoder().decode(bk.exportStep(sid)));
+  return mergeStepDocuments(docs);
 }
 
 export function exportSTL(
@@ -46,12 +43,13 @@ export function exportSTL(
   tolerance = DEFAULT_STL_TOLERANCE,
   angularTolerance = DEFAULT_STL_ANGULAR_TOLERANCE
 ): string | ArrayBuffer {
-  const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTL');
-  // Use the first solid; STL format doesn't natively support multi-solid.
+  // Rejects anything but a solid or a compound holding solids; mesh() then
+  // meshes every solid of a compound into one triangle list.
+  unwrapSolidsForExport(bk, shape, 'exportSTL');
   // Build STL from the mesh rather than native exportStl so that both tolerance
   // and angularTolerance are threaded through (native exportStl takes only a
   // fixed linear deflection) — mirroring the occt-wasm adapter.
-  const { vertices, triangles } = mesh(bk, solidHandle(wasmIndex(solidIds, 0)), {
+  const { vertices, triangles } = mesh(bk, shape, {
     tolerance,
     angularTolerance,
     skipNormals: true,
@@ -72,15 +70,10 @@ export function importSTL(bk: BrepkitKernel, data: string | ArrayBuffer): Kernel
 
 export function exportIGES(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
-  const parts: string[] = [];
-  for (const shape of shapes) {
-    const solidIds = unwrapSolidsForExport(bk, shape, 'exportIGES');
-    for (const sid of solidIds) {
-      const bytes: Uint8Array = bk.exportIges(sid);
-      parts.push(new TextDecoder().decode(bytes));
-    }
-  }
-  return parts.join('\n');
+  const docs = shapes
+    .flatMap((shape) => unwrapSolidsForExport(bk, shape, 'exportIGES'))
+    .map((sid) => new TextDecoder().decode(bk.exportIges(sid)));
+  return mergeIgesDocuments(docs);
 }
 
 export function importIGES(bk: BrepkitKernel, data: string | ArrayBuffer): KernelShape[] {
@@ -93,8 +86,8 @@ export function exportSTEPAssembly(
   parts: StepAssemblyPart[],
   _options?: { unit?: string }
 ): string {
-  // brepkit doesn't support named/colored assembly export yet.
-  // Fall back to exporting all shapes concatenated.
+  // brepkit doesn't support named/colored assembly export yet, so the parts
+  // go into one plain STEP document.
   if (parts.length === 0) return '';
   const shapes = parts.map((p) => p.shape);
   return exportSTEP(bk, shapes);
@@ -151,11 +144,12 @@ export function fromBREP(bk: BrepkitKernel, data: string): KernelShape {
     const id = bk.fromBREP(data);
     return solidHandle(id);
   }
-  // Fallback to STEP import
+  // toBREP writes a non-solid as STEP, which reads back as a solid per part.
   const shapes = importSTEP(bk, data);
-  const first = shapes[0];
+  const [first] = shapes;
   if (!first) throw new Error('brepkit: fromBREP produced no shapes');
-  return first;
+  if (shapes.length === 1) return first;
+  return compoundHandle(bk.makeCompound(shapes.map((s) => unwrap(s, 'solid'))));
 }
 
 export function createXCAFDocument(

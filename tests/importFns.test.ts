@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
@@ -9,6 +11,7 @@ import {
   exportIGES,
   exportSTEP,
   exportSTL,
+  getBounds,
   getFaces,
   getKernel,
   getShells,
@@ -28,7 +31,28 @@ import {
   translate,
   unwrap,
 } from '@/index.js';
-import type { Shape3D } from '@/index.js';
+import type { AnyShape, Dimension, Shape3D } from '@/index.js';
+
+type Box6 = [number, number, number, number, number, number];
+
+/** Each solid's [xMin, yMin, zMin, xMax, yMax, zMax], ordered by zMin, then xMin. */
+function solidBoxes(shape: AnyShape<Dimension>): Box6[] {
+  return getSolids(shape)
+    .map((solid): Box6 => {
+      const b = getBounds(solid);
+      return [b.xMin, b.yMin, b.zMin, b.xMax, b.yMax, b.zMax];
+    })
+    .sort((p, q) => p[2] - q[2] || p[0] - q[0]);
+}
+
+function expectBoxes(actual: Box6[], expected: Box6[]): void {
+  expect(actual).toHaveLength(expected.length);
+  actual.forEach((box6, i) => {
+    box6.forEach((v, j) => {
+      expect(v).toBeCloseTo(expected[i]?.[j] ?? NaN, 3);
+    });
+  });
+}
 
 /** The facets of a shape's ASCII STL; `inward` reverses each triangle so the shell faces in. */
 async function stlFacets(shape: Shape3D, inward = false): Promise<string> {
@@ -91,6 +115,28 @@ describe('importSTEP', () => {
     // Volume should be 5 * 10 * 20 = 1000
     if (!isShape3D(imported)) throw new Error('expected a 3D shape');
     expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
+  });
+
+  it('imports a one-solid file as that solid', async () => {
+    using part = box(5, 10, 20);
+    using imported = unwrap(await importSTEP(unwrap(exportSTEP(part))));
+    expect(isSolid(imported)).toBe(true);
+  });
+
+  it('imports every part of an assembly at its placement', async () => {
+    // Written by OCCT (occt-wasm exportSTEP of a compound of located parts): a
+    // plate and a post, each placed twice by NEXT_ASSEMBLY_USAGE_OCCURRENCE.
+    const step = readFileSync(join(__dirname, 'fixtures/test-assembly.step'));
+    using imported = unwrap(await importSTEP(new Blob([step])));
+
+    expect(getSolids(imported)).toHaveLength(4);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2 * 400 + 2 * 32, 3);
+    expectBoxes(solidBoxes(imported), [
+      [0, 0, 0, 20, 10, 2],
+      [0, 0, 2, 2, 2, 10],
+      [18, 8, 2, 20, 10, 10],
+      [0, 0, 10, 20, 10, 12],
+    ]);
   });
 });
 

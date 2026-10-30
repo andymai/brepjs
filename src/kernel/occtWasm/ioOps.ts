@@ -486,21 +486,96 @@ interface XcafDocHandle extends OcctWasmHandle {
   readonly labels: ReadonlyArray<Omit<XcafPart, 'shape'>>;
 }
 
+/**
+ * A new XCAF document holding each part as a free shape of its own, tagged
+ * with its name and color.
+ *
+ * XCAF stores a shape once. A part identical to an earlier one comes back as
+ * that part's label, and a part sharing another part's geometry (`TShape`) at
+ * another placement becomes a reference to it, which leaves the shared label
+ * no longer free, so it is not written. Either way there are fewer free shapes
+ * than parts; the document is then rebuilt once with those parts copied, and a
+ * copy has a `TShape` of its own. Copying the part whose label became shared,
+ * not the placed parts referencing it, keeps those sharing one geometry.
+ */
 function addXcafParts(k: OcctKernelWasm, parts: readonly XcafPart[]): number {
-  // occt-wasm exposes the XCAF document API as discrete xcaf* kernel methods
-  // (there is no single createXCAFDocument binding). Build the document by
-  // adding each shape as a free part, then tagging its name and color.
   const docId = k.xcafNewDocument();
-  for (const entry of parts) {
-    const labelId = k.xcafAddShape(docId, unwrap(entry.shape));
+  let merged: ReadonlySet<number>;
+  try {
+    merged = mergedParts(addEachPart(k, docId, parts, new Set()), freeShapes(k, docId));
+  } catch (e) {
+    k.xcafClose(docId);
+    throw e;
+  }
+  if (merged.size === 0) return docId;
+  k.xcafClose(docId);
+  const rebuilt = k.xcafNewDocument();
+  try {
+    addEachPart(k, rebuilt, parts, merged);
+    return rebuilt;
+  } catch (e) {
+    k.xcafClose(rebuilt);
+    throw e;
+  }
+}
+
+/** Add `parts` in order, copying those in `copy`; the label each part went in as. */
+function addEachPart(
+  k: OcctKernelWasm,
+  docId: number,
+  parts: readonly XcafPart[],
+  copy: ReadonlySet<number>
+): number[] {
+  return parts.map((entry, i) => {
+    const labelId = addPartShape(k, docId, unwrap(entry.shape), copy.has(i));
     if (entry.name) k.xcafSetName(docId, labelId, entry.name);
     if (entry.color) {
       // Colors arrive 0-255 (see exporterFns); xcafSetColor wants 0-1.
       const [r, g, b] = entry.color;
       k.xcafSetColor(docId, labelId, r / 255, g / 255, b / 255);
     }
+    return labelId;
+  });
+}
+
+/**
+ * The parts that did not become a free shape of their own: a repeat of an
+ * earlier part's label, or a label no longer free. Each part adds at most one
+ * free shape, so as many free shapes as parts means none merged.
+ */
+function mergedParts(labels: readonly number[], free: readonly number[]): Set<number> {
+  const merged = new Set<number>();
+  if (free.length === labels.length) return merged;
+  const freeLabels = new Set(free);
+  const seen = new Set<number>();
+  labels.forEach((label, i) => {
+    if (seen.has(label) || !freeLabels.has(label)) merged.add(i);
+    seen.add(label);
+  });
+  return merged;
+}
+
+/** Add a shape, or a copy of it; the document keeps the copy's geometry once its slot is released. */
+function addPartShape(k: OcctKernelWasm, docId: number, shapeId: number, copy: boolean): number {
+  if (!copy) return k.xcafAddShape(docId, shapeId);
+  const copyId = k.copy(shapeId);
+  try {
+    return k.xcafAddShape(docId, copyId);
+  } finally {
+    k.release(copyId);
   }
-  return docId;
+}
+
+/** The document's free shapes' label ids. */
+function freeShapes(k: OcctKernelWasm, docId: number): number[] {
+  const roots = k.xcafGetRootLabels(docId);
+  try {
+    const ids: number[] = [];
+    for (let i = 0; i < roots.size(); i++) ids.push(roots.get(i));
+    return ids;
+  } finally {
+    roots.delete();
+  }
 }
 
 function writeXcafDoc(k: OcctKernelWasm, docId: number, units: StepUnits): string {

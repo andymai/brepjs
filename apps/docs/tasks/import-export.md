@@ -157,6 +157,8 @@ void fromStl;
 
 All imports return `Result<Shape, BrepError>`. Failures during import almost always mean the file is malformed or in a dialect the kernel doesn't recognize.
 
+A STEP or IGES file holding one solid imports as that `Solid`. An assembly, or any file with several parts, imports as a `Compound` of every part, each at the placement the file gives it; `getSolids` lists the parts. Part names and colors in the file are not read.
+
 ### Always heal imported shapes
 
 Imports (especially STEP from third-party tools) often have minor invalidity: gaps between faces, edges with the wrong precision, vertices that don't quite match. Always heal before operating on imported shapes:

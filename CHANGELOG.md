@@ -1,5 +1,12 @@
 # Changelog
 
+## [20.13.1](https://github.com/andymai/brepjs/compare/brepjs-v20.13.0...brepjs-v20.13.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **io:** keep every part of a model through STEP, IGES, and STL ([#2560](https://github.com/andymai/brepjs/issues/2560)) ([b0beb86](https://github.com/andymai/brepjs/commit/b0beb86e1015198f79e1bf042b5d9df46cc07811))
+
 ## [20.13.0](https://github.com/andymai/brepjs/compare/brepjs-v20.12.15...brepjs-v20.13.0) (2026-10-30)
 
 
