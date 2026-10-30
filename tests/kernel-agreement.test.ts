@@ -1,16 +1,19 @@
 /**
  * Cross-kernel agreement tests.
  *
- * Verifies that OCCT and brepkit produce numerically consistent results
- * for basic operations. Both kernels must agree within tolerance.
+ * Verifies that brepkit (`b`) produces numerically consistent results with
+ * occt-wasm (`o`), the default kernel and the reference here, for basic
+ * operations. Both kernels must agree within tolerance.
  *
- * These tests only run when both kernels are available (on-demand via
- * test runner, not in CI). ADR-0006 Phase 4: comprehensive parity suite
- * covering booleans, transforms/measurement, sweep/loft/extrude, and 2D.
+ * Every vitest project excludes this file (`alwaysExclude` in vitest.config.ts)
+ * because it initialises both kernels itself, so CI never runs it. Run it on
+ * demand with a config whose `include` lists it; if either kernel fails to
+ * load, each test returns early. ADR-0006 Phase 4: parity suite covering
+ * booleans, transforms/measurement, extrude/revolve, fillet/chamfer, and 2D.
  */
 
 import { describe, it, beforeAll, expect } from 'vitest';
-import { initAllKernels } from './helpers/kernelInit.js';
+import { initKernel } from './helpers/kernelInit.js';
 import { expectClose, expectKernelsAgree } from './helpers/kernelDivergences.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelAdapter } from '@/kernel/types.js';
@@ -23,20 +26,19 @@ interface KernelPair {
 let _pair: KernelPair | null = null;
 
 beforeAll(async () => {
-  await initAllKernels();
   try {
-    const o = getKernel('occt');
-    const b = getKernel('brepkit');
-    _pair = { o, b };
-  } catch {
-    // One or both kernels not available
+    await initKernel('occt-wasm');
+    await initKernel('brepkit');
+    _pair = { o: getKernel('occt-wasm'), b: getKernel('brepkit') };
+  } catch (e) {
+    console.warn('[kernel-agreement] occt-wasm or brepkit failed to load:', e);
   }
 }, 30000);
 
 /** Returns both adapters or null (caller should `return` on null). */
 function kernels(): KernelPair | null {
   if (!_pair) {
-    console.warn('[skip] Cross-kernel tests require both OCCT and brepkit');
+    console.warn('[skip] Cross-kernel tests require both occt-wasm and brepkit');
   }
   return _pair;
 }
@@ -411,8 +413,8 @@ describe('cross-kernel agreement', () => {
       const k = kernels();
       if (!k) return;
 
-      const rotO = k.o.rotate(k.o.makeBox(2, 3, 4), [0, 0, 0], [0, 0, 1], 90);
-      const rotB = k.b.rotate(k.b.makeBox(2, 3, 4), [0, 0, 0], [0, 0, 1], 90);
+      const rotO = k.o.rotate(k.o.makeBox(2, 3, 4), Math.PI / 2, [0, 0, 1], [0, 0, 0]);
+      const rotB = k.b.rotate(k.b.makeBox(2, 3, 4), Math.PI / 2, [0, 0, 1], [0, 0, 0]);
 
       expectTopologicalEquivalence('rotate-box', k, rotO, rotB, { volTol: 0.02, areaTol: 0.02 });
     });
@@ -422,8 +424,8 @@ describe('cross-kernel agreement', () => {
       if (!k) return;
 
       // Box (2,3,4) rotated 90° around Z: x-extent becomes 3, y-extent becomes 2
-      const rotO = k.o.rotate(k.o.makeBox(2, 3, 4), [0, 0, 0], [0, 0, 1], 90);
-      const rotB = k.b.rotate(k.b.makeBox(2, 3, 4), [0, 0, 0], [0, 0, 1], 90);
+      const rotO = k.o.rotate(k.o.makeBox(2, 3, 4), Math.PI / 2, [0, 0, 1], [0, 0, 0]);
+      const rotB = k.b.rotate(k.b.makeBox(2, 3, 4), Math.PI / 2, [0, 0, 1], [0, 0, 0]);
 
       const bbO = k.o.boundingBox(rotO);
       const bbB = k.b.boundingBox(rotB);
@@ -466,10 +468,10 @@ describe('cross-kernel agreement', () => {
       if (!k) return;
 
       const boxO = k.o.translate(k.o.makeBox(2, 2, 2), 0, 0, 5);
-      const mirO = k.o.mirror(boxO, 'XY', [0, 0, 0]);
+      const mirO = k.o.mirror(boxO, [0, 0, 0], [0, 0, 1]);
 
       const boxB = k.b.translate(k.b.makeBox(2, 2, 2), 0, 0, 5);
-      const mirB = k.b.mirror(boxB, 'XY', [0, 0, 0]);
+      const mirB = k.b.mirror(boxB, [0, 0, 0], [0, 0, 1]);
 
       expectTopologicalEquivalence('mirror-box', k, mirO, mirB, { topoExact: false, volTol: 0.05 });
 
@@ -593,7 +595,7 @@ describe('cross-kernel agreement', () => {
         return n[2] > 0.9; // top face normal points up
       });
       if (!topO) return;
-      const extO = k.o.extrude(topO, [0, 0, 10]);
+      const extO = k.o.extrude(topO, [0, 0, 1], 10);
 
       const boxB = k.b.makeBox(5, 5, 1);
       const topB = k.b.iterShapes(boxB, 'face').find((f) => {
@@ -601,7 +603,7 @@ describe('cross-kernel agreement', () => {
         return n[2] > 0.9;
       });
       if (!topB) return;
-      const extB = k.b.extrude(topB, [0, 0, 10]);
+      const extB = k.b.extrude(topB, [0, 0, 1], 10);
 
       // Extruded 5×5 face by 10 in Z → volume = 250
       const volO = k.o.volume(extO);
@@ -629,9 +631,9 @@ describe('cross-kernel agreement', () => {
       });
       if (!topB) return;
 
-      // Revolve 360° around the Y axis through origin
-      const revO = k.o.revolve(topO, [0, 0, 0], [0, 1, 0], 360);
-      const revB = k.b.revolve(topB, [0, 0, 0], [0, 1, 0], 360);
+      // Revolve a full turn (radians) around the Y axis through origin
+      const revO = k.o.revolveVec(topO, [0, 0, 0], [0, 1, 0], 2 * Math.PI);
+      const revB = k.b.revolveVec(topB, [0, 0, 0], [0, 1, 0], 2 * Math.PI);
 
       // Both should produce a solid with positive volume
       const volO = k.o.volume(revO);
@@ -654,8 +656,8 @@ describe('cross-kernel agreement', () => {
       const edgesB = k.b.iterShapes(boxB, 'edge');
 
       // Fillet all edges with radius 1
-      const filletO = k.o.fillet(boxO, edgesO, [1]);
-      const filletB = k.b.fillet(boxB, edgesB, [1]);
+      const filletO = k.o.fillet(boxO, edgesO, 1);
+      const filletB = k.b.fillet(boxB, edgesB, 1);
 
       // Volume decreases from 1000 — both should agree on how much
       const volO = k.o.volume(filletO);
@@ -701,14 +703,8 @@ describe('cross-kernel agreement', () => {
       const ptA: [number, number] = [0, 0];
       const ptB: [number, number] = [10, 5];
 
-      const lineO = k.o.makeLine2d(
-        k.o.createPoint2d(ptA[0], ptA[1]),
-        k.o.createPoint2d(ptB[0], ptB[1])
-      );
-      const lineB = k.b.makeLine2d(
-        k.b.createPoint2d(ptA[0], ptA[1]),
-        k.b.createPoint2d(ptB[0], ptB[1])
-      );
+      const lineO = k.o.makeLine2d(ptA[0], ptA[1], ptB[0], ptB[1]);
+      const lineB = k.b.makeLine2d(ptA[0], ptA[1], ptB[0], ptB[1]);
 
       // Evaluate at midpoint
       const boundsO = k.o.getCurve2dBounds(lineO);
@@ -733,8 +729,8 @@ describe('cross-kernel agreement', () => {
 
       const radius = 5;
 
-      const circO = k.o.makeCircle2d(k.o.createPoint2d(0, 0), radius);
-      const circB = k.b.makeCircle2d(k.b.createPoint2d(0, 0), radius);
+      const circO = k.o.makeCircle2d(0, 0, radius);
+      const circB = k.b.makeCircle2d(0, 0, radius);
 
       // Evaluate at param 0 — should be on the circle at distance 5 from origin
       const p0O = k.o.evaluateCurve2d(circO, 0);
@@ -755,11 +751,8 @@ describe('cross-kernel agreement', () => {
         [7, 5],
         [10, 0],
       ];
-      const polesO = poles.map(([x, y]) => k.o.createPoint2d(x, y));
-      const polesB = poles.map(([x, y]) => k.b.createPoint2d(x, y));
-
-      const bezO = k.o.makeBezier2d(polesO);
-      const bezB = k.b.makeBezier2d(polesB);
+      const bezO = k.o.makeBezier2d(poles);
+      const bezB = k.b.makeBezier2d(poles);
 
       const boundsO = k.o.getCurve2dBounds(bezO);
       const boundsB = k.b.getCurve2dBounds(bezB);
@@ -780,14 +773,14 @@ describe('cross-kernel agreement', () => {
       if (!k) return;
 
       // Two lines crossing: (0,0)→(10,10) and (0,10)→(10,0)
-      const l1O = k.o.makeLine2d(k.o.createPoint2d(0, 0), k.o.createPoint2d(10, 10));
-      const l2O = k.o.makeLine2d(k.o.createPoint2d(0, 10), k.o.createPoint2d(10, 0));
+      const l1O = k.o.makeLine2d(0, 0, 10, 10);
+      const l2O = k.o.makeLine2d(0, 10, 10, 0);
 
-      const l1B = k.b.makeLine2d(k.b.createPoint2d(0, 0), k.b.createPoint2d(10, 10));
-      const l2B = k.b.makeLine2d(k.b.createPoint2d(0, 10), k.b.createPoint2d(10, 0));
+      const l1B = k.b.makeLine2d(0, 0, 10, 10);
+      const l2B = k.b.makeLine2d(0, 10, 10, 0);
 
-      const ixO = k.o.intersectCurves2d(l1O, l2O);
-      const ixB = k.b.intersectCurves2d(l1B, l2B);
+      const ixO = k.o.intersectCurves2d(l1O, l2O, 1e-9).points;
+      const ixB = k.b.intersectCurves2d(l1B, l2B, 1e-9).points;
 
       // Should intersect at (5, 5)
       expect(ixO.length).toBeGreaterThanOrEqual(1);
@@ -807,8 +800,8 @@ describe('cross-kernel agreement', () => {
       const k = kernels();
       if (!k) return;
 
-      const lineO = k.o.makeLine2d(k.o.createPoint2d(0, 0), k.o.createPoint2d(5, 0));
-      const lineB = k.b.makeLine2d(k.b.createPoint2d(0, 0), k.b.createPoint2d(5, 0));
+      const lineO = k.o.makeLine2d(0, 0, 5, 0);
+      const lineB = k.b.makeLine2d(0, 0, 5, 0);
 
       const movedO = k.o.translateCurve2d(lineO, 10, 20);
       const movedB = k.b.translateCurve2d(lineB, 10, 20);
@@ -831,15 +824,15 @@ describe('cross-kernel agreement', () => {
       if (!k) return;
 
       // Create a circle and check its 2D bounding box
-      const circO = k.o.makeCircle2d(k.o.createPoint2d(0, 0), 5);
-      const circB = k.b.makeCircle2d(k.b.createPoint2d(0, 0), 5);
+      const circO = k.o.makeCircle2d(0, 0, 5);
+      const circB = k.b.makeCircle2d(0, 0, 5);
 
       const bb2dO = k.o.createBoundingBox2d();
-      k.o.addCurveToBBox2d(bb2dO, circO);
+      k.o.addCurveToBBox2d(bb2dO, circO, 1e-6);
       const boundsO = k.o.getBBox2dBounds(bb2dO);
 
       const bb2dB = k.b.createBoundingBox2d();
-      k.b.addCurveToBBox2d(bb2dB, circB);
+      k.b.addCurveToBBox2d(bb2dB, circB, 1e-6);
       const boundsB = k.b.getBBox2dBounds(bb2dB);
 
       // Circle of radius 5 centered at origin: bbox should be [-5,-5] to [5,5]

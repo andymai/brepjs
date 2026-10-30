@@ -17,7 +17,6 @@
     // that the CI typecheck job doesn't run (vitest aliases them to src instead).
     "tests/helpers/playgroundExampleEval.ts",
     "tests/playgroundExamples.test.ts",
-    "tests/validateCandidate.test.ts",
-    "tests/kernel-agreement.test.ts"
+    "tests/validateCandidate.test.ts"
   ]
 }
