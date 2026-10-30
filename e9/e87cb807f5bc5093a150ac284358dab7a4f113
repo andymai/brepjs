@@ -1,0 +1,23 @@
+.size-limit.json
+  s_d4ab5fb2066c9b::t_83eb9e375355d2 2
+tests/exporterFns.test.ts
+  s_d4ab5fb2066c9b::t_b6e43d9ce0250c 173-187
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_b6e43d9ce0250c 494-499,502-506,508-518,522,527-530,537-538,542-544,546-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9e87cb807f5bc5093a150ac284358dab7a4f113",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
