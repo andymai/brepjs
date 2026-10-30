@@ -1,0 +1,114 @@
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_0fd3136952d273 144,651,845,1204-1206,1378,1553-1612
+  s_d4ab5fb2066c9b::t_9a2614cb6cc465 136-143
+tests/historyRefReplay.test.ts
+  s_d4ab5fb2066c9b::t_33961bfc1d27c4 26,72
+tests/historyReplay.test.ts
+  s_d4ab5fb2066c9b::t_25386a8ba5b80c 16,20,34-38,102,259,306
+tests/ikFns.test.ts
+  s_d4ab5fb2066c9b::t_b9355941eaf8fc 126,151,172,210-212,218-219,229
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_35e3dd8fd06350 21,65,90,375,399
+tests/instanceFns.test.ts
+  s_d4ab5fb2066c9b::t_ff26e0aef0d90f 16-18,26-30,63,69,78,84
+tests/jointFns.test.ts
+  s_d4ab5fb2066c9b::t_e5859434cc4023 444-456
+tests/kernelCall.test.ts
+  s_d4ab5fb2066c9b::t_bc7b95a90e0a5a 26,205,207,216,227,243
+tests/loftFns.test.ts
+  s_d4ab5fb2066c9b::t_4cfeff14d706fe 11,15-17,25-29,37,47,54,62,75,83,91
+tests/mateFns.test.ts
+  s_d4ab5fb2066c9b::t_50ab1ee56ed669 22,30-33,35-36,38,46-49,51-52,54,76,362
+tests/measureFns.test.ts
+  s_d4ab5fb2066c9b::t_adea60ad700162 39-40,42-47,57,62-65,83,138,147,212-214,224-226,298
+tests/measurement.test.ts
+  s_d4ab5fb2066c9b::t_9461d52a29f445 22,24-26,33-37,102,108,146,152,162
+tests/meshCache.test.ts
+  s_d4ab5fb2066c9b::t_bab112d19b1d1d 18
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_db786841cbaa33 10,41,454-458,576,650,736,738
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_a4e3aae07fca7e 11,46
+tests/occtWasmAdoptShape.test.ts
+  s_d4ab5fb2066c9b::t_c96523ca0dbda2 30
+tests/occtWasmBooleanOp.test.ts
+  s_d4ab5fb2066c9b::t_2c7db8764f4181 77-79,82-83,85,91,120
+tests/offsetWire2D.test.ts
+  s_d4ab5fb2066c9b::t_00ac740b3c5add 14-18
+tests/operations-extrude.test.ts
+  s_d4ab5fb2066c9b::t_7cc0c6c118000f 15,21-30,39,52,67,81,96,110,131,142,154,168,182,195,205
+tests/originGeometricFallback.test.ts
+  s_d4ab5fb2066c9b::t_907903aa701565 16,43
+tests/origins.test.ts
+  s_d4ab5fb2066c9b::t_64b405ba909e22 250
+tests/parity/composedTransformParity.test.ts
+  s_d4ab5fb2066c9b::t_e9998e6a3ad2cb 41,44-47,77-78,98-99,143-148,152-153
+tests/parity/manifold.test.ts
+  s_d4ab5fb2066c9b::t_896bd1acbd1768 213,370
+tests/parity/nativeEdges.test.ts
+  s_d4ab5fb2066c9b::t_f3842540a211b2 16,29
+tests/parity/nativeFaces.test.ts
+  s_d4ab5fb2066c9b::t_653dbcfafc0185 19,32,60-62
+tests/parity/planeExtrudeOrientation.test.ts
+  s_d4ab5fb2066c9b::t_f168d6156ed6bb 26,29-32,56-57
+tests/parity/profileExtrude.test.ts
+  s_d4ab5fb2066c9b::t_2fe0febf7c43ad 15-16,35,37,69-70,76
+tests/parity/roundtrip.test.ts
+  s_d4ab5fb2066c9b::t_8c9e12a98aa364 38,55
+tests/parity/transforms.test.ts
+  s_d4ab5fb2066c9b::t_c501dea5ce5d99 45,64,153
+tests/primitiveFns.test.ts
+  s_d4ab5fb2066c9b::t_026c2f3270ead7 23,52,67,94
+tests/public-api-types.test.ts
+  s_d4ab5fb2066c9b::t_81721ce133a66b 1118,1149
+tests/shapeFns.test.ts
+  s_d4ab5fb2066c9b::t_20d9176238c12c 110
+tests/shapeRef.test.ts
+  s_d4ab5fb2066c9b::t_13495715330c95 280
+tests/shapeRefExtrudeRoles.test.ts
+  s_d4ab5fb2066c9b::t_19499b46cdeaa8 19-20,162-164
+tests/sketchFns.test.ts
+  s_d4ab5fb2066c9b::t_c9b860ccf7a117 112-113
+tests/stepExportDegenerate.test.ts
+  s_d4ab5fb2066c9b::t_fb17ca11d2bf1f 70
+tests/subShapeQuery.test.ts
+  s_d4ab5fb2066c9b::t_ec2269e182a643 15,21
+tests/sweepFns.test.ts
+  s_d4ab5fb2066c9b::t_ebb4944d5ebfa1 21-26,35,40,45,48,50,56,59,61,66,69,71,76,79,81,93,96,102,105,113,116
+tests/sweepRepro.test.ts
+  s_d4ab5fb2066c9b::t_8992570069568d 30,38,44,51,60,67,74-75,81
+tests/sweepSketchOrientation.test.ts
+  s_d4ab5fb2066c9b::t_776890953f410e 24,27-28,32,44,50,58,63
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_e944146ea80f9a 11,208,449
+tests/topology.test.ts
+  s_d4ab5fb2066c9b::t_000adb8057be04 31,462,567
+tests/validityTypes.test.ts
+  s_d4ab5fb2066c9b::t_0614a9f0d4ed00 77-79,105-107,295,318,341,535,545-547,563,584-587
+tests/variableFillet.test.ts
+  s_d4ab5fb2066c9b::t_4c81d4abf70840 4-13,20-24,31-32,35,37,45-46,50,52,59-60,63-64,66-67,95
+tests/workerHandler.test.ts
+  s_d4ab5fb2066c9b::t_c6386422a9de03 65,78,94,119,144,168,193,216,238,263,282
+tests/workerPool.test.ts
+  s_d4ab5fb2066c9b::t_e7a87d4c5c3d1f 57
+tests/wrapperFns.test.ts
+  s_d4ab5fb2066c9b::t_68801bec1be50a 33-35,43-48,492,497,509,734,756
+tsconfig.typecheck-tests.json
+  s_d4ab5fb2066c9b::t_f876f0baf8861e 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bc7ead232d72eb169682cd36ecf6e2a6b2d9292",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
