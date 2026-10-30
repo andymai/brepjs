@@ -315,10 +315,28 @@ export function fillet(
       'Fillet result is not a 3D shape'
     ) as Result<ValidSolid>;
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(filletUnsupportedError(e));
     return err(
       edgeTreatmentError('fillet', e, filteredEdges, { edgeCount: selectedCount, radius })
     );
   }
+}
+
+/**
+ * `UNSUPPORTED_CAPABILITY` for a fillet the kernel cannot build as asked (a
+ * radius that varies along an edge on brepkit), from its
+ * `UnsupportedKernelOperationError`.
+ */
+export function filletUnsupportedError(e: unknown): BrepError {
+  const kernelId = getKernel().kernelId;
+  const raw = e instanceof Error ? e.message : String(e);
+  return unsupportedError(
+    BrepErrorCode.UNSUPPORTED_CAPABILITY,
+    `fillet: the ${kernelId} kernel cannot build this fillet (${raw})`,
+    e,
+    { kernel: kernelId, operation: 'fillet' },
+    'Use one constant radius per edge, or use the occt-wasm kernel'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -722,9 +740,10 @@ export interface VariableFilletRadius {
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
  *
- * **Cross-kernel note:** brepkit supports arbitrary multi-point radius profiles.
- * occt-wasm supports a linear (start/end, <=2-point) profile and returns
- * UNSUPPORTED for multi-point; the opencascade.js kernel does not implement it.
+ * **Cross-kernel note:** occt-wasm supports a linear (start/end, <=2-point)
+ * profile; brepkit supports only a constant radius. Either returns
+ * `UNSUPPORTED_CAPABILITY` for a profile it cannot build. The opencascade.js
+ * kernel does not implement it.
  */
 export function variableFillet(
   shape: ValidSolid,
@@ -775,6 +794,7 @@ export function variableFillet(
     }
     return ok(wrapped as ValidSolid);
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(filletUnsupportedError(e));
     return err(
       kernelError(BrepErrorCode.VARIABLE_FILLET_FAILED, 'Variable-radius fillet failed', e)
     );

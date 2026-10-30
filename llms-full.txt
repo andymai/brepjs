@@ -441,6 +441,8 @@ fillet(shape, radius): Result<Shape3D>             // All edges
 fillet(shape, edges, radius): Result<Shape3D>      // Selected edges
 // edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>
 // radius: number | [r1, r2] | (edge => number | [r1, r2] | null)
+// brepkit takes one constant radius per call: [r1, r2] with r1 != r2, or different radii from a callback,
+// return UNSUPPORTED_CAPABILITY there (as do different chamfer distances from a callback).
 
 chamfer(shape, distance): Result<Shape3D>          // All edges
 chamfer(shape, edges, distance): Result<Shape3D>   // Selected edges

@@ -24,7 +24,7 @@ import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/co
 import type { BooleanOptions, KernelShape, ShapeEvolution, KernelType } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
-import { chamferUnsupportedError } from './modifierFns.js';
+import { chamferUnsupportedError, filletUnsupportedError } from './modifierFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -362,6 +362,7 @@ export function filletWithEvolution(
     propagateAllMetadata(evolution, [shape], cast);
     return ok({ shape: cast as ValidSolid, evolution });
   } catch (e) {
+    if (isUnsupportedKernelOperationError(e)) return err(filletUnsupportedError(e));
     const raw = e instanceof Error ? e.message : String(e);
     return err(
       kernelError('FILLET_FAILED', `Fillet operation failed: ${raw}`, e, {

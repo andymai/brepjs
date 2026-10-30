@@ -295,17 +295,16 @@ export const divergences: DivergenceMap = {
     'modifierFns.variableFilletRadius': {
       kind: 'not-implemented',
       reason:
-        'brepkit variable fillet produces vol > 1000 (physically impossible -- fillet removes material)',
+        'brepkit has no variable-radius fillet: brepkit-wasm filletVariable builds no rolling-ball blend (a radius running 2 to 5 along a 40 mm box edge removes 260 mm3 where the blend removes about 113, and a constant law of 3 removes the 180 of a flat chamfer), so a radius that varies along an edge returns UNSUPPORTED_CAPABILITY. brepkit also rejects a radius that runs to 0 ("fillet radius must be positive at all points").',
     },
     'modifierFns.variableFilletCallback': {
       kind: 'not-implemented',
-      reason:
-        'brepkit variable fillet produces vol > 1000 (physically impossible -- fillet removes material)',
+      reason: 'Same as modifierFns.variableFilletRadius, for a callback that returns [r1, r2].',
     },
     'modifierFns.perEdgeValues': {
       kind: 'not-implemented',
       reason:
-        'brepkit misplaces per-edge fillet radii: four box edges at radii 1, 1, 3, 3 read 938.03 mm3 against the exact 957.08.',
+        "brepkit takes one fillet radius per call, so different radii on different edges return UNSUPPORTED_CAPABILITY (a second call on the first one's result leaves the input solid corrupt), and a radius that varies along an edge is unsupported (see modifierFns.variableFilletRadius).",
     },
     'chamferAngle.perEdge': {
       kind: 'not-implemented',
@@ -315,7 +314,7 @@ export const divergences: DivergenceMap = {
     'modifierFns.perEdgeChamfers': {
       kind: 'not-implemented',
       reason:
-        'brepkit chamfers one distance group after another, each on edge ids taken from the input solid, and a chamfer replaces the edges of the solid it returns: the second group fails with "no manifold edges to chamfer (all edges are boundary or missing)".',
+        'brepkit takes one chamfer setback per call, so different distances on different edges return UNSUPPORTED_CAPABILITY: a second call on the first one\'s result cannot name the input\'s other edges ("no manifold edges to chamfer").',
     },
     'chamferAngle.meetingEdges': {
       kind: 'not-implemented',
@@ -525,7 +524,8 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     variableFillet: {
       kind: 'not-implemented',
-      reason: 'OCCT-specific variable fillet via kernel API not available in brepkit',
+      reason:
+        'The kernel fillet with [r1, r2] throws UnsupportedKernelOperationError on brepkit (see modifierFns.variableFilletRadius).',
     },
     multiSweepFns: {
       kind: 'not-implemented',
