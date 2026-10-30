@@ -1,0 +1,38 @@
+src/kernel/brepkit/topologyOps.ts
+  s_a2dc21dbec3f2b::t_b848e2731cc530 22
+  s_a2dc21dbec3f2b::t_24021ad2118219 29-30,34-38
+src/kernel/brepkit/brepkitAdapter.ts
+  s_a2dc21dbec3f2b::t_46b153f88fe9cd 85-91
+  s_a2dc21dbec3f2b::t_be21c4e414d875 84,92,97
+  s_a2dc21dbec3f2b::t_eda4ccd63ca487 46
+src/kernel/brepkit/helpers.ts
+  s_a2dc21dbec3f2b::t_1dffb09d61ee84 474-513
+src/kernel/brepkit/modifierOps.ts
+  s_a2dc21dbec3f2b::t_50c765c08f48ce 19
+  s_a2dc21dbec3f2b::t_e54ae3019f75f8 424
+tests/brepkitAdapter.test.ts
+  s_a2dc21dbec3f2b::t_4e31b048d4ba78 16
+  s_a2dc21dbec3f2b::t_19b7adefdba7a9 771-846,850
+  s_a2dc21dbec3f2b::t_30508504907dbc 847-849,851-853
+tests/brepkitExtended.test.ts
+  s_a2dc21dbec3f2b::t_4d067a65d8b32a 883-890
+  s_a2dc21dbec3f2b::t_e90aa0e0ded4ce 28
+src/kernel/brepkit/repairOps.ts
+  s_a2dc21dbec3f2b::t_f6f03bce907491 9-15,49-50,90,100,106,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c447f438ed7b8d1be0a39384ebdc4118ab001c1a",
+  "prompts": {},
+  "sessions": {
+    "s_a2dc21dbec3f2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3041864d-11cb-40e5-b12f-602f4f774ad4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
