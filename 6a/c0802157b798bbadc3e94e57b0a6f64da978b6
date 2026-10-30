@@ -1,0 +1,27 @@
+tests/chamferAngle.test.ts
+  s_d4ab5fb2066c9b::t_85cc770e91de4c 23
+  s_d4ab5fb2066c9b::t_852f413d34e62c 166,290
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_85cc770e91de4c 41
+  s_d4ab5fb2066c9b::t_852f413d34e62c 576
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_d1976a92bc7469 48,70,82
+tests/draftFns.test.ts
+  s_d4ab5fb2066c9b::t_852f413d34e62c 144-145,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ac0802157b798bbadc3e94e57b0a6f64da978b6",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
