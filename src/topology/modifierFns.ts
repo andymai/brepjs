@@ -47,8 +47,27 @@ function validateNotNull(
   return ok(undefined);
 }
 
+type ValuePair = readonly [number, number];
+
+function isPositivePair([a, b]: ValuePair): boolean {
+  return a > 0 && b > 0;
+}
+
 /**
- * Validate that a scalar or `[a, b]` pair is positive.
+ * A fillet's start and end radius: one may be 0, so the fillet runs out to
+ * nothing at that end of the edge, but not both, and neither below 0.
+ */
+export function isFilletRadiusPair([start, end]: ValuePair): boolean {
+  return start >= 0 && end >= 0 && (start > 0 || end > 0);
+}
+
+export const FILLET_PAIR_MESSAGE = 'Fillet radii must not be negative, and one must be positive';
+export const FILLET_PAIR_HINT =
+  'A radius may run to 0 at one end of the edge, but the other must be greater than 0';
+
+/**
+ * Validate that a scalar is positive and that an `[a, b]` pair passes
+ * `isValidPair` (both positive by default).
  * Returns an Err Result on failure, `undefined` on success.
  *
  * Function-type values (per-edge callbacks) are intentionally skipped here --
@@ -62,12 +81,13 @@ function validatePositiveParam(
     pair: string;
     scalarHint: string;
     pairHint: string;
-  }
+  },
+  isValidPair: (pair: ValuePair) => boolean = isPositivePair
 ): Err<BrepError> | undefined {
   if (typeof value === 'number' && value <= 0) {
     return err(validationError(msgs.code, msgs.scalar, undefined, undefined, msgs.scalarHint));
   }
-  if (Array.isArray(value) && (value[0] <= 0 || value[1] <= 0)) {
+  if (Array.isArray(value) && !isValidPair(value)) {
     return err(validationError(msgs.code, msgs.pair, undefined, undefined, msgs.pairHint));
   }
   return undefined;
@@ -86,7 +106,8 @@ type KernelHashCallback<V> = (ocShape: KernelShape) => V;
  */
 function resolveEdgeCallback(
   selectedEdges: ReadonlyArray<Edge>,
-  callbackFn: (edge: Edge) => number | [number, number] | null
+  callbackFn: (edge: Edge) => number | [number, number] | null,
+  isValidPair: (pair: ValuePair) => boolean = isPositivePair
 ): { edges: Edge[]; kernelParam: KernelHashCallback<number | [number, number]> } | null {
   const filteredEdges: Edge[] = [];
   const hashToValue = new Map<number, number | [number, number]>();
@@ -94,7 +115,7 @@ function resolveEdgeCallback(
   for (const edge of selectedEdges) {
     const val = callbackFn(edge) ?? 0;
     if (typeof val === 'number' && val <= 0) continue;
-    if (Array.isArray(val) && (val[0] <= 0 || val[1] <= 0)) continue;
+    if (Array.isArray(val) && !isValidPair(val)) continue;
     filteredEdges.push(edge);
     hashToValue.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), val);
   }
@@ -220,13 +241,17 @@ function normalizeFilletInputs(
 ): Result<{ filteredEdges: Edge[]; kernelRadius: FilletKernelRadius; selectedCount: number }> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
-  const paramErr = validatePositiveParam(radius, {
-    code: 'INVALID_FILLET_RADIUS',
-    scalar: 'Fillet radius must be positive',
-    pair: 'Fillet radii must both be positive',
-    scalarHint: 'Provide a positive radius value greater than 0',
-    pairHint: 'Both radius values must be greater than 0',
-  });
+  const paramErr = validatePositiveParam(
+    radius,
+    {
+      code: 'INVALID_FILLET_RADIUS',
+      scalar: 'Fillet radius must be positive',
+      pair: FILLET_PAIR_MESSAGE,
+      scalarHint: 'Provide a positive radius value greater than 0',
+      pairHint: FILLET_PAIR_HINT,
+    },
+    isFilletRadiusPair
+  );
   if (paramErr) return paramErr;
 
   const selectedEdges = edges ?? getEdges(shape);
@@ -243,7 +268,7 @@ function normalizeFilletInputs(
   }
 
   if (typeof radius === 'function') {
-    const resolved = resolveEdgeCallback(selectedEdges, radius);
+    const resolved = resolveEdgeCallback(selectedEdges, radius, isFilletRadiusPair);
     if (!resolved) {
       return err(
         validationError(
@@ -738,6 +763,8 @@ export interface VariableFilletRadius {
  *
  * The radius varies along the edge according to the provided spec points.
  * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
+ * A radius may be 0, so the fillet runs out to nothing there, as long as one
+ * is positive.
  *
  * **Cross-kernel note:** occt-wasm and brepkit build a constant or linear
  * (start/end, <=2-point) profile and return `UNSUPPORTED_CAPABILITY` for one of
@@ -756,12 +783,13 @@ export function variableFillet(
       )
     );
   }
-  for (const r of radii) {
-    if (r.radius <= 0) {
-      return err(
-        validationError(BrepErrorCode.VARIABLE_FILLET_FAILED, 'All radius values must be positive')
-      );
-    }
+  if (radii.some((r) => r.radius < 0) || radii.every((r) => r.radius === 0)) {
+    return err(
+      validationError(
+        BrepErrorCode.VARIABLE_FILLET_FAILED,
+        'Radius values must not be negative, and one must be positive'
+      )
+    );
   }
 
   const kernel = getKernel();

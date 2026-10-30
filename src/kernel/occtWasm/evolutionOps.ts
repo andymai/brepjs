@@ -28,6 +28,7 @@ import {
   referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
+  refuseVanishingFilletRadius,
   unwrap,
   wrapResult,
 } from './helpers.js';
@@ -429,7 +430,8 @@ export function filletWithHistory(
           hashVec,
           hashUpperBound
         );
-      }
+      },
+      refuseVanishingFilletRadius
     );
     const { id, evolution } = parseEvolution(evo);
     return { shape: wrapResult(k, id), evolution };

@@ -41,7 +41,8 @@ export type FinderFn<T extends AnyShape<Dimension>> = (finder: FinderFor<T>) => 
  * Fillet radius specification.
  *
  * - `number` — constant radius on all selected edges
- * - `[number, number]` — variable radius (start, end)
+ * - `[number, number]` — variable radius (start, end); one end may be 0, so the
+ *   fillet runs out there (occt-wasm builds that only through `variableFillet`)
  * - callback — per-edge radius; return `null` to skip an edge
  */
 export type FilletRadius =

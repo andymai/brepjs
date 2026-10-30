@@ -15,6 +15,7 @@ import {
   referenceFaceIds,
   reportingFaultyEdges,
   runEdgeTreatment,
+  refuseVanishingFilletRadius,
   unwrap,
   wrapResult,
 } from './helpers.js';
@@ -43,7 +44,8 @@ export function fillet(
     (edgeVec, startRadii, endRadii) => {
       if (!k.filletRadii) throw needsOcctWasm59('per-edge or tapered fillet radii');
       return k.filletRadii(id, edgeVec, startRadii, endRadii);
-    }
+    },
+    refuseVanishingFilletRadius
   );
   return wrapResult(k, resultId);
 }
