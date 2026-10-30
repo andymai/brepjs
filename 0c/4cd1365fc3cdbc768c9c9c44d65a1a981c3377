@@ -1,0 +1,24 @@
+src/kernel/occtWasm/ioOps.ts
+  s_d4ab5fb2066c9b::t_c369dda1a2f131 494-499,502-506,508-518,522,527-530,537-538,542-544,546-555
+tests/exporterFns.test.ts
+  s_d4ab5fb2066c9b::t_0aa8d7082f8285 173-185
+  s_d4ab5fb2066c9b::t_1f143b3840b28d 186-187
+.size-limit.json
+  s_d4ab5fb2066c9b::t_83eb9e375355d2 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c4cd1365fc3cdbc768c9c9c44d65a1a981c3377",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
