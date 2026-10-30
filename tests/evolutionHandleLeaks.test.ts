@@ -167,7 +167,7 @@ describe('operation temporaries are reclaimed from the occt-wasm arena (#1749)',
         const results = [
           cut(base, tool), // castToShape3D + resolveBooleanTool (single solid)
           cut(base, multiTool, { unsafe: true }), // resolveBooleanTool fuseAll branch
-          fillet(base, undefined, 0.5), // modifierFns.finalizeShape3D
+          fillet(base, 0.5), // modifierFns.finalizeShape3D
         ];
         for (const r of results) {
           expect(isOk(r)).toBe(true);

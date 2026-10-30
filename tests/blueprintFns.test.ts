@@ -143,6 +143,7 @@ describe('blueprintFns', () => {
 
     it('accepts a vector overload', () => {
       const bp = rect(10, 10);
+      // @ts-expect-error -- translate2D declares only (dx, dy); Blueprint.translate also takes a Point2D
       const moved = translate2D(bp, [7, 3]);
       const bb = getBounds2D(moved);
       expect(bb.center[0]).toBeCloseTo(7, 0);

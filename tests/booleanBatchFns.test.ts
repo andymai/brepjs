@@ -26,7 +26,7 @@ import {
   fuseAllBisectWith,
   type BisectKernelOps,
 } from '@/topology/booleanBatchFns.js';
-import type { ValidSolid } from '@/index.js';
+import type { BooleanOptions, Result, Shape3D, ValidSolid } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -172,18 +172,40 @@ describe('fuseAllBisect — happy path', () => {
 // recovery walk down to a working batch size.
 
 function wrapWithBatchFailure(threshold: number): BisectKernelOps {
+  // Overloaded declarations so the wrappers match the overloaded cutAll/fuseAll
+  // types; `unsafe` only selects the Shape3D overload and has no runtime effect.
+  function failingCutAll(
+    base: ValidSolid,
+    tools: ValidSolid[],
+    options?: BooleanOptions
+  ): Result<ValidSolid>;
+  function failingCutAll(
+    base: Shape3D,
+    tools: Shape3D[],
+    options: BooleanOptions & { unsafe: true }
+  ): Result<Shape3D>;
+  function failingCutAll(
+    base: Shape3D,
+    tools: Shape3D[],
+    options?: BooleanOptions
+  ): Result<Shape3D> {
+    if (tools.length > threshold) throw new Error(`simulated batch failure (n=${tools.length})`);
+    return cutAll(base, tools, { ...options, unsafe: true });
+  }
+  function failingFuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
+  function failingFuseAll(
+    shapes: Shape3D[],
+    options: BooleanOptions & { unsafe: true }
+  ): Result<Shape3D>;
+  function failingFuseAll(shapes: Shape3D[], options?: BooleanOptions): Result<Shape3D> {
+    if (shapes.length > threshold) throw new Error(`simulated batch failure (n=${shapes.length})`);
+    return fuseAll(shapes, { ...options, unsafe: true });
+  }
   return {
     cut, // real pairwise — always works on the synthetic geometry we feed it
     fuse,
-    cutAll: (base, tools, options) => {
-      if (tools.length > threshold) throw new Error(`simulated batch failure (n=${tools.length})`);
-      return cutAll(base, tools, options);
-    },
-    fuseAll: (shapes, options) => {
-      if (shapes.length > threshold)
-        throw new Error(`simulated batch failure (n=${shapes.length})`);
-      return fuseAll(shapes, options);
-    },
+    cutAll: failingCutAll,
+    fuseAll: failingFuseAll,
   };
 }
 

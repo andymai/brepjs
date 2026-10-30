@@ -52,7 +52,7 @@ describe.skipIf(shouldSkipSuite('gltfRoundTrip'))('brepkit-specific: GLB round-t
   it('Y-up export round-trips back to the original orientation', async () => {
     const solid = box(10, 20, 40, { centered: true });
     const before = getBounds(solid);
-    const ext = (b: ReturnType<typeof getBounds>) => [
+    const ext = (b: ReturnType<typeof getBounds>): [number, number, number] => [
       b.xMax - b.xMin,
       b.yMax - b.yMin,
       b.zMax - b.zMin,

@@ -8,7 +8,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from '../setup.js';
 import { Evaluator, box, cylinder, fuse, translate, rotate } from '@/csg/index.js';
 import { translate as copyTranslate, rotate as copyRotate } from '@/topology/transformFns.js';
-import { measureVolumeProps, unwrap, type AnyShape, type Dimension } from '@/index.js';
+import { measureVolumeProps, unwrap, isShape3D, type AnyShape, type Dimension } from '@/index.js';
 import { hasAnyMetadata } from '@/topology/metadata/metadataPropagation.js';
 import { getFaceTags } from '@/topology/metadata/faceTagFns.js';
 
@@ -17,6 +17,7 @@ beforeAll(async () => {
 }, 30000);
 
 function props(shape: AnyShape<Dimension>): { volume: number; com: readonly number[] } {
+  if (!isShape3D(shape)) throw new Error('expected a 3D shape');
   const p = unwrap(measureVolumeProps(shape));
   return { volume: p.volume, com: p.centerOfMass };
 }

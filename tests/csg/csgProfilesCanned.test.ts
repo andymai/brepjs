@@ -29,14 +29,20 @@ import {
 } from '@/csg/index.js';
 import { isOk, unwrap, measureArea, measureVolume } from '@/index.js';
 import { faceCenter } from '@/topology/faceFns.js';
-import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
+import { isFace, isShape3D, type AnyShape, type Dimension, type Face } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 function area(s: AnyShape<Dimension>): number {
+  if (!isFace(s) && !isShape3D(s)) throw new Error('expected a face or 3D shape');
   return unwrap(measureArea(s));
+}
+
+function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(s));
 }
 
 const itBrep = it.skipIf(currentKernel === 'manifold');
@@ -216,6 +222,6 @@ describe('canned bim profiles', () => {
     );
     const r = ev.evaluate(beam);
     expect(isOk(r)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(r)))).toBeCloseTo(2480 * 500, 0);
+    expect(vol(unwrap(r))).toBeCloseTo(2480 * 500, 0);
   });
 });

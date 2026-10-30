@@ -83,8 +83,8 @@ describe('Error constructors', () => {
     const meta = { operation: 'fuse', tolerance: 1e-3, inputTypes: ['solid', 'solid'] };
     const e = kernelError('FUSE_FAILED', 'Fuse failed', undefined, meta);
     expect(e.metadata).toEqual(meta);
-    expect(e.metadata?.operation).toBe('fuse');
-    expect(e.metadata?.tolerance).toBe(1e-3);
+    expect(e.metadata?.['operation']).toBe('fuse');
+    expect(e.metadata?.['tolerance']).toBe(1e-3);
   });
 
   it('all factory functions accept metadata', () => {

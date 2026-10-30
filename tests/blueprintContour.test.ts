@@ -20,14 +20,20 @@ import Blueprint from '@/2d/blueprints/blueprint.js';
 import { Curve2D } from '@/2d/lib/curve2D.js';
 import { bezier2d, line2d, ellipse2d, bspline2d } from '@/2d/curve2dGeometryFns.js';
 import { profile, extrude, Evaluator, toJSON, fromJSON } from '@/csg/index.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { isFace, isShape3D, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 function area(s: AnyShape<Dimension>): number {
+  if (!isFace(s) && !isShape3D(s)) throw new Error('expected a face or 3D shape');
   return unwrap(measureArea(s));
+}
+
+function vol(s: AnyShape<Dimension>): number {
+  if (!isShape3D(s)) throw new Error('expected a 3D shape');
+  return unwrap(measureVolume(s));
 }
 
 const itBrep = it.skipIf(currentKernel === 'manifold');
@@ -158,7 +164,7 @@ describe('blueprintToContour', () => {
       const c = blueprintToContour(bp);
       const r = ev.evaluate(extrude(profile(unwrap(c)), [0, 0, 10]));
       expect(isOk(r)).toBe(true);
-      expect(unwrap(measureVolume(unwrap(r)))).toBeCloseTo((40 * 30 - (4 - Math.PI) * 25) * 10, 0);
+      expect(vol(unwrap(r))).toBeCloseTo((40 * 30 - (4 - Math.PI) * 25) * 10, 0);
     });
   });
 });

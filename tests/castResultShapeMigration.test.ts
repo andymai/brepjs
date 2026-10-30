@@ -38,7 +38,7 @@ import {
   split,
   booleanPipeline,
 } from '@/index.js';
-import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { isFace, isShape3D, type AnyShape, type Dimension } from '@/core/shapeTypes.js';
 import type { Result } from '@/core/result.js';
 import { getKernel } from '@/kernel/index.js';
 
@@ -117,7 +117,9 @@ describe.skipIf(currentKernel !== 'occt-wasm')(
         [0, 0, 0],
       ]);
       expect(isOk(r)).toBe(true);
-      expect(unwrap(measureArea(unwrap(r)))).toBeGreaterThan(0);
+      const surface = unwrap(r);
+      if (!isFace(surface) && !isShape3D(surface)) throw new Error('expected a face or 3D shape');
+      expect(unwrap(measureArea(surface))).toBeGreaterThan(0);
     });
 
     it('hull / convexHull produce solids', () => {

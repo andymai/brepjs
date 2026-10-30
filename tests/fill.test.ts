@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { fill, getWires, measureArea, polygon, unwrap } from '@/index.js';
+import { fill, getWires, isPlanarWire, measureArea, polygon, unwrap } from '@/index.js';
 import { makeFace } from '@/topology/surfaceBuilders.js';
 import { outerWire } from '@/topology/faceFns.js';
 
@@ -21,6 +21,7 @@ describe('fill', () => {
     if (!outerResult.ok) return;
     const outerFace = outerResult.value;
     const outer = outerWire(outerFace);
+    if (!isPlanarWire(outer)) throw new Error('expected a planar outer wire');
 
     // Inner 4x4 square (hole)
     const holeResult = polygon([
@@ -32,6 +33,7 @@ describe('fill', () => {
     expect(holeResult.ok).toBe(true);
     if (!holeResult.ok) return;
     const holeWire = outerWire(holeResult.value);
+    if (!isPlanarWire(holeWire)) throw new Error('expected a planar hole wire');
 
     // Face with hole
     const faceWithHoleResult = makeFace(outer, [holeWire]);

@@ -12,7 +12,9 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { BrepkitAdapter, type BrepkitHandle } from '@/kernel/brepkit/brepkitAdapter.js';
+import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
+import type { BrepkitHandle } from '@/kernel/brepkit/helpers.js';
+import type { BrepkitKernel } from '@/kernel/brepkit/brepkitWasmTypes.js';
 import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 
 // ---------------------------------------------------------------------------
@@ -56,13 +58,13 @@ function createMockBrepKernel() {
     revolve: vi.fn(() => allocId()),
     loft: vi.fn(() => allocId()),
     fillet: vi.fn(() => allocId()),
-    filletVariable: vi.fn(() => allocId()),
+    filletVariable: vi.fn((_solid: number, _json: string) => allocId()),
     chamfer: vi.fn(() => allocId()),
     shell: vi.fn(() => allocId()),
 
     // Transform
     copySolid: vi.fn((_id: number) => allocId()),
-    transformSolid: vi.fn(),
+    transformSolid: vi.fn<BrepkitKernel['transformSolid']>(),
     mirror: vi.fn(() => allocId()),
 
     // Tessellation
@@ -134,7 +136,7 @@ function createMockBrepKernel() {
     // Shape construction (Phase 2)
     makeVertex: vi.fn((_x: number, _y: number, _z: number) => allocId()),
     makeLineEdge: vi.fn(() => allocId()),
-    makeNurbsEdge: vi.fn(() => allocId()),
+    makeNurbsEdge: vi.fn<BrepkitKernel['makeNurbsEdge']>(() => allocId()),
     makeCircleEdge: vi.fn(() => allocId()),
     makeCircleArc3d: vi.fn(() => allocId()),
     makeWire: vi.fn((_edges: number[], _closed: boolean) => allocId()),
@@ -176,7 +178,7 @@ function createMockBrepKernel() {
     isEdgeForwardInWire: vi.fn(() => true),
 
     // Promoted-to-required methods (brepkit-wasm 0.4.3)
-    getCompoundSolids: vi.fn(() => []),
+    getCompoundSolids: vi.fn((): number[] => []),
     getShellFaces: vi.fn(() => []),
     getWireEdges: vi.fn((_wire: number) => [200, 201]),
     getShapeOrientation: vi.fn(() => 'forward'),
@@ -197,6 +199,14 @@ function createMockBrepKernel() {
       edgeCount: 2,
     })),
   };
+}
+
+function firstTransformMatrix(
+  mock: ReturnType<typeof createMockBrepKernel>
+): Float64Array | number[] {
+  const matrix = mock.transformSolid.mock.calls[0]?.[1];
+  if (!matrix) throw new Error('transformSolid was not called');
+  return matrix;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,7 +477,7 @@ describe('BrepkitAdapter', () => {
       expect(mock.transformSolid).toHaveBeenCalled();
       expect((translated as BrepkitHandle).type).toBe('solid');
       // Verify the translation matrix
-      const matrix = mock.transformSolid.mock.calls[0][1];
+      const matrix = firstTransformMatrix(mock);
       expect(matrix[3]).toBe(5); // tx
       expect(matrix[7]).toBe(0); // ty
       expect(matrix[11]).toBe(0); // tz
@@ -479,7 +489,7 @@ describe('BrepkitAdapter', () => {
       const box = adapter.makeBox(1, 1, 1);
       adapter.rotate(box, 90, [0, 0, 1]);
 
-      const matrix = mock.transformSolid.mock.calls[0][1];
+      const matrix = firstTransformMatrix(mock);
       // 90° rotation around Z: cos(90)=0, sin(90)=1
       expect(matrix[0]).toBeCloseTo(0); // cos
       expect(matrix[1]).toBeCloseTo(-1); // -sin
@@ -493,7 +503,7 @@ describe('BrepkitAdapter', () => {
       const box = adapter.makeBox(1, 1, 1);
       adapter.scale(box, [0, 0, 0], 3);
 
-      const matrix = mock.transformSolid.mock.calls[0][1];
+      const matrix = firstTransformMatrix(mock);
       expect(matrix[0]).toBe(3);
       expect(matrix[5]).toBe(3);
       expect(matrix[10]).toBe(3);
@@ -1078,7 +1088,7 @@ describe('BrepkitAdapter', () => {
       expect(mock.makeNurbsEdge).toHaveBeenCalled();
       // Verify it's degree 2 (3 points - 1)
       const call = mock.makeNurbsEdge.mock.calls[0];
-      expect(call[6]).toBe(2); // degree
+      expect(call?.[6]).toBe(2); // degree
     });
 
     it('makeBezierEdge rejects < 2 points', () => {
@@ -1130,7 +1140,7 @@ describe('BrepkitAdapter', () => {
 
     it('interpolatePoints creates NURBS from 4+ points', () => {
       const mock = createMockBrepKernel();
-      (mock as Record<string, unknown>).interpolatePoints = vi.fn(() => 99);
+      mock.interpolatePoints = vi.fn(() => 99);
       const adapter = new BrepkitAdapter(mock);
       const edge = adapter.interpolatePoints([
         [0, 0, 0],
@@ -1140,7 +1150,7 @@ describe('BrepkitAdapter', () => {
       ]);
 
       expect((edge as BrepkitHandle).type).toBe('edge');
-      expect((mock as Record<string, unknown>).interpolatePoints).toHaveBeenCalled();
+      expect(mock.interpolatePoints).toHaveBeenCalled();
     });
   });
 
