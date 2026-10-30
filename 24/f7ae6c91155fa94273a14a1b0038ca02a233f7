@@ -1,0 +1,47 @@
+tests/helpers/kernelDivergences.ts
+  s_d4ab5fb2066c9b::t_82295c2c32fff7 298,302,307,317,527-528
+tests/brepkitAdapter.test.ts
+  s_d4ab5fb2066c9b::t_e26092cf85e2e5 841,851-860,1459,1467,1470,1472-1479
+  s_d4ab5fb2066c9b::t_0f7801e9e20c4e 19,1435,1441-1456,1464-1466,1468-1469,1480-1516
+llms-full.txt
+  s_d4ab5fb2066c9b::t_6094a3e1d93fa3 444-445
+llms.txt
+  s_d4ab5fb2066c9b::t_6094a3e1d93fa3 444-445
+src/topology/evolutionFns.ts
+  s_d4ab5fb2066c9b::t_81a3a046e4980c 27,365
+src/topology/apiTypes.ts
+  s_d4ab5fb2066c9b::t_1dc70c8760d372 46-48
+tests/kernel-ops.test.ts
+  s_d4ab5fb2066c9b::t_772bb92c63d044 445-446
+src/topology/modifierFns.ts
+  s_d4ab5fb2066c9b::t_6e4457a512e663 743-746,797
+  s_d4ab5fb2066c9b::t_a8f2b427f96037 318,325-339
+  s_d4ab5fb2066c9b::t_a6b58df90dc422 340-341
+tests/modifierFns.test.ts
+  s_d4ab5fb2066c9b::t_6e4457a512e663 4
+  s_d4ab5fb2066c9b::t_d86ef55e111021 647-663
+  s_d4ab5fb2066c9b::t_f946a1a77aa836 761-780,782-793,795-848
+docs/kernel-conformance.md
+  s_d4ab5fb2066c9b::t_6094a3e1d93fa3 3
+src/kernel/brepkit/modifierOps.ts
+  s_d4ab5fb2066c9b::t_e26092cf85e2e5 43,45,157,159
+  s_d4ab5fb2066c9b::t_839684745251f9 38-40,47-49,63-116
+  s_d4ab5fb2066c9b::t_8733a3b2f5d4b7 9
+  s_d4ab5fb2066c9b::t_f36308ab8bad65 36-37,41,44,46,50-62,151-152,155,158,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24f7ae6c91155fa94273a14a1b0038ca02a233f7",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
