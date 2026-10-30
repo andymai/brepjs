@@ -6,7 +6,7 @@ Web CAD library with a layered architecture and pluggable kernel abstraction lay
 
 Layered architecture with enforced boundaries (imports flow downward only):
 
-- **Layer 0** (`kernel/`, `utils/`): Foundation, no internal imports
+- **Layer 0** (`kernel/`, `utils/`): Foundation, imports nothing above Layer 0 (`kernel/` may import `utils/`)
 - **Layer 1** (`core/`): Memory management, geometry, constants, imports kernel/utils only
 - **Layer 2** (`topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/`, `worker/`): Domain, imports layers 0-1 + each other
 - **Layer 3** (`sketching/`, `text/`, `projection/`): High-level API, imports all lower layers

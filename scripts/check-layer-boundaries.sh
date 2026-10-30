@@ -4,7 +4,7 @@ set -euo pipefail
 # Layer boundary enforcement for brepjs
 # Ensures imports only flow downward through the layer hierarchy.
 #
-# Layer 0: kernel/, utils/       — no internal imports
+# Layer 0: kernel/, utils/       — no imports from higher layers (may import each other)
 # Layer 1: core/                 — can import kernel/, utils/
 # Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/, csg/, voxel/, implicit/
 #                                — can import layers 0-1 + each other

@@ -3,7 +3,7 @@
   "rules": [
     {
       "id": "kernel-no-internal-imports",
-      "rule": "kernel/ is Layer 0 — it must not import from any other src/ module (core/, topology/, operations/, etc.). Only external dependencies and local kernel/ files are allowed.",
+      "rule": "kernel/ is Layer 0 with utils/ — it may import external dependencies, other kernel/ files, and utils/, but nothing from core/ or any layer above (topology/, operations/, etc.).",
       "severity": "high"
     },
     {
