@@ -1,7 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
-import { INCH_UNIT, MILLIMETER_UNIT, largestStepCoordinate } from './helpers/stepText.js';
+import {
+  INCH_UNIT,
+  MILLIMETER_UNIT,
+  largestStepCoordinate,
+  stepProductNames,
+} from './helpers/stepText.js';
 import {
   box,
   sphere,
@@ -12,11 +17,12 @@ import {
   getSolids,
   importSTEP,
   isOk,
+  locate,
   measureVolume,
   translate,
   unwrap,
 } from '@/index.js';
-import type { Shape3D } from '@/index.js';
+import type { AnyShape, Dimension, Shape3D } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -69,6 +75,99 @@ describe('exportAssemblySTEP', () => {
         [expect.closeTo(18, 3), expect.closeTo(8, 3), expect.closeTo(2, 3)],
         [expect.closeTo(0, 3), expect.closeTo(0, 3), expect.closeTo(10, 3)],
       ]);
+    });
+
+    describe('parts that share geometry', () => {
+      /** A plate and a post, each a part twice; `locate` shares the source's geometry. */
+      function sharedGeometryStep(units?: { unit: 'MM'; modelUnit: 'CM' }): Blob {
+        using plate = box(20, 10, 2);
+        using post = box(2, 2, 8);
+        using lid = locate(plate, { type: 'translate', v: [0, 0, 10] });
+        using postA = locate(post, { type: 'translate', v: [0, 0, 2] });
+        using postB = locate(post, { type: 'translate', v: [18, 8, 2] });
+        const parts = [
+          { shape: plate, name: 'base', color: '#3366cc' },
+          { shape: lid, name: 'lid', color: '#cc6633' },
+          { shape: postA, name: 'postA', color: '#999999' },
+          { shape: postB, name: 'postB', color: '#999999' },
+        ];
+        return unwrap(exportAssemblySTEP(parts, units));
+      }
+
+      /** Each solid's lowest corner, ordered by z, then x. */
+      function corners(shape: AnyShape<Dimension>): number[][] {
+        return getSolids(shape)
+          .map((solid) => getBounds(solid))
+          .sort((a, b) => a.zMin - b.zMin || a.xMin - b.xMin)
+          .map((b) => [b.xMin, b.yMin, b.zMin]);
+      }
+
+      const closeTo = (scale: number, ...v: number[]): unknown[] =>
+        v.map((x) => expect.closeTo(x * scale, 3));
+
+      it('writes each as its own part, at its placement', async () => {
+        using imported = unwrap(await importSTEP(sharedGeometryStep()));
+        expect(getSolids(imported)).toHaveLength(4);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2 * 400 + 2 * 32, 3);
+        expect(corners(imported)).toEqual([
+          closeTo(1, 0, 0, 0),
+          closeTo(1, 0, 0, 2),
+          closeTo(1, 18, 8, 2),
+          closeTo(1, 0, 0, 10),
+        ]);
+      });
+
+      it('keeps the name of each', async (ctx) => {
+        skipIfDiverges(ctx, 'exporterFns.partNames');
+        const names = stepProductNames(await sharedGeometryStep().text());
+        expect(names).toEqual(expect.arrayContaining(['base', 'lid', 'postA', 'postB']));
+      });
+
+      it('writes each when scaling from another model unit', async (ctx) => {
+        skipIfDiverges(ctx, 'exporterFns.assemblyUnits');
+        const step = sharedGeometryStep({ unit: 'MM', modelUnit: 'CM' });
+        using imported = unwrap(await importSTEP(step));
+        expect(getSolids(imported)).toHaveLength(4);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(864_000, 1);
+        expect(corners(imported)).toEqual([
+          closeTo(10, 0, 0, 0),
+          closeTo(10, 0, 0, 2),
+          closeTo(10, 18, 8, 2),
+          closeTo(10, 0, 0, 10),
+        ]);
+      });
+
+      it('writes the same shape listed twice as two parts', async () => {
+        using b = box(10, 10, 10);
+        const step = unwrap(
+          exportAssemblySTEP([
+            { shape: b, name: 'first' },
+            { shape: b, name: 'second' },
+          ])
+        );
+        using imported = unwrap(await importSTEP(step));
+        expect(getSolids(imported)).toHaveLength(2);
+        expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(2000, 3);
+      });
+
+      it('writes a part listed after several placed copies of it', async () => {
+        using b = box(10, 10, 10);
+        const copies = [1, 2, 3].map((n) => locate(b, { type: 'translate', v: [20 * n, 0, 0] }));
+        try {
+          const step = unwrap(
+            exportAssemblySTEP([
+              ...copies.map((shape, n) => ({ shape, name: `copy${n}` })),
+              { shape: b, name: 'original' },
+            ])
+          );
+          using imported = unwrap(await importSTEP(step));
+          expect(getSolids(imported)).toHaveLength(4);
+          expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(4000, 3);
+          expect(corners(imported).map(([x]) => x)).toEqual(closeTo(1, 0, 20, 40, 60));
+        } finally {
+          for (const copy of copies) copy[Symbol.dispose]();
+        }
+      });
     });
 
     it('exports with unit option', () => {

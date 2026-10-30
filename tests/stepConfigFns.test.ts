@@ -1,8 +1,23 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { skipIfDiverges } from './helpers/kernelDivergences.js';
-import { INCH_UNIT, MILLIMETER_UNIT, largestStepCoordinate } from './helpers/stepText.js';
-import { box, exportSTEPConfigured, isOk, unwrap } from '@/index.js';
+import {
+  INCH_UNIT,
+  MILLIMETER_UNIT,
+  largestStepCoordinate,
+  stepProductNames,
+} from './helpers/stepText.js';
+import {
+  box,
+  exportSTEPConfigured,
+  getSolids,
+  importSTEP,
+  isOk,
+  locate,
+  measureVolume,
+  unwrap,
+} from '@/index.js';
+import type { Shape3D } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -42,6 +57,34 @@ describe('exportSTEPConfigured', () => {
       // May not be supported on all kernels
       expect(result.error.code).toBe('STEP_EXPORT_CONFIGURED_FAILED');
     }
+  });
+
+  it('writes named parts that share geometry as separate parts', async () => {
+    using plate = box(20, 10, 2);
+    // `locate` shares the plate's geometry.
+    using lid = locate(plate, { type: 'translate', v: [0, 0, 10] });
+    const step = unwrap(
+      exportSTEPConfigured([
+        { shape: plate, name: 'base' },
+        { shape: lid, name: 'lid' },
+      ])
+    );
+    using imported = unwrap(await importSTEP(new Blob([step])));
+    expect(getSolids(imported)).toHaveLength(2);
+    expect(unwrap(measureVolume(imported as Shape3D))).toBeCloseTo(800, 3);
+  });
+
+  it('keeps the names of parts that share geometry', (ctx) => {
+    skipIfDiverges(ctx, 'exporterFns.partNames');
+    using plate = box(20, 10, 2);
+    using lid = locate(plate, { type: 'translate', v: [0, 0, 10] });
+    const step = unwrap(
+      exportSTEPConfigured([
+        { shape: plate, name: 'base' },
+        { shape: lid, name: 'lid' },
+      ])
+    );
+    expect(stepProductNames(step)).toEqual(expect.arrayContaining(['base', 'lid']));
   });
 
   // `unit` is the unit written; `modelUnit`, defaulting to `unit`, is the unit

@@ -333,6 +333,11 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'brepkit writes STEP in millimeters whatever unit or modelUnit asks for.',
     },
+    'exporterFns.partNames': {
+      kind: 'not-implemented',
+      reason:
+        "brepkit writes named parts (exportAssemblySTEP, exportSTEPConfigured) as plain STEP: every part goes under one product named 'brepkit_solid', without its name or color.",
+    },
     'modifierFns.nullShapeValidation': {
       kind: 'not-implemented',
       reason:

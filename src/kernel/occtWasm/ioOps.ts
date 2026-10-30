@@ -486,13 +486,53 @@ interface XcafDocHandle extends OcctWasmHandle {
   readonly labels: ReadonlyArray<Omit<XcafPart, 'shape'>>;
 }
 
+/**
+ * A new XCAF document holding each part as a free shape of its own, tagged
+ * with its name and color.
+ *
+ * XCAF stores a shape once. A part identical to an earlier one comes back as
+ * that part's label, and a part sharing an earlier part's geometry (`TShape`)
+ * at another placement becomes a reference to it, which leaves the earlier
+ * label no longer free, so it is not written. Either way the free-shape count
+ * does not grow; the document is then rebuilt with the merged part copied,
+ * and a copy has a `TShape` of its own.
+ */
 function addXcafParts(k: OcctKernelWasm, parts: readonly XcafPart[]): number {
-  // occt-wasm exposes the XCAF document API as discrete xcaf* kernel methods
-  // (there is no single createXCAFDocument binding). Build the document by
-  // adding each shape as a free part, then tagging its name and color.
-  const docId = k.xcafNewDocument();
-  for (const entry of parts) {
-    const labelId = k.xcafAddShape(docId, unwrap(entry.shape));
+  const copied = new Set<number>();
+  for (;;) {
+    const docId = k.xcafNewDocument();
+    let merged: ReadonlySet<number>;
+    try {
+      merged = addEachPart(k, docId, parts, copied);
+    } catch (e) {
+      k.xcafClose(docId);
+      throw e;
+    }
+    if (merged.size === 0) return docId;
+    k.xcafClose(docId);
+    for (const i of merged) copied.add(i);
+  }
+}
+
+/** Add `parts` in order; the parts to copy so that none merges with another (none if empty). */
+function addEachPart(
+  k: OcctKernelWasm,
+  docId: number,
+  parts: readonly XcafPart[],
+  copied: ReadonlySet<number>
+): ReadonlySet<number> {
+  const merged = new Set<number>();
+  const labels: number[] = [];
+  let free = 0;
+  for (const [i, entry] of parts.entries()) {
+    const labelId = addPartShape(k, docId, unwrap(entry.shape), copied.has(i));
+    const roots = freeShapes(k, docId);
+    // A copy cannot merge, so only a null shape can leave the count unchanged then.
+    if (roots.length !== free + 1 && !copied.has(i)) {
+      merged.add(partToCopy(i, labelId, labels, roots, (j) => copied.has(j) || merged.has(j)));
+    }
+    free = roots.length;
+    labels.push(labelId);
     if (entry.name) k.xcafSetName(docId, labelId, entry.name);
     if (entry.color) {
       // Colors arrive 0-255 (see exporterFns); xcafSetColor wants 0-1.
@@ -500,7 +540,47 @@ function addXcafParts(k: OcctKernelWasm, parts: readonly XcafPart[]): number {
       k.xcafSetColor(docId, labelId, r / 255, g / 255, b / 255);
     }
   }
-  return docId;
+  return merged;
+}
+
+/**
+ * Part `i` merged with an earlier one. Copy the earlier part when `i` is a new
+ * free reference that took its label out of the free shapes, which leaves every
+ * other placed instance sharing its geometry; otherwise copy `i`.
+ */
+function partToCopy(
+  i: number,
+  labelId: number,
+  labels: readonly number[],
+  roots: readonly number[],
+  settled: (j: number) => boolean
+): number {
+  if (!roots.includes(labelId) || labels.includes(labelId)) return i;
+  const absorbed = labels.findIndex((label, j) => !settled(j) && !roots.includes(label));
+  return absorbed >= 0 ? absorbed : i;
+}
+
+/** Add a shape, or a copy of it; the document keeps the copy's geometry once its slot is released. */
+function addPartShape(k: OcctKernelWasm, docId: number, shapeId: number, copy: boolean): number {
+  if (!copy) return k.xcafAddShape(docId, shapeId);
+  const copyId = k.copy(shapeId);
+  try {
+    return k.xcafAddShape(docId, copyId);
+  } finally {
+    k.release(copyId);
+  }
+}
+
+/** The document's free shapes' label ids. */
+function freeShapes(k: OcctKernelWasm, docId: number): number[] {
+  const roots = k.xcafGetRootLabels(docId);
+  try {
+    const ids: number[] = [];
+    for (let i = 0; i < roots.size(); i++) ids.push(roots.get(i));
+    return ids;
+  } finally {
+    roots.delete();
+  }
 }
 
 function writeXcafDoc(k: OcctKernelWasm, docId: number, units: StepUnits): string {

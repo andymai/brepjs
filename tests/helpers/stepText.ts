@@ -1,6 +1,12 @@
-/** Read lengths back out of STEP text, to check the unit an export wrote them in. */
+/** Read lengths and part names back out of STEP text, to check what an export wrote. */
 
 const CARTESIAN_POINT = /CARTESIAN_POINT\('[^']*',\(([^)]*)\)\)/g;
+const PRODUCT_NAME = /PRODUCT\('((?:[^']|'')*)'/g;
+
+/** The name of every PRODUCT, in file order. */
+export function stepProductNames(step: string): string[] {
+  return [...step.matchAll(PRODUCT_NAME)].map(([, name]) => name ?? '');
+}
 
 /** The largest coordinate of any CARTESIAN_POINT, in the file's own length unit. */
 export function largestStepCoordinate(step: string): number {
