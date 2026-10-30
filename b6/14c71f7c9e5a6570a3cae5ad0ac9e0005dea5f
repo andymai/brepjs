@@ -1,0 +1,41 @@
+tests/importFns.test.ts
+  s_d4ab5fb2066c9b::t_3d0c062de84aa1 21,65,90,375,399
+tests/measureFns.test.ts
+  s_d4ab5fb2066c9b::t_e7b643b4ad5b49 38-39,41-46,56,61-64,82,137,146,192-194,204-206,278
+tests/measurement.test.ts
+  s_d4ab5fb2066c9b::t_6c48b3bd084d00 22,24-26,33-37,102,108,146,152,162
+tests/objImport.test.ts
+  s_d4ab5fb2066c9b::t_25acfbc0dea2ff 11,46
+tests/occtWasmAdoptShape.test.ts
+  s_d4ab5fb2066c9b::t_9dd681b08f4d23 30
+tests/occtWasmBooleanOp.test.ts
+  s_d4ab5fb2066c9b::t_a14d2a92f7be01 77-79,82-83,85,91,120
+tests/originGeometricFallback.test.ts
+  s_d4ab5fb2066c9b::t_93885d83b98ff4 16,43
+tests/origins.test.ts
+  s_d4ab5fb2066c9b::t_ddad155e5dc4e2 250
+tests/shapeFns.test.ts
+  s_d4ab5fb2066c9b::t_2d2d757c9022c3 110
+tests/subShapeQuery.test.ts
+  s_d4ab5fb2066c9b::t_54d3287c077d5e 15,21
+tests/threemfImport.test.ts
+  s_d4ab5fb2066c9b::t_f540cd099229bf 11,208,449
+tests/wasmArenaDisposal.test.ts
+  s_d4ab5fb2066c9b::t_f661d55a2e9e7f 127-134,629,823,1182-1184,1356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b614c71f7c9e5a6570a3cae5ad0ac9e0005dea5f",
+  "prompts": {},
+  "sessions": {
+    "s_d4ab5fb2066c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dea4dc74-85ec-4988-b4fe-8c3f4de95054",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Andy Aragon <hi@andymai.com>"
+    }
+  }
+}
