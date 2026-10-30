@@ -18,8 +18,12 @@ import {
   sketchRectangle,
   makeBaseBox,
   box,
+  drawCircle,
+  getEdges,
   getFaces,
   measureArea,
+  measureVolume,
+  Sketch,
   unwrap,
 } from '@/index.js';
 
@@ -422,6 +426,64 @@ describe('DrawingPen', () => {
     expect(
       draw().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'chamfer')
     ).toBeInstanceOf(Drawing);
+  });
+});
+
+// A pen arc lifts to one edge whatever its span, so the faces swept from it
+// are the ones the drawing names.
+describe('pen arcs on a plane', () => {
+  function sketchOf(d: Drawing): Sketch {
+    const s = d.sketchOnPlane('XY');
+    if (!(s instanceof Sketch)) throw new Error('expected a single sketch');
+    return s;
+  }
+
+  it('lifts each half-circle cap of a slot as one edge', () => {
+    const slot = draw([0, -8])
+      .lineTo([40, -8])
+      .threePointsArcTo([40, 8], [48, 0])
+      .lineTo([0, 8])
+      .threePointsArcTo([0, -8], [-8, 0])
+      .close();
+    const s = sketchOf(slot);
+    expect(getEdges(s.wire)).toHaveLength(4);
+    using prism = s.extrude(10);
+    expect(getFaces(prism)).toHaveLength(6);
+    expect(unwrap(measureVolume(prism))).toBeCloseTo((40 * 16 + Math.PI * 64) * 10, 3);
+  });
+
+  it('lifts a bulging and a hollowed half circle as one edge each', () => {
+    const bulge = sketchOf(
+      draw([0, 0]).lineTo([10, 0]).threePointsArcTo([10, 10], [15, 5]).lineTo([0, 10]).close()
+    );
+    expect(getEdges(bulge.wire)).toHaveLength(4);
+    using bulgeFace = bulge.face();
+    expect(unwrap(measureArea(bulgeFace))).toBeCloseTo(100 + (Math.PI * 25) / 2, 6);
+    bulge.delete();
+
+    const hollow = sketchOf(
+      draw([0, 0]).lineTo([10, 0]).threePointsArcTo([10, 10], [5, 5]).lineTo([0, 10]).close()
+    );
+    expect(getEdges(hollow.wire)).toHaveLength(4);
+    using hollowFace = hollow.face();
+    expect(unwrap(measureArea(hollowFace))).toBeCloseTo(100 - (Math.PI * 25) / 2, 6);
+    hollow.delete();
+  });
+
+  it('lifts the two half circles of a drawn circle as two edges', () => {
+    const disc = sketchOf(drawCircle(5));
+    expect(getEdges(disc.wire)).toHaveLength(2);
+    using cylinder = disc.extrude(4);
+    expect(getFaces(cylinder)).toHaveLength(4);
+    expect(unwrap(measureVolume(cylinder))).toBeCloseTo(Math.PI * 25 * 4, 3);
+  });
+
+  it('lifts a single full circle as one closed edge', () => {
+    const disc = sketchOf(drawSingleCircle(5));
+    expect(getEdges(disc.wire)).toHaveLength(1);
+    using cylinder = disc.extrude(4);
+    expect(getFaces(cylinder)).toHaveLength(3);
+    expect(unwrap(measureVolume(cylinder))).toBeCloseTo(Math.PI * 25 * 4, 3);
   });
 });
 

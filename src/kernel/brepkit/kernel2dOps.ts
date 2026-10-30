@@ -887,24 +887,14 @@ export function liftCurve2dToPlane(
         ? planeZ
         : [-planeZ[0], -planeZ[1], -planeZ[2]];
 
+      // One edge whatever the span, as the reference kernel builds it: brepkit
+      // sweeps an arc counterclockwise about `axis` from its start to its end,
+      // which names any span uniquely, and a full circle (start = end) becomes
+      // a closed edge.
       const bounds = bk2d.curveBounds(c);
-      let angularSpan: number;
-      if (c.__bk2d === 'trimmed') {
-        angularSpan = Math.abs((c as any).tEnd - (c as any).tStart);
-      } else {
-        angularSpan = 2 * Math.PI;
-      }
-      // Full/near-full circles -> 4 arcs; large arcs -> 2; small arcs -> 1
-      const nSegments = angularSpan > Math.PI ? 4 : angularSpan > Math.PI / 2 ? 2 : 1;
-      const segmentSpan = (bounds.last - bounds.first) / nSegments;
-      const edgeIds: number[] = [];
-      for (let seg = 0; seg < nSegments; seg++) {
-        const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first + seg * segmentSpan);
-        const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
-        edgeIds.push(bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis));
-      }
-      if (edgeIds.length === 1) return edgeHandle(wasmIndex(edgeIds, 0));
-      return wireHandle(bk.makeWire(edgeIds, false));
+      const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first);
+      const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.last);
+      return edgeHandle(bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis));
     }
 
     // Exact ellipse arcs: EdgeCurve::Ellipse edges via makeEllipseArc3d.
