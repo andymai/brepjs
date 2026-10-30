@@ -74,6 +74,7 @@ import {
   mirrorJoin,
   complexExtrude,
   twistExtrude,
+  supportExtrude,
   sketchRoundedRectangle,
   drawCircle,
   section,
@@ -1269,6 +1270,34 @@ describe.skipIf(!isOcctWasm)('occt-wasm arena disposal', () => {
           const cw = unwrap(closedWire(w));
           const r = twistExtrude(cw, 90, [0, 0, 0], [0, 0, 10]);
           if (isOk(r)) unwrap(r)[Symbol.dispose]();
+        })
+      ).toBe(0);
+    });
+
+    it('supportExtrude leaks nothing', () => {
+      // A plane through the spine, so the support is honoured rather than dropped.
+      using support = unwrap(
+        polygon([
+          [-20, 0, -20],
+          [20, 0, -20],
+          [20, 0, 20],
+          [-20, 0, 20],
+        ])
+      );
+      expect(
+        perIterationLeak(() => {
+          using f = unwrap(
+            polygon([
+              [-2, -2, 0],
+              [2, -2, 0],
+              [2, 2, 0],
+              [-2, 2, 0],
+            ])
+          );
+          const w = getWires(f)[0];
+          if (!w) throw new Error('polygon face must have a wire');
+          const cw = unwrap(closedWire(w));
+          unwrap(supportExtrude(cw, [0, 0, 0], [0, 0, 10], support.wrapped))[Symbol.dispose]();
         })
       ).toBe(0);
     });

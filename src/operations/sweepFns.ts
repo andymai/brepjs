@@ -256,7 +256,8 @@ export function supportExtrude(
   support: KernelType
 ): Result<Shape3D> {
   const endPoint = vecAdd(center, normal);
-  const spine = makeSpineWire(center, endPoint);
+  // sweep is immutable and does not consume the spine, so dispose it on every exit.
+  using spine = makeSpineWire(center, endPoint);
   return sweep(wire, spine, { support });
 }
 
